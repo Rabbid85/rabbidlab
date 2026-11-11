@@ -3,6 +3,12 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.12', [
+    'Settings has every setting in one place, under You, Server and Advanced, with Find a setting on top: Appearance, Updates, Notifications, Links, Active Directory, Activity log, Developer in Dev builds, and About.',
+    'Appearance picks the layout, Centered or Full width, and the sidebar, names and icons or icons only. Both are kept in this browser.',
+    'Notifications shows the mail server and the alert settings, and sends a test email. The Email settings button on Sensors opens it.',
+    'Links settings and the Active Directory service account moved into Settings. The gears on Links and Active Directory open their page there.',
+    'Pages sit in a column in the middle unless Full width is picked. Active Directory and Settings list their pages down the left with brighter text and a bar down the open one.']],
   ['1.1.11', [
     'Settings is laid out like Active Directory: a big title across the top, its sections listed down the left under Server and Options headings, and the open one marked with an orange bar. Developer is under Options.',
     'In a narrow window, the section headings in Active Directory and Settings stay as words instead of turning into lines.']],
@@ -129,19 +135,21 @@ const RELEASE_NOTES = [
   const allows = (list) => !!shown && list.split(/\s+/).some((p) => shown.has(p));
   const has = (p) => can.has(p);
   const PAGES = { overview: 'overview.view', links: 'links.view', sensors: 'sensors.view', seats: 'seats.view sessions.view', people: 'access.view', ad: 'ad.view ad.connect', local: 'windows.view',
-    org: 'ad.view', attrs: 'ad.view',
-    settings: 'updates.view activity.view' };
-  const SUBS = { updates: 'updates.view', activity: 'activity.view', developer: 'updates.auto' };
+    org: 'ad.view', attrs: 'ad.view' };
+  // Settings' pages and what each needs; Appearance and About are for everyone, Developer for Rabbid Lab Dev only.
+  const SUBS = { appearance: '', updates: 'updates.view', notifications: 'sensors.alerts', links: 'links.edit', ad: 'ad.connect', activity: 'activity.view',
+    developer: 'updates.auto', about: '' };
+  const subOk = (s) => s in SUBS && (!SUBS[s] || !shown || allows(SUBS[s])) && (s !== 'developer' || document.body.classList.contains('is-dev'));
   const pageOk = (key) => !shown || !PAGES[key] || allows(PAGES[key]);
   const home = () => ['overview', 'links', 'sensors', 'ad', 'seats', 'people', 'local'].find(pageOk) || 'wiki';
-  const firstSetting = () => Object.keys(SUBS).find((s) => !shown || allows(SUBS[s])) || 'updates';
+  const firstSetting = () => Object.keys(SUBS).find(subOk) || 'appearance';
 
-  // Which page shows comes from the address: #updates and #activity are sections of Settings, and #people and
-  // #role/<id> are Roles and people (people.js). The rails mark them.
+  // Which page shows comes from the address: #settings/<page> is a page of Settings (#updates, #activity and #developer
+  // still work), and #people and #role/<id> are Roles and people (people.js). The rails mark them.
   const where = () => {
     const [h, ...rest] = location.hash.slice(1).split('/');
-    if (h in SUBS) return ['settings', h, rest];
-    if (h === 'settings') return ['settings', firstSetting(), rest];
+    if (['updates', 'activity', 'developer'].includes(h)) return ['settings', h, rest];
+    if (h === 'settings') return ['settings', rest[0] in SUBS ? rest[0] : firstSetting(), rest.slice(1)];
     if (h === 'role') return ['people', 'role', rest];
     return [h || home(), h, rest];
   };
@@ -152,7 +160,7 @@ const RELEASE_NOTES = [
   };
   const section = () => {
     const s = where()[1];
-    return document.querySelector(`.sub[data-sub="${s in SUBS && (!shown || allows(SUBS[s])) ? s : firstSetting()}"]`);
+    return document.querySelector(`.sub[data-sub="${subOk(s) ? s : firstSetting()}"]`);
   };
   const title = () => {
     const p = page();
@@ -183,7 +191,6 @@ const RELEASE_NOTES = [
   // Hides what the roles don't allow, then shows the page again in case it was one of those.
   const apply = () => {
     document.querySelectorAll('[data-can]').forEach((el) => el.classList.toggle('cant', !allows(el.dataset.can)));
-    $('rail-settings').href = `#${firstSetting()}`;
     show();
   };
   // Role colours come from data-color: the page's rules allow no style attributes.
@@ -205,8 +212,53 @@ const RELEASE_NOTES = [
     $('rail-collapse').setAttribute('aria-expanded', String(!small));
     $('rail-collapse-text').textContent = small ? 'Expand' : 'Collapse';
     $('rail-collapse').title = small ? 'Expand' : 'Collapse';
+    $('set-sidebar').querySelectorAll('[data-rail]').forEach((b) => b.setAttribute('aria-pressed', String((b.dataset.rail === 'small') === (localStorage.getItem('rabbidlab.rail') === 'small'))));
+    $('set-narrow').hidden = !narrow.matches;
   };
+  // Appearance, Layout: pages in a column in the middle, or the whole window.
+  const layout = () => {
+    let wide = false;
+    try { wide = localStorage.getItem('rabbidlab.layout') === 'wide'; } catch { /* centered */ }
+    document.body.classList.toggle('layout-wide', wide);
+    $('set-layout').querySelectorAll('[data-layout]').forEach((b) => b.setAttribute('aria-pressed', String((b.dataset.layout === 'wide') === wide)));
+  };
+  $('set-layout').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-layout]');
+    if (!b) return;
+    try { localStorage.setItem('rabbidlab.layout', b.dataset.layout); } catch { /* this visit only */ }
+    layout();
+  });
+  $('set-sidebar').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-rail]');
+    if (!b) return;
+    localStorage.setItem('rabbidlab.rail', b.dataset.rail);
+    rail();
+  });
+  layout();
   rail();
+  // Find a setting: the pages whose name or settings have the words, and their groups' headings.
+  $('set-find').addEventListener('input', () => {
+    const q = $('set-find').value.trim().toLowerCase();
+    const nav = $('set-find').closest('nav');
+    let any = false;
+    nav.querySelectorAll('a[data-sub]').forEach((a) => {
+      const page = document.querySelector(`.sub[data-sub="${a.dataset.sub}"]`);
+      a.hidden = !!q && !`${a.textContent} ${page ? page.textContent : ''}`.toLowerCase().includes(q);
+      if (!a.hidden && a.offsetParent) any = true;
+    });
+    nav.querySelectorAll('.rail-label').forEach((p) => {
+      let el = p.nextElementSibling;
+      let show = false;
+      for (; el && el.tagName === 'A'; el = el.nextElementSibling) if (!el.hidden && !el.classList.contains('cant')) show = true;
+      p.hidden = !show;
+    });
+    $('set-none').hidden = any || !q;
+  });
+  $('set-find').addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    const a = [...$('set-find').closest('nav').querySelectorAll('a[data-sub]')].find((x) => !x.hidden && x.offsetParent);
+    if (a) location.hash = a.getAttribute('href');
+  });
   apply();
 
   // Rabbid Lab Dev's Developer tools: the switch in Settings, Developer, and the DEV buttons it shows in Add a link and Add a sensor.
@@ -238,6 +290,10 @@ const RELEASE_NOTES = [
     $('hero-title').textContent = s.product;
     $('hero-version').textContent = s.version;
     $('hero-where').textContent = `Running on ${s.server} since ${when(s.startedAt)}.`;
+    $('ab-version').textContent = `${s.product} ${s.version}`;
+    $('ab-where').textContent = `Running on ${s.server} since ${when(s.startedAt)}.`;
+    $('ab-repo').href = s.repository;
+    $('ab-repo-text').textContent = s.repository.replace(/^https?:\/\//, '');
     $('hero-repo').href = s.repository;
     started = s.startedAt;
     uptime();
@@ -1268,6 +1324,19 @@ const RELEASE_NOTES = [
   });
   $('about-copy').addEventListener('click', () => copy($('about-text'), $('about-copy')));
   $('about-close').addEventListener('click', () => $('about-dialog').close());
+  // Settings, About: the same text, straight to the clipboard; where that isn't allowed, the dialog to copy it from.
+  $('ab-copy').addEventListener('click', async () => {
+    const b = $('ab-copy');
+    b.disabled = true;
+    try {
+      await navigator.clipboard.writeText(await about());
+      b.textContent = 'Copied';
+      setTimeout(() => { b.textContent = 'Copy'; }, 2500);
+    } catch {
+      $('about-open').click();
+    }
+    b.disabled = false;
+  });
 
   // What the other scripts use.
   window.RabbidLab = { $, esc, svg, say, initials, when, daysAgo, send, get, keep, forget, has, paint, where, viewAs, place, popups, option, dropdown, sure, copy, busy, groupTools, groupFilter, places,

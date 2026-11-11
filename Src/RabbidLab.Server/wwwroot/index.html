@@ -31,6 +31,8 @@
   <symbol id="i-activity" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-7 4 14 3-7h4"/></symbol>
   <symbol id="i-new" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/></symbol>
   <symbol id="i-code" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5M14 4l-4 16"/></symbol>
+  <symbol id="i-brush" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 0 0 0 18c1.4 0 2-1 2-2s-.6-1.4-.6-2.2c0-1 .8-1.8 1.8-1.8H17a4 4 0 0 0 4-4c0-4.4-4-8-9-8z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10.5" cy="7" r="1"/><circle cx="15.5" cy="7.5" r="1"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 21h4"/></symbol>
   <symbol id="i-out" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M9 7h8v8"/></symbol>
   <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
   <symbol id="i-rail" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></symbol>
@@ -111,7 +113,7 @@
   <a href="#wiki" data-page="wiki" title="Wiki"><svg><use href="#i-book"/></svg><span>Wiki</span></a>
   <a href="#whats-new" data-page="whats-new" title="What's new"><svg><use href="#i-new"/></svg><span>What's new</span><small id="rail-version"></small></a>
   <a href="https://github.com/Rabbid85/rabbidlab" id="rail-repo" target="_blank" rel="noopener" title="GitHub"><svg><use href="#i-code"/></svg><span>GitHub</span><svg class="out"><use href="#i-out"/></svg></a>
-  <a href="#updates" data-page="settings" class="rail-settings" id="rail-settings" title="Settings" data-can="updates.view activity.view"><svg><use href="#i-gear"/></svg><span>Settings</span><i class="rail-dot" id="rail-dot" hidden></i></a>
+  <a href="#settings" data-page="settings" class="rail-settings" id="rail-settings" title="Settings"><svg><use href="#i-gear"/></svg><span>Settings</span><i class="rail-dot" id="rail-dot" hidden></i></a>
   <button type="button" class="rail-collapse" id="rail-collapse" aria-expanded="true"><svg><use href="#i-rail"/></svg><span id="rail-collapse-text">Collapse</span></button>
 </nav>
 
@@ -166,19 +168,51 @@
     </section>
   </section>
 
-  <!-- Settings, laid out like Active Directory: a big title, its sections listed down the left, and the open one beside them (#updates, #activity, #developer). -->
+  <!-- Settings: every setting in one place, its pages down the left under You, Server and Advanced, the open one beside them (#settings/<page>). -->
   <section class="page settings-page set-area" id="page-settings" data-page="settings" data-title="Settings" hidden>
-    <header class="page-head dhead"><h1>Settings</h1><p>Keep Rabbid Lab up to date, and see what's been done here.</p></header>
-    <nav class="dnav srail" aria-label="Settings">
-      <p class="rail-label">Server</p>
-      <a href="#updates" data-sub="updates" data-can="updates.view"><svg><use href="#i-updates"/></svg><span>Updates</span><i class="rail-dot" id="srail-dot" hidden></i></a>
-      <a href="#activity" data-sub="activity" data-can="activity.view"><svg><use href="#i-activity"/></svg><span>Activity log</span></a>
-      <p class="rail-label dev-only" data-can="updates.auto">Options</p>
-      <a href="#developer" data-sub="developer" class="dev-only" data-can="updates.auto"><svg><use href="#i-code"/></svg><span>Developer</span></a>
+    <header class="page-head dhead"><h1>Settings</h1><p>Everything you can set in Rabbid Lab, in one place. Changes save as you make them.</p></header>
+    <nav class="dnav srail lists" aria-label="Settings">
+      <label class="side-find"><svg><use href="#i-search"/></svg><input type="search" id="set-find" placeholder="Find a setting" aria-label="Find a setting" autocomplete="off" spellcheck="false"></label>
+      <p class="rail-label">You</p>
+      <a href="#settings/appearance" data-sub="appearance"><svg><use href="#i-brush"/></svg><span>Appearance</span></a>
+      <p class="rail-label" data-can="updates.view sensors.alerts links.edit ad.connect activity.view">Server</p>
+      <a href="#settings/updates" data-sub="updates" data-can="updates.view"><svg><use href="#i-updates"/></svg><span>Updates</span><i class="rail-dot" id="srail-dot" hidden></i></a>
+      <a href="#settings/notifications" data-sub="notifications" data-can="sensors.alerts"><svg><use href="#i-bell"/></svg><span>Notifications</span></a>
+      <a href="#settings/links" data-sub="links" data-can="links.edit"><svg><use href="#i-link"/></svg><span>Links</span></a>
+      <a href="#settings/ad" data-sub="ad" data-can="ad.connect"><svg><use href="#i-users"/></svg><span>Active Directory</span></a>
+      <a href="#settings/activity" data-sub="activity" data-can="activity.view"><svg><use href="#i-activity"/></svg><span>Activity log</span></a>
+      <p class="rail-label">Advanced</p>
+      <a href="#settings/developer" data-sub="developer" class="dev-only" data-can="updates.auto"><svg><use href="#i-code"/></svg><span>Developer</span><small>Dev</small></a>
+      <a href="#settings/about" data-sub="about"><svg><use href="#i-info"/></svg><span>About</span></a>
+      <p class="hint set-none" id="set-none" hidden>No setting matches that.</p>
     </nav>
     <div class="dmain">
 
-    <section class="sub" data-sub="updates" data-title="Updates">
+    <!-- Appearance: just for this person, in this browser. -->
+    <section class="sub" data-sub="appearance" data-title="Appearance" hidden>
+      <header class="sub-head"><h2>Appearance</h2><p>How Rabbid Lab looks for you, in this browser.</p></header>
+      <p class="h3">Layout</p>
+      <div class="lay-picks" id="set-layout">
+        <button type="button" class="lay-pick" data-layout="centered" aria-pressed="true">
+          <span class="lay-pic"><i class="r"></i><i class="c"><i></i><i></i><i></i></i></span>
+          <b>Centered</b><small>Pages sit in a column in the middle, with space either side on a wide screen.</small></button>
+        <button type="button" class="lay-pick" data-layout="wide" aria-pressed="false">
+          <span class="lay-pic wide"><i class="r"></i><i class="c"><i></i><i></i><i></i></i></span>
+          <b>Full width</b><small>Pages use the whole window, so lists show more at once.</small></button>
+      </div>
+      <p class="h3">Sidebar</p>
+      <div class="lay-picks" id="set-sidebar">
+        <button type="button" class="lay-pick" data-rail="wide" aria-pressed="true">
+          <span class="lay-pic"><i class="r big"></i><i class="c"><i></i><i></i><i></i></i></span>
+          <b>Names and icons</b><small>The sidebar shows each page's name.</small></button>
+        <button type="button" class="lay-pick" data-rail="small" aria-pressed="false">
+          <span class="lay-pic"><i class="r thin"></i><i class="c"><i></i><i></i><i></i></i></span>
+          <b>Icons only</b><small>A narrow sidebar. Point at an icon for its name.</small></button>
+      </div>
+      <p class="hint" id="set-narrow" hidden>The window is narrow, so the sidebar shows icons only for now.</p>
+    </section>
+
+    <section class="sub" data-sub="updates" data-title="Updates" hidden>
       <header class="sub-head"><h2>Updates</h2><p>Keep Rabbid Lab on the newest version.</p></header>
       <!-- Where it stands, with the button that fits. During an update, the installing card takes its place. -->
       <div class="ustatus" id="upd-status">
@@ -212,10 +246,68 @@
 
       <p class="h3">More</p>
       <div class="rows">
-        <a class="row" href="#activity" data-can="activity.view"><svg><use href="#i-history"/></svg><span class="t"><b>Update history</b><span id="upd-history">Every update is in the activity log.</span></span><svg class="chev"><use href="#i-right"/></svg></a>
+        <a class="row" href="#settings/activity" data-can="activity.view"><svg><use href="#i-history"/></svg><span class="t"><b>Update history</b><span id="upd-history">Every update is in the activity log.</span></span><svg class="chev"><use href="#i-right"/></svg></a>
         <a class="row" href="#whats-new"><svg><use href="#i-new"/></svg><span class="t"><b id="upd-new-title">What's new</b><span id="upd-new-text"></span></span><svg class="chev"><use href="#i-right"/></svg></a>
       </div>
       <p class="foot-note"><svg><use href="#i-lock"/></svg><span>Updates come from <a id="upd-source" href="#" rel="noopener">GitHub</a> and only install if they're signed by Rabbid Lab.</span></p>
+    </section>
+
+    <!-- Notifications: the mail server and the saved alert settings, changed in Email settings (sensors.js). -->
+    <section class="sub" data-sub="notifications" data-title="Notifications" hidden>
+      <header class="sub-head"><h2>Notifications</h2><p>The mail server alerts go through, who gets them, and when.</p></header>
+      <p class="h3">Email</p>
+      <div class="rows" id="nt-mail">
+        <div class="row still"><svg><use href="#i-bell"/></svg><span class="t"><b>Mail server</b><span id="nt-server">…</span></span><button type="button" class="small" id="nt-change">Change</button></div>
+        <div class="row still"><svg><use href="#i-user"/></svg><span class="t"><b>Send alerts to</b><span id="nt-to">…</span></span><button type="button" class="small" id="nt-change-to">Change</button></div>
+        <div class="row still"><svg><use href="#i-check"/></svg><span class="t"><b>Send a test email</b><span id="nt-test-text">Sends one to the addresses above, through the mail server.</span></span><button type="button" class="small" id="nt-test">Send</button></div>
+      </div>
+      <p class="hint note" id="nt-done" hidden></p>
+      <p class="h3">Alert settings</p>
+      <div class="rows" id="nt-rules"></div>
+      <button type="button" class="small set-add" id="nt-add"><svg><use href="#i-plus"/></svg>Add alert settings</button>
+      <p class="hint problem" id="nt-problem" hidden></p>
+    </section>
+
+    <!-- Links: how often each link is checked, the descriptions, and export and import (links.js). Saved as they're changed. -->
+    <section class="sub" data-sub="links" data-title="Links" hidden>
+      <header class="sub-head"><h2>Links</h2><p>How Links checks each link, and its descriptions.</p></header>
+      <div class="set-form" id="lc-form">
+        <p class="h3">Checks</p>
+        <div class="rows">
+          <div class="row still wrap"><svg><use href="#i-clock"/></svg><span class="t"><b>Check each link every</b><span>How often Rabbid Lab asks each link whether it answers.</span></span><div class="seg sn-seg" id="lc-every"></div></div>
+          <div class="row still wrap"><svg><use href="#i-alert"/></svg><span class="t"><b>Show a link as down after</b><span id="lc-note"></span></span><div class="seg sn-seg" id="lc-after"></div></div>
+        </div>
+        <p class="hint">Links are checked while the console is open on Links. For checks around the clock, with email when something goes down, add a <a href="#sensors">sensor</a>.</p>
+        <p class="h3">Descriptions</p>
+        <div class="rows">
+          <div class="row still"><svg><use href="#i-new"/></svg><span class="t"><b>Describe known products</b><span>Fills in the description for TrueNAS, iDRAC, ESXi, UniFi and others. Turning it off removes the descriptions Rabbid Lab wrote; ones you typed are never changed.</span></span>
+            <span class="sw-label" id="lc-known-label">On</span><input type="checkbox" class="switch" id="lc-known" role="switch" aria-label="Describe known products"></div>
+        </div>
+        <p class="h3">Export and import</p>
+        <div class="rows">
+          <div class="row still"><svg><use href="#i-download"/></svg><span class="t"><b>Export links</b><span>Every link with its icon, the groups in their order and these settings, as one file.</span></span><a class="button small" id="lc-export" href="/api/links/export" download>Export</a></div>
+          <div class="row still"><svg><use href="#i-upload"/></svg><span class="t"><b>Import links</b><span>Adds the links in a file Export made. A link whose address is already here is left as it is.</span></span><label class="button small" for="lc-import-file">Import</label><input type="file" id="lc-import-file" accept=".json,application/json" hidden></div>
+        </div>
+      </div>
+      <p class="hint note" id="lc-done" role="status" hidden></p>
+      <p class="hint problem" id="lc-problem" hidden></p>
+    </section>
+
+    <!-- Active Directory: the service account Rabbid Lab makes its changes as (users.js). -->
+    <section class="sub" data-sub="ad" data-title="Active Directory" hidden>
+      <header class="sub-head"><h2>Active Directory</h2><p>The service account Rabbid Lab makes its AD changes as.</p></header>
+      <p class="h3">Service account</p>
+      <div class="rows">
+        <div class="row still"><svg><use href="#i-key"/></svg><span class="t"><b id="as-account">…</b><span id="as-about"></span></span><button type="button" class="small" id="as-setup" hidden>Set up</button></div>
+        <div class="row still" id="as-ou-row" hidden><svg><use href="#i-org"/></svg><span class="t"><b>Default OU for new users and groups</b><span>Where New user and New group put them. Saved as you change it.</span></span><select id="adset-ou" aria-label="Default OU for new users and groups"></select></div>
+      </div>
+      <div id="as-danger" hidden>
+        <p class="h3 danger-h">Danger zone</p>
+        <div class="rows danger-rows"><div class="row still"><svg><use href="#i-power"/></svg><span class="t"><b id="adset-stop-title">Disconnect the service account</b><span id="adset-stop-text">Rabbid Lab deletes the stored password and stops using the account.</span></span>
+          <button type="button" class="small danger" id="adset-stop">Disconnect</button></div></div>
+      </div>
+      <p class="hint note" id="as-done" hidden></p>
+      <p class="hint problem" id="adset-problem" hidden></p>
     </section>
 
     <section class="sub" data-sub="activity" data-title="Activity log" hidden>
@@ -225,18 +317,28 @@
       </section>
     </section>
 
-    <!-- Options, Developer: Rabbid Lab Dev only, so the release has no Options yet. -->
+    <!-- Developer: Rabbid Lab Dev only. -->
     <section class="sub" data-sub="developer" data-title="Developer" hidden>
       <header class="sub-head"><h2>Developer</h2><p>Tools for trying Rabbid Lab Dev out. The release doesn't have them.</p></header>
       <div class="rows">
         <div class="row still">
           <svg><use href="#i-code"/></svg>
-          <span class="t"><b>Developer tools</b><span>DEV buttons in Add a link and Add a sensor fill in test addresses that answer or don't. Anything added from one goes away after 30 seconds, and test sensors never email. Rabbid Lab Dev only.</span></span>
+          <span class="t"><b>Developer tools</b><span>DEV buttons in Add a link and Add a sensor fill in test addresses that answer or don't. Anything added from one goes away after 30 seconds, and test sensors never email.</span></span>
           <span class="sw-label" id="dev-tools-label">Off</span>
           <input type="checkbox" class="switch" id="dev-tools" role="switch" aria-label="Developer tools">
         </div>
       </div>
       <p class="hint problem" id="dev-problem" hidden></p>
+    </section>
+
+    <!-- About: the version, where it runs, support info and the source. -->
+    <section class="sub" data-sub="about" data-title="About" hidden>
+      <header class="sub-head"><h2>About</h2><p>The version, support info and source code.</p></header>
+      <div class="rows">
+        <div class="row still"><svg><use href="#i-info"/></svg><span class="t"><b id="ab-version">Rabbid Lab</b><span id="ab-where"></span></span></div>
+        <div class="row still"><svg><use href="#i-csv"/></svg><span class="t"><b>Support info</b><span>This Rabbid Lab described as text, to paste into a message when asking for help.</span></span><button type="button" class="small" id="ab-copy">Copy</button></div>
+        <a class="row" id="ab-repo" href="#" target="_blank" rel="noopener"><svg><use href="#i-code"/></svg><span class="t"><b>Source code</b><span id="ab-repo-text">GitHub</span></span><svg class="chev"><use href="#i-out"/></svg></a>
+      </div>
     </section>
     </div>
   </section>
@@ -638,17 +740,6 @@
   <div class="dialog-foot"><button type="button" id="dset-back" hidden>Back</button><button type="button" id="dset-cancel">Cancel</button><button type="button" class="primary" id="dset-go">Next</button></div>
 </dialog>
 
-<!-- Where new AD accounts go, and stopping using Rabbid Lab's account. -->
-<dialog class="dialog" id="adset-dialog" aria-labelledby="adset-title">
-  <h2 id="adset-title">Service account</h2>
-  <p class="dialog-lead" id="adset-lead"></p>
-  <div class="form"><label for="adset-ou">Default OU for new users and groups</label><select id="adset-ou"></select></div>
-  <div class="rows"><div class="row still"><span class="t"><b id="adset-stop-title">Disconnect the service account</b><span id="adset-stop-text">Rabbid Lab deletes the stored password and stops using the account. The account and its permissions stay in AD until you delete them.</span></span>
-    <button type="button" class="danger" id="adset-stop"><svg><use href="#i-x"/></svg>Disconnect</button></div></div>
-  <p class="hint problem" id="adset-problem" hidden></p>
-  <div class="dialog-foot"><button type="button" id="adset-cancel">Cancel</button><button type="button" class="primary" id="adset-save">Save</button></div>
-</dialog>
-
 <!-- A new account: in Active Directory (data-kind="ad") or Windows on one computer (data-kind="pc"). -->
 <dialog class="dialog wide" id="new-dialog" aria-labelledby="acct-title">
   <h2 id="acct-title">New account</h2>
@@ -873,27 +964,6 @@
   </ol>
   <p class="hint">No icon there? In the browser's settings, search for <b>Pop-ups and redirects</b> and add <code id="lopen-site2"></code> under <b>Allowed to send pop-ups and use redirects</b>.</p>
   <div class="dialog-foot"><button type="button" id="lopen-close">Close</button><button type="button" class="primary" id="lopen-go"></button></div>
-</dialog>
-
-<!-- Links: how often each link is checked, and how long one goes unanswered before its dot turns red. -->
-<dialog class="dialog wide" id="lcheck-dialog" aria-labelledby="lcheck-title">
-  <h2 id="lcheck-title">Links settings</h2>
-  <p class="dialog-lead">How often Rabbid Lab asks each link whether it answers, and how long one has to be quiet before it shows as down. A change is saved as you make it.</p>
-  <div class="form">
-    <label>Check each link every</label><div class="seg sn-seg" id="lc-every"></div>
-    <label>Show a link as down after no answer for</label><div class="seg sn-seg" id="lc-after"></div>
-    <label>Descriptions</label>
-    <label class="tick"><input type="checkbox" id="lc-known">Describe known products, such as TrueNAS, iDRAC, ESXi and UniFi</label>
-    <p class="hint">Fill in writes the description for a product it recognises. Turning this off removes the descriptions Rabbid Lab wrote. Descriptions you typed are not changed.</p>
-    <label>Export and import</label>
-    <div class="lc-file"><a class="button" id="lc-export" href="/api/links/export" download><svg><use href="#i-download"/></svg>Export</a><label class="button" for="lc-import-file"><svg><use href="#i-upload"/></svg>Import</label><input type="file" id="lc-import-file" accept=".json,application/json" hidden></div>
-  </div>
-  <p class="hint" id="lc-note"></p>
-  <p class="hint">Links are checked while the console is open on this page. For checks around the clock, with email when something goes down, add a <a href="#sensors" id="lc-sensors">sensor</a>.</p>
-  <p class="hint">Export saves every link with its icon, the groups in their order and these settings as one file. Import adds what's in a file like it beside what's here: a link whose address is already here is left as it is.</p>
-  <p class="hint" id="lc-done" role="status" hidden></p>
-  <p class="hint problem" id="lc-problem" hidden></p>
-  <div class="dialog-foot"><span class="grow"></span><button type="button" class="primary" id="lc-close">Done</button></div>
 </dialog>
 
 <!-- Uninstalling a seat's client. On the computer it is locked until someone allows it here. -->

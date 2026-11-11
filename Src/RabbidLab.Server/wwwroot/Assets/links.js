@@ -296,6 +296,7 @@
     $('lc-every').innerHTML = segs(EVERY, checks.every);
     $('lc-after').innerHTML = segs(AFTER, checks.downAfter);
     $('lc-known').checked = checks.describe !== false;
+    $('lc-known-label').textContent = checks.describe !== false ? 'On' : 'Off';
     $('lc-note').textContent = checks.downAfter
       ? `A link that doesn't answer turns amber and is tried again every few seconds. It turns red once it has gone ${span(checks.downAfter)} with no answer, so one slow reply doesn't show as down.`
       : 'A link turns red the first time it doesn\'t answer, even if it was only one slow reply.';
@@ -316,14 +317,12 @@
   // Turned on, the links here get their descriptions first, under the flask.
   $('lc-known').addEventListener('change', async () => {
     const on = $('lc-known').checked;
-    const form = $('lcheck-dialog').querySelector('.form');
+    const form = $('lc-form');
     if (on) R.busy(form, 'Describing the links…');
     await saveChecks({ describe: on });
     R.busy(form, '');
     draw();
   });
-  $('lc-close').addEventListener('click', () => $('lcheck-dialog').close());
-  $('lc-sensors').addEventListener('click', () => $('lcheck-dialog').close());
   // Import: a file Export made, added beside what's here. The flask covers the settings while it goes in.
   const count = (n, thing) => `${n} ${thing}${n === 1 ? '' : 's'}`;
   $('lc-import-file').addEventListener('change', async () => {
@@ -332,7 +331,7 @@
     if (!f) return;
     say('lc-done', '');
     say('lc-problem', '');
-    const form = $('lcheck-dialog').querySelector('.form');
+    const form = $('lc-form');
     R.busy(form, `Importing ${f.name}…`);
     try {
       let data = null;
@@ -356,11 +355,18 @@
     draw();
     check();
   });
-  $('ln-checks').addEventListener('click', () => {
+  // The gear on Links opens its page in Settings, which is drawn from a fresh read each time it shows.
+  $('ln-checks').addEventListener('click', () => { location.hash = '#settings/links'; });
+  document.addEventListener('rabbidlab:show', async (e) => {
+    if (e.detail[0] !== 'settings' || e.detail[1] !== 'links' || !can('links.edit')) return;
     say('lc-done', '');
     say('lc-problem', '');
+    try {
+      take(await R.get('/api/links'));
+    } catch (err) {
+      say('lc-problem', err.message);
+    }
     drawChecks();
-    $('lcheck-dialog').showModal();
   });
   $('ln-list').addEventListener('click', (e) => {
     const b = e.target.closest('[data-addto]');

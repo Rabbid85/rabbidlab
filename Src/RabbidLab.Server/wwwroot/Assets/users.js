@@ -1087,39 +1087,59 @@
     }
   });
 
-  $('dir-settings').addEventListener('click', async () => {
-    const s = ad.state;
-    $('adset-lead').textContent = `${s.account} in ${s.domain}, ${s.made ? 'with delegated permissions on' : 'managing'} ${s.scopeName}. ${s.made ? 'Created' : 'Connected'} by ${s.by}${s.at ? ` on ${R.when(s.at)}` : ''}.`;
+  // Settings, Active Directory: the service account, where new accounts go, and disconnecting it. The gear opens it.
+  $('dir-settings').addEventListener('click', () => { location.hash = '#settings/ad'; });
+  const drawAdSettings = async (fresh) => {
+    say('adset-problem', '');
+    try {
+      if (fresh || !ad) ad = await R.get('/api/ad');
+    } catch (err) {
+      say('adset-problem', err.message);
+      return;
+    }
+    const s = ad?.state;
+    $('as-account').textContent = s ? s.account : 'No service account';
+    $('as-about').textContent = s
+      ? `In ${s.domain}, ${s.made ? 'with delegated permissions on' : 'managing'} ${s.scopeName}. ${s.made ? 'Created' : 'Connected'} by ${s.by}${s.at ? ` on ${R.when(s.at)}` : ''}. Its password is stored encrypted on this server.`
+      : ad?.domain ? `Rabbid Lab makes its changes in ${ad.domain} as a service account. Set one up to use the Active Directory pages.` : "This server isn't on a domain. Connect one to manage it from here.";
+    $('as-setup').hidden = !!s;
+    $('as-setup').textContent = ad?.domain ? 'Set up' : 'Connect a domain';
+    $('as-ou-row').hidden = $('as-danger').hidden = !s;
+    if (!s) return;
     $('adset-stop-title').textContent = `Disconnect ${s.account}`;
     $('adset-stop-text').textContent = `Rabbid Lab deletes the stored password and stops using ${s.account}.${s.made ? ' The account and its delegated permissions stay in AD until you delete them.' : ''}`;
-    say('adset-problem', '');
     await placesInto('adset-ou', s.newUsers, 'adset-problem');
-    $('adset-dialog').showModal();
-  });
-  $('adset-cancel').addEventListener('click', () => $('adset-dialog').close());
-  $('adset-save').addEventListener('click', async () => {
+  };
+  $('as-setup').addEventListener('click', () => openSetup(ad?.domain));
+  $('dset-dialog').addEventListener('close', () => { if (R.where()[0] === 'settings' && R.where()[1] === 'ad') drawAdSettings(true); });
+  $('adset-ou').addEventListener('change', async () => {
+    say('as-done', '');
     try {
       await R.send('/api/ad/settings', { newUsers: $('adset-ou').value });
-      $('adset-dialog').close();
-      refreshAd(true);
+      ad = await R.get('/api/ad');
+      say('adset-problem', '');
     } catch (err) {
       say('adset-problem', err.message);
     }
   });
+  document.addEventListener('rabbidlab:show', (e) => {
+    if (e.detail[0] === 'settings' && e.detail[1] === 'ad' && can('ad.connect')) drawAdSettings(true);
+  });
   $('adset-stop').addEventListener('click', () => {
     const s = ad.state;
-    $('adset-dialog').close();
     sure(`Disconnect ${s.account}?`, `Rabbid Lab can't make any AD changes until a service account is set up again.${s.made ? ` ${s.account} stays in AD until you delete it.` : ''}`,
       'Disconnect', async () => {
         try {
           await R.send('/api/ad/disconnect', {});
           say('dir-note', s.made ? `Disconnected ${s.account}. Delete it in Active Directory Users and Computers if you won't use it again.` : `Disconnected ${s.account}.`);
+          say('as-done', s.made ? `Disconnected ${s.account}. Delete it in Active Directory Users and Computers if you won't use it again.` : `Disconnected ${s.account}.`);
         } catch (err) {
           say('dir-problem', err.message);
         }
         places = null;
         R.forget();
-        refreshAd(true);
+        await refreshAd(true);
+        drawAdSettings();
         document.dispatchEvent(new CustomEvent('rabbidlab:ad'));
       });
   });

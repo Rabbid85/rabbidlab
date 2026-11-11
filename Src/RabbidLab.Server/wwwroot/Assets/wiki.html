@@ -117,7 +117,7 @@
   <h3>Use an existing service account</h3>
   <p>On <b>Use an existing service account</b>, enter its username and password. It needs permission to create and manage users, groups and computers in the scope you pick.</p>
   <h3>Change it later</h3>
-  <p>The gear at the bottom of the views on any Active Directory page sets the default OU for new users and groups, and has <b>Disconnect</b>. Disconnecting deletes the stored password; the account and its permissions stay in AD until you delete them in Active Directory Users and Computers.</p>
+  <p><a href="#settings/ad">Settings, Active Directory</a> (the gear at the bottom of the views on any Active Directory page opens it) sets the default OU for new users and groups, and has <b>Disconnect</b>. Disconnecting deletes the stored password; the account and its permissions stay in AD until you delete them in Active Directory Users and Computers.</p>
   <p class="tip">Admin accounts protected by AdminSDHolder (Domain Admins and the like) can be viewed but not changed by the service account.</p>
 </article>
 
@@ -384,7 +384,7 @@
     <li><b>Quiet</b> never emails. The page still shows it.</li>
   </ul>
   <p>Something that comes back before its time is up emails nobody. When an email did go out, another says it's back.</p>
-  <p>Set up the mail server under <b>Email settings</b>:</p>
+  <p>Set up the mail server under <a href="#settings/notifications">Settings, Notifications</a>, in <b>Email settings</b>:</p>
   <ul>
     <li><b>Gmail</b>: your address and an app password (Google Account, Security, 2-Step Verification, App passwords).</li>
     <li><b>Microsoft 365</b>: an app registration in Microsoft Entra with the Mail.Send application permission and admin consent. Type the tenant, the application (client) ID and a client secret. From has to be a mailbox in the tenant.</li>
@@ -400,7 +400,7 @@
 <article data-key="updates" data-group="Keeping it running" data-title="Updates">
   <p>Rabbid Lab checks GitHub for a new version on start, every 12 hours, and when you click <b>Check for updates</b>.</p>
   <ul>
-    <li>On Windows, a new version installs automatically once nobody has used Rabbid Lab for a couple of minutes. Turn that off with <b>Update automatically</b> under <a href="#updates">Settings, Updates</a>.</li>
+    <li>On Windows, a new version installs automatically once nobody has used Rabbid Lab for a couple of minutes. Turn that off with <b>Update automatically</b> under <a href="#settings/updates">Settings, Updates</a>.</li>
     <li><b>Install now</b> installs straight away. The server is offline for about a minute.</li>
     <li>Only updates signed with Rabbid Lab's release key install.</li>
     <li>Seats update their client to the server's version by themselves.</li>
@@ -409,7 +409,7 @@
 </article>
 
 <article data-key="activity" data-group="Keeping it running" data-title="The activity log">
-  <p><a href="#activity">Settings, Activity log</a> lists every sign-in and change, who made it, and when. That covers accounts made, passwords set, groups changed, computers let in and updates installed. Passwords are never in it.</p>
+  <p><a href="#settings/activity">Settings, Activity log</a> lists every sign-in and change, who made it, and when. That covers accounts made, passwords set, groups changed, computers let in and updates installed. Passwords are never in it.</p>
 </article>
 
 <article data-key="locked-out" data-group="Keeping it running" data-title="Nobody can sign in">

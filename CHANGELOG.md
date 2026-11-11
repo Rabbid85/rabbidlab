@@ -2,6 +2,14 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.12 (2026-11-11)
+
+- Settings has every setting in one place, under You, Server and Advanced, with Find a setting on top: Appearance, Updates, Notifications, Links, Active Directory, Activity log, Developer in Dev builds, and About.
+- Appearance picks the layout, Centered or Full width, and the sidebar, names and icons or icons only. Both are kept in this browser.
+- Notifications shows the mail server and the alert settings, and sends a test email. The Email settings button on Sensors opens it.
+- Links settings and the Active Directory service account moved into Settings. The gears on Links and Active Directory open their page there.
+- Pages sit in a column in the middle unless Full width is picked. Active Directory and Settings list their pages down the left with brighter text and a bar down the open one.
+
 ## 1.1.11 (2026-11-11)
 
 - Settings is laid out like Active Directory: a big title across the top, its sections listed down the left under Server and Options headings, and the open one marked with an orange bar. Developer is under Options.

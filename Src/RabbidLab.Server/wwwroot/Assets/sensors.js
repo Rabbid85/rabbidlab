@@ -130,7 +130,7 @@
       : warn.length ? `${first.name}: ${first.note || 'needs attention'}.` : fresh ? 'The first checks are under way.' : live.length ? 'Everything is answering.' : 'Nothing is being checked.';
     $('sn-lead-more').textContent = !sensors.length ? 'Add a sensor to watch a server, a service or a certificate.'
       : down.length > 1 ? `So did ${down.slice(1, 4).map((s) => s.name).join(', ')}${down.length > 4 ? ` and ${down.length - 4} more` : ''}.`
-        : down.length && !mailReady ? 'Nobody is emailed until Email settings are filled in.' : '';
+        : down.length && !mailReady ? 'Nobody is emailed until a mail server is set up in Settings, Notifications.' : '';
     $('sn-answering').textContent = sensors.length ? `${live.filter((s) => s.status === 'up' || s.status === 'warn').length} of ${live.length}` : '0';
     const week = sensors.map((s) => s.up7).filter((p) => p != null);
     $('sn-week').textContent = week.length ? percent(Math.round(week.reduce((a, b) => a + b, 0) / week.length * 100) / 100) : '…';
@@ -913,7 +913,68 @@
       $('ml-test').disabled = $('ml-save').disabled = false;
     }
   });
-  $('sn-mail').addEventListener('click', openMail);
+  // Settings, Notifications: the mail server and the saved alert settings, each changed in Email settings.
+  $('sn-mail').addEventListener('click', () => { location.hash = '#settings/notifications'; });
+  const drawNotes = () => {
+    const m = kept || {};
+    const set = m.provider === 'm365' ? !!m.tenant : !!m.host;
+    const gmail = m.host === 'smtp.gmail.com';
+    const from = m.from || m.username;
+    $('nt-server').textContent = !set ? 'Not set up yet. Sensors need it to email an alert.'
+      : `${m.provider === 'm365' ? `Microsoft 365 · ${m.tenant}` : gmail ? 'Gmail' : `${m.host}:${m.port || 587}`}${from ? ` · sends as ${from}` : ''}`;
+    $('nt-change').textContent = set ? 'Change' : 'Set up';
+    $('nt-to').textContent = m.to?.length ? m.to.join(', ') : 'Nobody yet.';
+    $('nt-test').disabled = !set || !m.to?.length;
+    $('nt-rules').innerHTML = rules.map((r) => `<div class="row still"><i class="nt-dot" data-color="${esc(r.color || '#8A8FA8')}"></i>`
+      + `<span class="t"><b>${esc(r.name)}${r.id === defaultRule ? STAR.replace('rstar', 'nt-star') : ''}</b>`
+      + `<span>${r.id === defaultRule ? 'The default for new sensors. ' : ''}${esc(aboutRule(r))} Used by ${r.used} sensor${r.used === 1 ? '' : 's'}.</span></span>`
+      + `<button type="button" class="small" data-edit-rule="${esc(r.id)}">Edit</button></div>`).join('');
+    R.paint($('nt-rules'));
+  };
+  const loadNotes = async () => {
+    try {
+      kept = await R.get('/api/mail');
+      take(await R.get('/api/sensors'));
+      say('nt-problem', '');
+    } catch (err) {
+      say('nt-problem', err.message);
+    }
+    drawNotes();
+  };
+  $('nt-change').addEventListener('click', openMail);
+  $('nt-change-to').addEventListener('click', async () => {
+    await openMail();
+    $('ml-to').focus();
+  });
+  $('nt-rules').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-edit-rule]');
+    if (!b) return;
+    await openMail();
+    mailRule = b.dataset.editRule;
+    drawMailRules();
+    $('ml-rule-name').scrollIntoView({ block: 'center' });
+  });
+  $('nt-add').addEventListener('click', async () => {
+    await openMail();
+    $('ml-rules').querySelector('[data-rule-new]')?.click();
+    $('ml-rule-name').scrollIntoView({ block: 'center' });
+  });
+  $('nt-test').addEventListener('click', async () => {
+    say('nt-done', '');
+    say('nt-problem', '');
+    R.busy($('nt-mail'), 'Sending a test email…');
+    try {
+      await R.send('/api/mail/test', {});
+      say('nt-done', `Sent to ${(kept?.to || []).join(', ')}. Check the inbox, and the junk folder.`);
+    } catch (err) {
+      say('nt-problem', err.message);
+    }
+    R.busy($('nt-mail'), '');
+  });
+  $('mail-dialog').addEventListener('close', () => { if (R.where()[0] === 'settings' && R.where()[1] === 'notifications') loadNotes(); });
+  document.addEventListener('rabbidlab:show', (e) => {
+    if (e.detail[0] === 'settings' && e.detail[1] === 'notifications' && can('sensors.alerts')) loadNotes();
+  });
 
   // --- Showing the page --------------------------------------------------------------------------------------------------------------
 
