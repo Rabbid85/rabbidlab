@@ -71,9 +71,6 @@ button.danger.solid:hover { background: #DB4860; }
 }
 
 /* Active Directory: the views down the left, with counts, and a table per page. */
-.dir-needs { margin-bottom: 14px; }
-.dir-needs .ustatus-text { flex: 1; min-width: 260px; }
-.dir-needs .ustatus-text span { display: block; max-width: 680px; margin-top: 3px; line-height: 1.5; }
 .dir-page .lib-bar .primary, .dir-page .lib-bar .small { display: inline-flex; align-items: center; gap: 7px; }
 .dir-page .lib-bar svg { width: 15px; height: 15px; }
 .side small.tone.red { color: var(--red); font-weight: 700; }

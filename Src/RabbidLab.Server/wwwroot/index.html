@@ -413,6 +413,7 @@
   <!-- Active Directory: users, groups and computers, each with its views down the left, changed as Rabbid Lab's own AD account (users.js). -->
   <section class="page people-page dir-page dir-area" id="page-ad" data-page="ad" data-title="Active Directory" hidden>
     <header class="page-head"><h1 id="dir-title">Users</h1><p id="dir-lead"></p></header>
+    <div class="dgate" id="dir-setup" hidden></div>
     <!-- Active Directory's pages, down the left of whichever of them is open (console.js moves this there), then the open page's views (users.js). -->
     <nav class="dnav" id="dir-rail" aria-label="Active Directory">
       <p class="rail-label">Directory</p>
@@ -433,7 +434,6 @@
       </div>
     </nav>
     <div class="dmain">
-    <div class="ustatus dir-needs" id="dir-setup" hidden></div>
     <div class="lib" id="dir-lib" hidden>
       <div class="lib-body">
         <div class="lib-bar"><h2 id="dir-view-title"></h2><span class="bar-note" id="dir-count"></span>
@@ -481,10 +481,10 @@
   <!-- Org chart: who reports to whom, from each person's Manager in Active Directory (directory.js). -->
   <section class="page org-page dir-area" id="page-org" data-page="org" data-title="Org chart" hidden>
     <header class="page-head"><h1>Org chart</h1><p>Who reports to whom, from each person's Manager in Active Directory.</p></header>
+    <div class="dgate" id="org-setup" hidden></div>
     <div class="dmain">
     <div class="ln-tools" id="org-tools" hidden><label class="side-find"><svg><use href="#i-search"/></svg><input type="search" id="org-find" placeholder="Find a person" aria-label="Find a person" autocomplete="off" spellcheck="false"></label>
       <span class="bar-note" id="org-count"></span></div>
-    <div class="ustatus dir-needs" id="org-setup" hidden></div>
     <p class="hint" id="org-note" hidden></p>
     <div class="org" id="org-tree"></div>
     <p class="hint problem" id="org-problem" hidden></p>
@@ -494,8 +494,8 @@
   <!-- Attribute browser: the directory as a tree, and every attribute of whatever's picked (directory.js). -->
   <section class="page people-page attrs-page dir-area" id="page-attrs" data-page="attrs" data-title="Attribute browser" hidden>
     <header class="page-head"><h1>Attribute browser</h1><p>Every OU, container and object in the domain, and every attribute each one has.</p></header>
+    <div class="dgate" id="at-setup" hidden></div>
     <div class="dmain">
-    <div class="ustatus dir-needs" id="at-setup" hidden></div>
     <div class="lib" id="at-lib">
       <aside class="side attrs-side" aria-label="Directory">
         <nav class="crumbs" id="at-crumbs" aria-label="Where"></nav>

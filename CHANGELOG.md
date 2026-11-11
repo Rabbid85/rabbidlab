@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.0.4 (2026-11-11)
+
+- With no service account set up yet, Active Directory shows that once, in a card over the whole section, in place of a card at the top of each of its pages.
+
 ## 1.0.3 (2026-11-11)
 
 - The pages of Active Directory are listed down the left of the page, under its title, and look like the rail beside them: Find, then Directory, Tools and the views of the page that is open. It was a boxed panel of its own.

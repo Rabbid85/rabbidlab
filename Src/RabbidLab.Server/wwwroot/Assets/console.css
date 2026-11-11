@@ -383,3 +383,15 @@ select:not([multiple]):not([size]) { appearance: none; -webkit-appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238A8FA8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat; background-position: right 12px center; background-size: 16px 16px; }
 select:not([multiple]):not([size]):hover { border-color: #3A3E55; }
+/* Active Directory with no service account yet: the list and the page wait under a cover, with what to do in a card in the middle of it. */
+.dir-area > .page-head { grid-row: 1; }
+.dir-area > .dnav, .dir-area > .dmain, .dir-area > .dgate { grid-row: 2; }
+.dgate { z-index: 6; grid-column: 1 / -1; display: grid; place-items: start center; min-height: 62vh; margin: -8px -14px; padding: 9vh 20px 30px; border-radius: 14px;
+  background: rgba(11, 12, 20, .8); backdrop-filter: blur(3px); }
+.dgate-card { display: grid; justify-items: center; gap: 14px; width: min(580px, 100%); padding: 30px 34px 28px; border: 1px solid var(--line-strong); border-radius: 14px; background: #11131D;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, .55); text-align: center; }
+.dgate-card .ustatus-text b { display: block; color: var(--title); font: 750 21px "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; }
+.dgate-card .ustatus-text span { display: block; margin-top: 8px; color: var(--muted); font-size: 13.5px; line-height: 1.55; }
+.dgate-acts { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.dgate-acts:empty { display: none; }
+.dgate-acts .primary { padding: 9px 22px; }

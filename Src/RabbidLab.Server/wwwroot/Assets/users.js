@@ -922,6 +922,7 @@
     $(me?.source === 'ad' ? 'dset-password' : 'dset-user').focus();
   };
   // The card each Active Directory page shows until the service account is set up (directory.js draws it too).
+  // No service account yet: Active Directory's pages wait under a cover, with what to do in the middle of it.
   const setupCard = (el, info) => {
     const allowed = can('ad.connect');
     const local = can('windows.view');
@@ -929,15 +930,15 @@
     const noAccount = ' Windows accounts on this server and on seats need no service account: those are under Local accounts.';
     if (!info?.domain) {
       // No domain here: these pages have nothing to manage until one is connected.
-      el.innerHTML = `<span class="big-ic ember">${svg('key')}</span><div class="ustatus-text"><b>This server isn't on a domain</b><span>`
+      el.innerHTML = `<div class="dgate-card"><span class="big-ic ember">${svg('key')}</span><div class="ustatus-text"><b>This server isn't on a domain</b><span>`
         + esc(`The Active Directory pages need a domain.${noAccount}${allowed ? ' To manage a domain from here anyway, connect one.' : ''}`)
-        + `</span></div>${local ? '<a class="button primary" href="#local">Local accounts</a>' : ''}${allowed ? '<button type="button" data-setup>Connect a domain</button>' : ''}`;
+        + `</span></div><div class="dgate-acts">${local ? '<a class="button primary" href="#local">Local accounts</a>' : ''}${allowed ? '<button type="button" data-setup>Connect a domain</button>' : ''}</div></div>`;
     } else {
-      el.innerHTML = `<span class="big-ic ember">${svg('key')}</span><div class="ustatus-text"><b>Set up the Active Directory service account</b><span>`
+      el.innerHTML = `<div class="dgate-card"><span class="big-ic ember">${svg('key')}</span><div class="ustatus-text"><b>Set up the Active Directory service account</b><span>`
         + esc(allowed
           ? `Rabbid Lab makes its Active Directory changes as a dedicated service account (svc-rabbidlab). Create it with a domain admin login for ${info.domain}: Rabbid Lab creates the account, delegates it permissions on users, groups and computers, and stores its password encrypted. The admin login is only used for this and isn't saved.${local ? noAccount : ''}`
           : 'Someone whose roles allow setting up the service account has to do this first.')
-        + `</span></div>${allowed ? '<button type="button" class="primary" data-setup>Set up</button>' : ''}`;
+        + `</span></div><div class="dgate-acts">${allowed ? '<button type="button" class="primary" data-setup>Set up</button>' : ''}</div></div>`;
     }
     el.hidden = false;
     el.querySelector('[data-setup]')?.addEventListener('click', () => openSetup(info?.domain));
