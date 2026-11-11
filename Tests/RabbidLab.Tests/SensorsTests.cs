@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using RabbidLab.Server;
@@ -72,6 +73,74 @@ public sealed class SensorsTests : IDisposable
         Assert.Equal("Welcome", Named(view, "NAS page").GetProperty("text").GetString());
         Assert.Equal("text", Named(view, "NAS page").GetProperty("expect").GetString());
         Assert.Equal(60, Named(view, "NAS certificate").GetProperty("warnDays").GetInt32());
+    }
+
+    [Fact]
+    public async Task Hardware_is_read_over_Redfish_and_only_what_is_watched_counts()
+    {
+        static (string, byte[]) J(string json) => ("application/json", Encoding.UTF8.GetBytes(json));
+        using var bmc = new LinksTests.TinySite(new()
+        {
+            ["/redfish/v1/Systems"] = J("""{"Members":[{"@odata.id":"/redfish/v1/Systems/S1"}]}"""),
+            ["/redfish/v1/Systems/S1"] = J("""{"Manufacturer":"Dell Inc.","Model":"PowerEdge R730","SKU":"4XK2Q12","Status":{"Health":"OK","HealthRollup":"OK"},"Links":{"Chassis":[{"@odata.id":"/redfish/v1/Chassis/C1"}],"ManagedBy":[{"@odata.id":"/redfish/v1/Managers/M1"}]},"Storage":{"@odata.id":"/redfish/v1/Systems/S1/Storage"}}"""),
+            ["/redfish/v1/Chassis/C1"] = J("""{"Power":{"@odata.id":"/redfish/v1/Chassis/C1/Power"},"Thermal":{"@odata.id":"/redfish/v1/Chassis/C1/Thermal"}}"""),
+            ["/redfish/v1/Chassis/C1/Power"] = J("""{"PowerSupplies":[{"Name":"PS1","Status":{"State":"Enabled","Health":"OK"}},{"Name":"PS2","Status":{"State":"Enabled","Health":"Critical"}}]}"""),
+            ["/redfish/v1/Chassis/C1/Thermal"] = J("""{"Fans":[{"Name":"Fan1","Status":{"Health":"OK"}},{"Name":"Fan2","Status":{"State":"Absent"}}],"Temperatures":[{"Name":"System Board Inlet Temp","ReadingCelsius":22,"Status":{"Health":"OK"}},{"Name":"System Board Exhaust Temp","ReadingCelsius":34,"Status":{"Health":"OK"}}]}"""),
+            ["/redfish/v1/Managers/M1"] = J("""{"FirmwareVersion":"2.80.80.80","Model":"13G Monolithic"}"""),
+            ["/redfish/v1/Systems/S1/Storage"] = J("""{"Members":[{"@odata.id":"/redfish/v1/Systems/S1/Storage/RAID1"}]}"""),
+            ["/redfish/v1/Systems/S1/Storage/RAID1"] = J("""{"Drives":[{"@odata.id":"/d1"},{"@odata.id":"/d2"}]}"""),
+            ["/d1"] = J("""{"Name":"Disk 0","Status":{"Health":"OK"}}"""),
+            ["/d2"] = J("""{"Name":"Disk 1","Status":{"Health":"Warning"}}"""),
+        });
+        using var nothing = new LinksTests.TinySite(new());
+        var login = new Login("monitor", "secret");
+
+        var all = await Redfish.Check(new Sensor { Kind = "hw", Target = $"http://127.0.0.1:{bmc.Port}" }, login, false, CancellationToken.None);
+        var some = await Redfish.Check(new Sensor { Kind = "hw", Target = $"http://127.0.0.1:{bmc.Port}", Watch = ["fans", "temps"] }, login, false, CancellationToken.None);
+        var none = await Redfish.Check(new Sensor { Kind = "hw", Target = $"http://127.0.0.1:{nothing.Port}" }, login, false, CancellationToken.None);
+
+        Assert.False(all.Ok);
+        Assert.Equal("Power supplies: 1 of 2 OK · PS2 Critical", all.Note);
+        Assert.Equal("Signed in to the iDRAC on a PowerEdge R730", all.Title);
+        Assert.StartsWith("Service tag 4XK2Q12 · firmware 2.80.80.80 · as monitor", all.Detail);
+        var parts = all.Parts!.ToDictionary(p => p.Key);
+        Assert.Equal("1 of 1 OK", parts["fans"].Now); // the empty bay isn't counted
+        Assert.Equal("Inlet 22 °C · exhaust 34 °C", parts["temps"].Now);
+        Assert.Equal("warn", parts["disks"].State);
+        Assert.True(some.Ok);
+        Assert.False(some.Warn);
+        Assert.Equal("All OK", some.Note);
+        Assert.False(none.Ok);
+        Assert.Contains("No Redfish", none.Note);
+    }
+
+    [Fact]
+    public async Task Credentials_are_saved_once_listed_without_the_password_and_go_with_the_last_sensor()
+    {
+        var admin = await app.SignedIn();
+        var typed = new { name = "iDRAC read-only", username = "monitor", password = "hunter2" };
+
+        var tried = await admin.PostAsJsonAsync("/api/sensors/try", new { kind = "hw", target = "127.0.0.1:1", newLogin = typed });
+        var none = await admin.PostAsJsonAsync("/api/sensors", new { kind = "hw", target = "127.0.0.1:1", name = "R730" });
+        await admin.PostAsJsonAsync("/api/sensors", new { kind = "hw", target = "127.0.0.1:1", name = "R730", newLogin = typed });
+        var saved = (await Json(await admin.GetAsync("/api/sensors/logins"))).EnumerateArray().Single();
+        var view = await Json(await admin.PostAsJsonAsync("/api/sensors", new { kind = "hw", target = "127.0.0.1:2", name = "R640", login = saved.GetProperty("id").GetString() }));
+        var listed = await (await admin.GetAsync("/api/sensors/logins")).Content.ReadAsStringAsync();
+        var onDisk = await File.ReadAllTextAsync(Path.Combine(data, "sensor-logins.json"));
+        foreach (var name in new[] { "R730", "R640" })
+        {
+            await admin.PostAsJsonAsync($"/api/sensors/{Named(view, name).GetProperty("id").GetString()}/delete", new { });
+        }
+        var after = await Json(await admin.GetAsync("/api/sensors/logins"));
+
+        Assert.Equal(HttpStatusCode.OK, tried.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, none.StatusCode);
+        Assert.Equal("monitor", saved.GetProperty("username").GetString());
+        Assert.Equal(saved.GetProperty("id").GetString(), Named(view, "R640").GetProperty("login").GetString());
+        Assert.Contains("\"used\": 2", listed.Replace("\"used\":2", "\"used\": 2"));
+        Assert.DoesNotContain("hunter2", listed);
+        Assert.DoesNotContain("hunter2", onDisk);
+        Assert.Equal(0, after.GetArrayLength());
     }
 
     // A minute passes and the sensors are checked, as the worker does every few seconds.

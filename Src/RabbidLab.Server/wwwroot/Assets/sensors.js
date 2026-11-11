@@ -5,7 +5,7 @@
   const R = window.RabbidLab;
   const { $, esc, svg, say, has: can } = R;
   const COLOURS = ['#FF8A3D', '#F2BE6B', '#B07CE8', '#6FA8FF', '#3CC7C7', '#F06BB4', '#7C83FF']; // a group's colour; green and red are left to up and down
-  const KIND = { ping: 'Ping', port: 'Port', web: 'Web page', dns: 'DNS lookup', cert: 'Certificate' };
+  const KIND = { ping: 'Ping', port: 'Port', web: 'Web page', dns: 'DNS lookup', cert: 'Certificate', hw: 'Server hardware' };
   const WORD = { up: 'Up', down: 'Down', warn: 'Warning', paused: 'Paused', new: 'Checking' };
   const DOWN = ' down'; // the filter's choice of everything that's down: no group's name starts with a space
   const NO_GROUP = ' none'; // and its choice of sensors with no group
@@ -43,7 +43,7 @@
   const days = (note) => (/(\d+) day/.exec(note || '') ? `${/(\d+) day/.exec(note)[1]} days left` : note || '');
   // How it is now, in a few words for a card or a row.
   const now = (s) => (s.status === 'down' ? `Down ${s.since ? short(s.since) : ''}`.trim() : s.status === 'paused' ? 'Paused' : s.status === 'new' ? 'Checking…'
-    : s.kind === 'cert' ? days(s.note) : s.status === 'warn' ? s.note || 'Warning' : s.ms == null ? 'Up' : ms(s.ms));
+    : s.kind === 'cert' ? days(s.note) : s.status === 'warn' ? s.note || 'Warning' : s.kind === 'hw' ? s.note || 'All OK' : s.ms == null ? 'Up' : ms(s.ms));
   const percent = (p) => (p == null ? '' : `${p === 100 ? 100 : p.toFixed(p > 99.9 ? 2 : 1)}%`);
   const letters = (name) => {
     const words = String(name).split(/[\s._-]+/).filter(Boolean);
@@ -182,7 +182,7 @@
     name: (s) => `<div class="nm"><span class="lic letter" data-color="${colour(s)}"><b>${esc(letters(s.name)[0])}</b></span><b>${esc(s.name)}</b></div>`,
     check: (s) => `<span>${esc(check(s))}</span>`,
     where: (s) => `<span class="dim" title="${esc(where(s))}">${esc(where(s))}</span>`,
-    reply: (s) => `<span class="num">${esc(s.status === 'up' || s.status === 'warn' ? (s.kind === 'cert' ? days(s.note) : s.ms == null ? '' : ms(s.ms)) : '')}</span>`,
+    reply: (s) => `<span class="num">${esc(s.status === 'up' || s.status === 'warn' ? (s.kind === 'cert' ? days(s.note) : s.kind === 'hw' ? s.note || 'All OK' : s.ms == null ? '' : ms(s.ms)) : '')}</span>`,
     line: (s) => line(s.recent, s.status),
     up: (s) => `<span class="num">${percent(s.up7)}</span>`,
     rule: (s) => `<span><span class="rchip" data-color="${rule(s.rule).color}"><i class="dot"></i>${esc(rule(s.rule).name)}</span></span>`,
@@ -444,22 +444,34 @@
   let editing = null; // the sensor being changed, or null for a new one
   let kind = 'ping';
   const vals = {}; // what has been typed, kept while the kind changes
-  const GROUPS = [['answer', 'Is it answering']];
+  const GROUPS = [['answer', 'Is it answering'], ['health', 'Health']];
   const TYPES = [
     { id: 'ping', g: 'answer', icon: 'activity', about: 'Answers ping.' },
     { id: 'port', g: 'answer', icon: 'plug', about: 'A TCP port is open.' },
     { id: 'web', g: 'answer', icon: 'globe', about: 'The page answers, with what you expect on it.' },
     { id: 'dns', g: 'answer', icon: 'search', about: 'A name resolves, to the address it should.' },
     { id: 'cert', g: 'answer', icon: 'lock', about: 'Days until a certificate expires.' },
+    { id: 'hw', g: 'health', icon: 'server', about: 'iDRAC, iLO or Supermicro over Redfish: power supplies, fans, temperature and disks.', signs: true },
   ];
   // The fields, in the console's form markup; each keeps its value in vals under its key.
   const wide = (on) => (on ? ' class="wide"' : '');
   const field = (key, label, o = {}) => `<div${wide(o.wide)}><label for="sd-f-${key}">${label}</label><input id="sd-f-${key}" data-f="${key}"`
-    + `${o.num ? ' inputmode="numeric"' : ''} maxlength="${o.max || 300}" placeholder="${esc(o.ph || '')}" value="${esc(vals[key] ?? '')}" autocomplete="off" spellcheck="false"></div>`;
+    + `${o.type ? ` type="${o.type}"` : ''}${o.num ? ' inputmode="numeric"' : ''} maxlength="${o.max || 300}" placeholder="${esc(o.ph || '')}" value="${esc(vals[key] ?? '')}" autocomplete="off" spellcheck="false"></div>`;
   const choice = (key, label, items, o = {}) => `<div${wide(o.wide)}><label for="sd-f-${key}">${label}</label><select id="sd-f-${key}" data-f="${key}">`
     + items.map(([v, text]) => `<option value="${esc(v)}"${String(vals[key] ?? o.value) === String(v) ? ' selected' : ''}>${esc(text)}</option>`).join('') + '</select></div>';
   const picks = (key, label, items) => `<div class="wide"><label>${label}</label><div class="seg sn-seg">`
     + items.map(([v, text]) => `<button type="button" data-f="${key}" data-v="${esc(v)}" aria-pressed="${(vals[key] || '') === v}">${esc(text)}</button>`).join('') + '</div></div>';
+  // Credentials: a saved set picked, or a new one typed and saved with the sensor.
+  const NEW_LOGIN = ' new';
+  let logins = [];
+  const signIn = (role) => {
+    const opts = [...logins.map((l) => [l.id, `${l.name}${l.username && l.username !== l.name ? ` (${l.username})` : ''} · ${l.used} sensor${l.used === 1 ? '' : 's'}`]), [NEW_LOGIN, 'New credentials…']];
+    if (!opts.some(([v]) => v === vals.login)) vals.login = logins[0]?.id || NEW_LOGIN;
+    return '<div class="sd-div wide"><b>Sign in</b><i></i></div>' + choice('login', 'Credentials', opts, { wide: true })
+      + (vals.login === NEW_LOGIN ? field('username', 'Username', { max: 120, ph: 'rabbidlab-ro' }) + field('password', 'Password', { type: 'password', max: 500 })
+        + field('loginName', 'Save them as', { wide: true, max: 60, ph: 'iDRAC read-only' }) : '')
+      + `<p class="hint">Stored encrypted on this server and only sent to this address. ${role}</p>`;
+  };
   const FIELDS = {
     ping: () => field('target', 'Address', { wide: true, ph: '192.168.2.23 or nas.example.com' }),
     port: () => field('target', 'Host', { ph: '192.168.2.23 or nas.example.com' }) + field('port', 'Port', { num: true, max: 5, ph: '445, 636, 3389…' }),
@@ -470,20 +482,22 @@
       + field('server', 'DNS server to ask', { wide: true, max: 250, ph: 'The one this server uses' }),
     cert: () => field('target', 'Host', { ph: 'nas.example.com' }) + field('port', 'Port', { num: true, max: 5, ph: '443' })
       + choice('warn', 'Warn when it has less than', [[14, '14 days'], [21, '21 days'], [30, '30 days'], [60, '60 days']], { value: 21 }),
+    hw: () => field('target', 'iDRAC, iLO or BMC address', { wide: true, ph: '192.168.2.7' }) + signIn('An iDRAC or iLO user with the Read Only role is enough.'),
   };
+  const signs = () => TYPES.find((t) => t.id === kind)?.signs;
   const drawFields = () => {
     $('sd-fields').innerHTML = FIELDS[kind]();
-    $('sd-out').innerHTML = '';
+    $('sd-out').innerHTML = signs() ? '<p class="hint">Check now signs in and shows what it can watch.</p>' : '';
   };
   const setKind = (k) => {
     kind = TYPES.some((t) => t.id === k) ? k : 'ping';
     const t = TYPES.find((x) => x.id === kind);
     $('sd-types').innerHTML = GROUPS.map(([g, name]) => `<p class="rail-label">${name}</p>` + TYPES.filter((x) => x.g === g)
-      .map((x) => `<a href="#" data-kind="${x.id}"${x.id === kind ? ' aria-current="true"' : ''}>${svg(x.icon)}<span>${KIND[x.id]}</span></a>`).join('')).join('');
+      .map((x) => `<a href="#" data-kind="${x.id}"${x.id === kind ? ' aria-current="true"' : ''}>${svg(x.icon)}<span>${KIND[x.id]}</span>${x.signs ? svg('key', 'sd-key') : ''}</a>`).join('')).join('');
     $('sd-kind-name').textContent = KIND[kind];
     $('sd-kind-about').textContent = t.about;
-    // A certificate doesn't change by the minute.
-    if (!editing) $('sd-every').value = kind === 'cert' ? '3600' : '60';
+    // A certificate doesn't change by the minute, nor hardware.
+    if (!editing) $('sd-every').value = kind === 'cert' ? '3600' : kind === 'hw' ? '300' : '60';
     drawFields();
   };
   const pickGroup = () => {
@@ -494,13 +508,17 @@
   const num = (v) => (String(v ?? '').trim() ? Number(v) : null);
   const form = () => ({ kind, target: vals.target || '', port: kind === 'port' || kind === 'cert' ? num(vals.port) : null, server: kind === 'dns' ? vals.server || '' : '',
     expect: kind === 'web' ? vals.expect || '' : '', text: kind === 'web' && vals.expect === 'text' ? vals.text || '' : '', address: kind === 'dns' ? vals.address || '' : '',
-    warnDays: kind === 'cert' ? num(vals.warn ?? 21) : null, name: $('sd-name').value,
+    warnDays: kind === 'cert' ? num(vals.warn ?? 21) : null, login: signs() && vals.login !== NEW_LOGIN ? vals.login : null,
+    newLogin: signs() && vals.login === NEW_LOGIN ? { name: vals.loginName || '', username: vals.username || '', password: vals.password || '' } : null,
+    watch: kind === 'hw' ? vals.watch || null : null, pin: signs() ? vals.pin || null : null, name: $('sd-name').value,
     group: $('sd-group').value === NEW_GROUP ? $('sd-group-new').value : $('sd-group').value, every: Number($('sd-every').value), rule: $('sd-rule').value });
   // A sensor to change, or null for a new one, which starts in the group asked for or the one being looked at.
-  const edit = (s, into) => {
+  const edit = async (s, into) => {
     editing = s || null;
     Object.keys(vals).forEach((k) => delete vals[k]);
-    if (s) Object.assign(vals, { target: s.target, port: s.port ?? '', server: s.server || '', expect: s.expect || '', text: s.text || '', address: s.address || '', warn: s.warnDays ?? 21 });
+    if (s) Object.assign(vals, { target: s.target, port: s.port ?? '', server: s.server || '', expect: s.expect || '', text: s.text || '', address: s.address || '', warn: s.warnDays ?? 21,
+      login: s.login || undefined, watch: s.watch || null, pin: s.pin || null });
+    logins = await R.get('/api/sensors/logins').catch(() => []);
     $('sd-title').textContent = s ? `Change ${s.name}` : 'Add a sensor';
     $('sd-name').value = s?.name || '';
     $('sd-group').innerHTML = '<option value="">No group</option>' + groups.map((g) => `<option value="${esc(g)}">${esc(g)}</option>`).join('') + `<option value="${NEW_GROUP}">New group…</option>`;
@@ -526,7 +544,10 @@
   });
   const keep = (e) => { if (e.target.dataset.f) vals[e.target.dataset.f] = e.target.value; };
   $('sd-fields').addEventListener('input', keep);
-  $('sd-fields').addEventListener('change', keep);
+  $('sd-fields').addEventListener('change', (e) => {
+    keep(e);
+    if (e.target.dataset.f === 'login') drawFields();
+  });
   $('sd-fields').addEventListener('click', (e) => {
     const b = e.target.closest('button[data-v]');
     if (!b) return;
@@ -538,19 +559,35 @@
   // What Check now found, as a status card: what answered and how, or what went wrong.
   const found = (f) => {
     const answered = f.ms == null ? '' : `Answered in ${ms(f.ms)}`;
-    const title = !f.ok ? f.note || 'No answer' : kind === 'port' ? `Port ${vals.port} is open` : kind === 'dns' || kind === 'cert' ? f.note || 'It answered' : answered || 'It answered';
+    const title = !f.ok ? f.note || 'No answer' : kind === 'port' ? `Port ${vals.port} is open` : kind === 'dns' || kind === 'cert' || kind === 'hw' ? f.note || 'It answered' : answered || 'It answered';
     const line = !f.ok ? [f.detail, 'You can still add it.'].filter(Boolean).join(' · ')
       : [kind === 'web' ? f.note : kind === 'port' || kind === 'dns' ? answered : '', f.detail].filter(Boolean).join(' · ');
     const look = !f.ok ? ' bad' : f.warn ? ' ember' : '';
     return `<div class="ustatus"><span class="big-ic${look}">${svg(f.ok && !f.warn ? 'check' : 'alert')}</span><div class="ustatus-text"><b>${esc(title)}</b><span>${esc(line)}</span></div></div>`;
   };
+  const STATE = { ok: 'OK', warn: 'Warning', bad: 'Critical' };
+  const watchRows = (parts) => `<div class="rows">${parts.map((p) => `<label class="row sd-watch"><input type="checkbox" data-watch="${esc(p.key)}"${!vals.watch || vals.watch.includes(p.key) ? ' checked' : ''}>`
+    + `<span class="t"><b>${esc(p.name)}</b><span>${esc(p.now)}</span></span><span class="sd-now ${p.state}">${STATE[p.state] || ''}</span></label>`).join('')}</div>`;
+  const pinNote = (pin) => {
+    const bytes = pin.split(':');
+    const short = bytes.length > 6 ? `${bytes.slice(0, 4).join(':')}:…:${bytes.slice(-2).join(':')}` : pin;
+    return `<p class="sd-pin">${svg('alert')}<span>It has a self-signed certificate. Rabbid Lab trusts this one, <code title="${esc(pin)}">SHA-256 ${esc(short)}</code>, and warns you if it changes.</span></p>`;
+  };
+  const foundAll = (f) => {
+    if (signs()) vals.pin = f.pin || null;
+    return (f.ok && f.title ? found({ ...f, note: f.title }) : found(f)) + (f.parts?.length ? watchRows(f.parts) : '') + (f.pin ? pinNote(f.pin) : '');
+  };
+  $('sd-out').addEventListener('change', (e) => {
+    if (!e.target.dataset.watch) return;
+    vals.watch = [...$('sd-out').querySelectorAll('[data-watch]')].filter((x) => x.checked).map((x) => x.dataset.watch);
+  });
   $('sd-try').addEventListener('click', async () => {
     say('sd-problem', '');
     $('sd-out').innerHTML = '';
     R.busy($('sd-pane'), 'Checking…');
     $('sd-try').disabled = $('sd-save').disabled = true;
     try {
-      $('sd-out').innerHTML = found(await R.send('/api/sensors/try', form()));
+      $('sd-out').innerHTML = foundAll(await R.send('/api/sensors/try', form()));
     } catch (err) {
       say('sd-problem', err.message);
     } finally {

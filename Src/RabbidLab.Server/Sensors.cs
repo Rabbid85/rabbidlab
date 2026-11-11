@@ -36,6 +36,23 @@ public sealed class Sensor
 
     /// <summary>For cert: days left below which it warns; null for the usual 21.</summary>
     public int? WarnDays { get; set; }
+
+    /// <summary>For kinds that sign in: the saved credentials (SensorLogins) by id.</summary>
+    public string? Login { get; set; }
+
+    /// <summary>For hw: the parts it watches (Redfish.Parts); null for all of them.</summary>
+    public List<string>? Watch { get; set; }
+
+    /// <summary>The fingerprint of the device's certificate when Windows doesn't trust it: credentials only go to that one.</summary>
+    public string? Pin { get; set; }
+
+    /// <summary>Credentials typed for Check now, never saved with the sensor.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public Login? Typed { get; set; }
+
+    /// <summary>Check now: any certificate is read, to offer it to pin.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool Trying { get; set; }
     public string? Group { get; set; }
 
     /// <summary>Seconds between checks.</summary>
@@ -114,7 +131,10 @@ public sealed class SensorStatesFile
 }
 
 /// <summary>What a check found. Warn is an answer that needs attention soon, such as a certificate about to expire. Detail is for Check now only.</summary>
-public sealed record Probe(bool Ok, int? Ms = null, string? Note = null, bool Warn = false, string? Detail = null);
+public sealed record Probe(bool Ok, int? Ms = null, string? Note = null, bool Warn = false, string? Detail = null, string? Title = null, List<ProbePart>? Parts = null, string? Pin = null);
+
+/// <summary>One thing a sensor that signs in can watch, such as the power supplies: what it is now, and ok, warn or bad.</summary>
+public sealed record ProbePart(string Key, string Name, string Now, string State);
 
 public interface ISensorProbe
 {
@@ -122,14 +142,14 @@ public interface ISensorProbe
 }
 
 /// <summary>The checks themselves, made from this server. Each one answers within a few seconds or counts as no reply.</summary>
-public sealed class NetworkProbe(TimeProvider clock) : ISensorProbe
+public sealed class NetworkProbe(TimeProvider clock, SensorLogins? logins = null) : ISensorProbe
 {
     private static readonly HttpClient Http = MakeHttp();
 
     public async Task<Probe> Check(Sensor s, CancellationToken stop)
     {
         using var limit = CancellationTokenSource.CreateLinkedTokenSource(stop);
-        limit.CancelAfter(TimeSpan.FromSeconds(s.Kind == "web" ? 10 : 5));
+        limit.CancelAfter(TimeSpan.FromSeconds(s.Kind switch { "web" => 10, "hw" => 45, _ => 5 }));
         try
         {
             return s.Kind switch
@@ -138,6 +158,7 @@ public sealed class NetworkProbe(TimeProvider clock) : ISensorProbe
                 "web" => await Web(s, limit.Token),
                 "dns" => await Name(s.Target, s.Server, s.Address, limit.Token),
                 "cert" => await Certificate(s.Target, s.Port ?? 443, s.WarnDays ?? Sensors.CertificateWarnDays, limit.Token),
+                "hw" => await Signed(s, (login) => Redfish.Check(s, login, s.Trying, limit.Token)),
                 _ => await Ping(s.Target, limit.Token),
             };
         }
@@ -160,6 +181,10 @@ public sealed class NetworkProbe(TimeProvider clock) : ISensorProbe
             return new Probe(false, Note: e.InnerException is SocketException { SocketErrorCode: SocketError.HostNotFound or SocketError.NoData } ? "No such name" : "No reply");
         }
     }
+
+    // A check that signs in: with the credentials typed for Check now, or the saved ones it picked.
+    private async Task<Probe> Signed(Sensor s, Func<Login, Task<Probe>> check) =>
+        (s.Typed ?? logins?.Get(s.Login)) is { } login ? await check(login) : new Probe(false, Note: "No credentials: open the sensor and pick them again");
 
     private static async Task<Probe> Ping(string host, CancellationToken stop)
     {
@@ -282,7 +307,7 @@ public sealed class NetworkProbe(TimeProvider clock) : ISensorProbe
 
 /// <summary>A sensor as the page sends it.</summary>
 public sealed record SensorForm(string? Name, string? Kind, string? Target, int? Port, string? Server, string? Group, int? Every, string? Rule,
-    string? Expect = null, string? Text = null, string? Address = null, int? WarnDays = null);
+    string? Expect = null, string? Text = null, string? Address = null, int? WarnDays = null, string? Login = null, LoginForm? NewLogin = null, List<string>? Watch = null, string? Pin = null);
 
 public sealed record RuleForm(int? After, int? Again, bool? Back);
 
@@ -291,12 +316,15 @@ public sealed record RuleForm(int? After, int? Again, bool? Back);
 /// after two failed checks in a row (one, for a sensor checked hourly). Its alert rule says how long it stays down before
 /// the email goes, so something that comes straight back emails nobody.
 /// </summary>
-public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISensorProbe probe, IMailSender mail, ILogger<Sensors> log)
+public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISensorProbe probe, IMailSender mail, ILogger<Sensors> log, SensorLogins logins)
 {
     public const int CertificateWarnDays = 21;
     private const int Most = 200;
     private static readonly int[] Intervals = [30, 60, 300, 3600];
-    private static readonly string[] Kinds = ["ping", "port", "web", "dns", "cert"];
+    private static readonly string[] Kinds = ["ping", "port", "web", "dns", "cert", "hw"];
+
+    /// <summary>The kinds that sign in, with saved or typed credentials.</summary>
+    public static bool SignsIn(string kind) => kind is "hw";
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { WriteIndented = true };
     private static readonly JsonSerializerOptions Compact = new(JsonSerializerDefaults.Web);
     private readonly JsonFile<SensorsFile> file = folder.Json<SensorsFile>("sensors.json", Json);
@@ -359,7 +387,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
 
     private static object Row(Sensor s, SensorState st) => new
     {
-        s.Id, s.Name, s.Kind, s.Target, s.Port, s.Server, s.Expect, s.Text, s.Address, s.WarnDays, s.Group, s.Every, s.Rule, s.Paused,
+        s.Id, s.Name, s.Kind, s.Target, s.Port, s.Server, s.Expect, s.Text, s.Address, s.WarnDays, s.Login, s.Watch, s.Pin, s.Group, s.Every, s.Rule, s.Paused,
         status = s.Paused ? "paused" : st.Status,
         since = st.Since,
         ms = st.Ms,
@@ -368,6 +396,15 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
         recent = st.Recent.Select(x => x.Ms).ToList(),
         up7 = Uptime(st, 168),
     };
+
+    /// <summary>The sensors as they are saved.</summary>
+    public IReadOnlyList<Sensor> All()
+    {
+        lock (gate)
+        {
+            return [.. file.Read().Sensors];
+        }
+    }
 
     /// <summary>One sensor with its history, or null when it isn't there.</summary>
     public object? Detail(string id)
@@ -446,9 +483,11 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
         {
             return (null, "Names are 60 characters at most.");
         }
-        // A certificate doesn't change by the minute: hourly unless something else was asked for.
-        var every = Intervals.Contains(form.Every ?? 0) ? form.Every!.Value : kind == "cert" ? 3600 : 60;
-        return (new Sensor { Name = name, Kind = kind, Target = target, Port = port, Server = server, Expect = expect, Text = text, Address = address, WarnDays = warn, Every = every }, null);
+        // A certificate doesn't change by the minute: hourly unless something else was asked for. Hardware: every 5 minutes.
+        var every = Intervals.Contains(form.Every ?? 0) ? form.Every!.Value : kind switch { "cert" => 3600, "hw" => 300, _ => 60 };
+        var watch = kind == "hw" && form.Watch is { } w && !Redfish.Parts.All(w.Contains) ? Redfish.Parts.Where(w.Contains).ToList() : null;
+        return (new Sensor { Name = name, Kind = kind, Target = target, Port = port, Server = server, Expect = expect, Text = text, Address = address, WarnDays = warn, Watch = watch,
+            Pin = SignsIn(kind) && !string.IsNullOrWhiteSpace(form.Pin) ? form.Pin.Trim() : null, Every = every }, null);
     }
 
     /// <summary>The sensor saved (new when id is null), or why it can't be.</summary>
@@ -458,6 +497,26 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
         if (next is null)
         {
             return (null, problem);
+        }
+        // Credentials: saved ones picked, or typed ones saved now for this sensor and any other that picks them later.
+        if (SignsIn(next.Kind))
+        {
+            if (form.NewLogin is not null)
+            {
+                if (SensorLogins.Problem(form.NewLogin) is { } bad)
+                {
+                    return (null, bad);
+                }
+                next.Login = logins.Add(form.NewLogin, by);
+            }
+            else if (logins.Has(form.Login))
+            {
+                next.Login = form.Login;
+            }
+            else
+            {
+                return (null, "Pick saved credentials, or type a username and password.");
+            }
         }
         lock (gate)
         {
@@ -501,6 +560,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
                 }
             }
             file.Save(f);
+            logins.Prune(f.Sensors);
             return (next, null);
         }
     }
@@ -515,6 +575,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
             {
                 f.Sensors.Remove(gone);
                 file.Save(f);
+                logins.Prune(f.Sensors);
                 states.Read().States.Remove(id);
                 dirty = true;
             }
@@ -643,7 +704,31 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
     public async Task<(Probe? Probe, string? Problem)> Try(SensorForm form, CancellationToken stop)
     {
         var (sensor, problem) = Read(form);
-        return sensor is null ? (null, problem) : (await probe.Check(sensor, stop), null);
+        if (sensor is null)
+        {
+            return (null, problem);
+        }
+        if (SignsIn(sensor.Kind))
+        {
+            if (form.NewLogin is not null)
+            {
+                if (SensorLogins.Problem(form.NewLogin) is { } bad)
+                {
+                    return (null, bad);
+                }
+                sensor.Typed = new Login(form.NewLogin.Username!.Trim(), form.NewLogin.Password!);
+            }
+            else if (logins.Has(form.Login))
+            {
+                sensor.Login = form.Login;
+            }
+            else
+            {
+                return (null, "Pick saved credentials, or type a username and password.");
+            }
+        }
+        sensor.Trying = true;
+        return (await probe.Check(sensor, stop), null);
     }
 
     /// <summary>Checks one sensor now, whenever it was last checked. False when it isn't there.</summary>
@@ -874,6 +959,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
         "web" => $"Web page · {s.Target}",
         "dns" => $"DNS lookup · {s.Target}" + (s.Server is null ? "" : $" on {s.Server}"),
         "cert" => $"Certificate · {s.Target}" + (s.Port is null or 443 ? "" : $":{s.Port}"),
+        "hw" => $"Server hardware · {s.Target}",
         _ => $"Ping · {s.Target}",
     };
 
@@ -936,10 +1022,14 @@ public static class SensorsApi
                 return refused;
             }
             var (found, problem) = await sensors.Try(form, context.RequestAborted);
-            return found is null ? Results.BadRequest(new { error = problem }) : Results.Ok(new { found.Ok, found.Ms, found.Note, found.Warn, found.Detail });
+            return found is null ? Results.BadRequest(new { error = problem }) : Results.Ok(new { found.Ok, found.Ms, found.Note, found.Warn, found.Detail, found.Title, found.Parts, found.Pin });
         });
 
         app.MapPost("/api/sensors", (SensorForm form, HttpContext context, Sensors sensors, ActivityLog log) => Save(null, form, context, sensors, log));
+
+        // The saved credentials, for the dialog: names and usernames, never passwords.
+        app.MapGet("/api/sensors/logins", (HttpContext context, Sensors sensors, SensorLogins logins) =>
+            !Access.Can(context, Permissions.SensorsEdit) ? Access.NotAllowed() : Results.Ok(logins.List(sensors.All())));
 
         app.MapPost("/api/sensors/{id}", (string id, SensorForm form, HttpContext context, Sensors sensors, ActivityLog log) => Save(id, form, context, sensors, log));
 
@@ -1025,11 +1115,16 @@ public static class SensorsApi
         return Results.Ok(sensors.View());
     }
 
-    private static IResult Save(string? id, SensorForm form, HttpContext context, Sensors sensors, ActivityLog log)
+    private static async Task<IResult> Save(string? id, SensorForm form, HttpContext context, Sensors sensors, ActivityLog log)
     {
         if (Access.RefuseUnless(context, Permissions.SensorsEdit) is { } refused)
         {
             return refused;
+        }
+        // Saved without Check now: the certificate the device has now is the one trusted (none, when Windows trusts it).
+        if (Sensors.SignsIn(form.Kind ?? "") && string.IsNullOrWhiteSpace(form.Pin) && !string.IsNullOrWhiteSpace(form.Target))
+        {
+            form = form with { Pin = await DeviceHttp.Peek(form.Target.Trim(), context.RequestAborted) };
         }
         var (sensor, problem) = sensors.Save(id, form, ActivityLog.Who(context));
         if (sensor is null)

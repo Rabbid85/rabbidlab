@@ -147,8 +147,6 @@
     const late = known.filter((l) => !states[l.id].up && !states[l.id].down);
     const first = down[0];
     $('ln-hero').classList.toggle('bad', down.length > 0);
-    $('ln-title').textContent = !links.length ? 'No links yet' : down.length ? `${down.length} down` : !web.length ? `${links.length} link${links.length === 1 ? '' : 's'}`
-      : late.length || known.length < web.length ? 'Checking…' : 'All up';
     $('ln-lead').textContent = !links.length ? 'Nothing here yet.' : first ? `${first.name} stopped answering${states[first.id].since ? ` at ${at(states[first.id].since)}` : ''}.`
       : !web.length ? 'The places in your lab, one click away.' : late.length ? `${late[0].name} didn't answer just now.`
         : known.length < web.length ? 'The first check is under way.' : 'Everything is answering.';

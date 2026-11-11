@@ -136,3 +136,14 @@
   .sd-types .rail-label { display: none; }
   .sd-pane { min-height: 0; }
 }
+/* What a sensor that signs in can watch, each with a tick, and the certificate it trusts. */
+.sd-watch { min-height: 48px; padding: 8px 16px; cursor: default; }
+.sd-watch:first-child { border-top: 0; }
+.sd-watch input { flex: none; margin: 0; accent-color: #E8542F; }
+.sd-watch .t b { font-size: 13.5px; }
+.sd-now { color: var(--ok); font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+.sd-now.warn { color: var(--amber); }
+.sd-now.bad { color: var(--red); }
+.sd-pin { display: flex; gap: 8px; margin: 0; color: var(--muted); font-size: 12.5px; }
+.sd-pin svg { flex: none; width: 15px; height: 15px; margin-top: 2px; color: var(--amber); }
+.sd-pin code { color: var(--title); font: 12px Consolas, "Cascadia Mono", monospace; }

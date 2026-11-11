@@ -88,6 +88,7 @@ builder.Services.AddUserTools();
 builder.Services.AddSingleton<Links>();
 
 // Sensors: checks on a timer, and email when one stays down (Sensors.cs, Mail.cs).
+builder.Services.AddSingleton<SensorLogins>();
 builder.Services.AddSingleton<ISensorProbe, NetworkProbe>();
 builder.Services.AddSingleton<Mail>();
 builder.Services.AddSingleton<IMailSender>(services => services.GetRequiredService<Mail>());
