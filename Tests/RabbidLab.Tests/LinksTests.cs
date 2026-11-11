@@ -1,4 +1,5 @@
 using System.Net;
+using Microsoft.Extensions.DependencyInjection;
 using System.Net.Http.Json;
 using System.Net.Sockets;
 using System.Text;
@@ -193,6 +194,25 @@ public sealed class LinksTests : IDisposable
 
         Assert.Equal(["Charlie", "Alpha", "Bravo", "Delta"], links.Select(l => l.GetProperty("name").GetString()));
         Assert.All(links, l => Assert.Equal("Lab", l.GetProperty("group").GetString()));
+    }
+
+    [Fact]
+    public async Task Test_links_play_their_part_and_go_after_30_seconds()
+    {
+        var links = app.Services.GetRequiredService<Links>();
+
+        links.AddTests("list", "test");
+        var states = await links.States(CancellationToken.None);
+        var made = links.All().Count(l => l.Test is not null);
+        var down = states.States.Values.Count(s => s.Down);
+        var grouped = links.Groups().Contains("Test links");
+        app.Clock.Advance(TimeSpan.FromSeconds(31));
+
+        Assert.Equal(12, made);
+        Assert.Equal(3, down);
+        Assert.True(grouped);
+        Assert.Empty(links.All());
+        Assert.DoesNotContain("Test links", links.Groups());
     }
 
     [Fact]

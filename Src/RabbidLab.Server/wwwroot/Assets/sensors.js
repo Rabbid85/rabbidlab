@@ -5,7 +5,7 @@
   const R = window.RabbidLab;
   const { $, esc, svg, say, has: can } = R;
   const COLOURS = ['#FF8A3D', '#F2BE6B', '#B07CE8', '#6FA8FF', '#3CC7C7', '#F06BB4', '#7C83FF']; // a group's colour; green and red are left to up and down
-  const KIND = { ping: 'Ping', port: 'Port', web: 'Web page', dns: 'DNS lookup', cert: 'Certificate', hw: 'Server hardware', nas: 'Storage', vmware: 'VMware', snmp: 'SNMP', svc: 'Windows service', disk: 'Disk space' };
+  const KIND = { ping: 'Ping', test: 'Test', port: 'Port', web: 'Web page', dns: 'DNS lookup', cert: 'Certificate', hw: 'Server hardware', nas: 'Storage', vmware: 'VMware', snmp: 'SNMP', svc: 'Windows service', disk: 'Disk space' };
   const WORD = { up: 'Up', down: 'Down', warn: 'Warning', paused: 'Paused', new: 'Checking' };
   const DOWN = ' down'; // the filter's choice of everything that's down: no group's name starts with a space
   const NO_GROUP = ' none'; // and its choice of sensors with no group
@@ -904,6 +904,20 @@
     }
   });
   $('sn-mail').addEventListener('click', openMail);
+
+  // Developer tools (Rabbid Lab Dev): a test sensor that answers, or one that goes down, gone in 30 seconds.
+  document.querySelector('#page-sensors .devstrip').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-test]');
+    if (!b) return;
+    try {
+      take(await R.send('/api/sensors/test', { kind: b.dataset.test }));
+      say('sn-problem', '');
+      draw();
+      [6000, 12000, 18000, 31000].forEach((ms) => setTimeout(refresh, ms));
+    } catch (err) {
+      say('sn-problem', err.message);
+    }
+  });
 
   // --- Showing the page --------------------------------------------------------------------------------------------------------------
 

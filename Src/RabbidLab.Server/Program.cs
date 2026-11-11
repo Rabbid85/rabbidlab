@@ -168,6 +168,7 @@ app.MapUsersApi();
 app.MapDirectoryExtrasApi();
 app.MapLinksApi();
 app.MapSensorsApi();
+app.MapDevToolsApi();
 app.MapMailApi();
 app.MapUpdateApi();
 

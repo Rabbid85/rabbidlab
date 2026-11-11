@@ -297,6 +297,21 @@ public sealed class SensorsTests : IDisposable
         Assert.Equal("C: has 5 % free", disk.Note);
     }
 
+    [Fact]
+    public async Task A_test_sensor_goes_after_30_seconds_with_its_history()
+    {
+        var sensors = app.Services.GetRequiredService<Sensors>();
+
+        sensors.AddTest(true, "test");
+        await sensors.Tick(CancellationToken.None);
+        var before = sensors.All().Count;
+        app.Clock.Advance(TimeSpan.FromSeconds(31));
+        await sensors.Tick(CancellationToken.None);
+
+        Assert.Equal(1, before);
+        Assert.Empty(sensors.All());
+    }
+
     // A minute passes and the sensors are checked, as the worker does every few seconds.
     private async Task Minute(int minutes = 1)
     {

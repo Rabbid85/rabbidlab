@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.8', [
+    'Rabbid Lab Dev has Developer tools under Settings, Developer. Turned on, Links gets test buttons for a link, a link that is down and a list of 12, and Sensors for a sensor that answers and one that goes down. Each test goes away after 30 seconds, and test sensors never email.']],
   ['1.1.7', [
     'Add a link has a new layout: the form beside the tile as it will look on the page, filled in from the site as you paste the address, with the icon picked in a strip under the tile.',
     'Adding a list reads every address first, then shows what each one is in a table: found, no answer, or on Links already. Tick the ones to add; the table scrolls, so a list of 200 fits.']],
@@ -120,7 +122,7 @@ const RELEASE_NOTES = [
   const PAGES = { overview: 'overview.view', links: 'links.view', sensors: 'sensors.view', seats: 'seats.view sessions.view', people: 'access.view', ad: 'ad.view ad.connect', local: 'windows.view',
     org: 'ad.view', attrs: 'ad.view',
     settings: 'updates.view activity.view' };
-  const SUBS = { updates: 'updates.view', activity: 'activity.view' };
+  const SUBS = { updates: 'updates.view', activity: 'activity.view', developer: 'updates.auto' };
   const pageOk = (key) => !shown || !PAGES[key] || allows(PAGES[key]);
   const home = () => ['overview', 'links', 'sensors', 'ad', 'seats', 'people', 'local'].find(pageOk) || 'wiki';
   const firstSetting = () => Object.keys(SUBS).find((s) => !shown || allows(SUBS[s])) || 'updates';
@@ -198,6 +200,19 @@ const RELEASE_NOTES = [
   rail();
   apply();
 
+  // Rabbid Lab Dev's Developer tools: the switch in Settings, and the test buttons it shows on Links and Sensors.
+  const devTools = async (on) => {
+    try {
+      const d = on === undefined ? await get('/api/devtools') : await send('/api/devtools', { on });
+      document.body.classList.toggle('dev-tools', !!d.on);
+      $('dev-tools').checked = !!d.on;
+      $('dev-tools-label').textContent = d.on ? 'On' : 'Off';
+      say('dev-problem', '');
+    } catch (err) {
+      say('dev-problem', err.message);
+    }
+  };
+  $('dev-tools').addEventListener('change', (e) => devTools(e.target.checked));
   const status = async () => {
     const r = await fetch('/api/status', { headers: { Accept: 'application/json' } });
     if (!r.ok) throw new Error(r.statusText);
@@ -210,6 +225,7 @@ const RELEASE_NOTES = [
     $('foot-version').textContent = `${s.product} ${s.version}`;
     $('foot-repo').href = s.repository;
     document.body.classList.toggle('is-dev', !!s.dev);
+    if (s.dev) devTools();
     $('hero-title').textContent = s.product;
     $('hero-version').textContent = s.version;
     $('hero-where').textContent = `Running on ${s.server} since ${when(s.startedAt)}.`;

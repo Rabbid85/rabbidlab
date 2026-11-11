@@ -173,6 +173,7 @@
       <a href="#updates" data-sub="updates" data-can="updates.view"><svg><use href="#i-updates"/></svg>Updates<i class="rail-dot" id="srail-dot" hidden></i></a>
 
       <a href="#activity" data-sub="activity" data-can="activity.view"><svg><use href="#i-activity"/></svg>Activity log</a>
+      <a href="#developer" data-sub="developer" class="dev-only" data-can="updates.auto"><svg><use href="#i-code"/></svg>Developer</a>
     </nav>
 
     <section class="sub" data-sub="updates" data-title="Updates">
@@ -220,6 +221,20 @@
       <section class="card" aria-label="Activity log">
         <ul class="activity" id="activity-list"><li class="muted">Nothing yet.</li></ul>
       </section>
+    </section>
+
+    <!-- Rabbid Lab Dev only: test buttons on Links and Sensors, for trying the pages out. -->
+    <section class="sub" data-sub="developer" data-title="Developer" hidden>
+      <header class="sub-head"><h2>Developer</h2><p>Tools for trying Rabbid Lab Dev out. The release doesn't have them.</p></header>
+      <div class="rows">
+        <div class="row still">
+          <svg><use href="#i-code"/></svg>
+          <span class="t"><b>Developer tools</b><span>Test buttons on Links and Sensors. Each adds a link, a list of links or a sensor that answers or is down, and it goes away after 30 seconds. Test sensors never email.</span></span>
+          <span class="sw-label" id="dev-tools-label">Off</span>
+          <input type="checkbox" class="switch" id="dev-tools" role="switch" aria-label="Developer tools">
+        </div>
+      </div>
+      <p class="hint problem" id="dev-problem" hidden></p>
     </section>
   </section>
 
@@ -362,6 +377,8 @@
       <button type="button" class="small" id="ln-newgroup" data-can="links.edit"><svg><use href="#i-plus"/></svg>New group</button>
       <div class="vswitch" id="ln-view"><button type="button" data-view="grid" title="Rows" aria-label="Rows"><svg><use href="#i-list"/></svg></button><button type="button" data-view="cards" title="Tiles" aria-label="Tiles"><svg><use href="#i-overview"/></svg></button></div>
     </div>
+    <div class="devstrip" data-can="links.edit"><b>DEV</b><span>Add a test, gone in 30 seconds:</span><button type="button" class="small" data-test="up">A link</button>
+      <button type="button" class="small" data-test="down">A link that's down</button><button type="button" class="small" data-test="list">A list of 12</button></div>
     <div id="ln-list"></div>
     <div class="ln-empty" id="ln-empty" hidden><span class="big-ic ember"><svg><use href="#i-link"/></svg></span>
       <div><b>No links yet</b><span id="ln-empty-text">Put the sites in your lab here: the router, the NAS, the hypervisor, iDRACs. Paste an address and Rabbid Lab fills in the name, icon and IP.</span></div>
@@ -403,6 +420,8 @@
         <button type="button" class="link" id="sn-cols-reset" hidden>Reset columns</button>
         <div class="vswitch" id="sn-view"><button type="button" data-view="grid" title="Rows" aria-label="Rows"><svg><use href="#i-list"/></svg></button><button type="button" data-view="cards" title="Tiles" aria-label="Tiles"><svg><use href="#i-overview"/></svg></button></div>
       </div>
+      <div class="devstrip" data-can="sensors.edit"><b>DEV</b><span>Add a test, gone in 30 seconds:</span><button type="button" class="small" data-test="up">A sensor</button>
+        <button type="button" class="small" data-test="down">A sensor that goes down</button></div>
       <div id="sn-list"></div>
       <div class="ln-empty" id="sn-empty" hidden><span class="big-ic ember"><svg><use href="#i-activity"/></svg></span>
         <div><b>No sensors yet</b><span id="sn-empty-text">A sensor checks something on a timer: a machine that answers ping, an open port, a web page, a DNS name or a certificate. Rabbid Lab emails you when one stays down.</span></div>

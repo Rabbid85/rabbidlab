@@ -67,6 +67,10 @@ public sealed class Sensor
     [System.Text.Json.Serialization.JsonIgnore]
     public Login? Typed { get; set; }
 
+    /// <summary>A Developer tools test sensor: up or down, played rather than checked, and gone at Expires.</summary>
+    public string? Test { get; set; }
+    public DateTime? Expires { get; set; }
+
     /// <summary>Check now: any certificate is read, to offer it to pin.</summary>
     [System.Text.Json.Serialization.JsonIgnore]
     public bool Trying { get; set; }
@@ -189,6 +193,7 @@ public sealed class NetworkProbe(TimeProvider clock, SensorLogins? logins = null
                 "vmware" => await Signed(s, (login) => VMware.Check(s, login, s.Trying, limit.Token)),
                 "snmp" => await Signed(s, (login) => Snmp.Check(s, login, limit.Token)),
                 "svc" or "disk" => await Seat(s, limit.Token),
+                "test" => s.Test == "down" ? new Probe(false, Note: "Test sensor: made to fail") : new Probe(true, 3 + Random.Shared.Next(40), "Test sensor"),
                 _ => await Ping(s.Target, limit.Token),
             };
         }
@@ -468,6 +473,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
     {
         lock (gate)
         {
+            Sweep();
             var f = file.Read();
             var groups = Known(f);
             var place = groups.Select((g, i) => (g, i)).ToDictionary(p => p.g, p => p.i, Grouping.Same);
@@ -645,6 +651,39 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
         var every = Intervals.Contains(form.Every ?? 0) ? form.Every!.Value : kind == "disk" ? 300 : 60;
         int? free = kind == "disk" && form.WarnFree is 5 or 20 ? form.WarnFree : null;
         return (new Sensor { Name = name, Kind = kind, Target = computer, Seat = form.Seat.Trim(), Service = service, Drive = drive, WarnFree = free, Every = every }, null);
+    }
+
+    /// <summary>Developer tools: a sensor that answers, or one that fails and turns red, checked every 5 seconds and gone in 30. It never emails.</summary>
+    public void AddTest(bool down, string by)
+    {
+        lock (gate)
+        {
+            var f = file.Read();
+            var now = Now;
+            f.Sensors.Add(new Sensor
+            {
+                Id = Convert.ToHexString(RandomNumberGenerator.GetBytes(6)).ToLowerInvariant(), Name = down ? "Test sensor, down" : "Test sensor", Kind = "test", Target = "test",
+                Test = down ? "down" : "up", Every = 5, Rule = "custom", Custom = new AlertRule { Id = "custom", Name = "Custom", Color = "#8A8FA8", After = -1, Back = false },
+                Added = now, AddedBy = by, Expires = now + DevTools.Lasts,
+            });
+            file.Save(f);
+        }
+    }
+
+    // Test sensors past their time go, with their history. Called under the lock.
+    private void Sweep()
+    {
+        var f = file.Read();
+        var now = Now;
+        var gone = f.Sensors.Where(s => s.Expires is { } end && end <= now).Select(s => s.Id).ToList();
+        if (gone.Count == 0)
+        {
+            return;
+        }
+        f.Sensors.RemoveAll(s => gone.Contains(s.Id));
+        file.Save(f);
+        gone.ForEach(id => states.Read().States.Remove(id));
+        dirty = true;
     }
 
     /// <summary>The sensor saved (new when id is null), or why it can't be.</summary>
@@ -1023,6 +1062,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
         List<Sensor> due;
         lock (gate)
         {
+            Sweep();
             var now = Now;
             due = [.. file.Read().Sensors.Where(s => !s.Paused && !busy.Contains(s.Id) && (State(s.Id).Checked is not { } last || (now - last).TotalSeconds >= s.Every - 1)).Take(64)];
             due.ForEach(s => busy.Add(s.Id));
@@ -1232,6 +1272,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
         "nas" => $"Storage · {s.Target}",
         "vmware" => $"VMware · {s.Target}",
         "snmp" => $"SNMP · {s.Target}",
+        "test" => "Test sensor",
         "svc" => $"Windows service · {s.Service} on {s.Target}",
         "disk" => $"Disk space · {s.Drive} on {s.Target}",
         _ => $"Ping · {s.Target}",

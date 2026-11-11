@@ -736,6 +736,21 @@
     });
   });
 
+  // Developer tools (Rabbid Lab Dev): a test link, one that's down, or a list of twelve, gone in 30 seconds.
+  document.querySelector('#page-links .devstrip').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-test]');
+    if (!b) return;
+    try {
+      take(await R.send('/api/links/test', { kind: b.dataset.test }));
+      say('ln-problem', '');
+      draw();
+      check();
+      setTimeout(refresh, 31000);
+    } catch (err) {
+      say('ln-problem', err.message);
+    }
+  });
+
   // --- Showing the page --------------------------------------------------------------------------------------------
 
   document.addEventListener('rabbidlab:show', (e) => {

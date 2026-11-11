@@ -25,6 +25,10 @@ public sealed class Link
     public int? Place { get; set; }
     public DateTime Added { get; set; }
     public string? AddedBy { get; set; }
+
+    /// <summary>A Developer tools test link: up or down, played rather than checked, and gone at Expires.</summary>
+    public string? Test { get; set; }
+    public DateTime? Expires { get; set; }
 }
 
 public sealed class LinksFile
@@ -88,11 +92,58 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
     {
         lock (gate)
         {
+            Sweep();
             return [.. file.Read().Links];
         }
     }
 
     private static List<string> Known(LinksFile f) => Grouping.Known(f.Groups, f.Links.Select(l => l.Group));
+
+    private const string TestGroup = "Test links";
+
+    /// <summary>Developer tools: a link that answers, one that's down, or a list of twelve with every fourth down, all gone in 30 seconds.</summary>
+    public void AddTests(string? kind, string by)
+    {
+        lock (gate)
+        {
+            var f = file.Read();
+            var now = clock.GetUtcNow().UtcDateTime;
+            var made = kind == "list"
+                ? Enumerable.Range(1, 12).Select(i => ($"Test {i:00}", i % 4 == 0 ? "down" : "up")).ToList()
+                : [(kind == "down" ? "Test link, down" : "Test link", kind == "down" ? "down" : "up")];
+            foreach (var (name, how) in made)
+            {
+                var id = Convert.ToHexString(RandomNumberGenerator.GetBytes(6)).ToLowerInvariant();
+                f.Links.Add(new Link
+                {
+                    Id = id, Name = name, Url = $"https://{id}.test", Description = how == "down" ? "Test link that's down; gone in 30 seconds" : "Test link; gone in 30 seconds",
+                    Address = $"192.0.2.{RandomNumberGenerator.GetInt32(2, 254)}", Group = TestGroup, Test = how, Added = now, AddedBy = by, Expires = now + DevTools.Lasts,
+                });
+            }
+            if (!f.Groups.Contains(TestGroup))
+            {
+                f.Groups.Add(TestGroup);
+            }
+            file.Save(f);
+        }
+    }
+
+    // Test links past their time go, and their group with the last of them. Called under the lock.
+    private void Sweep()
+    {
+        var f = file.Read();
+        var now = clock.GetUtcNow().UtcDateTime;
+        if (f.Links.RemoveAll(l => l.Expires is { } end && end <= now) == 0)
+        {
+            return;
+        }
+        if (f.Links.All(l => l.Group != TestGroup))
+        {
+            f.Groups.Remove(TestGroup);
+        }
+        file.Save(f);
+        revision++;
+    }
 
     // A copy with another description: the links in the list are being read by other requests.
     private static Link WithDescription(Link l, string? description) =>
@@ -232,6 +283,7 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
     {
         lock (gate)
         {
+            Sweep();
             return Known(file.Read());
         }
     }
@@ -572,6 +624,7 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
         Task running;
         lock (gate)
         {
+            Sweep();
             // One check for everyone asking: the one under way, or a new one of the links that are due.
             if (check is null || check.IsCompleted)
             {
@@ -589,6 +642,11 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
             var states = new Dictionary<string, LinkState>();
             foreach (var l in f.Links)
             {
+                if (l.Test is { } test)
+                {
+                    states[l.Id] = test == "down" ? new LinkState(false, true, null, null, l.Added) : new LinkState(true, false, 12, 200, null);
+                    continue;
+                }
                 if (seen.TryGetValue(l.Id, out var c) && c.Url == l.Url)
                 {
                     states[l.Id] = new LinkState(c.Up, !c.Up && now - (c.Since ?? now) >= after, c.Ms, c.Code, c.Since);
@@ -606,7 +664,7 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
         var after = TimeSpan.FromSeconds(After(f));
         return [.. f.Links.Where(l =>
         {
-            if (!l.Url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) && !l.Url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            if (!l.Url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) && !l.Url.StartsWith("https://", StringComparison.OrdinalIgnoreCase) || l.Test is not null)
             {
                 return false;
             }
@@ -1121,7 +1179,7 @@ public static class LinksApi
     }
 
     // The groups in their order, and the links in it too: by group, then by name, the ones with no group last.
-    private static object Listed(Links links)
+    internal static object Listed(Links links)
     {
         var groups = links.Groups();
         var (every, downAfter) = links.Checks();

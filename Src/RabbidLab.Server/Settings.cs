@@ -8,6 +8,9 @@ public sealed class ConsoleSettings
 {
     /// <summary>Whether a new version installs by itself once nobody is using Rabbid Lab. Off: only when someone chooses Install now.</summary>
     public bool AutomaticUpdates { get; set; } = true;
+
+    /// <summary>Rabbid Lab Dev: the Developer tools switch in Settings, which shows the test buttons on Links and Sensors.</summary>
+    public bool DevTools { get; set; }
 }
 
 /// <summary>Reads and writes settings.json in the data folder, and encrypts and decrypts the secrets in it.</summary>
