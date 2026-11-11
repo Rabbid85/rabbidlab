@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.19', [
+    'The update window shows how far along the update is as a percentage, the same as Settings, Updates behind it.']],
   ['1.1.18', [
     'Appearance no longer has a Sidebar section. The Collapse button at the foot of the sidebar still shrinks it to icons.']],
   ['1.1.17', [
@@ -441,6 +443,7 @@ const RELEASE_NOTES = [
     $('inst-fill').style.width = p;
     $('updlg-fill').style.width = p;
     $('inst-pct').textContent = p;
+    $('updlg-pct').textContent = p;
     $('inst-title').textContent = phase === 'done' ? `Updated to Rabbid Lab ${version}` : `Updating to Rabbid Lab ${version}`;
     $('inst-line').textContent = line;
     const steps = { download: ['now', '', ''], install: ['done', 'now', ''], done: ['done', 'done', 'done'] }[phase];

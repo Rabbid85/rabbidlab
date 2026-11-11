@@ -194,6 +194,7 @@ body.booting .main > .busy-cover { place-content: start center; padding-top: 28v
 .update-dialog { width: min(480px, calc(100vw - 32px)); text-align: center; }
 .update-dialog .flask { display: block; margin: 2px auto 8px; }
 .updlg-now { margin: 6px 0 0; font-size: 14px; }
+.updlg-pct { margin: 14px 0 8px; color: #fff; font: 800 30px/1 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; }
 .update-dialog .steps span { justify-content: center; padding: 8px 6px; }
 .update-dialog .hint { margin: 14px 0 0; }
 .update-dialog .dialog-foot { margin-top: 8px; }

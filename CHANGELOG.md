@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.19 (2026-11-11)
+
+- The update window shows how far along the update is as a percentage, the same as Settings, Updates behind it.
+
 ## 1.1.18 (2026-11-11)
 
 - Appearance no longer has a Sidebar section. The Collapse button at the foot of the sidebar still shrinks it to icons.
