@@ -31,7 +31,6 @@
   <symbol id="i-activity" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-7 4 14 3-7h4"/></symbol>
   <symbol id="i-new" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/></symbol>
   <symbol id="i-code" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5M14 4l-4 16"/></symbol>
-  <symbol id="i-sliders" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></symbol>
   <symbol id="i-out" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M9 7h8v8"/></symbol>
   <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
   <symbol id="i-rail" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></symbol>
@@ -167,15 +166,17 @@
     </section>
   </section>
 
-  <!-- Settings: its own rail, and one section at a time (#updates, #activity). -->
-  <section class="page settings-page" id="page-settings" data-page="settings" data-title="Settings" hidden>
-    <nav class="srail" aria-label="Settings">
-      <h1>Settings</h1>
-      <a href="#updates" data-sub="updates" data-can="updates.view"><svg><use href="#i-updates"/></svg>Updates<i class="rail-dot" id="srail-dot" hidden></i></a>
-
-      <a href="#activity" data-sub="activity" data-can="activity.view"><svg><use href="#i-activity"/></svg>Activity log</a>
-      <a href="#options" data-sub="options" class="dev-only" data-can="updates.auto"><svg><use href="#i-sliders"/></svg>Options</a>
+  <!-- Settings, laid out like Active Directory: a big title, its sections listed down the left, and the open one beside them (#updates, #activity, #developer). -->
+  <section class="page settings-page set-area" id="page-settings" data-page="settings" data-title="Settings" hidden>
+    <header class="page-head dhead"><h1>Settings</h1><p>Keep Rabbid Lab up to date, and see what's been done here.</p></header>
+    <nav class="dnav srail" aria-label="Settings">
+      <p class="rail-label">Server</p>
+      <a href="#updates" data-sub="updates" data-can="updates.view"><svg><use href="#i-updates"/></svg><span>Updates</span><i class="rail-dot" id="srail-dot" hidden></i></a>
+      <a href="#activity" data-sub="activity" data-can="activity.view"><svg><use href="#i-activity"/></svg><span>Activity log</span></a>
+      <p class="rail-label dev-only" data-can="updates.auto">Options</p>
+      <a href="#developer" data-sub="developer" class="dev-only" data-can="updates.auto"><svg><use href="#i-code"/></svg><span>Developer</span></a>
     </nav>
+    <div class="dmain">
 
     <section class="sub" data-sub="updates" data-title="Updates">
       <header class="sub-head"><h2>Updates</h2><p>Keep Rabbid Lab on the newest version.</p></header>
@@ -224,10 +225,9 @@
       </section>
     </section>
 
-    <!-- Options. Only the Developer section so far, which is Rabbid Lab Dev only, so the release doesn't show Options yet. -->
-    <section class="sub" data-sub="options" data-title="Options" hidden>
-      <header class="sub-head"><h2>Options</h2><p>How Rabbid Lab works here.</p></header>
-      <p class="h3">Developer</p>
+    <!-- Options, Developer: Rabbid Lab Dev only, so the release has no Options yet. -->
+    <section class="sub" data-sub="developer" data-title="Developer" hidden>
+      <header class="sub-head"><h2>Developer</h2><p>Tools for trying Rabbid Lab Dev out. The release doesn't have them.</p></header>
       <div class="rows">
         <div class="row still">
           <svg><use href="#i-code"/></svg>
@@ -238,6 +238,7 @@
       </div>
       <p class="hint problem" id="dev-problem" hidden></p>
     </section>
+    </div>
   </section>
 
   <!-- Seats: the computers with the Rabbid Lab client, and everyone signed in. -->

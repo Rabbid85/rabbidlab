@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.11 (2026-11-11)
+
+- Settings is laid out like Active Directory: a big title across the top, its sections listed down the left under Server and Options headings, and the open one marked with an orange bar. Developer is under Options.
+- In a narrow window, the section headings in Active Directory and Settings stay as words instead of turning into lines.
+
 ## 1.1.10 (2026-11-11)
 
 - Settings has Options in place of Developer. Developer tools are under its Developer heading, and Options is where new settings will go.

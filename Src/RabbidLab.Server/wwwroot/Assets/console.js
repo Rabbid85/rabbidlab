@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.11', [
+    'Settings is laid out like Active Directory: a big title across the top, its sections listed down the left under Server and Options headings, and the open one marked with an orange bar. Developer is under Options.',
+    'In a narrow window, the section headings in Active Directory and Settings stay as words instead of turning into lines.']],
   ['1.1.10', [
     'Settings has Options in place of Developer. Developer tools are under its Developer heading, and Options is where new settings will go.']],
   ['1.1.9', [
@@ -128,7 +131,7 @@ const RELEASE_NOTES = [
   const PAGES = { overview: 'overview.view', links: 'links.view', sensors: 'sensors.view', seats: 'seats.view sessions.view', people: 'access.view', ad: 'ad.view ad.connect', local: 'windows.view',
     org: 'ad.view', attrs: 'ad.view',
     settings: 'updates.view activity.view' };
-  const SUBS = { updates: 'updates.view', activity: 'activity.view', options: 'updates.auto' };
+  const SUBS = { updates: 'updates.view', activity: 'activity.view', developer: 'updates.auto' };
   const pageOk = (key) => !shown || !PAGES[key] || allows(PAGES[key]);
   const home = () => ['overview', 'links', 'sensors', 'ad', 'seats', 'people', 'local'].find(pageOk) || 'wiki';
   const firstSetting = () => Object.keys(SUBS).find((s) => !shown || allows(SUBS[s])) || 'updates';
@@ -206,7 +209,7 @@ const RELEASE_NOTES = [
   rail();
   apply();
 
-  // Rabbid Lab Dev's Developer tools: the switch in Settings, Options, and the DEV buttons it shows in Add a link and Add a sensor.
+  // Rabbid Lab Dev's Developer tools: the switch in Settings, Developer, and the DEV buttons it shows in Add a link and Add a sensor.
   const devTools = async (on) => {
     try {
       const d = on === undefined ? await get('/api/devtools') : await send('/api/devtools', { on });

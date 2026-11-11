@@ -43,7 +43,7 @@ body.app.rail-small { grid-template-columns: 60px minmax(0, 1fr); }
 .rail-collapse { width: 100%; font-family: inherit; }
 .rail .rail-settings { margin-top: auto; }
 .rail-small .rail { padding-left: 8px; padding-right: 8px; }
-.rail-small .rail-label { height: 1px; margin: 10px 6px; overflow: hidden; color: transparent; background: var(--line); }
+.rail-small .rail .rail-label { height: 1px; margin: 10px 6px; overflow: hidden; color: transparent; background: var(--line); }
 .rail-small .rail a, .rail-small .rail-collapse { justify-content: center; padding: 0; }
 .rail-small .rail a > :not(svg:first-child):not(.rail-dot), .rail-small .rail-collapse span { display: none; }
 .rail-small .rail a[aria-current="page"]::before { left: -8px; }
@@ -57,18 +57,14 @@ body.app.rail-small { grid-template-columns: 60px minmax(0, 1fr); }
 .page-head p { margin: 6px 0 0; color: var(--muted); font-size: 14px; }
 @media (max-width: 700px) { .page { padding: 22px 18px 20px; } }
 
-/* Settings: its own rail on the left, one section beside it. */
-.page.settings-page { max-width: none; padding: 0; gap: 0; grid-template-columns: 230px minmax(0, 1fr); align-content: stretch; min-height: calc(100vh - 52px); }
-.srail { grid-row: 1; display: flex; flex-direction: column; gap: 2px; padding: 26px 14px; border-right: 1px solid var(--line); background: #0C0D16; }
-.srail h1 { margin: 0 0 12px 10px; font: 750 22px "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; color: var(--title); }
-.srail a { display: flex; align-items: center; gap: 11px; height: 36px; padding: 0 10px; border-radius: 8px; color: var(--muted); font-size: 13.5px; font-weight: 600; }
-.srail a:hover { background: #151827; color: var(--title); text-decoration: none; }
-.srail a[aria-current="page"] { background: #1A1D2B; color: var(--title); }
-.srail a svg { flex: none; width: 17px; height: 17px; }
-.srail a[aria-current="page"] svg { color: #FF8A3D; }
-.settings-page > .sub { grid-column: 2; grid-row: 1; align-self: start; padding: 28px 36px 32px; max-width: 860px; }
-.sub-head h2 { margin: 0; font: 750 26px/1.2 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; color: var(--title); }
-.sub-head p { margin: 4px 0 20px; color: var(--muted); font-size: 14px; }
+/* Settings, laid out like Active Directory: the big title, its sections down the left (.dnav), the open one beside them. */
+section.page.set-area { max-width: 1240px; grid-template-columns: 250px minmax(0, 1fr); column-gap: 32px; }
+.set-area > .page-head { grid-column: 1 / -1; grid-row: 1; }
+.set-area > .dnav { grid-column: 1; grid-row: 2; }
+.set-area > .dmain { grid-row: 2; }
+.set-area .sub { max-width: 860px; }
+.sub-head h2 { margin: 0; font: 750 20px/1.2 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; color: var(--title); }
+.sub-head p { margin: 4px 0 16px; color: var(--muted); font-size: 14px; }
 .h3 { margin: 24px 0 8px; font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
 .problem { color: var(--red); }
 
@@ -221,10 +217,8 @@ a.small-link { margin-top: 8px; padding: 6px 12px; font-size: 12.5px; }
 .fingerprint code { overflow-wrap: anywhere; color: #D7DAE8; font: 12px Consolas, "Cascadia Mono", monospace; }
 @media (max-width: 900px) { .tiles4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 760px) {
-  .page.settings-page { grid-template-columns: minmax(0, 1fr); }
-  .srail { grid-row: auto; flex-direction: row; overflow-x: auto; padding: 10px 14px; border-right: 0; border-bottom: 1px solid var(--line); }
-  .srail h1 { display: none; }
-  .settings-page > .sub { grid-column: 1; grid-row: 2; padding: 22px 18px; }
+  section.page.set-area { grid-template-columns: minmax(0, 1fr); }
+  .set-area > .dmain { grid-column: 1; grid-row: 3; }
 }
 
 /* Overview: the hero across the top, the news under it, then this machine. */
@@ -458,8 +452,9 @@ select:not([multiple]):not([size]):hover { border-color: #3A3E55; }
 .vswitch button[aria-pressed="true"] { background: #232637; color: var(--title); }
 .vswitch svg { width: 16px; height: 16px; }
 /* Rabbid Lab Dev's Developer tools: their Settings entry in Dev only, and the test buttons only while they're turned on. */
-.srail a.dev-only { display: none; }
+.srail .dev-only { display: none; }
 .is-dev .srail a.dev-only:not([hidden]) { display: flex; }
+.is-dev .srail p.dev-only:not([hidden]) { display: block; }
 .devstrip { display: none; align-items: center; gap: 8px; margin: -6px 0 16px; padding: 8px 12px; border: 1px dashed rgba(242, 190, 107, .45); border-radius: 10px;
   background: rgba(242, 190, 107, .05); color: var(--muted); font-size: 12.5px; }
 body.dev-tools .devstrip:not([hidden]) { display: flex; flex-wrap: wrap; }
