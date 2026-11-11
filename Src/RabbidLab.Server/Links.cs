@@ -39,6 +39,12 @@ public sealed class LinksFile
 
     /// <summary>Seconds a link goes unanswered before it shows as down; 0 is the first failed check.</summary>
     public int DownAfter { get; set; } = 30;
+
+    /// <summary>Whether Fill in writes a description for a product it recognises, such as TrueNAS or iDRAC (KnownSites).</summary>
+    public bool Describe { get; set; } = true;
+
+    /// <summary>Whether the links already here have been given those descriptions since Describe was last turned on.</summary>
+    public bool Described { get; set; }
 }
 
 /// <summary>What a site says about itself, for filling in a new link.</summary>
@@ -47,8 +53,8 @@ public sealed record LinkLook(string? Name, string? Description, string? Address
 /// <summary>Whether a link's site answered its last check. Down only once it has gone unanswered, since Since, for the time set.</summary>
 public sealed record LinkState(bool Up, bool Down, int? Ms, int? Code, DateTime? Since);
 
-/// <summary>What the page gets: each link's state, and in how many seconds to ask again.</summary>
-public sealed record LinkStates(Dictionary<string, LinkState> States, int Next);
+/// <summary>What the page gets: each link's state, in how many seconds to ask again, and Revision, which goes up when the links change by themselves.</summary>
+public sealed record LinkStates(Dictionary<string, LinkState> States, int Next, int Revision);
 
 /// <summary>
 /// The Links page's links, kept in links.json in the data folder. Looking a site up reads its title, description and
@@ -71,6 +77,8 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
     private static readonly int[] DownChoices = [0, 15, 30, 60, 300];
     private readonly Dictionary<string, Checked> seen = []; // each link's last check, by id
     private Task? check; // the check under way, or the last one
+    private Task? describing; // the links here being given descriptions of known products, or the last time they were
+    private int revision; // goes up when that changes a link, so the page reads the links again
 
     private sealed record Checked(string Url, bool Up, int? Ms, int? Code, DateTime At, DateTime? Since);
 
@@ -85,6 +93,140 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
     }
 
     private static List<string> Known(LinksFile f) => Grouping.Known(f.Groups, f.Links.Select(l => l.Group));
+
+    // A copy with another description: the links in the list are being read by other requests.
+    private static Link WithDescription(Link l, string? description) =>
+        new() { Id = l.Id, Name = l.Name, Url = l.Url, Description = description, Address = l.Address, Group = l.Group, Icon = l.Icon, Place = l.Place, Added = l.Added, AddedBy = l.AddedBy };
+
+    public int Revision
+    {
+        get
+        {
+            lock (gate)
+            {
+                return revision;
+            }
+        }
+    }
+
+    /// <summary>Whether Fill in describes products it recognises.</summary>
+    public bool Describes()
+    {
+        lock (gate)
+        {
+            return file.Read().Describe;
+        }
+    }
+
+    /// <summary>Turns describing known products on or off. Off takes the descriptions it wrote off the links; typed ones stay.</summary>
+    public void SetDescribe(bool on)
+    {
+        lock (gate)
+        {
+            var f = file.Read();
+            if (f.Describe == on)
+            {
+                return;
+            }
+            f.Describe = on;
+            f.Described = false;
+            if (!on)
+            {
+                for (var i = 0; i < f.Links.Count; i++)
+                {
+                    if (KnownSites.IsOurs(f.Links[i].Description))
+                    {
+                        f.Links[i] = WithDescription(f.Links[i], null);
+                    }
+                }
+                revision++;
+            }
+            file.Save(f);
+        }
+    }
+
+    /// <summary>Gives the links here with no description one when they're a known product, once each time describing is turned on. The pass under way, or a new one.</summary>
+    public Task Describing()
+    {
+        lock (gate)
+        {
+            var f = file.Read();
+            if (f.Describe && !f.Described && (describing is null || describing.IsCompleted))
+            {
+                describing = Task.Run(DescribeAll);
+            }
+            return describing ?? Task.CompletedTask;
+        }
+    }
+
+    // A link with no description gets the known one; so does one whose description is only the site's own (vCenter's
+    // marketing line, ESXi's "ESXi Host Client"), which Fill in copied. One typed by hand stays.
+    private async Task DescribeAll()
+    {
+        List<Link> links;
+        lock (gate)
+        {
+            links = [.. file.Read().Links.Where(l => l.Description is null || IsWeb(l.Url))];
+        }
+        using var room = new SemaphoreSlim(ChecksAtOnce);
+        var found = await Task.WhenAll(links.Select(async l =>
+        {
+            // The name or host name is usually enough; otherwise the page is read, as Fill in does.
+            var named = KnownSites.Describe(l.Name, l.Url);
+            if ((named is not null && l.Description is null) || !IsWeb(l.Url))
+            {
+                return (l.Id, l.Url, Was: l.Description, Text: named);
+            }
+            await room.WaitAsync();
+            try
+            {
+                using var cut = new CancellationTokenSource(LookFor);
+                var (html, _, _) = await Page(Http, new Uri(l.Url), cut.Token);
+                var text = named ?? KnownSites.Describe(l.Name, l.Url, html);
+                return (l.Id, l.Url, Was: l.Description, Text: l.Description is null || FromSite(l.Description, Meta(html, "description")) ? text : null);
+            }
+            catch (Exception e) when (e is HttpRequestException or OperationCanceledException or IOException or UriFormatException or InvalidOperationException or NotSupportedException)
+            {
+                return (l.Id, l.Url, Was: l.Description, Text: l.Description is null ? named : null);
+            }
+            finally
+            {
+                room.Release();
+            }
+        }));
+        lock (gate)
+        {
+            var f = file.Read();
+            if (!f.Describe)
+            {
+                return; // turned off while the pages were read
+            }
+            var changed = false;
+            foreach (var (id, url, was, text) in found)
+            {
+                var at = f.Links.FindIndex(l => l.Id == id);
+                // Not one changed in the meantime.
+                if (text is not null && at >= 0 && f.Links[at].Description == was && f.Links[at].Url == url)
+                {
+                    f.Links[at] = WithDescription(f.Links[at], text);
+                    changed = true;
+                }
+            }
+            f.Described = true;
+            file.Save(f);
+            if (changed)
+            {
+                revision++;
+            }
+        }
+    }
+
+    private static bool IsWeb(string url) =>
+        url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || url.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
+
+    // The site's own description, maybe cut to the 200 characters a description can have.
+    private static bool FromSite(string description, string? meta) =>
+        meta is not null && (description == meta || (description.Length >= 100 && meta.StartsWith(description, StringComparison.Ordinal)));
 
     public IReadOnlyList<string> Groups()
     {
@@ -301,8 +443,11 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
         return new LinksImported(added, Groups().Count - groups, skipped, refused, checks);
     }
 
-    /// <summary>The site's name, description, address and icon. Guarded (always, but in tests): not from this server or a link-local address.</summary>
-    public static async Task<LinkLook> Look(string? address, CancellationToken stop, bool guarded = true)
+    /// <summary>
+    /// The site's name, description, address and icon. Guarded (always, but in tests): not from this server or a
+    /// link-local address. With describe, a product it recognises gets its description from KnownSites.
+    /// </summary>
+    public static async Task<LinkLook> Look(string? address, CancellationToken stop, bool guarded = true, bool describe = false)
     {
         if (Clean(address) is not { } url)
         {
@@ -314,7 +459,7 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
         var ip = await Ip(uri.Host, cut.Token);
         if (uri.Scheme is not ("http" or "https"))
         {
-            return new LinkLook(uri.Host, null, ip, null, null);
+            return new LinkLook(uri.Host, describe ? KnownSites.Describe(uri.Host, url) : null, ip, null, null);
         }
         try
         {
@@ -323,20 +468,25 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
             var name = ok ? Named(html) : null; // an error page's title ("Not Found") is no name
             var about = ok ? Meta(html, "description") : null;
             var (icon, from) = await Icon(http, html, where, cut.Token);
+            var pages = html;
             // A front page with no name or icon of its own is a way in to the real one (vCenter's is): the page behind its first link is read.
             if (name is null && icon is null && FirstLink(html, where) is { } onward)
             {
                 (html, where, ok) = await Page(http, onward, cut.Token);
                 name = ok ? Named(html) : null;
                 about ??= ok ? Meta(html, "description") : null;
+                pages += html;
                 (icon, from) = await Icon(http, html, where, cut.Token);
             }
             // A page whose name a script fills in (ESXi, iDRAC, TrueNAS) goes by the machine's name in DNS.
-            return new LinkLook(name ?? await Machine(ip, cut.Token), about, ip, icon, null, from);
+            name ??= await Machine(ip, cut.Token);
+            // A known product's own description beats the site's, which is often marketing (vCenter's) or missing.
+            return new LinkLook(name, (describe ? KnownSites.Describe(name, url, pages) : null) ?? about, ip, icon, null, from);
         }
         catch (Exception e) when (e is HttpRequestException or OperationCanceledException or IOException)
         {
-            return new LinkLook(await Machine(ip, stop) ?? uri.Host, null, ip, null, IsRefusal(e)
+            var called = await Machine(ip, stop) ?? uri.Host;
+            return new LinkLook(called, describe ? KnownSites.Describe(called, url) : null, ip, null, IsRefusal(e)
                 ? $"{uri.Host} is on this server or a link-local address, which {Product.Name} doesn't read, so fill it in yourself."
                 : $"{uri.Host} didn't answer, so fill it in yourself.");
         }
@@ -418,6 +568,7 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
     /// </summary>
     public async Task<LinkStates> States(CancellationToken stop)
     {
+        _ = Describing(); // once after describing is turned on, in the background; the page reads the links again when it changes one
         Task running;
         lock (gate)
         {
@@ -444,7 +595,7 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
                 }
             }
             var waiting = states.Values.Any(s => !s.Up && !s.Down);
-            return new LinkStates(states, waiting ? Retry(f) : Math.Min(Every(f), 60));
+            return new LinkStates(states, waiting ? Retry(f) : Math.Min(Every(f), 60), revision);
         }
     }
 
@@ -798,7 +949,7 @@ public sealed record LinkForm(string? Name, string? Url, string? Description, st
 
 public sealed record LinkArrangeForm(string? Group, List<string>? Ids);
 
-public sealed record LinkChecksForm(int? Every, int? DownAfter);
+public sealed record LinkChecksForm(int? Every, int? DownAfter, bool? Describe = null);
 
 /// <summary>Links as a file: the links (no ids, so they are new wherever they land), the groups in order, and the check times.</summary>
 public sealed record LinksExport(string? Kind, int? Version, DateTime? Exported, LinkChecksForm? Checks, List<string>? Groups, List<LinkForm>? Links)
@@ -876,11 +1027,25 @@ public static class LinksApi
         app.MapGet("/api/links/states", async (HttpContext context, Links links) =>
             !Access.Can(context, Permissions.LinksView) ? Access.NotAllowed() : Results.Ok(await links.States(context.RequestAborted)));
 
-        app.MapPost("/api/links/checks", (LinkChecksForm form, HttpContext context, Links links, ActivityLog log) =>
+        app.MapPost("/api/links/checks", async (LinkChecksForm form, HttpContext context, Links links, ActivityLog log) =>
         {
             if (Access.RefuseUnless(context, Permissions.LinksEdit) is { } refused)
             {
                 return refused;
+            }
+            // Describing known products: turned on, the links here get theirs before the answer; off, they lose them.
+            if (form.Describe is { } describe)
+            {
+                links.SetDescribe(describe);
+                log.Record(context, "links", "link.describe", $"Turned {(describe ? "on" : "off")} descriptions of known products on Links");
+                if (describe)
+                {
+                    await links.Describing().WaitAsync(context.RequestAborted);
+                }
+                if (form.Every is null && form.DownAfter is null)
+                {
+                    return Results.Ok(Listed(links));
+                }
             }
             if (links.SetChecks(form.Every, form.DownAfter) is { } problem)
             {
@@ -932,8 +1097,9 @@ public static class LinksApi
         });
 
         // A new link's name, description, address and icon, read from the site.
-        app.MapPost("/api/links/look", async (LinkForm form, HttpContext context) =>
-            Access.RefuseUnless(context, Permissions.LinksEdit) is { } refused ? refused : Results.Ok(await Links.Look(form.Url, context.RequestAborted)));
+        app.MapPost("/api/links/look", async (LinkForm form, HttpContext context, Links links) =>
+            Access.RefuseUnless(context, Permissions.LinksEdit) is { } refused ? refused
+            : Results.Ok(await Links.Look(form.Url, context.RequestAborted, describe: links.Describes())));
 
         app.MapPost("/api/links", (LinkForm form, HttpContext context, Links links, ActivityLog log) => Save(null, form, context, links, log));
 
@@ -964,7 +1130,8 @@ public static class LinksApi
         {
             links = links.All().OrderBy(l => l.Group is { } g && place.TryGetValue(g, out var at) ? at : int.MaxValue).ThenBy(l => l.Place ?? int.MaxValue).ThenBy(l => l.Name, StringComparer.OrdinalIgnoreCase),
             groups,
-            checks = new { every, downAfter },
+            checks = new { every, downAfter, describe = links.Describes() },
+            revision = links.Revision,
         };
     }
 

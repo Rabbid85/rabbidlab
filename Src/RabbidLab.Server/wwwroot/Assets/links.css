@@ -38,6 +38,8 @@
 .ltiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; }
 .ltile { position: relative; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); transition: border-color .12s, transform .12s; }
 .ltile:hover { border-color: var(--line-strong); transform: translateY(-1px); }
+/* A link that's down: a red border and a red tint at the top. */
+.ltile.down, .ltile.down:hover, .lrows .ltile.down:hover { border-color: rgba(255, 107, 125, .5); background: linear-gradient(180deg, rgba(255, 107, 125, .07), transparent 80%), var(--panel); }
 .lgo { display: flex; align-items: center; gap: 13px; min-height: 74px; padding: 12px 40px 12px 14px; color: var(--text); }
 .lgo:hover { text-decoration: none; }
 .lic { display: grid; place-items: center; flex: none; width: 42px; height: 42px; overflow: hidden; border-radius: 11px; background: #1A1D2B; }
@@ -103,6 +105,10 @@
   color: var(--text); font-size: 13px; font-weight: 400; letter-spacing: 0; text-transform: none; cursor: pointer; }
 .lc-file .button:hover { background: #222536; text-decoration: none; }
 .lc-file .button svg { width: 15px; height: 15px; }
+/* Links settings: the checkbox for describing known products, as text rather than a field label. */
+#lcheck-dialog .tick { height: auto; min-height: 38px; margin: 0; padding: 8px 12px; color: var(--text); font-size: 13.5px; font-weight: 400; letter-spacing: 0; text-transform: none; }
+#lcheck-dialog .tick input { width: auto; height: auto; padding: 0; border: 0; }
+#lcheck-dialog .form .hint { margin: 2px 0 0; }
 /* A tile dragged to another group: the group under it lights up, and No group shows as a place to drop it when the page has none. */
 .ltile.dragged { opacity: .4; }
 .lgroup.drop-into { border-radius: 12px; outline: 2px dashed var(--accent-line); outline-offset: 8px; }

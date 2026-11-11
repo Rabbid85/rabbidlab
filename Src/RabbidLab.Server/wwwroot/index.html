@@ -841,6 +841,9 @@
   <div class="form">
     <label>Check each link every</label><div class="seg sn-seg" id="lc-every"></div>
     <label>Show a link as down after no answer for</label><div class="seg sn-seg" id="lc-after"></div>
+    <label>Descriptions</label>
+    <label class="tick"><input type="checkbox" id="lc-known">Describe known products, such as TrueNAS, iDRAC, ESXi and UniFi</label>
+    <p class="hint">Fill in writes the description for a product it recognises. Turning this off removes the descriptions Rabbid Lab wrote. Descriptions you typed are not changed.</p>
     <label>Export and import</label>
     <div class="lc-file"><a class="button" id="lc-export" href="/api/links/export" download><svg><use href="#i-download"/></svg>Export</a><label class="button" for="lc-import-file"><svg><use href="#i-upload"/></svg>Import</label><input type="file" id="lc-import-file" accept=".json,application/json" hidden></div>
   </div>

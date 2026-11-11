@@ -256,6 +256,55 @@ public sealed class LinksTests : IDisposable
     }
 
     [Fact]
+    public void Known_products_are_recognised_by_name_host_name_or_page()
+    {
+        Assert.Equal("TrueNAS storage", KnownSites.Describe("nas01", "https://truenas.amw.com"));
+        Assert.Equal("Dell iDRAC out-of-band management", KnownSites.Describe("idrac-r730", "https://192.168.2.7"));
+        Assert.Equal("UniFi network console", KnownSites.Describe("UniFi OS", "https://192.168.2.1"));
+        // Pages whose title a script fills in, as the real ones send them.
+        Assert.Equal("VMware ESXi host", KnownSites.Describe("r640", "https://192.168.2.21/ui/", "<html ng-app=\"esxUiApp\"><meta name=\"description\" content=\"ESXi Host Client\">"));
+        Assert.Equal("TrueNAS storage", KnownSites.Describe(null, "https://192.168.2.23", "<title id=\"main-page-title\"></title><body><ix-root></ix-root></body>"));
+        Assert.Equal("VMware vCenter Server", KnownSites.Describe(null, "https://192.168.2.19", "<meta name=\"description\" content=\"VMware vSphere is ... VMware ESX Server ...\">"));
+        Assert.Null(KnownSites.Describe("Complex", "https://example.lan", "<p>Nothing to see</p>"));
+        Assert.True(KnownSites.IsOurs("TrueNAS storage"));
+        Assert.False(KnownSites.IsOurs("ZFS storage, SMB shares"));
+    }
+
+    [Fact]
+    public async Task A_lookup_describes_a_known_product_only_when_asked_to()
+    {
+        using var site = new TinySite(new() { ["/"] = ("text/html", "<html><head><title>Pi-hole - dns01</title><meta name=\"description\" content=\"Network-wide ad blocking\"></head></html>"u8.ToArray()) });
+
+        var plain = await Links.Look($"http://127.0.0.1:{site.Port}", CancellationToken.None, guarded: false);
+        var described = await Links.Look($"http://127.0.0.1:{site.Port}", CancellationToken.None, guarded: false, describe: true);
+
+        Assert.Equal("Network-wide ad blocking", plain.Description);
+        Assert.Equal("Pi-hole DNS filtering", described.Description);
+    }
+
+    [Fact]
+    public async Task Turning_descriptions_off_removes_the_written_ones_and_on_puts_them_back()
+    {
+        var admin = await app.SignedIn();
+        await admin.PostAsJsonAsync("/api/links", new { url = "https://truenas.lab", name = "truenas" });
+        await admin.PostAsJsonAsync("/api/links", new { url = "https://idrac.lab", name = "iDRAC R730", description = "Dell iDRAC out-of-band management" });
+        await admin.PostAsJsonAsync("/api/links", new { url = "http://127.0.0.1:1", name = "Grafana", description = "Mine" });
+        static string? About(JsonElement now, string name) =>
+            now.GetProperty("links").EnumerateArray().First(l => l.GetProperty("name").GetString() == name).GetProperty("description").GetString();
+
+        var off = await Json(await admin.PostAsJsonAsync("/api/links/checks", new { describe = false }));
+        var on = await Json(await admin.PostAsJsonAsync("/api/links/checks", new { describe = true }));
+
+        Assert.False(off.GetProperty("checks").GetProperty("describe").GetBoolean());
+        Assert.Null(About(off, "iDRAC R730"));
+        Assert.Equal("Mine", About(off, "Grafana"));
+        Assert.True(on.GetProperty("checks").GetProperty("describe").GetBoolean());
+        Assert.Equal("TrueNAS storage", About(on, "truenas"));
+        Assert.Equal("Dell iDRAC out-of-band management", About(on, "iDRAC R730"));
+        Assert.Equal("Mine", About(on, "Grafana")); // typed, so it stays although Grafana is a known product
+    }
+
+    [Fact]
     public async Task A_lookup_never_reads_a_site_on_this_server_or_a_link_local_address()
     {
         using var site = new TinySite(new() { ["/"] = ("text/html", "<html><head><title>Something private</title></head></html>"u8.ToArray()) });

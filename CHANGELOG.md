@@ -2,6 +2,13 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.0.6 (2026-11-11)
+
+- Links recognises common homelab products, such as TrueNAS, iDRAC, ESXi, vCenter and UniFi, and writes a description for each. Links already there get theirs once, including ones that only had the description copied from the site. Descriptions typed by hand are not changed.
+- Links settings has a checkbox to turn this off. Turning it off removes the descriptions Rabbid Lab wrote.
+- A link that is down has a red border and a red tint on its tile.
+- Fill in on Add a link shows the flask and the site it is reading, without the line of text under them.
+
 ## 1.0.5 (2026-11-11)
 
 - Active Directory has a new layout. A big title, then its pages down the left with Find over them and the views of the open page tucked under its entry. The open entry is marked with a bar and brighter words.

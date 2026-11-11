@@ -7,6 +7,7 @@
   let links = [];
   let states = {};
   let checks = { every: 60, downAfter: 30 }; // seconds: between checks, and unanswered before a link shows as down
+  let revision = 0; // goes up when the server changes links by itself; a new one means read them again
   let groups = []; // their names, in the order they are shown
   let group = '';
   let lost = ''; // the group that was picked when it went away, in case it was only renamed
@@ -49,7 +50,7 @@
       : `<i class="lstate late" title="No answer just now · checking again, down after ${span(checks.downAfter)}" data-now="No answer"></i>`;
   };
   const span = (s) => (s < 60 ? `${s} seconds` : s === 60 ? 'a minute' : `${s / 60} minutes`);
-  const tile = (l) => `<div class="ltile" data-id="${esc(l.id)}"${can('links.edit') ? ` draggable="true" data-drag="${esc(l.id)}"` : ''}><a class="lgo" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer" draggable="false">`
+  const tile = (l) => `<div class="ltile${states[l.id]?.down ? ' down' : ''}" data-id="${esc(l.id)}"${can('links.edit') ? ` draggable="true" data-drag="${esc(l.id)}"` : ''}><a class="lgo" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer" draggable="false">`
     + (l.icon === NO_ICON ? (view === 'grid' ? '<span class="lic gap"></span>' : '') : `<span class="lic${l.icon ? '' : ' letter'}" data-color="${colour(l.name)}">${pic(l)}</span>`)
     + `<span class="lt"><b>${esc(l.name)}</b>${l.description ? `<span>${esc(l.description)}</span>` : ''}`
     + `<code>${esc(l.address && l.address !== host(l.url) ? `${l.address} · ${host(l.url)}` : host(l.url))}</code></span></a>`
@@ -173,6 +174,7 @@
       const answer = await R.get('/api/links/states');
       states = answer.states || {};
       wait = answer.next || 60;
+      if (answer.revision !== revision && !tools.busy()) take(await R.get('/api/links'));
       // Not under a drag or a name being typed: the dots catch up on the next check.
       if (!tools.busy()) draw();
     } catch {
@@ -186,6 +188,7 @@
     links = answer.links;
     groups = answer.groups || [];
     checks = answer.checks || checks;
+    if (answer.revision != null) revision = answer.revision;
   };
   const refresh = async () => {
     try {
@@ -294,6 +297,7 @@
     const segs = (items, value) => items.map(([v, text]) => `<button type="button" data-value="${v}" aria-pressed="${v === value}">${text}</button>`).join('');
     $('lc-every').innerHTML = segs(EVERY, checks.every);
     $('lc-after').innerHTML = segs(AFTER, checks.downAfter);
+    $('lc-known').checked = checks.describe !== false;
     $('lc-note').textContent = checks.downAfter
       ? `A link that doesn't answer turns amber and is tried again every few seconds. It turns red once it has gone ${span(checks.downAfter)} with no answer, so one slow reply doesn't show as down.`
       : 'A link turns red the first time it doesn\'t answer, even if it was only one slow reply.';
@@ -311,6 +315,15 @@
   const picked = (e) => e.target.closest('button[data-value]')?.dataset.value;
   $('lc-every').addEventListener('click', (e) => { if (picked(e) != null) saveChecks({ every: Number(picked(e)) }); });
   $('lc-after').addEventListener('click', (e) => { if (picked(e) != null) saveChecks({ downAfter: Number(picked(e)) }); });
+  // Turned on, the links here get their descriptions first, under the flask.
+  $('lc-known').addEventListener('change', async () => {
+    const on = $('lc-known').checked;
+    const form = $('lcheck-dialog').querySelector('.form');
+    if (on) R.busy(form, 'Describing the links…');
+    await saveChecks({ describe: on });
+    R.busy(form, '');
+    draw();
+  });
   $('lc-close').addEventListener('click', () => $('lcheck-dialog').close());
   $('lc-sensors').addEventListener('click', () => $('lcheck-dialog').close());
   // Import: a file Export made, added beside what's here. The flask covers the settings while it goes in.
@@ -506,7 +519,7 @@
     const run = ++lookRun;
     say('ln-looking', '');
     say('ln-dproblem', '');
-    reading(`Reading ${host(/^[a-z][a-z0-9+.-]*:\/\//i.test(url) ? url : `http://${url}`)}…`, 'Getting its name, its icon and its IP address.');
+    reading(`Reading ${host(/^[a-z][a-z0-9+.-]*:\/\//i.test(url) ? url : `http://${url}`)}…`);
     // Long enough to see, so a fast answer isn't a flicker.
     const seen = new Promise((done) => setTimeout(done, 600));
     let answer = null;
