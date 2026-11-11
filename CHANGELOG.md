@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.22 (2026-11-11)
+
+- The banner at the top of Overview, Links and Sensors is tighter: the line under the title, the buttons and the numbers sit closer together, and the banner is shorter. Nothing in it changed size.
+
 ## 1.1.21 (2026-11-11)
 
 - The Red accent is a true red now, not a pink one. A lab that picked the old red gets the new one by itself.

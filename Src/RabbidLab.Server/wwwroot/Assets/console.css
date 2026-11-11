@@ -322,13 +322,13 @@ a.small-link { margin-top: 8px; padding: 6px 12px; font-size: 12.5px; }
 .hero .tile.dot { border-radius: 50%; }
 .eyebrow { margin: 0; font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
 .hero-title { margin: 10px 0 0; font: 800 76px/.95 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; letter-spacing: -.04em; color: #fff; }
-.hero-lead { max-width: 580px; margin: 16px 0 0; font-size: 15px; color: #C9CCDA; }
+.hero-lead { max-width: 580px; margin: 12px 0 0; font-size: 15px; color: #C9CCDA; }
 .hero-lead b { color: #fff; font-weight: 650; }
-.hero-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
+.hero-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
 .hero-actions .primary:hover { background: var(--ember); filter: brightness(1.08); }
 a.button, label.button { display: inline-flex; cursor: pointer; align-items: center; padding: 8px 16px; border-radius: 8px; border: 1px solid var(--line-strong); background: #1A1C28; color: var(--text); font-size: 14px; }
 a.button:hover, label.button:hover { background: #222536; text-decoration: none; }
-.hero-stats { display: flex; flex-wrap: wrap; gap: 18px 54px; margin-top: 30px; }
+.hero-stats { display: flex; flex-wrap: wrap; gap: 18px 54px; margin-top: 22px; }
 .hero-stats b { display: block; font: 750 30px/1.1 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; color: #fff; }
 .hero-stats span { display: flex; align-items: center; gap: 6px; margin-top: 4px; font-size: 12.5px; color: var(--muted); }
 .hero-stats svg { width: 14px; height: 14px; }
@@ -354,8 +354,8 @@ a.button:hover, label.button:hover { background: #222536; text-decoration: none;
 .home .machine { margin: 22px 44px 0; }
 @media (max-width: 1180px) { .hero .hero-new { display: none; } }
 /* Every hero is the same height with its parts in the same places, so the line under it stays put from page to page. */
-@media (min-width: 701px) { .hero { min-height: 461px; } }
-.hero-lead { min-height: 3em; }
+@media (min-width: 701px) { .hero { min-height: 400px; } }
+.hero-lead { min-height: 1.5em; }
 .hero-actions { min-height: 39px; }
 @media (max-width: 700px) {
   .hero { padding: 30px 18px 26px; }
