@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.21 (2026-11-11)
+
+- The Red accent is a true red now, not a pink one. A lab that picked the old red gets the new one by itself.
+
 ## 1.1.20 (2026-11-11)
 
 - The Activity log is built for a big lab: grouped by day, the same change made over and over folded into one row that opens, and 50 at a time with Show 50 more.

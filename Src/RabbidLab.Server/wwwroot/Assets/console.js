@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.21', [
+    'The Red accent is a true red now, not a pink one. A lab that picked the old red gets the new one by itself.']],
   ['1.1.20', [
     'The Activity log is built for a big lab: grouped by day, the same change made over and over folded into one row that opens, and 50 at a time with Show 50 more.',
     'Its sub-menu shows one kind: sign-ins, people and accounts, links and sensors, seats, or updates and settings. The bar finds a person, computer or change, picks a person, narrows to today, 7 days, 30 days or all, and to problems only.',
@@ -300,14 +302,15 @@ const RELEASE_NOTES = [
   // The lab's own look, the same for everyone (Settings, Appearance): its name, its icon, and the accent colour. Nothing set:
   // Rabbid Lab's own. Each accent is a light shade for lines and a main one for buttons.
   const SWATCHES = [['Ember', '#FF8A3D', '#E8542F'], ['Amber', '#F7CF7E', '#E0A33A'], ['Green', '#7FE3B5', '#2FB37A'], ['Teal', '#6FDCDC', '#1FA3A8'],
-    ['Blue', '#8DBBFF', '#3D7FE6'], ['Indigo', '#9EA3FF', '#5B62E8'], ['Violet', '#C79BF0', '#8E52D6'], ['Pink', '#F68CC6', '#D6448E'], ['Red', '#FF8A97', '#E0405A']];
+    ['Blue', '#8DBBFF', '#3D7FE6'], ['Indigo', '#9EA3FF', '#5B62E8'], ['Violet', '#C79BF0', '#8E52D6'], ['Pink', '#F68CC6', '#D6448E'], ['Red', '#FF4D4D', '#E02424']];
   let brand = { name: null, icon: null, accent: null };
   let productName = 'Rabbid Lab';
   const lighter = (hex, by) => `#${[1, 3, 5].map((i) => { const c = parseInt(hex.slice(i, i + 2), 16); return Math.round(c + (255 - c) * by).toString(16).padStart(2, '0'); }).join('')}`;
   const drawBrand = () => {
     const r = document.documentElement.style;
-    const sw = brand.accent && SWATCHES.find((x) => x[2].toLowerCase() === brand.accent.toLowerCase());
-    const [light, main] = !brand.accent ? [] : sw ? [sw[1], sw[2]] : [lighter(brand.accent, 0.3), brand.accent];
+    // The red before 1.1.21 was pinker: a lab that picked it gets the red that's there now.
+    const sw = brand.accent && (brand.accent.toLowerCase() === '#e0405a' ? SWATCHES[8] : SWATCHES.find((x) => x[2].toLowerCase() === brand.accent.toLowerCase()));
+    const [light, main] = !brand.accent ? [] : sw ? [sw[1], sw[2]] : [lighter(brand.accent, 0.15), brand.accent];
     for (const [k, v] of [['--accent', main], ['--accent-line', light], ['--accent-hover', light], ['--accent-soft', light], ['--ember', main && `linear-gradient(90deg, ${light}, ${main})`]]) {
       if (v) r.setProperty(k, v);
       else r.removeProperty(k);
