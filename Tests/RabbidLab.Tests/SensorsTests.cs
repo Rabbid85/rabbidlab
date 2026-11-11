@@ -206,6 +206,34 @@ public sealed class SensorsTests : IDisposable
         Assert.Equal("Sign-in failed: check the username and password", wrong.Note);
     }
 
+    [Fact]
+    public async Task A_UPS_is_read_over_SNMP_and_a_wrong_community_gets_no_answer()
+    {
+        using var ups = new FakeSnmpAgent("lab", new()
+        {
+            ["1.3.6.1.2.1.1.5.0"] = new Lextm.SharpSnmpLib.OctetString("ups01"),
+            ["1.3.6.1.2.1.1.1.0"] = new Lextm.SharpSnmpLib.OctetString("APC Web/SNMP Management Card"),
+            ["1.3.6.1.2.1.1.3.0"] = new Lextm.SharpSnmpLib.TimeTicks(8_640_000u),
+            ["1.3.6.1.2.1.33.1.2.4.0"] = new Lextm.SharpSnmpLib.Integer32(96),
+            ["1.3.6.1.2.1.33.1.4.1.0"] = new Lextm.SharpSnmpLib.Integer32(5),
+        });
+        Sensor At(string value) => new() { Kind = "snmp", Target = "127.0.0.1", Port = ups.Port, Value = value };
+
+        var battery = await Snmp.Check(At("ups"), new Login(null, "lab", "community"), CancellationToken.None);
+        var uptime = await Snmp.Check(At("uptime"), new Login(null, "lab", "community"), CancellationToken.None);
+        var wrong = await Snmp.Check(At("uptime"), new Login(null, "public", "community"), CancellationToken.None);
+
+        Assert.True(battery.Ok);
+        Assert.True(battery.Warn);
+        Assert.Equal("Power: On battery", battery.Note);
+        Assert.Equal("96 %", battery.Parts!.Single(p => p.Key == "battery").Now);
+        Assert.StartsWith("SNMP v2c answered", battery.Title);
+        Assert.StartsWith("sysName ups01 · APC", battery.Detail);
+        Assert.Equal("Up 1 day", uptime.Parts!.Single().Now);
+        Assert.False(wrong.Ok);
+        Assert.Equal("No answer: check the address and the community", wrong.Note);
+    }
+
     // A minute passes and the sensors are checked, as the worker does every few seconds.
     private async Task Minute(int minutes = 1)
     {

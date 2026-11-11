@@ -5,7 +5,7 @@
   const R = window.RabbidLab;
   const { $, esc, svg, say, has: can } = R;
   const COLOURS = ['#FF8A3D', '#F2BE6B', '#B07CE8', '#6FA8FF', '#3CC7C7', '#F06BB4', '#7C83FF']; // a group's colour; green and red are left to up and down
-  const KIND = { ping: 'Ping', port: 'Port', web: 'Web page', dns: 'DNS lookup', cert: 'Certificate', hw: 'Server hardware', nas: 'Storage', vmware: 'VMware' };
+  const KIND = { ping: 'Ping', port: 'Port', web: 'Web page', dns: 'DNS lookup', cert: 'Certificate', hw: 'Server hardware', nas: 'Storage', vmware: 'VMware', snmp: 'SNMP' };
   const WORD = { up: 'Up', down: 'Down', warn: 'Warning', paused: 'Paused', new: 'Checking' };
   const DOWN = ' down'; // the filter's choice of everything that's down: no group's name starts with a space
   const NO_GROUP = ' none'; // and its choice of sensors with no group
@@ -43,7 +43,7 @@
   const days = (note) => (/(\d+) day/.exec(note || '') ? `${/(\d+) day/.exec(note)[1]} days left` : note || '');
   // How it is now, in a few words for a card or a row.
   const now = (s) => (s.status === 'down' ? `Down ${s.since ? short(s.since) : ''}`.trim() : s.status === 'paused' ? 'Paused' : s.status === 'new' ? 'Checking…'
-    : s.kind === 'cert' ? days(s.note) : s.status === 'warn' ? s.note || 'Warning' : ['hw', 'nas', 'vmware'].includes(s.kind) ? s.note || 'All OK' : s.ms == null ? 'Up' : ms(s.ms));
+    : s.kind === 'cert' ? days(s.note) : s.status === 'warn' ? s.note || 'Warning' : ['hw', 'nas', 'vmware', 'snmp'].includes(s.kind) ? s.note || 'All OK' : s.ms == null ? 'Up' : ms(s.ms));
   const percent = (p) => (p == null ? '' : `${p === 100 ? 100 : p.toFixed(p > 99.9 ? 2 : 1)}%`);
   const letters = (name) => {
     const words = String(name).split(/[\s._-]+/).filter(Boolean);
@@ -182,7 +182,7 @@
     name: (s) => `<div class="nm"><span class="lic letter" data-color="${colour(s)}"><b>${esc(letters(s.name)[0])}</b></span><b>${esc(s.name)}</b></div>`,
     check: (s) => `<span>${esc(check(s))}</span>`,
     where: (s) => `<span class="dim" title="${esc(where(s))}">${esc(where(s))}</span>`,
-    reply: (s) => `<span class="num">${esc(s.status === 'up' || s.status === 'warn' ? (s.kind === 'cert' ? days(s.note) : ['hw', 'nas', 'vmware'].includes(s.kind) ? s.note || 'All OK' : s.ms == null ? '' : ms(s.ms)) : '')}</span>`,
+    reply: (s) => `<span class="num">${esc(s.status === 'up' || s.status === 'warn' ? (s.kind === 'cert' ? days(s.note) : ['hw', 'nas', 'vmware', 'snmp'].includes(s.kind) ? s.note || 'All OK' : s.ms == null ? '' : ms(s.ms)) : '')}</span>`,
     line: (s) => line(s.recent, s.status),
     up: (s) => `<span class="num">${percent(s.up7)}</span>`,
     rule: (s) => `<span><span class="rchip" data-color="${rule(s.rule).color}"><i class="dot"></i>${esc(rule(s.rule).name)}</span></span>`,
@@ -454,6 +454,7 @@
     { id: 'hw', g: 'health', icon: 'server', about: 'iDRAC, iLO or Supermicro over Redfish: power supplies, fans, temperature and disks.', signs: true },
     { id: 'nas', g: 'health', icon: 'disk', about: 'TrueNAS or Synology: pool health, disks and free space.', signs: true },
     { id: 'vmware', g: 'health', icon: 'monitor', about: 'ESXi or vCenter: hosts connected, datastore free space and triggered alarms.', signs: true },
+    { id: 'snmp', g: 'health', icon: 'org', about: 'Switches, UPS units and printers: one value you pick, such as a UPS battery or a switch port.', signs: true },
   ];
   // The fields, in the console's form markup; each keeps its value in vals under its key.
   const wide = (on) => (on ? ' class="wide"' : '');
@@ -466,14 +467,26 @@
   // Credentials: a saved set picked, or a new one typed and saved with the sensor.
   const NEW_LOGIN = ' new';
   let logins = [];
-  const signIn = (role, key = false) => {
-    const opts = [...logins.filter((l) => !l.username === key).map((l) => [l.id, `${l.name}${l.username && l.username !== l.name ? ` (${l.username})` : ''} · ${l.used} sensor${l.used === 1 ? '' : 's'}`]), [NEW_LOGIN, key ? 'New API key…' : 'New credentials…']];
+  // The kind of credentials this sensor takes: an API key for TrueNAS, a community or v3 user for SNMP, else a username and password.
+  const loginKind = () => (kind === 'nas' && vals.product !== 'synology' ? 'key' : kind === 'snmp' ? (vals.snmpVersion === 'v3' ? 'snmpv3' : 'community') : 'user');
+  const NEW_NAME = { user: 'New credentials…', key: 'New API key…', community: 'New community…', snmpv3: 'New SNMPv3 user…' };
+  const signIn = (role) => {
+    const k = loginKind();
+    const opts = [...logins.filter((l) => l.kind === k).map((l) => [l.id, `${l.name}${l.username && l.username !== l.name ? ` (${l.username})` : ''} · ${l.used} sensor${l.used === 1 ? '' : 's'}`]), [NEW_LOGIN, NEW_NAME[k]]];
     if (!opts.some(([v]) => v === vals.login)) vals.login = opts[0][0];
+    const save = (ph) => field('loginName', k === 'user' || k === 'snmpv3' ? 'Save them as' : 'Save it as', { wide: true, max: 60, ph });
+    const typed = {
+      user: () => field('username', 'Username', { max: 120, ph: 'rabbidlab-ro' }) + field('password', 'Password', { type: 'password', max: 500 })
+        + save({ nas: 'DSM monitor', vmware: 'vSphere read-only' }[kind] || 'iDRAC read-only'),
+      key: () => field('password', 'API key', { type: 'password', wide: true, max: 500 }) + save('TrueNAS API key'),
+      community: () => field('password', 'Community', { type: 'password', wide: true, max: 500 }) + save('SNMP community'),
+      snmpv3: () => field('username', 'Username', { max: 120, ph: 'rabbidlab' }) + choice('auth', 'Authentication', [['SHA-256', 'SHA-256'], ['SHA-1', 'SHA-1']], { value: 'SHA-256' })
+        + field('password', 'Auth password', { type: 'password', max: 500 }) + choice('privacy', 'Privacy', [['AES-128', 'AES-128'], ['None', 'None']], { value: 'AES-128' })
+        + (vals.privacy === 'None' ? '' : field('privacyPassword', 'Privacy password', { type: 'password', wide: true, max: 500 })) + save('SNMPv3 monitor'),
+    };
     return '<div class="sd-div wide"><b>Sign in</b><i></i></div>' + choice('login', 'Credentials', opts, { wide: true })
-      + (vals.login !== NEW_LOGIN ? '' : key ? field('password', 'API key', { type: 'password', wide: true, max: 500 }) + field('loginName', 'Save it as', { wide: true, max: 60, ph: 'TrueNAS API key' })
-        : field('username', 'Username', { max: 120, ph: 'rabbidlab-ro' }) + field('password', 'Password', { type: 'password', max: 500 })
-          + field('loginName', 'Save them as', { wide: true, max: 60, ph: { nas: 'DSM monitor', vmware: 'vSphere read-only' }[kind] || 'iDRAC read-only' }))
-      + `<p class="hint">Stored encrypted on this server and only sent to this address. ${role}</p>`;
+      + (vals.login === NEW_LOGIN ? typed[k]() : '')
+      + `<p class="hint">${k === 'community' ? 'SNMP v2c sends the community in clear text. Use v3 where the device has it. ' : ''}Stored encrypted on this server and only sent to this address.${role ? ` ${role}` : ''}</p>`;
   };
   const FIELDS = {
     ping: () => field('target', 'Address', { wide: true, ph: '192.168.2.23 or nas.example.com' }),
@@ -486,12 +499,17 @@
     cert: () => field('target', 'Host', { ph: 'nas.example.com' }) + field('port', 'Port', { num: true, max: 5, ph: '443' })
       + choice('warn', 'Warn when it has less than', [[14, '14 days'], [21, '21 days'], [30, '30 days'], [60, '60 days']], { value: 21 }),
     hw: () => field('target', 'iDRAC, iLO or BMC address', { wide: true, ph: '192.168.2.7' }) + signIn('An iDRAC or iLO user with the Read Only role is enough.'),
+    snmp: () => field('target', 'Address', { wide: true, ph: '192.168.2.30 or ups.example.com' })
+      + choice('value', 'Value to watch', [['uptime', 'Uptime: it answers'], ['ups', 'UPS battery and power'], ['iface', 'Interface up'], ['oid', 'Custom OID']], { value: 'uptime', wide: true })
+      + (vals.value === 'iface' ? field('iface', 'Interface', { wide: true, max: 100, ph: 'Port 5 or eth0' }) + '<p class="hint">As the device names it. When the name is not found, Check now lists the names it has.</p>' : '')
+      + (vals.value === 'oid' ? field('oid', 'OID', { wide: true, max: 300, ph: '1.3.6.1.2.1.1.3.0' }) : '')
+      + picks('snmpVersion', 'Version', [['', 'v2c'], ['v3', 'v3']]) + signIn(''),
     vmware: () => field('target', 'ESXi or vCenter address', { wide: true, ph: 'vcenter.example.com' }) + signIn('A vSphere user with the Read-only role is enough.')
       + choice('warnFree', 'Warn when datastore free space is below', [[5, '5 %'], [10, '10 %'], [20, '20 %']], { value: 10 }),
     nas: () => picks('product', 'Product', [['', 'TrueNAS'], ['synology', 'Synology']])
       + field('target', 'Address', { wide: true, ph: vals.product === 'synology' ? 'backup.example.com (port 5001 unless you add another)' : 'truenas.example.com' })
       + (vals.product === 'synology' ? signIn('DSM only gives storage details to an account in the administrators group. Turn off 2-step verification for it.')
-        : signIn('Make one in TrueNAS under Credentials, API Keys.', true))
+        : signIn('Make one in TrueNAS under Credentials, API Keys.'))
       + choice('warnFree', 'Warn when free space is below', [[5, '5 %'], [10, '10 %'], [20, '20 %']], { value: 10 }),
   };
   const signs = () => TYPES.find((t) => t.id === kind)?.signs;
@@ -507,7 +525,7 @@
     $('sd-kind-name').textContent = KIND[kind];
     $('sd-kind-about').textContent = t.about;
     // A certificate doesn't change by the minute, nor hardware.
-    if (!editing) $('sd-every').value = kind === 'cert' ? '3600' : signs() ? '300' : '60';
+    if (!editing) $('sd-every').value = kind === 'cert' ? '3600' : signs() && kind !== 'snmp' ? '300' : '60';
     drawFields();
   };
   const pickGroup = () => {
@@ -519,7 +537,9 @@
   const form = () => ({ kind, target: vals.target || '', port: kind === 'port' || kind === 'cert' ? num(vals.port) : null, server: kind === 'dns' ? vals.server || '' : '',
     expect: kind === 'web' ? vals.expect || '' : '', text: kind === 'web' && vals.expect === 'text' ? vals.text || '' : '', address: kind === 'dns' ? vals.address || '' : '',
     warnDays: kind === 'cert' ? num(vals.warn ?? 21) : null, login: signs() && vals.login !== NEW_LOGIN ? vals.login : null,
-    newLogin: signs() && vals.login === NEW_LOGIN ? { name: vals.loginName || '', username: vals.username || '', password: vals.password || '' } : null,
+    newLogin: signs() && vals.login === NEW_LOGIN ? { name: vals.loginName || '', username: vals.username || '', password: vals.password || '', kind: loginKind(),
+      auth: vals.auth || 'SHA-256', privacy: vals.privacy || 'AES-128', privacyPassword: vals.privacyPassword || '' } : null,
+    value: kind === 'snmp' ? vals.value || 'uptime' : null, oid: kind === 'snmp' ? vals.oid || '' : null, interface: kind === 'snmp' ? vals.iface || '' : null,
     watch: signs() ? vals.watch || null : null, pin: signs() ? vals.pin || null : null,
     product: kind === 'nas' ? vals.product || '' : null, warnFree: kind === 'nas' || kind === 'vmware' ? num(vals.warnFree ?? 10) : null, name: $('sd-name').value,
     group: $('sd-group').value === NEW_GROUP ? $('sd-group-new').value : $('sd-group').value, every: Number($('sd-every').value), rule: $('sd-rule').value });
@@ -528,8 +548,9 @@
     editing = s || null;
     Object.keys(vals).forEach((k) => delete vals[k]);
     if (s) Object.assign(vals, { target: s.target, port: s.port ?? '', server: s.server || '', expect: s.expect || '', text: s.text || '', address: s.address || '', warn: s.warnDays ?? 21,
-      login: s.login || undefined, watch: s.watch || null, pin: s.pin || null, product: s.product === 'synology' ? 'synology' : '', warnFree: s.warnFree ?? 10 });
+      login: s.login || undefined, watch: s.watch || null, pin: s.pin || null, product: s.product === 'synology' ? 'synology' : '', warnFree: s.warnFree ?? 10, value: s.value || 'uptime', oid: s.oid || '', iface: s.interface || '' });
     logins = await R.get('/api/sensors/logins').catch(() => []);
+    if (s?.kind === 'snmp' && logins.find((l) => l.id === s.login)?.kind === 'snmpv3') vals.snmpVersion = 'v3';
     $('sd-title').textContent = s ? `Change ${s.name}` : 'Add a sensor';
     $('sd-name').value = s?.name || '';
     $('sd-group').innerHTML = '<option value="">No group</option>' + groups.map((g) => `<option value="${esc(g)}">${esc(g)}</option>`).join('') + `<option value="${NEW_GROUP}">New group…</option>`;
@@ -557,7 +578,7 @@
   $('sd-fields').addEventListener('input', keep);
   $('sd-fields').addEventListener('change', (e) => {
     keep(e);
-    if (e.target.dataset.f === 'login') drawFields();
+    if (['login', 'value', 'privacy'].includes(e.target.dataset.f)) drawFields();
   });
   $('sd-fields').addEventListener('click', (e) => {
     const b = e.target.closest('button[data-v]');

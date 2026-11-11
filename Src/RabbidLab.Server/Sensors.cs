@@ -49,6 +49,11 @@ public sealed class Sensor
     /// <summary>For nas and vmware: the share of free space below which it warns, in percent; null for 10.</summary>
     public int? WarnFree { get; set; }
 
+    /// <summary>For snmp: uptime, ups, iface or oid; the OID for oid, and the interface's name for iface.</summary>
+    public string? Value { get; set; }
+    public string? Oid { get; set; }
+    public string? Interface { get; set; }
+
     /// <summary>The fingerprint of the device's certificate when Windows doesn't trust it: credentials only go to that one.</summary>
     public string? Pin { get; set; }
 
@@ -155,7 +160,7 @@ public sealed class NetworkProbe(TimeProvider clock, SensorLogins? logins = null
     public async Task<Probe> Check(Sensor s, CancellationToken stop)
     {
         using var limit = CancellationTokenSource.CreateLinkedTokenSource(stop);
-        limit.CancelAfter(TimeSpan.FromSeconds(s.Kind switch { "web" => 10, "hw" or "nas" or "vmware" => 45, _ => 5 }));
+        limit.CancelAfter(TimeSpan.FromSeconds(s.Kind switch { "web" => 10, "hw" or "nas" or "vmware" => 45, "snmp" => 15, _ => 5 }));
         try
         {
             return s.Kind switch
@@ -167,6 +172,7 @@ public sealed class NetworkProbe(TimeProvider clock, SensorLogins? logins = null
                 "hw" => await Signed(s, (login) => Redfish.Check(s, login, s.Trying, limit.Token)),
                 "nas" => await Signed(s, (login) => s.Product == "synology" ? Synology.Check(s, login, s.Trying, limit.Token) : TrueNas.Check(s, login, s.Trying, limit.Token)),
                 "vmware" => await Signed(s, (login) => VMware.Check(s, login, s.Trying, limit.Token)),
+                "snmp" => await Signed(s, (login) => Snmp.Check(s, login, limit.Token)),
                 _ => await Ping(s.Target, limit.Token),
             };
         }
@@ -316,7 +322,7 @@ public sealed class NetworkProbe(TimeProvider clock, SensorLogins? logins = null
 /// <summary>A sensor as the page sends it.</summary>
 public sealed record SensorForm(string? Name, string? Kind, string? Target, int? Port, string? Server, string? Group, int? Every, string? Rule,
     string? Expect = null, string? Text = null, string? Address = null, int? WarnDays = null, string? Login = null, LoginForm? NewLogin = null, List<string>? Watch = null, string? Pin = null,
-    string? Product = null, int? WarnFree = null);
+    string? Product = null, int? WarnFree = null, string? Value = null, string? Oid = null, string? Interface = null);
 
 public sealed record RuleForm(int? After, int? Again, bool? Back);
 
@@ -330,15 +336,16 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
     public const int CertificateWarnDays = 21;
     private const int Most = 200;
     private static readonly int[] Intervals = [30, 60, 300, 3600];
-    private static readonly string[] Kinds = ["ping", "port", "web", "dns", "cert", "hw", "nas", "vmware"];
+    private static readonly string[] Kinds = ["ping", "port", "web", "dns", "cert", "hw", "nas", "vmware", "snmp"];
 
     /// <summary>The kinds that sign in, with saved or typed credentials.</summary>
-    public static bool SignsIn(string kind) => kind is "hw" or "nas" or "vmware";
+    public static bool SignsIn(string kind) => kind is "hw" or "nas" or "vmware" or "snmp";
 
     // What a kind can watch, and whether its credentials have a username (a TrueNAS API key has none).
-    private static string[] PartsOf(string kind) => kind switch { "hw" => Redfish.Parts, "nas" => Storage.Parts, "vmware" => VMware.Parts, _ => [] };
+    private static string[] PartsOf(string kind) => kind switch { "hw" => Redfish.Parts, "nas" => Storage.Parts, "vmware" => VMware.Parts, "snmp" => Snmp.Parts, _ => [] };
 
-    private static bool NeedsUsername(Sensor s) => !(s.Kind == "nas" && s.Product != "synology");
+    // The kinds of credentials a sensor takes: an API key for TrueNAS, a community or v3 user for SNMP, else a username and password.
+    private static string[] LoginKinds(Sensor s) => s.Kind switch { "snmp" => ["community", "snmpv3"], "nas" when s.Product != "synology" => ["key"], _ => ["user"] };
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { WriteIndented = true };
     private static readonly JsonSerializerOptions Compact = new(JsonSerializerDefaults.Web);
     private readonly JsonFile<SensorsFile> file = folder.Json<SensorsFile>("sensors.json", Json);
@@ -401,7 +408,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
 
     private static object Row(Sensor s, SensorState st) => new
     {
-        s.Id, s.Name, s.Kind, s.Target, s.Port, s.Server, s.Expect, s.Text, s.Address, s.WarnDays, s.Login, s.Watch, s.Pin, s.Product, s.WarnFree, s.Group, s.Every, s.Rule, s.Paused,
+        s.Id, s.Name, s.Kind, s.Target, s.Port, s.Server, s.Expect, s.Text, s.Address, s.WarnDays, s.Login, s.Watch, s.Pin, s.Product, s.WarnFree, s.Value, s.Oid, s.Interface, s.Group, s.Every, s.Rule, s.Paused,
         status = s.Paused ? "paused" : st.Status,
         since = st.Since,
         ms = st.Ms,
@@ -503,7 +510,18 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
         var watch = parts.Length > 0 && form.Watch is { } w && !parts.All(w.Contains) ? parts.Where(w.Contains).ToList() : null;
         var product = kind == "nas" ? (form.Product == "synology" ? "synology" : "truenas") : null;
         int? free = kind is "nas" or "vmware" && form.WarnFree is 5 or 20 ? form.WarnFree : null; // 10, the usual, is kept as null
-        return (new Sensor { Name = name, Kind = kind, Target = target, Port = port, Server = server, Expect = expect, Text = text, Address = address, WarnDays = warn, Watch = watch, Product = product, WarnFree = free,
+        var value = kind == "snmp" ? (Snmp.Values.Contains(form.Value) ? form.Value : "uptime") : null;
+        var oid = value == "oid" ? form.Oid?.Trim().TrimStart('.') : null;
+        if (value == "oid" && !OidPattern().IsMatch(oid ?? ""))
+        {
+            return (null, "An OID is numbers with dots, such as 1.3.6.1.2.1.1.3.0.");
+        }
+        var face = value == "iface" ? form.Interface?.Trim() : null;
+        if (value == "iface" && face is not { Length: > 0 and <= 100 })
+        {
+            return (null, "Type the interface's name as the device has it, such as Port 5 or eth0.");
+        }
+        return (new Sensor { Name = name, Kind = kind, Target = target, Port = port, Server = server, Expect = expect, Text = text, Address = address, WarnDays = warn, Watch = watch, Product = product, WarnFree = free, Value = value, Oid = oid, Interface = face,
             Pin = SignsIn(kind) && !string.IsNullOrWhiteSpace(form.Pin) ? form.Pin.Trim() : null, Every = every }, null);
     }
 
@@ -518,15 +536,17 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
         // Credentials: saved ones picked, or typed ones saved now for this sensor and any other that picks them later.
         if (SignsIn(next.Kind))
         {
+            var kinds = LoginKinds(next);
             if (form.NewLogin is not null)
             {
-                if (SensorLogins.Problem(form.NewLogin, NeedsUsername(next)) is { } bad)
+                var kind = kinds.Contains(form.NewLogin.Kind ?? "") ? form.NewLogin.Kind! : kinds[0];
+                if (SensorLogins.Problem(form.NewLogin, kind) is { } bad)
                 {
                     return (null, bad);
                 }
-                next.Login = logins.Add(form.NewLogin, by);
+                next.Login = logins.Add(form.NewLogin, kind, by);
             }
-            else if (logins.Has(form.Login))
+            else if (logins.KindOf(form.Login) is { } saved && kinds.Contains(saved))
             {
                 next.Login = form.Login;
             }
@@ -570,7 +590,8 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
                 f.Sensors[at] = next;
                 // Something else is checked now: what the old check found says nothing about it.
                 if (old!.Kind != next.Kind || old.Target != next.Target || old.Port != next.Port || old.Server != next.Server || old.Expect != next.Expect || old.Text != next.Text
-                    || old.Address != next.Address || old.WarnDays != next.WarnDays || old.Product != next.Product)
+                    || old.Address != next.Address || old.WarnDays != next.WarnDays || old.Product != next.Product
+                    || old.Value != next.Value || old.Oid != next.Oid || old.Interface != next.Interface)
                 {
                     states.Read().States.Remove(next.Id);
                     dirty = true;
@@ -727,15 +748,18 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
         }
         if (SignsIn(sensor.Kind))
         {
+            var kinds = LoginKinds(sensor);
             if (form.NewLogin is not null)
             {
-                if (SensorLogins.Problem(form.NewLogin, NeedsUsername(sensor)) is { } bad)
+                var kind = kinds.Contains(form.NewLogin.Kind ?? "") ? form.NewLogin.Kind! : kinds[0];
+                if (SensorLogins.Problem(form.NewLogin, kind) is { } bad)
                 {
                     return (null, bad);
                 }
-                sensor.Typed = new Login(form.NewLogin.Username?.Trim(), form.NewLogin.Password!);
+                var typed = form.NewLogin;
+                sensor.Typed = new Login(typed.Username?.Trim(), typed.Password!, kind, typed.Auth == "SHA-1" ? "SHA-1" : "SHA-256", typed.Privacy == "None" ? "None" : "AES-128", typed.PrivacyPassword);
             }
-            else if (logins.Has(form.Login))
+            else if (logins.KindOf(form.Login) is { } saved && kinds.Contains(saved))
             {
                 sensor.Login = form.Login;
             }
@@ -979,6 +1003,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
         "hw" => $"Server hardware · {s.Target}",
         "nas" => $"Storage · {s.Target}",
         "vmware" => $"VMware · {s.Target}",
+        "snmp" => $"SNMP · {s.Target}",
         _ => $"Ping · {s.Target}",
     };
 
@@ -986,6 +1011,9 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
         : t.TotalMinutes < 90 ? $"{(int) Math.Round(t.TotalMinutes)} minutes" : t.TotalHours < 36 ? $"{(int) Math.Round(t.TotalHours)} hours" : $"{(int) Math.Round(t.TotalDays)} days";
 
     private static string Local(DateTime utc) => TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), TimeZoneInfo.Local).ToString("MMM d, HH:mm", System.Globalization.CultureInfo.InvariantCulture);
+
+    [GeneratedRegex(@"^\d+(\.\d+){2,127}$")]
+    private static partial Regex OidPattern();
 
     [GeneratedRegex(@"^[A-Za-z0-9_][A-Za-z0-9._:-]{0,252}$")]
     private static partial Regex HostName();
