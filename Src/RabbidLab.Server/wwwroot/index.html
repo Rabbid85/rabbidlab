@@ -779,18 +779,24 @@
 </dialog>
 
 <!-- Alert rules: how long something is down before the email, picked per sensor. A change is saved as it's made. -->
-<dialog class="dialog wide" id="rules-dialog" aria-labelledby="rl-title">
+<dialog class="dialog sd-dialog rl-dialog" id="rules-dialog" aria-labelledby="rl-title">
   <h2 id="rl-title">Alert rules</h2>
   <p class="dialog-lead">How long something has to be down before Rabbid Lab emails you. Each sensor uses one of these.</p>
-  <div class="rcards" id="rl-cards"></div>
-  <div class="form">
-    <label>Email when it has been down for</label><div class="seg sn-seg" id="rl-after"></div>
-    <label>While it is still down</label><div class="seg sn-seg" id="rl-again"></div>
-    <label>When it comes back</label><div class="seg sn-seg" id="rl-back"></div>
+  <div class="sd-grid">
+    <!-- The four rules down the left, like Add a sensor's kinds; the open one's settings beside them. -->
+    <nav class="dnav sd-types" id="rl-list" aria-label="Alert rules"></nav>
+    <div class="sd-pane rl-pane">
+      <div class="sd-head"><b id="rl-name"></b><span id="rl-about"></span></div>
+      <div class="form sd-form">
+        <label>Email when it has been down for</label><div class="seg sn-seg" id="rl-after"></div>
+        <label>While it is still down</label><div class="seg sn-seg" id="rl-again"></div>
+        <label>When it comes back</label><div class="seg sn-seg" id="rl-back"></div>
+      </div>
+      <p class="hint" id="rl-note"></p>
+      <p class="hint problem" id="rl-problem" hidden></p>
+    </div>
   </div>
-  <p class="hint" id="rl-note"></p>
-  <p class="hint problem" id="rl-problem" hidden></p>
-  <div class="dialog-foot"><button type="button" id="rl-mail">Email settings</button><span class="grow"></span><button type="button" class="primary" id="rl-close">Done</button></div>
+  <div class="dialog-foot"><button type="button" id="rl-mail">Email settings</button><span class="grow"></span><button type="button" class="primary" id="rl-close" autofocus>Done</button></div>
 </dialog>
 
 <!-- Email: the mail server alerts go through, and who gets them. -->

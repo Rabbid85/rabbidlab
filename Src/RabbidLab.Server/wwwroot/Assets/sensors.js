@@ -5,7 +5,7 @@
   const R = window.RabbidLab;
   const { $, esc, svg, say, has: can } = R;
   const COLOURS = ['#FF8A3D', '#F2BE6B', '#B07CE8', '#6FA8FF', '#3CC7C7', '#F06BB4', '#7C83FF']; // a group's colour; green and red are left to up and down
-  const KIND = { ping: 'Ping', port: 'Port', web: 'Web page', dns: 'DNS lookup', cert: 'Certificate', hw: 'Server hardware', nas: 'Storage' };
+  const KIND = { ping: 'Ping', port: 'Port', web: 'Web page', dns: 'DNS lookup', cert: 'Certificate', hw: 'Server hardware', nas: 'Storage', vmware: 'VMware' };
   const WORD = { up: 'Up', down: 'Down', warn: 'Warning', paused: 'Paused', new: 'Checking' };
   const DOWN = ' down'; // the filter's choice of everything that's down: no group's name starts with a space
   const NO_GROUP = ' none'; // and its choice of sensors with no group
@@ -43,7 +43,7 @@
   const days = (note) => (/(\d+) day/.exec(note || '') ? `${/(\d+) day/.exec(note)[1]} days left` : note || '');
   // How it is now, in a few words for a card or a row.
   const now = (s) => (s.status === 'down' ? `Down ${s.since ? short(s.since) : ''}`.trim() : s.status === 'paused' ? 'Paused' : s.status === 'new' ? 'Checking…'
-    : s.kind === 'cert' ? days(s.note) : s.status === 'warn' ? s.note || 'Warning' : s.kind === 'hw' || s.kind === 'nas' ? s.note || 'All OK' : s.ms == null ? 'Up' : ms(s.ms));
+    : s.kind === 'cert' ? days(s.note) : s.status === 'warn' ? s.note || 'Warning' : ['hw', 'nas', 'vmware'].includes(s.kind) ? s.note || 'All OK' : s.ms == null ? 'Up' : ms(s.ms));
   const percent = (p) => (p == null ? '' : `${p === 100 ? 100 : p.toFixed(p > 99.9 ? 2 : 1)}%`);
   const letters = (name) => {
     const words = String(name).split(/[\s._-]+/).filter(Boolean);
@@ -182,7 +182,7 @@
     name: (s) => `<div class="nm"><span class="lic letter" data-color="${colour(s)}"><b>${esc(letters(s.name)[0])}</b></span><b>${esc(s.name)}</b></div>`,
     check: (s) => `<span>${esc(check(s))}</span>`,
     where: (s) => `<span class="dim" title="${esc(where(s))}">${esc(where(s))}</span>`,
-    reply: (s) => `<span class="num">${esc(s.status === 'up' || s.status === 'warn' ? (s.kind === 'cert' ? days(s.note) : s.kind === 'hw' || s.kind === 'nas' ? s.note || 'All OK' : s.ms == null ? '' : ms(s.ms)) : '')}</span>`,
+    reply: (s) => `<span class="num">${esc(s.status === 'up' || s.status === 'warn' ? (s.kind === 'cert' ? days(s.note) : ['hw', 'nas', 'vmware'].includes(s.kind) ? s.note || 'All OK' : s.ms == null ? '' : ms(s.ms)) : '')}</span>`,
     line: (s) => line(s.recent, s.status),
     up: (s) => `<span class="num">${percent(s.up7)}</span>`,
     rule: (s) => `<span><span class="rchip" data-color="${rule(s.rule).color}"><i class="dot"></i>${esc(rule(s.rule).name)}</span></span>`,
@@ -453,6 +453,7 @@
     { id: 'cert', g: 'answer', icon: 'lock', about: 'Days until a certificate expires.' },
     { id: 'hw', g: 'health', icon: 'server', about: 'iDRAC, iLO or Supermicro over Redfish: power supplies, fans, temperature and disks.', signs: true },
     { id: 'nas', g: 'health', icon: 'disk', about: 'TrueNAS or Synology: pool health, disks and free space.', signs: true },
+    { id: 'vmware', g: 'health', icon: 'monitor', about: 'ESXi or vCenter: hosts connected, datastore free space and triggered alarms.', signs: true },
   ];
   // The fields, in the console's form markup; each keeps its value in vals under its key.
   const wide = (on) => (on ? ' class="wide"' : '');
@@ -471,7 +472,7 @@
     return '<div class="sd-div wide"><b>Sign in</b><i></i></div>' + choice('login', 'Credentials', opts, { wide: true })
       + (vals.login !== NEW_LOGIN ? '' : key ? field('password', 'API key', { type: 'password', wide: true, max: 500 }) + field('loginName', 'Save it as', { wide: true, max: 60, ph: 'TrueNAS API key' })
         : field('username', 'Username', { max: 120, ph: 'rabbidlab-ro' }) + field('password', 'Password', { type: 'password', max: 500 })
-          + field('loginName', 'Save them as', { wide: true, max: 60, ph: kind === 'nas' ? 'DSM monitor' : 'iDRAC read-only' }))
+          + field('loginName', 'Save them as', { wide: true, max: 60, ph: { nas: 'DSM monitor', vmware: 'vSphere read-only' }[kind] || 'iDRAC read-only' }))
       + `<p class="hint">Stored encrypted on this server and only sent to this address. ${role}</p>`;
   };
   const FIELDS = {
@@ -485,6 +486,8 @@
     cert: () => field('target', 'Host', { ph: 'nas.example.com' }) + field('port', 'Port', { num: true, max: 5, ph: '443' })
       + choice('warn', 'Warn when it has less than', [[14, '14 days'], [21, '21 days'], [30, '30 days'], [60, '60 days']], { value: 21 }),
     hw: () => field('target', 'iDRAC, iLO or BMC address', { wide: true, ph: '192.168.2.7' }) + signIn('An iDRAC or iLO user with the Read Only role is enough.'),
+    vmware: () => field('target', 'ESXi or vCenter address', { wide: true, ph: 'vcenter.example.com' }) + signIn('A vSphere user with the Read-only role is enough.')
+      + choice('warnFree', 'Warn when datastore free space is below', [[5, '5 %'], [10, '10 %'], [20, '20 %']], { value: 10 }),
     nas: () => picks('product', 'Product', [['', 'TrueNAS'], ['synology', 'Synology']])
       + field('target', 'Address', { wide: true, ph: vals.product === 'synology' ? 'backup.example.com (port 5001 unless you add another)' : 'truenas.example.com' })
       + (vals.product === 'synology' ? signIn('DSM only gives storage details to an account in the administrators group. Turn off 2-step verification for it.')
@@ -504,7 +507,7 @@
     $('sd-kind-name').textContent = KIND[kind];
     $('sd-kind-about').textContent = t.about;
     // A certificate doesn't change by the minute, nor hardware.
-    if (!editing) $('sd-every').value = kind === 'cert' ? '3600' : kind === 'hw' || kind === 'nas' ? '300' : '60';
+    if (!editing) $('sd-every').value = kind === 'cert' ? '3600' : signs() ? '300' : '60';
     drawFields();
   };
   const pickGroup = () => {
@@ -517,8 +520,8 @@
     expect: kind === 'web' ? vals.expect || '' : '', text: kind === 'web' && vals.expect === 'text' ? vals.text || '' : '', address: kind === 'dns' ? vals.address || '' : '',
     warnDays: kind === 'cert' ? num(vals.warn ?? 21) : null, login: signs() && vals.login !== NEW_LOGIN ? vals.login : null,
     newLogin: signs() && vals.login === NEW_LOGIN ? { name: vals.loginName || '', username: vals.username || '', password: vals.password || '' } : null,
-    watch: kind === 'hw' || kind === 'nas' ? vals.watch || null : null, pin: signs() ? vals.pin || null : null,
-    product: kind === 'nas' ? vals.product || '' : null, warnFree: kind === 'nas' ? num(vals.warnFree ?? 10) : null, name: $('sd-name').value,
+    watch: signs() ? vals.watch || null : null, pin: signs() ? vals.pin || null : null,
+    product: kind === 'nas' ? vals.product || '' : null, warnFree: kind === 'nas' || kind === 'vmware' ? num(vals.warnFree ?? 10) : null, name: $('sd-name').value,
     group: $('sd-group').value === NEW_GROUP ? $('sd-group-new').value : $('sd-group').value, every: Number($('sd-every').value), rule: $('sd-rule').value });
   // A sensor to change, or null for a new one, which starts in the group asked for or the one being looked at.
   const edit = async (s, into) => {
@@ -645,14 +648,16 @@
   const drawRules = () => {
     const r = rule(ruleId);
     const about = (x) => (x.after < 0 ? 'Never emails. Shows on the page only.' : `Emails ${x.after ? `after ${x.after === 60 ? 'an hour' : `${x.after} minutes`} down` : 'right away'}${x.again ? `, and again every ${x.again === 60 ? 'hour' : x.again === 360 ? '6 hours' : 'day'}` : ''}.`);
-    $('rl-cards').innerHTML = rules.map((x) => `<button type="button" class="rcard" data-rule="${esc(x.id)}" data-color="${esc(x.color)}" aria-pressed="${x.id === ruleId}">`
-      + `<b><i></i>${esc(x.name)}</b><p>${about(x)}</p><span class="n">${svg('activity')}${x.used} sensor${x.used === 1 ? '' : 's'}</span></button>`).join('');
+    $('rl-list').innerHTML = rules.map((x) => `<a href="#" data-rule="${esc(x.id)}"${x.id === ruleId ? ' aria-current="true"' : ''} title="${x.used} sensor${x.used === 1 ? '' : 's'} use it">`
+      + `<i class="rl-dot" data-color="${esc(x.color)}"></i><span>${esc(x.name)}</span><small>${x.used}</small></a>`).join('');
+    R.paint($('rl-list'));
+    $('rl-name').textContent = r.name;
+    $('rl-about').textContent = `${about(r)} ${r.used ? `${r.used} sensor${r.used === 1 ? ' uses' : 's use'} it.` : 'No sensor uses it yet.'}`;
     const segs = (items, value) => items.map(([v, text]) => `<button type="button" data-value="${v}" aria-pressed="${v === value}"${r.after < 0 && items !== AFTER ? ' disabled' : ''}>${text}</button>`).join('');
     $('rl-after').innerHTML = segs(AFTER, r.after);
     $('rl-again').innerHTML = segs(AGAIN, r.again);
     $('rl-back').innerHTML = segs(BACK, r.back);
     $('rl-note').textContent = `A sensor turns red on the page after 2 failed checks in a row. The email waits for the time above, so something that comes straight back emails nobody.${mailReady ? '' : ' Nobody is emailed until Email settings are filled in.'}`;
-    paint($('rl-cards'));
   };
   const saveRule = async (change) => {
     const r = rule(ruleId);
@@ -666,9 +671,10 @@
     draw();
   };
   const value = (e) => e.target.closest('button[data-value]')?.dataset.value;
-  $('rl-cards').addEventListener('click', (e) => {
+  $('rl-list').addEventListener('click', (e) => {
     const b = e.target.closest('[data-rule]');
     if (!b) return;
+    e.preventDefault();
     ruleId = b.dataset.rule;
     drawRules();
   });

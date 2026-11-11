@@ -182,6 +182,30 @@ public sealed class SensorsTests : IDisposable
         Assert.Equal("Sign-in failed: check the username and password", wrong.Note);
     }
 
+    [Fact]
+    public async Task VMware_hosts_datastores_and_alarms_are_read_over_the_vSphere_API()
+    {
+        using var vcenter = new FakeVSphere();
+        using var refusing = new FakeVSphere(refuseLogin: true);
+        var login = new Login("monitor", "secret");
+
+        var all = await VMware.Check(new Sensor { Kind = "vmware", Target = $"http://127.0.0.1:{vcenter.Port}" }, login, false, CancellationToken.None);
+        var quiet = await VMware.Check(new Sensor { Kind = "vmware", Target = $"http://127.0.0.1:{vcenter.Port}", Watch = ["space", "alarms"] }, login, false, CancellationToken.None);
+        var wrong = await VMware.Check(new Sensor { Kind = "vmware", Target = $"http://127.0.0.1:{refusing.Port}" }, login, false, CancellationToken.None);
+
+        Assert.False(all.Ok);
+        Assert.Equal("Hosts connected: 1 of 2 · esx02 notResponding", all.Note);
+        Assert.Equal("Signed in to VMware vCenter Server 8.0.3 build-24322831", all.Title);
+        Assert.Equal("2 hosts · 1 datastore · as monitor", all.Detail);
+        Assert.Equal("Warn below 10 % · datastore1 has 18 % free", all.Parts!.Single(p => p.Key == "space").Now);
+        Assert.Equal("1 warning", all.Parts!.Single(p => p.Key == "alarms").Now);
+        Assert.True(quiet.Ok);
+        Assert.True(quiet.Warn);
+        Assert.Equal("Triggered alarms: 1 warning", quiet.Note);
+        Assert.False(wrong.Ok);
+        Assert.Equal("Sign-in failed: check the username and password", wrong.Note);
+    }
+
     // A minute passes and the sensors are checked, as the worker does every few seconds.
     private async Task Minute(int minutes = 1)
     {

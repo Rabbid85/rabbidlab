@@ -46,7 +46,7 @@ public sealed class Sensor
     /// <summary>For nas: truenas (an API key) or synology (a DSM account).</summary>
     public string? Product { get; set; }
 
-    /// <summary>For nas: the share of free space below which it warns, in percent; null for 10.</summary>
+    /// <summary>For nas and vmware: the share of free space below which it warns, in percent; null for 10.</summary>
     public int? WarnFree { get; set; }
 
     /// <summary>The fingerprint of the device's certificate when Windows doesn't trust it: credentials only go to that one.</summary>
@@ -155,7 +155,7 @@ public sealed class NetworkProbe(TimeProvider clock, SensorLogins? logins = null
     public async Task<Probe> Check(Sensor s, CancellationToken stop)
     {
         using var limit = CancellationTokenSource.CreateLinkedTokenSource(stop);
-        limit.CancelAfter(TimeSpan.FromSeconds(s.Kind switch { "web" => 10, "hw" or "nas" => 45, _ => 5 }));
+        limit.CancelAfter(TimeSpan.FromSeconds(s.Kind switch { "web" => 10, "hw" or "nas" or "vmware" => 45, _ => 5 }));
         try
         {
             return s.Kind switch
@@ -166,6 +166,7 @@ public sealed class NetworkProbe(TimeProvider clock, SensorLogins? logins = null
                 "cert" => await Certificate(s.Target, s.Port ?? 443, s.WarnDays ?? Sensors.CertificateWarnDays, limit.Token),
                 "hw" => await Signed(s, (login) => Redfish.Check(s, login, s.Trying, limit.Token)),
                 "nas" => await Signed(s, (login) => s.Product == "synology" ? Synology.Check(s, login, s.Trying, limit.Token) : TrueNas.Check(s, login, s.Trying, limit.Token)),
+                "vmware" => await Signed(s, (login) => VMware.Check(s, login, s.Trying, limit.Token)),
                 _ => await Ping(s.Target, limit.Token),
             };
         }
@@ -329,13 +330,13 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
     public const int CertificateWarnDays = 21;
     private const int Most = 200;
     private static readonly int[] Intervals = [30, 60, 300, 3600];
-    private static readonly string[] Kinds = ["ping", "port", "web", "dns", "cert", "hw", "nas"];
+    private static readonly string[] Kinds = ["ping", "port", "web", "dns", "cert", "hw", "nas", "vmware"];
 
     /// <summary>The kinds that sign in, with saved or typed credentials.</summary>
-    public static bool SignsIn(string kind) => kind is "hw" or "nas";
+    public static bool SignsIn(string kind) => kind is "hw" or "nas" or "vmware";
 
     // What a kind can watch, and whether its credentials have a username (a TrueNAS API key has none).
-    private static string[] PartsOf(string kind) => kind switch { "hw" => Redfish.Parts, "nas" => Storage.Parts, _ => [] };
+    private static string[] PartsOf(string kind) => kind switch { "hw" => Redfish.Parts, "nas" => Storage.Parts, "vmware" => VMware.Parts, _ => [] };
 
     private static bool NeedsUsername(Sensor s) => !(s.Kind == "nas" && s.Product != "synology");
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { WriteIndented = true };
@@ -497,11 +498,11 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
             return (null, "Names are 60 characters at most.");
         }
         // A certificate doesn't change by the minute: hourly unless something else was asked for. Hardware: every 5 minutes.
-        var every = Intervals.Contains(form.Every ?? 0) ? form.Every!.Value : kind switch { "cert" => 3600, "hw" or "nas" => 300, _ => 60 };
+        var every = Intervals.Contains(form.Every ?? 0) ? form.Every!.Value : kind switch { "cert" => 3600, "hw" or "nas" or "vmware" => 300, _ => 60 };
         var parts = PartsOf(kind);
         var watch = parts.Length > 0 && form.Watch is { } w && !parts.All(w.Contains) ? parts.Where(w.Contains).ToList() : null;
         var product = kind == "nas" ? (form.Product == "synology" ? "synology" : "truenas") : null;
-        int? free = kind == "nas" && form.WarnFree is 5 or 20 ? form.WarnFree : null; // 10, the usual, is kept as null
+        int? free = kind is "nas" or "vmware" && form.WarnFree is 5 or 20 ? form.WarnFree : null; // 10, the usual, is kept as null
         return (new Sensor { Name = name, Kind = kind, Target = target, Port = port, Server = server, Expect = expect, Text = text, Address = address, WarnDays = warn, Watch = watch, Product = product, WarnFree = free,
             Pin = SignsIn(kind) && !string.IsNullOrWhiteSpace(form.Pin) ? form.Pin.Trim() : null, Every = every }, null);
     }
@@ -977,6 +978,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
         "cert" => $"Certificate · {s.Target}" + (s.Port is null or 443 ? "" : $":{s.Port}"),
         "hw" => $"Server hardware · {s.Target}",
         "nas" => $"Storage · {s.Target}",
+        "vmware" => $"VMware · {s.Target}",
         _ => $"Ping · {s.Target}",
     };
 

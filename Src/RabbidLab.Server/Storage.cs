@@ -209,8 +209,8 @@ public static class Synology
             finally
             {
                 // Signed out, so DSM doesn't keep a session for every check.
-                _ = device.Http.GetAsync($"{root}/webapi/auth.cgi?api=SYNO.API.Auth&version=6&method=logout&session=RabbidLab&_sid={Uri.EscapeDataString(sid)}", CancellationToken.None)
-                    .ContinueWith(t => t.Exception, TaskScheduler.Default);
+                await VMware.Quietly(async () =>
+                    (await device.Http.GetAsync($"{root}/webapi/auth.cgi?api=SYNO.API.Auth&version=6&method=logout&session=RabbidLab&_sid={Uri.EscapeDataString(sid)}", CancellationToken.None)).Dispose());
             }
         }
         catch (Exception e) when (e is HttpRequestException or IOException or JsonException && device.Said(e) is not null)

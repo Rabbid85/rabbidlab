@@ -99,11 +99,6 @@
 .sv-events .row { min-height: 44px; padding: 8px 14px; cursor: default; }
 .sv-events .row i { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
 .sv-events time { flex: none; width: 150px; color: #6D7290; font-size: 12.5px; font-variant-numeric: tabular-nums; }
-#rules-dialog .rcards { grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 12px 0 14px; }
-#rules-dialog .rcard { cursor: pointer; text-align: left; font: inherit; }
-#rules-dialog .rcard[aria-pressed="true"] { border-color: var(--c); background: color-mix(in srgb, var(--c) 6%, var(--panel)); }
-#rules-dialog .rcard b i { width: 9px; height: 9px; border-radius: 50%; background: var(--c); }
-#rules-dialog .rcard p { min-height: 34px; }
 /* Add a sensor: the kinds of check down the left, like Active Directory's pages, and the open one's form beside them. */
 .sd-dialog { width: min(920px, calc(100vw - 32px)); }
 .sd-grid { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 22px; margin-top: 14px; }
@@ -147,3 +142,9 @@
 .sd-pin { display: flex; gap: 8px; margin: 0; color: var(--muted); font-size: 12.5px; }
 .sd-pin svg { flex: none; width: 15px; height: 15px; margin-top: 2px; color: var(--amber); }
 .sd-pin code { color: var(--title); font: 12px Consolas, "Cascadia Mono", monospace; }
+/* Alert rules: the four rules down the left, each with its colour and how many sensors use it. */
+.rl-dialog { width: min(860px, calc(100vw - 32px)); }
+.rl-pane { min-height: 0; }
+.rl-dot { display: block; flex: none; width: 9px; height: 9px; margin: 0 4px; border-radius: 50%; background: var(--c); }
+.rl-pane .sd-form { gap: 8px; }
+.rl-pane .hint { margin-top: 16px; }
