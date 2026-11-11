@@ -258,6 +258,45 @@ public sealed class SensorsTests : IDisposable
         Assert.DoesNotContain(gone.GetProperty("rules").EnumerateArray(), r => r.GetProperty("id").GetString() == id);
     }
 
+    [Fact]
+    public async Task A_seat_sensor_asks_the_client_on_that_computer()
+    {
+        var clients = app.Services.GetRequiredService<Clients>();
+        var commands = app.Services.GetRequiredService<ClientCommands>();
+        var (client, _, _) = clients.Join("PC1", "Windows 11", "1.1.5", "192.0.2.5");
+        clients.Approve(client!.Id, "test");
+        var probe = new NetworkProbe(TimeProvider.System, null, commands, clients);
+        var offline = await probe.Check(new Sensor { Kind = "svc", Seat = client.Id, Service = "Spooler", Target = "PC1" }, CancellationToken.None);
+        // The client: takes two orders and answers them as Windows would.
+        var serving = Task.Run(async () =>
+        {
+            for (var i = 0; i < 2; i++)
+            {
+                var order = await commands.Next(client.Id, CancellationToken.None);
+                commands.Done(client.Id, order!.Action == RabbidLab.Shared.AccountOrder.Service
+                    ? new RabbidLab.Shared.AccountAnswer { Id = order.Id, Ok = true, State = "StopPending", StartType = "Automatic", Detail = "Print Spooler (Spooler)" }
+                    : new RabbidLab.Shared.AccountAnswer { Id = order.Id, Ok = true, Total = 1_000_000_000_000, Free = 50_000_000_000, Detail = "OS" });
+            }
+        });
+        for (var wait = 0; !commands.Listening(client.Id) && wait < 50; wait++)
+        {
+            await Task.Delay(20);
+        }
+
+        var service = await probe.Check(new Sensor { Kind = "svc", Seat = client.Id, Service = "Spooler", Target = "PC1" }, CancellationToken.None);
+        var disk = await probe.Check(new Sensor { Kind = "disk", Seat = client.Id, Drive = "C:", Target = "PC1" }, CancellationToken.None);
+        await serving;
+
+        Assert.False(offline.Ok);
+        Assert.Equal("The client on PC1 isn't connected", offline.Note);
+        Assert.False(service.Ok);
+        Assert.Equal("Stop pending", service.Note);
+        Assert.Equal("Print Spooler (Spooler) is stop pending on PC1", service.Title);
+        Assert.True(disk.Ok);
+        Assert.True(disk.Warn);
+        Assert.Equal("C: has 5 % free", disk.Note);
+    }
+
     // A minute passes and the sensors are checked, as the worker does every few seconds.
     private async Task Minute(int minutes = 1)
     {

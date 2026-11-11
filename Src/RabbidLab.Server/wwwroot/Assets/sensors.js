@@ -5,7 +5,7 @@
   const R = window.RabbidLab;
   const { $, esc, svg, say, has: can } = R;
   const COLOURS = ['#FF8A3D', '#F2BE6B', '#B07CE8', '#6FA8FF', '#3CC7C7', '#F06BB4', '#7C83FF']; // a group's colour; green and red are left to up and down
-  const KIND = { ping: 'Ping', port: 'Port', web: 'Web page', dns: 'DNS lookup', cert: 'Certificate', hw: 'Server hardware', nas: 'Storage', vmware: 'VMware', snmp: 'SNMP' };
+  const KIND = { ping: 'Ping', port: 'Port', web: 'Web page', dns: 'DNS lookup', cert: 'Certificate', hw: 'Server hardware', nas: 'Storage', vmware: 'VMware', snmp: 'SNMP', svc: 'Windows service', disk: 'Disk space' };
   const WORD = { up: 'Up', down: 'Down', warn: 'Warning', paused: 'Paused', new: 'Checking' };
   const DOWN = ' down'; // the filter's choice of everything that's down: no group's name starts with a space
   const NO_GROUP = ' none'; // and its choice of sensors with no group
@@ -44,7 +44,7 @@
   const days = (note) => (/(\d+) day/.exec(note || '') ? `${/(\d+) day/.exec(note)[1]} days left` : note || '');
   // How it is now, in a few words for a card or a row.
   const now = (s) => (s.status === 'down' ? `Down ${s.since ? short(s.since) : ''}`.trim() : s.status === 'paused' ? 'Paused' : s.status === 'new' ? 'Checking…'
-    : s.kind === 'cert' ? days(s.note) : s.status === 'warn' ? s.note || 'Warning' : ['hw', 'nas', 'vmware', 'snmp'].includes(s.kind) ? s.note || 'All OK' : s.ms == null ? 'Up' : ms(s.ms));
+    : s.kind === 'cert' ? days(s.note) : s.status === 'warn' ? s.note || 'Warning' : ['hw', 'nas', 'vmware', 'snmp', 'svc', 'disk'].includes(s.kind) ? s.note || 'All OK' : s.ms == null ? 'Up' : ms(s.ms));
   const percent = (p) => (p == null ? '' : `${p === 100 ? 100 : p.toFixed(p > 99.9 ? 2 : 1)}%`);
   const letters = (name) => {
     const words = String(name).split(/[\s._-]+/).filter(Boolean);
@@ -184,7 +184,7 @@
     name: (s) => `<div class="nm"><span class="lic letter" data-color="${colour(s)}"><b>${esc(letters(s.name)[0])}</b></span><b>${esc(s.name)}</b></div>`,
     check: (s) => `<span>${esc(check(s))}</span>`,
     where: (s) => `<span class="dim" title="${esc(where(s))}">${esc(where(s))}</span>`,
-    reply: (s) => `<span class="num">${esc(s.status === 'up' || s.status === 'warn' ? (s.kind === 'cert' ? days(s.note) : ['hw', 'nas', 'vmware', 'snmp'].includes(s.kind) ? s.note || 'All OK' : s.ms == null ? '' : ms(s.ms)) : '')}</span>`,
+    reply: (s) => `<span class="num">${esc(s.status === 'up' || s.status === 'warn' ? (s.kind === 'cert' ? days(s.note) : ['hw', 'nas', 'vmware', 'snmp', 'svc', 'disk'].includes(s.kind) ? s.note || 'All OK' : s.ms == null ? '' : ms(s.ms)) : '')}</span>`,
     line: (s) => line(s.recent, s.status),
     up: (s) => `<span class="num">${percent(s.up7)}</span>`,
     rule: (s) => `<span><span class="rchip" data-color="${rule(s.rule).color}"><i class="dot"></i>${esc(rule(s.rule).name)}</span></span>`,
@@ -447,7 +447,7 @@
   let editing = null; // the sensor being changed, or null for a new one
   let kind = 'ping';
   const vals = {}; // what has been typed, kept while the kind changes
-  const GROUPS = [['answer', 'Is it answering'], ['health', 'Health']];
+  const GROUPS = [['answer', 'Is it answering'], ['health', 'Health'], ['seat', 'On a seat']];
   const TYPES = [
     { id: 'ping', g: 'answer', icon: 'activity', about: 'Answers ping.' },
     { id: 'port', g: 'answer', icon: 'plug', about: 'A TCP port is open.' },
@@ -458,6 +458,8 @@
     { id: 'nas', g: 'health', icon: 'disk', about: 'TrueNAS or Synology: pool health, disks and free space.', signs: true },
     { id: 'vmware', g: 'health', icon: 'monitor', about: 'ESXi or vCenter: hosts connected, datastore free space and triggered alarms.', signs: true },
     { id: 'snmp', g: 'health', icon: 'org', about: 'Switches, UPS units and printers: one value you pick, such as a UPS battery or a switch port.', signs: true },
+    { id: 'svc', g: 'seat', icon: 'gear', about: 'A Windows service is running, checked by the client on that computer.' },
+    { id: 'disk', g: 'seat', icon: 'disk', about: 'Free space on a drive of a computer in Seats, read by its client.' },
   ];
   // The fields, in the console's form markup; each keeps its value in vals under its key.
   const wide = (on) => (on ? ' class="wide"' : '');
@@ -491,6 +493,14 @@
       + (vals.login === NEW_LOGIN ? typed[k]() : '')
       + `<p class="hint">${k === 'community' ? 'SNMP v2c sends the community in clear text. Use v3 where the device has it. ' : ''}Stored encrypted on this server and only sent to this address.${role ? ` ${role}` : ''}</p>`;
   };
+  // The computers in Seats, for the checks their client makes.
+  let seats = [];
+  const SEAT_HINT = '<p class="hint">Checked by the Rabbid Lab client on that computer, which runs as SYSTEM. No credentials needed.</p>';
+  const seatPick = () => {
+    if (!seats.length) return '<p class="hint">No computers in Seats yet. Add one under Seats, then pick it here.</p>';
+    if (!seats.some((c) => c.id === vals.seat)) vals.seat = seats[0].id;
+    return choice('seat', 'Computer', seats.map((c) => [c.id, `${c.computer}${c.connected ? '' : ' (client not connected)'}`]), { wide: true });
+  };
   const FIELDS = {
     ping: () => field('target', 'Address', { wide: true, ph: '192.168.2.23 or nas.example.com' }),
     port: () => field('target', 'Host', { ph: '192.168.2.23 or nas.example.com' }) + field('port', 'Port', { num: true, max: 5, ph: '445, 636, 3389…' }),
@@ -502,6 +512,9 @@
     cert: () => field('target', 'Host', { ph: 'nas.example.com' }) + field('port', 'Port', { num: true, max: 5, ph: '443' })
       + choice('warn', 'Warn when it has less than', [[14, '14 days'], [21, '21 days'], [30, '30 days'], [60, '60 days']], { value: 21 }),
     hw: () => field('target', 'iDRAC, iLO or BMC address', { wide: true, ph: '192.168.2.7' }) + signIn('An iDRAC or iLO user with the Read Only role is enough.'),
+    svc: () => seatPick() + field('service', 'Service', { wide: true, max: 256, ph: 'Spooler or Print Spooler' }) + SEAT_HINT,
+    disk: () => seatPick() + field('drive', 'Drive', { max: 3, ph: 'C' })
+      + choice('warnFree', 'Warn when free space is below', [[5, '5 %'], [10, '10 %'], [20, '20 %']], { value: 10 }) + SEAT_HINT,
     snmp: () => field('target', 'Address', { wide: true, ph: '192.168.2.30 or ups.example.com' })
       + choice('value', 'Value to watch', [['uptime', 'Uptime: it answers'], ['ups', 'UPS battery and power'], ['iface', 'Interface up'], ['oid', 'Custom OID']], { value: 'uptime', wide: true })
       + (vals.value === 'iface' ? field('iface', 'Interface', { wide: true, max: 100, ph: 'Port 5 or eth0' }) + '<p class="hint">As the device names it. When the name is not found, Check now lists the names it has.</p>' : '')
@@ -528,7 +541,7 @@
     $('sd-kind-name').textContent = KIND[kind];
     $('sd-kind-about').textContent = t.about;
     // A certificate doesn't change by the minute, nor hardware.
-    if (!editing) $('sd-every').value = kind === 'cert' ? '3600' : signs() && kind !== 'snmp' ? '300' : '60';
+    if (!editing) $('sd-every').value = kind === 'cert' ? '3600' : (signs() && kind !== 'snmp') || kind === 'disk' ? '300' : '60';
     drawFields();
   };
   const pickGroup = () => {
@@ -537,22 +550,25 @@
     if (fresh) $('sd-group-new').focus();
   };
   const num = (v) => (String(v ?? '').trim() ? Number(v) : null);
-  const form = () => ({ kind, target: vals.target || '', port: kind === 'port' || kind === 'cert' ? num(vals.port) : null, server: kind === 'dns' ? vals.server || '' : '',
+  const onSeat = () => kind === 'svc' || kind === 'disk';
+  const form = () => ({ kind, target: onSeat() ? seats.find((c) => c.id === vals.seat)?.computer || '' : vals.target || '',
+    seat: onSeat() ? vals.seat || '' : null, service: kind === 'svc' ? vals.service || '' : null, drive: kind === 'disk' ? vals.drive || '' : null, port: kind === 'port' || kind === 'cert' ? num(vals.port) : null, server: kind === 'dns' ? vals.server || '' : '',
     expect: kind === 'web' ? vals.expect || '' : '', text: kind === 'web' && vals.expect === 'text' ? vals.text || '' : '', address: kind === 'dns' ? vals.address || '' : '',
     warnDays: kind === 'cert' ? num(vals.warn ?? 21) : null, login: signs() && vals.login !== NEW_LOGIN ? vals.login : null,
     newLogin: signs() && vals.login === NEW_LOGIN ? { name: vals.loginName || '', username: vals.username || '', password: vals.password || '', kind: loginKind(),
       auth: vals.auth || 'SHA-256', privacy: vals.privacy || 'AES-128', privacyPassword: vals.privacyPassword || '' } : null,
     value: kind === 'snmp' ? vals.value || 'uptime' : null, oid: kind === 'snmp' ? vals.oid || '' : null, interface: kind === 'snmp' ? vals.iface || '' : null,
     watch: signs() ? vals.watch || null : null, pin: signs() ? vals.pin || null : null,
-    product: kind === 'nas' ? vals.product || '' : null, warnFree: kind === 'nas' || kind === 'vmware' ? num(vals.warnFree ?? 10) : null, name: $('sd-name').value,
+    product: kind === 'nas' ? vals.product || '' : null, warnFree: ['nas', 'vmware', 'disk'].includes(kind) ? num(vals.warnFree ?? 10) : null, name: $('sd-name').value,
     group: $('sd-group').value === NEW_GROUP ? $('sd-group-new').value : $('sd-group').value, every: Number($('sd-every').value), rule: vals.rule || defaultRule, custom: vals.rule === 'custom' ? vals.custom : null });
   // A sensor to change, or null for a new one, which starts in the group asked for or the one being looked at.
   const edit = async (s, into) => {
     editing = s || null;
     Object.keys(vals).forEach((k) => delete vals[k]);
     if (s) Object.assign(vals, { target: s.target, port: s.port ?? '', server: s.server || '', expect: s.expect || '', text: s.text || '', address: s.address || '', warn: s.warnDays ?? 21,
-      login: s.login || undefined, watch: s.watch || null, pin: s.pin || null, product: s.product === 'synology' ? 'synology' : '', warnFree: s.warnFree ?? 10, value: s.value || 'uptime', oid: s.oid || '', iface: s.interface || '' });
+      login: s.login || undefined, watch: s.watch || null, pin: s.pin || null, product: s.product === 'synology' ? 'synology' : '', warnFree: s.warnFree ?? 10, value: s.value || 'uptime', oid: s.oid || '', iface: s.interface || '', seat: s.seat || undefined, service: s.service || '', drive: s.drive || '' });
     logins = await R.get('/api/sensors/logins').catch(() => []);
+    seats = await R.get('/api/sensors/seats').catch(() => []);
     if (s?.kind === 'snmp' && logins.find((l) => l.id === s.login)?.kind === 'snmpv3') vals.snmpVersion = 'v3';
     $('sd-title').textContent = s ? `Change ${s.name}` : 'Add a sensor';
     $('sd-name').value = s?.name || '';
@@ -595,7 +611,7 @@
   // What Check now found, as a status card: what answered and how, or what went wrong.
   const found = (f) => {
     const answered = f.ms == null ? '' : `Answered in ${ms(f.ms)}`;
-    const title = !f.ok ? f.note || 'No answer' : kind === 'port' ? `Port ${vals.port} is open` : kind === 'dns' || kind === 'cert' || signs() ? f.note || 'It answered' : answered || 'It answered';
+    const title = !f.ok ? f.note || 'No answer' : kind === 'port' ? `Port ${vals.port} is open` : kind === 'dns' || kind === 'cert' || signs() || onSeat() ? f.note || 'It answered' : answered || 'It answered';
     const line = !f.ok ? [f.detail, 'You can still add it.'].filter(Boolean).join(' · ')
       : [kind === 'web' ? f.note : kind === 'port' || kind === 'dns' ? answered : '', f.detail].filter(Boolean).join(' · ');
     const look = !f.ok ? ' bad' : f.warn ? ' ember' : '';
@@ -611,7 +627,7 @@
   };
   const foundAll = (f) => {
     if (signs()) vals.pin = f.pin || null;
-    return (f.ok && f.title ? found({ ...f, note: f.title }) : found(f)) + (f.parts?.length ? watchRows(f.parts) : '') + (f.pin ? pinNote(f.pin) : '');
+    return (f.title ? found({ ...f, note: f.title }) : found(f)) + (f.parts?.length ? watchRows(f.parts) : '') + (f.pin ? pinNote(f.pin) : '');
   };
   $('sd-out').addEventListener('change', (e) => {
     if (!e.target.dataset.watch) return;

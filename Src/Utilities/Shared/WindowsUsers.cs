@@ -49,6 +49,10 @@ public sealed class AccountOrder
     public const string Groups = "groups";
     public const string Delete = "delete";
 
+    /// <summary>Reads for sensors, not changes: a service's state, and a drive's free space. Name is the service or the drive.</summary>
+    public const string Service = "service";
+    public const string Disk = "disk";
+
     [DataMember(Name = "id")] public string? Id { get; set; }
     [DataMember(Name = "action")] public string? Action { get; set; }
     [DataMember(Name = "name")] public string? Name { get; set; }
@@ -96,7 +100,56 @@ public sealed class AccountAnswer
     [DataMember(Name = "accounts")] public List<WindowsAccount>? Accounts { get; set; }
     [DataMember(Name = "groups")] public List<WindowsGroup>? Groups { get; set; }
 
+    /// <summary>For a sensor: a service's state and start type and its names, or a drive's size and free space in bytes and its label.</summary>
+    [DataMember(Name = "state")] public string? State { get; set; }
+    [DataMember(Name = "startType")] public string? StartType { get; set; }
+    [DataMember(Name = "detail")] public string? Detail { get; set; }
+    [DataMember(Name = "total")] public long? Total { get; set; }
+    [DataMember(Name = "free")] public long? Free { get; set; }
+
     public static AccountAnswer Failed(string? id, string error) => new() { Id = id, Ok = false, Error = error };
+}
+
+/// <summary>What a seat's sensors read on the computer itself: a service's state, or a drive's free space. Reads only.</summary>
+#if NET
+[System.Runtime.Versioning.SupportedOSPlatform("windows")]
+#endif
+public static class SeatChecks
+{
+    public static bool Is(AccountOrder order) => order.Action == AccountOrder.Service || order.Action == AccountOrder.Disk;
+
+    public static AccountAnswer Do(AccountOrder order)
+    {
+        var name = order.Name?.Trim() ?? "";
+        try
+        {
+            if (order.Action == AccountOrder.Service)
+            {
+                var all = System.ServiceProcess.ServiceController.GetServices();
+                try
+                {
+                    var found = all.FirstOrDefault(s => string.Equals(s.ServiceName, name, StringComparison.OrdinalIgnoreCase))
+                        ?? all.FirstOrDefault(s => string.Equals(s.DisplayName, name, StringComparison.OrdinalIgnoreCase));
+                    return found is null ? AccountAnswer.Failed(order.Id, $"There's no service called {name} on {Environment.MachineName}.")
+                        : new AccountAnswer { Id = order.Id, Ok = true, State = found.Status.ToString(), StartType = found.StartType.ToString(), Detail = $"{found.DisplayName} ({found.ServiceName})" };
+                }
+                finally
+                {
+                    foreach (var s in all)
+                    {
+                        s.Dispose();
+                    }
+                }
+            }
+            var drive = new System.IO.DriveInfo(name.TrimEnd('\\', ':') + ":\\");
+            return !drive.IsReady ? AccountAnswer.Failed(order.Id, $"{drive.Name.TrimEnd('\\')} isn't ready on {Environment.MachineName}.")
+                : new AccountAnswer { Id = order.Id, Ok = true, Total = drive.TotalSize, Free = drive.AvailableFreeSpace, Detail = drive.VolumeLabel };
+        }
+        catch (Exception e) when (e is ArgumentException || e is System.IO.IOException || e is InvalidOperationException || e is UnauthorizedAccessException)
+        {
+            return AccountAnswer.Failed(order.Id, $"Windows on {Environment.MachineName} said: {e.Message.Trim().TrimEnd('.')}.");
+        }
+    }
 }
 
 /// <summary>Text helpers the server and the client both use.</summary>

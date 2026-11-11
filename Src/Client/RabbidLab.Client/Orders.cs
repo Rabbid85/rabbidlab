@@ -87,7 +87,8 @@ internal static class Orders
                 // A server older than this client has no orders to give; one that doesn't know this computer, it rejoins first.
                 return code == HttpStatusCode.NotFound ? TimeSpan.FromMinutes(10) : TimeSpan.FromSeconds(30);
             }
-            var answer = now.AccountChanges ? Do(order)
+            // Reads for sensors go ahead whatever Group Policy says about account changes.
+            var answer = SeatChecks.Is(order) ? SeatChecks.Do(order) : now.AccountChanges ? Do(order)
                 : AccountAnswer.Failed(order.Id, $"Group Policy turns account changes off on {Machine.Name}.");
             answer.Id = order.Id;
             await Answer(api, answer, key, stop).ConfigureAwait(false);

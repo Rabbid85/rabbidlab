@@ -8,6 +8,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using DnsClient;
+using RabbidLab.Shared;
 
 namespace RabbidLab.Server;
 
@@ -53,6 +54,11 @@ public sealed class Sensor
     public string? Value { get; set; }
     public string? Oid { get; set; }
     public string? Interface { get; set; }
+
+    /// <summary>For svc and disk: the computer in Seats, by id, whose client makes the check; the service, or the drive such as C:.</summary>
+    public string? Seat { get; set; }
+    public string? Service { get; set; }
+    public string? Drive { get; set; }
 
     /// <summary>The fingerprint of the device's certificate when Windows doesn't trust it: credentials only go to that one.</summary>
     public string? Pin { get; set; }
@@ -162,14 +168,14 @@ public interface ISensorProbe
 }
 
 /// <summary>The checks themselves, made from this server. Each one answers within a few seconds or counts as no reply.</summary>
-public sealed class NetworkProbe(TimeProvider clock, SensorLogins? logins = null) : ISensorProbe
+public sealed class NetworkProbe(TimeProvider clock, SensorLogins? logins = null, ClientCommands? commands = null, Clients? clients = null) : ISensorProbe
 {
     private static readonly HttpClient Http = MakeHttp();
 
     public async Task<Probe> Check(Sensor s, CancellationToken stop)
     {
         using var limit = CancellationTokenSource.CreateLinkedTokenSource(stop);
-        limit.CancelAfter(TimeSpan.FromSeconds(s.Kind switch { "web" => 10, "hw" or "nas" or "vmware" => 45, "snmp" => 15, _ => 5 }));
+        limit.CancelAfter(TimeSpan.FromSeconds(s.Kind switch { "web" => 10, "hw" or "nas" or "vmware" => 45, "snmp" => 15, "svc" or "disk" => 45, _ => 5 }));
         try
         {
             return s.Kind switch
@@ -182,6 +188,7 @@ public sealed class NetworkProbe(TimeProvider clock, SensorLogins? logins = null
                 "nas" => await Signed(s, (login) => s.Product == "synology" ? Synology.Check(s, login, s.Trying, limit.Token) : TrueNas.Check(s, login, s.Trying, limit.Token)),
                 "vmware" => await Signed(s, (login) => VMware.Check(s, login, s.Trying, limit.Token)),
                 "snmp" => await Signed(s, (login) => Snmp.Check(s, login, limit.Token)),
+                "svc" or "disk" => await Seat(s, limit.Token),
                 _ => await Ping(s.Target, limit.Token),
             };
         }
@@ -204,6 +211,44 @@ public sealed class NetworkProbe(TimeProvider clock, SensorLogins? logins = null
             return new Probe(false, Note: e.InnerException is SocketException { SocketErrorCode: SocketError.HostNotFound or SocketError.NoData } ? "No such name" : "No reply");
         }
     }
+
+    // A check the Rabbid Lab client on a seat makes, as SYSTEM: a service's state, or a drive's free space.
+    private async Task<Probe> Seat(Sensor s, CancellationToken stop)
+    {
+        if (commands is null || clients?.Find(s.Seat ?? "") is not { } client)
+        {
+            return new Probe(false, Note: "That computer isn't in Seats any more");
+        }
+        if (!commands.Listening(client.Id))
+        {
+            return new Probe(false, Note: $"The client on {client.Computer} isn't connected");
+        }
+        var watch = Stopwatch.StartNew();
+        var answer = await commands.Send(client.Id, new AccountOrder { Action = s.Kind == "svc" ? AccountOrder.Service : AccountOrder.Disk, Name = s.Kind == "svc" ? s.Service : s.Drive }, stop);
+        var ms = (int) watch.ElapsedMilliseconds;
+        if (answer is null)
+        {
+            return new Probe(false, Note: $"The client on {client.Computer} didn't answer");
+        }
+        if (!answer.Ok)
+        {
+            return new Probe(false, Note: answer.Error ?? "The client couldn't read it");
+        }
+        if (s.Kind == "svc")
+        {
+            var state = Spaced(answer.State);
+            return new Probe(answer.State == "Running", ms, state, Title: $"{answer.Detail} is {state.ToLowerInvariant()} on {client.Computer}",
+                Detail: $"Startup type {Spaced(answer.StartType)} · read by the client in {ms} ms");
+        }
+        var percent = 100.0 * (answer.Free ?? 0) / Math.Max(1, answer.Total ?? 1);
+        var limit = s.WarnFree ?? 10;
+        var said = $"{s.Drive} has {percent:0} % free";
+        return new Probe(true, ms, said, Warn: percent < limit, Title: $"{said} on {client.Computer}",
+            Detail: $"{(answer.Free ?? 0) / 1e9:0} GB free of {(answer.Total ?? 0) / 1e9:0} GB{(string.IsNullOrEmpty(answer.Detail) ? "" : $" · {answer.Detail}")} · warns below {limit} %");
+    }
+
+    // StopPending as Stop pending.
+    private static string Spaced(string? word) => Regex.Replace(word ?? "Unknown", "(?<=[a-z])(?=[A-Z])", " ").ToLowerInvariant() is { Length: > 0 } w ? char.ToUpperInvariant(w[0]) + w[1..] : "Unknown";
 
     // A check that signs in: with the credentials typed for Check now, or the saved ones it picked.
     private async Task<Probe> Signed(Sensor s, Func<Login, Task<Probe>> check) =>
@@ -331,7 +376,8 @@ public sealed class NetworkProbe(TimeProvider clock, SensorLogins? logins = null
 /// <summary>A sensor as the page sends it.</summary>
 public sealed record SensorForm(string? Name, string? Kind, string? Target, int? Port, string? Server, string? Group, int? Every, string? Rule,
     string? Expect = null, string? Text = null, string? Address = null, int? WarnDays = null, string? Login = null, LoginForm? NewLogin = null, List<string>? Watch = null, string? Pin = null,
-    string? Product = null, int? WarnFree = null, string? Value = null, string? Oid = null, string? Interface = null, RuleForm? Custom = null);
+    string? Product = null, int? WarnFree = null, string? Value = null, string? Oid = null, string? Interface = null, RuleForm? Custom = null,
+    string? Seat = null, string? Service = null, string? Drive = null);
 
 public sealed record RuleForm(int? After, int? Again, bool? Back, string? Name = null);
 
@@ -345,7 +391,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
     public const int CertificateWarnDays = 21;
     private const int Most = 200;
     private static readonly int[] Intervals = [30, 60, 300, 3600];
-    private static readonly string[] Kinds = ["ping", "port", "web", "dns", "cert", "hw", "nas", "vmware", "snmp"];
+    private static readonly string[] Kinds = ["ping", "port", "web", "dns", "cert", "hw", "nas", "vmware", "snmp", "svc", "disk"];
 
     /// <summary>The kinds that sign in, with saved or typed credentials.</summary>
     public static bool SignsIn(string kind) => kind is "hw" or "nas" or "vmware" or "snmp";
@@ -440,7 +486,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
 
     private static object Row(Sensor s, SensorState st) => new
     {
-        s.Id, s.Name, s.Kind, s.Target, s.Port, s.Server, s.Expect, s.Text, s.Address, s.WarnDays, s.Login, s.Watch, s.Pin, s.Product, s.WarnFree, s.Value, s.Oid, s.Interface, s.Group, s.Every, s.Rule, s.Custom, s.Paused,
+        s.Id, s.Name, s.Kind, s.Target, s.Port, s.Server, s.Expect, s.Text, s.Address, s.WarnDays, s.Login, s.Watch, s.Pin, s.Product, s.WarnFree, s.Value, s.Oid, s.Interface, s.Seat, s.Service, s.Drive, s.Group, s.Every, s.Rule, s.Custom, s.Paused,
         status = s.Paused ? "paused" : st.Status,
         since = st.Since,
         ms = st.Ms,
@@ -488,6 +534,10 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
     private static (Sensor? Sensor, string? Problem) Read(SensorForm form)
     {
         var kind = Kinds.Contains(form.Kind) ? form.Kind! : "ping";
+        if (kind is "svc" or "disk")
+        {
+            return ReadSeat(form, kind);
+        }
         var target = form.Target?.Trim() ?? "";
         if (target.Length is 0 or > 300)
         {
@@ -555,6 +605,46 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
         }
         return (new Sensor { Name = name, Kind = kind, Target = target, Port = port, Server = server, Expect = expect, Text = text, Address = address, WarnDays = warn, Watch = watch, Product = product, WarnFree = free, Value = value, Oid = oid, Interface = face,
             Pin = SignsIn(kind) && !string.IsNullOrWhiteSpace(form.Pin) ? form.Pin.Trim() : null, Every = every }, null);
+    }
+
+    // A check on a seat: the computer, its name shown, and the service or the drive.
+    private static (Sensor? Sensor, string? Problem) ReadSeat(SensorForm form, string kind)
+    {
+        if (string.IsNullOrWhiteSpace(form.Seat))
+        {
+            return (null, "Pick the computer.");
+        }
+        var computer = form.Target?.Trim() is { Length: > 0 and <= 100 } shown ? shown : form.Seat.Trim();
+        string? service = null, drive = null;
+        if (kind == "svc")
+        {
+            service = form.Service?.Trim();
+            if (service is not { Length: > 0 and <= 256 })
+            {
+                return (null, "Type the service's name, such as Spooler or Print Spooler.");
+            }
+        }
+        else
+        {
+            var letter = (form.Drive ?? "").Trim().TrimEnd(':', '\\');
+            if (letter.Length != 1 || !char.IsAsciiLetter(letter[0]))
+            {
+                return (null, "Type the drive letter, such as C.");
+            }
+            drive = letter.ToUpperInvariant() + ":";
+        }
+        var name = string.IsNullOrWhiteSpace(form.Name) ? $"{service ?? drive} on {computer}" : form.Name.Trim();
+        if (name.Length > 60)
+        {
+            name = string.IsNullOrWhiteSpace(form.Name) ? name[..60] : "";
+            if (name.Length == 0)
+            {
+                return (null, "Names are 60 characters at most.");
+            }
+        }
+        var every = Intervals.Contains(form.Every ?? 0) ? form.Every!.Value : kind == "disk" ? 300 : 60;
+        int? free = kind == "disk" && form.WarnFree is 5 or 20 ? form.WarnFree : null;
+        return (new Sensor { Name = name, Kind = kind, Target = computer, Seat = form.Seat.Trim(), Service = service, Drive = drive, WarnFree = free, Every = every }, null);
     }
 
     /// <summary>The sensor saved (new when id is null), or why it can't be.</summary>
@@ -636,7 +726,8 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
                 // Something else is checked now: what the old check found says nothing about it.
                 if (old!.Kind != next.Kind || old.Target != next.Target || old.Port != next.Port || old.Server != next.Server || old.Expect != next.Expect || old.Text != next.Text
                     || old.Address != next.Address || old.WarnDays != next.WarnDays || old.Product != next.Product
-                    || old.Value != next.Value || old.Oid != next.Oid || old.Interface != next.Interface)
+                    || old.Value != next.Value || old.Oid != next.Oid || old.Interface != next.Interface
+                    || old.Seat != next.Seat || old.Service != next.Service || old.Drive != next.Drive)
                 {
                     states.Read().States.Remove(next.Id);
                     dirty = true;
@@ -1141,6 +1232,8 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
         "nas" => $"Storage · {s.Target}",
         "vmware" => $"VMware · {s.Target}",
         "snmp" => $"SNMP · {s.Target}",
+        "svc" => $"Windows service · {s.Service} on {s.Target}",
+        "disk" => $"Disk space · {s.Drive} on {s.Target}",
         _ => $"Ping · {s.Target}",
     };
 
@@ -1210,6 +1303,12 @@ public static class SensorsApi
         });
 
         app.MapPost("/api/sensors", (SensorForm form, HttpContext context, Sensors sensors, ActivityLog log) => Save(null, form, context, sensors, log));
+
+        // The computers in Seats a sensor can check through, and whether their client is connected now.
+        app.MapGet("/api/sensors/seats", (HttpContext context, Clients clients, ClientCommands commands) =>
+            !Access.Can(context, Permissions.SensorsEdit) ? Access.NotAllowed()
+            : Results.Ok(clients.All().Where(c => c.Approved is not null).OrderBy(c => c.Computer, StringComparer.OrdinalIgnoreCase)
+                .Select(c => new { c.Id, c.Computer, connected = commands.Listening(c.Id) })));
 
         // The saved credentials, for the dialog: names and usernames, never passwords.
         app.MapGet("/api/sensors/logins", (HttpContext context, Sensors sensors, SensorLogins logins) =>
