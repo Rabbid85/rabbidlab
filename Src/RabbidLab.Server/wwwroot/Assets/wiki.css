@@ -1,0 +1,19 @@
+/* Wiki: the articles down the left, one article beside them, and the one before and after at its foot. */
+.wiki-body { max-width: 760px; padding: 22px 28px 26px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--text); font-size: 14.5px; line-height: 1.65; }
+.wiki-body .wiki-group { margin: 0; color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.wiki-body h2 { margin: 4px 0 12px; font: 750 24px/1.25 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; color: var(--title); }
+.wiki-body h3 { margin: 20px 0 6px; color: var(--title); font-size: 15px; font-weight: 650; }
+.wiki-body p { margin: 8px 0; }
+.wiki-body ol, .wiki-body ul { margin: 8px 0; padding-left: 22px; }
+.wiki-body li { margin: 5px 0; }
+.wiki-body ol li::marker { color: #FF8A3D; font-weight: 700; }
+.wiki-body b { color: var(--title); font-weight: 650; }
+.wiki-body code { padding: 1px 6px; border: 1px solid var(--line-strong); border-radius: 5px; background: #0C0E17; color: #D7DAE8; font: 12.5px Consolas, "Cascadia Mono", monospace; overflow-wrap: anywhere; }
+.wiki-body a { color: #B98BE0; }
+.wiki-body .tip { padding: 9px 12px; border-left: 3px solid var(--accent-line); border-radius: 0 8px 8px 0; background: rgba(255, 106, 69, .06); color: var(--text); font-size: 13.5px; }
+.wiki-next { display: flex; justify-content: space-between; gap: 12px; max-width: 760px; margin-top: 12px; }
+.wiki-next a { display: block; max-width: 48%; padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); color: var(--text); }
+.wiki-next a:hover { border-color: var(--line-strong); text-decoration: none; }
+.wiki-next a.next { margin-left: auto; text-align: right; }
+.wiki-next small { display: block; color: var(--muted); font-size: 11.5px; }
+.wiki-next b { color: var(--title); font-size: 13.5px; }

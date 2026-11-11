@@ -1,0 +1,104 @@
+/* Setup and sign-in: drifting tiles behind one card with the logo and name at the top, the form under it, and where
+   updating stands at its foot. */
+body.auth { overflow-x: hidden; }
+.tiles { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 0; pointer-events: none; }
+/* Until the page knows whether it's setting up or signing in, the card stays blank, so it's drawn once in its final layout. */
+body.loading .card-body > *, body.loading .card-foot > * { visibility: hidden; }
+/* The card's top stays put whichever form shows: only its foot moves. */
+.auth-shell { position: relative; z-index: 1; min-height: 100vh; display: flex; justify-content: center; align-items: flex-start;
+  padding: max(28px, calc(50vh - 300px)) 16px 28px; }
+.signin-card { width: 100%; max-width: 400px; background: #11131D; border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+
+/* The header: the logo beside the name, the way the console's top bar shows them. */
+.band { display: grid; grid-template-columns: auto 1fr; column-gap: 12px; align-items: center; padding: 20px 28px 18px; background: #0C0E17; border-bottom: 1px solid var(--line); }
+.band-mark { grid-row: 1 / 3; display: block; width: 36px; height: 36px; border-radius: 9px; }
+.band-title { grid-column: 2; margin: 0; font: 650 20px/1.2 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; letter-spacing: -.01em; color: var(--title); }
+.band-title .dev-tag { vertical-align: middle; font-family: "Segoe UI", system-ui, sans-serif; letter-spacing: .08em; }
+.band-sub { grid-column: 2; margin: 2px 0 0; font-size: 13px; font-weight: 500; color: var(--muted); }
+
+/* The form. */
+.card-body { padding: 24px 28px 18px; display: flex; flex-direction: column; }
+.card-body h2 { margin: 0 0 14px; font: 750 24px/1.2 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; color: var(--title); }
+.card-lead { margin: -10px 0 16px; color: var(--muted); font-size: 13.5px; line-height: 1.5; }
+
+/* Signing in with Active Directory: the domain and the controller it goes through on one line; Change opens the list. */
+.context { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px; margin-bottom: 10px; border: 1px solid var(--line-strong);
+  border-radius: 9px; background: #0C0E17; font-size: 13px; color: var(--muted); }
+.context > svg { flex: none; width: 15px; height: 15px; color: #6D7290; }
+.context b { color: var(--title); font-weight: 600; }
+.context .sep { color: #3A3E55; }
+.context .dc { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.context .dc::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }
+.context .dc.off::before { background: var(--red); }
+.context .dc.unknown::before { background: #3A3E55; }
+.context .change { margin-left: auto; padding: 0; border: 0; background: transparent; color: #FF8A3D; font-size: 12.5px; font-weight: 600; }
+.context .change:hover { background: transparent; text-decoration: underline; text-underline-offset: 3px; }
+
+.section { margin: 2px 0 6px; font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: #6D7290; }
+.input { position: relative; display: flex; align-items: center; margin-bottom: 10px; }
+.input > svg { position: absolute; left: 12px; width: 16px; height: 16px; color: #6D7290; pointer-events: none; }
+.input input { width: 100%; height: 40px; font: inherit; font-size: 14px; color: var(--text); background: #0C0E17; border: 1px solid var(--line-strong);
+  border-radius: 9px; padding: 0 38px; transition: border-color .15s; }
+.input input::placeholder { color: #5E6380; }
+.input input:focus { outline: none; border-color: var(--accent); }
+.input:focus-within > svg { color: #FF8A3D; }
+.input .end { position: absolute; right: 4px; width: 32px; height: 32px; padding: 0; display: grid; place-items: center; border: 0; background: transparent; color: #6D7290; border-radius: 7px; }
+.input .end:hover { background: #1A1D2B; color: var(--text); }
+.input .end svg { width: 16px; height: 16px; }
+.input .end.on .eye-open, .input .end:not(.on) .eye-shut { display: none; }
+/* Caps Lock on while typing a password. */
+.caps { margin: -4px 0 10px 2px; font-size: 12px; color: var(--amber); }
+
+/* The domain controller box: picked from the list only, with which one Automatic uses now on the right. */
+.input.server input { padding-right: 132px; cursor: pointer; caret-color: transparent; }
+.input .now { position: absolute; right: 40px; display: flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 650; color: var(--ok); pointer-events: none; }
+.input .now::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.input .now.off { color: var(--red); }
+/* A box picked from its list only, such as the domain once it's set up. */
+.input.pick input { cursor: pointer; caret-color: transparent; }
+
+/* The drop-down lists: domains and domain controllers. */
+.combo { position: relative; }
+.combo-list { position: absolute; z-index: 5; left: 0; right: 0; top: 44px; max-height: 210px; overflow-y: auto; margin: 0; padding: 5px; list-style: none;
+  background: #151827; border: 1px solid #2A2D3E; border-radius: 10px; }
+.combo-list li { padding: 6px 9px; border-radius: 6px; cursor: pointer; }
+.combo-list li b { display: block; color: var(--title); font-weight: 600; font-size: 13px; }
+.combo-list li small { display: block; color: var(--muted); font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.combo-list li small.ok { color: var(--ok); }
+.combo-list li small.bad { color: var(--red); }
+.combo-list li.active, .combo-list li:hover { background: #1D2133; }
+.combo-list li.empty { cursor: default; color: var(--muted); font-size: 12.5px; }
+
+.remember { display: flex; width: fit-content; align-items: center; gap: 9px; color: var(--muted); font-size: 13px; margin: 6px 0 16px 2px; cursor: pointer; user-select: none; }
+.remember input { width: 15px; height: 15px; accent-color: var(--accent); }
+button.go { width: 100%; height: 40px; border: 0; border-radius: 9px; color: #fff; font-size: 14px; font-weight: 650;
+  background: var(--ember); transition: filter .15s, transform .15s; }
+button.go:hover { filter: brightness(1.08); background: var(--ember); }
+button.go:active { transform: translateY(1px); }
+button.go:disabled { filter: grayscale(.4); opacity: .6; }
+.auth-error { margin: 12px 0 0; padding: 8px 11px; border-radius: 8px; background: rgba(255, 107, 125, .07); border: 1px solid rgba(255, 107, 125, .35); color: #FF8D9B; font-size: 12.5px; line-height: 1.45; }
+/* Local account or Active Directory: a link under the button. */
+.other-kind { align-self: center; margin-top: 14px; padding: 4px 8px; border: 0; background: transparent; color: var(--muted); font-size: 13px; font-weight: 600; }
+.other-kind:hover { background: transparent; color: #FF8A3D; text-decoration: underline; text-underline-offset: 3px; }
+
+/* The foot: where updating stands, then this computer and the version. */
+.card-foot { display: flex; flex-direction: column; align-items: flex-start; padding: 12px 28px; border-top: 1px solid var(--line); }
+.foot-update { align-self: stretch; }
+.foot-update:has(> :not([hidden])) { margin-bottom: 6px; }
+.card-foot .where { margin: 0; color: #5E6380; font-size: 11.5px; }
+.update { --tone: #5E6380; position: relative; display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; margin: 0; color: var(--muted); font-size: 12.5px; }
+/* The dot hangs in the margin, so the words, the bar and the line under them start in one place. */
+.update::before { content: ""; position: absolute; left: -15px; top: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--tone); }
+.update.ok { --tone: var(--ok); }
+.update.busy { --tone: #FF8A3D; color: var(--text); }
+.update.bad { --tone: var(--red); }
+.update button { padding: 0; border: 0; background: transparent; color: #FF8A3D; font-size: 12.5px; font-weight: 600; }
+.update button:hover { background: transparent; text-decoration: underline; text-underline-offset: 3px; }
+.update-bar { width: 100%; height: 3px; margin: 8px 0 2px; border-radius: 3px; background: #22253A; overflow: hidden; }
+.update-bar i { display: block; height: 100%; width: 0; background: var(--ember); transition: width .3s; }
+
+@media (max-width: 480px) {
+  .auth-shell { padding-top: 16px; }
+  .band { padding: 16px 20px 14px; }
+  .card-body, .card-foot { padding-left: 20px; padding-right: 20px; }
+}

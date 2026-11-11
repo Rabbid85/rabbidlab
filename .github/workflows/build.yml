@@ -1,0 +1,108 @@
+# Builds the Windows installer and uninstaller on GitHub's own machines, and has them signed by SignPath once it's set up
+# (the SIGNPATH_API_TOKEN secret and the SIGNPATH_ORGANIZATION_ID variable). Runs for a version tag (v1.2.3) and when
+# started by hand, not on every push. Installer/publish.sh downloads what it built and makes the release.
+name: Build
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    env:
+      SIGN: ${{ secrets.SIGNPATH_API_TOKEN != '' && vars.SIGNPATH_ORGANIZATION_ID != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Version
+        id: version
+        shell: powershell
+        run: |
+          $v = (Select-Xml -Path Src/RabbidLab.Server/RabbidLab.Server.csproj -XPath '//Version').Node.InnerText
+          "version=$v" >> $env:GITHUB_OUTPUT
+
+      - name: Test
+        run: dotnet test Tests/RabbidLab.Tests -c Release
+
+      - name: Publish the console
+        shell: powershell
+        run: ./Installer/build.ps1 -Stage Console
+
+      - name: Upload the console for signing
+        id: console
+        if: env.SIGN == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: console-unsigned
+          path: artifacts/publish/
+
+      - name: Sign the console
+        if: env.SIGN == 'true'
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: rabbidlab
+          signing-policy-slug: release-signing
+          artifact-configuration-slug: console
+          github-artifact-id: ${{ steps.console.outputs.artifact-id }}
+          parameters: |
+            version: "${{ steps.version.outputs.version }}"
+          wait-for-completion: true
+          output-artifact-directory: artifacts/console-signed
+
+      - name: Use the signed console
+        if: env.SIGN == 'true'
+        shell: powershell
+        run: Copy-Item artifacts/console-signed/* artifacts/publish/ -Recurse -Force
+
+      - name: Build the installer and uninstaller
+        shell: powershell
+        run: ./Installer/build.ps1 -Stage Setup
+
+      - name: Upload the installers for signing
+        id: installers
+        if: env.SIGN == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: installers-unsigned
+          path: artifacts/*.exe
+
+      - name: Sign the installers
+        if: env.SIGN == 'true'
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: rabbidlab
+          signing-policy-slug: release-signing
+          artifact-configuration-slug: installers
+          github-artifact-id: ${{ steps.installers.outputs.artifact-id }}
+          parameters: |
+            version: "${{ steps.version.outputs.version }}"
+          wait-for-completion: true
+          output-artifact-directory: artifacts/installers-signed
+
+      - name: Use the signed installers
+        if: env.SIGN == 'true'
+        shell: powershell
+        run: Copy-Item artifacts/installers-signed/*.exe artifacts/ -Force
+
+      - name: Upload the release files
+        uses: actions/upload-artifact@v4
+        with:
+          name: RabbidLab-${{ steps.version.outputs.version }}
+          path: |
+            artifacts/*.exe
+            artifacts/*.msi
+            artifacts/*-Client-Policy-*.zip

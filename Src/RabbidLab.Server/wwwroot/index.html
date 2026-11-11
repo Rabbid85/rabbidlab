@@ -1,0 +1,880 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rabbid Lab</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0B0C14">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="Assets/console.css">
+<link rel="stylesheet" href="Assets/people.css">
+<link rel="stylesheet" href="Assets/users.css">
+<link rel="stylesheet" href="Assets/links.css">
+<link rel="stylesheet" href="Assets/sensors.css">
+<link rel="stylesheet" href="Assets/wiki.css">
+<link rel="stylesheet" href="Assets/edition.css">
+<script src="Assets/palette.js" defer></script>
+<script src="Assets/console.js" defer></script>
+<script src="Assets/people.js" defer></script>
+<script src="Assets/users.js" defer></script>
+<script src="Assets/links.js" defer></script>
+<script src="Assets/sensors.js" defer></script>
+<script src="Assets/wiki.js" defer></script>
+<script src="Assets/directory.js" defer></script>
+</head>
+<!-- The console: the top bar, the rail down the left, and one page at a time (console.js picks it from the address). -->
+<body class="app booting">
+<svg class="sprite" aria-hidden="true">
+  <symbol id="i-overview" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5"/></symbol>
+  <symbol id="i-updates" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v5h-5"/><path d="M12 8v5l3 2"/></symbol>
+  <symbol id="i-activity" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-7 4 14 3-7h4"/></symbol>
+  <symbol id="i-new" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5M14 4l-4 16"/></symbol>
+  <symbol id="i-out" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M9 7h8v8"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-rail" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></symbol>
+  <symbol id="i-filter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16l-6.2 7.6V18l-3.6 2v-7.4z"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M4 20h16"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4M7 9l5-5 5 5M4 20h16"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18h.01"/></symbol>
+  <symbol id="i-history" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c1-3.5 3.6-5.5 6.5-5.5s5.5 2 6.5 5.5"/><path d="M15.5 4.8a3.5 3.5 0 0 1 0 6.4M17.5 14.8c2 .7 3.4 2.4 4 5.2"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-3.5 4.5-5 8-5s6.5 1.5 8 5"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></symbol>
+  <symbol id="i-monitor" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3M15 8l2 2"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-grip" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v16M8 8l4-4 4 4M8 16l4 4 4-4"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v6"/><path d="M12 7.6v.01"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></symbol>
+  <symbol id="i-server" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="7" rx="1.5"/><rect x="3" y="13" width="18" height="7" rx="1.5"/><path d="M7 7.5h.01M7 16.5h.01M11 7.5h6M11 16.5h6"/></symbol>
+  <symbol id="i-unlock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 7.5-2"/></symbol>
+  <symbol id="i-power" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v9"/><path d="M6.4 6.4a8 8 0 1 0 11.2 0"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3.2-3.2a4.5 4.5 0 0 0-6.4-6.4L12 5.6"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3.2 3.2a4.5 4.5 0 0 0 6.4 6.4l1.2-1.2"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></symbol>
+  <symbol id="i-laptop" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="11" rx="1.5"/><path d="M2 19h20"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/><path d="M8 7h8M8 11h6"/></symbol>
+  <symbol id="i-csv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M12 12v6M9 15l3 3 3-3"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></symbol>
+  <symbol id="i-org" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="5" rx="1"/><rect x="3" y="16" width="6" height="5" rx="1"/><rect x="15" y="16" width="6" height="5" rx="1"/><path d="M12 8v4M6 16v-2h12v2"/></symbol>
+</svg>
+<div class="sky" aria-hidden="true"></div>
+<header class="top">
+  <a class="brand" href="#overview">
+    <svg class="mark" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="15" fill="#0B0C14"/><g fill="#F2F3FA" transform="translate(10 14) scale(.9)"><rect width="11" height="40"/><path fill-rule="evenodd" d="M0 0H18A13 13 0 0 1 18 26H0ZM11 9V17H18A4 4 0 0 0 18 9Z"/><path d="M13 22H24L33 40H22Z"/></g><rect x="44" y="34" width="11" height="16" rx="1" fill="#FF6A45"/></svg>
+    <span class="name" id="brand-name">Rabbid Lab</span>
+    <span class="dev-tag" aria-label="Dev build">DEV</span>
+  </a>
+  <!-- Support info: this Rabbid Lab described as text to copy into a message when asking for help. -->
+  <button type="button" class="icon top-info" id="about-open" title="Support info" aria-label="Support info"><svg><use href="#i-info"/></svg></button>
+  <!-- Who's signed in; the menu says how, and signs out. -->
+  <div class="account" id="account" hidden>
+    <button type="button" class="account-chip" id="account-chip" aria-haspopup="true" aria-expanded="false" aria-controls="account-menu">
+      <span class="avatar" id="avatar" aria-hidden="true"></span>
+      <span class="account-name" id="account-name"></span>
+      <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+    </button>
+    <div class="account-menu" id="account-menu" hidden>
+      <div class="account-head">
+        <span class="avatar big" id="avatar-big" aria-hidden="true"></span>
+        <div class="account-id"><b id="menu-name"></b><small id="menu-user"></small></div>
+      </div>
+      <dl class="account-facts" id="account-facts"></dl>
+      <button type="button" class="signout" id="signout">Sign out</button>
+    </div>
+  </div>
+</header>
+
+<!-- The rail: the pages, in groups, and Settings at the foot. Collapse shrinks it to icons. -->
+<nav class="rail" aria-label="Pages">
+  <p class="rail-label">Lab</p>
+  <a href="#overview" data-page="overview" title="Overview" data-can="overview.view"><svg><use href="#i-overview"/></svg><span>Overview</span></a>
+  <a href="#links" data-page="links" title="Links" data-can="links.view"><svg><use href="#i-link"/></svg><span>Links</span><small id="rail-links"></small><i class="rail-dot bad" id="links-dot" hidden></i></a>
+  <a href="#sensors" data-page="sensors" title="Sensors" data-can="sensors.view"><svg><use href="#i-activity"/></svg><span>Sensors</span><i class="rail-dot bad" id="sensors-dot" hidden></i></a>
+  <p class="rail-label" data-can="ad.view ad.connect">Active Directory</p>
+  <a href="#ad/users" data-page="ad" data-adpage="users" title="Users" data-can="ad.view ad.connect"><svg><use href="#i-user"/></svg><span>Users</span><i class="rail-dot bad" id="dir-locked-dot" hidden></i></a>
+  <a href="#ad/groups" data-page="ad" data-adpage="groups" title="Groups" data-can="ad.view ad.connect"><svg><use href="#i-users"/></svg><span>Groups</span></a>
+  <a href="#ad/computers" data-page="ad" data-adpage="computers" title="Computers" data-can="ad.view ad.connect"><svg><use href="#i-laptop"/></svg><span>Computers</span></a>
+  <a href="#ad/domain" data-page="ad" data-adpage="domain" title="Domain settings" data-can="ad.view ad.connect"><svg><use href="#i-globe"/></svg><span>Domain settings</span><i class="rail-dot bad" id="dir-domain-dot" hidden></i></a>
+  <p class="rail-label" data-can="ad.view ad.connect">Directory tools</p>
+  <a href="#org" data-page="org" title="Org chart" data-can="ad.view"><svg><use href="#i-org"/></svg><span>Org chart</span></a>
+  <a href="#attrs" data-page="attrs" title="Attribute browser" data-can="ad.view"><svg><use href="#i-list"/></svg><span>Attribute browser</span></a>
+  <a href="#ad/audit" data-page="ad" data-adpage="audit" title="AD audit" data-can="ad.view ad.connect"><svg><use href="#i-history"/></svg><span>AD audit</span></a>
+  <a href="#ad/recycle" data-page="ad" data-adpage="recycle" title="Recycle Bin" data-can="ad.view ad.connect"><svg><use href="#i-trash"/></svg><span>Recycle Bin</span></a>
+  <p class="rail-label" data-can="seats.view sessions.view access.view windows.view">Config</p>
+  <a href="#seats" data-page="seats" title="Seats" data-can="seats.view sessions.view"><svg><use href="#i-monitor"/></svg><span>Seats</span><small id="rail-seats"></small><i class="rail-dot" id="seats-dot" hidden></i></a>
+  <a href="#local" data-page="local" title="Local accounts" data-can="windows.view"><svg><use href="#i-key"/></svg><span>Local accounts</span></a>
+  <a href="#people" data-page="people" title="Roles and people" data-can="access.view"><svg><use href="#i-shield"/></svg><span>Roles and people</span><small id="rail-roles"></small></a>
+  <p class="rail-label">Help</p>
+  <a href="#wiki" data-page="wiki" title="Wiki"><svg><use href="#i-book"/></svg><span>Wiki</span></a>
+  <a href="#whats-new" data-page="whats-new" title="What's new"><svg><use href="#i-new"/></svg><span>What's new</span><small id="rail-version"></small></a>
+  <a href="https://github.com/Rabbid85/rabbidlab" id="rail-repo" target="_blank" rel="noopener" title="GitHub"><svg><use href="#i-code"/></svg><span>GitHub</span><svg class="out"><use href="#i-out"/></svg></a>
+  <a href="#updates" data-page="settings" class="rail-settings" id="rail-settings" title="Settings" data-can="updates.view activity.view"><svg><use href="#i-gear"/></svg><span>Settings</span><i class="rail-dot" id="rail-dot" hidden></i></a>
+  <button type="button" class="rail-collapse" id="rail-collapse" aria-expanded="true"><svg><use href="#i-rail"/></svg><span id="rail-collapse-text">Collapse</span></button>
+</nav>
+
+<main class="main">
+  <!-- See Rabbid Lab as a role: what it hides, until Stop. -->
+  <div class="viewas" id="viewas" hidden><svg><use href="#i-eye"/></svg><span>You're seeing Rabbid Lab as <b id="viewas-name"></b>. Only the look changes: you can still do everything your own roles allow.</span><button type="button" id="viewas-stop">Stop</button></div>
+  <!-- This computer isn't a seat yet: the client to install, then Connect, which hands the client the server's address. -->
+  <div class="herebar" id="herebar" hidden><svg><use href="#i-monitor"/></svg>
+    <span id="here-text">This computer isn't in Seats yet.</span>
+    <a class="button small" id="here-download" href="/api/clients/download" download><svg><use href="#i-download"/></svg>1. Download the client</a>
+    <a class="button small primary" id="here-connect" href="#"><svg><use href="#i-link"/></svg>2. Connect this computer</a>
+    <button type="button" class="link" id="here-later">Not now</button></div>
+  <section class="page home" id="page-overview" data-page="overview" data-title="Overview" hidden>
+    <!-- The hero: the name big, how Rabbid Lab is doing, and the way to each page. -->
+    <header class="hero" id="hero">
+      <p class="eyebrow" id="hero-eyebrow">Homelab console</p>
+      <h1 class="hero-title" id="hero-title">Rabbid Lab</h1>
+      <p class="hero-lead"><b id="hero-state">Looking…</b> <span id="hero-where"></span></p>
+      <div class="hero-actions">
+        <button type="button" class="primary" id="hero-install" data-can="updates.install" hidden>Install now</button>
+        <button type="button" class="primary" id="hero-check" data-can="updates.check">Check for updates</button>
+        <a class="button" href="#activity" data-can="activity.view">Activity</a>
+        <span class="checked-note" id="hero-note" role="status" hidden></span>
+      </div>
+      <div class="hero-stats">
+        <div><b id="hero-version">…</b><span><svg><use href="#i-new"/></svg>Version</span></div>
+        <div><b id="hero-uptime">…</b><span><svg><use href="#i-clock"/></svg>Running</span></div>
+        <div data-can="updates.view"><b id="hero-updates">…</b><span><svg><use href="#i-updates"/></svg>Updates</span></div>
+      </div>
+      <nav class="pills" aria-label="Pages">
+        <a href="#updates" data-can="updates.view"><svg><use href="#i-updates"/></svg>Updates</a>
+        <a href="#activity" data-can="activity.view"><svg><use href="#i-activity"/></svg>Activity</a>
+        <a href="#whats-new"><svg><use href="#i-new"/></svg>What's new</a>
+        <a href="https://github.com/Rabbid85/rabbidlab" id="hero-repo" target="_blank" rel="noopener"><svg><use href="#i-code"/></svg>GitHub</a>
+      </nav>
+      <aside class="hero-new" aria-label="Newest version">
+        <p class="eyebrow">New</p>
+        <b id="new-title"></b>
+        <p id="new-text"></p>
+        <a class="more" href="#whats-new">Read what's new →</a>
+      </aside>
+    </header>
+
+    <section class="news" aria-labelledby="news-title">
+      <div class="news-head"><h2 id="news-title">News &amp; changelog</h2><i aria-hidden="true"></i><a class="more" href="#whats-new">All versions →</a></div>
+      <div class="news-grid" id="news"></div>
+    </section>
+
+    <section class="card machine" aria-labelledby="server-title">
+      <h2 id="server-title">This machine</h2>
+      <div class="facts-two" id="st-facts"><dl class="facts"><dt>Machine</dt><dd>…</dd></dl></div>
+    </section>
+  </section>
+
+  <!-- Settings: its own rail, and one section at a time (#updates, #activity). -->
+  <section class="page settings-page" id="page-settings" data-page="settings" data-title="Settings" hidden>
+    <nav class="srail" aria-label="Settings">
+      <h1>Settings</h1>
+      <a href="#updates" data-sub="updates" data-can="updates.view"><svg><use href="#i-updates"/></svg>Updates<i class="rail-dot" id="srail-dot" hidden></i></a>
+
+      <a href="#activity" data-sub="activity" data-can="activity.view"><svg><use href="#i-activity"/></svg>Activity log</a>
+    </nav>
+
+    <section class="sub" data-sub="updates" data-title="Updates">
+      <header class="sub-head"><h2>Updates</h2><p>Keep Rabbid Lab on the newest version.</p></header>
+      <!-- Where it stands, with the button that fits. During an update, the installing card takes its place. -->
+      <div class="ustatus" id="upd-status">
+        <span class="big-ic" id="upd-icon"><svg><use id="upd-icon-use" href="#i-check"/></svg></span>
+        <div class="ustatus-text"><b id="upd-title">Looking…</b><span id="upd-line"></span></div>
+        <span class="checked-note" id="upd-note" role="status" hidden></span>
+        <button type="button" id="upd-check">Check for updates</button>
+        <button type="button" class="primary" id="upd-install" data-can="updates.install" hidden>Install now</button>
+      </div>
+      <div class="uinstall" id="upd-installing" hidden>
+        <div class="uinstall-top">
+          <span class="big-ic ember"><svg><use href="#i-download"/></svg></span>
+          <div class="ustatus-text"><b id="inst-title"></b><span id="inst-line"></span></div>
+          <span class="pct" id="inst-pct">0%</span>
+        </div>
+        <div class="ubar"><i id="inst-fill"></i></div>
+        <div class="steps"><span id="step-download">Downloaded</span><span id="step-install">Installing</span><span id="step-back">Back on the new version</span></div>
+        <p class="say" id="inst-say">The server is offline for about a minute while the update installs. This page reloads when it is done.</p>
+      </div>
+      <p class="hint problem" id="upd-problem" hidden></p>
+
+      <p class="h3" data-can="updates.auto">How it updates</p>
+      <div class="rows" data-can="updates.auto">
+        <div class="row still">
+          <svg><use href="#i-updates"/></svg>
+          <span class="t"><b>Update automatically</b><span>New versions install automatically when nobody is using Rabbid Lab. The server is offline for about a minute during an update.</span></span>
+          <span class="sw-label" id="upd-auto-label">Off</span>
+          <input type="checkbox" class="switch" id="upd-auto" role="switch" aria-label="Update automatically">
+        </div>
+      </div>
+
+      <p class="h3">More</p>
+      <div class="rows">
+        <a class="row" href="#activity" data-can="activity.view"><svg><use href="#i-history"/></svg><span class="t"><b>Update history</b><span id="upd-history">Every update is in the activity log.</span></span><svg class="chev"><use href="#i-right"/></svg></a>
+        <a class="row" href="#whats-new"><svg><use href="#i-new"/></svg><span class="t"><b id="upd-new-title">What's new</b><span id="upd-new-text"></span></span><svg class="chev"><use href="#i-right"/></svg></a>
+      </div>
+      <p class="foot-note"><svg><use href="#i-lock"/></svg><span>Updates come from <a id="upd-source" href="#" rel="noopener">GitHub</a> and only install if they're signed by Rabbid Lab.</span></p>
+    </section>
+
+    <section class="sub" data-sub="activity" data-title="Activity log" hidden>
+      <header class="sub-head"><h2>Activity log</h2><p>What's been done here, by whom and when.</p></header>
+      <section class="card" aria-label="Activity log">
+        <ul class="activity" id="activity-list"><li class="muted">Nothing yet.</li></ul>
+      </section>
+    </section>
+  </section>
+
+  <!-- Seats: the computers with the Rabbid Lab client, and everyone signed in. -->
+  <section class="page seats-page" id="page-seats" data-page="seats" data-title="Seats" hidden>
+    <header class="page-head seats-head"><div><h1>Seats</h1><p>The computers with the Rabbid Lab client, and who's signed in.</p></div>
+      <button type="button" class="primary" id="seats-add" data-can="seats.add">Add computers</button></header>
+    <div class="tiles4" data-can="seats.view">
+      <div class="card tile4"><span class="label ok">Online</span><b id="n-online">0</b></div>
+      <div class="card tile4"><span class="label">Offline</span><b id="n-offline">0</b></div>
+      <div class="card tile4"><span class="label ember">Waiting for you</span><b id="n-waiting">0</b></div>
+      <div class="card tile4"><span class="label amber">Older client</span><b id="n-behind">0</b></div>
+    </div>
+    <div class="chips" id="seats-filter" role="tablist" data-can="seats.view">
+      <button type="button" data-filter="all" aria-selected="true">All <small id="f-all">0</small></button>
+      <button type="button" data-filter="online">Online <small id="f-online">0</small></button>
+      <button type="button" data-filter="offline">Offline <small id="f-offline">0</small></button>
+      <button type="button" data-filter="waiting">Waiting <small id="f-waiting">0</small></button>
+      <button type="button" data-filter="behind">Older client <small id="f-behind">0</small></button>
+    </div>
+    <div class="table" id="seats-table" data-can="seats.view"></div>
+    <p class="hint problem" id="seats-problem" hidden></p>
+    <h2 class="table-title">Signed in now</h2>
+    <div class="table" id="sessions-table"></div>
+  </section>
+
+  <!-- Roles and people: the roles in order down the left, and everyone with their roles, or one role to change (people.js). -->
+  <section class="page people-page" id="page-people" data-page="people" data-title="Roles and people" hidden>
+    <header class="page-head"><h1>Roles and people</h1>
+      <p>Roles decide what people can do. Put Active Directory groups, single people and local accounts in them. Anyone can have several roles, and gets everything they allow.</p></header>
+    <div class="lib">
+      <aside class="side" aria-label="Roles and people">
+        <label class="side-find"><svg><use href="#i-search"/></svg><input type="search" id="ppl-find" placeholder="Find a person, group or role" aria-label="Find a person, group or role" autocomplete="off" spellcheck="false"></label>
+        <p class="side-label">Browse</p>
+        <a href="#people" data-browse="all"><svg><use href="#i-list"/></svg>Everyone<small id="b-all"></small></a>
+        <a href="#people/people" data-browse="people"><svg><use href="#i-user"/></svg>People<small id="b-people"></small></a>
+        <a href="#people/groups" data-browse="groups"><svg><use href="#i-users"/></svg>Groups<small id="b-groups"></small></a>
+        <a href="#people/local" data-browse="local"><svg><use href="#i-key"/></svg>Local accounts<small id="b-local"></small></a>
+        <p class="side-label">Roles<span>Highest first</span></p>
+        <div class="side-roles" id="ppl-roles"></div>
+        <button type="button" class="side-new" id="role-new" data-can="access.roles"><svg><use href="#i-plus"/></svg>New role</button>
+        <p class="side-label">Filters</p>
+        <p class="side-sub">Signed in with</p>
+        <div class="seg" id="ppl-source"><button type="button" data-source="any" aria-pressed="true">Any</button><button type="button" data-source="ad">Active Directory</button><button type="button" data-source="local">Local</button></div>
+        <p class="side-sub">Role</p>
+        <select class="side-pick" id="ppl-role-filter" aria-label="Role"><option value="">Any role</option></select>
+        <label class="tick"><input type="checkbox" id="ppl-week">Signed in this week</label>
+      </aside>
+
+      <div class="lib-body">
+        <!-- Everyone: the roles as cards, then each person, group and account with their roles. -->
+        <div id="ppl-list">
+          <div class="lib-bar"><h2 id="ppl-title">Everyone</h2>
+            <select id="ppl-sort" aria-label="Sort"><option value="role">Highest role</option><option value="name">Name</option><option value="seen">Last signed in</option></select>
+            <button type="button" class="primary" id="ppl-add" data-can="access.members access.local"><svg><use href="#i-plus"/></svg>Add people</button></div>
+          <p class="lib-label" id="ppl-cards-label"><svg><use href="#i-shield"/></svg>Roles</p>
+          <div class="rcards" id="ppl-cards"></div>
+          <div class="prows" id="ppl-rows"></div>
+        </div>
+
+        <!-- One role: its look, what it allows, and who's in it. -->
+        <div id="role-view" hidden>
+          <div class="rhead"><span class="big"><svg><use href="#i-shield"/></svg></span>
+            <div class="rhead-text"><b id="role-name"></b><span id="role-line"></span></div>
+            <button type="button" id="role-viewas"><svg><use href="#i-eye"/></svg><span id="role-viewas-text">See Rabbid Lab as this role</span></button></div>
+          <nav class="tabs2" id="role-tabs"><a data-tab="display">Display</a><a data-tab="permissions">Permissions</a><a data-tab="members">Members <small id="role-count"></small></a></nav>
+          <p class="hint role-note" id="role-note" hidden></p>
+
+          <div data-pane="display">
+            <div class="form">
+              <label for="role-edit-name">Role name</label><input id="role-edit-name" maxlength="40" autocomplete="off">
+              <label for="role-edit-about">What it's for</label><input id="role-edit-about" maxlength="160" autocomplete="off">
+              <p class="form-label">Colour</p><div class="swatches" id="role-swatches" role="radiogroup" aria-label="Colour"></div>
+              <p class="form-label">How it looks</p><div class="chips-preview" id="role-preview"></div>
+            </div>
+            <p class="lib-label">Where it sits</p>
+            <p class="hint" id="role-where"></p>
+            <div class="rows" id="role-delete-row"><div class="row still"><span class="t"><b id="role-delete-title">Delete this role</b><span>Everyone in it loses what it gives them. Anything their other roles allow stays.</span></span>
+              <button type="button" class="danger" id="role-delete"><svg><use href="#i-trash"/></svg>Delete role</button></div></div>
+          </div>
+
+          <div data-pane="permissions" hidden>
+            <div class="tools"><label class="find"><svg><use href="#i-search"/></svg><input type="search" id="perm-find" placeholder="Find a permission" aria-label="Find a permission" autocomplete="off"></label>
+              <button type="button" class="link" id="perm-clear">Clear all</button></div>
+            <div id="perm-list"></div>
+          </div>
+
+          <div data-pane="members" hidden>
+            <p class="lib-label">In this role</p>
+            <div class="rows" id="member-list"></div>
+            <div id="member-add" data-can="access.members">
+              <p class="lib-label">Add to this role</p>
+              <div class="adder"><label class="find"><svg><use href="#i-search"/></svg><input type="search" id="member-find" data-find placeholder="Search groups, people and local accounts" aria-label="Search groups, people and local accounts" autocomplete="off" spellcheck="false"></label>
+                <div class="drop" data-drop hidden></div></div>
+            </div>
+          </div>
+        </div>
+        <p class="hint problem" id="ppl-problem" hidden></p>
+      </div>
+    </div>
+
+    <!-- A person, group or account: their roles, where each comes from, and what they can do. -->
+    <div class="pcard" id="pcard" hidden></div>
+    <!-- The roles to give someone, from the + beside their roles. -->
+    <div class="rmenu" id="rmenu" hidden></div>
+    <!-- Changes to a role wait here until saved. -->
+    <div class="unsaved" id="role-unsaved" hidden><span>Careful, you have changes that aren't saved.</span>
+      <button type="button" class="link" id="role-reset">Reset</button><button type="button" class="go" id="role-save">Save changes</button></div>
+  </section>
+
+  <!-- Links: the places in the lab, in groups, with their icons and whether they're up (links.js). -->
+  <section class="page home" id="page-links" data-page="links" data-title="Links" hidden>
+    <header class="hero" id="ln-hero">
+      <p class="eyebrow">Links</p>
+      <h1 class="hero-title" id="ln-title">Links</h1>
+      <p class="hero-lead"><b id="ln-lead"></b> <span id="ln-lead-more"></span></p>
+      <div class="hero-actions">
+        <button type="button" class="primary" id="ln-add" data-can="links.edit">Add a link</button>
+        <button type="button" class="hero-gear" id="ln-checks" data-can="links.edit" title="Links settings" aria-label="Links settings"><svg><use href="#i-gear"/></svg></button>
+      </div>
+      <div class="hero-stats">
+        <div><b id="ln-count">…</b><span><svg><use href="#i-link"/></svg>Links</span></div>
+        <div><b id="ln-answering">…</b><span><svg><use href="#i-activity"/></svg>Answering</span></div>
+        <div><b id="ln-every">…</b><span><svg><use href="#i-clock"/></svg>Checked every</span></div>
+      </div>
+      <aside class="hero-new bad" id="ln-card" hidden>
+        <p class="eyebrow">Down now</p>
+        <b id="ln-card-title"></b>
+        <p id="ln-card-text"></p>
+        <a class="more" id="ln-card-more" target="_blank" rel="noopener noreferrer">Open the link →</a>
+      </aside>
+    </header>
+    <section class="news sn-body">
+    <div class="ln-tools">
+      <label class="side-find"><svg><use href="#i-search"/></svg><input type="search" id="ln-find" placeholder="Find a link" aria-label="Find a link" autocomplete="off" spellcheck="false"></label>
+      <div class="lfilter" id="ln-filter" hidden>
+        <button type="button" class="small" id="ln-filter-open" aria-haspopup="true" aria-expanded="false" title="Show one group"><svg><use href="#i-filter"/></svg><span id="ln-filter-name">All groups</span></button>
+        <div class="lfilter-menu" id="ln-groups" hidden></div>
+      </div>
+      <button type="button" class="small" id="ln-newgroup" data-can="links.edit"><svg><use href="#i-plus"/></svg>New group</button>
+      <div class="seg" id="ln-view"><button type="button" data-view="cards"><svg><use href="#i-overview"/></svg>Cards</button><button type="button" data-view="grid"><svg><use href="#i-list"/></svg>Grid</button></div>
+    </div>
+    <div id="ln-list"></div>
+    <div class="ln-empty" id="ln-empty" hidden><span class="big-ic ember"><svg><use href="#i-link"/></svg></span>
+      <div><b>No links yet</b><span id="ln-empty-text">Put the sites in your lab here: the router, the NAS, the hypervisor, iDRACs. Paste an address and Rabbid Lab fills in the name, icon and IP.</span></div>
+      <button type="button" class="primary" id="ln-add-first" data-can="links.edit"><svg><use href="#i-plus"/></svg>Add a link</button></div>
+    <p class="hint problem" id="ln-problem" hidden></p>
+    </section>
+  </section>
+
+  <!-- Sensors: checks on a timer. The hero says how the lab is doing, and its squares are the sensors (sensors.js). -->
+  <section class="page home" id="page-sensors" data-page="sensors" data-title="Sensors" hidden>
+    <header class="hero" id="sn-hero">
+      <p class="eyebrow">Sensors</p>
+      <h1 class="hero-title" id="sn-title">Sensors</h1>
+      <p class="hero-lead"><b id="sn-lead"></b> <span id="sn-lead-more"></span></p>
+      <div class="hero-actions">
+        <button type="button" class="primary" id="sn-add" data-can="sensors.edit">Add a sensor</button>
+        <button type="button" id="sn-rules" data-can="sensors.alerts">Alert rules</button>
+        <button type="button" id="sn-mail" data-can="sensors.alerts">Email settings</button>
+      </div>
+      <div class="hero-stats">
+        <div><b id="sn-answering">…</b><span><svg><use href="#i-activity"/></svg>Answering</span></div>
+        <div><b id="sn-week">…</b><span><svg><use href="#i-clock"/></svg>Up, last 7 days</span></div>
+        <div><b id="sn-last">…</b><span><svg><use href="#i-updates"/></svg>Last check</span></div>
+      </div>
+      <aside class="hero-new" id="sn-card" hidden>
+        <p class="eyebrow" id="sn-card-kind"></p>
+        <b id="sn-card-title"></b>
+        <p id="sn-card-text"></p>
+        <a class="more" href="#sensors" id="sn-card-more">Open the sensor →</a>
+      </aside>
+    </header>
+    <section class="news sn-body">
+      <div class="ln-tools" id="sn-tools">
+        <label class="side-find"><svg><use href="#i-search"/></svg><input type="search" id="sn-find" placeholder="Find a sensor" aria-label="Find a sensor" autocomplete="off" spellcheck="false"></label>
+        <div class="lfilter" id="sn-filter" hidden>
+          <button type="button" class="small" id="sn-filter-open" aria-haspopup="true" aria-expanded="false" title="Show one group"><svg><use href="#i-filter"/></svg><span id="sn-filter-name">All groups</span></button>
+          <div class="lfilter-menu" id="sn-groups" hidden></div>
+        </div>
+        <button type="button" class="small" id="sn-newgroup" data-can="sensors.edit"><svg><use href="#i-plus"/></svg>New group</button>
+        <button type="button" class="link" id="sn-cols-reset" hidden>Reset columns</button>
+        <div class="seg" id="sn-view"><button type="button" data-view="cards"><svg><use href="#i-overview"/></svg>Cards</button><button type="button" data-view="grid"><svg><use href="#i-list"/></svg>Grid</button></div>
+      </div>
+      <div id="sn-list"></div>
+      <div class="ln-empty" id="sn-empty" hidden><span class="big-ic ember"><svg><use href="#i-activity"/></svg></span>
+        <div><b>No sensors yet</b><span id="sn-empty-text">A sensor checks something on a timer: a machine that answers ping, an open port, a web page, a DNS name or a certificate. Rabbid Lab emails you when one stays down.</span></div>
+        <button type="button" class="primary" id="sn-add-first" data-can="sensors.edit"><svg><use href="#i-plus"/></svg>Add a sensor</button></div>
+      <p class="hint problem" id="sn-problem" hidden></p>
+    </section>
+  </section>
+
+  <!-- Active Directory: users, groups and computers, each with its views down the left, changed as Rabbid Lab's own AD account (users.js). -->
+  <section class="page people-page dir-page" id="page-ad" data-page="ad" data-title="Active Directory" hidden>
+    <header class="page-head"><h1 id="dir-title">Users</h1><p id="dir-lead"></p></header>
+    <div class="ustatus dir-needs" id="dir-setup" hidden></div>
+    <div class="lib" id="dir-lib" hidden>
+      <aside class="side" aria-label="Views">
+        <label class="side-find"><svg><use href="#i-search"/></svg><input type="search" id="dir-find" placeholder="Find" aria-label="Find" autocomplete="off" spellcheck="false"></label>
+        <div id="dir-views"></div>
+        <div class="dir-acct"><svg><use href="#i-key"/></svg><span id="dir-acct"></span>
+          <button type="button" class="icon" id="dir-settings" data-can="ad.connect" title="Service account" aria-label="Service account"><svg><use href="#i-gear"/></svg></button></div>
+      </aside>
+      <div class="lib-body">
+        <div class="lib-bar"><h2 id="dir-view-title"></h2><span class="bar-note" id="dir-count"></span>
+          <button type="button" class="small" id="dir-export"><svg><use href="#i-csv"/></svg>Export</button>
+          <button type="button" class="primary" id="dir-new" data-can="ad.create"><svg><use href="#i-plus"/></svg><span id="dir-new-text">New user</span></button></div>
+        <div class="dir-banner" id="dir-banner" hidden></div>
+        <div class="table" id="dir-table"></div>
+        <p class="hint" id="dir-more" hidden>Active Directory has more than the 1,000 listed here.</p>
+      </div>
+    </div>
+    <p class="hint" id="dir-loading" hidden></p>
+    <p class="hint problem" id="dir-problem" hidden></p>
+    <p class="hint note" id="dir-note" hidden></p>
+    <!-- One user, group or computer: what it is, and what can be done to it. -->
+    <div class="pcard ucard" id="adcard" hidden></div>
+  </section>
+
+  <!-- Local accounts: the Windows accounts on this server and on each computer in Seats, whose client makes the change (users.js). -->
+  <section class="page people-page users-page" id="page-local" data-page="local" data-title="Local accounts" hidden>
+    <header class="page-head"><h1>Local accounts</h1>
+      <p>The Windows accounts on this server and on each computer in Seats. No service account is needed: this server makes its own changes, and on a seat the Rabbid Lab client does, straight away.</p></header>
+    <div class="lib">
+      <aside class="side" aria-label="Computers">
+        <label class="side-find"><svg><use href="#i-search"/></svg><input type="search" id="us-find" placeholder="Find an account" aria-label="Find an account" autocomplete="off" spellcheck="false"></label>
+        <p class="side-label">Computers</p>
+        <div class="side-list" id="us-computers"></div>
+        <p class="side-label">Show</p>
+        <label class="tick"><input type="checkbox" id="us-off" checked>Turned-off accounts</label>
+        <label class="tick"><input type="checkbox" id="us-system">Built-in accounts</label>
+      </aside>
+      <div class="lib-body">
+        <div class="lib-bar"><h2 id="us-pc-title"></h2><span class="bar-note" id="us-pc-line"></span>
+          <button type="button" class="primary" id="us-pc-new" data-can="windows.create"><svg><use href="#i-plus"/></svg>New account</button></div>
+        <p class="hint why" id="us-pc-why" hidden></p>
+        <div class="prows" id="us-pc-rows"></div>
+        <p class="hint" id="us-loading" hidden></p>
+        <p class="hint problem" id="us-problem" hidden></p>
+        <p class="hint note" id="us-note" hidden></p>
+      </div>
+    </div>
+    <div class="pcard ucard" id="ucard" hidden></div>
+  </section>
+
+  <!-- Org chart: who reports to whom, from each person's Manager in Active Directory (directory.js). -->
+  <section class="page org-page" id="page-org" data-page="org" data-title="Org chart" hidden>
+    <header class="page-head"><h1>Org chart</h1><p>Who reports to whom, from each person's Manager in Active Directory.</p></header>
+    <div class="ln-tools" id="org-tools" hidden><label class="side-find"><svg><use href="#i-search"/></svg><input type="search" id="org-find" placeholder="Find a person" aria-label="Find a person" autocomplete="off" spellcheck="false"></label>
+      <span class="bar-note" id="org-count"></span></div>
+    <div class="ustatus dir-needs" id="org-setup" hidden></div>
+    <p class="hint" id="org-note" hidden></p>
+    <div class="org" id="org-tree"></div>
+    <p class="hint problem" id="org-problem" hidden></p>
+  </section>
+
+  <!-- Attribute browser: the directory as a tree, and every attribute of whatever's picked (directory.js). -->
+  <section class="page people-page attrs-page" id="page-attrs" data-page="attrs" data-title="Attribute browser" hidden>
+    <header class="page-head"><h1>Attribute browser</h1><p>Every OU, container and object in the domain, and every attribute each one has.</p></header>
+    <div class="ustatus dir-needs" id="at-setup" hidden></div>
+    <div class="lib" id="at-lib">
+      <aside class="side attrs-side" aria-label="Directory">
+        <nav class="crumbs" id="at-crumbs" aria-label="Where"></nav>
+        <div id="at-items"></div>
+        <p class="hint" id="at-more" hidden>There's more here than Active Directory sent; it sends the first 1,000.</p>
+      </aside>
+      <div class="lib-body">
+        <div class="lib-bar"><h2 id="at-title">Pick something on the left</h2><span class="bar-note" id="at-line"></span></div>
+        <label class="side-find at-find" id="at-find-row" hidden><svg><use href="#i-search"/></svg><input type="search" id="at-find" placeholder="Find an attribute or value" aria-label="Find an attribute or value" autocomplete="off" spellcheck="false"></label>
+        <div class="table attrs" id="at-table"></div>
+        <p class="hint problem" id="at-problem" hidden></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Wiki: how to do everything, step by step, with links to the pages it talks about (wiki.js reads Assets/wiki.html). -->
+  <section class="page people-page wiki-page" id="page-wiki" data-page="wiki" data-title="Wiki" hidden>
+    <header class="page-head"><h1>Wiki</h1><p>How to do everything in Rabbid Lab, step by step.</p></header>
+    <div class="lib">
+      <aside class="side" aria-label="Articles">
+        <label class="side-find"><svg><use href="#i-search"/></svg><input type="search" id="wiki-find" placeholder="Search the wiki" aria-label="Search the wiki" autocomplete="off" spellcheck="false"></label>
+        <div id="wiki-toc"></div>
+      </aside>
+      <div class="lib-body">
+        <article class="wiki-body" id="wiki-body"></article>
+        <nav class="wiki-next" id="wiki-next" aria-label="Before and next"></nav>
+      </div>
+    </div>
+  </section>
+
+  <section class="page" id="page-whats-new" data-page="whats-new" data-title="What's new" hidden>
+    <header class="page-head"><h1>What's new</h1><p>What changed in each version.</p></header>
+    <section class="card" aria-label="What's new">
+      <ul class="notes" id="notes"></ul>
+    </section>
+  </section>
+
+  <footer class="foot">
+    <span id="foot-version">Rabbid Lab</span> · <a id="foot-repo" href="https://github.com/Rabbid85/rabbidlab" rel="noopener">github.com/Rabbid85/rabbidlab</a>
+  </footer>
+</main>
+
+<!-- Add computers: the client, how to install it on one computer or many, and whether new ones wait. -->
+<dialog class="dialog wide" id="add-dialog" aria-labelledby="add-title">
+  <h2 id="add-title">Add computers</h2>
+  <p class="dialog-lead">Install the Rabbid Lab client on a computer and it shows up under Seats. Or open Rabbid Lab in a browser on that computer and click Connect this computer.</p>
+  <div class="step"><span class="n">1</span><div><b>Install the client</b>
+    <p class="hint" id="get-client">Download it and run it, or install it quietly from a command line or Intune:</p>
+    <div class="key-row"><code class="cmd" id="install-line"></code><button type="button" class="small" id="line-copy">Copy</button></div>
+    <a class="button small-link" id="msi-link" href="/api/clients/download" download>Download the client (MSI)</a></div></div>
+  <div class="step"><span class="n">2</span><div><b>Or with Group Policy</b>
+    <p class="hint">Assign the MSI under Computer Configuration &gt; Policies &gt; Software Settings &gt; Software Installation. Add the template to PolicyDefinitions, then set Server address<span id="gpo-fingerprint"> and Server certificate fingerprint</span> under Administrative Templates &gt; Rabbid Lab &gt; Client.</p>
+    <a class="button small-link" id="policy-link" href="/api/clients/policy" download>Download the Group Policy template</a></div></div>
+  <div class="fingerprint" id="fingerprint-row" hidden><span>This server's certificate fingerprint</span><code id="fingerprint"></code></div>
+  <div class="rows">
+    <div class="row still" data-can="seats.settings"><svg><use href="#i-shield"/></svg><span class="t"><b>New computers wait for an admin</b><span>They show as Waiting until someone lets them in. Turn this off and they join straight away.</span></span>
+      <input type="checkbox" class="switch" id="join-approve" role="switch" aria-label="New computers wait for an admin"></div>
+  </div>
+  <div class="dialog-foot"><button type="button" id="add-close">Done</button></div>
+</dialog>
+
+<!-- Add people: someone from Active Directory or a local account into roles, or a new local account. -->
+<dialog class="dialog wide" id="people-dialog" aria-labelledby="people-title">
+  <h2 id="people-title">Add people</h2>
+  <p class="dialog-lead">Pick who, then the roles to put them in. Everyone who signs in also has User.</p>
+  <nav class="tabs2" id="people-tabs"><a data-ptab="find" data-can="access.members">Groups and people</a><a data-ptab="local" data-can="access.local">New local account</a></nav>
+  <div data-ppane="find">
+    <div class="adder"><label class="find"><svg><use href="#i-search"/></svg><input type="search" id="pd-find" placeholder="Search groups, people and local accounts" aria-label="Search" autocomplete="off" spellcheck="false"></label></div>
+    <div class="pick-list" id="pd-results"></div>
+  </div>
+  <div data-ppane="local" hidden>
+    <div class="form">
+      <label for="pd-user">Username</label><input id="pd-user" autocomplete="off" spellcheck="false">
+      <label for="pd-password">Password</label><input id="pd-password" type="password" autocomplete="new-password" placeholder="8 characters or more">
+    </div>
+  </div>
+  <p class="form-label">Roles</p>
+  <div class="role-picks" id="pd-roles"></div>
+  <p class="hint problem" id="pd-problem" hidden></p>
+  <div class="dialog-foot"><button type="button" id="pd-cancel">Cancel</button><button type="button" class="primary" id="pd-go">Add</button></div>
+</dialog>
+
+<!-- A new password for a local account. -->
+<dialog class="dialog" id="password-dialog" aria-labelledby="password-title">
+  <h2 id="password-title">New password</h2>
+  <p class="dialog-lead" id="password-lead"></p>
+  <div class="form"><label for="pw-new">Password</label><input id="pw-new" type="password" autocomplete="new-password" placeholder="8 characters or more"></div>
+  <p class="hint problem" id="pw-problem" hidden></p>
+  <div class="dialog-foot"><button type="button" id="pw-cancel">Cancel</button><button type="button" class="primary" id="pw-save">Save</button></div>
+</dialog>
+
+<!-- Rabbid Lab's own Active Directory account: made with an admin's sign-in (not kept), or one it's given. -->
+<dialog class="dialog wide" id="dset-dialog" aria-labelledby="dset-title">
+  <h2 id="dset-title">Set up the service account</h2>
+  <p class="dialog-lead">Rabbid Lab makes all its Active Directory changes as a dedicated service account. Its password is stored encrypted on this server.</p>
+  <nav class="tabs2" id="dset-tabs"><a data-adtab="make">Create a new service account</a><a data-adtab="existing">Use an existing service account</a></nav>
+  <div id="dset-step1">
+    <div class="form">
+      <label for="dset-domain">Domain</label><input id="dset-domain" autocomplete="off" spellcheck="false">
+      <label for="dset-user" id="dset-user-label">Admin username</label><input id="dset-user" autocomplete="username" spellcheck="false">
+      <label for="dset-password" id="dset-password-label">Admin password</label><input id="dset-password" type="password" autocomplete="current-password">
+    </div>
+    <p class="hint" id="dset-note"></p>
+  </div>
+  <div id="dset-step2" hidden>
+    <div class="form">
+      <label for="dset-account" class="dset-make">Service account name</label><input id="dset-account" class="dset-make" maxlength="20" autocomplete="off" spellcheck="false">
+      <label for="dset-ou" class="dset-make">Create it in (OU)</label><select id="dset-ou" class="dset-make"></select>
+      <label for="dset-scope">Delegate permissions on</label><select id="dset-scope"></select>
+    </div>
+    <p class="hint" id="dset-note2"></p>
+  </div>
+  <p class="hint" data-can="windows.view">No domain, or you only need local accounts? Those need no service account: <a href="#local" id="dset-local">open Local accounts</a>.</p>
+  <p class="hint problem" id="dset-problem" hidden></p>
+  <div class="dialog-foot"><button type="button" id="dset-back" hidden>Back</button><button type="button" id="dset-cancel">Cancel</button><button type="button" class="primary" id="dset-go">Next</button></div>
+</dialog>
+
+<!-- Where new AD accounts go, and stopping using Rabbid Lab's account. -->
+<dialog class="dialog" id="adset-dialog" aria-labelledby="adset-title">
+  <h2 id="adset-title">Service account</h2>
+  <p class="dialog-lead" id="adset-lead"></p>
+  <div class="form"><label for="adset-ou">Default OU for new users and groups</label><select id="adset-ou"></select></div>
+  <div class="rows"><div class="row still"><span class="t"><b id="adset-stop-title">Disconnect the service account</b><span id="adset-stop-text">Rabbid Lab deletes the stored password and stops using the account. The account and its permissions stay in AD until you delete them.</span></span>
+    <button type="button" class="danger" id="adset-stop"><svg><use href="#i-x"/></svg>Disconnect</button></div></div>
+  <p class="hint problem" id="adset-problem" hidden></p>
+  <div class="dialog-foot"><button type="button" id="adset-cancel">Cancel</button><button type="button" class="primary" id="adset-save">Save</button></div>
+</dialog>
+
+<!-- A new account: in Active Directory (data-kind="ad") or Windows on one computer (data-kind="pc"). -->
+<dialog class="dialog wide" id="new-dialog" aria-labelledby="acct-title">
+  <h2 id="acct-title">New account</h2>
+  <p class="dialog-lead" id="new-lead"></p>
+  <div class="form two">
+    <div class="dir-only"><label for="new-first">First name</label><input id="new-first" autocomplete="off"></div>
+    <div class="dir-only"><label for="new-last">Last name</label><input id="new-last" autocomplete="off"></div>
+    <div class="dir-only"><label for="new-display">Display name</label><input id="new-display" autocomplete="off" maxlength="64"></div>
+    <div><label for="new-user">Username</label><input id="new-user" autocomplete="off" spellcheck="false" maxlength="20"></div>
+    <div class="pc-only"><label for="new-full">Full name</label><input id="new-full" autocomplete="off"></div>
+    <div class="dir-only"><label for="new-mail">Email</label><input id="new-mail" type="email" autocomplete="off"></div>
+    <div class="dir-only"><label for="new-job">Job title</label><input id="new-job" autocomplete="off"></div>
+    <div class="dir-only wide"><label for="new-ou">Put it in</label><select id="new-ou"></select></div>
+    <div class="wide"><label for="new-about">Description</label><input id="new-about" autocomplete="off"></div>
+  </div>
+  <p class="form-label">Password</p>
+  <div class="seg pw-mode" id="new-pwmode"><button type="button" data-pw="make" aria-pressed="true">Make one for me</button><button type="button" data-pw="type" aria-pressed="false">Type one</button></div>
+  <input class="pick pw-typed" id="new-password" type="password" autocomplete="new-password" placeholder="The password rules there apply" hidden>
+  <div class="ticks">
+    <label class="tick"><input type="checkbox" id="new-change" checked>Change it at the first sign-in</label>
+    <label class="tick"><input type="checkbox" id="new-never">The password never expires</label>
+    <label class="tick dir-only"><input type="checkbox" id="new-on" checked>Turn the account on now</label>
+  </div>
+  <p class="form-label">Groups</p>
+  <div class="role-picks pc-only" id="new-pc-groups"></div>
+  <div class="dir-only">
+    <div class="chips-in" id="new-dir-groups"></div>
+    <div class="adder"><label class="find"><svg><use href="#i-search"/></svg><input type="search" id="new-group-find" data-find placeholder="Add to a group" aria-label="Add to a group" autocomplete="off" spellcheck="false"></label>
+      <div class="drop" data-drop hidden></div></div>
+  </div>
+  <p class="hint problem" id="new-problem" hidden></p>
+  <div class="dialog-foot"><button type="button" id="new-cancel">Cancel</button><button type="button" class="primary" id="new-go">Make the account</button></div>
+</dialog>
+
+<!-- A new password for an AD or Windows account. -->
+<dialog class="dialog" id="reset-dialog" aria-labelledby="reset-title">
+  <h2 id="reset-title">Set a password</h2>
+  <p class="dialog-lead" id="reset-lead"></p>
+  <div class="seg pw-mode" id="reset-pwmode"><button type="button" data-pw="make" aria-pressed="true">Make one for me</button><button type="button" data-pw="type" aria-pressed="false">Type one</button></div>
+  <input class="pick pw-typed" id="reset-password" type="password" autocomplete="new-password" placeholder="The password rules there apply" hidden>
+  <div class="ticks"><label class="tick"><input type="checkbox" id="reset-change" checked>Change it at the next sign-in</label></div>
+  <p class="hint problem" id="reset-problem" hidden></p>
+  <div class="dialog-foot"><button type="button" id="reset-cancel">Cancel</button><button type="button" class="primary" id="reset-go">Set the password</button></div>
+</dialog>
+
+<!-- A password Rabbid Lab made, shown this once. -->
+<dialog class="dialog" id="secret-dialog" aria-labelledby="secret-title">
+  <h2 id="secret-title">The password</h2>
+  <p class="dialog-lead" id="secret-lead"></p>
+  <div class="key-row"><code id="secret-text"></code><button type="button" class="small" id="secret-copy">Copy</button></div>
+  <p class="hint">It's shown this once. Rabbid Lab doesn't keep it.</p>
+  <p class="hint warn" id="secret-warning" hidden></p>
+  <div class="dialog-foot"><button type="button" class="primary" id="secret-done">Done</button></div>
+</dialog>
+
+<!-- Turning on the AD Recycle Bin, with an Enterprise Admin's sign-in (not kept). -->
+<dialog class="dialog" id="recycle-dialog" aria-labelledby="recycle-title">
+  <h2 id="recycle-title">Turn on the AD Recycle Bin</h2>
+  <p class="dialog-lead">Deleted users, groups and computers can then be brought back as they were. It's for the whole forest and can't be turned off again.</p>
+  <div class="form">
+    <label for="rb-user">An Enterprise Admin's username</label><input id="rb-user" autocomplete="username" spellcheck="false">
+    <label for="rb-password">Password</label><input id="rb-password" type="password" autocomplete="current-password">
+  </div>
+  <p class="hint">It's used for this once and not kept.</p>
+  <p class="hint problem" id="rb-problem" hidden></p>
+  <div class="dialog-foot"><button type="button" id="rb-cancel">Cancel</button><button type="button" class="primary" id="rb-go">Turn it on</button></div>
+</dialog>
+
+<!-- A new Active Directory group. -->
+<dialog class="dialog" id="group-dialog" aria-labelledby="group-title">
+  <h2 id="group-title">New group</h2>
+  <p class="dialog-lead" id="group-lead"></p>
+  <div class="form">
+    <label for="grp-name">Group name</label><input id="grp-name" maxlength="64" autocomplete="off" spellcheck="false">
+    <label for="grp-about">Description</label><input id="grp-about" maxlength="200" autocomplete="off">
+    <label for="grp-ou">Put it in</label><select id="grp-ou"></select>
+    <label for="grp-scope">Group scope</label><select id="grp-scope"><option value="global">Global</option><option value="universal">Universal</option><option value="local">Domain local</option></select>
+  </div>
+  <p class="form-label">Group type</p>
+  <div class="seg pw-mode" id="grp-type"><button type="button" data-type="security" aria-pressed="true">Security</button><button type="button" data-type="distribution" aria-pressed="false">Distribution</button></div>
+  <p class="hint problem" id="grp-problem" hidden></p>
+  <div class="dialog-foot"><button type="button" id="grp-cancel">Cancel</button><button type="button" class="primary" id="grp-go">Make the group</button></div>
+</dialog>
+
+<!-- A link: pasting the address fills in the rest from the site. -->
+<dialog class="dialog wide" id="link-dialog" aria-labelledby="link-title">
+  <h2 id="link-title">Add a link</h2>
+  <div class="seg sn-seg" id="ln-mode"><button type="button" data-mode="one">One link</button><button type="button" data-mode="many">A list</button></div>
+  <p class="dialog-lead" id="ln-dlead">Paste the address and Rabbid Lab fills in the rest from the site. Change anything you like.</p>
+  <div class="form two">
+    <div class="wide many"><label for="ln-many">Addresses</label><textarea id="ln-many" rows="9" spellcheck="false" autocomplete="off" placeholder="192.168.2.1&#10;https://192.168.2.19&#10;truenas.amw.com, nas.amw.com; printer.amw.com"></textarea></div>
+    <div class="wide one"><label for="ln-url">Address</label>
+      <div class="url-row"><input id="ln-url" placeholder="https://192.168.2.23 or truenas.amw.com" autocomplete="off" spellcheck="false"><button type="button" class="small" id="ln-look">Fill in</button></div></div>
+    <div class="one"><label for="ln-name">Name</label><input id="ln-name" maxlength="60" autocomplete="off"></div>
+    <div><label for="ln-group">Group</label><select id="ln-group"></select>
+      <input id="ln-group-new" maxlength="40" placeholder="Name of the new group" aria-label="Name of the new group" autocomplete="off" hidden></div>
+    <div class="wide one"><label for="ln-about">Detail</label><input id="ln-about" maxlength="200" placeholder="What it is, or what's on it" autocomplete="off"></div>
+    <div class="wide one"><label>Icon</label>
+      <div class="icon-row"><span class="lic big" id="ln-icon"></span><button type="button" class="small" id="ln-icon-site" title="Use the site's own icon">Site</button>
+        <label class="button small" for="ln-icon-file" title="Upload a picture of your own">Upload</label><input type="file" id="ln-icon-file" accept="image/*" hidden><button type="button" class="small" id="ln-icon-clear" title="Show the first letter of its name">Letter</button><button type="button" class="small" id="ln-icon-none" title="Show no icon at all">None</button></div></div>
+  </div>
+  <p class="hint" id="ln-looking" hidden></p>
+  <p class="hint problem" id="ln-dproblem" hidden></p>
+  <div class="dialog-foot"><button type="button" class="danger" id="ln-delete" hidden><svg><use href="#i-trash"/></svg>Delete</button><span class="grow"></span>
+    <button type="button" id="ln-cancel">Cancel</button><button type="button" class="primary" id="ln-save">Add the link</button></div>
+</dialog>
+
+<!-- A sensor: what to check, where, how often, and which alert rule it uses. -->
+<dialog class="dialog wide" id="sensor-dialog" aria-labelledby="sd-title">
+  <h2 id="sd-title">Add a sensor</h2>
+  <p class="dialog-lead">Pick what to check, then where. Checks are made from this server.</p>
+  <div class="form two">
+    <div class="wide"><label>Check</label>
+      <div class="seg sn-seg" id="sd-kind"><button type="button" data-kind="ping">Ping</button><button type="button" data-kind="port">Port</button><button type="button" data-kind="web">Web page</button>
+        <button type="button" data-kind="dns">DNS lookup</button><button type="button" data-kind="cert">Certificate</button></div></div>
+    <div id="sd-target-box"><label for="sd-target" id="sd-target-label">Address</label><input id="sd-target" maxlength="300" autocomplete="off" spellcheck="false"></div>
+    <div id="sd-port-box"><label for="sd-port">Port</label><input id="sd-port" inputmode="numeric" maxlength="5" autocomplete="off"></div>
+    <div id="sd-server-box"><label for="sd-server">DNS server to ask</label><input id="sd-server" maxlength="250" placeholder="The one this server uses" autocomplete="off" spellcheck="false"></div>
+    <div><label for="sd-name">Name</label><input id="sd-name" maxlength="60" autocomplete="off"></div>
+    <div><label for="sd-group">Group</label><select id="sd-group"></select>
+      <input id="sd-group-new" maxlength="40" placeholder="Name of the new group" aria-label="Name of the new group" autocomplete="off" hidden></div>
+    <div><label for="sd-every">Check every</label><select id="sd-every"><option value="30">30 seconds</option><option value="60">Minute</option><option value="300">5 minutes</option><option value="3600">Hour</option></select></div>
+    <div><label for="sd-rule">Alert rule</label><select id="sd-rule"></select></div>
+  </div>
+  <p class="hint" id="sd-found" hidden></p>
+  <p class="hint problem" id="sd-problem" hidden></p>
+  <div class="dialog-foot"><button type="button" class="danger" id="sd-delete" hidden><svg><use href="#i-trash"/></svg>Delete</button><button type="button" id="sd-try">Check now</button><span class="grow"></span>
+    <button type="button" id="sd-cancel">Cancel</button><button type="button" class="primary" id="sd-save">Add the sensor</button></div>
+</dialog>
+
+<!-- One sensor: how it is, its last hour, and what happened to it. -->
+<dialog class="dialog wide" id="sview-dialog" aria-labelledby="sv-title">
+  <h2 id="sv-title"></h2>
+  <p class="dialog-lead" id="sv-what"></p>
+  <div class="sv-now" id="sv-now"><span class="big-ic" id="sv-icon"><svg><use href="#i-activity"/></svg></span><div><b id="sv-state"></b><span id="sv-note"></span></div></div>
+  <div class="sv-stats"><div><b id="sv-ms"></b><span>Reply now</span></div><div><b id="sv-up24"></b><span>Up, last 24 hours</span></div><div><b id="sv-up7"></b><span>Up, last 7 days</span></div></div>
+  <div class="sv-chart"><h3>Reply time, last hour</h3><div id="sv-line"></div></div>
+  <div class="rows sv-events" id="sv-events"></div>
+  <p class="hint problem" id="sv-problem" hidden></p>
+  <div class="dialog-foot"><button type="button" id="sv-pause" data-can="sensors.edit">Pause</button><button type="button" id="sv-check" data-can="sensors.edit">Check now</button><span class="grow"></span>
+    <button type="button" id="sv-change" data-can="sensors.edit">Change</button><button type="button" class="primary" id="sv-close">Close</button></div>
+</dialog>
+
+<!-- Alert rules: how long something is down before the email, picked per sensor. A change is saved as it's made. -->
+<dialog class="dialog wide" id="rules-dialog" aria-labelledby="rl-title">
+  <h2 id="rl-title">Alert rules</h2>
+  <p class="dialog-lead">How long something has to be down before Rabbid Lab emails you. Each sensor uses one of these.</p>
+  <div class="rcards" id="rl-cards"></div>
+  <div class="form">
+    <label>Email when it has been down for</label><div class="seg sn-seg" id="rl-after"></div>
+    <label>While it is still down</label><div class="seg sn-seg" id="rl-again"></div>
+    <label>When it comes back</label><div class="seg sn-seg" id="rl-back"></div>
+  </div>
+  <p class="hint" id="rl-note"></p>
+  <p class="hint problem" id="rl-problem" hidden></p>
+  <div class="dialog-foot"><button type="button" id="rl-mail">Email settings</button><span class="grow"></span><button type="button" class="primary" id="rl-close">Done</button></div>
+</dialog>
+
+<!-- Email: the mail server alerts go through, and who gets them. -->
+<dialog class="dialog wide" id="mail-dialog" aria-labelledby="ml-title">
+  <h2 id="ml-title">Email settings</h2>
+  <p class="dialog-lead">The mail server Rabbid Lab sends alerts through, and who gets them.</p>
+  <div class="form two">
+    <div class="wide"><label>Send through</label>
+      <div class="seg sn-seg" id="ml-provider"><button type="button" data-provider="gmail">Gmail</button><button type="button" data-provider="m365">Microsoft 365</button><button type="button" data-provider="smtp">Another mail server</button></div></div>
+    <div data-for="smtp"><label for="ml-host">Mail server</label><input id="ml-host" maxlength="200" placeholder="smtp.example.com" autocomplete="off" spellcheck="false"></div>
+    <div data-for="smtp"><label for="ml-port">Port</label><input id="ml-port" inputmode="numeric" maxlength="5" autocomplete="off"></div>
+    <div data-for="smtp"><label for="ml-security">Encryption</label><select id="ml-security"><option value="starttls">STARTTLS</option><option value="none">None</option></select></div>
+    <div data-for="smtp gmail"><label for="ml-user" id="ml-user-label">Username</label><input id="ml-user" maxlength="200" autocomplete="off" spellcheck="false"></div>
+    <div data-for="smtp gmail"><label for="ml-password" id="ml-password-label">Password</label><input id="ml-password" type="password" autocomplete="new-password"></div>
+    <div data-for="m365"><label for="ml-tenant">Tenant</label><input id="ml-tenant" maxlength="100" placeholder="contoso.onmicrosoft.com or the tenant ID" autocomplete="off" spellcheck="false"></div>
+    <div data-for="m365"><label for="ml-client">Application (client) ID</label><input id="ml-client" maxlength="40" autocomplete="off" spellcheck="false"></div>
+    <div data-for="m365"><label for="ml-secret">Client secret</label><input id="ml-secret" type="password" autocomplete="new-password"></div>
+    <div data-for="smtp m365"><label for="ml-from">From</label><input id="ml-from" maxlength="200" placeholder="rabbidlab@example.com" autocomplete="off" spellcheck="false"></div>
+    <div class="wide"><label for="ml-to">Send alerts to</label><input id="ml-to" placeholder="you@example.com, someone@example.com" autocomplete="off" spellcheck="false"></div>
+  </div>
+  <p class="hint" id="ml-help"></p>
+  <p class="hint note" id="ml-done" hidden></p>
+  <p class="hint problem" id="ml-problem" hidden></p>
+  <div class="dialog-foot"><button type="button" id="ml-test">Send a test email</button><span class="grow"></span><button type="button" id="ml-cancel">Cancel</button><button type="button" class="primary" id="ml-save">Save</button></div>
+</dialog>
+
+<!-- A new group, for links or sensors, empty until something is put in it. -->
+<dialog class="dialog" id="lgroup-dialog" aria-labelledby="lgroup-title">
+  <h2 id="lgroup-title">New group</h2>
+  <p class="dialog-lead">A group can be empty until you put something in it.</p>
+  <div class="form"><label for="lg-name">Name</label><input id="lg-name" maxlength="40" placeholder="Network, Servers, Media…" autocomplete="off"></div>
+  <p class="hint problem" id="lg-problem" hidden></p>
+  <div class="dialog-foot"><button type="button" id="lg-cancel">Cancel</button><button type="button" class="primary" id="lg-save">Create group</button></div>
+</dialog>
+
+<!-- Open all, when the browser stopped some of the tabs: how to allow them, and the rest opened from here. -->
+<dialog class="dialog" id="lopen-dialog" aria-labelledby="lopen-title">
+  <h2 id="lopen-title"></h2>
+  <p class="dialog-lead">A browser lets a page open one tab for each click until pop-ups are allowed for it. Allow them for this console once, and Open all opens a whole group at a time from then on.</p>
+  <ol class="lopen-steps">
+    <li>Click the <b>pop-up blocked</b> icon at the right end of the address bar.</li>
+    <li>Pick <b>Always allow pop-ups and redirects from</b> <code id="lopen-site"></code>, then <b>Done</b>.</li>
+    <li>Click <b id="lopen-again"></b> below.</li>
+  </ol>
+  <p class="hint">No icon there? In the browser's settings, search for <b>Pop-ups and redirects</b> and add <code id="lopen-site2"></code> under <b>Allowed to send pop-ups and use redirects</b>.</p>
+  <div class="dialog-foot"><button type="button" id="lopen-close">Close</button><button type="button" class="primary" id="lopen-go"></button></div>
+</dialog>
+
+<!-- Links: how often each link is checked, and how long one goes unanswered before its dot turns red. -->
+<dialog class="dialog wide" id="lcheck-dialog" aria-labelledby="lcheck-title">
+  <h2 id="lcheck-title">Links settings</h2>
+  <p class="dialog-lead">How often Rabbid Lab asks each link whether it answers, and how long one has to be quiet before it shows as down. A change is saved as you make it.</p>
+  <div class="form">
+    <label>Check each link every</label><div class="seg sn-seg" id="lc-every"></div>
+    <label>Show a link as down after no answer for</label><div class="seg sn-seg" id="lc-after"></div>
+    <label>Export and import</label>
+    <div class="lc-file"><a class="button" id="lc-export" href="/api/links/export" download><svg><use href="#i-download"/></svg>Export</a><label class="button" for="lc-import-file"><svg><use href="#i-upload"/></svg>Import</label><input type="file" id="lc-import-file" accept=".json,application/json" hidden></div>
+  </div>
+  <p class="hint" id="lc-note"></p>
+  <p class="hint">Links are checked while the console is open on this page. For checks around the clock, with email when something goes down, add a <a href="#sensors" id="lc-sensors">sensor</a>.</p>
+  <p class="hint">Export saves every link with its icon, the groups in their order and these settings as one file. Import adds what's in a file like it beside what's here: a link whose address is already here is left as it is.</p>
+  <p class="hint" id="lc-done" role="status" hidden></p>
+  <p class="hint problem" id="lc-problem" hidden></p>
+  <div class="dialog-foot"><span class="grow"></span><button type="button" class="primary" id="lc-close">Done</button></div>
+</dialog>
+
+<!-- Uninstalling a seat's client. On the computer it is locked until someone allows it here. -->
+<dialog class="dialog" id="seat-dialog" aria-labelledby="seat-title">
+  <h2 id="seat-title"></h2>
+  <p class="dialog-lead">The client can't be uninstalled on its computer until you allow it here. That keeps anything on the computer from removing it on its own.</p>
+  <div class="rows">
+    <div class="row still"><span class="t"><b>Uninstall it now</b><span>The client takes itself off the computer within a minute. The computer then shows as Offline: remove it from the list.</span></span>
+      <button type="button" class="danger" id="seat-now">Uninstall</button></div>
+    <div class="row still"><span class="t"><b id="seat-allow-title">Allow uninstalling for an hour</b><span>Someone at the computer can then uninstall it from the client's window or from Windows' installed apps.</span></span>
+      <button type="button" class="small" id="seat-allow">Allow</button></div>
+  </div>
+  <p class="hint problem" id="seat-problem" hidden></p>
+  <div class="dialog-foot"><button type="button" class="primary" id="seat-close">Done</button></div>
+</dialog>
+
+<!-- Support info: what someone helping needs to know, to copy. -->
+<dialog class="dialog wide" id="about-dialog" aria-labelledby="about-title">
+  <h2 id="about-title">Support info</h2>
+  <p class="dialog-lead">Copy this into your message when you ask for help. It has no passwords in it.</p>
+  <pre class="about-text" id="about-text"></pre>
+  <div class="dialog-foot"><button type="button" id="about-close">Close</button><button type="button" class="primary" id="about-copy">Copy</button></div>
+</dialog>
+
+<!-- An update under way: the flask mid screen, saying what it's doing (console.js). -->
+<dialog class="dialog update-dialog" id="update-dialog" aria-labelledby="updlg-title">
+  <div id="updlg-flask"></div>
+  <h2 id="updlg-title"></h2>
+  <p class="updlg-now" id="updlg-now" role="status"></p>
+  <div class="ubar"><i id="updlg-fill"></i></div>
+  <div class="steps"><span id="updlg-download">Downloading</span><span id="updlg-install">Installing</span><span id="updlg-back">Back on the new version</span></div>
+  <p class="hint" id="updlg-say"></p>
+  <div class="dialog-foot"><button type="button" class="link" id="updlg-hide">Hide</button></div>
+</dialog>
+
+<!-- Are you sure: deleting, mostly. -->
+<dialog class="dialog" id="sure-dialog" aria-labelledby="sure-title">
+  <h2 id="sure-title"></h2>
+  <p class="dialog-lead" id="sure-lead"></p>
+  <div class="dialog-foot"><button type="button" id="sure-cancel">Cancel</button><button type="button" class="danger solid" id="sure-go"></button></div>
+</dialog>
+</body>
+</html>

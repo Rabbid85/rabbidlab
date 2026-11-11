@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SignPath artifact configuration "installers": the installer and the uninstaller. -->
+<artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
+  <parameters>
+    <parameter name="version" required="true" />
+  </parameters>
+  <zip-file>
+    <pe-file-set product-name="Rabbid Lab" product-version="${version}">
+      <include path="RabbidLab-Setup-${version}.exe" />
+      <include path="RabbidLab-Uninstall-${version}.exe" />
+      <for-each>
+        <authenticode-sign />
+      </for-each>
+    </pe-file-set>
+  </zip-file>
+</artifact-configuration>

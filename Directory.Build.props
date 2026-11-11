@@ -1,0 +1,6 @@
+<Project>
+  <!-- Every file's product version is exactly <Version> (no "+commit" suffix): code signing checks it. -->
+  <PropertyGroup>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+  </PropertyGroup>
+</Project>

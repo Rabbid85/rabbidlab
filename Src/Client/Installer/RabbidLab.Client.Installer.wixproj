@@ -1,0 +1,17 @@
+<Project Sdk="WixToolset.Sdk/5.0.2">
+
+  <!--
+    RabbidLab-Client.msi: the client for one computer, for Group Policy, Intune or a double-click. WiX 5 (MS-RL).
+    Built by Installer\build.ps1 with -p:Version and -p:ClientDir (the client's build output).
+  -->
+  <PropertyGroup>
+    <OutputName>RabbidLab-Client</OutputName>
+    <Version Condition="'$(Version)' == ''">0.0.0</Version>
+    <ClientDir Condition="'$(ClientDir)' == ''">..\RabbidLab.Client\bin\Release</ClientDir>
+    <DefineConstants>Version=$(Version);ClientDir=$(ClientDir);Icon=..\..\RabbidLab.Server\rabbidlab.ico</DefineConstants>
+    <InstallerPlatform>x64</InstallerPlatform>
+    <!-- ICE61 warns about AllowSameVersionUpgrades, which Package.wxs sets on purpose. -->
+    <SuppressIces>ICE61</SuppressIces>
+  </PropertyGroup>
+
+</Project>

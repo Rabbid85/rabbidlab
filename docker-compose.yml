@@ -1,0 +1,17 @@
+# Rabbid Lab with Docker Compose:  docker compose up -d   then open http://<this machine>:8420
+services:
+  rabbidlab:
+    build: .
+    image: rabbidlab
+    container_name: rabbidlab
+    restart: unless-stopped
+    ports:
+      - "8420:8420"
+    volumes:
+      # Everything Rabbid Lab keeps: settings, the activity log, downloaded updates. Back this up.
+      - rabbidlab:/data
+    environment:
+      - TZ=America/New_York
+
+volumes:
+  rabbidlab:

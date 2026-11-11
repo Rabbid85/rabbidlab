@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Signs Rabbid Lab releases with the offline release key (see Program.cs). Runs on the publisher's PC only. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseAppHost>false</UseAppHost>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.0" />
+  </ItemGroup>
+
+  <!-- The public key Rabbid Lab trusts, so a signature or a restored key is checked against exactly that. -->
+  <ItemGroup>
+    <Compile Include="..\..\Src\Utilities\RabbidLab.Updater\Release.cs" Link="Release.cs" />
+  </ItemGroup>
+
+</Project>

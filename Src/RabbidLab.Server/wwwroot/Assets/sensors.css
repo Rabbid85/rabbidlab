@@ -1,0 +1,108 @@
+/* Sensors: the Overview's hero with its squares as the sensors, then Links' groups of tiles, or the same as a table. */
+#page-sensors > * { min-width: 0; }
+.sn-body { padding-bottom: 26px; }
+.sn-body .table { max-width: 100%; }
+.sn-body .ln-tools .seg { margin-left: auto; }
+.sn-body .ln-tools .seg button { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 11px; font-size: 12.5px; }
+.sn-body .ln-tools .seg svg { width: 14px; height: 14px; }
+.hero.bad { background: radial-gradient(900px 420px at 88% 10%, rgba(255, 107, 125, .26), transparent 60%), radial-gradient(600px 300px at 70% 90%, rgba(158, 89, 207, .14), transparent 60%), #0C0D16; }
+.hero-actions button:not(.primary) { background: #1A1C28; }
+
+/* A square is a sensor, in its group's colour. It beats when it's checked; one that stops answering turns red and stops. */
+.hero .tile.sen { display: grid; place-items: center; padding: 0; border: 0; background: var(--g, #C9CCDA); pointer-events: auto; cursor: pointer; color: rgba(11, 12, 20, .78);
+  font: 800 12px "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; box-shadow: 0 6px 18px rgba(0, 0, 0, .35);
+  transition: left .4s, top .4s, width .3s, height .3s; animation: sn-beat var(--t, 3s) ease-out infinite; animation-delay: var(--d, 0s); }
+.hero .tile.sen:hover { z-index: 3; background: var(--g, #C9CCDA); filter: brightness(1.15); }
+.hero .tile.sen.s-down:hover { background: var(--red); }
+.hero .tile.sen.s-paused:hover { background: none; }
+.hero .tile.sen.tiny { font-size: 0; }
+@keyframes sn-beat { 0%, 14%, 100% { scale: 1; } 5% { scale: 1.17; } }
+.hero .tile.sen.s-new { opacity: .55; animation: none; }
+.hero .tile.sen.s-paused { border: 1.5px dashed #6D7290; background: none; color: #6D7290; box-shadow: none; animation: none; }
+.hero .tile.sen.s-warn { box-shadow: 0 0 0 2px #0C0D16, 0 0 0 4px var(--amber); }
+.hero .tile.sen.s-down { z-index: 2; background: var(--red); color: #fff; animation: none; box-shadow: 0 0 0 2px #0C0D16, 0 0 0 4px var(--red), 0 0 34px rgba(255, 107, 125, .7); }
+.hero .tile.sen.s-down::after { content: ""; position: absolute; inset: -4px; border: 2px solid var(--red); border-radius: inherit; animation: sn-ring 1.5s ease-out infinite; }
+@keyframes sn-ring { from { scale: 1; opacity: .9; } to { scale: 2.1; opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .hero .tile.sen, .hero .tile.sen.s-down::after { animation: none; } }
+@media (max-width: 1180px) { .hero .tile.sen { display: none; } }
+.hero-new.bad { border-color: rgba(255, 107, 125, .5); }
+.hero-new.bad .eyebrow { color: var(--red); }
+.hero-new.warn { border-color: rgba(242, 190, 107, .5); }
+.hero-new.warn .eyebrow { color: var(--amber); }
+
+/* Cards: a link's tile made bigger, with how it is now and its last hour as a line. */
+.ltiles.sn-tiles { grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; }
+.sn-tile { cursor: pointer; }
+.sn-tile .lgo { width: 100%; gap: 15px; min-height: 84px; padding: 16px 150px 8px 16px; border: 0; background: none; font: inherit; text-align: left; cursor: pointer; }
+.sn-tile .lic { width: 50px; height: 50px; border-radius: 13px; }
+.sn-tile .lic.letter b { font-size: 22px; }
+.sn-tile .lt b { font-size: 16.5px; }
+.sn-tile .lt span { font-size: 13.5px; }
+.sn-tile .lt code { color: #7B80A0; font: 13px "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; font-variant-numeric: tabular-nums; }
+.sn-tile .lstate { top: 20px; right: 18px; width: 9px; height: 9px; }
+.lstate.warn { background: var(--amber); box-shadow: 0 0 0 3px rgba(242, 190, 107, .14); }
+.sn-now { position: absolute; top: 38px; right: 16px; max-width: 138px; overflow: hidden; color: var(--title); font: 650 15px "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+  font-variant-numeric: tabular-nums; white-space: nowrap; text-overflow: ellipsis; pointer-events: none; }
+.sn-tile.s-down { border-color: rgba(255, 107, 125, .5); background: linear-gradient(180deg, rgba(255, 107, 125, .07), transparent 80%), var(--panel); }
+.sn-tile.s-down .sn-now { color: var(--red); }
+.sn-tile.s-warn .sn-now { color: var(--amber); }
+.sn-tile.s-paused .sn-now, .sn-tile.s-new .sn-now { color: #6D7290; }
+.sn-chart { position: relative; height: 42px; margin: 0 16px 14px; border-bottom: 1px solid #1A1D2B; pointer-events: none; }
+.sn-chart i { position: absolute; right: -3px; width: 7px; height: 7px; margin-top: -3.5px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 18%, transparent); }
+.sn-line { display: block; width: 100%; height: 100%; overflow: visible; }
+.sn-line path { vector-effect: non-scaling-stroke; fill: none; stroke: var(--c); stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; }
+.sn-line path.gone { stroke: var(--red); stroke-dasharray: 2 4; }
+.sn-line path.idle { stroke: #3A3E55; stroke-dasharray: 2 4; }
+.s-up { --c: #5FD4A0; } .s-down { --c: #FF6B7D; } .s-warn { --c: #F2BE6B; } .s-paused, .s-new { --c: #5E6380; }
+
+/* Grid: the console's table. A heading is dragged by its name to another place and by its right edge to another width. */
+.tr.sn { grid-template-columns: var(--sn-cols); min-width: var(--sn-min, 820px); min-height: 52px; cursor: pointer; }
+.tr.sn.th { min-height: 36px; cursor: default; user-select: none; }
+.tr.sn:not(.th):hover { background: #151827; }
+.tr.sn.s-down { background: rgba(255, 107, 125, .06); }
+.tr.sn > * { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.sn-th { position: relative; display: flex; align-items: center; height: 36px; cursor: grab; }
+.sn-th.drop-left { box-shadow: inset 2px 0 0 var(--accent-line); }
+.sn-th.drop-right { box-shadow: inset -2px 0 0 var(--accent-line); }
+.sn-size { position: absolute; top: 6px; right: -8px; bottom: 6px; width: 10px; cursor: col-resize; }
+.sn-size::after { content: ""; position: absolute; top: 4px; bottom: 4px; left: 4px; width: 2px; border-radius: 2px; background: #2A2D3E; }
+.sn-size:hover::after, .sn-sizing .sn-size::after { background: var(--accent-line); }
+.tr.sn .state.down { color: var(--red); }
+.tr.sn .state.warn { color: var(--amber); }
+.tr.sn .state.paused, .tr.sn .state.new { color: #5E6380; }
+.tr.sn .nm { display: flex; align-items: center; gap: 11px; }
+.tr.sn .nm .lic { width: 30px; height: 30px; border-radius: 8px; }
+.tr.sn .nm .lic b { display: block; color: var(--c); font-size: 14px; }
+.tr.sn .nm > b { overflow: hidden; text-overflow: ellipsis; }
+.tr.sn .dim { color: #8A8FA8; font-variant-numeric: tabular-nums; }
+.tr.sn .num { color: var(--title); font-weight: 600; font-variant-numeric: tabular-nums; }
+.tr.sn .sn-chart { height: 28px; margin: 0 8px 0 0; border: 0; overflow: visible; }
+.tr.sn .rchip { height: 22px; font-size: 11.5px; }
+.rchip .dot { border-radius: 50%; background: var(--c); }
+
+/* The dialogs. */
+.dialog .seg.sn-seg { margin: 2px 0 6px; }
+.dialog .seg.sn-seg button { height: 32px; padding: 0 13px; font-size: 13px; }
+#sensor-dialog .dialog-foot, #sview-dialog .dialog-foot, #rules-dialog .dialog-foot, #mail-dialog .dialog-foot { align-items: center; }
+#sensor-dialog .grow, #sview-dialog .grow, #rules-dialog .grow, #mail-dialog .grow { flex: 1; }
+#sensor-dialog .primary, #mail-dialog .primary { display: inline-flex; align-items: center; gap: 7px; }
+.sv-now { display: flex; align-items: center; gap: 14px; margin: 12px 0 14px; padding: 14px 16px; border: 1px solid color-mix(in srgb, var(--c) 45%, transparent); border-radius: 12px; background: color-mix(in srgb, var(--c) 7%, transparent); }
+.sv-now .big-ic { background: color-mix(in srgb, var(--c) 12%, transparent); color: var(--c); }
+.sv-now b { display: block; color: var(--title); font-size: 15px; }
+.sv-now div span { color: var(--muted); font-size: 13px; }
+.sv-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.sv-stats div { padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+.sv-stats b { display: block; color: var(--title); font: 750 20px/1.2 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; font-variant-numeric: tabular-nums; }
+.sv-stats span { color: var(--muted); font-size: 12px; }
+.sv-chart { margin-top: 12px; padding: 12px 16px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+.sv-chart h3 { margin: 0 0 8px; color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.sv-chart .sn-chart { height: 84px; margin: 0; }
+.sv-events { max-height: 230px; margin-top: 12px; overflow-y: auto; }
+.sv-events .row { min-height: 44px; padding: 8px 14px; cursor: default; }
+.sv-events .row i { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+.sv-events time { flex: none; width: 150px; color: #6D7290; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+#rules-dialog .rcards { grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 12px 0 14px; }
+#rules-dialog .rcard { cursor: pointer; text-align: left; font: inherit; }
+#rules-dialog .rcard[aria-pressed="true"] { border-color: var(--c); background: color-mix(in srgb, var(--c) 6%, var(--panel)); }
+#rules-dialog .rcard b i { width: 9px; height: 9px; border-radius: 50%; background: var(--c); }
+#rules-dialog .rcard p { min-height: 34px; }

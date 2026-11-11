@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The Rabbid Lab client: one RabbidLab-Client.exe that runs as the RabbidLabClient service (joins the server, checks in
+    every minute, updates itself) and as the tray icon for whoever is signed in to Windows. .NET Framework 4.7.2 because
+    every Windows 10 and 11 already has it, so the MSI (Src\Client\Installer) installs nothing else.
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net472</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <AssemblyName>RabbidLab-Client</AssemblyName>
+    <RootNamespace>RabbidLab.Client</RootNamespace>
+    <Version>0.0.0</Version>
+    <Product>Rabbid Lab</Product>
+    <Company>Rabbid</Company>
+    <AssemblyTitle>Rabbid Lab Client</AssemblyTitle>
+    <ApplicationIcon>..\..\RabbidLab.Server\rabbidlab.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- 64-bit on 64-bit Windows, so it reads the registry Group Policy writes. -->
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <Prefer32Bit>false</Prefer32Bit>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.Security" />
+    <Reference Include="System.ServiceProcess" />
+    <Reference Include="System.DirectoryServices" />
+    <Reference Include="System.DirectoryServices.AccountManagement" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Windows accounts, made and changed by the same code here and in the server. -->
+    <Compile Include="..\..\Utilities\Shared\WindowsUsers.cs" Link="Shared\WindowsUsers.cs" />
+  </ItemGroup>
+
+</Project>

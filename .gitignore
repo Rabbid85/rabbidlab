@@ -1,0 +1,23 @@
+# OS and editors
+Thumbs.db
+Desktop.ini
+.DS_Store
+.vs/
+.vscode/
+.idea/
+*.swp
+
+# Build output
+bin/
+obj/
+artifacts/
+dist/
+build/
+node_modules/
+
+# Local data and secrets
+data/
+*.log
+.env
+*.local.json
+*.user

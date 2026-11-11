@@ -1,0 +1,149 @@
+/* Users: the same layout as Roles and people, with Active Directory and each computer down the left. */
+.users-page .lib-bar h2, .dir-page .lib-bar h2, .attrs-page .lib-bar h2 { margin-right: 0; }
+.bar-note { margin-right: auto; overflow: hidden; color: #5E6380; font-size: 12.5px; white-space: nowrap; text-overflow: ellipsis; }
+.users-page .lib-bar .primary { display: inline-flex; align-items: center; gap: 7px; }
+.users-page .lib-bar .primary:disabled { opacity: .45; }
+.side a .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.side-list { display: flex; flex-direction: column; gap: 2px; }
+.side a.pc small { margin-left: auto; }
+.side a .pcdot { flex: none; width: 7px; height: 7px; margin-left: auto; border-radius: 50%; background: #3A3E55; }
+.side a.pc small + .pcdot { margin-left: 6px; }
+.side a .pcdot.on { background: var(--ok); }
+.side a .pcdot.warn { background: var(--amber); }
+.hint.why, .hint.warn { color: var(--amber); }
+.hint.note { color: var(--ok); }
+#us-loading { color: var(--muted); }
+
+/* An account's state, as small chips. */
+.uchip { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 7px; border: 1px solid var(--line-strong); border-radius: 6px; color: var(--muted);
+  font-size: 11.5px; font-weight: 650; white-space: nowrap; }
+.uchip svg { width: 11px; height: 11px; }
+.uchip.ember { border-color: rgba(255, 106, 69, .45); background: rgba(255, 106, 69, .08); color: #FF8A3D; }
+.uchip.amber { border-color: rgba(242, 190, 107, .45); background: rgba(242, 190, 107, .08); color: var(--amber); }
+.uchip.off { border-style: dashed; }
+.uchip.ok { border-color: rgba(95, 212, 160, .4); color: var(--ok); }
+.gchip { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border: 1px solid var(--line-strong); border-radius: 6px; background: #161927;
+  color: var(--text); font-size: 12px; font-weight: 600; white-space: nowrap; }
+.gchip:hover .chip-x { display: grid; }
+
+/* The card for one account. */
+.ucard { width: 390px; }
+.ucard .pcard-head span { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
+.ufacts { display: grid; grid-template-columns: 104px minmax(0, 1fr); gap: 4px 10px; margin: 12px 0 0; font-size: 12.5px; }
+.ufacts dt { color: var(--muted); font-weight: 600; }
+.ufacts dd { margin: 0; overflow-wrap: anywhere; }
+.ucard .hint { font-size: 12.5px; }
+.ucard .adder { margin-top: 8px; }
+.ucard .adder .drop { top: 38px; }
+.ucard .pcard-acts { flex-wrap: wrap; }
+.ucard .pcard-acts button { display: inline-flex; align-items: center; gap: 6px; }
+.ucard .pcard-acts svg { width: 14px; height: 14px; }
+.gpick { height: 26px; padding: 0 6px; border: 1px dashed var(--line-strong); border-radius: 6px; background: none; color: var(--muted); font: inherit; font-size: 12px; }
+
+/* The dialogs. */
+.form.two { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px 14px; }
+.form.two > div { display: grid; gap: 6px; align-content: start; }
+.form.two > div > label { margin-top: 0; }
+.form.two > .wide { grid-column: 1 / -1; }
+.form select { height: 38px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 8px; background: #0C0E17; color: var(--title); font: inherit; font-size: 14px; }
+.form select:focus { outline: none; border-color: var(--accent-line); }
+.dialog .seg.pw-mode { margin: 8px 0 0; }
+.dialog .seg.pw-mode button { height: 30px; padding: 0 12px; font-size: 13px; }
+.dialog input.pw-typed { width: 100%; margin-top: 8px; }
+.ticks { display: grid; gap: 6px; margin-top: 10px; }
+.dialog .tick { margin: 0; }
+.dialog .chips-in { margin: 8px 0; }
+.dialog .adder .drop { top: 40px; }
+button.danger.solid { border: 0; background: #C8384F; color: #fff; font-weight: 600; }
+button.danger.solid:hover { background: #DB4860; }
+#secret-text { user-select: all; }
+
+/* This computer isn't a seat: get the client and connect it. */
+.herebar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; padding: 10px 36px; border-bottom: 1px solid rgba(255, 106, 69, .35);
+  background: linear-gradient(90deg, rgba(232, 84, 47, .12), rgba(232, 84, 47, .03)); color: var(--text); font-size: 13.5px; }
+.herebar > svg { flex: none; width: 18px; height: 18px; color: #FF8A3D; }
+.herebar > span { flex: 1; min-width: 220px; }
+.herebar a.button { gap: 7px; padding: 6px 12px; font-size: 13px; }
+.herebar a.button svg { width: 14px; height: 14px; }
+@media (max-width: 980px) {
+  .form.two { grid-template-columns: minmax(0, 1fr); }
+  .ucard { width: min(390px, calc(100vw - 40px)); }
+}
+
+/* Active Directory: the views down the left, with counts, and a table per page. */
+.dir-needs { margin-bottom: 14px; }
+.dir-needs .ustatus-text { flex: 1; min-width: 260px; }
+.dir-needs .ustatus-text span { display: block; max-width: 680px; margin-top: 3px; line-height: 1.5; }
+.dir-page .lib-bar .primary, .dir-page .lib-bar .small { display: inline-flex; align-items: center; gap: 7px; }
+.dir-page .lib-bar svg { width: 15px; height: 15px; }
+.side small.tone.red { color: var(--red); font-weight: 700; }
+.side small.tone.amber { color: var(--amber); font-weight: 700; }
+.dir-acct { display: flex; align-items: center; gap: 8px; margin-top: 18px; padding: 10px; border-top: 1px solid var(--line); color: #5E6380; font-size: 12px; }
+.dir-acct > svg { flex: none; width: 14px; height: 14px; }
+.dir-acct span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.adt .tr { min-width: 760px; cursor: pointer; }
+.adt .tr.th { cursor: default; }
+.adt .tr:not(.th):hover, .adt .tr:not(.th):focus-visible { background: #151827; outline: none; }
+.adt.users .tr { grid-template-columns: minmax(200px, 1.5fr) minmax(130px, 1fr) minmax(120px, 1fr) 110px 150px; }
+.adt.groups .tr { grid-template-columns: minmax(220px, 1.8fr) 150px 110px 90px minmax(140px, 1fr); }
+.adt.computers .tr { grid-template-columns: minmax(200px, 1.4fr) minmax(170px, 1.2fr) minmax(140px, 1fr) 110px 150px; }
+.adt .tr > div { min-width: 0; }
+.adt .who .pic { width: 30px; height: 30px; }
+.two { min-width: 0; }
+.two b, .two small { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.two b { color: var(--title); font-size: 13.5px; font-weight: 600; }
+.two small { color: #5E6380; font-size: 11.5px; }
+.num { font-variant-numeric: tabular-nums; }
+.ubadge { display: inline-flex; align-items: center; height: 22px; margin-right: 4px; padding: 0 8px; border-radius: 999px; font-size: 11.5px; font-weight: 650; white-space: nowrap; }
+.ubadge.green { background: rgba(95, 212, 160, .12); color: var(--ok); }
+.ubadge.red { background: rgba(255, 107, 125, .14); color: var(--red); }
+.ubadge.amber { background: rgba(242, 190, 107, .14); color: var(--amber); }
+.ubadge.grey { background: #1A1D2B; color: var(--muted); }
+.mlist { display: grid; gap: 2px; max-height: 240px; overflow-y: auto; }
+.mrow { display: flex; align-items: center; gap: 10px; padding: 5px 4px; border-radius: 8px; }
+.mrow:hover { background: #181B29; }
+.mrow .two { flex: 1; }
+.pic.small { width: 26px; height: 26px; border-radius: 8px; font-size: 10.5px; }
+.pic.small svg { width: 14px; height: 14px; }
+
+/* Domain settings, the AD audit and the Recycle Bin. */
+.adt.domain .tr { grid-template-columns: minmax(240px, 1.6fr) minmax(150px, 1.2fr) minmax(150px, 1fr) 160px; }
+.adt.audit .tr { grid-template-columns: 110px 100px minmax(200px, 1.4fr) minmax(140px, 1fr) minmax(160px, 1.2fr); }
+.adt.recycle .tr { grid-template-columns: minmax(220px, 1.6fr) 110px minmax(160px, 1.2fr) 130px; }
+.ubadge.grey + .uchip, .ubadge + .uchip { margin-left: 2px; }
+.dir-banner { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 12px; padding: 11px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); font-size: 13.5px; }
+.dir-banner > svg { flex: none; width: 17px; height: 17px; color: #FF8A3D; }
+.dir-banner > span { flex: 1; min-width: 220px; }
+.dir-banner b { color: var(--title); }
+.dir-banner .warn { flex-basis: 100%; color: var(--amber); }
+
+/* The org chart: boxes in a tree, or by department when nobody has a manager. */
+.page.org-page { max-width: 1240px; }
+.org { overflow-x: auto; padding-bottom: 20px; }
+.obox { display: inline-flex; align-items: center; gap: 10px; min-width: 200px; max-width: 260px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); text-align: left; }
+.obox.hit { border-color: var(--accent-line); box-shadow: 0 0 0 2px rgba(255, 106, 69, .25); }
+.obox .pic { width: 32px; height: 32px; }
+.obox .two { flex: 1; }
+.ocount { padding: 1px 7px; border-radius: 999px; background: #1A1D2B; color: var(--muted); font-size: 11px; font-weight: 700; }
+.otree, .otree ul { margin: 0; padding: 0; list-style: none; }
+.otree ul { margin-left: 28px; padding-left: 18px; border-left: 1px solid var(--line-strong); }
+.otree li { position: relative; padding: 6px 0; }
+.otree ul > li::before { content: ""; position: absolute; left: -18px; top: 28px; width: 16px; border-top: 1px solid var(--line-strong); }
+.org.depts { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; }
+.odept { display: grid; align-content: start; gap: 8px; }
+.odept h3, .odept.alone h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 2px; color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.odept h3 small { color: #5E6380; letter-spacing: 0; }
+.odept.alone { display: flex; flex-wrap: wrap; margin-top: 22px; }
+.odept.alone h3 { flex-basis: 100%; }
+
+/* The attribute browser. */
+.attrs-side .crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-bottom: 10px; font-size: 12.5px; }
+.attrs-side .crumbs a { color: var(--muted); }
+.attrs-side .crumbs a:last-child { color: var(--title); font-weight: 600; }
+.attrs-side .crumbs span { color: #3A3E55; }
+.attrs-side a svg:last-child:not(:first-child) { width: 13px; height: 13px; margin-left: auto; color: #3A3E55; }
+#at-items { display: flex; flex-direction: column; gap: 2px; max-height: 70vh; overflow-y: auto; }
+.at-find { margin-bottom: 10px; }
+.table.attrs .tr { grid-template-columns: minmax(180px, .6fr) minmax(0, 1.4fr); min-width: 0; min-height: 0; align-items: start; padding-top: 7px; padding-bottom: 7px; }
+.table.attrs .tr .mono { color: var(--muted); }
+.table.attrs .vals { display: grid; gap: 2px; min-width: 0; font-size: 13px; overflow-wrap: anywhere; }

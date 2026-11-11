@@ -1,0 +1,23 @@
+# Rabbid Lab Dev with Docker Compose, beside the release:  docker compose -f docker-compose.dev.yml up -d   then open
+# http://<this machine>:8421. The dev build: its own container, data volume and port, and a DEV tag beside the name
+# (built with DEV=true). Everything else is as docker-compose.yml.
+name: rabbidlab-dev
+services:
+  rabbidlab-dev:
+    build:
+      context: .
+      args:
+        DEV: "true"
+    image: rabbidlab-dev
+    container_name: rabbidlab-dev
+    restart: unless-stopped
+    ports:
+      - "8421:8420"
+    volumes:
+      # Everything Rabbid Lab Dev keeps, apart from the release's.
+      - rabbidlab-dev:/data
+    environment:
+      - TZ=America/New_York
+
+volumes:
+  rabbidlab-dev:

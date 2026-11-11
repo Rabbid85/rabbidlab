@@ -1,0 +1,65 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Rabbid Lab's installer: one RabbidLab-Setup-<version>.exe with the console inside it (payload.zip,
+    made by Installer\build.ps1). .NET Framework 4.7.2 because every Windows Server 2019 and newer already has
+    it, so the installer runs before anything else is installed. The console it installs brings its own .NET.
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net472</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>RabbidLab-Setup</AssemblyName>
+    <RootNamespace>RabbidLab.Setup</RootNamespace>
+    <Version>0.3.0</Version>
+    <Product>Rabbid Lab</Product>
+    <Company>Rabbid</Company>
+    <AssemblyTitle>Rabbid Lab Setup</AssemblyTitle>
+    <ApplicationIcon>..\..\Src\RabbidLab.Server\rabbidlab.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <!-- -p:Preview=true: the same window without asking for administrator rights, for looking at the pages
+       (build.ps1 -Preview). It refuses to install anything. -->
+  <PropertyGroup Condition="'$(Preview)' == 'true'">
+    <ApplicationManifest>app.preview.manifest</ApplicationManifest>
+    <DefineConstants>$(DefineConstants);PREVIEW</DefineConstants>
+  </PropertyGroup>
+
+  <!-- -p:Uninstaller=true: RabbidLab-Uninstall.exe, which only removes Rabbid Lab (everything, by default),
+       without the console inside it, so it's small. Downloadable on its own from the GitHub release. -->
+  <PropertyGroup Condition="'$(Uninstaller)' == 'true'">
+    <AssemblyName>RabbidLab-Uninstall</AssemblyName>
+    <AssemblyTitle>Rabbid Lab Uninstaller</AssemblyTitle>
+    <DefineConstants>$(DefineConstants);UNINSTALLER</DefineConstants>
+  </PropertyGroup>
+
+  <!-- -p:Dev=true: Rabbid Lab Dev, the dev build that installs beside the release (Edition.cs), with its
+       own icon. Setup RabbidLab-Dev-Setup.exe, and with -p:Uninstaller=true, RabbidLab-Dev-Uninstall.exe. -->
+  <PropertyGroup Condition="'$(Dev)' == 'true'">
+    <AssemblyName>$(AssemblyName.Replace('RabbidLab-', 'RabbidLab-Dev-'))</AssemblyName>
+    <Product>Rabbid Lab Dev</Product>
+    <AssemblyTitle>$(AssemblyTitle.Replace('Rabbid Lab', 'Rabbid Lab Dev'))</AssemblyTitle>
+    <ApplicationIcon>..\..\Src\RabbidLab.Server\rabbidlab-dev.ico</ApplicationIcon>
+    <DefineConstants>$(DefineConstants);DEV</DefineConstants>
+  </PropertyGroup>
+
+
+  <ItemGroup>
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem" />
+    <Reference Include="System.ServiceProcess" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.DirectoryServices" />
+    <Reference Include="System.Management" />
+    <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.Xml.Linq" />
+
+    <EmbeddedResource Include="$(PayloadZip)" LogicalName="payload.zip" Condition="'$(PayloadZip)' != ''" />
+  </ItemGroup>
+
+</Project>

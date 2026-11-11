@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<policyDefinitionResources xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" revision="1.0" schemaVersion="1.0"
+                           xmlns="http://schemas.microsoft.com/GroupPolicy/2006/07/PolicyDefinitions">
+  <displayName>Rabbid Lab</displayName>
+  <description>Settings for the Rabbid Lab client.</description>
+  <resources>
+    <stringTable>
+      <string id="RabbidLab">Rabbid Lab</string>
+      <string id="Client">Client</string>
+      <string id="Server">Server address</string>
+      <string id="Server_Help">The Rabbid Lab server this computer connects to, such as https://rabbidlab.example.com:8420.
+
+The Rabbid Lab client joins it, waits to be let in under Seats, then checks in every minute. This setting wins over the SERVER given to the installer.</string>
+      <string id="CertificateFingerprint">Server certificate fingerprint</string>
+      <string id="CertificateFingerprint_Help">The SHA-256 fingerprint of the server's HTTPS certificate, from Seats, Add computers, on the server.
+
+Needed only when the server uses a certificate these computers don't already trust, such as the self-signed one Rabbid Lab makes when it's installed. With it, the client trusts that one certificate and no other. Leave it not configured when the server's certificate comes from your own certificate authority.</string>
+      <string id="AllowAccountChanges">Allow account changes</string>
+      <string id="AllowAccountChanges_Help">Whether people in Rabbid Lab may make, change and delete this computer's own Windows accounts, such as adding a local administrator.
+
+Not configured or enabled: they may, if their roles allow it. Disabled: the client turns every account change down, and Rabbid Lab says Group Policy turned them off.</string>
+    </stringTable>
+    <presentationTable>
+      <presentation id="Server">
+        <textBox refId="Server">
+          <label>Address:</label>
+        </textBox>
+      </presentation>
+      <presentation id="CertificateFingerprint">
+        <textBox refId="CertificateFingerprint">
+          <label>Fingerprint:</label>
+        </textBox>
+      </presentation>
+    </presentationTable>
+  </resources>
+</policyDefinitionResources>

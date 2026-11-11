@@ -1,0 +1,6 @@
+# LF everywhere, as the Docker build and the shell scripts expect; Git converts on Windows checkouts
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff2 binary

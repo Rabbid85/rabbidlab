@@ -1,0 +1,56 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <!-- Runs anywhere .NET does: in Docker (Linux), and on Windows as a Windows service. What only Windows has (DPAPI, the
+         event log, installing its own updates) is used only there. -->
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Version>1.0.0</Version>
+    <Product>Rabbid Lab</Product>
+    <Company>Rabbid</Company>
+    <Authors>Anthony Wiles</Authors>
+    <!-- On Windows, the program's icon: Setup's shortcuts and the Settings > Apps entry show it. -->
+    <ApplicationIcon>rabbidlab.ico</ApplicationIcon>
+    <!-- No web.config: it runs on its own web server, never under IIS. -->
+    <IsTransformWebConfigDisabled>true</IsTransformWebConfigDisabled>
+  </PropertyGroup>
+
+  <!-- -p:Dev=true: Rabbid Lab Dev, the build that installs beside the release (Product.cs): its own name, port (8421), data
+       folder and service, and the release's look with a DEV tag (Installer\dev.sh), with its own icon. -->
+  <PropertyGroup Condition="'$(Dev)' == 'true'">
+    <Product>Rabbid Lab Dev</Product>
+    <ApplicationIcon>rabbidlab-dev.ico</ApplicationIcon>
+    <DefineConstants>$(DefineConstants);DEV</DefineConstants>
+  </PropertyGroup>
+
+  <!-- -p:TestBuild=true (Installer\build.ps1 on a PC, without -Release): a test build, which the release with the same
+       version replaces (Product.Test). -->
+  <ItemGroup Condition="'$(TestBuild)' == 'true'">
+    <AssemblyMetadata Include="TestBuild" Value="true" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="DnsClient" Version="1.8.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.12" />
+    <PackageReference Include="Novell.Directory.Ldap.NETStandard" Version="4.0.0" />
+    <PackageReference Include="System.DirectoryServices.AccountManagement" Version="10.0.12" />
+    <PackageReference Include="System.DirectoryServices.Protocols" Version="10.0.12" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The icon as its own file for the shortcuts: Defender can stop Explorer reading it out of a new, unknown exe. -->
+    <None Update="$(ApplicationIcon)" Link="RabbidLab.ico" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Windows accounts, made and changed by the same code here and in the client. -->
+    <Compile Include="..\Utilities\Shared\WindowsUsers.cs" Link="Shared\WindowsUsers.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Updating itself: the update engine, on its own (Update.cs is Rabbid Lab's side of it). -->
+    <ProjectReference Include="..\Utilities\RabbidLab.Updater\RabbidLab.Updater.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,98 @@
+<!--
+  The Rabbid Lab client for one computer: RabbidLab-Client.exe in Program Files\Rabbid Lab Client, the RabbidLabClient
+  service that joins the server and checks in, and the tray icon at every sign-in. Quiet with Group Policy and Intune:
+    msiexec /i RabbidLab-Client.msi /qn SERVER=https://rabbidlab.amw.com:8420 FINGERPRINT=AB12...
+  Group Policy settings (the Rabbid Lab template) win over SERVER and FINGERPRINT.
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package Name="Rabbid Lab Client" Manufacturer="Rabbid" Version="$(Version)" UpgradeCode="C344F3AC-01E7-4D01-AB7E-C0BB0DF38689" Scope="perMachine" Compressed="yes">
+    <!-- The same version built again replaces the one installed, not a second entry beside it. -->
+    <MajorUpgrade AllowSameVersionUpgrades="yes" DowngradeErrorMessage="A newer Rabbid Lab Client is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+    <Icon Id="rabbidlab.ico" SourceFile="$(Icon)" />
+    <Property Id="ARPPRODUCTICON" Value="rabbidlab.ico" />
+    <Property Id="ARPURLINFOABOUT" Value="https://github.com/Rabbid85/rabbidlab" />
+    <Property Id="SERVER" Secure="yes" />
+    <Property Id="FINGERPRINT" Secure="yes" />
+    <!-- What was given before, read back so a repair or an update with nothing on the command line keeps it. -->
+    <Property Id="SAVEDSERVER">
+      <RegistrySearch Id="SavedServer" Root="HKLM" Key="SOFTWARE\Rabbid Lab\Client" Name="Server" Type="raw" Bitness="always64" />
+    </Property>
+    <Property Id="SAVEDFINGERPRINT">
+      <RegistrySearch Id="SavedFingerprint" Root="HKLM" Key="SOFTWARE\Rabbid Lab\Client" Name="CertificateFingerprint" Type="raw" Bitness="always64" />
+    </Property>
+    <!-- The fingerprint first: the saved one is for the saved server, never for a new SERVER. -->
+    <SetProperty Action="RememberFingerprint" Id="FINGERPRINT" Value="[SAVEDFINGERPRINT]" After="AppSearch" Sequence="both" Condition="NOT SERVER AND NOT FINGERPRINT AND SAVEDFINGERPRINT" />
+    <SetProperty Action="RememberServer" Id="SERVER" Value="[SAVEDSERVER]" After="RememberFingerprint" Sequence="both" Condition="NOT SERVER AND SAVEDSERVER" />
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="Rabbid Lab Client">
+        <Component Id="Program">
+          <File Id="ClientExe" Source="$(ClientDir)\RabbidLab-Client.exe" KeyPath="yes">
+            <Shortcut Id="StartMenu" Directory="ProgramMenuFolder" Name="Rabbid Lab Client" Description="Shows whether this computer is connected to Rabbid Lab."
+                      WorkingDirectory="INSTALLFOLDER" Advertise="yes" Icon="rabbidlab.ico" />
+          </File>
+          <File Id="ClientConfig" Source="$(ClientDir)\RabbidLab-Client.exe.config" />
+          <ServiceInstall Name="RabbidLabClient" DisplayName="Rabbid Lab Client" Description="Connects this computer to its Rabbid Lab server."
+                          Type="ownProcess" Start="auto" ErrorControl="normal" Account="LocalSystem" Arguments="--service" Vital="yes" />
+          <ServiceControl Id="ClientService" Name="RabbidLabClient" Start="install" Stop="both" Remove="uninstall" Wait="yes" />
+          <!-- The tray icon for everyone who signs in. -->
+          <RegistryValue Root="HKLM" Key="SOFTWARE\Microsoft\Windows\CurrentVersion\Run" Name="Rabbid Lab Client" Type="string" Value="&quot;[#ClientExe]&quot; --tray" />
+          <!-- rabbidlab://join links: Connect this computer, from the server's page. -->
+          <RegistryKey Root="HKLM" Key="SOFTWARE\Classes\rabbidlab">
+            <RegistryValue Type="string" Value="URL:Rabbid Lab Client" />
+            <RegistryValue Name="URL Protocol" Type="string" Value="" />
+            <RegistryValue Key="DefaultIcon" Type="string" Value="&quot;[#ClientExe]&quot;,0" />
+            <RegistryValue Key="shell\open\command" Type="string" Value="&quot;[#ClientExe]&quot; &quot;%1&quot;" />
+          </RegistryKey>
+        </Component>
+      </Directory>
+    </StandardDirectory>
+
+    <!-- The client's own files (status.json, its identity, downloaded updates): only SYSTEM and Administrators can change
+         them, Users can read. The service sets the same when it starts (Settings.cs). -->
+    <StandardDirectory Id="CommonAppDataFolder">
+      <Directory Id="DATAFOLDER" Name="Rabbid Lab Client">
+        <Component Id="Data" Guid="C50F5271-42B9-4A88-AB3A-004265B6621B" Bitness="always64">
+          <CreateFolder>
+            <PermissionEx Id="DataFolderAccess" Sddl="D:PAI(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;0x1200a9;;;BU)" />
+          </CreateFolder>
+        </Component>
+      </Directory>
+    </StandardDirectory>
+
+    <!-- What the installer was given, or was given before (SAVEDSERVER). Kept through updates and uninstalls (Permanent),
+         and not written when there has never been a SERVER. -->
+    <Component Id="Settings" Directory="INSTALLFOLDER" Condition="SERVER" Permanent="yes" Bitness="always64">
+      <RegistryKey Root="HKLM" Key="SOFTWARE\Rabbid Lab\Client">
+        <RegistryValue Name="Server" Type="string" Value="[SERVER]" KeyPath="yes" />
+        <RegistryValue Name="CertificateFingerprint" Type="string" Value="[FINGERPRINT]" />
+      </RegistryKey>
+    </Component>
+
+    <StandardDirectory Id="ProgramMenuFolder" />
+
+    <!-- Uninstalling is locked once the client has joined a server, until someone allows it in Rabbid Lab (Seats). The
+         service writes RemovalAllowed when the server says so, and when there is no server (Removal.cs). An update
+         replacing this version is never held up. -->
+    <Property Id="REMOVALALLOWED">
+      <RegistrySearch Id="RemovalAllowed" Root="HKLM" Key="SOFTWARE\Rabbid Lab\Client" Name="RemovalAllowed" Type="raw" Bitness="always64" />
+    </Property>
+    <CustomAction Id="RemovalLocked" Error="Uninstalling the Rabbid Lab client is locked on this computer. An admin has to allow it in Rabbid Lab first: open Seats, click this computer's Uninstall, and choose Allow uninstalling." />
+    <!-- The tray icon straight away for whoever installed it by hand; a quiet install shows it at the next sign-in. -->
+    <CustomAction Id="StartTray" FileRef="ClientExe" ExeCommand="--tray" Return="asyncNoWait" Impersonate="yes" />
+    <InstallExecuteSequence>
+      <Custom Action="RemovalLocked" After="AppSearch" Condition="REMOVE=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE AND NOT REMOVALALLOWED" />
+      <Custom Action="StartTray" After="InstallFinalize" Condition="NOT REMOVE AND UILevel &gt; 2" />
+    </InstallExecuteSequence>
+    <InstallUISequence>
+      <Custom Action="RemovalLocked" After="AppSearch" Condition="REMOVE=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE AND NOT REMOVALALLOWED" />
+    </InstallUISequence>
+
+    <Feature Id="Client" Title="Rabbid Lab Client">
+      <ComponentRef Id="Program" />
+      <ComponentRef Id="Settings" />
+      <ComponentRef Id="Data" />
+    </Feature>
+  </Package>
+</Wix>

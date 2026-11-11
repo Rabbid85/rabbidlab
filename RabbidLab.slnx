@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/Src/">
+    <Project Path="Src/RabbidLab.Server/RabbidLab.Server.csproj" />
+  </Folder>
+  <Folder Name="/Src/Client/">
+    <Project Path="Src/Client/RabbidLab.Client/RabbidLab.Client.csproj" />
+  </Folder>
+  <Folder Name="/Src/Utilities/">
+    <Project Path="Src/Utilities/RabbidLab.Updater/RabbidLab.Updater.csproj" />
+  </Folder>
+  <Folder Name="/Tests/">
+    <Project Path="Tests/RabbidLab.Tests/RabbidLab.Tests.csproj" />
+  </Folder>
+</Solution>

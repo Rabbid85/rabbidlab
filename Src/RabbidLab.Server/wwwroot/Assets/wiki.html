@@ -1,0 +1,437 @@
+<!-- The wiki's articles, read by wiki.js: one <article> each, with its group, title and key (its address is #wiki/<key>). -->
+
+<article data-key="install" data-group="Getting started" data-title="Install Rabbid Lab">
+  <p>Rabbid Lab runs on one machine (the server) and everyone uses it in a browser. Put it on a machine that stays on.</p>
+  <h3>On Windows</h3>
+  <ol>
+    <li>Download <code>RabbidLab-Setup-&lt;version&gt;.exe</code> from the latest release on GitHub.</li>
+    <li>Run it and say yes to the admin prompt.</li>
+    <li>Pick the folder and shortcuts, then the address (port 8420 unless you change it), then the HTTPS certificate. Rabbid Lab can make its own, or use one you already have.</li>
+    <li>Click <b>Install</b>. Rabbid Lab installs as a Windows service and starts straight away.</li>
+    <li>Open <code>https://localhost:8420</code> on the server, or <code>https://&lt;server name&gt;:8420</code> from another computer.</li>
+  </ol>
+  <p class="tip">Running Setup again updates Rabbid Lab and keeps its settings.</p>
+  <h3>In Docker</h3>
+  <ol>
+    <li>Run <code>docker compose up -d</code> in the repository folder.</li>
+    <li>Open <code>http://&lt;host&gt;:8420</code>. Everything Rabbid Lab keeps goes in the <code>rabbidlab</code> volume.</li>
+  </ol>
+  <p>Next: <a href="#wiki/setup">set it up</a>.</p>
+</article>
+
+<article data-key="setup" data-group="Getting started" data-title="First sign-in and setup">
+  <p>The first time anyone opens Rabbid Lab, it asks how people sign in. Do this right after installing: until it's done, anyone who can reach the port can do it.</p>
+  <h3>With Active Directory</h3>
+  <ol>
+    <li>Pick <b>Active Directory</b>.</li>
+    <li>Check the domain, and leave the domain controller on Automatic unless you want a particular one.</li>
+    <li>Sign in with your own domain account. You become an Administrator, and everyone in the domain can sign in as a User.</li>
+  </ol>
+  <h3>With a local account</h3>
+  <ol>
+    <li>Pick <b>Local account</b>.</li>
+    <li>Make a username and password. That account is the first Administrator.</li>
+  </ol>
+  <p class="tip">Who gets what is up to you afterwards, under <a href="#wiki/roles">Roles</a>.</p>
+</article>
+
+<article data-key="around" data-group="Getting started" data-title="Find your way around">
+  <p>Everything is in the rail down the left. You only see what your roles allow.</p>
+  <ul>
+    <li><b>Lab:</b> <a href="#overview">Overview</a> and <a href="#links">Links</a>, the sites in your lab.</li>
+    <li><b>Active Directory:</b> <a href="#ad/users">Users</a>, <a href="#ad/groups">Groups</a> and <a href="#ad/computers">Computers</a> in your domain.</li>
+    <li><b>Config:</b> <a href="#seats">Seats</a> (the computers with the client), <a href="#local">Local accounts</a> on those computers, and <a href="#people">Roles and people</a>.</li>
+    <li><b>Help:</b> this wiki, What's new, and GitHub.</li>
+    <li><b>Settings</b> at the bottom: updates and the activity log.</li>
+  </ul>
+  <p>Your name in the top right shows how you signed in and has Sign out. <b>Collapse</b> at the bottom shrinks the rail to icons.</p>
+</article>
+
+<article data-key="add-computer" data-group="Computers" data-title="Add a computer">
+  <p>A computer shows up under Seats once it has the Rabbid Lab client. There's no key: the client only needs the server's address. New computers wait until someone lets them in.</p>
+  <h3>From the computer itself (easiest)</h3>
+  <ol>
+    <li>On that computer, open Rabbid Lab in a browser and sign in.</li>
+    <li>The bar at the top says it isn't in Seats yet. Click <b>Download the client</b> and run the MSI.</li>
+    <li>Click <b>Connect this computer</b>. The client opens with this server's address filled in.</li>
+    <li>Check the address, click <b>Connect</b>, and OK the admin prompt.</li>
+    <li><a href="#wiki/let-in">Let it in</a> under Seats.</li>
+  </ol>
+  <h3>Quietly, from a command line or Intune</h3>
+  <ol>
+    <li>Open <a href="#seats">Seats</a> and click <b>Add computers</b>.</li>
+    <li>Copy the install line. It has this server's address, and the certificate fingerprint if the computers don't trust its certificate yet.</li>
+    <li>Run it on the computer, or paste it into Intune as the install command.</li>
+  </ol>
+  <h3>With Group Policy</h3>
+  <ol>
+    <li>In <b>Add computers</b>, download the MSI and the Group Policy template.</li>
+    <li>Copy the template into PolicyDefinitions (the central store, or C:\Windows\PolicyDefinitions).</li>
+    <li>In a GPO: Computer Configuration, Policies, Software Settings, Software Installation, assign the MSI.</li>
+    <li>In the same GPO: Administrative Templates, Rabbid Lab, Client. Set <b>Server address</b>, and <b>Server certificate fingerprint</b> if you need it.</li>
+  </ol>
+  <p class="tip">Group Policy wins over anything the installer or Connect was given.</p>
+</article>
+
+<article data-key="let-in" data-group="Computers" data-title="Let computers in, or remove them">
+  <ol>
+    <li>Open <a href="#seats">Seats</a>. New computers show as <b>Waiting</b>.</li>
+    <li>Click <b>Let in</b> on the computer. From then on it's a seat.</li>
+    <li>To take a computer off, click <b>Remove</b>. If its client is still installed, it joins again and waits.</li>
+  </ol>
+  <p>Don't want to let each one in? In <b>Add computers</b>, turn off <b>New computers wait for an admin</b> and they join straight away.</p>
+  <p class="tip">The All, Online, Offline, Waiting and Older client buttons above the list filter it.</p>
+</article>
+
+<article data-key="client" data-group="Computers" data-title="The client on a computer">
+  <p>The client is a small Windows service with a tray icon. It checks in every minute, says who is signed in, keeps itself on the server's version, and makes the account changes you ask for under <a href="#local">Local accounts</a>.</p>
+  <ul>
+    <li><b>Its window:</b> click the tray icon, or open <b>Rabbid Lab Client</b> from the Start menu. It shows whether the computer is connected, to which server, who is signed in to Windows, both versions and the last check-in.</li>
+    <li><b>When the icon shows:</b> as soon as the client is installed by hand. After a quiet install (Intune, Group Policy) it shows at the next sign-in.</li>
+    <li><b>No server yet?</b> The window has <b>Connect to a server</b>.</li>
+    <li><b>Stopping account changes on some computers:</b> in the Group Policy template, set <b>Allow account changes</b> to Disabled.</li>
+  </ul>
+  <p>If a seat won't take changes, see <a href="#wiki/seat-trouble">A seat that won't take changes</a>.</p>
+</article>
+
+<article data-key="client-uninstall" data-group="Computers" data-title="Uninstall the client">
+  <p>Once a client has joined a server, uninstalling it on the computer is locked: Windows refuses, from installed apps and from the client's own window, until you allow it here. A client that never joined a server isn't locked.</p>
+  <ol>
+    <li>Open <a href="#seats">Seats</a> and click <b>Uninstall</b> on the computer.</li>
+    <li><b>Uninstall</b> has the client take itself off within a minute. The computer then shows as Offline: click <b>Remove</b> to take it off the list.</li>
+    <li>Or click <b>Allow</b> to let someone at the computer uninstall it for the next hour, from the client's window or from Windows' installed apps. <b>Lock again</b> ends that early.</li>
+  </ol>
+  <p>The lock stops the ordinary ways of removing the client. Someone with administrator rights on the computer who sets out to tear it out by hand still can, and the seat then shows as Offline.</p>
+</article>
+
+<article data-key="dir-setup" data-group="Active Directory" data-title="Set up the AD service account">
+  <p>Rabbid Lab makes every Active Directory change as a dedicated service account, <code>svc-rabbidlab</code>. Its password is long, random and stored encrypted on the server. You set this up once.</p>
+  <h3>Create a new service account</h3>
+  <ol>
+    <li>Open <a href="#ad/users">Users</a> and click <b>Set up</b>.</li>
+    <li>On <b>Create a new service account</b>, enter a domain admin username and password. They're only used to create the service account and aren't saved.</li>
+    <li>Click <b>Next</b>. Pick the OU to create the account in, and where to delegate permissions: the whole domain or one OU.</li>
+    <li>Click <b>Create service account</b>.</li>
+  </ol>
+  <p>The service account gets Full Control over user, group and computer objects in that scope, the same as the Delegation of Control wizard.</p>
+  <h3>Use an existing service account</h3>
+  <p>On <b>Use an existing service account</b>, enter its username and password. It needs permission to create and manage users, groups and computers in the scope you pick.</p>
+  <h3>Change it later</h3>
+  <p>The gear at the bottom of the views on any Active Directory page sets the default OU for new users and groups, and has <b>Disconnect</b>. Disconnecting deletes the stored password; the account and its permissions stay in AD until you delete them in Active Directory Users and Computers.</p>
+  <p class="tip">Admin accounts protected by AdminSDHolder (Domain Admins and the like) can be viewed but not changed by the service account.</p>
+</article>
+
+<article data-key="dir-new-user" data-group="Active Directory" data-title="Make a user">
+  <ol>
+    <li>Open <a href="#ad/users">Users</a> and click <b>New user</b>.</li>
+    <li>Type the first and last name. The display name and username fill themselves in; change them if you like.</li>
+    <li>Pick where it goes, and add an email, job title and description if you want.</li>
+    <li>Leave <b>Make one for me</b> for the password, or pick <b>Type one</b>.</li>
+    <li>Keep <b>Change it at the first sign-in</b> on, so the person picks their own.</li>
+    <li>Add groups if you want, then click <b>Make the account</b>.</li>
+    <li>Copy the password Rabbid Lab shows. It's shown once and not kept.</li>
+  </ol>
+</article>
+
+<article data-key="dir-password" data-group="Active Directory" data-title="Reset a password or unlock someone">
+  <ol>
+    <li>Open <a href="#ad/users/locked">Users, Locked out</a>, or find the person in <a href="#ad/users">All users</a>.</li>
+    <li>Click them to open their card.</li>
+    <li>Locked out? Click <b>Unlock</b>.</li>
+    <li>Forgot their password? Click <b>Set a password</b>, pick <b>Make one for me</b> or type one, and keep <b>Change it at the next sign-in</b> on. Setting a password unlocks them too.</li>
+    <li>Copy the new password and give it to them.</li>
+  </ol>
+</article>
+
+<article data-key="dir-off" data-group="Active Directory" data-title="Turn accounts off, or delete them">
+  <p>Someone left? Turn their account off first. It can be turned back on; deleting can't be undone.</p>
+  <ol>
+    <li>Open their card in <a href="#ad/users">Users</a>.</li>
+    <li>Click <b>Turn off</b>. They show under <b>Disabled</b>.</li>
+    <li>When you're sure, open the card again and click <b>Delete</b>, then confirm.</li>
+  </ol>
+</article>
+
+<article data-key="dir-groups" data-group="Active Directory" data-title="Groups: make one, and change who's in it">
+  <h3>Make a group</h3>
+  <ol>
+    <li>Open <a href="#ad/groups">Groups</a> and click <b>New group</b>.</li>
+    <li>Name it, pick where it goes, its scope (Global is usual) and its type (Security for permissions, Distribution for email only).</li>
+    <li>Click <b>Make the group</b>.</li>
+  </ol>
+  <h3>Add or take out members</h3>
+  <ol>
+    <li>Click the group. Its card lists who's in it.</li>
+    <li>Type in <b>Add a user, group or computer</b> and click who you want.</li>
+    <li>To take someone out, click the cross beside them.</li>
+  </ol>
+  <p>You can also change a person's groups from their own card in <a href="#ad/users">Users</a>.</p>
+  <p class="tip"><a href="#ad/groups/empty">Empty groups</a> lists groups nobody is in, for tidying up.</p>
+</article>
+
+<article data-key="dir-computers" data-group="Active Directory" data-title="Computers in the domain">
+  <p><a href="#ad/computers">Computers</a> lists every computer account in the domain, servers and workstations.</p>
+  <ol>
+    <li>Open <a href="#ad/computers/stale">Inactive (90+ days)</a> to find computers nobody has used in a while.</li>
+    <li>Click one and <b>Turn off</b> its account. It can't sign anyone in with domain accounts until it's turned back on.</li>
+    <li>Gone for good? <b>Delete</b> it. The computer would have to join the domain again.</li>
+  </ol>
+  <p class="tip">Domain controllers are shown but can't be changed here.</p>
+</article>
+
+<article data-key="dir-views" data-group="Active Directory" data-title="Views and exporting">
+  <p>Each Active Directory page has views down the left, with how many are in each. Views that would be empty stay hidden, so the list shows what needs looking at.</p>
+  <ul>
+    <li><b>Users:</b> Locked out, Expired and Expiring passwords (within 14 days), Inactive (90+ days), Privileged accounts, Password never expires, Never signed in, and more.</li>
+    <li><b>Groups:</b> Security, Distribution, Privileged, Empty groups.</li>
+    <li><b>Computers:</b> Servers, Workstations, Inactive, Disabled.</li>
+  </ul>
+  <p>Find, at the top of the views, narrows the list. <b>Export</b> saves what's on screen as a CSV for Excel.</p>
+</article>
+
+
+<article data-key="dir-domain" data-group="Active Directory" data-title="Domain settings">
+  <p><a href="#ad/domain">Domain settings</a> shows how the domain is set up next to what's recommended. That covers passwords, lockout, Guest, krbtgt, Domain Admins, the functional levels, the domain controllers, the Recycle Bin and LAPS.</p>
+  <ol>
+    <li>Open <a href="#ad/domain/off">Not as recommended</a> first. Those are the ones worth fixing.</li>
+    <li>Click a setting to see why it matters and where it's set (usually the Default Domain Policy).</li>
+    <li>Change it there, then come back: the list reads the domain again each time you open it.</li>
+  </ol>
+  <p class="tip">"Couldn't be read" means Rabbid Lab's account isn't allowed to see that one, which is normal for fine-grained password policies.</p>
+</article>
+
+<article data-key="dir-audit" data-group="Active Directory" data-title="AD audit: what changed">
+  <p><a href="#ad/audit">AD audit</a> lists what changed in Active Directory in the last 30 days, wherever it was done: here, Active Directory Users and Computers, or PowerShell. Sign-ins and other housekeeping are left out, and so is a computer changing its own password.</p>
+  <ol>
+    <li>Pick a view: Last 24 hours, Made, Deleted, Users, and so on.</li>
+    <li>Click a change to see which attributes changed.</li>
+  </ol>
+  <p>When the change was made in Rabbid Lab, it says who made it. For changes made elsewhere, the domain controllers' security logs have that.</p>
+</article>
+
+<article data-key="dir-recycle" data-group="Active Directory" data-title="Recycle Bin: bring back something deleted">
+  <p>With the AD Recycle Bin on, a deleted user, group, computer or OU can come back as it was, groups and all, for 180 days (by default).</p>
+  <h3>Turn it on (once)</h3>
+  <ol>
+    <li>Open <a href="#ad/recycle">Recycle Bin</a>. If it's off, click <b>Turn it on</b>.</li>
+    <li>Sign in with an Enterprise Admin. It's used for this once and not kept.</li>
+  </ol>
+  <p class="tip">It's for the whole forest, and it can't be turned off again. That's how Active Directory works.</p>
+  <h3>Restore something</h3>
+  <ol>
+    <li>Find it in <a href="#ad/recycle">Recycle Bin</a> and click it.</li>
+    <li>Click <b>Restore</b>. It goes back where it was.</li>
+  </ol>
+  <p>Looking in Deleted Objects and restoring take rights only Domain Admins have by default. If Rabbid Lab's account doesn't have them, the page says so.</p>
+</article>
+
+<article data-key="org" data-group="Active Directory" data-title="Org chart">
+  <p>The <a href="#org">Org chart</a> draws who reports to whom from each person's <b>Manager</b> in Active Directory. Find highlights someone.</p>
+  <p>Nobody has a manager set? It shows everyone by department instead. Set Manager on the Organization tab in Active Directory Users and Computers, and the chart draws itself.</p>
+</article>
+
+<article data-key="attrs" data-group="Active Directory" data-title="Attribute browser">
+  <p>The <a href="#attrs">Attribute browser</a> shows the whole domain as folders, and every attribute of whatever you pick.</p>
+  <ol>
+    <li>Click an OU or container to go into it, and the path at the top to come back out.</li>
+    <li>Click a user, group or computer to see its attributes. SIDs, GUIDs, dates and flags are shown in words.</li>
+    <li>Type in <b>Find an attribute or value</b> to narrow the list.</li>
+  </ol>
+  <p class="tip">Passwords, LAPS passwords and BitLocker keys are never shown.</p>
+</article>
+<article data-key="local-new" data-group="Local accounts" data-title="Make a Windows account on a computer">
+  <p>Local accounts are the Windows accounts on one computer: this server, or any seat. You do it all in the browser and no service account is needed: this server makes its own changes, and on a seat the Rabbid Lab client makes them, running as SYSTEM.</p>
+  <ol>
+    <li>Open <a href="#local">Local accounts</a> and pick the computer on the left. A green dot means it's ready.</li>
+    <li>Click <b>New account</b>.</li>
+    <li>Type the username, and a full name and description if you want.</li>
+    <li>Pick the groups. Tick <b>Administrators</b> for a local admin; <b>Users</b> is ticked for you.</li>
+    <li>Click <b>Make the account</b>. On a seat, its client makes it within a second or two.</li>
+    <li>Copy the password Rabbid Lab shows.</li>
+  </ol>
+</article>
+
+<article data-key="local-change" data-group="Local accounts" data-title="Change or delete a local account">
+  <ol>
+    <li>Open <a href="#local">Local accounts</a>, pick the computer, then click the account.</li>
+    <li><b>Set a password</b> also unlocks it.</li>
+    <li><b>Turn off</b> stops anyone signing in with it.</li>
+    <li>Use the cross on a group, or <b>Add to…</b>, to change its groups.</li>
+    <li><b>Delete</b> removes it. Its files stay in its profile folder. Windows' own accounts, like Administrator, can only be turned off.</li>
+  </ol>
+</article>
+
+<article data-key="seat-trouble" data-group="Local accounts" data-title="A seat that won't take changes">
+  <p>The dot beside each computer in Local accounts says whether it's ready: green is ready, amber is online but not ready, grey is offline. Hover it to see why.</p>
+  <ul>
+    <li><b>It's offline:</b> the computer is off, or can't reach the server.</li>
+    <li><b>Its client is older:</b> it updates itself to the server's version within a few minutes.</li>
+    <li><b>Not listening yet:</b> the client was just started or updated. Give it a minute.</li>
+    <li><b>Group Policy turns account changes off:</b> Allow account changes is Disabled for that computer.</li>
+  </ul>
+</article>
+
+<article data-key="roles" data-group="Access" data-title="Roles: who can do what">
+  <p>Everything in Rabbid Lab is allowed by roles. People can have several roles and get everything those roles allow.</p>
+  <ul>
+    <li><b>Administrator</b> is always at the top and allows everything. The server's Windows administrators are always in it.</li>
+    <li><b>User</b> is always at the bottom, and everyone who signs in has it.</li>
+  </ul>
+  <h3>Make a role</h3>
+  <ol>
+    <li>Open <a href="#people">Roles and people</a> and click <b>New role</b>.</li>
+    <li>On <b>Display</b>, name it and pick a colour.</li>
+    <li>On <b>Permissions</b>, switch on what it allows, part by part.</li>
+    <li>On <b>Members</b>, add who's in it.</li>
+    <li>Click <b>Save changes</b>.</li>
+  </ol>
+  <p>Roles are in order, highest first: drag them to reorder. People can only change roles below their own highest one. <b>See Rabbid Lab as this role</b> shows what that role sees.</p>
+</article>
+
+<article data-key="people" data-group="Access" data-title="Put people in roles">
+  <ol>
+    <li>Open <a href="#people">Roles and people</a> and click <b>Add people</b>.</li>
+    <li>Search for an Active Directory group, a person, or a local account, and click it.</li>
+    <li>Tick the roles, then click <b>Add</b>.</li>
+  </ol>
+  <p>A group in a role counts for everyone in it, the next time they sign in. The + beside someone's roles gives them another one, and the cross on a role takes it away.</p>
+  <p class="tip">An Active Directory account that isn't in any role can't sign in. Everyone in AD is in User to begin with.</p>
+</article>
+
+<article data-key="local-signin" data-group="Access" data-title="Rabbid Lab's own accounts">
+  <p>Local accounts in Rabbid Lab are its own sign-ins, separate from Windows and AD. Use them when there's no domain, or as a way in if AD is down.</p>
+  <ol>
+    <li>In <a href="#people">Roles and people</a>, click <b>Add people</b>, then <b>New local account</b>.</li>
+    <li>Pick a username and a password of 8 characters or more, and its roles.</li>
+  </ol>
+  <p>To sign in with one when AD is set up, pick Local account on the sign-in page, or type <code>.\</code> before the username.</p>
+</article>
+
+<article data-key="sessions" data-group="Access" data-title="See who's signed in">
+  <ol>
+    <li>Open <a href="#seats">Seats</a>. <b>Signed in now</b> lists everyone signed in to Rabbid Lab, with their roles, browser and address.</li>
+    <li>Click <b>Sign out</b> on someone to end their session straight away.</li>
+  </ol>
+</article>
+
+<article data-key="links" data-group="Links" data-title="Add a link">
+  <ol>
+    <li>Open <a href="#links">Links</a> and click <b>Add a link</b>.</li>
+    <li>Paste the address, like <code>https://192.168.2.23</code>. Rabbid Lab reads the site and fills in the name, detail, icon and IP.</li>
+    <li>Change anything you like, and pick a group to put it under. <b>New group…</b> at the bottom of the list makes one.</li>
+    <li>Click <b>Add the link</b>.</li>
+  </ol>
+  <p>Hover a link and click the pencil to change it or delete it. <b>Upload</b> sets your own icon, <b>Letter</b> shows the first letter of the name, and <b>None</b> leaves the tile with no icon at all.</p>
+  <p>To add several at once, click <b>Add a link</b>, then <b>A list</b>, and paste the addresses: one on each line, or separated by commas or semicolons. Each site is read for its name, icon and IP, and they all go in the group you pick. Addresses that are already on Links are left out.</p>
+</article>
+
+<article data-key="link-checks" data-group="Links" data-title="The dot on a link, and how often it's checked">
+  <p>The dot on each link says whether its site answers: green is up, amber didn't answer just now and is being tried again, red is down. Hover the dot for the detail. Any answer counts as up, a sign-in page included.</p>
+  <p>The cogwheel at the top of <a href="#links">Links</a>, beside Add a link, sets two things:</p>
+  <ul>
+    <li><b>Check each link every</b>: 15 seconds to 5 minutes. A minute to begin with.</li>
+    <li><b>Show a link as down after no answer for</b>: right away, or 15 seconds to 5 minutes. 30 seconds to begin with, so one slow reply doesn't turn a link red.</li>
+  </ul>
+  <p>Links are checked while the console is open on the Links page. For checks around the clock, with email when something goes down, add a <a href="#sensors">sensor</a>.</p>
+  <p>The same cogwheel has <b>Export</b> and <b>Import</b>. Export saves every link with its icon, the groups in their order and these settings as one file. Import adds what's in a file like it beside what's already there: its groups, its links and its settings. A link whose address is already on Links is left as it is, so importing the same file twice adds nothing.</p>
+</article>
+
+<article data-key="link-groups" data-group="Links" data-title="Groups of links">
+  <ul>
+    <li><b>New group</b>, at the end of the row above the links, makes an empty group.</li>
+    <li>Hover a group's name for its tools. Drag the handle to move the group up or down, click the pencil to rename it, and click the bin to delete it.</li>
+    <li>Deleting a group keeps its links. They move to <b>No group</b> at the bottom of the page.</li>
+    <li>To move a link to another group, hover it, click the pencil and pick the group.</li>
+    <li>Drag a link onto another group to move it there, or onto another link to put it beside that one: a line shows which side it lands on. To take it out of its group, drop it on <b>No group</b>, which shows at the bottom while you drag.</li>
+    <li><b>Open all</b>, beside a group's name when you hover it, opens every link in the group in a tab of its own. Your browser stops all but the first until you allow pop-ups for the console.</li>
+    <li><b>Cards</b> and <b>Grid</b>, at the right of the row above the links, switch between tiles and a row to a link. Your browser remembers which.</li>
+    <li>The filter button beside the search box shows one group at a time: click it and pick the group, or <b>All groups</b> to see everything again. It appears once there is more than one group to pick from, and past eight groups its menu has a search box.</li>
+  </ul>
+</article>
+
+<article data-key="sensors" data-group="Sensors" data-title="Add a sensor">
+  <p>A sensor checks one thing on a timer, from this server, and the <a href="#sensors">Sensors</a> page shows what's down.</p>
+  <ol>
+    <li>Open <a href="#sensors">Sensors</a> and click <b>Add a sensor</b>.</li>
+    <li>Pick the check:
+      <ul>
+        <li><b>Ping</b>: the machine answers.</li>
+        <li><b>Port</b>: a port is open, such as 445 for file shares, 636 for LDAPS or 3389 for remote desktop.</li>
+        <li><b>Web page</b>: the page answers. A sign-in page counts as up; an error 500 or higher counts as down.</li>
+        <li><b>DNS lookup</b>: a name resolves, on the DNS server you name or the one this server uses.</li>
+        <li><b>Certificate</b>: warns when a site's certificate has under 21 days left, and is down once it expires.</li>
+      </ul></li>
+    <li>Type the address. <b>Check now</b> tries it before you save.</li>
+    <li>Pick a group, how often to check, and an alert rule, then click <b>Add the sensor</b>.</li>
+  </ol>
+  <p>A sensor is down after two failed checks in a row, so one lost reply isn't an outage. Click a sensor for its history, to pause it, or to change it. The squares at the top of the page are the sensors: each beats when it's checked, and one that's down turns red.</p>
+</article>
+
+<article data-key="sensor-views" data-group="Sensors" data-title="Cards and the grid">
+  <ul>
+    <li><b>Cards</b> and <b>Grid</b>, at the right of the row above the sensors, switch between the two. Your browser remembers which.</li>
+    <li>In the grid, drag a column's heading onto another to move it, and drag its right edge to make it wider or narrower. <b>Reset columns</b> puts them back.</li>
+    <li>Groups work as they do on Links: drag a card onto another group to move it, <b>New group</b>, the filter button to show one group or only the sensors that are down, and hover a group's name to drag, rename or delete it.</li>
+  </ul>
+</article>
+
+<article data-key="sensor-alerts" data-group="Sensors" data-title="Alerts and email">
+  <p>Each sensor uses one of four alert rules. Click <b>Alert rules</b> on the Sensors page to change their times.</p>
+  <ul>
+    <li><b>Critical</b> emails as soon as the sensor is down, and again every hour.</li>
+    <li><b>Normal</b> emails after 5 minutes down.</li>
+    <li><b>Relaxed</b> emails after 30 minutes down.</li>
+    <li><b>Quiet</b> never emails. The page still shows it.</li>
+  </ul>
+  <p>Something that comes back before its time is up emails nobody. When an email did go out, another says it's back.</p>
+  <p>Set up the mail server under <b>Email settings</b>:</p>
+  <ul>
+    <li><b>Gmail</b>: your address and an app password (Google Account, Security, 2-Step Verification, App passwords).</li>
+    <li><b>Microsoft 365</b>: an app registration in Microsoft Entra with the Mail.Send application permission and admin consent. Type the tenant, the application (client) ID and a client secret. From has to be a mailbox in the tenant.</li>
+    <li><b>Another mail server</b>: any server or relay that takes STARTTLS on port 587.</li>
+  </ul>
+  <p><b>Send a test email</b> saves the settings and sends one to everyone on the list. Passwords and secrets are stored encrypted on this server.</p>
+</article>
+
+<article data-key="support-info" data-group="Keeping it running" data-title="Support info">
+  <p>The <b>i</b> at the top right gathers what someone helping you needs to know: the version, the machine, how it's installed, the sign-in domain, and how many seats, links and sensors there are. Click <b>Copy</b> and paste it into your message. It has no passwords in it, and only shows what your roles let you see.</p>
+</article>
+
+<article data-key="updates" data-group="Keeping it running" data-title="Updates">
+  <p>Rabbid Lab checks GitHub for a new version on start, every 12 hours, and when you click <b>Check for updates</b>.</p>
+  <ul>
+    <li>On Windows, a new version installs automatically once nobody has used Rabbid Lab for a couple of minutes. Turn that off with <b>Update automatically</b> under <a href="#updates">Settings, Updates</a>.</li>
+    <li><b>Install now</b> installs straight away. The server is offline for about a minute.</li>
+    <li>Only updates signed with Rabbid Lab's release key install.</li>
+    <li>Seats update their client to the server's version by themselves.</li>
+  </ul>
+  <p>In Docker, update with <code>docker compose up -d --build</code>.</p>
+</article>
+
+<article data-key="activity" data-group="Keeping it running" data-title="The activity log">
+  <p><a href="#activity">Settings, Activity log</a> lists every sign-in and change, who made it, and when. That covers accounts made, passwords set, groups changed, computers let in and updates installed. Passwords are never in it.</p>
+</article>
+
+<article data-key="locked-out" data-group="Keeping it running" data-title="Nobody can sign in">
+  <p>If nobody can get in (AD is down, or the last admin left), add a local administrator on the server itself:</p>
+  <ol>
+    <li>Open a command prompt as administrator on the server.</li>
+    <li>Run <code>"C:\Program Files\Rabbid Lab\RabbidLab.Server.exe" --add-admin admin</code></li>
+    <li>Sign in with Local account, <code>admin</code>, and the password it prints.</li>
+  </ol>
+  <p>In Docker: <code>docker exec rabbidlab dotnet RabbidLab.Server.dll --add-admin admin</code></p>
+</article>
+
+<article data-key="data" data-group="Keeping it running" data-title="Where Rabbid Lab keeps things">
+  <p>Everything is in one data folder: <code>C:\ProgramData\Rabbid Lab</code> on Windows, <code>/data</code> in Docker. Back it up to keep everything.</p>
+  <ul>
+    <li><code>accounts.json</code>: how people sign in, and Rabbid Lab's own accounts.</li>
+    <li><code>roles.json</code>: roles, what they allow, and who's in them.</li>
+    <li><code>sessions.json</code>: who's signed in, encrypted.</li>
+    <li><code>clients.json</code>: the seats.</li>
+    <li><code>directory-tools.json</code>: Rabbid Lab's AD account, its password encrypted.</li>
+    <li><code>links.json</code>: the Links page.</li>
+    <li><code>activity.jsonl</code>: the activity log.</li>
+    <li><code>Keys</code>: the keys the encrypted parts use. Without them, the encrypted parts can't be read on another machine.</li>
+  </ul>
+</article>
