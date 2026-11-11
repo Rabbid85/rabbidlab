@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.18', [
+    'Appearance no longer has a Sidebar section. The Collapse button at the foot of the sidebar still shrinks it to icons.']],
   ['1.1.17', [
     'Support info and About are under their own Help heading in Settings. Advanced has only Developer and shows in Rabbid Lab Dev only, without the extra Dev label.']],
   ['1.1.16', [
@@ -234,8 +236,6 @@ const RELEASE_NOTES = [
     $('rail-collapse').setAttribute('aria-expanded', String(!small));
     $('rail-collapse-text').textContent = small ? 'Expand' : 'Collapse';
     $('rail-collapse').title = small ? 'Expand' : 'Collapse';
-    $('set-sidebar').querySelectorAll('[data-rail]').forEach((b) => b.setAttribute('aria-pressed', String((b.dataset.rail === 'small') === (localStorage.getItem('rabbidlab.rail') === 'small'))));
-    $('set-narrow').hidden = !narrow.matches;
   };
   // Layout, in the Settings list: pages in a column in the middle, or the whole window.
   const layout = () => {
@@ -249,12 +249,6 @@ const RELEASE_NOTES = [
     if (!b) return;
     try { localStorage.setItem('rabbidlab.layout', b.dataset.layout); } catch { /* this visit only */ }
     layout();
-  });
-  $('set-sidebar').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-rail]');
-    if (!b) return;
-    localStorage.setItem('rabbidlab.rail', b.dataset.rail);
-    rail();
   });
   layout();
   rail();

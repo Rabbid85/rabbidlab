@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.18 (2026-11-11)
+
+- Appearance no longer has a Sidebar section. The Collapse button at the foot of the sidebar still shrinks it to icons.
+
 ## 1.1.17 (2026-11-11)
 
 - Support info and About are under their own Help heading in Settings. Advanced has only Developer and shows in Rabbid Lab Dev only, without the extra Dev label.
