@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.29 (2026-11-11)
+
+- GitHub in the top bar is plain purple text, the same purple as the links on the page, with no box around it.
+- The update window no longer has the line about the page reloading, and it stays the same size from start to finish.
+
 ## 1.1.28 (2026-11-11)
 
 - Updates, Activity, What is new and GitHub moved from the Overview banner to the top bar, on every page. GitHub is purple so it stands out. In a narrow window they show as icons.

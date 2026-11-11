@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.29', [
+    'GitHub in the top bar is plain purple text, the same purple as the links on the page, with no box around it.',
+    'The update window no longer has the line about the page reloading, and it stays the same size from start to finish.']],
   ['1.1.28', [
     'Updates, Activity, What is new and GitHub moved from the Overview banner to the top bar, on every page. GitHub is purple so it stands out. In a narrow window they show as icons.',
     'The Overview banner is the same size as the ones on Links and Sensors.']],
@@ -461,8 +464,7 @@ const RELEASE_NOTES = [
     $('updlg-title').textContent = phase === 'done' ? `Updated to Rabbid Lab ${version}` : `Updating to Rabbid Lab ${version}`;
     $('updlg-now').textContent = phase === 'done' ? 'Done. Opening the new version.' : phase === 'install' ? 'Installing the update. The server is offline for about a minute.'
       : `Downloading the update${/ of /.test(line) ? `, ${line.split(' · ').pop()}` : ''}.`;
-    $('updlg-say').textContent = phase === 'done' ? '' : 'This page reloads by itself when the update is in.';
-    $('updlg-hide').hidden = phase === 'done';
+    $('updlg-hide').style.visibility = phase === 'done' ? 'hidden' : ''; // keeps its room, so the window doesn't shrink when it's done
     if (!hid && !$('update-dialog').open) $('update-dialog').showModal();
     const p = `${Math.min(100, Math.round(pct))}%`;
     $('inst-fill').style.width = p;
