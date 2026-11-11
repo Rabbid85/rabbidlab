@@ -74,6 +74,77 @@ public sealed class ActivityLog(DataFolder folder, ILogger<ActivityLog> log)
         }
     }
 
+    /// <summary>The kinds of activity Settings, Activity log filters by, and the areas each covers.</summary>
+    public static readonly IReadOnlyDictionary<string, string[]> Kinds = new Dictionary<string, string[]>
+    {
+        ["signins"] = ["sign-in"],
+        ["accounts"] = ["access", "users"],
+        ["lab"] = ["links", "sensors"],
+        ["seats"] = ["clients"],
+        ["admin"] = ["admin"],
+    };
+
+    /// <summary>The kind an entry's area belongs to, for its icon and its filter.</summary>
+    public static string KindOf(string area) => Kinds.FirstOrDefault(k => k.Value.Contains(area)).Key ?? "admin";
+
+    /// <summary>
+    /// The entries that match, newest first: of one kind, by one person, with some words in them, since a time, only the
+    /// ones that didn't go well. Count says how many to hand back; Total is how many matched, Problems how many of those failed.
+    /// </summary>
+    public ActivityPage Find(ActivityFilter filter)
+    {
+        List<ActivityEntry> all;
+        try
+        {
+            lock (gate)
+            {
+                all = [.. Read(file), .. Read(older)];
+            }
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            log.LogWarning(e, "The activity log could not be read");
+            all = [];
+        }
+        var areas = filter.Kind is { } k && Kinds.TryGetValue(k, out var a) ? a : null;
+        var words = filter.Find?.Trim() is { Length: > 0 } q ? q : null;
+        var inRange = all.Where(e => filter.Since is null || e.At >= filter.Since).ToList();
+        var matched = inRange.Where(e => (areas is null || areas.Contains(e.Area)) && (filter.By is null || e.By == filter.By)
+                && (!filter.Problems || e.Result != "ok")
+                && (words is null || $"{e.Title} {e.By} {e.From} {e.Detail}".Contains(words, StringComparison.OrdinalIgnoreCase)))
+            .ToList();
+        return new ActivityPage([.. matched.Take(filter.Count)], matched.Count, matched.Count(e => e.Result != "ok"),
+            [.. inRange.Select(e => e.By).Distinct().Order(StringComparer.OrdinalIgnoreCase)]);
+    }
+
+    // Every entry in a file, newest first.
+    private static IEnumerable<ActivityEntry> Read(string path)
+    {
+        if (!File.Exists(path))
+        {
+            return [];
+        }
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        using var reader = new StreamReader(stream, Encoding.UTF8);
+        var list = new List<ActivityEntry>();
+        while (reader.ReadLine() is { } line)
+        {
+            try
+            {
+                if (line.Length > 0 && JsonSerializer.Deserialize<ActivityEntry>(line, Json) is { } entry)
+                {
+                    list.Add(entry);
+                }
+            }
+            catch (JsonException)
+            {
+                // A line cut off part-way through is skipped.
+            }
+        }
+        list.Reverse();
+        return list;
+    }
+
     /// <summary>The last lines of a file, newest first, reading only as much of its end as they take.</summary>
     private static List<string> Tail(string path, int count)
     {
@@ -102,9 +173,48 @@ public sealed class ActivityLog(DataFolder folder, ILogger<ActivityLog> log)
     }
 }
 
+/// <summary>What Settings, Activity log asks for. Since: how far back (none: all of it).</summary>
+public sealed record ActivityFilter(string? Kind, string? By, string? Find, DateTime? Since, bool Problems, int Count);
+
+/// <summary>One page of the activity log, with how many matched in all and who appears in the time asked about.</summary>
+public sealed record ActivityPage(IReadOnlyList<ActivityEntry> Entries, int Total, int Problems, IReadOnlyList<string> People);
+
 public static class ActivityApi
 {
-    public static void MapActivityApi(this WebApplication app) =>
+    public static void MapActivityApi(this WebApplication app)
+    {
         app.MapGet("/api/activity", (int? count, HttpContext context, ActivityLog activity) =>
             Access.Can(context, Permissions.ActivityView) ? Results.Ok(activity.Recent(Math.Clamp(count ?? 100, 1, 1000))) : Access.NotAllowed());
+
+        app.MapGet("/api/activity/find", (string? kind, string? by, string? q, DateTime? since, bool? problems, int? count, HttpContext context, ActivityLog activity) =>
+            Access.Can(context, Permissions.ActivityView)
+                ? Results.Ok(activity.Find(Filter(kind, by, q, since, problems, Math.Clamp(count ?? 50, 1, 5000))))
+                : Access.NotAllowed());
+
+        // The same, as a CSV file to open in Excel.
+        app.MapGet("/api/activity/export", (string? kind, string? by, string? q, DateTime? since, bool? problems, HttpContext context, ActivityLog activity) =>
+        {
+            if (!Access.Can(context, Permissions.ActivityView))
+            {
+                return Access.NotAllowed();
+            }
+            var page = activity.Find(Filter(kind, by, q, since, problems, int.MaxValue));
+            var csv = new StringBuilder("When (UTC),Who,From,Area,What,Result,Detail\r\n");
+            foreach (var e in page.Entries)
+            {
+                csv.Append(string.Join(',', new[] { e.At.ToString("yyyy-MM-dd HH:mm:ss"), e.By, e.From ?? "", e.Area, e.Title, e.Result, e.Detail ?? "" }.Select(Cell))).Append("\r\n");
+            }
+            return Results.File(Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(csv.ToString())).ToArray(), "text/csv", "rabbidlab-activity.csv");
+        });
+    }
+
+    private static ActivityFilter Filter(string? kind, string? by, string? q, DateTime? since, bool? problems, int count) =>
+        new(kind is { Length: > 0 } ? kind : null, by is { Length: > 0 } ? by : null, q, since?.ToUniversalTime(), problems == true, count);
+
+    // A CSV cell: quoted when it has a comma, quote or line in it, and never starting a formula in Excel.
+    private static string Cell(string value)
+    {
+        var v = value.Length > 0 && "=+-@".Contains(value[0]) ? "'" + value : value;
+        return v.IndexOfAny([',', '"', '\n', '\r']) >= 0 ? $"\"{v.Replace("\"", "\"\"")}\"" : v;
+    }
 }

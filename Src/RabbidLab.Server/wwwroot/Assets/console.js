@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.20', [
+    'The Activity log is built for a big lab: grouped by day, the same change made over and over folded into one row that opens, and 50 at a time with Show 50 more.',
+    'Its sub-menu shows one kind: sign-ins, people and accounts, links and sensors, seats, or updates and settings. The bar finds a person, computer or change, picks a person, narrows to today, 7 days, 30 days or all, and to problems only.',
+    'Export saves what the log shows as a CSV file for Excel.']],
   ['1.1.19', [
     'The update window shows how far along the update is as a percentage, the same as Settings, Updates behind it.']],
   ['1.1.18', [
@@ -195,7 +199,7 @@ const RELEASE_NOTES = [
     document.querySelectorAll('.sub').forEach((s) => { s.hidden = s !== sub; });
     mark(document.querySelectorAll('.rail a[data-page]'), 'page', now.dataset.page);
     const [, , rest] = where();
-    const one = now.id === 'page-settings' && sub.querySelector(`.ds-sec[data-sec="${CSS.escape(rest[0] || '')}"]:not(.cant)`) ? rest[0] : '';
+    const one = now.id === 'page-settings' && rest[0] && (sub.querySelector(`.ds-sec[data-sec="${CSS.escape(rest[0])}"]:not(.cant)`) || (sub.dataset.filters || '').split(' ').includes(rest[0])) ? rest[0] : '';
     document.querySelectorAll('.srail .dkids').forEach((k) => k.classList.toggle('open', k.dataset.kids === sub.dataset.sub));
     document.querySelectorAll('.srail a[data-sub]').forEach((a) => {
       if (a.dataset.sub === sub.dataset.sub && (a.dataset.sec || '') === one) a.setAttribute('aria-current', 'page');
@@ -582,24 +586,103 @@ const RELEASE_NOTES = [
     note.timer = setTimeout(() => { note.hidden = true; }, 6000);
   };
 
+  // Settings, Activity log: found on the server, newest first, by day, and a run of the same change by the same person
+  // folded into one row that opens. The sub-menu picks a kind; the bar narrows by words, person, time and problems.
+  const AL_KINDS = { signins: ['Sign-ins', 'user', '#6FA8FF'], accounts: ['People and accounts', 'users', '#B07CE8'], lab: ['Links and sensors', 'link', '#3CC7C7'],
+    seats: ['Seats', 'monitor', '#F2BE6B'], admin: ['Updates and settings', 'updates', '#FF8A3D'] };
+  const AREA_KIND = { 'sign-in': 'signins', access: 'accounts', users: 'accounts', links: 'lab', sensors: 'lab', clients: 'seats', admin: 'admin' };
+  const al = { q: '', who: '', days: 7, problems: false, count: 50, open: new Set(), page: null };
+  const alKind = () => (where()[0] === 'settings' && where()[1] === 'activity' && AL_KINDS[where()[2][0]] ? where()[2][0] : '');
+  const alQuery = (count) => {
+    const p = new URLSearchParams();
+    if (alKind()) p.set('kind', alKind());
+    if (al.who) p.set('by', al.who);
+    if (al.q) p.set('q', al.q);
+    if (al.days) {
+      const d = new Date();
+      if (al.days === 1) d.setHours(0, 0, 0, 0);
+      else d.setDate(d.getDate() - al.days);
+      p.set('since', d.toISOString());
+    }
+    if (al.problems) p.set('problems', 'true');
+    if (count) p.set('count', count);
+    return p.toString();
+  };
+  const dayOf = (iso) => {
+    const d = new Date(iso);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const ago = Math.round((today - new Date(iso).setHours(0, 0, 0, 0)) / 86400000);
+    return ago === 0 ? 'Today' : ago === 1 ? 'Yesterday' : d.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric', year: d.getFullYear() === today.getFullYear() ? undefined : 'numeric' });
+  };
+  const alRow = (g, kid) => {
+    const k = AREA_KIND[g.e.area] || 'admin';
+    const [label, icon, colour] = AL_KINDS[k];
+    const n = g.items ? g.items.length : 1;
+    const key = `${g.e.at}|${g.e.title}`;
+    const sub = [g.e.by, g.e.area === 'sign-in' && g.e.from ? `from ${g.e.from}` : label, g.e.detail].filter(Boolean).join(' · ');
+    return `<div class="al-row${kid ? ' kid' : ''}"><span class="al-ic" data-color="${colour}">${svg(icon)}</span><span class="al-t"><b>${esc(g.e.title)}</b><span>${esc(sub)}</span></span>`
+      + `<span class="al-r">${g.e.result !== 'ok' ? `<span class="al-bad">${g.e.result === 'warning' ? 'Warning' : 'Failed'}</span>` : ''}`
+      + `${n > 1 ? `<button type="button" class="al-x" data-al-open="${esc(key)}" aria-expanded="${al.open.has(key)}" title="The same ${n} times in a row">×${n}</button>` : ''}`
+      + `<span title="${esc(when(g.e.at))}">${new Date(g.e.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span></span></div>`
+      + (n > 1 && al.open.has(key) ? g.items.map((x) => alRow({ e: x }, true)).join('') : '');
+  };
+  const alDraw = () => {
+    const page = al.page;
+    if (!page) return;
+    const kind = alKind();
+    const range = { 1: 'today', 7: 'in the last 7 days', 30: 'in the last 30 days', 0: 'in all' }[al.days];
+    $('al-count').innerHTML = `<b>${page.total}</b> ${range}${kind ? ` · ${AL_KINDS[kind][0]}` : ''}${page.problems ? ` · <b>${page.problems}</b> ${page.problems === 1 ? 'problem' : 'problems'}` : ''}`;
+    const groups = page.entries.reduce((out, e) => {
+      const last = out[out.length - 1];
+      if (last && last.e.title === e.title && last.e.by === e.by && new Date(last.items[last.items.length - 1].at) - new Date(e.at) < 600000) last.items.push(e);
+      else out.push({ e, items: [e] });
+      return out;
+    }, []);
+    let day = '';
+    $('activity-list').innerHTML = groups.length ? groups.map((g) => {
+      const d = dayOf(g.e.at);
+      const head = d !== day ? `<p class="al-day">${esc(d)}</p>` : '';
+      day = d;
+      return head + alRow(g);
+    }).join('') : '<p class="ds-empty">Nothing matches.</p>';
+    paint($('activity-list'));
+    const left = page.total - page.entries.length;
+    $('al-more').innerHTML = left > 0 ? `<button type="button" class="ds-btn" data-al-more>Show 50 more</button><span>${left} older</span>` : '';
+    document.querySelectorAll('#al-range [data-days]').forEach((b) => b.setAttribute('aria-pressed', String(Number(b.dataset.days) === al.days)));
+    document.querySelectorAll('#al-res [data-problems]').forEach((b) => b.setAttribute('aria-pressed', String(!!b.dataset.problems === al.problems)));
+  };
   const activity = async () => {
     try {
-      const r = await fetch('/api/activity?count=25', { headers: { Accept: 'application/json' } });
-      if (r.status === 403) {
-        $('activity-list').innerHTML = '<li class="muted">Your roles don\'t let you see the activity log.</li>';
-        return;
-      }
-      if (!r.ok) throw new Error(r.statusText);
-      const list = await r.json();
-      $('activity-list').innerHTML = list.length
-        ? list.map((a) => `<li><span class="status status-${a.result === 'ok' ? 'ok' : a.result === 'warning' ? 'amber' : 'red'}"><i aria-hidden="true"></i></span>`
-          + `<span class="act-title">${esc(a.title)}</span><span class="act-by">${esc(a.by)}</span><span class="act-when">${esc(when(a.at))}</span>`
-          + (a.detail ? `<span class="act-detail">${esc(a.detail)}</span>` : '') + '</li>').join('')
-        : '<li class="muted">Nothing yet.</li>';
-    } catch {
-      // The page still shows everything else.
+      al.page = await get(`/api/activity/find?${alQuery(al.count)}`);
+    } catch (err) {
+      $('activity-list').innerHTML = `<p class="ds-empty">${esc(err.message)}</p>`;
+      return;
     }
+    $('al-who').innerHTML = `<option value="">Anyone</option>${al.page.people.map((p) => `<option${p === al.who ? ' selected' : ''}>${esc(p)}</option>`).join('')}`;
+    $('al-export').href = `/api/activity/export?${alQuery(0)}`;
+    alDraw();
   };
+  const alAgain = () => {
+    al.count = 50;
+    activity();
+  };
+  let alTyping = null;
+  $('al-q').addEventListener('input', () => {
+    clearTimeout(alTyping);
+    alTyping = setTimeout(() => { al.q = $('al-q').value.trim(); alAgain(); }, 250);
+  });
+  $('al-who').addEventListener('change', () => { al.who = $('al-who').value; alAgain(); });
+  $('al-range').addEventListener('click', (e) => { const b = e.target.closest('[data-days]'); if (b) { al.days = Number(b.dataset.days); alAgain(); } });
+  $('al-res').addEventListener('click', (e) => { const b = e.target.closest('[data-problems]'); if (b) { al.problems = !!b.dataset.problems; alAgain(); } });
+  $('al-more').addEventListener('click', (e) => { if (e.target.closest('[data-al-more]')) { al.count += 50; activity(); } });
+  $('activity-list').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-al-open]');
+    if (!b) return;
+    if (al.open.has(b.dataset.alOpen)) al.open.delete(b.dataset.alOpen);
+    else al.open.add(b.dataset.alOpen);
+    alDraw();
+  });
 
   // A change, as the page asks for it: the answer, or the error it gave.
   const send = async (path, body) => {

@@ -187,7 +187,14 @@
         <a href="#settings/updates/history" data-sub="updates" data-sec="history" data-can="activity.view"><span class="nm">History</span></a>
       </div>
       <a href="#settings/notifications" data-sub="notifications" data-can="sensors.alerts"><svg><use href="#i-bell"/></svg><span>Notifications</span></a>
-      <a href="#settings/activity" data-sub="activity" data-can="activity.view"><svg><use href="#i-activity"/></svg><span>Activity log</span></a>
+      <a href="#settings/activity" data-sub="activity" data-can="activity.view"><svg class="all-flask" viewBox="0 0 24 24" aria-hidden="true"><path class="liquid" d="M6.6 15.2h10.8l2 3.2A1.7 1.7 0 0 1 17.9 21H6.1a1.7 1.7 0 0 1-1.5-2.6z"/><path d="M9 3h6M10 3v6.2L4.6 18.4A1.7 1.7 0 0 0 6.1 21h11.8a1.7 1.7 0 0 0 1.5-2.6L14 9.2V3"/></svg><span>Activity log</span></a>
+      <div class="dkids" data-kids="activity">
+        <a href="#settings/activity/signins" data-sub="activity" data-sec="signins"><span class="nm">Sign-ins</span></a>
+        <a href="#settings/activity/accounts" data-sub="activity" data-sec="accounts"><span class="nm">People and accounts</span></a>
+        <a href="#settings/activity/lab" data-sub="activity" data-sec="lab"><span class="nm">Links and sensors</span></a>
+        <a href="#settings/activity/seats" data-sub="activity" data-sec="seats"><span class="nm">Seats</span></a>
+        <a href="#settings/activity/admin" data-sub="activity" data-sec="admin"><span class="nm">Updates and settings</span></a>
+      </div>
       <p class="rail-label" data-can="links.edit sensors.alerts sensors.edit seats.settings seats.add ad.connect">Lab</p>
       <a href="#settings/links" data-sub="links" data-can="links.edit"><svg class="all-flask" viewBox="0 0 24 24" aria-hidden="true"><path class="liquid" d="M6.6 15.2h10.8l2 3.2A1.7 1.7 0 0 1 17.9 21H6.1a1.7 1.7 0 0 1-1.5-2.6z"/><path d="M9 3h6M10 3v6.2L4.6 18.4A1.7 1.7 0 0 0 6.1 21h11.8a1.7 1.7 0 0 0 1.5-2.6L14 9.2V3"/></svg><span>Links</span></a>
       <div class="dkids" data-kids="links">
@@ -315,11 +322,20 @@
       <p class="hint problem" id="nt-problem" hidden></p>
     </section>
 
-    <section class="sub" data-sub="activity" data-title="Activity log" hidden>
+    <!-- Activity log: found on the server; the sub-menu picks a kind, the bar narrows it further (console.js). -->
+    <section class="sub" data-sub="activity" data-title="Activity log" data-filters="signins accounts lab seats admin" hidden>
       <header class="sub-head"><h2>Activity log</h2><p>What's been done here, by whom and when.</p></header>
-      <section class="card" aria-label="Activity log">
-        <ul class="activity" id="activity-list"><li class="muted">Nothing yet.</li></ul>
-      </section>
+      <div class="al-tools">
+        <label class="side-find al-find"><svg><use href="#i-search"/></svg><input type="search" id="al-q" placeholder="Find a person, computer or change" aria-label="Find in the activity log" autocomplete="off" spellcheck="false"></label>
+        <select id="al-who" aria-label="Who"><option value="">Anyone</option></select>
+        <div class="seg" id="al-range"><button type="button" data-days="1">Today</button><button type="button" data-days="7" aria-pressed="true">7 days</button><button type="button" data-days="30">30 days</button><button type="button" data-days="0">All</button></div>
+        <div class="seg" id="al-res"><button type="button" data-problems="" aria-pressed="true">All</button><button type="button" data-problems="1">Problems</button></div>
+        <span class="grow"></span>
+        <a class="ds-btn" id="al-export" href="/api/activity/export" download><svg><use href="#i-csv"/></svg>Export</a>
+      </div>
+      <p class="al-count" id="al-count"></p>
+      <div id="activity-list"></div>
+      <div class="al-more" id="al-more"></div>
     </section>
 
     <!-- Links: how often each link is checked, the descriptions, and export and import (links.js). Saved as they're changed. -->

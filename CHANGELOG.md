@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.20 (2026-11-11)
+
+- The Activity log is built for a big lab: grouped by day, the same change made over and over folded into one row that opens, and 50 at a time with Show 50 more.
+- Its sub-menu shows one kind: sign-ins, people and accounts, links and sensors, seats, or updates and settings. The bar finds a person, computer or change, picks a person, narrows to today, 7 days, 30 days or all, and to problems only.
+- Export saves what the log shows as a CSV file for Excel.
+
 ## 1.1.19 (2026-11-11)
 
 - The update window shows how far along the update is as a percentage, the same as Settings, Updates behind it.
