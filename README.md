@@ -28,3 +28,22 @@ What changed in each version: [CHANGELOG.md](CHANGELOG.md).
 3. Open `https://localhost:8420`.
 
 Running the installer again updates Rabbid Lab and keeps its settings. Uninstall from Settings > Apps.
+
+## Code signing policy
+
+Free code signing provided by [SignPath.io](https://about.signpath.io/), certificate by [SignPath Foundation](https://signpath.org/).
+
+| Role | Members |
+|---|---|
+| Committers and reviewers | [Rabbid85](https://github.com/Rabbid85) |
+| Approvers | [Rabbid85](https://github.com/Rabbid85) |
+
+Releases are built by [GitHub Actions](.github/workflows/build.yml) from this repository. The installer, the uninstaller and Rabbid Lab's own files (`RabbidLab.Server.exe`, `RabbidLab.Server.dll`, `RabbidLab.Updater.dll`) are signed, and every signing request is approved by hand.
+
+## Privacy
+
+Rabbid Lab doesn't send data anywhere you haven't told it to. The one exception is the update check: it asks [GitHub](https://github.com/Rabbid85/rabbidlab/releases) for the latest release when it starts, every 12 hours, when you click **Check for updates**, and every 5 minutes while the sign-in page is open. Setup checks once when it opens. Nothing about you or your network is sent, only what any web request includes: your IP address and a `RabbidLab/<version>` user agent.
+
+## License
+
+[MIT](LICENSE)
