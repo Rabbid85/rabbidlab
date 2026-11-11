@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.26', [
+    'Overview is back the way it was in 1.1.24: its tiles sit where they did and its banner is its old height. Banner squares and the shorter banner are for Links and Sensors only.']],
   ['1.1.25', [
     'The banner at the top of Overview, Links and Sensors is shorter, 300 pixels.',
     'Banner squares in Settings, Appearance picks how the squares sit in those banners: Scatter, Even spread, Cluster, Tidy rows, Sweep, Wave, Ring, Arc, Steps, Stack or Spiral. Even spread is the default, and the pick is kept in this browser.',
@@ -1010,7 +1012,7 @@ const RELEASE_NOTES = [
     }, 5000);
   };
 
-  // --- Banner squares: Overview's tiles, and a square for each link and each sensor, over the right of each page's hero ---------
+  // --- Banner squares: a square for each link and each sensor, over the right of the hero on Links and Sensors -------------------
   // How they sit is each person's pick (Settings, Appearance, kept in this browser). Over 40 they line up in a grid.
   const SQUARES = { scatter: 'Scatter', even: 'Even spread', cluster: 'Cluster', rows: 'Tidy rows', sweep: 'Sweep', wave: 'Wave', ring: 'Ring',
     arc: 'Arc', steps: 'Steps', stack: 'Stack', spiral: 'Spiral' };
@@ -1184,25 +1186,24 @@ const RELEASE_NOTES = [
     layOut(hero);
   };
 
-  // Overview's still tiles, in Rabbid Lab's colours, some filled, some outlined, a few dots.
+  // Still tiles over the right of the hero, placed the same way every time.
   const scatter = () => {
     const COLOURS = window.RabbidLabColours.tiles;
     let seed = 20261109;
     const r = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-    const items = Array.from({ length: 22 }, () => {
+    for (let i = 0; i < 22; i++) {
       const t = document.createElement('i');
       const roll = r();
       const kind = roll < 0.18 ? 'dot' : roll < 0.42 ? 'outline' : 'fill';
       const size = `${kind === 'dot' ? 4 + r() * 5 : 10 + r() * 26}px`;
       const colour = COLOURS[Math.floor(r() * COLOURS.length)];
       t.className = `tile ${kind}`;
-      Object.assign(t.style, { width: size, height: size, transform: `rotate(${r() * 90}deg)`, opacity: String(0.35 + r() * 0.5) });
+      Object.assign(t.style, { left: `${58 + r() * 38}%`, top: `${4 + r() * 86}%`, width: size, height: size,
+        transform: `rotate(${r() * 90}deg)`, opacity: String(0.35 + r() * 0.5) });
       if (kind === 'outline') t.style.border = `1.5px solid ${colour}`;
       else t.style.background = colour;
       $('hero').prepend(t);
-      return { el: t };
-    });
-    squares($('hero'), items);
+    }
   };
 
   // Settings, Appearance, Banner squares: each choice drawn with 13 dots where it puts them.

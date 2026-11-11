@@ -322,7 +322,7 @@ a.small-link { margin-top: 8px; padding: 6px 12px; font-size: 12.5px; }
 
 /* Overview: the hero across the top, the news under it, then this machine. */
 .page.home { max-width: none; padding: 0; gap: 0; }
-.hero { position: relative; overflow: hidden; padding: 38px 44px 30px; border-bottom: 1px solid var(--line);
+.hero { position: relative; overflow: hidden; padding: 46px 44px 36px; border-bottom: 1px solid var(--line);
   background: radial-gradient(900px 420px at 88% 10%, rgba(232, 84, 47, .22), transparent 60%), radial-gradient(600px 300px at 70% 90%, rgba(158, 89, 207, .14), transparent 60%), #0C0D16; }
 .hero > :not(.tile) { position: relative; z-index: 1; }
 .hero .tile { position: absolute; z-index: 0; border-radius: 24%; pointer-events: none; }
@@ -361,7 +361,10 @@ a.button:hover, label.button:hover { background: #222536; text-decoration: none;
 .home .machine { margin: 22px 44px 0; }
 @media (max-width: 1180px) { .hero .hero-new { display: none; } }
 /* Every hero is the same height with its parts in the same places, so the line under it stays put from page to page. */
-@media (min-width: 701px) { .hero { min-height: 300px; } }
+@media (min-width: 701px) { .hero { min-height: 400px; } }
+/* Links and Sensors: a shorter banner than Overview's. */
+#page-links .hero, #page-sensors .hero { padding-top: 38px; padding-bottom: 30px; }
+@media (min-width: 701px) { #page-links .hero, #page-sensors .hero { min-height: 300px; } }
 .hero-lead { min-height: 1.5em; }
 .hero-actions { min-height: 39px; }
 @media (max-width: 700px) {

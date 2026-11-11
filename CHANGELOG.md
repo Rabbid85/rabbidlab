@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.26 (2026-11-11)
+
+- Overview is back the way it was in 1.1.24: its tiles sit where they did and its banner is its old height. Banner squares and the shorter banner are for Links and Sensors only.
+
 ## 1.1.25 (2026-11-11)
 
 - The banner at the top of Overview, Links and Sensors is shorter, 300 pixels.
