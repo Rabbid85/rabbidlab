@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.14 (2026-11-11)
+
+- Layout moved into the list down the left of Settings, under its own heading like filters: Pages, Centered or Full width, and Sidebar, names and icons or icons only. The Appearance page is gone.
+
 ## 1.1.13 (2026-11-11)
 
 - Pages no longer shift sideways when going between a long page and a short one: room for the scrollbar is always kept.

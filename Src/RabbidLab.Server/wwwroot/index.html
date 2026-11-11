@@ -173,8 +173,6 @@
     <header class="page-head dhead"><h1>Settings</h1><p>Everything you can set in Rabbid Lab, in one place. Changes save as you make them.</p></header>
     <nav class="dnav srail lists" aria-label="Settings">
       <label class="side-find"><svg><use href="#i-search"/></svg><input type="search" id="set-find" placeholder="Find a setting" aria-label="Find a setting" autocomplete="off" spellcheck="false"></label>
-      <p class="rail-label">You</p>
-      <a href="#settings/appearance" data-sub="appearance"><svg><use href="#i-brush"/></svg><span>Appearance</span></a>
       <p class="rail-label" data-can="updates.view sensors.alerts links.edit ad.connect activity.view">Server</p>
       <a href="#settings/updates" data-sub="updates" data-can="updates.view"><svg><use href="#i-updates"/></svg><span>Updates</span><i class="rail-dot" id="srail-dot" hidden></i></a>
       <a href="#settings/notifications" data-sub="notifications" data-can="sensors.alerts"><svg><use href="#i-bell"/></svg><span>Notifications</span></a>
@@ -184,33 +182,16 @@
       <p class="rail-label">Advanced</p>
       <a href="#settings/developer" data-sub="developer" class="dev-only" data-can="updates.auto"><svg><use href="#i-code"/></svg><span>Developer</span><small>Dev</small></a>
       <a href="#settings/about" data-sub="about"><svg><use href="#i-info"/></svg><span>About</span></a>
+      <!-- Layout: how pages sit and the sidebar, for this person in this browser. Like filters, under the list. -->
+      <div class="set-look" id="set-look">
+        <p class="rail-label">Layout</p>
+        <div class="dfilter"><span>Pages</span><div class="seg" id="set-layout"><button type="button" data-layout="centered" aria-pressed="true">Centered</button><button type="button" data-layout="wide" aria-pressed="false">Full width</button></div></div>
+        <div class="dfilter"><span>Sidebar</span><div class="seg" id="set-sidebar"><button type="button" data-rail="wide" aria-pressed="true">Names and icons</button><button type="button" data-rail="small" aria-pressed="false">Icons only</button></div></div>
+        <p class="hint set-narrow" id="set-narrow" hidden>The window is narrow, so the sidebar shows icons only for now.</p>
+      </div>
       <p class="hint set-none" id="set-none" hidden>No setting matches that.</p>
     </nav>
     <div class="dmain">
-
-    <!-- Appearance: just for this person, in this browser. -->
-    <section class="sub" data-sub="appearance" data-title="Appearance" hidden>
-      <header class="sub-head"><h2>Appearance</h2><p>How Rabbid Lab looks for you, in this browser.</p></header>
-      <p class="h3">Layout</p>
-      <div class="lay-picks" id="set-layout">
-        <button type="button" class="lay-pick" data-layout="centered" aria-pressed="true">
-          <span class="lay-pic"><i class="r"></i><i class="c"><i></i><i></i><i></i></i></span>
-          <b>Centered</b><small>Pages sit in a column in the middle, with space either side on a wide screen.</small></button>
-        <button type="button" class="lay-pick" data-layout="wide" aria-pressed="false">
-          <span class="lay-pic wide"><i class="r"></i><i class="c"><i></i><i></i><i></i></i></span>
-          <b>Full width</b><small>Pages use the whole window, so lists show more at once.</small></button>
-      </div>
-      <p class="h3">Sidebar</p>
-      <div class="lay-picks" id="set-sidebar">
-        <button type="button" class="lay-pick" data-rail="wide" aria-pressed="true">
-          <span class="lay-pic"><i class="r big"></i><i class="c"><i></i><i></i><i></i></i></span>
-          <b>Names and icons</b><small>The sidebar shows each page's name.</small></button>
-        <button type="button" class="lay-pick" data-rail="small" aria-pressed="false">
-          <span class="lay-pic"><i class="r thin"></i><i class="c"><i></i><i></i><i></i></i></span>
-          <b>Icons only</b><small>A narrow sidebar. Point at an icon for its name.</small></button>
-      </div>
-      <p class="hint" id="set-narrow" hidden>The window is narrow, so the sidebar shows icons only for now.</p>
-    </section>
 
     <section class="sub" data-sub="updates" data-title="Updates" hidden>
       <header class="sub-head"><h2>Updates</h2><p>Keep Rabbid Lab on the newest version.</p></header>

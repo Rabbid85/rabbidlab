@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.14', [
+    'Layout moved into the list down the left of Settings, under its own heading like filters: Pages, Centered or Full width, and Sidebar, names and icons or icons only. The Appearance page is gone.']],
   ['1.1.13', [
     'Pages no longer shift sideways when going between a long page and a short one: room for the scrollbar is always kept.']],
   ['1.1.12', [
@@ -138,13 +140,13 @@ const RELEASE_NOTES = [
   const has = (p) => can.has(p);
   const PAGES = { overview: 'overview.view', links: 'links.view', sensors: 'sensors.view', seats: 'seats.view sessions.view', people: 'access.view', ad: 'ad.view ad.connect', local: 'windows.view',
     org: 'ad.view', attrs: 'ad.view' };
-  // Settings' pages and what each needs; Appearance and About are for everyone, Developer for Rabbid Lab Dev only.
-  const SUBS = { appearance: '', updates: 'updates.view', notifications: 'sensors.alerts', links: 'links.edit', ad: 'ad.connect', activity: 'activity.view',
+  // Settings' pages and what each needs; About is for everyone, Developer for Rabbid Lab Dev only.
+  const SUBS = { updates: 'updates.view', notifications: 'sensors.alerts', links: 'links.edit', ad: 'ad.connect', activity: 'activity.view',
     developer: 'updates.auto', about: '' };
   const subOk = (s) => s in SUBS && (!SUBS[s] || !shown || allows(SUBS[s])) && (s !== 'developer' || document.body.classList.contains('is-dev'));
   const pageOk = (key) => !shown || !PAGES[key] || allows(PAGES[key]);
   const home = () => ['overview', 'links', 'sensors', 'ad', 'seats', 'people', 'local'].find(pageOk) || 'wiki';
-  const firstSetting = () => Object.keys(SUBS).find(subOk) || 'appearance';
+  const firstSetting = () => Object.keys(SUBS).find(subOk) || 'about';
 
   // Which page shows comes from the address: #settings/<page> is a page of Settings (#updates, #activity and #developer
   // still work), and #people and #role/<id> are Roles and people (people.js). The rails mark them.
@@ -217,7 +219,7 @@ const RELEASE_NOTES = [
     $('set-sidebar').querySelectorAll('[data-rail]').forEach((b) => b.setAttribute('aria-pressed', String((b.dataset.rail === 'small') === (localStorage.getItem('rabbidlab.rail') === 'small'))));
     $('set-narrow').hidden = !narrow.matches;
   };
-  // Appearance, Layout: pages in a column in the middle, or the whole window.
+  // Layout, in the Settings list: pages in a column in the middle, or the whole window.
   const layout = () => {
     let wide = false;
     try { wide = localStorage.getItem('rabbidlab.layout') === 'wide'; } catch { /* centered */ }
@@ -248,7 +250,10 @@ const RELEASE_NOTES = [
       a.hidden = !!q && !`${a.textContent} ${page ? page.textContent : ''}`.toLowerCase().includes(q);
       if (!a.hidden && a.offsetParent) any = true;
     });
-    nav.querySelectorAll('.rail-label').forEach((p) => {
+    const look = $('set-look');
+    look.hidden = !!q && !look.textContent.toLowerCase().includes(q);
+    if (q && !look.hidden) any = true;
+    nav.querySelectorAll(':scope > .rail-label').forEach((p) => {
       let el = p.nextElementSibling;
       let show = false;
       for (; el && el.tagName === 'A'; el = el.nextElementSibling) if (!el.hidden && !el.classList.contains('cant')) show = true;
