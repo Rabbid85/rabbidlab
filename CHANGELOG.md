@@ -2,6 +2,14 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.0.5 (2026-11-11)
+
+- Active Directory has a new layout. A big title, then its pages down the left with Find over them and the views of the open page tucked under its entry. The open entry is marked with a bar and brighter words.
+- Users, Groups and Computers can be narrowed from the left: by enabled or disabled, by when they last signed in, and by OU.
+- Across the top of each list: its tabs (People and System accounts on Users), how it is sorted, rows or tiles, Export and New.
+- What needs a look shows as cards over the list, such as Locked out or Expiring passwords, each with how many and who. Click one to see them.
+- Each row of a list is a card of its own, and the list can be shown as tiles.
+
 ## 1.0.4 (2026-11-11)
 
 - With no service account set up yet, Active Directory shows that once, in a card over the whole section, in place of a card at the top of each of its pages.

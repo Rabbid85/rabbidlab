@@ -353,38 +353,92 @@ a.button.primary:hover { background: var(--ember); }
 .top .top-info svg { width: 19px; height: 19px; }
 .about-text { max-height: 52vh; margin: 12px 0 0; padding: 14px 16px; overflow: auto; border: 1px solid var(--line); border-radius: 10px; background: #0C0E17; color: var(--text);
   font: 12.5px/1.6 Consolas, "Cascadia Mono", monospace; white-space: pre-wrap; word-break: break-word; user-select: all; }
-/* Active Directory: its pages listed down the left of the page, under the page's title, and looking like the rail. The open page's views follow. */
-section.page.dir-area { max-width: 1560px; grid-template-columns: 220px minmax(0, 1fr); column-gap: 30px; }
-.dir-area > .page-head { grid-column: 1 / -1; }
+/* Active Directory: a big title, then its pages listed down the left with Find over them, the open page's views tucked under its entry, and the filters at the foot. */
+section.page.dir-area { max-width: 1640px; grid-template-columns: 250px minmax(0, 1fr); column-gap: 32px; }
+.dir-area > .page-head { grid-column: 1 / -1; grid-row: 1; }
+.dhead h1 { font: 800 36px/1.1 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; letter-spacing: -.02em; color: #fff; }
+.dhead p { max-width: 820px; margin-top: 10px; color: #C9CCDA; font-size: 15px; }
 .dir-area > .dnav { grid-column: 1; }
 .dmain { grid-column: 2; display: grid; gap: 18px; align-content: start; min-width: 0; }
-.dnav { position: sticky; top: 70px; display: flex; flex-direction: column; gap: 1px; align-self: start; max-height: calc(100vh - 88px); margin-left: -10px; padding: 0 2px 8px 10px; overflow-y: auto;
+.dnav { position: sticky; top: 70px; display: flex; flex-direction: column; gap: 1px; align-self: start; max-height: calc(100vh - 88px); margin-left: -6px; padding: 0 4px 8px 6px; overflow-y: auto;
   scrollbar-width: thin; scrollbar-color: #2A2D3E transparent; }
-.dnav .rail-label:first-child { margin-top: 2px; }
+.dnav > .side-find { flex: none; margin: 0 0 14px; }
+.dnav .rail-label { flex: none; margin: 16px 10px 5px; }
+.dnav > .side-find + .rail-label { margin-top: 0; }
 .dnav a { position: relative; display: flex; flex: none; align-items: center; gap: 11px; height: 34px; padding: 0 10px; border-radius: 7px; color: var(--muted); font-size: 13.5px; font-weight: 600; white-space: nowrap; }
 .dnav a:hover { background: #151827; color: var(--title); text-decoration: none; }
-.dnav a[aria-current] { background: #1A1D2B; color: var(--title); }
-.dnav a[aria-current]::before { content: ""; position: absolute; top: 7px; bottom: 7px; left: -10px; width: 3px; border-radius: 0 3px 3px 0; background: var(--accent-line); }
 .dnav a > svg { flex: none; width: 17px; height: 17px; }
-.dnav a[aria-current] > svg:first-child { color: #FF8A3D; }
 .dnav a small { margin-left: auto; color: #5E6380; font-size: 11px; font-weight: 600; }
-.dnav .side { display: contents; } /* its Find box goes to the top of the list, its views to the foot */
-.dnav .side-find { order: -1; flex: none; margin: 0 0 10px; }
-.dnav .side-label { flex: none; margin: 14px 10px 4px; padding: 0; color: #5E6380; font-size: 10.5px; letter-spacing: .08em; }
-.dnav .dir-acct { margin-top: 14px; }
+.dnav a .rail-dot + small { margin-left: 8px; }
+/* The open entry: a bar and brighter words, no box. */
+.dnav a[aria-current] { color: #fff; font-weight: 700; }
+.dnav a[aria-current]::before { content: ""; position: absolute; top: 6px; bottom: 6px; left: -4px; width: 3px; border-radius: 3px; background: #FF8A3D; }
+.dnav a[aria-current] > svg:first-child { color: #FF8A3D; }
+.dkids { display: grid; flex: none; margin: 2px 0 6px 18px; padding-left: 12px; border-left: 1px solid var(--line-strong); }
+.dkids:empty { display: none; }
+.dkids a { height: 28px; font-size: 13px; font-weight: 500; }
+.dkids a[aria-current] { font-weight: 650; }
+.dkids a[aria-current]::before { top: 6px; bottom: 6px; left: -14px; width: 2px; }
+.dkids a small.tone.red { color: var(--red); font-weight: 700; }
+.dkids a small.tone.amber { color: var(--amber); font-weight: 700; }
+.dkids i { height: 6px; }
+.dkids .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.dfilters { display: grid; flex: none; }
+.dfilter { display: grid; gap: 7px; margin: 0 10px 12px; }
+.dfilter > span { color: var(--muted); font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.dfilter .seg { margin: 0; }
+.dfilter .seg button { height: 28px; padding: 0 9px; font-size: 12px; }
+.dfilter select { width: 100%; height: 34px; padding-left: 10px; border: 1px solid var(--line-strong); border-radius: 8px; background-color: #0C0E17; color: var(--title); font: inherit; font-size: 13px; }
+.dnav .dir-acct { flex: none; margin-top: 10px; }
+/* Find, the views and the filters are for the pages that list things, once the service account is there. */
+.dnav:not(.lists) > .side-find, .dnav:not(.lists) .dkids, .dnav:not(.lists) .dfilters { display: none; }
 .dir-page .lib { grid-template-columns: minmax(0, 1fr); }
+/* Across the top of the list: tabs, then the sort, rows or tiles, Export and New. */
+.dbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; border-bottom: 1px solid var(--line); }
+.dbar .tabs2 { margin: 0; border: 0; }
+.dbar .tabs2 a { display: flex; align-items: center; gap: 8px; padding: 6px 2px 12px; font-size: 15px; }
+.dbar .tabs2 svg { width: 17px; height: 17px; }
+.dbar .tabs2 small { font-size: 11.5px; }
+.dbar .grow { flex: 1; }
+.dbar > select { height: 34px; margin-bottom: 8px; padding-left: 10px; border: 1px solid var(--line-strong); border-radius: 8px; background-color: #0C0E17; color: var(--title); font: inherit; font-size: 13px; }
+.dbar .seg { margin: 0 0 8px; }
+.dbar .seg button { display: grid; place-items: center; width: 34px; height: 34px; padding: 0; }
+.dbar .seg svg { width: 16px; height: 16px; }
+.dbar > .primary, .dbar > .small { display: inline-flex; align-items: center; gap: 7px; height: 34px; margin-bottom: 8px; }
+.dbar > .primary svg, .dbar > .small svg { width: 15px; height: 15px; }
+.dnow { display: flex; align-items: baseline; gap: 10px; margin: 16px 0 0; }
+.dnow b { color: var(--title); font-size: 15px; font-weight: 650; }
+/* What needs a look: a card to a warning, with how many and who. */
+.dlook { margin-top: 18px; }
+.dlook-label { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+.dlook-label svg { width: 15px; height: 15px; }
+.dlook-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.dlook-card { display: grid; gap: 6px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--muted); font-size: 12.5px; transition: border-color .12s, transform .12s; }
+.dlook-card:hover { transform: translateY(-1px); text-decoration: none; }
+.dlook-card .n { font: 800 30px/1 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; color: #fff; }
+.dlook-card b { color: var(--title); font-size: 14.5px; }
+.dlook-card span:last-child { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.dlook-card.red { border-color: rgba(255, 107, 125, .45); }
+.dlook-card.red .n { color: var(--red); }
+.dlook-card.amber { border-color: rgba(242, 190, 107, .4); }
+.dlook-card.amber .n { color: var(--amber); }
+/* The list itself: a card to a row under the column headings, or tiles. */
+.table.adt { margin-top: 14px; border: 0; border-radius: 0; background: none; }
+.adt.drows { display: grid; gap: 6px; }
+.adt.drows .tr { min-height: 56px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+.adt.drows .tr.th { min-height: 28px; border-color: transparent; background: none; }
+.adt.drows .who .pic { width: 36px; height: 36px; }
+.adt.dtiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; overflow: visible; }
+.table.adt.dtiles .tr.dtile { display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; gap: 12px; min-width: 0; min-height: 0; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+.dtile-more { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding-top: 10px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12.5px; }
+.dtile-more > div { min-width: 0; }
+.adt .empty { border: 1px dashed var(--line); border-radius: 12px; }
 @media (max-width: 900px) {
   section.page.dir-area { grid-template-columns: minmax(0, 1fr); }
   .dir-area > .dnav, .dmain { grid-column: 1; }
   .dnav { position: static; max-height: none; }
 }
-/* Every dropdown: the console's own arrow, set in from the edge, in place of the browser's, and a dark list when it opens. */
-select:not([multiple]):not([size]) { appearance: none; -webkit-appearance: none; padding-right: 38px; color-scheme: dark; cursor: pointer;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238A8FA8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-  background-repeat: no-repeat; background-position: right 12px center; background-size: 16px 16px; }
-select:not([multiple]):not([size]):hover { border-color: #3A3E55; }
 /* Active Directory with no service account yet: the list and the page wait under a cover, with what to do in a card in the middle of it. */
-.dir-area > .page-head { grid-row: 1; }
 .dir-area > .dnav, .dir-area > .dmain, .dir-area > .dgate { grid-row: 2; }
 .dgate { z-index: 6; grid-column: 1 / -1; display: grid; place-items: start center; min-height: 62vh; margin: -8px -14px; padding: 9vh 20px 30px; border-radius: 14px;
   background: rgba(11, 12, 20, .8); backdrop-filter: blur(3px); }
@@ -395,3 +449,8 @@ select:not([multiple]):not([size]):hover { border-color: #3A3E55; }
 .dgate-acts { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
 .dgate-acts:empty { display: none; }
 .dgate-acts .primary { padding: 9px 22px; }
+/* Every dropdown: the console's own arrow, set in from the edge, in place of the browser's, and a dark list when it opens. */
+select:not([multiple]):not([size]) { appearance: none; -webkit-appearance: none; padding-right: 38px; color-scheme: dark; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238A8FA8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 12px center; background-size: 16px 16px; }
+select:not([multiple]):not([size]):hover { border-color: #3A3E55; }

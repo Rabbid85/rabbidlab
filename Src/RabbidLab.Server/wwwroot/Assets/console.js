@@ -3,6 +3,12 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.0.5', [
+    'Active Directory has a new layout. A big title, then its pages down the left with Find over them and the views of the open page tucked under its entry. The open entry is marked with a bar and brighter words.',
+    'Users, Groups and Computers can be narrowed from the left: by enabled or disabled, by when they last signed in, and by OU.',
+    'Across the top of each list: its tabs (People and System accounts on Users), how it is sorted, rows or tiles, Export and New.',
+    'What needs a look shows as cards over the list, such as Locked out or Expiring passwords, each with how many and who. Click one to see them.',
+    'Each row of a list is a card of its own, and the list can be shown as tiles.']],
   ['1.0.4', [
     'With no service account set up yet, Active Directory shows that once, in a card over the whole section, in place of a card at the top of each of its pages.']],
   ['1.0.3', [
@@ -117,7 +123,7 @@ const RELEASE_NOTES = [
     mark(document.querySelectorAll('.srail a[data-sub]'), 'sub', sub.dataset.sub);
     // Active Directory's pages are listed down the left of whichever of them is open, with that page's views (users.js).
     const dir = now.classList.contains('dir-area');
-    if (now.dataset.page !== 'ad') $('dir-side').hidden = true;
+    if (now.dataset.page !== 'ad') $('dir-rail').classList.remove('lists'); // Find, views and filters are for the pages that list things
     if (dir) {
       now.querySelector('.page-head').after($('dir-rail'));
       $('rail-dir').setAttribute('aria-current', 'page');

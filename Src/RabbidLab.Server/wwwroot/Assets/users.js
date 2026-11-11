@@ -41,14 +41,16 @@
         more.users = j.more;
         return j.users;
       },
-      aside: (u) => u.system,
+      // People, and the accounts Windows and Active Directory made for themselves, on a tab each.
+      tabs: [{ key: 'people', label: 'People', icon: 'user', where: (u) => !u.system }, { key: 'system', label: 'System accounts', icon: 'key', where: (u) => u.system }],
+      sorts: [['Name', (u) => (u.name || u.username).toLowerCase()], ['Last sign-in', (u) => -new Date(u.lastSignIn || 0)], ['Department', (u) => (u.department || '~').toLowerCase()]],
+      filters: ['account', 'seen', 'ou'],
       find: (u) => [u.name, u.username, u.upn, u.email, u.title, u.department, u.where],
       views: [
         ['View', [
           { key: 'all', label: 'All users' },
           { key: 'enabled', label: 'Enabled', where: (u) => u.enabled },
           { key: 'disabled', label: 'Disabled', where: (u) => !u.enabled },
-          { key: 'system', label: 'System accounts', where: (u) => u.system, quiet: true, aside: true },
         ]],
         ['Needs attention', [
           { key: 'locked', label: 'Locked out', tone: 'red', quiet: true, where: (u) => u.locked },
@@ -82,7 +84,8 @@
       title: 'Groups', noun: ['group', 'groups'], add: 'New group', key: (g) => g.dn,
       lead: 'Security and distribution groups, and who is in each.',
       load: async () => { const l = await R.get('/api/ad/groups'); more.groups = l.more; return l; },
-      aside: () => false,
+      sorts: [['Name', (g) => g.name.toLowerCase()], ['Members', (g) => -g.members]],
+      filters: ['ou'],
       find: (g) => [g.name, g.description, g.where],
       views: [
         ['Type', [
@@ -113,7 +116,8 @@
         more.computers = j.more;
         return j.computers;
       },
-      aside: () => false,
+      sorts: [['Name', (c) => c.name.toLowerCase()], ['Last sign-in', (c) => -new Date(c.lastSignIn || 0)], ['Operating system', (c) => (c.os || '~').toLowerCase()]],
+      filters: ['account', 'seen', 'ou'],
       find: (c) => [c.name, c.host, c.os, c.description, c.where],
       views: [
         ['View', [
@@ -142,7 +146,6 @@
       title: 'Domain settings', noun: ['setting', 'settings'], add: null, key: (s) => s.key,
       lead: 'How the domain is set, beside what is recommended.',
       load: () => R.get('/api/ad/domain'),
-      aside: () => false,
       find: (s) => [s.name, s.area, s.now, s.about],
       views: [
         ['View', [
@@ -161,7 +164,6 @@
       title: 'AD audit', noun: ['change', 'changes'], add: null, key: (c) => `${c.dn}|${c.at}`,
       lead: 'What changed in Active Directory in the last 30 days, made anywhere: here, Active Directory Users and Computers, PowerShell. Sign-ins and housekeeping are left out.',
       load: async () => { const l = await R.get('/api/ad/audit?days=30'); more.audit = l.more; return l; },
-      aside: () => false,
       find: (c) => [c.name, c.where, c.attributes.join(' '), c.by],
       views: [
         ['When', [
@@ -201,7 +203,7 @@
         more.recycle = recycle.more;
         return recycle.items;
       },
-      aside: () => false,
+      sorts: [['Deleted', (d) => -new Date(d.deleted || 0)], ['Name', (d) => d.name.toLowerCase()]],
       find: (d) => [d.name, d.wasIn, d.username],
       views: [
         ['View', [
@@ -225,40 +227,88 @@
   const page = () => AD[adPage];
   const allViews = () => page().views.flatMap(([, items]) => items);
   const viewOf = (key) => allViews().find((v) => v.key === key) || allViews()[0];
-  const inView = (v, x) => (v.aside || !page().aside(x)) && (!v.where || v.where(x));
+  // A page can split what it lists over tabs (people, system accounts); its views count what's on the open one.
+  let adTab = '';
+  const tabs = () => page().tabs || [];
+  const tab = () => tabs().find((t) => t.key === adTab) || tabs()[0];
+  const inView = (v, x) => (!tab() || tab().where(x)) && (!v.where || v.where(x));
 
-  // How many are in each view, counted again only when the list changes.
-  let counted = { list: null, page: '', n: {} };
+  // Filters down the left narrow whichever view is open: by account, by last sign-in and by OU, where the page has those.
+  let filters = { account: 'any', seen: 'any', ou: '' };
+  const FILTER = {
+    account: { label: 'Account', pick: [['any', 'Any'], ['on', 'Enabled'], ['off', 'Disabled']], where: (x, v) => v === 'any' || x.enabled === (v === 'on') },
+    seen: { label: 'Last signed in', pick: [['any', 'Any'], ['30', '30 days'], ['never', 'Never']],
+      where: (x, v) => v === 'any' || (v === 'never' ? !x.lastSignIn : !!x.lastSignIn && Date.now() - new Date(x.lastSignIn) < 30 * DAY) },
+  };
+  const filtered = (x) => (page().filters || []).every((f) => (f === 'ou' ? !filters.ou || (x.where || '') === filters.ou : FILTER[f].where(x, filters[f])));
+  const filtering = () => (page().filters || []).some((f) => (f === 'ou' ? !!filters.ou : filters[f] !== 'any'));
+  const drawFilters = () => {
+    const fs = page().filters || [];
+    const ous = [...new Set((lists[adPage] || []).map((x) => x.where || '').filter(Boolean))].sort((a, b) => a.localeCompare(b));
+    $('dir-filters').innerHTML = !fs.length ? '' : '<p class="rail-label">Filters</p>' + fs.map((f) => (f === 'ou'
+      ? `<div class="dfilter"><span>OU</span><select data-filter="ou" aria-label="OU"><option value="">Any OU</option>${ous.map((o) => `<option value="${esc(o)}"${o === filters.ou ? ' selected' : ''}>${esc(o)}</option>`).join('')}</select></div>`
+      : `<div class="dfilter"><span>${FILTER[f].label}</span><div class="seg sn-seg">${FILTER[f].pick.map(([v, text]) => `<button type="button" data-filter="${f}" data-value="${v}" aria-pressed="${filters[f] === v}">${text}</button>`).join('')}</div></div>`)).join('');
+  };
+
+  // The order the list is in, from the page's own choices, and whether it's rows or tiles (kept in this browser).
+  let adSort = 0;
+  const sorted = (list) => {
+    const s = (page().sorts || [])[adSort];
+    if (!s) return list;
+    const by = s[1];
+    return [...list].sort((a, b) => (by(a) < by(b) ? -1 : by(a) > by(b) ? 1 : 0));
+  };
+  let adLayout = 'rows';
+  try { if (localStorage.getItem('rabbidlab.ad.layout') === 'tiles') adLayout = 'tiles'; } catch { /* rows, then */ }
+  const PAGE_ICON = { users: 'user', groups: 'users', computers: 'laptop', domain: 'globe', audit: 'history', recycle: 'trash' };
+  const total = {}; // how many each page had when it was last read, for the list down the left
+
+  // How many are in each view, counted again only when the list or the tab changes.
+  let counted = { list: null, page: '', tab: '', n: {} };
   const counts = () => {
     const list = lists[adPage] || [];
-    if (counted.list !== list || counted.page !== adPage) {
+    if (counted.list !== list || counted.page !== adPage || counted.tab !== adTab) {
       const n = {};
       allViews().forEach((v) => { n[v.key] = list.filter((x) => inView(v, x)).length; });
-      counted = { list, page: adPage, n };
+      counted = { list, page: adPage, tab: adTab, n };
     }
     return counted.n;
   };
+  // The open page's views, tucked under its entry in the list down the left.
   const drawViews = () => {
     const count = counts();
-    $('dir-views').innerHTML = page().views.map(([label, items]) => {
-      const links = items.map((v) => {
-        const n = count[v.key];
-        if (v.quiet && !n && v.key !== adView) return '';
-        return `<a href="#ad/${adPage}/${v.key}"${v.key === adView ? ' aria-current="page"' : ''}><span class="nm">${esc(v.label)}</span>`
-          + `<small class="${n && v.tone ? `tone ${v.tone}` : ''}">${n.toLocaleString()}</small></a>`;
-      }).join('');
-      return links ? `<p class="side-label">${esc(label)}</p>${links}` : '';
-    }).join('');
+    $('dir-views').innerHTML = page().views.map(([, items]) => items.map((v) => {
+      const n = count[v.key];
+      if (v.quiet && !n && v.key !== adView) return '';
+      return `<a href="#ad/${adPage}/${v.key}"${v.key === adView ? ' aria-current="page"' : ''}><span class="nm">${esc(v.label)}</span>`
+        + `<small class="${n && v.tone ? `tone ${v.tone}` : ''}">${n.toLocaleString()}</small></a>`;
+    }).join('')).filter(Boolean).join('<i></i>');
+    document.querySelector(`#dir-rail a[data-adpage="${adPage}"]`)?.after($('dir-views'));
+    document.querySelectorAll('#dir-rail [data-n]').forEach((el) => { el.textContent = total[el.dataset.n] === undefined ? '' : total[el.dataset.n].toLocaleString(); });
+  };
+  // What needs a look, as cards over the list: the page's views that carry a warning and have something in them.
+  const drawLook = (find) => {
+    const count = counts();
+    const list = lists[adPage] || [];
+    const cards = adView !== allViews()[0].key || find || filtering() ? [] : allViews().filter((v) => v.tone && count[v.key]).slice(0, 4);
+    $('dir-look').hidden = !cards.length;
+    $('dir-look').innerHTML = !cards.length ? '' : `<p class="dlook-label">${svg('alert')}Needs a look</p><div class="dlook-cards">` + cards.map((v) => {
+      const first = list.find((x) => inView(v, x));
+      const name = first.name || first.username || '';
+      return `<a class="dlook-card ${v.tone}" href="#ad/${adPage}/${v.key}"><span class="n">${count[v.key].toLocaleString()}</span><b>${esc(v.label)}</b>`
+        + `<span>${esc(count[v.key] > 1 ? `${name} and ${(count[v.key] - 1).toLocaleString()} more` : name)}</span></a>`;
+    }).join('') + '</div>';
   };
 
   const drawAd = () => {
     const p = page();
     const s = ad?.state;
-    $('dir-title').textContent = p.title;
     $('dir-lead').textContent = p.lead;
     $('dir-setup').hidden = !!s;
     $('dir-lib').hidden = !s;
-    $('dir-side').hidden = !s; // the views, in Active Directory's rail
+    // Find, the views and the filters show in the list down the left while a page that lists things is open.
+    $('dir-rail').classList.toggle('lists', !!s);
+    $('dir-acct-row').hidden = !s;
     if (!s) {
       setupCard($('dir-setup'), ad);
       $('dir-locked-dot').hidden = true;
@@ -272,15 +322,33 @@
     const v = viewOf(adView);
     const find = $('dir-find').value.trim().toLowerCase();
     const list = lists[adPage] || [];
-    rows = list.filter((x) => inView(v, x) && (!find || p.find(x).some((t) => String(t || '').toLowerCase().includes(find))));
+    if (lists[adPage]) total[adPage] = (p.tabs ? list.filter(p.tabs[0].where) : list).length;
+    rows = sorted(list.filter((x) => inView(v, x) && filtered(x) && (!find || p.find(x).some((t) => String(t || '').toLowerCase().includes(find)))));
+    // The tabs, or the page's own name where it has none; the sort; rows or tiles.
+    const openTab = tab();
+    $('dir-tabs').innerHTML = (p.tabs || [{ key: '', label: p.title, icon: PAGE_ICON[adPage], where: () => true }])
+      .map((t) => `<a data-tab="${t.key}"${!openTab || t.key === openTab.key ? ' aria-current="true"' : ''}>${svg(t.icon)}${esc(t.label)} <small>${list.filter(t.where).length.toLocaleString()}</small></a>`).join('');
+    $('dir-sort').hidden = !(p.sorts || []).length;
+    $('dir-sort').innerHTML = (p.sorts || []).map(([label], i) => `<option value="${i}"${i === adSort ? ' selected' : ''}>${esc(label)}</option>`).join('');
+    $('dir-layout').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.layout === adLayout));
+    // What's open says so over the list once it's narrower than everything.
+    $('dir-now').hidden = !(adView !== allViews()[0].key || find || filtering());
     $('dir-view-title').textContent = v.label;
     $('dir-count').textContent = `${rows.length.toLocaleString()} ${p.noun[rows.length === 1 ? 0 : 1]}`;
-    $('dir-table').className = `table adt ${adPage}`;
-    $('dir-table').innerHTML = `<div class="tr th">${p.head.map((h) => `<span>${esc(h)}</span>`).join('')}</div>`
-      + (rows.length ? rows.map((x, i) => `<div class="tr" tabindex="0" data-i="${i}">${p.cells(x).map((c) => `<div>${c}</div>`).join('')}</div>`).join('')
-        : `<div class="empty">${list.length ? 'Nothing here right now.' : 'Nothing yet.'}</div>`);
+    $('dir-table').className = `table adt ${adPage} ${adLayout === 'tiles' ? 'dtiles' : 'drows'}`;
+    const none = `<div class="empty">${list.length ? 'Nothing here right now.' : 'Nothing yet.'}</div>`;
+    // Rows keep every column under its heading; a tile leads with the name and stacks the rest under it.
+    $('dir-table').innerHTML = !rows.length ? none : adLayout === 'tiles'
+      ? rows.map((x, i) => {
+        const c = p.cells(x);
+        return `<div class="tr dtile" tabindex="0" data-i="${i}"><div>${c[0]}</div><div class="dtile-more">${c.slice(1).map((cell) => `<div>${cell}</div>`).join('')}</div></div>`;
+      }).join('')
+      : `<div class="tr th">${p.head.map((h) => `<span>${esc(h)}</span>`).join('')}</div>`
+        + rows.map((x, i) => `<div class="tr" tabindex="0" data-i="${i}">${p.cells(x).map((c) => `<div>${c}</div>`).join('')}</div>`).join('');
     $('dir-more').hidden = !more[adPage];
     drawViews();
+    drawFilters();
+    drawLook(find);
     // The dots in the rail keep what the last read said, while another page is open.
     if (lists.users) $('dir-locked-dot').hidden = !lists.users.some((u) => u.locked && !u.system);
     if (lists.domain) $('dir-domain-dot').hidden = !lists.domain.some((s) => s.tone === 'bad');
@@ -356,6 +424,40 @@
   $('dir-find').addEventListener('input', () => {
     clearTimeout(adFindTimer);
     adFindTimer = setTimeout(drawAd, 150);
+  });
+  // The tabs, the sort, rows or tiles, and the filters: each draws the list again from what's loaded.
+  $('dir-tabs').addEventListener('click', (e) => {
+    const t = e.target.closest('[data-tab]');
+    if (!t || !tabs().length || t.dataset.tab === tab().key) return;
+    closeCard();
+    adTab = t.dataset.tab;
+    drawAd();
+  });
+  $('dir-sort').addEventListener('change', () => {
+    closeCard();
+    adSort = Number($('dir-sort').value);
+    drawAd();
+  });
+  $('dir-layout').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-layout]');
+    if (!b) return;
+    closeCard();
+    adLayout = b.dataset.layout;
+    try { localStorage.setItem('rabbidlab.ad.layout', adLayout); } catch { /* not kept, then */ }
+    drawAd();
+  });
+  $('dir-filters').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-filter]');
+    if (!b) return;
+    closeCard();
+    filters[b.dataset.filter] = b.dataset.value;
+    drawAd();
+  });
+  $('dir-filters').addEventListener('change', (e) => {
+    if (e.target.dataset.filter !== 'ou') return;
+    closeCard();
+    filters.ou = e.target.value;
+    drawAd();
   });
   $('dir-export').addEventListener('click', () => {
     const p = page();
@@ -1061,7 +1163,13 @@
       const fresh = lastAdPage !== rest[0];
       lastAdPage = rest[0];
       say('dir-note', '');
-      if (fresh) $('dir-find').value = '';
+      if (fresh) {
+        // Another page starts on its first tab, in its first order, with nothing narrowed.
+        $('dir-find').value = '';
+        adTab = '';
+        adSort = 0;
+        filters = { account: 'any', seen: 'any', ou: '' };
+      }
       refreshAd(fresh);
     } else {
       lastAdPage = null;

@@ -412,33 +412,38 @@
 
   <!-- Active Directory: users, groups and computers, each with its views down the left, changed as Rabbid Lab's own AD account (users.js). -->
   <section class="page people-page dir-page dir-area" id="page-ad" data-page="ad" data-title="Active Directory" hidden>
-    <header class="page-head"><h1 id="dir-title">Users</h1><p id="dir-lead"></p></header>
+    <header class="page-head dhead"><h1>Active Directory</h1><p id="dir-lead"></p></header>
     <div class="dgate" id="dir-setup" hidden></div>
     <!-- Active Directory's pages, down the left of whichever of them is open (console.js moves this there), then the open page's views (users.js). -->
     <nav class="dnav" id="dir-rail" aria-label="Active Directory">
-      <p class="rail-label">Directory</p>
-      <a href="#ad/users" data-adpage="users" data-can="ad.view ad.connect"><svg><use href="#i-user"/></svg><span>Users</span><i class="rail-dot bad" id="dir-locked-dot" hidden></i></a>
-      <a href="#ad/groups" data-adpage="groups" data-can="ad.view ad.connect"><svg><use href="#i-users"/></svg><span>Groups</span></a>
-      <a href="#ad/computers" data-adpage="computers" data-can="ad.view ad.connect"><svg><use href="#i-laptop"/></svg><span>Computers</span></a>
+      <label class="side-find"><svg><use href="#i-search"/></svg><input type="search" id="dir-find" placeholder="Find" aria-label="Find" autocomplete="off" spellcheck="false"></label>
+      <p class="rail-label">Browse</p>
+      <a href="#ad/users" data-adpage="users" data-can="ad.view ad.connect"><svg><use href="#i-user"/></svg><span>Users</span><i class="rail-dot bad" id="dir-locked-dot" hidden></i><small data-n="users"></small></a>
+      <a href="#ad/groups" data-adpage="groups" data-can="ad.view ad.connect"><svg><use href="#i-users"/></svg><span>Groups</span><small data-n="groups"></small></a>
+      <a href="#ad/computers" data-adpage="computers" data-can="ad.view ad.connect"><svg><use href="#i-laptop"/></svg><span>Computers</span><small data-n="computers"></small></a>
       <a href="#ad/domain" data-adpage="domain" data-can="ad.view ad.connect"><svg><use href="#i-globe"/></svg><span>Domain settings</span><i class="rail-dot bad" id="dir-domain-dot" hidden></i></a>
       <p class="rail-label" data-can="ad.view ad.connect">Tools</p>
       <a href="#org" data-adpage="org" data-can="ad.view"><svg><use href="#i-org"/></svg><span>Org chart</span></a>
       <a href="#attrs" data-adpage="attrs" data-can="ad.view"><svg><use href="#i-list"/></svg><span>Attribute browser</span></a>
       <a href="#ad/audit" data-adpage="audit" data-can="ad.view ad.connect"><svg><use href="#i-history"/></svg><span>AD audit</span></a>
       <a href="#ad/recycle" data-adpage="recycle" data-can="ad.view ad.connect"><svg><use href="#i-trash"/></svg><span>Recycle Bin</span></a>
-      <div class="side" id="dir-side" hidden>
-        <label class="side-find"><svg><use href="#i-search"/></svg><input type="search" id="dir-find" placeholder="Find" aria-label="Find" autocomplete="off" spellcheck="false"></label>
-        <div id="dir-views"></div>
-        <div class="dir-acct"><svg><use href="#i-key"/></svg><span id="dir-acct"></span>
-          <button type="button" class="icon" id="dir-settings" data-can="ad.connect" title="Service account" aria-label="Service account"><svg><use href="#i-gear"/></svg></button></div>
-      </div>
+      <!-- The open page's views (users.js puts them under its entry), and what narrows them. -->
+      <div class="dkids" id="dir-views"></div>
+      <div class="dfilters" id="dir-filters"></div>
+      <div class="dir-acct" id="dir-acct-row" hidden><svg><use href="#i-key"/></svg><span id="dir-acct"></span>
+        <button type="button" class="icon" id="dir-settings" data-can="ad.connect" title="Service account" aria-label="Service account"><svg><use href="#i-gear"/></svg></button></div>
     </nav>
     <div class="dmain">
     <div class="lib" id="dir-lib" hidden>
       <div class="lib-body">
-        <div class="lib-bar"><h2 id="dir-view-title"></h2><span class="bar-note" id="dir-count"></span>
+        <!-- Across the top of the list: its tabs, how it's sorted and laid out, and what can be done with it. -->
+        <div class="dbar"><div class="tabs2" id="dir-tabs"></div><span class="grow"></span>
+          <select id="dir-sort" aria-label="Sort by" title="Sort by"></select>
+          <div class="seg" id="dir-layout"><button type="button" data-layout="rows" title="Rows" aria-label="Rows"><svg><use href="#i-list"/></svg></button><button type="button" data-layout="tiles" title="Tiles" aria-label="Tiles"><svg><use href="#i-overview"/></svg></button></div>
           <button type="button" class="small" id="dir-export"><svg><use href="#i-csv"/></svg>Export</button>
           <button type="button" class="primary" id="dir-new" data-can="ad.create"><svg><use href="#i-plus"/></svg><span id="dir-new-text">New user</span></button></div>
+        <div class="dlook" id="dir-look" hidden></div>
+        <p class="dnow" id="dir-now" hidden><b id="dir-view-title"></b><span class="bar-note" id="dir-count"></span></p>
         <div class="dir-banner" id="dir-banner" hidden></div>
         <div class="table" id="dir-table"></div>
         <p class="hint" id="dir-more" hidden>Active Directory has more than the 1,000 listed here.</p>
@@ -480,7 +485,7 @@
 
   <!-- Org chart: who reports to whom, from each person's Manager in Active Directory (directory.js). -->
   <section class="page org-page dir-area" id="page-org" data-page="org" data-title="Org chart" hidden>
-    <header class="page-head"><h1>Org chart</h1><p>Who reports to whom, from each person's Manager in Active Directory.</p></header>
+    <header class="page-head dhead"><h1>Active Directory</h1><p>Org chart: who reports to whom, from each person's Manager in Active Directory.</p></header>
     <div class="dgate" id="org-setup" hidden></div>
     <div class="dmain">
     <div class="ln-tools" id="org-tools" hidden><label class="side-find"><svg><use href="#i-search"/></svg><input type="search" id="org-find" placeholder="Find a person" aria-label="Find a person" autocomplete="off" spellcheck="false"></label>
@@ -493,7 +498,7 @@
 
   <!-- Attribute browser: the directory as a tree, and every attribute of whatever's picked (directory.js). -->
   <section class="page people-page attrs-page dir-area" id="page-attrs" data-page="attrs" data-title="Attribute browser" hidden>
-    <header class="page-head"><h1>Attribute browser</h1><p>Every OU, container and object in the domain, and every attribute each one has.</p></header>
+    <header class="page-head dhead"><h1>Active Directory</h1><p>Attribute browser: every OU, container and object in the domain, and every attribute each one has.</p></header>
     <div class="dgate" id="at-setup" hidden></div>
     <div class="dmain">
     <div class="lib" id="at-lib">
