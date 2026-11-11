@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.10 (2026-11-11)
+
+- Settings has Options in place of Developer. Developer tools are under its Developer heading, and Options is where new settings will go.
+
 ## 1.1.9 (2026-11-11)
 
 - The Developer tools test buttons moved into Add a link and Add a sensor, so the whole add can be watched: the address goes in, the site is read under the flask, the tile fills in, and then you add it.

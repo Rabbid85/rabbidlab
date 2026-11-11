@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.10', [
+    'Settings has Options in place of Developer. Developer tools are under its Developer heading, and Options is where new settings will go.']],
   ['1.1.9', [
     'The Developer tools test buttons moved into Add a link and Add a sensor, so the whole add can be watched: the address goes in, the site is read under the flask, the tile fills in, and then you add it.',
     'Add a link has a test link that answers and one that does not, and lists of 12 and 200 addresses with a few that do not answer and one already on Links. Add a sensor fills in a ping sensor that answers or goes down.',
@@ -126,7 +128,7 @@ const RELEASE_NOTES = [
   const PAGES = { overview: 'overview.view', links: 'links.view', sensors: 'sensors.view', seats: 'seats.view sessions.view', people: 'access.view', ad: 'ad.view ad.connect', local: 'windows.view',
     org: 'ad.view', attrs: 'ad.view',
     settings: 'updates.view activity.view' };
-  const SUBS = { updates: 'updates.view', activity: 'activity.view', developer: 'updates.auto' };
+  const SUBS = { updates: 'updates.view', activity: 'activity.view', options: 'updates.auto' };
   const pageOk = (key) => !shown || !PAGES[key] || allows(PAGES[key]);
   const home = () => ['overview', 'links', 'sensors', 'ad', 'seats', 'people', 'local'].find(pageOk) || 'wiki';
   const firstSetting = () => Object.keys(SUBS).find((s) => !shown || allows(SUBS[s])) || 'updates';
@@ -204,7 +206,7 @@ const RELEASE_NOTES = [
   rail();
   apply();
 
-  // Rabbid Lab Dev's Developer tools: the switch in Settings, and the test buttons it shows on Links and Sensors.
+  // Rabbid Lab Dev's Developer tools: the switch in Settings, Options, and the DEV buttons it shows in Add a link and Add a sensor.
   const devTools = async (on) => {
     try {
       const d = on === undefined ? await get('/api/devtools') : await send('/api/devtools', { on });
