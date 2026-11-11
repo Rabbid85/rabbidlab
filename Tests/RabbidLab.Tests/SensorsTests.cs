@@ -143,6 +143,45 @@ public sealed class SensorsTests : IDisposable
         Assert.Equal(0, after.GetArrayLength());
     }
 
+    [Fact]
+    public async Task Storage_is_read_from_TrueNAS_and_Synology()
+    {
+        static (string, byte[]) J(string json) => ("application/json", Encoding.UTF8.GetBytes(json));
+        using var truenas = new LinksTests.TinySite(new()
+        {
+            ["/api/v2.0/system/info"] = J("""{"version":"TrueNAS-SCALE-24.10.1","hostname":"truenas"}"""),
+            ["/api/v2.0/pool"] = J("""[{"name":"tank","status":"ONLINE","healthy":true,"size":1000,"free":410,"topology":{"data":[{"type":"MIRROR","status":"ONLINE","children":[{"type":"DISK","status":"ONLINE"},{"type":"DISK","status":"ONLINE"}]}],"cache":[]}},{"name":"backup","status":"DEGRADED","healthy":false,"size":1000,"free":50,"topology":{"data":[{"type":"RAIDZ1","status":"DEGRADED","children":[{"type":"DISK","status":"ONLINE"},{"type":"DISK","status":"FAULTED"}]}]}}]"""),
+        });
+        using var synology = new LinksTests.TinySite(new()
+        {
+            ["/webapi/auth.cgi"] = J("""{"success":true,"data":{"sid":"abc"}}"""),
+            ["/webapi/entry.cgi?api=SYNO.DSM.Info"] = J("""{"success":true,"data":{"model":"DS920+","version_string":"DSM 7.2.1-69057"}}"""),
+            ["/webapi/entry.cgi?api=SYNO.Storage.CGI.Storage"] = J("""{"success":true,"data":{"volumes":[{"id":"volume_1","display_name":"Volume 1","status":"normal","size":{"total":"1000","used":"480"}}],"disks":[{"id":"sata1","status":"normal","smart_status":"normal"},{"id":"sata2","status":"normal","smart_status":"normal"}]}}"""),
+        });
+        using var refused = new LinksTests.TinySite(new() { ["/webapi/auth.cgi"] = J("""{"success":false,"error":{"code":400}}""") });
+        var key = new Login(null, "1-abc");
+        var dsm = new Login("monitor", "secret");
+
+        var nas = await TrueNas.Check(new Sensor { Kind = "nas", Target = $"http://127.0.0.1:{truenas.Port}" }, key, false, CancellationToken.None);
+        var space = await TrueNas.Check(new Sensor { Kind = "nas", Target = $"http://127.0.0.1:{truenas.Port}", Watch = ["space"] }, key, false, CancellationToken.None);
+        var ds = await Synology.Check(new Sensor { Kind = "nas", Product = "synology", Target = $"http://127.0.0.1:{synology.Port}" }, dsm, false, CancellationToken.None);
+        var wrong = await Synology.Check(new Sensor { Kind = "nas", Product = "synology", Target = $"http://127.0.0.1:{refused.Port}" }, dsm, false, CancellationToken.None);
+
+        Assert.False(nas.Ok);
+        Assert.Equal("Pool health: tank ONLINE · backup DEGRADED", nas.Note);
+        Assert.Equal("Signed in to TrueNAS-SCALE-24.10.1", nas.Title);
+        Assert.Equal("3 of 4 online", nas.Parts!.Single(p => p.Key == "disks").Now);
+        Assert.True(space.Ok);
+        Assert.True(space.Warn);
+        Assert.Equal("Free space: Warn below 10 % · backup has 5 % free", space.Note);
+        Assert.True(ds.Ok);
+        Assert.Equal("Signed in to DSM 7.2.1-69057 on a DS920+", ds.Title);
+        Assert.Equal("Warn below 10 % · Volume 1 has 52 % free", ds.Parts!.Single(p => p.Key == "space").Now);
+        Assert.Equal("2 of 2 normal", ds.Parts!.Single(p => p.Key == "disks").Now);
+        Assert.False(wrong.Ok);
+        Assert.Equal("Sign-in failed: check the username and password", wrong.Note);
+    }
+
     // A minute passes and the sensors are checked, as the worker does every few seconds.
     private async Task Minute(int minutes = 1)
     {

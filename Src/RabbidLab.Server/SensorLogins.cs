@@ -67,10 +67,11 @@ public sealed class SensorLogins(DataFolder folder, SettingsStore secrets, TimeP
         return saved is not null && secrets.TryDecrypt(saved.Password) is { } password ? new Login(saved.Username, password) : null;
     }
 
-    /// <summary>Why typed credentials can't be used, or null.</summary>
-    public static string? Problem(LoginForm? form) =>
-        form is null || string.IsNullOrWhiteSpace(form.Username) || string.IsNullOrEmpty(form.Password) ? "Type the username and password, or pick saved credentials."
-        : form.Username.Length > 120 || form.Password.Length > 500 || (form.Name?.Length ?? 0) > 60 ? "That's too long: usernames are 120 characters at most, names 60."
+    /// <summary>Why typed credentials can't be used, or null. An API key (TrueNAS) has no username.</summary>
+    public static string? Problem(LoginForm? form, bool username = true) =>
+        form is null || (username && string.IsNullOrWhiteSpace(form.Username)) || string.IsNullOrEmpty(form.Password)
+            ? username ? "Type the username and password, or pick saved credentials." : "Paste the API key, or pick a saved one."
+        : (form.Username?.Length ?? 0) > 120 || form.Password.Length > 500 || (form.Name?.Length ?? 0) > 60 ? "That's too long: usernames are 120 characters at most, names 60."
         : null;
 
     /// <summary>Saves typed credentials and gives their id.</summary>
@@ -82,8 +83,8 @@ public sealed class SensorLogins(DataFolder folder, SettingsStore secrets, TimeP
             var login = new SavedLogin
             {
                 Id = Convert.ToHexString(RandomNumberGenerator.GetBytes(6)).ToLowerInvariant(),
-                Name = string.IsNullOrWhiteSpace(form.Name) ? form.Username!.Trim() : form.Name.Trim(),
-                Username = form.Username!.Trim(),
+                Name = !string.IsNullOrWhiteSpace(form.Name) ? form.Name.Trim() : string.IsNullOrWhiteSpace(form.Username) ? "API key" : form.Username.Trim(),
+                Username = string.IsNullOrWhiteSpace(form.Username) ? null : form.Username.Trim(),
                 Password = secrets.Encrypt(form.Password!),
                 Added = clock.GetUtcNow().UtcDateTime,
                 AddedBy = by,

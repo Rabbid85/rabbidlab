@@ -40,8 +40,14 @@ public sealed class Sensor
     /// <summary>For kinds that sign in: the saved credentials (SensorLogins) by id.</summary>
     public string? Login { get; set; }
 
-    /// <summary>For hw: the parts it watches (Redfish.Parts); null for all of them.</summary>
+    /// <summary>For hw and nas: the parts it watches (Redfish.Parts, Storage.Parts); null for all of them.</summary>
     public List<string>? Watch { get; set; }
+
+    /// <summary>For nas: truenas (an API key) or synology (a DSM account).</summary>
+    public string? Product { get; set; }
+
+    /// <summary>For nas: the share of free space below which it warns, in percent; null for 10.</summary>
+    public int? WarnFree { get; set; }
 
     /// <summary>The fingerprint of the device's certificate when Windows doesn't trust it: credentials only go to that one.</summary>
     public string? Pin { get; set; }
@@ -149,7 +155,7 @@ public sealed class NetworkProbe(TimeProvider clock, SensorLogins? logins = null
     public async Task<Probe> Check(Sensor s, CancellationToken stop)
     {
         using var limit = CancellationTokenSource.CreateLinkedTokenSource(stop);
-        limit.CancelAfter(TimeSpan.FromSeconds(s.Kind switch { "web" => 10, "hw" => 45, _ => 5 }));
+        limit.CancelAfter(TimeSpan.FromSeconds(s.Kind switch { "web" => 10, "hw" or "nas" => 45, _ => 5 }));
         try
         {
             return s.Kind switch
@@ -159,6 +165,7 @@ public sealed class NetworkProbe(TimeProvider clock, SensorLogins? logins = null
                 "dns" => await Name(s.Target, s.Server, s.Address, limit.Token),
                 "cert" => await Certificate(s.Target, s.Port ?? 443, s.WarnDays ?? Sensors.CertificateWarnDays, limit.Token),
                 "hw" => await Signed(s, (login) => Redfish.Check(s, login, s.Trying, limit.Token)),
+                "nas" => await Signed(s, (login) => s.Product == "synology" ? Synology.Check(s, login, s.Trying, limit.Token) : TrueNas.Check(s, login, s.Trying, limit.Token)),
                 _ => await Ping(s.Target, limit.Token),
             };
         }
@@ -307,7 +314,8 @@ public sealed class NetworkProbe(TimeProvider clock, SensorLogins? logins = null
 
 /// <summary>A sensor as the page sends it.</summary>
 public sealed record SensorForm(string? Name, string? Kind, string? Target, int? Port, string? Server, string? Group, int? Every, string? Rule,
-    string? Expect = null, string? Text = null, string? Address = null, int? WarnDays = null, string? Login = null, LoginForm? NewLogin = null, List<string>? Watch = null, string? Pin = null);
+    string? Expect = null, string? Text = null, string? Address = null, int? WarnDays = null, string? Login = null, LoginForm? NewLogin = null, List<string>? Watch = null, string? Pin = null,
+    string? Product = null, int? WarnFree = null);
 
 public sealed record RuleForm(int? After, int? Again, bool? Back);
 
@@ -321,10 +329,15 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
     public const int CertificateWarnDays = 21;
     private const int Most = 200;
     private static readonly int[] Intervals = [30, 60, 300, 3600];
-    private static readonly string[] Kinds = ["ping", "port", "web", "dns", "cert", "hw"];
+    private static readonly string[] Kinds = ["ping", "port", "web", "dns", "cert", "hw", "nas"];
 
     /// <summary>The kinds that sign in, with saved or typed credentials.</summary>
-    public static bool SignsIn(string kind) => kind is "hw";
+    public static bool SignsIn(string kind) => kind is "hw" or "nas";
+
+    // What a kind can watch, and whether its credentials have a username (a TrueNAS API key has none).
+    private static string[] PartsOf(string kind) => kind switch { "hw" => Redfish.Parts, "nas" => Storage.Parts, _ => [] };
+
+    private static bool NeedsUsername(Sensor s) => !(s.Kind == "nas" && s.Product != "synology");
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { WriteIndented = true };
     private static readonly JsonSerializerOptions Compact = new(JsonSerializerDefaults.Web);
     private readonly JsonFile<SensorsFile> file = folder.Json<SensorsFile>("sensors.json", Json);
@@ -387,7 +400,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
 
     private static object Row(Sensor s, SensorState st) => new
     {
-        s.Id, s.Name, s.Kind, s.Target, s.Port, s.Server, s.Expect, s.Text, s.Address, s.WarnDays, s.Login, s.Watch, s.Pin, s.Group, s.Every, s.Rule, s.Paused,
+        s.Id, s.Name, s.Kind, s.Target, s.Port, s.Server, s.Expect, s.Text, s.Address, s.WarnDays, s.Login, s.Watch, s.Pin, s.Product, s.WarnFree, s.Group, s.Every, s.Rule, s.Paused,
         status = s.Paused ? "paused" : st.Status,
         since = st.Since,
         ms = st.Ms,
@@ -484,9 +497,12 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
             return (null, "Names are 60 characters at most.");
         }
         // A certificate doesn't change by the minute: hourly unless something else was asked for. Hardware: every 5 minutes.
-        var every = Intervals.Contains(form.Every ?? 0) ? form.Every!.Value : kind switch { "cert" => 3600, "hw" => 300, _ => 60 };
-        var watch = kind == "hw" && form.Watch is { } w && !Redfish.Parts.All(w.Contains) ? Redfish.Parts.Where(w.Contains).ToList() : null;
-        return (new Sensor { Name = name, Kind = kind, Target = target, Port = port, Server = server, Expect = expect, Text = text, Address = address, WarnDays = warn, Watch = watch,
+        var every = Intervals.Contains(form.Every ?? 0) ? form.Every!.Value : kind switch { "cert" => 3600, "hw" or "nas" => 300, _ => 60 };
+        var parts = PartsOf(kind);
+        var watch = parts.Length > 0 && form.Watch is { } w && !parts.All(w.Contains) ? parts.Where(w.Contains).ToList() : null;
+        var product = kind == "nas" ? (form.Product == "synology" ? "synology" : "truenas") : null;
+        int? free = kind == "nas" && form.WarnFree is 5 or 20 ? form.WarnFree : null; // 10, the usual, is kept as null
+        return (new Sensor { Name = name, Kind = kind, Target = target, Port = port, Server = server, Expect = expect, Text = text, Address = address, WarnDays = warn, Watch = watch, Product = product, WarnFree = free,
             Pin = SignsIn(kind) && !string.IsNullOrWhiteSpace(form.Pin) ? form.Pin.Trim() : null, Every = every }, null);
     }
 
@@ -503,7 +519,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
         {
             if (form.NewLogin is not null)
             {
-                if (SensorLogins.Problem(form.NewLogin) is { } bad)
+                if (SensorLogins.Problem(form.NewLogin, NeedsUsername(next)) is { } bad)
                 {
                     return (null, bad);
                 }
@@ -553,7 +569,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
                 f.Sensors[at] = next;
                 // Something else is checked now: what the old check found says nothing about it.
                 if (old!.Kind != next.Kind || old.Target != next.Target || old.Port != next.Port || old.Server != next.Server || old.Expect != next.Expect || old.Text != next.Text
-                    || old.Address != next.Address || old.WarnDays != next.WarnDays)
+                    || old.Address != next.Address || old.WarnDays != next.WarnDays || old.Product != next.Product)
                 {
                     states.Read().States.Remove(next.Id);
                     dirty = true;
@@ -712,11 +728,11 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
         {
             if (form.NewLogin is not null)
             {
-                if (SensorLogins.Problem(form.NewLogin) is { } bad)
+                if (SensorLogins.Problem(form.NewLogin, NeedsUsername(sensor)) is { } bad)
                 {
                     return (null, bad);
                 }
-                sensor.Typed = new Login(form.NewLogin.Username!.Trim(), form.NewLogin.Password!);
+                sensor.Typed = new Login(form.NewLogin.Username?.Trim(), form.NewLogin.Password!);
             }
             else if (logins.Has(form.Login))
             {
@@ -960,6 +976,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
         "dns" => $"DNS lookup · {s.Target}" + (s.Server is null ? "" : $" on {s.Server}"),
         "cert" => $"Certificate · {s.Target}" + (s.Port is null or 443 ? "" : $":{s.Port}"),
         "hw" => $"Server hardware · {s.Target}",
+        "nas" => $"Storage · {s.Target}",
         _ => $"Ping · {s.Target}",
     };
 

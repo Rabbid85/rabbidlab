@@ -354,8 +354,10 @@ public sealed class LinksTests : IDisposable
                     {
                         // The headers: not needed.
                     }
-                    var (type, body) = pages.TryGetValue(path, out var page) ? page : ("text/plain", "no"u8.ToArray());
-                    var head = $"HTTP/1.1 {(pages.ContainsKey(path) ? "200 OK" : "404 Not Found")}\r\nContent-Type: {type}\r\nContent-Length: {body.Length}\r\nConnection: close\r\n\r\n";
+                    // A page asked for with its query, such as /webapi/entry.cgi?api=SYNO.DSM.Info, also answers a longer query that starts the same.
+                    var key = pages.ContainsKey(path) ? path : pages.Keys.FirstOrDefault(k => k.Contains('?') && path.StartsWith(k, StringComparison.Ordinal)) ?? path;
+                    var (type, body) = pages.TryGetValue(key, out var page) ? page : ("text/plain", "no"u8.ToArray());
+                    var head = $"HTTP/1.1 {(pages.ContainsKey(key) ? "200 OK" : "404 Not Found")}\r\nContent-Type: {type}\r\nContent-Length: {body.Length}\r\nConnection: close\r\n\r\n";
                     await stream.WriteAsync(Encoding.ASCII.GetBytes(head));
                     await stream.WriteAsync(body);
                 }
