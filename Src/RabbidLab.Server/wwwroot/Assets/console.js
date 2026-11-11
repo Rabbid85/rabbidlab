@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.31', [
+    'The version in the top bar looks like the shortcuts beside it: a tag icon and plain grey text, with no box around it.']],
   ['1.1.30', [
     'The flask that shows while the page loads is bigger, and the top bar shortcuts wait until the page has loaded instead of filling in one by one.',
     'The footer with the version and the GitHub link is gone. The version is at the start of the shortcuts in the top bar.']],

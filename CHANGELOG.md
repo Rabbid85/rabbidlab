@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.31 (2026-11-11)
+
+- The version in the top bar looks like the shortcuts beside it: a tag icon and plain grey text, with no box around it.
+
 ## 1.1.30 (2026-11-11)
 
 - The flask that shows while the page loads is bigger, and the top bar shortcuts wait until the page has loaded instead of filling in one by one.
