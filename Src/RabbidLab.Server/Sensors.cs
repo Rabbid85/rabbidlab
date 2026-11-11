@@ -69,8 +69,11 @@ public sealed class Sensor
     /// <summary>Seconds between checks.</summary>
     public int Every { get; set; } = 60;
 
-    /// <summary>The alert rule it uses: critical, normal, relaxed or quiet.</summary>
+    /// <summary>The saved alert settings it uses, by id, or custom for its own (Custom).</summary>
     public string Rule { get; set; } = "normal";
+
+    /// <summary>With Rule custom: when it emails, again, and on coming back.</summary>
+    public AlertRule? Custom { get; set; }
     public bool Paused { get; set; }
     public DateTime Added { get; set; }
     public string? AddedBy { get; set; }
@@ -98,6 +101,12 @@ public sealed class SensorsFile
     public List<Sensor> Sensors { get; set; } = [];
     public List<string> Groups { get; set; } = [];
     public List<AlertRule> Rules { get; set; } = [];
+
+    /// <summary>The saved alert settings new sensors start with; null for normal.</summary>
+    public string? Default { get; set; }
+
+    /// <summary>Whether Rules is the whole list as kept (named, added, deleted), not changes to the four it started with.</summary>
+    public bool RulesOwned { get; set; }
 }
 
 /// <summary>One check: when, and the reply time in milliseconds, or -1 for none.</summary>
@@ -322,9 +331,9 @@ public sealed class NetworkProbe(TimeProvider clock, SensorLogins? logins = null
 /// <summary>A sensor as the page sends it.</summary>
 public sealed record SensorForm(string? Name, string? Kind, string? Target, int? Port, string? Server, string? Group, int? Every, string? Rule,
     string? Expect = null, string? Text = null, string? Address = null, int? WarnDays = null, string? Login = null, LoginForm? NewLogin = null, List<string>? Watch = null, string? Pin = null,
-    string? Product = null, int? WarnFree = null, string? Value = null, string? Oid = null, string? Interface = null);
+    string? Product = null, int? WarnFree = null, string? Value = null, string? Oid = null, string? Interface = null, RuleForm? Custom = null);
 
-public sealed record RuleForm(int? After, int? Again, bool? Back);
+public sealed record RuleForm(int? After, int? Again, bool? Back, string? Name = null);
 
 /// <summary>
 /// The Sensors page's sensors, kept in sensors.json, and how each is doing, kept in sensor-state.json. A sensor is down
@@ -358,9 +367,13 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
 
     private DateTime Now => clock.GetUtcNow().UtcDateTime;
 
-    /// <summary>The four alert rules. Their timings can be changed; there are always these four.</summary>
+    /// <summary>The saved alert settings: the four it starts with (their timings as changed), until the person names, adds or deletes one.</summary>
     private static List<AlertRule> Rules(SensorsFile f)
     {
+        if (f.RulesOwned)
+        {
+            return f.Rules;
+        }
         AlertRule[] start =
         [
             new() { Id = "critical", Name = "Critical", Color = "#FF6B7D", After = 0, Again = 60 },
@@ -373,6 +386,24 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
     }
 
     private static List<string> Known(SensorsFile f) => Grouping.Known(f.Groups, f.Sensors.Select(s => s.Group));
+
+    private static readonly string[] RuleColours = ["#FF6B7D", "#FF8A3D", "#6FA8FF", "#8A8FA8", "#5FD4A0", "#B07CE8", "#F2BE6B", "#3CC7C7"];
+
+    // The saved settings new sensors start with.
+    private static string DefaultRule(SensorsFile f, List<AlertRule> rules) =>
+        f.Default is { } d && rules.Any(r => r.Id == d) ? d : rules.Any(r => r.Id == "normal") ? "normal" : rules[0].Id;
+
+    // Timings as offered on the page; null when they're not.
+    private static string? Timings(RuleForm form) =>
+        form.After is not (-1 or 0 or 1 or 5 or 10 or 30 or 60) || form.Again is not (0 or 60 or 360 or 1440) ? "Pick one of the times offered." : null;
+
+    private static AlertRule Timed(AlertRule r, RuleForm form)
+    {
+        r.After = form.After!.Value;
+        r.Again = form.After == -1 ? 0 : form.Again!.Value;
+        r.Back = form.After != -1 && (form.Back ?? true);
+        return r;
+    }
 
     private SensorState State(string id)
     {
@@ -400,6 +431,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
                 sensors = f.Sensors.OrderBy(s => s.Group is { } g && place.TryGetValue(g, out var at) ? at : int.MaxValue).ThenBy(s => s.Name, Grouping.Same).Select(s => Row(s, State(s.Id))).ToList(),
                 groups,
                 rules = Rules(f).Select(r => new { r.Id, r.Name, r.Color, r.After, r.Again, r.Back, used = counts.GetValueOrDefault(r.Id) }).ToList(),
+                @default = DefaultRule(f, Rules(f)),
                 mail = mail.Ready,
                 last = f.Sensors.Select(s => State(s.Id).Checked).Max(),
             };
@@ -408,7 +440,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
 
     private static object Row(Sensor s, SensorState st) => new
     {
-        s.Id, s.Name, s.Kind, s.Target, s.Port, s.Server, s.Expect, s.Text, s.Address, s.WarnDays, s.Login, s.Watch, s.Pin, s.Product, s.WarnFree, s.Value, s.Oid, s.Interface, s.Group, s.Every, s.Rule, s.Paused,
+        s.Id, s.Name, s.Kind, s.Target, s.Port, s.Server, s.Expect, s.Text, s.Address, s.WarnDays, s.Login, s.Watch, s.Pin, s.Product, s.WarnFree, s.Value, s.Oid, s.Interface, s.Group, s.Every, s.Rule, s.Custom, s.Paused,
         status = s.Paused ? "paused" : st.Status,
         since = st.Since,
         ms = st.Ms,
@@ -576,7 +608,20 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
             var old = at < 0 ? null : f.Sensors[at];
             next.Id = old?.Id ?? Convert.ToHexString(RandomNumberGenerator.GetBytes(6)).ToLowerInvariant();
             next.Group = group;
-            next.Rule = Rules(f).Any(r => r.Id == form.Rule) ? form.Rule! : old?.Rule ?? "normal";
+            var rules = Rules(f);
+            if (form.Rule == "custom")
+            {
+                if (form.Custom is null || Timings(form.Custom) is not null)
+                {
+                    return (null, "Pick the times for this sensor's own alerts.");
+                }
+                next.Rule = "custom";
+                next.Custom = Timed(new AlertRule { Id = "custom", Name = "Custom", Color = "#8A8FA8" }, form.Custom);
+            }
+            else
+            {
+                next.Rule = rules.Any(r => r.Id == form.Rule) ? form.Rule! : old?.Rule is { } kept && rules.Any(r => r.Id == kept) ? kept : DefaultRule(f, rules);
+            }
             next.Paused = old?.Paused ?? false;
             next.Added = old?.Added ?? Now;
             next.AddedBy = old is null ? by : old.AddedBy;
@@ -715,9 +760,9 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
     /// <summary>Changes a rule's timings; the answer is why it can't be.</summary>
     public string? SaveRule(string id, RuleForm form)
     {
-        if (form.After is not (-1 or 0 or 1 or 5 or 10 or 30 or 60) || form.Again is not (0 or 60 or 360 or 1440))
+        if (Timings(form) is { } problem)
         {
-            return "Pick one of the times offered.";
+            return problem;
         }
         lock (gate)
         {
@@ -725,15 +770,107 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
             var rules = Rules(f);
             if (rules.FirstOrDefault(r => r.Id == id) is not { } rule)
             {
-                return "That rule isn't here any more.";
+                return "Those alert settings aren't here any more.";
             }
-            rule.After = form.After.Value;
-            rule.Again = form.After == -1 ? 0 : form.Again.Value;
-            rule.Back = form.After != -1 && (form.Back ?? true);
-            f.Rules = rules;
-            file.Save(f);
+            if (form.Name is not null)
+            {
+                if (RuleName(rules, form.Name, id) is { } bad)
+                {
+                    return bad;
+                }
+                rule.Name = form.Name.Trim();
+            }
+            Timed(rule, form);
+            Own(f, rules);
             return null;
         }
+    }
+
+    /// <summary>New saved alert settings, by name; the id, or why not.</summary>
+    public (string? Id, string? Problem) AddRule(RuleForm form)
+    {
+        if (Timings(form) is { } problem)
+        {
+            return (null, problem);
+        }
+        lock (gate)
+        {
+            var f = file.Read();
+            var rules = Rules(f);
+            if (RuleName(rules, form.Name, null) is { } bad)
+            {
+                return (null, bad);
+            }
+            if (rules.Count >= 20)
+            {
+                return (null, "That's 20 saved alert settings, which is as many as Rabbid Lab keeps.");
+            }
+            var rule = Timed(new AlertRule
+            {
+                Id = Convert.ToHexString(RandomNumberGenerator.GetBytes(4)).ToLowerInvariant(),
+                Name = form.Name!.Trim(),
+                Color = RuleColours.FirstOrDefault(c => rules.All(r => r.Color != c)) ?? RuleColours[rules.Count % RuleColours.Length],
+            }, form);
+            rules.Add(rule);
+            Own(f, rules);
+            return (rule.Id, null);
+        }
+    }
+
+    /// <summary>Makes saved alert settings the default for new sensors; false when they're not there.</summary>
+    public bool DefaultTo(string id)
+    {
+        lock (gate)
+        {
+            var f = file.Read();
+            var rules = Rules(f);
+            if (rules.All(r => r.Id != id))
+            {
+                return false;
+            }
+            f.Default = id;
+            Own(f, rules);
+            return true;
+        }
+    }
+
+    /// <summary>Deletes saved alert settings; the sensors on them move to the default. Why not, or null.</summary>
+    public string? DeleteRule(string id)
+    {
+        lock (gate)
+        {
+            var f = file.Read();
+            var rules = Rules(f);
+            if (rules.All(r => r.Id != id))
+            {
+                return "Those alert settings aren't here any more.";
+            }
+            var fallback = DefaultRule(f, rules);
+            if (fallback == id)
+            {
+                return "That's the default. Make another one the default first.";
+            }
+            rules.RemoveAll(r => r.Id == id);
+            foreach (var s in f.Sensors.Where(s => s.Rule == id))
+            {
+                s.Rule = fallback;
+            }
+            Own(f, rules);
+            return null;
+        }
+    }
+
+    private static string? RuleName(List<AlertRule> rules, string? name, string? id) =>
+        string.IsNullOrWhiteSpace(name) || name.Trim().Length > 40 ? "Give the alert settings a name, 40 characters at most."
+        : rules.Any(r => r.Id != id && string.Equals(r.Name, name.Trim(), StringComparison.OrdinalIgnoreCase)) ? $"There are alert settings called {name.Trim()} already."
+        : null;
+
+    // From here on the list is kept as it is, not as changes to the four it started with.
+    private void Own(SensorsFile f, List<AlertRule> rules)
+    {
+        f.Rules = rules;
+        f.RulesOwned = true;
+        file.Save(f);
     }
 
     // --- Checking -------------------------------------------------------------------------------------------------------
@@ -943,7 +1080,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
             foreach (var s in f.Sensors.Where(s => !s.Paused))
             {
                 var st = State(s.Id);
-                var rule = rules.GetValueOrDefault(s.Rule) ?? rules["normal"];
+                var rule = s.Rule == "custom" && s.Custom is { } own ? own : rules.GetValueOrDefault(s.Rule) ?? rules[DefaultRule(f, [.. rules.Values])];
                 if (st.Status == "down" && rule.After >= 0)
                 {
                     var first = st.Alerted is null && (now - (st.Since ?? now)).TotalMinutes >= rule.After;
@@ -1142,7 +1279,51 @@ public static class SensorsApi
             {
                 return Results.BadRequest(new { error = problem });
             }
-            log.Record(context, "sensors", "sensor.rule", $"Changed the alert rule {id}");
+            log.Record(context, "sensors", "sensor.rule", form.Name is null ? $"Changed the alert settings {id}" : $"Changed the alert settings {form.Name.Trim()}");
+            return Results.Ok(sensors.View());
+        });
+
+        // Saved alert settings: a new one, the default for new sensors, and deleting one (its sensors move to the default).
+        app.MapPost("/api/sensors/rules", (RuleForm form, HttpContext context, Sensors sensors, ActivityLog log) =>
+        {
+            if (Access.RefuseUnless(context, Permissions.SensorsAlerts) is { } refused)
+            {
+                return refused;
+            }
+            var (id, problem) = sensors.AddRule(form);
+            if (id is null)
+            {
+                return Results.BadRequest(new { error = problem });
+            }
+            log.Record(context, "sensors", "sensor.rule.add", $"Saved the alert settings {form.Name!.Trim()}");
+            return Results.Ok(new { id, now = sensors.View() });
+        });
+
+        app.MapPost("/api/sensors/rules/{id}/default", (string id, HttpContext context, Sensors sensors, ActivityLog log) =>
+        {
+            if (Access.RefuseUnless(context, Permissions.SensorsAlerts) is { } refused)
+            {
+                return refused;
+            }
+            if (!sensors.DefaultTo(id))
+            {
+                return Results.NotFound(new { error = "Those alert settings aren't here any more." });
+            }
+            log.Record(context, "sensors", "sensor.rule.default", $"Made {id} the default alert settings");
+            return Results.Ok(sensors.View());
+        });
+
+        app.MapPost("/api/sensors/rules/{id}/delete", (string id, HttpContext context, Sensors sensors, ActivityLog log) =>
+        {
+            if (Access.RefuseUnless(context, Permissions.SensorsAlerts) is { } refused)
+            {
+                return refused;
+            }
+            if (sensors.DeleteRule(id) is { } problem)
+            {
+                return Results.BadRequest(new { error = problem });
+            }
+            log.Record(context, "sensors", "sensor.rule.delete", $"Deleted the alert settings {id}");
             return Results.Ok(sensors.View());
         });
     }

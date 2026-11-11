@@ -142,9 +142,12 @@
 .sd-pin { display: flex; gap: 8px; margin: 0; color: var(--muted); font-size: 12.5px; }
 .sd-pin svg { flex: none; width: 15px; height: 15px; margin-top: 2px; color: var(--amber); }
 .sd-pin code { color: var(--title); font: 12px Consolas, "Cascadia Mono", monospace; }
-/* Alert rules: the four rules down the left, each with its colour and how many sensors use it. */
-.rl-dialog { width: min(860px, calc(100vw - 32px)); }
-.rl-pane { min-height: 0; }
-.rl-dot { display: block; flex: none; width: 9px; height: 9px; margin: 0 4px; border-radius: 50%; background: var(--c); }
-.rl-pane .sd-form { gap: 8px; }
-.rl-pane .hint { margin-top: 16px; }
+/* Saved alert settings: the default has a star, Custom shows its own times, and Save these as names them for other sensors. */
+.seg.sn-seg button .rstar { width: 12px; height: 12px; margin-left: 6px; color: #F2BE6B; vertical-align: -1px; }
+.seg.sn-seg button.ml-new { border-style: dashed; color: var(--muted); }
+.form.two > .sd-alert-more, .form.two > .ml-rule-times { display: grid; gap: 8px; }
+.sd-saveas, .form.two > .ml-rule-acts { display: flex; align-items: center; gap: 8px; }
+.sd-saveas input { flex: 1; max-width: 320px; }
+.sd-saveas .link, .ml-rule-acts .link { color: #FF8A3D; }
+.ml-rule-acts #ml-rule-delete { color: var(--muted); }
+.ml-alerts { margin-top: 6px; }

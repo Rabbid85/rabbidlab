@@ -13,6 +13,7 @@
   let sensors = [];
   let groups = [];
   let rules = [];
+  let defaultRule = 'normal'; // the saved alert settings new sensors start with
   let mailReady = false;
   let lastCheck = null;
   let group = ''; // the group being looked at, DOWN, or '' for all of them
@@ -176,7 +177,8 @@
     store('rabbidlab.sensors.columns', JSON.stringify(cols));
     applyCols();
   };
-  const rule = (id) => rules.find((r) => r.id === id) || rules[1] || { name: id, color: '#8A8FA8' };
+  const rule = (id) => (id === 'custom' ? { name: 'Custom', color: '#8A8FA8' }
+    : rules.find((r) => r.id === id) || rules.find((r) => r.id === defaultRule) || { name: id, color: '#8A8FA8' });
   const CELL = {
     state: (s) => `<span class="state ${s.status}">${s.status === 'down' && s.since ? `Down ${short(s.since)}` : WORD[s.status] || s.status}</span>`,
     name: (s) => `<div class="nm"><span class="lic letter" data-color="${colour(s)}"><b>${esc(letters(s.name)[0])}</b></span><b>${esc(s.name)}</b></div>`,
@@ -236,6 +238,7 @@
     sensors = answer.sensors;
     groups = answer.groups || [];
     rules = answer.rules || [];
+    defaultRule = answer.default || 'normal';
     mailReady = !!answer.mail;
     lastCheck = answer.last;
   };
@@ -542,7 +545,7 @@
     value: kind === 'snmp' ? vals.value || 'uptime' : null, oid: kind === 'snmp' ? vals.oid || '' : null, interface: kind === 'snmp' ? vals.iface || '' : null,
     watch: signs() ? vals.watch || null : null, pin: signs() ? vals.pin || null : null,
     product: kind === 'nas' ? vals.product || '' : null, warnFree: kind === 'nas' || kind === 'vmware' ? num(vals.warnFree ?? 10) : null, name: $('sd-name').value,
-    group: $('sd-group').value === NEW_GROUP ? $('sd-group-new').value : $('sd-group').value, every: Number($('sd-every').value), rule: $('sd-rule').value });
+    group: $('sd-group').value === NEW_GROUP ? $('sd-group-new').value : $('sd-group').value, every: Number($('sd-every').value), rule: vals.rule || defaultRule, custom: vals.rule === 'custom' ? vals.custom : null });
   // A sensor to change, or null for a new one, which starts in the group asked for or the one being looked at.
   const edit = async (s, into) => {
     editing = s || null;
@@ -557,8 +560,9 @@
     $('sd-group').value = s ? s.group || '' : into ?? (group === DOWN || group === NO_GROUP ? '' : group);
     $('sd-group-new').value = '';
     pickGroup();
-    $('sd-rule').innerHTML = rules.map((r) => `<option value="${esc(r.id)}">${esc(r.name)}: ${r.after < 0 ? 'never emails' : r.after ? `emails after ${r.after} minutes` : 'emails right away'}</option>`).join('');
-    $('sd-rule').value = s?.rule || 'normal';
+    vals.rule = s ? s.rule : defaultRule;
+    vals.custom = s?.custom ? { after: s.custom.after, again: s.custom.again, back: s.custom.back } : { after: 10, again: 0, back: true };
+    drawAlerts();
     $('sd-every').value = String(s?.every || 60);
     setKind(s?.kind || 'ping');
     $('sd-delete').hidden = !s;
@@ -660,53 +664,138 @@
     if (b) edit(null, b.dataset.addto);
   });
 
-  // --- Alert rules: a change is saved as it's made -------------------------------------------------------------------------------
+  // --- Alert settings: saved ones by name, one of them the default. A sensor picks one, or Custom for its own -------------
 
-  let ruleId = 'normal';
-  const AFTER = [[0, 'Right away'], [1, '1 min'], [5, '5 min'], [10, '10 min'], [30, '30 min'], [60, '1 hour'], [-1, 'Never']];
-  const AGAIN = [[0, 'Email once'], [60, 'Again every hour'], [360, 'Again every 6 hours'], [1440, 'Again every day']];
-  const BACK = [[true, 'Email'], [false, 'No email']];
-  const drawRules = () => {
-    const r = rule(ruleId);
-    const about = (x) => (x.after < 0 ? 'Never emails. Shows on the page only.' : `Emails ${x.after ? `after ${x.after === 60 ? 'an hour' : `${x.after} minutes`} down` : 'right away'}${x.again ? `, and again every ${x.again === 60 ? 'hour' : x.again === 360 ? '6 hours' : 'day'}` : ''}.`);
-    $('rl-list').innerHTML = rules.map((x) => `<a href="#" data-rule="${esc(x.id)}"${x.id === ruleId ? ' aria-current="true"' : ''} title="${x.used} sensor${x.used === 1 ? '' : 's'} use it">`
-      + `<i class="rl-dot" data-color="${esc(x.color)}"></i><span>${esc(x.name)}</span><small>${x.used}</small></a>`).join('');
-    R.paint($('rl-list'));
-    $('rl-name').textContent = r.name;
-    $('rl-about').textContent = `${about(r)} ${r.used ? `${r.used} sensor${r.used === 1 ? ' uses' : 's use'} it.` : 'No sensor uses it yet.'}`;
-    const segs = (items, value) => items.map(([v, text]) => `<button type="button" data-value="${v}" aria-pressed="${v === value}"${r.after < 0 && items !== AFTER ? ' disabled' : ''}>${text}</button>`).join('');
-    $('rl-after').innerHTML = segs(AFTER, r.after);
-    $('rl-again').innerHTML = segs(AGAIN, r.again);
-    $('rl-back').innerHTML = segs(BACK, r.back);
-    $('rl-note').textContent = `A sensor turns red on the page after 2 failed checks in a row. The email waits for the time above, so something that comes straight back emails nobody.${mailReady ? '' : ' Nobody is emailed until Email settings are filled in.'}`;
+  const TIMES = {
+    after: [[0, 'Right away'], [1, '1 min'], [5, '5 min'], [10, '10 min'], [30, '30 min'], [60, '1 hour'], [-1, 'Never']],
+    again: [[0, 'Email once'], [60, 'Again every hour'], [360, 'Again every 6 hours'], [1440, 'Again every day']],
+    back: [[true, 'Email'], [false, 'No email']],
   };
-  const saveRule = async (change) => {
-    const r = rule(ruleId);
-    try {
-      take(await R.send(`/api/sensors/rules/${encodeURIComponent(ruleId)}`, { after: r.after, again: r.again, back: r.back, ...change }));
-      say('rl-problem', '');
-    } catch (err) {
-      say('rl-problem', err.message);
+  const TIME_LABEL = { after: 'Email when it has been down for', again: 'While it is still down', back: 'When it comes back' };
+  const STAR = '<svg class="rstar" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3 6.4 20.2l1.1-6.2L3 9.6l6.2-.9z"/></svg>';
+  const aboutRule = (x) => (x.after < 0 ? 'Never emails; it shows on the page only.'
+    : `Emails ${x.after ? `after ${x.after === 60 ? 'an hour' : `${x.after} minute${x.after === 1 ? '' : 's'}`} down` : 'right away'}`
+      + `${x.again ? `, again every ${x.again === 60 ? 'hour' : x.again === 360 ? '6 hours' : 'day'} while it stays down` : ''}${x.back ? ', and when it comes back' : ''}.`);
+  // The three times as rows of buttons; scope says whose they are.
+  const timings = (scope, x) => Object.entries(TIMES).map(([key, items]) => `<div><label>${TIME_LABEL[key]}</label><div class="seg sn-seg">`
+    + items.map(([v, text]) => `<button type="button" data-scope="${scope}" data-t="${key}" data-v="${v}" aria-pressed="${x[key] === v}"${key !== 'after' && x.after < 0 ? ' disabled' : ''}>${text}</button>`).join('')
+    + '</div></div>').join('');
+  const ruleButtons = (scope, current, extra = '') => `<div class="seg sn-seg">${rules.map((r) => `<button type="button" data-scope="${scope}" data-rule="${esc(r.id)}" aria-pressed="${r.id === current}"`
+    + `${r.id === defaultRule ? ' title="The default: new sensors start with it"' : ''}>${esc(r.name)}${r.id === defaultRule ? STAR : ''}</button>`).join('')}${extra}</div>`;
+  const timed = (b) => (b.dataset.t === 'back' ? b.dataset.v === 'true' : Number(b.dataset.v));
+
+  // On a sensor: one of the saved settings, or Custom with times of its own, which can be saved by name for other sensors.
+  const drawAlerts = () => {
+    const custom = vals.rule === 'custom';
+    $('sd-rules').innerHTML = ruleButtons('sensor', vals.rule, `<button type="button" data-rule="custom" aria-pressed="${custom}">Custom</button>`);
+    if (!custom) {
+      $('sd-alert-more').innerHTML = `<p class="hint">${esc(aboutRule(rules.find((x) => x.id === vals.rule) || vals.custom))}</p>`;
+      return;
     }
-    drawRules();
-    draw();
+    $('sd-alert-more').innerHTML = timings('custom', vals.custom) + (!can('sensors.alerts') ? '' : `<div class="sd-saveas">${vals.naming
+      ? '<input id="sd-saveas-name" maxlength="40" placeholder="Name for these alert settings" autocomplete="off"><button type="button" class="small" data-saveas-go>Save</button><button type="button" class="link" data-saveas-cancel>Cancel</button>'
+      : '<button type="button" class="link" data-saveas>Save these as…</button>'}</div>`);
   };
-  const value = (e) => e.target.closest('button[data-value]')?.dataset.value;
-  $('rl-list').addEventListener('click', (e) => {
+  $('sd-rules').addEventListener('click', (e) => {
     const b = e.target.closest('[data-rule]');
     if (!b) return;
-    e.preventDefault();
-    ruleId = b.dataset.rule;
-    drawRules();
+    vals.rule = b.dataset.rule;
+    vals.naming = false;
+    drawAlerts();
   });
-  $('rl-after').addEventListener('click', (e) => { if (value(e) != null) saveRule({ after: Number(value(e)) }); });
-  $('rl-again').addEventListener('click', (e) => { if (value(e) != null) saveRule({ again: Number(value(e)) }); });
-  $('rl-back').addEventListener('click', (e) => { if (value(e) != null) saveRule({ back: value(e) === 'true' }); });
-  $('rl-close').addEventListener('click', () => $('rules-dialog').close());
-  $('sn-rules').addEventListener('click', () => {
-    say('rl-problem', '');
-    drawRules();
-    $('rules-dialog').showModal();
+  $('sd-alert-more').addEventListener('click', async (e) => {
+    const t = e.target.closest('[data-t]');
+    if (t) {
+      vals.custom[t.dataset.t] = timed(t);
+      if (vals.custom.after < 0) Object.assign(vals.custom, { again: 0, back: false });
+      drawAlerts();
+    } else if (e.target.closest('[data-saveas]') || e.target.closest('[data-saveas-cancel]')) {
+      vals.naming = !!e.target.closest('[data-saveas]');
+      drawAlerts();
+      $('sd-saveas-name')?.focus();
+    } else if (e.target.closest('[data-saveas-go]')) {
+      try {
+        const made = await R.send('/api/sensors/rules', { name: $('sd-saveas-name').value, ...vals.custom });
+        take(made.now);
+        Object.assign(vals, { rule: made.id, naming: false });
+        say('sd-problem', '');
+        drawAlerts();
+        draw();
+      } catch (err) {
+        say('sd-problem', err.message);
+      }
+    }
+  });
+
+  // In Email settings: the saved settings, a new one, the default, deleting one. Saved as they're changed.
+  let mailRule = null;
+  const drawMailRules = () => {
+    if (!rules.some((r) => r.id === mailRule)) mailRule = defaultRule;
+    const r = rules.find((x) => x.id === mailRule) || rules[0];
+    if (!r) return;
+    mailRule = r.id;
+    $('ml-rules').innerHTML = ruleButtons('mail', r.id, '<button type="button" class="ml-new" data-rule-new>+ New</button>');
+    if (document.activeElement !== $('ml-rule-name')) $('ml-rule-name').value = r.name;
+    $('ml-rule-times').innerHTML = timings('mail', r);
+    $('ml-rule-note').textContent = `${r.used} sensor${r.used === 1 ? ' uses' : 's use'} ${r.name}.${r.id === defaultRule ? ' It is the default: new sensors start with it.' : ''} Saved as you change it.`;
+    $('ml-rule-default').hidden = $('ml-rule-delete').hidden = r.id === defaultRule;
+  };
+  const changeRule = async (change) => {
+    const r = rules.find((x) => x.id === mailRule);
+    try {
+      take(await R.send(`/api/sensors/rules/${encodeURIComponent(r.id)}`, { after: r.after, again: r.again, back: r.back, ...change }));
+      say('ml-problem', '');
+    } catch (err) {
+      say('ml-problem', err.message);
+    }
+    drawMailRules();
+    draw();
+  };
+  $('ml-rules').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-rule]');
+    if (b) {
+      mailRule = b.dataset.rule;
+      drawMailRules();
+    } else if (e.target.closest('[data-rule-new]')) {
+      let name = 'New alert settings';
+      for (let i = 2; rules.some((r) => r.name.toLowerCase() === name.toLowerCase()); i++) name = `New alert settings ${i}`;
+      try {
+        const made = await R.send('/api/sensors/rules', { name, after: 5, again: 0, back: true });
+        take(made.now);
+        mailRule = made.id;
+        drawMailRules();
+        $('ml-rule-name').select();
+      } catch (err) {
+        say('ml-problem', err.message);
+      }
+    }
+  });
+  $('ml-rule-times').addEventListener('click', (e) => {
+    const t = e.target.closest('[data-t]');
+    if (t) changeRule({ [t.dataset.t]: timed(t) });
+  });
+  $('ml-rule-name').addEventListener('change', () => changeRule({ name: $('ml-rule-name').value }));
+  $('ml-rule-default').addEventListener('click', async () => {
+    try {
+      take(await R.send(`/api/sensors/rules/${encodeURIComponent(mailRule)}/default`, {}));
+    } catch (err) {
+      say('ml-problem', err.message);
+    }
+    drawMailRules();
+    draw();
+  });
+  $('ml-rule-delete').addEventListener('click', () => {
+    const r = rules.find((x) => x.id === mailRule);
+    R.sure(`Delete the alert settings ${r.name}?`, r.used ? `The ${r.used} sensor${r.used === 1 ? '' : 's'} on them move to ${rule(defaultRule).name}.` : 'No sensor uses them.', 'Delete', async () => {
+      try {
+        take(await R.send(`/api/sensors/rules/${encodeURIComponent(r.id)}/delete`, {}));
+        mailRule = defaultRule;
+      } catch (err) {
+        say('ml-problem', err.message);
+      }
+      drawMailRules();
+      draw();
+    });
   });
 
   // --- Email: the mail server and who gets the alerts ---------------------------------------------------------------------------
@@ -761,6 +850,8 @@
     $('ml-from').value = kept.from || '';
     $('ml-to').value = (kept.to || []).join(', ');
     setProvider(kept.provider === 'm365' ? 'm365' : !kept.host || kept.host === 'smtp.gmail.com' ? 'gmail' : 'smtp');
+    mailRule = defaultRule;
+    drawMailRules();
     if (!$('mail-dialog').open) $('mail-dialog').showModal();
   };
   $('ml-provider').addEventListener('click', (e) => {
@@ -797,10 +888,6 @@
     }
   });
   $('sn-mail').addEventListener('click', openMail);
-  $('rl-mail').addEventListener('click', () => {
-    $('rules-dialog').close();
-    openMail();
-  });
 
   // --- Showing the page --------------------------------------------------------------------------------------------------------------
 

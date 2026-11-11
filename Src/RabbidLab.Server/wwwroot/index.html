@@ -378,7 +378,6 @@
       <p class="hero-lead"><b id="sn-lead"></b> <span id="sn-lead-more"></span></p>
       <div class="hero-actions">
         <button type="button" class="primary" id="sn-add" data-can="sensors.edit">Add a sensor</button>
-        <button type="button" id="sn-rules" data-can="sensors.alerts">Alert rules</button>
         <button type="button" id="sn-mail" data-can="sensors.alerts">Email settings</button>
       </div>
       <div class="hero-stats">
@@ -750,12 +749,15 @@
       <div class="sd-head"><b id="sd-kind-name"></b><span id="sd-kind-about"></span></div>
       <div class="form two sd-form" id="sd-fields"></div>
       <div class="form two sd-form">
-        <div class="sd-div wide"><b>Name and alerts</b><i></i></div>
+        <div class="sd-div wide"><b>Name</b><i></i></div>
         <div><label for="sd-name">Name</label><input id="sd-name" maxlength="60" autocomplete="off"></div>
         <div><label for="sd-group">Group</label><select id="sd-group"></select>
           <input id="sd-group-new" maxlength="40" placeholder="Name of the new group" aria-label="Name of the new group" autocomplete="off" hidden></div>
         <div><label for="sd-every">Check every</label><select id="sd-every"><option value="30">30 seconds</option><option value="60">Minute</option><option value="300">5 minutes</option><option value="3600">Hour</option></select></div>
-        <div><label for="sd-rule">Alert rule</label><select id="sd-rule"></select></div>
+        <div></div>
+        <div class="sd-div wide"><b>Alerts</b><i></i></div>
+        <div class="wide"><label>Alert settings</label><div id="sd-rules"></div></div>
+        <div class="wide sd-alert-more" id="sd-alert-more"></div>
       </div>
       <div class="sd-out" id="sd-out"></div>
       <p class="hint problem" id="sd-problem" hidden></p>
@@ -778,32 +780,12 @@
     <button type="button" id="sv-change" data-can="sensors.edit">Change</button><button type="button" class="primary" id="sv-close">Close</button></div>
 </dialog>
 
-<!-- Alert rules: how long something is down before the email, picked per sensor. A change is saved as it's made. -->
-<dialog class="dialog sd-dialog rl-dialog" id="rules-dialog" aria-labelledby="rl-title">
-  <h2 id="rl-title">Alert rules</h2>
-  <p class="dialog-lead">How long something has to be down before Rabbid Lab emails you. Each sensor uses one of these.</p>
-  <div class="sd-grid">
-    <!-- The four rules down the left, like Add a sensor's kinds; the open one's settings beside them. -->
-    <nav class="dnav sd-types" id="rl-list" aria-label="Alert rules"></nav>
-    <div class="sd-pane rl-pane">
-      <div class="sd-head"><b id="rl-name"></b><span id="rl-about"></span></div>
-      <div class="form sd-form">
-        <label>Email when it has been down for</label><div class="seg sn-seg" id="rl-after"></div>
-        <label>While it is still down</label><div class="seg sn-seg" id="rl-again"></div>
-        <label>When it comes back</label><div class="seg sn-seg" id="rl-back"></div>
-      </div>
-      <p class="hint" id="rl-note"></p>
-      <p class="hint problem" id="rl-problem" hidden></p>
-    </div>
-  </div>
-  <div class="dialog-foot"><button type="button" id="rl-mail">Email settings</button><span class="grow"></span><button type="button" class="primary" id="rl-close" autofocus>Done</button></div>
-</dialog>
-
 <!-- Email: the mail server alerts go through, and who gets them. -->
 <dialog class="dialog wide" id="mail-dialog" aria-labelledby="ml-title">
   <h2 id="ml-title">Email settings</h2>
-  <p class="dialog-lead">The mail server Rabbid Lab sends alerts through, and who gets them.</p>
-  <div class="form two">
+  <p class="dialog-lead">The mail server alerts go through, who gets them, and when.</p>
+  <div class="form two sd-form">
+    <div class="sd-div wide"><b>Mail server</b><i></i></div>
     <div class="wide"><label>Send through</label>
       <div class="seg sn-seg" id="ml-provider"><button type="button" data-provider="gmail">Gmail</button><button type="button" data-provider="m365">Microsoft 365</button><button type="button" data-provider="smtp">Another mail server</button></div></div>
     <div data-for="smtp"><label for="ml-host">Mail server</label><input id="ml-host" maxlength="200" placeholder="smtp.example.com" autocomplete="off" spellcheck="false"></div>
@@ -818,6 +800,15 @@
     <div class="wide"><label for="ml-to">Send alerts to</label><input id="ml-to" placeholder="you@example.com, someone@example.com" autocomplete="off" spellcheck="false"></div>
   </div>
   <p class="hint" id="ml-help"></p>
+  <!-- Saved alert settings: picked by name on a sensor, one of them the default. Saved as they're changed. -->
+  <div class="form two sd-form ml-alerts" data-can="sensors.alerts">
+    <div class="sd-div wide"><b>Alert settings</b><i></i></div>
+    <div class="wide" id="ml-rules"></div>
+    <div class="wide"><label for="ml-rule-name">Name</label><input id="ml-rule-name" maxlength="40" autocomplete="off"></div>
+    <div class="wide ml-rule-times" id="ml-rule-times"></div>
+    <p class="hint" id="ml-rule-note"></p>
+    <div class="wide ml-rule-acts"><button type="button" class="link" id="ml-rule-default">Make it the default</button><button type="button" class="link" id="ml-rule-delete">Delete</button></div>
+  </div>
   <p class="hint note" id="ml-done" hidden></p>
   <p class="hint problem" id="ml-problem" hidden></p>
   <div class="dialog-foot"><button type="button" id="ml-test">Send a test email</button><span class="grow"></span><button type="button" id="ml-cancel">Cancel</button><button type="button" class="primary" id="ml-save">Save</button></div>

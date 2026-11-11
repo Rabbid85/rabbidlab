@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.4 (2026-11-11)
+
+- Alert rules became saved alert settings, kept in Email settings: name them, add your own, delete them, and star one as the default for new sensors. The Alert rules button is gone.
+- A sensor picks saved alert settings by name, or Custom for times of its own, which can be saved by name for other sensors.
+
 ## 1.1.3 (2026-11-11)
 
 - SNMP sensors read switches, UPS units and printers over v2c or v3 (SHA authentication, AES privacy): uptime, a UPS battery and power, whether an interface is up, or any OID.

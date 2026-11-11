@@ -234,6 +234,30 @@ public sealed class SensorsTests : IDisposable
         Assert.Equal("No answer: check the address and the community", wrong.Note);
     }
 
+    [Fact]
+    public async Task Alert_settings_are_saved_by_name_one_is_the_default_and_a_sensor_can_have_its_own()
+    {
+        var admin = await app.SignedIn();
+        var made = await Json(await admin.PostAsJsonAsync("/api/sensors/rules", new { name = "Lab gear", after = 30, again = 0, back = false }));
+        var id = made.GetProperty("id").GetString()!;
+        var twice = await admin.PostAsJsonAsync("/api/sensors/rules", new { name = "lab gear", after = 5, again = 0 });
+        await admin.PostAsJsonAsync($"/api/sensors/rules/{id}/default", new { });
+        var plain = await Json(await admin.PostAsJsonAsync("/api/sensors", new { kind = "ping", target = "192.168.2.50", name = "Switch" }));
+        var own = await Json(await admin.PostAsJsonAsync("/api/sensors", new { kind = "ping", target = "192.168.2.51", name = "Printer", rule = "custom", custom = new { after = 60, again = 1440, back = true } }));
+        var undeletable = await admin.PostAsJsonAsync($"/api/sensors/rules/{id}/delete", new { });
+        await admin.PostAsJsonAsync("/api/sensors/rules/normal/default", new { });
+        var gone = await Json(await admin.PostAsJsonAsync($"/api/sensors/rules/{id}/delete", new { }));
+
+        Assert.Equal(HttpStatusCode.BadRequest, twice.StatusCode);
+        Assert.Equal(id, plain.GetProperty("default").GetString());
+        Assert.Equal(id, Named(plain, "Switch").GetProperty("rule").GetString()); // new sensors start with the default
+        Assert.Equal("custom", Named(own, "Printer").GetProperty("rule").GetString());
+        Assert.Equal(1440, Named(own, "Printer").GetProperty("custom").GetProperty("again").GetInt32());
+        Assert.Equal(HttpStatusCode.BadRequest, undeletable.StatusCode); // the default can't go
+        Assert.Equal("normal", Named(gone, "Switch").GetProperty("rule").GetString()); // moved to the default
+        Assert.DoesNotContain(gone.GetProperty("rules").EnumerateArray(), r => r.GetProperty("id").GetString() == id);
+    }
+
     // A minute passes and the sensors are checked, as the worker does every few seconds.
     private async Task Minute(int minutes = 1)
     {
