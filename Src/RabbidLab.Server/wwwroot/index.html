@@ -79,6 +79,13 @@
     <span class="name" id="brand-name">Rabbid Lab</span>
     <span class="dev-tag" aria-label="Dev build">DEV</span>
   </a>
+  <!-- Shortcuts on every page: updates, the activity log, what's new, and the source on GitHub. -->
+  <nav class="top-links" aria-label="Shortcuts">
+    <a href="#settings/updates" data-can="updates.view"><svg><use href="#i-updates"/></svg><span>Updates</span></a>
+    <a href="#settings/activity" data-can="activity.view"><svg><use href="#i-activity"/></svg><span>Activity</span></a>
+    <a href="#whats-new"><svg><use href="#i-new"/></svg><span>What's new</span></a>
+    <a class="gh" href="https://github.com/Rabbid85/rabbidlab" id="top-repo" target="_blank" rel="noopener"><svg><use href="#i-code"/></svg><span>GitHub</span></a>
+  </nav>
   <!-- Support info: this Rabbid Lab described as text to copy into a message when asking for help. -->
   <button type="button" class="icon top-info" id="about-open" title="Support info" aria-label="Support info"><svg><use href="#i-info"/></svg></button>
   <!-- Who's signed in; the menu says how, and signs out. -->
@@ -144,12 +151,6 @@
         <div><b id="hero-uptime">…</b><span><svg><use href="#i-clock"/></svg>Running</span></div>
         <div data-can="updates.view"><b id="hero-updates">…</b><span><svg><use href="#i-updates"/></svg>Updates</span></div>
       </div>
-      <nav class="pills" aria-label="Pages">
-        <a href="#updates" data-can="updates.view"><svg><use href="#i-updates"/></svg>Updates</a>
-        <a href="#activity" data-can="activity.view"><svg><use href="#i-activity"/></svg>Activity</a>
-        <a href="#whats-new"><svg><use href="#i-new"/></svg>What's new</a>
-        <a href="https://github.com/Rabbid85/rabbidlab" id="hero-repo" target="_blank" rel="noopener"><svg><use href="#i-code"/></svg>GitHub</a>
-      </nav>
     </header>
 
     <section class="news" aria-labelledby="news-title">

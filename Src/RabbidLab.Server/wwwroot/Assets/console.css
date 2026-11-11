@@ -322,7 +322,7 @@ a.small-link { margin-top: 8px; padding: 6px 12px; font-size: 12.5px; }
 
 /* Overview: the hero across the top, the news under it, then this machine. */
 .page.home { max-width: none; padding: 0; gap: 0; }
-.hero { position: relative; overflow: hidden; padding: 46px 44px 36px; border-bottom: 1px solid var(--line);
+.hero { position: relative; overflow: hidden; padding: 38px 44px 30px; border-bottom: 1px solid var(--line);
   background: radial-gradient(900px 420px at 88% 10%, rgba(232, 84, 47, .22), transparent 60%), radial-gradient(600px 300px at 70% 90%, rgba(158, 89, 207, .14), transparent 60%), #0C0D16; }
 .hero > :not(.tile) { position: relative; z-index: 1; }
 .hero .tile { position: absolute; z-index: 0; border-radius: 24%; pointer-events: none; }
@@ -339,10 +339,6 @@ a.button:hover, label.button:hover { background: #222536; text-decoration: none;
 .hero-stats b { display: block; font: 750 30px/1.1 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; color: #fff; }
 .hero-stats span { display: flex; align-items: center; gap: 6px; margin-top: 4px; font-size: 12.5px; color: var(--muted); }
 .hero-stats svg { width: 14px; height: 14px; }
-.pills { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-top: 28px; padding: 5px; border: 1px solid var(--line-strong); border-radius: 10px; background: rgba(13, 15, 24, .85); }
-.pills a { display: flex; align-items: center; gap: 7px; height: 32px; padding: 0 12px; border-radius: 7px; font-size: 13px; font-weight: 600; color: var(--text); }
-.pills a:hover { background: #1A1D2B; text-decoration: none; }
-.pills svg { width: 15px; height: 15px; color: #6D7290; }
 .hero .hero-new { position: absolute; right: 36px; top: 40px; width: 250px; padding: 14px 16px; border: 1px solid var(--line-strong); border-radius: 12px; background: #0F111A; }
 .hero-new b { display: block; margin-top: 4px; color: var(--title); font-size: 14px; }
 .hero-new p:not(.eyebrow) { margin: 6px 0 10px; color: var(--muted); font-size: 12.5px; line-height: 1.45; }
@@ -361,10 +357,8 @@ a.button:hover, label.button:hover { background: #222536; text-decoration: none;
 .home .machine { margin: 22px 44px 0; }
 @media (max-width: 1180px) { .hero .hero-new { display: none; } }
 /* Every hero is the same height with its parts in the same places, so the line under it stays put from page to page. */
-@media (min-width: 701px) { .hero { min-height: 400px; } }
-/* Links and Sensors: a shorter banner than Overview's. */
-#page-links .hero, #page-sensors .hero { padding-top: 38px; padding-bottom: 30px; }
-@media (min-width: 701px) { #page-links .hero, #page-sensors .hero { min-height: 300px; } }
+@media (min-width: 701px) { .hero { min-height: 300px; } }
+#page-overview .hero-lead { max-width: 760px; }
 .hero-lead { min-height: 1.5em; }
 .hero-actions { min-height: 39px; }
 @media (max-width: 700px) {
@@ -436,8 +430,18 @@ a.button.primary:hover { background: var(--ember); }
 }
 
 /* Support info: the i in the top bar, and the text it gathers to copy. */
-.top .top-info { width: 32px; height: 32px; margin: 0 8px 0 auto; border-radius: 50%; color: var(--muted); }
+.top .top-info { width: 32px; height: 32px; margin: 0 8px 0 6px; border-radius: 50%; color: var(--muted); }
 .top .top-info svg { width: 19px; height: 19px; }
+/* Shortcuts in the top bar, on every page: quiet links, and GitHub in purple so it stands out. Icons only when the window is narrow. */
+.top-links { display: flex; align-items: center; gap: 2px; margin-left: auto; }
+.top-links a { display: flex; align-items: center; gap: 7px; height: 32px; padding: 0 10px; border: 1px solid transparent; border-radius: 8px; color: var(--muted); font-size: 13px; font-weight: 600; white-space: nowrap; }
+.top-links a:hover { background: #1A1D2B; color: var(--title); text-decoration: none; }
+.top-links svg { flex: none; width: 15px; height: 15px; }
+.top-links a.gh { margin-left: 4px; border-color: rgba(167, 139, 250, .4); background: linear-gradient(135deg, rgba(139, 92, 246, .22), rgba(217, 70, 239, .12)); color: #D8C4FF; }
+.top-links a.gh svg { color: #B794FF; }
+.top-links a.gh:hover { border-color: rgba(183, 148, 255, .7); background: linear-gradient(135deg, rgba(139, 92, 246, .34), rgba(217, 70, 239, .2)); color: #fff; }
+@media (max-width: 1100px) { .top-links span { display: none; } .top-links a { padding: 0 9px; } }
+@media (max-width: 640px) { .top-links { display: none; } .top .top-info { margin-left: auto; } }
 .about-text { max-height: 52vh; margin: 12px 0 0; padding: 14px 16px; overflow: auto; border: 1px solid var(--line); border-radius: 10px; background: #0C0E17; color: var(--text);
   font: 12.5px/1.6 Consolas, "Cascadia Mono", monospace; white-space: pre-wrap; word-break: break-word; user-select: all; }
 /* Active Directory and Settings: a big title, then the section's pages down the left (Find on top, small caps groups, the open

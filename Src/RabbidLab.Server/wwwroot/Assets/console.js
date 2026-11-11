@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.28', [
+    'Updates, Activity, What is new and GitHub moved from the Overview banner to the top bar, on every page. GitHub is purple so it stands out. In a narrow window they show as icons.',
+    'The Overview banner is the same size as the ones on Links and Sensors.']],
   ['1.1.27', [
     'Describe known products in Settings, Links is now Auto-fill descriptions, with plainer help: Rabbid Lab recognises common gear like TrueNAS, iDRAC, ESXi and UniFi and fills in what it is.']],
   ['1.1.26', [
@@ -409,7 +412,7 @@ const RELEASE_NOTES = [
     $('ab-since').textContent = when(s.startedAt);
     $('ab-repo').href = s.repository;
     $('ab-repo-text').textContent = s.repository.replace(/^https?:\/\//, '');
-    $('hero-repo').href = s.repository;
+    $('top-repo').href = s.repository;
     started = s.startedAt;
     uptime();
   };
