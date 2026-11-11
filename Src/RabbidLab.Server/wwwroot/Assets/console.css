@@ -353,3 +353,20 @@ a.button.primary:hover { background: var(--ember); }
 .top .top-info svg { width: 19px; height: 19px; }
 .about-text { max-height: 52vh; margin: 12px 0 0; padding: 14px 16px; overflow: auto; border: 1px solid var(--line); border-radius: 10px; background: #0C0E17; color: var(--text);
   font: 12.5px/1.6 Consolas, "Cascadia Mono", monospace; white-space: pre-wrap; word-break: break-word; user-select: all; }
+/* Active Directory's own rail: fixed beside the main one, its pages and then the open page's views. The pages make room for it. */
+.srail.drail { position: fixed; z-index: 5; top: 52px; bottom: 0; left: 224px; width: 240px; overflow-y: auto; }
+.rail-small .srail.drail { left: 60px; }
+.main.has-drail { padding-left: 240px; }
+.dpages { display: flex; flex-direction: column; gap: 2px; }
+.srail .rail-label { margin: 16px 10px 4px; }
+.srail .side { margin-top: 2px; }
+.srail .side a { height: 32px; font-size: 13px; }
+.srail .side .side-find { margin: 4px 0 6px; }
+.dir-page .lib { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 760px) {
+  .srail.drail { position: static; flex-direction: column; width: auto; padding: 10px 14px; }
+  .main.has-drail { padding-left: 0; }
+  .dpages { flex-direction: row; overflow-x: auto; }
+  .dpages a { flex: none; }
+  .dpages .rail-label { display: none; }
+}

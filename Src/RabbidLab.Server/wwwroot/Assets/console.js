@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.0.2', [
+    'Active Directory is one entry in the rail. It opens a rail of its own beside the page, with Users, Groups, Computers, Domain settings and the directory tools, and the views of the page that is open under them.']],
   ['1.0.1', [
     'Adding a list of links shows only how far along it is, such as Reading 3 of 14, with nothing under it.']],
   ['1.0.0', [
@@ -108,6 +110,15 @@ const RELEASE_NOTES = [
     document.querySelectorAll('.sub').forEach((s) => { s.hidden = s !== sub; });
     mark(document.querySelectorAll('.rail a[data-page]'), 'page', now.dataset.page);
     mark(document.querySelectorAll('.srail a[data-sub]'), 'sub', sub.dataset.sub);
+    // Active Directory has a rail of its own, beside whichever of its pages is open; that page's views go in it too (users.js).
+    const dir = ['ad', 'org', 'attrs'].includes(now.dataset.page);
+    $('dir-rail').hidden = !dir;
+    document.querySelector('.main').classList.toggle('has-drail', dir);
+    if (now.dataset.page !== 'ad') $('dir-side').hidden = true;
+    if (dir) {
+      $('rail-dir').setAttribute('aria-current', 'page');
+      mark(document.querySelectorAll('#dir-rail a[data-adpage]'), 'adpage', now.dataset.page === 'ad' ? where()[2][0] || 'users' : now.dataset.page);
+    }
     title();
     document.dispatchEvent(new CustomEvent('rabbidlab:show', { detail: where() }));
   };

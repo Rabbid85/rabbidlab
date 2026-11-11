@@ -258,11 +258,12 @@
     $('dir-lead').textContent = p.lead;
     $('dir-setup').hidden = !!s;
     $('dir-lib').hidden = !s;
-    document.querySelectorAll('.rail a[data-adpage]').forEach((a) => (a.dataset.adpage === adPage ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current')));
+    $('dir-side').hidden = !s; // the views, in Active Directory's rail
     if (!s) {
       setupCard($('dir-setup'), ad);
       $('dir-locked-dot').hidden = true;
       $('dir-domain-dot').hidden = true;
+      $('rail-dir-dot').hidden = true;
       return;
     }
     $('dir-acct').textContent = `Service account: ${s.account}`;
@@ -283,6 +284,8 @@
     // The dots in the rail keep what the last read said, while another page is open.
     if (lists.users) $('dir-locked-dot').hidden = !lists.users.some((u) => u.locked && !u.system);
     if (lists.domain) $('dir-domain-dot').hidden = !lists.domain.some((s) => s.tone === 'bad');
+    // The main rail's one entry carries a dot when either of those does.
+    $('rail-dir-dot').hidden = $('dir-locked-dot').hidden && $('dir-domain-dot').hidden;
     drawBanner();
   };
 
@@ -1054,7 +1057,6 @@
     const [pageName, , rest] = e.detail;
     if (pageName === 'ad') {
       // A new page of Active Directory is read again; another view of the same page draws from what's loaded.
-      document.querySelectorAll('.rail a[data-adpage]').forEach((a) => (a.dataset.adpage === (rest[0] || 'users') ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current')));
       const fresh = lastAdPage !== rest[0];
       lastAdPage = rest[0];
       say('dir-note', '');

@@ -100,16 +100,7 @@
   <a href="#overview" data-page="overview" title="Overview" data-can="overview.view"><svg><use href="#i-overview"/></svg><span>Overview</span></a>
   <a href="#links" data-page="links" title="Links" data-can="links.view"><svg><use href="#i-link"/></svg><span>Links</span><small id="rail-links"></small><i class="rail-dot bad" id="links-dot" hidden></i></a>
   <a href="#sensors" data-page="sensors" title="Sensors" data-can="sensors.view"><svg><use href="#i-activity"/></svg><span>Sensors</span><i class="rail-dot bad" id="sensors-dot" hidden></i></a>
-  <p class="rail-label" data-can="ad.view ad.connect">Active Directory</p>
-  <a href="#ad/users" data-page="ad" data-adpage="users" title="Users" data-can="ad.view ad.connect"><svg><use href="#i-user"/></svg><span>Users</span><i class="rail-dot bad" id="dir-locked-dot" hidden></i></a>
-  <a href="#ad/groups" data-page="ad" data-adpage="groups" title="Groups" data-can="ad.view ad.connect"><svg><use href="#i-users"/></svg><span>Groups</span></a>
-  <a href="#ad/computers" data-page="ad" data-adpage="computers" title="Computers" data-can="ad.view ad.connect"><svg><use href="#i-laptop"/></svg><span>Computers</span></a>
-  <a href="#ad/domain" data-page="ad" data-adpage="domain" title="Domain settings" data-can="ad.view ad.connect"><svg><use href="#i-globe"/></svg><span>Domain settings</span><i class="rail-dot bad" id="dir-domain-dot" hidden></i></a>
-  <p class="rail-label" data-can="ad.view ad.connect">Directory tools</p>
-  <a href="#org" data-page="org" title="Org chart" data-can="ad.view"><svg><use href="#i-org"/></svg><span>Org chart</span></a>
-  <a href="#attrs" data-page="attrs" title="Attribute browser" data-can="ad.view"><svg><use href="#i-list"/></svg><span>Attribute browser</span></a>
-  <a href="#ad/audit" data-page="ad" data-adpage="audit" title="AD audit" data-can="ad.view ad.connect"><svg><use href="#i-history"/></svg><span>AD audit</span></a>
-  <a href="#ad/recycle" data-page="ad" data-adpage="recycle" title="Recycle Bin" data-can="ad.view ad.connect"><svg><use href="#i-trash"/></svg><span>Recycle Bin</span></a>
+  <a href="#ad/users" data-page="ad" id="rail-dir" title="Active Directory" data-can="ad.view ad.connect"><svg><use href="#i-users"/></svg><span>Active Directory</span><i class="rail-dot bad" id="rail-dir-dot" hidden></i></a>
   <p class="rail-label" data-can="seats.view sessions.view access.view windows.view">Config</p>
   <a href="#seats" data-page="seats" title="Seats" data-can="seats.view sessions.view"><svg><use href="#i-monitor"/></svg><span>Seats</span><small id="rail-seats"></small><i class="rail-dot" id="seats-dot" hidden></i></a>
   <a href="#local" data-page="local" title="Local accounts" data-can="windows.view"><svg><use href="#i-key"/></svg><span>Local accounts</span></a>
@@ -131,6 +122,28 @@
     <a class="button small" id="here-download" href="/api/clients/download" download><svg><use href="#i-download"/></svg>1. Download the client</a>
     <a class="button small primary" id="here-connect" href="#"><svg><use href="#i-link"/></svg>2. Connect this computer</a>
     <button type="button" class="link" id="here-later">Not now</button></div>
+  <!-- Active Directory's own rail, beside whichever of its pages is open: the pages, then the open page's views (users.js). -->
+  <nav class="srail drail" id="dir-rail" aria-label="Active Directory" hidden>
+    <h1>Active Directory</h1>
+    <div class="dpages">
+    <a href="#ad/users" data-adpage="users" data-can="ad.view ad.connect"><svg><use href="#i-user"/></svg>Users<i class="rail-dot bad" id="dir-locked-dot" hidden></i></a>
+    <a href="#ad/groups" data-adpage="groups" data-can="ad.view ad.connect"><svg><use href="#i-users"/></svg>Groups</a>
+    <a href="#ad/computers" data-adpage="computers" data-can="ad.view ad.connect"><svg><use href="#i-laptop"/></svg>Computers</a>
+    <a href="#ad/domain" data-adpage="domain" data-can="ad.view ad.connect"><svg><use href="#i-globe"/></svg>Domain settings<i class="rail-dot bad" id="dir-domain-dot" hidden></i></a>
+    <p class="rail-label" data-can="ad.view ad.connect">Directory tools</p>
+    <a href="#org" data-adpage="org" data-can="ad.view"><svg><use href="#i-org"/></svg>Org chart</a>
+    <a href="#attrs" data-adpage="attrs" data-can="ad.view"><svg><use href="#i-list"/></svg>Attribute browser</a>
+    <a href="#ad/audit" data-adpage="audit" data-can="ad.view ad.connect"><svg><use href="#i-history"/></svg>AD audit</a>
+    <a href="#ad/recycle" data-adpage="recycle" data-can="ad.view ad.connect"><svg><use href="#i-trash"/></svg>Recycle Bin</a>
+    </div>
+    <div class="side" id="dir-side" hidden>
+      <p class="rail-label">Views</p>
+      <label class="side-find"><svg><use href="#i-search"/></svg><input type="search" id="dir-find" placeholder="Find" aria-label="Find" autocomplete="off" spellcheck="false"></label>
+      <div id="dir-views"></div>
+      <div class="dir-acct"><svg><use href="#i-key"/></svg><span id="dir-acct"></span>
+        <button type="button" class="icon" id="dir-settings" data-can="ad.connect" title="Service account" aria-label="Service account"><svg><use href="#i-gear"/></svg></button></div>
+    </div>
+  </nav>
   <section class="page home" id="page-overview" data-page="overview" data-title="Overview" hidden>
     <!-- The hero: the name big, how Rabbid Lab is doing, and the way to each page. -->
     <header class="hero" id="hero">
@@ -424,12 +437,6 @@
     <header class="page-head"><h1 id="dir-title">Users</h1><p id="dir-lead"></p></header>
     <div class="ustatus dir-needs" id="dir-setup" hidden></div>
     <div class="lib" id="dir-lib" hidden>
-      <aside class="side" aria-label="Views">
-        <label class="side-find"><svg><use href="#i-search"/></svg><input type="search" id="dir-find" placeholder="Find" aria-label="Find" autocomplete="off" spellcheck="false"></label>
-        <div id="dir-views"></div>
-        <div class="dir-acct"><svg><use href="#i-key"/></svg><span id="dir-acct"></span>
-          <button type="button" class="icon" id="dir-settings" data-can="ad.connect" title="Service account" aria-label="Service account"><svg><use href="#i-gear"/></svg></button></div>
-      </aside>
       <div class="lib-body">
         <div class="lib-bar"><h2 id="dir-view-title"></h2><span class="bar-note" id="dir-count"></span>
           <button type="button" class="small" id="dir-export"><svg><use href="#i-csv"/></svg>Export</button>
