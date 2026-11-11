@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.0.7', [
+    'The Active Directory setup card sits in the middle of the window and is sharp: no blur behind it and no shadow around it.']],
   ['1.0.6', [
     'Links recognises common homelab products, such as TrueNAS, iDRAC, ESXi, vCenter and UniFi, and writes a description for each. Links already there get theirs once, including ones that only had the description copied from the site. Descriptions typed by hand are not changed.',
     'Links settings has a checkbox to turn this off. Turning it off removes the descriptions Rabbid Lab wrote.',

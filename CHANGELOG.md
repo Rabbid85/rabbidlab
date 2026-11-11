@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.0.7 (2026-11-11)
+
+- The Active Directory setup card sits in the middle of the window and is sharp: no blur behind it and no shadow around it.
+
 ## 1.0.6 (2026-11-11)
 
 - Links recognises common homelab products, such as TrueNAS, iDRAC, ESXi, vCenter and UniFi, and writes a description for each. Links already there get theirs once, including ones that only had the description copied from the site. Descriptions typed by hand are not changed.
