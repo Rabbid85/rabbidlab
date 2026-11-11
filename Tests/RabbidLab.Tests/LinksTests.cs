@@ -197,22 +197,26 @@ public sealed class LinksTests : IDisposable
     }
 
     [Fact]
-    public async Task Test_links_play_their_part_and_go_after_30_seconds()
+    public async Task A_test_address_is_read_as_a_test_site_and_its_link_goes_after_30_seconds()
     {
         var links = app.Services.GetRequiredService<Links>();
 
-        links.AddTests("list", "test");
-        var states = await links.States(CancellationToken.None);
-        var made = links.All().Count(l => l.Test is not null);
-        var down = states.States.Values.Count(s => s.Down);
-        var grouped = links.Groups().Contains("Test links");
+        var up = await DevTools.Look("https://up-07.rabbidlab.test", CancellationToken.None);
+        var down = await DevTools.Look("down-03.rabbidlab.test", CancellationToken.None);
+        var (test, _) = links.Save(null, new LinkForm("Test 07", "https://up-07.rabbidlab.test", null, null, null, null), "test", testing: true);
+        var (gone, _) = links.Save(null, new LinkForm("Down", "https://down-03.rabbidlab.test", null, null, null, null), "test", testing: true);
+        var (plain, _) = links.Save(null, new LinkForm("Plain", "https://up-08.rabbidlab.test", null, null, null, null), "test");
+        var states = (await links.States(CancellationToken.None)).States;
         app.Clock.Advance(TimeSpan.FromSeconds(31));
+        var left = links.All().Select(l => l.Name).ToList();
 
-        Assert.Equal(12, made);
-        Assert.Equal(3, down);
-        Assert.True(grouped);
-        Assert.Empty(links.All());
-        Assert.DoesNotContain("Test links", links.Groups());
+        Assert.Equal("Test 07", up.Name);
+        Assert.StartsWith("data:image/svg+xml", up.Icon);
+        Assert.NotNull(down.Problem);
+        Assert.True(states[test!.Id].Up);
+        Assert.True(states[gone!.Id].Down);
+        Assert.Null(plain!.Expires); // without Developer tools on, it's an ordinary link
+        Assert.Equal(["Plain"], left);
     }
 
     [Fact]

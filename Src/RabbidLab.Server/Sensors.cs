@@ -67,8 +67,7 @@ public sealed class Sensor
     [System.Text.Json.Serialization.JsonIgnore]
     public Login? Typed { get; set; }
 
-    /// <summary>A Developer tools test sensor: up or down, played rather than checked, and gone at Expires.</summary>
-    public string? Test { get; set; }
+    /// <summary>A sensor on a Developer tools test address: played rather than checked, and gone at Expires.</summary>
     public DateTime? Expires { get; set; }
 
     /// <summary>Check now: any certificate is read, to offer it to pin.</summary>
@@ -178,6 +177,10 @@ public sealed class NetworkProbe(TimeProvider clock, SensorLogins? logins = null
 
     public async Task<Probe> Check(Sensor s, CancellationToken stop)
     {
+        if (s.Expires is not null && DevTools.IsTest(s.Target))
+        {
+            return await DevTools.Check(s, stop);
+        }
         using var limit = CancellationTokenSource.CreateLinkedTokenSource(stop);
         limit.CancelAfter(TimeSpan.FromSeconds(s.Kind switch { "web" => 10, "hw" or "nas" or "vmware" => 45, "snmp" => 15, "svc" or "disk" => 45, _ => 5 }));
         try
@@ -193,7 +196,6 @@ public sealed class NetworkProbe(TimeProvider clock, SensorLogins? logins = null
                 "vmware" => await Signed(s, (login) => VMware.Check(s, login, s.Trying, limit.Token)),
                 "snmp" => await Signed(s, (login) => Snmp.Check(s, login, limit.Token)),
                 "svc" or "disk" => await Seat(s, limit.Token),
-                "test" => s.Test == "down" ? new Probe(false, Note: "Test sensor: made to fail") : new Probe(true, 3 + Random.Shared.Next(40), "Test sensor"),
                 _ => await Ping(s.Target, limit.Token),
             };
         }
@@ -653,23 +655,6 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
         return (new Sensor { Name = name, Kind = kind, Target = computer, Seat = form.Seat.Trim(), Service = service, Drive = drive, WarnFree = free, Every = every }, null);
     }
 
-    /// <summary>Developer tools: a sensor that answers, or one that fails and turns red, checked every 5 seconds and gone in 30. It never emails.</summary>
-    public void AddTest(bool down, string by)
-    {
-        lock (gate)
-        {
-            var f = file.Read();
-            var now = Now;
-            f.Sensors.Add(new Sensor
-            {
-                Id = Convert.ToHexString(RandomNumberGenerator.GetBytes(6)).ToLowerInvariant(), Name = down ? "Test sensor, down" : "Test sensor", Kind = "test", Target = "test",
-                Test = down ? "down" : "up", Every = 5, Rule = "custom", Custom = new AlertRule { Id = "custom", Name = "Custom", Color = "#8A8FA8", After = -1, Back = false },
-                Added = now, AddedBy = by, Expires = now + DevTools.Lasts,
-            });
-            file.Save(f);
-        }
-    }
-
     // Test sensors past their time go, with their history. Called under the lock.
     private void Sweep()
     {
@@ -687,7 +672,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
     }
 
     /// <summary>The sensor saved (new when id is null), or why it can't be.</summary>
-    public (Sensor? Sensor, string? Problem) Save(string? id, SensorForm form, string by)
+    public (Sensor? Sensor, string? Problem) Save(string? id, SensorForm form, string by, bool testing = false)
     {
         var (next, problem) = Read(form);
         if (next is null)
@@ -754,6 +739,13 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
             next.Paused = old?.Paused ?? false;
             next.Added = old?.Added ?? Now;
             next.AddedBy = old is null ? by : old.AddedBy;
+            if (testing && DevTools.IsTest(next.Target))
+            {
+                next.Expires = Now + DevTools.Lasts;
+                next.Every = 5;
+                next.Rule = "custom";
+                next.Custom = new AlertRule { Id = "custom", Name = "Custom", Color = "#8A8FA8", After = -1, Back = false };
+            }
             f.Groups = known;
             if (at < 0)
             {
@@ -1006,7 +998,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
     // --- Checking -------------------------------------------------------------------------------------------------------
 
     /// <summary>Checks something once without keeping it, for Check now in the dialog.</summary>
-    public async Task<(Probe? Probe, string? Problem)> Try(SensorForm form, CancellationToken stop)
+    public async Task<(Probe? Probe, string? Problem)> Try(SensorForm form, CancellationToken stop, bool testing = false)
     {
         var (sensor, problem) = Read(form);
         if (sensor is null)
@@ -1036,6 +1028,10 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
             }
         }
         sensor.Trying = true;
+        if (testing && DevTools.IsTest(sensor.Target))
+        {
+            sensor.Expires = Now + DevTools.Lasts;
+        }
         return (await probe.Check(sensor, stop), null);
     }
 
@@ -1272,7 +1268,6 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
         "nas" => $"Storage · {s.Target}",
         "vmware" => $"VMware · {s.Target}",
         "snmp" => $"SNMP · {s.Target}",
-        "test" => "Test sensor",
         "svc" => $"Windows service · {s.Service} on {s.Target}",
         "disk" => $"Disk space · {s.Drive} on {s.Target}",
         _ => $"Ping · {s.Target}",
@@ -1333,17 +1328,17 @@ public static class SensorsApi
             : sensors.Detail(id) is { } detail ? Results.Ok(detail) : Results.NotFound(new { error = "That sensor isn't here any more." }));
 
         // Checks what the form describes once, without keeping it.
-        app.MapPost("/api/sensors/try", async (SensorForm form, HttpContext context, Sensors sensors) =>
+        app.MapPost("/api/sensors/try", async (SensorForm form, HttpContext context, Sensors sensors, SettingsStore settings) =>
         {
             if (Access.RefuseUnless(context, Permissions.SensorsEdit) is { } refused)
             {
                 return refused;
             }
-            var (found, problem) = await sensors.Try(form, context.RequestAborted);
+            var (found, problem) = await sensors.Try(form, context.RequestAborted, DevTools.On(settings));
             return found is null ? Results.BadRequest(new { error = problem }) : Results.Ok(new { found.Ok, found.Ms, found.Note, found.Warn, found.Detail, found.Title, found.Parts, found.Pin });
         });
 
-        app.MapPost("/api/sensors", (SensorForm form, HttpContext context, Sensors sensors, ActivityLog log) => Save(null, form, context, sensors, log));
+        app.MapPost("/api/sensors", (SensorForm form, HttpContext context, Sensors sensors, ActivityLog log, SettingsStore settings) => Save(null, form, context, sensors, log, settings));
 
         // The computers in Seats a sensor can check through, and whether their client is connected now.
         app.MapGet("/api/sensors/seats", (HttpContext context, Clients clients, ClientCommands commands) =>
@@ -1355,7 +1350,7 @@ public static class SensorsApi
         app.MapGet("/api/sensors/logins", (HttpContext context, Sensors sensors, SensorLogins logins) =>
             !Access.Can(context, Permissions.SensorsEdit) ? Access.NotAllowed() : Results.Ok(logins.List(sensors.All())));
 
-        app.MapPost("/api/sensors/{id}", (string id, SensorForm form, HttpContext context, Sensors sensors, ActivityLog log) => Save(id, form, context, sensors, log));
+        app.MapPost("/api/sensors/{id}", (string id, SensorForm form, HttpContext context, Sensors sensors, ActivityLog log, SettingsStore settings) => Save(id, form, context, sensors, log, settings));
 
         app.MapPost("/api/sensors/{id}/delete", (string id, HttpContext context, Sensors sensors, ActivityLog log) =>
         {
@@ -1483,7 +1478,7 @@ public static class SensorsApi
         return Results.Ok(sensors.View());
     }
 
-    private static async Task<IResult> Save(string? id, SensorForm form, HttpContext context, Sensors sensors, ActivityLog log)
+    private static async Task<IResult> Save(string? id, SensorForm form, HttpContext context, Sensors sensors, ActivityLog log, SettingsStore settings)
     {
         if (Access.RefuseUnless(context, Permissions.SensorsEdit) is { } refused)
         {
@@ -1494,7 +1489,7 @@ public static class SensorsApi
         {
             form = form with { Pin = await DeviceHttp.Peek(form.Target.Trim(), context.RequestAborted) };
         }
-        var (sensor, problem) = sensors.Save(id, form, ActivityLog.Who(context));
+        var (sensor, problem) = sensors.Save(id, form, ActivityLog.Who(context), DevTools.On(settings));
         if (sensor is null)
         {
             return Results.BadRequest(new { error = problem });

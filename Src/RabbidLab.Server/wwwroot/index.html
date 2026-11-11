@@ -377,8 +377,6 @@
       <button type="button" class="small" id="ln-newgroup" data-can="links.edit"><svg><use href="#i-plus"/></svg>New group</button>
       <div class="vswitch" id="ln-view"><button type="button" data-view="grid" title="Rows" aria-label="Rows"><svg><use href="#i-list"/></svg></button><button type="button" data-view="cards" title="Tiles" aria-label="Tiles"><svg><use href="#i-overview"/></svg></button></div>
     </div>
-    <div class="devstrip" data-can="links.edit"><b>DEV</b><span>Add a test, gone in 30 seconds:</span><button type="button" class="small" data-test="up">A link</button>
-      <button type="button" class="small" data-test="down">A link that's down</button><button type="button" class="small" data-test="list">A list of 12</button></div>
     <div id="ln-list"></div>
     <div class="ln-empty" id="ln-empty" hidden><span class="big-ic ember"><svg><use href="#i-link"/></svg></span>
       <div><b>No links yet</b><span id="ln-empty-text">Put the sites in your lab here: the router, the NAS, the hypervisor, iDRACs. Paste an address and Rabbid Lab fills in the name, icon and IP.</span></div>
@@ -420,8 +418,6 @@
         <button type="button" class="link" id="sn-cols-reset" hidden>Reset columns</button>
         <div class="vswitch" id="sn-view"><button type="button" data-view="grid" title="Rows" aria-label="Rows"><svg><use href="#i-list"/></svg></button><button type="button" data-view="cards" title="Tiles" aria-label="Tiles"><svg><use href="#i-overview"/></svg></button></div>
       </div>
-      <div class="devstrip" data-can="sensors.edit"><b>DEV</b><span>Add a test, gone in 30 seconds:</span><button type="button" class="small" data-test="up">A sensor</button>
-        <button type="button" class="small" data-test="down">A sensor that goes down</button></div>
       <div id="sn-list"></div>
       <div class="ln-empty" id="sn-empty" hidden><span class="big-ic ember"><svg><use href="#i-activity"/></svg></span>
         <div><b>No sensors yet</b><span id="sn-empty-text">A sensor checks something on a timer: a machine that answers ping, an open port, a web page, a DNS name or a certificate. Rabbid Lab emails you when one stays down.</span></div>
@@ -739,6 +735,11 @@
   <h2 id="link-title">Add a link</h2>
   <p class="dialog-lead" id="ln-dlead">Paste the address. Rabbid Lab reads the site for the rest.</p>
   <div class="seg sn-seg" id="ln-mode"><button type="button" data-mode="one">One link</button><button type="button" data-mode="many">A list</button></div>
+  <!-- Rabbid Lab Dev, Developer tools on: test addresses to watch the whole of adding, gone 30 seconds after they're added. -->
+  <div class="devstrip ld-dev" id="ln-dev"><b>DEV</b><span class="one">Paste a test:</span><button type="button" class="small one" data-fill="up">A link</button>
+    <button type="button" class="small one" data-fill="down">One that doesn't answer</button><span class="many">Paste a test list:</span>
+    <button type="button" class="small many" data-fill="12">12 links</button><button type="button" class="small many" data-fill="200">200 links</button>
+    <span class="grow">Gone 30 seconds after it's added.</span></div>
   <!-- One link: the form beside the tile as it will look, with the icon picked in a strip under the tile. -->
   <div class="ld-grid one">
     <div class="form two sd-form ld-form">
@@ -775,6 +776,8 @@
 <dialog class="dialog sd-dialog" id="sensor-dialog" aria-labelledby="sd-title">
   <h2 id="sd-title">Add a sensor</h2>
   <p class="dialog-lead">Pick what to check. Checks run from this server, or from the client on a seat.</p>
+  <div class="devstrip sd-dev" id="sd-dev"><b>DEV</b><span>Fill in a test:</span><button type="button" class="small" data-fill="up">A sensor</button>
+    <button type="button" class="small" data-fill="down">One that goes down</button><span class="grow">Checked every 5 seconds, never emails, gone 30 seconds after it's added.</span></div>
   <div class="sd-grid">
     <!-- The kinds of check, in groups, like Active Directory's pages; the open one has the bar (sensors.js fills it in). -->
     <nav class="dnav sd-types" id="sd-types" aria-label="What to check"></nav>

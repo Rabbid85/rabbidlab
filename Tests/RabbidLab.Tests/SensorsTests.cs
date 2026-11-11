@@ -298,16 +298,21 @@ public sealed class SensorsTests : IDisposable
     }
 
     [Fact]
-    public async Task A_test_sensor_goes_after_30_seconds_with_its_history()
+    public async Task A_sensor_on_a_test_address_plays_its_part_never_emails_and_goes_after_30_seconds()
     {
         var sensors = app.Services.GetRequiredService<Sensors>();
+        var probe = new NetworkProbe(TimeProvider.System);
 
-        sensors.AddTest(true, "test");
+        var (test, _) = sensors.Save(null, new SensorForm("Test", "ping", "down-01.rabbidlab.test", null, null, null, 60, null), "test", testing: true);
+        var found = await probe.Check(test!, CancellationToken.None);
         await sensors.Tick(CancellationToken.None);
         var before = sensors.All().Count;
         app.Clock.Advance(TimeSpan.FromSeconds(31));
         await sensors.Tick(CancellationToken.None);
 
+        Assert.Equal(5, test.Every);
+        Assert.Equal(-1, test.Custom!.After);
+        Assert.False(found.Ok);
         Assert.Equal(1, before);
         Assert.Empty(sensors.All());
     }

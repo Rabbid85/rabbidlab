@@ -26,7 +26,7 @@ public sealed class Link
     public DateTime Added { get; set; }
     public string? AddedBy { get; set; }
 
-    /// <summary>A Developer tools test link: up or down, played rather than checked, and gone at Expires.</summary>
+    /// <summary>A link to a Developer tools test address: up or down, played rather than checked, and gone at Expires.</summary>
     public string? Test { get; set; }
     public DateTime? Expires { get; set; }
 }
@@ -99,36 +99,7 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
 
     private static List<string> Known(LinksFile f) => Grouping.Known(f.Groups, f.Links.Select(l => l.Group));
 
-    private const string TestGroup = "Test links";
-
-    /// <summary>Developer tools: a link that answers, one that's down, or a list of twelve with every fourth down, all gone in 30 seconds.</summary>
-    public void AddTests(string? kind, string by)
-    {
-        lock (gate)
-        {
-            var f = file.Read();
-            var now = clock.GetUtcNow().UtcDateTime;
-            var made = kind == "list"
-                ? Enumerable.Range(1, 12).Select(i => ($"Test {i:00}", i % 4 == 0 ? "down" : "up")).ToList()
-                : [(kind == "down" ? "Test link, down" : "Test link", kind == "down" ? "down" : "up")];
-            foreach (var (name, how) in made)
-            {
-                var id = Convert.ToHexString(RandomNumberGenerator.GetBytes(6)).ToLowerInvariant();
-                f.Links.Add(new Link
-                {
-                    Id = id, Name = name, Url = $"https://{id}.test", Description = how == "down" ? "Test link that's down; gone in 30 seconds" : "Test link; gone in 30 seconds",
-                    Address = $"192.0.2.{RandomNumberGenerator.GetInt32(2, 254)}", Group = TestGroup, Test = how, Added = now, AddedBy = by, Expires = now + DevTools.Lasts,
-                });
-            }
-            if (!f.Groups.Contains(TestGroup))
-            {
-                f.Groups.Add(TestGroup);
-            }
-            file.Save(f);
-        }
-    }
-
-    // Test links past their time go, and their group with the last of them. Called under the lock.
+    // Test links past their time go. Called under the lock.
     private void Sweep()
     {
         var f = file.Read();
@@ -136,10 +107,6 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
         if (f.Links.RemoveAll(l => l.Expires is { } end && end <= now) == 0)
         {
             return;
-        }
-        if (f.Links.All(l => l.Group != TestGroup))
-        {
-            f.Groups.Remove(TestGroup);
         }
         file.Save(f);
         revision++;
@@ -368,8 +335,8 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
         return moved;
     }
 
-    /// <summary>The link saved (new when id is null), or why it can't be.</summary>
-    public (Link? Link, string? Problem) Save(string? id, LinkForm form, string by)
+    /// <summary>The link saved (new when id is null), or why it can't be. Testing: Developer tools are on, so a test address makes a test link.</summary>
+    public (Link? Link, string? Problem) Save(string? id, LinkForm form, string by, bool testing = false)
     {
         if (Clean(form.Url) is not { } url)
         {
@@ -419,6 +386,11 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
                 Icon = Blank(form.Icon),
                 Place = form.Place ?? old?.Place,
             };
+            if (testing && DevTools.IsTest(url))
+            {
+                link.Test = DevTools.IsDown(url) ? "down" : "up";
+                link.Expires = clock.GetUtcNow().UtcDateTime + DevTools.Lasts;
+            }
             if (at < 0)
             {
                 f.Links.Add(link);
@@ -1155,13 +1127,14 @@ public static class LinksApi
         });
 
         // A new link's name, description, address and icon, read from the site.
-        app.MapPost("/api/links/look", async (LinkForm form, HttpContext context, Links links) =>
+        app.MapPost("/api/links/look", async (LinkForm form, HttpContext context, Links links, SettingsStore settings) =>
             Access.RefuseUnless(context, Permissions.LinksEdit) is { } refused ? refused
-            : Results.Ok(await Links.Look(form.Url, context.RequestAborted, describe: links.Describes())));
+            : Results.Ok(DevTools.On(settings) && DevTools.IsTest(form.Url) ? await DevTools.Look(form.Url!, context.RequestAborted)
+                : await Links.Look(form.Url, context.RequestAborted, describe: links.Describes())));
 
-        app.MapPost("/api/links", (LinkForm form, HttpContext context, Links links, ActivityLog log) => Save(null, form, context, links, log));
+        app.MapPost("/api/links", (LinkForm form, HttpContext context, Links links, ActivityLog log, SettingsStore settings) => Save(null, form, context, links, log, settings));
 
-        app.MapPost("/api/links/{id}", (string id, LinkForm form, HttpContext context, Links links, ActivityLog log) => Save(id, form, context, links, log));
+        app.MapPost("/api/links/{id}", (string id, LinkForm form, HttpContext context, Links links, ActivityLog log, SettingsStore settings) => Save(id, form, context, links, log, settings));
 
         app.MapPost("/api/links/{id}/delete", (string id, HttpContext context, Links links, ActivityLog log) =>
         {
@@ -1195,13 +1168,13 @@ public static class LinksApi
 
     private static string Span(int seconds) => seconds < 60 ? $"{seconds} seconds" : seconds == 60 ? "minute" : $"{seconds / 60} minutes";
 
-    private static IResult Save(string? id, LinkForm form, HttpContext context, Links links, ActivityLog log)
+    private static IResult Save(string? id, LinkForm form, HttpContext context, Links links, ActivityLog log, SettingsStore settings)
     {
         if (Access.RefuseUnless(context, Permissions.LinksEdit) is { } refused)
         {
             return refused;
         }
-        var (link, problem) = links.Save(id, form, ActivityLog.Who(context));
+        var (link, problem) = links.Save(id, form, ActivityLog.Who(context), DevTools.On(settings));
         if (link is null)
         {
             return Results.BadRequest(new { error = problem });

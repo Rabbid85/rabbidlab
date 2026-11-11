@@ -592,6 +592,7 @@
     rows = null;
     show = 'all';
     $('ln-mode').hidden = !!l;
+    $('ln-dev').hidden = !!l;
     $('ln-many').value = '';
     $('ln-url').value = l?.url || '';
     $('ln-name').value = l?.name || '';
@@ -707,6 +708,29 @@
     };
     reader.readAsDataURL(f);
   });
+  // Developer tools (Rabbid Lab Dev): test addresses, read as a site that answers or one that doesn't. What's added with them goes in 30 seconds.
+  const testAddress = (how, n) => `https://${how}-${String(n).padStart(2, '0')}.rabbidlab.test`;
+  $('ln-dev').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-fill]');
+    if (!b) return;
+    const kind = b.dataset.fill;
+    if (kind === 'up' || kind === 'down') {
+      $('ln-url').value = testAddress(kind, 1 + Math.floor(Math.random() * 99));
+      $('ln-name').value = '';
+      $('ln-about').value = '';
+      icon = null;
+      drawIcon();
+      return look(true);
+    }
+    // A list: every ninth one doesn't answer, and the first link already on Links is in it too.
+    const n = Number(kind);
+    const lines = Array.from({ length: n }, (_, i) => testAddress(i % 9 === 8 ? 'down' : 'up', i + 1));
+    if (links[0]) lines.splice(Math.min(2, lines.length), 0, links[0].url);
+    $('ln-many').value = lines.join('\n');
+    rows = null;
+    drawFound();
+    drawSave();
+  });
   $('ln-cancel').addEventListener('click', () => $('link-dialog').close());
   $('ln-save').addEventListener('click', async () => {
     if (many && !editing) return rows ? addMany() : readMany();
@@ -734,21 +758,6 @@
         say('ln-dproblem', err.message);
       }
     });
-  });
-
-  // Developer tools (Rabbid Lab Dev): a test link, one that's down, or a list of twelve, gone in 30 seconds.
-  document.querySelector('#page-links .devstrip').addEventListener('click', async (e) => {
-    const b = e.target.closest('[data-test]');
-    if (!b) return;
-    try {
-      take(await R.send('/api/links/test', { kind: b.dataset.test }));
-      say('ln-problem', '');
-      draw();
-      check();
-      setTimeout(refresh, 31000);
-    } catch (err) {
-      say('ln-problem', err.message);
-    }
   });
 
   // --- Showing the page --------------------------------------------------------------------------------------------
