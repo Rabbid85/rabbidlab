@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.33', [
+    'Banner squares moved from Settings, Appearance to Settings, Links, as Icon layout, with its own entry in the Links menu. It sets how the link icons sit in the banner on Links; Sensors keeps them evenly spread.']],
   ['1.1.32', [
     'A page you jump to from another one has a Back link over its title, naming where you came from: the gear on Links opens Settings with Back to Links, a card on Overview opens What is new with Back to Overview. Going somewhere with the sidebar has no Back link, and going back takes it away.']],
   ['1.1.31', [
@@ -1038,7 +1040,7 @@ const RELEASE_NOTES = [
   };
 
   // --- Banner squares: a square for each link and each sensor, over the right of the hero on Links and Sensors -------------------
-  // How they sit is each person's pick (Settings, Appearance, kept in this browser). Over 40 they line up in a grid.
+  // On Links they sit as each person picks (Settings, Links, Icon layout, kept in this browser); on Sensors, evenly. Over 40, a grid.
   const SQUARES = { scatter: 'Scatter', even: 'Even spread', cluster: 'Cluster', rows: 'Tidy rows', sweep: 'Sweep', wave: 'Wave', ring: 'Ring',
     arc: 'Arc', steps: 'Steps', stack: 'Stack', spiral: 'Spiral' };
   const squaresPicked = () => {
@@ -1169,7 +1171,7 @@ const RELEASE_NOTES = [
     const W = hero.clientWidth;
     const H = hero.clientHeight;
     if (!now || !now.items.length || !W || !H) return;
-    const { items, card } = now;
+    const { items, card, picked } = now;
     const n = items.length;
     const left = W * 0.56;
     const right = card && !card.hidden && card.offsetWidth ? card.offsetLeft - 28 : W * 0.95;
@@ -1198,16 +1200,17 @@ const RELEASE_NOTES = [
       return;
     }
     const sides = items.map(({ el }) => parseFloat(el.style.width) || el.offsetWidth);
-    const spots = arrange(squaresPicked(), n, aw, ah, Math.max(...sides));
+    const spots = arrange(picked ? squaresPicked() : 'even', n, aw, ah, Math.max(...sides));
     items.forEach(({ el }, i) => {
       el.classList.remove('gridded');
       put(el, left + spots[i][0] - sides[i] / 2, top + spots[i][1] - sides[i] / 2);
     });
   };
   const resized = new ResizeObserver((seen) => seen.forEach((e) => layOut(e.target)));
-  const squares = (hero, items, card = null) => {
+  // picked: they sit as the person chose in Icon layout, rather than evenly.
+  const squares = (hero, items, card = null, picked = false) => {
     if (!laid.has(hero)) resized.observe(hero);
-    laid.set(hero, { items, card });
+    laid.set(hero, { items, card, picked });
     layOut(hero);
   };
 
@@ -1231,7 +1234,7 @@ const RELEASE_NOTES = [
     }
   };
 
-  // Settings, Appearance, Banner squares: each choice drawn with 13 dots where it puts them.
+  // Settings, Links, Icon layout: each choice drawn with 13 dots where it puts them.
   const drawSquaresPicker = () => {
     const COLOURS = window.RabbidLabColours.tiles;
     const picked = squaresPicked();

@@ -135,7 +135,7 @@
       el.remove();
       squares.delete(id);
     });
-    R.squares($('ln-hero'), items, $('ln-card'));
+    R.squares($('ln-hero'), items, $('ln-card'), true);
   };
   const EVERY_SHORT = { 15: '15 s', 30: '30 s', 60: '1 min', 300: '5 min' };
   const drawHero = () => {

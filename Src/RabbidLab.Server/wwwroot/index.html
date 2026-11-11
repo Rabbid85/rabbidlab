@@ -200,6 +200,7 @@
       <div class="dkids" data-kids="links">
         <a href="#settings/links/checks" data-sub="links" data-sec="checks"><span class="nm">Checks</span></a>
         <a href="#settings/links/descriptions" data-sub="links" data-sec="descriptions"><span class="nm">Descriptions</span></a>
+        <a href="#settings/links/icons" data-sub="links" data-sec="icons"><span class="nm">Icon layout</span></a>
         <a href="#settings/links/export" data-sub="links" data-sec="export"><span class="nm">Export and import</span></a>
       </div>
       <a href="#settings/sensors" data-sub="sensors" data-can="sensors.alerts sensors.edit"><svg class="all-flask" viewBox="0 0 24 24" aria-hidden="true"><path class="liquid" d="M6.6 15.2h10.8l2 3.2A1.7 1.7 0 0 1 17.9 21H6.1a1.7 1.7 0 0 1-1.5-2.6z"/><path d="M9 3h6M10 3v6.2L4.6 18.4A1.7 1.7 0 0 0 6.1 21h11.8a1.7 1.7 0 0 0 1.5-2.6L14 9.2V3"/></svg><span>Sensors</span></a>
@@ -240,7 +241,7 @@
 
     <!-- Appearance: the lab's name, icon and accent for everyone; Layout and Sidebar for this person, in this browser. -->
     <section class="sub" data-sub="appearance" data-title="Appearance" hidden>
-      <header class="sub-head"><h2>Appearance</h2><p>How Rabbid Lab looks. Your lab is the same for everyone; Layout and Banner squares are just for you, in this browser.</p></header>
+      <header class="sub-head"><h2>Appearance</h2><p>How Rabbid Lab looks. Your lab is the same for everyone; Layout is just for you, in this browser.</p></header>
       <section class="ds-sec" data-sec="lab"><h3 class="ds-h">Your lab <small class="ds-scope">Everyone</small></h3>
         <div class="ds-row"><div class="ds-l"><b>Name</b><span>In the top bar and the browser tab. Leave it empty for Rabbid Lab.</span></div>
           <div class="ds-r"><input class="ds-input" id="br-name" maxlength="40" placeholder="Rabbid Lab" autocomplete="off" spellcheck="false" aria-label="Lab name"></div></div>
@@ -261,10 +262,6 @@
             <span class="lay-pic wide"><i class="r"></i><i class="c"><i></i><i></i><i></i></i></span>
             <b>Full width</b><small>Pages use the whole window, so lists show more at once.</small></button>
         </div>
-      </section>
-      <section class="ds-sec" data-sec="squares"><h3 class="ds-h">Banner squares <small class="ds-scope">Just you</small></h3>
-        <p class="sq-lead">How the squares sit at the top of Links and Sensors, one for each link or sensor. Over 40, they line up in a grid.</p>
-        <div class="sq-picks" id="set-squares" role="group" aria-label="Banner squares"></div>
       </section>
     </section>
 
@@ -354,6 +351,10 @@
         <section class="ds-sec" data-sec="descriptions"><h3 class="ds-h">Descriptions</h3>
           <div class="ds-row"><div class="ds-l"><b>Auto-fill descriptions</b><span>Rabbid Lab recognises common gear like TrueNAS, iDRAC, ESXi and UniFi and fills in what it is. Turn it off to clear the ones it filled in. Descriptions you typed always stay.</span></div>
             <div class="ds-r"><span class="sw-label" id="lc-known-label">On</span><input type="checkbox" class="switch" id="lc-known" role="switch" aria-label="Auto-fill descriptions"></div></div>
+        </section>
+        <section class="ds-sec" data-sec="icons"><h3 class="ds-h">Icon layout <small class="ds-scope">Just you</small></h3>
+          <p class="sq-lead">How the link icons sit in the banner at the top of Links. Over 40, they line up in a grid.</p>
+          <div class="sq-picks" id="set-squares" role="group" aria-label="Icon layout"></div>
         </section>
         <section class="ds-sec" data-sec="export"><h3 class="ds-h">Export and import</h3>
           <div class="ds-row"><div class="ds-l"><b>Export links</b><span>Every link with its icon, the groups in their order and these settings, as one file.</span></div><div class="ds-r"><a class="ds-btn" id="lc-export" href="/api/links/export" download>Export</a></div></div>
