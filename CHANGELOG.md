@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.0.1 (2026-11-11)
+
+- Adding a list of links shows only how far along it is, such as Reading 3 of 14, with nothing under it.
+
 ## 1.0.0 (2026-11-11)
 
 - The first release. Rabbid Lab is a console for a homelab or a small office: it runs as a Windows service or in Docker, and you use it in a browser.

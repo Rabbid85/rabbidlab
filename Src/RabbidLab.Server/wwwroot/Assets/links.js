@@ -403,11 +403,11 @@
     const found = [];
     let next = 0;
     let done = 0;
-    // Said under the flask as it goes: one short line, the site being read or the link going in.
+    // Said under the flask as it goes: how far along it is, and nothing more.
     const read = async () => {
       while (next < fresh.length && run === lookRun) {
         const i = next++;
-        reading(`Reading ${Math.min(done + 1, fresh.length)} of ${fresh.length}`, fresh[i]);
+        reading(`Reading ${Math.min(done + 1, fresh.length)} of ${fresh.length}`);
         try {
           found[i] = await R.send('/api/links/look', { url: fresh[i] });
         } catch {
@@ -421,7 +421,7 @@
     const failed = [];
     for (let i = 0; i < fresh.length && run === lookRun; i++) {
       const f = found[i] || {};
-      reading(`Adding ${i + 1} of ${fresh.length}`, f.name || fresh[i]);
+      reading(`Adding ${i + 1} of ${fresh.length}`);
       try {
         await R.send('/api/links', { url: fresh[i], name: (f.name || '').slice(0, 60), group, description: (f.description || '').slice(0, 200), address: (f.address || '').slice(0, 100), icon: f.icon || null });
       } catch (err) {
@@ -430,8 +430,7 @@
     }
     if (run !== lookRun) return refresh();
     // What came of it, left up long enough to read.
-    const left = all.length - fresh.length;
-    reading(`Added ${count(fresh.length - failed.length, 'link')}`, left ? `${left} already here` : '');
+    reading(`Added ${count(fresh.length - failed.length, 'link')}`);
     await new Promise((go) => setTimeout(go, 1200));
     if (run !== lookRun) return refresh();
     reading('');
