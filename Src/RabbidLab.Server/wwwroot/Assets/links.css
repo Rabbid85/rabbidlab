@@ -64,17 +64,7 @@
 .ln-empty span:not(.big-ic) { color: var(--muted); font-size: 13.5px; }
 
 /* The dialog. */
-.url-row { display: flex; gap: 8px; }
-.url-row input { flex: 1; min-width: 0; }
-.icon-row { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; min-height: 38px; }
-.icon-row .lic { margin-right: 4px; }
-.icon-row .small, .icon-row label.button { padding: 7px 9px; white-space: nowrap; }
-.icon-row .lic.big { width: 38px; height: 38px; border-radius: 10px; }
-.icon-row .lic.big img { width: 26px; height: 26px; }
 #ln-mode { margin: 12px 0 8px; }
-.icon-row label.button { display: inline-flex; align-items: center; margin: 0; border: 1px solid var(--line-strong); border-radius: 8px; background: #1A1C28;
-  color: var(--text); font-size: 12.5px; font-weight: 400; letter-spacing: 0; text-transform: none; cursor: pointer; }
-.icon-row label.button:hover { background: #222536; }
 #link-dialog .dialog-foot { align-items: center; }
 #link-dialog .grow { flex: 1; }
 @media (max-width: 700px) {
@@ -94,7 +84,6 @@
 
 /* Adding a list: the addresses in one box, and the group they all go in. */
 #link-dialog:not(.many) .many, #link-dialog.many .one { display: none; }
-#link-dialog.many .form.two > div { grid-column: 1 / -1; }
 .form textarea { min-height: 190px; padding: 10px 12px; border: 1px solid var(--line-strong); border-radius: 8px; background: #0C0E17; color: var(--title); font: 13px/1.6 Consolas, "Cascadia Mono", monospace; resize: vertical; }
 .form textarea:focus { outline: none; border-color: var(--accent-line); }
 /* A link with no icon: nothing on its tile, and an empty dashed square in the dialog. */
@@ -157,3 +146,51 @@
 .lopen-steps code, #lopen-site2 { padding: 1px 6px; border-radius: 5px; background: #0C0E17; color: var(--title); font: 12.5px Consolas, "Cascadia Mono", monospace; }
 /* A tile is dragged whole: not its link's address or its icon's picture, which the browser would take for something to open. */
 .ltile[draggable="true"] a, .ltile[draggable="true"] img { -webkit-user-drag: none; }
+/* Add a link: the form beside the tile as it will look, the icon picked in a strip under the tile; a list is read, then ticked. */
+.ld-dialog { width: min(940px, calc(100vw - 32px)); }
+.ld-grid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 22px; margin-top: 14px; border-radius: 12px; }
+.ld-side { display: grid; align-content: start; gap: 8px; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: #0E1019; }
+.ld-cap { margin: 0; color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.ld-found, .form.two > .ld-found { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 2px 0 0; color: var(--muted); font-size: 12.5px; }
+.ld-found svg { flex: none; width: 14px; height: 14px; color: var(--ok); }
+.ld-found.warn svg { color: var(--amber); }
+.ld-found .link { padding: 0 4px; color: #FF8A3D; font-size: 12.5px; }
+#ln-preview .ltile { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+#ln-preview .ltile:hover { transform: none; }
+#ln-preview .lgo { min-height: 78px; }
+#ln-preview .ltile.ld-ghost { opacity: .45; border-style: dashed; }
+.ld-slot { flex: none; width: 42px; height: 42px; }
+.ld-strip { display: flex; align-items: center; gap: 4px; padding: 8px 10px; border: 1px solid var(--line); border-top: 0; border-radius: 0 0 12px 12px; background: var(--panel); }
+.ld-strip button { display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 8px; background: none; }
+.ld-strip button:hover:not(:disabled) { background: #1A1D2B; }
+.ld-strip button[aria-pressed="true"] { background: #232637; }
+.ld-strip button:disabled { opacity: .45; }
+.ld-strip > span { margin-left: auto; color: var(--muted); font-size: 12px; white-space: nowrap; }
+.ld-face { display: grid; place-items: center; width: 24px; height: 24px; overflow: hidden; border-radius: 6px; background: #1E2132; }
+.ld-face img { width: 18px; height: 18px; object-fit: contain; }
+.ld-face.letter { background: color-mix(in srgb, var(--c) 18%, transparent); color: var(--c); font: 750 13px "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; }
+.ld-face.up, .ld-face.none, .ld-face.off { border: 1px dashed var(--line-strong); background: none; color: var(--muted); }
+.ld-face svg { width: 12px; height: 12px; }
+.ld-list { margin-top: 14px; border-radius: 12px; }
+.form .ld-list textarea, .ld-list textarea { min-height: 0; }
+.ld-count { color: var(--muted); font-size: 12px; }
+.ld-chips button { display: inline-flex; align-items: center; }
+.ld-chips button small { margin-left: 6px; color: #5E6380; font-size: 11.5px; }
+.ld-scroll { max-height: 330px; margin-top: 10px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #2A2D3E transparent; }
+.tr.ld-lr { grid-template-columns: 22px 28px minmax(0, 1.5fr) minmax(0, 1fr) 130px; min-width: 0; min-height: 44px; gap: 10px; }
+.tr.ld-lr.th { position: sticky; top: 0; z-index: 1; min-height: 34px; }
+.form .tr.ld-lr input { width: auto; height: auto; margin: 0; padding: 0; border: 0; accent-color: #E8542F; }
+.tr.ld-lr .lic { width: 28px; height: 28px; border-radius: 8px; }
+.tr.ld-lr .lic img { width: 20px; height: 20px; }
+.tr.ld-lr .lic.letter b { font-size: 13px; }
+.tr.ld-lr code { overflow: hidden; color: #6D7290; font: 12px Consolas, "Cascadia Mono", monospace; white-space: nowrap; text-overflow: ellipsis; }
+.ld-how { font-size: 12.5px; font-weight: 600; }
+.ld-how.ok { color: var(--ok); }
+.ld-how.warn { color: var(--amber); }
+.ld-how.muted { color: #5E6380; }
+.ld-bar { display: block; width: 260px; margin: 4px 0 0; }
+@media (max-width: 760px) {
+  .ld-grid { grid-template-columns: minmax(0, 1fr); }
+  .tr.ld-lr { grid-template-columns: 22px 28px minmax(0, 1fr) 96px; }
+  .tr.ld-lr > :nth-child(4) { display: none; }
+}

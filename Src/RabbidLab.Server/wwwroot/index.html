@@ -716,23 +716,37 @@
 </dialog>
 
 <!-- A link: pasting the address fills in the rest from the site. -->
-<dialog class="dialog wide" id="link-dialog" aria-labelledby="link-title">
+<dialog class="dialog ld-dialog" id="link-dialog" aria-labelledby="link-title">
   <h2 id="link-title">Add a link</h2>
+  <p class="dialog-lead" id="ln-dlead">Paste the address. Rabbid Lab reads the site for the rest.</p>
   <div class="seg sn-seg" id="ln-mode"><button type="button" data-mode="one">One link</button><button type="button" data-mode="many">A list</button></div>
-  <p class="dialog-lead" id="ln-dlead">Paste the address and Rabbid Lab fills in the rest from the site. Change anything you like.</p>
-  <div class="form two">
-    <div class="wide many"><label for="ln-many">Addresses</label><textarea id="ln-many" rows="9" spellcheck="false" autocomplete="off" placeholder="192.168.2.1&#10;https://192.168.2.19&#10;truenas.amw.com, nas.amw.com; printer.amw.com"></textarea></div>
-    <div class="wide one"><label for="ln-url">Address</label>
-      <div class="url-row"><input id="ln-url" placeholder="https://192.168.2.23 or truenas.amw.com" autocomplete="off" spellcheck="false"><button type="button" class="small" id="ln-look">Fill in</button></div></div>
-    <div class="one"><label for="ln-name">Name</label><input id="ln-name" maxlength="60" autocomplete="off"></div>
-    <div><label for="ln-group">Group</label><select id="ln-group"></select>
-      <input id="ln-group-new" maxlength="40" placeholder="Name of the new group" aria-label="Name of the new group" autocomplete="off" hidden></div>
-    <div class="wide one"><label for="ln-about">Detail</label><input id="ln-about" maxlength="200" placeholder="What it is, or what's on it" autocomplete="off"></div>
-    <div class="wide one"><label>Icon</label>
-      <div class="icon-row"><span class="lic big" id="ln-icon"></span><button type="button" class="small" id="ln-icon-site" title="Use the site's own icon">Site</button>
-        <label class="button small" for="ln-icon-file" title="Upload a picture of your own">Upload</label><input type="file" id="ln-icon-file" accept="image/*" hidden><button type="button" class="small" id="ln-icon-clear" title="Show the first letter of its name">Letter</button><button type="button" class="small" id="ln-icon-none" title="Show no icon at all">None</button></div></div>
+  <!-- One link: the form beside the tile as it will look, with the icon picked in a strip under the tile. -->
+  <div class="ld-grid one">
+    <div class="form two sd-form ld-form">
+      <div class="wide"><label for="ln-url">Address</label><input id="ln-url" placeholder="Paste an address: grafana.example.com, https://192.168.2.23" autocomplete="off" spellcheck="false"></div>
+      <p class="ld-found wide" id="ln-looking" hidden></p>
+      <div><label for="ln-name">Name</label><input id="ln-name" maxlength="60" placeholder="Filled in from the site" autocomplete="off"></div>
+      <div><label for="ln-group">Group</label><select id="ln-group"></select>
+        <input id="ln-group-new" maxlength="40" placeholder="Name of the new group" aria-label="Name of the new group" autocomplete="off" hidden></div>
+      <div class="wide"><label for="ln-about">Detail</label><input id="ln-about" maxlength="200" placeholder="What it is, or what is on it" autocomplete="off"></div>
+    </div>
+    <aside class="ld-side">
+      <p class="ld-cap">On the Links page</p>
+      <div id="ln-preview"></div>
+      <input type="file" id="ln-icon-file" accept="image/*" hidden>
+    </aside>
   </div>
-  <p class="hint" id="ln-looking" hidden></p>
+  <!-- A list: the addresses and their group, then what each one turned out to be, to tick before adding. -->
+  <div class="form two sd-form ld-list many">
+    <div class="wide"><label for="ln-many">Addresses, one a line</label>
+      <textarea id="ln-many" rows="4" spellcheck="false" autocomplete="off" placeholder="192.168.2.1&#10;https://192.168.2.19&#10;truenas.example.com, nas.example.com; proxmox.example.com"></textarea>
+      <small class="ld-count" id="ln-many-count"></small></div>
+    <div><label for="ln-many-group">Add them to</label><select id="ln-many-group"></select>
+      <input id="ln-many-group-new" maxlength="40" placeholder="Name of the new group" aria-label="Name of the new group" autocomplete="off" hidden></div>
+    <div></div>
+    <div class="sd-div wide" id="ln-found-head" hidden><b>What Rabbid Lab found</b><i></i></div>
+    <div class="wide" id="ln-found" hidden></div>
+  </div>
   <p class="hint problem" id="ln-dproblem" hidden></p>
   <div class="dialog-foot"><button type="button" class="danger" id="ln-delete" hidden><svg><use href="#i-trash"/></svg>Delete</button><span class="grow"></span>
     <button type="button" id="ln-cancel">Cancel</button><button type="button" class="primary" id="ln-save">Add the link</button></div>

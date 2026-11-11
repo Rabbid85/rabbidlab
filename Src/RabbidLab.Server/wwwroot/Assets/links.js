@@ -367,32 +367,67 @@
     if (b) open(null, b.dataset.addto);
   });
 
-  // --- Adding and changing one --------------------------------------------------------------------------------------
+  // --- Adding and changing one: the form beside the tile as it will look; a list is read, then ticked before adding ----
 
+  const NEW_GROUP = ' new'; // the group lists' last choice: no group's name starts with a space
+  const full = (url) => (/^[a-z][a-z0-9+.-]*:\/\//i.test(url.trim()) ? url.trim() : `http://${url.trim()}`);
+  const addresses = (n) => (n === 1 ? '1 address' : `${n} addresses`);
+  let siteIcon = null; // the icon the site serves, kept while another is picked
+  let uploaded = false; // the icon is a picture of the person's own
+  const iconKind = () => (icon === NO_ICON ? 'none' : !icon ? 'letter' : uploaded ? 'upload' : 'site');
+  const ICON_SAID = { site: 'site', letter: 'letter', upload: 'your picture', none: 'none' };
+  // The tile as it will look on the page, and the four icons to pick from in a strip under it. None keeps an empty space, so nothing moves.
   const drawIcon = () => {
-    const name = $('ln-name').value || host($('ln-url').value) || '?';
-    $('ln-icon').className = `lic big${icon === NO_ICON ? ' none' : icon ? '' : ' letter'}`;
-    $('ln-icon').dataset.color = colour(name);
-    $('ln-icon').innerHTML = icon === NO_ICON ? '' : icon ? `<img src="${esc(icon)}" alt="">` : `<b>${letter(name)}</b>`;
-    $('ln-icon').title = icon === NO_ICON ? 'No icon' : icon ? '' : 'The first letter of its name';
-    R.paint($('ln-icon').parentElement);
-    $('ln-icon-site').disabled = !looked?.icon;
+    const url = $('ln-url').value.trim();
+    const name = $('ln-name').value.trim() || (url ? host(full(url)) : '');
+    const empty = !url && !name;
+    const shown = name || 'Name';
+    const k = iconKind();
+    const face = k === 'none' ? '<span class="ld-slot"></span>' : k === 'letter' ? `<span class="lic letter" data-color="${colour(shown)}"><b>${letter(shown)}</b></span>`
+      : `<span class="lic"><img src="${esc(icon)}" alt=""></span>`;
+    const where = !url ? 'address' : ip && ip !== host(full(url)) ? `${ip} · ${host(full(url))}` : host(full(url));
+    const pick = (kind, title, inner, off) => `<button type="button" data-icon="${kind}" aria-pressed="${k === kind}" title="${title}"${off ? ' disabled' : ''}>${inner}</button>`;
+    $('ln-preview').innerHTML = `<div class="ltiles"><div class="ltile${empty ? ' ld-ghost' : ''}"><div class="lgo">${face}`
+      + `<span class="lt"><b>${esc(shown)}</b><span>${esc($('ln-about').value.trim() || (empty ? 'Detail' : ''))}</span><code>${esc(where)}</code></span></div></div></div>`
+      + '<div class="ld-strip">'
+      + pick('site', siteIcon ? "The site's own icon" : 'The site offers no icon', siteIcon ? `<span class="ld-face"><img src="${esc(siteIcon)}" alt=""></span>` : `<span class="ld-face off">${svg('globe')}</span>`, !siteIcon)
+      + pick('letter', 'The first letter of the name', `<span class="ld-face letter" data-color="${colour(shown)}">${letter(shown)}</span>`)
+      + pick('upload', 'A picture of your own', uploaded && icon ? `<span class="ld-face"><img src="${esc(icon)}" alt=""></span>` : `<span class="ld-face up">${svg('upload')}</span>`)
+      + pick('none', 'No icon', '<span class="ld-face none"></span>')
+      + `<span>Icon: ${ICON_SAID[k]}</span></div>`;
+    R.paint($('ln-preview'));
   };
-  const NEW_GROUP = ' new'; // the list's last choice: no group's name starts with a space
-  const pickGroup = () => {
-    const fresh = $('ln-group').value === NEW_GROUP;
-    $('ln-group-new').hidden = !fresh;
-    if (fresh) $('ln-group-new').focus();
+  // Under the address: what reading the site filled in, or why it couldn't, and a way to read it again.
+  const foundLine = (ok, text, again) => {
+    $('ln-looking').hidden = !text && !again;
+    $('ln-looking').className = `ld-found wide${ok ? '' : ' warn'}`;
+    $('ln-looking').innerHTML = (text ? `${svg(ok ? 'check' : 'alert')}<span>${esc(text)}</span>` : '')
+      + (text || again ? `<button type="button" class="link" data-again>${text ? 'Read it again' : 'Read the site again'}</button>` : '');
   };
-  // A new link is one address with its details, or a list of addresses that are each read and added.
+  const groupOf = (id) => ($(id).value === NEW_GROUP ? $(`${id}-new`).value : $(id).value);
+  const pickGroup = (id) => {
+    const fresh = $(id).value === NEW_GROUP;
+    $(`${id}-new`).hidden = !fresh;
+    if (fresh) $(`${id}-new`).focus();
+  };
+
+  // A new link is one address with its details, or a list: every address is read first, then the ones ticked are added.
   let many = false;
+  let rows = null; // the list as read: { url, f, how, keep } for each address, or null before it's read
+  let show = 'all';
+  const drawSave = () => {
+    const n = listed($('ln-many').value).length;
+    $('ln-save').textContent = editing ? 'Save' : !many ? 'Add the link' : rows ? `Add ${count(rows.filter((r) => r.keep).length, 'link')}` : n ? `Read ${addresses(n)}` : 'Read them';
+    $('ln-many-count').textContent = many && n ? addresses(n) : '';
+  };
   const drawMode = () => {
     $('link-dialog').classList.toggle('many', many);
     $('ln-mode').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.mode === 'many') === many));
-    $('link-title').textContent = editing ? `Change ${editing.name}` : many ? 'Add a list of links' : 'Add a link';
-    $('ln-dlead').textContent = many ? 'Paste the addresses, one on each line or separated by commas or semicolons. Rabbid Lab reads each site for its name, icon and IP, and you can change any of them afterwards.'
-      : 'Paste the address and Rabbid Lab fills in the rest from the site. Change anything you like.';
-    $('ln-save').textContent = editing ? 'Save' : many ? 'Add the links' : 'Add the link';
+    $('link-title').textContent = editing ? `Change ${editing.name}` : 'Add a link';
+    $('ln-dlead').textContent = editing ? 'Change anything you like.' : many
+      ? 'Paste the addresses, one a line or separated by commas. Rabbid Lab reads each site, then you tick the ones to add.'
+      : 'Paste the address. Rabbid Lab reads the site for the rest.';
+    drawSave();
   };
   // The addresses in a pasted list: split at line ends, commas and semicolons, quotes dropped, each one once.
   const same = (url) => String(url).trim().replace(/^[a-z][a-z0-9+.-]*:\/\//i, '').replace(/\/+$/, '').toLowerCase();
@@ -400,58 +435,102 @@
     const seen = new Set();
     return String(text).split(/[\r\n,;]+/).map((a) => a.trim().replace(/^["'<]+|["'>]+$/g, '').trim()).filter((a) => a && !seen.has(same(a)) && seen.add(same(a)));
   };
-  // Every address is read like a single one, four at a time, then added in the order given. Ones already on Links are left out.
-  const addMany = async () => {
+  const READ_AS = { ok: ['Found', 'ok'], none: ['No answer', 'warn'], dup: ['On Links already', 'muted'] };
+  // What the list turned out to be: filters by what each one said, and a tick on each to add it or leave it out.
+  const drawFound = () => {
+    $('ln-found-head').hidden = $('ln-found').hidden = !rows;
+    if (!rows) return;
+    const n = (h) => rows.filter((r) => r.how === h).length;
+    if (show !== 'all' && !n(show)) show = 'all';
+    const shown = rows.map((r, i) => [r, i]).filter(([r]) => show === 'all' || r.how === show);
+    const chips = [['all', 'All', rows.length], ['ok', 'Found', n('ok')], ['none', 'No answer', n('none')], ['dup', 'On Links already', n('dup')]].filter(([k, , c]) => k === 'all' || c);
+    $('ln-found').innerHTML = `<div class="seg sn-seg ld-chips">${chips.map(([k, label, c]) => `<button type="button" data-show="${k}" aria-pressed="${show === k}">${label}<small>${c}</small></button>`).join('')}</div>`
+      + `<div class="table ld-scroll"><div class="tr ld-lr th"><span><input type="checkbox" data-all aria-label="Tick all of these"${shown.every(([r]) => r.keep) ? ' checked' : ''}></span>`
+      + '<span></span><span>Link</span><span>Address</span><span>What it said</span></div>'
+      + shown.map(([r, i]) => {
+        const name = r.f?.name || host(full(r.url));
+        const pic = r.f?.icon ? `<span class="lic"><img src="${esc(r.f.icon)}" alt=""></span>` : `<span class="lic letter" data-color="${colour(name)}"><b>${letter(name)}</b></span>`;
+        const about = r.how === 'dup' ? 'Left out, so nothing is there twice' : r.how === 'none' ? 'Added with its address only' : r.f?.description || '';
+        const where = r.f?.address && r.f.address !== host(full(r.url)) ? `${r.f.address} · ${host(full(r.url))}` : host(full(r.url));
+        return `<div class="tr ld-lr"><span><input type="checkbox" data-row="${i}"${r.keep ? ' checked' : ''} aria-label="Add ${esc(name)}"></span>${pic}`
+          + `<span><b>${esc(name)}</b><small>${esc(about)}</small></span><span><code>${esc(where)}</code></span><span class="ld-how ${READ_AS[r.how][1]}">${READ_AS[r.how][0]}</span></div>`;
+      }).join('') + '</div>'
+      + `<p class="hint">${rows.filter((r) => r.keep).length} of ${rows.length} will be added. Untick any to leave them out.</p>`;
+    R.paint($('ln-found'));
+  };
+  // The flask covers what's being worked on while it reads, with how far along it is.
+  const reading = (text, detail, part) => {
+    const area = $('link-dialog').querySelector(many ? '.ld-list' : '.ld-grid');
+    R.busy(area, text, detail);
+    const cover = area.querySelector(':scope > .busy-cover');
+    if (cover && part != null) {
+      if (!cover.querySelector('.ld-bar')) cover.insertAdjacentHTML('beforeend', '<span class="ubar ld-bar"><i></i></span>');
+      cover.querySelector('.ld-bar i').style.width = `${Math.round(part * 100)}%`;
+    }
+    $('ln-save').disabled = !!text;
+  };
+  // Every address is read like a single one, six at a time. Ones already on Links are left unticked.
+  const readMany = async () => {
     const all = listed($('ln-many').value);
-    const have = new Set(links.map((l) => same(l.url)));
-    const fresh = all.filter((a) => !have.has(same(a)));
-    say('ln-looking', '');
     say('ln-dproblem', '');
     if (!all.length) return say('ln-dproblem', 'Paste at least one address.');
-    if (!fresh.length) return say('ln-dproblem', all.length === 1 ? 'That link is already here.' : `All ${all.length} of those are already here.`);
-    const group = $('ln-group').value === NEW_GROUP ? $('ln-group-new').value : $('ln-group').value;
+    const have = new Set(links.map((l) => same(l.url)));
     const run = ++lookRun;
-    const found = [];
+    rows = all.map((url) => ({ url, f: null, how: have.has(same(url)) ? 'dup' : 'new', keep: !have.has(same(url)) }));
+    const todo = rows.filter((r) => r.how === 'new');
+    const tally = () => `${rows.filter((r) => r.how === 'ok').length} found · ${rows.filter((r) => r.how === 'none').length} no answer · ${rows.filter((r) => r.how === 'dup').length} on Links already`;
     let next = 0;
     let done = 0;
-    // Said under the flask as it goes: how far along it is, and nothing more.
     const read = async () => {
-      while (next < fresh.length && run === lookRun) {
-        const i = next++;
-        reading(`Reading ${Math.min(done + 1, fresh.length)} of ${fresh.length}`);
+      while (next < todo.length && run === lookRun) {
+        const r = todo[next++];
         try {
-          found[i] = await R.send('/api/links/look', { url: fresh[i] });
+          r.f = await R.send('/api/links/look', { url: r.url });
         } catch {
-          found[i] = null; // added with its address for a name
+          r.f = null; // added with its address for a name
         }
+        r.how = r.f && !r.f.problem ? 'ok' : 'none';
         done++;
+        if (run === lookRun) reading(`Reading ${done} of ${todo.length}`, tally(), done / todo.length);
       }
     };
-    await Promise.all(Array.from({ length: Math.min(4, fresh.length) }, read));
-    if (run !== lookRun) return; // closed while it read
+    if (todo.length) reading(`Reading 0 of ${todo.length}`, tally(), 0);
+    await Promise.all(Array.from({ length: Math.min(6, todo.length) }, read));
+    if (run !== lookRun) return;
+    reading('');
+    show = 'all';
+    drawFound();
+    drawSave();
+  };
+  // The ticked ones are added in the order given; any that don't go in stay ticked, with why.
+  const addMany = async () => {
+    const keep = rows.filter((r) => r.keep);
+    say('ln-dproblem', '');
+    if (!keep.length) return say('ln-dproblem', 'Tick at least one link to add.');
+    const group = groupOf('ln-many-group');
+    const run = ++lookRun;
     const failed = [];
-    for (let i = 0; i < fresh.length && run === lookRun; i++) {
-      const f = found[i] || {};
-      reading(`Adding ${i + 1} of ${fresh.length}`);
+    for (let i = 0; i < keep.length && run === lookRun; i++) {
+      const r = keep[i];
+      const f = r.f || {};
+      reading(`Adding ${i + 1} of ${keep.length}`, '', (i + 1) / keep.length);
       try {
-        await R.send('/api/links', { url: fresh[i], name: (f.name || '').slice(0, 60), group, description: (f.description || '').slice(0, 200), address: (f.address || '').slice(0, 100), icon: f.icon || null });
+        await R.send('/api/links', { url: r.url, name: (f.name || '').slice(0, 60), group, description: (f.description || '').slice(0, 200), address: (f.address || '').slice(0, 100), icon: f.icon || null });
+        Object.assign(r, { keep: false, how: 'dup' });
       } catch (err) {
-        failed.push([fresh[i], err.message]);
+        failed.push([r, err.message]);
       }
     }
     if (run !== lookRun) return refresh();
-    // What came of it, left up long enough to read.
-    reading(`Added ${count(fresh.length - failed.length, 'link')}`);
-    await new Promise((go) => setTimeout(go, 1200));
-    if (run !== lookRun) return refresh();
     reading('');
-    if (!failed.length) $('link-dialog').close();
-    else {
-      // The ones that didn't go in stay in the box, to fix and try again.
-      $('ln-many').value = failed.map(([a]) => a).join('\n');
-      const added = fresh.length - failed.length;
-      say('ln-dproblem', `${added ? `Added ${added}. ` : ''}${failed.length === 1 ? `${failed[0][0]} wasn't added` : `${failed.length} weren't added`}: ${failed[0][1]}`);
+    if (!failed.length) {
+      $('link-dialog').close();
+      return refresh();
     }
+    const added = keep.length - failed.length;
+    say('ln-dproblem', `${added ? `Added ${added}. ` : ''}${failed.length === 1 ? `${host(full(failed[0][0].url))} wasn't added` : `${failed.length} weren't added`}: ${failed[0][1]}`);
+    drawFound();
+    drawSave();
     refresh();
   };
   $('ln-mode').addEventListener('click', (e) => {
@@ -460,7 +539,29 @@
     many = b.dataset.mode === 'many';
     say('ln-dproblem', '');
     drawMode();
+    drawFound();
     (many ? $('ln-many') : $('ln-url')).focus();
+  });
+  $('ln-many').addEventListener('input', () => {
+    // A changed list is read again before anything is added.
+    if (rows) {
+      rows = null;
+      lookRun++;
+      drawFound();
+    }
+    drawSave();
+  });
+  $('ln-found').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-show]');
+    if (!b) return;
+    show = show === b.dataset.show ? 'all' : b.dataset.show;
+    drawFound();
+  });
+  $('ln-found').addEventListener('change', (e) => {
+    if (e.target.dataset.row !== undefined) rows[Number(e.target.dataset.row)].keep = e.target.checked;
+    else if (e.target.dataset.all !== undefined) rows.forEach((r) => { if (show === 'all' || r.how === show) r.keep = e.target.checked; });
+    drawFound();
+    drawSave();
   });
   // Several addresses pasted into the one address box go to the list instead.
   $('ln-url').addEventListener('paste', (e) => {
@@ -469,8 +570,10 @@
     if (editing || $('ln-url').value.trim() || parts.length < 2 || !(/[\r\n]/.test(text.trim()) || parts.every((p) => /[.:]/.test(p)))) return;
     e.preventDefault();
     many = true;
+    rows = null;
     $('ln-many').value = parts.join('\n');
     drawMode();
+    drawFound();
     $('ln-many').focus();
   });
   // Closing the dialog stops a list that's still being read.
@@ -481,32 +584,35 @@
     looked = null;
     lookedUrl = '';
     lookRun++;
+    many = false;
     reading('');
     icon = l?.icon || null;
-    many = false;
+    siteIcon = l?.icon && l.icon !== NO_ICON ? l.icon : null;
+    uploaded = false;
+    rows = null;
+    show = 'all';
     $('ln-mode').hidden = !!l;
     $('ln-many').value = '';
     $('ln-url').value = l?.url || '';
     $('ln-name').value = l?.name || '';
-    $('ln-group').innerHTML = '<option value="">No group</option>' + groups.map((g) => `<option value="${esc(g)}">${esc(g)}</option>`).join('')
-      + `<option value="${NEW_GROUP}">New group…</option>`;
-    $('ln-group').value = l ? l.group || '' : into ?? (group === NO_GROUP ? '' : group);
-    $('ln-group-new').value = '';
-    pickGroup();
     $('ln-about').value = l?.description || '';
+    const options = '<option value="">No group</option>' + groups.map((g) => `<option value="${esc(g)}">${esc(g)}</option>`).join('') + `<option value="${NEW_GROUP}">New group…</option>`;
+    const start = l ? l.group || '' : into ?? (group === NO_GROUP ? '' : group);
+    for (const id of ['ln-group', 'ln-many-group']) {
+      $(id).innerHTML = options;
+      $(id).value = start;
+      $(`${id}-new`).value = '';
+      pickGroup(id);
+    }
     ip = l?.address || '';
     $('ln-delete').hidden = !l;
-    say('ln-looking', '');
     say('ln-dproblem', '');
+    foundLine(true, '', !!l);
     drawMode();
+    drawFound();
     drawIcon();
     $('link-dialog').showModal();
     $('ln-url').focus();
-  };
-  // The flask covers the form while the site is read, and the buttons wait.
-  const reading = (text, detail) => {
-    R.busy($('link-dialog').querySelector('.form'), text, detail);
-    $('ln-look').disabled = $('ln-save').disabled = !!text;
   };
   // Reads the site; fills the empty fields, or all of them when asked to.
   const look = async (all) => {
@@ -515,9 +621,8 @@
     if (!url || (!all && url === lookedUrl)) return;
     lookedUrl = url;
     const run = ++lookRun;
-    say('ln-looking', '');
     say('ln-dproblem', '');
-    reading(`Reading ${host(/^[a-z][a-z0-9+.-]*:\/\//i.test(url) ? url : `http://${url}`)}…`);
+    reading(`Reading ${host(full(url))}…`);
     // Long enough to see, so a fast answer isn't a flicker.
     const seen = new Promise((done) => setTimeout(done, 600));
     let answer = null;
@@ -536,21 +641,27 @@
       fill('ln-name', looked.name);
       fill('ln-about', looked.description);
       if (looked.address) ip = looked.address;
-      if (looked.icon && (all || !icon)) icon = looked.icon;
-      say('ln-looking', looked.problem || (looked.icon ? `The icon is the site's own, read from ${looked.iconFrom || 'the site'}.` : "The site doesn't offer an icon, so it shows a letter. Upload sets one of your own."));
+      if (looked.icon) siteIcon = looked.icon;
+      if (looked.icon && (all || !icon)) {
+        icon = looked.icon;
+        uploaded = false;
+      }
+      const got = [looked.name && 'name', looked.description && 'detail', looked.icon && 'icon', looked.address && 'IP'].filter(Boolean);
+      const said = got.length > 1 ? `${got.slice(0, -1).join(', ')} and ${got[got.length - 1]}` : got[0];
+      foundLine(!looked.problem, looked.problem || (said ? `Read ${host(full(url))}: ${said} filled in. Change anything you like.` : `Read ${host(full(url))}, but it says nothing about itself. Fill it in yourself.`));
     } else {
-      say('ln-dproblem', problem);
+      foundLine(false, problem);
     }
     drawIcon();
   };
   $('ln-add').addEventListener('click', () => open(null));
   $('ln-add-first').addEventListener('click', () => open(null));
-  $('ln-group').addEventListener('change', pickGroup);
+  $('ln-group').addEventListener('change', () => pickGroup('ln-group'));
+  $('ln-many-group').addEventListener('change', () => pickGroup('ln-many-group'));
   $('ln-list').addEventListener('click', (e) => {
     const b = e.target.closest('[data-edit]');
     if (b) open(links.find((l) => l.id === b.dataset.edit));
   });
-  const full = (url) => (/^[a-z][a-z0-9+.-]*:\/\//i.test(url.trim()) ? url.trim() : `http://${url.trim()}`);
   $('ln-url').addEventListener('change', () => {
     if (!editing) return look(false);
     // A link moved to another machine: its IP is looked up again, and what was typed stays.
@@ -558,19 +669,15 @@
     ip = '';
     look(false);
   });
-  $('ln-url').addEventListener('paste', () => setTimeout(() => { if (!editing) look(false); }, 0));
-  $('ln-look').addEventListener('click', () => look(true));
-  $('ln-name').addEventListener('input', () => { if (!icon) drawIcon(); });
-  $('ln-icon-site').addEventListener('click', () => {
-    icon = looked?.icon || null;
-    drawIcon();
-  });
-  $('ln-icon-clear').addEventListener('click', () => {
-    icon = null;
-    drawIcon();
-  });
-  $('ln-icon-none').addEventListener('click', () => {
-    icon = NO_ICON;
+  $('ln-url').addEventListener('paste', () => setTimeout(() => { if (!editing && !many) look(false); }, 0));
+  $('ln-looking').addEventListener('click', (e) => { if (e.target.closest('[data-again]')) look(true); });
+  ['ln-url', 'ln-name', 'ln-about'].forEach((id) => $(id).addEventListener('input', drawIcon));
+  $('ln-preview').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-icon]');
+    if (!b || b.disabled) return;
+    if (b.dataset.icon === 'upload') return $('ln-icon-file').click();
+    uploaded = false;
+    icon = { site: siteIcon, letter: null, none: NO_ICON }[b.dataset.icon];
     drawIcon();
   });
   // An uploaded picture, made small: 128 pixels across at most, as a PNG (SVGs as they are).
@@ -579,12 +686,13 @@
     $('ln-icon-file').value = '';
     if (!f || !f.type.startsWith('image/')) return;
     const reader = new FileReader();
+    const use = (picture) => {
+      icon = picture;
+      uploaded = true;
+      drawIcon();
+    };
     reader.onload = () => {
-      if (f.type === 'image/svg+xml' && reader.result.length < 150000) {
-        icon = reader.result;
-        drawIcon();
-        return;
-      }
+      if (f.type === 'image/svg+xml' && reader.result.length < 150000) return use(reader.result);
       const img = new Image();
       img.onload = () => {
         const scale = Math.min(1, 128 / Math.max(img.width, img.height));
@@ -592,8 +700,7 @@
         c.width = Math.max(1, Math.round(img.width * scale));
         c.height = Math.max(1, Math.round(img.height * scale));
         c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-        icon = c.toDataURL('image/png');
-        drawIcon();
+        use(c.toDataURL('image/png'));
       };
       img.onerror = () => say('ln-dproblem', "That picture couldn't be read.");
       img.src = reader.result;
@@ -602,8 +709,8 @@
   });
   $('ln-cancel').addEventListener('click', () => $('link-dialog').close());
   $('ln-save').addEventListener('click', async () => {
-    if (many && !editing) return addMany();
-    const body = { url: $('ln-url').value, name: $('ln-name').value, group: $('ln-group').value === NEW_GROUP ? $('ln-group-new').value : $('ln-group').value, description: $('ln-about').value, address: ip, icon };
+    if (many && !editing) return rows ? addMany() : readMany();
+    const body = { url: $('ln-url').value, name: $('ln-name').value, group: groupOf('ln-group'), description: $('ln-about').value, address: ip, icon };
     $('ln-save').disabled = true;
     try {
       await R.send(editing ? `/api/links/${encodeURIComponent(editing.id)}` : '/api/links', body);
