@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.13 (2026-11-11)
+
+- Pages no longer shift sideways when going between a long page and a short one: room for the scrollbar is always kept.
+
 ## 1.1.12 (2026-11-11)
 
 - Settings has every setting in one place, under You, Server and Advanced, with Find a setting on top: Appearance, Updates, Notifications, Links, Active Directory, Activity log, Developer in Dev builds, and About.

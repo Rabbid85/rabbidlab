@@ -8,6 +8,8 @@
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; min-height: 100%; }
+/* Room for the scrollbar is always kept, so a centred page doesn't jump sideways between a long page and a short one. */
+html { scrollbar-gutter: stable; }
 body { background: var(--night); color: var(--text); font: 15px/1.5 "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif; position: relative; }
 a { color: #9E59CF; text-decoration: none; }
 a:hover { text-decoration: underline; }
