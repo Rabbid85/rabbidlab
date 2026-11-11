@@ -11,6 +11,11 @@ public sealed class ConsoleSettings
 
     /// <summary>Rabbid Lab Dev: the Developer tools switch in Settings, Developer, which shows the DEV buttons in Add a link and Add a sensor.</summary>
     public bool DevTools { get; set; }
+
+    /// <summary>The lab's own name, icon (a PNG or SVG data URL) and accent colour, for everyone. Null: Rabbid Lab's own.</summary>
+    public string? LabName { get; set; }
+    public string? LabIcon { get; set; }
+    public string? Accent { get; set; }
 }
 
 /// <summary>Reads and writes settings.json in the data folder, and encrypts and decrypts the secrets in it.</summary>

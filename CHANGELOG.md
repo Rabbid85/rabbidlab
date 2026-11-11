@@ -2,6 +2,14 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.15 (2026-11-11)
+
+- Settings has headings with their pages under them. Updates, Links, Sensors and Seats show a flask and have a sub-menu: the page shows all of its sections, and a sub-entry shows only that one.
+- Settings pages are laid out like Discord: a big title, then each section with its settings as rows, the value, switch or button on the right.
+- New pages: Account, See it as a role, Support info and About. Alert settings and saved credentials moved to Settings, Sensors, and New computers and the client install line to Settings, Seats.
+- Appearance sets the lab name, its icon and the accent colour for everyone, with Layout and Sidebar just for you. A new permission, Change the lab name, icon and accent colour, decides who can change them.
+- The full stop in the Rabbid Lab logo is square now, in the favicon, the sign-in page and the Windows icons too.
+
 ## 1.1.14 (2026-11-11)
 
 - Layout moved into the list down the left of Settings, under its own heading like filters: Pages, Centered or Full width, and Sidebar, names and icons or icons only. The Appearance page is gone.

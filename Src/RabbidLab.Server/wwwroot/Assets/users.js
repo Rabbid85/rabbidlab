@@ -1104,7 +1104,8 @@
       : ad?.domain ? `Rabbid Lab makes its changes in ${ad.domain} as a service account. Set one up to use the Active Directory pages.` : "This server isn't on a domain. Connect one to manage it from here.";
     $('as-setup').hidden = !!s;
     $('as-setup').textContent = ad?.domain ? 'Set up' : 'Connect a domain';
-    $('as-ou-row').hidden = $('as-danger').hidden = !s;
+    $('as-ou-row').hidden = !s;
+    $('as-danger').classList.toggle('gone', !s);
     if (!s) return;
     $('adset-stop-title').textContent = `Disconnect ${s.account}`;
     $('adset-stop-text').textContent = `Rabbid Lab deletes the stored password and stops using ${s.account}.${s.made ? ' The account and its delegated permissions stay in AD until you delete them.' : ''}`;

@@ -920,24 +920,30 @@
     const set = m.provider === 'm365' ? !!m.tenant : !!m.host;
     const gmail = m.host === 'smtp.gmail.com';
     const from = m.from || m.username;
-    $('nt-server').textContent = !set ? 'Not set up yet. Sensors need it to email an alert.'
-      : `${m.provider === 'm365' ? `Microsoft 365 · ${m.tenant}` : gmail ? 'Gmail' : `${m.host}:${m.port || 587}`}${from ? ` · sends as ${from}` : ''}`;
-    $('nt-change').textContent = set ? 'Change' : 'Set up';
+    $('nt-server').textContent = !set ? 'Not set up yet' : m.provider === 'm365' ? `Microsoft 365 · ${m.tenant}` : gmail ? 'Gmail' : `${m.host}:${m.port || 587}`;
+    $('nt-from').textContent = from || '–';
+    $('nt-change').textContent = set ? 'Edit' : 'Set up';
     $('nt-to').textContent = m.to?.length ? m.to.join(', ') : 'Nobody yet.';
     $('nt-test').disabled = !set || !m.to?.length;
-    $('nt-rules').innerHTML = rules.map((r) => `<div class="row still"><i class="nt-dot" data-color="${esc(r.color || '#8A8FA8')}"></i>`
-      + `<span class="t"><b>${esc(r.name)}${r.id === defaultRule ? STAR.replace('rstar', 'nt-star') : ''}</b>`
-      + `<span>${r.id === defaultRule ? 'The default for new sensors. ' : ''}${esc(aboutRule(r))} Used by ${r.used} sensor${r.used === 1 ? '' : 's'}.</span></span>`
-      + `<button type="button" class="small" data-edit-rule="${esc(r.id)}">Edit</button></div>`).join('');
+    $('nt-rules').innerHTML = rules.map((r) => `<div class="ds-row"><div class="ds-l"><b><i class="ds-dot" data-color="${esc(r.color || '#8A8FA8')}"></i>${esc(r.name)}${r.id === defaultRule ? STAR.replace('rstar', 'ds-star') : ''}</b>`
+      + `<span>${r.id === defaultRule ? 'The default for new sensors. ' : ''}${esc(aboutRule(r))}</span></div>`
+      + `<div class="ds-r"><span class="ds-v">${r.used} sensor${r.used === 1 ? '' : 's'}</span><button type="button" class="ds-btn" data-edit-rule="${esc(r.id)}">Edit</button></div></div>`).join('');
     R.paint($('nt-rules'));
+  };
+  const KINDS = { user: 'Username and password', key: 'API key', community: 'SNMP v2c community', snmpv3: 'SNMPv3 user' };
+  const drawCreds = (list) => {
+    $('sn-creds').innerHTML = list.length ? list.map((l) => `<div class="ds-row"><div class="ds-l"><b>${esc(l.name)}</b><span>${esc([KINDS[l.kind] || 'Credentials', l.username].filter(Boolean).join(' · '))}</span></div>`
+      + `<div class="ds-r"><span class="ds-v">${l.used} sensor${l.used === 1 ? '' : 's'}</span></div></div>`).join('') : '<p class="ds-empty">None yet. Credentials are saved when you add a sensor that signs in.</p>';
   };
   const loadNotes = async () => {
     try {
-      kept = await R.get('/api/mail');
+      if (can('sensors.alerts')) kept = await R.get('/api/mail');
       take(await R.get('/api/sensors'));
+      if (can('sensors.edit')) drawCreds(await R.get('/api/sensors/logins'));
       say('nt-problem', '');
+      say('sn-set-problem', '');
     } catch (err) {
-      say('nt-problem', err.message);
+      say(R.where()[1] === 'sensors' ? 'sn-set-problem' : 'nt-problem', err.message);
     }
     drawNotes();
   };
@@ -971,9 +977,9 @@
     }
     R.busy($('nt-mail'), '');
   });
-  $('mail-dialog').addEventListener('close', () => { if (R.where()[0] === 'settings' && R.where()[1] === 'notifications') loadNotes(); });
+  $('mail-dialog').addEventListener('close', () => { if (R.where()[0] === 'settings' && ['notifications', 'sensors'].includes(R.where()[1])) loadNotes(); });
   document.addEventListener('rabbidlab:show', (e) => {
-    if (e.detail[0] === 'settings' && e.detail[1] === 'notifications' && can('sensors.alerts')) loadNotes();
+    if (e.detail[0] === 'settings' && ['notifications', 'sensors'].includes(e.detail[1]) && (can('sensors.alerts') || can('sensors.edit'))) loadNotes();
   });
 
   // --- Showing the page --------------------------------------------------------------------------------------------------------------

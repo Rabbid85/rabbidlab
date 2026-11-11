@@ -32,7 +32,7 @@
 .lrename { width: 220px; height: 30px; padding: 0 9px; border: 1px solid var(--accent-line); border-radius: 7px; outline: 0; background: #0C0E17; color: var(--title); font: inherit; font-size: 13px; }
 .lhead .small { padding: 5px 11px; }
 .lnone { margin: 0; padding: 14px 16px; border: 1px dashed var(--line); border-radius: 12px; }
-.lnone .link { padding: 0 4px; color: #FF8A3D; }
+.lnone .link { padding: 0 4px; color: var(--accent-soft); }
 .lgroup h2 { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
 .lgroup h2 small { color: #5E6380; font-size: 11px; letter-spacing: 0; }
 .ltiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; }
@@ -104,7 +104,7 @@
 .lgroup.lout { display: none; }
 .moving .lgroup.lout { display: block; }
 /* A tile dragged over another: a line on the side it lands on. */
-.ltile.drop-before::before, .ltile.drop-after::after { content: ""; position: absolute; top: 4px; bottom: 4px; width: 3px; border-radius: 3px; background: #FF8A3D; }
+.ltile.drop-before::before, .ltile.drop-after::after { content: ""; position: absolute; top: 4px; bottom: 4px; width: 3px; border-radius: 3px; background: var(--accent-soft); }
 .ltile.drop-before::before { left: -7px; }
 .ltile.drop-after::after { right: -7px; }
 /* Grid: a row to a link, each a card of its own: its icon, its name over its detail, then its address and how it's answering. */
@@ -138,7 +138,7 @@
   .lrows .lt code { display: none; }
 }
 /* Open all, beside a group's name: there on hover, like its tools. */
-.lhead .lopen { padding: 2px 6px; opacity: 0; color: #FF8A3D; font-size: 12px; transition: opacity .12s; }
+.lhead .lopen { padding: 2px 6px; opacity: 0; color: var(--accent-soft); font-size: 12px; transition: opacity .12s; }
 .lgroup:hover .lopen, .lopen:focus-visible { opacity: 1; }
 @media (hover: none) { .lhead .lopen { opacity: 1; } }
 /* Open all, when the browser stopped tabs: the steps to allow them. */
@@ -154,7 +154,7 @@
 .ld-found, .form.two > .ld-found { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 2px 0 0; color: var(--muted); font-size: 12.5px; }
 .ld-found svg { flex: none; width: 14px; height: 14px; color: var(--ok); }
 .ld-found.warn svg { color: var(--amber); }
-.ld-found .link { padding: 0 4px; color: #FF8A3D; font-size: 12.5px; }
+.ld-found .link { padding: 0 4px; color: var(--accent-soft); font-size: 12.5px; }
 #ln-preview .ltile { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
 #ln-preview .ltile:hover { transform: none; }
 #ln-preview .lgo { min-height: 78px; }
@@ -179,7 +179,7 @@
 .ld-scroll { max-height: 330px; margin-top: 10px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #2A2D3E transparent; }
 .tr.ld-lr { grid-template-columns: 22px 28px minmax(0, 1.5fr) minmax(0, 1fr) 130px; min-width: 0; min-height: 44px; gap: 10px; }
 .tr.ld-lr.th { position: sticky; top: 0; z-index: 1; min-height: 34px; }
-.form .tr.ld-lr input { width: auto; height: auto; margin: 0; padding: 0; border: 0; accent-color: #E8542F; }
+.form .tr.ld-lr input { width: auto; height: auto; margin: 0; padding: 0; border: 0; accent-color: var(--accent); }
 .tr.ld-lr .lic { width: 28px; height: 28px; border-radius: 8px; }
 .tr.ld-lr .lic img { width: 20px; height: 20px; }
 .tr.ld-lr .lic.letter b { font-size: 13px; }

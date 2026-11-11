@@ -15,6 +15,7 @@ public static class Permissions
     public const string UpdatesCheck = "updates.check";
     public const string UpdatesInstall = "updates.install";
     public const string UpdatesAuto = "updates.auto";
+    public const string AppearanceBrand = "appearance.brand";
     public const string ActivityView = "activity.view";
     public const string AccessView = "access.view";
     public const string AccessMembers = "access.members";
@@ -74,6 +75,7 @@ public static class Permissions
             new(UpdatesAuto, "Turn Update automatically on or off", "Whether new versions install on their own."),
         ]),
         new("activity", "Activity log", "activity", [new(ActivityView, "See the activity log", "Sign-ins, changes and updates, and who did them.")]),
+        new("appearance", "Appearance", "brush", [new(AppearanceBrand, "Change the lab's name, icon and accent colour", "What everyone sees: the name in the top bar, its icon and the accent colour.")]),
         new("access", "Roles and people", "shield",
         [
             new(AccessView, "See roles and who's in them", "The roles, what they allow, and everyone in them."),

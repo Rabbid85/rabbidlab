@@ -6,7 +6,7 @@
 .wiki-body p { margin: 8px 0; }
 .wiki-body ol, .wiki-body ul { margin: 8px 0; padding-left: 22px; }
 .wiki-body li { margin: 5px 0; }
-.wiki-body ol li::marker { color: #FF8A3D; font-weight: 700; }
+.wiki-body ol li::marker { color: var(--accent-soft); font-weight: 700; }
 .wiki-body b { color: var(--title); font-weight: 650; }
 .wiki-body code { padding: 1px 6px; border: 1px solid var(--line-strong); border-radius: 5px; background: #0C0E17; color: #D7DAE8; font: 12.5px Consolas, "Cascadia Mono", monospace; overflow-wrap: anywhere; }
 .wiki-body a { color: #B98BE0; }

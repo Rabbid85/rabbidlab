@@ -134,7 +134,7 @@
 /* What a sensor that signs in can watch, each with a tick, and the certificate it trusts. */
 .sd-watch { min-height: 48px; padding: 8px 16px; cursor: default; }
 .sd-watch:first-child { border-top: 0; }
-.sd-watch input { flex: none; margin: 0; accent-color: #E8542F; }
+.sd-watch input { flex: none; margin: 0; accent-color: var(--accent); }
 .sd-watch .t b { font-size: 13.5px; }
 .sd-now { color: var(--ok); font-size: 12.5px; font-weight: 600; white-space: nowrap; }
 .sd-now.warn { color: var(--amber); }
@@ -148,6 +148,6 @@
 .form.two > .sd-alert-more, .form.two > .ml-rule-times { display: grid; gap: 8px; }
 .sd-saveas, .form.two > .ml-rule-acts { display: flex; align-items: center; gap: 8px; }
 .sd-saveas input { flex: 1; max-width: 320px; }
-.sd-saveas .link, .ml-rule-acts .link { color: #FF8A3D; }
+.sd-saveas .link, .ml-rule-acts .link { color: var(--accent-soft); }
 .ml-rule-acts #ml-rule-delete { color: var(--muted); }
 .ml-alerts { margin-top: 6px; }

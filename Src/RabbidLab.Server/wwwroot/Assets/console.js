@@ -3,6 +3,12 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.15', [
+    'Settings has headings with their pages under them. Updates, Links, Sensors and Seats show a flask and have a sub-menu: the page shows all of its sections, and a sub-entry shows only that one.',
+    'Settings pages are laid out like Discord: a big title, then each section with its settings as rows, the value, switch or button on the right.',
+    'New pages: Account, See it as a role, Support info and About. Alert settings and saved credentials moved to Settings, Sensors, and New computers and the client install line to Settings, Seats.',
+    'Appearance sets the lab name, its icon and the accent colour for everyone, with Layout and Sidebar just for you. A new permission, Change the lab name, icon and accent colour, decides who can change them.',
+    'The full stop in the Rabbid Lab logo is square now, in the favicon, the sign-in page and the Windows icons too.']],
   ['1.1.14', [
     'Layout moved into the list down the left of Settings, under its own heading like filters: Pages, Centered or Full width, and Sidebar, names and icons or icons only. The Appearance page is gone.']],
   ['1.1.13', [
@@ -141,12 +147,12 @@ const RELEASE_NOTES = [
   const PAGES = { overview: 'overview.view', links: 'links.view', sensors: 'sensors.view', seats: 'seats.view sessions.view', people: 'access.view', ad: 'ad.view ad.connect', local: 'windows.view',
     org: 'ad.view', attrs: 'ad.view' };
   // Settings' pages and what each needs; About is for everyone, Developer for Rabbid Lab Dev only.
-  const SUBS = { updates: 'updates.view', notifications: 'sensors.alerts', links: 'links.edit', ad: 'ad.connect', activity: 'activity.view',
-    developer: 'updates.auto', about: '' };
+  const SUBS = { account: '', appearance: '', viewas: 'access.view', updates: 'updates.view', notifications: 'sensors.alerts', activity: 'activity.view',
+    links: 'links.edit', sensors: 'sensors.alerts sensors.edit', seats: 'seats.settings seats.add', ad: 'ad.connect', developer: 'updates.auto', support: '', about: '' };
   const subOk = (s) => s in SUBS && (!SUBS[s] || !shown || allows(SUBS[s])) && (s !== 'developer' || document.body.classList.contains('is-dev'));
   const pageOk = (key) => !shown || !PAGES[key] || allows(PAGES[key]);
   const home = () => ['overview', 'links', 'sensors', 'ad', 'seats', 'people', 'local'].find(pageOk) || 'wiki';
-  const firstSetting = () => Object.keys(SUBS).find(subOk) || 'about';
+  const firstSetting = () => Object.keys(SUBS).find(subOk) || 'account';
 
   // Which page shows comes from the address: #settings/<page> is a page of Settings (#updates, #activity and #developer
   // still work), and #people and #role/<id> are Roles and people (people.js). The rails mark them.
@@ -180,7 +186,15 @@ const RELEASE_NOTES = [
     document.querySelectorAll('.page').forEach((p) => { p.hidden = p !== now; });
     document.querySelectorAll('.sub').forEach((s) => { s.hidden = s !== sub; });
     mark(document.querySelectorAll('.rail a[data-page]'), 'page', now.dataset.page);
-    mark(document.querySelectorAll('.srail a[data-sub]'), 'sub', sub.dataset.sub);
+    const [, , rest] = where();
+    const one = now.id === 'page-settings' && sub.querySelector(`.ds-sec[data-sec="${CSS.escape(rest[0] || '')}"]:not(.cant)`) ? rest[0] : '';
+    document.querySelectorAll('.srail .dkids').forEach((k) => k.classList.toggle('open', k.dataset.kids === sub.dataset.sub));
+    document.querySelectorAll('.srail a[data-sub]').forEach((a) => {
+      if (a.dataset.sub === sub.dataset.sub && (a.dataset.sec || '') === one) a.setAttribute('aria-current', 'page');
+      else a.removeAttribute('aria-current');
+    });
+    sub.querySelectorAll('.ds-sec[data-sec]').forEach((s) => { s.hidden = !!one && s.dataset.sec !== one; });
+    sub.classList.toggle('one-sec', !!one);
     // Active Directory's pages are listed down the left of whichever of them is open, with that page's views (users.js).
     const dir = now.classList.contains('dir-area');
     if (now.dataset.page !== 'ad') $('dir-rail').classList.remove('lists'); // Find, views and filters are for the pages that list things
@@ -245,25 +259,23 @@ const RELEASE_NOTES = [
     const q = $('set-find').value.trim().toLowerCase();
     const nav = $('set-find').closest('nav');
     let any = false;
-    nav.querySelectorAll('a[data-sub]').forEach((a) => {
+    nav.querySelectorAll(':scope > a[data-sub]').forEach((a) => {
       const page = document.querySelector(`.sub[data-sub="${a.dataset.sub}"]`);
       a.hidden = !!q && !`${a.textContent} ${page ? page.textContent : ''}`.toLowerCase().includes(q);
       if (!a.hidden && a.offsetParent) any = true;
     });
-    const look = $('set-look');
-    look.hidden = !!q && !look.textContent.toLowerCase().includes(q);
-    if (q && !look.hidden) any = true;
+    nav.classList.toggle('finding', !!q);
     nav.querySelectorAll(':scope > .rail-label').forEach((p) => {
       let el = p.nextElementSibling;
       let show = false;
-      for (; el && el.tagName === 'A'; el = el.nextElementSibling) if (!el.hidden && !el.classList.contains('cant')) show = true;
+      for (; el && !el.classList.contains('rail-label') && el.tagName !== 'P'; el = el.nextElementSibling) if (el.tagName === 'A' && !el.hidden && !el.classList.contains('cant')) show = true;
       p.hidden = !show;
     });
     $('set-none').hidden = any || !q;
   });
   $('set-find').addEventListener('keydown', (e) => {
     if (e.key !== 'Enter') return;
-    const a = [...$('set-find').closest('nav').querySelectorAll('a[data-sub]')].find((x) => !x.hidden && x.offsetParent);
+    const a = [...$('set-find').closest('nav').querySelectorAll(':scope > a[data-sub]')].find((x) => !x.hidden && x.offsetParent);
     if (a) location.hash = a.getAttribute('href');
   });
   apply();
@@ -281,24 +293,98 @@ const RELEASE_NOTES = [
     }
   };
   $('dev-tools').addEventListener('change', (e) => devTools(e.target.checked));
+  // The lab's own look, the same for everyone (Settings, Appearance): its name, its icon, and the accent colour. Nothing set:
+  // Rabbid Lab's own. Each accent is a light shade for lines and a main one for buttons.
+  const SWATCHES = [['Ember', '#FF8A3D', '#E8542F'], ['Amber', '#F7CF7E', '#E0A33A'], ['Green', '#7FE3B5', '#2FB37A'], ['Teal', '#6FDCDC', '#1FA3A8'],
+    ['Blue', '#8DBBFF', '#3D7FE6'], ['Indigo', '#9EA3FF', '#5B62E8'], ['Violet', '#C79BF0', '#8E52D6'], ['Pink', '#F68CC6', '#D6448E'], ['Red', '#FF8A97', '#E0405A']];
+  let brand = { name: null, icon: null, accent: null };
+  let productName = 'Rabbid Lab';
+  const lighter = (hex, by) => `#${[1, 3, 5].map((i) => { const c = parseInt(hex.slice(i, i + 2), 16); return Math.round(c + (255 - c) * by).toString(16).padStart(2, '0'); }).join('')}`;
+  const drawBrand = () => {
+    const r = document.documentElement.style;
+    const sw = brand.accent && SWATCHES.find((x) => x[2].toLowerCase() === brand.accent.toLowerCase());
+    const [light, main] = !brand.accent ? [] : sw ? [sw[1], sw[2]] : [lighter(brand.accent, 0.3), brand.accent];
+    for (const [k, v] of [['--accent', main], ['--accent-line', light], ['--accent-hover', light], ['--accent-soft', light], ['--ember', main && `linear-gradient(90deg, ${light}, ${main})`]]) {
+      if (v) r.setProperty(k, v);
+      else r.removeProperty(k);
+    }
+    product = brand.name || productName;
+    $('brand-name').textContent = product;
+    $('hero-title').textContent = product;
+    title();
+    $('brand-img').hidden = !brand.icon;
+    document.querySelector('.brand svg.mark').classList.toggle('gone', !!brand.icon);
+    if (brand.icon) $('brand-img').src = brand.icon;
+    $('favicon').href = brand.icon || 'favicon.svg';
+    // Settings, Appearance.
+    if (document.activeElement !== $('br-name')) $('br-name').value = brand.name || '';
+    $('br-icon').innerHTML = brand.icon ? '<img alt="">' : document.querySelector('.brand svg.mark').outerHTML.replace(' gone', '');
+    if (brand.icon) $('br-icon').querySelector('img').src = brand.icon;
+    const may = has('appearance.brand');
+    const at = brand.accent ? (sw ? SWATCHES.indexOf(sw) : -1) : 0;
+    $('br-swatches').innerHTML = SWATCHES.map(([nm, l, m], i) => `<button type="button" class="ds-sw" data-accent="${i}" data-color="${m}" title="${nm}" aria-pressed="${at === i}"${may ? '' : ' disabled'}></button>`).join('')
+      + `<label class="ds-sw custom${may ? '' : ' off'}" title="Any colour" aria-pressed="${at === -1}"><input type="color" id="br-custom" value="${main || '#E8542F'}"${may ? '' : ' disabled'}></label>`;
+    paint($('br-swatches'));
+    $('br-name').disabled = !may;
+    document.querySelectorAll('.br-edit').forEach((b) => b.classList.toggle('cant', !may));
+    $('br-cant').hidden = may;
+  };
+  const saveBrand = async (change) => {
+    try {
+      brand = await send('/api/brand', change);
+      say('br-problem', '');
+    } catch (err) {
+      say('br-problem', err.message);
+    }
+    drawBrand();
+  };
+  $('br-name').addEventListener('change', () => saveBrand({ name: $('br-name').value }));
+  $('br-name').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('br-name').blur(); });
+  $('br-swatches').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-accent]');
+    if (b) saveBrand({ accent: b.dataset.accent === '0' ? '' : SWATCHES[b.dataset.accent][2] });
+  });
+  $('br-swatches').addEventListener('change', (e) => { if (e.target.id === 'br-custom') saveBrand({ accent: e.target.value }); });
+  $('br-file').addEventListener('change', () => {
+    const f = $('br-file').files[0];
+    $('br-file').value = '';
+    if (!f) return;
+    if (f.size > 256 * 1024) {
+      say('br-problem', 'Keep the icon under 256 KB.');
+      return;
+    }
+    const read = new FileReader();
+    read.onload = () => saveBrand({ icon: read.result });
+    read.readAsDataURL(f);
+  });
+  $('br-reset').addEventListener('click', () => saveBrand({ icon: '' }));
+  document.addEventListener('rabbidlab:me', () => drawBrand());
+  const loadBrand = async () => {
+    try {
+      brand = await get('/api/brand');
+    } catch {
+      // Rabbid Lab's own look stays.
+    }
+    drawBrand();
+  };
   const status = async () => {
     const r = await fetch('/api/status', { headers: { Accept: 'application/json' } });
     if (!r.ok) throw new Error(r.statusText);
     const s = await r.json();
-    product = s.product;
-    title();
-    $('brand-name').textContent = s.product;
+    productName = s.product;
+    drawBrand();
     $('rail-version').textContent = s.version;
     $('rail-repo').href = s.repository;
     $('foot-version').textContent = `${s.product} ${s.version}`;
     $('foot-repo').href = s.repository;
     document.body.classList.toggle('is-dev', !!s.dev);
     if (s.dev) devTools();
-    $('hero-title').textContent = s.product;
+    loadBrand();
     $('hero-version').textContent = s.version;
     $('hero-where').textContent = `Running on ${s.server} since ${when(s.startedAt)}.`;
     $('ab-version').textContent = `${s.product} ${s.version}`;
-    $('ab-where').textContent = `Running on ${s.server} since ${when(s.startedAt)}.`;
+    $('ab-server').textContent = s.server;
+    $('ab-since').textContent = when(s.startedAt);
     $('ab-repo').href = s.repository;
     $('ab-repo-text').textContent = s.repository.replace(/^https?:\/\//, '');
     $('hero-repo').href = s.repository;
@@ -919,6 +1005,10 @@ const RELEASE_NOTES = [
       $('account-name').textContent = name;
       $('menu-name').textContent = name;
       $('menu-user').textContent = u.source === 'ad' ? `${u.username}@${domain}` : u.source === 'windows' ? u.username : `${s.product} account`;
+      $('acc-name').textContent = name;
+      $('acc-user').textContent = u.username;
+      $('acc-how').textContent = u.source === 'ad' ? `Active Directory · ${u.username}@${domain}` : u.source === 'windows' ? `Windows · ${u.username}` : `${s.product} account`;
+      $('acc-roles').textContent = (u.roles || []).map((r) => r.name).join(', ');
       $('avatar').textContent = letters;
       $('avatar-big').textContent = letters;
       $('account-facts').replaceChildren(...rows.flatMap(([label, value, full]) => {
@@ -1331,18 +1421,76 @@ const RELEASE_NOTES = [
   });
   $('about-copy').addEventListener('click', () => copy($('about-text'), $('about-copy')));
   $('about-close').addEventListener('click', () => $('about-dialog').close());
-  // Settings, About: the same text, straight to the clipboard; where that isn't allowed, the dialog to copy it from.
-  $('ab-copy').addEventListener('click', async () => {
-    const b = $('ab-copy');
-    b.disabled = true;
+  $('sup-copy').addEventListener('click', async () => {
+    await copy($('sup-text'), $('sup-copy'));
+    setTimeout(() => { $('sup-copy').innerHTML = `${svg('csv')}Copy`; }, 2500);
+  });
+  $('acc-signout').addEventListener('click', () => $('signout').click());
+  let viewRoles = [];
+  $('va-start').addEventListener('click', () => {
+    const r = viewRoles.find((x) => x.id === $('va-role').value);
+    if (!r) return;
+    const user = viewRoles.find((x) => x.id === 'user');
+    viewAs({ name: r.name }, r.id === 'admin' ? r.permissions : [...new Set([...(user ? user.permissions : []), ...r.permissions])]);
+    location.hash = '#overview';
+  });
+  $('seat-approve').addEventListener('change', async (e) => {
+    $('seat-approve-label').textContent = e.target.checked ? 'On' : 'Off';
     try {
-      await navigator.clipboard.writeText(await about());
-      b.textContent = 'Copied';
-      setTimeout(() => { b.textContent = 'Copy'; }, 2500);
-    } catch {
-      $('about-open').click();
+      await send('/api/clients/settings', { approve: e.target.checked });
+      say('seat-set-problem', '');
+    } catch (err) {
+      say('seat-set-problem', err.message);
     }
-    b.disabled = false;
+  });
+  $('seat-line-copy').addEventListener('click', async () => {
+    await copy($('seat-line'), $('seat-line-copy'));
+    setTimeout(() => { $('seat-line-copy').textContent = 'Copy'; }, 2000);
+  });
+  $('seat-fp-copy').addEventListener('click', async () => {
+    await copy($('seat-fp'), $('seat-fp-copy'));
+    setTimeout(() => { $('seat-fp-copy').textContent = 'Copy'; }, 2000);
+  });
+  document.addEventListener('rabbidlab:show', async (e) => {
+    const [pg, sub] = e.detail;
+    if (pg !== 'settings') return;
+    if (sub === 'support') $('sup-text').textContent = await about();
+    if (sub === 'viewas' && can.has('access.view')) {
+      try {
+        viewRoles = (await get('/api/roles')).roles || [];
+        $('va-role').innerHTML = viewRoles.filter((r) => r.id !== 'user').map((r) => `<option value="${esc(r.id)}">${esc(r.name)}</option>`).join('');
+        say('va-problem', '');
+      } catch (err) {
+        say('va-problem', err.message);
+      }
+    }
+    if (sub === 'seats') {
+      try {
+        joining = await get('/api/clients/settings');
+        say('seat-set-problem', '');
+      } catch (err) {
+        say('seat-set-problem', err.message);
+        return;
+      }
+      $('seat-approve').checked = !!joining.approve;
+      $('seat-approve-label').textContent = joining.approve ? 'On' : 'Off';
+      const line = [`msiexec /i RabbidLab-Client-${joining.version}.msi /qn SERVER=${location.origin}`];
+      if (joining.fingerprint) line.push(`FINGERPRINT=${joining.fingerprint}`);
+      $('seat-line').textContent = line.join(' ');
+      $('seat-msi-row').hidden = !joining.msi;
+      $('seat-policy-row').hidden = !joining.policy;
+      $('seat-fp-row').hidden = !joining.fingerprint;
+      $('seat-fp').textContent = joining.fingerprint || '';
+    }
+    if (sub === 'updates' && can.has('activity.view')) {
+      try {
+        const list = (await get('/api/activity?count=1000')).filter((a) => a.action === 'update.install').slice(0, 12);
+        $('up-history').innerHTML = list.length ? list.map((a) => `<div class="ds-row"><div class="ds-l"><b>${esc(a.title.replace(/^[^:]*: /, ''))}</b>${a.result === 'ok' ? '' : `<span>${esc(a.detail || "Didn't install.")}</span>`}</div>`
+          + `<div class="ds-r"><span class="ds-v">${esc(a.by)} · ${esc(when(a.at))}</span></div></div>`).join('') : '<p class="ds-empty">No updates installed yet.</p>';
+      } catch {
+        // The line above still says where they're kept.
+      }
+    }
   });
 
   // What the other scripts use.
