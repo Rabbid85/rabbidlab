@@ -1067,7 +1067,7 @@ public static class LinksApi
             if (form.Describe is { } describe)
             {
                 links.SetDescribe(describe);
-                log.Record(context, "links", "link.describe", $"Turned {(describe ? "on" : "off")} descriptions of known products on Links");
+                log.Record(context, "links", "link.describe", $"Turned {(describe ? "on" : "off")} auto-filled descriptions on Links");
                 if (describe)
                 {
                     await links.Describing().WaitAsync(context.RequestAborted);
