@@ -57,6 +57,11 @@ body.app.rail-small { grid-template-columns: 60px minmax(0, 1fr); }
 .page-head h1 { display: flex; align-items: center; gap: 12px; margin: 0; font: 750 28px/1.2 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
   letter-spacing: -.01em; color: var(--title); }
 .page-head p { margin: 6px 0 0; color: var(--muted); font-size: 14px; }
+/* Back to the page you came from, over the title: an arrow and its name. */
+.backlink { display: flex; align-items: center; gap: 10px; width: fit-content; margin: 0 0 18px; color: #fff; font-size: 15px; font-weight: 700; }
+.backlink svg { flex: none; width: 18px; height: 18px; }
+.backlink:hover { text-decoration: none; }
+.backlink:hover span { text-decoration: underline; text-underline-offset: 4px; }
 @media (max-width: 700px) { .page { padding: 22px 18px 20px; } }
 
 /* Settings, on the section layout (see .dnav). A page: its big title and what it's for, then its sections one under another,
@@ -261,6 +266,8 @@ input.pick:focus { outline: none; border-color: var(--accent); }
 /* Seats: four counts, the filters, and the tables of computers and sessions. */
 .page.seats-page { max-width: 1240px; }
 .seats-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
+.seats-head { flex-wrap: wrap; }
+.seats-head > .backlink { flex-basis: 100%; }
 .tiles4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
 .tile4 { padding: 13px 16px; }
 .tile4 .label { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--muted); }

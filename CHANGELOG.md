@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.32 (2026-11-11)
+
+- A page you jump to from another one has a Back link over its title, naming where you came from: the gear on Links opens Settings with Back to Links, a card on Overview opens What is new with Back to Overview. Going somewhere with the sidebar has no Back link, and going back takes it away.
+
 ## 1.1.31 (2026-11-11)
 
 - The version in the top bar looks like the shortcuts beside it: a tag icon and plain grey text, with no box around it.

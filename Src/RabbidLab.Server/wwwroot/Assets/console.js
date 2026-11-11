@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.32', [
+    'A page you jump to from another one has a Back link over its title, naming where you came from: the gear on Links opens Settings with Back to Links, a card on Overview opens What is new with Back to Overview. Going somewhere with the sidebar has no Back link, and going back takes it away.']],
   ['1.1.31', [
     'The version in the top bar looks like the shortcuts beside it: a tag icon and plain grey text, with no box around it.']],
   ['1.1.30', [
@@ -212,10 +214,9 @@ const RELEASE_NOTES = [
     const s = where()[1];
     return document.querySelector(`.sub[data-sub="${subOk(s) ? s : firstSetting()}"]`);
   };
-  const title = () => {
-    const p = page();
-    document.title = `${p.id === 'page-settings' ? section().dataset.title : p.dataset.title} · ${product}`;
-  };
+  // What the page showing is called: a Settings page by its own name.
+  const pageName = () => (page().id === 'page-settings' ? section().dataset.title : page().dataset.title);
+  const title = () => { document.title = `${pageName()} · ${product}`; };
   const mark = (links, key, value) => links.forEach((a) => {
     if (a.dataset[key] === value) a.setAttribute('aria-current', 'page');
     else a.removeAttribute('aria-current');
@@ -243,9 +244,22 @@ const RELEASE_NOTES = [
       $('rail-dir').setAttribute('aria-current', 'page');
       mark(document.querySelectorAll('#dir-rail a[data-adpage]'), 'adpage', now.dataset.page === 'ad' ? where()[2][0] || 'users' : now.dataset.page);
     }
+    // Back to where you jumped from, at the top of the page: in its banner, or over its title.
+    const backlink = $('backlink');
+    backlink.hidden = !back;
+    if (back) {
+      backlink.href = back.hash;
+      $('backlink-text').textContent = `Back to ${back.name}`;
+      (now.querySelector(':scope > .hero, :scope > .page-head') || now).prepend(backlink);
+    }
     title();
     document.dispatchEvent(new CustomEvent('rabbidlab:show', { detail: where() }));
   };
+  // Where you jumped here from: another page, by a link in it (a gear, a card, a shortcut in the top bar). Going there by
+  // the sidebar or the logo is moving across, not in, so it has no way back; and going back clears it.
+  let back = null;
+  let fromSidebar = false;
+  document.addEventListener('click', (e) => { fromSidebar = !!e.target.closest('.rail a, .brand'); }, true);
   // Hides what the roles don't allow, then shows the page again in case it was one of those.
   const apply = () => {
     document.querySelectorAll('[data-can]').forEach((el) => el.classList.toggle('cant', !allows(el.dataset.can)));
@@ -1454,10 +1468,17 @@ const RELEASE_NOTES = [
       if (sureDo) await sureDo();
     });
     let lastPage = where()[0];
+    let lastHash = location.hash || `#${lastPage}`;
+    let lastName = pageName();
     addEventListener('hashchange', () => {
       const was = lastPage;
       lastPage = where()[0];
+      if (fromSidebar || (back && back.hash === location.hash)) back = null;
+      else if (lastPage !== was) back = { hash: lastHash, name: lastName };
+      fromSidebar = false;
       show();
+      lastHash = location.hash;
+      lastName = pageName();
       // The Attribute browser keeps its place while you click through it.
       if (was !== 'attrs' || lastPage !== 'attrs') scrollTo(0, 0);
       if (lastPage === 'seats' && (can.has('seats.view') || can.has('sessions.view'))) seats();
