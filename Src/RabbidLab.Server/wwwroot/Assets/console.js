@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.30', [
+    'The flask that shows while the page loads is bigger, and the top bar shortcuts wait until the page has loaded instead of filling in one by one.',
+    'The footer with the version and the GitHub link is gone. The version is at the start of the shortcuts in the top bar.']],
   ['1.1.29', [
     'GitHub in the top bar is plain purple text, the same purple as the links on the page, with no box around it.',
     'The update window no longer has the line about the page reloading, and it stays the same size from start to finish.']],
@@ -403,8 +406,7 @@ const RELEASE_NOTES = [
     drawBrand();
     $('rail-version').textContent = s.version;
     $('rail-repo').href = s.repository;
-    $('foot-version').textContent = `${s.product} ${s.version}`;
-    $('foot-repo').href = s.repository;
+    $('top-version').textContent = s.version;
     document.body.classList.toggle('is-dev', !!s.dev);
     if (s.dev) devTools();
     loadBrand();

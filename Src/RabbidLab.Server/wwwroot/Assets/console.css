@@ -210,8 +210,10 @@ body.app.rail-small { grid-template-columns: 60px minmax(0, 1fr); }
 @keyframes flask-pop { 0% { transform: translateY(6px); opacity: 0; } 30% { opacity: 1; } 100% { transform: translateY(-7px); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .flask * { animation: none; } }
 /* Starting: the rail and the page stay out of sight until sign-in has answered and the page has what it shows, so a reload never shows them half built. */
-body.booting .rail > *, body.booting .main > :not(.busy-cover) { visibility: hidden; }
-body.booting .main > .busy-cover { place-content: start center; padding-top: 28vh; background: none; }
+body.booting .rail > *, body.booting .top-links, body.booting .main > :not(.busy-cover) { visibility: hidden; }
+body.booting .main > .busy-cover { place-content: start center; padding-top: 24vh; background: none; font-size: 15px; }
+/* The page loading: a big flask, the only thing on screen. */
+body.booting .main > .busy-cover .flask { width: 168px; height: 168px; }
 .busy-host { position: relative; }
 .busy-host > .busy-cover { position: absolute; inset: 0; z-index: 2; display: grid; place-content: center; justify-items: center; gap: 12px; border-radius: inherit;
   background: rgba(14, 16, 25, .9); color: var(--text); font-size: 13.5px; animation: busy-in .15s ease-out; }
@@ -245,8 +247,6 @@ input.switch::after { content: ""; position: absolute; top: 3px; left: 3px; widt
 input.switch:checked { background: var(--ember); }
 input.switch:checked::after { left: 21px; background: #fff; }
 input.switch:focus-visible { outline: 2px solid var(--accent-line); outline-offset: 2px; }
-.foot-note { display: flex; align-items: center; gap: 8px; margin: 14px 0 0; color: #5E6380; font-size: 12.5px; }
-.foot-note svg { flex: none; width: 14px; height: 14px; }
 
 /* A typed-in box outside a form, and buttons in a row. */
 input.pick, .row select { height: 34px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 8px;
@@ -391,8 +391,7 @@ a.button.primary:hover { background: var(--ember); }
 .notes > li { margin-bottom: 10px; }
 .notes b { color: var(--title); }
 .notes ul { margin: 4px 0 0; padding-left: 18px; color: var(--text); }
-.foot { max-width: 1040px; margin-top: auto; padding: 14px 36px 24px; color: #5E6380; font-size: 12.5px; }
-@media (max-width: 760px) { .rail-collapse { display: none; } .foot { padding: 14px 18px 20px; } }
+@media (max-width: 760px) { .rail-collapse { display: none; } }
 /* The account chip in the top bar and its menu. */
 [hidden] { display: none !important; }
 /* What someone's roles don't allow stays out of sight (data-can, console.js). */
@@ -433,10 +432,12 @@ a.button.primary:hover { background: var(--ember); }
 .top .top-info svg { width: 19px; height: 19px; }
 /* Shortcuts in the top bar, on every page: quiet links, and GitHub in neon purple so it stands out. Icons only when the window is narrow. */
 .top-links { display: flex; align-items: center; gap: 2px; margin-left: auto; }
+.top-version { margin-right: 6px; padding: 2px 8px; border: 1px solid var(--line-strong); border-radius: 20px; color: var(--muted); font-size: 12px; font-weight: 600; }
+.top-version:empty { display: none; }
 .top-links a { display: flex; align-items: center; gap: 7px; height: 32px; padding: 0 10px; border: 1px solid transparent; border-radius: 8px; color: var(--muted); font-size: 13px; font-weight: 600; white-space: nowrap; }
 .top-links a:hover { background: #1A1D2B; color: var(--title); text-decoration: none; }
 .top-links svg { flex: none; width: 15px; height: 15px; }
-.top-links a.gh, .top-links a.gh svg { color: #9E59CF; } /* the purple links are on the page, like the footer's */
+.top-links a.gh, .top-links a.gh svg { color: #9E59CF; } /* the purple the links on the page are */
 .top-links a.gh:hover, .top-links a.gh:hover svg { color: #B57BE6; }
 @media (max-width: 1100px) { .top-links span { display: none; } .top-links a { padding: 0 9px; } }
 @media (max-width: 640px) { .top-links { display: none; } .top .top-info { margin-left: auto; } }
@@ -548,10 +549,6 @@ body.layout-wide .page { max-width: none; margin-left: 0; margin-right: 0; }
 .home .hero, .home .news { padding-left: var(--side); padding-right: var(--side); }
 .home .machine { margin-left: var(--side); margin-right: var(--side); }
 .home .hero .hero-new { right: calc(var(--side) - 8px); }
-/* The footer lines up with the page above it: the same column when Centered, the window edge when Full width. */
-.foot { width: 100%; max-width: none; margin-left: 0; margin-right: 0; padding-left: max(44px, calc((100% - 1216px) / 2)); padding-right: max(44px, calc((100% - 1216px) / 2)); }
-.layout-wide .foot { padding-left: 36px; padding-right: 36px; }
-@media (max-width: 760px) { .foot, .layout-wide .foot { padding-left: 18px; padding-right: 18px; } }
 /* Every dropdown: the console's own arrow, set in from the edge, in place of the browser's, and a dark list when it opens. */
 select:not([multiple]):not([size]) { appearance: none; -webkit-appearance: none; padding-right: 38px; color-scheme: dark; cursor: pointer;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238A8FA8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");

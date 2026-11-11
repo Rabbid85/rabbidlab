@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.30 (2026-11-11)
+
+- The flask that shows while the page loads is bigger, and the top bar shortcuts wait until the page has loaded instead of filling in one by one.
+- The footer with the version and the GitHub link is gone. The version is at the start of the shortcuts in the top bar.
+
 ## 1.1.29 (2026-11-11)
 
 - GitHub in the top bar is plain purple text, the same purple as the links on the page, with no box around it.
