@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.16', [
+    'The footer with the version lines up with the page above it when pages are centered, instead of sitting off to one side.']],
   ['1.1.15', [
     'Settings has headings with their pages under them. Updates, Links, Sensors and Seats show a flask and have a sub-menu: the page shows all of its sections, and a sub-entry shows only that one.',
     'Settings pages are laid out like Discord: a big title, then each section with its settings as rows, the value, switch or button on the right.',

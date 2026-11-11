@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.16 (2026-11-11)
+
+- The footer with the version lines up with the page above it when pages are centered, instead of sitting off to one side.
+
 ## 1.1.15 (2026-11-11)
 
 - Settings has headings with their pages under them. Updates, Links, Sensors and Seats show a flask and have a sub-menu: the page shows all of its sections, and a sub-entry shows only that one.
