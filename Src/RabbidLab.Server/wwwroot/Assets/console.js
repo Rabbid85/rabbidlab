@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.0.3', [
+    'The pages of Active Directory are listed down the left of the page, under its title, and look like the rail beside them: Find, then Directory, Tools and the views of the page that is open. It was a boxed panel of its own.',
+    'Dropdowns have the console arrow, set in from the edge, in place of the one the browser draws.']],
   ['1.0.2', [
     'Active Directory is one entry in the rail. It opens a rail of its own beside the page, with Users, Groups, Computers, Domain settings and the directory tools, and the views of the page that is open under them.']],
   ['1.0.1', [
@@ -110,12 +113,11 @@ const RELEASE_NOTES = [
     document.querySelectorAll('.sub').forEach((s) => { s.hidden = s !== sub; });
     mark(document.querySelectorAll('.rail a[data-page]'), 'page', now.dataset.page);
     mark(document.querySelectorAll('.srail a[data-sub]'), 'sub', sub.dataset.sub);
-    // Active Directory has a rail of its own, beside whichever of its pages is open; that page's views go in it too (users.js).
-    const dir = ['ad', 'org', 'attrs'].includes(now.dataset.page);
-    $('dir-rail').hidden = !dir;
-    document.querySelector('.main').classList.toggle('has-drail', dir);
+    // Active Directory's pages are listed down the left of whichever of them is open, with that page's views (users.js).
+    const dir = now.classList.contains('dir-area');
     if (now.dataset.page !== 'ad') $('dir-side').hidden = true;
     if (dir) {
+      now.querySelector('.page-head').after($('dir-rail'));
       $('rail-dir').setAttribute('aria-current', 'page');
       mark(document.querySelectorAll('#dir-rail a[data-adpage]'), 'adpage', now.dataset.page === 'ad' ? where()[2][0] || 'users' : now.dataset.page);
     }

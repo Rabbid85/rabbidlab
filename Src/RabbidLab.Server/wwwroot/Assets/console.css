@@ -353,20 +353,33 @@ a.button.primary:hover { background: var(--ember); }
 .top .top-info svg { width: 19px; height: 19px; }
 .about-text { max-height: 52vh; margin: 12px 0 0; padding: 14px 16px; overflow: auto; border: 1px solid var(--line); border-radius: 10px; background: #0C0E17; color: var(--text);
   font: 12.5px/1.6 Consolas, "Cascadia Mono", monospace; white-space: pre-wrap; word-break: break-word; user-select: all; }
-/* Active Directory's own rail: fixed beside the main one, its pages and then the open page's views. The pages make room for it. */
-.srail.drail { position: fixed; z-index: 5; top: 52px; bottom: 0; left: 224px; width: 240px; overflow-y: auto; }
-.rail-small .srail.drail { left: 60px; }
-.main.has-drail { padding-left: 240px; }
-.dpages { display: flex; flex-direction: column; gap: 2px; }
-.srail .rail-label { margin: 16px 10px 4px; }
-.srail .side { margin-top: 2px; }
-.srail .side a { height: 32px; font-size: 13px; }
-.srail .side .side-find { margin: 4px 0 6px; }
+/* Active Directory: its pages listed down the left of the page, under the page's title, and looking like the rail. The open page's views follow. */
+section.page.dir-area { max-width: 1560px; grid-template-columns: 220px minmax(0, 1fr); column-gap: 30px; }
+.dir-area > .page-head { grid-column: 1 / -1; }
+.dir-area > .dnav { grid-column: 1; }
+.dmain { grid-column: 2; display: grid; gap: 18px; align-content: start; min-width: 0; }
+.dnav { position: sticky; top: 70px; display: flex; flex-direction: column; gap: 1px; align-self: start; max-height: calc(100vh - 88px); margin-left: -10px; padding: 0 2px 8px 10px; overflow-y: auto;
+  scrollbar-width: thin; scrollbar-color: #2A2D3E transparent; }
+.dnav .rail-label:first-child { margin-top: 2px; }
+.dnav a { position: relative; display: flex; flex: none; align-items: center; gap: 11px; height: 34px; padding: 0 10px; border-radius: 7px; color: var(--muted); font-size: 13.5px; font-weight: 600; white-space: nowrap; }
+.dnav a:hover { background: #151827; color: var(--title); text-decoration: none; }
+.dnav a[aria-current] { background: #1A1D2B; color: var(--title); }
+.dnav a[aria-current]::before { content: ""; position: absolute; top: 7px; bottom: 7px; left: -10px; width: 3px; border-radius: 0 3px 3px 0; background: var(--accent-line); }
+.dnav a > svg { flex: none; width: 17px; height: 17px; }
+.dnav a[aria-current] > svg:first-child { color: #FF8A3D; }
+.dnav a small { margin-left: auto; color: #5E6380; font-size: 11px; font-weight: 600; }
+.dnav .side { display: contents; } /* its Find box goes to the top of the list, its views to the foot */
+.dnav .side-find { order: -1; flex: none; margin: 0 0 10px; }
+.dnav .side-label { flex: none; margin: 14px 10px 4px; padding: 0; color: #5E6380; font-size: 10.5px; letter-spacing: .08em; }
+.dnav .dir-acct { margin-top: 14px; }
 .dir-page .lib { grid-template-columns: minmax(0, 1fr); }
-@media (max-width: 760px) {
-  .srail.drail { position: static; flex-direction: column; width: auto; padding: 10px 14px; }
-  .main.has-drail { padding-left: 0; }
-  .dpages { flex-direction: row; overflow-x: auto; }
-  .dpages a { flex: none; }
-  .dpages .rail-label { display: none; }
+@media (max-width: 900px) {
+  section.page.dir-area { grid-template-columns: minmax(0, 1fr); }
+  .dir-area > .dnav, .dmain { grid-column: 1; }
+  .dnav { position: static; max-height: none; }
 }
+/* Every dropdown: the console's own arrow, set in from the edge, in place of the browser's, and a dark list when it opens. */
+select:not([multiple]):not([size]) { appearance: none; -webkit-appearance: none; padding-right: 38px; color-scheme: dark; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238A8FA8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 12px center; background-size: 16px 16px; }
+select:not([multiple]):not([size]):hover { border-color: #3A3E55; }
