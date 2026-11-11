@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.17 (2026-11-11)
+
+- Support info and About are under their own Help heading in Settings. Advanced has only Developer and shows in Rabbid Lab Dev only, without the extra Dev label.
+
 ## 1.1.16 (2026-11-11)
 
 - The footer with the version lines up with the page above it when pages are centered, instead of sitting off to one side.
