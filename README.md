@@ -23,49 +23,11 @@ What changed in each version: [CHANGELOG.md](CHANGELOG.md).
 
 ## Installation
 
-### Windows
-
 1. Download `RabbidLab-Setup-<version>.exe` from the [latest release](https://github.com/Rabbid85/rabbidlab/releases/latest).
-2. Run it. The service listens on port 8420 over HTTPS by default.
+2. Run it.
 3. Open `https://localhost:8420`.
 
-Running the installer again updates an existing installation and keeps its settings. Uninstall from Settings > Apps
-or with `RabbidLab-Uninstall-<version>.exe`.
-
-Silent install:
-
-```
-RabbidLab-Setup-<version>.exe /quiet [/port=8420] [/name=lab.home.lan] [/adddns] [/certsubject=...] [/http] [/nofirewall]
-                              [/noredirect] [/dir=...] [/nostartmenu] [/desktop] [/nodefender] [/log=file]
-RabbidLab-Setup-<version>.exe /uninstall /quiet [/everything]
-RabbidLab-Uninstall-<version>.exe /quiet [/keepdata]
-```
-
-The same options can be placed in a `RabbidLab.xml` file next to the installer:
-
-```xml
-<RabbidLab>
-  <Setup Quiet="yes" />
-  <Install Folder="C:\Program Files\Rabbid Lab" StartMenu="yes" Desktop="no" />
-  <Web Port="8420" Https="yes" Name="lab.home.lan" AddToDns="no" Firewall="yes" Redirect="yes" CertificateSubject="" />
-</RabbidLab>
-```
-
-### Docker
-
-```
-docker compose up -d
-```
-
-Then open `http://<host>:8420`. Data is stored in the `rabbidlab` volume.
-
-### From source
-
-Requires the .NET 10 SDK.
-
-```
-dotnet run --project Src/RabbidLab.Server
-```
+Running the installer again updates Rabbid Lab and keeps its settings. Uninstall from Settings > Apps.
 
 ## Configuration
 

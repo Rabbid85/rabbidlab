@@ -358,7 +358,7 @@
         <div class="lfilter-menu" id="ln-groups" hidden></div>
       </div>
       <button type="button" class="small" id="ln-newgroup" data-can="links.edit"><svg><use href="#i-plus"/></svg>New group</button>
-      <div class="seg" id="ln-view"><button type="button" data-view="cards"><svg><use href="#i-overview"/></svg>Cards</button><button type="button" data-view="grid"><svg><use href="#i-list"/></svg>Grid</button></div>
+      <div class="vswitch" id="ln-view"><button type="button" data-view="grid" title="Rows" aria-label="Rows"><svg><use href="#i-list"/></svg></button><button type="button" data-view="cards" title="Tiles" aria-label="Tiles"><svg><use href="#i-overview"/></svg></button></div>
     </div>
     <div id="ln-list"></div>
     <div class="ln-empty" id="ln-empty" hidden><span class="big-ic ember"><svg><use href="#i-link"/></svg></span>
@@ -400,7 +400,7 @@
         </div>
         <button type="button" class="small" id="sn-newgroup" data-can="sensors.edit"><svg><use href="#i-plus"/></svg>New group</button>
         <button type="button" class="link" id="sn-cols-reset" hidden>Reset columns</button>
-        <div class="seg" id="sn-view"><button type="button" data-view="cards"><svg><use href="#i-overview"/></svg>Cards</button><button type="button" data-view="grid"><svg><use href="#i-list"/></svg>Grid</button></div>
+        <div class="vswitch" id="sn-view"><button type="button" data-view="grid" title="Rows" aria-label="Rows"><svg><use href="#i-list"/></svg></button><button type="button" data-view="cards" title="Tiles" aria-label="Tiles"><svg><use href="#i-overview"/></svg></button></div>
       </div>
       <div id="sn-list"></div>
       <div class="ln-empty" id="sn-empty" hidden><span class="big-ic ember"><svg><use href="#i-activity"/></svg></span>
@@ -439,7 +439,7 @@
         <!-- Across the top of the list: its tabs, how it's sorted and laid out, and what can be done with it. -->
         <div class="dbar"><div class="tabs2" id="dir-tabs"></div><span class="grow"></span>
           <select id="dir-sort" aria-label="Sort by" title="Sort by"></select>
-          <div class="seg" id="dir-layout"><button type="button" data-layout="rows" title="Rows" aria-label="Rows"><svg><use href="#i-list"/></svg></button><button type="button" data-layout="tiles" title="Tiles" aria-label="Tiles"><svg><use href="#i-overview"/></svg></button></div>
+          <div class="vswitch" id="dir-layout"><button type="button" data-layout="rows" title="Rows" aria-label="Rows"><svg><use href="#i-list"/></svg></button><button type="button" data-layout="tiles" title="Tiles" aria-label="Tiles"><svg><use href="#i-overview"/></svg></button></div>
           <button type="button" class="small" id="dir-export"><svg><use href="#i-csv"/></svg>Export</button>
           <button type="button" class="primary" id="dir-new" data-can="ad.create"><svg><use href="#i-plus"/></svg><span id="dir-new-text">New user</span></button></div>
         <div class="dlook" id="dir-look" hidden></div>

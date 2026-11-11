@@ -401,9 +401,7 @@ section.page.dir-area { max-width: 1640px; grid-template-columns: 250px minmax(0
 .dbar .tabs2 small { font-size: 11.5px; }
 .dbar .grow { flex: 1; }
 .dbar > select { height: 34px; margin-bottom: 8px; padding-left: 10px; border: 1px solid var(--line-strong); border-radius: 8px; background-color: #0C0E17; color: var(--title); font: inherit; font-size: 13px; }
-.dbar .seg { margin: 0 0 8px; }
-.dbar .seg button { display: grid; place-items: center; width: 34px; height: 34px; padding: 0; }
-.dbar .seg svg { width: 16px; height: 16px; }
+.dbar .vswitch { margin: 0 0 8px; }
 .dbar > .primary, .dbar > .small { display: inline-flex; align-items: center; gap: 7px; height: 34px; margin-bottom: 8px; }
 .dbar > .primary svg, .dbar > .small svg { width: 15px; height: 15px; }
 .dnow { display: flex; align-items: baseline; gap: 10px; margin: 16px 0 0; }
@@ -453,3 +451,9 @@ select:not([multiple]):not([size]) { appearance: none; -webkit-appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238A8FA8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat; background-position: right 12px center; background-size: 16px 16px; }
 select:not([multiple]):not([size]):hover { border-color: #3A3E55; }
+/* Rows or tiles: two icons in one box, the one in use lit (Links, Sensors, Active Directory). */
+.vswitch { display: inline-flex; flex: none; gap: 2px; padding: 3px; border: 1px solid var(--line-strong); border-radius: 9px; background: #0F111A; }
+.vswitch button { display: grid; place-items: center; width: 30px; height: 26px; padding: 0; border: 0; border-radius: 6px; background: none; color: #6D7290; }
+.vswitch button:hover { background: #151826; color: var(--title); }
+.vswitch button[aria-pressed="true"] { background: #232637; color: var(--title); }
+.vswitch svg { width: 16px; height: 16px; }

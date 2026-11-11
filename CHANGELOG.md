@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.0.8 (2026-11-11)
+
+- Links, Sensors and Active Directory switch between rows and tiles with two icons in one box, in place of the Cards and Grid buttons.
+
 ## 1.0.7 (2026-11-11)
 
 - The Active Directory setup card sits in the middle of the window and is sharp: no blur behind it and no shadow around it.
