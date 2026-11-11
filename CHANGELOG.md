@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.6 (2026-11-11)
+
+- The README is down to the features and how to install on Windows.
+
 ## 1.1.5 (2026-11-11)
 
 - Windows service and Disk space sensors check a computer in Seats through its Rabbid Lab client, which runs as SYSTEM, so they need no credentials. The client needs this version for them; it updates itself from the server.
