@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.24 (2026-11-11)
+
+- The row of Updates, Activity, What is new and GitHub buttons is back on the Overview banner. The New card stays gone.
+
 ## 1.1.23 (2026-11-11)
 
 - Overview no longer has the row of Updates, Activity, What is new and GitHub buttons, or the New card on the right of its banner. The news cards below still show what is new.

@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.24', [
+    'The row of Updates, Activity, What is new and GitHub buttons is back on the Overview banner. The New card stays gone.']],
   ['1.1.23', [
     'Overview no longer has the row of Updates, Activity, What is new and GitHub buttons, or the New card on the right of its banner. The news cards below still show what is new.']],
   ['1.1.22', [
@@ -398,6 +400,7 @@ const RELEASE_NOTES = [
     $('ab-since').textContent = when(s.startedAt);
     $('ab-repo').href = s.repository;
     $('ab-repo-text').textContent = s.repository.replace(/^https?:\/\//, '');
+    $('hero-repo').href = s.repository;
     started = s.startedAt;
     uptime();
   };
