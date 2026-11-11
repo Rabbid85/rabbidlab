@@ -234,7 +234,7 @@
 
     <!-- Appearance: the lab's name, icon and accent for everyone; Layout and Sidebar for this person, in this browser. -->
     <section class="sub" data-sub="appearance" data-title="Appearance" hidden>
-      <header class="sub-head"><h2>Appearance</h2><p>How Rabbid Lab looks. Your lab is the same for everyone; Layout is just for you, in this browser.</p></header>
+      <header class="sub-head"><h2>Appearance</h2><p>How Rabbid Lab looks. Your lab is the same for everyone; Layout and Banner squares are just for you, in this browser.</p></header>
       <section class="ds-sec" data-sec="lab"><h3 class="ds-h">Your lab <small class="ds-scope">Everyone</small></h3>
         <div class="ds-row"><div class="ds-l"><b>Name</b><span>In the top bar and the browser tab. Leave it empty for Rabbid Lab.</span></div>
           <div class="ds-r"><input class="ds-input" id="br-name" maxlength="40" placeholder="Rabbid Lab" autocomplete="off" spellcheck="false" aria-label="Lab name"></div></div>
@@ -255,6 +255,10 @@
             <span class="lay-pic wide"><i class="r"></i><i class="c"><i></i><i></i><i></i></i></span>
             <b>Full width</b><small>Pages use the whole window, so lists show more at once.</small></button>
         </div>
+      </section>
+      <section class="ds-sec" data-sec="squares"><h3 class="ds-h">Banner squares <small class="ds-scope">Just you</small></h3>
+        <p class="sq-lead">How the squares sit at the top of Overview, Links and Sensors. Over 40, they line up in a grid.</p>
+        <div class="sq-picks" id="set-squares" role="group" aria-label="Banner squares"></div>
       </section>
     </section>
 

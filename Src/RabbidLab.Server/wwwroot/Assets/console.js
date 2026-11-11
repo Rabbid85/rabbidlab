@@ -3,6 +3,11 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.25', [
+    'The banner at the top of Overview, Links and Sensors is shorter, 300 pixels.',
+    'Banner squares in Settings, Appearance picks how the squares sit in those banners: Scatter, Even spread, Cluster, Tidy rows, Sweep, Wave, Ring, Arc, Steps, Stack or Spiral. Even spread is the default, and the pick is kept in this browser.',
+    'Over 40 links or sensors, the squares line up in a straight grid, every one of them, and a down one still glows red where it sits. The squares keep clear of the Down now card.',
+    'Old code the banners no longer used is gone.']],
   ['1.1.24', [
     'The row of Updates, Activity, What is new and GitHub buttons is back on the Overview banner. The New card stays gone.']],
   ['1.1.23', [
@@ -1005,50 +1010,240 @@ const RELEASE_NOTES = [
     }, 5000);
   };
 
-  // Still tiles over the right of the hero, placed the same way every time.
+  // --- Banner squares: Overview's tiles, and a square for each link and each sensor, over the right of each page's hero ---------
+  // How they sit is each person's pick (Settings, Appearance, kept in this browser). Over 40 they line up in a grid.
+  const SQUARES = { scatter: 'Scatter', even: 'Even spread', cluster: 'Cluster', rows: 'Tidy rows', sweep: 'Sweep', wave: 'Wave', ring: 'Ring',
+    arc: 'Arc', steps: 'Steps', stack: 'Stack', spiral: 'Spiral' };
+  const squaresPicked = () => {
+    try {
+      const s = localStorage.getItem('rabbidlab.squares');
+      return s in SQUARES ? s : 'even';
+    } catch {
+      return 'even';
+    }
+  };
+  // A number from 0 to 1 for some text, the same every time.
+  const mix = (text) => {
+    let h = [...String(text)].reduce((n, c) => Math.imul(n ^ c.charCodeAt(0), 16777619), 2166136261);
+    h = Math.imul(h ^ (h >>> 16), 0x85ebca6b);
+    h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
+    return ((h ^ (h >>> 16)) >>> 0) / 4294967295;
+  };
+  // Where n squares about size px wide go in a box w by h: the middle of each, in px from the box's top left.
+  const arrange = (style, n, w, h, size) => {
+    const at = [];
+    const pad = size * 0.6;
+    const jig = (i, k) => mix(`${style}${i}${k}`) - 0.5;
+    if (style === 'scatter') {
+      // Spare spots in loose rows, mixed the same way every time, so nothing lands on top of anything else.
+      const cols = Math.max(1, Math.ceil(Math.sqrt((n * 1.7 * w) / h)));
+      const rows = Math.max(1, Math.ceil((n * 1.7) / cols));
+      const spots = [];
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) spots.push([((c + 0.5 + jig(r * cols + c, 'x') * 0.5) / cols) * w, ((r + 0.5 + jig(r * cols + c, 'y') * 0.5) / rows) * h]);
+      }
+      spots.sort((a, b) => mix(a.join()) - mix(b.join()));
+      at.push(...spots.slice(0, n));
+    } else if (style === 'even') {
+      const rows = Math.max(1, Math.round(Math.sqrt(n / (w / h))));
+      const cell = w / Math.ceil(n / rows);
+      let i = 0;
+      for (let r = 0; r < rows; r++) {
+        const count = Math.round((n - i) / (rows - r));
+        const start = (w - count * cell) / 2 + (r % 2 ? cell : -cell) * 0.25;
+        for (let c = 0; c < count; c++, i++) at.push([start + (c + 0.5 + jig(i, 'x') * 0.3) * cell, ((r + 0.5 + jig(i, 'y') * 0.3) / rows) * h]);
+      }
+    } else if (style === 'cluster') {
+      const ry = h / 2 - pad;
+      for (let i = 0; i < n; i++) {
+        const r = Math.sqrt((i + 0.5) / n);
+        at.push([w / 2 + Math.cos(i * 2.39996) * r * Math.min(ry * 1.35, w / 2 - pad), h / 2 + Math.sin(i * 2.39996) * r * ry]);
+      }
+    } else if (style === 'rows') {
+      const cols = Math.max(1, Math.min(n, Math.floor(w / (size * 1.9))));
+      const rows = Math.ceil(n / cols);
+      const cell = (w - pad) / cols;
+      for (let i = 0; i < n; i++) {
+        const r = Math.floor(i / cols);
+        at.push([w - pad / 2 - (cols - (i % cols) - 0.5 - (r % 2) * 0.5) * cell, ((r + 0.5) / Math.max(rows, 3)) * h]);
+      }
+    } else if (style === 'sweep') {
+      for (let i = 0; i < n; i++) {
+        const t = n === 1 ? 0.5 : i / (n - 1);
+        const y = h - pad - t * (h - 2 * pad) - Math.sin(t * Math.PI) * h * 0.14 + (i % 2 ? 1 : -1) * h * 0.07;
+        at.push([pad + t * (w - 2 * pad), Math.min(h - pad, Math.max(pad, y))]);
+      }
+    } else if (style === 'wave') {
+      const rows = n > 20 ? 2 : 1;
+      let i = 0;
+      for (let r = 0; r < rows; r++) {
+        const count = Math.round((n - i) / (rows - r));
+        for (let c = 0; c < count; c++, i++) {
+          const t = count === 1 ? 0.5 : c / (count - 1);
+          at.push([pad + t * (w - 2 * pad), (h * (r + 0.5)) / rows + Math.sin(t * Math.PI * 2 + r * Math.PI) * h * (rows === 1 ? 0.28 : 0.14)]);
+        }
+      }
+    } else if (style === 'ring') {
+      const outer = n > 18 ? Math.ceil(n * 0.62) : n;
+      const ry = h / 2 - pad;
+      const rx = Math.min(w / 2 - pad, ry * 2.2);
+      [[outer, 1, 0], [n - outer, 0.55, 0.5]].forEach(([count, f, shift]) => {
+        for (let k = 0; k < count; k++) {
+          const a = -Math.PI / 2 + ((k + shift) / count) * Math.PI * 2;
+          at.push([w / 2 + Math.cos(a) * rx * f, h / 2 + Math.sin(a) * ry * f]);
+        }
+      });
+    } else if (style === 'arc') {
+      const outer = n > 16 ? Math.ceil(n * 0.58) : n;
+      const ry = h - 2 * pad;
+      const rx = Math.min(w / 2 - pad, ry * 1.9);
+      [[outer, 1], [n - outer, 0.58]].forEach(([count, f]) => {
+        for (let k = 0; k < count; k++) {
+          const a = Math.PI - ((k + 0.5) / count) * Math.PI;
+          at.push([w / 2 + Math.cos(a) * rx * f, h - pad - Math.sin(a) * ry * f]);
+        }
+      });
+    } else if (style === 'steps') {
+      // Columns rising from left to right, from the bottom up.
+      const most = Math.max(1, Math.floor(h / (size * 1.35)));
+      const tall = (c, cols) => 1 + Math.floor((c * most) / cols);
+      let cols = 1;
+      while (Array.from({ length: cols }, (_, c) => tall(c, cols)).reduce((a, b) => a + b, 0) < n) cols++;
+      for (let c = 0, i = 0; c < cols && i < n; c++) {
+        for (let k = 0; k < tall(c, cols) && i < n; k++, i++) at.push([((c + 0.5) * w) / cols, h - ((k + 0.5) * h) / most]);
+      }
+    } else if (style === 'stack') {
+      // A pyramid: rows one wider each, the bottom one short of any it doesn't need.
+      const rows = Math.max(1, Math.min(Math.floor(h / (size * 1.25)), Math.ceil(Math.sqrt(2 * n))));
+      const top = Math.max(1, Math.ceil((n - (rows * (rows - 1)) / 2) / rows));
+      const widths = Array.from({ length: rows }, (_, r) => top + r);
+      widths[rows - 1] -= widths.reduce((a, b) => a + b, 0) - n;
+      const cy = h / rows;
+      const cx = Math.min(w / Math.max(...widths), cy * 1.2);
+      widths.forEach((count, r) => { for (let k = 0; k < count; k++) at.push([w / 2 + (k - (count - 1) / 2) * cx, (r + 0.5) * cy]); });
+    } else if (style === 'spiral') {
+      const ry = h / 2 - pad;
+      const rx = Math.min(w / 2 - pad, ry * 1.7);
+      const most = 2.2 * Math.PI * 2;
+      for (let i = 0; i < n; i++) {
+        const t = most * Math.sqrt((i + 0.6) / n);
+        at.push([w / 2 + Math.cos(t) * (t / most) * rx, h / 2 + Math.sin(t) * (t / most) * ry]);
+      }
+    }
+    return at;
+  };
+  // How big a square is for this many on a page; over 40 the grid sizes its own.
+  const squareSize = (n) => (n <= 20 ? 34 : n <= 30 ? 30 : 26);
+  // A hero's squares ([{ el }], in a steady order) and the card in its corner they keep clear of, put in place again whenever it
+  // changes size: when its page shows, when the window does.
+  const laid = new Map();
+  const layOut = (hero) => {
+    const now = laid.get(hero);
+    const W = hero.clientWidth;
+    const H = hero.clientHeight;
+    if (!now || !now.items.length || !W || !H) return;
+    const { items, card } = now;
+    const n = items.length;
+    const left = W * 0.56;
+    const right = card && !card.hidden && card.offsetWidth ? card.offsetLeft - 28 : W * 0.95;
+    const top = H * 0.12;
+    const aw = right - left;
+    const ah = H * 0.86 - top;
+    if (aw < 40 || ah < 40) return;
+    const put = (el, x, y) => {
+      el.style.left = `${((x / W) * 100).toFixed(2)}%`;
+      el.style.top = `${((y / H) * 100).toFixed(2)}%`;
+    };
+    if (n > 40) {
+      let cols = Math.ceil(Math.sqrt((n * aw) / ah));
+      let rows = Math.ceil(n / cols);
+      while (rows * (aw / cols) > ah) rows = Math.ceil(n / ++cols);
+      const cell = Math.min(aw / cols, ah / rows);
+      const side = Math.max(4, Math.round(cell * 0.78));
+      const x0 = left + (aw - cols * cell) / 2 + (cell - side) / 2;
+      const y0 = top + (ah - rows * cell) / 2 + (cell - side) / 2;
+      items.forEach(({ el }, i) => {
+        el.classList.add('gridded');
+        el.classList.toggle('tiny', side < 20);
+        Object.assign(el.style, { width: `${side}px`, height: `${side}px`, rotate: '0deg' });
+        put(el, x0 + (i % cols) * cell, y0 + Math.floor(i / cols) * cell);
+      });
+      return;
+    }
+    const sides = items.map(({ el }) => parseFloat(el.style.width) || el.offsetWidth);
+    const spots = arrange(squaresPicked(), n, aw, ah, Math.max(...sides));
+    items.forEach(({ el }, i) => {
+      el.classList.remove('gridded');
+      put(el, left + spots[i][0] - sides[i] / 2, top + spots[i][1] - sides[i] / 2);
+    });
+  };
+  const resized = new ResizeObserver((seen) => seen.forEach((e) => layOut(e.target)));
+  const squares = (hero, items, card = null) => {
+    if (!laid.has(hero)) resized.observe(hero);
+    laid.set(hero, { items, card });
+    layOut(hero);
+  };
+
+  // Overview's still tiles, in Rabbid Lab's colours, some filled, some outlined, a few dots.
   const scatter = () => {
     const COLOURS = window.RabbidLabColours.tiles;
     let seed = 20261109;
     const r = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-    for (let i = 0; i < 22; i++) {
+    const items = Array.from({ length: 22 }, () => {
       const t = document.createElement('i');
       const roll = r();
       const kind = roll < 0.18 ? 'dot' : roll < 0.42 ? 'outline' : 'fill';
       const size = `${kind === 'dot' ? 4 + r() * 5 : 10 + r() * 26}px`;
       const colour = COLOURS[Math.floor(r() * COLOURS.length)];
       t.className = `tile ${kind}`;
-      Object.assign(t.style, { left: `${58 + r() * 38}%`, top: `${4 + r() * 86}%`, width: size, height: size,
-        transform: `rotate(${r() * 90}deg)`, opacity: String(0.35 + r() * 0.5) });
+      Object.assign(t.style, { width: size, height: size, transform: `rotate(${r() * 90}deg)`, opacity: String(0.35 + r() * 0.5) });
       if (kind === 'outline') t.style.border = `1.5px solid ${colour}`;
       else t.style.background = colour;
       $('hero').prepend(t);
-    }
+      return { el: t };
+    });
+    squares($('hero'), items);
   };
 
-  // Where a page's squares go: rows over the right of its hero, more and smaller as there are more, clear of the card in the corner.
-  const places = (n) => {
-    const [cols, rows, size] = n <= 30 ? [8, 6, 34] : n <= 60 ? [11, 8, 24] : n <= 120 ? [15, 11, 16] : [20, 14, 11];
-    const slots = [];
-    for (let row = 0; row < rows; row++) {
-      for (let col = 0; col < cols; col++) {
-        const x = 56 + col * (42 / cols) + (row % 2) * (21 / cols);
-        const y = 7 + row * (80 / rows);
-        if (!(x > 75 && y < 58)) slots.push([x, y]);
-      }
-    }
-    // Mixed the same way every time, so a square stays where it was.
-    let seed = 20261110;
-    const next = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-    for (let i = slots.length - 1; i > 0; i--) {
-      const j = Math.floor(next() * (i + 1));
-      [slots[i], slots[j]] = [slots[j], slots[i]];
-    }
-    return { slots, size };
+  // Settings, Appearance, Banner squares: each choice drawn with 13 dots where it puts them.
+  const drawSquaresPicker = () => {
+    const COLOURS = window.RabbidLabColours.tiles;
+    const picked = squaresPicked();
+    $('set-squares').replaceChildren(...Object.entries(SQUARES).map(([key, name]) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'sq-pick';
+      b.dataset.squares = key;
+      b.setAttribute('aria-pressed', String(key === picked));
+      const pic = document.createElement('span');
+      pic.className = 'sq-pic';
+      const box = document.createElement('span');
+      arrange(key, 13, 200, 84, 14).forEach(([x, y], i) => {
+        const dot = document.createElement('i');
+        dot.dataset.color = COLOURS[i % COLOURS.length];
+        Object.assign(dot.style, { left: `${x / 2}%`, top: `${(y / 84) * 100}%`, rotate: `${Math.round(mix(`${key}${i}`) * 20 - 10)}deg` });
+        box.append(dot);
+      });
+      pic.append(box);
+      const label = document.createElement('b');
+      label.textContent = name;
+      b.append(pic, label);
+      return b;
+    }));
+    paint($('set-squares'));
   };
+  $('set-squares').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-squares]');
+    if (!b) return;
+    try { localStorage.setItem('rabbidlab.squares', b.dataset.squares); } catch { /* this visit only */ }
+    $('set-squares').querySelectorAll('[data-squares]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    laid.forEach((_, hero) => layOut(hero));
+  });
 
   document.addEventListener('DOMContentLoaded', () => {
     notes();
     scatter();
+    drawSquaresPicker();
     setInterval(uptime, 60000);
     // Starting: the rail and the page stay hidden (body.booting) until sign-in has answered and the page's first reads are back, so a
     // reload never shows the console half built. The flask comes up if that takes a moment; after a second and a half the page shows as it is.
@@ -1585,6 +1780,6 @@ const RELEASE_NOTES = [
   });
 
   // What the other scripts use.
-  window.RabbidLab = { $, esc, svg, say, initials, when, daysAgo, send, get, keep, forget, has, paint, where, viewAs, place, popups, option, dropdown, sure, copy, busy, groupTools, groupFilter, places,
+  window.RabbidLab = { $, esc, svg, say, initials, when, daysAgo, send, get, keep, forget, has, paint, where, viewAs, place, popups, option, dropdown, sure, copy, busy, groupTools, groupFilter, squares, squareSize,
     palette: window.RabbidLabColours.roles, me: () => meInfo };
 })();

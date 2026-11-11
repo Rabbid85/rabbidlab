@@ -101,11 +101,8 @@
   const HOW = { plain: 'Not checked', new: 'Checking…', up: 'Up', down: 'Down', warn: 'No answer just now' };
   const squares = new Map(); // a link's square, kept between draws so its picture isn't loaded again
   const drawSquares = () => {
-    const { slots, size } = R.places(links.length);
-    const seen = new Set();
-    [...links].sort((a, b) => a.id.localeCompare(b.id)).forEach((l, i) => {
-      if (i >= slots.length) return;
-      seen.add(l.id);
+    const size = R.squareSize(links.length);
+    const items = [...links].sort((a, b) => a.id.localeCompare(b.id)).map((l) => {
       let el = squares.get(l.id);
       if (!el) {
         el = document.createElement('a');
@@ -123,20 +120,22 @@
         el.innerHTML = pic(l);
       }
       el.href = l.url;
-      el.className = `tile sen lsq s-${state}${size < 20 ? ' tiny' : ''}`;
+      el.className = `tile sen lsq s-${state}${side < 20 ? ' tiny' : ''}`;
       el.title = `${l.name} · ${HOW[state]}`;
       el.setAttribute('aria-label', el.title);
       el.style.setProperty('--g', own(l) ? '#1E2132' : colour(l.name));
       el.style.setProperty('--t', `${(2.6 + r * 2.4).toFixed(2)}s`);
       el.style.setProperty('--d', `-${(hash(`${l.id}d`) * 4).toFixed(2)}s`);
-      Object.assign(el.style, { left: `${(slots[i][0] + r * 1.2).toFixed(2)}%`, top: `${(slots[i][1] + hash(`${l.id}y`) * 4).toFixed(2)}%`, width: `${side}px`, height: `${side}px`,
-        rotate: `${state === 'down' ? 8 : Math.round(hash(`${l.id}r`) * 24 - 12)}deg` });
+      Object.assign(el.style, { width: `${side}px`, height: `${side}px`, rotate: `${state === 'down' ? 8 : Math.round(hash(`${l.id}r`) * 24 - 12)}deg` });
+      return { el, id: l.id };
     });
+    const seen = new Set(items.map((x) => x.id));
     squares.forEach((el, id) => {
       if (seen.has(id)) return;
       el.remove();
       squares.delete(id);
     });
+    R.squares($('ln-hero'), items, $('ln-card'));
   };
   const EVERY_SHORT = { 15: '15 s', 30: '30 s', 60: '1 min', 300: '5 min' };
   const drawHero = () => {

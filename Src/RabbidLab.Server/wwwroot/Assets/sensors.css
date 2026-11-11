@@ -14,6 +14,8 @@
 .hero .tile.sen.s-down:hover { background: var(--red); }
 .hero .tile.sen.s-paused:hover { background: none; }
 .hero .tile.sen.tiny { font-size: 0; }
+/* Over 40 they sit in a grid, still: no beat. */
+.hero .tile.sen.gridded { animation: none; }
 @keyframes sn-beat { 0%, 14%, 100% { scale: 1; } 5% { scale: 1.17; } }
 .hero .tile.sen.s-new { opacity: .55; animation: none; }
 .hero .tile.sen.s-paused { border: 1.5px dashed #6D7290; background: none; color: #6D7290; box-shadow: none; animation: none; }
@@ -81,8 +83,8 @@
 /* The dialogs. */
 .dialog .seg.sn-seg { margin: 2px 0 6px; }
 .dialog .seg.sn-seg button { height: 32px; padding: 0 13px; font-size: 13px; }
-#sensor-dialog .dialog-foot, #sview-dialog .dialog-foot, #rules-dialog .dialog-foot, #mail-dialog .dialog-foot { align-items: center; }
-#sensor-dialog .grow, #sview-dialog .grow, #rules-dialog .grow, #mail-dialog .grow { flex: 1; }
+#sensor-dialog .dialog-foot, #sview-dialog .dialog-foot, #mail-dialog .dialog-foot { align-items: center; }
+#sensor-dialog .grow, #sview-dialog .grow, #mail-dialog .grow { flex: 1; }
 #sensor-dialog .primary, #mail-dialog .primary { display: inline-flex; align-items: center; gap: 7px; }
 .sv-now { display: flex; align-items: center; gap: 14px; margin: 12px 0 14px; padding: 14px 16px; border: 1px solid color-mix(in srgb, var(--c) 45%, transparent); border-radius: 12px; background: color-mix(in srgb, var(--c) 7%, transparent); }
 .sv-now .big-ic { background: color-mix(in srgb, var(--c) 12%, transparent); color: var(--c); }

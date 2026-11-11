@@ -116,8 +116,6 @@ body.app.rail-small { grid-template-columns: 60px minmax(0, 1fr); }
 .lay-pick:hover .lay-pic { border-color: #3A3E55; }
 .lay-pick[aria-pressed="true"] .lay-pic { border-color: var(--accent-line); }
 .lay-pic .r { flex: none; width: 26px; border-radius: 4px; background: #1A1D2B; }
-.lay-pic .r.big { width: 46px; }
-.lay-pic .r.thin { width: 14px; }
 .lay-pic .c { display: grid; align-content: start; gap: 6px; flex: 1; padding: 8px 34px; }
 .lay-pic.wide .c { padding: 8px 6px; }
 .lay-pic .c i { height: 12px; border-radius: 3px; background: #23263A; }
@@ -125,6 +123,16 @@ body.app.rail-small { grid-template-columns: 60px minmax(0, 1fr); }
 .lay-pic .c i:last-child { height: 42px; }
 .lay-pick b { color: #fff; font-size: 14px; }
 .lay-pick small { color: var(--muted); font-size: 12.5px; line-height: 1.45; }
+/* Banner squares: each choice a little box with 13 dots where it puts them, its name under it; the one in use outlined. */
+.sq-lead { margin: 0 0 12px; color: var(--muted); font-size: 13.5px; }
+.sq-picks { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; }
+.sq-pick { display: grid; gap: 7px; height: auto; padding: 0; border: 0; background: none; color: #fff; font: inherit; font-size: 13.5px; text-align: left; cursor: pointer; }
+.sq-pick:hover { background: none; }
+.sq-pic { position: relative; display: block; height: 100px; border: 2px solid var(--line-strong); border-radius: 12px; background: #0C0E17; }
+.sq-pic > span { position: absolute; inset: 8px; }
+.sq-pic i { position: absolute; width: 12px; height: 12px; border-radius: 3px; background: var(--c); translate: -50% -50%; }
+.sq-pick:hover .sq-pic { border-color: #3A3E55; }
+.sq-pick[aria-pressed="true"] .sq-pic { border-color: var(--accent-line); }
 @media (max-width: 700px) {
   .ds-row { flex-wrap: wrap; }
   .ds-r { max-width: none; justify-content: flex-start; }
@@ -157,7 +165,6 @@ body.app.rail-small { grid-template-columns: 60px minmax(0, 1fr); }
 .all-flask .liquid { fill: var(--accent-line); stroke: none; }
 .srail .dkids { display: none; }
 .srail .dkids.open { display: grid; }
-.set-narrow { margin: 10px 0 0; font-size: 12px; }
 .h3 { margin: 24px 0 8px; font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
 .problem { color: var(--red); }
 
@@ -315,7 +322,7 @@ a.small-link { margin-top: 8px; padding: 6px 12px; font-size: 12.5px; }
 
 /* Overview: the hero across the top, the news under it, then this machine. */
 .page.home { max-width: none; padding: 0; gap: 0; }
-.hero { position: relative; overflow: hidden; padding: 46px 44px 36px; border-bottom: 1px solid var(--line);
+.hero { position: relative; overflow: hidden; padding: 38px 44px 30px; border-bottom: 1px solid var(--line);
   background: radial-gradient(900px 420px at 88% 10%, rgba(232, 84, 47, .22), transparent 60%), radial-gradient(600px 300px at 70% 90%, rgba(158, 89, 207, .14), transparent 60%), #0C0D16; }
 .hero > :not(.tile) { position: relative; z-index: 1; }
 .hero .tile { position: absolute; z-index: 0; border-radius: 24%; pointer-events: none; }
@@ -354,7 +361,7 @@ a.button:hover, label.button:hover { background: #222536; text-decoration: none;
 .home .machine { margin: 22px 44px 0; }
 @media (max-width: 1180px) { .hero .hero-new { display: none; } }
 /* Every hero is the same height with its parts in the same places, so the line under it stays put from page to page. */
-@media (min-width: 701px) { .hero { min-height: 400px; } }
+@media (min-width: 701px) { .hero { min-height: 300px; } }
 .hero-lead { min-height: 1.5em; }
 .hero-actions { min-height: 39px; }
 @media (max-width: 700px) {
@@ -388,15 +395,6 @@ a.button.primary:hover { background: var(--ember); }
 .notes > li { margin-bottom: 10px; }
 .notes b { color: var(--title); }
 .notes ul { margin: 4px 0 0; padding-left: 18px; color: var(--text); }
-.activity { margin: 0; padding: 0; list-style: none; }
-.activity li { display: grid; grid-template-columns: 18px 1fr auto auto; gap: 4px 12px; align-items: baseline; padding: 8px 0; border-top: 1px solid var(--line); }
-.activity li:first-child { border-top: 0; }
-.act-by, .act-when { color: var(--muted); font-size: 13px; white-space: nowrap; }
-.act-detail { grid-column: 2 / -1; color: var(--muted); font-size: 13px; }
-.status i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--muted); }
-.status-ok i { background: var(--ok); }
-.status-amber i { background: var(--amber); }
-.status-red i { background: var(--red); }
 .foot { max-width: 1040px; margin-top: auto; padding: 14px 36px 24px; color: #5E6380; font-size: 12.5px; }
 @media (max-width: 760px) { .rail-collapse { display: none; } .foot { padding: 14px 18px 20px; } }
 /* The account chip in the top bar and its menu. */

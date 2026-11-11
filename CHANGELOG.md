@@ -2,6 +2,13 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.25 (2026-11-11)
+
+- The banner at the top of Overview, Links and Sensors is shorter, 300 pixels.
+- Banner squares in Settings, Appearance picks how the squares sit in those banners: Scatter, Even spread, Cluster, Tidy rows, Sweep, Wave, Ring, Arc, Steps, Stack or Spiral. Even spread is the default, and the pick is kept in this browser.
+- Over 40 links or sensors, the squares line up in a straight grid, every one of them, and a down one still glows red where it sits. The squares keep clear of the Down now card.
+- Old code the banners no longer used is gone.
+
 ## 1.1.24 (2026-11-11)
 
 - The row of Updates, Activity, What is new and GitHub buttons is back on the Overview banner. The New card stays gone.

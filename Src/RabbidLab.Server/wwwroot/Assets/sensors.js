@@ -82,15 +82,11 @@
 
   // --- The hero: how the lab is doing, and a square for every sensor -------------------------------------------------------
 
-  const places = R.places; // where the squares go; Links puts its own there the same way
   const squares = new Map(); // a sensor's square, kept between draws so its beat isn't started over
   const drawSquares = () => {
     const hero = $('sn-hero');
-    const { slots, size } = places(sensors.length);
-    const seen = new Set();
-    [...sensors].sort((a, b) => a.id.localeCompare(b.id)).forEach((s, i) => {
-      if (i >= slots.length) return;
-      seen.add(s.id);
+    const size = R.squareSize(sensors.length);
+    const items = [...sensors].sort((a, b) => a.id.localeCompare(b.id)).map((s) => {
       let el = squares.get(s.id);
       if (!el) {
         el = document.createElement('button');
@@ -101,21 +97,23 @@
       }
       const r = hash(s.id);
       const down = s.status === 'down';
-      const side = Math.round((down ? size * 1.4 : size * (0.85 + r * 0.35)));
-      el.className = `tile sen s-${s.status}${size < 20 ? ' tiny' : ''}`;
+      const side = Math.round(down ? size * 1.4 : size * (0.85 + r * 0.35));
+      el.className = `tile sen s-${s.status}${side < 20 ? ' tiny' : ''}`;
       el.title = `${s.name} · ${now(s)}`;
       el.textContent = letters(s.name);
       el.style.setProperty('--g', colour(s));
       el.style.setProperty('--t', `${(2.2 + r * 2.4).toFixed(2)}s`);
       el.style.setProperty('--d', `-${(hash(`${s.id}d`) * 4).toFixed(2)}s`);
-      Object.assign(el.style, { left: `${(slots[i][0] + r * 1.2).toFixed(2)}%`, top: `${(slots[i][1] + hash(`${s.id}y`) * 4).toFixed(2)}%`, width: `${side}px`, height: `${side}px`,
-        rotate: `${down ? 8 : Math.round(hash(`${s.id}r`) * 50 - 25)}deg` });
+      Object.assign(el.style, { width: `${side}px`, height: `${side}px`, rotate: `${down ? 8 : Math.round(hash(`${s.id}r`) * 50 - 25)}deg` });
+      return { el, id: s.id };
     });
+    const seen = new Set(items.map((x) => x.id));
     squares.forEach((el, id) => {
       if (seen.has(id)) return;
       el.remove();
       squares.delete(id);
     });
+    R.squares(hero, items, $('sn-card'));
   };
   const drawHero = () => {
     const live = sensors.filter((s) => s.status !== 'paused');

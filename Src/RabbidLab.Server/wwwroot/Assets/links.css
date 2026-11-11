@@ -88,16 +88,6 @@
 .form textarea:focus { outline: none; border-color: var(--accent-line); }
 /* A link with no icon: nothing on its tile, and an empty dashed square in the dialog. */
 .lic.none { border: 1px dashed var(--line-strong); background: none; }
-/* Links settings: Export and Import, side by side. */
-.lc-file { display: flex; flex-wrap: wrap; gap: 8px; margin: 2px 0 4px; }
-.lc-file .button { display: inline-flex; align-items: center; gap: 7px; margin: 0; padding: 7px 13px; border: 1px solid var(--line-strong); border-radius: 8px; background: #1A1C28;
-  color: var(--text); font-size: 13px; font-weight: 400; letter-spacing: 0; text-transform: none; cursor: pointer; }
-.lc-file .button:hover { background: #222536; text-decoration: none; }
-.lc-file .button svg { width: 15px; height: 15px; }
-/* Links settings: the checkbox for describing known products, as text rather than a field label. */
-#lcheck-dialog .tick { height: auto; min-height: 38px; margin: 0; padding: 8px 12px; color: var(--text); font-size: 13.5px; font-weight: 400; letter-spacing: 0; text-transform: none; }
-#lcheck-dialog .tick input { width: auto; height: auto; padding: 0; border: 0; }
-#lcheck-dialog .form .hint { margin: 2px 0 0; }
 /* A tile dragged to another group: the group under it lights up, and No group shows as a place to drop it when the page has none. */
 .ltile.dragged { opacity: .4; }
 .lgroup.drop-into { border-radius: 12px; outline: 2px dashed var(--accent-line); outline-offset: 8px; }
