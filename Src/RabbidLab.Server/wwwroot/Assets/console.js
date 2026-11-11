@@ -3,6 +3,11 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.0.9', [
+    'Add a sensor has a new layout: the kinds of check are listed down the left, and each one shows only its own fields. Check now shows what it found in a card.',
+    'Web page sensors can count as up only for a status from 200 to 399, or only when the page has some text on it.',
+    'DNS lookup sensors can check that a name resolves to the address it should.',
+    'Certificate sensors can warn at 14, 21, 30 or 60 days left.']],
   ['1.0.8', [
     'Links, Sensors and Active Directory switch between rows and tiles with two icons in one box, in place of the Cards and Grid buttons.']],
   ['1.0.7', [

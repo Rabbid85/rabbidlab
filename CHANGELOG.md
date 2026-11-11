@@ -2,6 +2,13 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.0.9 (2026-11-11)
+
+- Add a sensor has a new layout: the kinds of check are listed down the left, and each one shows only its own fields. Check now shows what it found in a card.
+- Web page sensors can count as up only for a status from 200 to 399, or only when the page has some text on it.
+- DNS lookup sensors can check that a name resolves to the address it should.
+- Certificate sensors can warn at 14, 21, 30 or 60 days left.
+
 ## 1.0.8 (2026-11-11)
 
 - Links, Sensors and Active Directory switch between rows and tiles with two icons in one box, in place of the Cards and Grid buttons.

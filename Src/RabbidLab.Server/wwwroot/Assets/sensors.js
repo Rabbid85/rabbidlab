@@ -439,39 +439,69 @@
     edit(showing);
   });
 
-  // --- Adding and changing one -------------------------------------------------------------------------------------------------
+  // --- Adding and changing one: the kinds of check down the left, the open one's fields beside them -------------------------
 
   let editing = null; // the sensor being changed, or null for a new one
   let kind = 'ping';
-  const TARGET = { ping: ['Address', '192.168.2.23 or nas.example.com'], port: ['Address', '192.168.2.23 or nas.example.com'], web: ['Page address', 'https://192.168.2.23'],
-    dns: ['Name to look up', 'nas.example.com'], cert: ['Address', 'nas.example.com'] };
+  const vals = {}; // what has been typed, kept while the kind changes
+  const GROUPS = [['answer', 'Is it answering']];
+  const TYPES = [
+    { id: 'ping', g: 'answer', icon: 'activity', about: 'Answers ping.' },
+    { id: 'port', g: 'answer', icon: 'plug', about: 'A TCP port is open.' },
+    { id: 'web', g: 'answer', icon: 'globe', about: 'The page answers, with what you expect on it.' },
+    { id: 'dns', g: 'answer', icon: 'search', about: 'A name resolves, to the address it should.' },
+    { id: 'cert', g: 'answer', icon: 'lock', about: 'Days until a certificate expires.' },
+  ];
+  // The fields, in the console's form markup; each keeps its value in vals under its key.
+  const wide = (on) => (on ? ' class="wide"' : '');
+  const field = (key, label, o = {}) => `<div${wide(o.wide)}><label for="sd-f-${key}">${label}</label><input id="sd-f-${key}" data-f="${key}"`
+    + `${o.num ? ' inputmode="numeric"' : ''} maxlength="${o.max || 300}" placeholder="${esc(o.ph || '')}" value="${esc(vals[key] ?? '')}" autocomplete="off" spellcheck="false"></div>`;
+  const choice = (key, label, items, o = {}) => `<div${wide(o.wide)}><label for="sd-f-${key}">${label}</label><select id="sd-f-${key}" data-f="${key}">`
+    + items.map(([v, text]) => `<option value="${esc(v)}"${String(vals[key] ?? o.value) === String(v) ? ' selected' : ''}>${esc(text)}</option>`).join('') + '</select></div>';
+  const picks = (key, label, items) => `<div class="wide"><label>${label}</label><div class="seg sn-seg">`
+    + items.map(([v, text]) => `<button type="button" data-f="${key}" data-v="${esc(v)}" aria-pressed="${(vals[key] || '') === v}">${esc(text)}</button>`).join('') + '</div></div>';
+  const FIELDS = {
+    ping: () => field('target', 'Address', { wide: true, ph: '192.168.2.23 or nas.example.com' }),
+    port: () => field('target', 'Host', { ph: '192.168.2.23 or nas.example.com' }) + field('port', 'Port', { num: true, max: 5, ph: '445, 636, 3389…' }),
+    web: () => field('target', 'Address', { wide: true, ph: 'https://192.168.2.23' })
+      + picks('expect', 'Counts as up when', [['', 'It answers'], ['ok', 'Status 200 to 399'], ['text', 'The page has this text']])
+      + (vals.expect === 'text' ? field('text', 'Text on the page', { wide: true, max: 200, ph: 'Words the page shows when it works' }) : ''),
+    dns: () => field('target', 'Name to look up', { ph: 'nas.example.com' }) + field('address', 'Should resolve to', { ph: 'Any address' })
+      + field('server', 'DNS server to ask', { wide: true, max: 250, ph: 'The one this server uses' }),
+    cert: () => field('target', 'Host', { ph: 'nas.example.com' }) + field('port', 'Port', { num: true, max: 5, ph: '443' })
+      + choice('warn', 'Warn when it has less than', [[14, '14 days'], [21, '21 days'], [30, '30 days'], [60, '60 days']], { value: 21 }),
+  };
+  const drawFields = () => {
+    $('sd-fields').innerHTML = FIELDS[kind]();
+    $('sd-out').innerHTML = '';
+  };
   const setKind = (k) => {
-    kind = k;
-    $('sd-kind').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.kind === k));
-    $('sd-target-label').textContent = TARGET[k][0];
-    $('sd-target').placeholder = TARGET[k][1];
-    $('sd-port-box').hidden = k !== 'port' && k !== 'cert';
-    $('sd-port').placeholder = k === 'cert' ? '443' : '445, 636, 3389…';
-    $('sd-server-box').hidden = k !== 'dns';
-    $('sd-target-box').classList.toggle('wide', k === 'ping' || k === 'web');
+    kind = TYPES.some((t) => t.id === k) ? k : 'ping';
+    const t = TYPES.find((x) => x.id === kind);
+    $('sd-types').innerHTML = GROUPS.map(([g, name]) => `<p class="rail-label">${name}</p>` + TYPES.filter((x) => x.g === g)
+      .map((x) => `<a href="#" data-kind="${x.id}"${x.id === kind ? ' aria-current="true"' : ''}>${svg(x.icon)}<span>${KIND[x.id]}</span></a>`).join('')).join('');
+    $('sd-kind-name').textContent = KIND[kind];
+    $('sd-kind-about').textContent = t.about;
     // A certificate doesn't change by the minute.
-    if (!editing) $('sd-every').value = k === 'cert' ? '3600' : '60';
-    say('sd-found', '');
+    if (!editing) $('sd-every').value = kind === 'cert' ? '3600' : '60';
+    drawFields();
   };
   const pickGroup = () => {
     const fresh = $('sd-group').value === NEW_GROUP;
     $('sd-group-new').hidden = !fresh;
     if (fresh) $('sd-group-new').focus();
   };
-  const form = () => ({ kind, target: $('sd-target').value, port: $('sd-port').value.trim() ? Number($('sd-port').value) : null, server: $('sd-server').value, name: $('sd-name').value,
+  const num = (v) => (String(v ?? '').trim() ? Number(v) : null);
+  const form = () => ({ kind, target: vals.target || '', port: kind === 'port' || kind === 'cert' ? num(vals.port) : null, server: kind === 'dns' ? vals.server || '' : '',
+    expect: kind === 'web' ? vals.expect || '' : '', text: kind === 'web' && vals.expect === 'text' ? vals.text || '' : '', address: kind === 'dns' ? vals.address || '' : '',
+    warnDays: kind === 'cert' ? num(vals.warn ?? 21) : null, name: $('sd-name').value,
     group: $('sd-group').value === NEW_GROUP ? $('sd-group-new').value : $('sd-group').value, every: Number($('sd-every').value), rule: $('sd-rule').value });
   // A sensor to change, or null for a new one, which starts in the group asked for or the one being looked at.
   const edit = (s, into) => {
     editing = s || null;
+    Object.keys(vals).forEach((k) => delete vals[k]);
+    if (s) Object.assign(vals, { target: s.target, port: s.port ?? '', server: s.server || '', expect: s.expect || '', text: s.text || '', address: s.address || '', warn: s.warnDays ?? 21 });
     $('sd-title').textContent = s ? `Change ${s.name}` : 'Add a sensor';
-    $('sd-target').value = s?.target || '';
-    $('sd-port').value = s?.port || '';
-    $('sd-server').value = s?.server || '';
     $('sd-name').value = s?.name || '';
     $('sd-group').innerHTML = '<option value="">No group</option>' + groups.map((g) => `<option value="${esc(g)}">${esc(g)}</option>`).join('') + `<option value="${NEW_GROUP}">New group…</option>`;
     $('sd-group').value = s ? s.group || '' : into ?? (group === DOWN || group === NO_GROUP ? '' : group);
@@ -483,30 +513,48 @@
     setKind(s?.kind || 'ping');
     $('sd-delete').hidden = !s;
     $('sd-save').textContent = s ? 'Save' : 'Add the sensor';
-    say('sd-found', '');
     say('sd-problem', '');
     $('sensor-dialog').showModal();
-    $('sd-target').focus();
+    $('sd-fields').querySelector('input')?.focus();
   };
-  $('sd-kind').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-kind]');
-    if (b) setKind(b.dataset.kind);
+  $('sd-types').addEventListener('click', (e) => {
+    const a = e.target.closest('[data-kind]');
+    if (!a) return;
+    e.preventDefault();
+    setKind(a.dataset.kind);
+    $('sd-fields').querySelector('input')?.focus();
+  });
+  const keep = (e) => { if (e.target.dataset.f) vals[e.target.dataset.f] = e.target.value; };
+  $('sd-fields').addEventListener('input', keep);
+  $('sd-fields').addEventListener('change', keep);
+  $('sd-fields').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-v]');
+    if (!b) return;
+    vals[b.dataset.f] = b.dataset.v;
+    drawFields();
   });
   $('sd-group').addEventListener('change', pickGroup);
   $('sd-cancel').addEventListener('click', () => $('sensor-dialog').close());
+  // What Check now found, as a status card: what answered and how, or what went wrong.
+  const found = (f) => {
+    const answered = f.ms == null ? '' : `Answered in ${ms(f.ms)}`;
+    const title = !f.ok ? f.note || 'No answer' : kind === 'port' ? `Port ${vals.port} is open` : kind === 'dns' || kind === 'cert' ? f.note || 'It answered' : answered || 'It answered';
+    const line = !f.ok ? [f.detail, 'You can still add it.'].filter(Boolean).join(' · ')
+      : [kind === 'web' ? f.note : kind === 'port' || kind === 'dns' ? answered : '', f.detail].filter(Boolean).join(' · ');
+    const look = !f.ok ? ' bad' : f.warn ? ' ember' : '';
+    return `<div class="ustatus"><span class="big-ic${look}">${svg(f.ok && !f.warn ? 'check' : 'alert')}</span><div class="ustatus-text"><b>${esc(title)}</b><span>${esc(line)}</span></div></div>`;
+  };
   $('sd-try').addEventListener('click', async () => {
     say('sd-problem', '');
-    R.busy($('sensor-dialog').querySelector('.form'), 'Checking…');
+    $('sd-out').innerHTML = '';
+    R.busy($('sd-pane'), 'Checking…');
     $('sd-try').disabled = $('sd-save').disabled = true;
     try {
-      const found = await R.send('/api/sensors/try', form());
-      say('sd-found', found.ok ? `It answered${found.ms == null ? '' : ` in ${ms(found.ms)}`}.${found.note ? ` ${found.note}.` : ''}` : `No good: ${found.note || 'no reply'}. You can still add it.`);
-      $('sd-found').className = `hint ${found.ok ? 'note' : 'warn'}`;
+      $('sd-out').innerHTML = found(await R.send('/api/sensors/try', form()));
     } catch (err) {
-      say('sd-found', '');
       say('sd-problem', err.message);
     } finally {
-      R.busy($('sensor-dialog').querySelector('.form'), '');
+      R.busy($('sd-pane'), '');
       $('sd-try').disabled = $('sd-save').disabled = false;
     }
   });
@@ -535,6 +583,7 @@
       }
     });
   });
+
   $('sn-add').addEventListener('click', () => edit(null));
   $('sn-add-first').addEventListener('click', () => edit(null));
   $('sn-list').addEventListener('click', (e) => {

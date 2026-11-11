@@ -333,7 +333,7 @@ public sealed class LinksTests : IDisposable
     }
 
     /// <summary>A web server on a real port, answering GETs for the paths it's given.</summary>
-    private sealed class TinySite : IDisposable
+    internal sealed class TinySite : IDisposable
     {
         private readonly TcpListener listener = new(IPAddress.Loopback, 0);
         private readonly CancellationTokenSource stop = new();

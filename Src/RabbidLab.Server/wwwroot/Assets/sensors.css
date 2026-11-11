@@ -104,3 +104,35 @@
 #rules-dialog .rcard[aria-pressed="true"] { border-color: var(--c); background: color-mix(in srgb, var(--c) 6%, var(--panel)); }
 #rules-dialog .rcard b i { width: 9px; height: 9px; border-radius: 50%; background: var(--c); }
 #rules-dialog .rcard p { min-height: 34px; }
+/* Add a sensor: the kinds of check down the left, like Active Directory's pages, and the open one's form beside them. */
+.sd-dialog { width: min(920px, calc(100vw - 32px)); }
+.sd-grid { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 22px; margin-top: 14px; }
+.sd-types { position: static; max-height: none; margin: 0; padding: 0 12px 0 4px; border-right: 1px solid var(--line); }
+.sd-types .rail-label:first-child { margin-top: 2px; }
+.sd-types a .sd-key { width: 13px; height: 13px; margin-left: auto; color: #5E6380; }
+.sd-pane { min-width: 0; min-height: 430px; border-radius: 12px; }
+.sd-head { margin: 0 0 12px; }
+.sd-head b { display: block; color: var(--title); font: 750 18px "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; }
+.sd-head span { color: var(--muted); font-size: 13px; }
+.form.sd-form { padding: 0; border: 0; background: none; }
+.form.two > .sd-div { display: flex; align-items: center; gap: 10px; margin: 14px 0 2px; }
+.sd-div b { color: var(--title); font-size: 13.5px; font-weight: 650; }
+.sd-div i { flex: 1; height: 1px; background: var(--line); }
+.sd-form .hint { grid-column: 1 / -1; margin: 0; }
+.sd-form .seg.sn-seg { margin: 0; }
+/* What Check now found: the status card, then what it can watch. */
+.sd-out { display: grid; gap: 8px; margin-top: 16px; }
+.sd-out:empty { display: none; }
+.sd-out .ustatus { padding: 14px 16px; }
+.sd-out .big-ic { width: 44px; height: 44px; border-radius: 12px; }
+.sd-out .big-ic svg { width: 22px; height: 22px; }
+.sd-out .ustatus-text b { font-size: 15.5px; }
+.sd-out .rows { margin: 0; }
+#sensor-dialog .dialog-foot { align-items: center; gap: 8px; }
+#sensor-dialog .grow { flex: 1; }
+@media (max-width: 760px) {
+  .sd-grid { grid-template-columns: minmax(0, 1fr); }
+  .sd-types { flex-direction: row; flex-wrap: wrap; padding: 0 0 10px; border-right: 0; border-bottom: 1px solid var(--line); }
+  .sd-types .rail-label { display: none; }
+  .sd-pane { min-height: 0; }
+}

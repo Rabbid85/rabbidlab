@@ -26,6 +26,16 @@ public sealed class Sensor
 
     /// <summary>For dns: the DNS server to ask; null for the one this computer uses.</summary>
     public string? Server { get; set; }
+
+    /// <summary>For web: null when any answer counts, ok for a status from 200 to 399, text for that status with Text on the page.</summary>
+    public string? Expect { get; set; }
+    public string? Text { get; set; }
+
+    /// <summary>For dns: the IP address the name should resolve to; null for any.</summary>
+    public string? Address { get; set; }
+
+    /// <summary>For cert: days left below which it warns; null for the usual 21.</summary>
+    public int? WarnDays { get; set; }
     public string? Group { get; set; }
 
     /// <summary>Seconds between checks.</summary>
@@ -103,8 +113,8 @@ public sealed class SensorStatesFile
     public Dictionary<string, SensorState> States { get; set; } = [];
 }
 
-/// <summary>What a check found. Warn is an answer that needs attention soon, such as a certificate about to expire.</summary>
-public sealed record Probe(bool Ok, int? Ms = null, string? Note = null, bool Warn = false);
+/// <summary>What a check found. Warn is an answer that needs attention soon, such as a certificate about to expire. Detail is for Check now only.</summary>
+public sealed record Probe(bool Ok, int? Ms = null, string? Note = null, bool Warn = false, string? Detail = null);
 
 public interface ISensorProbe
 {
@@ -125,9 +135,9 @@ public sealed class NetworkProbe(TimeProvider clock) : ISensorProbe
             return s.Kind switch
             {
                 "port" => await Port(s.Target, s.Port ?? 0, limit.Token),
-                "web" => await Web(s.Target, limit.Token),
-                "dns" => await Name(s.Target, s.Server, limit.Token),
-                "cert" => await Certificate(s.Target, s.Port ?? 443, limit.Token),
+                "web" => await Web(s, limit.Token),
+                "dns" => await Name(s.Target, s.Server, s.Address, limit.Token),
+                "cert" => await Certificate(s.Target, s.Port ?? 443, s.WarnDays ?? Sensors.CertificateWarnDays, limit.Token),
                 _ => await Ping(s.Target, limit.Token),
             };
         }
@@ -167,33 +177,74 @@ public sealed class NetworkProbe(TimeProvider clock) : ISensorProbe
         return new Probe(true, (int) watch.ElapsedMilliseconds);
     }
 
-    private static async Task<Probe> Web(string url, CancellationToken stop)
+    private static async Task<Probe> Web(Sensor s, CancellationToken stop)
     {
         var watch = Stopwatch.StartNew();
-        using var response = await Http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, stop);
+        using var response = await Http.GetAsync(s.Target, HttpCompletionOption.ResponseHeadersRead, stop);
+        var ms = (int) watch.ElapsedMilliseconds;
         var code = (int) response.StatusCode;
+        var said = $"HTTP {code} {response.ReasonPhrase}".TrimEnd();
         // A sign-in page or a refusal is the site answering; a 5xx is the site saying it's broken.
-        return code < 500 ? new Probe(true, (int) watch.ElapsedMilliseconds) : new Probe(false, Note: $"HTTP {code}");
+        if (s.Expect is null)
+        {
+            return code < 500 ? new Probe(true, ms, said) : new Probe(false, Note: $"HTTP {code}");
+        }
+        if (code is < 200 or > 399)
+        {
+            return new Probe(false, Note: said);
+        }
+        if (s.Expect == "text" && !(await Body(response, stop)).Contains(s.Text ?? "", StringComparison.OrdinalIgnoreCase))
+        {
+            return new Probe(false, Note: "The text isn't on the page");
+        }
+        return new Probe(true, ms, said);
     }
 
-    private static async Task<Probe> Name(string name, string? server, CancellationToken stop)
+    // The page, up to 2 MB: the text looked for is on the page a person sees, not past the end of a download.
+    private static async Task<string> Body(HttpResponseMessage response, CancellationToken stop)
+    {
+        await using var stream = await response.Content.ReadAsStreamAsync(stop);
+        var buffer = new byte[2 * 1024 * 1024];
+        var read = 0;
+        int n;
+        while (read < buffer.Length && (n = await stream.ReadAsync(buffer.AsMemory(read), stop)) > 0)
+        {
+            read += n;
+        }
+        return System.Text.Encoding.UTF8.GetString(buffer, 0, read);
+    }
+
+    private static async Task<Probe> Name(string name, string? server, string? expected, CancellationToken stop)
     {
         var watch = Stopwatch.StartNew();
+        IPAddress[] found;
         if (string.IsNullOrWhiteSpace(server))
         {
-            return (await Dns.GetHostAddressesAsync(name, stop)).Length > 0 ? new Probe(true, (int) watch.ElapsedMilliseconds) : new Probe(false, Note: "No such name");
+            found = await Dns.GetHostAddressesAsync(name, stop);
         }
-        var at = IPAddress.TryParse(server, out var ip) ? ip : (await Dns.GetHostAddressesAsync(server, stop)).First();
-        var client = new LookupClient(new LookupClientOptions(at) { Timeout = TimeSpan.FromSeconds(3), Retries = 0, UseCache = false });
-        var answer = await client.QueryAsync(name, QueryType.A, cancellationToken: stop);
-        if (!answer.HasError && answer.Answers.Count == 0)
+        else
         {
-            answer = await client.QueryAsync(name, QueryType.AAAA, cancellationToken: stop);
+            var at = IPAddress.TryParse(server, out var ip) ? ip : (await Dns.GetHostAddressesAsync(server, stop)).First();
+            var client = new LookupClient(new LookupClientOptions(at) { Timeout = TimeSpan.FromSeconds(3), Retries = 0, UseCache = false });
+            var answer = await client.QueryAsync(name, QueryType.A, cancellationToken: stop);
+            if (!answer.HasError && answer.Answers.Count == 0)
+            {
+                answer = await client.QueryAsync(name, QueryType.AAAA, cancellationToken: stop);
+            }
+            found = answer.HasError ? [] : [.. answer.Answers.OfType<DnsClient.Protocol.ARecord>().Select(r => r.Address), .. answer.Answers.OfType<DnsClient.Protocol.AaaaRecord>().Select(r => r.Address)];
         }
-        return !answer.HasError && answer.Answers.Count > 0 ? new Probe(true, (int) watch.ElapsedMilliseconds) : new Probe(false, Note: "No such name");
+        if (found.Length == 0)
+        {
+            return new Probe(false, Note: "No such name");
+        }
+        var ms = (int) watch.ElapsedMilliseconds;
+        var list = string.Join(", ", found.Take(3).Select(a => a.ToString()));
+        return expected is not null && IPAddress.TryParse(expected, out var want) && !found.Any(a => Addresses.Normal(a).Equals(Addresses.Normal(want)))
+            ? new Probe(false, Note: $"Resolves to {list}, not {expected}")
+            : new Probe(true, ms, $"Resolves to {list}");
     }
 
-    private async Task<Probe> Certificate(string host, int port, CancellationToken stop)
+    private async Task<Probe> Certificate(string host, int port, int warnDays, CancellationToken stop)
     {
         using var tcp = new TcpClient();
         var watch = Stopwatch.StartNew();
@@ -208,8 +259,9 @@ public sealed class NetworkProbe(TimeProvider clock) : ISensorProbe
         using var certificate = new X509Certificate2(raw);
         var days = (int) Math.Floor((certificate.NotAfter.ToUniversalTime() - clock.GetUtcNow().UtcDateTime).TotalDays);
         var ms = (int) watch.ElapsedMilliseconds;
-        return days < 0 ? new Probe(false, Note: $"Expired {-days} day{(days == -1 ? "" : "s")} ago")
-            : new Probe(true, ms, days == 0 ? "Expires today" : $"Expires in {days} day{(days == 1 ? "" : "s")}", Warn: days < Sensors.CertificateWarnDays);
+        var detail = $"{certificate.GetNameInfo(X509NameType.SimpleName, false)} · issued by {certificate.GetNameInfo(X509NameType.SimpleName, true)} · expires {certificate.NotAfter.ToUniversalTime():MMM d, yyyy}";
+        return days < 0 ? new Probe(false, Note: $"Expired {-days} day{(days == -1 ? "" : "s")} ago", Detail: detail)
+            : new Probe(true, ms, days == 0 ? "Expires today" : $"Expires in {days} day{(days == 1 ? "" : "s")}", Warn: days < warnDays, Detail: detail);
     }
 
     private static HttpClient MakeHttp()
@@ -229,7 +281,8 @@ public sealed class NetworkProbe(TimeProvider clock) : ISensorProbe
 }
 
 /// <summary>A sensor as the page sends it.</summary>
-public sealed record SensorForm(string? Name, string? Kind, string? Target, int? Port, string? Server, string? Group, int? Every, string? Rule);
+public sealed record SensorForm(string? Name, string? Kind, string? Target, int? Port, string? Server, string? Group, int? Every, string? Rule,
+    string? Expect = null, string? Text = null, string? Address = null, int? WarnDays = null);
 
 public sealed record RuleForm(int? After, int? Again, bool? Back);
 
@@ -306,7 +359,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
 
     private static object Row(Sensor s, SensorState st) => new
     {
-        s.Id, s.Name, s.Kind, s.Target, s.Port, s.Server, s.Group, s.Every, s.Rule, s.Paused,
+        s.Id, s.Name, s.Kind, s.Target, s.Port, s.Server, s.Expect, s.Text, s.Address, s.WarnDays, s.Group, s.Every, s.Rule, s.Paused,
         status = s.Paused ? "paused" : st.Status,
         since = st.Since,
         ms = st.Ms,
@@ -376,6 +429,18 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
         {
             return (null, "The DNS server has to be a name or an IP address.");
         }
+        var expect = kind == "web" && form.Expect is "ok" or "text" ? form.Expect : null;
+        var text = expect == "text" ? form.Text?.Trim() : null;
+        if (expect == "text" && text is not { Length: > 0 and <= 200 })
+        {
+            return (null, "Type the text the page shows when it works, 200 characters at most.");
+        }
+        var address = kind == "dns" && !string.IsNullOrWhiteSpace(form.Address) ? form.Address.Trim() : null;
+        if (address is not null && !IPAddress.TryParse(address, out _))
+        {
+            return (null, "Should resolve to is an IP address, such as 192.168.2.23. Leave it empty for any address.");
+        }
+        int? warn = kind == "cert" && form.WarnDays is 14 or 30 or 60 ? form.WarnDays : null; // 21, the usual, is kept as null
         var name = string.IsNullOrWhiteSpace(form.Name) ? (kind == "web" ? new Uri(target).Host : target) : form.Name.Trim();
         if (name.Length > 60)
         {
@@ -383,7 +448,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
         }
         // A certificate doesn't change by the minute: hourly unless something else was asked for.
         var every = Intervals.Contains(form.Every ?? 0) ? form.Every!.Value : kind == "cert" ? 3600 : 60;
-        return (new Sensor { Name = name, Kind = kind, Target = target, Port = port, Server = server, Every = every }, null);
+        return (new Sensor { Name = name, Kind = kind, Target = target, Port = port, Server = server, Expect = expect, Text = text, Address = address, WarnDays = warn, Every = every }, null);
     }
 
     /// <summary>The sensor saved (new when id is null), or why it can't be.</summary>
@@ -428,7 +493,8 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
             {
                 f.Sensors[at] = next;
                 // Something else is checked now: what the old check found says nothing about it.
-                if (old!.Kind != next.Kind || old.Target != next.Target || old.Port != next.Port || old.Server != next.Server)
+                if (old!.Kind != next.Kind || old.Target != next.Target || old.Port != next.Port || old.Server != next.Server || old.Expect != next.Expect || old.Text != next.Text
+                    || old.Address != next.Address || old.WarnDays != next.WarnDays)
                 {
                     states.Read().States.Remove(next.Id);
                     dirty = true;
@@ -870,7 +936,7 @@ public static class SensorsApi
                 return refused;
             }
             var (found, problem) = await sensors.Try(form, context.RequestAborted);
-            return found is null ? Results.BadRequest(new { error = problem }) : Results.Ok(new { found.Ok, found.Ms, found.Note, found.Warn });
+            return found is null ? Results.BadRequest(new { error = problem }) : Results.Ok(new { found.Ok, found.Ms, found.Note, found.Warn, found.Detail });
         });
 
         app.MapPost("/api/sensors", (SensorForm form, HttpContext context, Sensors sensors, ActivityLog log) => Save(null, form, context, sensors, log));

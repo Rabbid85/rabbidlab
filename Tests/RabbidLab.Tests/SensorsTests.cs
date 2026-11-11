@@ -35,6 +35,45 @@ public sealed class SensorsTests : IDisposable
 
     private static JsonElement Named(JsonElement view, string name) => view.GetProperty("sensors").EnumerateArray().First(s => s.GetProperty("name").GetString() == name);
 
+    [Fact]
+    public async Task A_web_page_can_need_a_good_status_or_text_and_a_name_an_address()
+    {
+        using var site = new LinksTests.TinySite(new() { ["/"] = ("text/html", "<h1>Welcome to the NAS</h1>"u8.ToArray()) });
+        var probe = new NetworkProbe(TimeProvider.System);
+        Task<Probe> Web(string path, string? expect, string? text = null) =>
+            probe.Check(new Sensor { Kind = "web", Target = $"http://127.0.0.1:{site.Port}{path}", Expect = expect, Text = text }, CancellationToken.None);
+
+        Assert.True((await Web("/missing", null)).Ok); // a 404 is the site answering
+        Assert.False((await Web("/missing", "ok")).Ok);
+        Assert.True((await Web("/", "text", "welcome")).Ok);
+        var missing = await Web("/", "text", "Sign in");
+        Assert.False(missing.Ok);
+        Assert.Equal("The text isn't on the page", missing.Note);
+
+        var named = await probe.Check(new Sensor { Kind = "dns", Target = "localhost", Address = "127.0.0.1" }, CancellationToken.None);
+        var wrong = await probe.Check(new Sensor { Kind = "dns", Target = "localhost", Address = "192.0.2.9" }, CancellationToken.None);
+        Assert.True(named.Ok);
+        Assert.False(wrong.Ok);
+        Assert.StartsWith("Resolves to", wrong.Note);
+    }
+
+    [Fact]
+    public async Task The_new_options_are_checked_and_kept()
+    {
+        var admin = await app.SignedIn();
+
+        var noText = await admin.PostAsJsonAsync("/api/sensors", new { kind = "web", target = "https://nas.lab", expect = "text" });
+        var notIp = await admin.PostAsJsonAsync("/api/sensors", new { kind = "dns", target = "nas.lab", address = "nas" });
+        var view = await Json(await admin.PostAsJsonAsync("/api/sensors", new { kind = "web", target = "https://nas.lab", expect = "text", text = "Welcome", name = "NAS page" }));
+        view = await Json(await admin.PostAsJsonAsync("/api/sensors", new { kind = "cert", target = "nas.lab", warnDays = 60, name = "NAS certificate" }));
+
+        Assert.Equal(HttpStatusCode.BadRequest, noText.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, notIp.StatusCode);
+        Assert.Equal("Welcome", Named(view, "NAS page").GetProperty("text").GetString());
+        Assert.Equal("text", Named(view, "NAS page").GetProperty("expect").GetString());
+        Assert.Equal(60, Named(view, "NAS certificate").GetProperty("warnDays").GetInt32());
+    }
+
     // A minute passes and the sensors are checked, as the worker does every few seconds.
     private async Task Minute(int minutes = 1)
     {

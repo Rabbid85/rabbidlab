@@ -66,6 +66,8 @@
   <symbol id="i-csv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M12 12v6M9 15l3 3 3-3"/></symbol>
   <symbol id="i-globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></symbol>
   <symbol id="i-org" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="5" rx="1"/><rect x="3" y="16" width="6" height="5" rx="1"/><rect x="15" y="16" width="6" height="5" rx="1"/><path d="M12 8v4M6 16v-2h12v2"/></symbol>
+  <symbol id="i-plug" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="7" width="16" height="10" rx="2"/><path d="M8 11h2M14 11h2M8 7V4M16 7V4M12 17v3"/></symbol>
+  <symbol id="i-disk" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5.5" rx="8" ry="2.5"/><path d="M4 5.5v13c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5v-13"/><path d="M4 12c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5"/></symbol>
 </svg>
 <div class="sky" aria-hidden="true"></div>
 <header class="top">
@@ -738,24 +740,27 @@
 </dialog>
 
 <!-- A sensor: what to check, where, how often, and which alert rule it uses. -->
-<dialog class="dialog wide" id="sensor-dialog" aria-labelledby="sd-title">
+<dialog class="dialog sd-dialog" id="sensor-dialog" aria-labelledby="sd-title">
   <h2 id="sd-title">Add a sensor</h2>
-  <p class="dialog-lead">Pick what to check, then where. Checks are made from this server.</p>
-  <div class="form two">
-    <div class="wide"><label>Check</label>
-      <div class="seg sn-seg" id="sd-kind"><button type="button" data-kind="ping">Ping</button><button type="button" data-kind="port">Port</button><button type="button" data-kind="web">Web page</button>
-        <button type="button" data-kind="dns">DNS lookup</button><button type="button" data-kind="cert">Certificate</button></div></div>
-    <div id="sd-target-box"><label for="sd-target" id="sd-target-label">Address</label><input id="sd-target" maxlength="300" autocomplete="off" spellcheck="false"></div>
-    <div id="sd-port-box"><label for="sd-port">Port</label><input id="sd-port" inputmode="numeric" maxlength="5" autocomplete="off"></div>
-    <div id="sd-server-box"><label for="sd-server">DNS server to ask</label><input id="sd-server" maxlength="250" placeholder="The one this server uses" autocomplete="off" spellcheck="false"></div>
-    <div><label for="sd-name">Name</label><input id="sd-name" maxlength="60" autocomplete="off"></div>
-    <div><label for="sd-group">Group</label><select id="sd-group"></select>
-      <input id="sd-group-new" maxlength="40" placeholder="Name of the new group" aria-label="Name of the new group" autocomplete="off" hidden></div>
-    <div><label for="sd-every">Check every</label><select id="sd-every"><option value="30">30 seconds</option><option value="60">Minute</option><option value="300">5 minutes</option><option value="3600">Hour</option></select></div>
-    <div><label for="sd-rule">Alert rule</label><select id="sd-rule"></select></div>
+  <p class="dialog-lead">Pick what to check. Checks run from this server.</p>
+  <div class="sd-grid">
+    <!-- The kinds of check, in groups, like Active Directory's pages; the open one has the bar (sensors.js fills it in). -->
+    <nav class="dnav sd-types" id="sd-types" aria-label="What to check"></nav>
+    <div class="sd-pane" id="sd-pane">
+      <div class="sd-head"><b id="sd-kind-name"></b><span id="sd-kind-about"></span></div>
+      <div class="form two sd-form" id="sd-fields"></div>
+      <div class="form two sd-form">
+        <div class="sd-div wide"><b>Name and alerts</b><i></i></div>
+        <div><label for="sd-name">Name</label><input id="sd-name" maxlength="60" autocomplete="off"></div>
+        <div><label for="sd-group">Group</label><select id="sd-group"></select>
+          <input id="sd-group-new" maxlength="40" placeholder="Name of the new group" aria-label="Name of the new group" autocomplete="off" hidden></div>
+        <div><label for="sd-every">Check every</label><select id="sd-every"><option value="30">30 seconds</option><option value="60">Minute</option><option value="300">5 minutes</option><option value="3600">Hour</option></select></div>
+        <div><label for="sd-rule">Alert rule</label><select id="sd-rule"></select></div>
+      </div>
+      <div class="sd-out" id="sd-out"></div>
+      <p class="hint problem" id="sd-problem" hidden></p>
+    </div>
   </div>
-  <p class="hint" id="sd-found" hidden></p>
-  <p class="hint problem" id="sd-problem" hidden></p>
   <div class="dialog-foot"><button type="button" class="danger" id="sd-delete" hidden><svg><use href="#i-trash"/></svg>Delete</button><button type="button" id="sd-try">Check now</button><span class="grow"></span>
     <button type="button" id="sd-cancel">Cancel</button><button type="button" class="primary" id="sd-save">Add the sensor</button></div>
 </dialog>
