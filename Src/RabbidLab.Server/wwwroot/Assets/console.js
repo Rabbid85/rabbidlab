@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.23', [
+    'Overview no longer has the row of Updates, Activity, What is new and GitHub buttons, or the New card on the right of its banner. The news cards below still show what is new.']],
   ['1.1.22', [
     'The banner at the top of Overview, Links and Sensors is tighter: the line under the title, the buttons and the numbers sit closer together, and the banner is shorter. Nothing in it changed size.']],
   ['1.1.21', [
@@ -396,7 +398,6 @@ const RELEASE_NOTES = [
     $('ab-since').textContent = when(s.startedAt);
     $('ab-repo').href = s.repository;
     $('ab-repo-text').textContent = s.repository.replace(/^https?:\/\//, '');
-    $('hero-repo').href = s.repository;
     started = s.startedAt;
     uptime();
   };
@@ -945,10 +946,8 @@ const RELEASE_NOTES = [
 
   const notes = () => {
     $('notes').innerHTML = RELEASE_NOTES.map(([v, items]) => `<li><b>${esc(v)}</b><ul>${items.map((n) => `<li>${esc(n)}</li>`).join('')}</ul></li>`).join('');
-    // The hero's New card and the news cards: the newest versions, each with its first note.
+    // Settings, Updates, and the news cards: the newest versions, each with its first note.
     const [newest, first] = RELEASE_NOTES[0];
-    $('new-title').textContent = `Rabbid Lab ${newest}`;
-    $('new-text').textContent = first[0];
     $('upd-new-title').textContent = `What's new in ${newest}`;
     $('upd-new-text').textContent = first[0];
     $('news').innerHTML = RELEASE_NOTES.slice(0, 4).map(([v, items]) => `<a class="post" href="#whats-new"><span class="meta"><span class="tag">Update</span>`
