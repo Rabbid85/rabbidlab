@@ -1258,6 +1258,10 @@ namespace RabbidLab.Setup
                     Log(DnsMessage + " " + e);
                 }
             }
+            if (everything)
+            {
+                RemoveConsoleAliases();
+            }
 
             Step("Stopping the Rabbid Lab service", 0.05);
             StopService();
@@ -1431,6 +1435,68 @@ namespace RabbidLab.Setup
         }
 #endif
 
+        /// <summary>
+        /// The aliases the console added in DNS for addresses added in Settings (console-names.json in the data folder):
+        /// each taken out only while it still points here, as the person removing Rabbid Lab.
+        /// </summary>
+        private void RemoveConsoleAliases()
+        {
+            var path = Path.Combine(Edition.DataDir, "console-names.json");
+            if (!File.Exists(path))
+            {
+                return;
+            }
+            ConsoleNamesFile saved;
+            try
+            {
+                using (var stream = File.OpenRead(path))
+                {
+                    saved = (ConsoleNamesFile) new System.Runtime.Serialization.Json.DataContractJsonSerializer(typeof(ConsoleNamesFile)).ReadObject(stream);
+                }
+            }
+            catch (Exception e) when (e is IOException || e is System.Runtime.Serialization.SerializationException || e is UnauthorizedAccessException)
+            {
+                Log("Setup could not read the console's added addresses: " + e.Message);
+                return;
+            }
+            foreach (var n in (saved?.Names ?? new List<ConsoleNameEntry>()).Where(n => !string.IsNullOrEmpty(n.Zone) && !string.IsNullOrEmpty(n.Server) && !string.IsNullOrEmpty(n.Target)))
+            {
+                Step($"Removing the DNS alias record for {n.Full}", 0.02);
+                try
+                {
+                    Log(DnsAlias.Remove(n.Full, n.Zone, n.Server, n.Target));
+                }
+                catch (Exception e)
+                {
+                    DnsMessage = $"Setup could not remove the DNS alias record for {n.Full} ({DnsAlias.Explain(e)}). Remove the alias (CNAME) record on the DNS server manually.";
+                    Log(DnsMessage + " " + e);
+                }
+            }
+        }
+
+        [System.Runtime.Serialization.DataContract]
+        private sealed class ConsoleNamesFile
+        {
+            [System.Runtime.Serialization.DataMember(Name = "names")]
+            public List<ConsoleNameEntry> Names = new List<ConsoleNameEntry>();
+        }
+
+        [System.Runtime.Serialization.DataContract]
+        private sealed class ConsoleNameEntry
+        {
+            [System.Runtime.Serialization.DataMember(Name = "full")]
+            public string Full = "";
+
+            [System.Runtime.Serialization.DataMember(Name = "zone")]
+            public string Zone = null;
+
+            [System.Runtime.Serialization.DataMember(Name = "server")]
+            public string Server = null;
+
+            [System.Runtime.Serialization.DataMember(Name = "target")]
+            public string Target = null;
+        }
+
         /// <summary>The certificates Setup made, their private keys, and the copies trusted on this computer.</summary>
         private static void RemoveOwnCertificates()
         {
@@ -1439,7 +1505,8 @@ namespace RabbidLab.Setup
             {
                 my.Open(OpenFlags.ReadWrite);
                 trusted.Open(OpenFlags.ReadWrite);
-                foreach (var cert in my.Certificates.Cast<X509Certificate2>().Where(x => x.Subject == CertSubject && x.FriendlyName == CertFriendlyName).ToList())
+                // Also the one the console made for addresses added in Settings, Console address (ConsoleNames.cs).
+                foreach (var cert in my.Certificates.Cast<X509Certificate2>().Where(x => (x.Subject == CertSubject && x.FriendlyName == CertFriendlyName) || x.FriendlyName == Edition.Name + " console addresses").ToList())
                 {
                     DeletePrivateKey(cert);
                     foreach (var t in trusted.Certificates.Find(X509FindType.FindByThumbprint, cert.Thumbprint, false))

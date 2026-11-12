@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.81', [
+    'Settings, Console address has Add an address: a name of your own, such as lab. With a domain controller it adds the alias in DNS too, with an account you type once and is not saved. Not in a domain, it shows the record to add on your router or Pi-hole.',
+    'Added addresses get a certificate of their own, so the certificate of the console, which Seats trust, never changes. Remove takes an address and its alias out again.',
+    'New permission: Add and remove console addresses.']],
   ['1.1.80', [
     'Settings, Updates is one page: no Status and Automatic updates sub-menu.']],
   ['1.1.79', [
@@ -2057,7 +2061,11 @@ const RELEASE_NOTES = [
     }
     const here = location.origin.toLowerCase();
     const list = c.addresses.length ? c.addresses : [{ url: location.origin, what: c.docker ? 'This page. In Docker, use the host address and the port you published.' : 'This page' }];
-    $('ca-list').innerHTML = list.map((a) => caRow(esc(a.url) + (a.url.toLowerCase() === here ? '<small class="ds-scope">This page</small>' : ''), esc(a.what), caCopy(a.url))).join('');
+    ca = c;
+    // An address added here can be removed; Add an address is for Windows installs, to people who may.
+    const remove = (a) => (a.name && has('console.address') ? `<button type="button" class="ds-btn" data-name-remove="${esc(a.name)}">${svg('trash')}Remove</button>` : '');
+    $('ca-list').innerHTML = list.map((a) => caRow(esc(a.url) + (a.url.toLowerCase() === here ? '<small class="ds-scope">This page</small>' : ''), esc(a.what), remove(a) + caCopy(a.url))).join('');
+    $('ca-add').hidden = !c.canAdd || !has('console.address');
     const redirect = c.redirectPort === 80 && !c.redirectTaken;
     $('ca-redirect').hidden = !redirect;
     if (redirect) $('ca-redirect').querySelector('span').textContent = `Port 80 redirects here, so http://${new URL(list[0].url).hostname} works without a port number.`;
@@ -2071,7 +2079,11 @@ const RELEASE_NOTES = [
         : `Issued by ${esc(cert.issuer)}.`, `<span class="ds-v">Expires ${esc(new Date(cert.expires).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }))}</span>`)
         + caRow('SHA-256 fingerprint', fp, caCopy(fp), 'ds-code')
         + caRow('Download the certificate', "The public certificate as a .cer file, to import on a computer or into a GPO. It doesn't contain the private key.",
-          `<a class="ds-btn" href="/api/console/certificate" download>${svg('download')}Download</a>`);
+          `<a class="ds-btn" href="/api/console/certificate" download>${svg('download')}Download</a>`)
+        // The added addresses have one of their own, so the one above (which Seats trust) never changes.
+        + (!c.namesCertificate ? '' : caRow('For the addresses added here', 'A certificate of their own, trusted on this computer. To open them from other computers without a warning, trust it there too, as above.',
+          `<span class="ds-v">Expires ${esc(new Date(c.namesCertificate.expires).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }))}</span>`
+          + `<a class="ds-btn" href="/api/console/certificate?names=true" download>${svg('download')}Download</a>`));
     const moved = c.redirectPort ? (c.redirectTaken ? `Port ${c.redirectPort} redirect is on, but another program has port ${c.redirectPort}.` : `Requests to port ${c.redirectPort} are redirected here.`) : '';
     $('ca-net').innerHTML = caRow('Port', moved, `<span class="ds-v">${c.port}</span>`)
       + (c.firewall == null ? '' : caRow('Windows Firewall', c.firewall
@@ -2080,7 +2092,7 @@ const RELEASE_NOTES = [
     $('ca-setup').hidden = !c.installed;
   };
   // Copy works over plain HTTP too, where the browser has no clipboard API.
-  $('ca-page').addEventListener('click', async (e) => {
+  const copyClick = async (e) => {
     const b = e.target.closest('[data-copy]');
     if (!b) return;
     let ok = false;
@@ -2097,7 +2109,164 @@ const RELEASE_NOTES = [
     }
     b.innerHTML = ok ? `${svg('check')}Copied` : 'Press Ctrl+C';
     setTimeout(() => { b.innerHTML = `${svg('csv')}Copy`; }, 2000);
+  };
+  $('ca-page').addEventListener('click', copyClick);
+  $('name-dialog').addEventListener('click', copyClick);
+
+  // Add an address: a name of your own, its alias in the domain's DNS (with an account typed for that), and its
+  // certificate. Removing one takes its alias out the same way. The dialog then says what it did, step by step.
+  let ca = null; // /api/console, as the page was last drawn
+  let nmMode = 'add'; // add, remove or done
+  let nmName = ''; // the address being removed
+  let nmDns = true; // add its alias to DNS, or take it out
+  let nmTimer = 0;
+  let nmFull = '';
+  const nmCard = (look, icon, title, text) => `<div class="ustatus nm-card"><span class="big-ic${look}">${svg(icon)}</span><div class="ustatus-text"><b>${esc(title)}</b><span>${esc(text)}</span></div></div>`;
+  const nmRow = (name, about, on, label) => `<div class="ds-row"><div class="ds-l"><b>${name}</b><span>${about}</span></div><div class="ds-r">`
+    + `<input type="checkbox" class="switch" id="nm-dns-on" role="switch" aria-label="${label}"${on ? ' checked' : ''}></div></div>`;
+  const nmIp = () => (ca?.addresses || []).map((a) => new URL(a.url).hostname).find((h) => /^\d+\.\d+\.\d+\.\d+$/.test(h)) || 'this computer\'s IP address';
+  // The dialog as it is now: the fields for adding or removing, or the steps once it's done.
+  const nmDraw = () => {
+    const domain = ca?.domain;
+    const done = nmMode === 'done';
+    const adding = nmMode === 'add';
+    const gone = (ca?.addresses || []).find((a) => a.name === nmName);
+    $('nm-form').hidden = done;
+    $('nm-steps').hidden = !done;
+    $('nm-name-wrap').hidden = $('nm-look').hidden = !adding;
+    $('nm-name-wrap').classList.toggle('wide', !domain);
+    $('nm-full-wrap').hidden = !adding || !domain;
+    $('nm-full').textContent = nmFull || (domain ? `name.${domain}` : '');
+    // DNS: with a domain, a switch to add the alias (or take it out); without one, the record to add yourself.
+    const ours = !adding && !!gone?.dns;
+    $('nm-dns').hidden = !domain || (!adding && !ours);
+    $('nm-dns').innerHTML = !domain ? '' : adding
+      ? nmRow('Add it to DNS', `An alias (CNAME) for ${esc(nmFull || `name.${domain}`)} that points to this computer, on a domain controller. It follows this computer if its IP address changes. Removing the address takes it out again.`, nmDns, 'Add it to DNS')
+      : nmRow('Take it out of DNS', `Its alias (CNAME), which ${esc(product)} added ${esc(gone?.dns?.replace(/^an alias in DNS /, '') || '')}. Leave it there if something else uses the name.`, nmDns, 'Take it out of DNS');
+    const record = adding && !domain;
+    $('nm-rec').hidden = !record;
+    if (record) {
+      const text = `${nmFull || 'lab.home.arpa'}   A   ${nmIp()}`;
+      $('nm-rec-text').textContent = text;
+      $('nm-rec-copy').dataset.copy = text;
+    }
+    if (record) {
+      $('nm-dns').hidden = false;
+      $('nm-dns').innerHTML = nmCard(' ember', 'alert', "This computer isn't in a domain", 'Add the name on whatever answers DNS for your network, such as your router, Pi-hole or AdGuard Home.');
+    }
+    const login = !!domain && nmDns && (adding || ours);
+    $('nm-user-wrap').hidden = $('nm-pw-wrap').hidden = $('nm-lock').hidden = !login;
+    $('nm-form').querySelector('.sd-div').hidden = !adding && !ours;
+    // The certificate: the added names have one of their own, so the console's, which Seats trust, never changes.
+    const https = ca?.scheme === 'https';
+    $('nm-cert-head').hidden = $('nm-cert').hidden = !https;
+    $('nm-cert').querySelector('span').textContent = adding
+      ? `The added addresses get a certificate of their own, so browsers on this computer don't warn about ${nmFull || 'the name'}. The console's own certificate, which computers in Seats trust, doesn't change. Other computers trust the new one like the first: download it once it's done.`
+      : 'The added addresses\' certificate is made again without it.';
+    $('nm-check').hidden = !adding;
+    $('nm-check').textContent = domain ? 'Check' : 'Check now';
+    $('nm-download').hidden = !done || !https || !ca?.namesCertificate;
+    $('nm-cancel').textContent = done ? 'Close' : 'Cancel';
+    $('nm-go').hidden = false;
+    $('nm-go').className = !adding && !done ? 'danger' : 'primary';
+    $('nm-go').textContent = done ? (nmName ? 'Done' : `Open ${nmFull}`) : adding ? 'Add the address' : 'Remove';
+  };
+  // As the name is typed: its full name, and where it leads now from this computer.
+  const nmLook = async () => {
+    const name = $('nm-name').value.trim();
+    if (!name) {
+      nmFull = '';
+      $('nm-look').innerHTML = '';
+      return nmDraw();
+    }
+    try {
+      const r = await send('/api/console/names/look', { name });
+      if ($('nm-name').value.trim() !== name) return;
+      nmFull = r.full;
+      const domain = ca?.domain;
+      $('nm-look').innerHTML = r.problem ? nmCard(' bad', 'alert', "That name can't be used", r.problem)
+        : r.leads === 'here' ? nmCard('', 'check', `${r.full} already leads here`, 'Add it to give it a certificate. DNS has it already.')
+        : r.leads === 'elsewhere' ? nmCard(' bad', 'alert', `${r.full} leads somewhere else`, `From this computer it goes to ${r.where}. Pick another name, or change that record first.`)
+        : domain ? nmCard('', 'check', `Nothing answers to ${r.full} yet`, 'Check, with the account below, looks in DNS on the domain controller.')
+        : nmCard('', 'info', `Nothing answers to ${r.full} yet`, 'Add the record below on your DNS server, then Check now shows when it works.');
+    } catch (err) {
+      say('nm-problem', err.message);
+    }
+    nmDraw();
+  };
+  const nmOpen = (name = '') => {
+    nmMode = name ? 'remove' : 'add';
+    nmName = name;
+    nmDns = true;
+    nmFull = '';
+    $('nm-name').value = '';
+    $('nm-pw').value = '';
+    $('nm-look').innerHTML = '';
+    say('nm-problem', '');
+    const a = (ca?.addresses || []).find((x) => x.name === name);
+    $('nm-title').textContent = name ? `Remove ${a ? new URL(a.url).hostname : name}` : 'Add an address';
+    $('nm-lead').textContent = name ? 'It stops opening the console. Its alias comes out of DNS when you say so.' : 'A name of your own to open the console by, such as lab or monitor.';
+    nmDraw();
+    $('name-dialog').showModal();
+    (name ? $('nm-user') : $('nm-name')).focus();
+  };
+  $('ca-add').addEventListener('click', () => nmOpen());
+  $('ca-list').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-name-remove]');
+    if (b) nmOpen(b.dataset.nameRemove);
   });
+  $('nm-name').addEventListener('input', () => {
+    clearTimeout(nmTimer);
+    nmTimer = setTimeout(nmLook, 350);
+  });
+  $('name-dialog').addEventListener('change', (e) => {
+    if (e.target.id !== 'nm-dns-on') return;
+    nmDns = e.target.checked;
+    nmDraw();
+  });
+  const nmForm = () => ({ name: nmName || $('nm-name').value.trim(), dns: !!ca?.domain && nmDns, username: $('nm-user').value.trim(), password: $('nm-pw').value });
+  // Check: with a domain, what DNS has around the name, read with the account; without one, where it leads now.
+  $('nm-check').addEventListener('click', async () => {
+    say('nm-problem', '');
+    if (!ca?.domain) return nmLook();
+    $('nm-check').disabled = true;
+    try {
+      const r = await send('/api/console/names/check', nmForm());
+      $('nm-look').innerHTML = nmCard(r.ok ? '' : ' bad', r.ok ? 'check' : 'alert', r.ok ? `${nmFull} can be added` : `${nmFull || 'That name'} can't be added`, r.message);
+    } catch (err) {
+      say('nm-problem', err.message);
+    }
+    $('nm-check').disabled = false;
+  });
+  $('nm-go').addEventListener('click', async () => {
+    if (nmMode === 'done') {
+      if (!nmName) window.open(`${ca.scheme}://${nmFull}:${ca.port}/`, '_blank', 'noopener');
+      return $('name-dialog').close();
+    }
+    say('nm-problem', '');
+    $('nm-go').disabled = true;
+    busy($('name-dialog'), nmMode === 'add' ? 'Adding the address…' : 'Removing the address…');
+    try {
+      const r = await send(nmMode === 'add' ? '/api/console/names' : '/api/console/names/remove', nmForm());
+      nmFull = r.full;
+      $('nm-title').textContent = nmMode === 'add' ? `${r.full} is ready` : `${r.full} is removed`;
+      $('nm-lead').textContent = nmMode === 'add' ? `Open the console at ${ca.scheme}://${r.full}:${ca.port} once it answers.` : 'It no longer opens the console.';
+      $('nm-steps').innerHTML = r.steps.map((s) => `<div class="row still nm-step${s.ok ? '' : ' warn'}"><span class="nm-ic">${svg(s.ok ? 'check' : 'alert')}</span>`
+        + `<span class="t"><b>${esc(s.title)}</b><span>${esc(s.text)}</span></span></div>`).join('');
+      nmMode = 'done';
+      $('nm-pw').value = '';
+      await consoleAddress();
+      nmDraw();
+    } catch (err) {
+      say('nm-problem', err.message);
+    } finally {
+      busy($('name-dialog'), '');
+      $('nm-go').disabled = false;
+    }
+  });
+  $('nm-cancel').addEventListener('click', () => $('name-dialog').close());
+  $('nm-download').addEventListener('click', () => { location.href = '/api/console/certificate?names=true'; });
+  $('name-dialog').addEventListener('close', () => { $('nm-pw').value = ''; });
   $('acc-signout').addEventListener('click', () => $('signout').click());
   // Where you're signed in: your own sessions, in the menu as a count and in Settings, Account, each with Sign out.
   const mySessions = async () => {

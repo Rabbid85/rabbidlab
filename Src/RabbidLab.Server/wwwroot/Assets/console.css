@@ -690,3 +690,29 @@ body.dev-tools .devstrip:not([hidden]) { display: flex; flex-wrap: wrap; }
 .lay-pick[aria-pressed="true"] .tp-dot { background: var(--accent); }
 .ts-picks { grid-template-columns: repeat(2, minmax(0, 290px)); }
 .ts-pic { display: grid; place-items: center; height: 104px; overflow: hidden; }
+
+/* Add an address: the name and its full name, what DNS says, the record to add by hand, and what adding it did. */
+.nm-dialog { width: min(720px, calc(100vw - 32px)); }
+.nm-dialog .dialog-foot { align-items: center; }
+.nm-dialog .grow { flex: 1; }
+.nm-full { display: flex; align-items: center; height: 42px; padding: 0 12px; border: 1px dashed var(--line-strong); border-radius: 8px; color: #B8BCCB; font-size: 14.5px; }
+.nm-card { margin: 0; }
+.nm-dialog .al-rows .ds-row { border-bottom: 0; }
+.nm-dialog .ds-note { display: flex; gap: 8px; margin: 2px 0 0; color: var(--muted); font-size: 12.5px; }
+.nm-dialog .ds-note svg { flex: none; width: 14px; height: 14px; margin-top: 2px; }
+.nm-dialog .ds-note[hidden], .nm-dialog .sd-sum[hidden] { display: none; }
+.nm-warn svg { color: var(--amber) !important; }
+.nm-dialog .form > .nm-rec { display: flex; align-items: center; gap: 8px; }
+.nm-rec[hidden] { display: none !important; }
+.nm-rec code { display: flex; flex: 1; align-items: center; height: 42px; padding: 0 14px; border: 1px solid var(--line-strong); border-radius: 8px; background: #0C0E17; color: var(--title);
+  font: 13.5px Consolas, "Cascadia Mono", monospace; white-space: pre; }
+.nm-dialog .nm-rec > .ds-btn { flex: none; width: auto; height: 42px; }
+.nm-steps { margin: 6px 0 14px; }
+.nm-step { align-items: center; }
+.nm-ic { display: grid; flex: none; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: rgba(95, 212, 160, .14); color: var(--ok); }
+.nm-ic svg { width: 15px; height: 15px; }
+.nm-step.warn .nm-ic { background: rgba(242, 190, 107, .14); color: var(--amber); }
+.nm-step .t b { font-size: 14px; }
+.nm-cert-dl { display: inline-flex; align-items: center; gap: 7px; }
+.nm-cert-dl svg { width: 15px; height: 15px; }
+#ca-page .ds-h .ds-btn svg, #ca-list .ds-btn svg { width: 15px; height: 15px; }

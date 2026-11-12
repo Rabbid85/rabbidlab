@@ -23,9 +23,6 @@
     <ProjectReference Include="..\..\Src\RabbidLab.Server\RabbidLab.Server.csproj" />
   </ItemGroup>
 
-  <!-- Setup is a .NET Framework program, so its DNS decisions are compiled in here to be tested. -->
-  <ItemGroup>
-    <Compile Include="..\..\Installer\Setup\DnsPlan.cs" Link="Setup\DnsPlan.cs" />
-  </ItemGroup>
+  <!-- Setup's DNS decisions (DnsPlan.cs) are tested through the server, which compiles them in for console addresses. -->
 
 </Project>

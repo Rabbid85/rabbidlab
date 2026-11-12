@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.81 (2026-11-12)
+
+- Settings, Console address has Add an address: a name of your own, such as lab. With a domain controller it adds the alias in DNS too, with an account you type once and is not saved. Not in a domain, it shows the record to add on your router or Pi-hole.
+- Added addresses get a certificate of their own, so the certificate of the console, which Seats trust, never changes. Remove takes an address and its alias out again.
+- New permission: Add and remove console addresses.
+
 ## 1.1.80 (2026-11-12)
 
 - Settings, Updates is one page: no Status and Automatic updates sub-menu.

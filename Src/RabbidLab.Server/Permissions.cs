@@ -35,6 +35,7 @@ public static class Permissions
     public const string SensorsView = "sensors.view";
     public const string SensorsEdit = "sensors.edit";
     public const string SensorsAlerts = "sensors.alerts";
+    public const string ConsoleAddresses = "console.address";
 
     public sealed record Action(string Key, string Name, string About);
 
@@ -78,6 +79,7 @@ public static class Permissions
             new(UpdatesInstall, "Install updates", "The server is offline for about a minute while one installs."),
             new(UpdatesAuto, "Turn Update automatically on or off", "Whether new versions install on their own."),
         ]),
+        new("console", "Console address", "browser", [new(ConsoleAddresses, "Add and remove console addresses", "Names to open Rabbid Lab by, their aliases in DNS, and their certificate.")]),
         new("activity", "Activity log", "activity", [new(ActivityView, "See the activity log", "Sign-ins, changes and updates, and who did them.")]),
         new("appearance", "Appearance", "brush", [new(AppearanceBrand, "Change the lab's name, icon and accent colour", "What everyone sees: the name in the top bar, its icon and the accent colour.")]),
         new("access", "Roles and people", "shield",

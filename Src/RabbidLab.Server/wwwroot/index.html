@@ -466,7 +466,7 @@
     <section class="sub" data-sub="address" data-title="Console address" id="ca-page" hidden>
       <header class="sub-head"><h2>Console address</h2><p>Where to open <span data-lab>Rabbid Lab</span> in a browser, from this computer or any other on your network.</p></header>
       <p class="hint problem" id="ca-problem" hidden></p>
-      <section class="ds-sec" data-sec="addresses"><h3 class="ds-h">Addresses</h3>
+      <section class="ds-sec" data-sec="addresses"><h3 class="ds-h has-reset">Addresses<button type="button" class="ds-btn" id="ca-add" data-can="console.address" hidden><svg><use href="#i-plus"/></svg>Add an address</button></h3>
         <div id="ca-list" data-skel="rows:5"></div>
         <p class="ds-note" id="ca-redirect" hidden><svg><use href="#i-info"/></svg><span></span></p>
       </section>
@@ -475,7 +475,7 @@
       </section>
       <section class="ds-sec" data-sec="network"><h3 class="ds-h">Port and firewall</h3>
         <div id="ca-net" data-skel="rows:2"></div>
-        <p class="ds-note" id="ca-setup" hidden><svg><use href="#i-info"/></svg><span>To change the port, host name or certificate, run Setup again and choose Change installation settings.</span></p>
+        <p class="ds-note" id="ca-setup" hidden><svg><use href="#i-info"/></svg><span>To change the port or the console's own certificate, run Setup again and choose Change installation settings.</span></p>
       </section>
     </section>
 
@@ -1093,6 +1093,29 @@
   </div>
   <div class="dialog-foot"><button type="button" class="danger" id="sd-delete" hidden><svg><use href="#i-trash"/></svg>Delete</button><button type="button" id="sd-try">Check now</button><span class="grow"></span>
     <button type="button" id="sd-cancel">Cancel</button><button type="button" class="primary" id="sd-save">Add the sensor</button></div>
+</dialog>
+
+<!-- A console address: added (with its alias in DNS when there's a domain), what that did, or removed (console.js, ConsoleNames.cs). -->
+<dialog class="dialog nm-dialog" id="name-dialog" aria-labelledby="nm-title">
+  <h2 id="nm-title">Add an address</h2>
+  <p class="dialog-lead" id="nm-lead"></p>
+  <div class="form two sd-form" id="nm-form">
+    <div id="nm-name-wrap"><label for="nm-name">Name</label><input id="nm-name" maxlength="253" placeholder="lab" autocomplete="off" spellcheck="false"></div>
+    <div id="nm-full-wrap"><label>Full name</label><div class="nm-full" id="nm-full"></div></div>
+    <div class="wide" id="nm-look"></div>
+    <div class="sd-div wide"><b>DNS</b><i></i></div>
+    <div class="wide al-rows" id="nm-dns"></div>
+    <div class="wide nm-rec" id="nm-rec" hidden><code id="nm-rec-text"></code><button type="button" class="ds-btn" id="nm-rec-copy"><svg><use href="#i-csv"/></svg>Copy</button></div>
+    <div id="nm-user-wrap"><label for="nm-user">Username</label><input id="nm-user" placeholder="AMW\administrator" autocomplete="off" spellcheck="false"></div>
+    <div id="nm-pw-wrap"><label for="nm-pw">Password</label><input id="nm-pw" type="password" autocomplete="new-password"></div>
+    <p class="ds-note wide" id="nm-lock"><svg><use href="#i-lock"/></svg><span>Used once for this change, never saved. The account needs DNS admin rights, such as Domain Admins or DnsAdmins.</span></p>
+    <div class="sd-div wide" id="nm-cert-head"><b>Certificate</b><i></i></div>
+    <p class="sd-sum nm-warn wide" id="nm-cert"><svg><use href="#i-alert"/></svg><span></span></p>
+  </div>
+  <div class="rows nm-steps" id="nm-steps" hidden></div>
+  <p class="hint problem" id="nm-problem" hidden></p>
+  <div class="dialog-foot"><button type="button" id="nm-check">Check</button><button type="button" class="nm-cert-dl" id="nm-download" hidden><svg><use href="#i-download"/></svg>Download the certificate</button>
+    <span class="grow"></span><button type="button" id="nm-cancel">Cancel</button><button type="button" class="primary" id="nm-go">Add the address</button></div>
 </dialog>
 
 <!-- One sensor's alerts, or the ones new sensors start with, given to other sensors (sensors.js). -->

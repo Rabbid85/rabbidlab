@@ -1,3 +1,4 @@
+using System.Security.Cryptography.X509Certificates;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -43,6 +44,11 @@ public sealed class TestApp(string data) : WebApplicationFactory<Program>
     /// <summary>Stands in for Discord, Teams, Slack, ntfy and webhooks: keeps what would have been posted.</summary>
     public FakeChannelSender Hooks { get; } = new();
 
+    /// <summary>Stands in for the domain's DNS and the certificate store, so no test changes either.</summary>
+    public FakeConsoleDns Dns { get; } = new();
+
+    public FakeNamesCertificate Named { get; } = new();
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseSetting("DataPath", data);
@@ -66,6 +72,10 @@ public sealed class TestApp(string data) : WebApplicationFactory<Program>
             services.AddSingleton<IMailSender>(Mail);
             services.RemoveAll<IChannelSender>();
             services.AddSingleton<IChannelSender>(Hooks);
+            services.RemoveAll<IConsoleDns>();
+            services.AddSingleton<IConsoleDns>(Dns);
+            services.RemoveAll<INamesCertificate>();
+            services.AddSingleton<INamesCertificate>(Named);
             // The tests run each round of checks themselves.
             foreach (var worker in services.Where(d => d.ImplementationType == typeof(SensorWorker)).ToList())
             {
@@ -441,5 +451,70 @@ public sealed class FakeMail : IMailSender
     {
         Sent.Add(note);
         return Task.FromResult<string?>(null);
+    }
+}
+
+/// <summary>A domain, amw.com, whose DNS is whatever the test says: records by name, and the aliases added and taken out.</summary>
+public sealed class FakeConsoleDns : IConsoleDns
+{
+    public string? Domain { get; set; } = "amw.com";
+
+    public string Target => "server1.amw.com";
+
+    public Dictionary<string, List<RabbidLab.Setup.DnsRecordInfo>> Records { get; } = [];
+
+    public List<string> Added { get; } = [];
+
+    public List<string> Removed { get; } = [];
+
+    public List<DnsLogin> Logins { get; } = [];
+
+    public (NameLeads Leads, string Where) Lookup(string name) => Added.Contains(name) ? (NameLeads.Here, Target) : (NameLeads.Nowhere, "");
+
+    public RabbidLab.Setup.DnsFacts Read(string name, DnsLogin login)
+    {
+        Logins.Add(login);
+        return login.Password == "wrong" ? throw new DnsProblem("The username or password is wrong.") : new RabbidLab.Setup.DnsFacts
+        {
+            Name = name,
+            Server = "dc01.amw.com",
+            Target = Target,
+            Zones = [new() { Name = "amw.com", Primary = true }],
+            Records = Records.GetValueOrDefault(name) ?? [],
+            TargetAddresses = ["192.0.2.10"],
+            MyAddresses = ["192.0.2.10"],
+        };
+    }
+
+    public void Add(RabbidLab.Setup.DnsFacts facts, string zone, DnsLogin login) => Added.Add(facts.Name);
+
+    public string Remove(string name, string zone, string server, string target, DnsLogin login)
+    {
+        Logins.Add(login);
+        Removed.Add($"{name} in {zone} on {server} to {target}");
+        Added.Remove(name);
+        return $"Took the alias {name} out of DNS on {server}.";
+    }
+}
+
+/// <summary>A certificate store that keeps which names each certificate was made for.</summary>
+public sealed class FakeNamesCertificate : INamesCertificate
+{
+    public bool Https { get; set; } = true;
+
+    public X509Certificate2? Current { get; private set; }
+
+    public List<List<string>> Made { get; } = [];
+
+    public X509Certificate2? Make(IReadOnlyList<string> names)
+    {
+        Made.Add([.. names]);
+        if (names.Count == 0)
+        {
+            return Current = null;
+        }
+        using var rsa = System.Security.Cryptography.RSA.Create(2048);
+        var request = new System.Security.Cryptography.X509Certificates.CertificateRequest("CN=Console addresses", rsa, System.Security.Cryptography.HashAlgorithmName.SHA256, System.Security.Cryptography.RSASignaturePadding.Pkcs1);
+        return Current = request.CreateSelfSigned(DateTimeOffset.Now.AddDays(-1), DateTimeOffset.Now.AddYears(5));
     }
 }

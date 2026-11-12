@@ -103,6 +103,17 @@ builder.Services.AddSingleton<Channels>();
 builder.Services.AddSingleton<Sensors>();
 builder.Services.AddHostedService<SensorWorker>();
 
+// Console addresses added in Settings: their aliases in the domain's DNS, and a certificate of their own, which the
+// console shows only to a browser that asks for one of them (ConsoleNames.cs, ConsoleDns.cs).
+builder.Services.AddSingleton<IConsoleDns>(_ => OperatingSystem.IsWindows() && !Product.InContainer ? new WindowsConsoleDns() : new NoConsoleDns());
+builder.Services.AddSingleton<INamesCertificate>(services => OperatingSystem.IsWindows() && !Product.InContainer
+    ? new StoreNamesCertificate(services.GetRequiredService<IConfiguration>()) : new NoNamesCertificate());
+builder.Services.AddSingleton<ConsoleNames>();
+if (OperatingSystem.IsWindows() && !Product.InContainer)
+{
+    builder.WebHost.ServeNames(StoreNamesCertificate.For);
+}
+
 var app = builder.Build();
 _ = app.Services.GetRequiredService<SettingsStore>().Current; // the lab's name is in messages from the start (Product.Title)
 
@@ -170,6 +181,7 @@ app.MapGet("/api/health", () => Results.Ok(new { ok = true })); // open, for Doc
 app.MapSignIn();
 app.MapStatusApi();
 app.MapConsoleAddressApi(redirect);
+app.MapConsoleNamesApi();
 app.MapActivityApi();
 app.MapSessionsApi();
 app.MapRolesApi();

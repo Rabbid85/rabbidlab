@@ -6,7 +6,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <Version>1.1.80</Version>
+    <Version>1.1.81</Version>
     <Product>Rabbid Lab</Product>
     <Company>Rabbid</Company>
     <Authors>Anthony Wiles</Authors>
@@ -37,6 +37,7 @@
     <PackageReference Include="Novell.Directory.Ldap.NETStandard" Version="4.0.0" />
     <PackageReference Include="System.DirectoryServices.AccountManagement" Version="10.0.12" />
     <PackageReference Include="System.DirectoryServices.Protocols" Version="10.0.12" />
+    <PackageReference Include="System.Management" Version="10.0.12" />
   </ItemGroup>
 
   <ItemGroup>
@@ -47,6 +48,8 @@
   <ItemGroup>
     <!-- Windows accounts, made and changed by the same code here and in the client. -->
     <Compile Include="..\Utilities\Shared\WindowsUsers.cs" Link="Shared\WindowsUsers.cs" />
+    <!-- Setup's rules for a DNS alias of this computer, used again when a console address is added in Settings. -->
+    <Compile Include="..\..\Installer\Setup\DnsPlan.cs" Link="Setup\DnsPlan.cs" />
   </ItemGroup>
 
   <ItemGroup>

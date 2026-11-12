@@ -398,6 +398,16 @@
   <p><b>Send a test email</b> saves the settings and sends one to everyone on the list. <b>Test</b> on any channel's row sends it one. Passwords and secrets are stored encrypted on this server.</p>
 </article>
 
+<article data-key="console-address" data-group="Keeping it running" data-title="Console address">
+  <p><a href="#settings/address">Settings, Console address</a> lists where to open <span data-lab>Rabbid Lab</span>: this computer's names and IP addresses, and any you add. It also shows the HTTPS certificate, the port and the firewall rule.</p>
+  <ul>
+    <li><b>Add an address</b> gives the console a name of your own, such as <b>lab</b>. On a computer in a domain it can add an alias (CNAME) for it in DNS on a domain controller, with an account you type for that. The account needs DNS admin rights, and it isn't saved. It never changes a record that's already there, or takes a computer's name.</li>
+    <li>Not in a domain? Add the name on whatever answers DNS for your network, such as your router or Pi-hole. The dialog shows the record to add.</li>
+    <li>Added addresses get a certificate of their own, trusted on this computer. The console's own certificate doesn't change, so computers in Seats keep working. To open an added address from other computers without a warning, trust its certificate there too: <b>Download</b> it on the page.</li>
+    <li><b>Remove</b> takes an address off, and its alias out of DNS if <span data-lab>Rabbid Lab</span> added it. Removing <span data-lab>Rabbid Lab</span> with everything takes the aliases out too.</li>
+  </ul>
+</article>
+
 <article data-key="support-info" data-group="Keeping it running" data-title="Support info">
   <p>The <b>i</b> at the top right gathers what someone helping you needs to know: the version, the machine, how it's installed, the sign-in domain, and how many seats, links and sensors there are. Click <b>Copy</b> and paste it into your message. It has no passwords in it, and only shows what your roles let you see.</p>
 </article>
