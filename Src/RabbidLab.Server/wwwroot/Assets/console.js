@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.64', [
+    'Added Console address to Settings, with the addresses, certificate, port and firewall.',
+    'Removed History from Updates. Past updates are in the Activity log.',
+    'Overview and the sign-in page say Lab console instead of Homelab console.']],
   ['1.1.63', [
     'Dev now says Rabbid Lab on screen. The DEV tag marks the dev build.',
     'Fixed blurry icons in the Links banner.']],
@@ -287,7 +291,7 @@ const RELEASE_NOTES = [
   const PAGES = { overview: 'overview.view', links: 'links.view', sensors: 'sensors.view', seats: 'seats.view sessions.view', people: 'access.view', ad: 'ad.view ad.connect', local: 'windows.view',
     org: 'ad.view', attrs: 'ad.view' };
   // Settings' pages and what each needs; About is for everyone, Developer for Rabbid Lab Dev only.
-  const SUBS = { account: '', appearance: '', viewas: 'access.view', updates: 'updates.view', notifications: 'sensors.alerts', activity: 'activity.view',
+  const SUBS = { account: '', appearance: '', viewas: 'access.view', address: '', updates: 'updates.view', notifications: 'sensors.alerts', activity: 'activity.view',
     links: 'links.edit', sensors: 'sensors.alerts sensors.edit', seats: 'seats.settings seats.add', ad: 'ad.connect', developer: 'updates.auto', support: '', about: '' };
   const subOk = (s) => s in SUBS && (!SUBS[s] || !shown || allows(SUBS[s])) && (s !== 'developer' || document.body.classList.contains('is-dev'));
   const pageOk = (key) => !shown || !PAGES[key] || allows(PAGES[key]);
@@ -661,7 +665,6 @@ const RELEASE_NOTES = [
     $('upd-check').disabled = busy;
     $('upd-auto').checked = !!u.automatic;
     $('upd-auto-label').textContent = u.automatic ? 'On' : 'Off';
-    $('upd-history').textContent = u.updatedFrom ? `${u.updatedFrom} to ${u.version}. Every update is in the activity log.` : 'Every update is in the activity log.';
     $('upd-source').href = u.source;
     schedule(busy ? 2000 : document.hidden ? 60000 : 15000);
   };
@@ -1497,7 +1500,7 @@ const RELEASE_NOTES = [
       $('menu-password').hidden = u.source !== 'local';
       $('acc-password-row').hidden = u.source !== 'local';
       $('account').hidden = false;
-      if (u.source === 'ad') $('hero-eyebrow').textContent = `${domain} · Homelab console`;
+      if (u.source === 'ad') $('hero-eyebrow').textContent = `${domain} · Lab console`;
       startWhenQuiet();
     };
     // Asked again every 5 seconds until Rabbid Lab answers, so a failed first try doesn't leave the page empty.
@@ -1911,6 +1914,61 @@ const RELEASE_NOTES = [
     await copy($('sup-text'), $('sup-copy'));
     setTimeout(() => { $('sup-copy').innerHTML = `${svg('csv')}Copy`; }, 2500);
   });
+  // Settings, Console address: the addresses Setup's last page lists, the HTTPS certificate, the port and the firewall.
+  const caRow = (name, help, right, cls = '') => `<div class="ds-row"><div class="ds-l"><b>${name}</b>${help ? `<span${cls ? ` class="${cls}"` : ''}>${help}</span>` : ''}</div><div class="ds-r">${right}</div></div>`;
+  const caCopy = (text) => `<button type="button" class="ds-btn" data-copy="${esc(text)}">${svg('csv')}Copy</button>`;
+  const consoleAddress = async () => {
+    let c;
+    try {
+      c = await get('/api/console');
+      say('ca-problem', '');
+    } catch (err) {
+      say('ca-problem', err.message);
+      return;
+    }
+    const here = location.origin.toLowerCase();
+    const list = c.addresses.length ? c.addresses : [{ url: location.origin, what: c.docker ? 'This page. In Docker, use the host address and the port you published.' : 'This page' }];
+    $('ca-list').innerHTML = list.map((a) => caRow(esc(a.url) + (a.url.toLowerCase() === here ? '<small class="ds-scope">This page</small>' : ''), esc(a.what), caCopy(a.url))).join('');
+    const redirect = c.redirectPort === 80 && !c.redirectTaken;
+    $('ca-redirect').hidden = !redirect;
+    if (redirect) $('ca-redirect').querySelector('span').textContent = `Port 80 redirects here, so http://${new URL(list[0].url).hostname} works without a port number.`;
+    const cert = c.certificate;
+    const fp = cert ? cert.fingerprint.match(/../g).join(':') : '';
+    $('ca-cert').innerHTML = c.scheme !== 'https'
+      ? caRow('Not using HTTPS', "The console is served over HTTP, so traffic to it isn't encrypted. Run Setup again to add a certificate.", '')
+      : !cert ? caRow('Certificate not found', "The certificate in console.json isn't in the certificate store, or it has expired.", '')
+      : caRow(esc(cert.subject), cert.selfSigned
+        ? "Self-signed. Browsers on other computers show a security warning until it's trusted. To trust it across the domain, deploy it to Trusted Root Certification Authorities with Group Policy."
+        : `Issued by ${esc(cert.issuer)}.`, `<span class="ds-v">Expires ${esc(new Date(cert.expires).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }))}</span>`)
+        + caRow('SHA-256 fingerprint', fp, caCopy(fp), 'ds-code')
+        + caRow('Download the certificate', "The public certificate as a .cer file, to import on a computer or into a GPO. It doesn't contain the private key.",
+          `<a class="ds-btn" href="/api/console/certificate" download>${svg('download')}Download</a>`);
+    const moved = c.redirectPort ? (c.redirectTaken ? `Port ${c.redirectPort} redirect is on, but another program has port ${c.redirectPort}.` : `Requests to port ${c.redirectPort} are redirected here.`) : '';
+    $('ca-net').innerHTML = caRow('Port', moved, `<span class="ds-v">${c.port}</span>`)
+      + (c.firewall == null ? '' : caRow('Windows Firewall', c.firewall
+        ? `Inbound connections on port ${c.port} are allowed on the Domain and Private profiles.`
+        : `Setup didn't add a firewall rule. Other computers can connect only if a rule allows port ${c.port}.`, `<span class="ds-v">${c.firewall ? 'Allowed' : 'No rule'}</span>`));
+    $('ca-setup').hidden = !c.installed;
+  };
+  // Copy works over plain HTTP too, where the browser has no clipboard API.
+  $('ca-page').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-copy]');
+    if (!b) return;
+    let ok = false;
+    try {
+      await navigator.clipboard.writeText(b.dataset.copy);
+      ok = true;
+    } catch {
+      const t = document.createElement('textarea');
+      t.value = b.dataset.copy;
+      document.body.append(t);
+      t.select();
+      ok = document.execCommand('copy');
+      t.remove();
+    }
+    b.innerHTML = ok ? `${svg('check')}Copied` : 'Press Ctrl+C';
+    setTimeout(() => { b.innerHTML = `${svg('csv')}Copy`; }, 2000);
+  });
   $('acc-signout').addEventListener('click', () => $('signout').click());
   // Where you're signed in: your own sessions, in the menu as a count and in Settings, Account, each with Sign out.
   const mySessions = async () => {
@@ -2027,15 +2085,7 @@ const RELEASE_NOTES = [
       $('seat-fp-row').hidden = !joining.fingerprint;
       $('seat-fp').textContent = joining.fingerprint || '';
     }
-    if (sub === 'updates' && can.has('activity.view')) {
-      try {
-        const list = (await get('/api/activity?count=1000')).filter((a) => a.action === 'update.install').slice(0, 12);
-        $('up-history').innerHTML = list.length ? list.map((a) => `<div class="ds-row"><div class="ds-l"><b>${esc(a.title.replace(/^[^:]*: /, ''))}</b>${a.result === 'ok' ? '' : `<span>${esc(a.detail || "Didn't install.")}</span>`}</div>`
-          + `<div class="ds-r"><span class="ds-v">${esc(a.by)} · ${esc(when(a.at))}</span></div></div>`).join('') : '<p class="ds-empty">No updates installed yet.</p>';
-      } catch {
-        skeleton($('up-history'), ''); // the line above still says where they're kept
-      }
-    }
+    if (sub === 'address') consoleAddress();
   });
 
   // What the other scripts use.

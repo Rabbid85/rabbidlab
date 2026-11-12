@@ -166,6 +166,7 @@ app.UseStaticFiles(new StaticFileOptions
 app.MapGet("/api/health", () => Results.Ok(new { ok = true })); // open, for Docker's health check
 app.MapSignIn();
 app.MapStatusApi();
+app.MapConsoleAddressApi(redirect);
 app.MapActivityApi();
 app.MapSessionsApi();
 app.MapRolesApi();

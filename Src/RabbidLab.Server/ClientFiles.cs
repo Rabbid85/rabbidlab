@@ -15,29 +15,32 @@ public static class ClientFiles
 
     public static string Policy => Path.Combine(Folder, "RabbidLab-Client-Policy.zip");
 
+    /// <summary>The SHA-256 fingerprint of the certificate Rabbid Lab serves HTTPS with; null over plain HTTP or when it can't be found.</summary>
+    public static string? Fingerprint(IConfiguration config) => Certificate(config) is { } cert ? Convert.ToHexString(SHA256.HashData(cert.RawData)) : null;
+
     /// <summary>
-    /// The SHA-256 fingerprint of the certificate Rabbid Lab serves HTTPS with, as console.json picks it (a subject in a
-    /// certificate store); null over plain HTTP or when it can't be found.
+    /// The certificate Rabbid Lab serves HTTPS with, as console.json picks it (a subject in a certificate store); null over
+    /// plain HTTP or when it can't be found.
     /// </summary>
-    public static string? Fingerprint(IConfiguration config)
+    public static X509Certificate2? Certificate(IConfiguration config)
     {
         lock (Gate)
         {
             // Read once: Rabbid Lab serves the certificate it started with until it restarts.
             if (!read)
             {
-                fingerprint = Read(config);
+                certificate = Read(config);
                 read = true;
             }
-            return fingerprint;
+            return certificate;
         }
     }
 
     private static readonly Lock Gate = new();
-    private static string? fingerprint;
+    private static X509Certificate2? certificate;
     private static bool read;
 
-    private static string? Read(IConfiguration config)
+    private static X509Certificate2? Read(IConfiguration config)
     {
         foreach (var endpoint in config.GetSection("Kestrel:Endpoints").GetChildren())
         {
@@ -54,7 +57,7 @@ public static class ClientFiles
                     .Where(x => x.HasPrivateKey && x.NotAfter > DateTime.Now).OrderByDescending(x => x.NotAfter).FirstOrDefault();
                 if (found is not null)
                 {
-                    return Convert.ToHexString(SHA256.HashData(found.RawData));
+                    return found;
                 }
             }
             catch (CryptographicException)

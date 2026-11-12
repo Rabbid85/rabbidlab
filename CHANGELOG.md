@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.64 (2026-11-12)
+
+- Added Console address to Settings, with the addresses, certificate, port and firewall.
+- Removed History from Updates. Past updates are in the Activity log.
+- Overview and the sign-in page say Lab console instead of Homelab console.
+
 ## 1.1.63 (2026-11-12)
 
 - Dev now says Rabbid Lab on screen. The DEV tag marks the dev build.
