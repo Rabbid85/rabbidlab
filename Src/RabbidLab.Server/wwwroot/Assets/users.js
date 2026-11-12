@@ -993,11 +993,11 @@
     $('dset-tabs').querySelectorAll('[data-adtab]').forEach((a) => (a.dataset.adtab === tab ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current')));
     $('dset-dialog').dataset.tab = tab;
     const make = tab === 'make';
-    $('dset-user-label').textContent = make ? 'Admin username' : 'Service account username';
-    $('dset-password-label').textContent = make ? 'Admin password' : 'Service account password';
+    $('dset-user-label').textContent = make ? 'Domain admin username' : 'Service account username';
+    $('dset-password-label').textContent = make ? 'Domain admin password' : 'Service account password';
     $('dset-note').textContent = make
-      ? 'A domain admin (or any account allowed to create users and change permissions). These credentials are only used to create the service account and are not saved.'
-      : 'Rabbid Lab stores this password encrypted and makes every AD change as this account. It needs permission to create and manage users, groups and computers in the scope you pick next.';
+      ? 'Sign in once with a domain admin login (or any account allowed to create users and delegate permissions). Rabbid Lab uses it to create the service account, then forgets it: these credentials are not saved.'
+      : 'Sign in as a service account that is already in Active Directory. Rabbid Lab stores its password encrypted and makes every AD change as it. It needs permission to create and manage users, groups and computers in the scope you pick next.';
     adsStep(1);
   };
   const adsStep = (n) => {
@@ -1019,6 +1019,7 @@
     $('dset-user').value = me?.source === 'ad' ? me.username : '';
     $('dset-password').value = '';
     $('dset-account').value = 'svc-rabbidlab';
+    ['dset-user', 'dset-password'].forEach((id) => $(id).classList.remove('bad'));
     adsTab('make');
     $('dset-dialog').showModal();
     $(me?.source === 'ad' ? 'dset-password' : 'dset-user').focus();
@@ -1052,6 +1053,7 @@
     if (a) adsTab(a.dataset.adtab);
   });
   $('dset-back').addEventListener('click', () => adsStep(1));
+  ['dset-user', 'dset-password'].forEach((id) => $(id).addEventListener('input', () => ['dset-user', 'dset-password'].forEach((x) => $(x).classList.remove('bad'))));
   $('dset-cancel').addEventListener('click', () => {
     $('dset-password').value = '';
     $('dset-dialog').close();
@@ -1060,8 +1062,11 @@
     const make = $('dset-dialog').dataset.tab === 'make';
     const sign = { domain: $('dset-domain').value.trim(), username: $('dset-user').value.trim(), password: $('dset-password').value };
     $('dset-go').disabled = true;
+    const first = $('dset-dialog').dataset.step === '1';
+    say('dset-problem', '');
+    R.busy($('dset-dialog'), first ? `Signing in to ${sign.domain || 'the domain'}…` : make ? 'Creating the service account…' : 'Checking the service account…');
     try {
-      if ($('dset-dialog').dataset.step === '1') {
+      if (first) {
         look = await R.send('/api/ad/look', sign);
         const opt = (p, selected) => `<option value="${esc(p.dn)}"${p.dn === selected ? ' selected' : ''}>${esc(p.path || p.name)}</option>`;
         $('dset-ou').innerHTML = look.places.map((p) => opt(p, look.accountOu)).join('');
@@ -1081,8 +1086,16 @@
         document.dispatchEvent(new CustomEvent('rabbidlab:ad')); // the Org chart and Attribute browser read again
       }
     } catch (err) {
+      // A wrong sign-in: back on the sign-in step, its two fields outlined, and the password ready to type again.
+      const wrong = /username or password/i.test(err.message);
+      if (wrong) adsStep(1);
       say('dset-problem', err.message);
+      if (wrong) {
+        ['dset-user', 'dset-password'].forEach((id) => $(id).classList.add('bad'));
+        $('dset-password').select();
+      }
     } finally {
+      R.busy($('dset-dialog'), '');
       $('dset-go').disabled = false;
     }
   });

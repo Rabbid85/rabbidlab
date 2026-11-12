@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.35', [
+    'Setting up the service account shows the flask while it signs in and while it creates the account. A wrong username or password outlines both fields in red and selects the password to type again.',
+    'Problems everywhere show as a red box with a warning sign. They were a line of grey text.',
+    'The service account window says first how creating one works: sign in once with a domain admin login, Rabbid Lab uses it to create the account, and the credentials are not saved.']],
   ['1.1.34', [
     'The Developer tools switch in Settings, Developer just says it turns on a few developer-only options.']],
   ['1.1.33', [

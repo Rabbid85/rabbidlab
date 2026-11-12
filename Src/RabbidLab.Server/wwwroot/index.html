@@ -812,15 +812,15 @@
 <!-- Rabbid Lab's own Active Directory account: made with an admin's sign-in (not kept), or one it's given. -->
 <dialog class="dialog wide" id="dset-dialog" aria-labelledby="dset-title">
   <h2 id="dset-title">Set up the service account</h2>
-  <p class="dialog-lead">Rabbid Lab makes all its Active Directory changes as a dedicated service account. Its password is stored encrypted on this server.</p>
+  <p class="dialog-lead">Rabbid Lab makes all its Active Directory changes as a dedicated service account. Create one now, or use one you already have.</p>
   <nav class="tabs2" id="dset-tabs"><a data-adtab="make">Create a new service account</a><a data-adtab="existing">Use an existing service account</a></nav>
   <div id="dset-step1">
+    <p class="hint dset-how" id="dset-note"></p>
     <div class="form">
       <label for="dset-domain">Domain</label><input id="dset-domain" autocomplete="off" spellcheck="false">
-      <label for="dset-user" id="dset-user-label">Admin username</label><input id="dset-user" autocomplete="username" spellcheck="false">
-      <label for="dset-password" id="dset-password-label">Admin password</label><input id="dset-password" type="password" autocomplete="current-password">
+      <label for="dset-user" id="dset-user-label">Domain admin username</label><input id="dset-user" autocomplete="username" spellcheck="false">
+      <label for="dset-password" id="dset-password-label">Domain admin password</label><input id="dset-password" type="password" autocomplete="current-password">
     </div>
-    <p class="hint" id="dset-note"></p>
   </div>
   <div id="dset-step2" hidden>
     <div class="form">
@@ -830,8 +830,8 @@
     </div>
     <p class="hint" id="dset-note2"></p>
   </div>
+  <p class="hint problem" id="dset-problem" role="alert" hidden></p>
   <p class="hint" data-can="windows.view">No domain, or you only need local accounts? Those need no service account: <a href="#local" id="dset-local">open Local accounts</a>.</p>
-  <p class="hint problem" id="dset-problem" hidden></p>
   <div class="dialog-foot"><button type="button" id="dset-back" hidden>Back</button><button type="button" id="dset-cancel">Cancel</button><button type="button" class="primary" id="dset-go">Next</button></div>
 </dialog>
 

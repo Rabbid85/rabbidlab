@@ -220,6 +220,7 @@ body.booting .main > .busy-cover { place-content: start center; padding-top: 24v
 /* The page loading: a big flask, the only thing on screen. */
 body.booting .main > .busy-cover .flask { width: 168px; height: 168px; }
 .busy-host { position: relative; }
+dialog.busy-host { position: fixed; } /* a dialog stays where it is under its cover */
 .busy-host > .busy-cover { position: absolute; inset: 0; z-index: 2; display: grid; place-content: center; justify-items: center; gap: 12px; border-radius: inherit;
   background: rgba(14, 16, 25, .9); color: var(--text); font-size: 13.5px; animation: busy-in .15s ease-out; }
 .busy-cover small { max-width: min(520px, 92%); color: var(--muted); font-size: 12.5px; line-height: 1.65; text-align: center; white-space: pre-line; overflow-wrap: anywhere; }
@@ -381,6 +382,13 @@ a.button:hover, label.button:hover { background: #222536; text-decoration: none;
 .facts-two { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 44px; align-items: start; }
 @media (max-width: 1000px) { .facts-two { grid-template-columns: 1fr; } }
 .hint { margin: 8px 0 0; color: var(--muted); font-size: 13px; }
+/* Something went wrong: a red box with a warning sign, never a line of grey text. */
+.hint.problem { display: flex; align-items: flex-start; gap: 10px; margin-top: 12px; padding: 11px 14px; border: 1px solid rgba(255, 107, 125, .5); border-radius: 10px;
+  background: rgba(255, 107, 125, .1); color: #FFD3D9; font-size: 13.5px; font-weight: 600; line-height: 1.45; }
+.hint.problem::before { content: ""; flex: none; width: 18px; height: 18px; margin-top: 1px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23FF6B7D' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3l10 18H2z'/%3E%3Cpath d='M12 10v5M12 18h.01'/%3E%3C/svg%3E") center / contain no-repeat; }
+/* A field the problem is about. */
+.dialog input.bad { border-color: var(--red); }
 .muted { color: var(--muted); }
 .mono { font: 12.5px Consolas, "Cascadia Mono", monospace; color: var(--text); }
 .progress { position: relative; height: 22px; background: var(--line); border-radius: 6px; overflow: hidden; margin: 10px 0; }

@@ -144,3 +144,4 @@ button.danger.solid:hover { background: #DB4860; }
 .table.attrs .tr { grid-template-columns: minmax(180px, .6fr) minmax(0, 1.4fr); min-width: 0; min-height: 0; align-items: start; padding-top: 7px; padding-bottom: 7px; }
 .table.attrs .tr .mono { color: var(--muted); }
 .table.attrs .vals { display: grid; gap: 2px; min-width: 0; font-size: 13px; overflow-wrap: anywhere; }
+.dset-how { margin: 0 0 12px; color: #C9CCDA; font-size: 13.5px; line-height: 1.5; }

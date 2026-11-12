@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.35 (2026-11-11)
+
+- Setting up the service account shows the flask while it signs in and while it creates the account. A wrong username or password outlines both fields in red and selects the password to type again.
+- Problems everywhere show as a red box with a warning sign. They were a line of grey text.
+- The service account window says first how creating one works: sign in once with a domain admin login, Rabbid Lab uses it to create the account, and the credentials are not saved.
+
 ## 1.1.34 (2026-11-11)
 
 - The Developer tools switch in Settings, Developer just says it turns on a few developer-only options.
