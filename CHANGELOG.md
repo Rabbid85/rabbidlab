@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.72 (2026-11-12)
+
+- Sorting or dragging links no longer makes the group tools flash.
+
 ## 1.1.71 (2026-11-12)
 
 - The handle for moving a group is the four-arrow move icon.

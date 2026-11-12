@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.72', [
+    'Sorting or dragging links no longer makes the group tools flash.']],
   ['1.1.71', [
     'The handle for moving a group is the four-arrow move icon.']],
   ['1.1.70', [
@@ -1705,6 +1707,12 @@ const RELEASE_NOTES = [
     let renaming = null; // the group whose name is being typed: its name and the text so far
     let dragging = null; // the group being dragged to another place
     let moving = null; // the link or sensor being dragged to another group: its id, and the group it came from
+    // The group under the pointer. A redraw (after Sort, say) keeps its tools showing until the pointer moves, instead of
+    // the new heading starting hidden and fading back in.
+    let hot = null;
+    list.addEventListener('mouseover', (e) => { hot = e.target.closest?.('.lgroup')?.dataset.name ?? null; });
+    list.addEventListener('mouseleave', () => { hot = null; });
+    list.addEventListener('mousemove', () => list.querySelectorAll('.lgroup.hot').forEach((g) => g.classList.remove('hot')), { passive: true });
     const change = async (path, body) => {
       try {
         o.take(await send(path, body));
@@ -1866,8 +1874,9 @@ const RELEASE_NOTES = [
         ? `<section class="lgroup lout" data-name=""><div class="lhead"><h2>No group</h2></div><p class="hint lnone">Drop it here to take it out of its group.</p></section>` : ''),
       // A drag or a name being typed is under way: the page leaves the list alone until it's done.
       busy: () => !!(renaming || dragging || moving),
-      // After a draw, the name being typed gets the cursor back.
+      // After a draw, the group under the pointer keeps its tools, and the name being typed gets the cursor back.
       settle: () => {
+        if (hot !== null) list.querySelectorAll('.lgroup').forEach((g) => g.classList.toggle('hot', g.dataset.name === hot));
         const box = renaming && list.querySelector('.lrename');
         if (!box) return;
         box.focus();

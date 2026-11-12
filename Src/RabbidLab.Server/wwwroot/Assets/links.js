@@ -285,13 +285,16 @@
     l.group = to || null;
     links = [...links.filter((x) => !ids.includes(x.id)), ...ids.map((x) => links.find((y) => y.id === x)).filter(Boolean)];
     draw();
+    // Each group's links in order, to tell whether the server's answer changes anything on the page.
+    const shown = () => JSON.stringify([...groups, ''].map((g) => links.filter((x) => (x.group || '') === g).map((x) => x.id)));
+    const was = shown();
     try {
       take(await R.send('/api/links/arrange', { group: to, ids }));
       say('ln-problem', '');
     } catch (err) {
       say('ln-problem', err.message);
     }
-    draw();
+    if (shown() !== was) draw(); // drawn once already: again only when the server put things elsewhere
   };
   // Groups: renamed where they stand, dragged into order, sorted, deleted (console.js has the tools Sensors uses too).
   const tools = R.groupTools($('ln-list'), {

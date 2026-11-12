@@ -24,7 +24,7 @@
 /* A group's heading: hover it for the handle that drags it, the pencil and the bin. */
 .lhead { display: flex; align-items: center; gap: 8px; min-height: 30px; margin: 0 0 8px; }
 .ltools { display: flex; align-items: center; gap: 2px; opacity: 0; transition: opacity .12s; }
-.lgroup:hover .ltools, .ltools:focus-within { opacity: 1; }
+.lgroup:hover .ltools, .ltools:focus-within, .lgroup.hot .ltools { opacity: 1; }
 @media (hover: none) { .ltools { opacity: 1; } }
 .lgrip { display: grid; place-items: center; width: 22px; height: 28px; color: #7B80A0; cursor: grab; }
 .lgrip svg { width: 15px; height: 15px; }
@@ -132,7 +132,7 @@
 }
 /* Open all, beside a group's name: there on hover, like its tools. */
 .lhead .lopen { padding: 2px 6px; opacity: 0; color: var(--accent-soft); font-size: 12px; transition: opacity .12s; }
-.lgroup:hover .lopen, .lopen:focus-visible { opacity: 1; }
+.lgroup:hover .lopen, .lopen:focus-visible, .lgroup.hot .lopen { opacity: 1; }
 @media (hover: none) { .lhead .lopen { opacity: 1; } }
 /* Open all, when the browser stopped tabs: the steps to allow them. */
 .lopen-steps { display: grid; gap: 8px; margin: 12px 0 10px; padding-left: 22px; font-size: 14px; }
