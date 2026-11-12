@@ -77,11 +77,16 @@
       : `<i class="lstate late" title="No answer just now${why} · checking again, down after ${span(checks.downAfter)}" data-now="No answer"></i>`;
   };
   const span = (s) => (s < 60 ? `${s} seconds` : s === 60 ? 'a minute' : `${s / 60} minutes`);
-  const tile = (l) => `<div class="ltile${states[l.id]?.down ? ' down' : ''}" data-id="${esc(l.id)}"${can('links.edit') ? ` draggable="true" data-drag="${esc(l.id)}"` : ''}><a class="lgo" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer" draggable="false">`
+  // While links are being ticked to watch: a tick on each, ticked or not, and none on one that isn't a web address.
+  const tick = (l) => (!watching ? '' : checked(l) ? `<span class="lw-tick">${svg('check')}</span>` : '');
+  const tickClass = (l) => (!watching ? '' : !checked(l) ? ' lw-off' : ticked.has(l.id) ? ` lw-on${l.sensor ? ' lw-was' : ''}` : '');
+  // A watched link: a small eye beside its dot.
+  const eye = (l) => (l.sensor && !watching ? `<span class="lw-eye" title="Watched: it alerts when it's down">${svg('eye')}</span>` : '');
+  const tile = (l) => `<div class="ltile${states[l.id]?.down ? ' down' : ''}${tickClass(l)}" data-id="${esc(l.id)}"${can('links.edit') && !watching ? ` draggable="true" data-drag="${esc(l.id)}"` : ''}>${tick(l)}<a class="lgo" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer" draggable="false">`
     + (l.icon === NO_ICON ? (view === 'grid' ? '<span class="lic gap"></span>' : '') : `<span class="lic${l.icon ? '' : ' letter'}" data-color="${colour(l.name)}">${pic(l)}</span>`)
     + `<span class="lt"><b>${esc(l.name)}</b>${l.description ? `<span>${esc(l.description)}</span>` : ''}`
     + `<code>${esc(l.address && l.address !== host(l.url) ? `${l.address} · ${host(l.url)}` : host(l.url))}</code></span></a>`
-    + `${dot(l)}${can('links.edit') ? `<button type="button" class="icon ledit" data-edit="${esc(l.id)}" aria-label="Change ${esc(l.name)}">${svg('edit')}</button>` : ''}</div>`;
+    + `${eye(l)}${dot(l)}${can('links.edit') && !watching ? `<button type="button" class="icon ledit" data-edit="${esc(l.id)}" aria-label="Change ${esc(l.name)}">${svg('edit')}</button>` : ''}</div>`;
   // The Links and Icons views: a dot only when a link isn't answering.
   const off = (l) => (states[l.id] && !states[l.id].up ? (states[l.id].down ? 'down' : 'late') : '');
   const face = (l, cls) => `<span class="${cls}${l.icon && l.icon !== NO_ICON ? '' : ' letter'}" data-color="${colour(l.name)}">${l.icon === NO_ICON ? '' : pic(l)}</span>`;
@@ -93,7 +98,8 @@
   // Icons: a square with the name under it, like a home screen.
   const launch = (l) => `<a class="lapp${off(l) ? ` ${off(l)}` : ''}" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer" title="${esc(`${l.name} · ${host(l.url)}`)}"${drag(l)}>`
     + `${face(l, 'lapp-sq')}${off(l) ? `<i class="lx-dot ${off(l)}"></i>` : ''}<span class="lapp-n">${esc(l.name)}</span></a>`;
-  const body = (list) => (view === 'links' ? `<div class="lx">${list.map(plain).join('')}</div>`
+  const body = (list) => (watching ? `<div class="ltiles${view === 'grid' ? ' lrows' : ''}">${list.map(tile).join('')}</div>` // ticking works on tiles
+    : view === 'links' ? `<div class="lx">${list.map(plain).join('')}</div>`
     : view === 'icons' ? `<div class="lapps">${list.map(launch).join('')}</div>`
       : `<div class="ltiles${view === 'grid' ? ' lrows' : ''}">${list.map(tile).join('')}</div>`);
 
@@ -206,6 +212,9 @@
       : down.length > 1 ? `So did ${down.slice(1, 4).map((l) => l.name).join(', ')}${down.length > 4 ? ` and ${down.length - 4} more` : ''}.`
         : !first && late.length ? `Trying again. It shows as down after ${span(checks.downAfter)} with no answer.` : '';
     $('ln-count').textContent = links.length;
+    const seen = links.filter((l) => l.sensor).length;
+    $('ln-watched-wrap').hidden = !seen;
+    $('ln-watched').textContent = seen;
     $('ln-answering').textContent = !web.length ? '0' : known.length ? `${up.length} of ${web.length}` : '…';
     $('ln-every').textContent = EVERY_SHORT[checks.every] || `${checks.every} s`;
     $('ln-card').hidden = !first;
@@ -306,7 +315,7 @@
     order: (names) => { groups = names; },
     count: (name) => links.filter((l) => l.group === name).length,
     // Open all: every link in the group, each in a tab of its own.
-    also: (g, n) => (n > 1 ? `<button type="button" class="link lopen" data-openall="${esc(g)}" title="Open every link in this group, each in a new tab">Open all</button>` : ''),
+    also: (g, n) => (watching ? tickAll(g) : n > 1 ? `<button type="button" class="link lopen" data-openall="${esc(g)}" title="Open every link in this group, each in a new tab">Open all</button>` : ''),
     places: true, // links keep the order they're dragged into
     move: arrange,
     // Sort: the group's links by name, A to Z or Z to A, saved like a drag.
@@ -967,11 +976,111 @@
     });
   });
 
+  // --- Watch links: tick the links to watch, pick when to alert and where, and each gets a sensor -------------------
+  // Ticked to begin with are the ones watched already; unticking one stops watching it.
+
+  let watching = false;
+  let ticked = new Set();
+  let lwTo = []; // the channels new ones alert
+  let lwChans = null; // /api/channels, for people who may change alert settings
+  const CH_NAME = { discord: 'Discord', teams: 'Teams', slack: 'Slack', ntfy: 'ntfy', webhook: 'Webhook' };
+  const tickAll = (g) => {
+    const mine = links.filter((l) => (l.group || '') === g && checked(l));
+    if (!mine.length) return '';
+    const all = mine.every((l) => ticked.has(l.id));
+    return `<button type="button" class="link lw-all" data-tickall="${esc(g)}">${all ? `Untick all ${mine.length}` : `Tick all ${mine.length}`}</button>`;
+  };
+  const drawBar = () => {
+    const was = new Set(links.filter((l) => l.sensor).map((l) => l.id));
+    const adds = [...ticked].filter((id) => !was.has(id)).length;
+    const stops = [...was].filter((id) => !ticked.has(id)).length;
+    $('lw-n').textContent = ticked.size;
+    $('lw-more').textContent = adds && stops ? `${adds} to watch, ${stops} to stop` : adds ? `${adds} new${was.size ? ` · ${was.size} watched already` : ''}` : stops ? `${stops} to stop watching` : 'Nothing changed yet';
+    $('lw-go-text').textContent = adds && stops ? `Watch ${adds}, stop ${stops}` : adds ? `Watch ${adds} link${adds === 1 ? '' : 's'}` : stops ? `Stop watching ${stops}` : 'Watch';
+    $('lw-go').disabled = !adds && !stops;
+    $('lw-send-wrap').hidden = !lwChans;
+    if (lwChans) {
+      const all = [...(lwChans.email.ready ? [{ id: 'email', name: 'Email', kind: 'email' }] : []), ...lwChans.channels.map((c) => ({ id: c.id, name: c.name || CH_NAME[c.kind], kind: c.kind }))];
+      $('lw-send').innerHTML = all.map((c) => `<button type="button" class="lw-chip${lwTo.includes(c.id) ? ' on' : ''}" data-lw-chan="${esc(c.id)}" aria-pressed="${lwTo.includes(c.id)}">${esc(c.name)}</button>`).join('')
+        || '<span class="lw-none">No channels yet</span>';
+    }
+  };
+  const setWatching = async (on) => {
+    watching = on;
+    $('page-links').classList.toggle('lw-mode', on);
+    $('ln-watching').classList.toggle('on', on);
+    $('ln-watching').querySelector('span').textContent = on ? 'Done' : 'Watch links';
+    $('lw-bar').hidden = !on;
+    if (on) {
+      ticked = new Set(links.filter((l) => l.sensor).map((l) => l.id));
+      // New ones start like new sensors: the alert time and channels from Settings, Sensors.
+      const sensors = can('sensors.view') ? await R.get('/api/sensors').catch(() => null) : null;
+      $('lw-after').value = String(sensors?.start?.after ?? 5);
+      if ($('lw-after').value === '') $('lw-after').value = '5';
+      lwChans = can('sensors.alerts') ? await R.get('/api/channels').catch(() => null) : null;
+      lwTo = lwChans ? [...(lwChans.email.onForNew && lwChans.email.ready ? ['email'] : []), ...lwChans.channels.filter((c) => c.onForNew).map((c) => c.id)] : [];
+      drawBar();
+    }
+    draw();
+  };
+  $('ln-watching').addEventListener('click', () => setWatching(!watching));
+  $('lw-cancel').addEventListener('click', () => setWatching(false));
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && watching && !document.querySelector('dialog[open]')) setWatching(false); });
+  // While ticking, a click on a tile ticks it instead of opening it.
+  $('ln-list').addEventListener('click', (e) => {
+    if (!watching) return;
+    const all = e.target.closest('[data-tickall]');
+    const t = e.target.closest('.ltile');
+    if (!all && !t) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (all) {
+      const mine = links.filter((l) => (l.group || '') === all.dataset.tickall && checked(l));
+      const on = !mine.every((l) => ticked.has(l.id));
+      mine.forEach((l) => (on ? ticked.add(l.id) : ticked.delete(l.id)));
+    } else {
+      const l = links.find((x) => x.id === t.dataset.id);
+      if (!l || !checked(l)) return;
+      if (ticked.has(l.id)) ticked.delete(l.id);
+      else ticked.add(l.id);
+    }
+    drawBar();
+    draw();
+  }, true);
+  $('lw-send').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-lw-chan]');
+    if (!b) return;
+    const id = b.dataset.lwChan;
+    lwTo = lwTo.includes(id) ? lwTo.filter((x) => x !== id) : [...lwTo, id];
+    drawBar();
+  });
+  $('lw-go').addEventListener('click', async () => {
+    const was = new Set(links.filter((l) => l.sensor).map((l) => l.id));
+    const watch = [...ticked].filter((id) => !was.has(id));
+    const unwatch = [...was].filter((id) => !ticked.has(id));
+    $('lw-go').disabled = true;
+    try {
+      const r = await R.send('/api/links/watch', { watch, unwatch, after: Number($('lw-after').value), channels: lwChans ? lwTo : null });
+      const said = [r.watched ? `Watching ${r.watched} more link${r.watched === 1 ? '' : 's'}.` : '', r.stopped ? `Stopped watching ${r.stopped}.` : ''].filter(Boolean).join(' ');
+      if (r.skipped.length) R.toast(said || 'Nothing changed', `Left out: ${r.skipped.join('; ')}`, { tone: 'warn' });
+      else R.toast(said, r.watched ? "They're on Sensors too." : '', r.watched ? { action: { href: '#sensors', label: 'Open Sensors' } } : {});
+      await setWatching(false);
+      refresh();
+    } catch (err) {
+      R.toast("Couldn't change what's watched", err.message, { tone: 'warn' });
+      $('lw-go').disabled = false;
+    }
+  });
+
   // --- Showing the page --------------------------------------------------------------------------------------------
 
   document.addEventListener('rabbidlab:show', (e) => {
     clearTimeout(timer);
-    if (e.detail[0] !== 'links' || !can('links.view')) return;
+    if (e.detail[0] !== 'links' || !can('links.view')) {
+      if (watching) setWatching(false);
+      return;
+    }
+    $('ln-watching').hidden = !can('links.edit') || !can('sensors.edit');
     refresh(); // its check keeps itself going while the page is the one shown
   });
   // The count and the down dot in the rail, when the page itself hasn't asked already.

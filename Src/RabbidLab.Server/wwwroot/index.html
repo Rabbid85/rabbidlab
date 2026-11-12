@@ -622,6 +622,7 @@
         <div><b id="ln-count"><i class="sk sk-num"></i></b><span><svg><use href="#i-link"/></svg>Links</span></div>
         <div><b id="ln-answering"><i class="sk sk-num"></i></b><span><svg><use href="#i-activity"/></svg>Answering</span></div>
         <div><b id="ln-every"><i class="sk sk-num"></i></b><span><svg><use href="#i-clock"/></svg>Checked every</span></div>
+        <div id="ln-watched-wrap" hidden><b id="ln-watched"></b><span><svg><use href="#i-eye"/></svg>Watched</span></div>
       </div>
       <aside class="hero-new bad" id="ln-card" hidden>
         <p class="eyebrow">Down now</p>
@@ -639,6 +640,7 @@
       </div>
       <button type="button" class="small" id="ln-newgroup" data-can="links.edit"><svg><use href="#i-plus"/></svg>New group</button>
       <button type="button" class="small" id="ln-refresh" data-can="links.edit" title="Read every link's site again and bring its icon, description and IP up to date"><svg><use href="#i-refresh"/></svg>Refresh icons</button>
+      <button type="button" class="small lw-btn" id="ln-watching" data-can="sensors.edit" hidden title="Tick links to watch: each gets a sensor that alerts when it's down"><svg><use href="#i-eye"/></svg><span>Watch links</span></button>
       <div class="vswitch" id="ln-view"><button type="button" data-view="grid" title="Rows" aria-label="Rows"><svg><use href="#i-view-rows"/></svg></button><button type="button" data-view="cards" title="Tiles" aria-label="Tiles"><svg><use href="#i-view-tiles"/></svg></button><button type="button" data-view="links" title="Links" aria-label="Links"><svg><use href="#i-view-list"/></svg></button><button type="button" data-view="icons" title="Icons" aria-label="Icons"><svg><use href="#i-view-icons"/></svg></button></div>
     </div>
     <p class="hint note ln-done" id="ln-done" role="status" hidden></p>
@@ -647,6 +649,13 @@
       <div><b>No links yet</b><span id="ln-empty-text">Put the sites in your lab here: the router, the NAS, the hypervisor, iDRACs. Paste an address and <span data-lab>Rabbid Lab</span> fills in the name, icon and IP.</span></div>
       <button type="button" class="primary" id="ln-add-first" data-can="links.edit"><svg><use href="#i-plus"/></svg>Add a link</button></div>
     <p class="hint problem" id="ln-problem" hidden></p>
+    <!-- Watch links: the bar along the bottom while links are being ticked (links.js). -->
+    <div class="lw-bar" id="lw-bar" role="toolbar" aria-label="Watch links" hidden>
+      <span class="lw-count"><b id="lw-n">0</b> ticked<small id="lw-more"></small></span><span class="lw-sep"></span>
+      <label class="lw-f"><span>Alert after</span><select id="lw-after"><option value="0">Right away</option><option value="1">1 minute</option><option value="5">5 minutes</option><option value="10">10 minutes</option><option value="30">30 minutes</option><option value="60">An hour</option></select></label>
+      <span class="lw-f" id="lw-send-wrap"><span>Send to</span><span class="lw-chips" id="lw-send"></span></span><span class="lw-sep"></span>
+      <button type="button" class="link" id="lw-cancel">Cancel</button><button type="button" class="primary" id="lw-go"><svg><use href="#i-eye"/></svg><span id="lw-go-text">Watch</span></button>
+    </div>
     </section>
   </section>
 

@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.83', [
+    'Watch links on Links: tick the links to watch (or Tick all in a group), pick when to alert and where, and each gets a sensor. Untick one to stop watching it.',
+    'A watched link has a small eye beside its dot, and the banner counts them.']],
   ['1.1.82', [
     'On for new sensors in Add a channel is a settings row with the switch on the right.']],
   ['1.1.81', [

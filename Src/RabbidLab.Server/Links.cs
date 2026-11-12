@@ -1490,6 +1490,49 @@ public static class LinksApi
             return Results.Ok(new { link = done.Link, changed = c, problem = done.Problem });
         });
 
+        // Watch links, the page's select mode: the ones ticked get a sensor each, with the alert time picked and the rest as
+        // new sensors start; the ones unticked lose theirs. A link that isn't a web address is left as it is.
+        app.MapPost("/api/links/watch", (WatchManyForm form, HttpContext context, Links links, Sensors sensors, ActivityLog log) =>
+        {
+            if ((Access.RefuseUnless(context, Permissions.LinksEdit) ?? Access.RefuseUnless(context, Permissions.SensorsEdit)) is { } refused)
+            {
+                return refused;
+            }
+            var start = sensors.StartAlerts();
+            var alerts = new RuleForm(form.After ?? start.After, start.Again, start.Back);
+            var channels = Access.Can(context, Permissions.SensorsAlerts) ? form.Channels : null;
+            var who = ActivityLog.Who(context);
+            var all = links.All().ToDictionary(l => l.Id);
+            var (watched, stopped, skipped) = (0, 0, new List<string>());
+            foreach (var l in (form.Watch ?? []).Distinct().Select(all.GetValueOrDefault).OfType<Link>().Where(l => l.Sensor is null || !sensors.Has(l.Sensor)))
+            {
+                if (sensors.CanWatch(null, l.Url, alerts) is { } why)
+                {
+                    skipped.Add($"{l.Name}: {why}");
+                    continue;
+                }
+                var (sensor, failed) = sensors.Watch(null, l.Name, l.Url, l.Group, alerts, channels, who);
+                if (sensor is null)
+                {
+                    skipped.Add($"{l.Name}: {failed}");
+                    continue;
+                }
+                links.SetSensor(l.Id, sensor);
+                watched++;
+            }
+            foreach (var l in (form.Unwatch ?? []).Distinct().Select(all.GetValueOrDefault).OfType<Link>().Where(l => l.Sensor is not null))
+            {
+                sensors.Delete(l.Sensor!);
+                links.SetSensor(l.Id, null);
+                stopped++;
+            }
+            if (watched + stopped > 0)
+            {
+                log.Record(context, "links", "link.watch", string.Join(", ", new[] { watched > 0 ? $"Watched {watched} link{(watched == 1 ? "" : "s")}" : "", stopped > 0 ? $"stopped watching {stopped}" : "" }.Where(s => s.Length > 0)));
+            }
+            return Results.Ok(new { watched, stopped, skipped });
+        });
+
         app.MapPost("/api/links/{id}/delete", (string id, HttpContext context, Links links, Sensors sensors, ActivityLog log) =>
         {
             if (Access.RefuseUnless(context, Permissions.LinksEdit) is { } refused)
@@ -1580,3 +1623,6 @@ public static class LinksApi
         return Results.Ok(link);
     }
 }
+
+/// <summary>Watch links: which to watch and which to stop watching, when to alert, and where (null for the usual channels).</summary>
+public sealed record WatchManyForm(List<string>? Watch, List<string>? Unwatch, int? After, List<string>? Channels);

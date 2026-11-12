@@ -232,3 +232,39 @@
 .lapp.drop-before::before, .lapp.drop-after::after { content: ""; position: absolute; top: 6px; bottom: 6px; width: 3px; border-radius: 3px; background: var(--accent-soft); }
 .lapp.drop-before::before { left: -5px; }
 .lapp.drop-after::after { right: -5px; }
+
+/* Watch links: a watched link has a small eye beside its dot. */
+.lw-eye { position: absolute; top: 11px; right: 28px; display: grid; place-items: center; width: 16px; height: 16px; color: var(--accent-soft); pointer-events: auto; }
+.lw-eye svg { width: 15px; height: 15px; }
+.lrows .lw-eye { position: static; flex: none; }
+.lw-btn svg { width: 15px; height: 15px; }
+.lw-btn.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, #141725); color: #fff; }
+/* While ticking: a tick on each web link, the ticked ones in the accent, the rest faded, and the bar along the bottom. */
+.lw-mode .ltile { cursor: pointer; }
+.lw-mode .ltile:not(.lw-on) { opacity: .6; }
+.lw-mode .ltile.lw-off { opacity: .3; cursor: default; }
+.lw-mode .ltile.lw-on { border-color: color-mix(in srgb, var(--accent) 70%, transparent); background: color-mix(in srgb, var(--accent) 7%, var(--panel)); }
+.lw-tick { position: absolute; top: 9px; left: 9px; z-index: 2; display: grid; place-items: center; width: 20px; height: 20px; border: 1.5px solid #4A4E66; border-radius: 50%; background: #0F111A; color: transparent; pointer-events: none; }
+.lw-tick svg { width: 11px; height: 11px; }
+.lw-on .lw-tick { border-color: var(--accent); background: var(--accent); color: #fff; }
+.lw-was .lw-tick { border-color: #6D7290; background: #2A2D3E; color: #C9CCDA; }
+.lw-all { margin-left: 10px; color: var(--accent-soft); font-size: 12.5px; }
+.lw-bar { position: fixed; bottom: 22px; left: 50%; z-index: 60; display: flex; align-items: center; gap: 16px; padding: 10px 12px 10px 18px; transform: translateX(-50%);
+  border: 1px solid var(--accent-line); border-radius: 16px; background: #141725; box-shadow: 0 20px 60px rgba(0, 0, 0, .6); white-space: nowrap; }
+.lw-bar[hidden] { display: none; }
+.lw-count { display: grid; grid-template-columns: auto auto; justify-content: start; column-gap: 5px; align-items: baseline; color: #B8BCCB; font-size: 13px; }
+.lw-count b { color: #fff; font-size: 18px; }
+.lw-count small { grid-column: 1 / -1; color: var(--muted); font-size: 11.5px; }
+.lw-sep { width: 1px; height: 34px; background: var(--line-strong); }
+.lw-f { display: grid; gap: 4px; }
+.lw-f[hidden] { display: none; }
+.lw-f > span:first-child { color: #9DA1B3; font-size: 10.5px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+.lw-f select { width: 140px; height: 32px; }
+.lw-chips { display: flex; gap: 6px; }
+.lw-chip { display: inline-flex; align-items: center; height: 30px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 8px; background: none; color: #B8BCCB; font: inherit; font-size: 13px; cursor: pointer; }
+.lw-chip.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); color: #fff; }
+.lw-none { color: var(--muted); font-size: 12.5px; line-height: 30px; }
+.lw-bar .primary { display: inline-flex; align-items: center; gap: 7px; }
+.lw-bar .primary svg { width: 15px; height: 15px; }
+.lw-bar .link { color: #B8BCCB; }
+@media (max-width: 900px) { .lw-bar { left: 16px; right: 16px; flex-wrap: wrap; transform: none; } }

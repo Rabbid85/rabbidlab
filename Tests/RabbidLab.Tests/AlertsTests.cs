@@ -190,6 +190,25 @@ public sealed class AlertsTests : IDisposable
     }
 
     [Fact]
+    public async Task Links_ticked_together_are_watched_together_and_unticked_ones_stop()
+    {
+        var admin = await app.SignedIn();
+        async Task<string> Link(string name, string url) => (await (await admin.PostAsJsonAsync("/api/links", new { name, url, group = "Network" })).Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetString()!;
+        var gateway = await Link("Gateway", "https://192.168.2.1");
+        var nas = await Link("TrueNAS", "https://192.168.2.23");
+        var shell = await Link("NAS shell", "ssh://192.168.2.23");
+
+        var first = await (await admin.PostAsJsonAsync("/api/links/watch", new { watch = new[] { gateway, nas, shell }, after = 10 })).Content.ReadFromJsonAsync<JsonElement>();
+        var second = await (await admin.PostAsJsonAsync("/api/links/watch", new { unwatch = new[] { nas } })).Content.ReadFromJsonAsync<JsonElement>();
+
+        Assert.Equal(2, first.GetProperty("watched").GetInt32());
+        Assert.Contains("NAS shell", first.GetProperty("skipped")[0].GetString());
+        Assert.Equal(1, second.GetProperty("stopped").GetInt32());
+        Assert.Equal("Gateway", Assert.Single(Sensors.All()).Name);
+        Assert.Equal(10, Sensors.All()[0].Custom!.After);
+    }
+
+    [Fact]
     public async Task Dragging_a_sensor_to_another_group_changes_only_its_group()
     {
         var admin = await app.SignedIn();

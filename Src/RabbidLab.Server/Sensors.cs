@@ -562,6 +562,15 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
         return Own(f.Start ?? rules.First(r => r.Id == DefaultRule(f, rules)));
     }
 
+    /// <summary>When new sensors alert, as set in Settings, Sensors.</summary>
+    public AlertRule StartAlerts()
+    {
+        lock (gate)
+        {
+            return StartRule(file.Read());
+        }
+    }
+
     private static object Times(AlertRule r) => new { r.After, r.Again, r.Back };
 
     private SensorState State(string id)

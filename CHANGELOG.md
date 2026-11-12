@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.83 (2026-11-12)
+
+- Watch links on Links: tick the links to watch (or Tick all in a group), pick when to alert and where, and each gets a sensor. Untick one to stop watching it.
+- A watched link has a small eye beside its dot, and the banner counts them.
+
 ## 1.1.82 (2026-11-12)
 
 - On for new sensors in Add a channel is a settings row with the switch on the right.
