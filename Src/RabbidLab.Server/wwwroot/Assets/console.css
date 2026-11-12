@@ -609,6 +609,18 @@ select:not([multiple]):not([size]) { appearance: none; -webkit-appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238A8FA8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat; background-position: right 12px center; background-size: 16px 16px; }
 select:not([multiple]):not([size]):hover { border-color: #3A3E55; }
+/* Where the browser allows it (Edge and Chrome), the open list is the console's own as well: dark, rounded, the accent on the one picked. */
+@supports (appearance: base-select) {
+  select:not([multiple]):not([size]), select:not([multiple]):not([size])::picker(select) { appearance: base-select; }
+  select:not([multiple]):not([size])::picker-icon { display: none; } /* the arrow is the background image above */
+  select:not([multiple]):not([size]) { align-items: center; padding-top: 0; padding-bottom: 0; }
+  select:not([multiple]):not([size])::picker(select) { margin-top: 4px; padding: 4px; border: 1px solid var(--line-strong); border-radius: 10px; background: #141725; color: #D7DAE8; box-shadow: 0 18px 44px rgba(0, 0, 0, .55); max-height: 340px; }
+  select:not([multiple]):not([size]) option { min-height: 34px; padding: 7px 12px; border-radius: 7px; background: none; color: #D7DAE8; font-size: 13.5px; }
+  select:not([multiple]):not([size]) option:hover, select:not([multiple]):not([size]) option:focus-visible { background: #1E2132; color: #fff; outline: none; }
+  select:not([multiple]):not([size]) option:checked { background: color-mix(in srgb, var(--accent) 16%, transparent); color: #fff; font-weight: 600; }
+  select:not([multiple]):not([size]) option::checkmark { color: var(--accent-soft); }
+  select:not([multiple]):not([size]) option:disabled { color: #5E6380; }
+}
 /* Rows or tiles: two icons in one box, the one in use lit (Links, Sensors, Active Directory). */
 .vswitch { display: inline-flex; flex: none; gap: 2px; padding: 3px; border: 1px solid var(--line-strong); border-radius: 9px; background: #0F111A; }
 .vswitch button { display: grid; place-items: center; width: 30px; height: 26px; padding: 0; border: 0; border-radius: 6px; background: none; color: #6D7290; }

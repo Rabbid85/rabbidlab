@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.76 (2026-11-12)
+
+- Dropdowns open as a dark list that matches the console, with the accent on the one picked, in Edge and Chrome.
+
 ## 1.1.75 (2026-11-12)
 
 - Alerts can go to Discord, Teams, Slack, ntfy or any webhook as well as email. Set channels up in Settings, Notifications, then tick them on each sensor.

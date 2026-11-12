@@ -815,7 +815,7 @@
   const downText = () => {
     const n = Number($('sd-down').value) || 2;
     const secs = n * (Number($('sd-every').value) || 60);
-    const about = secs < 90 ? `${secs} seconds` : secs < 5400 ? `${Math.round(secs / 60)} minutes` : `${Math.round(secs / 3600)} hours`;
+    const about = secs < 90 ? `${secs} seconds` : secs < 3600 ? `${Math.round(secs / 60)} minutes` : secs === 3600 ? 'an hour' : `${Math.round(secs / 3600)} hours`;
     return `Down after ${n === 1 ? 'one miss' : `${n} misses in a row`}, about ${about}.`;
   };
   // On a sensor: one of the saved settings, or Custom with times of its own, which can be saved by name for other sensors.
