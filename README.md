@@ -16,7 +16,7 @@ What changed in each version: [CHANGELOG.md](CHANGELOG.md).
 - Local accounts: the Windows accounts on the server and every seat
 - Links: the sites in your lab with their icons, IPs and whether they're up
 - Sensors: checks on a timer (ping, port, web page, DNS, certificate, server hardware, storage, VMware, SNMP, Windows services, disk space) with email when something stays down
-- Windows installer: service, HTTPS (self-signed or your own certificate), firewall rule, Start menu and desktop shortcuts, silent install
+- Windows installer: service, HTTPS (self-signed or your own certificate), firewall rule, a Start menu and a desktop shortcut, silent install
 - Docker image for x64 and ARM
 - Automatic updates from GitHub Releases, verified with a release signature
 - Activity log

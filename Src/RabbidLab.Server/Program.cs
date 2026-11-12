@@ -26,6 +26,12 @@ if (args.Contains("--health"))
     }
 }
 
+// --open <address>: the Start menu and desktop shortcuts. Checks Rabbid Lab is answering, starts its service if not, opens the console.
+if (args.Length >= 2 && args[0] == "--open")
+{
+    return await Opener.Open(args[1]);
+}
+
 var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseWindowsService(options => options.ServiceName = Product.Name); // nothing changes outside a Windows service
 if (OperatingSystem.IsWindows() && Product.Dev)

@@ -621,7 +621,7 @@ namespace RabbidLab.Setup
             ["56a863a9-875e-4185-98a7-b882c64b5ce5"] = "Block abuse of exploited vulnerable signed drivers",
         };
 
-        private const string StartIt = "start " + Edition.Name + " from the Start menu (" + Edition.Name + " > Start " + Edition.Name + "), or run Start-Service " + Edition.Id + " in PowerShell.";
+        private const string StartIt = "open " + Edition.Name + " from the Start menu, or run Start-Service " + Edition.Id + " in PowerShell.";
         private const string AdminShell = "Run in PowerShell as administrator";
 
         /// <summary>
@@ -1000,36 +1000,40 @@ namespace RabbidLab.Setup
 
         private void SetShortcuts(Choices c)
         {
-            var menu = Edition.StartMenuDir;
-            var desktop = Edition.DesktopShortcut;
             var icon = IconFile(c.InstallDir);
-            var setup = Path.Combine(c.InstallDir, "Setup", "RabbidLab-Setup.exe");
+            var server = Path.Combine(c.InstallDir, "RabbidLab.Server.exe");
 
-            if (Directory.Exists(menu))
-            {
-                Directory.Delete(menu, recursive: true);
-            }
+            RemoveShortcuts();
+            // One shortcut, named for the product: it checks the service is answering, starts it if not, and opens the console.
             if (c.StartMenu)
             {
-                Directory.CreateDirectory(menu);
-                WriteUrl(Path.Combine(menu, Edition.Name + ".url"), c.LocalUrl, icon);
-                WriteLink(Path.Combine(menu, $"Restart {Edition.Name}.lnk"), setup, "/service restart", icon, $"Restart the {Edition.Name} service");
-                WriteLink(Path.Combine(menu, $"Stop {Edition.Name}.lnk"), setup, "/service stop", icon, $"Stop the {Edition.Name} service");
-                WriteLink(Path.Combine(menu, $"Start {Edition.Name}.lnk"), setup, "/service start", icon, $"Start the {Edition.Name} service");
-                Log("Created Start menu shortcuts to open the console and to restart, stop and start the service.");
-            }
-            if (File.Exists(desktop))
-            {
-                File.Delete(desktop);
+                WriteLink(Edition.StartMenuShortcut, server, $"--open {c.LocalUrl}", icon, $"Open {Edition.Name}");
+                Log("Created the Start menu shortcut.");
             }
             if (c.Desktop)
             {
-                WriteUrl(desktop, c.LocalUrl, icon);
+                WriteLink(Edition.DesktopShortcut, server, $"--open {c.LocalUrl}", icon, $"Open {Edition.Name}");
                 Log("Created a desktop shortcut.");
             }
             // The shortcuts' icon is the program's, at the same path as before: without this, Explorer keeps showing the
             // icon it cached for that path, the old version's, after an update that changed it.
             SHChangeNotify(ShcneAssocChanged, 0, IntPtr.Zero, IntPtr.Zero);
+        }
+
+        /// <summary>Takes away the shortcuts, and what older versions made: a Start menu folder of four, and a .url on the desktop.</summary>
+        private static void RemoveShortcuts()
+        {
+            if (Directory.Exists(Edition.OldStartMenuDir))
+            {
+                Directory.Delete(Edition.OldStartMenuDir, recursive: true);
+            }
+            foreach (var file in new[] { Edition.StartMenuShortcut, Edition.DesktopShortcut, Edition.OldDesktopShortcut })
+            {
+                if (File.Exists(file))
+                {
+                    File.Delete(file);
+                }
+            }
         }
 
         /// <summary>The shortcuts' icon: the icon file, which Defender never blocks, or the program in older builds without one.</summary>
@@ -1044,9 +1048,6 @@ namespace RabbidLab.Setup
         [System.Runtime.InteropServices.DllImport("shell32.dll")]
         private static extern void SHChangeNotify(int eventId, uint flags, IntPtr item1, IntPtr item2);
 
-        private static void WriteUrl(string path, string url, string icon) =>
-            File.WriteAllText(path, $"[InternetShortcut]\r\nURL={url}\r\nIconFile={icon}\r\nIconIndex=0\r\n", Encoding.ASCII);
-
         private static void WriteLink(string path, string target, string args, string icon, string description)
         {
             dynamic shell = Activator.CreateInstance(Type.GetTypeFromProgID("WScript.Shell"));
@@ -1055,6 +1056,7 @@ namespace RabbidLab.Setup
             link.Arguments = args;
             link.Description = description;
             link.WorkingDirectory = Path.GetDirectoryName(target);
+            link.WindowStyle = 7; // minimised: the check takes a moment and has nothing to show
             if (icon != null)
             {
                 link.IconLocation = icon + ",0";
@@ -1299,16 +1301,7 @@ namespace RabbidLab.Setup
             RemoveOwnCertificates();
 
             Step("Removing shortcuts", 0.45);
-            var menu = Edition.StartMenuDir;
-            if (Directory.Exists(menu))
-            {
-                Directory.Delete(menu, recursive: true);
-            }
-            var desktop = Edition.DesktopShortcut;
-            if (File.Exists(desktop))
-            {
-                File.Delete(desktop);
-            }
+            RemoveShortcuts();
 
             Step("Removing program files", 0.55);
             if (Directory.Exists(dir))
@@ -1482,7 +1475,7 @@ namespace RabbidLab.Setup
             }
         }
 
-        // --- The service, from the Start menu shortcuts ------------------------------------------------------
+        // --- The service: started by the shortcut when it finds it stopped (Opener.cs), or from a command line ---
 
         /// <summary>restart, stop or start. Returns what happened, in a sentence.</summary>
         public static string ControlService(string action)
@@ -1502,7 +1495,7 @@ namespace RabbidLab.Setup
                     }
                     if (action == "stop")
                     {
-                        return "Rabbid Lab is stopped. It starts again when you start it from the Start menu or restart the computer.";
+                        return "Rabbid Lab is stopped. It starts again when you open it from the Start menu or restart the computer.";
                     }
                 }
                 if (service.Status == ServiceControllerStatus.Stopped)

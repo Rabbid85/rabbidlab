@@ -18,7 +18,7 @@ namespace RabbidLab.Setup
     ///   /quiet [/port=8420] [/name=lab.home.lan] [/adddns] [/certsubject=...] [/http] [/nofirewall] [/noredirect]
     ///          [/dir=...] [/nostartmenu] [/desktop] [/log=file]     install or update without the window
     ///   /uninstall [/quiet] [/everything] [/log=file]    remove it; /everything leaves nothing behind
-    ///   /service restart|stop|start                       from the Start menu shortcuts
+    ///   /service restart|stop|start                       the shortcut uses start when it finds the service stopped
     ///   --snapshot folder                                 pictures of every page, for checking how they look
     /// RabbidLab-Uninstall.exe (the same program built with -p:Uninstaller=true) only removes.
     /// Quiet exit codes: 0 done, 1 something failed (see the log). /acceptlicense is accepted and ignored: there is no
@@ -234,7 +234,7 @@ namespace RabbidLab.Setup
             });
         }
 
-        /// <summary>A small window in Rabbid Lab's style with a message and OK, for the Start menu shortcuts.</summary>
+        /// <summary>A small window in Rabbid Lab's style with a message and OK, for /service.</summary>
         /// <remarks>With work: the message shows while it runs off the window's thread, then what it returns, and OK waits for it.</remarks>
         private void Say(string message, Func<string> work = null)
         {

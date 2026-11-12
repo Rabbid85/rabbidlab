@@ -53,7 +53,11 @@ namespace RabbidLab.Setup
 
         public static readonly string ProgramDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), Name);
         public static readonly string DataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), Name);
-        public static readonly string StartMenuDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonPrograms), Name);
-        public static readonly string DesktopShortcut = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonDesktopDirectory), Name + ".url");
+        /// <summary>The one shortcut in the Start menu, and the one on the desktop: each checks the service and opens the console.</summary>
+        public static readonly string StartMenuShortcut = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonPrograms), Name + ".lnk");
+        public static readonly string DesktopShortcut = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonDesktopDirectory), Name + ".lnk");
+        /// <summary>What versions before 1.1.40 made, removed when found: a Start menu folder of four shortcuts, and a .url on the desktop.</summary>
+        public static readonly string OldStartMenuDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonPrograms), Name);
+        public static readonly string OldDesktopShortcut = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonDesktopDirectory), Name + ".url");
     }
 }
