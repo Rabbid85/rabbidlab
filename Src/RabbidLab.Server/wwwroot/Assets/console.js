@@ -3,6 +3,13 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.50', [
+    'A link takes the icon its page shows in the browser tab, and only falls back to the phone home-screen icon when there is none. Plex shows its orange icon again, not the white one on black.',
+    'Refresh icons only reads links with no icon or no description. A link with no IP line is not read again for that (Netflix was read on every refresh).',
+    'Reading a site stops at the end of its head once that has its name or icon, so a big page such as Yahoo Finance is read 80 KB in, not 512 KB.',
+    'Scatter keeps its arrangement when the banner changes size: the squares stretch with it rather than shuffling.',
+    'Add a link: the find icon button can always be clicked. With no address yet it asks for one.',
+    'Password managers no longer offer themselves on the Address box of a link.']],
   ['1.1.49', [
     'Rabbid Lab only recognises a product from the text of a page on your own network. Internet sites such as Hulu, Disney+ and Diffchecker were called a UniFi network console because their pages say unified; Refresh puts their own description back.',
     'More icons are found. A big .ico is cut down to its largest picture that fits, or the same file as .svg or .png is used (Pelican), and an internet site that turns readers away (Warcraft Logs) gets its icon from the DuckDuckGo icon service. Nothing on your network is ever sent there.',
@@ -1144,12 +1151,16 @@ const RELEASE_NOTES = [
       // Spare spots in loose rows, mixed the same way every time, so nothing lands on top of anything else.
       const cols = Math.max(1, Math.ceil(Math.sqrt((n * 1.7 * w) / h)));
       const rows = Math.max(1, Math.ceil((n * 1.7) / cols));
+      // Mixed by each spot's place in the rows, not where it lands, so the banner changing size moves them rather than reshuffling them.
       const spots = [];
       for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) spots.push([((c + 0.5 + jig(r * cols + c, 'x') * 0.5) / cols) * w, ((r + 0.5 + jig(r * cols + c, 'y') * 0.5) / rows) * h]);
+        for (let c = 0; c < cols; c++) {
+          const k = r * cols + c;
+          spots.push({ key: mix(`${style}${k}k`), at: [((c + 0.5 + jig(k, 'x') * 0.5) / cols) * w, ((r + 0.5 + jig(k, 'y') * 0.5) / rows) * h] });
+        }
       }
-      spots.sort((a, b) => mix(a.join()) - mix(b.join()));
-      at.push(...spots.slice(0, n));
+      spots.sort((a, b) => a.key - b.key);
+      at.push(...spots.slice(0, n).map((s) => s.at));
     } else if (style === 'even') {
       const rows = Math.max(1, Math.round(Math.sqrt(n / (w / h))));
       const cell = w / Math.ceil(n / rows);

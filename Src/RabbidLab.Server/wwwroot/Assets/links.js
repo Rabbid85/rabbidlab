@@ -343,7 +343,7 @@
   const refreshLinks = async (host, note) => {
     if (refreshing) return;
     const onPage = host === $('ln-list');
-    const todo = links.filter((l) => !l.icon || !l.description || !l.address);
+    const todo = links.filter((l) => !l.icon || !l.description); // the IP line is filled in on the way, never a reason to read a site again
     ['lc-refresh-done', 'ln-done'].forEach((id) => say(id, ''));
     if (!todo.length) return say(note, 'Every link has its icon, description and IP already.');
     refreshing = true;
@@ -481,7 +481,7 @@
     $('ln-preview').innerHTML = `<div class="ltiles"><div class="ltile${empty ? ' ld-ghost' : ''}"><div class="lgo">${face}`
       + `<span class="lt"><b>${esc(shown)}</b><span>${esc($('ln-about').value.trim() || (empty ? 'Detail' : ''))}</span><code>${esc(where)}</code></span></div></div></div>`
       + '<div class="ld-strip">'
-      + pick('site', siteIcon ? "The site's own icon" : "Get the site's icon", siteIcon ? `<span class="ld-face"><img src="${esc(siteIcon)}" alt=""></span>` : `<span class="ld-face ${url ? 'up' : 'off'}">${svg('globe')}</span>`, !siteIcon && !url)
+      + pick('site', siteIcon ? "The site's own icon" : "Find the site's icon", siteIcon ? `<span class="ld-face"><img src="${esc(siteIcon)}" alt=""></span>` : `<span class="ld-face up">${svg('globe')}</span>`)
       + pick('letter', 'The first letter of the name', `<span class="ld-face letter" data-color="${colour(shown)}">${letter(shown)}</span>`)
       + pick('upload', 'A picture of your own', uploaded && icon ? `<span class="ld-face"><img src="${esc(icon)}" alt=""></span>` : `<span class="ld-face up">${svg('upload')}</span>`)
       + pick('none', 'No icon', '<span class="ld-face none"></span>')
@@ -493,7 +493,7 @@
     $('ln-looking').hidden = !text && !again;
     $('ln-looking').className = `ld-found wide${ok ? '' : ' warn'}`;
     $('ln-looking').innerHTML = (text ? `${svg(ok ? 'check' : 'alert')}<span>${esc(text)}</span>` : '')
-      + (text || again ? `<button type="button" class="link" data-again>${text ? 'Read it again' : 'Read the site again'}</button>` : '');
+      + ((text && $('ln-url').value.trim()) || again ? `<button type="button" class="link" data-again>${text ? 'Read it again' : 'Read the site again'}</button>` : '');
   };
   const groupOf = (id) => ($(id).value === NEW_GROUP ? $(`${id}-new`).value : $(id).value);
   const pickGroup = (id) => {
@@ -749,7 +749,10 @@
   // The site's icon alone, for the site option before the site has been read: the name and detail stay as they are.
   const pullIcon = async () => {
     const url = $('ln-url').value.trim();
-    if (!url) return;
+    if (!url) {
+      foundLine(false, "Paste the address first, then this finds the site's icon.");
+      return $('ln-url').focus();
+    }
     const run = ++lookRun;
     say('ln-dproblem', '');
     reading(`Getting the icon from ${host(full(url))}…`);

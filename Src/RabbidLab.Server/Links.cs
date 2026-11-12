@@ -70,6 +70,7 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
     private const int MaxPage = 512 * 1024;
     private const int MaxIcon = 192 * 1024;
     private const int MaxIconFile = 512 * 1024; // read this far, so a big .ico can be cut down to one picture
+    private static readonly Regex IconLinkTag = new(@"<link\b[^>]*\brel\s*=\s*[""']?[^""'>]*icon", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(250)); // a page's head lists an icon
     private const string NoIcon = "none"; // a link shown with no icon at all; with none saved it shows its first letter
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { WriteIndented = true };
     private const int ChecksAtOnce = 16;
@@ -855,7 +856,11 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
         return http;
     }
 
-    /// <summary>The body, up to the limit; null when it's bigger. A page (upTo) is read as far as the limit; anything else that says it's bigger isn't fetched at all.</summary>
+    /// <summary>
+    /// The body, up to the limit; null when it's bigger. A page (upTo) is read as far as the limit, and no further than the
+    /// end of its head once that has a title or an icon in it: Yahoo Finance's 1.5 MB page has all that in its first 80 KB.
+    /// Anything else that says it's bigger isn't fetched at all.
+    /// </summary>
     private static async Task<byte[]?> Read(HttpResponseMessage answer, int limit, CancellationToken stop, bool upTo = false)
     {
         var said = answer.Content.Headers.ContentLength;
@@ -873,9 +878,34 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
             {
                 return upTo && into.Length > 0 ? into.ToArray() : null;
             }
+            var from = (int) Math.Max(0, into.Length - 6);
             into.Write(buffer, 0, n);
+            // The head has a name or an icon in it, read the way the lookup reads them (vCenter's title is only written by a script).
+            if (upTo && Find(into.GetBuffer(), from, (int) into.Length, "</head") is var end and >= 0
+                && System.Text.Encoding.UTF8.GetString(into.GetBuffer(), 0, end) is var head && (Named(head) is not null || IconLinkTag.IsMatch(head)))
+            {
+                return into.GetBuffer().AsSpan(0, end).ToArray();
+            }
         }
         return into.ToArray();
+    }
+
+    /// <summary>Where some ASCII text starts in bytes from..to, any case; -1 when it isn't there.</summary>
+    private static int Find(byte[] b, int from, int to, string text)
+    {
+        for (var i = from; i <= to - text.Length; i++)
+        {
+            var k = 0;
+            while (k < text.Length && (b[i + k] | 0x20) == (text[k] | 0x20))
+            {
+                k++;
+            }
+            if (k == text.Length)
+            {
+                return i;
+            }
+        }
+        return -1;
     }
 
     /// <summary>A page's HTML, where it ended up, and whether the site was happy to give it. One that only sends the browser on (ESXi's front page, to /ui) is followed, twice at most.</summary>
@@ -975,7 +1005,8 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
     }
 
     /// <summary>
-    /// The site's best icon as a data: URL: apple-touch-icon, else the biggest icon it lists, else /favicon.ico and the other
+    /// The site's best icon as a data: URL: the icon its page lists for the browser tab (an SVG, else the biggest), else its
+    /// phone home-screen icon, else /favicon.ico and the other
     /// usual places; six tries at most. With only, just the picture at page.
     /// </summary>
     private static async Task<(string? Icon, string? From)> Icon(HttpClient http, string html, Uri page, CancellationToken stop, bool only = false)
@@ -983,7 +1014,7 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
         List<string> listed = only ? [page.ToString()] : [.. Regex.Matches(html, @"<link\b[^>]*>", RegexOptions.IgnoreCase).Select(m => m.Value)
             .Select(tag => (Rel: Attr(tag, "rel")?.ToLowerInvariant() ?? "", Href: Attr(tag, "href"), Sizes: Attr(tag, "sizes"), Type: Attr(tag, "type")))
             .Where(l => l.Href is { Length: > 0 } && (l.Rel.Split(' ').Contains("icon") || l.Rel.Contains("apple-touch-icon")))
-            .OrderByDescending(l => l.Rel.Contains("apple-touch-icon"))
+            .OrderByDescending(l => l.Rel.Split(' ').Contains("icon")) // what the browser tab shows; a phone's home-screen icon is often another design (Plex's is white on black)
             .ThenByDescending(l => l.Type == "image/svg+xml" || (l.Href ?? "").EndsWith(".svg", StringComparison.OrdinalIgnoreCase))
             .ThenByDescending(l => int.TryParse(l.Sizes?.Split('x')[0], out var s) ? s : 0)
             .Select(l => l.Href!),

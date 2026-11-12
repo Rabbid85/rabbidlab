@@ -2,6 +2,15 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.50 (2026-11-11)
+
+- A link takes the icon its page shows in the browser tab, and only falls back to the phone home-screen icon when there is none. Plex shows its orange icon again, not the white one on black.
+- Refresh icons only reads links with no icon or no description. A link with no IP line is not read again for that (Netflix was read on every refresh).
+- Reading a site stops at the end of its head once that has its name or icon, so a big page such as Yahoo Finance is read 80 KB in, not 512 KB.
+- Scatter keeps its arrangement when the banner changes size: the squares stretch with it rather than shuffling.
+- Add a link: the find icon button can always be clicked. With no address yet it asks for one.
+- Password managers no longer offer themselves on the Address box of a link.
+
 ## 1.1.49 (2026-11-11)
 
 - Rabbid Lab only recognises a product from the text of a page on your own network. Internet sites such as Hulu, Disney+ and Diffchecker were called a UniFi network console because their pages say unified; Refresh puts their own description back.
