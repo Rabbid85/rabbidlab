@@ -37,6 +37,31 @@ public sealed class SensorsTests : IDisposable
     private static JsonElement Named(JsonElement view, string name) => view.GetProperty("sensors").EnumerateArray().First(s => s.GetProperty("name").GetString() == name);
 
     [Fact]
+    public async Task A_server_card_lists_the_watched_parts_its_last_check_found_and_drops_them_when_it_stops_answering()
+    {
+        var admin = await app.SignedIn();
+        var typed = new { name = "iDRAC read-only", username = "monitor", password = "hunter2" };
+        (await admin.PostAsJsonAsync("/api/sensors", new { kind = "hw", target = "192.168.2.12", name = "idrac-esxi02", newLogin = typed, watch = new[] { "power", "fans" } })).EnsureSuccessStatusCode();
+        var sensors = app.Services.GetRequiredService<Sensors>();
+        var target = sensors.All().Single().Target;
+        app.Probe.Finds[target] = new Probe(true, 900, "Power supplies: 1 of 2 OK", Warn: true, Parts:
+            [new("power", "Power supplies", "1 of 2 OK · PSU 2 Critical", "warn"), new("fans", "Fans", "6 of 6 OK", "ok"), new("temps", "Temperature", "Inlet 22 °C", "ok")]);
+
+        app.Clock.Advance(TimeSpan.FromMinutes(1));
+        await sensors.Tick(CancellationToken.None);
+        var found = Named(await Json(await admin.GetAsync("/api/sensors")), "idrac-esxi02");
+        app.Probe.Finds[target] = new Probe(false, Note: "No reply");
+        app.Clock.Advance(TimeSpan.FromMinutes(5));
+        await sensors.Tick(CancellationToken.None);
+        admin = await app.SignedIn();
+        var lost = Named(await Json(await admin.GetAsync("/api/sensors")), "idrac-esxi02");
+
+        Assert.Equal(["power", "fans"], found.GetProperty("parts").EnumerateArray().Select(p => p.GetProperty("key").GetString()));
+        Assert.Equal("warn", found.GetProperty("parts")[0].GetProperty("state").GetString());
+        Assert.Equal(JsonValueKind.Null, lost.GetProperty("parts").ValueKind);
+    }
+
+    [Fact]
     public async Task A_web_page_can_need_a_good_status_or_text_and_a_name_an_address()
     {
         using var site = new LinksTests.TinySite(new() { ["/"] = ("text/html", "<h1>Welcome to the NAS</h1>"u8.ToArray()) });

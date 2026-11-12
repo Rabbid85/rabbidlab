@@ -178,6 +178,9 @@ public sealed class SensorState
     public int? Ms { get; set; }
     public string? Note { get; set; }
 
+    /// <summary>For hw, nas, vmware and snmp: the watched parts as the last answer found them, for the cards.</summary>
+    public List<ProbePart>? Parts { get; set; }
+
     /// <summary>When the last email about it being down went out.</summary>
     public DateTime? Alerted { get; set; }
 
@@ -667,6 +670,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
         since = st.Since,
         ms = st.Ms,
         note = st.Note,
+        parts = st.Parts,
         @checked = st.Checked,
         recent = st.Recent.Select(x => x.Ms).ToList(),
         up7 = Uptime(st, 168),
@@ -1571,6 +1575,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
                 st.Status = result.Warn ? "warn" : "up";
                 st.Ms = result.Ms;
                 st.Note = result.Note;
+                st.Parts = result.Parts?.Where(p => s.Watch is null || s.Watch.Contains(p.Key)).ToList() is { Count: > 0 } parts ? parts : null;
                 st.Fails = 0;
                 st.FailedAt = null;
                 if (before == "down")
@@ -1596,6 +1601,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
                 st.FailedAt ??= now;
                 st.Ms = null;
                 st.Note = result.Note ?? "No reply";
+                st.Parts = null;
                 // One lost reply isn't an outage unless the sensor says so, or the next check is an hour away.
                 if (st.Status != "down" && st.Fails >= (s.DownAfter ?? (s.Every >= 3600 ? 1 : 2)))
                 {

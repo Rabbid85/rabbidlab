@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.85 (2026-11-12)
+
+- Sensor cards have a new look, like the alert banners: the icon of the link a sensor watches (or one for its kind) with a badge for how it is, a tag when it is down, warning, paused or new, one line, and its last hour under that.
+- Server, storage, vCenter and UPS sensors show their parts on the card: power supplies, fans, temperature, disks, pools, free space, battery. Certificates and drives show a bar of what is left.
+- The banner squares and the table use the same icons instead of letters.
+
 ## 1.1.84 (2026-11-12)
 
 - Alerts have a new look in Discord, Slack, Teams and ntfy: a banner for the state (down, back up, warning, test, several down), a bold title and one line, then short sections with an emoji heading and bullets.

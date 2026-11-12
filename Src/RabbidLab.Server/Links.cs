@@ -29,10 +29,10 @@ public sealed class Link
     public DateTime Added { get; set; }
     public string? AddedBy { get; set; }
 
-    /// <summary>A link to a Developer tools test address: up or down, played rather than checked, and gone at Expires.</summary>
     /// <summary>The sensor watching it, by id: its dot comes from that sensor, which alerts when it's down.</summary>
     public string? Sensor { get; set; }
 
+    /// <summary>A link to a Developer tools test address: up or down, played rather than checked, and gone at Expires.</summary>
     public string? Test { get; set; }
     public DateTime? Expires { get; set; }
 }

@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.85', [
+    'Sensor cards have a new look, like the alert banners: the icon of the link a sensor watches (or one for its kind) with a badge for how it is, a tag when it is down, warning, paused or new, one line, and its last hour under that.',
+    'Server, storage, vCenter and UPS sensors show their parts on the card: power supplies, fans, temperature, disks, pools, free space, battery. Certificates and drives show a bar of what is left.',
+    'The banner squares and the table use the same icons instead of letters.']],
   ['1.1.84', [
     'Alerts have a new look in Discord, Slack, Teams and ntfy: a banner for the state (down, back up, warning, test, several down), a bold title and one line, then short sections with an emoji heading and bullets.',
     'In Discord the times show in your own time zone. If Discord refuses the new layout, the same alert goes as an embed.']],

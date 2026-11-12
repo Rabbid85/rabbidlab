@@ -7,6 +7,11 @@
   const COLOURS = ['#FF8A3D', '#F2BE6B', '#B07CE8', '#6FA8FF', '#3CC7C7', '#F06BB4', '#7C83FF']; // a group's colour; green and red are left to up and down
   const KIND = { ping: 'Ping', port: 'Port', web: 'Web page', dns: 'DNS lookup', cert: 'Certificate', hw: 'Server hardware', nas: 'Storage', vmware: 'VMware', snmp: 'SNMP', svc: 'Windows service', disk: 'Disk space' };
   const WORD = { up: 'Up', down: 'Down', warn: 'Warning', paused: 'Paused', new: 'Checking', wait: 'Waiting' };
+  // A sensor's icon when it doesn't watch a link with one, and the badge on its corner for how it is.
+  const GLYPH = { ping: 'activity', port: 'plug', web: 'globe', dns: 'search', cert: 'lock', hw: 'server', nas: 'disk', vmware: 'monitor', snmp: 'org', svc: 'gear', disk: 'disk' };
+  const BADGE = { up: 'check', warn: 'alert', down: 'x', paused: 'pause', wait: 'clock', new: 'clock' };
+  const TAG = { warn: 'Warning', down: 'Down', paused: 'Paused', wait: 'Waiting', new: 'New' };
+  const TIMED = ['ping', 'port', 'web', 'dns']; // kinds whose reply time is worth a line
   const DOWN = ' down'; // the filter's choice of everything that's down: no group's name starts with a space
   const NO_GROUP = ' none'; // and its choice of sensors with no group
   const NEW_GROUP = ' new';
@@ -55,15 +60,30 @@
     : s.kind === 'cert' ? days(s.note) : s.status === 'warn' ? s.note || 'Warning' : ['hw', 'nas', 'vmware', 'snmp', 'svc', 'disk'].includes(s.kind) ? s.note || 'All OK' : s.ms == null ? 'Up' : ms(s.ms));
   const notAnswering = (s) => s.status === 'down' || s.status === 'wait';
   const percent = (p) => (p == null ? '' : `${p === 100 ? 100 : p.toFixed(p > 99.9 ? 2 : 1)}%`);
-  const letters = (name) => {
-    const words = String(name).split(/[\s._-]+/).filter(Boolean);
-    const digit = /(\d)\s*$/.exec(name);
-    return ((words[0] || '?')[0] + (digit ? digit[1] : (words[1] || '')[0] || '')).toUpperCase();
-  };
   const paint = (root) => {
     R.paint(root);
     root.querySelectorAll('[data-top]').forEach((el) => { el.style.top = `${el.dataset.top}%`; });
+    root.querySelectorAll('[data-pct]').forEach((el) => { el.style.width = `${el.dataset.pct}%`; });
   };
+
+  // The icon of the link a sensor watches, by sensor id, read from Links when the sensors change and every few minutes.
+  let faces = {};
+  let facesFor = '';
+  let facesAt = 0;
+  const loadFaces = async () => {
+    const ids = sensors.map((s) => s.id).sort().join();
+    if (!can('links.view') || (ids === facesFor && Date.now() - facesAt < 300000)) return;
+    facesFor = ids;
+    facesAt = Date.now();
+    try {
+      const got = await R.get('/api/links');
+      faces = Object.fromEntries((got.links || []).filter((l) => l.sensor && /^data:image\//.test(l.icon || '')).map((l) => [l.sensor, l.icon]));
+      if (!tools.busy() && !sizing && !moving) draw();
+    } catch {
+      // The cards keep their kind's icon.
+    }
+  };
+  const glyph = (s) => (s.kind === 'snmp' && (s.parts || []).some((p) => p.key === 'battery') ? 'power' : GLYPH[s.kind] || 'activity');
 
   // The last hour of reply times as a line. Checks with no reply are a red dashed stretch along the bottom.
   const line = (recent, status) => {
@@ -109,8 +129,12 @@
       const side = Math.round(down ? size * 1.4 : size * (0.85 + r * 0.35));
       el.className = `tile sen s-${s.status}${side < 20 ? ' tiny' : ''}`;
       el.title = `${s.name} · ${now(s)}`;
-      el.textContent = letters(s.name);
-      el.style.setProperty('--g', colour(s));
+      const face = faces[s.id] || glyph(s);
+      if (el.dataset.face !== face) {
+        el.dataset.face = face;
+        el.innerHTML = faces[s.id] ? `<img src="${esc(face)}" alt="">` : svg(face);
+      }
+      el.style.setProperty('--g', '#1E2132');
       el.style.setProperty('--ring', colour(s));
       R.ping(el, s.checked);
       Object.assign(el.style, { width: `${side}px`, height: `${side}px`, rotate: `${down ? 8 : Math.round(hash(`${s.id}r`) * 50 - 25)}deg` });
@@ -188,7 +212,7 @@
   };
   const CELL = {
     state: (s) => `<span class="state ${s.status}">${s.status === 'down' && s.since ? `Down ${short(s.since)}` : s.status === 'paused' && s.pausedUntil ? `Until ${clock(s.pausedUntil)}` : WORD[s.status] || s.status}</span>`,
-    name: (s) => `<div class="nm"><span class="lic letter" data-color="${colour(s)}"><b>${esc(letters(s.name)[0])}</b></span><b>${esc(s.name)}</b></div>`,
+    name: (s) => `<div class="nm"><span class="lic">${faces[s.id] ? `<img src="${esc(faces[s.id])}" alt="">` : svg(glyph(s))}</span><b>${esc(s.name)}</b></div>`,
     check: (s) => `<span>${esc(check(s))}${s.waits ? ` · waits on ${esc(s.waits)}` : ''}</span>`,
     where: (s) => `<span class="dim" title="${esc(where(s))}">${esc(where(s))}</span>`,
     reply: (s) => `<span class="num">${esc(s.status === 'up' || s.status === 'warn' ? (s.kind === 'cert' ? days(s.note) : ['hw', 'nas', 'vmware', 'snmp', 'svc', 'disk'].includes(s.kind) ? s.note || 'All OK' : s.ms == null ? '' : ms(s.ms)) : '')}</span>`,
@@ -201,10 +225,75 @@
 
   // --- The sensors, in their groups ----------------------------------------------------------------------------------------
 
-  const card = (s) => `<div class="ltile sn-tile s-${s.status}" data-open="${esc(s.id)}"${can('sensors.edit') ? ` draggable="true" data-drag="${esc(s.id)}"` : ''}><button type="button" class="lgo" aria-label="${esc(s.name)}">`
-    + `<span class="lic letter" data-color="${colour(s)}"><b>${esc(letters(s.name)[0])}</b></span>`
-    + `<span class="lt"><b>${esc(s.name)}</b><span>${s.waits ? `Waits on ${esc(s.waits)}` : esc(check(s))}</span><code>${esc(where(s))}</code></span></button>`
-    + `<i class="lstate ${s.status === 'paused' || s.status === 'new' ? '' : s.status}"></i><span class="sn-now">${esc(now(s))}</span>${line(s.recent, s.status)}</div>`;
+  // The card's one line: reply time and the week for a timed check that's up, else what the last check said.
+  const said = (s) => (s.status === 'down' ? `${s.note || 'No reply'}${s.since ? ` for ${long(s.since)}` : ''}`
+    : s.status === 'wait' ? `Waits on ${s.waits}`
+    : s.status === 'paused' ? (s.pausedUntil ? `Paused until ${clock(s.pausedUntil)}` : 'Paused until you resume it')
+    : s.status === 'new' ? 'Not checked yet'
+    : TIMED.includes(s.kind) && s.status === 'up' && !s.invert ? [s.ms == null ? '' : ms(s.ms), s.up7 == null ? '' : `${percent(s.up7)} this week`].filter(Boolean).join(' · ') || 'Up'
+    : s.note || WORD[s.status]);
+  const quiet = (text) => `<span class="sn-quiet">${esc(text)}</span>`;
+  // The last hour of replies, smoothed. Checks with no reply are a red dash along the bottom.
+  const smooth = (p) => p.map((q, i) => {
+    if (!i) return `M${q[0].toFixed(1)} ${q[1].toFixed(1)}`;
+    const a = p[i - 2] || p[i - 1];
+    const b = p[i - 1];
+    const d = p[i + 1] || q;
+    return `C${(b[0] + (q[0] - a[0]) / 6).toFixed(1)} ${(b[1] + (q[1] - a[1]) / 6).toFixed(1)} ${(q[0] - (d[0] - b[0]) / 6).toFixed(1)} ${(q[1] - (d[1] - b[1]) / 6).toFixed(1)} ${q[0].toFixed(1)} ${q[1].toFixed(1)}`;
+  }).join('');
+  const trace = (recent) => {
+    if (recent.length < 2) return quiet('First checks under way');
+    const [w, h] = [300, 34];
+    const got = recent.filter((n) => n >= 0);
+    const top = Math.max(...got, 1) * 1.15;
+    const bottom = got.length ? Math.min(...got) * 0.55 : 0;
+    const step = w / (recent.length - 1);
+    const at = recent.map((n, i) => [i * step, n < 0 ? null : h - 3 - ((n - bottom) / (top - bottom || 1)) * (h - 9)]);
+    const runs = [[]];
+    at.forEach((p) => (p[1] == null ? runs.push([]) : runs[runs.length - 1].push(p)));
+    const d = runs.filter((r) => r.length > 1).map(smooth).join('');
+    const gone = at.map((p) => (p[1] == null ? `M${Math.max(0, p[0] - step / 2).toFixed(1)} ${h - 1}H${Math.min(w, p[0] + step / 2).toFixed(1)}` : '')).join('');
+    return `<svg class="sn-trace" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true">${d ? `<path d="${d}"/>` : ''}${gone ? `<path class="gone" d="${gone}"/>` : ''}</svg>`;
+  };
+  // A server, pool, vCenter or UPS: up to four of its parts in a word or two, the full answer on hover.
+  const LABEL = { health: 'Health', power: 'PSU', fans: 'Fans', temps: 'Temp', disks: 'Disks', pools: 'Pool', space: 'Free', hosts: 'Hosts', alarms: 'Alarms', uptime: 'Up', battery: 'Battery', iface: 'Port' };
+  const POWER = { 'On line power': 'Line', 'On battery': 'Battery', 'On bypass': 'Bypass', 'No output': 'Off' };
+  const word = (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+  const brief = (s, p) => {
+    const t = p.now || '';
+    const of = /^(\d+) of (\d+)/.exec(t);
+    const free = [...t.matchAll(/(\d+) % free/g)].pop();
+    const pools = t.split(' · ');
+    return of ? `${of[1]}/${of[2]}`
+      : p.key === 'temps' ? (/\d+ °C/.exec(t) || [t])[0]
+      : p.key === 'space' && free ? `${free[1]}%`
+      : p.key === 'pools' ? (pools.length === 1 ? word(pools[0].split(' ').pop()) : `${pools.length} pools`)
+      : p.key === 'power' && s.kind === 'snmp' ? POWER[t] || t
+      : p.key === 'battery' ? t.replace(' %', '%')
+      : p.key === 'uptime' ? t.replace(/^Up /, '') : t;
+  };
+  const cells = (s) => {
+    const parts = s.parts.length > 1 ? s.parts.filter((p) => p.key !== 'health') : s.parts;
+    return `<span class="sn-cells">${parts.slice(0, 4).map((p) => `<span class="${esc(p.state)}" title="${esc(`${p.name}: ${p.now}`)}"><small>${esc(p.key === 'power' && s.kind === 'snmp' ? 'Power' : LABEL[p.key] || p.name)}</small><b>${esc(brief(s, p))}</b></span>`).join('')}</span>`;
+  };
+  // What's left, as a bar: days on a certificate (of 90) or free space on a drive.
+  const left = (s) => {
+    const days = /(\d+) day/.exec(s.note || '');
+    const free = /(\d+) % free/.exec(s.note || '');
+    const pct = s.kind === 'cert' ? (days ? Math.min(100, (days[1] / 90) * 100) : /today/.test(s.note || '') ? 0 : null) : free ? Number(free[1]) : null;
+    return pct == null ? null : `<span class="sn-meter"><i data-pct="${Math.max(2, Math.round(pct))}"></i></span>`;
+  };
+  const foot = (s) => (s.status === 'paused' ? quiet('No checks or alerts while paused')
+    : s.status === 'wait' ? quiet(`Checked again once ${s.waits} answers`)
+    : s.status === 'new' ? quiet('First check under way')
+    : TIMED.includes(s.kind) ? trace(s.recent)
+    : s.parts?.length ? cells(s)
+    : (s.status !== 'down' && left(s)) || quiet(s.kind === 'svc' || s.kind === 'disk' ? `Checked by the client on ${s.target}` : where(s)));
+  const card = (s) => `<div class="ltile sn-card s-${s.status}" data-open="${esc(s.id)}"${can('sensors.edit') ? ` draggable="true" data-drag="${esc(s.id)}"` : ''}>`
+    + `<button type="button" class="lgo" aria-label="${esc(s.name)}" title="${esc(`${s.name} · ${check(s)} · ${where(s)}`)}">`
+    + `<span class="sn-face${faces[s.id] ? '' : ' glyph'}">${faces[s.id] ? `<img src="${esc(faces[s.id])}" alt="">` : svg(glyph(s))}<i class="sn-badge">${svg(BADGE[s.status] || 'check')}</i></span>`
+    + `<span class="sn-main"><span class="sn-title"><b>${esc(s.name)}</b>${TAG[s.status] ? `<em>${TAG[s.status]}</em>` : ''}</span>`
+    + `<small>${esc(said(s))}</small><span class="sn-foot">${foot(s)}</span></span></button></div>`;
 
   const draw = () => {
     const find = $('sn-find').value.trim().toLowerCase();
@@ -247,6 +336,7 @@
     start = answer.start || start;
     gather = answer.gather || gather;
     lastCheck = answer.last;
+    loadFaces();
   };
   const refresh = async () => {
     try {
