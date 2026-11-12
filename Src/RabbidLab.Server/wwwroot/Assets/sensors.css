@@ -214,9 +214,7 @@
 .nt-chs .ds-row { gap: 14px; }
 .nt-new { color: var(--muted); font-size: 12.5px; }
 .ch-kinds { grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 6px 0 16px; }
-.ch-sw { display: flex; align-items: center; gap: 12px; padding-top: 22px; }
-.ch-sw label { margin: 0; }
-.form .ch-sw input.switch { width: 40px; height: 22px; padding: 0; border: 0; border-radius: 22px; } /* the form sizes every input; a switch keeps its own */
+.ch-sw .ds-row { min-height: 0; padding: 4px 0 0; border-bottom: 0; } /* On for new sensors, as a settings row */
 #channel-dialog { width: min(720px, calc(100vw - 32px)); }
 
 /* Send to ends with one line to add a channel, with the kinds not set up yet as small marks. */

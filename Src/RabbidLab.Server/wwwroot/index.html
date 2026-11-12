@@ -1136,8 +1136,9 @@
   <div class="chans ch-kinds" id="ch-kinds"></div>
   <div class="form two" id="ch-form">
     <div class="wide"><label for="ch-url" id="ch-url-label">Webhook address</label><input id="ch-url" maxlength="500" autocomplete="off" spellcheck="false"><small class="hint" id="ch-help"></small></div>
-    <div><label for="ch-name">Name</label><input id="ch-name" maxlength="40" autocomplete="off" spellcheck="false"></div>
-    <div class="ch-sw"><label for="ch-new">On for new sensors</label><input type="checkbox" class="switch" id="ch-new" role="switch" checked></div>
+    <div class="wide"><label for="ch-name">Name</label><input id="ch-name" maxlength="40" autocomplete="off" spellcheck="false"></div>
+    <div class="wide al-rows ch-sw"><div class="ds-row"><div class="ds-l"><b>On for new sensors</b><span>New sensors start with it ticked under Send to.</span></div>
+      <div class="ds-r"><input type="checkbox" class="switch" id="ch-new" role="switch" aria-label="On for new sensors" checked></div></div></div>
   </div>
   <div class="ch-mail" id="ch-mail" hidden></div>
   <p class="hint note" id="ch-done" hidden></p>

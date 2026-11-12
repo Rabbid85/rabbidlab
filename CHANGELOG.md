@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.82 (2026-11-12)
+
+- On for new sensors in Add a channel is a settings row with the switch on the right.
+
 ## 1.1.81 (2026-11-12)
 
 - Settings, Console address has Add an address: a name of your own, such as lab. With a domain controller it adds the alias in DNS too, with an account you type once and is not saved. Not in a domain, it shows the record to add on your router or Pi-hole.
