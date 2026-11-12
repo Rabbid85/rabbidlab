@@ -103,6 +103,15 @@
   const squares = new Map(); // a link's square, kept between draws so its picture isn't loaded again
   const drawSquares = () => {
     const size = R.squareSize(links.length);
+    // Where each sits on the page, for the layouts that go by group: its group's place, and its place in the group.
+    const order = [...groups, ''];
+    const inGroup = new Map();
+    const placed = new Map(links.map((l) => {
+      const g = order.indexOf(l.group || '');
+      const k = inGroup.get(g) || 0;
+      inGroup.set(g, k + 1);
+      return [l.id, { g: g < 0 ? order.length : g, k }];
+    }));
     const items = [...links].sort((a, b) => a.id.localeCompare(b.id)).map((l) => {
       let el = squares.get(l.id);
       if (!el) {
@@ -128,7 +137,7 @@
       el.style.setProperty('--ring', own(l) ? 'var(--accent-soft)' : colour(l.name));
       R.ping(el, states[l.id]?.at, hash(`${l.id}p`) * 0.6); // the checks all land together, so the pulses spread over a moment
       Object.assign(el.style, { width: `${side}px`, height: `${side}px`, rotate: `${state === 'down' ? 8 : Math.round(hash(`${l.id}r`) * 24 - 12)}deg` });
-      return { el, id: l.id };
+      return { el, id: l.id, group: l.group || '', ...placed.get(l.id) };
     });
     const seen = new Set(items.map((x) => x.id));
     squares.forEach((el, id) => {

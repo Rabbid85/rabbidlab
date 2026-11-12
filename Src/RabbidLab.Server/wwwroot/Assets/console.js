@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.59', [
+    'Icon layout in Settings, Links has a new set of layouts for the banner squares, and the old ones are gone: Full rows (the default), Depth, Groups, Mosaic, Network, Floor, Rain and Tilt.',
+    'Full rows lines the icons up in tidy columns against the right edge of the banner, in the order Links shows them. Groups puts a row for each group with its name, and Network gathers each group around a hub.']],
   ['1.1.58', [
     'TrueNAS gets its white logo on Links: its page only lists a black one, which could hardly be seen on a dark tile, and sets the white one by script for dark browsers. Press Refresh icons to bring the tile up to date.']],
   ['1.1.57', [
@@ -1147,14 +1150,13 @@ const RELEASE_NOTES = [
 
   // --- Banner squares: a square for each link and each sensor, over the right of the hero on Links and Sensors -------------------
   // On Links they sit as each person picks (Settings, Links, Icon layout, kept in this browser); on Sensors, evenly. Over 40, a grid.
-  const SQUARES = { scatter: 'Scatter', even: 'Even spread', cluster: 'Cluster', rows: 'Tidy rows', sweep: 'Sweep', wave: 'Wave', ring: 'Ring',
-    arc: 'Arc', steps: 'Steps', stack: 'Stack', spiral: 'Spiral' };
+  const SQUARES = { full: 'Full rows', depth: 'Depth', groups: 'Groups', mosaic: 'Mosaic', network: 'Network', floor: 'Floor', rain: 'Rain', tilt: 'Tilt' };
   const squaresPicked = () => {
     try {
       const s = localStorage.getItem('rabbidlab.squares');
-      return s in SQUARES ? s : 'even';
+      return s in SQUARES ? s : 'full';
     } catch {
-      return 'even';
+      return 'full';
     }
   };
   // A number from 0 to 1 for some text, the same every time.
@@ -1164,112 +1166,163 @@ const RELEASE_NOTES = [
     h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
     return ((h ^ (h >>> 16)) >>> 0) / 4294967295;
   };
-  // Where n squares about size px wide go in a box w by h: the middle of each, in px from the box's top left.
-  const arrange = (style, n, w, h, size) => {
+  // Sensors: n squares spread evenly over a box w by h, the middle of each in px from the box's top left.
+  const evenly = (n, w, h) => {
     const at = [];
-    const pad = size * 0.6;
-    const jig = (i, k) => mix(`${style}${i}${k}`) - 0.5;
-    if (style === 'scatter') {
-      // Spare spots in loose rows, mixed the same way every time, so nothing lands on top of anything else.
-      const cols = Math.max(1, Math.ceil(Math.sqrt((n * 1.7 * w) / h)));
-      const rows = Math.max(1, Math.ceil((n * 1.7) / cols));
-      // Mixed by each spot's place in the rows, not where it lands, so the banner changing size moves them rather than reshuffling them.
+    const rows = Math.max(1, Math.round(Math.sqrt(n / (w / h))));
+    const cell = w / Math.ceil(n / rows);
+    let i = 0;
+    for (let r = 0; r < rows; r++) {
+      const count = Math.round((n - i) / (rows - r));
+      const start = (w - count * cell) / 2 + (r % 2 ? cell : -cell) * 0.25;
+      for (let c = 0; c < count; c++, i++) at.push([start + (c + 0.5 + (mix(`even${i}x`) - 0.5) * 0.3) * cell, ((r + 0.5 + (mix(`even${i}y`) - 0.5) * 0.3) / rows) * h]);
+    }
+    return at;
+  };
+  // Links, as picked in Icon layout. items: { key, g (the group's place), k (its place in the group), group (the name) }. Each gets the
+  // middle of its square in a w by h box, how big (s, times size), how clear (o) and how turned (r); Network adds lines, Groups names.
+  const layoutOf = (style, items, w, h, size) => {
+    const n = items.length;
+    // In the order Links shows them: by group, then within it.
+    const ord = items.map((_, i) => i).sort((a, b) => items[a].g - items[b].g || items[a].k - items[b].k);
+    const out = new Array(n);
+    const set = (i, p) => { out[ord[i]] = { s: 1, o: 1, r: 0, ...p }; };
+    const gs = [...new Set(ord.map((i) => items[i].g))];
+    const inGroup = (g) => ord.filter((i) => items[i].g === g).length;
+    if (style === 'depth') {
+      // Loose spots, mixed the same way every time, on three layers: near ones big and bright, far ones small and faint.
+      const cols = Math.max(1, Math.ceil(Math.sqrt((n * 1.6 * w) / h)));
+      const rows = Math.max(1, Math.ceil((n * 1.6) / cols));
       const spots = [];
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
           const k = r * cols + c;
-          spots.push({ key: mix(`${style}${k}k`), at: [((c + 0.5 + jig(k, 'x') * 0.5) / cols) * w, ((r + 0.5 + jig(k, 'y') * 0.5) / rows) * h] });
+          spots.push({ key: mix(`d${k}`), x: ((c + 0.5 + (mix(`dx${k}`) - 0.5) * 0.6) / cols) * w, y: ((r + 0.5 + (mix(`dy${k}`) - 0.5) * 0.6) / rows) * h });
         }
       }
       spots.sort((a, b) => a.key - b.key);
-      at.push(...spots.slice(0, n).map((s) => s.at));
-    } else if (style === 'even') {
-      const rows = Math.max(1, Math.round(Math.sqrt(n / (w / h))));
-      const cell = w / Math.ceil(n / rows);
-      let i = 0;
-      for (let r = 0; r < rows; r++) {
-        const count = Math.round((n - i) / (rows - r));
-        const start = (w - count * cell) / 2 + (r % 2 ? cell : -cell) * 0.25;
-        for (let c = 0; c < count; c++, i++) at.push([start + (c + 0.5 + jig(i, 'x') * 0.3) * cell, ((r + 0.5 + jig(i, 'y') * 0.3) / rows) * h]);
-      }
-    } else if (style === 'cluster') {
-      const ry = h / 2 - pad;
-      for (let i = 0; i < n; i++) {
-        const r = Math.sqrt((i + 0.5) / n);
-        at.push([w / 2 + Math.cos(i * 2.39996) * r * Math.min(ry * 1.35, w / 2 - pad), h / 2 + Math.sin(i * 2.39996) * r * ry]);
-      }
-    } else if (style === 'rows') {
-      const cols = Math.max(1, Math.min(n, Math.floor(w / (size * 1.9))));
+      ord.forEach((it, i) => {
+        const d = mix(`${items[it].key}depth`);
+        const [s, o] = d < 0.3 ? [0.62, 0.42] : d < 0.72 ? [0.92, 0.8] : [1.28, 1];
+        set(i, { x: spots[i].x, y: spots[i].y, s, o, r: (mix(`${items[it].key}r`) - 0.5) * 18 });
+      });
+    } else if (style === 'groups') {
+      // A row for each group against the right edge, its name before it.
+      const most = Math.max(...gs.map(inGroup));
+      const pitch = Math.min(size * 1.45, (w * 0.82) / most);
+      const rowH = h / gs.length;
+      const s = Math.min(0.9, (rowH * 0.8) / size, (pitch * 0.85) / size);
+      out.labels = [];
+      ord.forEach((it, i) => {
+        const l = items[it];
+        const row = gs.indexOf(l.g);
+        const count = inGroup(l.g);
+        const at = ord.filter((x) => items[x].g === l.g).indexOf(it);
+        const x = w - size * 0.6 - (count - 1 - at) * pitch - (row % 2) * pitch * 0.5;
+        if (at === 0 && l.group && rowH >= 16) out.labels.push({ x: x - size * s * 0.5 - 12, y: (row + 0.5) * rowH, text: l.group });
+        set(i, { x, y: (row + 0.5) * rowH, s });
+      });
+    } else if (style === 'mosaic') {
+      // Packed against the right edge in cells; the first link of each group takes four.
+      const big = (i) => n > 6 && (i === 0 || items[ord[i]].g !== items[ord[i - 1]].g);
+      const bigs = ord.filter((_, i) => big(i)).length;
+      const gap = 6;
+      const cell = Math.max(14, Math.min(size * 1.2, Math.sqrt((w * h) / ((n + 3 * bigs) * 1.25))));
+      const cols = Math.max(2, Math.floor(w / cell));
+      const rows = Math.max(2, Math.floor(h / cell));
+      const used = new Set();
+      const free = (c, r, k) => {
+        for (let a = 0; a < k; a++) for (let b = 0; b < k; b++) if (c + a >= cols || r + b >= rows || used.has(`${c + a},${r + b}`)) return false;
+        return true;
+      };
+      let widest = 0;
+      const cells = ord.map((_, i) => {
+        const k = big(i) ? 2 : 1;
+        for (let c = 0; c < cols; c++) {
+          for (let r = 0; r < rows; r++) {
+            if (!free(c, r, k)) continue;
+            for (let a = 0; a < k; a++) for (let b = 0; b < k; b++) used.add(`${c + a},${r + b}`);
+            widest = Math.max(widest, c + k);
+            return { c, r, k };
+          }
+        }
+        return { c: 0, r: 0, k: 1 };
+      });
+      cells.forEach(({ c, r, k }, i) => set(i, { x: w - (widest - c - k / 2) * cell, y: (h - rows * cell) / 2 + (r + k / 2) * cell, s: (k * cell - gap) / size }));
+    } else if (style === 'network') {
+      // Each group around a hub of its own, the hubs in two rows and joined up.
+      const per = Math.ceil(gs.length / 2);
+      const hubs = gs.map((g, i) => {
+        const row = Math.floor(i / per);
+        const across = per === 1 ? 0.5 : (i % per) / (per - 1);
+        return { x: w * (0.14 + across * 0.72) + (mix(`hx${g}`) - 0.5) * w * 0.06, y: h * (gs.length > 3 ? (row ? 0.74 : 0.26) : 0.5) + (mix(`hy${g}`) - 0.5) * h * 0.1 };
+      });
+      out.lines = [];
+      ord.forEach((it, i) => {
+        const l = items[it];
+        const hub = hubs[gs.indexOf(l.g)];
+        const count = inGroup(l.g);
+        const at = ord.filter((x) => items[x].g === l.g).indexOf(it);
+        const radius = Math.min(size * (0.85 + count * 0.2), h * 0.22, w * 0.15);
+        const a = (at / count) * Math.PI * 2 + mix(`ha${l.g}`) * Math.PI;
+        const p = { x: hub.x + Math.cos(a) * radius, y: hub.y + Math.sin(a) * radius * 0.92 };
+        out.lines.push([hub, p, 0.22]);
+        set(i, { ...p, s: 0.82 });
+      });
+      hubs.slice(1).forEach((hub, i) => out.lines.push([hubs[i === per - 1 ? 0 : i], hub, 0.35]));
+      out.hubs = hubs;
+    } else if (style === 'floor') {
+      // On a floor seen at an angle: rows running back, the back ones smaller and fainter.
+      const cols = Math.ceil(Math.sqrt(n * 1.8));
       const rows = Math.ceil(n / cols);
-      const cell = (w - pad) / cols;
-      for (let i = 0; i < n; i++) {
-        const r = Math.floor(i / cols);
-        at.push([w - pad / 2 - (cols - (i % cols) - 0.5 - (r % 2) * 0.5) * cell, ((r + 0.5) / Math.max(rows, 3)) * h]);
-      }
-    } else if (style === 'sweep') {
-      for (let i = 0; i < n; i++) {
-        const t = n === 1 ? 0.5 : i / (n - 1);
-        const y = h - pad - t * (h - 2 * pad) - Math.sin(t * Math.PI) * h * 0.14 + (i % 2 ? 1 : -1) * h * 0.07;
-        at.push([pad + t * (w - 2 * pad), Math.min(h - pad, Math.max(pad, y))]);
-      }
-    } else if (style === 'wave') {
-      const rows = n > 20 ? 2 : 1;
-      let i = 0;
-      for (let r = 0; r < rows; r++) {
-        const count = Math.round((n - i) / (rows - r));
-        for (let c = 0; c < count; c++, i++) {
-          const t = count === 1 ? 0.5 : c / (count - 1);
-          at.push([pad + t * (w - 2 * pad), (h * (r + 0.5)) / rows + Math.sin(t * Math.PI * 2 + r * Math.PI) * h * (rows === 1 ? 0.28 : 0.14)]);
-        }
-      }
-    } else if (style === 'ring') {
-      const outer = n > 18 ? Math.ceil(n * 0.62) : n;
-      const ry = h / 2 - pad;
-      const rx = Math.min(w / 2 - pad, ry * 2.2);
-      [[outer, 1, 0], [n - outer, 0.55, 0.5]].forEach(([count, f, shift]) => {
-        for (let k = 0; k < count; k++) {
-          const a = -Math.PI / 2 + ((k + shift) / count) * Math.PI * 2;
-          at.push([w / 2 + Math.cos(a) * rx * f, h / 2 + Math.sin(a) * ry * f]);
-        }
+      const dx = Math.min(size * 1.4, w / (cols + rows));
+      const dy = dx * 0.55;
+      const span = cols + rows - 2;
+      const pts = ord.map((_, i) => {
+        const u = i % cols;
+        const v = Math.floor(i / cols);
+        const t = span ? (u + v) / span : 1;
+        return { x: (u - v) * dx, y: (u + v) * dy, s: 0.62 + t * 0.5, o: 0.4 + t * 0.6 };
       });
-    } else if (style === 'arc') {
-      const outer = n > 16 ? Math.ceil(n * 0.58) : n;
-      const ry = h - 2 * pad;
-      const rx = Math.min(w / 2 - pad, ry * 1.9);
-      [[outer, 1], [n - outer, 0.58]].forEach(([count, f]) => {
-        for (let k = 0; k < count; k++) {
-          const a = Math.PI - ((k + 0.5) / count) * Math.PI;
-          at.push([w / 2 + Math.cos(a) * rx * f, h - pad - Math.sin(a) * ry * f]);
-        }
+      const minX = Math.min(...pts.map((p) => p.x));
+      const maxX = Math.max(...pts.map((p) => p.x));
+      const maxY = Math.max(...pts.map((p) => p.y));
+      pts.forEach((p, i) => set(i, { ...p, x: p.x - minX + (w - (maxX - minX)) / 2, y: p.y + (h - maxY) / 2 }));
+    } else if (style === 'rain') {
+      // Columns of different lengths, brightest at the foot of each.
+      const cols = Math.max(1, Math.min(n, Math.floor(w / (size * 1.4))));
+      const colOf = (it) => Math.floor(mix(`${items[it].key}col`) * cols);
+      const counts = Array.from({ length: cols }, () => 0);
+      ord.forEach((it) => { counts[colOf(it)] += 1; });
+      const pitch = Math.min(size * 1.25, h / Math.max(...counts));
+      const seen = Array.from({ length: cols }, () => 0);
+      ord.forEach((it, i) => {
+        const c = colOf(it);
+        const k = seen[c]++;
+        const top = mix(`top${c}`) * Math.max(0, h - counts[c] * pitch);
+        const t = (k + 1) / counts[c];
+        set(i, { x: ((c + 0.5) / cols) * w, y: top + (k + 0.5) * pitch, s: 0.72 + t * 0.32, o: 0.3 + t * 0.7 });
       });
-    } else if (style === 'steps') {
-      // Columns rising from left to right, from the bottom up.
-      const most = Math.max(1, Math.floor(h / (size * 1.35)));
-      const tall = (c, cols) => 1 + Math.floor((c * most) / cols);
-      let cols = 1;
-      while (Array.from({ length: cols }, (_, c) => tall(c, cols)).reduce((a, b) => a + b, 0) < n) cols++;
-      for (let c = 0, i = 0; c < cols && i < n; c++) {
-        for (let k = 0; k < tall(c, cols) && i < n; k++, i++) at.push([((c + 0.5) * w) / cols, h - ((k + 0.5) * h) / most]);
-      }
-    } else if (style === 'stack') {
-      // A pyramid: rows one wider each, the bottom one short of any it doesn't need.
-      const rows = Math.max(1, Math.min(Math.floor(h / (size * 1.25)), Math.ceil(Math.sqrt(2 * n))));
-      const top = Math.max(1, Math.ceil((n - (rows * (rows - 1)) / 2) / rows));
-      const widths = Array.from({ length: rows }, (_, r) => top + r);
-      widths[rows - 1] -= widths.reduce((a, b) => a + b, 0) - n;
-      const cy = h / rows;
-      const cx = Math.min(w / Math.max(...widths), cy * 1.2);
-      widths.forEach((count, r) => { for (let k = 0; k < count; k++) at.push([w / 2 + (k - (count - 1) / 2) * cx, (r + 0.5) * cy]); });
-    } else if (style === 'spiral') {
-      const ry = h / 2 - pad;
-      const rx = Math.min(w / 2 - pad, ry * 1.7);
-      const most = 2.2 * Math.PI * 2;
-      for (let i = 0; i < n; i++) {
-        const t = most * Math.sqrt((i + 0.6) / n);
-        at.push([w / 2 + Math.cos(t) * (t / most) * rx, h / 2 + Math.sin(t) * (t / most) * ry]);
-      }
+    } else if (style === 'tilt') {
+      // A neat grid, turned a little.
+      const cols = Math.max(1, Math.ceil(Math.sqrt((n * w) / h) * 0.9));
+      const rows = Math.ceil(n / cols);
+      const pitch = Math.min(size * 1.42, (w * 0.86) / cols, (h * 1.05) / rows);
+      const a = (-13 * Math.PI) / 180;
+      ord.forEach((_, i) => {
+        const gx = ((i % cols) - (cols - 1) / 2) * pitch;
+        const gy = (Math.floor(i / cols) - (rows - 1) / 2) * pitch;
+        set(i, { x: w / 2 + gx * Math.cos(a) - gy * Math.sin(a), y: h / 2 + gx * Math.sin(a) + gy * Math.cos(a), s: 0.95, r: -13 });
+      });
+    } else {
+      // Full rows: tidy columns from the right edge, top to bottom, every square full size.
+      const rows = Math.max(1, Math.min(4, Math.round(Math.sqrt((n * h) / w) * 1.2)));
+      const cols = Math.ceil(n / rows);
+      const pitch = Math.min(size * 1.4, w / cols, h / rows);
+      const s = Math.min(1.05, (pitch * 0.8) / size);
+      ord.forEach((_, i) => set(i, { x: w - (Math.floor(i / rows) + 0.5) * pitch, y: (h - rows * pitch) / 2 + ((i % rows) + 0.5) * pitch, s }));
     }
-    return at;
+    return out;
   };
   // How big a square is for this many on a page; over 40 the grid sizes its own.
   const squareSize = (n) => (n <= 20 ? 34 : n <= 30 ? 30 : 26);
@@ -1282,6 +1335,8 @@ const RELEASE_NOTES = [
     const H = hero.clientHeight;
     if (!now || !now.items.length || !W || !H) return;
     const { items, card, picked } = now;
+    (now.extras || []).forEach((x) => x.remove()); // Network's lines and Groups' names, drawn again below
+    now.extras = [];
     const n = items.length;
     const left = W * 0.56;
     const top = H * 0.12;
@@ -1320,14 +1375,59 @@ const RELEASE_NOTES = [
       const y0 = top + (ah - rows * cell) / 2 + (cell - side) / 2;
       items.forEach(({ el }, i) => {
         el.classList.toggle('tiny', side < 20);
-        Object.assign(el.style, { width: `${side}px`, height: `${side}px`, rotate: '0deg' });
+        Object.assign(el.style, { width: `${side}px`, height: `${side}px`, rotate: '0deg', opacity: '' });
         put(el, x0 + (i % cols) * cell, y0 + Math.floor(i / cols) * cell);
       });
       return;
     }
-    const spots = arrange(picked ? squaresPicked() : 'even', n, aw, ah, Math.max(...sides));
+    if (!picked) {
+      const spots = evenly(n, aw, ah);
+      items.forEach(({ el }, i) => put(el, left + spots[i][0] - sides[i] / 2, top + spots[i][1] - sides[i] / 2));
+      return;
+    }
+    // As picked: each square sized, faded and turned by the layout; a down one stays big, bright and tipped so it's seen.
+    const base = squareSize(n);
+    const at = layoutOf(squaresPicked(), items.map((it, i) => ({ key: it.id ?? String(i), g: it.g ?? 0, k: it.k ?? i, group: it.group ?? '' })), aw, ah, base);
     items.forEach(({ el }, i) => {
-      put(el, left + spots[i][0] - sides[i] / 2, top + spots[i][1] - sides[i] / 2);
+      const p = at[i];
+      const down = el.classList.contains('s-down');
+      const side = Math.max(8, Math.round(down ? base * 1.4 : base * p.s));
+      const o = down || p.o >= 1 ? '' : String(el.classList.contains('s-new') ? p.o * 0.55 : p.o);
+      el.classList.toggle('tiny', side < 20);
+      Object.assign(el.style, { width: `${side}px`, height: `${side}px`, rotate: `${down ? 8 : Math.round(p.r)}deg`, opacity: o });
+      put(el, left + p.x - side / 2, top + p.y - side / 2);
+    });
+    const px = (x, y) => [`${(((left + x) / W) * 100).toFixed(2)}%`, `${(((top + y) / H) * 100).toFixed(2)}%`];
+    if (at.lines) {
+      const lines = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      lines.setAttribute('class', 'sq-lines');
+      lines.setAttribute('viewBox', `0 0 ${aw} ${ah}`);
+      lines.setAttribute('aria-hidden', 'true');
+      [lines.style.left, lines.style.top] = px(0, 0);
+      Object.assign(lines.style, { width: `${((aw / W) * 100).toFixed(2)}%`, height: `${((ah / H) * 100).toFixed(2)}%` });
+      at.lines.forEach(([a, b, o]) => {
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        [['x1', a.x], ['y1', a.y], ['x2', b.x], ['y2', b.y], ['stroke-opacity', o]].forEach(([k, v]) => line.setAttribute(k, String(v)));
+        if (o > 0.3) line.setAttribute('class', 'hub-line');
+        lines.append(line);
+      });
+      at.hubs.forEach((hb) => {
+        [[9, 'hub-glow'], [4.5, 'hub']].forEach(([r, cls]) => {
+          const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          [['cx', hb.x], ['cy', hb.y], ['r', r], ['class', cls]].forEach(([k, v]) => dot.setAttribute(k, String(v)));
+          lines.append(dot);
+        });
+      });
+      hero.prepend(lines);
+      now.extras.push(lines);
+    }
+    (at.labels || []).forEach((lb) => {
+      const name = document.createElement('span');
+      name.className = 'sq-label';
+      name.textContent = lb.text;
+      [name.style.left, name.style.top] = px(lb.x, lb.y);
+      hero.append(name);
+      now.extras.push(name);
     });
   };
   // A square pulses when what it stands for is checked: its check time moving on, never the first time it's seen.
@@ -1343,7 +1443,7 @@ const RELEASE_NOTES = [
   // picked: they sit as the person chose in Icon layout, rather than evenly.
   const squares = (hero, items, card = null, picked = false) => {
     if (!laid.has(hero)) resized.observe(hero);
-    laid.set(hero, { items, card, picked });
+    laid.set(hero, { items, card, picked, extras: laid.get(hero)?.extras || [] });
     layOut(hero);
   };
 
@@ -1367,7 +1467,8 @@ const RELEASE_NOTES = [
     }
   };
 
-  // Settings, Links, Icon layout: each choice drawn with 13 dots where it puts them.
+  // Settings, Links, Icon layout: each choice drawn with 13 dots in four groups where it puts them.
+  const MINI = [0, 0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3].map((g, i, all) => ({ key: `m${i}`, g, k: all.slice(0, i).filter((x) => x === g).length, group: `G${g}` }));
   const drawSquaresPicker = () => {
     const COLOURS = window.RabbidLabColours.tiles;
     const picked = squaresPicked();
@@ -1380,10 +1481,23 @@ const RELEASE_NOTES = [
       const pic = document.createElement('span');
       pic.className = 'sq-pic';
       const box = document.createElement('span');
-      arrange(key, 13, 200, 84, 14).forEach(([x, y], i) => {
+      const at = layoutOf(key, MINI, 184, 84, 13);
+      if (at.lines) {
+        const lines = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        lines.setAttribute('viewBox', '0 0 184 84');
+        lines.setAttribute('preserveAspectRatio', 'none');
+        at.lines.forEach(([a, c, o]) => {
+          const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+          [['x1', a.x], ['y1', a.y], ['x2', c.x], ['y2', c.y], ['stroke-opacity', o + 0.15]].forEach(([k, v]) => line.setAttribute(k, String(v)));
+          lines.append(line);
+        });
+        box.append(lines);
+      }
+      at.forEach((p, i) => {
         const dot = document.createElement('i');
         dot.dataset.color = COLOURS[i % COLOURS.length];
-        Object.assign(dot.style, { left: `${x / 2}%`, top: `${(y / 84) * 100}%`, rotate: `${Math.round(mix(`${key}${i}`) * 20 - 10)}deg` });
+        const side = `${(12 * p.s).toFixed(1)}px`;
+        Object.assign(dot.style, { left: `${((p.x / 184) * 100).toFixed(1)}%`, top: `${((p.y / 84) * 100).toFixed(1)}%`, width: side, height: side, rotate: `${Math.round(p.r)}deg`, opacity: String(p.o) });
         box.append(dot);
       });
       pic.append(box);
