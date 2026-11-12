@@ -857,6 +857,8 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
             // Any certificate does (homelab gear signs its own), so none is fetched or checked online while connecting: that can hang.
             SslOptions =
             {
+                // A full handshake every time: Netflix never answers a request on a resumed TLS session, so every second connection hung.
+                AllowTlsResume = false,
                 RemoteCertificateValidationCallback = (_, _, _, _) => true,
                 CertificateChainPolicy = new System.Security.Cryptography.X509Certificates.X509ChainPolicy
                 {

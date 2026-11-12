@@ -372,7 +372,8 @@ public sealed class NetworkProbe(TimeProvider clock, SensorLogins? logins = null
             AllowAutoRedirect = true,
             MaxAutomaticRedirections = 5,
             ConnectTimeout = TimeSpan.FromSeconds(4),
-            SslOptions = { RemoteCertificateValidationCallback = (_, _, _, _) => true },
+            // No resumed TLS sessions, as for links: Netflix never answers on one.
+            SslOptions = { RemoteCertificateValidationCallback = (_, _, _, _) => true, AllowTlsResume = false },
         };
         var http = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(9) };
         http.DefaultRequestHeaders.UserAgent.ParseAdd($"RabbidLab/{Product.Version}");
