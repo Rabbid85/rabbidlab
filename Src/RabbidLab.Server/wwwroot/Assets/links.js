@@ -103,6 +103,11 @@
     : view === 'icons' ? `<div class="lapps">${list.map(launch).join('')}</div>`
       : `<div class="ltiles${view === 'grid' ? ' lrows' : ''}">${list.map(tile).join('')}</div>`);
 
+  // The count and the down dot beside Links in the rail.
+  const rail = () => {
+    $('rail-links').textContent = links.length || '';
+    $('links-dot').hidden = !links.some((l) => states[l.id] && states[l.id].down);
+  };
   const draw = () => {
     const find = $('ln-find').value.trim().toLowerCase();
     // The group picked may be gone after a change: back to all of them.
@@ -134,8 +139,7 @@
       ? `Put the sites in your lab here: the router, the NAS, the hypervisor, iDRACs. Paste an address and ${R.lab()} fills in the name, icon and IP.`
       : 'Nobody has put any here yet.';
     R.paint($('ln-list'));
-    $('rail-links').textContent = links.length || '';
-    $('links-dot').hidden = !links.some((l) => states[l.id] && states[l.id].down);
+    rail();
     drawHero();
   };
 
@@ -234,13 +238,14 @@
       states = answer.states || {};
       wait = answer.next || 60;
       if (answer.revision !== revision && !tools.busy()) take(await R.get('/api/links'));
-      // Not under a drag or a name being typed: the dots catch up on the next check.
-      if (!tools.busy() && !refreshing) draw();
+      // Off the page only the rail's dot; on it, not under a drag or a name being typed: the dots catch up on the next check.
+      if (R.where()[0] !== 'links') rail();
+      else if (!tools.busy() && !refreshing) draw();
     } catch {
       // The dots stay as they were.
     }
     clearTimeout(timer);
-    if (R.where()[0] === 'links') timer = setTimeout(check, wait * 1000);
+    timer = setTimeout(check, wait * 1000); // on every page, so the rail's dot clears once a link is back
   };
   // What the server answers to a read or a change: the links and the groups, both in order, and the check times.
   const take = (answer) => {
@@ -402,7 +407,7 @@
     R.busy(form, '');
     draw();
   });
-  // Import: a file Export made, added beside what's here. The flask covers the settings while it goes in.
+  // Import: a file Export made, added beside what's here. The flask covers the settings or the links while it goes in.
   const count = (n, thing) => `${n} ${thing}${n === 1 ? '' : 's'}`;
   // Refresh: every link with a web address has its site read again, four at a time. On Links each
   // tile being read shows the flask and takes what was found as soon as it's back, the way Plex refreshes metadata; in
@@ -494,13 +499,18 @@
   };
   $('lc-refresh').addEventListener('click', () => refreshLinks($('lc-form'), 'lc-refresh-done'));
   $('ln-refresh').addEventListener('click', () => refreshLinks($('ln-list'), 'ln-done'));
-  $('lc-import-file').addEventListener('change', async () => {
-    const f = $('lc-import-file').files[0];
-    $('lc-import-file').value = '';
+  $('lc-import-file').addEventListener('change', () => importFile($('lc-import-file'), false));
+  // On Links the answer is a toast instead of a line in the settings.
+  $('ln-import').addEventListener('click', () => $('ln-import-file').click());
+  $('ln-import-file').addEventListener('change', () => importFile($('ln-import-file'), true));
+  $('ln-export').addEventListener('click', () => $('lc-export').click());
+  const importFile = async (input, onPage) => {
+    const f = input.files[0];
+    input.value = '';
     if (!f) return;
     say('lc-done', '');
     say('lc-problem', '');
-    const form = $('lc-form');
+    const form = onPage ? $('ln-list') : $('lc-form');
     R.busy(form, `Importing ${f.name}…`);
     try {
       let data = null;
@@ -515,15 +525,17 @@
         done.skipped ? `${count(done.skipped, 'link')} already here ${done.skipped === 1 ? 'was' : 'were'} left as ${done.skipped === 1 ? 'it is' : 'they are'}.` : '',
         done.refused ? `${count(done.refused, 'link')} couldn't be read from the file.` : '',
         done.checks ? 'The check times were set from the file.' : ''];
-      say('lc-done', parts.filter(Boolean).join(' '));
+      if (onPage) R.toast(parts[0], parts.slice(1).filter(Boolean).join(' '));
+      else say('lc-done', parts.filter(Boolean).join(' '));
     } catch (err) {
-      say('lc-problem', err.message);
+      if (onPage) R.toast("Couldn't import the file", err.message, { tone: 'red' });
+      else say('lc-problem', err.message);
     }
     R.busy(form, '');
     drawChecks();
     draw();
     check();
-  });
+  };
   // The gear on Links opens its page in Settings, which is drawn from a fresh read each time it shows.
   $('ln-checks').addEventListener('click', () => { location.hash = '#settings/links'; });
   document.addEventListener('rabbidlab:show', async (e) => {
@@ -1075,6 +1087,7 @@
     clearTimeout(timer);
     if (e.detail[0] !== 'links' || !can('links.view')) {
       if (watching) setWatching(false);
+      if (can('links.view')) timer = setTimeout(check, 60000); // the rail's dot keeps up elsewhere
       return;
     }
     // #links/watch, from Pick links in Settings, Links: the page opens ticking. The address goes back to #links.

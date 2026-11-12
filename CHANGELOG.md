@@ -2,6 +2,13 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.87 (2026-11-12)
+
+- Export and Import are on the Links toolbar too, beside Refresh icons.
+- The red dot beside Links in the menu now clears by itself once a link is back, without opening Links.
+- Sensor graphs no longer draw a red dashed line for checks that got no reply. The line just stops there, and stays green while the sensor is down.
+- Web page sensors make a new connection for every check, so the reply time is the same kind of number each time instead of jumping between about 1 ms and 8 ms.
+
 ## 1.1.86 (2026-11-12)
 
 - Watch links moved off the Links toolbar. It is now Pick links in Settings, Links, under Heartbeat, and opens Links ready to tick.

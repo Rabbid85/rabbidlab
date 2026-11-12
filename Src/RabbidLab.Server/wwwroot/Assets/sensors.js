@@ -85,7 +85,7 @@
   };
   const glyph = (s) => (s.kind === 'snmp' && (s.parts || []).some((p) => p.key === 'battery') ? 'power' : GLYPH[s.kind] || 'activity');
 
-  // The last hour of reply times as a line. Checks with no reply are a red dashed stretch along the bottom.
+  // The last hour of reply times as a line. Checks with no reply leave a gap; the line keeps the reply colour while it's down.
   const line = (recent, status) => {
     const box = (inner) => `<svg class="sn-line" viewBox="0 0 300 40" preserveAspectRatio="none" aria-hidden="true">${inner}</svg>`;
     if (!recent.length || status === 'paused') return `<div class="sn-chart">${box('<path class="idle" d="M0 30H300"/>')}</div>`;
@@ -93,20 +93,18 @@
     const y = (n) => 36 - (n / top) * 30;
     const step = 300 / Math.max(recent.length - 1, 1);
     let d = '';
-    let gone = '';
     let open = false;
     recent.forEach((n, i) => {
-      const x = i * step;
       if (n < 0) {
-        gone += `M${Math.max(0, x - step / 2).toFixed(1)} 37H${Math.min(300, x + step / 2).toFixed(1)}`;
         open = false;
-      } else {
-        d += `${open ? 'L' : 'M'}${x.toFixed(1)} ${y(n).toFixed(1)}`;
-        open = true;
+        return;
       }
+      d += `${open ? 'L' : 'M'}${(i * step).toFixed(1)} ${y(n).toFixed(1)}`;
+      open = true;
     });
     const end = recent[recent.length - 1];
-    return `<div class="sn-chart">${box(`<path d="${d}"/>${gone ? `<path class="gone" d="${gone}"/>` : ''}`)}${end >= 0 ? `<i data-top="${(y(end) / 40 * 100).toFixed(1)}"></i>` : ''}</div>`;
+    const hue = status === 'down' || status === 'wait' ? 'up' : status;
+    return `<div class="sn-chart s-${hue}">${box(`<path d="${d}"/>`)}${end >= 0 ? `<i data-top="${(y(end) / 40 * 100).toFixed(1)}"></i>` : ''}</div>`;
   };
 
   // --- The hero: how the lab is doing, and a square for every sensor -------------------------------------------------------
@@ -233,7 +231,7 @@
     : TIMED.includes(s.kind) && s.status === 'up' && !s.invert ? [s.ms == null ? '' : ms(s.ms), s.up7 == null ? '' : `${percent(s.up7)} this week`].filter(Boolean).join(' · ') || 'Up'
     : s.note || WORD[s.status]);
   const quiet = (text) => `<span class="sn-quiet">${esc(text)}</span>`;
-  // The last hour of replies, smoothed. Checks with no reply are a red dash along the bottom.
+  // The last hour of replies, smoothed. Checks with no reply leave a gap.
   const smooth = (p) => p.map((q, i) => {
     if (!i) return `M${q[0].toFixed(1)} ${q[1].toFixed(1)}`;
     const a = p[i - 2] || p[i - 1];
@@ -252,8 +250,7 @@
     const runs = [[]];
     at.forEach((p) => (p[1] == null ? runs.push([]) : runs[runs.length - 1].push(p)));
     const d = runs.filter((r) => r.length > 1).map(smooth).join('');
-    const gone = at.map((p) => (p[1] == null ? `M${Math.max(0, p[0] - step / 2).toFixed(1)} ${h - 1}H${Math.min(w, p[0] + step / 2).toFixed(1)}` : '')).join('');
-    return `<svg class="sn-trace" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true">${d ? `<path d="${d}"/>` : ''}${gone ? `<path class="gone" d="${gone}"/>` : ''}</svg>`;
+    return `<svg class="sn-trace" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true">${d ? `<path d="${d}"/>` : ''}</svg>`;
   };
   // A server, pool, vCenter or UPS: up to four of its parts in a word or two, the full answer on hover.
   const LABEL = { health: 'Health', power: 'PSU', fans: 'Fans', temps: 'Temp', disks: 'Disks', pools: 'Pool', space: 'Free', hosts: 'Hosts', alarms: 'Alarms', uptime: 'Up', battery: 'Battery', iface: 'Port' };
@@ -515,7 +512,6 @@
     $('sv-up24').textContent = percent(d.up24) || '-';
     $('sv-up7').textContent = percent(d.up7) || '-';
     $('sv-line').innerHTML = line(s.recent, s.status);
-    $('sv-line').firstElementChild.className = `sn-chart s-${s.status}`;
     $('sv-events').hidden = !d.events.length;
     $('sv-events').innerHTML = d.events.slice(0, 40).map((e) => `<div class="row still ${(EVENT[e.what] || ['', ''])[1]}"><i></i><time>${esc(R.when(e.at))}</time>`
       + `<span class="t"><b>${esc((EVENT[e.what] || [e.what])[0])}</b><span>${esc(e.text)}</span></span></div>`).join('');

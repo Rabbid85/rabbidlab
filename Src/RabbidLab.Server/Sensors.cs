@@ -443,6 +443,8 @@ public sealed class NetworkProbe(TimeProvider clock, SensorLogins? logins = null
             AllowAutoRedirect = true,
             MaxAutomaticRedirections = 5,
             ConnectTimeout = TimeSpan.FromSeconds(8),
+            // A new connection each check (redirects within one still share it), so reply times don't jump between reused and new.
+            PooledConnectionIdleTimeout = TimeSpan.FromSeconds(15),
             // No resumed TLS sessions, as for links: Netflix never answers on one.
             SslOptions = { RemoteCertificateValidationCallback = (_, _, _, _) => true, AllowTlsResume = false },
         };

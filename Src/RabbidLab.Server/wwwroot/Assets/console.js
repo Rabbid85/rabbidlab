@@ -3,6 +3,11 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.87', [
+    'Export and Import are on the Links toolbar too, beside Refresh icons.',
+    'The red dot beside Links in the menu now clears by itself once a link is back, without opening Links.',
+    'Sensor graphs no longer draw a red dashed line for checks that got no reply. The line just stops there, and stays green while the sensor is down.',
+    'Web page sensors make a new connection for every check, so the reply time is the same kind of number each time instead of jumping between about 1 ms and 8 ms.']],
   ['1.1.86', [
     'Watch links moved off the Links toolbar. It is now Pick links in Settings, Links, under Heartbeat, and opens Links ready to tick.',
     'Sensor cards lost the coloured bar beside the graph.']],
