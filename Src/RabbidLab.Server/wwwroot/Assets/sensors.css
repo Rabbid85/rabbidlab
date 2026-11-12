@@ -194,8 +194,6 @@
 .chan-tick { position: absolute; top: 8px; right: 8px; display: none; place-items: center; width: 16px; height: 16px; border-radius: 50%; background: var(--accent); color: #fff; }
 .chan-tick svg { width: 10px; height: 10px; }
 .chan.on .chan-tick { display: grid; }
-.chan.add { border-style: dashed; color: var(--muted); }
-.chan.add > svg { flex: none; width: 16px; height: 16px; margin: 0 6px; }
 .chan-ic { display: grid; flex: none; place-items: center; width: 34px; height: 34px; border-radius: 9px; background: #1E2132; color: #B8BCCB; }
 .chan-ic svg { width: 17px; height: 17px; }
 .chan-ic b { font: 800 16px "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; }
@@ -221,11 +219,17 @@
 .form .ch-sw input.switch { width: 40px; height: 22px; padding: 0; border: 0; border-radius: 22px; } /* the form sizes every input; a switch keeps its own */
 #channel-dialog { width: min(720px, calc(100vw - 32px)); }
 
-/* Send to: a kind not set up yet is a quieter card with a plus, to set it up from there. */
-.chan.add .chan-ic { opacity: .8; }
-.chan.add:hover { border-color: var(--accent-line); color: var(--title); }
-.chan-plus { position: absolute; top: 9px; right: 9px; width: 13px; height: 13px; color: var(--muted); }
-.chan.add:hover .chan-plus { color: var(--accent-soft); }
+/* Send to ends with one line to add a channel, with the kinds not set up yet as small marks. */
+.chan-addline { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 8px 12px 8px 16px; border: 1px dashed var(--line-strong); border-radius: 10px;
+  background: none; color: var(--muted); font: inherit; text-align: left; cursor: pointer; }
+.chan-addline > svg { flex: none; width: 16px; height: 16px; }
+.chan-addline > span { display: grid; min-width: 0; }
+.chan-addline b { color: var(--title); font-size: 13.5px; font-weight: 650; }
+.chan-addline small { overflow: hidden; color: var(--muted); font-size: 12px; white-space: nowrap; text-overflow: ellipsis; }
+.chan-addline:hover { border-color: var(--accent-line); background: #131624; color: var(--accent-soft); }
+.chan-minis { display: flex; flex: none; gap: 6px; margin-left: auto; }
+.chan-minis .chan-ic { width: 28px; height: 28px; border-radius: 8px; }
+.chan-minis .chan-ic svg { width: 15px; height: 15px; }
 .chan-ic svg { width: 18px; height: 18px; }
 
 /* One sensor: what it waits on and what waits on it, Send a test alert, and Pause with how long. */

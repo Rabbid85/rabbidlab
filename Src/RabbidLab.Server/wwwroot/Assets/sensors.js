@@ -710,16 +710,33 @@
     + `<span><b>${esc(name)}</b><small>${esc(sub)}</small></span><i class="chan-tick">${svg('check')}</i></button>`;
   const startChannels = () => (chans ? [...(chans.email.onForNew ? ['email'] : []), ...chans.channels.filter((c) => c.onForNew).map((c) => c.id)] : null);
   const chName = (id) => (id === 'email' ? 'Email' : (({ kind, name }) => `${CH_KIND[kind]}${name ? ` ${name}` : ''}`)(chans?.channels.find((c) => c.id === id) || { kind: 'webhook', name: '' }));
-  // Send to: email and each channel as a card to tick; with add, a card for each kind not set up yet, to set it up from here.
-  const sendCards = (on, add = true) => {
+  // The kinds not set up yet: email with no mail server, and each kind of channel there isn't one of.
+  const missing = () => (!chans ? [] : [...(chans.email.ready ? [] : ['email']), ...CH_KINDS.filter((k) => !chans.channels.some((c) => c.kind === k))]);
+  const orList = (names) => (names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} or ${names[names.length - 1]}`);
+  // Send to: email and each channel that's set up, as a card to tick, then one line to add a channel (Add a channel picks the kind).
+  const sendCards = (on) => {
     if (!chans) return '';
-    const has = new Set(chans.channels.map((c) => c.kind));
-    return chCard('email', 'email', 'Email', chans.email.ready ? 'To your alert list' : 'Not set up yet', on.includes('email'))
+    const left = missing();
+    return (chans.email.ready ? chCard('email', 'email', 'Email', 'To your alert list', on.includes('email')) : '')
       + chans.channels.map((c) => chCard(c.id, c.kind, CH_KIND[c.kind], c.name || c.where, on.includes(c.id))).join('')
-      + (!add ? '' : CH_KINDS.filter((k) => !has.has(k)).map((k) => `<button type="button" class="chan add" data-chan-add="${k}"><span class="chan-ic ${k}">${chIcon(k)}</span>`
-        + `<span><b>${CH_KIND[k]}</b><small>Set it up</small></span>${svg('plus', 'chan-plus')}</button>`).join(''));
+      + `<button type="button" class="chan-addline" data-chan-add>${svg('plus')}<span><b>Add a channel</b>`
+      + `<small>${left.length ? esc(orList(left.map((k) => (k === 'webhook' ? 'a webhook' : CH_KIND[k])))) : 'Another Discord, Teams, Slack, ntfy or webhook'}</small></span>`
+      + `<i class="chan-minis">${left.map((k) => `<span class="chan-ic ${k}">${chIcon(k)}</span>`).join('')}</i></button>`;
   };
-  // A click in Send to: a channel ticked or not, or a kind to set up, which is ticked once it's added. The list is changed in place.
+  // Email set up from Send to: the Email dialog, then the channels read again; ready says whether it can send now.
+  const setUpMail = async (then) => {
+    await openMail();
+    if (!$('mail-dialog').open) return;
+    $('mail-dialog').addEventListener('close', async () => {
+      try {
+        chans = await R.get('/api/channels');
+      } catch {
+        // keeps what it had
+      }
+      then(!!chans?.email.ready);
+    }, { once: true });
+  };
+  // A click in Send to: a channel ticked or not, or Add a channel, and what's added is ticked. The list is changed in place.
   const sendClick = (e, list, redraw) => {
     const b = e.target.closest('[data-chan]');
     if (b) {
@@ -729,8 +746,12 @@
       else list.splice(at, 1);
       return redraw();
     }
-    const add = e.target.closest('[data-chan-add]');
-    if (add) openChannel(null, (id) => { list.push(id); redraw(); }, add.dataset.chanAdd);
+    if (e.target.closest('[data-chan-add]')) {
+      openChannel(null, (id) => {
+        if (id && !list.includes(id)) list.push(id);
+        redraw();
+      });
+    }
   };
   // The three times as rows. x is { after, again, back }; each control says which with data-al.
   const AFTER = [[0, 'Right away'], [1, '1 minute'], [5, '5 minutes'], [10, '10 minutes'], [30, '30 minutes'], [60, 'An hour'], [-1, 'Never, only show it here']];
@@ -751,9 +772,10 @@
     return true;
   };
   // What will happen, in words: Alerts Email and Discord #homelab once it has been down 5 minutes, and again when it's back.
-  const alertWords = (x, to) => {
+  const alertWords = (x, picked) => {
     if (x.after < 0) return 'Never alerts: it only shows here.';
-    if (to && !to.length) return 'Nobody is alerted: pick where alerts go above.';
+    const to = picked && picked.filter((id) => id !== 'email' || chans?.email.ready); // email ticked with no mail server sends nothing
+    if (to && !to.length) return 'Nobody is alerted yet: set up or tick where alerts go above.';
     const mins = (m) => (m === 60 ? 'an hour' : m === 1 ? 'a minute' : `${m} minutes`);
     return `Alerts${to ? ` ${and(to.map(chName))}` : ''} ${x.after ? `once it has been down ${mins(x.after)}` : 'as soon as it\'s down'}`
       + `${x.again ? `, again every ${{ 60: 'hour', 360: '6 hours', 1440: 'day' }[x.again]} while it stays down` : ''}${x.back ? `${x.again ? ',' : ''} and again when it's back` : ''}.`;
@@ -1019,7 +1041,7 @@
   const drawStart = () => {
     $('ss-rows').innerHTML = timeRows(start);
     $('ss-send').closest('.ds-row').hidden = !chans;
-    $('ss-send').innerHTML = sendCards(startChannels() || [], false);
+    $('ss-send').innerHTML = sendCards(startChannels() || []);
     $('ss-gather').checked = gather.on;
     $('ss-secs').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', Number(b.dataset.secs) === gather.secs));
   };
@@ -1036,6 +1058,7 @@
   });
   // A channel ticked here is one new sensors start with: its On for new sensors.
   $('ss-send').addEventListener('click', async (e) => {
+    if (e.target.closest('[data-chan-add]')) return openChannel(null, () => drawStart()); // a new channel is on for new sensors unless switched off
     const b = e.target.closest('[data-chan]');
     if (!b) return;
     const id = b.dataset.chan;
@@ -1233,16 +1256,18 @@
   let chThen = null; // what to do with a new channel's id, when it was added from a sensor
   const drawChKinds = () => {
     $('ch-kinds').hidden = !!chEditing;
-    $('ch-kinds').innerHTML = Object.keys(CH_HELP).map((k) => `<button type="button" class="chan${k === chKind ? ' on' : ''}" data-ch-kind="${k}" aria-pressed="${k === chKind}">`
-      + `<span class="chan-ic ${k}">${chIcon(k)}</span><span><b>${CH_KIND[k]}</b><small>${CH_SUB[k]}</small></span></button>`).join('');
+    // Email is one of the kinds while there's no mail server: picking it opens the Email dialog.
+    const kinds = [...(chans && !chans.email.ready ? ['email'] : []), ...Object.keys(CH_HELP)];
+    $('ch-kinds').innerHTML = kinds.map((k) => `<button type="button" class="chan${k === chKind ? ' on' : ''}" data-ch-kind="${k}" aria-pressed="${k === chKind}">`
+      + `<span class="chan-ic ${k}">${chIcon(k)}</span><span><b>${CH_KIND[k]}</b><small>${k === 'email' ? 'Through your mail server' : CH_SUB[k]}</small></span></button>`).join('');
     const [label, ph, help] = CH_HELP[chKind];
     $('ch-url-label').textContent = label;
     $('ch-url').placeholder = chEditing ? 'Leave it empty to keep the saved one' : ph;
     $('ch-help').textContent = help;
   };
-  const openChannel = (c, then = null, kindOf = 'discord') => {
+  const openChannel = (c, then = null) => {
     chEditing = c || null;
-    chKind = c?.kind || kindOf;
+    chKind = c?.kind || missing().find((k) => k !== 'email') || 'discord'; // a new one starts on a kind there isn't one of yet
     chThen = then;
     $('ch-title').textContent = c ? `Change ${CH_KIND[c.kind]}${c.name ? ` · ${c.name}` : ''}` : 'Add a channel';
     $('ch-url').value = '';
@@ -1259,6 +1284,11 @@
   $('ch-kinds').addEventListener('click', (e) => {
     const b = e.target.closest('[data-ch-kind]');
     if (!b) return;
+    if (b.dataset.chKind === 'email') {
+      const then = chThen;
+      $('channel-dialog').close();
+      return setUpMail((ready) => then?.(ready ? 'email' : null));
+    }
     chKind = b.dataset.chKind;
     drawChKinds();
     $('ch-url').focus();
