@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.44', [
+    'Every setting under Appearance has Reset: the lab name, icon, accent colour and layout each go back to the default. Reset is greyed out while the setting is already the default.']],
   ['1.1.43', [
     'The service account window has its steps down the left: Sign in, Account, Review. A step already done opens again from the side, and every row on Review has Change.',
     'What the service account can manage starts as the whole domain and sits on Review, with Change to limit it to one OU, in place of a step of its own.',
@@ -324,11 +326,16 @@ const RELEASE_NOTES = [
     try { wide = localStorage.getItem('rabbidlab.layout') === 'wide'; } catch { /* centered */ }
     document.body.classList.toggle('layout-wide', wide);
     $('set-layout').querySelectorAll('[data-layout]').forEach((b) => b.setAttribute('aria-pressed', String((b.dataset.layout === 'wide') === wide)));
+    $('lay-reset').disabled = !wide;
   };
   $('set-layout').addEventListener('click', (e) => {
     const b = e.target.closest('[data-layout]');
     if (!b) return;
     try { localStorage.setItem('rabbidlab.layout', b.dataset.layout); } catch { /* this visit only */ }
+    layout();
+  });
+  $('lay-reset').addEventListener('click', () => {
+    try { localStorage.removeItem('rabbidlab.layout'); } catch { /* this visit only */ }
     layout();
   });
   layout();
@@ -396,6 +403,10 @@ const RELEASE_NOTES = [
     paint($('br-swatches'));
     $('br-name').disabled = !may;
     document.querySelectorAll('.br-edit').forEach((b) => b.classList.toggle('cant', !may));
+    // Each Reset puts Rabbid Lab's own back, and has nothing to do while that's what there is.
+    $('br-name-reset').disabled = !brand.name;
+    $('br-reset').disabled = !brand.icon;
+    $('br-accent-reset').disabled = !brand.accent;
     $('br-cant').hidden = may;
   };
   const saveBrand = async (change) => {
@@ -427,6 +438,11 @@ const RELEASE_NOTES = [
     read.readAsDataURL(f);
   });
   $('br-reset').addEventListener('click', () => saveBrand({ icon: '' }));
+  $('br-name-reset').addEventListener('click', () => {
+    $('br-name').value = '';
+    saveBrand({ name: '' });
+  });
+  $('br-accent-reset').addEventListener('click', () => saveBrand({ accent: '' }));
   document.addEventListener('rabbidlab:me', () => drawBrand());
   const loadBrand = async () => {
     try {

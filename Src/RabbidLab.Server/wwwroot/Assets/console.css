@@ -75,6 +75,8 @@ body.app.rail-small { grid-template-columns: 60px minmax(0, 1fr); }
 .ds-sec + .ds-sec { margin-top: 26px; padding-top: 26px; border-top: 1px solid var(--line); }
 .ds-h { margin: 0 0 6px; font: 700 18px/1.25 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; color: #fff; }
 .ds-h.danger { color: var(--red); }
+.ds-h.has-reset { display: flex; align-items: center; }
+.ds-h.has-reset .ds-btn { margin-left: auto; font: 600 14px "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; }
 .ds-scope { margin-left: 10px; padding: 2px 8px; border-radius: 20px; background: #1C1F2D; color: var(--muted); font: 600 11px "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; vertical-align: 2px; }
 .ds-row { display: flex; align-items: center; gap: 20px; min-height: 54px; padding: 10px 0; }
 .ds-l { display: grid; flex: 1; gap: 3px; min-width: 0; }

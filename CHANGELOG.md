@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.44 (2026-11-11)
+
+- Every setting under Appearance has Reset: the lab name, icon, accent colour and layout each go back to the default. Reset is greyed out while the setting is already the default.
+
 ## 1.1.43 (2026-11-11)
 
 - The service account window has its steps down the left: Sign in, Account, Review. A step already done opens again from the side, and every row on Review has Change.
