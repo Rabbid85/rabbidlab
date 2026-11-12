@@ -352,7 +352,11 @@
 
     <!-- Notifications: the mail server alerts go through and who gets them, changed in Email settings (sensors.js). -->
     <section class="sub" data-sub="notifications" data-title="Notifications" hidden>
-      <header class="sub-head"><h2>Notifications</h2><p>The mail server alerts go through, and who gets them.</p></header>
+      <header class="sub-head"><h2>Notifications</h2><p>Where alerts go. Set a channel up once, then pick it on each sensor.</p></header>
+      <section class="ds-sec" data-sec="channels" id="nt-channels"><h3 class="ds-h has-reset">Channels <small class="ds-scope">Everyone</small><button type="button" class="ds-btn" id="nt-ch-add"><svg><use href="#i-plus"/></svg>Add a channel</button></h3>
+        <div class="nt-chs" id="nt-ch-list" data-skel="rows:2"></div>
+        <p class="ds-note"><svg><use href="#i-info"/></svg><span>How soon an alert goes, reminders while it stays down, and the one when it comes back are set in each alert setting, under Sensors.</span></p>
+      </section>
       <section class="ds-sec" data-sec="mail" id="nt-mail"><h3 class="ds-h">Email</h3>
         <div class="ds-row"><div class="ds-l"><b>Mail server</b></div><div class="ds-r"><span class="ds-v" id="nt-server"><i class="sk sk-text"></i></span><button type="button" class="ds-btn" id="nt-change">Edit</button></div></div>
         <div class="ds-row"><div class="ds-l"><b>Sends as</b></div><div class="ds-r"><span class="ds-v" id="nt-from"><i class="sk sk-text"></i></span></div></div>
@@ -1062,27 +1066,46 @@
     <button type="button" class="small" data-fill="down">One that goes down</button><span class="grow">Checked every 5 seconds, never emails, gone 30 seconds after it's added.</span></div>
   <div class="sd-grid">
     <!-- The kinds of check, in groups, like Active Directory's pages; the open one has the bar (sensors.js fills it in). -->
-    <nav class="dnav sd-types" id="sd-types" aria-label="What to check"></nav>
+    <nav class="dnav sd-types" id="sd-types" aria-label="What to check"><label class="side-find sd-find"><svg><use href="#i-search"/></svg><input type="search" id="sd-find" placeholder="Find a check" aria-label="Find a check" autocomplete="off" spellcheck="false"></label><div id="sd-type-list"></div></nav>
     <div class="sd-pane" id="sd-pane">
       <div class="sd-head"><b id="sd-kind-name"></b><span id="sd-kind-about"></span></div>
       <div class="form two sd-form" id="sd-fields"></div>
+      <div class="sd-out" id="sd-out"></div>
       <div class="form two sd-form">
         <div class="sd-div wide"><b>Name</b><i></i></div>
         <div><label for="sd-name">Name</label><input id="sd-name" maxlength="60" autocomplete="off"></div>
         <div><label for="sd-group">Group</label><select id="sd-group"></select>
           <input id="sd-group-new" maxlength="40" placeholder="Name of the new group" aria-label="Name of the new group" autocomplete="off" hidden></div>
+        <div class="wide"><label for="sd-tag-in">Tags</label><div class="sd-tags" id="sd-tags"><input id="sd-tag-in" maxlength="24" placeholder="Add a tag" aria-label="Add a tag" autocomplete="off" spellcheck="false"></div></div>
         <div><label for="sd-every">Check every</label><select id="sd-every"><option value="30">30 seconds</option><option value="60">Minute</option><option value="300">5 minutes</option><option value="3600">Hour</option></select></div>
-        <div></div>
+        <div><label for="sd-down">Down after</label><select id="sd-down"><option value="1">1 miss</option><option value="2">2 misses in a row</option><option value="3">3 misses in a row</option><option value="5">5 misses in a row</option></select></div>
         <div class="sd-div wide"><b>Alerts</b><i></i></div>
         <div class="wide"><label>Alert settings</label><div id="sd-rules"></div></div>
         <div class="wide sd-alert-more" id="sd-alert-more"></div>
+        <div class="wide" id="sd-send-wrap" hidden><label>Send to</label><div class="chans" id="sd-send"></div></div>
       </div>
-      <div class="sd-out" id="sd-out"></div>
+      <details class="sd-more" id="sd-more" hidden><summary id="sd-more-title">More</summary><div class="sd-more-rows" id="sd-more-rows"></div></details>
       <p class="hint problem" id="sd-problem" hidden></p>
     </div>
   </div>
   <div class="dialog-foot"><button type="button" class="danger" id="sd-delete" hidden><svg><use href="#i-trash"/></svg>Delete</button><button type="button" id="sd-try">Check now</button><span class="grow"></span>
     <button type="button" id="sd-cancel">Cancel</button><button type="button" class="primary" id="sd-save">Add the sensor</button></div>
+</dialog>
+
+<!-- A channel: somewhere alerts go besides email (sensors.js, Channels.cs). -->
+<dialog class="dialog" id="channel-dialog" aria-labelledby="ch-title">
+  <h2 id="ch-title">Add a channel</h2>
+  <p class="dialog-lead">Somewhere alerts can go. Each sensor picks which channels it uses.</p>
+  <div class="chans ch-kinds" id="ch-kinds"></div>
+  <div class="form two">
+    <div class="wide"><label for="ch-url" id="ch-url-label">Webhook address</label><input id="ch-url" maxlength="500" autocomplete="off" spellcheck="false"><small class="hint" id="ch-help"></small></div>
+    <div><label for="ch-name">Name</label><input id="ch-name" maxlength="40" autocomplete="off" spellcheck="false"></div>
+    <div class="ch-sw"><label for="ch-new">On for new sensors</label><input type="checkbox" class="switch" id="ch-new" role="switch" checked></div>
+  </div>
+  <p class="hint note" id="ch-done" hidden></p>
+  <p class="hint problem" id="ch-problem" hidden></p>
+  <div class="dialog-foot"><button type="button" class="danger" id="ch-delete" hidden><svg><use href="#i-trash"/></svg>Delete</button><button type="button" id="ch-test">Send a test</button><span class="grow"></span>
+    <button type="button" id="ch-cancel">Cancel</button><button type="button" class="primary" id="ch-save">Add the channel</button></div>
 </dialog>
 
 <!-- One sensor: how it is, its last hour, and what happened to it. -->

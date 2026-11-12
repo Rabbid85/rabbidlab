@@ -215,7 +215,7 @@
     $('sn-view').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.view === view));
     const only = group === NO_GROUP ? '' : group; // the one group shown, as the sensors have it
     const shown = sensors.filter((s) => (group === DOWN ? s.status === 'down' : !group || (s.group || '') === only)
-      && (!find || [s.name, s.target, s.group, KIND[s.kind], s.note].some((v) => String(v || '').toLowerCase().includes(find))));
+      && (!find || [s.name, s.target, s.group, KIND[s.kind], s.note, ...(s.tags || [])].some((v) => String(v || '').toLowerCase().includes(find))));
     // Every group in its order, the empty ones too unless something is being looked for; sensors with no group go last.
     const by = (group && group !== DOWN ? [only] : [...groups, '']).map((g) => [g, shown.filter((s) => (s.group || '') === g)])
       .filter(([g, list]) => list.length || (g && !find && group !== DOWN));
@@ -376,7 +376,7 @@
   // --- One sensor: how it is and what happened to it -------------------------------------------------------------------------
 
   let showing = null; // the sensor in the dialog
-  const EVENT = { down: ['Went down', 's-down'], up: ['Came back', 's-up'], warn: ['Warning', 's-warn'], email: ['Email', 's-new'], problem: ['Email not sent', 's-down'] };
+  const EVENT = { down: ['Went down', 's-down'], up: ['Came back', 's-up'], warn: ['Warning', 's-warn'], email: ['Alert sent', 's-new'], problem: ['Alert not sent', 's-down'] };
   const fill = (d) => {
     const s = d.sensor;
     showing = s;
@@ -530,18 +530,110 @@
   const drawFields = () => {
     $('sd-fields').innerHTML = FIELDS[kind]();
     $('sd-out').innerHTML = signs() ? '<p class="hint">Check now signs in and shows what it can watch.</p>' : '';
+    drawMore();
   };
+  // The kinds down the left, narrowed to what Find a check has.
+  const drawTypes = () => {
+    const q = $('sd-find').value.trim().toLowerCase();
+    const hit = (x) => !q || `${KIND[x.id]} ${x.about}`.toLowerCase().includes(q);
+    $('sd-type-list').innerHTML = GROUPS.map(([g, name]) => [name, TYPES.filter((x) => x.g === g && hit(x))]).filter(([, list]) => list.length)
+      .map(([name, list]) => `<p class="rail-label">${name}</p>` + list.map((x) => `<a href="#" data-kind="${x.id}"${x.id === kind ? ' aria-current="true"' : ''}>${svg(x.icon)}<span>${KIND[x.id]}</span>${x.signs ? svg('key', 'sd-key') : ''}</a>`).join('')).join('')
+      || '<p class="hint sd-none">No check like that.</p>';
+  };
+  $('sd-find').addEventListener('input', drawTypes);
   const setKind = (k) => {
     kind = TYPES.some((t) => t.id === k) ? k : 'ping';
     const t = TYPES.find((x) => x.id === kind);
-    $('sd-types').innerHTML = GROUPS.map(([g, name]) => `<p class="rail-label">${name}</p>` + TYPES.filter((x) => x.g === g)
-      .map((x) => `<a href="#" data-kind="${x.id}"${x.id === kind ? ' aria-current="true"' : ''}>${svg(x.icon)}<span>${KIND[x.id]}</span>${x.signs ? svg('key', 'sd-key') : ''}</a>`).join('')).join('');
+    drawTypes();
     $('sd-kind-name').textContent = KIND[kind];
     $('sd-kind-about').textContent = t.about;
-    // A certificate doesn't change by the minute, nor hardware.
-    if (!editing) $('sd-every').value = kind === 'cert' ? '3600' : (signs() && kind !== 'snmp') || kind === 'disk' ? '300' : '60';
+    // A certificate doesn't change by the minute, nor hardware. Checked hourly, one miss is enough to count as down.
+    if (!editing) {
+      $('sd-every').value = kind === 'cert' ? '3600' : (signs() && kind !== 'snmp') || kind === 'disk' ? '300' : '60';
+      $('sd-down').value = $('sd-every').value === '3600' ? '1' : '2';
+    }
     drawFields();
+    drawAlerts();
   };
+  // More, folded: alert when it answers, how long a check waits, and for a web page over https its certificate.
+  const MORE = { web: 'More for web pages', ping: 'More for ping', port: 'More for ports', dns: 'More for DNS lookups' };
+  const WAIT = { web: 10, ping: 5, port: 5, dns: 5 };
+  const moreRow = (name, about, right) => `<div class="ds-row"><div class="ds-l"><b>${name}</b><span>${about}</span></div><div class="ds-r">${right}</div></div>`;
+  const drawMore = () => {
+    $('sd-more').hidden = !(kind in MORE);
+    if (!(kind in MORE)) return;
+    $('sd-more-title').textContent = MORE[kind];
+    const wait = vals.timeout || WAIT[kind];
+    $('sd-more-rows').innerHTML = (kind === 'web' ? moreRow('Warn before the certificate expires', 'For an https address: a warning this many days before it expires.',
+      `<select id="sd-cert" aria-label="Warn before the certificate expires">${[[7, '7 days'], [14, '14 days'], [30, '30 days'], [0, 'Never']]
+        .map(([v, text]) => `<option value="${v}"${Number(vals.certDays || 0) === v ? ' selected' : ''}>${text}</option>`).join('')}</select>`) : '')
+      + (kind === 'dns' ? '' : moreRow('Alert when it answers instead', 'For things that should be off, like a test server or a guest network.',
+        `<input type="checkbox" class="switch" id="sd-invert" role="switch" aria-label="Alert when it answers instead"${vals.invert ? ' checked' : ''}>`))
+      + moreRow('Give up waiting after', 'How long one check waits for an answer.',
+        `<div class="seg">${[5, 10, 30].map((v) => `<button type="button" data-wait="${v}" aria-pressed="${wait === v}">${v} s</button>`).join('')}</div>`);
+  };
+  $('sd-more-rows').addEventListener('change', (e) => {
+    if (e.target.id === 'sd-cert') vals.certDays = Number(e.target.value);
+    if (e.target.id === 'sd-invert') vals.invert = e.target.checked;
+  });
+  $('sd-more-rows').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-wait]');
+    if (!b) return;
+    vals.timeout = Number(b.dataset.wait);
+    drawMore();
+  });
+  // Tags as chips: Enter or a comma adds one, Backspace in the empty box takes the last off.
+  const drawTags = () => {
+    $('sd-tags').querySelectorAll('.sd-tag').forEach((t) => t.remove());
+    $('sd-tag-in').insertAdjacentHTML('beforebegin', (vals.tags || []).map((t) => `<span class="sd-tag">${esc(t)}<button type="button" data-untag="${esc(t)}" aria-label="Take the tag ${esc(t)} off">×</button></span>`).join(''));
+  };
+  const addTag = () => {
+    const t = $('sd-tag-in').value.replace(/,/g, '').trim().toLowerCase();
+    $('sd-tag-in').value = '';
+    vals.tags ||= [];
+    if (t && !vals.tags.includes(t) && vals.tags.length < 8) vals.tags.push(t);
+    drawTags();
+  };
+  $('sd-tag-in').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      addTag();
+    } else if (e.key === 'Backspace' && !e.target.value && vals.tags?.length) {
+      vals.tags.pop();
+      drawTags();
+    }
+  });
+  $('sd-tag-in').addEventListener('blur', addTag);
+  $('sd-tags').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-untag]');
+    if (!b) return $('sd-tag-in').focus();
+    vals.tags = vals.tags.filter((t) => t !== b.dataset.untag);
+    drawTags();
+  });
+  // Send to: the channels this sensor alerts, ticked. For people who may change alert settings; for others it keeps what it had.
+  let chans = null; // /api/channels, when this person may read it
+  const CH_KIND = { email: 'Email', discord: 'Discord', teams: 'Teams', slack: 'Slack', ntfy: 'ntfy', webhook: 'Webhook' };
+  const chIcon = (k) => (k === 'email' ? svg('bell') : k === 'webhook' ? svg('link') : `<b>${{ discord: 'D', teams: 'T', slack: '#', ntfy: 'n' }[k]}</b>`);
+  const chCard = (id, k, name, sub, on) => `<button type="button" class="chan${on ? ' on' : ''}" data-chan="${esc(id)}" aria-pressed="${on}"><span class="chan-ic ${k}">${chIcon(k)}</span>`
+    + `<span><b>${esc(name)}</b><small>${esc(sub)}</small></span><i class="chan-tick">${svg('check')}</i></button>`;
+  const startChannels = () => (chans ? [...(chans.email.onForNew ? ['email'] : []), ...chans.channels.filter((c) => c.onForNew).map((c) => c.id)] : null);
+  const drawSend = () => {
+    $('sd-send-wrap').hidden = !chans;
+    if (!chans) return;
+    const on = (id) => (vals.channels || []).includes(id);
+    $('sd-send').innerHTML = chCard('email', 'email', 'Email', chans.email.ready ? 'Through your mail server' : 'Not set up yet', on('email'))
+      + chans.channels.map((c) => chCard(c.id, c.kind, CH_KIND[c.kind], c.name || c.where, on(c.id))).join('')
+      + `<button type="button" class="chan add" data-chan-add>${svg('plus')}<span><b>Add a channel</b><small>Discord, Teams, ntfy, a webhook…</small></span></button>`;
+  };
+  $('sd-send').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-chan]');
+    if (b) {
+      const id = b.dataset.chan;
+      vals.channels = (vals.channels || []).includes(id) ? vals.channels.filter((x) => x !== id) : [...(vals.channels || []), id];
+      return drawSend();
+    }
+    if (e.target.closest('[data-chan-add]')) openChannel(null, (id) => { vals.channels = [...(vals.channels || []), id]; });
+  });
   const pickGroup = () => {
     const fresh = $('sd-group').value === NEW_GROUP;
     $('sd-group-new').hidden = !fresh;
@@ -558,15 +650,25 @@
     value: kind === 'snmp' ? vals.value || 'uptime' : null, oid: kind === 'snmp' ? vals.oid || '' : null, interface: kind === 'snmp' ? vals.iface || '' : null,
     watch: signs() ? vals.watch || null : null, pin: signs() ? vals.pin || null : null,
     product: kind === 'nas' ? vals.product || '' : null, warnFree: ['nas', 'vmware', 'disk'].includes(kind) ? num(vals.warnFree ?? 10) : null, name: $('sd-name').value,
-    group: $('sd-group').value === NEW_GROUP ? $('sd-group-new').value : $('sd-group').value, every: Number($('sd-every').value), rule: vals.rule || defaultRule, custom: vals.rule === 'custom' ? vals.custom : null });
+    group: $('sd-group').value === NEW_GROUP ? $('sd-group-new').value : $('sd-group').value, every: Number($('sd-every').value), rule: vals.rule || defaultRule, custom: vals.rule === 'custom' ? vals.custom : null,
+    tags: vals.tags || [], downAfter: Number($('sd-down').value), channels: chans ? vals.channels || [] : null, certDays: kind === 'web' ? vals.certDays || null : null,
+    invert: ['ping', 'port', 'web'].includes(kind) && !!vals.invert, timeout: kind in WAIT ? vals.timeout || null : null });
   // A sensor to change, or null for a new one, which starts in the group asked for or the one being looked at.
   const edit = async (s, into) => {
     editing = s || null;
     Object.keys(vals).forEach((k) => delete vals[k]);
     if (s) Object.assign(vals, { target: s.target, port: s.port ?? '', server: s.server || '', expect: s.expect || '', text: s.text || '', address: s.address || '', warn: s.warnDays ?? 21,
       login: s.login || undefined, watch: s.watch || null, pin: s.pin || null, product: s.product === 'synology' ? 'synology' : '', warnFree: s.warnFree ?? 10, value: s.value || 'uptime', oid: s.oid || '', iface: s.interface || '', seat: s.seat || undefined, service: s.service || '', drive: s.drive || '' });
+    // What More, Tags and Send to start with: a new web page warns 14 days before its certificate expires.
+    Object.assign(vals, { tags: [...(s?.tags || [])], certDays: s ? s.certDays || 0 : 14, invert: !!s?.invert, timeout: s?.timeout || null });
     logins = await R.get('/api/sensors/logins').catch(() => []);
     seats = await R.get('/api/sensors/seats').catch(() => []);
+    chans = can('sensors.alerts') ? await R.get('/api/channels').catch(() => null) : null;
+    vals.channels = s ? [...(s.channels || ['email'])] : startChannels();
+    $('sd-find').value = '';
+    $('sd-tag-in').value = '';
+    drawTags();
+    drawSend();
     if (s?.kind === 'snmp' && logins.find((l) => l.id === s.login)?.kind === 'snmpv3') vals.snmpVersion = 'v3';
     $('sd-title').textContent = s ? `Change ${s.name}` : 'Add a sensor';
     $('sd-name').value = s?.name || '';
@@ -576,8 +678,8 @@
     pickGroup();
     vals.rule = s ? s.rule : defaultRule;
     vals.custom = s?.custom ? { after: s.custom.after, again: s.custom.again, back: s.custom.back } : { after: 10, again: 0, back: true };
-    drawAlerts();
     $('sd-every').value = String(s?.every || 60);
+    $('sd-down').value = String(s?.downAfter ?? (s?.every >= 3600 ? 1 : 2));
     setKind(s?.kind || 'ping');
     $('sd-delete').hidden = !s;
     $('sd-dev').hidden = !!s;
@@ -606,6 +708,7 @@
     drawFields();
   });
   $('sd-group').addEventListener('change', pickGroup);
+  ['sd-down', 'sd-every'].forEach((id) => $(id).addEventListener('change', () => drawAlerts())); // the words under the alert setting follow them
   // Developer tools (Rabbid Lab Dev): a test address for a ping sensor, which answers or goes down. What's added with it goes in 30 seconds.
   $('sd-dev').addEventListener('click', (e) => {
     const b = e.target.closest('[data-fill]');
@@ -692,13 +795,13 @@
 
   const TIMES = {
     after: [[0, 'Right away'], [1, '1 min'], [5, '5 min'], [10, '10 min'], [30, '30 min'], [60, '1 hour'], [-1, 'Never']],
-    again: [[0, 'Email once'], [60, 'Again every hour'], [360, 'Again every 6 hours'], [1440, 'Again every day']],
-    back: [[true, 'Email'], [false, 'No email']],
+    again: [[0, 'Alert once'], [60, 'Again every hour'], [360, 'Again every 6 hours'], [1440, 'Again every day']],
+    back: [[true, 'Alert'], [false, 'No alert']],
   };
-  const TIME_LABEL = { after: 'Email when it has been down for', again: 'While it is still down', back: 'When it comes back' };
+  const TIME_LABEL = { after: 'Alert when it has been down for', again: 'While it is still down', back: 'When it comes back' };
   const STAR = '<svg class="rstar" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3 6.4 20.2l1.1-6.2L3 9.6l6.2-.9z"/></svg>';
-  const aboutRule = (x) => (x.after < 0 ? 'Never emails; it shows on the page only.'
-    : `Emails ${x.after ? `after ${x.after === 60 ? 'an hour' : `${x.after} minute${x.after === 1 ? '' : 's'}`} down` : 'right away'}`
+  const aboutRule = (x) => (x.after < 0 ? 'Never alerts; it only shows on the page.'
+    : `Alerts ${x.after ? `after ${x.after === 60 ? 'an hour' : `${x.after} minute${x.after === 1 ? '' : 's'}`} down` : 'right away'}`
       + `${x.again ? `, again every ${x.again === 60 ? 'hour' : x.again === 360 ? '6 hours' : 'day'} while it stays down` : ''}${x.back ? ', and when it comes back' : ''}.`);
   // The three times as rows of buttons; scope says whose they are.
   const timings = (scope, x) => Object.entries(TIMES).map(([key, items]) => `<div><label>${TIME_LABEL[key]}</label><div class="seg sn-seg">`
@@ -708,15 +811,23 @@
     + `${r.id === defaultRule ? ' title="The default: new sensors start with it"' : ''}>${esc(r.name)}${r.id === defaultRule ? STAR : ''}</button>`).join('')}${extra}</div>`;
   const timed = (b) => (b.dataset.t === 'back' ? b.dataset.v === 'true' : Number(b.dataset.v));
 
+  // When it counts as down, in words: Down after 2 misses in a row, about 2 minutes.
+  const downText = () => {
+    const n = Number($('sd-down').value) || 2;
+    const secs = n * (Number($('sd-every').value) || 60);
+    const about = secs < 90 ? `${secs} seconds` : secs < 5400 ? `${Math.round(secs / 60)} minutes` : `${Math.round(secs / 3600)} hours`;
+    return `Down after ${n === 1 ? 'one miss' : `${n} misses in a row`}, about ${about}.`;
+  };
   // On a sensor: one of the saved settings, or Custom with times of its own, which can be saved by name for other sensors.
   const drawAlerts = () => {
     const custom = vals.rule === 'custom';
     $('sd-rules').innerHTML = ruleButtons('sensor', vals.rule, `<button type="button" data-rule="custom" aria-pressed="${custom}">Custom</button>`);
+    const sum = (x) => `<p class="sd-sum">${svg('info')}<span>${esc(downText())} ${esc(aboutRule(x))}</span></p>`;
     if (!custom) {
-      $('sd-alert-more').innerHTML = `<p class="hint">${esc(aboutRule(rules.find((x) => x.id === vals.rule) || vals.custom))}</p>`;
+      $('sd-alert-more').innerHTML = sum(rules.find((x) => x.id === vals.rule) || vals.custom);
       return;
     }
-    $('sd-alert-more').innerHTML = timings('custom', vals.custom) + (!can('sensors.alerts') ? '' : `<div class="sd-saveas">${vals.naming
+    $('sd-alert-more').innerHTML = sum(vals.custom) + timings('custom', vals.custom) + (!can('sensors.alerts') ? '' : `<div class="sd-saveas">${vals.naming
       ? '<input id="sd-saveas-name" maxlength="40" placeholder="Name for these alert settings" autocomplete="off"><button type="button" class="small" data-saveas-go>Save</button><button type="button" class="link" data-saveas-cancel>Cancel</button>'
       : '<button type="button" class="link" data-saveas>Save these as…</button>'}</div>`);
   };
@@ -914,6 +1025,7 @@
   // Settings, Notifications: the mail server and the saved alert settings, each changed in Email settings.
   $('sn-mail').addEventListener('click', () => { location.hash = '#settings/notifications'; });
   const drawNotes = () => {
+    drawChannels();
     const m = kept || {};
     const set = m.provider === 'm365' ? !!m.tenant : !!m.host;
     const gmail = m.host === 'smtp.gmail.com';
@@ -935,7 +1047,10 @@
   };
   const loadNotes = async () => {
     try {
-      if (can('sensors.alerts')) kept = await R.get('/api/mail');
+      if (can('sensors.alerts')) {
+        kept = await R.get('/api/mail');
+        chans = await R.get('/api/channels');
+      }
       take(await R.get('/api/sensors'));
       if (can('sensors.edit')) drawCreds(await R.get('/api/sensors/logins'));
       say('nt-problem', '');
@@ -979,6 +1094,126 @@
   $('mail-dialog').addEventListener('close', () => { if (R.where()[0] === 'settings' && ['notifications', 'sensors'].includes(R.where()[1])) loadNotes(); });
   document.addEventListener('rabbidlab:show', (e) => {
     if (e.detail[0] === 'settings' && ['notifications', 'sensors'].includes(e.detail[1]) && (can('sensors.alerts') || can('sensors.edit'))) loadNotes();
+  });
+
+  // --- Channels, in Settings, Notifications: where alerts go besides email, each set up once and picked on each sensor -----
+
+  const CH_SUB = { discord: 'A channel webhook', teams: 'A Workflows webhook', slack: 'An incoming webhook', ntfy: 'Pushes to your phone', webhook: 'JSON to any address' };
+  const CH_HELP = {
+    discord: ['Webhook address', 'https://discord.com/api/webhooks/…', 'In Discord: channel settings, Integrations, Webhooks, New Webhook, Copy Webhook URL.'],
+    teams: ['Webhook address', 'https://…', 'In Teams: the channel menu, Workflows, Post to a channel when a webhook request is received. Copy the address it gives you.'],
+    slack: ['Webhook address', 'https://hooks.slack.com/services/…', 'In Slack: add the Incoming Webhooks app to a channel and copy its Webhook URL.'],
+    ntfy: ['Topic address', 'https://ntfy.sh/lab-alerts', 'The ntfy server and a topic. Subscribe to the same topic in the ntfy app on your phone. Anyone who knows the topic can read it, so make it hard to guess.'],
+    webhook: ['Address', 'https://example.com/hooks/lab', 'Alerts are posted as JSON: event (down, up, warn), subject, facts, sentBy and at.'],
+  };
+  const usedBy = (n) => (n ? `${n} sensor${n === 1 ? ' uses' : 's use'} it` : 'No sensor uses it yet');
+  const drawChannels = () => {
+    if (!chans) return;
+    const row = (id, k, name, sub, on, open) => `<div class="ds-row"><span class="chan-ic ${k}">${chIcon(k)}</span><div class="ds-l"><b>${esc(name)}</b><span>${esc(sub)}</span></div>`
+      + `<div class="ds-r"><span class="nt-new">On for new sensors</span><input type="checkbox" class="switch" data-ch-new="${esc(id)}" role="switch" aria-label="${esc(name)} on for new sensors"${on ? ' checked' : ''}>`
+      + `<button type="button" class="ds-btn" ${open}>Edit</button></div></div>`;
+    const e = chans.email;
+    $('nt-ch-list').innerHTML = row('email', 'email', 'Email', `${e.ready ? `To ${(kept?.to || []).join(', ')}` : 'Not set up yet: add the mail server below'} · ${usedBy(e.uses)}`, e.onForNew, 'data-ch-mail')
+      + chans.channels.map((c) => row(c.id, c.kind, `${CH_KIND[c.kind]}${c.name ? ` · ${c.name}` : ''}`, `${c.where} · ${usedBy(c.uses)}`, c.onForNew, `data-ch-edit="${esc(c.id)}"`)).join('');
+  };
+  $('nt-ch-list').addEventListener('change', async (e) => {
+    const id = e.target.dataset.chNew;
+    if (!id) return;
+    try {
+      chans = await R.send(id === 'email' ? '/api/channels/email' : `/api/channels/${encodeURIComponent(id)}`, { onForNew: e.target.checked });
+      say('nt-problem', '');
+    } catch (err) {
+      say('nt-problem', err.message);
+    }
+    drawChannels();
+  });
+  $('nt-ch-list').addEventListener('click', (e) => {
+    if (e.target.closest('[data-ch-mail]')) return openMail();
+    const b = e.target.closest('[data-ch-edit]');
+    if (b) openChannel(chans.channels.find((c) => c.id === b.dataset.chEdit));
+  });
+  $('nt-ch-add').addEventListener('click', () => openChannel(null));
+
+  // Add a channel, or change one: its kind (only when it's new), the address, a name, and whether new sensors start with it.
+  let chEditing = null;
+  let chKind = 'discord';
+  let chThen = null; // what to do with a new channel's id, when it was added from a sensor
+  const drawChKinds = () => {
+    $('ch-kinds').hidden = !!chEditing;
+    $('ch-kinds').innerHTML = Object.keys(CH_HELP).map((k) => `<button type="button" class="chan${k === chKind ? ' on' : ''}" data-ch-kind="${k}" aria-pressed="${k === chKind}">`
+      + `<span class="chan-ic ${k}">${chIcon(k)}</span><span><b>${CH_KIND[k]}</b><small>${CH_SUB[k]}</small></span></button>`).join('');
+    const [label, ph, help] = CH_HELP[chKind];
+    $('ch-url-label').textContent = label;
+    $('ch-url').placeholder = chEditing ? 'Leave it empty to keep the saved one' : ph;
+    $('ch-help').textContent = help;
+  };
+  const openChannel = (c, then = null) => {
+    chEditing = c || null;
+    chKind = c?.kind || 'discord';
+    chThen = then;
+    $('ch-title').textContent = c ? `Change ${CH_KIND[c.kind]}${c.name ? ` · ${c.name}` : ''}` : 'Add a channel';
+    $('ch-url').value = '';
+    $('ch-name').value = c?.name || '';
+    $('ch-new').checked = c ? c.onForNew : true;
+    $('ch-delete').hidden = !c;
+    $('ch-save').textContent = c ? 'Save' : 'Add the channel';
+    say('ch-done', '');
+    say('ch-problem', '');
+    drawChKinds();
+    $('channel-dialog').showModal();
+    $('ch-url').focus();
+  };
+  $('ch-kinds').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-ch-kind]');
+    if (!b) return;
+    chKind = b.dataset.chKind;
+    drawChKinds();
+    $('ch-url').focus();
+  });
+  const chForm = () => ({ kind: chKind, name: $('ch-name').value, url: $('ch-url').value, onForNew: $('ch-new').checked });
+  $('ch-test').addEventListener('click', async () => {
+    say('ch-done', '');
+    say('ch-problem', '');
+    $('ch-test').disabled = true;
+    try {
+      await R.send(chEditing && !$('ch-url').value.trim() ? `/api/channels/${encodeURIComponent(chEditing.id)}/test` : '/api/channels/test', chForm());
+      say('ch-done', 'Sent a test. Look for it there.');
+    } catch (err) {
+      say('ch-problem', err.message);
+    }
+    $('ch-test').disabled = false;
+  });
+  $('ch-save').addEventListener('click', async () => {
+    $('ch-save').disabled = true;
+    try {
+      if (chEditing) {
+        chans = await R.send(`/api/channels/${encodeURIComponent(chEditing.id)}`, chForm());
+      } else {
+        const made = await R.send('/api/channels', chForm());
+        chans = made.now;
+        chThen?.(made.id);
+      }
+      $('channel-dialog').close();
+      drawChannels();
+      drawSend();
+    } catch (err) {
+      say('ch-problem', err.message);
+    }
+    $('ch-save').disabled = false;
+  });
+  $('ch-cancel').addEventListener('click', () => $('channel-dialog').close());
+  $('ch-delete').addEventListener('click', () => {
+    const c = chEditing;
+    if (!c) return;
+    R.sure(`Delete ${CH_KIND[c.kind]}${c.name ? ` · ${c.name}` : ''}?`, c.uses ? `${usedBy(c.uses)}. Those sensors stop sending to it.` : 'No sensor uses it.', 'Delete', async () => {
+      try {
+        chans = await R.send(`/api/channels/${encodeURIComponent(c.id)}/delete`, {});
+        $('channel-dialog').close();
+        drawChannels();
+      } catch (err) {
+        say('ch-problem', err.message);
+      }
+    });
   });
 
   // --- Showing the page --------------------------------------------------------------------------------------------------------------

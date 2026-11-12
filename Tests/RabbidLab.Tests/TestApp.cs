@@ -40,6 +40,9 @@ public sealed class TestApp(string data) : WebApplicationFactory<Program>
     /// <summary>Stands in for the mail server: keeps what would have been sent.</summary>
     public FakeMail Mail { get; } = new();
 
+    /// <summary>Stands in for Discord, Teams, Slack, ntfy and webhooks: keeps what would have been posted.</summary>
+    public FakeChannelSender Hooks { get; } = new();
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseSetting("DataPath", data);
@@ -61,6 +64,8 @@ public sealed class TestApp(string data) : WebApplicationFactory<Program>
             services.AddSingleton<ISensorProbe>(Probe);
             services.RemoveAll<IMailSender>();
             services.AddSingleton<IMailSender>(Mail);
+            services.RemoveAll<IChannelSender>();
+            services.AddSingleton<IChannelSender>(Hooks);
             // The tests run each round of checks themselves.
             foreach (var worker in services.Where(d => d.ImplementationType == typeof(SensorWorker)).ToList())
             {
@@ -411,6 +416,18 @@ public sealed class FakeProbe : ISensorProbe
     public Dictionary<string, Probe> Finds { get; } = [];
 
     public Task<Probe> Check(Sensor sensor, CancellationToken stop) => Task.FromResult(Finds.GetValueOrDefault(sensor.Target) ?? new Probe(true, 5));
+}
+
+/// <summary>A channel service that keeps every alert it was asked to post.</summary>
+public sealed class FakeChannelSender : IChannelSender
+{
+    public List<(string Kind, string Url, MailNote Note)> Sent { get; } = [];
+
+    public Task<string?> Send(string kind, string url, MailNote note, CancellationToken stop)
+    {
+        Sent.Add((kind, url, note));
+        return Task.FromResult<string?>(null);
+    }
 }
 
 /// <summary>A mail server that keeps every email it was asked to send.</summary>

@@ -163,3 +163,56 @@
 .sd-saveas .link, .ml-rule-acts .link { color: var(--accent-soft); }
 .ml-rule-acts #ml-rule-delete { color: var(--muted); }
 .ml-alerts { margin-top: 6px; }
+
+/* Find a check, over the kinds. */
+.dnav.sd-types > .side-find.sd-find { display: flex; margin: 0 0 10px; } /* dnav hides its find box unless it lists things */
+.sd-none { margin: 8px 2px; }
+/* Check now's answer sits under the address. */
+.sd-out { margin-bottom: 4px; }
+/* Tags as chips in one box. */
+.sd-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: 40px; padding: 5px 8px; border: 1px solid var(--line-strong); border-radius: 8px; background: #0C0E17; cursor: text; }
+.sd-tags input { flex: 1; min-width: 120px; height: 28px; padding: 0 4px; border: 0; background: none; }
+.sd-tags input:focus { outline: none; box-shadow: none; }
+.sd-tag { display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 2px 0 10px; border-radius: 6px; background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--title); font-size: 12.5px; font-weight: 600; }
+.sd-tag button { display: grid; place-items: center; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 4px; background: none; color: #8A8FA8; font-size: 14px; line-height: 1; cursor: pointer; }
+.sd-tag button:hover { background: rgba(255, 255, 255, .08); color: #fff; }
+/* The alert setting in words. */
+.sd-sum { display: flex; align-items: flex-start; gap: 8px; margin: 0; color: #B8BCCB; font-size: 13px; line-height: 1.5; }
+.sd-sum svg { flex: none; width: 15px; height: 15px; margin-top: 2px; color: var(--accent-soft); }
+/* Channels: a card each, ticked when it's on. Also the kinds in Add a channel. */
+.chans { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
+.chan { position: relative; display: flex; align-items: center; gap: 10px; height: auto; min-height: 52px; padding: 8px 26px 8px 8px; border: 1px solid var(--line-strong); border-radius: 10px; background: #0F111A; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.chan:hover { border-color: #3A3E55; background: #131624; }
+.chan.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 7%, #0F111A); }
+.chan > span:not(.chan-ic) { display: grid; min-width: 0; }
+.chan b { color: var(--title); font-size: 13.5px; font-weight: 650; }
+.chan small { overflow: hidden; color: var(--muted); font-size: 12px; white-space: nowrap; text-overflow: ellipsis; }
+.chan-tick { position: absolute; top: 8px; right: 8px; display: none; place-items: center; width: 16px; height: 16px; border-radius: 50%; background: var(--accent); color: #fff; }
+.chan-tick svg { width: 10px; height: 10px; }
+.chan.on .chan-tick { display: grid; }
+.chan.add { border-style: dashed; color: var(--muted); }
+.chan.add > svg { flex: none; width: 16px; height: 16px; margin: 0 6px; }
+.chan-ic { display: grid; flex: none; place-items: center; width: 34px; height: 34px; border-radius: 9px; background: #1E2132; color: #B8BCCB; }
+.chan-ic svg { width: 17px; height: 17px; }
+.chan-ic b { font: 800 16px "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; }
+.chan-ic.email { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent-soft); }
+.chan-ic.discord { background: rgba(88, 101, 242, .2); color: #8F9BFF; }
+.chan-ic.teams { background: rgba(98, 100, 167, .22); color: #A5A7EC; }
+.chan-ic.slack { background: rgba(224, 30, 90, .16); color: #F06292; }
+.chan-ic.ntfy { background: rgba(51, 133, 116, .22); color: #5FD3B6; }
+.chan-ic.webhook { background: rgba(127, 178, 255, .16); color: #7FB2FF; }
+/* More, folded under the form. */
+.sd-more { margin: 16px 0 0; border-top: 1px solid var(--line); }
+.sd-more summary { padding: 12px 0 4px; color: var(--title); font-weight: 650; cursor: pointer; }
+.sd-more-rows .ds-row { min-height: 50px; padding: 6px 0; }
+.sd-more-rows .ds-l b { font-size: 14px; }
+.sd-more-rows .ds-l > span { font-size: 12.5px; }
+.sd-more-rows select { width: 130px; }
+/* Channels in Settings, Notifications, and the channel dialog. */
+.nt-chs .ds-row { gap: 14px; }
+.nt-new { color: var(--muted); font-size: 12.5px; }
+.ch-kinds { grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 6px 0 16px; }
+.ch-sw { display: flex; align-items: center; gap: 12px; padding-top: 22px; }
+.ch-sw label { margin: 0; }
+.form .ch-sw input.switch { width: 40px; height: 22px; padding: 0; border: 0; border-radius: 22px; } /* the form sizes every input; a switch keeps its own */
+#channel-dialog { width: min(720px, calc(100vw - 32px)); }

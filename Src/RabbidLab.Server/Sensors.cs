@@ -83,6 +83,24 @@ public sealed class Sensor
 
     /// <summary>With Rule custom: when it emails, again, and on coming back.</summary>
     public AlertRule? Custom { get; set; }
+
+    /// <summary>Where its alerts go (Channels.cs): email and channel ids. Null, for a sensor from before channels, is email.</summary>
+    public List<string>? Channels { get; set; }
+
+    /// <summary>Misses in a row before it counts as down: 1, 2, 3 or 5; null for 2 (1 for an hourly check).</summary>
+    public int? DownAfter { get; set; }
+
+    /// <summary>For web over https: warn this many days before the certificate expires; null not to look.</summary>
+    public int? CertDays { get; set; }
+
+    /// <summary>For ping, port and web: down when it answers, for something that should be off.</summary>
+    public bool Invert { get; set; }
+
+    /// <summary>Seconds one check waits for an answer: 5, 10 or 30; null for the kind's usual.</summary>
+    public int? Timeout { get; set; }
+
+    /// <summary>Words to find it by, lower case.</summary>
+    public List<string>? Tags { get; set; }
     public bool Paused { get; set; }
     public DateTime Added { get; set; }
     public string? AddedBy { get; set; }
@@ -182,13 +200,13 @@ public sealed class NetworkProbe(TimeProvider clock, SensorLogins? logins = null
             return await DevTools.Check(s, stop);
         }
         using var limit = CancellationTokenSource.CreateLinkedTokenSource(stop);
-        limit.CancelAfter(TimeSpan.FromSeconds(s.Kind switch { "web" => 10, "hw" or "nas" or "vmware" => 45, "snmp" => 15, "svc" or "disk" => 45, _ => 5 }));
+        limit.CancelAfter(TimeSpan.FromSeconds(s.Timeout ?? s.Kind switch { "web" => 10, "hw" or "nas" or "vmware" => 45, "snmp" => 15, "svc" or "disk" => 45, _ => 5 }));
         try
         {
             return s.Kind switch
             {
                 "port" => await Port(s.Target, s.Port ?? 0, limit.Token),
-                "web" => await Web(s, limit.Token),
+                "web" => await WebAndCertificate(s, limit.Token),
                 "dns" => await Name(s.Target, s.Server, s.Address, limit.Token),
                 "cert" => await Certificate(s.Target, s.Port ?? 443, s.WarnDays ?? Sensors.CertificateWarnDays, limit.Token),
                 "hw" => await Signed(s, (login) => Redfish.Check(s, login, s.Trying, limit.Token)),
@@ -275,6 +293,37 @@ public sealed class NetworkProbe(TimeProvider clock, SensorLogins? logins = null
         var watch = Stopwatch.StartNew();
         await socket.ConnectAsync(host, port, stop);
         return new Probe(true, (int) watch.ElapsedMilliseconds);
+    }
+
+    // Certificates read for web sensors, by host and port: a certificate doesn't change by the minute, so once an hour.
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, (DateTime At, Probe Found)> Certificates = new();
+
+    // The page, then for a sensor that asks, its certificate: a warning when it's close to expiring, its days left otherwise.
+    private async Task<Probe> WebAndCertificate(Sensor s, CancellationToken stop)
+    {
+        var page = await Web(s, stop);
+        if (!page.Ok || s.CertDays is not { } days || !Uri.TryCreate(s.Target, UriKind.Absolute, out var u) || u.Scheme != "https")
+        {
+            return page;
+        }
+        var key = $"{u.Host}:{u.Port}";
+        var now = clock.GetUtcNow().UtcDateTime;
+        if (s.Trying || !Certificates.TryGetValue(key, out var seen) || (now - seen.At).TotalHours >= 1)
+        {
+            try
+            {
+                seen = (now, await Certificate(u.Host, u.Port, days, stop));
+                Certificates[key] = seen;
+            }
+            catch (Exception e) when (e is SocketException or IOException or System.Security.Authentication.AuthenticationException or OperationCanceledException)
+            {
+                return page; // the page answered; a certificate that can't be read now is tried again next time
+            }
+        }
+        var cert = seen.Found;
+        var said = cert.Note is { Length: > 0 } n ? char.ToLowerInvariant(n[0]) + n[1..] : "";
+        return !cert.Ok || cert.Warn ? page with { Warn = true, Note = $"Certificate {said}", Detail = page.Note }
+            : page with { Detail = $"Certificate {said}" };
     }
 
     private static async Task<Probe> Web(Sensor s, CancellationToken stop)
@@ -375,7 +424,7 @@ public sealed class NetworkProbe(TimeProvider clock, SensorLogins? logins = null
             // No resumed TLS sessions, as for links: Netflix never answers on one.
             SslOptions = { RemoteCertificateValidationCallback = (_, _, _, _) => true, AllowTlsResume = false },
         };
-        var http = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(9) };
+        var http = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(31) }; // each check has its own limit: 5, 10 or 30 seconds
         http.DefaultRequestHeaders.UserAgent.ParseAdd($"RabbidLab/{Product.Version}");
         return http;
     }
@@ -385,17 +434,27 @@ public sealed class NetworkProbe(TimeProvider clock, SensorLogins? logins = null
 public sealed record SensorForm(string? Name, string? Kind, string? Target, int? Port, string? Server, string? Group, int? Every, string? Rule,
     string? Expect = null, string? Text = null, string? Address = null, int? WarnDays = null, string? Login = null, LoginForm? NewLogin = null, List<string>? Watch = null, string? Pin = null,
     string? Product = null, int? WarnFree = null, string? Value = null, string? Oid = null, string? Interface = null, RuleForm? Custom = null,
-    string? Seat = null, string? Service = null, string? Drive = null);
+    string? Seat = null, string? Service = null, string? Drive = null, List<string>? Channels = null, int? DownAfter = null, int? CertDays = null, bool? Invert = null,
+    int? Timeout = null, List<string>? Tags = null);
 
 public sealed record RuleForm(int? After, int? Again, bool? Back, string? Name = null);
 
 /// <summary>
 /// The Sensors page's sensors, kept in sensors.json, and how each is doing, kept in sensor-state.json. A sensor is down
-/// after two failed checks in a row (one, for a sensor checked hourly). Its alert rule says how long it stays down before
-/// the email goes, so something that comes straight back emails nobody.
+/// after its misses in a row (two unless it says, one for a sensor checked hourly). Its alert rule says how long it stays
+/// down before the alert goes to its channels, so something that comes straight back tells nobody.
 /// </summary>
-public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISensorProbe probe, IMailSender mail, ILogger<Sensors> log, SensorLogins logins)
+public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISensorProbe probe, IMailSender mail, ILogger<Sensors> log, SensorLogins logins, Channels channels)
 {
+    /// <summary>How many sensors send to a channel, for Settings, Notifications.</summary>
+    public int Using(string channel)
+    {
+        lock (gate)
+        {
+            return file.Read().Sensors.Count(s => (s.Channels ?? [Channels.Email]).Contains(channel));
+        }
+    }
+
     public const int CertificateWarnDays = 21;
     private const int Most = 200;
     private static readonly int[] Intervals = [30, 60, 300, 3600];
@@ -496,6 +555,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
     private static object Row(Sensor s, SensorState st) => new
     {
         s.Id, s.Name, s.Kind, s.Target, s.Port, s.Server, s.Expect, s.Text, s.Address, s.WarnDays, s.Login, s.Watch, s.Pin, s.Product, s.WarnFree, s.Value, s.Oid, s.Interface, s.Seat, s.Service, s.Drive, s.Group, s.Every, s.Rule, s.Custom, s.Paused,
+        channels = s.Channels ?? [Channels.Email], s.DownAfter, s.CertDays, s.Invert, s.Timeout, tags = s.Tags ?? [],
         status = s.Paused ? "paused" : st.Status,
         since = st.Since,
         ms = st.Ms,
@@ -613,7 +673,16 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
             return (null, "Type the interface's name as the device has it, such as Port 5 or eth0.");
         }
         return (new Sensor { Name = name, Kind = kind, Target = target, Port = port, Server = server, Expect = expect, Text = text, Address = address, WarnDays = warn, Watch = watch, Product = product, WarnFree = free, Value = value, Oid = oid, Interface = face,
-            Pin = SignsIn(kind) && !string.IsNullOrWhiteSpace(form.Pin) ? form.Pin.Trim() : null, Every = every }, null);
+            Pin = SignsIn(kind) && !string.IsNullOrWhiteSpace(form.Pin) ? form.Pin.Trim() : null, Every = every, Tags = Tagged(form.Tags), DownAfter = form.DownAfter is 1 or 2 or 3 or 5 ? form.DownAfter : null,
+            CertDays = kind == "web" && target.StartsWith("https:", StringComparison.OrdinalIgnoreCase) && form.CertDays is 7 or 14 or 30 ? form.CertDays : null,
+            Invert = form.Invert == true && kind is "ping" or "port" or "web", Timeout = kind is "ping" or "port" or "web" or "dns" && form.Timeout is 5 or 10 or 30 ? form.Timeout : null }, null);
+    }
+
+    // Tags as kept: lower case, trimmed, no repeats, 8 at most of 24 characters each.
+    private static List<string>? Tagged(List<string>? tags)
+    {
+        var kept = (tags ?? []).Select(t => t.Trim().ToLowerInvariant()).Where(t => t.Length is > 0 and <= 24 && !t.Any(char.IsControl)).Distinct().Take(8).ToList();
+        return kept.Count == 0 ? null : kept;
     }
 
     // A check on a seat: the computer, its name shown, and the service or the drive.
@@ -653,7 +722,8 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
         }
         var every = Intervals.Contains(form.Every ?? 0) ? form.Every!.Value : kind == "disk" ? 300 : 60;
         int? free = kind == "disk" && form.WarnFree is 5 or 20 ? form.WarnFree : null;
-        return (new Sensor { Name = name, Kind = kind, Target = computer, Seat = form.Seat.Trim(), Service = service, Drive = drive, WarnFree = free, Every = every }, null);
+        return (new Sensor { Name = name, Kind = kind, Target = computer, Seat = form.Seat.Trim(), Service = service, Drive = drive, WarnFree = free, Every = every,
+            Tags = Tagged(form.Tags), DownAfter = form.DownAfter is 1 or 2 or 3 or 5 ? form.DownAfter : null }, null);
     }
 
     // Test sensors past their time go, with their history. Called under the lock.
@@ -737,6 +807,8 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
             {
                 next.Rule = rules.Any(r => r.Id == form.Rule) ? form.Rule! : old?.Rule is { } kept && rules.Any(r => r.Id == kept) ? kept : DefaultRule(f, rules);
             }
+            // Where its alerts go: the channels sent; else the ones it had; a new one starts with those on for new sensors.
+            next.Channels = form.Channels is { } picked ? [.. picked.Where(channels.Known).Distinct()] : old is not null ? old.Channels : channels.Defaults();
             next.Paused = old?.Paused ?? false;
             next.Added = old?.Added ?? Now;
             next.AddedBy = old is null ? by : old.AddedBy;
@@ -757,7 +829,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
                 f.Sensors[at] = next;
                 // Something else is checked now: what the old check found says nothing about it.
                 if (old!.Kind != next.Kind || old.Target != next.Target || old.Port != next.Port || old.Server != next.Server || old.Expect != next.Expect || old.Text != next.Text
-                    || old.Address != next.Address || old.WarnDays != next.WarnDays || old.Product != next.Product
+                    || old.Address != next.Address || old.WarnDays != next.WarnDays || old.Product != next.Product || old.Invert != next.Invert || old.CertDays != next.CertDays
                     || old.Value != next.Value || old.Oid != next.Oid || old.Interface != next.Interface
                     || old.Seat != next.Seat || old.Service != next.Service || old.Drive != next.Drive)
                 {
@@ -801,7 +873,10 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
                 return null;
             }
             var s = f.Sensors[at];
-            f.Sensors[at] = new Sensor { Id = s.Id, Name = s.Name, Kind = s.Kind, Target = s.Target, Port = s.Port, Server = s.Server, Group = s.Group, Every = s.Every, Rule = s.Rule, Paused = paused, Added = s.Added, AddedBy = s.AddedBy };
+            // A copy with everything it has (credentials, page text, its own alert times, its seat), only paused or not.
+            var copy = JsonSerializer.Deserialize<Sensor>(JsonSerializer.Serialize(s))!;
+            copy.Paused = paused;
+            f.Sensors[at] = copy;
             file.Save(f);
             if (!paused)
             {
@@ -1033,7 +1108,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
         {
             sensor.Expires = Now + DevTools.Lasts;
         }
-        return (await probe.Check(sensor, stop), null);
+        return (Flip(sensor, await probe.Check(sensor, stop)), null);
     }
 
     /// <summary>Checks one sensor now, whenever it was last checked. False when it isn't there.</summary>
@@ -1114,7 +1189,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
                 busy.Remove(s.Id);
             }
         }
-        Record(s, result);
+        Record(s, Flip(s, result));
     }
 
     // What a check found, added to the sensor's history; turns it down, up or to a warning.
@@ -1170,8 +1245,8 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
                 st.FailedAt ??= now;
                 st.Ms = null;
                 st.Note = result.Note ?? "No reply";
-                // One lost reply isn't an outage, unless the next check is an hour away.
-                if (st.Status != "down" && st.Fails >= (s.Every >= 3600 ? 1 : 2))
+                // One lost reply isn't an outage unless the sensor says so, or the next check is an hour away.
+                if (st.Status != "down" && st.Fails >= (s.DownAfter ?? (s.Every >= 3600 ? 1 : 2)))
                 {
                     st.Status = "down";
                     st.Since = st.FailedAt;
@@ -1182,6 +1257,10 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
         }
     }
 
+    // For a sensor that alerts when something answers: an answer is the problem, no answer is how it should be.
+    private static Probe Flip(Sensor s, Probe p) => !s.Invert ? p
+        : p.Ok ? new Probe(false, Note: "It answers, and it shouldn't") : new Probe(true, 0, "Not answering, as it should be");
+
     private static void Event(SensorState st, DateTime at, string what, string text)
     {
         st.Events.Add(new SensorEvent(at, what, text));
@@ -1191,14 +1270,10 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
         }
     }
 
-    // Who should hear about what, worked out under the lock and sent outside it.
+    // Who should hear about what, worked out under the lock and sent outside it, to each of the sensor's channels.
     private async Task Alerts(CancellationToken stop)
     {
-        if (!mail.Ready)
-        {
-            return;
-        }
-        var send = new List<(string Id, MailNote Note, string Said)>();
+        var send = new List<(string Id, MailNote Note, string Said, List<string> To)>();
         lock (gate)
         {
             var f = file.Read();
@@ -1209,6 +1284,12 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
             {
                 var st = State(s.Id);
                 var rule = s.Rule == "custom" && s.Custom is { } own ? own : rules.GetValueOrDefault(s.Rule) ?? rules[DefaultRule(f, [.. rules.Values])];
+                // Its channels that can take an alert now. With none, nothing is marked as told, so it's said once one is set up.
+                var to = (s.Channels ?? [Channels.Email]).Where(channels.Ready).ToList();
+                if (to.Count == 0 && st.Status != "up")
+                {
+                    continue;
+                }
                 if (st.Status == "down" && rule.After >= 0)
                 {
                     var first = st.Alerted is null && (now - (st.Since ?? now)).TotalMinutes >= rule.After;
@@ -1220,7 +1301,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
                         [
                             ("Sensor", What(s)), ("Group", s.Group ?? "No group"), ("Down since", $"{Local(st.Since ?? now)} ({Span(now - (st.Since ?? now))})"),
                             ("What it said", st.Note ?? "No reply"), ("Also down", others.Count == 0 ? "Nothing else" : string.Join(", ", others)),
-                        ]), again ? "Emailed again: still down" : "Emailed: down"));
+                        ]), again ? "Sent again: still down" : "Sent: down", to));
                         st.Alerted = now;
                         st.Told = true;
                         dirty = true;
@@ -1228,7 +1309,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
                 }
                 else if (st.Status == "warn" && !st.Told && rule.After >= 0)
                 {
-                    send.Add((s.Id, new MailNote($"{s.Name}: {st.Note}", "warn", [("Sensor", What(s)), ("Group", s.Group ?? "No group")]), "Emailed: warning"));
+                    send.Add((s.Id, new MailNote($"{s.Name}: {st.Note}", "warn", [("Sensor", What(s)), ("Group", s.Group ?? "No group")]), "Sent: warning", to));
                     st.Told = true;
                     dirty = true;
                 }
@@ -1236,10 +1317,10 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
                 {
                     // Back, or a warning cleared: said only when the outage was, and the rule wants it.
                     var outage = st.Events.LastOrDefault(e => e.What == "up");
-                    if (st.Alerted is not null && rule.Back)
+                    if (st.Alerted is not null && rule.Back && to.Count > 0)
                     {
                         send.Add((s.Id, new MailNote($"{s.Name} is back up", "up",
-                            [("Sensor", What(s)), ("Group", s.Group ?? "No group"), ("What happened", outage?.Text ?? "Came back"), ("Answering in", st.Ms is { } ms ? $"{ms} ms" : "time")]), "Emailed: back up"));
+                            [("Sensor", What(s)), ("Group", s.Group ?? "No group"), ("What happened", outage?.Text ?? "Came back"), ("Answering in", st.Ms is { } ms ? $"{ms} ms" : "time")]), "Sent: back up", to));
                     }
                     st.Told = false;
                     st.Alerted = null;
@@ -1247,12 +1328,31 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
                 }
             }
         }
-        foreach (var (id, note, said) in send)
+        foreach (var (id, note, said, to) in send)
         {
-            var problem = await mail.Send(note, stop);
+            var went = new List<string>();
+            var failed = new List<string>();
+            foreach (var channel in to)
+            {
+                var problem = await channels.Send(channel, note, stop);
+                var name = channels.Name(channel);
+                if (problem is null)
+                {
+                    went.Add(name);
+                }
+                else
+                {
+                    failed.Add(channel == Channels.Email ? $"The email didn't go: {problem}" : $"{name} didn't take it: {problem}");
+                }
+            }
             lock (gate)
             {
-                Event(State(id), Now, problem is null ? "email" : "problem", problem is null ? said : $"The email didn't go: {problem}");
+                var st = State(id);
+                if (went.Count > 0)
+                {
+                    Event(st, Now, "email", $"{said} · {string.Join(", ", went)}");
+                }
+                failed.ForEach(text => Event(st, Now, "problem", text));
                 dirty = true;
             }
         }

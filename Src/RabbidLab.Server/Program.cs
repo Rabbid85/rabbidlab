@@ -98,6 +98,8 @@ builder.Services.AddSingleton<SensorLogins>();
 builder.Services.AddSingleton<ISensorProbe, NetworkProbe>();
 builder.Services.AddSingleton<Mail>();
 builder.Services.AddSingleton<IMailSender>(services => services.GetRequiredService<Mail>());
+builder.Services.AddSingleton<IChannelSender, ChannelSender>();
+builder.Services.AddSingleton<Channels>();
 builder.Services.AddSingleton<Sensors>();
 builder.Services.AddHostedService<SensorWorker>();
 
@@ -179,6 +181,7 @@ app.MapSensorsApi();
 app.MapDevToolsApi();
 app.MapBrandApi();
 app.MapMailApi();
+app.MapChannelsApi();
 app.MapUpdateApi();
 
 app.Run();
