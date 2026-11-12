@@ -73,6 +73,10 @@
   <symbol id="i-org" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="5" rx="1"/><rect x="3" y="16" width="6" height="5" rx="1"/><rect x="15" y="16" width="6" height="5" rx="1"/><path d="M12 8v4M6 16v-2h12v2"/></symbol>
   <symbol id="i-plug" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="7" width="16" height="10" rx="2"/><path d="M8 11h2M14 11h2M8 7V4M16 7V4M12 17v3"/></symbol>
   <symbol id="i-disk" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5.5" rx="8" ry="2.5"/><path d="M4 5.5v13c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5v-13"/><path d="M4 12c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+  <symbol id="i-user-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 20c1.2-3.3 4-5 7-5s5.8 1.7 7 5"/><path d="M19 8v6M16 11h6"/></symbol>
+  <symbol id="i-logout" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17l-5-5 5-5M5 12h11"/></symbol>
+  <symbol id="i-devices" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="14" height="10" rx="1.5"/><path d="M5 18h8"/><rect x="17" y="8" width="5" height="11" rx="1"/></symbol>
 </svg>
 <div class="sky" aria-hidden="true"></div>
 <header class="top">
@@ -92,7 +96,7 @@
   </nav>
   <!-- Support info: this Rabbid Lab described as text to copy into a message when asking for help. -->
   <button type="button" class="icon top-info" id="about-open" title="Support info" aria-label="Support info"><svg><use href="#i-info"/></svg></button>
-  <!-- Who's signed in; the menu says how, and signs out. -->
+  <!-- Who's signed in: who, how, their account pages, and Sign out. -->
   <div class="account" id="account" hidden>
     <button type="button" class="account-chip" id="account-chip" aria-haspopup="true" aria-expanded="false" aria-controls="account-menu">
       <span class="avatar" id="avatar" aria-hidden="true"></span>
@@ -100,12 +104,18 @@
       <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
     </button>
     <div class="account-menu" id="account-menu" hidden>
-      <div class="account-head">
+      <div class="am-id">
         <span class="avatar big" id="avatar-big" aria-hidden="true"></span>
-        <div class="account-id"><b id="menu-name"></b><small id="menu-user"></small></div>
+        <span class="am-who"><b id="menu-name"></b><small id="menu-user"></small><span class="am-chips" id="menu-roles"></span></span>
       </div>
-      <dl class="account-facts" id="account-facts"></dl>
-      <button type="button" class="signout" id="signout">Sign out</button>
+      <div class="am-how"><svg id="menu-how-icon"><use href="#i-globe"/></svg><span><b id="menu-how"></b><small id="menu-where"></small></span></div>
+      <div class="am-links">
+        <a href="#settings/account" class="am-link"><svg><use href="#i-user"/></svg>Your account</a>
+        <button type="button" class="am-link" id="menu-password" hidden><svg><use href="#i-lock"/></svg>Change your password</button>
+        <a href="#settings/account/sessions" class="am-link"><svg><use href="#i-devices"/></svg>Where you're signed in<small id="menu-sessions"></small></a>
+        <a href="#settings/appearance" class="am-link"><svg><use href="#i-brush"/></svg>Appearance</a>
+      </div>
+      <div class="am-links"><button type="button" class="am-link out" id="signout"><svg><use href="#i-logout"/></svg>Sign out</button></div>
     </div>
   </div>
 </header>
@@ -231,6 +241,11 @@
         <div class="ds-row"><div class="ds-l"><b>Name</b></div><div class="ds-r"><span class="ds-v" id="acc-name"></span></div></div>
         <div class="ds-row"><div class="ds-l"><b>Username</b></div><div class="ds-r"><span class="ds-v" id="acc-user"></span></div></div>
         <div class="ds-row"><div class="ds-l"><b>Signed in with</b></div><div class="ds-r"><span class="ds-v" id="acc-how"></span></div></div>
+        <div class="ds-row" id="acc-password-row" hidden><div class="ds-l"><b>Password</b><span>Changing it signs you out everywhere, here too.</span></div><div class="ds-r"><button type="button" class="ds-btn" id="acc-password">Change</button></div></div>
+      </section>
+      <section class="ds-sec" data-sec="sessions"><h3 class="ds-h">Where you're signed in</h3>
+        <div id="acc-sessions" data-skel="rows:2"></div>
+        <p class="hint problem" id="acc-sessions-problem" hidden></p>
       </section>
       <section class="ds-sec" data-sec="roles"><h3 class="ds-h">Roles</h3>
         <div class="ds-row"><div class="ds-l"><b>Your roles</b><span>What they let you do is set under Roles and people.</span></div><div class="ds-r"><span class="ds-v" id="acc-roles"></span><a class="ds-btn" href="#people" data-can="access.view">Open</a></div></div>
@@ -400,7 +415,7 @@
       <header class="sub-head"><h2>Active Directory</h2><p>The service account Rabbid Lab makes its AD changes as.</p></header>
       <section class="ds-sec" data-sec="account"><h3 class="ds-h">Service account</h3>
         <div class="ds-row"><div class="ds-l"><b id="as-account">…</b><span id="as-about"></span></div><div class="ds-r"><button type="button" class="ds-btn" id="as-setup" hidden>Set up</button></div></div>
-        <div class="ds-row" id="as-ou-row" hidden><div class="ds-l"><b>Default OU for new users and groups</b><span>Where New user and New group put them. Saved as you change it.</span></div><div class="ds-r"><select id="adset-ou" aria-label="Default OU for new users and groups"></select></div></div>
+        <div class="ds-row" id="as-ou-row" hidden><div class="ds-l"><b>Default OU for new users and groups</b><span>Where New user and New group put them. Saved as you change it.</span></div><div class="ds-r"><select id="adset-ou" aria-label="Default OU for new users and groups"></select><button type="button" class="ds-btn" data-browse-ou="adset-ou"><svg><use href="#i-folder"/></svg>Browse…</button></div></div>
         <p class="hint note" id="as-done" hidden></p>
       </section>
       <section class="ds-sec gone" data-sec="danger" id="as-danger"><h3 class="ds-h danger">Danger zone</h3>
@@ -798,6 +813,18 @@
   <div class="dialog-foot"><button type="button" id="pd-cancel">Cancel</button><button type="button" class="primary" id="pd-go">Add</button></div>
 </dialog>
 
+<!-- Your own password, for Rabbid Lab accounts: the current one first. Every session of the account ends. -->
+<dialog class="dialog" id="mypw-dialog" aria-labelledby="mypw-title">
+  <h2 id="mypw-title">Change your password</h2>
+  <p class="dialog-lead">Every browser signed in as you is signed out, this one too. Sign in again with the new password.</p>
+  <div class="form">
+    <label for="mypw-current">Current password</label><input id="mypw-current" type="password" autocomplete="current-password">
+    <label for="mypw-new">New password</label><input id="mypw-new" type="password" autocomplete="new-password" placeholder="8 characters or more">
+  </div>
+  <p class="hint problem" id="mypw-problem" role="alert" hidden></p>
+  <div class="dialog-foot"><button type="button" id="mypw-cancel">Cancel</button><button type="button" class="primary" id="mypw-save">Change password</button></div>
+</dialog>
+
 <!-- A new password for a local account. -->
 <dialog class="dialog" id="password-dialog" aria-labelledby="password-title">
   <h2 id="password-title">New password</h2>
@@ -807,30 +834,52 @@
   <div class="dialog-foot"><button type="button" id="pw-cancel">Cancel</button><button type="button" class="primary" id="pw-save">Save</button></div>
 </dialog>
 
-<!-- Rabbid Lab's own Active Directory account: made with an admin's sign-in (not kept), or one it's given. -->
-<dialog class="dialog wide" id="dset-dialog" aria-labelledby="dset-title">
-  <h2 id="dset-title">Set up the service account</h2>
-  <p class="dialog-lead">Rabbid Lab makes all its Active Directory changes as a dedicated service account. Create one now, or use one you already have.</p>
-  <nav class="tabs2" id="dset-tabs"><a data-adtab="make">Create a new service account</a><a data-adtab="existing">Use an existing service account</a></nav>
-  <div id="dset-step1">
-    <p class="hint dset-how" id="dset-note"></p>
-    <div class="form">
-      <label for="dset-domain">Domain</label><input id="dset-domain" autocomplete="off" spellcheck="false">
-      <label for="dset-user" id="dset-user-label">Domain admin username</label><input id="dset-user" autocomplete="username" spellcheck="false">
-      <label for="dset-password" id="dset-password-label">Domain admin password</label><input id="dset-password" type="password" autocomplete="current-password">
-    </div>
+<!-- Rabbid Lab's own Active Directory account, its steps down the side: made with an admin's sign-in (not saved), or one it's given. -->
+<dialog class="dialog dset" id="dset-dialog" aria-labelledby="dset-title">
+  <div class="dset-side">
+    <h2 id="dset-title">Service account</h2>
+    <p class="dset-lead">Rabbid Lab makes its Active Directory changes as this account.</p>
+    <ol class="dset-steps" id="dset-steps"></ol>
   </div>
-  <div id="dset-step2" hidden>
-    <div class="form">
-      <label for="dset-account" class="dset-make">Service account name</label><input id="dset-account" class="dset-make" maxlength="20" autocomplete="off" spellcheck="false">
-      <label for="dset-ou" class="dset-make">Create it in (OU)</label><select id="dset-ou" class="dset-make"></select>
-      <label for="dset-scope">Delegate permissions on</label><select id="dset-scope"></select>
+  <div class="dset-main">
+    <div class="seg dset-tabs" id="dset-tabs"><button type="button" data-adtab="make" aria-pressed="true">Create a new one</button><button type="button" data-adtab="existing" aria-pressed="false">Use one I have</button></div>
+    <div class="dset-body">
+      <div class="dset-head"><span class="big-ic ember"><svg><use id="dset-icon" href="#i-user"/></svg></span><span><b id="dset-step-title"></b><small id="dset-step-text"></small></span></div>
+      <div class="dset-pane" data-pane="signin">
+        <label class="dset-fld"><span>Domain</span><span class="dset-in"><svg><use href="#i-globe"/></svg><input id="dset-domain" autocomplete="off" spellcheck="false"></span></label>
+        <label class="dset-fld"><span id="dset-user-label">Domain admin</span><span class="dset-in"><svg><use href="#i-user"/></svg><input id="dset-user" autocomplete="username" spellcheck="false"></span></label>
+        <label class="dset-fld"><span>Password</span><span class="dset-in"><svg><use href="#i-lock"/></svg><input id="dset-password" type="password" autocomplete="current-password"></span></label>
+        <p class="dset-note"><svg><use href="#i-lock"/></svg><span id="dset-note"></span></p>
+        <p class="hint" data-can="windows.view">No domain, or you only need local accounts? Those need no service account: <a href="#local" id="dset-local">open Local accounts</a>.</p>
+      </div>
+      <div class="dset-pane" data-pane="account" hidden>
+        <label class="dset-fld"><span>Service account name</span><span class="dset-in"><svg><use href="#i-user"/></svg><input id="dset-account" maxlength="20" autocomplete="off" spellcheck="false"></span></label>
+        <div class="dset-fld"><label for="dset-ou">Create it in</label><div class="ou-row"><select id="dset-ou"></select><button type="button" data-browse-ou="dset-ou"><svg><use href="#i-folder"/></svg>Browse…</button></div></div>
+      </div>
+      <div class="dset-pane" data-pane="review" hidden>
+        <div class="dset-review" id="dset-review"></div>
+        <select id="dset-scope" hidden></select>
+        <p class="dset-note"><svg><use href="#i-shield"/></svg><span id="dset-note2"></span></p>
+      </div>
+      <p class="hint problem" id="dset-problem" role="alert" hidden></p>
     </div>
-    <p class="hint" id="dset-note2"></p>
+    <div class="dset-foot"><button type="button" id="dset-back" hidden>Back</button><span class="grow"></span><button type="button" id="dset-cancel">Cancel</button><button type="button" class="primary" id="dset-go">Next</button></div>
   </div>
-  <p class="hint problem" id="dset-problem" role="alert" hidden></p>
-  <p class="hint" data-can="windows.view">No domain, or you only need local accounts? Those need no service account: <a href="#local" id="dset-local">open Local accounts</a>.</p>
-  <div class="dialog-foot"><button type="button" id="dset-back" hidden>Back</button><button type="button" id="dset-cancel">Cancel</button><button type="button" class="primary" id="dset-go">Next</button></div>
+</dialog>
+
+<!-- Picking an OU: the OUs as a rail, the way Settings lists its pages, and the one picked beside it. Browse… beside an OU list opens it. -->
+<dialog class="dialog oupick" id="oupick-dialog" aria-labelledby="oupick-title">
+  <button type="button" class="oupick-x" id="oupick-x" aria-label="Close"><svg><use href="#i-x"/></svg></button>
+  <h2 id="oupick-title">Pick an OU</h2>
+  <p class="dialog-lead" id="oupick-lead"></p>
+  <div class="oupick-grid">
+    <nav class="dnav lists oupick-rail" aria-label="OUs">
+      <label class="side-find"><svg><use href="#i-search"/></svg><input type="search" id="oupick-find" placeholder="Find an OU" aria-label="Find an OU" autocomplete="off" spellcheck="false"></label>
+      <div id="oupick-list"></div>
+    </nav>
+    <div class="oupick-page" id="oupick-page"></div>
+  </div>
+  <div class="dialog-foot"><button type="button" id="oupick-cancel">Cancel</button><button type="button" class="primary" id="oupick-use">Use this OU</button></div>
 </dialog>
 
 <!-- A new account: in Active Directory (data-kind="ad") or Windows on one computer (data-kind="pc"). -->
@@ -845,7 +894,7 @@
     <div class="pc-only"><label for="new-full">Full name</label><input id="new-full" autocomplete="off"></div>
     <div class="dir-only"><label for="new-mail">Email</label><input id="new-mail" type="email" autocomplete="off"></div>
     <div class="dir-only"><label for="new-job">Job title</label><input id="new-job" autocomplete="off"></div>
-    <div class="dir-only wide"><label for="new-ou">Put it in</label><select id="new-ou"></select></div>
+    <div class="dir-only wide"><label for="new-ou">Put it in</label><div class="ou-row"><select id="new-ou"></select><button type="button" data-browse-ou="new-ou"><svg><use href="#i-folder"/></svg>Browse…</button></div></div>
     <div class="wide"><label for="new-about">Description</label><input id="new-about" autocomplete="off"></div>
   </div>
   <p class="form-label">Password</p>
@@ -908,7 +957,7 @@
   <div class="form">
     <label for="grp-name">Group name</label><input id="grp-name" maxlength="64" autocomplete="off" spellcheck="false">
     <label for="grp-about">Description</label><input id="grp-about" maxlength="200" autocomplete="off">
-    <label for="grp-ou">Put it in</label><select id="grp-ou"></select>
+    <label for="grp-ou">Put it in</label><div class="ou-row"><select id="grp-ou"></select><button type="button" data-browse-ou="grp-ou"><svg><use href="#i-folder"/></svg>Browse…</button></div>
     <label for="grp-scope">Group scope</label><select id="grp-scope"><option value="global">Global</option><option value="universal">Universal</option><option value="local">Domain local</option></select>
   </div>
   <p class="form-label">Group type</p>

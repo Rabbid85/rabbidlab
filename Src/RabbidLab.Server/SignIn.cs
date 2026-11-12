@@ -349,6 +349,38 @@ public static class SignIn
             await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
             return Results.Ok();
         });
+
+        // Your own password, for Rabbid Lab accounts only. Needs the current one; wrong ones count against sign-in's limit.
+        app.MapPost("/api/me/password", (HttpContext context, Accounts accounts, ActivityLog log, SignInLimiter limiter, MyPasswordForm form) =>
+        {
+            if (Access.Refuse(context) is { } refused)
+            {
+                return refused;
+            }
+            var username = context.User.Identity?.Name;
+            if (context.User.FindFirstValue("source") != Local || username is null)
+            {
+                return Results.BadRequest(new { error = $"Only {Product.Name} accounts change their password here. Active Directory and Windows passwords are changed there." });
+            }
+            var from = ActivityLog.Address(context);
+            if (!limiter.Take(from))
+            {
+                return TooMany();
+            }
+            if (accounts.Check(username, form.Current) is null)
+            {
+                log.Record(context, "access", "account.password.failed", "Typed a wrong current password", "failed");
+                return Results.BadRequest(new { error = "Your current password is wrong." });
+            }
+            limiter.GiveBack(from);
+            // Every session of the account ends, this one too, so the new password is the only way back in.
+            if (accounts.SetPassword(username, form.Password) is { } problem)
+            {
+                return Results.BadRequest(new { error = problem });
+            }
+            log.Record(context, "access", "account.password", "Changed their own password");
+            return Results.Ok();
+        });
     }
 
     /// <summary>
@@ -476,6 +508,8 @@ public static class SignIn
 }
 
 public sealed record LocalSetupForm(string? Username, string? Password);
+
+public sealed record MyPasswordForm(string? Current, string? Password);
 
 public sealed record DirectorySetupForm(string? Domain, string? Username, string? Password, bool Remember, string? Server = null);
 

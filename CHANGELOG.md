@@ -2,6 +2,14 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.43 (2026-11-11)
+
+- The service account window has its steps down the left: Sign in, Account, Review. A step already done opens again from the side, and every row on Review has Change.
+- What the service account can manage starts as the whole domain and sits on Review, with Change to limit it to one OU, in place of a step of its own.
+- Every OU list has Browse beside it. The OUs open the way Settings lists its pages, with a search, and the one picked shows its path and distinguished name.
+- The account menu shows your roles and how you signed in, then Your account, Where you are signed in, Appearance and Sign out. Change your password is there for Rabbid Lab accounts.
+- Settings, Account lists where you are signed in, with Sign out for each other browser, and Change your password for Rabbid Lab accounts. Changing it signs you out everywhere.
+
 ## 1.1.42 (2026-11-11)
 
 - With no service account set up, the cover on Active Directory, Org chart and Attribute browser dims the whole page, the title included, not only the part under it.

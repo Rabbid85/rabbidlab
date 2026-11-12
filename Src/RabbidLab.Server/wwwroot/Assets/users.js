@@ -984,31 +984,179 @@
     }
   });
 
-  // --- Setting up Rabbid Lab's AD account --------------------------------------------------------------------------
+  // --- Picking an OU: Browse… beside an OU list ----------------------------------------------------------------------
+  // The list's own options are the OUs, shown as a rail like Settings: an OU with OUs inside has the flask and opens
+  // under itself when picked. The one picked is described beside it, and Use this OU puts it back in the list.
 
-  let look = null;
-  const adsTab = (tab) => {
-    $('dset-tabs').querySelectorAll('[data-adtab]').forEach((a) => (a.dataset.adtab === tab ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current')));
-    $('dset-dialog').dataset.tab = tab;
-    const make = tab === 'make';
-    $('dset-user-label').textContent = make ? 'Domain admin username' : 'Service account username';
-    $('dset-password-label').textContent = make ? 'Domain admin password' : 'Service account password';
-    $('dset-note').textContent = make
-      ? 'Sign in once with a domain admin login (or any account allowed to create users and delegate permissions). Rabbid Lab uses it to create the service account, then forgets it: these credentials are not saved.'
-      : 'Sign in as a service account that is already in Active Directory. Rabbid Lab stores its password encrypted and makes every AD change as it. It needs permission to create and manage users, groups and computers in the scope you pick next.';
-    adsStep(1);
+  const FLASK = '<svg class="all-flask" viewBox="0 0 24 24" aria-hidden="true"><path class="liquid" d="M6.6 15.2h10.8l2 3.2A1.7 1.7 0 0 1 17.9 21H6.1a1.7 1.7 0 0 1-1.5-2.6z"/><path d="M9 3h6M10 3v6.2L4.6 18.4A1.7 1.7 0 0 0 6.1 21h11.8a1.7 1.7 0 0 0 1.5-2.6L14 9.2V3"/></svg>';
+  const dnParent = (dn) => { const m = String(dn).match(/^(?:[^,\\]|\\.)*,(.*)$/); return m ? m[1] : ''; };
+  const dnName = (dn) => { const first = String(dn).match(/^(?:[^,\\]|\\.)*/)[0]; return first.slice(first.indexOf('=') + 1).replace(/\\(.)/g, '$1'); };
+  const isDomain = (dn) => /^DC=/i.test(dn);
+  const same = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
+  const pick = { select: null, sel: '', find: '', nodes: [], domain: '' };
+  const PICK_LEADS = { 'dset-ou': 'Where the service account is created.', 'new-ou': 'Where the new user goes.', 'grp-ou': 'Where the new group goes.',
+    'adset-ou': 'Where New user and New group put them.' };
+  const ouNode = (dn) => pick.nodes.find((n) => !n.domain && same(n.dn, dn));
+  const kidsOf = (dn) => pick.nodes.filter((n) => !n.domain && same(n.parent, dn));
+  const topOus = () => pick.nodes.filter((n) => !n.domain && !ouNode(n.parent));
+  const inside = (dn) => same(pick.sel, dn) || pick.sel.toLowerCase().endsWith(`,${dn.toLowerCase()}`);
+  const ouRow = (n, icon, text, small) => `<a role="button" tabindex="0" data-ou="${esc(n.dn)}" title="${esc(n.dn)}"${same(pick.sel, n.dn) ? ' aria-current="true"' : ''}>`
+    + `${icon}<span class="nm">${esc(text)}</span>${small ? `<small>${esc(small)}</small>` : ''}</a>`;
+  const railRow = (n, top) => {
+    const ks = kidsOf(n.dn);
+    return ouRow(n, top ? (ks.length ? FLASK : svg('folder')) : '', n.name, ks.length ? String(ks.length) : '')
+      + (ks.length ? `<div class="dkids${inside(n.dn) ? ' open' : ''}">${ks.map((k) => railRow(k, false)).join('')}</div>` : '');
   };
-  const adsStep = (n) => {
-    $('dset-step1').hidden = n !== 1;
-    $('dset-step2').hidden = n !== 2;
-    $('dset-back').hidden = n !== 2;
-    const make = $('dset-dialog').dataset.tab === 'make';
-    document.querySelectorAll('#dset-dialog .dset-make').forEach((el) => { el.hidden = !make; });
-    // Nothing is delegated to an account that already exists: the scope is only where Rabbid Lab works.
-    document.querySelector('label[for="dset-scope"]').textContent = make ? 'Delegate permissions on' : 'Manage users, groups and computers in';
-    $('dset-go').textContent = n === 1 ? 'Next' : make ? 'Create service account' : 'Use this account';
-    $('dset-dialog').dataset.step = n;
+  const drawPickList = () => {
+    const q = pick.find.trim().toLowerCase();
+    let html;
+    if (q) {
+      const hits = pick.nodes.filter((n) => !n.domain && n.path.toLowerCase().includes(q));
+      html = `<p class="rail-label">${hits.length ? `Found ${hits.length}` : 'Nothing found'}</p>`
+        + hits.map((n) => ouRow(n, svg('folder'), n.name, n.path.split(' / ').slice(0, -1).join(' / '))).join('');
+    } else {
+      const whole = pick.nodes.find((n) => n.domain);
+      html = `<p class="rail-label">${esc(pick.domain)}</p>` + (whole ? ouRow(whole, svg('globe'), 'The whole domain', '') : '')
+        + topOus().map((n) => railRow(n, true)).join('');
+    }
+    $('oupick-list').innerHTML = pick.nodes.length ? html : '<p class="ds-empty oupick-none">No OUs to pick from.</p>';
+  };
+  const drawPickPage = () => {
+    const n = pick.nodes.find((x) => same(x.dn, pick.sel));
+    $('oupick-use').disabled = !n;
+    if (!n) {
+      $('oupick-page').innerHTML = '<header class="sub-head"><h2>Pick an OU</h2><p>Pick one on the left, or find it by name.</p></header>';
+      return;
+    }
+    const ks = n.domain ? topOus() : kidsOf(n.dn);
+    const names = ks.slice(0, 6).map((k) => k.name).join(', ') + (ks.length > 6 ? ` and ${ks.length - 6} more` : '');
+    $('oupick-page').innerHTML = `<header class="sub-head"><h2>${esc(n.domain ? pick.domain : n.name)}</h2><p>${esc(n.domain ? 'The whole domain' : `${pick.domain} / ${n.path}`)}</p></header>`
+      + `<div class="ds-row"><div class="ds-l"><b>Inside it</b></div><div class="ds-r"><span class="ds-v">${ks.length ? `${ks.length} OU${ks.length === 1 ? '' : 's'}: ${esc(names)}` : 'No OUs'}</span></div></div>`
+      + `<div class="ds-row"><div class="ds-l"><b>Distinguished name</b><span class="ds-code">${esc(n.dn)}</span></div></div>`;
+  };
+  const drawPick = () => {
+    drawPickList();
+    drawPickPage();
+  };
+  const openPick = (select) => {
+    pick.select = select;
+    pick.sel = select.value;
+    pick.find = '';
+    pick.nodes = [...select.options].map((o) => ({ dn: o.value, path: o.textContent, name: dnName(o.value), parent: dnParent(o.value), domain: isDomain(o.value) }));
+    const any = pick.nodes[0]?.dn || '';
+    pick.domain = any.split(/(?<!\\),/).filter(isDomain).map((p) => p.slice(3)).join('.');
+    $('oupick-lead').textContent = select.id === 'dset-scope'
+      ? (ds.tab === 'make' ? 'Where it gets Full Control over users, groups and computers.' : 'Where Rabbid Lab makes its changes. The account must already have permission there.')
+      : PICK_LEADS[select.id] || '';
+    $('oupick-find').value = '';
+    drawPick();
+    $('oupick-dialog').showModal();
+    $('oupick-list').querySelector('[aria-current]')?.scrollIntoView({ block: 'nearest' });
+    $('oupick-find').focus();
+  };
+  const usePick = () => {
+    const s = pick.select;
+    const o = s && [...s.options].find((x) => same(x.value, pick.sel));
+    if (!o) return;
+    $('oupick-dialog').close();
+    if (s.value !== o.value) {
+      s.value = o.value;
+      s.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  };
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-browse-ou]');
+    if (b) openPick($(b.dataset.browseOu));
+  });
+  const pickRow = (e) => {
+    const a = e.target.closest('[data-ou]');
+    if (!a) return false;
+    pick.sel = a.dataset.ou;
+    pick.find = '';
+    $('oupick-find').value = '';
+    drawPick();
+    $('oupick-list').querySelector('[aria-current]')?.focus();
+    return true;
+  };
+  $('oupick-list').addEventListener('click', pickRow);
+  $('oupick-list').addEventListener('dblclick', (e) => { if (pickRow(e)) usePick(); });
+  $('oupick-list').addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
+    const a = e.target.closest('[data-ou]');
+    if (a && same(a.dataset.ou, pick.sel) && e.key === 'Enter') usePick();
+    else pickRow(e);
+  });
+  $('oupick-find').addEventListener('input', () => {
+    pick.find = $('oupick-find').value;
+    drawPickList();
+  });
+  $('oupick-use').addEventListener('click', usePick);
+  ['oupick-cancel', 'oupick-x'].forEach((id) => $(id).addEventListener('click', () => $('oupick-dialog').close()));
+
+  // --- Setting up Rabbid Lab's AD account: its steps down the side ----------------------------------------------------
+  // Create a new one: sign in as a domain admin (not saved), name it and pick its OU, then check and create it. Use one
+  // I have: sign in as it, then check and use it. What it may manage starts as the whole domain; Review can change it.
+
+  let look = null; // what the sign-in read: the domain, its OUs and where accounts go
+  const ds = { tab: 'make', step: 0, reached: 0 };
+  const DSTEPS = {
+    make: [
+      { key: 'signin', name: 'Sign in', sub: 'A domain admin login', icon: 'user', title: 'Sign in as a domain admin', text: 'Used once to read your OUs and create the account. Not saved.' },
+      { key: 'account', name: 'Account', sub: 'Its name and OU', icon: 'user-plus', title: 'Name it, and pick where it goes', text: 'Pick an OU from the list, or Browse… to look through them.' },
+      { key: 'review', name: 'Review', sub: 'Check, then create', icon: 'check', title: 'Check it, then create it', text: 'Nothing changes in Active Directory until you click Create service account.' },
+    ],
+    existing: [
+      { key: 'signin', name: 'Sign in', sub: 'The service account', icon: 'user', title: 'Sign in as the service account', text: 'Rabbid Lab stores its password encrypted and makes every AD change as it.' },
+      { key: 'review', name: 'Review', sub: 'Check, then use it', icon: 'check', title: 'Check it, then use it', text: 'Nothing changes in Active Directory. Rabbid Lab makes its changes as this account from then on.' },
+    ],
+  };
+  const dsReview = () => {
+    if (!look) return;
+    const make = ds.tab === 'make';
+    const user = $('dset-user').value.trim();
+    const ou = $('dset-ou').selectedOptions[0];
+    const scope = $('dset-scope').selectedOptions[0];
+    const where = scope ? (isDomain(scope.value) ? `All of ${look.domain}` : scope.textContent) : '';
+    const row = (icon, label, value, sub, act) => `<div class="dset-rv">${svg(icon)}<span>${label}</span><b>${esc(value)}<small>${esc(sub)}</small></b>${act}</div>`;
+    const change = (i) => `<button type="button" class="dset-change" data-dstep="${i}">Change</button>`;
+    const browse = '<button type="button" class="dset-change" data-browse-ou="dset-scope">Change</button>';
+    $('dset-review').innerHTML = make
+      ? row('user', 'Signed in as', user, `${look.domain} · not saved`, change(0))
+        + row('user-plus', 'Service account', $('dset-account').value.trim(), 'Password made by Rabbid Lab, stored encrypted', change(1))
+        + row('folder', 'Created in', ou ? ou.textContent : '', ou ? ou.value : '', change(1))
+        + row('shield', 'Can manage', where, 'Users, groups and computers', browse)
+      : row('user', 'Service account', user, `${look.domain} · password stored encrypted`, change(0))
+        + row('shield', 'Works in', where, 'Users, groups and computers', browse);
+    $('dset-note2').textContent = make
+      ? 'It gets Full Control over user, group and computer objects there, the same as the Delegation of Control wizard. Admin accounts protected by AdminSDHolder aren\'t affected.'
+      : 'Rabbid Lab only makes changes there. The account must already have permission to create and manage users, groups and computers there. Rabbid Lab doesn\'t change its permissions.';
+  };
+  const dsDraw = () => {
+    const make = ds.tab === 'make';
+    const steps = DSTEPS[ds.tab];
+    const st = steps[ds.step];
+    $('dset-tabs').querySelectorAll('[data-adtab]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.adtab === ds.tab)));
+    $('dset-steps').innerHTML = steps.map((s, i) => {
+      const done = i !== ds.step && i < Math.max(ds.step, ds.reached);
+      return `<li class="${done ? 'done' : i === ds.step ? 'now' : ''}${i !== ds.step && i <= ds.reached ? ' go' : ''}" data-dstep="${i}">`
+        + `<i>${done ? svg('check') : i + 1}</i><b>${s.name}</b><small>${s.sub}</small></li>`;
+    }).join('');
+    $('dset-icon').setAttribute('href', `#i-${st.icon}`);
+    $('dset-step-title').textContent = st.title;
+    $('dset-step-text').textContent = st.text;
+    $('dset-dialog').querySelectorAll('[data-pane]').forEach((p) => { p.hidden = p.dataset.pane !== st.key; });
+    $('dset-user-label').textContent = make ? 'Domain admin' : 'Service account';
+    $('dset-note').textContent = make ? 'These credentials are only used to create the service account. They are never saved.' : 'Its password is stored encrypted on this server.';
+    $('dset-back').hidden = ds.step === 0;
+    $('dset-go').innerHTML = st.key === 'review' ? `${svg('check')}${make ? 'Create service account' : 'Use this account'}` : `Next${svg('right')}`;
+    if (st.key === 'review') dsReview();
+  };
+  const dsGo = (i) => {
+    ds.step = i;
+    ds.reached = Math.max(ds.reached, i);
     say('dset-problem', '');
+    dsDraw();
   };
   // Set it up, from any page that needs Rabbid Lab's AD account.
   const openSetup = (domain) => {
@@ -1018,7 +1166,10 @@
     $('dset-password').value = '';
     $('dset-account').value = 'svc-rabbidlab';
     ['dset-user', 'dset-password'].forEach((id) => $(id).classList.remove('bad'));
-    adsTab('make');
+    look = null;
+    Object.assign(ds, { tab: 'make', step: 0, reached: 0 });
+    say('dset-problem', '');
+    dsDraw();
     $('dset-dialog').showModal();
     $(me?.source === 'ad' ? 'dset-password' : 'dset-user').focus();
   };
@@ -1047,32 +1198,58 @@
   R.adSetupCard = setupCard;
   $('dset-local').addEventListener('click', () => $('dset-dialog').close());
   $('dset-tabs').addEventListener('click', (e) => {
-    const a = e.target.closest('[data-adtab]');
-    if (a) adsTab(a.dataset.adtab);
+    const b = e.target.closest('[data-adtab]');
+    if (!b || b.dataset.adtab === ds.tab) return;
+    Object.assign(ds, { tab: b.dataset.adtab, step: 0, reached: 0 });
+    say('dset-problem', '');
+    dsDraw();
   });
-  $('dset-back').addEventListener('click', () => adsStep(1));
-  ['dset-user', 'dset-password'].forEach((id) => $(id).addEventListener('input', () => ['dset-user', 'dset-password'].forEach((x) => $(x).classList.remove('bad'))));
+  // A step that's been reached opens again from the side, or from Change on Review.
+  $('dset-dialog').addEventListener('click', (e) => {
+    const s = e.target.closest('[data-dstep]');
+    if (s && Number(s.dataset.dstep) <= ds.reached && Number(s.dataset.dstep) !== ds.step) dsGo(Number(s.dataset.dstep));
+  });
+  $('dset-scope').addEventListener('change', dsReview);
+  $('dset-back').addEventListener('click', () => dsGo(ds.step - 1));
+  // A changed sign-in has to be read again before the steps after it.
+  ['dset-domain', 'dset-user', 'dset-password'].forEach((id) => $(id).addEventListener('input', () => {
+    ['dset-user', 'dset-password'].forEach((x) => $(x).classList.remove('bad'));
+    if (ds.reached) {
+      ds.reached = 0;
+      dsDraw();
+    }
+  }));
+  $('dset-dialog').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && e.target.matches('.dset-in input')) $('dset-go').click();
+  });
   $('dset-cancel').addEventListener('click', () => {
     $('dset-password').value = '';
     $('dset-dialog').close();
   });
   $('dset-go').addEventListener('click', async () => {
-    const make = $('dset-dialog').dataset.tab === 'make';
+    const make = ds.tab === 'make';
+    const key = DSTEPS[ds.tab][ds.step].key;
+    say('dset-problem', '');
+    if (key === 'account') {
+      if (!$('dset-account').value.trim()) {
+        say('dset-problem', 'Name the service account.');
+        $('dset-account').focus();
+        return;
+      }
+      dsGo(ds.step + 1);
+      return;
+    }
     const sign = { domain: $('dset-domain').value.trim(), username: $('dset-user').value.trim(), password: $('dset-password').value };
     $('dset-go').disabled = true;
-    const first = $('dset-dialog').dataset.step === '1';
-    say('dset-problem', '');
-    R.busy($('dset-dialog'), first ? `Signing in to ${sign.domain || 'the domain'}…` : make ? 'Creating the service account…' : 'Checking the service account…');
+    R.busy($('dset-dialog'), key === 'signin' ? `Signing in to ${sign.domain || 'the domain'}…` : make ? 'Creating the service account…' : 'Checking the service account…');
     try {
-      if (first) {
+      if (key === 'signin') {
         look = await R.send('/api/ad/look', sign);
         const opt = (p, selected) => `<option value="${esc(p.dn)}"${p.dn === selected ? ' selected' : ''}>${esc(p.path || p.name)}</option>`;
+        const was = $('dset-scope').value;
         $('dset-ou').innerHTML = look.places.map((p) => opt(p, look.accountOu)).join('');
-        $('dset-scope').innerHTML = `<option value="${esc(look.baseDn)}">All of ${esc(look.domain)}</option>` + look.places.filter((p) => !/^CN=/i.test(p.dn)).map((p) => opt(p, '')).join('');
-        $('dset-note2').textContent = make
-          ? 'The service account gets Full Control over user, group and computer objects in this scope, the same as the Delegation of Control wizard. Admin accounts protected by AdminSDHolder are not affected.'
-          : 'Rabbid Lab only makes changes inside this domain or OU. The service account must already have permission to create and manage users, groups and computers there. Rabbid Lab does not change its permissions.';
-        adsStep(2);
+        $('dset-scope').innerHTML = `<option value="${esc(look.baseDn)}">All of ${esc(look.domain)}</option>` + look.places.filter((p) => !/^CN=/i.test(p.dn)).map((p) => opt(p, was)).join('');
+        dsGo(ds.step + 1);
       } else {
         const answer = await R.send('/api/ad/connect', { ...sign, existing: !make, account: $('dset-account').value.trim(), ou: $('dset-ou').value, scope: $('dset-scope').value });
         $('dset-password').value = '';
@@ -1086,7 +1263,10 @@
     } catch (err) {
       // A wrong sign-in: back on the sign-in step, its two fields outlined, and the password ready to type again.
       const wrong = /username or password/i.test(err.message);
-      if (wrong) adsStep(1);
+      if (wrong) {
+        ds.reached = 0;
+        dsGo(0);
+      }
       say('dset-problem', err.message);
       if (wrong) {
         ['dset-user', 'dset-password'].forEach((id) => $(id).classList.add('bad'));

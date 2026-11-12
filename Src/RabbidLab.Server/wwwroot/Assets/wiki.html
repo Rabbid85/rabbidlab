@@ -106,16 +106,18 @@
 
 <article data-key="dir-setup" data-group="Active Directory" data-title="Set up the AD service account">
   <p>Rabbid Lab makes every Active Directory change as a dedicated service account, <code>svc-rabbidlab</code>. Its password is long, random and stored encrypted on the server. You set this up once.</p>
-  <h3>Create a new service account</h3>
+  <h3>Create a new one</h3>
   <ol>
-    <li>Open <a href="#ad/users">Users</a> and click <b>Set up</b>.</li>
-    <li>On <b>Create a new service account</b>, enter a domain admin username and password. They're only used to create the service account and aren't saved.</li>
-    <li>Click <b>Next</b>. Pick the OU to create the account in, and where to delegate permissions: the whole domain or one OU.</li>
-    <li>Click <b>Create service account</b>.</li>
+    <li>Open <a href="#ad/users">Users</a> and click <b>Set up</b>. The steps run down the left: Sign in, Account, Review.</li>
+    <li><b>Sign in</b>: enter a domain admin username and password. They're only used to create the service account and aren't saved.</li>
+    <li><b>Account</b>: name it and pick the OU to create it in, from the list or with <b>Browse…</b>.</li>
+    <li><b>Review</b>: check it, then click <b>Create service account</b>. <b>Can manage</b> starts as the whole domain; <b>Change</b> limits it to one OU.</li>
   </ol>
-  <p>The service account gets Full Control over user, group and computer objects in that scope, the same as the Delegation of Control wizard.</p>
-  <h3>Use an existing service account</h3>
-  <p>On <b>Use an existing service account</b>, enter its username and password. It needs permission to create and manage users, groups and computers in the scope you pick.</p>
+  <p>The service account gets Full Control over user, group and computer objects there, the same as the Delegation of Control wizard.</p>
+  <h3>Use one you have</h3>
+  <p>Click <b>Use one I have</b>, sign in as the service account, then check it on Review. It needs permission to create and manage users, groups and computers where it works: the whole domain, or the OU you pick with <b>Change</b>.</p>
+  <h3>Picking an OU</h3>
+  <p><b>Browse…</b> beside any OU list opens the OUs the way Settings lists its pages. An OU with OUs inside has the flask and opens when you click it. Type in <b>Find an OU</b> to search, then click <b>Use this OU</b>, or double-click it.</p>
   <h3>Change it later</h3>
   <p><a href="#settings/ad">Settings, Active Directory</a> (the gear at the bottom of the views on any Active Directory page opens it) sets the default OU for new users and groups, and has <b>Disconnect</b>. Disconnecting deletes the stored password; the account and its permissions stay in AD until you delete them in Active Directory Users and Computers.</p>
   <p class="tip">Admin accounts protected by AdminSDHolder (Domain Admins and the like) can be viewed but not changed by the service account.</p>

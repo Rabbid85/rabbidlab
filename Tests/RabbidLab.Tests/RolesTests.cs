@@ -181,6 +181,35 @@ public sealed class RolesTests : IDisposable
     }
 
     [Fact]
+    public async Task People_change_their_own_password_with_the_current_one_and_every_session_of_theirs_ends()
+    {
+        var admin = await app.SignedIn();
+        (await admin.PostAsJsonAsync("/api/accounts", new { username = "kiosk", password = "kiosk password" })).EnsureSuccessStatusCode();
+        var kiosk = await SignIn("kiosk", "kiosk password");
+        var elsewhere = await SignIn("kiosk", "kiosk password");
+        var windows = await SignIn(@".\localadmin", "windows pass");
+
+        var wrong = await kiosk.PostAsJsonAsync("/api/me/password", new { current = "not it", password = "a new password" });
+        var tooShort = await kiosk.PostAsJsonAsync("/api/me/password", new { current = "kiosk password", password = "short" });
+        var notOurs = await windows.PostAsJsonAsync("/api/me/password", new { current = "windows pass", password = "a new password" });
+        var right = await kiosk.PostAsJsonAsync("/api/me/password", new { current = "kiosk password", password = "a new password" });
+        var here = await kiosk.GetAsync("/api/sessions");
+        var there = await elsewhere.GetAsync("/api/sessions");
+        var adminStill = await admin.GetAsync("/api/sessions");
+
+        Assert.Equal(HttpStatusCode.BadRequest, wrong.StatusCode);
+        Assert.Contains("current password is wrong", await wrong.Content.ReadAsStringAsync());
+        Assert.Equal(HttpStatusCode.BadRequest, tooShort.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, notOurs.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, right.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, here.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, there.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, adminStill.StatusCode);
+        await SignIn("kiosk", "a new password");
+        Assert.Equal(HttpStatusCode.Unauthorized, (await app.Page().PostAsJsonAsync("/api/signin", new { username = "kiosk", password = "kiosk password" })).StatusCode);
+    }
+
+    [Fact]
     public async Task A_lost_roles_file_makes_nobody_an_administrator_who_was_not_one()
     {
         var setup = app.Page();

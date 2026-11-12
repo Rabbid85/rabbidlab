@@ -144,4 +144,91 @@ button.danger.solid:hover { background: #DB4860; }
 .table.attrs .tr { grid-template-columns: minmax(180px, .6fr) minmax(0, 1.4fr); min-width: 0; min-height: 0; align-items: start; padding-top: 7px; padding-bottom: 7px; }
 .table.attrs .tr .mono { color: var(--muted); }
 .table.attrs .vals { display: grid; gap: 2px; min-width: 0; font-size: 13px; overflow-wrap: anywhere; }
-.dset-how { margin: 0 0 12px; color: #C9CCDA; font-size: 13.5px; line-height: 1.5; }
+
+/* Setting up the service account: its steps down the side, the step on the right, a flat foot */
+.dialog.dset { width: min(900px, calc(100vw - 32px)); padding: 0; overflow: hidden; }
+.dialog.dset[open] { display: grid; grid-template-columns: 230px minmax(0, 1fr); }
+.dset-side { padding: 24px 18px; border-right: 1px solid var(--line); background: #0E1019; }
+.dset .dset-side h2 { font-size: 18px; }
+.dset-lead { margin: 4px 0 0; color: var(--muted); font-size: 12.5px; line-height: 1.45; }
+.dset-steps { display: grid; gap: 4px; margin: 22px 0 0; padding: 0; list-style: none; }
+.dset-steps li { position: relative; display: grid; grid-template-columns: 30px 1fr; gap: 0 10px; align-items: start; padding: 8px 6px; border-radius: 10px; color: var(--muted); }
+.dset-steps i { display: grid; place-items: center; width: 30px; height: 30px; border: 2px solid var(--line-strong); border-radius: 50%; background: #0C0E17; font-style: normal; font-size: 12.5px; font-weight: 800; }
+.dset-steps i svg { width: 14px; height: 14px; }
+.dset-steps b { color: #C9CCDA; font-size: 13.5px; }
+.dset-steps small { grid-column: 2; font-size: 12px; line-height: 1.35; }
+.dset-steps li:not(:last-child)::after { content: ""; position: absolute; left: 20px; top: 42px; bottom: -10px; width: 2px; border-radius: 2px; background: var(--line-strong); }
+.dset-steps li.done::after { background: var(--accent); }
+.dset-steps li.done i { border-color: var(--accent); background: var(--accent); color: #fff; }
+.dset-steps li.now { background: #1A1D2B; }
+.dset-steps li.now i { border-color: var(--accent-line); color: #fff; }
+.dset-steps li.now b { color: #fff; }
+.dset-steps li.go { cursor: pointer; }
+.dset-steps li.go:hover b { color: #fff; }
+.dset-main { display: grid; grid-template-rows: auto 1fr auto; min-width: 0; min-height: 500px; }
+.dset .seg.dset-tabs { margin: 18px 24px 0; }
+.dset .seg.dset-tabs button { height: 32px; padding: 0 14px; font-size: 13px; }
+.dset-body { padding: 18px 24px 20px; }
+.dset-head { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.dset-head .big-ic { width: 42px; height: 42px; border-radius: 12px; }
+.dset-head .big-ic svg { width: 21px; height: 21px; }
+.dset-head b { display: block; color: #fff; font-size: 16px; }
+.dset-head small { display: block; color: var(--muted); font-size: 13px; line-height: 1.45; }
+.dset-fld { display: grid; gap: 6px; margin-bottom: 12px; }
+.dset-fld > span:first-child, .dset-fld > label { color: #C9CCDA; font-size: 12.5px; font-weight: 600; }
+.dset-in { position: relative; display: flex; align-items: center; }
+.dset-in svg { position: absolute; left: 12px; width: 16px; height: 16px; color: #6D7290; pointer-events: none; }
+.dset-in input { width: 100%; height: 42px; padding: 0 12px 0 38px; border: 1px solid var(--line-strong); border-radius: 10px; background: #0C0E17; color: var(--title); font: inherit; font-size: 14px; }
+.dset-in input:focus { outline: none; border-color: var(--accent-line); }
+.dset-in:focus-within svg { color: var(--accent-soft); }
+.dset-in input.bad { border-color: var(--red); }
+.dset-note { display: flex; align-items: flex-start; gap: 8px; margin: 4px 0 0; padding: 10px 12px; border-radius: 10px; background: #0E1019; color: var(--muted); font-size: 12.5px; line-height: 1.45; }
+.dset-note svg { flex: none; width: 15px; height: 15px; margin-top: 1px; color: var(--ok); }
+.dset-review { margin-bottom: 10px; border: 1px solid var(--line); border-radius: 12px; background: #0E1019; }
+.dset-rv { display: grid; grid-template-columns: 22px 110px minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 52px; padding: 8px 14px; border-top: 1px solid var(--line); }
+.dset-rv:first-child { border-top: 0; }
+.dset-rv > svg { width: 18px; height: 18px; color: var(--accent-soft); }
+.dset-rv > span { color: var(--muted); font-size: 13px; }
+.dset-rv b { min-width: 0; color: #fff; font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+.dset-rv b small { display: block; color: var(--muted); font-size: 12px; font-weight: 400; }
+.dset-change { height: 28px; padding: 0 10px; border: 0; background: none; color: var(--accent-soft); font-size: 12.5px; font-weight: 600; }
+.dset-change:hover { background: #1A1D2B; }
+.dset-foot { display: flex; align-items: center; gap: 8px; padding: 14px 24px; border-top: 1px solid var(--line); background: #0E1019; }
+.dset-foot .grow { flex: 1; }
+.dset-foot .primary { display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 18px; }
+.dset-foot .primary svg { width: 15px; height: 15px; }
+@media (max-width: 760px) {
+  .dialog.dset[open] { grid-template-columns: minmax(0, 1fr); }
+  .dset-side { border-right: 0; border-bottom: 1px solid var(--line); }
+  .dset-lead, .dset-steps small, .dset-steps li::after { display: none; }
+  .dset-steps { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 12px; }
+  .dset-main { min-height: 0; }
+}
+
+/* An OU list with Browse… beside it */
+.ou-row { display: flex; gap: 8px; }
+.ou-row select { flex: 1; min-width: 0; }
+.ou-row button { display: inline-flex; flex: none; align-items: center; gap: 8px; height: 38px; padding: 0 14px; }
+.ou-row button svg { width: 16px; height: 16px; color: #8B90A5; }
+.dset .ou-row select { height: 42px; padding-left: 12px; border: 1px solid var(--line-strong); border-radius: 10px; background-color: #0C0E17; color: var(--title); font: inherit; font-size: 14px; }
+.dset .ou-row button { height: 42px; border-radius: 10px; }
+
+/* Pick an OU: the OUs as a rail like Settings, and the one picked as a Settings page beside it */
+.dialog.oupick { width: min(860px, calc(100vw - 32px)); }
+.oupick-x { position: absolute; top: 18px; right: 18px; display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 8px; background: none; color: var(--muted); }
+.oupick-x:hover { background: #1A1D2B; color: #fff; }
+.oupick-x svg { width: 16px; height: 16px; }
+.oupick-grid { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 32px; margin-top: 16px; padding-top: 18px; border-top: 1px solid var(--line); }
+.oupick .dnav { position: static; height: min(400px, 55vh); max-height: none; }
+.oupick .dnav a { cursor: pointer; }
+.oupick .dnav a small { overflow: hidden; max-width: 120px; text-overflow: ellipsis; }
+.oupick-rail .dkids { display: none; }
+.oupick-rail .dkids.open { display: grid; }
+.oupick-none { margin: 6px 12px; }
+.oupick-page { min-width: 0; }
+.oupick-page .sub-head { margin-bottom: 8px; padding: 0 2px 16px; border-bottom: 1px solid var(--line); }
+.oupick .dialog-foot { margin-top: 14px; padding-top: 16px; border-top: 1px solid var(--line); }
+@media (max-width: 700px) {
+  .oupick-grid { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .oupick .dnav { height: 240px; }
+}

@@ -3,6 +3,12 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.43', [
+    'The service account window has its steps down the left: Sign in, Account, Review. A step already done opens again from the side, and every row on Review has Change.',
+    'What the service account can manage starts as the whole domain and sits on Review, with Change to limit it to one OU, in place of a step of its own.',
+    'Every OU list has Browse beside it. The OUs open the way Settings lists its pages, with a search, and the one picked shows its path and distinguished name.',
+    'The account menu shows your roles and how you signed in, then Your account, Where you are signed in, Appearance and Sign out. Change your password is there for Rabbid Lab accounts.',
+    'Settings, Account lists where you are signed in, with Sign out for each other browser, and Change your password for Rabbid Lab accounts. Changing it signs you out everywhere.']],
   ['1.1.42', [
     'With no service account set up, the cover on Active Directory, Org chart and Attribute browser dims the whole page, the title included, not only the part under it.']],
   ['1.1.41', [
@@ -1335,15 +1341,12 @@ const RELEASE_NOTES = [
       const letters = initials(name);
       const domain = u.domain || s.domain;
       const dc = u.server && u.server !== domain ? u.server : null;
-      const rows = u.source === 'ad' ? [['Signed in with', 'Active Directory'], ['Domain', domain], ['Domain controller', dc ? dc.split('.')[0].toUpperCase() : 'Automatic', dc]]
-        : u.source === 'windows' ? [['Signed in with', 'Local account'], ['Computer', u.domain]] : [['Signed in with', 'Local account']];
       // What their roles allow decides what shows; each part loads only when it's allowed.
       can = new Set(u.can || []);
       shown = can;
       meInfo = u;
       me = u.username;
       const top = (u.roles || []).filter((r) => r.id !== 'user');
-      rows.push([top.length > 1 ? 'Roles' : 'Role', (top.length ? top : u.roles || []).map((r) => r.name).join(', ')]);
       apply();
       if (can.has('updates.view')) update();
       else $('hero-state').textContent = `Welcome, ${name}.`;
@@ -1360,14 +1363,16 @@ const RELEASE_NOTES = [
       $('acc-roles').textContent = (u.roles || []).map((r) => r.name).join(', ');
       $('avatar').textContent = letters;
       $('avatar-big').textContent = letters;
-      $('account-facts').replaceChildren(...rows.flatMap(([label, value, full]) => {
-        const dt = document.createElement('dt');
-        dt.textContent = label;
-        const dd = document.createElement('dd');
-        dd.textContent = value;
-        if (full) dd.title = full;
-        return [dt, dd];
-      }));
+      $('menu-roles').innerHTML = (top.length ? top : u.roles || []).map(chip).join('');
+      paint($('menu-roles'));
+      const [howIcon, how, where2] = u.source === 'ad' ? ['globe', 'Signed in with Active Directory', dc ? `${domain} · through ${dc.split('.')[0].toUpperCase()}` : domain]
+        : u.source === 'windows' ? ['monitor', 'Signed in with a Windows account', `On ${u.domain}`] : ['server', 'Signed in with a local account', 'Stored on this server'];
+      $('menu-how-icon').firstElementChild.setAttribute('href', `#i-${howIcon}`);
+      $('menu-how').textContent = how;
+      $('menu-where').textContent = where2;
+      $('menu-where').title = dc || '';
+      $('menu-password').hidden = u.source !== 'local';
+      $('acc-password-row').hidden = u.source !== 'local';
       $('account').hidden = false;
       if (u.source === 'ad') $('hero-eyebrow').textContent = `${domain} · Homelab console`;
       startWhenQuiet();
@@ -1391,8 +1396,10 @@ const RELEASE_NOTES = [
     const menu = (open) => {
       $('account-menu').hidden = !open;
       $('account-chip').setAttribute('aria-expanded', String(open));
+      if (open) mySessions().catch(() => {}); // the count beside Where you're signed in
     };
     $('account-chip').addEventListener('click', () => menu($('account-menu').hidden));
+    $('account-menu').addEventListener('click', (e) => { if (e.target.closest('a, #menu-password')) menu(false); });
     document.addEventListener('click', (e) => { if (!$('account').contains(e.target)) menu(false); });
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape' || $('account-menu').hidden) return;
@@ -1782,6 +1789,65 @@ const RELEASE_NOTES = [
     setTimeout(() => { $('sup-copy').innerHTML = `${svg('csv')}Copy`; }, 2500);
   });
   $('acc-signout').addEventListener('click', () => $('signout').click());
+  // Where you're signed in: your own sessions, in the menu as a count and in Settings, Account, each with Sign out.
+  const mySessions = async () => {
+    const r = await fetch('/api/sessions', { headers: { Accept: 'application/json' } });
+    if (!r.ok) throw new Error("Couldn't read where you're signed in.");
+    const list = (await r.json()).filter((x) => me && String(x.username).toLowerCase() === me.toLowerCase());
+    $('menu-sessions').textContent = list.length || '';
+    return list;
+  };
+  const drawMySessions = async () => {
+    say('acc-sessions-problem', '');
+    try {
+      const list = await mySessions();
+      $('acc-sessions').innerHTML = list.map((x) => `<div class="ds-row" data-session="${esc(x.id)}"><div class="ds-l"><b>${esc(x.device)}${x.current ? '<span class="ds-scope">This browser</span>' : ''}</b>`
+        + `<span>${esc([x.address, `Signed in ${when(x.started)}`, `last seen ${ago(x.lastSeen)}`].filter(Boolean).join(' · '))}</span></div>`
+        + `<div class="ds-r">${x.current ? '' : '<button type="button" class="ds-btn" data-end>Sign out</button>'}</div></div>`).join('') || '<p class="ds-empty">Nowhere.</p>';
+    } catch (err) {
+      $('acc-sessions').innerHTML = '';
+      say('acc-sessions-problem', err.message);
+    }
+  };
+  document.addEventListener('rabbidlab:show', (e) => { if (e.detail[0] === 'settings' && (!e.detail[1] || e.detail[1] === 'account')) drawMySessions(); });
+  $('acc-sessions').addEventListener('click', async (e) => {
+    const row = e.target.closest('[data-end]') && e.target.closest('[data-session]');
+    if (!row) return;
+    busy($('acc-sessions'), 'Signing it out…');
+    try {
+      await send(`/api/sessions/${encodeURIComponent(row.dataset.session)}/signout`);
+      say('acc-sessions-problem', '');
+    } catch (err) {
+      say('acc-sessions-problem', err.message);
+    } finally {
+      busy($('acc-sessions'), '');
+    }
+    drawMySessions();
+  });
+  // Your own password, for Rabbid Lab accounts: every session of yours ends, so it's back to sign-in after.
+  const myPassword = () => {
+    $('mypw-current').value = '';
+    $('mypw-new').value = '';
+    say('mypw-problem', '');
+    $('mypw-dialog').showModal();
+    $('mypw-current').focus();
+  };
+  $('menu-password').addEventListener('click', myPassword);
+  $('acc-password').addEventListener('click', myPassword);
+  $('mypw-cancel').addEventListener('click', () => $('mypw-dialog').close());
+  $('mypw-save').addEventListener('click', async () => {
+    $('mypw-save').disabled = true;
+    say('mypw-problem', '');
+    busy($('mypw-dialog'), 'Changing your password…');
+    try {
+      await send('/api/me/password', { current: $('mypw-current').value, password: $('mypw-new').value });
+      location.replace('/signin.html');
+    } catch (err) {
+      say('mypw-problem', err.message);
+      busy($('mypw-dialog'), '');
+      $('mypw-save').disabled = false;
+    }
+  });
   let viewRoles = [];
   $('va-start').addEventListener('click', () => {
     const r = viewRoles.find((x) => x.id === $('va-role').value);

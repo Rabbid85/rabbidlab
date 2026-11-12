@@ -435,17 +435,30 @@ a.button.primary:hover { background: var(--ember); }
 .account-chip[aria-expanded="true"] .chev { transform: rotate(180deg); }
 .avatar { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--ember);
   color: #fff; font-size: 12px; font-weight: 700; letter-spacing: .02em; }
-.avatar.big { width: 40px; height: 40px; font-size: 15px; }
-.account-menu { position: absolute; z-index: 20; right: 0; top: calc(100% + 8px); width: 290px; padding: 14px; background: #151827; border: 1px solid var(--line-strong); border-radius: 12px; }
-.account-head { display: flex; align-items: center; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
-.account-id { min-width: 0; }
-.account-id b, .account-id small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.account-id b { color: var(--title); font-size: 14.5px; font-weight: 600; }
-.account-id small { color: var(--muted); font-size: 12.5px; }
-.account-facts { display: grid; grid-template-columns: auto 1fr; gap: 7px 14px; margin: 12px 0 14px; font-size: 13px; }
-.account-facts dt { color: var(--muted); }
-.account-facts dd { margin: 0; color: var(--text); text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.signout { width: 100%; padding: 7px 12px; font-size: 13px; }
+.avatar.big { width: 52px; height: 52px; font-size: 17px; }
+/* The account menu: who, how they signed in, their own pages, and Sign out. Flat, no band. */
+.account-menu { position: absolute; z-index: 20; right: 0; top: calc(100% + 8px); width: 320px; overflow: hidden; background: #12141F; border: 1px solid var(--line-strong); border-radius: 14px; box-shadow: 0 24px 60px rgba(0, 0, 0, .55); }
+.am-id { display: flex; align-items: center; gap: 14px; padding: 18px 18px 14px; }
+.am-who { min-width: 0; }
+.am-who b, .am-who small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.am-who b { color: #fff; font-size: 16px; font-weight: 700; }
+.am-who small { color: var(--muted); font-size: 13px; }
+.am-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
+.am-chips:empty { display: none; }
+.am-how { display: flex; align-items: center; gap: 10px; margin: 0 14px 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: #0E1019; }
+.am-how svg { flex: none; width: 18px; height: 18px; color: var(--accent-soft); }
+.am-how span { min-width: 0; }
+.am-how b, .am-how small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.am-how b { color: #E6E8F2; font-size: 13px; font-weight: 600; }
+.am-how small { color: var(--muted); font-size: 12.5px; }
+.am-links { padding: 6px; border-top: 1px solid var(--line); }
+.am-link { display: flex; align-items: center; gap: 12px; width: 100%; height: 38px; padding: 0 12px; border: 0; border-radius: 8px; background: none; color: #D7DAE8; font-size: 13.5px; text-align: left; }
+.am-link:hover { background: #1A1D2B; color: #fff; text-decoration: none; }
+.am-link[hidden] { display: none; }
+.am-link svg { flex: none; width: 16px; height: 16px; color: #8B90A5; }
+.am-link small { margin-left: auto; color: #5E6380; font-size: 11.5px; }
+.am-link.out { color: #FF8A97; }
+.am-link.out svg { color: #FF6B7D; }
 @media (max-width: 560px) { .account-name { display: none; } }
 
 /* Scroll bars, everywhere: thin and dark, a rounded thumb and no arrows. Firefox takes the standard properties instead. */
