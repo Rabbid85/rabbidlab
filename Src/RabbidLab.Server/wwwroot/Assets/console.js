@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.38', [
+    'Rabbid Lab Dev shows as Rabbid Lab with the DEV tag in the top bar and on the sign-in page, not Rabbid Lab Dev and the tag.']],
   ['1.1.37', [
     'The bar over the Activity log lines up: the find box, the person list, the day buttons and Export are all the same height and sit on one line. A long name no longer stretches the person list.']],
   ['1.1.36', [
@@ -361,7 +363,7 @@ const RELEASE_NOTES = [
   let productName = 'Rabbid Lab';
   const drawBrand = () => {
     product = brand.name || productName;
-    $('brand-name').textContent = product;
+    $('brand-name').textContent = product.replace(/ Dev$/, ''); // the DEV tag beside it says the rest
     $('hero-title').textContent = product;
     title();
     $('brand-img').hidden = !brand.icon;

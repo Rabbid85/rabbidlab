@@ -259,7 +259,7 @@
     const brand = window.RabbidLabBrand.apply(s.brand);
     const name = brand.name || s.product;
     document.title = (setup ? 'Set up ' : 'Sign in to ') + name;
-    document.querySelectorAll('[data-product]').forEach((e) => { e.textContent = name; });
+    document.querySelectorAll('[data-product]').forEach((e) => { e.textContent = name.replace(/ Dev$/, ''); }); // the DEV tag beside it says the rest
     if (brand.icon) {
       document.getElementById('band-img').src = brand.icon;
       document.getElementById('band-img').hidden = false;
