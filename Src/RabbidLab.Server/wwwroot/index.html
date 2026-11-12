@@ -45,6 +45,8 @@
   <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></symbol>
   <symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M4 20h16"/></symbol>
   <symbol id="i-upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4M7 9l5-5 5 5M4 20h16"/></symbol>
+  <symbol id="i-file-out" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h5M14 3l5 5v3M14 3v5h5M15 17h6M18.5 14.5 21 17l-2.5 2.5"/></symbol>
+  <symbol id="i-file-in" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M3 15h8M8.5 12.5 11 15l-2.5 2.5"/></symbol>
   <symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18h.01"/></symbol>
   <symbol id="i-history" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></symbol>
   <symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol>
@@ -619,8 +621,8 @@
       <div class="hero-actions">
         <button type="button" class="primary" id="ln-add" data-can="links.edit">Add a link</button>
         <button type="button" class="hero-gear" id="ln-checks" data-can="links.edit" data-tip="Links settings" aria-label="Links settings"><svg><use href="#i-gear"/></svg></button>
-        <button type="button" class="hero-gear" id="ln-export" data-can="links.edit" data-tip="Export links" aria-label="Export links"><svg><use href="#i-download"/></svg></button>
-        <button type="button" class="hero-gear" id="ln-import" data-can="links.edit" data-tip="Import links" aria-label="Import links"><svg><use href="#i-upload"/></svg></button><input type="file" id="ln-import-file" accept=".json,application/json" hidden>
+        <button type="button" class="hero-gear" id="ln-export" data-can="links.edit" data-tip="Export links" aria-label="Export links"><svg><use href="#i-file-out"/></svg></button>
+        <button type="button" class="hero-gear" id="ln-import" data-can="links.edit" data-tip="Import links" aria-label="Import links"><svg><use href="#i-file-in"/></svg></button><input type="file" id="ln-import-file" accept=".json,application/json" hidden>
       </div>
       <div class="hero-stats">
         <div><b id="ln-count"><i class="sk sk-num"></i></b><span><svg><use href="#i-link"/></svg>Links</span></div>

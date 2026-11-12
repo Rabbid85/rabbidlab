@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.90 (2026-11-12)
+
+- Export and Import at the top of Links have file icons with an arrow going out and coming in, instead of download and upload arrows.
+
 ## 1.1.89 (2026-11-12)
 
 - The settings, Export and Import buttons at the top of Links show a short hint in the console style instead of the browser tooltip.
