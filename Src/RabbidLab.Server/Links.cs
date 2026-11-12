@@ -476,9 +476,9 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
     }
 
     /// <summary>
-    /// Reads a link's site again, the way Fill in does, and fills in what it's missing: the icon where it shows its letter,
-    /// a description where it has none or only Rabbid Lab's own, and its IP when that's on the lab's network. An icon it has stays (it may be one uploaded),
-    /// and so do No icon, a typed description and the name. Null when the link is gone.
+    /// Reads a link's site again, the way Fill in does: an icon that came from the site follows what the site serves now,
+    /// a description is filled in where it has none or only Rabbid Lab's own, and its IP when that's on the lab's network.
+    /// An uploaded icon, No icon, a typed description and the name stay. Null when the link is gone.
     /// </summary>
     public async Task<LinkRefreshed?> Refresh(string id, CancellationToken stop, bool guarded = true)
     {
@@ -498,7 +498,6 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
         {
             return new LinkRefreshed(was, [], null);
         }
-        // An icon saved before Rabbid Lab kept where icons came from is checked against the ones the site serves, once.
         // An icon of unknown origin (saved before Rabbid Lab kept that, or its site didn't answer last time) is checked against the ones the site serves.
         var unsure = was.Icon is { } saved && saved != NoIcon && was.IconFrom is null or "kept" ? saved : null;
         var look = await Look(was.Url, stop, guarded, describe, served: unsure);

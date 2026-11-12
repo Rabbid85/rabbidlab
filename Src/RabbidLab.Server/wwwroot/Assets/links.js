@@ -325,7 +325,7 @@
   });
   // Import: a file Export made, added beside what's here. The flask covers the settings while it goes in.
   const count = (n, thing) => `${n} ${thing}${n === 1 ? '' : 's'}`;
-  // Refresh: each link missing an icon, a description or its IP has its site read again, four at a time. On Links each
+  // Refresh: every link with a web address has its site read again, four at a time. On Links each
   // tile being read shows the flask and takes what was found as soon as it's back, the way Plex refreshes metadata; in
   // Settings, Links the flask covers the section with how far along it is. One run at a time.
   let refreshing = false;
