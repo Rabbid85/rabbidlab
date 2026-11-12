@@ -371,7 +371,7 @@ public sealed class NetworkProbe(TimeProvider clock, SensorLogins? logins = null
         {
             AllowAutoRedirect = true,
             MaxAutomaticRedirections = 5,
-            ConnectTimeout = TimeSpan.FromSeconds(4),
+            ConnectTimeout = TimeSpan.FromSeconds(8),
             // No resumed TLS sessions, as for links: Netflix never answers on one.
             SslOptions = { RemoteCertificateValidationCallback = (_, _, _, _) => true, AllowTlsResume = false },
         };

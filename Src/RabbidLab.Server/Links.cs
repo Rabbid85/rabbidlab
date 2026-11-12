@@ -78,10 +78,10 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { WriteIndented = true };
     private const int ChecksAtOnce = 16;
     private static readonly TimeSpan LookFor = TimeSpan.FromSeconds(12); // a lookup in all: the page, its icon, every byte
+    private static readonly TimeSpan CheckFor = TimeSpan.FromSeconds(10); // one check of one link: an iDRAC can take 4 seconds to answer (set before the clients below)
     private static readonly HttpClient Http = MakeHttp(guarded: false); // whether the links answer
     private static readonly HttpClient Reader = MakeHttp(guarded: true); // reading a site someone typed
     private readonly JsonFile<LinksFile> file = folder.Json<LinksFile>("links.json", Json);
-    private static readonly TimeSpan CheckFor = TimeSpan.FromSeconds(8); // one check of one link
     private static readonly int[] EveryChoices = [15, 30, 60, 300];
     private static readonly int[] DownChoices = [0, 15, 30, 60, 300];
     private readonly Dictionary<string, Checked> seen = []; // each link's last check, by id
@@ -703,7 +703,8 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
 
     /// <summary>
     /// Whether each http(s) link answers (any answer counts: a sign-in page is up). Links are checked when someone asks and
-    /// their last check is older than the time set; one that didn't answer shows as down once that has lasted long enough.
+    /// their last check is older than the time set; one that didn't answer is tried again sooner, and shows as down once a
+    /// later check has failed too, the time set after the first.
     /// </summary>
     public async Task<LinkStates> States(CancellationToken stop)
     {
@@ -736,13 +737,16 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
                 }
                 if (seen.TryGetValue(l.Id, out var c) && c.Url == l.Url)
                 {
-                    states[l.Id] = new LinkState(c.Up, !c.Up && now - (c.Since ?? now) >= after, c.Ms, c.Code, c.Since, c.At, c.Why);
+                    states[l.Id] = new LinkState(c.Up, Confirmed(c, after), c.Ms, c.Code, c.Since, c.At, c.Why);
                 }
             }
             var waiting = states.Values.Any(s => !s.Up && !s.Down);
             return new LinkStates(states, waiting ? Retry(f) : Math.Min(Every(f), 60), revision);
         }
     }
+
+    // Down is a check that failed that long after the first one did: never the clock alone, so one missed check is never red.
+    private static bool Confirmed(Checked c, TimeSpan after) => !c.Up && c.At - (c.Since ?? c.At) >= after;
 
     private List<Link> Due(LinksFile f, DateTime now)
     {
@@ -759,7 +763,7 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
             {
                 return true;
             }
-            var waiting = !c.Up && now - (c.Since ?? now) < after;
+            var waiting = !c.Up && !Confirmed(c, after);
             return now - c.At >= (waiting ? retry : every);
         })];
     }
@@ -780,7 +784,7 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
                 case System.Security.Authentication.AuthenticationException:
                     return "the TLS handshake failed";
                 case TimeoutException:
-                    return "it didn't connect within 4 seconds";
+                    return "it didn't connect within 8 seconds";
             }
         }
         return e is OperationCanceledException ? $"no answer within {CheckFor.TotalSeconds:0} seconds" : "the connection failed";
@@ -853,7 +857,7 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
             AllowAutoRedirect = true,
             MaxAutomaticRedirections = 5,
             AutomaticDecompression = DecompressionMethods.All, // an iDRAC only has its pages gzipped, and answers 404 to a reader that doesn't ask for that
-            ConnectTimeout = TimeSpan.FromSeconds(4),
+            ConnectTimeout = TimeSpan.FromSeconds(8),
             // Any certificate does (homelab gear signs its own), so none is fetched or checked online while connecting: that can hang.
             SslOptions =
             {
@@ -892,7 +896,7 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
                 }
             };
         }
-        var http = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(8) };
+        var http = new HttpClient(handler) { Timeout = CheckFor };
         http.DefaultRequestHeaders.UserAgent.ParseAdd($"RabbidLab/{Product.Version}");
         http.DefaultRequestHeaders.Accept.ParseAdd("text/html,image/*;q=0.9,*/*;q=0.8");
         return http;

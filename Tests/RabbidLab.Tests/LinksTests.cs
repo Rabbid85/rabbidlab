@@ -142,6 +142,36 @@ public sealed class LinksTests : IDisposable
     }
 
     [Fact]
+    public async Task One_missed_check_is_never_down_however_late_the_page_asks_again()
+    {
+        // A port nothing listens on, then a site on it.
+        var held = new TcpListener(IPAddress.Loopback, 0);
+        held.Start();
+        var port = ((IPEndPoint) held.LocalEndpoint).Port;
+        held.Stop();
+        var admin = await app.SignedIn();
+        var id = (await Json(await admin.PostAsJsonAsync("/api/links", new { url = $"http://127.0.0.1:{port}", name = "Slow" }))).GetProperty("id").GetString()!;
+
+        var missed = await Json(await admin.GetAsync("/api/links/states"));
+        var back = new TcpListener(IPAddress.Loopback, port);
+        back.Start();
+        _ = Task.Run(async () =>
+        {
+            using var client = await back.AcceptTcpClientAsync();
+            await client.GetStream().ReadAsync(new byte[4096]);
+            await client.GetStream().WriteAsync("HTTP/1.1 200 OK\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"u8.ToArray());
+        });
+        app.Clock.Advance(TimeSpan.FromSeconds(45)); // past the 30 seconds, and before the next check a minute on
+        var late = await Json(await admin.GetAsync("/api/links/states"));
+        back.Stop();
+
+        Assert.False(missed.GetProperty("states").GetProperty(id).GetProperty("up").GetBoolean());
+        Assert.False(missed.GetProperty("states").GetProperty(id).GetProperty("down").GetBoolean());
+        Assert.True(late.GetProperty("states").GetProperty(id).GetProperty("up").GetBoolean()); // asked again, not shown red from the clock
+        Assert.False(late.GetProperty("states").GetProperty(id).GetProperty("down").GetBoolean());
+    }
+
+    [Fact]
     public async Task Links_groups_and_check_times_are_exported_and_imported_beside_what_is_here()
     {
         var admin = await app.SignedIn();
