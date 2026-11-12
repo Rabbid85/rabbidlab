@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.74', [
+    'Settings, Appearance has Toasts: pick where they show, the style (Pill, Card, Glow or Square) and how long they stay. Just for you, in this browser.']],
   ['1.1.73', [
     'Toasts have a thin border in the accent colour.']],
   ['1.1.72', [
@@ -1027,22 +1029,70 @@ const RELEASE_NOTES = [
     const [kind, count] = el.dataset.skel.split(':');
     skeleton(el, kind, Number(count) || 6);
   });
-  // A toast at the foot of the window: the flask, a bold result and a line, and a link. It goes after a few seconds unless it stays (work under way).
+  // A toast: the flask, a bold result and a line, and a link. It goes after a few seconds unless it stays (work under way).
+  // Where it shows, its style and how long it stays are each person's own (Settings, Appearance, Toasts; kept in this browser).
   const TOAST_FLASK = '<svg class="all-flask" viewBox="0 0 24 24" aria-hidden="true"><path class="liquid" d="M6.6 15.2h10.8l2 3.2A1.7 1.7 0 0 1 17.9 21H6.1a1.7 1.7 0 0 1-1.5-2.6z"/><path d="M9 3h6M10 3v6.2L4.6 18.4A1.7 1.7 0 0 0 6.1 21h11.8a1.7 1.7 0 0 0 1.5-2.6L14 9.2V3"/></svg>';
+  const TOAST_DEFAULT = { at: 'bc', style: 'pill', secs: 6 };
+  const toastPrefs = () => {
+    try {
+      return { ...TOAST_DEFAULT, ...JSON.parse(localStorage.getItem('rabbidlab.toast') || '{}') };
+    } catch {
+      return { ...TOAST_DEFAULT };
+    }
+  };
   let toastEl = null;
   let toastTimer = 0;
   const toast = (bold, text = '', { stay = false, tone = '', action = null } = {}) => {
+    const p = toastPrefs();
     if (!toastEl) {
       toastEl = document.createElement('div');
       toastEl.setAttribute('role', 'status');
+      toastEl.addEventListener('click', (e) => { if (e.target.closest('.tx-x')) toastEl.classList.remove('show'); });
       document.body.append(toastEl);
     }
     clearTimeout(toastTimer);
-    toastEl.className = `toast show${stay ? ' busy' : ''}${tone ? ` ${tone}` : ''}`;
-    toastEl.innerHTML = `${TOAST_FLASK}<span>${bold ? `<b>${esc(bold)}</b>` : ''}${text ? ` ${esc(text)}` : ''}</span>`
-      + (action ? `<a href="${esc(action.href)}">${esc(action.label)}</a>` : '');
-    if (!stay) toastTimer = setTimeout(() => toastEl.classList.remove('show'), 6000);
+    // Lined up with the page rather than the window, so it never sits on the rail.
+    const main = document.querySelector('.main').getBoundingClientRect();
+    toastEl.style.setProperty('--toast-l', `${main.left + 24}px`);
+    toastEl.style.setProperty('--toast-m', `${main.left + main.width / 2}px`);
+    // At the top it sits under the bar that offers the client, when that's showing.
+    const bar = $('herebar');
+    toastEl.style.setProperty('--toast-t', `${(bar && !bar.hidden ? bar.getBoundingClientRect().bottom : main.top) + 16}px`);
+    toastEl.style.setProperty('--toast-s', `${p.secs}s`);
+    const link = action ? `<a href="${esc(action.href)}">${esc(action.label)}</a>` : '';
+    const shown = toastEl.classList.contains('show'); // updates to one that's showing don't slide it in again
+    toastEl.className = `toast ${p.style} at-${p.at}${stay ? ' busy' : ''}${tone ? ` ${tone}` : ''}${shown ? ' show' : ''}`;
+    toastEl.innerHTML = p.style === 'card' || p.style === 'square'
+      ? `<span class="tsq">${TOAST_FLASK}</span><span class="tx"><b>${esc(bold)}</b>${text || link ? `<span>${esc(text)}${text && link ? ' ' : ''}${link}</span>` : ''}`
+        + `${p.style === 'card' && !stay ? '<i class="tbar"><i></i></i>' : ''}</span>${p.style === 'card' ? '<button type="button" class="tx-x" aria-label="Close">×</button>' : ''}`
+      : `${TOAST_FLASK}<span>${bold ? `<b>${esc(bold)}</b>` : ''}${text ? ` ${esc(text)}` : ''}</span>${link}`;
+    if (!shown) {
+      void toastEl.offsetWidth; // starts from hidden, so it slides in
+      toastEl.classList.add('show');
+    }
+    if (!stay) toastTimer = setTimeout(() => toastEl.classList.remove('show'), p.secs * 1000);
   };
+  // Toasts, in Settings, Appearance: where they show, their style and how long they stay. Picking one shows a sample.
+  const toastSettings = () => {
+    const p = toastPrefs();
+    $('toast-at').querySelectorAll('[data-at]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.at === p.at)));
+    $('toast-style').querySelectorAll('[data-style]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.style === p.style)));
+    $('toast-secs').querySelectorAll('[data-secs]').forEach((b) => b.setAttribute('aria-pressed', String(Number(b.dataset.secs) === p.secs)));
+    $('toast-reset').disabled = p.at === TOAST_DEFAULT.at && p.style === TOAST_DEFAULT.style && p.secs === TOAST_DEFAULT.secs;
+  };
+  const toastSet = (change) => {
+    try {
+      if (change) localStorage.setItem('rabbidlab.toast', JSON.stringify({ ...toastPrefs(), ...change }));
+      else localStorage.removeItem('rabbidlab.toast');
+    } catch { /* this visit only */ }
+    toastSettings();
+    toast('Toasts look like this.', 'Pick another to try it.', { action: { label: 'Details', href: '#settings/appearance' } });
+  };
+  $('toast-at').addEventListener('click', (e) => { const b = e.target.closest('[data-at]'); if (b) toastSet({ at: b.dataset.at }); });
+  $('toast-style').addEventListener('click', (e) => { const b = e.target.closest('[data-style]'); if (b) toastSet({ style: b.dataset.style }); });
+  $('toast-secs').addEventListener('click', (e) => { const b = e.target.closest('[data-secs]'); if (b) toastSet({ secs: Number(b.dataset.secs) }); });
+  $('toast-reset').addEventListener('click', () => toastSet(null));
+  toastSettings();
   // Are you sure: a title, what happens, the button's words, and what to do on yes.
   let sureDo = null;
   const sure = (title, lead, button, then) => {

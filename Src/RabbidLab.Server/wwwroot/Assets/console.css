@@ -632,11 +632,49 @@ body.dev-tools .devstrip:not([hidden]) { display: flex; flex-wrap: wrap; }
 .srail.finding .dkids.open { display: none; }
 .ds-sec.gone { display: none !important; }
 .one-sec .ds-sec { margin-top: 0 !important; padding-top: 0 !important; border-top: 0 !important; }
-/* The toast: the flask and a line at the foot of the window, gone after a few seconds (R.toast). */
-.toast { position: fixed; left: 50%; bottom: 28px; z-index: 900; display: flex; align-items: center; gap: 12px; max-width: min(640px, calc(100vw - 32px)); padding: 10px 18px 10px 14px; border: 1px solid var(--accent); border-radius: 999px; background: #141725; box-shadow: 0 14px 40px rgba(0, 0, 0, .5); color: #D7DAE8; font-size: 14px; opacity: 0; pointer-events: none; transform: translate(-50%, 12px); transition: opacity .2s, transform .2s; }
-.toast.show { opacity: 1; pointer-events: auto; transform: translate(-50%, 0); }
+/* The toast: the flask and a line, gone after a few seconds (R.toast). Where, which style and how long are each person's
+   own (Settings, Appearance, Toasts). --toast-l and --toast-m line it up with the page, not the window. */
+.toast { --tx: -50%; --ty: 12px; position: fixed; left: var(--toast-m, 50%); bottom: 28px; z-index: 900; display: flex; align-items: center; gap: 12px; max-width: min(640px, calc(100vw - 32px)); padding: 10px 18px 10px 14px; border: 1px solid var(--accent); border-radius: 999px; background: #141725; box-shadow: 0 14px 40px rgba(0, 0, 0, .5); color: #D7DAE8; font-size: 14px; opacity: 0; pointer-events: none; transform: translate(var(--tx), var(--ty)); transition: opacity .2s, transform .2s; }
+.toast.show { opacity: 1; pointer-events: auto; transform: translate(var(--tx), 0); }
+.toast.at-tl, .toast.at-tc, .toast.at-tr { top: var(--toast-t, 70px); bottom: auto; --ty: -12px; }
+.toast.at-tl, .toast.at-bl { left: var(--toast-l, 24px); --tx: 0; }
+.toast.at-tr, .toast.at-br { left: auto; right: 24px; --tx: 0; }
 .toast b { color: #fff; font-weight: 650; }
-.toast > svg { flex: none; width: 20px; height: 20px; }
+.toast .all-flask { flex: none; width: 20px; height: 20px; }
 .toast.busy .liquid { animation: sk-pulse 1.2s ease-in-out infinite; }
-.toast.warn { border-color: rgba(242, 190, 107, .45); }
+.toast.warn { border-color: rgba(242, 190, 107, .55); }
 .toast a { flex: none; padding-left: 14px; border-left: 1px solid var(--line-strong); color: var(--accent-soft); font-weight: 600; }
+/* Glow: filled with the accent. */
+.toast.glow { border-color: transparent; background: linear-gradient(100deg, var(--accent), var(--accent-soft)); box-shadow: 0 12px 34px color-mix(in srgb, var(--accent) 40%, transparent); color: #fff; }
+.toast.glow .all-flask { stroke: #fff; }
+.toast.glow .liquid { fill: rgba(255, 255, 255, .55); }
+.toast.glow a { border-left-color: rgba(255, 255, 255, .35); color: #fff; text-decoration: underline; text-underline-offset: 3px; }
+/* Card and Square: the flask in a square, a title over a line. */
+.toast .tsq { display: grid; flex: none; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: color-mix(in srgb, var(--accent) 16%, transparent); }
+.toast .tx { display: grid; flex: 1; gap: 2px; min-width: 0; }
+.toast .tx > span { color: var(--muted); font-size: 13px; }
+.toast .tx a { padding: 0; border: 0; }
+.toast.card { align-items: flex-start; width: 360px; padding: 14px 10px 14px 14px; border-radius: 14px; }
+.toast.card .tbar { display: block; height: 3px; margin-top: 9px; overflow: hidden; border-radius: 3px; background: var(--line); }
+.toast.card .tbar i { display: block; width: 100%; height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--accent-soft), var(--accent)); animation: toast-bar var(--toast-s, 6s) linear forwards; }
+@keyframes toast-bar { to { width: 0; } }
+.toast .tx-x { display: grid; flex: none; place-items: center; width: 24px; height: 24px; margin: -4px 0 0; padding: 0; border: 0; border-radius: 6px; background: none; color: #6D7290; font-size: 17px; line-height: 1; cursor: pointer; }
+.toast .tx-x:hover { background: #1A1D2B; color: #fff; }
+.toast.square { padding: 8px 18px 8px 8px; border-radius: 14px; }
+.toast.square .tsq { border-radius: 24%; background: linear-gradient(135deg, var(--accent-soft), var(--accent)); transform: rotate(-8deg); }
+.toast.square .tsq .all-flask { stroke: #fff; }
+.toast.square .tsq .liquid { fill: rgba(255, 255, 255, .6); }
+/* The previews in Settings, Appearance, Toasts: still and small. */
+.toast.demo { position: static; opacity: 1; pointer-events: none; transform: scale(.72); box-shadow: none; white-space: nowrap; }
+.toast.demo .tbar i { animation: none; width: 62%; }
+.toast.demo.card { width: 300px; }
+.tp-label { margin: 14px 0 6px; color: #9DA1B3; font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+.tp-picks { grid-template-columns: repeat(3, minmax(0, 190px)); }
+.tp-pic { position: relative; height: 96px; }
+.tp-pic .r { width: 16px; }
+.tp-dot { position: absolute; width: 44px; height: 12px; border: 1px solid var(--accent); border-radius: 999px; background: #1E2132; }
+.tp-dot.p-tl { top: 10px; left: 32px; } .tp-dot.p-tc { top: 10px; left: calc(50% - 14px); } .tp-dot.p-tr { top: 10px; right: 10px; }
+.tp-dot.p-bl { bottom: 10px; left: 32px; } .tp-dot.p-bc { bottom: 10px; left: calc(50% - 14px); } .tp-dot.p-br { bottom: 10px; right: 10px; }
+.lay-pick[aria-pressed="true"] .tp-dot { background: var(--accent); }
+.ts-picks { grid-template-columns: repeat(2, minmax(0, 290px)); }
+.ts-pic { display: grid; place-items: center; height: 104px; overflow: hidden; }

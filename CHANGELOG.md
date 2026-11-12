@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.74 (2026-11-12)
+
+- Settings, Appearance has Toasts: pick where they show, the style (Pill, Card, Glow or Square) and how long they stay. Just for you, in this browser.
+
 ## 1.1.73 (2026-11-12)
 
 - Toasts have a thin border in the accent colour.
