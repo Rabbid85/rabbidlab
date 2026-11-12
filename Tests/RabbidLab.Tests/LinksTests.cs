@@ -243,6 +243,22 @@ public sealed class LinksTests : IDisposable
     }
 
     [Fact]
+    public async Task An_icon_the_page_does_not_list_is_found_where_an_iDRAC_keeps_it()
+    {
+        // Like an iDRAC 8: a front page that sends the browser on by script, an empty icon, and the real one in /images.
+        byte[] png = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 9, 9, 9, 9];
+        using var site = new TinySite(new()
+        {
+            ["/"] = ("text/html", Encoding.UTF8.GetBytes("<html><head><link rel=\"shortcut icon\" href=\"data:image/x-icon;,\"><script>top.document.location.href = \"/login.html\";</script></head></html>")),
+            ["/images/favicon.png"] = ("image/png", png),
+        });
+
+        var look = await Links.Look($"http://127.0.0.1:{site.Port}", CancellationToken.None, guarded: false);
+
+        Assert.Equal("data:image/png;base64," + Convert.ToBase64String(png), look.Icon);
+    }
+
+    [Fact]
     public async Task Refresh_fills_in_what_a_link_is_missing_and_keeps_what_was_set_by_hand()
     {
         byte[] png = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 5, 6, 7, 8];

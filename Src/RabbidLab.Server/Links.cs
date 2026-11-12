@@ -944,10 +944,16 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
             .ThenByDescending(l => int.TryParse(l.Sizes?.Split('x')[0], out var s) ? s : 0)
             .Select(l => l.Href!).ToList();
         listed.Add("/favicon.ico");
-        foreach (var href in listed.Distinct().Take(4))
+        // Where icons often are when the page doesn't say: an iDRAC 8 sends its front page on by script, and keeps its icon in /images.
+        listed.AddRange(["/favicon.png", "/images/favicon.png", "/images/favicon.ico"]);
+        foreach (var href in listed.Distinct().Take(8))
         {
             if (href.StartsWith("data:image/", StringComparison.Ordinal))
             {
+                if (href.IndexOf(',') is var comma && (comma < 0 || comma == href.Length - 1))
+                {
+                    continue; // an empty one, as an iDRAC's error page lists
+                }
                 return href.Length <= MaxIcon ? (href, "the page itself") : (null, null);
             }
             if (!Uri.TryCreate(page, href, out var at) || at.Scheme is not ("http" or "https"))
@@ -1239,7 +1245,7 @@ public static class LinksApi
             {
                 log.Record(context, "links", "link.refresh", $"Filled in the {string.Join(", ", c.SkipLast(1))}{(c.Count > 1 ? " and " : "")}{c[^1]} of {done.Link.Name}");
             }
-            return Results.Ok(new { name = done.Link.Name, changed = c, problem = done.Problem });
+            return Results.Ok(new { link = done.Link, changed = c, problem = done.Problem });
         });
 
         app.MapPost("/api/links/{id}/delete", (string id, HttpContext context, Links links, ActivityLog log) =>

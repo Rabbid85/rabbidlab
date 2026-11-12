@@ -324,21 +324,26 @@
   });
   // Import: a file Export made, added beside what's here. The flask covers the settings while it goes in.
   const count = (n, thing) => `${n} ${thing}${n === 1 ? '' : 's'}`;
-  // Refresh: each link missing an icon, a description or its IP has its site read again, four at a time, under the flask.
-  // From Settings, Links and from the Links page; one run at a time.
+  // Refresh: each link missing an icon, a description or its IP has its site read again, four at a time. On Links each
+  // tile being read shows the flask and takes what was found as soon as it's back, the way Plex refreshes metadata; in
+  // Settings, Links the flask covers the section with how far along it is. One run at a time.
   let refreshing = false;
+  const tileOf = (id) => $('ln-list').querySelector(`.ltile[data-id="${CSS.escape(id)}"]`);
   const refreshLinks = async (host, note) => {
     if (refreshing) return;
+    const onPage = host === $('ln-list');
     const todo = links.filter((l) => !l.icon || !l.description || !l.address);
     ['lc-refresh-done', 'ln-done'].forEach((id) => say(id, ''));
     if (!todo.length) return say(note, 'Every link has its icon, description and IP already.');
     refreshing = true;
+    $('ln-refresh').disabled = true;
     const got = { icon: 0, description: 0, IP: 0 };
     let next = 0;
     let done = 0;
     let filled = 0;
     let quiet = 0;
-    const show = (name) => {
+    const progress = (name) => {
+      if (onPage) return say(note, `Refreshing ${done} of ${todo.length}…`);
       R.busy(host, `Refreshing ${done} of ${todo.length}`, name ? `${name} · ${count(filled, 'link')} filled in so far` : '');
       const cover = host.querySelector(':scope > .busy-cover');
       if (cover && !cover.querySelector('.ld-bar')) cover.insertAdjacentHTML('beforeend', '<span class="ubar ld-bar"><i></i></span>');
@@ -347,8 +352,11 @@
     const work = async () => {
       while (next < todo.length) {
         const l = todo[next++];
+        const card = onPage ? tileOf(l.id) : null;
+        if (card) R.busy(card, 'Refreshing');
+        let r = null;
         try {
-          const r = await R.send(`/api/links/${encodeURIComponent(l.id)}/refresh`, {});
+          r = await R.send(`/api/links/${encodeURIComponent(l.id)}/refresh`, {});
           r.changed.forEach((c) => { got[c] += 1; });
           if (r.changed.length) filled++;
           else if (r.problem) quiet++;
@@ -356,13 +364,25 @@
           quiet++; // gone, or the server didn't answer: counted with the ones that didn't
         }
         done++;
-        show(l.name);
+        // The tile and its square show what was found straight away.
+        const at = links.findIndex((x) => x.id === l.id);
+        if (r?.link && at >= 0) links[at] = r.link;
+        const now = onPage ? tileOf(l.id) : null;
+        if (now && at >= 0) {
+          now.outerHTML = tile(links[at]);
+          const fresh = tileOf(l.id);
+          R.paint(fresh);
+          if (r?.changed.length) fresh.classList.add('lfresh');
+        } else if (now) R.busy(now, '');
+        if (r?.changed.length) drawSquares();
+        progress(l.name);
       }
     };
-    show('');
+    progress('');
     await Promise.all(Array.from({ length: Math.min(4, todo.length) }, work));
-    R.busy(host, '');
+    if (!onPage) R.busy(host, '');
     refreshing = false;
+    $('ln-refresh').disabled = false;
     try {
       take(await R.get('/api/links'));
     } catch {

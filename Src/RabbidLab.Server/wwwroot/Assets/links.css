@@ -185,7 +185,10 @@
   .tr.ld-lr > :nth-child(4) { display: none; }
 }
 
-/* Refresh icons on Links: the flask sits at the top of the list, under the tools, however long the list is. */
-#ln-list > .busy-cover { place-content: start center; padding-top: 70px; }
-#ln-list.busy-host { min-height: 260px; }
+/* Refresh icons on Links: a tile being read has a small flask over it; one that found something glows for a moment. */
+.ltile > .busy-cover { grid-auto-flow: column; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; background: rgba(14, 16, 25, .93); }
+.ltile > .busy-cover .flask { width: 34px; height: 34px; }
+.ltile > .busy-cover small { display: none; }
+.ltile.lfresh { animation: lfresh 1.8s ease-out; }
+@keyframes lfresh { from { border-color: var(--accent-line); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); } }
 .hint.ln-done { margin: -6px 0 14px; }
