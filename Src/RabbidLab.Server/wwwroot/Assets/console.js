@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.71', [
+    'The handle for moving a group is the four-arrow move icon.']],
   ['1.1.70', [
     'New icons for the view switch and for sort, rename and delete.']],
   ['1.1.69', [
