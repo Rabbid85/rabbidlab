@@ -290,6 +290,24 @@ public sealed class LinksTests : IDisposable
     }
 
     [Fact]
+    public async Task TrueNAS_gets_the_white_tab_icon_its_script_sets_and_the_listed_one_where_that_is_missing()
+    {
+        // TrueNAS lists only its black phone icon; a script sets the tab icon, black or white.
+        byte[] black = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 1, 1, 1, 1];
+        byte[] white = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 2, 2, 2, 2];
+        var page = Encoding.UTF8.GetBytes("<html><head><title id=\"main-page-title\"></title><link rel=\"apple-touch-icon\" sizes=\"180x180\" href=\"assets/favicons/apple-touch-icon.png\"></head><body><ix-root></ix-root></body></html>");
+        using var site = new TinySite(new() { ["/"] = ("text/html", page), ["/assets/favicons/apple-touch-icon.png"] = ("image/png", black), ["/assets/images/truenas_ondark_favicon.png"] = ("image/png", white) });
+        using var older = new TinySite(new() { ["/"] = ("text/html", page), ["/assets/favicons/apple-touch-icon.png"] = ("image/png", black) });
+
+        var look = await Links.Look($"http://127.0.0.1:{site.Port}", CancellationToken.None, guarded: false);
+        var without = await Links.Look($"http://127.0.0.1:{older.Port}", CancellationToken.None, guarded: false);
+
+        Assert.Equal("data:image/png;base64," + Convert.ToBase64String(white), look.Icon);
+        Assert.Equal("/assets/images/truenas_ondark_favicon.png", look.IconFrom);
+        Assert.Equal("data:image/png;base64," + Convert.ToBase64String(black), without.Icon);
+    }
+
+    [Fact]
     public async Task A_page_saying_unified_is_not_UniFi_and_a_big_ico_is_cut_down_to_one_picture()
     {
         // A .ico holding a 256 pixel picture too big to keep and a 64 pixel PNG, as Pelican's does: the PNG is kept.

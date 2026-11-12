@@ -1075,6 +1075,11 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
             .Select(l => l.Href!),
             // Where icons often are when the page doesn't say: an iDRAC 8 sends its front page on by script, and keeps its icon in /images.
             "/favicon.ico", "/favicon.png", "/images/favicon.png", "/images/favicon.ico"];
+        // TrueNAS sets its tab icon by script, black or white to suit the browser, and lists only the black one: the white one reads on a dark tile.
+        if (!only && html.Contains("id=\"main-page-title\"", StringComparison.OrdinalIgnoreCase))
+        {
+            listed.Insert(0, "assets/images/truenas_ondark_favicon.png");
+        }
         var tries = listed.Distinct().Take(6).ToList();
         string[] guesses = ["/favicon.ico", "/favicon.png", "/images/favicon.png", "/images/favicon.ico"];
         for (var i = 0; i < tries.Count; i++)
