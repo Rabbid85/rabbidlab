@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.73', [
+    'Toasts have a thin border in the accent colour.']],
   ['1.1.72', [
     'Sorting or dragging links no longer makes the group tools flash.']],
   ['1.1.71', [

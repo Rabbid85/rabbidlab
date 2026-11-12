@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.73 (2026-11-12)
+
+- Toasts have a thin border in the accent colour.
+
 ## 1.1.72 (2026-11-12)
 
 - Sorting or dragging links no longer makes the group tools flash.
