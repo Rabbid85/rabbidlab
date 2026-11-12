@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.88 (2026-11-12)
+
+- Export and Import moved off the Links toolbar to small icon buttons beside the gear at the top of Links.
+
 ## 1.1.87 (2026-11-12)
 
 - Export and Import are on the Links toolbar too, beside Refresh icons.

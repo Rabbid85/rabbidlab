@@ -619,6 +619,8 @@
       <div class="hero-actions">
         <button type="button" class="primary" id="ln-add" data-can="links.edit">Add a link</button>
         <button type="button" class="hero-gear" id="ln-checks" data-can="links.edit" title="Links settings" aria-label="Links settings"><svg><use href="#i-gear"/></svg></button>
+        <button type="button" class="hero-gear" id="ln-export" data-can="links.edit" title="Export links: every link with its icon, the groups and the check settings, as one file" aria-label="Export links"><svg><use href="#i-download"/></svg></button>
+        <button type="button" class="hero-gear" id="ln-import" data-can="links.edit" title="Import links from a file Export made. A link whose address is already here is left as it is" aria-label="Import links"><svg><use href="#i-upload"/></svg></button><input type="file" id="ln-import-file" accept=".json,application/json" hidden>
       </div>
       <div class="hero-stats">
         <div><b id="ln-count"><i class="sk sk-num"></i></b><span><svg><use href="#i-link"/></svg>Links</span></div>
@@ -642,8 +644,6 @@
       </div>
       <button type="button" class="small" id="ln-newgroup" data-can="links.edit"><svg><use href="#i-plus"/></svg>New group</button>
       <button type="button" class="small" id="ln-refresh" data-can="links.edit" title="Read every link's site again and bring its icon, description and IP up to date"><svg><use href="#i-refresh"/></svg>Refresh icons</button>
-      <button type="button" class="small" id="ln-export" data-can="links.edit" title="Every link with its icon, the groups in their order and the check settings, as one file"><svg><use href="#i-download"/></svg>Export</button>
-      <button type="button" class="small" id="ln-import" data-can="links.edit" title="Add the links in a file Export made. A link whose address is already here is left as it is"><svg><use href="#i-upload"/></svg>Import</button><input type="file" id="ln-import-file" accept=".json,application/json" hidden>
       <div class="vswitch" id="ln-view"><button type="button" data-view="grid" title="Rows" aria-label="Rows"><svg><use href="#i-view-rows"/></svg></button><button type="button" data-view="cards" title="Tiles" aria-label="Tiles"><svg><use href="#i-view-tiles"/></svg></button><button type="button" data-view="links" title="Links" aria-label="Links"><svg><use href="#i-view-list"/></svg></button><button type="button" data-view="icons" title="Icons" aria-label="Icons"><svg><use href="#i-view-icons"/></svg></button></div>
     </div>
     <p class="hint note ln-done" id="ln-done" role="status" hidden></p>

@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.88', [
+    'Export and Import moved off the Links toolbar to small icon buttons beside the gear at the top of Links.']],
   ['1.1.87', [
     'Export and Import are on the Links toolbar too, beside Refresh icons.',
     'The red dot beside Links in the menu now clears by itself once a link is back, without opening Links.',
