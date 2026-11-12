@@ -34,7 +34,7 @@ public static class KnownSites
         S("OpenMediaVault NAS", @"openmediavault|\bomv\d*\b", "openmediavault"),
         S("Synology NAS", @"synology|diskstation|\bdsm\b", "synology"),
         S("QNAP NAS", @"qnap|\bqu?ts\b", "qnap"),
-        S("UniFi network console", "unifi"),
+        S("UniFi network console", "unifi", @"\bunifi\b"), // on a page, not "unified"
         S("TP-Link Omada controller", "omada"),
         S("pfSense firewall", "pfsense"),
         S("OPNsense firewall", "opnsense"),
@@ -70,7 +70,10 @@ public static class KnownSites
 
     private static readonly HashSet<string> Ours = [.. Sites.Select(s => s.Description)];
 
-    /// <summary>The description for the product a site is, from its name and host name first, then its page; null when it isn't one of these.</summary>
+    /// <summary>
+    /// The description for the product a site is, from its name and host name first, then its page; null when it isn't one
+    /// of these. Callers pass the page only for sites on the lab's network: an internet site's page names all sorts of things.
+    /// </summary>
     public static string? Describe(string? name, string? url, string? html = null)
     {
         var host = Uri.TryCreate(url, UriKind.Absolute, out var u) ? u.Host : url;

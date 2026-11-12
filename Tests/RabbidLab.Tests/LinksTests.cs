@@ -133,6 +133,7 @@ public sealed class LinksTests : IDisposable
         Assert.Equal(10, first.GetProperty("next").GetInt32()); // and it's tried again sooner
         Assert.Equal((false, false), State(second, quiet));
         Assert.Equal((false, true), State(third, quiet)); // 30 seconds with no answer
+        Assert.Equal("it refused the connection", third.GetProperty("states").GetProperty(quiet).GetProperty("why").GetString()); // and why
         Assert.Equal((true, false), State(third, up));
         Assert.Equal(60, third.GetProperty("next").GetInt32());
         Assert.Equal(HttpStatusCode.BadRequest, unknown.StatusCode);
@@ -256,6 +257,40 @@ public sealed class LinksTests : IDisposable
         var look = await Links.Look($"http://127.0.0.1:{site.Port}", CancellationToken.None, guarded: false);
 
         Assert.Equal("data:image/png;base64," + Convert.ToBase64String(png), look.Icon);
+    }
+
+    [Fact]
+    public async Task A_page_saying_unified_is_not_UniFi_and_a_big_ico_is_cut_down_to_one_picture()
+    {
+        // A .ico holding a 256 pixel picture too big to keep and a 64 pixel PNG, as Pelican's does: the PNG is kept.
+        byte[] png = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 7, 7, 7, 7];
+        var big = new byte[300 * 1024];
+        var ico = new byte[6 + 32 + big.Length + png.Length];
+        ico[2] = 1;
+        ico[4] = 2;
+        void Entry(int at, byte side, int size, int offset)
+        {
+            ico[at] = side;
+            ico[at + 1] = side;
+            BitConverter.GetBytes((ushort) 1).CopyTo(ico, at + 4);
+            BitConverter.GetBytes((ushort) 32).CopyTo(ico, at + 6);
+            BitConverter.GetBytes((uint) size).CopyTo(ico, at + 8);
+            BitConverter.GetBytes((uint) offset).CopyTo(ico, at + 12);
+        }
+        Entry(6, 0, big.Length, 38);
+        Entry(22, 64, png.Length, 38 + big.Length);
+        png.CopyTo(ico, 38 + big.Length);
+        using var site = new TinySite(new()
+        {
+            ["/"] = ("text/html", Encoding.UTF8.GetBytes("<html><head><title>Phones</title><meta name=\"description\" content=\"Calls and chat\"><link rel=\"icon\" href=\"/big.ico\"></head><body>Unified communications</body></html>")),
+            ["/big.ico"] = ("image/x-icon", ico),
+        });
+
+        var look = await Links.Look($"http://127.0.0.1:{site.Port}", CancellationToken.None, guarded: false, describe: true);
+
+        Assert.Equal("Calls and chat", look.Description);
+        Assert.Equal("data:image/png;base64," + Convert.ToBase64String(png), look.Icon);
+        Assert.Null(KnownSites.Describe("Hulu", "https://www.hulu.com/")); // and an internet site isn't described from its page at all
     }
 
     [Fact]

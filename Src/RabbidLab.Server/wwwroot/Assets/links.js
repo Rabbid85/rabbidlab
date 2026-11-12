@@ -46,8 +46,9 @@
     if (s.up) return `<i class="lstate up" title="Up · answered in ${s.ms} ms" data-now="${s.ms} ms"></i>`;
     const since = s.since ? new Date(s.since).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
     // Amber until it has been quiet for as long as the settings say.
-    return s.down ? `<i class="lstate down" title="Down · no answer${since ? ` since ${since}` : ''}" data-now="Down"></i>`
-      : `<i class="lstate late" title="No answer just now · checking again, down after ${span(checks.downAfter)}" data-now="No answer"></i>`;
+    const why = s.why ? `: ${esc(s.why)}` : '';
+    return s.down ? `<i class="lstate down" title="Down · no answer${since ? ` since ${since}` : ''}${why}" data-now="Down"></i>`
+      : `<i class="lstate late" title="No answer just now${why} · checking again, down after ${span(checks.downAfter)}" data-now="No answer"></i>`;
   };
   const span = (s) => (s < 60 ? `${s} seconds` : s === 60 ? 'a minute' : `${s / 60} minutes`);
   const tile = (l) => `<div class="ltile${states[l.id]?.down ? ' down' : ''}" data-id="${esc(l.id)}"${can('links.edit') ? ` draggable="true" data-drag="${esc(l.id)}"` : ''}><a class="lgo" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer" draggable="false">`
@@ -121,7 +122,7 @@
       }
       el.href = l.url;
       el.className = `tile sen lsq s-${state}${side < 20 ? ' tiny' : ''}`;
-      el.title = `${l.name} · ${HOW[state]}`;
+      el.title = `${l.name} · ${HOW[state]}${(state === 'down' || state === 'warn') && states[l.id].why ? `: ${states[l.id].why}` : ''}`;
       el.setAttribute('aria-label', el.title);
       el.style.setProperty('--g', own(l) ? '#1E2132' : colour(l.name));
       el.style.setProperty('--ring', own(l) ? 'var(--accent-soft)' : colour(l.name));
@@ -158,7 +159,7 @@
     $('ln-card').hidden = !first;
     if (first) {
       $('ln-card-title').textContent = first.name;
-      $('ln-card-text').textContent = `No answer from ${host(first.url)}${states[first.id].since ? ` since ${at(states[first.id].since)}` : ''}.`;
+      $('ln-card-text').textContent = `No answer from ${host(first.url)}${states[first.id].since ? ` since ${at(states[first.id].since)}` : ''}${states[first.id].why ? `: ${states[first.id].why}` : ''}.`;
       $('ln-card-more').href = first.url;
     }
     drawSquares();
@@ -328,6 +329,16 @@
   // tile being read shows the flask and takes what was found as soon as it's back, the way Plex refreshes metadata; in
   // Settings, Links the flask covers the section with how far along it is. One run at a time.
   let refreshing = false;
+  // The banner squares follow the links as they come back, drawn once a frame however many land together.
+  let squaresDue = false;
+  const squaresSoon = () => {
+    if (squaresDue) return;
+    squaresDue = true;
+    requestAnimationFrame(() => {
+      squaresDue = false;
+      drawSquares();
+    });
+  };
   const tileOf = (id) => $('ln-list').querySelector(`.ltile[data-id="${CSS.escape(id)}"]`);
   const refreshLinks = async (host, note) => {
     if (refreshing) return;
@@ -338,7 +349,6 @@
     refreshing = true;
     $('ln-refresh').disabled = true;
     const got = { icon: 0, description: 0, IP: 0 };
-    let next = 0;
     let done = 0;
     let filled = 0;
     let quiet = 0;
@@ -349,9 +359,15 @@
       if (cover && !cover.querySelector('.ld-bar')) cover.insertAdjacentHTML('beforeend', '<span class="ubar ld-bar"><i></i></span>');
       if (cover) cover.querySelector('.ld-bar i').style.width = `${Math.round((done / todo.length) * 100)}%`;
     };
+    // Top to bottom, as the page shows them: one group at a time, four of it at once, then the group under it.
+    const queues = [...groups, ''].map((g) => todo.filter((l) => (l.group || '') === g)).filter((q) => q.length);
+    const rest = todo.filter((l) => !queues.some((q) => q.includes(l)));
+    if (rest.length) queues.push(rest);
+    let queue = [];
+    let next = 0;
     const work = async () => {
-      while (next < todo.length) {
-        const l = todo[next++];
+      while (next < queue.length) {
+        const l = queue[next++];
         const card = onPage ? tileOf(l.id) : null;
         if (card) R.busy(card, 'Refreshing');
         let r = null;
@@ -374,21 +390,20 @@
           R.paint(fresh);
           if (r?.changed.length) fresh.classList.add('lfresh');
         } else if (now) R.busy(now, '');
-        if (r?.changed.length) drawSquares();
+        if (r?.changed.length) squaresSoon();
         progress(l.name);
       }
     };
     progress('');
-    await Promise.all(Array.from({ length: Math.min(4, todo.length) }, work));
+    for (const q of queues) {
+      queue = q;
+      next = 0;
+      await Promise.all(Array.from({ length: Math.min(4, q.length) }, work));
+    }
     if (!onPage) R.busy(host, '');
     refreshing = false;
     $('ln-refresh').disabled = false;
-    try {
-      take(await R.get('/api/links'));
-    } catch {
-      // The page catches up on its next check.
-    }
-    draw();
+    draw(); // each link was taken in as it came back: nothing to read again
     const what = [got.icon && count(got.icon, 'icon'), got.description && count(got.description, 'description'), got.IP && count(got.IP, 'IP')].filter(Boolean);
     say(note, [filled ? `Filled in ${what.length > 1 ? `${what.slice(0, -1).join(', ')} and ${what[what.length - 1]}` : what[0]} on ${count(filled, 'link')}.` : 'Nothing new to fill in.',
       quiet ? `${count(quiet, 'link')} didn't answer.` : ''].filter(Boolean).join(' '));
@@ -466,7 +481,7 @@
     $('ln-preview').innerHTML = `<div class="ltiles"><div class="ltile${empty ? ' ld-ghost' : ''}"><div class="lgo">${face}`
       + `<span class="lt"><b>${esc(shown)}</b><span>${esc($('ln-about').value.trim() || (empty ? 'Detail' : ''))}</span><code>${esc(where)}</code></span></div></div></div>`
       + '<div class="ld-strip">'
-      + pick('site', siteIcon ? "The site's own icon" : 'The site offers no icon', siteIcon ? `<span class="ld-face"><img src="${esc(siteIcon)}" alt=""></span>` : `<span class="ld-face off">${svg('globe')}</span>`, !siteIcon)
+      + pick('site', siteIcon ? "The site's own icon" : "Get the site's icon", siteIcon ? `<span class="ld-face"><img src="${esc(siteIcon)}" alt=""></span>` : `<span class="ld-face ${url ? 'up' : 'off'}">${svg('globe')}</span>`, !siteIcon && !url)
       + pick('letter', 'The first letter of the name', `<span class="ld-face letter" data-color="${colour(shown)}">${letter(shown)}</span>`)
       + pick('upload', 'A picture of your own', uploaded && icon ? `<span class="ld-face"><img src="${esc(icon)}" alt=""></span>` : `<span class="ld-face up">${svg('upload')}</span>`)
       + pick('none', 'No icon', '<span class="ld-face none"></span>')
@@ -731,6 +746,31 @@
     }
     drawIcon();
   };
+  // The site's icon alone, for the site option before the site has been read: the name and detail stay as they are.
+  const pullIcon = async () => {
+    const url = $('ln-url').value.trim();
+    if (!url) return;
+    const run = ++lookRun;
+    say('ln-dproblem', '');
+    reading(`Getting the icon from ${host(full(url))}…`);
+    let got = null;
+    try {
+      got = await R.send('/api/links/look', { url });
+    } catch {
+      // Said below.
+    }
+    if (run !== lookRun) return;
+    reading('');
+    if (got?.icon) {
+      siteIcon = got.icon;
+      icon = got.icon;
+      uploaded = false;
+      foundLine(true, `Got the icon from ${host(full(url))}.`);
+    } else {
+      foundLine(false, `${host(full(url))} has no icon Rabbid Lab can read. Upload one instead.`);
+    }
+    drawIcon();
+  };
   $('ln-add').addEventListener('click', () => open(null));
   $('ln-add-first').addEventListener('click', () => open(null));
   $('ln-group').addEventListener('change', () => pickGroup('ln-group'));
@@ -753,6 +793,7 @@
     const b = e.target.closest('[data-icon]');
     if (!b || b.disabled) return;
     if (b.dataset.icon === 'upload') return $('ln-icon-file').click();
+    if (b.dataset.icon === 'site' && !siteIcon) return pullIcon();
     uploaded = false;
     icon = { site: siteIcon, letter: null, none: NO_ICON }[b.dataset.icon];
     drawIcon();

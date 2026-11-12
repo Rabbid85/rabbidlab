@@ -55,7 +55,7 @@ public sealed class LinksFile
 public sealed record LinkLook(string? Name, string? Description, string? Address, string? Icon, string? Problem, string? IconFrom = null);
 
 /// <summary>Whether a link's site answered its last check, made At. Down only once it has gone unanswered, since Since, for the time set.</summary>
-public sealed record LinkState(bool Up, bool Down, int? Ms, int? Code, DateTime? Since, DateTime? At);
+public sealed record LinkState(bool Up, bool Down, int? Ms, int? Code, DateTime? Since, DateTime? At, string? Why = null);
 
 /// <summary>What the page gets: each link's state, in how many seconds to ask again, and Revision, which goes up when the links change by themselves.</summary>
 public sealed record LinkStates(Dictionary<string, LinkState> States, int Next, int Revision);
@@ -69,6 +69,7 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
 {
     private const int MaxPage = 512 * 1024;
     private const int MaxIcon = 192 * 1024;
+    private const int MaxIconFile = 512 * 1024; // read this far, so a big .ico can be cut down to one picture
     private const string NoIcon = "none"; // a link shown with no icon at all; with none saved it shows its first letter
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { WriteIndented = true };
     private const int ChecksAtOnce = 16;
@@ -84,7 +85,7 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
     private Task? describing; // the links here being given descriptions of known products, or the last time they were
     private int revision; // goes up when that changes a link, so the page reads the links again
 
-    private sealed record Checked(string Url, bool Up, int? Ms, int? Code, DateTime At, DateTime? Since);
+    private sealed record Checked(string Url, bool Up, int? Ms, int? Code, DateTime At, DateTime? Since, string? Why = null);
 
     private Lock gate => file.Gate;
 
@@ -200,7 +201,8 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
             {
                 using var cut = new CancellationTokenSource(LookFor);
                 var (html, _, _) = await Page(Http, new Uri(l.Url), cut.Token);
-                var text = named ?? KnownSites.Describe(l.Name, l.Url, html);
+                var lan = await Ip(new Uri(l.Url).Host, cut.Token) is { } ip && OnLan(ip); // an internet site's page names all sorts of products
+                var text = named ?? KnownSites.Describe(l.Name, l.Url, lan ? html : null);
                 return (l.Id, l.Url, Was: l.Description, Text: l.Description is null || FromSite(l.Description, Meta(html, "description")) ? text : null);
             }
             catch (Exception e) when (e is HttpRequestException or OperationCanceledException or IOException or UriFormatException or InvalidOperationException or NotSupportedException)
@@ -508,10 +510,16 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
                 changed.Add("icon");
             }
             var description = now.Description;
-            if ((now.Description is null || KnownSites.IsOurs(now.Description)) && Blank(look.Description) is { } text && text != now.Description)
+            if (now.Description is null || KnownSites.IsOurs(now.Description))
             {
-                description = text.Length > 200 ? text[..200] : text;
-                changed.Add("description");
+                // Its own name first, as the dialog would; one of ours that no longer fits (an old "UniFi" on Hulu) goes once the site has answered.
+                var text = (describe ? KnownSites.Describe(now.Name, now.Url) : null) ?? Blank(look.Description);
+                var next = text is not null ? (text.Length > 200 ? text[..200] : text) : look.Problem is null ? null : now.Description;
+                if (next != now.Description)
+                {
+                    description = next;
+                    changed.Add("description");
+                }
             }
             var address = now.Address;
             if (now.Address is null && Blank(look.Address) is { } ip && OnLan(ip))
@@ -550,6 +558,7 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
         using var cut = CancellationTokenSource.CreateLinkedTokenSource(stop);
         cut.CancelAfter(LookFor);
         var ip = await Ip(uri.Host, cut.Token);
+        var lan = ip is not null && (OnLan(ip) || (IPAddress.TryParse(ip, out var self) && IPAddress.IsLoopback(self))); // the lab, or this computer
         if (uri.Scheme is not ("http" or "https"))
         {
             return new LinkLook(uri.Host, describe ? KnownSites.Describe(uri.Host, url) : null, ip, null, null);
@@ -571,14 +580,19 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
                 pages += html;
                 (icon, from) = await Icon(http, html, where, cut.Token);
             }
-            // A page whose name a script fills in (ESXi, iDRAC, TrueNAS) goes by the machine's name in DNS.
-            name ??= await Machine(ip, cut.Token);
+            // An internet site that turns readers away (behind a bot check) still has an icon at DuckDuckGo. Never one on the lab's network.
+            if (icon is null && ip is not null && Public(ip) && Uri.CheckHostName(uri.Host) == UriHostNameType.Dns)
+            {
+                (icon, from) = await Icon(http, "", new Uri($"https://icons.duckduckgo.com/ip3/{uri.Host}.ico"), cut.Token, only: true);
+            }
+            // A page whose name a script fills in (ESXi, iDRAC, TrueNAS) goes by the machine's name in DNS, on the lab's network.
+            name ??= lan ? await Machine(ip, cut.Token) : null;
             // A known product's own description beats the site's, which is often marketing (vCenter's) or missing.
-            return new LinkLook(name, (describe ? KnownSites.Describe(name, url, pages) : null) ?? about, ip, icon, null, from);
+            return new LinkLook(name, (describe ? KnownSites.Describe(name, url, lan ? pages : null) : null) ?? about, ip, icon, null, from);
         }
         catch (Exception e) when (e is HttpRequestException or OperationCanceledException or IOException)
         {
-            var called = await Machine(ip, stop) ?? uri.Host;
+            var called = (lan ? await Machine(ip, stop) : null) ?? uri.Host;
             return new LinkLook(called, describe ? KnownSites.Describe(called, url) : null, ip, null, IsRefusal(e)
                 ? $"{uri.Host} is on this server or a link-local address, which {Product.Name} doesn't read, so fill it in yourself."
                 : $"{uri.Host} didn't answer, so fill it in yourself.");
@@ -690,7 +704,7 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
                 }
                 if (seen.TryGetValue(l.Id, out var c) && c.Url == l.Url)
                 {
-                    states[l.Id] = new LinkState(c.Up, !c.Up && now - (c.Since ?? now) >= after, c.Ms, c.Code, c.Since, c.At);
+                    states[l.Id] = new LinkState(c.Up, !c.Up && now - (c.Since ?? now) >= after, c.Ms, c.Code, c.Since, c.At, c.Why);
                 }
             }
             var waiting = states.Values.Any(s => !s.Up && !s.Down);
@@ -718,6 +732,28 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
         })];
     }
 
+    /// <summary>Why a check got no answer, in words for the page: what the down card and the square say.</summary>
+    private static string Why(Exception e)
+    {
+        for (Exception? x = e; x is not null; x = x.InnerException)
+        {
+            switch (x)
+            {
+                case SocketException { SocketErrorCode: SocketError.ConnectionRefused }:
+                    return "it refused the connection";
+                case SocketException { SocketErrorCode: SocketError.HostNotFound or SocketError.NoData }:
+                    return "its name isn't in DNS";
+                case SocketException { SocketErrorCode: SocketError.HostUnreachable or SocketError.NetworkUnreachable }:
+                    return "it can't be reached from this server";
+                case System.Security.Authentication.AuthenticationException:
+                    return "the TLS handshake failed";
+                case TimeoutException:
+                    return "it didn't connect within 4 seconds";
+            }
+        }
+        return e is OperationCanceledException ? $"no answer within {CheckFor.TotalSeconds:0} seconds" : "the connection failed";
+    }
+
     private async Task Check(List<Link> links)
     {
         using var room = new SemaphoreSlim(ChecksAtOnce);
@@ -729,11 +765,11 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
             {
                 using var cut = new CancellationTokenSource(CheckFor);
                 using var answer = await Http.GetAsync(l.Url, HttpCompletionOption.ResponseHeadersRead, cut.Token);
-                return (Link: l, Up: true, Ms: (int?) timer.ElapsedMilliseconds, Code: (int?) answer.StatusCode);
+                return (Link: l, Up: true, Ms: (int?) timer.ElapsedMilliseconds, Code: (int?) answer.StatusCode, Why: (string?) null);
             }
             catch (Exception e) when (e is HttpRequestException or OperationCanceledException or IOException or UriFormatException or InvalidOperationException or NotSupportedException)
             {
-                return (Link: l, Up: false, Ms: (int?) null, Code: (int?) null);
+                return (Link: l, Up: false, Ms: (int?) null, Code: (int?) null, Why: (string?) Why(e));
             }
             finally
             {
@@ -751,7 +787,7 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
                 var l = a.Link;
                 var since = a.Up ? (DateTime?) null
                     : seen.TryGetValue(l.Id, out var old) && old.Url == l.Url && !old.Up && now - old.At <= gap ? old.Since : now;
-                seen[l.Id] = new Checked(l.Url, a.Up, a.Ms, a.Code, now, since);
+                seen[l.Id] = new Checked(l.Url, a.Up, a.Ms, a.Code, now, since, a.Why);
             }
             var kept = f.Links.Select(l => l.Id).ToHashSet();
             foreach (var id in seen.Keys.Where(id => !kept.Contains(id)).ToList())
@@ -819,18 +855,23 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
         return http;
     }
 
-    /// <summary>The body, up to the limit; null when it's bigger.</summary>
-    private static async Task<byte[]?> Read(HttpResponseMessage answer, int limit, CancellationToken stop)
+    /// <summary>The body, up to the limit; null when it's bigger. A page (upTo) is read as far as the limit; anything else that says it's bigger isn't fetched at all.</summary>
+    private static async Task<byte[]?> Read(HttpResponseMessage answer, int limit, CancellationToken stop, bool upTo = false)
     {
+        var said = answer.Content.Headers.ContentLength;
+        if (!upTo && said > limit)
+        {
+            return null;
+        }
         await using var stream = await answer.Content.ReadAsStreamAsync(stop);
-        using var into = new MemoryStream();
+        using var into = new MemoryStream(said is > 0 ? (int) Math.Min(said.Value, limit) : 16384);
         var buffer = new byte[16384];
         int n;
         while ((n = await stream.ReadAsync(buffer, stop)) > 0)
         {
             if (into.Length + n > limit)
             {
-                return into.Length > 0 && limit == MaxPage ? into.ToArray() : null; // a page is read as far as the limit
+                return upTo && into.Length > 0 ? into.ToArray() : null;
             }
             into.Write(buffer, 0, n);
         }
@@ -843,7 +884,7 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
         for (var hop = 0; ; hop++)
         {
             using var answer = await http.GetAsync(at, HttpCompletionOption.ResponseHeadersRead, stop);
-            var html = await Read(answer, MaxPage, stop) is { } bytes ? System.Text.Encoding.UTF8.GetString(bytes) : "";
+            var html = await Read(answer, MaxPage, stop, upTo: true) is { } bytes ? System.Text.Encoding.UTF8.GetString(bytes) : "";
             var where = answer.RequestMessage?.RequestUri ?? at;
             if (hop < 2 && Refresh(html, where) is { } next)
             {
@@ -933,21 +974,25 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
         return s.Length == 0 ? null : s.Length > 200 ? s[..200] : s;
     }
 
-    /// <summary>The site's best icon as a data: URL: apple-touch-icon, else the biggest icon it lists, else /favicon.ico.</summary>
-    private static async Task<(string? Icon, string? From)> Icon(HttpClient http, string html, Uri page, CancellationToken stop)
+    /// <summary>
+    /// The site's best icon as a data: URL: apple-touch-icon, else the biggest icon it lists, else /favicon.ico and the other
+    /// usual places; six tries at most. With only, just the picture at page.
+    /// </summary>
+    private static async Task<(string? Icon, string? From)> Icon(HttpClient http, string html, Uri page, CancellationToken stop, bool only = false)
     {
-        var listed = Regex.Matches(html, @"<link\b[^>]*>", RegexOptions.IgnoreCase).Select(m => m.Value)
+        List<string> listed = only ? [page.ToString()] : [.. Regex.Matches(html, @"<link\b[^>]*>", RegexOptions.IgnoreCase).Select(m => m.Value)
             .Select(tag => (Rel: Attr(tag, "rel")?.ToLowerInvariant() ?? "", Href: Attr(tag, "href"), Sizes: Attr(tag, "sizes"), Type: Attr(tag, "type")))
             .Where(l => l.Href is { Length: > 0 } && (l.Rel.Split(' ').Contains("icon") || l.Rel.Contains("apple-touch-icon")))
             .OrderByDescending(l => l.Rel.Contains("apple-touch-icon"))
             .ThenByDescending(l => l.Type == "image/svg+xml" || (l.Href ?? "").EndsWith(".svg", StringComparison.OrdinalIgnoreCase))
             .ThenByDescending(l => int.TryParse(l.Sizes?.Split('x')[0], out var s) ? s : 0)
-            .Select(l => l.Href!).ToList();
-        listed.Add("/favicon.ico");
-        // Where icons often are when the page doesn't say: an iDRAC 8 sends its front page on by script, and keeps its icon in /images.
-        listed.AddRange(["/favicon.png", "/images/favicon.png", "/images/favicon.ico"]);
-        foreach (var href in listed.Distinct().Take(8))
+            .Select(l => l.Href!),
+            // Where icons often are when the page doesn't say: an iDRAC 8 sends its front page on by script, and keeps its icon in /images.
+            "/favicon.ico", "/favicon.png", "/images/favicon.png", "/images/favicon.ico"];
+        var tries = listed.Distinct().Take(6).ToList();
+        for (var i = 0; i < tries.Count; i++)
         {
+            var href = tries[i];
             if (href.StartsWith("data:image/", StringComparison.Ordinal))
             {
                 if (href.IndexOf(',') is var comma && (comma < 0 || comma == href.Length - 1))
@@ -963,14 +1008,20 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
             try
             {
                 using var answer = await http.GetAsync(at, HttpCompletionOption.ResponseHeadersRead, stop);
-                if (!answer.IsSuccessStatusCode || await Read(answer, MaxIcon, stop) is not { Length: > 0 } bytes)
+                if (!answer.IsSuccessStatusCode || await Read(answer, MaxIconFile, stop) is not { Length: > 0 } bytes)
                 {
                     continue;
                 }
-                var type = Kind(bytes, answer.Content.Headers.ContentType?.MediaType);
-                if (type is not null)
+                var kind = Kind(bytes, answer.Content.Headers.ContentType?.MediaType);
+                var (picture, type) = kind == "image/x-icon" && bytes.Length > MaxIcon ? OneIcon(bytes) : (bytes, kind);
+                if (type is not null && picture.Length <= MaxIcon)
                 {
-                    return ($"data:{type};base64,{Convert.ToBase64String(bytes)}", at.AbsolutePath);
+                    return ($"data:{type};base64,{Convert.ToBase64String(picture)}", only ? "DuckDuckGo's icon service" : at.AbsolutePath);
+                }
+                // A picture too big to keep (Pelican's one-picture .ico is 260 KB): the same one by the same name is often there as an SVG or PNG.
+                if (kind is not null && !only && at.AbsolutePath.LastIndexOf('.') is var dot and > 0)
+                {
+                    tries.InsertRange(i + 1, new[] { ".svg", ".png" }.Select(e => at.AbsolutePath[..dot] + e).Where(p => !tries.Contains(p)));
                 }
             }
             catch (Exception e) when (e is HttpRequestException or OperationCanceledException or IOException)
@@ -979,6 +1030,40 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
             }
         }
         return (null, null);
+    }
+
+    /// <summary>A big .ico (Pelican's holds every size in 260 KB) cut down to its biggest picture that fits: a PNG one as itself, otherwise an .ico of one.</summary>
+    private static (byte[] Bytes, string? Type) OneIcon(byte[] b)
+    {
+        var count = b[4] | b[5] << 8;
+        (int Entry, int Side, int At, int Size)? best = null;
+        for (var i = 0; i < count && 6 + (i + 1) * 16 <= b.Length; i++)
+        {
+            var e = 6 + i * 16;
+            var side = b[e] == 0 ? 256 : b[e];
+            var size = (long) BitConverter.ToUInt32(b, e + 8);
+            var at = (long) BitConverter.ToUInt32(b, e + 12);
+            if (size > 0 && size <= MaxIcon - 22 && at + size <= b.Length && (best is null || side > best.Value.Side))
+            {
+                best = (e, side, (int) at, (int) size);
+            }
+        }
+        if (best is not { } pick)
+        {
+            return (b, null);
+        }
+        var data = b.AsSpan(pick.At, pick.Size).ToArray();
+        if (data.Length > 4 && data[0] == 0x89 && data[1] == 0x50 && data[2] == 0x4E && data[3] == 0x47)
+        {
+            return (data, "image/png");
+        }
+        var one = new byte[22 + data.Length];
+        one[2] = 1; // an icon, not a cursor
+        one[4] = 1; // of one picture
+        Array.Copy(b, pick.Entry, one, 6, 16);
+        BitConverter.GetBytes(22u).CopyTo(one, 18);
+        data.CopyTo(one, 22);
+        return (one, "image/x-icon");
     }
 
     /// <summary>What kind of picture the bytes are, by their first bytes (servers often say the wrong type); null when they aren't one.</summary>
@@ -1026,6 +1111,11 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
         var b = a.GetAddressBytes();
         return b[0] == 10 || (b[0] == 172 && b[1] is >= 16 and < 32) || (b[0] == 192 && b[1] == 168) || (b[0] == 100 && b[1] is >= 64 and < 128);
     }
+
+    /// <summary>Whether an address is out on the internet: not the lab's network, this computer, or a link-local one. Only those are asked about elsewhere.</summary>
+    private static bool Public(string ip) =>
+        IPAddress.TryParse(ip, out var a) && !OnLan(ip) && !IPAddress.IsLoopback(a) && !a.IsIPv6LinkLocal && !a.IsIPv6SiteLocal
+        && !(a.AddressFamily == AddressFamily.InterNetwork && a.GetAddressBytes() is [169, 254, ..] or [0, ..]);
 
     /// <summary>The host's IPv4 address (or IPv6 when that's all it has); the host itself when it's already an address.</summary>
     private static async Task<string?> Ip(string host, CancellationToken stop)
