@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.62', [
+    'Settings, Links calls its first section Heartbeat instead of Checks, and its first setting is Heartbeat interval: how often Rabbid Lab checks that each link answers.']],
   ['1.1.61', [
     'Icon layout keeps Full rows, Depth, Groups and Mosaic. Network, Floor, Rain and Tilt are gone; a browser that had one of them picked goes back to Full rows.']],
   ['1.1.60', [

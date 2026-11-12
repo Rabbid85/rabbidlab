@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.62 (2026-11-12)
+
+- Settings, Links calls its first section Heartbeat instead of Checks, and its first setting is Heartbeat interval: how often Rabbid Lab checks that each link answers.
+
 ## 1.1.61 (2026-11-12)
 
 - Icon layout keeps Full rows, Depth, Groups and Mosaic. Network, Floor, Rain and Tilt are gone; a browser that had one of them picked goes back to Full rows.
