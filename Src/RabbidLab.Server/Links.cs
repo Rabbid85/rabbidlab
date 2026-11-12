@@ -1051,9 +1051,15 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
             // Where icons often are when the page doesn't say: an iDRAC 8 sends its front page on by script, and keeps its icon in /images.
             "/favicon.ico", "/favicon.png", "/images/favicon.png", "/images/favicon.ico"];
         var tries = listed.Distinct().Take(6).ToList();
+        string[] guesses = ["/favicon.ico", "/favicon.png", "/images/favicon.png", "/images/favicon.ico"];
         for (var i = 0; i < tries.Count; i++)
         {
             var href = tries[i];
+            // Asked about another icon, only the ones the page lists are compared: never a guess, once there's an icon.
+            if (same is not null && chosen is not null && guesses.Contains(href))
+            {
+                break;
+            }
             if (href.StartsWith("data:image/", StringComparison.Ordinal))
             {
                 if (href.IndexOf(',') is var comma && (comma < 0 || comma == href.Length - 1))
@@ -1073,7 +1079,9 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
             try
             {
                 using var answer = await http.GetAsync(at, HttpCompletionOption.ResponseHeadersRead, stop);
-                if (!answer.IsSuccessStatusCode || await Read(answer, MaxIconFile, stop) is not { Length: > 0 } bytes)
+                // A web page where an icon was asked for (Netflix sends /favicon.png to its 2 MB home page) isn't read at all.
+                if (!answer.IsSuccessStatusCode || answer.Content.Headers.ContentType?.MediaType == "text/html"
+                    || await Read(answer, MaxIconFile, stop) is not { Length: > 0 } bytes)
                 {
                     continue;
                 }

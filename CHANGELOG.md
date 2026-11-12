@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.52 (2026-11-11)
+
+- Refresh icons starts links from the top of the page down, four at a time, without waiting on the slowest one in a group: a slow site only holds up its own place.
+- The one-time check of an old icon only compares the icons the page lists, and an icon address that turns out to be a web page is not downloaded. Netflix took 9 seconds; it now takes under one.
+
 ## 1.1.51 (2026-11-11)
 
 - Rabbid Lab remembers where the icon of each link came from: the site, or a picture of your own.

@@ -361,11 +361,11 @@
       if (cover && !cover.querySelector('.ld-bar')) cover.insertAdjacentHTML('beforeend', '<span class="ubar ld-bar"><i></i></span>');
       if (cover) cover.querySelector('.ld-bar i').style.width = `${Math.round((done / todo.length) * 100)}%`;
     };
-    // Top to bottom, as the page shows them: one group at a time, four of it at once, then the group under it.
+    // Started top to bottom, as the page shows them, four at a time: a slow one only holds up its own place, not the group.
     const queues = [...groups, ''].map((g) => todo.filter((l) => (l.group || '') === g)).filter((q) => q.length);
     const rest = todo.filter((l) => !queues.some((q) => q.includes(l)));
     if (rest.length) queues.push(rest);
-    let queue = [];
+    const queue = queues.flat();
     let next = 0;
     const work = async () => {
       while (next < queue.length) {
@@ -397,11 +397,7 @@
       }
     };
     progress('');
-    for (const q of queues) {
-      queue = q;
-      next = 0;
-      await Promise.all(Array.from({ length: Math.min(4, q.length) }, work));
-    }
+    await Promise.all(Array.from({ length: Math.min(4, queue.length) }, work));
     if (!onPage) R.busy(host, '');
     refreshing = false;
     $('ln-refresh').disabled = false;
