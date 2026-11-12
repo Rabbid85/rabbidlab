@@ -20,7 +20,7 @@
   let lookRun = 0; // the newest read: an older one's answer is dropped
   let timer = null;
   const stored = (key) => { try { return localStorage.getItem(key); } catch { return null; } };
-  let view = stored('rabbidlab.links.view') === 'grid' ? 'grid' : 'cards'; // tiles, or a row to a link
+  let view = ['grid', 'links'].includes(stored('rabbidlab.links.view')) ? stored('rabbidlab.links.view') : 'cards'; // tiles, a row to a link, or plain links
 
   const colour = (name) => COLOURS[[...String(name)].reduce((n, c) => (n * 31 + c.charCodeAt(0)) >>> 0, 7) % COLOURS.length];
   const letter = (name) => esc((String(name).match(/[A-Za-z0-9]/) || ['?'])[0].toUpperCase());
@@ -82,6 +82,15 @@
     + `<span class="lt"><b>${esc(l.name)}</b>${l.description ? `<span>${esc(l.description)}</span>` : ''}`
     + `<code>${esc(l.address && l.address !== host(l.url) ? `${l.address} · ${host(l.url)}` : host(l.url))}</code></span></a>`
     + `${dot(l)}${can('links.edit') ? `<button type="button" class="icon ledit" data-edit="${esc(l.id)}" aria-label="Change ${esc(l.name)}">${svg('edit')}</button>` : ''}</div>`;
+  // The Links view: a plain hyperlink with its icon and address, and a dot only when it isn't answering.
+  const plain = (l) => {
+    const s = states[l.id];
+    const off = s && !s.up ? (s.down ? 'down' : 'late') : '';
+    return `<a class="lx-link${off ? ` ${off}` : ''}" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer" title="${esc(l.description || l.name)}">`
+      + `<span class="lx-ic${l.icon && l.icon !== NO_ICON ? '' : ' letter'}" data-color="${colour(l.name)}">${l.icon === NO_ICON ? '' : pic(l)}</span>`
+      + `<span class="lx-t"><span class="lx-name">${esc(l.name)}</span><span class="lx-host">${esc(host(l.url))}</span></span>`
+      + `${off ? `<i class="lx-dot ${off}"></i>` : ''}</a>`;
+  };
 
   const draw = () => {
     const find = $('ln-find').value.trim().toLowerCase();
@@ -100,12 +109,19 @@
     // Every group in its order, the empty ones too unless something is being looked for; links with no group go last.
     const by = (group ? [only] : [...groups, '']).map((g) => [g, shown.filter((l) => (l.group || '') === g)])
       .filter(([g, list]) => list.length || (g && !find));
-    $('ln-list').innerHTML = by.map(([g, list]) => `<section class="lgroup" data-name="${esc(g)}">${groups.length ? tools.heading(g, list.length) : ''}`
-      + (list.length ? `<div class="ltiles${view === 'grid' ? ' lrows' : ''}">${list.map(tile).join('')}</div>`
-        : `<p class="hint lnone">No links in this group yet.${can('links.edit') ? ` <button type="button" class="link" data-addto="${esc(g)}">Add one</button>` : ''}</p>`)
-      + '</section>').join('')
-      || (links.length ? '<p class="hint">Nothing matches.</p>' : '');
-    if (!find) $('ln-list').insertAdjacentHTML('beforeend', tools.out(by.some(([g]) => !g)));
+    const full = by.filter(([, list]) => list.length);
+    if (view === 'links') {
+      // Plain links, the groups flowing down columns: for opening them, not arranging them.
+      $('ln-list').innerHTML = full.length ? `<div class="lx">${full.map(([g, list]) => `<section class="lx-group"><h2>${esc(g || 'No group')}<small>${list.length}</small></h2>${list.map(plain).join('')}</section>`).join('')}</div>`
+        : (links.length ? '<p class="hint">Nothing matches.</p>' : '');
+    } else {
+      $('ln-list').innerHTML = by.map(([g, list]) => `<section class="lgroup" data-name="${esc(g)}">${groups.length ? tools.heading(g, list.length) : ''}`
+        + (list.length ? `<div class="ltiles${view === 'grid' ? ' lrows' : ''}">${list.map(tile).join('')}</div>`
+          : `<p class="hint lnone">No links in this group yet.${can('links.edit') ? ` <button type="button" class="link" data-addto="${esc(g)}">Add one</button>` : ''}</p>`)
+        + '</section>').join('')
+        || (links.length ? '<p class="hint">Nothing matches.</p>' : '');
+      if (!find) $('ln-list').insertAdjacentHTML('beforeend', tools.out(by.some(([g]) => !g)));
+    }
     tools.settle();
     $('ln-view').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.view === view));
     $('ln-empty').hidden = links.length > 0 || groups.length > 0;

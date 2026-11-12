@@ -195,3 +195,21 @@
 .ltile.lfresh { animation: lfresh 1.8s ease-out; }
 @keyframes lfresh { from { border-color: var(--accent-line); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); } }
 .hint.ln-done { margin: -6px 0 14px; }
+/* The Links view: plain hyperlinks, each group a short list, the groups flowing down columns. */
+.lx { columns: 4 230px; column-gap: 44px; margin-top: 6px; }
+.lx-group { break-inside: avoid; margin: 0 0 28px; }
+.lx-group h2 { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; color: var(--accent-soft); font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.lx-group h2 small { color: #5E6380; font-size: 11px; letter-spacing: 0; }
+.lx-link { display: flex; align-items: center; gap: 12px; min-width: 0; margin: 0 -9px; padding: 7px 9px; border-radius: 8px; color: #D7DAE8; font-size: 14px; }
+.lx-link:hover { background: #151827; text-decoration: none; }
+.lx-link:hover .lx-name { text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--accent-soft) 60%, transparent); text-underline-offset: 3px; }
+.lx-ic { display: grid; flex: none; place-items: center; width: 28px; height: 28px; }
+.lx-ic img { width: 26px; height: 26px; object-fit: contain; }
+.lx-ic.letter { border-radius: 7px; background: color-mix(in srgb, var(--c) 18%, transparent); color: var(--c); font: 750 14px "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; }
+.lx-ic.letter b { font: inherit; }
+.lx-t { display: grid; min-width: 0; }
+.lx-name { overflow: hidden; color: var(--title); font-weight: 600; white-space: nowrap; text-overflow: ellipsis; }
+.lx-host { overflow: hidden; color: #6D7290; font: 11.5px Consolas, "Cascadia Mono", monospace; white-space: nowrap; text-overflow: ellipsis; }
+.lx-dot { flex: none; width: 7px; height: 7px; margin-left: auto; border-radius: 50%; background: var(--amber); }
+.lx-dot.down { background: var(--red); box-shadow: 0 0 0 3px rgba(255, 107, 125, .14); }
+.lx-link.down .lx-name { color: #FF9AA7; }
