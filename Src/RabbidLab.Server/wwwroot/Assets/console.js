@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.60', [
+    'On a Centered layout the banner icons on Links and Sensors end at the right edge of the page column, in line with the list under them, instead of out at the edge of the window.']],
   ['1.1.59', [
     'Icon layout in Settings, Links has a new set of layouts for the banner squares, and the old ones are gone: Full rows (the default), Depth, Groups, Mosaic, Network, Floor, Rain and Tilt.',
     'Full rows lines the icons up in tidy columns against the right edge of the banner, in the order Links shows them. Groups puts a row for each group with its name, and Network gathers each group around a hub.']],
@@ -1338,12 +1340,16 @@ const RELEASE_NOTES = [
     (now.extras || []).forEach((x) => x.remove()); // Network's lines and Groups' names, drawn again below
     now.extras = [];
     const n = items.length;
-    const left = W * 0.56;
+    // Inside the banner's padding, which on a Centered layout is the page's column: the squares end where the page does.
+    const pad = getComputedStyle(hero);
+    const padLeft = parseFloat(pad.paddingLeft) || 0;
+    const padRight = parseFloat(pad.paddingRight) || 0;
+    const left = padLeft + (W - padLeft - padRight) * 0.56;
     const top = H * 0.12;
     const ah = H * 0.86 - top;
     const sides = items.map(({ el }) => parseFloat(el.style.width) || el.offsetWidth);
     // The card keeps its corner only while the squares still fit beside it at their size; otherwise it steps aside for them.
-    let right = W * 0.95;
+    let right = W - padRight;
     if (card) {
       card.classList.remove('crowded');
       const beside = !card.hidden && card.offsetWidth ? card.offsetLeft - 28 : 0;
