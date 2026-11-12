@@ -294,6 +294,38 @@ public sealed class LinksTests : IDisposable
     }
 
     [Fact]
+    public async Task An_icon_saved_before_origins_were_kept_gives_way_to_the_tab_icon_when_the_site_serves_it()
+    {
+        // Like Plex: the tab's icon, and a phone icon that's another design, which used to be taken first.
+        byte[] tab = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 1, 1, 1, 1];
+        byte[] phone = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 2, 2, 2, 2];
+        var page = Encoding.UTF8.GetBytes("<html><head><title>Plex</title><link rel=\"shortcut icon\" href=\"/tab.png\"><link rel=\"apple-touch-icon-precomposed\" sizes=\"144x144\" href=\"/phone.png\"></head></html>");
+        using var site = new TinySite(new() { ["/"] = ("text/html", page), ["/b/"] = ("text/html", page), ["/tab.png"] = ("image/png", tab), ["/phone.png"] = ("image/png", phone) });
+        static string Png(byte[] b) => "data:image/png;base64," + Convert.ToBase64String(b);
+        var admin = await app.SignedIn();
+        async Task<string> Add(object link) => (await Json(await admin.PostAsJsonAsync("/api/links", link))).GetProperty("id").GetString()!;
+        var old = await Add(new { url = $"http://127.0.0.1:{site.Port}/", name = "Plex", description = "Media", icon = Png(phone) });
+        var mine = await Add(new { url = $"http://127.0.0.1:{site.Port}/b/", name = "Mine", description = "Media", icon = Png([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 9, 9, 9, 9]) });
+        // As a version that didn't keep where icons came from saved them.
+        var links = app.Services.GetRequiredService<Links>();
+        foreach (var l in links.All())
+        {
+            l.IconFrom = null;
+        }
+        Assert.All(links.All(), l => Assert.Null(l.IconFrom));
+
+        var swapped = await links.Refresh(old, CancellationToken.None, guarded: false);
+        var kept = await links.Refresh(mine, CancellationToken.None, guarded: false);
+        var all = links.All().ToDictionary(l => l.Id);
+
+        Assert.Equal(["icon"], swapped!.Changed);
+        Assert.Equal(Png(tab), all[old].Icon);
+        Assert.Equal("/tab.png", all[old].IconFrom);
+        Assert.Empty(kept!.Changed);
+        Assert.Equal("own", all[mine].IconFrom); // someone's own: never swapped, and not checked again
+    }
+
+    [Fact]
     public async Task Refresh_fills_in_what_a_link_is_missing_and_keeps_what_was_set_by_hand()
     {
         byte[] png = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 5, 6, 7, 8];

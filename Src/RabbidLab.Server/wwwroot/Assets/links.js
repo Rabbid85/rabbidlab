@@ -343,7 +343,9 @@
   const refreshLinks = async (host, note) => {
     if (refreshing) return;
     const onPage = host === $('ln-list');
-    const todo = links.filter((l) => !l.icon || !l.description); // the IP line is filled in on the way, never a reason to read a site again
+    // No icon or description, or an icon saved before Rabbid Lab kept where icons came from (checked once). The IP line is filled
+    // in on the way, never a reason to read a site again.
+    const todo = links.filter((l) => !l.icon || !l.description || (l.icon !== NO_ICON && !l.iconFrom));
     ['lc-refresh-done', 'ln-done'].forEach((id) => say(id, ''));
     if (!todo.length) return say(note, 'Every link has its icon, description and IP already.');
     refreshing = true;
@@ -464,6 +466,8 @@
   const full = (url) => (/^[a-z][a-z0-9+.-]*:\/\//i.test(url.trim()) ? url.trim() : `http://${url.trim()}`);
   const addresses = (n) => (n === 1 ? '1 address' : `${n} addresses`);
   let siteIcon = null; // the icon the site serves, kept while another is picked
+  let siteFrom = null; // where on the site it came from
+  let siteFresh = false; // read from the site while this dialog is open, so the site option needn't read it again
   let uploaded = false; // the icon is a picture of the person's own
   const iconKind = () => (icon === NO_ICON ? 'none' : !icon ? 'letter' : uploaded ? 'upload' : 'site');
   const ICON_SAID = { site: 'site', letter: 'letter', upload: 'your picture', none: 'none' };
@@ -606,7 +610,7 @@
       const f = r.f || {};
       reading(`Adding ${i + 1} of ${keep.length}`, '', (i + 1) / keep.length);
       try {
-        await R.send('/api/links', { url: r.url, name: (f.name || '').slice(0, 60), group, description: (f.description || '').slice(0, 200), address: (f.address || '').slice(0, 100), icon: f.icon || null });
+        await R.send('/api/links', { url: r.url, name: (f.name || '').slice(0, 60), group, description: (f.description || '').slice(0, 200), address: (f.address || '').slice(0, 100), icon: f.icon || null, iconFrom: f.iconFrom || null });
         Object.assign(r, { keep: false, how: 'dup' });
       } catch (err) {
         failed.push([r, err.message]);
@@ -678,8 +682,10 @@
     many = false;
     reading('');
     icon = l?.icon || null;
-    siteIcon = l?.icon && l.icon !== NO_ICON ? l.icon : null;
-    uploaded = false;
+    uploaded = l?.iconFrom === 'own';
+    siteIcon = !uploaded && l?.icon && l.icon !== NO_ICON ? l.icon : null;
+    siteFrom = l?.iconFrom || null;
+    siteFresh = false;
     rows = null;
     show = 'all';
     $('ln-mode').hidden = !!l;
@@ -733,7 +739,11 @@
       fill('ln-name', looked.name);
       fill('ln-about', looked.description);
       if (looked.address) ip = looked.address;
-      if (looked.icon) siteIcon = looked.icon;
+      if (looked.icon) {
+        siteIcon = looked.icon;
+        siteFrom = looked.iconFrom || null;
+        siteFresh = true;
+      }
       if (looked.icon && (all || !icon)) {
         icon = looked.icon;
         uploaded = false;
@@ -766,6 +776,8 @@
     reading('');
     if (got?.icon) {
       siteIcon = got.icon;
+      siteFrom = got.iconFrom || null;
+      siteFresh = true;
       icon = got.icon;
       uploaded = false;
       foundLine(true, `Got the icon from ${host(full(url))}.`);
@@ -796,7 +808,7 @@
     const b = e.target.closest('[data-icon]');
     if (!b || b.disabled) return;
     if (b.dataset.icon === 'upload') return $('ln-icon-file').click();
-    if (b.dataset.icon === 'site' && !siteIcon) return pullIcon();
+    if (b.dataset.icon === 'site' && !siteFresh) return pullIcon(); // what the site serves now, not what was saved
     uploaded = false;
     icon = { site: siteIcon, letter: null, none: NO_ICON }[b.dataset.icon];
     drawIcon();
@@ -854,7 +866,8 @@
   $('ln-cancel').addEventListener('click', () => $('link-dialog').close());
   $('ln-save').addEventListener('click', async () => {
     if (many && !editing) return rows ? addMany() : readMany();
-    const body = { url: $('ln-url').value, name: $('ln-name').value, group: groupOf('ln-group'), description: $('ln-about').value, address: ip, icon };
+    const body = { url: $('ln-url').value, name: $('ln-name').value, group: groupOf('ln-group'), description: $('ln-about').value, address: ip, icon,
+      iconFrom: uploaded ? 'own' : icon && icon !== NO_ICON && icon === siteIcon ? siteFrom : null };
     $('ln-save').disabled = true;
     try {
       await R.send(editing ? `/api/links/${encodeURIComponent(editing.id)}` : '/api/links', body);

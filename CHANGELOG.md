@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.51 (2026-11-11)
+
+- Rabbid Lab remembers where the icon of each link came from: the site, or a picture of your own.
+- Icons saved before that are checked once by the next Refresh icons. One the site serves itself, such as the white Plex icon made for iPhones, gives way to the icon its browser tab shows; a picture of your own stays and is never changed.
+- The site icon button in a link always reads the icon the site serves now, so any one link can be put right with a click.
+
 ## 1.1.50 (2026-11-11)
 
 - A link takes the icon its page shows in the browser tab, and only falls back to the phone home-screen icon when there is none. Plex shows its orange icon again, not the white one on black.

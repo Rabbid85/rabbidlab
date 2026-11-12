@@ -21,6 +21,9 @@ public sealed class Link
     public string? Group { get; set; }
     public string? Icon { get; set; }
 
+    /// <summary>Where the icon came from: a path on the site (or DuckDuckGo), or "own" for one someone uploaded. Null for one saved before this was kept.</summary>
+    public string? IconFrom { get; set; }
+
     /// <summary>Where it sits in its group once it has been dragged there; links nobody has placed follow, by name.</summary>
     public int? Place { get; set; }
     public DateTime Added { get; set; }
@@ -52,7 +55,7 @@ public sealed class LinksFile
 }
 
 /// <summary>What a site says about itself, for filling in a new link.</summary>
-public sealed record LinkLook(string? Name, string? Description, string? Address, string? Icon, string? Problem, string? IconFrom = null);
+public sealed record LinkLook(string? Name, string? Description, string? Address, string? Icon, string? Problem, string? IconFrom = null, bool Served = false);
 
 /// <summary>Whether a link's site answered its last check, made At. Down only once it has gone unanswered, since Since, for the time set.</summary>
 public sealed record LinkState(bool Up, bool Down, int? Ms, int? Code, DateTime? Since, DateTime? At, string? Why = null);
@@ -116,7 +119,7 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
 
     // A copy with another description: the links in the list are being read by other requests.
     private static Link WithDescription(Link l, string? description) =>
-        new() { Id = l.Id, Name = l.Name, Url = l.Url, Description = description, Address = l.Address, Group = l.Group, Icon = l.Icon, Place = l.Place, Added = l.Added, AddedBy = l.AddedBy };
+        new() { Id = l.Id, Name = l.Name, Url = l.Url, Description = description, Address = l.Address, Group = l.Group, Icon = l.Icon, IconFrom = l.IconFrom, Place = l.Place, Added = l.Added, AddedBy = l.AddedBy };
 
     public int Revision
     {
@@ -331,7 +334,7 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
             var l = f.Links[i];
             if (Grouping.Same.Equals(l.Group, from))
             {
-                f.Links[i] = new Link { Id = l.Id, Name = l.Name, Url = l.Url, Description = l.Description, Address = l.Address, Group = to, Icon = l.Icon, Place = l.Place, Added = l.Added, AddedBy = l.AddedBy };
+                f.Links[i] = new Link { Id = l.Id, Name = l.Name, Url = l.Url, Description = l.Description, Address = l.Address, Group = to, Icon = l.Icon, IconFrom = l.IconFrom, Place = l.Place, Added = l.Added, AddedBy = l.AddedBy };
                 moved++;
             }
         }
@@ -387,6 +390,8 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
                 Address = Blank(form.Address),
                 Group = group,
                 Icon = Blank(form.Icon),
+                // The same icon keeps where it came from; a new one says, or is someone's own when it doesn't.
+                IconFrom = Blank(form.Icon) is not { } kept ? null : kept == old?.Icon ? old.IconFrom : Blank(form.IconFrom) ?? "own",
                 Place = form.Place ?? old?.Place,
             };
             if (testing && DevTools.IsTest(url))
@@ -493,7 +498,9 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
         {
             return new LinkRefreshed(was, [], null);
         }
-        var look = await Look(was.Url, stop, guarded, describe);
+        // An icon saved before Rabbid Lab kept where icons came from is checked against the ones the site serves, once.
+        var unsure = was.Icon is { } saved && saved != NoIcon && was.IconFrom is null ? saved : null;
+        var look = await Look(was.Url, stop, guarded, describe, served: unsure);
         lock (gate)
         {
             var f = file.Read();
@@ -505,10 +512,23 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
             var now = f.Links[at];
             List<string> changed = [];
             var icon = now.Icon;
+            var from = now.IconFrom;
             if (now.Icon is null && look.Icon is { } found)
             {
                 icon = found;
+                from = look.IconFrom;
                 changed.Add("icon");
+            }
+            else if (unsure is not null && now.Icon == unsure && look.Problem is null)
+            {
+                // One of the site's own (Plex's phone icon, from when that came first) gives way to the one its browser tab shows;
+                // any other is someone's own, and stays.
+                if (look.Served && look.Icon is { } tab && tab != now.Icon)
+                {
+                    icon = tab;
+                    changed.Add("icon");
+                }
+                from = look.Served ? look.IconFrom : "own";
             }
             var description = now.Description;
             if (now.Description is null || KnownSites.IsOurs(now.Description))
@@ -528,15 +548,15 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
                 address = ip;
                 changed.Add("IP");
             }
-            // Not a link that was changed while its site was read.
-            if (changed.Count == 0 || now.Url != was.Url)
+            // Not a link that was changed while its site was read; nothing to save when nothing changed, not even where its icon came from.
+            if ((changed.Count == 0 && from == now.IconFrom) || now.Url != was.Url)
             {
                 return new LinkRefreshed(now, [], changed.Count == 0 ? look.Problem : null);
             }
             var link = new Link
             {
                 Id = now.Id, Added = now.Added, AddedBy = now.AddedBy, Name = now.Name, Url = now.Url, Group = now.Group, Place = now.Place,
-                Icon = icon, Description = description, Address = address,
+                Icon = icon, IconFrom = from, Description = description, Address = address,
             };
             f.Links[at] = link;
             file.Save(f);
@@ -549,7 +569,7 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
     /// The site's name, description, address and icon. Guarded (always, but in tests): not from this server or a
     /// link-local address. With describe, a product it recognises gets its description from KnownSites.
     /// </summary>
-    public static async Task<LinkLook> Look(string? address, CancellationToken stop, bool guarded = true, bool describe = false)
+    public static async Task<LinkLook> Look(string? address, CancellationToken stop, bool guarded = true, bool describe = false, string? served = null)
     {
         if (Clean(address) is not { } url)
         {
@@ -570,7 +590,7 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
             var (html, where, ok) = await Page(http, uri, cut.Token);
             var name = ok ? Named(html) : null; // an error page's title ("Not Found") is no name
             var about = ok ? Meta(html, "description") : null;
-            var (icon, from) = await Icon(http, html, where, cut.Token);
+            var (icon, from, saw) = await Icon(http, html, where, cut.Token, same: served);
             var pages = html;
             // A front page with no name or icon of its own is a way in to the real one (vCenter's is): the page behind its first link is read.
             if (name is null && icon is null && FirstLink(html, where) is { } onward)
@@ -579,17 +599,18 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
                 name = ok ? Named(html) : null;
                 about ??= ok ? Meta(html, "description") : null;
                 pages += html;
-                (icon, from) = await Icon(http, html, where, cut.Token);
+                (icon, from, saw) = await Icon(http, html, where, cut.Token, same: served);
             }
             // An internet site that turns readers away (behind a bot check) still has an icon at DuckDuckGo. Never one on the lab's network.
             if (icon is null && ip is not null && Public(ip) && Uri.CheckHostName(uri.Host) == UriHostNameType.Dns)
             {
-                (icon, from) = await Icon(http, "", new Uri($"https://icons.duckduckgo.com/ip3/{uri.Host}.ico"), cut.Token, only: true);
+                (icon, from, _) = await Icon(http, "", new Uri($"https://icons.duckduckgo.com/ip3/{uri.Host}.ico"), cut.Token, only: true);
+                saw |= served is not null && icon == served;
             }
             // A page whose name a script fills in (ESXi, iDRAC, TrueNAS) goes by the machine's name in DNS, on the lab's network.
             name ??= lan ? await Machine(ip, cut.Token) : null;
             // A known product's own description beats the site's, which is often marketing (vCenter's) or missing.
-            return new LinkLook(name, (describe ? KnownSites.Describe(name, url, lan ? pages : null) : null) ?? about, ip, icon, null, from);
+            return new LinkLook(name, (describe ? KnownSites.Describe(name, url, lan ? pages : null) : null) ?? about, ip, icon, null, from, saw);
         }
         catch (Exception e) when (e is HttpRequestException or OperationCanceledException or IOException)
         {
@@ -645,7 +666,7 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
                 if (at >= 0)
                 {
                     var l = f.Links[at];
-                    f.Links[at] = new Link { Id = l.Id, Name = l.Name, Url = l.Url, Description = l.Description, Address = l.Address, Group = name, Icon = l.Icon, Place = place++, Added = l.Added, AddedBy = l.AddedBy };
+                    f.Links[at] = new Link { Id = l.Id, Name = l.Name, Url = l.Url, Description = l.Description, Address = l.Address, Group = name, Icon = l.Icon, IconFrom = l.IconFrom, Place = place++, Added = l.Added, AddedBy = l.AddedBy };
                 }
             }
             file.Save(f);
@@ -1006,11 +1027,20 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
 
     /// <summary>
     /// The site's best icon as a data: URL: the icon its page lists for the browser tab (an SVG, else the biggest), else its
-    /// phone home-screen icon, else /favicon.ico and the other
-    /// usual places; six tries at most. With only, just the picture at page.
+    /// phone home-screen icon, else /favicon.ico and the other usual places; six tries at most. With only, just the picture
+    /// at page. With same, the others are read too, to say whether that icon is one the site serves (Saw).
     /// </summary>
-    private static async Task<(string? Icon, string? From)> Icon(HttpClient http, string html, Uri page, CancellationToken stop, bool only = false)
+    private static async Task<(string? Icon, string? From, bool Saw)> Icon(HttpClient http, string html, Uri page, CancellationToken stop, bool only = false, string? same = null)
     {
+        (string Icon, string From)? chosen = null;
+        var saw = false;
+        // The first that works is the one; when asked about another, the rest are read until it turns up.
+        bool Found(string icon, string from)
+        {
+            chosen ??= (icon, from);
+            saw |= icon == same;
+            return same is null || saw;
+        }
         List<string> listed = only ? [page.ToString()] : [.. Regex.Matches(html, @"<link\b[^>]*>", RegexOptions.IgnoreCase).Select(m => m.Value)
             .Select(tag => (Rel: Attr(tag, "rel")?.ToLowerInvariant() ?? "", Href: Attr(tag, "href"), Sizes: Attr(tag, "sizes"), Type: Attr(tag, "type")))
             .Where(l => l.Href is { Length: > 0 } && (l.Rel.Split(' ').Contains("icon") || l.Rel.Contains("apple-touch-icon")))
@@ -1030,7 +1060,11 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
                 {
                     continue; // an empty one, as an iDRAC's error page lists
                 }
-                return href.Length <= MaxIcon ? (href, "the page itself") : (null, null);
+                if (href.Length <= MaxIcon && Found(href, "the page itself"))
+                {
+                    break;
+                }
+                continue;
             }
             if (!Uri.TryCreate(page, href, out var at) || at.Scheme is not ("http" or "https"))
             {
@@ -1047,7 +1081,11 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
                 var (picture, type) = kind == "image/x-icon" && bytes.Length > MaxIcon ? OneIcon(bytes) : (bytes, kind);
                 if (type is not null && picture.Length <= MaxIcon)
                 {
-                    return ($"data:{type};base64,{Convert.ToBase64String(picture)}", only ? "DuckDuckGo's icon service" : at.AbsolutePath);
+                    if (Found($"data:{type};base64,{Convert.ToBase64String(picture)}", only ? "DuckDuckGo's icon service" : at.AbsolutePath))
+                    {
+                        break;
+                    }
+                    continue;
                 }
                 // A picture too big to keep (Pelican's one-picture .ico is 260 KB): the same one by the same name is often there as an SVG or PNG.
                 if (kind is not null && !only && at.AbsolutePath.LastIndexOf('.') is var dot and > 0)
@@ -1060,7 +1098,7 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
                 // The next one; out of time, the site goes without an icon.
             }
         }
-        return (null, null);
+        return (chosen?.Icon, chosen?.From, saw);
     }
 
     /// <summary>A big .ico (Pelican's holds every size in 260 KB) cut down to its biggest picture that fits: a PNG one as itself, otherwise an .ico of one.</summary>
@@ -1186,7 +1224,7 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
     private static string? Blank(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
 }
 
-public sealed record LinkForm(string? Name, string? Url, string? Description, string? Address, string? Group, string? Icon, int? Place = null);
+public sealed record LinkForm(string? Name, string? Url, string? Description, string? Address, string? Group, string? Icon, int? Place = null, string? IconFrom = null);
 
 public sealed record LinkArrangeForm(string? Group, List<string>? Ids);
 

@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.51', [
+    'Rabbid Lab remembers where the icon of each link came from: the site, or a picture of your own.',
+    'Icons saved before that are checked once by the next Refresh icons. One the site serves itself, such as the white Plex icon made for iPhones, gives way to the icon its browser tab shows; a picture of your own stays and is never changed.',
+    'The site icon button in a link always reads the icon the site serves now, so any one link can be put right with a click.']],
   ['1.1.50', [
     'A link takes the icon its page shows in the browser tab, and only falls back to the phone home-screen icon when there is none. Plex shows its orange icon again, not the white one on black.',
     'Refresh icons only reads links with no icon or no description. A link with no IP line is not read again for that (Netflix was read on every refresh).',
