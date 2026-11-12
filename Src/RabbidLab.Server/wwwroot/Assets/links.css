@@ -184,3 +184,8 @@
   .tr.ld-lr { grid-template-columns: 22px 28px minmax(0, 1fr) 96px; }
   .tr.ld-lr > :nth-child(4) { display: none; }
 }
+
+/* Refresh icons on Links: the flask sits at the top of the list, under the tools, however long the list is. */
+#ln-list > .busy-cover { place-content: start center; padding-top: 70px; }
+#ln-list.busy-host { min-height: 260px; }
+.hint.ln-done { margin: -6px 0 14px; }

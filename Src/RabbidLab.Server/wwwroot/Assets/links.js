@@ -173,7 +173,7 @@
       wait = answer.next || 60;
       if (answer.revision !== revision && !tools.busy()) take(await R.get('/api/links'));
       // Not under a drag or a name being typed: the dots catch up on the next check.
-      if (!tools.busy()) draw();
+      if (!tools.busy() && !refreshing) draw();
     } catch {
       // The dots stay as they were.
     }
@@ -325,20 +325,22 @@
   // Import: a file Export made, added beside what's here. The flask covers the settings while it goes in.
   const count = (n, thing) => `${n} ${thing}${n === 1 ? '' : 's'}`;
   // Refresh: each link missing an icon, a description or its IP has its site read again, four at a time, under the flask.
-  $('lc-refresh').addEventListener('click', async () => {
+  // From Settings, Links and from the Links page; one run at a time.
+  let refreshing = false;
+  const refreshLinks = async (host, note) => {
+    if (refreshing) return;
     const todo = links.filter((l) => !l.icon || !l.description || !l.address);
-    say('lc-refresh-done', '');
-    say('lc-problem', '');
-    if (!todo.length) return say('lc-refresh-done', 'Every link has its icon, description and IP already.');
-    const form = $('lc-form');
+    ['lc-refresh-done', 'ln-done'].forEach((id) => say(id, ''));
+    if (!todo.length) return say(note, 'Every link has its icon, description and IP already.');
+    refreshing = true;
     const got = { icon: 0, description: 0, IP: 0 };
     let next = 0;
     let done = 0;
     let filled = 0;
     let quiet = 0;
     const show = (name) => {
-      R.busy(form, `Refreshing ${done} of ${todo.length}`, name ? `${name} · ${count(filled, 'link')} filled in so far` : '');
-      const cover = form.querySelector(':scope > .busy-cover');
+      R.busy(host, `Refreshing ${done} of ${todo.length}`, name ? `${name} · ${count(filled, 'link')} filled in so far` : '');
+      const cover = host.querySelector(':scope > .busy-cover');
       if (cover && !cover.querySelector('.ld-bar')) cover.insertAdjacentHTML('beforeend', '<span class="ubar ld-bar"><i></i></span>');
       if (cover) cover.querySelector('.ld-bar i').style.width = `${Math.round((done / todo.length) * 100)}%`;
     };
@@ -359,7 +361,8 @@
     };
     show('');
     await Promise.all(Array.from({ length: Math.min(4, todo.length) }, work));
-    R.busy(form, '');
+    R.busy(host, '');
+    refreshing = false;
     try {
       take(await R.get('/api/links'));
     } catch {
@@ -367,9 +370,11 @@
     }
     draw();
     const what = [got.icon && count(got.icon, 'icon'), got.description && count(got.description, 'description'), got.IP && count(got.IP, 'IP')].filter(Boolean);
-    say('lc-refresh-done', [filled ? `Filled in ${what.length > 1 ? `${what.slice(0, -1).join(', ')} and ${what[what.length - 1]}` : what[0]} on ${count(filled, 'link')}.` : 'Nothing new to fill in.',
+    say(note, [filled ? `Filled in ${what.length > 1 ? `${what.slice(0, -1).join(', ')} and ${what[what.length - 1]}` : what[0]} on ${count(filled, 'link')}.` : 'Nothing new to fill in.',
       quiet ? `${count(quiet, 'link')} didn't answer.` : ''].filter(Boolean).join(' '));
-  });
+  };
+  $('lc-refresh').addEventListener('click', () => refreshLinks($('lc-form'), 'lc-refresh-done'));
+  $('ln-refresh').addEventListener('click', () => refreshLinks($('ln-list'), 'ln-done'));
   $('lc-import-file').addEventListener('change', async () => {
     const f = $('lc-import-file').files[0];
     $('lc-import-file').value = '';
