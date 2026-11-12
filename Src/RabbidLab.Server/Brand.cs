@@ -70,8 +70,8 @@ public static partial class Brand
 
     public static void MapBrandApi(this WebApplication app)
     {
-        app.MapGet("/api/brand", (HttpContext context, SettingsStore settings) =>
-            Access.Refuse(context) ?? Results.Ok(Read(settings.Current)));
+        // A read: anyone signed in, with no header asked for (Access.Refuse is for changes).
+        app.MapGet("/api/brand", (SettingsStore settings) => Results.Ok(Read(settings.Current)));
 
         app.MapPost("/api/brand", (BrandForm form, HttpContext context, SettingsStore settings, ActivityLog log) =>
         {

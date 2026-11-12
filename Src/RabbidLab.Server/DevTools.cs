@@ -61,8 +61,8 @@ public static class DevTools
         {
             return; // nothing of this in a release
         }
-        app.MapGet("/api/devtools", (HttpContext context, SettingsStore settings) =>
-            Access.Refuse(context) ?? Results.Ok(new { on = settings.Current.DevTools }));
+        // A read: anyone signed in, with no header asked for (Access.Refuse is for changes).
+        app.MapGet("/api/devtools", (SettingsStore settings) => Results.Ok(new { on = settings.Current.DevTools }));
 
         app.MapPost("/api/devtools", (DevToolsForm form, HttpContext context, SettingsStore settings, ActivityLog log) =>
         {
