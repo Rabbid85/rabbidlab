@@ -4,10 +4,10 @@
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
   ['1.1.63', [
-    'Rabbid Lab Dev is called Rabbid Lab on every page, Overview and About included, and in the messages the server shows; the DEV tag in the top bar and the tab icon say it is the Dev build. Windows still calls it Rabbid Lab Dev, so the two installs stay apart.',
-    'The banner on Links never draws a picture bigger than it is, so a 16 or 32 pixel favicon stays sharp instead of blown up and blurred. In Mosaic the big square of each group goes to the first link whose picture is sharp at that size.']],
+    'Dev now says Rabbid Lab on screen. The DEV tag marks the dev build.',
+    'Fixed blurry icons in the Links banner.']],
   ['1.1.62', [
-    'Settings, Links calls its first section Heartbeat instead of Checks, and its first setting is Heartbeat interval: how often Rabbid Lab checks that each link answers.']],
+    'Renamed Checks to Heartbeat in Links settings.']],
   ['1.1.61', [
     'Icon layout keeps Full rows, Depth, Groups and Mosaic. Network, Floor, Rain and Tilt are gone; a browser that had one of them picked goes back to Full rows.']],
   ['1.1.60', [

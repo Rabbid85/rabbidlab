@@ -4,12 +4,12 @@ What changed in each version of Rabbid Lab. The console shows the same notes und
 
 ## 1.1.63 (2026-11-12)
 
-- Rabbid Lab Dev is called Rabbid Lab on every page, Overview and About included, and in the messages the server shows; the DEV tag in the top bar and the tab icon say it is the Dev build. Windows still calls it Rabbid Lab Dev, so the two installs stay apart.
-- The banner on Links never draws a picture bigger than it is, so a 16 or 32 pixel favicon stays sharp instead of blown up and blurred. In Mosaic the big square of each group goes to the first link whose picture is sharp at that size.
+- Dev now says Rabbid Lab on screen. The DEV tag marks the dev build.
+- Fixed blurry icons in the Links banner.
 
 ## 1.1.62 (2026-11-12)
 
-- Settings, Links calls its first section Heartbeat instead of Checks, and its first setting is Heartbeat interval: how often Rabbid Lab checks that each link answers.
+- Renamed Checks to Heartbeat in Links settings.
 
 ## 1.1.61 (2026-11-12)
 
