@@ -273,6 +273,8 @@
       draw();
     },
   });
+  // Names compared the way people read them: case ignored, esxi2 before esxi10.
+  const byName = (a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
   // A link dragged to another place: its group's links in their new order. Shown straight away, then saved.
   // whole: ids is the whole group already (Sort A to Z), so a search on the page changes nothing.
   const arrange = async (id, to, ids, whole = false) => {
@@ -304,10 +306,16 @@
     also: (g, n) => (n > 1 ? `<button type="button" class="link lopen" data-openall="${esc(g)}" title="Open every link in this group, each in a new tab">Open all</button>` : ''),
     places: true, // links keep the order they're dragged into
     move: arrange,
-    // Sort A to Z: the group's links by name, saved like a drag.
-    sort: (g) => {
-      const ids = links.filter((x) => (x.group || '') === g).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })).map((x) => x.id);
+    // Sort: the group's links by name, A to Z or Z to A, saved like a drag.
+    sort: (g, dir) => {
+      const ids = links.filter((x) => (x.group || '') === g).sort((a, b) => byName(a, b) * (dir === 'za' ? -1 : 1)).map((x) => x.id);
       if (ids.length > 1) arrange(ids[0], g, ids, true);
+    },
+    // Which way the group is sorted now: 'az', 'za', or '' when it's in an order of its own.
+    sorted: (g) => {
+      const list = links.filter((x) => (x.group || '') === g);
+      if (list.every((x, i) => !i || byName(list[i - 1], x) <= 0)) return 'az';
+      return list.every((x, i) => !i || byName(list[i - 1], x) >= 0) ? 'za' : '';
     },
     take,
     draw,

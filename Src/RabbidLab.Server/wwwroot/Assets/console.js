@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.69', [
+    'The sort button on a group goes both ways: A to Z, then Z to A once it is in A to Z order. Its icon shows which way it will sort.']],
   ['1.1.68', [
     'You can drag links into place in the Links and Icons views too.',
     'Each group has a Sort A to Z button.',
@@ -1711,7 +1713,13 @@ const RELEASE_NOTES = [
         o.draw();
       }
     };
-    // A group's heading: its name and count, and for people who may change it the handle, pencil and bin.
+    // Sort: A to Z, or Z to A once the group is already A to Z. The icon shows which way the next click goes.
+    const sortButton = (g) => {
+      const dir = o.sorted?.(g) === 'az' ? 'za' : 'az';
+      const words = dir === 'az' ? 'A to Z' : 'Z to A';
+      return `<button type="button" class="icon" data-gsort="${esc(g)}" data-dir="${dir}" title="Sort ${words}" aria-label="Sort ${esc(g)} ${words}">${svg(dir === 'az' ? 'sort' : 'sort-za')}</button>`;
+    };
+    // A group's heading: its name and count, and for people who may change it the handle, sort, pencil and bin.
     const heading = (g, n) => {
       if (renaming?.name === g) {
         return `<div class="lhead"><input class="lrename" maxlength="40" value="${esc(renaming.text)}" aria-label="Name of the group">`
@@ -1719,7 +1727,7 @@ const RELEASE_NOTES = [
       }
       const tools = g && o.can()
         ? `<span class="ltools"><span class="lgrip" draggable="true" title="Drag to reorder">${svg('grip')}</span>`
-          + (o.sort && n > 1 ? `<button type="button" class="icon" data-gsort="${esc(g)}" title="Sort A to Z" aria-label="Sort ${esc(g)} A to Z">${svg('sort')}</button>` : '')
+          + (o.sort && n > 1 ? sortButton(g) : '')
           + `<button type="button" class="icon" data-rename="${esc(g)}" title="Rename" aria-label="Rename ${esc(g)}">${svg('edit')}</button>`
           + `<button type="button" class="icon" data-gdelete="${esc(g)}" title="Delete" aria-label="Delete ${esc(g)}">${svg('trash')}</button></span>` : '';
       return `<div class="lhead"><h2>${esc(g || 'No group')}<small>${n}</small></h2>${o.also?.(g, n) || ''}${tools}</div>`;
@@ -1737,7 +1745,7 @@ const RELEASE_NOTES = [
       const b = e.target.closest('button');
       if (!b) return;
       if (b.dataset.gsort) {
-        o.sort(b.dataset.gsort);
+        o.sort(b.dataset.gsort, b.dataset.dir);
       } else if (b.dataset.rename) {
         renaming = { name: b.dataset.rename, text: b.dataset.rename };
         o.draw();
