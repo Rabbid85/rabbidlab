@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.79 (2026-11-12)
+
+- Picking Email in Add a channel shows the mail server right there, so you can still switch to Discord or another kind.
+
 ## 1.1.78 (2026-11-12)
 
 - Send to shows the channels you have, then one Add a channel line. With no mail server yet, Email is one of the kinds in Add a channel. What you add from a sensor is ticked on it.

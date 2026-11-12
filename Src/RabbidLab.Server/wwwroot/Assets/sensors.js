@@ -723,19 +723,6 @@
       + `<small>${left.length ? esc(orList(left.map((k) => (k === 'webhook' ? 'a webhook' : CH_KIND[k])))) : 'Another Discord, Teams, Slack, ntfy or webhook'}</small></span>`
       + `<i class="chan-minis">${left.map((k) => `<span class="chan-ic ${k}">${chIcon(k)}</span>`).join('')}</i></button>`;
   };
-  // Email set up from Send to: the Email dialog, then the channels read again; ready says whether it can send now.
-  const setUpMail = async (then) => {
-    await openMail();
-    if (!$('mail-dialog').open) return;
-    $('mail-dialog').addEventListener('close', async () => {
-      try {
-        chans = await R.get('/api/channels');
-      } catch {
-        // keeps what it had
-      }
-      then(!!chans?.email.ready);
-    }, { once: true });
-  };
   // A click in Send to: a channel ticked or not, or Add a channel, and what's added is ticked. The list is changed in place.
   const sendClick = (e, list, redraw) => {
     const b = e.target.closest('[data-chan]');
@@ -1098,7 +1085,7 @@
   const setProvider = (p) => {
     provider = p;
     $('ml-provider').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.provider === p));
-    $('mail-dialog').querySelectorAll('[data-for]').forEach((el) => { el.hidden = !el.dataset.for.split(' ').includes(p); });
+    $('ml-body').querySelectorAll('[data-for]').forEach((el) => { el.hidden = !el.dataset.for.split(' ').includes(p); });
     $('ml-user-label').textContent = p === 'gmail' ? 'Gmail address' : 'Username';
     $('ml-password-label').textContent = p === 'gmail' ? 'App password' : 'Password';
     $('ml-password').placeholder = kept?.hasPassword ? 'Stored. Type a new one to change it.' : '';
@@ -1117,14 +1104,13 @@
     $('ml-secret').value = '';
     setProvider(provider);
   };
-  const openMail = async () => {
-    say('ml-problem', '');
-    say('ml-done', '');
+  // The mail server fields filled in with what's saved; false when it couldn't be read (said in problem).
+  const fillMail = async (problem) => {
     try {
       kept = await R.get('/api/mail');
     } catch (err) {
-      say('sn-problem', err.message);
-      return;
+      say(problem, err.message);
+      return false;
     }
     $('ml-host').value = kept.host || '';
     $('ml-port').value = kept.port || 587;
@@ -1137,6 +1123,13 @@
     $('ml-from').value = kept.from || '';
     $('ml-to').value = (kept.to || []).join(', ');
     setProvider(kept.provider === 'm365' ? 'm365' : !kept.host || kept.host === 'smtp.gmail.com' ? 'gmail' : 'smtp');
+    return true;
+  };
+  const openMail = async () => {
+    say('ml-problem', '');
+    say('ml-done', '');
+    if (!await fillMail('sn-problem')) return;
+    $('ml-done').before($('ml-body')); // back from Add a channel, if it was there
     if (!$('mail-dialog').open) $('mail-dialog').showModal();
   };
   $('ml-provider').addEventListener('click', (e) => {
@@ -1254,18 +1247,29 @@
   let chEditing = null;
   let chKind = 'discord';
   let chThen = null; // what to do with a new channel's id, when it was added from a sensor
+  let mailFilled = false; // the mail server fields have what's saved, for Email in here
   const drawChKinds = () => {
     $('ch-kinds').hidden = !!chEditing;
-    // Email is one of the kinds while there's no mail server: picking it opens the Email dialog.
+    // Email is one of the kinds while there's no mail server: picked, the mail server fields show in here instead.
     const kinds = [...(chans && !chans.email.ready ? ['email'] : []), ...Object.keys(CH_HELP)];
     $('ch-kinds').innerHTML = kinds.map((k) => `<button type="button" class="chan${k === chKind ? ' on' : ''}" data-ch-kind="${k}" aria-pressed="${k === chKind}">`
       + `<span class="chan-ic ${k}">${chIcon(k)}</span><span><b>${CH_KIND[k]}</b><small>${k === 'email' ? 'Through your mail server' : CH_SUB[k]}</small></span></button>`).join('');
+    const mail = chKind === 'email';
+    $('ch-form').hidden = mail;
+    $('ch-mail').hidden = !mail;
+    if (mail) {
+      if (!$('ch-mail').contains($('ml-body'))) $('ch-mail').append($('ml-body'));
+      return;
+    }
     const [label, ph, help] = CH_HELP[chKind];
     $('ch-url-label').textContent = label;
     $('ch-url').placeholder = chEditing ? 'Leave it empty to keep the saved one' : ph;
     $('ch-help').textContent = help;
   };
+  // The mail server fields go home when the dialog closes, for the Email dialog.
+  $('channel-dialog').addEventListener('close', () => $('ml-done').before($('ml-body')));
   const openChannel = (c, then = null) => {
+    mailFilled = false;
     chEditing = c || null;
     chKind = c?.kind || missing().find((k) => k !== 'email') || 'discord'; // a new one starts on a kind there isn't one of yet
     chThen = then;
@@ -1281,17 +1285,15 @@
     $('channel-dialog').showModal();
     $('ch-url').focus();
   };
-  $('ch-kinds').addEventListener('click', (e) => {
+  $('ch-kinds').addEventListener('click', async (e) => {
     const b = e.target.closest('[data-ch-kind]');
     if (!b) return;
-    if (b.dataset.chKind === 'email') {
-      const then = chThen;
-      $('channel-dialog').close();
-      return setUpMail((ready) => then?.(ready ? 'email' : null));
-    }
+    say('ch-done', '');
+    say('ch-problem', '');
     chKind = b.dataset.chKind;
+    if (chKind === 'email' && !mailFilled) mailFilled = await fillMail('ch-problem');
     drawChKinds();
-    $('ch-url').focus();
+    (chKind === 'email' ? [...$('ml-body').querySelectorAll('input')].find((i) => i.offsetParent) : $('ch-url'))?.focus();
   });
   const chForm = () => ({ kind: chKind, name: $('ch-name').value, url: $('ch-url').value, onForNew: $('ch-new').checked });
   $('ch-test').addEventListener('click', async () => {
@@ -1299,8 +1301,15 @@
     say('ch-problem', '');
     $('ch-test').disabled = true;
     try {
-      await R.send(chEditing && !$('ch-url').value.trim() ? `/api/channels/${encodeURIComponent(chEditing.id)}/test` : '/api/channels/test', chForm());
-      say('ch-done', 'Sent a test. Look for it there.');
+      if (chKind === 'email') {
+        // A test email goes to the addresses typed, so the mail server is saved first.
+        await saveMail();
+        await R.send('/api/mail/test', {});
+        say('ch-done', `Sent to ${kept.to.join(', ')}. Check the inbox, and the junk folder.`);
+      } else {
+        await R.send(chEditing && !$('ch-url').value.trim() ? `/api/channels/${encodeURIComponent(chEditing.id)}/test` : '/api/channels/test', chForm());
+        say('ch-done', 'Sent a test. Look for it there.');
+      }
     } catch (err) {
       say('ch-problem', err.message);
     }
@@ -1309,7 +1318,12 @@
   $('ch-save').addEventListener('click', async () => {
     $('ch-save').disabled = true;
     try {
-      if (chEditing) {
+      if (chKind === 'email') {
+        // Email: the mail server saved, and ticked where it was added from once it can send.
+        await saveMail();
+        chans = await R.get('/api/channels');
+        chThen?.(chans.email.ready ? 'email' : null);
+      } else if (chEditing) {
         chans = await R.send(`/api/channels/${encodeURIComponent(chEditing.id)}`, chForm());
       } else {
         const made = await R.send('/api/channels', chForm());

@@ -270,3 +270,8 @@
 #copy-dialog .dialog-foot { align-items: center; }
 #copy-dialog .grow { flex: 1; }
 #copy-dialog .link { color: var(--accent-soft); }
+/* Email picked in Add a channel: the mail server fields, under the kinds. */
+#ch-mail { padding: 18px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); } /* the same box as the webhook fields */
+#ch-mail[hidden] { display: none; }
+#ch-mail .sd-div { display: none; }
+#ch-mail #ml-help { margin: 10px 0 0; }
