@@ -40,8 +40,8 @@ public static class UsersApi
         {
             var warning = await tools.Connect(form, ActivityLog.Who(context), context.RequestAborted);
             var state = tools.State()!;
-            log.Record(context, "users", "ad.connect", form.Existing ? $"Set up {Product.Name}'s AD account as {state.Account}"
-                : $"Made {state.Account} in {state.Domain} for {Product.Name}, able to change accounts in {state.ScopeName}", warning is null ? "ok" : "warning", warning);
+            log.Record(context, "users", "ad.connect", form.Existing ? $"Set up {Product.Title}'s AD account as {state.Account}"
+                : $"Made {state.Account} in {state.Domain} for {Product.Title}, able to change accounts in {state.ScopeName}", warning is null ? "ok" : "warning", warning);
             return Results.Ok(new { state, warning });
         }));
 

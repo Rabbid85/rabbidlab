@@ -21,7 +21,7 @@ public sealed class WindowsAccounts : IWindowsAccounts
         : Task.Run(() => OperatingSystem.IsWindows() ? Check(name, password) : null, stop);
 
     public Task<AccountAnswer> Do(AccountOrder order, CancellationToken stop) =>
-        Task.Run(() => OperatingSystem.IsWindows() ? WindowsUsers.Do(order) : AccountAnswer.Failed(order.Id, $"{Product.Name} isn't running on Windows here, so this server has no Windows accounts."), stop);
+        Task.Run(() => OperatingSystem.IsWindows() ? WindowsUsers.Do(order) : AccountAnswer.Failed(order.Id, $"{Product.Title} isn't running on Windows here, so this server has no Windows accounts."), stop);
 
     [SupportedOSPlatform("windows")]
     private static string? Check(string name, string password)

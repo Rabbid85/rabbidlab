@@ -11,7 +11,7 @@ public static class Access
     /// <summary>Why a change isn't allowed (the answer to send), or null when it is.</summary>
     public static IResult? Refuse(HttpContext context) =>
         context.Request.Headers.ContainsKey(Header) ? null
-            : Results.Json(new { error = $"This change must come from {Product.Name}'s own page (the {Header} header is missing)." }, statusCode: StatusCodes.Status403Forbidden);
+            : Results.Json(new { error = $"This change must come from {Product.Title}'s own page (the {Header} header is missing)." }, statusCode: StatusCodes.Status403Forbidden);
 
     /// <summary>Whether the person asking has a role that allows this.</summary>
     public static bool Can(HttpContext context, string permission) => context.RequestServices.GetRequiredService<Roles>().Can(context.User, permission);

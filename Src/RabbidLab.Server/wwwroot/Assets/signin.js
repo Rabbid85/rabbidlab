@@ -257,9 +257,10 @@
     // What changes between setting up and signing in: the words, the confirm box, and Keep me signed in.
     // The lab's own look: its colours (brand.js), its name in place of Rabbid Lab's, its icon in place of the mark.
     const brand = window.RabbidLabBrand.apply(s.brand);
-    const name = brand.name || s.product;
+    const product = s.product.replace(/ Dev$/, ''); // the DEV tag says it's Dev
+    const name = brand.name || product;
     document.title = (setup ? 'Set up ' : 'Sign in to ') + name;
-    document.querySelectorAll('[data-product]').forEach((e) => { e.textContent = name.replace(/ Dev$/, ''); }); // the DEV tag beside it says the rest
+    document.querySelectorAll('[data-product]').forEach((e) => { e.textContent = name; });
     if (brand.icon) {
       document.getElementById('band-img').src = brand.icon;
       document.getElementById('band-img').hidden = false;
@@ -267,7 +268,7 @@
     }
     document.querySelectorAll('[data-version]').forEach((e) => {
       e.textContent = `${s.machine} · ${s.version}`;
-      e.title = `${s.product} ${s.version} on ${s.machine} (${s.platform})`;
+      e.title = `${product} ${s.version} on ${s.machine} (${s.platform})`;
     });
     document.body.classList.toggle('is-dev', !!s.dev);
     $('heading').textContent = setup ? 'Set up' : 'Sign in';
@@ -378,7 +379,7 @@
       $('ad-form').hidden = kind !== 'ad';
       $('lead').hidden = !setup && kind === 'ad'; // the domain line says it
       $('lead').textContent = setup ? (kind === 'ad' ? 'Connect Rabbid Lab to your domain.' : 'Create the administrator account.')
-        : kind === 'ad' ? `Use your ${s.domain} account.` : s.domain ? 'Use a local account.' : `Use your ${s.product} account.`;
+        : kind === 'ad' ? `Use your ${s.domain} account.` : s.domain ? 'Use a local account.' : `Use your ${product} account.`;
       $('other-kind').textContent = kind === 'ad' ? 'Use a local account instead' : 'Use Active Directory instead';
       showError('');
       if (kind === 'ad') startDirectory();

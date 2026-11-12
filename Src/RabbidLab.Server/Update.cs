@@ -16,7 +16,7 @@ namespace RabbidLab.Server;
 public sealed class ConsoleUpdateHost(SettingsStore store, DataFolder folder, ActivityLog activity) : IUpdateHost
 {
     /// <summary>Who the activity log says installed an update that installed by itself.</summary>
-    public const string AutomaticBy = Product.Name + " (automatic installation)";
+    public const string AutomaticBy = Product.Title + " (automatic installation)";
 
     /// <summary>As a Windows service it installs its own updates (with Setup); in Docker it's updated with its new download.</summary>
     public static bool SelfInstalls => OperatingSystem.IsWindows() && !Product.InContainer;
@@ -34,7 +34,7 @@ public sealed class ConsoleUpdateHost(SettingsStore store, DataFolder folder, Ac
     public bool Automatic => store.Current.AutomaticUpdates;
 
     public void Record(UpdateAttempt attempt) =>
-        activity.Record(AutomaticBy, null, "admin", "update.install", $"Install update: {Product.Name} {attempt.Version}", attempt.Problem is null ? "ok" : "failed", attempt.Problem);
+        activity.Record(AutomaticBy, null, "admin", "update.install", $"Install update: {Product.Title} {attempt.Version}", attempt.Problem is null ? "ok" : "failed", attempt.Problem);
 }
 
 /// <summary>
@@ -81,7 +81,7 @@ public sealed class ConsoleInstallerRunner(InstallerRunner runner) : IInstallerR
                 + (AsrRules.TryGetValue(rule, out var name) ? $"“{name}”" : rule) + ", which stops programs few computers run yet, such as a new release.";
             return DefenderManagedBy() is { } by
                 ? $"{said} These rules are set with {by}: add {allow} to its attack surface reduction exclusions, then select Try again."
-                : $"{said} To let {Product.Name} update itself on this machine, run  Add-MpPreference -AttackSurfaceReductionOnlyExclusions '{updates}', '{exe}'  in PowerShell as an administrator, then select Try again.";
+                : $"{said} To let {Product.Title} update itself on this machine, run  Add-MpPreference -AttackSurfaceReductionOnlyExclusions '{updates}', '{exe}'  in PowerShell as an administrator, then select Try again.";
         }
         if (Recorded("Microsoft-Windows-Windows Defender/Operational", "EventID=1116 or EventID=1117", file) is not null)
         {
@@ -201,7 +201,7 @@ public static class UpdateApi
             return updates.InstallNow(done =>
             {
                 var ok = done.Status == UpdateStatus.Installing;
-                activity.Record(by, from, "admin", "update.install", $"{title}: {Product.Name} {done.Available ?? done.Version}", ok ? "ok" : "failed", ok ? null : done.Message);
+                activity.Record(by, from, "admin", "update.install", $"{title}: {Product.Title} {done.Available ?? done.Version}", ok ? "ok" : "failed", ok ? null : done.Message);
             });
         }
         // What GitHub last said, and any update under way. Opening the page asks GitHub nothing: the source asks when Rabbid

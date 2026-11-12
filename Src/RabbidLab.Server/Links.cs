@@ -626,7 +626,7 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
         {
             var called = (lan ? await Machine(ip, stop) : null) ?? uri.Host;
             return new LinkLook(called, describe ? KnownSites.Describe(called, url) : null, ip, null, IsRefusal(e)
-                ? $"{uri.Host} is on this server or a link-local address, which {Product.Name} doesn't read, so fill it in yourself."
+                ? $"{uri.Host} is on this server or a link-local address, which {Product.Title} doesn't read, so fill it in yourself."
                 : $"{uri.Host} didn't answer, so fill it in yourself.");
         }
     }

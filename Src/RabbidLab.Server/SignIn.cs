@@ -189,7 +189,7 @@ public static class SignIn
                 return accounts.SetUp ? Results.Conflict(new { error = problem }) : Results.BadRequest(new { error = problem });
             }
             roles.SetUp(new Member { Kind = Member.Local, Name = account.Username }, null);
-            log.Record(account.Username, ActivityLog.Address(context), "sign-in", "setup.local", $"Set up {Product.Name} with a local account", "ok");
+            log.Record(account.Username, ActivityLog.Address(context), "sign-in", "setup.local", $"Set up {Product.Title} with a local account", "ok");
             var principal = Principal(account.Username, account.Username, Local, account.Stamp);
             await Start(context, principal, remember: false);
             roles.Seen(Who.Of(principal), account.Username);
@@ -215,7 +215,7 @@ public static class SignIn
             var from = ActivityLog.Address(context);
             if (accounts.SetUp)
             {
-                return Results.Conflict(new { error = Product.Name + " is already set up. Sign in instead." });
+                return Results.Conflict(new { error = Product.Title + " is already set up. Sign in instead." });
             }
             var domain = Clean(form.Domain);
             if ((DomainProblem(domain) ?? ServerProblem(form.Server)) is { } badDomain)
@@ -246,7 +246,7 @@ public static class SignIn
             {
                 return Results.Conflict(new { error = problem });
             }
-            log.Record(user.Username, from, "sign-in", "setup.directory", $"Set up {Product.Name} with Active Directory ({domain}, {server ?? "automatic"}, anyone in the domain)", "ok");
+            log.Record(user.Username, from, "sign-in", "setup.directory", $"Set up {Product.Title} with Active Directory ({domain}, {server ?? "automatic"}, anyone in the domain)", "ok");
             // Whoever sets it up is the administrator; everyone in the domain gets User.
             roles.SetUp(new Member { Kind = Member.Person, Name = user.Username, Display = user.Name }, new Member { Kind = Member.Everyone, Name = "ad" });
             var principal = Principal(user.Username, user.Name, Directory, accounts.Directory!.Stamp, domain, setupHost, user.Groups);
@@ -334,7 +334,7 @@ public static class SignIn
             if (!roles.CanSignIn(who))
             {
                 log.Record(username, from, "sign-in", "signin.refused", "Sign-in refused", "failed", "Not in any role");
-                return Results.Json(new { error = $"Your account isn't in any of {Product.Name}'s roles yet, so it can't sign in. Ask whoever runs {Product.Name} to add you." },
+                return Results.Json(new { error = $"Your account isn't in any of {Product.Title}'s roles yet, so it can't sign in. Ask whoever runs {Product.Title} to add you." },
                     statusCode: StatusCodes.Status403Forbidden);
             }
             var signedIn = Principal(username, user.Name, Directory, settings.Stamp, domain, host, user.Groups);
@@ -360,7 +360,7 @@ public static class SignIn
             var username = context.User.Identity?.Name;
             if (context.User.FindFirstValue("source") != Local || username is null)
             {
-                return Results.BadRequest(new { error = $"Only {Product.Name} accounts change their password here. Active Directory and Windows passwords are changed there." });
+                return Results.BadRequest(new { error = $"Only {Product.Title} accounts change their password here. Active Directory and Windows passwords are changed there." });
             }
             var from = ActivityLog.Address(context);
             if (!limiter.Take(from))

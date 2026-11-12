@@ -254,8 +254,8 @@ public sealed class Accounts(DataFolder folder)
 
     /// <summary>Why setup isn't open (it's done, or accounts.json can't be read), or null when it is.</summary>
     private string? Taken(AccountsFile a) =>
-        IsSetUp(a) ? Product.Name + " is already set up. Sign in instead."
-        : file.Broken ? $"accounts.json can't be read, so {Product.Name} can't be set up again from here. Restore the file from a backup, or add an administrator with --add-admin."
+        IsSetUp(a) ? Product.Title + " is already set up. Sign in instead."
+        : file.Broken ? $"accounts.json can't be read, so {Product.Title} can't be set up again from here. Restore the file from a backup, or add an administrator with --add-admin."
         : null;
 
     private static LocalAccount? Named(AccountsFile a, string username) => a.Local.FirstOrDefault(x => Same(x.Username, username));

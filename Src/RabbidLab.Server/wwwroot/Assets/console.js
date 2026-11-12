@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.63', [
+    'Rabbid Lab Dev is called Rabbid Lab on every page, Overview and About included, and in the messages the server shows; the DEV tag in the top bar and the tab icon say it is the Dev build. Windows still calls it Rabbid Lab Dev, so the two installs stay apart.',
+    'The banner on Links never draws a picture bigger than it is, so a 16 or 32 pixel favicon stays sharp instead of blown up and blurred. In Mosaic the big square of each group goes to the first link whose picture is sharp at that size.']],
   ['1.1.62', [
     'Settings, Links calls its first section Heartbeat instead of Checks, and its first setting is Heartbeat interval: how often Rabbid Lab checks that each link answers.']],
   ['1.1.61', [
@@ -446,7 +449,7 @@ const RELEASE_NOTES = [
   let productName = 'Rabbid Lab';
   const drawBrand = () => {
     product = brand.name || productName;
-    $('brand-name').textContent = product.replace(/ Dev$/, ''); // the DEV tag beside it says the rest
+    $('brand-name').textContent = product;
     $('hero-title').textContent = product;
     title();
     $('brand-img').hidden = !brand.icon;
@@ -516,7 +519,7 @@ const RELEASE_NOTES = [
     const r = await fetch('/api/status', { headers: { Accept: 'application/json' } });
     if (!r.ok) throw new Error(r.statusText);
     const s = await r.json();
-    productName = s.product;
+    productName = s.product.replace(/ Dev$/, ''); // the DEV tag in the top bar says it's Dev
     drawBrand();
     $('rail-version').textContent = s.version;
     $('rail-repo').href = s.repository;
@@ -526,7 +529,7 @@ const RELEASE_NOTES = [
     loadBrand();
     $('hero-version').textContent = s.version;
     $('hero-where').textContent = `Running on ${s.server} since ${when(s.startedAt)}.`;
-    $('ab-version').textContent = `${s.product} ${s.version}`;
+    $('ab-version').textContent = `${productName} ${s.version}`;
     $('ab-server').textContent = s.server;
     $('ab-since').textContent = when(s.startedAt);
     $('ab-repo').href = s.repository;
@@ -1229,8 +1232,9 @@ const RELEASE_NOTES = [
         set(i, { x, y: (row + 0.5) * rowH, s });
       });
     } else if (style === 'mosaic') {
-      // Packed against the right edge in cells; the first link of each group takes four.
-      const big = (i) => n > 6 && (i === 0 || items[ord[i]].g !== items[ord[i - 1]].g);
+      // Packed against the right edge in cells; in each group the first link with a picture sharp enough for it takes four.
+      const firsts = new Set(gs.map((g) => ord.find((it) => items[it].g === g && items[it].sharp !== false)).filter((it) => it != null));
+      const big = (i) => n > 6 && firsts.has(ord[i]);
       const bigs = ord.filter((_, i) => big(i)).length;
       const gap = 6;
       const cell = Math.max(14, Math.min(size * 1.2, Math.sqrt((w * h) / ((n + 3 * bigs) * 1.25))));
@@ -1332,7 +1336,7 @@ const RELEASE_NOTES = [
     }
     // As picked: each square sized, faded and turned by the layout; a down one stays big, bright and tipped so it's seen.
     const base = squareSize(n);
-    const at = layoutOf(squaresPicked(), items.map((it, i) => ({ key: it.id ?? String(i), g: it.g ?? 0, k: it.k ?? i, group: it.group ?? '' })), aw, ah, base);
+    const at = layoutOf(squaresPicked(), items.map((it, i) => ({ key: it.id ?? String(i), g: it.g ?? 0, k: it.k ?? i, group: it.group ?? '', sharp: it.sharp })), aw, ah, base);
     items.forEach(({ el }, i) => {
       const p = at[i];
       const down = el.classList.contains('s-down');
@@ -1475,10 +1479,10 @@ const RELEASE_NOTES = [
       here();
       $('account-name').textContent = name;
       $('menu-name').textContent = name;
-      $('menu-user').textContent = u.source === 'ad' ? `${u.username}@${domain}` : u.source === 'windows' ? u.username : `${s.product} account`;
+      $('menu-user').textContent = u.source === 'ad' ? `${u.username}@${domain}` : u.source === 'windows' ? u.username : `${productName} account`;
       $('acc-name').textContent = name;
       $('acc-user').textContent = u.username;
-      $('acc-how').textContent = u.source === 'ad' ? `Active Directory · ${u.username}@${domain}` : u.source === 'windows' ? `Windows · ${u.username}` : `${s.product} account`;
+      $('acc-how').textContent = u.source === 'ad' ? `Active Directory · ${u.username}@${domain}` : u.source === 'windows' ? `Windows · ${u.username}` : `${productName} account`;
       $('acc-roles').textContent = (u.roles || []).map((r) => r.name).join(', ');
       $('avatar').textContent = letters;
       $('avatar-big').textContent = letters;
@@ -1863,7 +1867,7 @@ const RELEASE_NOTES = [
     const list = [];
     const add = (label, value) => { if (value != null && value !== '') list.push([label, value]); };
     const since = s ? Math.max(0, Date.now() - new Date(s.startedAt).getTime()) / 3600000 : 0;
-    add('Product', s && `${s.product} ${s.version}${s.dev ? ' (dev build)' : ''}`);
+    add('Product', s && `${productName} ${s.version}${s.dev ? ' (dev build)' : ''}`);
     add('Machine', s?.server);
     add('Installed as', s?.platform);
     add('Windows / OS', s?.os);

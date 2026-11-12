@@ -300,7 +300,7 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
         var place = await Place(ldap, dn, NewUsersOf(f), stop);
         if (!Ldap.Under(place, f.Scope!))
         {
-            throw new ToolProblem($"{Product.Name}'s account can only make people in {ScopeName(f.Scope!, ldap.BaseDn, f.Domain!)}.");
+            throw new ToolProblem($"{Product.Title}'s account can only make people in {ScopeName(f.Scope!, ldap.BaseDn, f.Domain!)}.");
         }
         lock (gate)
         {
@@ -308,7 +308,7 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
             var now = Load();
             if (now.Account != f.Account || now.Domain != f.Domain || now.Scope != f.Scope)
             {
-                throw new ToolProblem($"{Product.Name}'s service account changed while this was saving. Try again.", StatusCodes.Status409Conflict);
+                throw new ToolProblem($"{Product.Title}'s service account changed while this was saving. Try again.", StatusCodes.Status409Conflict);
             }
             Save(new DirectoryToolsFile { Domain = now.Domain, Account = now.Account, Password = now.Password, Scope = now.Scope, NewUsers = place, Made = now.Made, By = now.By, At = now.At },
                 keepConnections: true);
@@ -389,7 +389,7 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
         var ou = await Place(ldap, form.Ou, NewUsersOf(f), stop);
         if (!Ldap.Under(ou, f.Scope!))
         {
-            throw new ToolProblem($"{Product.Name}'s account can only make groups in {ScopeName(f.Scope!, ldap.BaseDn, f.Domain!)}.");
+            throw new ToolProblem($"{Product.Title}'s account can only make groups in {ScopeName(f.Scope!, ldap.BaseDn, f.Domain!)}.");
         }
         if (await Taken(ldap, name, stop))
         {
@@ -511,7 +511,7 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
         var ou = await Place(ldap, form.Ou, NewUsersOf(f), stop);
         if (!Ldap.Under(ou, f.Scope!))
         {
-            throw new ToolProblem($"{Product.Name}'s account can only make people in {ScopeName(f.Scope!, ldap.BaseDn, f.Domain!)}.");
+            throw new ToolProblem($"{Product.Title}'s account can only make people in {ScopeName(f.Scope!, ldap.BaseDn, f.Domain!)}.");
         }
         if (await Taken(ldap, username, stop))
         {
@@ -641,7 +641,7 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
     private async Task<ILdap> SignIn(CancellationToken stop)
     {
         var f = Ready();
-        var password = secrets.TryDecrypt(f.Password) ?? throw new ToolProblem($"{Product.Name}'s Active Directory password can't be read here any more. Set it up again.", StatusCodes.Status409Conflict);
+        var password = secrets.TryDecrypt(f.Password) ?? throw new ToolProblem($"{Product.Title}'s Active Directory password can't be read here any more. Set it up again.", StatusCodes.Status409Conflict);
         try
         {
             return await open(f.Domain!, await Host(f.Domain!, stop), $"{f.Account}@{f.Domain}", password, stop)
@@ -658,7 +658,7 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
     {
         var f = Load();
         return f.Account is null || f.Domain is null || f.Scope is null
-            ? throw new ToolProblem($"{Product.Name} doesn't have its Active Directory account yet. Set it up first.", StatusCodes.Status409Conflict)
+            ? throw new ToolProblem($"{Product.Title} doesn't have its Active Directory account yet. Set it up first.", StatusCodes.Status409Conflict)
             : f;
     }
 
@@ -681,7 +681,7 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
         InScope(row.Dn, f, ldap.BaseDn);
         if (user.Service)
         {
-            throw new ToolProblem($"That's {Product.Name}'s own account. It looks after it itself.");
+            throw new ToolProblem($"That's {Product.Title}'s own account. It looks after it itself.");
         }
         return user.Protected || user.System
             ? throw new ToolProblem($"{user.Username} is a protected or built-in account. Change it in Active Directory Users and Computers.")

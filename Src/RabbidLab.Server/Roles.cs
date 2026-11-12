@@ -222,7 +222,7 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
                 return;
             }
             member.Added = DateTime.UtcNow;
-            member.AddedBy ??= Product.Name;
+            member.AddedBy ??= Product.Title;
             role.Members.Add(member);
             Save(f);
         }
