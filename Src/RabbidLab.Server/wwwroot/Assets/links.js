@@ -1008,8 +1008,6 @@
   const setWatching = async (on) => {
     watching = on;
     $('page-links').classList.toggle('lw-mode', on);
-    $('ln-watching').classList.toggle('on', on);
-    $('ln-watching').querySelector('span').textContent = on ? 'Done' : 'Watch links';
     $('lw-bar').hidden = !on;
     if (on) {
       ticked = new Set(links.filter((l) => l.sensor).map((l) => l.id));
@@ -1023,7 +1021,6 @@
     }
     draw();
   };
-  $('ln-watching').addEventListener('click', () => setWatching(!watching));
   $('lw-cancel').addEventListener('click', () => setWatching(false));
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && watching && !document.querySelector('dialog[open]')) setWatching(false); });
   // While ticking, a click on a tile ticks it instead of opening it.
@@ -1080,8 +1077,10 @@
       if (watching) setWatching(false);
       return;
     }
-    $('ln-watching').hidden = !can('links.edit') || !can('sensors.edit');
-    refresh(); // its check keeps itself going while the page is the one shown
+    // #links/watch, from Pick links in Settings, Links: the page opens ticking. The address goes back to #links.
+    const tick = e.detail[2][0] === 'watch' && can('links.edit') && can('sensors.edit');
+    if (e.detail[2][0] === 'watch') history.replaceState(null, '', '#links');
+    refresh().then(() => { if (tick && !watching) setWatching(true); }); // its check keeps itself going while the page is the one shown
   });
   // The count and the down dot in the rail, when the page itself hasn't asked already.
   document.addEventListener('rabbidlab:me', () => { if (can('links.view') && R.where()[0] !== 'links') refresh(); });

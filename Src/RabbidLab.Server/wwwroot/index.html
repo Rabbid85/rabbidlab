@@ -380,7 +380,8 @@
         <section class="ds-sec" data-sec="checks"><h3 class="ds-h">Heartbeat</h3>
           <div class="ds-row"><div class="ds-l"><b>Heartbeat interval</b><span>How often <span data-lab>Rabbid Lab</span> checks that each link answers, while Links is open.</span></div><div class="ds-r"><div class="seg sn-seg" id="lc-every"></div></div></div>
           <div class="ds-row"><div class="ds-l"><b>Show a link as down after</b><span id="lc-note"></span></div><div class="ds-r"><div class="seg sn-seg" id="lc-after"></div></div></div>
-          <p class="ds-note"><svg><use href="#i-info"/></svg><span>For checks around the clock, with email when something goes down, add a <a href="#sensors">sensor</a>.</span></p>
+          <div class="ds-row" data-can="sensors.edit"><div class="ds-l"><b>Watch links</b><span>Pick the links a sensor checks around the clock, with an alert when one goes down. They show on Sensors too.</span></div>
+            <div class="ds-r"><a class="ds-btn" href="#links/watch">Pick links</a></div></div>
         </section>
         <section class="ds-sec" data-sec="descriptions"><h3 class="ds-h">Icons and descriptions</h3>
           <div class="ds-row"><div class="ds-l"><b>Auto-fill descriptions</b><span><span data-lab>Rabbid Lab</span> recognises common gear like TrueNAS, iDRAC, ESXi and UniFi and fills in what it is. Turn it off to clear the ones it filled in. Descriptions you typed always stay.</span></div>
@@ -641,7 +642,6 @@
       </div>
       <button type="button" class="small" id="ln-newgroup" data-can="links.edit"><svg><use href="#i-plus"/></svg>New group</button>
       <button type="button" class="small" id="ln-refresh" data-can="links.edit" title="Read every link's site again and bring its icon, description and IP up to date"><svg><use href="#i-refresh"/></svg>Refresh icons</button>
-      <button type="button" class="small lw-btn" id="ln-watching" data-can="sensors.edit" hidden title="Tick links to watch: each gets a sensor that alerts when it's down"><svg><use href="#i-eye"/></svg><span>Watch links</span></button>
       <div class="vswitch" id="ln-view"><button type="button" data-view="grid" title="Rows" aria-label="Rows"><svg><use href="#i-view-rows"/></svg></button><button type="button" data-view="cards" title="Tiles" aria-label="Tiles"><svg><use href="#i-view-tiles"/></svg></button><button type="button" data-view="links" title="Links" aria-label="Links"><svg><use href="#i-view-list"/></svg></button><button type="button" data-view="icons" title="Icons" aria-label="Icons"><svg><use href="#i-view-icons"/></svg></button></div>
     </div>
     <p class="hint note ln-done" id="ln-done" role="status" hidden></p>

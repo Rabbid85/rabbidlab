@@ -237,8 +237,6 @@
 .lw-eye { position: absolute; top: 11px; right: 28px; display: grid; place-items: center; width: 16px; height: 16px; color: var(--accent-soft); pointer-events: auto; }
 .lw-eye svg { width: 15px; height: 15px; }
 .lrows .lw-eye { position: static; flex: none; }
-.lw-btn svg { width: 15px; height: 15px; }
-.lw-btn.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, #141725); color: #fff; }
 /* While ticking: a tick on each web link, the ticked ones in the accent, the rest faded, and the bar along the bottom. */
 .lw-mode .ltile { cursor: pointer; }
 .lw-mode .ltile:not(.lw-on) { opacity: .6; }

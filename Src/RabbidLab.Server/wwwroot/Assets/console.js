@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.86', [
+    'Watch links moved off the Links toolbar. It is now Pick links in Settings, Links, under Heartbeat, and opens Links ready to tick.',
+    'Sensor cards lost the coloured bar beside the graph.']],
   ['1.1.85', [
     'Sensor cards have a new look, like the alert banners: the icon of the link a sensor watches (or one for its kind) with a badge for how it is, a tag when it is down, warning, paused or new, one line, and its last hour under that.',
     'Server, storage, vCenter and UPS sensors show their parts on the card: power supplies, fans, temperature, disks, pools, free space, battery. Certificates and drives show a bar of what is left.',

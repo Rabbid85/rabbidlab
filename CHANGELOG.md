@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.86 (2026-11-12)
+
+- Watch links moved off the Links toolbar. It is now Pick links in Settings, Links, under Heartbeat, and opens Links ready to tick.
+- Sensor cards lost the coloured bar beside the graph.
+
 ## 1.1.85 (2026-11-12)
 
 - Sensor cards have a new look, like the alert banners: the icon of the link a sensor watches (or one for its kind) with a badge for how it is, a tag when it is down, warning, paused or new, one line, and its last hour under that.
