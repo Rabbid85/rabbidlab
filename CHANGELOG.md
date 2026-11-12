@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.53 (2026-11-11)
+
+- Refresh icons gives each link 8 seconds at most, and once nothing is left to start it says which links it is waiting on.
+- An old icon whose site does not answer during its one-time check is kept as it is and marked as checked, so a slow site is not read again on every refresh.
+
 ## 1.1.52 (2026-11-11)
 
 - Refresh icons starts links from the top of the page down, four at a time, without waiting on the slowest one in a group: a slow site only holds up its own place.

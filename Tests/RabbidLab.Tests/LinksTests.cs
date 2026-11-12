@@ -306,6 +306,7 @@ public sealed class LinksTests : IDisposable
         async Task<string> Add(object link) => (await Json(await admin.PostAsJsonAsync("/api/links", link))).GetProperty("id").GetString()!;
         var old = await Add(new { url = $"http://127.0.0.1:{site.Port}/", name = "Plex", description = "Media", icon = Png(phone) });
         var mine = await Add(new { url = $"http://127.0.0.1:{site.Port}/b/", name = "Mine", description = "Media", icon = Png([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 9, 9, 9, 9]) });
+        var quiet = await Add(new { url = "http://127.0.0.1:1/", name = "Quiet", description = "Media", icon = Png(phone) });
         // As a version that didn't keep where icons came from saved them.
         var links = app.Services.GetRequiredService<Links>();
         foreach (var l in links.All())
@@ -316,6 +317,7 @@ public sealed class LinksTests : IDisposable
 
         var swapped = await links.Refresh(old, CancellationToken.None, guarded: false);
         var kept = await links.Refresh(mine, CancellationToken.None, guarded: false);
+        await links.Refresh(quiet, CancellationToken.None, guarded: false);
         var all = links.All().ToDictionary(l => l.Id);
 
         Assert.Equal(["icon"], swapped!.Changed);
@@ -323,6 +325,8 @@ public sealed class LinksTests : IDisposable
         Assert.Equal("/tab.png", all[old].IconFrom);
         Assert.Empty(kept!.Changed);
         Assert.Equal("own", all[mine].IconFrom); // someone's own: never swapped, and not checked again
+        Assert.Equal("kept", all[quiet].IconFrom); // no answer: left as it is, and not read again for this
+        Assert.Equal(Png(phone), all[quiet].Icon);
     }
 
     [Fact]

@@ -519,16 +519,17 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
                 from = look.IconFrom;
                 changed.Add("icon");
             }
-            else if (unsure is not null && now.Icon == unsure && look.Problem is null)
+            else if (unsure is not null && now.Icon == unsure)
             {
                 // One of the site's own (Plex's phone icon, from when that came first) gives way to the one its browser tab shows;
-                // any other is someone's own, and stays.
-                if (look.Served && look.Icon is { } tab && tab != now.Icon)
+                // any other is someone's own, and stays. A site that doesn't answer keeps what it has ("kept"), checked once all the same,
+                // so a slow one (Netflix) isn't read again on every refresh.
+                if (look.Problem is null && look.Served && look.Icon is { } tab && tab != now.Icon)
                 {
                     icon = tab;
                     changed.Add("icon");
                 }
-                from = look.Served ? look.IconFrom : "own";
+                from = look.Problem is not null ? "kept" : look.Served ? look.IconFrom : "own";
             }
             var description = now.Description;
             if (now.Description is null || KnownSites.IsOurs(now.Description))
@@ -1403,7 +1404,9 @@ public static class LinksApi
             {
                 return refused;
             }
-            if (await links.Refresh(id, context.RequestAborted) is not { } done)
+            using var budget = CancellationTokenSource.CreateLinkedTokenSource(context.RequestAborted);
+            budget.CancelAfter(TimeSpan.FromSeconds(8)); // a slow site holds a refresh up this long at most
+            if (await links.Refresh(id, budget.Token) is not { } done)
             {
                 return Results.NotFound(new { error = "That link isn't here any more." });
             }

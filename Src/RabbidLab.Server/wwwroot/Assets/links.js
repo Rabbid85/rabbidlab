@@ -355,7 +355,9 @@
     let filled = 0;
     let quiet = 0;
     const progress = (name) => {
-      if (onPage) return say(note, `Refreshing ${done} of ${todo.length}…`);
+      // Once nothing is left to start, it says which it's waiting on.
+      const waiting = next >= queue.length && inFlight.size ? ` waiting on ${[...inFlight].join(', ')}` : '';
+      if (onPage) return say(note, `Refreshing ${done} of ${todo.length}…${waiting}`);
       R.busy(host, `Refreshing ${done} of ${todo.length}`, name ? `${name} · ${count(filled, 'link')} filled in so far` : '');
       const cover = host.querySelector(':scope > .busy-cover');
       if (cover && !cover.querySelector('.ld-bar')) cover.insertAdjacentHTML('beforeend', '<span class="ubar ld-bar"><i></i></span>');
@@ -366,10 +368,12 @@
     const rest = todo.filter((l) => !queues.some((q) => q.includes(l)));
     if (rest.length) queues.push(rest);
     const queue = queues.flat();
+    const inFlight = new Set(); // the names being read just now
     let next = 0;
     const work = async () => {
       while (next < queue.length) {
         const l = queue[next++];
+        inFlight.add(l.name);
         const card = onPage ? tileOf(l.id) : null;
         if (card) R.busy(card, 'Refreshing');
         let r = null;
@@ -381,6 +385,7 @@
         } catch {
           quiet++; // gone, or the server didn't answer: counted with the ones that didn't
         }
+        inFlight.delete(l.name);
         done++;
         // The tile and its square show what was found straight away.
         const at = links.findIndex((x) => x.id === l.id);
