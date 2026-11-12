@@ -59,8 +59,8 @@ button.danger.solid:hover { background: #DB4860; }
 #secret-text { user-select: all; }
 
 /* This computer isn't a seat: get the client and connect it. */
-.herebar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; padding: 10px 36px; border-bottom: 1px solid rgba(255, 106, 69, .35);
-  background: linear-gradient(90deg, rgba(232, 84, 47, .12), rgba(232, 84, 47, .03)); color: var(--text); font-size: 13.5px; }
+.herebar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; padding: 10px 36px; border-bottom: 1px solid color-mix(in srgb, var(--accent-line) 35%, transparent);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 12%, transparent), color-mix(in srgb, var(--accent) 3%, transparent)); color: var(--text); font-size: 13.5px; }
 .herebar > svg { flex: none; width: 18px; height: 18px; color: var(--accent-soft); }
 .herebar > span { flex: 1; min-width: 220px; }
 .herebar a.button { gap: 7px; padding: 6px 12px; font-size: 13px; }
@@ -118,7 +118,7 @@ button.danger.solid:hover { background: #DB4860; }
 .page.org-page { max-width: 1240px; }
 .org { overflow-x: auto; padding-bottom: 20px; }
 .obox { display: inline-flex; align-items: center; gap: 10px; min-width: 200px; max-width: 260px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); text-align: left; }
-.obox.hit { border-color: var(--accent-line); box-shadow: 0 0 0 2px rgba(255, 106, 69, .25); }
+.obox.hit { border-color: var(--accent-line); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-line) 25%, transparent); }
 .obox .pic { width: 32px; height: 32px; }
 .obox .two { flex: 1; }
 .ocount { padding: 1px 7px; border-radius: 999px; background: #1A1D2B; color: var(--muted); font-size: 11px; font-weight: 700; }

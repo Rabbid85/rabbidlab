@@ -146,7 +146,7 @@ public static class SignIn
     public static void MapSignIn(this WebApplication app)
     {
         // What the sign-in and setup pages need: whether it's set up, how people sign in, and who is signed in.
-        app.MapGet("/api/signin", (HttpContext context, Accounts accounts, Roles roles) => Results.Ok(new
+        app.MapGet("/api/signin", (HttpContext context, Accounts accounts, Roles roles, SettingsStore settings) => Results.Ok(new
         {
             product = Product.Name,
             version = Product.Version,
@@ -158,6 +158,7 @@ public static class SignIn
             server = accounts.Directory?.Server,
             thisDomain = accounts.SetUp ? null : ActiveDirectory.ThisDomain(),
             user = context.User.Identity?.IsAuthenticated == true ? Me(context.User, roles) : null,
+            brand = Brand.Read(settings.Current), // the lab's own name, icon and accent, so the sign-in page wears them too
         }));
 
         // The sign-in page's Change: the domains accounts may sign in from, and a domain's controllers and which ones answer now.

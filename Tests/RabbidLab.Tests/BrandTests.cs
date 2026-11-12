@@ -1,3 +1,6 @@
+using System.Net.Http.Json;
+using System.Text.Json;
+using Microsoft.Extensions.DependencyInjection;
 using RabbidLab.Server;
 
 namespace RabbidLab.Tests;
@@ -34,6 +37,36 @@ public sealed class BrandTests
     [InlineData(null, null, "#12345")]
     public void Anything_else_is_refused(string? name, string? icon, string? accent) =>
         Assert.NotNull(Brand.Problem(new BrandForm(name, icon, accent)));
+
+    [Fact]
+    public async Task The_look_is_still_there_after_a_restart_such_as_an_update_and_the_sign_in_page_is_given_it()
+    {
+        var data = Path.Combine(Path.GetTempPath(), "rabbidlab-brand-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(data);
+        try
+        {
+            using (var first = new TestApp(data))
+            {
+                var client = await first.SignedIn();
+                var saved = await client.PostAsJsonAsync("/api/brand", new { accent = "#1FA3A8" });
+                await client.PostAsJsonAsync("/api/brand", new { name = "Wiles Lab" });
+                await client.PostAsJsonAsync("/api/update/settings", new { automatic = false }); // another setting saved after it
+                Assert.True(saved.IsSuccessStatusCode);
+            }
+            using var second = new TestApp(data); // the same data folder, as after an update
+            var signedIn = await (await second.SignedIn()).GetFromJsonAsync<JsonElement>("/api/brand");
+            var signInPage = await second.Page().GetFromJsonAsync<JsonElement>("/api/signin");
+
+            Assert.Equal("#1FA3A8", signedIn.GetProperty("accent").GetString());
+            Assert.Equal("Wiles Lab", signedIn.GetProperty("name").GetString());
+            Assert.Equal("#1FA3A8", signInPage.GetProperty("brand").GetProperty("accent").GetString());
+            Assert.False(second.Services.GetRequiredService<SettingsStore>().Current.AutomaticUpdates);
+        }
+        finally
+        {
+            try { Directory.Delete(data, true); } catch (IOException) { }
+        }
+    }
 
     [Fact]
     public void An_icon_over_256_KB_is_refused()

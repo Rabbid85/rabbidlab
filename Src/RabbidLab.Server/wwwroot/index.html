@@ -7,6 +7,7 @@
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#0B0C14">
 <link rel="icon" id="favicon" href="favicon.svg" type="image/svg+xml">
+<script src="Assets/brand.js"></script>
 <link rel="stylesheet" href="Assets/console.css">
 <link rel="stylesheet" href="Assets/people.css">
 <link rel="stylesheet" href="Assets/users.css">
@@ -249,7 +250,7 @@
           <div class="ds-r"><span class="ds-icon" id="br-icon"></span><label class="ds-btn br-edit" for="br-file">Upload</label><input type="file" id="br-file" accept="image/png,image/svg+xml" hidden><button type="button" class="ds-btn br-edit" id="br-reset">Reset</button></div></div>
       </section>
       <section class="ds-sec" data-sec="accent"><h3 class="ds-h">Accent colour <small class="ds-scope">Everyone</small></h3>
-        <div class="ds-row"><div class="ds-l"><b>Accent</b><span>Buttons, switches, the bar on what's open, and the flask.</span></div><div class="ds-r"><span class="ds-swatches" id="br-swatches"></span></div></div>
+        <div class="ds-row"><div class="ds-l"><b>Accent</b><span>Buttons, switches, the bar on what's open, the flask, the dot in the logo and the browser tab's icon, on the sign-in page too.</span></div><div class="ds-r"><span class="ds-swatches" id="br-swatches"></span></div></div>
         <p class="hint" id="br-cant" hidden>Your roles don't let you change the lab's name, icon or accent colour.</p>
         <p class="hint problem" id="br-problem" hidden></p>
       </section>
@@ -553,7 +554,7 @@
   <section class="page home" id="page-links" data-page="links" data-title="Links" hidden>
     <header class="hero" id="ln-hero">
       <p class="eyebrow">Links</p>
-      <h1 class="hero-title" id="ln-title">Links</h1>
+      <h1 class="hero-title">Links</h1>
       <p class="hero-lead"><b id="ln-lead"></b> <span id="ln-lead-more"></span></p>
       <div class="hero-actions">
         <button type="button" class="primary" id="ln-add" data-can="links.edit">Add a link</button>
@@ -624,7 +625,7 @@
       </div>
       <div id="sn-list"></div>
       <div class="ln-empty" id="sn-empty" hidden><span class="big-ic ember"><svg><use href="#i-activity"/></svg></span>
-        <div><b>No sensors yet</b><span id="sn-empty-text">A sensor checks something on a timer: a machine that answers ping, an open port, a web page, a DNS name or a certificate. Rabbid Lab emails you when one stays down.</span></div>
+        <div><b>No sensors yet</b><span>A sensor checks something on a timer: a machine that answers ping, an open port, a web page, a DNS name or a certificate. Rabbid Lab emails you when one stays down.</span></div>
         <button type="button" class="primary" id="sn-add-first" data-can="sensors.edit"><svg><use href="#i-plus"/></svg>Add a sensor</button></div>
       <p class="hint problem" id="sn-problem" hidden></p>
     </section>
@@ -996,7 +997,7 @@
 <dialog class="dialog wide" id="sview-dialog" aria-labelledby="sv-title">
   <h2 id="sv-title"></h2>
   <p class="dialog-lead" id="sv-what"></p>
-  <div class="sv-now" id="sv-now"><span class="big-ic" id="sv-icon"><svg><use href="#i-activity"/></svg></span><div><b id="sv-state"></b><span id="sv-note"></span></div></div>
+  <div class="sv-now" id="sv-now"><span class="big-ic"><svg><use href="#i-activity"/></svg></span><div><b id="sv-state"></b><span id="sv-note"></span></div></div>
   <div class="sv-stats"><div><b id="sv-ms"></b><span>Reply now</span></div><div><b id="sv-up24"></b><span>Up, last 24 hours</span></div><div><b id="sv-up7"></b><span>Up, last 7 days</span></div></div>
   <div class="sv-chart"><h3>Reply time, last hour</h3><div id="sv-line"></div></div>
   <div class="rows sv-events" id="sv-events"></div>

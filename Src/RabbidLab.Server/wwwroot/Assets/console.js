@@ -3,6 +3,11 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.36', [
+    'The accent colour is on from the first moment the page shows, so a reload or an update no longer starts in orange. The look is kept in the browser as well as on the server.',
+    'The accent now colours everything: the flask and its foam, the dot in the logo, the browser tab icon, the glow behind the banners, and the borders and tints that were still orange.',
+    'The sign-in page wears the lab name, icon and accent too.',
+    'Tidied up: the colour code is in one place for the console and the sign-in page, rules written twice in the stylesheet are merged, and unused styles are gone. On a phone, the banner sides are back to their narrow padding.']],
   ['1.1.35', [
     'Setting up the service account shows the flask while it signs in and while it creates the account. A wrong username or password outlines both fields in red and selects the password to type again.',
     'Problems everywhere show as a red box with a warning sign. They were a line of grey text.',
@@ -348,21 +353,11 @@ const RELEASE_NOTES = [
   };
   $('dev-tools').addEventListener('change', (e) => devTools(e.target.checked));
   // The lab's own look, the same for everyone (Settings, Appearance): its name, its icon, and the accent colour. Nothing set:
-  // Rabbid Lab's own. Each accent is a light shade for lines and a main one for buttons.
-  const SWATCHES = [['Ember', '#FF8A3D', '#E8542F'], ['Amber', '#F7CF7E', '#E0A33A'], ['Green', '#7FE3B5', '#2FB37A'], ['Teal', '#6FDCDC', '#1FA3A8'],
-    ['Blue', '#8DBBFF', '#3D7FE6'], ['Indigo', '#9EA3FF', '#5B62E8'], ['Violet', '#C79BF0', '#8E52D6'], ['Pink', '#F68CC6', '#D6448E'], ['Red', '#FF4D4D', '#E02424']];
-  let brand = { name: null, icon: null, accent: null };
+  // Rabbid Lab's own. brand.js keeps the colours and the tab's icon; here are the name, the mark in the top bar, and Appearance.
+  const Brand = window.RabbidLabBrand;
+  let brand = Brand.now; // the look last seen in this browser, until the server's is read
   let productName = 'Rabbid Lab';
-  const lighter = (hex, by) => `#${[1, 3, 5].map((i) => { const c = parseInt(hex.slice(i, i + 2), 16); return Math.round(c + (255 - c) * by).toString(16).padStart(2, '0'); }).join('')}`;
   const drawBrand = () => {
-    const r = document.documentElement.style;
-    // The red before 1.1.21 was pinker: a lab that picked it gets the red that's there now.
-    const sw = brand.accent && (brand.accent.toLowerCase() === '#e0405a' ? SWATCHES[8] : SWATCHES.find((x) => x[2].toLowerCase() === brand.accent.toLowerCase()));
-    const [light, main] = !brand.accent ? [] : sw ? [sw[1], sw[2]] : [lighter(brand.accent, 0.15), brand.accent];
-    for (const [k, v] of [['--accent', main], ['--accent-line', light], ['--accent-hover', light], ['--accent-soft', light], ['--ember', main && `linear-gradient(90deg, ${light}, ${main})`]]) {
-      if (v) r.setProperty(k, v);
-      else r.removeProperty(k);
-    }
     product = brand.name || productName;
     $('brand-name').textContent = product;
     $('hero-title').textContent = product;
@@ -370,15 +365,14 @@ const RELEASE_NOTES = [
     $('brand-img').hidden = !brand.icon;
     document.querySelector('.brand svg.mark').classList.toggle('gone', !!brand.icon);
     if (brand.icon) $('brand-img').src = brand.icon;
-    $('favicon').href = brand.icon || 'favicon.svg';
     // Settings, Appearance.
     if (document.activeElement !== $('br-name')) $('br-name').value = brand.name || '';
     $('br-icon').innerHTML = brand.icon ? '<img alt="">' : document.querySelector('.brand svg.mark').outerHTML.replace(' gone', '');
     if (brand.icon) $('br-icon').querySelector('img').src = brand.icon;
     const may = has('appearance.brand');
-    const at = brand.accent ? (sw ? SWATCHES.indexOf(sw) : -1) : 0;
-    $('br-swatches').innerHTML = SWATCHES.map(([nm, l, m], i) => `<button type="button" class="ds-sw" data-accent="${i}" data-color="${m}" title="${nm}" aria-pressed="${at === i}"${may ? '' : ' disabled'}></button>`).join('')
-      + `<label class="ds-sw custom${may ? '' : ' off'}" title="Any colour" aria-pressed="${at === -1}"><input type="color" id="br-custom" value="${main || '#E8542F'}"${may ? '' : ' disabled'}></label>`;
+    const at = Brand.swatch(brand.accent);
+    $('br-swatches').innerHTML = Brand.SWATCHES.map(([nm, , m], i) => `<button type="button" class="ds-sw" data-accent="${i}" data-color="${m}" title="${nm}" aria-pressed="${at === i}"${may ? '' : ' disabled'}></button>`).join('')
+      + `<label class="ds-sw custom${may ? '' : ' off'}" title="Any colour" aria-pressed="${at === -1}"><input type="color" id="br-custom" value="${Brand.shades(brand.accent)[1] || Brand.SWATCHES[0][2]}"${may ? '' : ' disabled'}></label>`;
     paint($('br-swatches'));
     $('br-name').disabled = !may;
     document.querySelectorAll('.br-edit').forEach((b) => b.classList.toggle('cant', !may));
@@ -386,7 +380,7 @@ const RELEASE_NOTES = [
   };
   const saveBrand = async (change) => {
     try {
-      brand = await send('/api/brand', change);
+      brand = Brand.apply(await send('/api/brand', change));
       say('br-problem', '');
     } catch (err) {
       say('br-problem', err.message);
@@ -397,7 +391,7 @@ const RELEASE_NOTES = [
   $('br-name').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('br-name').blur(); });
   $('br-swatches').addEventListener('click', (e) => {
     const b = e.target.closest('[data-accent]');
-    if (b) saveBrand({ accent: b.dataset.accent === '0' ? '' : SWATCHES[b.dataset.accent][2] });
+    if (b) saveBrand({ accent: b.dataset.accent === '0' ? '' : Brand.SWATCHES[b.dataset.accent][2] });
   });
   $('br-swatches').addEventListener('change', (e) => { if (e.target.id === 'br-custom') saveBrand({ accent: e.target.value }); });
   $('br-file').addEventListener('change', () => {
@@ -416,9 +410,9 @@ const RELEASE_NOTES = [
   document.addEventListener('rabbidlab:me', () => drawBrand());
   const loadBrand = async () => {
     try {
-      brand = await get('/api/brand');
+      brand = Brand.apply(await get('/api/brand'));
     } catch {
-      // Rabbid Lab's own look stays.
+      // The look last seen in this browser stays.
     }
     drawBrand();
   };
@@ -862,7 +856,7 @@ const RELEASE_NOTES = [
   };
   // The flask that foams while something loads.
   const FLASK = '<svg class="flask" viewBox="0 0 64 64" aria-hidden="true"><defs>'
-    + '<linearGradient id="flask-ember" gradientUnits="userSpaceOnUse" x1="0" y1="21" x2="0" y2="55"><stop offset="0" stop-color="#FF8A3D"/><stop offset="1" stop-color="#E8542F"/></linearGradient>'
+    + '<linearGradient id="flask-ember" gradientUnits="userSpaceOnUse" x1="0" y1="21" x2="0" y2="55"><stop offset="0" class="flask-a"/><stop offset="1" class="flask-b"/></linearGradient>'
     + '<clipPath id="flask-glass"><path d="M26.5 21V30L12.5 48.5Q9 55 16 55H48Q55 55 51.5 48.5L37.5 30V21Z"/></clipPath></defs>'
     + '<path fill="#F2F3FA" d="M26.5 21V30L12.5 48.5Q9 55 16 55H48Q55 55 51.5 48.5L37.5 30V21Z"/><rect x="24" y="17" width="16" height="5" rx="2.5" fill="#F2F3FA"/>'
     + '<g clip-path="url(#flask-glass)"><path class="flask-wave" fill="url(#flask-ember)" d="M0 41Q8 37 16 41T32 41T48 41T64 41T80 41T96 41V64H0Z"/>'
@@ -1277,6 +1271,7 @@ const RELEASE_NOTES = [
 
   document.addEventListener('DOMContentLoaded', () => {
     notes();
+    drawBrand(); // the lab's name and icon as this browser last saw them, before the server answers
     scatter();
     drawSquaresPicker();
     setInterval(uptime, 60000);

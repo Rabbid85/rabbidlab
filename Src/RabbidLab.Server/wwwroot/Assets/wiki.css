@@ -10,7 +10,7 @@
 .wiki-body b { color: var(--title); font-weight: 650; }
 .wiki-body code { padding: 1px 6px; border: 1px solid var(--line-strong); border-radius: 5px; background: #0C0E17; color: #D7DAE8; font: 12.5px Consolas, "Cascadia Mono", monospace; overflow-wrap: anywhere; }
 .wiki-body a { color: #B98BE0; }
-.wiki-body .tip { padding: 9px 12px; border-left: 3px solid var(--accent-line); border-radius: 0 8px 8px 0; background: rgba(255, 106, 69, .06); color: var(--text); font-size: 13.5px; }
+.wiki-body .tip { padding: 9px 12px; border-left: 3px solid var(--accent-line); border-radius: 0 8px 8px 0; background: color-mix(in srgb, var(--accent-line) 6%, transparent); color: var(--text); font-size: 13.5px; }
 .wiki-next { display: flex; justify-content: space-between; gap: 12px; max-width: 760px; margin-top: 12px; }
 .wiki-next a { display: block; max-width: 48%; padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); color: var(--text); }
 .wiki-next a:hover { border-color: var(--line-strong); text-decoration: none; }

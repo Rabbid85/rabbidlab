@@ -255,8 +255,16 @@
     const setup = !s.setUp;
 
     // What changes between setting up and signing in: the words, the confirm box, and Keep me signed in.
-    document.title = (setup ? 'Set up ' : 'Sign in to ') + s.product;
-    document.querySelectorAll('[data-product]').forEach((e) => { e.textContent = s.product; });
+    // The lab's own look: its colours (brand.js), its name in place of Rabbid Lab's, its icon in place of the mark.
+    const brand = window.RabbidLabBrand.apply(s.brand);
+    const name = brand.name || s.product;
+    document.title = (setup ? 'Set up ' : 'Sign in to ') + name;
+    document.querySelectorAll('[data-product]').forEach((e) => { e.textContent = name; });
+    if (brand.icon) {
+      document.getElementById('band-img').src = brand.icon;
+      document.getElementById('band-img').hidden = false;
+      document.querySelector('svg.band-mark').style.display = 'none';
+    }
     document.querySelectorAll('[data-version]').forEach((e) => {
       e.textContent = `${s.machine} · ${s.version}`;
       e.title = `${s.product} ${s.version} on ${s.machine} (${s.platform})`;
