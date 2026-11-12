@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.61', [
+    'Icon layout keeps Full rows, Depth, Groups and Mosaic. Network, Floor, Rain and Tilt are gone; a browser that had one of them picked goes back to Full rows.']],
   ['1.1.60', [
     'On a Centered layout the banner icons on Links and Sensors end at the right edge of the page column, in line with the list under them, instead of out at the edge of the window.']],
   ['1.1.59', [
@@ -1152,7 +1154,7 @@ const RELEASE_NOTES = [
 
   // --- Banner squares: a square for each link and each sensor, over the right of the hero on Links and Sensors -------------------
   // On Links they sit as each person picks (Settings, Links, Icon layout, kept in this browser); on Sensors, evenly. Over 40, a grid.
-  const SQUARES = { full: 'Full rows', depth: 'Depth', groups: 'Groups', mosaic: 'Mosaic', network: 'Network', floor: 'Floor', rain: 'Rain', tilt: 'Tilt' };
+  const SQUARES = { full: 'Full rows', depth: 'Depth', groups: 'Groups', mosaic: 'Mosaic' };
   const squaresPicked = () => {
     try {
       const s = localStorage.getItem('rabbidlab.squares');
@@ -1182,7 +1184,7 @@ const RELEASE_NOTES = [
     return at;
   };
   // Links, as picked in Icon layout. items: { key, g (the group's place), k (its place in the group), group (the name) }. Each gets the
-  // middle of its square in a w by h box, how big (s, times size), how clear (o) and how turned (r); Network adds lines, Groups names.
+  // middle of its square in a w by h box, how big (s, times size), how clear (o) and how turned (r); Groups adds the group names.
   const layoutOf = (style, items, w, h, size) => {
     const n = items.length;
     // In the order Links shows them: by group, then within it.
@@ -1251,71 +1253,6 @@ const RELEASE_NOTES = [
         return { c: 0, r: 0, k: 1 };
       });
       cells.forEach(({ c, r, k }, i) => set(i, { x: w - (widest - c - k / 2) * cell, y: (h - rows * cell) / 2 + (r + k / 2) * cell, s: (k * cell - gap) / size }));
-    } else if (style === 'network') {
-      // Each group around a hub of its own, the hubs in two rows and joined up.
-      const per = Math.ceil(gs.length / 2);
-      const hubs = gs.map((g, i) => {
-        const row = Math.floor(i / per);
-        const across = per === 1 ? 0.5 : (i % per) / (per - 1);
-        return { x: w * (0.14 + across * 0.72) + (mix(`hx${g}`) - 0.5) * w * 0.06, y: h * (gs.length > 3 ? (row ? 0.74 : 0.26) : 0.5) + (mix(`hy${g}`) - 0.5) * h * 0.1 };
-      });
-      out.lines = [];
-      ord.forEach((it, i) => {
-        const l = items[it];
-        const hub = hubs[gs.indexOf(l.g)];
-        const count = inGroup(l.g);
-        const at = ord.filter((x) => items[x].g === l.g).indexOf(it);
-        const radius = Math.min(size * (0.85 + count * 0.2), h * 0.22, w * 0.15);
-        const a = (at / count) * Math.PI * 2 + mix(`ha${l.g}`) * Math.PI;
-        const p = { x: hub.x + Math.cos(a) * radius, y: hub.y + Math.sin(a) * radius * 0.92 };
-        out.lines.push([hub, p, 0.22]);
-        set(i, { ...p, s: 0.82 });
-      });
-      hubs.slice(1).forEach((hub, i) => out.lines.push([hubs[i === per - 1 ? 0 : i], hub, 0.35]));
-      out.hubs = hubs;
-    } else if (style === 'floor') {
-      // On a floor seen at an angle: rows running back, the back ones smaller and fainter.
-      const cols = Math.ceil(Math.sqrt(n * 1.8));
-      const rows = Math.ceil(n / cols);
-      const dx = Math.min(size * 1.4, w / (cols + rows));
-      const dy = dx * 0.55;
-      const span = cols + rows - 2;
-      const pts = ord.map((_, i) => {
-        const u = i % cols;
-        const v = Math.floor(i / cols);
-        const t = span ? (u + v) / span : 1;
-        return { x: (u - v) * dx, y: (u + v) * dy, s: 0.62 + t * 0.5, o: 0.4 + t * 0.6 };
-      });
-      const minX = Math.min(...pts.map((p) => p.x));
-      const maxX = Math.max(...pts.map((p) => p.x));
-      const maxY = Math.max(...pts.map((p) => p.y));
-      pts.forEach((p, i) => set(i, { ...p, x: p.x - minX + (w - (maxX - minX)) / 2, y: p.y + (h - maxY) / 2 }));
-    } else if (style === 'rain') {
-      // Columns of different lengths, brightest at the foot of each.
-      const cols = Math.max(1, Math.min(n, Math.floor(w / (size * 1.4))));
-      const colOf = (it) => Math.floor(mix(`${items[it].key}col`) * cols);
-      const counts = Array.from({ length: cols }, () => 0);
-      ord.forEach((it) => { counts[colOf(it)] += 1; });
-      const pitch = Math.min(size * 1.25, h / Math.max(...counts));
-      const seen = Array.from({ length: cols }, () => 0);
-      ord.forEach((it, i) => {
-        const c = colOf(it);
-        const k = seen[c]++;
-        const top = mix(`top${c}`) * Math.max(0, h - counts[c] * pitch);
-        const t = (k + 1) / counts[c];
-        set(i, { x: ((c + 0.5) / cols) * w, y: top + (k + 0.5) * pitch, s: 0.72 + t * 0.32, o: 0.3 + t * 0.7 });
-      });
-    } else if (style === 'tilt') {
-      // A neat grid, turned a little.
-      const cols = Math.max(1, Math.ceil(Math.sqrt((n * w) / h) * 0.9));
-      const rows = Math.ceil(n / cols);
-      const pitch = Math.min(size * 1.42, (w * 0.86) / cols, (h * 1.05) / rows);
-      const a = (-13 * Math.PI) / 180;
-      ord.forEach((_, i) => {
-        const gx = ((i % cols) - (cols - 1) / 2) * pitch;
-        const gy = (Math.floor(i / cols) - (rows - 1) / 2) * pitch;
-        set(i, { x: w / 2 + gx * Math.cos(a) - gy * Math.sin(a), y: h / 2 + gx * Math.sin(a) + gy * Math.cos(a), s: 0.95, r: -13 });
-      });
     } else {
       // Full rows: tidy columns from the right edge, top to bottom, every square full size.
       const rows = Math.max(1, Math.min(4, Math.round(Math.sqrt((n * h) / w) * 1.2)));
@@ -1337,7 +1274,7 @@ const RELEASE_NOTES = [
     const H = hero.clientHeight;
     if (!now || !now.items.length || !W || !H) return;
     const { items, card, picked } = now;
-    (now.extras || []).forEach((x) => x.remove()); // Network's lines and Groups' names, drawn again below
+    (now.extras || []).forEach((x) => x.remove()); // Groups' names, drawn again below
     now.extras = [];
     const n = items.length;
     // Inside the banner's padding, which on a Centered layout is the page's column: the squares end where the page does.
@@ -1404,29 +1341,6 @@ const RELEASE_NOTES = [
       put(el, left + p.x - side / 2, top + p.y - side / 2);
     });
     const px = (x, y) => [`${(((left + x) / W) * 100).toFixed(2)}%`, `${(((top + y) / H) * 100).toFixed(2)}%`];
-    if (at.lines) {
-      const lines = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-      lines.setAttribute('class', 'sq-lines');
-      lines.setAttribute('viewBox', `0 0 ${aw} ${ah}`);
-      lines.setAttribute('aria-hidden', 'true');
-      [lines.style.left, lines.style.top] = px(0, 0);
-      Object.assign(lines.style, { width: `${((aw / W) * 100).toFixed(2)}%`, height: `${((ah / H) * 100).toFixed(2)}%` });
-      at.lines.forEach(([a, b, o]) => {
-        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-        [['x1', a.x], ['y1', a.y], ['x2', b.x], ['y2', b.y], ['stroke-opacity', o]].forEach(([k, v]) => line.setAttribute(k, String(v)));
-        if (o > 0.3) line.setAttribute('class', 'hub-line');
-        lines.append(line);
-      });
-      at.hubs.forEach((hb) => {
-        [[9, 'hub-glow'], [4.5, 'hub']].forEach(([r, cls]) => {
-          const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-          [['cx', hb.x], ['cy', hb.y], ['r', r], ['class', cls]].forEach(([k, v]) => dot.setAttribute(k, String(v)));
-          lines.append(dot);
-        });
-      });
-      hero.prepend(lines);
-      now.extras.push(lines);
-    }
     (at.labels || []).forEach((lb) => {
       const name = document.createElement('span');
       name.className = 'sq-label';
@@ -1488,17 +1402,6 @@ const RELEASE_NOTES = [
       pic.className = 'sq-pic';
       const box = document.createElement('span');
       const at = layoutOf(key, MINI, 184, 84, 13);
-      if (at.lines) {
-        const lines = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        lines.setAttribute('viewBox', '0 0 184 84');
-        lines.setAttribute('preserveAspectRatio', 'none');
-        at.lines.forEach(([a, c, o]) => {
-          const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-          [['x1', a.x], ['y1', a.y], ['x2', c.x], ['y2', c.y], ['stroke-opacity', o + 0.15]].forEach(([k, v]) => line.setAttribute(k, String(v)));
-          lines.append(line);
-        });
-        box.append(lines);
-      }
       at.forEach((p, i) => {
         const dot = document.createElement('i');
         dot.dataset.color = COLOURS[i % COLOURS.length];

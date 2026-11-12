@@ -8,14 +8,9 @@
 .lsq img { width: 66%; height: 66%; object-fit: contain; }
 .lsq b { font: inherit; }
 .hero .tile.sen.lsq.tiny { font-size: 0; }
-/* Icon layout: the lines and hubs Network draws behind the squares, and the group names Groups puts before its rows. */
-.hero > .sq-lines { position: absolute; z-index: 0; overflow: visible; pointer-events: none; }
-.sq-lines line { stroke: var(--accent-soft); stroke-width: 1.4; }
-.sq-lines line.hub-line { stroke-dasharray: 4 5; }
-.sq-lines .hub { fill: var(--accent-soft); }
-.sq-lines .hub-glow { fill: var(--accent-soft); fill-opacity: .15; }
+/* Icon layout: the group names Groups puts before its rows. */
 .hero > .sq-label { position: absolute; z-index: 1; translate: -100% -50%; color: #6D7290; font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; pointer-events: none; }
-@media (max-width: 1180px) { .hero > .sq-lines, .hero > .sq-label { display: none; } }
+@media (max-width: 1180px) { .hero > .sq-label { display: none; } }
 .ln-tools .primary, .ln-tools .small, .ln-empty .primary, #link-dialog .primary { display: inline-flex; align-items: center; gap: 7px; }
 .ln-tools button svg, .ln-empty .primary svg { flex: none; width: 15px; height: 15px; }
 /* One row over the links: the search box, the filter, and New group. */
