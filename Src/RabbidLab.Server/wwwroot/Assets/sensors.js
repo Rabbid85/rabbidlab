@@ -942,6 +942,7 @@
       say('sn-set-problem', '');
     } catch (err) {
       say(R.where()[1] === 'sensors' ? 'sn-set-problem' : 'nt-problem', err.message);
+      R.skeleton($('sn-creds'), '');
     }
     drawNotes();
   };

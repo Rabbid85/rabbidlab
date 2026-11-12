@@ -409,12 +409,12 @@
   const loadAd = async (fresh) => {
     if (!ad?.state || !can('ad.view')) return;
     if (fresh || !lists[adPage]) {
-      say('dir-loading', `Reading ${ad.state.domain}…`);
+      R.skeleton($('dir-table'), 'rows', 8); // until the list is read
       try {
         lists[adPage] = await page().load();
         say('dir-problem', '');
       } finally {
-        say('dir-loading', '');
+        R.skeleton($('dir-table'), '');
       }
     }
   };
@@ -705,12 +705,12 @@
     const c = computer();
     pc = null;
     if (!c || !c.ready) return;
-    say('us-loading', c.server ? 'Asking Windows…' : `Asking ${c.name}…`);
+    R.skeleton($('us-pc-rows'), 'rows', 6); // until Windows, or the computer's client, has answered
     try {
       const got = await R.get(`/api/windows/${encodeURIComponent(c.id)}/accounts`);
       pc = { id: c.id, accounts: got.accounts, groups: got.groups };
     } finally {
-      say('us-loading', '');
+      R.skeleton($('us-pc-rows'), '');
     }
   };
 
@@ -737,7 +737,6 @@
     const keep = openLocal.name;
     say('us-note', '');
     say('us-problem', '');
-    if (!computer()?.server) say('us-loading', `Asking ${computer()?.name}…`);
     try {
       const answer = await R.send(path, body);
       if (answer.warning) say('us-note', answer.warning);
@@ -745,7 +744,6 @@
       say('us-problem', err.message);
     } finally {
       localBusy = false;
-      say('us-loading', '');
     }
     await loadLocal().catch((err) => say('us-problem', err.message));
     drawLocal();

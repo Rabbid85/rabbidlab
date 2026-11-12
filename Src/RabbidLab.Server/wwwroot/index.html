@@ -153,9 +153,9 @@
         <span class="checked-note" id="hero-note" role="status" hidden></span>
       </div>
       <div class="hero-stats">
-        <div><b id="hero-version">…</b><span><svg><use href="#i-new"/></svg>Version</span></div>
-        <div><b id="hero-uptime">…</b><span><svg><use href="#i-clock"/></svg>Running</span></div>
-        <div data-can="updates.view"><b id="hero-updates">…</b><span><svg><use href="#i-updates"/></svg>Updates</span></div>
+        <div><b id="hero-version"><i class="sk sk-num"></i></b><span><svg><use href="#i-new"/></svg>Version</span></div>
+        <div><b id="hero-uptime"><i class="sk sk-num"></i></b><span><svg><use href="#i-clock"/></svg>Running</span></div>
+        <div data-can="updates.view"><b id="hero-updates"><i class="sk sk-num"></i></b><span><svg><use href="#i-updates"/></svg>Updates</span></div>
       </div>
     </header>
 
@@ -307,7 +307,7 @@
       </section>
       <section class="ds-sec" data-sec="history" data-can="activity.view"><h3 class="ds-h">History</h3>
         <p class="hint" id="upd-history">Every update is in the activity log.</p>
-        <div id="up-history"></div>
+        <div id="up-history" data-skel="rows:3"></div>
       </section>
     </section>
 
@@ -315,9 +315,9 @@
     <section class="sub" data-sub="notifications" data-title="Notifications" hidden>
       <header class="sub-head"><h2>Notifications</h2><p>The mail server alerts go through, and who gets them.</p></header>
       <section class="ds-sec" data-sec="mail" id="nt-mail"><h3 class="ds-h">Email</h3>
-        <div class="ds-row"><div class="ds-l"><b>Mail server</b></div><div class="ds-r"><span class="ds-v" id="nt-server">…</span><button type="button" class="ds-btn" id="nt-change">Edit</button></div></div>
-        <div class="ds-row"><div class="ds-l"><b>Sends as</b></div><div class="ds-r"><span class="ds-v" id="nt-from">…</span></div></div>
-        <div class="ds-row"><div class="ds-l"><b>Send alerts to</b></div><div class="ds-r"><span class="ds-v" id="nt-to">…</span><button type="button" class="ds-btn" id="nt-change-to">Edit</button></div></div>
+        <div class="ds-row"><div class="ds-l"><b>Mail server</b></div><div class="ds-r"><span class="ds-v" id="nt-server"><i class="sk sk-text"></i></span><button type="button" class="ds-btn" id="nt-change">Edit</button></div></div>
+        <div class="ds-row"><div class="ds-l"><b>Sends as</b></div><div class="ds-r"><span class="ds-v" id="nt-from"><i class="sk sk-text"></i></span></div></div>
+        <div class="ds-row"><div class="ds-l"><b>Send alerts to</b></div><div class="ds-r"><span class="ds-v" id="nt-to"><i class="sk sk-text"></i></span><button type="button" class="ds-btn" id="nt-change-to">Edit</button></div></div>
         <div class="ds-row"><div class="ds-l"><b>Send a test email</b><span>Sends one to the addresses above, through the mail server.</span></div><div class="ds-r"><button type="button" class="ds-btn" id="nt-test">Send</button></div></div>
         <p class="hint note" id="nt-done" hidden></p>
       </section>
@@ -335,7 +335,7 @@
         <a class="ds-btn" id="al-export" href="/api/activity/export" download><svg><use href="#i-csv"/></svg>Export</a>
       </div>
       <p class="al-count" id="al-count"></p>
-      <div id="activity-list"></div>
+      <div id="activity-list" data-skel="rows:7"></div>
       <div class="al-more" id="al-more"></div>
     </section>
 
@@ -369,11 +369,11 @@
     <section class="sub" data-sub="sensors" data-title="Sensors" hidden>
       <header class="sub-head"><h2>Sensors</h2><p>When sensors email, and what they sign in with.</p></header>
       <section class="ds-sec" data-sec="alerts" data-can="sensors.alerts"><h3 class="ds-h">Alert settings</h3>
-        <div id="nt-rules"></div>
+        <div id="nt-rules" data-skel="rows:3"></div>
         <div class="ds-add"><button type="button" class="ds-btn" id="nt-add"><svg><use href="#i-plus"/></svg>Add alert settings</button></div>
       </section>
       <section class="ds-sec" data-sec="credentials" data-can="sensors.edit"><h3 class="ds-h">Saved credentials</h3>
-        <div id="sn-creds"></div>
+        <div id="sn-creds" data-skel="rows:2"></div>
         <p class="ds-note"><svg><use href="#i-lock"/></svg><span>Stored encrypted on this server. Credentials are saved with the sensor that needs them, and go once no sensor uses them.</span></p>
       </section>
       <p class="hint problem" id="sn-set-problem" hidden></p>
@@ -447,10 +447,10 @@
     <header class="page-head seats-head"><div><h1>Seats</h1><p>The computers with the Rabbid Lab client, and who's signed in.</p></div>
       <button type="button" class="primary" id="seats-add" data-can="seats.add">Add computers</button></header>
     <div class="tiles4" data-can="seats.view">
-      <div class="card tile4"><span class="label ok">Online</span><b id="n-online">0</b></div>
-      <div class="card tile4"><span class="label">Offline</span><b id="n-offline">0</b></div>
-      <div class="card tile4"><span class="label ember">Waiting for you</span><b id="n-waiting">0</b></div>
-      <div class="card tile4"><span class="label amber">Older client</span><b id="n-behind">0</b></div>
+      <div class="card tile4"><span class="label ok">Online</span><b id="n-online"><i class="sk sk-num"></i></b></div>
+      <div class="card tile4"><span class="label">Offline</span><b id="n-offline"><i class="sk sk-num"></i></b></div>
+      <div class="card tile4"><span class="label ember">Waiting for you</span><b id="n-waiting"><i class="sk sk-num"></i></b></div>
+      <div class="card tile4"><span class="label amber">Older client</span><b id="n-behind"><i class="sk sk-num"></i></b></div>
     </div>
     <div class="chips" id="seats-filter" role="tablist" data-can="seats.view">
       <button type="button" data-filter="all" aria-selected="true">All <small id="f-all">0</small></button>
@@ -459,10 +459,10 @@
       <button type="button" data-filter="waiting">Waiting <small id="f-waiting">0</small></button>
       <button type="button" data-filter="behind">Older client <small id="f-behind">0</small></button>
     </div>
-    <div class="table" id="seats-table" data-can="seats.view"></div>
+    <div class="table" id="seats-table" data-can="seats.view" data-skel="rows:4"></div>
     <p class="hint problem" id="seats-problem" hidden></p>
     <h2 class="table-title">Signed in now</h2>
-    <div class="table" id="sessions-table"></div>
+    <div class="table" id="sessions-table" data-skel="rows:3"></div>
   </section>
 
   <!-- Roles and people: the roles in order down the left, and everyone with their roles, or one role to change (people.js). -->
@@ -496,7 +496,7 @@
             <button type="button" class="primary" id="ppl-add" data-can="access.members access.local"><svg><use href="#i-plus"/></svg>Add people</button></div>
           <p class="lib-label" id="ppl-cards-label"><svg><use href="#i-shield"/></svg>Roles</p>
           <div class="rcards" id="ppl-cards"></div>
-          <div class="prows" id="ppl-rows"></div>
+          <div class="prows" id="ppl-rows" data-skel="rows:6"></div>
         </div>
 
         <!-- One role: its look, what it allows, and who's in it. -->
@@ -560,9 +560,9 @@
         <button type="button" class="hero-gear" id="ln-checks" data-can="links.edit" title="Links settings" aria-label="Links settings"><svg><use href="#i-gear"/></svg></button>
       </div>
       <div class="hero-stats">
-        <div><b id="ln-count">…</b><span><svg><use href="#i-link"/></svg>Links</span></div>
-        <div><b id="ln-answering">…</b><span><svg><use href="#i-activity"/></svg>Answering</span></div>
-        <div><b id="ln-every">…</b><span><svg><use href="#i-clock"/></svg>Checked every</span></div>
+        <div><b id="ln-count"><i class="sk sk-num"></i></b><span><svg><use href="#i-link"/></svg>Links</span></div>
+        <div><b id="ln-answering"><i class="sk sk-num"></i></b><span><svg><use href="#i-activity"/></svg>Answering</span></div>
+        <div><b id="ln-every"><i class="sk sk-num"></i></b><span><svg><use href="#i-clock"/></svg>Checked every</span></div>
       </div>
       <aside class="hero-new bad" id="ln-card" hidden>
         <p class="eyebrow">Down now</p>
@@ -581,7 +581,7 @@
       <button type="button" class="small" id="ln-newgroup" data-can="links.edit"><svg><use href="#i-plus"/></svg>New group</button>
       <div class="vswitch" id="ln-view"><button type="button" data-view="grid" title="Rows" aria-label="Rows"><svg><use href="#i-list"/></svg></button><button type="button" data-view="cards" title="Tiles" aria-label="Tiles"><svg><use href="#i-overview"/></svg></button></div>
     </div>
-    <div id="ln-list"></div>
+    <div id="ln-list" data-skel="tiles:8"></div>
     <div class="ln-empty" id="ln-empty" hidden><span class="big-ic ember"><svg><use href="#i-link"/></svg></span>
       <div><b>No links yet</b><span id="ln-empty-text">Put the sites in your lab here: the router, the NAS, the hypervisor, iDRACs. Paste an address and Rabbid Lab fills in the name, icon and IP.</span></div>
       <button type="button" class="primary" id="ln-add-first" data-can="links.edit"><svg><use href="#i-plus"/></svg>Add a link</button></div>
@@ -600,9 +600,9 @@
         <button type="button" id="sn-mail" data-can="sensors.alerts">Email settings</button>
       </div>
       <div class="hero-stats">
-        <div><b id="sn-answering">…</b><span><svg><use href="#i-activity"/></svg>Answering</span></div>
-        <div><b id="sn-week">…</b><span><svg><use href="#i-clock"/></svg>Up, last 7 days</span></div>
-        <div><b id="sn-last">…</b><span><svg><use href="#i-updates"/></svg>Last check</span></div>
+        <div><b id="sn-answering"><i class="sk sk-num"></i></b><span><svg><use href="#i-activity"/></svg>Answering</span></div>
+        <div><b id="sn-week"><i class="sk sk-num"></i></b><span><svg><use href="#i-clock"/></svg>Up, last 7 days</span></div>
+        <div><b id="sn-last"><i class="sk sk-num"></i></b><span><svg><use href="#i-updates"/></svg>Last check</span></div>
       </div>
       <aside class="hero-new" id="sn-card" hidden>
         <p class="eyebrow" id="sn-card-kind"></p>
@@ -622,7 +622,7 @@
         <button type="button" class="link" id="sn-cols-reset" hidden>Reset columns</button>
         <div class="vswitch" id="sn-view"><button type="button" data-view="grid" title="Rows" aria-label="Rows"><svg><use href="#i-list"/></svg></button><button type="button" data-view="cards" title="Tiles" aria-label="Tiles"><svg><use href="#i-overview"/></svg></button></div>
       </div>
-      <div id="sn-list"></div>
+      <div id="sn-list" data-skel="tiles:6"></div>
       <div class="ln-empty" id="sn-empty" hidden><span class="big-ic ember"><svg><use href="#i-activity"/></svg></span>
         <div><b>No sensors yet</b><span>A sensor checks something on a timer: a machine that answers ping, an open port, a web page, a DNS name or a certificate. Rabbid Lab emails you when one stays down.</span></div>
         <button type="button" class="primary" id="sn-add-first" data-can="sensors.edit"><svg><use href="#i-plus"/></svg>Add a sensor</button></div>
@@ -669,7 +669,6 @@
         <p class="hint" id="dir-more" hidden>Active Directory has more than the 1,000 listed here.</p>
       </div>
     </div>
-    <p class="hint" id="dir-loading" hidden></p>
     <p class="hint problem" id="dir-problem" hidden></p>
     <p class="hint note" id="dir-note" hidden></p>
     </div>
@@ -695,7 +694,6 @@
           <button type="button" class="primary" id="us-pc-new" data-can="windows.create"><svg><use href="#i-plus"/></svg>New account</button></div>
         <p class="hint why" id="us-pc-why" hidden></p>
         <div class="prows" id="us-pc-rows"></div>
-        <p class="hint" id="us-loading" hidden></p>
         <p class="hint problem" id="us-problem" hidden></p>
         <p class="hint note" id="us-note" hidden></p>
       </div>

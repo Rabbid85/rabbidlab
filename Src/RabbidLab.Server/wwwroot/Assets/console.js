@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.39', [
+    'While a page loads, grey placeholders the shape of what is coming pulse where the content will be: tiles on Links and Sensors, rows on Seats, Roles and people, Active Directory, Local accounts, the Activity log and the lists in Settings, and blocks for the numbers in the banners.',
+    'The lines that said Reading and Asking on Active Directory and Local accounts are gone; the placeholders say it. The flask still shows for things you start, like signing in, saving, importing and updating.']],
   ['1.1.38', [
     'Rabbid Lab Dev shows as Rabbid Lab with the DEV tag in the top bar and on the sign-in page, not Rabbid Lab Dev and the tag.']],
   ['1.1.37', [
@@ -886,6 +889,25 @@ const RELEASE_NOTES = [
     cover.querySelector('b').textContent = text;
     cover.querySelector('small').textContent = detail || ''; // what it's doing just now, a line for each thing
   };
+  // Grey placeholders the shape of what's loading, pulsing, until a page's first read is back: tiles for Links and Sensors,
+  // rows for lists. What's loaded takes their place when it's drawn; no kind takes them away if they're still there.
+  const SKELETON = {
+    tiles: (i) => `<div class="sk-tile"><i class="sk sq"></i><span class="sk-lines"><i class="sk w${[45, 60, 30, 75][i % 4]}"></i><i class="sk w${[75, 45, 60, 45][i % 4]}"></i><i class="sk w30"></i></span></div>`,
+    rows: (i) => `<div class="sk-row"><i class="sk sq"></i><span class="sk-lines"><i class="sk w${[45, 60, 30, 75][i % 4]}"></i><i class="sk w${[75, 45, 60, 45][i % 4]}"></i></span><i class="sk end"></i></div>`,
+  };
+  const skeleton = (el, kind = 'rows', count = 6) => {
+    if (!kind) {
+      if (el.firstElementChild?.classList.contains('sk-wrap')) el.replaceChildren();
+      return;
+    }
+    const items = Array.from({ length: count }, (_, i) => SKELETON[kind](i)).join('');
+    el.innerHTML = `<div class="sk-wrap" aria-hidden="true">${kind === 'tiles' ? `<i class="sk sk-head"></i><div class="sk-tiles">${items}</div>` : items}</div>`;
+  };
+  // A page's lists start as placeholders: data-skel="rows:6" on the list says what and how many.
+  document.querySelectorAll('[data-skel]').forEach((el) => {
+    const [kind, count] = el.dataset.skel.split(':');
+    skeleton(el, kind, Number(count) || 6);
+  });
   // Are you sure: a title, what happens, the button's words, and what to do on yes.
   let sureDo = null;
   const sure = (title, lead, button, then) => {
@@ -1815,12 +1837,12 @@ const RELEASE_NOTES = [
         $('up-history').innerHTML = list.length ? list.map((a) => `<div class="ds-row"><div class="ds-l"><b>${esc(a.title.replace(/^[^:]*: /, ''))}</b>${a.result === 'ok' ? '' : `<span>${esc(a.detail || "Didn't install.")}</span>`}</div>`
           + `<div class="ds-r"><span class="ds-v">${esc(a.by)} · ${esc(when(a.at))}</span></div></div>`).join('') : '<p class="ds-empty">No updates installed yet.</p>';
       } catch {
-        // The line above still says where they're kept.
+        skeleton($('up-history'), ''); // the line above still says where they're kept
       }
     }
   });
 
   // What the other scripts use.
-  window.RabbidLab = { $, esc, svg, say, initials, when, daysAgo, send, get, keep, forget, has, paint, where, viewAs, place, popups, option, dropdown, sure, copy, busy, groupTools, groupFilter, squares, squareSize,
+  window.RabbidLab = { $, esc, svg, say, initials, when, daysAgo, send, get, keep, forget, has, paint, where, viewAs, place, popups, option, dropdown, sure, copy, busy, groupTools, groupFilter, squares, squareSize, skeleton,
     palette: window.RabbidLabColours.roles, me: () => meInfo };
 })();

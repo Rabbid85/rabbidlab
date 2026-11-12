@@ -611,6 +611,7 @@
       problem('');
     } catch (err) {
       problem(err.message);
+      R.skeleton($('ppl-rows'), '');
       return;
     }
     if (draft && !role(draft.id)) draft = null;

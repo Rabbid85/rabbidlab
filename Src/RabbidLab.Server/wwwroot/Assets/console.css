@@ -203,6 +203,21 @@ body.app.rail-small { grid-template-columns: 60px minmax(0, 1fr); }
 
 /* The flask that foams while something loads, and the cover that holds it over a form. */
 .flask { width: 96px; height: 96px; overflow: visible; }
+/* Placeholders while a page's first read is under way: grey blocks the shape of what's coming, pulsing (R.skeleton). */
+.sk { display: block; border-radius: 6px; background: #1C1F2D; animation: sk-pulse 1.2s ease-in-out infinite; }
+@keyframes sk-pulse { 50% { opacity: .45; } }
+@media (prefers-reduced-motion: reduce) { .sk { animation: none; } }
+.sk-head { width: 90px; height: 11px; margin: 4px 0 14px; }
+.sk-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; }
+.sk-tile { display: flex; align-items: center; gap: 14px; height: 82px; padding: 0 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+.sk-tile .sq { flex: none; width: 42px; height: 42px; border-radius: 11px; }
+.sk-lines { display: grid; gap: 8px; flex: 1; min-width: 0; }
+.sk-lines .sk, .sk-row .end { height: 11px; }
+.sk-row { display: grid; grid-template-columns: 28px minmax(0, 1fr) 70px; align-items: center; gap: 12px; min-height: 52px; padding: 6px 4px; border-bottom: 1px solid var(--line); }
+.sk-row .sq { width: 28px; height: 28px; border-radius: 8px; }
+.sk-num { display: inline-block; width: 70px; height: 30px; border-radius: 8px; vertical-align: middle; }
+.sk-text { display: inline-block; width: 150px; height: 12px; vertical-align: middle; }
+.sk.w30 { width: 30%; } .sk.w45 { width: 45%; } .sk.w60 { width: 60%; } .sk.w75 { width: 75%; }
 /* The flask's liquid and foam take the accent. */
 .flask-a { stop-color: var(--accent-soft); }
 .flask-b { stop-color: var(--accent); }
