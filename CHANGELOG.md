@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.91 (2026-11-12)
+
+- Export and import is gone from Settings, Links. The two icons at the top of Links do the same thing.
+
 ## 1.1.90 (2026-11-12)
 
 - Export and Import at the top of Links have file icons with an arrow going out and coming in, instead of download and upload arrows.

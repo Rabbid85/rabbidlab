@@ -407,7 +407,7 @@
     R.busy(form, '');
     draw();
   });
-  // Import: a file Export made, added beside what's here. The flask covers the settings or the links while it goes in.
+  // Import: a file Export made, added beside what's here. The flask covers the links while it goes in.
   const count = (n, thing) => `${n} ${thing}${n === 1 ? '' : 's'}`;
   // Refresh: every link with a web address has its site read again, four at a time. On Links each
   // tile being read shows the flask and takes what was found as soon as it's back, the way Plex refreshes metadata; in
@@ -499,18 +499,19 @@
   };
   $('lc-refresh').addEventListener('click', () => refreshLinks($('lc-form'), 'lc-refresh-done'));
   $('ln-refresh').addEventListener('click', () => refreshLinks($('ln-list'), 'ln-done'));
-  $('lc-import-file').addEventListener('change', () => importFile($('lc-import-file'), false));
-  // On Links the answer is a toast instead of a line in the settings.
+  // Export: the server sends the file to save.
+  $('ln-export').addEventListener('click', () => {
+    const a = document.createElement('a');
+    a.href = '/api/links/export';
+    a.download = '';
+    a.click();
+  });
   $('ln-import').addEventListener('click', () => $('ln-import-file').click());
-  $('ln-import-file').addEventListener('change', () => importFile($('ln-import-file'), true));
-  $('ln-export').addEventListener('click', () => $('lc-export').click());
-  const importFile = async (input, onPage) => {
-    const f = input.files[0];
-    input.value = '';
+  $('ln-import-file').addEventListener('change', async () => {
+    const f = $('ln-import-file').files[0];
+    $('ln-import-file').value = '';
     if (!f) return;
-    say('lc-done', '');
-    say('lc-problem', '');
-    const form = onPage ? $('ln-list') : $('lc-form');
+    const form = $('ln-list');
     R.busy(form, `Importing ${f.name}…`);
     try {
       let data = null;
@@ -525,22 +526,18 @@
         done.skipped ? `${count(done.skipped, 'link')} already here ${done.skipped === 1 ? 'was' : 'were'} left as ${done.skipped === 1 ? 'it is' : 'they are'}.` : '',
         done.refused ? `${count(done.refused, 'link')} couldn't be read from the file.` : '',
         done.checks ? 'The check times were set from the file.' : ''];
-      if (onPage) R.toast(parts[0], parts.slice(1).filter(Boolean).join(' '));
-      else say('lc-done', parts.filter(Boolean).join(' '));
+      R.toast(parts[0], parts.slice(1).filter(Boolean).join(' '));
     } catch (err) {
-      if (onPage) R.toast("Couldn't import the file", err.message, { tone: 'red' });
-      else say('lc-problem', err.message);
+      R.toast("Couldn't import the file", err.message, { tone: 'red' });
     }
     R.busy(form, '');
-    drawChecks();
     draw();
     check();
-  };
+  });
   // The gear on Links opens its page in Settings, which is drawn from a fresh read each time it shows.
   $('ln-checks').addEventListener('click', () => { location.hash = '#settings/links'; });
   document.addEventListener('rabbidlab:show', async (e) => {
     if (e.detail[0] !== 'settings' || e.detail[1] !== 'links' || !can('links.edit')) return;
-    say('lc-done', '');
     say('lc-problem', '');
     try {
       take(await R.get('/api/links'));
