@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.54 (2026-11-11)
+
+- Refresh icons reads every link again, four at a time from the top: an icon from the site is brought up to date, an empty description is filled in, and a link on your network gets its IP. A picture of your own, No icon and descriptions you typed stay as they are.
+- Connections to sites no longer fetch or check certificates online, which could hang; any certificate was already accepted, as homelab gear signs its own.
+
 ## 1.1.53 (2026-11-11)
 
 - Refresh icons gives each link 8 seconds at most, and once nothing is left to start it says which links it is waiting on.

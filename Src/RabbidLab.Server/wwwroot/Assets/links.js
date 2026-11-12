@@ -343,11 +343,10 @@
   const refreshLinks = async (host, note) => {
     if (refreshing) return;
     const onPage = host === $('ln-list');
-    // No icon or description, or an icon saved before Rabbid Lab kept where icons came from (checked once). The IP line is filled
-    // in on the way, never a reason to read a site again.
-    const todo = links.filter((l) => !l.icon || !l.description || (l.icon !== NO_ICON && !l.iconFrom));
+    // Every link with a web address: the server keeps what was set by hand and brings the rest up to date.
+    const todo = links.filter(checked);
     ['lc-refresh-done', 'ln-done'].forEach((id) => say(id, ''));
-    if (!todo.length) return say(note, 'Every link has its icon, description and IP already.');
+    if (!todo.length) return say(note, 'No links with a web address to refresh.');
     refreshing = true;
     $('ln-refresh').disabled = true;
     const got = { icon: 0, description: 0, IP: 0 };
@@ -408,7 +407,7 @@
     $('ln-refresh').disabled = false;
     draw(); // each link was taken in as it came back: nothing to read again
     const what = [got.icon && count(got.icon, 'icon'), got.description && count(got.description, 'description'), got.IP && count(got.IP, 'IP')].filter(Boolean);
-    say(note, [filled ? `Filled in ${what.length > 1 ? `${what.slice(0, -1).join(', ')} and ${what[what.length - 1]}` : what[0]} on ${count(filled, 'link')}.` : 'Nothing new to fill in.',
+    say(note, [filled ? `Refreshed ${what.length > 1 ? `${what.slice(0, -1).join(', ')} and ${what[what.length - 1]}` : what[0]} on ${count(filled, 'link')}.` : 'Everything was up to date already.',
       quiet ? `${count(quiet, 'link')} didn't answer.` : ''].filter(Boolean).join(' '));
   };
   $('lc-refresh').addEventListener('click', () => refreshLinks($('lc-form'), 'lc-refresh-done'));

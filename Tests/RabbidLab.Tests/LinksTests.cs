@@ -300,7 +300,8 @@ public sealed class LinksTests : IDisposable
         byte[] tab = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 1, 1, 1, 1];
         byte[] phone = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 2, 2, 2, 2];
         var page = Encoding.UTF8.GetBytes("<html><head><title>Plex</title><link rel=\"shortcut icon\" href=\"/tab.png\"><link rel=\"apple-touch-icon-precomposed\" sizes=\"144x144\" href=\"/phone.png\"></head></html>");
-        using var site = new TinySite(new() { ["/"] = ("text/html", page), ["/b/"] = ("text/html", page), ["/tab.png"] = ("image/png", tab), ["/phone.png"] = ("image/png", phone) });
+        Dictionary<string, (string Type, byte[] Body)> pages = new() { ["/"] = ("text/html", page), ["/b/"] = ("text/html", page), ["/tab.png"] = ("image/png", tab), ["/phone.png"] = ("image/png", phone) };
+        using var site = new TinySite(pages);
         static string Png(byte[] b) => "data:image/png;base64," + Convert.ToBase64String(b);
         var admin = await app.SignedIn();
         async Task<string> Add(object link) => (await Json(await admin.PostAsJsonAsync("/api/links", link))).GetProperty("id").GetString()!;
@@ -326,6 +327,16 @@ public sealed class LinksTests : IDisposable
         Assert.Empty(kept!.Changed);
         Assert.Equal("own", all[mine].IconFrom); // someone's own: never swapped, and not checked again
         Assert.Equal("kept", all[quiet].IconFrom); // no answer: left as it is, and not read again for this
+
+        // The site changes its icon: one that came from the site follows it, one of someone's own doesn't.
+        byte[] fresh = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 3, 3, 3, 3];
+        pages["/tab.png"] = ("image/png", fresh);
+        var followed = await links.Refresh(old, CancellationToken.None, guarded: false);
+        await links.Refresh(mine, CancellationToken.None, guarded: false);
+        all = links.All().ToDictionary(l => l.Id);
+        Assert.Equal(["icon"], followed!.Changed);
+        Assert.Equal(Png(fresh), all[old].Icon);
+        Assert.Equal("own", all[mine].IconFrom);
         Assert.Equal(Png(phone), all[quiet].Icon);
     }
 

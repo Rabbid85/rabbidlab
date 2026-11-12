@@ -499,7 +499,8 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
             return new LinkRefreshed(was, [], null);
         }
         // An icon saved before Rabbid Lab kept where icons came from is checked against the ones the site serves, once.
-        var unsure = was.Icon is { } saved && saved != NoIcon && was.IconFrom is null ? saved : null;
+        // An icon of unknown origin (saved before Rabbid Lab kept that, or its site didn't answer last time) is checked against the ones the site serves.
+        var unsure = was.Icon is { } saved && saved != NoIcon && was.IconFrom is null or "kept" ? saved : null;
         var look = await Look(was.Url, stop, guarded, describe, served: unsure);
         lock (gate)
         {
@@ -519,11 +520,20 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
                 from = look.IconFrom;
                 changed.Add("icon");
             }
+            else if (now.Icon != NoIcon && now.IconFrom is { } site && site is not ("own" or "kept"))
+            {
+                // One from the site is brought up to date with what the site serves now.
+                if (look.Problem is null && look.Icon is { } current && current != now.Icon)
+                {
+                    icon = current;
+                    from = look.IconFrom;
+                    changed.Add("icon");
+                }
+            }
             else if (unsure is not null && now.Icon == unsure)
             {
                 // One of the site's own (Plex's phone icon, from when that came first) gives way to the one its browser tab shows;
-                // any other is someone's own, and stays. A site that doesn't answer keeps what it has ("kept"), checked once all the same,
-                // so a slow one (Netflix) isn't read again on every refresh.
+                // any other is someone's own, and stays. A site that doesn't answer keeps what it has ("kept") until the next refresh.
                 if (look.Problem is null && look.Served && look.Icon is { } tab && tab != now.Icon)
                 {
                     icon = tab;
@@ -845,7 +855,16 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
             MaxAutomaticRedirections = 5,
             AutomaticDecompression = DecompressionMethods.All, // an iDRAC only has its pages gzipped, and answers 404 to a reader that doesn't ask for that
             ConnectTimeout = TimeSpan.FromSeconds(4),
-            SslOptions = { RemoteCertificateValidationCallback = (_, _, _, _) => true },
+            // Any certificate does (homelab gear signs its own), so none is fetched or checked online while connecting: that can hang.
+            SslOptions =
+            {
+                RemoteCertificateValidationCallback = (_, _, _, _) => true,
+                CertificateChainPolicy = new System.Security.Cryptography.X509Certificates.X509ChainPolicy
+                {
+                    DisableCertificateDownloads = true,
+                    RevocationMode = System.Security.Cryptography.X509Certificates.X509RevocationMode.NoCheck,
+                },
+            },
         };
         if (guarded)
         {
@@ -1413,7 +1432,7 @@ public static class LinksApi
             var c = done.Changed;
             if (c.Count > 0)
             {
-                log.Record(context, "links", "link.refresh", $"Filled in the {string.Join(", ", c.SkipLast(1))}{(c.Count > 1 ? " and " : "")}{c[^1]} of {done.Link.Name}");
+                log.Record(context, "links", "link.refresh", $"Refreshed the {string.Join(", ", c.SkipLast(1))}{(c.Count > 1 ? " and " : "")}{c[^1]} of {done.Link.Name}");
             }
             return Results.Ok(new { link = done.Link, changed = c, problem = done.Problem });
         });
