@@ -782,6 +782,7 @@
     drawMode();
     drawFound();
     drawIcon();
+    R.watchLink?.open(l); // Watch it: sensors.js fills it in
     $('link-dialog').showModal();
     $('ln-url').focus();
   };
@@ -940,7 +941,7 @@
   $('ln-save').addEventListener('click', async () => {
     if (many && !editing) return rows ? addMany() : readMany();
     const body = { url: $('ln-url').value, name: $('ln-name').value, group: groupOf('ln-group'), description: $('ln-about').value, address: ip, icon,
-      iconFrom: uploaded ? 'own' : icon && icon !== NO_ICON && icon === siteIcon ? siteFrom : null };
+      iconFrom: uploaded ? 'own' : icon && icon !== NO_ICON && icon === siteIcon ? siteFrom : null, watch: R.watchLink?.form() ?? undefined };
     $('ln-save').disabled = true;
     try {
       await R.send(editing ? `/api/links/${encodeURIComponent(editing.id)}` : '/api/links', body);
@@ -955,7 +956,7 @@
   $('ln-delete').addEventListener('click', () => {
     if (!editing) return;
     const gone = editing;
-    R.sure(`Take ${gone.name} off Links?`, 'The link is removed for everyone.', 'Delete', async () => {
+    R.sure(`Take ${gone.name} off Links?`, gone.sensor ? 'The link is removed for everyone, and so is the sensor that watches it.' : 'The link is removed for everyone.', 'Delete', async () => {
       try {
         await R.send(`/api/links/${encodeURIComponent(gone.id)}/delete`, {});
         $('link-dialog').close();

@@ -364,7 +364,7 @@
         <li><b>Certificate</b>: warns when a site's certificate has under 21 days left, and is down once it expires.</li>
       </ul></li>
     <li>Type the address. <b>Check now</b> tries it before you save.</li>
-    <li>Pick a group, how often to check, and an alert rule, then click <b>Add the sensor</b>.</li>
+    <li>Pick a group, how often to check, and when it alerts, then click <b>Add the sensor</b>.</li>
   </ol>
   <p>A sensor is down after two misses in a row, so one lost reply isn't an outage; change it with <b>Down after</b>. Its alerts go to the channels ticked under <b>Send to</b>: email, Discord, Teams, Slack, ntfy or any webhook, set up once in Settings, Notifications. Click a sensor for its history, to pause it, or to change it. The squares at the top of the page are the sensors: each beats when it's checked, and one that's down turns red.</p>
 </article>
@@ -378,21 +378,24 @@
 </article>
 
 <article data-key="sensor-alerts" data-group="Sensors" data-title="Alerts and email">
-  <p>Each sensor uses one of four alert rules. Click <b>Alert rules</b> on the Sensors page to change their times.</p>
+  <p>Each sensor says when it alerts, under <b>Alerts</b> when you add or change it:</p>
   <ul>
-    <li><b>Critical</b> emails as soon as the sensor is down, and again every hour.</li>
-    <li><b>Normal</b> emails after 5 minutes down.</li>
-    <li><b>Relaxed</b> emails after 30 minutes down.</li>
-    <li><b>Quiet</b> never emails. The page still shows it.</li>
+    <li><b>Alert when it has been down for</b>: right away, 1 to 30 minutes, an hour, or never (it only shows on the page).</li>
+    <li><b>While it stays down</b>: once, or again every hour, 6 hours or day.</li>
+    <li><b>When it comes back</b>: an all-clear, only after a down alert went.</li>
+    <li><b>Depends on</b>: while that sensor is down, this one waits instead of alerting, and shows as Waiting. If it's still down once the other is back, it alerts then.</li>
+    <li><b>Send to</b>: email and the channels set up in Settings, Notifications. A kind that isn't set up yet can be set up from there.</li>
   </ul>
-  <p>Something that comes back before its time is up emails nobody. When an email did go out, another says it's back.</p>
-  <p>Set up the mail server under <a href="#settings/notifications">Settings, Notifications</a>, in <b>Email settings</b>:</p>
+  <p>New sensors start with what's set in <a href="#settings/sensors">Settings, Sensors</a>. <b>Use these alerts on other sensors</b> copies one sensor's alerts to others; <b>Use on every sensor</b> in Settings does it for all of them. Something that comes back before its time is up alerts nobody.</p>
+  <p>On a sensor, <b>Send a test alert</b> sends its alert, marked as a test, to its channels. <b>Pause</b> stops it for 15 minutes, an hour, 4 hours, until 8 tomorrow or until you start it again, and can take what depends on it along. <b>Gather alerts</b> in Settings, Sensors sends one alert when several go down close together.</p>
+  <p>On Links, <b>Watch it</b> in a link's dialog gives it a sensor that checks it every minute and alerts the same way. Its dot comes from that sensor.</p>
+  <p>Set up email under <a href="#settings/notifications">Settings, Notifications</a>, with <b>Edit</b> on the Email row:</p>
   <ul>
     <li><b>Gmail</b>: your address and an app password (Google Account, Security, 2-Step Verification, App passwords).</li>
     <li><b>Microsoft 365</b>: an app registration in Microsoft Entra with the Mail.Send application permission and admin consent. Type the tenant, the application (client) ID and a client secret. From has to be a mailbox in the tenant.</li>
     <li><b>Another mail server</b>: any server or relay that takes STARTTLS on port 587.</li>
   </ul>
-  <p><b>Send a test email</b> saves the settings and sends one to everyone on the list. Passwords and secrets are stored encrypted on this server.</p>
+  <p><b>Send a test email</b> saves the settings and sends one to everyone on the list. <b>Test</b> on any channel's row sends it one. Passwords and secrets are stored encrypted on this server.</p>
 </article>
 
 <article data-key="support-info" data-group="Keeping it running" data-title="Support info">

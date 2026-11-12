@@ -154,15 +154,19 @@
 .sd-pin { display: flex; gap: 8px; margin: 0; color: var(--muted); font-size: 12.5px; }
 .sd-pin svg { flex: none; width: 15px; height: 15px; margin-top: 2px; color: var(--amber); }
 .sd-pin code { color: var(--title); font: 12px Consolas, "Cascadia Mono", monospace; }
-/* Saved alert settings: the default has a star, Custom shows its own times, and Save these as names them for other sensors. */
-.seg.sn-seg button .rstar { width: 12px; height: 12px; margin-left: 6px; color: #F2BE6B; vertical-align: -1px; }
-.seg.sn-seg button.ml-new { border-style: dashed; color: var(--muted); }
-.form.two > .sd-alert-more, .form.two > .ml-rule-times { display: grid; gap: 8px; }
-.sd-saveas, .form.two > .ml-rule-acts { display: flex; align-items: center; gap: 8px; }
-.sd-saveas input { flex: 1; max-width: 320px; }
-.sd-saveas .link, .ml-rule-acts .link { color: var(--accent-soft); }
-.ml-rule-acts #ml-rule-delete { color: var(--muted); }
-.ml-alerts { margin-top: 6px; }
+/* Alerts: the same rows on a sensor, a watched link and in Settings, Sensors. */
+.al-rows .ds-row { min-height: 52px; padding: 7px 0; border-bottom: 1px solid #191C2A; }
+.al-rows .ds-row:last-child { border-bottom: 0; }
+.dialog .al-rows .ds-l b { font-size: 14px; }
+.dialog .al-rows .ds-l > span { font-size: 12.5px; }
+.al-rows .ds-r select { width: 230px; height: 36px; }
+.al-rows .ds-r select:disabled, .al-rows input.switch:disabled { opacity: .45; cursor: default; }
+.form input.switch, .ds-r input.switch { width: 40px; height: 22px; padding: 0; border: 0; border-radius: 22px; } /* the form sizes every input; a switch keeps its own */
+.al-copy { display: flex; justify-content: flex-start; margin-top: -4px; }
+.al-copy .link { color: var(--accent-soft); }
+.al-send .ds-r { max-width: 72%; }
+.al-send .chans { width: min(600px, 100%); grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.ld-alerts { margin-top: 14px; }
 
 /* Find a check, over the kinds. */
 .dnav.sd-types > .side-find.sd-find { display: flex; margin: 0 0 10px; } /* dnav hides its find box unless it lists things */
@@ -216,3 +220,49 @@
 .ch-sw label { margin: 0; }
 .form .ch-sw input.switch { width: 40px; height: 22px; padding: 0; border: 0; border-radius: 22px; } /* the form sizes every input; a switch keeps its own */
 #channel-dialog { width: min(720px, calc(100vw - 32px)); }
+
+/* Send to: a kind not set up yet is a quieter card with a plus, to set it up from there. */
+.chan.add .chan-ic { opacity: .8; }
+.chan.add:hover { border-color: var(--accent-line); color: var(--title); }
+.chan-plus { position: absolute; top: 9px; right: 9px; width: 13px; height: 13px; color: var(--muted); }
+.chan.add:hover .chan-plus { color: var(--accent-soft); }
+.chan-ic svg { width: 18px; height: 18px; }
+
+/* One sensor: what it waits on and what waits on it, Send a test alert, and Pause with how long. */
+.sv-deps { display: grid; gap: 4px; margin: -4px 0 12px; }
+.sv-deps[hidden] { display: none; }
+.sv-deps p { display: flex; align-items: flex-start; gap: 8px; margin: 0; color: #B8BCCB; font-size: 13.5px; line-height: 1.45; }
+.sv-deps svg { flex: none; width: 15px; height: 15px; margin-top: 2px; color: var(--accent-soft); }
+.sv-deps b { color: #fff; }
+.sv-test, .sv-pause { display: inline-flex; align-items: center; gap: 7px; }
+.sv-test svg { width: 15px; height: 15px; }
+.sv-pause svg { width: 12px; height: 12px; transform: rotate(-90deg); transition: transform .15s; }
+.sv-pause[aria-expanded="true"] { border-color: var(--accent); }
+.sv-pause[aria-expanded="true"] svg { transform: rotate(90deg); }
+.sv-pause-at { position: relative; display: inline-flex; }
+.sv-menu { position: absolute; bottom: calc(100% + 8px); left: 0; z-index: 50; display: grid; width: 290px; padding: 6px; border: 1px solid var(--line-strong); border-radius: 12px;
+  background: #141725; box-shadow: 0 18px 50px rgba(0, 0, 0, .55); }
+.sv-menu[hidden] { display: none; }
+.sv-menu-h { margin: 4px 8px 6px; color: #9DA1B3; font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+.sv-menu button { display: flex; justify-content: space-between; align-items: center; height: 36px; padding: 0 10px; border: 0; border-radius: 7px; background: none;
+  color: #E6E8F2; font: inherit; font-size: 14px; text-align: left; cursor: pointer; }
+.sv-menu button:hover, .sv-menu button:focus-visible { outline: none; background: #1E2132; }
+.sv-menu small { color: var(--muted); font-size: 12px; }
+.sv-menu-all { display: flex; align-items: center; gap: 8px; margin: 6px 4px 2px; padding: 8px 6px 2px; border-top: 1px solid var(--line); color: #B8BCCB; font-size: 13px; cursor: pointer; }
+.sv-menu-all input { accent-color: var(--accent); }
+
+/* Waiting on something that's down: grey, not red, and it doesn't add to the count. */
+.s-wait { --c: #8A8FA8; }
+.lstate.wait { background: #8A8FA8; box-shadow: 0 0 0 3px rgba(138, 143, 168, .14); }
+.sn-tile.s-wait .sn-now, .tr.sn .state.wait { color: #B8BCCB; }
+.hero .tile.sen.s-wait { background: #5E6380; color: #fff; box-shadow: none; animation: none; }
+
+/* Use these alerts on other sensors. */
+.cp-dialog { width: min(640px, calc(100vw - 32px)); }
+.cp-find { display: flex; margin: 4px 0 10px; }
+.cp-list { max-height: 420px; overflow: auto; }
+.cp-list .sd-watch { align-items: center; }
+.cp-g { margin-left: auto; padding-left: 12px; color: var(--muted); font-size: 12.5px; white-space: nowrap; }
+#copy-dialog .dialog-foot { align-items: center; }
+#copy-dialog .grow { flex: 1; }
+#copy-dialog .link { color: var(--accent-soft); }

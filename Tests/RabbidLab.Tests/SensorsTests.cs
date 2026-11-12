@@ -235,27 +235,25 @@ public sealed class SensorsTests : IDisposable
     }
 
     [Fact]
-    public async Task Alert_settings_are_saved_by_name_one_is_the_default_and_a_sensor_can_have_its_own()
+    public async Task Each_sensor_has_its_own_alert_times_starting_with_the_ones_set_for_new_sensors()
     {
         var admin = await app.SignedIn();
-        var made = await Json(await admin.PostAsJsonAsync("/api/sensors/rules", new { name = "Lab gear", after = 30, again = 0, back = false }));
-        var id = made.GetProperty("id").GetString()!;
-        var twice = await admin.PostAsJsonAsync("/api/sensors/rules", new { name = "lab gear", after = 5, again = 0 });
-        await admin.PostAsJsonAsync($"/api/sensors/rules/{id}/default", new { });
+        var odd = await admin.PostAsJsonAsync("/api/sensors/start", new { after = 7, again = 0, back = true });
+        (await admin.PostAsJsonAsync("/api/sensors/start", new { after = 30, again = 0, back = false })).EnsureSuccessStatusCode();
         var plain = await Json(await admin.PostAsJsonAsync("/api/sensors", new { kind = "ping", target = "192.168.2.50", name = "Switch" }));
         var own = await Json(await admin.PostAsJsonAsync("/api/sensors", new { kind = "ping", target = "192.168.2.51", name = "Printer", rule = "custom", custom = new { after = 60, again = 1440, back = true } }));
-        var undeletable = await admin.PostAsJsonAsync($"/api/sensors/rules/{id}/delete", new { });
-        await admin.PostAsJsonAsync("/api/sensors/rules/normal/default", new { });
-        var gone = await Json(await admin.PostAsJsonAsync($"/api/sensors/rules/{id}/delete", new { }));
+        var old = await Json(await admin.PostAsJsonAsync("/api/sensors", new { kind = "ping", target = "192.168.2.52", name = "NAS", rule = "critical" }));
+        var switchId = Named(plain, "Switch").GetProperty("id").GetString();
+        var copied = await Json(await admin.PostAsJsonAsync("/api/sensors/copy", new { after = 60, again = 1440, back = true, ids = new[] { switchId } }));
 
-        Assert.Equal(HttpStatusCode.BadRequest, twice.StatusCode);
-        Assert.Equal(id, plain.GetProperty("default").GetString());
-        Assert.Equal(id, Named(plain, "Switch").GetProperty("rule").GetString()); // new sensors start with the default
-        Assert.Equal("custom", Named(own, "Printer").GetProperty("rule").GetString());
-        Assert.Equal(1440, Named(own, "Printer").GetProperty("custom").GetProperty("again").GetInt32());
-        Assert.Equal(HttpStatusCode.BadRequest, undeletable.StatusCode); // the default can't go
-        Assert.Equal("normal", Named(gone, "Switch").GetProperty("rule").GetString()); // moved to the default
-        Assert.DoesNotContain(gone.GetProperty("rules").EnumerateArray(), r => r.GetProperty("id").GetString() == id);
+        Assert.Equal(HttpStatusCode.BadRequest, odd.StatusCode); // only the times offered
+        Assert.Equal(30, plain.GetProperty("start").GetProperty("after").GetInt32());
+        Assert.Equal(30, Named(plain, "Switch").GetProperty("alert").GetProperty("after").GetInt32()); // new sensors start with those
+        Assert.False(Named(plain, "Switch").GetProperty("alert").GetProperty("back").GetBoolean());
+        Assert.Equal(1440, Named(own, "Printer").GetProperty("alert").GetProperty("again").GetInt32());
+        Assert.Equal(0, Named(old, "NAS").GetProperty("alert").GetProperty("after").GetInt32()); // one on saved settings still reads right
+        Assert.Equal(1, copied.GetProperty("changed").GetInt32());
+        Assert.Equal(60, Named(copied.GetProperty("now"), "Switch").GetProperty("alert").GetProperty("after").GetInt32());
     }
 
     [Fact]

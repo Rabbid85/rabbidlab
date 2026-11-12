@@ -2,6 +2,18 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.77 (2026-11-12)
+
+- Each sensor sets its own alerts: when, reminders while it stays down, and the all-clear. New sensors start with what is set in Settings, Sensors. The saved alert settings (Critical, Normal and so on) are gone; every sensor keeps the times it had.
+- Use these alerts on other sensors copies the alerts of one sensor to others.
+- Depends on: a sensor behind one that is down waits instead of alerting, and shows as Waiting.
+- Pause for 15 minutes, an hour, 4 hours or until 8 tomorrow, and take what depends on it along.
+- Send a test alert from a sensor, and Test on each channel in Settings, Notifications.
+- Gather alerts: when several go down close together, one alert lists them all.
+- Watch it on a link: a sensor checks it every minute and alerts like any other.
+- Email settings is just the mail server now. Email is a channel like the rest in Settings, Notifications.
+- Fixed dragging a sensor to another group wiping its settings.
+
 ## 1.1.76 (2026-11-12)
 
 - Dropdowns open as a dark list that matches the console, with the accent on the one picked, in Edge and Chrome.

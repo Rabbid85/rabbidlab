@@ -30,6 +30,9 @@ public sealed class Link
     public string? AddedBy { get; set; }
 
     /// <summary>A link to a Developer tools test address: up or down, played rather than checked, and gone at Expires.</summary>
+    /// <summary>The sensor watching it, by id: its dot comes from that sensor, which alerts when it's down.</summary>
+    public string? Sensor { get; set; }
+
     public string? Test { get; set; }
     public DateTime? Expires { get; set; }
 }
@@ -119,7 +122,7 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
 
     // A copy with another description: the links in the list are being read by other requests.
     private static Link WithDescription(Link l, string? description) =>
-        new() { Id = l.Id, Name = l.Name, Url = l.Url, Description = description, Address = l.Address, Group = l.Group, Icon = l.Icon, IconFrom = l.IconFrom, Place = l.Place, Added = l.Added, AddedBy = l.AddedBy };
+        new() { Id = l.Id, Name = l.Name, Url = l.Url, Description = description, Address = l.Address, Group = l.Group, Icon = l.Icon, IconFrom = l.IconFrom, Place = l.Place, Added = l.Added, AddedBy = l.AddedBy, Sensor = l.Sensor };
 
     public int Revision
     {
@@ -334,7 +337,7 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
             var l = f.Links[i];
             if (Grouping.Same.Equals(l.Group, from))
             {
-                f.Links[i] = new Link { Id = l.Id, Name = l.Name, Url = l.Url, Description = l.Description, Address = l.Address, Group = to, Icon = l.Icon, IconFrom = l.IconFrom, Place = l.Place, Added = l.Added, AddedBy = l.AddedBy };
+                f.Links[i] = new Link { Id = l.Id, Name = l.Name, Url = l.Url, Description = l.Description, Address = l.Address, Group = to, Icon = l.Icon, IconFrom = l.IconFrom, Place = l.Place, Added = l.Added, AddedBy = l.AddedBy, Sensor = l.Sensor };
                 moved++;
             }
         }
@@ -393,6 +396,7 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
                 // The same icon keeps where it came from; a new one says, or is someone's own when it doesn't.
                 IconFrom = Blank(form.Icon) is not { } kept ? null : kept == old?.Icon ? old.IconFrom : Blank(form.IconFrom) ?? "own",
                 Place = form.Place ?? old?.Place,
+                Sensor = old?.Sensor,
             };
             if (testing && DevTools.IsTest(url))
             {
@@ -409,6 +413,26 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
             }
             file.Save(f);
             return (link, null);
+        }
+    }
+
+    /// <summary>The link watched by a sensor (by id), or by none. The link as it is now, or null when it isn't there.</summary>
+    public Link? SetSensor(string id, string? sensor)
+    {
+        lock (gate)
+        {
+            var f = file.Read();
+            var at = f.Links.FindIndex(l => l.Id == id);
+            if (at < 0)
+            {
+                return null;
+            }
+            // A copy: the ones in the list are being read by other requests.
+            var link = JsonSerializer.Deserialize<Link>(JsonSerializer.Serialize(f.Links[at], Json), Json)!;
+            link.Sensor = sensor;
+            f.Links[at] = link;
+            file.Save(f);
+            return link;
         }
     }
 
@@ -566,7 +590,7 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
             var link = new Link
             {
                 Id = now.Id, Added = now.Added, AddedBy = now.AddedBy, Name = now.Name, Url = now.Url, Group = now.Group, Place = now.Place,
-                Icon = icon, IconFrom = from, Description = description, Address = address,
+                Icon = icon, IconFrom = from, Description = description, Address = address, Sensor = now.Sensor,
             };
             f.Links[at] = link;
             file.Save(f);
@@ -676,7 +700,7 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
                 if (at >= 0)
                 {
                     var l = f.Links[at];
-                    f.Links[at] = new Link { Id = l.Id, Name = l.Name, Url = l.Url, Description = l.Description, Address = l.Address, Group = name, Icon = l.Icon, IconFrom = l.IconFrom, Place = place++, Added = l.Added, AddedBy = l.AddedBy };
+                    f.Links[at] = new Link { Id = l.Id, Name = l.Name, Url = l.Url, Description = l.Description, Address = l.Address, Group = name, Icon = l.Icon, IconFrom = l.IconFrom, Place = place++, Added = l.Added, AddedBy = l.AddedBy, Sensor = l.Sensor };
                 }
             }
             file.Save(f);
@@ -706,7 +730,7 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
     /// their last check is older than the time set; one that didn't answer is tried again sooner, and shows as down once a
     /// later check has failed too, the time set after the first.
     /// </summary>
-    public async Task<LinkStates> States(CancellationToken stop)
+    public async Task<LinkStates> States(CancellationToken stop, Func<string, bool>? watched = null)
     {
         _ = Describing(); // once after describing is turned on, in the background; the page reads the links again when it changes one
         Task running;
@@ -716,7 +740,7 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
             // One check for everyone asking: the one under way, or a new one of the links that are due.
             if (check is null || check.IsCompleted)
             {
-                var due = Due(file.Read(), clock.GetUtcNow().UtcDateTime);
+                var due = Due(file.Read(), clock.GetUtcNow().UtcDateTime, watched);
                 check = due.Count > 0 ? Task.Run(() => Check(due)) : Task.CompletedTask;
             }
             running = check;
@@ -748,14 +772,15 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
     // Down is a check that failed that long after the first one did: never the clock alone, so one missed check is never red.
     private static bool Confirmed(Checked c, TimeSpan after) => !c.Up && c.At - (c.Since ?? c.At) >= after;
 
-    private List<Link> Due(LinksFile f, DateTime now)
+    // The links due a check. One a sensor watches is left to the sensor.
+    private List<Link> Due(LinksFile f, DateTime now, Func<string, bool>? watched = null)
     {
         var every = TimeSpan.FromSeconds(Every(f));
         var retry = TimeSpan.FromSeconds(Retry(f));
         var after = TimeSpan.FromSeconds(After(f));
         return [.. f.Links.Where(l =>
         {
-            if (!l.Url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) && !l.Url.StartsWith("https://", StringComparison.OrdinalIgnoreCase) || l.Test is not null)
+            if (!l.Url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) && !l.Url.StartsWith("https://", StringComparison.OrdinalIgnoreCase) || l.Test is not null || (l.Sensor is { } sensor && watched?.Invoke(sensor) == true))
             {
                 return false;
             }
@@ -1262,7 +1287,10 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
     private static string? Blank(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
 }
 
-public sealed record LinkForm(string? Name, string? Url, string? Description, string? Address, string? Group, string? Icon, int? Place = null, string? IconFrom = null);
+public sealed record LinkForm(string? Name, string? Url, string? Description, string? Address, string? Group, string? Icon, int? Place = null, string? IconFrom = null, LinkWatch? Watch = null);
+
+/// <summary>Watch it: a sensor checks the link and alerts as asked. Off takes the sensor away.</summary>
+public sealed record LinkWatch(bool On, int? After, int? Again, bool? Back, List<string>? Channels);
 
 public sealed record LinkArrangeForm(string? Group, List<string>? Ids);
 
@@ -1344,8 +1372,23 @@ public static class LinksApi
             return Results.Ok(Listed(links));
         });
 
-        app.MapGet("/api/links/states", async (HttpContext context, Links links) =>
-            !Access.Can(context, Permissions.LinksView) ? Access.NotAllowed() : Results.Ok(await links.States(context.RequestAborted)));
+        // A link a sensor watches takes its dot from the sensor, and isn't checked twice.
+        app.MapGet("/api/links/states", async (HttpContext context, Links links, Sensors sensors) =>
+        {
+            if (!Access.Can(context, Permissions.LinksView))
+            {
+                return Access.NotAllowed();
+            }
+            var now = await links.States(context.RequestAborted, sensors.Has);
+            foreach (var l in links.All())
+            {
+                if (l.Sensor is { } id && sensors.AsLink(id) is { } state)
+                {
+                    now.States[l.Id] = state;
+                }
+            }
+            return Results.Ok(now);
+        });
 
         app.MapPost("/api/links/checks", async (LinkChecksForm form, HttpContext context, Links links, ActivityLog log) =>
         {
@@ -1422,9 +1465,9 @@ public static class LinksApi
             : Results.Ok(DevTools.On(settings) && DevTools.IsTest(form.Url) ? await DevTools.Look(form.Url!, context.RequestAborted)
                 : await Links.Look(form.Url, context.RequestAborted, describe: links.Describes())));
 
-        app.MapPost("/api/links", (LinkForm form, HttpContext context, Links links, ActivityLog log, SettingsStore settings) => Save(null, form, context, links, log, settings));
+        app.MapPost("/api/links", (LinkForm form, HttpContext context, Links links, Sensors sensors, ActivityLog log, SettingsStore settings) => Save(null, form, context, links, sensors, log, settings));
 
-        app.MapPost("/api/links/{id}", (string id, LinkForm form, HttpContext context, Links links, ActivityLog log, SettingsStore settings) => Save(id, form, context, links, log, settings));
+        app.MapPost("/api/links/{id}", (string id, LinkForm form, HttpContext context, Links links, Sensors sensors, ActivityLog log, SettingsStore settings) => Save(id, form, context, links, sensors, log, settings));
 
         // Fills in what a link is missing from its site: one link a call, so the page can show how far along it is.
         app.MapPost("/api/links/{id}/refresh", async (string id, HttpContext context, Links links, ActivityLog log) =>
@@ -1447,7 +1490,7 @@ public static class LinksApi
             return Results.Ok(new { link = done.Link, changed = c, problem = done.Problem });
         });
 
-        app.MapPost("/api/links/{id}/delete", (string id, HttpContext context, Links links, ActivityLog log) =>
+        app.MapPost("/api/links/{id}/delete", (string id, HttpContext context, Links links, Sensors sensors, ActivityLog log) =>
         {
             if (Access.RefuseUnless(context, Permissions.LinksEdit) is { } refused)
             {
@@ -1458,6 +1501,11 @@ public static class LinksApi
                 return Results.NotFound(new { error = "That link isn't here any more." });
             }
             log.Record(context, "links", "link.delete", $"Took {gone.Name} off Links");
+            // The sensor that watched it was made for it, and goes with it.
+            if (gone.Sensor is { } watcher && sensors.Delete(watcher) is { } sensor)
+            {
+                log.Record(context, "sensors", "sensor.delete", $"Deleted the sensor {sensor.Name}, which watched that link");
+            }
             return Results.Ok();
         });
     }
@@ -1479,18 +1527,56 @@ public static class LinksApi
 
     private static string Span(int seconds) => seconds < 60 ? $"{seconds} seconds" : seconds == 60 ? "minute" : $"{seconds / 60} minutes";
 
-    private static IResult Save(string? id, LinkForm form, HttpContext context, Links links, ActivityLog log, SettingsStore settings)
+    private static IResult Save(string? id, LinkForm form, HttpContext context, Links links, Sensors sensors, ActivityLog log, SettingsStore settings)
     {
         if (Access.RefuseUnless(context, Permissions.LinksEdit) is { } refused)
         {
             return refused;
         }
-        var (link, problem) = links.Save(id, form, ActivityLog.Who(context), DevTools.On(settings));
+        // Watching makes or changes a sensor, so it's for people who may change sensors; checked before anything is saved.
+        var watch = form.Watch;
+        if (watch is not null)
+        {
+            if (Access.RefuseUnless(context, Permissions.SensorsEdit) is { } cannot)
+            {
+                return cannot;
+            }
+            var was = id is null ? null : links.All().FirstOrDefault(l => l.Id == id)?.Sensor;
+            if (watch.On && sensors.CanWatch(was, Links.Clean(form.Url), new RuleForm(watch.After, watch.Again, watch.Back)) is { } bad)
+            {
+                return Results.BadRequest(new { error = bad });
+            }
+        }
+        var who = ActivityLog.Who(context);
+        var (link, problem) = links.Save(id, form, who, DevTools.On(settings));
         if (link is null)
         {
             return Results.BadRequest(new { error = problem });
         }
         log.Record(context, "links", id is null ? "link.add" : "link.change", id is null ? $"Put {link.Name} on Links" : $"Changed {link.Name} on Links");
+        if (watch is { On: true })
+        {
+            // Channels are picked by people who may change alert settings; for anyone else the sensor keeps, or starts with, the usual ones.
+            var channels = Access.Can(context, Permissions.SensorsAlerts) ? watch.Channels : null;
+            var (sensor, failed) = sensors.Watch(link.Sensor, link.Name, link.Url, link.Group, new RuleForm(watch.After, watch.Again, watch.Back), channels, who);
+            if (sensor is null)
+            {
+                return Results.BadRequest(new { error = failed });
+            }
+            if (sensor != link.Sensor)
+            {
+                log.Record(context, "sensors", "sensor.add", $"Added the sensor {link.Name}, which watches that link");
+            }
+            link = links.SetSensor(link.Id, sensor) ?? link;
+        }
+        else if (watch is { On: false } && link.Sensor is { } watcher)
+        {
+            if (sensors.Delete(watcher) is { } gone)
+            {
+                log.Record(context, "sensors", "sensor.delete", $"Deleted the sensor {gone.Name}: its link isn't watched any more");
+            }
+            link = links.SetSensor(link.Id, null) ?? link;
+        }
         return Results.Ok(link);
     }
 }

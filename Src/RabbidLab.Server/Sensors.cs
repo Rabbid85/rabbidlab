@@ -101,7 +101,16 @@ public sealed class Sensor
 
     /// <summary>Words to find it by, lower case.</summary>
     public List<string>? Tags { get; set; }
+
+    /// <summary>The sensor it sits behind, by id: while that one is down, this one waits instead of alerting.</summary>
+    public string? DependsOn { get; set; }
     public bool Paused { get; set; }
+
+    /// <summary>When a timed pause ends; null for a pause that lasts until it's started again.</summary>
+    public DateTime? PausedUntil { get; set; }
+
+    /// <summary>The sensor it was paused along with, by id: starting that one again starts this one too.</summary>
+    public string? PausedWith { get; set; }
     public DateTime Added { get; set; }
     public string? AddedBy { get; set; }
 }
@@ -134,6 +143,13 @@ public sealed class SensorsFile
 
     /// <summary>Whether Rules is the whole list as kept (named, added, deleted), not changes to the four it started with.</summary>
     public bool RulesOwned { get; set; }
+
+    /// <summary>Down alerts close together go out as one: the first waits GatherSecs for others to join it.</summary>
+    public bool Gather { get; set; }
+    public int GatherSecs { get; set; } = 60;
+
+    /// <summary>When new sensors alert, set in Settings, Sensors; null for what the default saved settings say (Normal: after 5 minutes).</summary>
+    public AlertRule? Start { get; set; }
 }
 
 /// <summary>One check: when, and the reply time in milliseconds, or -1 for none.</summary>
@@ -167,6 +183,9 @@ public sealed class SensorState
 
     /// <summary>Someone was emailed that it's down, so they're told when it's back.</summary>
     public bool Told { get; set; }
+
+    /// <summary>When it last came back from down: what depends on it waits until its own next check.</summary>
+    public DateTime? Back { get; set; }
     public List<Sample> Recent { get; set; } = [];
     public List<HourCount> Hours { get; set; } = [];
     public List<SensorEvent> Events { get; set; } = [];
@@ -435,7 +454,7 @@ public sealed record SensorForm(string? Name, string? Kind, string? Target, int?
     string? Expect = null, string? Text = null, string? Address = null, int? WarnDays = null, string? Login = null, LoginForm? NewLogin = null, List<string>? Watch = null, string? Pin = null,
     string? Product = null, int? WarnFree = null, string? Value = null, string? Oid = null, string? Interface = null, RuleForm? Custom = null,
     string? Seat = null, string? Service = null, string? Drive = null, List<string>? Channels = null, int? DownAfter = null, int? CertDays = null, bool? Invert = null,
-    int? Timeout = null, List<string>? Tags = null);
+    int? Timeout = null, List<string>? Tags = null, string? DependsOn = null);
 
 public sealed record RuleForm(int? After, int? Again, bool? Back, string? Name = null);
 
@@ -473,6 +492,9 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
     private readonly JsonFile<SensorsFile> file = folder.Json<SensorsFile>("sensors.json", Json);
     private readonly JsonFile<SensorStatesFile> states = folder.Json<SensorStatesFile>("sensor-state.json", Compact);
     private readonly HashSet<string> busy = []; // being checked right now
+    private readonly HashSet<string> soon = []; // checked on the next round, whenever they were last checked
+    private readonly Dictionary<string, DateTime> held = []; // down alerts waiting for others to join them (Gather), from when
+    private readonly Dictionary<string, DateTime> tested = []; // when each sensor last sent a test alert
     private bool dirty;
     private DateTime saved;
 
@@ -518,6 +540,30 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
         return r;
     }
 
+    private static AlertRule Own(RuleForm form) => Timed(new AlertRule { Id = "custom", Name = "Custom", Color = "#8A8FA8" }, form);
+
+    private static AlertRule Own(AlertRule r) => new() { Id = "custom", Name = "Custom", Color = "#8A8FA8", After = r.After, Again = r.Again, Back = r.Back };
+
+    // When a sensor alerts: its own times, or for one from before sensors had them, the saved settings it was on.
+    private static AlertRule Alerting(SensorsFile f, Sensor s)
+    {
+        if (s.Rule == "custom" && s.Custom is { } own)
+        {
+            return own;
+        }
+        var rules = Rules(f);
+        return rules.FirstOrDefault(r => r.Id == s.Rule) ?? rules.First(r => r.Id == DefaultRule(f, rules));
+    }
+
+    // When new sensors alert.
+    private static AlertRule StartRule(SensorsFile f)
+    {
+        var rules = Rules(f);
+        return Own(f.Start ?? rules.First(r => r.Id == DefaultRule(f, rules)));
+    }
+
+    private static object Times(AlertRule r) => new { r.After, r.Again, r.Back };
+
     private SensorState State(string id)
     {
         var all = states.Read().States;
@@ -527,6 +573,52 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
         }
         return state;
     }
+
+    // What a down sensor waits on instead of alerting: the furthest one up its chain that's down, or that came back
+    // since this one was last checked. Null when it doesn't wait. Called under the lock.
+    private Sensor? Waits(Dictionary<string, Sensor> byId, Sensor s)
+    {
+        var mine = State(s.Id);
+        if (s.Paused || mine.Status != "down")
+        {
+            return null;
+        }
+        Sensor? found = null;
+        var seen = new HashSet<string> { s.Id };
+        for (var p = Above(byId, s); p is not null && seen.Add(p.Id); p = Above(byId, p))
+        {
+            var ps = State(p.Id);
+            if (!p.Paused && (ps.Status == "down" || ps.Back is { } back && (mine.Checked ?? DateTime.MinValue) < back))
+            {
+                found = p;
+            }
+        }
+        return found;
+    }
+
+    private static Sensor? Above(Dictionary<string, Sensor> byId, Sensor s) => s.DependsOn is { } id ? byId.GetValueOrDefault(id) : null;
+
+    // Everything that depends on a sensor, directly or through others.
+    private static List<Sensor> Behind(SensorsFile f, string id)
+    {
+        var found = new List<Sensor>();
+        var seen = new HashSet<string> { id };
+        var next = new Queue<string>([id]);
+        while (next.TryDequeue(out var at))
+        {
+            foreach (var s in f.Sensors.Where(s => s.DependsOn == at && seen.Add(s.Id)))
+            {
+                found.Add(s);
+                next.Enqueue(s.Id);
+            }
+        }
+        return found;
+    }
+
+    // Names as a list for an alert: a, b and c; past a few, a count.
+    private static string Few(List<string> names, int most = 8) => names.Count == 0 ? "Nothing else"
+        : names.Count > most ? $"{string.Join(", ", names.Take(most))} and {names.Count - most} more"
+        : names.Count == 1 ? names[0] : $"{string.Join(", ", names.Take(names.Count - 1))} and {names[^1]}";
 
     // --- What the page reads ------------------------------------------------------------------------------------------
 
@@ -540,23 +632,29 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
             var groups = Known(f);
             var place = groups.Select((g, i) => (g, i)).ToDictionary(p => p.g, p => p.i, Grouping.Same);
             var counts = f.Sensors.GroupBy(s => s.Rule).ToDictionary(g => g.Key, g => g.Count());
+            var byId = f.Sensors.ToDictionary(s => s.Id);
             return new
             {
-                sensors = f.Sensors.OrderBy(s => s.Group is { } g && place.TryGetValue(g, out var at) ? at : int.MaxValue).ThenBy(s => s.Name, Grouping.Same).Select(s => Row(s, State(s.Id))).ToList(),
+                sensors = f.Sensors.OrderBy(s => s.Group is { } g && place.TryGetValue(g, out var at) ? at : int.MaxValue).ThenBy(s => s.Name, Grouping.Same).Select(s => Row(s, State(s.Id), Waits(byId, s), Alerting(f, s))).ToList(),
                 groups,
                 rules = Rules(f).Select(r => new { r.Id, r.Name, r.Color, r.After, r.Again, r.Back, used = counts.GetValueOrDefault(r.Id) }).ToList(),
                 @default = DefaultRule(f, Rules(f)),
+                start = Times(StartRule(f)),
+                gather = new { on = f.Gather, secs = f.GatherSecs },
                 mail = mail.Ready,
                 last = f.Sensors.Select(s => State(s.Id).Checked).Max(),
             };
         }
     }
 
-    private static object Row(Sensor s, SensorState st) => new
+    // A sensor as the page has it. One that's down while something it depends on is down shows as wait.
+    private static object Row(Sensor s, SensorState st, Sensor? waits, AlertRule alert) => new
     {
         s.Id, s.Name, s.Kind, s.Target, s.Port, s.Server, s.Expect, s.Text, s.Address, s.WarnDays, s.Login, s.Watch, s.Pin, s.Product, s.WarnFree, s.Value, s.Oid, s.Interface, s.Seat, s.Service, s.Drive, s.Group, s.Every, s.Rule, s.Custom, s.Paused,
-        channels = s.Channels ?? [Channels.Email], s.DownAfter, s.CertDays, s.Invert, s.Timeout, tags = s.Tags ?? [],
-        status = s.Paused ? "paused" : st.Status,
+        alert = Times(alert),
+        channels = s.Channels ?? [Channels.Email], s.DownAfter, s.CertDays, s.Invert, s.Timeout, tags = s.Tags ?? [], s.DependsOn, s.PausedUntil,
+        status = s.Paused ? "paused" : waits is not null ? "wait" : st.Status,
+        waits = waits?.Name,
         since = st.Since,
         ms = st.Ms,
         note = st.Note,
@@ -579,12 +677,13 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
     {
         lock (gate)
         {
-            if (file.Read().Sensors.FirstOrDefault(s => s.Id == id) is not { } s)
+            var f = file.Read();
+            if (f.Sensors.FirstOrDefault(s => s.Id == id) is not { } s)
             {
                 return null;
             }
             var st = State(id);
-            return new { sensor = Row(s, st), up24 = Uptime(st, 24), up7 = Uptime(st, 168), samples = st.Recent.ToList(), events = st.Events.AsEnumerable().Reverse().ToList(), alerted = st.Alerted };
+            return new { sensor = Row(s, st, Waits(f.Sensors.ToDictionary(x => x.Id), s), Alerting(f, s)), up24 = Uptime(st, 24), up7 = Uptime(st, 168), samples = st.Recent.ToList(), events = st.Events.AsEnumerable().Reverse().ToList(), alerted = st.Alerted };
         }
     }
 
@@ -801,15 +900,46 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
                     return (null, "Pick the times for this sensor's own alerts.");
                 }
                 next.Rule = "custom";
-                next.Custom = Timed(new AlertRule { Id = "custom", Name = "Custom", Color = "#8A8FA8" }, form.Custom);
+                next.Custom = Own(form.Custom);
+            }
+            else if (rules.Any(r => r.Id == form.Rule))
+            {
+                next.Rule = form.Rule!;
+            }
+            else if (old is not null)
+            {
+                // Not sent: it keeps the times it has.
+                next.Rule = old.Rule;
+                next.Custom = old.Custom;
             }
             else
             {
-                next.Rule = rules.Any(r => r.Id == form.Rule) ? form.Rule! : old?.Rule is { } kept && rules.Any(r => r.Id == kept) ? kept : DefaultRule(f, rules);
+                next.Rule = "custom";
+                next.Custom = StartRule(f);
             }
             // Where its alerts go: the channels sent; else the ones it had; a new one starts with those on for new sensors.
             next.Channels = form.Channels is { } picked ? [.. picked.Where(channels.Known).Distinct()] : old is not null ? old.Channels : channels.Defaults();
+            // What it depends on: a sensor that's here and doesn't depend on it already. Not sent keeps what it had.
+            var above = form.DependsOn is null ? old?.DependsOn : form.DependsOn.Trim();
+            if (string.IsNullOrEmpty(above) || form.DependsOn is null && f.Sensors.All(s => s.Id != above))
+            {
+                next.DependsOn = null;
+            }
+            else if (f.Sensors.All(s => s.Id != above))
+            {
+                return (null, "The sensor it depends on isn't here any more.");
+            }
+            else if (above == next.Id || Behind(f, next.Id).Any(s => s.Id == above))
+            {
+                return (null, "It can't depend on that one, because that one depends on it.");
+            }
+            else
+            {
+                next.DependsOn = above;
+            }
             next.Paused = old?.Paused ?? false;
+            next.PausedUntil = old?.PausedUntil;
+            next.PausedWith = old?.PausedWith;
             next.Added = old?.Added ?? Now;
             next.AddedBy = old is null ? by : old.AddedBy;
             if (testing && DevTools.IsTest(next.Target))
@@ -852,6 +982,12 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
             if (gone is not null)
             {
                 f.Sensors.Remove(gone);
+                // What depended on it or was paused with it is on its own now.
+                foreach (var s in f.Sensors.Where(s => s.DependsOn == id || s.PausedWith == id))
+                {
+                    s.DependsOn = s.DependsOn == id ? null : s.DependsOn;
+                    s.PausedWith = s.PausedWith == id ? null : s.PausedWith;
+                }
                 file.Save(f);
                 logins.Prune(f.Sensors);
                 states.Read().States.Remove(id);
@@ -861,42 +997,233 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
         }
     }
 
-    /// <summary>Pauses a sensor or starts it again. A paused sensor isn't checked and emails nobody.</summary>
-    public Sensor? Pause(string id, bool paused)
+    /// <summary>
+    /// Pauses a sensor, for some minutes or until it's started again, or starts it again. A paused sensor isn't checked and
+    /// alerts nobody. With dependents, what depends on it and isn't paused already pauses with it, and starts again with it.
+    /// The sensor and how many others went with it, or null when it isn't there.
+    /// </summary>
+    public (Sensor Sensor, int Also)? Pause(string id, bool paused, int? minutes = null, bool dependents = false)
     {
         lock (gate)
         {
             var f = file.Read();
-            var at = f.Sensors.FindIndex(s => s.Id == id);
-            if (at < 0)
+            if (f.Sensors.FirstOrDefault(s => s.Id == id) is not { } s)
             {
                 return null;
             }
-            var s = f.Sensors[at];
-            // A copy with everything it has (credentials, page text, its own alert times, its seat), only paused or not.
-            var copy = JsonSerializer.Deserialize<Sensor>(JsonSerializer.Serialize(s))!;
-            copy.Paused = paused;
-            f.Sensors[at] = copy;
-            file.Save(f);
-            if (!paused)
+            var also = 0;
+            if (paused)
             {
-                // Starting again is a clean start: it's checked at once, and an old outage isn't carried on.
-                var st = State(id);
-                st.Checked = null;
-                st.Fails = 0;
-                st.FailedAt = null;
-                st.Alerted = null;
-                st.Told = false;
-                if (st.Status == "down")
+                var until = minutes is > 0 ? Now.AddMinutes(minutes.Value) : (DateTime?) null;
+                Hold(s, until, null);
+                foreach (var d in dependents ? Behind(f, id).Where(d => !d.Paused) : [])
                 {
-                    st.Status = "new";
-                    st.Since = null;
+                    Hold(d, until, s);
+                    also++;
                 }
-                dirty = true;
             }
-            return f.Sensors[at];
+            else
+            {
+                Start(s, false);
+                foreach (var d in f.Sensors.Where(d => d.Paused && d.PausedWith == id))
+                {
+                    Start(d, false);
+                    also++;
+                }
+            }
+            file.Save(f);
+            return (s, also);
         }
     }
+
+    // Paused until a time, or until started again; with, when it went along with another. Under the lock.
+    private void Hold(Sensor s, DateTime? until, Sensor? with)
+    {
+        s.Paused = true;
+        s.PausedUntil = until;
+        s.PausedWith = with?.Id;
+        held.Remove(s.Id);
+        Event(State(s.Id), Now, "pause", (with is null ? "Paused" : $"Paused with {with.Name}") + (until is { } u ? $" until {Local(u)}" : ""));
+        dirty = true;
+    }
+
+    // Starting again is a clean start: it's checked at once, and an old outage isn't carried on. Under the lock.
+    private void Start(Sensor s, bool timed)
+    {
+        s.Paused = false;
+        s.PausedUntil = null;
+        s.PausedWith = null;
+        var st = State(s.Id);
+        st.Checked = null;
+        st.Fails = 0;
+        st.FailedAt = null;
+        st.Alerted = null;
+        st.Told = false;
+        if (st.Status == "down")
+        {
+            st.Status = "new";
+            st.Since = null;
+        }
+        Event(st, Now, "resume", timed ? "Started again when its pause ended" : "Started again");
+        dirty = true;
+    }
+
+    /// <summary>Puts a sensor in another group, or in none, and changes nothing else. Why not, or null.</summary>
+    public string? MoveTo(string id, string? group)
+    {
+        lock (gate)
+        {
+            var f = file.Read();
+            if (f.Sensors.FirstOrDefault(s => s.Id == id) is not { } s)
+            {
+                return "That sensor isn't here any more.";
+            }
+            var known = Known(f);
+            var (name, full) = Grouping.Join(known, group);
+            if (full is not null)
+            {
+                return full;
+            }
+            s.Group = name;
+            f.Groups = known;
+            file.Save(f);
+            return null;
+        }
+    }
+
+    /// <summary>Whether down alerts close together go out as one, and how long the first waits for others. Why not, or null.</summary>
+    public string? GatherAlerts(bool on, int? secs)
+    {
+        if (secs is not (30 or 60 or 120 or 300))
+        {
+            return "Pick one of the times offered.";
+        }
+        lock (gate)
+        {
+            var f = file.Read();
+            f.Gather = on;
+            f.GatherSecs = secs.Value;
+            file.Save(f);
+            return null;
+        }
+    }
+
+    /// <summary>When new sensors alert. Why not, or null.</summary>
+    public string? SetStart(RuleForm form)
+    {
+        if (Timings(form) is { } problem)
+        {
+            return problem;
+        }
+        lock (gate)
+        {
+            var f = file.Read();
+            f.Start = Own(form);
+            file.Save(f);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Gives sensors these alert times, and these channels when sent. What each depends on is left as it is.
+    /// How many it changed, or why not.
+    /// </summary>
+    public (int Changed, string? Problem) CopyAlerts(RuleForm form, List<string>? to, IReadOnlyList<string>? ids)
+    {
+        if (Timings(form) is { } problem)
+        {
+            return (0, problem);
+        }
+        lock (gate)
+        {
+            var f = file.Read();
+            var picked = (ids ?? []).ToHashSet();
+            var changed = 0;
+            foreach (var s in f.Sensors.Where(s => picked.Contains(s.Id)))
+            {
+                s.Rule = "custom";
+                s.Custom = Own(form);
+                if (to is not null)
+                {
+                    s.Channels = [.. to.Where(channels.Known).Distinct()];
+                }
+                changed++;
+            }
+            file.Save(f);
+            return (changed, null);
+        }
+    }
+
+    /// <summary>Whether a sensor with this id is here.</summary>
+    public bool Has(string id)
+    {
+        lock (gate)
+        {
+            return file.Read().Sensors.Any(s => s.Id == id);
+        }
+    }
+
+    /// <summary>How the sensor watching a link is doing, as Links shows a link; null when it's paused, gone or not checked yet.</summary>
+    public LinkState? AsLink(string id)
+    {
+        lock (gate)
+        {
+            var f = file.Read();
+            if (f.Sensors.FirstOrDefault(s => s.Id == id) is not { Paused: false } s)
+            {
+                return null;
+            }
+            var st = State(id);
+            if (st.Status is not ("up" or "warn" or "down"))
+            {
+                return null;
+            }
+            var down = st.Status == "down";
+            var why = st.Note is { Length: > 0 } n ? char.ToLowerInvariant(n[0]) + n[1..] : null;
+            return new LinkState(!down, down, st.Ms, null, down ? st.Since : null, st.Checked, down ? why : null);
+        }
+    }
+
+    /// <summary>Why a link can't be watched as asked, or null: it has to be a web address, the times have to be offered ones, and there has to be room.</summary>
+    public string? CanWatch(string? sensor, string? url, RuleForm alerts)
+    {
+        if (url is null || !url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) && !url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Only web addresses (http:// or https://) can be watched.";
+        }
+        if (Timings(alerts) is { } problem)
+        {
+            return problem;
+        }
+        lock (gate)
+        {
+            var f = file.Read();
+            return f.Sensors.Any(s => s.Id == sensor) || f.Sensors.Count < Most ? null : $"That's {Most} sensors, which is as many as {Product.Title} keeps.";
+        }
+    }
+
+    /// <summary>
+    /// The sensor that watches a link: a web page sensor made for it, or the one it has, given the link's name, address and
+    /// group and the alerts asked for. Channels null keeps the ones it has (a new one starts with the usual ones). Its id, or why not.
+    /// </summary>
+    public (string? Id, string? Problem) Watch(string? sensor, string name, string url, string? group, RuleForm alerts, List<string>? to, string by)
+    {
+        Sensor? old;
+        lock (gate)
+        {
+            old = file.Read().Sensors.FirstOrDefault(s => s.Id == sensor && s.Kind == "web");
+        }
+        var form = old is null
+            ? new SensorForm(name, "web", url, null, null, group, 60, "custom", Custom: alerts, Channels: to)
+            : FormOf(old) with { Name = name, Target = url, Group = group, Rule = "custom", Custom = alerts, Channels = to };
+        var (saved, problem) = Save(old?.Id, form, by);
+        return (saved?.Id, problem);
+    }
+
+    // A sensor as a form that saves it as it is.
+    private static SensorForm FormOf(Sensor s) => new(s.Name, s.Kind, s.Target, s.Port, s.Server, s.Group, s.Every, s.Rule, s.Expect, s.Text, s.Address, s.WarnDays, s.Login, null, s.Watch, s.Pin,
+        s.Product, s.WarnFree, s.Value, s.Oid, s.Interface, s.Custom is { } c ? new RuleForm(c.After, c.Again, c.Back) : null, s.Seat, s.Service, s.Drive, s.Channels, s.DownAfter, s.CertDays, s.Invert,
+        s.Timeout, s.Tags, s.DependsOn);
 
     public string? AddGroup(string? name) => Groups(known => Grouping.Add(known, name));
 
@@ -1136,8 +1463,20 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
         {
             Sweep();
             var now = Now;
-            due = [.. file.Read().Sensors.Where(s => !s.Paused && !busy.Contains(s.Id) && (State(s.Id).Checked is not { } last || (now - last).TotalSeconds >= s.Every - 1)).Take(64)];
-            due.ForEach(s => busy.Add(s.Id));
+            var f = file.Read();
+            // Timed pauses that are over.
+            var over = f.Sensors.Where(s => s.Paused && s.PausedUntil is { } end && end <= now).ToList();
+            over.ForEach(s => Start(s, true));
+            if (over.Count > 0)
+            {
+                file.Save(f);
+            }
+            due = [.. f.Sensors.Where(s => !s.Paused && !busy.Contains(s.Id) && (soon.Contains(s.Id) || State(s.Id).Checked is not { } last || (now - last).TotalSeconds >= s.Every - 1)).Take(64)];
+            due.ForEach(s =>
+            {
+                busy.Add(s.Id);
+                soon.Remove(s.Id);
+            });
         }
         await Parallel.ForEachAsync(due, new ParallelOptions { MaxDegreeOfParallelism = 16, CancellationToken = stop }, async (s, t) => await Check(s, t));
         await Alerts(stop);
@@ -1228,6 +1567,9 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
                 if (before == "down")
                 {
                     Event(st, now, "up", $"Came back after {Span(now - (st.Since ?? now))}");
+                    // What depends on it and is down is checked again now: back too, or down on its own and alerting.
+                    st.Back = now;
+                    Behind(file.Read(), s.Id).Where(d => State(d.Id).Status == "down").ToList().ForEach(d => soon.Add(d.Id));
                 }
                 if (before != st.Status)
                 {
@@ -1270,23 +1612,32 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
         }
     }
 
-    // Who should hear about what, worked out under the lock and sent outside it, to each of the sensor's channels.
+    // Who should hear about what, worked out under the lock and sent outside it, to each of the sensor's channels. A down
+    // sensor waiting on one it depends on says nothing. With Gather on, a first down alert waits a little for others to join it.
     private async Task Alerts(CancellationToken stop)
     {
-        var send = new List<(string Id, MailNote Note, string Said, List<string> To)>();
+        var send = new List<(List<string> Ids, MailNote Note, string Channel)>();
+        var said = new Dictionary<string, string>(); // what each sensor's history says went
         lock (gate)
         {
             var f = file.Read();
-            var rules = Rules(f).ToDictionary(r => r.Id);
             var now = Now;
-            var down = f.Sensors.Where(s => !s.Paused && State(s.Id).Status == "down").Select(s => s.Name).ToList();
+            var byId = f.Sensors.ToDictionary(s => s.Id);
+            var waits = f.Sensors.ToDictionary(s => s.Id, s => Waits(byId, s));
+            var down = f.Sensors.Where(s => !s.Paused && State(s.Id).Status == "down" && waits[s.Id] is null).ToList();
+            // A sensor's channels that can take an alert now.
+            List<string> To(Sensor s) => [.. (s.Channels ?? [Channels.Email]).Where(channels.Ready)];
+            void Queue(Sensor s, MailNote note, string text)
+            {
+                To(s).ForEach(c => send.Add(([s.Id], note, c)));
+                said[s.Id] = text;
+            }
             foreach (var s in f.Sensors.Where(s => !s.Paused))
             {
                 var st = State(s.Id);
-                var rule = s.Rule == "custom" && s.Custom is { } own ? own : rules.GetValueOrDefault(s.Rule) ?? rules[DefaultRule(f, [.. rules.Values])];
-                // Its channels that can take an alert now. With none, nothing is marked as told, so it's said once one is set up.
-                var to = (s.Channels ?? [Channels.Email]).Where(channels.Ready).ToList();
-                if (to.Count == 0 && st.Status != "up")
+                var rule = Alerting(f, s);
+                // With no channel, or waiting on what it depends on, nothing is marked as told: it alerts once it can, if it's still down.
+                if ((To(s).Count == 0 && st.Status != "up") || waits[s.Id] is not null)
                 {
                     continue;
                 }
@@ -1294,14 +1645,13 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
                 {
                     var first = st.Alerted is null && (now - (st.Since ?? now)).TotalMinutes >= rule.After;
                     var again = st.Alerted is { } last && rule.Again > 0 && (now - last).TotalMinutes >= rule.Again;
-                    if (first || again)
+                    if (first && f.Gather)
                     {
-                        var others = down.Where(n => n != s.Name).ToList();
-                        send.Add((s.Id, new MailNote($"{s.Name} is {(again ? "still " : "")}down", "down",
-                        [
-                            ("Sensor", What(s)), ("Group", s.Group ?? "No group"), ("Down since", $"{Local(st.Since ?? now)} ({Span(now - (st.Since ?? now))})"),
-                            ("What it said", st.Note ?? "No reply"), ("Also down", others.Count == 0 ? "Nothing else" : string.Join(", ", others)),
-                        ]), again ? "Sent again: still down" : "Sent: down", to));
+                        held.TryAdd(s.Id, now);
+                    }
+                    else if (first || again)
+                    {
+                        Queue(s, DownNote(s, st, now, again, down, waits, byId), again ? "Sent again: still down" : "Sent: down");
                         st.Alerted = now;
                         st.Told = true;
                         dirty = true;
@@ -1309,7 +1659,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
                 }
                 else if (st.Status == "warn" && !st.Told && rule.After >= 0)
                 {
-                    send.Add((s.Id, new MailNote($"{s.Name}: {st.Note}", "warn", [("Sensor", What(s)), ("Group", s.Group ?? "No group")]), "Sent: warning", to));
+                    Queue(s, new MailNote($"{s.Name}: {st.Note}", "warn", [("Sensor", What(s)), ("Group", s.Group ?? "No group")]), "Sent: warning");
                     st.Told = true;
                     dirty = true;
                 }
@@ -1317,45 +1667,164 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
                 {
                     // Back, or a warning cleared: said only when the outage was, and the rule wants it.
                     var outage = st.Events.LastOrDefault(e => e.What == "up");
-                    if (st.Alerted is not null && rule.Back && to.Count > 0)
+                    if (st.Alerted is not null && rule.Back)
                     {
-                        send.Add((s.Id, new MailNote($"{s.Name} is back up", "up",
-                            [("Sensor", What(s)), ("Group", s.Group ?? "No group"), ("What happened", outage?.Text ?? "Came back"), ("Answering in", st.Ms is { } ms ? $"{ms} ms" : "time")]), "Sent: back up", to));
+                        Queue(s, new MailNote($"{s.Name} is back up", "up",
+                            [("Sensor", What(s)), ("Group", s.Group ?? "No group"), ("What happened", outage?.Text ?? "Came back"), ("Answering in", st.Ms is { } ms ? $"{ms} ms" : "time")]), "Sent: back up");
                     }
                     st.Told = false;
                     st.Alerted = null;
                     dirty = true;
                 }
             }
-        }
-        foreach (var (id, note, said, to) in send)
-        {
-            var went = new List<string>();
-            var failed = new List<string>();
-            foreach (var channel in to)
+            // Gathered alerts go once the first has waited long enough (at once if Gather was turned off): the ones still down, together.
+            if (held.Count > 0 && (!f.Gather || (now - held.Values.Min()).TotalSeconds >= f.GatherSecs))
             {
-                var problem = await channels.Send(channel, note, stop);
-                var name = channels.Name(channel);
-                if (problem is null)
+                var ready = held.Keys.Where(byId.ContainsKey).Select(id => byId[id]).Where(s => down.Contains(s) && To(s).Count > 0).ToList();
+                held.Clear();
+                foreach (var channel in ready.SelectMany(To).Distinct().ToList())
                 {
-                    went.Add(name);
+                    var with = ready.Where(s => To(s).Contains(channel)).ToList();
+                    send.Add(([.. with.Select(s => s.Id)], with.Count == 1 ? DownNote(with[0], State(with[0].Id), now, false, down, waits, byId) : Gathered(with, now, f, down, waits, byId), channel));
                 }
-                else
+                foreach (var s in ready)
                 {
-                    failed.Add(channel == Channels.Email ? $"The email didn't go: {problem}" : $"{name} didn't take it: {problem}");
+                    var st = State(s.Id);
+                    st.Alerted = now;
+                    st.Told = true;
+                    said[s.Id] = ready.Count == 1 ? "Sent: down" : $"Sent: down, in one alert with {ready.Count - 1} other{(ready.Count == 2 ? "" : "s")}";
                 }
-            }
-            lock (gate)
-            {
-                var st = State(id);
-                if (went.Count > 0)
-                {
-                    Event(st, Now, "email", $"{said} · {string.Join(", ", went)}");
-                }
-                failed.ForEach(text => Event(st, Now, "problem", text));
                 dirty = true;
             }
         }
+        var went = new Dictionary<string, List<string>>();
+        var failed = new Dictionary<string, List<string>>();
+        foreach (var (ids, note, channel) in send)
+        {
+            var problem = await channels.Send(channel, note, stop);
+            var name = channels.Name(channel);
+            foreach (var id in ids)
+            {
+                var into = problem is null ? went : failed;
+                if (!into.TryGetValue(id, out var list))
+                {
+                    into[id] = list = [];
+                }
+                list.Add(problem is null ? name : channel == Channels.Email ? $"The email didn't go: {problem}" : $"{name} didn't take it: {problem}");
+            }
+        }
+        if (said.Count == 0)
+        {
+            return;
+        }
+        lock (gate)
+        {
+            foreach (var (id, text) in said)
+            {
+                var st = State(id);
+                if (went.TryGetValue(id, out var to))
+                {
+                    Event(st, Now, "email", $"{text} · {string.Join(", ", to)}");
+                }
+                failed.GetValueOrDefault(id)?.ForEach(t => Event(st, Now, "problem", t));
+            }
+            dirty = true;
+        }
+    }
+
+    // The alert for one sensor that's down: what it is, since when, what it said, what else is down, and what waits on it.
+    private static MailNote DownNote(Sensor s, SensorState st, DateTime now, bool again, List<Sensor> down, Dictionary<string, Sensor?> waits, Dictionary<string, Sensor> byId)
+    {
+        var behind = waits.Where(w => w.Value?.Id == s.Id).Select(w => byId[w.Key].Name).ToList();
+        List<(string, string)> facts =
+        [
+            ("Sensor", What(s)), ("Group", s.Group ?? "No group"), ("Down since", $"{Local(st.Since ?? now)} ({Span(now - (st.Since ?? now))})"),
+            ("What it said", st.Note ?? "No reply"), ("Also down", Few([.. down.Where(x => x.Id != s.Id).Select(x => x.Name)])),
+        ];
+        if (behind.Count > 0)
+        {
+            facts.Add(("Waiting on it", Few(behind)));
+        }
+        return new MailNote($"{s.Name} is {(again ? "still " : "")}down", "down", facts);
+    }
+
+    // One alert for several that went down close together: what's down, what waits on each, when, and what's still up. Under the lock.
+    private MailNote Gathered(List<Sensor> with, DateTime now, SensorsFile f, List<Sensor> down, Dictionary<string, Sensor?> waits, Dictionary<string, Sensor> byId)
+    {
+        List<(string, string)> facts = [("Down", Few([.. with.Select(s => s.Name)], 20))];
+        foreach (var s in with)
+        {
+            var behind = waits.Where(w => w.Value?.Id == s.Id).Select(w => byId[w.Key].Name).ToList();
+            if (behind.Count > 0)
+            {
+                facts.Add(($"Waiting on {s.Name}", Few(behind)));
+            }
+        }
+        var times = with.Select(s => State(s.Id).Since ?? now).ToList();
+        var spread = times.Max() - times.Min();
+        facts.Add(("Since", $"{Local(times.Min())} ({(spread.TotalSeconds < 1 ? "all at once" : $"all within {Span(spread)}")})"));
+        var others = down.Where(s => !with.Contains(s)).Select(s => s.Name).ToList();
+        if (others.Count > 0)
+        {
+            facts.Add(("Also down", Few(others)));
+        }
+        var up = f.Sensors.Where(s => !s.Paused && State(s.Id).Status is "up" or "warn").Select(s => s.Name).ToList();
+        facts.Add(("Still up", up.Count <= 8 ? Few(up) : $"{up.Count} others"));
+        return new MailNote($"{with.Count} sensors are down", "down", facts);
+    }
+
+    /// <summary>
+    /// Sends a sensor's down alert, marked as a test, to the channels it alerts. Where it went and what didn't, or why it
+    /// couldn't be sent at all. One every 10 seconds per sensor, so a double click doesn't send two.
+    /// </summary>
+    public async Task<(List<string> Went, List<string> Failed, string? Problem)> TestAlert(string id, string by, CancellationToken stop)
+    {
+        MailNote note;
+        List<string> to;
+        lock (gate)
+        {
+            if (file.Read().Sensors.FirstOrDefault(x => x.Id == id) is not { } s)
+            {
+                return ([], [], "That sensor isn't here any more.");
+            }
+            to = [.. (s.Channels ?? [Channels.Email]).Where(channels.Ready)];
+            if (to.Count == 0)
+            {
+                return ([], [], "It has nowhere to send alerts. Change it and pick a channel under Send to, or set up email.");
+            }
+            if (tested.TryGetValue(id, out var last) && (Now - last).TotalSeconds < 10)
+            {
+                return ([], [], "A test alert just went. Try again in a few seconds.");
+            }
+            tested[id] = Now;
+            note = new MailNote($"Test: {s.Name} is down", "down", [("Sensor", What(s)), ("Group", s.Group ?? "No group"), ("This is a test", $"{by} sent it from the sensor's page. Nothing is down.")]);
+        }
+        var went = new List<string>();
+        var failed = new List<string>();
+        foreach (var channel in to)
+        {
+            var problem = await channels.Send(channel, note, stop);
+            var name = channels.Name(channel);
+            if (problem is null)
+            {
+                went.Add(name);
+            }
+            else
+            {
+                failed.Add(channel == Channels.Email ? $"The email didn't go: {problem}" : $"{name} didn't take it: {problem}");
+            }
+        }
+        lock (gate)
+        {
+            var st = State(id);
+            if (went.Count > 0)
+            {
+                Event(st, Now, "email", $"Sent a test alert · {string.Join(", ", went)}");
+            }
+            failed.ForEach(t => Event(st, Now, "problem", t));
+            dirty = true;
+        }
+        return (went, failed, null);
     }
 
     /// <summary>What a sensor checks, in a few words: Ping · 192.168.2.27.</summary>
@@ -1473,11 +1942,84 @@ public static class SensorsApi
             {
                 return refused;
             }
-            if (sensors.Pause(id, form.Paused) is not { } sensor)
+            if (form.Minutes is not (null or (>= 1 and <= 10080)))
+            {
+                return Results.BadRequest(new { error = "A pause is a week at most." });
+            }
+            if (sensors.Pause(id, form.Paused, form.Minutes, form.Dependents) is not var (sensor, also))
             {
                 return Results.NotFound(new { error = "That sensor isn't here any more." });
             }
-            log.Record(context, "sensors", form.Paused ? "sensor.pause" : "sensor.resume", form.Paused ? $"Paused the sensor {sensor.Name}" : $"Started the sensor {sensor.Name} again");
+            var others = also == 0 ? "" : $" and the {also} that depend on it";
+            log.Record(context, "sensors", form.Paused ? "sensor.pause" : "sensor.resume", form.Paused
+                ? $"Paused the sensor {sensor.Name}{others}{(form.Minutes is { } m ? $" for {(m % 60 == 0 ? $"{m / 60} hour{(m == 60 ? "" : "s")}" : $"{m} minutes")}" : "")}"
+                : $"Started the sensor {sensor.Name}{others} again");
+            return Results.Ok(sensors.View());
+        });
+
+        // When new sensors alert (Settings, Sensors).
+        app.MapPost("/api/sensors/start", (RuleForm form, HttpContext context, Sensors sensors, ActivityLog log) =>
+        {
+            if (Access.RefuseUnless(context, Permissions.SensorsAlerts) is { } refused)
+            {
+                return refused;
+            }
+            if (sensors.SetStart(form) is { } problem)
+            {
+                return Results.BadRequest(new { error = problem });
+            }
+            log.Record(context, "sensors", "sensor.start", "Changed when new sensors alert");
+            return Results.Ok(sensors.View());
+        });
+
+        // One sensor's alerts, or the ones new sensors start with, given to other sensors.
+        app.MapPost("/api/sensors/copy", (CopyForm form, HttpContext context, Sensors sensors, ActivityLog log) =>
+        {
+            if (Access.RefuseUnless(context, Permissions.SensorsAlerts) is { } refused)
+            {
+                return refused;
+            }
+            var (changed, problem) = sensors.CopyAlerts(new RuleForm(form.After, form.Again, form.Back), form.Channels, form.Ids);
+            if (problem is not null)
+            {
+                return Results.BadRequest(new { error = problem });
+            }
+            log.Record(context, "sensors", "sensor.copy", $"Changed the alerts on {changed} sensor{(changed == 1 ? "" : "s")}");
+            return Results.Ok(new { changed, now = sensors.View() });
+        });
+
+        // The sensor's down alert, marked as a test, to the channels it alerts.
+        app.MapPost("/api/sensors/{id}/test", async (string id, HttpContext context, Sensors sensors, ActivityLog log) =>
+        {
+            if (Access.RefuseUnless(context, Permissions.SensorsAlerts) is { } refused)
+            {
+                return refused;
+            }
+            var (went, failed, problem) = await sensors.TestAlert(id, ActivityLog.Who(context), context.RequestAborted);
+            if (problem is not null)
+            {
+                return Results.BadRequest(new { error = problem });
+            }
+            log.Record(context, "sensors", "sensor.test", $"Sent a test alert for {sensors.All().FirstOrDefault(s => s.Id == id)?.Name ?? id}");
+            return Results.Ok(new { went, failed });
+        });
+
+        // A sensor dragged to another group: only its group changes.
+        app.MapPost("/api/sensors/{id}/move", (string id, MoveForm form, HttpContext context, Sensors sensors) =>
+            Access.RefuseUnless(context, Permissions.SensorsEdit) ?? (sensors.MoveTo(id, form.Group) is { } problem
+                ? (IResult) Results.BadRequest(new { error = problem }) : Results.Ok(sensors.View())));
+
+        app.MapPost("/api/sensors/gather", (GatherForm form, HttpContext context, Sensors sensors, ActivityLog log) =>
+        {
+            if (Access.RefuseUnless(context, Permissions.SensorsAlerts) is { } refused)
+            {
+                return refused;
+            }
+            if (sensors.GatherAlerts(form.On, form.Secs) is { } problem)
+            {
+                return Results.BadRequest(new { error = problem });
+            }
+            log.Record(context, "sensors", "sensor.gather", form.On ? $"Turned on Gather alerts, within {(form.Secs < 60 ? $"{form.Secs} seconds" : $"{form.Secs / 60} minute{(form.Secs == 60 ? "" : "s")}")}" : "Turned off Gather alerts");
             return Results.Ok(sensors.View());
         });
 
@@ -1600,4 +2142,12 @@ public static class SensorsApi
     }
 }
 
-public sealed record PauseForm(bool Paused);
+/// <summary>Pause or start again; Minutes for a timed pause; Dependents to take what depends on it along.</summary>
+public sealed record PauseForm(bool Paused, int? Minutes = null, bool Dependents = false);
+
+public sealed record MoveForm(string? Group);
+
+public sealed record GatherForm(bool On, int? Secs);
+
+/// <summary>Alert times, and channels when sent, for the sensors listed.</summary>
+public sealed record CopyForm(int? After, int? Again, bool? Back, List<string>? Channels, List<string>? Ids);
