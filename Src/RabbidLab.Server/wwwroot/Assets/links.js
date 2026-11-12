@@ -110,7 +110,7 @@
     $('ln-view').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.view === view));
     $('ln-empty').hidden = links.length > 0 || groups.length > 0;
     $('ln-empty-text').textContent = can('links.edit')
-      ? 'Put the sites in your lab here: the router, the NAS, the hypervisor, iDRACs. Paste an address and Rabbid Lab fills in the name, icon and IP.'
+      ? `Put the sites in your lab here: the router, the NAS, the hypervisor, iDRACs. Paste an address and ${R.lab()} fills in the name, icon and IP.`
       : 'Nobody has put any here yet.';
     R.paint($('ln-list'));
     $('rail-links').textContent = links.length || '';
@@ -557,8 +557,8 @@
     $('ln-mode').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.mode === 'many') === many));
     $('link-title').textContent = editing ? `Change ${editing.name}` : 'Add a link';
     $('ln-dlead').textContent = editing ? 'Change anything you like.' : many
-      ? 'Paste the addresses, one a line or separated by commas. Rabbid Lab reads each site, then you tick the ones to add.'
-      : 'Paste the address. Rabbid Lab reads the site for the rest.';
+      ? `Paste the addresses, one a line or separated by commas. ${R.lab()} reads each site, then you tick the ones to add.`
+      : `Paste the address. ${R.lab()} reads the site for the rest.`;
     drawSave();
   };
   // The addresses in a pasted list: split at line ends, commas and semicolons, quotes dropped, each one once.
@@ -819,7 +819,7 @@
       uploaded = false;
       foundLine(true, `Got the icon from ${host(full(url))}.`);
     } else {
-      foundLine(false, `${host(full(url))} has no icon Rabbid Lab can read. Upload one instead.`);
+      foundLine(false, `${host(full(url))} has no icon ${R.lab()} can read. Upload one instead.`);
     }
     drawIcon();
   };

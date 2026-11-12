@@ -367,7 +367,7 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
             }
             if (at < 0 && f.Links.Count >= 500)
             {
-                return (null, "That's 500 links, which is as many as Rabbid Lab keeps.");
+                return (null, $"That's 500 links, which is as many as {Product.Title} keeps.");
             }
             var old = at < 0 ? null : f.Links[at];
             // A group typed for the first time is made, at the end. One that's there keeps its own spelling.

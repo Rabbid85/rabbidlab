@@ -16,7 +16,7 @@ namespace RabbidLab.Server;
 public sealed class ConsoleUpdateHost(SettingsStore store, DataFolder folder, ActivityLog activity) : IUpdateHost
 {
     /// <summary>Who the activity log says installed an update that installed by itself.</summary>
-    public const string AutomaticBy = Product.Title + " (automatic installation)";
+    public static string AutomaticBy => Product.Title + " (automatic installation)";
 
     /// <summary>As a Windows service it installs its own updates (with Setup); in Docker it's updated with its new download.</summary>
     public static bool SelfInstalls => OperatingSystem.IsWindows() && !Product.InContainer;
@@ -34,7 +34,7 @@ public sealed class ConsoleUpdateHost(SettingsStore store, DataFolder folder, Ac
     public bool Automatic => store.Current.AutomaticUpdates;
 
     public void Record(UpdateAttempt attempt) =>
-        activity.Record(AutomaticBy, null, "admin", "update.install", $"Install update: {Product.Title} {attempt.Version}", attempt.Problem is null ? "ok" : "failed", attempt.Problem);
+        activity.Record(AutomaticBy, null, "admin", "update.install", $"Install update: {Product.Software} {attempt.Version}", attempt.Problem is null ? "ok" : "failed", attempt.Problem);
 }
 
 /// <summary>
@@ -201,7 +201,7 @@ public static class UpdateApi
             return updates.InstallNow(done =>
             {
                 var ok = done.Status == UpdateStatus.Installing;
-                activity.Record(by, from, "admin", "update.install", $"{title}: {Product.Title} {done.Available ?? done.Version}", ok ? "ok" : "failed", ok ? null : done.Message);
+                activity.Record(by, from, "admin", "update.install", $"{title}: {Product.Software} {done.Available ?? done.Version}", ok ? "ok" : "failed", ok ? null : done.Message);
             });
         }
         // What GitHub last said, and any update under way. Opening the page asks GitHub nothing: the source asks when Rabbid

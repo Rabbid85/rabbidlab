@@ -35,7 +35,7 @@ public static class Grouping
         }
         if (known.Count >= Most)
         {
-            return $"That's {Most} groups, which is as many as Rabbid Lab keeps.";
+            return $"That's {Most} groups, which is as many as {Product.Title} keeps.";
         }
         known.Add(group);
         return null;

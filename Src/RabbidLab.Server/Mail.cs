@@ -151,7 +151,7 @@ public sealed partial class Mail(DataFolder folder, SettingsStore secrets, ILogg
 
     private async Task<string?> SendSmtp(MailSettings s, MailNote note, CancellationToken stop)
     {
-        using var message = new MailMessage { From = new MailAddress(s.From!, Product.Name), Subject = note.Subject, Body = Text(note), BodyEncoding = Encoding.UTF8, SubjectEncoding = Encoding.UTF8 };
+        using var message = new MailMessage { From = new MailAddress(s.From!, Product.Title), Subject = note.Subject, Body = Text(note), BodyEncoding = Encoding.UTF8, SubjectEncoding = Encoding.UTF8 };
         message.AlternateViews.Add(AlternateView.CreateAlternateViewFromString(Html(note), Encoding.UTF8, "text/html"));
         foreach (var to in s.To)
         {
@@ -227,7 +227,7 @@ public sealed partial class Mail(DataFolder folder, SettingsStore secrets, ILogg
     }
 
     private static string Text(MailNote note) =>
-        note.Subject + "\r\n\r\n" + string.Join("\r\n", note.Facts.Select(f => $"{f.Label}: {f.Value}")) + $"\r\n\r\nSent by {Product.Name}.";
+        note.Subject + "\r\n\r\n" + string.Join("\r\n", note.Facts.Select(f => $"{f.Label}: {f.Value}")) + $"\r\n\r\nSent by {Product.Title}.";
 
     private static string Html(MailNote note)
     {
@@ -236,7 +236,7 @@ public sealed partial class Mail(DataFolder folder, SettingsStore secrets, ILogg
         return "<div style=\"font-family:Segoe UI,Arial,sans-serif;font-size:14px;color:#1B1D29;max-width:560px\">"
             + $"<div style=\"padding:14px 16px;border-radius:10px;background:{back};color:{ink};font-weight:700;font-size:16px\">{WebUtility.HtmlEncode(note.Subject)}</div>"
             + $"<table style=\"margin:16px 0;border-collapse:collapse;font-size:14px\">{rows}</table>"
-            + $"<div style=\"color:#8A8FA8;font-size:12px\">Sent by {WebUtility.HtmlEncode(Product.Name)}.</div></div>";
+            + $"<div style=\"color:#8A8FA8;font-size:12px\">Sent by {WebUtility.HtmlEncode(Product.Title)}.</div></div>";
     }
 
     [GeneratedRegex(@"^[A-Za-z0-9][A-Za-z0-9.-]{0,99}$")]
@@ -270,7 +270,7 @@ public static class MailApi
             {
                 return refused;
             }
-            var note = new MailNote($"Test email from {Product.Name}", "note",
+            var note = new MailNote($"Test email from {Product.Title}", "note",
                 [("Sent by", ActivityLog.Who(context)), ("Why", "Someone clicked Send a test email. If you can read this, alerts will reach you.")]);
             if (await mail.Send(note, context.RequestAborted) is { } problem)
             {

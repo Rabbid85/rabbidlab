@@ -28,6 +28,7 @@
       || '<p class="side-sub">Nothing mentions that.</p>';
     const i = articles.indexOf(now);
     $('wiki-body').innerHTML = `<p class="wiki-group">${esc(now.group)}</p><h2>${esc(now.title)}</h2>${now.html}`;
+    $('wiki-body').querySelectorAll('[data-lab]').forEach((e) => { e.textContent = R.lab(); }); // the lab's own name
     const prev = articles[i - 1];
     const next = articles[i + 1];
     $('wiki-next').innerHTML = (prev ? `<a href="#wiki/${prev.key}" class="prev"><small>Before</small><b>${esc(prev.title)}</b></a>` : '<span></span>')

@@ -25,7 +25,14 @@ public sealed class SettingsStore(DataFolder folder, IDataProtectionProvider pro
     private readonly JsonFile<ConsoleSettings> file = folder.Json<ConsoleSettings>("settings.json", Json);
     private readonly IDataProtector protector = protection.CreateProtector("RabbidLab.Settings.Secrets");
 
-    public ConsoleSettings Current => file.Read();
+    public ConsoleSettings Current => Seen(file.Read());
+
+    // Every read keeps the lab's name where messages can get it.
+    private static ConsoleSettings Seen(ConsoleSettings s)
+    {
+        Brand.Named = s.LabName;
+        return s;
+    }
 
     /// <summary>Changes part of the settings and saves them, keeping everything else exactly as it was.</summary>
     public void Change(Action<ConsoleSettings> change)
@@ -35,6 +42,7 @@ public sealed class SettingsStore(DataFolder folder, IDataProtectionProvider pro
             var copy = JsonSerializer.Deserialize<ConsoleSettings>(JsonSerializer.Serialize(file.Read(), Json), Json) ?? new();
             change(copy);
             file.Save(copy);
+            Seen(copy);
         }
     }
 

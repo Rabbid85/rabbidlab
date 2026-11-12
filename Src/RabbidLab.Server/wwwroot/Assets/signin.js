@@ -28,7 +28,7 @@
       const said = await r.json().catch(() => null);
       showError(said?.error || `Something went wrong (${r.status}). Try again.`);
     } catch {
-      showError("Couldn't reach Rabbid Lab. Check that it's running, then try again.");
+      showError(`Couldn't reach ${window.RabbidLabBrand.now.name || 'Rabbid Lab'}. Check that it's running, then try again.`);
     }
     button.disabled = false;
   };
@@ -378,8 +378,8 @@
       $('local-form').hidden = kind !== 'local';
       $('ad-form').hidden = kind !== 'ad';
       $('lead').hidden = !setup && kind === 'ad'; // the domain line says it
-      $('lead').textContent = setup ? (kind === 'ad' ? 'Connect Rabbid Lab to your domain.' : 'Create the administrator account.')
-        : kind === 'ad' ? `Use your ${s.domain} account.` : s.domain ? 'Use a local account.' : `Use your ${product} account.`;
+      $('lead').textContent = setup ? (kind === 'ad' ? `Connect ${name} to your domain.` : 'Create the administrator account.')
+        : kind === 'ad' ? `Use your ${s.domain} account.` : s.domain ? 'Use a local account.' : `Use your ${name} account.`;
       $('other-kind').textContent = kind === 'ad' ? 'Use a local account instead' : 'Use Active Directory instead';
       showError('');
       if (kind === 'ad') startDirectory();
@@ -441,6 +441,6 @@
 
   start().catch(() => {
     document.body.classList.remove('loading');
-    showError("Couldn't reach Rabbid Lab. Check that it's running, then refresh the page.");
+    showError(`Couldn't reach ${window.RabbidLabBrand.now.name || 'Rabbid Lab'}. Check that it's running, then refresh the page.`);
   });
 })();

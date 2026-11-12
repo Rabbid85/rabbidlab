@@ -21,7 +21,7 @@ public static class RolesApi
             var managed = roles.Managed(me);
             return Results.Ok(new
             {
-                catalog = Permissions.Parts,
+                catalog = Permissions.Shown(),
                 roles = f.Roles.Select(r => new
                 {
                     id = r.Id,

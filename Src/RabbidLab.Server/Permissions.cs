@@ -40,6 +40,10 @@ public static class Permissions
 
     public sealed record Part(string Key, string Name, string Icon, IReadOnlyList<Action> Actions);
 
+    /// <summary>The catalog as the page shows it, with the lab's own name in place of Rabbid Lab.</summary>
+    public static IReadOnlyList<Part> Shown() => Product.Title == Product.Software ? Parts
+        : [.. Parts.Select(p => p with { Actions = [.. p.Actions.Select(a => a with { Name = a.Name.Replace(Product.Software, Product.Title), About = a.About.Replace(Product.Software, Product.Title) })] })];
+
     public static readonly IReadOnlyList<Part> Parts =
     [
         new("overview", "Overview", "overview", [new(OverviewView, "See the overview", "The front page: how Rabbid Lab is doing and what's new.")]),

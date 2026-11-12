@@ -19,8 +19,11 @@ public static class Product
     public const int DefaultPort = 8420;
 #endif
 
-    /// <summary>The name on screen: Rabbid Lab in both, since the DEV tag marks Dev. Name stays for the service, data folder and keys.</summary>
-    public const string Title = "Rabbid Lab";
+    /// <summary>The software's own name, where it names the software: versions, releases, signing.</summary>
+    public const string Software = "Rabbid Lab";
+
+    /// <summary>The name on screen: the lab's name when it has one (Settings, Appearance), else Rabbid Lab. Name stays for the service, data folder and keys.</summary>
+    public static string Title => Brand.Named ?? Software;
 
     /// <summary>The repository on GitHub: where the code is, and where releases (and so updates) come from.</summary>
     public const string Repository = "https://github.com/Rabbid85/rabbidlab";

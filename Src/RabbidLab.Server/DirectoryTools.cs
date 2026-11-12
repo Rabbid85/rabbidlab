@@ -225,7 +225,7 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
             var can = (await ldap.Find(scope, "(objectClass=*)", false, ["allowedChildClassesEffective"], 1, stop)).FirstOrDefault()?.Texts("allowedChildClassesEffective")
                 .Contains("user", StringComparer.OrdinalIgnoreCase) == true;
             Save(new DirectoryToolsFile { Domain = domain, Account = sam, Password = secrets.Encrypt(password), Scope = scope, Made = false, By = by, At = DateTime.UtcNow });
-            return can ? null : $"{sam} isn't allowed to make accounts in {ScopeName(scope, ldap.BaseDn, domain)}. Rabbid Lab can still list them, but making them won't work until it is.";
+            return can ? null : $"{sam} isn't allowed to make accounts in {ScopeName(scope, ldap.BaseDn, domain)}. {Product.Title} can still list them, but making them won't work until it is.";
         }
 
         if (!ldap.Encrypted)

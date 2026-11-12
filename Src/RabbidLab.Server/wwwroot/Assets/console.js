@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.65', [
+    'Your lab name from Appearance now shows everywhere: pages, sign-in, emails, messages and the wiki. Versions and updates still say Rabbid Lab.',
+    'Fixed the Links banner icons drifting when the window is resized.']],
   ['1.1.64', [
     'Added Console address to Settings, with the addresses, certificate, port and firewall.',
     'Removed History from Updates. Past updates are in the Activity log.',
@@ -455,6 +458,7 @@ const RELEASE_NOTES = [
     product = brand.name || productName;
     $('brand-name').textContent = product;
     $('hero-title').textContent = product;
+    document.querySelectorAll('[data-lab]').forEach((e) => { e.textContent = product; }); // the lab's name in the page's words
     title();
     $('brand-img').hidden = !brand.icon;
     document.querySelector('.brand svg.mark').classList.toggle('gone', !!brand.icon);
@@ -620,7 +624,7 @@ const RELEASE_NOTES = [
     downloading: `Downloading version ${u.available}.`,
     installing: `Installing version ${u.available}.`,
     failed: `Version ${u.available} didn't install.`,
-  })[u.status] || 'Rabbid Lab is up to date.';
+  })[u.status] || `${product} is up to date.`;
 
   const draw = (u) => {
     // Back as a new version: a full bar and the version for a moment, then the new page.
@@ -653,7 +657,7 @@ const RELEASE_NOTES = [
     } else bar(null);
     if (u.status === 'available') {
       card('download', 'ember', `Rabbid Lab ${u.available} is ready`, u.automatic
-        ? `You have ${u.version}. The update installs automatically when nobody is using Rabbid Lab, or click Install now.`
+        ? `You have ${u.version}. The update installs automatically when nobody is using ${product}, or click Install now.`
         : `You have ${u.version}. Installing takes about a minute, and the server is offline while it does.`);
     } else if (u.status === 'waiting') card('clock', 'ember', `Version ${u.available} installs in a moment`, u.message);
     else if (u.status === 'failed') card('alert', 'bad', `Version ${u.available} didn't install`, u.message);
@@ -710,7 +714,7 @@ const RELEASE_NOTES = [
       if (can.has('activity.view')) activity();
     } catch (e) {
       $('upd-problem').hidden = false;
-      $('upd-problem').textContent = `Couldn't reach Rabbid Lab (${e.message}).`;
+      $('upd-problem').textContent = `Couldn't reach ${product} (${e.message}).`;
       $('upd-check').disabled = false;
       $('upd-install').disabled = false;
     }
@@ -1055,7 +1059,7 @@ const RELEASE_NOTES = [
           + `<span class="acts">${st === 'waiting' && can.has('seats.approve') ? '<button type="button" class="small primary" data-approve>Let in</button>' : ''}`
           + `${st !== 'waiting' && can.has('seats.remove') ? '<button type="button" class="small quiet" data-uninstall>Uninstall</button>' : ''}`
           + `${can.has('seats.remove') ? '<button type="button" class="small quiet" data-forget>Remove</button>' : ''}</span></div>`;
-      }).join('') : `<div class="empty">${computers.length ? 'None of the computers are like that right now.' : 'No computers yet. Add computers to give people the Rabbid Lab client.'}</div>`);
+      }).join('') : `<div class="empty">${computers.length ? 'None of the computers are like that right now.' : `No computers yet. Add computers to give people the ${esc(product)} client.`}</div>`);
   };
   const drawSessions = (list) => {
     // Each person's roles, highest first, without User when there's more: everyone has that.
@@ -1371,7 +1375,7 @@ const RELEASE_NOTES = [
   const resized = new ResizeObserver((seen) => seen.forEach((e) => layOut(e.target)));
   // picked: they sit as the person chose in Icon layout, rather than evenly.
   const squares = (hero, items, card = null, picked = false) => {
-    if (!laid.has(hero)) resized.observe(hero);
+    if (!laid.has(hero)) resized.observe(hero, { box: 'border-box' }); // a wider window on a Centered layout only widens the padding
     laid.set(hero, { items, card, picked, extras: laid.get(hero)?.extras || [] });
     layOut(hero);
   };
@@ -1511,7 +1515,7 @@ const RELEASE_NOTES = [
         if (!r.ok) throw new Error(r.statusText);
         s = await r.json();
       } catch {
-        $('hero-state').textContent = "Can't reach Rabbid Lab. Trying again.";
+        $('hero-state').textContent = `Can't reach ${product}. Trying again.`;
         started();
         setTimeout(start, 5000);
         return;
@@ -2089,6 +2093,6 @@ const RELEASE_NOTES = [
   });
 
   // What the other scripts use.
-  window.RabbidLab = { $, esc, svg, say, initials, when, daysAgo, send, get, keep, forget, has, paint, where, viewAs, place, popups, option, dropdown, sure, copy, busy, groupTools, groupFilter, squares, squareSize, ping, skeleton,
+  window.RabbidLab = { lab: () => product, $, esc, svg, say, initials, when, daysAgo, send, get, keep, forget, has, paint, where, viewAs, place, popups, option, dropdown, sure, copy, busy, groupTools, groupFilter, squares, squareSize, ping, skeleton,
     palette: window.RabbidLabColours.roles, me: () => meInfo };
 })();

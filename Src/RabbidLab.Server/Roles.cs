@@ -464,7 +464,7 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
     };
 
     /// <summary>A permission's name as the page shows it, or its key.</summary>
-    public static string PermissionName(string key) => Permissions.Parts.SelectMany(p => p.Actions).FirstOrDefault(a => a.Key == key)?.Name ?? key;
+    public static string PermissionName(string key) => Permissions.Shown().SelectMany(p => p.Actions).FirstOrDefault(a => a.Key == key)?.Name ?? key;
 
     /// <summary>The first role this local account is in that someone doesn't manage, or null.</summary>
     private static Role? Above(RolesFile f, string username, Who by) =>
@@ -549,7 +549,7 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
         var now = DateTime.UtcNow;
         Member Add(Role r, string kind, string name)
         {
-            var m = new Member { Kind = kind, Name = name, Added = now, AddedBy = "Rabbid Lab" };
+            var m = new Member { Kind = kind, Name = name, Added = now, AddedBy = Product.Title };
             r.Members.Add(m);
             return m;
         }

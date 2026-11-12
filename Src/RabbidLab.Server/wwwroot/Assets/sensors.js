@@ -493,7 +493,7 @@
   };
   // The computers in Seats, for the checks their client makes.
   let seats = [];
-  const SEAT_HINT = '<p class="hint">Checked by the Rabbid Lab client on that computer, which runs as SYSTEM. No credentials needed.</p>';
+  const SEAT_HINT = () => `<p class="hint">Checked by the ${R.esc(R.lab())} client on that computer, which runs as SYSTEM. No credentials needed.</p>`;
   const seatPick = () => {
     if (!seats.length) return '<p class="hint">No computers in Seats yet. Add one under Seats, then pick it here.</p>';
     if (!seats.some((c) => c.id === vals.seat)) vals.seat = seats[0].id;
@@ -510,9 +510,9 @@
     cert: () => field('target', 'Host', { ph: 'nas.example.com' }) + field('port', 'Port', { num: true, max: 5, ph: '443' })
       + choice('warn', 'Warn when it has less than', [[14, '14 days'], [21, '21 days'], [30, '30 days'], [60, '60 days']], { value: 21 }),
     hw: () => field('target', 'iDRAC, iLO or BMC address', { wide: true, ph: '192.168.2.7' }) + signIn('An iDRAC or iLO user with the Read Only role is enough.'),
-    svc: () => seatPick() + field('service', 'Service', { wide: true, max: 256, ph: 'Spooler or Print Spooler' }) + SEAT_HINT,
+    svc: () => seatPick() + field('service', 'Service', { wide: true, max: 256, ph: 'Spooler or Print Spooler' }) + SEAT_HINT(),
     disk: () => seatPick() + field('drive', 'Drive', { max: 3, ph: 'C' })
-      + choice('warnFree', 'Warn when free space is below', [[5, '5 %'], [10, '10 %'], [20, '20 %']], { value: 10 }) + SEAT_HINT,
+      + choice('warnFree', 'Warn when free space is below', [[5, '5 %'], [10, '10 %'], [20, '20 %']], { value: 10 }) + SEAT_HINT(),
     snmp: () => field('target', 'Address', { wide: true, ph: '192.168.2.30 or ups.example.com' })
       + choice('value', 'Value to watch', [['uptime', 'Uptime: it answers'], ['ups', 'UPS battery and power'], ['iface', 'Interface up'], ['oid', 'Custom OID']], { value: 'uptime', wide: true })
       + (vals.value === 'iface' ? field('iface', 'Interface', { wide: true, max: 100, ph: 'Port 5 or eth0' }) + '<p class="hint">As the device names it. When the name is not found, Check now lists the names it has.</p>' : '')
@@ -631,7 +631,7 @@
   const pinNote = (pin) => {
     const bytes = pin.split(':');
     const short = bytes.length > 6 ? `${bytes.slice(0, 4).join(':')}:…:${bytes.slice(-2).join(':')}` : pin;
-    return `<p class="sd-pin">${svg('alert')}<span>It has a self-signed certificate. Rabbid Lab trusts this one, <code title="${esc(pin)}">SHA-256 ${esc(short)}</code>, and warns you if it changes.</span></p>`;
+    return `<p class="sd-pin">${svg('alert')}<span>It has a self-signed certificate. ${esc(R.lab())} trusts this one, <code title="${esc(pin)}">SHA-256 ${esc(short)}</code>, and warns you if it changes.</span></p>`;
   };
   const foundAll = (f) => {
     if (signs()) vals.pin = f.pin || null;

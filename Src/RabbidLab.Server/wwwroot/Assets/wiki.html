@@ -1,7 +1,7 @@
 <!-- The wiki's articles, read by wiki.js: one <article> each, with its group, title and key (its address is #wiki/<key>). -->
 
 <article data-key="install" data-group="Getting started" data-title="Install Rabbid Lab">
-  <p>Rabbid Lab runs on one machine (the server) and everyone uses it in a browser. Put it on a machine that stays on.</p>
+  <p><span data-lab>Rabbid Lab</span> runs on one machine (the server) and everyone uses it in a browser. Put it on a machine that stays on.</p>
   <h3>On Windows</h3>
   <ol>
     <li>Download <code>RabbidLab-Setup-&lt;version&gt;.exe</code> from the latest release on GitHub.</li>
@@ -20,7 +20,7 @@
 </article>
 
 <article data-key="setup" data-group="Getting started" data-title="First sign-in and setup">
-  <p>The first time anyone opens Rabbid Lab, it asks how people sign in. Do this right after installing: until it's done, anyone who can reach the port can do it.</p>
+  <p>The first time anyone opens <span data-lab>Rabbid Lab</span>, it asks how people sign in. Do this right after installing: until it's done, anyone who can reach the port can do it.</p>
   <h3>With Active Directory</h3>
   <ol>
     <li>Pick <b>Active Directory</b>.</li>
@@ -48,10 +48,10 @@
 </article>
 
 <article data-key="add-computer" data-group="Computers" data-title="Add a computer">
-  <p>A computer shows up under Seats once it has the Rabbid Lab client. There's no key: the client only needs the server's address. New computers wait until someone lets them in.</p>
+  <p>A computer shows up under Seats once it has the <span data-lab>Rabbid Lab</span> client. There's no key: the client only needs the server's address. New computers wait until someone lets them in.</p>
   <h3>From the computer itself (easiest)</h3>
   <ol>
-    <li>On that computer, open Rabbid Lab in a browser and sign in.</li>
+    <li>On that computer, open <span data-lab>Rabbid Lab</span> in a browser and sign in.</li>
     <li>The bar at the top says it isn't in Seats yet. Click <b>Download the client</b> and run the MSI.</li>
     <li>Click <b>Connect this computer</b>. The client opens with this server's address filled in.</li>
     <li>Check the address, click <b>Connect</b>, and OK the admin prompt.</li>
@@ -105,7 +105,7 @@
 </article>
 
 <article data-key="dir-setup" data-group="Active Directory" data-title="Set up the AD service account">
-  <p>Rabbid Lab makes every Active Directory change as a dedicated service account, <code>svc-rabbidlab</code>. Its password is long, random and stored encrypted on the server. You set this up once.</p>
+  <p><span data-lab>Rabbid Lab</span> makes every Active Directory change as a dedicated service account, <code>svc-rabbidlab</code>. Its password is long, random and stored encrypted on the server. You set this up once.</p>
   <h3>Create a new one</h3>
   <ol>
     <li>Open <a href="#ad/users">Users</a> and click <b>Set up</b>. The steps run down the left: Sign in, Account, Review.</li>
@@ -131,7 +131,7 @@
     <li>Leave <b>Make one for me</b> for the password, or pick <b>Type one</b>.</li>
     <li>Keep <b>Change it at the first sign-in</b> on, so the person picks their own.</li>
     <li>Add groups if you want, then click <b>Make the account</b>.</li>
-    <li>Copy the password Rabbid Lab shows. It's shown once and not kept.</li>
+    <li>Copy the password <span data-lab>Rabbid Lab</span> shows. It's shown once and not kept.</li>
   </ol>
 </article>
 
@@ -199,7 +199,7 @@
     <li>Click a setting to see why it matters and where it's set (usually the Default Domain Policy).</li>
     <li>Change it there, then come back: the list reads the domain again each time you open it.</li>
   </ol>
-  <p class="tip">"Couldn't be read" means Rabbid Lab's account isn't allowed to see that one, which is normal for fine-grained password policies.</p>
+  <p class="tip">"Couldn't be read" means <span data-lab>Rabbid Lab</span>'s account isn't allowed to see that one, which is normal for fine-grained password policies.</p>
 </article>
 
 <article data-key="dir-audit" data-group="Active Directory" data-title="AD audit: what changed">
@@ -208,7 +208,7 @@
     <li>Pick a view: Last 24 hours, Made, Deleted, Users, and so on.</li>
     <li>Click a change to see which attributes changed.</li>
   </ol>
-  <p>When the change was made in Rabbid Lab, it says who made it. For changes made elsewhere, the domain controllers' security logs have that.</p>
+  <p>When the change was made in <span data-lab>Rabbid Lab</span>, it says who made it. For changes made elsewhere, the domain controllers' security logs have that.</p>
 </article>
 
 <article data-key="dir-recycle" data-group="Active Directory" data-title="Recycle Bin: bring back something deleted">
@@ -224,7 +224,7 @@
     <li>Find it in <a href="#ad/recycle">Recycle Bin</a> and click it.</li>
     <li>Click <b>Restore</b>. It goes back where it was.</li>
   </ol>
-  <p>Looking in Deleted Objects and restoring take rights only Domain Admins have by default. If Rabbid Lab's account doesn't have them, the page says so.</p>
+  <p>Looking in Deleted Objects and restoring take rights only Domain Admins have by default. If <span data-lab>Rabbid Lab</span>'s account doesn't have them, the page says so.</p>
 </article>
 
 <article data-key="org" data-group="Active Directory" data-title="Org chart">
@@ -242,14 +242,14 @@
   <p class="tip">Passwords, LAPS passwords and BitLocker keys are never shown.</p>
 </article>
 <article data-key="local-new" data-group="Local accounts" data-title="Make a Windows account on a computer">
-  <p>Local accounts are the Windows accounts on one computer: this server, or any seat. You do it all in the browser and no service account is needed: this server makes its own changes, and on a seat the Rabbid Lab client makes them, running as SYSTEM.</p>
+  <p>Local accounts are the Windows accounts on one computer: this server, or any seat. You do it all in the browser and no service account is needed: this server makes its own changes, and on a seat the <span data-lab>Rabbid Lab</span> client makes them, running as SYSTEM.</p>
   <ol>
     <li>Open <a href="#local">Local accounts</a> and pick the computer on the left. A green dot means it's ready.</li>
     <li>Click <b>New account</b>.</li>
     <li>Type the username, and a full name and description if you want.</li>
     <li>Pick the groups. Tick <b>Administrators</b> for a local admin; <b>Users</b> is ticked for you.</li>
     <li>Click <b>Make the account</b>. On a seat, its client makes it within a second or two.</li>
-    <li>Copy the password Rabbid Lab shows.</li>
+    <li>Copy the password <span data-lab>Rabbid Lab</span> shows.</li>
   </ol>
 </article>
 
@@ -274,7 +274,7 @@
 </article>
 
 <article data-key="roles" data-group="Access" data-title="Roles: who can do what">
-  <p>Everything in Rabbid Lab is allowed by roles. People can have several roles and get everything those roles allow.</p>
+  <p>Everything in <span data-lab>Rabbid Lab</span> is allowed by roles. People can have several roles and get everything those roles allow.</p>
   <ul>
     <li><b>Administrator</b> is always at the top and allows everything. The server's Windows administrators are always in it.</li>
     <li><b>User</b> is always at the bottom, and everyone who signs in has it.</li>
@@ -287,7 +287,7 @@
     <li>On <b>Members</b>, add who's in it.</li>
     <li>Click <b>Save changes</b>.</li>
   </ol>
-  <p>Roles are in order, highest first: drag them to reorder. People can only change roles below their own highest one. <b>See Rabbid Lab as this role</b> shows what that role sees.</p>
+  <p>Roles are in order, highest first: drag them to reorder. People can only change roles below their own highest one. <b>See <span data-lab>Rabbid Lab</span> as this role</b> shows what that role sees.</p>
 </article>
 
 <article data-key="people" data-group="Access" data-title="Put people in roles">
@@ -300,8 +300,8 @@
   <p class="tip">An Active Directory account that isn't in any role can't sign in. Everyone in AD is in User to begin with.</p>
 </article>
 
-<article data-key="local-signin" data-group="Access" data-title="Rabbid Lab's own accounts">
-  <p>Local accounts in Rabbid Lab are its own sign-ins, separate from Windows and AD. Use them when there's no domain, or as a way in if AD is down.</p>
+<article data-key="local-signin" data-group="Access" data-title="Local accounts">
+  <p>Local accounts in <span data-lab>Rabbid Lab</span> are its own sign-ins, separate from Windows and AD. Use them when there's no domain, or as a way in if AD is down.</p>
   <ol>
     <li>In <a href="#people">Roles and people</a>, click <b>Add people</b>, then <b>New local account</b>.</li>
     <li>Pick a username and a password of 8 characters or more, and its roles.</li>
@@ -311,7 +311,7 @@
 
 <article data-key="sessions" data-group="Access" data-title="See who's signed in">
   <ol>
-    <li>Open <a href="#seats">Seats</a>. <b>Signed in now</b> lists everyone signed in to Rabbid Lab, with their roles, browser and address.</li>
+    <li>Open <a href="#seats">Seats</a>. <b>Signed in now</b> lists everyone signed in to <span data-lab>Rabbid Lab</span>, with their roles, browser and address.</li>
     <li>Click <b>Sign out</b> on someone to end their session straight away.</li>
   </ol>
 </article>
@@ -319,7 +319,7 @@
 <article data-key="links" data-group="Links" data-title="Add a link">
   <ol>
     <li>Open <a href="#links">Links</a> and click <b>Add a link</b>.</li>
-    <li>Paste the address, like <code>https://192.168.2.23</code>. Rabbid Lab reads the site and fills in the name, detail, icon and IP.</li>
+    <li>Paste the address, like <code>https://192.168.2.23</code>. <span data-lab>Rabbid Lab</span> reads the site and fills in the name, detail, icon and IP.</li>
     <li>Change anything you like, and pick a group to put it under. <b>New group…</b> at the bottom of the list makes one.</li>
     <li>Click <b>Add the link</b>.</li>
   </ol>
@@ -402,7 +402,7 @@
 <article data-key="updates" data-group="Keeping it running" data-title="Updates">
   <p>Rabbid Lab checks GitHub for a new version on start, every 12 hours, and when you click <b>Check for updates</b>.</p>
   <ul>
-    <li>On Windows, a new version installs automatically once nobody has used Rabbid Lab for a couple of minutes. Turn that off with <b>Update automatically</b> under <a href="#settings/updates">Settings, Updates</a>.</li>
+    <li>On Windows, a new version installs automatically once nobody has used <span data-lab>Rabbid Lab</span> for a couple of minutes. Turn that off with <b>Update automatically</b> under <a href="#settings/updates">Settings, Updates</a>.</li>
     <li><b>Install now</b> installs straight away. The server is offline for about a minute.</li>
     <li>Only updates signed with Rabbid Lab's release key install.</li>
     <li>Seats update their client to the server's version by themselves.</li>
@@ -427,11 +427,11 @@
 <article data-key="data" data-group="Keeping it running" data-title="Where Rabbid Lab keeps things">
   <p>Everything is in one data folder: <code>C:\ProgramData\Rabbid Lab</code> on Windows, <code>/data</code> in Docker. Back it up to keep everything.</p>
   <ul>
-    <li><code>accounts.json</code>: how people sign in, and Rabbid Lab's own accounts.</li>
+    <li><code>accounts.json</code>: how people sign in, and <span data-lab>Rabbid Lab</span>'s own accounts.</li>
     <li><code>roles.json</code>: roles, what they allow, and who's in them.</li>
     <li><code>sessions.json</code>: who's signed in, encrypted.</li>
     <li><code>clients.json</code>: the seats.</li>
-    <li><code>directory-tools.json</code>: Rabbid Lab's AD account, its password encrypted.</li>
+    <li><code>directory-tools.json</code>: <span data-lab>Rabbid Lab</span>'s AD account, its password encrypted.</li>
     <li><code>links.json</code>: the Links page.</li>
     <li><code>activity.jsonl</code>: the activity log.</li>
     <li><code>Keys</code>: the keys the encrypted parts use. Without them, the encrypted parts can't be read on another machine.</li>

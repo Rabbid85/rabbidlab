@@ -201,7 +201,7 @@ public static class ClientsApi
         Credentials(context) is (var id, var secret) ? clients.Verify(id, secret) : null;
 
     private static IResult Unknown() =>
-        Results.Json(new { error = "This computer isn't one of Rabbid Lab's clients. It will rejoin automatically." }, statusCode: StatusCodes.Status401Unauthorized);
+        Results.Json(new { error = $"This computer isn't one of {Product.Title}'s clients. It will rejoin automatically." }, statusCode: StatusCodes.Status401Unauthorized);
 
     /// <summary>Whether a client runs an older version than this server.</summary>
     public static bool Behind(string? version) =>

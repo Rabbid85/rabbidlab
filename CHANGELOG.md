@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.65 (2026-11-12)
+
+- Your lab name from Appearance now shows everywhere: pages, sign-in, emails, messages and the wiki. Versions and updates still say Rabbid Lab.
+- Fixed the Links banner icons drifting when the window is resized.
+
 ## 1.1.64 (2026-11-12)
 
 - Added Console address to Settings, with the addresses, certificate, port and firewall.

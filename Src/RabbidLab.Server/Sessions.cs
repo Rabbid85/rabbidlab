@@ -276,7 +276,7 @@ public sealed class Sessions : ITicketStore, IDisposable
         }
         if (agent.Contains("RabbidLab-Client", StringComparison.Ordinal))
         {
-            return "Rabbid Lab client";
+            return $"{Product.Title} client";
         }
         var browser = agent.Contains("Edg/") ? "Edge" : agent.Contains("OPR/") ? "Opera" : agent.Contains("Firefox/") ? "Firefox"
             : agent.Contains("Chrome/") ? "Chrome" : agent.Contains("Safari/") ? "Safari" : "A browser";

@@ -712,7 +712,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
             }
             if (at < 0 && f.Sensors.Count >= Most)
             {
-                return (null, $"That's {Most} sensors, which is as many as Rabbid Lab keeps.");
+                return (null, $"That's {Most} sensors, which is as many as {Product.Title} keeps.");
             }
             var known = Known(f);
             var (group, full) = Grouping.Join(known, form.Group);
@@ -926,7 +926,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
             }
             if (rules.Count >= 20)
             {
-                return (null, "That's 20 saved alert settings, which is as many as Rabbid Lab keeps.");
+                return (null, $"That's 20 saved alert settings, which is as many as {Product.Title} keeps.");
             }
             var rule = Timed(new AlertRule
             {

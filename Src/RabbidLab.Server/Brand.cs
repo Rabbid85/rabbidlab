@@ -11,6 +11,9 @@ public sealed record BrandForm(string? Name, string? Icon, string? Accent);
 /// </summary>
 public static partial class Brand
 {
+    /// <summary>The lab's name as last read from the settings, for messages (Product.Title); null when it has none.</summary>
+    public static string? Named { get; internal set; }
+
     public const int NameLength = 40;
     public const int IconBytes = 256 * 1024;
     private static readonly string[] IconKinds = ["data:image/png;base64,", "data:image/svg+xml;base64,"];
@@ -37,7 +40,7 @@ public static partial class Brand
             var data = icon[kind.Length..];
             if (data.Length > IconBytes * 4 / 3 + 4 || !Convert.TryFromBase64String(data, new byte[data.Length], out var bytes))
             {
-                return "That icon isn't a PNG or SVG Rabbid Lab can read, or it's over 256 KB.";
+                return $"That icon isn't a PNG or SVG {Product.Title} can read, or it's over 256 KB.";
             }
             if (bytes > IconBytes)
             {

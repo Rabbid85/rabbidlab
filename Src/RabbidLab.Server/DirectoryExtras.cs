@@ -88,7 +88,7 @@ public sealed partial class DirectoryTools
 
         if (head is null)
         {
-            Add("policy", "Passwords", "Password policy", "Couldn't be read", "", "unknown", "Rabbid Lab's account couldn't read the domain's own object.");
+            Add("policy", "Passwords", "Password policy", "Couldn't be read", "", "unknown", $"{Product.Title}'s account couldn't read the domain's own object.");
             return list;
         }
         var minLength = (int) (head.Number("minPwdLength") ?? 0);
