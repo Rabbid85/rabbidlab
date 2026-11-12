@@ -20,7 +20,7 @@
   let lookRun = 0; // the newest read: an older one's answer is dropped
   let timer = null;
   const stored = (key) => { try { return localStorage.getItem(key); } catch { return null; } };
-  let view = ['grid', 'links'].includes(stored('rabbidlab.links.view')) ? stored('rabbidlab.links.view') : 'cards'; // tiles, a row to a link, or plain links
+  let view = ['grid', 'links', 'icons'].includes(stored('rabbidlab.links.view')) ? stored('rabbidlab.links.view') : 'cards'; // tiles, rows, plain links or icons
 
   const colour = (name) => COLOURS[[...String(name)].reduce((n, c) => (n * 31 + c.charCodeAt(0)) >>> 0, 7) % COLOURS.length];
   const letter = (name) => esc((String(name).match(/[A-Za-z0-9]/) || ['?'])[0].toUpperCase());
@@ -82,15 +82,18 @@
     + `<span class="lt"><b>${esc(l.name)}</b>${l.description ? `<span>${esc(l.description)}</span>` : ''}`
     + `<code>${esc(l.address && l.address !== host(l.url) ? `${l.address} · ${host(l.url)}` : host(l.url))}</code></span></a>`
     + `${dot(l)}${can('links.edit') ? `<button type="button" class="icon ledit" data-edit="${esc(l.id)}" aria-label="Change ${esc(l.name)}">${svg('edit')}</button>` : ''}</div>`;
-  // The Links view: a plain hyperlink with its icon and address, and a dot only when it isn't answering.
-  const plain = (l) => {
-    const s = states[l.id];
-    const off = s && !s.up ? (s.down ? 'down' : 'late') : '';
-    return `<a class="lx-link${off ? ` ${off}` : ''}" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer" title="${esc(l.description || l.name)}">`
-      + `<span class="lx-ic${l.icon && l.icon !== NO_ICON ? '' : ' letter'}" data-color="${colour(l.name)}">${l.icon === NO_ICON ? '' : pic(l)}</span>`
-      + `<span class="lx-t"><span class="lx-name">${esc(l.name)}</span><span class="lx-host">${esc(host(l.url))}</span></span>`
-      + `${off ? `<i class="lx-dot ${off}"></i>` : ''}</a>`;
-  };
+  // The Links and Icons views: a dot only when a link isn't answering.
+  const off = (l) => (states[l.id] && !states[l.id].up ? (states[l.id].down ? 'down' : 'late') : '');
+  const face = (l, cls) => `<span class="${cls}${l.icon && l.icon !== NO_ICON ? '' : ' letter'}" data-color="${colour(l.name)}">${l.icon === NO_ICON ? '' : pic(l)}</span>`;
+  // Links: one line each, the name and then its address.
+  const plain = (l) => `<a class="lx-link${off(l) ? ` ${off(l)}` : ''}" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer" title="${esc(l.description || l.name)}">`
+    + `${face(l, 'lx-ic')}<span class="lx-name">${esc(l.name)}</span><span class="lx-host">${esc(host(l.url))}</span>${off(l) ? `<i class="lx-dot ${off(l)}"></i>` : ''}</a>`;
+  // Icons: a square with the name under it, like a home screen.
+  const launch = (l) => `<a class="lapp${off(l) ? ` ${off(l)}` : ''}" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer" title="${esc(`${l.name} · ${host(l.url)}`)}">`
+    + `${face(l, 'lapp-sq')}${off(l) ? `<i class="lx-dot ${off(l)}"></i>` : ''}<span class="lapp-n">${esc(l.name)}</span></a>`;
+  const body = (list) => (view === 'links' ? `<div class="lx">${list.map(plain).join('')}</div>`
+    : view === 'icons' ? `<div class="lapps">${list.map(launch).join('')}</div>`
+      : `<div class="ltiles${view === 'grid' ? ' lrows' : ''}">${list.map(tile).join('')}</div>`);
 
   const draw = () => {
     const find = $('ln-find').value.trim().toLowerCase();
@@ -109,19 +112,13 @@
     // Every group in its order, the empty ones too unless something is being looked for; links with no group go last.
     const by = (group ? [only] : [...groups, '']).map((g) => [g, shown.filter((l) => (l.group || '') === g)])
       .filter(([g, list]) => list.length || (g && !find));
-    const full = by.filter(([, list]) => list.length);
-    if (view === 'links') {
-      // Plain links, the groups flowing down columns: for opening them, not arranging them.
-      $('ln-list').innerHTML = full.length ? `<div class="lx">${full.map(([g, list]) => `<section class="lx-group"><h2>${esc(g || 'No group')}<small>${list.length}</small></h2>${list.map(plain).join('')}</section>`).join('')}</div>`
-        : (links.length ? '<p class="hint">Nothing matches.</p>' : '');
-    } else {
-      $('ln-list').innerHTML = by.map(([g, list]) => `<section class="lgroup" data-name="${esc(g)}">${groups.length ? tools.heading(g, list.length) : ''}`
-        + (list.length ? `<div class="ltiles${view === 'grid' ? ' lrows' : ''}">${list.map(tile).join('')}</div>`
-          : `<p class="hint lnone">No links in this group yet.${can('links.edit') ? ` <button type="button" class="link" data-addto="${esc(g)}">Add one</button>` : ''}</p>`)
-        + '</section>').join('')
-        || (links.length ? '<p class="hint">Nothing matches.</p>' : '');
-      if (!find) $('ln-list').insertAdjacentHTML('beforeend', tools.out(by.some(([g]) => !g)));
-    }
+    $('ln-list').classList.toggle('lx-cols', view === 'links'); // the Links view flows its groups down columns
+    $('ln-list').innerHTML = by.map(([g, list]) => `<section class="lgroup" data-name="${esc(g)}">${groups.length ? tools.heading(g, list.length) : ''}`
+      + (list.length ? body(list)
+        : `<p class="hint lnone">No links in this group yet.${can('links.edit') ? ` <button type="button" class="link" data-addto="${esc(g)}">Add one</button>` : ''}</p>`)
+      + '</section>').join('')
+      || (links.length ? '<p class="hint">Nothing matches.</p>' : '');
+    if (!find) $('ln-list').insertAdjacentHTML('beforeend', tools.out(by.some(([g]) => !g)));
     tools.settle();
     $('ln-view').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.view === view));
     $('ln-empty').hidden = links.length > 0 || groups.length > 0;
@@ -409,7 +406,7 @@
     const progress = (name) => {
       // Once nothing is left to start, it says which it's waiting on.
       const waiting = next >= queue.length && inFlight.size ? ` waiting on ${[...inFlight].join(', ')}` : '';
-      if (onPage) return say(note, `Refreshing ${done} of ${todo.length}…${waiting}`);
+      if (onPage) return R.toast(`Refreshing ${done} of ${todo.length}…`, waiting.trim(), { stay: true });
       R.busy(host, `Refreshing ${done} of ${todo.length}`, name ? `${name} · ${count(filled, 'link')} filled in so far` : '');
       const cover = host.querySelector(':scope > .busy-cover');
       if (cover && !cover.querySelector('.ld-bar')) cover.insertAdjacentHTML('beforeend', '<span class="ubar ld-bar"><i></i></span>');
@@ -460,8 +457,11 @@
     $('ln-refresh').disabled = false;
     draw(); // each link was taken in as it came back: nothing to read again
     const what = [got.icon && count(got.icon, 'icon'), got.description && count(got.description, 'description'), got.IP && count(got.IP, 'IP')].filter(Boolean);
-    say(note, [filled ? `Refreshed ${what.length > 1 ? `${what.slice(0, -1).join(', ')} and ${what[what.length - 1]}` : what[0]} on ${count(filled, 'link')}.` : 'Everything was up to date already.',
-      quiet ? `${count(quiet, 'link')} didn't answer.` : ''].filter(Boolean).join(' '));
+    // The result in a toast, with the activity log for what changed.
+    const list = what.length > 1 ? `${what.slice(0, -1).join(', ')} and ${what[what.length - 1]}` : what[0];
+    R.toast(filled ? `Refreshed ${list} on ${count(filled, 'link')}.` : `Refreshed ${count(todo.length, 'link')}.`,
+      [filled ? '' : 'Nothing to change.', quiet ? `${count(quiet, 'link')} didn't answer.` : ''].filter(Boolean).join(' '),
+      { tone: quiet ? 'warn' : '', action: filled || quiet ? { label: 'Details', href: '#settings/activity/lab' } : null });
   };
   $('lc-refresh').addEventListener('click', () => refreshLinks($('lc-form'), 'lc-refresh-done'));
   $('ln-refresh').addEventListener('click', () => refreshLinks($('ln-list'), 'ln-done'));

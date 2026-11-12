@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.67 (2026-11-12)
+
+- Links view is tighter: one line per link, the address next to the name, and the same group headings as the other views.
+- New Icons view on Links: an icon per link with the name under it.
+- Refresh icons shows how it went in a toast instead of a line under the toolbar.
+
 ## 1.1.66 (2026-11-12)
 
 - Links has a third view: plain links in columns, with each address under its name.

@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.67', [
+    'Links view is tighter: one line per link, the address next to the name, and the same group headings as the other views.',
+    'New Icons view on Links: an icon per link with the name under it.',
+    'Refresh icons shows how it went in a toast instead of a line under the toolbar.']],
   ['1.1.66', [
     'Links has a third view: plain links in columns, with each address under its name.']],
   ['1.1.65', [
@@ -1009,6 +1013,22 @@ const RELEASE_NOTES = [
     const [kind, count] = el.dataset.skel.split(':');
     skeleton(el, kind, Number(count) || 6);
   });
+  // A toast at the foot of the window: the flask, a bold result and a line, and a link. It goes after a few seconds unless it stays (work under way).
+  const TOAST_FLASK = '<svg class="all-flask" viewBox="0 0 24 24" aria-hidden="true"><path class="liquid" d="M6.6 15.2h10.8l2 3.2A1.7 1.7 0 0 1 17.9 21H6.1a1.7 1.7 0 0 1-1.5-2.6z"/><path d="M9 3h6M10 3v6.2L4.6 18.4A1.7 1.7 0 0 0 6.1 21h11.8a1.7 1.7 0 0 0 1.5-2.6L14 9.2V3"/></svg>';
+  let toastEl = null;
+  let toastTimer = 0;
+  const toast = (bold, text = '', { stay = false, tone = '', action = null } = {}) => {
+    if (!toastEl) {
+      toastEl = document.createElement('div');
+      toastEl.setAttribute('role', 'status');
+      document.body.append(toastEl);
+    }
+    clearTimeout(toastTimer);
+    toastEl.className = `toast show${stay ? ' busy' : ''}${tone ? ` ${tone}` : ''}`;
+    toastEl.innerHTML = `${TOAST_FLASK}<span>${bold ? `<b>${esc(bold)}</b>` : ''}${text ? ` ${esc(text)}` : ''}</span>`
+      + (action ? `<a href="${esc(action.href)}">${esc(action.label)}</a>` : '');
+    if (!stay) toastTimer = setTimeout(() => toastEl.classList.remove('show'), 6000);
+  };
   // Are you sure: a title, what happens, the button's words, and what to do on yes.
   let sureDo = null;
   const sure = (title, lead, button, then) => {
@@ -2095,6 +2115,6 @@ const RELEASE_NOTES = [
   });
 
   // What the other scripts use.
-  window.RabbidLab = { lab: () => product, $, esc, svg, say, initials, when, daysAgo, send, get, keep, forget, has, paint, where, viewAs, place, popups, option, dropdown, sure, copy, busy, groupTools, groupFilter, squares, squareSize, ping, skeleton,
+  window.RabbidLab = { lab: () => product, $, esc, svg, say, initials, when, daysAgo, send, get, keep, forget, has, paint, where, viewAs, place, popups, option, dropdown, sure, copy, busy, groupTools, groupFilter, squares, squareSize, ping, skeleton, toast,
     palette: window.RabbidLabColours.roles, me: () => meInfo };
 })();
