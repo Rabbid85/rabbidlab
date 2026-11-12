@@ -143,12 +143,15 @@ body.app.rail-small { grid-template-columns: 60px minmax(0, 1fr); }
   .ds-r { max-width: none; justify-content: flex-start; }
   .lay-picks { grid-template-columns: minmax(0, 1fr); }
 }
+/* Everything in the bar is the same height, 36px. */
 /* Settings, Activity log: the bar that narrows it, the day headings, and a row per change (a run of the same one folded). */
 .al-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 0 0 14px; }
-.al-find { width: 280px; max-width: 100%; height: 36px; margin: 0; }
-.al-tools select { height: 36px; padding-left: 12px; border: 1px solid var(--line-strong); border-radius: 8px; background-color: #0C0E17; color: var(--title); font: inherit; font-size: 13.5px; }
+.al-tools .al-find { flex: 1 1 190px; min-width: 170px; height: 36px; margin: 0; }
+.al-tools select { height: 36px; max-width: 150px; text-overflow: ellipsis; padding-left: 12px; border: 1px solid var(--line-strong); border-radius: 8px; background-color: #0C0E17; color: var(--title); font: inherit; font-size: 13.5px; }
 .al-tools .seg { margin: 0; }
-.al-tools .grow { flex: 1; }
+.al-tools .seg button, .al-tools .ds-btn { height: 36px; }
+.al-tools .seg button { padding: 0 10px; font-size: 13px; }
+.al-tools .ds-btn { padding: 0 14px; }
 .al-count { margin: 0 0 4px; color: var(--muted); font-size: 13px; }
 .al-count b { color: #D7DAE8; }
 .al-day { margin: 18px 0 4px; color: #9DA1B3; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
