@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.80', [
+    'Settings, Updates is one page: no Status and Automatic updates sub-menu.']],
   ['1.1.79', [
     'Picking Email in Add a channel shows the mail server right there, so you can still switch to Discord or another kind.']],
   ['1.1.78', [

@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.80 (2026-11-12)
+
+- Settings, Updates is one page: no Status and Automatic updates sub-menu.
+
 ## 1.1.79 (2026-11-12)
 
 - Picking Email in Add a channel shows the mail server right there, so you can still switch to Discord or another kind.
