@@ -82,7 +82,7 @@
 
   // --- The hero: how the lab is doing, and a square for every sensor -------------------------------------------------------
 
-  const squares = new Map(); // a sensor's square, kept between draws so its beat isn't started over
+  const squares = new Map(); // a sensor's square, kept between draws so it knows when its sensor was last checked
   const drawSquares = () => {
     const hero = $('sn-hero');
     const size = R.squareSize(sensors.length);
@@ -102,8 +102,8 @@
       el.title = `${s.name} · ${now(s)}`;
       el.textContent = letters(s.name);
       el.style.setProperty('--g', colour(s));
-      el.style.setProperty('--t', `${(2.2 + r * 2.4).toFixed(2)}s`);
-      el.style.setProperty('--d', `-${(hash(`${s.id}d`) * 4).toFixed(2)}s`);
+      el.style.setProperty('--ring', colour(s));
+      R.ping(el, s.checked);
       Object.assign(el.style, { width: `${side}px`, height: `${side}px`, rotate: `${down ? 8 : Math.round(hash(`${s.id}r`) * 50 - 25)}deg` });
       return { el, id: s.id };
     });

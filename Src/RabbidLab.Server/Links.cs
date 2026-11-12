@@ -54,8 +54,8 @@ public sealed class LinksFile
 /// <summary>What a site says about itself, for filling in a new link.</summary>
 public sealed record LinkLook(string? Name, string? Description, string? Address, string? Icon, string? Problem, string? IconFrom = null);
 
-/// <summary>Whether a link's site answered its last check. Down only once it has gone unanswered, since Since, for the time set.</summary>
-public sealed record LinkState(bool Up, bool Down, int? Ms, int? Code, DateTime? Since);
+/// <summary>Whether a link's site answered its last check, made At. Down only once it has gone unanswered, since Since, for the time set.</summary>
+public sealed record LinkState(bool Up, bool Down, int? Ms, int? Code, DateTime? Since, DateTime? At);
 
 /// <summary>What the page gets: each link's state, in how many seconds to ask again, and Revision, which goes up when the links change by themselves.</summary>
 public sealed record LinkStates(Dictionary<string, LinkState> States, int Next, int Revision);
@@ -616,12 +616,12 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
             {
                 if (l.Test is { } test)
                 {
-                    states[l.Id] = test == "down" ? new LinkState(false, true, null, null, l.Added) : new LinkState(true, false, 12, 200, null);
+                    states[l.Id] = test == "down" ? new LinkState(false, true, null, null, l.Added, now) : new LinkState(true, false, 12, 200, null, now);
                     continue;
                 }
                 if (seen.TryGetValue(l.Id, out var c) && c.Url == l.Url)
                 {
-                    states[l.Id] = new LinkState(c.Up, !c.Up && now - (c.Since ?? now) >= after, c.Ms, c.Code, c.Since);
+                    states[l.Id] = new LinkState(c.Up, !c.Up && now - (c.Since ?? now) >= after, c.Ms, c.Code, c.Since, c.At);
                 }
             }
             var waiting = states.Values.Any(s => !s.Up && !s.Down);

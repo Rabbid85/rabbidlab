@@ -124,8 +124,8 @@
       el.title = `${l.name} · ${HOW[state]}`;
       el.setAttribute('aria-label', el.title);
       el.style.setProperty('--g', own(l) ? '#1E2132' : colour(l.name));
-      el.style.setProperty('--t', `${(2.6 + r * 2.4).toFixed(2)}s`);
-      el.style.setProperty('--d', `-${(hash(`${l.id}d`) * 4).toFixed(2)}s`);
+      el.style.setProperty('--ring', own(l) ? 'var(--accent-soft)' : colour(l.name));
+      R.ping(el, states[l.id]?.at, hash(`${l.id}p`) * 0.6); // the checks all land together, so the pulses spread over a moment
       Object.assign(el.style, { width: `${side}px`, height: `${side}px`, rotate: `${state === 'down' ? 8 : Math.round(hash(`${l.id}r`) * 24 - 12)}deg` });
       return { el, id: l.id };
     });

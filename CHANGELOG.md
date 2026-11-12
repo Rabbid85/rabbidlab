@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.45 (2026-11-11)
+
+- The squares on Links and Sensors pulse each time they are checked, a quick swell and a ring going out, in place of a beat on a timer. Links are checked together, so their pulses spread over a moment.
+- Every square in the banner can be clicked. The banner text, buttons and stats ran the full width and covered the squares beside them.
+- The glow behind the banners fades out smoothly at any window width, with no edge to it.
+
 ## 1.1.44 (2026-11-11)
 
 - Every setting under Appearance has Reset: the lab name, icon, accent colour and layout each go back to the default. Reset is greyed out while the setting is already the default.

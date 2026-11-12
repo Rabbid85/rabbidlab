@@ -3,27 +3,34 @@
 .sn-body { padding-bottom: 26px; }
 .sn-body .table { max-width: 100%; }
 .sn-body .ln-tools .vswitch { margin-left: auto; }
-.hero.bad { background: radial-gradient(900px 420px at 88% 10%, rgba(255, 107, 125, .26), transparent 60%), radial-gradient(600px 300px at 70% 90%, rgba(158, 89, 207, .14), transparent 60%), #0C0D16; }
+.hero.bad { --glow: rgba(255, 107, 125, .26); }
 .hero-actions button:not(.primary) { background: #1A1C28; }
 
-/* A square is a sensor, in its group's colour. It beats when it's checked; one that stops answering turns red and stops. */
+/* A square is a sensor or a link, in its colour. It pulses each time it's checked; one that stops answering turns red. */
 .hero .tile.sen { display: grid; place-items: center; padding: 0; border: 0; background: var(--g, #C9CCDA); pointer-events: auto; cursor: pointer; color: rgba(11, 12, 20, .78);
   font: 800 12px "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; box-shadow: 0 6px 18px rgba(0, 0, 0, .35);
-  transition: left .4s, top .4s, width .3s, height .3s; animation: sn-beat var(--t, 3s) ease-out infinite; animation-delay: var(--d, 0s); }
+  transition: left .4s, top .4s, width .3s, height .3s; }
 .hero .tile.sen:hover { z-index: 3; background: var(--g, #C9CCDA); filter: brightness(1.15); }
 .hero .tile.sen.s-down:hover { background: var(--red); }
 .hero .tile.sen.s-paused:hover { background: none; }
 .hero .tile.sen.tiny { font-size: 0; }
-/* Over 40 they sit in a grid, still: no beat. */
-.hero .tile.sen.gridded { animation: none; }
-@keyframes sn-beat { 0%, 14%, 100% { scale: 1; } 5% { scale: 1.17; } }
+/* The pulse: a quick swell with a ring going out. a and b take turns so each check starts it over (R.ping). */
+.hero .tile.sen[data-ping="a"] { animation: sq-ping-a .9s ease-out var(--pd, 0s) both; }
+.hero .tile.sen[data-ping="b"] { animation: sq-ping-b .9s ease-out var(--pd, 0s) both; }
+.hero .tile.sen[data-ping]:not(.s-down)::after { content: ""; position: absolute; inset: -3px; border: 2px solid var(--ring, var(--accent-soft)); border-radius: inherit; opacity: 0; pointer-events: none; }
+.hero .tile.sen[data-ping="a"]:not(.s-down)::after { animation: sq-ring-a .9s ease-out var(--pd, 0s) both; }
+.hero .tile.sen[data-ping="b"]:not(.s-down)::after { animation: sq-ring-b .9s ease-out var(--pd, 0s) both; }
+@keyframes sq-ping-a { 0%, 100% { scale: 1; } 22% { scale: 1.2; filter: brightness(1.25); } }
+@keyframes sq-ping-b { 0%, 100% { scale: 1; } 22% { scale: 1.2; filter: brightness(1.25); } }
+@keyframes sq-ring-a { from { scale: 1; opacity: .85; } to { scale: 1.9; opacity: 0; } }
+@keyframes sq-ring-b { from { scale: 1; opacity: .85; } to { scale: 1.9; opacity: 0; } }
 .hero .tile.sen.s-new { opacity: .55; animation: none; }
 .hero .tile.sen.s-paused { border: 1.5px dashed #6D7290; background: none; color: #6D7290; box-shadow: none; animation: none; }
 .hero .tile.sen.s-warn { box-shadow: 0 0 0 2px #0C0D16, 0 0 0 4px var(--amber); }
 .hero .tile.sen.s-down { z-index: 2; background: var(--red); color: #fff; animation: none; box-shadow: 0 0 0 2px #0C0D16, 0 0 0 4px var(--red), 0 0 34px rgba(255, 107, 125, .7); }
 .hero .tile.sen.s-down::after { content: ""; position: absolute; inset: -4px; border: 2px solid var(--red); border-radius: inherit; animation: sn-ring 1.5s ease-out infinite; }
 @keyframes sn-ring { from { scale: 1; opacity: .9; } to { scale: 2.1; opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .hero .tile.sen, .hero .tile.sen.s-down::after { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .hero .tile.sen[data-ping], .hero .tile.sen[data-ping]::after, .hero .tile.sen.s-down::after { animation: none; } }
 @media (max-width: 1180px) { .hero .tile.sen { display: none; } }
 .hero-new.bad { border-color: rgba(255, 107, 125, .5); }
 .hero-new.bad .eyebrow { color: var(--red); }

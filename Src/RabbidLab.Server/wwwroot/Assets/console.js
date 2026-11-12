@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.45', [
+    'The squares on Links and Sensors pulse each time they are checked, a quick swell and a ring going out, in place of a beat on a timer. Links are checked together, so their pulses spread over a moment.',
+    'Every square in the banner can be clicked. The banner text, buttons and stats ran the full width and covered the squares beside them.',
+    'The glow behind the banners fades out smoothly at any window width, with no edge to it.']],
   ['1.1.44', [
     'Every setting under Appearance has Reset: the lab name, icon, accent colour and layout each go back to the default. Reset is greyed out while the setting is already the default.']],
   ['1.1.43', [
@@ -1247,7 +1251,6 @@ const RELEASE_NOTES = [
       const x0 = left + (aw - cols * cell) / 2 + (cell - side) / 2;
       const y0 = top + (ah - rows * cell) / 2 + (cell - side) / 2;
       items.forEach(({ el }, i) => {
-        el.classList.add('gridded');
         el.classList.toggle('tiny', side < 20);
         Object.assign(el.style, { width: `${side}px`, height: `${side}px`, rotate: '0deg' });
         put(el, x0 + (i % cols) * cell, y0 + Math.floor(i / cols) * cell);
@@ -1257,9 +1260,17 @@ const RELEASE_NOTES = [
     const sides = items.map(({ el }) => parseFloat(el.style.width) || el.offsetWidth);
     const spots = arrange(picked ? squaresPicked() : 'even', n, aw, ah, Math.max(...sides));
     items.forEach(({ el }, i) => {
-      el.classList.remove('gridded');
       put(el, left + spots[i][0] - sides[i] / 2, top + spots[i][1] - sides[i] / 2);
     });
+  };
+  // A square pulses when what it stands for is checked: its check time moving on, never the first time it's seen.
+  const ping = (el, at, delay = 0) => {
+    if (!at || el.dataset.at === at) return;
+    const first = !el.dataset.at;
+    el.dataset.at = at;
+    if (first) return;
+    el.style.setProperty('--pd', `${delay.toFixed(2)}s`);
+    el.dataset.ping = el.dataset.ping === 'a' ? 'b' : 'a';
   };
   const resized = new ResizeObserver((seen) => seen.forEach((e) => layOut(e.target)));
   // picked: they sit as the person chose in Icon layout, rather than evenly.
@@ -1932,6 +1943,6 @@ const RELEASE_NOTES = [
   });
 
   // What the other scripts use.
-  window.RabbidLab = { $, esc, svg, say, initials, when, daysAgo, send, get, keep, forget, has, paint, where, viewAs, place, popups, option, dropdown, sure, copy, busy, groupTools, groupFilter, squares, squareSize, skeleton,
+  window.RabbidLab = { $, esc, svg, say, initials, when, daysAgo, send, get, keep, forget, has, paint, where, viewAs, place, popups, option, dropdown, sure, copy, busy, groupTools, groupFilter, squares, squareSize, ping, skeleton,
     palette: window.RabbidLabColours.roles, me: () => meInfo };
 })();
