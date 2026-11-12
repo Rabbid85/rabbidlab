@@ -76,6 +76,34 @@ public sealed class ChannelsTests : IDisposable
     }
 
     [Fact]
+    public async Task An_alert_is_laid_out_as_a_card_with_its_banner_for_each_service()
+    {
+        var admin = await app.SignedIn();
+        (await admin.PostAsJsonAsync("/api/channels", new { kind = "discord", name = "#homelab", url = "https://discord.com/api/webhooks/1302/secrettoken" })).EnsureSuccessStatusCode();
+        (await admin.PostAsJsonAsync("/api/sensors", new { kind = "ping", target = "192.168.2.1", name = "Gate_way", rule = "critical" })).EnsureSuccessStatusCode();
+        app.Probe.Finds["192.168.2.1"] = new Probe(false, Note: "No reply");
+        await Minute(3);
+        var note = app.Hooks.Sent.Single(h => h.Kind == "discord").Note;
+
+        var discord = System.Text.Json.JsonSerializer.Serialize(ChannelSender.Discord(note.Card!));
+        var embed = System.Text.Json.JsonSerializer.Serialize(ChannelSender.Body("discord", note));
+        var slack = System.Text.Json.JsonSerializer.Serialize(ChannelSender.Body("slack", note));
+        var teams = System.Text.Json.JsonSerializer.Serialize(ChannelSender.Body("teams", note));
+        var hook = System.Text.Json.JsonSerializer.Serialize(ChannelSender.Body("webhook", note));
+
+        Assert.Equal("down", note.Card!.Banner);
+        Assert.Contains("\"flags\":32768", discord);
+        Assert.Contains("\"type\":17", discord);
+        Assert.Contains("Assets/alerts/down.png", discord);
+        Assert.Contains("## Gate\\\\_way is down", discord); // a name's _ isn't read as formatting
+        Assert.Matches(@"t:[0-9]+:t", discord); // <t:...:t>, which Discord shows in each reader's own zone
+        Assert.Contains("\"image\":{\"url\":\"https://raw.githubusercontent.com/", embed);
+        Assert.Contains("\"type\":\"image\"", slack);
+        Assert.Contains("\"width\":\"Full\"", teams);
+        Assert.Contains("\"card\":{\"state\":\"down\"", hook);
+    }
+
+    [Fact]
     public async Task A_sensor_that_alerts_when_it_answers_is_down_after_one_miss_when_asked()
     {
         var admin = await app.SignedIn();

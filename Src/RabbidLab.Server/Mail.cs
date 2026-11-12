@@ -30,8 +30,20 @@ public sealed class MailSettings
 public sealed record MailForm(string? Provider, string? Host, int? Port, string? Security, string? Username, string? Password, string? From,
     List<string>? To, string? Tenant, string? ClientId, string? ClientSecret);
 
-/// <summary>An email to send: its subject, a tone for its colour (down, up, warn or note), and its facts as label and value.</summary>
-public sealed record MailNote(string Subject, string Tone, IReadOnlyList<(string Label, string Value)> Facts);
+/// <summary>
+/// An alert to send: its subject, a tone for its colour (down, up, warn or note), and its facts as label and value. Card, when
+/// there is one, is the same alert laid out for Discord, Slack, Teams and ntfy (ChannelSender).
+/// </summary>
+public sealed record MailNote(string Subject, string Tone, IReadOnlyList<(string Label, string Value)> Facts, AlertCard? Card = null);
+
+/// <summary>
+/// An alert laid out like release notes: a banner for its state (down, up, warn, test or many), a title, one line, short
+/// sections with an emoji heading and bullets, and a footer. {when} in the line is When, which Discord shows in each
+/// reader's own time zone.
+/// </summary>
+public sealed record AlertCard(string Banner, string Title, string Line, IReadOnlyList<AlertSection> Sections, string Footer, DateTime? When = null);
+
+public sealed record AlertSection(string Heading, IReadOnlyList<string> Items);
 
 public interface IMailSender
 {

@@ -185,7 +185,10 @@ public sealed class Channels(DataFolder folder, SettingsStore secrets, IMailSend
     /// <summary>A test message, to a channel being set up (form) or one that's saved (id).</summary>
     public async Task<string?> Test(string? id, ChannelForm? form, CancellationToken stop)
     {
-        var note = new MailNote($"Test from {Product.Title}", "note", [("What", "A test message. Sensor alerts will look like this.")]);
+        var note = new MailNote($"Test from {Product.Title}", "note", [("What", "A test message. Sensor alerts will look like this.")],
+            new AlertCard("test", "Alerts work here", $"This channel gets alerts from {Product.Title}.",
+                [new("🔔 What you'll get", ["A message when a sensor goes down, and one when it's back", "Reminders while it stays down, if the sensor asks for them"])],
+                "Sent from Settings, Notifications"));
         if (id is not null)
         {
             return Known(id) ? await Send(id, note, stop) : "That channel isn't here any more.";
@@ -240,7 +243,26 @@ public sealed class ChannelSender : IChannelSender
     {
         try
         {
-            using var answer = kind == "ntfy" ? await Ntfy(url, note, stop) : await Http.PostAsJsonAsync(url, Body(kind, note), stop);
+            HttpResponseMessage first;
+            if (kind == "ntfy")
+            {
+                first = await Ntfy(url, note, stop);
+            }
+            else if (kind == "discord" && note.Card is { } card)
+            {
+                // Discord's newer layout (components); if Discord refuses it, the same card as an embed.
+                first = await Http.PostAsJsonAsync(url + (url.Contains('?') ? "&" : "?") + "with_components=true", Discord(card), stop);
+                if (first.StatusCode == System.Net.HttpStatusCode.BadRequest)
+                {
+                    first.Dispose();
+                    first = await Http.PostAsJsonAsync(url, Body(kind, note), stop);
+                }
+            }
+            else
+            {
+                first = await Http.PostAsJsonAsync(url, Body(kind, note), stop);
+            }
+            using var answer = first;
             if (answer.IsSuccessStatusCode)
             {
                 return null;
@@ -256,9 +278,49 @@ public sealed class ChannelSender : IChannelSender
 
     private static int Colour(string tone) => tone switch { "down" => 0xFF6B7D, "up" => 0x3DD68C, "warn" => 0xF2BE6B, _ => 0xE8542F };
 
-    // What each service takes: Discord an embed, Slack blocks, Teams an Adaptive Card, a webhook plain JSON.
+    // The card's colour by its banner: red down, green back up, amber warning, blue-violet for a test.
+    private static int CardColour(string banner) => banner switch { "up" => 0x23A55A, "warn" => 0xF0B232, "test" => 0x7B7FFF, _ => 0xF23F43 };
+
+    /// <summary>The banner for a state, as a picture on GitHub: the same for every lab, so it says nothing about this one.</summary>
+    public static string Banner(string state) =>
+        $"https://raw.githubusercontent.com/Rabbid85/rabbidlab/{(Product.Dev ? "dev" : "main")}/Src/RabbidLab.Server/wwwroot/Assets/alerts/{state}.png";
+
+    // The card's line with its time: Discord shows <t:…:t> in each reader's own time zone, others get this server's.
+    private static string Line(AlertCard c, bool discord) => c.When is not { } when ? c.Line.Replace(" {when}", "").Replace("{when}", "")
+        : c.Line.Replace("{when}", discord ? $"<t:{new DateTimeOffset(DateTime.SpecifyKind(when, DateTimeKind.Utc)).ToUnixTimeSeconds()}:t>"
+            : TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(when, DateTimeKind.Utc), TimeZoneInfo.Local).ToString("h:mm tt", System.Globalization.CultureInfo.InvariantCulture));
+
+    // Names can have * or _ in them, which Discord and Slack would read as formatting.
+    private static string Plain(string s) => System.Text.RegularExpressions.Regex.Replace(s, @"([\\*_~`|>])", @"\$1");
+
+    // The sections as text: a bold emoji heading, then bullets.
+    private static string Sections(AlertCard c, string bold, string bullet) =>
+        string.Join("\n\n", c.Sections.Where(s => s.Items.Count > 0).Select(s => $"{bold}{s.Heading}{bold}\n" + string.Join("\n", s.Items.Select(i => $"{bullet}{(bold.Length > 0 ? Plain(i) : i)}"))));
+
+    /// <summary>The card in Discord's newer layout: a frame in the state's colour, the banner, the title and line, a divider, the sections and the footer.</summary>
+    public static object Discord(AlertCard c)
+    {
+        var parts = new List<object>
+        {
+            new { type = 12, items = new[] { new { media = new { url = Banner(c.Banner) }, description = c.Title } } },
+            new { type = 10, content = Cut($"## {Plain(c.Title)}\n{Line(c, true)}", 1500) },
+        };
+        if (c.Sections.Any(s => s.Items.Count > 0))
+        {
+            parts.Add(new { type = 14, divider = true, spacing = 1 });
+            parts.Add(new { type = 10, content = Cut(Sections(c, "**", "- "), 2200) });
+        }
+        parts.Add(new { type = 10, content = Cut($"-# {Plain(c.Footer)}", 200) });
+        return new { username = Product.Title, flags = 32768, components = new object[] { new { type = 17, accent_color = CardColour(c.Banner), components = parts } } };
+    }
+
+    // What each service takes: Discord an embed, Slack blocks, Teams an Adaptive Card, a webhook plain JSON. With a card, laid out as one.
     public static object Body(string kind, MailNote note)
     {
+        if (note.Card is { } card && kind is "discord" or "slack" or "teams")
+        {
+            return Laid(kind, card);
+        }
         var facts = note.Facts.Where(f => f.Value.Length > 0).ToList();
         var by = $"Sent by {Product.Title}";
         return kind switch
@@ -318,22 +380,104 @@ public sealed class ChannelSender : IChannelSender
                 facts = facts.GroupBy(f => f.Label).ToDictionary(g => g.Key, g => g.First().Value),
                 sentBy = Product.Title,
                 at = DateTime.UtcNow.ToString("o"),
+                card = note.Card is not { } c ? null : new
+                {
+                    state = c.Banner, title = c.Title, line = Line(c, false), banner = Banner(c.Banner),
+                    sections = c.Sections.Select(s => new { heading = s.Heading, items = s.Items }).ToList(), footer = c.Footer,
+                },
             },
         };
     }
 
-    // ntfy's JSON publishing: the topic in the body, so names in any language arrive whole.
+    // The card as Discord's embed (when its newer layout is refused), Slack's blocks or a Teams Adaptive Card.
+    private static object Laid(string kind, AlertCard c)
+    {
+        var line = Line(c, kind == "discord");
+        switch (kind)
+        {
+            case "discord":
+                return new
+                {
+                    username = Product.Title,
+                    embeds = new[]
+                    {
+                        new
+                        {
+                            title = Cut(c.Title, 250),
+                            description = Cut($"{line}\n\n{Sections(c, "**", "- ")}".Trim(), 4000),
+                            color = CardColour(c.Banner),
+                            image = new { url = Banner(c.Banner) },
+                            footer = new { text = Cut(c.Footer, 200) },
+                        },
+                    },
+                };
+            case "slack":
+                var blocks = new List<object>
+                {
+                    new { type = "image", image_url = Banner(c.Banner), alt_text = c.Title },
+                    new { type = "header", text = new { type = "plain_text", text = Cut(c.Title, 150) } },
+                    new { type = "section", text = new { type = "mrkdwn", text = Cut(line, 2900) } },
+                };
+                if (c.Sections.Any(s => s.Items.Count > 0))
+                {
+                    blocks.Add(new { type = "divider" });
+                    blocks.Add(new { type = "section", text = new { type = "mrkdwn", text = Cut(Sections(c, "*", "• "), 2900) } });
+                }
+                blocks.Add(new { type = "context", elements = new[] { new { type = "mrkdwn", text = Cut(c.Footer, 300) } } });
+                return new { text = c.Title, blocks };
+            default:
+                var body = new List<object>
+                {
+                    new { type = "Image", url = Banner(c.Banner), size = "Stretch", altText = c.Title },
+                    new { type = "TextBlock", text = c.Title, weight = "Bolder", size = "Large", wrap = true },
+                    new { type = "TextBlock", text = line, wrap = true, spacing = "Small" },
+                };
+                var first = true;
+                foreach (var s in c.Sections.Where(s => s.Items.Count > 0))
+                {
+                    body.Add(new { type = "TextBlock", text = s.Heading, weight = "Bolder", wrap = true, spacing = "Medium", separator = first });
+                    body.Add(new { type = "TextBlock", text = string.Join("\r", s.Items.Select(i => $"- {i}")), wrap = true, spacing = "Small" });
+                    first = false;
+                }
+                body.Add(new { type = "TextBlock", text = c.Footer, isSubtle = true, size = "Small", wrap = true, spacing = "Medium" });
+                return new
+                {
+                    type = "message",
+                    attachments = new[]
+                    {
+                        new
+                        {
+                            contentType = "application/vnd.microsoft.card.adaptive",
+                            content = new Dictionary<string, object>
+                            {
+                                ["$schema"] = "http://adaptivecards.io/schemas/adaptive-card.json",
+                                ["type"] = "AdaptiveCard",
+                                ["version"] = "1.4",
+                                ["msteams"] = new { width = "Full" },
+                                ["body"] = body,
+                            },
+                        },
+                    },
+                };
+        }
+    }
+
+    // ntfy's JSON publishing: the topic in the body, so names in any language arrive whole. With a card, its banner comes along.
     private static Task<HttpResponseMessage> Ntfy(string url, MailNote note, CancellationToken stop)
     {
         var u = new Uri(url);
         var server = u.GetLeftPart(UriPartial.Authority);
+        var c = note.Card;
         return Http.PostAsJsonAsync(server, new
         {
             topic = u.AbsolutePath.Trim('/'),
-            title = note.Subject,
-            message = string.Join("\n", note.Facts.Where(f => f.Value.Length > 0).Select(f => $"{f.Label}: {f.Value}")),
+            title = c?.Title ?? note.Subject,
+            message = c is null ? string.Join("\n", note.Facts.Where(f => f.Value.Length > 0).Select(f => $"{f.Label}: {f.Value}"))
+                : $"{Line(c, false)}\n\n{Sections(c, "", "• ")}".Trim(),
             priority = note.Tone == "down" ? 4 : 3,
-            tags = new[] { note.Tone switch { "down" => "rotating_light", "up" => "white_check_mark", "warn" => "warning", _ => "test_tube" } },
+            tags = new[] { (c?.Banner ?? note.Tone) switch { "down" or "many" => "rotating_light", "up" => "white_check_mark", "warn" => "warning", _ => "bell" } },
+            attach = c is null ? null : Banner(c.Banner),
+            filename = c is null ? null : $"{c.Banner}.png",
         }, stop);
     }
 

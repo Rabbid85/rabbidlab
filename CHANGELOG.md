@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.84 (2026-11-12)
+
+- Alerts have a new look in Discord, Slack, Teams and ntfy: a banner for the state (down, back up, warning, test, several down), a bold title and one line, then short sections with an emoji heading and bullets.
+- In Discord the times show in your own time zone. If Discord refuses the new layout, the same alert goes as an embed.
+
 ## 1.1.83 (2026-11-12)
 
 - Watch links on Links: tick the links to watch (or Tick all in a group), pick when to alert and where, and each gets a sensor. Untick one to stop watching it.

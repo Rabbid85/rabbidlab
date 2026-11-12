@@ -1668,7 +1668,8 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
                 }
                 else if (st.Status == "warn" && !st.Told && rule.After >= 0)
                 {
-                    Queue(s, new MailNote($"{s.Name}: {st.Note}", "warn", [("Sensor", What(s)), ("Group", s.Group ?? "No group")]), "Sent: warning");
+                    Queue(s, new MailNote($"{s.Name}: {st.Note}", "warn", [("Sensor", What(s)), ("Group", s.Group ?? "No group")],
+                        new AlertCard("warn", $"{s.Name}: {st.Note}", "It's still answering. This is a heads-up.", [new("🟡 Details", [What(s), Where(s)])], Product.Title)), "Sent: warning");
                     st.Told = true;
                     dirty = true;
                 }
@@ -1679,7 +1680,10 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
                     if (st.Alerted is not null && rule.Back)
                     {
                         Queue(s, new MailNote($"{s.Name} is back up", "up",
-                            [("Sensor", What(s)), ("Group", s.Group ?? "No group"), ("What happened", outage?.Text ?? "Came back"), ("Answering in", st.Ms is { } ms ? $"{ms} ms" : "time")]), "Sent: back up");
+                            [("Sensor", What(s)), ("Group", s.Group ?? "No group"), ("What happened", outage?.Text ?? "Came back"), ("Answering in", st.Ms is { } ms ? $"{ms} ms" : "time")],
+                            new AlertCard("up", $"{s.Name} is back up", "It answered again at {when}.",
+                                [new("🟢 Now", [st.Ms is { } took ? $"Answering in {took} ms" : "Answering", outage?.Text ?? "Came back"]), new("📍 Where", [What(s), Where(s)])],
+                                Product.Title, st.Since ?? now)), "Sent: back up");
                     }
                     st.Told = false;
                     st.Alerted = null;
@@ -1754,8 +1758,25 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
         {
             facts.Add(("Waiting on it", Few(behind)));
         }
-        return new MailNote($"{s.Name} is {(again ? "still " : "")}down", "down", facts);
+        var since = st.Since ?? now;
+        var others = down.Where(x => x.Id != s.Id).Select(x => x.Name).ToList();
+        List<AlertSection> sections = [new("🔴 What happened", [st.Note ?? "No reply", What(s), $"Down for {Span(now - since)}{(again ? "" : " so far")}"])];
+        if (behind.Count > 0)
+        {
+            sections.Add(new("⏳ Waiting on it", [$"{Few(behind)} {(behind.Count == 1 ? "waits" : "wait")} instead of alerting"]));
+        }
+        if (others.Count > 0)
+        {
+            sections.Add(new("🔻 Also down", [Few(others)]));
+        }
+        sections.Add(new("📍 Where", [Where(s)]));
+        return new MailNote($"{s.Name} is {(again ? "still " : "")}down", "down", facts,
+            new AlertCard("down", $"{s.Name} is {(again ? "still " : "")}down", again ? "Down since {when}." : "It stopped answering at {when}.", sections, Product.Title, since));
     }
+
+    // Where a sensor sits, in a few words: Network · checked every minute.
+    private static string Where(Sensor s) =>
+        $"{s.Group ?? "No group"} · checked every {(s.Every switch { 30 => "30 seconds", 60 => "minute", 300 => "5 minutes", 3600 => "hour", _ => $"{s.Every} seconds" })}";
 
     // One alert for several that went down close together: what's down, what waits on each, when, and what's still up. Under the lock.
     private MailNote Gathered(List<Sensor> with, DateTime now, SensorsFile f, List<Sensor> down, Dictionary<string, Sensor?> waits, Dictionary<string, Sensor> byId)
@@ -1779,7 +1800,22 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
         }
         var up = f.Sensors.Where(s => !s.Paused && State(s.Id).Status is "up" or "warn").Select(s => s.Name).ToList();
         facts.Add(("Still up", up.Count <= 8 ? Few(up) : $"{up.Count} others"));
-        return new MailNote($"{with.Count} sensors are down", "down", facts);
+        List<AlertSection> sections = [new("🔴 Down", [.. with.Take(15).Select(s => $"{s.Name}: {State(s.Id).Note ?? "no reply"}")])];
+        foreach (var s in with)
+        {
+            var behind = waits.Where(w => w.Value?.Id == s.Id).Select(w => byId[w.Key].Name).ToList();
+            if (behind.Count > 0)
+            {
+                sections.Add(new($"⏳ Waiting on {s.Name}", [Few(behind)]));
+            }
+        }
+        if (others.Count > 0)
+        {
+            sections.Add(new("🔻 Also down", [Few(others)]));
+        }
+        sections.Add(new("🟢 Still up", [up.Count == 0 ? "Nothing else" : up.Count <= 8 ? Few(up) : $"{up.Count} others"]));
+        return new MailNote($"{with.Count} sensors are down", "down", facts,
+            new AlertCard("many", $"{with.Count} sensors are down", spread.TotalSeconds < 1 ? "All at {when}." : $"All within {Span(spread)} of {{when}}.", sections, Product.Title, times.Min()));
     }
 
     /// <summary>
@@ -1806,7 +1842,8 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
                 return ([], [], "A test alert just went. Try again in a few seconds.");
             }
             tested[id] = Now;
-            note = new MailNote($"Test: {s.Name} is down", "down", [("Sensor", What(s)), ("Group", s.Group ?? "No group"), ("This is a test", $"{by} sent it from the sensor's page. Nothing is down.")]);
+            note = new MailNote($"Test: {s.Name} is down", "down", [("Sensor", What(s)), ("Group", s.Group ?? "No group"), ("This is a test", $"{by} sent it from the sensor's page. Nothing is down.")],
+                new AlertCard("test", $"Test alert for {s.Name}", "Nothing is down. Its alerts come here, looking like this.", [new("📍 The sensor", [What(s), Where(s)])], $"{Product.Title} · sent by {by}"));
         }
         var went = new List<string>();
         var failed = new List<string>();
