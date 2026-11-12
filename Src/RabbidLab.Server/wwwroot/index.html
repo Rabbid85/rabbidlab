@@ -210,7 +210,7 @@
       <a href="#settings/links" data-sub="links" data-can="links.edit"><svg class="all-flask" viewBox="0 0 24 24" aria-hidden="true"><path class="liquid" d="M6.6 15.2h10.8l2 3.2A1.7 1.7 0 0 1 17.9 21H6.1a1.7 1.7 0 0 1-1.5-2.6z"/><path d="M9 3h6M10 3v6.2L4.6 18.4A1.7 1.7 0 0 0 6.1 21h11.8a1.7 1.7 0 0 0 1.5-2.6L14 9.2V3"/></svg><span>Links</span></a>
       <div class="dkids" data-kids="links">
         <a href="#settings/links/checks" data-sub="links" data-sec="checks"><span class="nm">Checks</span></a>
-        <a href="#settings/links/descriptions" data-sub="links" data-sec="descriptions"><span class="nm">Descriptions</span></a>
+        <a href="#settings/links/descriptions" data-sub="links" data-sec="descriptions"><span class="nm">Icons and descriptions</span></a>
         <a href="#settings/links/icons" data-sub="links" data-sec="icons"><span class="nm">Icon layout</span></a>
         <a href="#settings/links/export" data-sub="links" data-sec="export"><span class="nm">Export and import</span></a>
       </div>
@@ -363,9 +363,12 @@
           <div class="ds-row"><div class="ds-l"><b>Show a link as down after</b><span id="lc-note"></span></div><div class="ds-r"><div class="seg sn-seg" id="lc-after"></div></div></div>
           <p class="ds-note"><svg><use href="#i-info"/></svg><span>For checks around the clock, with email when something goes down, add a <a href="#sensors">sensor</a>.</span></p>
         </section>
-        <section class="ds-sec" data-sec="descriptions"><h3 class="ds-h">Descriptions</h3>
+        <section class="ds-sec" data-sec="descriptions"><h3 class="ds-h">Icons and descriptions</h3>
           <div class="ds-row"><div class="ds-l"><b>Auto-fill descriptions</b><span>Rabbid Lab recognises common gear like TrueNAS, iDRAC, ESXi and UniFi and fills in what it is. Turn it off to clear the ones it filled in. Descriptions you typed always stay.</span></div>
             <div class="ds-r"><span class="sw-label" id="lc-known-label">On</span><input type="checkbox" class="switch" id="lc-known" role="switch" aria-label="Auto-fill descriptions"></div></div>
+          <div class="ds-row"><div class="ds-l"><b>Refresh icons and descriptions</b><span>Reads each link's site again, four at a time, and fills in what's missing: an icon where it shows a letter, a description where it has none, and its IP on your network. Icons and descriptions you set stay as they are.</span></div>
+            <div class="ds-r"><button type="button" class="ds-btn" id="lc-refresh">Refresh</button></div></div>
+          <p class="hint note" id="lc-refresh-done" role="status" hidden></p>
         </section>
         <section class="ds-sec" data-sec="icons"><h3 class="ds-h">Icon layout <small class="ds-scope">Just you</small></h3>
           <p class="sq-lead">How the link icons sit in the banner at the top of Links. Over 40, they line up in a grid.</p>

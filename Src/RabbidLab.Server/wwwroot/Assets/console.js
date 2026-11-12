@@ -3,6 +3,11 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.46', [
+    'Settings, Links, Icons and descriptions has Refresh. It reads the site of each link again, four at a time, and fills in an icon where a link shows its letter, a description where it has none, and its IP when that is on your network. Icons and descriptions you set stay as they are.',
+    'Over 40 links or sensors, the banner grid uses the whole right of the banner, with squares big enough to show their letter or icon. A down one stays its size, red with a thin ring.',
+    'The Down now card only takes room in the banner while the squares still fit beside it, and nothing sits on top of it. When they do not fit, it steps aside and the line under the title still says what is down.',
+    'A down square has a smaller ring and glow, so they no longer spill over the squares around it.']],
   ['1.1.45', [
     'The squares on Links and Sensors pulse each time they are checked, a quick swell and a ring going out, in place of a beat on a timer. Links are checked together, so their pulses spread over a moment.',
     'Every square in the banner can be clicked. The banner text, buttons and stats ran the full width and covered the squares beside them.',
@@ -1233,21 +1238,38 @@ const RELEASE_NOTES = [
     const { items, card, picked } = now;
     const n = items.length;
     const left = W * 0.56;
-    const right = card && !card.hidden && card.offsetWidth ? card.offsetLeft - 28 : W * 0.95;
     const top = H * 0.12;
-    const aw = right - left;
     const ah = H * 0.86 - top;
+    const sides = items.map(({ el }) => parseFloat(el.style.width) || el.offsetWidth);
+    // The card keeps its corner only while the squares still fit beside it at their size; otherwise it steps aside for them.
+    let right = W * 0.95;
+    if (card) {
+      card.classList.remove('crowded');
+      const beside = !card.hidden && card.offsetWidth ? card.offsetLeft - 28 : 0;
+      const size = sides.reduce((a, b) => a + b, 0) / n; // a typical one, not a down one grown bigger
+      const fits = n <= 40 && beside - left >= size * 3 && (beside - left) * ah >= n * (size * 2) ** 2;
+      if (beside && fits) right = beside;
+      else if (beside) card.classList.add('crowded');
+    }
+    const aw = right - left;
     if (aw < 40 || ah < 40) return;
     const put = (el, x, y) => {
       el.style.left = `${((x / W) * 100).toFixed(2)}%`;
       el.style.top = `${((y / H) * 100).toFixed(2)}%`;
     };
+    items.forEach(({ el }) => el.classList.toggle('gridded', n > 40));
     if (n > 40) {
-      let cols = Math.ceil(Math.sqrt((n * aw) / ah));
-      let rows = Math.ceil(n / cols);
-      while (rows * (aw / cols) > ah) rows = Math.ceil(n / ++cols);
-      const cell = Math.min(aw / cols, ah / rows);
-      const side = Math.max(4, Math.round(cell * 0.78));
+      // The grid with the biggest squares that fit, no bigger than a square's own size; with room to spare it takes the shape of the space.
+      const fit = (c) => Math.min(aw / c, ah / Math.ceil(n / c));
+      let cols = 1;
+      for (let c = 2; c <= n; c++) if (fit(c) > fit(cols)) cols = c;
+      const cell = Math.min(fit(cols), 40);
+      if (cell === 40) {
+        cols = Math.max(1, Math.min(Math.floor(aw / cell), Math.round(Math.sqrt((n * aw) / ah))));
+        while (Math.ceil(n / cols) * cell > ah) cols++;
+      }
+      const rows = Math.ceil(n / cols);
+      const side = Math.max(4, Math.round(cell * 0.76));
       const x0 = left + (aw - cols * cell) / 2 + (cell - side) / 2;
       const y0 = top + (ah - rows * cell) / 2 + (cell - side) / 2;
       items.forEach(({ el }, i) => {
@@ -1257,7 +1279,6 @@ const RELEASE_NOTES = [
       });
       return;
     }
-    const sides = items.map(({ el }) => parseFloat(el.style.width) || el.offsetWidth);
     const spots = arrange(picked ? squaresPicked() : 'even', n, aw, ah, Math.max(...sides));
     items.forEach(({ el }, i) => {
       put(el, left + spots[i][0] - sides[i] / 2, top + spots[i][1] - sides[i] / 2);

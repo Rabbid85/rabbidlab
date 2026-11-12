@@ -468,6 +468,75 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
     }
 
     /// <summary>
+    /// Reads a link's site again, the way Fill in does, and fills in what it's missing: the icon where it shows its letter,
+    /// a description where it has none or only Rabbid Lab's own, and its IP when that's on the lab's network. An icon it has stays (it may be one uploaded),
+    /// and so do No icon, a typed description and the name. Null when the link is gone.
+    /// </summary>
+    public async Task<LinkRefreshed?> Refresh(string id, CancellationToken stop, bool guarded = true)
+    {
+        Link? was;
+        bool describe;
+        lock (gate)
+        {
+            var f = file.Read();
+            was = f.Links.FirstOrDefault(l => l.Id == id);
+            describe = f.Describe;
+        }
+        if (was is null)
+        {
+            return null;
+        }
+        if (was.Test is not null)
+        {
+            return new LinkRefreshed(was, [], null);
+        }
+        var look = await Look(was.Url, stop, guarded, describe);
+        lock (gate)
+        {
+            var f = file.Read();
+            var at = f.Links.FindIndex(l => l.Id == id);
+            if (at < 0)
+            {
+                return null;
+            }
+            var now = f.Links[at];
+            List<string> changed = [];
+            var icon = now.Icon;
+            if (now.Icon is null && look.Icon is { } found)
+            {
+                icon = found;
+                changed.Add("icon");
+            }
+            var description = now.Description;
+            if ((now.Description is null || KnownSites.IsOurs(now.Description)) && Blank(look.Description) is { } text && text != now.Description)
+            {
+                description = text.Length > 200 ? text[..200] : text;
+                changed.Add("description");
+            }
+            var address = now.Address;
+            if (now.Address is null && Blank(look.Address) is { } ip && OnLan(ip))
+            {
+                address = ip;
+                changed.Add("IP");
+            }
+            // Not a link that was changed while its site was read.
+            if (changed.Count == 0 || now.Url != was.Url)
+            {
+                return new LinkRefreshed(now, [], changed.Count == 0 ? look.Problem : null);
+            }
+            var link = new Link
+            {
+                Id = now.Id, Added = now.Added, AddedBy = now.AddedBy, Name = now.Name, Url = now.Url, Group = now.Group, Place = now.Place,
+                Icon = icon, Description = description, Address = address,
+            };
+            f.Links[at] = link;
+            file.Save(f);
+            revision++;
+            return new LinkRefreshed(link, changed, null);
+        }
+    }
+
+    /// <summary>
     /// The site's name, description, address and icon. Guarded (always, but in tests): not from this server or a
     /// link-local address. With describe, a product it recognises gets its description from KnownSites.
     /// </summary>
@@ -937,6 +1006,21 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
             && (said == "image/svg+xml" || start.StartsWith("<?xml", StringComparison.Ordinal))) ? "image/svg+xml" : null;
     }
 
+    /// <summary>Whether an address is on a private network, like the lab's: an internet site's IP says nothing worth showing.</summary>
+    private static bool OnLan(string ip)
+    {
+        if (!IPAddress.TryParse(ip, out var a))
+        {
+            return false;
+        }
+        if (a.AddressFamily != AddressFamily.InterNetwork)
+        {
+            return a.IsIPv6UniqueLocal;
+        }
+        var b = a.GetAddressBytes();
+        return b[0] == 10 || (b[0] == 172 && b[1] is >= 16 and < 32) || (b[0] == 192 && b[1] == 168) || (b[0] == 100 && b[1] is >= 64 and < 128);
+    }
+
     /// <summary>The host's IPv4 address (or IPv6 when that's all it has); the host itself when it's already an address.</summary>
     private static async Task<string?> Ip(string host, CancellationToken stop)
     {
@@ -989,6 +1073,9 @@ public sealed record LinksExport(string? Kind, int? Version, DateTime? Exported,
 
 /// <summary>What an import did: links and groups added, links left out as already here, links turned away, and whether the check times were set.</summary>
 public sealed record LinksImported(int Links, int Groups, int Skipped, int Refused, bool Checks);
+
+/// <summary>What Refresh filled in on a link (icon, description, IP), or why its site couldn't be read when it filled in nothing.</summary>
+public sealed record LinkRefreshed(Link Link, List<string> Changed, string? Problem);
 
 
 public static class LinksApi
@@ -1135,6 +1222,25 @@ public static class LinksApi
         app.MapPost("/api/links", (LinkForm form, HttpContext context, Links links, ActivityLog log, SettingsStore settings) => Save(null, form, context, links, log, settings));
 
         app.MapPost("/api/links/{id}", (string id, LinkForm form, HttpContext context, Links links, ActivityLog log, SettingsStore settings) => Save(id, form, context, links, log, settings));
+
+        // Fills in what a link is missing from its site: one link a call, so the page can show how far along it is.
+        app.MapPost("/api/links/{id}/refresh", async (string id, HttpContext context, Links links, ActivityLog log) =>
+        {
+            if (Access.RefuseUnless(context, Permissions.LinksEdit) is { } refused)
+            {
+                return refused;
+            }
+            if (await links.Refresh(id, context.RequestAborted) is not { } done)
+            {
+                return Results.NotFound(new { error = "That link isn't here any more." });
+            }
+            var c = done.Changed;
+            if (c.Count > 0)
+            {
+                log.Record(context, "links", "link.refresh", $"Filled in the {string.Join(", ", c.SkipLast(1))}{(c.Count > 1 ? " and " : "")}{c[^1]} of {done.Link.Name}");
+            }
+            return Results.Ok(new { name = done.Link.Name, changed = c, problem = done.Problem });
+        });
 
         app.MapPost("/api/links/{id}/delete", (string id, HttpContext context, Links links, ActivityLog log) =>
         {

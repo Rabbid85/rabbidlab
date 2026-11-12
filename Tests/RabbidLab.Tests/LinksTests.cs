@@ -243,6 +243,41 @@ public sealed class LinksTests : IDisposable
     }
 
     [Fact]
+    public async Task Refresh_fills_in_what_a_link_is_missing_and_keeps_what_was_set_by_hand()
+    {
+        byte[] png = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 5, 6, 7, 8];
+        var page = Encoding.UTF8.GetBytes("<html><head><title>Shelfy</title><meta name=\"description\" content=\"Pantry list\"><link rel=\"icon\" href=\"/i.png\"></head></html>");
+        using var site = new TinySite(new() { ["/"] = ("text/html", page), ["/b/"] = ("text/html", page), ["/i.png"] = ("application/octet-stream", png) });
+        var admin = await app.SignedIn();
+        async Task<string> Add(object link) => (await Json(await admin.PostAsJsonAsync("/api/links", link))).GetProperty("id").GetString()!;
+        var bare = await Add(new { url = $"http://127.0.0.1:{site.Port}/", name = "Pantry" });
+        var mine = await Add(new { url = $"http://127.0.0.1:{site.Port}/b/", name = "My pantry", description = "My own words", icon = "none", address = "pantry.lan" });
+        var quiet = await Add(new { url = "http://127.0.0.1:1", name = "Quiet" });
+        var links = app.Services.GetRequiredService<Links>();
+
+        // The stand-in site is on this computer, which a real lookup doesn't read: unguarded, for the test.
+        var filled = await links.Refresh(bare, CancellationToken.None, guarded: false);
+        var kept = await links.Refresh(mine, CancellationToken.None, guarded: false);
+        var none = await links.Refresh(quiet, CancellationToken.None, guarded: false);
+        var again = await links.Refresh(bare, CancellationToken.None, guarded: false);
+        var missing = await admin.PostAsync("/api/links/nope/refresh", null);
+        var all = links.All().ToDictionary(l => l.Id);
+
+        Assert.Equal(["icon", "description"], filled!.Changed);
+        Assert.Equal("data:image/png;base64," + Convert.ToBase64String(png), all[bare].Icon);
+        Assert.Equal("Pantry list", all[bare].Description);
+        Assert.Equal("Pantry", all[bare].Name);
+        Assert.Empty(kept!.Changed);
+        Assert.Equal("none", all[mine].Icon);
+        Assert.Equal("My own words", all[mine].Description);
+        Assert.Equal("pantry.lan", all[mine].Address);
+        Assert.Empty(none!.Changed);
+        Assert.NotNull(none.Problem);
+        Assert.Empty(again!.Changed); // nothing left to fill in
+        Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
+    }
+
+    [Fact]
     public async Task A_lookup_follows_a_front_page_to_the_real_one_and_leaves_a_broken_icon()
     {
         byte[] png = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3, 4];

@@ -324,6 +324,52 @@
   });
   // Import: a file Export made, added beside what's here. The flask covers the settings while it goes in.
   const count = (n, thing) => `${n} ${thing}${n === 1 ? '' : 's'}`;
+  // Refresh: each link missing an icon, a description or its IP has its site read again, four at a time, under the flask.
+  $('lc-refresh').addEventListener('click', async () => {
+    const todo = links.filter((l) => !l.icon || !l.description || !l.address);
+    say('lc-refresh-done', '');
+    say('lc-problem', '');
+    if (!todo.length) return say('lc-refresh-done', 'Every link has its icon, description and IP already.');
+    const form = $('lc-form');
+    const got = { icon: 0, description: 0, IP: 0 };
+    let next = 0;
+    let done = 0;
+    let filled = 0;
+    let quiet = 0;
+    const show = (name) => {
+      R.busy(form, `Refreshing ${done} of ${todo.length}`, name ? `${name} · ${count(filled, 'link')} filled in so far` : '');
+      const cover = form.querySelector(':scope > .busy-cover');
+      if (cover && !cover.querySelector('.ld-bar')) cover.insertAdjacentHTML('beforeend', '<span class="ubar ld-bar"><i></i></span>');
+      if (cover) cover.querySelector('.ld-bar i').style.width = `${Math.round((done / todo.length) * 100)}%`;
+    };
+    const work = async () => {
+      while (next < todo.length) {
+        const l = todo[next++];
+        try {
+          const r = await R.send(`/api/links/${encodeURIComponent(l.id)}/refresh`, {});
+          r.changed.forEach((c) => { got[c] += 1; });
+          if (r.changed.length) filled++;
+          else if (r.problem) quiet++;
+        } catch {
+          quiet++; // gone, or the server didn't answer: counted with the ones that didn't
+        }
+        done++;
+        show(l.name);
+      }
+    };
+    show('');
+    await Promise.all(Array.from({ length: Math.min(4, todo.length) }, work));
+    R.busy(form, '');
+    try {
+      take(await R.get('/api/links'));
+    } catch {
+      // The page catches up on its next check.
+    }
+    draw();
+    const what = [got.icon && count(got.icon, 'icon'), got.description && count(got.description, 'description'), got.IP && count(got.IP, 'IP')].filter(Boolean);
+    say('lc-refresh-done', [filled ? `Filled in ${what.length > 1 ? `${what.slice(0, -1).join(', ')} and ${what[what.length - 1]}` : what[0]} on ${count(filled, 'link')}.` : 'Nothing new to fill in.',
+      quiet ? `${count(quiet, 'link')} didn't answer.` : ''].filter(Boolean).join(' '));
+  });
   $('lc-import-file').addEventListener('change', async () => {
     const f = $('lc-import-file').files[0];
     $('lc-import-file').value = '';

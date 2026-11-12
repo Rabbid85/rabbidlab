@@ -377,7 +377,7 @@ a.button:hover, label.button:hover { background: #222536; text-decoration: none;
 .hero-stats b { display: block; font: 750 30px/1.1 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; color: #fff; }
 .hero-stats span { display: flex; align-items: center; gap: 6px; margin-top: 4px; font-size: 12.5px; color: var(--muted); }
 .hero-stats svg { width: 14px; height: 14px; }
-.hero .hero-new { position: absolute; right: 36px; top: 40px; width: 250px; padding: 14px 16px; border: 1px solid var(--line-strong); border-radius: 12px; background: #0F111A; }
+.hero .hero-new { position: absolute; right: 36px; top: 40px; z-index: 4; width: 250px; padding: 14px 16px; border: 1px solid var(--line-strong); border-radius: 12px; background: #0F111A; }
 .hero-new b { display: block; margin-top: 4px; color: var(--title); font-size: 14px; }
 .hero-new p:not(.eyebrow) { margin: 6px 0 10px; color: var(--muted); font-size: 12.5px; line-height: 1.45; }
 .more { color: var(--accent-soft); font-size: 13px; font-weight: 600; white-space: nowrap; }
@@ -394,6 +394,8 @@ a.button:hover, label.button:hover { background: #222536; text-decoration: none;
 .post .text { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; margin-top: 6px; color: var(--muted); font-size: 12.5px; line-height: 1.45; }
 .home .machine { margin: 22px var(--side) 0; }
 @media (max-width: 1180px) { .hero .hero-new { display: none; } }
+/* No room beside it for the squares: the card steps aside, and the line under the title still says what's down. */
+.hero .hero-new.crowded { display: none; }
 /* Every hero is the same height with its parts in the same places, so the line under it stays put from page to page. */
 @media (min-width: 701px) { .hero { min-height: 300px; } }
 #page-overview .hero-lead { max-width: 760px; }
