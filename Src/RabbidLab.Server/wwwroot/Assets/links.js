@@ -85,11 +85,13 @@
   // The Links and Icons views: a dot only when a link isn't answering.
   const off = (l) => (states[l.id] && !states[l.id].up ? (states[l.id].down ? 'down' : 'late') : '');
   const face = (l, cls) => `<span class="${cls}${l.icon && l.icon !== NO_ICON ? '' : ' letter'}" data-color="${colour(l.name)}">${l.icon === NO_ICON ? '' : pic(l)}</span>`;
+  // Dragged to another place or group, like the tiles, for people who may change links.
+  const drag = (l) => (can('links.edit') ? ` draggable="true" data-drag="${esc(l.id)}"` : '');
   // Links: one line each, the name and then its address.
-  const plain = (l) => `<a class="lx-link${off(l) ? ` ${off(l)}` : ''}" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer" title="${esc(l.description || l.name)}">`
+  const plain = (l) => `<a class="lx-link${off(l) ? ` ${off(l)}` : ''}" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer" title="${esc(l.description || l.name)}"${drag(l)}>`
     + `${face(l, 'lx-ic')}<span class="lx-name">${esc(l.name)}</span><span class="lx-host">${esc(host(l.url))}</span>${off(l) ? `<i class="lx-dot ${off(l)}"></i>` : ''}</a>`;
   // Icons: a square with the name under it, like a home screen.
-  const launch = (l) => `<a class="lapp${off(l) ? ` ${off(l)}` : ''}" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer" title="${esc(`${l.name} · ${host(l.url)}`)}">`
+  const launch = (l) => `<a class="lapp${off(l) ? ` ${off(l)}` : ''}" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer" title="${esc(`${l.name} · ${host(l.url)}`)}"${drag(l)}>`
     + `${face(l, 'lapp-sq')}${off(l) ? `<i class="lx-dot ${off(l)}"></i>` : ''}<span class="lapp-n">${esc(l.name)}</span></a>`;
   const body = (list) => (view === 'links' ? `<div class="lx">${list.map(plain).join('')}</div>`
     : view === 'icons' ? `<div class="lapps">${list.map(launch).join('')}</div>`
@@ -271,7 +273,25 @@
       draw();
     },
   });
-  // Groups: renamed where they stand, dragged into order, deleted (console.js has the tools Sensors uses too).
+  // A link dragged to another place: its group's links in their new order. Shown straight away, then saved.
+  // whole: ids is the whole group already (Sort A to Z), so a search on the page changes nothing.
+  const arrange = async (id, to, ids, whole = false) => {
+    const l = links.find((x) => x.id === id);
+    if (!l) return draw();
+    // With a search on, the page shows only part of the group: the link joins the end of all of it.
+    if (!whole && $('ln-find').value.trim()) ids = [...links.filter((x) => (x.group || '') === to && x.id !== id).map((x) => x.id), id];
+    l.group = to || null;
+    links = [...links.filter((x) => !ids.includes(x.id)), ...ids.map((x) => links.find((y) => y.id === x)).filter(Boolean)];
+    draw();
+    try {
+      take(await R.send('/api/links/arrange', { group: to, ids }));
+      say('ln-problem', '');
+    } catch (err) {
+      say('ln-problem', err.message);
+    }
+    draw();
+  };
+  // Groups: renamed where they stand, dragged into order, sorted, deleted (console.js has the tools Sensors uses too).
   const tools = R.groupTools($('ln-list'), {
     api: '/api/links/groups',
     thing: 'link',
@@ -283,22 +303,11 @@
     // Open all: every link in the group, each in a tab of its own.
     also: (g, n) => (n > 1 ? `<button type="button" class="link lopen" data-openall="${esc(g)}" title="Open every link in this group, each in a new tab">Open all</button>` : ''),
     places: true, // links keep the order they're dragged into
-    // A link dragged to another place: its group's links in their new order. Shown straight away, then saved.
-    move: async (id, to, ids) => {
-      const l = links.find((x) => x.id === id);
-      if (!l) return draw();
-      // With a search on, the page shows only part of the group: the link joins the end of all of it.
-      if ($('ln-find').value.trim()) ids = [...links.filter((x) => (x.group || '') === to && x.id !== id).map((x) => x.id), id];
-      l.group = to || null;
-      links = [...links.filter((x) => !ids.includes(x.id)), ...ids.map((x) => links.find((y) => y.id === x)).filter(Boolean)];
-      draw();
-      try {
-        take(await R.send('/api/links/arrange', { group: to, ids }));
-        say('ln-problem', '');
-      } catch (err) {
-        say('ln-problem', err.message);
-      }
-      draw();
+    move: arrange,
+    // Sort A to Z: the group's links by name, saved like a drag.
+    sort: (g) => {
+      const ids = links.filter((x) => (x.group || '') === g).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })).map((x) => x.id);
+      if (ids.length > 1) arrange(ids[0], g, ids, true);
     },
     take,
     draw,

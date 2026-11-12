@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.68', [
+    'You can drag links into place in the Links and Icons views too.',
+    'Each group has a Sort A to Z button.',
+    'The handle for moving a group is a grip now, not an arrow.']],
   ['1.1.67', [
     'Links view is tighter: one line per link, the address next to the name, and the same group headings as the other views.',
     'New Icons view on Links: an icon per link with the name under it.',
@@ -1715,6 +1719,7 @@ const RELEASE_NOTES = [
       }
       const tools = g && o.can()
         ? `<span class="ltools"><span class="lgrip" draggable="true" title="Drag to reorder">${svg('grip')}</span>`
+          + (o.sort && n > 1 ? `<button type="button" class="icon" data-gsort="${esc(g)}" title="Sort A to Z" aria-label="Sort ${esc(g)} A to Z">${svg('sort')}</button>` : '')
           + `<button type="button" class="icon" data-rename="${esc(g)}" title="Rename" aria-label="Rename ${esc(g)}">${svg('edit')}</button>`
           + `<button type="button" class="icon" data-gdelete="${esc(g)}" title="Delete" aria-label="Delete ${esc(g)}">${svg('trash')}</button></span>` : '';
       return `<div class="lhead"><h2>${esc(g || 'No group')}<small>${n}</small></h2>${o.also?.(g, n) || ''}${tools}</div>`;
@@ -1731,7 +1736,9 @@ const RELEASE_NOTES = [
     list.addEventListener('click', (e) => {
       const b = e.target.closest('button');
       if (!b) return;
-      if (b.dataset.rename) {
+      if (b.dataset.gsort) {
+        o.sort(b.dataset.gsort);
+      } else if (b.dataset.rename) {
         renaming = { name: b.dataset.rename, text: b.dataset.rename };
         o.draw();
       } else if ('renameSave' in b.dataset) {

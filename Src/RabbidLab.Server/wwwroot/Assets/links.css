@@ -223,3 +223,12 @@
 .lapp.down .lapp-sq { border-color: rgba(255, 107, 125, .55); }
 .lapp-n { max-width: 100%; overflow: hidden; color: #D7DAE8; font-size: 12.5px; font-weight: 600; line-height: 1.25; white-space: nowrap; text-overflow: ellipsis; }
 .lapp.down .lapp-n { color: #FF9AA7; }
+/* Dragging in the Links and Icons views: a line where it lands. */
+.lx-link { position: relative; }
+.lx-link.dragged, .lapp.dragged { opacity: .4; }
+.lx-link.drop-before::before, .lx-link.drop-after::after { content: ""; position: absolute; right: 8px; left: 8px; height: 3px; border-radius: 3px; background: var(--accent-soft); }
+.lx-link.drop-before::before { top: -2px; }
+.lx-link.drop-after::after { bottom: -2px; }
+.lapp.drop-before::before, .lapp.drop-after::after { content: ""; position: absolute; top: 6px; bottom: 6px; width: 3px; border-radius: 3px; background: var(--accent-soft); }
+.lapp.drop-before::before { left: -5px; }
+.lapp.drop-after::after { right: -5px; }

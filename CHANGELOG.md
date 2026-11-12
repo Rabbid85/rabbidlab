@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.68 (2026-11-12)
+
+- You can drag links into place in the Links and Icons views too.
+- Each group has a Sort A to Z button.
+- The handle for moving a group is a grip now, not an arrow.
+
 ## 1.1.67 (2026-11-12)
 
 - Links view is tighter: one line per link, the address next to the name, and the same group headings as the other views.
