@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.34 (2026-11-11)
+
+- The Developer tools switch in Settings, Developer just says it turns on a few developer-only options.
+
 ## 1.1.33 (2026-11-11)
 
 - Banner squares moved from Settings, Appearance to Settings, Links, as Icon layout, with its own entry in the Links menu. It sets how the link icons sit in the banner on Links; Sensors keeps them evenly spread.
