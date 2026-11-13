@@ -120,10 +120,11 @@ body.app.rail-small { grid-template-columns: 60px minmax(0, 1fr); }
 .ds-sw.custom { overflow: hidden; background: conic-gradient(#FF6B7D, #F2BE6B, #5FD4A0, #3CC7C7, #6FA8FF, #B07CE8, #FF6B7D); }
 .ds-sw.custom input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
 .ds-sw:disabled, .ds-sw.custom.off { opacity: .45; cursor: default; }
-/* Appearance: every row's controls in the same two slots, a 300px control then Reset, so they line up down the page. */
-.ap-rows .ds-r { display: grid; grid-template-columns: minmax(0, 300px) 104px; gap: 14px; align-items: center; }
+/* Appearance: every row's controls in the same two slots, a 300px control then an 80px Reset, so they line up down the page. */
+.ap-rows .ds-r { display: grid; grid-template-columns: minmax(0, 300px) 80px; gap: 14px; align-items: center; }
+.ap-rows .ds-r .ds-btn { min-width: 0; }
 .ap-rows .ds-r > :first-child { grid-column: 1; }
-.ap-rows .ds-h.has-reset .ds-btn:not(.ds-ibtn) { min-width: 104px; justify-content: center; }
+.ap-rows .ds-h.has-reset .ds-btn:not(.ds-ibtn) { min-width: 80px; justify-content: center; }
 .ap-rows .ds-r select, .ap-rows .ds-r .ds-input { width: 100%; }
 .ap-icon { display: flex; align-items: center; gap: 10px; }
 .ap-icon .ds-icon { flex: none; width: 38px; height: 38px; border-radius: 8px; }
@@ -132,7 +133,7 @@ body.app.rail-small { grid-template-columns: 60px minmax(0, 1fr); }
 .ap-rows .ds-swatches { flex-wrap: nowrap; justify-content: space-between; gap: 4px; max-width: none; }
 .ap-rows .ds-sw { flex: 0 1 24px; width: auto; height: auto; min-width: 16px; aspect-ratio: 1; }
 @media (max-width: 700px) {
-  .ap-rows .ds-r { flex: 1 1 100%; grid-template-columns: minmax(0, 1fr) 104px; }
+  .ap-rows .ds-r { flex: 1 1 100%; grid-template-columns: minmax(0, 1fr) 80px; }
   .ap-rows .ds-swatches { flex-wrap: wrap; justify-content: flex-start; gap: 8px; }
   .ap-rows .ds-sw { flex: none; width: 26px; }
 }
