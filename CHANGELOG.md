@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.108 (2026-11-12)
+
+- The eye and Reset in the Toasts heading are one button split in two.
+
 ## 1.1.107 (2026-11-12)
 
 - The Reset buttons in Settings, Appearance are narrower.

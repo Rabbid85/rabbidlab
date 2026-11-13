@@ -77,7 +77,13 @@ body.app.rail-small { grid-template-columns: 60px minmax(0, 1fr); }
 .ds-h.danger { color: var(--red); }
 .ds-h.has-reset { display: flex; align-items: center; }
 .ds-h.has-reset .ds-btn { margin-left: auto; font: 600 14px "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; }
-.ds-h.has-reset .ds-ibtn + .ds-btn { margin-left: 14px; } /* an icon button before Reset takes the push */
+/* Two buttons joined into one, split by a line (Toasts: Show a test and Reset). */
+.ds-pair { display: inline-flex; margin-left: auto; border-radius: 8px; background: #23263A; }
+.ds-h.has-reset .ds-pair .ds-btn { margin-left: 0; background: none; }
+.ds-pair .ds-btn:first-child { border-radius: 8px 0 0 8px; }
+.ds-pair .ds-btn:last-child { border-radius: 0 8px 8px 0; box-shadow: inset 1px 0 0 #34384F; }
+.ds-h.has-reset .ds-pair .ds-btn:hover:not(:disabled) { background: #2C3047; }
+.ds-pair .ds-btn.ds-ibtn { width: 40px; }
 .ds-btn.ds-ibtn { justify-content: center; width: 38px; padding: 0; }
 .ds-btn.ds-ibtn svg { width: 17px; height: 17px; }
 .ds-scope { margin-left: 10px; padding: 2px 8px; border-radius: 20px; background: #1C1F2D; color: var(--muted); font: 600 11px "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; vertical-align: 2px; }
