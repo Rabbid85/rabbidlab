@@ -77,14 +77,13 @@ body.app.rail-small { grid-template-columns: 60px minmax(0, 1fr); }
 .ds-h.danger { color: var(--red); }
 .ds-h.has-reset { display: flex; align-items: center; }
 .ds-h.has-reset .ds-btn { margin-left: auto; font: 600 14px "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; }
-/* Two buttons joined into one, split by a line (Toasts: Show a test and Reset). */
+/* Two buttons joined into one, split by a line (Toasts: Show a test and Reset; Console address: Download and Copy). */
 .ds-pair { display: inline-flex; margin-left: auto; border-radius: 8px; background: #23263A; }
-.ds-h.has-reset .ds-pair .ds-btn { margin-left: 0; background: none; }
+.ds-pair .ds-btn, .ds-h.has-reset .ds-pair .ds-btn { margin-left: 0; background: none; }
 .ds-pair .ds-btn:first-child { border-radius: 8px 0 0 8px; }
 .ds-pair .ds-btn:last-child { border-radius: 0 8px 8px 0; box-shadow: inset 1px 0 0 #34384F; }
-.ds-h.has-reset .ds-pair .ds-btn:hover:not(:disabled) { background: #2C3047; }
-.ds-pair .ds-btn.ds-ibtn { width: 40px; }
-.ds-btn.ds-ibtn { justify-content: center; width: 38px; padding: 0; }
+.ds-pair .ds-btn:hover:not(:disabled), .ds-h.has-reset .ds-pair .ds-btn:hover:not(:disabled) { background: #2C3047; }
+.ds-btn.ds-ibtn { justify-content: center; width: 40px; min-width: 0; padding: 0; } /* an icon on its own, its words in data-tip */
 .ds-btn.ds-ibtn svg { width: 17px; height: 17px; }
 .ds-scope { margin-left: 10px; padding: 2px 8px; border-radius: 20px; background: #1C1F2D; color: var(--muted); font: 600 11px "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; vertical-align: 2px; }
 .ds-row { display: flex; align-items: center; gap: 20px; min-height: 54px; padding: 10px 0; }
@@ -742,6 +741,26 @@ body.dev-tools .devstrip:not([hidden]) { display: flex; flex-wrap: wrap; }
 .toast.square .tsq .all-flask { stroke: #fff; }
 .toast.square .tsq .liquid { fill: rgba(255, 255, 255, .6); }
 
+/* Console address: rows with an icon, what it is, and its buttons on the right as icons (Copy, Download, Remove). */
+.ca-row { display: flex; align-items: center; gap: 14px; min-height: 58px; padding: 9px 0; }
+.ca-row .t { display: grid; flex: 1; gap: 2px; min-width: 0; }
+.ca-row .t b { color: #fff; font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
+.ca-row .t > span { color: var(--muted); font-size: 13.5px; line-height: 1.45; }
+.ca-row .t .ds-code { font-size: 12px !important; }
+.ca-row > .ds-v, .ca-row > .ca-chip, .ca-row > .ca-tag, .ca-row > .ds-btn, .ca-row > .ds-pair { flex: none; margin-left: auto; }
+.ca-row > .ds-v + .ds-btn { margin-left: 14px; }
+.ca-ic { flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: #161926; color: #9DA1B3; }
+.ca-ic svg { width: 18px; height: 18px; }
+.ca-ic.warn { background: rgba(242, 190, 107, .1); color: var(--amber); }
+.ca-ic.ok { background: rgba(95, 212, 160, .1); color: var(--ok); }
+.ca-ic.bad { background: rgba(255, 107, 125, .1); color: var(--red); }
+.ca-tag { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 20px; font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+.t b .ca-tag { margin-left: 8px; vertical-align: 2px; }
+.ca-tag.warn { background: rgba(242, 190, 107, .12); color: var(--amber); }
+.ca-tag.ok { padding: 4px 11px; background: rgba(95, 212, 160, .12); color: var(--ok); font-size: 13px; }
+.ca-tag.ok i { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+.ca-tag.big { padding: 4px 11px; font-size: 13px; }
+.ca-chip { padding: 4px 11px; border: 1px solid var(--line-strong); border-radius: 8px; background: #0C0E17; color: var(--title); font: 600 13.5px Consolas, monospace; }
 /* Add an address: the name and its full name, what DNS says, the record to add by hand, and what adding it did. */
 .nm-dialog { width: min(720px, calc(100vw - 32px)); }
 .nm-dialog .dialog-foot { align-items: center; }
@@ -766,4 +785,3 @@ body.dev-tools .devstrip:not([hidden]) { display: flex; flex-wrap: wrap; }
 .nm-step .t b { font-size: 14px; }
 .nm-cert-dl { display: inline-flex; align-items: center; gap: 7px; }
 .nm-cert-dl svg { width: 15px; height: 15px; }
-#ca-page .ds-h .ds-btn svg, #ca-list .ds-btn svg { width: 15px; height: 15px; }

@@ -87,6 +87,7 @@
   <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 0 0-14.3-4.9L4 8"/><path d="M4 3v5h5"/><path d="M4 13a8 8 0 0 0 14.3 4.9L20 16"/><path d="M20 21v-5h-5"/></symbol>
   <symbol id="i-box" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5 9 5z"/><path d="M3 8v8l9 5 9-5V8M12 13v8"/></symbol>
   <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></symbol>
   <symbol id="i-logout" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17l-5-5 5-5M5 12h11"/></symbol>
   <symbol id="i-devices" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="14" height="10" rx="1.5"/><path d="M5 18h8"/><rect x="17" y="8" width="5" height="11" rx="1"/></symbol>
 </svg>
@@ -466,9 +467,9 @@
 
     <!-- Console address: where to open Rabbid Lab, its HTTPS certificate, and its port and firewall (console.js). -->
     <section class="sub" data-sub="address" data-title="Console address" id="ca-page" hidden>
-      <header class="sub-head"><h2>Console address</h2><p>Where to open <span data-lab>Rabbid Lab</span> in a browser, from this computer or any other on your network.</p></header>
+      <header class="sub-head"><h2>Console address</h2><p>Where to open the console in a browser, from this computer or any other on your network.</p></header>
       <p class="hint problem" id="ca-problem" hidden></p>
-      <section class="ds-sec" data-sec="addresses"><h3 class="ds-h has-reset">Addresses<button type="button" class="ds-btn" id="ca-add" data-can="console.address" hidden><svg><use href="#i-plus"/></svg>Add an address</button></h3>
+      <section class="ds-sec" data-sec="addresses"><h3 class="ds-h has-reset">Addresses<button type="button" class="ds-btn ds-ibtn" id="ca-add" data-can="console.address" data-tip="Add an address" aria-label="Add an address" hidden><svg><use href="#i-plus"/></svg></button></h3>
         <div id="ca-list" data-skel="rows:5"></div>
         <p class="ds-note" id="ca-redirect" hidden><svg><use href="#i-info"/></svg><span></span></p>
       </section>

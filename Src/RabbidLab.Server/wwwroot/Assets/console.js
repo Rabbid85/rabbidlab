@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.110', [
+    'Settings, Console address is tidied up: an icon on every row, Copy, Download and Remove as icon buttons that line up, and Self-signed and Allowed as coloured tags. Add an address is a plus in the Addresses heading.']],
   ['1.1.109', [
     'The first toast no longer slides in from the side, and the update window no longer jumps when it turns green. Update automatically no longer says the lab is stopped during an update.']],
   ['1.1.108', [
@@ -2158,8 +2160,14 @@ const RELEASE_NOTES = [
     setTimeout(() => { $('sup-copy').innerHTML = `${svg('csv')}Copy`; }, 2500);
   });
   // Settings, Console address: the addresses Setup's last page lists, the HTTPS certificate, the port and the firewall.
-  const caRow = (name, help, right, cls = '') => `<div class="ds-row"><div class="ds-l"><b>${name}</b>${help ? `<span${cls ? ` class="${cls}"` : ''}>${help}</span>` : ''}</div><div class="ds-r">${right}</div></div>`;
-  const caCopy = (text) => `<button type="button" class="ds-btn" data-copy="${esc(text)}">${svg('csv')}Copy</button>`;
+  // Each row: an icon, what it is, and its buttons on the right as icons.
+  const caRow = (icon, name, help, right, { tone = '', cls = '' } = {}) => `<div class="ca-row"><span class="ca-ic${tone ? ` ${tone}` : ''}">${svg(icon)}</span>`
+    + `<div class="t"><b>${name}</b>${help ? `<span${cls ? ` class="${cls}"` : ''}>${help}</span>` : ''}</div>${right}</div>`;
+  const caCopy = (text) => `<button type="button" class="ds-btn ds-ibtn" data-copy="${esc(text)}" data-tip="Copy" aria-label="Copy">${svg('copy')}</button>`;
+  const caGet = (href) => `<a class="ds-btn ds-ibtn" href="${href}" download data-tip="Download .cer" aria-label="Download the certificate">${svg('download')}</a>`;
+  const caDate = (iso) => esc(new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }));
+  // Which icon goes with an address, from what it is.
+  const caIcon = (what) => (/^IP/.test(what) ? 'server' : /^(Full|Its full)/.test(what) ? 'globe' : /^Computer/.test(what) ? 'monitor' : /^(Added|Host)/.test(what) ? 'tag' : 'browser');
   const consoleAddress = async () => {
     let c;
     try {
@@ -2173,8 +2181,9 @@ const RELEASE_NOTES = [
     const list = c.addresses.length ? c.addresses : [{ url: location.origin, what: c.docker ? 'This page. In Docker, use the host address and the port you published.' : 'This page' }];
     ca = c;
     // An address added here can be removed; Add an address is for Windows installs, to people who may.
-    const remove = (a) => (a.name && has('console.address') ? `<button type="button" class="ds-btn" data-name-remove="${esc(a.name)}">${svg('trash')}Remove</button>` : '');
-    $('ca-list').innerHTML = list.map((a) => caRow(esc(a.url) + (a.url.toLowerCase() === here ? '<small class="ds-scope">This page</small>' : ''), esc(a.what), remove(a) + caCopy(a.url))).join('');
+    const remove = (a) => `<button type="button" class="ds-btn ds-ibtn" data-name-remove="${esc(a.name)}" data-tip="Remove" aria-label="Remove ${esc(a.name)}">${svg('trash')}</button>`;
+    $('ca-list').innerHTML = list.map((a) => caRow(caIcon(a.what), esc(a.url) + (a.url.toLowerCase() === here ? '<small class="ds-scope">This page</small>' : ''), esc(a.what),
+      a.name && has('console.address') ? `<span class="ds-pair">${remove(a)}${caCopy(a.url)}</span>` : caCopy(a.url))).join('');
     $('ca-add').hidden = !c.canAdd || !has('console.address');
     const redirect = c.redirectPort === 80 && !c.redirectTaken;
     $('ca-redirect').hidden = !redirect;
@@ -2182,23 +2191,21 @@ const RELEASE_NOTES = [
     const cert = c.certificate;
     const fp = cert ? cert.fingerprint.match(/../g).join(':') : '';
     $('ca-cert').innerHTML = c.scheme !== 'https'
-      ? caRow('Not using HTTPS', "The console is served over HTTP, so traffic to it isn't encrypted. Run Setup again to add a certificate.", '')
-      : !cert ? caRow('Certificate not found', "The certificate in console.json isn't in the certificate store, or it has expired.", '')
-      : caRow(esc(cert.subject), cert.selfSigned
-        ? "Self-signed. Browsers on other computers show a security warning until it's trusted. To trust it across the domain, deploy it to Trusted Root Certification Authorities with Group Policy."
-        : `Issued by ${esc(cert.issuer)}.`, `<span class="ds-v">Expires ${esc(new Date(cert.expires).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }))}</span>`)
-        + caRow('SHA-256 fingerprint', fp, caCopy(fp), 'ds-code')
-        + caRow('Download the certificate', "The public certificate as a .cer file, to import on a computer or into a GPO. It doesn't contain the private key.",
-          `<a class="ds-btn" href="/api/console/certificate" download>${svg('download')}Download</a>`)
+      ? caRow('alert', 'Not using HTTPS', "The console is served over HTTP, so traffic to it isn't encrypted. Run Setup again to add a certificate.", '', { tone: 'warn' })
+      : !cert ? caRow('alert', 'Certificate not found', "The certificate in console.json isn't in the certificate store, or it has expired.", '', { tone: 'bad' })
+      : caRow('shield', esc(cert.subject) + (cert.selfSigned ? '<span class="ca-tag warn">Self-signed</span>' : ''), cert.selfSigned
+        ? "Other computers show a warning until it's trusted. Deploy it to Trusted Root Certification Authorities with Group Policy."
+        : `Issued by ${esc(cert.issuer)}.`, `<span class="ds-v">Expires ${caDate(cert.expires)}</span>`, { tone: cert.selfSigned ? 'warn' : 'ok' })
+        + caRow('key', 'SHA-256 fingerprint', fp, `<span class="ds-pair">${caGet('/api/console/certificate')}${caCopy(fp)}</span>`, { cls: 'ds-code' })
         // The added addresses have one of their own, so the one above (which Seats trust) never changes.
-        + (!c.namesCertificate ? '' : caRow('For the addresses added here', 'A certificate of their own, trusted on this computer. To open them from other computers without a warning, trust it there too, as above.',
-          `<span class="ds-v">Expires ${esc(new Date(c.namesCertificate.expires).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }))}</span>`
-          + `<a class="ds-btn" href="/api/console/certificate?names=true" download>${svg('download')}Download</a>`));
+        + (!c.namesCertificate ? '' : caRow('shield', 'For the addresses added here', 'Their own certificate, trusted on this computer. Trust it on other computers too, as above.',
+          `<span class="ds-v">Expires ${caDate(c.namesCertificate.expires)}</span>${caGet('/api/console/certificate?names=true')}`, { tone: 'warn' }));
     const moved = c.redirectPort ? (c.redirectTaken ? `Port ${c.redirectPort} redirect is on, but another program has port ${c.redirectPort}.` : `Requests to port ${c.redirectPort} are redirected here.`) : '';
-    $('ca-net').innerHTML = caRow('Port', moved, `<span class="ds-v">${c.port}</span>`)
-      + (c.firewall == null ? '' : caRow('Windows Firewall', c.firewall
-        ? `Inbound connections on port ${c.port} are allowed on the Domain and Private profiles.`
-        : `Setup didn't add a firewall rule. Other computers can connect only if a rule allows port ${c.port}.`, `<span class="ds-v">${c.firewall ? 'Allowed' : 'No rule'}</span>`));
+    $('ca-net').innerHTML = caRow('plug', 'Port', moved || `${c.scheme.toUpperCase()}, on every address above.`, `<span class="ca-chip">${c.port}</span>`)
+      + (c.firewall == null ? '' : caRow('lock', 'Windows Firewall', c.firewall
+        ? `Inbound on port ${c.port}, Domain and Private profiles.`
+        : `Setup didn't add a rule. Other computers connect only if a rule allows port ${c.port}.`,
+        c.firewall ? '<span class="ca-tag ok"><i></i>Allowed</span>' : '<span class="ca-tag warn big">No rule</span>', { tone: c.firewall ? 'ok' : 'warn' }));
     $('ca-setup').hidden = !c.installed;
   };
   // Copy works over plain HTTP too, where the browser has no clipboard API.
@@ -2217,8 +2224,10 @@ const RELEASE_NOTES = [
       ok = document.execCommand('copy');
       t.remove();
     }
-    b.innerHTML = ok ? `${svg('check')}Copied` : 'Press Ctrl+C';
-    setTimeout(() => { b.innerHTML = `${svg('csv')}Copy`; }, 2000);
+    // The icon turns into a tick for a moment; if the browser wouldn't copy, a toast says how.
+    b.innerHTML = svg(ok ? 'check' : 'copy');
+    if (!ok) toast("Couldn't copy.", 'Select it and press Ctrl+C.', { tone: 'warn' });
+    setTimeout(() => { b.innerHTML = svg('copy'); }, 1500);
   };
   $('ca-page').addEventListener('click', copyClick);
   $('name-dialog').addEventListener('click', copyClick);
