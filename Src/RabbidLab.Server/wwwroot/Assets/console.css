@@ -371,6 +371,19 @@ a.small-link { margin-top: 8px; padding: 6px 12px; font-size: 12.5px; }
 .hero-lead b { color: #fff; font-weight: 650; }
 .hero-actions { display: flex; flex-wrap: wrap; gap: 10px; min-height: 39px; margin-top: 18px; }
 .hero > .hero-actions { z-index: 2; } /* above the stats, so a button's hint isn't covered */
+/* A cogwheel's menu at the top of Links and Sensors. A popover, so the banner doesn't clip it; under its cogwheel where the browser can anchor it. */
+.gear-menu { width: 210px; margin: auto; padding: 0; overflow: hidden; border: 1px solid var(--line-strong); border-radius: 12px; background: #131522; color: var(--text); box-shadow: 0 20px 50px rgba(0, 0, 0, .55); }
+.gear-menu .am-links:first-child { border-top: 0; }
+.hero-actions .gear-menu .am-link { background: none; } /* not the banner's button fill */
+.hero-actions .gear-menu .am-link:hover { background: #1A1D2B; }
+@supports (anchor-name: --a) {
+  #ln-checks { anchor-name: --ln-gear; }
+  #sn-gear { anchor-name: --sn-gear; }
+  #ln-gear-menu { position-anchor: --ln-gear; }
+  #sn-gear-menu { position-anchor: --sn-gear; }
+  .gear-menu { inset: auto; top: anchor(bottom); left: anchor(left); margin: 8px 0 0; position-try-fallbacks: flip-block; }
+}
+.hero-actions:has(.gear-menu:popover-open) .hero-gear::after { display: none; } /* no hint while its menu is open */
 .hero-actions .primary:hover { background: var(--ember); filter: brightness(1.08); }
 a.button, label.button { display: inline-flex; cursor: pointer; align-items: center; padding: 8px 16px; border-radius: 8px; border: 1px solid var(--line-strong); background: #1A1C28; color: var(--text); font-size: 14px; }
 a.button:hover, label.button:hover { background: #222536; text-decoration: none; }

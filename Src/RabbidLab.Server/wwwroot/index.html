@@ -612,7 +612,7 @@
       <div class="hero-actions">
         <button type="button" class="primary" id="ln-add" data-can="links.edit">Add a link</button>
         <button type="button" class="hero-gear" id="ln-checks" data-can="links.edit" data-tip="Settings, export, import" aria-label="Links settings, export and import" popovertarget="ln-gear-menu"><svg><use href="#i-gear"/></svg></button>
-        <div class="ln-gear-menu" id="ln-gear-menu" popover>
+        <div class="gear-menu" id="ln-gear-menu" popover>
           <div class="am-links"><a class="am-link" href="#settings/links"><svg><use href="#i-gear"/></svg>Links settings</a></div>
           <div class="am-links"><button type="button" class="am-link" id="ln-export"><svg><use href="#i-download"/></svg>Export links</button>
             <button type="button" class="am-link" id="ln-import"><svg><use href="#i-upload"/></svg>Import links</button></div>
@@ -666,7 +666,11 @@
       <p class="hero-lead"><b id="sn-lead"></b> <span id="sn-lead-more"></span></p>
       <div class="hero-actions">
         <button type="button" class="primary" id="sn-add" data-can="sensors.edit">Add a sensor</button>
-        <button type="button" id="sn-mail" data-can="sensors.alerts">Notifications</button>
+        <button type="button" class="hero-gear" id="sn-gear" data-can="sensors.alerts sensors.edit" data-tip="Settings, notifications" aria-label="Sensors settings and notifications" popovertarget="sn-gear-menu"><svg><use href="#i-gear"/></svg></button>
+        <div class="gear-menu" id="sn-gear-menu" popover>
+          <div class="am-links"><a class="am-link" href="#settings/sensors" data-can="sensors.alerts sensors.edit"><svg><use href="#i-gear"/></svg>Sensors settings</a>
+            <a class="am-link" href="#settings/notifications" data-can="sensors.alerts"><svg><use href="#i-bell"/></svg>Notifications</a></div>
+        </div>
       </div>
       <div class="hero-stats">
         <div><b id="sn-answering"><i class="sk sk-num"></i></b><span><svg><use href="#i-activity"/></svg>Answering</span></div>

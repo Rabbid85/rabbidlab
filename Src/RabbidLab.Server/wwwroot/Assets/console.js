@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.94', [
+    'Sensors says Sensors at the top, like Links, with how they are doing on the line under it. The Notifications button is now a cogwheel menu with Sensors settings and Notifications.']],
   ['1.1.93', [
     'While the console starts, Loading and its flask cover the whole window, top bar and menu included, instead of only the page area.']],
   ['1.1.92', [

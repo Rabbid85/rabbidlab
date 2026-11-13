@@ -152,8 +152,7 @@
     const warn = live.filter((s) => s.status === 'warn');
     const fresh = live.length > 0 && live.every((s) => s.status === 'new');
     $('sn-hero').classList.toggle('bad', down.length > 0);
-    $('sn-title').textContent = !sensors.length ? 'No sensors yet' : down.length ? `${down.length} down` : warn.length ? `${warn.length} warning${warn.length === 1 ? '' : 's'}`
-      : fresh ? 'Checking…' : live.length ? 'All up' : 'All paused';
+    // The title says Sensors, as Links says Links; how they're doing is the line under it.
     const first = down[0] || warn[0];
     $('sn-lead').textContent = !sensors.length ? 'Nothing is being checked.' : down.length ? `${first.name} stopped answering ${first.since ? `${long(first.since)} ago` : 'just now'}.`
       : warn.length ? `${first.name}: ${first.note || 'needs attention'}.` : fresh ? 'The first checks are under way.' : live.length ? 'Everything is answering.' : 'Nothing is being checked.';
@@ -1252,7 +1251,8 @@
     }
   });
   // Settings: Notifications has the channels, email among them; Sensors has when new sensors alert, gathering and credentials.
-  $('sn-mail').addEventListener('click', () => { location.hash = '#settings/notifications'; });
+  // The cogwheel's menu shuts once a row in it is picked.
+  $('sn-gear-menu').addEventListener('click', (e) => { if (e.target.closest('.am-link')) $('sn-gear-menu').hidePopover(); });
   const drawNotes = () => {
     drawChannels();
     if (can('sensors.alerts')) drawStart();

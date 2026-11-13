@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.94 (2026-11-12)
+
+- Sensors says Sensors at the top, like Links, with how they are doing on the line under it. The Notifications button is now a cogwheel menu with Sensors settings and Notifications.
+
 ## 1.1.93 (2026-11-12)
 
 - While the console starts, Loading and its flask cover the whole window, top bar and menu included, instead of only the page area.
