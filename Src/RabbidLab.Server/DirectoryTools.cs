@@ -27,7 +27,8 @@ public sealed class DirectoryToolsFile
 /// <summary>What the tools are working with, for the page.</summary>
 public sealed record DirectoryToolsState(string Domain, string Account, string Scope, string ScopeName, string NewUsers, string NewUsersName, bool Made, string? By, DateTime? At);
 
-public sealed record AdOu(string Dn, string Name, string Path);
+/// <summary>An OU or container. Fixed says why nothing new can go in it (Builtin, Domain Controllers), or is null.</summary>
+public sealed record AdOu(string Dn, string Name, string Path, string? Fixed = null);
 
 public sealed record AdGroupRef(string Dn, string Name);
 
@@ -236,7 +237,7 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
         {
             throw new ToolProblem($"There's already an account called {name} in {domain}. Pick another name, or choose Use an account I already have.");
         }
-        var ou = await Place(ldap, form.Ou, $"CN=Users,{ldap.BaseDn}", stop);
+        var ou = await Into(ldap, form.Ou, $"CN=Users,{ldap.BaseDn}", stop);
         var where = await Place(ldap, form.Scope, ldap.BaseDn, stop);
         var dn = $"CN={Ldap.Escape(name)},{ou}";
         var secret = Passwords.Make(64);
@@ -297,7 +298,7 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
     {
         using var ldap = await Open(stop);
         var f = Ready();
-        var place = await Place(ldap, dn, NewUsersOf(f), stop);
+        var place = await Into(ldap, dn, NewUsersOf(f), stop);
         if (!Ldap.Under(place, f.Scope!))
         {
             throw new ToolProblem($"{Product.Title}'s account can only make people in {ScopeName(f.Scope!, ldap.BaseDn, f.Domain!)}.");
@@ -386,7 +387,7 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
         }
         using var ldap = await Open(stop);
         var f = Ready();
-        var ou = await Place(ldap, form.Ou, NewUsersOf(f), stop);
+        var ou = await Into(ldap, form.Ou, NewUsersOf(f), stop);
         if (!Ldap.Under(ou, f.Scope!))
         {
             throw new ToolProblem($"{Product.Title}'s account can only make groups in {ScopeName(f.Scope!, ldap.BaseDn, f.Domain!)}.");
@@ -508,7 +509,7 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
             throw new ToolProblem(NeedsLdaps);
         }
         var f = Ready();
-        var ou = await Place(ldap, form.Ou, NewUsersOf(f), stop);
+        var ou = await Into(ldap, form.Ou, NewUsersOf(f), stop);
         if (!Ldap.Under(ou, f.Scope!))
         {
             throw new ToolProblem($"{Product.Title}'s account can only make people in {ScopeName(f.Scope!, ldap.BaseDn, f.Domain!)}.");
@@ -811,13 +812,22 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
         return (add ? "Couldn't add to every group: " : "Couldn't take out of every group: ") + text + ".";
     }
 
+    // Every OU and container Active Directory Users and Computers shows: not the advanced-only system ones, nor anything
+    // inside System. The ones nothing new can be created in are listed too, with why, so the tree matches ADUC.
     private static async Task<List<AdOu>> PlacesIn(ILdap ldap, string root, CancellationToken stop)
     {
-        var rows = await ldap.Find(root, "(|(objectClass=organizationalUnit)(&(objectClass=container)(cn=Users)))", true, ["ou", "cn"], Limit, stop);
-        return [.. rows.Select(r => new AdOu(r.Dn, r.Text("ou") ?? r.Text("cn") ?? Ldap.Name(r.Dn), Ldap.Path(r.Dn, ldap.BaseDn)))
-            .Where(p => !p.Dn.Contains("OU=Domain Controllers,", StringComparison.OrdinalIgnoreCase))
+        var rows = await ldap.Find(root, "(&(|(objectClass=organizationalUnit)(objectClass=container)(objectClass=builtinDomain))(!(showInAdvancedViewOnly=TRUE)))",
+            true, ["ou", "cn", "objectClass"], Limit, stop);
+        return [.. rows.Where(r => !r.Dn.EndsWith($",CN=System,{ldap.BaseDn}", StringComparison.OrdinalIgnoreCase))
+            .Select(r => new AdOu(r.Dn, r.Text("ou") ?? r.Text("cn") ?? Ldap.Name(r.Dn), Ldap.Path(r.Dn, ldap.BaseDn), Fixed(r, ldap.BaseDn)))
             .OrderBy(p => p.Path, StringComparer.OrdinalIgnoreCase)];
     }
+
+    private static string? Fixed(LdapRow r, string baseDn) =>
+        r.Texts("objectClass").Contains("builtinDomain", StringComparer.OrdinalIgnoreCase) ? "Active Directory keeps its built-in groups here. New objects can't go in it."
+        : r.Dn.Equals($"CN=ForeignSecurityPrincipals,{baseDn}", StringComparison.OrdinalIgnoreCase) ? "Stand-ins for accounts from other domains. New objects can't go in it."
+        : r.Dn.Equals($"OU=Domain Controllers,{baseDn}", StringComparison.OrdinalIgnoreCase) ? "Only domain controllers go here."
+        : null;
 
     /// <summary>The OU picked (which must be there), or the fallback when none is.</summary>
     private static async Task<string> Place(ILdap ldap, string? dn, string fallback, CancellationToken stop)
@@ -829,6 +839,14 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
         }
         var found = (await ldap.Find(wanted, "(objectClass=*)", false, ["distinguishedName"], 1, stop)).FirstOrDefault();
         return found?.Dn ?? throw new ToolProblem($"There's no {Ldap.Path(wanted, ldap.BaseDn)} in Active Directory any more.");
+    }
+
+    /// <summary>Like Place, for where something new is made: never Builtin, ForeignSecurityPrincipals or Domain Controllers.</summary>
+    private static async Task<string> Into(ILdap ldap, string? dn, string fallback, CancellationToken stop)
+    {
+        var place = await Place(ldap, dn, fallback, stop);
+        var row = (await ldap.Find(place, "(objectClass=*)", false, ["objectClass"], 1, stop)).FirstOrDefault();
+        return row is not null && Fixed(row, ldap.BaseDn) is { } why ? throw new ToolProblem(why) : place;
     }
 
     private static AdUser Person(LdapRow r, string baseDn, string service)

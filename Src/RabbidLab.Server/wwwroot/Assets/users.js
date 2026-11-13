@@ -863,7 +863,8 @@
       places = [];
       say(problem, err.message);
     }
-    $(select).innerHTML = places.map((p) => `<option value="${esc(p.dn)}"${p.dn === selected ? ' selected' : ''}>${esc(p.path || p.name)}</option>`).join('');
+    // Builtin, Domain Controllers and the like are listed, as in ADUC, but can't be picked: data-fixed says why.
+    $(select).innerHTML = places.map((p) => `<option value="${esc(p.dn)}"${p.dn === selected ? ' selected' : ''}${p.fixed ? ` disabled data-fixed="${esc(p.fixed)}"` : ''}>${esc(p.path || p.name)}</option>`).join('');
   };
   const openNew = async (kind) => {
     const d = $('new-dialog');
@@ -1000,7 +1001,7 @@
   const kidsOf = (dn) => pick.nodes.filter((n) => !n.domain && same(n.parent, dn));
   const topOus = () => pick.nodes.filter((n) => !n.domain && !ouNode(n.parent));
   const inside = (dn) => same(pick.sel, dn) || pick.sel.toLowerCase().endsWith(`,${dn.toLowerCase()}`);
-  const ouRow = (n, icon, text, small) => `<a role="button" tabindex="0" data-ou="${esc(n.dn)}" title="${esc(n.dn)}"${same(pick.sel, n.dn) ? ' aria-current="true"' : ''}>`
+  const ouRow = (n, icon, text, small) => `<a role="button" tabindex="0" data-ou="${esc(n.dn)}" title="${esc(n.dn)}"${n.fixed ? ' class="fixed"' : ''}${same(pick.sel, n.dn) ? ' aria-current="true"' : ''}>`
     + `${icon}<span class="nm">${esc(text)}</span>${small ? `<small>${esc(small)}</small>` : ''}</a>`;
   const railRow = (n, top) => {
     const ks = kidsOf(n.dn);
@@ -1021,18 +1022,49 @@
     }
     $('oupick-list').innerHTML = pick.nodes.length ? html : '<p class="ds-empty oupick-none">No OUs to pick from.</p>';
   };
+  // What's directly in a place (the Attribute browser's read), kept while the window is open.
+  const inPlace = new Map();
+  const KINDS = [['user', 'user', 'user', 'users'], ['group', 'users', 'group', 'groups'], ['computer', 'laptop', 'computer', 'computers'],
+    ['ou', 'folder', 'OU', 'OUs'], ['container', 'folder', 'container', 'containers'], ['other', 'list', 'other object', 'other objects']];
+  const PICK_ICON = Object.fromEntries(KINDS.map(([k, icon]) => [k, icon]));
+  const lookInside = async (dn) => {
+    inPlace.set(dn.toLowerCase(), { loading: true });
+    try {
+      const r = await R.get(`/api/ad/browse?dn=${encodeURIComponent(dn)}`);
+      inPlace.set(dn.toLowerCase(), { items: r.items, more: r.more });
+    } catch (err) {
+      inPlace.set(dn.toLowerCase(), { problem: err.message });
+    }
+    if (same(pick.sel, dn) && $('oupick-dialog').open) drawPickPage();
+  };
+  const insideHtml = (dn) => {
+    const got = inPlace.get(dn.toLowerCase());
+    if (!got) {
+      lookInside(dn);
+      return insideHtml(dn);
+    }
+    if (got.loading) return `<div class="op-items">${'<i class="sk op-sk"></i>'.repeat(5)}</div>`;
+    if (got.problem) return `<p class="hint problem">${esc(got.problem)}</p>`;
+    const counts = KINDS.map(([k, , one, many]) => {
+      const n = got.items.filter((i) => i.kind === k).length;
+      return n ? `${n}${got.more ? '+' : ''} ${n === 1 ? one : many}` : '';
+    }).filter(Boolean);
+    const said = counts.length > 1 ? `${counts.slice(0, -1).join(', ')} and ${counts[counts.length - 1]}` : counts[0] || 'Nothing in it yet';
+    return `<p class="op-count">${esc(said)}</p>`
+      + (got.items.length ? `<div class="op-items">${got.items.map((i) => `<div class="op-item" title="${esc(i.dn)}">${svg(PICK_ICON[i.kind] || 'list')}<b>${esc(i.name)}</b>`
+        + `${i.description ? `<small>${esc(i.description)}</small>` : ''}</div>`).join('')}</div>` : '');
+  };
   const drawPickPage = () => {
     const n = pick.nodes.find((x) => same(x.dn, pick.sel));
-    $('oupick-use').disabled = !n;
+    $('oupick-use').disabled = !n || !!n.fixed;
     if (!n) {
       $('oupick-page').innerHTML = '<header class="sub-head"><h2>Pick an OU</h2><p>Pick one on the left, or find it by name.</p></header>';
       return;
     }
-    const ks = n.domain ? topOus() : kidsOf(n.dn);
-    const names = ks.slice(0, 6).map((k) => k.name).join(', ') + (ks.length > 6 ? ` and ${ks.length - 6} more` : '');
     $('oupick-page').innerHTML = `<header class="sub-head"><h2>${esc(n.domain ? pick.domain : n.name)}</h2><p>${esc(n.domain ? 'The whole domain' : `${pick.domain} / ${n.path}`)}</p></header>`
-      + `<div class="ds-row"><div class="ds-l"><b>Inside it</b></div><div class="ds-r"><span class="ds-v">${ks.length ? `${ks.length} OU${ks.length === 1 ? '' : 's'}: ${esc(names)}` : 'No OUs'}</span></div></div>`
-      + `<div class="ds-row"><div class="ds-l"><b>Distinguished name</b><span class="ds-code">${esc(n.dn)}</span></div></div>`;
+      + (n.fixed ? `<p class="op-fixed">${svg('lock')}<span>${esc(n.fixed)}</span></p>` : '')
+      + `<h3 class="op-h">Inside it</h3>${insideHtml(n.dn)}`
+      + `<div class="ds-row op-dn"><div class="ds-l"><b>Distinguished name</b><span class="ds-code">${esc(n.dn)}</span></div></div>`;
   };
   const drawPick = () => {
     drawPickList();
@@ -1042,7 +1074,8 @@
     pick.select = select;
     pick.sel = select.value;
     pick.find = '';
-    pick.nodes = [...select.options].map((o) => ({ dn: o.value, path: o.textContent, name: dnName(o.value), parent: dnParent(o.value), domain: isDomain(o.value) }));
+    pick.nodes = [...select.options].map((o) => ({ dn: o.value, path: o.textContent, name: dnName(o.value), parent: dnParent(o.value), domain: isDomain(o.value), fixed: o.dataset.fixed || '' }));
+    inPlace.clear(); // read afresh each time it opens
     const any = pick.nodes[0]?.dn || '';
     pick.domain = any.split(/(?<!\\),/).filter(isDomain).map((p) => p.slice(3)).join('.');
     $('oupick-lead').textContent = select.id === 'dset-scope'

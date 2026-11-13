@@ -116,6 +116,31 @@ public sealed class DirectoryToolsTests : IDisposable
     }
 
     [Fact]
+    public async Task OU_pickers_list_what_ADUC_shows_and_nothing_new_goes_in_Builtin()
+    {
+        const string domain = "DC=amw,DC=com";
+        ad.Add($"CN=Builtin,{domain}", ("objectClass", "builtinDomain"), ("cn", "Builtin"));
+        ad.Add($"CN=Computers,{domain}", ("objectClass", "container"), ("cn", "Computers"));
+        ad.Add($"OU=Domain Controllers,{domain}", ("objectClass", "organizationalUnit"), ("ou", "Domain Controllers"));
+        ad.Add($"CN=System,{domain}", ("objectClass", "container"), ("cn", "System"), ("showInAdvancedViewOnly", "TRUE"));
+        ad.Add($"CN=PSPs,CN=System,{domain}", ("objectClass", "container"), ("cn", "PSPs"));
+        await Connect(domain);
+
+        var places = await tools.Places(CancellationToken.None);
+        var dns = places.Select(p => p.Dn).ToList();
+        Assert.Contains($"CN=Computers,{domain}", dns);
+        Assert.Contains(Lab, dns);
+        Assert.DoesNotContain($"CN=System,{domain}", dns);
+        Assert.DoesNotContain($"CN=PSPs,CN=System,{domain}", dns);
+        Assert.NotNull(places.Single(p => p.Dn == $"CN=Builtin,{domain}").Fixed);
+        Assert.NotNull(places.Single(p => p.Dn == $"OU=Domain Controllers,{domain}").Fixed);
+        Assert.Null(places.Single(p => p.Dn == $"CN=Computers,{domain}").Fixed);
+
+        var refused = await Refused(() => tools.CreateGroup(new NewAdGroup("Lab Admins", "global", true, $"CN=Builtin,{domain}", null), CancellationToken.None));
+        Assert.Contains("built-in groups", refused.Message);
+    }
+
+    [Fact]
     public async Task Lists_say_when_Active_Directory_had_more_than_it_sent()
     {
         await Connect("DC=amw,DC=com");

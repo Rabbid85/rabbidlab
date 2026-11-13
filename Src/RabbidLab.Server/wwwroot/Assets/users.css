@@ -227,6 +227,23 @@ button.danger.solid:hover { background: #DB4860; }
 .oupick-none { margin: 6px 12px; }
 .oupick-page { min-width: 0; }
 .oupick-page .sub-head { margin-bottom: 8px; padding: 0 2px 16px; border-bottom: 1px solid var(--line); }
+/* Long names stop with … rather than scrolling the list sideways; the places nothing new can go in are dimmed. */
+.oupick .dnav { overflow-x: hidden; }
+.oupick .dnav a .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.oupick .dnav a.fixed { opacity: .5; }
+/* What's in the place picked: a count in words, then each thing in it with its icon. */
+.op-h { margin: 14px 0 4px; color: #fff; font: 700 15px "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; }
+.op-count { margin: 0 0 10px; color: var(--muted); font-size: 13.5px; }
+.op-items { display: grid; align-content: start; gap: 1px; max-height: 214px; padding: 4px; overflow-y: auto; border: 1px solid var(--line); border-radius: 10px; background: #0C0E17; }
+.op-item { display: flex; align-items: center; gap: 10px; min-height: 32px; padding: 4px 10px; border-radius: 7px; font-size: 13.5px; }
+.op-item:hover { background: #151826; }
+.op-item svg { flex: none; width: 16px; height: 16px; color: #8A8FA8; }
+.op-item b { flex: none; max-width: 60%; overflow: hidden; color: var(--title); font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.op-item small { flex: 1; min-width: 0; overflow: hidden; color: #6D7290; font-size: 12.5px; text-overflow: ellipsis; white-space: nowrap; }
+.op-sk { height: 22px; margin: 5px 6px; }
+.op-fixed { display: flex; gap: 8px; margin: 12px 0 0; padding: 10px 12px; border-radius: 10px; background: rgba(242, 190, 107, .08); color: #E6C98F; font-size: 13px; }
+.op-fixed svg { flex: none; width: 15px; height: 15px; margin-top: 2px; color: var(--amber); }
+.op-dn { margin-top: 8px; }
 .oupick .dialog-foot { margin-top: 14px; padding-top: 16px; border-top: 1px solid var(--line); }
 @media (max-width: 700px) {
   .oupick-grid { grid-template-columns: minmax(0, 1fr); gap: 16px; }

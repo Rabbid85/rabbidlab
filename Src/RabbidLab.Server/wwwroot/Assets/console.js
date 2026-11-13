@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.114', [
+    'Pick an OU shows what is in the place picked: its users, groups, computers and OUs, counted and listed. It lists every OU and container that Active Directory Users and Computers shows, and Builtin, ForeignSecurityPrincipals and Domain Controllers show dimmed with why nothing new can go in them.']],
   ['1.1.113', [
     'Your lab name shows in the top bar, the big title on Overview and the browser tab. Sentences about the app, like updates, the client and how links are checked, say Rabbid Lab again.']],
   ['1.1.112', [
