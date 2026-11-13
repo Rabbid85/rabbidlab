@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.116 (2026-11-13)
+
+- Service account, Use one I have: type the account, or pick it from Active Directory as you type. The list is read as this server itself, so it needs no login, and leaves out the accounts AD and Exchange keep for themselves. The steps on the left sit closer to their names.
+
 ## 1.1.115 (2026-11-13)
 
 - The Attribute browser edits like ADSI Edit: every attribute an object can have with its type, Hide empty, and a menu on each one to Edit, Clear value or copy it, plus Copy DN and Export CSV. Editing takes the new Edit attributes permission and goes in the Activity log. Pick an OU shows what is inside while the service account is being set up, using the login typed there, and messages say Rabbid Lab rather than the lab name.

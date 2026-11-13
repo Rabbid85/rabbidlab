@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.116', [
+    'Service account, Use one I have: type the account, or pick it from Active Directory as you type. The list is read as this server itself, so it needs no login, and leaves out the accounts AD and Exchange keep for themselves. The steps on the left sit closer to their names.']],
   ['1.1.115', [
     'The Attribute browser edits like ADSI Edit: every attribute an object can have with its type, Hide empty, and a menu on each one to Edit, Clear value or copy it, plus Copy DN and Export CSV. Editing takes the new Edit attributes permission and goes in the Activity log. Pick an OU shows what is inside while the service account is being set up, using the login typed there, and messages say Rabbid Lab rather than the lab name.']],
   ['1.1.114', [

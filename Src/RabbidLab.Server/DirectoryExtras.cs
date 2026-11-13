@@ -36,6 +36,9 @@ public sealed record AttributeForm(string? Dn, string? Name, List<string?>? Valu
 /// <summary>Where to look while setting up, with the login typed there.</summary>
 public sealed record LookBrowseForm(string? Domain, string? Username, string? Password, string? Dn);
 
+/// <summary>An account found in AD while setting up: its username, display name, description, where it is, and whether it's turned on.</summary>
+public sealed record AdAccountHit(string Username, string? Name, string? Description, string Where, bool Enabled);
+
 /// <summary>Domain settings, the AD audit, the Recycle Bin and the attribute browser, read as Rabbid Lab's AD account.</summary>
 public interface IDirectoryExtras
 {
@@ -55,6 +58,9 @@ public interface IDirectoryExtras
 
     /// <summary>Browse, signed in as the admin typed while setting up (credentials not saved): Pick an OU before there's a service account.</summary>
     Task<AdPlace> BrowseAs(string? domain, string username, string password, string? dn, CancellationToken stop);
+
+    /// <summary>Accounts in AD to pick as the service account, read as this server's own computer account (no login needed on a domain-joined Windows server).</summary>
+    Task<List<AdAccountHit>> LookAccounts(string? domain, string? q, CancellationToken stop);
 
     Task<AdObject> Attributes(string dn, CancellationToken stop);
 
@@ -419,6 +425,29 @@ public sealed partial class DirectoryTools
         return await PlaceOf(ldap, dn, d, stop);
     }
 
+    public async Task<List<AdAccountHit>> LookAccounts(string? domain, string? q, CancellationToken stop)
+    {
+        var d = Clean(domain) ?? Domain ?? throw new ToolProblem("Which domain? Type its name, such as amw.com.");
+        var cant = $"This server can't read {d} on its own. Type the account's name instead.";
+        using var ldap = await Ldap.OpenAnonymous(d, await Host(d, stop), stop) ?? throw new ToolProblem(cant);
+        // Nothing typed: the accounts that look like service accounts. Typed: any account it matches.
+        var text = q?.Trim() ?? "";
+        var match = text.Length == 0 ? "(|(sAMAccountName=svc*)(description=*service*))" : Match(text, "sAMAccountName", "displayName", "cn");
+        try
+        {
+            // Not krbtgt, Guest and the other accounts Active Directory keeps for itself, nor the mailboxes Exchange makes for itself.
+            var rows = await ldap.Find(ldap.BaseDn, $"(&(objectCategory=person)(objectClass=user)(!(isCriticalSystemObject=TRUE))(!(sAMAccountName=$*))(!(sAMAccountName=SM_*))(!(sAMAccountName=HealthMailbox*)){match})", true, ["sAMAccountName", "displayName", "description", "userAccountControl"], 30, stop);
+            return [.. rows.Where(r => !string.IsNullOrEmpty(r.Text("sAMAccountName")))
+                .Select(r => new AdAccountHit(r.Text("sAMAccountName")!, r.Text("displayName"), r.Text("description"), Ldap.Path(Ldap.Parent(r.Dn), ldap.BaseDn),
+                    ((r.Number("userAccountControl") ?? 0) & 2) == 0))
+                .OrderBy(h => h.Username, StringComparer.OrdinalIgnoreCase)];
+        }
+        catch (LdapRefused)
+        {
+            throw new ToolProblem(cant);
+        }
+    }
+
     private static async Task<AdPlace> PlaceOf(ILdap ldap, string? dn, string domain, CancellationToken stop)
     {
         var at = string.IsNullOrWhiteSpace(dn) ? ldap.BaseDn : Inside(dn, ldap.BaseDn);
@@ -738,6 +767,9 @@ public static class DirectoryExtrasApi
 
         app.MapGet("/api/ad/browse", (string? dn, HttpContext context, IDirectoryExtras tools) => UsersApi.Try(context, Permissions.AdView, async () =>
             Results.Ok(await tools.Browse(dn, context.RequestAborted)), change: false));
+
+        app.MapGet("/api/ad/look/accounts", (string? domain, string? q, HttpContext context, IDirectoryExtras tools) => UsersApi.Try(context, Permissions.AdConnect, async () =>
+            Results.Ok(await tools.LookAccounts(domain, q, context.RequestAborted)), change: false));
 
         app.MapPost("/api/ad/look/browse", (LookBrowseForm form, HttpContext context, IDirectoryExtras tools) => UsersApi.Try(context, Permissions.AdConnect, async () =>
             Results.Ok(await tools.BrowseAs(form.Domain, form.Username ?? "", form.Password ?? "", form.Dn, context.RequestAborted)), change: false));

@@ -167,7 +167,9 @@ button.danger.solid:hover { background: #DB4860; }
 .dset-steps i { display: grid; place-items: center; width: 30px; height: 30px; border: 2px solid var(--line-strong); border-radius: 50%; background: #0C0E17; font-style: normal; font-size: 12.5px; font-weight: 800; }
 .dset-steps i svg { width: 14px; height: 14px; }
 .dset-steps b { color: #C9CCDA; font-size: 13.5px; }
-.dset-steps small { grid-column: 2; font-size: 12px; line-height: 1.35; }
+.dset-steps small { grid-column: 2; align-self: start; font-size: 12px; line-height: 1.35; }
+.dset-steps i { grid-row: span 2; } /* the number beside both lines, so the line under the name sits right under it */
+.dset-steps b { align-self: end; }
 .dset-steps li:not(:last-child)::after { content: ""; position: absolute; left: 20px; top: 42px; bottom: -10px; width: 2px; border-radius: 2px; background: var(--line-strong); }
 .dset-steps li.done::after { background: var(--accent); }
 .dset-steps li.done i { border-color: var(--accent); background: var(--accent); color: #fff; }
@@ -193,6 +195,11 @@ button.danger.solid:hover { background: #DB4860; }
 .dset-in input:focus { outline: none; border-color: var(--accent-line); }
 .dset-in:focus-within svg { color: var(--accent-soft); }
 .dset-in input.bad { border-color: var(--red); }
+/* Use one I have: the accounts in AD to pick from, under the box, as you type. */
+.dset-acct { position: relative; }
+.dset-drop { top: 72px; max-height: 214px; } /* fits above the dialog's foot */
+.dset-drop .opt .pic { display: grid; place-items: center; border-radius: 50%; background: #1C1F2D; color: #9DA1B3; }
+.dset-drop .opt .pic svg { position: static; width: 16px; height: 16px; color: inherit; }
 .dset-note { display: flex; align-items: flex-start; gap: 8px; margin: 4px 0 0; padding: 10px 12px; border-radius: 10px; background: #0E1019; color: var(--muted); font-size: 12.5px; line-height: 1.45; }
 .dset-note svg { flex: none; width: 15px; height: 15px; margin-top: 1px; color: var(--ok); }
 .dset-review { margin-bottom: 10px; border: 1px solid var(--line); border-radius: 12px; background: #0E1019; }

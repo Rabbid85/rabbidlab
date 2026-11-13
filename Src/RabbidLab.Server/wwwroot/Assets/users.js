@@ -1183,6 +1183,9 @@
     $('dset-step-text').textContent = st.text.replace(/Rabbid Lab/g, R.app()); // the steps are written before the lab's name is known
     $('dset-dialog').querySelectorAll('[data-pane]').forEach((p) => { p.hidden = p.dataset.pane !== st.key; });
     $('dset-user-label').textContent = make ? 'Domain admin' : 'Service account';
+    $('dset-user').placeholder = make ? '' : 'Type its name, or pick it from AD';
+    if (make) $('dset-drop').hidden = true;
+    else if (document.activeElement === $('dset-user')) acctFind(); // switched to Use one I have while in the box
     $('dset-note').textContent = make ? 'These credentials are only used to create the service account. They are never saved.' : 'Its password is stored encrypted on this server.';
     $('dset-back').hidden = ds.step === 0;
     $('dset-go').innerHTML = st.key === 'review' ? `${svg('check')}${make ? 'Create service account' : 'Use this account'}` : `Next${svg('right')}`;
@@ -1255,6 +1258,46 @@
       dsDraw();
     }
   }));
+  // Use one I have: type the account, or pick it from AD as you type. AD is read as this server's own computer account,
+  // so no login is needed for the list; with nothing typed it shows the ones that look like service accounts.
+  let acctTimer = 0;
+  let acctAsk = 0;
+  let acctHits = [];
+  const acctFind = () => {
+    if (ds.tab !== 'existing') return;
+    clearTimeout(acctTimer);
+    const n = ++acctAsk;
+    const q = $('dset-user').value.trim();
+    acctTimer = setTimeout(async () => {
+      let html;
+      try {
+        acctHits = await R.get(`/api/ad/look/accounts?domain=${encodeURIComponent($('dset-domain').value.trim())}&q=${encodeURIComponent(q)}`);
+        if (n !== acctAsk) return;
+        html = (q ? '' : '<p class="drop-note">Service accounts in Active Directory</p>')
+          + (acctHits.map((h, i) => R.option(` data-acct="${i}"`, `<span class="pic">${svg('user')}</span>`, h.enabled ? h.username : `${h.username} (turned off)`,
+            [h.name, h.description, h.where].filter(Boolean).join(' · '))).join('') || `<p class="drop-note">${q ? 'No account like that.' : 'None that look like service accounts. Type to find one.'}</p>`);
+      } catch (err) {
+        if (n !== acctAsk) return;
+        html = `<p class="drop-note">${esc(err.message)}</p>`;
+      }
+      $('dset-drop').innerHTML = html;
+      $('dset-drop').hidden = document.activeElement !== $('dset-user');
+    }, q ? 250 : 0);
+  };
+  $('dset-user').addEventListener('input', acctFind);
+  $('dset-user').addEventListener('focus', acctFind);
+  $('dset-user').addEventListener('click', () => { if ($('dset-drop').hidden) acctFind(); }); // already in the box: a click shows them again
+  $('dset-user').addEventListener('blur', () => setTimeout(() => { $('dset-drop').hidden = true; }, 150));
+  $('dset-drop').addEventListener('mousedown', (e) => e.preventDefault()); // keeps the box focused while picking
+  $('dset-drop').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-acct]');
+    if (!b) return;
+    $('dset-user').value = acctHits[Number(b.dataset.acct)].username;
+    $('dset-drop').hidden = true;
+    $('dset-user').dispatchEvent(new Event('input')); // a changed sign-in is read again
+    clearTimeout(acctTimer); // without looking it up again
+    $('dset-password').focus();
+  });
   $('dset-dialog').addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && e.target.matches('.dset-in input')) $('dset-go').click();
   });

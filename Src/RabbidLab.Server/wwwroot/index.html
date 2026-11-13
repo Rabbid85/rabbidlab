@@ -916,7 +916,8 @@
       <div class="dset-head"><span class="big-ic ember"><svg><use id="dset-icon" href="#i-user"/></svg></span><span><b id="dset-step-title"></b><small id="dset-step-text"></small></span></div>
       <div class="dset-pane" data-pane="signin">
         <label class="dset-fld"><span>Domain</span><span class="dset-in"><svg><use href="#i-globe"/></svg><input id="dset-domain" autocomplete="off" spellcheck="false"></span></label>
-        <label class="dset-fld"><span id="dset-user-label">Domain admin</span><span class="dset-in"><svg><use href="#i-user"/></svg><input id="dset-user" autocomplete="username" spellcheck="false"></span></label>
+        <div class="dset-fld dset-acct"><label for="dset-user" id="dset-user-label">Domain admin</label><span class="dset-in"><svg><use href="#i-user"/></svg><input id="dset-user" autocomplete="username" spellcheck="false"></span>
+          <div class="drop dset-drop" id="dset-drop" hidden></div></div>
         <label class="dset-fld"><span>Password</span><span class="dset-in"><svg><use href="#i-lock"/></svg><input id="dset-password" type="password" autocomplete="current-password"></span></label>
         <p class="dset-note"><svg><use href="#i-lock"/></svg><span id="dset-note"></span></p>
         <p class="hint" data-can="windows.view">No domain, or you only need local accounts? Those need no service account: <a href="#local" id="dset-local">open Local accounts</a>.</p>
