@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.96 (2026-11-12)
+
+- The line under the Settings title is gone.
+
 ## 1.1.95 (2026-11-12)
 
 - Settings has a new Alerts heading with three pages: Alert rules, Notifications and Alert history.

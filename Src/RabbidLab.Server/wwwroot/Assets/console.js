@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.96', [
+    'The line under the Settings title is gone.']],
   ['1.1.95', [
     'Settings has a new Alerts heading with three pages: Alert rules, Notifications and Alert history.',
     'Alert rules set every kind of alert in one place: a sensor or a watched link going down, a certificate close to expiring, a pool or drive running low, a failing fan, power supply or disk, a computer that stops checking in, an update that is ready or did not install, and sign-ins that keep failing. Each goes to the notifications you pick.',
