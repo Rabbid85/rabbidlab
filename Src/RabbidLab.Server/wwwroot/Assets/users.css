@@ -318,7 +318,8 @@ button.danger.solid:hover { background: #DB4860; }
 .cmd-sub.left > .cmd-fly { left: auto; right: calc(100% + 8px); }
 .cmd-sub.open > .cmd-fly { display: block; }
 .cmd-head { margin: 0; padding: 13px 18px 11px; color: var(--title); font-size: 13px; font-weight: 700; }
-.cmd-note { margin: 0; padding: 0 18px 12px; color: var(--muted); font-size: 12.5px; line-height: 1.45; }
+.cmd-note { margin: 0; padding: 4px 18px 12px; color: var(--muted); font-size: 12.5px; line-height: 1.45; }
+.cmd-head small { display: block; margin-top: 3px; color: var(--muted); font-size: 12px; font-weight: 500; }
 .cmd-head + .cmd-note { margin-top: -4px; }
 .cmd-menu > .cmd-note:first-child { padding-top: 13px; }
 

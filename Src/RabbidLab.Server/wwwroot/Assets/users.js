@@ -748,14 +748,20 @@
     openCmd(menuObjs(rows[Number(row.dataset.i)]), e.clientX || r.left + 40, e.clientY || r.bottom);
   });
 
-  // The menu: Properties, then a category for each kind of change, More, and Delete. What applies to none of them is
-  // greyed out; for several, an item says how many of them it applies to.
-  const mi = (cmd, icon, label, { off = false, hint = '', danger = false } = {}) => `<button type="button" role="menuitem" class="am-link${danger ? ' out' : ''}" data-cmd="${cmd}"${off ? ' disabled' : ''}>`
-    + `${svg(icon)}<span>${esc(label)}</span>${hint ? `<small>${esc(hint)}</small>` : ''}</button>`;
-  const some = (k, n, cmd, icon, label) => mi(cmd, icon, label, { off: !k, hint: n > 1 && k && k < n ? `${k} of ${n}` : '' });
-  const part = (...items) => `<div class="am-links">${items.join('')}</div>`;
-  const fly = (icon, label, ...parts) => `<div class="cmd-sub"><button type="button" role="menuitem" class="am-link" aria-haspopup="menu" aria-expanded="false">`
-    + `${svg(icon)}<span>${esc(label)}</span>${svg('right', 'chev')}</button><div class="gear-menu cmd-fly" role="menu">${parts.join('')}</div></div>`;
+  // The menu: Properties, then a category for each kind of change, More, and Delete. Only what applies is listed; for
+  // several, an item says how many of them it applies to.
+  const mi = (cmd, icon, label, { off = false, hint = '', danger = false } = {}) => (off ? ''
+    : `<button type="button" role="menuitem" class="am-link${danger ? ' out' : ''}" data-cmd="${cmd}">${svg(icon)}<span>${esc(label)}</span>${hint ? `<small>${esc(hint)}</small>` : ''}</button>`);
+  const some = (k, n, cmd, icon, label) => mi(cmd, icon, label, { off: !k, hint: n > 1 && k < n ? `${k} of ${n}` : '' });
+  const part = (...items) => (items.join('') ? `<div class="am-links">${items.join('')}</div>` : '');
+  // A category opens to the side. One with a single item is just that item; an empty one isn't there.
+  const fly = (icon, label, ...parts) => {
+    const inner = parts.join('');
+    const items = (inner.match(/data-cmd=/g) || []).length;
+    if (items < 2) return inner.replace(/<div class="am-links">|<\/div>/g, '');
+    return `<div class="cmd-sub"><button type="button" role="menuitem" class="am-link" aria-haspopup="menu" aria-expanded="false">`
+      + `${svg(icon)}<span>${esc(label)}</span>${svg('right', 'chev')}</button><div class="gear-menu cmd-fly" role="menu">${inner}</div></div>`;
+  };
   const COPY = {
     users: [['name', 'name', 'names', nameOf], ['username', 'logon name', 'logon names', (u) => u.username],
       ['upn', 'user principal name', 'user principal names', (u) => u.upn], ['email', 'email address', 'email addresses', (u) => u.email],
@@ -764,11 +770,11 @@
     computers: [['name', 'name', 'names', (c) => c.name], ['host', 'DNS host name', 'DNS host names', (c) => c.host], ['dn', 'distinguished name', 'distinguished names', (c) => c.dn]],
   };
   const PIC = { users: 'user', groups: 'users', computers: 'laptop' };
-  // What's left out on each page, for the note in the menu: one, several, and the rest.
+  // What's left out on each page, one and several, for the line under the menu's heading.
   const LEFT_OUT = {
-    users: ['A protected or built-in account', 'Protected or built-in accounts', 'protected or built-in'],
-    groups: ['A built-in group', 'Built-in groups', 'built-in groups'],
-    computers: ['A domain controller', 'Domain controllers', 'domain controllers'],
+    users: ['protected or built-in account', 'protected or built-in accounts'],
+    groups: ['built-in group', 'built-in groups'],
+    computers: ['domain controller', 'domain controllers'],
   };
   // An account option's field on the user, and what turning it on or off says afterwards.
   const FLAGS = {
@@ -792,10 +798,11 @@
       const on = has((u) => u[FLAGS[flag][0]]);
       return some(n - on, n, `flag-on:${flag}`, icon, onLabel) + some(on, n, `flag-off:${flag}`, icon, offLabel);
     };
-    const [a1, aN, rest] = LEFT_OUT[k];
-    const top = all === 1 ? part(mi('open', PIC[k], 'Properties')) : `<p class="cmd-head">${esc(count(all, one, many))} selected</p>`;
-    const note = !can('ad.change') || n === all ? ''
-      : `<p class="cmd-note">${n ? `${n} of ${all} can be changed here. The rest are ${rest}` : all === 1 ? a1 : aN}: Active Directory Users and Computers changes ${n === 0 && all === 1 ? 'it' : 'them'}.</p>`;
+    const out = can('ad.change') ? all - n : 0;
+    const left = LEFT_OUT[k];
+    const top = all === 1
+      ? part(mi('open', PIC[k], 'Properties')) + (out ? `<p class="cmd-note">${esc(left[0].charAt(0).toUpperCase() + left[0].slice(1))}: change it in Active Directory Users and Computers.</p>` : '')
+      : `<p class="cmd-head">${esc(count(all, one, many))} selected${out ? `<small>${esc(count(out, ...left))} left out</small>` : ''}</p>`;
     const onOff = (icon) => part(some(has((x) => !x.enabled), n, 'enable', 'user-check', n === 1 ? 'Enable account' : 'Enable accounts'),
       some(has((x) => x.enabled), n, 'disable', 'user-off', n === 1 ? 'Disable account' : 'Disable accounts'),
       ...(icon ? [some(has((u) => u.locked), n, 'unlock', 'unlock', n === 1 ? 'Unlock account' : 'Unlock accounts')] : []));
@@ -832,7 +839,7 @@
         fly('users', 'Members',
           part(mi('members-add', 'user-plus', n === 1 ? 'Add members…' : `Add members to ${n} groups…`), mi('members-remove', 'user-minus', 'Remove members…', { off: n !== 1 })),
           part(mi('members-copy', 'copy', 'Copy members from another group…'), mi('members-copy-to', 'copy', 'Copy members to other groups…', { off: n !== 1 }))),
-        fly('users', 'Member of', ...membership),
+        fly('org', 'Member of', ...membership),
         organization);
     } else if (change) {
       changes = part(fly('laptop', 'Account', onOff(false)), fly('users', 'Groups', ...membership), organization);
@@ -843,7 +850,7 @@
       part(mi('export', 'csv', all === 1 ? 'Export to CSV' : `Export ${count(all, one, many)} to CSV`))));
     const deletable = xs.filter((x) => k !== 'groups' || !x.protected).length;
     const gone = can('ad.delete') && deletable ? part(mi('delete', 'trash', deletable === 1 ? 'Delete…' : `Delete ${count(deletable, one, many)}…`, { danger: true })) : '';
-    return top + note + changes + more + gone;
+    return top + changes + more + gone;
   };
 
   let menuFor = { kind: 'users', objs: [] };

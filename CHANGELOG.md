@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.123 (2026-11-13)
+
+- The Actions menu on Users, Groups and Computers is tidier. It only lists what applies, a category with one thing in it is just that thing, and what was left out is one short line under the heading.
+
 ## 1.1.122 (2026-11-13)
 
 - OUs and containers show a folder in the Attribute browser, AD audit and Recycle Bin instead of the list icon. The Value column in the Attribute browser no longer squashes in a narrow window.
