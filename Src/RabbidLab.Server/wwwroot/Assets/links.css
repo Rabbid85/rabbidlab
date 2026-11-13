@@ -3,6 +3,16 @@
 /* The hero: the cogwheel beside Add a link, and a square for every link with its icon or its letter. */
 .hero-actions .hero-gear { display: grid; place-items: center; width: 40px; padding: 0; }
 .hero-gear svg { width: 17px; height: 17px; }
+/* The cogwheel's menu: Links settings, then Export and Import. A popover, so the banner doesn't clip it; under the cogwheel where the browser can anchor it. */
+.ln-gear-menu { width: 210px; margin: auto; padding: 0; overflow: hidden; border: 1px solid var(--line-strong); border-radius: 12px; background: #131522; color: var(--text); box-shadow: 0 20px 50px rgba(0, 0, 0, .55); }
+.ln-gear-menu .am-links:first-child { border-top: 0; }
+.hero-actions .ln-gear-menu .am-link { background: none; } /* not the banner's button fill */
+.hero-actions .ln-gear-menu .am-link:hover { background: #1A1D2B; }
+@supports (anchor-name: --a) {
+  #ln-checks { anchor-name: --ln-gear; }
+  .ln-gear-menu { position-anchor: --ln-gear; inset: auto; top: anchor(bottom); left: anchor(left); margin: 8px 0 0; position-try-fallbacks: flip-block; }
+}
+.hero-actions:has(.ln-gear-menu:popover-open) #ln-checks::after { display: none; } /* no hint while its menu is open */
 .hero .tile.sen.lsq { font-size: 14px; }
 .hero .tile.sen.lsq:hover { text-decoration: none; }
 .lsq img { width: 66%; height: 66%; object-fit: contain; }

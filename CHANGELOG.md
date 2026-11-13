@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.92 (2026-11-12)
+
+- The cogwheel at the top of Links opens a small menu: Links settings, Export links and Import links. The two file icons beside it are gone.
+
 ## 1.1.91 (2026-11-12)
 
 - Export and import is gone from Settings, Links. The two icons at the top of Links do the same thing.

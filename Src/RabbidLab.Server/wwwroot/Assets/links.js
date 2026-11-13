@@ -499,6 +499,8 @@
   };
   $('lc-refresh').addEventListener('click', () => refreshLinks($('lc-form'), 'lc-refresh-done'));
   $('ln-refresh').addEventListener('click', () => refreshLinks($('ln-list'), 'ln-done'));
+  // The cogwheel's menu shuts once a row in it is picked.
+  $('ln-gear-menu').addEventListener('click', (e) => { if (e.target.closest('.am-link')) $('ln-gear-menu').hidePopover(); });
   // Export: the server sends the file to save.
   $('ln-export').addEventListener('click', () => {
     const a = document.createElement('a');
@@ -534,8 +536,7 @@
     draw();
     check();
   });
-  // The gear on Links opens its page in Settings, which is drawn from a fresh read each time it shows.
-  $('ln-checks').addEventListener('click', () => { location.hash = '#settings/links'; });
+  // Links settings, from the cogwheel's menu: drawn from a fresh read each time it shows.
   document.addEventListener('rabbidlab:show', async (e) => {
     if (e.detail[0] !== 'settings' || e.detail[1] !== 'links' || !can('links.edit')) return;
     say('lc-problem', '');
