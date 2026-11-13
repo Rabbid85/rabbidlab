@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.120 (2026-11-13)
+
+- Users can be selected and changed together. Tick them and click Actions, or use the dots or right-click on a row, for one menu: enable, unlock, expiration, password options, groups, security flags, edit properties, rename, move and delete.
+
 ## 1.1.119 (2026-11-13)
 
 - Setup starts with the license agreement, the MIT License, and Next waits for I accept. Quiet installs need /acceptlicense, and an update skips the page when the license has not changed.

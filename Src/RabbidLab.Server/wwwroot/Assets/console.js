@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.120', [
+    'Users can be selected and changed together. Tick them and click Actions, or use the dots or right-click on a row, for one menu: enable, unlock, expiration, password options, groups, security flags, edit properties, rename, move and delete.']],
   ['1.1.119', [
     'Setup starts with the license agreement, the MIT License, and Next waits for I accept. Quiet installs need /acceptlicense, and an update skips the page when the license has not changed.']],
   ['1.1.118', [

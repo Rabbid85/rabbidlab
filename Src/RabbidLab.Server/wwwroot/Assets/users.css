@@ -286,3 +286,49 @@ button.danger.solid:hover { background: #DB4860; }
   .oupick-grid { grid-template-columns: minmax(0, 1fr); gap: 16px; }
   .oupick .dnav { height: 240px; }
 }
+
+/* The Users list: a tick on the left, ⋯ on the right, and a bar over the list while some are selected. */
+.adt.users.picks .tr { grid-template-columns: 18px minmax(200px, 1.5fr) minmax(215px, 1fr) minmax(100px, .9fr) 110px 150px 28px; }
+.adt .tk { display: grid; place-items: center; align-self: stretch; cursor: pointer; }
+.adt .tk input { width: 15px; height: 15px; margin: 0; accent-color: var(--accent); cursor: pointer; }
+.adt .tr.picked { background: #141827; }
+.adt .tr-more { display: flex; justify-content: flex-end; }
+.adt .tr-more .at-more { margin-top: 0; }
+.adt .tr:hover .at-more, .adt .tr:focus-within .at-more, .adt .tr.picked .at-more { opacity: 1; }
+.dbulk { display: flex; align-items: center; gap: 14px; margin: 14px 0 0; padding: 7px 7px 7px 14px; border: 1px solid var(--accent-line); border-radius: 10px; background: #12141F; }
+.dbulk[hidden] { display: none; }
+.dbulk b { color: var(--title); font-size: 13.5px; font-weight: 650; }
+.dbulk .grow { flex: 1; }
+.dbulk .small { display: inline-flex; align-items: center; gap: 7px; height: 32px; }
+.dbulk .small svg { width: 15px; height: 15px; }
+.dbulk .small .chev { width: 13px; height: 13px; margin-left: 1px; color: #8B90A5; }
+.linkish { padding: 0; border: 0; background: none; color: var(--muted); font: inherit; font-size: 13px; cursor: pointer; }
+.linkish:hover { color: var(--title); text-decoration: underline; }
+
+/* Its menu: the gear menu's rows, with categories that open beside it. */
+.gear-menu.cmd-menu { position: fixed; inset: auto; width: 250px; margin: 0; overflow: visible; }
+.cmd-menu .am-link > span { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.cmd-menu .am-link:disabled { opacity: .4; cursor: default; }
+.cmd-menu .am-link:disabled:hover { background: none; color: #D7DAE8; }
+.cmd-menu .am-link .chev { width: 13px; height: 13px; margin-left: auto; }
+.cmd-menu .am-link small { flex: none; }
+.cmd-sub { position: relative; }
+.cmd-sub.open > .am-link { background: #1A1D2B; color: #fff; }
+.gear-menu.cmd-fly { position: absolute; top: -7px; left: calc(100% + 8px); display: none; width: max-content; min-width: 230px; max-width: 380px; margin: 0; }
+.cmd-sub.left > .cmd-fly { left: auto; right: calc(100% + 8px); }
+.cmd-sub.open > .cmd-fly { display: block; }
+.cmd-head { margin: 0; padding: 13px 18px 11px; color: var(--title); font-size: 13px; font-weight: 700; }
+.cmd-note { margin: 0; padding: 0 18px 12px; color: var(--muted); font-size: 12.5px; line-height: 1.45; }
+.cmd-head + .cmd-note { margin-top: -4px; }
+.cmd-menu > .cmd-note:first-child { padding-top: 13px; }
+
+/* Edit properties' manager box, and the groups picked or ticked. */
+.form .ou-row .adder { flex: 1; min-width: 0; }
+.form .adder .find { height: 38px; }
+.form .adder .find input { height: auto; padding: 0; border: 0; background: none; }
+#gp-dialog .adder { margin-top: 12px; }
+.gp-list { max-height: 300px; margin-top: 10px; overflow-y: auto; }
+.gp-list .ticks { margin-top: 0; }
+.gp-list .tick { margin: 0; }
+.gp-list .tick small { margin-left: auto; color: #5E6380; font-size: 11.5px; }
+.key-row code.many { white-space: pre; letter-spacing: 0; line-height: 1.7; font-size: 13px; overflow-x: auto; }

@@ -78,6 +78,9 @@ public interface ILdap : IDisposable
 
     Task WriteDacl(string dn, byte[] descriptor, CancellationToken stop);
 
+    /// <summary>Renames or moves it (ModifyDN): rdn is its new CN=…, parent where it goes.</summary>
+    Task Rename(string dn, string rdn, string parent, CancellationToken stop);
+
     /// <summary>Like Find, but deleted objects too (the Show Deleted control), for the Recycle Bin.</summary>
     Task<List<LdapRow>> FindDeleted(string root, string filter, bool subtree, string[] attributes, int limit, CancellationToken stop);
 
@@ -388,6 +391,9 @@ public static class Ldap
             return Send(request, stop);
         }
 
+        public Task Rename(string dn, string rdn, string parent, CancellationToken stop) =>
+            Send(new Protocols.ModifyDNRequest(dn, parent, rdn) { DeleteOldRdn = true }, stop);
+
         public Task Restore(string dn, string newDn, CancellationToken stop)
         {
             var request = new Protocols.ModifyRequest(dn,
@@ -613,6 +619,9 @@ public static class Ldap
             constraints.SetControls(new LdapControl(SdFlags, true, DaclOnly));
             return Run(() => ldap.ModifyAsync(dn, new LdapModification(LdapModification.Replace, new LdapAttribute("nTSecurityDescriptor", descriptor)), constraints, stop));
         }
+
+        public Task Rename(string dn, string rdn, string parent, CancellationToken stop) =>
+            Run(() => ldap.RenameAsync(dn, rdn, parent, true, stop));
 
         public Task Restore(string dn, string newDn, CancellationToken stop)
         {

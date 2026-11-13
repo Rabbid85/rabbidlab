@@ -315,6 +315,33 @@ public sealed class UsersTests : IDisposable
     }
 
     [Fact]
+    public void Cannot_change_password_swaps_the_account_s_own_entries_as_ADUC_does()
+    {
+        byte[] admins = [1, 2, 0, 0, 0, 0, 0, 5, 32, 0, 0, 0, 32, 2, 0, 0];
+        var right = new Guid("ab721a53-1e2f-11d0-9819-00aa0040529b");
+        var mine = Dacl.Ace(0, 0x20094, null, null, admins);
+        var inherited = Dacl.Ace(0x10 | 0x02, 0x000F01FF, null, null, admins);
+        var descriptor = Descriptor(admins, mine, Dacl.Ace(0, 0x100, right, null, [1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0]), inherited);
+
+        var on = Dacl.SetCannotChangePassword(descriptor, true);
+        var off = Dacl.SetCannotChangePassword(on, false);
+
+        Assert.False(Dacl.CannotChangePassword(descriptor));
+        Assert.True(Dacl.CannotChangePassword(on));
+        Assert.False(Dacl.CannotChangePassword(off));
+        // Denies first, for Everyone and SELF; the old allow is gone and the rest stay in order.
+        Assert.Equal([6, 6, 5, 5], Aces(on).Select(a => (int) a[0]));
+        Assert.Equal(mine, Aces(on)[2]);
+        Assert.Equal(inherited, Aces(on)[3]);
+        // Off: allows after the explicit entries, before the inherited one.
+        Assert.Equal(4, Aces(off).Count);
+        Assert.Equal(mine, Aces(off)[0]);
+        Assert.Equal([5, 5], Aces(off).Skip(1).Take(2).Select(a => (int) a[0]));
+        Assert.Equal(inherited, Aces(off)[3]);
+        Assert.Equal(admins, Owner(off));
+    }
+
+    [Fact]
     public void Names_and_passwords_are_made_the_way_Active_Directory_takes_them()
     {
         var password = Passwords.Make();

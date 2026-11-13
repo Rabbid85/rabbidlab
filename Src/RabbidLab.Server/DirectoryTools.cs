@@ -47,7 +47,9 @@ public sealed record NewAdGroup(string? Name, string? Scope, bool Security, stri
 
 public sealed record AdUser(string Username, string? Name, string? Upn, string? Email, string? Title, string? Description, string Dn, string Where,
     bool Enabled, bool Locked, bool NeverExpires, bool MustChange, bool Protected, bool Service, bool System, DateTime? LastSignIn, DateTime? PasswordSet, DateTime? Created,
-    List<AdGroupRef> Groups, string? Department = null, string? Manager = null, DateTime? PasswordExpires = null, DateTime? AccountExpires = null, string? ManagerDn = null);
+    List<AdGroupRef> Groups, string? Department = null, string? Manager = null, DateTime? PasswordExpires = null, DateTime? AccountExpires = null, string? ManagerDn = null,
+    string? First = null, string? Last = null, string? Office = null, string? Phone = null, string? Company = null,
+    bool Sensitive = false, bool Smartcard = false, bool Reversible = false, bool DesOnly = false, bool NoPreauth = false);
 
 /// <summary>The OUs to pick from while setting up, read with the admin sign-in given.</summary>
 public sealed record SetupLook(string Domain, string BaseDn, List<AdOu> Places, string AccountOu, string Account);
@@ -156,13 +158,17 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
     private const int DontExpire = 0x10000;
     private const int NotDelegated = 0x100000;
     private const int LockedOut = 0x10;
+    private const int ReversiblePassword = 0x80;
+    private const int SmartcardRequired = 0x40000;
+    private const int DesKeysOnly = 0x200000;
+    private const int NoPreauthNeeded = 0x400000;
     private const int Limit = 1000; // the most Active Directory sends without paging
     private const string NeedsLdaps = "Active Directory only sets passwords over an encrypted connection, and this one isn't. In Docker that's LDAPS or StartTLS: give the domain controllers a certificate this computer trusts.";
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { WriteIndented = true };
 
     private static readonly string[] UserAttributes = ["sAMAccountName", "displayName", "userPrincipalName", "mail", "title", "description",
         "userAccountControl", "msDS-User-Account-Control-Computed", "lockoutTime", "lastLogonTimestamp", "pwdLastSet", "whenCreated", "memberOf", "adminCount", "isCriticalSystemObject",
-        "department", "manager", "accountExpires", "msDS-UserPasswordExpiryTimeComputed"];
+        "department", "manager", "accountExpires", "msDS-UserPasswordExpiryTimeComputed", "givenName", "sn", "physicalDeliveryOfficeName", "telephoneNumber", "company"];
 
     private static readonly string[] GroupAttributes = ["cn", "description", "groupType", "member", "adminCount", "isCriticalSystemObject", "objectSid"];
 
@@ -874,7 +880,10 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
             // Worked out by Active Directory from the domain's (or a fine-grained) policy; never for accounts that don't expire.
             PasswordExpires: (flags & DontExpire) == 0 ? FileTime(r.Number("msDS-UserPasswordExpiryTimeComputed")) : null,
             AccountExpires: FileTime(r.Number("accountExpires")),
-            ManagerDn: r.Text("manager"));
+            ManagerDn: r.Text("manager"),
+            First: r.Text("givenName"), Last: r.Text("sn"), Office: r.Text("physicalDeliveryOfficeName"), Phone: r.Text("telephoneNumber"), Company: r.Text("company"),
+            Sensitive: (flags & NotDelegated) != 0, Smartcard: (flags & SmartcardRequired) != 0, Reversible: (flags & ReversiblePassword) != 0,
+            DesOnly: (flags & DesKeysOnly) != 0, NoPreauth: (flags & NoPreauthNeeded) != 0);
     }
 
     private static AdGroup Group(LdapRow r, string baseDn)
@@ -1123,6 +1132,8 @@ public sealed class LdapPool : IDisposable
         public Task Delete(string dn, CancellationToken stop) => Watch(ldap.Delete(dn, stop));
 
         public Task WriteDacl(string dn, byte[] descriptor, CancellationToken stop) => Watch(ldap.WriteDacl(dn, descriptor, stop));
+
+        public Task Rename(string dn, string rdn, string parent, CancellationToken stop) => Watch(ldap.Rename(dn, rdn, parent, stop));
 
         public Task<List<LdapRow>> FindDeleted(string root, string filter, bool subtree, string[] attributes, int limit, CancellationToken stop) =>
             Watch(ldap.FindDeleted(root, filter, subtree, attributes, limit, stop));

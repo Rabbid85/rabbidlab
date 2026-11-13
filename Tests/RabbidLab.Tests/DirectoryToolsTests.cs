@@ -178,6 +178,37 @@ public sealed class DirectoryToolsTests : IDisposable
     }
 
     [Fact]
+    public async Task The_users_grid_menu_changes_options_expiry_properties_name_and_place_inside_the_scope_only()
+    {
+        await Connect();
+        var none = CancellationToken.None;
+        var jordan = $"CN=Jordan Reyes,{Lab}";
+
+        await tools.SetFlag("jreyes", "smartcard", true, none);
+        await tools.SetFlag("jreyes", "mustchange", true, none);
+        await tools.SetExpiry("jreyes", new DateOnly(2026, 12, 31), none);
+        var changed = await tools.Edit("jreyes", new UserEdit(null, null, null, "Field tech", null, null, null, "Tech", null, null, null), none);
+        Assert.Equal(["description", "job title"], changed);
+        Assert.Contains($"modify {jordan} userAccountControl", ad.Log);
+        Assert.Contains($"modify {jordan} pwdLastSet", ad.Log);
+        Assert.Contains($"modify {jordan} accountExpires", ad.Log);
+        Assert.Contains($"modify {jordan} description", ad.Log);
+
+        // A password that never expires can't also be made to change.
+        ad.Rows.Single(r => r.Dn == jordan).Values["userAccountControl"] = ["66048"];
+        Assert.Contains("never expires", (await Refused(() => tools.SetFlag("jreyes", "mustchange", true, none))).Message);
+
+        // Moved and renamed inside the scope; never out of it, and never a protected account.
+        Assert.Equal("Lab / People", await tools.Move("jreyes", $"OU=People,{Lab}", none));
+        Assert.Contains($"rename {jordan} -> CN=Jordan Reyes,OU=People,{Lab}", ad.Log);
+        await tools.Rename("jreyes", "Jordan Reyes-Hall", none);
+        Assert.Contains($"rename CN=Jordan Reyes,OU=People,{Lab} -> CN=Jordan Reyes-Hall,OU=People,{Lab}", ad.Log);
+        Assert.Contains("outside", (await Refused(() => tools.Move("jreyes", Other, none))).Message);
+        Assert.Contains("outside", (await Refused(() => tools.SetFlag("outsider", "sensitive", true, none))).Message);
+        Assert.Contains("protected or built-in", (await Refused(() => tools.SetExpiry("boss", null, none))).Message);
+    }
+
+    [Fact]
     public async Task Lists_say_when_Active_Directory_had_more_than_it_sent()
     {
         await Connect("DC=amw,DC=com");
@@ -558,6 +589,16 @@ public sealed class FakeLdap : ILdap
     public Task Delete(string dn, CancellationToken stop) => Do($"delete {dn}", () => Rows.RemoveAll(r => Same(r.Dn, dn)));
 
     public Task WriteDacl(string dn, byte[] descriptor, CancellationToken stop) => Do($"dacl {dn}", () => true);
+
+    public Task Rename(string dn, string rdn, string parent, CancellationToken stop) => Do($"rename {dn} -> {rdn},{parent}", () =>
+    {
+        var at = Rows.FindIndex(r => Same(r.Dn, dn));
+        if (at >= 0)
+        {
+            Rows[at] = Rows[at] with { Dn = $"{rdn},{parent}" };
+        }
+        return true;
+    });
 
     public Task Restore(string dn, string newDn, CancellationToken stop) => Do($"restore {dn} -> {newDn}", () => true);
 

@@ -190,6 +190,7 @@ app.MapRolesApi();
 app.MapClientsApi();
 app.MapUsersApi();
 app.MapDirectoryExtrasApi();
+app.MapDirectoryActionsApi();
 app.MapLinksApi();
 app.MapSensorsApi();
 app.MapDevToolsApi();

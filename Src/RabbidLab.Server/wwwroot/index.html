@@ -91,6 +91,13 @@
   <symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></symbol>
   <symbol id="i-logout" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17l-5-5 5-5M5 12h11"/></symbol>
   <symbol id="i-devices" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="14" height="10" rx="1.5"/><path d="M5 18h8"/><rect x="17" y="8" width="5" height="11" rx="1"/></symbol>
+  <symbol id="i-user-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="8" r="4"/><path d="M3 21a7 7 0 0 1 11.5-5.4M16 19l2 2 4-4"/></symbol>
+  <symbol id="i-user-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="8" r="4"/><path d="M3 21a7 7 0 0 1 11.5-5.4"/><circle cx="18.5" cy="18.5" r="3.5"/><path d="M16 21l5-5"/></symbol>
+  <symbol id="i-user-minus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="8" r="4"/><path d="M3 21a7 7 0 0 1 11.5-5.4M16 18h6"/></symbol>
+  <symbol id="i-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></symbol>
+  <symbol id="i-move" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M10 13h6M13.5 10.5 16 13l-2.5 2.5"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+  <symbol id="i-chevron-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></symbol>
 </svg>
 <div class="sky" aria-hidden="true"></div>
 <header class="top">
@@ -747,6 +754,9 @@
         <div class="dlook" id="dir-look" hidden></div>
         <p class="dnow" id="dir-now" hidden><b id="dir-view-title"></b><span class="bar-note" id="dir-count"></span></p>
         <div class="dir-banner" id="dir-banner" hidden></div>
+        <!-- Ticked users: how many, and one Actions menu for all of them. -->
+        <div class="dbulk" id="dir-bulk" hidden><b id="dir-bulk-n"></b><button type="button" class="linkish" id="dir-bulk-clear">Clear selection</button><span class="grow"></span>
+          <button type="button" class="small" id="dir-bulk-act" aria-haspopup="menu"><svg><use href="#i-menu"/></svg>Actions<svg class="chev"><use href="#i-chevron-down"/></svg></button></div>
         <div class="table" id="dir-table"></div>
         <p class="hint" id="dir-more" hidden>Active Directory has more than the 1,000 listed here.</p>
       </div>
@@ -1303,6 +1313,62 @@
     <button type="button" class="am-link" data-at="name"><svg><use href="#i-copy"/></svg>Copy attribute name</button>
     <button type="button" class="am-link" data-at="line"><svg><use href="#i-copy"/></svg>Copy attribute and value</button></div>
 </div>
+
+<!-- A user's menu (row ⋯, right-click, or Actions over ticked users): categories that open to the side. -->
+<div class="gear-menu cmd-menu" id="cmd-menu" popover role="menu"></div>
+<select id="mv-ou" hidden aria-hidden="true" tabindex="-1" data-always></select>
+
+<!-- Set account expiration: the last day the account works. -->
+<dialog class="dialog" id="exp-dialog" aria-labelledby="exp-title">
+  <h2 id="exp-title">Set account expiration</h2>
+  <p class="dialog-lead" id="exp-lead"></p>
+  <div class="form sd-form"><label for="exp-date">End of</label><input type="date" id="exp-date">
+    <small class="hint">The account stops working when this day ends.</small></div>
+  <p class="hint problem" id="exp-problem" hidden></p>
+  <div class="dialog-foot"><button type="button" id="exp-cancel">Cancel</button><button type="button" class="primary" id="exp-save">Save</button></div>
+</dialog>
+
+<!-- Edit properties: one user's details, or the shared ones for several (blank leaves each as it is). -->
+<dialog class="dialog wide" id="ued-dialog" aria-labelledby="ued-title">
+  <h2 id="ued-title">Edit properties</h2>
+  <p class="dialog-lead" id="ued-lead"></p>
+  <div class="form two" id="ued-fields">
+    <div data-one><label for="ued-first">First name</label><input id="ued-first" autocomplete="off" maxlength="64"></div>
+    <div data-one><label for="ued-last">Last name</label><input id="ued-last" autocomplete="off" maxlength="64"></div>
+    <div data-one class="wide"><label for="ued-display">Display name</label><input id="ued-display" autocomplete="off" maxlength="256"></div>
+    <div class="wide"><label for="ued-description">Description</label><input id="ued-description" autocomplete="off" maxlength="1024"></div>
+    <div><label for="ued-jobtitle">Job title</label><input id="ued-jobtitle" autocomplete="off" maxlength="128"></div>
+    <div><label for="ued-department">Department</label><input id="ued-department" autocomplete="off" maxlength="64"></div>
+    <div><label for="ued-company">Company</label><input id="ued-company" autocomplete="off" maxlength="64"></div>
+    <div><label for="ued-office">Office</label><input id="ued-office" autocomplete="off" maxlength="128"></div>
+    <div data-one><label for="ued-email">Email</label><input id="ued-email" type="email" autocomplete="off" spellcheck="false" maxlength="256"></div>
+    <div data-one><label for="ued-phone">Phone</label><input id="ued-phone" autocomplete="off" spellcheck="false" maxlength="64"></div>
+    <div class="wide"><label for="ued-manager">Manager</label><div class="ou-row"><div class="adder" id="ued-boss"><span class="find"><svg><use href="#i-search"/></svg><input type="search" id="ued-manager" data-find placeholder="Find a person" autocomplete="off" spellcheck="false"></span><div class="drop" data-drop hidden></div></div>
+      <button type="button" id="ued-manager-x"><svg><use href="#i-x"/></svg>No manager</button></div></div>
+  </div>
+  <p class="hint problem" id="ued-problem" hidden></p>
+  <div class="dialog-foot"><button type="button" id="ued-cancel">Cancel</button><button type="button" class="primary" id="ued-save">Save</button></div>
+</dialog>
+
+<!-- Rename: the name it has in Active Directory, which is also its display name. -->
+<dialog class="dialog" id="ren-dialog" aria-labelledby="ren-title">
+  <h2 id="ren-title">Rename</h2>
+  <p class="dialog-lead" id="ren-lead"></p>
+  <div class="form sd-form"><label for="ren-name">Full name</label><input id="ren-name" maxlength="64" autocomplete="off" spellcheck="false" data-1p-ignore data-lpignore="true" data-bwignore>
+    <small class="hint">The logon name stays as it is.</small></div>
+  <p class="hint problem" id="ren-problem" hidden></p>
+  <div class="dialog-foot"><button type="button" id="ren-cancel">Cancel</button><button type="button" class="primary" id="ren-save">Rename</button></div>
+</dialog>
+
+<!-- Add to groups (find and pick) or Remove from groups (tick the ones to leave). -->
+<dialog class="dialog" id="gp-dialog" aria-labelledby="gp-title">
+  <h2 id="gp-title">Add to groups</h2>
+  <p class="dialog-lead" id="gp-lead"></p>
+  <div class="adder" id="gp-adder"><label class="find"><svg><use href="#i-search"/></svg><input type="search" data-find placeholder="Find a group" aria-label="Find a group" autocomplete="off" spellcheck="false"></label><div class="drop" data-drop hidden></div></div>
+  <div class="gp-list" id="gp-list"></div>
+  <p class="hint problem" id="gp-problem" hidden></p>
+  <div class="dialog-foot"><button type="button" id="gp-cancel">Cancel</button><button type="button" class="primary" id="gp-save">Add</button></div>
+</dialog>
 
 <!-- Edit an attribute, as ADSI Edit does: one box for one value, a line each for several, TRUE or FALSE for a Boolean. -->
 <dialog class="dialog" id="attr-dialog" aria-labelledby="attr-title">

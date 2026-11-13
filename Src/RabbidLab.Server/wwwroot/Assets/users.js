@@ -23,6 +23,27 @@
   let rows = [];
   let places = null;
 
+  // Users ticked in the list (by username), kept while the list is read again.
+  const picked = new Set();
+  const byUsername = (name) => (lists.users || []).find((u) => u.username === name);
+  const count = (n, one, many) => `${n.toLocaleString()} ${n === 1 ? one : many}`;
+  // The bar over the list, the tick in the heading and each row's highlight, without drawing the list again.
+  const drawPicked = () => {
+    const n = picked.size;
+    $('dir-bulk').hidden = !n || adPage !== 'users';
+    $('dir-bulk-n').textContent = `${count(n, 'user', 'users')} selected`;
+    $('dir-table').querySelectorAll('[data-tick]').forEach((box) => {
+      box.checked = picked.has(box.dataset.tick);
+      box.closest('.tr')?.classList.toggle('picked', box.checked);
+    });
+    const all = $('dir-table').querySelector('[data-tick-all]');
+    if (all) {
+      const shown = rows.filter((u) => picked.has(u.username)).length;
+      all.checked = !!rows.length && shown === rows.length;
+      all.indeterminate = shown > 0 && shown < rows.length;
+    }
+  };
+
   const userStatus = (u) => (u.locked ? badge('Locked out', 'red') : !u.enabled ? badge('Disabled', 'grey')
     : u.passwordExpires && days(u.passwordExpires) < 0 ? badge('Password expired', 'red') : badge('Enabled', 'green'));
   const pcStatus = (c) => (!c.enabled ? badge('Disabled', 'grey') : stale(c.lastSignIn) ? badge('Inactive', 'amber') : badge('Enabled', 'green'));
@@ -335,7 +356,10 @@
     $('dir-now').hidden = !(adView !== allViews()[0].key || find || filtering());
     $('dir-view-title').textContent = v.label;
     $('dir-count').textContent = `${rows.length.toLocaleString()} ${p.noun[rows.length === 1 ? 0 : 1]}`;
-    $('dir-table').className = `table adt ${adPage} ${adLayout === 'tiles' ? 'dtiles' : 'drows'}`;
+    // Users as rows can be ticked, and each has ⋯ for its menu.
+    const picks = adPage === 'users' && adLayout === 'rows';
+    if (adPage === 'users') [...picked].forEach((name) => { if (!byUsername(name)) picked.delete(name); });
+    $('dir-table').className = `table adt ${adPage} ${adLayout === 'tiles' ? 'dtiles' : 'drows'}${picks ? ' picks' : ''}`;
     const none = `<div class="empty">${list.length ? 'Nothing here right now.' : 'Nothing yet.'}</div>`;
     // Rows keep every column under its heading; a tile leads with the name and stacks the rest under it.
     $('dir-table').innerHTML = !rows.length ? none : adLayout === 'tiles'
@@ -343,9 +367,14 @@
         const c = p.cells(x);
         return `<div class="tr dtile" tabindex="0" data-i="${i}"><div>${c[0]}</div><div class="dtile-more">${c.slice(1).map((cell) => `<div>${cell}</div>`).join('')}</div></div>`;
       }).join('')
-      : `<div class="tr th">${p.head.map((h) => `<span>${esc(h)}</span>`).join('')}</div>`
-        + rows.map((x, i) => `<div class="tr" tabindex="0" data-i="${i}">${p.cells(x).map((c) => `<div>${c}</div>`).join('')}</div>`).join('');
+      : `<div class="tr th">${picks ? '<label class="tk"><input type="checkbox" data-tick-all aria-label="Select all"></label>' : ''}${p.head.map((h) => `<span>${esc(h)}</span>`).join('')}${picks ? '<span></span>' : ''}</div>`
+        + rows.map((x, i) => `<div class="tr" tabindex="0" data-i="${i}">`
+          + (picks ? `<label class="tk"><input type="checkbox" data-tick="${esc(x.username)}" aria-label="Select ${esc(x.name || x.username)}"></label>` : '')
+          + p.cells(x).map((c) => `<div>${c}</div>`).join('')
+          + (picks ? `<div class="tr-more"><button type="button" class="at-more" data-row-menu="${i}" data-tip="Actions" aria-label="Actions for ${esc(x.name || x.username)}">${svg('dots')}</button></div>` : '')
+          + '</div>').join('');
     $('dir-more').hidden = !more[adPage];
+    drawPicked();
     drawViews();
     drawFilters();
     drawLook(find);
@@ -459,20 +488,22 @@
     filters.ou = e.target.value;
     drawAd();
   });
-  $('dir-export').addEventListener('click', () => {
+  // The page's columns for each row given, as a CSV download.
+  const csvOf = (list, name) => {
     const p = page();
     const cell = (v) => {
       // A leading quote keeps Excel from running a value that starts like a formula.
       const s = (v === null || v === undefined ? '' : String(v)).replace(/^[=+\-@\t\r]/, "'$&");
       return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
     };
-    const text = [p.csv.map(([h]) => cell(h)).join(','), ...rows.map((x) => p.csv.map(([, f]) => cell(f(x))).join(','))].join('\r\n');
+    const text = [p.csv.map(([h]) => cell(h)).join(','), ...list.map((x) => p.csv.map(([, f]) => cell(f(x))).join(','))].join('\r\n');
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([`﻿${text}`], { type: 'text/csv' }));
-    a.download = `${ad.state.domain}-${adPage}-${adView}.csv`;
+    a.download = `${ad.state.domain}-${name}.csv`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-  });
+  };
+  $('dir-export').addEventListener('click', () => csvOf(rows, `${adPage}-${adView}`));
 
   // --- One user, group or computer -----------------------------------------------------------------------------------
 
@@ -497,7 +528,7 @@
       + facts([['Logon name', u.username], ['Principal name', u.upn], ['Where', u.where || ad.state.domain], ['Email', u.email], ['Department', u.department], ['Job title', u.title],
         ['Manager', u.manager], ['Description', u.description], ['Last sign-in', ago(u.lastSignIn)],
         ['Password', u.mustChange ? 'Changes at the next sign-in' : u.neverExpires ? 'Never expires' : u.passwordExpires ? `Expires ${day(u.passwordExpires)}` : null],
-        ['Account expires', u.accountExpires ? day(u.accountExpires) : null], ['Made', u.created ? day(u.created) : null]])
+        ['Account expires', u.accountExpires ? `End of ${day(new Date(new Date(u.accountExpires) - 1))}` : null], ['Made', u.created ? day(u.created) : null]])
       + (fixed ? `<p class="hint">${esc(fixed)}</p>` : '')
       + `<h4>Groups</h4><div class="chips-in">${u.groups.map((g, i) => `<span class="gchip">${esc(g.name)}${change ? `<button type="button" class="chip-x" data-act="ungroup" data-g="${i}" aria-label="Take out of ${esc(g.name)}">${svg('x')}</button>` : ''}</span>`).join('') || '<span class="muted">Only Domain Users</span>'}</div>`
       + (change ? adder('Add to a group') : '')
@@ -613,12 +644,22 @@
   };
 
   $('dir-table').addEventListener('click', (e) => {
+    if (e.target.closest('.tk')) {
+      tickRange(e);
+      return;
+    }
+    const dots = e.target.closest('[data-row-menu]');
+    if (dots) {
+      const r = dots.getBoundingClientRect();
+      openCmd(menuUsers(rows[Number(dots.dataset.rowMenu)]), r.right - CMD_W, r.bottom + 6);
+      return;
+    }
     const row = e.target.closest('[data-i]');
     if (row) openAd(Number(row.dataset.i), row);
   });
   $('dir-table').addEventListener('keydown', (e) => {
     const row = e.target.closest('[data-i]');
-    if (row && (e.key === 'Enter' || e.key === ' ')) {
+    if (row && e.target === row && (e.key === 'Enter' || e.key === ' ')) {
       e.preventDefault();
       openAd(Number(row.dataset.i), row);
     }
@@ -661,6 +702,485 @@
         else sure(`Delete ${x.name || x.username}?`, `${x.username} is deleted from ${ad.state.domain} for good, with anything in it. Turning it off can be undone; this can't.`, `Delete ${x.username}`, () => act(`${adBase()}/delete`, {}, { gone: true }));
         break;
     }
+  });
+
+  // --- Users: ticked ones, and one menu of what can be done to them -----------------------------------------------
+  // A row's ⋯ or a right-click opens it for that user, or for every selected user when that row is one of them; Actions
+  // over the list opens it for the selected ones. Its categories open to the side. Changes go one user at a time, and
+  // protected and built-in accounts are left out: Active Directory Users and Computers changes those.
+
+  const CMD_W = 250;
+  const mayChange = (u) => !u.service && !u.protected && !u.system;
+  const whoOf = (us) => (us.length === 1 ? us[0].name || us[0].username : count(us.length, 'user', 'users'));
+  const userPath = (u) => `/api/ad/users/${encodeURIComponent(u.username)}`;
+  const menuUsers = (u) => (u && picked.has(u.username) && picked.size > 1 ? [...picked].map(byUsername).filter(Boolean) : [u].filter(Boolean));
+
+  // Shift-click ticks every row between the last one ticked and this one.
+  let lastTick = null;
+  const tickRange = (e) => {
+    const box = e.target.closest('.tk')?.querySelector('input');
+    if (!box || e.target !== box) return; // the label's own click comes through the box
+    if (box.dataset.tickAll !== undefined) {
+      rows.forEach((u) => (box.checked ? picked.add(u.username) : picked.delete(u.username)));
+    } else {
+      const i = rows.findIndex((u) => u.username === box.dataset.tick);
+      const from = e.shiftKey && lastTick !== null ? Math.min(lastTick, i) : i;
+      const to = e.shiftKey && lastTick !== null ? Math.max(lastTick, i) : i;
+      rows.slice(from, to + 1).forEach((u) => (box.checked ? picked.add(u.username) : picked.delete(u.username)));
+      lastTick = i;
+    }
+    drawPicked();
+  };
+  $('dir-bulk-clear').addEventListener('click', () => {
+    picked.clear();
+    drawPicked();
+  });
+  $('dir-bulk-act').addEventListener('click', () => {
+    const r = $('dir-bulk-act').getBoundingClientRect();
+    openCmd([...picked].map(byUsername).filter(Boolean), r.right - CMD_W, r.bottom + 6);
+  });
+  $('dir-table').addEventListener('contextmenu', (e) => {
+    const row = adPage === 'users' && e.target.closest('[data-i]');
+    if (!row) return;
+    e.preventDefault();
+    const r = row.getBoundingClientRect();
+    // From the keyboard there's no pointer: under the row's name.
+    openCmd(menuUsers(rows[Number(row.dataset.i)]), e.clientX || r.left + 40, e.clientY || r.bottom);
+  });
+
+  // The menu: Properties, then a category for each kind of change, More, and Delete. What applies to none of them is
+  // greyed out; for several users, an item says how many of them it applies to.
+  const mi = (cmd, icon, label, { off = false, hint = '', danger = false } = {}) => `<button type="button" role="menuitem" class="am-link${danger ? ' out' : ''}" data-cmd="${cmd}"${off ? ' disabled' : ''}>`
+    + `${svg(icon)}<span>${esc(label)}</span>${hint ? `<small>${esc(hint)}</small>` : ''}</button>`;
+  const some = (k, n, cmd, icon, label) => mi(cmd, icon, label, { off: !k, hint: n > 1 && k && k < n ? `${k} of ${n}` : '' });
+  const part = (...items) => `<div class="am-links">${items.join('')}</div>`;
+  const fly = (icon, label, ...parts) => `<div class="cmd-sub"><button type="button" role="menuitem" class="am-link" aria-haspopup="menu" aria-expanded="false">`
+    + `${svg(icon)}<span>${esc(label)}</span>${svg('right', 'chev')}</button><div class="gear-menu cmd-fly" role="menu">${parts.join('')}</div></div>`;
+  const COPY = [['name', 'name', 'names', (u) => u.name || u.username], ['username', 'logon name', 'logon names', (u) => u.username],
+    ['upn', 'user principal name', 'user principal names', (u) => u.upn], ['email', 'email address', 'email addresses', (u) => u.email],
+    ['dn', 'distinguished name', 'distinguished names', (u) => u.dn]];
+  // An account option's field on the user, and what turning it on or off says afterwards.
+  const FLAGS = {
+    mustchange: ['mustChange', (w) => `${w} must change the password at the next sign-in`, (w) => `Cleared the password change requirement for ${w}`],
+    noexpiry: ['neverExpires', (w) => `Set the password to never expire for ${w}`, (w) => `Set the password to expire per policy for ${w}`],
+    cannotchange: [null, (w) => `Stopped ${w} from changing the password`, (w) => `Let ${w} change the password`],
+    sensitive: ['sensitive', (w) => `Marked ${w} as sensitive and cannot be delegated`, (w) => `Allowed delegation for ${w}`],
+    smartcard: ['smartcard', (w) => `Required a smart card for ${w}`, (w) => `Stopped requiring a smart card for ${w}`],
+    reversible: ['reversible', (w) => `Turned on reversible password encryption for ${w}`, (w) => `Turned off reversible password encryption for ${w}`],
+    des: ['desOnly', (w) => `Set ${w} to use only Kerberos DES encryption types`, (w) => `Stopped ${w} using only Kerberos DES encryption types`],
+    preauth: ['noPreauth', (w) => `Turned off Kerberos preauthentication for ${w}`, (w) => `Turned on Kerberos preauthentication for ${w}`],
+  };
+  const menuHtml = (objs) => {
+    const all = objs.length;
+    const us = objs.filter(mayChange);
+    const n = us.length;
+    const has = (f) => us.filter(f).length;
+    const change = can('ad.change') && n > 0;
+    const toggle = (flag, icon, onLabel, offLabel) => {
+      const k = has((u) => u[FLAGS[flag][0]]);
+      return some(n - k, n, `flag-on:${flag}`, icon, onLabel) + some(k, n, `flag-off:${flag}`, icon, offLabel);
+    };
+    const top = all === 1 ? part(mi('open', 'user', 'Properties')) : `<p class="cmd-head">${esc(count(all, 'user', 'users'))} selected</p>`;
+    const note = !can('ad.change') || n === all ? ''
+      : `<p class="cmd-note">${n ? `${n} of ${all} can be changed here. The rest are protected or built-in` : `${all === 1 ? 'A protected or built-in account' : 'Protected or built-in accounts'}`}: Active Directory Users and Computers changes ${n === 0 && all === 1 ? 'it' : 'them'}.</p>`;
+    const changes = !change ? '' : part(
+      fly('user', 'Account',
+        part(some(has((u) => !u.enabled), n, 'enable', 'user-check', n === 1 ? 'Enable account' : 'Enable accounts'),
+          some(has((u) => u.enabled), n, 'disable', 'user-off', n === 1 ? 'Disable account' : 'Disable accounts'),
+          some(has((u) => u.locked), n, 'unlock', 'unlock', n === 1 ? 'Unlock account' : 'Unlock accounts')),
+        part(mi('expiry', 'calendar', n === 1 && us[0].accountExpires ? 'Change account expiration…' : 'Set account expiration…'),
+          some(has((u) => u.accountExpires), n, 'expiry-clear', 'calendar', 'Remove account expiration'))),
+      fly('key', 'Password',
+        part(mi('password', 'key', n === 1 ? 'Reset password…' : `Reset password for ${n} users…`)),
+        part(some(has((u) => !u.mustChange && !u.neverExpires), n, 'flag-on:mustchange', 'refresh', 'Require password change at next sign-in'),
+          some(has((u) => u.mustChange), n, 'flag-off:mustchange', 'refresh', 'Clear password change requirement')),
+        part(toggle('noexpiry', 'clock', 'Set password to never expire', 'Set password to expire per policy')),
+        part(mi('flag-on:cannotchange', 'lock', 'Prevent user from changing password'), mi('flag-off:cannotchange', 'unlock', 'Allow user to change password'))),
+      fly('users', 'Groups',
+        part(mi('groups-add', 'user-plus', 'Add to groups…'), some(has((u) => u.groups.length), n, 'groups-remove', 'user-minus', 'Remove from groups…'),
+          some(has((u) => u.groups.length), n, 'groups-remove-all', 'user-minus', 'Remove from all groups…'))),
+      fly('shield', 'Security',
+        part(toggle('sensitive', 'shield', 'Mark as sensitive and cannot be delegated', 'Allow delegation'),
+          toggle('smartcard', 'key', 'Require smart card for interactive sign-in', 'Stop requiring a smart card')),
+        part(toggle('reversible', 'lock', 'Store password using reversible encryption', 'Stop storing password using reversible encryption'),
+          toggle('des', 'lock', 'Use only Kerberos DES encryption types', 'Stop using only Kerberos DES encryption types'),
+          toggle('preauth', 'alert', 'Do not require Kerberos preauthentication', 'Require Kerberos preauthentication'))),
+      fly('folder', 'Organization',
+        part(mi('edit', 'edit', n === 1 ? 'Edit properties…' : `Edit properties of ${n} users…`), mi('rename', 'edit', 'Rename…', { off: n !== 1 }), mi('move', 'move', 'Move…'))));
+    const more = part(fly('dots', 'More',
+      part(mi('attrs', 'list', 'View in attribute browser', { off: all !== 1 })),
+      part(...COPY.map(([k, one, many]) => mi(`copy:${k}`, 'copy', `Copy ${all === 1 ? one : many}`))),
+      part(mi('export', 'csv', all === 1 ? 'Export to CSV' : `Export ${all} users to CSV`))));
+    const gone = can('ad.delete') && n ? part(mi('delete', 'trash', n === 1 ? 'Delete…' : `Delete ${n} users…`, { danger: true })) : '';
+    return top + note + changes + more + gone;
+  };
+
+  let menuFor = [];
+  const openCmd = (objs, x, y) => {
+    if (!objs.length) return;
+    const m = $('cmd-menu');
+    if (m.matches(':popover-open')) m.hidePopover();
+    menuFor = objs;
+    m.innerHTML = menuHtml(objs);
+    m.style.setProperty('left', '0px');
+    m.style.setProperty('top', '0px');
+    m.showPopover();
+    const h = m.offsetHeight;
+    m.style.setProperty('left', `${Math.max(8, Math.min(x, innerWidth - m.offsetWidth - 8))}px`);
+    m.style.setProperty('top', `${Math.max(8, y + h > innerHeight - 8 ? innerHeight - h - 8 : y)}px`);
+    m.querySelector('.am-link:not(:disabled)')?.focus({ preventScroll: true });
+  };
+  // A category's items open beside it: to the right, or to the left where the window ends, and up where it's short.
+  const openFly = (sub) => {
+    $('cmd-menu').querySelectorAll('.cmd-sub.open').forEach((s) => {
+      if (s === sub) return;
+      s.classList.remove('open', 'left');
+      s.firstElementChild.setAttribute('aria-expanded', 'false');
+    });
+    if (!sub || sub.classList.contains('open')) return;
+    sub.classList.add('open');
+    sub.firstElementChild.setAttribute('aria-expanded', 'true');
+    const f = sub.querySelector('.cmd-fly');
+    f.style.removeProperty('top');
+    sub.classList.toggle('left', sub.getBoundingClientRect().right + f.offsetWidth + 12 > innerWidth);
+    const low = f.getBoundingClientRect().bottom - (innerHeight - 8);
+    if (low > 0) f.style.setProperty('top', `${-7 - low}px`);
+  };
+  $('cmd-menu').addEventListener('mouseover', (e) => {
+    const sub = e.target.closest('.cmd-sub');
+    if (sub && !e.target.closest('.cmd-fly')) openFly(sub);
+    else if (!sub && e.target.closest('.am-link')) openFly(null);
+  });
+  $('cmd-menu').addEventListener('toggle', (e) => { if (e.newState === 'closed') openFly(null); });
+  $('cmd-menu').addEventListener('click', (e) => {
+    const head = e.target.closest('.cmd-sub > .am-link');
+    if (head) {
+      openFly(head.parentElement);
+      head.parentElement.querySelector('.cmd-fly .am-link:not(:disabled)')?.focus();
+      return;
+    }
+    const b = e.target.closest('[data-cmd]');
+    if (!b || b.disabled) return;
+    $('cmd-menu').hidePopover();
+    runCmd(b.dataset.cmd, menuFor);
+  });
+  // Up and down within the list that has focus; right opens a category, left goes back to it.
+  $('cmd-menu').addEventListener('keydown', (e) => {
+    const m = $('cmd-menu');
+    const now = document.activeElement;
+    const scope = now.closest('.cmd-fly') || m;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      const items = [...scope.querySelectorAll('.am-link:not(:disabled)')].filter((b) => (b.parentElement.closest('.cmd-fly') || m) === scope);
+      const at = items.indexOf(now);
+      items[(at + (e.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length]?.focus();
+    } else if (e.key === 'ArrowRight' && now.matches('.cmd-sub > .am-link')) {
+      e.preventDefault();
+      openFly(now.parentElement);
+      now.parentElement.querySelector('.cmd-fly .am-link:not(:disabled)')?.focus();
+    } else if (e.key === 'ArrowLeft' && scope !== m) {
+      e.preventDefault();
+      openFly(null);
+      scope.parentElement.firstElementChild.focus();
+    }
+  });
+
+  // Each user in turn under the flask; then the list is read again and a toast says how it went. Gives back what
+  // each that worked answered.
+  const each = async (users, doing, done, work, { gone = false } = {}) => {
+    if (!users.length) return [];
+    closeCard();
+    say('dir-problem', '');
+    say('dir-note', '');
+    const answers = [];
+    const failed = [];
+    const warnings = [];
+    for (const [i, u] of users.entries()) {
+      R.busy($('dir-lib'), doing, users.length > 1 ? `${i + 1} of ${users.length}: ${u.name || u.username}` : u.name || u.username);
+      try {
+        const a = await R.send(...work(u));
+        if (a?.warning) warnings.push(a.warning);
+        answers.push([u, a]);
+        if (gone) picked.delete(u.username);
+      } catch (err) {
+        failed.push(`${u.username}: ${err.message}`);
+      }
+    }
+    try {
+      if (users.length === 1 && !gone && lists.users?.includes(users[0])) {
+        lists.users[lists.users.indexOf(users[0])] = await R.get(userPath(users[0]));
+        counted.list = null;
+      } else {
+        await loadAd(true);
+      }
+    } catch (err) {
+      say('dir-problem', err.message);
+    }
+    R.busy($('dir-lib'), '');
+    drawAd();
+    const ok = users.length - failed.length;
+    if (!failed.length) R.toast(done, warnings[0] || '', { tone: warnings.length ? 'warn' : '' });
+    else R.toast(ok ? `Done for ${ok} of ${users.length}` : 'That didn\'t work', failed[0], { tone: 'warn' });
+    if (failed.length > 1) say('dir-problem', failed.join(' '));
+    return answers;
+  };
+  const post = (u, tail, body = {}) => [`${userPath(u)}${tail}`, body];
+
+  const runCmd = (cmd, objs) => {
+    const us = objs.filter(mayChange);
+    const [what, arg] = cmd.split(':');
+    const only = (f) => us.filter(f);
+    switch (what) {
+      case 'open': {
+        const i = rows.indexOf(objs[0]);
+        const el = $('dir-table').querySelector(`[data-i="${i}"]`);
+        if (i >= 0 && el) openAd(i, el);
+        break;
+      }
+      case 'enable':
+      case 'disable': {
+        const on = what === 'enable';
+        const to = only((u) => u.enabled !== on);
+        each(to, on ? 'Enabling' : 'Disabling', `${on ? 'Enabled' : 'Disabled'} ${whoOf(to)}`, (u) => post(u, '/enable', { on }));
+        break;
+      }
+      case 'unlock': {
+        const to = only((u) => u.locked);
+        each(to, 'Unlocking', `Unlocked ${whoOf(to)}`, (u) => post(u, '/unlock'));
+        break;
+      }
+      case 'expiry': openExpiry(us); break;
+      case 'expiry-clear': {
+        const to = only((u) => u.accountExpires);
+        each(to, 'Removing the expiration', `Removed the account expiration for ${whoOf(to)}`, (u) => post(u, '/expiry', { date: null }));
+        break;
+      }
+      case 'password':
+        if (us.length === 1) reset(whoOf(us), `${userPath(us[0])}/password`, 'It also unlocks the account if it\'s locked out.');
+        else resetMany(us);
+        break;
+      case 'flag-on':
+      case 'flag-off': {
+        const on = what === 'flag-on';
+        const [field, onSaid, offSaid] = FLAGS[arg];
+        const to = !field ? us : only((u) => !!u[field] !== on && !(arg === 'mustchange' && on && u.neverExpires));
+        each(to, 'Changing the account options', (on ? onSaid : offSaid)(whoOf(to)), (u) => post(u, '/flag', { flag: arg, on }));
+        break;
+      }
+      case 'groups-add': openGroups(us, true); break;
+      case 'groups-remove': openGroups(only((u) => u.groups.length), false); break;
+      case 'groups-remove-all': {
+        const to = only((u) => u.groups.length);
+        sure(`Remove ${whoOf(to)} from all groups?`, 'Every group membership is removed. The primary group, usually Domain Users, stays.', 'Remove from all groups',
+          () => each(to, 'Removing from groups', `Removed ${whoOf(to)} from all groups`, (u) => post(u, '/groups', { add: [], remove: u.groups.map((g) => g.dn) })));
+        break;
+      }
+      case 'edit': openEdit(us); break;
+      case 'rename': openRename(us[0]); break;
+      case 'move': openMove(us); break;
+      case 'attrs': location.hash = `#attrs/${encodeURIComponent(dnParent(objs[0].dn))}/${encodeURIComponent(objs[0].dn)}`; break;
+      case 'copy': copyField(objs, arg); break;
+      case 'export': csvOf(objs, objs.length === 1 ? objs[0].username : `${objs.length}-users`); break;
+      case 'delete':
+        sure(`Delete ${whoOf(us)}?`, `${us.length === 1 ? `${us[0].username} is` : `${count(us.length, 'account is', 'accounts are')}`} deleted from ${ad.state.domain} for good, with anything in ${us.length === 1 ? 'it' : 'them'}. Disabling can be undone; this can't.`,
+          us.length === 1 ? `Delete ${us[0].username}` : `Delete ${us.length} users`, () => each(us, 'Deleting', `Deleted ${whoOf(us)}`, (u) => post(u, '/delete'), { gone: true }));
+        break;
+    }
+  };
+
+  const copyField = async (objs, key) => {
+    const [, one, many, get] = COPY.find(([k]) => k === key);
+    const values = objs.map(get).filter(Boolean);
+    if (!values.length) {
+      R.toast(`No ${many} to copy`, '', { tone: 'warn' });
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(values.join('\r\n'));
+      R.toast(values.length === 1 ? `Copied the ${one}` : `Copied ${values.length} ${many}`);
+    } catch {
+      R.toast('Couldn\'t copy', 'The browser didn\'t allow it.', { tone: 'warn' });
+    }
+  };
+
+  // Set account expiration: the last day it works, as ADUC's End of.
+  let expFor = [];
+  const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const openExpiry = (us) => {
+    expFor = us;
+    const one = us.length === 1 ? us[0] : null;
+    $('exp-title').textContent = one?.accountExpires ? 'Change account expiration' : 'Set account expiration';
+    $('exp-lead').textContent = `For ${whoOf(us)}.`;
+    $('exp-date').value = one?.accountExpires ? ymd(new Date(new Date(one.accountExpires) - 1)) : '';
+    say('exp-problem', '');
+    $('exp-dialog').showModal();
+    $('exp-date').focus();
+  };
+  $('exp-cancel').addEventListener('click', () => $('exp-dialog').close());
+  $('exp-save').addEventListener('click', () => {
+    const date = $('exp-date').value;
+    if (!date) {
+      say('exp-problem', 'Pick the last day the account works.');
+      return;
+    }
+    $('exp-dialog').close();
+    each(expFor, 'Setting the expiration', `${whoOf(expFor)} ${expFor.length === 1 ? 'expires' : 'expire'} at the end of ${day(`${date}T12:00`)}`, (u) => post(u, '/expiry', { date }));
+  });
+
+  // Edit properties: one user's details, or for several only what's typed (blank leaves each as it is).
+  const UED = [['first', 'first', 'first'], ['last', 'last', 'last'], ['display', 'name', 'display'], ['description', 'description', 'description'],
+    ['jobtitle', 'title', 'title'], ['department', 'department', 'department'], ['company', 'company', 'company'], ['office', 'office', 'office'],
+    ['email', 'email', 'email'], ['phone', 'phone', 'phone']];
+  const ued = { users: [], boss: undefined }; // boss: undefined leaves it, '' clears it, else the manager's DN
+  const openEdit = (us) => {
+    ued.users = us;
+    ued.boss = undefined;
+    const one = us.length === 1 ? us[0] : null;
+    $('ued-title').textContent = one ? `Edit ${one.name || one.username}` : `Edit ${us.length} users`;
+    $('ued-lead').textContent = one ? `${one.username}, in ${one.where || ad.state.domain}.` : 'Only what you fill in changes. Blank boxes leave each user as they are.';
+    $('ued-fields').querySelectorAll('[data-one]').forEach((el) => { el.hidden = !one; });
+    UED.forEach(([id, field]) => {
+      $(`ued-${id}`).value = one ? one[field] || '' : '';
+      $(`ued-${id}`).placeholder = one ? '' : 'Leave as it is';
+    });
+    $('ued-manager').value = one?.manager || '';
+    $('ued-manager').placeholder = one ? 'Find a person' : 'Leave as it is';
+    say('ued-problem', '');
+    $('ued-dialog').showModal();
+    $(one ? 'ued-first' : 'ued-description').focus();
+  };
+  R.dropdown($('ued-boss'), {
+    none: 'Nobody matches.',
+    find: async (q) => {
+      const t = q.toLowerCase();
+      return (lists.users || []).filter((u) => !u.system && !ued.users.includes(u) && [u.name, u.username].some((v) => String(v || '').toLowerCase().includes(t))).slice(0, 30);
+    },
+    draw: (u, i) => R.option(` data-pick="${i}"`, `<span class="pic user">${esc(initials(u.name || u.username))}</span>`, u.name || u.username, u.title || u.username),
+    pick: (u) => {
+      ued.boss = u.dn;
+      $('ued-manager').value = u.name || u.username;
+    },
+  });
+  $('ued-manager-x').addEventListener('click', () => {
+    ued.boss = '';
+    $('ued-manager').value = '';
+  });
+  $('ued-cancel').addEventListener('click', () => $('ued-dialog').close());
+  $('ued-save').addEventListener('click', () => {
+    const one = ued.users.length === 1 ? ued.users[0] : null;
+    const form = {};
+    UED.forEach(([id, field, key]) => {
+      if (!one && $(`ued-${id}`).closest('[data-one]')) return;
+      const v = $(`ued-${id}`).value.trim();
+      if (one ? v !== (one[field] || '') : v) form[key] = v;
+    });
+    if (ued.boss !== undefined) form.manager = ued.boss;
+    $('ued-dialog').close();
+    if (!Object.keys(form).length) return;
+    each(ued.users, 'Saving', `Saved ${whoOf(ued.users)}`, (u) => post(u, '/edit', form));
+  });
+
+  // Rename: its name in Active Directory, and its display name with it.
+  let renaming = null;
+  const openRename = (u) => {
+    renaming = u;
+    $('ren-lead').textContent = `${u.username}, in ${u.where || ad.state.domain}.`;
+    $('ren-name').value = u.name || u.username;
+    say('ren-problem', '');
+    $('ren-dialog').showModal();
+    $('ren-name').select();
+  };
+  $('ren-cancel').addEventListener('click', () => $('ren-dialog').close());
+  $('ren-save').addEventListener('click', () => {
+    const name = $('ren-name').value.trim();
+    if (!name) {
+      say('ren-problem', 'Type the new name.');
+      return;
+    }
+    $('ren-dialog').close();
+    const u = renaming;
+    each([u], 'Renaming', `Renamed ${u.name || u.username} to ${name}`, (x) => post(x, '/rename', { name }));
+  });
+  $('ren-name').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('ren-save').click(); });
+
+  // Move…: the OU picker, then each user that isn't there already.
+  let moving = [];
+  const openMove = async (us) => {
+    moving = us;
+    // It opens on where they are when that's one place, else where new users go.
+    const at = us.map((u) => dnParent(u.dn).toLowerCase());
+    await placesInto('mv-ou', at.every((p) => p === at[0]) ? dnParent(us[0].dn) : ad.state.newUsers, 'dir-problem');
+    PICK_LEADS['mv-ou'] = `Where ${whoOf(us)} ${us.length === 1 ? 'goes' : 'go'}.`;
+    openPick($('mv-ou'));
+  };
+  $('mv-ou').addEventListener('change', () => {
+    const ou = $('mv-ou').value;
+    const to = moving.filter((u) => !same(dnParent(u.dn), ou));
+    const where = (places || []).find((p) => same(p.dn, ou))?.path || ad.state.domain;
+    each(to, 'Moving', `Moved ${whoOf(to)} to ${where}`, (u) => post(u, '/move', { ou }));
+  });
+
+  // Add to groups: find and pick them. Remove from groups: tick the ones to leave, from the groups they're in.
+  const gp = { users: [], add: true, chosen: [], all: [] };
+  const drawGp = () => {
+    $('gp-list').innerHTML = gp.add
+      ? `<div class="chips-in">${gp.chosen.map((g, i) => `<span class="gchip">${esc(g.name)}<button type="button" class="chip-x" data-gp-x="${i}" aria-label="Not ${esc(g.name)}">${svg('x')}</button></span>`).join('')
+        || '<span class="muted">No groups picked yet.</span>'}</div>`
+      : `<div class="ticks">${gp.all.map((g, i) => `<label class="tick"><input type="checkbox" data-gp="${i}"${gp.chosen.includes(g) ? ' checked' : ''}>${esc(g.name)}`
+        + `${gp.users.length > 1 ? `<small>${g.n} of ${gp.users.length}</small>` : ''}</label>`).join('')}</div>`;
+    $('gp-save').disabled = !gp.chosen.length;
+  };
+  const openGroups = (us, add) => {
+    gp.users = us;
+    gp.add = add;
+    gp.chosen = [];
+    const seen = new Map();
+    us.forEach((u) => u.groups.forEach((g) => {
+      const k = g.dn.toLowerCase();
+      seen.set(k, { dn: g.dn, name: g.name, n: (seen.get(k)?.n || 0) + 1 });
+    }));
+    gp.all = [...seen.values()].sort((a, b) => a.name.localeCompare(b.name));
+    $('gp-title').textContent = add ? 'Add to groups' : 'Remove from groups';
+    $('gp-lead').textContent = add ? `Find the groups to add ${whoOf(us)} to.` : `Tick the groups to take ${whoOf(us)} out of.`;
+    $('gp-adder').hidden = !add;
+    $('gp-save').textContent = add ? 'Add' : 'Remove';
+    $('gp-adder').querySelector('[data-find]').value = '';
+    $('gp-adder').querySelector('[data-drop]').hidden = true;
+    say('gp-problem', '');
+    drawGp();
+    $('gp-dialog').showModal();
+    if (add) $('gp-adder').querySelector('[data-find]').focus();
+  };
+  R.dropdown($('gp-adder'), {
+    none: 'No group matches.',
+    find: async (q) => (await R.get(`/api/ad/groups?q=${encodeURIComponent(q)}`)).filter((g) => !g.system && !gp.chosen.some((c) => same(c.dn, g.dn))).slice(0, 30),
+    draw: (g, i) => R.option(` data-pick="${i}"`, `<span class="pic">${svg('users')}</span>`, g.name, g.description || g.where),
+    pick: (g) => {
+      gp.chosen.push({ dn: g.dn, name: g.name });
+      drawGp();
+      $('gp-adder').querySelector('[data-find]').focus();
+    },
+  });
+  $('gp-list').addEventListener('click', (e) => {
+    const x = e.target.closest('[data-gp-x]');
+    if (!x) return;
+    gp.chosen.splice(Number(x.dataset.gpX), 1);
+    drawGp();
+  });
+  $('gp-list').addEventListener('change', (e) => {
+    if (e.target.dataset.gp === undefined) return;
+    const g = gp.all[Number(e.target.dataset.gp)];
+    gp.chosen = e.target.checked ? [...gp.chosen, g] : gp.chosen.filter((c) => c !== g);
+    $('gp-save').disabled = !gp.chosen.length;
+  });
+  $('gp-cancel').addEventListener('click', () => $('gp-dialog').close());
+  $('gp-save').addEventListener('click', () => {
+    const { users, add, chosen } = gp;
+    $('gp-dialog').close();
+    const names = chosen.length === 1 ? chosen[0].name : count(chosen.length, 'group', 'groups');
+    each(users, add ? 'Adding to groups' : 'Removing from groups', add ? `Added ${whoOf(users)} to ${names}` : `Removed ${whoOf(users)} from ${names}`,
+      (u) => post(u, '/groups', add ? { add: chosen.map((g) => g.dn), remove: [] }
+        : { add: [], remove: chosen.filter((g) => u.groups.some((h) => same(h.dn, g.dn))).map((g) => g.dn) }));
   });
 
   // --- Local accounts: one computer's Windows accounts --------------------------------------------------------------
@@ -804,10 +1324,11 @@
   pwMode('new-pwmode', 'new-password');
   pwMode('reset-pwmode', 'reset-password');
 
-  const secret = (who, password, warning, mustChange) => {
-    $('secret-title').textContent = `${who}'s password`;
-    $('secret-lead').textContent = `Give it to ${who}.${mustChange ? ' They pick their own when they first sign in.' : ''}`;
+  const secret = (who, password, warning, mustChange, many = false) => {
+    $('secret-title').textContent = many ? 'The new passwords' : `${who}'s password`;
+    $('secret-lead').textContent = `${many ? 'Give each person theirs.' : `Give it to ${who}.`}${mustChange ? ' They pick their own when they first sign in.' : ''}`;
     $('secret-text').textContent = password;
+    $('secret-text').classList.toggle('many', many);
     say('secret-warning', warning || '');
     $('secret-copy').textContent = 'Copy';
     $('secret-dialog').showModal();
@@ -823,7 +1344,7 @@
 
   let resetting = null;
   const reset = (who, path, lead) => {
-    resetting = { who, path };
+    resetting = { who, path, users: null };
     $('reset-title').textContent = `A new password for ${who}`;
     $('reset-lead').textContent = lead;
     resetMode('reset-pwmode', 'reset-password');
@@ -831,9 +1352,24 @@
     say('reset-problem', '');
     $('reset-dialog').showModal();
   };
+  // Several users: each gets one of its own, unless one is typed for all of them.
+  const resetMany = (us) => {
+    reset(whoOf(us), '', 'Each gets a password of its own, unless you type one for all of them. It also unlocks accounts that are locked out.');
+    resetting.users = us;
+    $('reset-title').textContent = `New passwords for ${us.length} users`;
+  };
   $('reset-cancel').addEventListener('click', () => $('reset-dialog').close());
   $('reset-go').addEventListener('click', async () => {
     const password = typed('reset-pwmode', 'reset-password');
+    if (resetting.users) {
+      const mustChange = $('reset-change').checked;
+      $('reset-dialog').close();
+      const got = await each(resetting.users, 'Setting passwords', `Set new passwords for ${resetting.who}`, (u) => post(u, '/password', { password, mustChange }));
+      const made = got.filter(([, a]) => a?.password);
+      const wide = Math.max(...made.map(([u]) => u.username.length), 0);
+      if (made.length) secret('', made.map(([u, a]) => `${u.username.padEnd(wide + 3)}${a.password}`).join('\n'), null, mustChange, true);
+      return;
+    }
     $('reset-go').disabled = true;
     try {
       const answer = await R.send(resetting.path, { password, mustChange: $('reset-change').checked });
@@ -1095,7 +1631,7 @@
     const o = s && [...s.options].find((x) => same(x.value, pick.sel));
     if (!o) return;
     $('oupick-dialog').close();
-    if (s.value !== o.value) {
+    if (s.value !== o.value || s.dataset.always !== undefined) {
       s.value = o.value;
       s.dispatchEvent(new Event('change', { bubbles: true }));
     }

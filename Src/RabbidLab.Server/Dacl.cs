@@ -35,7 +35,62 @@ public static class Dacl
     ];
 
     /// <summary>The descriptor with the entries added after its own explicit ones (where Windows keeps them); entries already there aren't added twice.</summary>
-    public static byte[] Grant(byte[] descriptor, IReadOnlyList<byte[]> entries)
+    public static byte[] Grant(byte[] descriptor, IReadOnlyList<byte[]> entries) => Rebuild(descriptor, aces =>
+    {
+        var at = FirstInherited(aces);
+        foreach (var e in entries.Where(e => !aces.Any(a => a.AsSpan().SequenceEqual(e))))
+        {
+            aces.Insert(at++, e);
+        }
+    });
+
+    // User cannot change password: the Change Password right denied to Everyone and SELF, as ADUC sets it.
+    private static readonly Guid ChangePassword = new("ab721a53-1e2f-11d0-9819-00aa0040529b");
+    private const byte DeniedObject = 0x06;
+    private const uint ControlAccess = 0x100;
+    private static readonly byte[] Everyone = [1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0];
+    private static readonly byte[] Self = [1, 1, 0, 0, 0, 0, 0, 5, 10, 0, 0, 0];
+
+    /// <summary>Whether the account's own entries deny it the Change Password right.</summary>
+    public static bool CannotChangePassword(byte[] descriptor) =>
+        Part(descriptor, 16, Acl) is { } dacl && Aces(dacl).Any(a => PasswordAce(a) && a[0] == DeniedObject);
+
+    /// <summary>
+    /// The account's own Change Password entries for Everyone and SELF swapped for Deny (on) or Allow (off) ones. Denies
+    /// go first and allows before anything inherited, which keeps the list in the order Windows wants.
+    /// </summary>
+    public static byte[] SetCannotChangePassword(byte[] descriptor, bool on) => Rebuild(descriptor, aces =>
+    {
+        aces.RemoveAll(PasswordAce);
+        var at = on ? 0 : FirstInherited(aces);
+        foreach (var sid in new[] { Everyone, Self })
+        {
+            var ace = Ace(0, ControlAccess, ChangePassword, null, sid);
+            ace[0] = on ? DeniedObject : AllowedObject;
+            aces.Insert(at++, ace);
+        }
+    });
+
+    private static bool PasswordAce(byte[] a) => a.Length >= 28 && a[0] is AllowedObject or DeniedObject && (a[1] & Inherited) == 0
+        && (BinaryPrimitives.ReadUInt32LittleEndian(a.AsSpan(8)) & ObjectTypePresent) != 0 && new Guid(a.AsSpan(12, 16)) == ChangePassword
+        && SidAfter(a) is { } sid && (sid.SequenceEqual(Everyone) || sid.SequenceEqual(Self));
+
+    // The SID at the end of an object ACE, after its one or two GUIDs.
+    private static byte[]? SidAfter(byte[] a)
+    {
+        var flags = BinaryPrimitives.ReadUInt32LittleEndian(a.AsSpan(8));
+        var at = 12 + ((flags & ObjectTypePresent) != 0 ? 16 : 0) + ((flags & InheritedObjectTypePresent) != 0 ? 16 : 0);
+        return at < a.Length ? a[at..] : null;
+    }
+
+    private static int FirstInherited(List<byte[]> aces)
+    {
+        var at = aces.FindIndex(a => (a[1] & Inherited) != 0);
+        return at < 0 ? aces.Count : at;
+    }
+
+    /// <summary>The descriptor with its DACL's entries changed by edit, put back together.</summary>
+    private static byte[] Rebuild(byte[] descriptor, Action<List<byte[]>> edit)
     {
         if (descriptor.Length < 20 || descriptor[0] != 1)
         {
@@ -47,15 +102,7 @@ public static class Dacl
         var sacl = Part(descriptor, 12, Acl);
         var dacl = Part(descriptor, 16, Acl) ?? EmptyAcl();
         var aces = Aces(dacl);
-        var at = aces.FindIndex(a => (a[1] & Inherited) != 0);
-        if (at < 0)
-        {
-            at = aces.Count;
-        }
-        foreach (var e in entries.Where(e => !aces.Any(a => a.AsSpan().SequenceEqual(e))))
-        {
-            aces.Insert(at++, e);
-        }
+        edit(aces);
         var total = 8 + aces.Sum(a => a.Length);
         if (total > ushort.MaxValue)
         {
