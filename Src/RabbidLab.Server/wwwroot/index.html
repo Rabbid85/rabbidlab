@@ -70,6 +70,7 @@
   <symbol id="i-power" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v9"/><path d="M6.4 6.4a8 8 0 1 0 11.2 0"/></symbol>
   <symbol id="i-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3.2-3.2a4.5 4.5 0 0 0-6.4-6.4L12 5.6"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3.2 3.2a4.5 4.5 0 0 0 6.4 6.4l1.2-1.2"/></symbol>
   <symbol id="i-edit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h8M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></symbol>
+  <symbol id="i-dots" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></symbol>
   <symbol id="i-laptop" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="11" rx="1.5"/><path d="M2 19h20"/></symbol>
   <symbol id="i-book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/><path d="M8 7h8M8 11h6"/></symbol>
   <symbol id="i-csv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M12 12v6M9 15l3 3 3-3"/></symbol>
@@ -807,7 +808,9 @@
         <p class="hint" id="at-more" hidden>There's more here than Active Directory sent; it sends the first 1,000.</p>
       </aside>
       <div class="lib-body">
-        <div class="lib-bar"><h2 id="at-title">Pick something on the left</h2><span class="bar-note" id="at-line"></span></div>
+        <div class="lib-bar"><h2 id="at-title">Pick something on the left</h2><span class="bar-note" id="at-line"></span>
+          <span class="at-tools" id="at-tools" hidden><label class="at-hide"><input type="checkbox" class="switch" id="at-empty" role="switch" checked><span>Hide empty</span></label>
+            <span class="ds-pair"><button type="button" class="ds-btn ds-ibtn" id="at-copy-dn" data-tip="Copy DN" aria-label="Copy the distinguished name"><svg><use href="#i-copy"/></svg></button><button type="button" class="ds-btn ds-ibtn" id="at-export" data-tip="Export CSV" aria-label="Export every attribute to a CSV file"><svg><use href="#i-download"/></svg></button></span></span></div>
         <label class="side-find at-find" id="at-find-row" hidden><svg><use href="#i-search"/></svg><input type="search" id="at-find" placeholder="Find an attribute or value" aria-label="Find an attribute or value" autocomplete="off" spellcheck="false"></label>
         <div class="table attrs" id="at-table"></div>
         <p class="hint problem" id="at-problem" hidden></p>
@@ -1269,6 +1272,28 @@
     <li id="updlg-back"><span class="cn"><i></i></span><span class="node"><svg><use href="#i-refresh"/></svg></span><span class="nm">Restarting</span><small></small></li>
   </ol>
   <div class="dialog-foot"><button type="button" class="updlg-hide" id="updlg-hide">Hide</button><span class="updlg-took" id="updlg-took" hidden></span></div>
+</dialog>
+
+<!-- The Attribute browser's menu for one attribute: on its … button or a right-click (directory.js). -->
+<div class="gear-menu at-menu" id="at-menu" popover>
+  <div class="am-links" id="at-menu-change"><button type="button" class="am-link" data-at="edit"><svg><use href="#i-edit"/></svg>Edit…</button>
+    <button type="button" class="am-link" data-at="clear"><svg><use href="#i-x"/></svg>Clear value</button></div>
+  <div class="am-links"><button type="button" class="am-link" data-at="value"><svg><use href="#i-copy"/></svg>Copy value</button>
+    <button type="button" class="am-link" data-at="name"><svg><use href="#i-copy"/></svg>Copy attribute name</button>
+    <button type="button" class="am-link" data-at="line"><svg><use href="#i-copy"/></svg>Copy attribute and value</button></div>
+</div>
+
+<!-- Edit an attribute, as ADSI Edit does: one box for one value, a line each for several, TRUE or FALSE for a Boolean. -->
+<dialog class="dialog" id="attr-dialog" aria-labelledby="attr-title">
+  <h2 id="attr-title">Edit</h2>
+  <p class="dialog-lead" id="attr-lead"></p>
+  <div class="form sd-form"><label for="attr-one" id="attr-label">Value</label>
+    <input id="attr-one" autocomplete="off" spellcheck="false" data-1p-ignore data-lpignore="true" data-bwignore>
+    <select id="attr-bool" aria-label="Value" hidden><option value="">Not set</option><option value="TRUE">TRUE</option><option value="FALSE">FALSE</option></select>
+    <textarea id="attr-many" rows="7" spellcheck="false" aria-label="Values, one a line" hidden></textarea>
+    <small class="hint" id="attr-help"></small></div>
+  <p class="hint problem" id="attr-problem" hidden></p>
+  <div class="dialog-foot"><button type="button" id="attr-cancel">Cancel</button><button type="button" class="primary" id="attr-save">Save</button></div>
 </dialog>
 
 <!-- Are you sure: deleting, mostly. -->

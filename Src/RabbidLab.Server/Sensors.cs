@@ -1778,7 +1778,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
                         continue;
                     }
                     Queue(s, new MailNote($"{s.Name}: {st.Note}", "warn", [("Sensor", What(s)), ("Group", s.Group ?? "No group")],
-                        new AlertCard("warn", $"{s.Name}: {st.Note}", "It's still answering. This is a heads-up.", [new("🟡 Details", [What(s), Where(s)])], Product.Title)),
+                        new AlertCard("warn", $"{s.Name}: {st.Note}", "It's still answering. This is a heads-up.", [new("🟡 Details", [What(s), Where(s)])], Product.Lab)),
                         again ? "Sent again: still needs attention" : "Sent: warning", wkey);
                     st.Warned = now;
                     dirty = true;
@@ -1797,7 +1797,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
                             [("Sensor", What(s)), ("Group", s.Group ?? "No group"), ("What happened", outage?.Text ?? "Came back"), ("Answering in", st.Ms is { } ms ? $"{ms} ms" : "time")],
                             new AlertCard("up", $"{s.Name} is back up", "It answered again at {when}.",
                                 [new("🟢 Now", [st.Ms is { } took ? $"Answering in {took} ms" : "Answering", outage?.Text ?? "Came back"]), new("📍 Where", [What(s), Where(s)])],
-                                Product.Title, st.Since ?? now)), "Sent: back up", key);
+                                Product.Lab, st.Since ?? now)), "Sent: back up", key);
                     }
                     st.Told = false;
                     st.Alerted = null;
@@ -1882,7 +1882,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
         }
         sections.Add(new("📍 Where", [Where(s)]));
         return new MailNote($"{s.Name} is {(again ? "still " : "")}down", "down", facts,
-            new AlertCard("down", $"{s.Name} is {(again ? "still " : "")}down", again ? "Down since {when}." : "It stopped answering at {when}.", sections, Product.Title, since));
+            new AlertCard("down", $"{s.Name} is {(again ? "still " : "")}down", again ? "Down since {when}." : "It stopped answering at {when}.", sections, Product.Lab, since));
     }
 
     // Where a sensor sits, in a few words: Network · checked every minute.
@@ -1926,7 +1926,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
         }
         sections.Add(new("🟢 Still up", [up.Count == 0 ? "Nothing else" : up.Count <= 8 ? Few(up) : $"{up.Count} others"]));
         return new MailNote($"{with.Count} sensors are down", "down", facts,
-            new AlertCard("many", $"{with.Count} sensors are down", spread.TotalSeconds < 1 ? "All at {when}." : $"All within {Span(spread)} of {{when}}.", sections, Product.Title, times.Min()));
+            new AlertCard("many", $"{with.Count} sensors are down", spread.TotalSeconds < 1 ? "All at {when}." : $"All within {Span(spread)} of {{when}}.", sections, Product.Lab, times.Min()));
     }
 
     /// <summary>
@@ -1954,7 +1954,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
             }
             tested[id] = Now;
             note = new MailNote($"Test: {s.Name} is down", "down", [("Sensor", What(s)), ("Group", s.Group ?? "No group"), ("This is a test", $"{by} sent it from the sensor's page. Nothing is down.")],
-                new AlertCard("test", $"Test alert for {s.Name}", "Nothing is down. Its alerts come here, looking like this.", [new("📍 The sensor", [What(s), Where(s)])], $"{Product.Title} · sent by {by}"));
+                new AlertCard("test", $"Test alert for {s.Name}", "Nothing is down. Its alerts come here, looking like this.", [new("📍 The sensor", [What(s), Where(s)])], $"{Product.Lab} · sent by {by}"));
         }
         var went = new List<string>();
         var failed = new List<string>();

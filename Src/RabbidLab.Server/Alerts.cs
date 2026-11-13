@@ -621,13 +621,13 @@ public sealed class AlertWatch(Alerts alerts, Clients clients, RabbidLab.Updater
                 await alerts.Send("seat.offline", new MailNote(title, "down", [("Computer", c.Computer), ("Last checked in", c.LastSeen.ToString("u"))],
                     new AlertCard("down", title, "Its client last checked in at {when}.",
                         [new("🔴 What happened", [$"Quiet for {Math.Round((Now - c.LastSeen).TotalMinutes)} minutes", c.User is { } who ? $"{who} was signed in" : "Nobody was signed in"]),
-                            new("📍 Where", [c.Address ?? "Address unknown", c.Os ?? "Windows"])], Product.Title, c.LastSeen)), rule.To, stop);
+                            new("📍 Where", [c.Address ?? "Address unknown", c.Os ?? "Windows"])], Product.Lab, c.LastSeen)), rule.To, stop);
             }
             else if (!quiet && quietSeats.Remove(c.Id) && rule.Back)
             {
                 var title = $"{c.Computer} is checking in again";
                 await alerts.Send("seat.offline", new MailNote(title, "up", [("Computer", c.Computer)],
-                    new AlertCard("up", title, "Its client checked in at {when}.", [new("🟢 Now", ["Checking in", c.Address ?? "Address unknown"])], Product.Title, c.LastSeen)), rule.To, stop);
+                    new AlertCard("up", title, "Its client checked in at {when}.", [new("🟢 Now", ["Checking in", c.Address ?? "Address unknown"])], Product.Lab, c.LastSeen)), rule.To, stop);
             }
         }
     }
@@ -643,7 +643,7 @@ public sealed class AlertWatch(Alerts alerts, Clients clients, RabbidLab.Updater
             {
                 alerts.Told("ready", ready);
                 await alerts.Send("update.ready", new MailNote(title, "note", [("Now", s.Version), ("Ready", ready)],
-                    new AlertCard("up", title, $"You have {s.Version}. Install it from Settings, Updates.", [new("🆕 What's new", [$"Version {ready}", "What's new in the console has the notes"])], Product.Title)), r.To, stop);
+                    new AlertCard("up", title, $"You have {s.Version}. Install it from Settings, Updates.", [new("🆕 What's new", [$"Version {ready}", "What's new in the console has the notes"])], Product.Lab)), r.To, stop);
             }
         }
         if (s.Status == RabbidLab.Updater.UpdateStatus.Failed && alerts.Rule("update.failed") is { On: true, To.Count: > 0 } f && alerts.NotTold("failed", $"{s.Available} {s.Message}"))
@@ -653,7 +653,7 @@ public sealed class AlertWatch(Alerts alerts, Clients clients, RabbidLab.Updater
             {
                 alerts.Told("failed", $"{s.Available} {s.Message}");
                 await alerts.Send("update.failed", new MailNote(title, "down", [("Still on", s.Version), ("What it said", s.Message)],
-                    new AlertCard("down", title, $"It's still on {s.Version}.", [new("🔴 What it said", [s.Message])], Product.Title)), f.To, stop);
+                    new AlertCard("down", title, $"It's still on {s.Version}.", [new("🔴 What it said", [s.Message])], Product.Lab)), f.To, stop);
             }
         }
     }
@@ -684,7 +684,7 @@ public sealed class AlertWatch(Alerts alerts, Clients clients, RabbidLab.Updater
             toldSignIns[group.Key] = Now;
             var from = group.Select(f => f.From ?? "an unknown address").Distinct().ToList();
             await alerts.Send("signin.failing", new MailNote(title, "warn", [("Account", group.Key), ("From", string.Join(", ", from))],
-                new AlertCard("warn", title, "In the 10 minutes up to {when}.", [new("🔐 From", [.. from.Take(8)])], Product.Title, Now)), rule.To, stop);
+                new AlertCard("warn", title, "In the 10 minutes up to {when}.", [new("🔐 From", [.. from.Take(8)])], Product.Lab, Now)), rule.To, stop);
         }
     }
 }

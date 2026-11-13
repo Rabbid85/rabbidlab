@@ -306,8 +306,8 @@ public sealed class Channels(DataFolder folder, SettingsStore secrets, IMailSend
     /// <summary>A test message: to a saved notification, to one as typed, or to a saved one with what's typed over it.</summary>
     public async Task<string?> Test(ChannelTestForm form, CancellationToken stop)
     {
-        var note = new MailNote($"Test from {Product.Title}", "note", [("What", "A test message. Alerts will look like this.")],
-            new AlertCard("test", "Alerts work here", $"This notification gets alerts from {Product.Title}.",
+        var note = new MailNote($"Test from {Product.Lab}", "note", [("What", "A test message. Alerts will look like this.")],
+            new AlertCard("test", "Alerts work here", $"This notification gets alerts from {Product.Lab}.",
                 [new("🔔 What you'll get", ["A message when something goes down, and one when it's back", "Reminders while it stays down, if its alert rule asks for them"])],
                 "Sent from Settings, Notifications"));
         Channel? old;
@@ -450,7 +450,7 @@ public sealed class ChannelSender : IChannelSender
             parts.Add(new { type = 10, content = Cut(Sections(c, "**", "- "), 2200) });
         }
         parts.Add(new { type = 10, content = Cut($"-# {Plain(c.Footer)}", 200) });
-        return new { username = Product.Title, flags = 32768, components = new object[] { new { type = 17, accent_color = CardColour(c.Banner), components = parts } } };
+        return new { username = Product.Lab, flags = 32768, components = new object[] { new { type = 17, accent_color = CardColour(c.Banner), components = parts } } };
     }
 
     // What each service takes: Discord an embed, Slack blocks, Teams an Adaptive Card, a webhook plain JSON. With a card, laid out as one.
@@ -461,12 +461,12 @@ public sealed class ChannelSender : IChannelSender
             return Laid(kind, card);
         }
         var facts = note.Facts.Where(f => f.Value.Length > 0).ToList();
-        var by = $"Sent by {Product.Title}";
+        var by = $"Sent by {Product.Lab}";
         return kind switch
         {
             "discord" => new
             {
-                username = Product.Title,
+                username = Product.Lab,
                 embeds = new[]
                 {
                     new
@@ -517,7 +517,7 @@ public sealed class ChannelSender : IChannelSender
                 @event = note.Tone,
                 subject = note.Subject,
                 facts = facts.GroupBy(f => f.Label).ToDictionary(g => g.Key, g => g.First().Value),
-                sentBy = Product.Title,
+                sentBy = Product.Lab,
                 at = DateTime.UtcNow.ToString("o"),
                 card = note.Card is not { } c ? null : new
                 {
@@ -537,7 +537,7 @@ public sealed class ChannelSender : IChannelSender
             case "discord":
                 return new
                 {
-                    username = Product.Title,
+                    username = Product.Lab,
                     embeds = new[]
                     {
                         new

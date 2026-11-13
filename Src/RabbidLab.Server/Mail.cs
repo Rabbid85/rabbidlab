@@ -157,7 +157,7 @@ public sealed partial class Mail(SettingsStore secrets, ILogger<Mail> log) : IMa
     private async Task<string?> SendSmtp(MailSettings s, MailNote note, CancellationToken stop)
     {
         var message = new MimeMessage { Subject = note.Subject };
-        message.From.Add(new MailboxAddress(Product.Title, s.From));
+        message.From.Add(new MailboxAddress(Product.Lab, s.From));
         message.To.AddRange(s.To.Select(a => MailboxAddress.Parse(a)));
         message.Body = new BodyBuilder { TextBody = Text(note), HtmlBody = Html(note) }.ToMessageBody();
         using var limit = CancellationTokenSource.CreateLinkedTokenSource(stop);
@@ -237,7 +237,7 @@ public sealed partial class Mail(SettingsStore secrets, ILogger<Mail> log) : IMa
     }
 
     private static string Text(MailNote note) =>
-        note.Subject + "\r\n\r\n" + string.Join("\r\n", note.Facts.Select(f => $"{f.Label}: {f.Value}")) + $"\r\n\r\nSent by {Product.Title}.";
+        note.Subject + "\r\n\r\n" + string.Join("\r\n", note.Facts.Select(f => $"{f.Label}: {f.Value}")) + $"\r\n\r\nSent by {Product.Lab}.";
 
     private static string Html(MailNote note)
     {
@@ -246,7 +246,7 @@ public sealed partial class Mail(SettingsStore secrets, ILogger<Mail> log) : IMa
         return "<div style=\"font-family:Segoe UI,Arial,sans-serif;font-size:14px;color:#1B1D29;max-width:560px\">"
             + $"<div style=\"padding:14px 16px;border-radius:10px;background:{back};color:{ink};font-weight:700;font-size:16px\">{WebUtility.HtmlEncode(note.Subject)}</div>"
             + $"<table style=\"margin:16px 0;border-collapse:collapse;font-size:14px\">{rows}</table>"
-            + $"<div style=\"color:#8A8FA8;font-size:12px\">Sent by {WebUtility.HtmlEncode(Product.Title)}.</div></div>";
+            + $"<div style=\"color:#8A8FA8;font-size:12px\">Sent by {WebUtility.HtmlEncode(Product.Lab)}.</div></div>";
     }
 
     [GeneratedRegex(@"^[A-Za-z0-9][A-Za-z0-9.-]{0,99}$")]

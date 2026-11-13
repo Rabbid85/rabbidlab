@@ -11,7 +11,7 @@ public sealed record BrandForm(string? Name, string? Icon, string? Accent);
 /// </summary>
 public static partial class Brand
 {
-    /// <summary>The lab's name as last read from the settings, for messages (Product.Title); null when it has none.</summary>
+    /// <summary>The lab's name as last read from the settings, for messages (Product.Lab); null when it has none.</summary>
     public static string? Named { get; internal set; }
 
     public const int NameLength = 40;

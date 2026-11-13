@@ -22,8 +22,11 @@ public static class Product
     /// <summary>The software's own name, where it names the software: versions, releases, signing.</summary>
     public const string Software = "Rabbid Lab";
 
-    /// <summary>The name on screen: the lab's name when it has one (Settings, Appearance), else Rabbid Lab. Name stays for the service, data folder and keys.</summary>
-    public static string Title => Brand.Named ?? Software;
+    /// <summary>The app's name in messages: always Rabbid Lab, never the lab's name. Name stays for the service, data folder and keys.</summary>
+    public static string Title => Software;
+
+    /// <summary>The lab's own name (Settings, Appearance), else Rabbid Lab: who alerts and mail come from.</summary>
+    public static string Lab => Brand.Named ?? Software;
 
     /// <summary>The repository on GitHub: where the code is, and where releases (and so updates) come from.</summary>
     public const string Repository = "https://github.com/Rabbid85/rabbidlab";

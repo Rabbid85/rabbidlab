@@ -146,17 +146,148 @@
     if (a.dataset.dn === object?.dn) a.setAttribute('aria-current', 'page');
     else a.removeAttribute('aria-current');
   });
+  // Every attribute it may have, with its type; Hide empty shows only the ones with a value. Each has a menu (its …
+  // button, or a right-click) to copy it and, where the service account may write it, Edit… and Clear value, as ADSI Edit.
   const drawObject = () => {
     if (!object) return;
     const find = $('at-find').value.trim().toLowerCase();
-    const rows = object.attributes.filter((a) => !find || a.name.toLowerCase().includes(find) || a.values.some((v) => v.toLowerCase().includes(find)));
+    const hide = $('at-empty').checked;
+    const rows = object.attributes.filter((a) => (!hide || a.set) && (!find || a.name.toLowerCase().includes(find) || a.values.some((v) => v.toLowerCase().includes(find))));
+    const withValue = object.attributes.filter((a) => a.set).length;
     $('at-title').textContent = object.name;
-    $('at-line').textContent = `${object.attributes.length} attributes`;
+    $('at-line').textContent = `${object.attributes.length} attributes, ${withValue} with a value`;
     $('at-find-row').hidden = false;
-    $('at-table').innerHTML = '<div class="tr th"><span>Attribute</span><span>Value</span></div>'
-      + rows.map((a) => `<div class="tr"><span class="mono">${esc(a.name)}</span><div class="vals">${a.values.map((v) => `<span${a.hidden ? ' class="muted"' : ''}>${esc(v)}</span>`).join('')}</div></div>`).join('')
-      + (rows.length ? '' : '<div class="empty">No attribute matches.</div>');
+    $('at-tools').hidden = false;
+    $('at-table').innerHTML = '<div class="tr th"><span>Attribute</span><span>Value</span><span>Type</span><span></span></div>'
+      + rows.map((a) => `<div class="tr${a.set ? '' : ' unset'}" data-attr="${esc(a.name)}"><span class="mono">${esc(a.name)}</span>`
+        + `<div class="vals">${a.set ? a.values.map((v) => `<span${a.hidden ? ' class="muted"' : ''}>${esc(v)}</span>`).join('') : '<span class="muted">Not set</span>'}</div>`
+        + `<span class="ty">${esc(a.type)}${a.values.length > 1 ? ` · ${a.values.length}` : ''}</span>`
+        + `<button type="button" class="at-more" data-attr-menu="${esc(a.name)}" data-tip="More" aria-label="More for ${esc(a.name)}">${svg('dots')}</button></div>`).join('')
+      + (rows.length ? '' : `<div class="empty">${find ? 'No attribute matches.' : 'No attribute has a value.'}</div>`);
   };
+
+  // Copying: the clipboard, or a box to copy from where the browser won't (plain HTTP).
+  const copyText = async (text, what) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      R.toast(`Copied ${what}.`);
+    } catch {
+      const t = document.createElement('textarea');
+      t.value = text;
+      document.body.append(t);
+      t.select();
+      const ok = document.execCommand('copy');
+      t.remove();
+      R.toast(ok ? `Copied ${what}.` : "Couldn't copy.", ok ? '' : 'Select it and press Ctrl+C.', { tone: ok ? '' : 'warn' });
+    }
+  };
+  let menuFor = null;
+  const openMenu = (name, x, y) => {
+    menuFor = object?.attributes.find((a) => a.name === name);
+    if (!menuFor) return;
+    const m = $('at-menu');
+    const may = R.has('ad.attributes') && menuFor.editable;
+    m.querySelector('[data-at="edit"]').hidden = !may;
+    m.querySelector('[data-at="clear"]').hidden = !may || !menuFor.set;
+    $('at-menu-change').hidden = !may;
+    m.querySelector('[data-at="value"]').hidden = !menuFor.set || menuFor.hidden;
+    m.querySelector('[data-at="line"]').hidden = !menuFor.set || menuFor.hidden;
+    m.style.setProperty('left', `${Math.max(8, Math.min(x, window.innerWidth - 230))}px`);
+    m.style.setProperty('top', `${Math.max(8, Math.min(y, window.innerHeight - 230))}px`);
+    m.showPopover();
+  };
+  $('at-table').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-attr-menu]');
+    if (!b) return;
+    const r = b.getBoundingClientRect();
+    openMenu(b.dataset.attrMenu, r.right - 220, r.bottom + 6);
+  });
+  $('at-table').addEventListener('contextmenu', (e) => {
+    const row = e.target.closest('.tr[data-attr]');
+    if (!row) return;
+    e.preventDefault();
+    openMenu(row.dataset.attr, e.clientX, e.clientY);
+  });
+  $('at-menu').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-at]');
+    if (!b || !menuFor) return;
+    $('at-menu').hidePopover();
+    const a = menuFor;
+    if (b.dataset.at === 'value') copyText(a.values.join('\n'), 'the value');
+    if (b.dataset.at === 'name') copyText(a.name, 'the name');
+    if (b.dataset.at === 'line') copyText(`${a.name}: ${a.values.join('; ')}`, `${a.name} and its value`);
+    if (b.dataset.at === 'edit') openEdit(a);
+    if (b.dataset.at === 'clear') {
+      R.sure(`Clear ${a.name}?`, `It's taken off ${object.name} in Active Directory.`, 'Clear', () => saveAttr(a, []));
+    }
+  });
+
+  // Edit…: one box for a single value, a line each for several, TRUE or FALSE for a Boolean. Empty clears it.
+  let editing = null;
+  const HELP = {
+    'Date and time': 'A time in UTC, written like 20261231170000.0Z.',
+    'Large integer': 'A whole number. Times such as accountExpires count 100-nanosecond steps since 1601; 0 or 9223372036854775807 is never.',
+    Integer: 'A whole number.',
+    'Numeric string': 'Digits and spaces.',
+    'Distinguished name': 'A full DN, like CN=Name,OU=Users,DC=amw,DC=com.',
+    'Object identifier': 'An OID, like 1.2.840.113556.1.4.1.',
+  };
+  const openEdit = (a) => {
+    editing = a;
+    const bool = a.type === 'Boolean';
+    const raw = a.raw || [];
+    $('attr-title').textContent = `Edit ${a.name}`;
+    $('attr-lead').textContent = `${a.type || 'Value'}, ${a.single ? 'one value' : 'one value a line'}. On ${object.name}.`;
+    $('attr-one').hidden = !a.single || bool;
+    $('attr-bool').hidden = !bool;
+    $('attr-many').hidden = a.single || bool;
+    $('attr-one').value = raw[0] || '';
+    $('attr-bool').value = raw[0] || '';
+    $('attr-many').value = raw.join('\n');
+    $('attr-label').htmlFor = bool ? 'attr-bool' : a.single ? 'attr-one' : 'attr-many';
+    $('attr-label').textContent = a.single || bool ? 'Value' : 'Values, one a line';
+    $('attr-help').textContent = `${HELP[a.type] || ''}${HELP[a.type] ? ' ' : ''}Leave it empty to clear it.`;
+    say('attr-problem', '');
+    $('attr-dialog').showModal();
+    $(bool ? 'attr-bool' : a.single ? 'attr-one' : 'attr-many').focus();
+  };
+  const saveAttr = async (a, values) => {
+    try {
+      object = await R.send('/api/ad/object/attribute', { dn: object.dn, name: a.name, values });
+      drawObject();
+      if ($('attr-dialog').open) $('attr-dialog').close();
+      R.toast(values.some((v) => v.trim()) ? `Saved ${a.name}.` : `Cleared ${a.name}.`);
+    } catch (err) {
+      if ($('attr-dialog').open) say('attr-problem', err.message);
+      else R.toast(`Couldn't change ${a.name}.`, err.message, { tone: 'warn' });
+    }
+  };
+  $('attr-save').addEventListener('click', async () => {
+    if (!editing) return;
+    const bool = editing.type === 'Boolean';
+    const values = bool ? [$('attr-bool').value] : editing.single ? [$('attr-one').value] : $('attr-many').value.split(/\r?\n/);
+    $('attr-save').disabled = true;
+    await saveAttr(editing, values);
+    $('attr-save').disabled = false;
+  });
+  $('attr-cancel').addEventListener('click', () => $('attr-dialog').close());
+
+  $('at-empty').addEventListener('change', drawObject);
+  $('at-copy-dn').addEventListener('click', () => object && copyText(object.dn, 'the distinguished name'));
+  // Export CSV: every attribute with a value, a row each value, the way ADSI Edit's lists copy out.
+  $('at-export').addEventListener('click', () => {
+    if (!object) return;
+    const cell = (s) => `"${String(s).replace(/"/g, '""')}"`;
+    const lines = [['Attribute', 'Value', 'Type'].map(cell).join(',')];
+    object.attributes.filter((a) => a.set && !a.hidden).forEach((a) => a.values.forEach((v) => lines.push([a.name, v, a.type].map(cell).join(','))));
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(new Blob([`﻿${lines.join('\r\n')}\r\n`], { type: 'text/csv' }));
+    link.download = `${object.name.replace(/[\\/:*?"<>|]/g, '_')} attributes.csv`;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(link.href), 4000);
+  });
   const showAttrs = async () => {
     const [, , rest] = R.where();
     const at = dec(rest[0]);

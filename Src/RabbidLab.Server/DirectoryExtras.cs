@@ -1,5 +1,7 @@
+using System.Collections.Concurrent;
 using System.Globalization;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace RabbidLab.Server;
 
@@ -19,9 +21,20 @@ public sealed record AdPlaceItem(string Dn, string Name, string Kind, bool Opens
 /// <summary>A place in the tree and what's directly in it.</summary>
 public sealed record AdPlace(string Dn, string Name, string Path, string? Parent, List<AdPlaceItem> Items, bool More);
 
-public sealed record AdAttribute(string Name, List<string> Values, bool Hidden);
+/// <summary>
+/// One attribute: its values in words, its type from the schema, and whether it has a value (every attribute the object
+/// may have is listed). Editable: the service account may write it, it's inside the scope, and it holds text, numbers,
+/// dates or names that can be typed; Raw is then its values as stored, which Edit starts from. Single: it holds one value.
+/// </summary>
+public sealed record AdAttribute(string Name, List<string> Values, bool Hidden, string Type = "", bool Set = true, bool Editable = false, bool Single = false, List<string>? Raw = null);
 
 public sealed record AdObject(string Dn, string Name, string Kind, List<AdAttribute> Attributes);
+
+/// <summary>An attribute's new values; none clears it.</summary>
+public sealed record AttributeForm(string? Dn, string? Name, List<string?>? Values);
+
+/// <summary>Where to look while setting up, with the login typed there.</summary>
+public sealed record LookBrowseForm(string? Domain, string? Username, string? Password, string? Dn);
 
 /// <summary>Domain settings, the AD audit, the Recycle Bin and the attribute browser, read as Rabbid Lab's AD account.</summary>
 public interface IDirectoryExtras
@@ -40,7 +53,13 @@ public interface IDirectoryExtras
 
     Task<AdPlace> Browse(string? dn, CancellationToken stop);
 
+    /// <summary>Browse, signed in as the admin typed while setting up (credentials not saved): Pick an OU before there's a service account.</summary>
+    Task<AdPlace> BrowseAs(string? domain, string username, string password, string? dn, CancellationToken stop);
+
     Task<AdObject> Attributes(string dn, CancellationToken stop);
+
+    /// <summary>Writes an attribute (clears it with no values), as ADSI Edit would, and gives the object as it is now.</summary>
+    Task<AdObject> SetAttribute(string dn, string name, List<string?> values, CancellationToken stop);
 }
 
 public sealed partial class DirectoryTools
@@ -390,6 +409,18 @@ public sealed partial class DirectoryTools
     public async Task<AdPlace> Browse(string? dn, CancellationToken stop)
     {
         using var ldap = await Open(stop);
+        return await PlaceOf(ldap, dn, Ready().Domain!, stop);
+    }
+
+    public async Task<AdPlace> BrowseAs(string? domain, string username, string password, string? dn, CancellationToken stop)
+    {
+        var d = Clean(domain) ?? Domain ?? throw new ToolProblem("Which domain? Type its name, such as amw.com.");
+        using var ldap = await open(d, await Host(d, stop), username, password, stop) ?? throw new ToolProblem("That username or password is wrong.");
+        return await PlaceOf(ldap, dn, d, stop);
+    }
+
+    private static async Task<AdPlace> PlaceOf(ILdap ldap, string? dn, string domain, CancellationToken stop)
+    {
         var at = string.IsNullOrWhiteSpace(dn) ? ldap.BaseDn : Inside(dn, ldap.BaseDn);
         var top = string.Equals(at, ldap.BaseDn, StringComparison.OrdinalIgnoreCase);
         var rows = await ldap.FindChildren(at, ["objectClass", "name", "description", "displayName"], Limit, stop);
@@ -398,17 +429,230 @@ public sealed partial class DirectoryTools
             var kind = KindOf(r);
             return new AdPlaceItem(r.Dn, r.Text("displayName") ?? r.Text("name") ?? Ldap.Name(r.Dn), kind, kind is "ou" or "container" or "other", r.Text("description"));
         }).OrderBy(i => i.Kind is "ou" or "container" ? 0 : i.Kind == "other" ? 1 : 2).ThenBy(i => i.Name, StringComparer.OrdinalIgnoreCase).ToList();
-        return new AdPlace(at, top ? Ready().Domain! : Ldap.Name(at), Ldap.Path(at, ldap.BaseDn), top ? null : Ldap.Parent(at), items, rows.Count >= Limit);
+        return new AdPlace(at, top ? domain : Ldap.Name(at), Ldap.Path(at, ldap.BaseDn), top ? null : Ldap.Parent(at), items, rows.Count >= Limit);
     }
 
     public async Task<AdObject> Attributes(string dn, CancellationToken stop)
     {
         using var ldap = await Open(stop);
-        var all = await ldap.ReadAll(Inside(dn, ldap.BaseDn), stop) ?? throw new ToolProblem("That isn't in Active Directory any more.", StatusCodes.Status404NotFound);
-        var kind = KindOf(all.TryGetValue("objectClass", out var c) ? c.Select(v => Encoding.UTF8.GetString(v)).ToList() : []);
-        var attributes = all.Select(a => Secret.Contains(a.Key) ? new AdAttribute(a.Key, ["(hidden)"], true) : new AdAttribute(a.Key, [.. a.Value.Select(v => Show(a.Key, v))], false))
-            .OrderBy(a => a.Name, StringComparer.OrdinalIgnoreCase).ToList();
-        return new AdObject(dn, Ldap.Name(dn), kind == "container" ? "other" : kind, attributes);
+        return await AttributesOf(ldap, Inside(dn, ldap.BaseDn), stop);
+    }
+
+    // Every attribute the object may have (allowedAttributes), set or not, each with its type; the ones the service
+    // account may write (allowedAttributesEffective) and that can be typed are editable, inside the scope only.
+    private async Task<AdObject> AttributesOf(ILdap ldap, string at, CancellationToken stop)
+    {
+        var all = await ldap.ReadAll(at, stop) ?? throw new ToolProblem("That isn't in Active Directory any more.", StatusCodes.Status404NotFound);
+        var set = new Dictionary<string, byte[][]>(all, StringComparer.OrdinalIgnoreCase);
+        var kind = KindOf(set.TryGetValue("objectClass", out var c) ? c.Select(v => Encoding.UTF8.GetString(v)).ToList() : []);
+        var allowed = (await ldap.Find(at, "(objectClass=*)", false, ["allowedAttributes", "allowedAttributesEffective"], 1, stop)).FirstOrDefault();
+        var may = allowed?.Texts("allowedAttributes").ToList() ?? [];
+        var writable = new HashSet<string>(allowed?.Texts("allowedAttributesEffective") ?? [], StringComparer.OrdinalIgnoreCase);
+        await Describe(ldap, set.Keys.Concat(may), stop);
+        var inScope = Ldap.Under(at, Ready().Scope!);
+        bool CanEdit(string name) => inScope && writable.Contains(name) && SchemaOf.TryGetValue(name, out var s) && Editable(name, s.Syntax);
+        var rows = set.Select(a =>
+        {
+            var s = SchemaOf.GetValueOrDefault(a.Key);
+            if (Secret.Contains(a.Key))
+            {
+                return new AdAttribute(a.Key, ["(hidden)"], true, TypeOf(s.Syntax));
+            }
+            var edit = CanEdit(a.Key);
+            return new AdAttribute(a.Key, [.. a.Value.Select(v => Show(a.Key, v))], false, TypeOf(s.Syntax), true, edit, s.Single,
+                edit ? [.. a.Value.Select(v => Encoding.UTF8.GetString(v))] : null);
+        }).ToList();
+        foreach (var name in may.Where(m => !set.ContainsKey(m)).Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            var s = SchemaOf.GetValueOrDefault(name);
+            rows.Add(new AdAttribute(name, [], Secret.Contains(name), TypeOf(s.Syntax), false, !Secret.Contains(name) && CanEdit(name), s.Single));
+        }
+        return new AdObject(at, Ldap.Name(at), kind == "container" ? "other" : kind, [.. rows.OrderBy(a => a.Name, StringComparer.OrdinalIgnoreCase)]);
+    }
+
+    public async Task<AdObject> SetAttribute(string dn, string name, List<string?> values, CancellationToken stop)
+    {
+        using var ldap = await Open(stop);
+        var f = Ready();
+        var at = Inside(dn, ldap.BaseDn);
+        InScope(at, f, ldap.BaseDn);
+        if (!AttributeName().IsMatch(name))
+        {
+            throw new ToolProblem("That isn't an attribute name.");
+        }
+        await Describe(ldap, [name], stop);
+        if (!SchemaOf.TryGetValue(name, out var schema))
+        {
+            throw new ToolProblem($"The schema has no attribute called {name}.");
+        }
+        if (!Editable(name, schema.Syntax))
+        {
+            throw new ToolProblem($"{name} can't be edited here: it's binary, a secret, or what makes the object what it is.");
+        }
+        var now = (await ldap.Find(at, "(objectClass=*)", false, ["allowedAttributesEffective", name], 1, stop)).FirstOrDefault()
+            ?? throw new ToolProblem("That isn't in Active Directory any more.", StatusCodes.Status404NotFound);
+        if (!now.Texts("allowedAttributesEffective").Contains(name, StringComparer.OrdinalIgnoreCase))
+        {
+            throw new ToolProblem($"{f.Account} isn't allowed to change {name} on {Ldap.Name(at)}.");
+        }
+        var clean = Clean(name, schema, values, out var why) ?? throw new ToolProblem(why!);
+        // Clearing what's already empty changes nothing; Active Directory would call it an error.
+        if (clean.Count > 0 || now.Texts(name).Any())
+        {
+            try
+            {
+                await ldap.Modify(at, [clean.Count == 0 ? new LdapMod(LdapChange.Delete, name) : new LdapMod(LdapChange.Replace, name, [.. clean])], stop);
+            }
+            catch (LdapRefused e)
+            {
+                throw new ToolProblem(e.Code == LdapRefused.InsufficientRights ? $"{f.Account} isn't allowed to change {name} on {Ldap.Name(at)}."
+                    : $"Active Directory refused it: {e.Message}.");
+            }
+        }
+        return await AttributesOf(ldap, at, stop);
+    }
+
+    // --- The schema, for the attribute browser: each attribute's syntax and whether it holds one value -------------------
+
+    // Read as they're needed, in batches, and kept: the schema seldom changes and is the same across the forest.
+    private static readonly ConcurrentDictionary<string, (string Syntax, bool Single)> SchemaOf = new(StringComparer.OrdinalIgnoreCase);
+
+    [GeneratedRegex("^[A-Za-z][A-Za-z0-9-]{0,127}$")]
+    private static partial Regex AttributeName();
+
+    private static async Task Describe(ILdap ldap, IEnumerable<string> names, CancellationToken stop)
+    {
+        var wanted = names.Where(n => AttributeName().IsMatch(n) && !SchemaOf.ContainsKey(n)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        if (wanted.Count == 0)
+        {
+            return;
+        }
+        var schemaDn = (await ldap.Find("", "(objectClass=*)", false, ["schemaNamingContext"], 1, stop)).FirstOrDefault()?.Text("schemaNamingContext");
+        if (schemaDn is null)
+        {
+            return;
+        }
+        foreach (var batch in wanted.Chunk(80))
+        {
+            var filter = $"(&(objectClass=attributeSchema)(|{string.Concat(batch.Select(n => $"(lDAPDisplayName={n})"))}))";
+            foreach (var r in await ldap.Find(schemaDn, filter, true, ["lDAPDisplayName", "attributeSyntax", "isSingleValued"], 1000, stop))
+            {
+                if (r.Text("lDAPDisplayName") is { } n && r.Text("attributeSyntax") is { } syntax)
+                {
+                    SchemaOf[n] = (syntax, string.Equals(r.Text("isSingleValued"), "TRUE", StringComparison.OrdinalIgnoreCase));
+                }
+            }
+        }
+    }
+
+    /// <summary>The kind of value a schema syntax (2.5.5.x) holds, in words.</summary>
+    private static string TypeOf(string? syntax) => syntax switch
+    {
+        "2.5.5.1" => "Distinguished name",
+        "2.5.5.2" => "Object identifier",
+        "2.5.5.3" or "2.5.5.4" or "2.5.5.5" or "2.5.5.12" => "String",
+        "2.5.5.6" => "Numeric string",
+        "2.5.5.7" or "2.5.5.14" => "Distinguished name with data",
+        "2.5.5.8" => "Boolean",
+        "2.5.5.9" => "Integer",
+        "2.5.5.10" => "Octet string",
+        "2.5.5.11" => "Date and time",
+        "2.5.5.13" => "Presentation address",
+        "2.5.5.15" => "Security descriptor",
+        "2.5.5.16" => "Large integer",
+        "2.5.5.17" => "SID",
+        _ => "",
+    };
+
+    // Syntaxes whose values can be typed: names, object identifiers, text, numbers, true or false, and times.
+    private static readonly HashSet<string> Typed = ["2.5.5.1", "2.5.5.2", "2.5.5.3", "2.5.5.4", "2.5.5.5", "2.5.5.6", "2.5.5.8", "2.5.5.9", "2.5.5.11", "2.5.5.12", "2.5.5.16"];
+
+    // What makes an object what it is: changed only by making, moving or renaming it.
+    private static readonly HashSet<string> Identity = new(StringComparer.OrdinalIgnoreCase) { "objectClass", "objectCategory", "distinguishedName", "name", "cn", "ou" };
+
+    private static bool Editable(string name, string? syntax) => syntax is not null && Typed.Contains(syntax) && !Identity.Contains(name) && !Secret.Contains(name);
+
+    /// <summary>Values typed for an attribute, as they're written: blanks left out, TRUE and FALSE, numbers checked. Null, with why, when they can't be.</summary>
+    private static List<string>? Clean(string name, (string Syntax, bool Single) schema, IEnumerable<string?> typed, out string? why)
+    {
+        why = null;
+        var values = new List<string>();
+        foreach (var raw in typed)
+        {
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                continue;
+            }
+            var text = schema.Syntax is "2.5.5.3" or "2.5.5.4" or "2.5.5.5" or "2.5.5.12" ? raw : raw.Trim();
+            if (text.Length > 100_000)
+            {
+                why = $"A value of {name} can't be over 100,000 characters.";
+                return null;
+            }
+            switch (schema.Syntax)
+            {
+                case "2.5.5.8":
+                    if (!bool.TryParse(text, out var on))
+                    {
+                        why = $"{name} is TRUE or FALSE.";
+                        return null;
+                    }
+                    text = on ? "TRUE" : "FALSE";
+                    break;
+                case "2.5.5.9":
+                    if (!int.TryParse(text, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var n))
+                    {
+                        why = $"{name} is a whole number from -2147483648 to 2147483647.";
+                        return null;
+                    }
+                    text = n.ToString(CultureInfo.InvariantCulture);
+                    break;
+                case "2.5.5.16":
+                    if (!long.TryParse(text, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var big))
+                    {
+                        why = $"{name} is a whole number from -9223372036854775808 to 9223372036854775807.";
+                        return null;
+                    }
+                    text = big.ToString(CultureInfo.InvariantCulture);
+                    break;
+                case "2.5.5.6":
+                    if (text.Any(ch => !char.IsAsciiDigit(ch) && ch != ' '))
+                    {
+                        why = $"{name} holds digits and spaces only.";
+                        return null;
+                    }
+                    break;
+                case "2.5.5.11":
+                    if (!System.Text.RegularExpressions.Regex.IsMatch(text, @"^\d{12}(\d{2})?(\.\d{1,3})?Z$"))
+                    {
+                        why = $"{name} is a time in UTC, written as YYYYMMDDHHMMSS.0Z (for example 20261231170000.0Z).";
+                        return null;
+                    }
+                    break;
+            }
+            if (text.Any(ch => char.IsControl(ch) && ch is not ('\r' or '\n' or '\t')))
+            {
+                why = $"A value of {name} has characters that can't be stored.";
+                return null;
+            }
+            values.Add(text);
+        }
+        if (values.Count > 1000)
+        {
+            why = "At most 1,000 values can be set at once.";
+            return null;
+        }
+        if (schema.Single && values.Count > 1)
+        {
+            why = $"{name} holds a single value.";
+            return null;
+        }
+        if (values.Distinct(StringComparer.OrdinalIgnoreCase).Count() != values.Count)
+        {
+            why = "The same value is there more than once.";
+            return null;
+        }
+        return values;
     }
 
     /// <summary>One value in words: SIDs and GUIDs as text, dates as dates, flags by name, and binary as its size.</summary>
@@ -495,8 +739,22 @@ public static class DirectoryExtrasApi
         app.MapGet("/api/ad/browse", (string? dn, HttpContext context, IDirectoryExtras tools) => UsersApi.Try(context, Permissions.AdView, async () =>
             Results.Ok(await tools.Browse(dn, context.RequestAborted)), change: false));
 
+        app.MapPost("/api/ad/look/browse", (LookBrowseForm form, HttpContext context, IDirectoryExtras tools) => UsersApi.Try(context, Permissions.AdConnect, async () =>
+            Results.Ok(await tools.BrowseAs(form.Domain, form.Username ?? "", form.Password ?? "", form.Dn, context.RequestAborted)), change: false));
+
         app.MapGet("/api/ad/object", (string dn, HttpContext context, IDirectoryExtras tools) => UsersApi.Try(context, Permissions.AdView, async () =>
             Results.Ok(await tools.Attributes(dn, context.RequestAborted)), change: false));
+
+        // Edit… and Clear value in the Attribute browser: one attribute at a time, in the Activity log with what it was set to.
+        app.MapPost("/api/ad/object/attribute", (AttributeForm form, HttpContext context, IDirectoryExtras tools, ActivityLog log) => UsersApi.Try(context, Permissions.AdAttributes, async () =>
+        {
+            var values = form.Values ?? [];
+            var o = await tools.SetAttribute(form.Dn ?? "", form.Name ?? "", values, context.RequestAborted);
+            var shown = values.Where(v => !string.IsNullOrWhiteSpace(v)).ToList();
+            log.Record(context, "users", "ad.attribute", shown.Count == 0 ? $"Cleared {form.Name} on {o.Name}" : $"Set {form.Name} on {o.Name}",
+                detail: shown.Count == 0 ? null : string.Join("; ", shown.Take(10)) + (shown.Count > 10 ? $" and {shown.Count - 10} more" : ""));
+            return Results.Ok(o);
+        }));
     }
 
     /// <summary>Whether an activity title names this object as a whole word, so a group called IT isn't matched by "edited".</summary>

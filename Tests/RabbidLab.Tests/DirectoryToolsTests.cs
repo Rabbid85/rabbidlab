@@ -141,6 +141,43 @@ public sealed class DirectoryToolsTests : IDisposable
     }
 
     [Fact]
+    public async Task The_attribute_browser_edits_as_ADSI_Edit_does_inside_the_scope_only()
+    {
+        const string schema = "CN=Schema,CN=Configuration,DC=amw,DC=com";
+        ad.Rows.Single(r => r.Dn == "").Values["schemaNamingContext"] = [schema];
+        ad.Add($"CN=Description,{schema}", ("objectClass", "attributeSchema"), ("lDAPDisplayName", "description"), ("attributeSyntax", "2.5.5.12"), ("isSingleValued", "FALSE"));
+        ad.Add($"CN=Employee-Number,{schema}", ("objectClass", "attributeSchema"), ("lDAPDisplayName", "employeeNumber"), ("attributeSyntax", "2.5.5.12"), ("isSingleValued", "TRUE"));
+        ad.Add($"CN=Object-Sid,{schema}", ("objectClass", "attributeSchema"), ("lDAPDisplayName", "objectSid"), ("attributeSyntax", "2.5.5.17"), ("isSingleValued", "TRUE"));
+        var casey = $"CN=Casey Holt,{Lab}";
+        ad.Add(casey, ("objectClass", "user"), ("description", "Old"), ("allowedAttributes", "description"), ("allowedAttributes", "employeeNumber"), ("allowedAttributes", "objectSid"),
+            ("allowedAttributesEffective", "description"), ("allowedAttributesEffective", "employeeNumber"));
+        ad.Add($"CN=Far Away,{Other}", ("objectClass", "user"), ("allowedAttributesEffective", "description"));
+        await Connect();
+        var none = CancellationToken.None;
+
+        // Every attribute it may have is listed, set or not, with its type; only typed ones the account may write are editable.
+        var o = await tools.Attributes(casey, none);
+        var description = o.Attributes.Single(a => a.Name == "description");
+        Assert.Equal("String", description.Type);
+        Assert.True(description.Set);
+        Assert.True(description.Editable);
+        Assert.Equal(["Old"], description.Raw);
+        Assert.True(o.Attributes.Single(a => a.Name == "employeeNumber") is { Set: false, Editable: true, Single: true });
+        Assert.False(o.Attributes.Single(a => a.Name == "objectSid").Editable);
+
+        await tools.SetAttribute(casey, "employeeNumber", ["1042"], none);
+        Assert.Contains($"modify {casey} employeeNumber", ad.Log);
+        Assert.Contains("single value", (await Refused(() => tools.SetAttribute(casey, "employeeNumber", ["1", "2"], none))).Message);
+        Assert.Contains("binary", (await Refused(() => tools.SetAttribute(casey, "objectSid", ["S-1-5-21-1"], none))).Message);
+        Assert.Contains("outside", (await Refused(() => tools.SetAttribute($"CN=Far Away,{Other}", "description", ["x"], none))).Message);
+
+        // Clearing what's already empty asks Active Directory for nothing.
+        ad.Log.Clear();
+        await tools.SetAttribute(casey, "employeeNumber", [], none);
+        Assert.DoesNotContain($"modify {casey} employeeNumber", ad.Log);
+    }
+
+    [Fact]
     public async Task Lists_say_when_Active_Directory_had_more_than_it_sent()
     {
         await Connect("DC=amw,DC=com");
@@ -524,7 +561,11 @@ public sealed class FakeLdap : ILdap
 
     public Task Restore(string dn, string newDn, CancellationToken stop) => Do($"restore {dn} -> {newDn}", () => true);
 
-    public Task<Dictionary<string, byte[][]>?> ReadAll(string dn, CancellationToken stop) => Task.FromResult<Dictionary<string, byte[][]>?>(null);
+    // Everything stored on it as bytes, as a "*" read gives; not the constructed allowed* ones, which only come when asked for.
+    public Task<Dictionary<string, byte[][]>?> ReadAll(string dn, CancellationToken stop) => Task.FromResult(Rows.FirstOrDefault(r => Same(r.Dn, dn)) is { } r
+        ? r.Values.Where(kv => !kv.Key.StartsWith("allowed", StringComparison.OrdinalIgnoreCase)).ToDictionary(kv => kv.Key,
+            kv => kv.Value.Select(v => v as byte[] ?? Encoding.UTF8.GetBytes(Convert.ToString(v, System.Globalization.CultureInfo.InvariantCulture) ?? "")).ToArray(), StringComparer.OrdinalIgnoreCase)
+        : null);
 
     public Task<string?> WhoAmI(CancellationToken stop) => Task.FromResult(Who);
 

@@ -1030,7 +1030,10 @@
   const lookInside = async (dn) => {
     inPlace.set(dn.toLowerCase(), { loading: true });
     try {
-      const r = await R.get(`/api/ad/browse?dn=${encodeURIComponent(dn)}`);
+      // While the service account is being set up there isn't one to read with yet: the login typed there reads it (not saved).
+      const r = pick.select?.id?.startsWith('dset-')
+        ? await R.send('/api/ad/look/browse', { domain: $('dset-domain').value.trim(), username: $('dset-user').value.trim(), password: $('dset-password').value, dn })
+        : await R.get(`/api/ad/browse?dn=${encodeURIComponent(dn)}`);
       inPlace.set(dn.toLowerCase(), { items: r.items, more: r.more });
     } catch (err) {
       inPlace.set(dn.toLowerCase(), { problem: err.message });

@@ -141,7 +141,18 @@ button.danger.solid:hover { background: #DB4860; }
 .attrs-side a svg:last-child:not(:first-child) { width: 13px; height: 13px; margin-left: auto; color: #3A3E55; }
 #at-items { display: flex; flex-direction: column; gap: 2px; max-height: 70vh; overflow-y: auto; }
 .at-find { margin-bottom: 10px; }
-.table.attrs .tr { grid-template-columns: minmax(180px, .6fr) minmax(0, 1.4fr); min-width: 0; min-height: 0; align-items: start; padding-top: 7px; padding-bottom: 7px; }
+.table.attrs .tr { grid-template-columns: minmax(180px, .55fr) minmax(0, 1.3fr) 150px 30px; min-width: 0; min-height: 0; align-items: start; padding-top: 7px; padding-bottom: 7px; }
+/* Every attribute it may have: the ones not set are dimmed (Hide empty takes them away); the … menu shows on the row pointed at. */
+.table.attrs .tr.unset .mono { color: #5E6380; }
+.table.attrs .ty { color: #6D7290; font-size: 12.5px; }
+.at-more { display: grid; place-items: center; width: 28px; height: 28px; margin-top: -4px; padding: 0; border: 0; border-radius: 7px; background: none; color: #6D7290; opacity: 0; }
+.table.attrs .tr:hover .at-more, .at-more:focus-visible { opacity: 1; }
+.at-more:hover { background: #1A1D2B; color: #fff; }
+.at-more svg { width: 16px; height: 16px; }
+.at-tools { display: flex; align-items: center; gap: 14px; margin-left: auto; }
+.at-tools[hidden] { display: none; }
+.at-hide { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; cursor: pointer; }
+.gear-menu.at-menu { position: fixed; width: 230px; inset: auto; margin: 0; }
 .table.attrs .tr .mono { color: var(--muted); }
 .table.attrs .vals { display: grid; gap: 2px; min-width: 0; font-size: 13px; overflow-wrap: anywhere; }
 

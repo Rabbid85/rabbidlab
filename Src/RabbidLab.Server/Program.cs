@@ -117,7 +117,7 @@ if (OperatingSystem.IsWindows() && !Product.InContainer)
 }
 
 var app = builder.Build();
-_ = app.Services.GetRequiredService<SettingsStore>().Current; // the lab's name is in messages from the start (Product.Title)
+_ = app.Services.GetRequiredService<SettingsStore>().Current; // the lab's name is in alerts from the start (Product.Lab)
 
 // --add-admin: a local administrator for when nobody can sign in, then it exits.
 if (app.AddAdminCommand(args) is int added)

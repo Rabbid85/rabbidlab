@@ -237,7 +237,9 @@
   <ol>
     <li>Click an OU or container to go into it, and the path at the top to come back out.</li>
     <li>Click a user, group or computer to see its attributes. SIDs, GUIDs, dates and flags are shown in words.</li>
-    <li>Type in <b>Find an attribute or value</b> to narrow the list.</li>
+    <li>Type in <b>Find an attribute or value</b> to narrow the list. <b>Hide empty</b> shows only the attributes with a value; turn it off to see every one the object can have.</li>
+    <li>Click <b>…</b> on an attribute, or right-click it, to copy it, or to <b>Edit…</b> or <b>Clear value</b> as ADSI Edit does. Editing needs the <b>Edit attributes</b> permission, works inside the service account's scope, and every change goes in the Activity log.</li>
+    <li>The buttons at the top copy the object's distinguished name and export its attributes to a CSV file.</li>
   </ol>
   <p class="tip">Passwords, LAPS passwords and BitLocker keys are never shown.</p>
 </article>

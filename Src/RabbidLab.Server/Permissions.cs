@@ -26,6 +26,7 @@ public static class Permissions
     public const string AdChange = "ad.change";
     public const string AdDelete = "ad.delete";
     public const string AdConnect = "ad.connect";
+    public const string AdAttributes = "ad.attributes";
     public const string WindowsView = "windows.view";
     public const string WindowsCreate = "windows.create";
     public const string WindowsChange = "windows.change";
@@ -96,6 +97,7 @@ public static class Permissions
             new(AdChange, "Change users, groups and computers", "Set passwords, unlock, turn accounts and computers off and on, and change who's in groups."),
             new(AdDelete, "Delete users, groups and computers", "Gone from the domain for good."),
             new(AdConnect, "Set up Rabbid Lab's AD account", "Make the service account Rabbid Lab changes Active Directory with, or take it away."),
+            new(AdAttributes, "Edit attributes", "Change any attribute in the Attribute browser, as ADSI Edit does, inside the service account's scope."),
         ]),
         new("windows", "Windows accounts", "key",
         [
