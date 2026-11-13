@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.93 (2026-11-12)
+
+- While the console starts, Loading and its flask cover the whole window, top bar and menu included, instead of only the page area.
+
 ## 1.1.92 (2026-11-12)
 
 - The cogwheel at the top of Links opens a small menu: Links settings, Export links and Import links. The two file icons beside it are gone.
