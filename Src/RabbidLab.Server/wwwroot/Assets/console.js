@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.111', [
+    'Add an address shows whether a name works on the Full name box, with a tick or a warning and one short line under it. Port and firewall show plain values, and the certificate for added addresses only shows while there are some.']],
   ['1.1.110', [
     'Settings, Console address is tidied up: an icon on every row, Copy, Download and Remove as icon buttons that line up, and Self-signed and Allowed as coloured tags. Add an address is a plus in the Addresses heading.']],
   ['1.1.109', [
@@ -2197,15 +2199,17 @@ const RELEASE_NOTES = [
         ? "Other computers show a warning until it's trusted. Deploy it to Trusted Root Certification Authorities with Group Policy."
         : `Issued by ${esc(cert.issuer)}.`, `<span class="ds-v">Expires ${caDate(cert.expires)}</span>`, { tone: cert.selfSigned ? 'warn' : 'ok' })
         + caRow('key', 'SHA-256 fingerprint', fp, `<span class="ds-pair">${caGet('/api/console/certificate')}${caCopy(fp)}</span>`, { cls: 'ds-code' })
-        // The added addresses have one of their own, so the one above (which Seats trust) never changes.
-        + (!c.namesCertificate ? '' : caRow('shield', 'For the addresses added here', 'Their own certificate, trusted on this computer. Trust it on other computers too, as above.',
+        // The added addresses have one of their own, so the one above (which Seats trust) never changes. It's made again
+        // with each one added or removed, and deleted with the last, so it only shows while there are some.
+        + (!c.namesCertificate || !c.addresses.some((a) => a.name) ? '' : caRow('shield', 'For the addresses added here',
+          'Made again when one is added or removed, and deleted with the last. Trust it on other computers too, as above.',
           `<span class="ds-v">Expires ${caDate(c.namesCertificate.expires)}</span>${caGet('/api/console/certificate?names=true')}`, { tone: 'warn' }));
     const moved = c.redirectPort ? (c.redirectTaken ? `Port ${c.redirectPort} redirect is on, but another program has port ${c.redirectPort}.` : `Requests to port ${c.redirectPort} are redirected here.`) : '';
-    $('ca-net').innerHTML = caRow('plug', 'Port', moved || `${c.scheme.toUpperCase()}, on every address above.`, `<span class="ca-chip">${c.port}</span>`)
+    $('ca-net').innerHTML = caRow('plug', 'Port', moved || `${c.scheme.toUpperCase()}, on every address above.`, `<span class="ds-v">${c.port}</span>`)
       + (c.firewall == null ? '' : caRow('lock', 'Windows Firewall', c.firewall
         ? `Inbound on port ${c.port}, Domain and Private profiles.`
         : `Setup didn't add a rule. Other computers connect only if a rule allows port ${c.port}.`,
-        c.firewall ? '<span class="ca-tag ok"><i></i>Allowed</span>' : '<span class="ca-tag warn big">No rule</span>', { tone: c.firewall ? 'ok' : 'warn' }));
+        `<span class="ds-v">${c.firewall ? 'Allowed' : 'No rule'}</span>`, { tone: c.firewall ? 'ok' : 'warn' }));
     $('ca-setup').hidden = !c.installed;
   };
   // Copy works over plain HTTP too, where the browser has no clipboard API.
@@ -2240,7 +2244,16 @@ const RELEASE_NOTES = [
   let nmDns = true; // add its alias to DNS, or take it out
   let nmTimer = 0;
   let nmFull = '';
-  const nmCard = (look, icon, title, text) => `<div class="ustatus nm-card"><span class="big-ic${look}">${svg(icon)}</span><div class="ustatus-text"><b>${esc(title)}</b><span>${esc(text)}</span></div></div>`;
+  // The name's state, shown on its box and in one short line under it: ok, bad, info, or wait while it looks.
+  let nmTone = '';
+  let nmSay = '';
+  const NM_ICON = { ok: 'check', bad: 'alert', info: 'info', warn: 'alert' };
+  const nmLine = (tone, text) => `<p class="nm-say ${tone}">${svg(NM_ICON[tone])}<span>${esc(text)}</span></p>`;
+  const nmShow = (tone, text) => {
+    nmTone = tone;
+    nmSay = text;
+    nmDraw();
+  };
   const nmRow = (name, about, on, label) => `<div class="ds-row"><div class="ds-l"><b>${name}</b><span>${about}</span></div><div class="ds-r">`
     + `<input type="checkbox" class="switch" id="nm-dns-on" role="switch" aria-label="${label}"${on ? ' checked' : ''}></div></div>`;
   const nmIp = () => (ca?.addresses || []).map((a) => new URL(a.url).hostname).find((h) => /^\d+\.\d+\.\d+\.\d+$/.test(h)) || 'this computer\'s IP address';
@@ -2255,12 +2268,17 @@ const RELEASE_NOTES = [
     $('nm-name-wrap').hidden = $('nm-look').hidden = !adding;
     $('nm-name-wrap').classList.toggle('wide', !domain);
     $('nm-full-wrap').hidden = !adding || !domain;
-    $('nm-full').textContent = nmFull || (domain ? `name.${domain}` : '');
+    $('nm-full').className = `nm-full${nmTone ? ` ${nmTone}` : ''}`;
+    $('nm-full').innerHTML = `<span>${esc(nmFull || (domain ? `name.${domain}` : ''))}</span>${nmTone === 'wait' ? '<i class="nm-spin"></i>' : NM_ICON[nmTone] ? svg(NM_ICON[nmTone]) : ''}`;
+    // Without a domain there's no full name box, so the name's own box shows it.
+    $('nm-name').classList.toggle('ok', !domain && nmTone === 'ok');
+    $('nm-name').classList.toggle('bad', !domain && nmTone === 'bad');
+    $('nm-look').innerHTML = nmSay && NM_ICON[nmTone] ? nmLine(nmTone, nmSay) : '';
     // DNS: with a domain, a switch to add the alias (or take it out); without one, the record to add yourself.
     const ours = !adding && !!gone?.dns;
     $('nm-dns').hidden = !domain || (!adding && !ours);
     $('nm-dns').innerHTML = !domain ? '' : adding
-      ? nmRow('Add it to DNS', `An alias (CNAME) for ${esc(nmFull || `name.${domain}`)} that points to this computer, on a domain controller. It follows this computer if its IP address changes. Removing the address takes it out again.`, nmDns, 'Add it to DNS')
+      ? nmRow('Add it to DNS', `A CNAME for ${esc(nmFull || `name.${domain}`)} pointing to this computer, added on a domain controller. Removing the address takes it out again.`, nmDns, 'Add it to DNS')
       : nmRow('Take it out of DNS', `Its alias (CNAME), which ${esc(product)} added ${esc(gone?.dns?.replace(/^an alias in DNS /, '') || '')}. Leave it there if something else uses the name.`, nmDns, 'Take it out of DNS');
     const record = adding && !domain;
     $('nm-rec').hidden = !record;
@@ -2271,7 +2289,7 @@ const RELEASE_NOTES = [
     }
     if (record) {
       $('nm-dns').hidden = false;
-      $('nm-dns').innerHTML = nmCard(' ember', 'alert', "This computer isn't in a domain", 'Add the name on whatever answers DNS for your network, such as your router, Pi-hole or AdGuard Home.');
+      $('nm-dns').innerHTML = nmLine('warn', "This computer isn't in a domain. Add the record below on whatever answers DNS for your network, such as your router, Pi-hole or AdGuard Home.");
     }
     const login = !!domain && nmDns && (adding || ours);
     $('nm-user-wrap').hidden = $('nm-pw-wrap').hidden = $('nm-lock').hidden = !login;
@@ -2280,7 +2298,7 @@ const RELEASE_NOTES = [
     const https = ca?.scheme === 'https';
     $('nm-cert-head').hidden = $('nm-cert').hidden = !https;
     $('nm-cert').querySelector('span').textContent = adding
-      ? `The added addresses get a certificate of their own, so browsers on this computer don't warn about ${nmFull || 'the name'}. The console's own certificate, which computers in Seats trust, doesn't change. Other computers trust the new one like the first: download it once it's done.`
+      ? `Added addresses get a certificate of their own, so this computer doesn't warn about ${nmFull || 'the name'}. The console's own certificate doesn't change. Download the new one afterwards to trust it on other computers.`
       : 'The added addresses\' certificate is made again without it.';
     $('nm-check').hidden = !adding;
     $('nm-check').textContent = domain ? 'Check' : 'Check now';
@@ -2295,23 +2313,22 @@ const RELEASE_NOTES = [
     const name = $('nm-name').value.trim();
     if (!name) {
       nmFull = '';
-      $('nm-look').innerHTML = '';
-      return nmDraw();
+      return nmShow('', '');
     }
+    nmShow('wait', '');
     try {
       const r = await send('/api/console/names/look', { name });
       if ($('nm-name').value.trim() !== name) return;
       nmFull = r.full;
-      const domain = ca?.domain;
-      $('nm-look').innerHTML = r.problem ? nmCard(' bad', 'alert', "That name can't be used", r.problem)
-        : r.leads === 'here' ? nmCard('', 'check', `${r.full} already leads here`, 'Add it to give it a certificate. DNS has it already.')
-        : r.leads === 'elsewhere' ? nmCard(' bad', 'alert', `${r.full} leads somewhere else`, `From this computer it goes to ${r.where}. Pick another name, or change that record first.`)
-        : domain ? nmCard('', 'check', `Nothing answers to ${r.full} yet`, 'Check, with the account below, looks in DNS on the domain controller.')
-        : nmCard('', 'info', `Nothing answers to ${r.full} yet`, 'Add the record below on your DNS server, then Check now shows when it works.');
+      if (r.problem) nmShow('bad', r.problem);
+      else if (r.leads === 'here') nmShow('ok', 'Already leads to this computer. Adding it gives it a certificate.');
+      else if (r.leads === 'elsewhere') nmShow('bad', `Leads to ${r.where} now. Pick another name, or change that record first.`);
+      else if (ca?.domain) nmShow('ok', 'Nothing answers to it yet. Check looks it up in DNS with the account below.');
+      else nmShow('info', 'Nothing answers to it yet. Add the record below, then Check now shows when it works.');
     } catch (err) {
       say('nm-problem', err.message);
+      nmShow('', '');
     }
-    nmDraw();
   };
   const nmOpen = (name = '') => {
     nmMode = name ? 'remove' : 'add';
@@ -2320,7 +2337,8 @@ const RELEASE_NOTES = [
     nmFull = '';
     $('nm-name').value = '';
     $('nm-pw').value = '';
-    $('nm-look').innerHTML = '';
+    nmTone = '';
+    nmSay = '';
     say('nm-problem', '');
     const a = (ca?.addresses || []).find((x) => x.name === name);
     $('nm-title').textContent = name ? `Remove ${a ? new URL(a.url).hostname : name}` : 'Add an address';
@@ -2351,7 +2369,7 @@ const RELEASE_NOTES = [
     $('nm-check').disabled = true;
     try {
       const r = await send('/api/console/names/check', nmForm());
-      $('nm-look').innerHTML = nmCard(r.ok ? '' : ' bad', r.ok ? 'check' : 'alert', r.ok ? `${nmFull} can be added` : `${nmFull || 'That name'} can't be added`, r.message);
+      nmShow(r.ok ? 'ok' : 'bad', r.message);
     } catch (err) {
       say('nm-problem', err.message);
     }

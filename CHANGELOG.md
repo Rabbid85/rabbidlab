@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.111 (2026-11-12)
+
+- Add an address shows whether a name works on the Full name box, with a tick or a warning and one short line under it. Port and firewall show plain values, and the certificate for added addresses only shows while there are some.
+
 ## 1.1.110 (2026-11-12)
 
 - Settings, Console address is tidied up: an icon on every row, Copy, Download and Remove as icon buttons that line up, and Self-signed and Allowed as coloured tags. Add an address is a plus in the Addresses heading.

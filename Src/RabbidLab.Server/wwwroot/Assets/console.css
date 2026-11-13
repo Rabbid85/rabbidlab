@@ -747,7 +747,7 @@ body.dev-tools .devstrip:not([hidden]) { display: flex; flex-wrap: wrap; }
 .ca-row .t b { color: #fff; font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
 .ca-row .t > span { color: var(--muted); font-size: 13.5px; line-height: 1.45; }
 .ca-row .t .ds-code { font-size: 12px !important; }
-.ca-row > .ds-v, .ca-row > .ca-chip, .ca-row > .ca-tag, .ca-row > .ds-btn, .ca-row > .ds-pair { flex: none; margin-left: auto; }
+.ca-row > .ds-v, .ca-row > .ds-btn, .ca-row > .ds-pair { flex: none; margin-left: auto; }
 .ca-row > .ds-v + .ds-btn { margin-left: 14px; }
 .ca-ic { flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: #161926; color: #9DA1B3; }
 .ca-ic svg { width: 18px; height: 18px; }
@@ -757,16 +757,32 @@ body.dev-tools .devstrip:not([hidden]) { display: flex; flex-wrap: wrap; }
 .ca-tag { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 20px; font-size: 11.5px; font-weight: 600; white-space: nowrap; }
 .t b .ca-tag { margin-left: 8px; vertical-align: 2px; }
 .ca-tag.warn { background: rgba(242, 190, 107, .12); color: var(--amber); }
-.ca-tag.ok { padding: 4px 11px; background: rgba(95, 212, 160, .12); color: var(--ok); font-size: 13px; }
-.ca-tag.ok i { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 8px var(--ok); }
-.ca-tag.big { padding: 4px 11px; font-size: 13px; }
-.ca-chip { padding: 4px 11px; border: 1px solid var(--line-strong); border-radius: 8px; background: #0C0E17; color: var(--title); font: 600 13.5px Consolas, monospace; }
 /* Add an address: the name and its full name, what DNS says, the record to add by hand, and what adding it did. */
 .nm-dialog { width: min(720px, calc(100vw - 32px)); }
 .nm-dialog .dialog-foot { align-items: center; }
 .nm-dialog .grow { flex: 1; }
 .nm-full { display: flex; align-items: center; height: 42px; padding: 0 12px; border: 1px dashed var(--line-strong); border-radius: 8px; color: #B8BCCB; font-size: 14.5px; }
-.nm-card { margin: 0; }
+/* The name's state on its box: a green border and a tick when it can be added, red when it can't, a spinner while it looks. */
+.nm-full { gap: 10px; }
+.nm-full > span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nm-full > svg { flex: none; width: 18px; height: 18px; color: var(--muted); }
+.nm-full.ok { border-style: solid; border-color: rgba(95, 212, 160, .55); }
+.nm-full.ok > svg { color: var(--ok); }
+.nm-full.bad { border-style: solid; border-color: rgba(255, 107, 125, .55); }
+.nm-full.bad > svg { color: var(--red); }
+#nm-name.ok:not(:focus) { border-color: rgba(95, 212, 160, .55); }
+#nm-name.bad:not(:focus) { border-color: rgba(255, 107, 125, .55); }
+.nm-spin { flex: none; width: 16px; height: 16px; border: 2px solid color-mix(in srgb, var(--accent-soft) 25%, transparent); border-top-color: var(--accent-soft); border-radius: 50%; animation: spin .9s linear infinite; }
+/* And one short line under it. */
+#nm-look { margin-top: -6px; }
+#nm-look:empty { display: none; }
+.nm-say { display: flex; gap: 8px; margin: 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
+.nm-say svg { flex: none; width: 15px; height: 15px; margin-top: 2px; }
+.nm-say.ok svg { color: var(--ok); }
+.nm-say.bad { color: #E9A3AC; }
+.nm-say.bad svg { color: var(--red); }
+.nm-say.warn svg { color: var(--amber); }
+.nm-dialog .nm-rec > .ds-btn.ds-ibtn { width: 42px; }
 .nm-dialog .al-rows .ds-row { border-bottom: 0; }
 .nm-dialog .ds-note { display: flex; gap: 8px; margin: 2px 0 0; color: var(--muted); font-size: 12.5px; }
 .nm-dialog .ds-note svg { flex: none; width: 14px; height: 14px; margin-top: 2px; }
