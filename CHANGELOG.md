@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.103 (2026-11-12)
+
+- Drop-downs open below the box again. They go above only when there is no room under it.
+
 ## 1.1.102 (2026-11-12)
 
 - Settings, Appearance lines up: every control sits in one column with Reset in its own column next to it. Page width, toast Style and Show for are drop-downs now.

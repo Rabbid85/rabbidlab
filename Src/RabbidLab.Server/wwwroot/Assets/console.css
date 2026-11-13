@@ -636,7 +636,8 @@ select:not([multiple]):not([size]):hover { border-color: #3A3E55; }
   select:not([multiple]):not([size]), select:not([multiple]):not([size])::picker(select) { appearance: base-select; }
   select:not([multiple]):not([size])::picker-icon { display: none; } /* the arrow is the background image above */
   select:not([multiple]):not([size]) { align-items: center; padding-top: 0; padding-bottom: 0; }
-  select:not([multiple]):not([size])::picker(select) { margin-top: 4px; padding: 4px; border: 1px solid var(--line-strong); border-radius: 10px; background: #141725; color: #D7DAE8; box-shadow: 0 18px 44px rgba(0, 0, 0, .55); max-height: 340px; }
+  /* Opens below; goes above only when it doesn't fit (the browser's default picks whichever side has more room). */
+  select:not([multiple]):not([size])::picker(select) { position-try-order: normal; position-try-fallbacks: flip-block; margin: 4px 0; padding: 4px; border: 1px solid var(--line-strong); border-radius: 10px; background: #141725; color: #D7DAE8; box-shadow: 0 18px 44px rgba(0, 0, 0, .55); max-height: 340px; }
   select:not([multiple]):not([size]) option { min-height: 34px; padding: 7px 12px; border-radius: 7px; background: none; color: #D7DAE8; font-size: 13.5px; }
   select:not([multiple]):not([size]) option:hover, select:not([multiple]):not([size]) option:focus-visible { background: #1E2132; color: #fff; outline: none; }
   select:not([multiple]):not([size]) option:checked { background: color-mix(in srgb, var(--accent) 16%, transparent); color: #fff; font-weight: 600; }

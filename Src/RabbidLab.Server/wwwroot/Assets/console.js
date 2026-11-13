@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.103', [
+    'Drop-downs open below the box again. They go above only when there is no room under it.']],
   ['1.1.102', [
     'Settings, Appearance lines up: every control sits in one column with Reset in its own column next to it. Page width, toast Style and Show for are drop-downs now.']],
   ['1.1.101', [
