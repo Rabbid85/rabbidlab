@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.99', [
+    'See it as a role is now Role preview: Preview as a role, and the bar at the top says Previewing as.']],
   ['1.1.98', [
     'Where toasts show, in Settings, Appearance, is a drop-down instead of six pictures.']],
   ['1.1.97', [
@@ -474,7 +476,7 @@ const RELEASE_NOTES = [
   // Role colours come from data-color: the page's rules allow no style attributes.
   const paint = (root) => root.querySelectorAll('[data-color]').forEach((el) => el.style.setProperty('--c', el.dataset.color));
   const chip = (r) => `<span class="rchip" data-color="${esc(r.color)}"><i class="dot"></i>${esc(r.name)}</span>`;
-  // Seeing Rabbid Lab as a role: what it allows (with User's), until Stop.
+  // Role preview: what a role allows (with User's), until Stop.
   const viewAs = (role, permissions) => {
     shown = role ? new Set(permissions) : can;
     $('viewas').hidden = !role;

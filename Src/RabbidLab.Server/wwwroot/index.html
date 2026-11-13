@@ -152,8 +152,8 @@
 <main class="main">
   <!-- Back to the page you came from, when you jumped here from it rather than from the sidebar (console.js moves it into the page). -->
   <a class="backlink" id="backlink" hidden><svg><use href="#i-back"/></svg><span id="backlink-text"></span></a>
-  <!-- See Rabbid Lab as a role: what it hides, until Stop. -->
-  <div class="viewas" id="viewas" hidden><svg><use href="#i-eye"/></svg><span>You're seeing <span data-lab>Rabbid Lab</span> as <b id="viewas-name"></b>. Only the look changes: you can still do everything your own roles allow.</span><button type="button" id="viewas-stop">Stop</button></div>
+  <!-- Role preview: the console as a role sees it, until Stop. -->
+  <div class="viewas" id="viewas" hidden><svg><use href="#i-eye"/></svg><span>Previewing as <b id="viewas-name"></b>. Only the view changes: you keep your own permissions.</span><button type="button" id="viewas-stop">Stop</button></div>
   <!-- This computer isn't a seat yet: the client to install, then Connect, which hands the client the server's address. -->
   <div class="herebar" id="herebar" hidden><svg><use href="#i-monitor"/></svg>
     <span id="here-text">This computer isn't in Seats yet.</span>
@@ -199,7 +199,7 @@
       <p class="rail-label">You</p>
       <a href="#settings/account" data-sub="account"><svg><use href="#i-user"/></svg><span>Account</span></a>
       <a href="#settings/appearance" data-sub="appearance"><svg><use href="#i-brush"/></svg><span>Appearance</span></a>
-      <a href="#settings/viewas" data-sub="viewas" data-can="access.view"><svg><use href="#i-eye"/></svg><span>See it as a role</span></a>
+      <a href="#settings/viewas" data-sub="viewas" data-can="access.view"><svg><use href="#i-eye"/></svg><span>Role preview</span></a>
       <p class="rail-label">Server</p>
       <a href="#settings/address" data-sub="address"><svg><use href="#i-browser"/></svg><span>Console address</span></a>
       <a href="#settings/updates" data-sub="updates" data-can="updates.view"><svg><use href="#i-updates"/></svg><span>Updates</span><i class="rail-dot" id="srail-dot" hidden></i></a>
@@ -306,11 +306,11 @@
       </section>
     </section>
 
-    <!-- See it as a role: what someone in a role would see, until Stop in the bar at the top. -->
-    <section class="sub" data-sub="viewas" data-title="See it as a role" hidden>
-      <header class="sub-head"><h2>See it as a role</h2><p>See <span data-lab>Rabbid Lab</span> as someone in a role would. Only the look changes: you can still do everything your own roles allow.</p></header>
+    <!-- Role preview: the console as someone in a role sees it, until Stop in the bar at the top. -->
+    <section class="sub" data-sub="viewas" data-title="Role preview" hidden>
+      <header class="sub-head"><h2>Role preview</h2><p>Shows the console with only what a role allows. Only the view changes: you keep your own permissions.</p></header>
       <section class="ds-sec" data-sec="viewas">
-        <div class="ds-row"><div class="ds-l"><b>See <span data-lab>Rabbid Lab</span> as</b><span>Stop from the bar at the top of the page.</span></div>
+        <div class="ds-row"><div class="ds-l"><b>Preview as</b><span>Stop it from the bar at the top of the page.</span></div>
           <div class="ds-r"><select id="va-role" aria-label="Role"></select><button type="button" class="ds-btn" id="va-start">Start</button></div></div>
       </section>
       <p class="hint problem" id="va-problem" hidden></p>
@@ -576,7 +576,7 @@
         <div id="role-view" hidden>
           <div class="rhead"><span class="big"><svg><use href="#i-shield"/></svg></span>
             <div class="rhead-text"><b id="role-name"></b><span id="role-line"></span></div>
-            <button type="button" id="role-viewas"><svg><use href="#i-eye"/></svg><span id="role-viewas-text">See <span data-lab>Rabbid Lab</span> as this role</span></button></div>
+            <button type="button" id="role-viewas"><svg><use href="#i-eye"/></svg><span id="role-viewas-text">Preview this role</span></button></div>
           <nav class="tabs2" id="role-tabs"><a data-tab="display">Display</a><a data-tab="permissions">Permissions</a><a data-tab="members">Members <small id="role-count"></small></a></nav>
           <p class="hint role-note" id="role-note" hidden></p>
 

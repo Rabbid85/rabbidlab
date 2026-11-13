@@ -326,7 +326,7 @@
     $('role-view').style.setProperty('--c', draft.color);
     $('role-name').textContent = draft.name || 'Untitled role';
     $('role-line').textContent = `${r.members.length} ${r.members.length === 1 ? 'member' : 'members'} · ${count} of ${total} permissions · ${where}`;
-    $('role-viewas-text').textContent = `See ${R.lab()} as ${r.name}`;
+    $('role-viewas-text').textContent = `Preview as ${r.name}`;
     $('role-count').textContent = r.members.length;
     $('role-tabs').querySelectorAll('[data-tab]').forEach((a) => {
       a.href = `#role/${encodeURIComponent(r.id)}/${a.dataset.tab}`;

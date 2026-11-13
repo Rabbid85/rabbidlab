@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.99 (2026-11-12)
+
+- See it as a role is now Role preview: Preview as a role, and the bar at the top says Previewing as.
+
 ## 1.1.98 (2026-11-12)
 
 - Where toasts show, in Settings, Appearance, is a drop-down instead of six pictures.
