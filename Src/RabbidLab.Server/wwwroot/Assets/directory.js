@@ -122,7 +122,7 @@
     out.push(dn.slice(at));
     return out;
   };
-  const ICON = { ou: 'list', container: 'list', other: 'list', user: 'user', group: 'users', computer: 'laptop' };
+  const ICON = { ou: 'folder', container: 'folder', other: 'folder', user: 'user', group: 'users', computer: 'laptop' };
 
   const drawPlace = () => {
     // The way down from the domain: each part above the domain's own DC= parts.
@@ -137,7 +137,7 @@
     $('at-crumbs').innerHTML = steps.join('<span>/</span>');
     $('at-items').innerHTML = place.items.map((it) => {
       const href = it.opens ? `#attrs/${enc(it.dn)}` : `#attrs/${enc(place.dn)}/${enc(it.dn)}`;
-      return `<a href="${href}" data-dn="${esc(it.dn)}">${svg(ICON[it.kind] || 'list')}<span class="nm">${esc(it.name)}</span>${it.opens ? svg('right') : ''}</a>`;
+      return `<a href="${href}" data-dn="${esc(it.dn)}">${svg(ICON[it.kind] || 'folder')}<span class="nm">${esc(it.name)}</span>${it.opens ? svg('right') : ''}</a>`;
     }).join('') || '<p class="side-sub">Nothing in here.</p>';
     $('at-more').hidden = !place.more;
   };

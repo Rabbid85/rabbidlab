@@ -52,7 +52,7 @@
   const server = (c) => /server/i.test(c.os || '');
   const TONE = { good: badge('As recommended', 'green'), warn: badge('Worth a look', 'amber'), bad: badge('Not as recommended', 'red'), unknown: badge("Couldn't be read", 'grey') };
   const WHAT = { made: 'green', changed: 'grey', deleted: 'red', restored: 'amber' };
-  const KIND_ICON = { user: 'user', group: 'users', computer: 'laptop', ou: 'list', container: 'list', other: 'list' };
+  const KIND_ICON = { user: 'user', group: 'users', computer: 'laptop', ou: 'folder', container: 'folder', other: 'folder' };
   let recycle = null; // /api/ad/recycle: whether it's on, and what's in it
 
   const AD = {
@@ -211,7 +211,7 @@
       cells: (c) => [
         small(ago(c.at), new Date(c.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })),
         badge(c.what.charAt(0).toUpperCase() + c.what.slice(1), WHAT[c.what]),
-        `<div class="who"><span class="pic">${svg(KIND_ICON[c.kind] || 'list')}</span>${small(c.name, c.kind === 'ou' ? 'OU' : c.kind)}</div>`,
+        `<div class="who"><span class="pic">${svg(KIND_ICON[c.kind] || 'folder')}</span>${small(c.name, c.kind === 'ou' ? 'OU' : c.kind)}</div>`,
         esc(c.where || ad.state.domain),
         small(c.attributes.slice(0, 4).join(', ') + (c.attributes.length > 4 ? ` and ${c.attributes.length - 4} more` : ''), c.by ? `by ${c.by}, in ${R.app()}` : ''),
       ],
@@ -239,7 +239,7 @@
       ],
       head: ['Name', 'Type', 'Was in', 'Deleted'],
       cells: (d) => [
-        `<div class="who"><span class="pic">${svg(KIND_ICON[d.kind] || 'list')}</span>${small(d.name, d.username)}</div>`,
+        `<div class="who"><span class="pic">${svg(KIND_ICON[d.kind] || 'folder')}</span>${small(d.name, d.username)}</div>`,
         esc(d.kind === 'ou' ? 'OU' : d.kind.charAt(0).toUpperCase() + d.kind.slice(1)),
         esc(d.wasIn || ad.state.domain),
         esc(d.deleted ? ago(d.deleted) : '-'),
@@ -545,13 +545,13 @@
     + facts([['Area', s.area], ['Now', s.now], ['Recommended', s.recommended]])
     + `<p class="hint">${esc(s.about)}</p>`;
 
-  const changeCard = (c) => head(`<span class="pic">${svg(KIND_ICON[c.kind] || 'list')}</span>`, c.name, badge(c.what.charAt(0).toUpperCase() + c.what.slice(1), WHAT[c.what]))
+  const changeCard = (c) => head(`<span class="pic">${svg(KIND_ICON[c.kind] || 'folder')}</span>`, c.name, badge(c.what.charAt(0).toUpperCase() + c.what.slice(1), WHAT[c.what]))
     + facts([['When', new Date(c.at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })], ['Kind', c.kind === 'ou' ? 'OU' : c.kind], ['Where', c.where || ad.state.domain],
       ['By', c.by ? `${c.by}, in ${R.app()}` : null]])
     + (c.attributes.length ? `<h4>What changed</h4><div class="chips-in">${c.attributes.map((a) => `<span class="gchip">${esc(a)}</span>`).join('')}</div>` : '')
     + `<p class="hint">${esc(c.dn)}</p>`;
 
-  const deletedCard = (d) => head(`<span class="pic">${svg(KIND_ICON[d.kind] || 'list')}</span>`, d.name, badge('Deleted', 'red'))
+  const deletedCard = (d) => head(`<span class="pic">${svg(KIND_ICON[d.kind] || 'folder')}</span>`, d.name, badge('Deleted', 'red'))
     + facts([['Logon name', d.username], ['Was in', d.wasIn || ad.state.domain], ['Deleted', d.deleted ? day(d.deleted) : null]])
     + (can('ad.change') ? `<div class="pcard-acts"><button type="button" class="small primary" data-act="restore">${svg('history')}Restore</button></div>` : '')
     + '<p class="hint">It comes back where it was, with its groups and details.</p>';
@@ -1247,10 +1247,10 @@
 
   // One window for picking: find and pick (shown as chips), or tick from a list. One: picking replaces what's picked.
   const pk = { find: null, ticks: null, one: false, not: [], chosen: [], go: null };
-  const PK_ICON = { user: 'user', group: 'users', computer: 'laptop', other: 'list' };
+  const PK_ICON = { user: 'user', group: 'users', computer: 'laptop', other: 'user' };
   const drawPk = () => {
     $('gp-list').innerHTML = pk.ticks
-      ? `<div class="ticks">${pk.ticks.map((t, i) => `<label class="tick"><input type="checkbox" data-gp="${i}"${pk.chosen.includes(t) ? ' checked' : ''}>${svg(PK_ICON[t.kind] || 'list')}<span>${esc(t.name)}</span>`
+      ? `<div class="ticks">${pk.ticks.map((t, i) => `<label class="tick"><input type="checkbox" data-gp="${i}"${pk.chosen.includes(t) ? ' checked' : ''}>${svg(PK_ICON[t.kind] || 'user')}<span>${esc(t.name)}</span>`
         + `${t.sub ? `<small>${esc(t.sub)}</small>` : ''}</label>`).join('')}</div>`
       : `<div class="chips-in">${pk.chosen.map((c, i) => `<span class="gchip">${esc(c.name)}<button type="button" class="chip-x" data-gp-x="${i}" aria-label="Not ${esc(c.name)}">${svg('x')}</button></span>`).join('')
         || '<span class="muted">Nothing picked yet.</span>'}</div>`;
@@ -1272,7 +1272,7 @@
   R.dropdown($('gp-adder'), {
     none: 'Nothing matches.',
     find: async (q) => (pk.find ? (await pk.find(q)).filter((x) => !pk.chosen.some((c) => same(c.dn, x.dn)) && !pk.not.some((d) => same(d, x.dn))).slice(0, 30) : []),
-    draw: (x, i) => R.option(` data-pick="${i}"`, `<span class="pic">${svg(PK_ICON[x.kind] || 'list')}</span>`, x.name, x.sub || ''),
+    draw: (x, i) => R.option(` data-pick="${i}"`, `<span class="pic">${svg(PK_ICON[x.kind] || 'user')}</span>`, x.name, x.sub || ''),
     pick: (x) => {
       pk.chosen = pk.one ? [x] : [...pk.chosen, x];
       drawPk();
@@ -1676,7 +1676,7 @@
   // What's directly in a place (the Attribute browser's read), kept while the window is open.
   const inPlace = new Map();
   const KINDS = [['user', 'user', 'user', 'users'], ['group', 'users', 'group', 'groups'], ['computer', 'laptop', 'computer', 'computers'],
-    ['ou', 'folder', 'OU', 'OUs'], ['container', 'folder', 'container', 'containers'], ['other', 'list', 'other object', 'other objects']];
+    ['ou', 'folder', 'OU', 'OUs'], ['container', 'folder', 'container', 'containers'], ['other', 'folder', 'other object', 'other objects']];
   const PICK_ICON = Object.fromEntries(KINDS.map(([k, icon]) => [k, icon]));
   const lookInside = async (dn) => {
     inPlace.set(dn.toLowerCase(), { loading: true });
@@ -1705,7 +1705,7 @@
     }).filter(Boolean);
     const said = counts.length > 1 ? `${counts.slice(0, -1).join(', ')} and ${counts[counts.length - 1]}` : counts[0] || 'Nothing in it yet';
     return `<p class="op-count">${esc(said)}</p>`
-      + (got.items.length ? `<div class="op-items">${got.items.map((i) => `<div class="op-item" title="${esc(i.dn)}">${svg(PICK_ICON[i.kind] || 'list')}<b>${esc(i.name)}</b>`
+      + (got.items.length ? `<div class="op-items">${got.items.map((i) => `<div class="op-item" title="${esc(i.dn)}">${svg(PICK_ICON[i.kind] || 'folder')}<b>${esc(i.name)}</b>`
         + `${i.description ? `<small>${esc(i.description)}</small>` : ''}</div>`).join('')}</div>` : '');
   };
   const drawPickPage = () => {

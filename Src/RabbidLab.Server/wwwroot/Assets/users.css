@@ -141,7 +141,7 @@ button.danger.solid:hover { background: #DB4860; }
 .attrs-side a svg:last-child:not(:first-child) { width: 13px; height: 13px; margin-left: auto; color: #3A3E55; }
 #at-items { display: flex; flex-direction: column; gap: 2px; max-height: 70vh; overflow-y: auto; }
 .at-find { margin-bottom: 10px; }
-.table.attrs .tr { grid-template-columns: minmax(180px, .55fr) minmax(0, 1.3fr) 150px 30px; min-width: 0; min-height: 0; align-items: start; padding-top: 7px; padding-bottom: 7px; }
+.table.attrs .tr { grid-template-columns: minmax(130px, .55fr) minmax(160px, 1.3fr) 110px 30px; min-width: 0; min-height: 0; align-items: start; padding-top: 7px; padding-bottom: 7px; }
 /* Every attribute it may have: the ones not set are dimmed (Hide empty takes them away); the … menu shows on the row pointed at. */
 .table.attrs .tr.unset .mono { color: #5E6380; }
 .table.attrs .ty { color: #6D7290; font-size: 12.5px; }

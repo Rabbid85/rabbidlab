@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.122 (2026-11-13)
+
+- OUs and containers show a folder in the Attribute browser, AD audit and Recycle Bin instead of the list icon. The Value column in the Attribute browser no longer squashes in a narrow window.
+
 ## 1.1.121 (2026-11-13)
 
 - Groups and Computers get the same tick boxes, Actions, dots and right-click menu as Users. Groups have Members (add, remove, copy) and Member of; computers have Account and Groups; both can be edited and moved. Copying group membership works on all three. The Needs a look cards are gone.
