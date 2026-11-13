@@ -178,9 +178,17 @@ button.danger.solid:hover { background: #DB4860; }
 .dset-steps li.now b { color: #fff; }
 .dset-steps li.go { cursor: pointer; }
 .dset-steps li.go:hover b { color: #fff; }
-.dset-main { display: grid; grid-template-rows: auto 1fr auto; min-width: 0; min-height: 500px; }
-.dset .seg.dset-tabs { margin: 18px 24px 0; }
-.dset .seg.dset-tabs button { height: 32px; padding: 0 14px; font-size: 13px; }
+.dset-main { display: grid; grid-template-rows: 1fr auto; min-width: 0; min-height: 500px; }
+/* Choose: two cards, the one picked outlined in the accent. */
+.dset-cards { display: grid; gap: 12px; }
+.dset-card { display: flex; align-items: flex-start; gap: 14px; width: 100%; padding: 16px 18px; border: 1px solid var(--line); border-radius: 14px; background: #0E1019; color: var(--text); font: inherit; text-align: left; }
+.dset-card:hover { border-color: #3A3E55; background: #0E1019; }
+.dset-card[aria-pressed="true"] { border-color: var(--accent-line); }
+.dset-card .big-ic { width: 44px; height: 44px; border-radius: 12px; background: #161926; color: #9DA1B3; }
+.dset-card[aria-pressed="true"] .big-ic { background: color-mix(in srgb, var(--accent-soft) 12%, transparent); color: var(--accent-soft); }
+.dset-card .big-ic svg { width: 22px; height: 22px; }
+.dset-card b { display: block; color: #fff; font-size: 15px; }
+.dset-card b + span { display: block; margin-top: 4px; color: var(--muted); font-size: 13px; line-height: 1.5; }
 .dset-body { padding: 18px 24px 20px; }
 .dset-head { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
 .dset-head .big-ic { width: 42px; height: 42px; border-radius: 12px; }
@@ -219,7 +227,7 @@ button.danger.solid:hover { background: #DB4860; }
   .dialog.dset[open] { grid-template-columns: minmax(0, 1fr); }
   .dset-side { border-right: 0; border-bottom: 1px solid var(--line); }
   .dset-lead, .dset-steps small, .dset-steps li::after { display: none; }
-  .dset-steps { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 12px; }
+  .dset-steps { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); margin-top: 12px; }
   .dset-main { min-height: 0; }
 }
 

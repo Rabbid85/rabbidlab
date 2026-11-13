@@ -911,9 +911,14 @@
     <ol class="dset-steps" id="dset-steps"></ol>
   </div>
   <div class="dset-main">
-    <div class="seg dset-tabs" id="dset-tabs"><button type="button" data-adtab="make" aria-pressed="true">Create a new one</button><button type="button" data-adtab="existing" aria-pressed="false">Use one I have</button></div>
     <div class="dset-body">
       <div class="dset-head"><span class="big-ic ember"><svg><use id="dset-icon" href="#i-user"/></svg></span><span><b id="dset-step-title"></b><small id="dset-step-text"></small></span></div>
+      <div class="dset-pane" data-pane="choose">
+        <div class="dset-cards" id="dset-choose">
+          <button type="button" class="dset-card" data-adtab="make" aria-pressed="true"><span class="big-ic"><svg><use href="#i-user-plus"/></svg></span><span><b>Create a new one</b><span>Sign in once as a domain admin. <span data-app>Rabbid Lab</span> creates svc-rabbidlab with a long random password and delegates permissions on the OU you pick. The admin login isn't saved.</span></span></button>
+          <button type="button" class="dset-card" data-adtab="existing" aria-pressed="false"><span class="big-ic"><svg><use href="#i-user"/></svg></span><span><b>Use one I have</b><span>Pick an account from AD, or type it, and give its password. It needs permission to create and change users, groups and computers where <span data-app>Rabbid Lab</span> works.</span></span></button>
+        </div>
+      </div>
       <div class="dset-pane" data-pane="signin">
         <label class="dset-fld"><span>Domain</span><span class="dset-in"><svg><use href="#i-globe"/></svg><input id="dset-domain" autocomplete="off" spellcheck="false"></span></label>
         <div class="dset-fld dset-acct"><label for="dset-user" id="dset-user-label">Domain admin</label><span class="dset-in"><svg><use href="#i-user"/></svg><input id="dset-user" autocomplete="username" spellcheck="false"></span>

@@ -1136,13 +1136,17 @@
 
   let look = null; // what the sign-in read: the domain, its OUs and where accounts go
   const ds = { tab: 'make', step: 0, reached: 0 };
+  // First, which: a new one Rabbid Lab creates, or one that's already there. The steps after it follow the choice.
+  const DCHOOSE = { key: 'choose', name: 'Choose', sub: 'New, or one you have', icon: 'shield', title: 'Which service account?', text: 'Rabbid Lab makes every Active Directory change as it.' };
   const DSTEPS = {
     make: [
+      DCHOOSE,
       { key: 'signin', name: 'Sign in', sub: 'A domain admin login', icon: 'user', title: 'Sign in as a domain admin', text: 'Used once to read your OUs and create the account. Not saved.' },
       { key: 'account', name: 'Account', sub: 'Its name and OU', icon: 'user-plus', title: 'Name it, and pick where it goes', text: 'Pick an OU from the list, or Browse… to look through them.' },
       { key: 'review', name: 'Review', sub: 'Check, then create', icon: 'check', title: 'Check it, then create it', text: 'Nothing changes in Active Directory until you click Create service account.' },
     ],
     existing: [
+      DCHOOSE,
       { key: 'signin', name: 'Sign in', sub: 'The service account', icon: 'user', title: 'Sign in as the service account', text: 'Rabbid Lab stores its password encrypted and makes every AD change as it.' },
       { key: 'review', name: 'Review', sub: 'Check, then use it', icon: 'check', title: 'Check it, then use it', text: 'Nothing changes in Active Directory. Rabbid Lab makes its changes as this account from then on.' },
     ],
@@ -1158,11 +1162,11 @@
     const change = (i) => `<button type="button" class="dset-change" data-dstep="${i}">Change</button>`;
     const browse = '<button type="button" class="dset-change" data-browse-ou="dset-scope">Change</button>';
     $('dset-review').innerHTML = make
-      ? row('user', 'Signed in as', user, `${look.domain} · not saved`, change(0))
-        + row('user-plus', 'Service account', $('dset-account').value.trim(), `Password made by ${R.app()}, stored encrypted`, change(1))
-        + row('folder', 'Created in', ou ? ou.textContent : '', ou ? ou.value : '', change(1))
+      ? row('user', 'Signed in as', user, `${look.domain} · not saved`, change(1))
+        + row('user-plus', 'Service account', $('dset-account').value.trim(), `Password made by ${R.app()}, stored encrypted`, change(2))
+        + row('folder', 'Created in', ou ? ou.textContent : '', ou ? ou.value : '', change(2))
         + row('shield', 'Can manage', where, 'Users, groups and computers', browse)
-      : row('user', 'Service account', user, `${look.domain} · password stored encrypted`, change(0))
+      : row('user', 'Service account', user, `${look.domain} · password stored encrypted`, change(1))
         + row('shield', 'Works in', where, 'Users, groups and computers', browse);
     $('dset-note2').textContent = make
       ? 'It gets Full Control over user, group and computer objects there, the same as the Delegation of Control wizard. Admin accounts protected by AdminSDHolder aren\'t affected.'
@@ -1172,7 +1176,7 @@
     const make = ds.tab === 'make';
     const steps = DSTEPS[ds.tab];
     const st = steps[ds.step];
-    $('dset-tabs').querySelectorAll('[data-adtab]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.adtab === ds.tab)));
+    $('dset-choose').querySelectorAll('[data-adtab]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.adtab === ds.tab)));
     $('dset-steps').innerHTML = steps.map((s, i) => {
       const done = i !== ds.step && i < Math.max(ds.step, ds.reached);
       return `<li class="${done ? 'done' : i === ds.step ? 'now' : ''}${i !== ds.step && i <= ds.reached ? ' go' : ''}" data-dstep="${i}">`
@@ -1210,7 +1214,7 @@
     say('dset-problem', '');
     dsDraw();
     $('dset-dialog').showModal();
-    $(me?.source === 'ad' ? 'dset-password' : 'dset-user').focus();
+    $('dset-choose').querySelector('[aria-pressed="true"]').focus();
   };
   // The card each Active Directory page shows until the service account is set up (directory.js draws it too).
   // No service account yet: Active Directory's pages wait under a cover, with what to do in the middle of it.
@@ -1236,13 +1240,19 @@
   };
   R.adSetupCard = setupCard;
   $('dset-local').addEventListener('click', () => $('dset-dialog').close());
-  $('dset-tabs').addEventListener('click', (e) => {
+  // Picking a card picks the way; a double-click goes straight on to signing in.
+  $('dset-choose').addEventListener('click', (e) => {
     const b = e.target.closest('[data-adtab]');
     if (!b || b.dataset.adtab === ds.tab) return;
     Object.assign(ds, { tab: b.dataset.adtab, step: 0, reached: 0 });
+    // Your own name fills the domain admin box; the service account is someone else.
+    const mine = R.me()?.source === 'ad' ? R.me().username : '';
+    if (ds.tab === 'existing' && $('dset-user').value === mine) $('dset-user').value = '';
+    if (ds.tab === 'make' && !$('dset-user').value) $('dset-user').value = mine;
     say('dset-problem', '');
     dsDraw();
   });
+  $('dset-choose').addEventListener('dblclick', (e) => { if (e.target.closest('[data-adtab]')) $('dset-go').click(); });
   // A step that's been reached opens again from the side, or from Change on Review.
   $('dset-dialog').addEventListener('click', (e) => {
     const s = e.target.closest('[data-dstep]');
@@ -1250,11 +1260,11 @@
   });
   $('dset-scope').addEventListener('change', dsReview);
   $('dset-back').addEventListener('click', () => dsGo(ds.step - 1));
-  // A changed sign-in has to be read again before the steps after it.
+  // A changed sign-in has to be read again before the steps after it (Choose stays done).
   ['dset-domain', 'dset-user', 'dset-password'].forEach((id) => $(id).addEventListener('input', () => {
     ['dset-user', 'dset-password'].forEach((x) => $(x).classList.remove('bad'));
-    if (ds.reached) {
-      ds.reached = 0;
+    if (ds.reached > 1) {
+      ds.reached = 1;
       dsDraw();
     }
   }));
@@ -1309,6 +1319,11 @@
     const make = ds.tab === 'make';
     const key = DSTEPS[ds.tab][ds.step].key;
     say('dset-problem', '');
+    if (key === 'choose') {
+      dsGo(1);
+      $(make && R.me()?.source === 'ad' && $('dset-user').value ? 'dset-password' : 'dset-user').focus();
+      return;
+    }
     if (key === 'account') {
       if (!$('dset-account').value.trim()) {
         say('dset-problem', 'Name the service account.');
@@ -1343,8 +1358,8 @@
       // A wrong sign-in: back on the sign-in step, its two fields outlined, and the password ready to type again.
       const wrong = /username or password/i.test(err.message);
       if (wrong) {
-        ds.reached = 0;
-        dsGo(0);
+        ds.reached = 1;
+        dsGo(1);
       }
       say('dset-problem', err.message);
       if (wrong) {

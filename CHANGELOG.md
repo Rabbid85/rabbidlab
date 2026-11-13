@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.117 (2026-11-13)
+
+- Setting up the service account starts with a Choose step: two cards, Create a new one or Use one I have, the one picked outlined. The two buttons that sat across the top are gone.
+
 ## 1.1.116 (2026-11-13)
 
 - Service account, Use one I have: type the account, or pick it from Active Directory as you type. The list is read as this server itself, so it needs no login, and leaves out the accounts AD and Exchange keep for themselves. The steps on the left sit closer to their names.
