@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.101 (2026-11-12)
+
+- Your roles have a row of their own in Settings, Account, with Open for Roles and people on the next row. The side menus keep room for their scroll bar, so the text no longer shifts when it shows.
+
 ## 1.1.100 (2026-11-12)
 
 - Settings, Account is two sections: Account info with your roles in it, and Where you are signed in, where this browser has its own Sign out. Buttons down the right of settings rows are all one width.

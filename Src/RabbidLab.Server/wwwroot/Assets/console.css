@@ -28,7 +28,7 @@ body.app.rail-small { grid-template-columns: 60px minmax(0, 1fr); }
 .mark { width: 28px; height: 28px; border-radius: 7px; }
 
 /* The rail: small grey group labels over the pages, the one showing marked in ember. */
-.rail { grid-area: rail; position: sticky; top: 52px; height: calc(100vh - 52px); overflow-y: auto; display: flex; flex-direction: column; gap: 1px;
+.rail { grid-area: rail; position: sticky; top: 52px; height: calc(100vh - 52px); overflow-y: auto; scrollbar-gutter: stable; display: flex; flex-direction: column; gap: 1px;
   padding: 6px 10px 10px; background: #0D0F18; border-right: 1px solid var(--line); }
 .rail-label { margin: 14px 10px 4px; font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #5E6380; }
 .rail a, .rail-collapse { position: relative; display: flex; align-items: center; gap: 11px; height: 34px; padding: 0 10px; border: 0; border-radius: 7px;
@@ -529,7 +529,7 @@ section.page.dir-area, section.page.set-area { max-width: 1264px; padding: 52px 
 .dhead h1 { font: 800 30px/1.15 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; letter-spacing: -.02em; color: #fff; }
 .dhead p { max-width: 680px; margin-top: 10px; color: #B4B8C8; font-size: 14px; line-height: 1.55; }
 .dmain { grid-column: 2; display: grid; gap: 18px; align-content: start; min-width: 0; }
-.dnav { position: sticky; top: 72px; display: flex; flex-direction: column; align-self: start; max-height: calc(100vh - 90px); padding-bottom: 8px; overflow-y: auto;
+.dnav { position: sticky; top: 72px; display: flex; flex-direction: column; align-self: start; max-height: calc(100vh - 90px); padding-bottom: 8px; overflow-y: auto; scrollbar-gutter: stable;
   scrollbar-width: thin; scrollbar-color: #2A2D3E transparent; }
 .dnav > .side-find { flex: none; height: 32px; margin: 0; border-radius: 7px; }
 .dnav .rail-label { flex: none; margin: 30px 0 8px 12px; font-size: 11px; color: #9DA1B3; }

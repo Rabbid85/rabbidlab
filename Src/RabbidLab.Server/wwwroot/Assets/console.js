@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.101', [
+    'Your roles have a row of their own in Settings, Account, with Open for Roles and people on the next row. The side menus keep room for their scroll bar, so the text no longer shifts when it shows.']],
   ['1.1.100', [
     'Settings, Account is two sections: Account info with your roles in it, and Where you are signed in, where this browser has its own Sign out. Buttons down the right of settings rows are all one width.']],
   ['1.1.99', [
