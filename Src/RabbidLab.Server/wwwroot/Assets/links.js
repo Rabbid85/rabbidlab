@@ -991,9 +991,6 @@
 
   let watching = false;
   let ticked = new Set();
-  let lwTo = []; // the channels new ones alert
-  let lwChans = null; // /api/channels, for people who may change alert settings
-  const CH_NAME = { discord: 'Discord', teams: 'Teams', slack: 'Slack', ntfy: 'ntfy', webhook: 'Webhook' };
   const tickAll = (g) => {
     const mine = links.filter((l) => (l.group || '') === g && checked(l));
     if (!mine.length) return '';
@@ -1008,12 +1005,6 @@
     $('lw-more').textContent = adds && stops ? `${adds} to watch, ${stops} to stop` : adds ? `${adds} new${was.size ? ` · ${was.size} watched already` : ''}` : stops ? `${stops} to stop watching` : 'Nothing changed yet';
     $('lw-go-text').textContent = adds && stops ? `Watch ${adds}, stop ${stops}` : adds ? `Watch ${adds} link${adds === 1 ? '' : 's'}` : stops ? `Stop watching ${stops}` : 'Watch';
     $('lw-go').disabled = !adds && !stops;
-    $('lw-send-wrap').hidden = !lwChans;
-    if (lwChans) {
-      const all = [...(lwChans.email.ready ? [{ id: 'email', name: 'Email', kind: 'email' }] : []), ...lwChans.channels.map((c) => ({ id: c.id, name: c.name || CH_NAME[c.kind], kind: c.kind }))];
-      $('lw-send').innerHTML = all.map((c) => `<button type="button" class="lw-chip${lwTo.includes(c.id) ? ' on' : ''}" data-lw-chan="${esc(c.id)}" aria-pressed="${lwTo.includes(c.id)}">${esc(c.name)}</button>`).join('')
-        || '<span class="lw-none">No channels yet</span>';
-    }
   };
   const setWatching = async (on) => {
     watching = on;
@@ -1021,12 +1012,10 @@
     $('lw-bar').hidden = !on;
     if (on) {
       ticked = new Set(links.filter((l) => l.sensor).map((l) => l.id));
-      // New ones start like new sensors: the alert time and channels from Settings, Sensors.
-      const sensors = can('sensors.view') ? await R.get('/api/sensors').catch(() => null) : null;
-      $('lw-after').value = String(sensors?.start?.after ?? 5);
-      if ($('lw-after').value === '') $('lw-after').value = '5';
-      lwChans = can('sensors.alerts') ? await R.get('/api/channels').catch(() => null) : null;
-      lwTo = lwChans ? [...(lwChans.email.onForNew && lwChans.email.ready ? ['email'] : []), ...lwChans.channels.filter((c) => c.onForNew).map((c) => c.id)] : [];
+      // New ones follow the watched-link rule: the bar says what it does.
+      if (can('sensors.alerts')) await R.notes.load();
+      await R.watchLink.open(null);
+      $('lw-rule').textContent = `They follow the watched-link rule: ${R.watchLink.rule()}.`;
       drawBar();
     }
     draw();
@@ -1054,20 +1043,13 @@
     drawBar();
     draw();
   }, true);
-  $('lw-send').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-lw-chan]');
-    if (!b) return;
-    const id = b.dataset.lwChan;
-    lwTo = lwTo.includes(id) ? lwTo.filter((x) => x !== id) : [...lwTo, id];
-    drawBar();
-  });
   $('lw-go').addEventListener('click', async () => {
     const was = new Set(links.filter((l) => l.sensor).map((l) => l.id));
     const watch = [...ticked].filter((id) => !was.has(id));
     const unwatch = [...was].filter((id) => !ticked.has(id));
     $('lw-go').disabled = true;
     try {
-      const r = await R.send('/api/links/watch', { watch, unwatch, after: Number($('lw-after').value), channels: lwChans ? lwTo : null });
+      const r = await R.send('/api/links/watch', { watch, unwatch });
       const said = [r.watched ? `Watching ${r.watched} more link${r.watched === 1 ? '' : 's'}.` : '', r.stopped ? `Stopped watching ${r.stopped}.` : ''].filter(Boolean).join(' ');
       if (r.skipped.length) R.toast(said || 'Nothing changed', `Left out: ${r.skipped.join('; ')}`, { tone: 'warn' });
       else R.toast(said, r.watched ? "They're on Sensors too." : '', r.watched ? { action: { href: '#sensors', label: 'Open Sensors' } } : {});

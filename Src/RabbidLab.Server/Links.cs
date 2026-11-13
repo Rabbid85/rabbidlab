@@ -1289,8 +1289,8 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
 
 public sealed record LinkForm(string? Name, string? Url, string? Description, string? Address, string? Group, string? Icon, int? Place = null, string? IconFrom = null, LinkWatch? Watch = null);
 
-/// <summary>Watch it: a sensor checks the link and alerts as asked. Off takes the sensor away.</summary>
-public sealed record LinkWatch(bool On, int? After, int? Again, bool? Back, List<string>? Channels);
+/// <summary>Watch it: a sensor checks the link and alerts by the watched-link rule, or as asked. Off takes the sensor away.</summary>
+public sealed record LinkWatch(bool On, int? After, int? Again, bool? Back, List<string>? Channels, bool Follow = true);
 
 public sealed record LinkArrangeForm(string? Group, List<string>? Ids);
 
@@ -1498,9 +1498,8 @@ public static class LinksApi
             {
                 return refused;
             }
-            var start = sensors.StartAlerts();
-            var alerts = new RuleForm(form.After ?? start.After, start.Again, start.Back);
-            var channels = Access.Can(context, Permissions.SensorsAlerts) ? form.Channels : null;
+            // They follow the watched-link rule.
+            var alerts = new RuleForm(5, 0, true);
             var who = ActivityLog.Who(context);
             var all = links.All().ToDictionary(l => l.Id);
             var (watched, stopped, skipped) = (0, 0, new List<string>());
@@ -1511,7 +1510,7 @@ public static class LinksApi
                     skipped.Add($"{l.Name}: {why}");
                     continue;
                 }
-                var (sensor, failed) = sensors.Watch(null, l.Name, l.Url, l.Group, alerts, channels, who);
+                var (sensor, failed) = sensors.Watch(null, l.Name, l.Url, l.Group, true, alerts, null, who);
                 if (sensor is null)
                 {
                     skipped.Add($"{l.Name}: {failed}");
@@ -1585,7 +1584,7 @@ public static class LinksApi
                 return cannot;
             }
             var was = id is null ? null : links.All().FirstOrDefault(l => l.Id == id)?.Sensor;
-            if (watch.On && sensors.CanWatch(was, Links.Clean(form.Url), new RuleForm(watch.After, watch.Again, watch.Back)) is { } bad)
+            if (watch.On && sensors.CanWatch(was, Links.Clean(form.Url), watch.Follow ? new RuleForm(5, 0, true) : new RuleForm(watch.After, watch.Again, watch.Back)) is { } bad)
             {
                 return Results.BadRequest(new { error = bad });
             }
@@ -1601,7 +1600,7 @@ public static class LinksApi
         {
             // Channels are picked by people who may change alert settings; for anyone else the sensor keeps, or starts with, the usual ones.
             var channels = Access.Can(context, Permissions.SensorsAlerts) ? watch.Channels : null;
-            var (sensor, failed) = sensors.Watch(link.Sensor, link.Name, link.Url, link.Group, new RuleForm(watch.After, watch.Again, watch.Back), channels, who);
+            var (sensor, failed) = sensors.Watch(link.Sensor, link.Name, link.Url, link.Group, watch.Follow, new RuleForm(watch.After, watch.Again, watch.Back), watch.Follow ? null : channels, who);
             if (sensor is null)
             {
                 return Results.BadRequest(new { error = failed });

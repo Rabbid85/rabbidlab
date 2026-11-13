@@ -1,0 +1,147 @@
+/* Settings, Alerts: the alert rules, the notifications by name, the history of every alert, and the Send to drop-down. */
+
+/* Send to: the picked notifications as chips on a button; its menu is a popover, so a dialog doesn't clip it. */
+.np { min-width: 0; }
+.np-btn { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; width: 100%; min-height: 40px; padding: 5px 34px 5px 5px; position: relative;
+  border: 1px solid var(--line-strong); border-radius: 8px; background: #0C0E17; color: var(--text); text-align: left; cursor: pointer; }
+.np-btn:hover { border-color: #3A3E55; background: #0C0E17; }
+.np-btn[aria-expanded="true"], .np-btn:focus-visible { border-color: var(--accent-line); outline: none; }
+.np-chev { position: absolute; right: 10px; top: 50%; width: 16px; height: 16px; margin-top: -8px; color: #8A8FA8; }
+.np-none { padding: 0 6px; color: #6D7290; font-size: 13px; }
+.np-chip { display: inline-flex; align-items: center; gap: 7px; height: 28px; padding: 0 9px 0 4px; border-radius: 6px; background: #1E2132; color: #E6E8F2; font-size: 13px; white-space: nowrap; }
+.np-chip .chan-ic { width: 20px; height: 20px; border-radius: 5px; }
+.np-chip .chan-ic svg { width: 12px; height: 12px; }
+.np-chip.none { padding: 0 9px; color: #6D7290; }
+.np-chip.addr { padding: 0 4px 0 10px; }
+.np-x { display: grid; place-items: center; width: 18px; height: 18px; padding: 0; border: 0; border-radius: 4px; background: none; color: #8A8FA8; }
+.np-x:hover { background: #2A2D3E; color: #fff; }
+.np-x svg { width: 11px; height: 11px; }
+.np-menu { width: min(360px, calc(100vw - 32px)); max-height: 380px; margin: auto; padding: 6px; overflow-y: auto; border: 1px solid var(--line-strong); border-radius: 12px;
+  background: #131522; color: var(--text); box-shadow: 0 20px 50px rgba(0, 0, 0, .55); }
+@supports (anchor-name: --a) {
+  .np-menu { inset: auto; top: anchor(bottom); left: anchor(left); width: anchor-size(width); min-width: 260px; margin: 6px 0 0; position-try-fallbacks: flip-block; }
+}
+.np-h { margin: 6px 10px 4px; color: #5E6380; font-size: 10.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.np-opt { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 4px 10px; border: 0; border-radius: 8px; background: none; color: #E6E8F2; font-size: 13.5px; text-align: left; }
+.np-opt:hover { background: #1A1D2B; }
+.np-opt .chan-ic { width: 28px; height: 28px; border-radius: 7px; }
+.np-opt .chan-ic svg { width: 15px; height: 15px; }
+.np-t { display: grid; min-width: 0; }
+.np-t small { color: #6D7290; font-size: 11.5px; }
+.np-box { display: grid; flex: none; place-items: center; width: 18px; height: 18px; margin-left: auto; border: 1.5px solid #3A3E55; border-radius: 5px; color: transparent; }
+.np-box svg { width: 12px; height: 12px; }
+.np-opt.on .np-box { border-color: var(--accent); background: var(--accent); color: #fff; }
+.np-empty { margin: 8px 10px; color: #6D7290; font-size: 13px; }
+.np-add { display: flex; align-items: center; gap: 8px; width: 100%; height: 40px; margin-top: 4px; padding: 0 10px; border: 0; border-top: 1px solid var(--line); border-radius: 0 0 8px 8px;
+  background: none; color: var(--accent-soft); font-size: 13px; font-weight: 600; }
+.np-add:hover { background: #1A1D2B; }
+.np-add svg { width: 15px; height: 15px; }
+.al-rows .ds-r .np, .rl-rows .ds-r .np { width: 320px; max-width: 100%; }
+
+/* A rule's or a notification's mark. */
+.ric { display: grid; flex: none; place-items: center; width: 40px; height: 40px; border-radius: 10px; background: #1E2132; color: #B8BCCB; }
+.ric svg { width: 19px; height: 19px; }
+.ric.down { background: rgba(255, 107, 125, .14); color: #FF8A97; }
+.ric.cert { background: rgba(242, 190, 107, .14); color: #F2BE6B; }
+.ric.space { background: rgba(127, 178, 255, .14); color: #7FB2FF; }
+.ric.hw { background: rgba(255, 138, 61, .14); color: #FF9A57; }
+.ric.link { background: rgba(95, 212, 160, .13); color: #5FD4A0; }
+.ric.seat { background: rgba(165, 167, 236, .14); color: #A5A7EC; }
+.ric.upd { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent-soft); }
+.ric.lock { background: rgba(255, 107, 125, .12); color: #FF8A97; }
+
+/* Alert rules: in groups with a small heading, each a card with what it does, where it goes, a switch and Edit. */
+.ar-sec + .ar-sec { margin-top: 22px; padding-top: 0; border-top: 0; }
+.ar-h { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.ar-h small, .ngroup h4 small { color: #5E6380; font-size: 11px; letter-spacing: 0; }
+.rrows, .nrows { display: grid; gap: 8px; }
+.rrow { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto auto; align-items: center; gap: 16px; padding: 13px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+.rrow.off { opacity: .62; }
+.rnm, .nnm { display: grid; gap: 4px; min-width: 0; }
+.rnm b, .nnm b { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: #fff; font: 700 15px "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; }
+.rnm > span, .nnm > span { overflow: hidden; color: var(--muted); font-size: 12.5px; white-space: nowrap; text-overflow: ellipsis; }
+.rnm .to { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 3px; }
+.rnm .to .np-chip { height: 24px; font-size: 12px; }
+.rnm .to .np-chip .chan-ic { width: 18px; height: 18px; }
+.rmeta { color: #6D7290; font-size: 12px; text-align: right; white-space: nowrap; }
+.rmeta b { display: block; color: #C9CCDA; font-size: 12.5px; font-weight: 650; }
+.racts, .nacts { display: flex; align-items: center; gap: 12px; }
+.racts .ds-btn, .nacts .ds-btn { height: 34px; padding: 0 14px; }
+.ar-times { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }
+.ds-r .ar-times select { width: 120px; }
+.ds-l b .ds-scope { margin-left: 2px; }
+
+/* Edit a rule: the rows, and what follows it with a way to make the rest follow it too. */
+.rl-rows { margin-top: 10px; }
+.rl-rows .ds-row + .ds-row { border-top: 1px solid var(--line); }
+.rl-follow { display: flex; align-items: center; gap: 12px; margin-top: 12px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: #0F111A; color: var(--muted); font-size: 13px; }
+.rl-follow b { color: #E6E8F2; }
+.rl-follow .ds-btn { flex: none; height: 32px; padding: 0 12px; font-size: 13px; }
+
+/* Notifications: a bar with Find and Add, then each one by its name, in groups by kind. */
+.nt-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 22px 0 18px; }
+.nt-bar .side-find { width: min(320px, 100%); }
+.nt-bar .primary { display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 16px; white-space: nowrap; }
+.nt-bar .primary svg { width: 15px; height: 15px; }
+.ngroup + .ngroup { margin-top: 22px; }
+.ngroup h4 { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.nrow { display: grid; grid-template-columns: 40px minmax(0, 1fr) 140px 150px auto; align-items: center; gap: 16px; padding: 13px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+.nrow:hover { border-color: var(--line-strong); }
+.nrow > .chan-ic { width: 40px; height: 40px; border-radius: 10px; }
+.nrow > .chan-ic svg { width: 20px; height: 20px; }
+.nnm b em { padding: 2px 7px; border-radius: 5px; background: #1E2132; color: #A9AEC4; font: 650 11px "Segoe UI", system-ui, sans-serif; font-style: normal; }
+.nnm b em.warn { background: rgba(242, 190, 107, .14); color: var(--amber); }
+.nst { display: grid; gap: 2px; min-width: 0; color: var(--muted); font-size: 12.5px; }
+.nst b { overflow: hidden; color: #E6E8F2; font-size: 13px; font-weight: 650; white-space: nowrap; text-overflow: ellipsis; }
+.nst i { display: inline-block; width: 7px; height: 7px; margin-right: 6px; border-radius: 50%; background: var(--ok); vertical-align: 1px; }
+.nst i.off { background: #4A4F68; }
+.nst i.bad { background: var(--red); }
+.nt-empty { display: flex; align-items: center; gap: 16px; padding: 22px; border: 1px dashed var(--line-strong); border-radius: 12px; }
+.nt-empty b { display: block; color: #fff; font-size: 15px; }
+.nt-empty span:not(.big-ic) { color: var(--muted); font-size: 13.5px; }
+@media (max-width: 900px) {
+  .nrow { grid-template-columns: 40px minmax(0, 1fr) auto; }
+  .nrow .nst { display: none; }
+  .rrow { grid-template-columns: 40px minmax(0, 1fr) auto; }
+  .rrow .rmeta { display: none; }
+}
+
+/* Add a notification: the name first, the kinds, then where it sends. */
+.nf-body { position: relative; }
+.nf-body > .form:first-child { display: grid; gap: 6px; margin-top: 8px; }
+.nf-kinds { margin: 14px 0 12px; }
+.nf-provs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.chan-ic.nf-p { background: #1B1E2C; color: #B8BCCB; }
+.nf-lab { display: flex !important; align-items: center; justify-content: space-between; }
+.nf-lab a { display: inline-flex; align-items: center; gap: 5px; color: var(--accent-soft); font-size: 12.5px; font-weight: 600; letter-spacing: 0; text-transform: none; }
+.nf-lab a svg { width: 13px; height: 13px; }
+.nf-quiet { display: flex; gap: 8px; align-items: flex-start; margin: 0; color: #8A8FA8; font-size: 12.5px; line-height: 1.5; }
+.nf-quiet[hidden] { display: none; }
+.nf-quiet svg { flex: none; width: 15px; height: 15px; margin-top: 2px; }
+.nf-to { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: 40px; padding: 5px; border: 1px solid var(--line-strong); border-radius: 8px; background: #0C0E17; cursor: text; }
+.nf-to:focus-within { border-color: var(--accent-line); }
+.form .nf-to input { flex: 1; min-width: 160px; height: 28px; padding: 0 6px; border: 0; background: none; }
+.dialog .seg.sn-seg button { display: inline-flex; align-items: center; }
+.seg button small { margin-left: 6px; color: #6D7290; font-weight: 600; }
+
+/* Alert history: by day, each alert with where it went and whether it got there. */
+.hday { margin: 16px 0 8px; color: #6D7290; font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.hday:first-child { margin-top: 0; }
+.hrows { overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+.hrow { display: grid; grid-template-columns: 76px 30px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 11px 14px; border-top: 1px solid var(--line); font-size: 13px; }
+.hrow:first-child { border-top: 0; }
+.hrow time { color: #6D7290; font-size: 12px; }
+.hrow .ric { width: 30px; height: 30px; border-radius: 8px; }
+.hrow .ric svg { width: 15px; height: 15px; }
+.hrow .w { display: grid; min-width: 0; }
+.hrow .w b { color: #E6E8F2; font-weight: 650; }
+.hrow .w span, .hrow .w small { overflow: hidden; color: #6D7290; font-size: 12px; white-space: nowrap; text-overflow: ellipsis; }
+.hrow .w small { color: #C97A86; }
+.hrow .ok { color: #5FD4A0; font-size: 12px; font-weight: 650; }
+.hrow .bad { color: #FF8A97; font-size: 12px; font-weight: 650; }
+.hrow .held { color: #F2BE6B; font-size: 12px; font-weight: 650; }
+
+/* The watch bar on Links says what the watched-link rule does. */
+.lw-rule { max-width: 420px; overflow: hidden; color: var(--muted); font-size: 12.5px; white-space: nowrap; text-overflow: ellipsis; }
+.nt-bar .grow { flex: 1; }
+#nf-mail, #nf-hook { margin-top: 12px; }

@@ -103,6 +103,23 @@ public sealed class TestApp(string data) : WebApplicationFactory<Program>
         }
         return client;
     }
+
+    /// <summary>Adds a notification and gives back its id: an email one through Gmail, or a webhook kind at an address.</summary>
+    public static async Task<string> Notification(HttpClient admin, string name = "Me", string kind = "email", string? url = null)
+    {
+        var made = await admin.PostAsJsonAsync("/api/channels", kind == "email"
+            ? new { kind, name, url, mail = new { provider = "gmail", username = "lab@gmail.com", password = "abcd efgh ijkl mnop", to = new[] { "me@example.com" } } }
+            : (object) new { kind, name, url });
+        made.EnsureSuccessStatusCode();
+        return (await made.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>()).GetProperty("id").GetString()!;
+    }
+
+    /// <summary>Down alerts, of sensors and of watched links, go to these notifications, this many minutes in.</summary>
+    public static async Task Alerting(HttpClient admin, int after, params string[] to)
+    {
+        (await admin.PostAsJsonAsync("/api/alerts/rules/sensor.down", new { on = true, after, again = 0, back = true, to })).EnsureSuccessStatusCode();
+        (await admin.PostAsJsonAsync("/api/alerts/rules/link.down", new { on = true, after, again = 0, back = true, to })).EnsureSuccessStatusCode();
+    }
 }
 
 /// <summary>A clock that starts at the real time and moves only when told.</summary>
@@ -443,13 +460,22 @@ public sealed class FakeChannelSender : IChannelSender
 /// <summary>A mail server that keeps every email it was asked to send.</summary>
 public sealed class FakeMail : IMailSender
 {
-    public bool Ready { get; set; } = true;
+    /// <summary>Why every send fails, or null for them to go.</summary>
+    public string? Fails { get; set; }
 
     public List<MailNote> Sent { get; } = [];
 
-    public Task<string?> Send(MailNote note, CancellationToken stop)
+    /// <summary>The settings each email went with.</summary>
+    public List<MailSettings> With { get; } = [];
+
+    public Task<string?> Send(MailSettings settings, MailNote note, CancellationToken stop)
     {
+        if (Fails is not null)
+        {
+            return Task.FromResult<string?>(Fails);
+        }
         Sent.Add(note);
+        With.Add(settings);
         return Task.FromResult<string?>(null);
     }
 }

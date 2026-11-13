@@ -100,6 +100,8 @@ builder.Services.AddSingleton<Mail>();
 builder.Services.AddSingleton<IMailSender>(services => services.GetRequiredService<Mail>());
 builder.Services.AddSingleton<IChannelSender, ChannelSender>();
 builder.Services.AddSingleton<Channels>();
+builder.Services.AddSingleton<Alerts>();
+builder.Services.AddHostedService<AlertWatch>();
 builder.Services.AddSingleton<Sensors>();
 builder.Services.AddHostedService<SensorWorker>();
 
@@ -192,9 +194,15 @@ app.MapLinksApi();
 app.MapSensorsApi();
 app.MapDevToolsApi();
 app.MapBrandApi();
-app.MapMailApi();
+app.MapAlertsApi();
 app.MapChannelsApi();
 app.MapUpdateApi();
+
+// Alert rules start once from how alerts used to be set; the sensors that watch links are marked, and the ones on the
+// usual times follow their rule from then on (Alerts.cs).
+var atStart = app.Services.GetRequiredService<Sensors>();
+app.Services.GetRequiredService<Alerts>().Seed(atStart.StartAlerts(), app.Services.GetRequiredService<Channels>().Defaults());
+atStart.Settle(app.Services.GetRequiredService<Links>().All().Where(l => l.Sensor is not null).Select(l => l.Sensor!));
 
 app.Run();
 return 0;

@@ -2,6 +2,17 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.95 (2026-11-12)
+
+- Settings has a new Alerts heading with three pages: Alert rules, Notifications and Alert history.
+- Alert rules set every kind of alert in one place: a sensor or a watched link going down, a certificate close to expiring, a pool or drive running low, a failing fan, power supply or disk, a computer that stops checking in, an update that is ready or did not install, and sign-ins that keep failing. Each goes to the notifications you pick.
+- Sensors and watched links follow their rule unless you give them times of their own, so changing the rule changes them all. Make them follow it puts the rest back on the rule.
+- Quiet hours hold alerts until they are over, then send whatever is still wrong. Down alerts can still go straight away.
+- Every notification has a name, and email is one kind like Discord or ntfy, so there can be more than one. Gmail needs only the address and an app password, and other mail servers can use SSL/TLS on port 465.
+- Send to on a sensor or a link is a drop-down of your notifications by name.
+- Alert history lists every alert, where it went, and whether it got there.
+- Your email setup moved into a notification called Email, so your sensors keep sending to it.
+
 ## 1.1.94 (2026-11-12)
 
 - Sensors says Sensors at the top, like Links, with how they are doing on the line under it. The Notifications button is now a cogwheel menu with Sensors settings and Notifications.

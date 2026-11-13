@@ -12,6 +12,9 @@ public sealed record ActivityEntry(DateTime At, string By, string? From, string 
 /// </summary>
 public sealed class ActivityLog(DataFolder folder, ILogger<ActivityLog> log)
 {
+    /// <summary>Each entry as it's written: the alert watch counts failed sign-ins from it.</summary>
+    public event Action<ActivityEntry>? Recorded;
+
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
     private readonly string file = Path.Combine(folder.Path, "activity.jsonl");
     private readonly string older = Path.Combine(folder.Path, "activity.1.jsonl");
@@ -48,6 +51,7 @@ public sealed class ActivityLog(DataFolder folder, ILogger<ActivityLog> log)
         {
             log.LogWarning(e, "The activity log could not be written");
         }
+        Recorded?.Invoke(entry);
     }
 
     /// <summary>The newest entries, newest first.</summary>

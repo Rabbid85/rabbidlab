@@ -50,10 +50,11 @@ public sealed class AlertsTests : IDisposable
     public async Task A_sensor_behind_one_thats_down_waits_and_alerts_only_if_its_still_down_once_that_one_is_back()
     {
         var admin = await app.SignedIn();
-        await Add(admin, new { kind = "ping", target = "192.168.2.1", name = "Gateway", rule = "critical" });
+        await TestApp.Alerting(admin, 0, await TestApp.Notification(admin));
+        await Add(admin, new { kind = "ping", target = "192.168.2.1", name = "Gateway"});
         var gateway = Named("Gateway").Id;
-        await Add(admin, new { kind = "ping", target = "192.168.2.21", name = "esxi01", rule = "critical", dependsOn = gateway });
-        await Add(admin, new { kind = "ping", target = "192.168.2.18", name = "esxi02", rule = "critical", dependsOn = gateway });
+        await Add(admin, new { kind = "ping", target = "192.168.2.21", name = "esxi01", dependsOn = gateway });
+        await Add(admin, new { kind = "ping", target = "192.168.2.18", name = "esxi02", dependsOn = gateway });
         foreach (var down in new[] { "192.168.2.1", "192.168.2.21", "192.168.2.18" })
         {
             app.Probe.Finds[down] = new Probe(false, Note: "No reply");
@@ -121,7 +122,7 @@ public sealed class AlertsTests : IDisposable
     public async Task A_test_alert_goes_to_the_sensors_channels_marked_as_a_test()
     {
         var admin = await app.SignedIn();
-        (await admin.PostAsJsonAsync("/api/channels", new { kind = "ntfy", url = "https://ntfy.sh/lab-alerts" })).EnsureSuccessStatusCode();
+        await TestApp.Alerting(admin, 5, await TestApp.Notification(admin), await TestApp.Notification(admin, "Phone", "ntfy", "https://ntfy.sh/lab-alerts"));
         await Add(admin, new { kind = "ping", target = "192.168.2.1", name = "Gateway" });
         var id = Named("Gateway").Id;
 
@@ -139,10 +140,11 @@ public sealed class AlertsTests : IDisposable
     public async Task Down_alerts_close_together_go_out_as_one_when_gathered()
     {
         var admin = await app.SignedIn();
+        await TestApp.Alerting(admin, 0, await TestApp.Notification(admin));
         (await admin.PostAsJsonAsync("/api/sensors/gather", new { on = true, secs = 60 })).EnsureSuccessStatusCode();
         foreach (var (name, target) in new[] { ("TrueNAS", "192.168.2.23"), ("Plex", "192.168.2.24"), ("pihole", "192.168.2.25"), ("Switch", "192.168.2.2") })
         {
-            await Add(admin, new { kind = "ping", target, name, rule = "critical" });
+            await Add(admin, new { kind = "ping", target, name});
             if (name != "Switch")
             {
                 app.Probe.Finds[target] = new Probe(false, Note: "No reply");
@@ -163,6 +165,7 @@ public sealed class AlertsTests : IDisposable
     public async Task A_watched_link_gets_a_sensor_that_gives_it_its_dot_and_goes_with_it()
     {
         var admin = await app.SignedIn();
+        await TestApp.Alerting(admin, 0, await TestApp.Notification(admin));
         var watch = new { on = true, after = 0, again = 0, back = true };
         var made = await (await admin.PostAsJsonAsync("/api/links", new { name = "Grafana", url = "https://grafana.amw.com", group = "Monitoring", watch })).Content.ReadFromJsonAsync<JsonElement>();
         var id = made.GetProperty("id").GetString();
@@ -173,7 +176,7 @@ public sealed class AlertsTests : IDisposable
         var refused = await admin.PostAsJsonAsync("/api/links", new { name = "NAS shell", url = "ssh://192.168.2.23", watch });
 
         Assert.Equal(sensor.Id, made.GetProperty("sensor").GetString());
-        Assert.Equal(("web", "Monitoring", 0), (sensor.Kind, sensor.Group, sensor.Custom!.After));
+        Assert.Equal(("web", "Monitoring", "follow", true), (sensor.Kind, sensor.Group, sensor.Rule, sensor.Link));
         Assert.True(states.GetProperty("states").GetProperty(id!).GetProperty("down").GetBoolean());
         Assert.Contains(app.Mail.Sent, m => m.Subject == "Grafana is down");
         Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
@@ -183,8 +186,9 @@ public sealed class AlertsTests : IDisposable
         Assert.Equal(JsonValueKind.Null, off.GetProperty("sensor").ValueKind);
         Assert.Empty(Sensors.All());
 
-        (await admin.PostAsJsonAsync($"/api/links/{id}", new { name = "Grafana", url = "https://grafana.amw.com", watch })).EnsureSuccessStatusCode();
-        Assert.Single(Sensors.All());
+        // Watched again with times of its own instead of the rule's.
+        (await admin.PostAsJsonAsync($"/api/links/{id}", new { name = "Grafana", url = "https://grafana.amw.com", watch = new { on = true, follow = false, after = 10, again = 0, back = true } })).EnsureSuccessStatusCode();
+        Assert.Equal(("custom", 10, true), (Named("Grafana").Rule, Named("Grafana").Custom!.After, Named("Grafana").Link));
         (await admin.PostAsJsonAsync($"/api/links/{id}/delete", new { })).EnsureSuccessStatusCode();
         Assert.Empty(Sensors.All());
     }
@@ -205,7 +209,7 @@ public sealed class AlertsTests : IDisposable
         Assert.Contains("NAS shell", first.GetProperty("skipped")[0].GetString());
         Assert.Equal(1, second.GetProperty("stopped").GetInt32());
         Assert.Equal("Gateway", Assert.Single(Sensors.All()).Name);
-        Assert.Equal(10, Sensors.All()[0].Custom!.After);
+        Assert.Equal(("follow", true), (Sensors.All()[0].Rule, Sensors.All()[0].Link));
     }
 
     [Fact]

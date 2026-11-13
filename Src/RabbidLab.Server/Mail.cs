@@ -1,21 +1,25 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Net.Mail;
-using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using MailKit.Security;
+using MimeKit;
 
 namespace RabbidLab.Server;
 
-/// <summary>How Rabbid Lab sends email and who gets its alerts, kept in mail.json. The password and client secret are stored encrypted.</summary>
+/// <summary>
+/// How an email notification sends: Gmail with an app password, any mail server, or Microsoft 365 through Graph. Kept in
+/// the notification (Channels.cs). The password and client secret are stored encrypted.
+/// </summary>
 public sealed class MailSettings
 {
-    /// <summary>smtp: any mail server, Gmail included. m365: Microsoft 365, through Microsoft Graph with an app registration.</summary>
+    /// <summary>gmail, smtp (any mail server) or m365 (Microsoft Graph with an app registration).</summary>
     public string Provider { get; set; } = "smtp";
     public string? Host { get; set; }
     public int Port { get; set; } = 587;
 
-    /// <summary>starttls, or none for a relay on the local network.</summary>
+    /// <summary>starttls, ssl (TLS from the start, port 465) or none for a relay on the local network.</summary>
     public string Security { get; set; } = "starttls";
     public string? Username { get; set; }
     public string? Password { get; set; }
@@ -25,10 +29,6 @@ public sealed class MailSettings
     public string? ClientId { get; set; }
     public string? ClientSecret { get; set; }
 }
-
-/// <summary>The email settings as the page sends them. A password or secret left empty keeps the one that's stored.</summary>
-public sealed record MailForm(string? Provider, string? Host, int? Port, string? Security, string? Username, string? Password, string? From,
-    List<string>? To, string? Tenant, string? ClientId, string? ClientSecret);
 
 /// <summary>
 /// An alert to send: its subject, a tone for its colour (down, up, warn or note), and its facts as label and value. Card, when
@@ -47,113 +47,106 @@ public sealed record AlertSection(string Heading, IReadOnlyList<string> Items);
 
 public interface IMailSender
 {
-    /// <summary>Whether a mail server and at least one address to send to are set.</summary>
-    bool Ready { get; }
-
-    /// <summary>Sends to everyone on the alert list. The answer is why it couldn't, or null when it went.</summary>
-    Task<string?> Send(MailNote note, CancellationToken stop);
+    /// <summary>Sends to the addresses in the settings. The answer is why it couldn't, or null when it went.</summary>
+    Task<string?> Send(MailSettings settings, MailNote note, CancellationToken stop);
 }
 
-public sealed partial class Mail(DataFolder folder, SettingsStore secrets, ILogger<Mail> log) : IMailSender
+public sealed partial class Mail(SettingsStore secrets, ILogger<Mail> log) : IMailSender
 {
-    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { WriteIndented = true };
     private static readonly HttpClient Graph = new() { Timeout = TimeSpan.FromSeconds(30) };
-    private readonly JsonFile<MailSettings> file = folder.Json<MailSettings>("mail.json", Json);
 
-    public bool Ready
-    {
-        get
-        {
-            var s = file.Read();
-            return s.To.Count > 0 && !string.IsNullOrEmpty(s.From) && (s.Provider == "m365"
-                ? !string.IsNullOrEmpty(s.Tenant) && !string.IsNullOrEmpty(s.ClientId) && !string.IsNullOrEmpty(s.ClientSecret)
-                : !string.IsNullOrEmpty(s.Host));
-        }
-    }
+    /// <summary>Whether the settings can send: a sender, someone to send to, and a server or an app registration.</summary>
+    public static bool Ready(MailSettings s) => s.To.Count > 0 && !string.IsNullOrEmpty(s.From) && (s.Provider == "m365"
+        ? !string.IsNullOrEmpty(s.Tenant) && !string.IsNullOrEmpty(s.ClientId) && !string.IsNullOrEmpty(s.ClientSecret)
+        : !string.IsNullOrEmpty(s.Host));
 
     /// <summary>The settings for the page: everything but the secrets, and whether each is stored.</summary>
-    public object View()
+    public static object View(MailSettings s) => new
     {
-        var s = file.Read();
-        return new { s.Provider, s.Host, s.Port, s.Security, s.Username, s.From, s.To, s.Tenant, s.ClientId,
-            hasPassword = !string.IsNullOrEmpty(s.Password), hasSecret = !string.IsNullOrEmpty(s.ClientSecret), ready = Ready };
-    }
+        s.Provider, s.Host, s.Port, s.Security, s.Username, s.From, s.To, s.Tenant, s.ClientId,
+        hasPassword = !string.IsNullOrEmpty(s.Password), hasSecret = !string.IsNullOrEmpty(s.ClientSecret),
+    };
 
-    /// <summary>Saves the settings; the answer is why they can't be.</summary>
-    public string? Save(MailForm form)
+    /// <summary>The settings from the form, the stored password and secret kept when left empty; or why they won't do.</summary>
+    public static (MailSettings? Settings, string? Problem) Read(MailForm form, MailSettings? old, SettingsStore secrets)
     {
-        var provider = form.Provider == "m365" ? "m365" : "smtp";
-        var from = form.From?.Trim() ?? "";
-        if (!MailAddress.TryCreate(from, out _))
-        {
-            return "From has to be an email address, such as rabbidlab@example.com.";
-        }
+        var provider = form.Provider is "gmail" or "m365" ? form.Provider : "smtp";
         var to = (form.To ?? []).Select(a => a.Trim()).Where(a => a.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        if (to.Count == 0)
+        {
+            return (null, "Add at least one address under Send alerts to.");
+        }
         if (to.Count > 20 || to.Any(a => !MailAddress.TryCreate(a, out _)))
         {
-            return to.Count > 20 ? "That's more than 20 addresses. Send to a group address instead." : $"{to.First(a => !MailAddress.TryCreate(a, out _))} isn't an email address.";
+            return (null, to.Count > 20 ? "That's more than 20 addresses. Send to a group address instead." : $"{to.First(a => !MailAddress.TryCreate(a, out _))} isn't an email address.");
         }
-        lock (file.Gate)
+        // A secret is kept only while it's for the same kind of sending.
+        var same = old?.Provider == provider;
+        var next = new MailSettings { Provider = provider, To = to, Password = same ? old!.Password : null, ClientSecret = same ? old!.ClientSecret : null };
+        if (provider == "gmail")
         {
-            var old = file.Read();
-            var next = new MailSettings { Provider = provider, From = from, To = to, Password = old.Password, ClientSecret = old.ClientSecret };
-            if (provider == "m365")
+            var address = form.Username?.Trim() ?? "";
+            if (!MailAddress.TryCreate(address, out _))
             {
-                next.Tenant = form.Tenant?.Trim();
-                next.ClientId = form.ClientId?.Trim();
-                if (next.Tenant is not { Length: > 0 } tenant || !TenantName().IsMatch(tenant) || !Guid.TryParse(next.ClientId, out _))
-                {
-                    return "Microsoft 365 needs the tenant (its ID, or a name such as contoso.onmicrosoft.com) and the application (client) ID of the app registration.";
-                }
-                if (!string.IsNullOrEmpty(form.ClientSecret))
-                {
-                    next.ClientSecret = secrets.Encrypt(form.ClientSecret);
-                }
-                if (string.IsNullOrEmpty(next.ClientSecret))
-                {
-                    return "Microsoft 365 needs the client secret of the app registration.";
-                }
+                return (null, "Type the Gmail address alerts are sent from.");
             }
-            else
+            (next.Host, next.Port, next.Security, next.Username, next.From) = ("smtp.gmail.com", 587, "starttls", address, address);
+            if (!string.IsNullOrEmpty(form.Password))
             {
-                next.Host = form.Host?.Trim();
-                next.Port = form.Port ?? 587;
-                next.Security = form.Security == "none" ? "none" : "starttls";
-                next.Username = string.IsNullOrWhiteSpace(form.Username) ? null : form.Username.Trim();
-                if (next.Host is not { Length: > 0 and <= 200 } || next.Port is < 1 or > 65535)
-                {
-                    return "Type the mail server's name, such as smtp.gmail.com, and its port.";
-                }
-                if (next.Port == 465)
-                {
-                    return "Port 465 isn't supported. Mail servers that offer it offer 587 with STARTTLS too: use that.";
-                }
-                if (!string.IsNullOrEmpty(form.Password))
-                {
-                    next.Password = secrets.Encrypt(form.Password);
-                }
-                else if (next.Username is null)
-                {
-                    next.Password = null;
-                }
+                next.Password = secrets.Encrypt(form.Password.Replace(" ", ""));
             }
-            file.Save(next);
-            return null;
+            return string.IsNullOrEmpty(next.Password) ? (null, "Gmail needs an app password. Make one under Google Account, Security, 2-Step Verification, App passwords.") : (next, null);
         }
+        next.From = form.From?.Trim() ?? "";
+        if (!MailAddress.TryCreate(next.From, out _))
+        {
+            return (null, "From has to be an email address, such as rabbidlab@example.com.");
+        }
+        if (provider == "m365")
+        {
+            next.Tenant = form.Tenant?.Trim();
+            next.ClientId = form.ClientId?.Trim();
+            if (next.Tenant is not { Length: > 0 } tenant || !TenantName().IsMatch(tenant) || !Guid.TryParse(next.ClientId, out _))
+            {
+                return (null, "Microsoft 365 needs the tenant (its ID, or a name such as contoso.onmicrosoft.com) and the application (client) ID of the app registration.");
+            }
+            if (!string.IsNullOrEmpty(form.ClientSecret))
+            {
+                next.ClientSecret = secrets.Encrypt(form.ClientSecret);
+            }
+            return string.IsNullOrEmpty(next.ClientSecret) ? (null, "Microsoft 365 needs the client secret of the app registration.") : (next, null);
+        }
+        next.Host = form.Host?.Trim();
+        next.Port = form.Port ?? 587;
+        next.Security = form.Security is "ssl" or "none" ? form.Security : "starttls";
+        next.Username = string.IsNullOrWhiteSpace(form.Username) ? null : form.Username.Trim();
+        if (next.Host is not { Length: > 0 and <= 200 } || next.Port is < 1 or > 65535)
+        {
+            return (null, "Type the mail server's name, such as smtp.example.com, and its port.");
+        }
+        if (!string.IsNullOrEmpty(form.Password))
+        {
+            next.Password = secrets.Encrypt(form.Password);
+        }
+        else if (next.Username is null)
+        {
+            next.Password = null;
+        }
+        return (next, null);
     }
 
-    public async Task<string?> Send(MailNote note, CancellationToken stop)
+    public async Task<string?> Send(MailSettings s, MailNote note, CancellationToken stop)
     {
-        var s = file.Read();
-        if (!Ready)
+        if (!Ready(s))
         {
-            return "Email isn't set up yet.";
+            return "Its mail settings aren't finished. Edit it and fill them in.";
         }
         try
         {
             return s.Provider == "m365" ? await SendGraph(s, note, stop) : await SendSmtp(s, note, stop);
         }
-        catch (Exception e) when (e is SmtpException or HttpRequestException or IOException or FormatException or InvalidOperationException
+        catch (Exception e) when (e is MailKit.ServiceNotConnectedException or MailKit.ProtocolException or MailKit.CommandException or AuthenticationException
+            or System.Net.Sockets.SocketException or HttpRequestException or IOException or FormatException or InvalidOperationException or ParseException
             || (e is OperationCanceledException && !stop.IsCancellationRequested))
         {
             log.LogWarning(e, "Email could not be sent");
@@ -163,20 +156,21 @@ public sealed partial class Mail(DataFolder folder, SettingsStore secrets, ILogg
 
     private async Task<string?> SendSmtp(MailSettings s, MailNote note, CancellationToken stop)
     {
-        using var message = new MailMessage { From = new MailAddress(s.From!, Product.Title), Subject = note.Subject, Body = Text(note), BodyEncoding = Encoding.UTF8, SubjectEncoding = Encoding.UTF8 };
-        message.AlternateViews.Add(AlternateView.CreateAlternateViewFromString(Html(note), Encoding.UTF8, "text/html"));
-        foreach (var to in s.To)
-        {
-            message.To.Add(to);
-        }
-        using var client = new SmtpClient(s.Host!, s.Port) { EnableSsl = s.Security != "none", DeliveryMethod = SmtpDeliveryMethod.Network, Timeout = 20000 };
-        if (s.Username is { Length: > 0 } user)
-        {
-            client.Credentials = new NetworkCredential(user, secrets.TryDecrypt(s.Password) ?? "");
-        }
+        var message = new MimeMessage { Subject = note.Subject };
+        message.From.Add(new MailboxAddress(Product.Title, s.From));
+        message.To.AddRange(s.To.Select(a => MailboxAddress.Parse(a)));
+        message.Body = new BodyBuilder { TextBody = Text(note), HtmlBody = Html(note) }.ToMessageBody();
         using var limit = CancellationTokenSource.CreateLinkedTokenSource(stop);
         limit.CancelAfter(TimeSpan.FromSeconds(30));
-        await client.SendMailAsync(message, limit.Token);
+        using var client = new MailKit.Net.Smtp.SmtpClient { Timeout = 20000 };
+        var security = s.Security switch { "ssl" => SecureSocketOptions.SslOnConnect, "none" => SecureSocketOptions.None, _ => SecureSocketOptions.StartTls };
+        await client.ConnectAsync(s.Host!, s.Port, security, limit.Token);
+        if (s.Username is { Length: > 0 } user)
+        {
+            await client.AuthenticateAsync(user, secrets.TryDecrypt(s.Password) ?? "", limit.Token);
+        }
+        await client.SendAsync(new MailKit.SendRequest(message), limit.Token);
+        await client.DisconnectAsync(true, limit.Token);
         return null;
     }
 
@@ -225,17 +219,21 @@ public sealed partial class Mail(DataFolder folder, SettingsStore secrets, ILogg
     // What went wrong, in words that say what to do about it.
     private static string Why(MailSettings s, Exception e)
     {
+        var server = s.Provider == "m365" ? "Microsoft 365" : s.Provider == "gmail" ? "Gmail" : s.Host;
         if (e is OperationCanceledException)
         {
-            return $"{(s.Provider == "m365" ? "Microsoft 365" : s.Host)} didn't answer in time.";
+            return $"{server} didn't answer in time.";
         }
         var said = (e.InnerException?.Message ?? e.Message).Trim();
-        if (e is SmtpException && (said.Contains("5.7.", StringComparison.Ordinal) || said.Contains("Authentication", StringComparison.OrdinalIgnoreCase)))
+        if (e is AuthenticationException)
         {
-            var gmail = s.Host?.Contains("gmail", StringComparison.OrdinalIgnoreCase) == true;
-            return $"{s.Host} didn't accept the username and password." + (gmail ? " Gmail needs an app password (Google Account, Security, 2-Step Verification, App passwords), not your usual one." : "") + $" It said: {said}";
+            return $"{server} didn't accept the username and password." + (s.Provider == "gmail" ? " Gmail needs an app password, not your usual one." : "") + $" It said: {said}";
         }
-        return $"{(s.Provider == "m365" ? "Microsoft 365" : s.Host)} couldn't be reached or refused the message: {said}";
+        if (e is SslHandshakeException)
+        {
+            return $"{server} and {Product.Title} couldn't agree on encryption. Check the port: 587 is STARTTLS, 465 is SSL/TLS. It said: {said}";
+        }
+        return $"{server} couldn't be reached or refused the message: {said}";
     }
 
     private static string Text(MailNote note) =>
@@ -255,41 +253,6 @@ public sealed partial class Mail(DataFolder folder, SettingsStore secrets, ILogg
     private static partial Regex TenantName();
 }
 
-public static class MailApi
-{
-    public static void MapMailApi(this WebApplication app)
-    {
-        app.MapGet("/api/mail", (HttpContext context, Mail mail) =>
-            !Access.Can(context, Permissions.SensorsAlerts) ? Access.NotAllowed() : Results.Ok(mail.View()));
-
-        app.MapPost("/api/mail", (MailForm form, HttpContext context, Mail mail, ActivityLog log) =>
-        {
-            if (Access.RefuseUnless(context, Permissions.SensorsAlerts) is { } refused)
-            {
-                return refused;
-            }
-            if (mail.Save(form) is { } problem)
-            {
-                return Results.BadRequest(new { error = problem });
-            }
-            log.Record(context, "sensors", "mail.change", "Changed the email settings");
-            return Results.Ok(mail.View());
-        });
-
-        app.MapPost("/api/mail/test", async (HttpContext context, Mail mail, ActivityLog log) =>
-        {
-            if (Access.RefuseUnless(context, Permissions.SensorsAlerts) is { } refused)
-            {
-                return refused;
-            }
-            var note = new MailNote($"Test email from {Product.Title}", "note",
-                [("Sent by", ActivityLog.Who(context)), ("Why", "Someone clicked Send a test email. If you can read this, alerts will reach you.")]);
-            if (await mail.Send(note, context.RequestAborted) is { } problem)
-            {
-                return Results.BadRequest(new { error = problem });
-            }
-            log.Record(context, "sensors", "mail.test", "Sent a test email");
-            return Results.Ok(new { ok = true });
-        });
-    }
-}
+/// <summary>An email notification's settings as the page sends them. A password or secret left empty keeps the one that's stored.</summary>
+public sealed record MailForm(string? Provider, string? Host, int? Port, string? Security, string? Username, string? Password, string? From,
+    List<string>? To, string? Tenant, string? ClientId, string? ClientSecret);

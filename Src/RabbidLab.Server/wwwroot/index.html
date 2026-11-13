@@ -13,12 +13,14 @@
 <link rel="stylesheet" href="Assets/users.css">
 <link rel="stylesheet" href="Assets/links.css">
 <link rel="stylesheet" href="Assets/sensors.css">
+<link rel="stylesheet" href="Assets/alerts.css">
 <link rel="stylesheet" href="Assets/wiki.css">
 <link rel="stylesheet" href="Assets/edition.css">
 <script src="Assets/palette.js" defer></script>
 <script src="Assets/console.js" defer></script>
 <script src="Assets/people.js" defer></script>
 <script src="Assets/users.js" defer></script>
+<script src="Assets/alerts.js" defer></script>
 <script src="Assets/links.js" defer></script>
 <script src="Assets/sensors.js" defer></script>
 <script src="Assets/wiki.js" defer></script>
@@ -201,7 +203,6 @@
       <p class="rail-label">Server</p>
       <a href="#settings/address" data-sub="address"><svg><use href="#i-browser"/></svg><span>Console address</span></a>
       <a href="#settings/updates" data-sub="updates" data-can="updates.view"><svg><use href="#i-updates"/></svg><span>Updates</span><i class="rail-dot" id="srail-dot" hidden></i></a>
-      <a href="#settings/notifications" data-sub="notifications" data-can="sensors.alerts"><svg><use href="#i-bell"/></svg><span>Notifications</span></a>
       <a href="#settings/activity" data-sub="activity" data-can="activity.view"><svg class="all-flask" viewBox="0 0 24 24" aria-hidden="true"><path class="liquid" d="M6.6 15.2h10.8l2 3.2A1.7 1.7 0 0 1 17.9 21H6.1a1.7 1.7 0 0 1-1.5-2.6z"/><path d="M9 3h6M10 3v6.2L4.6 18.4A1.7 1.7 0 0 0 6.1 21h11.8a1.7 1.7 0 0 0 1.5-2.6L14 9.2V3"/></svg><span>Activity log</span></a>
       <div class="dkids" data-kids="activity">
         <a href="#settings/activity/signins" data-sub="activity" data-sec="signins"><span class="nm">Sign-ins</span></a>
@@ -210,6 +211,17 @@
         <a href="#settings/activity/seats" data-sub="activity" data-sec="seats"><span class="nm">Seats</span></a>
         <a href="#settings/activity/admin" data-sub="activity" data-sec="admin"><span class="nm">Updates and settings</span></a>
       </div>
+      <p class="rail-label" data-can="sensors.alerts">Alerts</p>
+      <a href="#settings/alerts" data-sub="alerts" data-can="sensors.alerts"><svg class="all-flask" viewBox="0 0 24 24" aria-hidden="true"><path class="liquid" d="M6.6 15.2h10.8l2 3.2A1.7 1.7 0 0 1 17.9 21H6.1a1.7 1.7 0 0 1-1.5-2.6z"/><path d="M9 3h6M10 3v6.2L4.6 18.4A1.7 1.7 0 0 0 6.1 21h11.8a1.7 1.7 0 0 0 1.5-2.6L14 9.2V3"/></svg><span>Alert rules</span></a>
+      <div class="dkids" data-kids="alerts">
+        <a href="#settings/alerts/sensors" data-sub="alerts" data-sec="sensors"><span class="nm">Sensors</span></a>
+        <a href="#settings/alerts/links" data-sub="alerts" data-sec="links"><span class="nm">Links</span></a>
+        <a href="#settings/alerts/seats" data-sub="alerts" data-sec="seats"><span class="nm">Seats</span></a>
+        <a href="#settings/alerts/lab" data-sub="alerts" data-sec="lab"><span class="nm" data-lab>Rabbid Lab</span></a>
+        <a href="#settings/alerts/quiet" data-sub="alerts" data-sec="quiet"><span class="nm">Gathering and quiet hours</span></a>
+      </div>
+      <a href="#settings/notifications" data-sub="notifications" data-can="sensors.alerts"><svg><use href="#i-bell"/></svg><span>Notifications</span></a>
+      <a href="#settings/history" data-sub="history" data-can="sensors.alerts"><svg><use href="#i-history"/></svg><span>Alert history</span></a>
       <p class="rail-label" data-can="links.edit sensors.alerts sensors.edit seats.settings seats.add ad.connect">Lab</p>
       <a href="#settings/links" data-sub="links" data-can="links.edit"><svg class="all-flask" viewBox="0 0 24 24" aria-hidden="true"><path class="liquid" d="M6.6 15.2h10.8l2 3.2A1.7 1.7 0 0 1 17.9 21H6.1a1.7 1.7 0 0 1-1.5-2.6z"/><path d="M9 3h6M10 3v6.2L4.6 18.4A1.7 1.7 0 0 0 6.1 21h11.8a1.7 1.7 0 0 0 1.5-2.6L14 9.2V3"/></svg><span>Links</span></a>
       <div class="dkids" data-kids="links">
@@ -217,12 +229,7 @@
         <a href="#settings/links/descriptions" data-sub="links" data-sec="descriptions"><span class="nm">Icons and descriptions</span></a>
         <a href="#settings/links/icons" data-sub="links" data-sec="icons"><span class="nm">Icon layout</span></a>
       </div>
-      <a href="#settings/sensors" data-sub="sensors" data-can="sensors.alerts sensors.edit"><svg class="all-flask" viewBox="0 0 24 24" aria-hidden="true"><path class="liquid" d="M6.6 15.2h10.8l2 3.2A1.7 1.7 0 0 1 17.9 21H6.1a1.7 1.7 0 0 1-1.5-2.6z"/><path d="M9 3h6M10 3v6.2L4.6 18.4A1.7 1.7 0 0 0 6.1 21h11.8a1.7 1.7 0 0 0 1.5-2.6L14 9.2V3"/></svg><span>Sensors</span></a>
-      <div class="dkids" data-kids="sensors">
-        <a href="#settings/sensors/start" data-sub="sensors" data-sec="start" data-can="sensors.alerts"><span class="nm">New sensors</span></a>
-        <a href="#settings/sensors/gather" data-sub="sensors" data-sec="gather" data-can="sensors.alerts"><span class="nm">Gather alerts</span></a>
-        <a href="#settings/sensors/credentials" data-sub="sensors" data-sec="credentials" data-can="sensors.edit"><span class="nm">Saved credentials</span></a>
-      </div>
+      <a href="#settings/sensors" data-sub="sensors" data-can="sensors.edit"><svg><use href="#i-key"/></svg><span>Sensors</span></a>
       <a href="#settings/seats" data-sub="seats" data-can="seats.settings seats.add"><svg class="all-flask" viewBox="0 0 24 24" aria-hidden="true"><path class="liquid" d="M6.6 15.2h10.8l2 3.2A1.7 1.7 0 0 1 17.9 21H6.1a1.7 1.7 0 0 1-1.5-2.6z"/><path d="M9 3h6M10 3v6.2L4.6 18.4A1.7 1.7 0 0 0 6.1 21h11.8a1.7 1.7 0 0 0 1.5-2.6L14 9.2V3"/></svg><span>Seats</span></a>
       <div class="dkids" data-kids="seats">
         <a href="#settings/seats/new" data-sub="seats" data-sec="new" data-can="seats.settings"><span class="nm">New computers</span></a>
@@ -346,14 +353,42 @@
       </section>
     </section>
 
-    <!-- Notifications: where alerts can go. Email is a channel like the rest; its Edit opens the mail server (sensors.js). -->
-    <section class="sub" data-sub="notifications" data-title="Notifications" hidden>
-      <header class="sub-head"><h2>Notifications</h2><p>Where alerts can go. Set a channel up once, then pick it on each sensor.</p></header>
-      <section class="ds-sec" data-sec="channels" id="nt-channels"><h3 class="ds-h has-reset">Channels <small class="ds-scope">Everyone</small><button type="button" class="ds-btn" id="nt-ch-add"><svg><use href="#i-plus"/></svg>Add a channel</button></h3>
-        <div class="nt-chs" id="nt-ch-list" data-skel="rows:2"></div>
-        <p class="ds-note"><svg><use href="#i-info"/></svg><span>When to alert, and which channels, is set on each sensor. New sensors start with what's in Settings, Sensors.</span></p>
+    <!-- Alert rules: every kind of alert, when it goes and to which notifications; then gathering and quiet hours (alerts.js). -->
+    <section class="sub" data-sub="alerts" data-title="Alert rules" hidden>
+      <header class="sub-head"><h2>Alert rules</h2><p>What sends an alert, and to which notifications. A sensor or a link can still set its own times.</p></header>
+      <section class="ds-sec ar-sec" data-sec="sensors" id="ar-sensors" data-skel="rows:4"></section>
+      <section class="ds-sec ar-sec" data-sec="links" id="ar-links"></section>
+      <section class="ds-sec ar-sec" data-sec="seats" id="ar-seats"></section>
+      <section class="ds-sec ar-sec" data-sec="lab" id="ar-lab"></section>
+      <section class="ds-sec" data-sec="quiet"><h3 class="ds-h">Gathering and quiet hours</h3>
+        <div class="ds-row"><div class="ds-l"><b>One alert for several</b><span>When several go down close together, one alert lists them all. Each still says on its own when it's back.</span></div>
+          <div class="ds-r"><input type="checkbox" class="switch" id="ar-gather" role="switch" aria-label="One alert for several"></div></div>
+        <div class="ds-row"><div class="ds-l"><b>Close together means within</b><span>The first alert waits this long for others to join it.</span></div>
+          <div class="ds-r"><div class="seg" id="ar-secs"><button type="button" data-secs="30">30 s</button><button type="button" data-secs="60">1 min</button><button type="button" data-secs="120">2 min</button><button type="button" data-secs="300">5 min</button></div></div></div>
+        <div class="ds-row"><div class="ds-l"><b>Quiet hours <small class="ds-scope" id="ar-quiet-now" hidden>Quiet now</small></b><span>Alerts wait until they're over, then whatever is still wrong goes out. This server's time.</span></div>
+          <div class="ds-r"><span class="ar-times"><select id="ar-from" aria-label="Quiet from"></select>to<select id="ar-to" aria-label="Quiet until"></select></span><input type="checkbox" class="switch" id="ar-quiet" role="switch" aria-label="Quiet hours"></div></div>
+        <div class="ds-row"><div class="ds-l"><b>Down alerts during quiet hours</b><span>A sensor or a link going down still alerts right away.</span></div>
+          <div class="ds-r"><input type="checkbox" class="switch" id="ar-down" role="switch" aria-label="Down alerts during quiet hours"></div></div>
       </section>
+      <p class="hint problem" id="ar-problem" hidden></p>
+    </section>
+
+    <!-- Notifications: where alerts can go, each by its name, in groups by kind (alerts.js). -->
+    <section class="sub" data-sub="notifications" data-title="Notifications" hidden>
+      <header class="sub-head"><h2>Notifications</h2><p>Where alerts can go. Each one has a name, and alert rules, sensors and links pick it by that name.</p></header>
+      <div class="nt-bar"><label class="side-find"><svg><use href="#i-search"/></svg><input type="search" id="nt-find" placeholder="Find a notification" aria-label="Find a notification" autocomplete="off" spellcheck="false"></label>
+        <span class="grow"></span><button type="button" class="primary" id="nt-add"><svg><use href="#i-plus"/></svg>Add a notification</button></div>
+      <div id="nt-list" data-skel="rows:3"></div>
       <p class="hint problem" id="nt-problem" hidden></p>
+    </section>
+
+    <!-- Alert history: every alert, where it went, and whether it got there (alerts.js). -->
+    <section class="sub" data-sub="history" data-title="Alert history" hidden>
+      <header class="sub-head"><h2>Alert history</h2><p>Every alert, where it went, and whether it got there. Kept for 90 days.</p></header>
+      <div class="nt-bar"><label class="side-find"><svg><use href="#i-search"/></svg><input type="search" id="ah-find" placeholder="Find an alert" aria-label="Find an alert" autocomplete="off" spellcheck="false"></label>
+        <div class="seg sn-seg" id="ah-range"><button type="button" data-days="7">7 days</button><button type="button" data-days="30">30 days</button><button type="button">Failed</button></div></div>
+      <div id="ah-list" data-skel="rows:5"></div>
+      <p class="hint problem" id="ah-problem" hidden></p>
     </section>
 
     <!-- Activity log: found on the server; the sub-menu picks a kind, the bar narrows it further (console.js). -->
@@ -396,19 +431,9 @@
       <p class="hint problem" id="lc-problem" hidden></p>
     </section>
 
-    <!-- Sensors: when new sensors alert, gathering alerts, and the credentials sensors sign in with (sensors.js). -->
+    <!-- Sensors: the credentials sensors sign in with. When sensors alert is in Alert rules (sensors.js). -->
     <section class="sub" data-sub="sensors" data-title="Sensors" hidden>
-      <header class="sub-head"><h2>Sensors</h2><p>What new sensors start with, gathering alerts, and the credentials sensors sign in with.</p></header>
-      <section class="ds-sec" data-sec="start" data-can="sensors.alerts"><h3 class="ds-h has-reset">New sensors start with<button type="button" class="ds-btn" id="ss-all">Use on every sensor…</button></h3>
-        <div class="al-rows" id="ss-rows" data-skel="rows:3"></div>
-        <div class="ds-row al-send"><div class="ds-l"><b>Send to</b><span>Each sensor can change it.</span></div><div class="ds-r"><div class="chans" id="ss-send"></div></div></div>
-      </section>
-      <section class="ds-sec" data-sec="gather" data-can="sensors.alerts"><h3 class="ds-h">Gather alerts</h3>
-        <div class="ds-row"><div class="ds-l"><b>One alert for several</b><span>When several go down close together, one alert lists them all. Each still says on its own when it's back.</span></div>
-          <div class="ds-r"><input type="checkbox" class="switch" id="ss-gather" role="switch" aria-label="One alert for several"></div></div>
-        <div class="ds-row"><div class="ds-l"><b>Close together means within</b><span>The first alert waits this long for others to join it.</span></div>
-          <div class="ds-r"><div class="seg" id="ss-secs"><button type="button" data-secs="30">30 s</button><button type="button" data-secs="60">1 min</button><button type="button" data-secs="120">2 min</button><button type="button" data-secs="300">5 min</button></div></div></div>
-      </section>
+      <header class="sub-head"><h2>Sensors</h2><p>The credentials sensors sign in with. When sensors alert, and where, is in Alert rules.</p></header>
       <section class="ds-sec" data-sec="credentials" data-can="sensors.edit"><h3 class="ds-h">Saved credentials</h3>
         <div id="sn-creds" data-skel="rows:2"></div>
         <p class="ds-note"><svg><use href="#i-lock"/></svg><span>Stored encrypted on this server. Credentials are saved with the sensor that needs them, and go once no sensor uses them.</span></p>
@@ -651,8 +676,7 @@
     <!-- Watch links: the bar along the bottom while links are being ticked (links.js). -->
     <div class="lw-bar" id="lw-bar" role="toolbar" aria-label="Watch links" hidden>
       <span class="lw-count"><b id="lw-n">0</b> ticked<small id="lw-more"></small></span><span class="lw-sep"></span>
-      <label class="lw-f"><span>Alert after</span><select id="lw-after"><option value="0">Right away</option><option value="1">1 minute</option><option value="5">5 minutes</option><option value="10">10 minutes</option><option value="30">30 minutes</option><option value="60">An hour</option></select></label>
-      <span class="lw-f" id="lw-send-wrap"><span>Send to</span><span class="lw-chips" id="lw-send"></span></span><span class="lw-sep"></span>
+      <span class="lw-f lw-rule" id="lw-rule"></span><span class="lw-sep"></span>
       <button type="button" class="link" id="lw-cancel">Cancel</button><button type="button" class="primary" id="lw-go"><svg><use href="#i-eye"/></svg><span id="lw-go-text">Watch</span></button>
     </div>
     </section>
@@ -666,10 +690,11 @@
       <p class="hero-lead"><b id="sn-lead"></b> <span id="sn-lead-more"></span></p>
       <div class="hero-actions">
         <button type="button" class="primary" id="sn-add" data-can="sensors.edit">Add a sensor</button>
-        <button type="button" class="hero-gear" id="sn-gear" data-can="sensors.alerts sensors.edit" data-tip="Settings, notifications" aria-label="Sensors settings and notifications" popovertarget="sn-gear-menu"><svg><use href="#i-gear"/></svg></button>
+        <button type="button" class="hero-gear" id="sn-gear" data-can="sensors.alerts sensors.edit" data-tip="Alerts and settings" aria-label="Alert rules, notifications and sensor settings" popovertarget="sn-gear-menu"><svg><use href="#i-gear"/></svg></button>
         <div class="gear-menu" id="sn-gear-menu" popover>
-          <div class="am-links"><a class="am-link" href="#settings/sensors" data-can="sensors.alerts sensors.edit"><svg><use href="#i-gear"/></svg>Sensors settings</a>
+          <div class="am-links"><a class="am-link" href="#settings/alerts" data-can="sensors.alerts"><svg><use href="#i-alert"/></svg>Alert rules</a>
             <a class="am-link" href="#settings/notifications" data-can="sensors.alerts"><svg><use href="#i-bell"/></svg>Notifications</a></div>
+          <div class="am-links"><a class="am-link" href="#settings/sensors" data-can="sensors.edit"><svg><use href="#i-key"/></svg>Saved credentials</a></div>
         </div>
       </div>
       <div class="hero-stats">
@@ -1054,7 +1079,7 @@
   <div class="form two sd-form ld-alerts one" id="ln-alerts" hidden>
     <div class="sd-div wide"><b>Alerts</b><i></i></div>
     <div class="wide al-rows" id="ln-watch"></div>
-    <div class="wide" id="ln-send-wrap" hidden><label>Send to</label><div class="chans" id="ln-send"></div></div>
+    <div class="wide" id="ln-send-wrap" hidden><label>Send to</label><div class="np" id="ln-send"></div></div>
   </div>
   <!-- A list: the addresses and their group, then what each one turned out to be, to tick before adding. -->
   <div class="form two sd-form ld-list many">
@@ -1095,7 +1120,7 @@
         <div><label for="sd-down">Down after</label><select id="sd-down"><option value="1">1 miss</option><option value="2">2 misses in a row</option><option value="3">3 misses in a row</option><option value="5">5 misses in a row</option></select></div>
         <div class="sd-div wide"><b>Alerts</b><i></i></div>
         <div class="wide al-rows" id="sd-alerts"></div>
-        <div class="wide" id="sd-send-wrap" hidden><label>Send to</label><div class="chans" id="sd-send"></div></div>
+        <div class="wide" id="sd-send-wrap" hidden><label>Send to</label><div class="np" id="sd-send"></div></div>
         <div class="wide" id="sd-alert-sum"></div>
         <div class="wide al-copy" data-can="sensors.alerts"><button type="button" class="link" id="sd-copy">Use these alerts on other sensors…</button></div>
       </div>
@@ -1141,22 +1166,48 @@
     <button type="button" id="cp-cancel">Cancel</button><button type="button" class="primary" id="cp-go">Copy</button></div>
 </dialog>
 
-<!-- A channel: somewhere alerts go besides email (sensors.js, Channels.cs). -->
-<dialog class="dialog" id="channel-dialog" aria-labelledby="ch-title">
-  <h2 id="ch-title">Add a channel</h2>
-  <p class="dialog-lead">Somewhere alerts can go. Each sensor picks which channels it uses.</p>
-  <div class="chans ch-kinds" id="ch-kinds"></div>
-  <div class="form two" id="ch-form">
-    <div class="wide"><label for="ch-url" id="ch-url-label">Webhook address</label><input id="ch-url" maxlength="500" autocomplete="off" spellcheck="false"><small class="hint" id="ch-help"></small></div>
-    <div class="wide"><label for="ch-name">Name</label><input id="ch-name" maxlength="40" autocomplete="off" spellcheck="false"></div>
-    <div class="wide al-rows ch-sw"><div class="ds-row"><div class="ds-l"><b>On for new sensors</b><span>New sensors start with it ticked under Send to.</span></div>
-      <div class="ds-r"><input type="checkbox" class="switch" id="ch-new" role="switch" aria-label="On for new sensors" checked></div></div></div>
+<!-- A notification: somewhere alerts go, by its name. Email through Gmail, a mail server or Microsoft 365, or a webhook (alerts.js, Channels.cs). -->
+<dialog class="dialog wide" id="notify-dialog" aria-labelledby="nf-title">
+  <h2 id="nf-title">Add a notification</h2>
+  <p class="dialog-lead">Somewhere alerts can go. Alert rules, sensors and links pick it by its name.</p>
+  <div class="nf-body">
+    <div class="form sd-form"><label for="nf-name">Name</label><input id="nf-name" maxlength="40" placeholder="Such as Anthony, Ops team or Lab alerts" autocomplete="off" spellcheck="false" data-1p-ignore data-lpignore="true" data-bwignore></div>
+    <div class="chans ch-kinds nf-kinds" id="nf-kinds"></div>
+    <div class="form two sd-form" id="nf-hook">
+      <div class="wide"><label for="nf-url" id="nf-url-label">Webhook address</label><input id="nf-url" maxlength="500" autocomplete="off" spellcheck="false" data-1p-ignore data-lpignore="true" data-bwignore><small class="hint" id="nf-url-help"></small></div>
+    </div>
+    <div class="form two sd-form" id="nf-mail" hidden>
+      <div class="wide"><label>Send through</label><div class="chans nf-provs" id="nf-provs"></div></div>
+      <div data-for="gmail"><label for="nf-gmail">Gmail address</label><input id="nf-gmail" maxlength="200" placeholder="alerts@gmail.com" autocomplete="off" spellcheck="false" data-1p-ignore data-lpignore="true" data-bwignore></div>
+      <div data-for="gmail"><label for="nf-gpass" class="nf-lab">App password <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener">Make one<svg><use href="#i-out"/></svg></a></label><input id="nf-gpass" type="password" autocomplete="new-password" data-1p-ignore data-lpignore="true" data-bwignore></div>
+      <p class="nf-quiet wide" data-for="gmail"><svg><use href="#i-info"/></svg><span>Goes through smtp.gmail.com, port 587, STARTTLS: nothing else to fill in. Gmail only takes an app password here, not your usual one. It needs 2-Step Verification on.</span></p>
+      <div data-for="smtp"><label for="nf-host">Mail server</label><input id="nf-host" maxlength="200" placeholder="smtp.example.com" autocomplete="off" spellcheck="false" data-1p-ignore data-lpignore="true" data-bwignore></div>
+      <div data-for="smtp"><label for="nf-port">Port</label><input id="nf-port" inputmode="numeric" maxlength="5" autocomplete="off" data-1p-ignore data-lpignore="true" data-bwignore></div>
+      <div class="wide" data-for="smtp"><label>Encryption</label><div class="seg sn-seg" id="nf-sec"><button type="button" data-sec="starttls">STARTTLS<small>587</small></button><button type="button" data-sec="ssl">SSL/TLS<small>465</small></button><button type="button" data-sec="none">None<small>25</small></button></div></div>
+      <div data-for="smtp"><label for="nf-user">Username</label><input id="nf-user" maxlength="200" placeholder="If the server asks for one" autocomplete="off" spellcheck="false" data-1p-ignore data-lpignore="true" data-bwignore></div>
+      <div data-for="smtp"><label for="nf-pass">Password</label><input id="nf-pass" type="password" autocomplete="new-password" data-1p-ignore data-lpignore="true" data-bwignore></div>
+      <div data-for="m365"><label for="nf-tenant">Tenant</label><input id="nf-tenant" maxlength="100" placeholder="contoso.onmicrosoft.com or the tenant ID" autocomplete="off" spellcheck="false" data-1p-ignore data-lpignore="true" data-bwignore></div>
+      <div data-for="m365"><label for="nf-client">Application (client) ID</label><input id="nf-client" maxlength="40" autocomplete="off" spellcheck="false" data-1p-ignore data-lpignore="true" data-bwignore></div>
+      <div data-for="m365"><label for="nf-secret">Client secret</label><input id="nf-secret" type="password" autocomplete="new-password" data-1p-ignore data-lpignore="true" data-bwignore></div>
+      <div class="wide" data-for="smtp m365"><label for="nf-from">From</label><input id="nf-from" maxlength="200" placeholder="alerts@example.com" autocomplete="off" spellcheck="false" data-1p-ignore data-lpignore="true" data-bwignore></div>
+      <p class="nf-quiet wide" data-for="m365"><svg><use href="#i-info"/></svg><span>In Microsoft Entra, register an app, give it the Mail.Send application permission with admin consent, and make a client secret. From has to be a mailbox in that tenant.</span></p>
+      <div class="wide"><label for="nf-to-in">Send alerts to</label><div class="nf-to" id="nf-to"></div></div>
+    </div>
   </div>
-  <div class="ch-mail" id="ch-mail" hidden></div>
-  <p class="hint note" id="ch-done" hidden></p>
-  <p class="hint problem" id="ch-problem" hidden></p>
-  <div class="dialog-foot"><button type="button" class="danger" id="ch-delete" hidden><svg><use href="#i-trash"/></svg>Delete</button><button type="button" id="ch-test">Send a test</button><span class="grow"></span>
-    <button type="button" id="ch-cancel">Cancel</button><button type="button" class="primary" id="ch-save">Add the channel</button></div>
+  <p class="hint note" id="nf-done" hidden></p>
+  <p class="hint problem" id="nf-problem" hidden></p>
+  <div class="dialog-foot"><button type="button" class="danger" id="nf-delete" hidden><svg><use href="#i-trash"/></svg>Delete</button><button type="button" id="nf-test">Send a test</button><span class="grow"></span>
+    <button type="button" id="nf-cancel">Cancel</button><button type="button" class="primary" id="nf-save">Add the notification</button></div>
+</dialog>
+
+<!-- An alert rule: its times or number, where it goes, and for the down rules what follows it (alerts.js, Alerts.cs). -->
+<dialog class="dialog wide" id="rule-dialog" aria-labelledby="rl-title">
+  <h2 id="rl-title"></h2>
+  <p class="dialog-lead" id="rl-lead"></p>
+  <div class="al-rows rl-rows" id="rl-rows"></div>
+  <div class="rl-follow" id="rl-follow" hidden></div>
+  <p class="hint problem" id="rl-problem" hidden></p>
+  <div class="dialog-foot"><span class="grow"></span><button type="button" id="rl-cancel">Cancel</button><button type="button" class="primary" id="rl-save">Save</button></div>
 </dialog>
 
 <!-- One sensor: how it is, its last hour, and what happened to it. -->
@@ -1175,31 +1226,6 @@
     <button type="button" id="sv-change" data-can="sensors.edit">Change</button><button type="button" class="primary" id="sv-close">Close</button></div>
 </dialog>
 
-<!-- Email: the mail server alerts go through, and who gets them. -->
-<dialog class="dialog wide" id="mail-dialog" aria-labelledby="ml-title">
-  <h2 id="ml-title">Email</h2>
-  <p class="dialog-lead">The mail server alerts go through, and who gets them. When to alert is set on each sensor.</p>
-  <!-- The mail server fields: here, or in Add a channel while Email is picked there (sensors.js moves them). -->
-  <div id="ml-body"><div class="form two sd-form">
-    <div class="sd-div wide"><b>Mail server</b><i></i></div>
-    <div class="wide"><label>Send through</label>
-      <div class="seg sn-seg" id="ml-provider"><button type="button" data-provider="gmail">Gmail</button><button type="button" data-provider="m365">Microsoft 365</button><button type="button" data-provider="smtp">Another mail server</button></div></div>
-    <div data-for="smtp"><label for="ml-host">Mail server</label><input id="ml-host" maxlength="200" placeholder="smtp.example.com" autocomplete="off" spellcheck="false"></div>
-    <div data-for="smtp"><label for="ml-port">Port</label><input id="ml-port" inputmode="numeric" maxlength="5" autocomplete="off"></div>
-    <div data-for="smtp"><label for="ml-security">Encryption</label><select id="ml-security"><option value="starttls">STARTTLS</option><option value="none">None</option></select></div>
-    <div data-for="smtp gmail"><label for="ml-user" id="ml-user-label">Username</label><input id="ml-user" maxlength="200" autocomplete="off" spellcheck="false"></div>
-    <div data-for="smtp gmail"><label for="ml-password" id="ml-password-label">Password</label><input id="ml-password" type="password" autocomplete="new-password"></div>
-    <div data-for="m365"><label for="ml-tenant">Tenant</label><input id="ml-tenant" maxlength="100" placeholder="contoso.onmicrosoft.com or the tenant ID" autocomplete="off" spellcheck="false"></div>
-    <div data-for="m365"><label for="ml-client">Application (client) ID</label><input id="ml-client" maxlength="40" autocomplete="off" spellcheck="false"></div>
-    <div data-for="m365"><label for="ml-secret">Client secret</label><input id="ml-secret" type="password" autocomplete="new-password"></div>
-    <div data-for="smtp m365"><label for="ml-from">From</label><input id="ml-from" maxlength="200" placeholder="rabbidlab@example.com" autocomplete="off" spellcheck="false"></div>
-    <div class="wide"><label for="ml-to">Send alerts to</label><input id="ml-to" placeholder="you@example.com, someone@example.com" autocomplete="off" spellcheck="false"></div>
-  </div>
-  <p class="hint" id="ml-help"></p></div>
-  <p class="hint note" id="ml-done" hidden></p>
-  <p class="hint problem" id="ml-problem" hidden></p>
-  <div class="dialog-foot"><button type="button" id="ml-test">Send a test email</button><span class="grow"></span><button type="button" id="ml-cancel">Cancel</button><button type="button" class="primary" id="ml-save">Save</button></div>
-</dialog>
 
 <!-- A new group, for links or sensors, empty until something is put in it. -->
 <dialog class="dialog" id="lgroup-dialog" aria-labelledby="lgroup-title">

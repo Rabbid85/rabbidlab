@@ -260,25 +260,31 @@ public sealed class SensorsTests : IDisposable
     }
 
     [Fact]
-    public async Task Each_sensor_has_its_own_alert_times_starting_with_the_ones_set_for_new_sensors()
+    public async Task A_sensor_follows_its_rule_until_it_has_times_of_its_own_and_can_be_made_to_follow_again()
     {
         var admin = await app.SignedIn();
-        var odd = await admin.PostAsJsonAsync("/api/sensors/start", new { after = 7, again = 0, back = true });
-        (await admin.PostAsJsonAsync("/api/sensors/start", new { after = 30, again = 0, back = false })).EnsureSuccessStatusCode();
+        var odd = await admin.PostAsJsonAsync("/api/alerts/rules/sensor.down", new { after = 7, again = 0, back = true });
+        (await admin.PostAsJsonAsync("/api/alerts/rules/sensor.down", new { after = 30, again = 0, back = false })).EnsureSuccessStatusCode();
         var plain = await Json(await admin.PostAsJsonAsync("/api/sensors", new { kind = "ping", target = "192.168.2.50", name = "Switch" }));
         var own = await Json(await admin.PostAsJsonAsync("/api/sensors", new { kind = "ping", target = "192.168.2.51", name = "Printer", rule = "custom", custom = new { after = 60, again = 1440, back = true } }));
         var old = await Json(await admin.PostAsJsonAsync("/api/sensors", new { kind = "ping", target = "192.168.2.52", name = "NAS", rule = "critical" }));
         var switchId = Named(plain, "Switch").GetProperty("id").GetString();
         var copied = await Json(await admin.PostAsJsonAsync("/api/sensors/copy", new { after = 60, again = 1440, back = true, ids = new[] { switchId } }));
+        var followed = await Json(await admin.PostAsJsonAsync("/api/alerts/rules/sensor.down/follow", new { }));
+        var after = await Json(await admin.GetAsync("/api/sensors"));
 
         Assert.Equal(HttpStatusCode.BadRequest, odd.StatusCode); // only the times offered
         Assert.Equal(30, plain.GetProperty("start").GetProperty("after").GetInt32());
         Assert.Equal(30, Named(plain, "Switch").GetProperty("alert").GetProperty("after").GetInt32()); // new sensors start with those
         Assert.False(Named(plain, "Switch").GetProperty("alert").GetProperty("back").GetBoolean());
+        Assert.True(Named(plain, "Switch").GetProperty("follows").GetBoolean());
+        Assert.False(Named(own, "Printer").GetProperty("follows").GetBoolean());
         Assert.Equal(1440, Named(own, "Printer").GetProperty("alert").GetProperty("again").GetInt32());
         Assert.Equal(0, Named(old, "NAS").GetProperty("alert").GetProperty("after").GetInt32()); // one on saved settings still reads right
         Assert.Equal(1, copied.GetProperty("changed").GetInt32());
         Assert.Equal(60, Named(copied.GetProperty("now"), "Switch").GetProperty("alert").GetProperty("after").GetInt32());
+        Assert.Equal(3, followed.GetProperty("changed").GetInt32()); // Printer, NAS and Switch
+        Assert.All(after.GetProperty("sensors").EnumerateArray(), s => Assert.Equal(30, s.GetProperty("alert").GetProperty("after").GetInt32()));
     }
 
     [Fact]
@@ -355,6 +361,7 @@ public sealed class SensorsTests : IDisposable
     public async Task A_sensor_is_down_after_two_failed_checks_and_emails_when_its_rule_says()
     {
         var admin = await app.SignedIn();
+        await TestApp.Alerting(admin, 5, await TestApp.Notification(admin));
         (await admin.PostAsJsonAsync("/api/sensors", new { kind = "ping", target = "192.168.2.27", name = "ESXi 3", group = "Hypervisors", rule = "normal" })).EnsureSuccessStatusCode();
         (await admin.PostAsJsonAsync("/api/sensors", new { kind = "ping", target = "192.168.2.1", name = "Gateway", rule = "critical" })).EnsureSuccessStatusCode();
         (await admin.PostAsJsonAsync("/api/sensors", new { kind = "ping", target = "192.168.2.40", name = "UPS", rule = "quiet" })).EnsureSuccessStatusCode();
@@ -415,6 +422,7 @@ public sealed class SensorsTests : IDisposable
     public async Task A_paused_sensor_is_not_checked_and_a_certificate_about_to_expire_is_a_warning()
     {
         var admin = await app.SignedIn();
+        (await admin.PostAsJsonAsync("/api/alerts/rules/sensor.cert", new { on = true, to = new[] { await TestApp.Notification(admin) } })).EnsureSuccessStatusCode();
         var view = await Json(await admin.PostAsJsonAsync("/api/sensors", new { kind = "cert", target = "rabbidlab.amw.com" }));
         var id = Named(view, "rabbidlab.amw.com").GetProperty("id").GetString();
         app.Probe.Finds["rabbidlab.amw.com"] = new Probe(true, 30, "Expires in 12 days", Warn: true);
@@ -464,7 +472,8 @@ public sealed class SensorsTests : IDisposable
         var refused = await viewer.PostAsJsonAsync("/api/sensors", new { kind = "ping", target = "10.0.0.1" });
         var groupRefused = await viewer.PostAsJsonAsync("/api/sensors/groups", new { name = "Mine" });
         var ruleRefused = await viewer.PostAsJsonAsync("/api/sensors/rules/normal", new { after = 0, again = 0 });
-        var mailRefused = await viewer.GetAsync("/api/mail");
+        var mailRefused = await viewer.GetAsync("/api/alerts");
+        var alertRefused = await viewer.PostAsJsonAsync("/api/alerts/rules/sensor.down", new { after = 0 });
         var after = await Json(await (await app.SignedIn()).GetAsync("/api/sensors"));
 
         Assert.All([noAddress, notAName, noPort, notAPage, badRule], r => Assert.Equal(HttpStatusCode.BadRequest, r.StatusCode));
@@ -478,32 +487,7 @@ public sealed class SensorsTests : IDisposable
         var relaxed = rule.GetProperty("rules").EnumerateArray().First(r => r.GetProperty("id").GetString() == "relaxed");
         Assert.Equal(10, relaxed.GetProperty("after").GetInt32());
         Assert.False(relaxed.GetProperty("back").GetBoolean());
-        Assert.All([unseen, refused, groupRefused, ruleRefused, mailRefused], r => Assert.Equal(HttpStatusCode.Forbidden, r.StatusCode));
+        Assert.All([unseen, refused, groupRefused, ruleRefused, mailRefused, alertRefused], r => Assert.Equal(HttpStatusCode.Forbidden, r.StatusCode));
         Assert.Equal(["Network"], Texts(after)); // the viewer could not make one
-    }
-
-    [Fact]
-    public async Task Email_settings_keep_their_secrets_and_refuse_what_cannot_work()
-    {
-        var admin = await app.SignedIn();
-        var smtp = new { provider = "smtp", host = "smtp.gmail.com", port = 587, security = "starttls", username = "lab@example.com", password = "app password", from = "lab@example.com", to = new[] { "me@example.com", " me@example.com ", "you@example.com" } };
-
-        var saved = await admin.PostAsJsonAsync("/api/mail", smtp);
-        var text = await saved.Content.ReadAsStringAsync();
-        var kept = await Json(await admin.PostAsJsonAsync("/api/mail", smtp with { password = "" }));
-        var onDisk = await File.ReadAllTextAsync(Path.Combine(data, "mail.json"));
-        var badFrom = await admin.PostAsJsonAsync("/api/mail", smtp with { from = "nobody" });
-        var badTo = await admin.PostAsJsonAsync("/api/mail", smtp with { to = ["not an address"] });
-        var port465 = await admin.PostAsJsonAsync("/api/mail", smtp with { port = 465 });
-        var noSecret = await admin.PostAsJsonAsync("/api/mail", new { provider = "m365", tenant = "contoso.onmicrosoft.com", clientId = Guid.NewGuid().ToString(), from = "lab@example.com", to = new[] { "me@example.com" } });
-        var badTenant = await admin.PostAsJsonAsync("/api/mail", new { provider = "m365", tenant = "contoso/../x", clientId = Guid.NewGuid().ToString(), clientSecret = "s", from = "lab@example.com", to = new[] { "me@example.com" } });
-
-        Assert.Equal(HttpStatusCode.OK, saved.StatusCode);
-        Assert.DoesNotContain("app password", text);
-        Assert.DoesNotContain("app password", onDisk);
-        Assert.True(kept.GetProperty("hasPassword").GetBoolean());
-        Assert.True(kept.GetProperty("ready").GetBoolean());
-        Assert.Equal(2, kept.GetProperty("to").GetArrayLength());
-        Assert.All([badFrom, badTo, port465, noSecret, badTenant], r => Assert.Equal(HttpStatusCode.BadRequest, r.StatusCode));
     }
 }

@@ -4,113 +4,188 @@ using System.Text.Json;
 
 namespace RabbidLab.Server;
 
-/// <summary>Somewhere alerts go besides email: a Discord, Teams or Slack webhook, an ntfy topic, or any webhook.</summary>
+/// <summary>
+/// A notification: somewhere alerts go, by its name. Email through Gmail, a mail server or Microsoft 365; a Discord,
+/// Teams or Slack webhook; an ntfy topic; or any webhook.
+/// </summary>
 public sealed class Channel
 {
     public string Id { get; set; } = "";
 
-    /// <summary>discord, teams, slack, ntfy or webhook.</summary>
+    /// <summary>email, discord, teams, slack, ntfy or webhook.</summary>
     public string Kind { get; set; } = "webhook";
+
+    /// <summary>What it's picked by, such as Anthony or Ops team.</summary>
     public string Name { get; set; } = "";
 
-    /// <summary>The webhook or topic address, stored encrypted: anyone who has it can post to the channel.</summary>
+    /// <summary>The webhook or topic address, stored encrypted: anyone who has it can post there.</summary>
     public string Url { get; set; } = "";
 
-    /// <summary>Whether new sensors start with it ticked.</summary>
+    /// <summary>For email: how it sends and to whom.</summary>
+    public MailSettings? Mail { get; set; }
+
+    /// <summary>From before alert rules: whether new sensors started with it. The rules started from it once.</summary>
     public bool OnForNew { get; set; }
     public DateTime Added { get; set; }
     public string? AddedBy { get; set; }
+
+    /// <summary>The last time something was sent to it, whether it went, and why not.</summary>
+    public DateTime? LastTried { get; set; }
+    public DateTime? LastSent { get; set; }
+    public string? LastProblem { get; set; }
 }
 
 public sealed class ChannelsFile
 {
     public List<Channel> Channels { get; set; } = [];
 
-    /// <summary>Whether new sensors start with email ticked.</summary>
+    /// <summary>From before email was a notification like the rest: whether new sensors started with email.</summary>
     public bool EmailOnForNew { get; set; } = true;
+
+    /// <summary>The one mail server from mail.json became the notification called Email.</summary>
+    public bool MailMoved { get; set; }
 }
 
-/// <summary>A channel as the page sends it. An empty Url keeps the stored one.</summary>
-public sealed record ChannelForm(string? Kind, string? Name, string? Url, bool? OnForNew);
+/// <summary>A notification as the page sends it. An empty Url, password or secret keeps the stored one.</summary>
+public sealed record ChannelForm(string? Kind, string? Name, string? Url, bool? OnForNew = null, MailForm? Mail = null);
 
-/// <summary>Sends an alert to one channel. The answer is why it didn't go, or null when it did.</summary>
+/// <summary>A test of a notification: a saved one by id, a new one as typed, or a saved one with what's typed over it.</summary>
+public sealed record ChannelTestForm(string? Id, ChannelForm? Form);
+
+/// <summary>Sends an alert to one webhook or topic. The answer is why it didn't go, or null when it did.</summary>
 public interface IChannelSender
 {
     Task<string?> Send(string kind, string url, MailNote note, CancellationToken stop);
 }
 
-/// <summary>The channels in channels.json, and email, which is the mail settings (Mail.cs) under the name "email".</summary>
-public sealed class Channels(DataFolder folder, SettingsStore secrets, IMailSender mail, IChannelSender sender)
+/// <summary>The notifications in channels.json. Email moved in from mail.json, under its old id "email", so sensors kept it.</summary>
+public sealed class Channels(DataFolder folder, SettingsStore secrets, IMailSender mail, IChannelSender sender, TimeProvider clock)
 {
     public const string Email = "email";
-    public static readonly string[] Kinds = ["discord", "teams", "slack", "ntfy", "webhook"];
-    private const int Most = 20;
+    public static readonly string[] Kinds = ["email", "discord", "teams", "slack", "ntfy", "webhook"];
+    private const int Most = 30;
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { WriteIndented = true };
     private readonly JsonFile<ChannelsFile> file = folder.Json<ChannelsFile>("channels.json", Json);
 
-    private static readonly Dictionary<string, string> KindNames = new()
+    public static readonly Dictionary<string, string> KindNames = new()
     {
-        ["discord"] = "Discord", ["teams"] = "Teams", ["slack"] = "Slack", ["ntfy"] = "ntfy", ["webhook"] = "Webhook",
+        ["email"] = "Email", ["discord"] = "Discord", ["teams"] = "Teams", ["slack"] = "Slack", ["ntfy"] = "ntfy", ["webhook"] = "Webhook",
     };
 
-    /// <summary>The channels for the page, the address shortened so it isn't shown whole. uses: how many sensors use one.</summary>
-    public object View(Func<string, int> uses)
+    // The file, with the old mail server moved in the first time it's read.
+    private ChannelsFile Read()
     {
-        var f = file.Read();
-        return new
-        {
-            email = new { id = Email, ready = mail.Ready, onForNew = f.EmailOnForNew, uses = uses(Email) },
-            channels = f.Channels.Select(c => new { c.Id, c.Kind, c.Name, where = Where(secrets.TryDecrypt(c.Url)), c.OnForNew, uses = uses(c.Id) }).ToList(),
-        };
-    }
-
-    /// <summary>The channels a new sensor starts with.</summary>
-    public List<string> Defaults()
-    {
-        var f = file.Read();
-        return [.. (f.EmailOnForNew ? [Email] : Array.Empty<string>()), .. f.Channels.Where(c => c.OnForNew).Select(c => c.Id)];
-    }
-
-    /// <summary>Whether a sensor can send to it: email, or a channel that's here.</summary>
-    public bool Known(string? id) => id == Email || file.Read().Channels.Any(c => c.Id == id);
-
-    /// <summary>Whether an alert would go anywhere: email set up, or the channel here.</summary>
-    public bool Ready(string id) => id == Email ? mail.Ready : file.Read().Channels.Any(c => c.Id == id);
-
-    /// <summary>What a channel is called in a sensor's history: Email, or Discord #homelab.</summary>
-    public string Name(string id) => id == Email ? "Email" : file.Read().Channels.FirstOrDefault(c => c.Id == id) is { } c ? $"{KindNames[c.Kind]} {c.Name}".Trim() : "A channel";
-
-    public (Channel? Channel, string? Problem) Add(ChannelForm form, string by)
-    {
-        var kind = Kinds.Contains(form.Kind) ? form.Kind! : "";
-        if (kind.Length == 0)
-        {
-            return (null, "Pick what kind of channel it is.");
-        }
-        if (Check(kind, form.Url) is { } bad)
-        {
-            return (null, bad);
-        }
         lock (file.Gate)
         {
             var f = file.Read();
+            if (!f.MailMoved)
+            {
+                var old = folder.Json<MailSettings>("mail.json", Json).Read();
+                if (global::RabbidLab.Server.Mail.Ready(old) && f.Channels.All(c => c.Id != Email))
+                {
+                    if (old.Provider == "smtp" && string.Equals(old.Host, "smtp.gmail.com", StringComparison.OrdinalIgnoreCase))
+                    {
+                        old.Provider = "gmail";
+                    }
+                    f.Channels.Insert(0, new Channel { Id = Email, Kind = "email", Name = "Email", Mail = old, OnForNew = f.EmailOnForNew, Added = clock.GetUtcNow().UtcDateTime });
+                }
+                f.MailMoved = true;
+                file.Save(f);
+            }
+            return f;
+        }
+    }
+
+    /// <summary>The notifications for the page, the address shortened so it isn't shown whole. uses: what sends to one.</summary>
+    public object View(Func<string, (int Sensors, int Links)> uses)
+    {
+        List<Channel> list;
+        lock (file.Gate)
+        {
+            list = [.. Read().Channels];
+        }
+        // Counted outside the lock: the sensors take theirs, then ask here.
+        return new
+        {
+            channels = list.Select(c => (c, n: uses(c.Id))).Select(x => new
+            {
+                x.c.Id, x.c.Kind, name = Label(x.c), where = x.c.Kind == "email" ? MailWhere(x.c.Mail) : Where(secrets.TryDecrypt(x.c.Url)),
+                mail = x.c.Mail is null ? null : global::RabbidLab.Server.Mail.View(x.c.Mail), ready = Ready(x.c),
+                sensors = x.n.Sensors, links = x.n.Links, x.c.LastTried, x.c.LastSent, x.c.LastProblem,
+            }).ToList(),
+        };
+    }
+
+    /// <summary>The ones new sensors used to start with, for starting the alert rules.</summary>
+    public List<string> Defaults()
+    {
+        lock (file.Gate)
+        {
+            return [.. Read().Channels.Where(c => c.OnForNew && Ready(c)).Select(c => c.Id)];
+        }
+    }
+
+    /// <summary>Whether it's here.</summary>
+    public bool Known(string? id)
+    {
+        lock (file.Gate)
+        {
+            return Read().Channels.Any(c => c.Id == id);
+        }
+    }
+
+    /// <summary>Whether an alert would go anywhere: it's here, and an email one has what it needs to send.</summary>
+    public bool Ready(string id)
+    {
+        lock (file.Gate)
+        {
+            return Read().Channels.FirstOrDefault(c => c.Id == id) is { } c && Ready(c);
+        }
+    }
+
+    private static bool Ready(Channel c) => c.Kind != "email" || c.Mail is { } m && global::RabbidLab.Server.Mail.Ready(m);
+
+    /// <summary>What it's called, as the history and the alert rules show it.</summary>
+    public string Name(string id)
+    {
+        lock (file.Gate)
+        {
+            return Read().Channels.FirstOrDefault(c => c.Id == id) is { } c ? Label(c) : "A notification that's gone";
+        }
+    }
+
+    /// <summary>Its kind, or null when it's gone.</summary>
+    public string? KindOf(string id)
+    {
+        lock (file.Gate)
+        {
+            return Read().Channels.FirstOrDefault(c => c.Id == id)?.Kind;
+        }
+    }
+
+    // Its name; one from before names had to be given is called by its kind.
+    private static string Label(Channel c) => c.Name.Length > 0 ? c.Name : KindNames.GetValueOrDefault(c.Kind, "Notification");
+
+    public (Channel? Channel, string? Problem) Add(ChannelForm form, string by)
+    {
+        lock (file.Gate)
+        {
+            var f = Read();
             if (f.Channels.Count >= Most)
             {
-                return (null, $"That's {Most} channels, which is as many as {Product.Title} keeps.");
+                return (null, $"That's {Most} notifications, which is as many as {Product.Title} keeps.");
             }
-            var channel = new Channel
+            var (made, problem) = Build(form, null, f.Channels);
+            if (made is null)
             {
-                Id = Convert.ToHexString(RandomNumberGenerator.GetBytes(6)).ToLowerInvariant(),
-                Kind = kind,
-                Name = Named(form.Name, kind, form.Url!),
-                Url = secrets.Encrypt(form.Url!.Trim()),
-                OnForNew = form.OnForNew ?? true,
-                Added = DateTime.UtcNow,
-                AddedBy = by,
-            };
-            f.Channels.Add(channel);
+                return (null, problem);
+            }
+            made.Id = Convert.ToHexString(RandomNumberGenerator.GetBytes(6)).ToLowerInvariant();
+            made.Added = clock.GetUtcNow().UtcDateTime;
+            made.AddedBy = by;
+            f.Channels.Add(made);
             file.Save(f);
-            return (channel, null);
+            return (made, null);
         }
     }
 
@@ -118,38 +193,76 @@ public sealed class Channels(DataFolder folder, SettingsStore secrets, IMailSend
     {
         lock (file.Gate)
         {
-            var f = file.Read();
-            if (f.Channels.FirstOrDefault(c => c.Id == id) is not { } c)
+            var f = Read();
+            var at = f.Channels.FindIndex(c => c.Id == id);
+            if (at < 0)
             {
-                return "That channel isn't here any more.";
+                return "That notification isn't here any more.";
             }
-            if (!string.IsNullOrWhiteSpace(form.Url))
+            var (next, problem) = Build(form, f.Channels[at], f.Channels);
+            if (next is null)
             {
-                if (Check(c.Kind, form.Url) is { } bad)
-                {
-                    return bad;
-                }
-                c.Url = secrets.Encrypt(form.Url.Trim());
+                return problem;
             }
-            if (form.Name is not null)
-            {
-                c.Name = Named(form.Name, c.Kind, secrets.TryDecrypt(c.Url) ?? "");
-            }
-            if (form.OnForNew is { } on)
-            {
-                c.OnForNew = on;
-            }
+            f.Channels[at] = next;
             file.Save(f);
             return null;
         }
     }
 
-    /// <summary>Takes a channel away; the sensors that used it stop sending to it (Sensors drops unknown ids).</summary>
+    // A notification from the form: the kind it is (a saved one keeps its kind), a name of its own, and where it sends.
+    private (Channel? Channel, string? Problem) Build(ChannelForm form, Channel? old, List<Channel> all)
+    {
+        var kind = old?.Kind ?? (Kinds.Contains(form.Kind) ? form.Kind! : "");
+        if (kind.Length == 0)
+        {
+            return (null, "Pick what kind of notification it is.");
+        }
+        var name = form.Name?.Trim() ?? "";
+        if (name.Length == 0)
+        {
+            return (null, "Give it a name, such as Anthony, Ops team or Lab alerts. It's what sensors and links pick it by.");
+        }
+        if (name.Length > 40)
+        {
+            return (null, "Keep the name to 40 characters.");
+        }
+        if (all.Any(c => c.Id != old?.Id && string.Equals(Label(c), name, StringComparison.OrdinalIgnoreCase)))
+        {
+            return (null, $"There's a notification called {name} already. Give this one another name.");
+        }
+        var next = new Channel
+        {
+            Id = old?.Id ?? "", Kind = kind, Name = name, Url = old?.Url ?? "", Mail = old?.Mail, OnForNew = old?.OnForNew ?? false,
+            Added = old?.Added ?? default, AddedBy = old?.AddedBy, LastTried = old?.LastTried, LastSent = old?.LastSent, LastProblem = old?.LastProblem,
+        };
+        if (kind == "email")
+        {
+            var (settings, problem) = global::RabbidLab.Server.Mail.Read(form.Mail ?? new MailForm(null, null, null, null, null, null, null, null, null, null, null), old?.Mail, secrets);
+            if (settings is null)
+            {
+                return (null, problem);
+            }
+            next.Mail = settings;
+            return (next, null);
+        }
+        if (old is null || !string.IsNullOrWhiteSpace(form.Url))
+        {
+            if (Check(kind, form.Url) is { } bad)
+            {
+                return (null, bad);
+            }
+            next.Url = secrets.Encrypt(form.Url!.Trim());
+        }
+        return (next, null);
+    }
+
+    /// <summary>Takes one away; the sensors and rules that used it stop sending to it.</summary>
     public bool Remove(string id)
     {
         lock (file.Gate)
         {
-            var f = file.Read();
+            var f = Read();
             if (f.Channels.RemoveAll(c => c.Id == id) == 0)
             {
                 return false;
@@ -159,45 +272,66 @@ public sealed class Channels(DataFolder folder, SettingsStore secrets, IMailSend
         }
     }
 
-    public void EmailOnForNew(bool on)
+    /// <summary>Sends an alert to one notification by id. The answer is why it didn't go, or null when it went.</summary>
+    public async Task<string?> Send(string id, MailNote note, CancellationToken stop)
     {
+        Channel? c;
         lock (file.Gate)
         {
-            var f = file.Read();
-            f.EmailOnForNew = on;
-            file.Save(f);
+            c = Read().Channels.FirstOrDefault(x => x.Id == id);
         }
-    }
-
-    /// <summary>Sends an alert to one channel by id. The answer is why it didn't go, or null when it went.</summary>
-    public Task<string?> Send(string id, MailNote note, CancellationToken stop)
-    {
-        if (id == Email)
+        if (c is null)
         {
-            return mail.Send(note, stop);
+            return "That notification isn't here any more.";
         }
-        var c = file.Read().Channels.FirstOrDefault(x => x.Id == id);
-        return c is null ? Task.FromResult<string?>("That channel isn't here any more.")
-            : secrets.TryDecrypt(c.Url) is { } url ? sender.Send(c.Kind, url, note, stop)
-            : Task.FromResult<string?>("Its address can't be read here any more. Type it again.");
+        var problem = await Post(c, note, stop);
+        lock (file.Gate)
+        {
+            if (Read().Channels.FirstOrDefault(x => x.Id == id) is { } kept)
+            {
+                kept.LastTried = clock.GetUtcNow().UtcDateTime;
+                kept.LastProblem = problem;
+                kept.LastSent = problem is null ? kept.LastTried : kept.LastSent;
+                file.Save(file.Read());
+            }
+        }
+        return problem;
     }
 
-    /// <summary>A test message, to a channel being set up (form) or one that's saved (id).</summary>
-    public async Task<string?> Test(string? id, ChannelForm? form, CancellationToken stop)
+    private Task<string?> Post(Channel c, MailNote note, CancellationToken stop) =>
+        c.Kind == "email" ? mail.Send(c.Mail ?? new MailSettings(), note, stop)
+        : secrets.TryDecrypt(c.Url) is { } url ? sender.Send(c.Kind, url, note, stop)
+        : Task.FromResult<string?>("Its address can't be read here any more. Type it again.");
+
+    /// <summary>A test message: to a saved notification, to one as typed, or to a saved one with what's typed over it.</summary>
+    public async Task<string?> Test(ChannelTestForm form, CancellationToken stop)
     {
-        var note = new MailNote($"Test from {Product.Title}", "note", [("What", "A test message. Sensor alerts will look like this.")],
-            new AlertCard("test", "Alerts work here", $"This channel gets alerts from {Product.Title}.",
-                [new("🔔 What you'll get", ["A message when a sensor goes down, and one when it's back", "Reminders while it stays down, if the sensor asks for them"])],
+        var note = new MailNote($"Test from {Product.Title}", "note", [("What", "A test message. Alerts will look like this.")],
+            new AlertCard("test", "Alerts work here", $"This notification gets alerts from {Product.Title}.",
+                [new("🔔 What you'll get", ["A message when something goes down, and one when it's back", "Reminders while it stays down, if its alert rule asks for them"])],
                 "Sent from Settings, Notifications"));
-        if (id is not null)
+        Channel? old;
+        List<Channel> all;
+        lock (file.Gate)
         {
-            return Known(id) ? await Send(id, note, stop) : "That channel isn't here any more.";
+            all = [.. Read().Channels];
+            old = form.Id is null ? null : all.FirstOrDefault(c => c.Id == form.Id);
         }
-        var kind = Kinds.Contains(form?.Kind) ? form!.Kind! : "";
-        return kind.Length == 0 ? "Pick what kind of channel it is." : Check(kind, form!.Url) ?? await sender.Send(kind, form.Url!.Trim(), note, stop);
+        if (form.Id is not null && old is null)
+        {
+            return "That notification isn't here any more.";
+        }
+        if (form.Form is null)
+        {
+            return await Send(old!.Id, note, stop);
+        }
+        // As typed: a name isn't needed to try it.
+        var typed = form.Form with { Name = string.IsNullOrWhiteSpace(form.Form.Name) ? "Test" : form.Form.Name };
+        var (made, problem) = Build(typed, old, [.. all.Where(c => c.Id == old?.Id)]);
+        return made is null ? problem : await Post(made, note, stop);
     }
 
-    /// <summary>Why an address won't do for the kind of channel, or null when it will.</summary>
+    /// <summary>Why an address won't do for the kind, or null when it will.</summary>
     public static string? Check(string kind, string? url)
     {
         if (string.IsNullOrWhiteSpace(url) || url.Length > 500 || !Uri.TryCreate(url.Trim(), UriKind.Absolute, out var u) || u.Scheme is not ("http" or "https") || u.Host.Length == 0)
@@ -222,15 +356,20 @@ public sealed class Channels(DataFolder folder, SettingsStore secrets, IMailSend
     // The address shortened for the page: the host and the last few characters.
     private static string Where(string? url) => Uri.TryCreate(url, UriKind.Absolute, out var u) ? $"{u.Host} · …{url![^Math.Min(4, url.Length)..]}" : "Address can't be read";
 
-    private static string Named(string? name, string kind, string url)
+    // How an email one sends, in a few words: from alerts@gmail.com to anthony@amw.com and 1 more.
+    private static string MailWhere(MailSettings? m)
     {
-        var typed = name?.Trim() ?? "";
-        if (typed.Length > 0)
+        if (m is null)
         {
-            return typed.Length > 40 ? typed[..40] : typed;
+            return "Not set up";
         }
-        // An ntfy channel is known by its topic; the others by their kind until someone names them.
-        return kind == "ntfy" && Uri.TryCreate(url, UriKind.Absolute, out var u) ? u.AbsolutePath.Trim('/') : "";
+        var to = m.To.Count == 0 ? "nobody yet" : m.To.Count == 1 ? m.To[0] : $"{m.To[0]} and {m.To.Count - 1} more";
+        return m.Provider switch
+        {
+            "m365" => $"Microsoft 365 · from {m.From} to {to}",
+            "gmail" => $"from {m.From} to {to}",
+            _ => $"{m.Host}, port {m.Port}, {(m.Security == "ssl" ? "SSL/TLS" : m.Security == "none" ? "no encryption" : "STARTTLS")} · to {to}",
+        };
     }
 }
 
@@ -488,7 +627,7 @@ public static class ChannelsApi
 {
     public static void MapChannelsApi(this WebApplication app)
     {
-        // Seen by whoever may change alert settings, as the mail settings are.
+        // Seen by whoever may change alert settings.
         app.MapGet("/api/channels", (HttpContext context, Channels channels, Sensors sensors) =>
             !Access.Can(context, Permissions.SensorsAlerts) ? Access.NotAllowed() : Results.Ok(channels.View(sensors.Using)));
 
@@ -503,26 +642,12 @@ public static class ChannelsApi
             {
                 return Results.BadRequest(new { error = problem });
             }
-            log.Record(context, "sensors", "channel.add", $"Added the {made.Kind} channel {made.Name}".TrimEnd());
+            log.Record(context, "sensors", "channel.add", $"Added the notification {made.Name} ({Channels.KindNames[made.Kind]})");
             return Results.Ok(new { id = made.Id, now = channels.View(sensors.Using) });
         });
 
-        app.MapPost("/api/channels/email", (OnForNewForm form, HttpContext context, Channels channels, Sensors sensors) =>
-        {
-            if (Access.RefuseUnless(context, Permissions.SensorsAlerts) is { } refused)
-            {
-                return refused;
-            }
-            channels.EmailOnForNew(form.OnForNew);
-            return Results.Ok(channels.View(sensors.Using));
-        });
-
-        app.MapPost("/api/channels/test", async (ChannelForm form, HttpContext context, Channels channels, CancellationToken stop) =>
-            Access.RefuseUnless(context, Permissions.SensorsAlerts) ?? (await channels.Test(null, form, stop) is { } problem
-                ? (IResult) Results.BadRequest(new { error = problem }) : Results.Ok(new { sent = true })));
-
-        app.MapPost("/api/channels/{id}/test", async (string id, HttpContext context, Channels channels, CancellationToken stop) =>
-            Access.RefuseUnless(context, Permissions.SensorsAlerts) ?? (await channels.Test(id, null, stop) is { } problem
+        app.MapPost("/api/channels/test", async (ChannelTestForm form, HttpContext context, Channels channels, CancellationToken stop) =>
+            Access.RefuseUnless(context, Permissions.SensorsAlerts) ?? (await channels.Test(form, stop) is { } problem
                 ? (IResult) Results.BadRequest(new { error = problem }) : Results.Ok(new { sent = true })));
 
         app.MapPost("/api/channels/{id}", (string id, ChannelForm form, HttpContext context, Channels channels, Sensors sensors, ActivityLog log) =>
@@ -535,11 +660,11 @@ public static class ChannelsApi
             {
                 return Results.BadRequest(new { error = problem });
             }
-            log.Record(context, "sensors", "channel.change", $"Changed the channel {channels.Name(id)}");
+            log.Record(context, "sensors", "channel.change", $"Changed the notification {channels.Name(id)}");
             return Results.Ok(channels.View(sensors.Using));
         });
 
-        app.MapPost("/api/channels/{id}/delete", (string id, HttpContext context, Channels channels, Sensors sensors, ActivityLog log) =>
+        app.MapPost("/api/channels/{id}/delete", (string id, HttpContext context, Channels channels, Alerts alerts, Sensors sensors, ActivityLog log) =>
         {
             if (Access.RefuseUnless(context, Permissions.SensorsAlerts) is { } refused)
             {
@@ -548,12 +673,11 @@ public static class ChannelsApi
             var name = channels.Name(id);
             if (!channels.Remove(id))
             {
-                return Results.NotFound(new { error = "That channel isn't here any more." });
+                return Results.NotFound(new { error = "That notification isn't here any more." });
             }
-            log.Record(context, "sensors", "channel.delete", $"Deleted the channel {name}");
+            alerts.Forget(id);
+            log.Record(context, "sensors", "channel.delete", $"Deleted the notification {name}");
             return Results.Ok(channels.View(sensors.Using));
         });
     }
 }
-
-public sealed record OnForNewForm(bool OnForNew);

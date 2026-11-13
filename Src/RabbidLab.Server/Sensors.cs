@@ -78,8 +78,11 @@ public sealed class Sensor
     /// <summary>Seconds between checks.</summary>
     public int Every { get; set; } = 60;
 
-    /// <summary>The saved alert settings it uses, by id, or custom for its own (Custom).</summary>
+    /// <summary>follow for its alert rule's times and notifications, custom for its own (Custom), or a saved setting from before rules by id.</summary>
     public string Rule { get; set; } = "normal";
+
+    /// <summary>It watches a link on Links, so its down alerts come under the watched-link rule.</summary>
+    public bool Link { get; set; }
 
     /// <summary>With Rule custom: when it emails, again, and on coming back.</summary>
     public AlertRule? Custom { get; set; }
@@ -148,8 +151,11 @@ public sealed class SensorsFile
     public bool Gather { get; set; }
     public int GatherSecs { get; set; } = 60;
 
-    /// <summary>When new sensors alert, set in Settings, Sensors; null for what the default saved settings say (Normal: after 5 minutes).</summary>
+    /// <summary>From before alert rules: when new sensors alerted. The down rules started from it.</summary>
     public AlertRule? Start { get; set; }
+
+    /// <summary>The sensors whose times matched their rule were made to follow it, once.</summary>
+    public bool Followed { get; set; }
 }
 
 /// <summary>One check: when, and the reply time in milliseconds, or -1 for none.</summary>
@@ -183,6 +189,9 @@ public sealed class SensorState
 
     /// <summary>When the last email about it being down went out.</summary>
     public DateTime? Alerted { get; set; }
+
+    /// <summary>When the last alert about its warning went out.</summary>
+    public DateTime? Warned { get; set; }
 
     /// <summary>Someone was emailed that it's down, so they're told when it's back.</summary>
     public bool Told { get; set; }
@@ -468,14 +477,109 @@ public sealed record RuleForm(int? After, int? Again, bool? Back, string? Name =
 /// after its misses in a row (two unless it says, one for a sensor checked hourly). Its alert rule says how long it stays
 /// down before the alert goes to its channels, so something that comes straight back tells nobody.
 /// </summary>
-public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISensorProbe probe, IMailSender mail, ILogger<Sensors> log, SensorLogins logins, Channels channels)
+public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISensorProbe probe, Alerts alerts, ILogger<Sensors> log, SensorLogins logins, Channels channels)
 {
-    /// <summary>How many sensors send to a channel, for Settings, Notifications.</summary>
-    public int Using(string channel)
+    /// <summary>How many sensors, and how many watched links, send their down alerts to a notification, for Settings, Notifications.</summary>
+    public (int Sensors, int Links) Using(string channel)
     {
         lock (gate)
         {
-            return file.Read().Sensors.Count(s => (s.Channels ?? [Channels.Email]).Contains(channel));
+            var using_ = file.Read().Sensors.Where(s => Sends(s).Contains(channel)).ToList();
+            return (using_.Count(s => !s.Link), using_.Count(s => s.Link));
+        }
+    }
+
+    // Where a sensor's down alerts go: its rule's notifications when it follows its rule, else its own.
+    private List<string> Sends(Sensor s) => s.Rule == "follow" ? alerts.Rule(s.Link ? Alerts.LinkDown : Alerts.SensorDown).To : s.Channels ?? [Channels.Email];
+
+    // The notifications an alert of this kind goes to now: down alerts as the sensor sends them, warnings by their rule.
+    private List<string> To(Sensor s, string key) => [.. (key is Alerts.SensorDown or Alerts.LinkDown ? Sends(s) : alerts.Rule(key).To).Where(channels.Ready)];
+
+    // The rule a sensor's down alerts come under.
+    private static string DownKey(Sensor s) => s.Link ? Alerts.LinkDown : Alerts.SensorDown;
+
+    // The rule a warning comes under: a certificate, space running low, or a part of a server.
+    private static string WarnKey(Sensor s, SensorState st) =>
+        s.Kind == "cert" || st.Note?.StartsWith("Certificate", StringComparison.Ordinal) == true ? "sensor.cert"
+        : s.Kind == "disk" || st.Parts?.Any(p => p.Key == "space" && p.State != "ok") == true ? "sensor.space"
+        : "sensor.hardware";
+
+    /// <summary>For each alert rule: how many sensors or links it covers, and for the down rules how many set their own times.</summary>
+    public object RuleCounts()
+    {
+        lock (gate)
+        {
+            var all = file.Read().Sensors;
+            var plain = all.Where(s => !s.Link && s.Expires is null).ToList();
+            var links = all.Where(s => s.Link).ToList();
+            bool Parts(Sensor s, params string[] keys) => s.Watch is null ? PartsOf(s.Kind).Any(keys.Contains) : s.Watch.Any(keys.Contains);
+            return new Dictionary<string, object>
+            {
+                [Alerts.SensorDown] = new { follow = plain.Count(s => s.Rule == "follow"), own = plain.Where(s => s.Rule != "follow").Select(s => s.Name).ToList() },
+                [Alerts.LinkDown] = new { follow = links.Count(s => s.Rule == "follow"), own = links.Where(s => s.Rule != "follow").Select(s => s.Name).ToList() },
+                ["sensor.cert"] = new { count = all.Count(s => s.Kind == "cert" || s.Kind == "web" && s.CertDays is not null) },
+                ["sensor.space"] = new { count = all.Count(s => s.Kind == "disk" || s.Kind is "nas" or "vmware" && Parts(s, "space")) },
+                ["sensor.hardware"] = new { count = all.Count(s => s.Kind == "hw" || s.Kind == "nas" && Parts(s, "pools", "disks") || s.Kind == "vmware" && Parts(s, "hosts", "alarms") || s.Kind == "snmp" && Parts(s, "battery", "power")) },
+            };
+        }
+    }
+
+    /// <summary>Whether down alerts close together go as one, and how long the first waits.</summary>
+    public object Gathering()
+    {
+        lock (gate)
+        {
+            var f = file.Read();
+            return new { on = f.Gather, secs = f.GatherSecs };
+        }
+    }
+
+    /// <summary>Makes the sensors with their own times (or the watched links with theirs) follow their rule. How many changed.</summary>
+    public int Follow(bool links)
+    {
+        lock (gate)
+        {
+            var f = file.Read();
+            var changed = 0;
+            foreach (var s in f.Sensors.Where(s => s.Link == links && s.Rule != "follow" && s.Expires is null))
+            {
+                (s.Rule, s.Custom, s.Channels) = ("follow", null, null);
+                changed++;
+            }
+            file.Save(f);
+            return changed;
+        }
+    }
+
+    /// <summary>
+    /// At start: marks the sensors that watch links, and the first time, makes every sensor whose times and notifications
+    /// are what its rule says follow that rule, so a change to the rule changes them too.
+    /// </summary>
+    public void Settle(IEnumerable<string> linkSensors)
+    {
+        var watching = linkSensors.ToHashSet();
+        lock (gate)
+        {
+            var f = file.Read();
+            foreach (var s in f.Sensors)
+            {
+                s.Link = watching.Contains(s.Id);
+            }
+            if (!f.Followed)
+            {
+                foreach (var s in f.Sensors.Where(s => s.Rule != "follow" && s.Expires is null))
+                {
+                    var own = Alerting(f, s);
+                    var rule = alerts.Rule(DownKey(s));
+                    var sends = (s.Channels ?? [Channels.Email]).Where(channels.Known).ToHashSet();
+                    if (rule.On && own.After == rule.After && own.Again == rule.Again && own.Back == rule.Back && sends.SetEquals(rule.To))
+                    {
+                        (s.Rule, s.Custom, s.Channels) = ("follow", null, null);
+                    }
+                }
+                f.Followed = true;
+            }
+            file.Save(f);
         }
     }
 
@@ -499,6 +603,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
     private readonly HashSet<string> busy = []; // being checked right now
     private readonly HashSet<string> soon = []; // checked on the next round, whenever they were last checked
     private readonly Dictionary<string, DateTime> held = []; // down alerts waiting for others to join them (Gather), from when
+    private readonly HashSet<string> quiet = []; // sensor:rule alerts held for quiet hours, written down once
     private readonly Dictionary<string, DateTime> tested = []; // when each sensor last sent a test alert
     private bool dirty;
     private DateTime saved;
@@ -549,9 +654,13 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
 
     private static AlertRule Own(AlertRule r) => new() { Id = "custom", Name = "Custom", Color = "#8A8FA8", After = r.After, Again = r.Again, Back = r.Back };
 
-    // When a sensor alerts: its own times, or for one from before sensors had them, the saved settings it was on.
-    private static AlertRule Alerting(SensorsFile f, Sensor s)
+    // When a sensor alerts: its rule's times, its own, or for one from before sensors had them, the saved settings it was on.
+    private AlertRule Alerting(SensorsFile f, Sensor s)
     {
+        if (s.Rule == "follow")
+        {
+            return alerts.Times(DownKey(s));
+        }
         if (s.Rule == "custom" && s.Custom is { } own)
         {
             return own;
@@ -567,7 +676,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
         return Own(f.Start ?? rules.First(r => r.Id == DefaultRule(f, rules)));
     }
 
-    /// <summary>When new sensors alert, as set in Settings, Sensors.</summary>
+    /// <summary>When new sensors alerted before alert rules, which the down rules start from.</summary>
     public AlertRule StartAlerts()
     {
         lock (gate)
@@ -653,20 +762,24 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
                 groups,
                 rules = Rules(f).Select(r => new { r.Id, r.Name, r.Color, r.After, r.Again, r.Back, used = counts.GetValueOrDefault(r.Id) }).ToList(),
                 @default = DefaultRule(f, Rules(f)),
-                start = Times(StartRule(f)),
+                // What a sensor or a watched link that follows its rule gets, and the numbers new sensors warn at.
+                start = Times(alerts.Times(Alerts.SensorDown)),
+                startTo = alerts.Rule(Alerts.SensorDown).To,
+                linkStart = Times(alerts.Times(Alerts.LinkDown)),
+                linkTo = alerts.Rule(Alerts.LinkDown).To,
+                limits = new { cert = alerts.Rule("sensor.cert").Limit, space = alerts.Rule("sensor.space").Limit },
                 gather = new { on = f.Gather, secs = f.GatherSecs },
-                mail = mail.Ready,
                 last = f.Sensors.Select(s => State(s.Id).Checked).Max(),
             };
         }
     }
 
     // A sensor as the page has it. One that's down while something it depends on is down shows as wait.
-    private static object Row(Sensor s, SensorState st, Sensor? waits, AlertRule alert) => new
+    private object Row(Sensor s, SensorState st, Sensor? waits, AlertRule alert) => new
     {
         s.Id, s.Name, s.Kind, s.Target, s.Port, s.Server, s.Expect, s.Text, s.Address, s.WarnDays, s.Login, s.Watch, s.Pin, s.Product, s.WarnFree, s.Value, s.Oid, s.Interface, s.Seat, s.Service, s.Drive, s.Group, s.Every, s.Rule, s.Custom, s.Paused,
-        alert = Times(alert),
-        channels = s.Channels ?? [Channels.Email], s.DownAfter, s.CertDays, s.Invert, s.Timeout, tags = s.Tags ?? [], s.DependsOn, s.PausedUntil,
+        alert = Times(alert), follows = s.Rule == "follow", s.Link,
+        channels = Sends(s), s.DownAfter, s.CertDays, s.Invert, s.Timeout, tags = s.Tags ?? [], s.DependsOn, s.PausedUntil,
         status = s.Paused ? "paused" : waits is not null ? "wait" : st.Status,
         waits = waits?.Name,
         since = st.Since,
@@ -908,7 +1021,14 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
             next.Id = old?.Id ?? Convert.ToHexString(RandomNumberGenerator.GetBytes(6)).ToLowerInvariant();
             next.Group = group;
             var rules = Rules(f);
-            if (form.Rule == "custom")
+            next.Link = old?.Link ?? false;
+            if (form.Rule == "follow" || old is null && form.Rule != "custom" && !rules.Any(r => r.Id == form.Rule))
+            {
+                // Its rule's times and notifications, and whatever they're changed to later.
+                next.Rule = "follow";
+                next.Custom = null;
+            }
+            else if (form.Rule == "custom")
             {
                 if (form.Custom is null || Timings(form.Custom) is not null)
                 {
@@ -921,19 +1041,20 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
             {
                 next.Rule = form.Rule!;
             }
-            else if (old is not null)
-            {
-                // Not sent: it keeps the times it has.
-                next.Rule = old.Rule;
-                next.Custom = old.Custom;
-            }
             else
             {
-                next.Rule = "custom";
-                next.Custom = StartRule(f);
+                // Not sent: it keeps the times it has.
+                next.Rule = old!.Rule;
+                next.Custom = old.Custom;
             }
-            // Where its alerts go: the channels sent; else the ones it had; a new one starts with those on for new sensors.
-            next.Channels = form.Channels is { } picked ? [.. picked.Where(channels.Known).Distinct()] : old is not null ? old.Channels : channels.Defaults();
+            // Where its down alerts go: following its rule, the rule's; else the notifications sent, or the ones it had.
+            next.Channels = next.Rule == "follow" ? null
+                : form.Channels is { } picked ? [.. picked.Where(channels.Known).Distinct()] : old?.Channels ?? alerts.Rule(DownKey(next)).To;
+            // A new certificate sensor warns at what the certificate rule says, unless it says otherwise.
+            if (old is null && next.Kind == "cert" && form.WarnDays is null)
+            {
+                next.WarnDays = alerts.Rule("sensor.cert").Limit;
+            }
             // What it depends on: a sensor that's here and doesn't depend on it already. Not sent keeps what it had.
             var above = form.DependsOn is null ? old?.DependsOn : form.DependsOn.Trim();
             if (string.IsNullOrEmpty(above) || form.DependsOn is null && f.Sensors.All(s => s.Id != above))
@@ -1123,22 +1244,6 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
         }
     }
 
-    /// <summary>When new sensors alert. Why not, or null.</summary>
-    public string? SetStart(RuleForm form)
-    {
-        if (Timings(form) is { } problem)
-        {
-            return problem;
-        }
-        lock (gate)
-        {
-            var f = file.Read();
-            f.Start = Own(form);
-            file.Save(f);
-            return null;
-        }
-    }
-
     /// <summary>
     /// Gives sensors these alert times, and these channels when sent. What each depends on is left as it is.
     /// How many it changed, or why not.
@@ -1219,9 +1324,9 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
 
     /// <summary>
     /// The sensor that watches a link: a web page sensor made for it, or the one it has, given the link's name, address and
-    /// group and the alerts asked for. Channels null keeps the ones it has (a new one starts with the usual ones). Its id, or why not.
+    /// group. It follows the watched-link rule, or has the alerts asked for; channels null keeps the ones it has. Its id, or why not.
     /// </summary>
-    public (string? Id, string? Problem) Watch(string? sensor, string name, string url, string? group, RuleForm alerts, List<string>? to, string by)
+    public (string? Id, string? Problem) Watch(string? sensor, string name, string url, string? group, bool follow, RuleForm own, List<string>? to, string by)
     {
         Sensor? old;
         lock (gate)
@@ -1229,9 +1334,21 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
             old = file.Read().Sensors.FirstOrDefault(s => s.Id == sensor && s.Kind == "web");
         }
         var form = old is null
-            ? new SensorForm(name, "web", url, null, null, group, 60, "custom", Custom: alerts, Channels: to)
-            : FormOf(old) with { Name = name, Target = url, Group = group, Rule = "custom", Custom = alerts, Channels = to };
+            ? new SensorForm(name, "web", url, null, null, group, 60, follow ? "follow" : "custom", Custom: follow ? null : own, Channels: to)
+            : FormOf(old) with { Name = name, Target = url, Group = group, Rule = follow ? "follow" : "custom", Custom = follow ? null : own, Channels = to };
         var (saved, problem) = Save(old?.Id, form, by);
+        if (saved is not null)
+        {
+            lock (gate)
+            {
+                var f = file.Read();
+                if (f.Sensors.FirstOrDefault(s => s.Id == saved.Id) is { Link: false } made)
+                {
+                    made.Link = true;
+                    file.Save(f);
+                }
+            }
+        }
         return (saved?.Id, problem);
     }
 
@@ -1466,7 +1583,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
             }
         }
         await Check(sensor, stop);
-        await Alerts(stop);
+        await SendAlerts(stop);
         return true;
     }
 
@@ -1494,7 +1611,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
             });
         }
         await Parallel.ForEachAsync(due, new ParallelOptions { MaxDegreeOfParallelism = 16, CancellationToken = stop }, async (s, t) => await Check(s, t));
-        await Alerts(stop);
+        await SendAlerts(stop);
         lock (gate)
         {
             if (dirty && (Now - saved).TotalSeconds >= 30)
@@ -1629,11 +1746,12 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
         }
     }
 
-    // Who should hear about what, worked out under the lock and sent outside it, to each of the sensor's channels. A down
-    // sensor waiting on one it depends on says nothing. With Gather on, a first down alert waits a little for others to join it.
-    private async Task Alerts(CancellationToken stop)
+    // Who should hear about what, worked out under the lock and sent outside it, through the alert rules. A down sensor
+    // waiting on one it depends on says nothing. With Gather on, a first down alert waits a little for others to join it.
+    // In quiet hours what the rules hold back isn't marked as told, so it goes once they're over if it's still so.
+    private async Task SendAlerts(CancellationToken stop)
     {
-        var send = new List<(List<string> Ids, MailNote Note, string Channel)>();
+        var send = new List<(List<string> Ids, MailNote Note, string Key, List<string> To)>();
         var said = new Dictionary<string, string>(); // what each sensor's history says went
         lock (gate)
         {
@@ -1642,71 +1760,107 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
             var byId = f.Sensors.ToDictionary(s => s.Id);
             var waits = f.Sensors.ToDictionary(s => s.Id, s => Waits(byId, s));
             var down = f.Sensors.Where(s => !s.Paused && State(s.Id).Status == "down" && waits[s.Id] is null).ToList();
-            // A sensor's channels that can take an alert now.
-            List<string> To(Sensor s) => [.. (s.Channels ?? [Channels.Email]).Where(channels.Ready)];
-            void Queue(Sensor s, MailNote note, string text)
+            void Queue(Sensor s, MailNote note, string text, string key)
             {
-                To(s).ForEach(c => send.Add(([s.Id], note, c)));
+                send.Add(([s.Id], note, key, To(s, key)));
                 said[s.Id] = text;
+                quiet.Remove($"{s.Id}:{key}");
+            }
+            // Held for quiet hours: written down once, and nothing marked, so it goes when they're over.
+            bool Hold(Sensor s, string key, string title)
+            {
+                if (!alerts.Holds(key, now))
+                {
+                    return false;
+                }
+                if (quiet.Add($"{s.Id}:{key}"))
+                {
+                    alerts.Held(key, title, To(s, key));
+                }
+                return true;
             }
             foreach (var s in f.Sensors.Where(s => !s.Paused))
             {
                 var st = State(s.Id);
                 var rule = Alerting(f, s);
-                // With no channel, or waiting on what it depends on, nothing is marked as told: it alerts once it can, if it's still down.
-                if ((To(s).Count == 0 && st.Status != "up") || waits[s.Id] is not null)
+                var key = DownKey(s);
+                if (waits[s.Id] is not null)
                 {
                     continue;
                 }
-                if (st.Status == "down" && rule.After >= 0)
+                if (st.Status != "down" && st.Status != "warn")
+                {
+                    quiet.RemoveWhere(k => k.StartsWith(s.Id + ":", StringComparison.Ordinal));
+                }
+                if (st.Status == "down" && rule.After >= 0 && To(s, key).Count > 0)
                 {
                     var first = st.Alerted is null && (now - (st.Since ?? now)).TotalMinutes >= rule.After;
                     var again = st.Alerted is { } last && rule.Again > 0 && (now - last).TotalMinutes >= rule.Again;
+                    if ((first || again) && Hold(s, key, $"{s.Name} is {(again ? "still " : "")}down"))
+                    {
+                        continue;
+                    }
                     if (first && f.Gather)
                     {
                         held.TryAdd(s.Id, now);
                     }
                     else if (first || again)
                     {
-                        Queue(s, DownNote(s, st, now, again, down, waits, byId), again ? "Sent again: still down" : "Sent: down");
+                        Queue(s, DownNote(s, st, now, again, down, waits, byId), again ? "Sent again: still down" : "Sent: down", key);
                         st.Alerted = now;
                         st.Told = true;
                         dirty = true;
                     }
                 }
-                else if (st.Status == "warn" && !st.Told && rule.After >= 0)
+                else if (st.Status == "warn")
                 {
+                    // A warning comes under its own rule: a certificate, space running low, or a part of a server.
+                    var wkey = WarnKey(s, st);
+                    var wrule = alerts.Rule(wkey);
+                    var first = st.Warned is null;
+                    var again = st.Warned is { } last && wrule.Again > 0 && (now - last).TotalMinutes >= wrule.Again;
+                    if (!wrule.On || To(s, wkey).Count == 0 || !first && !again || Hold(s, wkey, $"{s.Name}: {st.Note}"))
+                    {
+                        continue;
+                    }
                     Queue(s, new MailNote($"{s.Name}: {st.Note}", "warn", [("Sensor", What(s)), ("Group", s.Group ?? "No group")],
-                        new AlertCard("warn", $"{s.Name}: {st.Note}", "It's still answering. This is a heads-up.", [new("🟡 Details", [What(s), Where(s)])], Product.Title)), "Sent: warning");
-                    st.Told = true;
+                        new AlertCard("warn", $"{s.Name}: {st.Note}", "It's still answering. This is a heads-up.", [new("🟡 Details", [What(s), Where(s)])], Product.Title)),
+                        again ? "Sent again: still needs attention" : "Sent: warning", wkey);
+                    st.Warned = now;
                     dirty = true;
                 }
-                else if (st.Status == "up" && st.Told)
+                else if (st.Status == "up" && (st.Told || st.Warned is not null))
                 {
-                    // Back, or a warning cleared: said only when the outage was, and the rule wants it.
-                    var outage = st.Events.LastOrDefault(e => e.What == "up");
-                    if (st.Alerted is not null && rule.Back)
+                    // Back: said only when a down alert went and the rule wants it. A warning that cleared just ends.
+                    if (st.Alerted is not null && rule.Back && To(s, key).Count > 0)
                     {
+                        if (Hold(s, key, $"{s.Name} is back up"))
+                        {
+                            continue;
+                        }
+                        var outage = st.Events.LastOrDefault(e => e.What == "up");
                         Queue(s, new MailNote($"{s.Name} is back up", "up",
                             [("Sensor", What(s)), ("Group", s.Group ?? "No group"), ("What happened", outage?.Text ?? "Came back"), ("Answering in", st.Ms is { } ms ? $"{ms} ms" : "time")],
                             new AlertCard("up", $"{s.Name} is back up", "It answered again at {when}.",
                                 [new("🟢 Now", [st.Ms is { } took ? $"Answering in {took} ms" : "Answering", outage?.Text ?? "Came back"]), new("📍 Where", [What(s), Where(s)])],
-                                Product.Title, st.Since ?? now)), "Sent: back up");
+                                Product.Title, st.Since ?? now)), "Sent: back up", key);
                     }
                     st.Told = false;
                     st.Alerted = null;
+                    st.Warned = null;
                     dirty = true;
                 }
             }
             // Gathered alerts go once the first has waited long enough (at once if Gather was turned off): the ones still down, together.
             if (held.Count > 0 && (!f.Gather || (now - held.Values.Min()).TotalSeconds >= f.GatherSecs))
             {
-                var ready = held.Keys.Where(byId.ContainsKey).Select(id => byId[id]).Where(s => down.Contains(s) && To(s).Count > 0).ToList();
+                var ready = held.Keys.Where(byId.ContainsKey).Select(id => byId[id]).Where(s => down.Contains(s) && To(s, DownKey(s)).Count > 0).ToList();
                 held.Clear();
-                foreach (var channel in ready.SelectMany(To).Distinct().ToList())
+                foreach (var channel in ready.SelectMany(s => To(s, DownKey(s))).Distinct().ToList())
                 {
-                    var with = ready.Where(s => To(s).Contains(channel)).ToList();
-                    send.Add(([.. with.Select(s => s.Id)], with.Count == 1 ? DownNote(with[0], State(with[0].Id), now, false, down, waits, byId) : Gathered(with, now, f, down, waits, byId), channel));
+                    var with = ready.Where(s => To(s, DownKey(s)).Contains(channel)).ToList();
+                    send.Add(([.. with.Select(s => s.Id)], with.Count == 1 ? DownNote(with[0], State(with[0].Id), now, false, down, waits, byId) : Gathered(with, now, f, down, waits, byId),
+                        DownKey(with[0]), [channel]));
                 }
                 foreach (var s in ready)
                 {
@@ -1720,18 +1874,13 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
         }
         var went = new Dictionary<string, List<string>>();
         var failed = new Dictionary<string, List<string>>();
-        foreach (var (ids, note, channel) in send)
+        foreach (var (ids, note, key, to) in send)
         {
-            var problem = await channels.Send(channel, note, stop);
-            var name = channels.Name(channel);
+            var (ok, bad) = await alerts.Send(key, note, to, stop);
             foreach (var id in ids)
             {
-                var into = problem is null ? went : failed;
-                if (!into.TryGetValue(id, out var list))
-                {
-                    into[id] = list = [];
-                }
-                list.Add(problem is null ? name : channel == Channels.Email ? $"The email didn't go: {problem}" : $"{name} didn't take it: {problem}");
+                (went.TryGetValue(id, out var w) ? w : went[id] = []).AddRange(ok);
+                (failed.TryGetValue(id, out var x) ? x : failed[id] = []).AddRange(bad.Select(b => $"Didn't go to {b}"));
             }
         }
         if (said.Count == 0)
@@ -1743,7 +1892,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
             foreach (var (id, text) in said)
             {
                 var st = State(id);
-                if (went.TryGetValue(id, out var to))
+                if (went.TryGetValue(id, out var to) && to.Count > 0)
                 {
                     Event(st, Now, "email", $"{text} · {string.Join(", ", to)}");
                 }
@@ -1840,10 +1989,10 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
             {
                 return ([], [], "That sensor isn't here any more.");
             }
-            to = [.. (s.Channels ?? [Channels.Email]).Where(channels.Ready)];
+            to = To(s, DownKey(s));
             if (to.Count == 0)
             {
-                return ([], [], "It has nowhere to send alerts. Change it and pick a channel under Send to, or set up email.");
+                return ([], [], s.Rule == "follow" ? "Its alert rule has nowhere to send. Pick notifications for it in Settings, Alert rules." : "It has nowhere to send alerts. Change it and pick notifications under Send to.");
             }
             if (tested.TryGetValue(id, out var last) && (Now - last).TotalSeconds < 10)
             {
@@ -1865,7 +2014,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
             }
             else
             {
-                failed.Add(channel == Channels.Email ? $"The email didn't go: {problem}" : $"{name} didn't take it: {problem}");
+                failed.Add($"Didn't go to {name}: {problem}");
             }
         }
         lock (gate)
@@ -2008,21 +2157,6 @@ public static class SensorsApi
             log.Record(context, "sensors", form.Paused ? "sensor.pause" : "sensor.resume", form.Paused
                 ? $"Paused the sensor {sensor.Name}{others}{(form.Minutes is { } m ? $" for {(m % 60 == 0 ? $"{m / 60} hour{(m == 60 ? "" : "s")}" : $"{m} minutes")}" : "")}"
                 : $"Started the sensor {sensor.Name}{others} again");
-            return Results.Ok(sensors.View());
-        });
-
-        // When new sensors alert (Settings, Sensors).
-        app.MapPost("/api/sensors/start", (RuleForm form, HttpContext context, Sensors sensors, ActivityLog log) =>
-        {
-            if (Access.RefuseUnless(context, Permissions.SensorsAlerts) is { } refused)
-            {
-                return refused;
-            }
-            if (sensors.SetStart(form) is { } problem)
-            {
-                return Results.BadRequest(new { error = problem });
-            }
-            log.Record(context, "sensors", "sensor.start", "Changed when new sensors alert");
             return Results.Ok(sensors.View());
         });
 
