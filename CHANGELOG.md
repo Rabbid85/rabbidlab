@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.104 (2026-11-12)
+
+- New update window: the flask in a ring that fills up, the old and new version, and the steps as joined dots with icons that turn into ticks. It says Rabbid Lab is stopped while it installs, not that the server is offline, and the last step is Restarting.
+
 ## 1.1.103 (2026-11-12)
 
 - Drop-downs open below the box again. They go above only when there is no room under it.

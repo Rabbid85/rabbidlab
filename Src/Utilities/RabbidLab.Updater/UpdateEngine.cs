@@ -251,7 +251,7 @@ public sealed class UpdateEngine(UpdateOptions options, IUpdateSource source, IU
         // Automatic installation turned off: offered, installed only when someone chooses Install now.
         if (!chosen && !host.Automatic)
         {
-            return Say(UpdateStatus.Available, version, $"Version {version} is ready to install. Installing takes about a minute, and the server is offline while it does.");
+            return Say(UpdateStatus.Available, version, $"Version {version} is ready to install. Installing takes about a minute, and Rabbid Lab is stopped while it does.");
         }
         // Someone is using the console: offered, never installed under anyone. Nobody has for a couple of minutes: installed.
         if (!chosen && InUseNow)
@@ -386,7 +386,7 @@ public sealed class UpdateEngine(UpdateOptions options, IUpdateSource source, IU
     }
 
     private UpdateState Installing(string version) =>
-        Say(UpdateStatus.Installing, version, $"Installing version {version}. The server is offline for about a minute.");
+        Say(UpdateStatus.Installing, version, $"Installing version {version}. Rabbid Lab is stopped for about a minute.");
 
     /// <summary>Notes the version running now in version.txt, and says which one it replaced, if this is its first run.</summary>
     private static string? Replaced(string folder, string current)

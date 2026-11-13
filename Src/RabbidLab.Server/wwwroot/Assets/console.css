@@ -253,13 +253,45 @@ dialog.busy-host { position: fixed; } /* a dialog stays where it is under its co
 .busy-cover small:empty { display: none; }
 @keyframes busy-in { from { opacity: 0; } }
 .uinstall .say { margin: 14px 0 0; font-size: 12.5px; color: #5E6380; }
-/* An update under way, mid screen: the flask, what it's doing, and how far along. */
-.update-dialog { width: min(480px, calc(100vw - 32px)); text-align: center; }
-.update-dialog .flask { display: block; margin: 2px auto 8px; }
-.updlg-now { margin: 6px 0 0; font-size: 14px; }
-.updlg-pct { margin: 14px 0 8px; color: #fff; font: 800 30px/1 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; }
-.update-dialog .steps span { justify-content: center; padding: 8px 6px; }
-.update-dialog .dialog-foot { margin-top: 14px; }
+/* An update under way, mid screen: the flask in a ring that fills, the versions, what it's doing, and the steps as joined
+   dots, each with its icon until it's done. The line into a dot fills while the step before it runs. Green when it's done. */
+.update-dialog { width: min(460px, calc(100vw - 32px)); padding: 28px 26px 16px; border-radius: 18px; text-align: center; box-shadow: 0 30px 80px rgba(0, 0, 0, .6); }
+.update-dialog::backdrop { background: rgba(5, 6, 10, .62); backdrop-filter: blur(5px); }
+.updlg-ring { position: relative; width: 156px; height: 156px; margin: 0 auto 14px; }
+.updlg-ring .ring { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); overflow: visible; }
+.updlg-ring .track { fill: none; stroke: color-mix(in srgb, var(--accent-soft) 12%, transparent); stroke-width: 7; }
+.updlg-ring .prog { fill: none; stroke-width: 7; stroke-linecap: round; transition: stroke-dashoffset .6s ease; filter: drop-shadow(0 0 6px color-mix(in srgb, var(--accent-line) 55%, transparent)); }
+.updlg-ring .flask { position: absolute; left: 50%; top: 50%; width: 92px; height: 92px; translate: -50% -52%; }
+.updlg-pct { position: absolute; left: 50%; bottom: -12px; translate: -50% 0; padding: 3px 12px; border: 1px solid color-mix(in srgb, var(--accent-line) 40%, transparent); border-radius: 999px; background: #161926; color: #fff; font: 700 14px "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; }
+.update-dialog h2 { margin-top: 18px; }
+.updlg-vers { display: inline-flex; align-items: center; gap: 8px; margin-top: 8px; padding: 3px 11px; border: 1px solid var(--line-strong); border-radius: 999px; background: #0C0E17; color: var(--muted); font: 12.5px Consolas, monospace; }
+.updlg-vers[hidden] { display: none; }
+.updlg-vers b { color: var(--title); font-weight: 600; }
+.updlg-vers svg { width: 13px; height: 13px; color: var(--accent-soft); }
+.updlg-now { min-height: 42px; margin: 8px 0 14px; color: var(--muted); font-size: 14px; }
+.updlg-steps { display: grid; grid-template-columns: repeat(3, 1fr); margin: 0; padding: 0; list-style: none; }
+.updlg-steps li { position: relative; display: grid; justify-items: center; align-content: start; gap: 2px; color: #6D7290; font-size: 13px; }
+.updlg-steps .node { position: relative; z-index: 1; display: grid; place-items: center; width: 36px; height: 36px; margin-bottom: 7px; border: 2px solid #3A3E55; border-radius: 50%; background: #0C0E17; }
+.updlg-steps .node svg { width: 16px; height: 16px; color: #6D7290; }
+.updlg-steps .cn { position: absolute; top: 17px; left: calc(-50% + 24px); right: calc(50% + 24px); height: 2px; border-radius: 2px; background: var(--line-strong); overflow: hidden; }
+.updlg-steps .cn i { display: block; width: 0; height: 100%; background: var(--ember); transition: width .6s ease; }
+.updlg-steps small { min-height: 18px; color: #5E6380; font-size: 12px; }
+.updlg-steps .done { color: var(--text); }
+.updlg-steps .done .node { border-color: transparent; background: var(--ember); }
+.updlg-steps .done .node svg { color: #fff; stroke-width: 2.6; }
+.updlg-steps .now { color: #fff; font-weight: 600; }
+.updlg-steps .now small { color: var(--accent-soft); font-weight: 400; }
+.updlg-steps .now .node { border-color: color-mix(in srgb, var(--accent-soft) 25%, transparent); background: color-mix(in srgb, var(--accent) 20%, #0C0E17); }
+.updlg-steps .now .node svg { color: var(--accent-soft); }
+.updlg-steps .now .node::after { content: ""; position: absolute; inset: -2px; border: 2px solid; border-color: var(--accent-soft) transparent transparent; border-radius: 50%; animation: spin .9s linear infinite; }
+.update-dialog.is-done .prog { stroke: var(--ok); filter: drop-shadow(0 0 6px rgba(95, 212, 160, .5)); }
+.update-dialog.is-done .updlg-pct { border-color: rgba(95, 212, 160, .45); color: var(--ok); }
+.update-dialog.is-done .updlg-steps .done .node, .update-dialog.is-done .updlg-steps .cn i { background: var(--ok); }
+.update-dialog .dialog-foot { justify-content: center; align-items: center; min-height: 32px; margin-top: 14px; }
+.updlg-hide { padding: 6px 10px; border: 0; background: none; color: #9DA1B3; font-size: 13.5px; font-weight: 600; }
+.updlg-hide:hover { background: #1A1C28; color: #fff; }
+.updlg-took { color: #5E6380; font-size: 13px; }
+.updlg-took b { color: var(--ok); font-weight: 600; }
 
 /* Rows, like system settings: what it is on the left, its control on the right. */
 .rows { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); overflow: hidden; }

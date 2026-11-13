@@ -76,7 +76,7 @@ public static class Permissions
         [
             new(UpdatesView, "See updates", "Which version is installed and whether a new one is out."),
             new(UpdatesCheck, "Check for updates", "Ask GitHub now instead of waiting."),
-            new(UpdatesInstall, "Install updates", "The server is offline for about a minute while one installs."),
+            new(UpdatesInstall, "Install updates", "Rabbid Lab is stopped for about a minute while one installs."),
             new(UpdatesAuto, "Turn Update automatically on or off", "Whether new versions install on their own."),
         ]),
         new("console", "Console address", "browser", [new(ConsoleAddresses, "Add and remove console addresses", "Names to open Rabbid Lab by, their aliases in DNS, and their certificate.")]),

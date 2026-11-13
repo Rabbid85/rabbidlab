@@ -85,6 +85,8 @@
   <symbol id="i-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
   <symbol id="i-user-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 20c1.2-3.3 4-5 7-5s5.8 1.7 7 5"/><path d="M19 8v6M16 11h6"/></symbol>
   <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 0 0-14.3-4.9L4 8"/><path d="M4 3v5h5"/><path d="M4 13a8 8 0 0 0 14.3 4.9L20 16"/><path d="M20 21v-5h-5"/></symbol>
+  <symbol id="i-box" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5 9 5z"/><path d="M3 8v8l9 5 9-5V8M12 13v8"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
   <symbol id="i-logout" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17l-5-5 5-5M5 12h11"/></symbol>
   <symbol id="i-devices" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="14" height="10" rx="1.5"/><path d="M5 18h8"/><rect x="17" y="8" width="5" height="11" rx="1"/></symbol>
 </svg>
@@ -320,14 +322,14 @@
             <span class="pct" id="inst-pct">0%</span>
           </div>
           <div class="ubar"><i id="inst-fill"></i></div>
-          <div class="steps"><span id="step-download">Downloaded</span><span id="step-install">Installing</span><span id="step-back">Back on the new version</span></div>
-          <p class="say" id="inst-say">The server is offline for about a minute while the update installs. This page reloads when it is done.</p>
+          <div class="steps"><span id="step-download">Downloaded</span><span id="step-install">Installing</span><span id="step-back">Restarting</span></div>
+          <p class="say" id="inst-say">Rabbid Lab is stopped for about a minute while the update installs. This page reloads when it is done.</p>
         </div>
         <p class="hint problem" id="upd-problem" hidden></p>
         <div class="ds-row"><div class="ds-l"><b id="upd-new-title">What's new</b><span id="upd-new-text"></span></div><div class="ds-r"><a class="ds-link" href="#whats-new">Read it<svg><use href="#i-right"/></svg></a></div></div>
       </section>
       <section class="ds-sec" data-sec="auto" data-can="updates.auto"><h3 class="ds-h">Automatic updates</h3>
-        <div class="ds-row"><div class="ds-l"><b>Update automatically</b><span>New versions install when nobody is using <span data-lab>Rabbid Lab</span>. The server is offline for about a minute during an update.</span></div>
+        <div class="ds-row"><div class="ds-l"><b>Update automatically</b><span>New versions install when nobody is using <span data-lab>Rabbid Lab</span>. <span data-lab>Rabbid Lab</span> is stopped for about a minute during an update.</span></div>
           <div class="ds-r"><span class="sw-label" id="upd-auto-label">Off</span><input type="checkbox" class="switch" id="upd-auto" role="switch" aria-label="Update automatically"></div></div>
         <p class="ds-note"><svg><use href="#i-lock"/></svg><span>Updates come from <a id="upd-source" href="#" rel="noopener">GitHub</a> and only install if they're signed by Rabbid Lab.</span></p>
       </section>
@@ -1248,15 +1250,24 @@
   <div class="dialog-foot"><button type="button" id="about-close">Close</button><button type="button" class="primary" id="about-copy">Copy</button></div>
 </dialog>
 
-<!-- An update under way: the flask mid screen, saying what it's doing (console.js). -->
+<!-- An update under way: the flask in a ring that fills, the versions, what it's doing, and the steps as joined dots with an
+     icon each that turns into a tick (console.js). -->
 <dialog class="dialog update-dialog" id="update-dialog" aria-labelledby="updlg-title">
-  <div id="updlg-flask"></div>
+  <div class="updlg-ring">
+    <svg class="ring" viewBox="0 0 156 156" aria-hidden="true"><defs><linearGradient id="updlg-grad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" class="flask-a"/><stop offset="1" class="flask-b"/></linearGradient></defs>
+      <circle class="track" cx="78" cy="78" r="72"/><circle class="prog" id="updlg-fill" cx="78" cy="78" r="72" stroke="url(#updlg-grad)" stroke-dasharray="452.4" stroke-dashoffset="452.4"/></svg>
+    <span id="updlg-flask"></span>
+    <span class="updlg-pct" id="updlg-pct">0%</span>
+  </div>
   <h2 id="updlg-title"></h2>
+  <span class="updlg-vers" id="updlg-vers" hidden><span id="updlg-from"></span><svg><use href="#i-arrow"/></svg><b id="updlg-to"></b></span>
   <p class="updlg-now" id="updlg-now" role="status"></p>
-  <p class="updlg-pct" id="updlg-pct">0%</p>
-  <div class="ubar"><i id="updlg-fill"></i></div>
-  <div class="steps"><span id="updlg-download">Downloading</span><span id="updlg-install">Installing</span><span id="updlg-back">Back on the new version</span></div>
-  <div class="dialog-foot"><button type="button" class="link" id="updlg-hide">Hide</button></div>
+  <ol class="updlg-steps">
+    <li id="updlg-download"><span class="node"><svg><use href="#i-download"/></svg></span><span class="nm">Downloading</span><small></small></li>
+    <li id="updlg-install"><span class="cn"><i></i></span><span class="node"><svg><use href="#i-box"/></svg></span><span class="nm">Installing</span><small></small></li>
+    <li id="updlg-back"><span class="cn"><i></i></span><span class="node"><svg><use href="#i-refresh"/></svg></span><span class="nm">Restarting</span><small></small></li>
+  </ol>
+  <div class="dialog-foot"><button type="button" class="updlg-hide" id="updlg-hide">Hide</button><span class="updlg-took" id="updlg-took" hidden></span></div>
 </dialog>
 
 <!-- Are you sure: deleting, mostly. -->

@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.104', [
+    'New update window: the flask in a ring that fills up, the old and new version, and the steps as joined dots with icons that turn into ticks. It says Rabbid Lab is stopped while it installs, not that the server is offline, and the last step is Restarting.']],
   ['1.1.103', [
     'Drop-downs open below the box again. They go above only when there is no room under it.']],
   ['1.1.102', [
@@ -676,11 +678,20 @@ const RELEASE_NOTES = [
     return d.toDateString() === new Date().toDateString() ? `checked today at ${d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : `checked ${when(iso)}`;
   };
 
-  // An update under way takes the status card's place, and shows in a dialog mid screen: download, install, back on the
-  // new version. Phase null puts the status card back.
+  // An update under way takes the status card's place, and shows in a dialog mid screen: download, install, restart.
+  // Phase null puts the status card back.
   let since = 0; // when installing began
+  let began = 0; // when this page first saw the update under way
+  let dl = null; // the download so far, { got, total } in bytes
   let tick = null;
   let hid = false; // the update dialog was put away with Hide
+  const secs = (ms) => Math.max(1, Math.round(ms / 1000));
+  const took = (s) => {
+    const say = (n, unit) => `${n} ${unit}${n === 1 ? '' : 's'}`;
+    const m = Math.floor(s / 60);
+    return m ? `${say(m, 'minute')}${s % 60 ? ` ${say(s % 60, 'second')}` : ''}` : say(s, 'second');
+  };
+  const STEP_ICONS = ['i-download', 'i-box', 'i-refresh'];
   const bar = (phase, pct, version, line) => {
     const on = phase != null;
     $('upd-installing').hidden = !on;
@@ -689,33 +700,59 @@ const RELEASE_NOTES = [
       clearInterval(tick);
       tick = null;
       since = 0;
+      began = 0;
+      dl = null;
       hid = false;
       if ($('update-dialog').open) $('update-dialog').close();
       return;
     }
-    // Mid screen too: the flask, and the same steps. Hide puts it away until the next update.
+    const done = phase === 'done';
+    const watched = began; // a time only when this page saw it from the start
+    began ||= Date.now();
+    const steps = { download: ['now', '', ''], install: ['done', 'now', ''], done: ['done', 'done', 'done'] }[phase];
+    const names = [phase === 'download' ? 'Downloading' : 'Downloaded', done ? 'Installed' : 'Installing', done ? 'Restarted' : 'Restarting'];
+    // Mid screen too: the flask in a ring, the versions, and the steps as dots. Hide puts it away until the next update.
     $('updlg-flask').innerHTML ||= FLASK;
-    $('updlg-title').textContent = phase === 'done' ? `Updated to Rabbid Lab ${version}` : `Updating to Rabbid Lab ${version}`;
-    $('updlg-now').textContent = phase === 'done' ? 'Done. Opening the new version.' : phase === 'install' ? 'Installing the update. The server is offline for about a minute.'
-      : `Downloading the update${/ of /.test(line) ? `, ${line.split(' · ').pop()}` : ''}.`;
-    $('updlg-hide').style.visibility = phase === 'done' ? 'hidden' : ''; // keeps its room, so the window doesn't shrink when it's done
+    $('update-dialog').classList.toggle('is-done', done);
+    $('updlg-title').textContent = done ? `Updated to Rabbid Lab ${version}` : `Updating to Rabbid Lab ${version}`;
+    $('updlg-vers').hidden = !last?.version;
+    $('updlg-from').textContent = last?.version || '';
+    $('updlg-to').textContent = version;
+    $('updlg-now').textContent = done ? 'Done. Opening the new version.' : phase === 'install' ? "Installing the update. Rabbid Lab is stopped until it's done."
+      : 'Downloading the update. You can keep using Rabbid Lab until it installs.';
+    const size = dl?.total ? mb(dl.total) : '';
+    const notes = [phase === 'download' ? (size && `${mb(dl.got)} of ${size}`) : size,
+      done ? (since && watched ? `took ${secs(Date.now() - since)} s` : '') : phase === 'install' ? 'about a minute' : '',
+      done ? 'opening it now' : 'this page reloads'];
+    // How far each step has got: the line into the next dot fills with it.
+    const part = [phase === 'download' ? (dl?.total ? dl.got / dl.total : 0) : 1, done ? 1 : phase === 'install' ? Math.max(0, (pct - 66) / 32) : 0];
+    ['download', 'install', 'back'].forEach((id, i) => {
+      const li = $(`updlg-${id}`);
+      li.className = steps[i];
+      li.querySelector('.nm').textContent = names[i];
+      li.querySelector('small').textContent = notes[i];
+      li.querySelector('.node use').setAttribute('href', `#${steps[i] === 'done' ? 'i-check' : STEP_ICONS[i]}`);
+      li.querySelector('.cn i')?.style.setProperty('width', `${Math.min(100, 100 * part[i - 1])}%`);
+    });
+    // Done: Hide gives its place to how long it took, so the window keeps its size.
+    $('updlg-hide').hidden = done;
+    $('updlg-took').hidden = !(done && watched);
+    if (done && watched) $('updlg-took').replaceChildren('Took ', Object.assign(document.createElement('b'), { textContent: took(secs(Date.now() - watched)) }));
     if (!hid && !$('update-dialog').open) $('update-dialog').showModal();
-    const p = `${Math.min(100, Math.round(pct))}%`;
+    const n = Math.min(100, pct);
+    const p = `${Math.round(n)}%`;
     $('inst-fill').style.width = p;
-    $('updlg-fill').style.width = p;
+    $('updlg-fill').setAttribute('stroke-dashoffset', String(452.4 * (1 - n / 100)));
     $('inst-pct').textContent = p;
     $('updlg-pct').textContent = p;
-    $('inst-title').textContent = phase === 'done' ? `Updated to Rabbid Lab ${version}` : `Updating to Rabbid Lab ${version}`;
+    $('inst-title').textContent = $('updlg-title').textContent;
     $('inst-line').textContent = line;
-    const steps = { download: ['now', '', ''], install: ['done', 'now', ''], done: ['done', 'done', 'done'] }[phase];
-    for (const at of ['step', 'updlg']) {
-      ['download', 'install', 'back'].forEach((id, i) => { $(`${at}-${id}`).className = steps[i]; });
-      $(`${at}-download`).textContent = phase === 'download' ? 'Downloading' : 'Downloaded';
-      $(`${at}-install`).textContent = phase === 'done' ? 'Installed' : 'Installing';
-      $(`${at}-back`).textContent = `Back on ${version}`;
-    }
-    $('inst-say').textContent = phase === 'done' ? 'Done. This page opens the new version in a moment.'
-      : 'The server is offline for about a minute while the update installs. This page reloads when it is done.';
+    ['download', 'install', 'back'].forEach((id, i) => {
+      $(`step-${id}`).className = steps[i];
+      $(`step-${id}`).textContent = names[i];
+    });
+    $('inst-say').textContent = done ? 'Done. This page opens the new version in a moment.'
+      : 'Rabbid Lab is stopped for about a minute while the update installs. This page reloads when it is done.';
   };
   // The download fills two thirds of the bar; while Rabbid Lab is stopped to install, it moves on the minute that takes.
   const installing = (version) => {
@@ -759,13 +796,14 @@ const RELEASE_NOTES = [
     $('hero-check').classList.toggle('primary', $('hero-install').hidden);
     if (u.status === 'installing') installing(u.available);
     else if (u.status === 'downloading') {
+      dl = { got: u.downloaded || 0, total: u.total || 0 };
       bar('download', 4 + 62 * (u.total ? (u.downloaded || 0) / u.total : 0), u.available,
         `From ${u.version}${u.total ? ` · ${mb(u.downloaded || 0)} of ${mb(u.total)}` : ''}`);
     } else bar(null);
     if (u.status === 'available') {
       card('download', 'ember', `Rabbid Lab ${u.available} is ready`, u.automatic
         ? `You have ${u.version}. The update installs automatically when nobody is using ${product}, or click Install now.`
-        : `You have ${u.version}. Installing takes about a minute, and the server is offline while it does.`);
+        : `You have ${u.version}. Installing takes about a minute, and Rabbid Lab is stopped while it does.`);
     } else if (u.status === 'waiting') card('clock', 'ember', `Version ${u.available} installs in a moment`, u.message);
     else if (u.status === 'failed') card('alert', 'bad', `Version ${u.available} didn't install`, u.message);
     else card('check', 'ok', "You're up to date", `Rabbid Lab ${u.version} · ${checked(u.checkedAt)}`);
