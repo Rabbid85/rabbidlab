@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.113 (2026-11-12)
+
+- Your lab name shows in the top bar, the big title on Overview and the browser tab. Sentences about the app, like updates, the client and how links are checked, say Rabbid Lab again.
+
 ## 1.1.112 (2026-11-12)
 
 - A toast that is showing moves with the page when the window is resized. Add a link says Single link and Bulk add, and its first line says what fills in from the site.

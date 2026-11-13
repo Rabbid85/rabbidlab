@@ -136,7 +136,7 @@
     $('ln-view').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.view === view));
     $('ln-empty').hidden = links.length > 0 || groups.length > 0;
     $('ln-empty-text').textContent = can('links.edit')
-      ? `Put the sites in your lab here: the router, the NAS, the hypervisor, iDRACs. Paste an address and ${R.lab()} fills in the name, icon and IP.`
+      ? `Put the sites in your lab here: the router, the NAS, the hypervisor, iDRACs. Paste an address and ${R.app()} fills in the name, icon and IP.`
       : 'Nobody has put any here yet.';
     R.paint($('ln-list'));
     rail();
@@ -875,7 +875,7 @@
       uploaded = false;
       foundLine(true, `Got the icon from ${host(full(url))}.`);
     } else {
-      foundLine(false, `${host(full(url))} has no icon ${R.lab()} can read. Upload one instead.`);
+      foundLine(false, `${host(full(url))} has no icon ${R.app()} can read. Upload one instead.`);
     }
     drawIcon();
   };

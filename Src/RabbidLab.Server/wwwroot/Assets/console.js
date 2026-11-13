@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.113', [
+    'Your lab name shows in the top bar, the big title on Overview and the browser tab. Sentences about the app, like updates, the client and how links are checked, say Rabbid Lab again.']],
   ['1.1.112', [
     'A toast that is showing moves with the page when the window is resized. Add a link says Single link and Bulk add, and its first line says what fills in from the site.']],
   ['1.1.111', [
@@ -410,7 +412,8 @@ const RELEASE_NOTES = [
   const WORDS = { current: 'Up to date', available: 'Update available', waiting: 'Waiting', downloading: 'Downloading', installing: 'Installing', failed: 'Failed' };
   let last = null;
   let timer = null;
-  let product = 'Rabbid Lab';
+  let product = 'Rabbid Lab'; // the app's name, in the page's sentences
+  let labName = 'Rabbid Lab'; // the lab's own name: the top bar, the hero and the browser tab
 
   // What the signed-in person's roles allow (can), and what the page shows: the same, or a role's while seeing Rabbid Lab
   // as it. Anything marked data-can="a b" shows when either is allowed. Until sign-in is known, nothing marked shows.
@@ -450,7 +453,7 @@ const RELEASE_NOTES = [
   };
   // What the page showing is called: a Settings page by its own name.
   const pageName = () => (page().id === 'page-settings' ? section().dataset.title : page().dataset.title);
-  const title = () => { document.title = `${pageName()} · ${product}`; };
+  const title = () => { document.title = `${pageName()} · ${labName}`; };
   const mark = (links, key, value) => links.forEach((a) => {
     if (a.dataset[key] === value) a.setAttribute('aria-current', 'page');
     else a.removeAttribute('aria-current');
@@ -580,10 +583,11 @@ const RELEASE_NOTES = [
   let brand = Brand.now; // the look last seen in this browser, until the server's is read
   let productName = 'Rabbid Lab';
   const drawBrand = () => {
-    product = brand.name || productName;
-    $('brand-name').textContent = product;
-    $('hero-title').textContent = product;
-    document.querySelectorAll('[data-lab]').forEach((e) => { e.textContent = product; }); // the lab's name in the page's words
+    labName = brand.name || productName;
+    product = productName;
+    $('brand-name').textContent = labName;
+    $('hero-title').textContent = labName;
+    document.querySelectorAll('[data-app]').forEach((e) => { e.textContent = product; }); // the app's name in the page's words, never the lab's
     title();
     $('brand-img').hidden = !brand.icon;
     document.querySelector('.brand svg.mark').classList.toggle('gone', !!brand.icon);
@@ -2542,6 +2546,6 @@ const RELEASE_NOTES = [
   });
 
   // What the other scripts use.
-  window.RabbidLab = { lab: () => product, $, esc, svg, say, initials, when, daysAgo, send, get, keep, forget, has, paint, where, viewAs, place, popups, option, dropdown, sure, copy, busy, groupTools, groupFilter, squares, squareSize, ping, skeleton, toast,
+  window.RabbidLab = { app: () => product, $, esc, svg, say, initials, when, daysAgo, send, get, keep, forget, has, paint, where, viewAs, place, popups, option, dropdown, sure, copy, busy, groupTools, groupFilter, squares, squareSize, ping, skeleton, toast,
     palette: window.RabbidLabColours.roles, me: () => meInfo };
 })();

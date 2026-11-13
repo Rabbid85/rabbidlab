@@ -220,7 +220,7 @@
         <a href="#settings/alerts/types" data-sub="alerts" data-sec="types"><span class="nm">Alert types</span></a>
         <a href="#settings/alerts/sensors" data-sub="alerts" data-sec="sensors"><span class="nm">Sensor warnings</span></a>
         <a href="#settings/alerts/seats" data-sub="alerts" data-sec="seats"><span class="nm">Seats</span></a>
-        <a href="#settings/alerts/lab" data-sub="alerts" data-sec="lab"><span class="nm" data-lab>Rabbid Lab</span></a>
+        <a href="#settings/alerts/lab" data-sub="alerts" data-sec="lab"><span class="nm" data-app>Rabbid Lab</span></a>
         <a href="#settings/alerts/quiet" data-sub="alerts" data-sec="quiet"><span class="nm">Gathering and quiet hours</span></a>
       </div>
       <a href="#settings/notifications" data-sub="notifications" data-can="sensors.alerts"><svg><use href="#i-bell"/></svg><span>Notifications</span></a>
@@ -267,7 +267,7 @@
 
     <!-- Appearance: the lab's name, icon and accent for everyone; Layout and Sidebar for this person, in this browser. -->
     <section class="sub ap-rows" data-sub="appearance" data-title="Appearance" hidden>
-      <header class="sub-head"><h2>Appearance</h2><p>How <span data-lab>Rabbid Lab</span> looks. Your lab is the same for everyone; Layout and Toasts are just for you, in this browser.</p></header>
+      <header class="sub-head"><h2>Appearance</h2><p>How <span data-app>Rabbid Lab</span> looks. Your lab is the same for everyone; Layout and Toasts are just for you, in this browser.</p></header>
       <section class="ds-sec" data-sec="lab"><h3 class="ds-h">Your lab <small class="ds-scope">Everyone</small></h3>
         <div class="ds-row"><div class="ds-l"><b>Name</b><span>In the top bar and the browser tab. Leave it empty for Rabbid Lab.</span></div>
           <div class="ds-r"><input class="ds-input" id="br-name" maxlength="40" placeholder="Rabbid Lab" autocomplete="off" spellcheck="false" aria-label="Lab name"><button type="button" class="ds-btn br-edit" id="br-name-reset">Reset</button></div></div>
@@ -306,7 +306,7 @@
     </section>
 
     <section class="sub" data-sub="updates" data-title="Updates" hidden>
-      <header class="sub-head"><h2>Updates</h2><p>Keep <span data-lab>Rabbid Lab</span> on the newest version.</p></header>
+      <header class="sub-head"><h2>Updates</h2><p>Keep <span data-app>Rabbid Lab</span> on the newest version.</p></header>
       <section class="ds-sec" data-sec="status"><h3 class="ds-h">Status</h3>
         <!-- Where it stands, with the button that fits. During an update, the installing card takes its place. -->
         <div class="ustatus" id="upd-status">
@@ -330,7 +330,7 @@
         <div class="ds-row"><div class="ds-l"><b id="upd-new-title">What's new</b><span id="upd-new-text"></span></div><div class="ds-r"><a class="ds-link" href="#whats-new">Read it<svg><use href="#i-right"/></svg></a></div></div>
       </section>
       <section class="ds-sec" data-sec="auto" data-can="updates.auto"><h3 class="ds-h">Automatic updates</h3>
-        <div class="ds-row"><div class="ds-l"><b>Update automatically</b><span>New versions install when nobody is using <span data-lab>Rabbid Lab</span>.</span></div>
+        <div class="ds-row"><div class="ds-l"><b>Update automatically</b><span>New versions install when nobody is using <span data-app>Rabbid Lab</span>.</span></div>
           <div class="ds-r"><span class="sw-label" id="upd-auto-label">Off</span><input type="checkbox" class="switch" id="upd-auto" role="switch" aria-label="Update automatically"></div></div>
         <p class="ds-note"><svg><use href="#i-lock"/></svg><span>Updates come from <a id="upd-source" href="#" rel="noopener">GitHub</a> and only install if they're signed by Rabbid Lab.</span></p>
       </section>
@@ -394,15 +394,15 @@
       <header class="sub-head"><h2>Links</h2><p>The heartbeat on each link, icons and descriptions, the icon layout, and moving links in and out.</p></header>
       <div id="lc-form">
         <section class="ds-sec" data-sec="checks"><h3 class="ds-h">Heartbeat</h3>
-          <div class="ds-row"><div class="ds-l"><b>Heartbeat interval</b><span>How often <span data-lab>Rabbid Lab</span> checks that each link answers, while Links is open.</span></div><div class="ds-r"><div class="seg sn-seg" id="lc-every"></div></div></div>
+          <div class="ds-row"><div class="ds-l"><b>Heartbeat interval</b><span>How often <span data-app>Rabbid Lab</span> checks that each link answers, while Links is open.</span></div><div class="ds-r"><div class="seg sn-seg" id="lc-every"></div></div></div>
           <div class="ds-row"><div class="ds-l"><b>Show a link as down after</b><span id="lc-note"></span></div><div class="ds-r"><div class="seg sn-seg" id="lc-after"></div></div></div>
           <div class="ds-row" data-can="sensors.edit"><div class="ds-l"><b>Watch links</b><span>Pick the links a sensor checks around the clock, with an alert when one goes down. They show on Sensors too.</span></div>
             <div class="ds-r"><a class="ds-btn" href="#links/watch">Pick links</a></div></div>
         </section>
         <section class="ds-sec" data-sec="descriptions"><h3 class="ds-h">Icons and descriptions</h3>
-          <div class="ds-row"><div class="ds-l"><b>Auto-fill descriptions</b><span><span data-lab>Rabbid Lab</span> recognises common gear like TrueNAS, iDRAC, ESXi and UniFi and fills in what it is. Turn it off to clear the ones it filled in. Descriptions you typed always stay.</span></div>
+          <div class="ds-row"><div class="ds-l"><b>Auto-fill descriptions</b><span><span data-app>Rabbid Lab</span> recognises common gear like TrueNAS, iDRAC, ESXi and UniFi and fills in what it is. Turn it off to clear the ones it filled in. Descriptions you typed always stay.</span></div>
             <div class="ds-r"><span class="sw-label" id="lc-known-label">On</span><input type="checkbox" class="switch" id="lc-known" role="switch" aria-label="Auto-fill descriptions"></div></div>
-          <div class="ds-row"><div class="ds-l"><b>Refresh icons and descriptions</b><span>Reads the site of every link again, four at a time from the top: an icon from the site is brought up to date, an empty description is filled in, and a link on your network gets its IP. A picture of your own, No icon and descriptions you typed stay as they are. An internet site that turns <span data-lab>Rabbid Lab</span> away gets its icon from DuckDuckGo's icon service; nothing on your network is ever sent there.</span></div>
+          <div class="ds-row"><div class="ds-l"><b>Refresh icons and descriptions</b><span>Reads the site of every link again, four at a time from the top: an icon from the site is brought up to date, an empty description is filled in, and a link on your network gets its IP. A picture of your own, No icon and descriptions you typed stay as they are. An internet site that turns <span data-app>Rabbid Lab</span> away gets its icon from DuckDuckGo's icon service; nothing on your network is ever sent there.</span></div>
             <div class="ds-r"><button type="button" class="ds-btn" id="lc-refresh">Refresh</button></div></div>
           <p class="hint note" id="lc-refresh-done" role="status" hidden></p>
         </section>
@@ -426,7 +426,7 @@
 
     <!-- Seats: whether new computers wait, and getting the client onto computers (console.js). -->
     <section class="sub" data-sub="seats" data-title="Seats" hidden>
-      <header class="sub-head"><h2>Seats</h2><p>Computers with the <span data-lab>Rabbid Lab</span> client: letting them in, and getting the client onto them.</p></header>
+      <header class="sub-head"><h2>Seats</h2><p>Computers with the <span data-app>Rabbid Lab</span> client: letting them in, and getting the client onto them.</p></header>
       <section class="ds-sec" data-sec="new" data-can="seats.settings"><h3 class="ds-h">New computers</h3>
         <div class="ds-row"><div class="ds-l"><b>New computers wait for an admin</b><span>They show as Waiting until someone lets them in. Turn this off and they join straight away.</span></div>
           <div class="ds-r"><span class="sw-label" id="seat-approve-label">On</span><input type="checkbox" class="switch" id="seat-approve" role="switch" aria-label="New computers wait for an admin"></div></div>
@@ -442,14 +442,14 @@
 
     <!-- Active Directory: the service account Rabbid Lab makes its changes as (users.js). -->
     <section class="sub" data-sub="ad" data-title="Active Directory" hidden>
-      <header class="sub-head"><h2>Active Directory</h2><p>The service account <span data-lab>Rabbid Lab</span> makes its AD changes as.</p></header>
+      <header class="sub-head"><h2>Active Directory</h2><p>The service account <span data-app>Rabbid Lab</span> makes its AD changes as.</p></header>
       <section class="ds-sec" data-sec="account"><h3 class="ds-h">Service account</h3>
         <div class="ds-row"><div class="ds-l"><b id="as-account">…</b><span id="as-about"></span></div><div class="ds-r"><button type="button" class="ds-btn" id="as-setup" hidden>Set up</button></div></div>
         <div class="ds-row" id="as-ou-row" hidden><div class="ds-l"><b>Default OU for new users and groups</b><span>Where New user and New group put them. Saved as you change it.</span></div><div class="ds-r"><select id="adset-ou" aria-label="Default OU for new users and groups"></select><button type="button" class="ds-btn" data-browse-ou="adset-ou"><svg><use href="#i-folder"/></svg>Browse…</button></div></div>
         <p class="hint note" id="as-done" hidden></p>
       </section>
       <section class="ds-sec gone" data-sec="danger" id="as-danger"><h3 class="ds-h danger">Danger zone</h3>
-        <div class="ds-row"><div class="ds-l"><b id="adset-stop-title">Disconnect the service account</b><span id="adset-stop-text"><span data-lab>Rabbid Lab</span> deletes the stored password and stops using the account.</span></div>
+        <div class="ds-row"><div class="ds-l"><b id="adset-stop-title">Disconnect the service account</b><span id="adset-stop-text"><span data-app>Rabbid Lab</span> deletes the stored password and stops using the account.</span></div>
           <div class="ds-r"><button type="button" class="ds-btn danger" id="adset-stop">Disconnect</button></div></div>
       </section>
       <p class="hint problem" id="adset-problem" hidden></p>
@@ -484,7 +484,7 @@
 
     <!-- Support info: this Rabbid Lab as text, to paste when asking for help. -->
     <section class="sub" data-sub="support" data-title="Support info" hidden>
-      <header class="sub-head"><h2>Support info</h2><p>This <span data-lab>Rabbid Lab</span> described as text, to paste into a message when asking for help.</p></header>
+      <header class="sub-head"><h2>Support info</h2><p>This <span data-app>Rabbid Lab</span> described as text, to paste into a message when asking for help.</p></header>
       <section class="ds-sec" data-sec="support">
         <pre class="about-text" id="sup-text">Gathering…</pre>
         <div class="ds-add"><button type="button" class="ds-btn" id="sup-copy"><svg><use href="#i-csv"/></svg>Copy</button></div>
@@ -506,7 +506,7 @@
 
   <!-- Seats: the computers with the Rabbid Lab client, and everyone signed in. -->
   <section class="page seats-page" id="page-seats" data-page="seats" data-title="Seats" hidden>
-    <header class="page-head seats-head"><div><h1>Seats</h1><p>The computers with the <span data-lab>Rabbid Lab</span> client, and who's signed in.</p></div>
+    <header class="page-head seats-head"><div><h1>Seats</h1><p>The computers with the <span data-app>Rabbid Lab</span> client, and who's signed in.</p></div>
       <button type="button" class="primary" id="seats-add" data-can="seats.add">Add computers</button></header>
     <div class="tiles4" data-can="seats.view">
       <div class="card tile4"><span class="label ok">Online</span><b id="n-online"><i class="sk sk-num"></i></b></div>
@@ -653,7 +653,7 @@
     <p class="hint note ln-done" id="ln-done" role="status" hidden></p>
     <div id="ln-list" data-skel="tiles:8"></div>
     <div class="ln-empty" id="ln-empty" hidden><span class="big-ic ember"><svg><use href="#i-link"/></svg></span>
-      <div><b>No links yet</b><span id="ln-empty-text">Put the sites in your lab here: the router, the NAS, the hypervisor, iDRACs. Paste an address and <span data-lab>Rabbid Lab</span> fills in the name, icon and IP.</span></div>
+      <div><b>No links yet</b><span id="ln-empty-text">Put the sites in your lab here: the router, the NAS, the hypervisor, iDRACs. Paste an address and <span data-app>Rabbid Lab</span> fills in the name, icon and IP.</span></div>
       <button type="button" class="primary" id="ln-add-first" data-can="links.edit"><svg><use href="#i-plus"/></svg>Add a link</button></div>
     <p class="hint problem" id="ln-problem" hidden></p>
     <!-- Watch links: the bar along the bottom while links are being ticked (links.js). -->
@@ -705,7 +705,7 @@
       </div>
       <div id="sn-list" data-skel="tiles:6"></div>
       <div class="ln-empty" id="sn-empty" hidden><span class="big-ic ember"><svg><use href="#i-activity"/></svg></span>
-        <div><b>No sensors yet</b><span>A sensor checks something on a timer: a machine that answers ping, an open port, a web page, a DNS name or a certificate. <span data-lab>Rabbid Lab</span> emails you when one stays down.</span></div>
+        <div><b>No sensors yet</b><span>A sensor checks something on a timer: a machine that answers ping, an open port, a web page, a DNS name or a certificate. <span data-app>Rabbid Lab</span> emails you when one stays down.</span></div>
         <button type="button" class="primary" id="sn-add-first" data-can="sensors.edit"><svg><use href="#i-plus"/></svg>Add a sensor</button></div>
       <p class="hint problem" id="sn-problem" hidden></p>
     </section>
@@ -760,7 +760,7 @@
   <!-- Local accounts: the Windows accounts on this server and on each computer in Seats, whose client makes the change (users.js). -->
   <section class="page people-page users-page" id="page-local" data-page="local" data-title="Local accounts" hidden>
     <header class="page-head"><h1>Local accounts</h1>
-      <p>The Windows accounts on this server and on each computer in Seats. No service account is needed: this server makes its own changes, and on a seat the <span data-lab>Rabbid Lab</span> client does, straight away.</p></header>
+      <p>The Windows accounts on this server and on each computer in Seats. No service account is needed: this server makes its own changes, and on a seat the <span data-app>Rabbid Lab</span> client does, straight away.</p></header>
     <div class="lib">
       <aside class="side" aria-label="Computers">
         <label class="side-find"><svg><use href="#i-search"/></svg><input type="search" id="us-find" placeholder="Find an account" aria-label="Find an account" autocomplete="off" spellcheck="false"></label>
@@ -818,7 +818,7 @@
 
   <!-- Wiki: how to do everything, step by step, with links to the pages it talks about (wiki.js reads Assets/wiki.html). -->
   <section class="page people-page wiki-page" id="page-wiki" data-page="wiki" data-title="Wiki" hidden>
-    <header class="page-head"><h1>Wiki</h1><p>How to do everything in <span data-lab>Rabbid Lab</span>, step by step.</p></header>
+    <header class="page-head"><h1>Wiki</h1><p>How to do everything in <span data-app>Rabbid Lab</span>, step by step.</p></header>
     <div class="lib">
       <aside class="side" aria-label="Articles">
         <label class="side-find"><svg><use href="#i-search"/></svg><input type="search" id="wiki-find" placeholder="Search the wiki" aria-label="Search the wiki" autocomplete="off" spellcheck="false"></label>
@@ -842,7 +842,7 @@
 <!-- Add computers: the client, how to install it on one computer or many, and whether new ones wait. -->
 <dialog class="dialog wide" id="add-dialog" aria-labelledby="add-title">
   <h2 id="add-title">Add computers</h2>
-  <p class="dialog-lead">Install the <span data-lab>Rabbid Lab</span> client on a computer and it shows up under Seats. Or open <span data-lab>Rabbid Lab</span> in a browser on that computer and click Connect this computer.</p>
+  <p class="dialog-lead">Install the <span data-app>Rabbid Lab</span> client on a computer and it shows up under Seats. Or open <span data-app>Rabbid Lab</span> in a browser on that computer and click Connect this computer.</p>
   <div class="step"><span class="n">1</span><div><b>Install the client</b>
     <p class="hint" id="get-client">Download it and run it, or install it quietly from a command line or Intune:</p>
     <div class="key-row"><code class="cmd" id="install-line"></code><button type="button" class="small" id="line-copy">Copy</button></div>
@@ -904,7 +904,7 @@
 <dialog class="dialog dset" id="dset-dialog" aria-labelledby="dset-title">
   <div class="dset-side">
     <h2 id="dset-title">Service account</h2>
-    <p class="dset-lead"><span data-lab>Rabbid Lab</span> makes its Active Directory changes as this account.</p>
+    <p class="dset-lead"><span data-app>Rabbid Lab</span> makes its Active Directory changes as this account.</p>
     <ol class="dset-steps" id="dset-steps"></ol>
   </div>
   <div class="dset-main">
@@ -998,7 +998,7 @@
   <h2 id="secret-title">The password</h2>
   <p class="dialog-lead" id="secret-lead"></p>
   <div class="key-row"><code id="secret-text"></code><button type="button" class="small" id="secret-copy">Copy</button></div>
-  <p class="hint">It's shown this once. <span data-lab>Rabbid Lab</span> doesn't keep it.</p>
+  <p class="hint">It's shown this once. <span data-app>Rabbid Lab</span> doesn't keep it.</p>
   <p class="hint warn" id="secret-warning" hidden></p>
   <div class="dialog-foot"><button type="button" class="primary" id="secret-done">Done</button></div>
 </dialog>

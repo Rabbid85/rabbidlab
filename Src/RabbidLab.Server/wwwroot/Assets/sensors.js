@@ -662,7 +662,7 @@
   };
   // The computers in Seats, for the checks their client makes.
   let seats = [];
-  const SEAT_HINT = () => `<p class="hint">Checked by the ${R.esc(R.lab())} client on that computer, which runs as SYSTEM. No credentials needed.</p>`;
+  const SEAT_HINT = () => `<p class="hint">Checked by the ${R.esc(R.app())} client on that computer, which runs as SYSTEM. No credentials needed.</p>`;
   const seatPick = () => {
     if (!seats.length) return '<p class="hint">No computers in Seats yet. Add one under Seats, then pick it here.</p>';
     if (!seats.some((c) => c.id === vals.seat)) vals.seat = seats[0].id;
@@ -908,7 +908,7 @@
   const pinNote = (pin) => {
     const bytes = pin.split(':');
     const short = bytes.length > 6 ? `${bytes.slice(0, 4).join(':')}:…:${bytes.slice(-2).join(':')}` : pin;
-    return `<p class="sd-pin">${svg('alert')}<span>It has a self-signed certificate. ${esc(R.lab())} trusts this one, <code title="${esc(pin)}">SHA-256 ${esc(short)}</code>, and warns you if it changes.</span></p>`;
+    return `<p class="sd-pin">${svg('alert')}<span>It has a self-signed certificate. ${esc(R.app())} trusts this one, <code title="${esc(pin)}">SHA-256 ${esc(short)}</code>, and warns you if it changes.</span></p>`;
   };
   const foundAll = (f) => {
     if (signs()) vals.pin = f.pin || null;

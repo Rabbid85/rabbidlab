@@ -381,7 +381,7 @@
   };
   const drawRules = () => {
     if (!rules) return;
-    GROUPS.lab = R.lab();
+    GROUPS.lab = R.app();
     const r = rules.now.rules;
     const types = rules.now.types;
     $('ar-types').innerHTML = `<h4 class="ar-h">Alert types <small>${types.length}</small><button type="button" class="link ar-add" data-type-add>${svg('plus')}New alert type</button></h4>`

@@ -72,7 +72,7 @@
         `<span class="mono">${esc(u.username)}</span>`,
         u.department || u.title ? small(u.department || u.title, u.department ? u.title : '') : '<span class="muted">-</span>',
         esc(ago(u.lastSignIn)),
-        userStatus(u) + (u.service ? chip(R.lab(), 'ember') : ''),
+        userStatus(u) + (u.service ? chip(R.app(), 'ember') : ''),
       ],
       csv: [['Name', (u) => u.name], ['Logon name', (u) => u.username], ['User principal name', (u) => u.upn], ['Email', (u) => u.email], ['Department', (u) => u.department],
         ['Job title', (u) => u.title], ['Manager', (u) => u.manager], ['Organizational unit', (u) => u.where], ['Last sign-in', (u) => u.lastSignIn], ['Password last set', (u) => u.passwordSet],
@@ -190,7 +190,7 @@
         badge(c.what.charAt(0).toUpperCase() + c.what.slice(1), WHAT[c.what]),
         `<div class="who"><span class="pic">${svg(KIND_ICON[c.kind] || 'list')}</span>${small(c.name, c.kind === 'ou' ? 'OU' : c.kind)}</div>`,
         esc(c.where || ad.state.domain),
-        small(c.attributes.slice(0, 4).join(', ') + (c.attributes.length > 4 ? ` and ${c.attributes.length - 4} more` : ''), c.by ? `by ${c.by}, in ${R.lab()}` : ''),
+        small(c.attributes.slice(0, 4).join(', ') + (c.attributes.length > 4 ? ` and ${c.attributes.length - 4} more` : ''), c.by ? `by ${c.by}, in ${R.app()}` : ''),
       ],
       csv: [['When', (c) => c.at], ['What', (c) => c.what], ['Kind', (c) => c.kind], ['Name', (c) => c.name], ['Where', (c) => c.where], ['Changed', (c) => c.attributes.join(' ')],
         ['By', (c) => c.by], ['Distinguished name', (c) => c.dn]],
@@ -372,7 +372,7 @@
       const warn = lists.domain.filter((s) => s.tone === 'warn').length;
       html = `${svg(bad ? 'alert' : 'check')}<span><b>${bad ? `${bad} not as recommended` : 'Nothing is off'}${warn ? `, ${warn} worth a look` : ''}.</b> Click a setting to see why it matters and where it's set.</span>`;
     } else if (adPage === 'audit') {
-      html = `${svg('history')}<span>Who made a change shows when it was made in ${esc(R.lab())}. For changes made elsewhere, the domain controllers' security logs say who.</span>`;
+      html = `${svg('history')}<span>Who made a change shows when it was made in ${esc(R.app())}. For changes made elsewhere, the domain controllers' security logs say who.</span>`;
     }
     b.innerHTML = html;
     b.hidden = !html;
@@ -489,8 +489,8 @@
   const adder = (placeholder) => `<div class="adder"><label class="find">${svg('search')}<input type="search" data-find placeholder="${esc(placeholder)}" aria-label="${esc(placeholder)}" autocomplete="off" spellcheck="false"></label><div class="drop" data-drop hidden></div></div>`;
 
   const userCard = (u) => {
-    const fixed = u.service ? `That's ${ad.state.account}, ${R.lab()}'s own account. It looks after it itself.`
-      : u.protected ? `Active Directory protects the accounts of admins, so ${R.lab()}'s account can't change this one. Use Active Directory Users and Computers for it.`
+    const fixed = u.service ? `That's ${ad.state.account}, ${R.app()}'s own account. It looks after it itself.`
+      : u.protected ? `Active Directory protects the accounts of admins, so ${R.app()}'s account can't change this one. Use Active Directory Users and Computers for it.`
       : u.system ? 'A built-in account. Change it in Active Directory Users and Computers.' : '';
     const change = can('ad.change') && !u.service && !u.protected && !u.system;
     return head(`<span class="pic user">${esc(initials(u.name || u.username))}</span>`, u.name || u.username, userStatus(u))
@@ -529,7 +529,7 @@
 
   const changeCard = (c) => head(`<span class="pic">${svg(KIND_ICON[c.kind] || 'list')}</span>`, c.name, badge(c.what.charAt(0).toUpperCase() + c.what.slice(1), WHAT[c.what]))
     + facts([['When', new Date(c.at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })], ['Kind', c.kind === 'ou' ? 'OU' : c.kind], ['Where', c.where || ad.state.domain],
-      ['By', c.by ? `${c.by}, in ${R.lab()}` : null]])
+      ['By', c.by ? `${c.by}, in ${R.app()}` : null]])
     + (c.attributes.length ? `<h4>What changed</h4><div class="chips-in">${c.attributes.map((a) => `<span class="gchip">${esc(a)}</span>`).join('')}</div>` : '')
     + `<p class="hint">${esc(c.dn)}</p>`;
 
@@ -1046,7 +1046,7 @@
     const any = pick.nodes[0]?.dn || '';
     pick.domain = any.split(/(?<!\\),/).filter(isDomain).map((p) => p.slice(3)).join('.');
     $('oupick-lead').textContent = select.id === 'dset-scope'
-      ? (ds.tab === 'make' ? 'Where it gets Full Control over users, groups and computers.' : `Where ${R.lab()} makes its changes. The account must already have permission there.`)
+      ? (ds.tab === 'make' ? 'Where it gets Full Control over users, groups and computers.' : `Where ${R.app()} makes its changes. The account must already have permission there.`)
       : PICK_LEADS[select.id] || '';
     $('oupick-find').value = '';
     drawPick();
@@ -1123,14 +1123,14 @@
     const browse = '<button type="button" class="dset-change" data-browse-ou="dset-scope">Change</button>';
     $('dset-review').innerHTML = make
       ? row('user', 'Signed in as', user, `${look.domain} · not saved`, change(0))
-        + row('user-plus', 'Service account', $('dset-account').value.trim(), `Password made by ${R.lab()}, stored encrypted`, change(1))
+        + row('user-plus', 'Service account', $('dset-account').value.trim(), `Password made by ${R.app()}, stored encrypted`, change(1))
         + row('folder', 'Created in', ou ? ou.textContent : '', ou ? ou.value : '', change(1))
         + row('shield', 'Can manage', where, 'Users, groups and computers', browse)
       : row('user', 'Service account', user, `${look.domain} · password stored encrypted`, change(0))
         + row('shield', 'Works in', where, 'Users, groups and computers', browse);
     $('dset-note2').textContent = make
       ? 'It gets Full Control over user, group and computer objects there, the same as the Delegation of Control wizard. Admin accounts protected by AdminSDHolder aren\'t affected.'
-      : `${R.lab()} only makes changes there. The account must already have permission to create and manage users, groups and computers there. ${R.lab()} doesn't change its permissions.`;
+      : `${R.app()} only makes changes there. The account must already have permission to create and manage users, groups and computers there. ${R.app()} doesn't change its permissions.`;
   };
   const dsDraw = () => {
     const make = ds.tab === 'make';
@@ -1144,7 +1144,7 @@
     }).join('');
     $('dset-icon').setAttribute('href', `#i-${st.icon}`);
     $('dset-step-title').textContent = st.title;
-    $('dset-step-text').textContent = st.text.replace(/Rabbid Lab/g, R.lab()); // the steps are written before the lab's name is known
+    $('dset-step-text').textContent = st.text.replace(/Rabbid Lab/g, R.app()); // the steps are written before the lab's name is known
     $('dset-dialog').querySelectorAll('[data-pane]').forEach((p) => { p.hidden = p.dataset.pane !== st.key; });
     $('dset-user-label').textContent = make ? 'Domain admin' : 'Service account';
     $('dset-note').textContent = make ? 'These credentials are only used to create the service account. They are never saved.' : 'Its password is stored encrypted on this server.';
@@ -1188,7 +1188,7 @@
     } else {
       el.innerHTML = `<div class="dgate-card"><span class="big-ic ember">${svg('key')}</span><div class="ustatus-text"><b>Set up the Active Directory service account</b><span>`
         + esc(allowed
-          ? `${R.lab()} makes its Active Directory changes as a dedicated service account (svc-rabbidlab). Create it with a domain admin login for ${info.domain}: ${R.lab()} creates the account, delegates it permissions on users, groups and computers, and stores its password encrypted. The admin login is only used for this and isn't saved.${local ? noAccount : ''}`
+          ? `${R.app()} makes its Active Directory changes as a dedicated service account (svc-rabbidlab). Create it with a domain admin login for ${info.domain}: ${R.app()} creates the account, delegates it permissions on users, groups and computers, and stores its password encrypted. The admin login is only used for this and isn't saved.${local ? noAccount : ''}`
           : 'Someone whose roles allow setting up the service account has to do this first.')
         + `</span></div><div class="dgate-acts">${allowed ? '<button type="button" class="primary" data-setup>Set up</button>' : ''}</div></div>`;
     }
@@ -1254,7 +1254,7 @@
         const answer = await R.send('/api/ad/connect', { ...sign, existing: !make, account: $('dset-account').value.trim(), ou: $('dset-ou').value, scope: $('dset-scope').value });
         $('dset-password').value = '';
         $('dset-dialog').close();
-        say('dir-note', answer.warning || (make ? `Created the service account ${answer.state.account}. ${R.lab()} makes its AD changes as it from now on.` : `${R.lab()} makes its AD changes as ${answer.state.account} from now on.`));
+        say('dir-note', answer.warning || (make ? `Created the service account ${answer.state.account}. ${R.app()} makes its AD changes as it from now on.` : `${R.app()} makes its AD changes as ${answer.state.account} from now on.`));
         places = null;
         R.forget();
         refreshAd(true);
@@ -1292,14 +1292,14 @@
     $('as-account').textContent = s ? s.account : 'No service account';
     $('as-about').textContent = s
       ? `In ${s.domain}, ${s.made ? 'with delegated permissions on' : 'managing'} ${s.scopeName}. ${s.made ? 'Created' : 'Connected'} by ${s.by}${s.at ? ` on ${R.when(s.at)}` : ''}. Its password is stored encrypted on this server.`
-      : ad?.domain ? `${R.lab()} makes its changes in ${ad.domain} as a service account. Set one up to use the Active Directory pages.` : "This server isn't on a domain. Connect one to manage it from here.";
+      : ad?.domain ? `${R.app()} makes its changes in ${ad.domain} as a service account. Set one up to use the Active Directory pages.` : "This server isn't on a domain. Connect one to manage it from here.";
     $('as-setup').hidden = !!s;
     $('as-setup').textContent = ad?.domain ? 'Set up' : 'Connect a domain';
     $('as-ou-row').hidden = !s;
     $('as-danger').classList.toggle('gone', !s);
     if (!s) return;
     $('adset-stop-title').textContent = `Disconnect ${s.account}`;
-    $('adset-stop-text').textContent = `${R.lab()} deletes the stored password and stops using ${s.account}.${s.made ? ' The account and its delegated permissions stay in AD until you delete them.' : ''}`;
+    $('adset-stop-text').textContent = `${R.app()} deletes the stored password and stops using ${s.account}.${s.made ? ' The account and its delegated permissions stay in AD until you delete them.' : ''}`;
     await placesInto('adset-ou', s.newUsers, 'adset-problem');
   };
   $('as-setup').addEventListener('click', () => openSetup(ad?.domain));
@@ -1319,7 +1319,7 @@
   });
   $('adset-stop').addEventListener('click', () => {
     const s = ad.state;
-    sure(`Disconnect ${s.account}?`, `${R.lab()} can't make any AD changes until a service account is set up again.${s.made ? ` ${s.account} stays in AD until you delete it.` : ''}`,
+    sure(`Disconnect ${s.account}?`, `${R.app()} can't make any AD changes until a service account is set up again.${s.made ? ` ${s.account} stays in AD until you delete it.` : ''}`,
       'Disconnect', async () => {
         try {
           await R.send('/api/ad/disconnect', {});
