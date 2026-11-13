@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.121 (2026-11-13)
+
+- Groups and Computers get the same tick boxes, Actions, dots and right-click menu as Users. Groups have Members (add, remove, copy) and Member of; computers have Account and Groups; both can be edited and moved. Copying group membership works on all three. The Needs a look cards are gone.
+
 ## 1.1.120 (2026-11-13)
 
 - Users can be selected and changed together. Tick them and click Actions, or use the dots or right-click on a row, for one menu: enable, unlock, expiration, password options, groups, security flags, edit properties, rename, move and delete.

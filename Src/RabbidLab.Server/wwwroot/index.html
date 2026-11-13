@@ -751,7 +751,6 @@
           <div class="vswitch" id="dir-layout"><button type="button" data-layout="rows" title="Rows" aria-label="Rows"><svg><use href="#i-list"/></svg></button><button type="button" data-layout="tiles" title="Tiles" aria-label="Tiles"><svg><use href="#i-overview"/></svg></button></div>
           <button type="button" class="small" id="dir-export"><svg><use href="#i-csv"/></svg>Export</button>
           <button type="button" class="primary" id="dir-new" data-can="ad.create"><svg><use href="#i-plus"/></svg><span id="dir-new-text">New user</span></button></div>
-        <div class="dlook" id="dir-look" hidden></div>
         <p class="dnow" id="dir-now" hidden><b id="dir-view-title"></b><span class="bar-note" id="dir-count"></span></p>
         <div class="dir-banner" id="dir-banner" hidden></div>
         <!-- Ticked users: how many, and one Actions menu for all of them. -->
@@ -1343,7 +1342,9 @@
     <div><label for="ued-office">Office</label><input id="ued-office" autocomplete="off" maxlength="128"></div>
     <div data-one><label for="ued-email">Email</label><input id="ued-email" type="email" autocomplete="off" spellcheck="false" maxlength="256"></div>
     <div data-one><label for="ued-phone">Phone</label><input id="ued-phone" autocomplete="off" spellcheck="false" maxlength="64"></div>
-    <div class="wide"><label for="ued-manager">Manager</label><div class="ou-row"><div class="adder" id="ued-boss"><span class="find"><svg><use href="#i-search"/></svg><input type="search" id="ued-manager" data-find placeholder="Find a person" autocomplete="off" spellcheck="false"></span><div class="drop" data-drop hidden></div></div>
+    <div class="wide"><label for="ued-notes">Notes</label><input id="ued-notes" autocomplete="off" maxlength="1024"></div>
+    <div class="wide"><label for="ued-location">Location</label><input id="ued-location" autocomplete="off" maxlength="1024"></div>
+    <div class="wide" id="ued-boss-row"><label for="ued-manager">Manager</label><div class="ou-row"><div class="adder" id="ued-boss"><span class="find"><svg><use href="#i-search"/></svg><input type="search" id="ued-manager" data-find placeholder="Find a person" autocomplete="off" spellcheck="false"></span><div class="drop" data-drop hidden></div></div>
       <button type="button" id="ued-manager-x"><svg><use href="#i-x"/></svg>No manager</button></div></div>
   </div>
   <p class="hint problem" id="ued-problem" hidden></p>

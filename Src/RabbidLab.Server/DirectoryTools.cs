@@ -34,14 +34,14 @@ public sealed record AdGroupRef(string Dn, string Name);
 
 /// <summary>A group: its scope (Global, Domain local or Universal), whether it's a security group, and how many members it has.</summary>
 public sealed record AdGroup(string Dn, string Name, string? Description, string Where, string Scope = "Global", bool Security = true, int Members = 0, bool MoreMembers = false,
-    bool Protected = false, bool System = false);
+    bool Protected = false, bool System = false, List<AdGroupRef>? Groups = null, string? Email = null, string? Notes = null);
 
 /// <summary>Someone or something in a group: a person ("user"), a group, a computer, or "other" (a contact, say).</summary>
 public sealed record AdMember(string Dn, string Name, string Kind, string? Username, string Where);
 
 /// <summary>A computer's account in the domain.</summary>
 public sealed record AdComputer(string Name, string Dn, string Where, string? Host, string? Os, string? OsVersion, string? Description, bool Enabled, bool Controller,
-    DateTime? LastSignIn, DateTime? Created);
+    DateTime? LastSignIn, DateTime? Created, List<AdGroupRef>? Groups = null, string? Location = null);
 
 public sealed record NewAdGroup(string? Name, string? Scope, bool Security, string? Ou, string? Description);
 
@@ -170,10 +170,10 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
         "userAccountControl", "msDS-User-Account-Control-Computed", "lockoutTime", "lastLogonTimestamp", "pwdLastSet", "whenCreated", "memberOf", "adminCount", "isCriticalSystemObject",
         "department", "manager", "accountExpires", "msDS-UserPasswordExpiryTimeComputed", "givenName", "sn", "physicalDeliveryOfficeName", "telephoneNumber", "company"];
 
-    private static readonly string[] GroupAttributes = ["cn", "description", "groupType", "member", "adminCount", "isCriticalSystemObject", "objectSid"];
+    private static readonly string[] GroupAttributes = ["cn", "description", "groupType", "member", "adminCount", "isCriticalSystemObject", "objectSid", "memberOf", "mail", "info"];
 
     private static readonly string[] ComputerAttributes = ["cn", "dNSHostName", "operatingSystem", "operatingSystemVersion", "description", "userAccountControl",
-        "lastLogonTimestamp", "whenCreated"];
+        "lastLogonTimestamp", "whenCreated", "memberOf", "location"];
 
     private static readonly string[] MemberAttributes = ["objectClass", "sAMAccountName", "displayName", "cn"];
 
@@ -896,7 +896,8 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
             Members: members,
             MoreMembers: more,
             Protected: r.Number("adminCount") == 1,
-            System: r.Text("isCriticalSystemObject") == "TRUE" || (type & 1) != 0);
+            System: r.Text("isCriticalSystemObject") == "TRUE" || (type & 1) != 0,
+            Groups: MemberOf(r), Email: r.Text("mail"), Notes: r.Text("info"));
     }
 
     /// <summary>The last part of its SID, which is what primaryGroupID holds. Null without an objectSid.</summary>
@@ -916,8 +917,13 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
         return new AdComputer(r.Text("cn") ?? Ldap.Name(r.Dn), r.Dn, Ldap.Path(Ldap.Parent(r.Dn), baseDn), r.Text("dNSHostName"), r.Text("operatingSystem"),
             r.Text("operatingSystemVersion"), r.Text("description"), Enabled: (flags & Disabled) == 0, Controller: (flags & 0x2000) != 0,
             LastSignIn: FileTime(r.Number("lastLogonTimestamp")),
-            Created: When(r.Text("whenCreated")));
+            Created: When(r.Text("whenCreated")),
+            Groups: MemberOf(r), Location: r.Text("location"));
     }
+
+    /// <summary>The groups it is directly in, by name.</summary>
+    private static List<AdGroupRef> MemberOf(LdapRow r) =>
+        [.. r.Texts("memberOf").Select(g => new AdGroupRef(g, Ldap.Name(g))).OrderBy(g => g.Name, StringComparer.OrdinalIgnoreCase)];
 
     /// <summary>The DN, when it's in this domain.</summary>
     private static string Inside(string dn, string baseDn) =>

@@ -209,6 +209,32 @@ public sealed class DirectoryToolsTests : IDisposable
     }
 
     [Fact]
+    public async Task Groups_and_computers_move_join_groups_and_take_edits_inside_the_scope_only()
+    {
+        await Connect();
+        var none = CancellationToken.None;
+        var staff = $"CN=Lab Staff,{Lab}";
+        var pc1 = $"CN=PC1,{Lab}";
+
+        Assert.Equal("Lab / People", await tools.MoveObject(pc1, $"OU=People,{Lab}", none));
+        Assert.Contains($"rename {pc1} -> CN=PC1,OU=People,{Lab}", ad.Log);
+        Assert.Null(await tools.ChangeMemberOf($"CN=PC1,OU=People,{Lab}", [staff], [], none));
+        Assert.Contains($"modify {staff} member", ad.Log);
+        Assert.Equal(["description", "notes"], await tools.EditObject(new ObjectEdit(staff, "Lab people", null, "Ask Anthony", null), none));
+        Assert.Contains($"modify {staff} description", ad.Log);
+        // A group isn't put in itself; email and location only go on what has them.
+        ad.Log.Clear();
+        Assert.Null(await tools.ChangeMemberOf(staff, [staff], [], none));
+        Assert.DoesNotContain(ad.Log, l => l.StartsWith("modify", StringComparison.Ordinal));
+        Assert.Equal(["location"], await tools.EditObject(new ObjectEdit($"CN=PC1,OU=People,{Lab}", null, "x@amw.com", null, "Rack 2"), none));
+
+        Assert.Contains("built-in", (await Refused(() => tools.MoveObject($"CN=Lab Operators,{Lab}", $"OU=People,{Lab}", none))).Message);
+        Assert.Contains("domain controller", (await Refused(() => tools.ChangeMemberOf($"CN=DC9,{Lab}", [staff], [], none))).Message);
+        Assert.Contains("outside", (await Refused(() => tools.EditObject(new ObjectEdit($"CN=Elsewhere,{Other}", "x", null, null, null), none))).Message);
+        Assert.Contains("outside", (await Refused(() => tools.MoveObject($"CN=PC1,OU=People,{Lab}", Other, none))).Message);
+    }
+
+    [Fact]
     public async Task Lists_say_when_Active_Directory_had_more_than_it_sent()
     {
         await Connect("DC=amw,DC=com");

@@ -16,9 +16,27 @@ public sealed record AdRenameForm(string? Name);
 
 public sealed record AdMoveForm(string? Ou);
 
-/// <summary>The Users grid's menu: account options, expiry, properties, rename and move, one user at a time.</summary>
+/// <summary>A group or computer by DN, and where it goes.</summary>
+public sealed record ObjectMoveForm(string? Dn, string? Ou);
+
+/// <summary>A group or computer by DN, and the groups to put it in or take it out of.</summary>
+public sealed record ObjectGroupsForm(string? Dn, List<string>? Add, List<string>? Remove);
+
+/// <summary>A group's or computer's details: null leaves it, empty clears it. Email and notes are a group's, location a computer's.</summary>
+public sealed record ObjectEdit(string? Dn, string? Description, string? Email, string? Notes, string? Location);
+
+/// <summary>The menus on Users, Groups and Computers: account options, expiry, properties, rename and move, one at a time.</summary>
 public interface IDirectoryActions
 {
+    /// <summary>Where the group or computer is now, readably.</summary>
+    Task<string> MoveObject(string dn, string ou, CancellationToken stop);
+
+    /// <summary>What didn't work, if anything.</summary>
+    Task<string?> ChangeMemberOf(string dn, IReadOnlyList<string> add, IReadOnlyList<string> remove, CancellationToken stop);
+
+    /// <summary>The fields that changed, by name.</summary>
+    Task<List<string>> EditObject(ObjectEdit form, CancellationToken stop);
+
     Task SetFlag(string username, string flag, bool on, CancellationToken stop);
 
     /// <summary>The account stops working after that day ends (server time), as ADUC's End of; null for never.</summary>
@@ -47,6 +65,103 @@ public sealed partial class DirectoryTools : IDirectoryActions
     };
 
     public static bool KnownFlag(string flag) => Bits.ContainsKey(flag) || flag is "mustchange" or "cannotchange";
+
+    private static readonly string[] ObjectAttributes = ["objectClass", "sAMAccountName", "userAccountControl", "groupType", "adminCount", "isCriticalSystemObject",
+        "objectSid", "cn", "member", "description", "mail", "info", "location"];
+
+    /// <summary>A group or computer this may change: in scope, not a built-in group, not a domain controller. Users go through Changeable.</summary>
+    private static async Task<(LdapRow Row, string Kind)> ChangeableObject(ILdap ldap, DirectoryToolsFile f, string dn, CancellationToken stop)
+    {
+        var row = (await ldap.Find(Inside(dn, ldap.BaseDn), "(objectClass=*)", false, ObjectAttributes, 1, stop)).FirstOrDefault()
+            ?? throw new ToolProblem("That isn't in Active Directory any more.", StatusCodes.Status404NotFound);
+        InScope(row.Dn, f, ldap.BaseDn);
+        var kind = KindOf(row);
+        switch (kind)
+        {
+            case "group":
+                return (await ChangeableGroup(ldap, f, row.Dn, stop), kind);
+            case "computer":
+                return ((row.Number("userAccountControl") ?? 0) & 0x2000) != 0
+                    ? throw new ToolProblem($"{Ldap.Name(row.Dn)} is a domain controller. Change those in Active Directory itself.")
+                    : (row, kind);
+            case "user":
+                return (await Changeable(ldap, f, row.Text("sAMAccountName") ?? "", stop), kind);
+            default:
+                throw new ToolProblem("Only users, groups and computers can be changed here.");
+        }
+    }
+
+    public async Task<string> MoveObject(string dn, string ou, CancellationToken stop)
+    {
+        if (string.IsNullOrWhiteSpace(ou))
+        {
+            throw new ToolProblem("Pick where to move it.");
+        }
+        using var ldap = await Open(stop);
+        var f = Ready();
+        var (row, _) = await ChangeableObject(ldap, f, dn, stop);
+        var into = await Into(ldap, ou, f.Scope!, stop);
+        InScope(into, f, ldap.BaseDn);
+        if (!string.Equals(Ldap.Parent(row.Dn), into, StringComparison.OrdinalIgnoreCase))
+        {
+            await Relocate(ldap, f, row.Dn, Ldap.Split(row.Dn)[0], into, stop);
+        }
+        return Ldap.Path(into, ldap.BaseDn) is { Length: > 0 } path ? path : f.Domain!;
+    }
+
+    public async Task<string?> ChangeMemberOf(string dn, IReadOnlyList<string> add, IReadOnlyList<string> remove, CancellationToken stop)
+    {
+        using var ldap = await Open(stop);
+        var f = Ready();
+        var (row, _) = await ChangeableObject(ldap, f, dn, stop);
+        // A group can't be put in itself.
+        var a = await Join(ldap, f, row.Dn, add.Where(g => !string.Equals(g?.Trim(), row.Dn, StringComparison.OrdinalIgnoreCase)), true, stop);
+        var b = await Join(ldap, f, row.Dn, remove, false, stop);
+        return a is null ? b : b is null ? a : $"{a} {b}";
+    }
+
+    public async Task<List<string>> EditObject(ObjectEdit form, CancellationToken stop)
+    {
+        using var ldap = await Open(stop);
+        var f = Ready();
+        var (row, kind) = await ChangeableObject(ldap, f, form.Dn ?? "", stop);
+        (string Attribute, string Label, int Max, string? Value)[] fields = kind switch
+        {
+            "group" => [("description", "description", 1024, form.Description), ("mail", "email", 256, form.Email), ("info", "notes", 1024, form.Notes)],
+            "computer" => [("description", "description", 1024, form.Description), ("location", "location", 1024, form.Location)],
+            _ => throw new ToolProblem("Users are edited with Edit properties on Users."),
+        };
+        var changes = new List<LdapMod>();
+        var changed = new List<string>();
+        foreach (var (attribute, label, max, typed) in fields)
+        {
+            if (typed is null)
+            {
+                continue;
+            }
+            var value = attribute == "info" ? typed.Trim().Replace("\r\n", "\n").Replace("\n", "\r\n") : typed.Trim();
+            if (value.Length > max)
+            {
+                throw new ToolProblem($"The {label} is {max} characters at most.");
+            }
+            if (value.Any(c => char.IsControl(c) && c is not ('\r' or '\n')))
+            {
+                throw new ToolProblem($"The {label} has characters that can't be stored.");
+            }
+            var was = row.Text(attribute) ?? "";
+            if (string.Equals(was, value, StringComparison.Ordinal) || (value.Length == 0 && was.Length == 0))
+            {
+                continue;
+            }
+            changes.Add(value.Length == 0 ? new(LdapChange.Delete, attribute) : new(LdapChange.Replace, attribute, value));
+            changed.Add(label);
+        }
+        if (changes.Count > 0)
+        {
+            await Change(ldap, row.Dn, changes, f, password: false, stop);
+        }
+        return changed;
+    }
 
     public async Task SetFlag(string username, string flag, bool on, CancellationToken stop)
     {
@@ -242,6 +357,37 @@ public static class DirectoryActionsApi
 
     public static void MapDirectoryActionsApi(this WebApplication app)
     {
+        // Groups and computers, by DN: where they are, the groups they're in, and their details.
+        app.MapPost("/api/ad/object/move", (ObjectMoveForm form, HttpContext context, IDirectoryActions tools, ActivityLog log) =>
+            UsersApi.Try(context, Permissions.AdChange, async () =>
+            {
+                var where = await tools.MoveObject(form.Dn ?? "", form.Ou ?? "", context.RequestAborted);
+                log.Record(context, "users", "ad.move", $"Moved {Ldap.Name(form.Dn ?? "")} to {where}");
+                return Results.Ok(new { where });
+            }));
+
+        app.MapPost("/api/ad/object/groups", (ObjectGroupsForm form, HttpContext context, IDirectoryActions tools, ActivityLog log) =>
+            UsersApi.Try(context, Permissions.AdChange, async () =>
+            {
+                var add = form.Add ?? [];
+                var remove = form.Remove ?? [];
+                var warning = await tools.ChangeMemberOf(form.Dn ?? "", add, remove, context.RequestAborted);
+                var said = string.Join("; ", new[] { add.Count > 0 ? "added to " + string.Join(", ", add.Select(Ldap.Name)) : null, remove.Count > 0 ? "taken out of " + string.Join(", ", remove.Select(Ldap.Name)) : null }.OfType<string>());
+                log.Record(context, "users", "ad.memberof", $"Changed the groups {Ldap.Name(form.Dn ?? "")} is in", warning is null ? "ok" : "warning", said + (warning is null ? "" : $". {warning}"));
+                return Results.Ok(new { warning });
+            }));
+
+        app.MapPost("/api/ad/object/edit", (ObjectEdit form, HttpContext context, IDirectoryActions tools, ActivityLog log) =>
+            UsersApi.Try(context, Permissions.AdChange, async () =>
+            {
+                var changed = await tools.EditObject(form, context.RequestAborted);
+                if (changed.Count > 0)
+                {
+                    log.Record(context, "users", "ad.edit", $"Edited {Ldap.Name(form.Dn ?? "")}'s properties", detail: "Changed " + string.Join(", ", changed));
+                }
+                return Results.Ok(new { changed });
+            }));
+
         app.MapPost("/api/ad/users/{username}/flag", (string username, FlagForm form, HttpContext context, IDirectoryActions tools, ActivityLog log) =>
             UsersApi.Try(context, Permissions.AdChange, async () =>
             {

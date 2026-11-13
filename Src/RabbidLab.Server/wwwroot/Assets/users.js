@@ -23,22 +23,24 @@
   let rows = [];
   let places = null;
 
-  // Users ticked in the list (by username), kept while the list is read again.
-  const picked = new Set();
-  const byUsername = (name) => (lists.users || []).find((u) => u.username === name);
+  // What's ticked on Users, Groups and Computers (by each page's key), kept while the list is read again.
+  const picked = { users: new Set(), groups: new Set(), computers: new Set() };
+  const pickedHere = () => picked[adPage] || new Set();
+  const keyOf = (x) => String(AD[adPage].key(x));
+  const byKey = (key) => (lists[adPage] || []).find((x) => keyOf(x) === key);
   const count = (n, one, many) => `${n.toLocaleString()} ${n === 1 ? one : many}`;
   // The bar over the list, the tick in the heading and each row's highlight, without drawing the list again.
   const drawPicked = () => {
-    const n = picked.size;
-    $('dir-bulk').hidden = !n || adPage !== 'users';
-    $('dir-bulk-n').textContent = `${count(n, 'user', 'users')} selected`;
+    const sel = pickedHere();
+    $('dir-bulk').hidden = !sel.size;
+    if (sel.size) $('dir-bulk-n').textContent = `${count(sel.size, ...AD[adPage].noun)} selected`;
     $('dir-table').querySelectorAll('[data-tick]').forEach((box) => {
-      box.checked = picked.has(box.dataset.tick);
+      box.checked = sel.has(box.dataset.tick);
       box.closest('.tr')?.classList.toggle('picked', box.checked);
     });
     const all = $('dir-table').querySelector('[data-tick-all]');
     if (all) {
-      const shown = rows.filter((u) => picked.has(u.username)).length;
+      const shown = rows.filter((x) => sel.has(keyOf(x))).length;
       all.checked = !!rows.length && shown === rows.length;
       all.indeterminate = shown > 0 && shown < rows.length;
     }
@@ -307,20 +309,6 @@
     document.querySelector(`#dir-rail a[data-adpage="${adPage}"]`)?.after($('dir-views'));
     document.querySelectorAll('#dir-rail [data-n]').forEach((el) => { el.textContent = total[el.dataset.n] === undefined ? '' : total[el.dataset.n].toLocaleString(); });
   };
-  // What needs a look, as cards over the list: the page's views that carry a warning and have something in them.
-  const drawLook = (find) => {
-    const count = counts();
-    const list = lists[adPage] || [];
-    const cards = adView !== allViews()[0].key || find || filtering() ? [] : allViews().filter((v) => v.tone && count[v.key]).slice(0, 4);
-    $('dir-look').hidden = !cards.length;
-    $('dir-look').innerHTML = !cards.length ? '' : `<p class="dlook-label">${svg('alert')}Needs a look</p><div class="dlook-cards">` + cards.map((v) => {
-      const first = list.find((x) => inView(v, x));
-      const name = first.name || first.username || '';
-      return `<a class="dlook-card ${v.tone}" href="#ad/${adPage}/${v.key}"><span class="n">${count[v.key].toLocaleString()}</span><b>${esc(v.label)}</b>`
-        + `<span>${esc(count[v.key] > 1 ? `${name} and ${(count[v.key] - 1).toLocaleString()} more` : name)}</span></a>`;
-    }).join('') + '</div>';
-  };
-
   const drawAd = () => {
     const p = page();
     const s = ad?.state;
@@ -356,9 +344,9 @@
     $('dir-now').hidden = !(adView !== allViews()[0].key || find || filtering());
     $('dir-view-title').textContent = v.label;
     $('dir-count').textContent = `${rows.length.toLocaleString()} ${p.noun[rows.length === 1 ? 0 : 1]}`;
-    // Users as rows can be ticked, and each has ⋯ for its menu.
-    const picks = adPage === 'users' && adLayout === 'rows';
-    if (adPage === 'users') [...picked].forEach((name) => { if (!byUsername(name)) picked.delete(name); });
+    // Users, groups and computers as rows can be ticked, and each has ⋯ for its menu.
+    const picks = !!picked[adPage] && adLayout === 'rows';
+    if (picked[adPage] && lists[adPage]) [...picked[adPage]].forEach((k) => { if (!byKey(k)) picked[adPage].delete(k); });
     $('dir-table').className = `table adt ${adPage} ${adLayout === 'tiles' ? 'dtiles' : 'drows'}${picks ? ' picks' : ''}`;
     const none = `<div class="empty">${list.length ? 'Nothing here right now.' : 'Nothing yet.'}</div>`;
     // Rows keep every column under its heading; a tile leads with the name and stacks the rest under it.
@@ -369,7 +357,7 @@
       }).join('')
       : `<div class="tr th">${picks ? '<label class="tk"><input type="checkbox" data-tick-all aria-label="Select all"></label>' : ''}${p.head.map((h) => `<span>${esc(h)}</span>`).join('')}${picks ? '<span></span>' : ''}</div>`
         + rows.map((x, i) => `<div class="tr" tabindex="0" data-i="${i}">`
-          + (picks ? `<label class="tk"><input type="checkbox" data-tick="${esc(x.username)}" aria-label="Select ${esc(x.name || x.username)}"></label>` : '')
+          + (picks ? `<label class="tk"><input type="checkbox" data-tick="${esc(keyOf(x))}" aria-label="Select ${esc(x.name || x.username)}"></label>` : '')
           + p.cells(x).map((c) => `<div>${c}</div>`).join('')
           + (picks ? `<div class="tr-more"><button type="button" class="at-more" data-row-menu="${i}" data-tip="Actions" aria-label="Actions for ${esc(x.name || x.username)}">${svg('dots')}</button></div>` : '')
           + '</div>').join('');
@@ -377,7 +365,6 @@
     drawPicked();
     drawViews();
     drawFilters();
-    drawLook(find);
     // The dots in the rail keep what the last read said, while another page is open.
     if (lists.users) $('dir-locked-dot').hidden = !lists.users.some((u) => u.locked && !u.system);
     if (lists.domain) $('dir-domain-dot').hidden = !lists.domain.some((s) => s.tone === 'bad');
@@ -651,7 +638,7 @@
     const dots = e.target.closest('[data-row-menu]');
     if (dots) {
       const r = dots.getBoundingClientRect();
-      openCmd(menuUsers(rows[Number(dots.dataset.rowMenu)]), r.right - CMD_W, r.bottom + 6);
+      openCmd(menuObjs(rows[Number(dots.dataset.rowMenu)]), r.right - CMD_W, r.bottom + 6);
       return;
     }
     const row = e.target.closest('[data-i]');
@@ -704,61 +691,85 @@
     }
   });
 
-  // --- Users: ticked ones, and one menu of what can be done to them -----------------------------------------------
-  // A row's ⋯ or a right-click opens it for that user, or for every selected user when that row is one of them; Actions
-  // over the list opens it for the selected ones. Its categories open to the side. Changes go one user at a time, and
-  // protected and built-in accounts are left out: Active Directory Users and Computers changes those.
+  // --- Users, groups and computers: ticked ones, and one menu of what can be done to them ---------------------------
+  // A row's ⋯ or a right-click opens it for that row, or for every selected row when it's one of them; Actions over the
+  // list opens it for the selected ones. Its categories open to the side. Changes go one at a time, and what this can't
+  // change is left out: protected and built-in accounts, built-in groups and domain controllers.
 
   const CMD_W = 250;
-  const mayChange = (u) => !u.service && !u.protected && !u.system;
-  const whoOf = (us) => (us.length === 1 ? us[0].name || us[0].username : count(us.length, 'user', 'users'));
+  const nameOf = (x) => x.name || x.username;
+  const mayChange = (k, x) => (k === 'users' ? !x.service && !x.protected && !x.system : k === 'groups' ? !x.system : !x.controller);
+  const whoOf = (xs, k = adPage) => (xs.length === 1 ? nameOf(xs[0]) : count(xs.length, ...AD[k].noun));
   const userPath = (u) => `/api/ad/users/${encodeURIComponent(u.username)}`;
-  const menuUsers = (u) => (u && picked.has(u.username) && picked.size > 1 ? [...picked].map(byUsername).filter(Boolean) : [u].filter(Boolean));
+  const selectedObjs = () => [...pickedHere()].map(byKey).filter(Boolean);
+  const menuObjs = (x) => (x && pickedHere().has(keyOf(x)) && pickedHere().size > 1 ? selectedObjs() : [x].filter(Boolean));
+
+  // Where each change goes, for each kind.
+  const pcPath = (x) => `/api/ad/computers/${encodeURIComponent(x.name)}`;
+  const enableOf = (k, x, on) => [k === 'users' ? `${userPath(x)}/enable` : `${pcPath(x)}/enable`, { on }];
+  const memberOf = (k, x, add, remove) => (k === 'users' ? [`${userPath(x)}/groups`, { add, remove }] : ['/api/ad/object/groups', { dn: x.dn, add, remove }]);
+  const moveOf = (k, x, ou) => (k === 'users' ? [`${userPath(x)}/move`, { ou }] : ['/api/ad/object/move', { dn: x.dn, ou }]);
+  const editOf = (k, x, form) => (k === 'users' ? [`${userPath(x)}/edit`, form] : ['/api/ad/object/edit', { dn: x.dn, ...form }]);
+  const deleteOf = (k, x) => (k === 'users' ? [`${userPath(x)}/delete`, {}] : k === 'groups' ? ['/api/ad/groups/delete', { dn: x.dn }] : [`${pcPath(x)}/delete`, {}]);
+  const membersOf = (g, add, remove) => ['/api/ad/groups/members', { dn: g.dn, add, remove }];
+  const post = (u, tail, body = {}) => [`${userPath(u)}${tail}`, body];
 
   // Shift-click ticks every row between the last one ticked and this one.
   let lastTick = null;
   const tickRange = (e) => {
     const box = e.target.closest('.tk')?.querySelector('input');
     if (!box || e.target !== box) return; // the label's own click comes through the box
+    const sel = pickedHere();
     if (box.dataset.tickAll !== undefined) {
-      rows.forEach((u) => (box.checked ? picked.add(u.username) : picked.delete(u.username)));
+      rows.forEach((x) => (box.checked ? sel.add(keyOf(x)) : sel.delete(keyOf(x))));
     } else {
-      const i = rows.findIndex((u) => u.username === box.dataset.tick);
+      const i = rows.findIndex((x) => keyOf(x) === box.dataset.tick);
       const from = e.shiftKey && lastTick !== null ? Math.min(lastTick, i) : i;
       const to = e.shiftKey && lastTick !== null ? Math.max(lastTick, i) : i;
-      rows.slice(from, to + 1).forEach((u) => (box.checked ? picked.add(u.username) : picked.delete(u.username)));
+      rows.slice(from, to + 1).forEach((x) => (box.checked ? sel.add(keyOf(x)) : sel.delete(keyOf(x))));
       lastTick = i;
     }
     drawPicked();
   };
   $('dir-bulk-clear').addEventListener('click', () => {
-    picked.clear();
+    pickedHere().clear();
     drawPicked();
   });
   $('dir-bulk-act').addEventListener('click', () => {
     const r = $('dir-bulk-act').getBoundingClientRect();
-    openCmd([...picked].map(byUsername).filter(Boolean), r.right - CMD_W, r.bottom + 6);
+    openCmd(selectedObjs(), r.right - CMD_W, r.bottom + 6);
   });
   $('dir-table').addEventListener('contextmenu', (e) => {
-    const row = adPage === 'users' && e.target.closest('[data-i]');
+    const row = picked[adPage] && e.target.closest('[data-i]');
     if (!row) return;
     e.preventDefault();
     const r = row.getBoundingClientRect();
     // From the keyboard there's no pointer: under the row's name.
-    openCmd(menuUsers(rows[Number(row.dataset.i)]), e.clientX || r.left + 40, e.clientY || r.bottom);
+    openCmd(menuObjs(rows[Number(row.dataset.i)]), e.clientX || r.left + 40, e.clientY || r.bottom);
   });
 
   // The menu: Properties, then a category for each kind of change, More, and Delete. What applies to none of them is
-  // greyed out; for several users, an item says how many of them it applies to.
+  // greyed out; for several, an item says how many of them it applies to.
   const mi = (cmd, icon, label, { off = false, hint = '', danger = false } = {}) => `<button type="button" role="menuitem" class="am-link${danger ? ' out' : ''}" data-cmd="${cmd}"${off ? ' disabled' : ''}>`
     + `${svg(icon)}<span>${esc(label)}</span>${hint ? `<small>${esc(hint)}</small>` : ''}</button>`;
   const some = (k, n, cmd, icon, label) => mi(cmd, icon, label, { off: !k, hint: n > 1 && k && k < n ? `${k} of ${n}` : '' });
   const part = (...items) => `<div class="am-links">${items.join('')}</div>`;
   const fly = (icon, label, ...parts) => `<div class="cmd-sub"><button type="button" role="menuitem" class="am-link" aria-haspopup="menu" aria-expanded="false">`
     + `${svg(icon)}<span>${esc(label)}</span>${svg('right', 'chev')}</button><div class="gear-menu cmd-fly" role="menu">${parts.join('')}</div></div>`;
-  const COPY = [['name', 'name', 'names', (u) => u.name || u.username], ['username', 'logon name', 'logon names', (u) => u.username],
-    ['upn', 'user principal name', 'user principal names', (u) => u.upn], ['email', 'email address', 'email addresses', (u) => u.email],
-    ['dn', 'distinguished name', 'distinguished names', (u) => u.dn]];
+  const COPY = {
+    users: [['name', 'name', 'names', nameOf], ['username', 'logon name', 'logon names', (u) => u.username],
+      ['upn', 'user principal name', 'user principal names', (u) => u.upn], ['email', 'email address', 'email addresses', (u) => u.email],
+      ['dn', 'distinguished name', 'distinguished names', (u) => u.dn]],
+    groups: [['name', 'name', 'names', (g) => g.name], ['email', 'email address', 'email addresses', (g) => g.email], ['dn', 'distinguished name', 'distinguished names', (g) => g.dn]],
+    computers: [['name', 'name', 'names', (c) => c.name], ['host', 'DNS host name', 'DNS host names', (c) => c.host], ['dn', 'distinguished name', 'distinguished names', (c) => c.dn]],
+  };
+  const PIC = { users: 'user', groups: 'users', computers: 'laptop' };
+  // What's left out on each page, for the note in the menu: one, several, and the rest.
+  const LEFT_OUT = {
+    users: ['A protected or built-in account', 'Protected or built-in accounts', 'protected or built-in'],
+    groups: ['A built-in group', 'Built-in groups', 'built-in groups'],
+    computers: ['A domain controller', 'Domain controllers', 'domain controllers'],
+  };
   // An account option's field on the user, and what turning it on or off says afterwards.
   const FLAGS = {
     mustchange: ['mustChange', (w) => `${w} must change the password at the next sign-in`, (w) => `Cleared the password change requirement for ${w}`],
@@ -770,58 +781,78 @@
     des: ['desOnly', (w) => `Set ${w} to use only Kerberos DES encryption types`, (w) => `Stopped ${w} using only Kerberos DES encryption types`],
     preauth: ['noPreauth', (w) => `Turned off Kerberos preauthentication for ${w}`, (w) => `Turned on Kerberos preauthentication for ${w}`],
   };
-  const menuHtml = (objs) => {
+  const menuHtml = (k, objs) => {
+    const [one, many] = AD[k].noun;
     const all = objs.length;
-    const us = objs.filter(mayChange);
-    const n = us.length;
-    const has = (f) => us.filter(f).length;
+    const xs = objs.filter((x) => mayChange(k, x));
+    const n = xs.length;
+    const has = (f) => xs.filter(f).length;
     const change = can('ad.change') && n > 0;
     const toggle = (flag, icon, onLabel, offLabel) => {
-      const k = has((u) => u[FLAGS[flag][0]]);
-      return some(n - k, n, `flag-on:${flag}`, icon, onLabel) + some(k, n, `flag-off:${flag}`, icon, offLabel);
+      const on = has((u) => u[FLAGS[flag][0]]);
+      return some(n - on, n, `flag-on:${flag}`, icon, onLabel) + some(on, n, `flag-off:${flag}`, icon, offLabel);
     };
-    const top = all === 1 ? part(mi('open', 'user', 'Properties')) : `<p class="cmd-head">${esc(count(all, 'user', 'users'))} selected</p>`;
+    const [a1, aN, rest] = LEFT_OUT[k];
+    const top = all === 1 ? part(mi('open', PIC[k], 'Properties')) : `<p class="cmd-head">${esc(count(all, one, many))} selected</p>`;
     const note = !can('ad.change') || n === all ? ''
-      : `<p class="cmd-note">${n ? `${n} of ${all} can be changed here. The rest are protected or built-in` : `${all === 1 ? 'A protected or built-in account' : 'Protected or built-in accounts'}`}: Active Directory Users and Computers changes ${n === 0 && all === 1 ? 'it' : 'them'}.</p>`;
-    const changes = !change ? '' : part(
-      fly('user', 'Account',
-        part(some(has((u) => !u.enabled), n, 'enable', 'user-check', n === 1 ? 'Enable account' : 'Enable accounts'),
-          some(has((u) => u.enabled), n, 'disable', 'user-off', n === 1 ? 'Disable account' : 'Disable accounts'),
-          some(has((u) => u.locked), n, 'unlock', 'unlock', n === 1 ? 'Unlock account' : 'Unlock accounts')),
-        part(mi('expiry', 'calendar', n === 1 && us[0].accountExpires ? 'Change account expiration…' : 'Set account expiration…'),
-          some(has((u) => u.accountExpires), n, 'expiry-clear', 'calendar', 'Remove account expiration'))),
-      fly('key', 'Password',
-        part(mi('password', 'key', n === 1 ? 'Reset password…' : `Reset password for ${n} users…`)),
-        part(some(has((u) => !u.mustChange && !u.neverExpires), n, 'flag-on:mustchange', 'refresh', 'Require password change at next sign-in'),
-          some(has((u) => u.mustChange), n, 'flag-off:mustchange', 'refresh', 'Clear password change requirement')),
-        part(toggle('noexpiry', 'clock', 'Set password to never expire', 'Set password to expire per policy')),
-        part(mi('flag-on:cannotchange', 'lock', 'Prevent user from changing password'), mi('flag-off:cannotchange', 'unlock', 'Allow user to change password'))),
-      fly('users', 'Groups',
-        part(mi('groups-add', 'user-plus', 'Add to groups…'), some(has((u) => u.groups.length), n, 'groups-remove', 'user-minus', 'Remove from groups…'),
-          some(has((u) => u.groups.length), n, 'groups-remove-all', 'user-minus', 'Remove from all groups…'))),
-      fly('shield', 'Security',
-        part(toggle('sensitive', 'shield', 'Mark as sensitive and cannot be delegated', 'Allow delegation'),
-          toggle('smartcard', 'key', 'Require smart card for interactive sign-in', 'Stop requiring a smart card')),
-        part(toggle('reversible', 'lock', 'Store password using reversible encryption', 'Stop storing password using reversible encryption'),
-          toggle('des', 'lock', 'Use only Kerberos DES encryption types', 'Stop using only Kerberos DES encryption types'),
-          toggle('preauth', 'alert', 'Do not require Kerberos preauthentication', 'Require Kerberos preauthentication'))),
-      fly('folder', 'Organization',
-        part(mi('edit', 'edit', n === 1 ? 'Edit properties…' : `Edit properties of ${n} users…`), mi('rename', 'edit', 'Rename…', { off: n !== 1 }), mi('move', 'move', 'Move…'))));
+      : `<p class="cmd-note">${n ? `${n} of ${all} can be changed here. The rest are ${rest}` : all === 1 ? a1 : aN}: Active Directory Users and Computers changes ${n === 0 && all === 1 ? 'it' : 'them'}.</p>`;
+    const onOff = (icon) => part(some(has((x) => !x.enabled), n, 'enable', 'user-check', n === 1 ? 'Enable account' : 'Enable accounts'),
+      some(has((x) => x.enabled), n, 'disable', 'user-off', n === 1 ? 'Disable account' : 'Disable accounts'),
+      ...(icon ? [some(has((u) => u.locked), n, 'unlock', 'unlock', n === 1 ? 'Unlock account' : 'Unlock accounts')] : []));
+    const membership = [
+      part(mi('groups-add', 'user-plus', 'Add to groups…'), some(has((x) => x.groups?.length), n, 'groups-remove', 'user-minus', 'Remove from groups…'),
+        some(has((x) => x.groups?.length), n, 'groups-remove-all', 'user-minus', 'Remove from all groups…')),
+      part(mi('groups-copy', 'copy', `Copy membership from another ${one}…`), mi('groups-copy-to', 'copy', `Copy membership to other ${many}…`, { off: n !== 1 })),
+    ];
+    const organization = fly('folder', 'Organization',
+      part(mi('edit', 'edit', n === 1 ? 'Edit properties…' : `Edit properties of ${count(n, one, many)}…`),
+        ...(k === 'users' ? [mi('rename', 'edit', 'Rename…', { off: n !== 1 })] : []), mi('move', 'move', 'Move…')));
+    let changes = '';
+    if (change && k === 'users') {
+      changes = part(
+        fly('user', 'Account', onOff(true),
+          part(mi('expiry', 'calendar', n === 1 && xs[0].accountExpires ? 'Change account expiration…' : 'Set account expiration…'),
+            some(has((u) => u.accountExpires), n, 'expiry-clear', 'calendar', 'Remove account expiration'))),
+        fly('key', 'Password',
+          part(mi('password', 'key', n === 1 ? 'Reset password…' : `Reset password for ${n} users…`)),
+          part(some(has((u) => !u.mustChange && !u.neverExpires), n, 'flag-on:mustchange', 'refresh', 'Require password change at next sign-in'),
+            some(has((u) => u.mustChange), n, 'flag-off:mustchange', 'refresh', 'Clear password change requirement')),
+          part(toggle('noexpiry', 'clock', 'Set password to never expire', 'Set password to expire per policy')),
+          part(mi('flag-on:cannotchange', 'lock', 'Prevent user from changing password'), mi('flag-off:cannotchange', 'unlock', 'Allow user to change password'))),
+        fly('users', 'Groups', ...membership),
+        fly('shield', 'Security',
+          part(toggle('sensitive', 'shield', 'Mark as sensitive and cannot be delegated', 'Allow delegation'),
+            toggle('smartcard', 'key', 'Require smart card for interactive sign-in', 'Stop requiring a smart card')),
+          part(toggle('reversible', 'lock', 'Store password using reversible encryption', 'Stop storing password using reversible encryption'),
+            toggle('des', 'lock', 'Use only Kerberos DES encryption types', 'Stop using only Kerberos DES encryption types'),
+            toggle('preauth', 'alert', 'Do not require Kerberos preauthentication', 'Require Kerberos preauthentication'))),
+        organization);
+    } else if (change && k === 'groups') {
+      changes = part(
+        fly('users', 'Members',
+          part(mi('members-add', 'user-plus', n === 1 ? 'Add members…' : `Add members to ${n} groups…`), mi('members-remove', 'user-minus', 'Remove members…', { off: n !== 1 })),
+          part(mi('members-copy', 'copy', 'Copy members from another group…'), mi('members-copy-to', 'copy', 'Copy members to other groups…', { off: n !== 1 }))),
+        fly('users', 'Member of', ...membership),
+        organization);
+    } else if (change) {
+      changes = part(fly('laptop', 'Account', onOff(false)), fly('users', 'Groups', ...membership), organization);
+    }
     const more = part(fly('dots', 'More',
       part(mi('attrs', 'list', 'View in attribute browser', { off: all !== 1 })),
-      part(...COPY.map(([k, one, many]) => mi(`copy:${k}`, 'copy', `Copy ${all === 1 ? one : many}`))),
-      part(mi('export', 'csv', all === 1 ? 'Export to CSV' : `Export ${all} users to CSV`))));
-    const gone = can('ad.delete') && n ? part(mi('delete', 'trash', n === 1 ? 'Delete…' : `Delete ${n} users…`, { danger: true })) : '';
+      part(...COPY[k].map(([key, o, m]) => mi(`copy:${key}`, 'copy', `Copy ${all === 1 ? o : m}`))),
+      part(mi('export', 'csv', all === 1 ? 'Export to CSV' : `Export ${count(all, one, many)} to CSV`))));
+    const deletable = xs.filter((x) => k !== 'groups' || !x.protected).length;
+    const gone = can('ad.delete') && deletable ? part(mi('delete', 'trash', deletable === 1 ? 'Delete…' : `Delete ${count(deletable, one, many)}…`, { danger: true })) : '';
     return top + note + changes + more + gone;
   };
 
-  let menuFor = [];
+  let menuFor = { kind: 'users', objs: [] };
   const openCmd = (objs, x, y) => {
     if (!objs.length) return;
     const m = $('cmd-menu');
     if (m.matches(':popover-open')) m.hidePopover();
-    menuFor = objs;
-    m.innerHTML = menuHtml(objs);
+    menuFor = { kind: adPage, objs };
+    m.innerHTML = menuHtml(adPage, objs);
     m.style.setProperty('left', '0px');
     m.style.setProperty('top', '0px');
     m.showPopover();
@@ -862,7 +893,7 @@
     const b = e.target.closest('[data-cmd]');
     if (!b || b.disabled) return;
     $('cmd-menu').hidePopover();
-    runCmd(b.dataset.cmd, menuFor);
+    runCmd(b.dataset.cmd, menuFor.kind, menuFor.objs);
   });
   // Up and down within the list that has focus; right opens a category, left goes back to it.
   $('cmd-menu').addEventListener('keydown', (e) => {
@@ -885,51 +916,66 @@
     }
   });
 
-  // Each user in turn under the flask; then the list is read again and a toast says how it went. Gives back what
-  // each that worked answered.
-  const each = async (users, doing, done, work, { gone = false } = {}) => {
-    if (!users.length) return [];
+  // Each one in turn under the flask; then the list is read again and a toast says how it went. Gives back what each
+  // that worked answered.
+  const each = async (k, xs, doing, done, work, { gone = false } = {}) => {
+    if (!xs.length) return [];
     closeCard();
     say('dir-problem', '');
     say('dir-note', '');
     const answers = [];
     const failed = [];
     const warnings = [];
-    for (const [i, u] of users.entries()) {
-      R.busy($('dir-lib'), doing, users.length > 1 ? `${i + 1} of ${users.length}: ${u.name || u.username}` : u.name || u.username);
+    for (const [i, x] of xs.entries()) {
+      R.busy($('dir-lib'), doing, xs.length > 1 ? `${i + 1} of ${xs.length}: ${nameOf(x)}` : nameOf(x));
       try {
-        const a = await R.send(...work(u));
+        const a = await R.send(...work(x));
         if (a?.warning) warnings.push(a.warning);
-        answers.push([u, a]);
-        if (gone) picked.delete(u.username);
+        answers.push([x, a]);
+        if (gone) picked[k]?.delete(String(AD[k].key(x)));
       } catch (err) {
-        failed.push(`${u.username}: ${err.message}`);
+        failed.push(`${nameOf(x)}: ${err.message}`);
       }
     }
     try {
-      if (users.length === 1 && !gone && lists.users?.includes(users[0])) {
-        lists.users[lists.users.indexOf(users[0])] = await R.get(userPath(users[0]));
+      if (k === 'users' && xs.length === 1 && !gone && lists.users?.includes(xs[0])) {
+        lists.users[lists.users.indexOf(xs[0])] = await R.get(userPath(xs[0]));
         counted.list = null;
-      } else {
+      } else if (k === adPage) {
         await loadAd(true);
+      } else {
+        delete lists[k];
       }
     } catch (err) {
       say('dir-problem', err.message);
     }
     R.busy($('dir-lib'), '');
     drawAd();
-    const ok = users.length - failed.length;
+    const ok = xs.length - failed.length;
     if (!failed.length) R.toast(done, warnings[0] || '', { tone: warnings.length ? 'warn' : '' });
-    else R.toast(ok ? `Done for ${ok} of ${users.length}` : 'That didn\'t work', failed[0], { tone: 'warn' });
+    else R.toast(ok ? `Done for ${ok} of ${xs.length}` : 'That didn\'t work', failed[0], { tone: 'warn' });
     if (failed.length > 1) say('dir-problem', failed.join(' '));
     return answers;
   };
-  const post = (u, tail, body = {}) => [`${userPath(u)}${tail}`, body];
 
-  const runCmd = (cmd, objs) => {
-    const us = objs.filter(mayChange);
+  // A group's members, read when they're needed.
+  const membersNow = async (g) => (await R.get(`/api/ad/groups/members?dn=${encodeURIComponent(g.dn)}`)).map((m) => ({ dn: m.dn, name: m.name, kind: m.kind, sub: m.username || m.where }));
+  const groupsFind = async (q) => (await R.get(`/api/ad/groups?q=${encodeURIComponent(q)}`)).filter((g) => !g.system).map((g) => ({ dn: g.dn, name: g.name, kind: 'group', sub: g.description || g.where }));
+  const anyFind = async (q) => (await R.get(`/api/ad/find?q=${encodeURIComponent(q)}`)).map((m) => ({ dn: m.dn, name: m.name, kind: m.kind, sub: m.username || m.where }));
+  // The same kind, from the list already read: for copying membership from one to another.
+  const sameFind = (k, not) => async (q) => {
+    const t = q.toLowerCase();
+    return (lists[k] || []).filter((x) => !not.includes(x) && [x.name, x.username].some((v) => String(v || '').toLowerCase().includes(t)))
+      .slice(0, 30).map((x) => ({ dn: x.dn, name: nameOf(x), kind: { users: 'user', groups: 'group', computers: 'computer' }[k], sub: x.username || x.where, x }));
+  };
+  const notIn = (x, dns) => dns.filter((d) => !(x.groups || []).some((g) => same(g.dn, d)) && !same(x.dn, d));
+
+  const runCmd = (cmd, k, objs) => {
+    const xs = objs.filter((x) => mayChange(k, x));
     const [what, arg] = cmd.split(':');
-    const only = (f) => us.filter(f);
+    const only = (f) => xs.filter(f);
+    const [one, many] = AD[k].noun;
+    const who = whoOf(xs, k);
     switch (what) {
       case 'open': {
         const i = rows.indexOf(objs[0]);
@@ -940,56 +986,127 @@
       case 'enable':
       case 'disable': {
         const on = what === 'enable';
-        const to = only((u) => u.enabled !== on);
-        each(to, on ? 'Enabling' : 'Disabling', `${on ? 'Enabled' : 'Disabled'} ${whoOf(to)}`, (u) => post(u, '/enable', { on }));
+        const to = only((x) => x.enabled !== on);
+        each(k, to, on ? 'Enabling' : 'Disabling', `${on ? 'Enabled' : 'Disabled'} ${whoOf(to, k)}`, (x) => enableOf(k, x, on));
         break;
       }
       case 'unlock': {
         const to = only((u) => u.locked);
-        each(to, 'Unlocking', `Unlocked ${whoOf(to)}`, (u) => post(u, '/unlock'));
+        each(k, to, 'Unlocking', `Unlocked ${whoOf(to, k)}`, (u) => post(u, '/unlock'));
         break;
       }
-      case 'expiry': openExpiry(us); break;
+      case 'expiry': openExpiry(xs); break;
       case 'expiry-clear': {
         const to = only((u) => u.accountExpires);
-        each(to, 'Removing the expiration', `Removed the account expiration for ${whoOf(to)}`, (u) => post(u, '/expiry', { date: null }));
+        each(k, to, 'Removing the expiration', `Removed the account expiration for ${whoOf(to, k)}`, (u) => post(u, '/expiry', { date: null }));
         break;
       }
       case 'password':
-        if (us.length === 1) reset(whoOf(us), `${userPath(us[0])}/password`, 'It also unlocks the account if it\'s locked out.');
-        else resetMany(us);
+        if (xs.length === 1) reset(who, `${userPath(xs[0])}/password`, 'It also unlocks the account if it\'s locked out.');
+        else resetMany(xs);
         break;
       case 'flag-on':
       case 'flag-off': {
         const on = what === 'flag-on';
         const [field, onSaid, offSaid] = FLAGS[arg];
-        const to = !field ? us : only((u) => !!u[field] !== on && !(arg === 'mustchange' && on && u.neverExpires));
-        each(to, 'Changing the account options', (on ? onSaid : offSaid)(whoOf(to)), (u) => post(u, '/flag', { flag: arg, on }));
+        const to = !field ? xs : only((u) => !!u[field] !== on && !(arg === 'mustchange' && on && u.neverExpires));
+        each(k, to, 'Changing the account options', (on ? onSaid : offSaid)(whoOf(to, k)), (u) => post(u, '/flag', { flag: arg, on }));
         break;
       }
-      case 'groups-add': openGroups(us, true); break;
-      case 'groups-remove': openGroups(only((u) => u.groups.length), false); break;
+      case 'groups-add':
+        openPicker({ title: 'Add to groups', lead: `Find the groups to add ${who} to.`, button: 'Add', find: groupsFind, not: xs.map((x) => x.dn),
+          go: (gs) => each(k, xs, 'Adding to groups', `Added ${who} to ${gs.length === 1 ? gs[0].name : count(gs.length, 'group', 'groups')}`,
+            (x) => memberOf(k, x, notIn(x, gs.map((g) => g.dn)), [])) });
+        break;
+      case 'groups-remove': {
+        const to = only((x) => x.groups?.length);
+        const seen = new Map();
+        to.forEach((x) => x.groups.forEach((g) => seen.set(g.dn.toLowerCase(), { dn: g.dn, name: g.name, kind: 'group', n: (seen.get(g.dn.toLowerCase())?.n || 0) + 1 })));
+        openPicker({ title: 'Remove from groups', lead: `Tick the groups to take ${whoOf(to, k)} out of.`, button: 'Remove',
+          ticks: [...seen.values()].sort((a, b) => a.name.localeCompare(b.name)).map((g) => ({ ...g, sub: to.length > 1 ? `${g.n} of ${to.length}` : '' })),
+          go: (gs) => each(k, to, 'Removing from groups', `Removed ${whoOf(to, k)} from ${gs.length === 1 ? gs[0].name : count(gs.length, 'group', 'groups')}`,
+            (x) => memberOf(k, x, [], gs.filter((g) => x.groups.some((h) => same(h.dn, g.dn))).map((g) => g.dn))) });
+        break;
+      }
       case 'groups-remove-all': {
-        const to = only((u) => u.groups.length);
-        sure(`Remove ${whoOf(to)} from all groups?`, 'Every group membership is removed. The primary group, usually Domain Users, stays.', 'Remove from all groups',
-          () => each(to, 'Removing from groups', `Removed ${whoOf(to)} from all groups`, (u) => post(u, '/groups', { add: [], remove: u.groups.map((g) => g.dn) })));
+        const to = only((x) => x.groups?.length);
+        const stays = { users: ' The primary group, usually Domain Users, stays.', computers: ' The primary group, usually Domain Computers, stays.', groups: '' }[k];
+        sure(`Remove ${whoOf(to, k)} from all groups?`, `Every group membership is removed.${stays}`, 'Remove from all groups',
+          () => each(k, to, 'Removing from groups', `Removed ${whoOf(to, k)} from all groups`, (x) => memberOf(k, x, [], x.groups.map((g) => g.dn))));
         break;
       }
-      case 'edit': openEdit(us); break;
-      case 'rename': openRename(us[0]); break;
-      case 'move': openMove(us); break;
-      case 'attrs': location.hash = `#attrs/${encodeURIComponent(dnParent(objs[0].dn))}/${encodeURIComponent(objs[0].dn)}`; break;
-      case 'copy': copyField(objs, arg); break;
-      case 'export': csvOf(objs, objs.length === 1 ? objs[0].username : `${objs.length}-users`); break;
-      case 'delete':
-        sure(`Delete ${whoOf(us)}?`, `${us.length === 1 ? `${us[0].username} is` : `${count(us.length, 'account is', 'accounts are')}`} deleted from ${ad.state.domain} for good, with anything in ${us.length === 1 ? 'it' : 'them'}. Disabling can be undone; this can't.`,
-          us.length === 1 ? `Delete ${us[0].username}` : `Delete ${us.length} users`, () => each(us, 'Deleting', `Deleted ${whoOf(us)}`, (u) => post(u, '/delete'), { gone: true }));
+      case 'groups-copy':
+        openPicker({ title: 'Copy membership', lead: `Pick the ${one} whose groups ${who} ${xs.length === 1 ? 'joins' : 'join'}.`, button: 'Copy', one: true, find: sameFind(k, xs),
+          go: ([from]) => {
+            const gs = from.x.groups || [];
+            if (!gs.length) R.toast(`${from.name} isn't in any groups`, '', { tone: 'warn' });
+            else each(k, xs, 'Copying membership', `Added ${who} to the groups ${from.name} is in`, (x) => memberOf(k, x, notIn(x, gs.map((g) => g.dn)), []));
+          } });
         break;
+      case 'groups-copy-to': {
+        const from = xs[0];
+        const gs = from.groups || [];
+        if (!gs.length) {
+          R.toast(`${nameOf(from)} isn't in any groups`, '', { tone: 'warn' });
+          break;
+        }
+        openPicker({ title: 'Copy membership', lead: `Pick the ${many} to add to the ${count(gs.length, 'group', 'groups')} ${nameOf(from)} is in.`, button: 'Copy', find: sameFind(k, xs),
+          go: (picks) => each(k, picks.map((p) => p.x).filter((x) => mayChange(k, x)), 'Copying membership', `Added ${whoOf(picks.map((p) => p.x), k)} to the groups ${nameOf(from)} is in`,
+            (x) => memberOf(k, x, notIn(x, gs.map((g) => g.dn)), [])) });
+        break;
+      }
+      case 'members-add':
+        openPicker({ title: 'Add members', lead: `Find the users, groups and computers to add to ${who}.`, button: 'Add', find: anyFind, not: xs.map((g) => g.dn),
+          go: (ms) => each(k, xs, 'Adding members', `Added ${ms.length === 1 ? ms[0].name : count(ms.length, 'member', 'members')} to ${who}`, (g) => membersOf(g, ms.map((m) => m.dn), [])) });
+        break;
+      case 'members-remove': {
+        const g = xs[0];
+        membersNow(g).then((ms) => openPicker({ title: 'Remove members', lead: ms.length ? `Tick who to take out of ${g.name}.` : `${g.name} has no members.`, button: 'Remove', ticks: ms,
+          go: (out) => each(k, [g], 'Removing members', `Took ${out.length === 1 ? out[0].name : count(out.length, 'member', 'members')} out of ${g.name}`, (x) => membersOf(x, [], out.map((m) => m.dn))) }))
+          .catch((err) => R.toast('Couldn\'t read the members', err.message, { tone: 'warn' }));
+        break;
+      }
+      case 'members-copy':
+        openPicker({ title: 'Copy members', lead: `Pick the group whose members go into ${who}.`, button: 'Copy', one: true, find: groupsFind, not: xs.map((g) => g.dn),
+          go: async ([from]) => {
+            const ms = await membersNow(from).catch(() => []);
+            if (!ms.length) R.toast(`${from.name} has no members to copy`, '', { tone: 'warn' });
+            else each(k, xs, 'Copying members', `Added the members of ${from.name} to ${who}`, (g) => membersOf(g, ms.map((m) => m.dn).filter((d) => !same(d, g.dn)), []));
+          } });
+        break;
+      case 'members-copy-to': {
+        const from = xs[0];
+        openPicker({ title: 'Copy members', lead: `Pick the groups that get the members of ${from.name}.`, button: 'Copy', find: groupsFind, not: [from.dn],
+          go: async (to) => {
+            const ms = await membersNow(from).catch(() => []);
+            if (!ms.length) R.toast(`${from.name} has no members to copy`, '', { tone: 'warn' });
+            else each(k, to, 'Copying members', `Added the members of ${from.name} to ${to.length === 1 ? to[0].name : count(to.length, 'group', 'groups')}`, (g) => membersOf(g, ms.map((m) => m.dn).filter((d) => !same(d, g.dn)), []));
+          } });
+        break;
+      }
+      case 'edit': openEdit(k, xs); break;
+      case 'rename': openRename(xs[0]); break;
+      case 'move': openMove(k, xs); break;
+      case 'attrs': location.hash = `#attrs/${encodeURIComponent(dnParent(objs[0].dn))}/${encodeURIComponent(objs[0].dn)}`; break;
+      case 'copy': copyField(k, objs, arg); break;
+      case 'export': csvOf(objs, objs.length === 1 ? nameOf(objs[0]) : `${objs.length}-${many}`); break;
+      case 'delete': {
+        const to = xs.filter((x) => k !== 'groups' || !x.protected);
+        const w = whoOf(to, k);
+        const why = {
+          users: `${to.length === 1 ? `${to[0].username} is` : `${count(to.length, 'account is', 'accounts are')}`} deleted from ${ad.state.domain} for good, with anything in ${to.length === 1 ? 'it' : 'them'}. Disabling can be undone; this can't.`,
+          groups: `${to.length === 1 ? 'The group is' : 'The groups are'} deleted from ${ad.state.domain} for good. Members stay; they're just not in ${to.length === 1 ? 'it' : 'them'} any more.`,
+          computers: `${to.length === 1 ? 'Its account is' : 'Their accounts are'} deleted from ${ad.state.domain}. ${to.length === 1 ? 'It' : 'They'} can't sign anyone in with domain accounts until ${to.length === 1 ? 'it joins' : 'they join'} the domain again. Disabling can be undone; this can't.`,
+        }[k];
+        sure(`Delete ${w}?`, why, to.length === 1 ? `Delete ${nameOf(to[0])}` : `Delete ${count(to.length, one, many)}`,
+          () => each(k, to, 'Deleting', `Deleted ${w}`, (x) => deleteOf(k, x), { gone: true }));
+        break;
+      }
     }
   };
 
-  const copyField = async (objs, key) => {
-    const [, one, many, get] = COPY.find(([k]) => k === key);
+  const copyField = async (k, objs, key) => {
+    const [, one, many, get] = COPY[k].find(([c]) => c === key);
     const values = objs.map(get).filter(Boolean);
     if (!values.length) {
       R.toast(`No ${many} to copy`, '', { tone: 'warn' });
@@ -1010,7 +1127,7 @@
     expFor = us;
     const one = us.length === 1 ? us[0] : null;
     $('exp-title').textContent = one?.accountExpires ? 'Change account expiration' : 'Set account expiration';
-    $('exp-lead').textContent = `For ${whoOf(us)}.`;
+    $('exp-lead').textContent = `For ${whoOf(us, 'users')}.`;
     $('exp-date').value = one?.accountExpires ? ymd(new Date(new Date(one.accountExpires) - 1)) : '';
     say('exp-problem', '');
     $('exp-dialog').showModal();
@@ -1024,41 +1141,46 @@
       return;
     }
     $('exp-dialog').close();
-    each(expFor, 'Setting the expiration', `${whoOf(expFor)} ${expFor.length === 1 ? 'expires' : 'expire'} at the end of ${day(`${date}T12:00`)}`, (u) => post(u, '/expiry', { date }));
+    each('users', expFor, 'Setting the expiration', `${whoOf(expFor, 'users')} ${expFor.length === 1 ? 'expires' : 'expire'} at the end of ${day(`${date}T12:00`)}`, (u) => post(u, '/expiry', { date }));
   });
 
-  // Edit properties: one user's details, or for several only what's typed (blank leaves each as it is).
-  const UED = [['first', 'first', 'first'], ['last', 'last', 'last'], ['display', 'name', 'display'], ['description', 'description', 'description'],
-    ['jobtitle', 'title', 'title'], ['department', 'department', 'department'], ['company', 'company', 'company'], ['office', 'office', 'office'],
-    ['email', 'email', 'email'], ['phone', 'phone', 'phone']];
-  const ued = { users: [], boss: undefined }; // boss: undefined leaves it, '' clears it, else the manager's DN
-  const openEdit = (us) => {
-    ued.users = us;
+  // Edit properties: one's details, or for several only what's typed (blank leaves each as it is). Each field is for
+  // the kinds listed beside it; data-one fields are for one at a time.
+  const UED = [['first', 'first', 'first', 'users'], ['last', 'last', 'last', 'users'], ['display', 'name', 'display', 'users'],
+    ['description', 'description', 'description', 'users groups computers'], ['jobtitle', 'title', 'title', 'users'], ['department', 'department', 'department', 'users'],
+    ['company', 'company', 'company', 'users'], ['office', 'office', 'office', 'users'], ['email', 'email', 'email', 'users groups'], ['phone', 'phone', 'phone', 'users'],
+    ['notes', 'notes', 'notes', 'groups'], ['location', 'location', 'location', 'computers']];
+  const ued = { kind: 'users', objs: [], boss: undefined }; // boss: undefined leaves it, '' clears it, else the manager's DN
+  const openEdit = (k, xs) => {
+    ued.kind = k;
+    ued.objs = xs;
     ued.boss = undefined;
-    const one = us.length === 1 ? us[0] : null;
-    $('ued-title').textContent = one ? `Edit ${one.name || one.username}` : `Edit ${us.length} users`;
-    $('ued-lead').textContent = one ? `${one.username}, in ${one.where || ad.state.domain}.` : 'Only what you fill in changes. Blank boxes leave each user as they are.';
-    $('ued-fields').querySelectorAll('[data-one]').forEach((el) => { el.hidden = !one; });
-    UED.forEach(([id, field]) => {
-      $(`ued-${id}`).value = one ? one[field] || '' : '';
-      $(`ued-${id}`).placeholder = one ? '' : 'Leave as it is';
+    const one = xs.length === 1 ? xs[0] : null;
+    $('ued-title').textContent = one ? `Edit ${nameOf(one)}` : `Edit ${count(xs.length, ...AD[k].noun)}`;
+    $('ued-lead').textContent = one ? (k === 'users' ? `${one.username}, in ${one.where || ad.state.domain}.` : `In ${one.where || ad.state.domain}.`) : `Only what you fill in changes. Blank boxes leave each one as it is.`;
+    UED.forEach(([id, field, , kinds]) => {
+      const box = $(`ued-${id}`);
+      box.closest('div').hidden = !kinds.split(' ').includes(k) || (!one && box.closest('[data-one]') !== null);
+      box.value = one ? one[field] || '' : '';
+      box.placeholder = one ? '' : 'Leave as it is';
     });
+    $('ued-boss-row').hidden = k !== 'users';
     $('ued-manager').value = one?.manager || '';
     $('ued-manager').placeholder = one ? 'Find a person' : 'Leave as it is';
     say('ued-problem', '');
     $('ued-dialog').showModal();
-    $(one ? 'ued-first' : 'ued-description').focus();
+    $('ued-fields').querySelector('div:not([hidden]) input')?.focus();
   };
   R.dropdown($('ued-boss'), {
     none: 'Nobody matches.',
     find: async (q) => {
       const t = q.toLowerCase();
-      return (lists.users || []).filter((u) => !u.system && !ued.users.includes(u) && [u.name, u.username].some((v) => String(v || '').toLowerCase().includes(t))).slice(0, 30);
+      return (lists.users || []).filter((u) => !u.system && !ued.objs.includes(u) && [u.name, u.username].some((v) => String(v || '').toLowerCase().includes(t))).slice(0, 30);
     },
-    draw: (u, i) => R.option(` data-pick="${i}"`, `<span class="pic user">${esc(initials(u.name || u.username))}</span>`, u.name || u.username, u.title || u.username),
+    draw: (u, i) => R.option(` data-pick="${i}"`, `<span class="pic user">${esc(initials(nameOf(u)))}</span>`, nameOf(u), u.title || u.username),
     pick: (u) => {
       ued.boss = u.dn;
-      $('ued-manager').value = u.name || u.username;
+      $('ued-manager').value = nameOf(u);
     },
   });
   $('ued-manager-x').addEventListener('click', () => {
@@ -1067,25 +1189,27 @@
   });
   $('ued-cancel').addEventListener('click', () => $('ued-dialog').close());
   $('ued-save').addEventListener('click', () => {
-    const one = ued.users.length === 1 ? ued.users[0] : null;
+    const { kind: k, objs: xs } = ued;
+    const one = xs.length === 1 ? xs[0] : null;
     const form = {};
     UED.forEach(([id, field, key]) => {
-      if (!one && $(`ued-${id}`).closest('[data-one]')) return;
-      const v = $(`ued-${id}`).value.trim();
+      const box = $(`ued-${id}`);
+      if (box.closest('div').hidden) return;
+      const v = box.value.trim();
       if (one ? v !== (one[field] || '') : v) form[key] = v;
     });
-    if (ued.boss !== undefined) form.manager = ued.boss;
+    if (k === 'users' && ued.boss !== undefined) form.manager = ued.boss;
     $('ued-dialog').close();
     if (!Object.keys(form).length) return;
-    each(ued.users, 'Saving', `Saved ${whoOf(ued.users)}`, (u) => post(u, '/edit', form));
+    each(k, xs, 'Saving', `Saved ${whoOf(xs, k)}`, (x) => editOf(k, x, form));
   });
 
-  // Rename: its name in Active Directory, and its display name with it.
+  // Rename: a user's name in Active Directory, and its display name with it.
   let renaming = null;
   const openRename = (u) => {
     renaming = u;
     $('ren-lead').textContent = `${u.username}, in ${u.where || ad.state.domain}.`;
-    $('ren-name').value = u.name || u.username;
+    $('ren-name').value = nameOf(u);
     say('ren-problem', '');
     $('ren-dialog').showModal();
     $('ren-name').select();
@@ -1099,88 +1223,79 @@
     }
     $('ren-dialog').close();
     const u = renaming;
-    each([u], 'Renaming', `Renamed ${u.name || u.username} to ${name}`, (x) => post(x, '/rename', { name }));
+    each('users', [u], 'Renaming', `Renamed ${nameOf(u)} to ${name}`, (x) => post(x, '/rename', { name }));
   });
   $('ren-name').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('ren-save').click(); });
 
-  // Move…: the OU picker, then each user that isn't there already.
-  let moving = [];
-  const openMove = async (us) => {
-    moving = us;
+  // Move…: the OU picker, then each one that isn't there already.
+  let moving = { kind: 'users', objs: [] };
+  const openMove = async (k, xs) => {
+    moving = { kind: k, objs: xs };
     // It opens on where they are when that's one place, else where new users go.
-    const at = us.map((u) => dnParent(u.dn).toLowerCase());
-    await placesInto('mv-ou', at.every((p) => p === at[0]) ? dnParent(us[0].dn) : ad.state.newUsers, 'dir-problem');
-    PICK_LEADS['mv-ou'] = `Where ${whoOf(us)} ${us.length === 1 ? 'goes' : 'go'}.`;
+    const at = xs.map((x) => dnParent(x.dn).toLowerCase());
+    await placesInto('mv-ou', at.every((p) => p === at[0]) ? dnParent(xs[0].dn) : ad.state.newUsers, 'dir-problem');
+    PICK_LEADS['mv-ou'] = `Where ${whoOf(xs, k)} ${xs.length === 1 ? 'goes' : 'go'}.`;
     openPick($('mv-ou'));
   };
   $('mv-ou').addEventListener('change', () => {
     const ou = $('mv-ou').value;
-    const to = moving.filter((u) => !same(dnParent(u.dn), ou));
+    const { kind: k, objs } = moving;
+    const to = objs.filter((x) => !same(dnParent(x.dn), ou));
     const where = (places || []).find((p) => same(p.dn, ou))?.path || ad.state.domain;
-    each(to, 'Moving', `Moved ${whoOf(to)} to ${where}`, (u) => post(u, '/move', { ou }));
+    each(k, to, 'Moving', `Moved ${whoOf(to, k)} to ${where}`, (x) => moveOf(k, x, ou));
   });
 
-  // Add to groups: find and pick them. Remove from groups: tick the ones to leave, from the groups they're in.
-  const gp = { users: [], add: true, chosen: [], all: [] };
-  const drawGp = () => {
-    $('gp-list').innerHTML = gp.add
-      ? `<div class="chips-in">${gp.chosen.map((g, i) => `<span class="gchip">${esc(g.name)}<button type="button" class="chip-x" data-gp-x="${i}" aria-label="Not ${esc(g.name)}">${svg('x')}</button></span>`).join('')
-        || '<span class="muted">No groups picked yet.</span>'}</div>`
-      : `<div class="ticks">${gp.all.map((g, i) => `<label class="tick"><input type="checkbox" data-gp="${i}"${gp.chosen.includes(g) ? ' checked' : ''}>${esc(g.name)}`
-        + `${gp.users.length > 1 ? `<small>${g.n} of ${gp.users.length}</small>` : ''}</label>`).join('')}</div>`;
-    $('gp-save').disabled = !gp.chosen.length;
+  // One window for picking: find and pick (shown as chips), or tick from a list. One: picking replaces what's picked.
+  const pk = { find: null, ticks: null, one: false, not: [], chosen: [], go: null };
+  const PK_ICON = { user: 'user', group: 'users', computer: 'laptop', other: 'list' };
+  const drawPk = () => {
+    $('gp-list').innerHTML = pk.ticks
+      ? `<div class="ticks">${pk.ticks.map((t, i) => `<label class="tick"><input type="checkbox" data-gp="${i}"${pk.chosen.includes(t) ? ' checked' : ''}>${svg(PK_ICON[t.kind] || 'list')}<span>${esc(t.name)}</span>`
+        + `${t.sub ? `<small>${esc(t.sub)}</small>` : ''}</label>`).join('')}</div>`
+      : `<div class="chips-in">${pk.chosen.map((c, i) => `<span class="gchip">${esc(c.name)}<button type="button" class="chip-x" data-gp-x="${i}" aria-label="Not ${esc(c.name)}">${svg('x')}</button></span>`).join('')
+        || '<span class="muted">Nothing picked yet.</span>'}</div>`;
+    $('gp-save').disabled = !pk.chosen.length;
   };
-  const openGroups = (us, add) => {
-    gp.users = us;
-    gp.add = add;
-    gp.chosen = [];
-    const seen = new Map();
-    us.forEach((u) => u.groups.forEach((g) => {
-      const k = g.dn.toLowerCase();
-      seen.set(k, { dn: g.dn, name: g.name, n: (seen.get(k)?.n || 0) + 1 });
-    }));
-    gp.all = [...seen.values()].sort((a, b) => a.name.localeCompare(b.name));
-    $('gp-title').textContent = add ? 'Add to groups' : 'Remove from groups';
-    $('gp-lead').textContent = add ? `Find the groups to add ${whoOf(us)} to.` : `Tick the groups to take ${whoOf(us)} out of.`;
-    $('gp-adder').hidden = !add;
-    $('gp-save').textContent = add ? 'Add' : 'Remove';
+  const openPicker = ({ title, lead, button, find = null, ticks = null, one = false, not = [], go }) => {
+    Object.assign(pk, { find, ticks, one, not, go, chosen: [] });
+    $('gp-title').textContent = title;
+    $('gp-lead').textContent = lead;
+    $('gp-adder').hidden = !find;
+    $('gp-save').textContent = button;
     $('gp-adder').querySelector('[data-find]').value = '';
     $('gp-adder').querySelector('[data-drop]').hidden = true;
     say('gp-problem', '');
-    drawGp();
+    drawPk();
     $('gp-dialog').showModal();
-    if (add) $('gp-adder').querySelector('[data-find]').focus();
+    if (find) $('gp-adder').querySelector('[data-find]').focus();
   };
   R.dropdown($('gp-adder'), {
-    none: 'No group matches.',
-    find: async (q) => (await R.get(`/api/ad/groups?q=${encodeURIComponent(q)}`)).filter((g) => !g.system && !gp.chosen.some((c) => same(c.dn, g.dn))).slice(0, 30),
-    draw: (g, i) => R.option(` data-pick="${i}"`, `<span class="pic">${svg('users')}</span>`, g.name, g.description || g.where),
-    pick: (g) => {
-      gp.chosen.push({ dn: g.dn, name: g.name });
-      drawGp();
+    none: 'Nothing matches.',
+    find: async (q) => (pk.find ? (await pk.find(q)).filter((x) => !pk.chosen.some((c) => same(c.dn, x.dn)) && !pk.not.some((d) => same(d, x.dn))).slice(0, 30) : []),
+    draw: (x, i) => R.option(` data-pick="${i}"`, `<span class="pic">${svg(PK_ICON[x.kind] || 'list')}</span>`, x.name, x.sub || ''),
+    pick: (x) => {
+      pk.chosen = pk.one ? [x] : [...pk.chosen, x];
+      drawPk();
       $('gp-adder').querySelector('[data-find]').focus();
     },
   });
   $('gp-list').addEventListener('click', (e) => {
     const x = e.target.closest('[data-gp-x]');
     if (!x) return;
-    gp.chosen.splice(Number(x.dataset.gpX), 1);
-    drawGp();
+    pk.chosen.splice(Number(x.dataset.gpX), 1);
+    drawPk();
   });
   $('gp-list').addEventListener('change', (e) => {
     if (e.target.dataset.gp === undefined) return;
-    const g = gp.all[Number(e.target.dataset.gp)];
-    gp.chosen = e.target.checked ? [...gp.chosen, g] : gp.chosen.filter((c) => c !== g);
-    $('gp-save').disabled = !gp.chosen.length;
+    const t = pk.ticks[Number(e.target.dataset.gp)];
+    pk.chosen = e.target.checked ? [...pk.chosen, t] : pk.chosen.filter((c) => c !== t);
+    $('gp-save').disabled = !pk.chosen.length;
   });
   $('gp-cancel').addEventListener('click', () => $('gp-dialog').close());
   $('gp-save').addEventListener('click', () => {
-    const { users, add, chosen } = gp;
+    const { chosen, go } = pk;
     $('gp-dialog').close();
-    const names = chosen.length === 1 ? chosen[0].name : count(chosen.length, 'group', 'groups');
-    each(users, add ? 'Adding to groups' : 'Removing from groups', add ? `Added ${whoOf(users)} to ${names}` : `Removed ${whoOf(users)} from ${names}`,
-      (u) => post(u, '/groups', add ? { add: chosen.map((g) => g.dn), remove: [] }
-        : { add: [], remove: chosen.filter((g) => u.groups.some((h) => same(h.dn, g.dn))).map((g) => g.dn) }));
+    if (chosen.length) go(chosen);
   });
 
   // --- Local accounts: one computer's Windows accounts --------------------------------------------------------------
@@ -1354,7 +1469,7 @@
   };
   // Several users: each gets one of its own, unless one is typed for all of them.
   const resetMany = (us) => {
-    reset(whoOf(us), '', 'Each gets a password of its own, unless you type one for all of them. It also unlocks accounts that are locked out.');
+    reset(whoOf(us, 'users'), '', 'Each gets a password of its own, unless you type one for all of them. It also unlocks accounts that are locked out.');
     resetting.users = us;
     $('reset-title').textContent = `New passwords for ${us.length} users`;
   };
@@ -1364,7 +1479,7 @@
     if (resetting.users) {
       const mustChange = $('reset-change').checked;
       $('reset-dialog').close();
-      const got = await each(resetting.users, 'Setting passwords', `Set new passwords for ${resetting.who}`, (u) => post(u, '/password', { password, mustChange }));
+      const got = await each('users', resetting.users, 'Setting passwords', `Set new passwords for ${resetting.who}`, (u) => post(u, '/password', { password, mustChange }));
       const made = got.filter(([, a]) => a?.password);
       const wide = Math.max(...made.map(([u]) => u.username.length), 0);
       if (made.length) secret('', made.map(([u, a]) => `${u.username.padEnd(wide + 3)}${a.password}`).join('\n'), null, mustChange, true);
