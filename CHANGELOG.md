@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.105 (2026-11-12)
+
+- Settings, Appearance, Toasts has a Test button that shows a toast with your settings.
+
 ## 1.1.104 (2026-11-12)
 
 - New update window: the flask in a ring that fills up, the old and new version, and the steps as joined dots with icons that turn into ticks. It says Rabbid Lab is stopped while it installs, not that the server is offline, and the last step is Restarting.

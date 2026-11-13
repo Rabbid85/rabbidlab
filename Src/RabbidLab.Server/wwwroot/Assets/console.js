@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.105', [
+    'Settings, Appearance, Toasts has a Test button that shows a toast with your settings.']],
   ['1.1.104', [
     'New update window: the flask in a ring that fills up, the old and new version, and the steps as joined dots with icons that turn into ticks. It says Rabbid Lab is stopped while it installs, not that the server is offline, and the last step is Restarting.']],
   ['1.1.103', [
@@ -1215,6 +1217,7 @@ const RELEASE_NOTES = [
   $('toast-style').addEventListener('change', () => toastSet({ style: $('toast-style').value }));
   $('toast-secs').addEventListener('change', () => toastSet({ secs: Number($('toast-secs').value) }));
   $('toast-reset').addEventListener('click', () => toastSet(null));
+  $('toast-test').addEventListener('click', () => toast('This is a test toast.', `It shows for ${toastPrefs().secs} seconds.`, { action: { label: 'Details', href: '#settings/appearance' } }));
   toastSettings();
   // Are you sure: a title, what happens, the button's words, and what to do on yes.
   let sureDo = null;
