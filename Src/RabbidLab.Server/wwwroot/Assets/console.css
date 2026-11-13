@@ -297,8 +297,8 @@ dialog.busy-host { position: fixed; } /* a dialog stays where it is under its co
 .update-dialog.is-done .prog { stroke: var(--ok); filter: drop-shadow(0 0 6px rgba(95, 212, 160, .5)); }
 .update-dialog.is-done .updlg-pct { border-color: rgba(95, 212, 160, .45); color: var(--ok); }
 .update-dialog.is-done .updlg-steps .done .node, .update-dialog.is-done .updlg-steps .cn i { background: var(--ok); }
-.update-dialog .dialog-foot { justify-content: center; align-items: center; min-height: 32px; margin-top: 14px; }
-.updlg-hide { padding: 6px 10px; border: 0; background: none; color: #9DA1B3; font-size: 13.5px; font-weight: 600; }
+.update-dialog .dialog-foot { justify-content: center; align-items: center; height: 32px; margin-top: 14px; } /* one height for Hide and Took, so it never moves when it's done */
+.updlg-hide { height: 32px; padding: 0 10px; border: 0; background: none; color: #9DA1B3; font-size: 13.5px; font-weight: 600; }
 .updlg-hide:hover { background: #1A1C28; color: #fff; }
 .updlg-took { color: #5E6380; font-size: 13px; }
 .updlg-took b { color: var(--ok); font-weight: 600; }

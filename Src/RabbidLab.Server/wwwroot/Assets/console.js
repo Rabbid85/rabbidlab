@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.109', [
+    'The first toast no longer slides in from the side, and the update window no longer jumps when it turns green. Update automatically no longer says the lab is stopped during an update.']],
   ['1.1.108', [
     'The eye and Reset in the Toasts heading are one button split in two.']],
   ['1.1.107', [
@@ -1198,7 +1200,10 @@ const RELEASE_NOTES = [
         + `${p.style === 'card' && !stay ? '<i class="tbar"><i></i></i>' : ''}</span>${p.style === 'card' ? '<button type="button" class="tx-x" aria-label="Close">×</button>' : ''}`
       : `${TOAST_FLASK}<span>${bold ? `<b>${esc(bold)}</b>` : ''}${text ? ` ${esc(text)}` : ''}</span>${link}`;
     if (!shown) {
-      void toastEl.offsetWidth; // starts from hidden, so it slides in
+      // Put it in its spot first with no animation, so only the fade-in runs and it never slides across the screen.
+      toastEl.style.setProperty('transition', 'none');
+      void toastEl.offsetWidth;
+      toastEl.style.removeProperty('transition');
       toastEl.classList.add('show');
     }
     if (!stay) toastTimer = setTimeout(() => toastEl.classList.remove('show'), p.secs * 1000);

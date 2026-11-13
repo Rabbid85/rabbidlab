@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.109 (2026-11-12)
+
+- The first toast no longer slides in from the side, and the update window no longer jumps when it turns green. Update automatically no longer says the lab is stopped during an update.
+
 ## 1.1.108 (2026-11-12)
 
 - The eye and Reset in the Toasts heading are one button split in two.
