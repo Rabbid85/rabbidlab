@@ -77,6 +77,9 @@ body.app.rail-small { grid-template-columns: 60px minmax(0, 1fr); }
 .ds-h.danger { color: var(--red); }
 .ds-h.has-reset { display: flex; align-items: center; }
 .ds-h.has-reset .ds-btn { margin-left: auto; font: 600 14px "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; }
+.ds-h.has-reset .ds-ibtn + .ds-btn { margin-left: 14px; } /* an icon button before Reset takes the push */
+.ds-btn.ds-ibtn { justify-content: center; width: 38px; padding: 0; }
+.ds-btn.ds-ibtn svg { width: 17px; height: 17px; }
 .ds-scope { margin-left: 10px; padding: 2px 8px; border-radius: 20px; background: #1C1F2D; color: var(--muted); font: 600 11px "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; vertical-align: 2px; }
 .ds-row { display: flex; align-items: center; gap: 20px; min-height: 54px; padding: 10px 0; }
 .ds-l { display: grid; flex: 1; gap: 3px; min-width: 0; }
@@ -120,8 +123,7 @@ body.app.rail-small { grid-template-columns: 60px minmax(0, 1fr); }
 /* Appearance: every row's controls in the same two slots, a 300px control then Reset, so they line up down the page. */
 .ap-rows .ds-r { display: grid; grid-template-columns: minmax(0, 300px) 104px; gap: 14px; align-items: center; }
 .ap-rows .ds-r > :first-child { grid-column: 1; }
-.ap-rows .ds-h.has-reset .ds-btn { min-width: 104px; justify-content: center; }
-.ap-rows .ds-r > .ap-slot2 { grid-column: 2; } /* a button on its own sits under the Resets */
+.ap-rows .ds-h.has-reset .ds-btn:not(.ds-ibtn) { min-width: 104px; justify-content: center; }
 .ap-rows .ds-r select, .ap-rows .ds-r .ds-input { width: 100%; }
 .ap-icon { display: flex; align-items: center; gap: 10px; }
 .ap-icon .ds-icon { flex: none; width: 38px; height: 38px; border-radius: 8px; }

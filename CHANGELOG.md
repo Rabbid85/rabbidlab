@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.106 (2026-11-12)
+
+- The toast Test button is now an eye next to Reset in the Toasts heading.
+
 ## 1.1.105 (2026-11-12)
 
 - Settings, Appearance, Toasts has a Test button that shows a toast with your settings.

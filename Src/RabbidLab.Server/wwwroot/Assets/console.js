@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.106', [
+    'The toast Test button is now an eye next to Reset in the Toasts heading.']],
   ['1.1.105', [
     'Settings, Appearance, Toasts has a Test button that shows a toast with your settings.']],
   ['1.1.104', [
