@@ -612,8 +612,8 @@
     $('ln-mode').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.mode === 'many') === many));
     $('link-title').textContent = editing ? `Change ${editing.name}` : 'Add a link';
     $('ln-dlead').textContent = editing ? 'Change anything you like.' : many
-      ? `Paste the addresses, one a line or separated by commas. ${R.lab()} reads each site, then you tick the ones to add.`
-      : `Paste the address. ${R.lab()} reads the site for the rest.`;
+      ? 'Paste the addresses, one a line or separated by commas. Each site is read, then you tick the ones to add.'
+      : 'Paste the address. The name, icon and detail fill in from the site.';
     drawSave();
   };
   // The addresses in a pasted list: split at line ends, commas and semicolons, quotes dropped, each one once.

@@ -1035,8 +1035,8 @@
 <!-- A link: pasting the address fills in the rest from the site. -->
 <dialog class="dialog ld-dialog" id="link-dialog" aria-labelledby="link-title">
   <h2 id="link-title">Add a link</h2>
-  <p class="dialog-lead" id="ln-dlead">Paste the address. <span data-lab>Rabbid Lab</span> reads the site for the rest.</p>
-  <div class="seg sn-seg" id="ln-mode"><button type="button" data-mode="one">One link</button><button type="button" data-mode="many">A list</button></div>
+  <p class="dialog-lead" id="ln-dlead">Paste the address. The name, icon and detail fill in from the site.</p>
+  <div class="seg sn-seg" id="ln-mode"><button type="button" data-mode="one">Single link</button><button type="button" data-mode="many">Bulk add</button></div>
   <!-- Rabbid Lab Dev, Developer tools on: test addresses to watch the whole of adding, gone 30 seconds after they're added. -->
   <div class="devstrip ld-dev" id="ln-dev"><b>DEV</b><span class="one">Paste a test:</span><button type="button" class="small one" data-fill="up">A link</button>
     <button type="button" class="small one" data-fill="down">One that doesn't answer</button><span class="many">Paste a test list:</span>
@@ -1071,7 +1071,7 @@
     <div><label for="ln-many-group">Add them to</label><select id="ln-many-group"></select>
       <input id="ln-many-group-new" maxlength="40" placeholder="Name of the new group" aria-label="Name of the new group" autocomplete="off" hidden></div>
     <div></div>
-    <div class="sd-div wide" id="ln-found-head" hidden><b>What <span data-lab>Rabbid Lab</span> found</b><i></i></div>
+    <div class="sd-div wide" id="ln-found-head" hidden><b>Results</b><i></i></div>
     <div class="wide" id="ln-found" hidden></div>
   </div>
   <p class="hint problem" id="ln-dproblem" hidden></p>

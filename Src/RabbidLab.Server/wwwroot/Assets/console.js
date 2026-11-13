@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.112', [
+    'A toast that is showing moves with the page when the window is resized. Add a link says Single link and Bulk add, and its first line says what fills in from the site.']],
   ['1.1.111', [
     'Add an address shows whether a name works on the Full name box, with a tick or a warning and one short line under it. Port and firewall show plain values, and the certificate for added addresses only shows while there are some.']],
   ['1.1.110', [
@@ -1179,6 +1181,24 @@ const RELEASE_NOTES = [
   };
   let toastEl = null;
   let toastTimer = 0;
+  // Lined up with the page rather than the window, so it never sits on the rail. Worked out again whenever the page area
+  // changes size (the window resized or maximised, the rail collapsed), so a toast that's up moves with it.
+  const toastPlace = () => {
+    const main = document.querySelector('.main').getBoundingClientRect();
+    toastEl.style.setProperty('--toast-l', `${main.left + 24}px`);
+    toastEl.style.setProperty('--toast-m', `${main.left + main.width / 2}px`);
+    // At the top it sits under the bar that offers the client, when that's showing.
+    const bar = $('herebar');
+    toastEl.style.setProperty('--toast-t', `${(bar && !bar.hidden ? bar.getBoundingClientRect().bottom : main.top) + 16}px`);
+  };
+  let toastQueued = 0;
+  const toastReplace = () => {
+    if (!toastEl?.classList.contains('show') || toastQueued) return;
+    toastQueued = requestAnimationFrame(() => {
+      toastQueued = 0;
+      toastPlace();
+    });
+  };
   const toast = (bold, text = '', { stay = false, tone = '', action = null } = {}) => {
     const p = toastPrefs();
     if (!toastEl) {
@@ -1186,15 +1206,11 @@ const RELEASE_NOTES = [
       toastEl.setAttribute('role', 'status');
       toastEl.addEventListener('click', (e) => { if (e.target.closest('.tx-x')) toastEl.classList.remove('show'); });
       document.body.append(toastEl);
+      new ResizeObserver(toastReplace).observe(document.querySelector('.main'));
+      window.addEventListener('resize', toastReplace);
     }
     clearTimeout(toastTimer);
-    // Lined up with the page rather than the window, so it never sits on the rail.
-    const main = document.querySelector('.main').getBoundingClientRect();
-    toastEl.style.setProperty('--toast-l', `${main.left + 24}px`);
-    toastEl.style.setProperty('--toast-m', `${main.left + main.width / 2}px`);
-    // At the top it sits under the bar that offers the client, when that's showing.
-    const bar = $('herebar');
-    toastEl.style.setProperty('--toast-t', `${(bar && !bar.hidden ? bar.getBoundingClientRect().bottom : main.top) + 16}px`);
+    toastPlace();
     toastEl.style.setProperty('--toast-s', `${p.secs}s`);
     const link = action ? `<a href="${esc(action.href)}">${esc(action.label)}</a>` : '';
     const shown = toastEl.classList.contains('show'); // updates to one that's showing don't slide it in again
