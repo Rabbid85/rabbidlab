@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.98 (2026-11-12)
+
+- Where toasts show, in Settings, Appearance, is a drop-down instead of six pictures.
+
 ## 1.1.97 (2026-11-12)
 
 - Alert types: named ways to alert, such as Default or Critical, each with when it alerts and where it sends. They are at the top of Settings, Alert rules.

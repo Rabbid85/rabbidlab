@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.98', [
+    'Where toasts show, in Settings, Appearance, is a drop-down instead of six pictures.']],
   ['1.1.97', [
     'Alert types: named ways to alert, such as Default or Critical, each with when it alerts and where it sends. They are at the top of Settings, Alert rules.',
     'A sensor or a watched link picks its Alert type from a drop-down, or Do not alert. New alert type at the bottom of the list makes one on the spot.',
@@ -1152,7 +1154,7 @@ const RELEASE_NOTES = [
   // Toasts, in Settings, Appearance: where they show, their style and how long they stay. Picking one shows a sample.
   const toastSettings = () => {
     const p = toastPrefs();
-    $('toast-at').querySelectorAll('[data-at]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.at === p.at)));
+    $('toast-at').value = p.at;
     $('toast-style').querySelectorAll('[data-style]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.style === p.style)));
     $('toast-secs').querySelectorAll('[data-secs]').forEach((b) => b.setAttribute('aria-pressed', String(Number(b.dataset.secs) === p.secs)));
     $('toast-reset').disabled = p.at === TOAST_DEFAULT.at && p.style === TOAST_DEFAULT.style && p.secs === TOAST_DEFAULT.secs;
@@ -1165,7 +1167,7 @@ const RELEASE_NOTES = [
     toastSettings();
     toast('Toasts look like this.', 'Pick another to try it.', { action: { label: 'Details', href: '#settings/appearance' } });
   };
-  $('toast-at').addEventListener('click', (e) => { const b = e.target.closest('[data-at]'); if (b) toastSet({ at: b.dataset.at }); });
+  $('toast-at').addEventListener('change', () => toastSet({ at: $('toast-at').value }));
   $('toast-style').addEventListener('click', (e) => { const b = e.target.closest('[data-style]'); if (b) toastSet({ style: b.dataset.style }); });
   $('toast-secs').addEventListener('click', (e) => { const b = e.target.closest('[data-secs]'); if (b) toastSet({ secs: Number(b.dataset.secs) }); });
   $('toast-reset').addEventListener('click', () => toastSet(null));
