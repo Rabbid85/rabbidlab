@@ -1188,6 +1188,7 @@
     $('dset-dialog').querySelectorAll('[data-pane]').forEach((p) => { p.hidden = p.dataset.pane !== st.key; });
     $('dset-user-label').textContent = make ? 'Domain admin' : 'Service account';
     $('dset-user').placeholder = make ? '' : 'Type its name, or pick it from AD';
+    $('dset-browse').hidden = make;
     if (make) $('dset-drop').hidden = true;
     else if (document.activeElement === $('dset-user')) acctFind(); // switched to Use one I have while in the box
     $('dset-note').textContent = make ? 'These credentials are only used to create the service account. They are never saved.' : 'Its password is stored encrypted on this server.';
@@ -1308,6 +1309,108 @@
     clearTimeout(acctTimer); // without looking it up again
     $('dset-password').focus();
   });
+
+  // Browse… beside the box: the OUs down the left, as Pick an OU shows them, and the accounts in the one picked on
+  // the right; Find an account looks across the domain. Read as this server, like the list under the box.
+  const ap = { places: [], nodes: [], at: '', sel: '', find: '', got: new Map() };
+  const apDomain = () => $('dset-domain').value.trim();
+  const apKids = (dn) => ap.nodes.filter((n) => same(n.parent, dn));
+  const apTop = () => ap.nodes.filter((n) => !ap.nodes.some((m) => same(m.dn, n.parent)));
+  const apOpenUnder = (dn) => same(ap.at, dn) || ap.at.toLowerCase().endsWith(`,${dn.toLowerCase()}`);
+  const apRow = (n, top) => {
+    const ks = apKids(n.dn);
+    return `<a role="button" tabindex="0" data-ap-ou="${esc(n.dn)}" title="${esc(n.dn)}"${same(ap.at, n.dn) ? ' aria-current="true"' : ''}>`
+      + `${top ? (ks.length ? FLASK : svg('folder')) : ''}<span class="nm">${esc(n.name)}</span>${ks.length ? `<small>${ks.length}</small>` : ''}</a>`
+      + (ks.length ? `<div class="dkids${apOpenUnder(n.dn) ? ' open' : ''}">${ks.map((k) => apRow(k, false)).join('')}</div>` : '');
+  };
+  const apLoad = async (key, q) => {
+    ap.got.set(key, { loading: true });
+    try {
+      const items = await R.get(`/api/ad/look/accounts?domain=${encodeURIComponent(apDomain())}${q ? `&q=${encodeURIComponent(q)}` : `&place=${encodeURIComponent(ap.at)}`}`);
+      ap.got.set(key, { items });
+    } catch (err) {
+      ap.got.set(key, { problem: err.message });
+    }
+    if ($('acctpick-dialog').open) apDraw();
+  };
+  const apDraw = () => {
+    $('acctpick-list').innerHTML = `<p class="rail-label">${esc(apDomain())}</p>` + apTop().map((n) => apRow(n, true)).join('');
+    const q = ap.find.trim();
+    const key = (q ? `?${q}` : ap.at).toLowerCase();
+    if (!ap.got.has(key)) apLoad(key, q);
+    const got = ap.got.get(key);
+    const place = ap.places.find((p) => same(p.dn, ap.at));
+    const head = q ? `<header class="sub-head"><h2>Found</h2><p>Accounts like “${esc(q)}” anywhere in ${esc(apDomain())}</p></header>`
+      : `<header class="sub-head"><h2>${esc(place?.name || apDomain())}</h2><p>${esc(place ? `${apDomain()} / ${place.path}` : apDomain())}</p></header>`;
+    const body = got.loading ? `<div class="op-items ap-items">${'<i class="sk op-sk"></i>'.repeat(6)}</div>`
+      : got.problem ? `<p class="hint problem">${esc(got.problem)}</p>`
+      : got.items.length ? `<p class="op-count">${got.items.length} account${got.items.length === 1 ? '' : 's'}</p><div class="op-items ap-items">${got.items.map((h) => `<button type="button" class="op-item ap-acct${same(ap.sel, h.username) ? ' on' : ''}" data-ap-acct="${esc(h.username)}"${h.enabled ? '' : ' data-off'}>`
+        + `${svg('user')}<b>${esc(h.username)}${h.enabled ? '' : ' (turned off)'}</b><small>${esc([h.name, h.description, q ? h.where : ''].filter(Boolean).join(' · '))}</small></button>`).join('')}</div>`
+      : `<p class="op-count">${q ? 'No account like that.' : 'No user accounts directly in here. Pick another OU on the left, or find it by name.'}</p>`;
+    $('acctpick-page').innerHTML = head + body;
+    $('acctpick-use').disabled = !ap.sel;
+  };
+  const apOpen = async () => {
+    if (!apDomain()) {
+      say('dset-problem', 'Type the domain first.');
+      $('dset-domain').focus();
+      return;
+    }
+    Object.assign(ap, { find: '', sel: $('dset-user').value.trim(), places: [], nodes: [] });
+    ap.got.clear();
+    $('acctpick-find').value = '';
+    $('acctpick-list').innerHTML = '<i class="sk op-sk"></i>'.repeat(6);
+    $('acctpick-page').innerHTML = '';
+    $('acctpick-use').disabled = true;
+    $('acctpick-dialog').showModal();
+    try {
+      ap.places = await R.get(`/api/ad/look/places?domain=${encodeURIComponent(apDomain())}`);
+    } catch (err) {
+      $('acctpick-list').innerHTML = '';
+      $('acctpick-page').innerHTML = `<p class="hint problem">${esc(err.message)}</p>`;
+      return;
+    }
+    ap.nodes = ap.places.map((p) => ({ dn: p.dn, name: dnName(p.dn), parent: dnParent(p.dn) }));
+    // It opens where service accounts usually are: an OU called Service Accounts, else Users.
+    ap.at = (ap.places.find((p) => /^service accounts?$/i.test(p.name)) || ap.places.find((p) => /^CN=Users,/i.test(p.dn)) || ap.places[0])?.dn || '';
+    apDraw();
+    $('acctpick-find').focus();
+  };
+  const apUse = () => {
+    if (!ap.sel) return;
+    $('dset-user').value = ap.sel;
+    $('acctpick-dialog').close();
+    $('dset-user').dispatchEvent(new Event('input')); // a changed sign-in is read again
+    clearTimeout(acctTimer);
+    $('dset-drop').hidden = true;
+    $('dset-password').focus();
+  };
+  $('dset-browse').addEventListener('click', apOpen);
+  $('acctpick-list').addEventListener('click', (e) => {
+    const a = e.target.closest('[data-ap-ou]');
+    if (!a) return;
+    ap.at = a.dataset.apOu;
+    ap.find = '';
+    $('acctpick-find').value = '';
+    apDraw();
+  });
+  let apTimer = 0;
+  $('acctpick-find').addEventListener('input', () => {
+    clearTimeout(apTimer);
+    apTimer = setTimeout(() => {
+      ap.find = $('acctpick-find').value;
+      apDraw();
+    }, 250);
+  });
+  $('acctpick-page').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-ap-acct]');
+    if (!b) return;
+    ap.sel = b.dataset.apAcct;
+    apDraw();
+  });
+  $('acctpick-page').addEventListener('dblclick', (e) => { if (e.target.closest('[data-ap-acct]')) apUse(); });
+  $('acctpick-use').addEventListener('click', apUse);
+  ['acctpick-cancel', 'acctpick-x'].forEach((id) => $(id).addEventListener('click', () => $('acctpick-dialog').close()));
   $('dset-dialog').addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && e.target.matches('.dset-in input')) $('dset-go').click();
   });

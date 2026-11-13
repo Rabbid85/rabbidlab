@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.118', [
+    'Use one I have has a Browse button beside the account box: your OUs down the left and the accounts in the one you pick on the right, or Find an account across the domain. Pick one and Use this account fills it in.']],
   ['1.1.117', [
     'Setting up the service account starts with a Choose step: two cards, Create a new one or Use one I have, the one picked outlined. The two buttons that sat across the top are gone.']],
   ['1.1.116', [

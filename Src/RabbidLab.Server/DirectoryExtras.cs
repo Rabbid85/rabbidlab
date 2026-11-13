@@ -60,7 +60,10 @@ public interface IDirectoryExtras
     Task<AdPlace> BrowseAs(string? domain, string username, string password, string? dn, CancellationToken stop);
 
     /// <summary>Accounts in AD to pick as the service account, read as this server's own computer account (no login needed on a domain-joined Windows server).</summary>
-    Task<List<AdAccountHit>> LookAccounts(string? domain, string? q, CancellationToken stop);
+    Task<List<AdAccountHit>> LookAccounts(string? domain, string? q, string? place, CancellationToken stop);
+
+    /// <summary>Every OU and container, read as this server, for Browse… while picking the service account.</summary>
+    Task<List<AdOu>> LookPlaces(string? domain, CancellationToken stop);
 
     Task<AdObject> Attributes(string dn, CancellationToken stop);
 
@@ -425,22 +428,52 @@ public sealed partial class DirectoryTools
         return await PlaceOf(ldap, dn, d, stop);
     }
 
-    public async Task<List<AdAccountHit>> LookAccounts(string? domain, string? q, CancellationToken stop)
+    // Use one I have: the accounts to pick from, read as this server's own computer account. Typed: any account that
+    // matches, across the domain. A place (Browse…): the accounts directly in that OU or container. Neither: the ones
+    // that look like service accounts. Never krbtgt, Guest and the like, nor the mailboxes Exchange makes for itself.
+    public async Task<List<AdAccountHit>> LookAccounts(string? domain, string? q, string? place, CancellationToken stop)
     {
         var d = Clean(domain) ?? Domain ?? throw new ToolProblem("Which domain? Type its name, such as amw.com.");
         var cant = $"This server can't read {d} on its own. Type the account's name instead.";
         using var ldap = await Ldap.OpenAnonymous(d, await Host(d, stop), stop) ?? throw new ToolProblem(cant);
-        // Nothing typed: the accounts that look like service accounts. Typed: any account it matches.
-        var text = q?.Trim() ?? "";
-        var match = text.Length == 0 ? "(|(sAMAccountName=svc*)(description=*service*))" : Match(text, "sAMAccountName", "displayName", "cn");
+        string[] wanted = ["objectClass", "sAMAccountName", "displayName", "description", "userAccountControl", "isCriticalSystemObject"];
         try
         {
-            // Not krbtgt, Guest and the other accounts Active Directory keeps for itself, nor the mailboxes Exchange makes for itself.
-            var rows = await ldap.Find(ldap.BaseDn, $"(&(objectCategory=person)(objectClass=user)(!(isCriticalSystemObject=TRUE))(!(sAMAccountName=$*))(!(sAMAccountName=SM_*))(!(sAMAccountName=HealthMailbox*)){match})", true, ["sAMAccountName", "displayName", "description", "userAccountControl"], 30, stop);
-            return [.. rows.Where(r => !string.IsNullOrEmpty(r.Text("sAMAccountName")))
+            List<LdapRow> rows;
+            if (!string.IsNullOrWhiteSpace(place) && string.IsNullOrWhiteSpace(q))
+            {
+                rows = [.. (await ldap.FindChildren(Inside(place, ldap.BaseDn), wanted, 1000, stop))
+                    .Where(r => r.Texts("objectClass").Contains("user", StringComparer.OrdinalIgnoreCase) && !r.Texts("objectClass").Contains("computer", StringComparer.OrdinalIgnoreCase))];
+            }
+            else
+            {
+                var text = q?.Trim() ?? "";
+                var match = text.Length == 0 ? "(|(sAMAccountName=svc*)(description=*service*))" : Match(text, "sAMAccountName", "displayName", "cn");
+                rows = await ldap.Find(ldap.BaseDn, $"(&(objectCategory=person)(objectClass=user)(!(isCriticalSystemObject=TRUE))(!(sAMAccountName=$*))(!(sAMAccountName=SM_*))(!(sAMAccountName=HealthMailbox*)){match})", true, wanted, 50, stop);
+            }
+            return [.. rows.Where(r => Pickable(r))
                 .Select(r => new AdAccountHit(r.Text("sAMAccountName")!, r.Text("displayName"), r.Text("description"), Ldap.Path(Ldap.Parent(r.Dn), ldap.BaseDn),
                     ((r.Number("userAccountControl") ?? 0) & 2) == 0))
                 .OrderBy(h => h.Username, StringComparer.OrdinalIgnoreCase)];
+        }
+        catch (LdapRefused)
+        {
+            throw new ToolProblem(cant);
+        }
+    }
+
+    private static bool Pickable(LdapRow r) => r.Text("sAMAccountName") is { Length: > 0 } sam && r.Text("isCriticalSystemObject") != "TRUE"
+        && !sam.StartsWith('$') && !sam.StartsWith("SM_", StringComparison.OrdinalIgnoreCase) && !sam.StartsWith("HealthMailbox", StringComparison.OrdinalIgnoreCase);
+
+    // Browse… for the service account: every OU and container, as Pick an OU lists them, read as this server.
+    public async Task<List<AdOu>> LookPlaces(string? domain, CancellationToken stop)
+    {
+        var d = Clean(domain) ?? Domain ?? throw new ToolProblem("Which domain? Type its name, such as amw.com.");
+        var cant = $"This server can't read {d} on its own. Type the account's name instead.";
+        using var ldap = await Ldap.OpenAnonymous(d, await Host(d, stop), stop) ?? throw new ToolProblem(cant);
+        try
+        {
+            return await PlacesIn(ldap, ldap.BaseDn, stop);
         }
         catch (LdapRefused)
         {
@@ -768,8 +801,11 @@ public static class DirectoryExtrasApi
         app.MapGet("/api/ad/browse", (string? dn, HttpContext context, IDirectoryExtras tools) => UsersApi.Try(context, Permissions.AdView, async () =>
             Results.Ok(await tools.Browse(dn, context.RequestAborted)), change: false));
 
-        app.MapGet("/api/ad/look/accounts", (string? domain, string? q, HttpContext context, IDirectoryExtras tools) => UsersApi.Try(context, Permissions.AdConnect, async () =>
-            Results.Ok(await tools.LookAccounts(domain, q, context.RequestAborted)), change: false));
+        app.MapGet("/api/ad/look/places", (string? domain, HttpContext context, IDirectoryExtras tools) => UsersApi.Try(context, Permissions.AdConnect, async () =>
+            Results.Ok(await tools.LookPlaces(domain, context.RequestAborted)), change: false));
+
+        app.MapGet("/api/ad/look/accounts", (string? domain, string? q, string? place, HttpContext context, IDirectoryExtras tools) => UsersApi.Try(context, Permissions.AdConnect, async () =>
+            Results.Ok(await tools.LookAccounts(domain, q, place, context.RequestAborted)), change: false));
 
         app.MapPost("/api/ad/look/browse", (LookBrowseForm form, HttpContext context, IDirectoryExtras tools) => UsersApi.Try(context, Permissions.AdConnect, async () =>
             Results.Ok(await tools.BrowseAs(form.Domain, form.Username ?? "", form.Password ?? "", form.Dn, context.RequestAborted)), change: false));

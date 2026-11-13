@@ -208,6 +208,17 @@ button.danger.solid:hover { background: #DB4860; }
 .dset-drop { top: 72px; max-height: 214px; } /* fits above the dialog's foot */
 .dset-drop .opt .pic { display: grid; place-items: center; border-radius: 50%; background: #1C1F2D; color: #9DA1B3; }
 .dset-drop .opt .pic svg { position: static; width: 16px; height: 16px; color: inherit; }
+/* Browse… beside the box, and the accounts in the OU picked in its window: one outlined when picked, ones turned off dimmed. */
+.dset-row { display: flex; gap: 8px; }
+.dset-row .dset-in { flex: 1; min-width: 0; }
+.dset-browse { display: inline-flex; flex: none; align-items: center; gap: 7px; height: 42px; padding: 0 14px; border-radius: 10px; }
+.dset-browse[hidden] { display: none; }
+.dset-browse svg { width: 15px; height: 15px; }
+.op-items.ap-items { max-height: 300px; }
+.ap-acct { width: 100%; border: 1px solid transparent; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.ap-acct:hover { background: #151826; }
+.ap-acct.on { border-color: var(--accent-line); background: #151826; }
+.ap-acct[data-off] b { color: #8A8FA8; }
 .dset-note { display: flex; align-items: flex-start; gap: 8px; margin: 4px 0 0; padding: 10px 12px; border-radius: 10px; background: #0E1019; color: var(--muted); font-size: 12.5px; line-height: 1.45; }
 .dset-note svg { flex: none; width: 15px; height: 15px; margin-top: 1px; color: var(--ok); }
 .dset-review { margin-bottom: 10px; border: 1px solid var(--line); border-radius: 12px; background: #0E1019; }

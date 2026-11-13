@@ -921,7 +921,7 @@
       </div>
       <div class="dset-pane" data-pane="signin">
         <label class="dset-fld"><span>Domain</span><span class="dset-in"><svg><use href="#i-globe"/></svg><input id="dset-domain" autocomplete="off" spellcheck="false"></span></label>
-        <div class="dset-fld dset-acct"><label for="dset-user" id="dset-user-label">Domain admin</label><span class="dset-in"><svg><use href="#i-user"/></svg><input id="dset-user" autocomplete="username" spellcheck="false"></span>
+        <div class="dset-fld dset-acct"><label for="dset-user" id="dset-user-label">Domain admin</label><div class="dset-row"><span class="dset-in"><svg><use href="#i-user"/></svg><input id="dset-user" autocomplete="username" spellcheck="false"></span><button type="button" class="dset-browse" id="dset-browse" hidden><svg><use href="#i-folder"/></svg>Browse…</button></div>
           <div class="drop dset-drop" id="dset-drop" hidden></div></div>
         <label class="dset-fld"><span>Password</span><span class="dset-in"><svg><use href="#i-lock"/></svg><input id="dset-password" type="password" autocomplete="current-password"></span></label>
         <p class="dset-note"><svg><use href="#i-lock"/></svg><span id="dset-note"></span></p>
@@ -955,6 +955,21 @@
     <div class="oupick-page" id="oupick-page"></div>
   </div>
   <div class="dialog-foot"><button type="button" id="oupick-cancel">Cancel</button><button type="button" class="primary" id="oupick-use">Use this OU</button></div>
+</dialog>
+
+<!-- Browse… for the service account: the OUs as a rail, as Pick an OU shows them, and the accounts in the one picked. Read as this server (users.js). -->
+<dialog class="dialog oupick" id="acctpick-dialog" aria-labelledby="acctpick-title">
+  <button type="button" class="oupick-x" id="acctpick-x" aria-label="Close"><svg><use href="#i-x"/></svg></button>
+  <h2 id="acctpick-title">Pick the service account</h2>
+  <p class="dialog-lead">Browse Active Directory, or find the account by name.</p>
+  <div class="oupick-grid">
+    <nav class="dnav lists oupick-rail" aria-label="OUs">
+      <label class="side-find"><svg><use href="#i-search"/></svg><input type="search" id="acctpick-find" placeholder="Find an account" aria-label="Find an account" autocomplete="off" spellcheck="false"></label>
+      <div id="acctpick-list"></div>
+    </nav>
+    <div class="oupick-page" id="acctpick-page"></div>
+  </div>
+  <div class="dialog-foot"><button type="button" id="acctpick-cancel">Cancel</button><button type="button" class="primary" id="acctpick-use" disabled>Use this account</button></div>
 </dialog>
 
 <!-- A new account: in Active Directory (data-kind="ad") or Windows on one computer (data-kind="pc"). -->

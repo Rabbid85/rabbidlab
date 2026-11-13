@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.118 (2026-11-13)
+
+- Use one I have has a Browse button beside the account box: your OUs down the left and the accounts in the one you pick on the right, or Find an account across the domain. Pick one and Use this account fills it in.
+
 ## 1.1.117 (2026-11-13)
 
 - Setting up the service account starts with a Choose step: two cards, Create a new one or Use one I have, the one picked outlined. The two buttons that sat across the top are gone.
