@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.100', [
+    'Settings, Account is two sections: Account info with your roles in it, and Where you are signed in, where this browser has its own Sign out. Buttons down the right of settings rows are all one width.']],
   ['1.1.99', [
     'See it as a role is now Role preview: Preview as a role, and the bar at the top says Previewing as.']],
   ['1.1.98', [
@@ -2321,7 +2323,6 @@ const RELEASE_NOTES = [
   $('nm-cancel').addEventListener('click', () => $('name-dialog').close());
   $('nm-download').addEventListener('click', () => { location.href = '/api/console/certificate?names=true'; });
   $('name-dialog').addEventListener('close', () => { $('nm-pw').value = ''; });
-  $('acc-signout').addEventListener('click', () => $('signout').click());
   // Where you're signed in: your own sessions, in the menu as a count and in Settings, Account, each with Sign out.
   const mySessions = async () => {
     const r = await fetch('/api/sessions', { headers: { Accept: 'application/json' } });
@@ -2334,9 +2335,11 @@ const RELEASE_NOTES = [
     say('acc-sessions-problem', '');
     try {
       const list = await mySessions();
-      $('acc-sessions').innerHTML = list.map((x) => `<div class="ds-row" data-session="${esc(x.id)}"><div class="ds-l"><b>${esc(x.device)}${x.current ? '<span class="ds-scope">This browser</span>' : ''}</b>`
-        + `<span>${esc([x.address, `Signed in ${when(x.started)}`, `last seen ${ago(x.lastSeen)}`].filter(Boolean).join(' · '))}</span></div>`
-        + `<div class="ds-r">${x.current ? '' : '<button type="button" class="ds-btn" data-end>Sign out</button>'}</div></div>`).join('') || '<p class="ds-empty">Nowhere.</p>';
+      // This browser first; an address on this computer (::1, 127.0.0.1) says so instead.
+      const local = (a) => (/^(::1|127\.|::ffff:127\.)/.test(a || '') ? 'This computer' : a);
+      $('acc-sessions').innerHTML = [...list].sort((a, b) => b.current - a.current).map((x) => `<div class="ds-row" data-session="${esc(x.id)}"><div class="ds-l"><b>${esc(x.device)}${x.current ? '<span class="ds-scope">This browser</span>' : ''}</b>`
+        + `<span>${esc([local(x.address), `Signed in ${when(x.started)}`, `last seen ${ago(x.lastSeen)}`].filter(Boolean).join(' · '))}</span></div>`
+        + `<div class="ds-r"><button type="button" class="ds-btn" ${x.current ? 'data-signout' : 'data-end'}>Sign out</button></div></div>`).join('') || '<p class="ds-empty">Nowhere.</p>';
     } catch (err) {
       $('acc-sessions').innerHTML = '';
       say('acc-sessions-problem', err.message);
@@ -2344,6 +2347,7 @@ const RELEASE_NOTES = [
   };
   document.addEventListener('rabbidlab:show', (e) => { if (e.detail[0] === 'settings' && (!e.detail[1] || e.detail[1] === 'account')) drawMySessions(); });
   $('acc-sessions').addEventListener('click', async (e) => {
+    if (e.target.closest('[data-signout]')) return $('signout').click(); // this browser: the usual sign-out
     const row = e.target.closest('[data-end]') && e.target.closest('[data-session]');
     if (!row) return;
     busy($('acc-sessions'), 'Signing it out…');

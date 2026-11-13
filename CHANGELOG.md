@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.100 (2026-11-12)
+
+- Settings, Account is two sections: Account info with your roles in it, and Where you are signed in, where this browser has its own Sign out. Buttons down the right of settings rows are all one width.
+
 ## 1.1.99 (2026-11-12)
 
 - See it as a role is now Role preview: Preview as a role, and the bar at the top says Previewing as.

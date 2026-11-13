@@ -247,22 +247,17 @@
 
     <!-- Account: who's signed in, their roles, and signing out. -->
     <section class="sub" data-sub="account" data-title="Account" hidden>
-      <header class="sub-head"><h2>Account</h2><p>Who you're signed in as, and your roles.</p></header>
+      <header class="sub-head"><h2>Account</h2><p>Who you're signed in as, your roles, and where you're signed in.</p></header>
       <section class="ds-sec" data-sec="info"><h3 class="ds-h">Account info</h3>
         <div class="ds-row"><div class="ds-l"><b>Name</b></div><div class="ds-r"><span class="ds-v" id="acc-name"></span></div></div>
         <div class="ds-row"><div class="ds-l"><b>Username</b></div><div class="ds-r"><span class="ds-v" id="acc-user"></span></div></div>
         <div class="ds-row"><div class="ds-l"><b>Signed in with</b></div><div class="ds-r"><span class="ds-v" id="acc-how"></span></div></div>
+        <div class="ds-row"><div class="ds-l"><b>Roles</b><span>What they let you do is set under Roles and people.</span></div><div class="ds-r"><span class="ds-v" id="acc-roles"></span><a class="ds-btn" href="#people" data-can="access.view">Open</a></div></div>
         <div class="ds-row" id="acc-password-row" hidden><div class="ds-l"><b>Password</b><span>Changing it signs you out everywhere, here too.</span></div><div class="ds-r"><button type="button" class="ds-btn" id="acc-password">Change</button></div></div>
       </section>
       <section class="ds-sec" data-sec="sessions"><h3 class="ds-h">Where you're signed in</h3>
         <div id="acc-sessions" data-skel="rows:2"></div>
         <p class="hint problem" id="acc-sessions-problem" hidden></p>
-      </section>
-      <section class="ds-sec" data-sec="roles"><h3 class="ds-h">Roles</h3>
-        <div class="ds-row"><div class="ds-l"><b>Your roles</b><span>What they let you do is set under Roles and people.</span></div><div class="ds-r"><span class="ds-v" id="acc-roles"></span><a class="ds-btn" href="#people" data-can="access.view">Open</a></div></div>
-      </section>
-      <section class="ds-sec" data-sec="signout"><h3 class="ds-h">Signing out</h3>
-        <div class="ds-row"><div class="ds-l"><b>Sign out</b><span>Signs you out of <span data-lab>Rabbid Lab</span> on this browser.</span></div><div class="ds-r"><button type="button" class="ds-btn" id="acc-signout">Sign out</button></div></div>
       </section>
     </section>
 
