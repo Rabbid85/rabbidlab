@@ -29,11 +29,15 @@
   const keyOf = (x) => String(AD[adPage].key(x));
   const byKey = (key) => (lists[adPage] || []).find((x) => keyOf(x) === key);
   const count = (n, one, many) => `${n.toLocaleString()} ${n === 1 ? one : many}`;
-  // The bar over the list, the tick in the heading and each row's highlight, without drawing the list again.
+  // The heading row (how many are selected, or the column names), its tick and each row's highlight, without drawing the list again.
   const drawPicked = () => {
     const sel = pickedHere();
-    $('dir-bulk').hidden = !sel.size;
-    if (sel.size) $('dir-bulk-n').textContent = `${count(sel.size, ...AD[adPage].noun)} selected`;
+    const bulk = $('dir-table').querySelector('.th-bulk');
+    if (bulk) {
+      bulk.hidden = !sel.size;
+      bulk.closest('.tr').classList.toggle('picking', !!sel.size);
+      if (sel.size) bulk.querySelector('b').textContent = `${count(sel.size, ...AD[adPage].noun)} selected`;
+    }
     $('dir-table').querySelectorAll('[data-tick]').forEach((box) => {
       box.checked = sel.has(box.dataset.tick);
       box.closest('.tr')?.classList.toggle('picked', box.checked);
@@ -355,7 +359,9 @@
         const c = p.cells(x);
         return `<div class="tr dtile" tabindex="0" data-i="${i}"><div>${c[0]}</div><div class="dtile-more">${c.slice(1).map((cell) => `<div>${cell}</div>`).join('')}</div></div>`;
       }).join('')
-      : `<div class="tr th">${picks ? '<label class="tk"><input type="checkbox" data-tick-all aria-label="Select all"></label>' : ''}${p.head.map((h) => `<span>${esc(h)}</span>`).join('')}${picks ? '<span></span>' : ''}</div>`
+      : `<div class="tr th">${picks ? '<label class="tk"><input type="checkbox" data-tick-all aria-label="Select all"></label>' : ''}${p.head.map((h) => `<span>${esc(h)}</span>`).join('')}${picks ? '<span></span>'
+        + `<div class="th-bulk" hidden><b></b><button type="button" class="linkish" data-bulk-clear>Clear selection</button>`
+        + `<button type="button" class="small" data-bulk-act aria-haspopup="menu">${svg('menu')}Actions${svg('chevron-down', 'chev')}</button></div>` : ''}</div>`
         + rows.map((x, i) => `<div class="tr" tabindex="0" data-i="${i}">`
           + (picks ? `<label class="tk"><input type="checkbox" data-tick="${esc(keyOf(x))}" aria-label="Select ${esc(x.name || x.username)}"></label>` : '')
           + p.cells(x).map((c) => `<div>${c}</div>`).join('')
@@ -635,6 +641,17 @@
       tickRange(e);
       return;
     }
+    if (e.target.closest('[data-bulk-clear]')) {
+      pickedHere().clear();
+      drawPicked();
+      return;
+    }
+    const bulk = e.target.closest('[data-bulk-act]');
+    if (bulk) {
+      const r = bulk.getBoundingClientRect();
+      openCmd(selectedObjs(), r.right - CMD_W, r.bottom + 6);
+      return;
+    }
     const dots = e.target.closest('[data-row-menu]');
     if (dots) {
       const r = dots.getBoundingClientRect();
@@ -731,14 +748,6 @@
     }
     drawPicked();
   };
-  $('dir-bulk-clear').addEventListener('click', () => {
-    pickedHere().clear();
-    drawPicked();
-  });
-  $('dir-bulk-act').addEventListener('click', () => {
-    const r = $('dir-bulk-act').getBoundingClientRect();
-    openCmd(selectedObjs(), r.right - CMD_W, r.bottom + 6);
-  });
   $('dir-table').addEventListener('contextmenu', (e) => {
     const row = picked[adPage] && e.target.closest('[data-i]');
     if (!row) return;

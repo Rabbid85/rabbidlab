@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.124', [
+    'With rows ticked, the column headings turn into how many are selected, Clear selection and Actions, instead of a bar above the list. The list no longer moves down when you tick something.']],
   ['1.1.123', [
     'The Actions menu on Users, Groups and Computers is tidier. It only lists what applies, a category with one thing in it is just that thing, and what was left out is one short line under the heading.']],
   ['1.1.122', [

@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.124 (2026-11-13)
+
+- With rows ticked, the column headings turn into how many are selected, Clear selection and Actions, instead of a bar above the list. The list no longer moves down when you tick something.
+
 ## 1.1.123 (2026-11-13)
 
 - The Actions menu on Users, Groups and Computers is tidier. It only lists what applies, a category with one thing in it is just that thing, and what was left out is one short line under the heading.

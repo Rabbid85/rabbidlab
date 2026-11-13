@@ -295,13 +295,6 @@ button.danger.solid:hover { background: #DB4860; }
 .adt .tr-more { display: flex; justify-content: flex-end; }
 .adt .tr-more .at-more { margin-top: 0; }
 .adt .tr:hover .at-more, .adt .tr:focus-within .at-more, .adt .tr.picked .at-more { opacity: 1; }
-.dbulk { display: flex; align-items: center; gap: 14px; margin: 14px 0 0; padding: 7px 7px 7px 14px; border: 1px solid var(--accent-line); border-radius: 10px; background: #12141F; }
-.dbulk[hidden] { display: none; }
-.dbulk b { color: var(--title); font-size: 13.5px; font-weight: 650; }
-.dbulk .grow { flex: 1; }
-.dbulk .small { display: inline-flex; align-items: center; gap: 7px; height: 32px; }
-.dbulk .small svg { width: 15px; height: 15px; }
-.dbulk .small .chev { width: 13px; height: 13px; margin-left: 1px; color: #8B90A5; }
 .linkish { padding: 0; border: 0; background: none; color: var(--muted); font: inherit; font-size: 13px; cursor: pointer; }
 .linkish:hover { color: var(--title); text-decoration: underline; }
 
@@ -339,3 +332,12 @@ button.danger.solid:hover { background: #DB4860; }
 .adt.computers.picks .tr { grid-template-columns: 18px minmax(200px, 1.4fr) minmax(170px, 1.2fr) minmax(140px, 1fr) 110px 150px 28px; }
 .gp-list .tick svg { flex: none; width: 15px; height: 15px; color: #8B90A5; }
 .gp-list .tick span { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+
+/* While some are ticked, the heading row says how many, with Clear selection and Actions, instead of the column names. */
+.adt .tr.th.picking > span { display: none; }
+.adt .th-bulk { display: flex; grid-column: 2 / -1; align-items: center; gap: 14px; min-width: 0; color: var(--title); font-size: 13px; font-weight: 500; letter-spacing: 0; text-transform: none; }
+.adt .th-bulk[hidden] { display: none; }
+.adt .th-bulk b { font-weight: 650; }
+.adt .th-bulk .small { display: inline-flex; align-items: center; gap: 7px; height: 28px; margin: -6px 0 -6px auto; } /* no taller than the column names, so the rows stay put */
+.adt .th-bulk .small svg { width: 14px; height: 14px; }
+.adt .th-bulk .small .chev { width: 12px; height: 12px; color: #8B90A5; }
