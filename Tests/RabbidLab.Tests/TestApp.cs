@@ -114,11 +114,19 @@ public sealed class TestApp(string data) : WebApplicationFactory<Program>
         return (await made.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>()).GetProperty("id").GetString()!;
     }
 
-    /// <summary>Down alerts, of sensors and of watched links, go to these notifications, this many minutes in.</summary>
+    /// <summary>The alert type new sensors and watched links start with alerts this many minutes in, to these notifications.</summary>
     public static async Task Alerting(HttpClient admin, int after, params string[] to)
     {
-        (await admin.PostAsJsonAsync("/api/alerts/rules/sensor.down", new { on = true, after, again = 0, back = true, to })).EnsureSuccessStatusCode();
-        (await admin.PostAsJsonAsync("/api/alerts/rules/link.down", new { on = true, after, again = 0, back = true, to })).EnsureSuccessStatusCode();
+        var start = (await admin.GetFromJsonAsync<System.Text.Json.JsonElement>("/api/alerts")).GetProperty("now").GetProperty("startType").GetString();
+        (await admin.PostAsJsonAsync($"/api/alerts/types/{start}", new { name = "Default", after, again = 0, back = true, to })).EnsureSuccessStatusCode();
+    }
+
+    /// <summary>Adds an alert type and gives back its id.</summary>
+    public static async Task<string> AlertType(HttpClient admin, string name, int after, int again = 0, bool back = true, params string[] to)
+    {
+        var made = await admin.PostAsJsonAsync("/api/alerts/types", new { name, after, again, back, to });
+        made.EnsureSuccessStatusCode();
+        return (await made.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>()).GetProperty("id").GetString()!;
     }
 }
 

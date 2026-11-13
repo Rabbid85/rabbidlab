@@ -176,7 +176,8 @@ public sealed class AlertsTests : IDisposable
         var refused = await admin.PostAsJsonAsync("/api/links", new { name = "NAS shell", url = "ssh://192.168.2.23", watch });
 
         Assert.Equal(sensor.Id, made.GetProperty("sensor").GetString());
-        Assert.Equal(("web", "Monitoring", "follow", true), (sensor.Kind, sensor.Group, sensor.Rule, sensor.Link));
+        Assert.Equal(("web", "Monitoring", true), (sensor.Kind, sensor.Group, sensor.Link));
+        Assert.Equal(app.Services.GetRequiredService<Alerts>().StartType().Id, sensor.Rule); // the usual alert type
         Assert.True(states.GetProperty("states").GetProperty(id!).GetProperty("down").GetBoolean());
         Assert.Contains(app.Mail.Sent, m => m.Subject == "Grafana is down");
         Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
@@ -186,9 +187,10 @@ public sealed class AlertsTests : IDisposable
         Assert.Equal(JsonValueKind.Null, off.GetProperty("sensor").ValueKind);
         Assert.Empty(Sensors.All());
 
-        // Watched again with times of its own instead of the rule's.
-        (await admin.PostAsJsonAsync($"/api/links/{id}", new { name = "Grafana", url = "https://grafana.amw.com", watch = new { on = true, follow = false, after = 10, again = 0, back = true } })).EnsureSuccessStatusCode();
-        Assert.Equal(("custom", 10, true), (Named("Grafana").Rule, Named("Grafana").Custom!.After, Named("Grafana").Link));
+        // Watched again with another alert type picked.
+        var critical = await TestApp.AlertType(admin, "Critical", 0, 60);
+        (await admin.PostAsJsonAsync($"/api/links/{id}", new { name = "Grafana", url = "https://grafana.amw.com", watch = new { on = true, type = critical } })).EnsureSuccessStatusCode();
+        Assert.Equal((critical, true), (Named("Grafana").Rule, Named("Grafana").Link));
         (await admin.PostAsJsonAsync($"/api/links/{id}/delete", new { })).EnsureSuccessStatusCode();
         Assert.Empty(Sensors.All());
     }
@@ -209,17 +211,18 @@ public sealed class AlertsTests : IDisposable
         Assert.Contains("NAS shell", first.GetProperty("skipped")[0].GetString());
         Assert.Equal(1, second.GetProperty("stopped").GetInt32());
         Assert.Equal("Gateway", Assert.Single(Sensors.All()).Name);
-        Assert.Equal(("follow", true), (Sensors.All()[0].Rule, Sensors.All()[0].Link));
+        Assert.Equal((app.Services.GetRequiredService<Alerts>().StartType().Id, true), (Sensors.All()[0].Rule, Sensors.All()[0].Link));
     }
 
     [Fact]
     public async Task Dragging_a_sensor_to_another_group_changes_only_its_group()
     {
         var admin = await app.SignedIn();
+        var slow = await TestApp.AlertType(admin, "Slow", 10);
         await Add(admin, new
         {
             kind = "web", target = "https://192.168.2.1", name = "UniFi", expect = "text", text = "UniFi OS", tags = new[] { "network" },
-            rule = "custom", custom = new { after = 10, again = 0, back = true },
+            rule = slow,
         });
 
         (await admin.PostAsJsonAsync($"/api/sensors/{Named("UniFi").Id}/move", new { group = "Network" })).EnsureSuccessStatusCode();
@@ -228,6 +231,6 @@ public sealed class AlertsTests : IDisposable
         Assert.Equal("Network", moved.Group);
         Assert.Equal("UniFi OS", moved.Text);
         Assert.Equal(["network"], moved.Tags);
-        Assert.Equal(10, moved.Custom!.After);
+        Assert.Equal(slow, moved.Rule);
     }
 }

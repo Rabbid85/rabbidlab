@@ -145,3 +145,10 @@
 .lw-rule { max-width: 420px; overflow: hidden; color: var(--muted); font-size: 12.5px; white-space: nowrap; text-overflow: ellipsis; }
 .nt-bar .grow { flex: 1; }
 #nf-mail, #nf-hook { margin-top: 12px; }
+
+/* Alert types: the heading's New alert type, a line about them, and the one new sensors start with. */
+.ar-h .ar-add { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; color: var(--accent-soft); font-size: 12.5px; font-weight: 650; letter-spacing: 0; text-transform: none; }
+.ar-h .ar-add svg { width: 14px; height: 14px; }
+.ar-lead { margin: -2px 0 12px; color: var(--muted); font-size: 13px; }
+.ar-tag { padding: 2px 7px; border-radius: 5px; background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent-soft); font: 650 11px "Segoe UI", system-ui, sans-serif; font-style: normal; }
+.ty-name { display: grid; gap: 6px; margin-top: 8px; }

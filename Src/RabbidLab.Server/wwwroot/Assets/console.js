@@ -3,6 +3,11 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.97', [
+    'Alert types: named ways to alert, such as Default or Critical, each with when it alerts and where it sends. They are at the top of Settings, Alert rules.',
+    'A sensor or a watched link picks its Alert type from a drop-down, or Do not alert. New alert type at the bottom of the list makes one on the spot.',
+    'Watching links ticked on Links gives them the alert type picked in the bar.',
+    'Your sensors were given alert types that match how they alerted before. The Its own and The rule choice, Send to on sensors, and Use these alerts on other sensors are gone.']],
   ['1.1.96', [
     'The line under the Settings title is gone.']],
   ['1.1.95', [

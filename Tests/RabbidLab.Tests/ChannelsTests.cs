@@ -108,7 +108,7 @@ public sealed class ChannelsTests : IDisposable
     }
 
     [Fact]
-    public async Task A_new_sensor_follows_its_rule_and_alerts_reach_each_notification_on_it()
+    public async Task A_new_sensor_starts_with_the_usual_alert_type_and_alerts_reach_each_notification_on_it()
     {
         var admin = await app.SignedIn();
         var me = await TestApp.Notification(admin);
@@ -121,7 +121,7 @@ public sealed class ChannelsTests : IDisposable
         var sensor = app.Services.GetRequiredService<Sensors>().All().Single();
         var history = await admin.GetStringAsync("/api/alerts/history");
 
-        Assert.Equal("follow", sensor.Rule);
+        Assert.Equal(app.Services.GetRequiredService<Alerts>().StartType().Id, sensor.Rule);
         Assert.Null(sensor.Channels);
         Assert.Contains(app.Mail.Sent, m => m.Subject == "Gateway is down");
         Assert.Equal("gmail", app.Mail.With[0].Provider);

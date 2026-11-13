@@ -214,8 +214,8 @@
       <p class="rail-label" data-can="sensors.alerts">Alerts</p>
       <a href="#settings/alerts" data-sub="alerts" data-can="sensors.alerts"><svg class="all-flask" viewBox="0 0 24 24" aria-hidden="true"><path class="liquid" d="M6.6 15.2h10.8l2 3.2A1.7 1.7 0 0 1 17.9 21H6.1a1.7 1.7 0 0 1-1.5-2.6z"/><path d="M9 3h6M10 3v6.2L4.6 18.4A1.7 1.7 0 0 0 6.1 21h11.8a1.7 1.7 0 0 0 1.5-2.6L14 9.2V3"/></svg><span>Alert rules</span></a>
       <div class="dkids" data-kids="alerts">
-        <a href="#settings/alerts/sensors" data-sub="alerts" data-sec="sensors"><span class="nm">Sensors</span></a>
-        <a href="#settings/alerts/links" data-sub="alerts" data-sec="links"><span class="nm">Links</span></a>
+        <a href="#settings/alerts/types" data-sub="alerts" data-sec="types"><span class="nm">Alert types</span></a>
+        <a href="#settings/alerts/sensors" data-sub="alerts" data-sec="sensors"><span class="nm">Sensor warnings</span></a>
         <a href="#settings/alerts/seats" data-sub="alerts" data-sec="seats"><span class="nm">Seats</span></a>
         <a href="#settings/alerts/lab" data-sub="alerts" data-sec="lab"><span class="nm" data-lab>Rabbid Lab</span></a>
         <a href="#settings/alerts/quiet" data-sub="alerts" data-sec="quiet"><span class="nm">Gathering and quiet hours</span></a>
@@ -355,9 +355,9 @@
 
     <!-- Alert rules: every kind of alert, when it goes and to which notifications; then gathering and quiet hours (alerts.js). -->
     <section class="sub" data-sub="alerts" data-title="Alert rules" hidden>
-      <header class="sub-head"><h2>Alert rules</h2><p>What sends an alert, and to which notifications. A sensor or a link can still set its own times.</p></header>
-      <section class="ds-sec ar-sec" data-sec="sensors" id="ar-sensors" data-skel="rows:4"></section>
-      <section class="ds-sec ar-sec" data-sec="links" id="ar-links"></section>
+      <header class="sub-head"><h2>Alert rules</h2><p>The alert types sensors and watched links pick from, then the other alerts and where they go.</p></header>
+      <section class="ds-sec ar-sec" data-sec="types" id="ar-types" data-skel="rows:2"></section>
+      <section class="ds-sec ar-sec" data-sec="sensors" id="ar-sensors"></section>
       <section class="ds-sec ar-sec" data-sec="seats" id="ar-seats"></section>
       <section class="ds-sec ar-sec" data-sec="lab" id="ar-lab"></section>
       <section class="ds-sec" data-sec="quiet"><h3 class="ds-h">Gathering and quiet hours</h3>
@@ -676,7 +676,7 @@
     <!-- Watch links: the bar along the bottom while links are being ticked (links.js). -->
     <div class="lw-bar" id="lw-bar" role="toolbar" aria-label="Watch links" hidden>
       <span class="lw-count"><b id="lw-n">0</b> ticked<small id="lw-more"></small></span><span class="lw-sep"></span>
-      <span class="lw-f lw-rule" id="lw-rule"></span><span class="lw-sep"></span>
+      <label class="lw-f"><span>Alert type</span><select id="lw-type"></select></label><span class="lw-sep"></span>
       <button type="button" class="link" id="lw-cancel">Cancel</button><button type="button" class="primary" id="lw-go"><svg><use href="#i-eye"/></svg><span id="lw-go-text">Watch</span></button>
     </div>
     </section>
@@ -1079,7 +1079,6 @@
   <div class="form two sd-form ld-alerts one" id="ln-alerts" hidden>
     <div class="sd-div wide"><b>Alerts</b><i></i></div>
     <div class="wide al-rows" id="ln-watch"></div>
-    <div class="wide" id="ln-send-wrap" hidden><label>Send to</label><div class="np" id="ln-send"></div></div>
   </div>
   <!-- A list: the addresses and their group, then what each one turned out to be, to tick before adding. -->
   <div class="form two sd-form ld-list many">
@@ -1120,9 +1119,7 @@
         <div><label for="sd-down">Down after</label><select id="sd-down"><option value="1">1 miss</option><option value="2">2 misses in a row</option><option value="3">3 misses in a row</option><option value="5">5 misses in a row</option></select></div>
         <div class="sd-div wide"><b>Alerts</b><i></i></div>
         <div class="wide al-rows" id="sd-alerts"></div>
-        <div class="wide" id="sd-send-wrap" hidden><label>Send to</label><div class="np" id="sd-send"></div></div>
         <div class="wide" id="sd-alert-sum"></div>
-        <div class="wide al-copy" data-can="sensors.alerts"><button type="button" class="link" id="sd-copy">Use these alerts on other sensors…</button></div>
       </div>
       <details class="sd-more" id="sd-more" hidden><summary id="sd-more-title">More</summary><div class="sd-more-rows" id="sd-more-rows"></div></details>
       <p class="hint problem" id="sd-problem" hidden></p>
@@ -1155,16 +1152,6 @@
     <span class="grow"></span><button type="button" id="nm-cancel">Cancel</button><button type="button" class="primary" id="nm-go">Add the address</button></div>
 </dialog>
 
-<!-- One sensor's alerts, or the ones new sensors start with, given to other sensors (sensors.js). -->
-<dialog class="dialog cp-dialog" id="copy-dialog" aria-labelledby="cp-title">
-  <h2 id="cp-title">Use these alerts on other sensors</h2>
-  <p class="dialog-lead" id="cp-lead"></p>
-  <label class="side-find cp-find"><svg><use href="#i-search"/></svg><input type="search" id="cp-find" placeholder="Find a sensor" aria-label="Find a sensor" autocomplete="off" spellcheck="false"></label>
-  <div class="rows cp-list" id="cp-list"></div>
-  <p class="hint problem" id="cp-problem" hidden></p>
-  <div class="dialog-foot"><button type="button" class="link" id="cp-all">Tick them all</button><span class="grow"></span>
-    <button type="button" id="cp-cancel">Cancel</button><button type="button" class="primary" id="cp-go">Copy</button></div>
-</dialog>
 
 <!-- A notification: somewhere alerts go, by its name. Email through Gmail, a mail server or Microsoft 365, or a webhook (alerts.js, Channels.cs). -->
 <dialog class="dialog wide" id="notify-dialog" aria-labelledby="nf-title">
@@ -1205,9 +1192,19 @@
   <h2 id="rl-title"></h2>
   <p class="dialog-lead" id="rl-lead"></p>
   <div class="al-rows rl-rows" id="rl-rows"></div>
-  <div class="rl-follow" id="rl-follow" hidden></div>
   <p class="hint problem" id="rl-problem" hidden></p>
   <div class="dialog-foot"><span class="grow"></span><button type="button" id="rl-cancel">Cancel</button><button type="button" class="primary" id="rl-save">Save</button></div>
+</dialog>
+
+<!-- An alert type: a name sensors and links pick it by, how long down before the alert, reminders, the all-clear and where it goes (alerts.js). -->
+<dialog class="dialog wide" id="type-dialog" aria-labelledby="ty-title">
+  <h2 id="ty-title">New alert type</h2>
+  <p class="dialog-lead">A way to alert that sensors and watched links pick by name.</p>
+  <div class="form sd-form ty-name"><label for="ty-name">Name</label><input id="ty-name" maxlength="40" placeholder="Such as Critical, Normal or Office hours" autocomplete="off" spellcheck="false" data-1p-ignore data-lpignore="true" data-bwignore></div>
+  <div class="al-rows rl-rows" id="ty-rows"></div>
+  <p class="hint problem" id="ty-problem" hidden></p>
+  <div class="dialog-foot"><button type="button" class="danger" id="ty-delete" hidden><svg><use href="#i-trash"/></svg>Delete</button><span class="grow"></span>
+    <button type="button" id="ty-cancel">Cancel</button><button type="button" class="primary" id="ty-save">Add the alert type</button></div>
 </dialog>
 
 <!-- One sensor: how it is, its last hour, and what happened to it. -->

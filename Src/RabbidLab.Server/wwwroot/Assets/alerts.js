@@ -258,7 +258,8 @@
     $('nf-save').disabled = false;
   });
   $('nf-cancel').addEventListener('click', () => $('notify-dialog').close());
-  const usedWords = (n) => [n.sensors ? `${n.sensors} sensor${n.sensors === 1 ? '' : 's'}` : '', n.links ? `${n.links} link${n.links === 1 ? '' : 's'}` : ''].filter(Boolean).join(' · ');
+  // What uses one: 11 sensors · 2 links.
+  const usedWords = (n) => [n?.sensors ? `${n.sensors} sensor${n.sensors === 1 ? '' : 's'}` : '', n?.links ? `${n.links} link${n.links === 1 ? '' : 's'}` : ''].filter(Boolean).join(' · ');
   $('nf-delete').addEventListener('click', () => {
     const n = editingNote;
     if (!n) return;
@@ -342,21 +343,22 @@
   };
   const icon = (k) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON[k]}</svg>`;
   const RULES = [
-    { key: 'sensor.down', group: 'sensors', ic: 'down', title: 'A sensor stops answering', kind: 'times' },
     { key: 'sensor.cert', group: 'sensors', ic: 'cert', title: 'A certificate is close to expiring', kind: 'cert' },
     { key: 'sensor.space', group: 'sensors', ic: 'space', title: 'A pool or drive runs low', kind: 'space' },
     { key: 'sensor.hardware', group: 'sensors', ic: 'hw', title: 'A fan, power supply or disk reports a fault', kind: 'hw' },
-    { key: 'link.down', group: 'links', ic: 'link', title: 'A watched link stops answering', kind: 'times' },
     { key: 'seat.offline', group: 'seats', ic: 'seat', title: 'A computer stops checking in', kind: 'seat' },
     { key: 'update.ready', group: 'lab', ic: 'upd', title: 'An update is ready', kind: 'plain', when: 'Once for each new version' },
     { key: 'update.failed', group: 'lab', ic: 'upd', title: "An update didn't install", kind: 'plain', when: 'Right away' },
     { key: 'signin.failing', group: 'lab', ic: 'lock', title: 'Sign-ins keep failing', kind: 'signin' },
+    // Down alerts go by each sensor's or link's alert type; these two only name them in the history.
+    { key: 'sensor.down', group: '', ic: 'down', title: 'A sensor stopped answering', kind: 'times' },
+    { key: 'link.down', group: '', ic: 'link', title: 'A watched link stopped answering', kind: 'times' },
   ];
-  const GROUPS = { sensors: 'Sensors', links: 'Links', seats: 'Seats', lab: '' }; // lab: the lab's name, when it's drawn
+  const GROUPS = { sensors: 'Sensor warnings', seats: 'Seats', lab: '' }; // lab: the lab's name, when it's drawn
   const ruleOf = (key) => RULES.find((x) => x.key === key);
   const mins = (m) => (m === 60 ? 'an hour' : m === 1 ? 'a minute' : `${m} minutes`);
   const EVERY = { 60: 'every hour', 360: 'every 6 hours', 1440: 'every day', 10080: 'every week' };
-  // A rule in a line: After 5 minutes down, once, and an all-clear when it comes back.
+  // A rule or an alert type in a line: After 5 minutes down, once, and an all-clear when it comes back.
   const when = (x, r) => {
     const again = r.again ? `again ${EVERY[r.again]}` : 'once';
     switch (x.kind) {
@@ -371,22 +373,31 @@
   };
   const meta = (x) => {
     const c = rules.counts[x.key];
-    if (!c) return '';
-    if (x.key === 'sensor.down') return `<b>${c.follow} sensor${c.follow === 1 ? '' : 's'}</b>${c.own.length ? `${c.own.length} set their own` : 'follow it'}`;
-    if (x.key === 'link.down') return `<b>${c.follow} link${c.follow === 1 ? '' : 's'}</b>${c.own.length ? `${c.own.length} set their own` : 'watched'}`;
-    return `<b>${c.count} sensor${c.count === 1 ? '' : 's'}</b>${{ 'sensor.cert': 'check certificates', 'sensor.space': 'watch space', 'sensor.hardware': 'watch hardware' }[x.key]}`;
+    return c ? `<b>${c.count} sensor${c.count === 1 ? '' : 's'}</b>${{ 'sensor.cert': 'check certificates', 'sensor.space': 'watch space', 'sensor.hardware': 'watch hardware' }[x.key]}` : '';
+  };
+  const toChips = (ids) => {
+    const to = ids.map(named).filter(Boolean);
+    return to.length ? to.map(chip).join('') : '<span class="np-chip none">Not sending anywhere</span>';
   };
   const drawRules = () => {
     if (!rules) return;
     GROUPS.lab = R.lab();
     const r = rules.now.rules;
+    const types = rules.now.types;
+    $('ar-types').innerHTML = `<h4 class="ar-h">Alert types <small>${types.length}</small><button type="button" class="link ar-add" data-type-add>${svg('plus')}New alert type</button></h4>`
+      + `<p class="ar-lead">Sensors and watched links each pick one by name. Change one here and everything using it changes too.</p><div class="rrows">${types.map((t) => {
+        const used = usedWords(rules.counts.types[t.id]);
+        return `<div class="rrow"><span class="ric down">${icon('down')}</span>`
+          + `<div class="rnm"><b>${esc(t.name)}${t.id === rules.now.startType ? '<em class="ar-tag">New ones start with it</em>' : ''}</b><span>${esc(when({ kind: 'times' }, t))}</span><div class="to">${toChips(t.to)}</div></div>`
+          + `<div class="rmeta">${used ? `<b>${esc(used)}</b>use it` : '<b>Not used yet</b>pick it on a sensor'}</div>`
+          + `<div class="racts"><button type="button" class="ds-btn" data-type-edit="${esc(t.id)}">Edit</button></div></div>`;
+      }).join('')}</div>`;
     Object.keys(GROUPS).forEach((g) => {
       const mine = RULES.filter((x) => x.group === g);
       $(`ar-${g}`).innerHTML = `<h4 class="ar-h">${esc(GROUPS[g])} <small>${mine.length}</small></h4><div class="rrows">${mine.map((x) => {
         const s = r[x.key];
-        const to = s.to.map(named).filter(Boolean);
         return `<div class="rrow${s.on ? '' : ' off'}"><span class="ric ${x.ic}">${icon(x.ic)}</span>`
-          + `<div class="rnm"><b>${esc(x.title)}</b><span>${esc(when(x, s))}</span><div class="to">${to.length ? to.map(chip).join('') : '<span class="np-chip none">Not sending anywhere</span>'}</div></div>`
+          + `<div class="rnm"><b>${esc(x.title)}</b><span>${esc(when(x, s))}</span><div class="to">${toChips(s.to)}</div></div>`
           + `<div class="rmeta">${meta(x)}</div><div class="racts"><input type="checkbox" class="switch" data-rule-on="${x.key}" role="switch" aria-label="${esc(x.title)}"${s.on ? ' checked' : ''}>`
           + `<button type="button" class="ds-btn" data-rule-edit="${x.key}">Edit</button></div></div>`;
       }).join('')}</div>`;
@@ -462,45 +473,35 @@
     if (b) setGather({ secs: Number(b.dataset.secs) });
   });
 
-  // Edit a rule: the rows its kind has, Send to, and for the down rules what follows it.
+  // Edit a rule: the rows its kind has, then Send to.
   let editingRule = null; // { key, x, vals }
   const row = (name, about, right) => `<div class="ds-row"><div class="ds-l"><b>${name}</b><span>${about}</span></div><div class="ds-r">${right}</div></div>`;
   const select = (k, items, on) => `<select data-rl="${k}">${items.map(([v, t]) => `<option value="${v}"${v === on ? ' selected' : ''}>${t}</option>`).join('')}</select>`;
   const AFTER = [[0, 'Right away'], [1, '1 minute'], [5, '5 minutes'], [10, '10 minutes'], [30, '30 minutes'], [60, 'An hour']];
   const AGAIN = [[0, 'Alert once'], [60, 'Again every hour'], [360, 'Again every 6 hours'], [1440, 'Again every day']];
+  const switchRow = (k, name, about, on) => row(name, about, `<input type="checkbox" class="switch" data-rl="${k}" role="switch" aria-label="${name}"${on ? ' checked' : ''}>`);
   const drawRule = () => {
     const { x, vals: v } = editingRule;
-    const back = (name, about) => row(name, about, `<input type="checkbox" class="switch" data-rl="back" role="switch" aria-label="${name}"${v.back ? ' checked' : ''}>`);
     const rows = {
-      times: () => row('Alert when it has been down for', 'Counted from the first miss.', select('after', AFTER, v.after))
-        + row('While it stays down', 'Reminders until it comes back.', select('again', AGAIN, v.again)) + back('When it comes back', 'An all-clear, only after a down alert went.'),
       cert: () => row('Warn this long before it expires', 'New certificate sensors start with this. Each can change it.', select('limit', [[14, '14 days'], [21, '21 days'], [30, '30 days'], [60, '60 days']], v.limit))
         + row('While it stays close', 'Reminders until it\'s renewed.', select('again', [[0, 'Alert once'], [1440, 'Again every day'], [10080, 'Again every week']], v.again)),
       space: () => row('Warn below', 'New drive sensors start with this. Each can change it.', select('limit', [[5, '5% free'], [10, '10% free'], [20, '20% free']], v.limit))
         + row('While it stays low', 'Reminders until there\'s room again.', select('again', AGAIN, v.again)),
       hw: () => row('While it lasts', 'Reminders until the part is fixed.', select('again', AGAIN, v.again)),
       seat: () => row('Alert when it has been quiet for', 'A seat\'s client checks in about once a minute.', select('limit', [[5, '5 minutes'], [15, '15 minutes'], [30, '30 minutes'], [60, 'An hour']], v.limit))
-        + back('When it checks in again', 'An all-clear, only after an alert went.'),
+        + switchRow('back', 'When it checks in again', 'An all-clear, only after an alert went.', v.back),
       signin: () => row('Alert after', 'Failed sign-ins for one account within 10 minutes.', select('limit', [[3, '3 failed'], [5, '5 failed'], [10, '10 failed']], v.limit)),
       plain: () => '',
     }[x.kind]();
     $('rl-rows').innerHTML = rows + row('Send to', 'Picked by name from Notifications.', '<div class="np" id="rl-send"></div>');
     pick($('rl-send'), v.to);
-    const c = rules.counts[x.key];
-    $('rl-follow').hidden = !c?.own;
-    if (c?.own) {
-      const thing = x.key === 'link.down' ? 'watched link' : 'sensor';
-      $('rl-follow').innerHTML = `<span><b>${c.follow} ${thing}${c.follow === 1 ? '' : 's'}</b> follow${c.follow === 1 ? 's' : ''} this rule.${c.own.length ? ` ${c.own.length > 3 ? `${c.own.length} set their own` : `${and(c.own.map((n) => `<b>${esc(n)}</b>`))} set${c.own.length === 1 ? 's its' : ' their'} own`}.` : ''}</span>`
-        + (c.own.length ? '<span class="grow"></span><button type="button" class="ds-btn" id="rl-make">Make them follow it…</button>' : '');
-    }
   };
   const openRule = (key) => {
     const x = ruleOf(key);
     const s = rules.now.rules[key];
     editingRule = { key, x, vals: { ...s, to: [...s.to] } };
     $('rl-title').textContent = x.title;
-    $('rl-lead').textContent = key === 'sensor.down' ? 'What sensors follow, unless they set their own times.' : key === 'link.down' ? 'What watched links follow, unless they set their own times.'
-      : key.startsWith('sensor.') ? 'Warnings: the sensor is still answering, but something needs attention soon.' : 'When it alerts, and where.';
+    $('rl-lead').textContent = key.startsWith('sensor.') ? 'Warnings: the sensor is still answering, but something needs attention soon.' : 'When it alerts, and where.';
     say('rl-problem', '');
     drawRule();
     $('rule-dialog').showModal();
@@ -509,22 +510,6 @@
     const k = e.target.dataset.rl;
     if (!k) return;
     editingRule.vals[k] = k === 'back' ? e.target.checked : Number(e.target.value);
-  });
-  $('rl-follow').addEventListener('click', (e) => {
-    if (!e.target.closest('#rl-make')) return;
-    const { key } = editingRule;
-    const c = rules.counts[key];
-    R.sure(`Make ${c.own.length} follow this rule?`, `${and(c.own)} lose${c.own.length === 1 ? 's its' : ' their'} own times and notifications, and follow ${ruleOf(key).title.toLowerCase()} from now on.`, 'Make them follow it', async () => {
-      try {
-        const r = await R.send(`/api/alerts/rules/${key}/follow`, {});
-        rules = r;
-        drawRule();
-        drawRules();
-        R.toast(`${r.changed} now follow the rule`);
-      } catch (err) {
-        say('rl-problem', err.message);
-      }
-    });
   });
   $('rl-cancel').addEventListener('click', () => $('rule-dialog').close());
   $('rl-save').addEventListener('click', async () => {
@@ -535,7 +520,70 @@
   $('page-settings').addEventListener('click', (e) => {
     const b = e.target.closest('[data-rule-edit]');
     if (b) openRule(b.dataset.ruleEdit);
+    const t = e.target.closest('[data-type-edit]');
+    if (t) openType(rules.now.types.find((x) => x.id === t.dataset.typeEdit));
+    if (e.target.closest('[data-type-add]')) openType(null);
   });
+
+  // An alert type: its name, how long down before the alert, reminders, the all-clear, where it goes, and whether new ones start with it.
+  let editingType = null; // { id, vals, then }
+  const drawType = () => {
+    const v = editingType.vals;
+    $('ty-rows').innerHTML = row('Alert when it has been down for', 'Counted from the first miss.', select('after', AFTER, v.after))
+      + row('While it stays down', 'Reminders until it comes back.', select('again', AGAIN, v.again))
+      + switchRow('back', 'When it comes back', 'An all-clear, only after a down alert went.', v.back)
+      + row('Send to', 'Picked by name from Notifications.', '<div class="np" id="ty-send"></div>')
+      + switchRow('start', 'New sensors and links start with it', 'Each one can pick another.', v.start);
+    pick($('ty-send'), v.to);
+  };
+  const openType = async (t, then = null) => {
+    if (!notes) await load();
+    if (!rules) rules = await R.get('/api/alerts').catch(() => null);
+    editingType = { id: t?.id || null, then, vals: { after: t?.after ?? 5, again: t?.again ?? 0, back: t?.back ?? true, to: [...(t?.to || [])], start: !!t && t.id === rules?.now.startType } };
+    $('ty-title').textContent = t ? `Change ${t.name}` : 'New alert type';
+    $('ty-name').value = t?.name || '';
+    $('ty-delete').hidden = !t;
+    $('ty-save').textContent = t ? 'Save' : 'Add the alert type';
+    say('ty-problem', '');
+    drawType();
+    $('type-dialog').showModal();
+    $('ty-name').focus();
+  };
+  $('ty-rows').addEventListener('change', (e) => {
+    const k = e.target.dataset.rl;
+    if (!k) return;
+    editingType.vals[k] = k === 'back' || k === 'start' ? e.target.checked : Number(e.target.value);
+  });
+  $('ty-cancel').addEventListener('click', () => $('type-dialog').close());
+  $('ty-save').addEventListener('click', async () => {
+    const { id, vals: v, then } = editingType;
+    $('ty-save').disabled = true;
+    try {
+      const r = await R.send(id ? `/api/alerts/types/${encodeURIComponent(id)}` : '/api/alerts/types', { name: $('ty-name').value, ...v });
+      rules = r;
+      $('type-dialog').close();
+      drawRules();
+      then?.(r.id);
+    } catch (err) {
+      say('ty-problem', err.message);
+    }
+    $('ty-save').disabled = false;
+  });
+  $('ty-delete').addEventListener('click', () => {
+    const t = rules.now.types.find((x) => x.id === editingType.id);
+    const start = rules.now.types.find((x) => x.id !== t.id && (x.id === rules.now.startType || t.id === rules.now.startType));
+    const used = usedWords(rules.counts.types[t.id]);
+    R.sure(`Delete ${t.name}?`, used ? `${used} use it. They move to ${start?.name || 'the alert type new ones start with'}.` : 'Nothing uses it.', 'Delete', async () => {
+      try {
+        rules = await R.send(`/api/alerts/types/${encodeURIComponent(t.id)}/delete`, {});
+        $('type-dialog').close();
+        drawRules();
+      } catch (err) {
+        say('ty-problem', err.message);
+      }
+    });
+  });
+  R.alertTypes = { open: (t, then) => openType(t, then) };
 
   // --- Settings, Alert history: every alert, where it went, and whether it got there --------------------------------------------
 

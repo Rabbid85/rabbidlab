@@ -17,10 +17,6 @@
   const NEW_GROUP = ' new';
   let sensors = [];
   let groups = [];
-  let start = { after: 5, again: 0, back: true }; // what a sensor that follows its alert rule gets
-  let startTo = []; // and where it goes
-  let linkStart = { after: 5, again: 0, back: true }; // the same for watched links
-  let linkTo = [];
   let limits = { cert: 21, space: 10 }; // what new sensors warn at
   let gather = { on: false, secs: 60 }; // one alert for several
   let lastCheck = null;
@@ -184,7 +180,7 @@
 
   // --- The grid's columns: an order and widths of the person's own, kept in the browser -----------------------------------
 
-  const COLS = { state: ['State', 130], name: ['Sensor', 220], check: ['Check', 120], where: ['Address', 200], reply: ['Reply', 110], line: ['Last hour', 240], up: ['Up, 7 days', 100], alerts: ['Alerts', 120] };
+  const COLS = { state: ['State', 130], name: ['Sensor', 220], check: ['Check', 120], where: ['Address', 200], reply: ['Reply', 110], line: ['Last hour', 240], up: ['Up, 7 days', 100], alerts: ['Alert type', 120] };
   const plain = () => ({ order: Object.keys(COLS), w: Object.fromEntries(Object.entries(COLS).map(([k, c]) => [k, c[1]])) });
   const readCols = () => {
     try {
@@ -219,7 +215,7 @@
     reply: (s) => `<span class="num">${esc(s.status === 'up' || s.status === 'warn' ? (s.kind === 'cert' ? days(s.note) : ['hw', 'nas', 'vmware', 'snmp', 'svc', 'disk'].includes(s.kind) ? s.note || 'All OK' : s.ms == null ? '' : ms(s.ms)) : '')}</span>`,
     line: (s) => line(s.recent, s.status),
     up: (s) => `<span class="num">${percent(s.up7)}</span>`,
-    alerts: (s) => `<span class="dim">${esc(alertShort(s.alert))}</span>`,
+    alerts: (s) => `<span class="dim">${esc(typeOf(s.type)?.name || "Don't alert")}</span>`,
   };
   const head = () => `<div class="tr th sn">${cols.order.map((k) => `<span class="sn-th" draggable="true" data-col="${k}">${COLS[k][0]}<i class="sn-size" data-size="${k}"></i></span>`).join('')}</div>`;
   const row = (s) => `<div class="tr sn s-${s.status}" data-open="${esc(s.id)}">${cols.order.map((k) => CELL[k](s)).join('')}</div>`;
@@ -333,10 +329,8 @@
   const take = (answer) => {
     sensors = answer.sensors;
     groups = answer.groups || [];
-    start = answer.start || start;
-    startTo = answer.startTo || startTo;
-    linkStart = answer.linkStart || linkStart;
-    linkTo = answer.linkTo || linkTo;
+    types = answer.types || types;
+    startType = answer.startType || startType;
     limits = answer.limits || limits;
     gather = answer.gather || gather;
     lastCheck = answer.last;
@@ -498,9 +492,9 @@
   const fill = (d) => {
     const s = d.sensor;
     showing = s;
-    const a = s.alert || start;
+    const a = s.alert;
     $('sv-title').textContent = s.name;
-    $('sv-what').textContent = `${check(s)} · ${where(s)} · every ${{ 30: '30 seconds', 60: 'minute', 300: '5 minutes', 3600: 'hour' }[s.every] || `${s.every} s`} · ${a.after < 0 ? 'never alerts' : `alerts ${alertShort(a).toLowerCase()}`}`;
+    $('sv-what').textContent = `${check(s)} · ${where(s)} · every ${{ 30: '30 seconds', 60: 'minute', 300: '5 minutes', 3600: 'hour' }[s.every] || `${s.every} s`} · ${a.after < 0 ? 'never alerts' : `${typeOf(s.type)?.name || 'alerts'}: ${alertShort(a).toLowerCase()}`}`;
     // What it waits on, and what waits on it.
     const mine = sensors.filter((x) => x.dependsOn === s.id).map((x) => x.name);
     const above = sensors.find((x) => x.id === s.dependsOn);
@@ -787,42 +781,33 @@
   });
   // --- Alerts: when it alerts, reminders, the all-clear, and where alerts go. The same rows on a sensor, a watched link and in Settings --
 
-  // Send to: the notifications by name, from alerts.js (R.notes). Null for people who can't change alerts, or until read.
-  const notes = () => (can('sensors.alerts') ? R.notes.list() : null);
-  // A rule in a few words: after 5 minutes down, to Rabbid Lab Links.
-  const ruleLine = (x, to) => `${x.after < 0 ? 'it\'s off' : x.after ? `after ${x.after === 60 ? 'an hour' : x.after === 1 ? 'a minute' : `${x.after} minutes`} down` : 'right away'}`
-    + `${notes() && to.length ? `, to ${R.notes.words(to)}` : ''}`;
-  // Alerts: following the rule, or times of its own. The rule says what it is; Its own shows the rows.
-  const followRow = (follows, rule, times, to) => `<div class="ds-row"><div class="ds-l"><b>When it alerts</b><span>${follows
-    ? esc(`Follows the rule “${rule}”: ${ruleLine(times, to)}. Change the rule in Settings, Alert rules.`) : 'Its own times and notifications. The rule doesn\'t change them.'}</span></div>`
-    + `<div class="ds-r"><div class="seg" role="group" aria-label="When it alerts"><button type="button" data-follow="1" aria-pressed="${follows}">The rule</button>`
-    + `<button type="button" data-follow="0" aria-pressed="${!follows}">Its own</button></div></div></div>`;
-  // The three times as rows. x is { after, again, back }; each control says which with data-al.
-  const AFTER = [[0, 'Right away'], [1, '1 minute'], [5, '5 minutes'], [10, '10 minutes'], [30, '30 minutes'], [60, 'An hour'], [-1, 'Never, only show it here']];
-  const AGAIN = [[0, 'Alert once'], [60, 'Again every hour'], [360, 'Again every 6 hours'], [1440, 'Again every day']];
-  const alRow = (name, about, right) => `<div class="ds-row"><div class="ds-l"><b>${name}</b><span>${about}</span></div><div class="ds-r">${right}</div></div>`;
-  const options = (items, on) => items.map(([v, t]) => `<option value="${v}"${v === on ? ' selected' : ''}>${t}</option>`).join('');
-  const timeRows = (x) => alRow('Alert when it has been down for', 'Counted from the first miss.', `<select data-al="after" aria-label="Alert when it has been down for">${options(AFTER, x.after)}</select>`)
-    + alRow('While it stays down', 'Reminders until it comes back.', `<select data-al="again" aria-label="While it stays down"${x.after < 0 ? ' disabled' : ''}>${options(AGAIN, x.again)}</select>`)
-    + alRow('When it comes back', 'An all-clear, only after a down alert went.',
-      `<input type="checkbox" class="switch" data-al="back" role="switch" aria-label="When it comes back"${x.back ? ' checked' : ''}${x.after < 0 ? ' disabled' : ''}>`);
-  // A change in those rows, read into x. False when it wasn't one of them.
-  const timeChange = (e, x) => {
-    const k = e.target.dataset.al;
-    if (k === 'after' || k === 'again') x[k] = Number(e.target.value);
-    else if (k === 'back') x.back = e.target.checked;
-    else return false;
-    if (x.after < 0) Object.assign(x, { again: 0, back: false });
-    return true;
+  // Alert types: named ways to alert, set up in Settings, Alert rules (alerts.js). A sensor or a watched link picks one, or none.
+  let types = [];
+  let startType = '';
+  const typeOf = (id) => types.find((t) => t.id === id);
+  const mins = (m) => (m === 60 ? 'an hour' : m === 1 ? 'a minute' : `${m} minutes`);
+  // An alert type in words: After 5 minutes down, once, and an all-clear when it's back, to Rabbid Lab Links.
+  const typeWords = (id) => {
+    const t = typeOf(id);
+    if (!t) return 'It never alerts: it only shows here.';
+    const to = can('sensors.alerts') && R.notes.list() ? R.notes.words(t.to) : '';
+    return `${t.after ? `After ${mins(t.after)} down` : 'As soon as it\'s down'}, ${t.again ? `again every ${{ 60: 'hour', 360: '6 hours', 1440: 'day' }[t.again]} while it stays down` : 'once'}`
+      + `${t.back ? ', and an all-clear when it\'s back' : ''}${to ? `, to ${to}` : ''}.${t.to.length ? '' : ' It has nowhere to send yet.'}`;
   };
-  // What will happen, in words: Alerts Anthony and Rabbid Lab Links once it has been down 5 minutes, and again when it's back.
-  const alertWords = (x, picked) => {
-    if (x.after < 0) return 'Never alerts: it only shows here.';
-    const to = picked && picked.filter((id) => R.notes.name(id));
-    if (to && !to.length) return 'Nobody is alerted yet: pick a notification under Send to, or in its alert rule.';
-    const mins = (m) => (m === 60 ? 'an hour' : m === 1 ? 'a minute' : `${m} minutes`);
-    return `Alerts${to ? ` ${R.notes.words(to)}` : ''} ${x.after ? `once it has been down ${mins(x.after)}` : 'as soon as it\'s down'}`
-      + `${x.again ? `, again every ${{ 60: 'hour', 360: '6 hours', 1440: 'day' }[x.again]} while it stays down` : ''}${x.back ? `${x.again ? ',' : ''} and again when it's back` : ''}.`;
+  const alRow = (name, about, right) => `<div class="ds-row"><div class="ds-l"><b>${name}</b><span>${about}</span></div><div class="ds-r">${right}</div></div>`;
+  const NEW_TYPE = ' new';
+  // Alert type: the types by name, Don't alert, and New alert type… for people who may set alerts up.
+  const typeRow = (id) => alRow('Alert type', esc(typeWords(id)), `<select data-al="type" aria-label="Alert type">`
+    + types.map((t) => `<option value="${esc(t.id)}"${t.id === id ? ' selected' : ''}>${esc(t.name)}</option>`).join('')
+    + `<option value="none"${id === 'none' ? ' selected' : ''}>Don't alert</option>${can('sensors.alerts') ? `<option value="${NEW_TYPE}">New alert type…</option>` : ''}</select>`);
+  // New alert type… opens its dialog; once it's added it's the one picked, and until then the old pick stays.
+  const pickType = (e, current, set) => {
+    if (e.target.value !== NEW_TYPE) return set(e.target.value);
+    e.target.value = current;
+    return R.alertTypes.open(null, async (id) => {
+      take(await R.get('/api/sensors'));
+      set(id);
+    });
   };
   const pickGroup = () => {
     const fresh = $('sd-group').value === NEW_GROUP;
@@ -841,8 +826,8 @@
     watch: signs() ? vals.watch || null : null, pin: signs() ? vals.pin || null : null,
     product: kind === 'nas' ? vals.product || '' : null, warnFree: ['nas', 'vmware', 'disk'].includes(kind) ? num(vals.warnFree ?? limits.space) : null, name: $('sd-name').value,
     group: $('sd-group').value === NEW_GROUP ? $('sd-group-new').value : $('sd-group').value, every: Number($('sd-every').value),
-    rule: vals.follows ? 'follow' : 'custom', custom: vals.follows ? null : vals.alert, dependsOn: vals.dependsOn || '',
-    tags: vals.tags || [], downAfter: Number($('sd-down').value), channels: !vals.follows && notes() ? vals.channels || [] : null, certDays: kind === 'web' ? vals.certDays || null : null,
+    rule: vals.rule, dependsOn: vals.dependsOn || '',
+    tags: vals.tags || [], downAfter: Number($('sd-down').value), certDays: kind === 'web' ? vals.certDays || null : null,
     invert: ['ping', 'port', 'web'].includes(kind) && !!vals.invert, timeout: kind in WAIT ? vals.timeout || null : null });
   // A sensor to change, or null for a new one, which starts in the group asked for or the one being looked at.
   const edit = async (s, into) => {
@@ -852,16 +837,14 @@
       login: s.login || undefined, watch: s.watch || null, pin: s.pin || null, product: s.product === 'synology' ? 'synology' : '', warnFree: s.warnFree ?? 10, value: s.value || 'uptime', oid: s.oid || '', iface: s.interface || '', seat: s.seat || undefined, service: s.service || '', drive: s.drive || '' });
     // What More, Tags and Send to start with: a new web page warns 14 days before its certificate expires.
     Object.assign(vals, { tags: [...(s?.tags || [])], certDays: s ? s.certDays || 0 : 14, invert: !!s?.invert, timeout: s?.timeout || null });
-    // Its alerts: a new one follows the rule; Its own starts from what the rule says.
-    Object.assign(vals, { follows: s ? !!s.follows : true, alert: { ...(s?.alert || start) }, dependsOn: s?.dependsOn || '' });
+    // Its alert type: a new one starts with the usual one.
+    Object.assign(vals, { rule: s ? s.type : startType, dependsOn: s?.dependsOn || '' });
     logins = await R.get('/api/sensors/logins').catch(() => []);
     seats = await R.get('/api/sensors/seats').catch(() => []);
     if (can('sensors.alerts')) await R.notes.load();
-    vals.channels = s ? [...(s.channels || [])] : [...startTo];
     $('sd-find').value = '';
     $('sd-tag-in').value = '';
     drawTags();
-    drawSend();
     if (s?.kind === 'snmp' && logins.find((l) => l.id === s.login)?.kind === 'snmpv3') vals.snmpVersion = 'v3';
     $('sd-title').textContent = s ? `Change ${s.name}` : 'Add a sensor';
     $('sd-name').value = s?.name || '';
@@ -991,100 +974,30 @@
     const about = secs < 90 ? `${secs} seconds` : secs < 3600 ? `${Math.round(secs / 60)} minutes` : secs === 3600 ? 'an hour' : `${Math.round(secs / 3600)} hours`;
     return `Down after ${n === 1 ? 'one miss' : `${n} misses in a row`}, about ${about}.`;
   };
-  // The rows, with Depends on: any other sensor, but not one that depends on this one already.
+  // The rows: its alert type, and Depends on: any other sensor, but not one that depends on this one already.
   const drawAlerts = () => {
     const mine = new Set(editing ? [editing.id, ...behindOf(editing.id).map((x) => x.id)] : []);
     const above = sensors.filter((x) => !mine.has(x.id));
     if (vals.dependsOn && !above.some((x) => x.id === vals.dependsOn)) vals.dependsOn = '';
-    $('sd-alerts').innerHTML = followRow(vals.follows, 'A sensor stops answering', start, startTo) + (vals.follows ? '' : timeRows(vals.alert))
-      + alRow('Depends on', 'While that one is down, this one waits instead of alerting.',
-        `<select data-al="dep" aria-label="Depends on"><option value="">Nothing</option>${above.map((x) => `<option value="${esc(x.id)}"${x.id === vals.dependsOn ? ' selected' : ''}>${esc(x.name)} · ${esc(where(x))}</option>`).join('')}</select>`);
-    $('sd-copy').closest('.al-copy').hidden = vals.follows;
-    drawSend();
+    $('sd-alerts').innerHTML = typeRow(vals.rule) + alRow('Depends on', 'While that one is down, this one waits instead of alerting.',
+      `<select data-al="dep" aria-label="Depends on"><option value="">Nothing</option>${above.map((x) => `<option value="${esc(x.id)}"${x.id === vals.dependsOn ? ' selected' : ''}>${esc(x.name)} · ${esc(where(x))}</option>`).join('')}</select>`);
+    drawSum();
   };
   const drawSum = () => {
     const dep = sensors.find((x) => x.id === vals.dependsOn);
-    const said = alertWords(vals.follows ? start : vals.alert, notes() ? (vals.follows ? startTo : vals.channels || []) : null);
-    $('sd-alert-sum').innerHTML = `<p class="sd-sum">${svg('info')}<span>${esc(`${downText()} ${said}${dep ? ` Says nothing while ${dep.name} is down.` : ''}`)}</span></p>`;
-  };
-  // Send to: its own notifications, only when it has times of its own.
-  const drawSend = () => {
-    $('sd-send-wrap').hidden = !!vals.follows || !notes();
-    if (!$('sd-send-wrap').hidden) R.notes.pick($('sd-send'), (vals.channels ||= []), drawSum);
-    drawSum();
+    $('sd-alert-sum').innerHTML = `<p class="sd-sum">${svg('info')}<span>${esc(`${downText()}${dep ? ` Says nothing while ${dep.name} is down.` : ''}`)}</span></p>`;
   };
   $('sd-alerts').addEventListener('change', (e) => {
-    if (e.target.dataset.al === 'dep') vals.dependsOn = e.target.value;
-    else if (!timeChange(e, vals.alert)) return;
-    drawAlerts();
-  });
-  $('sd-alerts').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-follow]');
-    if (!b) return;
-    vals.follows = b.dataset.follow === '1';
-    drawAlerts();
-  });
-  $('sd-copy').addEventListener('click', () => openCopy({ alert: vals.alert, channels: notes() ? vals.channels || [] : null, from: editing, group: $('sd-group').value }));
-
-  // --- Use these alerts on other sensors: how many change at once, now that each sensor has its own --------------------------
-
-  let copying = null; // { alert, channels, from, group, ids }
-  const copyable = () => sensors.filter((x) => x.id !== copying.from?.id);
-  const openCopy = ({ alert, channels, from = null, group: g = '', all = false }) => {
-    copying = { alert: { ...alert }, channels: channels ? [...channels] : null, from, group: g, ids: new Set() };
-    if (all) copyable().forEach((x) => copying.ids.add(x.id));
-    $('cp-title').textContent = from ? `Use ${from.name}'s alerts on other sensors` : all ? 'Use these on every sensor' : 'Use these alerts on other sensors';
-    $('cp-lead').textContent = `${alertWords(copying.alert, copying.channels)} What each one depends on stays as it is.`;
-    $('cp-find').value = '';
-    say('cp-problem', '');
-    drawCopy();
-    $('copy-dialog').showModal();
-  };
-  const drawCopyFoot = () => {
-    const n = copying.ids.size;
-    $('cp-go').textContent = n ? `Copy to ${n} sensor${n === 1 ? '' : 's'}` : 'Copy';
-    $('cp-go').disabled = !n;
-    const g = copying.group && copying.group !== NEW_GROUP ? copying.group : '';
-    const inGroup = g ? copyable().filter((x) => x.group === g) : [];
-    $('cp-all').textContent = inGroup.length && !inGroup.every((x) => copying.ids.has(x.id)) ? `Tick the ${g} group` : n === copyable().length && n ? 'Untick them all' : 'Tick them all';
-  };
-  const drawCopy = () => {
-    const q = $('cp-find').value.trim().toLowerCase();
-    const list = copyable().filter((x) => !q || [x.name, x.target, x.group, ...(x.tags || [])].some((v) => String(v || '').toLowerCase().includes(q)));
-    $('cp-list').innerHTML = list.map((x) => `<label class="row sd-watch"><input type="checkbox" data-cp="${esc(x.id)}"${copying.ids.has(x.id) ? ' checked' : ''}>`
-      + `<span class="t"><b>${esc(x.name)}</b><span>${esc(`${check(x)} · ${where(x)} · ${x.alert?.after < 0 ? 'never alerts' : `alerts ${alertShort(x.alert).toLowerCase()}`}`)}</span></span>`
-      + `<span class="cp-g">${esc(x.group || '')}</span></label>`).join('') || `<p class="hint">${sensors.length > 1 ? 'Nothing matches.' : 'There are no other sensors yet.'}</p>`;
-    drawCopyFoot();
-  };
-  $('cp-find').addEventListener('input', drawCopy);
-  $('cp-list').addEventListener('change', (e) => {
-    const id = e.target.dataset.cp;
-    if (!id) return;
-    if (e.target.checked) copying.ids.add(id);
-    else copying.ids.delete(id);
-    drawCopyFoot();
-  });
-  $('cp-all').addEventListener('click', () => {
-    const word = $('cp-all').textContent;
-    const g = copying.group;
-    if (word.startsWith('Tick the ')) copyable().filter((x) => x.group === g).forEach((x) => copying.ids.add(x.id));
-    else if (word.startsWith('Untick')) copying.ids.clear();
-    else copyable().forEach((x) => copying.ids.add(x.id));
-    drawCopy();
-  });
-  $('cp-cancel').addEventListener('click', () => $('copy-dialog').close());
-  $('cp-go').addEventListener('click', async () => {
-    $('cp-go').disabled = true;
-    try {
-      const r = await R.send('/api/sensors/copy', { ...copying.alert, channels: copying.channels, ids: [...copying.ids] });
-      take(r.now);
-      $('copy-dialog').close();
-      draw();
-      R.toast(`Changed the alerts on ${r.changed} sensor${r.changed === 1 ? '' : 's'}.`);
-    } catch (err) {
-      say('cp-problem', err.message);
-      drawCopyFoot();
+    if (e.target.dataset.al === 'type') {
+      pickType(e, vals.rule, (id) => {
+        vals.rule = id;
+        drawAlerts();
+      });
+      return;
     }
+    if (e.target.dataset.al !== 'dep') return;
+    vals.dependsOn = e.target.value;
+    drawAlerts();
   });
 
   // --- Settings, Sensors: the credentials sensors sign in with -----------------------------------------------------------------
@@ -1109,9 +1022,9 @@
     if (e.detail[0] === 'settings' && e.detail[1] === 'sensors' && can('sensors.edit')) loadCreds();
   });
 
-  // --- Watch it, in Add a link: a sensor checks the link and alerts, by its rule or with times of its own (links.js asks) --------
+  // --- Watch it, in Add a link: a sensor checks the link and alerts by the alert type picked (links.js asks for these) ----------
 
-  let watching = null; // { on, follows, alert, channels } for the link in the dialog; null when this person can't watch links
+  let watching = null; // { on, type } for the link in the dialog; null when this person can't watch links
   const webAddress = () => {
     const url = $('ln-url').value.trim();
     return !url || /^https?:\/\//i.test(url) || !/^[a-z][a-z0-9+.-]*:\/\//i.test(url); // typed without a scheme, it's http
@@ -1122,25 +1035,22 @@
     const web = webAddress();
     if (!web) w.on = false;
     $('ln-watch').innerHTML = alRow('Watch it', web ? 'Checked every minute from this server, and it alerts when it\'s down. It shows on Sensors too.' : 'Only web addresses (http:// or https://) can be watched.',
-      `<input type="checkbox" class="switch" data-al="on" role="switch" aria-label="Watch it"${w.on ? ' checked' : ''}${web ? '' : ' disabled'}>`)
-      + (w.on ? followRow(w.follows, 'A watched link stops answering', linkStart, linkTo) + (w.follows ? '' : timeRows(w.alert)) : '');
-    $('ln-send-wrap').hidden = !w.on || w.follows || !notes();
-    if (!$('ln-send-wrap').hidden) R.notes.pick($('ln-send'), w.channels);
+      `<input type="checkbox" class="switch" data-al="on" role="switch" aria-label="Watch it"${w.on ? ' checked' : ''}${web ? '' : ' disabled'}>`) + (w.on ? typeRow(w.type) : '');
   };
   $('ln-watch').addEventListener('change', (e) => {
-    if (e.target.dataset.al === 'on') watching.on = e.target.checked;
-    else if (!timeChange(e, watching.alert)) return;
-    drawWatch();
-  });
-  $('ln-watch').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-follow]');
-    if (!b) return;
-    watching.follows = b.dataset.follow === '1';
-    drawWatch();
+    if (e.target.dataset.al === 'on') {
+      watching.on = e.target.checked;
+      drawWatch();
+    } else if (e.target.dataset.al === 'type') {
+      pickType(e, watching.type, (id) => {
+        watching.type = id;
+        drawWatch();
+      });
+    }
   });
   $('ln-url').addEventListener('input', () => { if (watching) drawWatch(); }); // an ssh:// link can't be watched
   R.watchLink = {
-    // The Alerts part of the link dialog, for a link or a new one (null): on with its sensor's alerts, or off and following the rule.
+    // The Alerts part of the link dialog, for a link or a new one (null): on with its sensor's alert type, or off with the usual one.
     open: async (link) => {
       watching = null;
       $('ln-alerts').hidden = true;
@@ -1152,14 +1062,15 @@
         return; // without the sensors, the link is saved as it is
       }
       const s = link?.sensor ? sensors.find((x) => x.id === link.sensor) : null;
-      watching = { on: !!s, follows: s ? !!s.follows : true, alert: { ...(s?.alert || linkStart) }, channels: [...(s ? s.channels : linkTo)] };
+      watching = { on: !!s, type: s ? s.type : startType };
       $('ln-alerts').hidden = false;
       drawWatch();
     },
-    // What to send with the link: whether it's watched and how, or null to leave it as it is.
-    form: () => (!watching ? null : { on: watching.on, follow: watching.follows, ...watching.alert, channels: !watching.follows && notes() ? watching.channels : null }),
-    // What new watched links do, for the bar on Links: after 5 minutes down, to Rabbid Lab Links.
-    rule: () => ruleLine(linkStart, linkTo),
+    // What to send with the link: whether it's watched and by which alert type, or null to leave it as it is.
+    form: () => (!watching ? null : { on: watching.on, type: watching.type }),
+    // For the bar on Links: the alert types to pick for the links ticked, and the usual one.
+    types: () => types,
+    start: () => startType,
   };
 
   // --- Showing the page --------------------------------------------------------------------------------------------------------------

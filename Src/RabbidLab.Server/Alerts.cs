@@ -41,7 +41,28 @@ public sealed class AlertsFile
 
     /// <summary>The update already told about as ready, and the failure already told about, so neither is said twice.</summary>
     public Dictionary<string, string> Told { get; set; } = [];
+
+    /// <summary>The alert types sensors and watched links pick from, and the one new ones start with.</summary>
+    public List<AlertType> Types { get; set; } = [];
+    public string? StartType { get; set; }
 }
+
+/// <summary>
+/// A named way to alert, such as Default or Critical, that sensors and watched links pick by name: how long down before
+/// the alert, reminders while it stays down, the all-clear, and the notifications it goes to.
+/// </summary>
+public sealed class AlertType
+{
+    public string Id { get; set; } = "";
+    public string Name { get; set; } = "";
+    public int After { get; set; } = 5;
+    public int Again { get; set; }
+    public bool Back { get; set; } = true;
+    public List<string> To { get; set; } = [];
+}
+
+/// <summary>An alert type as the page sends it. Start makes it the one new sensors and links start with.</summary>
+public sealed record AlertTypeForm(string? Name, int? After, int? Again, bool? Back, List<string>? To, bool? Start);
 
 /// <summary>An alert that went, was held for quiet hours, or didn't go: sent, partial, failed or held.</summary>
 public sealed record AlertEntry(DateTime At, string Rule, string Title, List<string> To, string Outcome, string? Why = null);
@@ -97,11 +118,176 @@ public sealed class Alerts(DataFolder folder, Channels channels, TimeProvider cl
         }
     }
 
-    /// <summary>The rule's times as a sensor's: after, again, and back.</summary>
+    /// <summary>The rule's times as a sensor's: after, again, and back. Only for sensors from before alert types.</summary>
     public AlertRule Times(string key)
     {
         var r = Rule(key);
         return new AlertRule { Id = "follow", Name = "Follows its rule", Color = "#8A8FA8", After = r.On ? r.After : -1, Again = r.On ? r.Again : 0, Back = r.On && r.Back };
+    }
+
+    // --- Alert types: named ways to alert that sensors and watched links pick ----------------------------------------------
+
+    // The first time: Default from how sensors went down, and Watched links too when links went down another way.
+    private void EnsureTypes(AlertsFile f)
+    {
+        if (f.Types.Count > 0)
+        {
+            return;
+        }
+        AlertType From(string key, string name)
+        {
+            var r = f.Rules.GetValueOrDefault(key) ?? Start(key);
+            return new AlertType { Id = NewId(), Name = name, After = Math.Max(0, r.After), Again = r.Again, Back = r.Back, To = [.. r.To] };
+        }
+        var plain = From(SensorDown, "Default");
+        f.Types.Add(plain);
+        var links = From(LinkDown, "Watched links");
+        if (links.After != plain.After || links.Again != plain.Again || links.Back != plain.Back || !links.To.ToHashSet().SetEquals(plain.To))
+        {
+            f.Types.Add(links);
+        }
+        f.StartType = plain.Id;
+        file.Save(f);
+    }
+
+    private static string NewId() => Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(6)).ToLowerInvariant();
+
+    private AlertType Copy(AlertType t) => new() { Id = t.Id, Name = t.Name, After = t.After, Again = t.Again, Back = t.Back, To = [.. t.To.Where(channels.Known)] };
+
+    /// <summary>The alert types, in the order they were made.</summary>
+    public List<AlertType> Types()
+    {
+        lock (file.Gate)
+        {
+            var f = file.Read();
+            EnsureTypes(f);
+            return [.. f.Types.Select(Copy)];
+        }
+    }
+
+    /// <summary>An alert type by id, or null.</summary>
+    public AlertType? Type(string? id)
+    {
+        lock (file.Gate)
+        {
+            var f = file.Read();
+            EnsureTypes(f);
+            return f.Types.FirstOrDefault(t => t.Id == id) is { } t ? Copy(t) : null;
+        }
+    }
+
+    /// <summary>The alert type new sensors and watched links start with.</summary>
+    public AlertType StartType()
+    {
+        lock (file.Gate)
+        {
+            var f = file.Read();
+            EnsureTypes(f);
+            return Copy(f.Types.FirstOrDefault(t => t.Id == f.StartType) ?? f.Types[0]);
+        }
+    }
+
+    /// <summary>An alert type's times as a sensor's.</summary>
+    public static AlertRule TimesOf(AlertType t) => new() { Id = t.Id, Name = t.Name, Color = "#8A8FA8", After = t.After, Again = t.Again, Back = t.Back };
+
+    /// <summary>Adds an alert type (id null) or changes one; the type, or why not.</summary>
+    public (AlertType? Type, string? Problem) SaveType(string? id, AlertTypeForm form)
+    {
+        var name = form.Name?.Trim() ?? "";
+        if (name.Length == 0)
+        {
+            return (null, "Give it a name, such as Critical, Normal or Office hours. It's what sensors and links pick it by.");
+        }
+        if (name.Length > 40)
+        {
+            return (null, "Keep the name to 40 characters.");
+        }
+        if (form.After is not (0 or 1 or 5 or 10 or 30 or 60) || form.Again is not (0 or 60 or 360 or 1440))
+        {
+            return (null, "Pick one of the times offered.");
+        }
+        lock (file.Gate)
+        {
+            var f = file.Read();
+            EnsureTypes(f);
+            if (f.Types.Any(t => t.Id != id && string.Equals(t.Name, name, StringComparison.OrdinalIgnoreCase)))
+            {
+                return (null, $"There's an alert type called {name} already. Give this one another name.");
+            }
+            var t = id is null ? new AlertType { Id = NewId() } : f.Types.FirstOrDefault(x => x.Id == id);
+            if (t is null)
+            {
+                return (null, "That alert type isn't here any more.");
+            }
+            if (id is null && f.Types.Count >= 20)
+            {
+                return (null, "That's 20 alert types, which is as many as there's room for.");
+            }
+            (t.Name, t.After, t.Again, t.Back) = (name, form.After.Value, form.Again.Value, form.Back ?? true);
+            t.To = [.. (form.To ?? []).Where(channels.Known).Distinct()];
+            if (id is null)
+            {
+                f.Types.Add(t);
+            }
+            if (form.Start == true)
+            {
+                f.StartType = t.Id;
+            }
+            file.Save(f);
+            return (Copy(t), null);
+        }
+    }
+
+    /// <summary>Takes an alert type away; what used it moves to the one new sensors start with. That one's id, or why not.</summary>
+    public (string? MovedTo, string? Problem) DeleteType(string id)
+    {
+        lock (file.Gate)
+        {
+            var f = file.Read();
+            EnsureTypes(f);
+            if (f.Types.All(t => t.Id != id))
+            {
+                return (null, "That alert type isn't here any more.");
+            }
+            if (f.Types.Count == 1)
+            {
+                return (null, "It's the only alert type. Make another one first.");
+            }
+            f.Types.RemoveAll(t => t.Id == id);
+            if (f.StartType == id || f.Types.All(t => t.Id != f.StartType))
+            {
+                f.StartType = f.Types[0].Id;
+            }
+            file.Save(f);
+            return (f.StartType, null);
+        }
+    }
+
+    /// <summary>
+    /// The alert type with these times and notifications, made with this name (or one like it) when there isn't one yet.
+    /// For sensors from before alert types.
+    /// </summary>
+    public string Match(int after, int again, bool back, IReadOnlyCollection<string> to, string name)
+    {
+        lock (file.Gate)
+        {
+            var f = file.Read();
+            EnsureTypes(f);
+            var want = to.Where(channels.Known).ToHashSet();
+            if (f.Types.FirstOrDefault(t => t.After == after && t.Again == again && t.Back == back && t.To.ToHashSet().SetEquals(want)) is { } same)
+            {
+                return same.Id;
+            }
+            var unique = name;
+            for (var n = 2; f.Types.Any(t => string.Equals(t.Name, unique, StringComparison.OrdinalIgnoreCase)); n++)
+            {
+                unique = $"{name} {n}";
+            }
+            var made = new AlertType { Id = NewId(), Name = unique, After = after, Again = again, Back = back, To = [.. want] };
+            f.Types.Add(made);
+            file.Save(f);
+            return made.Id;
+        }
     }
 
     /// <summary>
@@ -217,7 +403,7 @@ public sealed class Alerts(DataFolder folder, Channels channels, TimeProvider cl
         lock (file.Gate)
         {
             var f = file.Read();
-            if (f.Rules.Values.Count(r => r.To.Remove(channel)) > 0)
+            if (f.Rules.Values.Count(r => r.To.Remove(channel)) + f.Types.Count(t => t.To.Remove(channel)) > 0)
             {
                 file.Save(f);
             }
@@ -336,7 +522,9 @@ public sealed class Alerts(DataFolder folder, Channels channels, TimeProvider cl
             var f = file.Read();
             return new
             {
-                rules = Keys.ToDictionary(k => k, k => Rule(k)),
+                rules = Keys.Where(k => k is not (SensorDown or LinkDown)).ToDictionary(k => k, k => Rule(k)),
+                types = Types(),
+                startType = StartType().Id,
                 quiet = new { on = f.QuietOn, from = f.QuietFrom, to = f.QuietTo, downStillGoes = f.DownInQuiet, now = Quiet(Now) },
             };
         }
@@ -522,20 +710,53 @@ public static class AlertsApi
             return Results.Ok(new { now = alerts.View(), counts = sensors.RuleCounts(), gather = sensors.Gathering() });
         });
 
-        // The sensors (or watched links) with their own times follow the rule from now on.
-        app.MapPost("/api/alerts/rules/{key}/follow", (string key, HttpContext context, Alerts alerts, Sensors sensors, ActivityLog log) =>
+        // Alert types: named ways to alert that sensors and watched links pick.
+        app.MapPost("/api/alerts/types", (AlertTypeForm form, HttpContext context, Alerts alerts, Sensors sensors, ActivityLog log) =>
         {
             if (Access.RefuseUnless(context, Permissions.SensorsAlerts) is { } refused)
             {
                 return refused;
             }
-            if (key is not (Alerts.SensorDown or Alerts.LinkDown))
+            var (made, problem) = alerts.SaveType(null, form);
+            if (made is null)
             {
-                return Results.BadRequest(new { error = "Only the down rules can be followed." });
+                return Results.BadRequest(new { error = problem });
             }
-            var changed = sensors.Follow(key == Alerts.LinkDown);
-            log.Record(context, "sensors", "alerts.follow", $"Made {changed} {(key == Alerts.LinkDown ? "watched links" : "sensors")} follow their alert rule");
-            return Results.Ok(new { changed, now = alerts.View(), counts = sensors.RuleCounts(), gather = sensors.Gathering() });
+            log.Record(context, "sensors", "alerts.type.add", $"Added the alert type {made.Name}");
+            return Results.Ok(new { id = made.Id, now = alerts.View(), counts = sensors.RuleCounts(), gather = sensors.Gathering() });
+        });
+
+        app.MapPost("/api/alerts/types/{id}", (string id, AlertTypeForm form, HttpContext context, Alerts alerts, Sensors sensors, ActivityLog log) =>
+        {
+            if (Access.RefuseUnless(context, Permissions.SensorsAlerts) is { } refused)
+            {
+                return refused;
+            }
+            var (saved, problem) = alerts.SaveType(id, form);
+            if (saved is null)
+            {
+                return Results.BadRequest(new { error = problem });
+            }
+            log.Record(context, "sensors", "alerts.type.change", $"Changed the alert type {saved.Name}");
+            return Results.Ok(new { id, now = alerts.View(), counts = sensors.RuleCounts(), gather = sensors.Gathering() });
+        });
+
+        // Deleting a type moves what used it to the one new sensors start with.
+        app.MapPost("/api/alerts/types/{id}/delete", (string id, HttpContext context, Alerts alerts, Sensors sensors, ActivityLog log) =>
+        {
+            if (Access.RefuseUnless(context, Permissions.SensorsAlerts) is { } refused)
+            {
+                return refused;
+            }
+            var name = alerts.Type(id)?.Name ?? "an alert type";
+            var (movedTo, problem) = alerts.DeleteType(id);
+            if (movedTo is null)
+            {
+                return Results.BadRequest(new { error = problem });
+            }
+            var moved = sensors.Retype(id, movedTo);
+            log.Record(context, "sensors", "alerts.type.delete", $"Deleted the alert type {name}; {moved} moved to {alerts.Type(movedTo)?.Name}");
+            return Results.Ok(new { moved, now = alerts.View(), counts = sensors.RuleCounts(), gather = sensors.Gathering() });
         });
 
         app.MapPost("/api/alerts/quiet", (QuietForm form, HttpContext context, Alerts alerts, Sensors sensors, ActivityLog log) =>

@@ -260,31 +260,27 @@ public sealed class SensorsTests : IDisposable
     }
 
     [Fact]
-    public async Task A_sensor_follows_its_rule_until_it_has_times_of_its_own_and_can_be_made_to_follow_again()
+    public async Task A_sensor_picks_an_alert_type_by_name_and_a_deleted_type_hands_its_sensors_to_the_usual_one()
     {
         var admin = await app.SignedIn();
-        var odd = await admin.PostAsJsonAsync("/api/alerts/rules/sensor.down", new { after = 7, again = 0, back = true });
-        (await admin.PostAsJsonAsync("/api/alerts/rules/sensor.down", new { after = 30, again = 0, back = false })).EnsureSuccessStatusCode();
+        var odd = await admin.PostAsJsonAsync("/api/alerts/types", new { name = "Odd", after = 7, again = 0, back = true });
+        var nameless = await admin.PostAsJsonAsync("/api/alerts/types", new { name = " ", after = 5, again = 0, back = true });
+        var critical = await TestApp.AlertType(admin, "Critical", 0, 60);
+        var twice = await admin.PostAsJsonAsync("/api/alerts/types", new { name = "critical", after = 5, again = 0, back = true });
         var plain = await Json(await admin.PostAsJsonAsync("/api/sensors", new { kind = "ping", target = "192.168.2.50", name = "Switch" }));
-        var own = await Json(await admin.PostAsJsonAsync("/api/sensors", new { kind = "ping", target = "192.168.2.51", name = "Printer", rule = "custom", custom = new { after = 60, again = 1440, back = true } }));
-        var old = await Json(await admin.PostAsJsonAsync("/api/sensors", new { kind = "ping", target = "192.168.2.52", name = "NAS", rule = "critical" }));
-        var switchId = Named(plain, "Switch").GetProperty("id").GetString();
-        var copied = await Json(await admin.PostAsJsonAsync("/api/sensors/copy", new { after = 60, again = 1440, back = true, ids = new[] { switchId } }));
-        var followed = await Json(await admin.PostAsJsonAsync("/api/alerts/rules/sensor.down/follow", new { }));
+        var picked = await Json(await admin.PostAsJsonAsync("/api/sensors", new { kind = "ping", target = "192.168.2.51", name = "Printer", rule = critical }));
+        var never = await Json(await admin.PostAsJsonAsync("/api/sensors", new { kind = "ping", target = "192.168.2.52", name = "Lab PC", rule = "none" }));
+        var start = plain.GetProperty("startType").GetString();
+        var deleted = await Json(await admin.PostAsJsonAsync($"/api/alerts/types/{critical}/delete", new { }));
         var after = await Json(await admin.GetAsync("/api/sensors"));
 
-        Assert.Equal(HttpStatusCode.BadRequest, odd.StatusCode); // only the times offered
-        Assert.Equal(30, plain.GetProperty("start").GetProperty("after").GetInt32());
-        Assert.Equal(30, Named(plain, "Switch").GetProperty("alert").GetProperty("after").GetInt32()); // new sensors start with those
-        Assert.False(Named(plain, "Switch").GetProperty("alert").GetProperty("back").GetBoolean());
-        Assert.True(Named(plain, "Switch").GetProperty("follows").GetBoolean());
-        Assert.False(Named(own, "Printer").GetProperty("follows").GetBoolean());
-        Assert.Equal(1440, Named(own, "Printer").GetProperty("alert").GetProperty("again").GetInt32());
-        Assert.Equal(0, Named(old, "NAS").GetProperty("alert").GetProperty("after").GetInt32()); // one on saved settings still reads right
-        Assert.Equal(1, copied.GetProperty("changed").GetInt32());
-        Assert.Equal(60, Named(copied.GetProperty("now"), "Switch").GetProperty("alert").GetProperty("after").GetInt32());
-        Assert.Equal(3, followed.GetProperty("changed").GetInt32()); // Printer, NAS and Switch
-        Assert.All(after.GetProperty("sensors").EnumerateArray(), s => Assert.Equal(30, s.GetProperty("alert").GetProperty("after").GetInt32()));
+        Assert.All([odd, nameless, twice], r => Assert.Equal(HttpStatusCode.BadRequest, r.StatusCode));
+        Assert.Equal(start, Named(plain, "Switch").GetProperty("type").GetString()); // a new one starts with the usual type
+        Assert.Equal(5, Named(plain, "Switch").GetProperty("alert").GetProperty("after").GetInt32());
+        Assert.Equal(60, Named(picked, "Printer").GetProperty("alert").GetProperty("again").GetInt32());
+        Assert.Equal(-1, Named(never, "Lab PC").GetProperty("alert").GetProperty("after").GetInt32());
+        Assert.Equal(1, deleted.GetProperty("moved").GetInt32());
+        Assert.Equal(start, Named(after, "Printer").GetProperty("type").GetString());
     }
 
     [Fact]
@@ -340,7 +336,7 @@ public sealed class SensorsTests : IDisposable
         await sensors.Tick(CancellationToken.None);
 
         Assert.Equal(5, test.Every);
-        Assert.Equal(-1, test.Custom!.After);
+        Assert.Equal("none", test.Rule);
         Assert.False(found.Ok);
         Assert.Equal(1, before);
         Assert.Empty(sensors.All());
@@ -358,13 +354,15 @@ public sealed class SensorsTests : IDisposable
     }
 
     [Fact]
-    public async Task A_sensor_is_down_after_two_failed_checks_and_emails_when_its_rule_says()
+    public async Task A_sensor_is_down_after_two_failed_checks_and_emails_when_its_alert_type_says()
     {
         var admin = await app.SignedIn();
-        await TestApp.Alerting(admin, 5, await TestApp.Notification(admin));
-        (await admin.PostAsJsonAsync("/api/sensors", new { kind = "ping", target = "192.168.2.27", name = "ESXi 3", group = "Hypervisors", rule = "normal" })).EnsureSuccessStatusCode();
-        (await admin.PostAsJsonAsync("/api/sensors", new { kind = "ping", target = "192.168.2.1", name = "Gateway", rule = "critical" })).EnsureSuccessStatusCode();
-        (await admin.PostAsJsonAsync("/api/sensors", new { kind = "ping", target = "192.168.2.40", name = "UPS", rule = "quiet" })).EnsureSuccessStatusCode();
+        var me = await TestApp.Notification(admin);
+        await TestApp.Alerting(admin, 5, me);
+        var hourly = await TestApp.AlertType(admin, "Critical", 0, 60, true, me);
+        (await admin.PostAsJsonAsync("/api/sensors", new { kind = "ping", target = "192.168.2.27", name = "ESXi 3", group = "Hypervisors" })).EnsureSuccessStatusCode();
+        (await admin.PostAsJsonAsync("/api/sensors", new { kind = "ping", target = "192.168.2.1", name = "Gateway", rule = hourly })).EnsureSuccessStatusCode();
+        (await admin.PostAsJsonAsync("/api/sensors", new { kind = "ping", target = "192.168.2.40", name = "UPS", rule = "none" })).EnsureSuccessStatusCode();
         var no = new Probe(false, Note: "No reply");
 
         await Minute();

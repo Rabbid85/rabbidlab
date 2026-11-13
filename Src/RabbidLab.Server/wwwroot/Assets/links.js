@@ -1012,10 +1012,11 @@
     $('lw-bar').hidden = !on;
     if (on) {
       ticked = new Set(links.filter((l) => l.sensor).map((l) => l.id));
-      // New ones follow the watched-link rule: the bar says what it does.
-      if (can('sensors.alerts')) await R.notes.load();
+      // The links ticked get the alert type picked here, the usual one to begin with.
       await R.watchLink.open(null);
-      $('lw-rule').textContent = `They follow the watched-link rule: ${R.watchLink.rule()}.`;
+      const start = R.watchLink.start();
+      $('lw-type').innerHTML = R.watchLink.types().map((t) => `<option value="${esc(t.id)}"${t.id === start ? ' selected' : ''}>${esc(t.name)}</option>`).join('')
+        + '<option value="none">Don\'t alert</option>';
       drawBar();
     }
     draw();
@@ -1049,7 +1050,7 @@
     const unwatch = [...was].filter((id) => !ticked.has(id));
     $('lw-go').disabled = true;
     try {
-      const r = await R.send('/api/links/watch', { watch, unwatch });
+      const r = await R.send('/api/links/watch', { watch, unwatch, type: $('lw-type').value || null });
       const said = [r.watched ? `Watching ${r.watched} more link${r.watched === 1 ? '' : 's'}.` : '', r.stopped ? `Stopped watching ${r.stopped}.` : ''].filter(Boolean).join(' ');
       if (r.skipped.length) R.toast(said || 'Nothing changed', `Left out: ${r.skipped.join('; ')}`, { tone: 'warn' });
       else R.toast(said, r.watched ? "They're on Sensors too." : '', r.watched ? { action: { href: '#sensors', label: 'Open Sensors' } } : {});
