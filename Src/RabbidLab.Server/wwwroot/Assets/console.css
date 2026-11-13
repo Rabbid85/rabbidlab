@@ -117,20 +117,22 @@ body.app.rail-small { grid-template-columns: 60px minmax(0, 1fr); }
 .ds-sw.custom { overflow: hidden; background: conic-gradient(#FF6B7D, #F2BE6B, #5FD4A0, #3CC7C7, #6FA8FF, #B07CE8, #FF6B7D); }
 .ds-sw.custom input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
 .ds-sw:disabled, .ds-sw.custom.off { opacity: .45; cursor: default; }
-.lay-picks { display: grid; grid-template-columns: repeat(2, minmax(0, 260px)); gap: 14px; margin-top: 6px; }
-.lay-pick { display: grid; justify-items: start; align-content: start; gap: 4px; height: auto; padding: 0; border: 0; background: none; color: inherit; text-align: left; font: inherit; cursor: pointer; }
-.lay-pick:hover { background: none; }
-.lay-pic { display: flex; gap: 6px; width: 100%; height: 132px; margin-bottom: 8px; padding: 10px; border: 2px solid var(--line-strong); border-radius: 12px; background: #0C0E17; }
-.lay-pick:hover .lay-pic { border-color: #3A3E55; }
-.lay-pick[aria-pressed="true"] .lay-pic { border-color: var(--accent-line); }
-.lay-pic .r { flex: none; width: 26px; border-radius: 4px; background: #1A1D2B; }
-.lay-pic .c { display: grid; align-content: start; gap: 6px; flex: 1; padding: 8px 34px; }
-.lay-pic.wide .c { padding: 8px 6px; }
-.lay-pic .c i { height: 12px; border-radius: 3px; background: #23263A; }
-.lay-pic .c i:first-child { width: 55%; height: 14px; background: #3A3E55; }
-.lay-pic .c i:last-child { height: 42px; }
-.lay-pick b { color: #fff; font-size: 14px; }
-.lay-pick small { color: var(--muted); font-size: 12.5px; line-height: 1.45; }
+/* Appearance: every row's controls in the same two slots, a 300px control then Reset, so they line up down the page. */
+.ap-rows .ds-r { display: grid; grid-template-columns: minmax(0, 300px) 104px; gap: 14px; align-items: center; }
+.ap-rows .ds-r > :first-child { grid-column: 1; }
+.ap-rows .ds-h.has-reset .ds-btn { min-width: 104px; justify-content: center; }
+.ap-rows .ds-r select, .ap-rows .ds-r .ds-input { width: 100%; }
+.ap-icon { display: flex; align-items: center; gap: 10px; }
+.ap-icon .ds-icon { flex: none; width: 38px; height: 38px; border-radius: 8px; }
+.ap-icon .ds-icon svg, .ap-icon .ds-icon img { width: 26px; height: 26px; }
+.ap-icon .ds-btn { flex: 1; }
+.ap-rows .ds-swatches { flex-wrap: nowrap; justify-content: space-between; gap: 4px; max-width: none; }
+.ap-rows .ds-sw { flex: 0 1 24px; width: auto; height: auto; min-width: 16px; aspect-ratio: 1; }
+@media (max-width: 700px) {
+  .ap-rows .ds-r { flex: 1 1 100%; grid-template-columns: minmax(0, 1fr) 104px; }
+  .ap-rows .ds-swatches { flex-wrap: wrap; justify-content: flex-start; gap: 8px; }
+  .ap-rows .ds-sw { flex: none; width: 26px; }
+}
 /* Icon layout (Settings, Links): each choice a little box with 13 dots where it puts them, its name under it; the one in use outlined. */
 .sq-lead { margin: 0 0 12px; color: var(--muted); font-size: 13.5px; }
 .sq-picks { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; }
@@ -144,7 +146,6 @@ body.app.rail-small { grid-template-columns: 60px minmax(0, 1fr); }
 @media (max-width: 700px) {
   .ds-row { flex-wrap: wrap; }
   .ds-r { max-width: none; justify-content: flex-start; }
-  .lay-picks { grid-template-columns: minmax(0, 1fr); }
 }
 /* Everything in the bar is the same height, 36px. */
 /* Settings, Activity log: the bar that narrows it, the day headings, and a row per change (a run of the same one folded). */
@@ -697,13 +698,6 @@ body.dev-tools .devstrip:not([hidden]) { display: flex; flex-wrap: wrap; }
 .toast.square .tsq { border-radius: 24%; background: linear-gradient(135deg, var(--accent-soft), var(--accent)); transform: rotate(-8deg); }
 .toast.square .tsq .all-flask { stroke: #fff; }
 .toast.square .tsq .liquid { fill: rgba(255, 255, 255, .6); }
-/* The previews in Settings, Appearance, Toasts: still and small. */
-.toast.demo { position: static; opacity: 1; pointer-events: none; transform: scale(.72); box-shadow: none; white-space: nowrap; }
-.toast.demo .tbar i { animation: none; width: 62%; }
-.toast.demo.card { width: 300px; }
-.tp-label { margin: 14px 0 6px; color: #9DA1B3; font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
-.ts-picks { grid-template-columns: repeat(2, minmax(0, 290px)); }
-.ts-pic { display: grid; place-items: center; height: 104px; overflow: hidden; }
 
 /* Add an address: the name and its full name, what DNS says, the record to add by hand, and what adding it did. */
 .nm-dialog { width: min(720px, calc(100vw - 32px)); }

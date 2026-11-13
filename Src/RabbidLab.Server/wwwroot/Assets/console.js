@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.102', [
+    'Settings, Appearance lines up: every control sits in one column with Reset in its own column next to it. Page width, toast Style and Show for are drop-downs now.']],
   ['1.1.101', [
     'Your roles have a row of their own in Settings, Account, with Open for Roles and people on the next row. The side menus keep room for their scroll bar, so the text no longer shifts when it shows.']],
   ['1.1.100', [
@@ -502,17 +504,13 @@ const RELEASE_NOTES = [
     let wide = false;
     try { wide = localStorage.getItem('rabbidlab.layout') === 'wide'; } catch { /* centered */ }
     document.body.classList.toggle('layout-wide', wide);
-    $('set-layout').querySelectorAll('[data-layout]').forEach((b) => b.setAttribute('aria-pressed', String((b.dataset.layout === 'wide') === wide)));
-    $('lay-reset').disabled = !wide;
+    $('set-layout').value = wide ? 'wide' : 'centered';
   };
-  $('set-layout').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-layout]');
-    if (!b) return;
-    try { localStorage.setItem('rabbidlab.layout', b.dataset.layout); } catch { /* this visit only */ }
-    layout();
-  });
-  $('lay-reset').addEventListener('click', () => {
-    try { localStorage.removeItem('rabbidlab.layout'); } catch { /* this visit only */ }
+  $('set-layout').addEventListener('change', () => {
+    try {
+      if ($('set-layout').value === 'wide') localStorage.setItem('rabbidlab.layout', 'wide');
+      else localStorage.removeItem('rabbidlab.layout');
+    } catch { /* this visit only */ }
     layout();
   });
   layout();
@@ -1161,8 +1159,8 @@ const RELEASE_NOTES = [
   const toastSettings = () => {
     const p = toastPrefs();
     $('toast-at').value = p.at;
-    $('toast-style').querySelectorAll('[data-style]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.style === p.style)));
-    $('toast-secs').querySelectorAll('[data-secs]').forEach((b) => b.setAttribute('aria-pressed', String(Number(b.dataset.secs) === p.secs)));
+    $('toast-style').value = p.style;
+    $('toast-secs').value = String(p.secs);
     $('toast-reset').disabled = p.at === TOAST_DEFAULT.at && p.style === TOAST_DEFAULT.style && p.secs === TOAST_DEFAULT.secs;
   };
   const toastSet = (change) => {
@@ -1174,8 +1172,8 @@ const RELEASE_NOTES = [
     toast('Toasts look like this.', 'Pick another to try it.', { action: { label: 'Details', href: '#settings/appearance' } });
   };
   $('toast-at').addEventListener('change', () => toastSet({ at: $('toast-at').value }));
-  $('toast-style').addEventListener('click', (e) => { const b = e.target.closest('[data-style]'); if (b) toastSet({ style: b.dataset.style }); });
-  $('toast-secs').addEventListener('click', (e) => { const b = e.target.closest('[data-secs]'); if (b) toastSet({ secs: Number(b.dataset.secs) }); });
+  $('toast-style').addEventListener('change', () => toastSet({ style: $('toast-style').value }));
+  $('toast-secs').addEventListener('change', () => toastSet({ secs: Number($('toast-secs').value) }));
   $('toast-reset').addEventListener('click', () => toastSet(null));
   toastSettings();
   // Are you sure: a title, what happens, the button's words, and what to do on yes.
