@@ -16,7 +16,7 @@ namespace RabbidLab.Setup
     ///
     /// The answer file can hold everything, so a quiet install needs nothing else:
     ///   &lt;RabbidLab&gt;
-    ///     &lt;Setup Quiet="yes" /&gt;
+    ///     &lt;Setup Quiet="yes" AcceptLicense="yes" /&gt;
     ///     &lt;Company Name="Home" /&gt;
     ///     &lt;Install Folder="C:\Program Files\Rabbid Lab" StartMenu="yes" Desktop="no" /&gt;
     ///     &lt;Web Port="8420" Https="yes" Name="lab.home.lan" AddToDns="no" Firewall="yes" Redirect="yes" CertificateSubject="" /&gt;
@@ -64,6 +64,7 @@ namespace RabbidLab.Setup
         public string ConfigFile;
         public bool ConfigNamed;
         public bool Quiet;
+        public bool AcceptLicense;
         public string Company;
 
         /// <summary>The version already installed, when this is an upgrade.</summary>
@@ -164,6 +165,7 @@ namespace RabbidLab.Setup
             if (setup != null)
             {
                 Quiet = IsYes(Attr(setup, "Quiet"));
+                AcceptLicense = IsYes(Attr(setup, "AcceptLicense"));
             }
             var company = Attr(root.Element("Company"), "Name");
             Company = company.Length > 0 ? company : null;

@@ -60,6 +60,8 @@
     <Reference Include="System.Xml.Linq" />
 
     <EmbeddedResource Include="$(PayloadZip)" LogicalName="payload.zip" Condition="'$(PayloadZip)' != ''" />
+    <!-- The license agreement Setup shows and installs: the repository's own LICENSE (MIT). -->
+    <EmbeddedResource Include="..\..\LICENSE" LogicalName="LICENSE.txt" />
   </ItemGroup>
 
 </Project>

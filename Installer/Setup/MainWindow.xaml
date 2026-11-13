@@ -63,6 +63,20 @@
     <StackPanel x:Name="StepDots" Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,12,0,20" Visibility="Collapsed" />
 
     <Grid Grid.Row="1" Margin="28,20,28,0">
+      <!-- License agreement: the first page of a new install, and of an update whose agreement changed. Next waits for the box. -->
+      <DockPanel x:Name="LicensePage" Visibility="Collapsed">
+        <StackPanel DockPanel.Dock="Top">
+          <TextBlock Style="{StaticResource H1}" Text="License agreement" />
+          <TextBlock Style="{StaticResource Lead}" Text="Rabbid Lab is open source under the MIT License: you may use, copy, change and share it, and it comes with no warranty." />
+        </StackPanel>
+        <CheckBox x:Name="AgreeBox" DockPanel.Dock="Bottom" Margin="0,14,0,0" Content="I accept the terms of the license agreement" Checked="Agree_Changed" Unchecked="Agree_Changed" />
+        <Border CornerRadius="8" Background="{StaticResource Field}" BorderBrush="{StaticResource Line}" BorderThickness="1">
+          <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="16,12,8,12">
+            <TextBlock x:Name="LicenseText" FontSize="12.5" LineHeight="19" TextWrapping="Wrap" Foreground="{StaticResource Text}" />
+          </ScrollViewer>
+        </Border>
+      </DockPanel>
+
       <!-- Summary of actions: last page of a new install, first page of an update. -->
       <ScrollViewer x:Name="WelcomePage" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
       <StackPanel Margin="0,0,4,4">

@@ -64,7 +64,9 @@ namespace RabbidLab.Setup
             pages = mode == Mode.Install
                 ? new List<Page>
                 {
-                    // New install: one page per choice, then the summary. Update: straight to the summary.
+                    // New install: the license, one page per choice, then the summary. Update: straight to the summary,
+                    // after the license only when it changed.
+                    new Page { Key = "license", Step = "License", Next = "Next", Element = LicensePage, Skip = () => licenseAccepted },
                     new Page { Key = "options", Step = "Installation options", Next = "Next", Element = OptionsPage, Skip = () => Updating },
                     new Page { Key = "address", Step = "Console address", Next = "Next", Element = AddressPage, Skip = () => Updating },
                     new Page { Key = "security", Step = "Certificate", Next = "Next", Element = SecurityPage, Skip = () => Updating },
@@ -111,6 +113,14 @@ namespace RabbidLab.Setup
                 }
             }
 
+
+            // License: the agreement this Setup carries. An installed copy with the same one already accepted it.
+            var license = LicenseAgreement();
+            // Paragraphs rewrapped to the box; the file keeps its own line breaks.
+            LicenseText.Text = string.Join("\n\n", license.Replace("\r\n", "\n").Split(new[] { "\n\n" }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(p => string.Join(" ", p.Split('\n').Select(l => l.Trim()))));
+            licenseAccepted = upgrade && File.Exists(System.IO.Path.Combine(choices.InstallDir, "LICENSE.txt"))
+                && File.ReadAllText(System.IO.Path.Combine(choices.InstallDir, "LICENSE.txt")).Trim() == license;
 
             // Address and security
             PortBox.Text = choices.Port.ToString();
@@ -181,6 +191,19 @@ namespace RabbidLab.Setup
         /// <summary>Updating or repairing: settings are kept, so the choice pages are skipped.</summary>
         private bool Updating => choices.InstalledVersion != null;
 
+        /// <summary>The installed copy's LICENSE.txt is word for word this one: an update doesn't ask again.</summary>
+        private bool licenseAccepted;
+
+        /// <summary>The license agreement built into Setup (the repository's LICENSE).</summary>
+        public static string LicenseAgreement()
+        {
+            using (var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("LICENSE.txt"))
+            using (var reader = new StreamReader(stream))
+            {
+                return reader.ReadToEnd().Trim();
+            }
+        }
+
         /// <summary>Updating with the settings it already has: nothing was changed with Change.</summary>
         private bool KeepSettings => mode == Mode.Install && choices.InstalledVersion != null && !edited;
 
@@ -238,7 +261,7 @@ namespace RabbidLab.Setup
         {
             at = index;
             var page = pages[at];
-            foreach (var element in new FrameworkElement[] { WelcomePage, SettingsPage, AddressPage, SecurityPage, OptionsPage, WorkPage, DonePage, RemovePage })
+            foreach (var element in new FrameworkElement[] { LicensePage, WelcomePage, SettingsPage, AddressPage, SecurityPage, OptionsPage, WorkPage, DonePage, RemovePage })
             {
                 element.Visibility = element == page.Element ? Visibility.Visible : Visibility.Collapsed;
             }
@@ -255,7 +278,7 @@ namespace RabbidLab.Setup
             CloseButton.IsEnabled = page.Key != "work";
             LogButton.Visibility = page.Key == "done" && failed ? Visibility.Visible : Visibility.Collapsed;
             Problem.Text = "";
-            NextButton.IsEnabled = true;
+            NextButton.IsEnabled = page.Key != "license" || AgreeBox.IsChecked == true; // the agreement has to be accepted first
             if (page.Key == "address")
             {
                 RefreshUrls();
@@ -1198,6 +1221,14 @@ namespace RabbidLab.Setup
         }
 
         // --- Events --------------------------------------------------------------------------------------------
+
+        private void Agree_Changed(object sender, RoutedEventArgs e)
+        {
+            if (pages[at].Key == "license")
+            {
+                NextButton.IsEnabled = AgreeBox.IsChecked == true;
+            }
+        }
 
         private void Address_Changed(object sender, TextChangedEventArgs e)
         {

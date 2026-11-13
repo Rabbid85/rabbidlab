@@ -15,14 +15,14 @@ namespace RabbidLab.Setup
     /// RabbidLab-Setup.exe:
     ///   (nothing)                     install or update, in the window (RabbidLab.xml next to it fills it in)
     ///   /config=RabbidLab.xml         use that answer file; with Quiet="yes" in it, a quiet install
-    ///   /quiet [/port=8420] [/name=lab.home.lan] [/adddns] [/certsubject=...] [/http] [/nofirewall] [/noredirect]
+    ///   /quiet /acceptlicense [/port=8420] [/name=lab.home.lan] [/adddns] [/certsubject=...] [/http] [/nofirewall] [/noredirect]
     ///          [/dir=...] [/nostartmenu] [/desktop] [/log=file]     install or update without the window
     ///   /uninstall [/quiet] [/everything] [/log=file]    remove it; /everything leaves nothing behind
     ///   /service restart|stop|start                       the shortcut uses start when it finds the service stopped
     ///   --snapshot folder                                 pictures of every page, for checking how they look
     /// RabbidLab-Uninstall.exe (the same program built with -p:Uninstaller=true) only removes.
-    /// Quiet exit codes: 0 done, 1 something failed (see the log). /acceptlicense is accepted and ignored: there is no
-    /// license agreement (Rabbid Lab's own update engine passes it, as it would for a product that has one).
+    /// Quiet exit codes: 0 done, 1 something failed (see the log), 2 the license was not accepted.
+    /// A quiet install needs /acceptlicense or AcceptLicense="yes" in the answer file; the updater passes it.
     /// </summary>
     public partial class App : Application
     {
@@ -150,6 +150,13 @@ namespace RabbidLab.Setup
             quiet = quiet || (choices.ConfigNamed && choices.Quiet);
             if (quiet)
             {
+                // Quiet installs can't show the license, so it has to be accepted on the command line or in the answer file.
+                if (!Has("acceptlicense") && !choices.AcceptLicense)
+                {
+                    Write(log, "Installation did not start. A quiet installation requires acceptance of the license agreement. Specify /acceptlicense, or set AcceptLicense=\"yes\" in the answer file. The license agreement is in LICENSE.txt.");
+                    Shutdown(2);
+                    return;
+                }
                 // Quiet installs can't ask about shortcuts, so a desktop shortcut only comes when asked for (/desktop, or
                 // Desktop="yes"). An update keeps what it had.
                 if (choices.InstalledVersion == null && !Has("desktop") && choices.ConfigFile == null)

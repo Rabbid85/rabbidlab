@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.119 (2026-11-13)
+
+- Setup starts with the license agreement, the MIT License, and Next waits for I accept. Quiet installs need /acceptlicense, and an update skips the page when the license has not changed.
+
 ## 1.1.118 (2026-11-13)
 
 - Use one I have has a Browse button beside the account box: your OUs down the left and the accounts in the one you pick on the right, or Find an account across the domain. Pick one and Use this account fills it in.

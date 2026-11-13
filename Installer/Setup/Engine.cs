@@ -217,6 +217,18 @@ namespace RabbidLab.Setup
                 }
             }
 
+            // The accepted license goes next to the program, so a later upgrade knows it was accepted.
+            using (var license = Assembly.GetExecutingAssembly().GetManifestResourceStream("LICENSE.txt"))
+            {
+                if (license != null)
+                {
+                    Retry(() =>
+                    {
+                        license.Position = 0;
+                        using (var file = File.Create(Path.Combine(c.InstallDir, "LICENSE.txt"))) license.CopyTo(file);
+                    });
+                }
+            }
 
             // A copy of Setup stays behind: it removes Rabbid Lab later, and restarts, stops and starts the service.
             var self = Assembly.GetExecutingAssembly().Location;
