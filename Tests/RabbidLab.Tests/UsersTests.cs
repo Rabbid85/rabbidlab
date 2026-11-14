@@ -221,7 +221,7 @@ public sealed class UsersTests : IDisposable
     {
         var admin = await app.SignedIn();
         (await admin.PostAsJsonAsync("/api/ad/connect", new { username = "awiles", password = "domain pass", account = "svc-rabbidlab" })).EnsureSuccessStatusCode();
-        var help = await Role(admin, "Help desk", "windows.view", "ad.view", "ad.change");
+        var help = await Role(admin, "Help desk", "windows.view", "ad.view", "ad.password");
         (await admin.PostAsJsonAsync("/api/accounts", new { username = "mlopez", password = "user password", roles = new[] { help } })).EnsureSuccessStatusCode();
         var desk = await SignIn("mlopez", "user password");
 
@@ -233,6 +233,36 @@ public sealed class UsersTests : IDisposable
         Assert.Equal(HttpStatusCode.Forbidden, (await desk.PostAsJsonAsync("/api/ad/users", new { username = "x2" })).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await desk.PostAsJsonAsync("/api/ad/users/jreyes/delete", new { })).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await desk.PostAsJsonAsync("/api/ad/disconnect", new { })).StatusCode);
+    }
+
+    [Fact]
+    public async Task Each_directory_task_takes_its_own_permission_and_whole_domain_pages_need_the_whole_domain()
+    {
+        var admin = await app.SignedIn();
+        (await admin.PostAsJsonAsync("/api/ad/connect", new { username = "awiles", password = "domain pass", account = "svc-rabbidlab" })).EnsureSuccessStatusCode();
+        var hr = await Role(admin, "HR", "ad.view", "ad.password");
+        (await admin.PostAsJsonAsync("/api/accounts", new { username = "hr1", password = "user password", roles = new[] { hr } })).EnsureSuccessStatusCode();
+        var hr1 = await SignIn("hr1", "user password");
+
+        Assert.Equal(HttpStatusCode.OK, (await hr1.PostAsJsonAsync("/api/ad/users/jreyes/password", new { password = "New pass 1" })).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await hr1.PostAsJsonAsync("/api/ad/users/jreyes/unlock", new { })).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await hr1.PostAsJsonAsync("/api/ad/users/jreyes/enable", new { on = false })).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await hr1.PostAsJsonAsync("/api/ad/users/jreyes/groups", new { add = new[] { "CN=Staff,DC=amw,DC=com" } })).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await hr1.PostAsJsonAsync("/api/ad/groups/members", new { dn = "CN=Staff,DC=amw,DC=com", add = new[] { "x" } })).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await hr1.PostAsJsonAsync("/api/ad/users/jreyes/flag", new { flag = "noexpiry", on = true })).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await hr1.PostAsJsonAsync("/api/ad/users/jreyes/edit", new { title = "x" })).StatusCode);
+        Assert.False((await Json(await hr1.GetAsync("/api/ad"))).GetProperty("scoped").GetBoolean());
+
+        (await admin.PostAsJsonAsync($"/api/roles/{hr}", new { name = "HR", color = "#5FD4A0", permissions = new[] { "ad.view", "ad.password" }, scope = new[] { "OU=People,DC=amw,DC=com" } })).EnsureSuccessStatusCode();
+
+        Assert.True((await Json(await hr1.GetAsync("/api/ad"))).GetProperty("scoped").GetBoolean());
+        foreach (var path in new[] { "/api/ad/domain", "/api/ad/audit", "/api/ad/recycle", "/api/ad/object/find?q=x" })
+        {
+            var refused = await hr1.GetAsync(path);
+            Assert.Equal(HttpStatusCode.Forbidden, refused.StatusCode);
+            Assert.Contains("needs a role that covers all of it", await Error(refused));
+        }
+        Assert.Equal(HttpStatusCode.OK, (await hr1.GetAsync("/api/ad/users")).StatusCode);
     }
 
     [Fact]

@@ -1,3 +1,4 @@
+using System.Net.Http.Json;
 using System.Reflection;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
@@ -152,6 +153,128 @@ public sealed class DirectoryToolsTests : IDisposable
         Assert.Contains($"modify CN=Jordan Reyes,{Lab} unicodePwd", ad.Log);
         Assert.Contains($"modify CN=PC1,{Lab} userAccountControl", ad.Log);
         Assert.Contains($"modify CN=Lab Staff,{Lab} member", ad.Log); // the group in scope still got its member
+    }
+
+    /// <summary>A role with these permissions and scope, and a local account in it. Roles made later rank lower.</summary>
+    private async Task<Who> InRole(HttpClient admin, string role, string account, string[] permissions, params string[] scope)
+    {
+        var id = (await (await admin.PostAsJsonAsync("/api/roles", new { name = role, color = "#5FD4A0" })).Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetString()!;
+        (await admin.PostAsJsonAsync($"/api/roles/{id}", new { name = role, color = "#5FD4A0", permissions, scope })).EnsureSuccessStatusCode();
+        (await admin.PostAsJsonAsync("/api/accounts", new { username = account, password = "user password", roles = new[] { id } })).EnsureSuccessStatusCode();
+        return new Who(SignIn.Local, account, null, []);
+    }
+
+    private void As(Who who, string permission) => Caller.Set(new Caller(who, permission, app.Services.GetRequiredService<Roles>()));
+
+    private void Hire(string sam, string name, string ou, params (string, object)[] more) =>
+        ad.Add($"CN={name},{ou}", [("objectClass", "user"), ("objectCategory", "person"), ("sAMAccountName", sam), ("displayName", name), ("userAccountControl", "512"), .. more]);
+
+    [Fact]
+    public async Task A_role_s_scope_keeps_its_people_to_its_OUs()
+    {
+        await Connect();
+        var none = CancellationToken.None;
+        var people = $"OU=People,{Lab}";
+        Hire("nhire", "New Hire", people);
+        ad.Add($"CN=People Team,{people}", ("objectClass", "group"), ("objectCategory", "group"), ("cn", "People Team"), ("sAMAccountName", "People Team"), ("groupType", "-2147483646"));
+        var admin = await app.SignedIn();
+        var hr = await InRole(admin, "HR", "hr1", ["ad.view", "ad.create", "ad.password", "ad.groups", "ad.change"], people);
+
+        As(hr, Permissions.AdView);
+        var (users, _) = await tools.Users(none);
+        var (groups, _) = await tools.Groups(null, none);
+        var places = await tools.Places(none);
+        var hidden = await Refused(() => tools.User("jreyes", none));
+        var above = await Refused(() => tools.Browse(Lab, none));
+        await tools.Browse(people, none);
+
+        As(hr, Permissions.AdPassword);
+        await tools.Password("nhire", "New pass 1", false, none);
+        var reset = await Refused(() => tools.Password("jreyes", "New pass 1", false, none));
+
+        As(hr, Permissions.AdGroups);
+        var joined = await tools.ChangeGroups("nhire", [$"CN=Lab Staff,{Lab}", $"CN=People Team,{people}"], [], none);
+
+        As(hr, Permissions.AdChange);
+        var moved = await Refused(() => tools.Move("nhire", Lab, none));
+
+        As(hr, Permissions.AdCreate);
+        var made = await Refused(() => tools.Create(new NewAdUser("A", "B", null, "ab", Lab, null, false, true, false, null, null, null, null), "New pass 1", none));
+        await tools.Create(new NewAdUser("C", "D", null, "cd", people, null, false, true, false, null, null, null, null), "New pass 1", none);
+
+        // Without a caller it's Rabbid Lab itself asking, and only the service account's scope counts.
+        Caller.Set(null);
+        await tools.Password("jreyes", "New pass 1", false, none);
+
+        Assert.Equal(["nhire"], users.Select(u => u.Username));
+        Assert.Equal(["People Team"], groups.Select(g => g.Name));
+        Assert.Equal(["Lab / People"], places.Select(p => p.Path));
+        Assert.All(new[] { hidden, above, reset, moved, made }, p =>
+        {
+            Assert.Contains("outside the scope of your roles", p.Message);
+            Assert.Equal(StatusCodes.Status403Forbidden, p.Status);
+        });
+        Assert.Contains("Lab Staff is outside the scope of your roles", joined);
+        Assert.Contains($"modify CN=People Team,{people} member", ad.Log);
+        Assert.DoesNotContain($"modify CN=Lab Staff,{Lab} member", ad.Log);
+        Assert.Contains($"add CN=C D,{people}", ad.Log);
+        Assert.DoesNotContain($"add CN=A B,{Lab}", ad.Log);
+    }
+
+    [Fact]
+    public async Task Nobody_changes_an_account_or_group_in_a_role_above_their_own()
+    {
+        await Connect();
+        var none = CancellationToken.None;
+        var roles = app.Services.GetRequiredService<Roles>();
+        var staff = ad.Rows.First(r => r.Dn == $"CN=Lab Staff,{Lab}").Values["objectSid"][0];
+        // Nested is in Lab Staff through another group, which only tokenGroups shows.
+        Hire("nested", "Nested Member", Lab, ("tokenGroups", staff));
+        ad.Add($"CN=Inner,{Lab}", ("objectClass", "group"), ("objectCategory", "group"), ("cn", "Inner"), ("sAMAccountName", "Inner"), ("groupType", "-2147483646"), ("tokenGroups", staff));
+        var admin = await app.SignedIn();
+        var it = await InRole(admin, "IT", "it1", ["ad.view", "ad.password", "ad.groups", "ad.create", "ad.attributes"]);
+        var desk = await InRole(admin, "Help desk", "desk1", ["ad.view", "ad.password", "ad.groups", "ad.create", "ad.attributes"]);
+        var boss = new Who(SignIn.Local, "admin", null, []);
+        var itId = roles.Snapshot().Roles.First(r => r.Name == "IT").Id;
+        Assert.Null(roles.AddMember(itId, Member.Person, "awiles", null, boss));
+        Assert.Null(roles.AddMember(itId, Member.Person, "ghost", null, boss));
+        Assert.Null(roles.AddMember(itId, Member.Group, "Lab Staff", null, boss));
+
+        As(desk, Permissions.AdPassword);
+        var named = await Refused(() => tools.Password("awiles", "New pass 1", false, none));
+        var through = await Refused(() => tools.Password("nested", "New pass 1", false, none));
+        await tools.Password("jreyes", "New pass 1", false, none);
+
+        As(desk, Permissions.AdGroups);
+        var group = await Refused(() => tools.ChangeMembers($"CN=Lab Staff,{Lab}", [$"CN=Jordan Reyes,{Lab}"], [], none));
+        var inner = await Refused(() => tools.ChangeMembers($"CN=Inner,{Lab}", [$"CN=Jordan Reyes,{Lab}"], [], none));
+        var joined = await tools.ChangeGroups("jreyes", [$"CN=Lab Staff,{Lab}"], [], none);
+
+        As(desk, Permissions.AdCreate);
+        var stale = await Refused(() => tools.Create(new NewAdUser("G", "H", null, "ghost", Lab, null, false, true, false, null, null, null, null), "New pass 1", none));
+
+        As(desk, Permissions.AdAttributes);
+        var attribute = await Refused(() => tools.SetAttribute($"CN=Anthony Wiles,{Lab}", "description", ["x"], none));
+        var renamed = await Refused(() => tools.SetAttribute($"CN=Jordan Reyes,{Lab}", "sAMAccountName", ["ghost"], none));
+
+        // Someone in the role itself, and anyone above it, can.
+        As(it, Permissions.AdPassword);
+        await tools.Password("awiles", "New pass 1", false, none);
+        As(boss, Permissions.AdGroups);
+        Assert.Null(await tools.ChangeMembers($"CN=Lab Staff,{Lab}", [$"CN=Jordan Reyes,{Lab}"], [], none));
+
+        Assert.All(new[] { named, through, group, inner, stale, attribute, renamed }, p => Assert.Equal(StatusCodes.Status403Forbidden, p.Status));
+        Assert.Equal("awiles is in the role IT. Only someone above IT can change that account.", named.Message);
+        Assert.Contains("nested is in the role IT", through.Message);
+        Assert.Equal("Lab Staff puts people in the role IT. Only someone above IT can change it.", group.Message);
+        Assert.Contains("Inner puts people in the role IT", inner.Message);
+        Assert.Contains("Lab Staff puts people in the role IT", joined);
+        Assert.Contains("The role IT names ghost", stale.Message);
+        Assert.Contains("awiles is in the role IT", attribute.Message);
+        Assert.Contains("The role IT names ghost", renamed.Message);
+        Assert.Contains($"modify CN=Jordan Reyes,{Lab} unicodePwd", ad.Log);
+        Assert.Single(ad.Log, l => l == $"modify CN=Anthony Wiles,{Lab} unicodePwd");
+        Assert.Single(ad.Log, l => l == $"modify CN=Lab Staff,{Lab} member");
     }
 
     [Fact]

@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.146 (2026-11-14)
+
+- Change users, groups and computers is now four permissions: reset passwords and unlock, turn accounts off and on, change group membership, and edit properties. Roles that had it keep all four.
+- A role can have a scope. Add OUs under Active Directory on its Permissions tab and its Active Directory permissions only work there. People in it only see those OUs, and Domain health, AD audit, Recycle Bin and the Attribute browser are hidden for them.
+- Nobody can change an account or group that is in a role above their own, so a password reset or a group change can no longer hand someone a higher role.
+
 ## 1.1.145 (2026-11-13)
 
 - The squares are gone from the banners on Links, Sensors and Domain health. Every banner has the same still tiles as Overview.

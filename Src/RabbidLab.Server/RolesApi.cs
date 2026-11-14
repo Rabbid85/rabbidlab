@@ -22,6 +22,7 @@ public static class RolesApi
             return Results.Ok(new
             {
                 catalog = Permissions.Shown(),
+                scoped = Permissions.Scoped,
                 roles = f.Roles.Select(r => new
                 {
                     id = r.Id,
@@ -29,6 +30,7 @@ public static class RolesApi
                     about = r.About,
                     color = r.Color,
                     permissions = r.Id == Roles.Admin ? [.. Permissions.All] : r.Permissions,
+                    scope = r.Scope.Select(d => new { dn = d, path = Place(d) }),
                     members = r.Members.Select(m => new { kind = m.Kind, name = m.Name, display = m.Display, added = m.Added, addedBy = m.AddedBy }),
                     builtIn = r.Id is Roles.Admin or Roles.User,
                     manage = managed.Contains(r.Id),
@@ -87,7 +89,7 @@ public static class RolesApi
                 return refused;
             }
             var before = roles.Find(id);
-            if (roles.Change(id, form.Name, form.About, form.Color, form.Permissions, Who.Of(context.User)) is { } problem)
+            if (roles.Change(id, form.Name, form.About, form.Color, form.Permissions, Who.Of(context.User), form.Scope) is { } problem)
             {
                 return Results.BadRequest(new { error = problem });
             }
@@ -283,6 +285,14 @@ public static class RolesApi
     private static bool Self(HttpContext context, string username) =>
         context.User.FindFirst("source")?.Value == SignIn.Local && string.Equals(username, context.User.Identity?.Name, StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>An OU as people read it (Lab / People), or the domain's name for the domain itself.</summary>
+    private static string Place(string dn)
+    {
+        var parts = Ldap.Split(dn);
+        var domain = parts.Where(p => p.StartsWith("DC=", StringComparison.OrdinalIgnoreCase)).ToList();
+        return Ldap.Path(dn, string.Join(',', domain)) is { Length: > 0 } path ? path : string.Join('.', domain.Select(p => p[3..]));
+    }
+
     /// <summary>What changed about a role, in words, for the activity log.</summary>
     private static string? Changes(Role before, Role after)
     {
@@ -302,6 +312,10 @@ public static class RolesApi
         {
             said.Add($"No longer allows: {Names(removed)}.");
         }
+        if (before.Scope.Count != after.Scope.Count || before.Scope.Except(after.Scope, StringComparer.OrdinalIgnoreCase).Any())
+        {
+            said.Add(after.Scope.Count == 0 ? "Scope: all of Active Directory." : $"Scope: {string.Join(", ", after.Scope.Select(Place))}.");
+        }
         if (before.Color != after.Color || before.About != after.About)
         {
             said.Add("New look or description.");
@@ -310,7 +324,7 @@ public static class RolesApi
     }
 }
 
-public sealed record RoleForm(string? Name, string? About, string? Color, string? Copy = null, List<string>? Permissions = null);
+public sealed record RoleForm(string? Name, string? About, string? Color, string? Copy = null, List<string>? Permissions = null, List<string>? Scope = null);
 
 public sealed record OrderForm(List<string>? Ids);
 

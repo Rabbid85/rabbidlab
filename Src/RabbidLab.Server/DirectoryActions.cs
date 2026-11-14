@@ -143,6 +143,7 @@ public sealed partial class DirectoryTools : IDirectoryActions
         {
             throw new ToolProblem($"{Product.Title}'s account can only make computers in {ScopeName(f.Scope!, ldap.BaseDn, f.Domain!)}.");
         }
+        Reached(ou);
         if (await Taken(ldap, name + "$", stop))
         {
             throw new ToolProblem($"There's already a computer called {name} in {f.Domain}.");
@@ -433,7 +434,7 @@ public static class DirectoryActionsApi
             }));
 
         app.MapPost("/api/ad/object/groups", (ObjectGroupsForm form, HttpContext context, IDirectoryActions tools, ActivityLog log) =>
-            UsersApi.Try(context, Permissions.AdChange, async () =>
+            UsersApi.Try(context, Permissions.AdGroups, async () =>
             {
                 var add = form.Add ?? [];
                 var remove = form.Remove ?? [];
@@ -454,8 +455,9 @@ public static class DirectoryActionsApi
                 return Results.Ok(new { changed });
             }));
 
+        // Change password at next sign-in goes with resetting passwords; the other options with editing.
         app.MapPost("/api/ad/users/{username}/flag", (string username, FlagForm form, HttpContext context, IDirectoryActions tools, ActivityLog log) =>
-            UsersApi.Try(context, Permissions.AdChange, async () =>
+            UsersApi.Try(context, string.Equals(form.Flag?.Trim(), "mustchange", StringComparison.OrdinalIgnoreCase) ? Permissions.AdPassword : Permissions.AdChange, async () =>
             {
                 var flag = form.Flag?.Trim().ToLowerInvariant() ?? "";
                 if (!DirectoryTools.KnownFlag(flag))

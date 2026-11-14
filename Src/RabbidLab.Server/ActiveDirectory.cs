@@ -162,7 +162,7 @@ public sealed class ActiveDirectory : IDirectory
     }
 
     /// <summary>The groups with these names, by sAMAccountName or cn.</summary>
-    private static string GroupsFilter(IEnumerable<string> groups) =>
+    internal static string GroupsFilter(IEnumerable<string> groups) =>
         "(&(objectClass=group)(|" + string.Concat(groups.Select(g => $"(sAMAccountName={Escape(g)})(cn={Escape(g)})")) + "))";
 
     /// <summary>Which of the groups asked about are these found groups, by either of their names.</summary>

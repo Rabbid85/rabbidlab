@@ -32,6 +32,9 @@ public sealed class Role
     public string About { get; set; } = "";
     public string Color { get; set; } = "";
     public List<string> Permissions { get; set; } = [];
+
+    /// <summary>The OUs its Active Directory permissions cover, by DN. None means everywhere the service account reaches.</summary>
+    public List<string> Scope { get; set; } = [];
     public List<Member> Members { get; set; } = [];
 }
 
@@ -48,6 +51,8 @@ public sealed class Person
 
 public sealed class RolesFile
 {
+    /// <summary>Which permissions the file was written with: an older one gets the permissions split out since (Roles.Upgrade).</summary>
+    public int Version { get; set; }
     public List<Role> Roles { get; set; } = [];
     public List<Person> People { get; set; } = [];
 }
@@ -72,6 +77,8 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
     public const string User = "user";
     private const int MostRoles = 50;
     private const int MostPeople = 2000;
+    private const int MostPlaces = 20;
+    private const int Current = 2; // 2: Change users, groups and computers became four permissions
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { WriteIndented = true };
     // Watched: --add-admin writes it while the service runs.
     private readonly JsonFile<RolesFile> file = folder.Json<RolesFile>("roles.json", Json, watch: true);
@@ -117,7 +124,37 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
         lock (gate)
         {
             return Fresh().Roles.FirstOrDefault(x => x.Id == id) is { } r
-                ? new Role { Id = r.Id, Name = r.Name, About = r.About, Color = r.Color, Permissions = [.. r.Permissions], Members = [.. r.Members] } : null;
+                ? new Role { Id = r.Id, Name = r.Name, About = r.About, Color = r.Color, Permissions = [.. r.Permissions], Scope = [.. r.Scope], Members = [.. r.Members] } : null;
+        }
+    }
+
+    /// <summary>
+    /// Where in Active Directory a permission reaches for someone: null is everywhere, else the OUs of their roles that
+    /// allow it. One role without a scope that allows it is enough for everywhere.
+    /// </summary>
+    public IReadOnlyList<string>? Reach(Who who, string permission)
+    {
+        lock (gate)
+        {
+            return Reach(Fresh(), who, permission);
+        }
+    }
+
+    /// <summary>
+    /// The roles whose people and groups someone may not change in Active Directory: the ones they aren't in and aren't
+    /// above. Resetting such a password, or joining such a group, would hand them the role. User never counts.
+    /// </summary>
+    public IReadOnlyList<Role> Outranking(Who by)
+    {
+        lock (gate)
+        {
+            var f = Fresh();
+            var mine = Mine(f, by);
+            if (mine.Any(r => r.Id == Admin))
+            {
+                return [];
+            }
+            return [.. f.Roles.Where((r, i) => r.Id != User && !mine.Contains(r) && !Manages(f, by, i)).Select(r => new Role { Id = r.Id, Name = r.Name, Members = [.. r.Members] })];
         }
     }
 
@@ -250,7 +287,10 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
             if (copy is not null && f.Roles.FirstOrDefault(r => r.Id == copy) is { } from)
             {
                 var mine = Allowed(f, by);
-                role.Permissions = [.. (from.Id == Admin ? Permissions.All : (IEnumerable<string>) from.Permissions).Where(mine.Contains).Order()];
+                // Its scope comes along, and what the maker's own roles don't cover there is left out.
+                role.Scope = from.Id == Admin ? [] : [.. from.Scope];
+                role.Permissions = [.. (from.Id == Admin ? Permissions.All : (IEnumerable<string>) from.Permissions).Where(mine.Contains)
+                    .Where(p => !Permissions.Scoped.Contains(p) || Covers(Reach(f, by, p), role.Scope)).Order()];
             }
             f.Roles.Insert(f.Roles.Count - 1, role);
             Save(f);
@@ -258,8 +298,8 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
         }
     }
 
-    /// <summary>A role's name, what it's for, its colour and what it allows. Administrator can't be changed, nor User's name.</summary>
-    public string? Change(string id, string? name, string? about, string? color, IReadOnlyCollection<string>? permissions, Who by)
+    /// <summary>A role's name, what it's for, its colour, what it allows and its scope in Active Directory. Administrator can't be changed, nor User's name.</summary>
+    public string? Change(string id, string? name, string? about, string? color, IReadOnlyCollection<string>? permissions, Who by, IReadOnlyCollection<string>? scope = null)
     {
         lock (gate)
         {
@@ -287,6 +327,7 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
             {
                 return problem;
             }
+            var allows = role.Permissions;
             if (permissions is not null)
             {
                 if (permissions.FirstOrDefault(p => !Permissions.All.Contains(p)) is { } unknown)
@@ -300,8 +341,29 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
                 {
                     return $"You can only change what your own roles allow, and they don't allow {PermissionName(beyond).ToLowerInvariant()}.";
                 }
-                role.Permissions = [.. permissions.Distinct().Order()];
+                allows = [.. permissions.Distinct().Order()];
             }
+            var places = role.Scope;
+            if (scope is not null)
+            {
+                places = Tidy(scope);
+                if (places.FirstOrDefault(d => !IsDn(d)) is { } not)
+                {
+                    return $"{not} isn't an OU in Active Directory.";
+                }
+                if (places.Count > MostPlaces)
+                {
+                    return $"A role's scope is {MostPlaces} OUs at most.";
+                }
+            }
+            // Nor a wider scope: what the role does in Active Directory stays inside what their own roles cover.
+            var moved = places.Count != role.Scope.Count || places.Except(role.Scope, StringComparer.OrdinalIgnoreCase).Any();
+            if (allows.Where(Permissions.Scoped.Contains).Any(p => (moved || !role.Permissions.Contains(p)) && !Covers(Reach(f, by, p), places)))
+            {
+                return "This role's scope can only cover what your own roles cover in Active Directory.";
+            }
+            role.Permissions = allows;
+            role.Scope = places;
             role.Name = copy.Name;
             role.About = copy.About;
             role.Color = copy.Color;
@@ -485,6 +547,31 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
         return mine.Any(r => r.Id == Admin) ? Permissions.All : mine.SelectMany(r => r.Permissions).ToHashSet();
     }
 
+    private static IReadOnlyList<string>? Reach(RolesFile f, Who who, string permission)
+    {
+        var mine = Mine(f, who);
+        if (mine.Any(r => r.Id == Admin))
+        {
+            return null;
+        }
+        var giving = mine.Where(r => r.Permissions.Contains(permission)).ToList();
+        return giving.Any(r => r.Scope.Count == 0) ? null : Tidy(giving.SelectMany(r => r.Scope));
+    }
+
+    /// <summary>Whether a reach (null is everywhere) takes in every OU of a scope (none is everywhere).</summary>
+    private static bool Covers(IReadOnlyList<string>? reach, IReadOnlyCollection<string> scope) =>
+        reach is null || (scope.Count > 0 && scope.All(s => reach.Any(r => Ldap.Under(s, r))));
+
+    /// <summary>OUs without repeats, and without the ones inside another on the list.</summary>
+    private static List<string> Tidy(IEnumerable<string> dns)
+    {
+        var all = dns.Select(d => d?.Trim() ?? "").Where(d => d.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        return [.. all.Where(d => !all.Any(o => !Same(o, d) && Ldap.Under(d, o)))];
+    }
+
+    private static bool IsDn(string dn) =>
+        dn.Length <= 1024 && Ldap.Split(dn) is { Count: > 0 } parts && parts.All(p => p.IndexOf('=') > 0) && parts[^1].StartsWith("DC=", StringComparison.OrdinalIgnoreCase);
+
     private static bool Manages(RolesFile f, Who by, int index)
     {
         var mine = Mine(f, by);
@@ -532,6 +619,7 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
 
     private static RolesFile Defaults() => new()
     {
+        Version = Current,
         Roles =
         [
             new Role { Id = Admin, Name = "Administrator", About = "Everything, including who gets in. Always at the top.", Color = "#FF6A45" },
@@ -588,6 +676,7 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
             // Only a Rabbid Lab that never kept roles takes them from its old settings; a lost file makes nobody an administrator.
             var legacy = !accounts.HasRoles && !file.Exists;
             f.Roles = Rebuild(legacy).Roles;
+            f.Version = Current;
             if (accounts.SetUp)
             {
                 if (!legacy)
@@ -600,6 +689,10 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
         else if (!ReferenceEquals(f, seen))
         {
             Repair(f);
+            if (Upgrade(f) && accounts.SetUp)
+            {
+                file.Save(f);
+            }
             if (accounts.SetUp)
             {
                 accounts.NoteRoles();
@@ -616,6 +709,21 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
         var admin = f.Roles.FirstOrDefault(r => r.Id == Admin) ?? defaults.Roles[0];
         var user = f.Roles.FirstOrDefault(r => r.Id == User) ?? defaults.Roles[1];
         f.Roles = [admin, .. f.Roles.Where(r => r.Id is not (Admin or User)), user];
+    }
+
+    /// <summary>A file from before a permission was split gets its parts, so nobody loses what they could do. Whether anything changed.</summary>
+    private static bool Upgrade(RolesFile f)
+    {
+        if (f.Version >= Current)
+        {
+            return false;
+        }
+        foreach (var r in f.Roles.Where(r => r.Permissions.Contains(Permissions.AdChange)))
+        {
+            r.Permissions = [.. r.Permissions.Union(Permissions.WasChange).Order()];
+        }
+        f.Version = Current;
+        return true;
     }
 
     private void Save(RolesFile f)

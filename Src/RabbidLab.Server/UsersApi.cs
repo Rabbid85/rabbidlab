@@ -26,9 +26,10 @@ public static class UsersApi
     {
         // --- Active Directory ----------------------------------------------------------------------------------------
 
-        app.MapGet("/api/ad", (HttpContext context, IDirectoryTools tools) =>
+        // scoped: this person's roles only show part of Active Directory, so the pages about the whole domain aren't theirs.
+        app.MapGet("/api/ad", (HttpContext context, IDirectoryTools tools, Roles roles) =>
             !Access.Can(context, Permissions.AdView) && !Access.Can(context, Permissions.AdConnect) ? Access.NotAllowed()
-            : Results.Ok(new { domain = tools.Domain, state = tools.State() }));
+            : Results.Ok(new { domain = tools.Domain, state = tools.State(), scoped = Access.Can(context, Permissions.AdView) && roles.Reach(Who.Of(context.User), Permissions.AdView) is not null }));
 
         // Setting up, step one: the OUs to pick from, read with the admin sign-in given (which isn't kept).
         app.MapPost("/api/ad/look", (SetupForm form, HttpContext context, IDirectoryTools tools) => Try(context, Permissions.AdConnect, async () =>
@@ -104,7 +105,7 @@ public static class UsersApi
         }));
 
         app.MapPost("/api/ad/users/{username}/password", (string username, PasswordReset form, HttpContext context, IDirectoryTools tools, ActivityLog log) =>
-            Try(context, Permissions.AdChange, async () =>
+            Try(context, Permissions.AdPassword, async () =>
             {
                 var password = string.IsNullOrEmpty(form.Password) ? Passwords.Make() : form.Password;
                 await tools.Password(username, password, form.MustChange, context.RequestAborted);
@@ -112,7 +113,7 @@ public static class UsersApi
                 return Results.Ok(new { password = string.IsNullOrEmpty(form.Password) ? password : null });
             }));
 
-        app.MapPost("/api/ad/users/{username}/unlock", (string username, HttpContext context, IDirectoryTools tools, ActivityLog log) => Try(context, Permissions.AdChange, async () =>
+        app.MapPost("/api/ad/users/{username}/unlock", (string username, HttpContext context, IDirectoryTools tools, ActivityLog log) => Try(context, Permissions.AdPassword, async () =>
         {
             await tools.Unlock(username, context.RequestAborted);
             log.Record(context, "users", "ad.unlock", $"Unlocked {username}");
@@ -120,7 +121,7 @@ public static class UsersApi
         }));
 
         app.MapPost("/api/ad/users/{username}/enable", (string username, OnForm form, HttpContext context, IDirectoryTools tools, ActivityLog log) =>
-            Try(context, Permissions.AdChange, async () =>
+            Try(context, Permissions.AdEnable, async () =>
             {
                 await tools.Enable(username, form.On, context.RequestAborted);
                 log.Record(context, "users", form.On ? "ad.enable" : "ad.disable", form.On ? $"Turned {username} back on" : $"Turned {username} off");
@@ -128,7 +129,7 @@ public static class UsersApi
             }));
 
         app.MapPost("/api/ad/users/{username}/groups", (string username, GroupsForm form, HttpContext context, IDirectoryTools tools, ActivityLog log) =>
-            Try(context, Permissions.AdChange, async () =>
+            Try(context, Permissions.AdGroups, async () =>
             {
                 var add = form.Add ?? [];
                 var remove = form.Remove ?? [];
@@ -164,7 +165,7 @@ public static class UsersApi
             return Results.Ok(group);
         }));
 
-        app.MapPost("/api/ad/groups/members", (GroupMembersForm form, HttpContext context, IDirectoryTools tools, ActivityLog log) => Try(context, Permissions.AdChange, async () =>
+        app.MapPost("/api/ad/groups/members", (GroupMembersForm form, HttpContext context, IDirectoryTools tools, ActivityLog log) => Try(context, Permissions.AdGroups, async () =>
         {
             var add = form.Add ?? [];
             var remove = form.Remove ?? [];
@@ -188,7 +189,7 @@ public static class UsersApi
         }, change: false));
 
         app.MapPost("/api/ad/computers/{name}/enable", (string name, OnForm form, HttpContext context, IDirectoryTools tools, ActivityLog log) =>
-            Try(context, Permissions.AdChange, async () =>
+            Try(context, Permissions.AdEnable, async () =>
             {
                 await tools.EnableComputer(name, form.On, context.RequestAborted);
                 log.Record(context, "users", form.On ? "ad.computer.enable" : "ad.computer.disable", form.On ? $"Turned the computer {name} back on in AD" : $"Turned the computer {name} off in AD");
@@ -303,13 +304,23 @@ public static class UsersApi
         }
     }
 
-    /// <summary>Allowed, then done, with what went wrong said for the page. A change must also come from Rabbid Lab's own page.</summary>
-    internal static async Task<IResult> Try(HttpContext context, string permission, Func<Task<IResult>> work, bool change = true)
+    /// <summary>
+    /// Allowed, then done, with what went wrong said for the page. A change must also come from Rabbid Lab's own page.
+    /// The tools are told who's asking (Caller), so they stay inside the scope of that person's roles; a page about the
+    /// whole domain (whole) is only for roles that cover all of it.
+    /// </summary>
+    internal static async Task<IResult> Try(HttpContext context, string permission, Func<Task<IResult>> work, bool change = true, bool whole = false)
     {
         if ((change ? Access.RefuseUnless(context, permission) : Access.Can(context, permission) ? null : Access.NotAllowed()) is { } refused)
         {
             return refused;
         }
+        var caller = new Caller(Who.Of(context.User), permission, context.RequestServices.GetRequiredService<Roles>());
+        if (whole && Permissions.Scoped.Contains(permission) && caller.Reach() is not null)
+        {
+            return Results.Json(new { error = "Your roles cover part of Active Directory, and this needs a role that covers all of it." }, statusCode: StatusCodes.Status403Forbidden);
+        }
+        Caller.Set(caller);
         try
         {
             return await work();

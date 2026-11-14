@@ -441,6 +441,8 @@ public static class SignIn
             server = p.FindFirstValue("server"),
             roles = Roles.Brief(roles.Of(who)),
             can = roles.Allowed(who).Order(),
+            // Their roles show only part of Active Directory, so the pages about the whole domain aren't theirs.
+            adScoped = roles.Allowed(who).Contains(Permissions.AdView) && roles.Reach(who, Permissions.AdView) is not null,
         };
     }
 

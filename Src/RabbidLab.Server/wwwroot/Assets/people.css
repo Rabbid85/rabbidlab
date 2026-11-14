@@ -186,3 +186,11 @@ button.link:hover { background: none; color: var(--title); }
 .prow.dw-on { background: #171B2C; box-shadow: inset 3px 0 0 var(--accent); }
 .dw-give button { display: inline-flex; align-items: center; gap: 7px; }
 .dw-give .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c, var(--muted)); }
+
+/* A role's scope in Active Directory: its OUs as chips under the text, and the OU list with Browse… to add one. */
+.row.scope { align-items: flex-start; gap: 14px; padding: 12px 18px; }
+.row.scope .scope-ous { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.row.scope .gchip svg { width: 13px; height: 13px; color: var(--muted); }
+.row.scope .gchip .chip-x { display: grid; }
+.row.scope .ou-row { flex: none; width: 340px; max-width: 46%; }
+.row.scope .ou-row select { height: 38px; }

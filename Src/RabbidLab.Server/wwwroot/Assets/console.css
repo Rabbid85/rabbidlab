@@ -505,6 +505,8 @@ a.button.primary:hover { background: var(--ember); }
 [hidden] { display: none !important; }
 /* What someone's roles don't allow stays out of sight (data-can, console.js). */
 .cant { display: none !important; }
+/* Pages about the whole domain, for someone whose roles show only part of Active Directory. */
+body.ad-scoped [data-whole] { display: none !important; }
 .account { position: relative; }
 .account-chip { display: inline-flex; align-items: center; gap: 9px; padding: 3px 10px 3px 3px; border-radius: 999px; background: transparent; color: var(--title); }
 .account-chip:hover, .account-chip[aria-expanded="true"] { background: #1A1C28; }

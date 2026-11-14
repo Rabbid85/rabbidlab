@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text.Json;
 using RabbidLab.Shared;
+using RoleMember = RabbidLab.Server.Member;
 
 namespace RabbidLab.Server;
 
@@ -181,7 +182,7 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
         "userAccountControl", "msDS-User-Account-Control-Computed", "lockoutTime", "lastLogonTimestamp", "pwdLastSet", "whenCreated", "memberOf", "adminCount", "isCriticalSystemObject",
         "department", "manager", "accountExpires", "msDS-UserPasswordExpiryTimeComputed", "givenName", "sn", "physicalDeliveryOfficeName", "telephoneNumber", "company"];
 
-    private static readonly string[] GroupAttributes = ["cn", "description", "groupType", "member", "adminCount", "isCriticalSystemObject", "objectSid", "memberOf", "mail", "info"];
+    private static readonly string[] GroupAttributes = ["cn", "sAMAccountName", "description", "groupType", "member", "adminCount", "isCriticalSystemObject", "objectSid", "memberOf", "mail", "info"];
 
     private static readonly string[] ComputerAttributes = ["cn", "dNSHostName", "operatingSystem", "operatingSystemVersion", "description", "userAccountControl",
         "lastLogonTimestamp", "whenCreated", "memberOf", "location"];
@@ -345,14 +346,27 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
     public async Task<List<AdOu>> Places(CancellationToken stop)
     {
         using var ldap = await Open(stop);
-        return await PlacesIn(ldap, Ready().Scope!, stop);
+        var places = new List<AdOu>();
+        var top = Ready().Scope!;
+        foreach (var root in Roots(top))
+        {
+            try
+            {
+                places.AddRange(await PlacesIn(ldap, root, stop));
+            }
+            catch (LdapRefused e) when (e.Code == LdapRefused.NoSuchObject && root != top)
+            {
+                // An OU in a role's scope that's gone from Active Directory.
+            }
+        }
+        return places;
     }
 
     public async Task<(List<AdUser> Users, bool More)> Users(CancellationToken stop)
     {
         using var ldap = await Open(stop);
         var f = Ready();
-        var rows = await ldap.Find(f.Scope!, "(&(objectCategory=person)(objectClass=user))", true, UserAttributes, Limit, stop);
+        var rows = await Look(ldap, f.Scope!, "(&(objectCategory=person)(objectClass=user))", UserAttributes, Limit, stop);
         var users = rows.Select(r => Person(r, ldap.BaseDn, f.Account!)).OrderBy(u => u.Name ?? u.Username, StringComparer.OrdinalIgnoreCase).ToList();
         return (users, rows.Count >= Limit);
     }
@@ -361,13 +375,15 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
     {
         using var ldap = await Open(stop);
         var f = Ready();
-        return Person(await Find(ldap, f.Scope!, username, stop), ldap.BaseDn, f.Account!);
+        var row = await Find(ldap, f.Scope!, username, stop);
+        Reached(row.Dn);
+        return Person(row, ldap.BaseDn, f.Account!);
     }
 
     public async Task<(List<AdGroup> Groups, bool More)> Groups(string? search, CancellationToken stop)
     {
         using var ldap = await Open(stop);
-        var rows = await ldap.Find(ldap.BaseDn, $"(&(objectCategory=group){Match(search, "cn", "sAMAccountName", "description")})", true, GroupAttributes, Limit, stop);
+        var rows = await Look(ldap, ldap.BaseDn, $"(&(objectCategory=group){Match(search, "cn", "sAMAccountName", "description")})", GroupAttributes, Limit, stop);
         // Whoever has a group as primary group isn't in its member attribute, so they're counted apart. Not for a search: pickers don't show counts.
         var primary = new Dictionary<long, int>();
         if (rows.Count > 0 && string.IsNullOrWhiteSpace(search))
@@ -399,6 +415,7 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
         var dn = Inside(group, ldap.BaseDn);
         var found = (await ldap.Find(dn, "(objectClass=group)", false, ["objectSid"], 1, stop)).FirstOrDefault()
             ?? throw new ToolProblem("That group isn't in Active Directory any more.", StatusCodes.Status404NotFound);
+        Reached(found.Dn);
         var member = $"(memberOf={ActiveDirectory.Escape(found.Dn)})";
         var rows = await ldap.Find(ldap.BaseDn, Rid(found) is { } rid ? $"(|{member}(primaryGroupID={rid}))" : member, true, MemberAttributes, Limit, stop);
         return ([.. rows.Select(r => Member(r, ldap.BaseDn)).OrderBy(m => m.Kind != "user").ThenBy(m => m.Name, StringComparer.OrdinalIgnoreCase)], rows.Count >= Limit);
@@ -411,6 +428,7 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
         {
             throw new ToolProblem("Group names are 64 characters at most, without \" / \\ [ ] : ; | = , + * ? < > or @.");
         }
+        Unclaimed(name, group: true);
         using var ldap = await Open(stop);
         var f = Ready();
         var ou = await Into(ldap, form.Ou, NewGroupsOf(f), stop);
@@ -418,6 +436,7 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
         {
             throw new ToolProblem($"{Product.Title}'s account can only make groups in {ScopeName(f.Scope!, ldap.BaseDn, f.Domain!)}.");
         }
+        Reached(ou);
         if (await Taken(ldap, name, stop))
         {
             throw new ToolProblem($"There's already something called {name} in {f.Domain}.");
@@ -482,7 +501,7 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
     public async Task<(List<AdComputer> Computers, bool More)> Computers(CancellationToken stop)
     {
         using var ldap = await Open(stop);
-        var rows = await ldap.Find(Ready().Scope!, "(objectCategory=computer)", true, ComputerAttributes, Limit, stop);
+        var rows = await Look(ldap, Ready().Scope!, "(objectCategory=computer)", ComputerAttributes, Limit, stop);
         return ([.. rows.Select(r => Computer(r, ldap.BaseDn)).OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase)], rows.Count >= Limit);
     }
 
@@ -511,7 +530,7 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
             return [];
         }
         using var ldap = await Open(stop);
-        var rows = await ldap.Find(ldap.BaseDn, $"(&(|(&(objectCategory=person)(objectClass=user))(objectCategory=group)(objectCategory=computer)){match})", true, MemberAttributes, 40, stop);
+        var rows = await Look(ldap, ldap.BaseDn, $"(&(|(&(objectCategory=person)(objectClass=user))(objectCategory=group)(objectCategory=computer)){match})", MemberAttributes, 40, stop);
         return [.. rows.Select(r => Member(r, ldap.BaseDn)).OrderBy(m => m.Kind != "user").ThenBy(m => m.Name, StringComparer.OrdinalIgnoreCase)];
     }
 
@@ -522,6 +541,7 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
         {
             throw new ToolProblem(bad);
         }
+        Unclaimed(username, group: false);
         var first = Words.Blank(form.First);
         var last = Words.Blank(form.Last);
         var display = Words.Blank(form.Display) ?? Words.Blank($"{first} {last}") ?? username;
@@ -540,6 +560,7 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
         {
             throw new ToolProblem($"{Product.Title}'s account can only make people in {ScopeName(f.Scope!, ldap.BaseDn, f.Domain!)}.");
         }
+        Reached(ou);
         if (await Taken(ldap, username, stop))
         {
             throw new ToolProblem($"There's already an account called {username} in {f.Domain}.");
@@ -707,6 +728,7 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
         var row = await Find(ldap, ldap.BaseDn, username, stop);
         var user = Person(row, ldap.BaseDn, f.Account!);
         InScope(row.Dn, f, ldap.BaseDn);
+        await Ranked(ldap, row.Dn, user.Username, null, group: false, stop);
         return signIn && user.Service
             ? throw new ToolProblem($"That's {Product.Title}'s own account. Its password and sign-in settings stay as they are, so {Product.Title} keeps working.")
             : row;
@@ -718,6 +740,7 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
         var row = (await ldap.Find(Inside(group, ldap.BaseDn), "(objectClass=group)", false, GroupAttributes, 1, stop)).FirstOrDefault()
             ?? throw new ToolProblem("That group isn't in Active Directory any more.", StatusCodes.Status404NotFound);
         InScope(row.Dn, f, ldap.BaseDn);
+        await Ranked(ldap, row.Dn, row.Text("sAMAccountName"), row.Text("cn") ?? Ldap.Name(row.Dn), group: true, stop);
         return row; // built-in ones too: Active Directory refuses what may not be done
     }
 
@@ -732,12 +755,114 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
             : row;
     }
 
-    /// <summary>Refused when it's outside the OU (or domain) the service account was set up for.</summary>
+    /// <summary>Refused when it's outside the OU (or domain) the service account was set up for, or outside the caller's roles.</summary>
     private static void InScope(string dn, DirectoryToolsFile f, string baseDn)
     {
         if (!Ldap.Under(dn, f.Scope!))
         {
             throw new ToolProblem($"{Ldap.Name(dn)} is outside the service account's scope ({ScopeName(f.Scope!, baseDn, f.Domain!)}), so it can't be changed here.");
+        }
+        Reached(dn);
+    }
+
+    /// <summary>Refused when it's outside the OUs the caller's roles cover for what they're doing.</summary>
+    private static void Reached(string dn)
+    {
+        if (Caller.Current?.Reach() is { } reach && !reach.Any(r => Ldap.Under(dn, r)))
+        {
+            throw new ToolProblem($"{Ldap.Name(dn)} is outside the scope of your roles.", StatusCodes.Status403Forbidden);
+        }
+    }
+
+    /// <summary>Where the caller may look under a root: the root itself, or the OUs of their roles inside it.</summary>
+    private static List<string> Roots(string top) => Caller.Current?.Reach() is not { } reach ? [top]
+        : [.. reach.Select(r => Ldap.Under(r, top) ? r : Ldap.Under(top, r) ? top : null).OfType<string>().Distinct(StringComparer.OrdinalIgnoreCase)];
+
+    /// <summary>A search of everything under a root, kept to what the caller's roles cover.</summary>
+    private static async Task<List<LdapRow>> Look(ILdap ldap, string top, string filter, string[] attributes, int limit, CancellationToken stop)
+    {
+        var rows = new List<LdapRow>();
+        foreach (var root in Roots(top))
+        {
+            try
+            {
+                rows.AddRange(await ldap.Find(root, filter, true, attributes, limit, stop));
+            }
+            catch (LdapRefused e) when (e.Code == LdapRefused.NoSuchObject && root != top)
+            {
+                // An OU in a role's scope that's gone from Active Directory.
+            }
+        }
+        return rows;
+    }
+
+    /// <summary>
+    /// Refused when the account or group is in a role the caller isn't in and isn't above: a new password for that
+    /// account, or a new member of that group, would hand over the role. A group inside such a group counts too.
+    /// </summary>
+    private static async Task Ranked(ILdap ldap, string dn, string? sam, string? cn, bool group, CancellationToken stop)
+    {
+        if (Caller.Current?.Outranking() is not { Count: > 0 } above)
+        {
+            return;
+        }
+        static bool Same(string? a, string? b) => a is { Length: > 0 } && string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
+        Role? Of(Func<RoleMember, bool> match) => above.FirstOrDefault(r => r.Members.Any(match));
+        var role = group ? Of(m => m.Kind == RoleMember.Group && (Same(m.Name, cn) || Same(m.Name, sam)))
+            : Of(m => m.Kind == RoleMember.Everyone || (m.Kind == RoleMember.Person && Same(m.Name, sam)));
+        var wanted = above.SelectMany(r => r.Members).Where(m => m.Kind == RoleMember.Group).Select(m => m.Name).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        if (role is null && wanted.Count > 0)
+        {
+            // tokenGroups is worked out on request from the entry itself: nested groups and the primary group count.
+            var tokens = (await ldap.Find(dn, "(objectClass=*)", false, ["tokenGroups"], 1, stop)).FirstOrDefault()?.AllBytes("tokenGroups").ToList() ?? [];
+            if (tokens.Count > 0)
+            {
+                foreach (var g in await ldap.Find(ldap.BaseDn, ActiveDirectory.GroupsFilter(wanted), true, ["objectSid", "cn", "sAMAccountName"], Limit, stop))
+                {
+                    if (g.Bytes("objectSid") is { } sid && tokens.Any(t => t.AsSpan().SequenceEqual(sid)))
+                    {
+                        role ??= Of(m => m.Kind == RoleMember.Group && (Same(m.Name, g.Text("cn")) || Same(m.Name, g.Text("sAMAccountName"))));
+                    }
+                }
+            }
+        }
+        if (role is not null)
+        {
+            throw new ToolProblem(group
+                ? $"{cn ?? Ldap.Name(dn)} puts people in the role {role.Name}. Only someone above {role.Name} can change it."
+                : $"{sam ?? Ldap.Name(dn)} is in the role {role.Name}. Only someone above {role.Name} can change that account.", StatusCodes.Status403Forbidden);
+        }
+    }
+
+    /// <summary>Ranked, for something only known by its DN: users and groups are checked, anything else passes.</summary>
+    private static async Task Ranked(ILdap ldap, string dn, CancellationToken stop)
+    {
+        if (Caller.Current?.Outranking() is not { Count: > 0 })
+        {
+            return;
+        }
+        var row = (await ldap.Find(dn, "(objectClass=*)", false, ["objectClass", "sAMAccountName", "cn"], 1, stop)).FirstOrDefault();
+        if (row is not null && KindOf(row) is var kind and ("user" or "group"))
+        {
+            await Ranked(ldap, dn, row.Text("sAMAccountName"), row.Text("cn") ?? Ldap.Name(dn), kind == "group", stop);
+        }
+    }
+
+    /// <summary>
+    /// Refused when a role above the caller names this account or group: making one by that name (after the old one was
+    /// deleted, say) would put its maker in the role. Null checks both kinds.
+    /// </summary>
+    private static void Unclaimed(string name, bool? group)
+    {
+        if (Caller.Current?.Outranking() is not { Count: > 0 } above)
+        {
+            return;
+        }
+        var role = above.FirstOrDefault(r => r.Members.Any(m => string.Equals(m.Name, name, StringComparison.OrdinalIgnoreCase)
+            && ((m.Kind == RoleMember.Group && group != false) || (m.Kind == RoleMember.Person && group != true))));
+        if (role is not null)
+        {
+            throw new ToolProblem($"The role {role.Name} names {name}. Only someone above {role.Name} can make or rename something to that.", StatusCodes.Status403Forbidden);
         }
     }
 

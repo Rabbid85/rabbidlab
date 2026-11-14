@@ -161,7 +161,7 @@
   <a href="#sensors" data-page="sensors" title="Sensors" data-can="sensors.view"><svg><use href="#i-activity"/></svg><span>Sensors</span><i class="rail-dot bad" id="sensors-dot" hidden></i></a>
   <p class="rail-label" data-can="ad.view ad.connect">Directory</p>
   <a href="#ad/users" data-page="ad" id="rail-dir" title="Active Directory" data-can="ad.view ad.connect"><svg><use href="#i-users"/></svg><span>Active Directory</span><i class="rail-dot bad" id="rail-dir-dot" hidden></i></a>
-  <a href="#ad/domain" data-page="domain" id="rail-domain" title="Domain health" data-can="ad.view ad.connect"><svg><use href="#i-shield"/></svg><span>Domain health</span><i class="rail-dot bad" id="rail-domain-dot" hidden></i></a>
+  <a href="#ad/domain" data-page="domain" id="rail-domain" title="Domain health" data-can="ad.view ad.connect" data-whole><svg><use href="#i-shield"/></svg><span>Domain health</span><i class="rail-dot bad" id="rail-domain-dot" hidden></i></a>
   <p class="rail-label" data-can="seats.view sessions.view access.view windows.view">Config</p>
   <a href="#seats" data-page="seats" title="Seats" data-can="seats.view sessions.view"><svg><use href="#i-monitor"/></svg><span>Seats</span><small id="rail-seats"></small><i class="rail-dot" id="seats-dot" hidden></i></a>
   <a href="#local" data-page="local" title="Local accounts" data-can="windows.view"><svg><use href="#i-key"/></svg><span>Local accounts</span></a>
@@ -747,12 +747,12 @@
       <a href="#ad/users" data-adpage="users" data-can="ad.view ad.connect"><svg><use href="#i-user"/></svg><span>Users</span><i class="rail-dot bad" id="dir-locked-dot" hidden></i><small data-n="users"></small></a>
       <a href="#ad/groups" data-adpage="groups" data-can="ad.view ad.connect"><svg><use href="#i-users"/></svg><span>Groups</span><small data-n="groups"></small></a>
       <a href="#ad/computers" data-adpage="computers" data-can="ad.view ad.connect"><svg><use href="#i-laptop"/></svg><span>Computers</span><small data-n="computers"></small></a>
-      <a href="#ad/domain" data-adpage="domain" data-can="ad.view ad.connect"><svg><use href="#i-shield"/></svg><span>Domain health</span><i class="rail-dot bad" id="dir-domain-dot" hidden></i></a>
+      <a href="#ad/domain" data-adpage="domain" data-can="ad.view ad.connect" data-whole><svg><use href="#i-shield"/></svg><span>Domain health</span><i class="rail-dot bad" id="dir-domain-dot" hidden></i></a>
       <p class="rail-label" data-can="ad.view ad.connect">Tools</p>
       <a href="#org" data-adpage="org" data-can="ad.view"><svg><use href="#i-org"/></svg><span>Org chart</span></a>
-      <a href="#attrs" data-adpage="attrs" data-can="ad.view"><svg><use href="#i-list"/></svg><span>Attribute browser</span></a>
-      <a href="#ad/audit" data-adpage="audit" data-can="ad.view ad.connect"><svg><use href="#i-history"/></svg><span>AD audit</span></a>
-      <a href="#ad/recycle" data-adpage="recycle" data-can="ad.view ad.connect"><svg><use href="#i-trash"/></svg><span>Recycle Bin</span></a>
+      <a href="#attrs" data-adpage="attrs" data-can="ad.view" data-whole><svg><use href="#i-list"/></svg><span>Attribute browser</span></a>
+      <a href="#ad/audit" data-adpage="audit" data-can="ad.view ad.connect" data-whole><svg><use href="#i-history"/></svg><span>AD audit</span></a>
+      <a href="#ad/recycle" data-adpage="recycle" data-can="ad.view ad.connect" data-whole><svg><use href="#i-trash"/></svg><span>Recycle Bin</span></a>
       <!-- The open page's views (users.js puts them under its entry), and what narrows them. -->
       <div class="dkids" id="dir-views"></div>
       <div class="dir-acct" id="dir-acct-row" hidden><svg><use href="#i-key"/></svg><span id="dir-acct"></span>

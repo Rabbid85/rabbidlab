@@ -24,6 +24,9 @@ public static class Permissions
     public const string AdView = "ad.view";
     public const string AdCreate = "ad.create";
     public const string AdChange = "ad.change";
+    public const string AdPassword = "ad.password";
+    public const string AdEnable = "ad.enable";
+    public const string AdGroups = "ad.groups";
     public const string AdDelete = "ad.delete";
     public const string AdConnect = "ad.connect";
     public const string AdAttributes = "ad.attributes";
@@ -92,9 +95,12 @@ public static class Permissions
         ]),
         new("ad", "Active Directory", "users",
         [
-            new(AdView, "See Active Directory", "Users, groups and computers in the domain, and who's in each group."),
-            new(AdCreate, "Make users and groups", "New people, with a password and groups, and new groups."),
-            new(AdChange, "Change users, groups and computers", "Set passwords, unlock, turn accounts and computers off and on, and change who's in groups."),
+            new(AdView, "See Active Directory", "Users, groups and computers in the role's scope, and who's in each group."),
+            new(AdCreate, "Make users, groups and computers", "New people, with a password and groups, new groups and new computer accounts."),
+            new(AdPassword, "Reset passwords and unlock accounts", "Set a new password, make someone change theirs at the next sign-in, and unlock."),
+            new(AdEnable, "Turn accounts off and on", "Disable and enable users and computers."),
+            new(AdGroups, "Change group membership", "Add and remove the members of groups."),
+            new(AdChange, "Edit properties and account options", "Details, account options and expiry, rename, move, and restore from the Recycle Bin."),
             new(AdDelete, "Delete users, groups and computers", "Gone from the domain for good."),
             new(AdConnect, "Set up Rabbid Lab's AD account", "Make the service account Rabbid Lab changes Active Directory with, or take it away."),
             new(AdAttributes, "Edit attributes", "Change any attribute in the Attribute browser, as ADSI Edit does, inside the service account's scope."),
@@ -107,6 +113,12 @@ public static class Permissions
             new(WindowsDelete, "Delete Windows accounts", "Gone from that computer for good."),
         ]),
     ];
+
+    /// <summary>The ones a role's scope narrows to its OUs. Setting up the service account isn't one: that's the whole domain's.</summary>
+    public static readonly IReadOnlySet<string> Scoped = new HashSet<string> { AdView, AdCreate, AdPassword, AdEnable, AdGroups, AdChange, AdDelete, AdAttributes };
+
+    /// <summary>What Change users, groups and computers was split into. Roles that had it keep all of it.</summary>
+    public static readonly IReadOnlyList<string> WasChange = [AdPassword, AdEnable, AdGroups];
 
     public static readonly IReadOnlySet<string> All = Parts.SelectMany(p => p.Actions).Select(a => a.Key).ToHashSet();
 

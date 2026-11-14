@@ -263,6 +263,71 @@ public sealed class RolesTests : IDisposable
     }
 
     [Fact]
+    public async Task Roles_from_before_the_split_keep_everything_Change_used_to_allow()
+    {
+        var admin = await app.SignedIn();
+        var old = await Make(admin, "Old desk", "ad.view", "ad.change");
+        var viewer = await Make(admin, "Viewer", "ad.view");
+        app.Dispose();
+        // As a version before the split wrote it: no version, and Change alone.
+        var path = Path.Combine(data, "roles.json");
+        File.WriteAllText(path, File.ReadAllText(path).Replace("\"version\": 2,", ""));
+        File.Delete(path + ".bak");
+
+        using var again = new TestApp(data);
+        var page = again.Page();
+        (await page.PostAsJsonAsync("/api/signin", new { username = "admin", password = "correct horse" })).EnsureSuccessStatusCode();
+        var roles = (await Json(page, "/api/roles")).GetProperty("roles").EnumerateArray().ToDictionary(r => r.GetProperty("id").GetString()!,
+            r => r.GetProperty("permissions").EnumerateArray().Select(p => p.GetString()).ToList());
+
+        Assert.Equal(["ad.change", "ad.enable", "ad.groups", "ad.password", "ad.view"], roles[old]);
+        Assert.Equal(["ad.view"], roles[viewer]);
+        // Once upgraded it stays as it's set: taking one away isn't undone at the next start.
+        (await page.PostAsJsonAsync($"/api/roles/{old}", new { name = "Old desk", color = "#5FD4A0", permissions = new[] { "ad.view", "ad.change" } })).EnsureSuccessStatusCode();
+        Assert.Contains("\"version\": 2", File.ReadAllText(path));
+    }
+
+    [Fact]
+    public async Task A_role_s_scope_is_OUs_and_nobody_sets_one_wider_than_their_own()
+    {
+        const string lab = "OU=Lab,DC=amw,DC=com";
+        var admin = await app.SignedIn();
+        var lead = await Make(admin, "Lead", "access.view", "access.roles", "ad.view", "ad.password");
+        var desk = await Make(admin, "Desk", "ad.view", "ad.password");
+        object Form(string name, string[] permissions, params string[] scope) => new { name, color = "#5FD4A0", permissions, scope };
+        string[] leads = ["access.view", "access.roles", "ad.view", "ad.password"];
+        string[] desks = ["ad.view", "ad.password"];
+        (await admin.PostAsJsonAsync($"/api/roles/{lead}", Form("Lead", leads, lab))).EnsureSuccessStatusCode();
+        // One inside another is the same as the outer one alone.
+        (await admin.PostAsJsonAsync($"/api/roles/{desk}", Form("Desk", desks, $"OU=People,{lab}", $"OU=Temps,OU=People,{lab}"))).EnsureSuccessStatusCode();
+        (await admin.PostAsJsonAsync("/api/accounts", new { username = "lead1", password = "user password", roles = new[] { lead } })).EnsureSuccessStatusCode();
+        var lead1 = await SignIn("lead1", "user password");
+
+        var notAnOu = await admin.PostAsJsonAsync($"/api/roles/{desk}", Form("Desk", desks, "People"));
+        var elsewhere = await lead1.PostAsJsonAsync($"/api/roles/{desk}", Form("Desk", desks, "OU=Other,DC=amw,DC=com"));
+        var everywhere = await lead1.PostAsJsonAsync($"/api/roles/{desk}", Form("Desk", desks));
+        var beyond = await lead1.PostAsJsonAsync($"/api/roles/{desk}", Form("Desk", ["ad.view", "ad.password", "ad.delete"], $"OU=People,{lab}"));
+        var inside = await lead1.PostAsJsonAsync($"/api/roles/{desk}", Form("Desk", desks, lab));
+        var shown = (await Json(admin, "/api/roles")).GetProperty("roles").EnumerateArray().First(r => r.GetProperty("id").GetString() == desk).GetProperty("scope");
+        var roles = app.Services.GetRequiredService<Roles>();
+        var who = new Who(RabbidLab.Server.SignIn.Local, "lead1", null, []);
+
+        Assert.Equal(HttpStatusCode.BadRequest, notAnOu.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, elsewhere.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, everywhere.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, beyond.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, inside.StatusCode);
+        Assert.Equal("Lab", shown[0].GetProperty("path").GetString());
+        Assert.Equal([lab], roles.Reach(who, "ad.password"));
+        Assert.Null(roles.Reach(new Who(RabbidLab.Server.SignIn.Local, "admin", null, []), "ad.password"));
+        // A second role without a scope that allows the same thing makes it everywhere.
+        var wide = await Make(admin, "Wide", "ad.password");
+        (await admin.PostAsJsonAsync($"/api/roles/{wide}/members", new { kind = "local", name = "lead1" })).EnsureSuccessStatusCode();
+        Assert.Null(roles.Reach(who, "ad.password"));
+        Assert.Equal([lab], roles.Reach(who, "ad.view"));
+    }
+
+    [Fact]
     public async Task Search_finds_groups_people_and_local_accounts()
     {
         var setup = app.Page();

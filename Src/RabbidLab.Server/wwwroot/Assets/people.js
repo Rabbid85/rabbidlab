@@ -329,8 +329,39 @@
 
   const editable = (r) => r.manage && mine('access.roles') && r.id !== 'admin';
   const dirty = (r) => draft && draft.id === r.id && (draft.name !== r.name || draft.about !== (r.about || '') || draft.color !== r.color
-    || draft.permissions.size !== r.permissions.length || r.permissions.some((p) => !draft.permissions.has(p)));
-  const fresh = (r) => ({ id: r.id, name: r.name, about: r.about || '', color: r.color, permissions: new Set(r.permissions) });
+    || draft.permissions.size !== r.permissions.length || r.permissions.some((p) => !draft.permissions.has(p))
+    || draft.scope.length !== r.scope.length || r.scope.some((s) => !draft.scope.includes(s.dn)));
+  const fresh = (r) => ({ id: r.id, name: r.name, about: r.about || '', color: r.color, permissions: new Set(r.permissions), scope: r.scope.map((s) => s.dn) });
+
+  // A role's scope: the OUs its Active Directory permissions work in. None is everywhere the service account reaches.
+  let ous = null; // the OUs to pick from, once asked for, with the problem when they can't be listed
+  let roleTab = 'permissions';
+  const askOus = async () => {
+    if (ous) return;
+    ous = { loading: true };
+    try {
+      ous = { list: mine('ad.view') ? await R.get('/api/ad/places') : [] };
+    } catch (err) {
+      ous = { list: [], problem: err.message };
+    }
+    if (draft && role(draft.id) && !$('role-view').hidden) drawRole(role(draft.id), roleTab);
+  };
+  const ouPath = (dn) => data.roles.flatMap((r) => r.scope).find((s) => s.dn === dn)?.path || ous?.list?.find((p) => p.dn === dn)?.path
+    || dn.split(/(?<!\\),/).filter((p) => !/^DC=/i.test(p)).map((p) => p.slice(p.indexOf('=') + 1)).reverse().join(' / ') || dn;
+  const scopeRow = (r, can) => {
+    if (r.id === 'admin') return '';
+    if (!ous) askOus();
+    const left = (ous?.list || []).filter((p) => !draft.scope.includes(p.dn));
+    const chips = draft.scope.map((dn) => `<span class="gchip" title="${esc(dn)}">${svg('folder')}${esc(ouPath(dn))}`
+      + (can ? `<button type="button" class="chip-x" data-scope-x="${esc(dn)}" aria-label="Remove ${esc(ouPath(dn))}">${svg('x')}</button>` : '') + '</span>').join('');
+    const say = draft.scope.length ? 'Its Active Directory permissions only work in these OUs and everything inside them.'
+      : 'All of Active Directory that the service account reaches. Add an OU to limit its Active Directory permissions to it.';
+    const why = ous?.problem ? ` OUs can't be listed: ${ous.problem}` : '';
+    return `<div class="row still scope"><span class="t"><b>Scope</b><span>${esc(say + why)}</span>${chips ? `<span class="scope-ous">${chips}</span>` : ''}</span>`
+      + (can && left.length ? `<span class="ou-row"><select id="role-scope-add" aria-label="Add an OU"><option value="">Add an OU…</option>`
+        + left.map((p) => `<option value="${esc(p.dn)}">${esc(p.path || p.name)}</option>`).join('')
+        + `</select><button type="button" data-browse-ou="role-scope-add">${svg('folder')}Browse…</button></span>` : '') + '</div>';
+  };
   const unsaved = (r) => { $('role-unsaved').hidden = !dirty(r); };
   const placeText = (r) => {
     const i = data.roles.indexOf(r);
@@ -340,6 +371,7 @@
   };
 
   const drawRole = (r, tab) => {
+    roleTab = tab;
     if (!draft || draft.id !== r.id) draft = fresh(r);
     const i = data.roles.indexOf(r);
     const total = allParts().length;
@@ -382,6 +414,7 @@
       if (!acts.length) return '';
       const on = p.actions.filter((a) => r.id === 'admin' || draft.permissions.has(a.key)).length;
       return `<div class="sec">${svg(p.icon)}<b>${esc(p.name)}</b><span>${on} of ${p.actions.length}</span></div><div class="rows">`
+        + (p.key === 'ad' ? scopeRow(r, can) : '')
         + acts.map((a) => {
           const locked = !can || !mine(a.key);
           return `<label class="row still perm${locked ? ' locked' : ''}"><span class="t"><b>${esc(a.name)}</b><span>${esc(a.about)}${can && !mine(a.key) ? " Your roles don't allow this, so you can't give it." : ''}</span></span>`
@@ -422,9 +455,20 @@
     drawRole(role(draft.id), 'display');
   });
   $('perm-list').addEventListener('change', (e) => {
+    if (e.target.id === 'role-scope-add' && e.target.value) {
+      draft.scope.push(e.target.value);
+      drawRole(role(draft.id), 'permissions');
+      return;
+    }
     if (!e.target.matches('[data-perm]')) return;
     if (e.target.checked) draft.permissions.add(e.target.dataset.perm);
     else draft.permissions.delete(e.target.dataset.perm);
+    drawRole(role(draft.id), 'permissions');
+  });
+  $('perm-list').addEventListener('click', (e) => {
+    const x = e.target.closest('[data-scope-x]');
+    if (!x) return;
+    draft.scope = draft.scope.filter((dn) => dn !== x.dataset.scopeX);
     drawRole(role(draft.id), 'permissions');
   });
   $('perm-find').addEventListener('input', () => drawRole(role(draft.id), 'permissions'));
@@ -438,7 +482,7 @@
   });
   $('role-save').addEventListener('click', async () => {
     try {
-      await R.send(`/api/roles/${encodeURIComponent(draft.id)}`, { name: draft.name, about: draft.about, color: draft.color, permissions: [...draft.permissions] });
+      await R.send(`/api/roles/${encodeURIComponent(draft.id)}`, { name: draft.name, about: draft.about, color: draft.color, permissions: [...draft.permissions], scope: draft.scope });
       draft = null;
       problem('');
     } catch (err) {

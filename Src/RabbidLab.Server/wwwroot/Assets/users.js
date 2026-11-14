@@ -912,7 +912,16 @@
 
   // The menu: Properties, then a category for each kind of change, More, and Delete. Only what applies is listed; for
   // several, an item says how many of them it applies to.
-  const mi = (cmd, icon, label, { off = false, hint = '', danger = false } = {}) => (off || menuHide.has(cmd) || menuHide.has(cmd.split(':')[0]) ? ''
+  // What each change takes: resetting passwords, turning accounts off and on, or group membership. Anything else is
+  // editing (ad.change); looking, copying and exporting take nothing more, and Delete is checked where it's listed.
+  const NEEDS = { password: 'ad.password', unlock: 'ad.password', 'flag-on:mustchange': 'ad.password', 'flag-off:mustchange': 'ad.password',
+    enable: 'ad.enable', disable: 'ad.enable',
+    'groups-add': 'ad.groups', 'groups-remove': 'ad.groups', 'groups-remove-all': 'ad.groups', 'groups-copy': 'ad.groups', 'groups-copy-to': 'ad.groups',
+    'members-add': 'ad.groups', 'members-remove': 'ad.groups', 'members-copy': 'ad.groups', 'members-copy-to': 'ad.groups' };
+  const FREE = new Set(['open', 'clear-sel', 'attrs', 'export', 'delete', 'copy']);
+  const may = (cmd) => FREE.has(cmd.split(':')[0]) || can(NEEDS[cmd] || 'ad.change');
+  const anyChange = () => ['ad.change', 'ad.password', 'ad.enable', 'ad.groups'].some(can);
+  const mi = (cmd, icon, label, { off = false, hint = '', danger = false } = {}) => (off || !may(cmd) || menuHide.has(cmd) || menuHide.has(cmd.split(':')[0]) ? ''
     : `<button type="button" role="menuitem" class="am-link${danger ? ' out' : ''}" data-cmd="${cmd}">${svg(icon)}<span>${esc(label)}</span>${hint ? `<small>${esc(hint)}</small>` : ''}</button>`);
   const some = (k, n, cmd, icon, label) => mi(cmd, icon, label, { off: !k, hint: n > 1 && k < n ? `${k} of ${n}` : '' });
   const part = (...items) => (items.join('') ? `<div class="am-links">${items.join('')}</div>` : '');
@@ -955,7 +964,7 @@
     const xs = objs.filter((x) => mayChange(k, x));
     const n = xs.length;
     const has = (f) => xs.filter(f).length;
-    const change = can('ad.change') && n > 0;
+    const change = anyChange() && n > 0;
     const toggle = (flag, icon, onLabel, offLabel) => {
       const on = has((u) => u[FLAGS[flag][0]]);
       return some(n - on, n, `flag-on:${flag}`, icon, onLabel) + some(on, n, `flag-off:${flag}`, icon, offLabel);
@@ -1533,19 +1542,19 @@
   const dwFact = (label, value, wide = false) => `<div class="dw-fact${wide ? ' wide' : ''}"><span class="l">${esc(label)}</span><span class="v">${value || '<span class="muted">Not set</span>'}</span></div>`;
   // A section: its heading with its actions (only those this may do), then its facts.
   let dwNot = new Set(); // what's never sent for the one shown
-  const dwLink = (cmd, icon, label) => (!can('ad.change') || dwNot.has(cmd.split(':')[0]) ? '' : `<button type="button" class="dw-link" data-dw-cmd="${cmd}">${svg(icon)}${esc(label)}</button>`);
+  const dwLink = (cmd, icon, label) => (!may(cmd) || dwNot.has(cmd.split(':')[0]) ? '' : `<button type="button" class="dw-link" data-dw-cmd="${cmd}">${svg(icon)}${esc(label)}</button>`);
   const dwFacts = (title, items, links = '') => {
     const shown = items.filter(Boolean).join('');
     return shown ? `<section class="dw-sec"><div class="dw-sec-head"><h3>${esc(title)}</h3>${links ? `<div class="dw-links">${links}</div>` : ''}</div><div class="dw-facts">${shown}</div></section>` : '';
   };
   // A setting as a switch: on or off, and flipping it makes the change.
   const dwSwitch = (label, on, onCmd, offCmd, help = '') => {
-    const off = !can('ad.change') || dwNot.has(onCmd.split(':')[0]);
+    const off = !may(onCmd) || dwNot.has(onCmd.split(':')[0]);
     return `<label class="dw-fact dw-sw"><span>${esc(label)}${help ? `<small>${esc(help)}</small>` : ''}</span>`
       + `<input type="checkbox" class="switch" data-dw-on="${onCmd}" data-dw-off="${offCmd}"${on ? ' checked' : ''}${off ? ' disabled' : ''}></label>`;
   };
   const e1 = (v) => (v ? esc(v) : '');
-  const qa = (cmd, icon, label) => (dwNot.has(cmd) ? '' : `<button type="button" class="dw-qa" data-dw-cmd="${cmd}">${svg(icon)}<span>${esc(label)}</span></button>`);
+  const qa = (cmd, icon, label) => (dwNot.has(cmd) || !may(cmd) ? '' : `<button type="button" class="dw-qa" data-dw-cmd="${cmd}">${svg(icon)}<span>${esc(label)}</span></button>`);
   // Why a few things aren't there, for the ones that have them.
   const dwWhy = (k, x) => (k === 'users' && x.service ? `That's ${ad.state.account}, ${R.app()}'s own account. Its password and sign-in settings stay as they are, so ${R.app()} keeps working.`
     : k === 'computers' && x.controller ? 'A domain controller: it can\'t be disabled, moved or deleted here.' : '');
@@ -1558,7 +1567,7 @@
       : k === 'computers' ? pcStatus(x) + (x.controller ? chip('Domain controller', 'muted') : '') + (server(x) ? chip('Server', 'muted') : '')
         : badge(x.security ? 'Security group' : 'Distribution group', 'grey') + badge(x.scope, 'grey') + (x.protected ? badge('Privileged', 'amber') : '');
     // The everyday actions as buttons; More opens the whole menu.
-    const quick = !can('ad.change') ? '' : k === 'users'
+    const quick = !anyChange() ? '' : k === 'users'
       ? qa('password', 'key', 'Reset password') + (x.locked ? qa('unlock', 'unlock', 'Unlock') : '') + qa(x.enabled ? 'disable' : 'enable', x.enabled ? 'user-off' : 'user-check', x.enabled ? 'Disable' : 'Enable')
         + qa('edit', 'edit', 'Edit') + qa('groups-add', 'user-plus', 'Add to groups')
       : k === 'groups' ? qa('members-add', 'user-plus', 'Add members') + qa('groups-add', 'org', 'Add to groups') + qa('edit', 'edit', 'Edit')
@@ -1568,7 +1577,7 @@
       + `<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`
       + `<div class="dw-status">${status}</div>`
       + `<div class="dw-bar">${quick}<button type="button" class="dw-qa dw-more" data-dw-more aria-haspopup="menu">${svg('dots')}<span>More</span></button></div>`
-      + (why && can('ad.change') ? `<p class="hint dw-note">${esc(why)}</p>` : '');
+      + (why && anyChange() ? `<p class="hint dw-note">${esc(why)}</p>` : '');
   };
 
   const dwOverview = (k, x) => {
@@ -1608,7 +1617,7 @@
 
   // Its groups, each with a way out, and Add to groups.
   const dwMemberOf = (k, x) => {
-    const change = can('ad.change') && mayChange(k, x);
+    const change = can('ad.groups') && mayChange(k, x);
     const gs = x.groups || [];
     return `<section class="dw-sec"><div class="dw-sec-head"><h3>Member of <small>${gs.length}</small></h3>${change ? `<button type="button" class="small" data-dw-cmd="groups-add">${svg('user-plus')}Add to groups</button>` : ''}</div>`
       + (gs.length ? `<div class="dw-list">${gs.map((g) => `<div class="mrow"><span class="pic small">${svg('users')}</span><div class="two"><b>${esc(g.name)}</b><small>${esc(pathOf(g.dn))}</small></div>`
@@ -1620,7 +1629,7 @@
 
   // A group's members, read when the tab opens.
   const dwMembers = (g) => {
-    const change = can('ad.change') && mayChange('groups', g);
+    const change = can('ad.groups') && mayChange('groups', g);
     if (dw.membersFor !== g.dn) {
       dw.membersFor = g.dn;
       dw.members = null;
@@ -1680,7 +1689,7 @@
     disable: { label: 'Disable', doing: 'Disabling', icon: 'user-off', kinds: ['user', 'computer'], ask: true,
       run: (f) => (f.kind === 'computer' ? [`${pcPath({ name: f.username || f.name })}/enable`, { on: false }] : [`${userPath(f)}/enable`, { on: false }]) },
   };
-  const actOf = (s) => (s.act && ACTS[s.act] && can('ad.change') ? ACTS[s.act] : null);
+  const actOf = (s) => (s.act && ACTS[s.act] && can(s.act === 'disable' ? 'ad.enable' : 'ad.change') ? ACTS[s.act] : null);
   const dwFound = (s) => {
     const fs = s.found || [];
     if (!fs.length) return '';
@@ -2264,7 +2273,8 @@
   const same = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
   const pick = { select: null, sel: '', find: '', nodes: [], domain: '' };
   const PICK_LEADS = { 'dset-ou': 'Where the service account is created.', 'new-ou': 'Where the new user goes.', 'grp-ou': 'Where the new group goes.',
-    'adset-ou': 'Where New user puts them.', 'adset-gou': 'Where New group puts them.', 'adset-cou': 'Where New computer puts them.', 'pcnew-ou': 'Where the new computer account goes.' };
+    'adset-ou': 'Where New user puts them.', 'adset-gou': 'Where New group puts them.', 'adset-cou': 'Where New computer puts them.', 'pcnew-ou': 'Where the new computer account goes.',
+    'role-scope-add': 'An OU this role works in. Everything inside it counts too.' };
   const ouNode = (dn) => pick.nodes.find((n) => !n.domain && same(n.dn, dn));
   const kidsOf = (dn) => pick.nodes.filter((n) => !n.domain && same(n.parent, dn));
   const topOus = () => pick.nodes.filter((n) => !n.domain && !ouNode(n.parent));
@@ -2345,7 +2355,7 @@
     pick.select = select;
     pick.sel = select.value;
     pick.find = '';
-    pick.nodes = [...select.options].map((o) => ({ dn: o.value, path: o.textContent, name: dnName(o.value), parent: dnParent(o.value), domain: isDomain(o.value), fixed: o.dataset.fixed || '' }));
+    pick.nodes = [...select.options].filter((o) => o.value).map((o) => ({ dn: o.value, path: o.textContent, name: dnName(o.value), parent: dnParent(o.value), domain: isDomain(o.value), fixed: o.dataset.fixed || '' }));
     inPlace.clear(); // read afresh each time it opens
     const any = pick.nodes[0]?.dn || '';
     pick.domain = any.split(/(?<!\\),/).filter(isDomain).map((p) => p.slice(3)).join('.');

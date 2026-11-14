@@ -461,6 +461,7 @@ public sealed partial class DirectoryTools
     public async Task<AdPlace> Browse(string? dn, CancellationToken stop)
     {
         using var ldap = await Open(stop);
+        Reached(string.IsNullOrWhiteSpace(dn) ? ldap.BaseDn : Inside(dn, ldap.BaseDn));
         return await PlaceOf(ldap, dn, Ready().Domain!, stop);
     }
 
@@ -540,6 +541,7 @@ public sealed partial class DirectoryTools
     public async Task<AdObject> Attributes(string dn, CancellationToken stop)
     {
         using var ldap = await Open(stop);
+        Reached(Inside(dn, ldap.BaseDn));
         return await AttributesOf(ldap, Inside(dn, ldap.BaseDn), stop);
     }
 
@@ -554,7 +556,9 @@ public sealed partial class DirectoryTools
         var may = allowed?.Texts("allowedAttributes").ToList() ?? [];
         var writable = new HashSet<string>(allowed?.Texts("allowedAttributesEffective") ?? [], StringComparer.OrdinalIgnoreCase);
         await Describe(ldap, set.Keys.Concat(may), stop);
-        var inScope = Ldap.Under(at, Ready().Scope!);
+        // Editable only where the caller's roles let them edit attributes, which may be less than where they can look.
+        var inScope = Ldap.Under(at, Ready().Scope!)
+            && (Caller.Current is not { } caller || caller.Roles.Reach(caller.Who, Permissions.AdAttributes) is not { } reach || reach.Any(r => Ldap.Under(at, r)));
         bool CanEdit(string name) => inScope && writable.Contains(name) && SchemaOf.TryGetValue(name, out var s) && Editable(name, s.Syntax);
         var rows = set.Select(a =>
         {
@@ -581,9 +585,17 @@ public sealed partial class DirectoryTools
         var f = Ready();
         var at = Inside(dn, ldap.BaseDn);
         InScope(at, f, ldap.BaseDn);
+        await Ranked(ldap, at, stop);
         if (!AttributeName().IsMatch(name))
         {
             throw new ToolProblem("That isn't an attribute name.");
+        }
+        if (name.Equals("sAMAccountName", StringComparison.OrdinalIgnoreCase))
+        {
+            foreach (var v in values.Where(v => !string.IsNullOrWhiteSpace(v)))
+            {
+                Unclaimed(v!.Trim(), group: null);
+            }
         }
         await Describe(ldap, [name], stop);
         if (!SchemaOf.TryGetValue(name, out var schema))
@@ -808,7 +820,7 @@ public static class DirectoryExtrasApi
     public static void MapDirectoryExtrasApi(this WebApplication app)
     {
         app.MapGet("/api/ad/domain", (HttpContext context, IDirectoryExtras tools) => UsersApi.Try(context, Permissions.AdView, async () =>
-            Results.Ok(await tools.DomainSettings(context.RequestAborted)), change: false));
+            Results.Ok(await tools.DomainSettings(context.RequestAborted)), change: false, whole: true));
 
         // One domain setting changed from its side panel, signed in as a domain admin for it (not saved).
         app.MapPost("/api/ad/domain/{key}", (string key, DomainSettingForm form, HttpContext context, IDirectoryExtras tools, ActivityLog log) => UsersApi.Try(context, Permissions.AdConnect, async () =>
@@ -831,10 +843,10 @@ public static class DirectoryExtrasApi
                 By = Enumerable.Range(-3, 7).SelectMany(m => ours[(c.At.Ticks / TimeSpan.TicksPerMinute) + m])
                     .Where(e => Math.Abs((e.At - c.At).TotalMinutes) < 3 && Mentions(e.Title, c.Name)).MinBy(e => Math.Abs((e.At - c.At).Ticks))?.By,
             }));
-        }, change: false));
+        }, change: false, whole: true));
 
         app.MapGet("/api/ad/recycle", (HttpContext context, IDirectoryExtras tools) => UsersApi.Try(context, Permissions.AdView, async () =>
-            Results.Ok(await tools.RecycleBin(context.RequestAborted)), change: false));
+            Results.Ok(await tools.RecycleBin(context.RequestAborted)), change: false, whole: true));
 
         app.MapPost("/api/ad/recycle/restore", (DnForm form, HttpContext context, IDirectoryExtras tools, ActivityLog log) => UsersApi.Try(context, Permissions.AdChange, async () =>
         {
@@ -867,7 +879,7 @@ public static class DirectoryExtrasApi
 
         // The Attribute browser's find: anything in the domain by name.
         app.MapGet("/api/ad/object/find", (string? q, HttpContext context, IDirectoryExtras tools) => UsersApi.Try(context, Permissions.AdView, async () =>
-            Results.Ok(await tools.FindAnything(q, context.RequestAborted)), change: false));
+            Results.Ok(await tools.FindAnything(q, context.RequestAborted)), change: false, whole: true));
 
         // Edit… and Clear value in the Attribute browser: one attribute at a time, in the Activity log with what it was set to.
         app.MapPost("/api/ad/object/attribute", (AttributeForm form, HttpContext context, IDirectoryExtras tools, ActivityLog log) => UsersApi.Try(context, Permissions.AdAttributes, async () =>
