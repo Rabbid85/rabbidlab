@@ -799,3 +799,14 @@ body.dev-tools .devstrip:not([hidden]) { display: flex; flex-wrap: wrap; }
 .nm-step .t b { font-size: 14px; }
 .nm-cert-dl { display: inline-flex; align-items: center; gap: 7px; }
 .nm-cert-dl svg { width: 15px; height: 15px; }
+
+/* Number boxes: never the browser's spinner. R.stepper (console.js) puts the console's own − and + beside the box. */
+input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
+input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.stepper { display: inline-flex; flex: none; align-items: stretch; height: 38px; border: 1px solid var(--line-strong); border-radius: 8px; background: #0C0E17; overflow: hidden; }
+.stepper:focus-within { border-color: var(--accent-line); }
+.stepper input[type="number"] { width: 64px; height: auto; margin: 0; padding: 0 4px; border: 0; border-radius: 0; background: none; color: var(--title); font: inherit; font-size: 14px; text-align: center; }
+.stepper input[type="number"]:focus { outline: none; }
+.stepper button { display: grid; place-items: center; width: 34px; padding: 0; border: 0; border-radius: 0; background: none; color: #8B90A5; }
+.stepper button:hover { background: #1A1D2B; color: var(--title); }
+.stepper button svg { width: 14px; height: 14px; }

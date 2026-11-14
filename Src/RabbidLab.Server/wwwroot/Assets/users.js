@@ -621,7 +621,7 @@
     if (NO_VALUE.includes(r.op)) return '<span class="flt-none"></span>';
     if (f.type === 'days' || f.type === 'until' || f.type === 'number') {
       const after = f.type === 'number' ? '' : f.type === 'days' && r.op === 'olderThan' ? `days ago${f.never ? ', or never' : ''}` : 'days';
-      return `<span class="flt-num"><input type="number" min="0" max="3650" data-r-val="${i}" value="${esc(v[0] ?? '')}" aria-label="Number">${after ? `<span>${after}</span>` : ''}</span>`;
+      return `<span class="flt-num">${R.stepper(`min="0" max="3650" data-r-val="${i}" value="${esc(v[0] ?? '')}" aria-label="Number"`)}${after ? `<span>${after}</span>` : ''}</span>`;
     }
     if (f.type === 'text') return `<input type="text" data-r-val="${i}" value="${esc(v[0] ?? '')}" aria-label="Value" placeholder="Text" autocomplete="off" spellcheck="false">`;
     // Choices, OUs and groups: picked values as chips, and a box to add more from what the list holds.
@@ -760,6 +760,22 @@
     setTimeout(() => URL.revokeObjectURL(a.href), 5000);
   };
   $('dir-export').addEventListener('click', () => csvOf(rows, `${adPage}-${adView}`));
+  // Refresh: the open page's list read again from Active Directory, with the flask while it reads.
+  $('dir-refresh').addEventListener('click', async () => {
+    const k = adPage;
+    R.busy($('dir-lib'), 'Reading Active Directory again…');
+    try {
+      lists[k] = await AD[k].load();
+      say('dir-problem', '');
+    } catch (err) {
+      say('dir-problem', err.message);
+    } finally {
+      R.busy($('dir-lib'), '');
+    }
+    if (k !== adPage) return;
+    drawAd();
+    if ($('ad-drawer').open) drawDrawer();
+  });
 
   // --- One user, group or computer -----------------------------------------------------------------------------------
 
@@ -1750,8 +1766,10 @@
   const dwSetting = (s) => {
     const change = s.edit && can('ad.connect')
       ? '<section class="dw-sec"><div class="dw-sec-head"><h3>Change it</h3></div><div class="form dws-form">'
-        + (s.edit === 'switch' ? `<label class="dw-fact dw-sw"><span>${esc(s.name)}</span><input type="checkbox" class="switch" id="dws-value"${s.value ? ' checked' : ''}></label>`
-          : `<label for="dws-value">New value</label><span class="dws-num"><input type="number" id="dws-value" min="${s.min}" max="${s.max}" value="${s.value ?? ''}"><span>${esc(s.unit || '')}</span></span>`
+        // On and off: two choices to pick, then Save (not a switch, which would look like it changes straight away).
+        + (s.edit === 'switch' ? `<label>New value</label><div class="seg dws-seg" id="dws-value" role="radiogroup" aria-label="New value">${[[1, 'On'], [0, 'Off']]
+          .map(([v, label]) => `<button type="button" role="radio" data-dws-v="${v}" aria-pressed="${Number(s.value) === v}" aria-checked="${Number(s.value) === v}">${label}</button>`).join('')}</div>`
+          : `<label for="dws-value">New value</label><span class="dws-num">${R.stepper(`id="dws-value" min="${s.min}" max="${s.max}" value="${s.value ?? ''}"`)}<span>${esc(s.unit || '')}</span></span>`
             + `<small class="hint">From ${s.min} to ${s.max}.</small>`)
         + `<label for="dws-user">Domain admin</label><input id="dws-user" autocomplete="off" spellcheck="false" placeholder="AMW\\admin" value="${esc(dwsUser)}">`
         + '<label for="dws-pass">Password</label><input type="password" id="dws-pass" autocomplete="new-password">'
@@ -1767,7 +1785,7 @@
   };
   const saveSetting = async (s) => {
     const el = $('dws-value');
-    const value = s.edit === 'switch' ? String(el.checked) : el.value.trim();
+    const value = s.edit === 'switch' ? String(el.querySelector('[aria-pressed="true"]')?.dataset.dwsV === '1') : el.value.trim();
     dwsUser = $('dws-user').value.trim();
     const password = $('dws-pass').value;
     say('dws-problem', '');
@@ -1852,7 +1870,9 @@
     if (!x) return;
     const k = dw.kind;
     if (k === 'domain') {
-      if (e.target.closest('[data-dws-save]')) saveSetting(x);
+      const pick = e.target.closest('[data-dws-v]');
+      if (pick) pick.parentElement.querySelectorAll('[data-dws-v]').forEach((b) => { b.setAttribute('aria-pressed', String(b === pick)); b.setAttribute('aria-checked', String(b === pick)); });
+      else if (e.target.closest('[data-dws-save]')) saveSetting(x);
       else if (e.target.closest('[data-dws-admins]')) openAdmins();
       return;
     }

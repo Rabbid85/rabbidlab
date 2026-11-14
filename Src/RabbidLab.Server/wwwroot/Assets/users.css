@@ -332,7 +332,7 @@ button.danger.solid:hover { background: #DB4860; }
 .dbar .cnt[hidden] { display: none; }
 .dbar .small .chev { width: 12px; height: 12px; color: #8B90A5; }
 #dir-act:disabled { opacity: .45; cursor: default; }
-#dir-filter { padding: 0 9px; } /* just the funnel, and its count */
+#dir-filter, #dir-refresh { padding: 0 9px; } /* just the icon (and the funnel's count) */
 #dir-filter.on { border-color: var(--accent-line); color: var(--title); }
 /* Clear filter sits joined to Filter while one is on. */
 #dir-filter:has(+ #dir-filter-x:not([hidden])) { border-top-right-radius: 0; border-bottom-right-radius: 0; }
@@ -475,7 +475,6 @@ dialog.drawer:not(:modal) { z-index: 60; }
 /* A domain setting in the side panel: its new value, the domain admin it's changed as, and Save. */
 .dws-form { display: grid; gap: 6px; }
 .dws-form > label:not(.dw-sw) { margin-top: 8px; color: #8A8FA8; font-size: 12px; font-weight: 600; }
-.dws-form .dw-sw { margin-top: 2px; }
 .dws-num { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; }
 .dws-num input { width: 130px; }
 .dws-foot { display: flex; justify-content: flex-end; margin: 14px 0 6px; }
@@ -487,3 +486,6 @@ dialog.drawer:not(:modal) { z-index: 60; }
 .attrs-side .nm small { display: block; margin-top: 1px; overflow: hidden; color: #6D7290; font-size: 11.5px; font-weight: 500; white-space: nowrap; text-overflow: ellipsis; }
 .attrs-side .nm small:empty { display: none; }
 .attrs-side #at-items a:has(.nm small:not(:empty)) { height: auto; min-height: 46px; padding-top: 6px; padding-bottom: 6px; }
+.flt-num .stepper { height: 36px; }
+.dws-seg { margin: 0; }
+.dws-seg button { height: 34px; padding: 0 18px; font-size: 13px; }

@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.140 (2026-11-13)
+
+- The Active Directory toolbar has a Refresh button that reads the open list again, with the flask while it reads.
+- Number boxes have the console own minus and plus instead of the browser spinner, and on or off domain settings are an On and Off choice you then save.
+
 ## 1.1.139 (2026-11-13)
 
 - The Attribute browser has a find box over its folders that finds any user, group, computer or OU by name across the domain, with where each one is. Click one to open it; the matches stay until the box is cleared.

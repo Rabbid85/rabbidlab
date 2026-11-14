@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.140', [
+    'The Active Directory toolbar has a Refresh button that reads the open list again, with the flask while it reads.',
+    'Number boxes have the console own minus and plus instead of the browser spinner, and on or off domain settings are an On and Off choice you then save.']],
   ['1.1.139', [
     'The Attribute browser has a find box over its folders that finds any user, group, computer or OU by name across the domain, with where each one is. Click one to open it; the matches stay until the box is cleared.']],
   ['1.1.138', [
@@ -2640,7 +2643,21 @@ const RELEASE_NOTES = [
     if (sub === 'address') consoleAddress();
   });
 
+  // Number boxes: no browser spinner (console.css), and − and + of the console's own beside the box. stepper(attrs)
+  // gives the box with its buttons; a click steps it within its min and max, as if typed.
+  const stepper = (attrs) => `<span class="stepper"><button type="button" data-step="down" aria-label="Less">${svg('minus')}</button>`
+    + `<input type="number" ${attrs}><button type="button" data-step="up" aria-label="More">${svg('plus')}</button></span>`;
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('.stepper [data-step]');
+    const box = b?.parentElement.querySelector('input[type="number"]');
+    if (!box || box.disabled) return;
+    if (b.dataset.step === 'up') box.stepUp();
+    else box.stepDown();
+    box.dispatchEvent(new Event('input', { bubbles: true }));
+    box.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+
   // What the other scripts use. Hints are tips.js and data grids are grid.js.
-  window.RabbidLab = { app: () => product, $, esc, svg, say, initials, when, daysAgo, send, get, keep, forget, has, paint, where, viewAs, place, popups, option, dropdown, sure, copy, busy, groupTools, groupFilter, squares, squareSize, ping, skeleton, toast,
+  window.RabbidLab = { app: () => product, $, esc, svg, say, initials, when, daysAgo, send, get, keep, forget, has, paint, where, viewAs, place, popups, option, dropdown, sure, copy, busy, groupTools, groupFilter, squares, squareSize, ping, skeleton, toast, stepper,
     palette: window.RabbidLabColours.roles, me: () => meInfo };
 })();
