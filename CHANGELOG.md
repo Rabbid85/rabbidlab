@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.161 (2026-11-14)
+
+- Local accounts is worded the way Active Directory is: Disabled, Disable and Enable in place of Turned off, plus Password never expires, Last sign-in and This computer.
+
 ## 1.1.160 (2026-11-14)
 
 - While a computer is locked, the client service cannot be stopped, paused, disabled or deleted from the computer, and Windows starts it again if its process is ended. Allowing uninstall in Rabbid Lab, or entering the uninstall code, lifts that within a minute.

@@ -1903,21 +1903,21 @@
   const isAdmin = (a) => (a.groups || []).includes(adminsName());
   const pcChips = (a) => [
     isAdmin(a) && chip('Administrator', 'ember', 'shield'),
-    !a.enabled && chip('Turned off', 'off', 'power'),
+    !a.enabled && chip('Disabled', 'off', 'power'),
     a.locked && chip('Locked out', 'amber', 'lock'),
-    a.builtIn && chip('Built in', 'muted'),
-    a.neverExpires && chip('Never expires', 'muted'),
+    a.builtIn && chip('Built-in', 'muted'),
+    a.neverExpires && chip('Password never expires', 'muted'),
   ].filter(Boolean).join('');
   const localBase = (a) => `/api/windows/${encodeURIComponent(pcId)}/accounts/${encodeURIComponent(a.name)}`;
 
   const drawLocal = () => {
     $('us-computers').innerHTML = computers.map((c) => `<a href="#local/${encodeURIComponent(c.id)}" class="pc"${c.id === pcId ? ' aria-current="page"' : ''}>`
-      + `${svg(c.server ? 'server' : 'monitor')}<span class="nm">${esc(c.name)}</span>${c.here ? '<small>This one</small>' : ''}`
+      + `${svg(c.server ? 'server' : 'monitor')}<span class="nm">${esc(c.name)}</span>${c.here ? '<small>This computer</small>' : ''}`
       + `<i class="pcdot ${c.ready ? 'on' : c.online ? 'warn' : 'off'}" title="${esc(c.ready ? 'Ready' : c.why || 'Offline')}"></i></a>`).join('')
       || '<p class="side-sub">No computers in Devices yet.</p>';
     const c = computer();
     $('us-pc-title').textContent = c ? c.name : computers.length ? 'Not found' : 'No computers yet';
-    $('us-pc-line').textContent = c ? [c.server ? 'This server' : c.os, c.user ? `${c.user} is on it` : ''].filter(Boolean).join(' · ') : '';
+    $('us-pc-line').textContent = c ? [c.server ? 'This server' : c.os, c.user ? `Signed in: ${c.user}` : ''].filter(Boolean).join(' · ') : '';
     say('us-pc-why', c && !c.ready ? c.why : '');
     $('us-pc-new').disabled = !c?.ready || !pc;
     const find = $('us-find').value.trim().toLowerCase();
@@ -1925,7 +1925,7 @@
       && (!find || [a.name, a.fullName, a.description].some((v) => String(v || '').toLowerCase().includes(find)))) : [];
     $('us-pc-rows').innerHTML = !pc ? '' : local.map((a, i) => `<div class="prow urow" tabindex="0" data-i="${i}">`
       + `<div class="who"><span class="pic local">${svg('key')}</span><div><b>${esc(a.name)}</b><span>${esc(a.fullName || a.description || '')}</span></div></div>`
-      + `<div class="chips-in">${pcChips(a)}</div><div class="seen">${a.lastSignIn ? `Signed in ${esc(ago(a.lastSignIn).toLowerCase())}` : 'Never signed in'}</div></div>`).join('')
+      + `<div class="chips-in">${pcChips(a)}</div><div class="seen">${a.lastSignIn ? `Last sign-in: ${esc(ago(a.lastSignIn))}` : 'Never signed in'}</div></div>`).join('')
       || '<p class="hint">No accounts to show.</p>';
   };
 
@@ -1947,12 +1947,12 @@
     const change = can('windows.change');
     const others = pc.groups.filter((g) => !(a.groups || []).includes(g.name));
     const btn = (actKey, icon, label) => `<button type="button" class="dw-qa" data-act="${actKey}">${svg(icon)}<span>${esc(label)}</span></button>`;
-    const acts = (change ? btn('password', 'key', 'Set a password') + btn('power', a.enabled ? 'user-off' : 'user-check', a.enabled ? 'Turn off' : 'Turn on') : '')
+    const acts = (change ? btn('password', 'key', 'Set a password') + btn('power', a.enabled ? 'user-off' : 'user-check', a.enabled ? 'Disable' : 'Enable') : '')
       + (can('windows.delete') && !a.builtIn ? btn('delete', 'trash', 'Delete') : '');
     const gs = a.groups || [];
     return `<div class="dw-head"><span class="pic dw-pic local">${svg('key')}</span><div class="dw-name"><h2 id="dw-title">${esc(a.name)}</h2><p>${esc(computer()?.name || '')}</p></div>`
       + `<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`
-      + `<div class="dw-status">${pcChips(a) || chip('On', 'ok')}</div>${acts ? `<div class="dw-bar">${acts}</div>` : ''}`
+      + `<div class="dw-status">${pcChips(a) || chip('Enabled', 'ok')}</div>${acts ? `<div class="dw-bar">${acts}</div>` : ''}`
       + dwFacts('Account', [dwFact('Full name', e1(a.fullName)), dwFact('Last sign-in', esc(ago(a.lastSignIn))), dwFact('Description', e1(a.description), true)])
       + `<section class="dw-sec"><div class="dw-sec-head"><h3>Groups <small>${gs.length}</small></h3>`
       + `${change && others.length ? `<select class="gpick" data-act="group" aria-label="Add to a group"><option value="">Add to…</option>${others.map((g) => `<option>${esc(g.name)}</option>`).join('')}</select>` : ''}</div>`
@@ -2563,7 +2563,7 @@
         acctHits = await R.get(`/api/ad/look/accounts?domain=${encodeURIComponent($('dset-domain').value.trim())}&q=${encodeURIComponent(q)}`);
         if (n !== acctAsk) return;
         html = (q ? '' : '<p class="drop-note">Service accounts in Active Directory</p>')
-          + (acctHits.map((h, i) => R.option(` data-acct="${i}"`, `<span class="pic">${svg('user')}</span>`, h.enabled ? h.username : `${h.username} (turned off)`,
+          + (acctHits.map((h, i) => R.option(` data-acct="${i}"`, `<span class="pic">${svg('user')}</span>`, h.enabled ? h.username : `${h.username} (disabled)`,
             [h.name, h.description, h.where].filter(Boolean).join(' · '))).join('') || `<p class="drop-note">${q ? 'No account like that.' : 'None that look like service accounts. Type to find one.'}</p>`);
       } catch (err) {
         if (n !== acctAsk) return;
@@ -2623,7 +2623,7 @@
     const body = got.loading ? `<div class="op-items ap-items">${'<i class="sk op-sk"></i>'.repeat(6)}</div>`
       : got.problem ? `<p class="hint problem">${esc(got.problem)}</p>`
       : got.items.length ? `<p class="op-count">${got.items.length} account${got.items.length === 1 ? '' : 's'}</p><div class="op-items ap-items">${got.items.map((h) => `<button type="button" class="op-item ap-acct${same(ap.sel, h.username) ? ' on' : ''}" data-ap-acct="${esc(h.username)}"${h.enabled ? '' : ' data-off'}>`
-        + `${svg('user')}<b>${esc(h.username)}${h.enabled ? '' : ' (turned off)'}</b><small>${esc([h.name, h.description, q ? h.where : ''].filter(Boolean).join(' · '))}</small></button>`).join('')}</div>`
+        + `${svg('user')}<b>${esc(h.username)}${h.enabled ? '' : ' (disabled)'}</b><small>${esc([h.name, h.description, q ? h.where : ''].filter(Boolean).join(' · '))}</small></button>`).join('')}</div>`
       : `<p class="op-count">${q ? 'No account like that.' : 'No user accounts directly in here. Pick another OU on the left, or find it by name.'}</p>`;
     $('acctpick-page').innerHTML = head + body;
     $('acctpick-use').disabled = !ap.sel;

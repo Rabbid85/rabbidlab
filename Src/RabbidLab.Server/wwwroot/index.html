@@ -797,14 +797,14 @@
   <!-- Local accounts: the Windows accounts on this server and on each computer in Devices, whose client makes the change (users.js). -->
   <section class="page people-page users-page" id="page-local" data-page="local" data-title="Local accounts" hidden>
     <header class="page-head"><h1>Local accounts</h1>
-      <p>The Windows accounts on this server and on each computer in Devices. No service account is needed: this server makes its own changes, and on the other computers the <span data-app>Rabbid Lab</span> client does, straight away.</p></header>
+      <p>Local Windows accounts on this server and on every computer in Devices. No service account is needed: <span data-app>Rabbid Lab</span> changes accounts on this server itself, and its client changes them on the other computers.</p></header>
     <div class="lib">
       <aside class="side" aria-label="Computers">
         <label class="side-find"><svg><use href="#i-search"/></svg><input type="search" id="us-find" placeholder="Find an account" aria-label="Find an account" autocomplete="off" spellcheck="false"></label>
         <p class="side-label">Computers</p>
         <div class="side-list" id="us-computers"></div>
         <p class="side-label">Show</p>
-        <label class="tick"><input type="checkbox" id="us-off" checked>Turned-off accounts</label>
+        <label class="tick"><input type="checkbox" id="us-off" checked>Disabled accounts</label>
         <label class="tick"><input type="checkbox" id="us-system">Built-in accounts</label>
       </aside>
       <div class="lib-body">

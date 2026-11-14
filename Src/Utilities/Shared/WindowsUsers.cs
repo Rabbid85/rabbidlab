@@ -225,7 +225,7 @@ public static class WindowsUsers
                 case AccountOrder.Delete:
                     if (BuiltIn(user))
                     {
-                        return AccountAnswer.Failed(id, $"{user.SamAccountName} is one of Windows' own accounts. Turn it off instead.");
+                        return AccountAnswer.Failed(id, $"{user.SamAccountName} is a built-in Windows account. Disable it instead.");
                     }
                     user.Delete();
                     return new AccountAnswer { Id = id, Ok = true };

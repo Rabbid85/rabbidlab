@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.161', [
+    'Local accounts is worded the way Active Directory is: Disabled, Disable and Enable in place of Turned off, plus Password never expires, Last sign-in and This computer.']],
   ['1.1.160', [
     'While a computer is locked, the client service cannot be stopped, paused, disabled or deleted from the computer, and Windows starts it again if its process is ended. Allowing uninstall in Rabbid Lab, or entering the uninstall code, lifts that within a minute.']],
   ['1.1.159', [
