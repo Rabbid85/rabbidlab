@@ -29,6 +29,8 @@
 .hero .tile.sen.s-warn { box-shadow: 0 0 0 2px #0C0D16, 0 0 0 4px var(--amber); }
 .hero .tile.sen.s-down { z-index: 2; background: var(--red); color: #fff; animation: none; box-shadow: 0 0 0 2px #0C0D16, 0 0 0 4px var(--red), 0 0 18px rgba(255, 107, 125, .5); }
 .hero .tile.sen.s-down::after { content: ""; position: absolute; inset: -3px; border: 1.5px solid var(--red); border-radius: inherit; animation: sn-ring 1.6s ease-out infinite; }
+.hero .tile.sen.still, .hero .tile.sen.still::after { animation: none; }
+.hero .tile.sen.still.s-down::after { content: none; } /* a check that is off glows red but does not pulse: it is not going anywhere */
 @keyframes sn-ring { from { scale: 1; opacity: .8; } to { scale: 1.55; opacity: 0; } }
 /* In the grid a down one stays its size, red with a thin ring: nothing spills onto the squares around it. */
 .hero .tile.sen.gridded.s-down { box-shadow: 0 0 0 2px #0C0D16, 0 0 0 3px var(--red), 0 0 12px rgba(255, 107, 125, .45); }

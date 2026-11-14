@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.143', [
+    'Active Directory and Domain health have the same banner as Overview, Links and Sensors: the page name, a line on what is open, its numbers, and squares on the right. Org chart and the Attribute browser share it.',
+    'On Domain health the squares are the checks, red where one is not as recommended and amber where one is worth a look. Click one to open it in the side panel.']],
   ['1.1.142', [
     'Domain settings is now Domain health, with about 30 new checks taken from PingCastle, Defender for Identity and Microsoft guidance: accounts with no password needed, admins outside Protected Users, Kerberoastable admins, stale users and computers, old Windows, LAPS coverage, backups, AD CS templates, trusts and DNS zones.',
     'Each check lists what it found in the side panel. Tick the ones to change and fix them right there (require a password, mark sensitive, turn off DES, disable and so on), or open one in its own page.',
@@ -542,7 +545,7 @@ const RELEASE_NOTES = [
     sub.classList.toggle('one-sec', !!one);
     // Active Directory's pages are listed down the left of whichever of them is open, with that page's views (users.js).
     // Domain health is its own area: its own entry in the sidebar, and only its views down the left.
-    const dir = now.classList.contains('dir-area');
+    const dir = now.classList.contains('dir-top');
     const domain = now.dataset.page === 'ad' && rest[0] === 'domain';
     if (now.dataset.page !== 'ad') $('dir-rail').classList.remove('lists'); // Find, views and filters are for the pages that list things
     $('dir-rail').classList.toggle('domain-only', domain);
@@ -551,7 +554,10 @@ const RELEASE_NOTES = [
       $('dir-title').textContent = now.dataset.title;
     }
     if (dir) {
-      now.querySelector('.page-head').after($('dir-rail'));
+      // One banner and one list down the left for all of them, moved to the open one.
+      now.prepend($('dir-hero'));
+      now.querySelector('.dir-area').prepend($('dir-rail'));
+      if (now.id !== 'page-ad') $('dir-title').textContent = 'Active Directory';
       $(domain ? 'rail-domain' : 'rail-dir').setAttribute('aria-current', 'page');
       if (domain) $('rail-dir').removeAttribute('aria-current');
       mark(document.querySelectorAll('#dir-rail a[data-adpage]'), 'adpage', now.dataset.page === 'ad' ? where()[2][0] || 'users' : now.dataset.page);
@@ -1732,10 +1738,10 @@ const RELEASE_NOTES = [
     layOut(hero);
   };
 
-  // Still tiles over the right of the hero, placed the same way every time.
-  const scatter = () => {
+  // Still tiles over the right of a hero, placed the same way every time: Overview's, and the directory pages'.
+  const scatter = (hero, start) => {
     const COLOURS = window.RabbidLabColours.tiles;
-    let seed = 20261109;
+    let seed = start;
     const r = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
     for (let i = 0; i < 22; i++) {
       const t = document.createElement('i');
@@ -1743,12 +1749,12 @@ const RELEASE_NOTES = [
       const kind = roll < 0.18 ? 'dot' : roll < 0.42 ? 'outline' : 'fill';
       const size = `${kind === 'dot' ? 4 + r() * 5 : 10 + r() * 26}px`;
       const colour = COLOURS[Math.floor(r() * COLOURS.length)];
-      t.className = `tile ${kind}`;
+      t.className = `tile deco ${kind}`;
       Object.assign(t.style, { left: `${58 + r() * 38}%`, top: `${4 + r() * 86}%`, width: size, height: size,
         transform: `rotate(${r() * 90}deg)`, opacity: String(0.35 + r() * 0.5) });
       if (kind === 'outline') t.style.border = `1.5px solid ${colour}`;
       else t.style.background = colour;
-      $('hero').prepend(t);
+      hero.prepend(t);
     }
   };
 
@@ -1793,7 +1799,8 @@ const RELEASE_NOTES = [
   document.addEventListener('DOMContentLoaded', () => {
     notes();
     drawBrand(); // the lab's name and icon as this browser last saw them, before the server answers
-    scatter();
+    scatter($('hero'), 20261109);
+    scatter($('dir-hero'), 20261113);
     drawSquaresPicker();
     setInterval(uptime, 60000);
     // Starting: the rail and the page stay hidden (body.booting) until sign-in has answered and the page's first reads are back, so a

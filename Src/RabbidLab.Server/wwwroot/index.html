@@ -735,8 +735,15 @@
   </section>
 
   <!-- Active Directory: users, groups and computers, each with its views down the left, changed as Rabbid Lab's own AD account (users.js). -->
-  <section class="page people-page dir-page dir-area" id="page-ad" data-page="ad" data-title="Active Directory" hidden>
-    <header class="page-head dhead"><h1 id="dir-title">Active Directory</h1><p id="dir-lead"></p></header>
+  <section class="page home dir-top people-page dir-page" id="page-ad" data-page="ad" data-title="Active Directory" hidden>
+    <!-- The banner over every directory page (Active Directory, Domain health, Org chart, Attribute browser): console.js moves it to the open one, users.js fills it. -->
+    <header class="hero" id="dir-hero">
+      <p class="eyebrow" id="dir-eyebrow">Directory</p>
+      <h1 class="hero-title" id="dir-title">Active Directory</h1>
+      <p class="hero-lead"><b id="dir-state"></b> <span id="dir-lead"></span></p>
+      <div class="hero-stats" id="dir-stats"></div>
+    </header>
+  <div class="dir-area">
     <div class="dgate" id="dir-setup" hidden></div>
     <!-- Active Directory's pages, down the left of whichever of them is open (console.js moves this there), then the open page's views (users.js). -->
     <nav class="dnav" id="dir-rail" aria-label="Active Directory">
@@ -778,6 +785,7 @@
     <p class="hint note" id="dir-note" hidden></p>
     </div>
     <!-- One user, group or computer: what it is, and what can be done to it. -->
+  </div>
   </section>
 
   <!-- Local accounts: the Windows accounts on this server and on each computer in Seats, whose client makes the change (users.js). -->
@@ -805,8 +813,8 @@
   </section>
 
   <!-- Org chart: who reports to whom, from each person's Manager in Active Directory (directory.js). -->
-  <section class="page org-page dir-area" id="page-org" data-page="org" data-title="Org chart" hidden>
-    <header class="page-head dhead"><h1>Active Directory</h1><p>Org chart: who reports to whom, from each person's Manager in Active Directory.</p></header>
+  <section class="page home dir-top org-page" id="page-org" data-page="org" data-title="Org chart" data-lead="Who reports to whom, from each person's Manager in Active Directory." hidden>
+  <div class="dir-area">
     <div class="dgate" id="org-setup" hidden></div>
     <div class="dmain">
     <div class="ln-tools" id="org-tools" hidden><label class="side-find"><svg><use href="#i-search"/></svg><input type="search" id="org-find" placeholder="Find a person" aria-label="Find a person" autocomplete="off" spellcheck="false"></label>
@@ -815,11 +823,12 @@
     <div class="org" id="org-tree"></div>
     <p class="hint problem" id="org-problem" hidden></p>
     </div>
+  </div>
   </section>
 
   <!-- Attribute browser: the directory as a tree, and every attribute of whatever's picked (directory.js). -->
-  <section class="page people-page attrs-page dir-area" id="page-attrs" data-page="attrs" data-title="Attribute browser" hidden>
-    <header class="page-head dhead"><h1>Active Directory</h1><p>Attribute browser: every OU, container and object in the domain, and every attribute each one has.</p></header>
+  <section class="page home dir-top people-page attrs-page" id="page-attrs" data-page="attrs" data-title="Attribute browser" data-lead="Every OU, container and object in the domain, and every attribute each one has." hidden>
+  <div class="dir-area">
     <div class="dgate" id="at-setup" hidden></div>
     <div class="dmain">
     <div class="lib" id="at-lib">
@@ -839,6 +848,7 @@
       </div>
     </div>
     </div>
+  </div>
   </section>
 
   <!-- Wiki: how to do everything, step by step, with links to the pages it talks about (wiki.js reads Assets/wiki.html). -->

@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.143 (2026-11-13)
+
+- Active Directory and Domain health have the same banner as Overview, Links and Sensors: the page name, a line on what is open, its numbers, and squares on the right. Org chart and the Attribute browser share it.
+- On Domain health the squares are the checks, red where one is not as recommended and amber where one is worth a look. Click one to open it in the side panel.
+
 ## 1.1.142 (2026-11-13)
 
 - Domain settings is now Domain health, with about 30 new checks taken from PingCastle, Defender for Identity and Microsoft guidance: accounts with no password needed, admins outside Protected Users, Kerberoastable admins, stale users and computers, old Windows, LAPS coverage, backups, AD CS templates, trusts and DNS zones.

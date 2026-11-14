@@ -580,6 +580,15 @@ section.page.dir-area, section.page.set-area { max-width: 1264px; padding: 52px 
 .dir-area > .page-head, .set-area > .page-head { grid-column: 1 / -1; grid-row: 1; }
 .dir-area > .dnav, .set-area > .dnav { grid-column: 1; grid-row: 2; }
 .dir-area > .dmain, .set-area > .dmain { grid-row: 2; }
+/* The directory pages (Active Directory, Domain health, Org chart, Attribute browser): the same banner as Overview, Links
+   and Sensors across the top, then the pages down the left and the open one beside them, lined up with the banner's text. */
+section.page.home.dir-top { max-width: none; padding: 0; gap: 0; }
+.dir-top > .dir-area { display: grid; grid-template-columns: 224px minmax(0, 1fr); gap: 22px 16px; align-content: start; padding: 28px var(--side) 40px; }
+.dir-top > .dir-area > .dnav, .dir-top > .dir-area > .dmain { grid-row: 1; }
+#dir-hero .hero-lead { max-width: 720px; }
+#dir-hero.checks .hero-lead { max-width: 580px; } /* clear of the squares */
+/* Domain health's squares are its checks; the other pages have the Overview's still tiles. */
+#dir-hero.checks > .tile.deco, #dir-hero:not(.checks) > .tile.sen { display: none; }
 .dhead h1 { font: 800 30px/1.15 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; letter-spacing: -.02em; color: #fff; }
 .dhead p { max-width: 680px; margin-top: 10px; color: #B4B8C8; font-size: 14px; line-height: 1.55; }
 .dmain { grid-column: 2; display: grid; gap: 18px; align-content: start; min-width: 0; }
@@ -655,6 +664,8 @@ section.page.dir-area, section.page.set-area { max-width: 1264px; padding: 52px 
   section.page.dir-area, section.page.set-area, .layout-wide section.page.dir-area, .layout-wide section.page.set-area { grid-template-columns: minmax(0, 1fr); padding: 30px 18px; }
   .dir-area > .dnav, .set-area > .dnav, .dmain { grid-column: 1; }
   .dir-area > .dmain, .set-area > .dmain { grid-row: 3; }
+  .dir-top > .dir-area { grid-template-columns: minmax(0, 1fr); padding: 22px var(--side) 30px; }
+  .dir-top > .dir-area > .dmain { grid-row: 2; }
   .dnav { position: static; max-height: none; }
 }
 /* Appearance, Layout: Centered puts every page in a column in the middle, the banners on Overview, Links and Sensors still

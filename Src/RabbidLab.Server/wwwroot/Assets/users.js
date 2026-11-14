@@ -143,7 +143,7 @@
     },
     domain: {
       title: 'Domain health', noun: ['check', 'checks'], add: null, key: (s) => s.key,
-      lead: 'How the domain is set up and what is in it, checked against what Microsoft, PingCastle and Defender for Identity recommend.',
+      lead: 'Checked against what Microsoft, PingCastle and Defender for Identity recommend.',
       load: () => R.get('/api/ad/domain'),
       find: (s) => [s.name, s.area, s.now, s.about, s.source, ...(s.found || []).map((f) => f.name)],
       views: [
@@ -455,7 +455,7 @@
   const drawAd = () => {
     const p = page();
     const s = ad?.state;
-    $('dir-lead').textContent = p.lead;
+    drawHero();
     $('dir-setup').hidden = !!s;
     $('dir-lib').hidden = !s;
     // Find, the views and the filters show in the list down the left while a page that lists things is open.
@@ -522,7 +522,103 @@
     drawBanner();
   };
 
-  // A line above the table: the Recycle Bin's state, how Domain health stands, and what the audit can say.
+  // The banner over the directory pages (index.html, #dir-hero): what's open, its numbers, and on Domain health a square
+  // for each check. Org chart and the Attribute browser get their name, what they show, and the counts read so far.
+  const HERO_STATS = { users: ['all', 'locked', 'expired', 'inactive'], groups: ['all', 'security', 'privileged', 'empty'], computers: ['all', 'servers', 'workstations', 'stale'],
+    domain: ['all', 'off', 'look', 'notes'], audit: ['all', 'week', 'day', 'deleted'], recycle: ['all', 'users', 'groups', 'computers'] };
+  const STAT_ICON = { locked: 'lock', expired: 'key', inactive: 'hourglass', stale: 'hourglass', security: 'shield', privileged: 'crown', empty: 'users', servers: 'server',
+    workstations: 'laptop', off: 'alert', look: 'eye', notes: 'list', week: 'calendar', day: 'clock', deleted: 'trash', users: 'user', groups: 'users', computers: 'laptop' };
+  const stat = (n, icon, label) => `<div><b>${n === null ? '<i class="sk sk-num"></i>' : esc(n.toLocaleString())}</b><span>${svg(icon)}${esc(label)}</span></div>`;
+  const drawHero = (other = '') => {
+    const at = R.where()[0];
+    if (!other && at !== 'ad') other = at === 'org' || at === 'attrs' ? at : ''; // a list read again while another page is open
+    if (!other && at !== 'ad') return;
+    const hero = $('dir-hero');
+    $('dir-eyebrow').textContent = ad?.state ? `${ad.state.domain} · Directory` : 'Directory';
+    if (other) {
+      const pg = $(`page-${other}`);
+      $('dir-state').textContent = `${pg.dataset.title}.`;
+      $('dir-lead').textContent = pg.dataset.lead || '';
+      $('dir-stats').innerHTML = ['users', 'groups', 'computers'].filter((k) => total[k] !== undefined).map((k) => stat(total[k], PAGE_ICON[k], AD[k].title)).join('');
+      hero.classList.remove('checks', 'bad');
+      return;
+    }
+    const p = page();
+    const list = lists[adPage];
+    const n = list ? counts() : {};
+    const bad = list && adPage === 'domain' ? list.filter((s) => s.tone === 'bad').length : 0;
+    const warn = list && adPage === 'domain' ? list.filter((s) => s.tone === 'warn').length : 0;
+    $('dir-state').textContent = adPage !== 'domain' ? `${p.title}.` : !list ? '' : bad || warn
+      ? `${bad ? `${bad} not as recommended` : 'Nothing is off'}${warn ? `, ${warn} worth a look` : ''}.` : 'Everything is as recommended.';
+    $('dir-lead').textContent = p.lead;
+    $('dir-stats').innerHTML = !ad?.state ? '' : HERO_STATS[adPage].map((key) => {
+      const v = allViews().find((x) => x.key === key);
+      const label = key === 'all' ? p.noun[1].charAt(0).toUpperCase() + p.noun[1].slice(1) : v?.label || key;
+      return stat(list ? n[key] ?? 0 : null, key === 'all' ? PAGE_ICON[adPage] : STAT_ICON[key] || PAGE_ICON[adPage], label);
+    }).join('');
+    drawCheckSquares();
+  };
+  // Domain health's checks as squares, coloured by how each came out; clicking one opens it in the side panel.
+  const SQ = { good: 's-up', warn: 's-warn', bad: 's-down', info: 's-up', unknown: 's-paused' };
+  const spread = (t) => { let h = 7; for (const c of t) h = (h * 31 + c.charCodeAt(0)) % 100003; return h / 100003; };
+  const checkSq = new Map();
+  const drawCheckSquares = () => {
+    const hero = $('dir-hero');
+    const list = adPage === 'domain' && ad?.state ? lists.domain : null;
+    hero.classList.toggle('checks', !!list);
+    hero.classList.toggle('bad', !!list && list.some((s) => s.tone === 'bad'));
+    if (!list) return;
+    const size = R.squareSize(list.length);
+    const items = list.map((s) => {
+      let el = checkSq.get(s.key);
+      if (!el) {
+        el = document.createElement('button');
+        el.type = 'button';
+        el.dataset.check = s.key;
+        hero.prepend(el);
+        checkSq.set(s.key, el);
+      }
+      const off = s.tone === 'bad';
+      const side = Math.round(size * (off ? 1.25 : 0.85 + spread(s.key) * 0.3));
+      el.className = `tile sen still ${SQ[s.tone] || 's-up'}${side < 20 ? ' tiny' : ''}`;
+      el.dataset.tip = `${s.name}: ${s.now}`;
+      el.setAttribute('aria-label', s.name);
+      const icon = AREA_ICON[s.area] || 'shield';
+      if (el.dataset.icon !== icon) {
+        el.dataset.icon = icon;
+        el.innerHTML = svg(icon);
+      }
+      el.style.setProperty('--g', '#1E2132');
+      Object.assign(el.style, { width: `${side}px`, height: `${side}px`, rotate: `${off ? 8 : Math.round(spread(`${s.key}r`) * 50 - 25)}deg` });
+      return { el, id: s.key };
+    });
+    const seen = new Set(items.map((x) => x.id));
+    checkSq.forEach((el, key) => {
+      if (seen.has(key)) return;
+      el.remove();
+      checkSq.delete(key);
+    });
+    R.squares(hero, items);
+  };
+  $('dir-hero').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-check]');
+    const s = b && adPage === 'domain' && (lists.domain || []).find((x) => x.key === b.dataset.check);
+    if (!s) return;
+    if (R.panel.shows('ad', `domain:${s.key}`)) R.panel.close();
+    else openDrawer('domain', s);
+  });
+  document.addEventListener('rabbidlab:show', async (e) => {
+    const at = e.detail[0];
+    if (at !== 'org' && at !== 'attrs') return;
+    drawHero(at);
+    if (ad) return;
+    try {
+      ad = await R.get('/api/ad'); // the domain's name for the banner, when the page was opened first
+    } catch { return; }
+    if (R.where()[0] === at) drawHero(at);
+  });
+
+  // A line above the table: the Recycle Bin's state and what the audit can say. Domain health's says it in the banner.
   const drawBanner = () => {
     const b = $('dir-banner');
     let html = '';
@@ -532,10 +628,6 @@
         : `${svg('alert')}<span><b>The Recycle Bin is off,</b> so anything deleted comes back without its groups and most of its details, if at all.</span>`
           + (can('ad.connect') ? '<button type="button" class="small primary" data-banner="enable">Turn it on</button>' : '');
       if (recycle.problem) html += `<span class="warn">${esc(recycle.problem)}</span>`;
-    } else if (adPage === 'domain' && lists.domain) {
-      const bad = lists.domain.filter((s) => s.tone === 'bad').length;
-      const warn = lists.domain.filter((s) => s.tone === 'warn').length;
-      html = `${svg(bad ? 'alert' : 'check')}<span><b>${bad ? `${bad} not as recommended` : 'Nothing is off'}${warn ? `, ${warn} worth a look` : ''}.</b> Click a check to see what it found, why it matters and how to fix it.</span>`;
     } else if (adPage === 'audit') {
       html = `${svg('history')}<span>Who made a change shows when it was made in ${esc(R.app())}. For changes made elsewhere, the domain controllers' security logs say who.</span>`;
     }
