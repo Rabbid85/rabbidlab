@@ -1527,6 +1527,46 @@ namespace RabbidLab.Setup
                     }
                     my.Remove(cert);
                 }
+                // From 1.1.150 the console keeps those as files in the data folder (ConsoleCertificates.cs): its certificate
+                // authority for added addresses and the self-signed certificate for the rest, both trusted here.
+                foreach (var file in new[] { "console-ca.cer", "console-names-local.cer" })
+                {
+                    try
+                    {
+                        var path = Path.Combine(DataDir, file);
+                        if (!File.Exists(path))
+                        {
+                            continue;
+                        }
+                        using (var cert = new X509Certificate2(File.ReadAllBytes(path)))
+                        {
+                            foreach (var t in trusted.Certificates.Find(X509FindType.FindByThumbprint, cert.Thumbprint, false))
+                            {
+                                trusted.Remove(t);
+                            }
+                        }
+                    }
+                    catch (Exception e) when (e is CryptographicException || e is IOException || e is UnauthorizedAccessException)
+                    {
+                        // Not readable: nothing of it to take out.
+                    }
+                }
+            }
+            // The authority's key, in the computer's key store under this name.
+            try
+            {
+                var name = Edition.Name + " console addresses";
+                if (CngKey.Exists(name, CngProvider.MicrosoftSoftwareKeyStorageProvider, CngKeyOpenOptions.MachineKey))
+                {
+                    using (var key = CngKey.Open(name, CngProvider.MicrosoftSoftwareKeyStorageProvider, CngKeyOpenOptions.MachineKey))
+                    {
+                        key.Delete();
+                    }
+                }
+            }
+            catch (CryptographicException)
+            {
+                // Already gone.
             }
         }
 

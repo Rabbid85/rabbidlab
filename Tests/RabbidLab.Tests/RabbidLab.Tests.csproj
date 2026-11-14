@@ -25,4 +25,9 @@
 
   <!-- Setup's DNS decisions (DnsPlan.cs) are tested through the server, which compiles them in for console addresses. -->
 
+  <ItemGroup>
+    <!-- How the client knows its server (Pin.cs), tested against the certificates the server makes. -->
+    <Compile Include="..\..\Src\Client\RabbidLab.Client\Pin.cs" Link="Client\Pin.cs" />
+  </ItemGroup>
+
 </Project>

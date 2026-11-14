@@ -14,28 +14,34 @@ using System.Threading.Tasks;
 namespace RabbidLab.Client;
 
 /// <summary>
-/// Talking to the server over HTTPS. With a fingerprint from Group Policy or the installer, its certificate must be
-/// exactly that one (how a self-signed certificate is trusted); without one, a certificate Windows trusts.
+/// Talking to the server over HTTPS. With a fingerprint from Group Policy or the installer, its certificate or that
+/// certificate's key must be exactly that one (Pin; how a self-signed certificate is trusted); without one, a
+/// certificate Windows trusts.
 /// </summary>
 internal sealed class ServerApi : IDisposable
 {
     private readonly HttpClient http;
+
+    /// <summary>The server answered with a certificate this computer doesn't accept.</summary>
+    public bool Untrusted { get; private set; }
+
+    /// <summary>The key fingerprint of the certificate the server showed and this computer accepted.</summary>
+    public string? Key { get; private set; }
 
     public ServerApi(string server, string? fingerprint, TimeSpan? timeout = null)
     {
         var handler = new HttpClientHandler
         {
             ServerCertificateCustomValidationCallback = (_, certificate, _, errors) =>
-                fingerprint is null ? errors == SslPolicyErrors.None : certificate is not null && Fingerprint(certificate) == fingerprint,
+            {
+                var ok = fingerprint is null ? errors == SslPolicyErrors.None : certificate is not null && Pin.Matches(certificate.RawData, fingerprint);
+                Untrusted = !ok;
+                Key = ok && certificate is not null ? Pin.OfKey(certificate.RawData) : null;
+                return ok;
+            },
         };
         http = new HttpClient(handler) { BaseAddress = new Uri(server + "/"), Timeout = timeout ?? TimeSpan.FromSeconds(30) };
         http.DefaultRequestHeaders.UserAgent.ParseAdd($"RabbidLab-Client/{Agent.Version}");
-    }
-
-    public static string Fingerprint(X509Certificate2 certificate)
-    {
-        using var sha = SHA256.Create();
-        return BitConverter.ToString(sha.ComputeHash(certificate.RawData)).Replace("-", "");
     }
 
     /// <summary>Sends the body as JSON and reads the answer, or null when it isn't one.</summary>

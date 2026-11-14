@@ -18,7 +18,10 @@ internal sealed class JoinLink
     public string Server { get; set; } = "";
     public string Fingerprint { get; set; } = "";
 
-    /// <summary>rabbidlab://join?server=...&amp;fingerprint=...; anything else gives empty fields.</summary>
+    /// <summary>
+    /// rabbidlab://join?server=...&amp;fingerprint=...&amp;key=...; anything else gives empty fields. key is the fingerprint
+    /// of the server's key, which this client takes first; fingerprint is its certificate's, for clients before 1.1.150.
+    /// </summary>
     public static JoinLink Parse(string? link)
     {
         var j = new JoinLink();
@@ -26,6 +29,7 @@ internal sealed class JoinLink
         {
             return j;
         }
+        var key = "";
         foreach (var pair in uri.Query.TrimStart('?').Split('&'))
         {
             var eq = pair.IndexOf('=');
@@ -38,7 +42,12 @@ internal sealed class JoinLink
             {
                 case "server": j.Server = value.TrimEnd('/'); break;
                 case "fingerprint": j.Fingerprint = Settings.CleanFingerprint(value) ?? ""; break;
+                case "key": key = Settings.CleanFingerprint(value) ?? ""; break;
             }
+        }
+        if (key.Length > 0)
+        {
+            j.Fingerprint = key;
         }
         return j;
     }
@@ -106,7 +115,7 @@ internal sealed class ConnectWindow : Form
 {
     private readonly TextBox server = new();
     private readonly Label note = new() { AutoSize = false, Height = 54 };
-    private readonly Label said = new() { AutoSize = false, Height = 44 };
+    private readonly Label said = new() { AutoSize = false, Height = 62 };
     private readonly Button go = new() { Text = "Connect", Height = 36, Width = 130, FlatStyle = FlatStyle.System };
     private readonly string fingerprint;
     private bool done;
@@ -157,6 +166,8 @@ internal sealed class ConnectWindow : Form
             Controls.Add(c);
         }
         Controls.Add(buttons);
+        // As tall as everything in it, so nothing lies over the buttons.
+        ClientSize = new Size(ClientSize.Width, Padding.Vertical + Controls.Cast<Control>().Sum(c => c.Height));
         Shield(go);
 
         var now = Settings.Read();
@@ -258,7 +269,7 @@ internal sealed class ConnectWindow : Form
             }
             if (s?.Server == link.Server && s.State is Status.Refused or Status.Unreachable or Status.IdentityUnreadable)
             {
-                Say(said, s.Describe(), Look.Red);
+                Say(said, string.IsNullOrEmpty(s.Problem) ? s.Describe() : $"{s.Describe()}. {s.Problem}", Look.Red);
                 go.Enabled = true;
                 return;
             }

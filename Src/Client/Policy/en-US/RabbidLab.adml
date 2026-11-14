@@ -12,9 +12,9 @@
 
 The Rabbid Lab client joins it, waits to be let in under Devices, then checks in every minute. This setting wins over the SERVER given to the installer.</string>
       <string id="CertificateFingerprint">Server certificate fingerprint</string>
-      <string id="CertificateFingerprint_Help">The SHA-256 fingerprint of the server's HTTPS certificate, from Devices, Add computers, on the server.
+      <string id="CertificateFingerprint_Help">The SHA-256 fingerprint of the server's public key, from Devices, Add computers, on the server. The fingerprint of its HTTPS certificate works too.
 
-Needed only when the server uses a certificate these computers don't already trust, such as the self-signed one Rabbid Lab makes when it's installed. With it, the client trusts that one certificate and no other. Leave it not configured when the server's certificate comes from your own certificate authority.</string>
+Needed only when the server uses a certificate these computers don't already trust, such as the self-signed one Rabbid Lab makes when it's installed. With it, the client trusts that one key and no other. Leave it not configured when the server's certificate comes from your own certificate authority.</string>
       <string id="AllowAccountChanges">Allow account changes</string>
       <string id="AllowAccountChanges_Help">Whether people in Rabbid Lab may make, change and delete this computer's own Windows accounts, such as adding a local administrator.
 

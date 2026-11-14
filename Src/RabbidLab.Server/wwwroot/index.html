@@ -455,7 +455,7 @@
         <div class="ds-row" id="seat-msi-row"><div class="ds-l"><b>The client (MSI)</b><span>Run it on a computer, or install it quietly with the line below.</span></div><div class="ds-r"><a class="ds-btn" id="seat-msi" href="/api/clients/download" download>Download</a></div></div>
         <div class="ds-row"><div class="ds-l"><b>Install line</b><span class="ds-code" id="seat-line"></span></div><div class="ds-r"><button type="button" class="ds-btn" id="seat-line-copy">Copy</button></div></div>
         <div class="ds-row" id="seat-policy-row"><div class="ds-l"><b>Group Policy template</b><span>Sets the server address and certificate fingerprint on every computer.</span></div><div class="ds-r"><a class="ds-btn" id="seat-policy" href="/api/clients/policy" download>Download</a></div></div>
-        <div class="ds-row" id="seat-fp-row"><div class="ds-l"><b>This server's certificate fingerprint</b><span class="ds-code" id="seat-fp"></span></div><div class="ds-r"><button type="button" class="ds-btn" id="seat-fp-copy">Copy</button></div></div>
+        <div class="ds-row" id="seat-fp-row"><div class="ds-l"><b>This server's public key fingerprint</b><span class="ds-code" id="seat-fp"></span></div><div class="ds-r"><button type="button" class="ds-btn" id="seat-fp-copy">Copy</button></div></div>
       </section>
       <p class="hint problem" id="seat-set-problem" hidden></p>
     </section>
@@ -886,7 +886,7 @@
   <div class="step"><span class="n">2</span><div><b>Or with Group Policy</b>
     <p class="hint">Assign the MSI under Computer Configuration &gt; Policies &gt; Software Settings &gt; Software Installation. Add the template to PolicyDefinitions, then set Server address<span id="gpo-fingerprint"> and Server certificate fingerprint</span> under Administrative Templates &gt; Rabbid Lab &gt; Client.</p>
     <a class="button small-link" id="policy-link" href="/api/clients/policy" download>Download the Group Policy template</a></div></div>
-  <div class="fingerprint" id="fingerprint-row" hidden><span>This server's certificate fingerprint</span><code id="fingerprint"></code></div>
+  <div class="fingerprint" id="fingerprint-row" hidden><span>This server's public key fingerprint</span><code id="fingerprint"></code></div>
   <div class="rows">
     <div class="row still" data-can="seats.settings"><svg><use href="#i-shield"/></svg><span class="t"><b>New computers wait for an admin</b><span>They show as Waiting until someone lets them in. Turn this off and they join straight away.</span></span>
       <input type="checkbox" class="switch" id="join-approve" role="switch" aria-label="New computers wait for an admin"></div>

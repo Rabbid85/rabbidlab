@@ -56,7 +56,38 @@ internal sealed class Settings
         // The installer's fingerprint belongs to the installer's server, not to another one Group Policy picks.
         var sameServer = s.PolicyServer is null || string.Equals(s.PolicyServer, installedServer, StringComparison.OrdinalIgnoreCase);
         s.Fingerprint = policyFingerprint ?? (sameServer ? installedFingerprint : null);
+        s.ours = policyFingerprint is null && s.Fingerprint is not null;
         return s;
+    }
+
+    // The fingerprint is the installer's or Connect's, so the client may replace it (not Group Policy's).
+    private bool ours;
+
+    /// <summary>
+    /// Keeps the fingerprint of the server's key in place of its certificate's, once the certificate was accepted, so
+    /// the server can make its certificate again. Whether it changed anything.
+    /// </summary>
+    public bool KeepKey(string? key)
+    {
+        if (!ours || key is null || string.Equals(key, Fingerprint, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+        try
+        {
+            using var machine = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64);
+            using var installed = machine.OpenSubKey(InstalledKey, writable: true);
+            if (installed?.GetValue("CertificateFingerprint") is not string)
+            {
+                return false; // from an environment variable, trying it out
+            }
+            installed.SetValue("CertificateFingerprint", key);
+            return true;
+        }
+        catch (Exception e) when (e is UnauthorizedAccessException or System.Security.SecurityException or IOException)
+        {
+            return false; // not the service: it does this at its next round
+        }
     }
 
     /// <summary>A fingerprint as 64 capitals and digits, however it was typed; null when there's none.</summary>

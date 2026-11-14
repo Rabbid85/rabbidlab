@@ -68,7 +68,7 @@ public static class ClientsApi
             Caller(context, clients) is not { } c ? Unknown() : commands.Done(c.Id, answer) ? Results.Ok() : Results.NotFound());
 
         // The computer this page is open on: whether it's in Devices, and if not, what it needs to get there.
-        app.MapGet("/api/clients/here", (HttpContext context, Clients clients, IConfiguration config) =>
+        app.MapGet("/api/clients/here", (HttpContext context, Clients clients, IConfiguration config, INamesCertificate named) =>
         {
             var here = Addresses.Normal(ActivityLog.Address(context));
             var seat = here is null ? null : clients.All().FirstOrDefault(c => Addresses.Normal(c.Address) == here);
@@ -78,7 +78,9 @@ public static class ClientsApi
                 thisServer = Addresses.OnServer(context.Connection.RemoteIpAddress), // the page is open on the server itself: nothing to connect
                 msi = File.Exists(ClientFiles.Msi),
                 server = $"{context.Request.Scheme}://{context.Request.Host}",
-                fingerprint = ClientFiles.Fingerprint(config),
+                // The key's fingerprint is the one a client keeps. The certificate's, of the one this address shows, is for clients before 1.1.150.
+                fingerprint = named.For(context.Request.Host.Host) is { } shown ? ClientFiles.Fingerprint(shown) : ClientFiles.Fingerprint(config),
+                key = ClientFiles.KeyFingerprint(config),
                 version = Product.Version,
             });
         });
@@ -148,7 +150,7 @@ public static class ClientsApi
             return Results.Ok(new { removalUntil = clients.RemovalUntil(c), uninstalling = c.Uninstall });
         });
 
-        // Add computers: whether new ones wait, this server's certificate fingerprint, and which files it has.
+        // Add computers: whether new ones wait, this server's public key fingerprint, and which files it has.
         app.MapGet("/api/clients/settings", (HttpContext context, Clients clients, IConfiguration config) =>
         {
             if (!Access.Can(context, Permissions.SeatsAdd))
@@ -158,7 +160,7 @@ public static class ClientsApi
             return Results.Ok(new
             {
                 approve = clients.Waits,
-                fingerprint = ClientFiles.Fingerprint(config),
+                fingerprint = ClientFiles.KeyFingerprint(config),
                 msi = File.Exists(ClientFiles.Msi),
                 policy = File.Exists(ClientFiles.Policy),
                 version = Product.Version,

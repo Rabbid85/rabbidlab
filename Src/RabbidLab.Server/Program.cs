@@ -109,14 +109,17 @@ builder.Services.AddHostedService<SensorWorker>();
 // console shows only to a browser that asks for one of them (ConsoleNames.cs, ConsoleDns.cs).
 builder.Services.AddSingleton<IConsoleDns>(_ => OperatingSystem.IsWindows() && !Product.InContainer ? new WindowsConsoleDns() : new NoConsoleDns());
 builder.Services.AddSingleton<INamesCertificate>(services => OperatingSystem.IsWindows() && !Product.InContainer
-    ? new StoreNamesCertificate(services.GetRequiredService<IConfiguration>()) : new NoNamesCertificate());
+    ? new StoreNamesCertificate(services.GetRequiredService<IConfiguration>(), services.GetRequiredService<DataFolder>().Path, () => services.GetRequiredService<IConsoleDns>().Domain)
+    : new NoNamesCertificate());
 builder.Services.AddSingleton<ConsoleNames>();
+INamesCertificate? named = null; // there once the services are built
 if (OperatingSystem.IsWindows() && !Product.InContainer)
 {
-    builder.WebHost.ServeNames(StoreNamesCertificate.For);
+    builder.WebHost.ServeNames(name => named?.For(name));
 }
 
 var app = builder.Build();
+named = app.Services.GetRequiredService<INamesCertificate>();
 _ = app.Services.GetRequiredService<SettingsStore>().Current; // the lab's name is in alerts from the start (Product.Lab)
 
 // --add-admin: a local administrator for when nobody can sign in, then it exits.
@@ -211,6 +214,9 @@ app.MapUpdateApi();
 var atStart = app.Services.GetRequiredService<Sensors>();
 app.Services.GetRequiredService<Alerts>().Seed(atStart.StartAlerts(), app.Services.GetRequiredService<Channels>().Defaults());
 atStart.Settle(app.Services.GetRequiredService<Links>().All().Where(l => l.Sensor is not null).Select(l => l.Sensor!));
+
+// The certificates for added console addresses, checked now and once a day (ConsoleNames.RenewDaily).
+app.Services.GetRequiredService<ConsoleNames>().RenewDaily(app.Logger);
 
 app.Run();
 return 0;

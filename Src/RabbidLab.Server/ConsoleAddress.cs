@@ -16,17 +16,30 @@ public static class ConsoleAddress
 
     public sealed record CertificateInfo(string Subject, string Issuer, bool SelfSigned, DateTime Expires, string Fingerprint);
 
-    /// <summary>Installed: Setup put it there, so running Setup again changes it. Firewall is null when Setup didn't say.</summary>
+    /// <summary>This install's certificate authority for added addresses: what it can sign for, and the file it downloads as.</summary>
+    public sealed record AuthorityInfo(string Subject, DateTime Expires, IReadOnlyList<string> LimitedTo, string File);
+
+    /// <summary>A certificate for added addresses, and which.</summary>
+    public sealed record NamesInfo(DateTime Expires, IReadOnlyList<string> Names);
+
+    /// <summary>
+    /// Installed: Setup put it there, so running Setup again changes it. Firewall is null when Setup didn't say. Signed is
+    /// the certificate from the authority, Local the self-signed one for the names it can't sign for (ConsoleCertificates.cs).
+    /// </summary>
     public sealed record Report(string Scheme, int Port, List<Address> Addresses, CertificateInfo? Certificate, int? RedirectPort,
-        bool RedirectTaken, bool? Firewall, bool Installed, bool Docker, bool CanAdd, string? Domain, CertificateInfo? NamesCertificate);
+        bool RedirectTaken, bool? Firewall, bool Installed, bool Docker, bool CanAdd, string? Domain, AuthorityInfo? Authority, NamesInfo? Signed, NamesInfo? Local);
+
+    private static string AuthorityFile => $"{Product.Name} certificate authority.cer";
 
     public static void MapConsoleAddressApi(this WebApplication app, Redirect.Plan? redirect)
     {
         app.MapGet("/api/console", (IServer server, IConfiguration config, ConsoleNames names, INamesCertificate named) => Read(server, config, redirect, names, named));
-        // The console's own certificate, or with ?names=1 the one for the added names.
-        app.MapGet("/api/console/certificate", (IConfiguration config, INamesCertificate named, bool? names) => (names == true ? named.Current : ClientFiles.Certificate(config)) is { } cert
-            ? Results.File(cert.RawData, "application/pkix-cert", $"{Product.Name}.cer")
-            : Results.NotFound(new { error = "This console isn't using an HTTPS certificate." }));
+        // The console's own certificate; with ?authority=true the certificate authority for added addresses, and with
+        // ?names=true the self-signed one for the added names the authority can't sign for.
+        app.MapGet("/api/console/certificate", (IConfiguration config, INamesCertificate named, bool? names, bool? authority) =>
+            (authority == true ? named.Now.Authority : names == true ? named.Now.Local : ClientFiles.Certificate(config)) is { } cert
+                ? Results.File(cert.RawData, "application/pkix-cert", authority == true ? AuthorityFile : $"{Product.Name}.cer")
+                : Results.NotFound(new { error = "This console doesn't have that certificate." }));
     }
 
     private static Report Read(IServer server, IConfiguration config, Redirect.Plan? redirect, ConsoleNames names, INamesCertificate named)
@@ -76,8 +89,12 @@ public static class ConsoleAddress
         var info = Info(cert);
         var firewall = Saved("Firewall") is int f ? f == 1 : (bool?) null;
         var canAdd = OperatingSystem.IsWindows() && !Product.InContainer;
+        var now = scheme == "https" ? named.Now : NamesCertificates.None;
         return new Report(scheme, port, list, info, redirect?.Port, redirect?.Taken == true, firewall, Saved("Port") is not null, Product.InContainer,
-            canAdd, names.Domain, scheme == "https" ? Info(named.Current) : null);
+            canAdd, names.Domain,
+            now.Authority is null ? null : new AuthorityInfo(now.Authority.GetNameInfo(X509NameType.SimpleName, forIssuer: false), now.Authority.NotAfter.ToUniversalTime(), now.LimitedTo, AuthorityFile),
+            now.Signed is null ? null : new NamesInfo(now.Signed.NotAfter.ToUniversalTime(), now.SignedNames),
+            now.Local is null ? null : new NamesInfo(now.Local.NotAfter.ToUniversalTime(), now.LocalNames));
     }
 
     private static List<string> Ips() => ConsoleNames.Ips();

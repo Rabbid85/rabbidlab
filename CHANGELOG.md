@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.150 (2026-11-14)
+
+- Connecting a computer through an address you added works now. The client knows the server by its public key, so every address is right, and it stays right when a certificate is made again.
+- In a domain, an added address in that domain gets a certificate signed by a certificate authority made for this install, which can sign only for names in the domain. Trust it once on other computers and the browser warning is gone: Settings, Console address has the download and a certutil line for every domain computer.
+- The Connect this computer window no longer cuts off its buttons, and it says why when it cannot connect.
+
 ## 1.1.149 (2026-11-14)
 
 - Seats is called Devices now, in the console, the wiki and the Windows client. Only the name changed: same page, same permissions, same addresses.

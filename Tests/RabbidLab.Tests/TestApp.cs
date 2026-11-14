@@ -542,15 +542,23 @@ public sealed class FakeNamesCertificate : INamesCertificate
 
     public List<List<string>> Made { get; } = [];
 
-    public X509Certificate2? Make(IReadOnlyList<string> names)
+    public NamesCertificates Now => new(null, [], null, [], Current, Current is null ? [] : Made[^1]);
+
+    public X509Certificate2? For(string? name) => name is not null && Current is not null && Made[^1].Contains(name) ? Current : null;
+
+    public bool Good(IReadOnlyList<string> names) => true;
+
+    public NamesCertificates Make(IReadOnlyList<string> names)
     {
         Made.Add([.. names]);
         if (names.Count == 0)
         {
-            return Current = null;
+            Current = null;
+            return Now;
         }
         using var rsa = System.Security.Cryptography.RSA.Create(2048);
         var request = new System.Security.Cryptography.X509Certificates.CertificateRequest("CN=Console addresses", rsa, System.Security.Cryptography.HashAlgorithmName.SHA256, System.Security.Cryptography.RSASignaturePadding.Pkcs1);
-        return Current = request.CreateSelfSigned(DateTimeOffset.Now.AddDays(-1), DateTimeOffset.Now.AddYears(5));
+        Current = request.CreateSelfSigned(DateTimeOffset.Now.AddDays(-1), DateTimeOffset.Now.AddYears(5));
+        return Now;
     }
 }

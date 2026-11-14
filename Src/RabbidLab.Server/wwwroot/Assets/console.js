@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.150', [
+    'Connecting a computer through an address you added works now. The client knows the server by its public key, so every address is right, and it stays right when a certificate is made again.',
+    'In a domain, an added address in that domain gets a certificate signed by a certificate authority made for this install, which can sign only for names in the domain. Trust it once on other computers and the browser warning is gone: Settings, Console address has the download and a certutil line for every domain computer.',
+    'The Connect this computer window no longer cuts off its buttons, and it says why when it cannot connect.']],
   ['1.1.149', [
     'Seats is called Devices now, in the console, the wiki and the Windows client. Only the name changed: same page, same permissions, same addresses.',
     'The bar shown on a computer that has not joined says it is not connected yet.']],
@@ -1466,7 +1470,7 @@ const RELEASE_NOTES = [
     if (where()[0] === 'seats') seatTimer = setTimeout(seats, 30000);
   };
   const seatProblem = (text) => say('seats-problem', text);
-  // Add computers: the quiet install line with this server's address and its certificate fingerprint in it.
+  // Add computers: the quiet install line with this server's address and its public key fingerprint in it.
   let joining = null;
   const drawJoining = () => {
     if (!joining) return;
@@ -1500,6 +1504,7 @@ const RELEASE_NOTES = [
   const joinLink = () => {
     const q = new URLSearchParams({ server: hereInfo.server });
     if (hereInfo.fingerprint) q.set('fingerprint', hereInfo.fingerprint);
+    if (hereInfo.key) q.set('key', hereInfo.key);
     return `rabbidlab://join?${q}`;
   };
   const joined = (seat) => {
@@ -2066,6 +2071,8 @@ const RELEASE_NOTES = [
   const caCopy = (text) => `<button type="button" class="ds-btn ds-ibtn" data-copy="${esc(text)}" data-tip="Copy" aria-label="Copy">${svg('copy')}</button>`;
   const caGet = (href) => `<a class="ds-btn ds-ibtn" href="${href}" download data-tip="Download .cer" aria-label="Download the certificate">${svg('download')}</a>`;
   const caDate = (iso) => esc(new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }));
+  // Puts the certificate authority in Active Directory, so every domain computer trusts it.
+  const caPublish = (c) => `certutil -dspublish -f "${c.authority.file}" RootCA`;
   // Which icon goes with an address, from what it is.
   const caIcon = (what) => (/^IP/.test(what) ? 'server' : /^(Full|Its full)/.test(what) ? 'globe' : /^Computer/.test(what) ? 'monitor' : /^(Added|Host)/.test(what) ? 'tag' : 'browser');
   const consoleAddress = async () => {
@@ -2097,11 +2104,18 @@ const RELEASE_NOTES = [
         ? "Other computers show a warning until it's trusted. Deploy it to Trusted Root Certification Authorities with Group Policy."
         : `Issued by ${esc(cert.issuer)}.`, `<span class="ds-v">Expires ${caDate(cert.expires)}</span>`, { tone: cert.selfSigned ? 'warn' : 'ok' })
         + caRow('key', 'SHA-256 fingerprint', fp, `<span class="ds-pair">${caGet('/api/console/certificate')}${caCopy(fp)}</span>`, { cls: 'ds-code' })
-        // The added addresses have one of their own, so the one above (which computers in Devices trust) never changes. It's made again
-        // with each one added or removed, and deleted with the last, so it only shows while there are some.
-        + (!c.namesCertificate || !c.addresses.some((a) => a.name) ? '' : caRow('shield', 'For the addresses added here',
-          'Made again when one is added or removed, and deleted with the last. Trust it on other computers too, as above.',
-          `<span class="ds-v">Expires ${caDate(c.namesCertificate.expires)}</span>${caGet('/api/console/certificate?names=true')}`, { tone: 'warn' }));
+        // The added addresses have certificates of their own, so the one above never changes. In a domain, one signed by this
+        // install's certificate authority, which other computers trust once. Short names and names outside the domain get a
+        // self-signed one, trusted on this computer, made again with each one added or removed.
+        + (!c.authority ? '' : caRow('shield', 'Certificate authority', (c.signed ? `Signed the certificate for ${esc(c.signed.names.join(', '))}. ` : '')
+          + `It can sign only for names in ${esc(c.authority.limitedTo[0] || 'this domain')}. Trusted on this computer. Other computers open those addresses without a warning once it's in their Trusted Root Certification Authorities.`,
+          `<span class="ds-v">Expires ${caDate(c.authority.expires)}</span>${caGet('/api/console/certificate?authority=true')}`, { tone: 'ok' })
+          + caRow('monitor', 'Every domain computer', `Download it, then run this once on a domain controller as an Enterprise Admin: ${esc(caPublish(c))}. Computers trust it after their next Group Policy refresh.`,
+            caCopy(caPublish(c))))
+        + (!c.local ? '' : caRow('shield', c.authority ? 'For the other added addresses' : 'For the addresses added here',
+          c.authority ? `Self-signed, for ${esc(c.local.names.join(', '))}. Trusted on this computer only. From other computers, use the full name.`
+            : 'Made again when one is added or removed, and deleted with the last. Trust it on other computers too, as above.',
+          `<span class="ds-v">Expires ${caDate(c.local.expires)}</span>${caGet('/api/console/certificate?names=true')}`, { tone: 'warn' }));
     const moved = c.redirectPort ? (c.redirectTaken ? `Port ${c.redirectPort} redirect is on, but another program has port ${c.redirectPort}.` : `Requests to port ${c.redirectPort} are redirected here.`) : '';
     $('ca-net').innerHTML = caRow('plug', 'Port', moved || `${c.scheme.toUpperCase()}, on every address above.`, `<span class="ds-v">${c.port}</span>`)
       + (c.firewall == null ? '' : caRow('lock', 'Windows Firewall', c.firewall

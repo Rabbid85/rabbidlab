@@ -16,7 +16,15 @@ public static class ClientFiles
     public static string Policy => Path.Combine(Folder, "RabbidLab-Client-Policy.zip");
 
     /// <summary>The SHA-256 fingerprint of the certificate Rabbid Lab serves HTTPS with; null over plain HTTP or when it can't be found.</summary>
-    public static string? Fingerprint(IConfiguration config) => Certificate(config) is { } cert ? Convert.ToHexString(SHA256.HashData(cert.RawData)) : null;
+    public static string? Fingerprint(IConfiguration config) => Certificate(config) is { } cert ? Fingerprint(cert) : null;
+
+    public static string Fingerprint(X509Certificate2 cert) => Convert.ToHexString(SHA256.HashData(cert.RawData));
+
+    /// <summary>
+    /// The SHA-256 fingerprint of that certificate's public key, which is what clients are given: the certificates for
+    /// added console addresses have the same key (ConsoleCertificates.cs), so it is right at every address.
+    /// </summary>
+    public static string? KeyFingerprint(IConfiguration config) => Certificate(config) is { } cert ? NameCerts.KeyFingerprint(cert) : null;
 
     /// <summary>
     /// The certificate Rabbid Lab serves HTTPS with, as console.json picks it (a subject in a certificate store); null over

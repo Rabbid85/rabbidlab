@@ -60,6 +60,7 @@ internal sealed class Agent
             {
                 return Unreachable(status, joined, $"It answered {(int) answered}.");
             }
+            settings.KeepKey(api.Key);
             status.State = answer.Approved ? Status.Connected : Status.Waiting;
             status.ServerVersion = answer.Version;
             status.CheckedIn = DateTime.UtcNow;
@@ -82,7 +83,11 @@ internal sealed class Agent
         }
         catch (HttpRequestException e)
         {
-            return Unreachable(status, joined, (e.InnerException ?? e).Message);
+            // It answered, but not with the certificate this computer accepts: said plainly, not as Windows words it.
+            var why = !api.Untrusted ? (e.InnerException ?? e).Message
+                : settings.Fingerprint is null ? "Windows doesn't trust its certificate."
+                : "Its certificate isn't the one this computer was given. Connect again from the server's page.";
+            return Unreachable(status, joined, why);
         }
         catch (TaskCanceledException) when (!stop.IsCancellationRequested)
         {

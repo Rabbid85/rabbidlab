@@ -34,158 +34,13 @@ public sealed record NameForm(string? Name, bool Dns = false, string? Username =
 public sealed record NameStep(bool Ok, string Title, string Text);
 
 /// <summary>
-/// The certificate for the added names. The console's own certificate never changes, because computers in Devices pin
-/// it: an added name gets one of its own, which the console shows only to a browser that asks for that name (SNI).
-/// </summary>
-public interface INamesCertificate
-{
-    /// <summary>Whether the console is served over HTTPS, so a name needs a certificate.</summary>
-    bool Https { get; }
-
-    /// <summary>The certificate for the added names, or null when there's none.</summary>
-    X509Certificate2? Current { get; }
-
-    /// <summary>Makes the certificate for these names, in place of the last one; with no names it's taken away. Null for none.</summary>
-    X509Certificate2? Make(IReadOnlyList<string> names);
-}
-
-/// <summary>The added names' certificate in the computer's store, trusted on this computer, and kept for the console to serve.</summary>
-[SupportedOSPlatform("windows")]
-public sealed class StoreNamesCertificate(IConfiguration config) : INamesCertificate
-{
-    // Not "Rabbid Lab" or "RabbidLab-Dev": the console finds its own certificate by a subject containing that.
-    private const string Subject = "CN=Console addresses";
-    private static string Friendly => $"{Product.Name} console addresses";
-    private static readonly Lock Gate = new();
-    private static X509Certificate2? current;
-    private static HashSet<string> covers = new(StringComparer.OrdinalIgnoreCase);
-    private static bool read;
-
-    /// <summary>The certificate to show a browser that asked for this name, or null for the console's own.</summary>
-    public static X509Certificate2? For(string? name)
-    {
-        lock (Gate)
-        {
-            Load();
-            return name is not null && covers.Contains(name.TrimEnd('.')) ? current : null;
-        }
-    }
-
-    public bool Https => ClientFiles.Certificate(config) is not null;
-
-    public X509Certificate2? Current
-    {
-        get
-        {
-            lock (Gate)
-            {
-                Load();
-                return current;
-            }
-        }
-    }
-
-    public X509Certificate2? Make(IReadOnlyList<string> names)
-    {
-        lock (Gate)
-        {
-            using var my = new X509Store(StoreName.My, StoreLocation.LocalMachine);
-            using var root = new X509Store(StoreName.Root, StoreLocation.LocalMachine);
-            my.Open(OpenFlags.ReadWrite);
-            root.Open(OpenFlags.ReadWrite);
-            var old = my.Certificates.Where(x => x.FriendlyName == Friendly).ToList();
-            X509Certificate2? made = null;
-            if (names.Count > 0)
-            {
-                using var rsa = RSA.Create(2048);
-                var request = new CertificateRequest(Subject, rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
-                var san = new SubjectAlternativeNameBuilder();
-                foreach (var name in names)
-                {
-                    san.AddDnsName(name);
-                }
-                request.CertificateExtensions.Add(san.Build());
-                request.CertificateExtensions.Add(new X509EnhancedKeyUsageExtension([new Oid("1.3.6.1.5.5.7.3.1")], false));
-                request.CertificateExtensions.Add(new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.KeyEncipherment, true));
-                request.CertificateExtensions.Add(new X509BasicConstraintsExtension(false, false, 0, true));
-                using var self = request.CreateSelfSigned(DateTimeOffset.Now.AddDays(-1), DateTimeOffset.Now.AddYears(5));
-                // Into the computer's store with its private key, which only administrators and SYSTEM can read.
-                made = X509CertificateLoader.LoadPkcs12(self.Export(X509ContentType.Pfx, ""), "", X509KeyStorageFlags.MachineKeySet | X509KeyStorageFlags.PersistKeySet);
-                made.FriendlyName = Friendly;
-                my.Add(made);
-                root.Add(X509CertificateLoader.LoadCertificate(self.RawData));
-            }
-            foreach (var gone in old)
-            {
-                foreach (var trusted in root.Certificates.Find(X509FindType.FindByThumbprint, gone.Thumbprint, false))
-                {
-                    root.Remove(trusted);
-                }
-                DeletePrivateKey(gone);
-                my.Remove(gone);
-            }
-            current = made;
-            covers = new HashSet<string>(names, StringComparer.OrdinalIgnoreCase);
-            read = true;
-            return made;
-        }
-    }
-
-    // The one kept from before, once: the newest with its private key.
-    private static void Load()
-    {
-        if (read)
-        {
-            return;
-        }
-        read = true;
-        try
-        {
-            using var my = new X509Store(StoreName.My, StoreLocation.LocalMachine);
-            my.Open(OpenFlags.ReadOnly);
-            current = my.Certificates.Where(x => x.FriendlyName == Friendly && x.HasPrivateKey && x.NotAfter > DateTime.Now).OrderByDescending(x => x.NotAfter).FirstOrDefault();
-            covers = new HashSet<string>(current?.Extensions.OfType<X509SubjectAlternativeNameExtension>().SelectMany(e => e.EnumerateDnsNames()) ?? [], StringComparer.OrdinalIgnoreCase);
-        }
-        catch (CryptographicException)
-        {
-            current = null;
-        }
-    }
-
-    private static void DeletePrivateKey(X509Certificate2 cert)
-    {
-        try
-        {
-            using var key = cert.GetRSAPrivateKey();
-            if (key is RSACng cng)
-            {
-                cng.Key.Delete();
-            }
-        }
-        catch (CryptographicException)
-        {
-            // Already gone, or not readable: taking the certificate out of the store still stops it being used.
-        }
-    }
-}
-
-/// <summary>Off Windows (Docker): no certificate store, so no certificate for added names.</summary>
-public sealed class NoNamesCertificate : INamesCertificate
-{
-    public bool Https => false;
-
-    public X509Certificate2? Current => null;
-
-    public X509Certificate2? Make(IReadOnlyList<string> names) => null;
-}
-
-/// <summary>
 /// Settings, Console address: names of your own to open the console by. Adding one can add its alias (CNAME) to the
 /// domain's DNS, as an account typed for that, by Setup's rules (DnsPlan), and makes the names a certificate of their own.
 /// Removing one takes its alias out again, only if Rabbid Lab added it, and only while it still points here.
 /// </summary>
-public sealed class ConsoleNames(DataFolder folder, IConsoleDns dns, INamesCertificate certificate, TimeProvider clock)
+public sealed class ConsoleNames(DataFolder folder, IConsoleDns dns, INamesCertificate certificate, TimeProvider clock) : IDisposable
 {
+    private Timer? daily;
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { WriteIndented = true };
     private readonly JsonFile<ConsoleNamesFile> file = folder.Json<ConsoleNamesFile>("console-names.json", Json);
 
@@ -351,7 +206,7 @@ public sealed class ConsoleNames(DataFolder folder, IConsoleDns dns, INamesCerti
             file.Save(f);
             names = Covered(f);
         }
-        steps.Add(Certify(names, full));
+        steps.AddRange(Certify(names));
         var (leads, where) = dns.Lookup(full);
         steps.Add(leads switch
         {
@@ -408,9 +263,9 @@ public sealed class ConsoleNames(DataFolder folder, IConsoleDns dns, INamesCerti
             file.Save(f);
             names = Covered(f);
         }
-        if (certificate.Https && (certificate.Current is not null || names.Count > 0))
+        if (certificate.Https && (certificate.Now is { Signed: not null } or { Local: not null } || names.Count > 0))
         {
-            steps.Add(Certify(names, null));
+            steps.AddRange(Certify(names));
         }
         return (steps, n.Full, null);
     }
@@ -418,25 +273,70 @@ public sealed class ConsoleNames(DataFolder folder, IConsoleDns dns, INamesCerti
     // Every added name, short and full, which the names' certificate covers.
     private static List<string> Covered(ConsoleNamesFile f) => [.. f.Names.SelectMany(n => new[] { n.Name, n.Full }).Distinct(StringComparer.OrdinalIgnoreCase)];
 
-    // The certificate made again for the names now; a step saying so, or what went wrong.
-    private NameStep Certify(List<string> names, string? added)
+    // The certificates made again for the names now; a step for each saying so, or what went wrong.
+    private List<NameStep> Certify(List<string> names)
     {
         if (!certificate.Https)
         {
-            return new(true, "No certificate needed", "The console is served over HTTP.");
+            return [new(true, "No certificate needed", "The console is served over HTTP.")];
         }
         try
         {
             var made = certificate.Make(names);
-            return made is null
-                ? new(true, "Certificate taken away", "No added names are left, so their certificate went too. The console's own certificate didn't change.")
-                : new(true, added is null ? "Certificate made again" : "Certificate made", $"For {string.Join(", ", names)} · expires {made.NotAfter:MMM d, yyyy}. The console's own certificate, which computers in Devices trust, didn't change.");
+            var steps = new List<NameStep>();
+            if (made.Signed is not null)
+            {
+                steps.Add(new(true, "Certificate signed", $"For {string.Join(", ", made.SignedNames)}, by this console's certificate authority. Computers that trust the authority open it without a warning."));
+            }
+            if (made.Local is not null)
+            {
+                steps.Add(new(true, made.Signed is null ? "Certificate made" : "Certificate for the short name", $"For {string.Join(", ", made.LocalNames)} · self-signed, trusted on this computer."));
+            }
+            if (steps.Count == 0)
+            {
+                steps.Add(new(true, "Certificate taken away", "No added names are left, so their certificate went too."));
+            }
+            return steps;
         }
-        catch (Exception e) when (e is CryptographicException or UnauthorizedAccessException)
+        catch (Exception e) when (e is CryptographicException or UnauthorizedAccessException or IOException)
         {
-            return new(false, "No certificate for it", $"The certificate couldn't be made ({e.Message.Trim().TrimEnd('.')}), so browsers warn about the name.");
+            return [new(false, "No certificate for it", $"The certificate couldn't be made ({e.Message.Trim().TrimEnd('.')}), so browsers warn about the name.")];
         }
     }
+
+    /// <summary>
+    /// At the start, then once a day: the names' certificates made again when they're missing, close to expiring, or
+    /// from before 1.1.150 (one self-signed certificate with a key of its own).
+    /// </summary>
+    public void RenewDaily(ILogger log)
+    {
+        Renew(log);
+        daily ??= new Timer(_ => Renew(log), null, TimeSpan.FromDays(1), TimeSpan.FromDays(1));
+    }
+
+    private void Renew(ILogger log)
+    {
+        try
+        {
+            List<string> names;
+            lock (gate)
+            {
+                names = Covered(file.Read());
+            }
+            if (certificate.Https && !certificate.Good(names))
+            {
+                certificate.Make(names);
+                log.LogInformation("Made the certificates for the console addresses again ({Names})", string.Join(", ", names));
+            }
+        }
+        catch (Exception e)
+        {
+            // Whatever it is, the console still starts: the names are answered with the console's own certificate until this works.
+            log.LogWarning(e, "The certificates for the console addresses could not be made again");
+        }
+    }
+
+    public void Dispose() => daily?.Dispose();
 }
 
 public static class ConsoleNamesApi
