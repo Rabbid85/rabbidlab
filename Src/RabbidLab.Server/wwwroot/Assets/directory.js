@@ -125,6 +125,10 @@
   const ICON = { ou: 'folder', container: 'folder', other: 'folder', user: 'user', group: 'users', computer: 'laptop' };
 
   const drawPlace = () => {
+    if (finding.length >= 2) {
+      markPlace(); // what was found stays while the find has something in it
+      return;
+    }
     // The way down from the domain: each part above the domain's own DC= parts.
     const p = parts(place.dn);
     const domainAt = p.findIndex((x) => /^DC=/i.test(x));
@@ -145,6 +149,40 @@
   const markPlace = () => $('at-items').querySelectorAll('a[data-dn]').forEach((a) => {
     if (a.dataset.dn === object?.dn) a.setAttribute('aria-current', 'page');
     else a.removeAttribute('aria-current');
+  });
+  // Find anything in the domain by name: while the box has something in it, what matches shows in place of the tree.
+  let finding = '';
+  let findTimer = null;
+  let findAsk = 0;
+  const parentOf = (dn) => parts(dn).slice(1).join(',');
+  const drawFound = (list) => {
+    $('at-crumbs').innerHTML = `<span class="at-found">${list.length ? `${list.length >= 60 ? '60 or more' : list.length} found` : 'Nothing found'}</span>`;
+    $('at-items').innerHTML = list.map((m) => {
+      const opens = m.kind === 'ou' || m.kind === 'container';
+      const href = opens ? `#attrs/${enc(m.dn)}` : `#attrs/${enc(parentOf(m.dn))}/${enc(m.dn)}`;
+      return `<a href="${href}" data-dn="${esc(m.dn)}">${svg(ICON[m.kind] || 'folder')}<span class="nm">${esc(m.name)}<small>${esc(m.where || '')}</small></span></a>`;
+    }).join('') || '<p class="side-sub">Nothing has that name.</p>';
+    $('at-more').hidden = true;
+    markPlace();
+  };
+  $('at-obj').addEventListener('input', () => {
+    clearTimeout(findTimer);
+    finding = $('at-obj').value.trim();
+    if (finding.length < 2) {
+      findAsk++;
+      if (place) drawPlace();
+      markPlace();
+      return;
+    }
+    findTimer = setTimeout(async () => {
+      const mine = ++findAsk;
+      try {
+        const list = await R.get(`/api/ad/object/find?q=${enc(finding)}`);
+        if (mine === findAsk) drawFound(list);
+      } catch (err) {
+        if (mine === findAsk) say('at-problem', err.message);
+      }
+    }, 250);
   });
   // Every attribute it may have, with its type; Hide empty shows only the ones with a value. Each has a menu (its …
   // button, or a right-click) to copy it and, where the service account may write it, Edit… and Clear value, as ADSI Edit.

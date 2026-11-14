@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.139 (2026-11-13)
+
+- The Attribute browser has a find box over its folders that finds any user, group, computer or OU by name across the domain, with where each one is. Click one to open it; the matches stay until the box is cleared.
+
 ## 1.1.138 (2026-11-13)
 
 - Domain settings open in the side panel like Users do. Password and lockout rules, the machine account quota, Guest and the tombstone lifetime can be changed there, signed in as a domain admin for that change (not saved). Password and lockout rules go into the Default Domain Policy, as Group Policy Management does.

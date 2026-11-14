@@ -75,6 +75,9 @@ public interface IDirectoryExtras
 
     Task<AdObject> Attributes(string dn, CancellationToken stop);
 
+    /// <summary>Anything in the domain by name, for the Attribute browser: users, groups, computers, OUs and containers.</summary>
+    Task<List<AdMember>> FindAnything(string? search, CancellationToken stop);
+
     /// <summary>Writes an attribute (clears it with no values), as ADSI Edit would, and gives the object as it is now.</summary>
     Task<AdObject> SetAttribute(string dn, string name, List<string?> values, CancellationToken stop);
 }
@@ -424,6 +427,25 @@ public sealed partial class DirectoryTools
     }
 
     // --- The attribute browser ---------------------------------------------------------------------------------------
+
+    public async Task<List<AdMember>> FindAnything(string? search, CancellationToken stop)
+    {
+        var match = Match(search, "cn", "ou", "sAMAccountName", "displayName", "name");
+        if (match.Length == 0)
+        {
+            return [];
+        }
+        using var ldap = await Open(stop);
+        var rows = await ldap.Find(ldap.BaseDn, $"(&(|(objectClass=user)(objectClass=group)(objectClass=organizationalUnit)(objectClass=container)){match})", true,
+            ["objectClass", "cn", "ou", "name", "sAMAccountName", "displayName"], 60, stop);
+        return [.. rows.Select(r =>
+        {
+            var kind = KindOf(r);
+            var sam = r.Text("sAMAccountName");
+            var name = (kind == "user" ? r.Text("displayName") : null) ?? r.Text("cn") ?? r.Text("ou") ?? r.Text("name") ?? Ldap.Name(r.Dn);
+            return new AdMember(r.Dn, name, kind, kind == "computer" ? sam?.TrimEnd('$') : sam, Ldap.Path(Ldap.Parent(r.Dn), ldap.BaseDn));
+        }).OrderBy(m => m.Name, StringComparer.OrdinalIgnoreCase)];
+    }
 
     public async Task<AdPlace> Browse(string? dn, CancellationToken stop)
     {
@@ -831,6 +853,10 @@ public static class DirectoryExtrasApi
 
         app.MapGet("/api/ad/object", (string dn, HttpContext context, IDirectoryExtras tools) => UsersApi.Try(context, Permissions.AdView, async () =>
             Results.Ok(await tools.Attributes(dn, context.RequestAborted)), change: false));
+
+        // The Attribute browser's find: anything in the domain by name.
+        app.MapGet("/api/ad/object/find", (string? q, HttpContext context, IDirectoryExtras tools) => UsersApi.Try(context, Permissions.AdView, async () =>
+            Results.Ok(await tools.FindAnything(q, context.RequestAborted)), change: false));
 
         // Edit… and Clear value in the Attribute browser: one attribute at a time, in the Activity log with what it was set to.
         app.MapPost("/api/ad/object/attribute", (AttributeForm form, HttpContext context, IDirectoryExtras tools, ActivityLog log) => UsersApi.Try(context, Permissions.AdAttributes, async () =>
