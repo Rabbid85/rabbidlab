@@ -1413,6 +1413,7 @@ const RELEASE_NOTES = [
   const addr = (a) => (a === '::1' || a === '127.0.0.1' ? 'This server' : (a || '').replace(/^::ffff:/i, ''));
   const stateOf = (c) => (!c.approved ? 'waiting' : c.online ? 'online' : 'offline');
   const STATE = { online: 'Online', offline: 'Offline', waiting: 'Waiting' };
+  let seatPanel = null; // draws the computer open in the side panel again, once that's set up
   const drawSeats = () => {
     const n = { all: computers.length, behind: computers.filter((c) => c.behind).length };
     for (const st of ['online', 'offline', 'waiting']) n[st] = computers.filter((c) => stateOf(c) === st).length;
@@ -1423,6 +1424,7 @@ const RELEASE_NOTES = [
     const shown = computers.filter((c) => seatFilter === 'all' || (seatFilter === 'behind' ? c.behind : stateOf(c) === seatFilter));
     seatsEmpty = computers.length ? 'None of the computers are like that right now.' : `No computers yet. Add computers to give people the ${esc(product)} client.`;
     seatsGrid().draw(shown);
+    seatPanel?.();
   };
   // Devices and Signed in now are data grids (grid.js), made the first time they're drawn.
   const ms = (iso) => (iso ? new Date(iso).getTime() : 0);
@@ -1716,72 +1718,103 @@ const RELEASE_NOTES = [
       $('seats-filter').querySelectorAll('[data-filter]').forEach((b) => b.setAttribute('aria-selected', String(b === chip)));
       drawSeats();
     });
-    $('seats-table').addEventListener('click', (e) => {
+    // A row opens its computer in the side panel; the row's own buttons do what they say. Uninstall opens the panel too.
+    const seatAct = async (c, what, body) => {
+      let said = null;
+      try {
+        said = await send(`/api/clients/${encodeURIComponent(c.id)}/${what}`, body);
+        seatProblem('');
+      } catch (err) {
+        seatProblem(err.message);
+        if (panel.is('seats')) toast("That didn't work.", err.message, { tone: 'warn' });
+      }
+      return said;
+    };
+    const seatRemove = (c) => sure(`Remove ${c.computer}?`, 'Its client will ask to join again and wait for approval.', 'Remove', async () => {
+      await seatAct(c, 'remove');
+      seats();
+    });
+    $('seats-table').addEventListener('click', async (e) => {
       const row = e.target.closest('[data-client]');
       const c = row && computers.find((x) => x.id === row.dataset.client);
       if (!c) return;
-      const act = async (what) => {
-        try {
-          await send(`/api/clients/${encodeURIComponent(c.id)}/${what}`);
-          seatProblem('');
-        } catch (err) {
-          seatProblem(err.message);
-        }
+      if (e.target.matches('[data-approve]')) {
+        await seatAct(c, 'approve');
         seats();
-      };
-      if (e.target.matches('[data-approve]')) act('approve');
-      else if (e.target.matches('[data-forget]')) sure(`Remove ${c.computer}?`, 'Its client will ask to join again and wait for approval.', 'Remove', () => act('remove'));
-      else if (e.target.matches('[data-uninstall]')) openSeat(c);
+      } else if (e.target.matches('[data-forget]')) seatRemove(c);
+      else if (panel.shows('seats', c.id) && !e.target.matches('[data-uninstall]')) panel.close();
+      else openSeat(c);
     });
-    // Uninstalling a computer's client: locked on the computer until it's allowed here, for an hour, or ordered from here.
+
+    // One computer in the side panel: what it is, approving or removing it, and uninstalling its client. The client is
+    // locked on the computer until it's allowed here, for an hour, or its uninstall code is entered there.
     let seat = null;
-    let seatCode = null; // the computer's uninstall code once Show was clicked: { code, held }
+    let seatCode = null; // its uninstall code once Show code was clicked: { code, held }
+    const markSeat = () => document.querySelectorAll('#seats-table [data-client]').forEach((el) => el.classList.toggle('dw-on', panel.shows('seats', el.dataset.client)));
+    panel.el.addEventListener('close', markSeat);
+    const clock = (iso) => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
     const drawSeat = () => {
-      $('seat-title').textContent = `Uninstall the client on ${seat.computer}`;
-      $('seat-code-value').hidden = !seatCode;
-      $('seat-code-value').textContent = seatCode ? seatCode.code : '';
-      $('seat-code-about').textContent = !seatCode ? "Entered on the computer, it allows uninstalling for an hour. It works when the computer can't reach this server."
-        : seatCode.held ? 'On the computer, open Rabbid Lab Client, click Uninstall and enter this code.'
-        : "This computer hasn't received its code yet. It gets it the next time it checks in, with client 1.1.152 or later.";
-      $('seat-code').textContent = seatCode ? 'Copy' : 'Show';
-      $('seat-allow-title').textContent = seat.removalUntil ? `Allowed until ${new Date(seat.removalUntil).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : 'Allow uninstalling for an hour';
-      $('seat-allow').textContent = seat.removalUntil ? 'Lock again' : 'Allow';
-      $('seat-now').disabled = !!seat.uninstalling;
-      $('seat-now').textContent = seat.uninstalling ? 'Ordered' : 'Uninstall';
+      const st = stateOf(seat);
+      const facts = [['Windows', seat.os || 'Unknown'], ['Signed in', seat.user || 'Nobody'], ['Client', `${seat.version || '?'}${seat.behind ? ' (older than this server)' : ''}`],
+        ['Address', addr(seat.address)], ['Last seen', ago(seat.lastSeen)], ['Joined', when(seat.joined)],
+        seat.approved ? ['Approved', `${when(seat.approved)}${seat.approvedBy ? ` by ${seat.approvedBy}` : ''}`] : null].filter(Boolean);
+      const bar = `<div class="dw-bar">${st === 'waiting' && can.has('seats.approve') ? `<button type="button" class="dw-qa" data-seat-approve>${svg('check')}<span>Approve</span></button>` : ''}`
+        + `${can.has('seats.remove') ? `<button type="button" class="dw-qa" data-seat-remove>${svg('trash')}<span>Remove from Devices</span></button>` : ''}</div>`;
+      const open = !!seat.removalUntil;
+      const lock = st === 'waiting' || !can.has('seats.remove') ? ''
+        : `<section class="dw-sec"><div class="dw-sec-head"><h3>Uninstall the client</h3><span class="seat-lock${open ? ' open' : ''}">${svg(open ? 'check' : 'lock')}${open ? `Allowed until ${esc(clock(seat.removalUntil))}` : 'Locked'}</span></div>`
+          + `<p class="dw-how">${open ? 'Someone at the computer can uninstall the client now, from Rabbid Lab Client or from Installed apps in Windows.' : "The client can't be uninstalled on the computer until you allow it here."}</p>`
+          + `<div class="seat-acts"><button type="button" data-seat-allow>${open ? 'Lock again' : 'Allow for an hour'}</button>`
+          + `<button type="button" class="danger" data-seat-now${seat.uninstalling ? ' disabled' : ''}>${svg('trash')}${seat.uninstalling ? 'Uninstalling' : 'Uninstall now'}</button></div></section>`
+          + `<section class="dw-sec"><div class="dw-sec-head"><h3>Uninstall code</h3>${seatCode ? '' : `<button type="button" class="small" data-seat-code>${svg('eye')}Show code</button>`}</div>`
+          + (seatCode ? `<div class="seat-code"><code>${esc(seatCode.code)}</code>${caCopy(seatCode.code)}</div>`
+            + `<p class="dw-how${seatCode.held ? '' : ' warn'}">${seatCode.held ? 'On the computer, open Rabbid Lab Client, click Uninstall and enter this code. It allows uninstalling for an hour.'
+              : "This computer hasn't received its code yet. It gets it the next time it checks in, with client 1.1.152 or later."}</p>`
+            : `<p class="dw-how">For when the computer can't reach this server. Entered on the computer, it allows uninstalling for an hour.</p>`) + '</section>';
+      panel.body.innerHTML = `<div class="dw-head"><span class="pic dw-pic">${svg('monitor')}</span><div class="dw-name"><h2 id="dw-title">${esc(seat.computer)}</h2>`
+        + `<p><span class="state ${st}">${STATE[st]}</span></p></div><button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>${bar}`
+        + `<section class="dw-sec"><div class="dw-sec-head"><h3>Details</h3></div><ul class="does">${facts.map(([k, v]) => `<li><b>${esc(k)}</b><span>${esc(v)}</span></li>`).join('')}</ul></section>${lock}`;
     };
     const openSeat = (c) => {
+      if (seat?.id !== c.id) seatCode = null;
       seat = c;
-      seatCode = null;
-      say('seat-problem', '');
       drawSeat();
-      $('seat-dialog').showModal();
+      panel.open('seats', c.id);
+      markSeat();
     };
-    const removal = async (body) => {
-      try {
-        Object.assign(seat, await send(`/api/clients/${encodeURIComponent(seat.id)}/removal`, body));
-        say('seat-problem', '');
-      } catch (err) {
-        say('seat-problem', err.message);
-      }
-      drawSeat();
-      drawSeats();
-    };
-    $('seat-now').addEventListener('click', () => removal({ allow: true, now: true }));
-    $('seat-allow').addEventListener('click', () => removal({ allow: !seat.removalUntil }));
-    $('seat-code').addEventListener('click', async () => {
-      if (seatCode) {
-        await copy($('seat-code-value'), $('seat-code'));
+    // The list was read again: the computer that's open shows what it is now, or closes when it's gone.
+    seatPanel = () => {
+      if (!panel.is('seats')) return;
+      const c = computers.find((x) => x.id === panel.key);
+      if (!c) {
+        panel.close();
         return;
       }
-      try {
-        seatCode = await send(`/api/clients/${encodeURIComponent(seat.id)}/code`);
-        say('seat-problem', '');
-      } catch (err) {
-        say('seat-problem', err.message);
-      }
+      seat = c;
       drawSeat();
+      markSeat();
+    };
+    panel.el.addEventListener('click', copyClick);
+    panel.el.addEventListener('click', async (e) => {
+      if (!panel.is('seats') || !seat) return;
+      const on = (name) => e.target.closest(`[data-seat-${name}]`);
+      const lockTo = async (body) => {
+        const said = await seatAct(seat, 'removal', body);
+        if (said) Object.assign(seat, said);
+        drawSeat();
+        drawSeats();
+      };
+      if (on('approve')) {
+        await seatAct(seat, 'approve');
+        seats();
+      } else if (on('remove')) seatRemove(seat);
+      else if (on('allow')) lockTo({ allow: !seat.removalUntil });
+      else if (on('now')) sure(`Uninstall the client on ${seat.computer}?`, 'The client removes itself from the computer within a minute.', 'Uninstall', () => lockTo({ allow: true, now: true }));
+      else if (on('code')) {
+        seatCode = (await seatAct(seat, 'code')) || seatCode;
+        drawSeat();
+      }
     });
-    $('seat-close').addEventListener('click', () => $('seat-dialog').close());
     $('sessions-table').addEventListener('click', async (e) => {
       const row = e.target.closest('[data-session]');
       if (!row || !e.target.matches('[data-end]')) return;
