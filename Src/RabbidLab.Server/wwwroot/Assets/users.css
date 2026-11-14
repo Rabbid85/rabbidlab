@@ -466,3 +466,17 @@ dialog.drawer::backdrop { background: rgba(5, 6, 10, .55); backdrop-filter: blur
 .adt.picks .th-grip:hover::after { left: 3.5px; }
 body.col-dragging .adt.picks .th-grip:not(:hover)::after { top: 8px; bottom: 8px; left: 4.5px; width: 1px; border-radius: 0; background: #363B55; }
 .adt.picks .tr.th .tk::after { right: -10.5px; }
+
+/* The side panel doesn't block the page: no dimming, the list stays usable, and the open row is marked. */
+dialog.drawer:not(:modal) { z-index: 60; }
+.adt .tr.dw-on { background: #171B2C; box-shadow: inset 3px 0 0 var(--accent); }
+/* A section's own actions, beside its heading. */
+.dw-links { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 2px; }
+.dw-link { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 8px; border: 0; border-radius: 7px; background: none; color: var(--accent-soft); font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.dw-link:hover { background: #1A1D2B; color: #fff; }
+.dw-link svg { width: 14px; height: 14px; }
+/* Settings as switches, the app's own. */
+.dw-fact.dw-sw { grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 4px 0; cursor: pointer; }
+.dw-sw > span { color: var(--text); font-size: 13.5px; }
+.dw-sw > span small { display: block; color: #6D7290; font-size: 12px; }
+.dw-sw input.switch:disabled { opacity: .45; cursor: default; }

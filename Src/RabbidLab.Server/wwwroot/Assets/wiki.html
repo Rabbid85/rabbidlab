@@ -153,7 +153,7 @@
     <li>Groups have <b>Members</b> (add, remove, copy from or to another group) and <b>Member of</b>. Computers have <b>Account</b>, <b>Groups</b> and <b>Organization</b>.</li>
     <li>The menu only lists what applies. With several picked, an item says how many of them it applies to.</li>
   </ol>
-  <p>Protected and built-in accounts (such as Administrator), built-in groups and domain controllers are left out. Change those in Active Directory Users and Computers. Every change goes in the Activity log.</p>
+  <p>Protected and built-in accounts and groups can be changed too: Active Directory refuses whatever the service account isn't allowed to do. A few things are never offered: the password, sign-in settings and deleting of <span data-app>Rabbid Lab</span>'s own account (it would lock itself out), disabling, moving or deleting a domain controller, and deleting a built-in group. Every change goes in the Activity log.</p>
 </article>
 
 <article data-key="dir-columns" data-group="Active Directory" data-title="Filter, sort and pick columns">

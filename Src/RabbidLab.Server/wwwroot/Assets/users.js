@@ -507,6 +507,9 @@
     $('dir-more').hidden = !more[adPage];
     drawPicked();
     drawViews();
+    // The side panel belongs to the page it was opened on.
+    if ($('ad-drawer').open && dw.kind !== adPage) $('ad-drawer').close();
+    markOpenRow();
     // The dots in the rail keep what the last read said, while another page is open.
     if (lists.users) $('dir-locked-dot').hidden = !lists.users.some((u) => u.locked && !u.system);
     if (lists.domain) $('dir-domain-dot').hidden = !lists.domain.some((s) => s.tone === 'bad');
@@ -1068,7 +1071,13 @@
 
   const CMD_W = 250;
   const nameOf = (x) => x.name || x.username;
-  const mayChange = (k, x) => (k === 'users' ? !x.service && !x.protected && !x.system : k === 'groups' ? !x.system : !x.controller);
+  // Everything goes to Active Directory, which refuses what the service account may not do. A few things are never sent:
+  // Rabbid Lab's own account keeps its password and sign-in, domain controllers stay put, built-in groups aren't deleted.
+  const mayChange = () => true;
+  const SIGN_IN = ['enable', 'disable', 'password', 'flag-on', 'flag-off', 'expiry', 'expiry-clear', 'delete'];
+  const blocked = (k, x) => new Set(k === 'users' && x.service ? SIGN_IN : k === 'computers' && x.controller ? ['enable', 'disable', 'move', 'delete']
+    : k === 'groups' && (x.system || x.protected) ? ['delete'] : []);
+  let menuHide = new Set(); // what the open menu leaves out, for the ones it's for
   const whoOf = (xs, k = adPage) => (xs.length === 1 ? nameOf(xs[0]) : count(xs.length, ...AD[k].noun));
   const userPath = (u) => `/api/ad/users/${encodeURIComponent(u.username)}`;
   const selectedObjs = () => [...pickedHere()].map(byKey).filter(Boolean);
@@ -1112,7 +1121,7 @@
 
   // The menu: Properties, then a category for each kind of change, More, and Delete. Only what applies is listed; for
   // several, an item says how many of them it applies to.
-  const mi = (cmd, icon, label, { off = false, hint = '', danger = false } = {}) => (off ? ''
+  const mi = (cmd, icon, label, { off = false, hint = '', danger = false } = {}) => (off || menuHide.has(cmd) || menuHide.has(cmd.split(':')[0]) ? ''
     : `<button type="button" role="menuitem" class="am-link${danger ? ' out' : ''}" data-cmd="${cmd}">${svg(icon)}<span>${esc(label)}</span>${hint ? `<small>${esc(hint)}</small>` : ''}</button>`);
   const some = (k, n, cmd, icon, label) => mi(cmd, icon, label, { off: !k, hint: n > 1 && k < n ? `${k} of ${n}` : '' });
   const part = (...items) => (items.join('') ? `<div class="am-links">${items.join('')}</div>` : '');
@@ -1160,12 +1169,8 @@
       const on = has((u) => u[FLAGS[flag][0]]);
       return some(n - on, n, `flag-on:${flag}`, icon, onLabel) + some(on, n, `flag-off:${flag}`, icon, offLabel);
     };
-    const out = can('ad.change') ? all - n : 0;
-    const left = LEFT_OUT[k];
-    const top = all === 1
-      ? part(mi('open', PIC[k], 'Properties')) + (out ? `<p class="cmd-note">${esc(left[0].charAt(0).toUpperCase() + left[0].slice(1))}: change it in Active Directory Users and Computers.</p>` : '')
-      : `<p class="cmd-head">${esc(count(all, one, many))} selected<button type="button" class="linkish cmd-clear" data-cmd="clear-sel">Clear</button>`
-        + `${out ? `<small>${esc(count(out, ...left))} left out</small>` : ''}</p>`;
+    const top = all === 1 ? part(mi('open', PIC[k], 'Properties'))
+      : `<p class="cmd-head">${esc(count(all, one, many))} selected<button type="button" class="linkish cmd-clear" data-cmd="clear-sel">Clear</button></p>`;
     const onOff = (icon) => part(some(has((x) => !x.enabled), n, 'enable', 'user-check', n === 1 ? 'Enable account' : 'Enable accounts'),
       some(has((x) => x.enabled), n, 'disable', 'user-off', n === 1 ? 'Disable account' : 'Disable accounts'),
       ...(icon ? [some(has((u) => u.locked), n, 'unlock', 'unlock', n === 1 ? 'Unlock account' : 'Unlock accounts')] : []));
@@ -1211,14 +1216,17 @@
       part(mi('attrs', 'list', 'View in attribute browser', { off: all !== 1 })),
       part(...COPY[k].map(([key, o, m]) => mi(`copy:${key}`, 'copy', `Copy ${all === 1 ? o : m}`))),
       part(mi('export', 'csv', all === 1 ? 'Export to CSV' : `Export ${count(all, one, many)} to CSV`))));
-    const deletable = xs.filter((x) => k !== 'groups' || !x.protected).length;
+    const deletable = xs.filter((x) => !blocked(k, x).has('delete')).length;
     const gone = can('ad.delete') && deletable ? part(mi('delete', 'trash', deletable === 1 ? 'Delete…' : `Delete ${count(deletable, one, many)}…`, { danger: true })) : '';
     return top + changes + more + gone;
   };
 
   let menuFor = { kind: 'users', objs: [] };
-  const openCmd = (objs, x, y, kind = adPage) => {
+  const openCmd = (objs, x, y, kind = adPage, { panel = false } = {}) => {
     if (!objs.length) return;
+    // Left out: what's never sent for any of these, and Properties when the panel is already open.
+    menuHide = new Set([...SIGN_IN, 'move'].filter((c) => objs.every((o) => blocked(kind, o).has(c))));
+    if (panel) menuHide.add('open');
     const m = $('cmd-menu');
     if (m.matches(':popover-open')) m.hidePopover();
     // Over the side panel the menu has to be inside it, or the panel makes it unclickable.
@@ -1292,7 +1300,10 @@
   // Each one in turn under the flask; then the list is read again and a toast says how it went. Gives back what each
   // that worked answered.
   const each = async (k, xs, doing, done, work, { gone = false } = {}) => {
-    if (!xs.length) return [];
+    if (!xs.length) {
+      if ($('ad-drawer').open) drawDrawer(); // a switch flipped for nothing goes back
+      return [];
+    }
     closeCard();
     say('dir-problem', '');
     say('dir-note', '');
@@ -1384,6 +1395,9 @@
         const on = what === 'flag-on';
         const [field, onSaid, offSaid] = FLAGS[arg];
         const to = !field ? xs : only((u) => !!u[field] !== on && !(arg === 'mustchange' && on && u.neverExpires));
+        if (arg === 'mustchange' && on && !to.length && xs.some((u) => u.neverExpires)) {
+          R.toast('The password never expires', 'Set it to expire per policy first; then it can be made to change at the next sign-in.', { tone: 'warn' });
+        }
         each(k, to, 'Changing the account options', (on ? onSaid : offSaid)(whoOf(to, k)), (u) => post(u, '/flag', { flag: arg, on }));
         break;
       }
@@ -1465,7 +1479,7 @@
       case 'copy': copyField(k, objs, arg); break;
       case 'export': csvOf(objs, objs.length === 1 ? nameOf(objs[0]) : `${objs.length}-${many}`); break;
       case 'delete': {
-        const to = xs.filter((x) => k !== 'groups' || !x.protected);
+        const to = xs.filter((x) => !blocked(k, x).has('delete'));
         const w = whoOf(to, k);
         const why = {
           users: `${to.length === 1 ? `${to[0].username} is` : `${count(to.length, 'account is', 'accounts are')}`} deleted from ${ad.state.domain} for good, with anything in ${to.length === 1 ? 'it' : 'them'}. Disabling can be undone; this can't.`,
@@ -1673,25 +1687,31 @@
   });
 
   // --- The panel from the right: one user, group or computer -------------------------------------------------------
-  // Clicking a row opens it over the list, as the Microsoft 365 and Entra admin centers do: who or what it is, its
-  // status, the everyday actions (⋯ has the rest), and tabs for its details and its groups (a group's members too).
+  // Clicking a row opens it beside the list, as the Microsoft 365 and Entra admin centers do: who or what it is, its
+  // status, the everyday actions (More has the rest), and tabs for its details and its groups (a group's members too).
+  // Each section has its own actions, and settings are switches. The list stays usable: another row opens in it.
 
   const dw = { kind: '', key: '', tab: 'overview', members: null, membersFor: '' };
   const dwObj = () => (lists[dw.kind] || []).find((x) => String(AD[dw.kind].key(x)) === dw.key);
   const dwFact = (label, value, wide = false) => `<div class="dw-fact${wide ? ' wide' : ''}"><span class="l">${esc(label)}</span><span class="v">${value || '<span class="muted">Not set</span>'}</span></div>`;
-  const dwFacts = (title, items) => {
+  // A section: its heading with its actions (only those this may do), then its facts.
+  let dwNot = new Set(); // what's never sent for the one shown
+  const dwLink = (cmd, icon, label) => (!can('ad.change') || dwNot.has(cmd.split(':')[0]) ? '' : `<button type="button" class="dw-link" data-dw-cmd="${cmd}">${svg(icon)}${esc(label)}</button>`);
+  const dwFacts = (title, items, links = '') => {
     const shown = items.filter(Boolean).join('');
-    return shown ? `<section class="dw-sec"><h3>${esc(title)}</h3><div class="dw-facts">${shown}</div></section>` : '';
+    return shown ? `<section class="dw-sec"><div class="dw-sec-head"><h3>${esc(title)}</h3>${links ? `<div class="dw-links">${links}</div>` : ''}</div><div class="dw-facts">${shown}</div></section>` : '';
+  };
+  // A setting as a switch: on or off, and flipping it makes the change.
+  const dwSwitch = (label, on, onCmd, offCmd, help = '') => {
+    const off = !can('ad.change') || dwNot.has(onCmd.split(':')[0]);
+    return `<label class="dw-fact dw-sw"><span>${esc(label)}${help ? `<small>${esc(help)}</small>` : ''}</span>`
+      + `<input type="checkbox" class="switch" data-dw-on="${onCmd}" data-dw-off="${offCmd}"${on ? ' checked' : ''}${off ? ' disabled' : ''}></label>`;
   };
   const e1 = (v) => (v ? esc(v) : '');
-  const qa = (cmd, icon, label) => `<button type="button" class="dw-qa" data-dw-cmd="${cmd}">${svg(icon)}<span>${esc(label)}</span></button>`;
-  const LEFT_WHY = {
-    users: (u) => (u.service ? `That's ${ad.state.account}, ${R.app()}'s own account. It looks after it itself.`
-      : u.protected ? `Active Directory protects the accounts of admins, so ${R.app()}'s account can't change this one. Use Active Directory Users and Computers for it.`
-        : 'A built-in account. Change it in Active Directory Users and Computers.'),
-    groups: () => 'A built-in group. Change it in Active Directory Users and Computers.',
-    computers: () => 'A domain controller. Change it in Active Directory itself.',
-  };
+  const qa = (cmd, icon, label) => (dwNot.has(cmd) ? '' : `<button type="button" class="dw-qa" data-dw-cmd="${cmd}">${svg(icon)}<span>${esc(label)}</span></button>`);
+  // Why a few things aren't there, for the ones that have them.
+  const dwWhy = (k, x) => (k === 'users' && x.service ? `That's ${ad.state.account}, ${R.app()}'s own account. Its password and sign-in settings stay as they are, so ${R.app()} keeps working.`
+    : k === 'computers' && x.controller ? 'A domain controller: it can\'t be disabled, moved or deleted here.' : '');
 
   const dwHead = (k, x) => {
     const pic = k === 'users' ? `<span class="pic user dw-pic">${esc(initials(nameOf(x)))}</span>` : `<span class="pic dw-pic">${svg(k === 'groups' ? 'users' : server(x) ? 'server' : 'laptop')}</span>`;
@@ -1700,42 +1720,52 @@
       + (x.service ? chip(R.app(), 'ember') : '')
       : k === 'computers' ? pcStatus(x) + (x.controller ? chip('Domain controller', 'muted') : '') + (server(x) ? chip('Server', 'muted') : '')
         : badge(x.security ? 'Security group' : 'Distribution group', 'grey') + badge(x.scope, 'grey') + (x.protected ? badge('Privileged', 'amber') : '');
-    // The everyday actions as buttons; ⋯ opens the whole menu.
-    const change = can('ad.change') && mayChange(k, x);
-    const quick = !change ? '' : k === 'users'
+    // The everyday actions as buttons; More opens the whole menu.
+    const quick = !can('ad.change') ? '' : k === 'users'
       ? qa('password', 'key', 'Reset password') + (x.locked ? qa('unlock', 'unlock', 'Unlock') : '') + qa(x.enabled ? 'disable' : 'enable', x.enabled ? 'user-off' : 'user-check', x.enabled ? 'Disable' : 'Enable')
         + qa('edit', 'edit', 'Edit') + qa('groups-add', 'user-plus', 'Add to groups')
       : k === 'groups' ? qa('members-add', 'user-plus', 'Add members') + qa('groups-add', 'org', 'Add to groups') + qa('edit', 'edit', 'Edit')
         : qa(x.enabled ? 'disable' : 'enable', x.enabled ? 'user-off' : 'user-check', x.enabled ? 'Disable' : 'Enable') + qa('groups-add', 'user-plus', 'Add to groups') + qa('edit', 'edit', 'Edit');
+    const why = dwWhy(k, x);
     return `<div class="dw-head">${pic}<div class="dw-name"><h2 id="dw-title">${esc(nameOf(x))}</h2>${sub ? `<p>${esc(sub)}</p>` : ''}</div>`
       + `<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`
       + `<div class="dw-status">${status}</div>`
       + `<div class="dw-bar">${quick}<button type="button" class="dw-qa dw-more" data-dw-more aria-haspopup="menu">${svg('dots')}<span>More</span></button></div>`
-      + (!change && can('ad.change') ? `<p class="hint dw-note">${esc(LEFT_WHY[k](x))}</p>` : '');
+      + (why && can('ad.change') ? `<p class="hint dw-note">${esc(why)}</p>` : '');
   };
 
   const dwOverview = (k, x) => {
+    const where = dwFact('Organizational unit', esc(x.where || ad.state.domain), true);
     if (k === 'users') {
       const password = x.mustChange ? 'Must change at the next sign-in' : x.neverExpires ? 'Never expires' : x.passwordExpires ? `Expires ${day(x.passwordExpires)}` : '';
       return dwFacts('Account', [dwFact('Pre-Windows 2000 logon name', `<span class="mono">${esc(x.username)}</span>`), dwFact('User principal name', e1(x.upn)),
-        dwFact('Last sign-in', esc(ago(x.lastSignIn))), dwFact('Password', esc(password)), dwFact('Password last set', x.passwordSet ? esc(day(x.passwordSet)) : ''),
-        dwFact('Account expires', x.accountExpires ? `End of ${esc(day(new Date(new Date(x.accountExpires) - 1)))}` : 'Never'), dwFact('Created', x.created ? esc(day(x.created)) : ''),
-        dwFact('Organizational unit', esc(x.where || ad.state.domain), true)])
+        dwFact('Last sign-in', esc(ago(x.lastSignIn))), dwFact('Created', x.created ? esc(day(x.created)) : ''),
+        dwFact('Account expires', x.accountExpires ? `End of ${esc(day(new Date(new Date(x.accountExpires) - 1)))}` : 'Never'), dwFact('Locked out', x.locked ? 'Yes' : 'No'), where],
+        dwLink('expiry', 'calendar', x.accountExpires ? 'Change expiration' : 'Set expiration') + (x.accountExpires ? dwLink('expiry-clear', 'calendar', 'Remove expiration') : '')
+          + dwLink('move', 'move', 'Move') + dwLink('rename', 'edit', 'Rename'))
+        + dwFacts('Password', [dwFact('Password', esc(password)), dwFact('Last set', x.passwordSet ? esc(day(x.passwordSet)) : ''),
+          dwSwitch('Must change at next sign-in', !!x.mustChange, 'flag-on:mustchange', 'flag-off:mustchange'),
+          dwSwitch('Never expires', !!x.neverExpires, 'flag-on:noexpiry', 'flag-off:noexpiry')],
+          dwLink('password', 'key', 'Reset password') + dwLink('flag-on:cannotchange', 'lock', 'Stop user changing it') + dwLink('flag-off:cannotchange', 'unlock', 'Let user change it'))
         + dwFacts('Contact and organization', [dwFact('Display name', e1(x.name)), dwFact('Email', e1(x.email)), dwFact('Job title', e1(x.title)), dwFact('Department', e1(x.department)),
-          dwFact('Company', e1(x.company)), dwFact('Office', e1(x.office)), dwFact('Phone', e1(x.phone)), dwFact('Manager', e1(x.manager)), dwFact('Description', e1(x.description), true)])
-        + dwFacts('Security', [dwFact('Sensitive and cannot be delegated', x.sensitive ? 'Yes' : 'No'), dwFact('Smart card required', x.smartcard ? 'Yes' : 'No'),
-          dwFact('Reversible encryption', x.reversible ? 'Yes' : 'No'), dwFact('Kerberos preauthentication', x.noPreauth ? 'Not required' : 'Required')])
+          dwFact('Company', e1(x.company)), dwFact('Office', e1(x.office)), dwFact('Phone', e1(x.phone)), dwFact('Manager', e1(x.manager)), dwFact('Description', e1(x.description), true)],
+          dwLink('edit', 'edit', 'Edit'))
+        + dwFacts('Security', [dwSwitch('Sensitive and cannot be delegated', !!x.sensitive, 'flag-on:sensitive', 'flag-off:sensitive'),
+          dwSwitch('Smart card required', !!x.smartcard, 'flag-on:smartcard', 'flag-off:smartcard'),
+          dwSwitch('Reversible encryption', !!x.reversible, 'flag-on:reversible', 'flag-off:reversible'),
+          dwSwitch('Kerberos DES only', !!x.desOnly, 'flag-on:des', 'flag-off:des'),
+          dwSwitch('Kerberos preauthentication required', !x.noPreauth, 'flag-off:preauth', 'flag-on:preauth')])
         + `<p class="hint dw-dn">${esc(x.dn)}</p>`;
     }
     if (k === 'groups') {
       return dwFacts('Group', [dwFact('Group type', x.security ? 'Security' : 'Distribution'), dwFact('Group scope', esc(x.scope)),
         dwFact('Members', x.moreMembers ? '1,500 or more' : esc(x.members.toLocaleString())), dwFact('Email', e1(x.email)),
-        dwFact('Organizational unit', esc(x.where || ad.state.domain), true), dwFact('Description', e1(x.description), true), dwFact('Notes', e1(x.notes), true)])
+        where, dwFact('Description', e1(x.description), true), dwFact('Notes', e1(x.notes), true)], dwLink('edit', 'edit', 'Edit') + dwLink('move', 'move', 'Move'))
         + `<p class="hint dw-dn">${esc(x.dn)}</p>`;
     }
     return dwFacts('Computer', [dwFact('DNS host name', e1(x.host)), dwFact('Operating system', esc([x.os, x.osVersion].filter(Boolean).join(' '))),
       dwFact('Last sign-in', esc(ago(x.lastSignIn))), dwFact('Created', x.created ? esc(day(x.created)) : ''), dwFact('Location', e1(x.location)),
-      dwFact('Organizational unit', esc(x.where || ad.state.domain), true), dwFact('Description', e1(x.description), true)])
+      where, dwFact('Description', e1(x.description), true)], dwLink('edit', 'edit', 'Edit') + dwLink('move', 'move', 'Move'))
       + `<p class="hint dw-dn">${esc(x.dn)}</p>`;
   };
 
@@ -1778,6 +1808,7 @@
       return;
     }
     const k = dw.kind;
+    dwNot = blocked(k, x);
     const tabsFor = k === 'groups' ? [['overview', 'Overview'], ['members', 'Members'], ['memberof', 'Member of']] : [['overview', 'Overview'], ['memberof', 'Member of']];
     const body = dw.tab === 'members' ? dwMembers(x) : dw.tab === 'memberof' ? dwMemberOf(k, x) : dwOverview(k, x);
     const scroll = $('dw-body').scrollTop;
@@ -1793,13 +1824,33 @@
     dw.key = key;
     closeCard();
     drawDrawer();
-    if (!$('ad-drawer').open) $('ad-drawer').showModal();
-    $('ad-drawer').querySelector('.dw-close')?.focus({ preventScroll: true });
+    // Not modal: the list beside it stays usable, and another row opens in the same panel.
+    if (!$('ad-drawer').open) $('ad-drawer').show();
+    markOpenRow();
   };
+  // The row whose panel is open is marked in the list.
+  const markOpenRow = () => {
+    const on = $('ad-drawer').open && dw.kind === adPage ? dw.key : null;
+    $('dir-table').querySelectorAll('.tr[data-i]').forEach((row) => row.classList.toggle('dw-on', on !== null && keyOf(rows[Number(row.dataset.i)]) === on));
+  };
+  $('ad-drawer').addEventListener('close', markOpenRow);
+  // Esc closes it, unless a window or menu over it is what Esc is for.
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || !$('ad-drawer').open || document.querySelector('dialog[open]:modal, :popover-open')) return;
+    $('ad-drawer').close();
+  });
+  // Leaving the Active Directory pages closes it.
+  document.addEventListener('rabbidlab:show', (e) => { if (e.detail[0] !== 'ad' && $('ad-drawer').open) $('ad-drawer').close(); });
+  // A switch makes its change straight away; the panel shows how it came out.
+  $('ad-drawer').addEventListener('change', (e) => {
+    const sw = e.target.closest('[data-dw-on]');
+    const x = dwObj();
+    if (!sw || !x) return;
+    runCmd(sw.checked ? sw.dataset.dwOn : sw.dataset.dwOff, dw.kind, [x]);
+  });
   $('ad-drawer').addEventListener('click', (e) => {
     const d = $('ad-drawer');
-    // A click on the dimmed page beside the panel closes it.
-    if (e.target === d || e.target.closest('[data-dw-close]')) { d.close(); return; }
+    if (e.target.closest('[data-dw-close]')) { d.close(); return; }
     const x = dwObj();
     if (!x) return;
     const k = dw.kind;
@@ -1810,7 +1861,7 @@
     const more = e.target.closest('[data-dw-more]');
     if (more) {
       const r = more.getBoundingClientRect();
-      openCmd([x], r.right - CMD_W, r.bottom + 6, k);
+      openCmd([x], r.right - CMD_W, r.bottom + 6, k, { panel: true });
       return;
     }
     const leave = e.target.closest('[data-dw-leave]');

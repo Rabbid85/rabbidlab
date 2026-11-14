@@ -88,31 +88,36 @@ public sealed class DirectoryToolsTests : IDisposable
     }
 
     [Fact]
-    public async Task Protected_built_in_and_its_own_accounts_are_refused_here_not_just_hidden_on_the_page()
+    public async Task Protected_and_built_in_ones_go_to_AD_and_its_own_account_keeps_its_sign_in()
     {
         await Connect();
         var none = CancellationToken.None;
 
-        foreach (var (name, said) in new[] { ("boss", "protected or built-in"), ("krbtgt", "protected or built-in"), ("svc-existing", "own account") })
-        {
-            var problems = new[]
-            {
-                await Refused(() => tools.Password(name, "New pass 1", false, none)),
-                await Refused(() => tools.Unlock(name, none)),
-                await Refused(() => tools.Enable(name, false, none)),
-                await Refused(() => tools.ChangeGroups(name, [$"CN=Lab Staff,{Lab}"], [], none)),
-                await Refused(() => tools.Delete(name, none)),
-            };
-            Assert.All(problems, p => Assert.Contains(said, p.Message));
-        }
-        var builtIn = await Refused(() => tools.ChangeMembers($"CN=Lab Operators,{Lab}", [$"CN=Jordan Reyes,{Lab}"], [], none));
-        var intoBuiltIn = await tools.ChangeGroups("jreyes", [$"CN=Lab Operators,{Lab}"], [], none);
-        var controller = await Refused(() => tools.DeleteComputer("DC9", none));
+        // Protected and built-in accounts and groups: Active Directory decides, so the change is sent.
+        await tools.Enable("boss", false, none);
+        await tools.Password("krbtgt", "New pass 1", false, none);
+        Assert.Null(await tools.ChangeMembers($"CN=Lab Operators,{Lab}", [$"CN=Jordan Reyes,{Lab}"], [], none));
+        Assert.Null(await tools.ChangeGroups("jreyes", [$"CN=Lab Operators,{Lab}"], [], none));
+        Assert.Contains($"modify CN=Boss,{Lab} userAccountControl", ad.Log);
+        Assert.Contains($"modify CN=krbtgt,{Lab} unicodePwd", ad.Log);
 
-        Assert.Contains("built-in Active Directory group", builtIn.Message);
-        Assert.Contains("built-in Active Directory group", intoBuiltIn);
-        Assert.Contains("domain controller", controller.Message);
-        Assert.DoesNotContain(ad.Log, l => l.StartsWith("modify", StringComparison.Ordinal) || l.StartsWith("delete", StringComparison.Ordinal));
+        // Its own account: its groups and unlocking, yes; its password, sign-in settings and deleting it, no.
+        Assert.Null(await tools.ChangeGroups("svc-existing", [$"CN=Lab Staff,{Lab}"], [], none));
+        await tools.Unlock("svc-existing", none);
+        var own = new[]
+        {
+            await Refused(() => tools.Password("svc-existing", "New pass 1", false, none)),
+            await Refused(() => tools.Enable("svc-existing", false, none)),
+            await Refused(() => tools.Delete("svc-existing", none)),
+            await Refused(() => tools.SetFlag("svc-existing", "smartcard", true, none)),
+            await Refused(() => tools.SetExpiry("svc-existing", new DateOnly(2030, 1, 1), none)),
+        };
+        Assert.All(own, p => Assert.Contains("own account", p.Message));
+
+        // Domain controllers can't be deleted or moved; built-in and protected groups can't be deleted.
+        Assert.Contains("domain controller", (await Refused(() => tools.DeleteComputer("DC9", none))).Message);
+        Assert.Contains("domain controller", (await Refused(() => tools.MoveObject($"CN=DC9,{Lab}", $"OU=People,{Lab}", none))).Message);
+        Assert.Contains("built-in or protected", (await Refused(() => tools.DeleteGroup($"CN=Lab Operators,{Lab}", none))).Message);
     }
 
     [Fact]
@@ -205,7 +210,7 @@ public sealed class DirectoryToolsTests : IDisposable
         Assert.Contains($"rename CN=Jordan Reyes,OU=People,{Lab} -> CN=Jordan Reyes-Hall,OU=People,{Lab}", ad.Log);
         Assert.Contains("outside", (await Refused(() => tools.Move("jreyes", Other, none))).Message);
         Assert.Contains("outside", (await Refused(() => tools.SetFlag("outsider", "sensitive", true, none))).Message);
-        Assert.Contains("protected or built-in", (await Refused(() => tools.SetExpiry("boss", null, none))).Message);
+        Assert.Contains("own account", (await Refused(() => tools.SetExpiry("svc-existing", null, none))).Message);
     }
 
     [Fact]
@@ -228,8 +233,8 @@ public sealed class DirectoryToolsTests : IDisposable
         Assert.DoesNotContain(ad.Log, l => l.StartsWith("modify", StringComparison.Ordinal));
         Assert.Equal(["location"], await tools.EditObject(new ObjectEdit($"CN=PC1,OU=People,{Lab}", null, "x@amw.com", null, "Rack 2"), none));
 
-        Assert.Contains("built-in", (await Refused(() => tools.MoveObject($"CN=Lab Operators,{Lab}", $"OU=People,{Lab}", none))).Message);
-        Assert.Contains("domain controller", (await Refused(() => tools.ChangeMemberOf($"CN=DC9,{Lab}", [staff], [], none))).Message);
+        Assert.Equal("Lab / People", await tools.MoveObject($"CN=Lab Operators,{Lab}", $"OU=People,{Lab}", none));
+        Assert.Null(await tools.ChangeMemberOf($"CN=DC9,{Lab}", [staff], [], none));
         Assert.Contains("outside", (await Refused(() => tools.EditObject(new ObjectEdit($"CN=Elsewhere,{Other}", "x", null, null, null), none))).Message);
         Assert.Contains("outside", (await Refused(() => tools.MoveObject($"CN=PC1,OU=People,{Lab}", Other, none))).Message);
     }

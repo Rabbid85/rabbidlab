@@ -471,9 +471,9 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
         using var ldap = await Open(stop);
         var f = Ready();
         var found = await ChangeableGroup(ldap, f, group, stop);
-        if (Group(found, ldap.BaseDn).Protected)
+        if (Group(found, ldap.BaseDn) is { Protected: true } or { System: true })
         {
-            throw new ToolProblem($"{Ldap.Name(found.Dn)} is a protected Active Directory group, so it can't be deleted here.");
+            throw new ToolProblem($"{Ldap.Name(found.Dn)} is a built-in or protected Active Directory group, so it can't be deleted here.");
         }
         await Remove(ldap, found.Dn, f, stop);
     }
@@ -606,7 +606,7 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
             throw new ToolProblem(NeedsLdaps);
         }
         var f = Ready();
-        var user = await Changeable(ldap, f, username, stop);
+        var user = await Changeable(ldap, f, username, stop, signIn: true);
         List<LdapMod> changes = [new(LdapChange.Replace, "unicodePwd", Ldap.Password(password)), new(LdapChange.Replace, "lockoutTime", "0")];
         if (mustChange)
         {
@@ -627,7 +627,7 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
     {
         using var ldap = await Open(stop);
         var f = Ready();
-        var user = await Changeable(ldap, f, username, stop);
+        var user = await Changeable(ldap, f, username, stop, signIn: true);
         var flags = (int) (user.Number("userAccountControl") ?? NormalAccount);
         flags = on ? flags & ~Disabled : flags | Disabled;
         await Change(ldap, user.Dn, [new(LdapChange.Replace, "userAccountControl", flags.ToString(CultureInfo.InvariantCulture))], f, password: false, stop);
@@ -647,7 +647,7 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
     {
         using var ldap = await Open(stop);
         var f = Ready();
-        await Remove(ldap, (await Changeable(ldap, f, username, stop)).Dn, f, stop);
+        await Remove(ldap, (await Changeable(ldap, f, username, stop, signIn: true)).Dn, f, stop);
     }
 
     public void Dispose() => pool?.Dispose();
@@ -697,30 +697,27 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
         ?? throw new ToolProblem($"There's no account called {username} any more.", StatusCodes.Status404NotFound);
 
     /// <summary>
-    /// Found, in scope, and one Rabbid Lab may change: not its own service account, and not a protected (adminCount) or
-    /// built-in account. Every change to a user goes through here, unlocking and group changes included.
+    /// Found and in scope. Protected and built-in accounts go to Active Directory like any other, and it refuses what the
+    /// service account may not do. Rabbid Lab's own account keeps its password and sign-in settings (signIn), or Rabbid
+    /// Lab would lock itself out. Every change to a user goes through here.
     /// </summary>
-    private static async Task<LdapRow> Changeable(ILdap ldap, DirectoryToolsFile f, string username, CancellationToken stop)
+    private static async Task<LdapRow> Changeable(ILdap ldap, DirectoryToolsFile f, string username, CancellationToken stop, bool signIn = false)
     {
         var row = await Find(ldap, ldap.BaseDn, username, stop);
         var user = Person(row, ldap.BaseDn, f.Account!);
         InScope(row.Dn, f, ldap.BaseDn);
-        if (user.Service)
-        {
-            throw new ToolProblem($"That's {Product.Title}'s own account. It looks after it itself.");
-        }
-        return user.Protected || user.System
-            ? throw new ToolProblem($"{user.Username} is a protected or built-in account. Change it in Active Directory Users and Computers.")
+        return signIn && user.Service
+            ? throw new ToolProblem($"That's {Product.Title}'s own account. Its password and sign-in settings stay as they are, so {Product.Title} keeps working.")
             : row;
     }
 
-    /// <summary>The group, when it's in scope and not one of Active Directory's built-in groups.</summary>
+    /// <summary>The group, when it's in scope; built-in ones too.</summary>
     private static async Task<LdapRow> ChangeableGroup(ILdap ldap, DirectoryToolsFile f, string group, CancellationToken stop)
     {
         var row = (await ldap.Find(Inside(group, ldap.BaseDn), "(objectClass=group)", false, GroupAttributes, 1, stop)).FirstOrDefault()
             ?? throw new ToolProblem("That group isn't in Active Directory any more.", StatusCodes.Status404NotFound);
         InScope(row.Dn, f, ldap.BaseDn);
-        return Group(row, ldap.BaseDn).System ? throw new ToolProblem($"{Ldap.Name(row.Dn)} is a built-in Active Directory group, so it can't be changed here.") : row;
+        return row; // built-in ones too: Active Directory refuses what may not be done
     }
 
     /// <summary>The computer by name, when it's in scope and isn't a domain controller (those are only changed in Active Directory itself).</summary>

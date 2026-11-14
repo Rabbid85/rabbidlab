@@ -75,7 +75,7 @@ public sealed partial class DirectoryTools : IDirectoryActions
     private static readonly string[] ObjectAttributes = ["objectClass", "sAMAccountName", "userAccountControl", "groupType", "adminCount", "isCriticalSystemObject",
         "objectSid", "cn", "member", "description", "mail", "info", "location"];
 
-    /// <summary>A group or computer this may change: in scope, not a built-in group, not a domain controller. Users go through Changeable.</summary>
+    /// <summary>A user, group or computer in scope. Users go through Changeable; Active Directory refuses what may not be done.</summary>
     private static async Task<(LdapRow Row, string Kind)> ChangeableObject(ILdap ldap, DirectoryToolsFile f, string dn, CancellationToken stop)
     {
         var row = (await ldap.Find(Inside(dn, ldap.BaseDn), "(objectClass=*)", false, ObjectAttributes, 1, stop)).FirstOrDefault()
@@ -87,9 +87,7 @@ public sealed partial class DirectoryTools : IDirectoryActions
             case "group":
                 return (await ChangeableGroup(ldap, f, row.Dn, stop), kind);
             case "computer":
-                return ((row.Number("userAccountControl") ?? 0) & 0x2000) != 0
-                    ? throw new ToolProblem($"{Ldap.Name(row.Dn)} is a domain controller. Change those in Active Directory itself.")
-                    : (row, kind);
+                return (row, kind); // domain controllers too; only moving, disabling and deleting them is refused
             case "user":
                 return (await Changeable(ldap, f, row.Text("sAMAccountName") ?? "", stop), kind);
             default:
@@ -105,7 +103,11 @@ public sealed partial class DirectoryTools : IDirectoryActions
         }
         using var ldap = await Open(stop);
         var f = Ready();
-        var (row, _) = await ChangeableObject(ldap, f, dn, stop);
+        var (row, kind) = await ChangeableObject(ldap, f, dn, stop);
+        if (kind == "computer" && ((row.Number("userAccountControl") ?? 0) & 0x2000) != 0)
+        {
+            throw new ToolProblem($"{Ldap.Name(row.Dn)} is a domain controller. Domain controllers stay in Domain Controllers.");
+        }
         var into = await Into(ldap, ou, f.Scope!, stop);
         InScope(into, f, ldap.BaseDn);
         if (!string.Equals(Ldap.Parent(row.Dn), into, StringComparison.OrdinalIgnoreCase))
@@ -220,7 +222,7 @@ public sealed partial class DirectoryTools : IDirectoryActions
     {
         using var ldap = await Open(stop);
         var f = Ready();
-        var user = await Changeable(ldap, f, username, stop);
+        var user = await Changeable(ldap, f, username, stop, signIn: true);
         var flags = (int) (user.Number("userAccountControl") ?? NormalAccount);
         if (Bits.TryGetValue(flag, out var bit))
         {
@@ -265,7 +267,7 @@ public sealed partial class DirectoryTools : IDirectoryActions
     {
         using var ldap = await Open(stop);
         var f = Ready();
-        var user = await Changeable(ldap, f, username, stop);
+        var user = await Changeable(ldap, f, username, stop, signIn: true);
         // ADUC's End of: midnight at the start of the next day, local time.
         var value = last is { } d ? d.AddDays(1).ToDateTime(TimeOnly.MinValue, DateTimeKind.Local).ToFileTimeUtc().ToString(CultureInfo.InvariantCulture) : "0";
         await Change(ldap, user.Dn, [new(LdapChange.Replace, "accountExpires", value)], f, password: false, stop);
