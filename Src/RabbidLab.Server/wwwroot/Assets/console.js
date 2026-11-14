@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.127', [
+    'Columns has a sliders icon instead of the one that looked like a pause button.']],
   ['1.1.126', [
     'Clicking a user, group or computer opens it in a panel from the right, with its details, groups and everyday actions. The list has compact rows by default (Relaxed is under Columns), columns keep to their width and end in dots, and double-clicking a column edge fits it. Users, groups and computers each have their own default OU in settings, and Computers has New computer.']],
   ['1.1.125', [
