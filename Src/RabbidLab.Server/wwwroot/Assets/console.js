@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.147', [
+    'The side panel opens under the top bar now, not over it.']],
   ['1.1.146', [
     'Change users, groups and computers is now four permissions: reset passwords and unlock, turn accounts off and on, change group membership, and edit properties. Roles that had it keep all four.',
     'A role can have a scope. Add OUs under Active Directory on its Permissions tab and its Active Directory permissions only work there. People in it only see those OUs, and Domain health, AD audit, Recycle Bin and the Attribute browser are hidden for them.',

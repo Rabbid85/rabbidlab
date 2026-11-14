@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.147 (2026-11-14)
+
+- The side panel opens under the top bar now, not over it.
+
 ## 1.1.146 (2026-11-14)
 
 - Change users, groups and computers is now four permissions: reset passwords and unlock, turn accounts off and on, change group membership, and edit properties. Roles that had it keep all four.
