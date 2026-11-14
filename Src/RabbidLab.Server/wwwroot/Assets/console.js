@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.132', [
+    'Filter is just the funnel icon now, with its count and the clear button beside it.']],
   ['1.1.131', [
     'Hints are the consoles own dark box now and show after a quarter of a second, not the slow grey browser one. A hint that only repeats text you can already read stays hidden.',
     'Active Directory has its own Directory heading in the left menu. Tick boxes are dark with an orange tick instead of white boxes.',

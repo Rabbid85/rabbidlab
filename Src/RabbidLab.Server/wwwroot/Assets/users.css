@@ -349,6 +349,7 @@ body.col-dragging, body.col-dragging * { cursor: col-resize !important; user-sel
 .dbar .cnt[hidden] { display: none; }
 .dbar .small .chev { width: 12px; height: 12px; color: #8B90A5; }
 #dir-act:disabled { opacity: .45; cursor: default; }
+#dir-filter { padding: 0 9px; } /* just the funnel, and its count */
 #dir-filter.on { border-color: var(--accent-line); color: var(--title); }
 /* Clear filter sits joined to Filter while one is on. */
 #dir-filter:has(+ #dir-filter-x:not([hidden])) { border-top-right-radius: 0; border-bottom-right-radius: 0; }

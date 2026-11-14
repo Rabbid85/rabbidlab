@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.132 (2026-11-13)
+
+- Filter is just the funnel icon now, with its count and the clear button beside it.
+
 ## 1.1.131 (2026-11-13)
 
 - Hints are the consoles own dark box now and show after a quarter of a second, not the slow grey browser one. A hint that only repeats text you can already read stays hidden.
