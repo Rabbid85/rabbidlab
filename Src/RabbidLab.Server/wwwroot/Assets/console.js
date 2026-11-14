@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.153', [
+    'The Devices and Signed in now tables are narrower, so they fit without a scrollbar and nothing on the right edge is cut off.']],
   ['1.1.152', [
     'Uninstall code: every computer has its own. Click Show next to Uninstall code in Devices, Uninstall, then enter it on the computer in the Rabbid Lab Client window to allow uninstalling for an hour. It works when the computer cannot reach this server.',
     'The uninstall lock releases by itself after 30 days without reaching the server, so nothing is stuck if the server is gone for good. Turn that off in Settings, Devices.',
@@ -1430,15 +1432,15 @@ const RELEASE_NOTES = [
     headButton: true,
     cols: [
       { key: 'state', label: 'State', w: 90, on: true, get: (c) => ({ waiting: 0, online: 1, offline: 2 })[stateOf(c)], cell: (c) => `<span class="state ${stateOf(c)}">${STATE[stateOf(c)]}</span>` },
-      { key: 'computer', label: 'Computer', w: 200, fixed: true, get: (c) => c.computer,
+      { key: 'computer', label: 'Computer', w: 180, fixed: true, get: (c) => c.computer,
         cell: (c) => `<b>${esc(c.computer)}</b><small>${esc(c.uninstalling ? 'Uninstalling its client' : c.removalUntil ? `Uninstall allowed until ${new Date(c.removalUntil).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : c.os || '')}</small>` },
-      { key: 'user', label: 'Signed in to Windows', w: 170, on: true, get: (c) => c.user, cell: (c) => (c.user ? `<span class="ell">${esc(c.user)}</span>` : '<span class="nobody">Nobody</span>') },
+      { key: 'user', label: 'Signed in to Windows', w: 160, on: true, get: (c) => c.user, cell: (c) => (c.user ? `<span class="ell">${esc(c.user)}</span>` : '<span class="nobody">Nobody</span>') },
       { key: 'version', label: 'Client', w: 80, on: true, get: (c) => c.version, cell: (c) => `<span class="${c.behind ? 'old' : ''}">${esc(c.version || '?')}</span>` },
       { key: 'address', label: 'Address', w: 130, on: true, get: (c) => addr(c.address), cell: (c) => `<span class="mono muted ell">${esc(addr(c.address))}</span>` },
       { key: 'lastSeen', label: 'Last seen', w: 100, on: true, get: (c) => ms(c.lastSeen), cell: (c) => `<span class="muted">${esc(ago(c.lastSeen))}</span>` },
       { key: 'os', label: 'Windows', w: 200, get: (c) => c.os },
     ],
-    tail: { w: 190, cell: (c) => { const st = stateOf(c); return `<span class="acts">${st === 'waiting' && can.has('seats.approve') ? '<button type="button" class="small primary" data-approve>Approve</button>' : ''}`
+    tail: { w: 180, cell: (c) => { const st = stateOf(c); return `<span class="acts">${st === 'waiting' && can.has('seats.approve') ? '<button type="button" class="small primary" data-approve>Approve</button>' : ''}`
       + `${st !== 'waiting' && can.has('seats.remove') ? '<button type="button" class="small quiet" data-uninstall>Uninstall</button>' : ''}`
       + `${can.has('seats.remove') ? '<button type="button" class="small quiet" data-forget>Remove</button>' : ''}</span>`; } },
     row: (c) => ` data-client="${esc(c.id)}"`,
@@ -1454,14 +1456,14 @@ const RELEASE_NOTES = [
     key: 'sessions',
     headButton: true,
     cols: [
-      { key: 'person', label: 'Person', w: 180, fixed: true, get: (s) => s.name || s.username, cell: (s) => `<b>${esc(s.name || s.username)}</b><small>${esc(s.username)}</small>` },
-      { key: 'roles', label: 'Roles', w: 160, on: true, get: (s) => rolesOf(s).map((r) => r.name).join(', '), cell: (s) => `<span class="chips-in">${rolesOf(s).map(chip).join('')}</span>` },
-      { key: 'using', label: 'Using', w: 190, on: true, get: (s) => s.device, cell: (s) => `<span class="ell">${esc(s.device)}</span><small>${s.remembered ? 'Kept signed in' : 'Until the page closes'}</small>` },
-      { key: 'address', label: 'Address', w: 130, on: true, get: (s) => addr(s.address), cell: (s) => `<span class="mono muted ell">${esc(addr(s.address))}</span>` },
-      { key: 'started', label: 'Signed in', w: 140, on: true, get: (s) => ms(s.started), cell: (s) => `<span class="muted">${esc(when(s.started))}</span>` },
-      { key: 'lastSeen', label: 'Last seen', w: 100, on: true, get: (s) => ms(s.lastSeen), cell: (s) => `<span class="muted">${esc(ago(s.lastSeen))}</span>` },
+      { key: 'person', label: 'Person', w: 170, fixed: true, get: (s) => s.name || s.username, cell: (s) => `<b>${esc(s.name || s.username)}</b><small>${esc(s.username)}</small>` },
+      { key: 'roles', label: 'Roles', w: 140, on: true, get: (s) => rolesOf(s).map((r) => r.name).join(', '), cell: (s) => `<span class="chips-in">${rolesOf(s).map(chip).join('')}</span>` },
+      { key: 'using', label: 'Using', w: 165, on: true, get: (s) => s.device, cell: (s) => `<span class="ell">${esc(s.device)}</span><small>${s.remembered ? 'Kept signed in' : 'Until the page closes'}</small>` },
+      { key: 'address', label: 'Address', w: 120, on: true, get: (s) => addr(s.address), cell: (s) => `<span class="mono muted ell">${esc(addr(s.address))}</span>` },
+      { key: 'started', label: 'Signed in', w: 135, on: true, get: (s) => ms(s.started), cell: (s) => `<span class="muted">${esc(when(s.started))}</span>` },
+      { key: 'lastSeen', label: 'Last seen', w: 85, on: true, get: (s) => ms(s.lastSeen), cell: (s) => `<span class="muted">${esc(ago(s.lastSeen))}</span>` },
     ],
-    tail: { w: 100, cell: (s) => `<span class="acts">${s.current ? '<span class="you">You, here</span>'
+    tail: { w: 90, cell: (s) => `<span class="acts">${s.current ? '<span class="you">You, here</span>'
       : s.username === me || can.has('sessions.signout') ? '<button type="button" class="small quiet" data-end>Sign out</button>' : ''}</span>` },
     row: (s) => ` data-session="${esc(s.id)}"`,
     empty: () => 'Nobody is signed in.',

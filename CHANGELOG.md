@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.153 (2026-11-14)
+
+- The Devices and Signed in now tables are narrower, so they fit without a scrollbar and nothing on the right edge is cut off.
+
 ## 1.1.152 (2026-11-14)
 
 - Uninstall code: every computer has its own. Click Show next to Uninstall code in Devices, Uninstall, then enter it on the computer in the Rabbid Lab Client window to allow uninstalling for an hour. It works when the computer cannot reach this server.
