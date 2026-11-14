@@ -500,6 +500,12 @@
     drawViews();
     // The side panel belongs to the page it was opened on.
     if ($('ad-drawer').open && dw.kind !== adPage) $('ad-drawer').close();
+    // Something asked to open in the panel once this page's list was there (Open Domain Admins).
+    if (dwNext && dwNext.k === adPage && lists[adPage]) {
+      const x = lists[adPage].find(dwNext.find);
+      dwNext = null;
+      if (x) openDrawer(adPage, x);
+    }
     markOpenRow();
     // The dots in the rail keep what the last read said, while another page is open.
     if (lists.users) $('dir-locked-dot').hidden = !lists.users.some((u) => u.locked && !u.system);
@@ -804,10 +810,6 @@
       + (can('ad.delete') && !g.system && !g.protected ? `<div class="pcard-acts"><button type="button" class="small danger" data-act="delete">${svg('trash')}Delete group</button></div>` : '');
   };
 
-  const settingCard = (s) => head(`<span class="pic">${svg('globe')}</span>`, s.name, TONE[s.tone] || '')
-    + facts([['Area', s.area], ['Now', s.now], ['Recommended', s.recommended]])
-    + `<p class="hint">${esc(s.about)}</p>`;
-
   const changeCard = (c) => head(`<span class="pic">${svg(KIND_ICON[c.kind] || 'folder')}</span>`, c.name, badge(c.what.charAt(0).toUpperCase() + c.what.slice(1), WHAT[c.what]))
     + facts([['When', new Date(c.at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })], ['Kind', c.kind === 'ou' ? 'OU' : c.kind], ['Where', c.where || ad.state.domain],
       ['By', c.by ? `${c.by}, in ${R.app()}` : null]])
@@ -833,7 +835,7 @@
   const openAd = async (i, el) => {
     open = rows[i];
     members = null;
-    const card = { users: userCard, groups: (x) => groupCard(x, null), computers: computerCard, domain: settingCard, audit: changeCard, recycle: deletedCard }[adPage];
+    const card = { users: userCard, groups: (x) => groupCard(x, null), computers: computerCard, audit: changeCard, recycle: deletedCard }[adPage];
     $('adcard').innerHTML = card(open);
     place($('adcard'), el, $('page-ad'));
     if (adPage !== 'groups') return;
@@ -907,8 +909,8 @@
     const row = e.target.closest('[data-i]');
     if (row) openRow(Number(row.dataset.i), row);
   });
-  // Users, groups and computers open in the side panel; the other pages' rows in their card.
-  const openRow = (i, el) => (picked[adPage] ? openDrawer(adPage, rows[i]) : openAd(i, el));
+  // Users, groups, computers and domain settings open in the side panel; the other pages' rows in their card.
+  const openRow = (i, el) => (picked[adPage] || adPage === 'domain' ? openDrawer(adPage, rows[i]) : openAd(i, el));
   $('dir-table').addEventListener('keydown', (e) => {
     const row = e.target.closest('[data-i]');
     if (row && e.target === row && (e.key === 'Enter' || e.key === ' ')) {
@@ -1739,6 +1741,59 @@
       + `${change ? `<button type="button" class="small" data-dw-cmd="members-add">${svg('user-plus')}Add members</button>` : ''}</div>${body}</section>`;
   };
 
+  // A domain setting: how it is, what's recommended and why, and changing it here (signed in as a domain admin for it,
+  // not saved), or how it's changed when that's done somewhere else.
+  let dwsUser = '';
+  const DWS_POLICY = ['length', 'complex', 'reversible', 'history', 'maxage', 'minage', 'lockout', 'duration'];
+  const dwsLink = (key) => (key === 'recycle' ? `<a class="dw-link" href="#ad/recycle">${svg('trash')}Recycle Bin</a>`
+    : key === 'admins' ? `<button type="button" class="dw-link" data-dws-admins>${svg('users')}Open Domain Admins</button>` : '');
+  const dwSetting = (s) => {
+    const change = s.edit && can('ad.connect')
+      ? '<section class="dw-sec"><div class="dw-sec-head"><h3>Change it</h3></div><div class="form dws-form">'
+        + (s.edit === 'switch' ? `<label class="dw-fact dw-sw"><span>${esc(s.name)}</span><input type="checkbox" class="switch" id="dws-value"${s.value ? ' checked' : ''}></label>`
+          : `<label for="dws-value">New value</label><span class="dws-num"><input type="number" id="dws-value" min="${s.min}" max="${s.max}" value="${s.value ?? ''}"><span>${esc(s.unit || '')}</span></span>`
+            + `<small class="hint">From ${s.min} to ${s.max}.</small>`)
+        + `<label for="dws-user">Domain admin</label><input id="dws-user" autocomplete="off" spellcheck="false" placeholder="AMW\\admin" value="${esc(dwsUser)}">`
+        + '<label for="dws-pass">Password</label><input type="password" id="dws-pass" autocomplete="new-password">'
+        + `<small class="hint">${DWS_POLICY.includes(s.key) ? 'Saved in the Default Domain Policy, as Group Policy Management does, and set on the domain straight away. ' : ''}`
+        + 'The login is used for this change only and isn\'t saved.</small></div>'
+        + '<p class="hint problem" id="dws-problem" hidden></p><div class="dws-foot"><button type="button" class="primary" data-dws-save>Save</button></div></section>'
+      : s.how ? `<section class="dw-sec"><div class="dw-sec-head"><h3>How it's changed</h3><div class="dw-links">${dwsLink(s.key)}</div></div><p class="dw-how">${esc(s.how)}</p></section>` : '';
+    return `<div class="dw-head"><span class="pic dw-pic">${svg('globe')}</span><div class="dw-name"><h2 id="dw-title">${esc(s.name)}</h2><p>${esc(s.area)}</p></div>`
+      + `<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`
+      + `<div class="dw-status">${TONE[s.tone] || ''}</div>`
+      + dwFacts('Setting', [dwFact('Now', esc(s.now)), dwFact('Recommended', esc(s.recommended)), dwFact('Why it matters', esc(s.about), true)])
+      + change;
+  };
+  const saveSetting = async (s) => {
+    const el = $('dws-value');
+    const value = s.edit === 'switch' ? String(el.checked) : el.value.trim();
+    dwsUser = $('dws-user').value.trim();
+    const password = $('dws-pass').value;
+    say('dws-problem', '');
+    if (!dwsUser || !password) {
+      say('dws-problem', 'Sign in as a domain admin to change it.');
+      return;
+    }
+    R.busy($('dw-body'), `Changing ${s.name}…`);
+    try {
+      lists.domain = await R.send(`/api/ad/domain/${encodeURIComponent(s.key)}`, { value, username: dwsUser, password });
+      R.busy($('dw-body'), '');
+      drawAd();
+      drawDrawer();
+      R.toast(`Changed ${s.name}`, lists.domain.find((x) => x.key === s.key)?.now || '');
+    } catch (err) {
+      R.busy($('dw-body'), '');
+      say('dws-problem', err.message);
+    }
+  };
+  // Domain Admins in Groups, opened in the panel once its list is there.
+  let dwNext = null;
+  const openAdmins = () => {
+    dwNext = { k: 'groups', find: (g) => /^Domain Admins$/i.test(g.name) };
+    location.hash = '#ad/groups';
+  };
+
   const drawDrawer = () => {
     const x = dwObj();
     if (!x) {
@@ -1746,6 +1801,10 @@
       return;
     }
     const k = dw.kind;
+    if (k === 'domain') {
+      $('dw-body').innerHTML = dwSetting(x);
+      return;
+    }
     dwNot = blocked(k, x);
     const tabsFor = k === 'groups' ? [['overview', 'Overview'], ['members', 'Members'], ['memberof', 'Member of']] : [['overview', 'Overview'], ['memberof', 'Member of']];
     const body = dw.tab === 'members' ? dwMembers(x) : dw.tab === 'memberof' ? dwMemberOf(k, x) : dwOverview(k, x);
@@ -1792,6 +1851,11 @@
     const x = dwObj();
     if (!x) return;
     const k = dw.kind;
+    if (k === 'domain') {
+      if (e.target.closest('[data-dws-save]')) saveSetting(x);
+      else if (e.target.closest('[data-dws-admins]')) openAdmins();
+      return;
+    }
     const t = e.target.closest('[data-dw-tab]');
     if (t) { dw.tab = t.dataset.dwTab; drawDrawer(); return; }
     const cmd = e.target.closest('[data-dw-cmd]');

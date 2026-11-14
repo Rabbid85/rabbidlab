@@ -471,3 +471,12 @@ dialog.drawer:not(:modal) { z-index: 60; }
 @keyframes pk-float { 50% { transform: translateY(-6px) rotate(25deg); } }
 @media (prefers-reduced-motion: reduce) { .pk-bit { animation: none; } }
 #gp-all:disabled { opacity: .4; cursor: default; text-decoration: none; }
+
+/* A domain setting in the side panel: its new value, the domain admin it's changed as, and Save. */
+.dws-form { display: grid; gap: 6px; }
+.dws-form > label:not(.dw-sw) { margin-top: 8px; color: #8A8FA8; font-size: 12px; font-weight: 600; }
+.dws-form .dw-sw { margin-top: 2px; }
+.dws-num { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; }
+.dws-num input { width: 130px; }
+.dws-foot { display: flex; justify-content: flex-end; margin: 14px 0 6px; }
+.dw-how { margin: 0 0 12px; color: var(--text); font-size: 13.5px; line-height: 1.55; }

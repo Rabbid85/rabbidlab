@@ -55,6 +55,58 @@ public sealed class DirectoryToolsTests : IDisposable
     private static Task<ToolProblem> Refused(Func<Task> change) => Assert.ThrowsAsync<ToolProblem>(change);
 
     [Fact]
+    public void Security_template_keys_change_where_they_are_or_join_their_section_and_the_policy_version_goes_up()
+    {
+        var inf = "[Unicode]\r\nUnicode=yes\r\n[System Access]\r\nMinimumPasswordLength = 7\r\nPasswordComplexity = 1\r\n\r\n[Version]\r\nsignature=\"$CHICAGO$\"\r\n";
+        var after = GpoText.SetInf(inf, "System Access", new Dictionary<string, string> { ["MinimumPasswordLength"] = "14", ["LockoutBadCount"] = "5" });
+        Assert.Contains("MinimumPasswordLength = 14\r\n", after);
+        Assert.Contains("PasswordComplexity = 1", after);
+        Assert.DoesNotContain("= 7", after);
+        Assert.True(after.IndexOf("LockoutBadCount = 5", StringComparison.Ordinal) < after.IndexOf("[Version]", StringComparison.Ordinal));
+        var none = GpoText.SetInf("[Unicode]\r\nUnicode=yes\r\n[Version]\r\nRevision=1\r\n", "System Access", new Dictionary<string, string> { ["PasswordHistorySize"] = "24" });
+        Assert.Contains("[System Access]\r\nPasswordHistorySize = 24\r\n[Version]", none);
+        var (ini, version) = GpoText.BumpGpt("[General]\r\nVersion=7\r\ndisplayName=New Group Policy Object\r\n", 9);
+        Assert.Equal(10, version);
+        Assert.Contains("Version=10\r\n", ini);
+        var (text, encoding) = GpoText.Decode(GpoText.Encode("[Unicode]\r\n", Encoding.Unicode));
+        Assert.Equal("[Unicode]\r\n", text);
+        Assert.Equal(Encoding.Unicode, encoding);
+    }
+
+    [Fact]
+    public async Task Domain_settings_change_as_the_admin_typed_and_the_password_policy_goes_through_the_default_domain_policy()
+    {
+        await Connect();
+        const string gpo = "CN={31B2F340-016D-11D2-945F-00C04FB984F9},CN=Policies,CN=System,DC=amw,DC=com";
+        const string path = @"\\amw.com\SysVol\amw.com\Policies\{31B2F340-016D-11D2-945F-00C04FB984F9}";
+        const string template = path + @"\MACHINE\Microsoft\Windows NT\SecEdit\GptTmpl.inf";
+        ad.Add(gpo, ("gPCFileSysPath", path), ("versionNumber", "3"));
+        var files = new FakeSysvol();
+        files.Files[template] = GpoText.Encode("[Unicode]\r\nUnicode=yes\r\n[System Access]\r\nMinimumPasswordLength = 7\r\n[Version]\r\nRevision=1\r\n", Encoding.Unicode);
+        files.Files[path + @"\GPT.INI"] = Encoding.Latin1.GetBytes("[General]\r\nVersion=3\r\n");
+        tools.Sysvol = files;
+        var none = CancellationToken.None;
+
+        await Refused(() => tools.SetDomainSetting("length", "14", "admin", "wrong", none));
+        await Refused(() => tools.SetDomainSetting("length", "99", "admin", "right", none));
+        await Refused(() => tools.SetDomainSetting("length", "14", "", "", none));
+        await Refused(() => tools.SetDomainSetting("dfl", "7", "admin", "right", none));
+        Assert.DoesNotContain(ad.Log, l => l.Contains("minPwdLength", StringComparison.Ordinal));
+
+        var settings = await tools.SetDomainSetting("length", "14", "admin", "right", none);
+        Assert.Contains("MinimumPasswordLength = 14", GpoText.Decode(files.Files[template]).Text);
+        Assert.StartsWith("\uFEFF", Encoding.Unicode.GetString(files.Files[template])); // still UTF-16 with its mark, as Group Policy writes it
+        Assert.Contains("Version=4", GpoText.Decode(files.Files[path + @"\GPT.INI"]).Text);
+        Assert.Contains($"modify {gpo} versionNumber", ad.Log);
+        Assert.Contains("modify DC=amw,DC=com minPwdLength", ad.Log);
+        Assert.Contains(settings, s => s.Key == "length" && s.Edit == "number" && s.Max == 14);
+        Assert.Contains(settings, s => s.Key == "dfl" && s.Edit is null && s.How is not null);
+
+        await tools.SetDomainSetting("quota", "0", "admin", "right", none);
+        Assert.Contains("modify DC=amw,DC=com ms-DS-MachineAccountQuota", ad.Log);
+    }
+
+    [Fact]
     public async Task Changes_stay_inside_the_scope_the_service_account_was_set_up_for()
     {
         await Connect();
@@ -532,6 +584,21 @@ public sealed class DirectoryToolsTests : IDisposable
 /// Active Directory as these tests see it: amw.com (NetBIOS name AMW) with a Lab OU and an Other OU, kept in memory.
 /// It answers the filters DirectoryTools sends, and notes every change it's asked for instead of making it anywhere.
 /// </summary>
+/// <summary>SYSVOL as a dictionary of files; it checks nothing about who signs in.</summary>
+public sealed class FakeSysvol : ISysvol
+{
+    public Dictionary<string, byte[]> Files { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+    public Task<byte[]> Read(string path, string username, string password, CancellationToken stop) =>
+        Files.TryGetValue(path, out var data) ? Task.FromResult(data) : Task.FromException<byte[]>(new ToolProblem($"No file at {path}"));
+
+    public Task Write(string path, byte[] data, string username, string password, CancellationToken stop)
+    {
+        Files[path] = data;
+        return Task.CompletedTask;
+    }
+}
+
 public sealed class FakeLdap : ILdap
 {
     private const string Domain = "DC=amw,DC=com";

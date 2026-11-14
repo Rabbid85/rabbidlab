@@ -5,8 +5,13 @@ using System.Text.RegularExpressions;
 
 namespace RabbidLab.Server;
 
-/// <summary>One domain setting beside what's recommended. Tone: good, warn, bad, or unknown when it couldn't be read.</summary>
-public sealed record AdSetting(string Key, string Area, string Name, string Now, string Recommended, string Tone, string About);
+/// <summary>
+/// One domain setting beside what's recommended. Tone: good, warn, bad, or unknown when it couldn't be read. Edit: number
+/// or switch when it can be changed here, with its Value (1 or 0 for a switch), Min, Max and Unit; How says how it's
+/// changed otherwise.
+/// </summary>
+public sealed record AdSetting(string Key, string Area, string Name, string Now, string Recommended, string Tone, string About,
+    string? Edit = null, long? Value = null, int? Min = null, int? Max = null, string? Unit = null, string? How = null);
 
 /// <summary>Something that changed in Active Directory: made, changed or deleted, when, and which attributes (when AD says).</summary>
 public sealed record AdChange(string Dn, string Name, string Kind, string Where, DateTime At, string What, List<string> Attributes, string? By = null);
@@ -43,6 +48,9 @@ public sealed record AdAccountHit(string Username, string? Name, string? Descrip
 public interface IDirectoryExtras
 {
     Task<List<AdSetting>> DomainSettings(CancellationToken stop);
+
+    /// <summary>Changes one domain setting, signed in as the domain admin given (not saved), and gives the settings as they are now.</summary>
+    Task<List<AdSetting>> SetDomainSetting(string key, string value, string username, string password, CancellationToken stop);
 
     /// <summary>What changed in the last days. More when Active Directory had more than it sent, so some changes are missing.</summary>
     Task<(List<AdChange> Changes, bool More)> Changes(int days, CancellationToken stop);
@@ -112,7 +120,9 @@ public sealed partial class DirectoryTools
         var config = rootDse?.Text("configurationNamingContext");
         var head = (await ldap.Find(ldap.BaseDn, "(objectClass=*)", false, ["minPwdLength", "pwdHistoryLength", "maxPwdAge", "minPwdAge", "pwdProperties", "lockoutThreshold",
             "lockoutDuration", "lockOutObservationWindow", "ms-DS-MachineAccountQuota", "objectSid"], 1, stop)).FirstOrDefault();
-        void Add(string key, string area, string name, string now, string recommended, string tone, string about) => list.Add(new AdSetting(key, area, name, now, recommended, tone, about));
+        // Each with what it takes to change it (DomainEdits.cs): its value as a number for the ones changed here.
+        void Add(string key, string area, string name, string now, string recommended, string tone, string about, long? value = null) =>
+            list.Add(Editable(new AdSetting(key, area, name, now, recommended, tone, about), value));
 
         if (head is null)
         {
@@ -121,30 +131,30 @@ public sealed partial class DirectoryTools
         }
         var minLength = (int) (head.Number("minPwdLength") ?? 0);
         Add("length", "Passwords", "Minimum password length", $"{minLength} characters", "14 or more", minLength >= 14 ? "good" : minLength >= 8 ? "warn" : "bad",
-            "Longer passwords are the best protection against guessing. Set in the Default Domain Policy, Account Policies, Password Policy.");
+            "Longer passwords are the best protection against guessing. Set in the Default Domain Policy, Account Policies, Password Policy.", minLength);
         var properties = head.Number("pwdProperties") ?? 0;
         Add("complex", "Passwords", "Passwords must meet complexity rules", (properties & 1) != 0 ? "On" : "Off", "On", (properties & 1) != 0 ? "good" : "bad",
-            "Needs three of: capitals, small letters, numbers and symbols.");
+            "Needs three of: capitals, small letters, numbers and symbols.", properties & 1);
         Add("reversible", "Passwords", "Store passwords with reversible encryption", (properties & 16) != 0 ? "On" : "Off", "Off", (properties & 16) != 0 ? "bad" : "good",
-            "On means passwords can be read back in plain text. Only very old apps need it.");
+            "On means passwords can be read back in plain text. Only very old apps need it.", (properties & 16) != 0 ? 1 : 0);
         var history = (int) (head.Number("pwdHistoryLength") ?? 0);
         Add("history", "Passwords", "Passwords remembered", history.ToString(CultureInfo.InvariantCulture), "24", history >= 24 ? "good" : history >= 12 ? "warn" : "bad",
-            "Stops people going straight back to an old password.");
+            "Stops people going straight back to an old password.", history);
         var maxAge = Days(head.Number("maxPwdAge"));
         Add("maxage", "Passwords", "Maximum password age", maxAge is null ? "Never expires" : $"{maxAge} days", "365 days, or never with long passwords", maxAge is null or >= 60 ? "good" : "warn",
-            "Forcing changes too often makes people pick weaker passwords.");
+            "Forcing changes too often makes people pick weaker passwords.", maxAge);
         var minAge = Days(head.Number("minPwdAge")) ?? 0;
         Add("minage", "Passwords", "Minimum password age", $"{minAge} days", "1 day", minAge >= 1 ? "good" : "warn",
-            "Without it, someone can change their password over and over to get back to the old one.");
+            "Without it, someone can change their password over and over to get back to the old one.", minAge);
         var threshold = (int) (head.Number("lockoutThreshold") ?? 0);
         Add("lockout", "Lockout", "Lock out after", threshold == 0 ? "Never locks out" : $"{threshold} wrong passwords", "5 to 10 wrong passwords",
-            threshold == 0 ? "bad" : threshold <= 10 ? "good" : "warn", "Without a lockout, anyone can keep guessing passwords.");
+            threshold == 0 ? "bad" : threshold <= 10 ? "good" : "warn", "Without a lockout, anyone can keep guessing passwords.", threshold);
         var duration = Minutes(head.Number("lockoutDuration"));
         Add("duration", "Lockout", "Locked out for", threshold == 0 ? "Doesn't apply" : duration is null ? "Until an admin unlocks" : $"{duration} minutes", "15 minutes or more",
-            threshold == 0 || duration is null or >= 15 ? "good" : "warn", "How long a locked-out account stays locked.");
+            threshold == 0 || duration is null or >= 15 ? "good" : "warn", "How long a locked-out account stays locked.", duration);
         var quota = (int) (head.Number("ms-DS-MachineAccountQuota") ?? 10);
         Add("quota", "Domain", "Computers anyone can join to the domain", quota.ToString(CultureInfo.InvariantCulture), "0", quota == 0 ? "good" : "warn",
-            "By default every user can join 10 computers. Set ms-DS-MachineAccountQuota to 0 so only admins can.");
+            "By default every user can join 10 computers. Set ms-DS-MachineAccountQuota to 0 so only admins can.", quota);
         var levels = new Dictionary<long, string> { [2] = "2003", [3] = "2008", [4] = "2008 R2", [5] = "2012", [6] = "2012 R2", [7] = "2016", [10] = "2025" };
         var domainLevel = rootDse?.Number("domainFunctionality");
         var forestLevel = rootDse?.Number("forestFunctionality");
@@ -159,7 +169,7 @@ public sealed partial class DirectoryTools
             var domainSid = Sid(sid);
             var guest = (await ldap.Find(ldap.BaseDn, $"(objectSid={domainSid}-501)", true, ["userAccountControl"], 1, stop)).FirstOrDefault();
             var guestOn = guest is not null && ((guest.Number("userAccountControl") ?? 2) & Disabled) == 0;
-            Add("guest", "Accounts", "Guest account", guest is null ? "Not found" : guestOn ? "On" : "Off", "Off", guestOn ? "bad" : "good", "Guest lets anyone in without a password.");
+            Add("guest", "Accounts", "Guest account", guest is null ? "Not found" : guestOn ? "On" : "Off", "Off", guestOn ? "bad" : "good", "Guest lets anyone in without a password.", guestOn ? 1 : 0);
             var krbtgt = (await ldap.Find(ldap.BaseDn, $"(objectSid={domainSid}-502)", true, ["pwdLastSet"], 1, stop)).FirstOrDefault();
             var set = FileTime(krbtgt?.Number("pwdLastSet"));
             var age = set is { } at ? (int) (DateTime.UtcNow - at).TotalDays : (int?) null;
@@ -188,7 +198,7 @@ public sealed partial class DirectoryTools
         {
             var (on, tombstone, _) = await RecycleSettings(ldap, config, stop);
             Add("recycle", "Domain", "AD Recycle Bin", on ? "On" : "Off", "On", on ? "good" : "warn", "Lets a deleted user, group or computer come back as it was. Turn it on under Recycle Bin.");
-            Add("tombstone", "Domain", "Tombstone lifetime", $"{tombstone} days", "180 days", tombstone >= 180 ? "good" : "warn", "How long Active Directory remembers deleted objects. Backups older than this can't be restored.");
+            Add("tombstone", "Domain", "Tombstone lifetime", $"{tombstone} days", "180 days", tombstone >= 180 ? "good" : "warn", "How long Active Directory remembers deleted objects. Backups older than this can't be restored.", tombstone);
             var controllers = await ldap.Find(ldap.BaseDn, "(&(objectCategory=computer)(userAccountControl:1.2.840.113556.1.4.803:=8192))", true, ["cn", "operatingSystem"], 50, stop);
             var oldest = controllers.Select(c => c.Text("operatingSystem") ?? "").OrderBy(o => o, StringComparer.OrdinalIgnoreCase).FirstOrDefault() ?? "";
             Add("dcs", "Domain controllers", "Domain controllers", $"{controllers.Count}: {string.Join(", ", controllers.Select(c => c.Text("cn")))}", "2 or more", controllers.Count >= 2 ? "good" : "warn",
@@ -766,6 +776,15 @@ public static class DirectoryExtrasApi
     {
         app.MapGet("/api/ad/domain", (HttpContext context, IDirectoryExtras tools) => UsersApi.Try(context, Permissions.AdView, async () =>
             Results.Ok(await tools.DomainSettings(context.RequestAborted)), change: false));
+
+        // One domain setting changed from its side panel, signed in as a domain admin for it (not saved).
+        app.MapPost("/api/ad/domain/{key}", (string key, DomainSettingForm form, HttpContext context, IDirectoryExtras tools, ActivityLog log) => UsersApi.Try(context, Permissions.AdConnect, async () =>
+        {
+            var list = await tools.SetDomainSetting(key, form.Value ?? "", form.Username ?? "", form.Password ?? "", context.RequestAborted);
+            var s = list.FirstOrDefault(x => x.Key == key);
+            log.Record(context, "users", "ad.domain.set", $"Changed the domain setting {s?.Name ?? key} to {s?.Now ?? form.Value}");
+            return Results.Ok(list);
+        }));
 
         // What changed lately; who made it when Rabbid Lab made it.
         app.MapGet("/api/ad/audit", (int? days, HttpContext context, IDirectoryExtras tools, ActivityLog log) => UsersApi.Try(context, Permissions.AdView, async () =>

@@ -218,8 +218,9 @@
   <p><a href="#ad/domain">Domain settings</a> has its own place in the left menu, under Directory. It shows how the domain is set up next to what's recommended. That covers passwords, lockout, Guest, krbtgt, Domain Admins, the functional levels, the domain controllers, the Recycle Bin and LAPS.</p>
   <ol>
     <li>Open <a href="#ad/domain/off">Not as recommended</a> first. Those are the ones worth fixing.</li>
-    <li>Click a setting to see why it matters and where it's set (usually the Default Domain Policy).</li>
-    <li>Change it there, then come back: the list reads the domain again each time you open it.</li>
+    <li>Click a setting to open it in the panel on the right: what it is now, what's recommended and why.</li>
+    <li>Under <b>Change it</b>, set the new value, sign in as a domain admin (used for that change only, not saved) and click Save. Password and lockout rules are saved in the Default Domain Policy, as Group Policy Management does, and set on the domain straight away. The machine account quota, Guest and the tombstone lifetime are set in Active Directory itself (the tombstone lifetime takes an Enterprise Admin).</li>
+    <li>Settings that aren't changed from here, such as the functional levels and krbtgt, say how they're changed instead.</li>
   </ol>
   <p class="tip">"Couldn't be read" means <span data-app>Rabbid Lab</span>'s account isn't allowed to see that one, which is normal for fine-grained password policies.</p>
 </article>

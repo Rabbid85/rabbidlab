@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.138 (2026-11-13)
+
+- Domain settings open in the side panel like Users do. Password and lockout rules, the machine account quota, Guest and the tombstone lifetime can be changed there, signed in as a domain admin for that change (not saved). Password and lockout rules go into the Default Domain Policy, as Group Policy Management does.
+- Settings that are not changed from here, like the functional levels and krbtgt, say how they are changed instead, and People in Domain Admins opens the group.
+
 ## 1.1.137 (2026-11-13)
 
 - The pick window keeps its size while you type in Find. When nothing matches it says so, with the count and a Clear the find button, and Tick all shown greys out instead of disappearing.
