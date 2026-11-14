@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.142', [
+    'Domain settings is now Domain health, with about 30 new checks taken from PingCastle, Defender for Identity and Microsoft guidance: accounts with no password needed, admins outside Protected Users, Kerberoastable admins, stale users and computers, old Windows, LAPS coverage, backups, AD CS templates, trusts and DNS zones.',
+    'Each check lists what it found in the side panel. Tick the ones to change and fix them right there (require a password, mark sensitive, turn off DES, disable and so on), or open one in its own page.',
+    'Every Domain health area has its own icon, and the page banners are a bit shorter with a smaller title.']],
   ['1.1.141', [
     'Every row opens the side panel on the right now: AD audit, Recycle Bin, Local accounts and Roles and people too, with no more cards popping up beside the row. Clicking the open row again closes it.',
     'The AD audit panel has Open it to jump to that user, group or computer, and the Recycle Bin panel has Restore.']],
@@ -537,13 +541,13 @@ const RELEASE_NOTES = [
     sub.querySelectorAll('.ds-sec[data-sec]').forEach((s) => { s.hidden = !!one && s.dataset.sec !== one; });
     sub.classList.toggle('one-sec', !!one);
     // Active Directory's pages are listed down the left of whichever of them is open, with that page's views (users.js).
-    // Domain settings is its own area: its own entry in the sidebar, and only its views down the left.
+    // Domain health is its own area: its own entry in the sidebar, and only its views down the left.
     const dir = now.classList.contains('dir-area');
     const domain = now.dataset.page === 'ad' && rest[0] === 'domain';
     if (now.dataset.page !== 'ad') $('dir-rail').classList.remove('lists'); // Find, views and filters are for the pages that list things
     $('dir-rail').classList.toggle('domain-only', domain);
     if (now.id === 'page-ad') {
-      now.dataset.title = domain ? 'Domain settings' : 'Active Directory';
+      now.dataset.title = domain ? 'Domain health' : 'Active Directory';
       $('dir-title').textContent = now.dataset.title;
     }
     if (dir) {

@@ -68,6 +68,7 @@ public sealed partial class DirectoryTools : IDirectoryActions
         ["reversible"] = ReversiblePassword,
         ["des"] = DesKeysOnly,
         ["preauth"] = NoPreauthNeeded,
+        ["notreq"] = PasswordNotRequired,
     };
 
     public static bool KnownFlag(string flag) => Bits.ContainsKey(flag) || flag is "mustchange" or "cannotchange";
@@ -408,6 +409,7 @@ public static class DirectoryActionsApi
         ["reversible"] = ("Turned on reversible password encryption for {0}", "Turned off reversible password encryption for {0}"),
         ["des"] = ("Set {0} to use only Kerberos DES encryption types", "Stopped {0} using only Kerberos DES encryption types"),
         ["preauth"] = ("Turned off Kerberos preauthentication for {0}", "Turned on Kerberos preauthentication for {0}"),
+        ["notreq"] = ("Let {0} have no password", "Required a password for {0}"),
     };
 
     public static void MapDirectoryActionsApi(this WebApplication app)

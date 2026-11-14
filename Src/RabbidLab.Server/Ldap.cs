@@ -103,7 +103,7 @@ public delegate Task<ILdap?> LdapOpener(string domain, string host, string usern
 public static class Ldap
 {
     /// <summary>The attributes that come back as bytes.</summary>
-    private static readonly HashSet<string> Binary = new(StringComparer.OrdinalIgnoreCase) { "objectSid", "objectGUID", "nTSecurityDescriptor", "tokenGroups" };
+    private static readonly HashSet<string> Binary = new(StringComparer.OrdinalIgnoreCase) { "objectSid", "objectGUID", "nTSecurityDescriptor", "tokenGroups", "dNSProperty" };
 
     private const string SdFlags = "1.2.840.113556.1.4.801";
     private const string TreeDelete = "1.2.840.113556.1.4.805";

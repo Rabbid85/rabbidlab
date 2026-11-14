@@ -11,7 +11,17 @@ namespace RabbidLab.Server;
 /// changed otherwise.
 /// </summary>
 public sealed record AdSetting(string Key, string Area, string Name, string Now, string Recommended, string Tone, string About,
-    string? Edit = null, long? Value = null, int? Min = null, int? Max = null, string? Unit = null, string? How = null);
+    string? Edit = null, long? Value = null, int? Min = null, int? Max = null, string? Unit = null, string? How = null)
+{
+    /// <summary>What the check found (up to 50), what fixes it, whose check it is, and the fix it can do here for what it found.</summary>
+    public List<AdMember>? Found { get; init; }
+
+    public string? Fix { get; init; }
+
+    public string? Source { get; init; }
+
+    public string? Act { get; init; }
+}
 
 /// <summary>Something that changed in Active Directory: made, changed or deleted, when, and which attributes (when AD says).</summary>
 public sealed record AdChange(string Dn, string Name, string Kind, string Where, DateTime At, string What, List<string> Attributes, string? By = null);
@@ -119,7 +129,7 @@ public sealed partial class DirectoryTools
         using var ldap = await Open(stop);
         var account = Ready().Account;
         var list = new List<AdSetting>();
-        var rootDse = (await ldap.Find("", "(objectClass=*)", false, ["configurationNamingContext", "schemaNamingContext", "domainFunctionality", "forestFunctionality"], 1, stop)).FirstOrDefault();
+        var rootDse = (await ldap.Find("", "(objectClass=*)", false, ["configurationNamingContext", "schemaNamingContext", "domainFunctionality", "forestFunctionality", "rootDomainNamingContext"], 1, stop)).FirstOrDefault();
         var config = rootDse?.Text("configurationNamingContext");
         var head = (await ldap.Find(ldap.BaseDn, "(objectClass=*)", false, ["minPwdLength", "pwdHistoryLength", "maxPwdAge", "minPwdAge", "pwdProperties", "lockoutThreshold",
             "lockoutDuration", "lockOutObservationWindow", "ms-DS-MachineAccountQuota", "objectSid"], 1, stop)).FirstOrDefault();
@@ -219,6 +229,7 @@ public sealed partial class DirectoryTools
                     "Gives every computer its own local admin password and changes it, so one leaked password doesn't open them all.");
             }
         }
+        await HealthChecks(ldap, rootDse, config, head.Bytes("objectSid") is { } sidBytes ? Sid(sidBytes) : null, list, stop);
         return list;
     }
 

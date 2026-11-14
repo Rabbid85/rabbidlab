@@ -107,6 +107,21 @@ public sealed class DirectoryToolsTests : IDisposable
     }
 
     [Fact]
+    public async Task Domain_health_puts_every_check_in_an_area_with_what_it_found()
+    {
+        await Connect();
+        var checks = await tools.DomainSettings(CancellationToken.None);
+        Assert.All(checks, c => Assert.False(string.IsNullOrEmpty(c.Area), c.Key));
+        var reversible = Assert.Single(checks, c => c.Key == "revaccounts");
+        Assert.Equal("Passwords and lockout", reversible.Area);
+        Assert.NotEmpty(reversible.Found!); // the stand-in answers bit tests for every row
+        Assert.Equal("reversible-off", reversible.Act);
+        Assert.Contains(checks, c => c.Key == "adcs" && c.Now == "Not installed");
+        Assert.Contains(checks, c => c.Key == "backup" && c.Now == "Never" && c.Tone == "bad");
+        Assert.Equal("Passwords and lockout", checks[0].Area); // area by area
+    }
+
+    [Fact]
     public async Task Changes_stay_inside_the_scope_the_service_account_was_set_up_for()
     {
         await Connect();

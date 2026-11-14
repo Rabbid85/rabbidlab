@@ -53,7 +53,10 @@
     : u.passwordExpires && days(u.passwordExpires) < 0 ? badge('Password expired', 'red') : badge('Enabled', 'green'));
   const pcStatus = (c) => (!c.enabled ? badge('Disabled', 'grey') : stale(c.lastSignIn) ? badge('Inactive', 'amber') : badge('Enabled', 'green'));
   const server = (c) => /server/i.test(c.os || '');
-  const TONE = { good: badge('As recommended', 'green'), warn: badge('Worth a look', 'amber'), bad: badge('Not as recommended', 'red'), unknown: badge("Couldn't be read", 'grey') };
+  const TONE = { good: badge('As recommended', 'green'), warn: badge('Worth a look', 'amber'), bad: badge('Not as recommended', 'red'), info: badge('For your notes', 'grey'), unknown: badge("Couldn't be read", 'grey') };
+  // Domain health's areas, in order, each with its own icon.
+  const AREA_ICON = { 'Passwords and lockout': 'lock', 'Privileged accounts': 'crown', 'Kerberos and delegation': 'ticket', 'Stale objects': 'hourglass',
+    'Domain and forest': 'tree', 'Domain controllers': 'server', 'Certificates (AD CS)': 'certificate', Trusts: 'link', DNS: 'signpost' };
   const WHAT = { made: 'green', changed: 'grey', deleted: 'red', restored: 'amber' };
   const KIND_ICON = { user: 'user', group: 'users', computer: 'laptop', ou: 'folder', container: 'folder', other: 'folder' };
   let recycle = null; // /api/ad/recycle: whether it's on, and what's in it
@@ -139,20 +142,22 @@
         ['Distinguished name', (c) => c.dn]],
     },
     domain: {
-      title: 'Domain settings', noun: ['setting', 'settings'], add: null, key: (s) => s.key,
-      lead: 'How the domain is set, beside what is recommended.',
+      title: 'Domain health', noun: ['check', 'checks'], add: null, key: (s) => s.key,
+      lead: 'How the domain is set up and what is in it, checked against what Microsoft, PingCastle and Defender for Identity recommend.',
       load: () => R.get('/api/ad/domain'),
-      find: (s) => [s.name, s.area, s.now, s.about],
+      find: (s) => [s.name, s.area, s.now, s.about, s.source, ...(s.found || []).map((f) => f.name)],
       views: [
         ['View', [
-          { key: 'all', label: 'All settings' },
+          { key: 'all', label: 'All checks' },
           { key: 'off', label: 'Not as recommended', tone: 'red', where: (s) => s.tone === 'bad' },
           { key: 'look', label: 'Worth a look', tone: 'amber', where: (s) => s.tone === 'warn' },
+          { key: 'notes', label: 'For your notes', quiet: true, where: (s) => s.tone === 'info' },
           { key: 'unread', label: 'Couldn\'t be read', quiet: true, where: (s) => s.tone === 'unknown' },
         ]],
-        ['Area', ['Passwords', 'Lockout', 'Accounts', 'Domain', 'Domain controllers'].map((a) => ({ key: a.toLowerCase().replace(/\s+/g, '-'), label: a, where: (s) => s.area === a }))],
+        ['Area', Object.keys(AREA_ICON).map((a) => ({ key: a.toLowerCase().replace(/[^a-z]+/g, '-').replace(/-$/, ''), label: a, where: (s) => s.area === a }))],
       ],
-      csv: [['Area', (s) => s.area], ['Setting', (s) => s.name], ['Now', (s) => s.now], ['Recommended', (s) => s.recommended], ['Result', (s) => s.tone], ['Why', (s) => s.about]],
+      csv: [['Area', (s) => s.area], ['Check', (s) => s.name], ['Now', (s) => s.now], ['Recommended', (s) => s.recommended], ['Result', (s) => s.tone], ['Why', (s) => s.about],
+        ['Found', (s) => (s.found || []).map((f) => f.name).join('; ')], ['Source', (s) => s.source]],
     },
     audit: {
       title: 'AD audit', noun: ['change', 'changes'], add: null, key: (c) => `${c.dn}|${c.at}`,
@@ -270,12 +275,13 @@
   ];
 
   AD.domain.cols = [
-    col('name', 'Setting', 260, (s) => s.name, { fixed: true, cell: (s) => small(s.name, s.area) }),
-    col('area', 'Area', 150, (s) => s.area),
-    col('now', 'Now', 210, (s) => s.now, { on: true }),
+    col('name', 'Check', 300, (s) => s.name, { fixed: true, cell: (s) => `<div class="who"><span class="pic">${svg(AREA_ICON[s.area] || 'shield')}</span>${small(s.name, s.area)}</div>` }),
+    col('area', 'Area', 170, (s) => Object.keys(AREA_ICON).indexOf(s.area), { cell: (s) => esc(s.area) }),
+    col('now', 'Now', 200, (s) => s.now, { on: true }),
     col('recommended', 'Recommended', 210, (s) => s.recommended, { on: true, cell: (s) => `<span class="muted ell">${esc(s.recommended)}</span>` }),
-    col('result', 'Result', 170, (s) => ({ bad: 0, warn: 1, unknown: 2, good: 3 })[s.tone] ?? 4, { on: true, cell: (s) => TONE[s.tone] || '' }),
+    col('result', 'Result', 170, (s) => ({ bad: 0, warn: 1, info: 2, unknown: 3, good: 4 })[s.tone] ?? 5, { on: true, cell: (s) => TONE[s.tone] || '' }),
     col('about', 'Why it matters', 320, (s) => s.about),
+    col('source', 'Source', 240, (s) => s.source || '', { cell: (s) => `<span class="muted ell">${esc(s.source || '')}</span>` }),
   ];
   AD.audit.cols = [
     col('when', 'When', 120, (c) => time(c.at), { on: true, cell: (c) => small(ago(c.at), new Date(c.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })) }),
@@ -314,7 +320,7 @@
     empty: () => emptyNow,
     redraw: () => { closeCard(); drawAd(); },
   });
-  const PAGE_ICON = { users: 'user', groups: 'users', computers: 'laptop', domain: 'globe', audit: 'history', recycle: 'trash' };
+  const PAGE_ICON = { users: 'user', groups: 'users', computers: 'laptop', domain: 'shield', audit: 'history', recycle: 'trash' };
   const total = {}; // how many each page had when it was last read, for the list down the left
 
   // The filter's fields: what each can be asked, by kind. Ops in NO_VALUE need nothing filled in.
@@ -516,7 +522,7 @@
     drawBanner();
   };
 
-  // A line above the table: the Recycle Bin's state, how Domain settings stands, and what the audit can say.
+  // A line above the table: the Recycle Bin's state, how Domain health stands, and what the audit can say.
   const drawBanner = () => {
     const b = $('dir-banner');
     let html = '';
@@ -529,7 +535,7 @@
     } else if (adPage === 'domain' && lists.domain) {
       const bad = lists.domain.filter((s) => s.tone === 'bad').length;
       const warn = lists.domain.filter((s) => s.tone === 'warn').length;
-      html = `${svg(bad ? 'alert' : 'check')}<span><b>${bad ? `${bad} not as recommended` : 'Nothing is off'}${warn ? `, ${warn} worth a look` : ''}.</b> Click a setting to see why it matters and where it's set.</span>`;
+      html = `${svg(bad ? 'alert' : 'check')}<span><b>${bad ? `${bad} not as recommended` : 'Nothing is off'}${warn ? `, ${warn} worth a look` : ''}.</b> Click a check to see what it found, why it matters and how to fix it.</span>`;
     } else if (adPage === 'audit') {
       html = `${svg('history')}<span>Who made a change shows when it was made in ${esc(R.app())}. For changes made elsewhere, the domain controllers' security logs say who.</span>`;
     }
@@ -1611,11 +1617,75 @@
         + 'The login is used for this change only and isn\'t saved.</small></div>'
         + '<p class="hint problem" id="dws-problem" hidden></p><div class="dws-foot"><button type="button" class="primary" data-dws-save>Save</button></div></section>'
       : s.how ? `<section class="dw-sec"><div class="dw-sec-head"><h3>How it's changed</h3><div class="dw-links">${dwsLink(s.key)}</div></div><p class="dw-how">${esc(s.how)}</p></section>` : '';
-    return `<div class="dw-head"><span class="pic dw-pic">${svg('globe')}</span><div class="dw-name"><h2 id="dw-title">${esc(s.name)}</h2><p>${esc(s.area)}</p></div>`
+    return `<div class="dw-head"><span class="pic dw-pic">${svg(AREA_ICON[s.area] || 'shield')}</span><div class="dw-name"><h2 id="dw-title">${esc(s.name)}</h2><p>${esc(s.area)}</p></div>`
       + `<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`
       + `<div class="dw-status">${TONE[s.tone] || ''}</div>`
-      + dwFacts('Setting', [dwFact('Now', esc(s.now)), dwFact('Recommended', esc(s.recommended)), dwFact('Why it matters', esc(s.about), true)])
-      + change;
+      + dwFacts('Check', [dwFact('Now', esc(s.now)), dwFact('Recommended', esc(s.recommended)), dwFact('Why it matters', esc(s.about), true)])
+      + dwFound(s)
+      + (s.fix ? `<section class="dw-sec"><div class="dw-sec-head"><h3>How to fix it</h3></div><p class="dw-how">${esc(s.fix)}</p></section>` : '')
+      + change
+      + (s.source ? `<p class="dw-src">Source: ${esc(s.source)}</p>` : '');
+  };
+  // What a check found: each one opens in its own page, and the check's fix runs on the ticked ones.
+  const FOUND_ICON = { ...KIND_ICON, cert: 'certificate', trust: 'link', zone: 'signpost' };
+  const flagOff = (flag, on = false) => (f) => [`${userPath(f)}/flag`, { flag, on }];
+  const ACTS = {
+    'notreq-off': { label: 'Require a password', doing: 'Requiring a password', icon: 'lock', kinds: ['user'], run: flagOff('notreq') },
+    'noexpiry-off': { label: 'Let passwords expire', doing: 'Letting passwords expire', icon: 'calendar', kinds: ['user'], run: flagOff('noexpiry') },
+    'reversible-off': { label: 'Turn off reversible encryption', doing: 'Turning off reversible encryption', icon: 'lock', kinds: ['user'], run: flagOff('reversible') },
+    'sensitive-on': { label: 'Mark sensitive', doing: 'Marking sensitive', icon: 'shield', kinds: ['user'], run: flagOff('sensitive', true) },
+    'preauth-on': { label: 'Require preauthentication', doing: 'Requiring preauthentication', icon: 'ticket', kinds: ['user'], run: flagOff('preauth') },
+    'des-off': { label: 'Turn off DES', doing: 'Turning off DES', icon: 'ticket', kinds: ['user'], run: flagOff('des') },
+    disable: { label: 'Disable', doing: 'Disabling', icon: 'user-off', kinds: ['user', 'computer'], ask: true,
+      run: (f) => (f.kind === 'computer' ? [`${pcPath({ name: f.username || f.name })}/enable`, { on: false }] : [`${userPath(f)}/enable`, { on: false }]) },
+  };
+  const actOf = (s) => (s.act && ACTS[s.act] && can('ad.change') ? ACTS[s.act] : null);
+  const dwFound = (s) => {
+    const fs = s.found || [];
+    if (!fs.length) return '';
+    const a = actOf(s);
+    const can1 = (f) => a && a.kinds.includes(f.kind);
+    const any = fs.some(can1);
+    return `<section class="dw-sec"><div class="dw-sec-head"><h3>What was found <small>${fs.length}</small></h3>`
+      + (any ? `<button type="button" class="small" data-dwf-act>${svg(a.icon)}${esc(a.label)}</button>` : '') + '</div>'
+      + `<div class="dw-list">${fs.map((f, i) => `<div class="mrow">`
+        + (any ? (can1(f) ? `<label class="tk"><input type="checkbox" data-dwf-tick="${i}" checked aria-label="Pick ${esc(f.name)}"></label>` : '<span class="tk"></span>') : '')
+        + `<span class="pic small${f.kind === 'user' ? ' user' : ''}">${f.kind === 'user' ? esc(initials(f.name)) : svg(FOUND_ICON[f.kind] || 'folder')}</span>`
+        + `<div class="two"><b>${esc(f.name)}</b><small>${esc(f.where || '')}</small></div>`
+        + (PAGE_OF[f.kind] ? `<button type="button" class="at-more dwf-open" data-dwf-open="${i}" data-tip="Open" aria-label="Open ${esc(f.name)}">${svg('right')}</button>` : '')
+        + '</div>').join('')}</div>`
+      + (fs.length >= 50 ? '<p class="hint">The first 50 are shown; the CSV has the same.</p>' : '')
+      + '<p class="hint problem" id="dwf-problem" hidden></p></section>';
+  };
+  // Runs the check's fix on each ticked one, then reads the checks again.
+  const actFound = (s) => {
+    const a = actOf(s);
+    const fs = [...$('dw-body').querySelectorAll('[data-dwf-tick]:checked')].map((t) => s.found[Number(t.dataset.dwfTick)]);
+    if (!a || !fs.length) return;
+    const go = async () => {
+      const failed = [];
+      for (const [i, f] of fs.entries()) {
+        R.busy($('dw-body'), `${a.doing}…`, fs.length > 1 ? `${i + 1} of ${fs.length}: ${f.name}` : f.name);
+        try {
+          await R.send(...a.run(f));
+        } catch (err) {
+          failed.push(`${f.name}: ${err.message}`);
+        }
+      }
+      delete lists.users;
+      delete lists.computers;
+      try {
+        lists.domain = await R.get('/api/ad/domain');
+      } catch { /* the list stays as it was */ }
+      R.busy($('dw-body'), '');
+      drawAd();
+      drawDrawer();
+      const done = fs.length - failed.length;
+      if (done) R.toast(`${count(done, 'account', 'accounts')} fixed`, s.name);
+      if (failed.length) say($('dwf-problem') ? 'dwf-problem' : 'dir-problem', failed.join(' '));
+    };
+    if (a.ask) sure(`${a.label} ${count(fs.length, 'account', 'accounts')}?`, `${fs.map((f) => f.name).slice(0, 5).join(', ')}${fs.length > 5 ? ` and ${fs.length - 5} more` : ''}. They can be enabled again later.`, a.label, go);
+    else go();
   };
   const saveSetting = async (s) => {
     const el = $('dws-value');
@@ -1743,6 +1813,8 @@
       if (pick) pick.parentElement.querySelectorAll('[data-dws-v]').forEach((b) => { b.setAttribute('aria-pressed', String(b === pick)); b.setAttribute('aria-checked', String(b === pick)); });
       else if (e.target.closest('[data-dws-save]')) saveSetting(x);
       else if (e.target.closest('[data-dws-admins]')) openAdmins();
+      else if (e.target.closest('[data-dwf-act]')) actFound(x);
+      else if (e.target.closest('[data-dwf-open]')) openChanged(x.found[Number(e.target.closest('[data-dwf-open]').dataset.dwfOpen)]);
       return;
     }
     const t = e.target.closest('[data-dw-tab]');

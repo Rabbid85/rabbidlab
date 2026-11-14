@@ -171,6 +171,7 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
     private const int ReversiblePassword = 0x80;
     private const int SmartcardRequired = 0x40000;
     private const int DesKeysOnly = 0x200000;
+    private const int PasswordNotRequired = 0x20;
     private const int NoPreauthNeeded = 0x400000;
     private const int Limit = 1000; // the most Active Directory sends without paging
     private const string NeedsLdaps = "Active Directory only sets passwords over an encrypted connection, and this one isn't. In Docker that's LDAPS or StartTLS: give the domain controllers a certificate this computer trusts.";
