@@ -105,7 +105,7 @@ public sealed class Clients(DataFolder folder, TimeProvider clock)
             f.Clients.RemoveAll(c => c.Approved is null && string.Equals(c.Computer, computer, StringComparison.OrdinalIgnoreCase) && c.Address == address);
             if (f.Approve && f.Clients.Count(c => c.Approved is null) >= MaxWaiting)
             {
-                return (null, null, $"{MaxWaiting} computers are already waiting to be let in. Let some in or remove them first.");
+                return (null, null, $"{MaxWaiting} computers are already waiting for approval. Approve or remove some first.");
             }
             if (f.Clients.Count >= MaxClients)
             {

@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.151', [
+    'The Windows client is reworded in plain English: both of its windows, the tray menu, the installer messages and the Group Policy help.',
+    'The Connect this computer window matches the rest of the client now, with the dark buttons and a dark address box.',
+    'Let in is called Approve, on the Devices page, in the wiki and in the activity log, so the console and the client use the same word. The setting is now Require approval for new computers.']],
   ['1.1.150', [
     'Connecting a computer through an address you added works now. The client knows the server by its public key, so every address is right, and it stays right when a certificate is made again.',
     'In a domain, an added address in that domain gets a certificate signed by a certificate authority made for this install, which can sign only for names in the domain. Trust it once on other computers and the browser warning is gone: Settings, Console address has the download and a certutil line for every domain computer.',
@@ -1419,7 +1423,7 @@ const RELEASE_NOTES = [
       { key: 'lastSeen', label: 'Last seen', w: 100, on: true, get: (c) => ms(c.lastSeen), cell: (c) => `<span class="muted">${esc(ago(c.lastSeen))}</span>` },
       { key: 'os', label: 'Windows', w: 200, get: (c) => c.os },
     ],
-    tail: { w: 190, cell: (c) => { const st = stateOf(c); return `<span class="acts">${st === 'waiting' && can.has('seats.approve') ? '<button type="button" class="small primary" data-approve>Let in</button>' : ''}`
+    tail: { w: 190, cell: (c) => { const st = stateOf(c); return `<span class="acts">${st === 'waiting' && can.has('seats.approve') ? '<button type="button" class="small primary" data-approve>Approve</button>' : ''}`
       + `${st !== 'waiting' && can.has('seats.remove') ? '<button type="button" class="small quiet" data-uninstall>Uninstall</button>' : ''}`
       + `${can.has('seats.remove') ? '<button type="button" class="small quiet" data-forget>Remove</button>' : ''}</span>`; } },
     row: (c) => ` data-client="${esc(c.id)}"`,
@@ -1509,7 +1513,7 @@ const RELEASE_NOTES = [
   };
   const joined = (seat) => {
     clearInterval(hereTimer);
-    $('here-text').textContent = seat.approved ? `${seat.computer} is connected.` : `${seat.computer} joined. Let it in under Devices.`;
+    $('here-text').textContent = seat.approved ? `${seat.computer} is connected.` : `${seat.computer} is waiting for approval. Approve it under Devices.`;
     $('here-download').hidden = true;
     $('here-connect').hidden = true;
     setTimeout(() => { $('herebar').hidden = true; }, 12000);
@@ -1685,7 +1689,7 @@ const RELEASE_NOTES = [
     $('hero-install').addEventListener('click', () => post('/api/update/install'));
     $('upd-install').addEventListener('click', () => post('/api/update/install'));
     $('upd-auto').addEventListener('change', (e) => post('/api/update/settings', { automatic: e.target.checked }));
-    // Devices: the filters, Let in and Remove on a computer, Sign out on a session, and the Add computers dialog.
+    // Devices: the filters, Approve and Remove on a computer, Sign out on a session, and the Add computers dialog.
     $('seats-filter').addEventListener('click', (e) => {
       const chip = e.target.closest('[data-filter]');
       if (!chip) return;

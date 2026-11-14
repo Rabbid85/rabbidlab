@@ -34,7 +34,7 @@ public static class ClientsApi
             {
                 return Results.Json(new { error = problem }, statusCode: StatusCodes.Status429TooManyRequests);
             }
-            log.Record($"The client on {computer}", from, "clients", "client.join", client.Approved is null ? $"{computer} joined and waits to be let in" : $"{computer} joined", "ok");
+            log.Record($"The client on {computer}", from, "clients", "client.join", client.Approved is null ? $"{computer} joined and is waiting for approval" : $"{computer} joined", "ok");
             return Results.Ok(new { id = client.Id, secret, approved = client.Approved is not null, version = Product.Version });
         });
 
@@ -114,7 +114,7 @@ public static class ClientsApi
             {
                 return Results.NotFound(new { error = "That client isn't here any more." });
             }
-            log.Record(context, "clients", "client.approve", $"Let {c.Computer} in");
+            log.Record(context, "clients", "client.approve", $"Approved {c.Computer}");
             return Results.Ok();
         });
 

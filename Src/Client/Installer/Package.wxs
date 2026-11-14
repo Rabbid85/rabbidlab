@@ -7,7 +7,7 @@
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
   <Package Name="Rabbid Lab Client" Manufacturer="Rabbid" Version="$(Version)" UpgradeCode="C344F3AC-01E7-4D01-AB7E-C0BB0DF38689" Scope="perMachine" Compressed="yes">
     <!-- The same version built again replaces the one installed, not a second entry beside it. -->
-    <MajorUpgrade AllowSameVersionUpgrades="yes" DowngradeErrorMessage="A newer Rabbid Lab Client is already installed." />
+    <MajorUpgrade AllowSameVersionUpgrades="yes" DowngradeErrorMessage="A newer version of the Rabbid Lab client is already installed." />
     <MediaTemplate EmbedCab="yes" />
     <Icon Id="rabbidlab.ico" SourceFile="$(Icon)" />
     <Property Id="ARPPRODUCTICON" Value="rabbidlab.ico" />
@@ -78,7 +78,7 @@
     <Property Id="REMOVALALLOWED">
       <RegistrySearch Id="RemovalAllowed" Root="HKLM" Key="SOFTWARE\Rabbid Lab\Client" Name="RemovalAllowed" Type="raw" Bitness="always64" />
     </Property>
-    <CustomAction Id="RemovalLocked" Error="Uninstalling the Rabbid Lab client is locked on this computer. An admin has to allow it in Rabbid Lab first: open Devices, click this computer's Uninstall, and choose Allow uninstalling." />
+    <CustomAction Id="RemovalLocked" Error="The Rabbid Lab client can't be uninstalled yet. An admin has to allow it first. In Rabbid Lab, go to Devices, click Uninstall next to this computer, and choose Allow uninstalling." />
     <!-- The tray icon straight away for whoever installed it by hand; a quiet install shows it at the next sign-in. -->
     <CustomAction Id="StartTray" FileRef="ClientExe" ExeCommand="--tray" Return="asyncNoWait" Impersonate="yes" />
     <InstallExecuteSequence>

@@ -67,10 +67,10 @@ public static class Permissions
         new("seats", "Devices", "monitor",
         [
             new(SeatsView, "See computers", "Every computer with the client, whether it's online, and who's on it."),
-            new(SeatsApprove, "Let new computers in", "Approve a computer that asked to join."),
+            new(SeatsApprove, "Approve new computers", "Approve a computer that's waiting to connect."),
             new(SeatsRemove, "Remove computers", "Take a computer off the list. It has to join again."),
             new(SeatsAdd, "Add computers", "Get the client installer, the Connect link and the Group Policy template."),
-            new(SeatsSettings, "Change client settings", "Whether new computers wait for someone to let them in."),
+            new(SeatsSettings, "Change client settings", "Whether new computers need approval."),
         ]),
         new("sessions", "Sessions", "signout",
         [

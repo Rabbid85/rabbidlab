@@ -63,7 +63,7 @@ internal sealed class Identity
         }
         if (parts.Length != 3)
         {
-            throw Unreadable(new InvalidDataException("It doesn't hold an id, a secret and a server."));
+            throw Unreadable(new InvalidDataException("The file is missing its ID, secret or server."));
         }
         return marked ? new Identity { Id = parts[0], Secret = parts[1], Server = parts[2] } : Save(parts[0], parts[1], parts[2]);
     }
@@ -107,5 +107,5 @@ internal sealed class Identity
     }
 
     private static IdentityUnreadableException Unreadable(Exception e) => new(
-        $"{Path} can't be read by this account ({e.Message.Trim().TrimEnd('.')}). The Rabbid Lab Client service reads it as SYSTEM. To join again, an administrator deletes that file.", e);
+        $"{Path} can't be read by this account ({e.Message.Trim().TrimEnd('.')}). The Rabbid Lab Client service reads it as SYSTEM. To connect this computer again, have an administrator delete that file.", e);
 }

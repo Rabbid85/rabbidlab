@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.151 (2026-11-14)
+
+- The Windows client is reworded in plain English: both of its windows, the tray menu, the installer messages and the Group Policy help.
+- The Connect this computer window matches the rest of the client now, with the dark buttons and a dark address box.
+- Let in is called Approve, on the Devices page, in the wiki and in the activity log, so the console and the client use the same word. The setting is now Require approval for new computers.
+
 ## 1.1.150 (2026-11-14)
 
 - Connecting a computer through an address you added works now. The client knows the server by its public key, so every address is right, and it stays right when a certificate is made again.

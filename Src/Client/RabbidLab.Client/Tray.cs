@@ -33,9 +33,9 @@ internal sealed class Tray : ApplicationContext
         var show = new ToolStripMenuItem("Open", null, (_, _) => Show());
         show.Font = new Font(show.Font, FontStyle.Bold);
         menu.Items.Add(show);
-        menu.Items.Add(new ToolStripMenuItem("Open Rabbid Lab in the browser", null, (_, _) => Browse()));
+        menu.Items.Add(new ToolStripMenuItem("Open Rabbid Lab in browser", null, (_, _) => Browse()));
         menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add(new ToolStripMenuItem("Close the icon", null, (_, _) => Quit()));
+        menu.Items.Add(new ToolStripMenuItem("Exit", null, (_, _) => Quit()));
         icon = new NotifyIcon
         {
             Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath),
@@ -76,10 +76,10 @@ internal sealed class Tray : ApplicationContext
         heading.Text = now.Describe();
         var tip = $"Rabbid Lab: {now.Describe()}";
         icon.Text = tip.Length > 63 ? tip.Substring(0, 60) + "…" : tip;
-        // Let in: said once, when it happens.
+        // Approved: said once, when it happens.
         if (last?.State == Status.Waiting && now.State == Status.Connected)
         {
-            icon.ShowBalloonTip(5000, "Rabbid Lab", $"This computer is connected to {now.Host}.", ToolTipIcon.Info);
+            icon.ShowBalloonTip(5000, "Rabbid Lab", $"This computer was approved and is now connected to {now.Host}.", ToolTipIcon.Info);
         }
         last = now;
         if (window is { IsDisposed: false, Visible: true })
@@ -213,12 +213,12 @@ internal sealed class StatusWindow : Form
         facts.RowStyles.Clear();
         facts.RowCount = 0;
         Fact("Server", s.Server ?? "Not set");
-        Fact("This computer", s.Computer);
-        Fact("Signed in", string.IsNullOrEmpty(s.User) ? Environment.UserName : s.User!);
-        Fact("Last check-in", s.CheckedIn is { } at ? at.ToLocalTime().ToString("g") : "Not yet");
+        Fact("Computer name", s.Computer);
+        Fact("Signed-in user", string.IsNullOrEmpty(s.User) ? Environment.UserName : s.User!);
+        Fact("Last check-in", s.CheckedIn is { } at ? at.ToLocalTime().ToString("g") : "Never");
         Fact("Client version", s.Version);
-        Fact("Server version", s.ServerVersion ?? "Not known");
-        Fact("Uninstalling", !joined ? "Allowed: not connected to a server"
+        Fact("Server version", s.ServerVersion ?? "Unknown");
+        Fact("Uninstall", !joined ? "Allowed (not connected to a server)"
             : s.Locked ? $"Locked by {s.Host}"
             : s.RemovalUntil is { } until ? $"Allowed until {until.ToLocalTime():t}" : "Allowed");
         facts.ResumeLayout();
@@ -237,7 +237,7 @@ internal sealed class StatusWindow : Form
     {
         if (!Removal.Allowed)
         {
-            MessageBox.Show(this, $"Uninstalling is locked by {shown.Host}.\n\nAn admin has to allow it in Rabbid Lab first: Devices, {shown.Computer}, Uninstall.",
+            MessageBox.Show(this, $"The Rabbid Lab client can't be uninstalled yet.\n\nAn admin has to allow it first. In Rabbid Lab on {shown.Host}, go to Devices, click Uninstall next to {shown.Computer}, and choose Allow uninstalling.",
                 "Rabbid Lab Client", MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
@@ -247,7 +247,7 @@ internal sealed class StatusWindow : Form
         }
         if (!Removal.Uninstall(quiet: false))
         {
-            MessageBox.Show(this, "Windows couldn't start the uninstall. Use Settings, Apps, Installed apps.", "Rabbid Lab Client", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MessageBox.Show(this, "The uninstall didn't start. Use Settings > Apps > Installed apps instead.", "Rabbid Lab Client", MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
     }
 
@@ -309,7 +309,52 @@ internal static class Look
         };
         b.FlatAppearance.BorderSize = primary ? 0 : 1;
         b.FlatAppearance.BorderColor = Line;
+        if (primary)
+        {
+            // Greyed while it can't be clicked.
+            b.EnabledChanged += (_, _) => b.BackColor = b.Enabled ? Accent : Line;
+        }
         return b;
+    }
+
+    /// <summary>A text box in the window's colours, in a thin frame that turns ember while it has the cursor.</summary>
+    public static Panel Box(TextBox box)
+    {
+        box.BorderStyle = BorderStyle.None;
+        box.BackColor = Field;
+        box.ForeColor = Ink;
+        box.Dock = DockStyle.Fill;
+        var inside = new Panel { Dock = DockStyle.Fill, BackColor = Field, Padding = new Padding(9, 7, 9, 0) };
+        inside.Controls.Add(box);
+        var frame = new Panel { Dock = DockStyle.Top, Height = 34, BackColor = Line, Padding = new Padding(1) };
+        frame.Controls.Add(inside);
+        box.Enter += (_, _) => frame.BackColor = Accent;
+        box.Leave += (_, _) => frame.BackColor = Line;
+        return frame;
+    }
+
+    /// <summary>Windows' administrator shield on one of these buttons, for what asks for an administrator.</summary>
+    public static void Shield(Button button)
+    {
+        try
+        {
+            var info = new StockIcon { Size = Marshal.SizeOf(typeof(StockIcon)) };
+            if (SHGetStockIconInfo(77, 0x101, ref info) != 0 || info.Icon == IntPtr.Zero) // the shield, small
+            {
+                return;
+            }
+            using (var icon = Icon.FromHandle(info.Icon))
+            {
+                button.Image = icon.ToBitmap();
+            }
+            DestroyIcon(info.Icon);
+            button.TextImageRelation = TextImageRelation.ImageBeforeText;
+            button.Text = " " + button.Text; // a little room between the shield and the word
+        }
+        catch (Exception e) when (e is DllNotFoundException or EntryPointNotFoundException)
+        {
+            // No shield: the button works the same.
+        }
     }
 
     /// <summary>
@@ -357,4 +402,20 @@ internal static class Look
 
     [DllImport("dwmapi.dll")]
     private static extern int DwmSetWindowAttribute(IntPtr window, int attribute, ref int value, int size);
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    private struct StockIcon
+    {
+        public int Size;
+        public IntPtr Icon;
+        public int SystemIndex;
+        public int Index;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 260)] public string Path;
+    }
+
+    [DllImport("shell32.dll")]
+    private static extern int SHGetStockIconInfo(int id, int flags, ref StockIcon info);
+
+    [DllImport("user32.dll")]
+    private static extern bool DestroyIcon(IntPtr icon);
 }

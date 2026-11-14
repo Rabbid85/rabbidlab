@@ -446,10 +446,10 @@
 
     <!-- Devices: whether new computers wait, and getting the client onto computers (console.js). -->
     <section class="sub" data-sub="seats" data-title="Devices" hidden>
-      <header class="sub-head"><h2>Devices</h2><p>Computers with the <span data-app>Rabbid Lab</span> client: letting them in, and getting the client onto them.</p></header>
+      <header class="sub-head"><h2>Devices</h2><p>Computers with the <span data-app>Rabbid Lab</span> client: approving new ones, and installing the client.</p></header>
       <section class="ds-sec" data-sec="new" data-can="seats.settings"><h3 class="ds-h">New computers</h3>
-        <div class="ds-row"><div class="ds-l"><b>New computers wait for an admin</b><span>They show as Waiting until someone lets them in. Turn this off and they join straight away.</span></div>
-          <div class="ds-r"><span class="sw-label" id="seat-approve-label">On</span><input type="checkbox" class="switch" id="seat-approve" role="switch" aria-label="New computers wait for an admin"></div></div>
+        <div class="ds-row"><div class="ds-l"><b>Require approval for new computers</b><span>New computers show as Waiting until an admin approves them. Turn this off and they connect right away.</span></div>
+          <div class="ds-r"><span class="sw-label" id="seat-approve-label">On</span><input type="checkbox" class="switch" id="seat-approve" role="switch" aria-label="Require approval for new computers"></div></div>
       </section>
       <section class="ds-sec" data-sec="client" data-can="seats.add"><h3 class="ds-h">Install the client</h3>
         <div class="ds-row" id="seat-msi-row"><div class="ds-l"><b>The client (MSI)</b><span>Run it on a computer, or install it quietly with the line below.</span></div><div class="ds-r"><a class="ds-btn" id="seat-msi" href="/api/clients/download" download>Download</a></div></div>
@@ -888,8 +888,8 @@
     <a class="button small-link" id="policy-link" href="/api/clients/policy" download>Download the Group Policy template</a></div></div>
   <div class="fingerprint" id="fingerprint-row" hidden><span>This server's public key fingerprint</span><code id="fingerprint"></code></div>
   <div class="rows">
-    <div class="row still" data-can="seats.settings"><svg><use href="#i-shield"/></svg><span class="t"><b>New computers wait for an admin</b><span>They show as Waiting until someone lets them in. Turn this off and they join straight away.</span></span>
-      <input type="checkbox" class="switch" id="join-approve" role="switch" aria-label="New computers wait for an admin"></div>
+    <div class="row still" data-can="seats.settings"><svg><use href="#i-shield"/></svg><span class="t"><b>Require approval for new computers</b><span>New computers show as Waiting until an admin approves them. Turn this off and they connect right away.</span></span>
+      <input type="checkbox" class="switch" id="join-approve" role="switch" aria-label="Require approval for new computers"></div>
   </div>
   <div class="dialog-foot"><button type="button" id="add-close">Done</button></div>
 </dialog>

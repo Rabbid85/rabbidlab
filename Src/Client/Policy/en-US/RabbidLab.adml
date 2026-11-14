@@ -8,17 +8,17 @@
       <string id="RabbidLab">Rabbid Lab</string>
       <string id="Client">Client</string>
       <string id="Server">Server address</string>
-      <string id="Server_Help">The Rabbid Lab server this computer connects to, such as https://rabbidlab.example.com:8420.
+      <string id="Server_Help">The address of the Rabbid Lab server this computer connects to. Example: https://rabbidlab.example.com:8420
 
-The Rabbid Lab client joins it, waits to be let in under Devices, then checks in every minute. This setting wins over the SERVER given to the installer.</string>
+The client connects to that server, waits for an admin to approve it under Devices, then checks in every minute. This setting overrides the SERVER value given to the installer.</string>
       <string id="CertificateFingerprint">Server certificate fingerprint</string>
-      <string id="CertificateFingerprint_Help">The SHA-256 fingerprint of the server's public key, from Devices, Add computers, on the server. The fingerprint of its HTTPS certificate works too.
+      <string id="CertificateFingerprint_Help">The SHA-256 fingerprint of the server's public key. Copy it from Add computers on the Devices page in Rabbid Lab. The fingerprint of the server's HTTPS certificate also works.
 
-Needed only when the server uses a certificate these computers don't already trust, such as the self-signed one Rabbid Lab makes when it's installed. With it, the client trusts that one key and no other. Leave it not configured when the server's certificate comes from your own certificate authority.</string>
+Only needed when the server uses a certificate these computers don't already trust, such as the self-signed certificate Rabbid Lab creates during setup. When set, the client only connects to a server with this key. Leave this not configured if the server's certificate comes from your own certificate authority.</string>
       <string id="AllowAccountChanges">Allow account changes</string>
-      <string id="AllowAccountChanges_Help">Whether people in Rabbid Lab may make, change and delete this computer's own Windows accounts, such as adding a local administrator.
+      <string id="AllowAccountChanges_Help">Controls whether Rabbid Lab admins can create, change and delete local Windows accounts on this computer, for example adding a local administrator.
 
-Not configured or enabled: they may, if their roles allow it. Disabled: the client turns every account change down, and Rabbid Lab says Group Policy turned them off.</string>
+Not configured or Enabled: allowed, if the admin's role permits it. Disabled: the client rejects every account change, and Rabbid Lab reports that Group Policy turned them off.</string>
     </stringTable>
     <presentationTable>
       <presentation id="Server">

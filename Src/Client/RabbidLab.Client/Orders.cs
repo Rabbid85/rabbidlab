@@ -89,7 +89,7 @@ internal static class Orders
             }
             // Reads for sensors go ahead whatever Group Policy says about account changes.
             var answer = SeatChecks.Is(order) ? SeatChecks.Do(order) : now.AccountChanges ? Do(order)
-                : AccountAnswer.Failed(order.Id, $"Group Policy turns account changes off on {Machine.Name}.");
+                : AccountAnswer.Failed(order.Id, $"Account changes are turned off by Group Policy on {Machine.Name}.");
             answer.Id = order.Id;
             await Answer(api, answer, key, stop).ConfigureAwait(false);
         }
@@ -107,7 +107,7 @@ internal static class Orders
         catch (Exception e)
         {
             // Whatever went wrong, the server hears about it.
-            return AccountAnswer.Failed(order.Id, $"Windows on {Machine.Name} said: {e.Message.Trim().TrimEnd('.')}.");
+            return AccountAnswer.Failed(order.Id, $"Windows on {Machine.Name} returned an error: {e.Message.Trim().TrimEnd('.')}.");
         }
     }
 

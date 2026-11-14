@@ -43,22 +43,22 @@ internal sealed class Status
     public string Describe() => State switch
     {
         Connected => $"Connected to {Host}",
-        Waiting => $"Waiting for an admin at {Host} to let this computer in",
+        Waiting => $"Waiting for approval on {Host}",
         NoServer => "Not connected to a server",
-        Refused => $"{Host} is busy, trying again shortly",
-        Removed => $"{Host} removed this computer, joining again",
+        Refused => $"{Host} is busy. Retrying soon",
+        Removed => $"Removed from {Host}. Reconnecting",
         Unreachable => $"Can't reach {Host}",
-        IdentityUnreadable => "This computer's identity can't be read",
+        IdentityUnreadable => "Can't read this computer's saved connection",
         _ => "Starting",
     };
 
     /// <summary>What to do about it, or what it means, in a sentence for the window.</summary>
     public string Hint() => State switch
     {
-        Connected => "This computer shows under Devices in Rabbid Lab.",
-        Waiting => "It shows under Devices as Waiting until someone lets it in.",
-        NoServer => "Open Rabbid Lab in a browser on this computer and click Connect this computer, or click Connect to a server below.",
-        Starting => "The Rabbid Lab Client service hasn't reported yet.",
+        Connected => "This computer is listed under Devices in Rabbid Lab.",
+        Waiting => "An admin needs to approve this computer under Devices in Rabbid Lab.",
+        NoServer => "To connect, open Rabbid Lab in a browser on this computer and click Connect this computer. Or click Connect to a server below.",
+        Starting => "Waiting for the Rabbid Lab Client service to start.",
         _ => Problem ?? "",
     };
 

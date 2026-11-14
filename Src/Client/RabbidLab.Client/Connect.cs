@@ -3,7 +3,6 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.ServiceProcess;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -58,15 +57,15 @@ internal sealed class JoinLink
         // It goes on a command line (--join), so nothing that could split or end an argument.
         if (Server.Any(c => char.IsWhiteSpace(c) || c == '"' || c == '\\'))
         {
-            return "The server's address can't have spaces, quotes or backslashes in it.";
+            return "The server address can't contain spaces, quotes or backslashes.";
         }
         if (!Uri.TryCreate(Server, UriKind.Absolute, out var u) || (u.Scheme != "https" && u.Scheme != "http") || u.Host.Length == 0)
         {
-            return "The server's address starts with https:// (or http://), such as https://rabbidlab.example.com:8420.";
+            return "Enter the full server address, starting with https:// (or http://). Example: https://rabbidlab.example.com:8420";
         }
         if (Fingerprint.Length > 0 && !Regex.IsMatch(Fingerprint, "^[0-9A-F]{64}$"))
         {
-            return "The fingerprint is 64 letters and numbers (0-9, A-F).";
+            return "The fingerprint must be 64 characters (0-9 and A-F).";
         }
         return null;
     }
@@ -116,7 +115,7 @@ internal sealed class ConnectWindow : Form
     private readonly TextBox server = new();
     private readonly Label note = new() { AutoSize = false, Height = 54 };
     private readonly Label said = new() { AutoSize = false, Height = 62 };
-    private readonly Button go = new() { Text = "Connect", Height = 36, Width = 130, FlatStyle = FlatStyle.System };
+    private readonly Button go = Look.Button("Connect", primary: true);
     private readonly string fingerprint;
     private bool done;
 
@@ -138,21 +137,16 @@ internal sealed class ConnectWindow : Form
         var title = new Label { Text = "Connect this computer", AutoSize = false, Height = 36, Dock = DockStyle.Top, Font = new Font("Segoe UI", 15f, FontStyle.Bold) };
         var lead = new Label
         {
-            Text = $"{Machine.Name} becomes one of the server's devices: it shows up in Rabbid Lab, and the people who run it can make and change its Windows accounts.",
+            Text = $"This adds {Machine.Name} to Devices in Rabbid Lab. Admins can then manage this computer's local Windows accounts.",
             AutoSize = false, Height = 58, Dock = DockStyle.Top, ForeColor = Look.Muted,
         };
         server.Text = link.Server;
-        foreach (var box in new[] { server })
-        {
-            box.BackColor = Look.Field;
-            box.ForeColor = Look.Ink;
-            box.BorderStyle = BorderStyle.FixedSingle;
-            box.Dock = DockStyle.Top;
-        }
+        var field = Look.Box(server);
         note.Dock = DockStyle.Top;
+        note.Padding = new Padding(0, 6, 0, 0);
         said.Dock = DockStyle.Top;
-        var buttons = new FlowLayoutPanel { Dock = DockStyle.Bottom, Height = 40, FlowDirection = FlowDirection.RightToLeft };
-        var cancel = new Button { Text = "Cancel", Height = 36, Width = 100, FlatStyle = FlatStyle.System };
+        var buttons = new FlowLayoutPanel { Dock = DockStyle.Bottom, Height = 48, Padding = new Padding(0, 12, 0, 0), FlowDirection = FlowDirection.RightToLeft };
+        var cancel = Look.Button("Cancel", primary: false);
         cancel.Click += (_, _) => Close();
         go.Click += async (_, _) => await Connect();
         buttons.Controls.Add(go);
@@ -161,28 +155,30 @@ internal sealed class ConnectWindow : Form
         CancelButton = cancel;
 
         // Top to bottom (docked controls stack in reverse).
-        foreach (var c in new Control[] { said, note, server, Caption("Server address"), lead, title })
+        foreach (var c in new Control[] { said, note, field, Caption("Server address"), lead, title })
         {
             Controls.Add(c);
         }
         Controls.Add(buttons);
         // As tall as everything in it, so nothing lies over the buttons.
         ClientSize = new Size(ClientSize.Width, Padding.Vertical + Controls.Cast<Control>().Sum(c => c.Height));
-        Shield(go);
+        Look.Shield(go);
 
         var now = Settings.Read();
         if (now.PolicyServer is not null)
         {
-            Say(note, $"Group Policy picks this computer's server ({now.PolicyServer}), so it can't be changed here.", Look.Amber);
-            server.Enabled = go.Enabled = false;
+            Say(note, $"The server is set by Group Policy ({now.PolicyServer}) and can't be changed here.", Look.Amber);
+            server.ReadOnly = true;
+            server.ForeColor = Look.Muted;
+            go.Enabled = false;
         }
         else if (now.Server is not null && !string.Equals(now.Server, link.Server, StringComparison.OrdinalIgnoreCase) && link.Server.Length > 0)
         {
-            Say(note, $"This computer is connected to {now.Server}. Connecting moves it to {link.Server}.", Look.Amber);
+            Say(note, $"This computer is already connected to {now.Server}. Connecting will move it to {link.Server}.", Look.Amber);
         }
         else if (link.Server.Length > 0)
         {
-            Say(note, "Check the address is your Rabbid Lab, then Connect.", Look.Muted);
+            Say(note, "Make sure this is your Rabbid Lab server, then click Connect.", Look.Muted);
         }
         server.TextChanged += (_, _) =>
         {
@@ -210,7 +206,7 @@ internal sealed class ConnectWindow : Form
     private void WarnPlain()
     {
         var plain = server.Text.TrimStart().StartsWith("http://", StringComparison.OrdinalIgnoreCase);
-        Say(said, plain ? "This address uses http://, so the connection to the server is not encrypted. Use https:// if the server has it." : "", Look.Amber);
+        Say(said, plain ? "This address uses http://, so the connection won't be encrypted. Use https:// if the server supports it." : "", Look.Amber);
     }
 
     private static Label Caption(string text) => new() { Text = text, AutoSize = false, Height = 26, Dock = DockStyle.Top, ForeColor = Look.Muted, Padding = new Padding(0, 6, 0, 0) };
@@ -243,14 +239,14 @@ internal sealed class ConnectWindow : Form
             await Task.Run(() => admin?.WaitForExit());
             if (admin?.ExitCode is not 0 and not null)
             {
-                Say(said, "That didn't save. Try again, or install with the server's address.", Look.Red);
+                Say(said, "The server address couldn't be saved. Try again.", Look.Red);
                 go.Enabled = true;
                 return;
             }
         }
         catch (Win32Exception)
         {
-            Say(said, "Windows needs an administrator's OK to connect this computer.", Look.Red);
+            Say(said, "Connecting needs administrator permission. Click Connect again and choose Yes.", Look.Red);
             go.Enabled = true;
             return;
         }
@@ -261,8 +257,10 @@ internal sealed class ConnectWindow : Form
             var s = Status.Read();
             if (s?.Server == link.Server && s.State is Status.Connected or Status.Waiting)
             {
-                Say(said, s.State == Status.Connected ? $"Connected. {Machine.Name} shows up in Rabbid Lab's Devices." : $"Joined. {Machine.Name} waits for someone to let it in under Devices.", Look.Green);
+                Say(said, s.State == Status.Connected ? $"Connected. {Machine.Name} is now listed under Devices in Rabbid Lab."
+                    : $"Almost done. An admin needs to approve {Machine.Name} under Devices in Rabbid Lab.", Look.Green);
                 go.Text = "Done";
+                go.Image = null;
                 go.Enabled = true;
                 done = true;
                 return;
@@ -274,13 +272,7 @@ internal sealed class ConnectWindow : Form
                 return;
             }
         }
-        Say(said, "Saved. It's still joining; the tray icon says when it's connected.", Look.Muted);
+        Say(said, "Saved. Still connecting. The tray icon will show when it's connected.", Look.Muted);
         go.Enabled = true;
     }
-
-    /// <summary>The administrator shield on a button, as Windows draws it.</summary>
-    private static void Shield(Button button) => SendMessage(button.Handle, 0x160C, IntPtr.Zero, new IntPtr(1));
-
-    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-    private static extern IntPtr SendMessage(IntPtr window, int message, IntPtr w, IntPtr l);
 }

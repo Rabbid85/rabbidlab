@@ -36,12 +36,12 @@ internal sealed class Agent
                 if (code == (HttpStatusCode) 429)
                 {
                     status.State = Status.Refused;
-                    status.Problem = "It's busy with other computers joining; this one tries again in a few minutes.";
+                    status.Problem = "The server is busy with other computers connecting. This computer will try again in a few minutes.";
                     return status.Save();
                 }
                 if (made is null)
                 {
-                    return Unreachable(status, joined, $"It answered {(int) code}.");
+                    return Unreachable(status, joined, $"The server returned an error (HTTP {(int) code}).");
                 }
                 me = Identity.Save(made.Id, made.Secret, settings.Server);
             }
@@ -58,7 +58,7 @@ internal sealed class Agent
             }
             if (answer is null)
             {
-                return Unreachable(status, joined, $"It answered {(int) answered}.");
+                return Unreachable(status, joined, $"The server returned an error (HTTP {(int) answered}).");
             }
             settings.KeepKey(api.Key);
             status.State = answer.Approved ? Status.Connected : Status.Waiting;
@@ -85,13 +85,13 @@ internal sealed class Agent
         {
             // It answered, but not with the certificate this computer accepts: said plainly, not as Windows words it.
             var why = !api.Untrusted ? (e.InnerException ?? e).Message
-                : settings.Fingerprint is null ? "Windows doesn't trust its certificate."
-                : "Its certificate isn't the one this computer was given. Connect again from the server's page.";
+                : settings.Fingerprint is null ? "Windows doesn't trust the server's certificate."
+                : "The server's certificate doesn't match the fingerprint saved on this computer. Connect again from the Rabbid Lab page.";
             return Unreachable(status, joined, why);
         }
         catch (TaskCanceledException) when (!stop.IsCancellationRequested)
         {
-            return Unreachable(status, joined, "It didn't answer in time.");
+            return Unreachable(status, joined, "The server didn't respond in time.");
         }
     }
 
