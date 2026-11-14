@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.158 (2026-11-14)
+
+- Fixed the client icon not showing after a reinstall or an update. A copy of the icon program left running from the older install kept the new one from starting. The client service now ends that leftover and starts the installed one.
+
 ## 1.1.157 (2026-11-14)
 
 - The client icon is always on the taskbar. The client service starts it for anyone signed in to Windows who does not have one, so it shows right after an install or an update and comes back if it stops. Exit is gone from its menu.

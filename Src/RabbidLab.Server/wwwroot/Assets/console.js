@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.158', [
+    'Fixed the client icon not showing after a reinstall or an update. A copy of the icon program left running from the older install kept the new one from starting. The client service now ends that leftover and starts the installed one.']],
   ['1.1.157', [
     'The client icon is always on the taskbar. The client service starts it for anyone signed in to Windows who does not have one, so it shows right after an install or an update and comes back if it stops. Exit is gone from its menu.',
     'Uninstall now no longer leaves uninstalling allowed for the rest of the hour. A client installed again afterwards is locked from the start.',

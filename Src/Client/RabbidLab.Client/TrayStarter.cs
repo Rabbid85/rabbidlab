@@ -10,16 +10,20 @@ namespace RabbidLab.Client;
 /// <summary>
 /// Keeps the tray icon there: every round, the service starts the icon for anyone signed in to Windows who hasn't got
 /// one, as that person and on their desktop. So it shows straight after an install or an update, and comes back if it
-/// stops, without waiting for the next sign-in.
+/// stops, without waiting for the next sign-in. A copy left running from before an update or a reinstall is ended
+/// first: it runs a program file that has since been moved aside, shows no icon, and would keep the new one from
+/// starting (there is one icon for each person).
 /// </summary>
 internal static class TrayStarter
 {
     public static void Ensure()
     {
         string exe;
+        string installed; // where Windows says this service's own program file is: the installed one
         using (var me = Process.GetCurrentProcess())
         {
             exe = me.MainModule.FileName;
+            installed = Where(me.Id) ?? exe;
         }
         var name = Path.GetFileNameWithoutExtension(exe);
         foreach (var session in SignedIn())
@@ -29,13 +33,53 @@ internal static class TrayStarter
             {
                 using (p)
                 {
-                    there |= p.SessionId == session;
+                    if (p.SessionId != session)
+                    {
+                        continue;
+                    }
+                    // The same file as the service's, or Windows won't say: it's left alone.
+                    if (Where(p.Id) is not { } file || string.Equals(file, installed, StringComparison.OrdinalIgnoreCase))
+                    {
+                        there = true;
+                        continue;
+                    }
+                    try
+                    {
+                        p.Kill();
+                        p.WaitForExit(3000);
+                    }
+                    catch (Exception e) when (e is System.ComponentModel.Win32Exception or InvalidOperationException)
+                    {
+                        // Gone already, or not to be ended: looked at again next round.
+                    }
                 }
             }
             if (!there)
             {
                 Start(session, exe);
             }
+        }
+    }
+
+    // Where a running program's file is at this moment, as Windows has it: one whose file an installer moved aside, to
+    // put a newer one in its place, shows up as somewhere else. Null when Windows won't say.
+    private static string? Where(int id)
+    {
+        const int queryLimited = 0x1000;
+        var process = OpenProcess(queryLimited, false, id);
+        if (process == IntPtr.Zero)
+        {
+            return null;
+        }
+        try
+        {
+            var path = new StringBuilder(1024);
+            var size = path.Capacity;
+            return QueryFullProcessImageName(process, 0, path, ref size) ? path.ToString() : null;
+        }
+        finally
+        {
+            CloseHandle(process);
         }
     }
 
@@ -148,4 +192,10 @@ internal static class TrayStarter
 
     [DllImport("kernel32.dll")]
     private static extern bool CloseHandle(IntPtr handle);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern IntPtr OpenProcess(int access, bool inherit, int id);
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern bool QueryFullProcessImageName(IntPtr process, int flags, StringBuilder name, ref int size);
 }
