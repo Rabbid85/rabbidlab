@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.141 (2026-11-13)
+
+- Every row opens the side panel on the right now: AD audit, Recycle Bin, Local accounts and Roles and people too, with no more cards popping up beside the row. Clicking the open row again closes it.
+- The AD audit panel has Open it to jump to that user, group or computer, and the Recycle Bin panel has Restore.
+
 ## 1.1.140 (2026-11-13)
 
 - The Active Directory toolbar has a Refresh button that reads the open list again, with the flask while it reads.

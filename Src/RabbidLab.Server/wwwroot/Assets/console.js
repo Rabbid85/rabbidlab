@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.141', [
+    'Every row opens the side panel on the right now: AD audit, Recycle Bin, Local accounts and Roles and people too, with no more cards popping up beside the row. Clicking the open row again closes it.',
+    'The AD audit panel has Open it to jump to that user, group or computer, and the Recycle Bin panel has Restore.']],
   ['1.1.140', [
     'The Active Directory toolbar has a Refresh button that reads the open list again, with the flask while it reads.',
     'Number boxes have the console own minus and plus instead of the browser spinner, and on or off domain settings are an On and Off choice you then save.']],
@@ -2643,6 +2646,32 @@ const RELEASE_NOTES = [
     if (sub === 'address') consoleAddress();
   });
 
+  // The side panel, for every page: a row opens what it is on the right, as the Microsoft 365 and Entra admin centers
+  // do, while the page beside it stays usable. There's one; the page that opened it last owns it, and draws into body.
+  // Its × ([data-dw-close]), Esc or going to another page closes it.
+  const panel = {
+    el: $('side-panel'),
+    body: $('dw-body'),
+    owner: '',
+    page: '',
+    key: '',
+    // key: what's shown (a row's own key); shows() says whether it's that one, so clicking its row again closes it.
+    open: (owner, key = '') => {
+      panel.key = key;
+      panel.owner = owner;
+      panel.page = where()[0];
+      if (!panel.el.open) panel.el.show();
+    },
+    close: () => { if (panel.el.open) panel.el.close(); },
+    is: (owner) => panel.el.open && panel.owner === owner,
+    shows: (owner, key) => panel.is(owner) && panel.key === key,
+  };
+  panel.el.addEventListener('click', (e) => { if (e.target.closest('[data-dw-close]')) panel.close(); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && panel.el.open && !document.querySelector('dialog[open]:modal, :popover-open')) panel.close();
+  });
+  document.addEventListener('rabbidlab:show', () => { if (panel.el.open && where()[0] !== panel.page) panel.close(); });
+
   // Number boxes: no browser spinner (console.css), and − and + of the console's own beside the box. stepper(attrs)
   // gives the box with its buttons; a click steps it within its min and max, as if typed.
   const stepper = (attrs) => `<span class="stepper"><button type="button" data-step="down" aria-label="Less">${svg('minus')}</button>`
@@ -2658,6 +2687,6 @@ const RELEASE_NOTES = [
   });
 
   // What the other scripts use. Hints are tips.js and data grids are grid.js.
-  window.RabbidLab = { app: () => product, $, esc, svg, say, initials, when, daysAgo, send, get, keep, forget, has, paint, where, viewAs, place, popups, option, dropdown, sure, copy, busy, groupTools, groupFilter, squares, squareSize, ping, skeleton, toast, stepper,
+  window.RabbidLab = { app: () => product, $, esc, svg, say, initials, when, daysAgo, send, get, keep, forget, has, paint, where, viewAs, place, popups, option, dropdown, sure, copy, busy, groupTools, groupFilter, squares, squareSize, ping, skeleton, toast, stepper, panel,
     palette: window.RabbidLabColours.roles, me: () => meInfo };
 })();

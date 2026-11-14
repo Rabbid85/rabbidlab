@@ -27,17 +27,9 @@
 .gchip:hover .chip-x { display: grid; }
 
 /* The card for one account. */
-.ucard { width: 390px; }
-.ucard .pcard-head span { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
 .ufacts { display: grid; grid-template-columns: 104px minmax(0, 1fr); gap: 4px 10px; margin: 12px 0 0; font-size: 12.5px; }
 .ufacts dt { color: var(--muted); font-weight: 600; }
 .ufacts dd { margin: 0; overflow-wrap: anywhere; }
-.ucard .hint { font-size: 12.5px; }
-.ucard .adder { margin-top: 8px; }
-.ucard .adder .drop { top: 38px; }
-.ucard .pcard-acts { flex-wrap: wrap; }
-.ucard .pcard-acts button { display: inline-flex; align-items: center; gap: 6px; }
-.ucard .pcard-acts svg { width: 14px; height: 14px; }
 .gpick { height: 26px; padding: 0 6px; border: 1px dashed var(--line-strong); border-radius: 6px; background: none; color: var(--muted); font: inherit; font-size: 12px; }
 
 /* The dialogs. */
@@ -67,7 +59,6 @@ button.danger.solid:hover { background: #DB4860; }
 .herebar a.button svg { width: 14px; height: 14px; }
 @media (max-width: 980px) {
   .form.two { grid-template-columns: minmax(0, 1fr); }
-  .ucard { width: min(390px, calc(100vw - 40px)); }
 }
 
 /* Active Directory: the views down the left, with counts, and a table per page. */

@@ -137,6 +137,13 @@
       : '<div class="empty">Nobody here matches.</div>';
     document.querySelectorAll('.side a[data-browse]').forEach((a) => current(a, a.dataset.browse === browse));
     R.paint($('ppl-list'));
+    // The side panel follows the list: drawn again as it is now, or closed when its row has gone.
+    if (R.panel.is('people')) {
+      const row = list.find((r) => rowKey(r) === R.panel.key);
+      if (row) drawCard(row);
+      else R.panel.close();
+    }
+    markRow();
   };
 
   // --- The column on the left: browse, the roles in order (drag to move), and filters ------------------------------
@@ -189,34 +196,48 @@
     refresh();
   });
 
-  // --- A person's card, and giving or taking away roles ------------------------------------------------------------
+  // --- One person, group or account in the side panel, and giving or taking away roles -------------------------------
 
-  const closeCard = () => {
-    $('pcard').hidden = true;
-    $('rmenu').hidden = true;
-  };
+  const closeCard = () => { $('rmenu').hidden = true; }; // the role menu; the side panel stays and is drawn again
   const place = (box, near, dx = 0) => R.place(box, near, $('page-people'), dx);
+  const rowKey = (row) => `${row.kind}:${row.name}`;
+  const markRow = () => document.querySelectorAll('#ppl-rows [data-row]').forEach((el) => el.classList.toggle('dw-on', R.panel.shows('people', rowKey(list[Number(el.dataset.row)] || {}))));
+  R.panel.el.addEventListener('close', markRow);
   const allowedOf = (row) => {
     if (row.roles.some((x) => x.role.id === 'admin')) return null; // everything
     return new Set(row.roles.flatMap((x) => x.role.permissions));
   };
-  const openCard = (i, el) => {
-    const row = list[i];
+  // Its roles (each with a way out), roles to give, what they can do, and for a local account its password and removal.
+  let panelRow = null;
+  const drawCard = (row) => {
+    panelRow = row;
     const can = allowedOf(row);
     const does = can === null ? '<li><b>Everything</b><span>Administrator allows it all.</span></li>'
       : data.catalog.map((p) => {
         const on = p.actions.filter((a) => can.has(a.key));
         return on.length ? `<li><b>${esc(p.name)}</b><span>${esc(on.map((a) => a.name.charAt(0).toLowerCase() + a.name.slice(1)).join(', '))}</span></li>` : '';
       }).join('') || '<li><span>Nothing yet.</span></li>';
+    const give = giveable(row);
     const acts = row.kind === 'local' && mine('access.local')
-      ? `<div class="pcard-acts"><button type="button" class="small" data-password>New password</button><button type="button" class="small danger" data-remove-account>Remove account</button></div>` : '';
-    $('pcard').innerHTML = `<div class="pcard-head">${pic(row)}<div><b>${esc(nameOf(row))}</b><span>${esc(row.sub)}${row.seen ? ` · ${esc(since(row.seen).toLowerCase())}` : ''}</span></div>`
-      + `<button type="button" class="icon" data-close aria-label="Close">${svg('x')}</button></div>`
-      + `<h4>Roles</h4><div class="chips-in">${row.roles.map((x) => chip(row, x)).join('') || '<span class="muted">None</span>'}${giveable(row).length ? `<button type="button" class="addrole" data-give aria-label="Give a role">${svg('plus')}</button>` : ''}</div>`
-      + `<h4>${row.kind === 'group' || row.kind === 'everyone' ? 'Its roles allow' : 'Can do'}</h4><ul class="does">${does}</ul>${acts}`;
-    $('pcard').dataset.row = i;
-    R.paint($('pcard'));
-    place($('pcard'), el, 180);
+      ? `<div class="dw-bar"><button type="button" class="dw-qa" data-password>${svg('key')}<span>New password</span></button><button type="button" class="dw-qa" data-remove-account>${svg('trash')}<span>Remove account</span></button></div>` : '';
+    R.panel.body.innerHTML = `<div class="dw-head">${pic(row).replace('class="pic', 'class="pic dw-pic')}<div class="dw-name"><h2 id="dw-title">${esc(nameOf(row))}</h2>`
+      + `<p>${esc(row.sub)}${row.seen ? ` · ${esc(since(row.seen).toLowerCase())}` : ''}</p></div><button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>${acts}`
+      + `<section class="dw-sec"><div class="dw-sec-head"><h3>Roles <small>${row.roles.length}</small></h3></div><div class="chips-in">${row.roles.map((x) => chip(row, x)).join('') || '<span class="muted">None</span>'}</div></section>`
+      + (give.length ? `<section class="dw-sec"><div class="dw-sec-head"><h3>Give a role</h3></div><div class="chips-in dw-give">${give.map((r) => `<button type="button" class="small" data-give-role="${esc(r.id)}" data-color="${esc(r.color)}"><i class="dot"></i>${esc(r.name)}</button>`).join('')}</div></section>` : '')
+      + `<section class="dw-sec"><div class="dw-sec-head"><h3>${row.kind === 'group' || row.kind === 'everyone' ? 'Its roles allow' : 'Can do'}</h3></div><ul class="does">${does}</ul></section>`;
+    R.paint(R.panel.body);
+  };
+  // Clicking the row that's open closes it; another row opens in its place.
+  const openCard = (i) => {
+    const row = list[i];
+    if (R.panel.shows('people', rowKey(row))) {
+      R.panel.close();
+      return;
+    }
+    closeCard();
+    drawCard(row);
+    R.panel.open('people', rowKey(row));
+    markRow();
   };
   const openMenu = (i, el) => {
     const row = list[i];
@@ -257,18 +278,19 @@
     const take = e.target.closest('[data-take]');
     if (take) return takeRole(row, take.dataset.take);
     if (e.target.closest('[data-give]')) return openMenu(i, e.target.closest('[data-give]'));
-    if (box === 'rows') openCard(i, host);
+    if (box === 'rows') openCard(i);
   };
   $('ppl-rows').addEventListener('click', (e) => onRowClick(e, 'rows'));
   $('ppl-rows').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && e.target.matches('[data-row]')) openCard(Number(e.target.dataset.row), e.target);
+    if (e.key === 'Enter' && e.target.matches('[data-row]')) openCard(Number(e.target.dataset.row));
   });
-  $('pcard').addEventListener('click', (e) => {
-    const row = list[Number($('pcard').dataset.row)];
-    if (e.target.closest('[data-close]')) return closeCard();
+  R.panel.el.addEventListener('click', (e) => {
+    if (!R.panel.is('people') || !panelRow) return;
+    const row = panelRow;
     const take = e.target.closest('[data-take]');
     if (take) return takeRole(row, take.dataset.take);
-    if (e.target.closest('[data-give]')) return openMenu(Number($('pcard').dataset.row), e.target.closest('[data-give]'));
+    const give = e.target.closest('[data-give-role]');
+    if (give) return giveRole(row, give.dataset.giveRole);
     if (e.target.closest('[data-password]')) {
       $('password-lead').textContent = `For the local account ${row.name}. It's signed out everywhere.`;
       $('pw-new').value = '';
@@ -292,7 +314,7 @@
     const b = e.target.closest('[data-give-role]');
     if (b) giveRole(list[Number($('rmenu').dataset.row)], b.dataset.giveRole);
   });
-  R.popups('#pcard, #rmenu, [data-row], [data-give]', closeCard);
+  R.popups('#rmenu, [data-give]', closeCard);
   $('pw-cancel').addEventListener('click', () => $('password-dialog').close());
   $('pw-save').addEventListener('click', async () => {
     try {

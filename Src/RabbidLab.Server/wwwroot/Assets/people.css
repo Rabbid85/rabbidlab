@@ -83,18 +83,10 @@
 .seen { color: #5E6380; font-size: 12px; text-align: right; }
 
 /* Someone's card, and the menu of roles to give. */
-.pcard, .rmenu { position: absolute; z-index: 15; border: 1px solid var(--line-strong); border-radius: 12px; background: #131522; box-shadow: 0 20px 50px rgba(0, 0, 0, .55); }
-.pcard { width: 340px; padding: 14px 16px 16px; }
-.pcard-head { display: flex; align-items: center; gap: 12px; }
-.pcard-head > div { flex: 1; min-width: 0; }
-.pcard-head b { display: block; color: var(--title); font-size: 16px; font-weight: 700; }
-.pcard-head span { color: var(--muted); font-size: 12.5px; }
-.pcard-head .pic { width: 42px; height: 42px; }
-.pcard h4 { margin: 14px 0 7px; color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.rmenu { position: absolute; z-index: 15; border: 1px solid var(--line-strong); border-radius: 12px; background: #131522; box-shadow: 0 20px 50px rgba(0, 0, 0, .55); }
 .does { display: grid; gap: 5px; margin: 0; padding: 0; list-style: none; font-size: 12.5px; }
 .does li { display: grid; grid-template-columns: 96px 1fr; gap: 8px; }
 .does b { color: var(--muted); font-weight: 600; }
-.pcard-acts { display: flex; gap: 8px; margin-top: 14px; }
 button.icon { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; background: none; color: #5E6380; }
 button.icon:hover { background: #1A1D2B; color: var(--title); }
 button.icon svg { width: 15px; height: 15px; }
@@ -189,3 +181,8 @@ button.link:hover { background: none; color: var(--title); }
   .prow { grid-template-columns: minmax(0, 1fr); }
   .seen { text-align: left; }
 }
+
+/* In the side panel: the row it's for is marked, and roles to give are buttons with their colour. */
+.prow.dw-on { background: #171B2C; box-shadow: inset 3px 0 0 var(--accent); }
+.dw-give button { display: inline-flex; align-items: center; gap: 7px; }
+.dw-give .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c, var(--muted)); }

@@ -621,7 +621,6 @@
     </div>
 
     <!-- A person, group or account: their roles, where each comes from, and what they can do. -->
-    <div class="pcard" id="pcard" hidden></div>
     <!-- The roles to give someone, from the + beside their roles. -->
     <div class="rmenu" id="rmenu" hidden></div>
     <!-- Changes to a role wait here until saved. -->
@@ -773,7 +772,6 @@
     <p class="hint note" id="dir-note" hidden></p>
     </div>
     <!-- One user, group or computer: what it is, and what can be done to it. -->
-    <div class="pcard ucard" id="adcard" hidden></div>
   </section>
 
   <!-- Local accounts: the Windows accounts on this server and on each computer in Seats, whose client makes the change (users.js). -->
@@ -798,7 +796,6 @@
         <p class="hint note" id="us-note" hidden></p>
       </div>
     </div>
-    <div class="pcard ucard" id="ucard" hidden></div>
   </section>
 
   <!-- Org chart: who reports to whom, from each person's Manager in Active Directory (directory.js). -->
@@ -1339,7 +1336,7 @@
 
 <!-- A user's menu (row ⋯, right-click, or Actions over ticked users): categories that open to the side. -->
 <!-- One user, group or computer, in a panel from the right (users.js draws it). -->
-<dialog class="drawer" id="ad-drawer" aria-labelledby="dw-title"><div class="dw-body" id="dw-body"></div></dialog>
+<dialog class="drawer" id="side-panel" aria-labelledby="dw-title"><div class="dw-body" id="dw-body"></div></dialog>
 <div class="gear-menu cmd-menu" id="cmd-menu" popover role="menu"></div>
 <!-- Columns: which ones the list shows; Users, Groups and Computers each keep their own. -->
 

@@ -499,7 +499,7 @@
     drawPicked();
     drawViews();
     // The side panel belongs to the page it was opened on.
-    if ($('ad-drawer').open && dw.kind !== adPage) $('ad-drawer').close();
+    if (R.panel.is('ad') && dw.kind !== adPage) R.panel.close();
     // Something asked to open in the panel once this page's list was there (Open Domain Admins).
     if (dwNext && dwNext.k === adPage && lists[adPage]) {
       const x = lists[adPage].find(dwNext.find);
@@ -774,142 +774,14 @@
     }
     if (k !== adPage) return;
     drawAd();
-    if ($('ad-drawer').open) drawDrawer();
+    if (R.panel.is('ad')) drawDrawer();
   });
 
-  // --- One user, group or computer -----------------------------------------------------------------------------------
+  // --- The side panel's helpers ---------------------------------------------------------------------------------------
 
-  let open = null; // the row its card is for
-  const closeCard = () => {
-    $('adcard').hidden = true;
-    $('ucard').hidden = true;
-    open = null;
-  };
-  const place = (box, near, pageEl) => R.place(box, near, pageEl, 160);
-  const facts = (list) => `<dl class="ufacts">${list.filter(([, v]) => v || v === 0).map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>`;
-  const head = (picture, name, chips) => `<div class="pcard-head">${picture}<div><b>${esc(name)}</b><span>${chips}</span></div>`
-    + `<button type="button" class="icon" data-act="close" aria-label="Close">${svg('x')}</button></div>`;
-  const adder = (placeholder) => `<div class="adder"><label class="find">${svg('search')}<input type="search" data-find placeholder="${esc(placeholder)}" aria-label="${esc(placeholder)}" autocomplete="off" spellcheck="false"></label><div class="drop" data-drop hidden></div></div>`;
-
-  const userCard = (u) => {
-    const fixed = u.service ? `That's ${ad.state.account}, ${R.app()}'s own account. It looks after it itself.`
-      : u.protected ? `Active Directory protects the accounts of admins, so ${R.app()}'s account can't change this one. Use Active Directory Users and Computers for it.`
-      : u.system ? 'A built-in account. Change it in Active Directory Users and Computers.' : '';
-    const change = can('ad.change') && !u.service && !u.protected && !u.system;
-    return head(`<span class="pic user">${esc(initials(u.name || u.username))}</span>`, u.name || u.username, userStatus(u))
-      + facts([['Logon name', u.username], ['Principal name', u.upn], ['Where', u.where || ad.state.domain], ['Email', u.email], ['Department', u.department], ['Job title', u.title],
-        ['Manager', u.manager], ['Description', u.description], ['Last sign-in', ago(u.lastSignIn)],
-        ['Password', u.mustChange ? 'Changes at the next sign-in' : u.neverExpires ? 'Never expires' : u.passwordExpires ? `Expires ${day(u.passwordExpires)}` : null],
-        ['Account expires', u.accountExpires ? `End of ${day(new Date(new Date(u.accountExpires) - 1))}` : null], ['Made', u.created ? day(u.created) : null]])
-      + (fixed ? `<p class="hint">${esc(fixed)}</p>` : '')
-      + `<h4>Groups</h4><div class="chips-in">${u.groups.map((g, i) => `<span class="gchip">${esc(g.name)}${change ? `<button type="button" class="chip-x" data-act="ungroup" data-g="${i}" aria-label="Take out of ${esc(g.name)}">${svg('x')}</button>` : ''}</span>`).join('') || '<span class="muted">Only Domain Users</span>'}</div>`
-      + (change ? adder('Add to a group') : '')
-      + `<div class="pcard-acts">${change ? `<button type="button" class="small" data-act="password">${svg('key')}Set a password</button>` : ''}`
-      + `${change && u.locked ? `<button type="button" class="small" data-act="unlock">${svg('unlock')}Unlock</button>` : ''}`
-      + `${change ? `<button type="button" class="small" data-act="power">${svg('power')}${u.enabled ? 'Turn off' : 'Turn on'}</button>` : ''}`
-      + `${can('ad.delete') && !u.service && !u.protected && !u.system ? `<button type="button" class="small danger" data-act="delete">${svg('trash')}Delete</button>` : ''}</div>`;
-  };
-
+  // Local accounts close their panel when the list changes under it.
+  const closeCard = () => { if (R.panel.is('local')) R.panel.close(); };
   const KIND_PIC = { user: 'user', group: 'users', computer: 'laptop', other: 'user' };
-  // Who's in the group, drawn on its own so the rest of the card (and what's typed in it) stays put.
-  const memberRows = (g, members) => (members === null ? '<p class="muted">Reading…</p>'
-    : members.map((m, i) => `<div class="mrow"><span class="pic small${m.kind === 'user' ? ' user' : ''}">${m.kind === 'user' ? esc(initials(m.name)) : svg(KIND_PIC[m.kind])}</span>`
-      + `<div class="two"><b>${esc(m.name)}</b><small>${esc([m.username, m.where].filter(Boolean).join(' · '))}</small></div>`
-      + `${can('ad.change') && !g.system ? `<button type="button" class="icon" data-act="unmember" data-m="${i}" aria-label="Take ${esc(m.name)} out">${svg('x')}</button>` : ''}</div>`).join('')
-      || '<p class="muted">Nobody yet.</p>');
-  const groupCard = (g, members) => {
-    const change = can('ad.change') && !g.system;
-    return head(`<span class="pic">${svg('users')}</span>`, g.name, `${chip(g.security ? 'Security' : 'Distribution', 'muted')}${chip(g.scope, 'muted')}${g.protected ? chip('Privileged', 'amber') : ''}`)
-      + facts([['Description', g.description], ['Where', g.where || ad.state.domain], ['Members', g.moreMembers ? '1,500 or more' : String(g.members)]])
-      + `<h4>Members</h4><div class="mlist" data-members>${memberRows(g, members)}</div>`
-      + (change ? adder('Add a user, group or computer') : '')
-      + (can('ad.delete') && !g.system && !g.protected ? `<div class="pcard-acts"><button type="button" class="small danger" data-act="delete">${svg('trash')}Delete group</button></div>` : '');
-  };
-
-  const changeCard = (c) => head(`<span class="pic">${svg(KIND_ICON[c.kind] || 'folder')}</span>`, c.name, badge(c.what.charAt(0).toUpperCase() + c.what.slice(1), WHAT[c.what]))
-    + facts([['When', new Date(c.at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })], ['Kind', c.kind === 'ou' ? 'OU' : c.kind], ['Where', c.where || ad.state.domain],
-      ['By', c.by ? `${c.by}, in ${R.app()}` : null]])
-    + (c.attributes.length ? `<h4>What changed</h4><div class="chips-in">${c.attributes.map((a) => `<span class="gchip">${esc(a)}</span>`).join('')}</div>` : '')
-    + `<p class="hint">${esc(c.dn)}</p>`;
-
-  const deletedCard = (d) => head(`<span class="pic">${svg(KIND_ICON[d.kind] || 'folder')}</span>`, d.name, badge('Deleted', 'red'))
-    + facts([['Logon name', d.username], ['Was in', d.wasIn || ad.state.domain], ['Deleted', d.deleted ? day(d.deleted) : null]])
-    + (can('ad.change') ? `<div class="pcard-acts"><button type="button" class="small primary" data-act="restore">${svg('history')}Restore</button></div>` : '')
-    + '<p class="hint">It comes back where it was, with its groups and details.</p>';
-
-  const computerCard = (c) => {
-    const change = can('ad.change') && !c.controller;
-    return head(`<span class="pic">${svg(server(c) ? 'server' : 'laptop')}</span>`, c.name, pcStatus(c) + (c.controller ? chip('Domain controller', 'muted') : ''))
-      + facts([['DNS name', c.host], ['Windows', [c.os, c.osVersion].filter(Boolean).join(' ')], ['Where', c.where || ad.state.domain], ['Description', c.description],
-        ['Last sign-in', ago(c.lastSignIn)], ['Made', c.created ? day(c.created) : null]])
-      + (c.controller ? '<p class="hint">Domain controllers are changed in Active Directory itself.</p>' : '')
-      + `<div class="pcard-acts">${change ? `<button type="button" class="small" data-act="power">${svg('power')}${c.enabled ? 'Turn off' : 'Turn on'}</button>` : ''}`
-      + `${can('ad.delete') && !c.controller ? `<button type="button" class="small danger" data-act="delete">${svg('trash')}Delete</button>` : ''}</div>`;
-  };
-
-  let members = null;
-  const openAd = async (i, el) => {
-    open = rows[i];
-    members = null;
-    const card = { users: userCard, groups: (x) => groupCard(x, null), computers: computerCard, audit: changeCard, recycle: deletedCard }[adPage];
-    $('adcard').innerHTML = card(open);
-    place($('adcard'), el, $('page-ad'));
-    if (adPage !== 'groups') return;
-    const g = open;
-    let got = [];
-    try {
-      got = await R.get(`/api/ad/groups/members?dn=${encodeURIComponent(g.dn)}`);
-    } catch (err) {
-      if (open === g) say('dir-problem', err.message);
-    }
-    // A slower answer for a group whose card has closed is dropped.
-    if (open !== g) return;
-    members = got;
-    const list = $('adcard').querySelector('[data-members]');
-    if (list) list.innerHTML = memberRows(g, members);
-  };
-  const adBase = () => (adPage === 'users' ? `/api/ad/users/${encodeURIComponent(open.username)}` : `/api/ad/computers/${encodeURIComponent(open.name)}`);
-
-  // Does it, then reads what changed again and shows the card again (unless it was deleted).
-  let busy = false;
-  const act = async (path, body, { gone = false, done = null } = {}) => {
-    if (busy || !open) return;
-    busy = true;
-    const was = open;
-    const keep = page().key(open);
-    say('dir-note', '');
-    say('dir-problem', '');
-    try {
-      const answer = await R.send(path, body);
-      if (answer.warning) say('dir-note', answer.warning);
-      if (done) done(answer);
-    } catch (err) {
-      say('dir-problem', err.message);
-    } finally {
-      busy = false;
-    }
-    // One user: just that one is read again. Anything else reads the page again.
-    let one = false;
-    if (adPage === 'users' && !gone && lists.users?.includes(was)) {
-      try {
-        const u = await R.get(`/api/ad/users/${encodeURIComponent(was.username)}`);
-        const at = (lists.users || []).indexOf(was);
-        if (at >= 0) {
-          lists.users[at] = u;
-          counted.list = null;
-          one = true;
-        }
-      } catch {
-        // The whole list is read instead.
-      }
-    }
-    if (!one) await loadAd(true).catch((err) => say('dir-problem', err.message));
-    drawAd();
-    const again = rows.findIndex((x) => page().key(x) === keep);
-    const el = document.querySelector(`#dir-table [data-i="${again}"]`);
-    if (!gone && again >= 0 && el) openAd(again, el);
-    else closeCard();
-  };
 
   $('dir-table').addEventListener('click', (e) => {
     if (e.target.closest('.tk')) {
@@ -925,52 +797,14 @@
     const row = e.target.closest('[data-i]');
     if (row) openRow(Number(row.dataset.i), row);
   });
-  // Users, groups, computers and domain settings open in the side panel; the other pages' rows in their card.
-  const openRow = (i, el) => (picked[adPage] || adPage === 'domain' ? openDrawer(adPage, rows[i]) : openAd(i, el));
+  // Every row opens in the side panel (R.panel).
+  // Clicking the row that's open closes it; another row opens in its place.
+  const openRow = (i) => (R.panel.shows('ad', `${adPage}:${keyOf(rows[i])}`) ? R.panel.close() : openDrawer(adPage, rows[i]));
   $('dir-table').addEventListener('keydown', (e) => {
     const row = e.target.closest('[data-i]');
     if (row && e.target === row && (e.key === 'Enter' || e.key === ' ')) {
       e.preventDefault();
       openRow(Number(row.dataset.i), row);
-    }
-  });
-
-  // The card's search box: groups to put a user in, or who to put in a group.
-  R.dropdown($('adcard'), {
-    none: 'Nothing matches.',
-    find: async (q) => {
-      const x = open;
-      if (!x) return [];
-      const found = adPage === 'users'
-        ? (await R.get(`/api/ad/groups?q=${encodeURIComponent(q)}`)).filter((g) => !x.groups.some((h) => h.dn === g.dn)).map((g) => ({ dn: g.dn, name: g.name, kind: 'group', where: g.description || g.where }))
-        : (await R.get(`/api/ad/find?q=${encodeURIComponent(q)}`)).filter((m) => m.dn !== x.dn && !(members || []).some((h) => h.dn === m.dn));
-      return found.slice(0, 30);
-    },
-    draw: (m, i) => R.option(` data-pick="${i}"`, `<span class="pic">${svg(KIND_PIC[m.kind])}</span>`, m.name, m.username || m.where),
-    pick: (m) => {
-      if (!open) return;
-      if (adPage === 'groups') act('/api/ad/groups/members', { dn: open.dn, add: [m.dn] });
-      else act(`${adBase()}/groups`, { add: [m.dn] });
-    },
-  });
-  $('adcard').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-act]');
-    if (!b || !open) return;
-    const x = open;
-    const isGroup = adPage === 'groups';
-    switch (b.dataset.act) {
-      case 'close': closeCard(); break;
-      case 'ungroup': act(`${adBase()}/groups`, { remove: [x.groups[Number(b.dataset.g)].dn] }); break;
-      case 'unmember': act('/api/ad/groups/members', { dn: x.dn, remove: [members[Number(b.dataset.m)].dn] }); break;
-      case 'unlock': act(`${adBase()}/unlock`, {}); break;
-      case 'restore': act('/api/ad/recycle/restore', { dn: x.dn }, { gone: true, done: () => say('dir-note', `Restored ${x.name}. It's back in ${x.wasIn || ad.state.domain}.`) }); break;
-      case 'power': act(`${adBase()}/enable`, { on: !x.enabled }); break;
-      case 'password': reset(x.name || x.username, `${adBase()}/password`, 'It also unlocks the account if it\'s locked out.'); break;
-      case 'delete':
-        if (isGroup) sure(`Delete ${x.name}?`, `The group is deleted from ${ad.state.domain} for good. Its members stay; they're just not in it any more.`, `Delete ${x.name}`, () => act('/api/ad/groups/delete', { dn: x.dn }, { gone: true }));
-        else if (adPage === 'computers') sure(`Delete ${x.name}?`, `Its account is deleted from ${ad.state.domain}. The computer can't sign anyone in with domain accounts until it joins the domain again. Turning it off can be undone; this can't.`, `Delete ${x.name}`, () => act(`${adBase()}/delete`, {}, { gone: true }));
-        else sure(`Delete ${x.name || x.username}?`, `${x.username} is deleted from ${ad.state.domain} for good, with anything in it. Turning it off can be undone; this can't.`, `Delete ${x.username}`, () => act(`${adBase()}/delete`, {}, { gone: true }));
-        break;
     }
   });
 
@@ -1140,7 +974,7 @@
     const m = $('cmd-menu');
     if (m.matches(':popover-open')) m.hidePopover();
     // Over the side panel the menu has to be inside it, or the panel makes it unclickable.
-    const host = $('ad-drawer').open ? $('ad-drawer') : document.body;
+    const host = R.panel.el.open ? R.panel.el : document.body;
     if (m.parentElement !== host) host.append(m);
     menuFor = { kind, objs };
     m.innerHTML = menuHtml(kind, objs);
@@ -1211,7 +1045,7 @@
   // that worked answered.
   const each = async (k, xs, doing, done, work, { gone = false } = {}) => {
     if (!xs.length) {
-      if ($('ad-drawer').open) drawDrawer(); // a switch flipped for nothing goes back
+      if (R.panel.is('ad')) drawDrawer(); // a switch flipped for nothing goes back
       return [];
     }
     closeCard();
@@ -1246,7 +1080,7 @@
     R.busy($('dir-lib'), '');
     drawAd();
     // The side panel shows the change too (or closes, for something deleted).
-    if ($('ad-drawer').open) { dw.membersFor = ''; drawDrawer(); }
+    if (R.panel.is('ad')) { dw.membersFor = ''; drawDrawer(); }
     const ok = xs.length - failed.length;
     if (!failed.length) R.toast(done, warnings[0] || '', { tone: warnings.length ? 'warn' : '' });
     else R.toast(ok ? `Done for ${ok} of ${xs.length}` : 'That didn\'t work', failed[0], { tone: 'warn' });
@@ -1805,6 +1639,40 @@
       say('dws-problem', err.message);
     }
   };
+  // AD audit and Recycle Bin rows: what changed (and Open it), or what was deleted (and Restore).
+  const dwTop = (icon, name, sub, status) => `<div class="dw-head"><span class="pic dw-pic">${svg(icon)}</span><div class="dw-name"><h2 id="dw-title">${esc(name)}</h2>`
+    + `${sub ? `<p>${esc(sub)}</p>` : ''}</div><button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div><div class="dw-status">${status}</div>`;
+  const PAGE_OF = { user: 'users', group: 'groups', computer: 'computers' };
+  const dwChange = (c) => dwTop(KIND_ICON[c.kind] || 'folder', c.name, c.where || ad.state.domain, badge(c.what.charAt(0).toUpperCase() + c.what.slice(1), WHAT[c.what]))
+    + (PAGE_OF[c.kind] && c.what !== 'deleted' ? `<div class="dw-bar"><button type="button" class="dw-qa" data-dwa-open>${svg('right')}<span>Open it</span></button></div>` : '')
+    + dwFacts('Change', [dwFact('When', esc(new Date(c.at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }))), dwFact('Kind', esc(c.kind === 'ou' ? 'OU' : c.kind)),
+      dwFact('By', c.by ? esc(`${c.by}, in ${R.app()}`) : `<span class="muted">Not known: it was made outside ${esc(R.app())}</span>`, true),
+      dwFact('Distinguished name', `<span class="mono">${esc(c.dn)}</span>`, true)])
+    + (c.attributes.length ? `<section class="dw-sec"><div class="dw-sec-head"><h3>What changed <small>${c.attributes.length}</small></h3></div>`
+      + `<div class="chips-in">${c.attributes.map((a) => `<span class="gchip">${esc(a)}</span>`).join('')}</div></section>` : '');
+  const dwDeleted = (d) => dwTop(KIND_ICON[d.kind] || 'folder', d.name, d.wasIn || ad.state.domain, badge('Deleted', 'red'))
+    + dwFacts('Deleted', [dwFact('Logon name', e1(d.username)), dwFact('Was in', esc(d.wasIn || ad.state.domain)), dwFact('Deleted', d.deleted ? esc(day(d.deleted)) : '')])
+    + (can('ad.change') ? '<section class="dw-sec"><div class="dw-sec-head"><h3>Bring it back</h3></div><p class="dw-how">It comes back where it was, with its groups and details.</p>'
+      + `<div class="dws-foot"><button type="button" class="primary" data-dwr-restore>${svg('history')}Restore</button></div></section>` : '');
+  // Open it: the user, group or computer, in its own page's panel.
+  const openChanged = (c) => {
+    dwNext = { k: PAGE_OF[c.kind], find: (x) => same(x.dn, c.dn) };
+    location.hash = `#ad/${PAGE_OF[c.kind]}`;
+  };
+  const restoreDeleted = async (d) => {
+    R.busy($('dw-body'), `Restoring ${d.name}…`);
+    try {
+      await R.send('/api/ad/recycle/restore', { dn: d.dn });
+      R.panel.close();
+      R.toast(`Restored ${d.name}`, `It's back in ${d.wasIn || ad.state.domain}.`);
+      await loadAd(true);
+      drawAd();
+    } catch (err) {
+      say('dir-problem', err.message);
+    } finally {
+      R.busy($('dw-body'), '');
+    }
+  };
   // Domain Admins in Groups, opened in the panel once its list is there.
   let dwNext = null;
   const openAdmins = () => {
@@ -1815,12 +1683,12 @@
   const drawDrawer = () => {
     const x = dwObj();
     if (!x) {
-      if ($('ad-drawer').open) $('ad-drawer').close();
+      if (R.panel.is('ad')) R.panel.close();
       return;
     }
     const k = dw.kind;
-    if (k === 'domain') {
-      $('dw-body').innerHTML = dwSetting(x);
+    if (k === 'domain' || k === 'audit' || k === 'recycle') {
+      $('dw-body').innerHTML = { domain: dwSetting, audit: dwChange, recycle: dwDeleted }[k](x);
       return;
     }
     dwNot = blocked(k, x);
@@ -1840,35 +1708,36 @@
     closeCard();
     drawDrawer();
     // Not modal: the list beside it stays usable, and another row opens in the same panel.
-    if (!$('ad-drawer').open) $('ad-drawer').show();
+    R.panel.open('ad', `${k}:${key}`);
     markOpenRow();
   };
   // The row whose panel is open is marked in the list.
   const markOpenRow = () => {
-    const on = $('ad-drawer').open && dw.kind === adPage ? dw.key : null;
+    const on = R.panel.is('ad') && dw.kind === adPage ? dw.key : null;
     $('dir-table').querySelectorAll('.tr[data-i]').forEach((row) => row.classList.toggle('dw-on', on !== null && keyOf(rows[Number(row.dataset.i)]) === on));
   };
-  $('ad-drawer').addEventListener('close', markOpenRow);
-  // Esc closes it, unless a window or menu over it is what Esc is for.
-  document.addEventListener('keydown', (e) => {
-    if (e.key !== 'Escape' || !$('ad-drawer').open || document.querySelector('dialog[open]:modal, :popover-open')) return;
-    $('ad-drawer').close();
-  });
-  // Leaving the Active Directory pages closes it.
-  document.addEventListener('rabbidlab:show', (e) => { if (e.detail[0] !== 'ad' && $('ad-drawer').open) $('ad-drawer').close(); });
+  // The side panel (R.panel, console.js) closes itself on Esc, its × and leaving the page; this marks the row.
+  R.panel.el.addEventListener('close', markOpenRow);
   // A switch makes its change straight away; the panel shows how it came out.
-  $('ad-drawer').addEventListener('change', (e) => {
+  R.panel.el.addEventListener('change', (e) => {
     const sw = e.target.closest('[data-dw-on]');
-    const x = dwObj();
+    const x = R.panel.is('ad') && dwObj();
     if (!sw || !x) return;
     runCmd(sw.checked ? sw.dataset.dwOn : sw.dataset.dwOff, dw.kind, [x]);
   });
-  $('ad-drawer').addEventListener('click', (e) => {
-    const d = $('ad-drawer');
-    if (e.target.closest('[data-dw-close]')) { d.close(); return; }
+  R.panel.el.addEventListener('click', (e) => {
+    if (!R.panel.is('ad') || e.target.closest('[data-dw-close]')) return;
     const x = dwObj();
     if (!x) return;
     const k = dw.kind;
+    if (k === 'audit') {
+      if (e.target.closest('[data-dwa-open]')) openChanged(x);
+      return;
+    }
+    if (k === 'recycle') {
+      if (e.target.closest('[data-dwr-restore]')) restoreDeleted(x);
+      return;
+    }
     if (k === 'domain') {
       const pick = e.target.closest('[data-dws-v]');
       if (pick) pick.parentElement.querySelectorAll('[data-dws-v]').forEach((b) => { b.setAttribute('aria-pressed', String(b === pick)); b.setAttribute('aria-checked', String(b === pick)); });
@@ -1951,21 +1820,33 @@
     }
   };
 
-  const localCard = (a) => {
+  // One local account in the side panel: what it is, its groups, and what can be done to it.
+  const localPanel = (a) => {
     const change = can('windows.change');
     const others = pc.groups.filter((g) => !(a.groups || []).includes(g.name));
-    return head(`<span class="pic local">${svg('key')}</span>`, a.name, pcChips(a) || chip('On', 'ok'))
-      + facts([['Full name', a.fullName], ['Description', a.description], ['Last sign-in', ago(a.lastSignIn)]])
-      + `<h4>Groups</h4><div class="chips-in">${(a.groups || []).map((g) => `<span class="gchip">${esc(g)}${change ? `<button type="button" class="chip-x" data-act="ungroup" data-g="${esc(g)}" aria-label="Take out of ${esc(g)}">${svg('x')}</button>` : ''}</span>`).join('') || '<span class="muted">None</span>'}`
+    const btn = (actKey, icon, label) => `<button type="button" class="dw-qa" data-act="${actKey}">${svg(icon)}<span>${esc(label)}</span></button>`;
+    const acts = (change ? btn('password', 'key', 'Set a password') + btn('power', a.enabled ? 'user-off' : 'user-check', a.enabled ? 'Turn off' : 'Turn on') : '')
+      + (can('windows.delete') && !a.builtIn ? btn('delete', 'trash', 'Delete') : '');
+    const gs = a.groups || [];
+    return `<div class="dw-head"><span class="pic dw-pic local">${svg('key')}</span><div class="dw-name"><h2 id="dw-title">${esc(a.name)}</h2><p>${esc(computer()?.name || '')}</p></div>`
+      + `<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`
+      + `<div class="dw-status">${pcChips(a) || chip('On', 'ok')}</div>${acts ? `<div class="dw-bar">${acts}</div>` : ''}`
+      + dwFacts('Account', [dwFact('Full name', e1(a.fullName)), dwFact('Last sign-in', esc(ago(a.lastSignIn))), dwFact('Description', e1(a.description), true)])
+      + `<section class="dw-sec"><div class="dw-sec-head"><h3>Groups <small>${gs.length}</small></h3>`
       + `${change && others.length ? `<select class="gpick" data-act="group" aria-label="Add to a group"><option value="">Add to…</option>${others.map((g) => `<option>${esc(g.name)}</option>`).join('')}</select>` : ''}</div>`
-      + `<div class="pcard-acts">${change ? `<button type="button" class="small" data-act="password">${svg('key')}Set a password</button><button type="button" class="small" data-act="power">${svg('power')}${a.enabled ? 'Turn off' : 'Turn on'}</button>` : ''}`
-      + `${can('windows.delete') && !a.builtIn ? `<button type="button" class="small danger" data-act="delete">${svg('trash')}Delete</button>` : ''}</div>`;
+      + (gs.length ? `<div class="dw-list">${gs.map((g) => `<div class="mrow"><span class="pic small">${svg('users')}</span><div class="two"><b>${esc(g)}</b></div>`
+        + `${change ? `<button type="button" class="at-more dw-x" data-act="ungroup" data-g="${esc(g)}" data-tip="Remove" aria-label="Take out of ${esc(g)}">${svg('x')}</button>` : ''}</div>`).join('')}</div>`
+        : '<p class="muted dw-empty">Not in any groups.</p>') + '</section>';
   };
-  const openLocalCard = (i, el) => {
+  const openLocalCard = (i) => {
     openLocal = local[i];
-    $('ucard').innerHTML = localCard(openLocal);
-    place($('ucard'), el, $('page-local'));
+    R.panel.body.innerHTML = localPanel(openLocal);
+    R.panel.open('local', openLocal.name);
+    markLocal();
   };
+  const toggleLocal = (i) => (R.panel.shows('local', local[i]?.name) ? R.panel.close() : openLocalCard(i));
+  const markLocal = () => document.querySelectorAll('#us-pc-rows [data-i]').forEach((row) => row.classList.toggle('dw-on', R.panel.is('local') && local[Number(row.dataset.i)] === openLocal));
+  R.panel.el.addEventListener('close', markLocal);
 
   let localBusy = false;
   const actLocal = async (path, body, gone = false) => {
@@ -1985,31 +1866,29 @@
     await loadLocal().catch((err) => say('us-problem', err.message));
     drawLocal();
     const again = local.findIndex((a) => a.name === keep);
-    const el = document.querySelector(`#us-pc-rows [data-i="${again}"]`);
-    if (!gone && again >= 0 && el) openLocalCard(again, el);
+    if (!gone && again >= 0) openLocalCard(again);
     else closeCard();
   };
 
   $('us-pc-rows').addEventListener('click', (e) => {
     const row = e.target.closest('[data-i]');
-    if (row) openLocalCard(Number(row.dataset.i), row);
+    if (row) toggleLocal(Number(row.dataset.i));
   });
   $('us-pc-rows').addEventListener('keydown', (e) => {
     const row = e.target.closest('[data-i]');
     if (row && (e.key === 'Enter' || e.key === ' ')) {
       e.preventDefault();
-      openLocalCard(Number(row.dataset.i), row);
+      toggleLocal(Number(row.dataset.i));
     }
   });
-  $('ucard').addEventListener('change', (e) => {
-    if (e.target.dataset.act === 'group' && e.target.value) actLocal(`${localBase(openLocal)}/groups`, { add: [e.target.value] });
+  R.panel.el.addEventListener('change', (e) => {
+    if (R.panel.is('local') && e.target.dataset.act === 'group' && e.target.value) actLocal(`${localBase(openLocal)}/groups`, { add: [e.target.value] });
   });
-  $('ucard').addEventListener('click', (e) => {
+  R.panel.el.addEventListener('click', (e) => {
     const b = e.target.closest('[data-act]');
-    if (!b || !openLocal || b.tagName === 'SELECT') return;
+    if (!R.panel.is('local') || !b || !openLocal || b.tagName === 'SELECT') return;
     const a = openLocal;
     switch (b.dataset.act) {
-      case 'close': closeCard(); break;
       case 'ungroup': actLocal(`${localBase(a)}/groups`, { remove: [b.dataset.g] }); break;
       case 'power': actLocal(`${localBase(a)}/enable`, { on: !a.enabled }); break;
       case 'password': reset(a.name, `${localBase(a)}/password`, `On ${computer()?.name}. It also unlocks the account if it's locked out.`); break;
@@ -2019,7 +1898,6 @@
   ['us-off', 'us-system'].forEach((id) => $(id).addEventListener('change', () => { closeCard(); drawLocal(); }));
   $('us-find').addEventListener('input', () => { closeCard(); drawLocal(); });
 
-  R.popups('.ucard, [data-i]', closeCard);
 
   // --- Dialogs: a password, and showing a password once ---------------------------------------------------------------
 
