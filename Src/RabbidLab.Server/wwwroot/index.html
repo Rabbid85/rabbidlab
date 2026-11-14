@@ -257,6 +257,7 @@
       <a href="#settings/seats" data-sub="seats" data-can="seats.settings seats.add"><svg class="all-flask" viewBox="0 0 24 24" aria-hidden="true"><path class="liquid" d="M6.6 15.2h10.8l2 3.2A1.7 1.7 0 0 1 17.9 21H6.1a1.7 1.7 0 0 1-1.5-2.6z"/><path d="M9 3h6M10 3v6.2L4.6 18.4A1.7 1.7 0 0 0 6.1 21h11.8a1.7 1.7 0 0 0 1.5-2.6L14 9.2V3"/></svg><span>Devices</span></a>
       <div class="dkids" data-kids="seats">
         <a href="#settings/seats/new" data-sub="seats" data-sec="new" data-can="seats.settings"><span class="nm">New computers</span></a>
+        <a href="#settings/seats/lock" data-sub="seats" data-sec="lock" data-can="seats.settings"><span class="nm">Uninstall lock</span></a>
         <a href="#settings/seats/client" data-sub="seats" data-sec="client" data-can="seats.add"><span class="nm">Install the client</span></a>
       </div>
       <a href="#settings/ad" data-sub="ad" data-can="ad.connect"><svg><use href="#i-users"/></svg><span>Active Directory</span></a>
@@ -450,6 +451,10 @@
       <section class="ds-sec" data-sec="new" data-can="seats.settings"><h3 class="ds-h">New computers</h3>
         <div class="ds-row"><div class="ds-l"><b>Require approval for new computers</b><span>New computers show as Waiting until an admin approves them. Turn this off and they connect right away.</span></div>
           <div class="ds-r"><span class="sw-label" id="seat-approve-label">On</span><input type="checkbox" class="switch" id="seat-approve" role="switch" aria-label="Require approval for new computers"></div></div>
+      </section>
+      <section class="ds-sec" data-sec="lock" data-can="seats.settings"><h3 class="ds-h">Uninstall lock</h3>
+        <div class="ds-row"><div class="ds-l"><b>Release the lock after 30 days offline</b><span>A computer that can't reach this server for 30 days can uninstall the client without a code. This keeps computers from being stuck if this server is gone for good.</span></div>
+          <div class="ds-r"><span class="sw-label" id="seat-unlock-label">On</span><input type="checkbox" class="switch" id="seat-unlock" role="switch" aria-label="Release the uninstall lock after 30 days offline"></div></div>
       </section>
       <section class="ds-sec" data-sec="client" data-can="seats.add"><h3 class="ds-h">Install the client</h3>
         <div class="ds-row" id="seat-msi-row"><div class="ds-l"><b>The client (MSI)</b><span>Run it on a computer, or install it quietly with the line below.</span></div><div class="ds-r"><a class="ds-btn" id="seat-msi" href="/api/clients/download" download>Download</a></div></div>
@@ -1318,12 +1323,14 @@
 <!-- Uninstalling a computer's client. On the computer it is locked until someone allows it here. -->
 <dialog class="dialog" id="seat-dialog" aria-labelledby="seat-title">
   <h2 id="seat-title"></h2>
-  <p class="dialog-lead">The client can't be uninstalled on its computer until you allow it here. That keeps anything on the computer from removing it on its own.</p>
+  <p class="dialog-lead">The client is locked on its computer. It can only be uninstalled when you allow it here, or with this computer's uninstall code.</p>
   <div class="rows">
-    <div class="row still"><span class="t"><b>Uninstall it now</b><span>The client takes itself off the computer within a minute. The computer then shows as Offline: remove it from the list.</span></span>
+    <div class="row still"><span class="t"><b>Uninstall it now</b><span>The client uninstalls itself within a minute. The computer then shows as Offline and can be removed from the list.</span></span>
       <button type="button" class="danger" id="seat-now">Uninstall</button></div>
-    <div class="row still"><span class="t"><b id="seat-allow-title">Allow uninstalling for an hour</b><span>Someone at the computer can then uninstall it from the client's window or from Windows' installed apps.</span></span>
+    <div class="row still"><span class="t"><b id="seat-allow-title">Allow uninstalling for an hour</b><span>Someone at the computer can then uninstall it from the Rabbid Lab Client window or from Installed apps in Windows.</span></span>
       <button type="button" class="small" id="seat-allow">Allow</button></div>
+    <div class="row still"><span class="t"><b>Uninstall code</b><span id="seat-code-about"></span><span class="ds-code" id="seat-code-value" hidden></span></span>
+      <button type="button" class="small" id="seat-code">Show</button></div>
   </div>
   <p class="hint problem" id="seat-problem" hidden></p>
   <div class="dialog-foot"><button type="button" class="primary" id="seat-close">Done</button></div>

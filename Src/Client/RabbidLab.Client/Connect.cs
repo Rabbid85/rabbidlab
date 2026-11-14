@@ -71,6 +71,20 @@ internal sealed class JoinLink
     }
 
     /// <summary>
+    /// The server this computer is locked to, when that isn't the one given. A locked computer can't be moved to another
+    /// server until uninstalling is allowed: otherwise pointing it somewhere that doesn't answer would be a way round the lock.
+    /// </summary>
+    public static string? LockedTo(string server)
+    {
+        var now = Settings.Read();
+        return now.Server is not null && !string.Equals(now.Server, server, StringComparison.OrdinalIgnoreCase) && !Removal.Allowed ? now.Server : null;
+    }
+
+    /// <summary>What to say about it.</summary>
+    public static string LockedNote(string server) =>
+        $"This computer is locked to {(Uri.TryCreate(server, UriKind.Absolute, out var u) ? u.Host : server)}. Unlock it before moving it: click Uninstall in the Rabbid Lab Client window and enter the uninstall code.";
+
+    /// <summary>
     /// Saved where the installer keeps its settings, then the service restarted so it joins straight away. Run as an
     /// administrator (--join); the window asks Windows for that.
     /// </summary>
@@ -80,6 +94,11 @@ internal sealed class JoinLink
         {
             Console.Error.WriteLine(problem);
             return 2;
+        }
+        if (LockedTo(Server) is { } held)
+        {
+            Console.Error.WriteLine(LockedNote(held));
+            return 3;
         }
         using (var machine = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64))
         using (var key = machine.CreateSubKey(Settings.InstalledKey))
@@ -172,6 +191,10 @@ internal sealed class ConnectWindow : Form
             server.ForeColor = Look.Muted;
             go.Enabled = false;
         }
+        else if (link.Server.Length > 0 && JoinLink.LockedTo(link.Server) is { } held)
+        {
+            Say(note, JoinLink.LockedNote(held), Look.Amber);
+        }
         else if (now.Server is not null && !string.Equals(now.Server, link.Server, StringComparison.OrdinalIgnoreCase) && link.Server.Length > 0)
         {
             Say(note, $"This computer is already connected to {now.Server}. Connecting will move it to {link.Server}.", Look.Amber);
@@ -228,6 +251,11 @@ internal sealed class ConnectWindow : Form
         if (link.Problem() is { } problem)
         {
             Say(said, problem, Look.Red);
+            return;
+        }
+        if (JoinLink.LockedTo(link.Server) is { } held)
+        {
+            Say(said, JoinLink.LockedNote(held), Look.Red);
             return;
         }
         go.Enabled = false;

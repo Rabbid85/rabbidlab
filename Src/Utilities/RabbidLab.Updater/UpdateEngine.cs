@@ -34,6 +34,9 @@ public sealed class UpdateEngine(UpdateOptions options, IUpdateSource source, IU
     /// <summary>Where updating stands now.</summary>
     public UpdateState State { get; private set; } = new(host.Version, null, UpdateStatus.Current, "Rabbid Lab is up to date.");
 
+    /// <summary>How long the installer has been running, while it is: every page counts from the same moment with it.</summary>
+    public TimeSpan? InstallingFor => State.Status == UpdateStatus.Installing && installingVersion is not null ? DateTime.UtcNow - installingAt : null;
+
     /// <summary>
     /// The version this one replaced, when this is the first time it has run since updating itself ("earlier" when
     /// that version isn't known, for an update from before version.txt was kept). Null otherwise.

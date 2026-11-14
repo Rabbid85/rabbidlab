@@ -174,7 +174,7 @@ public static class UpdateApi
     /// progress, whether it can install itself here, and where it looks.
     /// </summary>
     public sealed record UpdateView(string Version, string? Available, string Status, string Message, DateTime? CheckedAt, string? UpdatedFrom, bool Automatic,
-        long? Downloaded, long? Total, string? Problem, bool CanInstall, string Source);
+        long? Downloaded, long? Total, string? Problem, bool CanInstall, string Source, double? InstallingFor);
 
     public sealed record UpdateSettingsForm(bool Automatic);
 
@@ -185,7 +185,7 @@ public static class UpdateApi
     {
         static UpdateView View(UpdateState s, UpdateEngine updates, IUpdateSource source, IUpdateHost host, SettingsStore store, GitHubOptions github) =>
             new(s.Version, s.Available, Word(s.Status), s.Message, source.CheckedAt, updates.UpdatedFrom, store.Current.AutomaticUpdates, s.Downloaded, s.Total,
-                source.Problem, host.CanInstall, github.Manifest);
+                source.Problem, host.CanInstall, github.Manifest, updates.InstallingFor?.TotalSeconds);
         // Whether the sign-in page's Install now may start the update: never while someone signed in is working.
         static bool Here(UpdateState s, UpdateEngine updates, IUpdateHost host) =>
             host.CanInstall && host.Automatic && s.Status == UpdateStatus.Available && !updates.InUseNow;

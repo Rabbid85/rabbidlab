@@ -111,6 +111,12 @@ internal sealed class CheckInRequest
     [DataMember(Name = "os")] public string? Os { get; set; }
     [DataMember(Name = "version")] public string? Version { get; set; }
     [DataMember(Name = "user")] public string? User { get; set; }
+
+    /// <summary>The hash in the uninstall code's check this computer holds, so the server knows whether its code works here.</summary>
+    [DataMember(Name = "code", EmitDefaultValue = false)] public string? Code { get; set; }
+
+    /// <summary>When the uninstall code was last typed on this computer, as ISO 8601.</summary>
+    [DataMember(Name = "codeUsed", EmitDefaultValue = false)] public string? CodeUsed { get; set; }
 }
 
 [DataContract]
@@ -124,4 +130,10 @@ internal sealed class CheckInAnswer
 
     /// <summary>The server ordered the client to uninstall itself.</summary>
     [DataMember(Name = "uninstall")] public bool Uninstall { get; set; }
+
+    /// <summary>The check for this computer's uninstall code (UninstallCode): "salt:hash".</summary>
+    [DataMember(Name = "code")] public string? Code { get; set; }
+
+    /// <summary>After how many days without the server the uninstall lock lets go; 0 for never.</summary>
+    [DataMember(Name = "unlockAfterDays")] public int? UnlockAfterDays { get; set; }
 }

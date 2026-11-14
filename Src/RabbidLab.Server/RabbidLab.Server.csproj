@@ -6,7 +6,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <Version>1.1.151</Version>
+    <Version>1.1.152</Version>
     <Product>Rabbid Lab</Product>
     <Company>Rabbid</Company>
     <Authors>Anthony Wiles</Authors>
@@ -52,6 +52,8 @@
     <Compile Include="..\Utilities\Shared\WindowsUsers.cs" Link="Shared\WindowsUsers.cs" />
     <!-- Setup's rules for a DNS alias of this computer, used again when a console address is added in Settings. -->
     <Compile Include="..\..\Installer\Setup\DnsPlan.cs" Link="Setup\DnsPlan.cs" />
+    <!-- The client's uninstall code: made here, checked on the computer, by the same code. -->
+    <Compile Include="..\Client\RabbidLab.Client\UninstallCode.cs" Link="Client\UninstallCode.cs" />
   </ItemGroup>
 
   <ItemGroup>

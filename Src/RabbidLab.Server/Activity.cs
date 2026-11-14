@@ -24,7 +24,7 @@ public sealed class ActivityLog(DataFolder folder, ILogger<ActivityLog> log)
     public long RotateAt { get; set; } = 5 * 1024 * 1024;
 
     /// <summary>Where a request came from, for the log.</summary>
-    public static string? Address(HttpContext context) => context.Connection.RemoteIpAddress?.ToString();
+    public static string? Address(HttpContext context) => context.Connection.RemoteIpAddress is { } ip ? Addresses.Normal(ip).ToString() : null;
 
     /// <summary>Who is asking: the person signed in, or else the address they're at.</summary>
     public static string Who(HttpContext context) => context.User.Identity?.Name is { Length: > 0 } name ? name : "Someone at " + (Address(context) ?? "an unknown address");

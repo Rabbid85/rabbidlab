@@ -2,6 +2,15 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.152 (2026-11-14)
+
+- Uninstall code: every computer has its own. Click Show next to Uninstall code in Devices, Uninstall, then enter it on the computer in the Rabbid Lab Client window to allow uninstalling for an hour. It works when the computer cannot reach this server.
+- The uninstall lock releases by itself after 30 days without reaching the server, so nothing is stuck if the server is gone for good. Turn that off in Settings, Devices.
+- A locked computer can no longer be connected to a different server until it is unlocked.
+- Showing an uninstall code and using one are both in the activity log. Using one is also in the Windows event log on that computer.
+- Addresses on Devices and Signed in now read as plain IPv4, and this server shows as This server.
+- Two pages open on the console now show the same progress while an update installs.
+
 ## 1.1.151 (2026-11-14)
 
 - The Windows client is reworded in plain English: both of its windows, the tray menu, the installer messages and the Group Policy help.

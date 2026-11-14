@@ -51,6 +51,14 @@ internal static class Program
             Application.Run(new ConnectWindow(JoinLink.Parse(args[0])));
             return 0;
         }
+        if (args.Length == 1 && args[0] == "--unlock")
+        {
+            // Uninstall, while it's locked: the uninstall code. The client's window starts this as an administrator.
+            Application.EnableVisualStyles();
+            Application.SetCompatibleTextRenderingDefault(false);
+            Application.Run(new UnlockWindow());
+            return 0;
+        }
         if (args.Length == 1 && args[0] == "--check-in")
         {
             try
@@ -67,7 +75,7 @@ internal static class Program
             }
         }
         // Not one of the ways it runs: nothing is started.
-        Console.Error.WriteLine("Usage: RabbidLab-Client [--tray | --service | --check-in | --join <server> <fingerprint> | rabbidlab://join?server=...]");
+        Console.Error.WriteLine("Usage: RabbidLab-Client [--tray | --service | --check-in | --unlock | --join <server> <fingerprint> | rabbidlab://join?server=...]");
         return 2;
     }
 }

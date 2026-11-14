@@ -22,13 +22,18 @@ internal sealed class Agent
         if (settings.Server is null)
         {
             status.State = Status.NoServer;
+            Leave();
             Lock(status, joined: false, null);
             return status.Save();
         }
+        // A computer that has checked in with a server stays locked when the server can't be reached or joined, whatever
+        // became of its identity: only the server, the uninstall code or the days without the server unlock it.
+        var held = Removal.Enrolled;
         using var api = new ServerApi(settings.Server, settings.Fingerprint);
         try
         {
             var me = Identity.Load();
+            held |= me is not null;
             if (me is null || me.Server != settings.Server)
             {
                 var (code, made) = await api.Post<JoinAnswer>("api/clients/join",
@@ -41,29 +46,36 @@ internal sealed class Agent
                 }
                 if (made is null)
                 {
-                    return Unreachable(status, joined, $"The server returned an error (HTTP {(int) code}).");
+                    return Unreachable(status, held, $"The server returned an error (HTTP {(int) code}).");
                 }
                 me = Identity.Save(made.Id, made.Secret, settings.Server);
             }
-            joined = true;
+            joined = held = true;
+            var check = Removal.CodeCheck;
             var (answered, answer) = await api.Post<CheckInAnswer>("api/clients/checkin",
-                new CheckInRequest { Computer = Machine.Name, Os = Machine.Os, Version = Version, User = Machine.Users() },
+                new CheckInRequest
+                {
+                    Computer = Machine.Name, Os = Machine.Os, Version = Version, User = Machine.Users(),
+                    Code = check?.Substring(check.IndexOf(':') + 1), CodeUsed = Removal.CodeUsed,
+                },
                 $"RabbidLab-Client {me.Id}:{me.Secret}", stop).ConfigureAwait(false);
             if (answered == HttpStatusCode.Unauthorized)
             {
                 Identity.Forget();
                 status.State = Status.Removed;
+                Leave();
                 Lock(status, joined: false, null);
                 return status.Save();
             }
             if (answer is null)
             {
-                return Unreachable(status, joined, $"The server returned an error (HTTP {(int) answered}).");
+                return Unreachable(status, held, $"The server returned an error (HTTP {(int) answered}).");
             }
             settings.KeepKey(api.Key);
             status.State = answer.Approved ? Status.Connected : Status.Waiting;
             status.ServerVersion = answer.Version;
             status.CheckedIn = DateTime.UtcNow;
+            Reached(answer);
             Lock(status, joined, Removal.Parse(answer.RemovalUntil));
             if (answer.Uninstall)
             {
@@ -87,34 +99,72 @@ internal sealed class Agent
             var why = !api.Untrusted ? (e.InnerException ?? e).Message
                 : settings.Fingerprint is null ? "Windows doesn't trust the server's certificate."
                 : "The server's certificate doesn't match the fingerprint saved on this computer. Connect again from the Rabbid Lab page.";
-            return Unreachable(status, joined, why);
+            return Unreachable(status, held, why);
         }
         catch (TaskCanceledException) when (!stop.IsCancellationRequested)
         {
-            return Unreachable(status, joined, "The server didn't respond in time.");
+            return Unreachable(status, held, "The server didn't respond in time.");
         }
     }
 
-    // What the server said about uninstalling, written where the installer reads it.
+    // Whether uninstalling is locked, and why not when it isn't, written where the installer reads it.
     private static void Lock(Status status, bool joined, DateTime? until)
     {
         try
         {
-            status.Locked = Removal.Apply(joined, until);
-            status.RemovalUntil = joined && !status.Locked ? until : null;
+            var why = Removal.Apply(joined, until);
+            status.Locked = why == Unlocked.Locked;
+            status.RemovalUntil = why == Unlocked.ByServer ? until : why == Unlocked.ByCode ? Removal.CodeUntil : null;
+            status.Unlocked = why == Unlocked.ByCode ? Status.ByCode : why == Unlocked.Offline ? Status.ByOffline : null;
         }
-        catch (Exception e) when (e is UnauthorizedAccessException or System.Security.SecurityException or System.IO.IOException)
+        catch (Exception e) when (NotTheService(e))
         {
-            // Not the service (--check-in by someone who isn't an administrator): the registry stays as it was.
+            // The registry stays as it was.
         }
     }
 
-    private static Status Unreachable(Status status, bool joined, string why)
+    // The check-in was answered: when, and what the server says about the uninstall code and the days without it.
+    private static void Reached(CheckInAnswer answer)
+    {
+        try
+        {
+            Removal.Reached(answer.Code, answer.UnlockAfterDays);
+        }
+        catch (Exception e) when (NotTheService(e))
+        {
+        }
+    }
+
+    private static void Leave()
+    {
+        try
+        {
+            Removal.Left();
+        }
+        catch (Exception e) when (NotTheService(e))
+        {
+        }
+    }
+
+    // --check-in by someone who isn't an administrator can't write the registry.
+    private static bool NotTheService(Exception e) => e is UnauthorizedAccessException or System.Security.SecurityException or System.IO.IOException;
+
+    private static Status Unreachable(Status status, bool held, string why)
     {
         status.State = Status.Unreachable;
         status.Problem = why;
+        try
+        {
+            if (held)
+            {
+                Removal.Unreached();
+            }
+        }
+        catch (Exception e) when (NotTheService(e))
+        {
+        }
         // The server can't be asked: what it allowed before stands until its time is up.
-        Lock(status, joined, joined ? Removal.Until : null);
+        Lock(status, held, held ? Removal.Until : null);
         return status.Save();
     }
 }

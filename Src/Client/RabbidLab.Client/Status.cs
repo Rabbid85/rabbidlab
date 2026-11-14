@@ -22,6 +22,10 @@ internal sealed class Status
     public const string Removed = "removed";
     public const string IdentityUnreadable = "identity-unreadable";
 
+    /// <summary>Why uninstalling is allowed when the server didn't allow it: the uninstall code, or too long without the server.</summary>
+    public const string ByCode = "code";
+    public const string ByOffline = "offline";
+
     [DataMember(Name = "state")] public string State { get; set; } = Starting;
     [DataMember(Name = "server")] public string? Server { get; set; }
     [DataMember(Name = "computer")] public string Computer { get; set; } = Environment.MachineName;
@@ -36,6 +40,7 @@ internal sealed class Status
     /// <summary>Whether uninstalling is locked until the server allows it, and until when it's allowed when it is (Removal).</summary>
     [DataMember(Name = "locked")] public bool Locked { get; set; }
     [DataMember(Name = "removalUntil")] public DateTime? RemovalUntil { get; set; }
+    [DataMember(Name = "unlocked")] public string? Unlocked { get; set; }
 
     private static string Path => Folder.File("status.json");
 

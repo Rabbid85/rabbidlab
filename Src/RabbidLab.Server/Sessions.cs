@@ -307,7 +307,7 @@ public static class SessionsApi
                 remembered = s.Remembered,
                 started = s.Started,
                 lastSeen = s.LastSeen,
-                address = s.Address,
+                address = Addresses.Normal(s.Address) ?? s.Address,
                 device = Sessions.Device(s.Agent),
                 current = s.Id == current,
             });

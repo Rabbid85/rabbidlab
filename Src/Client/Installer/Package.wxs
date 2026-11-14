@@ -78,7 +78,7 @@
     <Property Id="REMOVALALLOWED">
       <RegistrySearch Id="RemovalAllowed" Root="HKLM" Key="SOFTWARE\Rabbid Lab\Client" Name="RemovalAllowed" Type="raw" Bitness="always64" />
     </Property>
-    <CustomAction Id="RemovalLocked" Error="The Rabbid Lab client can't be uninstalled yet. An admin has to allow it first. In Rabbid Lab, go to Devices, click Uninstall next to this computer, and choose Allow uninstalling." />
+    <CustomAction Id="RemovalLocked" Error="The Rabbid Lab client is locked on this computer. To uninstall it, open Rabbid Lab Client from the Start menu, click Uninstall and enter this computer's uninstall code. Or have an admin allow it in Rabbid Lab: go to Devices, click Uninstall next to this computer, and choose Allow." />
     <!-- The tray icon straight away for whoever installed it by hand; a quiet install shows it at the next sign-in. -->
     <CustomAction Id="StartTray" FileRef="ClientExe" ExeCommand="--tray" Return="asyncNoWait" Impersonate="yes" />
     <InstallExecuteSequence>

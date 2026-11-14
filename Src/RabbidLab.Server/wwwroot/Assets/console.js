@@ -3,6 +3,13 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.152', [
+    'Uninstall code: every computer has its own. Click Show next to Uninstall code in Devices, Uninstall, then enter it on the computer in the Rabbid Lab Client window to allow uninstalling for an hour. It works when the computer cannot reach this server.',
+    'The uninstall lock releases by itself after 30 days without reaching the server, so nothing is stuck if the server is gone for good. Turn that off in Settings, Devices.',
+    'A locked computer can no longer be connected to a different server until it is unlocked.',
+    'Showing an uninstall code and using one are both in the activity log. Using one is also in the Windows event log on that computer.',
+    'Addresses on Devices and Signed in now read as plain IPv4, and this server shows as This server.',
+    'Two pages open on the console now show the same progress while an update installs.']],
   ['1.1.151', [
     'The Windows client is reworded in plain English: both of its windows, the tray menu, the installer messages and the Group Policy help.',
     'The Connect this computer window matches the rest of the client now, with the dark buttons and a dark address box.',
@@ -808,6 +815,7 @@ const RELEASE_NOTES = [
   // An update under way takes the status card's place, and shows in a dialog mid screen: download, install, restart.
   // Phase null puts the status card back.
   let since = 0; // when installing began
+  let heard = 0; // when the server last answered this page
   let began = 0; // when this page first saw the update under way
   let dl = null; // the download so far, { got, total } in bytes
   let tick = null;
@@ -882,8 +890,11 @@ const RELEASE_NOTES = [
       : 'Rabbid Lab is stopped for about a minute while the update installs. This page reloads when it is done.';
   };
   // The download fills two thirds of the bar; while Rabbid Lab is stopped to install, it moves on the minute that takes.
-  const installing = (version) => {
-    since ||= Date.now();
+  // Counted from when the server said installing began, or else from its last answer, so every page open on the console
+  // shows the same number.
+  const installing = (version, forSeconds) => {
+    if (forSeconds != null) since = Date.now() - forSeconds * 1000;
+    since ||= heard || Date.now();
     bar('install', 66 + 32 * (1 - Math.exp(-(Date.now() - since) / 30000)), version, last ? `From ${last.version}` : '');
     tick ||= setInterval(() => installing(version), 1000);
   };
@@ -921,7 +932,7 @@ const RELEASE_NOTES = [
     // An update ready: Install now leads, and Check for updates steps back.
     $('hero-install').hidden = !(u.status === 'available' || u.status === 'failed') || !u.canInstall;
     $('hero-check').classList.toggle('primary', $('hero-install').hidden);
-    if (u.status === 'installing') installing(u.available);
+    if (u.status === 'installing') installing(u.available, u.installingFor);
     else if (u.status === 'downloading') {
       dl = { got: u.downloaded || 0, total: u.total || 0 };
       bar('download', 4 + 62 * (u.total ? (u.downloaded || 0) / u.total : 0), u.available,
@@ -949,7 +960,9 @@ const RELEASE_NOTES = [
     try {
       const r = await fetch('/api/update', { headers: { Accept: 'application/json' } });
       if (!r.ok) throw new Error(r.statusText);
-      draw(await r.json());
+      const u = await r.json();
+      heard = Date.now();
+      draw(u);
     } catch {
       // Setup stops Rabbid Lab to install, sometimes before this page has seen the download finish.
       if (last && (last.status === 'installing' || last.status === 'downloading')) {
@@ -1392,6 +1405,8 @@ const RELEASE_NOTES = [
     const d = new Date(iso);
     return d.toDateString() === new Date().toDateString() ? d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : when(iso);
   };
+  // An address as people read it: plain IPv4, and this computer's own by name instead of ::1.
+  const addr = (a) => (a === '::1' || a === '127.0.0.1' ? 'This server' : (a || '').replace(/^::ffff:/i, ''));
   const stateOf = (c) => (!c.approved ? 'waiting' : c.online ? 'online' : 'offline');
   const STATE = { online: 'Online', offline: 'Offline', waiting: 'Waiting' };
   const drawSeats = () => {
@@ -1419,7 +1434,7 @@ const RELEASE_NOTES = [
         cell: (c) => `<b>${esc(c.computer)}</b><small>${esc(c.uninstalling ? 'Uninstalling its client' : c.removalUntil ? `Uninstall allowed until ${new Date(c.removalUntil).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : c.os || '')}</small>` },
       { key: 'user', label: 'Signed in to Windows', w: 170, on: true, get: (c) => c.user, cell: (c) => (c.user ? `<span class="ell">${esc(c.user)}</span>` : '<span class="nobody">Nobody</span>') },
       { key: 'version', label: 'Client', w: 80, on: true, get: (c) => c.version, cell: (c) => `<span class="${c.behind ? 'old' : ''}">${esc(c.version || '?')}</span>` },
-      { key: 'address', label: 'Address', w: 130, on: true, get: (c) => c.address, cell: (c) => `<span class="mono muted ell">${esc(c.address || '')}</span>` },
+      { key: 'address', label: 'Address', w: 130, on: true, get: (c) => addr(c.address), cell: (c) => `<span class="mono muted ell">${esc(addr(c.address))}</span>` },
       { key: 'lastSeen', label: 'Last seen', w: 100, on: true, get: (c) => ms(c.lastSeen), cell: (c) => `<span class="muted">${esc(ago(c.lastSeen))}</span>` },
       { key: 'os', label: 'Windows', w: 200, get: (c) => c.os },
     ],
@@ -1442,7 +1457,7 @@ const RELEASE_NOTES = [
       { key: 'person', label: 'Person', w: 180, fixed: true, get: (s) => s.name || s.username, cell: (s) => `<b>${esc(s.name || s.username)}</b><small>${esc(s.username)}</small>` },
       { key: 'roles', label: 'Roles', w: 160, on: true, get: (s) => rolesOf(s).map((r) => r.name).join(', '), cell: (s) => `<span class="chips-in">${rolesOf(s).map(chip).join('')}</span>` },
       { key: 'using', label: 'Using', w: 190, on: true, get: (s) => s.device, cell: (s) => `<span class="ell">${esc(s.device)}</span><small>${s.remembered ? 'Kept signed in' : 'Until the page closes'}</small>` },
-      { key: 'address', label: 'Address', w: 130, on: true, get: (s) => s.address, cell: (s) => `<span class="mono muted ell">${esc(s.address || '')}</span>` },
+      { key: 'address', label: 'Address', w: 130, on: true, get: (s) => addr(s.address), cell: (s) => `<span class="mono muted ell">${esc(addr(s.address))}</span>` },
       { key: 'started', label: 'Signed in', w: 140, on: true, get: (s) => ms(s.started), cell: (s) => `<span class="muted">${esc(when(s.started))}</span>` },
       { key: 'lastSeen', label: 'Last seen', w: 100, on: true, get: (s) => ms(s.lastSeen), cell: (s) => `<span class="muted">${esc(ago(s.lastSeen))}</span>` },
     ],
@@ -1716,8 +1731,15 @@ const RELEASE_NOTES = [
     });
     // Uninstalling a computer's client: locked on the computer until it's allowed here, for an hour, or ordered from here.
     let seat = null;
+    let seatCode = null; // the computer's uninstall code once Show was clicked: { code, held }
     const drawSeat = () => {
       $('seat-title').textContent = `Uninstall the client on ${seat.computer}`;
+      $('seat-code-value').hidden = !seatCode;
+      $('seat-code-value').textContent = seatCode ? seatCode.code : '';
+      $('seat-code-about').textContent = !seatCode ? "Entered on the computer, it allows uninstalling for an hour. It works when the computer can't reach this server."
+        : seatCode.held ? 'On the computer, open Rabbid Lab Client, click Uninstall and enter this code.'
+        : "This computer hasn't received its code yet. It gets it the next time it checks in, with client 1.1.152 or later.";
+      $('seat-code').textContent = seatCode ? 'Copy' : 'Show';
       $('seat-allow-title').textContent = seat.removalUntil ? `Allowed until ${new Date(seat.removalUntil).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : 'Allow uninstalling for an hour';
       $('seat-allow').textContent = seat.removalUntil ? 'Lock again' : 'Allow';
       $('seat-now').disabled = !!seat.uninstalling;
@@ -1725,6 +1747,7 @@ const RELEASE_NOTES = [
     };
     const openSeat = (c) => {
       seat = c;
+      seatCode = null;
       say('seat-problem', '');
       drawSeat();
       $('seat-dialog').showModal();
@@ -1741,6 +1764,19 @@ const RELEASE_NOTES = [
     };
     $('seat-now').addEventListener('click', () => removal({ allow: true, now: true }));
     $('seat-allow').addEventListener('click', () => removal({ allow: !seat.removalUntil }));
+    $('seat-code').addEventListener('click', async () => {
+      if (seatCode) {
+        await copy($('seat-code-value'), $('seat-code'));
+        return;
+      }
+      try {
+        seatCode = await send(`/api/clients/${encodeURIComponent(seat.id)}/code`);
+        say('seat-problem', '');
+      } catch (err) {
+        say('seat-problem', err.message);
+      }
+      drawSeat();
+    });
     $('seat-close').addEventListener('click', () => $('seat-dialog').close());
     $('sessions-table').addEventListener('click', async (e) => {
       const row = e.target.closest('[data-session]');
@@ -2458,6 +2494,15 @@ const RELEASE_NOTES = [
       say('seat-set-problem', err.message);
     }
   });
+  $('seat-unlock').addEventListener('change', async (e) => {
+    $('seat-unlock-label').textContent = e.target.checked ? 'On' : 'Off';
+    try {
+      await send('/api/clients/settings', { unlockAfterDays: e.target.checked ? 30 : 0 });
+      say('seat-set-problem', '');
+    } catch (err) {
+      say('seat-set-problem', err.message);
+    }
+  });
   $('seat-line-copy').addEventListener('click', async () => {
     await copy($('seat-line'), $('seat-line-copy'));
     setTimeout(() => { $('seat-line-copy').textContent = 'Copy'; }, 2000);
@@ -2489,6 +2534,8 @@ const RELEASE_NOTES = [
       }
       $('seat-approve').checked = !!joining.approve;
       $('seat-approve-label').textContent = joining.approve ? 'On' : 'Off';
+      $('seat-unlock').checked = joining.unlockAfterDays > 0;
+      $('seat-unlock-label').textContent = joining.unlockAfterDays > 0 ? 'On' : 'Off';
       const line = [`msiexec /i RabbidLab-Client-${joining.version}.msi /qn SERVER=${location.origin}`];
       if (joining.fingerprint) line.push(`FINGERPRINT=${joining.fingerprint}`);
       $('seat-line').textContent = line.join(' ');

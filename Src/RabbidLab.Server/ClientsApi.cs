@@ -38,9 +38,30 @@ public static class ClientsApi
             return Results.Ok(new { id = client.Id, secret, approved = client.Approved is not null, version = Product.Version });
         });
 
-        app.MapPost("/api/clients/checkin", (CheckInForm form, HttpContext context, Clients clients) =>
-            Credentials(context) is (var id, var secret) && clients.CheckIn(id, secret, form.Computer, form.Os, form.Version, form.User, ActivityLog.Address(context)) is { } c
-                ? Results.Ok(new { approved = c.Approved is not null, version = Product.Version, removalUntil = clients.RemovalUntil(c)?.ToString("o"), uninstall = clients.TakeUninstall(c.Id) }) : Unknown());
+        // The answer carries the check for the computer's uninstall code and the days without this server after which the
+        // lock lets go, so both work there when this server can't be reached (the client's Removal.cs).
+        app.MapPost("/api/clients/checkin", (CheckInForm form, HttpContext context, Clients clients, ActivityLog log) =>
+        {
+            var used = DateTime.TryParse(form.CodeUsed, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind, out var at) ? at.ToUniversalTime() : (DateTime?) null;
+            if (Credentials(context) is not (var id, var secret)
+                || clients.CheckIn(id, secret, form.Computer, form.Os, form.Version, form.User, ActivityLog.Address(context), form.Code, used, out var usedNow) is not { } c)
+            {
+                return Unknown();
+            }
+            if (usedNow)
+            {
+                log.Record($"The client on {c.Computer}", ActivityLog.Address(context), "clients", "client.code.used", $"The uninstall code was used on {c.Computer}", "ok");
+            }
+            return Results.Ok(new
+            {
+                approved = c.Approved is not null,
+                version = Product.Version,
+                removalUntil = clients.RemovalUntil(c)?.ToString("o"),
+                uninstall = clients.TakeUninstall(c.Id),
+                code = c.CodeCheck,
+                unlockAfterDays = clients.UnlockAfterDays,
+            });
+        });
 
         // The client asking for its next order, held open until there is one (ClientCommands). Only computers let in get any.
         app.MapPost("/api/clients/next", async (HttpContext context, Clients clients, ClientCommands commands) =>
@@ -93,7 +114,7 @@ public static class ClientsApi
                 os = c.Os,
                 version = c.Version,
                 user = c.User,
-                address = c.Address,
+                address = Addresses.Normal(c.Address) ?? c.Address,
                 joined = c.Joined,
                 lastSeen = c.LastSeen,
                 approved = c.Approved,
@@ -150,6 +171,21 @@ public static class ClientsApi
             return Results.Ok(new { removalUntil = clients.RemovalUntil(c), uninstalling = c.Uninstall });
         });
 
+        // The computer's uninstall code, for whoever may remove computers. Showing it is in the activity log.
+        app.MapPost("/api/clients/{id}/code", (string id, HttpContext context, Clients clients, ActivityLog log) =>
+        {
+            if (Access.RefuseUnless(context, Permissions.SeatsRemove) is { } refused)
+            {
+                return refused;
+            }
+            if (clients.Reveal(id) is not var (c, code))
+            {
+                return Results.NotFound(new { error = "That client isn't here any more." });
+            }
+            log.Record(context, "clients", "client.code.show", $"Showed the uninstall code for {c.Computer}");
+            return Results.Ok(new { code, held = c.CodeHeld });
+        });
+
         // Add computers: whether new ones wait, this server's public key fingerprint, and which files it has.
         app.MapGet("/api/clients/settings", (HttpContext context, Clients clients, IConfiguration config) =>
         {
@@ -160,6 +196,7 @@ public static class ClientsApi
             return Results.Ok(new
             {
                 approve = clients.Waits,
+                unlockAfterDays = clients.UnlockAfterDays,
                 fingerprint = ClientFiles.KeyFingerprint(config),
                 msi = File.Exists(ClientFiles.Msi),
                 policy = File.Exists(ClientFiles.Policy),
@@ -184,8 +221,17 @@ public static class ClientsApi
             {
                 return refused;
             }
-            clients.SetApprove(form.Approve);
-            log.Record(context, "clients", "client.settings", form.Approve ? "New computers wait for an admin" : "New computers join straight away");
+            // Each switch sends its own setting, so the other stays as it is.
+            if (form.Approve is { } approve)
+            {
+                clients.SetApprove(approve);
+                log.Record(context, "clients", "client.settings", approve ? "New computers need approval" : "New computers connect without approval");
+            }
+            if (form.UnlockAfterDays is { } days)
+            {
+                clients.SetUnlockAfter(days);
+                log.Record(context, "clients", "client.settings", days > 0 ? $"The uninstall lock is released after {days} days offline" : "The uninstall lock is no longer released for computers that are offline");
+            }
             return Results.Ok();
         });
     }
@@ -212,9 +258,9 @@ public static class ClientsApi
 
 public sealed record JoinForm(string? Computer, string? Os, string? Version);
 
-public sealed record CheckInForm(string? Computer, string? Os, string? Version, string? User);
+public sealed record CheckInForm(string? Computer, string? Os, string? Version, string? User, string? Code = null, string? CodeUsed = null);
 
-public sealed record ClientSettingsForm(bool Approve);
+public sealed record ClientSettingsForm(bool? Approve = null, int? UnlockAfterDays = null);
 
 /// <summary>Allow uninstalling the client for an hour (Allow), lock it again, or have the client uninstall itself (Now).</summary>
 public sealed record RemovalForm(bool Allow, bool Now);

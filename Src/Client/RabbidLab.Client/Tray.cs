@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
 using System.Runtime.InteropServices;
@@ -220,7 +221,8 @@ internal sealed class StatusWindow : Form
         Fact("Server version", s.ServerVersion ?? "Unknown");
         Fact("Uninstall", !joined ? "Allowed (not connected to a server)"
             : s.Locked ? $"Locked by {s.Host}"
-            : s.RemovalUntil is { } until ? $"Allowed until {until.ToLocalTime():t}" : "Allowed");
+            : s.Unlocked == Status.ByOffline ? $"Allowed (server not reached for {Removal.OfflineDays} days)"
+            : s.RemovalUntil is { } until ? $"Allowed until {until.ToLocalTime():t}{(s.Unlocked == Status.ByCode ? " (uninstall code)" : "")}" : "Allowed");
         facts.ResumeLayout();
     }
 
@@ -237,8 +239,15 @@ internal sealed class StatusWindow : Form
     {
         if (!Removal.Allowed)
         {
-            MessageBox.Show(this, $"The Rabbid Lab client can't be uninstalled yet.\n\nAn admin has to allow it first. In Rabbid Lab on {shown.Host}, go to Devices, click Uninstall next to {shown.Computer}, and choose Allow uninstalling.",
-                "Rabbid Lab Client", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            // Locked: the uninstall code, asked for by this program run as an administrator, which can then unlock it (Unlock.cs).
+            try
+            {
+                Process.Start(new ProcessStartInfo(Application.ExecutablePath, "--unlock") { Verb = "runas", UseShellExecute = true })?.Dispose();
+            }
+            catch (Win32Exception)
+            {
+                // No administrator said yes: it stays locked.
+            }
             return;
         }
         if (MessageBox.Show(this, "Uninstall the Rabbid Lab client from this computer?", "Rabbid Lab Client", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) != DialogResult.Yes)

@@ -203,4 +203,83 @@ public sealed class ClientsTests : IDisposable
         Assert.Equal(HttpStatusCode.Forbidden, (await user.GetAsync("/api/clients/settings")).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await user.PostAsJsonAsync("/api/clients/settings", new { approve = false })).StatusCode);
     }
+    // A check-in as the client makes it since uninstall codes: the hash of the check it holds, and when the code was typed.
+    private async Task<JsonElement> CheckInSaying(string id, string secret, string? code = null, string? codeUsed = null)
+    {
+        var client = app.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("RabbidLab-Client", $"{id}:{secret}");
+        var r = await client.PostAsJsonAsync("/api/clients/checkin", new { computer = "AMW-LT-022", os = "Windows 11 Pro", version = "1.1.152", code, codeUsed });
+        r.EnsureSuccessStatusCode();
+        return await Json(r);
+    }
+
+    [Fact]
+    public async Task Each_computer_has_an_uninstall_code_an_admin_can_show_and_the_computer_can_check_offline()
+    {
+        var admin = await app.SignedIn();
+        var (id, secret, _) = await Join();
+        var (other, _, _) = await Join("AMW-LT-023");
+
+        var first = await CheckInSaying(id, secret);
+        var check = first.GetProperty("code").GetString()!;
+        var shown = await Json(await admin.PostAsync($"/api/clients/{id}/code", null));
+        var code = shown.GetProperty("code").GetString()!;
+        await CheckInSaying(id, secret, code: check.Split(':')[1]);
+        var again = await Json(await admin.PostAsync($"/api/clients/{id}/code", null));
+        var others = (await Json(await admin.PostAsync($"/api/clients/{other}/code", null))).GetProperty("code").GetString()!;
+        var log = await (await admin.GetAsync("/api/activity")).Content.ReadAsStringAsync();
+
+        Assert.Matches("^[0-9A-HJKMNP-TV-Z]{5}(-[0-9A-HJKMNP-TV-Z]{5}){3}$", code);
+        Assert.False(shown.GetProperty("held").GetBoolean());
+        Assert.True(again.GetProperty("held").GetBoolean());
+        Assert.Equal(code, again.GetProperty("code").GetString());
+        Assert.NotEqual(code, others);
+        Assert.Equal(30, first.GetProperty("unlockAfterDays").GetInt32());
+        // The computer's side: only the right code passes the check, typed however.
+        Assert.True(RabbidLab.Client.UninstallCode.Matches(code, check));
+        Assert.True(RabbidLab.Client.UninstallCode.Matches(" " + code.ToLowerInvariant().Replace("-", " "), check));
+        Assert.False(RabbidLab.Client.UninstallCode.Matches(others, check));
+        Assert.False(RabbidLab.Client.UninstallCode.Matches(code[..^1], check));
+        Assert.False(RabbidLab.Client.UninstallCode.Matches(code, null));
+        Assert.DoesNotContain(code.Replace("-", ""), await File.ReadAllTextAsync(Path.Combine(data, "clients.json")));
+        Assert.Contains("Showed the uninstall code for AMW-LT-022", log);
+    }
+
+    [Fact]
+    public async Task Using_the_code_is_logged_once_and_showing_it_needs_the_right_to_remove_computers()
+    {
+        var admin = await app.SignedIn();
+        var (id, secret, _) = await Join();
+        app.Services.GetRequiredService<Accounts>().Add("mlopez", "user password", Roles.User);
+        var user = app.Page();
+        (await user.PostAsJsonAsync("/api/signin", new { username = "mlopez", password = "user password" })).EnsureSuccessStatusCode();
+        var used = DateTime.UtcNow.AddSeconds(-20).ToString("o");
+
+        await CheckInSaying(id, secret, codeUsed: used);
+        await CheckInSaying(id, secret, codeUsed: used);
+        var log = await (await admin.GetAsync("/api/activity")).Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.Forbidden, (await user.PostAsync($"/api/clients/{id}/code", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await admin.PostAsync("/api/clients/nobody/code", null)).StatusCode);
+        Assert.Single(System.Text.RegularExpressions.Regex.Matches(log, "The uninstall code was used on AMW-LT-022"));
+    }
+
+    [Fact]
+    public async Task The_lock_letting_go_after_30_days_offline_can_be_turned_off_without_changing_approval()
+    {
+        var admin = await app.SignedIn();
+        var (id, secret, _) = await Join();
+
+        (await admin.PostAsJsonAsync("/api/clients/settings", new { unlockAfterDays = 0 })).EnsureSuccessStatusCode();
+        var off = await CheckInSaying(id, secret);
+        var settings = await admin.GetFromJsonAsync<JsonElement>("/api/clients/settings");
+        (await admin.PostAsJsonAsync("/api/clients/settings", new { approve = false })).EnsureSuccessStatusCode();
+        var after = await admin.GetFromJsonAsync<JsonElement>("/api/clients/settings");
+
+        Assert.Equal(0, off.GetProperty("unlockAfterDays").GetInt32());
+        Assert.True(settings.GetProperty("approve").GetBoolean());
+        Assert.Equal(0, settings.GetProperty("unlockAfterDays").GetInt32());
+        Assert.False(after.GetProperty("approve").GetBoolean());
+        Assert.Equal(0, after.GetProperty("unlockAfterDays").GetInt32());
+    }
 }
