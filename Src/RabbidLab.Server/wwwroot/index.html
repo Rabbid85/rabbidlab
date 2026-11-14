@@ -9,6 +9,7 @@
 <link rel="icon" id="favicon" href="favicon.svg" type="image/svg+xml">
 <script src="Assets/brand.js"></script>
 <link rel="stylesheet" href="Assets/console.css">
+<link rel="stylesheet" href="Assets/grid.css">
 <link rel="stylesheet" href="Assets/people.css">
 <link rel="stylesheet" href="Assets/users.css">
 <link rel="stylesheet" href="Assets/links.css">
@@ -18,6 +19,8 @@
 <link rel="stylesheet" href="Assets/edition.css">
 <script src="Assets/palette.js" defer></script>
 <script src="Assets/console.js" defer></script>
+<script src="Assets/tips.js" defer></script>
+<script src="Assets/grid.js" defer></script>
 <script src="Assets/people.js" defer></script>
 <script src="Assets/users.js" defer></script>
 <script src="Assets/alerts.js" defer></script>
@@ -823,7 +826,7 @@
       <div class="lib-body">
         <div class="lib-bar"><h2 id="at-title">Pick something on the left</h2><span class="bar-note" id="at-line"></span>
           <span class="at-tools" id="at-tools" hidden><label class="at-hide"><input type="checkbox" class="switch" id="at-empty" role="switch" checked><span>Hide empty</span></label>
-            <span class="ds-pair"><button type="button" class="ds-btn ds-ibtn" id="at-copy-dn" data-tip="Copy DN" aria-label="Copy the distinguished name"><svg><use href="#i-copy"/></svg></button><button type="button" class="ds-btn ds-ibtn" id="at-export" data-tip="Export CSV" aria-label="Export every attribute to a CSV file"><svg><use href="#i-download"/></svg></button></span></span></div>
+            <span class="ds-pair"><button type="button" class="ds-btn ds-ibtn" id="at-cols" data-tip="Columns" aria-label="Columns"><svg><use href="#i-columns"/></svg></button><button type="button" class="ds-btn ds-ibtn" id="at-copy-dn" data-tip="Copy DN" aria-label="Copy the distinguished name"><svg><use href="#i-copy"/></svg></button><button type="button" class="ds-btn ds-ibtn" id="at-export" data-tip="Export CSV" aria-label="Export every attribute to a CSV file"><svg><use href="#i-download"/></svg></button></span></span></div>
         <label class="side-find at-find" id="at-find-row" hidden><svg><use href="#i-search"/></svg><input type="search" id="at-find" placeholder="Find an attribute or value" aria-label="Find an attribute or value" autocomplete="off" spellcheck="false"></label>
         <div class="table attrs" id="at-table"></div>
         <p class="hint problem" id="at-problem" hidden></p>
@@ -1336,7 +1339,6 @@
 <dialog class="drawer" id="ad-drawer" aria-labelledby="dw-title"><div class="dw-body" id="dw-body"></div></dialog>
 <div class="gear-menu cmd-menu" id="cmd-menu" popover role="menu"></div>
 <!-- Columns: which ones the list shows; Users, Groups and Computers each keep their own. -->
-<div class="gear-menu col-menu" id="col-menu" popover></div>
 
 <!-- Filter: conditions on what the list holds (a field, how to test it, and a value), all or any of them. -->
 <dialog class="dialog wide" id="flt-dialog" aria-labelledby="flt-title">

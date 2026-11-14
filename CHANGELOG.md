@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.134 (2026-11-13)
+
+- Every table works like the Users list now: Domain settings, AD audit, Recycle Bin, the Attribute browser, Seats and Signed in now all sort by a heading, resize and fit columns, pick columns and switch between Compact and Relaxed rows.
+- Hints and tables each come from one shared file now, so they look and behave the same everywhere.
+
 ## 1.1.133 (2026-11-13)
 
 - Domain settings has its own place in the left menu under Directory, with its own red dot, instead of sitting in the Active Directory list.

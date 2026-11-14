@@ -152,8 +152,6 @@
         ]],
         ['Area', ['Passwords', 'Lockout', 'Accounts', 'Domain', 'Domain controllers'].map((a) => ({ key: a.toLowerCase().replace(/\s+/g, '-'), label: a, where: (s) => s.area === a }))],
       ],
-      head: ['Setting', 'Now', 'Recommended', 'Result'],
-      cells: (s) => [small(s.name, s.area), esc(s.now), `<span class="muted">${esc(s.recommended)}</span>`, TONE[s.tone] || ''],
       csv: [['Area', (s) => s.area], ['Setting', (s) => s.name], ['Now', (s) => s.now], ['Recommended', (s) => s.recommended], ['Result', (s) => s.tone], ['Why', (s) => s.about]],
     },
     audit: {
@@ -180,14 +178,6 @@
           { key: 'ous', label: 'OUs', quiet: true, where: (c) => c.kind === 'ou' },
         ]],
       ],
-      head: ['When', 'What', 'Object', 'Where', 'Changed'],
-      cells: (c) => [
-        small(ago(c.at), new Date(c.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })),
-        badge(c.what.charAt(0).toUpperCase() + c.what.slice(1), WHAT[c.what]),
-        `<div class="who"><span class="pic">${svg(KIND_ICON[c.kind] || 'folder')}</span>${small(c.name, c.kind === 'ou' ? 'OU' : c.kind)}</div>`,
-        esc(c.where || ad.state.domain),
-        small(c.attributes.slice(0, 4).join(', ') + (c.attributes.length > 4 ? ` and ${c.attributes.length - 4} more` : ''), c.by ? `by ${c.by}, in ${R.app()}` : ''),
-      ],
       csv: [['When', (c) => c.at], ['What', (c) => c.what], ['Kind', (c) => c.kind], ['Name', (c) => c.name], ['Where', (c) => c.where], ['Changed', (c) => c.attributes.join(' ')],
         ['By', (c) => c.by], ['Distinguished name', (c) => c.dn]],
     },
@@ -199,7 +189,6 @@
         more.recycle = recycle.more;
         return recycle.items;
       },
-      sorts: [['Deleted', (d) => -new Date(d.deleted || 0)], ['Name', (d) => d.name.toLowerCase()]],
       find: (d) => [d.name, d.wasIn, d.username],
       views: [
         ['View', [
@@ -209,13 +198,6 @@
           { key: 'computers', label: 'Computers', where: (d) => d.kind === 'computer' },
           { key: 'ous', label: 'OUs', quiet: true, where: (d) => d.kind === 'ou' },
         ]],
-      ],
-      head: ['Name', 'Type', 'Was in', 'Deleted'],
-      cells: (d) => [
-        `<div class="who"><span class="pic">${svg(KIND_ICON[d.kind] || 'folder')}</span>${small(d.name, d.username)}</div>`,
-        esc(d.kind === 'ou' ? 'OU' : d.kind.charAt(0).toUpperCase() + d.kind.slice(1)),
-        esc(d.wasIn || ad.state.domain),
-        esc(d.deleted ? ago(d.deleted) : '-'),
       ],
       csv: [['Name', (d) => d.name], ['Type', (d) => d.kind], ['Was in', (d) => d.wasIn], ['Deleted', (d) => d.deleted], ['Distinguished name', (d) => d.dn]],
     },
@@ -233,13 +215,16 @@
   // Each page lists every column it can show; Columns picks which (kept in this browser), the heading sorts by one,
   // and Filter keeps the rows that match its conditions (field, test, value), all of them or any.
 
-  const text = (v) => (v ? `<span class="ell">${esc(v)}</span>` : '<span class="muted">-</span>');
   const dateCell = (iso) => (iso ? esc(day(iso)) : '<span class="muted">Never</span>');
   const endOf = (iso) => (iso ? esc(day(new Date(new Date(iso) - 1))) : '<span class="muted">Never</span>');
   const time = (iso) => (iso ? new Date(iso).getTime() : 0);
-  // key, heading, grid width, the value (for sorting, and the cell unless it has its own), and options: on (shown by
-  // default), fixed (always shown), cell, sort.
-  const col = (key, label, w, get, o = {}) => ({ key, label, w, get, ...o });
+  // key, heading, width, the value (for sorting, and the cell unless it has its own), and options: on (shown by
+  // default), fixed (always shown), cell. A width in pixels, or the default one for that column.
+  const DEFAULT_PX = { name: 210, username: 190, upn: 230, email: 210, department: 150, title: 150, company: 140, office: 120, phone: 120, manager: 160,
+    where: 180, description: 240, lastSignIn: 110, passwordSet: 130, passwordExpires: 130, accountExpires: 130, created: 110, status: 160, type: 160, scope: 120,
+    members: 90, notes: 200, os: 210, host: 200, location: 140 };
+  const minOf = (w) => Number((String(w).match(/(\d+)px/) || [0, 80])[1]);
+  const col = (key, label, w, get, o = {}) => ({ key, label, w: typeof w === 'number' ? w : DEFAULT_PX[key] || minOf(w), get, ...o });
   AD.users.cols = [
     col('name', 'Name', 'minmax(200px, 1.5fr)', (u) => u.name || u.username, { fixed: true,
       cell: (u) => `<div class="who"><span class="pic user">${esc(initials(u.name || u.username))}</span><b class="ell">${esc(u.name || u.username)}</b></div>` }),
@@ -284,31 +269,51 @@
     col('status', 'Status', '150px', (c) => (!c.enabled ? 2 : stale(c.lastSignIn) ? 1 : 0), { on: true, cell: (c) => pcStatus(c) + (c.controller ? chip('Domain controller', 'muted') : '') }),
   ];
 
-  // Which columns each page shows, in the page's own order, and how it's sorted; both kept in this browser.
-  const remember = (name, value) => { try { localStorage.setItem(`rabbidlab.ad.${name}`, JSON.stringify(value)); } catch { /* not kept, then */ } };
-  const recall = (name) => { try { return JSON.parse(localStorage.getItem(`rabbidlab.ad.${name}`) || 'null'); } catch { return null; } };
-  const shownCols = (p = page()) => {
-    const keys = recall(`cols.${adPage}`);
-    return p.cols.filter((c) => c.fixed || (Array.isArray(keys) ? keys.includes(c.key) : c.on));
-  };
-  const colSort = () => {
-    const s = recall(`sort.${adPage}`);
-    return s && page().cols?.some((c) => c.key === s.key) ? s : { key: 'name', dir: 1 };
-  };
-  const sorted = (list) => {
-    const p = page();
-    if (!p.cols) return p.sorts ? [...list].sort((a, b) => (p.sorts[0][1](a) < p.sorts[0][1](b) ? -1 : 1)) : list;
-    const s = colSort();
-    const c = p.cols.find((x) => x.key === s.key);
-    const val = (x) => { const v = c.get(x); return typeof v === 'number' ? v : String(v ?? '').toLowerCase(); };
-    // Blanks go last either way.
-    return [...list].sort((a, b) => {
-      const x = val(a);
-      const y = val(b);
-      if (x === '' || y === '') return x === y ? 0 : x === '' ? 1 : -1;
-      return (x < y ? -1 : x > y ? 1 : 0) * s.dir;
-    });
-  };
+  AD.domain.cols = [
+    col('name', 'Setting', 260, (s) => s.name, { fixed: true, cell: (s) => small(s.name, s.area) }),
+    col('area', 'Area', 150, (s) => s.area),
+    col('now', 'Now', 210, (s) => s.now, { on: true }),
+    col('recommended', 'Recommended', 210, (s) => s.recommended, { on: true, cell: (s) => `<span class="muted ell">${esc(s.recommended)}</span>` }),
+    col('result', 'Result', 170, (s) => ({ bad: 0, warn: 1, unknown: 2, good: 3 })[s.tone] ?? 4, { on: true, cell: (s) => TONE[s.tone] || '' }),
+    col('about', 'Why it matters', 320, (s) => s.about),
+  ];
+  AD.audit.cols = [
+    col('when', 'When', 120, (c) => time(c.at), { on: true, cell: (c) => small(ago(c.at), new Date(c.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })) }),
+    col('what', 'What', 110, (c) => c.what, { on: true, cell: (c) => badge(c.what.charAt(0).toUpperCase() + c.what.slice(1), WHAT[c.what]) }),
+    col('name', 'Object', 240, (c) => c.name, { fixed: true, cell: (c) => `<div class="who"><span class="pic">${svg(KIND_ICON[c.kind] || 'folder')}</span>${small(c.name, c.kind === 'ou' ? 'OU' : c.kind)}</div>` }),
+    col('where', 'Where', 200, (c) => c.where || ad.state.domain, { on: true }),
+    col('changed', 'Changed', 300, (c) => c.attributes.join(', '), { on: true,
+      cell: (c) => small(c.attributes.slice(0, 4).join(', ') + (c.attributes.length > 4 ? ` and ${c.attributes.length - 4} more` : ''), c.by ? `by ${c.by}, in ${R.app()}` : '') }),
+    col('dn', 'Distinguished name', 320, (c) => c.dn),
+  ];
+  AD.recycle.cols = [
+    col('name', 'Name', 240, (d) => d.name, { fixed: true, cell: (d) => `<div class="who"><span class="pic">${svg(KIND_ICON[d.kind] || 'folder')}</span>${small(d.name, d.username)}</div>` }),
+    col('kind', 'Type', 110, (d) => d.kind, { on: true, cell: (d) => esc(d.kind === 'ou' ? 'OU' : d.kind.charAt(0).toUpperCase() + d.kind.slice(1)) }),
+    col('wasIn', 'Was in', 220, (d) => d.wasIn || ad.state.domain, { on: true }),
+    col('deleted', 'Deleted', 130, (d) => time(d.deleted), { on: true, cell: (d) => esc(d.deleted ? ago(d.deleted) : '-') }),
+    col('dn', 'Distinguished name', 320, (d) => d.dn),
+  ];
+  // How each page sorts until a heading is clicked.
+  ['users', 'groups', 'computers'].forEach((k) => { AD[k].sort = { key: 'name', dir: 1 }; });
+  AD.audit.sort = { key: 'when', dir: -1 };
+  AD.recycle.sort = { key: 'deleted', dir: -1 };
+
+  // Every AD list is a data grid (grid.js): columns, widths and sort kept per page in this browser. Users, Groups and
+  // Computers add a tick on the left and ⋯ on the right.
+  let emptyNow = '';
+  const adGrid = R.grid({
+    el: $('dir-table'),
+    store: 'rabbidlab.ad',
+    key: () => adPage,
+    cols: () => page().cols,
+    sort: () => page().sort || null,
+    lead: () => (picked[adPage] ? { w: 18, head: '<label class="tk"><input type="checkbox" data-tick-all aria-label="Select all"></label>',
+      cell: (x) => `<label class="tk"><input type="checkbox" data-tick="${esc(keyOf(x))}" aria-label="Select ${esc(x.name || x.username)}"></label>` } : null),
+    tail: () => (picked[adPage] ? { w: 28, cell: (x, i) => `<div class="tr-more"><button type="button" class="at-more" data-row-menu="${i}" data-tip="Actions" aria-label="Actions for ${esc(x.name || x.username)}">${svg('dots')}</button></div>` } : null),
+    row: (x, i) => ` tabindex="0" data-i="${i}"`,
+    empty: () => emptyNow,
+    redraw: () => { closeCard(); drawAd(); },
+  });
   const PAGE_ICON = { users: 'user', groups: 'users', computers: 'laptop', domain: 'globe', audit: 'history', recycle: 'trash' };
   const total = {}; // how many each page had when it was last read, for the list down the left
 
@@ -466,14 +471,15 @@
     const list = lists[adPage] || [];
     if (lists[adPage]) total[adPage] = (p.tabs ? list.filter(p.tabs[0].where) : list).length;
     const test = filterTest(adPage, filterOn[adPage]);
-    rows = sorted(list.filter((x) => inView(v, x) && test(x) && (!find || p.find(x).some((t) => String(t || '').toLowerCase().includes(find)))));
+    rows = list.filter((x) => inView(v, x) && test(x) && (!find || p.find(x).some((t) => String(t || '').toLowerCase().includes(find))));
     // The tabs, or the page's own name where it has none.
     const openTab = tab();
     $('dir-tabs').innerHTML = (p.tabs || [{ key: '', label: p.title, icon: PAGE_ICON[adPage], where: () => true }])
       .map((t) => `<a data-tab="${t.key}"${!openTab || t.key === openTab.key ? ' aria-current="true"' : ''}>${svg(t.icon)}${esc(t.label)} <small>${list.filter(t.where).length.toLocaleString()}</small></a>`).join('');
     // Filter, Columns and Actions are for the pages that list users, groups and computers.
     const picks = !!picked[adPage];
-    ['dir-filter', 'dir-cols', 'dir-act'].forEach((id) => { $(id).hidden = !picks; });
+    ['dir-filter', 'dir-act'].forEach((id) => { $(id).hidden = !picks; });
+    $('dir-cols').hidden = !p.cols;
     const nf = filterCount();
     $('dir-filter-x').hidden = !picks || !nf;
     $('dir-filter').classList.toggle('on', nf > 0);
@@ -486,26 +492,9 @@
     $('dir-filtered').hidden = !filtering();
     $('dir-filtered').innerHTML = filtering() ? `${svg('filter')}<span>${esc(filterWords(adPage, filterOn[adPage]))}</span><button type="button" class="linkish" data-filter-clear>Clear filter</button>` : '';
     if (picks && lists[adPage]) [...picked[adPage]].forEach((k) => { if (!byKey(k)) picked[adPage].delete(k); });
-    $('dir-table').className = `table adt ${adPage} drows${picks ? ` picks ${density()}` : ''}`;
-    const none = `<div class="empty">${list.length ? (filtering() ? 'Nothing matches the filter.' : 'Nothing here right now.') : 'Nothing yet.'}</div>`;
-    if (!picks) {
-      $('dir-table').innerHTML = !rows.length ? none : `<div class="tr th">${p.head.map((h) => `<span>${esc(h)}</span>`).join('')}</div>`
-        + rows.map((x, i) => `<div class="tr" tabindex="0" data-i="${i}">${p.cells(x).map((c) => `<div>${c}</div>`).join('')}</div>`).join('');
-    } else {
-      // The chosen columns, each heading sorts by itself and its right edge drags to resize it.
-      const cols = shownCols(p);
-      const s = colSort();
-      setTracks(cols);
-      $('dir-table').innerHTML = `<div class="tr th"><label class="tk"><input type="checkbox" data-tick-all aria-label="Select all"></label>`
-        + cols.map((c) => `<div class="th-cell"><button type="button" class="th-sort${c.key === s.key ? ' on' : ''}" data-sort="${c.key}" title="${esc(c.label)}"><span class="lbl">${esc(c.label)}</span>`
-          + `${c.key === s.key ? svg(s.dir > 0 ? 'chevron-up' : 'chevron-down', 'arr') : ''}</button><i class="th-grip" data-grip="${c.key}" data-tip="Drag to resize"></i></div>`).join('')
-        + '<span></span></div>'
-        + (!rows.length ? none : rows.map((x, i) => `<div class="tr" tabindex="0" data-i="${i}">`
-          + `<label class="tk"><input type="checkbox" data-tick="${esc(keyOf(x))}" aria-label="Select ${esc(x.name || x.username)}"></label>`
-          + cols.map((c) => `<div>${c.cell ? c.cell(x) : text(c.get(x))}</div>`).join('')
-          + `<div class="tr-more"><button type="button" class="at-more" data-row-menu="${i}" data-tip="Actions" aria-label="Actions for ${esc(x.name || x.username)}">${svg('dots')}</button></div>`
-          + '</div>').join(''));
-    }
+    $('dir-table').className = `table adt ${adPage} drows${picks ? ' picks' : ''}`;
+    emptyNow = list.length ? (filtering() ? 'Nothing matches the filter.' : 'Nothing here right now.') : 'Nothing yet.';
+    rows = adGrid.draw(rows);
     $('dir-more').hidden = !more[adPage];
     drawPicked();
     drawViews();
@@ -597,119 +586,8 @@
     adTab = t.dataset.tab;
     drawAd();
   });
-  // The grid's tracks: the tick, each column at a width in pixels (as data grids do: its own default, or what it was
-  // dragged to), and ⋯ taking what's left. Text that doesn't fit ends in …; a wider list scrolls sideways.
-  const widths = () => recall(`widths.${adPage}`) || {};
-  const minOf = (w) => Number((String(w).match(/(\d+)px/) || [0, 80])[1]);
-  const DEFAULT_PX = { name: 210, username: 190, upn: 230, email: 210, department: 150, title: 150, company: 140, office: 120, phone: 120, manager: 160,
-    where: 180, description: 240, lastSignIn: 110, passwordSet: 130, passwordExpires: 130, accountExpires: 130, created: 110, status: 160, type: 160, scope: 120,
-    members: 90, notes: 200, os: 210, host: 200, location: 140 };
-  const widthOf = (c, wd = widths()) => wd[c.key] || DEFAULT_PX[c.key] || minOf(c.w);
-  const setTracks = (cols) => {
-    const wd = widths();
-    const min = 18 + 28 + cols.reduce((sum, c) => sum + widthOf(c, wd), 0) + 20 * (cols.length + 1) + 32;
-    $('dir-table').style.setProperty('--cols', `18px ${cols.map((c) => `${widthOf(c, wd)}px`).join(' ')} minmax(28px, 1fr)`);
-    $('dir-table').style.setProperty('--minw', `${min}px`);
-  };
-  // Compact rows (the default) or relaxed ones, kept in this browser for every list.
-  const density = () => (recall('density') === 'relaxed' ? 'relaxed' : 'compact');
-
-  // A heading sorts by its column; again turns it round.
-  $('dir-table').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-sort]');
-    if (!b) return;
-    const s = colSort();
-    remember(`sort.${adPage}`, { key: b.dataset.sort, dir: s.key === b.dataset.sort ? -s.dir : 1 });
-    closeCard();
-    drawAd();
-  });
-  // A heading's right edge drags to make its column wider or narrower; a double-click puts it back.
-  $('dir-table').addEventListener('pointerdown', (e) => {
-    const grip = e.target.closest('[data-grip]');
-    if (!grip) return;
-    e.preventDefault();
-    const key = grip.dataset.grip;
-    const cell = grip.closest('.th-cell');
-    const start = e.clientX;
-    const from = cell.getBoundingClientRect().width;
-    const cols = shownCols();
-    const wd = widths();
-    document.body.classList.add('col-dragging');
-    const move = (m) => {
-      wd[key] = Math.max(60, Math.round(from + m.clientX - start));
-      remember(`widths.${adPage}`, wd);
-      setTracks(cols);
-    };
-    const up = () => {
-      window.removeEventListener('pointermove', move);
-      ['pointerup', 'pointercancel', 'blur'].forEach((ev) => window.removeEventListener(ev, up));
-      document.body.classList.remove('col-dragging');
-    };
-    window.addEventListener('pointermove', move);
-    // Letting go anywhere, a cancelled pointer or leaving the window all end the drag.
-    ['pointerup', 'pointercancel', 'blur'].forEach((ev) => window.addEventListener(ev, up));
-  });
-  // A double-click on the edge fits the column to what's in it: each row is measured at its natural width.
-  $('dir-table').addEventListener('dblclick', (e) => {
-    const grip = e.target.closest('[data-grip]');
-    if (!grip) return;
-    const cols = shownCols();
-    const at = cols.findIndex((c) => c.key === grip.dataset.grip);
-    if (at < 0) return;
-    const t = $('dir-table');
-    const wd = widths();
-    const tracks = cols.map((c, i) => (i === at ? 'max-content' : `${widthOf(c, wd)}px`));
-    t.classList.add('measuring');
-    t.style.setProperty('--cols', `18px ${tracks.join(' ')} minmax(28px, 1fr)`);
-    const widest = Math.max(...[...t.querySelectorAll(`.tr > :nth-child(${at + 2})`)].map((cell) => cell.getBoundingClientRect().width));
-    t.classList.remove('measuring');
-    wd[grip.dataset.grip] = Math.min(600, Math.max(60, Math.ceil(widest) + 4));
-    remember(`widths.${adPage}`, wd);
-    setTracks(cols);
-  });
-
-  // Columns: tick the ones to show; Reset puts back the page's own columns, widths and order.
-  const placeUnder = (menu, button) => {
-    const r = button.getBoundingClientRect();
-    menu.style.setProperty('left', '0px');
-    menu.style.setProperty('top', '0px');
-    menu.showPopover();
-    menu.style.setProperty('left', `${Math.max(8, Math.min(r.right - menu.offsetWidth, innerWidth - menu.offsetWidth - 8))}px`);
-    menu.style.setProperty('top', `${r.bottom + 6}px`);
-  };
-  const drawColMenu = () => {
-    const shown = shownCols().map((c) => c.key);
-    $('col-menu').innerHTML = `<div class="col-dens"><span>Rows</span><div class="seg">${[['compact', 'Compact'], ['relaxed', 'Relaxed']].map(([d, label]) => `<button type="button" data-density="${d}" aria-pressed="${density() === d}">${label}</button>`).join('')}</div></div>`
-      + `<p class="cmd-head">Columns</p><div class="am-links col-list">${page().cols.filter((c) => !c.fixed)
-      .map((c) => `<label class="am-link col-check"><input type="checkbox" data-col="${c.key}"${shown.includes(c.key) ? ' checked' : ''}><span>${esc(c.label)}</span></label>`).join('')}</div>`
-      + `<div class="am-links"><button type="button" class="am-link" data-col-reset>${svg('refresh')}<span>Reset columns, widths and sort</span></button></div>`;
-  };
-  $('dir-cols').addEventListener('click', () => {
-    if ($('col-menu').matches(':popover-open')) return;
-    drawColMenu();
-    placeUnder($('col-menu'), $('dir-cols'));
-  });
-  $('col-menu').addEventListener('change', (e) => {
-    const box = e.target.closest('[data-col]');
-    if (!box) return;
-    const keys = shownCols().filter((c) => !c.fixed).map((c) => c.key).filter((k) => k !== box.dataset.col);
-    if (box.checked) keys.push(box.dataset.col);
-    remember(`cols.${adPage}`, keys);
-    drawAd();
-  });
-  $('col-menu').addEventListener('click', (e) => {
-    const d = e.target.closest('[data-density]');
-    if (d) {
-      remember('density', d.dataset.density);
-      drawColMenu();
-      drawAd();
-      return;
-    }
-    if (!e.target.closest('[data-col-reset]')) return;
-    ['cols', 'widths', 'sort'].forEach((n) => { try { localStorage.removeItem(`rabbidlab.ad.${n}.${adPage}`); } catch { /* nothing kept */ } });
-    drawColMenu();
-    drawAd();
-  });
+  // Columns opens the grid's own menu (grid.js): Compact or Relaxed, which columns, and Reset.
+  $('dir-cols').addEventListener('click', () => adGrid.menu($('dir-cols')));
 
   // Actions: the menu for what's ticked, the same one as a row's ⋯.
   $('dir-act').addEventListener('click', () => {

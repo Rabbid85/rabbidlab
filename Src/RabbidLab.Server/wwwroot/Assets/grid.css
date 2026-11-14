@@ -1,0 +1,50 @@
+/* Data grids (grid.js): every table in the console looks and works the same. The columns chosen, at the widths set (in
+   --cols), a header band with a line between each column that drags to resize, sideways scroll when wide, and compact
+   (the default) or relaxed rows. */
+.table.dgrid .tr { grid-template-columns: var(--cols); min-width: var(--minw); column-gap: 20px; }
+.table.dgrid .tr > div { min-width: 0; overflow: hidden; }
+.ell { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+
+/* The heading row: a band, each heading sorts, a line between columns that turns orange when grabbed. */
+.table.dgrid .tr.th { background: #12141F; }
+.table.dgrid .tr.th > .th-cell { position: relative; display: flex; align-items: center; min-width: 0; align-self: stretch; overflow: visible; }
+.th-sort { display: inline-flex; align-items: center; gap: 4px; min-width: 0; max-width: 100%; overflow: hidden; padding: 0; border: 0; background: none; color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; white-space: nowrap; cursor: pointer; }
+.th-sort:hover, .th-sort.on { color: var(--title); }
+.th-sort.still { cursor: default; }
+.th-sort.still:hover { color: inherit; }
+.th-sort .arr { flex: none; width: 12px; height: 12px; }
+.th-sort .lbl { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.th-grip { position: absolute; top: 0; right: -15px; bottom: 0; z-index: 1; width: 10px; cursor: col-resize; }
+.th-grip::after { content: ""; position: absolute; top: 8px; bottom: 8px; left: 4.5px; width: 1px; background: #363B55; }
+.th-grip:hover::after { top: 4px; bottom: 4px; left: 3.5px; width: 3px; border-radius: 2px; background: var(--accent); }
+body.col-dragging, body.col-dragging * { cursor: col-resize !important; user-select: none; }
+.table.dgrid .tr > .lead { display: grid; place-items: center; align-self: stretch; overflow: visible; }
+.table.dgrid .tr.th > .lead { position: relative; }
+.table.dgrid .tr.th > .lead::after { content: ""; position: absolute; top: 8px; right: -10.5px; bottom: 8px; width: 1px; background: #363B55; }
+.table.dgrid .tr-tail { display: flex; justify-content: flex-end; }
+
+/* While a column is fitted to what's in it (double-click its edge), nothing is cut short. */
+.dgrid.measuring .tr > div, .dgrid.measuring .tr > div *, .dgrid.measuring .th-sort .lbl { overflow: visible !important; max-width: none !important; text-overflow: clip !important; }
+
+/* Compact rows: one line each, joined like a table. Relaxed rows are taller. */
+.table.dgrid.compact { gap: 0; }
+.table.dgrid.compact .tr { min-height: 38px; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: none; }
+.table.dgrid.compact .tr.th { min-height: 34px; border-bottom-color: var(--line-strong); background: #12141F; }
+.table.dgrid.compact .tr:last-child { border-bottom: 0; }
+.table.dgrid .tr:not(.th):hover { background: #151827; }
+.table.dgrid.relaxed:not(.drows) .tr:not(.th) { min-height: 54px; }
+
+/* Columns: Compact or Relaxed at the top, then a tick for each column. */
+.gear-menu.col-menu { position: fixed; inset: auto; width: 270px; max-height: min(560px, 80vh); margin: 0; overflow-y: auto; }
+.col-check { cursor: pointer; }
+.col-check input { flex: none; margin: 0; }
+.col-dens { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px 12px 18px; border-bottom: 1px solid var(--line); }
+.col-dens > span { color: var(--title); font-size: 13px; font-weight: 700; }
+.col-dens .seg button { height: 28px; padding: 0 12px; font-size: 12.5px; }
+
+/* Columns at the end of the heading row, for a grid with no toolbar. */
+.gcols { display: grid; place-items: center; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 7px; background: none; color: #8B90A5; }
+.gcols:hover { background: #1A1D2B; color: #fff; }
+.gcols svg { width: 15px; height: 15px; }
+/* It stays in reach at the right edge when the grid scrolls sideways. */
+.table.dgrid .tr.th > .tr-tail:has(.gcols) { position: sticky; right: 0; z-index: 2; background: #12141F; }

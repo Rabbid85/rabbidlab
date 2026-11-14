@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.134', [
+    'Every table works like the Users list now: Domain settings, AD audit, Recycle Bin, the Attribute browser, Seats and Signed in now all sort by a heading, resize and fit columns, pick columns and switch between Compact and Relaxed rows.',
+    'Hints and tables each come from one shared file now, so they look and behave the same everywhere.']],
   ['1.1.133', [
     'Domain settings has its own place in the left menu under Directory, with its own red dot, instead of sitting in the Active Directory list.']],
   ['1.1.132', [
@@ -1345,29 +1348,59 @@ const RELEASE_NOTES = [
     $('rail-seats').textContent = n.online || '';
     $('seats-dot').hidden = !n.waiting;
     const shown = computers.filter((c) => seatFilter === 'all' || (seatFilter === 'behind' ? c.behind : stateOf(c) === seatFilter));
-    $('seats-table').innerHTML = '<div class="tr th"><span>State</span><span>Computer</span><span>Signed in to Windows</span><span>Client</span><span>Address</span><span>Last seen</span><span></span></div>'
-      + (shown.length ? shown.map((c) => {
-        const st = stateOf(c);
-        return `<div class="tr" data-client="${esc(c.id)}"><span class="state ${st}">${STATE[st]}</span>`
-          + `<div><b>${esc(c.computer)}</b><small>${esc(c.uninstalling ? 'Uninstalling its client' : c.removalUntil ? `Uninstall allowed until ${new Date(c.removalUntil).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : c.os || '')}</small></div>`
-          + (c.user ? `<span>${esc(c.user)}</span>` : '<span class="nobody">Nobody</span>')
-          + `<span class="${c.behind ? 'old' : ''}">${esc(c.version || '?')}</span>`
-          + `<span class="mono muted">${esc(c.address || '')}</span><span class="muted">${esc(ago(c.lastSeen))}</span>`
-          + `<span class="acts">${st === 'waiting' && can.has('seats.approve') ? '<button type="button" class="small primary" data-approve>Let in</button>' : ''}`
-          + `${st !== 'waiting' && can.has('seats.remove') ? '<button type="button" class="small quiet" data-uninstall>Uninstall</button>' : ''}`
-          + `${can.has('seats.remove') ? '<button type="button" class="small quiet" data-forget>Remove</button>' : ''}</span></div>`;
-      }).join('') : `<div class="empty">${computers.length ? 'None of the computers are like that right now.' : `No computers yet. Add computers to give people the ${esc(product)} client.`}</div>`);
+    seatsEmpty = computers.length ? 'None of the computers are like that right now.' : `No computers yet. Add computers to give people the ${esc(product)} client.`;
+    seatsGrid().draw(shown);
   };
+  // Seats and Signed in now are data grids (grid.js), made the first time they're drawn.
+  const ms = (iso) => (iso ? new Date(iso).getTime() : 0);
+  let seatsEmpty = '';
+  let seatsG = null;
+  const seatsGrid = () => (seatsG ||= window.RabbidLab.grid({
+    el: $('seats-table'),
+    key: 'seats',
+    headButton: true,
+    cols: [
+      { key: 'state', label: 'State', w: 90, on: true, get: (c) => ({ waiting: 0, online: 1, offline: 2 })[stateOf(c)], cell: (c) => `<span class="state ${stateOf(c)}">${STATE[stateOf(c)]}</span>` },
+      { key: 'computer', label: 'Computer', w: 200, fixed: true, get: (c) => c.computer,
+        cell: (c) => `<b>${esc(c.computer)}</b><small>${esc(c.uninstalling ? 'Uninstalling its client' : c.removalUntil ? `Uninstall allowed until ${new Date(c.removalUntil).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : c.os || '')}</small>` },
+      { key: 'user', label: 'Signed in to Windows', w: 170, on: true, get: (c) => c.user, cell: (c) => (c.user ? `<span class="ell">${esc(c.user)}</span>` : '<span class="nobody">Nobody</span>') },
+      { key: 'version', label: 'Client', w: 80, on: true, get: (c) => c.version, cell: (c) => `<span class="${c.behind ? 'old' : ''}">${esc(c.version || '?')}</span>` },
+      { key: 'address', label: 'Address', w: 130, on: true, get: (c) => c.address, cell: (c) => `<span class="mono muted ell">${esc(c.address || '')}</span>` },
+      { key: 'lastSeen', label: 'Last seen', w: 100, on: true, get: (c) => ms(c.lastSeen), cell: (c) => `<span class="muted">${esc(ago(c.lastSeen))}</span>` },
+      { key: 'os', label: 'Windows', w: 200, get: (c) => c.os },
+    ],
+    tail: { w: 190, cell: (c) => { const st = stateOf(c); return `<span class="acts">${st === 'waiting' && can.has('seats.approve') ? '<button type="button" class="small primary" data-approve>Let in</button>' : ''}`
+      + `${st !== 'waiting' && can.has('seats.remove') ? '<button type="button" class="small quiet" data-uninstall>Uninstall</button>' : ''}`
+      + `${can.has('seats.remove') ? '<button type="button" class="small quiet" data-forget>Remove</button>' : ''}</span>`; } },
+    row: (c) => ` data-client="${esc(c.id)}"`,
+    empty: () => seatsEmpty,
+    redraw: () => drawSeats(),
+  }));
+  let sessionsNow = [];
+  let sessionsG = null;
+  // Each person's roles, highest first, without User when there's more: everyone has that.
+  const rolesOf = (s) => (s.roles.length > 1 ? s.roles.filter((r) => r.id !== 'user') : s.roles);
+  const sessionsGrid = () => (sessionsG ||= window.RabbidLab.grid({
+    el: $('sessions-table'),
+    key: 'sessions',
+    headButton: true,
+    cols: [
+      { key: 'person', label: 'Person', w: 180, fixed: true, get: (s) => s.name || s.username, cell: (s) => `<b>${esc(s.name || s.username)}</b><small>${esc(s.username)}</small>` },
+      { key: 'roles', label: 'Roles', w: 160, on: true, get: (s) => rolesOf(s).map((r) => r.name).join(', '), cell: (s) => `<span class="chips-in">${rolesOf(s).map(chip).join('')}</span>` },
+      { key: 'using', label: 'Using', w: 190, on: true, get: (s) => s.device, cell: (s) => `<span class="ell">${esc(s.device)}</span><small>${s.remembered ? 'Kept signed in' : 'Until the page closes'}</small>` },
+      { key: 'address', label: 'Address', w: 130, on: true, get: (s) => s.address, cell: (s) => `<span class="mono muted ell">${esc(s.address || '')}</span>` },
+      { key: 'started', label: 'Signed in', w: 140, on: true, get: (s) => ms(s.started), cell: (s) => `<span class="muted">${esc(when(s.started))}</span>` },
+      { key: 'lastSeen', label: 'Last seen', w: 100, on: true, get: (s) => ms(s.lastSeen), cell: (s) => `<span class="muted">${esc(ago(s.lastSeen))}</span>` },
+    ],
+    tail: { w: 100, cell: (s) => `<span class="acts">${s.current ? '<span class="you">You, here</span>'
+      : s.username === me || can.has('sessions.signout') ? '<button type="button" class="small quiet" data-end>Sign out</button>' : ''}</span>` },
+    row: (s) => ` data-session="${esc(s.id)}"`,
+    empty: () => 'Nobody is signed in.',
+    redraw: () => drawSessions(sessionsNow),
+  }));
   const drawSessions = (list) => {
-    // Each person's roles, highest first, without User when there's more: everyone has that.
-    const roles = (s) => (s.roles.length > 1 ? s.roles.filter((r) => r.id !== 'user') : s.roles);
-    $('sessions-table').innerHTML = '<div class="tr th sess"><span>Person</span><span>Roles</span><span>Using</span><span>Address</span><span>Signed in</span><span>Last seen</span><span></span></div>'
-      + list.map((s) => `<div class="tr sess" data-session="${esc(s.id)}"><div><b>${esc(s.name || s.username)}</b><small>${esc(s.username)}</small></div>`
-        + `<span class="chips-in">${roles(s).map(chip).join('')}</span>`
-        + `<div><span>${esc(s.device)}</span><small>${s.remembered ? 'Kept signed in' : 'Until the page closes'}</small></div>`
-        + `<span class="mono muted">${esc(s.address || '')}</span><span class="muted">${esc(when(s.started))}</span><span class="muted">${esc(ago(s.lastSeen))}</span>`
-        + `<span class="acts">${s.current ? '<span class="you">You, here</span>'
-          : s.username === me || can.has('sessions.signout') ? '<button type="button" class="small quiet" data-end>Sign out</button>' : ''}</span></div>`).join('');
+    sessionsNow = list;
+    sessionsGrid().draw(list);
     paint($('sessions-table'));
   };
   const seats = async () => {
@@ -2595,62 +2628,7 @@ const RELEASE_NOTES = [
     if (sub === 'address') consoleAddress();
   });
 
-  // Hints: one box in the console's look for data-tip, shown a quarter of a second after the pointer stops on it (or at
-  // once with the keyboard), under the element or over it where there's no room, kept inside the window. A title
-  // anywhere becomes a data-tip the first time the pointer meets it, so the browser's own grey box never shows.
-  const tipBox = document.createElement('div');
-  tipBox.className = 'tipbox';
-  tipBox.setAttribute('role', 'tooltip');
-  let tipFor = null;
-  let tipTimer = null;
-  const tipOf = (el) => {
-    const t = el?.closest?.('[data-tip], [title]');
-    if (t?.hasAttribute('title')) {
-      const text = t.getAttribute('title');
-      t.removeAttribute('title');
-      if (text) {
-        t.dataset.tip = text;
-        if (!t.getAttribute('aria-label') && !t.textContent.trim()) t.setAttribute('aria-label', text);
-      }
-    }
-    return t?.dataset.tip ? t : null;
-  };
-  const hideTip = () => {
-    clearTimeout(tipTimer);
-    tipFor = null;
-    tipBox.classList.remove('show');
-  };
-  // A tip that only repeats what's on screen shows when the text is cut off.
-  const clipped = (t) => [t, ...t.querySelectorAll('*')].some((e) => e.scrollWidth > e.clientWidth + 1);
-  const showTip = (t) => {
-    if (t.dataset.tip.trim() === t.textContent.trim() && !clipped(t)) return;
-    // Inside an open dialog or popover it has to be in there too, or the top layer covers it.
-    const host = t.closest('dialog[open], :popover-open') || document.body;
-    if (tipBox.parentElement !== host) host.append(tipBox);
-    tipBox.textContent = t.dataset.tip;
-    const r = t.getBoundingClientRect();
-    const w = tipBox.offsetWidth;
-    const h = tipBox.offsetHeight;
-    const up = r.bottom + 8 + h > innerHeight - 8;
-    tipBox.classList.toggle('up', up);
-    tipBox.style.setProperty('left', `${Math.max(8, Math.min(r.left + r.width / 2 - w / 2, innerWidth - w - 8))}px`);
-    tipBox.style.setProperty('top', `${up ? Math.max(8, r.top - h - 8) : r.bottom + 8}px`);
-    tipBox.classList.add('show');
-  };
-  const tipLater = (t, wait) => {
-    if (t === tipFor) return;
-    hideTip();
-    if (!t) return;
-    tipFor = t;
-    tipTimer = setTimeout(() => { if (tipFor === t && t.isConnected) showTip(t); }, wait);
-  };
-  document.body.append(tipBox);
-  document.addEventListener('pointerover', (e) => tipLater(tipOf(e.target), 250));
-  document.addEventListener('focusin', (e) => tipLater(e.target.matches?.(':focus-visible') ? tipOf(e.target) : null, 0));
-  ['pointerdown', 'scroll', 'focusout', 'keydown'].forEach((ev) => document.addEventListener(ev, hideTip, true));
-  window.addEventListener('blur', hideTip);
-
-  // What the other scripts use.
+  // What the other scripts use. Hints are tips.js and data grids are grid.js.
   window.RabbidLab = { app: () => product, $, esc, svg, say, initials, when, daysAgo, send, get, keep, forget, has, paint, where, viewAs, place, popups, option, dropdown, sure, copy, busy, groupTools, groupFilter, squares, squareSize, ping, skeleton, toast,
     palette: window.RabbidLabColours.roles, me: () => meInfo };
 })();

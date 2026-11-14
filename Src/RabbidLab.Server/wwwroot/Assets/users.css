@@ -81,9 +81,6 @@ button.danger.solid:hover { background: #DB4860; }
 .adt .tr { min-width: 760px; cursor: pointer; }
 .adt .tr.th { cursor: default; }
 .adt .tr:not(.th):hover, .adt .tr:not(.th):focus-visible { background: #151827; outline: none; }
-.adt.users .tr { grid-template-columns: minmax(200px, 1.5fr) minmax(130px, 1fr) minmax(120px, 1fr) 110px 150px; }
-.adt.groups .tr { grid-template-columns: minmax(220px, 1.8fr) 150px 110px 90px minmax(140px, 1fr); }
-.adt.computers .tr { grid-template-columns: minmax(200px, 1.4fr) minmax(170px, 1.2fr) minmax(140px, 1fr) 110px 150px; }
 .adt .tr > div { min-width: 0; }
 .adt .who .pic { width: 30px; height: 30px; }
 .two { min-width: 0; }
@@ -104,9 +101,6 @@ button.danger.solid:hover { background: #DB4860; }
 .pic.small svg { width: 14px; height: 14px; }
 
 /* Domain settings, the AD audit and the Recycle Bin. */
-.adt.domain .tr { grid-template-columns: minmax(240px, 1.6fr) minmax(150px, 1.2fr) minmax(150px, 1fr) 160px; }
-.adt.audit .tr { grid-template-columns: 110px 100px minmax(200px, 1.4fr) minmax(140px, 1fr) minmax(160px, 1.2fr); }
-.adt.recycle .tr { grid-template-columns: minmax(220px, 1.6fr) 110px minmax(160px, 1.2fr) 130px; }
 .ubadge.grey + .uchip, .ubadge + .uchip { margin-left: 2px; }
 .dir-banner { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 12px; padding: 11px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); font-size: 13.5px; }
 .dir-banner > svg { flex: none; width: 17px; height: 17px; color: var(--accent-soft); }
@@ -141,7 +135,7 @@ button.danger.solid:hover { background: #DB4860; }
 .attrs-side a svg:last-child:not(:first-child) { width: 13px; height: 13px; margin-left: auto; color: #3A3E55; }
 #at-items { display: flex; flex-direction: column; gap: 2px; max-height: 70vh; overflow-y: auto; }
 .at-find { margin-bottom: 10px; }
-.table.attrs .tr { grid-template-columns: minmax(130px, .55fr) minmax(160px, 1.3fr) 110px 30px; min-width: 0; min-height: 0; align-items: start; padding-top: 7px; padding-bottom: 7px; }
+.table.attrs .tr:not(.th) { align-items: start; padding-top: 7px; padding-bottom: 7px; }
 /* Every attribute it may have: the ones not set are dimmed (Hide empty takes them away); the … menu shows on the row pointed at. */
 .table.attrs .tr.unset .mono { color: #5E6380; }
 .table.attrs .ty { color: #6D7290; font-size: 12.5px; }
@@ -330,19 +324,15 @@ button.danger.solid:hover { background: #DB4860; }
 .gp-list .tick span { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 
 
-/* Users, Groups and Computers: the columns chosen, at the widths set (users.js puts them in --cols), sideways scroll when wide. */
-.adt.picks .tr { grid-template-columns: var(--cols); min-width: var(--minw); }
-.adt .th-cell { position: relative; display: flex; align-items: center; min-width: 0; align-self: stretch; }
-.th-sort { display: inline-flex; align-items: center; gap: 4px; min-width: 0; max-width: 100%; overflow: hidden; padding: 0; border: 0; background: none; color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; white-space: nowrap; cursor: pointer; }
-.th-sort:hover, .th-sort.on { color: var(--title); }
-.th-sort .arr { flex: none; width: 12px; height: 12px; }
-.th-grip { position: absolute; top: 7px; right: -8px; bottom: 7px; z-index: 1; width: 10px; cursor: col-resize; }
-.th-grip::after { content: ""; position: absolute; top: 0; bottom: 0; left: 4px; width: 2px; border-radius: 2px; background: var(--line-strong); opacity: 0; }
-.adt .tr.th:hover .th-grip::after { opacity: 1; }
-.th-grip:hover::after { background: var(--accent); }
-body.col-dragging, body.col-dragging * { cursor: col-resize !important; user-select: none; }
-.ell { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+/* The AD lists are data grids (grid.js, grid.css); these are their own touches. */
 .adt .who b.ell { color: var(--title); font-weight: 600; }
+.adt.dgrid .tr.th { border-radius: 8px 8px 0 0; }
+.adt.dgrid.compact .tr:last-child { border-bottom: 1px solid var(--line); }
+.adt.dgrid.compact .tr.picked { background: #161A2B; }
+.adt.dgrid.compact .who { gap: 9px; }
+.adt.dgrid.compact .who .pic { width: 24px; height: 24px; font-size: 10px; }
+.adt.dgrid.compact .who .pic svg { width: 14px; height: 14px; }
+.adt.dgrid.compact .at-more { width: 26px; height: 26px; }
 
 /* The toolbar's Filter, Columns and Actions, with how many conditions or ticked rows. */
 .dbar .cnt { display: inline-grid; min-width: 19px; height: 19px; place-items: center; padding: 0 6px; border-radius: 999px; background: var(--accent); color: #fff; font-size: 11px; font-weight: 700; }
@@ -360,11 +350,6 @@ body.col-dragging, body.col-dragging * { cursor: col-resize !important; user-sel
 .dnow-filter[hidden] { display: none; }
 .dnow-filter svg { flex: none; width: 14px; height: 14px; align-self: center; }
 .dnow-filter span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-
-/* Columns: the gear menu's rows with a tick each. */
-.gear-menu.col-menu { position: fixed; inset: auto; width: 270px; max-height: min(560px, 80vh); margin: 0; overflow-y: auto; }
-.col-check { cursor: pointer; }
-.col-check input { flex: none; margin: 0; }
 
 /* Filter: a row per condition (field, test, value, remove). */
 .flt-join select { height: 30px; margin: 0 4px; padding: 0 8px; border: 1px solid var(--line-strong); border-radius: 7px; background-color: #0C0E17; color: var(--title); font: inherit; font-size: 13px; }
@@ -430,48 +415,6 @@ dialog.drawer::backdrop { background: rgba(5, 6, 10, .55); backdrop-filter: blur
 .dw-list .mrow:hover .dw-x { opacity: 1; }
 .dw-empty { margin: 4px 0 10px; }
 .dw-dn { margin: 14px 0 0; color: #5E6380; font: 11.5px Consolas, "Cascadia Mono", monospace; overflow-wrap: anywhere; }
-
-/* Data grid behaviour: each cell keeps to its column, and a heading or value too long for it ends in …. */
-.adt.picks .tr > div { overflow: hidden; }
-.th-sort .lbl { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-/* While a column is being fitted to its contents (double-click on its edge), nothing is cut short. */
-.adt.measuring .tr > div, .adt.measuring .tr > div *, .adt.measuring .th-sort .lbl { overflow: visible !important; max-width: none !important; text-overflow: clip !important; }
-
-/* Compact rows (the default): one line each, joined like a table. Relaxed keeps the taller card rows. */
-.adt.picks.compact.drows { gap: 0; }
-.adt.picks.compact .tr { min-height: 38px; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: none; }
-.adt.picks.compact .tr.th { min-height: 34px; border-bottom-color: var(--line-strong); }
-.adt.picks.compact .tr:not(.th):hover { background: #151827; }
-.adt.picks.compact .tr.picked { background: #161A2B; }
-.adt.picks.compact .who { gap: 9px; }
-.adt.picks.compact .who .pic { width: 24px; height: 24px; font-size: 10px; }
-.adt.picks.compact .who .pic svg { width: 14px; height: 14px; }
-.adt.picks.compact .at-more { width: 26px; height: 26px; }
-
-/* Rows: Compact or Relaxed, at the top of the Columns menu. */
-.col-dens { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px 12px 18px; border-bottom: 1px solid var(--line); }
-.col-dens > span { color: var(--title); font-size: 13px; font-weight: 700; }
-.col-dens .seg button { height: 28px; padding: 0 12px; font-size: 12.5px; }
-
-/* The heading row as a header band, with a line between every column (where it starts and stops), as spreadsheets show
-   it; the line turns orange when grabbed to resize. */
-.adt.picks .tr.th { background: #12141F; border-radius: 8px 8px 0 0; }
-.adt.picks.compact .tr.th { border-bottom-color: var(--line-strong); }
-.adt.picks .th-grip { top: 0; right: -11px; bottom: 0; width: 10px; }
-.adt.picks .tr.th > .th-cell { overflow: visible; }
-.adt.picks .th-grip::after { top: 8px; bottom: 8px; left: 5px; width: 1px; border-radius: 0; background: #363B55; opacity: 1; }
-.adt.picks .th-grip:hover::after, body.col-dragging .adt.picks .th-grip::after { top: 4px; bottom: 4px; left: 4px; width: 3px; border-radius: 2px; background: var(--accent); }
-.adt.picks .tr.th .tk { position: relative; }
-.adt.picks .tr.th .tk::after { content: ""; position: absolute; top: 8px; right: -6px; bottom: 8px; width: 1px; background: #363B55; }
-
-/* More room between columns, with the line in the middle of it, clear of the names on both sides. Only the line being
-   grabbed (or dragged) turns orange. */
-.adt.picks .tr { column-gap: 20px; }
-.adt.picks .th-grip { right: -15px; width: 10px; }
-.adt.picks .th-grip::after { left: 4.5px; }
-.adt.picks .th-grip:hover::after { left: 3.5px; }
-body.col-dragging .adt.picks .th-grip:not(:hover)::after { top: 8px; bottom: 8px; left: 4.5px; width: 1px; border-radius: 0; background: #363B55; }
-.adt.picks .tr.th .tk::after { right: -10.5px; }
 
 /* The side panel doesn't block the page: no dimming, the list stays usable, and the open row is marked. */
 dialog.drawer:not(:modal) { z-index: 60; }

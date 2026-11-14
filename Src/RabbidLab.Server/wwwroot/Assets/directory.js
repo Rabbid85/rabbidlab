@@ -158,13 +158,28 @@
     $('at-line').textContent = `${object.attributes.length} attributes, ${withValue} with a value`;
     $('at-find-row').hidden = false;
     $('at-tools').hidden = false;
-    $('at-table').innerHTML = '<div class="tr th"><span>Attribute</span><span>Value</span><span>Type</span><span></span></div>'
-      + rows.map((a) => `<div class="tr${a.set ? '' : ' unset'}" data-attr="${esc(a.name)}"><span class="mono">${esc(a.name)}</span>`
-        + `<div class="vals">${a.set ? a.values.map((v) => `<span${a.hidden ? ' class="muted"' : ''}>${esc(v)}</span>`).join('') : '<span class="muted">Not set</span>'}</div>`
-        + `<span class="ty">${esc(a.type)}${a.values.length > 1 ? ` · ${a.values.length}` : ''}</span>`
-        + `<button type="button" class="at-more" data-attr-menu="${esc(a.name)}" data-tip="More" aria-label="More for ${esc(a.name)}">${svg('dots')}</button></div>`).join('')
-      + (rows.length ? '' : `<div class="empty">${find ? 'No attribute matches.' : 'No attribute has a value.'}</div>`);
+    attrEmpty = find ? 'No attribute matches.' : 'No attribute has a value.';
+    attrGrid.draw(rows);
   };
+  // The attributes as a data grid (grid.js), with a menu at the end of each row.
+  let attrEmpty = '';
+  const attrGrid = R.grid({
+    el: $('at-table'),
+    key: 'attrs',
+    cols: [
+      { key: 'name', label: 'Attribute', w: 220, fixed: true, get: (a) => a.name, cell: (a) => `<span class="mono ell">${esc(a.name)}</span>` },
+      { key: 'value', label: 'Value', w: 420, on: true, get: (a) => a.values.join(' '),
+        cell: (a) => `<div class="vals">${a.set ? a.values.map((v) => `<span${a.hidden ? ' class="muted"' : ''}>${esc(v)}</span>`).join('') : '<span class="muted">Not set</span>'}</div>` },
+      { key: 'type', label: 'Type', w: 150, on: true, get: (a) => a.type, cell: (a) => `<span class="ty ell">${esc(a.type)}${a.values.length > 1 ? ` · ${a.values.length}` : ''}</span>` },
+      { key: 'count', label: 'Values', w: 80, get: (a) => a.values.length },
+    ],
+    tail: { w: 30, cell: (a) => `<button type="button" class="at-more" data-attr-menu="${esc(a.name)}" data-tip="More" aria-label="More for ${esc(a.name)}">${svg('dots')}</button>` },
+    row: (a) => ` data-attr="${esc(a.name)}"`,
+    rowClass: (a) => (a.set ? '' : 'unset'),
+    empty: () => attrEmpty,
+    redraw: () => drawObject(),
+  });
+  $('at-cols').addEventListener('click', () => attrGrid.menu($('at-cols')));
 
   // Copying: the clipboard, or a box to copy from where the browser won't (plain HTTP).
   const copyText = async (text, what) => {
