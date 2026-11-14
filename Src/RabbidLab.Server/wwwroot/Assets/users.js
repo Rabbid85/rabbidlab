@@ -349,7 +349,7 @@
     days: [['olderThan', 'more than'], ['within', 'in the last'], ['empty', 'never'], ['set', 'is set']],
     until: [['next', 'in the next'], ['past', 'has passed'], ['empty', 'never'], ['set', 'is set']],
     number: [['more', 'more than'], ['fewer', 'fewer than'], ['eq', 'exactly']],
-    yes: [['is', 'is']],
+    yes: [['is', 'is'], ['isNot', 'is not']],
   };
   const NO_VALUE = ['empty', 'set', 'past'];
   const fieldOf = (pageKey, key) => (AD[pageKey].fields || []).flatMap(([, items]) => items).find((f) => f.key === key);
@@ -365,7 +365,7 @@
     if (!f) return () => true;
     const values = listOf(r.value);
     const one = values[0];
-    if (!NO_VALUE.includes(r.op) && f.type !== 'yes' && (one === undefined || one === '')) return () => true;
+    if (!NO_VALUE.includes(r.op) && (one === undefined || one === '')) return () => true;
     const n = Number(one);
     switch (f.type) {
       case 'text': {
@@ -394,11 +394,11 @@
         if (r.op === 'past') return (x) => !!f.get(x) && dayDiff(f.get(x)) > 0;
         return (x) => !!f.get(x) && dayDiff(f.get(x)) <= 0 && -dayDiff(f.get(x)) <= n;
       case 'number': return r.op === 'more' ? (x) => f.get(x) > n : r.op === 'fewer' ? (x) => f.get(x) < n : (x) => f.get(x) === n;
-      case 'yes': return (x) => !!f.get(x) === (one !== false && one !== 'false');
+      case 'yes': return (x) => (!!f.get(x) === (one !== false && one !== 'false')) === (r.op !== 'isNot');
       default: return () => true;
     }
   };
-  const ruleFilled = (pageKey, r) => { const f = fieldOf(pageKey, r.field); return !!f && (f.type === 'yes' || NO_VALUE.includes(r.op) || listOf(r.value).some((v) => v !== '')); };
+  const ruleFilled = (pageKey, r) => { const f = fieldOf(pageKey, r.field); return !!f && (NO_VALUE.includes(r.op) || listOf(r.value).some((v) => v !== '')); };
   const filterCount = (pageKey = adPage) => (filterOn[pageKey]?.rules || []).filter((r) => ruleFilled(pageKey, r)).length;
   const filterTest = (pageKey, flt) => {
     const tests = (flt?.rules || []).filter((r) => ruleFilled(pageKey, r)).map((r) => ruleTest(pageKey, r));
@@ -411,7 +411,7 @@
     const f = fieldOf(pageKey, r.field);
     const op = (OPS[f.type].find(([k]) => k === r.op) || ['', ''])[1];
     const v = listOf(r.value);
-    if (f.type === 'yes') return `${f.label}: ${v[0] === false || v[0] === 'false' ? 'no' : 'yes'}`;
+    if (f.type === 'yes') return `${f.label} ${op} ${v[0] === false || v[0] === 'false' ? 'no' : 'yes'}`;
     if (NO_VALUE.includes(r.op)) return `${f.label} ${op}`;
     if (f.type === 'days') return `${f.label} ${op} ${v[0]} days${r.op === 'olderThan' ? ' ago' : ''}`;
     if (f.type === 'until') return `${f.label} ${op} ${v[0]} days`;
@@ -474,6 +474,7 @@
     const picks = !!picked[adPage];
     ['dir-filter', 'dir-cols', 'dir-act'].forEach((id) => { $(id).hidden = !picks; });
     const nf = filterCount();
+    $('dir-filter-x').hidden = !picks || !nf;
     $('dir-filter').classList.toggle('on', nf > 0);
     $('dir-filter').querySelector('.cnt').hidden = !nf;
     $('dir-filter').querySelector('.cnt').textContent = String(nf);
@@ -496,7 +497,7 @@
       setTracks(cols);
       $('dir-table').innerHTML = `<div class="tr th"><label class="tk"><input type="checkbox" data-tick-all aria-label="Select all"></label>`
         + cols.map((c) => `<div class="th-cell"><button type="button" class="th-sort${c.key === s.key ? ' on' : ''}" data-sort="${c.key}" title="${esc(c.label)}"><span class="lbl">${esc(c.label)}</span>`
-          + `${c.key === s.key ? svg(s.dir > 0 ? 'chevron-up' : 'chevron-down', 'arr') : ''}</button><i class="th-grip" data-grip="${c.key}" title="Drag to resize; double-click for the default width"></i></div>`).join('')
+          + `${c.key === s.key ? svg(s.dir > 0 ? 'chevron-up' : 'chevron-down', 'arr') : ''}</button><i class="th-grip" data-grip="${c.key}" data-tip="Drag to resize"></i></div>`).join('')
         + '<span></span></div>'
         + (!rows.length ? none : rows.map((x, i) => `<div class="tr" tabindex="0" data-i="${i}">`
           + `<label class="tk"><input type="checkbox" data-tick="${esc(keyOf(x))}" aria-label="Select ${esc(x.name || x.username)}"></label>`
@@ -716,8 +717,8 @@
 
   // --- Filter: conditions, each a field, a test and a value; all of them or any ----------------------------------
   let draft = null; // { page, join, rules } while the window is open
-  const firstField = (pageKey) => AD[pageKey].fields[0][1][0];
-  const blankRule = (pageKey) => { const f = firstField(pageKey); return { field: f.key, op: OPS[f.type][0][0], value: f.type === 'yes' ? true : '' }; };
+  // A new condition starts with nothing picked.
+  const blankRule = () => ({ field: '', op: '', value: '' });
   // What a choice can be: the values the list holds, for the box's suggestions.
   const choicesFor = (pageKey, f) => {
     const all = (lists[pageKey] || []).flatMap((x) => listOf(f.get(x))).filter(Boolean).map(String);
@@ -725,7 +726,12 @@
   };
   const valueHtml = (r, f, i) => {
     const v = listOf(r.value);
-    if (f.type === 'yes') return `<select data-r-val="${i}" aria-label="Value"><option value="true"${v[0] === false || v[0] === 'false' ? '' : ' selected'}>Yes</option><option value="false"${v[0] === false || v[0] === 'false' ? ' selected' : ''}>No</option></select>`;
+    if (f.type === 'yes') {
+      const no = v[0] === false || v[0] === 'false';
+      const yes = v[0] === true || v[0] === 'true';
+      return `<select data-r-val="${i}" aria-label="Value">${yes || no ? '' : '<option value="" selected disabled>Pick one</option>'}`
+        + `<option value="true"${yes ? ' selected' : ''}>Yes</option><option value="false"${no ? ' selected' : ''}>No</option></select>`;
+    }
     if (NO_VALUE.includes(r.op)) return '<span class="flt-none"></span>';
     if (f.type === 'days' || f.type === 'until' || f.type === 'number') {
       const after = f.type === 'number' ? '' : f.type === 'days' && r.op === 'olderThan' ? `days ago${f.never ? ', or never' : ''}` : 'days';
@@ -741,11 +747,13 @@
     const p = AD[draft.page];
     $('flt-join').value = draft.join;
     $('flt-rules').innerHTML = draft.rules.map((r, i) => {
-      const f = fieldOf(draft.page, r.field) || firstField(draft.page);
-      return `<div class="flt-row"><select data-r-field="${i}" aria-label="Field">${p.fields.map(([group, items]) => `<optgroup label="${esc(group)}">`
-          + `${items.map((x) => `<option value="${x.key}"${x.key === f.key ? ' selected' : ''}>${esc(x.label)}</option>`).join('')}</optgroup>`).join('')}</select>`
-        + `<select data-r-op="${i}" aria-label="Test"${OPS[f.type].length < 2 ? ' disabled' : ''}>${OPS[f.type].map(([k, label]) => `<option value="${k}"${k === r.op ? ' selected' : ''}>${esc(label)}</option>`).join('')}</select>`
-        + `<div class="flt-val">${valueHtml(r, f, i)}</div>`
+      const f = fieldOf(draft.page, r.field);
+      return `<div class="flt-row"><select data-r-field="${i}" aria-label="Field">${f ? '' : '<option value="" selected disabled>Pick a field</option>'}`
+        + `${p.fields.map(([group, items]) => `<optgroup label="${esc(group)}">`
+          + `${items.map((x) => `<option value="${x.key}"${x.key === f?.key ? ' selected' : ''}>${esc(x.label)}</option>`).join('')}</optgroup>`).join('')}</select>`
+        + (f ? `<select data-r-op="${i}" aria-label="Test">${OPS[f.type].map(([k, label]) => `<option value="${k}"${k === r.op ? ' selected' : ''}>${esc(label)}</option>`).join('')}</select>`
+          : `<select data-r-op="${i}" aria-label="Test" disabled><option value="" selected>Test</option></select>`)
+        + `<div class="flt-val">${f ? valueHtml(r, f, i) : '<span class="flt-none"></span>'}</div>`
         + `<button type="button" class="at-more flt-x" data-r-del="${i}" data-tip="Remove" aria-label="Remove this condition">${svg('x')}</button></div>`;
     }).join('') || '<p class="muted flt-empty">No conditions. Add one to narrow the list.</p>';
     drawDraftCount();
@@ -760,11 +768,11 @@
   };
   $('dir-filter').addEventListener('click', () => {
     const now = filterOn[adPage];
-    draft = { page: adPage, join: now?.join || 'all', rules: now?.rules?.length ? JSON.parse(JSON.stringify(now.rules)) : [blankRule(adPage)] };
+    draft = { page: adPage, join: now?.join || 'all', rules: now?.rules?.length ? JSON.parse(JSON.stringify(now.rules)) : [blankRule()] };
     $('flt-title').textContent = `Filter ${AD[adPage].noun[1]}`;
     drawDraft();
     $('flt-dialog').showModal();
-    $('flt-rules').querySelector('[data-r-val], [data-r-pick]')?.focus();
+    $('flt-rules').querySelector('[data-r-val], [data-r-pick], [data-r-field]')?.focus();
   });
   const addPick = (i, value) => {
     const r = draft.rules[i];
@@ -778,7 +786,7 @@
     const t = e.target;
     if (t.dataset.rField !== undefined) {
       const f = fieldOf(draft.page, t.value);
-      draft.rules[Number(t.dataset.rField)] = { field: f.key, op: OPS[f.type][0][0], value: f.type === 'yes' ? true : '' };
+      draft.rules[Number(t.dataset.rField)] = { field: f.key, op: OPS[f.type][0][0], value: '' };
       drawDraft();
     } else if (t.dataset.rOp !== undefined) {
       const r = draft.rules[Number(t.dataset.rOp)];
@@ -786,6 +794,7 @@
       drawDraft();
     } else if (t.dataset.rVal !== undefined) {
       draft.rules[Number(t.dataset.rVal)].value = t.tagName === 'SELECT' ? t.value === 'true' : t.value;
+      if (t.tagName === 'SELECT') t.querySelector('option[value=""]')?.remove(); // Pick one goes once picked
       drawDraftCount();
     } else if (t.dataset.rPick !== undefined) {
       addPick(Number(t.dataset.rPick), t.value);
@@ -823,7 +832,7 @@
   });
   $('flt-join').addEventListener('change', () => { draft.join = $('flt-join').value; drawDraftCount(); });
   $('flt-add').addEventListener('click', () => {
-    draft.rules.push(blankRule(draft.page));
+    draft.rules.push(blankRule());
     drawDraft();
     $('flt-rules').querySelectorAll('[data-r-field]')[draft.rules.length - 1]?.focus();
   });
@@ -840,11 +849,14 @@
     closeCard();
     drawAd();
   });
-  // Clear filter, on the line over the list.
-  $('dir-now').addEventListener('click', (e) => {
-    if (!e.target.closest('[data-filter-clear]')) return;
+  // Clear filter, beside Filter and on the line over the list.
+  const clearFilter = () => {
     delete filterOn[adPage];
     drawAd();
+  };
+  $('dir-filter-x').addEventListener('click', clearFilter);
+  $('dir-now').addEventListener('click', (e) => {
+    if (e.target.closest('[data-filter-clear]')) clearFilter();
   });
   // The page's columns for each row given, as a CSV download.
   const csvOf = (list, name) => {

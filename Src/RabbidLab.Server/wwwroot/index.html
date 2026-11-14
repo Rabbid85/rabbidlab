@@ -149,6 +149,7 @@
   <a href="#overview" data-page="overview" title="Overview" data-can="overview.view"><svg><use href="#i-overview"/></svg><span>Overview</span></a>
   <a href="#links" data-page="links" title="Links" data-can="links.view"><svg><use href="#i-link"/></svg><span>Links</span><small id="rail-links"></small><i class="rail-dot bad" id="links-dot" hidden></i></a>
   <a href="#sensors" data-page="sensors" title="Sensors" data-can="sensors.view"><svg><use href="#i-activity"/></svg><span>Sensors</span><i class="rail-dot bad" id="sensors-dot" hidden></i></a>
+  <p class="rail-label" data-can="ad.view ad.connect">Directory</p>
   <a href="#ad/users" data-page="ad" id="rail-dir" title="Active Directory" data-can="ad.view ad.connect"><svg><use href="#i-users"/></svg><span>Active Directory</span><i class="rail-dot bad" id="rail-dir-dot" hidden></i></a>
   <p class="rail-label" data-can="seats.view sessions.view access.view windows.view">Config</p>
   <a href="#seats" data-page="seats" title="Seats" data-can="seats.view sessions.view"><svg><use href="#i-monitor"/></svg><span>Seats</span><small id="rail-seats"></small><i class="rail-dot" id="seats-dot" hidden></i></a>
@@ -751,6 +752,7 @@
         <!-- Across the top of the list: its tabs, how it's sorted and laid out, and what can be done with it. -->
         <div class="dbar"><div class="tabs2" id="dir-tabs"></div><span class="grow"></span>
           <button type="button" class="small" id="dir-filter" aria-haspopup="dialog"><svg><use href="#i-filter"/></svg>Filter<b class="cnt" hidden></b></button>
+          <button type="button" class="small flt-off" id="dir-filter-x" data-tip="Clear filter" aria-label="Clear filter" hidden><svg><use href="#i-x"/></svg></button>
           <button type="button" class="small" id="dir-cols" aria-haspopup="menu"><svg><use href="#i-columns"/></svg>Columns</button>
           <button type="button" class="small" id="dir-act" aria-haspopup="menu" disabled><svg><use href="#i-menu"/></svg>Actions<b class="cnt" hidden></b><svg class="chev"><use href="#i-chevron-down"/></svg></button>
           <button type="button" class="small" id="dir-export"><svg><use href="#i-csv"/></svg>Export</button>

@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.131 (2026-11-13)
+
+- Hints are the consoles own dark box now and show after a quarter of a second, not the slow grey browser one. A hint that only repeats text you can already read stays hidden.
+- Active Directory has its own Directory heading in the left menu. Tick boxes are dark with an orange tick instead of white boxes.
+- Filter: a new condition starts blank, yes or no fields can be is or is not, and a Clear filter button sits on the end of Filter while one is on.
+
 ## 1.1.130 (2026-11-13)
 
 - The side panel no longer blocks the page: the list stays usable and clicking another row opens it in the panel. Each section has its own actions (Move, Rename, Set expiration, Reset password, Edit) and the password and security settings are switches. Protected and built-in accounts and groups can be changed too, with Active Directory refusing what is not allowed; only the password and sign-in of Rabbid Labs own account, and moving, disabling or deleting a domain controller, stay off.

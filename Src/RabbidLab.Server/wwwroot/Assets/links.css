@@ -172,7 +172,7 @@
 .ld-scroll { max-height: 330px; margin-top: 10px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #2A2D3E transparent; }
 .tr.ld-lr { grid-template-columns: 22px 28px minmax(0, 1.5fr) minmax(0, 1fr) 130px; min-width: 0; min-height: 44px; gap: 10px; }
 .tr.ld-lr.th { position: sticky; top: 0; z-index: 1; min-height: 34px; }
-.form .tr.ld-lr input { width: auto; height: auto; margin: 0; padding: 0; border: 0; accent-color: var(--accent); }
+.form .tr.ld-lr input { margin: 0; }
 .tr.ld-lr .lic { width: 28px; height: 28px; border-radius: 8px; }
 .tr.ld-lr .lic img { width: 20px; height: 20px; }
 .tr.ld-lr .lic.letter b { font-size: 13px; }

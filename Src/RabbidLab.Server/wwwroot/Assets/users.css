@@ -289,7 +289,7 @@ button.danger.solid:hover { background: #DB4860; }
 
 /* The Users list: a tick on the left, ⋯ on the right, and a bar over the list while some are selected. */
 .adt .tk { display: grid; place-items: center; align-self: stretch; cursor: pointer; }
-.adt .tk input { width: 15px; height: 15px; margin: 0; accent-color: var(--accent); cursor: pointer; }
+.adt .tk input { margin: 0; }
 .adt .tr.picked { background: #141827; }
 .adt .tr-more { display: flex; justify-content: flex-end; }
 .adt .tr-more .at-more { margin-top: 0; }
@@ -350,6 +350,11 @@ body.col-dragging, body.col-dragging * { cursor: col-resize !important; user-sel
 .dbar .small .chev { width: 12px; height: 12px; color: #8B90A5; }
 #dir-act:disabled { opacity: .45; cursor: default; }
 #dir-filter.on { border-color: var(--accent-line); color: var(--title); }
+/* Clear filter sits joined to Filter while one is on. */
+#dir-filter:has(+ #dir-filter-x:not([hidden])) { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+#dir-filter-x { margin-left: -10px; padding: 0 10px; border-left: 0; border-color: var(--accent-line); border-top-left-radius: 0; border-bottom-left-radius: 0; color: #8B90A5; }
+#dir-filter-x[hidden] { display: none; }
+#dir-filter-x:hover { color: var(--title); }
 .dnow-filter { display: inline-flex; align-items: center; gap: 8px; min-width: 0; color: var(--muted); font-size: 13px; }
 .dnow-filter[hidden] { display: none; }
 .dnow-filter svg { flex: none; width: 14px; height: 14px; align-self: center; }
@@ -358,7 +363,7 @@ body.col-dragging, body.col-dragging * { cursor: col-resize !important; user-sel
 /* Columns: the gear menu's rows with a tick each. */
 .gear-menu.col-menu { position: fixed; inset: auto; width: 270px; max-height: min(560px, 80vh); margin: 0; overflow-y: auto; }
 .col-check { cursor: pointer; }
-.col-check input { flex: none; width: 15px; height: 15px; margin: 0; accent-color: var(--accent); }
+.col-check input { flex: none; margin: 0; }
 
 /* Filter: a row per condition (field, test, value, remove). */
 .flt-join select { height: 30px; margin: 0 4px; padding: 0 8px; border: 1px solid var(--line-strong); border-radius: 7px; background-color: #0C0E17; color: var(--title); font: inherit; font-size: 13px; }
@@ -366,7 +371,7 @@ body.col-dragging, body.col-dragging * { cursor: col-resize !important; user-sel
 .flt-row { display: grid; grid-template-columns: 210px 150px minmax(0, 1fr) 28px; gap: 8px; align-items: start; }
 .flt-row select, .flt-row input[type="text"], .flt-num input { width: 100%; height: 36px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 8px; background-color: #0C0E17; color: var(--title); font: inherit; font-size: 13.5px; }
 .flt-row select:focus, .flt-row input:focus { outline: none; border-color: var(--accent-line); }
-.flt-row select:disabled { opacity: .7; }
+.flt-row select:disabled { opacity: .45; }
 .flt-num { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; white-space: nowrap; }
 .flt-num input { width: 96px; }
 .flt-tokens { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: 36px; padding: 4px 8px; border: 1px solid var(--line-strong); border-radius: 8px; background: #0C0E17; }

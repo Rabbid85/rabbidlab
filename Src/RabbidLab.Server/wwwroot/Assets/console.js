@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.131', [
+    'Hints are the consoles own dark box now and show after a quarter of a second, not the slow grey browser one. A hint that only repeats text you can already read stays hidden.',
+    'Active Directory has its own Directory heading in the left menu. Tick boxes are dark with an orange tick instead of white boxes.',
+    'Filter: a new condition starts blank, yes or no fields can be is or is not, and a Clear filter button sits on the end of Filter while one is on.']],
   ['1.1.130', [
     'The side panel no longer blocks the page: the list stays usable and clicking another row opens it in the panel. Each section has its own actions (Move, Rename, Set expiration, Reset password, Edit) and the password and security settings are switches. Protected and built-in accounts and groups can be changed too, with Active Directory refusing what is not allowed; only the password and sign-in of Rabbid Labs own account, and moving, disabling or deleting a domain controller, stay off.']],
   ['1.1.129', [
@@ -2578,6 +2582,61 @@ const RELEASE_NOTES = [
     }
     if (sub === 'address') consoleAddress();
   });
+
+  // Hints: one box in the console's look for data-tip, shown a quarter of a second after the pointer stops on it (or at
+  // once with the keyboard), under the element or over it where there's no room, kept inside the window. A title
+  // anywhere becomes a data-tip the first time the pointer meets it, so the browser's own grey box never shows.
+  const tipBox = document.createElement('div');
+  tipBox.className = 'tipbox';
+  tipBox.setAttribute('role', 'tooltip');
+  let tipFor = null;
+  let tipTimer = null;
+  const tipOf = (el) => {
+    const t = el?.closest?.('[data-tip], [title]');
+    if (t?.hasAttribute('title')) {
+      const text = t.getAttribute('title');
+      t.removeAttribute('title');
+      if (text) {
+        t.dataset.tip = text;
+        if (!t.getAttribute('aria-label') && !t.textContent.trim()) t.setAttribute('aria-label', text);
+      }
+    }
+    return t?.dataset.tip ? t : null;
+  };
+  const hideTip = () => {
+    clearTimeout(tipTimer);
+    tipFor = null;
+    tipBox.classList.remove('show');
+  };
+  // A tip that only repeats what's on screen shows when the text is cut off.
+  const clipped = (t) => [t, ...t.querySelectorAll('*')].some((e) => e.scrollWidth > e.clientWidth + 1);
+  const showTip = (t) => {
+    if (t.dataset.tip.trim() === t.textContent.trim() && !clipped(t)) return;
+    // Inside an open dialog or popover it has to be in there too, or the top layer covers it.
+    const host = t.closest('dialog[open], :popover-open') || document.body;
+    if (tipBox.parentElement !== host) host.append(tipBox);
+    tipBox.textContent = t.dataset.tip;
+    const r = t.getBoundingClientRect();
+    const w = tipBox.offsetWidth;
+    const h = tipBox.offsetHeight;
+    const up = r.bottom + 8 + h > innerHeight - 8;
+    tipBox.classList.toggle('up', up);
+    tipBox.style.setProperty('left', `${Math.max(8, Math.min(r.left + r.width / 2 - w / 2, innerWidth - w - 8))}px`);
+    tipBox.style.setProperty('top', `${up ? Math.max(8, r.top - h - 8) : r.bottom + 8}px`);
+    tipBox.classList.add('show');
+  };
+  const tipLater = (t, wait) => {
+    if (t === tipFor) return;
+    hideTip();
+    if (!t) return;
+    tipFor = t;
+    tipTimer = setTimeout(() => { if (tipFor === t && t.isConnected) showTip(t); }, wait);
+  };
+  document.body.append(tipBox);
+  document.addEventListener('pointerover', (e) => tipLater(tipOf(e.target), 250));
+  document.addEventListener('focusin', (e) => tipLater(e.target.matches?.(':focus-visible') ? tipOf(e.target) : null, 0));
+  ['pointerdown', 'scroll', 'focusout', 'keydown'].forEach((ev) => document.addEventListener(ev, hideTip, true));
+  window.addEventListener('blur', hideTip);
 
   // What the other scripts use.
   window.RabbidLab = { app: () => product, $, esc, svg, say, initials, when, daysAgo, send, get, keep, forget, has, paint, where, viewAs, place, popups, option, dropdown, sure, copy, busy, groupTools, groupFilter, squares, squareSize, ping, skeleton, toast,
