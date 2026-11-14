@@ -115,7 +115,7 @@
         ['Members', (g) => g.members], ['Privileged', (g) => g.protected], ['Organizational unit', (g) => g.where], ['Distinguished name', (g) => g.dn]],
     },
     computers: {
-      title: 'Computers', noun: ['computer', 'computers'], add: null, key: (c) => c.name,
+      title: 'Computers', noun: ['computer', 'computers'], add: 'New computer', key: (c) => c.name,
       lead: 'Every computer in the domain: servers and workstations, and the ones nobody has used in a while.',
       load: async () => {
         const j = await R.get('/api/ad/computers');
@@ -484,7 +484,7 @@
     $('dir-filtered').hidden = !filtering();
     $('dir-filtered').innerHTML = filtering() ? `${svg('filter')}<span>${esc(filterWords(adPage, filterOn[adPage]))}</span><button type="button" class="linkish" data-filter-clear>Clear filter</button>` : '';
     if (picks && lists[adPage]) [...picked[adPage]].forEach((k) => { if (!byKey(k)) picked[adPage].delete(k); });
-    $('dir-table').className = `table adt ${adPage} drows${picks ? ' picks' : ''}`;
+    $('dir-table').className = `table adt ${adPage} drows${picks ? ` picks ${density()}` : ''}`;
     const none = `<div class="empty">${list.length ? (filtering() ? 'Nothing matches the filter.' : 'Nothing here right now.') : 'Nothing yet.'}</div>`;
     if (!picks) {
       $('dir-table').innerHTML = !rows.length ? none : `<div class="tr th">${p.head.map((h) => `<span>${esc(h)}</span>`).join('')}</div>`
@@ -495,7 +495,7 @@
       const s = colSort();
       setTracks(cols);
       $('dir-table').innerHTML = `<div class="tr th"><label class="tk"><input type="checkbox" data-tick-all aria-label="Select all"></label>`
-        + cols.map((c) => `<div class="th-cell"><button type="button" class="th-sort${c.key === s.key ? ' on' : ''}" data-sort="${c.key}">${esc(c.label)}`
+        + cols.map((c) => `<div class="th-cell"><button type="button" class="th-sort${c.key === s.key ? ' on' : ''}" data-sort="${c.key}" title="${esc(c.label)}"><span class="lbl">${esc(c.label)}</span>`
           + `${c.key === s.key ? svg(s.dir > 0 ? 'chevron-up' : 'chevron-down', 'arr') : ''}</button><i class="th-grip" data-grip="${c.key}" title="Drag to resize; double-click for the default width"></i></div>`).join('')
         + '<span></span></div>'
         + (!rows.length ? none : rows.map((x, i) => `<div class="tr" tabindex="0" data-i="${i}">`
@@ -591,16 +591,22 @@
     adTab = t.dataset.tab;
     drawAd();
   });
-  // The grid's tracks: the tick, each column (its own width once dragged), and ⋯. Wide lists scroll sideways.
+  // The grid's tracks: the tick, each column at a width in pixels (as data grids do: its own default, or what it was
+  // dragged to), and ⋯ taking what's left. Text that doesn't fit ends in …; a wider list scrolls sideways.
   const widths = () => recall(`widths.${adPage}`) || {};
   const minOf = (w) => Number((String(w).match(/(\d+)px/) || [0, 80])[1]);
+  const DEFAULT_PX = { name: 210, username: 190, upn: 230, email: 210, department: 150, title: 150, company: 140, office: 120, phone: 120, manager: 160,
+    where: 180, description: 240, lastSignIn: 110, passwordSet: 130, passwordExpires: 130, accountExpires: 130, created: 110, status: 160, type: 160, scope: 120,
+    members: 90, notes: 200, os: 210, host: 200, location: 140 };
+  const widthOf = (c, wd = widths()) => wd[c.key] || DEFAULT_PX[c.key] || minOf(c.w);
   const setTracks = (cols) => {
     const wd = widths();
-    const tracks = cols.map((c) => (wd[c.key] ? `${wd[c.key]}px` : c.w));
-    const min = 18 + 28 + cols.reduce((sum, c) => sum + (wd[c.key] || minOf(c.w)), 0) + 12 * (cols.length + 1) + 32;
-    $('dir-table').style.setProperty('--cols', `18px ${tracks.join(' ')} 28px`);
+    const min = 18 + 28 + cols.reduce((sum, c) => sum + widthOf(c, wd), 0) + 12 * (cols.length + 1) + 32;
+    $('dir-table').style.setProperty('--cols', `18px ${cols.map((c) => `${widthOf(c, wd)}px`).join(' ')} minmax(28px, 1fr)`);
     $('dir-table').style.setProperty('--minw', `${min}px`);
   };
+  // Compact rows (the default) or relaxed ones, kept in this browser for every list.
+  const density = () => (recall('density') === 'relaxed' ? 'relaxed' : 'compact');
 
   // A heading sorts by its column; again turns it round.
   $('dir-table').addEventListener('click', (e) => {
@@ -635,13 +641,23 @@
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up, { once: true });
   });
+  // A double-click on the edge fits the column to what's in it: each row is measured at its natural width.
   $('dir-table').addEventListener('dblclick', (e) => {
     const grip = e.target.closest('[data-grip]');
     if (!grip) return;
+    const cols = shownCols();
+    const at = cols.findIndex((c) => c.key === grip.dataset.grip);
+    if (at < 0) return;
+    const t = $('dir-table');
     const wd = widths();
-    delete wd[grip.dataset.grip];
+    const tracks = cols.map((c, i) => (i === at ? 'max-content' : `${widthOf(c, wd)}px`));
+    t.classList.add('measuring');
+    t.style.setProperty('--cols', `18px ${tracks.join(' ')} minmax(28px, 1fr)`);
+    const widest = Math.max(...[...t.querySelectorAll(`.tr > :nth-child(${at + 2})`)].map((cell) => cell.getBoundingClientRect().width));
+    t.classList.remove('measuring');
+    wd[grip.dataset.grip] = Math.min(600, Math.max(60, Math.ceil(widest) + 4));
     remember(`widths.${adPage}`, wd);
-    setTracks(shownCols());
+    setTracks(cols);
   });
 
   // Columns: tick the ones to show; Reset puts back the page's own columns, widths and order.
@@ -655,7 +671,8 @@
   };
   const drawColMenu = () => {
     const shown = shownCols().map((c) => c.key);
-    $('col-menu').innerHTML = `<p class="cmd-head">Columns</p><div class="am-links col-list">${page().cols.filter((c) => !c.fixed)
+    $('col-menu').innerHTML = `<div class="col-dens"><span>Rows</span><div class="seg">${[['compact', 'Compact'], ['relaxed', 'Relaxed']].map(([d, label]) => `<button type="button" data-density="${d}" aria-pressed="${density() === d}">${label}</button>`).join('')}</div></div>`
+      + `<p class="cmd-head">Columns</p><div class="am-links col-list">${page().cols.filter((c) => !c.fixed)
       .map((c) => `<label class="am-link col-check"><input type="checkbox" data-col="${c.key}"${shown.includes(c.key) ? ' checked' : ''}><span>${esc(c.label)}</span></label>`).join('')}</div>`
       + `<div class="am-links"><button type="button" class="am-link" data-col-reset>${svg('refresh')}<span>Reset columns, widths and sort</span></button></div>`;
   };
@@ -673,6 +690,13 @@
     drawAd();
   });
   $('col-menu').addEventListener('click', (e) => {
+    const d = e.target.closest('[data-density]');
+    if (d) {
+      remember('density', d.dataset.density);
+      drawColMenu();
+      drawAd();
+      return;
+    }
     if (!e.target.closest('[data-col-reset]')) return;
     ['cols', 'widths', 'sort'].forEach((n) => { try { localStorage.removeItem(`rabbidlab.ad.${n}.${adPage}`); } catch { /* nothing kept */ } });
     drawColMenu();
@@ -984,13 +1008,15 @@
       return;
     }
     const row = e.target.closest('[data-i]');
-    if (row) openAd(Number(row.dataset.i), row);
+    if (row) openRow(Number(row.dataset.i), row);
   });
+  // Users, groups and computers open in the side panel; the other pages' rows in their card.
+  const openRow = (i, el) => (picked[adPage] ? openDrawer(adPage, rows[i]) : openAd(i, el));
   $('dir-table').addEventListener('keydown', (e) => {
     const row = e.target.closest('[data-i]');
     if (row && e.target === row && (e.key === 'Enter' || e.key === ' ')) {
       e.preventDefault();
-      openAd(Number(row.dataset.i), row);
+      openRow(Number(row.dataset.i), row);
     }
   });
 
@@ -1189,12 +1215,15 @@
   };
 
   let menuFor = { kind: 'users', objs: [] };
-  const openCmd = (objs, x, y) => {
+  const openCmd = (objs, x, y, kind = adPage) => {
     if (!objs.length) return;
     const m = $('cmd-menu');
     if (m.matches(':popover-open')) m.hidePopover();
-    menuFor = { kind: adPage, objs };
-    m.innerHTML = menuHtml(adPage, objs);
+    // Over the side panel the menu has to be inside it, or the panel makes it unclickable.
+    const host = $('ad-drawer').open ? $('ad-drawer') : document.body;
+    if (m.parentElement !== host) host.append(m);
+    menuFor = { kind, objs };
+    m.innerHTML = menuHtml(kind, objs);
     m.style.setProperty('left', '0px');
     m.style.setProperty('top', '0px');
     m.showPopover();
@@ -1293,6 +1322,8 @@
     }
     R.busy($('dir-lib'), '');
     drawAd();
+    // The side panel shows the change too (or closes, for something deleted).
+    if ($('ad-drawer').open) { dw.membersFor = ''; drawDrawer(); }
     const ok = xs.length - failed.length;
     if (!failed.length) R.toast(done, warnings[0] || '', { tone: warnings.length ? 'warn' : '' });
     else R.toast(ok ? `Done for ${ok} of ${xs.length}` : 'That didn\'t work', failed[0], { tone: 'warn' });
@@ -1323,12 +1354,7 @@
         picked[k]?.clear();
         drawPicked();
         break;
-      case 'open': {
-        const i = rows.indexOf(objs[0]);
-        const el = $('dir-table').querySelector(`[data-i="${i}"]`);
-        if (i >= 0 && el) openAd(i, el);
-        break;
-      }
+      case 'open': openDrawer(k, objs[0]); break;
       case 'enable':
       case 'disable': {
         const on = what === 'enable';
@@ -1644,6 +1670,161 @@
     if (chosen.length) go(chosen);
   });
 
+  // --- The panel from the right: one user, group or computer -------------------------------------------------------
+  // Clicking a row opens it over the list, as the Microsoft 365 and Entra admin centers do: who or what it is, its
+  // status, the everyday actions (⋯ has the rest), and tabs for its details and its groups (a group's members too).
+
+  const dw = { kind: '', key: '', tab: 'overview', members: null, membersFor: '' };
+  const dwObj = () => (lists[dw.kind] || []).find((x) => String(AD[dw.kind].key(x)) === dw.key);
+  const dwFact = (label, value, wide = false) => `<div class="dw-fact${wide ? ' wide' : ''}"><span class="l">${esc(label)}</span><span class="v">${value || '<span class="muted">Not set</span>'}</span></div>`;
+  const dwFacts = (title, items) => {
+    const shown = items.filter(Boolean).join('');
+    return shown ? `<section class="dw-sec"><h3>${esc(title)}</h3><div class="dw-facts">${shown}</div></section>` : '';
+  };
+  const e1 = (v) => (v ? esc(v) : '');
+  const qa = (cmd, icon, label) => `<button type="button" class="dw-qa" data-dw-cmd="${cmd}">${svg(icon)}<span>${esc(label)}</span></button>`;
+  const LEFT_WHY = {
+    users: (u) => (u.service ? `That's ${ad.state.account}, ${R.app()}'s own account. It looks after it itself.`
+      : u.protected ? `Active Directory protects the accounts of admins, so ${R.app()}'s account can't change this one. Use Active Directory Users and Computers for it.`
+        : 'A built-in account. Change it in Active Directory Users and Computers.'),
+    groups: () => 'A built-in group. Change it in Active Directory Users and Computers.',
+    computers: () => 'A domain controller. Change it in Active Directory itself.',
+  };
+
+  const dwHead = (k, x) => {
+    const pic = k === 'users' ? `<span class="pic user dw-pic">${esc(initials(nameOf(x)))}</span>` : `<span class="pic dw-pic">${svg(k === 'groups' ? 'users' : server(x) ? 'server' : 'laptop')}</span>`;
+    const sub = k === 'users' ? [x.username, x.upn].filter(Boolean).join(' · ') : k === 'computers' ? x.host || '' : x.description || '';
+    const status = k === 'users' ? userStatus(x) + (x.mustChange ? badge('Must change password', 'amber') : '') + (x.protected ? badge('Privileged', 'amber') : '')
+      + (x.service ? chip(R.app(), 'ember') : '')
+      : k === 'computers' ? pcStatus(x) + (x.controller ? chip('Domain controller', 'muted') : '') + (server(x) ? chip('Server', 'muted') : '')
+        : badge(x.security ? 'Security group' : 'Distribution group', 'grey') + badge(x.scope, 'grey') + (x.protected ? badge('Privileged', 'amber') : '');
+    // The everyday actions as buttons; ⋯ opens the whole menu.
+    const change = can('ad.change') && mayChange(k, x);
+    const quick = !change ? '' : k === 'users'
+      ? qa('password', 'key', 'Reset password') + (x.locked ? qa('unlock', 'unlock', 'Unlock') : '') + qa(x.enabled ? 'disable' : 'enable', x.enabled ? 'user-off' : 'user-check', x.enabled ? 'Disable' : 'Enable')
+        + qa('edit', 'edit', 'Edit') + qa('groups-add', 'user-plus', 'Add to groups')
+      : k === 'groups' ? qa('members-add', 'user-plus', 'Add members') + qa('groups-add', 'org', 'Add to groups') + qa('edit', 'edit', 'Edit')
+        : qa(x.enabled ? 'disable' : 'enable', x.enabled ? 'user-off' : 'user-check', x.enabled ? 'Disable' : 'Enable') + qa('groups-add', 'user-plus', 'Add to groups') + qa('edit', 'edit', 'Edit');
+    return `<div class="dw-head">${pic}<div class="dw-name"><h2 id="dw-title">${esc(nameOf(x))}</h2>${sub ? `<p>${esc(sub)}</p>` : ''}</div>`
+      + `<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`
+      + `<div class="dw-status">${status}</div>`
+      + `<div class="dw-bar">${quick}<button type="button" class="dw-qa dw-more" data-dw-more aria-haspopup="menu">${svg('dots')}<span>More</span></button></div>`
+      + (!change && can('ad.change') ? `<p class="hint dw-note">${esc(LEFT_WHY[k](x))}</p>` : '');
+  };
+
+  const dwOverview = (k, x) => {
+    if (k === 'users') {
+      const password = x.mustChange ? 'Must change at the next sign-in' : x.neverExpires ? 'Never expires' : x.passwordExpires ? `Expires ${day(x.passwordExpires)}` : '';
+      return dwFacts('Account', [dwFact('Pre-Windows 2000 logon name', `<span class="mono">${esc(x.username)}</span>`), dwFact('User principal name', e1(x.upn)),
+        dwFact('Last sign-in', esc(ago(x.lastSignIn))), dwFact('Password', esc(password)), dwFact('Password last set', x.passwordSet ? esc(day(x.passwordSet)) : ''),
+        dwFact('Account expires', x.accountExpires ? `End of ${esc(day(new Date(new Date(x.accountExpires) - 1)))}` : 'Never'), dwFact('Created', x.created ? esc(day(x.created)) : ''),
+        dwFact('Organizational unit', esc(x.where || ad.state.domain), true)])
+        + dwFacts('Contact and organization', [dwFact('Display name', e1(x.name)), dwFact('Email', e1(x.email)), dwFact('Job title', e1(x.title)), dwFact('Department', e1(x.department)),
+          dwFact('Company', e1(x.company)), dwFact('Office', e1(x.office)), dwFact('Phone', e1(x.phone)), dwFact('Manager', e1(x.manager)), dwFact('Description', e1(x.description), true)])
+        + dwFacts('Security', [dwFact('Sensitive and cannot be delegated', x.sensitive ? 'Yes' : 'No'), dwFact('Smart card required', x.smartcard ? 'Yes' : 'No'),
+          dwFact('Reversible encryption', x.reversible ? 'Yes' : 'No'), dwFact('Kerberos preauthentication', x.noPreauth ? 'Not required' : 'Required')])
+        + `<p class="hint dw-dn">${esc(x.dn)}</p>`;
+    }
+    if (k === 'groups') {
+      return dwFacts('Group', [dwFact('Group type', x.security ? 'Security' : 'Distribution'), dwFact('Group scope', esc(x.scope)),
+        dwFact('Members', x.moreMembers ? '1,500 or more' : esc(x.members.toLocaleString())), dwFact('Email', e1(x.email)),
+        dwFact('Organizational unit', esc(x.where || ad.state.domain), true), dwFact('Description', e1(x.description), true), dwFact('Notes', e1(x.notes), true)])
+        + `<p class="hint dw-dn">${esc(x.dn)}</p>`;
+    }
+    return dwFacts('Computer', [dwFact('DNS host name', e1(x.host)), dwFact('Operating system', esc([x.os, x.osVersion].filter(Boolean).join(' '))),
+      dwFact('Last sign-in', esc(ago(x.lastSignIn))), dwFact('Created', x.created ? esc(day(x.created)) : ''), dwFact('Location', e1(x.location)),
+      dwFact('Organizational unit', esc(x.where || ad.state.domain), true), dwFact('Description', e1(x.description), true)])
+      + `<p class="hint dw-dn">${esc(x.dn)}</p>`;
+  };
+
+  // Its groups, each with a way out, and Add to groups.
+  const dwMemberOf = (k, x) => {
+    const change = can('ad.change') && mayChange(k, x);
+    const gs = x.groups || [];
+    return `<section class="dw-sec"><div class="dw-sec-head"><h3>Member of <small>${gs.length}</small></h3>${change ? `<button type="button" class="small" data-dw-cmd="groups-add">${svg('user-plus')}Add to groups</button>` : ''}</div>`
+      + (gs.length ? `<div class="dw-list">${gs.map((g) => `<div class="mrow"><span class="pic small">${svg('users')}</span><div class="two"><b>${esc(g.name)}</b><small>${esc(pathOf(g.dn))}</small></div>`
+        + `${change ? `<button type="button" class="at-more dw-x" data-dw-leave="${esc(g.dn)}" data-tip="Remove" aria-label="Remove from ${esc(g.name)}">${svg('x')}</button>` : ''}</div>`).join('')}</div>`
+        : `<p class="muted dw-empty">${k === 'users' ? 'Only Domain Users, the primary group.' : k === 'computers' ? 'Only Domain Computers, the primary group.' : 'Not in any groups.'}</p>`)
+      + '</section>';
+  };
+  const pathOf = (dn) => dn.split(/(?<!\\),/).slice(1).filter((p) => !/^DC=/i.test(p)).map((p) => p.slice(p.indexOf('=') + 1)).reverse().join(' / ') || ad.state.domain;
+
+  // A group's members, read when the tab opens.
+  const dwMembers = (g) => {
+    const change = can('ad.change') && mayChange('groups', g);
+    if (dw.membersFor !== g.dn) {
+      dw.membersFor = g.dn;
+      dw.members = null;
+      membersNow(g).then((ms) => { if (dw.membersFor === g.dn) { dw.members = ms; drawDrawer(); } })
+        .catch((err) => { if (dw.membersFor === g.dn) { dw.members = { problem: err.message }; drawDrawer(); } });
+    }
+    const ms = dw.members;
+    const body = ms === null ? `<div class="op-items">${'<i class="sk op-sk"></i>'.repeat(4)}</div>`
+      : ms.problem ? `<p class="hint problem">${esc(ms.problem)}</p>`
+        : ms.length ? `<div class="dw-list">${ms.map((m) => `<div class="mrow"><span class="pic small${m.kind === 'user' ? ' user' : ''}">${m.kind === 'user' ? esc(initials(m.name)) : svg(KIND_PIC[m.kind] || 'user')}</span>`
+          + `<div class="two"><b>${esc(m.name)}</b><small>${esc(m.sub || '')}</small></div>`
+          + `${change ? `<button type="button" class="at-more dw-x" data-dw-out="${esc(m.dn)}" data-tip="Remove" aria-label="Take ${esc(m.name)} out">${svg('x')}</button>` : ''}</div>`).join('')}</div>`
+          : '<p class="muted dw-empty">Nobody yet.</p>';
+    return `<section class="dw-sec"><div class="dw-sec-head"><h3>Members${Array.isArray(ms) ? ` <small>${ms.length}</small>` : ''}</h3>`
+      + `${change ? `<button type="button" class="small" data-dw-cmd="members-add">${svg('user-plus')}Add members</button>` : ''}</div>${body}</section>`;
+  };
+
+  const drawDrawer = () => {
+    const x = dwObj();
+    if (!x) {
+      if ($('ad-drawer').open) $('ad-drawer').close();
+      return;
+    }
+    const k = dw.kind;
+    const tabsFor = k === 'groups' ? [['overview', 'Overview'], ['members', 'Members'], ['memberof', 'Member of']] : [['overview', 'Overview'], ['memberof', 'Member of']];
+    const body = dw.tab === 'members' ? dwMembers(x) : dw.tab === 'memberof' ? dwMemberOf(k, x) : dwOverview(k, x);
+    const scroll = $('dw-body').scrollTop;
+    $('dw-body').innerHTML = dwHead(k, x)
+      + `<div class="tabs2 dw-tabs" role="tablist">${tabsFor.map(([t, label]) => `<a role="tab" data-dw-tab="${t}"${dw.tab === t ? ' aria-current="true"' : ''}>${esc(label)}</a>`).join('')}</div>`
+      + `<div class="dw-panel">${body}</div>`;
+    $('dw-body').scrollTop = scroll;
+  };
+  const openDrawer = (k, x) => {
+    const key = String(AD[k].key(x));
+    if (dw.kind !== k || dw.key !== key) Object.assign(dw, { tab: 'overview', members: null, membersFor: '' });
+    dw.kind = k;
+    dw.key = key;
+    closeCard();
+    drawDrawer();
+    if (!$('ad-drawer').open) $('ad-drawer').showModal();
+    $('ad-drawer').querySelector('.dw-close')?.focus({ preventScroll: true });
+  };
+  $('ad-drawer').addEventListener('click', (e) => {
+    const d = $('ad-drawer');
+    // A click on the dimmed page beside the panel closes it.
+    if (e.target === d || e.target.closest('[data-dw-close]')) { d.close(); return; }
+    const x = dwObj();
+    if (!x) return;
+    const k = dw.kind;
+    const t = e.target.closest('[data-dw-tab]');
+    if (t) { dw.tab = t.dataset.dwTab; drawDrawer(); return; }
+    const cmd = e.target.closest('[data-dw-cmd]');
+    if (cmd) { runCmd(cmd.dataset.dwCmd, k, [x]); return; }
+    const more = e.target.closest('[data-dw-more]');
+    if (more) {
+      const r = more.getBoundingClientRect();
+      openCmd([x], r.right - CMD_W, r.bottom + 6, k);
+      return;
+    }
+    const leave = e.target.closest('[data-dw-leave]');
+    if (leave) {
+      const g = (x.groups || []).find((h) => same(h.dn, leave.dataset.dwLeave));
+      each(k, [x], 'Removing from the group', `Removed ${nameOf(x)} from ${g?.name || 'the group'}`, (y) => memberOf(k, y, [], [leave.dataset.dwLeave]));
+      return;
+    }
+    const out = e.target.closest('[data-dw-out]');
+    if (out) {
+      const m = (dw.members || []).find((h) => same(h.dn, out.dataset.dwOut));
+      dw.membersFor = ''; // read again after
+      each(k, [x], 'Removing a member', `Took ${m?.name || 'them'} out of ${x.name}`, (g) => membersOf(g, [], [out.dataset.dwOut]));
+    }
+  });
+
   // --- Local accounts: one computer's Windows accounts --------------------------------------------------------------
 
   let computers = [];
@@ -1946,10 +2127,20 @@
   });
   $('us-pc-new').addEventListener('click', () => openNew('pc'));
 
-  // A new group.
+  // A new user, group or computer account.
   $('dir-new').addEventListener('click', async () => {
     if (adPage === 'users') {
       openNew('ad');
+      return;
+    }
+    if (adPage === 'computers') {
+      $('pcnew-name').value = '';
+      $('pcnew-about').value = '';
+      $('pcnew-lead').textContent = `In ${ad.state.domain}, made by ${ad.state.account}, ready for a computer of that name to join.`;
+      say('pcnew-problem', '');
+      await placesInto('pcnew-ou', ad.state.newComputers, 'pcnew-problem');
+      $('pcnew-dialog').showModal();
+      $('pcnew-name').focus();
       return;
     }
     $('grp-name').value = '';
@@ -1958,7 +2149,7 @@
     $('grp-type').querySelectorAll('[data-type]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.type === 'security')));
     $('group-lead').textContent = `In ${ad.state.domain}, made by ${ad.state.account}.`;
     say('grp-problem', '');
-    await placesInto('grp-ou', ad.state.newUsers, 'grp-problem');
+    await placesInto('grp-ou', ad.state.newGroups || ad.state.newUsers, 'grp-problem');
     $('group-dialog').showModal();
     $('grp-name').focus();
   });
@@ -1967,6 +2158,20 @@
     if (b) $('grp-type').querySelectorAll('[data-type]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
   });
   $('grp-cancel').addEventListener('click', () => $('group-dialog').close());
+  $('pcnew-cancel').addEventListener('click', () => $('pcnew-dialog').close());
+  $('pcnew-go').addEventListener('click', async () => {
+    $('pcnew-go').disabled = true;
+    try {
+      const c = await R.send('/api/ad/computers', { name: $('pcnew-name').value, description: $('pcnew-about').value, ou: $('pcnew-ou').value });
+      $('pcnew-dialog').close();
+      R.toast(`Made the computer account ${c.name}`, `A computer called ${c.name} can join the domain into it.`);
+      reload();
+    } catch (err) {
+      say('pcnew-problem', err.message);
+    } finally {
+      $('pcnew-go').disabled = false;
+    }
+  });
   $('grp-go').addEventListener('click', async () => {
     $('grp-go').disabled = true;
     try {
@@ -1993,7 +2198,7 @@
   const same = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
   const pick = { select: null, sel: '', find: '', nodes: [], domain: '' };
   const PICK_LEADS = { 'dset-ou': 'Where the service account is created.', 'new-ou': 'Where the new user goes.', 'grp-ou': 'Where the new group goes.',
-    'adset-ou': 'Where New user and New group put them.' };
+    'adset-ou': 'Where New user puts them.', 'adset-gou': 'Where New group puts them.', 'adset-cou': 'Where New computer puts them.', 'pcnew-ou': 'Where the new computer account goes.' };
   const ouNode = (dn) => pick.nodes.find((n) => !n.domain && same(n.dn, dn));
   const kidsOf = (dn) => pick.nodes.filter((n) => !n.domain && same(n.parent, dn));
   const topOus = () => pick.nodes.filter((n) => !n.domain && !ouNode(n.parent));
@@ -2489,25 +2694,30 @@
       : ad?.domain ? `${R.app()} makes its changes in ${ad.domain} as a service account. Set one up to use the Active Directory pages.` : "This server isn't on a domain. Connect one to manage it from here.";
     $('as-setup').hidden = !!s;
     $('as-setup').textContent = ad?.domain ? 'Set up' : 'Connect a domain';
-    $('as-ou-row').hidden = !s;
+    ['as-ou-row', 'as-gou-row', 'as-cou-row'].forEach((id) => { $(id).hidden = !s; });
     $('as-danger').classList.toggle('gone', !s);
     if (!s) return;
     $('adset-stop-title').textContent = `Disconnect ${s.account}`;
     $('adset-stop-text').textContent = `${R.app()} deletes the stored password and stops using ${s.account}.${s.made ? ' The account and its delegated permissions stay in AD until you delete them.' : ''}`;
     await placesInto('adset-ou', s.newUsers, 'adset-problem');
+    $('adset-gou').innerHTML = $('adset-ou').innerHTML;
+    $('adset-cou').innerHTML = $('adset-ou').innerHTML;
+    $('adset-gou').value = s.newGroups || s.newUsers;
+    $('adset-cou').value = s.newComputers || '';
   };
   $('as-setup').addEventListener('click', () => openSetup(ad?.domain));
   $('dset-dialog').addEventListener('close', () => { if (R.where()[0] === 'settings' && R.where()[1] === 'ad') drawAdSettings(true); });
-  $('adset-ou').addEventListener('change', async () => {
+  // Each default OU saves as it changes: users, groups and computers.
+  [['adset-ou', 'newUsers'], ['adset-gou', 'newGroups'], ['adset-cou', 'newComputers']].forEach(([id, field]) => $(id).addEventListener('change', async () => {
     say('as-done', '');
     try {
-      await R.send('/api/ad/settings', { newUsers: $('adset-ou').value });
+      await R.send('/api/ad/settings', { [field]: $(id).value });
       ad = await R.get('/api/ad');
       say('adset-problem', '');
     } catch (err) {
       say('adset-problem', err.message);
     }
-  });
+  }));
   document.addEventListener('rabbidlab:show', (e) => {
     if (e.detail[0] === 'settings' && e.detail[1] === 'ad' && can('ad.connect')) drawAdSettings(true);
   });

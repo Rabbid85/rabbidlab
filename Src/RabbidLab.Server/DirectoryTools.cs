@@ -18,6 +18,12 @@ public sealed class DirectoryToolsFile
     /// <summary>Where new people go unless someone picks another OU.</summary>
     public string? NewUsers { get; set; }
 
+    /// <summary>Where new groups go; where new people go when not set.</summary>
+    public string? NewGroups { get; set; }
+
+    /// <summary>Where new computer accounts go; the domain's Computers container when not set.</summary>
+    public string? NewComputers { get; set; }
+
     /// <summary>Whether Rabbid Lab made the account (and gave it its rights), rather than being given one.</summary>
     public bool Made { get; set; }
     public string? By { get; set; }
@@ -25,7 +31,8 @@ public sealed class DirectoryToolsFile
 }
 
 /// <summary>What the tools are working with, for the page.</summary>
-public sealed record DirectoryToolsState(string Domain, string Account, string Scope, string ScopeName, string NewUsers, string NewUsersName, bool Made, string? By, DateTime? At);
+public sealed record DirectoryToolsState(string Domain, string Account, string Scope, string ScopeName, string NewUsers, string NewUsersName, bool Made, string? By, DateTime? At,
+    string NewGroups = "", string NewGroupsName = "", string NewComputers = "", string NewComputersName = "");
 
 /// <summary>An OU or container. Fixed says why nothing new can go in it (Builtin, Domain Controllers), or is null.</summary>
 public sealed record AdOu(string Dn, string Name, string Path, string? Fixed = null);
@@ -81,6 +88,9 @@ public interface IDirectoryTools
     void Disconnect();
 
     Task SetNewUsers(string dn, CancellationToken stop);
+
+    /// <summary>Where New user (users), New group (groups) or New computer (computers) puts things unless another OU is picked.</summary>
+    Task SetNewPlace(string kind, string dn, CancellationToken stop);
 
     Task<List<AdOu>> Places(CancellationToken stop);
 
@@ -197,7 +207,10 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
         }
         var baseDn = BaseOf(f.Domain);
         var newUsers = NewUsersOf(f);
-        return new DirectoryToolsState(f.Domain, f.Account, f.Scope, ScopeName(f.Scope, baseDn, f.Domain), newUsers, ScopeName(newUsers, baseDn, f.Domain), f.Made, f.By, f.At);
+        var newGroups = NewGroupsOf(f);
+        var newComputers = NewComputersOf(f);
+        return new DirectoryToolsState(f.Domain, f.Account, f.Scope, ScopeName(f.Scope, baseDn, f.Domain), newUsers, ScopeName(newUsers, baseDn, f.Domain), f.Made, f.By, f.At,
+            newGroups, ScopeName(newGroups, baseDn, f.Domain), newComputers, ScopeName(newComputers, baseDn, f.Domain));
     }
 
     public async Task<SetupLook> Look(string? domain, string username, string password, CancellationToken stop)
@@ -300,14 +313,17 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
         pool?.Flush();
     }
 
-    public async Task SetNewUsers(string dn, CancellationToken stop)
+    public Task SetNewUsers(string dn, CancellationToken stop) => SetNewPlace("users", dn, stop);
+
+    /// <summary>Where New user, New group or New computer puts things unless another OU is picked.</summary>
+    public async Task SetNewPlace(string kind, string dn, CancellationToken stop)
     {
         using var ldap = await Open(stop);
         var f = Ready();
-        var place = await Into(ldap, dn, NewUsersOf(f), stop);
+        var place = await Into(ldap, dn, kind == "groups" ? NewGroupsOf(f) : kind == "computers" ? NewComputersOf(f) : NewUsersOf(f), stop);
         if (!Ldap.Under(place, f.Scope!))
         {
-            throw new ToolProblem($"{Product.Title}'s account can only make people in {ScopeName(f.Scope!, ldap.BaseDn, f.Domain!)}.");
+            throw new ToolProblem($"{Product.Title}'s account can only make {(kind == "groups" ? "groups" : kind == "computers" ? "computers" : "people")} in {ScopeName(f.Scope!, ldap.BaseDn, f.Domain!)}.");
         }
         lock (gate)
         {
@@ -317,8 +333,11 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
             {
                 throw new ToolProblem($"{Product.Title}'s service account changed while this was saving. Try again.", StatusCodes.Status409Conflict);
             }
-            Save(new DirectoryToolsFile { Domain = now.Domain, Account = now.Account, Password = now.Password, Scope = now.Scope, NewUsers = place, Made = now.Made, By = now.By, At = now.At },
-                keepConnections: true);
+            Save(new DirectoryToolsFile
+            {
+                Domain = now.Domain, Account = now.Account, Password = now.Password, Scope = now.Scope, Made = now.Made, By = now.By, At = now.At,
+                NewUsers = kind is "users" ? place : now.NewUsers, NewGroups = kind is "groups" ? place : now.NewGroups, NewComputers = kind is "computers" ? place : now.NewComputers,
+            }, keepConnections: true);
         }
     }
 
@@ -393,7 +412,7 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
         }
         using var ldap = await Open(stop);
         var f = Ready();
-        var ou = await Into(ldap, form.Ou, NewUsersOf(f), stop);
+        var ou = await Into(ldap, form.Ou, NewGroupsOf(f), stop);
         if (!Ldap.Under(ou, f.Scope!))
         {
             throw new ToolProblem($"{Product.Title}'s account can only make groups in {ScopeName(f.Scope!, ldap.BaseDn, f.Domain!)}.");
@@ -958,6 +977,11 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
 
     private static string NewUsersOf(DirectoryToolsFile f) =>
         f.NewUsers ?? (string.Equals(f.Scope, BaseOf(f.Domain!), StringComparison.OrdinalIgnoreCase) ? $"CN=Users,{f.Scope}" : f.Scope!);
+
+    private static string NewGroupsOf(DirectoryToolsFile f) => f.NewGroups ?? NewUsersOf(f);
+
+    private static string NewComputersOf(DirectoryToolsFile f) =>
+        f.NewComputers ?? (string.Equals(f.Scope, BaseOf(f.Domain!), StringComparison.OrdinalIgnoreCase) ? $"CN=Computers,{f.Scope}" : f.Scope!);
 
     // Read from disk once, then kept: only Save and Disconnect change it. Nobody changes the object handed out.
     private DirectoryToolsFile Load()

@@ -235,6 +235,26 @@ public sealed class DirectoryToolsTests : IDisposable
     }
 
     [Fact]
+    public async Task Users_groups_and_computers_keep_their_own_default_OU_and_new_computers_go_in_theirs()
+    {
+        await Connect();
+        var none = CancellationToken.None;
+
+        await tools.SetNewPlace("groups", $"OU=People,{Lab}", none);
+        var s = tools.State()!;
+        Assert.Equal(Lab, s.NewUsers);
+        Assert.Equal($"OU=People,{Lab}", s.NewGroups);
+        Assert.Equal(Lab, s.NewComputers);
+
+        var pc = await tools.CreateComputer(new NewAdComputer("ws-042", null, "Front desk"), none);
+        Assert.Equal("WS-042", pc.Name);
+        Assert.Contains($"add CN=WS-042,{Lab}", ad.Log);
+        Assert.Contains("already a computer called PC1", (await Refused(() => tools.CreateComputer(new NewAdComputer("PC1", null, null), none))).Message);
+        Assert.Contains("1 to 15", (await Refused(() => tools.CreateComputer(new NewAdComputer("a-name-far-too-long", null, null), none))).Message);
+        Assert.Contains("can only make computers", (await Refused(() => tools.CreateComputer(new NewAdComputer("WS-043", Other, null), none))).Message);
+    }
+
+    [Fact]
     public async Task Lists_say_when_Active_Directory_had_more_than_it_sent()
     {
         await Connect("DC=amw,DC=com");

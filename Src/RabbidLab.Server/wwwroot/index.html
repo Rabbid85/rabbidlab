@@ -455,7 +455,9 @@
       <header class="sub-head"><h2>Active Directory</h2><p>The service account <span data-app>Rabbid Lab</span> makes its AD changes as.</p></header>
       <section class="ds-sec" data-sec="account"><h3 class="ds-h">Service account</h3>
         <div class="ds-row"><div class="ds-l"><b id="as-account">…</b><span id="as-about"></span></div><div class="ds-r"><button type="button" class="ds-btn" id="as-setup" hidden>Set up</button></div></div>
-        <div class="ds-row" id="as-ou-row" hidden><div class="ds-l"><b>Default OU for new users and groups</b><span>Where New user and New group put them. Saved as you change it.</span></div><div class="ds-r"><select id="adset-ou" aria-label="Default OU for new users and groups"></select><button type="button" class="ds-btn" data-browse-ou="adset-ou"><svg><use href="#i-folder"/></svg>Browse…</button></div></div>
+        <div class="ds-row" id="as-ou-row" hidden><div class="ds-l"><b>Default OU for new users</b><span>Where New user puts them. Saved as you change it.</span></div><div class="ds-r"><select id="adset-ou" aria-label="Default OU for new users"></select><button type="button" class="ds-btn" data-browse-ou="adset-ou"><svg><use href="#i-folder"/></svg>Browse…</button></div></div>
+        <div class="ds-row" id="as-gou-row" hidden><div class="ds-l"><b>Default OU for new groups</b><span>Where New group puts them.</span></div><div class="ds-r"><select id="adset-gou" aria-label="Default OU for new groups"></select><button type="button" class="ds-btn" data-browse-ou="adset-gou"><svg><use href="#i-folder"/></svg>Browse…</button></div></div>
+        <div class="ds-row" id="as-cou-row" hidden><div class="ds-l"><b>Default OU for new computers</b><span>Where New computer puts the accounts it makes ahead of a computer joining.</span></div><div class="ds-r"><select id="adset-cou" aria-label="Default OU for new computers"></select><button type="button" class="ds-btn" data-browse-ou="adset-cou"><svg><use href="#i-folder"/></svg>Browse…</button></div></div>
         <p class="hint note" id="as-done" hidden></p>
       </section>
       <section class="ds-sec gone" data-sec="danger" id="as-danger"><h3 class="ds-h danger">Danger zone</h3>
@@ -1048,6 +1050,20 @@
   <div class="dialog-foot"><button type="button" id="rb-cancel">Cancel</button><button type="button" class="primary" id="rb-go">Turn it on</button></div>
 </dialog>
 
+<!-- A new computer account, made before the computer joins the domain (pre-staged). -->
+<dialog class="dialog" id="pcnew-dialog" aria-labelledby="pcnew-title">
+  <h2 id="pcnew-title">New computer</h2>
+  <p class="dialog-lead" id="pcnew-lead"></p>
+  <div class="form">
+    <label for="pcnew-name">Computer name</label><input id="pcnew-name" maxlength="15" autocomplete="off" spellcheck="false">
+    <label for="pcnew-about">Description</label><input id="pcnew-about" maxlength="200" autocomplete="off">
+    <label for="pcnew-ou">Put it in</label><div class="ou-row"><select id="pcnew-ou"></select><button type="button" data-browse-ou="pcnew-ou"><svg><use href="#i-folder"/></svg>Browse…</button></div>
+  </div>
+  <p class="hint">A computer with this name joins the domain into this account and OU.</p>
+  <p class="hint problem" id="pcnew-problem" hidden></p>
+  <div class="dialog-foot"><button type="button" id="pcnew-cancel">Cancel</button><button type="button" class="primary" id="pcnew-go">Make the computer account</button></div>
+</dialog>
+
 <!-- A new Active Directory group. -->
 <dialog class="dialog" id="group-dialog" aria-labelledby="group-title">
   <h2 id="group-title">New group</h2>
@@ -1313,6 +1329,8 @@
 </div>
 
 <!-- A user's menu (row ⋯, right-click, or Actions over ticked users): categories that open to the side. -->
+<!-- One user, group or computer, in a panel from the right (users.js draws it). -->
+<dialog class="drawer" id="ad-drawer" aria-labelledby="dw-title"><div class="dw-body" id="dw-body"></div></dialog>
 <div class="gear-menu cmd-menu" id="cmd-menu" popover role="menu"></div>
 <!-- Columns: which ones the list shows; Users, Groups and Computers each keep their own. -->
 <div class="gear-menu col-menu" id="col-menu" popover></div>

@@ -333,7 +333,7 @@ button.danger.solid:hover { background: #DB4860; }
 /* Users, Groups and Computers: the columns chosen, at the widths set (users.js puts them in --cols), sideways scroll when wide. */
 .adt.picks .tr { grid-template-columns: var(--cols); min-width: var(--minw); }
 .adt .th-cell { position: relative; display: flex; align-items: center; min-width: 0; align-self: stretch; }
-.th-sort { display: inline-flex; align-items: center; gap: 4px; min-width: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; white-space: nowrap; cursor: pointer; }
+.th-sort { display: inline-flex; align-items: center; gap: 4px; min-width: 0; max-width: 100%; overflow: hidden; padding: 0; border: 0; background: none; color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; white-space: nowrap; cursor: pointer; }
 .th-sort:hover, .th-sort.on { color: var(--title); }
 .th-sort .arr { flex: none; width: 12px; height: 12px; }
 .th-grip { position: absolute; top: 7px; right: -8px; bottom: 7px; z-index: 1; width: 10px; cursor: col-resize; }
@@ -380,3 +380,69 @@ body.col-dragging, body.col-dragging * { cursor: col-resize !important; user-sel
 #flt-clear { margin-right: 14px; }
 .flt-count { margin-right: auto; color: var(--muted); font-size: 13px; }
 .cmd-head .cmd-clear { float: right; font-size: 12.5px; font-weight: 500; }
+
+/* The side panel: one user, group or computer, sliding in from the right over the dimmed page. */
+dialog.drawer { position: fixed; inset: 0 0 0 auto; width: min(580px, 100vw); height: 100%; max-height: 100%; margin: 0; padding: 0; overflow: hidden; border: 0; border-left: 1px solid var(--line-strong);
+  border-radius: 18px 0 0 18px; background: #11131D; color: var(--text); box-shadow: -30px 0 90px -30px rgba(0, 0, 0, .7); animation: dw-in .24s cubic-bezier(.16, 1, .3, 1); }
+dialog.drawer::backdrop { background: rgba(5, 6, 10, .55); backdrop-filter: blur(2px); }
+@keyframes dw-in { from { transform: translateX(48px); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { dialog.drawer { animation: none; } }
+.dw-body { height: 100%; padding: 24px 26px 34px; overflow-y: auto; }
+.dw-head { display: flex; align-items: center; gap: 14px; }
+.pic.dw-pic { width: 52px; height: 52px; font-size: 17px; }
+.pic.dw-pic svg { width: 24px; height: 24px; }
+.dw-name { flex: 1; min-width: 0; }
+.dw-name h2 { margin: 0; color: var(--title); font: 750 21px "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; overflow-wrap: anywhere; }
+.dw-name p { margin: 3px 0 0; color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+.dw-close { align-self: flex-start; }
+.dw-status { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0 0; }
+.dw-status:empty { display: none; }
+.dw-bar { display: flex; flex-wrap: wrap; gap: 4px; margin: 16px -8px 0; }
+.dw-qa { display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 10px; border: 0; border-radius: 8px; background: none; color: #D7DAE8; font: inherit; font-size: 13.5px; cursor: pointer; }
+.dw-qa:hover { background: #1A1D2B; color: #fff; }
+.dw-qa svg { width: 16px; height: 16px; color: var(--accent-soft); }
+.dw-note { margin: 12px 0 0; }
+.dw-tabs { margin: 18px 0 0; border-bottom: 1px solid var(--line); }
+.dw-tabs a { cursor: pointer; }
+.dw-panel { padding-top: 6px; }
+.dw-sec { padding: 18px 0 6px; border-bottom: 1px solid var(--line); }
+.dw-sec:last-of-type { border-bottom: 0; }
+.dw-sec h3 { margin: 0 0 14px; color: var(--title); font-size: 15px; font-weight: 650; }
+.dw-sec h3 small { margin-left: 6px; color: #6D7290; font-size: 12.5px; font-weight: 500; }
+.dw-sec-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.dw-sec-head h3 { margin: 0; }
+.dw-sec-head .small { display: inline-flex; align-items: center; gap: 7px; }
+.dw-sec-head .small svg { width: 15px; height: 15px; }
+.dw-facts { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px 20px; margin-bottom: 12px; }
+.dw-fact { display: grid; gap: 3px; min-width: 0; }
+.dw-fact.wide { grid-column: 1 / -1; }
+.dw-fact .l { color: #6D7290; font-size: 12px; font-weight: 600; }
+.dw-fact .v { color: var(--text); font-size: 13.5px; overflow-wrap: anywhere; }
+.dw-list { display: grid; gap: 2px; }
+.dw-list .mrow { padding: 7px 6px; }
+.dw-x { margin: 0; }
+.dw-list .mrow:hover .dw-x { opacity: 1; }
+.dw-empty { margin: 4px 0 10px; }
+.dw-dn { margin: 14px 0 0; color: #5E6380; font: 11.5px Consolas, "Cascadia Mono", monospace; overflow-wrap: anywhere; }
+
+/* Data grid behaviour: each cell keeps to its column, and a heading or value too long for it ends in …. */
+.adt.picks .tr > div { overflow: hidden; }
+.th-sort .lbl { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+/* While a column is being fitted to its contents (double-click on its edge), nothing is cut short. */
+.adt.measuring .tr > div, .adt.measuring .tr > div *, .adt.measuring .th-sort .lbl { overflow: visible !important; max-width: none !important; text-overflow: clip !important; }
+
+/* Compact rows (the default): one line each, joined like a table. Relaxed keeps the taller card rows. */
+.adt.picks.compact.drows { gap: 0; }
+.adt.picks.compact .tr { min-height: 38px; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: none; }
+.adt.picks.compact .tr.th { min-height: 34px; border-bottom-color: var(--line-strong); }
+.adt.picks.compact .tr:not(.th):hover { background: #151827; }
+.adt.picks.compact .tr.picked { background: #161A2B; }
+.adt.picks.compact .who { gap: 9px; }
+.adt.picks.compact .who .pic { width: 24px; height: 24px; font-size: 10px; }
+.adt.picks.compact .who .pic svg { width: 14px; height: 14px; }
+.adt.picks.compact .at-more { width: 26px; height: 26px; }
+
+/* Rows: Compact or Relaxed, at the top of the Columns menu. */
+.col-dens { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px 12px 18px; border-bottom: 1px solid var(--line); }
+.col-dens > span { color: var(--title); font-size: 13px; font-weight: 700; }
+.col-dens .seg button { height: 28px; padding: 0 12px; font-size: 12.5px; }

@@ -25,6 +25,9 @@ public sealed record ObjectGroupsForm(string? Dn, List<string>? Add, List<string
 /// <summary>A group's or computer's details: null leaves it, empty clears it. Email and notes are a group's, location a computer's.</summary>
 public sealed record ObjectEdit(string? Dn, string? Description, string? Email, string? Notes, string? Location);
 
+/// <summary>A computer account made ahead of the computer joining (pre-staged): its name, OU and description.</summary>
+public sealed record NewAdComputer(string? Name, string? Ou, string? Description);
+
 /// <summary>The menus on Users, Groups and Computers: account options, expiry, properties, rename and move, one at a time.</summary>
 public interface IDirectoryActions
 {
@@ -36,6 +39,9 @@ public interface IDirectoryActions
 
     /// <summary>The fields that changed, by name.</summary>
     Task<List<string>> EditObject(ObjectEdit form, CancellationToken stop);
+
+    /// <summary>A computer account, waiting for a computer of that name to join the domain.</summary>
+    Task<AdComputer> CreateComputer(NewAdComputer form, CancellationToken stop);
 
     Task SetFlag(string username, string flag, bool on, CancellationToken stop);
 
@@ -118,6 +124,53 @@ public sealed partial class DirectoryTools : IDirectoryActions
         var a = await Join(ldap, f, row.Dn, add.Where(g => !string.Equals(g?.Trim(), row.Dn, StringComparison.OrdinalIgnoreCase)), true, stop);
         var b = await Join(ldap, f, row.Dn, remove, false, stop);
         return a is null ? b : b is null ? a : $"{a} {b}";
+    }
+
+    public async Task<AdComputer> CreateComputer(NewAdComputer form, CancellationToken stop)
+    {
+        var name = (form.Name ?? "").Trim().ToUpperInvariant();
+        if (name.Length is 0 or > 15 || !System.Text.RegularExpressions.Regex.IsMatch(name, "^[A-Z0-9-]+$") || name.StartsWith('-') || name.All(char.IsAsciiDigit))
+        {
+            throw new ToolProblem("Computer names are 1 to 15 letters, digits and hyphens. They can't be all digits or start with a hyphen.");
+        }
+        using var ldap = await Open(stop);
+        var f = Ready();
+        var ou = await Into(ldap, form.Ou, NewComputersOf(f), stop);
+        if (!Ldap.Under(ou, f.Scope!))
+        {
+            throw new ToolProblem($"{Product.Title}'s account can only make computers in {ScopeName(f.Scope!, ldap.BaseDn, f.Domain!)}.");
+        }
+        if (await Taken(ldap, name + "$", stop))
+        {
+            throw new ToolProblem($"There's already a computer called {name} in {f.Domain}.");
+        }
+        var dn = $"CN={Ldap.Escape(name)},{ou}";
+        var attributes = new Dictionary<string, object[]>
+        {
+            ["objectClass"] = ["computer"],
+            ["sAMAccountName"] = [name + "$"],
+            // A workstation account with no password yet, as ADUC makes one: the computer sets its own when it joins.
+            ["userAccountControl"] = ["4128"],
+        };
+        if (Words.Blank(form.Description) is { } about)
+        {
+            attributes["description"] = [about];
+        }
+        try
+        {
+            await ldap.Add(dn, attributes, stop);
+        }
+        catch (LdapRefused e)
+        {
+            throw new ToolProblem(e.Code switch
+            {
+                LdapRefused.EntryExists => $"There's already something called {name} in {Ldap.Path(ou, ldap.BaseDn)}.",
+                LdapRefused.InsufficientRights => $"{f.Account} isn't allowed to make computers in {Ldap.Path(ou, ldap.BaseDn)}.",
+                _ => Said(e, f.Account!),
+            });
+        }
+        var made = (await ldap.Find(dn, "(objectClass=*)", false, ComputerAttributes, 1, stop)).FirstOrDefault();
+        return made is null ? throw new ToolProblem($"{name} was made, but couldn't be read back.") : Computer(made, ldap.BaseDn);
     }
 
     public async Task<List<string>> EditObject(ObjectEdit form, CancellationToken stop)
@@ -357,6 +410,15 @@ public static class DirectoryActionsApi
 
     public static void MapDirectoryActionsApi(this WebApplication app)
     {
+        // New computer: a computer account made ahead of the computer joining.
+        app.MapPost("/api/ad/computers", (NewAdComputer form, HttpContext context, IDirectoryActions tools, ActivityLog log) =>
+            UsersApi.Try(context, Permissions.AdCreate, async () =>
+            {
+                var c = await tools.CreateComputer(form, context.RequestAborted);
+                log.Record(context, "users", "ad.computer.create", $"Made the computer account {c.Name} in {(c.Where is { Length: > 0 } w ? w : "the domain")}");
+                return Results.Ok(c);
+            }));
+
         // Groups and computers, by DN: where they are, the groups they're in, and their details.
         app.MapPost("/api/ad/object/move", (ObjectMoveForm form, HttpContext context, IDirectoryActions tools, ActivityLog log) =>
             UsersApi.Try(context, Permissions.AdChange, async () =>

@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.126 (2026-11-13)
+
+- Clicking a user, group or computer opens it in a panel from the right, with its details, groups and everyday actions. The list has compact rows by default (Relaxed is under Columns), columns keep to their width and end in dots, and double-clicking a column edge fits it. Users, groups and computers each have their own default OU in settings, and Computers has New computer.
+
 ## 1.1.125 (2026-11-13)
 
 - Users, Groups and Computers have Filter, Columns and Actions in the toolbar. Filter keeps rows that match your conditions, Columns picks what shows, column names sort, and their edges drag to resize. Actions shows how many are ticked. The rows and tiles switch and the filters down the left are gone, and Name shows just the name.

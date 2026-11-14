@@ -281,6 +281,8 @@ public sealed class FakeDirectoryTools : IDirectoryTools
 
     public Task SetNewUsers(string dn, CancellationToken stop) => Task.CompletedTask;
 
+    public Task SetNewPlace(string kind, string dn, CancellationToken stop) => Task.CompletedTask;
+
     public Task<List<AdOu>> Places(CancellationToken stop) => Task.FromResult<List<AdOu>>([new("CN=Users,DC=amw,DC=com", "Users", "Users")]);
 
     public Task<(List<AdUser> Users, bool More)> Users(CancellationToken stop) => Task.FromResult((Ready(), false));

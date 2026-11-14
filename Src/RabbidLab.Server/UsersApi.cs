@@ -63,9 +63,14 @@ public static class UsersApi
 
         app.MapPost("/api/ad/settings", (AdSettingsForm form, HttpContext context, IDirectoryTools tools, ActivityLog log) => Try(context, Permissions.AdConnect, async () =>
         {
-            await tools.SetNewUsers(form.NewUsers ?? "", context.RequestAborted);
+            // One at a time, as each is changed: only the ones given are set.
+            foreach (var (kind, dn) in new[] { ("users", form.NewUsers), ("groups", form.NewGroups), ("computers", form.NewComputers) }.Where(p => p.Item2 is not null))
+            {
+                await tools.SetNewPlace(kind, dn!, context.RequestAborted);
+            }
             var state = tools.State()!;
-            log.Record(context, "users", "ad.settings", $"New AD accounts go in {state.NewUsersName}");
+            log.Record(context, "users", "ad.settings", form.NewGroups is not null ? $"New AD groups go in {state.NewGroupsName}"
+                : form.NewComputers is not null ? $"New AD computers go in {state.NewComputersName}" : $"New AD users go in {state.NewUsersName}");
             return Results.Ok(state);
         }));
 
@@ -382,7 +387,7 @@ public static class UsersApi
     private static string? Normal(string? address) => Addresses.Normal(address);
 }
 
-public sealed record AdSettingsForm(string? NewUsers);
+public sealed record AdSettingsForm(string? NewUsers, string? NewGroups = null, string? NewComputers = null);
 
 public sealed record PasswordReset(string? Password, bool MustChange);
 
