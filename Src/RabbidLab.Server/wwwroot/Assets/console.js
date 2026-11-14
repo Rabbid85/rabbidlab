@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.133', [
+    'Domain settings has its own place in the left menu under Directory, with its own red dot, instead of sitting in the Active Directory list.']],
   ['1.1.132', [
     'Filter is just the funnel icon now, with its count and the clear button beside it.']],
   ['1.1.131', [
@@ -514,11 +516,19 @@ const RELEASE_NOTES = [
     sub.querySelectorAll('.ds-sec[data-sec]').forEach((s) => { s.hidden = !!one && s.dataset.sec !== one; });
     sub.classList.toggle('one-sec', !!one);
     // Active Directory's pages are listed down the left of whichever of them is open, with that page's views (users.js).
+    // Domain settings is its own area: its own entry in the sidebar, and only its views down the left.
     const dir = now.classList.contains('dir-area');
+    const domain = now.dataset.page === 'ad' && rest[0] === 'domain';
     if (now.dataset.page !== 'ad') $('dir-rail').classList.remove('lists'); // Find, views and filters are for the pages that list things
+    $('dir-rail').classList.toggle('domain-only', domain);
+    if (now.id === 'page-ad') {
+      now.dataset.title = domain ? 'Domain settings' : 'Active Directory';
+      $('dir-title').textContent = now.dataset.title;
+    }
     if (dir) {
       now.querySelector('.page-head').after($('dir-rail'));
-      $('rail-dir').setAttribute('aria-current', 'page');
+      $(domain ? 'rail-domain' : 'rail-dir').setAttribute('aria-current', 'page');
+      if (domain) $('rail-dir').removeAttribute('aria-current');
       mark(document.querySelectorAll('#dir-rail a[data-adpage]'), 'adpage', now.dataset.page === 'ad' ? where()[2][0] || 'users' : now.dataset.page);
     }
     // Back to where you jumped from, at the top of the page: in its banner, or over its title.

@@ -151,6 +151,7 @@
   <a href="#sensors" data-page="sensors" title="Sensors" data-can="sensors.view"><svg><use href="#i-activity"/></svg><span>Sensors</span><i class="rail-dot bad" id="sensors-dot" hidden></i></a>
   <p class="rail-label" data-can="ad.view ad.connect">Directory</p>
   <a href="#ad/users" data-page="ad" id="rail-dir" title="Active Directory" data-can="ad.view ad.connect"><svg><use href="#i-users"/></svg><span>Active Directory</span><i class="rail-dot bad" id="rail-dir-dot" hidden></i></a>
+  <a href="#ad/domain" data-page="domain" id="rail-domain" title="Domain settings" data-can="ad.view ad.connect"><svg><use href="#i-globe"/></svg><span>Domain settings</span><i class="rail-dot bad" id="rail-domain-dot" hidden></i></a>
   <p class="rail-label" data-can="seats.view sessions.view access.view windows.view">Config</p>
   <a href="#seats" data-page="seats" title="Seats" data-can="seats.view sessions.view"><svg><use href="#i-monitor"/></svg><span>Seats</span><small id="rail-seats"></small><i class="rail-dot" id="seats-dot" hidden></i></a>
   <a href="#local" data-page="local" title="Local accounts" data-can="windows.view"><svg><use href="#i-key"/></svg><span>Local accounts</span></a>
@@ -726,7 +727,7 @@
 
   <!-- Active Directory: users, groups and computers, each with its views down the left, changed as Rabbid Lab's own AD account (users.js). -->
   <section class="page people-page dir-page dir-area" id="page-ad" data-page="ad" data-title="Active Directory" hidden>
-    <header class="page-head dhead"><h1>Active Directory</h1><p id="dir-lead"></p></header>
+    <header class="page-head dhead"><h1 id="dir-title">Active Directory</h1><p id="dir-lead"></p></header>
     <div class="dgate" id="dir-setup" hidden></div>
     <!-- Active Directory's pages, down the left of whichever of them is open (console.js moves this there), then the open page's views (users.js). -->
     <nav class="dnav" id="dir-rail" aria-label="Active Directory">

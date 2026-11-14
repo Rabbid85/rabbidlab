@@ -455,6 +455,7 @@
       $('dir-locked-dot').hidden = true;
       $('dir-domain-dot').hidden = true;
       $('rail-dir-dot').hidden = true;
+      $('rail-domain-dot').hidden = true;
       return;
     }
     $('dir-acct').textContent = `Service account: ${s.account}`;
@@ -515,7 +516,8 @@
     if (lists.users) $('dir-locked-dot').hidden = !lists.users.some((u) => u.locked && !u.system);
     if (lists.domain) $('dir-domain-dot').hidden = !lists.domain.some((s) => s.tone === 'bad');
     // The main rail's one entry carries a dot when either of those does.
-    $('rail-dir-dot').hidden = $('dir-locked-dot').hidden && $('dir-domain-dot').hidden;
+    $('rail-dir-dot').hidden = $('dir-locked-dot').hidden;
+    $('rail-domain-dot').hidden = $('dir-domain-dot').hidden;
     drawBanner();
   };
 

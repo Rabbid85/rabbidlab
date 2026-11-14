@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.133 (2026-11-13)
+
+- Domain settings has its own place in the left menu under Directory, with its own red dot, instead of sitting in the Active Directory list.
+
 ## 1.1.132 (2026-11-13)
 
 - Filter is just the funnel icon now, with its count and the clear button beside it.

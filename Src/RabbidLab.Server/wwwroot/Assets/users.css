@@ -486,3 +486,7 @@ dialog.drawer:not(:modal) { z-index: 60; }
 .dw-sw > span { color: var(--text); font-size: 13.5px; }
 .dw-sw > span small { display: block; color: #6D7290; font-size: 12px; }
 .dw-sw input.switch:disabled { opacity: .45; cursor: default; }
+
+/* Domain settings is its own area: on its page the list down the left has only its views, and the AD pages leave it out. */
+#dir-rail.domain-only > a:not([data-adpage="domain"]), #dir-rail.domain-only > .rail-label { display: none; }
+#dir-rail:not(.domain-only) > a[data-adpage="domain"] { display: none; }
