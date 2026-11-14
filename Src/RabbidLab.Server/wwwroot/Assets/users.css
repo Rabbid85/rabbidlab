@@ -313,15 +313,8 @@ button.danger.solid:hover { background: #DB4860; }
 .form .ou-row .adder { flex: 1; min-width: 0; }
 .form .adder .find { height: 38px; }
 .form .adder .find input { height: auto; padding: 0; border: 0; background: none; }
-#gp-dialog .adder { margin-top: 12px; }
-.gp-list { max-height: 300px; margin-top: 10px; overflow-y: auto; }
-.gp-list .ticks { margin-top: 0; }
-.gp-list .tick { margin: 0; }
-.gp-list .tick small { margin-left: auto; color: #5E6380; font-size: 11.5px; }
 .key-row code.many { white-space: pre; letter-spacing: 0; line-height: 1.7; font-size: 13px; overflow-x: auto; }
 
-.gp-list .tick svg { flex: none; width: 15px; height: 15px; color: #8B90A5; }
-.gp-list .tick span { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 
 
 /* The AD lists are data grids (grid.js, grid.css); these are their own touches. */
@@ -433,3 +426,20 @@ dialog.drawer:not(:modal) { z-index: 60; }
 /* Domain settings is its own area: on its page the list down the left has only its views, and the AD pages leave it out. */
 #dir-rail.domain-only > a:not([data-adpage="domain"]), #dir-rail.domain-only > .rail-label { display: none; }
 #dir-rail:not(.domain-only) > a[data-adpage="domain"] { display: none; }
+
+/* The picker, as NorthStack AD has it: everyone in a list with a tick each, a box to find in it, and the count. */
+.pk-bar { display: flex; align-items: center; gap: 14px; margin-top: 14px; }
+.pk-bar .pk-find { flex: 1; margin: 0; }
+.pk-list { max-height: min(52vh, 440px); margin-top: 10px; overflow-y: auto; border: 1px solid var(--line); border-radius: 12px; background: #0F111A; scrollbar-width: thin; scrollbar-color: #2A2D3E transparent; }
+.pk-row { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 6px 14px; border-top: 1px solid var(--line); cursor: pointer; }
+.pk-row:first-child { border-top: 0; }
+.pk-row:hover { background: #151827; }
+.pk-row:has(input:checked) { background: color-mix(in srgb, var(--accent) 9%, #0F111A); }
+.pk-row .pic { flex: none; width: 28px; height: 28px; }
+.pk-row .pic svg { width: 15px; height: 15px; }
+.pk-text { display: grid; flex: 1; min-width: 0; }
+.pk-text b { overflow: hidden; color: var(--title); font-size: 13.5px; font-weight: 600; white-space: nowrap; text-overflow: ellipsis; }
+.pk-text small { overflow: hidden; color: var(--muted); font-size: 12px; white-space: nowrap; text-overflow: ellipsis; }
+.pk-none { margin: 0; padding: 22px; color: var(--muted); text-align: center; }
+.pk-count { margin-right: auto; color: var(--muted); font-size: 13px; }
+#gp-dialog .dialog-foot { align-items: center; }

@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.136', [
+    'Add to groups, Add members, Remove and Copy list everyone to pick from with a tick each, like NorthStack AD: find to narrow it, Tick all shown, and a count of what is ticked. Groups they are already in, and members a group already has, are left out.']],
   ['1.1.135', [
     'Sensors Rows view uses the same table as everything else, so it sorts by a heading and has the Columns menu with Compact and Relaxed rows.',
     'Every table can move a column by dragging its heading onto another one. Reset in Columns puts the order back too.']],

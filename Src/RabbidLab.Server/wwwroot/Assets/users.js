@@ -1238,14 +1238,6 @@
 
   // A group's members, read when they're needed.
   const membersNow = async (g) => (await R.get(`/api/ad/groups/members?dn=${encodeURIComponent(g.dn)}`)).map((m) => ({ dn: m.dn, name: m.name, kind: m.kind, sub: m.username || m.where }));
-  const groupsFind = async (q) => (await R.get(`/api/ad/groups?q=${encodeURIComponent(q)}`)).filter((g) => !g.system).map((g) => ({ dn: g.dn, name: g.name, kind: 'group', sub: g.description || g.where }));
-  const anyFind = async (q) => (await R.get(`/api/ad/find?q=${encodeURIComponent(q)}`)).map((m) => ({ dn: m.dn, name: m.name, kind: m.kind, sub: m.username || m.where }));
-  // The same kind, from the list already read: for copying membership from one to another.
-  const sameFind = (k, not) => async (q) => {
-    const t = q.toLowerCase();
-    return (lists[k] || []).filter((x) => !not.includes(x) && [x.name, x.username].some((v) => String(v || '').toLowerCase().includes(t)))
-      .slice(0, 30).map((x) => ({ dn: x.dn, name: nameOf(x), kind: { users: 'user', groups: 'group', computers: 'computer' }[k], sub: x.username || x.where, x }));
-  };
   const notIn = (x, dns) => dns.filter((d) => !(x.groups || []).some((g) => same(g.dn, d)) && !same(x.dn, d));
 
   const runCmd = (cmd, k, objs) => {
@@ -1294,7 +1286,9 @@
         break;
       }
       case 'groups-add':
-        openPicker({ title: 'Add to groups', lead: `Find the groups to add ${who} to.`, button: 'Add', find: groupsFind, not: xs.map((x) => x.dn),
+        // One of them: the groups it's already in are left out.
+        openPicker({ title: 'Add to groups', lead: `Tick the groups to add ${who} to.`, button: 'Add to groups', noun: ['group', 'groups'],
+          rows: rowsOf(['groups'], [...xs.map((x) => x.dn), ...(xs.length === 1 ? (xs[0].groups || []).map((g) => g.dn) : [])]),
           go: (gs) => each(k, xs, 'Adding to groups', `Added ${who} to ${gs.length === 1 ? gs[0].name : count(gs.length, 'group', 'groups')}`,
             (x) => memberOf(k, x, notIn(x, gs.map((g) => g.dn)), [])) });
         break;
@@ -1302,8 +1296,9 @@
         const to = only((x) => x.groups?.length);
         const seen = new Map();
         to.forEach((x) => x.groups.forEach((g) => seen.set(g.dn.toLowerCase(), { dn: g.dn, name: g.name, kind: 'group', n: (seen.get(g.dn.toLowerCase())?.n || 0) + 1 })));
-        openPicker({ title: 'Remove from groups', lead: `Tick the groups to take ${whoOf(to, k)} out of.`, button: 'Remove',
-          ticks: [...seen.values()].sort((a, b) => a.name.localeCompare(b.name)).map((g) => ({ ...g, sub: to.length > 1 ? `${g.n} of ${to.length}` : '' })),
+        openPicker({ title: 'Remove from groups', lead: `Tick the groups to take ${whoOf(to, k)} out of.`, button: 'Remove from groups', noun: ['group', 'groups'],
+          none: `${whoOf(xs, k)} ${xs.length === 1 ? 'isn\'t' : 'aren\'t'} in any groups.`,
+          rows: [...seen.values()].sort((a, b) => a.name.localeCompare(b.name)).map((g) => ({ ...g, sub: to.length > 1 ? `${g.n} of ${to.length}` : '' })),
           go: (gs) => each(k, to, 'Removing from groups', `Removed ${whoOf(to, k)} from ${gs.length === 1 ? gs[0].name : count(gs.length, 'group', 'groups')}`,
             (x) => memberOf(k, x, [], gs.filter((g) => x.groups.some((h) => same(h.dn, g.dn))).map((g) => g.dn))) });
         break;
@@ -1316,7 +1311,8 @@
         break;
       }
       case 'groups-copy':
-        openPicker({ title: 'Copy membership', lead: `Pick the ${one} whose groups ${who} ${xs.length === 1 ? 'joins' : 'join'}.`, button: 'Copy', one: true, find: sameFind(k, xs),
+        openPicker({ title: 'Copy membership', lead: `Tick the ${one} whose groups ${who} ${xs.length === 1 ? 'joins' : 'join'}.`, button: 'Copy', one: true, noun: [one, many],
+          rows: rowsOf([k], xs.map((x) => x.dn)),
           go: ([from]) => {
             const gs = from.x.groups || [];
             if (!gs.length) R.toast(`${from.name} isn't in any groups`, '', { tone: 'warn' });
@@ -1330,24 +1326,28 @@
           R.toast(`${nameOf(from)} isn't in any groups`, '', { tone: 'warn' });
           break;
         }
-        openPicker({ title: 'Copy membership', lead: `Pick the ${many} to add to the ${count(gs.length, 'group', 'groups')} ${nameOf(from)} is in.`, button: 'Copy', find: sameFind(k, xs),
+        openPicker({ title: 'Copy membership', lead: `Tick the ${many} to add to the ${count(gs.length, 'group', 'groups')} ${nameOf(from)} is in.`, button: 'Copy', noun: [one, many],
+          rows: rowsOf([k], [from.dn]),
           go: (picks) => each(k, picks.map((p) => p.x).filter((x) => mayChange(k, x)), 'Copying membership', `Added ${whoOf(picks.map((p) => p.x), k)} to the groups ${nameOf(from)} is in`,
             (x) => memberOf(k, x, notIn(x, gs.map((g) => g.dn)), [])) });
         break;
       }
       case 'members-add':
-        openPicker({ title: 'Add members', lead: `Find the users, groups and computers to add to ${who}.`, button: 'Add', find: anyFind, not: xs.map((g) => g.dn),
+        // One group: who's already in it is left out.
+        openPicker({ title: 'Add members', lead: `Tick the users, groups and computers to add to ${who}.`, button: 'Add members', noun: ['member', 'members'], tags: true,
+          rows: (async () => rowsOf(['users', 'groups', 'computers'], [...xs.map((g) => g.dn), ...(xs.length === 1 ? (await membersNow(xs[0]).catch(() => [])).map((m) => m.dn) : [])]))(),
           go: (ms) => each(k, xs, 'Adding members', `Added ${ms.length === 1 ? ms[0].name : count(ms.length, 'member', 'members')} to ${who}`, (g) => membersOf(g, ms.map((m) => m.dn), [])) });
         break;
       case 'members-remove': {
         const g = xs[0];
-        membersNow(g).then((ms) => openPicker({ title: 'Remove members', lead: ms.length ? `Tick who to take out of ${g.name}.` : `${g.name} has no members.`, button: 'Remove', ticks: ms,
-          go: (out) => each(k, [g], 'Removing members', `Took ${out.length === 1 ? out[0].name : count(out.length, 'member', 'members')} out of ${g.name}`, (x) => membersOf(x, [], out.map((m) => m.dn))) }))
-          .catch((err) => R.toast('Couldn\'t read the members', err.message, { tone: 'warn' }));
+        openPicker({ title: 'Remove members', lead: `Tick who to take out of ${g.name}.`, button: 'Remove members', noun: ['member', 'members'], tags: true,
+          none: `${g.name} has no members.`, rows: membersNow(g).then((ms) => ms.sort((a, b) => a.name.localeCompare(b.name))),
+          go: (out) => each(k, [g], 'Removing members', `Took ${out.length === 1 ? out[0].name : count(out.length, 'member', 'members')} out of ${g.name}`, (x) => membersOf(x, [], out.map((m) => m.dn))) });
         break;
       }
       case 'members-copy':
-        openPicker({ title: 'Copy members', lead: `Pick the group whose members go into ${who}.`, button: 'Copy', one: true, find: groupsFind, not: xs.map((g) => g.dn),
+        openPicker({ title: 'Copy members', lead: `Tick the group whose members go into ${who}.`, button: 'Copy', one: true, noun: ['group', 'groups'],
+          rows: rowsOf(['groups'], xs.map((g) => g.dn)),
           go: async ([from]) => {
             const ms = await membersNow(from).catch(() => []);
             if (!ms.length) R.toast(`${from.name} has no members to copy`, '', { tone: 'warn' });
@@ -1356,7 +1356,8 @@
         break;
       case 'members-copy-to': {
         const from = xs[0];
-        openPicker({ title: 'Copy members', lead: `Pick the groups that get the members of ${from.name}.`, button: 'Copy', find: groupsFind, not: [from.dn],
+        openPicker({ title: 'Copy members', lead: `Tick the groups that get the members of ${from.name}.`, button: 'Copy', noun: ['group', 'groups'],
+          rows: rowsOf(['groups'], [from.dn]),
           go: async (to) => {
             const ms = await membersNow(from).catch(() => []);
             if (!ms.length) R.toast(`${from.name} has no members to copy`, '', { tone: 'warn' });
@@ -1525,57 +1526,84 @@
     each(k, to, 'Moving', `Moved ${whoOf(to, k)} to ${where}`, (x) => moveOf(k, x, ou));
   });
 
-  // One window for picking: find and pick (shown as chips), or tick from a list. One: picking replaces what's picked.
-  const pk = { find: null, ticks: null, one: false, not: [], chosen: [], go: null };
+  // One window for picking, as NorthStack AD has it: every one there is in a list with a tick each, a box to find in
+  // it, Tick all shown, and how many are ticked. One: ticking one clears the others.
+  const KIND_OF = { users: 'user', groups: 'group', computers: 'computer' };
   const PK_ICON = { user: 'user', group: 'users', computer: 'laptop', other: 'user' };
-  const drawPk = () => {
-    $('gp-list').innerHTML = pk.ticks
-      ? `<div class="ticks">${pk.ticks.map((t, i) => `<label class="tick"><input type="checkbox" data-gp="${i}"${pk.chosen.includes(t) ? ' checked' : ''}>${svg(PK_ICON[t.kind] || 'user')}<span>${esc(t.name)}</span>`
-        + `${t.sub ? `<small>${esc(t.sub)}</small>` : ''}</label>`).join('')}</div>`
-      : `<div class="chips-in">${pk.chosen.map((c, i) => `<span class="gchip">${esc(c.name)}<button type="button" class="chip-x" data-gp-x="${i}" aria-label="Not ${esc(c.name)}">${svg('x')}</button></span>`).join('')
-        || '<span class="muted">Nothing picked yet.</span>'}</div>`;
-    $('gp-save').disabled = !pk.chosen.length;
+  const PK_TAG = { user: 'User', group: 'Group', computer: 'Computer' };
+  const pk = { rows: [], one: false, chosen: new Set(), go: null, noun: ['item', 'items'], tags: false, none: '' };
+  const ensure = async (k) => lists[k] || (lists[k] = await AD[k].load());
+  // Everyone of these kinds, A to Z, less the ones in not (themselves, and what they're already in or have).
+  const rowsOf = async (kinds, not = []) => {
+    const skip = new Set(not.map((d) => String(d).toLowerCase()));
+    const sub = (k, x) => (k === 'users' ? [x.username, x.where] : k === 'groups' ? [x.security ? 'Security' : 'Distribution', x.where] : [x.host, x.where]).filter(Boolean).join(' · ');
+    const all = await Promise.all(kinds.map(async (k) => (await ensure(k)).map((x) => ({ dn: x.dn, name: nameOf(x), kind: KIND_OF[k], sub: sub(k, x), x }))));
+    return all.flat().filter((r) => !skip.has(String(r.dn).toLowerCase())).sort((a, b) => a.name.localeCompare(b.name));
   };
-  const openPicker = ({ title, lead, button, find = null, ticks = null, one = false, not = [], go }) => {
-    Object.assign(pk, { find, ticks, one, not, go, chosen: [] });
+  const pkCount = () => {
+    const n = pk.chosen.size;
+    $('gp-count').textContent = n ? `${count(n, pk.noun[0], pk.noun[1])} ticked` : '';
+    $('gp-save').disabled = !n;
+  };
+  const pkShown = () => {
+    const q = $('gp-find').value.trim().toLowerCase();
+    return pk.rows.filter((r) => !q || `${r.name} ${r.sub}`.toLowerCase().includes(q));
+  };
+  const drawPk = () => {
+    const shown = pkShown();
+    $('gp-list').innerHTML = shown.length ? shown.map((r) => `<label class="pk-row"><input type="checkbox" data-pk="${r.i}"${pk.chosen.has(r.i) ? ' checked' : ''}>`
+      + `<span class="pic">${svg(PK_ICON[r.kind] || 'user')}</span><span class="pk-text"><b>${esc(r.name)}</b>${r.sub ? `<small>${esc(r.sub)}</small>` : ''}</span>`
+      + `${pk.tags && PK_TAG[r.kind] ? badge(PK_TAG[r.kind], 'grey') : ''}</label>`).join('')
+      : `<p class="pk-none">${pk.rows.length ? 'Nothing matches.' : esc(pk.none || 'Nothing to pick.')}</p>`;
+    $('gp-all').hidden = pk.one || !shown.length;
+    pkCount();
+  };
+  // rows: the list, or a promise of it (it shows loading until it's read).
+  const openPicker = async ({ title, lead, button, rows, one = false, noun = ['item', 'items'], tags = false, none = '', go }) => {
+    Object.assign(pk, { rows: [], one, noun, tags, none, go, chosen: new Set() });
     $('gp-title').textContent = title;
     $('gp-lead').textContent = lead;
-    $('gp-adder').hidden = !find;
     $('gp-save').textContent = button;
-    $('gp-adder').querySelector('[data-find]').value = '';
-    $('gp-adder').querySelector('[data-drop]').hidden = true;
+    $('gp-find').value = '';
+    $('gp-all').hidden = true;
     say('gp-problem', '');
-    drawPk();
+    pkCount();
+    R.skeleton($('gp-list'), 'rows', 6);
     $('gp-dialog').showModal();
-    if (find) $('gp-adder').querySelector('[data-find]').focus();
-  };
-  R.dropdown($('gp-adder'), {
-    none: 'Nothing matches.',
-    find: async (q) => (pk.find ? (await pk.find(q)).filter((x) => !pk.chosen.some((c) => same(c.dn, x.dn)) && !pk.not.some((d) => same(d, x.dn))).slice(0, 30) : []),
-    draw: (x, i) => R.option(` data-pick="${i}"`, `<span class="pic">${svg(PK_ICON[x.kind] || 'user')}</span>`, x.name, x.sub || ''),
-    pick: (x) => {
-      pk.chosen = pk.one ? [x] : [...pk.chosen, x];
-      drawPk();
-      $('gp-adder').querySelector('[data-find]').focus();
-    },
-  });
-  $('gp-list').addEventListener('click', (e) => {
-    const x = e.target.closest('[data-gp-x]');
-    if (!x) return;
-    pk.chosen.splice(Number(x.dataset.gpX), 1);
+    $('gp-find').focus();
+    try {
+      pk.rows = (await rows).map((r, i) => ({ ...r, i }));
+    } catch (err) {
+      say('gp-problem', err.message);
+    } finally {
+      R.skeleton($('gp-list'), '');
+    }
     drawPk();
+  };
+  let pkTimer = null;
+  $('gp-find').addEventListener('input', () => {
+    clearTimeout(pkTimer);
+    pkTimer = setTimeout(drawPk, 80);
   });
   $('gp-list').addEventListener('change', (e) => {
-    if (e.target.dataset.gp === undefined) return;
-    const t = pk.ticks[Number(e.target.dataset.gp)];
-    pk.chosen = e.target.checked ? [...pk.chosen, t] : pk.chosen.filter((c) => c !== t);
-    $('gp-save').disabled = !pk.chosen.length;
+    if (e.target.dataset.pk === undefined) return;
+    const i = Number(e.target.dataset.pk);
+    if (pk.one) {
+      pk.chosen = new Set(e.target.checked ? [i] : []);
+      $('gp-list').querySelectorAll('[data-pk]').forEach((b) => { b.checked = Number(b.dataset.pk) === i && e.target.checked; });
+    } else if (e.target.checked) pk.chosen.add(i);
+    else pk.chosen.delete(i);
+    pkCount();
+  });
+  $('gp-all').addEventListener('click', () => {
+    pkShown().forEach((r) => pk.chosen.add(r.i));
+    drawPk();
   });
   $('gp-cancel').addEventListener('click', () => $('gp-dialog').close());
   $('gp-save').addEventListener('click', () => {
-    const { chosen, go } = pk;
+    const chosen = pk.rows.filter((r) => pk.chosen.has(r.i));
     $('gp-dialog').close();
-    if (chosen.length) go(chosen);
+    if (chosen.length) pk.go(chosen);
   });
 
   // --- The panel from the right: one user, group or computer -------------------------------------------------------

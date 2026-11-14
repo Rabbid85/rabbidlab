@@ -1395,13 +1395,13 @@
 </dialog>
 
 <!-- Add to groups (find and pick) or Remove from groups (tick the ones to leave). -->
-<dialog class="dialog" id="gp-dialog" aria-labelledby="gp-title">
+<dialog class="dialog wide" id="gp-dialog" aria-labelledby="gp-title">
   <h2 id="gp-title">Add to groups</h2>
   <p class="dialog-lead" id="gp-lead"></p>
-  <div class="adder" id="gp-adder"><label class="find"><svg><use href="#i-search"/></svg><input type="search" data-find placeholder="Find a group" aria-label="Find a group" autocomplete="off" spellcheck="false"></label><div class="drop" data-drop hidden></div></div>
-  <div class="gp-list" id="gp-list"></div>
+  <div class="pk-bar"><label class="side-find pk-find"><svg><use href="#i-search"/></svg><input type="search" id="gp-find" placeholder="Find" aria-label="Find" autocomplete="off" spellcheck="false"></label><button type="button" class="linkish" id="gp-all" hidden>Tick all shown</button></div>
+  <div class="pk-list" id="gp-list"></div>
   <p class="hint problem" id="gp-problem" hidden></p>
-  <div class="dialog-foot"><button type="button" id="gp-cancel">Cancel</button><button type="button" class="primary" id="gp-save">Add</button></div>
+  <div class="dialog-foot"><span class="pk-count" id="gp-count"></span><button type="button" id="gp-cancel">Cancel</button><button type="button" class="primary" id="gp-save">Add</button></div>
 </dialog>
 
 <!-- Edit an attribute, as ADSI Edit does: one box for one value, a line each for several, TRUE or FALSE for a Boolean. -->
