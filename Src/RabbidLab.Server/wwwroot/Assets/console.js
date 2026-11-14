@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.135', [
+    'Sensors Rows view uses the same table as everything else, so it sorts by a heading and has the Columns menu with Compact and Relaxed rows.',
+    'Every table can move a column by dragging its heading onto another one. Reset in Columns puts the order back too.']],
   ['1.1.134', [
     'Every table works like the Users list now: Domain settings, AD audit, Recycle Bin, the Attribute browser, Seats and Signed in now all sort by a heading, resize and fit columns, pick columns and switch between Compact and Relaxed rows.',
     'Hints and tables each come from one shared file now, so they look and behave the same everywhere.']],

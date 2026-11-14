@@ -24,7 +24,7 @@ body.col-dragging, body.col-dragging * { cursor: col-resize !important; user-sel
 .table.dgrid .tr-tail { display: flex; justify-content: flex-end; }
 
 /* While a column is fitted to what's in it (double-click its edge), nothing is cut short. */
-.dgrid.measuring .tr > div, .dgrid.measuring .tr > div *, .dgrid.measuring .th-sort .lbl { overflow: visible !important; max-width: none !important; text-overflow: clip !important; }
+:is(.dgrid.measuring, .measuring .dgrid) .tr > div, :is(.dgrid.measuring, .measuring .dgrid) .tr > div *, :is(.dgrid.measuring, .measuring .dgrid) .th-sort .lbl { overflow: visible !important; max-width: none !important; text-overflow: clip !important; }
 
 /* Compact rows: one line each, joined like a table. Relaxed rows are taller. */
 .table.dgrid.compact { gap: 0; }
@@ -48,3 +48,8 @@ body.col-dragging, body.col-dragging * { cursor: col-resize !important; user-sel
 .gcols svg { width: 15px; height: 15px; }
 /* It stays in reach at the right edge when the grid scrolls sideways. */
 .table.dgrid .tr.th > .tr-tail:has(.gcols) { position: sticky; right: 0; z-index: 2; background: #12141F; }
+
+/* A heading dragged onto another lands on the side the pointer is over. */
+.table.dgrid .th-cell[draggable="true"] { cursor: grab; }
+.table.dgrid .th-cell.drop-left { box-shadow: inset 2px 0 0 var(--accent-line); }
+.table.dgrid .th-cell.drop-right { box-shadow: inset -2px 0 0 var(--accent-line); }

@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.135 (2026-11-13)
+
+- Sensors Rows view uses the same table as everything else, so it sorts by a heading and has the Columns menu with Compact and Relaxed rows.
+- Every table can move a column by dragging its heading onto another one. Reset in Columns puts the order back too.
+
 ## 1.1.134 (2026-11-13)
 
 - Every table works like the Users list now: Domain settings, AD audit, Recycle Bin, the Attribute browser, Seats and Signed in now all sort by a heading, resize and fit columns, pick columns and switch between Compact and Relaxed rows.

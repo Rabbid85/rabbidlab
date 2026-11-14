@@ -92,18 +92,11 @@
 .sn-line path.idle { stroke: #3A3E55; stroke-dasharray: 2 4; }
 .s-up { --c: #5FD4A0; } .s-down { --c: #FF6B7D; } .s-warn { --c: #F2BE6B; } .s-paused, .s-new { --c: #5E6380; }
 
-/* Grid: the console's table. A heading is dragged by its name to another place and by its right edge to another width. */
-.tr.sn { grid-template-columns: var(--sn-cols); min-width: var(--sn-min, 820px); min-height: 52px; cursor: pointer; }
-.tr.sn.th { min-height: 36px; cursor: default; user-select: none; }
+/* Rows view: a data grid (grid.js, grid.css); these are the sensors' own cells. */
+.tr.sn { min-height: 52px; cursor: pointer; }
 .tr.sn:not(.th):hover { background: #151827; }
-.tr.sn.s-down { background: rgba(255, 107, 125, .06); }
+.table.dgrid .tr.sn.s-down { background: rgba(255, 107, 125, .06); }
 .tr.sn > * { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.sn-th { position: relative; display: flex; align-items: center; height: 36px; cursor: grab; }
-.sn-th.drop-left { box-shadow: inset 2px 0 0 var(--accent-line); }
-.sn-th.drop-right { box-shadow: inset -2px 0 0 var(--accent-line); }
-.sn-size { position: absolute; top: 6px; right: -8px; bottom: 6px; width: 10px; cursor: col-resize; }
-.sn-size::after { content: ""; position: absolute; top: 4px; bottom: 4px; left: 4px; width: 2px; border-radius: 2px; background: #2A2D3E; }
-.sn-size:hover::after, .sn-sizing .sn-size::after { background: var(--accent-line); }
 .tr.sn .state.down { color: var(--red); }
 .tr.sn .state.warn { color: var(--amber); }
 .tr.sn .state.paused, .tr.sn .state.new { color: #5E6380; }
@@ -300,3 +293,6 @@
 #ch-mail[hidden] { display: none; }
 #ch-mail .sd-div { display: none; }
 #ch-mail #ml-help { margin: 10px 0 0; }
+.table.dgrid.compact .tr.sn .nm .lic { width: 24px; height: 24px; border-radius: 7px; }
+.table.dgrid.compact .tr.sn .nm .lic img { width: 16px; height: 16px; }
+.table.dgrid.compact .tr.sn .sn-chart { height: 22px; }

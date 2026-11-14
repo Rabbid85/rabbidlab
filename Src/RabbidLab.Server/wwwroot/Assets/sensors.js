@@ -78,7 +78,7 @@
     try {
       const got = await R.get('/api/links');
       faces = Object.fromEntries((got.links || []).filter((l) => l.sensor && /^data:image\//.test(l.icon || '')).map((l) => [l.sensor, l.icon]));
-      if (!tools.busy() && !sizing && !moving) draw();
+      if (!tools.busy() && !snGrid.busy()) draw();
     } catch {
       // The cards keep their kind's icon.
     }
@@ -178,35 +178,7 @@
     $('sensors-dot').hidden = !down.length;
   };
 
-  // --- The grid's columns: an order and widths of the person's own, kept in the browser -----------------------------------
-
-  const COLS = { state: ['State', 130], name: ['Sensor', 220], check: ['Check', 120], where: ['Address', 200], reply: ['Reply', 110], line: ['Last hour', 240], up: ['Up, 7 days', 100], alerts: ['Alert type', 120] };
-  const plain = () => ({ order: Object.keys(COLS), w: Object.fromEntries(Object.entries(COLS).map(([k, c]) => [k, c[1]])) });
-  const readCols = () => {
-    try {
-      const kept = JSON.parse(stored('rabbidlab.sensors.columns') || 'null');
-      const start = plain();
-      if (!kept) return start;
-      // A column added since it was saved goes at the end; one that's gone is dropped.
-      const order = [...kept.order.filter((k) => k in COLS), ...start.order.filter((k) => !kept.order.includes(k))];
-      return { order, w: Object.fromEntries(order.map((k) => [k, Math.min(900, Math.max(60, Number(kept.w?.[k]) || start.w[k]))])) };
-    } catch {
-      return plain();
-    }
-  };
-  let cols = readCols();
-  let sizing = false; // a column's edge is being dragged
-  let moving = null; // the column whose heading is being dragged
-  const applyCols = () => {
-    const list = $('sn-list');
-    list.style.setProperty('--sn-cols', cols.order.map((k) => `minmax(${cols.w[k]}px, ${cols.w[k]}fr)`).join(' '));
-    list.style.setProperty('--sn-min', `${cols.order.reduce((n, k) => n + cols.w[k], 0) + 12 * (cols.order.length - 1) + 32}px`);
-    $('sn-cols-reset').hidden = view !== 'grid' || JSON.stringify(cols) === JSON.stringify(plain());
-  };
-  const keepCols = () => {
-    store('rabbidlab.sensors.columns', JSON.stringify(cols));
-    applyCols();
-  };
+  // --- The Rows view's cells, one per column (the columns are grid.js's) ------------------------------------------------
   const CELL = {
     state: (s) => `<span class="state ${s.status}">${s.status === 'down' && s.since ? `Down ${short(s.since)}` : s.status === 'paused' && s.pausedUntil ? `Until ${clock(s.pausedUntil)}` : WORD[s.status] || s.status}</span>`,
     name: (s) => `<div class="nm"><span class="lic">${faces[s.id] ? `<img src="${esc(faces[s.id])}" alt="">` : svg(glyph(s))}</span><b>${esc(s.name)}</b></div>`,
@@ -217,8 +189,25 @@
     up: (s) => `<span class="num">${percent(s.up7)}</span>`,
     alerts: (s) => `<span class="dim">${esc(typeOf(s.type)?.name || "Don't alert")}</span>`,
   };
-  const head = () => `<div class="tr th sn">${cols.order.map((k) => `<span class="sn-th" draggable="true" data-col="${k}">${COLS[k][0]}<i class="sn-size" data-size="${k}"></i></span>`).join('')}</div>`;
-  const row = (s) => `<div class="tr sn s-${s.status}" data-open="${esc(s.id)}">${cols.order.map((k) => CELL[k](s)).join('')}</div>`;
+  // The Rows view is a data grid (grid.js): a table for each group, all sharing the same columns.
+  const STATE_ORDER = { down: 0, warn: 1, wait: 2, new: 3, paused: 4, up: 5 };
+  const snGrid = R.grid({
+    el: $('sn-list'),
+    key: 'sensors',
+    cols: [
+      { key: 'state', label: 'State', w: 110, on: true, get: (s) => STATE_ORDER[s.status] ?? 9, cell: CELL.state },
+      { key: 'name', label: 'Sensor', w: 200, fixed: true, get: (s) => s.name, cell: CELL.name },
+      { key: 'check', label: 'Check', w: 110, on: true, get: (s) => check(s), cell: CELL.check },
+      { key: 'where', label: 'Address', w: 170, on: true, get: (s) => where(s), cell: CELL.where },
+      { key: 'reply', label: 'Reply', w: 100, on: true, get: (s) => s.ms ?? '', cell: CELL.reply },
+      { key: 'line', label: 'Last hour', w: 200, on: true, nosort: true, get: () => '', cell: CELL.line },
+      { key: 'up', label: 'Up, 7 days', w: 90, on: true, get: (s) => s.up7 ?? '', cell: CELL.up },
+      { key: 'alerts', label: 'Alert type', w: 110, on: true, get: (s) => typeOf(s.type)?.name || '', cell: CELL.alerts },
+    ],
+    row: (s) => ` data-open="${esc(s.id)}"`,
+    rowClass: (s) => `sn s-${s.status}`,
+    redraw: () => draw(),
+  });
 
   // --- The sensors, in their groups ----------------------------------------------------------------------------------------
 
@@ -315,12 +304,12 @@
       .filter(([g, list]) => list.length || (g && !find && group !== DOWN));
     $('sn-list').innerHTML = by.map(([g, list]) => `<section class="lgroup" data-name="${esc(g)}">${groups.length ? tools.heading(g, list.length) : ''}`
       + (!list.length ? `<p class="hint lnone">No sensors in this group yet.${can('sensors.edit') ? ` <button type="button" class="link" data-addto="${esc(g)}">Add one</button>` : ''}</p>`
-        : view === 'grid' ? `<div class="table">${head()}${list.map(row).join('')}</div>` : `<div class="ltiles sn-tiles">${list.map(card).join('')}</div>`)
+        : view === 'grid' ? snGrid.table(list) : `<div class="ltiles sn-tiles">${list.map(card).join('')}</div>`)
       + '</section>').join('')
       || (sensors.length ? '<p class="hint">Nothing matches.</p>' : '');
     if (!find && group !== DOWN) $('sn-list').insertAdjacentHTML('beforeend', tools.out(by.some(([g]) => !g)));
     tools.settle();
-    applyCols();
+    $('sn-cols').hidden = view !== 'grid';
     $('sn-empty').hidden = sensors.length > 0 || groups.length > 0;
     paint($('sn-list'));
   };
@@ -344,7 +333,7 @@
       say('sn-problem', err.message);
     }
     // Not under a drag, a column being sized or a name being typed: it catches up on the next read.
-    if (!tools.busy() && !sizing && !moving) draw();
+    if (!tools.busy() && !snGrid.busy()) draw();
   };
   const tools = R.groupTools($('sn-list'), {
     api: '/api/sensors/groups',
@@ -400,74 +389,7 @@
     store('rabbidlab.sensors.view', view);
     draw();
   });
-  $('sn-cols-reset').addEventListener('click', () => {
-    cols = plain();
-    keepCols();
-    draw();
-  });
-
-  // A column's right edge, dragged: its share of the width follows the pointer.
-  $('sn-list').addEventListener('pointerdown', (e) => {
-    const handle = e.target.closest('.sn-size');
-    if (!handle) return;
-    e.preventDefault();
-    const key = handle.dataset.size;
-    const from = e.clientX;
-    const wide = handle.parentElement.getBoundingClientRect().width;
-    const was = cols.w[key];
-    sizing = true;
-    document.body.classList.add('sn-sizing');
-    const move = (m) => {
-      cols.w[key] = Math.min(900, Math.max(60, Math.round(was * (wide + m.clientX - from) / wide)));
-      applyCols();
-    };
-    const done = () => {
-      window.removeEventListener('pointermove', move);
-      sizing = false;
-      document.body.classList.remove('sn-sizing');
-      keepCols();
-    };
-    window.addEventListener('pointermove', move);
-    window.addEventListener('pointerup', done, { once: true });
-  });
-  // A column's heading, dragged onto another: it lands on the side of that one the pointer is over.
-  const unmark = () => $('sn-list').querySelectorAll('.drop-left, .drop-right').forEach((el) => el.classList.remove('drop-left', 'drop-right'));
-  $('sn-list').addEventListener('dragstart', (e) => {
-    const th = e.target.closest?.('.sn-th');
-    if (!th) return;
-    if (sizing) {
-      e.preventDefault();
-      return;
-    }
-    moving = th.dataset.col;
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', moving);
-  });
-  $('sn-list').addEventListener('dragover', (e) => {
-    const th = e.target.closest('.sn-th');
-    if (!moving || !th) return;
-    e.preventDefault();
-    unmark();
-    if (th.dataset.col === moving) return;
-    const box = th.getBoundingClientRect();
-    th.classList.add(e.clientX < box.left + box.width / 2 ? 'drop-left' : 'drop-right');
-  });
-  $('sn-list').addEventListener('drop', (e) => {
-    const th = e.target.closest('.sn-th');
-    if (!moving || !th || th.dataset.col === moving) return;
-    e.preventDefault();
-    const order = cols.order.filter((k) => k !== moving);
-    order.splice(order.indexOf(th.dataset.col) + (th.classList.contains('drop-right') ? 1 : 0), 0, moving);
-    cols.order = order;
-    moving = null;
-    keepCols();
-    draw();
-  });
-  $('sn-list').addEventListener('dragend', () => {
-    if (!moving) return;
-    moving = null;
-    unmark();
-  });
+  $('sn-cols').addEventListener('click', () => snGrid.menu($('sn-cols')));
 
   // --- One sensor: how it is and what happened to it -------------------------------------------------------------------------
 
@@ -544,7 +466,7 @@
   };
   document.addEventListener('click', (e) => {
     const b = e.target.closest('#page-sensors [data-open]');
-    if (!b || e.target.closest('.sn-size')) return;
+    if (!b) return;
     e.preventDefault();
     open(b.dataset.open);
   });
