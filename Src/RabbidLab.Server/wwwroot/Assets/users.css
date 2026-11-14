@@ -446,3 +446,14 @@ dialog.drawer::backdrop { background: rgba(5, 6, 10, .55); backdrop-filter: blur
 .col-dens { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px 12px 18px; border-bottom: 1px solid var(--line); }
 .col-dens > span { color: var(--title); font-size: 13px; font-weight: 700; }
 .col-dens .seg button { height: 28px; padding: 0 12px; font-size: 12.5px; }
+
+/* The heading row as a header band, with a line between every column (where it starts and stops), as spreadsheets show
+   it; the line turns orange when grabbed to resize. */
+.adt.picks .tr.th { background: #12141F; border-radius: 8px 8px 0 0; }
+.adt.picks.compact .tr.th { border-bottom-color: var(--line-strong); }
+.adt.picks .th-grip { top: 0; right: -11px; bottom: 0; width: 10px; }
+.adt.picks .tr.th > .th-cell { overflow: visible; }
+.adt.picks .th-grip::after { top: 8px; bottom: 8px; left: 5px; width: 1px; border-radius: 0; background: #363B55; opacity: 1; }
+.adt.picks .th-grip:hover::after, body.col-dragging .adt.picks .th-grip::after { top: 4px; bottom: 4px; left: 4px; width: 3px; border-radius: 2px; background: var(--accent); }
+.adt.picks .tr.th .tk { position: relative; }
+.adt.picks .tr.th .tk::after { content: ""; position: absolute; top: 8px; right: -6px; bottom: 8px; width: 1px; background: #363B55; }

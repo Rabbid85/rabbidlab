@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.128 (2026-11-13)
+
+- The column headings sit on their own band with a line between every column, so you can see where each one starts and stops. The line turns orange when you grab it to resize.
+
 ## 1.1.127 (2026-11-13)
 
 - Columns has a sliders icon instead of the one that looked like a pause button.
