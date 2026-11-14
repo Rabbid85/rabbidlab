@@ -601,7 +601,7 @@
   const widthOf = (c, wd = widths()) => wd[c.key] || DEFAULT_PX[c.key] || minOf(c.w);
   const setTracks = (cols) => {
     const wd = widths();
-    const min = 18 + 28 + cols.reduce((sum, c) => sum + widthOf(c, wd), 0) + 12 * (cols.length + 1) + 32;
+    const min = 18 + 28 + cols.reduce((sum, c) => sum + widthOf(c, wd), 0) + 20 * (cols.length + 1) + 32;
     $('dir-table').style.setProperty('--cols', `18px ${cols.map((c) => `${widthOf(c, wd)}px`).join(' ')} minmax(28px, 1fr)`);
     $('dir-table').style.setProperty('--minw', `${min}px`);
   };
@@ -636,10 +636,12 @@
     };
     const up = () => {
       window.removeEventListener('pointermove', move);
+      ['pointerup', 'pointercancel', 'blur'].forEach((ev) => window.removeEventListener(ev, up));
       document.body.classList.remove('col-dragging');
     };
     window.addEventListener('pointermove', move);
-    window.addEventListener('pointerup', up, { once: true });
+    // Letting go anywhere, a cancelled pointer or leaving the window all end the drag.
+    ['pointerup', 'pointercancel', 'blur'].forEach((ev) => window.addEventListener(ev, up));
   });
   // A double-click on the edge fits the column to what's in it: each row is measured at its natural width.
   $('dir-table').addEventListener('dblclick', (e) => {

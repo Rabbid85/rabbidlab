@@ -457,3 +457,12 @@ dialog.drawer::backdrop { background: rgba(5, 6, 10, .55); backdrop-filter: blur
 .adt.picks .th-grip:hover::after, body.col-dragging .adt.picks .th-grip::after { top: 4px; bottom: 4px; left: 4px; width: 3px; border-radius: 2px; background: var(--accent); }
 .adt.picks .tr.th .tk { position: relative; }
 .adt.picks .tr.th .tk::after { content: ""; position: absolute; top: 8px; right: -6px; bottom: 8px; width: 1px; background: #363B55; }
+
+/* More room between columns, with the line in the middle of it, clear of the names on both sides. Only the line being
+   grabbed (or dragged) turns orange. */
+.adt.picks .tr { column-gap: 20px; }
+.adt.picks .th-grip { right: -15px; width: 10px; }
+.adt.picks .th-grip::after { left: 4.5px; }
+.adt.picks .th-grip:hover::after { left: 3.5px; }
+body.col-dragging .adt.picks .th-grip:not(:hover)::after { top: 8px; bottom: 8px; left: 4.5px; width: 1px; border-radius: 0; background: #363B55; }
+.adt.picks .tr.th .tk::after { right: -10.5px; }

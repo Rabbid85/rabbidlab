@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.129', [
+    'More room between columns, with each line in the middle of it, clear of the names on both sides. The orange look of a line you are dragging no longer sticks on every line after a resize.']],
   ['1.1.128', [
     'The column headings sit on their own band with a line between every column, so you can see where each one starts and stops. The line turns orange when you grab it to resize.']],
   ['1.1.127', [
