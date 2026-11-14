@@ -142,16 +142,8 @@ body.app.rail-small { grid-template-columns: 60px minmax(0, 1fr); }
   .ap-rows .ds-swatches { flex-wrap: wrap; justify-content: flex-start; gap: 8px; }
   .ap-rows .ds-sw { flex: none; width: 26px; }
 }
-/* Icon layout (Settings, Links): each choice a little box with 13 dots where it puts them, its name under it; the one in use outlined. */
+/* A line of help over a choice in Settings. */
 .sq-lead { margin: 0 0 12px; color: var(--muted); font-size: 13.5px; }
-.sq-picks { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; }
-.sq-pick { display: grid; gap: 7px; height: auto; padding: 0; border: 0; background: none; color: #fff; font: inherit; font-size: 13.5px; text-align: left; cursor: pointer; }
-.sq-pick:hover { background: none; }
-.sq-pic { position: relative; display: block; height: 100px; border: 2px solid var(--line-strong); border-radius: 12px; background: #0C0E17; }
-.sq-pic > span { position: absolute; inset: 8px; }
-.sq-pic i { position: absolute; width: 12px; height: 12px; border-radius: 3px; background: var(--c); translate: -50% -50%; }
-.sq-pick:hover .sq-pic { border-color: #3A3E55; }
-.sq-pick[aria-pressed="true"] .sq-pic { border-color: var(--accent-line); }
 @media (max-width: 700px) {
   .ds-row { flex-wrap: wrap; }
   .ds-r { max-width: none; justify-content: flex-start; }
@@ -463,7 +455,6 @@ a.button:hover, label.button:hover { background: #222536; text-decoration: none;
 .home .machine { margin: 22px var(--side) 0; }
 @media (max-width: 1180px) { .hero .hero-new { display: none; } }
 /* No room beside it for the squares: the card steps aside, and the line under the title still says what's down. */
-.hero .hero-new.crowded { display: none; }
 /* Every hero is the same height with its parts in the same places, so the line under it stays put from page to page. */
 @media (min-width: 701px) { .hero { min-height: 302px; } } /* the height Overview, Links and Sensors come to with one line under the title */
 #page-overview .hero-lead { max-width: 760px; }
@@ -589,9 +580,6 @@ section.page.home.dir-top { max-width: none; padding: 0; gap: 0; }
 #dir-hero { display: flex; flex-direction: column; }
 #dir-hero > .hero-stats { margin-top: auto; padding-top: 18px; }
 #dir-hero .hero-lead { max-width: 720px; }
-#dir-hero.checks .hero-lead { max-width: 580px; } /* clear of the squares */
-/* Domain health's squares are its checks; the other pages have the Overview's still tiles. */
-#dir-hero.checks > .tile.deco, #dir-hero:not(.checks) > .tile.sen { display: none; }
 .dhead h1 { font: 800 30px/1.15 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; letter-spacing: -.02em; color: #fff; }
 .dhead p { max-width: 680px; margin-top: 10px; color: #B4B8C8; font-size: 14px; line-height: 1.55; }
 .dmain { grid-column: 2; display: grid; gap: 18px; align-content: start; min-width: 0; }

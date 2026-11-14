@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.145 (2026-11-13)
+
+- The squares are gone from the banners on Links, Sensors and Domain health. Every banner has the same still tiles as Overview.
+- Icon layout is gone from Settings, Links, since it only placed those squares.
+
 ## 1.1.144 (2026-11-13)
 
 - Every banner is the same height now, Overview, Links, Sensors and the directory pages alike, with the numbers along the bottom in the same place.

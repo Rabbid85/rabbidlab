@@ -1,16 +1,8 @@
 /* Links: groups of tiles, each a site in the lab with its icon, detail, address and whether it answers. */
 #page-links > * { min-width: 0; }
-/* The hero: the cogwheel beside Add a link, and a square for every link with its icon or its letter. */
+/* The hero: the cogwheel beside Add a link. */
 .hero-actions .hero-gear { display: grid; place-items: center; width: 40px; padding: 0; }
 .hero-gear svg { width: 17px; height: 17px; }
-.hero .tile.sen.lsq { font-size: 14px; }
-.hero .tile.sen.lsq:hover { text-decoration: none; }
-.lsq img { width: 66%; height: 66%; object-fit: contain; }
-.lsq b { font: inherit; }
-.hero .tile.sen.lsq.tiny { font-size: 0; }
-/* Icon layout: the group names Groups puts before its rows. */
-.hero > .sq-label { position: absolute; z-index: 1; translate: -100% -50%; color: #6D7290; font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; pointer-events: none; }
-@media (max-width: 1180px) { .hero > .sq-label { display: none; } }
 .ln-tools .primary, .ln-tools .small, .ln-empty .primary, #link-dialog .primary { display: inline-flex; align-items: center; gap: 7px; }
 .ln-tools button svg, .ln-empty .primary svg { flex: none; width: 15px; height: 15px; }
 /* One row over the links: the search box, the filter, and New group. */

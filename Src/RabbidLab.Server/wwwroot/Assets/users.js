@@ -540,7 +540,6 @@
       $('dir-state').textContent = `${pg.dataset.title}.`;
       $('dir-lead').textContent = pg.dataset.lead || '';
       $('dir-stats').innerHTML = ['users', 'groups', 'computers'].filter((k) => total[k] !== undefined).map((k) => stat(total[k], PAGE_ICON[k], AD[k].title)).join('');
-      hero.classList.remove('checks', 'bad');
       return;
     }
     const p = page();
@@ -556,57 +555,7 @@
       const label = key === 'all' ? p.noun[1].charAt(0).toUpperCase() + p.noun[1].slice(1) : v?.label || key;
       return stat(list ? n[key] ?? 0 : null, key === 'all' ? PAGE_ICON[adPage] : STAT_ICON[key] || PAGE_ICON[adPage], label);
     }).join('');
-    drawCheckSquares();
   };
-  // Domain health's checks as squares, coloured by how each came out; clicking one opens it in the side panel.
-  const SQ = { good: 's-up', warn: 's-warn', bad: 's-down', info: 's-up', unknown: 's-paused' };
-  const spread = (t) => { let h = 7; for (const c of t) h = (h * 31 + c.charCodeAt(0)) % 100003; return h / 100003; };
-  const checkSq = new Map();
-  const drawCheckSquares = () => {
-    const hero = $('dir-hero');
-    const list = adPage === 'domain' && ad?.state ? lists.domain : null;
-    hero.classList.toggle('checks', !!list);
-    hero.classList.toggle('bad', !!list && list.some((s) => s.tone === 'bad'));
-    if (!list) return;
-    const size = R.squareSize(list.length);
-    const items = list.map((s) => {
-      let el = checkSq.get(s.key);
-      if (!el) {
-        el = document.createElement('button');
-        el.type = 'button';
-        el.dataset.check = s.key;
-        hero.prepend(el);
-        checkSq.set(s.key, el);
-      }
-      const off = s.tone === 'bad';
-      const side = Math.round(size * (off ? 1.25 : 0.85 + spread(s.key) * 0.3));
-      el.className = `tile sen still ${SQ[s.tone] || 's-up'}${side < 20 ? ' tiny' : ''}`;
-      el.dataset.tip = `${s.name}: ${s.now}`;
-      el.setAttribute('aria-label', s.name);
-      const icon = AREA_ICON[s.area] || 'shield';
-      if (el.dataset.icon !== icon) {
-        el.dataset.icon = icon;
-        el.innerHTML = svg(icon);
-      }
-      el.style.setProperty('--g', '#1E2132');
-      Object.assign(el.style, { width: `${side}px`, height: `${side}px`, rotate: `${off ? 8 : Math.round(spread(`${s.key}r`) * 50 - 25)}deg` });
-      return { el, id: s.key };
-    });
-    const seen = new Set(items.map((x) => x.id));
-    checkSq.forEach((el, key) => {
-      if (seen.has(key)) return;
-      el.remove();
-      checkSq.delete(key);
-    });
-    R.squares(hero, items);
-  };
-  $('dir-hero').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-check]');
-    const s = b && adPage === 'domain' && (lists.domain || []).find((x) => x.key === b.dataset.check);
-    if (!s) return;
-    if (R.panel.shows('ad', `domain:${s.key}`)) R.panel.close();
-    else openDrawer('domain', s);
-  });
   document.addEventListener('rabbidlab:show', async (e) => {
     const at = e.detail[0];
     if (at !== 'org' && at !== 'attrs') return;

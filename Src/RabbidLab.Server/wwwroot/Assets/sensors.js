@@ -1,5 +1,5 @@
-// Sensors: #sensors, the things Rabbid Lab checks on a timer. The hero says how the lab is doing and its squares are the
-// sensors; below, the sensors in their groups as cards or as a table whose columns can be resized and reordered.
+// Sensors: #sensors, the things Rabbid Lab checks on a timer. The hero says how the lab is doing; below, the sensors in their
+// groups as cards or as a table whose columns can be resized and reordered.
 // console.js shares its helpers as window.RabbidLab.
 (() => {
   const R = window.RabbidLab;
@@ -30,7 +30,6 @@
 
   // --- Words ----------------------------------------------------------------------------------------------------------
 
-  const hash = (text) => [...String(text)].reduce((n, c) => (n * 31 + c.charCodeAt(0)) >>> 0, 7) / 4294967295;
   const short = (iso) => {
     const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
     return s < 90 ? `${Math.round(s)} s` : s < 5400 ? `${Math.round(s / 60)} min` : s < 129600 ? `${Math.round(s / 3600)} h` : `${Math.round(s / 86400)} d`;
@@ -40,7 +39,6 @@
     const say1 = (n, unit) => `${n} ${unit}${n === 1 ? '' : 's'}`;
     return s < 90 ? say1(Math.round(s), 'second') : s < 5400 ? say1(Math.round(s / 60), 'minute') : s < 129600 ? say1(Math.round(s / 3600), 'hour') : say1(Math.round(s / 86400), 'day');
   };
-  const colour = (s) => (s.group && groups.includes(s.group) ? COLOURS[groups.indexOf(s.group) % COLOURS.length] : '#C9CCDA');
   const check = (s) => (s.kind === 'port' ? `Port ${s.port}` : KIND[s.kind] || s.kind);
   const where = (s) => (s.kind === 'web' ? s.target.replace(/^https?:\/\//i, '').replace(/\/$/, '')
     : s.kind === 'cert' && s.port && s.port !== 443 ? `${s.target}:${s.port}` : s.kind === 'dns' && s.server ? `${s.target} on ${s.server}` : s.target);
@@ -54,10 +52,6 @@
   };
   // When it alerts, in a few words: After 5 min, Right away, Never.
   const alertShort = (a) => (!a ? '' : a.after < 0 ? 'Never' : a.after === 0 ? 'Right away' : `After ${a.after === 60 ? '1 hour' : `${a.after} min`}`);
-  // How it is now, in a few words for a card or a row.
-  const now = (s) => (s.status === 'down' ? `Down ${s.since ? short(s.since) : ''}`.trim() : s.status === 'wait' ? 'Waiting'
-    : s.status === 'paused' ? (s.pausedUntil ? `Until ${clock(s.pausedUntil)}` : 'Paused') : s.status === 'new' ? 'Checking…'
-    : s.kind === 'cert' ? days(s.note) : s.status === 'warn' ? s.note || 'Warning' : ['hw', 'nas', 'vmware', 'snmp', 'svc', 'disk'].includes(s.kind) ? s.note || 'All OK' : s.ms == null ? 'Up' : ms(s.ms));
   const notAnswering = (s) => s.status === 'down' || s.status === 'wait';
   const percent = (p) => (p == null ? '' : `${p === 100 ? 100 : p.toFixed(p > 99.9 ? 2 : 1)}%`);
   const paint = (root) => {
@@ -107,45 +101,8 @@
     return `<div class="sn-chart s-${hue}">${box(`<path d="${d}"/>`)}${end >= 0 ? `<i data-top="${(y(end) / 40 * 100).toFixed(1)}"></i>` : ''}</div>`;
   };
 
-  // --- The hero: how the lab is doing, and a square for every sensor -------------------------------------------------------
+  // --- The hero: how the lab is doing -----------------------------------------------------------------------------------------
 
-  const squares = new Map(); // a sensor's square, kept between draws so it knows when its sensor was last checked
-  const drawSquares = () => {
-    const hero = $('sn-hero');
-    const size = R.squareSize(sensors.length);
-    const items = [...sensors].sort((a, b) => a.id.localeCompare(b.id)).map((s) => {
-      let el = squares.get(s.id);
-      if (!el) {
-        el = document.createElement('button');
-        el.type = 'button';
-        el.dataset.open = s.id;
-        hero.prepend(el);
-        squares.set(s.id, el);
-      }
-      const r = hash(s.id);
-      const down = s.status === 'down';
-      const side = Math.round(down ? size * 1.4 : size * (0.85 + r * 0.35));
-      el.className = `tile sen s-${s.status}${side < 20 ? ' tiny' : ''}`;
-      el.title = `${s.name} · ${now(s)}`;
-      const face = faces[s.id] || glyph(s);
-      if (el.dataset.face !== face) {
-        el.dataset.face = face;
-        el.innerHTML = faces[s.id] ? `<img src="${esc(face)}" alt="">` : svg(face);
-      }
-      el.style.setProperty('--g', '#1E2132');
-      el.style.setProperty('--ring', colour(s));
-      R.ping(el, s.checked);
-      Object.assign(el.style, { width: `${side}px`, height: `${side}px`, rotate: `${down ? 8 : Math.round(hash(`${s.id}r`) * 50 - 25)}deg` });
-      return { el, id: s.id };
-    });
-    const seen = new Set(items.map((x) => x.id));
-    squares.forEach((el, id) => {
-      if (seen.has(id)) return;
-      el.remove();
-      squares.delete(id);
-    });
-    R.squares(hero, items, $('sn-card'));
-  };
   const drawHero = () => {
     const live = sensors.filter((s) => s.status !== 'paused');
     const down = live.filter((s) => s.status === 'down');
@@ -174,7 +131,6 @@
         : `${check(first)} for ${where(first)}: ${first.note || ''}.`;
       $('sn-card-more').dataset.open = first.id;
     }
-    drawSquares();
     $('sensors-dot').hidden = !down.length;
   };
 

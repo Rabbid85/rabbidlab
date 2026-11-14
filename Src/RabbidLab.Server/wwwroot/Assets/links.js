@@ -27,32 +27,6 @@
   const NO_ICON = 'none'; // a link's icon when it's to show none at all; with no icon saved it shows its first letter
   const own = (l) => !!l.icon && l.icon !== NO_ICON; // it has a picture
   const pic = (l) => (own(l) ? `<img src="${esc(l.icon)}" alt="">` : `<b>${letter(l.name)}</b>`);
-  // How many pixels wide a picture is, from its data: URL's header (PNG, GIF, the biggest in an ICO); an SVG is sharp at any size.
-  const picPx = (icon) => {
-    if (/^data:image\/svg/i.test(icon)) return Infinity;
-    const m = /^data:image\/([a-z0-9+.-]+);base64,([A-Za-z0-9+/=]{0,1024})/i.exec(icon || '');
-    if (!m) return null;
-    let b = '';
-    try { b = atob(m[2].slice(0, m[2].length - (m[2].length % 4))); } catch { return null; }
-    const at = (i) => b.charCodeAt(i);
-    const kind = m[1].toLowerCase();
-    if (kind === 'png' && b.length >= 24) return ((at(16) << 24) | (at(17) << 16) | (at(18) << 8) | at(19)) >>> 0;
-    if (kind === 'gif' && b.length >= 10) return at(6) | (at(7) << 8);
-    if (kind.endsWith('icon') && b.length >= 22) {
-      let most = 0;
-      for (let k = 0, n = at(4) | (at(5) << 8); k < n && 6 + 16 * k < b.length; k++) most = Math.max(most, at(6 + 16 * k) || 256);
-      return most || null;
-    }
-    return null;
-  };
-  // A picture is never drawn bigger than it is, so a 16 px favicon stays sharp instead of blown up.
-  const capPic = (el) => {
-    const img = el.querySelector('img');
-    if (!img || /^data:image\/svg/i.test(img.src)) return;
-    const cap = () => Object.assign(img.style, { maxWidth: `${img.naturalWidth}px`, maxHeight: `${img.naturalHeight}px` });
-    if (img.complete && img.naturalWidth) cap();
-    else img.addEventListener('load', cap, { once: true });
-  };
   const host = (url) => {
     try {
       const u = new URL(url);
@@ -143,63 +117,10 @@
     drawHero();
   };
 
-  // --- The hero: how the links are doing, and a square for every link ----------------------------------------------
+  // --- The hero: how the links are doing -------------------------------------------------------------------------
 
-  const hash = (text) => [...String(text)].reduce((n, c) => (n * 31 + c.charCodeAt(0)) >>> 0, 7) / 4294967295;
   const at = (iso) => (iso ? new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '');
   const checked = (l) => /^https?:/i.test(l.url);
-  // plain is a link that isn't a web address, so it's never checked.
-  const how = (l) => (!checked(l) ? 'plain' : !states[l.id] ? 'new' : states[l.id].up ? 'up' : states[l.id].down ? 'down' : 'warn');
-  const HOW = { plain: 'Not checked', new: 'Checking…', up: 'Up', down: 'Down', warn: 'No answer just now' };
-  const squares = new Map(); // a link's square, kept between draws so its picture isn't loaded again
-  const drawSquares = () => {
-    const size = R.squareSize(links.length);
-    // Where each sits on the page, for the layouts that go by group: its group's place, and its place in the group.
-    const order = [...groups, ''];
-    const inGroup = new Map();
-    const placed = new Map(links.map((l) => {
-      const g = order.indexOf(l.group || '');
-      const k = inGroup.get(g) || 0;
-      inGroup.set(g, k + 1);
-      return [l.id, { g: g < 0 ? order.length : g, k }];
-    }));
-    const items = [...links].sort((a, b) => a.id.localeCompare(b.id)).map((l) => {
-      let el = squares.get(l.id);
-      if (!el) {
-        el = document.createElement('a');
-        el.target = '_blank';
-        el.rel = 'noopener noreferrer';
-        $('ln-hero').prepend(el);
-        squares.set(l.id, el);
-      }
-      const state = how(l);
-      const r = hash(l.id);
-      const side = Math.round(state === 'down' ? size * 1.4 : size * (0.95 + r * 0.3));
-      const face = own(l) ? l.icon : letter(l.name); // a link with no icon still gets its letter up here
-      if (el.dataset.face !== face) {
-        el.dataset.face = face;
-        el.innerHTML = pic(l);
-        capPic(el);
-      }
-      el.href = l.url;
-      el.className = `tile sen lsq s-${state}${side < 20 ? ' tiny' : ''}`;
-      el.title = `${l.name} · ${HOW[state]}${(state === 'down' || state === 'warn') && states[l.id].why ? `: ${states[l.id].why}` : ''}`;
-      el.setAttribute('aria-label', el.title);
-      el.style.setProperty('--g', own(l) ? '#1E2132' : colour(l.name));
-      el.style.setProperty('--ring', own(l) ? 'var(--accent-soft)' : colour(l.name));
-      R.ping(el, states[l.id]?.at, hash(`${l.id}p`) * 0.6); // the checks all land together, so the pulses spread over a moment
-      Object.assign(el.style, { width: `${side}px`, height: `${side}px`, rotate: `${state === 'down' ? 8 : Math.round(hash(`${l.id}r`) * 24 - 12)}deg` });
-      const px = own(l) ? picPx(l.icon) : Infinity; // a letter is sharp at any size
-      return { el, id: l.id, group: l.group || '', sharp: px == null || px >= 48, ...placed.get(l.id) };
-    });
-    const seen = new Set(items.map((x) => x.id));
-    squares.forEach((el, id) => {
-      if (seen.has(id)) return;
-      el.remove();
-      squares.delete(id);
-    });
-    R.squares($('ln-hero'), items, $('ln-card'), true);
-  };
   const EVERY_SHORT = { 15: '15 s', 30: '30 s', 60: '1 min', 300: '5 min' };
   const drawHero = () => {
     const web = links.filter(checked);
@@ -227,7 +148,6 @@
       $('ln-card-text').textContent = `No answer from ${host(first.url)}${states[first.id].since ? ` since ${at(states[first.id].since)}` : ''}${states[first.id].why ? `: ${states[first.id].why}` : ''}.`;
       $('ln-card-more').href = first.url;
     }
-    drawSquares();
   };
 
   // Asks again when the server says to: sooner while a link that didn't answer is being tried again.
@@ -413,16 +333,6 @@
   // tile being read shows the flask and takes what was found as soon as it's back, the way Plex refreshes metadata; in
   // Settings, Links the flask covers the section with how far along it is. One run at a time.
   let refreshing = false;
-  // The banner squares follow the links as they come back, drawn once a frame however many land together.
-  let squaresDue = false;
-  const squaresSoon = () => {
-    if (squaresDue) return;
-    squaresDue = true;
-    requestAnimationFrame(() => {
-      squaresDue = false;
-      drawSquares();
-    });
-  };
   const tileOf = (id) => $('ln-list').querySelector(`.ltile[data-id="${CSS.escape(id)}"]`);
   const refreshLinks = async (host, note) => {
     if (refreshing) return;
@@ -480,7 +390,6 @@
           R.paint(fresh);
           if (r?.changed.length) fresh.classList.add('lfresh');
         } else if (now) R.busy(now, '');
-        if (r?.changed.length) squaresSoon();
         progress(l.name);
       }
     };
