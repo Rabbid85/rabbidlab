@@ -67,7 +67,7 @@ public static class ClientsApi
         app.MapPost("/api/clients/done", (AccountAnswer answer, HttpContext context, Clients clients, ClientCommands commands) =>
             Caller(context, clients) is not { } c ? Unknown() : commands.Done(c.Id, answer) ? Results.Ok() : Results.NotFound());
 
-        // The computer this page is open on: whether it's a seat, and if not, what it needs to become one.
+        // The computer this page is open on: whether it's in Devices, and if not, what it needs to get there.
         app.MapGet("/api/clients/here", (HttpContext context, Clients clients, IConfiguration config) =>
         {
             var here = Addresses.Normal(ActivityLog.Address(context));
@@ -75,7 +75,7 @@ public static class ClientsApi
             return Results.Ok(new
             {
                 seat = seat is null ? null : new { id = seat.Id, computer = seat.Computer, approved = seat.Approved is not null, online = clients.IsOnline(seat) },
-                thisServer = Addresses.OnServer(context.Connection.RemoteIpAddress), // the page is open on the server itself: no seat to offer
+                thisServer = Addresses.OnServer(context.Connection.RemoteIpAddress), // the page is open on the server itself: nothing to connect
                 msi = File.Exists(ClientFiles.Msi),
                 server = $"{context.Request.Scheme}://{context.Request.Host}",
                 fingerprint = ClientFiles.Fingerprint(config),
@@ -217,5 +217,5 @@ public sealed record ClientSettingsForm(bool Approve);
 /// <summary>Allow uninstalling the client for an hour (Allow), lock it again, or have the client uninstall itself (Now).</summary>
 public sealed record RemovalForm(bool Allow, bool Now);
 
-/// <summary>How many joins one address gets: 30 in ten minutes, so nobody can flood Seats. Kept apart from sign-ins.</summary>
+/// <summary>How many joins one address gets: 30 in ten minutes, so nobody can flood Devices. Kept apart from sign-ins.</summary>
 public sealed class JoinLimiter(TimeProvider clock) : Limiter(30, clock);

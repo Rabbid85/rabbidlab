@@ -34,7 +34,7 @@ public sealed record NameForm(string? Name, bool Dns = false, string? Username =
 public sealed record NameStep(bool Ok, string Title, string Text);
 
 /// <summary>
-/// The certificate for the added names. The console's own certificate never changes, because computers in Seats pin
+/// The certificate for the added names. The console's own certificate never changes, because computers in Devices pin
 /// it: an added name gets one of its own, which the console shows only to a browser that asks for that name (SNI).
 /// </summary>
 public interface INamesCertificate
@@ -430,7 +430,7 @@ public sealed class ConsoleNames(DataFolder folder, IConsoleDns dns, INamesCerti
             var made = certificate.Make(names);
             return made is null
                 ? new(true, "Certificate taken away", "No added names are left, so their certificate went too. The console's own certificate didn't change.")
-                : new(true, added is null ? "Certificate made again" : "Certificate made", $"For {string.Join(", ", names)} · expires {made.NotAfter:MMM d, yyyy}. The console's own certificate, which computers in Seats trust, didn't change.");
+                : new(true, added is null ? "Certificate made again" : "Certificate made", $"For {string.Join(", ", names)} · expires {made.NotAfter:MMM d, yyyy}. The console's own certificate, which computers in Devices trust, didn't change.");
         }
         catch (Exception e) when (e is CryptographicException or UnauthorizedAccessException)
         {
@@ -443,7 +443,7 @@ public static class ConsoleNamesApi
 {
     /// <summary>
     /// The console shows a browser that asks for an added name (SNI) the names' own certificate, and everyone else its
-    /// own certificate, which Seats pin. Only for the Console endpoint Setup writes in console.json.
+    /// own certificate, which computers in Devices pin. Only for the Console endpoint Setup writes in console.json.
     /// </summary>
     public static void ServeNames(this IWebHostBuilder host, Func<string?, X509Certificate2?> forName) =>
         host.ConfigureKestrel((context, kestrel) => kestrel.Configure(context.Configuration.GetSection("Kestrel")).Endpoint("Console", endpoint =>

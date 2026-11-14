@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.149 (2026-11-14)
+
+- Seats is called Devices now, in the console, the wiki and the Windows client. Only the name changed: same page, same permissions, same addresses.
+- The bar shown on a computer that has not joined says it is not connected yet.
+
 ## 1.1.148 (2026-11-14)
 
 - Multi-factor authentication (MFA): signing in can take a 6-digit code from an authenticator app after the password. Turn it on for yourself in Settings, Account.

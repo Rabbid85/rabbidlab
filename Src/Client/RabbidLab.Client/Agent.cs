@@ -66,7 +66,7 @@ internal sealed class Agent
             Lock(status, joined, Removal.Parse(answer.RemovalUntil));
             if (answer.Uninstall)
             {
-                // Ordered from Seats: allowed for the few minutes it takes, then Windows Installer takes the client off.
+                // Ordered from Devices: allowed for the few minutes it takes, then Windows Installer takes the client off.
                 Lock(status, joined, DateTime.UtcNow.AddMinutes(10));
                 status.Save();
                 Removal.Uninstall(quiet: true);

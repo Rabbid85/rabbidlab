@@ -532,12 +532,12 @@ public sealed class Alerts(DataFolder folder, Channels channels, TimeProvider cl
 }
 
 /// <summary>
-/// The alerts nothing else sends, checked every 30 seconds: a seat whose client went quiet (and its all-clear), an update
+/// The alerts nothing else sends, checked every 30 seconds: a computer whose client went quiet (and its all-clear), an update
 /// that's ready or didn't install, and sign-ins that keep failing for one account.
 /// </summary>
 public sealed class AlertWatch(Alerts alerts, Clients clients, RabbidLab.Updater.UpdateEngine updates, ActivityLog activity, TimeProvider clock, ILogger<AlertWatch> log) : BackgroundService
 {
-    private readonly Dictionary<string, DateTime> quietSeats = []; // seats told about, by id
+    private readonly Dictionary<string, DateTime> quietSeats = []; // computers told about, by id
     private readonly HashSet<string> held = []; // held for quiet hours, written down once
     private readonly System.Collections.Concurrent.ConcurrentQueue<(DateTime At, string Who, string? From)> failures = new();
     private readonly List<(DateTime At, string Who, string? From)> recent = [];
@@ -571,7 +571,7 @@ public sealed class AlertWatch(Alerts alerts, Clients clients, RabbidLab.Updater
         }
     };
 
-    /// <summary>One look at seats, updates and sign-ins.</summary>
+    /// <summary>One look at devices, updates and sign-ins.</summary>
     public async Task Round(CancellationToken stop)
     {
         await Seats(stop);

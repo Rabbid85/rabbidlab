@@ -354,7 +354,7 @@
     { key: 'sensor.down', group: '', ic: 'down', title: 'A sensor stopped answering', kind: 'times' },
     { key: 'link.down', group: '', ic: 'link', title: 'A watched link stopped answering', kind: 'times' },
   ];
-  const GROUPS = { sensors: 'Sensor warnings', seats: 'Seats', lab: '' }; // lab: the lab's name, when it's drawn
+  const GROUPS = { sensors: 'Sensor warnings', seats: 'Devices', lab: '' }; // lab: the lab's name, when it's drawn
   const ruleOf = (key) => RULES.find((x) => x.key === key);
   const mins = (m) => (m === 60 ? 'an hour' : m === 1 ? 'a minute' : `${m} minutes`);
   const EVERY = { 60: 'every hour', 360: 'every 6 hours', 1440: 'every day', 10080: 'every week' };
@@ -488,7 +488,7 @@
       space: () => row('Warn below', 'New drive sensors start with this. Each can change it.', select('limit', [[5, '5% free'], [10, '10% free'], [20, '20% free']], v.limit))
         + row('While it stays low', 'Reminders until there\'s room again.', select('again', AGAIN, v.again)),
       hw: () => row('While it lasts', 'Reminders until the part is fixed.', select('again', AGAIN, v.again)),
-      seat: () => row('Alert when it has been quiet for', 'A seat\'s client checks in about once a minute.', select('limit', [[5, '5 minutes'], [15, '15 minutes'], [30, '30 minutes'], [60, 'An hour']], v.limit))
+      seat: () => row('Alert when it has been quiet for', 'A computer\'s client checks in about once a minute.', select('limit', [[5, '5 minutes'], [15, '15 minutes'], [30, '30 minutes'], [60, 'An hour']], v.limit))
         + switchRow('back', 'When it checks in again', 'An all-clear, only after an alert went.', v.back),
       signin: () => row('Alert after', 'Failed sign-ins for one account within 10 minutes.', select('limit', [[3, '3 failed'], [5, '5 failed'], [10, '10 failed']], v.limit)),
       plain: () => '',

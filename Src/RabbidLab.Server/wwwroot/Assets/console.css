@@ -334,7 +334,7 @@ input.pick:focus { outline: none; border-color: var(--accent); }
 .row .quiet:hover { background: transparent; color: var(--red); }
 .row b small { margin-left: 6px; padding: 1px 6px; border-radius: 4px; background: #1A1D2B; color: var(--muted); font-size: 11px; font-weight: 600; }
 
-/* Seats: four counts, the filters, and the tables of computers and sessions. */
+/* Devices: four counts, the filters, and the tables of computers and sessions. */
 .page.seats-page { max-width: 1240px; }
 .seats-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; }
 .seats-head > .backlink { flex-basis: 100%; }

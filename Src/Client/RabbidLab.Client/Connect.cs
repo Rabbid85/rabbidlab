@@ -129,7 +129,7 @@ internal sealed class ConnectWindow : Form
         var title = new Label { Text = "Connect this computer", AutoSize = false, Height = 36, Dock = DockStyle.Top, Font = new Font("Segoe UI", 15f, FontStyle.Bold) };
         var lead = new Label
         {
-            Text = $"{Machine.Name} becomes one of the server's seats: it shows up in Rabbid Lab, and the people who run it can make and change its Windows accounts.",
+            Text = $"{Machine.Name} becomes one of the server's devices: it shows up in Rabbid Lab, and the people who run it can make and change its Windows accounts.",
             AutoSize = false, Height = 58, Dock = DockStyle.Top, ForeColor = Look.Muted,
         };
         server.Text = link.Server;
@@ -250,7 +250,7 @@ internal sealed class ConnectWindow : Form
             var s = Status.Read();
             if (s?.Server == link.Server && s.State is Status.Connected or Status.Waiting)
             {
-                Say(said, s.State == Status.Connected ? $"Connected. {Machine.Name} shows up in Rabbid Lab's Seats." : $"Joined. {Machine.Name} waits for someone to let it in under Seats.", Look.Green);
+                Say(said, s.State == Status.Connected ? $"Connected. {Machine.Name} shows up in Rabbid Lab's Devices." : $"Joined. {Machine.Name} waits for someone to let it in under Devices.", Look.Green);
                 go.Text = "Done";
                 go.Enabled = true;
                 done = true;

@@ -30,7 +30,7 @@ public sealed class ActivityTests : IDisposable
         var log = app.Services.GetRequiredService<ActivityLog>();
         for (var i = 0; i < 60; i++)
         {
-            log.Record("jsmith", "10.0.3.9", "clients", "client.approve", $"Let DESKTOP-{i:00} into Seats", "ok");
+            log.Record("jsmith", "10.0.3.9", "clients", "client.approve", $"Let DESKTOP-{i:00} into Devices", "ok");
         }
         log.Record("lbrooks", null, "users", "ad.password", "Set a new password for Priya Raman", "ok");
         log.Record("admin", "10.0.3.120", "sign-in", "signin.failed", "Sign-in failed", "failed");
@@ -42,7 +42,7 @@ public sealed class ActivityTests : IDisposable
         var later = await Find(client, $"since={Uri.EscapeDataString(DateTime.UtcNow.AddMinutes(5).ToString("o"))}");
 
         Assert.Equal((50, 60), (seats.GetProperty("entries").GetArrayLength(), seats.GetProperty("total").GetInt32()));
-        Assert.Equal("Let DESKTOP-59 into Seats", seats.GetProperty("entries")[0].GetProperty("title").GetString()); // newest first
+        Assert.Equal("Let DESKTOP-59 into Devices", seats.GetProperty("entries")[0].GetProperty("title").GetString()); // newest first
         Assert.Equal(1, priya.GetProperty("total").GetInt32());
         Assert.Equal("Set a new password for Priya Raman", lbrooks.GetProperty("entries")[0].GetProperty("title").GetString());
         Assert.Equal((1, 1), (problems.GetProperty("total").GetInt32(), problems.GetProperty("problems").GetInt32()));

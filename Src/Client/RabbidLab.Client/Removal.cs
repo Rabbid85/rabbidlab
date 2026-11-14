@@ -8,7 +8,7 @@ namespace RabbidLab.Client;
 
 /// <summary>
 /// Whether this client may be uninstalled. Once it has joined a server, uninstalling is locked until someone allows it
-/// in Rabbid Lab (Seats), for an hour at a time. The service writes what the server said to the registry, where the
+/// in Rabbid Lab (Devices), for an hour at a time. The service writes what the server said to the registry, where the
 /// installer reads it and refuses an uninstall that isn't allowed. A client with no server isn't locked.
 /// </summary>
 internal static class Removal

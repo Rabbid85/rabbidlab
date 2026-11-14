@@ -5,7 +5,7 @@ using System.Linq;
 using System.Runtime.Serialization;
 
 // Compiled into both the server (net10.0) and the client (net472): the same code makes and changes Windows accounts on
-// the server itself and on each computer in Seats. The [DataMember] names are the JSON both sides send.
+// the server itself and on each computer in Devices. The [DataMember] names are the JSON both sides send.
 namespace RabbidLab.Shared;
 
 /// <summary>One of a computer's own Windows accounts.</summary>
@@ -110,7 +110,7 @@ public sealed class AccountAnswer
     public static AccountAnswer Failed(string? id, string error) => new() { Id = id, Ok = false, Error = error };
 }
 
-/// <summary>What a seat's sensors read on the computer itself: a service's state, or a drive's free space. Reads only.</summary>
+/// <summary>What the client's sensors read on the computer itself: a service's state, or a drive's free space. Reads only.</summary>
 #if NET
 [System.Runtime.Versioning.SupportedOSPlatform("windows")]
 #endif

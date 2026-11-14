@@ -5,7 +5,7 @@ namespace RabbidLab.Server;
 
 /// <summary>
 /// The user tools: Active Directory accounts, made and changed as Rabbid Lab's own AD account (DirectoryTools.cs), and
-/// Windows accounts on this server or on a computer in Seats, which its client changes when the server asks
+/// Windows accounts on this server or on a computer in Devices, which its client changes when the server asks
 /// (ClientCommands.cs). Each change takes its permission and goes in the activity log; passwords never do.
 /// </summary>
 public static class UsersApi
@@ -203,7 +203,7 @@ public static class UsersApi
             return Results.Ok();
         }));
 
-        // --- Windows accounts, on this server or a computer in Seats -------------------------------------------------
+        // --- Windows accounts, on this server or a computer in Devices -------------------------------------------------
 
         app.MapGet("/api/windows/computers", (HttpContext context, Clients clients, ClientCommands commands) =>
         {
@@ -358,7 +358,7 @@ public static class UsersApi
         {
             if (clients.Find(id) is not { Approved: not null } c)
             {
-                return Results.NotFound(new { error = "That computer isn't one of the seats any more." });
+                return Results.NotFound(new { error = "That computer isn't in Devices any more." });
             }
             computer = c.Computer;
             if (Why(c, clients, commands) is { } why)

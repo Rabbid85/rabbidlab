@@ -36,7 +36,7 @@ public sealed class ClientsFile
 {
     public List<Client> Clients { get; set; } = [];
 
-    /// <summary>Whether computers that join wait for an admin before they count as seats.</summary>
+    /// <summary>Whether computers that join wait for an admin before they count as devices.</summary>
     public bool Approve { get; set; } = true;
 }
 

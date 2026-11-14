@@ -64,7 +64,7 @@ public static class Permissions
             new(SensorsEdit, "Add and change sensors", "Add sensors, change, pause and delete them, and their groups."),
             new(SensorsAlerts, "Change alerts and email", "The alert rules, the mail server and who gets the emails."),
         ]),
-        new("seats", "Seats", "monitor",
+        new("seats", "Devices", "monitor",
         [
             new(SeatsView, "See computers", "Every computer with the client, whether it's online, and who's on it."),
             new(SeatsApprove, "Let new computers in", "Approve a computer that asked to join."),
@@ -109,8 +109,8 @@ public static class Permissions
         ]),
         new("windows", "Windows accounts", "key",
         [
-            new(WindowsView, "See Windows accounts", "The accounts on this server and on the computers in Seats."),
-            new(WindowsCreate, "Make Windows accounts", "New accounts on this server or a computer in Seats, administrators included."),
+            new(WindowsView, "See Windows accounts", "The accounts on this server and on the computers in Devices."),
+            new(WindowsCreate, "Make Windows accounts", "New accounts on this server or a computer in Devices, administrators included."),
             new(WindowsChange, "Change Windows accounts", "Set passwords, turn accounts off and on, and change their groups, such as Administrators."),
             new(WindowsDelete, "Delete Windows accounts", "Gone from that computer for good."),
         ]),

@@ -72,13 +72,13 @@
 
     <StandardDirectory Id="ProgramMenuFolder" />
 
-    <!-- Uninstalling is locked once the client has joined a server, until someone allows it in Rabbid Lab (Seats). The
+    <!-- Uninstalling is locked once the client has joined a server, until someone allows it in Rabbid Lab (Devices). The
          service writes RemovalAllowed when the server says so, and when there is no server (Removal.cs). An update
          replacing this version is never held up. -->
     <Property Id="REMOVALALLOWED">
       <RegistrySearch Id="RemovalAllowed" Root="HKLM" Key="SOFTWARE\Rabbid Lab\Client" Name="RemovalAllowed" Type="raw" Bitness="always64" />
     </Property>
-    <CustomAction Id="RemovalLocked" Error="Uninstalling the Rabbid Lab client is locked on this computer. An admin has to allow it in Rabbid Lab first: open Seats, click this computer's Uninstall, and choose Allow uninstalling." />
+    <CustomAction Id="RemovalLocked" Error="Uninstalling the Rabbid Lab client is locked on this computer. An admin has to allow it in Rabbid Lab first: open Devices, click this computer's Uninstall, and choose Allow uninstalling." />
     <!-- The tray icon straight away for whoever installed it by hand; a quiet install shows it at the next sign-in. -->
     <CustomAction Id="StartTray" FileRef="ClientExe" ExeCommand="--tray" Return="asyncNoWait" Impersonate="yes" />
     <InstallExecuteSequence>

@@ -55,7 +55,7 @@ public sealed class Sensor
     public string? Oid { get; set; }
     public string? Interface { get; set; }
 
-    /// <summary>For svc and disk: the computer in Seats, by id, whose client makes the check; the service, or the drive such as C:.</summary>
+    /// <summary>For svc and disk: the computer in Devices, by id, whose client makes the check; the service, or the drive such as C:.</summary>
     public string? Seat { get; set; }
     public string? Service { get; set; }
     public string? Drive { get; set; }
@@ -271,12 +271,12 @@ public sealed class NetworkProbe(TimeProvider clock, SensorLogins? logins = null
         }
     }
 
-    // A check the Rabbid Lab client on a seat makes, as SYSTEM: a service's state, or a drive's free space.
+    // A check the Rabbid Lab client on a computer makes, as SYSTEM: a service's state, or a drive's free space.
     private async Task<Probe> Seat(Sensor s, CancellationToken stop)
     {
         if (commands is null || clients?.Find(s.Seat ?? "") is not { } client)
         {
-            return new Probe(false, Note: "That computer isn't in Seats any more");
+            return new Probe(false, Note: "That computer isn't in Devices any more");
         }
         if (!commands.Listening(client.Id))
         {
@@ -925,7 +925,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
         return kept.Count == 0 ? null : kept;
     }
 
-    // A check on a seat: the computer, its name shown, and the service or the drive.
+    // A check on a computer in Devices: the computer, its name shown, and the service or the drive.
     private static (Sensor? Sensor, string? Problem) ReadSeat(SensorForm form, string kind)
     {
         if (string.IsNullOrWhiteSpace(form.Seat))
@@ -2067,7 +2067,7 @@ public static class SensorsApi
 
         app.MapPost("/api/sensors", (SensorForm form, HttpContext context, Sensors sensors, ActivityLog log, SettingsStore settings) => Save(null, form, context, sensors, log, settings));
 
-        // The computers in Seats a sensor can check through, and whether their client is connected now.
+        // The computers in Devices a sensor can check through, and whether their client is connected now.
         app.MapGet("/api/sensors/seats", (HttpContext context, Clients clients, ClientCommands commands) =>
             !Access.Can(context, Permissions.SensorsEdit) ? Access.NotAllowed()
             : Results.Ok(clients.All().Where(c => c.Approved is not null).OrderBy(c => c.Computer, StringComparer.OrdinalIgnoreCase)

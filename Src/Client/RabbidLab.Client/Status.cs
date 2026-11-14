@@ -55,8 +55,8 @@ internal sealed class Status
     /// <summary>What to do about it, or what it means, in a sentence for the window.</summary>
     public string Hint() => State switch
     {
-        Connected => "This computer shows under Seats in Rabbid Lab.",
-        Waiting => "It shows under Seats as Waiting until someone lets it in.",
+        Connected => "This computer shows under Devices in Rabbid Lab.",
+        Waiting => "It shows under Devices as Waiting until someone lets it in.",
         NoServer => "Open Rabbid Lab in a browser on this computer and click Connect this computer, or click Connect to a server below.",
         Starting => "The Rabbid Lab Client service hasn't reported yet.",
         _ => Problem ?? "",

@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.149', [
+    'Seats is called Devices now, in the console, the wiki and the Windows client. Only the name changed: same page, same permissions, same addresses.',
+    'The bar shown on a computer that has not joined says it is not connected yet.']],
   ['1.1.148', [
     'Multi-factor authentication (MFA): signing in can take a 6-digit code from an authenticator app after the password. Turn it on for yourself in Settings, Account.',
     'A role can require MFA, with the Require MFA switch on its Display tab. People in it set it up at their next sign-in, and anyone signed in without a code is signed out.',
@@ -999,7 +1002,7 @@ const RELEASE_NOTES = [
   // Settings, Activity log: found on the server, newest first, by day, and a run of the same change by the same person
   // folded into one row that opens. The sub-menu picks a kind; the bar narrows by words, person, time and problems.
   const AL_KINDS = { signins: ['Sign-ins', 'user', '#6FA8FF'], accounts: ['People and accounts', 'users', '#B07CE8'], lab: ['Links and sensors', 'link', '#3CC7C7'],
-    seats: ['Seats', 'monitor', '#F2BE6B'], admin: ['Updates and settings', 'updates', '#FF8A3D'] };
+    seats: ['Devices', 'monitor', '#F2BE6B'], admin: ['Updates and settings', 'updates', '#FF8A3D'] };
   const AREA_KIND = { 'sign-in': 'signins', access: 'accounts', users: 'accounts', links: 'lab', sensors: 'lab', clients: 'seats', admin: 'admin' };
   const al = { q: '', who: '', days: 7, problems: false, count: 50, open: new Set(), page: null };
   const alKind = () => (where()[0] === 'settings' && where()[1] === 'activity' && AL_KINDS[where()[2][0]] ? where()[2][0] : '');
@@ -1370,7 +1373,7 @@ const RELEASE_NOTES = [
     }
   };
 
-  // Seats: the computers with the client and everyone signed in, asked again every 30 seconds while it's open.
+  // Devices: the computers with the client and everyone signed in, asked again every 30 seconds while it's open.
   let seatFilter = 'all';
   let computers = [];
   let seatTimer = null;
@@ -1394,7 +1397,7 @@ const RELEASE_NOTES = [
     seatsEmpty = computers.length ? 'None of the computers are like that right now.' : `No computers yet. Add computers to give people the ${esc(product)} client.`;
     seatsGrid().draw(shown);
   };
-  // Seats and Signed in now are data grids (grid.js), made the first time they're drawn.
+  // Devices and Signed in now are data grids (grid.js), made the first time they're drawn.
   const ms = (iso) => (iso ? new Date(iso).getTime() : 0);
   let seatsEmpty = '';
   let seatsG = null;
@@ -1489,7 +1492,7 @@ const RELEASE_NOTES = [
       + `${items.length} change${items.length === 1 ? '' : 's'}</span><b>Rabbid Lab ${esc(v)}</b><span class="text">${esc(items[0])}</span></a>`).join('');
   };
 
-  // This computer, when it isn't a seat yet: the client to download, then a rabbidlab://join link that hands the client
+  // This computer, when it isn't in Devices yet: the client to download, then a rabbidlab://join link that hands the client
   // this server's address. Windows only, and not for a month after Not now.
   const LATER = 'rabbidlab.here.later';
   let hereTimer = null;
@@ -1501,7 +1504,7 @@ const RELEASE_NOTES = [
   };
   const joined = (seat) => {
     clearInterval(hereTimer);
-    $('here-text').textContent = seat.approved ? `${seat.computer} is connected.` : `${seat.computer} joined. Let it in under Seats.`;
+    $('here-text').textContent = seat.approved ? `${seat.computer} is connected.` : `${seat.computer} joined. Let it in under Devices.`;
     $('here-download').hidden = true;
     $('here-connect').hidden = true;
     setTimeout(() => { $('herebar').hidden = true; }, 12000);
@@ -1677,7 +1680,7 @@ const RELEASE_NOTES = [
     $('hero-install').addEventListener('click', () => post('/api/update/install'));
     $('upd-install').addEventListener('click', () => post('/api/update/install'));
     $('upd-auto').addEventListener('change', (e) => post('/api/update/settings', { automatic: e.target.checked }));
-    // Seats: the filters, Let in and Remove on a computer, Sign out on a session, and the Add computers dialog.
+    // Devices: the filters, Let in and Remove on a computer, Sign out on a session, and the Add computers dialog.
     $('seats-filter').addEventListener('click', (e) => {
       const chip = e.target.closest('[data-filter]');
       if (!chip) return;
@@ -1702,7 +1705,7 @@ const RELEASE_NOTES = [
       else if (e.target.matches('[data-forget]')) sure(`Remove ${c.computer}?`, 'Its client will ask to join again and wait for approval.', 'Remove', () => act('remove'));
       else if (e.target.matches('[data-uninstall]')) openSeat(c);
     });
-    // Uninstalling a seat's client: locked on the computer until it's allowed here, for an hour, or ordered from here.
+    // Uninstalling a computer's client: locked on the computer until it's allowed here, for an hour, or ordered from here.
     let seat = null;
     const drawSeat = () => {
       $('seat-title').textContent = `Uninstall the client on ${seat.computer}`;
@@ -2023,7 +2026,7 @@ const RELEASE_NOTES = [
     add('Service account', dir && (dir.state ? `${dir.state.account} in ${dir.state.domain}, ${dir.state.made ? 'created by Rabbid Lab' : 'an existing account'}, scope ${dir.state.scopeName}` : 'Not set up'));
     add('Updates', upd && `${{ current: 'up to date', available: 'update available', downloading: 'downloading', installing: 'installing', failed: 'last update failed' }[upd.status] || upd.status}`
       + `${upd.available ? ` (${upd.available})` : ''}, checked ${upd.checkedAt ? when(upd.checkedAt) : 'never'}`);
-    add('Seats', Array.isArray(seats) ? `${seats.length} computer${seats.length === 1 ? '' : 's'}, ${seats.filter((c) => c.online).length} online` : null);
+    add('Devices', Array.isArray(seats) ? `${seats.length} computer${seats.length === 1 ? '' : 's'}, ${seats.filter((c) => c.online).length} online` : null);
     add('Links', links && `${links.links.length} in ${links.groups?.length || 0} group${links.groups?.length === 1 ? '' : 's'}`);
     add('Sensors', sensors && `${sensors.sensors.length}, ${sensors.sensors.filter((x) => x.status === 'down').length} down, email ${sensors.mail ? 'set up' : 'not set up'}`);
     add('Signed in as', meInfo && `${meInfo.source === 'ad' ? 'an Active Directory account' : meInfo.source === 'windows' ? 'a Windows account' : 'a local account'}, roles: ${(meInfo.roles || []).map((r) => r.name || r).join(', ') || 'none'}`);
@@ -2094,7 +2097,7 @@ const RELEASE_NOTES = [
         ? "Other computers show a warning until it's trusted. Deploy it to Trusted Root Certification Authorities with Group Policy."
         : `Issued by ${esc(cert.issuer)}.`, `<span class="ds-v">Expires ${caDate(cert.expires)}</span>`, { tone: cert.selfSigned ? 'warn' : 'ok' })
         + caRow('key', 'SHA-256 fingerprint', fp, `<span class="ds-pair">${caGet('/api/console/certificate')}${caCopy(fp)}</span>`, { cls: 'ds-code' })
-        // The added addresses have one of their own, so the one above (which Seats trust) never changes. It's made again
+        // The added addresses have one of their own, so the one above (which computers in Devices trust) never changes. It's made again
         // with each one added or removed, and deleted with the last, so it only shows while there are some.
         + (!c.namesCertificate || !c.addresses.some((a) => a.name) ? '' : caRow('shield', 'For the addresses added here',
           'Made again when one is added or removed, and deleted with the last. Trust it on other computers too, as above.',
@@ -2189,7 +2192,7 @@ const RELEASE_NOTES = [
     const login = !!domain && nmDns && (adding || ours);
     $('nm-user-wrap').hidden = $('nm-pw-wrap').hidden = $('nm-lock').hidden = !login;
     $('nm-form').querySelector('.sd-div').hidden = !adding && !ours;
-    // The certificate: the added names have one of their own, so the console's, which Seats trust, never changes.
+    // The certificate: the added names have one of their own, so the console's, which computers in Devices trust, never changes.
     const https = ca?.scheme === 'https';
     $('nm-cert-head').hidden = $('nm-cert').hidden = !https;
     $('nm-cert').querySelector('span').textContent = adding

@@ -1,5 +1,5 @@
 // Active Directory (#ad/<users|groups|computers>/<view>), changed as Rabbid Lab's own AD account, and Local accounts
-// (#local/<computer id>): the Windows accounts on this server ("server") or a computer in Seats, whose client makes the
+// (#local/<computer id>): the Windows accounts on this server ("server") or a computer in Devices, whose client makes the
 // change. console.js shares its helpers as window.RabbidLab.
 (() => {
   const R = window.RabbidLab;
@@ -1914,7 +1914,7 @@
     $('us-computers').innerHTML = computers.map((c) => `<a href="#local/${encodeURIComponent(c.id)}" class="pc"${c.id === pcId ? ' aria-current="page"' : ''}>`
       + `${svg(c.server ? 'server' : 'monitor')}<span class="nm">${esc(c.name)}</span>${c.here ? '<small>This one</small>' : ''}`
       + `<i class="pcdot ${c.ready ? 'on' : c.online ? 'warn' : 'off'}" title="${esc(c.ready ? 'Ready' : c.why || 'Offline')}"></i></a>`).join('')
-      || '<p class="side-sub">No computers in Seats yet.</p>';
+      || '<p class="side-sub">No computers in Devices yet.</p>';
     const c = computer();
     $('us-pc-title').textContent = c ? c.name : computers.length ? 'Not found' : 'No computers yet';
     $('us-pc-line').textContent = c ? [c.server ? 'This server' : c.os, c.user ? `${c.user} is on it` : ''].filter(Boolean).join(' · ') : '';
@@ -2500,8 +2500,8 @@
   const setupCard = (el, info) => {
     const allowed = can('ad.connect');
     const local = can('windows.view');
-    // Local accounts are made by this server and by each seat's client, as SYSTEM: only Active Directory needs an account.
-    const noAccount = ' Windows accounts on this server and on seats need no service account: those are under Local accounts.';
+    // Local accounts are made by this server and by each computer's client, as SYSTEM: only Active Directory needs an account.
+    const noAccount = ' Windows accounts on this server and on computers in Devices need no service account: those are under Local accounts.';
     if (!info?.domain) {
       // No domain here: these pages have nothing to manage until one is connected.
       el.innerHTML = `<div class="dgate-card"><span class="big-ic ember">${svg('key')}</span><div class="ustatus-text"><b>This server isn't on a domain</b><span>`

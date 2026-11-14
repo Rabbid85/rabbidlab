@@ -492,7 +492,7 @@
   let editing = null; // the sensor being changed, or null for a new one
   let kind = 'ping';
   const vals = {}; // what has been typed, kept while the kind changes
-  const GROUPS = [['answer', 'Is it answering'], ['health', 'Health'], ['seat', 'On a seat']];
+  const GROUPS = [['answer', 'Is it answering'], ['health', 'Health'], ['seat', 'On a computer']];
   const TYPES = [
     { id: 'ping', g: 'answer', icon: 'activity', about: 'Answers ping.' },
     { id: 'port', g: 'answer', icon: 'plug', about: 'A TCP port is open.' },
@@ -504,7 +504,7 @@
     { id: 'vmware', g: 'health', icon: 'monitor', about: 'ESXi or vCenter: hosts connected, datastore free space and triggered alarms.', signs: true },
     { id: 'snmp', g: 'health', icon: 'org', about: 'Switches, UPS units and printers: one value you pick, such as a UPS battery or a switch port.', signs: true },
     { id: 'svc', g: 'seat', icon: 'gear', about: 'A Windows service is running, checked by the client on that computer.' },
-    { id: 'disk', g: 'seat', icon: 'disk', about: 'Free space on a drive of a computer in Seats, read by its client.' },
+    { id: 'disk', g: 'seat', icon: 'disk', about: 'Free space on a drive of a computer in Devices, read by its client.' },
   ];
   // The fields, in the console's form markup; each keeps its value in vals under its key.
   const wide = (on) => (on ? ' class="wide"' : '');
@@ -538,11 +538,11 @@
       + (vals.login === NEW_LOGIN ? typed[k]() : '')
       + `<p class="hint">${k === 'community' ? 'SNMP v2c sends the community in clear text. Use v3 where the device has it. ' : ''}Stored encrypted on this server and only sent to this address.${role ? ` ${role}` : ''}</p>`;
   };
-  // The computers in Seats, for the checks their client makes.
+  // The computers in Devices, for the checks their client makes.
   let seats = [];
   const SEAT_HINT = () => `<p class="hint">Checked by the ${R.esc(R.app())} client on that computer, which runs as SYSTEM. No credentials needed.</p>`;
   const seatPick = () => {
-    if (!seats.length) return '<p class="hint">No computers in Seats yet. Add one under Seats, then pick it here.</p>';
+    if (!seats.length) return '<p class="hint">No computers in Devices yet. Add one under Devices, then pick it here.</p>';
     if (!seats.some((c) => c.id === vals.seat)) vals.seat = seats[0].id;
     return choice('seat', 'Computer', seats.map((c) => [c.id, `${c.computer}${c.connected ? '' : ' (client not connected)'}`]), { wide: true });
   };

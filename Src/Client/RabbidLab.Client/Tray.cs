@@ -237,7 +237,7 @@ internal sealed class StatusWindow : Form
     {
         if (!Removal.Allowed)
         {
-            MessageBox.Show(this, $"Uninstalling is locked by {shown.Host}.\n\nAn admin has to allow it in Rabbid Lab first: Seats, {shown.Computer}, Uninstall.",
+            MessageBox.Show(this, $"Uninstalling is locked by {shown.Host}.\n\nAn admin has to allow it in Rabbid Lab first: Devices, {shown.Computer}, Uninstall.",
                 "Rabbid Lab Client", MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }

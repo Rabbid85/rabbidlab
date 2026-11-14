@@ -163,7 +163,7 @@
   <a href="#ad/users" data-page="ad" id="rail-dir" title="Active Directory" data-can="ad.view ad.connect"><svg><use href="#i-users"/></svg><span>Active Directory</span><i class="rail-dot bad" id="rail-dir-dot" hidden></i></a>
   <a href="#ad/domain" data-page="domain" id="rail-domain" title="Domain health" data-can="ad.view ad.connect" data-whole><svg><use href="#i-shield"/></svg><span>Domain health</span><i class="rail-dot bad" id="rail-domain-dot" hidden></i></a>
   <p class="rail-label" data-can="seats.view sessions.view access.view windows.view">Config</p>
-  <a href="#seats" data-page="seats" title="Seats" data-can="seats.view sessions.view"><svg><use href="#i-monitor"/></svg><span>Seats</span><small id="rail-seats"></small><i class="rail-dot" id="seats-dot" hidden></i></a>
+  <a href="#seats" data-page="seats" title="Devices" data-can="seats.view sessions.view"><svg><use href="#i-monitor"/></svg><span>Devices</span><small id="rail-seats"></small><i class="rail-dot" id="seats-dot" hidden></i></a>
   <a href="#local" data-page="local" title="Local accounts" data-can="windows.view"><svg><use href="#i-key"/></svg><span>Local accounts</span></a>
   <a href="#people" data-page="people" title="Roles and people" data-can="access.view"><svg><use href="#i-shield"/></svg><span>Roles and people</span><small id="rail-roles"></small></a>
   <p class="rail-label">Help</p>
@@ -179,9 +179,9 @@
   <a class="backlink" id="backlink" hidden><svg><use href="#i-back"/></svg><span id="backlink-text"></span></a>
   <!-- Role preview: the console as a role sees it, until Stop. -->
   <div class="viewas" id="viewas" hidden><svg><use href="#i-eye"/></svg><span>Previewing as <b id="viewas-name"></b>. Only the view changes: you keep your own permissions.</span><button type="button" id="viewas-stop">Stop</button></div>
-  <!-- This computer isn't a seat yet: the client to install, then Connect, which hands the client the server's address. -->
+  <!-- This computer isn't in Devices yet: the client to install, then Connect, which hands the client the server's address. -->
   <div class="herebar" id="herebar" hidden><svg><use href="#i-monitor"/></svg>
-    <span id="here-text">This computer isn't in Seats yet.</span>
+    <span id="here-text">This computer isn't connected yet.</span>
     <a class="button small" id="here-download" href="/api/clients/download" download><svg><use href="#i-download"/></svg>1. Download the client</a>
     <a class="button small primary" id="here-connect" href="#"><svg><use href="#i-link"/></svg>2. Connect this computer</a>
     <button type="button" class="link" id="here-later">Not now</button></div>
@@ -233,7 +233,7 @@
         <a href="#settings/activity/signins" data-sub="activity" data-sec="signins"><span class="nm">Sign-ins</span></a>
         <a href="#settings/activity/accounts" data-sub="activity" data-sec="accounts"><span class="nm">People and accounts</span></a>
         <a href="#settings/activity/lab" data-sub="activity" data-sec="lab"><span class="nm">Links and sensors</span></a>
-        <a href="#settings/activity/seats" data-sub="activity" data-sec="seats"><span class="nm">Seats</span></a>
+        <a href="#settings/activity/seats" data-sub="activity" data-sec="seats"><span class="nm">Devices</span></a>
         <a href="#settings/activity/admin" data-sub="activity" data-sec="admin"><span class="nm">Updates and settings</span></a>
       </div>
       <p class="rail-label" data-can="sensors.alerts">Alerts</p>
@@ -241,7 +241,7 @@
       <div class="dkids" data-kids="alerts">
         <a href="#settings/alerts/types" data-sub="alerts" data-sec="types"><span class="nm">Alert types</span></a>
         <a href="#settings/alerts/sensors" data-sub="alerts" data-sec="sensors"><span class="nm">Sensor warnings</span></a>
-        <a href="#settings/alerts/seats" data-sub="alerts" data-sec="seats"><span class="nm">Seats</span></a>
+        <a href="#settings/alerts/seats" data-sub="alerts" data-sec="seats"><span class="nm">Devices</span></a>
         <a href="#settings/alerts/lab" data-sub="alerts" data-sec="lab"><span class="nm" data-app>Rabbid Lab</span></a>
         <a href="#settings/alerts/quiet" data-sub="alerts" data-sec="quiet"><span class="nm">Gathering and quiet hours</span></a>
       </div>
@@ -254,7 +254,7 @@
         <a href="#settings/links/descriptions" data-sub="links" data-sec="descriptions"><span class="nm">Icons and descriptions</span></a>
       </div>
       <a href="#settings/sensors" data-sub="sensors" data-can="sensors.edit"><svg><use href="#i-key"/></svg><span>Sensors</span></a>
-      <a href="#settings/seats" data-sub="seats" data-can="seats.settings seats.add"><svg class="all-flask" viewBox="0 0 24 24" aria-hidden="true"><path class="liquid" d="M6.6 15.2h10.8l2 3.2A1.7 1.7 0 0 1 17.9 21H6.1a1.7 1.7 0 0 1-1.5-2.6z"/><path d="M9 3h6M10 3v6.2L4.6 18.4A1.7 1.7 0 0 0 6.1 21h11.8a1.7 1.7 0 0 0 1.5-2.6L14 9.2V3"/></svg><span>Seats</span></a>
+      <a href="#settings/seats" data-sub="seats" data-can="seats.settings seats.add"><svg class="all-flask" viewBox="0 0 24 24" aria-hidden="true"><path class="liquid" d="M6.6 15.2h10.8l2 3.2A1.7 1.7 0 0 1 17.9 21H6.1a1.7 1.7 0 0 1-1.5-2.6z"/><path d="M9 3h6M10 3v6.2L4.6 18.4A1.7 1.7 0 0 0 6.1 21h11.8a1.7 1.7 0 0 0 1.5-2.6L14 9.2V3"/></svg><span>Devices</span></a>
       <div class="dkids" data-kids="seats">
         <a href="#settings/seats/new" data-sub="seats" data-sec="new" data-can="seats.settings"><span class="nm">New computers</span></a>
         <a href="#settings/seats/client" data-sub="seats" data-sec="client" data-can="seats.add"><span class="nm">Install the client</span></a>
@@ -444,9 +444,9 @@
       <p class="hint problem" id="sn-set-problem" hidden></p>
     </section>
 
-    <!-- Seats: whether new computers wait, and getting the client onto computers (console.js). -->
-    <section class="sub" data-sub="seats" data-title="Seats" hidden>
-      <header class="sub-head"><h2>Seats</h2><p>Computers with the <span data-app>Rabbid Lab</span> client: letting them in, and getting the client onto them.</p></header>
+    <!-- Devices: whether new computers wait, and getting the client onto computers (console.js). -->
+    <section class="sub" data-sub="seats" data-title="Devices" hidden>
+      <header class="sub-head"><h2>Devices</h2><p>Computers with the <span data-app>Rabbid Lab</span> client: letting them in, and getting the client onto them.</p></header>
       <section class="ds-sec" data-sec="new" data-can="seats.settings"><h3 class="ds-h">New computers</h3>
         <div class="ds-row"><div class="ds-l"><b>New computers wait for an admin</b><span>They show as Waiting until someone lets them in. Turn this off and they join straight away.</span></div>
           <div class="ds-r"><span class="sw-label" id="seat-approve-label">On</span><input type="checkbox" class="switch" id="seat-approve" role="switch" aria-label="New computers wait for an admin"></div></div>
@@ -526,9 +526,9 @@
     </div>
   </section>
 
-  <!-- Seats: the computers with the Rabbid Lab client, and everyone signed in. -->
-  <section class="page seats-page" id="page-seats" data-page="seats" data-title="Seats" hidden>
-    <header class="page-head seats-head"><div><h1>Seats</h1><p>The computers with the <span data-app>Rabbid Lab</span> client, and who's signed in.</p></div>
+  <!-- Devices: the computers with the Rabbid Lab client, and everyone signed in. -->
+  <section class="page seats-page" id="page-seats" data-page="seats" data-title="Devices" hidden>
+    <header class="page-head seats-head"><div><h1>Devices</h1><p>The computers with the <span data-app>Rabbid Lab</span> client, and who's signed in.</p></div>
       <button type="button" class="primary" id="seats-add" data-can="seats.add">Add computers</button></header>
     <div class="tiles4" data-can="seats.view">
       <div class="card tile4"><span class="label ok">Online</span><b id="n-online"><i class="sk sk-num"></i></b></div>
@@ -789,10 +789,10 @@
   </div>
   </section>
 
-  <!-- Local accounts: the Windows accounts on this server and on each computer in Seats, whose client makes the change (users.js). -->
+  <!-- Local accounts: the Windows accounts on this server and on each computer in Devices, whose client makes the change (users.js). -->
   <section class="page people-page users-page" id="page-local" data-page="local" data-title="Local accounts" hidden>
     <header class="page-head"><h1>Local accounts</h1>
-      <p>The Windows accounts on this server and on each computer in Seats. No service account is needed: this server makes its own changes, and on a seat the <span data-app>Rabbid Lab</span> client does, straight away.</p></header>
+      <p>The Windows accounts on this server and on each computer in Devices. No service account is needed: this server makes its own changes, and on the other computers the <span data-app>Rabbid Lab</span> client does, straight away.</p></header>
     <div class="lib">
       <aside class="side" aria-label="Computers">
         <label class="side-find"><svg><use href="#i-search"/></svg><input type="search" id="us-find" placeholder="Find an account" aria-label="Find an account" autocomplete="off" spellcheck="false"></label>
@@ -878,7 +878,7 @@
 <!-- Add computers: the client, how to install it on one computer or many, and whether new ones wait. -->
 <dialog class="dialog wide" id="add-dialog" aria-labelledby="add-title">
   <h2 id="add-title">Add computers</h2>
-  <p class="dialog-lead">Install the <span data-app>Rabbid Lab</span> client on a computer and it shows up under Seats. Or open <span data-app>Rabbid Lab</span> in a browser on that computer and click Connect this computer.</p>
+  <p class="dialog-lead">Install the <span data-app>Rabbid Lab</span> client on a computer and it shows up under Devices. Or open <span data-app>Rabbid Lab</span> in a browser on that computer and click Connect this computer.</p>
   <div class="step"><span class="n">1</span><div><b>Install the client</b>
     <p class="hint" id="get-client">Download it and run it, or install it quietly from a command line or Intune:</p>
     <div class="key-row"><code class="cmd" id="install-line"></code><button type="button" class="small" id="line-copy">Copy</button></div>
@@ -1168,7 +1168,7 @@
 <!-- A sensor: what to check, where, how often, and which alert rule it uses. -->
 <dialog class="dialog sd-dialog" id="sensor-dialog" aria-labelledby="sd-title">
   <h2 id="sd-title">Add a sensor</h2>
-  <p class="dialog-lead">Pick what to check. Checks run from this server, or from the client on a seat.</p>
+  <p class="dialog-lead">Pick what to check. Checks run from this server, or from the client on a computer in Devices.</p>
   <div class="devstrip sd-dev" id="sd-dev"><b>DEV</b><span>Fill in a test:</span><button type="button" class="small" data-fill="up">A sensor</button>
     <button type="button" class="small" data-fill="down">One that goes down</button><span class="grow">Checked every 5 seconds, never emails, gone 30 seconds after it's added.</span></div>
   <div class="sd-grid">
@@ -1315,7 +1315,7 @@
   <div class="dialog-foot"><button type="button" id="lopen-close">Close</button><button type="button" class="primary" id="lopen-go"></button></div>
 </dialog>
 
-<!-- Uninstalling a seat's client. On the computer it is locked until someone allows it here. -->
+<!-- Uninstalling a computer's client. On the computer it is locked until someone allows it here. -->
 <dialog class="dialog" id="seat-dialog" aria-labelledby="seat-title">
   <h2 id="seat-title"></h2>
   <p class="dialog-lead">The client can't be uninstalled on its computer until you allow it here. That keeps anything on the computer from removing it on its own.</p>
