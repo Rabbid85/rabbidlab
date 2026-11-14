@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.125', [
+    'Users, Groups and Computers have Filter, Columns and Actions in the toolbar. Filter keeps rows that match your conditions, Columns picks what shows, column names sort, and their edges drag to resize. Actions shows how many are ticked. The rows and tiles switch and the filters down the left are gone, and Name shows just the name.']],
   ['1.1.124', [
     'With rows ticked, the column headings turn into how many are selected, Clear selection and Actions, instead of a bar above the list. The list no longer moves down when you tick something.']],
   ['1.1.123', [

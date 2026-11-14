@@ -98,6 +98,8 @@
   <symbol id="i-move" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M10 13h6M13.5 10.5 16 13l-2.5 2.5"/></symbol>
   <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
   <symbol id="i-chevron-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></symbol>
+  <symbol id="i-chevron-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></symbol>
+  <symbol id="i-columns" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M15 4v16"/></symbol>
 </svg>
 <div class="sky" aria-hidden="true"></div>
 <header class="top">
@@ -738,7 +740,6 @@
       <a href="#ad/recycle" data-adpage="recycle" data-can="ad.view ad.connect"><svg><use href="#i-trash"/></svg><span>Recycle Bin</span></a>
       <!-- The open page's views (users.js puts them under its entry), and what narrows them. -->
       <div class="dkids" id="dir-views"></div>
-      <div class="dfilters" id="dir-filters"></div>
       <div class="dir-acct" id="dir-acct-row" hidden><svg><use href="#i-key"/></svg><span id="dir-acct"></span>
         <button type="button" class="icon" id="dir-settings" data-can="ad.connect" title="Service account" aria-label="Service account"><svg><use href="#i-gear"/></svg></button></div>
     </nav>
@@ -747,11 +748,12 @@
       <div class="lib-body">
         <!-- Across the top of the list: its tabs, how it's sorted and laid out, and what can be done with it. -->
         <div class="dbar"><div class="tabs2" id="dir-tabs"></div><span class="grow"></span>
-          <select id="dir-sort" aria-label="Sort by" title="Sort by"></select>
-          <div class="vswitch" id="dir-layout"><button type="button" data-layout="rows" title="Rows" aria-label="Rows"><svg><use href="#i-list"/></svg></button><button type="button" data-layout="tiles" title="Tiles" aria-label="Tiles"><svg><use href="#i-overview"/></svg></button></div>
+          <button type="button" class="small" id="dir-filter" aria-haspopup="dialog"><svg><use href="#i-filter"/></svg>Filter<b class="cnt" hidden></b></button>
+          <button type="button" class="small" id="dir-cols" aria-haspopup="menu"><svg><use href="#i-columns"/></svg>Columns</button>
+          <button type="button" class="small" id="dir-act" aria-haspopup="menu" disabled><svg><use href="#i-menu"/></svg>Actions<b class="cnt" hidden></b><svg class="chev"><use href="#i-chevron-down"/></svg></button>
           <button type="button" class="small" id="dir-export"><svg><use href="#i-csv"/></svg>Export</button>
           <button type="button" class="primary" id="dir-new" data-can="ad.create"><svg><use href="#i-plus"/></svg><span id="dir-new-text">New user</span></button></div>
-        <p class="dnow" id="dir-now" hidden><b id="dir-view-title"></b><span class="bar-note" id="dir-count"></span></p>
+        <p class="dnow" id="dir-now" hidden><b id="dir-view-title"></b><span class="bar-note" id="dir-count"></span><span class="dnow-filter" id="dir-filtered" hidden></span></p>
         <div class="dir-banner" id="dir-banner" hidden></div>
         <div class="table" id="dir-table"></div>
         <p class="hint" id="dir-more" hidden>Active Directory has more than the 1,000 listed here.</p>
@@ -1312,6 +1314,17 @@
 
 <!-- A user's menu (row ⋯, right-click, or Actions over ticked users): categories that open to the side. -->
 <div class="gear-menu cmd-menu" id="cmd-menu" popover role="menu"></div>
+<!-- Columns: which ones the list shows; Users, Groups and Computers each keep their own. -->
+<div class="gear-menu col-menu" id="col-menu" popover></div>
+
+<!-- Filter: conditions on what the list holds (a field, how to test it, and a value), all or any of them. -->
+<dialog class="dialog wide" id="flt-dialog" aria-labelledby="flt-title">
+  <h2 id="flt-title">Filter</h2>
+  <p class="dialog-lead flt-join">Show the ones that match <select id="flt-join" aria-label="All or any"><option value="all">all</option><option value="any">any</option></select> of these:</p>
+  <div class="flt-rules" id="flt-rules"></div>
+  <button type="button" class="small flt-add" id="flt-add"><svg><use href="#i-plus"/></svg>Add a condition</button>
+  <div class="dialog-foot"><button type="button" class="linkish" id="flt-clear">Clear all</button><span class="flt-count" id="flt-count"></span><button type="button" id="flt-cancel">Cancel</button><button type="button" class="primary" id="flt-apply">Apply</button></div>
+</dialog>
 <select id="mv-ou" hidden aria-hidden="true" tabindex="-1" data-always></select>
 
 <!-- Set account expiration: the last day the account works. -->

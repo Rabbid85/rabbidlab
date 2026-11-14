@@ -288,7 +288,6 @@ button.danger.solid:hover { background: #DB4860; }
 }
 
 /* The Users list: a tick on the left, ⋯ on the right, and a bar over the list while some are selected. */
-.adt.users.picks .tr { grid-template-columns: 18px minmax(200px, 1.5fr) minmax(215px, 1fr) minmax(100px, .9fr) 110px 150px 28px; }
 .adt .tk { display: grid; place-items: center; align-self: stretch; cursor: pointer; }
 .adt .tk input { width: 15px; height: 15px; margin: 0; accent-color: var(--accent); cursor: pointer; }
 .adt .tr.picked { background: #141827; }
@@ -327,17 +326,57 @@ button.danger.solid:hover { background: #DB4860; }
 .gp-list .tick small { margin-left: auto; color: #5E6380; font-size: 11.5px; }
 .key-row code.many { white-space: pre; letter-spacing: 0; line-height: 1.7; font-size: 13px; overflow-x: auto; }
 
-/* Groups and computers get the same tick and ⋯ as Users. */
-.adt.groups.picks .tr { grid-template-columns: 18px minmax(220px, 1.8fr) 150px 110px 90px minmax(140px, 1fr) 28px; }
-.adt.computers.picks .tr { grid-template-columns: 18px minmax(200px, 1.4fr) minmax(170px, 1.2fr) minmax(140px, 1fr) 110px 150px 28px; }
 .gp-list .tick svg { flex: none; width: 15px; height: 15px; color: #8B90A5; }
 .gp-list .tick span { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 
-/* While some are ticked, the heading row says how many, with Clear selection and Actions, instead of the column names. */
-.adt .tr.th.picking > span { display: none; }
-.adt .th-bulk { display: flex; grid-column: 2 / -1; align-items: center; gap: 14px; min-width: 0; color: var(--title); font-size: 13px; font-weight: 500; letter-spacing: 0; text-transform: none; }
-.adt .th-bulk[hidden] { display: none; }
-.adt .th-bulk b { font-weight: 650; }
-.adt .th-bulk .small { display: inline-flex; align-items: center; gap: 7px; height: 28px; margin: -6px 0 -6px auto; } /* no taller than the column names, so the rows stay put */
-.adt .th-bulk .small svg { width: 14px; height: 14px; }
-.adt .th-bulk .small .chev { width: 12px; height: 12px; color: #8B90A5; }
+
+/* Users, Groups and Computers: the columns chosen, at the widths set (users.js puts them in --cols), sideways scroll when wide. */
+.adt.picks .tr { grid-template-columns: var(--cols); min-width: var(--minw); }
+.adt .th-cell { position: relative; display: flex; align-items: center; min-width: 0; align-self: stretch; }
+.th-sort { display: inline-flex; align-items: center; gap: 4px; min-width: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; white-space: nowrap; cursor: pointer; }
+.th-sort:hover, .th-sort.on { color: var(--title); }
+.th-sort .arr { flex: none; width: 12px; height: 12px; }
+.th-grip { position: absolute; top: 7px; right: -8px; bottom: 7px; z-index: 1; width: 10px; cursor: col-resize; }
+.th-grip::after { content: ""; position: absolute; top: 0; bottom: 0; left: 4px; width: 2px; border-radius: 2px; background: var(--line-strong); opacity: 0; }
+.adt .tr.th:hover .th-grip::after { opacity: 1; }
+.th-grip:hover::after { background: var(--accent); }
+body.col-dragging, body.col-dragging * { cursor: col-resize !important; user-select: none; }
+.ell { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.adt .who b.ell { color: var(--title); font-weight: 600; }
+
+/* The toolbar's Filter, Columns and Actions, with how many conditions or ticked rows. */
+.dbar .cnt { display: inline-grid; min-width: 19px; height: 19px; place-items: center; padding: 0 6px; border-radius: 999px; background: var(--accent); color: #fff; font-size: 11px; font-weight: 700; }
+.dbar .cnt[hidden] { display: none; }
+.dbar .small .chev { width: 12px; height: 12px; color: #8B90A5; }
+#dir-act:disabled { opacity: .45; cursor: default; }
+#dir-filter.on { border-color: var(--accent-line); color: var(--title); }
+.dnow-filter { display: inline-flex; align-items: center; gap: 8px; min-width: 0; color: var(--muted); font-size: 13px; }
+.dnow-filter[hidden] { display: none; }
+.dnow-filter svg { flex: none; width: 14px; height: 14px; align-self: center; }
+.dnow-filter span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+
+/* Columns: the gear menu's rows with a tick each. */
+.gear-menu.col-menu { position: fixed; inset: auto; width: 270px; max-height: min(560px, 80vh); margin: 0; overflow-y: auto; }
+.col-check { cursor: pointer; }
+.col-check input { flex: none; width: 15px; height: 15px; margin: 0; accent-color: var(--accent); }
+
+/* Filter: a row per condition (field, test, value, remove). */
+.flt-join select { height: 30px; margin: 0 4px; padding: 0 8px; border: 1px solid var(--line-strong); border-radius: 7px; background-color: #0C0E17; color: var(--title); font: inherit; font-size: 13px; }
+.flt-rules { display: grid; gap: 8px; margin: 14px 0 12px; }
+.flt-row { display: grid; grid-template-columns: 210px 150px minmax(0, 1fr) 28px; gap: 8px; align-items: start; }
+.flt-row select, .flt-row input[type="text"], .flt-num input { width: 100%; height: 36px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 8px; background-color: #0C0E17; color: var(--title); font: inherit; font-size: 13.5px; }
+.flt-row select:focus, .flt-row input:focus { outline: none; border-color: var(--accent-line); }
+.flt-row select:disabled { opacity: .7; }
+.flt-num { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; white-space: nowrap; }
+.flt-num input { width: 96px; }
+.flt-tokens { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: 36px; padding: 4px 8px; border: 1px solid var(--line-strong); border-radius: 8px; background: #0C0E17; }
+.flt-tokens:focus-within { border-color: var(--accent-line); }
+.flt-row .flt-tokens input { flex: 1; width: auto; min-width: 110px; height: 26px; padding: 0 2px; border: 0; background: none; }
+.flt-x { opacity: 1; margin: 4px 0 0; }
+.flt-empty { margin: 4px 0; }
+.flt-add { display: inline-flex; align-items: center; gap: 7px; }
+.flt-add svg { width: 15px; height: 15px; }
+#flt-dialog .dialog-foot { align-items: center; }
+#flt-clear { margin-right: 14px; }
+.flt-count { margin-right: auto; color: var(--muted); font-size: 13px; }
+.cmd-head .cmd-clear { float: right; font-size: 12.5px; font-weight: 500; }

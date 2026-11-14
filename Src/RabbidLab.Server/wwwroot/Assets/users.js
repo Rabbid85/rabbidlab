@@ -29,15 +29,14 @@
   const keyOf = (x) => String(AD[adPage].key(x));
   const byKey = (key) => (lists[adPage] || []).find((x) => keyOf(x) === key);
   const count = (n, one, many) => `${n.toLocaleString()} ${n === 1 ? one : many}`;
-  // The heading row (how many are selected, or the column names), its tick and each row's highlight, without drawing the list again.
+  // How many are ticked on the Actions button (greyed until there are some), the tick in the heading and each row's
+  // highlight, without drawing the list again.
   const drawPicked = () => {
     const sel = pickedHere();
-    const bulk = $('dir-table').querySelector('.th-bulk');
-    if (bulk) {
-      bulk.hidden = !sel.size;
-      bulk.closest('.tr').classList.toggle('picking', !!sel.size);
-      if (sel.size) bulk.querySelector('b').textContent = `${count(sel.size, ...AD[adPage].noun)} selected`;
-    }
+    $('dir-act').disabled = !sel.size;
+    $('dir-act').querySelector('.cnt').hidden = !sel.size;
+    $('dir-act').querySelector('.cnt').textContent = sel.size.toLocaleString();
+    $('dir-act').dataset.tip = sel.size ? `${count(sel.size, ...AD[adPage].noun)} selected` : `Tick ${AD[adPage].noun[1]} first`;
     $('dir-table').querySelectorAll('[data-tick]').forEach((box) => {
       box.checked = sel.has(box.dataset.tick);
       box.closest('.tr')?.classList.toggle('picked', box.checked);
@@ -70,8 +69,6 @@
       },
       // People, and the accounts Windows and Active Directory made for themselves, on a tab each.
       tabs: [{ key: 'people', label: 'People', icon: 'user', where: (u) => !u.system }, { key: 'system', label: 'System accounts', icon: 'key', where: (u) => u.system }],
-      sorts: [['Name', (u) => (u.name || u.username).toLowerCase()], ['Last sign-in', (u) => -new Date(u.lastSignIn || 0)], ['Department', (u) => (u.department || '~').toLowerCase()]],
-      filters: ['account', 'seen', 'ou'],
       find: (u) => [u.name, u.username, u.upn, u.email, u.title, u.department, u.where],
       views: [
         ['View', [
@@ -93,14 +90,6 @@
           { key: 'ending', label: 'Accounts with an expiration date', quiet: true, where: (u) => !!u.accountExpires },
         ]],
       ],
-      head: ['Name', 'Pre-Windows 2000 logon name', 'Department', 'Last sign-in', 'Status'],
-      cells: (u) => [
-        `<div class="who"><span class="pic user">${esc(initials(u.name || u.username))}</span>${small(u.name || u.username, u.upn)}</div>`,
-        `<span class="mono">${esc(u.username)}</span>`,
-        u.department || u.title ? small(u.department || u.title, u.department ? u.title : '') : '<span class="muted">-</span>',
-        esc(ago(u.lastSignIn)),
-        userStatus(u) + (u.service ? chip(R.app(), 'ember') : ''),
-      ],
       csv: [['Name', (u) => u.name], ['Logon name', (u) => u.username], ['User principal name', (u) => u.upn], ['Email', (u) => u.email], ['Department', (u) => u.department],
         ['Job title', (u) => u.title], ['Manager', (u) => u.manager], ['Organizational unit', (u) => u.where], ['Last sign-in', (u) => u.lastSignIn], ['Password last set', (u) => u.passwordSet],
         ['Password expires', (u) => u.passwordExpires], ['Password never expires', (u) => u.neverExpires], ['Must change password', (u) => u.mustChange],
@@ -111,8 +100,6 @@
       title: 'Groups', noun: ['group', 'groups'], add: 'New group', key: (g) => g.dn,
       lead: 'Security and distribution groups, and who is in each.',
       load: async () => { const l = await R.get('/api/ad/groups'); more.groups = l.more; return l; },
-      sorts: [['Name', (g) => g.name.toLowerCase()], ['Members', (g) => -g.members]],
-      filters: ['ou'],
       find: (g) => [g.name, g.description, g.where],
       views: [
         ['Type', [
@@ -123,14 +110,6 @@
         ]],
         // Domain Users and the like count their members another way (the primary group), so they never look empty.
         ['Cleanup', [{ key: 'empty', label: 'Empty groups', tone: 'amber', where: (g) => g.members === 0 && !g.moreMembers && !g.system }]],
-      ],
-      head: ['Group', 'Group type', 'Group scope', 'Members', 'Organizational unit'],
-      cells: (g) => [
-        `<div class="who"><span class="pic">${svg('users')}</span>${small(g.name, g.description)}</div>`,
-        `${g.security ? 'Security' : 'Distribution'}${g.protected ? ` ${badge('Privileged', 'amber')}` : ''}`,
-        esc(g.scope),
-        `<span class="num">${g.moreMembers ? '1,500+' : g.members.toLocaleString()}</span>`,
-        esc(g.where || ad.state.domain),
       ],
       csv: [['Group', (g) => g.name], ['Description', (g) => g.description], ['Group type', (g) => (g.security ? 'Security' : 'Distribution')], ['Group scope', (g) => g.scope],
         ['Members', (g) => g.members], ['Privileged', (g) => g.protected], ['Organizational unit', (g) => g.where], ['Distinguished name', (g) => g.dn]],
@@ -143,8 +122,6 @@
         more.computers = j.more;
         return j.computers;
       },
-      sorts: [['Name', (c) => c.name.toLowerCase()], ['Last sign-in', (c) => -new Date(c.lastSignIn || 0)], ['Operating system', (c) => (c.os || '~').toLowerCase()]],
-      filters: ['account', 'seen', 'ou'],
       find: (c) => [c.name, c.host, c.os, c.description, c.where],
       views: [
         ['View', [
@@ -156,14 +133,6 @@
           { key: 'stale', label: 'Inactive (90+ days)', tone: 'amber', where: (c) => c.enabled && stale(c.lastSignIn) },
           { key: 'disabled', label: 'Disabled', where: (c) => !c.enabled },
         ]],
-      ],
-      head: ['Computer', 'Operating system', 'Organizational unit', 'Last sign-in', 'Status'],
-      cells: (c) => [
-        `<div class="who"><span class="pic">${svg(server(c) ? 'server' : 'laptop')}</span>${small(c.name, c.host)}</div>`,
-        c.os ? small(c.os, c.osVersion) : '<span class="muted">-</span>',
-        esc(c.where || ad.state.domain),
-        esc(ago(c.lastSignIn)),
-        pcStatus(c) + (c.controller ? chip('Domain controller', 'muted') : ''),
       ],
       csv: [['Computer', (c) => c.name], ['DNS host name', (c) => c.host], ['Operating system', (c) => c.os], ['Version', (c) => c.osVersion], ['Description', (c) => c.description],
         ['Organizational unit', (c) => c.where], ['Last sign-in', (c) => c.lastSignIn], ['Created', (c) => c.created], ['Enabled', (c) => c.enabled], ['Domain controller', (c) => c.controller],
@@ -260,35 +229,194 @@
   const tab = () => tabs().find((t) => t.key === adTab) || tabs()[0];
   const inView = (v, x) => (!tab() || tab().where(x)) && (!v.where || v.where(x));
 
-  // Filters down the left narrow whichever view is open: by account, by last sign-in and by OU, where the page has those.
-  let filters = { account: 'any', seen: 'any', ou: '' };
-  const FILTER = {
-    account: { label: 'Account', pick: [['any', 'Any'], ['on', 'Enabled'], ['off', 'Disabled']], where: (x, v) => v === 'any' || x.enabled === (v === 'on') },
-    seen: { label: 'Last signed in', pick: [['any', 'Any'], ['30', '30 days'], ['never', 'Never']],
-      where: (x, v) => v === 'any' || (v === 'never' ? !x.lastSignIn : !!x.lastSignIn && Date.now() - new Date(x.lastSignIn) < 30 * DAY) },
-  };
-  const filtered = (x) => (page().filters || []).every((f) => (f === 'ou' ? !filters.ou || (x.where || '') === filters.ou : FILTER[f].where(x, filters[f])));
-  const filtering = () => (page().filters || []).some((f) => (f === 'ou' ? !!filters.ou : filters[f] !== 'any'));
-  const drawFilters = () => {
-    const fs = page().filters || [];
-    const ous = [...new Set((lists[adPage] || []).map((x) => x.where || '').filter(Boolean))].sort((a, b) => a.localeCompare(b));
-    $('dir-filters').innerHTML = !fs.length ? '' : '<p class="rail-label">Filters</p>' + fs.map((f) => (f === 'ou'
-      ? `<div class="dfilter"><span>OU</span><select data-filter="ou" aria-label="OU"><option value="">Any OU</option>${ous.map((o) => `<option value="${esc(o)}"${o === filters.ou ? ' selected' : ''}>${esc(o)}</option>`).join('')}</select></div>`
-      : `<div class="dfilter"><span>${FILTER[f].label}</span><div class="seg sn-seg">${FILTER[f].pick.map(([v, text]) => `<button type="button" data-filter="${f}" data-value="${v}" aria-pressed="${filters[f] === v}">${text}</button>`).join('')}</div></div>`)).join('');
-  };
+  // --- Columns, sorting and the filter, on Users, Groups and Computers --------------------------------------------
+  // Each page lists every column it can show; Columns picks which (kept in this browser), the heading sorts by one,
+  // and Filter keeps the rows that match its conditions (field, test, value), all of them or any.
 
-  // The order the list is in, from the page's own choices, and whether it's rows or tiles (kept in this browser).
-  let adSort = 0;
-  const sorted = (list) => {
-    const s = (page().sorts || [])[adSort];
-    if (!s) return list;
-    const by = s[1];
-    return [...list].sort((a, b) => (by(a) < by(b) ? -1 : by(a) > by(b) ? 1 : 0));
+  const text = (v) => (v ? `<span class="ell">${esc(v)}</span>` : '<span class="muted">-</span>');
+  const dateCell = (iso) => (iso ? esc(day(iso)) : '<span class="muted">Never</span>');
+  const endOf = (iso) => (iso ? esc(day(new Date(new Date(iso) - 1))) : '<span class="muted">Never</span>');
+  const time = (iso) => (iso ? new Date(iso).getTime() : 0);
+  // key, heading, grid width, the value (for sorting, and the cell unless it has its own), and options: on (shown by
+  // default), fixed (always shown), cell, sort.
+  const col = (key, label, w, get, o = {}) => ({ key, label, w, get, ...o });
+  AD.users.cols = [
+    col('name', 'Name', 'minmax(200px, 1.5fr)', (u) => u.name || u.username, { fixed: true,
+      cell: (u) => `<div class="who"><span class="pic user">${esc(initials(u.name || u.username))}</span><b class="ell">${esc(u.name || u.username)}</b></div>` }),
+    col('username', 'Pre-Windows 2000 logon name', 'minmax(215px, 1fr)', (u) => u.username, { on: true, cell: (u) => `<span class="mono">${esc(u.username)}</span>` }),
+    col('upn', 'User principal name', 'minmax(200px, 1.2fr)', (u) => u.upn),
+    col('email', 'Email', 'minmax(180px, 1.2fr)', (u) => u.email),
+    col('department', 'Department', 'minmax(120px, 1fr)', (u) => u.department, { on: true }),
+    col('title', 'Job title', 'minmax(120px, 1fr)', (u) => u.title),
+    col('company', 'Company', 'minmax(120px, 1fr)', (u) => u.company),
+    col('office', 'Office', 'minmax(110px, 1fr)', (u) => u.office),
+    col('phone', 'Phone', 'minmax(110px, .8fr)', (u) => u.phone),
+    col('manager', 'Manager', 'minmax(130px, 1fr)', (u) => u.manager),
+    col('where', 'Organizational unit', 'minmax(140px, 1fr)', (u) => u.where || ad.state.domain),
+    col('description', 'Description', 'minmax(160px, 1.4fr)', (u) => u.description),
+    col('lastSignIn', 'Last sign-in', '110px', (u) => time(u.lastSignIn), { on: true, cell: (u) => esc(ago(u.lastSignIn)) }),
+    col('passwordSet', 'Password last set', '130px', (u) => time(u.passwordSet), { cell: (u) => dateCell(u.passwordSet) }),
+    col('passwordExpires', 'Password expires', '130px', (u) => time(u.passwordExpires), { cell: (u) => (u.neverExpires ? '<span class="muted">Never</span>' : dateCell(u.passwordExpires)) }),
+    col('accountExpires', 'Account expires', '130px', (u) => time(u.accountExpires), { cell: (u) => endOf(u.accountExpires) }),
+    col('created', 'Created', '110px', (u) => time(u.created), { cell: (u) => dateCell(u.created) }),
+    col('status', 'Status', '150px', (u) => (u.locked ? 0 : !u.enabled ? 2 : 1), { on: true, cell: (u) => userStatus(u) + (u.service ? chip(R.app(), 'ember') : '') }),
+  ];
+  AD.groups.cols = [
+    col('name', 'Group', 'minmax(220px, 1.8fr)', (g) => g.name, { fixed: true, cell: (g) => `<div class="who"><span class="pic">${svg('users')}</span><b class="ell">${esc(g.name)}</b></div>` }),
+    col('type', 'Group type', '150px', (g) => (g.security ? 'Security' : 'Distribution'), { on: true,
+      cell: (g) => `${g.security ? 'Security' : 'Distribution'}${g.protected ? ` ${badge('Privileged', 'amber')}` : ''}` }),
+    col('scope', 'Group scope', '120px', (g) => g.scope, { on: true }),
+    col('members', 'Members', '90px', (g) => g.members, { on: true, cell: (g) => `<span class="num">${g.moreMembers ? '1,500+' : g.members.toLocaleString()}</span>` }),
+    col('where', 'Organizational unit', 'minmax(140px, 1fr)', (g) => g.where || ad.state.domain, { on: true }),
+    col('description', 'Description', 'minmax(160px, 1.4fr)', (g) => g.description),
+    col('email', 'Email', 'minmax(160px, 1fr)', (g) => g.email),
+    col('notes', 'Notes', 'minmax(160px, 1.2fr)', (g) => g.notes),
+  ];
+  AD.computers.cols = [
+    col('name', 'Computer', 'minmax(200px, 1.4fr)', (c) => c.name, { fixed: true, cell: (c) => `<div class="who"><span class="pic">${svg(server(c) ? 'server' : 'laptop')}</span><b class="ell">${esc(c.name)}</b></div>` }),
+    col('os', 'Operating system', 'minmax(170px, 1.2fr)', (c) => c.os, { on: true, cell: (c) => (c.os ? small(c.os, c.osVersion) : '<span class="muted">-</span>') }),
+    col('host', 'DNS host name', 'minmax(170px, 1fr)', (c) => c.host),
+    col('where', 'Organizational unit', 'minmax(140px, 1fr)', (c) => c.where || ad.state.domain, { on: true }),
+    col('description', 'Description', 'minmax(160px, 1.2fr)', (c) => c.description),
+    col('location', 'Location', 'minmax(120px, 1fr)', (c) => c.location),
+    col('lastSignIn', 'Last sign-in', '110px', (c) => time(c.lastSignIn), { on: true, cell: (c) => esc(ago(c.lastSignIn)) }),
+    col('created', 'Created', '110px', (c) => time(c.created), { cell: (c) => dateCell(c.created) }),
+    col('status', 'Status', '150px', (c) => (!c.enabled ? 2 : stale(c.lastSignIn) ? 1 : 0), { on: true, cell: (c) => pcStatus(c) + (c.controller ? chip('Domain controller', 'muted') : '') }),
+  ];
+
+  // Which columns each page shows, in the page's own order, and how it's sorted; both kept in this browser.
+  const remember = (name, value) => { try { localStorage.setItem(`rabbidlab.ad.${name}`, JSON.stringify(value)); } catch { /* not kept, then */ } };
+  const recall = (name) => { try { return JSON.parse(localStorage.getItem(`rabbidlab.ad.${name}`) || 'null'); } catch { return null; } };
+  const shownCols = (p = page()) => {
+    const keys = recall(`cols.${adPage}`);
+    return p.cols.filter((c) => c.fixed || (Array.isArray(keys) ? keys.includes(c.key) : c.on));
   };
-  let adLayout = 'rows';
-  try { if (localStorage.getItem('rabbidlab.ad.layout') === 'tiles') adLayout = 'tiles'; } catch { /* rows, then */ }
+  const colSort = () => {
+    const s = recall(`sort.${adPage}`);
+    return s && page().cols?.some((c) => c.key === s.key) ? s : { key: 'name', dir: 1 };
+  };
+  const sorted = (list) => {
+    const p = page();
+    if (!p.cols) return p.sorts ? [...list].sort((a, b) => (p.sorts[0][1](a) < p.sorts[0][1](b) ? -1 : 1)) : list;
+    const s = colSort();
+    const c = p.cols.find((x) => x.key === s.key);
+    const val = (x) => { const v = c.get(x); return typeof v === 'number' ? v : String(v ?? '').toLowerCase(); };
+    // Blanks go last either way.
+    return [...list].sort((a, b) => {
+      const x = val(a);
+      const y = val(b);
+      if (x === '' || y === '') return x === y ? 0 : x === '' ? 1 : -1;
+      return (x < y ? -1 : x > y ? 1 : 0) * s.dir;
+    });
+  };
   const PAGE_ICON = { users: 'user', groups: 'users', computers: 'laptop', domain: 'globe', audit: 'history', recycle: 'trash' };
   const total = {}; // how many each page had when it was last read, for the list down the left
+
+  // The filter's fields: what each can be asked, by kind. Ops in NO_VALUE need nothing filled in.
+  const fld = (key, label, type, get, o = {}) => ({ key, label, type, get, ...o });
+  const OU = (x) => x.where || '';
+  const IN = (x) => (x.groups || []).map((g) => g.name);
+  AD.users.fields = [
+    ['Account', [fld('enabled', 'Enabled', 'yes', (u) => u.enabled), fld('locked', 'Locked out', 'yes', (u) => u.locked), fld('protected', 'Privileged', 'yes', (u) => u.protected),
+      fld('neverExpires', 'Password never expires', 'yes', (u) => u.neverExpires), fld('mustChange', 'Must change password at next sign-in', 'yes', (u) => u.mustChange),
+      fld('lastSignIn', 'Last sign-in', 'days', (u) => u.lastSignIn, { never: true }), fld('passwordSet', 'Password last set', 'days', (u) => u.passwordSet),
+      fld('passwordExpires', 'Password expires', 'until', (u) => (u.neverExpires ? null : u.passwordExpires)), fld('accountExpires', 'Account expires', 'until', (u) => u.accountExpires),
+      fld('created', 'Created', 'days', (u) => u.created)]],
+    ['Identity', [fld('name', 'Name', 'text', (u) => u.name), fld('username', 'Pre-Windows 2000 logon name', 'text', (u) => u.username), fld('upn', 'User principal name', 'text', (u) => u.upn),
+      fld('email', 'Email', 'text', (u) => u.email), fld('description', 'Description', 'text', (u) => u.description)]],
+    ['Organization', [fld('department', 'Department', 'choice', (u) => u.department), fld('title', 'Job title', 'choice', (u) => u.title), fld('company', 'Company', 'choice', (u) => u.company),
+      fld('office', 'Office', 'choice', (u) => u.office), fld('manager', 'Manager', 'choice', (u) => u.manager), fld('where', 'Organizational unit', 'ou', OU)]],
+    ['Membership', [fld('groups', 'Member of group', 'member', IN)]],
+  ];
+  AD.groups.fields = [
+    ['Group', [fld('name', 'Name', 'text', (g) => g.name), fld('description', 'Description', 'text', (g) => g.description), fld('type', 'Group type', 'choice', (g) => (g.security ? 'Security' : 'Distribution')),
+      fld('scope', 'Group scope', 'choice', (g) => g.scope), fld('members', 'Members', 'number', (g) => g.members), fld('protected', 'Privileged', 'yes', (g) => g.protected),
+      fld('email', 'Email', 'text', (g) => g.email), fld('where', 'Organizational unit', 'ou', OU)]],
+    ['Membership', [fld('groups', 'Member of group', 'member', IN)]],
+  ];
+  AD.computers.fields = [
+    ['Computer', [fld('name', 'Name', 'text', (c) => c.name), fld('host', 'DNS host name', 'text', (c) => c.host), fld('description', 'Description', 'text', (c) => c.description),
+      fld('os', 'Operating system', 'choice', (c) => c.os), fld('location', 'Location', 'choice', (c) => c.location), fld('where', 'Organizational unit', 'ou', OU)]],
+    ['Account', [fld('enabled', 'Enabled', 'yes', (c) => c.enabled), fld('controller', 'Domain controller', 'yes', (c) => c.controller),
+      fld('lastSignIn', 'Last sign-in', 'days', (c) => c.lastSignIn, { never: true }), fld('created', 'Created', 'days', (c) => c.created)]],
+    ['Membership', [fld('groups', 'Member of group', 'member', IN)]],
+  ];
+  const OPS = {
+    text: [['contains', 'contains'], ['notContains', 'does not contain'], ['is', 'is'], ['isNot', 'is not'], ['starts', 'starts with'], ['empty', 'is empty'], ['set', 'is not empty']],
+    choice: [['in', 'is any of'], ['notIn', 'is none of'], ['empty', 'is empty'], ['set', 'is not empty']],
+    member: [['in', 'is any of'], ['notIn', 'is none of']],
+    ou: [['under', 'is in or under'], ['in', 'is directly in']],
+    days: [['olderThan', 'more than'], ['within', 'in the last'], ['empty', 'never'], ['set', 'is set']],
+    until: [['next', 'in the next'], ['past', 'has passed'], ['empty', 'never'], ['set', 'is set']],
+    number: [['more', 'more than'], ['fewer', 'fewer than'], ['eq', 'exactly']],
+    yes: [['is', 'is']],
+  };
+  const NO_VALUE = ['empty', 'set', 'past'];
+  const fieldOf = (pageKey, key) => (AD[pageKey].fields || []).flatMap(([, items]) => items).find((f) => f.key === key);
+  const listOf = (v) => (Array.isArray(v) ? v : v === undefined || v === null || v === '' ? [] : [v]);
+  const lc = (s) => String(s ?? '').toLowerCase();
+  const dayDiff = (iso) => (Date.now() - new Date(iso)) / DAY; // days ago (negative: to come)
+
+  // What's filtered on each page, until it's cleared or the page is read again in a new tab.
+  const filterOn = {};
+  // A test for one row from a condition; one not filled in yet lets everything through.
+  const ruleTest = (pageKey, r) => {
+    const f = fieldOf(pageKey, r.field);
+    if (!f) return () => true;
+    const values = listOf(r.value);
+    const one = values[0];
+    if (!NO_VALUE.includes(r.op) && f.type !== 'yes' && (one === undefined || one === '')) return () => true;
+    const n = Number(one);
+    switch (f.type) {
+      case 'text': {
+        const want = lc(one);
+        return { empty: (x) => !f.get(x), set: (x) => !!f.get(x), is: (x) => lc(f.get(x)) === want, isNot: (x) => lc(f.get(x)) !== want,
+          starts: (x) => lc(f.get(x)).startsWith(want), notContains: (x) => !lc(f.get(x)).includes(want) }[r.op] || ((x) => lc(f.get(x)).includes(want));
+      }
+      case 'choice': {
+        const want = new Set(values.map(lc));
+        return { empty: (x) => !f.get(x), set: (x) => !!f.get(x), notIn: (x) => !want.has(lc(f.get(x))) }[r.op] || ((x) => want.has(lc(f.get(x))));
+      }
+      case 'member': {
+        const want = new Set(values.map(lc));
+        const has = (x) => f.get(x).some((g) => want.has(lc(g)));
+        return r.op === 'notIn' ? (x) => !has(x) : has;
+      }
+      case 'ou': return r.op === 'in' ? (x) => values.some((p) => same(f.get(x), p)) : (x) => values.some((p) => same(f.get(x), p) || lc(f.get(x)).startsWith(`${lc(p)} / `));
+      case 'days':
+        if (r.op === 'empty') return (x) => !f.get(x);
+        if (r.op === 'set') return (x) => !!f.get(x);
+        if (r.op === 'within') return (x) => !!f.get(x) && dayDiff(f.get(x)) <= n;
+        return (x) => (f.get(x) ? dayDiff(f.get(x)) > n : !!f.never);
+      case 'until':
+        if (r.op === 'empty') return (x) => !f.get(x);
+        if (r.op === 'set') return (x) => !!f.get(x);
+        if (r.op === 'past') return (x) => !!f.get(x) && dayDiff(f.get(x)) > 0;
+        return (x) => !!f.get(x) && dayDiff(f.get(x)) <= 0 && -dayDiff(f.get(x)) <= n;
+      case 'number': return r.op === 'more' ? (x) => f.get(x) > n : r.op === 'fewer' ? (x) => f.get(x) < n : (x) => f.get(x) === n;
+      case 'yes': return (x) => !!f.get(x) === (one !== false && one !== 'false');
+      default: return () => true;
+    }
+  };
+  const ruleFilled = (pageKey, r) => { const f = fieldOf(pageKey, r.field); return !!f && (f.type === 'yes' || NO_VALUE.includes(r.op) || listOf(r.value).some((v) => v !== '')); };
+  const filterCount = (pageKey = adPage) => (filterOn[pageKey]?.rules || []).filter((r) => ruleFilled(pageKey, r)).length;
+  const filterTest = (pageKey, flt) => {
+    const tests = (flt?.rules || []).filter((r) => ruleFilled(pageKey, r)).map((r) => ruleTest(pageKey, r));
+    if (!tests.length) return () => true;
+    return flt.join === 'any' ? (x) => tests.some((t) => t(x)) : (x) => tests.every((t) => t(x));
+  };
+  const filtering = () => filterCount() > 0;
+  // A filter in words, for the line over the list.
+  const filterWords = (pageKey, flt) => (flt?.rules || []).filter((r) => ruleFilled(pageKey, r)).map((r) => {
+    const f = fieldOf(pageKey, r.field);
+    const op = (OPS[f.type].find(([k]) => k === r.op) || ['', ''])[1];
+    const v = listOf(r.value);
+    if (f.type === 'yes') return `${f.label}: ${v[0] === false || v[0] === 'false' ? 'no' : 'yes'}`;
+    if (NO_VALUE.includes(r.op)) return `${f.label} ${op}`;
+    if (f.type === 'days') return `${f.label} ${op} ${v[0]} days${r.op === 'olderThan' ? ' ago' : ''}`;
+    if (f.type === 'until') return `${f.label} ${op} ${v[0]} days`;
+    return `${f.label} ${op} ${v.join(', ')}`;
+  }).join(flt.join === 'any' ? ' or ' : '; ');
 
   // How many are in each view, counted again only when the list or the tab changes.
   let counted = { list: null, page: '', tab: '', n: {} };
@@ -336,41 +464,49 @@
     const find = $('dir-find').value.trim().toLowerCase();
     const list = lists[adPage] || [];
     if (lists[adPage]) total[adPage] = (p.tabs ? list.filter(p.tabs[0].where) : list).length;
-    rows = sorted(list.filter((x) => inView(v, x) && filtered(x) && (!find || p.find(x).some((t) => String(t || '').toLowerCase().includes(find)))));
-    // The tabs, or the page's own name where it has none; the sort; rows or tiles.
+    const test = filterTest(adPage, filterOn[adPage]);
+    rows = sorted(list.filter((x) => inView(v, x) && test(x) && (!find || p.find(x).some((t) => String(t || '').toLowerCase().includes(find)))));
+    // The tabs, or the page's own name where it has none.
     const openTab = tab();
     $('dir-tabs').innerHTML = (p.tabs || [{ key: '', label: p.title, icon: PAGE_ICON[adPage], where: () => true }])
       .map((t) => `<a data-tab="${t.key}"${!openTab || t.key === openTab.key ? ' aria-current="true"' : ''}>${svg(t.icon)}${esc(t.label)} <small>${list.filter(t.where).length.toLocaleString()}</small></a>`).join('');
-    $('dir-sort').hidden = !(p.sorts || []).length;
-    $('dir-sort').innerHTML = (p.sorts || []).map(([label], i) => `<option value="${i}"${i === adSort ? ' selected' : ''}>${esc(label)}</option>`).join('');
-    $('dir-layout').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.layout === adLayout));
+    // Filter, Columns and Actions are for the pages that list users, groups and computers.
+    const picks = !!picked[adPage];
+    ['dir-filter', 'dir-cols', 'dir-act'].forEach((id) => { $(id).hidden = !picks; });
+    const nf = filterCount();
+    $('dir-filter').classList.toggle('on', nf > 0);
+    $('dir-filter').querySelector('.cnt').hidden = !nf;
+    $('dir-filter').querySelector('.cnt').textContent = String(nf);
     // What's open says so over the list once it's narrower than everything.
     $('dir-now').hidden = !(adView !== allViews()[0].key || find || filtering());
     $('dir-view-title').textContent = v.label;
     $('dir-count').textContent = `${rows.length.toLocaleString()} ${p.noun[rows.length === 1 ? 0 : 1]}`;
-    // Users, groups and computers as rows can be ticked, and each has ⋯ for its menu.
-    const picks = !!picked[adPage] && adLayout === 'rows';
-    if (picked[adPage] && lists[adPage]) [...picked[adPage]].forEach((k) => { if (!byKey(k)) picked[adPage].delete(k); });
-    $('dir-table').className = `table adt ${adPage} ${adLayout === 'tiles' ? 'dtiles' : 'drows'}${picks ? ' picks' : ''}`;
-    const none = `<div class="empty">${list.length ? 'Nothing here right now.' : 'Nothing yet.'}</div>`;
-    // Rows keep every column under its heading; a tile leads with the name and stacks the rest under it.
-    $('dir-table').innerHTML = !rows.length ? none : adLayout === 'tiles'
-      ? rows.map((x, i) => {
-        const c = p.cells(x);
-        return `<div class="tr dtile" tabindex="0" data-i="${i}"><div>${c[0]}</div><div class="dtile-more">${c.slice(1).map((cell) => `<div>${cell}</div>`).join('')}</div></div>`;
-      }).join('')
-      : `<div class="tr th">${picks ? '<label class="tk"><input type="checkbox" data-tick-all aria-label="Select all"></label>' : ''}${p.head.map((h) => `<span>${esc(h)}</span>`).join('')}${picks ? '<span></span>'
-        + `<div class="th-bulk" hidden><b></b><button type="button" class="linkish" data-bulk-clear>Clear selection</button>`
-        + `<button type="button" class="small" data-bulk-act aria-haspopup="menu">${svg('menu')}Actions${svg('chevron-down', 'chev')}</button></div>` : ''}</div>`
-        + rows.map((x, i) => `<div class="tr" tabindex="0" data-i="${i}">`
-          + (picks ? `<label class="tk"><input type="checkbox" data-tick="${esc(keyOf(x))}" aria-label="Select ${esc(x.name || x.username)}"></label>` : '')
-          + p.cells(x).map((c) => `<div>${c}</div>`).join('')
-          + (picks ? `<div class="tr-more"><button type="button" class="at-more" data-row-menu="${i}" data-tip="Actions" aria-label="Actions for ${esc(x.name || x.username)}">${svg('dots')}</button></div>` : '')
-          + '</div>').join('');
+    $('dir-filtered').hidden = !filtering();
+    $('dir-filtered').innerHTML = filtering() ? `${svg('filter')}<span>${esc(filterWords(adPage, filterOn[adPage]))}</span><button type="button" class="linkish" data-filter-clear>Clear filter</button>` : '';
+    if (picks && lists[adPage]) [...picked[adPage]].forEach((k) => { if (!byKey(k)) picked[adPage].delete(k); });
+    $('dir-table').className = `table adt ${adPage} drows${picks ? ' picks' : ''}`;
+    const none = `<div class="empty">${list.length ? (filtering() ? 'Nothing matches the filter.' : 'Nothing here right now.') : 'Nothing yet.'}</div>`;
+    if (!picks) {
+      $('dir-table').innerHTML = !rows.length ? none : `<div class="tr th">${p.head.map((h) => `<span>${esc(h)}</span>`).join('')}</div>`
+        + rows.map((x, i) => `<div class="tr" tabindex="0" data-i="${i}">${p.cells(x).map((c) => `<div>${c}</div>`).join('')}</div>`).join('');
+    } else {
+      // The chosen columns, each heading sorts by itself and its right edge drags to resize it.
+      const cols = shownCols(p);
+      const s = colSort();
+      setTracks(cols);
+      $('dir-table').innerHTML = `<div class="tr th"><label class="tk"><input type="checkbox" data-tick-all aria-label="Select all"></label>`
+        + cols.map((c) => `<div class="th-cell"><button type="button" class="th-sort${c.key === s.key ? ' on' : ''}" data-sort="${c.key}">${esc(c.label)}`
+          + `${c.key === s.key ? svg(s.dir > 0 ? 'chevron-up' : 'chevron-down', 'arr') : ''}</button><i class="th-grip" data-grip="${c.key}" title="Drag to resize; double-click for the default width"></i></div>`).join('')
+        + '<span></span></div>'
+        + (!rows.length ? none : rows.map((x, i) => `<div class="tr" tabindex="0" data-i="${i}">`
+          + `<label class="tk"><input type="checkbox" data-tick="${esc(keyOf(x))}" aria-label="Select ${esc(x.name || x.username)}"></label>`
+          + cols.map((c) => `<div>${c.cell ? c.cell(x) : text(c.get(x))}</div>`).join('')
+          + `<div class="tr-more"><button type="button" class="at-more" data-row-menu="${i}" data-tip="Actions" aria-label="Actions for ${esc(x.name || x.username)}">${svg('dots')}</button></div>`
+          + '</div>').join(''));
+    }
     $('dir-more').hidden = !more[adPage];
     drawPicked();
     drawViews();
-    drawFilters();
     // The dots in the rail keep what the last read said, while another page is open.
     if (lists.users) $('dir-locked-dot').hidden = !lists.users.some((u) => u.locked && !u.system);
     if (lists.domain) $('dir-domain-dot').hidden = !lists.domain.some((s) => s.tone === 'bad');
@@ -455,30 +591,230 @@
     adTab = t.dataset.tab;
     drawAd();
   });
-  $('dir-sort').addEventListener('change', () => {
-    closeCard();
-    adSort = Number($('dir-sort').value);
-    drawAd();
-  });
-  $('dir-layout').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-layout]');
+  // The grid's tracks: the tick, each column (its own width once dragged), and ⋯. Wide lists scroll sideways.
+  const widths = () => recall(`widths.${adPage}`) || {};
+  const minOf = (w) => Number((String(w).match(/(\d+)px/) || [0, 80])[1]);
+  const setTracks = (cols) => {
+    const wd = widths();
+    const tracks = cols.map((c) => (wd[c.key] ? `${wd[c.key]}px` : c.w));
+    const min = 18 + 28 + cols.reduce((sum, c) => sum + (wd[c.key] || minOf(c.w)), 0) + 12 * (cols.length + 1) + 32;
+    $('dir-table').style.setProperty('--cols', `18px ${tracks.join(' ')} 28px`);
+    $('dir-table').style.setProperty('--minw', `${min}px`);
+  };
+
+  // A heading sorts by its column; again turns it round.
+  $('dir-table').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-sort]');
     if (!b) return;
+    const s = colSort();
+    remember(`sort.${adPage}`, { key: b.dataset.sort, dir: s.key === b.dataset.sort ? -s.dir : 1 });
     closeCard();
-    adLayout = b.dataset.layout;
-    try { localStorage.setItem('rabbidlab.ad.layout', adLayout); } catch { /* not kept, then */ }
     drawAd();
   });
-  $('dir-filters').addEventListener('click', (e) => {
-    const b = e.target.closest('button[data-filter]');
-    if (!b) return;
-    closeCard();
-    filters[b.dataset.filter] = b.dataset.value;
+  // A heading's right edge drags to make its column wider or narrower; a double-click puts it back.
+  $('dir-table').addEventListener('pointerdown', (e) => {
+    const grip = e.target.closest('[data-grip]');
+    if (!grip) return;
+    e.preventDefault();
+    const key = grip.dataset.grip;
+    const cell = grip.closest('.th-cell');
+    const start = e.clientX;
+    const from = cell.getBoundingClientRect().width;
+    const cols = shownCols();
+    const wd = widths();
+    document.body.classList.add('col-dragging');
+    const move = (m) => {
+      wd[key] = Math.max(60, Math.round(from + m.clientX - start));
+      remember(`widths.${adPage}`, wd);
+      setTracks(cols);
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      document.body.classList.remove('col-dragging');
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up, { once: true });
+  });
+  $('dir-table').addEventListener('dblclick', (e) => {
+    const grip = e.target.closest('[data-grip]');
+    if (!grip) return;
+    const wd = widths();
+    delete wd[grip.dataset.grip];
+    remember(`widths.${adPage}`, wd);
+    setTracks(shownCols());
+  });
+
+  // Columns: tick the ones to show; Reset puts back the page's own columns, widths and order.
+  const placeUnder = (menu, button) => {
+    const r = button.getBoundingClientRect();
+    menu.style.setProperty('left', '0px');
+    menu.style.setProperty('top', '0px');
+    menu.showPopover();
+    menu.style.setProperty('left', `${Math.max(8, Math.min(r.right - menu.offsetWidth, innerWidth - menu.offsetWidth - 8))}px`);
+    menu.style.setProperty('top', `${r.bottom + 6}px`);
+  };
+  const drawColMenu = () => {
+    const shown = shownCols().map((c) => c.key);
+    $('col-menu').innerHTML = `<p class="cmd-head">Columns</p><div class="am-links col-list">${page().cols.filter((c) => !c.fixed)
+      .map((c) => `<label class="am-link col-check"><input type="checkbox" data-col="${c.key}"${shown.includes(c.key) ? ' checked' : ''}><span>${esc(c.label)}</span></label>`).join('')}</div>`
+      + `<div class="am-links"><button type="button" class="am-link" data-col-reset>${svg('refresh')}<span>Reset columns, widths and sort</span></button></div>`;
+  };
+  $('dir-cols').addEventListener('click', () => {
+    if ($('col-menu').matches(':popover-open')) return;
+    drawColMenu();
+    placeUnder($('col-menu'), $('dir-cols'));
+  });
+  $('col-menu').addEventListener('change', (e) => {
+    const box = e.target.closest('[data-col]');
+    if (!box) return;
+    const keys = shownCols().filter((c) => !c.fixed).map((c) => c.key).filter((k) => k !== box.dataset.col);
+    if (box.checked) keys.push(box.dataset.col);
+    remember(`cols.${adPage}`, keys);
     drawAd();
   });
-  $('dir-filters').addEventListener('change', (e) => {
-    if (e.target.dataset.filter !== 'ou') return;
+  $('col-menu').addEventListener('click', (e) => {
+    if (!e.target.closest('[data-col-reset]')) return;
+    ['cols', 'widths', 'sort'].forEach((n) => { try { localStorage.removeItem(`rabbidlab.ad.${n}.${adPage}`); } catch { /* nothing kept */ } });
+    drawColMenu();
+    drawAd();
+  });
+
+  // Actions: the menu for what's ticked, the same one as a row's ⋯.
+  $('dir-act').addEventListener('click', () => {
+    const r = $('dir-act').getBoundingClientRect();
+    openCmd(selectedObjs(), r.right - CMD_W, r.bottom + 6);
+  });
+
+  // --- Filter: conditions, each a field, a test and a value; all of them or any ----------------------------------
+  let draft = null; // { page, join, rules } while the window is open
+  const firstField = (pageKey) => AD[pageKey].fields[0][1][0];
+  const blankRule = (pageKey) => { const f = firstField(pageKey); return { field: f.key, op: OPS[f.type][0][0], value: f.type === 'yes' ? true : '' }; };
+  // What a choice can be: the values the list holds, for the box's suggestions.
+  const choicesFor = (pageKey, f) => {
+    const all = (lists[pageKey] || []).flatMap((x) => listOf(f.get(x))).filter(Boolean).map(String);
+    return [...new Set(all)].sort((a, b) => a.localeCompare(b));
+  };
+  const valueHtml = (r, f, i) => {
+    const v = listOf(r.value);
+    if (f.type === 'yes') return `<select data-r-val="${i}" aria-label="Value"><option value="true"${v[0] === false || v[0] === 'false' ? '' : ' selected'}>Yes</option><option value="false"${v[0] === false || v[0] === 'false' ? ' selected' : ''}>No</option></select>`;
+    if (NO_VALUE.includes(r.op)) return '<span class="flt-none"></span>';
+    if (f.type === 'days' || f.type === 'until' || f.type === 'number') {
+      const after = f.type === 'number' ? '' : f.type === 'days' && r.op === 'olderThan' ? `days ago${f.never ? ', or never' : ''}` : 'days';
+      return `<span class="flt-num"><input type="number" min="0" max="3650" data-r-val="${i}" value="${esc(v[0] ?? '')}" aria-label="Number">${after ? `<span>${after}</span>` : ''}</span>`;
+    }
+    if (f.type === 'text') return `<input type="text" data-r-val="${i}" value="${esc(v[0] ?? '')}" aria-label="Value" placeholder="Text" autocomplete="off" spellcheck="false">`;
+    // Choices, OUs and groups: picked values as chips, and a box to add more from what the list holds.
+    return `<span class="flt-tokens">${v.map((x, j) => `<span class="gchip">${esc(x)}<button type="button" class="chip-x" data-r-unpick="${i}" data-j="${j}" aria-label="Remove ${esc(x)}">${svg('x')}</button></span>`).join('')}`
+      + `<input type="text" list="flt-dl-${i}" data-r-pick="${i}" placeholder="${v.length ? 'Add another' : 'Type or pick'}" autocomplete="off" spellcheck="false" aria-label="Add a value">`
+      + `<datalist id="flt-dl-${i}">${choicesFor(draft.page, f).filter((c) => !v.includes(c)).map((c) => `<option value="${esc(c)}">`).join('')}</datalist></span>`;
+  };
+  const drawDraft = () => {
+    const p = AD[draft.page];
+    $('flt-join').value = draft.join;
+    $('flt-rules').innerHTML = draft.rules.map((r, i) => {
+      const f = fieldOf(draft.page, r.field) || firstField(draft.page);
+      return `<div class="flt-row"><select data-r-field="${i}" aria-label="Field">${p.fields.map(([group, items]) => `<optgroup label="${esc(group)}">`
+          + `${items.map((x) => `<option value="${x.key}"${x.key === f.key ? ' selected' : ''}>${esc(x.label)}</option>`).join('')}</optgroup>`).join('')}</select>`
+        + `<select data-r-op="${i}" aria-label="Test"${OPS[f.type].length < 2 ? ' disabled' : ''}>${OPS[f.type].map(([k, label]) => `<option value="${k}"${k === r.op ? ' selected' : ''}>${esc(label)}</option>`).join('')}</select>`
+        + `<div class="flt-val">${valueHtml(r, f, i)}</div>`
+        + `<button type="button" class="at-more flt-x" data-r-del="${i}" data-tip="Remove" aria-label="Remove this condition">${svg('x')}</button></div>`;
+    }).join('') || '<p class="muted flt-empty">No conditions. Add one to narrow the list.</p>';
+    drawDraftCount();
+  };
+  // How many match as the conditions stand, updated as they're typed.
+  const drawDraftCount = () => {
+    const p = AD[draft.page];
+    const v = viewOf(adView);
+    const base = (lists[draft.page] || []).filter((x) => inView(v, x));
+    const n = base.filter(filterTest(draft.page, draft)).length;
+    $('flt-count').textContent = `${n.toLocaleString()} of ${base.length.toLocaleString()} ${p.noun[1]} match`;
+  };
+  $('dir-filter').addEventListener('click', () => {
+    const now = filterOn[adPage];
+    draft = { page: adPage, join: now?.join || 'all', rules: now?.rules?.length ? JSON.parse(JSON.stringify(now.rules)) : [blankRule(adPage)] };
+    $('flt-title').textContent = `Filter ${AD[adPage].noun[1]}`;
+    drawDraft();
+    $('flt-dialog').showModal();
+    $('flt-rules').querySelector('[data-r-val], [data-r-pick]')?.focus();
+  });
+  const addPick = (i, value) => {
+    const r = draft.rules[i];
+    const v = String(value || '').trim();
+    if (!v || listOf(r.value).some((x) => same(x, v))) return;
+    r.value = [...listOf(r.value), v];
+    drawDraft();
+    $('flt-rules').querySelector(`[data-r-pick="${i}"]`)?.focus();
+  };
+  $('flt-rules').addEventListener('change', (e) => {
+    const t = e.target;
+    if (t.dataset.rField !== undefined) {
+      const f = fieldOf(draft.page, t.value);
+      draft.rules[Number(t.dataset.rField)] = { field: f.key, op: OPS[f.type][0][0], value: f.type === 'yes' ? true : '' };
+      drawDraft();
+    } else if (t.dataset.rOp !== undefined) {
+      const r = draft.rules[Number(t.dataset.rOp)];
+      r.op = t.value;
+      drawDraft();
+    } else if (t.dataset.rVal !== undefined) {
+      draft.rules[Number(t.dataset.rVal)].value = t.tagName === 'SELECT' ? t.value === 'true' : t.value;
+      drawDraftCount();
+    } else if (t.dataset.rPick !== undefined) {
+      addPick(Number(t.dataset.rPick), t.value);
+    }
+  });
+  $('flt-rules').addEventListener('input', (e) => {
+    const t = e.target;
+    if (t.dataset.rVal !== undefined && t.tagName === 'INPUT') {
+      draft.rules[Number(t.dataset.rVal)].value = t.value;
+      drawDraftCount();
+    }
+    // A suggestion picked from the list adds itself straight away.
+    if (t.dataset.rPick !== undefined && [...(t.list?.options || [])].some((o) => o.value === t.value)) addPick(Number(t.dataset.rPick), t.value);
+  });
+  $('flt-rules').addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    const t = e.target;
+    e.preventDefault();
+    if (t.dataset.rPick !== undefined) addPick(Number(t.dataset.rPick), t.value);
+    else $('flt-apply').click();
+  });
+  $('flt-rules').addEventListener('click', (e) => {
+    const del = e.target.closest('[data-r-del]');
+    if (del) {
+      draft.rules.splice(Number(del.dataset.rDel), 1);
+      drawDraft();
+      return;
+    }
+    const un = e.target.closest('[data-r-unpick]');
+    if (un) {
+      const r = draft.rules[Number(un.dataset.rUnpick)];
+      r.value = listOf(r.value).filter((_, j) => j !== Number(un.dataset.j));
+      drawDraft();
+    }
+  });
+  $('flt-join').addEventListener('change', () => { draft.join = $('flt-join').value; drawDraftCount(); });
+  $('flt-add').addEventListener('click', () => {
+    draft.rules.push(blankRule(draft.page));
+    drawDraft();
+    $('flt-rules').querySelectorAll('[data-r-field]')[draft.rules.length - 1]?.focus();
+  });
+  $('flt-cancel').addEventListener('click', () => $('flt-dialog').close());
+  $('flt-clear').addEventListener('click', () => {
+    draft.rules = [];
+    drawDraft();
+  });
+  $('flt-apply').addEventListener('click', () => {
+    const kept = draft.rules.filter((r) => ruleFilled(draft.page, r));
+    if (kept.length) filterOn[draft.page] = { join: draft.join, rules: kept };
+    else delete filterOn[draft.page];
+    $('flt-dialog').close();
     closeCard();
-    filters.ou = e.target.value;
+    drawAd();
+  });
+  // Clear filter, on the line over the list.
+  $('dir-now').addEventListener('click', (e) => {
+    if (!e.target.closest('[data-filter-clear]')) return;
+    delete filterOn[adPage];
     drawAd();
   });
   // The page's columns for each row given, as a CSV download.
@@ -641,17 +977,6 @@
       tickRange(e);
       return;
     }
-    if (e.target.closest('[data-bulk-clear]')) {
-      pickedHere().clear();
-      drawPicked();
-      return;
-    }
-    const bulk = e.target.closest('[data-bulk-act]');
-    if (bulk) {
-      const r = bulk.getBoundingClientRect();
-      openCmd(selectedObjs(), r.right - CMD_W, r.bottom + 6);
-      return;
-    }
     const dots = e.target.closest('[data-row-menu]');
     if (dots) {
       const r = dots.getBoundingClientRect();
@@ -811,7 +1136,8 @@
     const left = LEFT_OUT[k];
     const top = all === 1
       ? part(mi('open', PIC[k], 'Properties')) + (out ? `<p class="cmd-note">${esc(left[0].charAt(0).toUpperCase() + left[0].slice(1))}: change it in Active Directory Users and Computers.</p>` : '')
-      : `<p class="cmd-head">${esc(count(all, one, many))} selected${out ? `<small>${esc(count(out, ...left))} left out</small>` : ''}</p>`;
+      : `<p class="cmd-head">${esc(count(all, one, many))} selected<button type="button" class="linkish cmd-clear" data-cmd="clear-sel">Clear</button>`
+        + `${out ? `<small>${esc(count(out, ...left))} left out</small>` : ''}</p>`;
     const onOff = (icon) => part(some(has((x) => !x.enabled), n, 'enable', 'user-check', n === 1 ? 'Enable account' : 'Enable accounts'),
       some(has((x) => x.enabled), n, 'disable', 'user-off', n === 1 ? 'Disable account' : 'Disable accounts'),
       ...(icon ? [some(has((u) => u.locked), n, 'unlock', 'unlock', n === 1 ? 'Unlock account' : 'Unlock accounts')] : []));
@@ -993,6 +1319,10 @@
     const [one, many] = AD[k].noun;
     const who = whoOf(xs, k);
     switch (what) {
+      case 'clear-sel':
+        picked[k]?.clear();
+        drawPicked();
+        break;
       case 'open': {
         const i = rows.indexOf(objs[0]);
         const el = $('dir-table').querySelector(`[data-i="${i}"]`);
@@ -2240,11 +2570,9 @@
       lastAdPage = rest[0];
       say('dir-note', '');
       if (fresh) {
-        // Another page starts on its first tab, in its first order, with nothing narrowed.
+        // Another page starts on its first tab with Find cleared; its columns, sort and filter stay as they were.
         $('dir-find').value = '';
         adTab = '';
-        adSort = 0;
-        filters = { account: 'any', seen: 'any', ou: '' };
       }
       refreshAd(fresh);
     } else {
