@@ -1287,7 +1287,7 @@
       }
       case 'groups-add':
         // One of them: the groups it's already in are left out.
-        openPicker({ title: 'Add to groups', lead: `Tick the groups to add ${who} to.`, button: 'Add to groups', noun: ['group', 'groups'],
+        openPicker({ title: 'Add to groups', lead: `Tick the groups to add ${who} to.`, button: 'Add to groups', noun: ['group', 'groups'], none: `${who} ${xs.length === 1 ? 'is' : 'are'} already in every group`,
           rows: rowsOf(['groups'], [...xs.map((x) => x.dn), ...(xs.length === 1 ? (xs[0].groups || []).map((g) => g.dn) : [])]),
           go: (gs) => each(k, xs, 'Adding to groups', `Added ${who} to ${gs.length === 1 ? gs[0].name : count(gs.length, 'group', 'groups')}`,
             (x) => memberOf(k, x, notIn(x, gs.map((g) => g.dn)), [])) });
@@ -1334,7 +1334,7 @@
       }
       case 'members-add':
         // One group: who's already in it is left out.
-        openPicker({ title: 'Add members', lead: `Tick the users, groups and computers to add to ${who}.`, button: 'Add members', noun: ['member', 'members'], tags: true,
+        openPicker({ title: 'Add members', lead: `Tick the users, groups and computers to add to ${who}.`, button: 'Add members', noun: ['member', 'members'], tags: true, none: 'Every user, group and computer is already a member',
           rows: (async () => rowsOf(['users', 'groups', 'computers'], [...xs.map((g) => g.dn), ...(xs.length === 1 ? (await membersNow(xs[0]).catch(() => [])).map((m) => m.dn) : [])]))(),
           go: (ms) => each(k, xs, 'Adding members', `Added ${ms.length === 1 ? ms[0].name : count(ms.length, 'member', 'members')} to ${who}`, (g) => membersOf(g, ms.map((m) => m.dn), [])) });
         break;
@@ -1554,10 +1554,28 @@
     $('gp-list').innerHTML = shown.length ? shown.map((r) => `<label class="pk-row"><input type="checkbox" data-pk="${r.i}"${pk.chosen.has(r.i) ? ' checked' : ''}>`
       + `<span class="pic">${svg(PK_ICON[r.kind] || 'user')}</span><span class="pk-text"><b>${esc(r.name)}</b>${r.sub ? `<small>${esc(r.sub)}</small>` : ''}</span>`
       + `${pk.tags && PK_TAG[r.kind] ? badge(PK_TAG[r.kind], 'grey') : ''}</label>`).join('')
-      : `<p class="pk-none">${pk.rows.length ? 'Nothing matches.' : esc(pk.none || 'Nothing to pick.')}</p>`;
-    $('gp-all').hidden = pk.one || !shown.length;
+      : pkEmpty();
+    $('gp-all').hidden = pk.one;
+    $('gp-all').disabled = !shown.length;
     pkCount();
   };
+  // Nothing to show: what the find missed (with a way back to everything), or why there's nothing at all.
+  const pkEmpty = () => {
+    const q = $('gp-find').value.trim();
+    const n = pk.rows.length;
+    const [title, text] = n ? [`No ${pk.noun[1]} match “${q}”`, `Check the spelling, or clear the find to see all ${count(n, pk.noun[0], pk.noun[1])}.`]
+      : [pk.none || `There are no ${pk.noun[1]} to pick`, ''];
+    const dots = Array.from({ length: 6 }, (_, i) => `<i class="pk-bit b${i}"></i>`).join('');
+    return `<div class="pk-empty"><div class="pk-art"><span class="big-ic ember">${svg(n ? 'search' : 'users')}</span><span class="pk-ghosts"><i></i><i></i><i></i></span>`
+      + `<span class="pk-glass">${dots}<span class="pk-lens">${svg(n ? 'search' : 'users')}</span></span></div>`
+      + `<b>${esc(title)}</b>${text ? `<small>${esc(text)}</small>` : ''}${n ? '<button type="button" class="small" data-pk-clear>Clear the find</button>' : ''}</div>`;
+  };
+  $('gp-list').addEventListener('click', (e) => {
+    if (!e.target.closest('[data-pk-clear]')) return;
+    $('gp-find').value = '';
+    drawPk();
+    $('gp-find').focus();
+  });
   // rows: the list, or a promise of it (it shows loading until it's read).
   const openPicker = async ({ title, lead, button, rows, one = false, noun = ['item', 'items'], tags = false, none = '', go }) => {
     Object.assign(pk, { rows: [], one, noun, tags, none, go, chosen: new Set() });

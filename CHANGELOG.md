@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.137 (2026-11-13)
+
+- The pick window keeps its size while you type in Find. When nothing matches it says so, with the count and a Clear the find button, and Tick all shown greys out instead of disappearing.
+
 ## 1.1.136 (2026-11-13)
 
 - Add to groups, Add members, Remove and Copy list everyone to pick from with a tick each, like NorthStack AD: find to narrow it, Tick all shown, and a count of what is ticked. Groups they are already in, and members a group already has, are left out.

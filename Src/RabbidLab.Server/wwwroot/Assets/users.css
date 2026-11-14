@@ -430,7 +430,7 @@ dialog.drawer:not(:modal) { z-index: 60; }
 /* The picker, as NorthStack AD has it: everyone in a list with a tick each, a box to find in it, and the count. */
 .pk-bar { display: flex; align-items: center; gap: 14px; margin-top: 14px; }
 .pk-bar .pk-find { flex: 1; margin: 0; }
-.pk-list { max-height: min(52vh, 440px); margin-top: 10px; overflow-y: auto; border: 1px solid var(--line); border-radius: 12px; background: #0F111A; scrollbar-width: thin; scrollbar-color: #2A2D3E transparent; }
+.pk-list { height: min(52vh, 440px); margin-top: 10px; overflow-y: auto; border: 1px solid var(--line); border-radius: 12px; background: #0F111A; scrollbar-width: thin; scrollbar-color: #2A2D3E transparent; }
 .pk-row { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 6px 14px; border-top: 1px solid var(--line); cursor: pointer; }
 .pk-row:first-child { border-top: 0; }
 .pk-row:hover { background: #151827; }
@@ -440,6 +440,34 @@ dialog.drawer:not(:modal) { z-index: 60; }
 .pk-text { display: grid; flex: 1; min-width: 0; }
 .pk-text b { overflow: hidden; color: var(--title); font-size: 13.5px; font-weight: 600; white-space: nowrap; text-overflow: ellipsis; }
 .pk-text small { overflow: hidden; color: var(--muted); font-size: 12px; white-space: nowrap; text-overflow: ellipsis; }
-.pk-none { margin: 0; padding: 22px; color: var(--muted); text-align: center; }
 .pk-count { margin-right: auto; color: var(--muted); font-size: 13px; }
 #gp-dialog .dialog-foot { align-items: center; }
+/* Nothing to show: the window keeps its size, with what the find missed and a way back. */
+.pk-empty { display: grid; justify-items: center; align-content: center; gap: 6px; height: 100%; padding: 24px; text-align: center; }
+.pk-empty > b { margin-top: 12px; color: var(--title); font-size: 15px; font-weight: 650; }
+.pk-empty > small { max-width: 340px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.pk-empty > .small { margin-top: 12px; }
+.pk-art { display: grid; place-items: center; }
+.pk-art .big-ic { width: 60px; height: 60px; border-radius: 18px; }
+.pk-ghosts, .pk-glass { display: none; }
+#gp-dialog[data-empty="ghost"] .pk-art .big-ic, #gp-dialog[data-empty="glass"] .pk-art .big-ic { display: none; }
+#gp-dialog[data-empty="ghost"] .pk-ghosts { display: grid; justify-items: center; gap: 8px; width: 280px; }
+.pk-ghosts i { display: flex; align-items: center; gap: 10px; width: 100%; height: 36px; padding: 0 10px; border: 1.5px dashed #2A2E44; border-radius: 9px; }
+.pk-ghosts i::before { content: ""; flex: none; width: 15px; height: 15px; border: 1.5px solid #2A2E44; border-radius: 4px; }
+.pk-ghosts i::after { content: ""; width: 45%; height: 8px; border-radius: 4px; background: #1F2232; }
+.pk-ghosts i:nth-child(2) { width: 88%; opacity: .6; }
+.pk-ghosts i:nth-child(3) { width: 74%; opacity: .3; }
+#gp-dialog[data-empty="glass"] .pk-glass { position: relative; display: block; width: 160px; height: 112px; }
+.pk-lens { position: absolute; left: 50%; top: 50%; display: grid; place-items: center; width: 64px; height: 64px; margin: -32px 0 0 -32px; border-radius: 20px; background: var(--ember); color: #fff;
+  box-shadow: 0 0 44px color-mix(in srgb, var(--accent) 50%, transparent), inset 0 1px 0 rgba(255, 255, 255, .35); }
+.pk-lens svg { width: 30px; height: 30px; }
+.pk-bit { position: absolute; width: 10px; height: 10px; border-radius: 3px; animation: pk-float 5s ease-in-out infinite; }
+.pk-bit.b0 { left: 10px; top: 22px; background: var(--accent-line); }
+.pk-bit.b1 { right: 12px; top: 12px; border: 1.5px solid #C9CCDA; animation-delay: -1s; }
+.pk-bit.b2 { left: 26px; bottom: 6px; width: 8px; height: 8px; background: #F2BE6B; animation-delay: -2s; }
+.pk-bit.b3 { right: 26px; bottom: 14px; background: #9E59CF; animation-delay: -3s; }
+.pk-bit.b4 { left: 60%; top: 0; width: 8px; height: 8px; border: 1.5px solid var(--accent-line); animation-delay: -1.5s; }
+.pk-bit.b5 { right: 0; top: 54px; width: 7px; height: 7px; background: #5FD4A0; animation-delay: -4s; }
+@keyframes pk-float { 50% { transform: translateY(-6px) rotate(25deg); } }
+@media (prefers-reduced-motion: reduce) { .pk-bit { animation: none; } }
+#gp-all:disabled { opacity: .4; cursor: default; text-decoration: none; }
