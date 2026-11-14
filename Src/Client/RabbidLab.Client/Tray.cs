@@ -2,9 +2,11 @@ using System;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows.Forms;
+using Microsoft.Win32;
 
 namespace RabbidLab.Client;
 
@@ -24,6 +26,7 @@ internal sealed class Tray : ApplicationContext
     private readonly EventWaitHandle signal = new(false, EventResetMode.AutoReset, ShowSignal);
     private StatusWindow? window;
     private Status? last;
+    private int shownTries; // how often the taskbar setting was looked for; -1 once it's settled
 
     public Tray(bool open)
     {
@@ -73,6 +76,7 @@ internal sealed class Tray : ApplicationContext
 
     private void Refresh()
     {
+        KeepOnTaskbar();
         var now = Status.Read() ?? new Status();
         heading.Text = now.Describe();
         var tip = $"Rabbid Lab: {now.Describe()}";
@@ -86,6 +90,59 @@ internal sealed class Tray : ApplicationContext
         if (window is { IsDisposed: false, Visible: true })
         {
             window.Draw(now);
+        }
+    }
+
+    // Windows 11 puts a new icon under the ^ until someone drags it out. Each time the icon starts, its switch under
+    // Settings, Personalization, Taskbar, Other system tray icons is turned on, so it's on the taskbar itself. Windows
+    // lists the icon a moment after it first shows, so this looks a few times, then leaves it.
+    private void KeepOnTaskbar()
+    {
+        if (shownTries < 0 || shownTries++ > 12)
+        {
+            return;
+        }
+        try
+        {
+            using var all = Registry.CurrentUser.OpenSubKey(@"Control Panel\NotifyIconSettings");
+            if (all is null)
+            {
+                shownTries = -1; // not Windows 11: nothing to turn on
+                return;
+            }
+            var exe = Application.ExecutablePath;
+            var mine = "\\" + Path.Combine(Path.GetFileName(Path.GetDirectoryName(exe) ?? ""), Path.GetFileName(exe));
+            var found = false;
+            var changed = false;
+            foreach (var name in all.GetSubKeyNames())
+            {
+                using var one = all.OpenSubKey(name, writable: true);
+                if (one?.GetValue("ExecutablePath") is not string path || !path.EndsWith(mine, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+                found = true;
+                if (!(one.GetValue("IsPromoted") is int on && on == 1))
+                {
+                    one.SetValue("IsPromoted", 1, RegistryValueKind.DWord);
+                    changed = true;
+                }
+            }
+            if (!found)
+            {
+                return; // not listed yet: looked for again at the next tick
+            }
+            shownTries = -1;
+            if (changed)
+            {
+                // Windows reads the switch when an icon is added, so the icon is added again.
+                icon.Visible = false;
+                icon.Visible = true;
+            }
+        }
+        catch (Exception e) when (e is System.Security.SecurityException or UnauthorizedAccessException or IOException)
+        {
+            shownTries = -1;
         }
     }
 

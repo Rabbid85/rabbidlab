@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.155 (2026-11-14)
+
+- Devices: clicking a computer opens it in a panel on the right, with its details, Approve or Remove, Allow for an hour, Uninstall now and its uninstall code. The Uninstall window is gone.
+- The client turns on its own taskbar icon in Windows 11, so it shows next to the clock and not under the arrow.
+
 ## 1.1.154 (2026-11-14)
 
 - The uninstall code window no longer restarts the client service before uninstalling. That restart could leave Windows unable to remove the service, and the client would then not install again until the computer was restarted.
