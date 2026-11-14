@@ -58,11 +58,11 @@
     }
     data.people.forEach((p) => {
       if (p.source === 'local') {
-        add('local', p.username).seen = p.lastSignIn;
+        Object.assign(add('local', p.username), { seen: p.lastSignIn, mfa: p.mfa });
         return;
       }
       const row = add('user', p.username);
-      Object.assign(row, { display: p.name, seen: p.lastSignIn, domain: p.domain, source: p.source });
+      Object.assign(row, { display: p.name, seen: p.lastSignIn, domain: p.domain, source: p.source, mfa: p.mfa });
       data.roles.forEach((r) => r.members.forEach((m) => {
         if (p.source === 'ad' && m.kind === 'group' && p.groups.some((g) => same(g, m.name))) give(row, r, m.name, false);
         if (p.source === 'ad' && m.kind === 'everyone') give(row, r, 'Everyone', false);
@@ -220,9 +220,14 @@
     const give = giveable(row);
     const acts = row.kind === 'local' && mine('access.local')
       ? `<div class="dw-bar"><button type="button" class="dw-qa" data-password>${svg('key')}<span>New password</span></button><button type="button" class="dw-qa" data-remove-account>${svg('trash')}<span>Remove account</span></button></div>` : '';
+    // MFA, for someone who signs in: whether their authenticator app is set up, and Reset for a lost phone.
+    const needs = row.roles.filter((x) => x.role.mfa).map((x) => x.role.name);
+    const mfa = !['user', 'local'].includes(row.kind) ? ''
+      : `<section class="dw-sec"><div class="dw-sec-head"><h3>MFA</h3>${row.mfa && mine('access.mfa') ? `<button type="button" class="small" data-reset-mfa>${svg('refresh')}Reset MFA</button>` : ''}</div>`
+        + `<p class="dw-how">${esc(row.mfa ? `On since ${R.when(row.mfa)}.` : needs.length ? 'Not set up. They set it up at their next sign-in.' : 'Not set up.')}${needs.length ? ` Required by ${esc(needs.join(', '))}.` : ''}</p></section>`;
     R.panel.body.innerHTML = `<div class="dw-head">${pic(row).replace('class="pic', 'class="pic dw-pic')}<div class="dw-name"><h2 id="dw-title">${esc(nameOf(row))}</h2>`
       + `<p>${esc(row.sub)}${row.seen ? ` · ${esc(since(row.seen).toLowerCase())}` : ''}</p></div><button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>${acts}`
-      + `<section class="dw-sec"><div class="dw-sec-head"><h3>Roles <small>${row.roles.length}</small></h3></div><div class="chips-in">${row.roles.map((x) => chip(row, x)).join('') || '<span class="muted">None</span>'}</div></section>`
+      + `<section class="dw-sec"><div class="dw-sec-head"><h3>Roles <small>${row.roles.length}</small></h3></div><div class="chips-in">${row.roles.map((x) => chip(row, x)).join('') || '<span class="muted">None</span>'}</div></section>${mfa}`
       + (give.length ? `<section class="dw-sec"><div class="dw-sec-head"><h3>Give a role</h3></div><div class="chips-in dw-give">${give.map((r) => `<button type="button" class="small" data-give-role="${esc(r.id)}" data-color="${esc(r.color)}"><i class="dot"></i>${esc(r.name)}</button>`).join('')}</div></section>` : '')
       + `<section class="dw-sec"><div class="dw-sec-head"><h3>${row.kind === 'group' || row.kind === 'everyone' ? 'Its roles allow' : 'Can do'}</h3></div><ul class="does">${does}</ul></section>`;
     R.paint(R.panel.body);
@@ -291,6 +296,20 @@
     if (take) return takeRole(row, take.dataset.take);
     const give = e.target.closest('[data-give-role]');
     if (give) return giveRole(row, give.dataset.giveRole);
+    if (e.target.closest('[data-reset-mfa]')) {
+      sure(`Reset MFA for ${nameOf(row)}?`, 'Their authenticator app stops working here. If a role of theirs requires MFA, they set it up again at their next sign-in.', 'Reset MFA', async () => {
+        try {
+          await R.send('/api/mfa/reset', { source: row.source, username: row.name });
+          problem('');
+          R.toast('MFA reset', nameOf(row));
+        } catch (err) {
+          problem(err.message);
+        }
+        closeCard();
+        refresh();
+      });
+      return;
+    }
     if (e.target.closest('[data-password]')) {
       $('password-lead').textContent = `For the local account ${row.name}. It's signed out everywhere.`;
       $('pw-new').value = '';
@@ -404,6 +423,10 @@
       + `<span class="rchip via" data-color="${esc(draft.color)}"><i class="dot"></i>${esc(draft.name || 'Untitled role')}<small>${svg('users')}${esc(group)}</small></span>`
       + '<span class="hint">Dashed: from a group.</span>';
     $('role-where').textContent = placeText(r);
+    // Require MFA is saved as it's switched, Administrator's too: it isn't part of the changes waiting to be saved.
+    $('role-mfa').checked = !!r.mfa;
+    $('role-mfa').disabled = !(r.manage && mine('access.roles'));
+    $('role-mfa-row').classList.toggle('locked', $('role-mfa').disabled);
     $('role-delete-row').hidden = r.builtIn || !can;
     $('role-delete-title').textContent = `Delete ${r.name}`;
 
@@ -453,6 +476,17 @@
     if (!b || b.disabled) return;
     draft.color = b.dataset.swatch;
     drawRole(role(draft.id), 'display');
+  });
+  $('role-mfa').addEventListener('change', async (e) => {
+    const r = role(draft.id);
+    try {
+      await R.send(`/api/roles/${encodeURIComponent(r.id)}/mfa`, { on: e.target.checked });
+      problem('');
+      R.toast(e.target.checked ? 'MFA required' : 'MFA not required', r.name);
+    } catch (err) {
+      problem(err.message);
+    }
+    refresh();
   });
   $('perm-list').addEventListener('change', (e) => {
     if (e.target.id === 'role-scope-add' && e.target.value) {

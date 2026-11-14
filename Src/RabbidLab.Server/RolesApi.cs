@@ -9,7 +9,7 @@ public static class RolesApi
 {
     public static void MapRolesApi(this WebApplication app)
     {
-        app.MapGet("/api/roles", (HttpContext context, Roles roles, Accounts accounts) =>
+        app.MapGet("/api/roles", (HttpContext context, Roles roles, Accounts accounts, Mfa mfa) =>
         {
             if (!Access.Can(context, Permissions.AccessView))
             {
@@ -31,6 +31,7 @@ public static class RolesApi
                     color = r.Color,
                     permissions = r.Id == Roles.Admin ? [.. Permissions.All] : r.Permissions,
                     scope = r.Scope.Select(d => new { dn = d, path = Place(d) }),
+                    mfa = r.Mfa,
                     members = r.Members.Select(m => new { kind = m.Kind, name = m.Name, display = m.Display, added = m.Added, addedBy = m.AddedBy }),
                     builtIn = r.Id is Roles.Admin or Roles.User,
                     manage = managed.Contains(r.Id),
@@ -43,6 +44,7 @@ public static class RolesApi
                     domain = p.Domain,
                     groups = p.Groups,
                     lastSignIn = p.LastSignIn,
+                    mfa = mfa.Since(p.Source, p.Username),
                 }),
                 local = accounts.List().Select(a => new { username = a.Username, created = a.Created }),
                 domain = accounts.Directory?.Domain,
@@ -95,6 +97,21 @@ public static class RolesApi
             }
             var after = roles.Find(id) ?? before!;
             log.Record(context, "access", "role.change", $"Changed the role {after.Name}", detail: Changes(before!, after));
+            return Results.Ok();
+        });
+
+        // Whether everyone in the role signs in with a code as well. Saved as it's switched, Administrator's too.
+        app.MapPost("/api/roles/{id}/mfa", (string id, OnForm form, HttpContext context, Roles roles, ActivityLog log) =>
+        {
+            if (Access.RefuseUnless(context, Permissions.AccessRoles) is { } refused)
+            {
+                return refused;
+            }
+            if (roles.RequireMfa(id, form.On, Who.Of(context.User)) is { } problem)
+            {
+                return Results.BadRequest(new { error = problem });
+            }
+            log.Record(context, "access", form.On ? "role.mfa.on" : "role.mfa.off", form.On ? $"Made MFA required for {RoleName(roles, id)}" : $"Stopped requiring MFA for {RoleName(roles, id)}");
             return Results.Ok();
         });
 

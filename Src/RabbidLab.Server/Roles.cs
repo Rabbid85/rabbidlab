@@ -35,6 +35,9 @@ public sealed class Role
 
     /// <summary>The OUs its Active Directory permissions cover, by DN. None means everywhere the service account reaches.</summary>
     public List<string> Scope { get; set; } = [];
+
+    /// <summary>Everyone in it signs in with a code from an authenticator app as well as their password (Mfa.cs).</summary>
+    public bool Mfa { get; set; }
     public List<Member> Members { get; set; } = [];
 }
 
@@ -124,7 +127,7 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
         lock (gate)
         {
             return Fresh().Roles.FirstOrDefault(x => x.Id == id) is { } r
-                ? new Role { Id = r.Id, Name = r.Name, About = r.About, Color = r.Color, Permissions = [.. r.Permissions], Scope = [.. r.Scope], Members = [.. r.Members] } : null;
+                ? new Role { Id = r.Id, Name = r.Name, About = r.About, Color = r.Color, Permissions = [.. r.Permissions], Scope = [.. r.Scope], Mfa = r.Mfa, Members = [.. r.Members] } : null;
         }
     }
 
@@ -155,6 +158,44 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
                 return [];
             }
             return [.. f.Roles.Where((r, i) => r.Id != User && !mine.Contains(r) && !Manages(f, by, i)).Select(r => new Role { Id = r.Id, Name = r.Name, Members = [.. r.Members] })];
+        }
+    }
+
+    /// <summary>The roles of theirs that require MFA, highest first. One is enough.</summary>
+    public IReadOnlyList<Role> MfaRoles(Who who)
+    {
+        lock (gate)
+        {
+            return [.. Mine(Fresh(), who).Where(r => r.Mfa).Select(r => new Role { Id = r.Id, Name = r.Name })];
+        }
+    }
+
+    public bool NeedsMfa(Who who) => MfaRoles(who).Count > 0;
+
+    /// <summary>
+    /// Whether a role requires MFA. Administrator's can be set too, by an administrator: it's the one thing about that role
+    /// that changes. People in it who signed in without a code are signed out, and set it up when they sign in again.
+    /// </summary>
+    public string? RequireMfa(string id, bool on, Who by)
+    {
+        lock (gate)
+        {
+            var f = Fresh();
+            var index = f.Roles.FindIndex(r => r.Id == id);
+            if (index < 0)
+            {
+                return "That role isn't there any more.";
+            }
+            if (!Manages(f, by, index))
+            {
+                return $"Only someone above {f.Roles[index].Name} can change it.";
+            }
+            if (f.Roles[index].Mfa != on)
+            {
+                f.Roles[index].Mfa = on;
+                Save(f);
+            }
+            return null;
         }
     }
 

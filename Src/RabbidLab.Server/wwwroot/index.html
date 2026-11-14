@@ -280,6 +280,9 @@
         <div class="ds-row" data-can="access.view"><div class="ds-l"><b>Roles and people</b><span>What your roles let you do is set there.</span></div><div class="ds-r"><a class="ds-btn" href="#people">Open</a></div></div>
         <div class="ds-row" id="acc-password-row" hidden><div class="ds-l"><b>Password</b><span>Changing it signs you out everywhere, here too.</span></div><div class="ds-r"><button type="button" class="ds-btn" id="acc-password">Change</button></div></div>
       </section>
+      <section class="ds-sec" data-sec="mfa"><h3 class="ds-h">Multi-factor authentication</h3>
+        <div class="ds-row"><div class="ds-l"><b>Authenticator app</b><span id="acc-mfa-text"></span></div><div class="ds-r"><button type="button" class="ds-btn" id="acc-mfa" hidden>Set up</button></div></div>
+      </section>
       <section class="ds-sec" data-sec="sessions"><h3 class="ds-h">Where you're signed in</h3>
         <div id="acc-sessions" data-skel="rows:2"></div>
         <p class="hint problem" id="acc-sessions-problem" hidden></p>
@@ -597,6 +600,9 @@
             </div>
             <p class="lib-label">Where it sits</p>
             <p class="hint" id="role-where"></p>
+            <p class="lib-label">Sign-in</p>
+            <div class="rows"><label class="row still perm" id="role-mfa-row"><span class="t"><b>Require MFA</b><span>Everyone in this role signs in with their password and a code from an authenticator app. Anyone without it sets it up at their next sign-in, and anyone signed in without a code is signed out.</span></span>
+              <input type="checkbox" class="switch" role="switch" id="role-mfa" aria-label="Require MFA"></label></div>
             <div class="rows" id="role-delete-row"><div class="row still"><span class="t"><b id="role-delete-title">Delete this role</b><span>Everyone in it loses what it gives them. Anything their other roles allow stays.</span></span>
               <button type="button" class="danger" id="role-delete"><svg><use href="#i-trash"/></svg>Delete role</button></div></div>
           </div>
@@ -910,6 +916,21 @@
 </dialog>
 
 <!-- Your own password, for Rabbid Lab accounts: the current one first. Every session of the account ends. -->
+<!-- MFA for yourself (console.js): setting it up shows the QR code and takes the first code; turning it off takes a code too. -->
+<dialog class="dialog" id="mfa-dialog" aria-labelledby="mfa-title">
+  <h2 id="mfa-title">Set up MFA</h2>
+  <p class="dialog-lead" id="mfa-lead"></p>
+  <div id="mfa-setup">
+    <div class="mfa-qr" id="mfa-qr"></div>
+    <p class="mfa-key">Can't scan it? Type this key into the app instead:<code id="mfa-secret"></code></p>
+  </div>
+  <div class="form">
+    <label for="mfa-code">6-digit code</label><input id="mfa-code" inputmode="numeric" maxlength="7" autocomplete="one-time-code" spellcheck="false">
+  </div>
+  <p class="hint problem" id="mfa-problem" role="alert" hidden></p>
+  <div class="dialog-foot"><button type="button" id="mfa-cancel">Cancel</button><button type="button" class="primary" id="mfa-save">Turn on</button></div>
+</dialog>
+
 <dialog class="dialog" id="mypw-dialog" aria-labelledby="mypw-title">
   <h2 id="mypw-title">Change your password</h2>
   <p class="dialog-lead">Every browser signed in as you is signed out, this one too. Sign in again with the new password.</p>

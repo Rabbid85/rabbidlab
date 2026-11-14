@@ -505,6 +505,11 @@ a.button.primary:hover { background: var(--ember); }
 [hidden] { display: none !important; }
 /* What someone's roles don't allow stays out of sight (data-can, console.js). */
 .cant { display: none !important; }
+/* MFA: the QR code an authenticator app scans, and the key to type in its place. On the sign-in page and in Settings. */
+.mfa-qr { width: 188px; margin: 2px auto 12px; padding: 6px; border-radius: 12px; background: #fff; }
+.mfa-qr svg { display: block; width: 100%; height: auto; }
+.mfa-key { margin: 0 0 16px; color: var(--muted); font-size: 12.5px; line-height: 1.5; text-align: center; }
+.mfa-key code { display: block; margin-top: 4px; color: var(--title); font: 13px Consolas, "Cascadia Mono", monospace; letter-spacing: .04em; user-select: all; }
 /* Pages about the whole domain, for someone whose roles show only part of Active Directory. */
 body.ad-scoped [data-whole] { display: none !important; }
 .account { position: relative; }
@@ -814,3 +819,4 @@ input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-o
 .stepper button { display: grid; place-items: center; width: 34px; padding: 0; border: 0; border-radius: 0; background: none; color: #8B90A5; }
 .stepper button:hover { background: #1A1D2B; color: var(--title); }
 .stepper button svg { width: 14px; height: 14px; }
+.dialog .mfa-qr { margin-top: 14px; }

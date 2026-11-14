@@ -74,8 +74,20 @@
         <button class="go" type="submit" id="ad-go">Sign in</button>
       </form>
 
+      <!-- After a right password, for an account with MFA: the code from its authenticator app. A role that requires MFA
+           sets it up here first, from the QR code. -->
+      <form id="mfa-form" novalidate hidden>
+        <div id="mfa-setup" hidden>
+          <div class="mfa-qr" id="mfa-qr"></div>
+          <p class="mfa-key">Can't scan it? Type this key into the app instead:<code id="mfa-secret"></code></p>
+        </div>
+        <div class="input"><svg><use href="#i-lock"/></svg><input id="mfa-code" inputmode="numeric" maxlength="7" aria-label="6-digit code" placeholder="6-digit code" autocomplete="one-time-code" spellcheck="false"></div>
+        <button class="go" type="submit" id="mfa-go">Verify</button>
+      </form>
+
       <p class="auth-error" id="error" role="alert" hidden></p>
       <button type="button" class="other-kind" id="other-kind"></button>
+      <button type="button" class="other-kind" id="mfa-back" hidden>Back to sign-in</button>
     </div>
 
     <!-- Where updating stands (signin.js asks /api/update/watch), and this computer and the version. -->

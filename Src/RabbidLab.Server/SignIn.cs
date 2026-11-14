@@ -31,6 +31,8 @@ public static class SignIn
         services.AddSingleton<Accounts>();
         services.AddSingleton<Roles>();
         services.AddSingleton<SignInLimiter>();
+        services.AddSingleton<Mfa>();
+        services.AddSingleton<PendingSignIns>();
         services.AddSingleton<IDirectory, ActiveDirectory>();
         services.AddSingleton<IWindowsAccounts, WindowsAccounts>();
         services.AddMemoryCache();
@@ -71,7 +73,9 @@ public static class SignIn
                 {
                     old |= context.HttpContext.RequestServices.GetRequiredService<TimeProvider>().GetUtcNow() - session.Started > Longest;
                 }
-                if (stamp is null || stamp != current || old || p is null || !roles.CanSignIn(Who.Of(p)))
+                // A role that requires MFA takes a code: a session from before it did ends, and signing in again asks for one.
+                var noCode = p is not null && p.FindFirstValue("mfa") is null && roles.NeedsMfa(Who.Of(p));
+                if (stamp is null || stamp != current || old || noCode || p is null || !roles.CanSignIn(Who.Of(p)))
                 {
                     context.RejectPrincipal();
                     await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
@@ -257,13 +261,32 @@ public static class SignIn
 
         // Rabbid Lab's own accounts for .\name or Local account, otherwise Active Directory when it's set up.
         app.MapPost("/api/signin", async (HttpContext context, Accounts accounts, Roles roles, ActivityLog log, IDirectory directory, IDomainFinder finder,
-            IWindowsAccounts windows, IMemoryCache cache, SignInForm form) =>
+            IWindowsAccounts windows, IMemoryCache cache, Mfa mfa, PendingSignIns pending, SignInForm form) =>
         {
             if (Access.Refuse(context) is { } refused)
             {
                 return refused;
             }
             var from = ActivityLog.Address(context);
+            // The password was right. With MFA the page gets a ticket to send its code with, and nobody is signed in yet;
+            // someone whose role requires MFA and hasn't set it up gets the secret to set it up with first.
+            async Task<IResult> Enter(ClaimsPrincipal principal, string shown)
+            {
+                var who = Who.Of(principal);
+                if (mfa.Has(who))
+                {
+                    return Results.Ok(new { mfa = "code", ticket = pending.Add(principal, form.Remember, shown, null) });
+                }
+                if (roles.NeedsMfa(who))
+                {
+                    var secret = Totp.NewSecret();
+                    return Results.Ok(new { mfa = "setup", ticket = pending.Add(principal, form.Remember, shown, secret), setup = MfaApi.Setup(who, secret) });
+                }
+                await Start(context, principal, form.Remember);
+                roles.Seen(who, shown);
+                log.Record(principal.Identity!.Name!, from, "sign-in", "signin", "Signed in", "ok");
+                return Results.Ok(new { user = Me(principal, roles) });
+            }
             var name = form.Username?.Trim() ?? "";
             if (name.Length > MaxUsername)
             {
@@ -291,10 +314,7 @@ public static class SignIn
                     log.Record(name.Length > 0 ? name : "Unknown user", from, "sign-in", "signin.failed", "Sign-in failed", "failed");
                     return wrong;
                 }
-                await Start(context, principal, form.Remember);
-                roles.Seen(Who.Of(principal), principal.FindFirstValue("name") ?? name);
-                log.Record(principal.Identity!.Name!, from, "sign-in", "signin", "Signed in", "ok");
-                return Results.Ok(new { user = Me(principal, roles) });
+                return await Enter(principal, principal.FindFirstValue("name") ?? name);
             }
             // Another domain only when the one set up shares its forest or trusts it, so nobody can send the check to a domain of their own.
             var domain = string.IsNullOrWhiteSpace(form.Domain) ? settings.Domain : Clean(form.Domain);
@@ -337,12 +357,53 @@ public static class SignIn
                 return Results.Json(new { error = $"Your account isn't in any of {Product.Title}'s roles yet, so it can't sign in. Ask whoever runs {Product.Title} to add you." },
                     statusCode: StatusCodes.Status403Forbidden);
             }
-            var signedIn = Principal(username, user.Name, Directory, settings.Stamp, domain, host, user.Groups);
-            await Start(context, signedIn, form.Remember);
-            roles.Seen(who, user.Name);
-            log.Record(username, from, "sign-in", "signin", "Signed in", "ok");
-            return Results.Ok(new { user = Me(signedIn, roles) });
+            return await Enter(Principal(username, user.Name, Directory, settings.Stamp, domain, host, user.Groups), user.Name);
         }).AddEndpointFilter(Limited);
+
+        // The second step: the code from the authenticator app, with the ticket the password step gave. When the app is
+        // being set up, the first code also turns MFA on.
+        app.MapPost("/api/signin/mfa", async (HttpContext context, Roles roles, ActivityLog log, Mfa mfa, PendingSignIns pending, MfaSignInForm form) =>
+        {
+            if (Access.Refuse(context) is { } refused)
+            {
+                return refused;
+            }
+            if (pending.Find(form.Ticket) is not { } waiting)
+            {
+                return Results.BadRequest(new { error = "That took too long. Sign in again.", again = true });
+            }
+            var from = ActivityLog.Address(context);
+            var who = Who.Of(waiting.Principal);
+            var username = waiting.Principal.Identity!.Name!;
+            // Set up some other way since the password was typed: this ticket's secret doesn't take that one's place.
+            if (waiting.Secret is not null && mfa.Has(who))
+            {
+                pending.Remove(form.Ticket!);
+                return Results.BadRequest(new { error = "MFA was set up for this account just now. Sign in again.", again = true });
+            }
+            switch (waiting.Secret is null ? mfa.Check(who, form.Code) : mfa.Enable(who, waiting.Secret, form.Code))
+            {
+                case MfaAnswer.Wait:
+                    return Results.Json(new { error = MfaApi.TooMany }, statusCode: StatusCodes.Status429TooManyRequests);
+                case MfaAnswer.Wrong:
+                    log.Record(username, from, "sign-in", "signin.failed", "Sign-in failed", "failed", "Wrong MFA code");
+                    return Results.Json(new { error = MfaApi.WrongCode }, statusCode: StatusCodes.Status401Unauthorized);
+            }
+            pending.Remove(form.Ticket!);
+            if (!roles.CanSignIn(who))
+            {
+                return Results.BadRequest(new { error = "Sign in again.", again = true });
+            }
+            ((ClaimsIdentity) waiting.Principal.Identity).AddClaim(new Claim("mfa", "1"));
+            await Start(context, waiting.Principal, waiting.Remember);
+            roles.Seen(who, waiting.Name);
+            if (waiting.Secret is not null)
+            {
+                log.Record(username, from, "access", "mfa.on", "Turned on MFA", "ok", "At sign-in, as their role requires");
+            }
+            log.Record(username, from, "sign-in", "signin", "Signed in", "ok");
+            return Results.Ok(new { user = Me(waiting.Principal, roles) });
+        });
 
         app.MapPost("/api/signout", async (HttpContext context) =>
         {
@@ -516,6 +577,8 @@ public sealed record MyPasswordForm(string? Current, string? Password);
 public sealed record DirectorySetupForm(string? Domain, string? Username, string? Password, bool Remember, string? Server = null);
 
 public sealed record SignInForm(string? Username, string? Password, bool Remember, string? Server = null, bool Local = false, string? Domain = null);
+
+public sealed record MfaSignInForm(string? Ticket, string? Code);
 
 
 /// <summary>Ten wrong passwords from one address in ten minutes, then it waits.</summary>

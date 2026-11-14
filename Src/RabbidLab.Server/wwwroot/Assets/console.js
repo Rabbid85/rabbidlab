@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.148', [
+    'Multi-factor authentication (MFA): signing in can take a 6-digit code from an authenticator app after the password. Turn it on for yourself in Settings, Account.',
+    'A role can require MFA, with the Require MFA switch on its Display tab. People in it set it up at their next sign-in, and anyone signed in without a code is signed out.',
+    'Lost phone: someone with the new Reset MFA permission clears it from the person in Roles and people, or run RabbidLab.Server --reset-mfa username on the server.']],
   ['1.1.147', [
     'The side panel opens under the top bar now, not over it.']],
   ['1.1.146', [
@@ -2332,6 +2336,65 @@ const RELEASE_NOTES = [
       busy($('acc-sessions'), '');
     }
     drawMySessions();
+  });
+  // MFA for yourself: a code from an authenticator app at sign-in. Set up shows the QR code and takes the first code;
+  // turning it off takes a code too, so a browser left signed in can't.
+  let mfaNow = null;
+  const drawMfa = async () => {
+    try {
+      mfaNow = await get('/api/mfa');
+      const need = mfaNow.requiredBy.length ? ` Required by ${mfaNow.requiredBy.length === 1 ? 'the role' : 'the roles'} ${mfaNow.requiredBy.join(', ')}.` : '';
+      $('acc-mfa-text').textContent = (mfaNow.since ? `On since ${when(mfaNow.since)}.` : 'Off. When it is on, signing in takes your password and a 6-digit code from an authenticator app.') + need;
+      $('acc-mfa').textContent = mfaNow.since ? 'Turn off' : 'Set up';
+      $('acc-mfa').hidden = false;
+    } catch (err) {
+      $('acc-mfa-text').textContent = err.message;
+    }
+  };
+  document.addEventListener('rabbidlab:show', (e) => { if (e.detail[0] === 'settings' && (!e.detail[1] || e.detail[1] === 'account')) drawMfa(); });
+  const mfaSecret = async () => {
+    const s = await send('/api/mfa/setup');
+    $('mfa-qr').innerHTML = s.qr; // an SVG picture drawn by the server
+    $('mfa-secret').textContent = s.secret.replace(/(.{4})/g, '$1 ').trim();
+  };
+  $('acc-mfa').addEventListener('click', async () => {
+    const off = !!mfaNow?.since;
+    $('mfa-dialog').dataset.mode = off ? 'off' : 'on';
+    $('mfa-title').textContent = off ? 'Turn off MFA' : 'Set up MFA';
+    $('mfa-lead').textContent = off
+      ? `Type a code from your authenticator app to turn it off.${mfaNow.requiredBy.length ? ' Your role requires MFA, so you set it up again at your next sign-in.' : ''}`
+      : 'Scan this with an authenticator app, such as Microsoft Authenticator or Google Authenticator. Then type the 6-digit code it shows.';
+    $('mfa-setup').hidden = off;
+    $('mfa-save').textContent = off ? 'Turn off' : 'Turn on';
+    $('mfa-save').disabled = false;
+    $('mfa-code').value = '';
+    say('mfa-problem', '');
+    try {
+      if (!off) await mfaSecret();
+    } catch (err) {
+      say('mfa-problem', err.message);
+    }
+    $('mfa-dialog').showModal();
+    $('mfa-code').focus();
+  });
+  $('mfa-cancel').addEventListener('click', () => $('mfa-dialog').close());
+  $('mfa-code').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('mfa-save').click(); });
+  $('mfa-save').addEventListener('click', async () => {
+    const off = $('mfa-dialog').dataset.mode === 'off';
+    $('mfa-save').disabled = true;
+    say('mfa-problem', '');
+    try {
+      await send(off ? '/api/mfa/off' : '/api/mfa/on', { code: $('mfa-code').value });
+      $('mfa-dialog').close();
+      toast(off ? 'MFA is off' : 'MFA is on', off ? 'Signing in takes just your password.' : 'Your next sign-in asks for a code.');
+      drawMfa();
+    } catch (err) {
+      say('mfa-problem', err.message);
+      // Ten minutes ran out: the server made a new secret, so the QR code changes with it.
+      if (!off && /took too long/.test(err.message)) mfaSecret().catch(() => {});
+      $('mfa-code').select();
+    }
+    $('mfa-save').disabled = false;
   });
   // Your own password, for Rabbid Lab accounts: every session of yours ends, so it's back to sign-in after.
   const myPassword = () => {

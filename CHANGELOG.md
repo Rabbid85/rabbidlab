@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.148 (2026-11-14)
+
+- Multi-factor authentication (MFA): signing in can take a 6-digit code from an authenticator app after the password. Turn it on for yourself in Settings, Account.
+- A role can require MFA, with the Require MFA switch on its Display tab. People in it set it up at their next sign-in, and anyone signed in without a code is signed out.
+- Lost phone: someone with the new Reset MFA permission clears it from the person in Roles and people, or run RabbidLab.Server --reset-mfa username on the server.
+
 ## 1.1.147 (2026-11-14)
 
 - The side panel opens under the top bar now, not over it.

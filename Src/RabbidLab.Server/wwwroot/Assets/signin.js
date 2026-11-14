@@ -16,12 +16,65 @@
     $('error').hidden = !text;
   };
 
+  // MFA, after a right password: the answer is a ticket to send the code with, and nobody is signed in yet. When a role
+  // requires MFA and the account hasn't set it up, the answer also has the QR code to set it up with.
+  let ticket = '';
+  const askCode = (said) => {
+    ticket = said.ticket;
+    const setup = said.mfa === 'setup';
+    ['local-form', 'ad-form', 'other-kind'].forEach((id) => { $(id).hidden = true; });
+    $('heading').textContent = setup ? 'Set up MFA' : 'Enter your code';
+    $('lead').hidden = false;
+    $('lead').textContent = setup
+      ? 'Your role requires multi-factor authentication. Scan this with an authenticator app, such as Microsoft Authenticator or Google Authenticator, then type the 6-digit code it shows.'
+      : 'Type the 6-digit code from your authenticator app.';
+    $('mfa-setup').hidden = !setup;
+    if (setup) {
+      $('mfa-qr').innerHTML = said.setup.qr; // an SVG picture drawn by the server
+      $('mfa-secret').textContent = said.setup.secret.replace(/(.{4})/g, '$1 ').trim();
+    }
+    $('mfa-go').textContent = setup ? 'Turn on and sign in' : 'Verify';
+    $('mfa-code').value = '';
+    $('mfa-form').hidden = false;
+    $('mfa-back').hidden = false;
+    $('mfa-code').focus();
+  };
+  $('mfa-back').addEventListener('click', () => location.reload());
+  $('mfa-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    showError('');
+    $('mfa-go').disabled = true;
+    try {
+      const r = await fetch('/api/signin/mfa', { method: 'POST', headers, body: JSON.stringify({ ticket, code: $('mfa-code').value }) });
+      if (r.ok) {
+        location.replace('/');
+        return;
+      }
+      const said = await r.json().catch(() => null);
+      if (said?.again) {
+        location.reload(); // the ticket ran out: the password again
+        return;
+      }
+      showError(said?.error || `Something went wrong (${r.status}). Try again.`);
+      $('mfa-code').select();
+    } catch {
+      showError(`Couldn't reach ${window.RabbidLabBrand.now.name || 'Rabbid Lab'}. Check that it's running, then try again.`);
+    }
+    $('mfa-go').disabled = false;
+  });
+
   const post = async (url, body, button) => {
     showError('');
     button.disabled = true;
     try {
       const r = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
       if (r.ok) {
+        const said = await r.json().catch(() => null);
+        if (said?.mfa) {
+          button.disabled = false;
+          askCode(said);
+          return;
+        }
         location.replace('/');
         return;
       }

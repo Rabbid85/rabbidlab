@@ -320,6 +320,25 @@
   <p>The order counts in Active Directory too. Nobody can reset the password of, or otherwise change, an account that's in a role above their own, or change a group that puts people in one. A help desk role can't take over an admin that way.</p>
 </article>
 
+<article data-key="mfa" data-group="Access" data-title="Multi-factor authentication (MFA)">
+  <p>With MFA on, signing in takes your password and then a 6-digit code from an authenticator app, such as Microsoft Authenticator, Google Authenticator or 1Password. It works the same for local accounts, Active Directory accounts and Windows administrators.</p>
+  <h3>Turn it on for yourself</h3>
+  <ol>
+    <li>Open <a href="#settings/account">Settings, Account</a> and click <b>Set up</b> under Multi-factor authentication.</li>
+    <li>Scan the QR code with the app, or type the key in.</li>
+    <li>Type the code the app shows and click <b>Turn on</b>.</li>
+  </ol>
+  <p><b>Turn off</b> takes a code too.</p>
+  <h3>Require it for a role</h3>
+  <p>In <a href="#people">Roles and people</a>, open a role and switch on <b>Require MFA</b> on its Display tab. Everyone in the role who hasn't set it up does that at their next sign-in. Anyone signed in without a code is signed out, you included if you're in the role.</p>
+  <h3>A lost phone</h3>
+  <ul>
+    <li>Someone with the <b>Reset MFA</b> permission opens the person in Roles and people and clicks <b>Reset MFA</b>. It works on people in roles below their own.</li>
+    <li>If nobody can, run <code>"C:\Program Files\Rabbid Lab\RabbidLab.Server.exe" --reset-mfa username</code> on the server, as an administrator. In Docker: <code>docker exec rabbidlab dotnet RabbidLab.Server.dll --reset-mfa username</code></li>
+  </ul>
+  <p>The codes come from the time, so the server's clock and the phone's have to agree to within about 30 seconds.</p>
+</article>
+
 <article data-key="people" data-group="Access" data-title="Put people in roles">
   <ol>
     <li>Open <a href="#people">Roles and people</a> and click <b>Add people</b>.</li>

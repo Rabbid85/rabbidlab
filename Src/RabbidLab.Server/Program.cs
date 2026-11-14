@@ -125,6 +125,12 @@ if (app.AddAdminCommand(args) is int added)
     return added;
 }
 
+// --reset-mfa: takes MFA off an account whose phone is gone, then it exits.
+if (app.ResetMfaCommand(args) is int reset)
+{
+    return reset;
+}
+
 app.UseRedirectPort(redirect);
 app.Use(async (context, next) =>
 {
@@ -187,6 +193,7 @@ app.MapConsoleNamesApi();
 app.MapActivityApi();
 app.MapSessionsApi();
 app.MapRolesApi();
+app.MapMfaApi();
 app.MapClientsApi();
 app.MapUsersApi();
 app.MapDirectoryExtrasApi();
