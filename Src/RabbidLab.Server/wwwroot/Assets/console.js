@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.156', [
+    'The bar that offers the client shows again on a computer whose client was uninstalled. It used to stay hidden for as long as the computer was still listed in Devices, even as Offline.']],
   ['1.1.155', [
     'Devices: clicking a computer opens it in a panel on the right, with its details, Approve or Remove, Allow for an hour, Uninstall now and its uninstall code. The Uninstall window is gone.',
     'The client turns on its own taskbar icon in Windows 11, so it shows next to the clock and not under the arrow.']],
@@ -1549,7 +1551,8 @@ const RELEASE_NOTES = [
     } catch {
       return;
     }
-    if (hereInfo.seat || hereInfo.thisServer) return;
+    // Listed in Devices but not checking in, such as after its client was uninstalled, isn't connected: the bar offers the client.
+    if (hereInfo.seat?.online || hereInfo.thisServer) return;
     $('here-connect').href = joinLink();
     if (!hereInfo.msi) {
       $('here-download').href = 'https://github.com/Rabbid85/rabbidlab/releases/latest';
@@ -1566,7 +1569,7 @@ const RELEASE_NOTES = [
       if (++tries > 36) clearInterval(hereTimer);
       try {
         const h = await get('/api/clients/here');
-        if (h.seat) joined(h.seat);
+        if (h.seat?.online) joined(h.seat);
       } catch {
         // Asked again in a moment.
       }

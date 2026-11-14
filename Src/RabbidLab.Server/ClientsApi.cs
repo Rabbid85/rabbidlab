@@ -92,7 +92,8 @@ public static class ClientsApi
         app.MapGet("/api/clients/here", (HttpContext context, Clients clients, IConfiguration config, INamesCertificate named) =>
         {
             var here = Addresses.Normal(ActivityLog.Address(context));
-            var seat = here is null ? null : clients.All().FirstOrDefault(c => Addresses.Normal(c.Address) == here);
+            // The one checking in, when the address is listed more than once (an old entry left Offline, say).
+            var seat = here is null ? null : clients.All().Where(c => Addresses.Normal(c.Address) == here).OrderByDescending(clients.IsOnline).ThenByDescending(c => c.LastSeen).FirstOrDefault();
             return Results.Ok(new
             {
                 seat = seat is null ? null : new { id = seat.Id, computer = seat.Computer, approved = seat.Approved is not null, online = clients.IsOnline(seat) },

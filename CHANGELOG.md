@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.156 (2026-11-14)
+
+- The bar that offers the client shows again on a computer whose client was uninstalled. It used to stay hidden for as long as the computer was still listed in Devices, even as Offline.
+
 ## 1.1.155 (2026-11-14)
 
 - Devices: clicking a computer opens it in a panel on the right, with its details, Approve or Remove, Allow for an hour, Uninstall now and its uninstall code. The Uninstall window is gone.
