@@ -3,7 +3,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
 using System.Security.Principal;
-using System.ServiceProcess;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -21,6 +21,7 @@ internal sealed class UnlockWindow : Form
     private readonly Button go = Look.Button("Unlock", primary: true);
     private readonly Button cancel = Look.Button("Cancel", primary: false);
     private bool unlocked;
+    private Task? told; // the server being told the code was used
 
     public UnlockWindow()
     {
@@ -90,6 +91,15 @@ internal sealed class UnlockWindow : Form
     {
         if (unlocked)
         {
+            // A moment for the server to hear about the code, when it can be reached; then the uninstall.
+            try
+            {
+                told?.Wait(TimeSpan.FromSeconds(5));
+            }
+            catch (AggregateException)
+            {
+                // The service tells it instead, if it's still here in a minute.
+            }
             if (!Removal.Uninstall(quiet: false))
             {
                 Say("The uninstall didn't start. Use Settings > Apps > Installed apps instead.", Look.Red);
@@ -108,8 +118,7 @@ internal sealed class UnlockWindow : Form
                 return;
             }
             Journal.Write($"The uninstall code was entered on this computer by {WindowsIdentity.GetCurrent().Name}. Uninstalling the Rabbid Lab client is allowed until {until.ToLocalTime():g}.");
-            // The service checks in again straight away, so the server hears the code was used before the client is gone.
-            Task.Run(Journal.CheckInNow);
+            told = Task.Run(Journal.TellServer);
             Done(until);
         }
         catch (Exception e) when (e is UnauthorizedAccessException or System.Security.SecurityException)
@@ -159,22 +168,20 @@ internal static class Journal
         }
     }
 
-    /// <summary>Starts the service again, which checks in as it starts.</summary>
-    public static void CheckInNow()
+    /// <summary>
+    /// One check-in from this program, so the server hears the code was used before the client is gone. The service is
+    /// left alone: starting it again here could start it in the middle of the uninstall that follows, which leaves
+    /// Windows unable to remove it until a restart, and the client unable to be installed again.
+    /// </summary>
+    public static void TellServer()
     {
         try
         {
-            using var service = new ServiceController(ClientService.Name);
-            if (service.Status != ServiceControllerStatus.Stopped)
-            {
-                service.Stop();
-                service.WaitForStatus(ServiceControllerStatus.Stopped, TimeSpan.FromSeconds(20));
-            }
-            service.Start();
+            new Agent().Round(CancellationToken.None).GetAwaiter().GetResult();
         }
-        catch (Exception e) when (e is InvalidOperationException or System.ServiceProcess.TimeoutException or System.ComponentModel.Win32Exception)
+        catch (Exception)
         {
-            // Not installed as a service, or slow to stop: it checks in within a minute anyway.
+            // The service tells it at its next check-in.
         }
     }
 }

@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.154', [
+    'The uninstall code window no longer restarts the client service before uninstalling. That restart could leave Windows unable to remove the service, and the client would then not install again until the computer was restarted.']],
   ['1.1.153', [
     'The Devices and Signed in now tables are narrower, so they fit without a scrollbar and nothing on the right edge is cut off.']],
   ['1.1.152', [

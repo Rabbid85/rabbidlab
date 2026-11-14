@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.154 (2026-11-14)
+
+- The uninstall code window no longer restarts the client service before uninstalling. That restart could leave Windows unable to remove the service, and the client would then not install again until the computer was restarted.
+
 ## 1.1.153 (2026-11-14)
 
 - The Devices and Signed in now tables are narrower, so they fit without a scrollbar and nothing on the right edge is cut off.
