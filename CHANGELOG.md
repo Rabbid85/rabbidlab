@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.159 (2026-11-14)
+
+- Signed in now: the end of each row is an icon with a hint. A green tick marks the session you are in, and the others have a Sign out icon.
+
 ## 1.1.158 (2026-11-14)
 
 - Fixed the client icon not showing after a reinstall or an update. A copy of the icon program left running from the older install kept the new one from starting. The client service now ends that leftover and starts the installed one.

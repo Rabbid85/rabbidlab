@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.159', [
+    'Signed in now: the end of each row is an icon with a hint. A green tick marks the session you are in, and the others have a Sign out icon.']],
   ['1.1.158', [
     'Fixed the client icon not showing after a reinstall or an update. A copy of the icon program left running from the older install kept the new one from starting. The client service now ends that leftover and starts the installed one.']],
   ['1.1.157', [
@@ -1478,8 +1480,9 @@ const RELEASE_NOTES = [
       { key: 'started', label: 'Signed in', w: 135, on: true, get: (s) => ms(s.started), cell: (s) => `<span class="muted">${esc(when(s.started))}</span>` },
       { key: 'lastSeen', label: 'Last seen', w: 85, on: true, get: (s) => ms(s.lastSeen), cell: (s) => `<span class="muted">${esc(ago(s.lastSeen))}</span>` },
     ],
-    tail: { w: 90, cell: (s) => `<span class="acts">${s.current ? '<span class="you">You, here</span>'
-      : s.username === me || can.has('sessions.signout') ? '<button type="button" class="small quiet" data-end>Sign out</button>' : ''}</span>` },
+    // The end of the row is an icon with a hint: a tick for the session this page is in, Sign out for the others.
+    tail: { w: 60, cell: (s) => `<span class="acts">${s.current ? `<span class="sess-here" data-tip="This session" aria-label="This session">${svg('user-check')}</span>`
+      : s.username === me || can.has('sessions.signout') ? `<button type="button" class="icon" data-end data-tip="Sign out" aria-label="Sign out ${esc(s.name || s.username)}">${svg('logout')}</button>` : ''}</span>` },
     row: (s) => ` data-session="${esc(s.id)}"`,
     empty: () => 'Nobody is signed in.',
     redraw: () => drawSessions(sessionsNow),
@@ -1829,7 +1832,7 @@ const RELEASE_NOTES = [
     });
     $('sessions-table').addEventListener('click', async (e) => {
       const row = e.target.closest('[data-session]');
-      if (!row || !e.target.matches('[data-end]')) return;
+      if (!row || !e.target.closest('[data-end]')) return;
       try {
         await send(`/api/sessions/${encodeURIComponent(row.dataset.session)}/signout`);
         seatProblem('');
