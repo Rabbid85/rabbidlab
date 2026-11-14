@@ -63,6 +63,10 @@ public static class ClientsApi
             });
         });
 
+        // The client's service stopping: the computer shows as Offline at once, so the page open on it offers the client again.
+        app.MapPost("/api/clients/bye", (HttpContext context, Clients clients) =>
+            Credentials(context) is (var id, var secret) && clients.Stopping(id, secret) ? Results.Ok() : Unknown());
+
         // The client asking for its next order, held open until there is one (ClientCommands). Only computers let in get any.
         app.MapPost("/api/clients/next", async (HttpContext context, Clients clients, ClientCommands commands) =>
         {

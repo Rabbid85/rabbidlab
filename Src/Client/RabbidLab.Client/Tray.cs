@@ -27,6 +27,7 @@ internal sealed class Tray : ApplicationContext
     private StatusWindow? window;
     private Status? last;
     private int shownTries; // how often the taskbar setting was looked for; -1 once it's settled
+    private readonly DateTime written = Written(); // this program's file as it was when the icon started
 
     public Tray(bool open)
     {
@@ -38,8 +39,6 @@ internal sealed class Tray : ApplicationContext
         show.Font = new Font(show.Font, FontStyle.Bold);
         menu.Items.Add(show);
         menu.Items.Add(new ToolStripMenuItem("Open Rabbid Lab in browser", null, (_, _) => Browse()));
-        menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add(new ToolStripMenuItem("Exit", null, (_, _) => Quit()));
         icon = new NotifyIcon
         {
             Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath),
@@ -76,6 +75,24 @@ internal sealed class Tray : ApplicationContext
 
     private void Refresh()
     {
+        // An update replaced this program, or it was uninstalled, while the icon was up: this icon goes, and after an
+        // update the new program's takes its place. The service starts one too, for anyone signed in without (TrayStarter).
+        if (Written() != written)
+        {
+            try
+            {
+                if (File.Exists(Application.ExecutablePath))
+                {
+                    Process.Start(new ProcessStartInfo(Application.ExecutablePath, "--tray") { UseShellExecute = false })?.Dispose();
+                }
+            }
+            catch (Exception e) when (e is Win32Exception or IOException or InvalidOperationException)
+            {
+                // The service starts it within a minute.
+            }
+            Quit();
+            return;
+        }
         KeepOnTaskbar();
         var now = Status.Read() ?? new Status();
         heading.Text = now.Describe();
@@ -143,6 +160,20 @@ internal sealed class Tray : ApplicationContext
         catch (Exception e) when (e is System.Security.SecurityException or UnauthorizedAccessException or IOException)
         {
             shownTries = -1;
+        }
+    }
+
+    // When this program's file was last written; the earliest time there is when the file is gone or can't be looked at.
+    private static DateTime Written()
+    {
+        try
+        {
+            var exe = Application.ExecutablePath;
+            return File.Exists(exe) ? File.GetLastWriteTimeUtc(exe) : DateTime.MinValue;
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            return DateTime.MinValue;
         }
     }
 

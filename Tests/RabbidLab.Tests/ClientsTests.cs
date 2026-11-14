@@ -282,4 +282,49 @@ public sealed class ClientsTests : IDisposable
         Assert.False(after.GetProperty("approve").GetBoolean());
         Assert.Equal(0, after.GetProperty("unlockAfterDays").GetInt32());
     }
+    [Fact]
+    public async Task A_client_that_says_its_service_is_stopping_is_offline_at_once_until_it_checks_in_again()
+    {
+        var admin = await app.SignedIn();
+        var (id, secret, _) = await Join();
+        (await admin.PostAsync($"/api/clients/{id}/approve", null)).EnsureSuccessStatusCode();
+        await CheckInSaying(id, secret);
+        var client = app.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("RabbidLab-Client", $"{id}:{secret}");
+        var stranger = app.CreateClient();
+        stranger.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("RabbidLab-Client", $"{id}:not-its-secret");
+        async Task<bool> Online() => (await admin.GetFromJsonAsync<JsonElement>("/api/clients"))[0].GetProperty("online").GetBoolean();
+
+        var before = await Online();
+        var refused = await stranger.PostAsJsonAsync("/api/clients/bye", new { computer = "AMW-LT-022" });
+        var stillOn = await Online();
+        (await client.PostAsJsonAsync("/api/clients/bye", new { computer = "AMW-LT-022" })).EnsureSuccessStatusCode();
+        var stopped = await Online();
+        await CheckInSaying(id, secret);
+        var back = await Online();
+
+        Assert.True(before);
+        Assert.Equal(HttpStatusCode.Unauthorized, refused.StatusCode);
+        Assert.True(stillOn);
+        Assert.False(stopped);
+        Assert.True(back);
+    }
+
+    [Fact]
+    public async Task An_ordered_uninstall_ends_its_allowance_so_a_client_installed_again_is_locked()
+    {
+        var admin = await app.SignedIn();
+        var (id, secret, _) = await Join();
+        (await admin.PostAsync($"/api/clients/{id}/approve", null)).EnsureSuccessStatusCode();
+        (await admin.PostAsJsonAsync($"/api/clients/{id}/removal", new { allow = true, now = true })).EnsureSuccessStatusCode();
+        static bool Allowed(JsonElement answer) => answer.TryGetProperty("removalUntil", out var until) && until.ValueKind == JsonValueKind.String;
+
+        var ordered = await CheckInSaying(id, secret);
+        var installedAgain = await CheckInSaying(id, secret);
+
+        Assert.True(ordered.GetProperty("uninstall").GetBoolean());
+        Assert.True(Allowed(ordered));
+        Assert.False(installedAgain.GetProperty("uninstall").GetBoolean());
+        Assert.False(Allowed(installedAgain));
+    }
 }

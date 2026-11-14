@@ -22,13 +22,29 @@ internal static class Program
             using var one = new Mutex(true, @"Local\RabbidLab.Client.Tray", out var first);
             if (!first)
             {
-                // The icon is there already: the Start menu shortcut has it open its window.
-                if (args.Length == 0 && EventWaitHandle.TryOpenExisting(Tray.ShowSignal, out var show))
+                if (args.Length == 0)
                 {
-                    show.Set();
-                    show.Dispose();
+                    // The icon is there already: the Start menu shortcut has it open its window.
+                    if (EventWaitHandle.TryOpenExisting(Tray.ShowSignal, out var show))
+                    {
+                        show.Set();
+                        show.Dispose();
+                    }
+                    return 0;
                 }
-                return 0;
+                // Started as the icon while another is there. That one may be on its way out (an update replaced it and it
+                // started this one), so its place is waited for, for a few seconds.
+                try
+                {
+                    if (!one.WaitOne(TimeSpan.FromSeconds(8)))
+                    {
+                        return 0;
+                    }
+                }
+                catch (AbandonedMutexException)
+                {
+                    // It went without letting go: the place is this one's.
+                }
             }
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);

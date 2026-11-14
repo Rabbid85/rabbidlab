@@ -107,6 +107,30 @@ internal sealed class Agent
         }
     }
 
+    /// <summary>
+    /// The service is stopping: the server is told, so the computer shows as Offline at once and not three minutes
+    /// later. Three seconds at most, and nothing is done about an answer that doesn't come.
+    /// </summary>
+    public static void Bye()
+    {
+        try
+        {
+            var settings = Settings.Read();
+            var me = Identity.Load();
+            if (settings.Server is null || me is null || me.Server != settings.Server)
+            {
+                return;
+            }
+            using var api = new ServerApi(settings.Server, settings.Fingerprint, TimeSpan.FromSeconds(3));
+            api.Post<CheckInAnswer>("api/clients/bye", new JoinRequest { Computer = Machine.Name }, $"RabbidLab-Client {me.Id}:{me.Secret}", CancellationToken.None)
+                .GetAwaiter().GetResult();
+        }
+        catch (Exception)
+        {
+            // It shows Offline after three minutes without a check-in instead.
+        }
+    }
+
     // Whether uninstalling is locked, and why not when it isn't, written where the installer reads it.
     private static void Lock(Status status, bool joined, DateTime? until)
     {

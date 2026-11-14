@@ -44,6 +44,9 @@ public sealed class Client
 
     /// <summary>When the client last said the code was typed on its computer, so one use is logged once.</summary>
     public DateTime? CodeUsed { get; set; }
+
+    /// <summary>When the client said its service was stopping (a restart, an update, an uninstall); null once it checks in again.</summary>
+    public DateTime? Stopped { get; set; }
 }
 
 public sealed class ClientsFile
@@ -239,7 +242,8 @@ public sealed class Clients(DataFolder folder, TimeProvider clock, IDataProtecti
             {
                 return null;
             }
-            var before = (c.Computer, c.Os, c.Version, c.User, c.Address, c.CodeCheck, c.CodeHeld, c.CodeUsed);
+            var before = (c.Computer, c.Os, c.Version, c.User, c.Address, c.CodeCheck, c.CodeHeld, c.CodeUsed, c.Stopped);
+            c.Stopped = null;
             // A client from before uninstall codes gets one now.
             if (c.Code is null || c.CodeCheck is null)
             {
@@ -258,11 +262,27 @@ public sealed class Clients(DataFolder folder, TimeProvider clock, IDataProtecti
             c.Address = address ?? c.Address;
             c.LastSeen = clock.GetUtcNow().UtcDateTime;
             changed = true;
-            if (before != (c.Computer, c.Os, c.Version, c.User, c.Address, c.CodeCheck, c.CodeHeld, c.CodeUsed) || clock.GetUtcNow() - written > SaveEvery)
+            if (before != (c.Computer, c.Os, c.Version, c.User, c.Address, c.CodeCheck, c.CodeHeld, c.CodeUsed, c.Stopped) || clock.GetUtcNow() - written > SaveEvery)
             {
                 Save(f);
             }
             return c;
+        }
+    }
+
+    /// <summary>The client's service is stopping: it counts as offline from now, until it checks in again. False when the id or secret is wrong.</summary>
+    public bool Stopping(string id, string secret)
+    {
+        lock (file.Gate)
+        {
+            var f = file.Read();
+            if (Known(f, id, secret) is not { } c)
+            {
+                return false;
+            }
+            c.Stopped = clock.GetUtcNow().UtcDateTime;
+            Save(f);
+            return true;
         }
     }
 
@@ -354,9 +374,13 @@ public sealed class Clients(DataFolder folder, TimeProvider clock, IDataProtecti
             {
                 return false;
             }
+            // The order is the allowance: the client allows itself the few minutes the uninstall takes. The hour that came
+            // with the order ends here, so a client that's installed again afterwards is locked from the start.
+            var allowed = RemovalUntil(c) is not null;
             c.Uninstall = false;
+            c.RemovalUntil = null;
             Save(f);
-            return RemovalUntil(c) is not null;
+            return allowed;
         }
     }
 
@@ -372,7 +396,7 @@ public sealed class Clients(DataFolder folder, TimeProvider clock, IDataProtecti
         }
     }
 
-    public bool IsOnline(Client c) => clock.GetUtcNow().UtcDateTime - c.LastSeen < Online;
+    public bool IsOnline(Client c) => c.Stopped is null && clock.GetUtcNow().UtcDateTime - c.LastSeen < Online;
 
     /// <summary>The client with this id, when the secret is its own.</summary>
     private static Client? Known(ClientsFile f, string id, string secret) =>

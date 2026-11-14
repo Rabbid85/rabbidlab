@@ -49,6 +49,8 @@ internal sealed class ClientService : ServiceBase
         {
             // Stopping anyway.
         }
+        // The server hears the client has stopped (a restart, an update, an uninstall), so it shows Offline at once.
+        Agent.Bye();
     }
 
     private static async Task Run(CancellationToken stop)
@@ -56,6 +58,15 @@ internal sealed class ClientService : ServiceBase
         var agent = new Agent();
         while (!stop.IsCancellationRequested)
         {
+            // The tray icon, for anyone signed in to Windows who hasn't got one.
+            try
+            {
+                TrayStarter.Ensure();
+            }
+            catch (Exception)
+            {
+                // Tried again next round.
+            }
             Status status;
             try
             {
