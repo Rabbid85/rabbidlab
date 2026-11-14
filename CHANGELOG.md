@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.160 (2026-11-14)
+
+- While a computer is locked, the client service cannot be stopped, paused, disabled or deleted from the computer, and Windows starts it again if its process is ended. Allowing uninstall in Rabbid Lab, or entering the uninstall code, lifts that within a minute.
+
 ## 1.1.159 (2026-11-14)
 
 - Signed in now: the end of each row is an icon with a hint. A green tick marks the session you are in, and the others have a Sign out icon.

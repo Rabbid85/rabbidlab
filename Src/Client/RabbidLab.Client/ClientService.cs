@@ -29,6 +29,7 @@ internal sealed class ClientService : ServiceBase
     protected override void OnStart(string[] args)
     {
         Folder.Secure();
+        Task.Run(Guard.StartAgainWhenEnded);
         stop = new CancellationTokenSource();
         var token = stop.Token;
         loop = Task.WhenAll(Task.Run(() => Run(token)), Task.Run(() => Orders.Listen(token)));

@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.160', [
+    'While a computer is locked, the client service cannot be stopped, paused, disabled or deleted from the computer, and Windows starts it again if its process is ended. Allowing uninstall in Rabbid Lab, or entering the uninstall code, lifts that within a minute.']],
   ['1.1.159', [
     'Signed in now: the end of each row is an icon with a hint. A green tick marks the session you are in, and the others have a Sign out icon.']],
   ['1.1.158', [
@@ -1778,7 +1780,7 @@ const RELEASE_NOTES = [
       const open = !!seat.removalUntil;
       const lock = st === 'waiting' || !can.has('seats.remove') ? ''
         : `<section class="dw-sec"><div class="dw-sec-head"><h3>Uninstall the client</h3><span class="seat-lock${open ? ' open' : ''}">${svg(open ? 'check' : 'lock')}${open ? `Allowed until ${esc(clock(seat.removalUntil))}` : 'Locked'}</span></div>`
-          + `<p class="dw-how">${open ? 'Someone at the computer can uninstall the client now, from Rabbid Lab Client or from Installed apps in Windows.' : "The client can't be uninstalled on the computer until you allow it here."}</p>`
+          + `<p class="dw-how">${open ? 'Someone at the computer can uninstall the client now, from Rabbid Lab Client or from Installed apps in Windows.' : "The client can't be stopped or uninstalled on the computer until you allow it here, or its uninstall code is entered there."}</p>`
           + `<div class="seat-acts"><button type="button" data-seat-allow>${open ? 'Lock again' : 'Allow for an hour'}</button>`
           + `<button type="button" class="danger" data-seat-now${seat.uninstalling ? ' disabled' : ''}>${svg('trash')}${seat.uninstalling ? 'Uninstalling' : 'Uninstall now'}</button></div></section>`
           + `<section class="dw-sec"><div class="dw-sec-head"><h3>Uninstall code</h3>${seatCode ? '' : `<button type="button" class="small" data-seat-code>${svg('eye')}Show code</button>`}</div>`
