@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.172', [
+    'The Attribute browser and the Org chart have their Find at the top of the list down the left, where the other Active Directory pages have it.',
+    'The sign-in page no longer has Keep me signed in. A sign-in lasts while a Rabbid Lab page is open and ends a few minutes after the last one closes.',
+    'The Devices columns go back to the new defaults once, for everyone, after this update.']],
   ['1.1.171', [
     'The Devices lists look like the Active Directory ones: no box around the grid, the computer name first with its icon, sorted by name, and the "shown" line only when a view or Find narrows the list.',
     'The Approve column only takes room while a computer is waiting, and Restart is off by default (it is still under Columns), so the list fits without scrolling sideways.']],
@@ -1609,7 +1613,7 @@ const RELEASE_NOTES = [
   let seatsG = null;
   const seatsGrid = () => (seatsG ||= window.RabbidLab.grid({
     el: $('seats-table'),
-    key: 'devices',
+    key: 'computers', // was devices: renamed in 1.1.172 so everyone gets the new default columns once
     // A tick on each row, for whoever may do something with several computers at once (devices.js).
     lead: () => dvHooks.lead?.() || null,
     sort: { key: 'computer', dir: 1 },

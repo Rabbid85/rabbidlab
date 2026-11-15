@@ -777,6 +777,9 @@
     <!-- Active Directory's pages, down the left of whichever of them is open (console.js moves this there), then the open page's views (users.js). -->
     <nav class="dnav" id="dir-rail" aria-label="Active Directory">
       <label class="side-find"><svg><use href="#i-search"/></svg><input type="search" id="dir-find" placeholder="Find" aria-label="Find" autocomplete="off" spellcheck="false"></label>
+      <!-- The Attribute browser's own find, in the same spot: anything in the domain by name, shown in place of the tree (directory.js). -->
+      <label class="side-find rail-own" data-on="attrs"><svg><use href="#i-search"/></svg><input type="search" id="at-obj" placeholder="Find" aria-label="Find a user, group, computer or OU" autocomplete="off" spellcheck="false"></label>
+      <label class="side-find rail-own" data-on="org"><svg><use href="#i-search"/></svg><input type="search" id="org-find" placeholder="Find" aria-label="Find a person" autocomplete="off" spellcheck="false"></label>
       <p class="rail-label">Browse</p>
       <a href="#ad/users" data-adpage="users" data-can="ad.view ad.connect"><svg><use href="#i-user"/></svg><span>Users</span><i class="rail-dot bad" id="dir-locked-dot" hidden></i><small data-n="users"></small></a>
       <a href="#ad/groups" data-adpage="groups" data-can="ad.view ad.connect"><svg><use href="#i-users"/></svg><span>Groups</span><small data-n="groups"></small></a>
@@ -846,8 +849,7 @@
   <div class="dir-area">
     <div class="dgate" id="org-setup" hidden></div>
     <div class="dmain">
-    <div class="ln-tools" id="org-tools" hidden><label class="side-find"><svg><use href="#i-search"/></svg><input type="search" id="org-find" placeholder="Find a person" aria-label="Find a person" autocomplete="off" spellcheck="false"></label>
-      <span class="bar-note" id="org-count"></span></div>
+    <div class="ln-tools" id="org-tools" hidden><span class="bar-note" id="org-count"></span></div>
     <p class="hint" id="org-note" hidden></p>
     <div class="org" id="org-tree"></div>
     <p class="hint problem" id="org-problem" hidden></p>
@@ -862,7 +864,6 @@
     <div class="dmain">
     <div class="lib" id="at-lib">
       <aside class="side attrs-side" aria-label="Directory">
-        <label class="side-find at-objfind"><svg><use href="#i-search"/></svg><input type="search" id="at-obj" placeholder="Find a user, group, computer or OU" aria-label="Find a user, group, computer or OU" autocomplete="off" spellcheck="false"></label>
         <nav class="crumbs" id="at-crumbs" aria-label="Where"></nav>
         <div id="at-items"></div>
         <p class="hint" id="at-more" hidden>There's more here than Active Directory sent; it sends the first 1,000.</p>

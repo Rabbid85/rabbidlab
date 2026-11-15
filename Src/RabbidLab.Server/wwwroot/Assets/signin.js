@@ -311,7 +311,7 @@
     if (s.user) return location.replace('/');
     const setup = !s.setUp;
 
-    // What changes between setting up and signing in: the words, the confirm box, and Keep me signed in.
+    // What changes between setting up and signing in: the words and the confirm box.
     // The lab's own look: its colours (brand.js), its name in place of Rabbid Lab's, its icon in place of the mark.
     const brand = window.RabbidLabBrand.apply(s.brand);
     const product = s.product.replace(/ Dev$/, ''); // the DEV tag says it's Dev
@@ -476,7 +476,7 @@
         return;
       }
       remember('local');
-      post('/api/signin', { username: $('local-user').value, password: $('local-password').value, remember: $('local-remember').checked, local: true }, e.submitter);
+      post('/api/signin', { username: $('local-user').value, password: $('local-password').value, local: true }, e.submitter);
     });
     $('ad-form').addEventListener('submit', (e) => {
       e.preventDefault();
@@ -486,7 +486,7 @@
       }
       remember('ad');
       post('/api/signin', {
-        username: $('ad-user').value, password: $('ad-password').value, remember: $('ad-remember').checked,
+        username: $('ad-user').value, password: $('ad-password').value,
         server, domain: domain() !== s.domain ? domain() : undefined,
       }, e.submitter);
     });

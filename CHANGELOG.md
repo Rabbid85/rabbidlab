@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.172 (2026-11-14)
+
+- The Attribute browser and the Org chart have their Find at the top of the list down the left, where the other Active Directory pages have it.
+- The sign-in page no longer has Keep me signed in. A sign-in lasts while a Rabbid Lab page is open and ends a few minutes after the last one closes.
+- The Devices columns go back to the new defaults once, for everyone, after this update.
+
 ## 1.1.171 (2026-11-14)
 
 - The Devices lists look like the Active Directory ones: no box around the grid, the computer name first with its icon, sorted by name, and the "shown" line only when a view or Find narrows the list.

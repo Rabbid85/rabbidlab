@@ -16,7 +16,7 @@ public static class SignIn
 {
     // Release and Dev both run on localhost, and browsers don't keep cookies apart by port.
     public static readonly string Cookie = Product.Dev ? "rabbidlab-dev" : "rabbidlab";
-    // Without Keep me signed in: an open console checks in every minute or less, so this ends soon after its last page closes.
+    // A sign-in that isn't kept (the sign-in page no longer offers keeping one): an open console checks in every minute or less, so this ends soon after its last page closes.
     public static readonly TimeSpan Session = TimeSpan.FromMinutes(5);
     public static readonly TimeSpan Remembered = TimeSpan.FromDays(30);
     // Active Directory and Windows accounts sign in again this long after they did, so a change there counts by then.
