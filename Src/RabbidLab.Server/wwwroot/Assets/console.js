@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.201', [
+    'Icons in the side panel lists sit in the middle of their boxes again. A rule meant for small buttons was pushing them left.']],
   ['1.1.200', [
     'The opening screen is about a third smaller: the flask, the name and the line under it.']],
   ['1.1.199', [

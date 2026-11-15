@@ -424,8 +424,9 @@ input.pick:focus { outline: none; border-color: var(--accent); }
 .job-what summary::before { content: "\25B8"; flex: none; color: #6D7290; }
 .job-what[open] summary::before { content: "\25BE"; }
 .job-what summary b { flex: 1; }
-.dw-body .dw-sec .small { display: inline-flex; align-items: center; gap: 7px; }
-.dw-body .dw-sec .small svg { width: 15px; height: 15px; }
+/* Small buttons in a panel section; icon boxes (.pic.small) keep their own centred grid. */
+.dw-body .dw-sec .small:not(.pic) { display: inline-flex; align-items: center; gap: 7px; }
+.dw-body .dw-sec .small:not(.pic) svg { width: 15px; height: 15px; }
 .fl-view .two small { color: #6D7290; }
 /* The windows for running a script, writing one and making a workflow. */
 .form-in { display: grid; gap: 6px; }

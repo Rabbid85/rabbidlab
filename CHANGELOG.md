@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.201 (2026-11-15)
+
+- Icons in the side panel lists sit in the middle of their boxes again. A rule meant for small buttons was pushing them left.
+
 ## 1.1.200 (2026-11-15)
 
 - The opening screen is about a third smaller: the flask, the name and the line under it.
