@@ -54,6 +54,9 @@ internal sealed class InventoryReport
 
     /// <summary>What Windows Update installed, by name; left out until it's answered once.</summary>
     [DataMember(Name = "history", EmitDefaultValue = false)] public List<HistoryReport>? History { get; set; }
+
+    /// <summary>Fast startup is on (Shut down isn't a real one, and many cards then don't wake it); left out when Windows wouldn't say.</summary>
+    [DataMember(Name = "fastStartup", EmitDefaultValue = false)] public bool? FastStartup { get; set; }
 }
 
 [DataContract]
@@ -85,6 +88,9 @@ internal sealed class NicReport
 
     /// <summary>Windows lets it wake the computer (powercfg's wake_armed list); left out when that couldn't be read.</summary>
     [DataMember(Name = "wake", EmitDefaultValue = false)] public bool? Wake { get; set; }
+
+    /// <summary>The card's own wake-from-shut-down switch is on (Shutdown Wake-On-Lan and the like); left out when it has none.</summary>
+    [DataMember(Name = "wakeOff", EmitDefaultValue = false)] public bool? WakeOff { get; set; }
 }
 
 [DataContract]
@@ -255,6 +261,7 @@ internal static class Inventory
         }
         Printers(r);
         Nics(r);
+        r.FastStartup = FastStartup();
         r.RestartNeeded = Exists(@"SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired")
             || Exists(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending");
         if (missingChecked is { } at2 && missing is not null)
@@ -379,7 +386,7 @@ internal static class Inventory
                 cards.Add(new NicReport
                 {
                     Name = card.Name, Mac = WakeOnLan.Text(mac), Kind = wifi ? "wifi" : "wired", Ip = v4?.Address.ToString(), Prefix = v4 is null ? 0 : WakeOnLan.Prefix(v4) ?? 0,
-                    Up = card.OperationalStatus == OperationalStatus.Up, Wake = armed?.Contains(card.Description),
+                    Up = card.OperationalStatus == OperationalStatus.Up, Wake = armed?.Contains(card.Description), WakeOff = wifi ? null : WakesFromOff(card.Name),
                 });
             }
         }
@@ -389,6 +396,53 @@ internal static class Inventory
             return;
         }
         r.Nics = cards.OrderBy(c => c.Kind == "wifi").ThenBy(c => !c.Up).Take(WakeOnLan.Most).ToList();
+    }
+
+    // The card's own switch for waking from shut down, which each maker names its own way; null when it has none or
+    // Windows wouldn't say. Read only: the built-in script Turn on Wake-on-LAN changes it.
+    private static bool? WakesFromOff(string name)
+    {
+        try
+        {
+            using var searcher = new ManagementObjectSearcher(@"root\StandardCimv2",
+                $"SELECT DisplayName, DisplayValue FROM MSFT_NetAdapterAdvancedPropertySettingData WHERE Name = '{name.Replace("\\", "\\\\").Replace("'", "\\'")}'");
+            foreach (var found in searcher.Get())
+            {
+                using (found)
+                {
+                    var label = Text(found["DisplayName"]) ?? "";
+                    if (System.Text.RegularExpressions.Regex.IsMatch(label, "shutdown wake|wake from (power off|shutdown)|power off state", System.Text.RegularExpressions.RegexOptions.IgnoreCase)
+                        && label.IndexOf("speed", StringComparison.OrdinalIgnoreCase) < 0)
+                    {
+                        return System.Text.RegularExpressions.Regex.IsMatch(Text(found["DisplayValue"]) ?? "", "^(enabled|on)$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                    }
+                }
+            }
+            return null;
+        }
+        catch (Exception e) when (e is ManagementException or System.Runtime.InteropServices.COMException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+
+    // Fast startup: on when Windows has it switched on and hibernation, which it needs, isn't off.
+    private static bool? FastStartup()
+    {
+        try
+        {
+            using var power = Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Control\Session Manager\Power");
+            using var hibernate = Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Control\Power");
+            if (power?.GetValue("HiberbootEnabled") is not int boot)
+            {
+                return null;
+            }
+            return boot == 1 && (hibernate?.GetValue("HibernateEnabled") is not int h || h != 0);
+        }
+        catch (Exception e) when (e is System.Security.SecurityException or IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
     }
 
     private static bool Virtual(string? description) =>
@@ -565,7 +619,7 @@ internal static class Inventory
     // counts to the nearest hundredth of the drive.
     private static string Print(InventoryReport r)
     {
-        var all = new StringBuilder().Append(r.Manufacturer).Append('|').Append(r.Model).Append('|').Append(r.Serial).Append('|').Append(r.Processor).Append('|').Append(r.Memory)
+        var all = new StringBuilder().Append(r.Manufacturer).Append('|').Append(r.Model).Append('|').Append(r.Serial).Append('|').Append(r.Processor).Append('|').Append(r.Memory).Append('|').Append(r.FastStartup)
             .Append('|').Append(r.Started).Append('|').Append(r.RestartNeeded).Append('|').Append(r.MissingChecked);
         foreach (var d in r.Disks)
         {
@@ -594,7 +648,7 @@ internal static class Inventory
         all.Append("|d:").Append(string.Join(",", r.PrinterDrivers ?? new List<string>()));
         foreach (var n in r.Nics ?? new List<NicReport>())
         {
-            all.Append("|n:").Append(n.Mac).Append(':').Append(n.Ip).Append(':').Append(n.Up).Append(':').Append(n.Wake);
+            all.Append("|n:").Append(n.Mac).Append(':').Append(n.Ip).Append(':').Append(n.Up).Append(':').Append(n.Wake).Append(':').Append(n.WakeOff);
         }
         foreach (var h in r.History ?? new List<HistoryReport>())
         {

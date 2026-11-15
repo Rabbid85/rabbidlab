@@ -520,3 +520,5 @@ dialog.drawer:not(:modal) { z-index: 60; }
 .err-when { flex: none; margin-left: 10px; color: #6D7290; font-size: 11.5px; line-height: 1.45; text-align: right; white-space: nowrap; }
 /* Find over a table in the panel (Software). */
 .side-find.seat-find { display: flex; width: 100%; margin: 0 0 10px; }
+/* A hint under a section's facts (the Network section's Wake-on-LAN, say) keeps its distance. */
+.dw-sec .does + .dw-how { margin-top: 10px; }

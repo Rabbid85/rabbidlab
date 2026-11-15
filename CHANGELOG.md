@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.204 (2026-11-15)
+
+- A computer panel shows Wake from sleep and Wake from off apart, and what stops waking from off: Fast startup, or the network card setting. Needs client 1.1.204.
+- The built-in script Turn on Wake-on-LAN also turns on the network card setting for waking from shut down, whatever its maker calls it.
+- A computer that does not come online within three minutes of Wake gets a message saying so, with what to check.
+
 ## 1.1.203 (2026-11-15)
 
 - Clients from 1.1.203 send back the errors they run into: a client update that did not install, Windows Update not answering, parts of the inventory they could not read, and losing the server. They show in an Errors column, a Has errors view and at the top of the computer panel, with Clear.

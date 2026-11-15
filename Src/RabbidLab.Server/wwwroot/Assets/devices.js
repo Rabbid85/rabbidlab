@@ -1133,7 +1133,15 @@
       const sent = results.filter((r) => r.sent);
       const failed = results.filter((r) => !r.sent);
       sent.forEach((r) => { wakingAt[r.client] = Date.now(); });
-      if (sent.length) setTimeout(() => D.draw(), WAKING + 1000); // Waking stops showing
+      // Waking stops showing; one that still hasn't come online is said, with where to look.
+      if (sent.length) {
+        setTimeout(() => {
+          D.draw();
+          D.panelAgain();
+          const asleep = sent.map((r) => D.computers().find((c) => c.id === r.client)).filter((c) => c && !c.online);
+          if (asleep.length) toast(`${names(asleep)} didn't wake.`, 'Its panel says what Windows allows. The BIOS has to allow waking from the network too, with ErP or deep sleep off.', { tone: 'warn' });
+        }, WAKING + 1000);
+      }
       D.draw();
       D.panelAgain();
       const via = [...new Set(sent.flatMap((r) => r.via))].join(' and ');

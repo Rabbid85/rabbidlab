@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.204', [
+    'A computer panel shows Wake from sleep and Wake from off apart, and what stops waking from off: Fast startup, or the network card setting. Needs client 1.1.204.',
+    'The built-in script Turn on Wake-on-LAN also turns on the network card setting for waking from shut down, whatever its maker calls it.',
+    'A computer that does not come online within three minutes of Wake gets a message saying so, with what to check.']],
   ['1.1.203', [
     'Clients from 1.1.203 send back the errors they run into: a client update that did not install, Windows Update not answering, parts of the inventory they could not read, and losing the server. They show in an Errors column, a Has errors view and at the top of the computer panel, with Clear.',
     'The Software tab in a computer panel is a table with Name, Version and Publisher that sorts, with Find.',
@@ -2468,12 +2472,18 @@ const RELEASE_NOTES = [
         ...inv.disks.map((d) => [`Drive ${d.name}`, d.total ? `${Math.round(100 * d.free / d.total)}% free of ${gb(d.total)}` : 'Unknown'])]));
       // Its network cards, and whether Windows lets the wired one wake it (Wake in devices.js).
       const wired = (inv?.nics || []).filter((n) => n.kind === 'wired');
+      const fix = 'Run the built-in script Turn on Wake-on-LAN on it while it is on. The BIOS has to allow waking from the network too (often Power On By PCI-E, or Wake on LAN), with ErP or deep sleep off.';
       const wol = !wired.length ? ['Wi-Fi only', "Most Wi-Fi cards can't wake a computer. A network cable can."]
         : wired.some((n) => n.wake === true) ? ['Allowed in Windows', '']
-        : wired.every((n) => n.wake === false) ? ['Off in Windows', 'Run the built-in script Turn on Wake-on-LAN on it. It has to be on in the BIOS too.'] : ['Not known', ''];
+        : wired.every((n) => n.wake === false) ? ['Off in Windows', fix] : ['Not known', ''];
+      // From shut down (clients from 1.1.204): Fast startup, or the card's own switch, stop most computers waking.
+      const card = wired.find((n) => n.wakeOff != null);
+      const off = !wired.length ? null : inv?.fastStartup ? ['Stopped by Fast startup', fix] : card ? (card.wakeOff ? ['Allowed in Windows', ''] : ['Off in the network card', fix]) : null;
+      const how = wol[1] || off?.[1] || '';
       const network = seat.server || !inv ? '' : !inv.nics ? section('Network', none('Its network cards show here once its client is on 1.1.195 or later.'))
-        : section('Network', facts2([...inv.nics.map((n) => [n.name || (n.kind === 'wifi' ? 'Wi-Fi' : 'Ethernet'), [n.mac, n.ip].filter(Boolean).join(' · ')]), ['Wake-on-LAN', wol[0]]])
-          + (wol[1] ? `<p class="dw-how">${esc(wol[1])}</p>` : ''));
+        : section('Network', facts2([...inv.nics.map((n) => [n.name || (n.kind === 'wifi' ? 'Wi-Fi' : 'Ethernet'), [n.mac, n.ip].filter(Boolean).join(' · ')]),
+          [off ? 'Wake from sleep' : 'Wake-on-LAN', wol[0]], off && ['Wake from off', off[0]]])
+          + (how ? `<p class="dw-how">${esc(how)}</p>` : ''));
       // This server without the client: putting it on gives it everything the other computers have.
       const here = !seat.server ? '' : section('Manage it like the other computers', `<p class="dw-how">Install the ${esc(productName)} client on this server to see its hardware, software and Windows updates here, and to run scripts, updates, restarts and WMI queries on it. It's approved straight away and keeps itself up to date.</p>`
         + (can.has('seats.add') ? `<div class="seat-acts"><button type="button" class="primary" data-seat-here${hereStarted ? ' disabled' : ''}>${svg('download')}${hereStarted ? 'Installing the client' : 'Install the client here'}</button></div>` : ''));

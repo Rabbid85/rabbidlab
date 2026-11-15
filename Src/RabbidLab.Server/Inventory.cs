@@ -46,6 +46,9 @@ public sealed class DeviceNic
 
     /// <summary>Windows lets it wake the computer; null when the computer couldn't say.</summary>
     public bool? Wake { get; set; }
+
+    /// <summary>The card's own wake-from-shut-down switch is on; null when it has none, or the client is before 1.1.204.</summary>
+    public bool? WakeOff { get; set; }
 }
 
 /// <summary>An update in Windows Update's history: its name, KB, when, and installed, failed, cancelled or pending.</summary>
@@ -112,6 +115,9 @@ public sealed class DeviceInventory
 
     /// <summary>What Windows Update installed, by name, newest first; null until a client from 1.1.203 on sends it.</summary>
     public List<DeviceHistory>? History { get; set; }
+
+    /// <summary>Fast startup is on, which stops most computers waking after Shut down; null until a client from 1.1.204 on says.</summary>
+    public bool? FastStartup { get; set; }
 
     /// <summary>When this server got it.</summary>
     public DateTime Received { get; set; }
@@ -255,7 +261,7 @@ public sealed class Inventories(DataFolder folder, TimeProvider clock)
         })];
         i.Nics = i.Nics is null ? null : [.. i.Nics.Select(n => (Nic: n, Mac: WakeOnLan.Mac(n.Mac))).Where(n => n.Mac is not null).Take(WakeOnLan.Most).Select(n => new DeviceNic
         {
-            Name = Cut(n.Nic.Name) ?? "", Mac = WakeOnLan.Text(n.Mac!), Kind = n.Nic.Kind == "wifi" ? "wifi" : "wired", Up = n.Nic.Up, Wake = n.Nic.Wake,
+            Name = Cut(n.Nic.Name) ?? "", Mac = WakeOnLan.Text(n.Mac!), Kind = n.Nic.Kind == "wifi" ? "wifi" : "wired", Up = n.Nic.Up, Wake = n.Nic.Wake, WakeOff = n.Nic.WakeOff,
             Ip = System.Net.IPAddress.TryParse(n.Nic.Ip, out var ip) && ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork ? ip.ToString() : null,
             Prefix = n.Nic.Prefix is >= 1 and <= 30 ? n.Nic.Prefix : 0,
         })];

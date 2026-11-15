@@ -49,20 +49,30 @@ public static class BuiltInScripts
         S("flush-dns", "Flush DNS", Cmd, "Empties the DNS cache.", "ipconfig /flushdns"),
         S("gpupdate", "Update Group Policy", Cmd, "Applies Group Policy now.", "gpupdate /force /wait:120", 5),
         S("network", "Network settings", Cmd, "Every network adapter with its addresses, gateway and DNS servers.", "ipconfig /all"),
-        S("wake-on-lan", "Turn on Wake-on-LAN", Ps, "Lets the wired network card wake the computer, and turns off Fast startup, which stops many cards waking a computer that was shut down. The BIOS has to allow it too.", """
+        S("wake-on-lan", "Turn on Wake-on-LAN", Ps, "Lets the wired network card wake the computer from sleep and from shut down, and turns off Fast startup, which stops many cards waking a computer that was shut down. The BIOS has to allow it too.", """
             $cards = Get-NetAdapter -Physical -ErrorAction SilentlyContinue | Where-Object { $_.NdisPhysicalMedium -eq 14 }
             if (-not $cards) { 'No wired network card found.'; exit 1 }
             foreach ($c in $cards) {
-                # The driver's own switch, where it has one, then Windows' Allow this device to wake the computer.
+                "$($c.Name) ($($c.InterfaceDescription)):"
+                # The card's own switches, which each maker names its own way: wake on a magic packet, from sleep and from
+                # shut down (Realtek: Shutdown Wake-On-Lan; Intel: ...from power off state; PME on some others).
                 Get-NetAdapterAdvancedProperty -Name $c.Name -ErrorAction SilentlyContinue |
-                    Where-Object { $_.RegistryKeyword -in '*WakeOnMagicPacket', 'WakeOnMagicPacket' } |
-                    ForEach-Object { Set-NetAdapterAdvancedProperty -Name $c.Name -RegistryKeyword $_.RegistryKeyword -RegistryValue 1 -NoRestart -ErrorAction SilentlyContinue }
+                    Where-Object { $_.DisplayName -match 'wake on magic packet|shutdown wake|wake from (power off|shutdown)|power off state|enable pme' -and $_.DisplayName -notmatch 'speed' } |
+                    ForEach-Object {
+                        $on = $_.ValidDisplayValues | Where-Object { $_ -match '^(Enabled|On)$' } | Select-Object -First 1
+                        if (-not $on) { return }
+                        if ($_.DisplayValue -eq $on) { "  $($_.DisplayName): already on"; return }
+                        Set-NetAdapterAdvancedProperty -Name $c.Name -DisplayName $_.DisplayName -DisplayValue $on -NoRestart -ErrorAction SilentlyContinue
+                        "  $($_.DisplayName): turned on"
+                    }
+                # Then Windows' Allow this device to wake the computer.
                 Set-NetAdapterPowerManagement -Name $c.Name -WakeOnMagicPacket Enabled -NoRestart -ErrorAction SilentlyContinue
                 & powercfg.exe /deviceenablewake "$($c.InterfaceDescription)" | Out-Null
-                "$($c.Name) ($($c.InterfaceDescription)) can wake this computer."
+                '  Allowed to wake the computer.'
             }
             Set-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Power' -Name HiberbootEnabled -Value 0 -Type DWord
-            'Fast startup is off. Wake-on-LAN has to be on in the BIOS too.'
+            'Fast startup is off.'
+            'The BIOS has to allow it too: waking from the network on (often Power On By PCI-E, or Wake on LAN), and ErP or deep sleep off.'
             """),
         S("signed-in", "Who is signed in", Cmd, "Everyone signed in at the screen or over Remote Desktop.", """
             quser 2>nul
