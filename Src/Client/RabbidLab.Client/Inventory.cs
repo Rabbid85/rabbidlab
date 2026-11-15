@@ -222,6 +222,9 @@ internal static class Inventory
         return found.Values.OrderBy(p => p.Name, StringComparer.OrdinalIgnoreCase).ToList();
     }
 
+    // Windows Update's id for the Definition Updates kind, the same in every language.
+    private const string DefinitionUpdates = "e0789628-ce08-4437-be74-2495b842f43b";
+
     // Asks Windows Update what this computer is missing. It goes to Microsoft (or the WSUS server the computer uses),
     // and can take minutes. When it doesn't answer, what it said last time stands.
     private static void AskWindowsUpdate()
@@ -245,11 +248,20 @@ internal static class Inventory
                     kb = "KB" + (string) id;
                     break;
                 }
+                // An update is in several categories: its kind (Security Updates, Updates...) and the products it's for.
                 string? kind = null;
+                var definitions = false;
                 foreach (dynamic category in update.Categories)
                 {
-                    kind = (string) category.Name;
-                    break;
+                    if (kind is null || string.Equals((string) category.Type, "UpdateClassification", StringComparison.OrdinalIgnoreCase))
+                    {
+                        kind = (string) category.Name;
+                    }
+                    definitions |= string.Equals((string) category.CategoryID, DefinitionUpdates, StringComparison.OrdinalIgnoreCase);
+                }
+                if (definitions)
+                {
+                    continue; // antivirus definitions come out several times a day and install themselves
                 }
                 list.Add(new UpdateReport { Kb = kb, Title = (string) update.Title, Kind = kind });
             }

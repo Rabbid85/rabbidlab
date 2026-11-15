@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.165', [
+    'Devices is laid out like Active Directory now: Computers, Software, Windows updates and Signed in now down the left, with views for computers that need updates, need a restart, are low on disk space or have an older client.',
+    'Each computer reports its hardware, drives, installed software and Windows updates. Click a computer to see them, or open Software or Windows updates to see every computer that has one. A computer needs client 1.1.165 for this.',
+    'Columns and Export are in the bar. Client, Address and Last seen are under Columns now, and Remove and Uninstall are in the panel that opens when you click a computer.']],
   ['1.1.164', [
     'Devices: the Windows version has a column of its own, next to the computer name, and no longer sits under it.']],
   ['1.1.163', [
@@ -606,7 +610,7 @@ const RELEASE_NOTES = [
     sub.classList.toggle('one-sec', !!one);
     // Active Directory's pages are listed down the left of whichever of them is open, with that page's views (users.js).
     // Domain health is its own area: its own entry in the sidebar, and only its views down the left.
-    const dir = now.classList.contains('dir-top');
+    const dir = now.classList.contains('dir-top') && now.id !== 'page-seats'; // Devices is laid out the same way, with a banner and a list of its own
     const domain = now.dataset.page === 'ad' && rest[0] === 'domain';
     if (now.dataset.page !== 'ad') $('dir-rail').classList.remove('lists'); // Find, views and filters are for the pages that list things
     $('dir-rail').classList.toggle('domain-only', domain);
@@ -1425,7 +1429,11 @@ const RELEASE_NOTES = [
   };
 
   // Devices: the computers with the client and everyone signed in, asked again every 30 seconds while it's open.
-  let seatFilter = 'all';
+  let dvAt = 'computers'; // which list of the Devices page shows: computers, software, updates or sessions
+  let dvView = 'all'; // and for computers, which view of them
+  let dvShown = []; // the rows of the list that shows
+  let software = null; // /api/devices/software, once the Software list was opened
+  let updates = null; // /api/devices/updates
   let computers = [];
   let seatTimer = null;
   const ago = (iso) => {
@@ -1440,43 +1448,106 @@ const RELEASE_NOTES = [
   const stateOf = (c) => (!c.approved ? 'waiting' : c.online ? 'online' : 'offline');
   const STATE = { online: 'Online', offline: 'Offline', waiting: 'Waiting' };
   let seatPanel = null; // draws the computer open in the side panel again, once that's set up
+  // The Devices page, laid out as Active Directory is: the lists down the left (Computers has views of its own), the
+  // banner with four numbers, and the list that's open. Inventory is what each computer's client sent (Inventory.cs).
+  const DV_VIEWS = [['all', 'All computers', () => true], ['online', 'Online', (c) => stateOf(c) === 'online'], ['offline', 'Offline', (c) => stateOf(c) === 'offline'],
+    ['waiting', 'Waiting for approval', (c) => stateOf(c) === 'waiting', 'amber'], null,
+    ['updates', 'Needs updates', (c) => c.inventory?.missing > 0, 'amber'], ['restart', 'Needs restart', (c) => !!c.inventory?.restartNeeded, 'amber'],
+    ['disk', 'Low disk space', (c) => c.inventory?.disk != null && c.inventory.disk < 15, 'red'], ['behind', 'Older client', (c) => c.behind]];
+  const DV = { computers: ['Computers', 'monitor', 'Every computer with the client, with views for what needs looking at.'],
+    software: ['Software', 'box', 'What is installed, and on which computers.'],
+    updates: ['Windows updates', 'updates', 'What is missing and what is installed, by update.'],
+    sessions: ['Signed in now', 'users', 'Everyone signed in to this console.'] };
+  // What a row of Software or Windows updates is known by, on its row and in the side panel.
+  const thingKey = (x) => ('kb' in x ? `u:${x.kb}:${x.title || ''}` : `s:${x.name}:${x.publisher || ''}`);
+  const dvStat = (n, icon, label) => `<div><b>${n}</b><span>${svg(icon)}${esc(label)}</span></div>`;
   const drawSeats = () => {
-    const n = { all: computers.length, behind: computers.filter((c) => c.behind).length };
-    for (const st of ['online', 'offline', 'waiting']) n[st] = computers.filter((c) => stateOf(c) === st).length;
-    for (const k of ['online', 'offline', 'waiting', 'behind']) $(`n-${k}`).textContent = n[k];
-    for (const k of Object.keys(n)) $(`f-${k}`).textContent = n[k];
-    $('rail-seats').textContent = n.online || '';
-    $('seats-dot').hidden = !n.waiting;
-    const shown = computers.filter((c) => seatFilter === 'all' || (seatFilter === 'behind' ? c.behind : stateOf(c) === seatFilter));
-    seatsEmpty = computers.length ? 'None of the computers are like that right now.' : `No computers yet. Add computers to give people the ${esc(product)} client.`;
-    seatsGrid().draw(shown);
+    const n = (f) => computers.filter(f).length;
+    $('rail-seats').textContent = n((c) => stateOf(c) === 'online') || '';
+    $('seats-dot').hidden = !n((c) => stateOf(c) === 'waiting');
+    if (dvAt === 'sessions' ? !can.has('sessions.view') : !can.has('seats.view')) dvAt = can.has('seats.view') ? 'computers' : 'sessions';
+    const view = DV_VIEWS.find((v) => v && v[0] === dvView) || DV_VIEWS[0];
+    const find = $('dv-find').value.trim().toLowerCase();
+    const all = { computers: computers.filter(view[2]), software: software || [], updates: updates || [], sessions: sessionsNow }[dvAt];
+    dvShown = all.filter((x) => !find || JSON.stringify(x).toLowerCase().includes(find));
+    document.querySelectorAll('#dv-rail a[data-dv]').forEach((a) => (a.dataset.dv === dvAt ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current')));
+    $('dv-views').innerHTML = dvAt !== 'computers' ? '' : DV_VIEWS.map((v) => {
+      if (!v) return '<i></i>';
+      const count = n(v[2]);
+      return `<a href="#seats/computers/${v[0]}"${v[0] === view[0] ? ' aria-current="page"' : ''}><span class="nm">${esc(v[1])}</span><small class="${count && v[3] ? `tone ${v[3]}` : ''}">${count}</small></a>`;
+    }).join('');
+    $('dv-dot').hidden = !n((c) => stateOf(c) === 'waiting');
+    $('dv-n-computers').textContent = computers.length || '';
+    $('dv-n-software').textContent = software ? software.length : '';
+    $('dv-n-updates').textContent = updates ? updates.filter((u) => u.missing.length).length || '' : '';
+    $('dv-n-sessions').textContent = sessionsNow.length || '';
+    $('page-seats').dataset.at = dvAt;
+    $('dv-state').textContent = `${DV[dvAt][0]}.`;
+    $('dv-lead').textContent = DV[dvAt][2];
+    $('dv-stats').innerHTML = !can.has('seats.view') ? '' : dvStat(n((c) => stateOf(c) === 'online'), 'monitor', 'Online') + dvStat(n((c) => stateOf(c) === 'offline'), 'power', 'Offline')
+      + dvStat(n((c) => stateOf(c) === 'waiting'), 'clock', 'Waiting for approval') + dvStat(n((c) => c.inventory?.missing > 0), 'updates', 'Need updates');
+    $('dv-tabs').innerHTML = `<a aria-current="true">${svg(DV[dvAt][1])}${esc(DV[dvAt][0])} <small>${dvShown.length}</small></a>`;
+    $('dv-view-title').textContent = dvAt === 'computers' ? view[1] : DV[dvAt][0];
+    $('dv-count').textContent = `${dvShown.length} shown`;
+    for (const [k, id] of [['computers', 'seats-table'], ['software', 'dv-software'], ['updates', 'dv-updates'], ['sessions', 'sessions-table']]) $(id).hidden = k !== dvAt;
+    const late = 'A computer sends what it has within half an hour of being approved, with client 1.1.165 or later.';
+    seatsEmpty = dvAt === 'software' ? (software ? `No software has been reported yet. ${late}` : 'Reading the list.')
+      : dvAt === 'updates' ? (updates ? `No updates have been reported yet. ${late}` : 'Reading the list.')
+      : computers.length ? 'None of the computers are like that right now.' : `No computers yet. Add computers to give people the ${esc(product)} client.`;
+    dvGrid().draw(dvShown);
+    if (dvAt === 'sessions') paint($('sessions-table'));
     seatPanel?.();
   };
-  // Devices and Signed in now are data grids (grid.js), made the first time they're drawn.
+  // How long ago something began, in a word or two: 5 hours, 3 days.
+  const howLong = (iso) => {
+    const m = Math.max(0, Math.round((Date.now() - new Date(iso)) / 60000));
+    const say1 = (count, unit) => `${count} ${unit}${count === 1 ? '' : 's'}`;
+    return m < 60 ? say1(m, 'minute') : m < 2880 ? say1(Math.round(m / 60), 'hour') : say1(Math.round(m / 1440), 'day');
+  };
+  const gb = (bytes) => `${Math.round(bytes / 1073741824).toLocaleString()} GB`;
+  // The day something was installed, as the client sent it (2026-11-08), the way dates read here; anything else as it came.
+  const dvDay = (text) => {
+    const m = /^(\d{4})-(\d\d)-(\d\d)$/.exec(text || '');
+    return m ? new Date(Number(m[1]), m[2] - 1, Number(m[3])).toLocaleDateString([], { dateStyle: 'medium' }) : text || '';
+  };
+  // The lists of the Devices page are data grids (grid.js), made the first time they're drawn. Columns and Export in the
+  // bar work on the one that shows.
+  const dvGrid = () => ({ computers: seatsGrid, software: softwareGrid, updates: updatesGrid, sessions: sessionsGrid })[dvAt]();
   const ms = (iso) => (iso ? new Date(iso).getTime() : 0);
   let seatsEmpty = '';
   let seatsG = null;
   const seatsGrid = () => (seatsG ||= window.RabbidLab.grid({
     el: $('seats-table'),
-    key: 'seats',
-    headButton: true,
+    key: 'devices',
+    // What fits across the page shows; the rest (client, address, last seen, hardware) is under Columns.
     cols: [
-      { key: 'state', label: 'State', w: 80, on: true, get: (c) => ({ waiting: 0, online: 1, offline: 2 })[stateOf(c)], cell: (c) => `<span class="state ${stateOf(c)}">${STATE[stateOf(c)]}</span>` },
+      { key: 'state', label: 'State', w: 75, on: true, get: (c) => ({ waiting: 0, online: 1, offline: 2 })[stateOf(c)], text: (c) => STATE[stateOf(c)], cell: (c) => `<span class="state ${stateOf(c)}">${STATE[stateOf(c)]}</span>` },
       // Under the name only while something is going on with its client: Windows has a column of its own.
-      { key: 'computer', label: 'Computer', w: 140, fixed: true, get: (c) => c.computer,
+      { key: 'computer', label: 'Computer', w: 135, fixed: true, get: (c) => c.computer,
         cell: (c) => {
           const note = c.uninstalling ? 'Uninstalling its client' : c.removalUntil ? `Uninstall allowed until ${new Date(c.removalUntil).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : '';
           return `<b>${esc(c.computer)}</b>${note ? `<small>${esc(note)}</small>` : ''}`;
         } },
       { key: 'os', label: 'Windows', w: 145, on: true, get: (c) => c.os, cell: (c) => `<span class="ell">${esc(c.os || '')}</span>` },
-      { key: 'user', label: 'Signed in', w: 130, on: true, get: (c) => c.user, cell: (c) => (c.user ? `<span class="ell">${esc(c.user)}</span>` : '<span class="nobody">Nobody</span>') },
-      { key: 'version', label: 'Client', w: 70, on: true, get: (c) => c.version, cell: (c) => `<span class="${c.behind ? 'old' : ''}">${esc(c.version || '?')}</span>` },
-      { key: 'address', label: 'Address', w: 105, on: true, get: (c) => addr(c.address), cell: (c) => `<span class="mono muted ell">${esc(addr(c.address))}</span>` },
-      { key: 'lastSeen', label: 'Last seen', w: 75, on: true, get: (c) => ms(c.lastSeen), cell: (c) => `<span class="muted">${esc(ago(c.lastSeen))}</span>` },
+      { key: 'user', label: 'Signed in', w: 120, on: true, get: (c) => c.user, cell: (c) => (c.user ? `<span class="ell">${esc(c.user)}</span>` : '<span class="nobody">Nobody</span>') },
+      { key: 'missing', label: 'Updates', w: 90, on: true, get: (c) => c.inventory?.missing ?? -1, text: (c) => c.inventory?.missing ?? '',
+        cell: (c) => (c.inventory?.missing == null ? '<span class="muted">-</span>' : c.inventory.missing ? `<span class="state waiting">${c.inventory.missing} missing</span>` : '<span class="state online">Up to date</span>') },
+      { key: 'restart', label: 'Restart', w: 70, on: true, get: (c) => (c.inventory?.restartNeeded ? 1 : 0), text: (c) => (!c.inventory ? '' : c.inventory.restartNeeded ? 'Needed' : 'No'),
+        cell: (c) => (!c.inventory ? '<span class="muted">-</span>' : c.inventory.restartNeeded ? '<span class="state waiting">Needed</span>' : '<span class="muted">No</span>') },
+      { key: 'disk', label: 'Free on C:', w: 75, on: true, get: (c) => c.inventory?.disk ?? -1, text: (c) => (c.inventory?.disk == null ? '' : `${c.inventory.disk}%`),
+        cell: (c) => (c.inventory?.disk == null ? '<span class="muted">-</span>' : `<span class="${c.inventory.disk < 15 ? 'old' : ''}">${c.inventory.disk}%</span>`) },
+      { key: 'uptime', label: 'Uptime', w: 80, get: (c) => ms(c.inventory?.started), text: (c) => (c.inventory?.started ? howLong(c.inventory.started) : ''),
+        cell: (c) => `<span class="muted">${c.inventory?.started ? esc(howLong(c.inventory.started)) : '-'}</span>` },
+      { key: 'lastSeen', label: 'Last seen', w: 80, get: (c) => ms(c.lastSeen), text: (c) => c.lastSeen || '', cell: (c) => `<span class="muted">${esc(ago(c.lastSeen))}</span>` },
+      { key: 'version', label: 'Client', w: 70, get: (c) => c.version, cell: (c) => `<span class="${c.behind ? 'old' : ''}">${esc(c.version || '?')}</span>` },
+      { key: 'address', label: 'Address', w: 105, get: (c) => addr(c.address), cell: (c) => `<span class="mono muted ell">${esc(addr(c.address))}</span>` },
+      { key: 'model', label: 'Model', w: 180, get: (c) => [c.inventory?.manufacturer, c.inventory?.model].filter(Boolean).join(' ') },
+      { key: 'serial', label: 'Serial number', w: 140, get: (c) => c.inventory?.serial || '' },
+      { key: 'processor', label: 'Processor', w: 220, get: (c) => c.inventory?.processor || '' },
+      { key: 'memory', label: 'Memory', w: 80, get: (c) => c.inventory?.memory || 0, text: (c) => (c.inventory?.memory ? gb(c.inventory.memory) : ''), cell: (c) => (c.inventory?.memory ? esc(gb(c.inventory.memory)) : '') },
     ],
-    tail: { w: 160, cell: (c) => { const st = stateOf(c); return `<span class="acts">${st === 'waiting' && can.has('seats.approve') ? '<button type="button" class="small primary" data-approve>Approve</button>' : ''}`
-      + `${st !== 'waiting' && can.has('seats.remove') ? '<button type="button" class="small quiet" data-uninstall>Uninstall</button>' : ''}`
-      + `${can.has('seats.remove') ? '<button type="button" class="small quiet" data-forget>Remove</button>' : ''}</span>`; } },
+    // Approve is on the row; removing a computer and uninstalling its client are in its side panel.
+    tail: { w: 90, cell: (c) => `<span class="acts">${stateOf(c) === 'waiting' && can.has('seats.approve') ? '<button type="button" class="small primary" data-approve>Approve</button>' : ''}</span>` },
     row: (c) => ` data-client="${esc(c.id)}"`,
     empty: () => seatsEmpty,
     redraw: () => drawSeats(),
@@ -1488,14 +1559,13 @@ const RELEASE_NOTES = [
   const sessionsGrid = () => (sessionsG ||= window.RabbidLab.grid({
     el: $('sessions-table'),
     key: 'sessions',
-    headButton: true,
     cols: [
-      { key: 'person', label: 'Person', w: 170, fixed: true, get: (s) => s.name || s.username, cell: (s) => `<b>${esc(s.name || s.username)}</b><small>${esc(s.username)}</small>` },
-      { key: 'roles', label: 'Roles', w: 140, on: true, get: (s) => rolesOf(s).map((r) => r.name).join(', '), cell: (s) => `<span class="chips-in">${rolesOf(s).map(chip).join('')}</span>` },
-      { key: 'using', label: 'Using', w: 165, on: true, get: (s) => s.device, cell: (s) => `<span class="ell">${esc(s.device)}</span><small>${s.remembered ? 'Kept signed in' : 'Until the page closes'}</small>` },
-      { key: 'address', label: 'Address', w: 120, on: true, get: (s) => addr(s.address), cell: (s) => `<span class="mono muted ell">${esc(addr(s.address))}</span>` },
-      { key: 'started', label: 'Signed in', w: 135, on: true, get: (s) => ms(s.started), cell: (s) => `<span class="muted">${esc(when(s.started))}</span>` },
-      { key: 'lastSeen', label: 'Last seen', w: 85, on: true, get: (s) => ms(s.lastSeen), cell: (s) => `<span class="muted">${esc(ago(s.lastSeen))}</span>` },
+      { key: 'person', label: 'Person', w: 155, fixed: true, get: (s) => s.name || s.username, cell: (s) => `<b>${esc(s.name || s.username)}</b><small>${esc(s.username)}</small>` },
+      { key: 'roles', label: 'Roles', w: 130, on: true, get: (s) => rolesOf(s).map((r) => r.name).join(', '), cell: (s) => `<span class="chips-in">${rolesOf(s).map(chip).join('')}</span>` },
+      { key: 'using', label: 'Using', w: 155, on: true, get: (s) => s.device, cell: (s) => `<span class="ell">${esc(s.device)}</span><small>${s.remembered ? 'Kept signed in' : 'Until the page closes'}</small>` },
+      { key: 'address', label: 'Address', w: 110, on: true, get: (s) => addr(s.address), cell: (s) => `<span class="mono muted ell">${esc(addr(s.address))}</span>` },
+      { key: 'started', label: 'Signed in', w: 135, on: true, get: (s) => ms(s.started), text: (s) => s.started || '', cell: (s) => `<span class="muted">${esc(when(s.started))}</span>` },
+      { key: 'lastSeen', label: 'Last seen', w: 75, on: true, get: (s) => ms(s.lastSeen), text: (s) => s.lastSeen || '', cell: (s) => `<span class="muted">${esc(ago(s.lastSeen))}</span>` },
     ],
     // The end of the row is an icon with a hint: a tick for the session this page is in, Sign out for the others.
     tail: { w: 60, cell: (s) => `<span class="acts">${s.current ? `<span class="sess-here" data-tip="This session" aria-label="This session">${svg('user-check')}</span>`
@@ -1506,9 +1576,38 @@ const RELEASE_NOTES = [
   }));
   const drawSessions = (list) => {
     sessionsNow = list;
-    sessionsGrid().draw(list);
-    paint($('sessions-table'));
+    drawSeats();
   };
+  // Software and Windows updates across the computers: a row opens which computers have it.
+  let softwareG = null;
+  const softwareGrid = () => (softwareG ||= window.RabbidLab.grid({
+    el: $('dv-software'),
+    key: 'software',
+    cols: [
+      { key: 'name', label: 'Name', w: 300, fixed: true, get: (s) => s.name, cell: (s) => `<b>${esc(s.name)}</b>` },
+      { key: 'version', label: 'Version', w: 170, on: true, get: (s) => s.versions.join(', '), cell: (s) => `<span class="mono muted ell">${esc(s.versions.length > 1 ? `${s.versions.length} versions` : s.versions[0] || '')}</span>` },
+      { key: 'publisher', label: 'Publisher', w: 220, on: true, get: (s) => s.publisher || '', cell: (s) => `<span class="ell">${esc(s.publisher || '')}</span>` },
+      { key: 'computers', label: 'Installed on', w: 130, on: true, get: (s) => s.computers.length, cell: (s) => `${s.computers.length} computer${s.computers.length === 1 ? '' : 's'}` },
+    ],
+    row: (s) => ` data-thing="${esc(thingKey(s))}"`,
+    empty: () => seatsEmpty,
+    redraw: () => drawSeats(),
+  }));
+  let updatesG = null;
+  const updatesGrid = () => (updatesG ||= window.RabbidLab.grid({
+    el: $('dv-updates'),
+    key: 'updates',
+    cols: [
+      { key: 'kb', label: 'Update', w: 110, fixed: true, get: (u) => u.kb, cell: (u) => `<b>${esc(u.kb || 'No number')}</b>` },
+      { key: 'title', label: 'Title', w: 350, on: true, get: (u) => u.title || '', cell: (u) => `<span class="ell">${esc(u.title || '')}</span>` },
+      { key: 'kind', label: 'Type', w: 150, on: true, get: (u) => u.kind || '', cell: (u) => `<span class="ell">${esc(u.kind || '')}</span>` },
+      { key: 'missing', label: 'Missing on', w: 105, on: true, get: (u) => u.missing.length, cell: (u) => (u.missing.length ? `<span class="state waiting">${u.missing.length}</span>` : '<span class="muted">None</span>') },
+      { key: 'installed', label: 'Installed on', w: 105, on: true, get: (u) => u.installed.length, cell: (u) => String(u.installed.length) },
+    ],
+    row: (u) => ` data-thing="${esc(thingKey(u))}"`,
+    empty: () => seatsEmpty,
+    redraw: () => drawSeats(),
+  }));
   const seats = async () => {
     clearTimeout(seatTimer);
     try {
@@ -1520,6 +1619,10 @@ const RELEASE_NOTES = [
         drawSeats();
       }
       if (s.ok) drawSessions(await s.json());
+      // The list that's open across computers, read again with the rest.
+      if (c.ok && dvAt === 'software') software = await get('/api/devices/software');
+      if (c.ok && dvAt === 'updates') updates = await get('/api/devices/updates');
+      if (dvAt === 'software' || dvAt === 'updates') drawSeats();
     } catch {
       // Asked again shortly.
     }
@@ -1629,6 +1732,7 @@ const RELEASE_NOTES = [
     scatter($('dir-hero'), 20261113);
     scatter($('ln-hero'), 20261117);
     scatter($('sn-hero'), 20261121);
+    scatter($('dv-hero'), 20261125);
     setInterval(uptime, 60000);
     // Starting: the rail and the page stay hidden (body.booting) until sign-in has answered and the page's first reads are back, so a
     // reload never shows the console half built. The flask comes up if that takes a moment; after a second and a half the page shows as it is.
@@ -1743,13 +1847,22 @@ const RELEASE_NOTES = [
     $('upd-install').addEventListener('click', () => post('/api/update/install'));
     $('upd-auto').addEventListener('change', (e) => post('/api/update/settings', { automatic: e.target.checked }));
     // Devices: the filters, Approve and Remove on a computer, Sign out on a session, and the Add computers dialog.
-    $('seats-filter').addEventListener('click', (e) => {
-      const chip = e.target.closest('[data-filter]');
-      if (!chip) return;
-      seatFilter = chip.dataset.filter;
-      $('seats-filter').querySelectorAll('[data-filter]').forEach((b) => b.setAttribute('aria-selected', String(b === chip)));
+    // Which list and which view come from the address: #seats/software, #seats/computers/waiting.
+    document.addEventListener('rabbidlab:show', (e) => {
+      if (e.detail[0] !== 'seats') return;
+      const [list, view] = e.detail[2] || [];
+      const at = DV[list] ? list : 'computers';
+      if (at !== dvAt && panel.is('seats')) panel.close();
+      const opened = at !== dvAt && (at === 'software' || at === 'updates');
+      dvAt = at;
+      dvView = dvAt === 'computers' && DV_VIEWS.some((v) => v && v[0] === view) ? view : 'all';
       drawSeats();
+      if (opened) seats(); // its list is read as it opens
     });
+    $('dv-find').addEventListener('input', drawSeats);
+    $('dv-cols').addEventListener('click', () => dvGrid().menu($('dv-cols')));
+    $('dv-export').addEventListener('click', () => dvGrid().csv(dvShown, `devices-${dvAt === 'computers' ? `computers-${dvView}` : dvAt}`));
+    $('dv-refresh').addEventListener('click', () => seats());
     // A row opens its computer in the side panel; the row's own buttons do what they say. Uninstall opens the panel too.
     const seatAct = async (c, what, body) => {
       let said = null;
@@ -1773,8 +1886,7 @@ const RELEASE_NOTES = [
       if (e.target.matches('[data-approve]')) {
         await seatAct(c, 'approve');
         seats();
-      } else if (e.target.matches('[data-forget]')) seatRemove(c);
-      else if (panel.shows('seats', c.id) && !e.target.matches('[data-uninstall]')) panel.close();
+      } else if (panel.shows('seats', c.id)) panel.close();
       else openSeat(c);
     });
 
@@ -1782,7 +1894,9 @@ const RELEASE_NOTES = [
     // locked on the computer until it's allowed here, for an hour, or its uninstall code is entered there.
     let seat = null;
     let seatCode = null; // its uninstall code once Show code was clicked: { code, held }
-    const markSeat = () => document.querySelectorAll('#seats-table [data-client]').forEach((el) => el.classList.toggle('dw-on', panel.shows('seats', el.dataset.client)));
+    let seatTab = 'summary'; // Summary, Software or Updates
+    let seatInv = null; // its whole inventory once the server answered: { inventory }, where inventory is null when it has sent none
+    const markSeat = () => document.querySelectorAll('#page-seats [data-client], #page-seats [data-thing]').forEach((el) => el.classList.toggle('dw-on', panel.shows('seats', el.dataset.client || el.dataset.thing)));
     panel.el.addEventListener('close', markSeat);
     const clock = (iso) => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
     const drawSeat = () => {
@@ -1803,20 +1917,79 @@ const RELEASE_NOTES = [
             + `<p class="dw-how${seatCode.held ? '' : ' warn'}">${seatCode.held ? 'On the computer, open Rabbid Lab Client, click Uninstall and enter this code. It allows uninstalling for an hour.'
               : "This computer hasn't received its code yet. It gets it the next time it checks in, with client 1.1.152 or later."}</p>`
             : `<p class="dw-how">For when the computer can't reach this server. Entered on the computer, it allows uninstalling for an hour.</p>`) + '</section>';
+      // What its client sent: the hardware on Summary, and a tab each for its software and its Windows updates.
+      const inv = seatInv?.inventory;
+      const list = (rows2) => `<div class="dw-list seat-list">${rows2.map(([a, b, tone]) => `<div class="mrow"><div class="two"><b>${esc(a)}</b><small>${esc(b)}</small></div>${tone ? `<span class="state ${tone[0]}">${esc(tone[1])}</span>` : ''}</div>`).join('')}</div>`;
+      const none = (text) => `<p class="muted dw-empty">${esc(text)}</p>`;
+      const waitingFor = !seatInv ? 'Reading what this computer sent.' : "This computer hasn't sent its inventory yet. It does within half an hour of being approved, with client 1.1.165 or later.";
+      const section = (title, body, right = '') => `<section class="dw-sec"><div class="dw-sec-head"><h3>${title}</h3>${right}</div>${body}</section>`;
+      const facts2 = (rows2) => `<ul class="does">${rows2.filter(Boolean).map(([k, v]) => `<li><b>${esc(k)}</b><span>${esc(v)}</span></li>`).join('')}</ul>`;
+      const tabs = st === 'waiting' ? '' : `<div class="tabs2 dw-tabs" role="tablist">${[['summary', 'Summary', ''], ['software', 'Software', inv ? inv.software.length : ''], ['updates', 'Updates', inv?.missingChecked ? inv.missing.length : '']]
+        .map(([t, label, count]) => `<a role="tab" data-seat-tab="${t}"${seatTab === t ? ' aria-current="true"' : ''}>${label}${count === '' ? '' : ` <small>${count}</small>`}</a>`).join('')}</div>`;
+      const hardware = !inv ? (st === 'waiting' ? '' : section('Hardware', none(waitingFor))) : section('Hardware', facts2([
+        ['Model', [inv.manufacturer, inv.model].filter(Boolean).join(' ') || 'Unknown'], inv.serial && ['Serial number', inv.serial], inv.processor && ['Processor', inv.processor],
+        inv.memory ? ['Memory', gb(inv.memory)] : null, inv.started && ['Uptime', howLong(inv.started)], ['Restart', inv.restartNeeded ? 'Needed, to finish installing something' : 'Not needed'],
+        ...inv.disks.map((d) => [`Drive ${d.name}`, d.total ? `${Math.round(100 * d.free / d.total)}% free of ${gb(d.total)}` : 'Unknown'])]));
+      const pane = st === 'waiting' || seatTab === 'summary' ? section('Details', facts2(facts)) + hardware + lock
+        : !inv ? section(seatTab === 'software' ? 'Installed software' : 'Windows updates', none(waitingFor))
+        : seatTab === 'software' ? section(`Installed software <small>${inv.software.length}</small>`, inv.software.length ? list(inv.software.map((p) => [p.name, [p.version, p.publisher].filter(Boolean).join(' · ')])) : none('Nothing is listed.'))
+        : section(`Missing <small>${inv.missingChecked ? inv.missing.length : ''}</small>`, !inv.missingChecked ? none("Windows Update hasn't answered on this computer yet. It's asked every six hours.")
+          : inv.missing.length ? list(inv.missing.map((u) => [u.kb || 'No number', u.title || '', u.kind ? ['waiting', u.kind] : null])) : none('Nothing is missing.'))
+          + section(`Installed <small>${inv.updates.length}</small>`, inv.updates.length ? list(inv.updates.map((u) => [u.kb, [u.kind, dvDay(u.installed)].filter(Boolean).join(' · ')])) : none('Nothing is listed.'));
       panel.body.innerHTML = `<div class="dw-head"><span class="pic dw-pic">${svg('monitor')}</span><div class="dw-name"><h2 id="dw-title">${esc(seat.computer)}</h2>`
-        + `<p><span class="state ${st}">${STATE[st]}</span></p></div><button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>${bar}`
-        + `<section class="dw-sec"><div class="dw-sec-head"><h3>Details</h3></div><ul class="does">${facts.map(([k, v]) => `<li><b>${esc(k)}</b><span>${esc(v)}</span></li>`).join('')}</ul></section>${lock}`;
+        + `<p><span class="state ${st}">${STATE[st]}</span></p></div><button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>${bar}${tabs}${pane}`;
     };
     const openSeat = (c) => {
-      if (seat?.id !== c.id) seatCode = null;
+      if (seat?.id !== c.id) {
+        seatCode = null;
+        seatInv = null;
+        seatTab = 'summary';
+      }
       seat = c;
       drawSeat();
       panel.open('seats', c.id);
       markSeat();
+      // Its software and updates, asked for as it opens.
+      get(`/api/clients/${encodeURIComponent(c.id)}/inventory`).then((got) => {
+        if (seat?.id !== c.id) return;
+        seatInv = got;
+        if (panel.shows('seats', c.id)) drawSeat();
+      }).catch(() => {});
     };
+    // A program or an update: the computers that have it, or are missing it.
+    const openThing = (x) => {
+      const key = thingKey(x);
+      if (panel.shows('seats', key)) {
+        panel.close();
+        return;
+      }
+      seat = null;
+      const rows2 = (items, second) => (items.length ? `<div class="dw-list">${items.map((c) => `<div class="mrow"><span class="pic small">${svg('monitor')}</span><div class="two"><b>${esc(c.computer)}</b><small>${esc(second(c))}</small></div></div>`).join('')}</div>`
+        : '<p class="muted dw-empty">None.</p>');
+      const head = (icon, title, sub) => `<div class="dw-head"><span class="pic dw-pic">${svg(icon)}</span><div class="dw-name"><h2 id="dw-title">${esc(title)}</h2><p>${esc(sub)}</p></div>`
+        + `<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`;
+      const section = (title, count, body) => `<section class="dw-sec"><div class="dw-sec-head"><h3>${esc(title)} <small>${count}</small></h3></div>${body}</section>`;
+      panel.body.innerHTML = dvAt === 'software'
+        ? head('box', x.name, x.publisher || 'Publisher unknown') + section('Installed on', x.computers.length, rows2(x.computers, (c) => [c.version, c.installed && `Installed ${dvDay(c.installed)}`].filter(Boolean).join(' · ')))
+        : head('updates', x.kb || 'Update', x.kind || 'Windows update') + (x.title ? `<section class="dw-sec"><p class="dw-how">${esc(x.title)}</p></section>` : '')
+          + section('Missing on', x.missing.length, rows2(x.missing, () => 'Not installed')) + section('Installed on', x.installed.length, rows2(x.installed, (c) => (c.on ? `Installed ${dvDay(c.on)}` : 'Installed')));
+      panel.open('seats', key);
+      markSeat();
+    };
+    for (const id of ['dv-software', 'dv-updates']) {
+      $(id).addEventListener('click', (e) => {
+        const row = e.target.closest('[data-thing]');
+        const x = row && dvShown.find((y) => thingKey(y) === row.dataset.thing);
+        if (x) openThing(x);
+      });
+    }
     // The list was read again: the computer that's open shows what it is now, or closes when it's gone.
     seatPanel = () => {
       if (!panel.is('seats')) return;
+      if (!seat) {
+        markSeat(); // a program or an update is open: its row stays marked
+        return;
+      }
       const c = computers.find((x) => x.id === panel.key);
       if (!c) {
         panel.close();
@@ -1829,6 +2002,12 @@ const RELEASE_NOTES = [
     panel.el.addEventListener('click', copyClick);
     panel.el.addEventListener('click', async (e) => {
       if (!panel.is('seats') || !seat) return;
+      const tab = e.target.closest('[data-seat-tab]');
+      if (tab) {
+        seatTab = tab.dataset.seatTab;
+        drawSeat();
+        return;
+      }
       const on = (name) => e.target.closest(`[data-seat-${name}]`);
       const lockTo = async (body) => {
         const said = await seatAct(seat, 'removal', body);

@@ -345,18 +345,15 @@ input.pick:focus { outline: none; border-color: var(--accent); }
 .seat-code { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 12px; padding: 12px 12px 12px 16px; border: 1px solid var(--line-strong); border-radius: 12px; background: var(--night); }
 .seat-code code { color: var(--title); font: 600 19px/1.2 Consolas, "Cascadia Mono", monospace; letter-spacing: .06em; user-select: all; }
 .dw-how.warn { color: var(--amber); }
-/* Devices: four counts, the filters, and the tables of computers and sessions. */
-.page.seats-page { max-width: 1240px; }
-.seats-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; }
-.seats-head > .backlink { flex-basis: 100%; }
-.tiles4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
-.tile4 { padding: 13px 16px; }
-.tile4 .label { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--muted); }
-.tile4 .label::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #5E6380; }
-.tile4 .label.ok::before { background: var(--ok); }
-.tile4 .label.ember::before { background: var(--accent-soft); }
-.tile4 .label.amber::before { background: var(--amber); }
-.tile4 b { display: block; font: 650 26px/1.2 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; color: var(--title); }
+/* Devices: the tables of computers, software, updates and sessions. The page itself is laid out as Active Directory is (.dir-page). */
+/* A computer, a program or an update opens the side panel, and the open one is marked. */
+.seats-page :is(#seats-table, #dv-software, #dv-updates) .tr:not(.th) { cursor: pointer; }
+.seats-page :is(#seats-table, #dv-software, #dv-updates) .tr:not(.th):hover { background: #151827; }
+.seats-page :is(#seats-table, #dv-software, #dv-updates) .tr.dw-on { background: #171B2C; box-shadow: inset 3px 0 0 var(--accent); }
+/* A computer's software and updates in the side panel: a long update title takes the lines it needs. */
+.seat-list .two small { white-space: normal; }
+/* Add computers goes with the list of computers. */
+.seats-page:not([data-at="computers"]) #seats-add { display: none; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chips button { height: 30px; padding: 0 12px; background: transparent; color: var(--muted); font-size: 13px; font-weight: 600; }
 .chips button[aria-selected="true"] { background: #1A1D2B; border-color: #3A3E55; color: var(--title); }
@@ -381,7 +378,6 @@ input.pick:focus { outline: none; border-color: var(--accent); }
 .state.offline { color: #5E6380; }
 .state.waiting { color: #FF8A3D; }
 .empty { padding: 26px 18px; color: var(--muted); font-size: 13.5px; text-align: center; }
-.table-title { margin: 10px 0 0; font-size: 15px; font-weight: 650; color: var(--title); }
 
 /* A dialog over the page, such as Add computers. */
 .dialog { width: min(560px, calc(100vw - 32px)); padding: 24px 26px; border: 1px solid var(--line-strong); border-radius: 14px; background: #11131D; color: var(--text); }
@@ -403,7 +399,6 @@ input.pick:focus { outline: none; border-color: var(--accent); }
 a.small-link { margin-top: 8px; padding: 6px 12px; font-size: 12.5px; }
 .fingerprint { display: grid; gap: 4px; margin-top: 4px; font-size: 12.5px; color: var(--muted); }
 .fingerprint code { overflow-wrap: anywhere; color: #D7DAE8; font: 12px Consolas, "Cascadia Mono", monospace; }
-@media (max-width: 900px) { .tiles4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 760px) {
 }
 
@@ -595,9 +590,9 @@ section.page.home.dir-top { max-width: none; padding: 0; gap: 0; }
 .dir-top > .dir-area { display: grid; grid-template-columns: 224px minmax(0, 1fr); gap: 22px 16px; align-content: start; padding: 28px var(--side) 40px; }
 .dir-top > .dir-area > .dnav, .dir-top > .dir-area > .dmain { grid-row: 1; }
 /* No buttons in this one, so its numbers sit at the bottom, where they are on the other banners. */
-#dir-hero { display: flex; flex-direction: column; }
-#dir-hero > .hero-stats { margin-top: auto; padding-top: 18px; }
-#dir-hero .hero-lead { max-width: 720px; }
+#dir-hero, #dv-hero { display: flex; flex-direction: column; }
+#dir-hero > .hero-stats, #dv-hero > .hero-stats { margin-top: auto; padding-top: 18px; }
+#dir-hero .hero-lead, #dv-hero .hero-lead { max-width: 720px; }
 .dhead h1 { font: 800 30px/1.15 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; letter-spacing: -.02em; color: #fff; }
 .dhead p { max-width: 680px; margin-top: 10px; color: #B4B8C8; font-size: 14px; line-height: 1.55; }
 .dmain { grid-column: 2; display: grid; gap: 18px; align-content: start; min-width: 0; }

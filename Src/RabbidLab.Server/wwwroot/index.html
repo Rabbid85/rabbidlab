@@ -532,26 +532,39 @@
   </section>
 
   <!-- Devices: the computers with the Rabbid Lab client, and everyone signed in. -->
-  <section class="page seats-page" id="page-seats" data-page="seats" data-title="Devices" hidden>
-    <header class="page-head seats-head"><div><h1>Devices</h1><p>The computers with the <span data-app>Rabbid Lab</span> client, and who's signed in.</p></div>
-      <button type="button" class="primary" id="seats-add" data-can="seats.add">Add computers</button></header>
-    <div class="tiles4" data-can="seats.view">
-      <div class="card tile4"><span class="label ok">Online</span><b id="n-online"><i class="sk sk-num"></i></b></div>
-      <div class="card tile4"><span class="label">Offline</span><b id="n-offline"><i class="sk sk-num"></i></b></div>
-      <div class="card tile4"><span class="label ember">Waiting for you</span><b id="n-waiting"><i class="sk sk-num"></i></b></div>
-      <div class="card tile4"><span class="label amber">Older client</span><b id="n-behind"><i class="sk sk-num"></i></b></div>
+  <section class="page home dir-top people-page dir-page seats-page" id="page-seats" data-page="seats" data-title="Devices" hidden>
+    <header class="hero" id="dv-hero">
+      <p class="eyebrow">Devices</p>
+      <h1 class="hero-title">Devices</h1>
+      <p class="hero-lead"><b id="dv-state"></b> <span id="dv-lead"></span></p>
+      <div class="hero-stats" id="dv-stats"></div>
+    </header>
+    <div class="dir-area">
+      <!-- The lists of the Devices page down the left; Computers has views of its own under it (console.js). -->
+      <nav class="dnav lists" id="dv-rail" aria-label="Devices">
+        <label class="side-find"><svg><use href="#i-search"/></svg><input type="search" id="dv-find" placeholder="Find" aria-label="Find" autocomplete="off" spellcheck="false"></label>
+        <p class="rail-label" data-can="seats.view">Browse</p>
+        <a href="#seats" data-dv="computers" data-can="seats.view"><svg><use href="#i-monitor"/></svg><span>Computers</span><i class="rail-dot" id="dv-dot" hidden></i><small id="dv-n-computers"></small></a>
+        <div class="dkids" id="dv-views"></div>
+        <a href="#seats/software" data-dv="software" data-can="seats.view"><svg><use href="#i-box"/></svg><span>Software</span><small id="dv-n-software"></small></a>
+        <a href="#seats/updates" data-dv="updates" data-can="seats.view"><svg><use href="#i-updates"/></svg><span>Windows updates</span><small id="dv-n-updates"></small></a>
+        <p class="rail-label" data-can="sessions.view">Console</p>
+        <a href="#seats/sessions" data-dv="sessions" data-can="sessions.view"><svg><use href="#i-users"/></svg><span>Signed in now</span><small id="dv-n-sessions"></small></a>
+      </nav>
+      <div class="dmain"><div class="lib"><div class="lib-body">
+        <div class="dbar"><div class="tabs2" id="dv-tabs"></div><span class="grow"></span>
+          <button type="button" class="small" id="dv-cols" aria-haspopup="menu"><svg><use href="#i-columns"/></svg>Columns</button>
+          <button type="button" class="small" id="dv-refresh" data-tip="Refresh" aria-label="Refresh"><svg><use href="#i-refresh"/></svg></button>
+          <button type="button" class="small" id="dv-export"><svg><use href="#i-csv"/></svg>Export</button>
+          <button type="button" class="primary" id="seats-add" data-can="seats.add"><svg><use href="#i-plus"/></svg><span>Add computers</span></button></div>
+        <p class="dnow"><b id="dv-view-title"></b><span class="bar-note" id="dv-count"></span></p>
+        <div class="table" id="seats-table" data-can="seats.view" data-skel="rows:4"></div>
+        <div class="table" id="dv-software" hidden></div>
+        <div class="table" id="dv-updates" hidden></div>
+        <div class="table" id="sessions-table" hidden></div>
+        <p class="hint problem" id="seats-problem" hidden></p>
+      </div></div></div>
     </div>
-    <div class="chips" id="seats-filter" role="tablist" data-can="seats.view">
-      <button type="button" data-filter="all" aria-selected="true">All <small id="f-all">0</small></button>
-      <button type="button" data-filter="online">Online <small id="f-online">0</small></button>
-      <button type="button" data-filter="offline">Offline <small id="f-offline">0</small></button>
-      <button type="button" data-filter="waiting">Waiting <small id="f-waiting">0</small></button>
-      <button type="button" data-filter="behind">Older client <small id="f-behind">0</small></button>
-    </div>
-    <div class="table" id="seats-table" data-can="seats.view" data-skel="rows:4"></div>
-    <p class="hint problem" id="seats-problem" hidden></p>
-    <h2 class="table-title">Signed in now</h2>
-    <div class="table" id="sessions-table" data-skel="rows:3"></div>
   </section>
 
   <!-- Roles and people: the roles in order down the left, and everyone with their roles, or one role to change (people.js). -->

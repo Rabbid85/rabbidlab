@@ -98,6 +98,22 @@
     };
     // One of several tables inside el, as HTML (cls: its own classes).
     g.table = (list, cls = '') => `<div class="table dgrid ${density()}${cls ? ` ${cls}` : ''}">${body(list).html}</div>`;
+    // The rows given, with the columns that show and in the order shown, as a CSV download. A column's text() is what
+    // it exports as, when get() is only for sorting.
+    g.csv = (list, file) => {
+      const cell = (v) => {
+        // A leading quote keeps Excel from running a value that starts like a formula.
+        const s = (v === null || v === undefined ? '' : String(v)).replace(/^[=+\-@\t\r]/, "'$&");
+        return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+      };
+      const shown = g.shown();
+      const text = [shown.map((c) => cell(c.label)).join(','), ...g.sorted(list).map((x) => shown.map((c) => cell(c.text ? c.text(x) : c.get(x))).join(','))].join('\r\n');
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([`\uFEFF${text}`], { type: 'text/csv' }));
+      a.download = `${file}.csv`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    };
     // Columns: Compact or Relaxed, a tick for each column, and Reset.
     const drawMenu = () => {
       const on = g.shown().map((c) => c.key);

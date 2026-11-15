@@ -77,10 +77,22 @@
   <ol>
     <li>Open <a href="#seats">Devices</a>. New computers show as <b>Waiting</b>.</li>
     <li>Click <b>Approve</b> next to the computer. It's connected from then on.</li>
-    <li>To remove a computer, click <b>Remove</b>. If the client is still installed on it, it connects again and waits for approval.</li>
+    <li>To remove a computer, click it, then <b>Remove from Devices</b> in the panel on the right. If the client is still installed on it, it connects again and waits for approval.</li>
   </ol>
   <p>Don't want to approve each one? In <b>Add computers</b>, turn off <b>Require approval for new computers</b> and they connect right away.</p>
-  <p class="tip">The All, Online, Offline, Waiting and Older client buttons above the list filter it.</p>
+  <p class="tip">The views under Computers on the left (Online, Offline, Waiting for approval and the rest) narrow the list.</p>
+</article>
+
+<article data-key="inventory" data-group="Computers" data-title="Hardware, software and Windows updates">
+  <p>Each computer's client reports what's on it: model, serial number, processor, memory, drives, uptime, whether Windows is waiting for a restart, the installed software, and the Windows updates installed and missing. Nothing is installed or changed on the computer for this.</p>
+  <ul>
+    <li><b>Computers</b> shows the short version on each row. The views on the left pick out what needs looking at: Needs updates, Needs restart, Low disk space (under 15% free on C:) and Older client. More columns are under <b>Columns</b>.</li>
+    <li><b>Click a computer</b> for its hardware, and tabs with its software and its updates.</li>
+    <li><b>Software</b> lists every program across the computers. Click one to see which computers have it, and which version.</li>
+    <li><b>Windows updates</b> lists every update. Click one to see where it's missing and where it's installed.</li>
+    <li><b>Export</b> saves the open list as a CSV file.</li>
+  </ul>
+  <p>The client looks every half hour and sends when something changed. It asks Windows Update what's missing every six hours; antivirus definition updates are left out. A computer needs client 1.1.165 or later.</p>
 </article>
 
 <article data-key="client" data-group="Computers" data-title="The client on a computer">
@@ -97,7 +109,7 @@
 <article data-key="client-uninstall" data-group="Computers" data-title="Uninstall the client">
   <p>Once a computer has connected to a server, the client is locked on it: Windows won't uninstall it from Installed apps or from the Rabbid Lab Client window. An administrator at the computer can still stop its service; the lock is on uninstalling. A client that never connected to a server isn't locked.</p>
   <ol>
-    <li>Open <a href="#seats">Devices</a> and click the computer, or <b>Uninstall</b> next to it. It opens in a panel on the right.</li>
+    <li>Open <a href="#seats">Devices</a> and click the computer. It opens in a panel on the right.</li>
     <li><b>Uninstall now</b> makes the client uninstall itself within a minute. The computer then shows as Offline: click <b>Remove</b> to take it off the list.</li>
     <li>Or click <b>Allow for an hour</b> so someone at the computer can uninstall it. <b>Lock again</b> ends that early.</li>
   </ol>
@@ -169,7 +181,7 @@
     <li>Click a column name to sort by it, and again to turn the order round. Drag the edge of a column name to make it wider or narrower; double-click the edge to fit the column to what is in it.</li>
     <li><b>Rows</b>, at the top of Columns, switches between <b>Compact</b> (the default) and <b>Relaxed</b>.</li>
   </ul>
-  <p>Every table in the console works the same way: Domain health, AD audit, Recycle Bin, the Attribute browser, Devices and Signed in now too. Where a table has no toolbar, Columns is the icon at the right end of its heading row. Drag a heading onto another to move that column. Columns, order, widths and sort are kept in this browser for each table; Compact or Relaxed is one setting for all of them.</p>
+  <p>Every table in the console works the same way: Domain health, AD audit, Recycle Bin, the Attribute browser and the lists under Devices too. Drag a heading onto another to move that column. Columns, order, widths and sort are kept in this browser for each table; Compact or Relaxed is one setting for all of them.</p>
 </article>
 
 <article data-key="dir-off" data-group="Active Directory" data-title="Turn accounts off, or delete them">
@@ -365,7 +377,7 @@
 
 <article data-key="sessions" data-group="Access" data-title="See who's signed in">
   <ol>
-    <li>Open <a href="#seats">Devices</a>. <b>Signed in now</b> lists everyone signed in to <span data-app>Rabbid Lab</span>, with their roles, browser and address.</li>
+    <li>Open <a href="#seats">Devices</a> and click <b>Signed in now</b> on the left. It lists everyone signed in to <span data-app>Rabbid Lab</span>, with their roles, browser and address.</li>
     <li>Click <b>Sign out</b> on someone to end their session straight away.</li>
   </ol>
 </article>

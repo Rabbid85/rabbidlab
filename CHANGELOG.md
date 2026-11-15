@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.165 (2026-11-14)
+
+- Devices is laid out like Active Directory now: Computers, Software, Windows updates and Signed in now down the left, with views for computers that need updates, need a restart, are low on disk space or have an older client.
+- Each computer reports its hardware, drives, installed software and Windows updates. Click a computer to see them, or open Software or Windows updates to see every computer that has one. A computer needs client 1.1.165 for this.
+- Columns and Export are in the bar. Client, Address and Last seen are under Columns now, and Remove and Uninstall are in the panel that opens when you click a computer.
+
 ## 1.1.164 (2026-11-14)
 
 - Devices: the Windows version has a column of its own, next to the computer name, and no longer sits under it.
