@@ -350,7 +350,7 @@ input.pick:focus { outline: none; border-color: var(--accent); }
 /* A computer, a program or an update opens the side panel, and the open one is marked. */
 .seats-page :is(#seats-table, #dv-software, #dv-updates, #dv-scripts, #dv-jobs, #dv-workflows, #dv-wmi) .tr:not(.th) { cursor: pointer; }
 .seats-page :is(#seats-table, #dv-software, #dv-updates, #dv-scripts, #dv-jobs, #dv-workflows, #dv-wmi) .tr:not(.th):hover { background: #151827; }
-.seats-page :is(#seats-table, #dv-software, #dv-updates, #dv-scripts, #dv-jobs, #dv-workflows, #dv-wmi) .tr.dw-on { background: #171B2C; box-shadow: inset 3px 0 0 var(--accent); }
+.seats-page :is(#seats-table, #dv-software, #dv-updates, #dv-scripts, #dv-jobs, #dv-workflows, #dv-wmi) .tr.dw-on { background: #171B2C; }
 /* WMI query (devices.js): which computers, the namespace and the examples on one line, the query under them, then Run. */
 .wq { display: grid; gap: 10px; margin-top: 14px; }
 .wq[hidden] { display: none; }

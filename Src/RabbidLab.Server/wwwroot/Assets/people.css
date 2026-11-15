@@ -183,7 +183,7 @@ button.link:hover { background: none; color: var(--title); }
 }
 
 /* In the side panel: the row it's for is marked, and roles to give are buttons with their colour. */
-.prow.dw-on { background: #171B2C; box-shadow: inset 3px 0 0 var(--accent); }
+.prow.dw-on { background: #171B2C; }
 .dw-give button { display: inline-flex; align-items: center; gap: 7px; }
 .dw-give .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c, var(--muted)); }
 

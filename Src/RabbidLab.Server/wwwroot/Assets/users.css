@@ -409,7 +409,7 @@ dialog.drawer::backdrop { background: rgba(5, 6, 10, .55); backdrop-filter: blur
 
 /* The side panel doesn't block the page: no dimming, the list stays usable, and the open row is marked. */
 dialog.drawer:not(:modal) { z-index: 60; }
-.adt .tr.dw-on { background: #171B2C; box-shadow: inset 3px 0 0 var(--accent); }
+.adt .tr.dw-on { background: #171B2C; }
 /* A section's own actions, beside its heading. */
 .dw-links { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 2px; }
 .dw-link { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 8px; border: 0; border-radius: 7px; background: none; color: var(--accent-soft); font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; }

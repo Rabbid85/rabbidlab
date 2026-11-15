@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.176', [
+    'The row whose side panel is open no longer has an orange line down its left edge; it just turns a little darker. The wiki tips lost their orange edge too.']],
   ['1.1.175', [
     'An update that installs by itself shows the full update window on every open page. When someone clicks Install now, their page shows the window and other pages show a short note.']],
   ['1.1.174', [

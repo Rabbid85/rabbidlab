@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.176 (2026-11-15)
+
+- The row whose side panel is open no longer has an orange line down its left edge; it just turns a little darker. The wiki tips lost their orange edge too.
+
 ## 1.1.175 (2026-11-15)
 
 - An update that installs by itself shows the full update window on every open page. When someone clicks Install now, their page shows the window and other pages show a short note.
