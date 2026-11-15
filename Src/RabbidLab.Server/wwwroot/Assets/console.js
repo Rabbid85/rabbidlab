@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.188', [
+    'The opening screen now plays like the mockup every time the console opens: the flask fills one step at a time even when everything loads at once.',
+    'The side panel has a soft, close shadow instead of the wide dark smear over the page.']],
   ['1.1.187', [
     'A new opening screen while the console loads: your lab name under the flask, which fills up as your links, sensors, devices and updates load, with what each one found. After an update it also shows what is new in that version.']],
   ['1.1.186', [
@@ -1495,15 +1498,45 @@ const RELEASE_NOTES = [
     const got = {}; // path -> what it said
     let shownAt = 0;
     let news = null; // { version, note } when this browser opens a version for the first time
-    const done = () => steps.filter((s) => s.path in got);
+    // It plays at its own pace, one step at a time, so the flask fills where it can be seen even when everything is back at once.
+    let landed = 0; // steps shown as done
+    let ready = false; // the console is ready underneath
+    let timer = null;
+    const pace = () => (news ? 760 : 480); // between steps; slower after an update, with a note to read
     const draw = () => {
       if (!el) return;
-      const n = done().length;
-      const next = steps.find((s) => !(s.path in got));
-      const last = [...steps].reverse().find((s) => s.path in got && got[s.path]);
-      el.querySelector('.boot-level').style.transform = `translateY(${LEVEL(n / steps.length)}px)`;
-      el.querySelector('.boot-dots').innerHTML = steps.map((s) => `<i${s.path in got ? ' class="on"' : ''}></i>`).join('');
-      el.querySelector('.boot-step').innerHTML = next ? `<b>${esc(next.doing)}…</b>${last ? `<span> · ${esc(got[last.path])}</span>` : ''}` : '';
+      const next = steps[landed];
+      const last = steps[landed - 1];
+      el.querySelector('.boot-level').style.transform = `translateY(${LEVEL(landed / steps.length)}px)`;
+      el.querySelector('.boot-dots').innerHTML = steps.map((_, k) => `<i${k < landed ? ' class="on"' : ''}></i>`).join('');
+      el.querySelector('.boot-step').innerHTML = next ? `<b>${esc(next.doing)}…</b>${last && got[last.path] ? `<span> · ${esc(got[last.path])}</span>` : ''}` : '';
+    };
+    // Lands the next step when its read is back, then the welcome and the fade once all are in and the console is ready.
+    const tick = () => {
+      if (!el) return;
+      const next = steps[landed];
+      if (next && next.path in got) {
+        landed++;
+        drop();
+        setTimeout(draw, 550);
+      }
+      if (landed >= steps.length && ready) {
+        timer = setTimeout(welcome, 650);
+        return;
+      }
+      timer = setTimeout(tick, pace());
+    };
+    const welcome = () => {
+      if (!el) return;
+      const first = (meInfo?.name || meInfo?.username || '').split(' ')[0];
+      const last = [...steps].reverse().find((s) => got[s.path]);
+      el.querySelector('.boot-step').innerHTML = first ? `<b>Welcome back, ${esc(first)}.</b>${last ? `<span> · ${esc(got[last.path])}</span>` : ''}` : '';
+      const gone = el;
+      el = null;
+      setTimeout(() => {
+        gone.classList.add('out');
+        setTimeout(() => gone.remove(), 500);
+      }, Math.max(700, (news ? 3600 : 0) - (Date.now() - shownAt)));
     };
     // A square of the banner's colours drops into the flask for each read that comes back.
     const drop = () => {
@@ -1529,10 +1562,9 @@ const RELEASE_NOTES = [
         } catch {
           got[s.path] = '';
         }
-        drop();
-        setTimeout(draw, el ? 600 : 0);
       },
       // Sign-in answered: only the steps this person's roles read, and what's new when this browser hasn't seen this version.
+      // It comes up now, every time the console opens.
       signedIn(s) {
         steps = BOOT.filter((x) => !x.can || can.has(x.can));
         let seen = null;
@@ -1543,15 +1575,14 @@ const RELEASE_NOTES = [
           // Not kept: no note.
         }
         const note = seen && seen !== s.version ? RELEASE_NOTES.find(([v]) => v === s.version)?.[1]?.[0] : null;
-        if (note) {
-          news = { version: s.version, note };
-          this.show(); // straight away, so there's time to read it
-        }
+        if (note) news = { version: s.version, note };
+        this.show();
         draw();
       },
       show() {
         if (el || !document.body.classList.contains('booting')) return;
         shownAt = Date.now();
+        timer = setTimeout(tick, 250);
         el = document.createElement('div');
         el.className = 'boot';
         el.setAttribute('role', 'status');
@@ -1562,20 +1593,11 @@ const RELEASE_NOTES = [
         draw();
       },
       get shown() { return !!el; },
-      // The console is ready: full, a welcome, then the screen fades away. A note about an update stays up long enough to read.
+      // The console is ready underneath: the steps still to land do, then the welcome, then the screen fades away.
       finish() {
         if (!el) return;
-        for (const s of steps) if (!(s.path in got)) got[s.path] = '';
-        draw();
-        const first = (meInfo?.name || meInfo?.username || '').split(' ')[0];
-        const last = [...steps].reverse().find((s) => got[s.path]);
-        el.querySelector('.boot-step').innerHTML = first ? `<b>Welcome back, ${esc(first)}.</b>${last ? `<span> · ${esc(got[last.path])}</span>` : ''}` : '';
-        const gone = el;
-        el = null;
-        setTimeout(() => {
-          gone.classList.add('out');
-          setTimeout(() => gone.remove(), 500);
-        }, Math.max(650, (news ? 3200 : 0) - (Date.now() - shownAt)));
+        ready = true;
+        for (const s of steps) if (!(s.path in got)) got[s.path] = ''; // a read the page didn't make this time
       },
     };
   })();

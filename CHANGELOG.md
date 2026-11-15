@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.188 (2026-11-15)
+
+- The opening screen now plays like the mockup every time the console opens: the flask fills one step at a time even when everything loads at once.
+- The side panel has a soft, close shadow instead of the wide dark smear over the page.
+
 ## 1.1.187 (2026-11-15)
 
 - A new opening screen while the console loads: your lab name under the flask, which fills up as your links, sensors, devices and updates load, with what each one found. After an update it also shows what is new in that version.
