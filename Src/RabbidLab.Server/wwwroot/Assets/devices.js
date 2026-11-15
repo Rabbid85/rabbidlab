@@ -124,7 +124,7 @@
       { key: 'language', label: 'Language', w: 100, on: true, get: (s) => LANG[s.language] },
       { key: 'about', label: 'Description', w: 280, on: true, get: (s) => s.about || '', cell: (s) => `<span class="ell muted">${esc(s.about || '')}</span>` },
       { key: 'changed', label: 'Changed', w: 150, on: true, get: (s) => ms(s.changed), text: (s) => s.changed || '', cell: (s) => `<span class="muted">${esc(when(s.changed))}</span>` },
-      { key: 'by', label: 'By', w: 110, on: true, get: (s) => s.by || '' },
+      { key: 'by', label: 'By', w: 110, on: true, get: (s) => (s.builtIn ? 'Built-in' : s.by || '') },
       { key: 'minutes', label: 'Time limit', w: 100, get: (s) => s.minutes, text: (s) => `${s.minutes} min`, cell: (s) => `<span class="muted">${s.minutes} min</span>` },
       { key: 'workflows', label: 'Workflows', w: 180, get: (s) => s.workflows.join(', ') },
     ],
@@ -526,10 +526,22 @@
     $('run-typed').hidden = !typed;
     $('run-preview').hidden = !(script && picked);
     $('run-preview').textContent = script && picked ? scriptOf(picked)?.text || '' : '';
+    $('run-copy').hidden = !(script && picked && has('seats.scripts.edit'));
+    $('run-save-row').hidden = !typed;
+    $('run-test').hidden = !script || (!picked && !typed);
     $('run-form').hidden = !script && run.on.length <= BRAKE;
     $('run-go').disabled = script && !picked && !typed;
     pressed($('run-lang'), 'lang', run.lang);
     $('run-text').placeholder = run.lang === 'cmd' ? 'ipconfig /flushdns' : 'Get-Service Spooler';
+  };
+  // The scripts to pick: the library's own, then the built-in ones, then one typed in now.
+  const fillScripts = (selected = '') => {
+    const opt = (s) => `<option value="${esc(s.id)}"${s.id === selected ? ' selected' : ''}>${esc(s.name)} (${LANG[s.language]})</option>`;
+    const mine = (scripts || []).filter((s) => !s.builtIn);
+    const built = (scripts || []).filter((s) => s.builtIn);
+    $('run-script').innerHTML = (has('seats.scripts.run') ? (mine.length ? `<optgroup label="Your scripts">${mine.map(opt).join('')}</optgroup>` : '')
+      + (built.length ? `<optgroup label="Built-in">${built.map(opt).join('')}</optgroup>` : '') : '')
+      + (has('seats.scripts.edit') ? `<option value=""${selected === null ? ' selected' : ''}>Type one now</option>` : '') || '<option value="" disabled selected>The library has no scripts yet</option>';
   };
   const openRun = async (kind, on, preset = '') => {
     const list = on.filter((c) => c.approved);
@@ -549,9 +561,15 @@
     const n = list.length;
     $('run-title').textContent = kind === 'script' ? 'Run a script' : kind === 'restart' ? `Restart ${many(n)}?` : 'Install Windows updates';
     $('run-lead').textContent = `On ${names(list)}.`;
-    $('run-script').innerHTML = (has('seats.scripts.run') ? (scripts || []).map((s) => `<option value="${esc(s.id)}"${s.id === preset ? ' selected' : ''}>${esc(s.name)} (${LANG[s.language]})</option>`).join('') : '')
-      + (has('seats.scripts.edit') ? '<option value="">Type one now</option>' : '') || '<option value="" disabled selected>The library has no scripts yet</option>';
+    fillScripts(preset);
     $('run-text').value = '';
+    // Test on one of them first: online ones first.
+    $('run-test-on').innerHTML = [...list].sort((a, b) => (D.stateOf(a) === 'online' ? 0 : 1) - (D.stateOf(b) === 'online' ? 0 : 1))
+      .map((c) => `<option value="${esc(c.id)}">${esc(c.computer)}${D.stateOf(c) === 'online' ? '' : ' (offline)'}</option>`).join('');
+    $('run-test-out').hidden = true;
+    $('run-save-form').hidden = true;
+    $('run-save').hidden = false;
+    testing = null;
     $('run-count').value = '';
     for (const id of ['run-count', 'run-count-label']) $(id).hidden = n <= BRAKE;
     $('run-count-label').textContent = `That's ${n} computers. Type ${n} to go ahead`;
@@ -569,6 +587,93 @@
     drawRun();
   });
   $('run-cancel').addEventListener('click', () => $('run-dialog').close());
+  // A library or built-in script as the start of one typed in now.
+  $('run-copy').addEventListener('click', () => {
+    const s = scriptOf($('run-script').value);
+    if (!s) return;
+    $('run-script').value = '';
+    run.lang = s.language;
+    $('run-text').value = s.text.replace(/\r\n/g, '\n');
+    drawRun();
+    $('run-text').focus();
+  });
+  // What was typed, kept in the library; it's then the script picked.
+  $('run-save').addEventListener('click', () => {
+    $('run-save').hidden = true;
+    $('run-save-form').hidden = false;
+    $('run-save-name').value = '';
+    $('run-save-name').focus();
+  });
+  const saveTyped = async () => {
+    const name = $('run-save-name').value.trim();
+    if (!name) {
+      $('run-save-name').focus();
+      return;
+    }
+    $('run-save-go').disabled = true;
+    try {
+      const made = await confirmed(() => send('/api/devices/scripts', { name, language: run.lang, text: $('run-text').value, minutes: 10 }));
+      scripts = await get('/api/devices/scripts');
+      fillScripts(made.id);
+      $('run-save-form').hidden = true;
+      $('run-save').hidden = false;
+      say('run-problem', '');
+      drawRun();
+      toast('Saved to the library.', `${name} is under Scripts.`);
+      if (D.at() === 'scripts') D.reload();
+    } catch (e) {
+      if (!e.cancelled) say('run-problem', e.message);
+    }
+    $('run-save-go').disabled = false;
+  };
+  $('run-save-go').addEventListener('click', saveTyped);
+  $('run-save-name').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); saveTyped(); } });
+
+  // Test: the script on one computer, with what it wrote shown here, before it goes to all of them.
+  let testing = null; // the test job being watched
+  const showTest = (text, bad = false) => {
+    $('run-test-out').hidden = false;
+    $('run-test-out').textContent = text;
+    $('run-test-out').classList.toggle('bad', bad);
+  };
+  $('run-test-go').addEventListener('click', async () => {
+    const c = run.on.find((x) => x.id === $('run-test-on').value);
+    if (!c) return;
+    const body = { kind: 'script', clients: [c.id] };
+    if ($('run-script').value) body.script = $('run-script').value;
+    else Object.assign(body, { language: run.lang, text: $('run-text').value });
+    $('run-test-go').disabled = true;
+    try {
+      const made = await confirmed(() => send('/api/devices/run', body));
+      testing = made.id;
+      say('run-problem', '');
+      showTest(`Sent to ${c.computer}. Waiting for it to pick it up…`);
+      const id = made.id;
+      const until = Date.now() + 6 * 60000;
+      while (testing === id && $('run-dialog').open && Date.now() < until) {
+        await new Promise((r) => setTimeout(r, 1500));
+        let j;
+        try {
+          j = await get(`/api/devices/jobs/${encodeURIComponent(id)}`);
+        } catch {
+          continue;
+        }
+        const t = j.targets.find((x) => x.client === c.id);
+        if (!t) break;
+        if (t.state === 'running') showTest(`Running on ${c.computer}…`);
+        if (t.state === 'waiting' || t.state === 'running') continue;
+        const out = await get(`/api/devices/jobs/${encodeURIComponent(id)}/output/${encodeURIComponent(c.id)}`).catch(() => ({ output: [] }));
+        const step = t.steps[0] || {};
+        const head = [`${c.computer}: ${(STATE[t.state] || ['', t.state])[1]}`, step.exit != null ? `exit ${step.exit}` : '', step.seconds != null ? secs(step.seconds) : '', t.problem || ''].filter(Boolean).join(' · ');
+        showTest(`${head}\n\n${(out.output || []).join('\n').trim() || 'It wrote nothing.'}`, t.state !== 'done' || (step.exit != null && step.exit !== 0));
+        break;
+      }
+    } catch (e) {
+      if (!e.cancelled) say('run-problem', e.message);
+    }
+    $('run-test-go').disabled = false;
+  });
+  $('run-dialog').addEventListener('close', () => { testing = null; });
   $('run-go').addEventListener('click', async () => {
     const body = { kind: run.kind, clients: run.on.map((c) => c.id) };
     if (run.kind === 'script') {
@@ -683,7 +788,8 @@
   const openScript = (s) => {
     shown = s;
     panel.body.innerHTML = head('code', s.name, esc(`${LANG[s.language]} · time limit ${s.minutes} minutes`))
-      + `<div class="dw-bar">${has('seats.scripts.run') ? qa('data-sc-run', 'right', 'Run…') : ''}${has('seats.scripts.edit') ? qa('data-sc-edit', 'edit', 'Edit') + qa('data-sc-copy', 'copy', 'Duplicate') + qa('data-sc-del', 'trash', 'Delete') : ''}</div>`
+      + `<div class="dw-bar">${has('seats.scripts.run') ? qa('data-sc-run', 'right', 'Run…') : ''}${has('seats.scripts.edit') ? (s.builtIn ? '' : qa('data-sc-edit', 'edit', 'Edit')) + qa('data-sc-copy', 'copy', 'Duplicate') + (s.builtIn ? '' : qa('data-sc-del', 'trash', 'Delete')) : ''}</div>`
+      + (s.builtIn ? `<p class="dw-how">Built into ${esc(R.app())}. Duplicate it to make one of your own to change.</p>` : '')
       + (s.about ? section('About', `<p class="dw-how">${esc(s.about)}</p>`) : '')
       + section('Script', `<pre class="code-box">${esc(s.text)}</pre>`)
       + (s.workflows.length ? section(`Workflows that run it <small>${s.workflows.length}</small>`, `<div class="dw-list">${s.workflows.map((w) => `<div class="mrow"><span class="pic small">${svg('org')}</span><div class="two"><b>${esc(w)}</b></div></div>`).join('')}</div>`) : '')
@@ -691,24 +797,19 @@
     panel.open('devices', `script:${s.id}`);
     mark();
   };
-  // Where a new script can start: things people run on computers all the time. Each is only a start, to read and change.
-  const EXAMPLES = [
-    ['Clear temp files', 'powershell', 'Empties the Windows and user temp folders.', "Get-ChildItem \"$env:windir\\Temp\", 'C:\\Users\\*\\AppData\\Local\\Temp' -Force -ErrorAction SilentlyContinue |\r\n    Get-ChildItem -Force -ErrorAction SilentlyContinue |\r\n    Remove-Item -Recurse -Force -ErrorAction SilentlyContinue\r\n'Temp folders emptied.'"],
-    ['Restart a service', 'powershell', 'Restarts the print spooler. Change the name for another service.', "$name = 'Spooler'\r\nRestart-Service -Name $name -Force\r\nGet-Service -Name $name | Format-Table Name, Status -AutoSize"],
-    ['Flush DNS', 'cmd', 'Empties the DNS cache.', 'ipconfig /flushdns'],
-    ['Update Group Policy', 'cmd', 'Applies Group Policy now.', 'gpupdate /force /wait:120'],
-    ['Install an app with winget', 'powershell', 'Installs Google Chrome for everyone. Change the id for another app.',
-      "$id = 'Google.Chrome'\r\n# SYSTEM has no winget on its path: the one Windows came with is under WindowsApps.\r\n$winget = Get-ChildItem \"$env:ProgramFiles\\WindowsApps\\Microsoft.DesktopAppInstaller_*_x64__8wekyb3d8bbwe\\winget.exe\" -ErrorAction SilentlyContinue |\r\n    Sort-Object LastWriteTime | Select-Object -Last 1\r\nif (-not $winget) { 'winget is not on this computer.'; exit 1 }\r\n& $winget.FullName install --id $id --exact --silent --scope machine --accept-package-agreements --accept-source-agreements\r\nexit $LASTEXITCODE"],
-    ['Uninstall an app with winget', 'powershell', 'Uninstalls an app by its winget id.',
-      "$id = 'Valve.Steam'\r\n$winget = Get-ChildItem \"$env:ProgramFiles\\WindowsApps\\Microsoft.DesktopAppInstaller_*_x64__8wekyb3d8bbwe\\winget.exe\" -ErrorAction SilentlyContinue |\r\n    Sort-Object LastWriteTime | Select-Object -Last 1\r\nif (-not $winget) { 'winget is not on this computer.'; exit 1 }\r\n& $winget.FullName uninstall --id $id --exact --silent --accept-source-agreements\r\nexit $LASTEXITCODE"],
-    ['Disk space', 'powershell', 'Lists each drive with its size and free space.', "Get-CimInstance Win32_LogicalDisk -Filter 'DriveType=3' |\r\n    Select-Object DeviceID, @{n='SizeGB';e={[math]::Round($_.Size / 1GB)}}, @{n='FreeGB';e={[math]::Round($_.FreeSpace / 1GB)}} |\r\n    Format-Table -AutoSize"],
-    ['Local administrators', 'powershell', 'Lists who is in the Administrators group.', "Get-LocalGroupMember -SID 'S-1-5-32-544' | Format-Table Name, ObjectClass, PrincipalSource -AutoSize"],
-    ['Errors in the System log', 'powershell', 'The last 20 errors in the System event log from the past day.', "Get-WinEvent -FilterHashtable @{ LogName = 'System'; Level = 1, 2; StartTime = (Get-Date).AddDays(-1) } -MaxEvents 20 -ErrorAction SilentlyContinue |\r\n    Format-Table TimeCreated, ProviderName, Id, Message -Wrap"],
-    ['Defender quick scan', 'powershell', 'Updates Microsoft Defender and runs a quick scan.', "Update-MpSignature\r\nStart-MpScan -ScanType QuickScan\r\nGet-MpComputerStatus | Format-List AntivirusSignatureLastUpdated, QuickScanEndTime"],
-  ];
+  // A new script can start from a built-in one (BuiltInScripts.cs): things people run on computers all the time.
+  const builtIns = () => (scripts || []).filter((s) => s.builtIn);
   let editing = { id: null, lang: 'powershell' };
   $('sc-min').innerHTML = `${R.stepper('id="sc-minutes" min="1" max="240" value="10" aria-label="Minutes"')}<span>minutes</span>`;
-  const openScriptEdit = (s, copy = false) => {
+  const openScriptEdit = async (s, copy = false) => {
+    if (!scripts) {
+      try {
+        scripts = await get('/api/devices/scripts');
+      } catch (e) {
+        oops(e);
+        return;
+      }
+    }
     editing = { id: s && !copy ? s.id : null, lang: s?.language || 'powershell' };
     $('sc-title').textContent = editing.id ? 'Edit script' : 'New script';
     $('sc-name').value = s ? (copy ? `${s.name} (copy)`.slice(0, 80) : s.name) : '';
@@ -716,7 +817,7 @@
     $('sc-minutes').value = s?.minutes || 10;
     $('sc-text').value = s?.text || '';
     $('sc-start-row').hidden = !!s;
-    $('sc-start').innerHTML = `<option value="">An empty script</option>${EXAMPLES.map((x, i) => `<option value="${i}">${esc(x[0])} (${LANG[x[1]]})</option>`).join('')}`;
+    $('sc-start').innerHTML = `<option value="">An empty script</option>${builtIns().map((x) => `<option value="${esc(x.id)}">${esc(x.name)} (${LANG[x.language]})</option>`).join('')}`;
     pressed($('sc-lang'), 'lang', editing.lang);
     say('sc-problem', '');
     $('script-dialog').showModal();
@@ -729,9 +830,9 @@
     pressed($('sc-lang'), 'lang', editing.lang);
   });
   $('sc-start').addEventListener('change', () => {
-    const x = EXAMPLES[Number($('sc-start').value)];
-    if (!$('sc-start').value || !x) return;
-    [$('sc-name').value, editing.lang, $('sc-about').value, $('sc-text').value] = x;
+    const x = builtIns().find((s) => s.id === $('sc-start').value);
+    if (!x) return;
+    [$('sc-name').value, editing.lang, $('sc-about').value, $('sc-text').value, $('sc-minutes').value] = [x.name, x.language, x.about || '', x.text, x.minutes];
     pressed($('sc-lang'), 'lang', editing.lang);
   });
   // Tab indents in a script; Escape still leaves the window.

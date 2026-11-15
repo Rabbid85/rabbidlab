@@ -51,7 +51,7 @@ public static class DevicesApi
             !Seeing(context, Permissions.ScriptsRun, Permissions.ScriptsEdit, Permissions.Workflows) ? Access.NotAllowed()
             : Results.Ok(scripts.All().Select(s => new
             {
-                id = s.Id, name = s.Name, about = s.About, language = s.Language, text = s.Text, minutes = s.Minutes, by = s.By, changed = s.Changed,
+                id = s.Id, name = s.Name, about = s.About, language = s.Language, text = s.Text, minutes = s.Minutes, by = s.By, changed = s.Changed, builtIn = s.BuiltIn,
                 workflows = workflows.Using(s.Id).Select(w => w.Name),
             })));
 
@@ -75,6 +75,10 @@ public static class DevicesApi
             if ((Access.RefuseUnless(context, Permissions.ScriptsEdit) ?? confirm.Refuse(context)) is { } refused)
             {
                 return refused;
+            }
+            if (BuiltInScripts.Is(id))
+            {
+                return Results.BadRequest(new { error = "Built-in scripts can't be deleted." });
             }
             if (workflows.Using(id) is { Count: > 0 } used)
             {

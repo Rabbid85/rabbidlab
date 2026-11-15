@@ -1517,8 +1517,16 @@
       <p class="form-label">Language</p>
       <div class="seg pw-mode" id="run-lang"><button type="button" data-lang="powershell" aria-pressed="true">PowerShell</button><button type="button" data-lang="cmd" aria-pressed="false">Command</button></div>
       <label for="run-text">Script</label><textarea id="run-text" spellcheck="false" autocomplete="off" placeholder="Get-Service Spooler"></textarea>
+      <div class="run-save" id="run-save-row"><button type="button" class="small" id="run-save"><svg><use href="#i-download"/></svg>Save to library…</button>
+        <span class="run-save-form" id="run-save-form" hidden><input id="run-save-name" maxlength="80" autocomplete="off" spellcheck="false" placeholder="Name it" aria-label="Name for the script"><button type="button" class="small primary" id="run-save-go">Save</button></span></div>
     </div>
     <pre class="code-box" id="run-preview" hidden></pre>
+    <button type="button" class="linkish run-copy" id="run-copy" hidden>Edit a copy</button>
+    <div class="run-test" id="run-test" hidden>
+      <p class="form-label">Test it first</p>
+      <div class="run-test-row"><select id="run-test-on" aria-label="Computer to test on"></select><button type="button" class="small" id="run-test-go"><svg><use href="#i-right"/></svg>Test</button></div>
+      <pre class="code-box run-test-out" id="run-test-out" hidden></pre>
+    </div>
     <label for="run-count" id="run-count-label" hidden></label><input id="run-count" inputmode="numeric" maxlength="6" autocomplete="off" hidden>
   </div>
   <p class="hint" id="run-note"></p>

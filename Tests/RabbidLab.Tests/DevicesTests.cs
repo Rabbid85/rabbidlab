@@ -77,6 +77,27 @@ public sealed class DevicesTests : IDisposable
         await Id(await admin.PostAsJsonAsync("/api/devices/scripts", new { name, language = "cmd", text, minutes = 5 }));
 
     [Fact]
+    public async Task Built_in_scripts_are_in_the_library_to_run_but_not_to_change()
+    {
+        var admin = await Admin();
+        var (id, client) = await Computer();
+
+        var all = (await admin.GetFromJsonAsync<JsonElement>("/api/devices/scripts")).EnumerateArray().ToList();
+        var queue = all.Single(s => s.GetProperty("id").GetString() == "builtin-clear-print-queue");
+        var ran = await Id(await admin.PostAsJsonAsync("/api/devices/run", new { kind = "script", clients = new[] { id }, script = "builtin-clear-print-queue" }));
+        var change = await admin.PostAsJsonAsync("/api/devices/scripts", new { id = "builtin-flush-dns", name = "Flush DNS", language = "cmd", text = "del C:\\*", minutes = 5 });
+        var delete = await admin.PostAsync("/api/devices/scripts/builtin-flush-dns/delete", null);
+        var taken = await Take(client);
+
+        Assert.True(queue.GetProperty("builtIn").GetBoolean());
+        Assert.True(all.Count(s => s.GetProperty("builtIn").GetBoolean()) >= 10);
+        Assert.Contains("Stop-Service -Name Spooler", taken.Single(j => j.GetProperty("id").GetString() == ran).GetProperty("steps")[0].GetProperty("text").GetString());
+        Assert.Equal(HttpStatusCode.BadRequest, change.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, delete.StatusCode);
+        Assert.Equal("ipconfig /flushdns\r\n", app.Services.GetRequiredService<DeviceScripts>().Find("builtin-flush-dns")!.Text);
+    }
+
+    [Fact]
     public async Task A_printer_goes_out_as_a_job_with_what_was_typed_checked_and_quoted()
     {
         var admin = await Admin();

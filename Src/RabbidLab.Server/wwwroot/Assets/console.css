@@ -435,6 +435,18 @@ input.pick:focus { outline: none; border-color: var(--accent); }
 .script-dialog .form textarea { min-height: 300px; }
 #run-form textarea { min-height: 150px; }
 #run-form .code-box { max-height: 200px; margin: 8px 0 0; }
+/* Run a script: saving what was typed, a copy of a library script, and a test on one computer with what it wrote. */
+.run-save { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; }
+.run-save-form { display: inline-flex; align-items: center; gap: 8px; }
+.run-save-form input { width: 220px; }
+.run-save .small, .run-test-row .small { display: inline-flex; align-items: center; gap: 7px; }
+.run-save .small svg, .run-test-row .small svg { width: 14px; height: 14px; }
+.run-copy { justify-self: start; margin: 6px 0 0; font-size: 12.5px; text-align: left; }
+.run-test { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+.run-test-row { display: flex; gap: 8px; }
+.run-test-row select { flex: 1; min-width: 0; }
+#run-form .run-test-out { max-height: 240px; white-space: pre-wrap; }
+.run-test-out.bad { border-color: color-mix(in srgb, var(--red) 55%, transparent); }
 .sc-min { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; }
 .fl-time { display: flex; gap: 8px; }
 .fl-time select { flex: 1; min-width: 0; }

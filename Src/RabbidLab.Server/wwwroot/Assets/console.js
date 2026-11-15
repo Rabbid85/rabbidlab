@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.193', [
+    'Built-in scripts: 16 of them, such as Clear a stuck print queue, Who is signed in, Uptime and Disk health, sit in the library for anyone to run, use in a workflow or duplicate. They can not be changed or deleted.',
+    'Run a script lists Your scripts, Built-in and Type one now. Edit a copy of any script, save one you typed to the library, and test it on one computer first to see what it wrote, right in the window.']],
   ['1.1.192', [
     'Printer kinds read WSD, TCP/IP, LPR, IPP, Shared, Universal Print, Virtual or Local.']],
   ['1.1.191', [

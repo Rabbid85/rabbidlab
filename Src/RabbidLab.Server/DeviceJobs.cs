@@ -18,6 +18,10 @@ public sealed class DeviceScript
 
     public string? By { get; set; }
     public DateTime Changed { get; set; }
+
+    /// <summary>One Rabbid Lab comes with (BuiltInScripts): not kept in scripts.json, and not changed or deleted.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool BuiltIn { get; set; }
 }
 
 public sealed class DeviceScriptsFile
@@ -43,12 +47,16 @@ public sealed class DeviceScripts(DataFolder folder, TimeProvider clock)
     {
         lock (file.Gate)
         {
-            return [.. file.Read().Scripts.OrderBy(s => s.Name, StringComparer.OrdinalIgnoreCase)];
+            return [.. file.Read().Scripts.OrderBy(s => s.Name, StringComparer.OrdinalIgnoreCase), .. BuiltInScripts.All];
         }
     }
 
     public DeviceScript? Find(string? id)
     {
+        if (BuiltInScripts.Find(id) is { } builtIn)
+        {
+            return builtIn;
+        }
         lock (file.Gate)
         {
             return file.Read().Scripts.FirstOrDefault(s => s.Id == id);
@@ -70,6 +78,10 @@ public sealed class DeviceScripts(DataFolder folder, TimeProvider clock)
     /// <summary>Adds a script, or changes the one with this id.</summary>
     public (DeviceScript? Script, string? Problem) Save(string? id, string? name, string? about, string? language, string? text, int? minutes, string by)
     {
+        if (BuiltInScripts.Is(id))
+        {
+            return (null, "Built-in scripts can't be changed. Duplicate it to make one of your own.");
+        }
         var n = name?.Trim() ?? "";
         if (n.Length is 0 or > MaxName)
         {
