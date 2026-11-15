@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.175 (2026-11-15)
+
+- An update that installs by itself shows the full update window on every open page. When someone clicks Install now, their page shows the window and other pages show a short note.
+
 ## 1.1.174 (2026-11-15)
 
 - Rabbid Lab signs people out after 30 minutes without a click, key press or scroll, even with the page left open. A minute before, it asks if you are still there.

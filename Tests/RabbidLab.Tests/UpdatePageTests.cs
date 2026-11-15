@@ -43,7 +43,9 @@ public sealed class UpdatePageTests : IDisposable
         var waiting = admin.GetAsync($"/api/update?after={now}");
         await Task.Delay(500);
         Assert.False(waiting.IsCompleted);
-        (await other.PostAsync("/api/update/install", null)).EnsureSuccessStatusCode();
+        var clicked = await other.PostAsync("/api/update/install", null);
+        clicked.EnsureSuccessStatusCode();
+        Assert.True((await clicked.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("chosen").GetBoolean());
 
         var heard = await waiting.WaitAsync(TimeSpan.FromSeconds(10));
         heard.EnsureSuccessStatusCode();

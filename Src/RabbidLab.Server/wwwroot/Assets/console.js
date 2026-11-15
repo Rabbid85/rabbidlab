@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.175', [
+    'An update that installs by itself shows the full update window on every open page. When someone clicks Install now, their page shows the window and other pages show a short note.']],
   ['1.1.174', [
     'Rabbid Lab signs people out after 30 minutes without a click, key press or scroll, even with the page left open. A minute before, it asks if you are still there.',
     'Change how long, or turn it off, in Settings > Sign-in. The activity log says when someone was signed out for being idle.',
@@ -953,7 +955,8 @@ const RELEASE_NOTES = [
   let dl = null; // the download so far, { got, total } in bytes
   let tick = null;
   let hid = false; // the update dialog was put away with Hide
-  // Only the page Install was clicked on shows the update window; other pages just say it's updating. Kept over a reload.
+  // The page Install was clicked on shows the update window and other pages just say it's updating; an update that
+  // installs by itself shows the window everywhere. Kept over a reload.
   let ours = '';
   try { ours = sessionStorage.getItem('rabbidlab.updating') || ''; } catch { /* none */ }
   const own = (version) => {
@@ -963,6 +966,7 @@ const RELEASE_NOTES = [
       else sessionStorage.removeItem('rabbidlab.updating');
     } catch { /* this page only */ }
   };
+  const isMine = (version) => ours === version || last?.chosen === false;
   let told = ''; // what the updating toast says, so it's only drawn again when that changes
   const secs = (ms) => Math.max(1, Math.round(ms / 1000));
   const took = (s) => {
@@ -989,10 +993,10 @@ const RELEASE_NOTES = [
     }
     const done = phase === 'done';
     began ||= Date.now();
-    // Not the page that clicked Install: a toast says it's updating, and the Updates card drops the bar and percent.
-    const mine = ours === version;
-    $('upd-installing').classList.toggle('only-say', !mine);
-    if (!mine) {
+    // Another page clicked Install: a toast says it's updating, and the Updates card drops the bar and percent.
+    const ownIt = isMine(version);
+    $('upd-installing').classList.toggle('only-say', !ownIt);
+    if (!ownIt) {
       const say = done ? `Updated to ${product} ${version}` : `${product} is updating to ${version}`;
       if (say !== told) toast(say, done ? 'Opening it now.' : "This page reloads when it's done.", { stay: !done });
       told = say;
@@ -1027,7 +1031,7 @@ const RELEASE_NOTES = [
     // Counted from when installing began, which every page was told, so they all say the same.
     $('updlg-took').hidden = !(done && since);
     if (done && since) $('updlg-took').replaceChildren('Took ', Object.assign(document.createElement('b'), { textContent: took(secs(Date.now() - since)) }));
-    if (mine && !hid && !$('update-dialog').open) $('update-dialog').showModal();
+    if (ownIt && !hid && !$('update-dialog').open) $('update-dialog').showModal();
     const n = Math.min(100, pct);
     const p = `${Math.round(n)}%`;
     $('inst-fill').style.width = p;
@@ -1035,7 +1039,7 @@ const RELEASE_NOTES = [
     $('inst-pct').textContent = p;
     $('updlg-pct').textContent = p;
     $('inst-title').textContent = $('updlg-title').textContent;
-    $('inst-line').textContent = mine ? line : last ? `From ${last.version}` : '';
+    $('inst-line').textContent = ownIt ? line : last ? `From ${last.version}` : '';
     ['download', 'install', 'back'].forEach((id, i) => {
       $(`step-${id}`).className = steps[i];
       $(`step-${id}`).textContent = names[i];
@@ -1084,7 +1088,7 @@ const RELEASE_NOTES = [
     }
     const busy = u.status === 'downloading' || u.status === 'installing';
     // While the update dialog is up it does the talking: the words behind it stay as they were.
-    if (!busy || hid || ours !== u.available) {
+    if (!busy || hid || !isMine(u.available)) {
       $('hero-state').textContent = headline(u);
       $('hero-updates').textContent = WORDS[u.status] || u.status;
     }

@@ -55,6 +55,9 @@ public sealed class UpdateEngine(UpdateOptions options, IUpdateSource source, IU
     /// <summary>How long the installer has been running, while it is: every page counts from the same moment with it.</summary>
     public TimeSpan? InstallingFor => State.Status == UpdateStatus.Installing && installingVersion is not null ? DateTime.UtcNow - installingAt : null;
 
+    /// <summary>Whether the last update started was someone choosing Install now, not installing by itself.</summary>
+    public bool Chosen { get; private set; }
+
     /// <summary>
     /// The version this one replaced, when this is the first time it has run since updating itself ("earlier" when
     /// that version isn't known, for an update from before version.txt was kept). Null otherwise.
@@ -198,6 +201,7 @@ public sealed class UpdateEngine(UpdateOptions options, IUpdateSource source, IU
                 return State;
             }
             var offer = source.Offer;
+            Chosen = true;
             State = new(current, offer?.Version ?? State.Available, UpdateStatus.Downloading, "Getting the update ready.", 0, offer?.Size);
             install = Task.Run(async () =>
             {
@@ -296,6 +300,7 @@ public sealed class UpdateEngine(UpdateOptions options, IUpdateSource source, IU
         }
         Directory.CreateDirectory(updates);
         File.WriteAllText(tried, version);
+        Chosen = chosen;
         State = Say(UpdateStatus.Downloading, version, $"Downloading version {version}.") with { Downloaded = 0, Total = offer.Size };
         FileStream held;
         try

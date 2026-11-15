@@ -171,10 +171,10 @@ public static class UpdateApi
     /// <summary>
     /// Where updating stands: this version and any newer one, the status and what to say, when GitHub was last asked and why
     /// it didn't answer, the version this one updated from, whether new versions install by themselves, the download's
-    /// progress, whether it can install itself here, and where it looks.
+    /// progress, whether it can install itself here, where it looks, and whether someone chose Install now or it went by itself.
     /// </summary>
     public sealed record UpdateView(string Version, string? Available, string Status, string Message, DateTime? CheckedAt, string? UpdatedFrom, bool Automatic,
-        long? Downloaded, long? Total, string? Problem, bool CanInstall, string Source, double? InstallingFor, int Sessions = 0);
+        long? Downloaded, long? Total, string? Problem, bool CanInstall, string Source, double? InstallingFor, bool Chosen, int Sessions = 0);
 
     public sealed record UpdateSettingsForm(bool Automatic);
 
@@ -185,7 +185,7 @@ public static class UpdateApi
     {
         static UpdateView View(UpdateState s, UpdateEngine updates, IUpdateSource source, IUpdateHost host, SettingsStore store, GitHubOptions github) =>
             new(s.Version, s.Available, Word(s.Status), s.Message, source.CheckedAt, updates.UpdatedFrom, store.Current.AutomaticUpdates, s.Downloaded, s.Total,
-                source.Problem, host.CanInstall, github.Manifest, updates.InstallingFor?.TotalSeconds);
+                source.Problem, host.CanInstall, github.Manifest, updates.InstallingFor?.TotalSeconds, updates.Chosen);
         // Whether the sign-in page's Install now may start the update: never while someone signed in is working.
         static bool Here(UpdateState s, UpdateEngine updates, IUpdateHost host) =>
             host.CanInstall && host.Automatic && s.Status == UpdateStatus.Available && !updates.InUseNow;

@@ -245,6 +245,24 @@ public sealed class UpdateEngineTests : IDisposable
     }
 
     [Fact]
+    public async Task Pages_are_told_whether_someone_chose_the_update_or_it_went_by_itself()
+    {
+        Offer("3.2.0", "pretend installer"u8.ToArray());
+        var itself = Engine();
+        Assert.Equal(UpdateStatus.Installing, (await itself.TryNow(CancellationToken.None)).Status);
+        Assert.False(itself.Chosen);
+
+        // Install now: said straight away, before the download starts.
+        host.Automatic = false;
+        var clicked = Engine();
+        var done = new TaskCompletionSource<UpdateState>();
+        clicked.InstallNow(done.SetResult);
+        Assert.True(clicked.Chosen);
+        Assert.Equal(UpdateStatus.Installing, (await done.Task.WaitAsync(TimeSpan.FromSeconds(10))).Status);
+        Assert.True(clicked.Chosen);
+    }
+
+    [Fact]
     public async Task A_download_that_stalls_ends_with_the_reason_and_nothing_is_run()
     {
         Offer("3.2.0", "pretend installer"u8.ToArray());
