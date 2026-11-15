@@ -13,6 +13,17 @@
   const of = (v) => (typeof v === 'function' ? v() : v);
   const blank = '<span class="muted">-</span>';
 
+  // While a heading is dragged: its label following the pointer, and a line down the table where it lands.
+  const ghost = document.createElement('div');
+  ghost.className = 'col-ghost';
+  ghost.hidden = true;
+  const line = document.createElement('div');
+  line.className = 'col-line';
+  line.hidden = true;
+  document.body.append(ghost, line);
+  const MOVE = 6; // pixels a press moves before it's a drag and not a click
+  const EDGE = 48; // this near a table's side while dragging, it scrolls that way
+
   // The Columns menu, one for every grid.
   const menu = document.createElement('div');
   menu.className = 'gear-menu col-menu';
@@ -75,7 +86,7 @@
       const lead = of(o.lead);
       const tail = of(o.tail);
       setTracks(shown);
-      const head = shown.map((c) => `<div class="th-cell" draggable="true" data-grid-col="${c.key}">${c.nosort ? `<span class="th-sort still"><span class="lbl">${esc(c.label)}</span></span>`
+      const head = shown.map((c) => `<div class="th-cell" data-grid-col="${c.key}">${c.nosort ? `<span class="th-sort still"><span class="lbl">${esc(c.label)}</span></span>`
         : `<button type="button" class="th-sort${s?.key === c.key ? ' on' : ''}" data-grid-sort="${c.key}" title="${esc(c.label)}"><span class="lbl">${esc(c.label)}</span>`
           + `${s?.key === c.key ? svg(s.dir > 0 ? 'chevron-up' : 'chevron-down', 'arr') : ''}</button>`}<i class="th-grip" data-grid-grip="${c.key}" data-tip="Drag to resize"></i></div>`).join('');
       const button = o.headButton ? `<button type="button" class="gcols" data-grid-cols data-tip="Columns" aria-label="Columns">${svg('columns')}</button>` : '';
@@ -154,40 +165,11 @@
       }
     };
 
-    // The heading: sort, drag an edge, double-click an edge, drag a heading onto another. Listened for once on el, so a
-    // redraw keeps them.
+    // The heading: click to sort, drag a heading sideways to move its column, drag an edge to resize, double-click an
+    // edge to fit. Listened for once on el, so a redraw keeps them.
     const t0 = el();
-    let sizing = false; // an edge is being dragged, so the heading doesn't move too
+    let sizing = false; // an edge is being dragged
     let moving = null; // the column whose heading is being dragged
-    const unmark = () => t0.querySelectorAll('.drop-left, .drop-right').forEach((c) => c.classList.remove('drop-left', 'drop-right'));
-    t0.addEventListener('dragstart', (e) => {
-      const th = e.target.closest?.('[data-grid-col]');
-      if (!th) return;
-      if (sizing) { e.preventDefault(); return; }
-      moving = th.dataset.gridCol;
-      e.dataTransfer.effectAllowed = 'move';
-      e.dataTransfer.setData('text/plain', moving);
-    });
-    t0.addEventListener('dragover', (e) => {
-      const th = e.target.closest('[data-grid-col]');
-      if (!moving || !th) return;
-      e.preventDefault();
-      unmark();
-      if (th.dataset.gridCol === moving) return;
-      const box = th.getBoundingClientRect();
-      th.classList.add(e.clientX < box.left + box.width / 2 ? 'drop-left' : 'drop-right');
-    });
-    t0.addEventListener('drop', (e) => {
-      const th = e.target.closest('[data-grid-col]');
-      if (!moving || !th || th.dataset.gridCol === moving) return;
-      e.preventDefault();
-      const order = cols().map((c) => c.key).filter((k) => k !== moving);
-      order.splice(order.indexOf(th.dataset.gridCol) + (th.classList.contains('drop-right') ? 1 : 0), 0, moving);
-      keep(name('order'), order);
-      moving = null;
-      o.redraw();
-    });
-    t0.addEventListener('dragend', () => { moving = null; unmark(); });
     // A column being resized or moved: a page that redraws on its own waits for it.
     g.busy = () => sizing || !!moving;
     t0.addEventListener('click', (e) => {
@@ -199,30 +181,144 @@
       keep(name('sort'), { key: b.dataset.gridSort, dir: s?.key === b.dataset.gridSort ? -s.dir : 1 });
       o.redraw();
     });
-    t0.addEventListener('pointerdown', (e) => {
-      const grip = e.target.closest('[data-grid-grip]');
-      if (!grip) return;
+    // The click the browser sends after a drag lets go isn't a sort.
+    const eatClick = () => {
+      const eat = (c) => { c.stopPropagation(); c.preventDefault(); };
+      window.addEventListener('click', eat, { capture: true, once: true });
+      setTimeout(() => window.removeEventListener('click', eat, true), 0);
+    };
+    // Every drag ends the same way: on letting go, on Esc (back as it was), or when the window loses focus.
+    const follow = (move, end) => {
+      const up = () => done(true);
+      const cancel = () => done(false);
+      const esc = (k) => { if (k.key === 'Escape') { k.preventDefault(); done(false); } };
+      const done = (ok) => {
+        window.removeEventListener('pointermove', move);
+        window.removeEventListener('pointerup', up);
+        ['pointercancel', 'blur'].forEach((ev) => window.removeEventListener(ev, cancel));
+        window.removeEventListener('keydown', esc, true);
+        end(ok);
+      };
+      window.addEventListener('pointermove', move);
+      window.addEventListener('pointerup', up);
+      ['pointercancel', 'blur'].forEach((ev) => window.addEventListener(ev, cancel));
+      window.addEventListener('keydown', esc, true);
+    };
+
+    // Resizing: the edge line follows the pointer, and the width is kept once it's let go.
+    const resize = (e, grip) => {
       e.preventDefault();
       const key = grip.dataset.gridGrip;
       const start = e.clientX;
       const from = grip.closest('.th-cell').getBoundingClientRect().width;
       const shown = g.shown();
       const wd = widths();
+      const was = wd[key];
+      let frame = 0;
       sizing = true;
+      grip.classList.add('on');
       document.body.classList.add('col-dragging');
-      const move = (m) => {
+      follow((m) => {
         wd[key] = Math.max(60, Math.round(from + m.clientX - start));
-        keep(name('widths'), wd);
-        setTracks(shown);
-      };
-      const up = () => {
-        window.removeEventListener('pointermove', move);
-        ['pointerup', 'pointercancel', 'blur'].forEach((ev) => window.removeEventListener(ev, up));
+        if (!frame) frame = requestAnimationFrame(() => { frame = 0; setTracks(shown, shown.map((c) => `${widthOf(c, wd)}px`)); });
+      }, (ok) => {
+        cancelAnimationFrame(frame);
+        if (!ok) { if (was == null) delete wd[key]; else wd[key] = was; }
+        if (ok) keep(name('widths'), wd);
+        setTracks(shown, shown.map((c) => `${widthOf(c, wd)}px`));
+        grip.classList.remove('on');
         document.body.classList.remove('col-dragging');
         sizing = false;
+        eatClick();
+      });
+    };
+
+    // Moving: a press on a heading that travels sideways picks the column up. Its label follows the pointer, the column
+    // fades, and a line down the table shows where it lands; near a side the table scrolls. A press that doesn't
+    // travel is a click, and sorts.
+    const pickUp = (e, th) => {
+      const key = th.dataset.gridCol;
+      const row = th.parentElement;
+      const table = th.closest('.table') || el();
+      const x0 = e.clientX;
+      const y0 = e.clientY;
+      let on = false;
+      let at = -1; // where it lands, among the headings shown
+      let x = x0;
+      let roll = 0;
+      const heads = () => [...row.querySelectorAll(':scope > [data-grid-col]')];
+      const from = () => heads().findIndex((h) => h.dataset.gridCol === key);
+      const cells = () => {
+        const nth = from() + 1 + (row.querySelector(':scope > .lead') ? 1 : 0);
+        return el().querySelectorAll(`.tr > :nth-child(${nth})`);
       };
-      window.addEventListener('pointermove', move);
-      ['pointerup', 'pointercancel', 'blur'].forEach((ev) => window.addEventListener(ev, up));
+      const place = () => {
+        const hs = heads();
+        at = hs.findIndex((h) => { const r = h.getBoundingClientRect(); return x < r.left + r.width / 2; });
+        if (at < 0) at = hs.length;
+        const f = from();
+        // Next to where it is changes nothing: no line.
+        if (at === f || at === f + 1) { line.hidden = true; return; }
+        const box = table.getBoundingClientRect();
+        const lx = at === 0 ? hs[0].getBoundingClientRect().left - GAP / 2 : hs[at - 1].getBoundingClientRect().right + GAP / 2;
+        const top = Math.max(box.top, 0);
+        line.style.cssText = `left:${Math.round(Math.min(Math.max(lx, box.left + 2), box.right - 2) - 1)}px;top:${top}px;height:${Math.max(0, Math.min(box.bottom, innerHeight) - top)}px`;
+        line.hidden = false;
+      };
+      // Near the table's left or right side, it scrolls that way, faster the nearer.
+      const scroll = () => {
+        roll = 0;
+        if (!on) return;
+        const box = table.getBoundingClientRect();
+        const near = x < box.left + EDGE ? -(box.left + EDGE - x) : x > box.right - EDGE ? x - (box.right - EDGE) : 0;
+        if (!near || table.scrollWidth <= table.clientWidth) return;
+        const before = table.scrollLeft;
+        table.scrollLeft += Math.sign(near) * Math.min(24, 4 + Math.abs(near) / 2);
+        if (table.scrollLeft !== before) place();
+        roll = requestAnimationFrame(scroll);
+      };
+      follow((m) => {
+        x = m.clientX;
+        if (!on) {
+          if (Math.abs(m.clientX - x0) < MOVE && Math.abs(m.clientY - y0) < MOVE) return;
+          on = true;
+          moving = key;
+          ghost.innerHTML = `${svg('move')}<span>${esc(th.textContent.trim())}</span>`;
+          ghost.hidden = false;
+          cells().forEach((c) => c.classList.add('col-lift'));
+          document.body.classList.add('col-moving');
+        }
+        ghost.style.transform = `translate(${m.clientX + 14}px, ${m.clientY + 12}px)`;
+        place();
+        if (!roll) roll = requestAnimationFrame(scroll);
+      }, (ok) => {
+        cancelAnimationFrame(roll);
+        roll = 0;
+        if (!on) return; // a click: it sorts
+        eatClick();
+        cells().forEach((c) => c.classList.remove('col-lift'));
+        document.body.classList.remove('col-moving');
+        ghost.hidden = true;
+        line.hidden = true;
+        moving = null;
+        const hs = heads().map((h) => h.dataset.gridCol);
+        const f = hs.indexOf(key);
+        if (!ok || at < 0 || at === f || at === f + 1) return;
+        // In front of the heading it was dropped before (hidden columns keep their places), or after the last one.
+        const order = cols().map((c) => c.key).filter((k) => k !== key);
+        const before = hs[at];
+        order.splice(before ? order.indexOf(before) : order.indexOf(hs[hs.length - 1]) + 1, 0, key);
+        keep(name('order'), order);
+        o.redraw();
+      });
+    };
+
+    t0.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0) return;
+      const grip = e.target.closest('[data-grid-grip]');
+      if (grip) { resize(e, grip); return; }
+      const th = e.target.closest('[data-grid-col]');
+      if (th && el().contains(th)) pickUp(e, th);
     });
     // Fits a column to what's in it: every cell measured at its natural width.
     t0.addEventListener('dblclick', (e) => {

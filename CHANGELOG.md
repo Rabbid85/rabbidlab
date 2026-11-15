@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.197 (2026-11-15)
+
+- Moving columns works better on every grid: drag a heading sideways and a line down the table shows where it lands, even letting go between headings, and the table scrolls when you drag to its side.
+- A click on a heading that wobbles a little still sorts, and Esc puts a column back while you move or resize it.
+
 ## 1.1.196 (2026-11-15)
 
 - A computer panel has the same actions as the Actions menu now: Run a script, Install Windows updates, Restart, Wake, Query with WMI and Add a printer.

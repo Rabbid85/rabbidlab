@@ -14,9 +14,9 @@
 .th-sort.still:hover { color: inherit; }
 .th-sort .arr { flex: none; width: 12px; height: 12px; }
 .th-sort .lbl { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.th-grip { position: absolute; top: 0; right: -15px; bottom: 0; z-index: 1; width: 10px; cursor: col-resize; }
-.th-grip::after { content: ""; position: absolute; top: 8px; bottom: 8px; left: 4.5px; width: 1px; background: #363B55; }
-.th-grip:hover::after { top: 4px; bottom: 4px; left: 3.5px; width: 3px; border-radius: 2px; background: var(--accent); }
+.th-grip { position: absolute; top: 0; right: -17px; bottom: 0; z-index: 1; width: 14px; cursor: col-resize; }
+.th-grip::after { content: ""; position: absolute; top: 8px; bottom: 8px; left: 6.5px; width: 1px; background: #363B55; }
+.th-grip:hover::after, .th-grip.on::after { top: 4px; bottom: 4px; left: 5.5px; width: 3px; border-radius: 2px; background: var(--accent); }
 body.col-dragging, body.col-dragging * { cursor: col-resize !important; user-select: none; }
 .table.dgrid .tr > .lead { display: grid; place-items: center; align-self: stretch; overflow: visible; }
 .table.dgrid .tr.th > .lead { position: relative; }
@@ -49,7 +49,17 @@ body.col-dragging, body.col-dragging * { cursor: col-resize !important; user-sel
 /* It stays in reach at the right edge when the grid scrolls sideways. */
 .table.dgrid .tr.th > .tr-tail:has(.gcols) { position: sticky; right: 0; z-index: 2; background: #12141F; }
 
-/* A heading dragged onto another lands on the side the pointer is over. */
-.table.dgrid .th-cell[draggable="true"] { cursor: grab; }
-.table.dgrid .th-cell.drop-left { box-shadow: inset 2px 0 0 var(--accent-line); }
-.table.dgrid .th-cell.drop-right { box-shadow: inset -2px 0 0 var(--accent-line); }
+/* Moving a column: drag its heading sideways. Its label follows the pointer, the column fades, and a line down the
+   table shows where it lands. */
+.table.dgrid .tr.th { user-select: none; }
+.table.dgrid .th-cell { cursor: grab; }
+.table.dgrid .col-lift { opacity: .35; }
+body.col-moving, body.col-moving * { cursor: grabbing !important; user-select: none; }
+.col-ghost { position: fixed; top: 0; left: 0; z-index: 1000; display: flex; align-items: center; gap: 7px; max-width: 240px; padding: 7px 12px; border: 1px solid var(--line-strong);
+  border-radius: 9px; background: #1A1D2B; box-shadow: 0 10px 28px rgba(0, 0, 0, .45); color: var(--title); font-size: 11px; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; white-space: nowrap; pointer-events: none; }
+.col-ghost span { overflow: hidden; text-overflow: ellipsis; }
+.col-ghost svg { flex: none; width: 13px; height: 13px; color: #8B90A5; }
+.col-line { position: fixed; z-index: 999; width: 2px; border-radius: 1px; background: var(--accent); pointer-events: none; }
+.col-line::before { content: ""; position: absolute; top: 0; left: -4px; border: 5px solid transparent; border-top-color: var(--accent); }
+.col-ghost[hidden], .col-line[hidden] { display: none; }

@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.197', [
+    'Moving columns works better on every grid: drag a heading sideways and a line down the table shows where it lands, even letting go between headings, and the table scrolls when you drag to its side.',
+    'A click on a heading that wobbles a little still sorts, and Esc puts a column back while you move or resize it.']],
   ['1.1.196', [
     'A computer panel has the same actions as the Actions menu now: Run a script, Install Windows updates, Restart, Wake, Query with WMI and Add a printer.']],
   ['1.1.195', [
