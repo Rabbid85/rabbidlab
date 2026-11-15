@@ -454,15 +454,35 @@
     });
   }
   const menu = $('dv-act-menu');
+  // What can be done on computers, from this one list: the Actions menu for the ticked ones, and the buttons at the
+  // top of a computer's panel (printers.js adds Add a printer through actItems).
+  const doItems = (item, on) => {
+    if (!on.some((c) => c.approved)) return '';
+    const off = on.filter((c) => c.approved && !c.online && !c.server).length;
+    return (canScripts() ? item('script', 'code', 'Run a script…') : '')
+      + (has('seats.actions') ? item('updates', 'updates', 'Install Windows updates…') + item('restart', 'power', 'Restart…') + item('wake', 'wake', 'Wake', String(off || '')) : '')
+      + (has('seats.wmi') ? item('wmi', 'list', 'Query with WMI…') : '') + (D.hooks.actItems?.(item) || '');
+  };
+  // One of those, on these computers: from the menu, or from one computer's panel.
+  const doAct = async (act, on, fromPanel = false) => {
+    if (act === 'wake') {
+      // The offline ones; when none are, all of them (one that just went to sleep still shows online for a few minutes).
+      const can = on.filter((c) => c.approved && !c.server);
+      const off = can.filter((c) => !c.online);
+      await wake(off.length ? off : can);
+    } else if (act === 'wmi') {
+      wq.want = fromPanel ? `c:${on[0].id}` : 'ticked';
+      location.hash = '#seats/wmi';
+    } else if (D.hooks.act?.(act, on)) {
+      // done by another part of the page (printers.js)
+    } else openRun(act, on);
+  };
   $('dv-act').addEventListener('click', () => {
     const on = ticked();
-    const approved = on.filter((c) => c.approved).length;
-    const waiting = on.length - approved;
+    const waiting = on.filter((c) => !c.approved).length;
     const item = (act, icon, label, hint = '', danger = false) => `<button type="button" role="menuitem" class="am-link${danger ? ' out' : ''}" data-dv-act="${act}">${svg(icon)}<span>${esc(label)}</span>${hint ? `<small>${esc(hint)}</small>` : ''}</button>`;
     const groups = [
-      (canScripts() && approved ? item('script', 'code', 'Run a script…') : '') + (has('seats.actions') && approved ? item('updates', 'updates', 'Install Windows updates…') + item('restart', 'power', 'Restart…')
-        + item('wake', 'wake', 'Wake', String(on.filter((c) => c.approved && !c.online && !c.server).length || '')) : '')
-        + (has('seats.wmi') && approved ? item('wmi', 'list', 'Query with WMI…') : '') + (approved ? D.hooks.actItems?.(item) || '' : ''),
+      doItems(item, on),
       (has('seats.approve') && waiting ? item('approve', 'check', 'Approve', String(waiting)) : '') + item('export', 'csv', 'Export these') + item('clear', 'x', 'Clear the ticks'),
       has('seats.remove') ? item('remove', 'trash', 'Remove from Devices…', '', true) : '',
     ];
@@ -493,12 +513,7 @@
       D.picked.clear();
       drawPicked();
     } else if (act === 'export') D.grid().csv(D.grid().sorted(on), 'devices-ticked');
-    else if (act === 'wake') {
-      // The offline ones; when none are, all of them (one that just went to sleep still shows online for a few minutes).
-      const can = on.filter((c) => c.approved && !c.server);
-      const off = can.filter((c) => !c.online);
-      await wake(off.length ? off : can);
-    } else if (act === 'approve') {
+    else if (act === 'approve') {
       const list = on.filter((c) => !c.approved);
       const failed = await each(list, 'approve');
       toast(failed ? `${failed} of ${list.length} couldn't be approved.` : `Approved ${many(list.length)}.`, '', failed ? { tone: 'warn' } : {});
@@ -508,12 +523,7 @@
         D.picked.clear();
         toast(failed ? `${failed} of ${on.length} couldn't be removed.` : `Removed ${many(on.length)}.`, '', failed ? { tone: 'warn' } : {});
       });
-    } else if (act === 'wmi') {
-      wq.want = 'ticked';
-      location.hash = '#seats/wmi';
-    } else if (D.hooks.act?.(act, on)) {
-      // done by another part of the page (printers.js)
-    } else openRun(act, on);
+    } else await doAct(act, on);
   });
 
   // --- Running something on computers ---------------------------------------------------------------------------
@@ -1002,24 +1012,13 @@
   $('dv-new').addEventListener('click', () => (D.at() === 'workflows' ? openFlowEdit(null) : openScriptEdit(null)));
   panel.el.addEventListener('click', async (e) => {
     const on = (attr) => e.target.closest(`[${attr}]`);
-    // In a computer's panel (console.js draws it): what can be run on it, and its jobs.
-    const act = on('data-dv-do');
+    // In a computer's panel (console.js draws it): the same actions as the Actions menu, on this one computer, and its jobs.
+    const act = on('data-dv-act');
     if (act && panel.is('seats')) {
       const c = D.computers().find((x) => x.id === panel.key);
-      if (c) openRun(act.dataset.dvDo, [c]);
-      return;
-    }
-    const waker = on('data-dv-wake');
-    if (waker && panel.is('seats')) {
-      const c = D.computers().find((x) => x.id === panel.key);
-      waker.disabled = true;
-      if (c) await wake([c]);
-      waker.disabled = false;
-      return;
-    }
-    if (on('data-dv-wmi') && panel.is('seats')) {
-      wq.want = `c:${panel.key}`;
-      location.hash = '#seats/wmi';
+      act.disabled = true;
+      if (c) await doAct(act.dataset.dvAct, [c], true);
+      act.disabled = false;
       return;
     }
     const jobLink = on('data-job-open');
@@ -1114,10 +1113,7 @@
 
   // --- A computer's side panel: what can be run on it, and its jobs ---------------------------------------------
   const seatJobs = {}; // computer id -> its jobs, once asked for
-  D.hooks.seatBar = (c) => (!c.approved || c.server ? '' : (has('seats.actions') && !c.online ? qa('data-dv-wake', 'wake', 'Wake') : '')
-    + (canScripts() ? qa('data-dv-do="script"', 'code', 'Run a script') : '')
-    + (has('seats.actions') ? qa('data-dv-do="updates"', 'updates', 'Install updates') + qa('data-dv-do="restart"', 'power', 'Restart') : '')
-    + (has('seats.wmi') ? qa('data-dv-wmi', 'list', 'WMI query') : ''));
+  D.hooks.seatBar = (c) => (c.server ? '' : doItems((act, icon, label) => qa(`data-dv-act="${act}"`, icon, label.replace(/…$/, '')), [c]));
   D.hooks.seatTabs = (c) => (canJobs() && !c.server ? [['jobs', 'Jobs', seatJobs[c.id] ? seatJobs[c.id].length : '']] : []);
   D.hooks.seatPane = (c, tab) => {
     if (tab !== 'jobs') return null;
