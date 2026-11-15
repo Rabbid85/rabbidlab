@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.208', [
+    'Update the client in the Actions menu: the client installs the version this server has now, instead of at its next try or the next day after an install that did not take.']],
   ['1.1.207', [
     'After an update the opening screen no longer sits for seconds with all its dots lit. It waits at most two and a half seconds for the rest of the page, and the update watch it keeps open does not count. Its last line stays up meanwhile.']],
   ['1.1.206', [

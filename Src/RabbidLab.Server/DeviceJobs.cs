@@ -211,6 +211,7 @@ public sealed class DeviceJobs(DataFolder folder, TimeProvider clock, ClientComm
     public const string SignOut = "signout";
     public const string Shutdown = "shutdown";
     public const string Message = "message";
+    public const string Client = "client";
 
     public const string Waiting = "waiting";
     public const string Running = "running";
@@ -571,6 +572,26 @@ public static class DeviceActions
             echo The computer shuts down in 5 minutes.
             """),
     };
+
+    /// <summary>
+    /// The client installs this server's version now, not at its next try: the once-a-day wait after an install that
+    /// didn't take is cleared and the client restarts, and on its first round it fetches and installs the server's
+    /// version. The restart starts a few seconds after this step reports back, from outside it, so stopping the service
+    /// doesn't stop the restart. Any client that takes jobs can do it.
+    /// </summary>
+    public static JobStep UpdateClient() => new()
+    {
+        Title = "Update the client", Language = DeviceScripts.PowerShell, Minutes = 2,
+        Text = DeviceScripts.Clean($$"""
+            $data = Join-Path $env:ProgramData 'Rabbid Lab Client'
+            Remove-Item -LiteralPath (Join-Path $data 'last-update.txt') -Force -ErrorAction SilentlyContinue
+            $restart = 'timeout /t 8 /nobreak >nul & net stop {{ClientServiceName}} & net start {{ClientServiceName}}'
+            Start-Process -FilePath "$env:windir\System32\cmd.exe" -ArgumentList '/c', $restart -WindowStyle Hidden
+            'The client restarts in a few seconds and installs the version this server has.'
+            """),
+    };
+
+    private const string ClientServiceName = "RabbidLabClient";
 
     public const int MessageMost = 250;
 

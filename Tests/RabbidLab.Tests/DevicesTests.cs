@@ -122,6 +122,19 @@ public sealed class DevicesTests : IDisposable
     }
 
     [Fact]
+    public async Task Update_the_client_clears_the_wait_and_restarts_it_from_outside_the_job()
+    {
+        var admin = await Admin();
+        var (id, client) = await Computer();
+        var job = await Id(await admin.PostAsJsonAsync("/api/devices/run", new { kind = "client", clients = new[] { id } }));
+        var text = (await Take(client)).Single(j => j.GetProperty("id").GetString() == job).GetProperty("steps")[0].GetProperty("text").GetString()!;
+        Assert.Contains("last-update.txt", text);
+        Assert.Contains("net stop RabbidLabClient & net start RabbidLabClient", text);
+        Assert.Contains("Start-Process", text); // the restart runs outside the job, so stopping the service doesn't stop it
+        Assert.Contains("Updated the client on SHOP-PC", await (await admin.GetAsync("/api/activity")).Content.ReadAsStringAsync());
+    }
+
+    [Fact]
     public async Task Lock_sign_out_shut_down_and_a_message_go_out_as_jobs_that_are_for_now()
     {
         var admin = await Admin();

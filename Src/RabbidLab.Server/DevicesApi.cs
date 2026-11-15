@@ -103,7 +103,7 @@ public static class DevicesApi
             {
                 DeviceJobs.Script => typed ? Permissions.ScriptsEdit : Permissions.ScriptsRun,
                 DeviceJobs.Restart or DeviceJobs.Updates or DeviceJobs.Printer or DeviceJobs.Check
-                    or DeviceJobs.Lock or DeviceJobs.SignOut or DeviceJobs.Shutdown or DeviceJobs.Message => Permissions.SeatsActions,
+                    or DeviceJobs.Lock or DeviceJobs.SignOut or DeviceJobs.Shutdown or DeviceJobs.Message or DeviceJobs.Client => Permissions.SeatsActions,
                 _ => null,
             };
             if (needs is null)
@@ -137,6 +137,10 @@ public static class DevicesApi
             else if (form.Kind == DeviceJobs.Restart)
             {
                 (step, title) = (DeviceActions.Restart(), "Restart");
+            }
+            else if (form.Kind == DeviceJobs.Client)
+            {
+                (step, title) = (DeviceActions.UpdateClient(), "Update the client");
             }
             else if (form.Kind == DeviceJobs.Lock)
             {
@@ -184,7 +188,7 @@ public static class DevicesApi
                 return Results.NotFound(new { error = "That script isn't here any more." });
             }
             // Locking, signing out, shutting down and a message are for now: a computer that's offline longer doesn't get them later.
-            var now = form.Kind is DeviceJobs.Lock or DeviceJobs.SignOut or DeviceJobs.Shutdown or DeviceJobs.Message;
+            var now = form.Kind is DeviceJobs.Lock or DeviceJobs.SignOut or DeviceJobs.Shutdown or DeviceJobs.Message or DeviceJobs.Client;
             var job = jobs.Add(ActivityLog.Who(context), form.Kind!, title, [step], on, now ? Soon : Life, typed ? null : form.Script);
             var computers = Workflows.Computers(on);
             log.Record(context, "clients", "job.run", form.Kind switch
@@ -196,6 +200,7 @@ public static class DevicesApi
                 DeviceJobs.SignOut => $"Signed everyone out of {computers}",
                 DeviceJobs.Shutdown => $"Shut down {computers}",
                 DeviceJobs.Message => $"Sent a message to {computers}",
+                DeviceJobs.Client => $"Updated the client on {computers}",
                 _ => $"Installed Windows updates on {computers}",
             }, "ok", $"Job {job.Id}, SHA-256 {DeviceActions.Fingerprint([step])}{(form.Kind == DeviceJobs.Message ? $", message: {form.Text!.Trim()}" : "")}");
             return Results.Ok(new { id = job.Id });

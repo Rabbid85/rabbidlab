@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.208 (2026-11-15)
+
+- Update the client in the Actions menu: the client installs the version this server has now, instead of at its next try or the next day after an install that did not take.
+
 ## 1.1.207 (2026-11-15)
 
 - After an update the opening screen no longer sits for seconds with all its dots lit. It waits at most two and a half seconds for the rest of the page, and the update watch it keeps open does not count. Its last line stays up meanwhile.
