@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.186 (2026-11-15)
+
+- Devices shows a Client column with each computer client version (amber when it is older than the server), or Not installed for this server without the client.
+
 ## 1.1.185 (2026-11-15)
 
 - This server can be a full row in Devices. Open it and click Install the client here: the server puts the client on itself and approves it, so it gets software, Windows updates, scripts, jobs and the tick box like the other computers.

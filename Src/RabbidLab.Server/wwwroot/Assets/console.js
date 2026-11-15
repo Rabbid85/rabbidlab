@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.186', [
+    'Devices shows a Client column with each computer client version (amber when it is older than the server), or Not installed for this server without the client.']],
   ['1.1.185', [
     'This server can be a full row in Devices. Open it and click Install the client here: the server puts the client on itself and approves it, so it gets software, Windows updates, scripts, jobs and the tick box like the other computers.']],
   ['1.1.184', [
@@ -1735,13 +1737,22 @@ const RELEASE_NOTES = [
   const ms = (iso) => (iso ? new Date(iso).getTime() : 0);
   let seatsEmpty = '';
   let seatsG = null;
+  // Client shows by default since 1.1.186: put once into a column list someone already chose, keeping the rest of it.
+  try {
+    const k = 'rabbidlab.grid.cols.computers';
+    const chosen = JSON.parse(localStorage.getItem(k) || 'null');
+    if (Array.isArray(chosen) && !chosen.includes('version') && !localStorage.getItem(`${k}.client`)) localStorage.setItem(k, JSON.stringify([...chosen, 'version']));
+    localStorage.setItem(`${k}.client`, '1');
+  } catch {
+    // Not kept in this browser: the default shows it.
+  }
   const seatsGrid = () => (seatsG ||= window.RabbidLab.grid({
     el: $('seats-table'),
     key: 'computers', // was devices: renamed in 1.1.172 so everyone gets the new default columns once
     // A tick on each row, for whoever may do something with several computers at once (devices.js).
     lead: () => dvHooks.lead?.() || null,
     sort: { key: 'computer', dir: 1 },
-    // What fits across the page shows; the rest (client, address, last seen, hardware) is under Columns.
+    // What fits across the page shows; the rest (address, last seen, hardware) is under Columns.
     cols: [
       // The name first with its icon, as on Active Directory; one thing per column, so the name alone.
       { key: 'computer', label: 'Computer', w: 165, fixed: true, get: (c) => c.computer,
@@ -1762,7 +1773,10 @@ const RELEASE_NOTES = [
       { key: 'uptime', label: 'Uptime', w: 80, get: (c) => ms(c.inventory?.started), text: (c) => (c.inventory?.started ? howLong(c.inventory.started) : ''),
         cell: (c) => `<span class="muted">${c.inventory?.started ? esc(howLong(c.inventory.started)) : '-'}</span>` },
       { key: 'lastSeen', label: 'Last seen', w: 80, get: (c) => ms(c.lastSeen), text: (c) => c.lastSeen || '', cell: (c) => `<span class="muted">${esc(ago(c.lastSeen))}</span>` },
-      { key: 'version', label: 'Client', w: 70, get: (c) => (c.server ? '' : c.version), cell: (c) => (c.server ? '<span class="muted">-</span>' : `<span class="${c.behind ? 'old' : ''}">${esc(c.version || '?')}</span>`) },
+      // The client's version, or Not installed for this server without it.
+      { key: 'version', label: 'Client', w: 95, on: true, get: (c) => (c.server ? '' : c.version), text: (c) => (c.server ? 'Not installed' : c.version || ''),
+        cell: (c) => (c.server ? '<span class="muted">Not installed</span>'
+          : `<span class="${c.behind ? 'old' : ''}"${c.behind ? ' data-tip="Older than this server"' : ''}>${esc(c.version || '?')}</span>`) },
       { key: 'address', label: 'Address', w: 105, get: (c) => addr(c.address), cell: (c) => `<span class="mono muted ell">${esc(addr(c.address))}</span>` },
       { key: 'model', label: 'Model', w: 180, get: (c) => [c.inventory?.manufacturer, c.inventory?.model].filter(Boolean).join(' ') },
       { key: 'serial', label: 'Serial number', w: 140, get: (c) => c.inventory?.serial || '' },
