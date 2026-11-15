@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.163', [
+    'After an update, open pages load the new version a little apart when many people are signed in, so the server is not asked for everything in the same second.']],
   ['1.1.162', [
     'An administrator at the computer can stop the client service again, as with Datto RMM. The block added in 1.1.160 is removed. Uninstalling still needs the uninstall code or an allowance from Rabbid Lab.',
     'The client icon sits under the arrow with the other tray icons again and is no longer pinned to the taskbar. The client service still makes sure it is running.']],
@@ -937,7 +939,9 @@ const RELEASE_NOTES = [
     if (last && u.version !== last.version) {
       clearInterval(tick);
       bar('done', 100, u.version, `From ${last.version}`);
-      setTimeout(() => location.reload(), 1500);
+      // Every open page sees the new version within seconds of each other. With many people signed in they load it a
+      // little apart (40 ms for each, half a minute at most), so the server isn't asked for everything at once.
+      setTimeout(() => location.reload(), 1500 + Math.random() * Math.min(30000, (u.sessions || 1) * 40));
       return;
     }
     last = u;

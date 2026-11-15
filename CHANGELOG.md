@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.163 (2026-11-14)
+
+- After an update, open pages load the new version a little apart when many people are signed in, so the server is not asked for everything in the same second.
+
 ## 1.1.162 (2026-11-14)
 
 - An administrator at the computer can stop the client service again, as with Datto RMM. The block added in 1.1.160 is removed. Uninstalling still needs the uninstall code or an allowance from Rabbid Lab.

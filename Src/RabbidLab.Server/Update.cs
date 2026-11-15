@@ -174,7 +174,7 @@ public static class UpdateApi
     /// progress, whether it can install itself here, and where it looks.
     /// </summary>
     public sealed record UpdateView(string Version, string? Available, string Status, string Message, DateTime? CheckedAt, string? UpdatedFrom, bool Automatic,
-        long? Downloaded, long? Total, string? Problem, bool CanInstall, string Source, double? InstallingFor);
+        long? Downloaded, long? Total, string? Problem, bool CanInstall, string Source, double? InstallingFor, int Sessions = 0);
 
     public sealed record UpdateSettingsForm(bool Automatic);
 
@@ -206,8 +206,10 @@ public static class UpdateApi
         }
         // What GitHub last said, and any update under way. Opening the page asks GitHub nothing: the source asks when Rabbid
         // Lab starts and every 12 hours, and Check for updates asks at once.
-        app.MapGet("/api/update", (HttpContext context, UpdateEngine updates, IUpdateSource source, IUpdateHost host, SettingsStore store, GitHubOptions github) =>
-            Access.Can(context, Permissions.UpdatesView) ? Results.Ok(View(updates.State, updates, source, host, store, github)) : Access.NotAllowed());
+        // With how many people are signed in: after an update every open page loads the new version, and with many of
+        // them they do it a little apart, not all in the same second.
+        app.MapGet("/api/update", (HttpContext context, UpdateEngine updates, IUpdateSource source, IUpdateHost host, SettingsStore store, GitHubOptions github, Sessions sessions) =>
+            Access.Can(context, Permissions.UpdatesView) ? Results.Ok(View(updates.State, updates, source, host, store, github) with { Sessions = sessions.All().Count }) : Access.NotAllowed());
         // The sign-in page, when it opens (opened=true) and every 30 seconds while it's open: it asks GitHub when opened if
         // the last check is over a minute old, and otherwise over 5 minutes old. With wait=true the answer comes once the
         // check is done, or an update is on its way, or eight seconds are up. Anyone may ask, so it says versions and
