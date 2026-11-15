@@ -668,8 +668,8 @@ section.page.home.dir-top { max-width: none; padding: 0; gap: 0; }
 .dnav { position: sticky; top: 72px; display: flex; flex-direction: column; align-self: start; max-height: calc(100vh - 90px); padding-bottom: 8px; overflow-y: auto; scrollbar-gutter: stable;
   scrollbar-width: thin; scrollbar-color: #2A2D3E transparent; }
 .dnav > .side-find { flex: none; height: 32px; margin: 0; border-radius: 7px; }
-/* On a section page Find sits level with the tab beside it (its middle on the tab text). */
-:is(#dir-rail, #dv-rail) > .side-find { margin-top: 4px; }
+/* On a section page Find fills the tab row beside it: its top level with the tabs, its bottom on the line under them. */
+:is(#dir-rail, #dv-rail) > .side-find { height: 43px; margin-top: 0; }
 .dnav .rail-label { flex: none; margin: 30px 0 8px 12px; font-size: 11px; color: #9DA1B3; }
 .dnav > .rail-label:first-child, .dnav:not(.lists) > .side-find + .rail-label { margin-top: 10px; }
 .dnav a { position: relative; display: flex; flex: none; align-items: center; gap: 10px; height: 32px; padding: 0 10px 0 14px; color: #B8BCCB; font-size: 14px; font-weight: 500; white-space: nowrap; }
