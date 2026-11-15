@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.170 (2026-11-14)
+
+- Only the page you clicked Install on shows the update window and its progress. Other open pages show a small toast saying Rabbid Lab is updating, and reload when it is done.
+
 ## 1.1.169 (2026-11-14)
 
 - An update could fail over and over after the Start menu shortcut had been used to start the service: its small window, waiting for OK, kept the program files in use. Setup now ends anything still running from the program folder before it copies files, and that window closes by itself once the service is running.
