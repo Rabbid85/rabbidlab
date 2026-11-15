@@ -40,6 +40,7 @@ public static class SignIn
         services.TryAddSingleton(TimeProvider.System);
         services.AddSingleton<Sessions>();
         services.AddSingleton<Clients>();
+        services.AddSingleton<Inventories>();
         services.AddSingleton<JoinLimiter>();
         // The cookie carries only the session's id; the session itself is kept by Sessions.
         services.AddOptions<CookieAuthenticationOptions>(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -93,7 +94,7 @@ public static class SignIn
             var path = context.Request.Path;
             var signedIn = context.User.Identity?.IsAuthenticated == true;
             // What anyone can send is kept small: a client's answer may list a computer's accounts, the rest is a form.
-            if (!signedIn && Open(path) && TooBig(context, path == "/api/clients/done" ? 1024 * 1024 : 64 * 1024))
+            if (!signedIn && Open(path) && TooBig(context, path == "/api/clients/done" || path == "/api/clients/inventory" ? 2 * 1024 * 1024 : 64 * 1024))
             {
                 context.Response.StatusCode = StatusCodes.Status413PayloadTooLarge;
                 await context.Response.WriteAsJsonAsync(new { error = "That request is too large." });
@@ -121,7 +122,7 @@ public static class SignIn
         || path.StartsWithSegments("/api/setup") || path == "/api/signout" || path.StartsWithSegments("/api/update/watch") || ForClients(path);
 
     // The Rabbid Lab client's own endpoints: open (they carry the client's id and secret), and never someone working.
-    private static readonly string[] ClientPaths = ["/api/clients/join", "/api/clients/checkin", "/api/clients/next", "/api/clients/done", "/api/clients/bye", "/api/clients/download"];
+    private static readonly string[] ClientPaths = ["/api/clients/join", "/api/clients/checkin", "/api/clients/next", "/api/clients/done", "/api/clients/bye", "/api/clients/inventory", "/api/clients/download"];
 
     // What an open page asks by itself on a timer.
     private static readonly string[] Polled = ["/api/update", "/api/clients", "/api/sessions", "/api/links/states", "/api/clients/here"];

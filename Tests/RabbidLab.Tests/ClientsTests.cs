@@ -327,4 +327,94 @@ public sealed class ClientsTests : IDisposable
         Assert.False(installedAgain.GetProperty("uninstall").GetBoolean());
         Assert.False(Allowed(installedAgain));
     }
+    // A computer's inventory, as its client sends it.
+    private async Task<HttpResponseMessage> SendInventory(string id, string secret, object inventory)
+    {
+        var client = app.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("RabbidLab-Client", $"{id}:{secret}");
+        return await client.PostAsJsonAsync("/api/clients/inventory", inventory);
+    }
+
+    private static object Inventory(string chrome, bool missing) => new
+    {
+        manufacturer = "Dell Inc.", model = "OptiPlex 7090", serial = "J8K2LM3", processor = "Intel Core i7-11700", memory = 34359738368L,
+        started = DateTime.UtcNow.AddDays(-3), restartNeeded = missing,
+        disks = new[] { new { name = "C:", total = 500_000_000_000L, free = 200_000_000_000L }, new { name = "D:", total = 1_000_000_000_000L, free = 10_000_000_000L } },
+        software = new[] { new { name = "Google Chrome", version = chrome, publisher = "Google LLC", installed = "2026-10-02" }, new { name = "7-Zip 24.08 (x64)", version = "24.08", publisher = "Igor Pavlov", installed = "2026-01-15" } },
+        updates = new[] { new { kb = "KB5045935", title = "Servicing Stack Update", kind = "Update", installed = "2026-10-14" } },
+        missing = missing ? new[] { new { kb = "KB5046617", title = "2026-11 Cumulative Update for Windows 11", kind = "Security Updates" } } : [],
+        missingChecked = DateTime.UtcNow,
+    };
+
+    [Fact]
+    public async Task A_computers_client_sends_its_inventory_and_the_list_and_the_computer_show_it()
+    {
+        var admin = await app.SignedIn();
+        var (id, secret, _) = await Join();
+        var waiting = await SendInventory(id, secret, Inventory("131.0", true));
+        (await admin.PostAsync($"/api/clients/{id}/approve", null)).EnsureSuccessStatusCode();
+
+        (await SendInventory(id, secret, Inventory("131.0", true))).EnsureSuccessStatusCode();
+        var row = (await admin.GetFromJsonAsync<JsonElement>("/api/clients"))[0].GetProperty("inventory");
+        var whole = (await admin.GetFromJsonAsync<JsonElement>($"/api/clients/{id}/inventory")).GetProperty("inventory");
+
+        Assert.Equal(HttpStatusCode.Forbidden, waiting.StatusCode);
+        Assert.Equal("OptiPlex 7090", row.GetProperty("model").GetString());
+        Assert.Equal(40, row.GetProperty("disk").GetInt32());
+        Assert.Equal(1, row.GetProperty("missing").GetInt32());
+        Assert.True(row.GetProperty("restartNeeded").GetBoolean());
+        Assert.Equal(2, row.GetProperty("software").GetInt32());
+        Assert.Equal(2, whole.GetProperty("software").GetArrayLength());
+        Assert.Equal("KB5046617", whole.GetProperty("missing")[0].GetProperty("kb").GetString());
+        Assert.True(File.Exists(Path.Combine(data, "Inventory", id + ".json")));
+    }
+
+    [Fact]
+    public async Task Software_and_updates_are_listed_across_computers_and_go_when_a_computer_is_removed()
+    {
+        var admin = await app.SignedIn();
+        var (one, oneSecret, _) = await Join();
+        var (two, twoSecret, _) = await Join("AMW-LT-023");
+        (await admin.PostAsync($"/api/clients/{one}/approve", null)).EnsureSuccessStatusCode();
+        (await admin.PostAsync($"/api/clients/{two}/approve", null)).EnsureSuccessStatusCode();
+        (await SendInventory(one, oneSecret, Inventory("131.0", true))).EnsureSuccessStatusCode();
+        (await SendInventory(two, twoSecret, Inventory("130.2", false))).EnsureSuccessStatusCode();
+
+        var software = await admin.GetFromJsonAsync<JsonElement>("/api/devices/software");
+        var updates = await admin.GetFromJsonAsync<JsonElement>("/api/devices/updates");
+        (await admin.PostAsync($"/api/clients/{two}/remove", null)).EnsureSuccessStatusCode();
+        var after = await admin.GetFromJsonAsync<JsonElement>("/api/devices/software");
+
+        var chrome = software.EnumerateArray().Single(s => s.GetProperty("name").GetString() == "Google Chrome");
+        Assert.Equal(2, software.GetArrayLength());
+        Assert.Equal(2, chrome.GetProperty("computers").GetArrayLength());
+        Assert.Equal(["130.2", "131.0"], chrome.GetProperty("versions").EnumerateArray().Select(v => v.GetString()));
+        var cumulative = updates.EnumerateArray().Single(u => u.GetProperty("kb").GetString() == "KB5046617");
+        Assert.Equal(1, cumulative.GetProperty("missing").GetArrayLength());
+        Assert.Equal(2, updates.EnumerateArray().Single(u => u.GetProperty("kb").GetString() == "KB5045935").GetProperty("installed").GetArrayLength());
+        Assert.Equal(1, after.EnumerateArray().Single(s => s.GetProperty("name").GetString() == "Google Chrome").GetProperty("computers").GetArrayLength());
+        Assert.False(File.Exists(Path.Combine(data, "Inventory", two + ".json")));
+    }
+
+    [Fact]
+    public async Task Inventory_is_cut_to_size_and_only_for_people_who_may_see_computers()
+    {
+        var admin = await app.SignedIn();
+        var (id, secret, _) = await Join();
+        (await admin.PostAsync($"/api/clients/{id}/approve", null)).EnsureSuccessStatusCode();
+        app.Services.GetRequiredService<Accounts>().Add("mlopez", "user password", Roles.User);
+        var user = app.Page();
+        (await user.PostAsJsonAsync("/api/signin", new { username = "mlopez", password = "user password" })).EnsureSuccessStatusCode();
+
+        (await SendInventory(id, secret, new { model = new string('m', 5000), software = new[] { new { name = new string('n', 5000) }, new { name = " " } } })).EnsureSuccessStatusCode();
+        var whole = (await admin.GetFromJsonAsync<JsonElement>($"/api/clients/{id}/inventory")).GetProperty("inventory");
+
+        Assert.Equal(Inventories.MaxText, whole.GetProperty("model").GetString()!.Length);
+        Assert.Equal(1, whole.GetProperty("software").GetArrayLength());
+        Assert.Equal(Inventories.MaxText, whole.GetProperty("software")[0].GetProperty("name").GetString()!.Length);
+        Assert.Equal(JsonValueKind.Null, (await admin.GetFromJsonAsync<JsonElement>("/api/clients"))[0].GetProperty("inventory").GetProperty("missing").ValueKind);
+        Assert.Equal(HttpStatusCode.Forbidden, (await user.GetAsync($"/api/clients/{id}/inventory")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await user.GetAsync("/api/devices/software")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await user.GetAsync("/api/devices/updates")).StatusCode);
+    }
 }

@@ -111,7 +111,7 @@ public static class ClientsApi
             });
         });
 
-        app.MapGet("/api/clients", (HttpContext context, Clients clients) =>
+        app.MapGet("/api/clients", (HttpContext context, Clients clients, Inventories inventories) =>
             Access.Can(context, Permissions.SeatsView) ? Results.Ok(clients.All().Select(c => new
             {
                 id = c.Id,
@@ -128,7 +128,66 @@ public static class ClientsApi
                 behind = Behind(c.Version),
                 removalUntil = clients.RemovalUntil(c),
                 uninstalling = c.Uninstall,
+                inventory = Summary(inventories.Get(c.Id)),
             })) : Access.NotAllowed());
+
+        // The client's inventory of its computer (Inventory.cs): hardware, drives, software, Windows updates. Kept only for
+        // a computer that's been approved.
+        app.MapPost("/api/clients/inventory", (DeviceInventory inventory, HttpContext context, Clients clients, Inventories inventories) =>
+        {
+            if (Caller(context, clients) is not { } c)
+            {
+                return Unknown();
+            }
+            if (c.Approved is null)
+            {
+                return Results.Json(new { error = "This computer is waiting for approval." }, statusCode: StatusCodes.Status403Forbidden);
+            }
+            inventories.Set(c.Id, inventory);
+            return Results.Ok();
+        });
+
+        // One computer's whole inventory, for its side panel; null when its client hasn't sent one yet.
+        app.MapGet("/api/clients/{id}/inventory", (string id, HttpContext context, Clients clients, Inventories inventories) =>
+            !Access.Can(context, Permissions.SeatsView) ? Access.NotAllowed()
+            : clients.Find(id) is null ? Results.NotFound(new { error = "That client isn't here any more." })
+            : Results.Ok(new { inventory = inventories.Get(id) }));
+
+        // Software across the approved computers: a row for each program and publisher, with the computers that have it.
+        app.MapGet("/api/devices/software", (HttpContext context, Clients clients, Inventories inventories) =>
+            !Access.Can(context, Permissions.SeatsView) ? Access.NotAllowed() : Results.Ok(clients.All().Where(c => c.Approved is not null)
+                .SelectMany(c => (inventories.Get(c.Id)?.Software ?? []).Select(p => (Client: c, Program: p)))
+                .GroupBy(x => $"{x.Program.Name}\n{x.Program.Publisher}".ToUpperInvariant())
+                .Select(g => new
+                {
+                    name = g.First().Program.Name,
+                    publisher = g.First().Program.Publisher,
+                    versions = g.Select(x => x.Program.Version ?? "").Where(v => v.Length > 0).Distinct().OrderBy(v => v, StringComparer.OrdinalIgnoreCase).ToList(),
+                    computers = g.Select(x => new { id = x.Client.Id, computer = x.Client.Computer, version = x.Program.Version, installed = x.Program.Installed })
+                        .DistinctBy(x => x.id).OrderBy(x => x.computer, StringComparer.OrdinalIgnoreCase).ToList(),
+                })
+                .OrderBy(x => x.name, StringComparer.OrdinalIgnoreCase)));
+
+        // Windows updates across the approved computers: a row for each update, with the computers missing it and the ones that have it.
+        app.MapGet("/api/devices/updates", (HttpContext context, Clients clients, Inventories inventories) =>
+        {
+            if (!Access.Can(context, Permissions.SeatsView))
+            {
+                return Access.NotAllowed();
+            }
+            var all = clients.All().Where(c => c.Approved is not null).Select(c => (Client: c, Inventory: inventories.Get(c.Id))).Where(x => x.Inventory is not null).ToList();
+            var seen = all.SelectMany(x => x.Inventory!.Missing.Select(u => (x.Client, Update: u, Missing: true)).Concat(x.Inventory.Updates.Select(u => (x.Client, Update: u, Missing: false))));
+            return Results.Ok(seen.GroupBy(x => (x.Update.Kb.Length > 0 ? x.Update.Kb : x.Update.Title ?? "").ToUpperInvariant())
+                .Select(g => new
+                {
+                    kb = g.First().Update.Kb,
+                    title = g.Select(x => x.Update.Title).FirstOrDefault(t => !string.IsNullOrEmpty(t)),
+                    kind = g.Select(x => x.Update.Kind).FirstOrDefault(k => !string.IsNullOrEmpty(k)),
+                    missing = g.Where(x => x.Missing).Select(x => new { id = x.Client.Id, computer = x.Client.Computer }).DistinctBy(x => x.id).OrderBy(x => x.computer, StringComparer.OrdinalIgnoreCase).ToList(),
+                    installed = g.Where(x => !x.Missing).Select(x => new { id = x.Client.Id, computer = x.Client.Computer, on = x.Update.Installed }).DistinctBy(x => x.id).OrderBy(x => x.computer, StringComparer.OrdinalIgnoreCase).ToList(),
+                })
+                .OrderByDescending(x => x.missing.Count).ThenByDescending(x => x.kb, StringComparer.OrdinalIgnoreCase));
+        });
 
         app.MapPost("/api/clients/{id}/approve", (string id, HttpContext context, Clients clients, ActivityLog log) =>
         {
@@ -144,7 +203,7 @@ public static class ClientsApi
             return Results.Ok();
         });
 
-        app.MapPost("/api/clients/{id}/remove", (string id, HttpContext context, Clients clients, ClientCommands commands, ActivityLog log) =>
+        app.MapPost("/api/clients/{id}/remove", (string id, HttpContext context, Clients clients, ClientCommands commands, Inventories inventories, ActivityLog log) =>
         {
             if (Access.RefuseUnless(context, Permissions.SeatsRemove) is { } refused)
             {
@@ -155,6 +214,7 @@ public static class ClientsApi
                 return Results.NotFound(new { error = "That client isn't here any more." });
             }
             commands.Forget(c.Id);
+            inventories.Forget(c.Id);
             log.Record(context, "clients", "client.remove", $"Removed {c.Computer}");
             return Results.Ok();
         });
@@ -255,6 +315,24 @@ public static class ClientsApi
 
     private static IResult Unknown() =>
         Results.Json(new { error = $"This computer isn't one of {Product.Title}'s clients. It will rejoin automatically." }, statusCode: StatusCodes.Status401Unauthorized);
+
+    /// <summary>The few facts about a computer the list shows; the rest is asked for when the computer is opened.</summary>
+    private static object? Summary(DeviceInventory? i) => i is null ? null : new
+    {
+        manufacturer = i.Manufacturer,
+        model = i.Model,
+        serial = i.Serial,
+        processor = i.Processor,
+        memory = i.Memory,
+        started = i.Started,
+        restartNeeded = i.RestartNeeded,
+        // Free space on the Windows drive, as a percentage.
+        disk = i.Disks.FirstOrDefault(d => d.Name.StartsWith('C') || d.Name.StartsWith('c')) is { Total: > 0 } c ? (int?) Math.Round(100.0 * c.Free / c.Total) : null,
+        // How many updates are missing; null until Windows Update has answered once.
+        missing = i.MissingChecked is null ? (int?) null : i.Missing.Count,
+        software = i.Software.Count,
+        received = i.Received,
+    };
 
     /// <summary>Whether a client runs an older version than this server.</summary>
     public static bool Behind(string? version) =>

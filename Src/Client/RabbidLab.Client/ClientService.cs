@@ -80,6 +80,11 @@ internal sealed class ClientService : ServiceBase
                 {
                     await Updater.Follow(status, stop).ConfigureAwait(false);
                 }
+                // An approved computer tells the server what it is and has (Inventory.cs).
+                if (status.State == Status.Connected)
+                {
+                    await Inventory.Follow(stop).ConfigureAwait(false);
+                }
             }
             catch (Exception e) when (!stop.IsCancellationRequested)
             {
