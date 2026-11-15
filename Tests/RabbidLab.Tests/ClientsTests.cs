@@ -327,6 +327,36 @@ public sealed class ClientsTests : IDisposable
         Assert.False(installedAgain.GetProperty("uninstall").GetBoolean());
         Assert.False(Allowed(installedAgain));
     }
+    [Fact]
+    public async Task Errors_a_client_sends_add_up_show_on_its_computer_and_can_be_cleared()
+    {
+        var admin = await app.SignedIn();
+        var (id, secret, _) = await Join();
+        var client = app.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("RabbidLab-Client", $"{id}:{secret}");
+        object Problem(string area, string message, int count) => new { area, message, at = DateTime.UtcNow.ToString("o"), count };
+        async Task Send(params object[] problems) =>
+            (await client.PostAsJsonAsync("/api/clients/checkin", new { computer = "AMW-LT-022", os = "Windows 11 Pro", version = "1.1.203", problems })).EnsureSuccessStatusCode();
+        JsonElement Errors(JsonElement list) => list[0].GetProperty("problems");
+
+        // Waiting for approval: not kept, so a computer nobody let in can't fill the list.
+        await Send(Problem("update", "Couldn't download client 1.1.203 from the server.", 1));
+        Assert.Equal(0, Errors(await admin.GetFromJsonAsync<JsonElement>("/api/clients")).GetArrayLength());
+
+        (await admin.PostAsync($"/api/clients/{id}/approve", null)).EnsureSuccessStatusCode();
+        await Send(Problem("windows-update", "Windows Update didn't answer: busy (0x80240016)", 2), Problem("inventory", new string('x', 1000), 1));
+        await Send(Problem("windows-update", "Windows Update didn't answer: busy (0x80240016)", 3));
+        var errors = Errors(await admin.GetFromJsonAsync<JsonElement>("/api/clients"));
+        Assert.Equal(2, errors.GetArrayLength());
+        var wu = errors.EnumerateArray().Single(e => e.GetProperty("area").GetString() == "windows-update");
+        Assert.Equal(5, wu.GetProperty("count").GetInt32()); // the same one again counts up, not a new line
+        Assert.Equal(Clients.MostProblemText, errors.EnumerateArray().Single(e => e.GetProperty("area").GetString() == "inventory").GetProperty("message").GetString()!.Length);
+
+        (await admin.PostAsync($"/api/clients/{id}/problems/clear", null)).EnsureSuccessStatusCode();
+        Assert.Equal(0, Errors(await admin.GetFromJsonAsync<JsonElement>("/api/clients")).GetArrayLength());
+        Assert.Contains("Cleared the errors on AMW-LT-022", await (await admin.GetAsync("/api/activity")).Content.ReadAsStringAsync());
+    }
+
     // A computer's inventory, as its client sends it.
     private async Task<HttpResponseMessage> SendInventory(string id, string secret, object inventory)
     {
@@ -368,8 +398,12 @@ public sealed class ClientsTests : IDisposable
         Assert.Equal("KB5046617", whole.GetProperty("missing")[0].GetProperty("kb").GetString());
         Assert.True(File.Exists(Path.Combine(data, "Inventory", id + ".json")));
 
-        // The client restarts (its own update, say) and reports before Windows Update has answered it: the last answer stays.
+        // Windows Update's history by name, then a restarted client that hasn't asked yet: the last answer and history stay.
+        (await SendInventory(id, secret, new { model = "OptiPlex 7090", missing = new[] { new { kb = "KB5046617", title = "2026-11 Cumulative Update" } }, missingChecked = DateTime.UtcNow,
+            history = new[] { new { title = "2026-11 Cumulative Update for Windows 11 (KB5132688)", kb = "KB5132688", date = DateTime.UtcNow.AddDays(-4), result = "installed" } } })).EnsureSuccessStatusCode();
         (await SendInventory(id, secret, new { model = "OptiPlex 7090", disks = Array.Empty<object>() })).EnsureSuccessStatusCode();
+        var kept = (await admin.GetFromJsonAsync<JsonElement>($"/api/clients/{id}/inventory")).GetProperty("inventory");
+        Assert.Equal("KB5132688", kept.GetProperty("history")[0].GetProperty("kb").GetString());
         var after = (await admin.GetFromJsonAsync<JsonElement>("/api/clients"))[0].GetProperty("inventory");
         Assert.Equal(1, after.GetProperty("missing").GetInt32());
         Assert.NotEqual(JsonValueKind.Null, after.GetProperty("missingChecked").ValueKind);

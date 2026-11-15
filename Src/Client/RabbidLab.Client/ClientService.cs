@@ -89,6 +89,7 @@ internal sealed class ClientService : ServiceBase
             }
             catch (Exception e) when (!stop.IsCancellationRequested)
             {
+                Problems.Note("client", $"A round with the server failed: {e.Message}");
                 status = new Status { State = Status.Unreachable, Problem = e.Message };
                 try
                 {
@@ -121,6 +122,24 @@ internal static class Updater
     // When the next try may start, after one that didn't get the MSI running.
     private static DateTime notBefore = DateTime.MinValue;
 
+    // The version whose failed install was already told to the server.
+    private static string? told;
+
+    // What Windows Installer's log says about how the last install ended, as ": Windows Installer error 1603".
+    private static string InstallerSaid()
+    {
+        try
+        {
+            var log = File.ReadAllText(Folder.File("update.log")); // Unicode, which the byte order mark says
+            var ended = System.Text.RegularExpressions.Regex.Matches(log, @"Installation success or error status: (\d+)");
+            return ended.Count > 0 && ended[ended.Count - 1].Groups[1].Value is var code && code != "0" ? $": Windows Installer error {code}" : "";
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            return "";
+        }
+    }
+
     public static async Task Follow(Status status, CancellationToken stop)
     {
         if (!Version.TryParse(status.ServerVersion, out var server) || !Version.TryParse(Agent.Version, out var mine) || server <= mine)
@@ -130,6 +149,12 @@ internal static class Updater
         var tried = Folder.File("last-update.txt");
         if (File.Exists(tried) && File.ReadAllText(tried).Trim() == status.ServerVersion && DateTime.UtcNow - File.GetLastWriteTimeUtc(tried) < TimeSpan.FromDays(1))
         {
+            // Started a while ago and this is still the old client: the install didn't take. Told once per version.
+            if (told != status.ServerVersion && DateTime.UtcNow - File.GetLastWriteTimeUtc(tried) > TimeSpan.FromMinutes(10))
+            {
+                told = status.ServerVersion;
+                Problems.Note("update", $"Client {status.ServerVersion} didn't install{InstallerSaid()}. It tries again tomorrow; update.log on the computer has the details.");
+            }
             return;
         }
         var settings = Settings.Read();
@@ -155,7 +180,9 @@ internal static class Updater
         }
         if (!downloaded)
         {
-            return; // a server without the MSI, or a download cut short
+            // A server without the MSI, or a download cut short: tried again in ten minutes.
+            Problems.Note("update", $"Couldn't download client {status.ServerVersion} from the server.");
+            return;
         }
         // msiexec carries on after this service stops for the upgrade, and starts the new one.
         var system = Environment.GetFolderPath(Environment.SpecialFolder.System);

@@ -47,7 +47,22 @@ public sealed class Client
 
     /// <summary>When the client said its service was stopping (a restart, an update, an uninstall); null once it checks in again.</summary>
     public DateTime? Stopped { get; set; }
+
+    /// <summary>Errors its client ran into, newest first; the same one again counts up. Cleared from Devices.</summary>
+    public List<ClientProblem>? Problems { get; set; }
 }
+
+/// <summary>An error a client ran into: where (update, windows-update, inventory, connection, orders, client), what, when first and last, how often.</summary>
+public sealed class ClientProblem
+{
+    public string Area { get; set; } = "";
+    public string Message { get; set; } = "";
+    public DateTime First { get; set; }
+    public DateTime At { get; set; }
+    public int Count { get; set; }
+}
+
+public sealed record ProblemForm(string? Area, string? Message, string? At, int Count);
 
 public sealed class ClientsFile
 {
@@ -381,6 +396,65 @@ public sealed class Clients(DataFolder folder, TimeProvider clock, IDataProtecti
             c.RemovalUntil = null;
             Save(f);
             return allowed;
+        }
+    }
+
+    /// <summary>At most this many errors kept for a computer, and taken from one check-in.</summary>
+    public const int MostProblems = 50;
+    public const int MostProblemsAtOnce = 20;
+    public const int MostProblemText = 300;
+
+    /// <summary>Errors the client sent with its check-in, added to the ones kept: the same one again counts up.</summary>
+    public void AddProblems(string id, IEnumerable<ProblemForm> sent)
+    {
+        lock (file.Gate)
+        {
+            var f = file.Read();
+            if (f.Clients.FirstOrDefault(x => x.Id == id) is not { } c)
+            {
+                return;
+            }
+            var now = clock.GetUtcNow().UtcDateTime;
+            c.Problems ??= [];
+            foreach (var p in sent.Take(MostProblemsAtOnce))
+            {
+                var message = p.Message?.Trim() is { Length: > 0 } m ? m[..Math.Min(m.Length, MostProblemText)] : null;
+                if (message is null)
+                {
+                    continue;
+                }
+                var area = p.Area?.Trim() is { Length: > 0 } a ? a[..Math.Min(a.Length, 40)] : "client";
+                // A time from the computer's clock, but never one ahead of this server's.
+                var at = DateTime.TryParse(p.At, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind, out var t) && t.ToUniversalTime() < now ? t.ToUniversalTime() : now;
+                var count = Math.Clamp(p.Count, 1, 100_000);
+                if (c.Problems.FirstOrDefault(x => x.Area == area && x.Message == message) is { } same)
+                {
+                    same.Count = (int) Math.Min(int.MaxValue, (long) same.Count + count);
+                    same.At = at > same.At ? at : same.At;
+                }
+                else
+                {
+                    c.Problems.Add(new ClientProblem { Area = area, Message = message, First = at, At = at, Count = count });
+                }
+            }
+            c.Problems = [.. c.Problems.OrderByDescending(x => x.At).Take(MostProblems)];
+            Save(f);
+        }
+    }
+
+    /// <summary>The computer's errors were looked at: gone from the list. Null when it isn't here.</summary>
+    public Client? ClearProblems(string id)
+    {
+        lock (file.Gate)
+        {
+            var f = file.Read();
+            if (f.Clients.FirstOrDefault(x => x.Id == id) is not { } c)
+            {
+                return null;
+            }
+            c.Problems = null;
+            Save(f);
+            return c;
         }
     }
 

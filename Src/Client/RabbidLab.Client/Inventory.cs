@@ -51,6 +51,22 @@ internal sealed class InventoryReport
 
     /// <summary>Its network cards, for Wake-on-LAN; left out when Windows wouldn't say.</summary>
     [DataMember(Name = "nics", EmitDefaultValue = false)] public List<NicReport>? Nics { get; set; }
+
+    /// <summary>What Windows Update installed, by name; left out until it's answered once.</summary>
+    [DataMember(Name = "history", EmitDefaultValue = false)] public List<HistoryReport>? History { get; set; }
+}
+
+[DataContract]
+internal sealed class HistoryReport
+{
+    [DataMember(Name = "title")] public string Title { get; set; } = "";
+    [DataMember(Name = "kb", EmitDefaultValue = false)] public string Kb { get; set; } = "";
+
+    /// <summary>When, as ISO 8601.</summary>
+    [DataMember(Name = "date")] public string Date { get; set; } = "";
+
+    /// <summary>installed, failed, cancelled or pending.</summary>
+    [DataMember(Name = "result")] public string Result { get; set; } = "installed";
 }
 
 [DataContract]
@@ -130,6 +146,8 @@ internal static class Inventory
     private static string? sentTo; // and to which server
     private static List<UpdateReport>? missing;
     private static DateTime? missingChecked;
+    private static List<HistoryReport>? history;
+    private static List<string>? misses; // what WMI wouldn't read during this Gather, with why
     private static DateTime asked = DateTime.MinValue;
     private static Task? asking;
 
@@ -172,6 +190,10 @@ internal static class Inventory
         {
             (sentAs, sentTo, sent, sentMissing) = (print, settings.Server, now, report.MissingChecked);
         }
+        else
+        {
+            Problems.Note("inventory", $"The server didn't take the inventory (HTTP {(int) code}).");
+        }
     }
 
     private static string? sentMissing; // the Windows Update answer that was last sent, by its time
@@ -179,6 +201,7 @@ internal static class Inventory
     /// <summary>Everything quick to read, with what Windows Update last said is missing.</summary>
     public static InventoryReport Gather()
     {
+        misses = new List<string>();
         var r = new InventoryReport();
         Wmi("SELECT Manufacturer, Model, TotalPhysicalMemory FROM Win32_ComputerSystem", o =>
         {
@@ -239,6 +262,12 @@ internal static class Inventory
             r.Missing = missing;
             r.MissingChecked = at2.ToString("o", CultureInfo.InvariantCulture);
         }
+        r.History = history;
+        if (misses.Count > 0)
+        {
+            Problems.Note("inventory", $"Couldn't read {misses.Count} part(s) of the inventory. {misses[0]}");
+        }
+        misses = null;
         return r;
     }
 
@@ -487,10 +516,48 @@ internal static class Inventory
             }
             missing = list;
             missingChecked = DateTime.UtcNow;
+            history = History(searcher);
+        }
+        catch (Exception e)
+        {
+            // Windows Update is off, unreachable or busy: asked again in six hours, and the server is told.
+            Problems.Note("windows-update", $"Windows Update didn't answer: {e.Message.Trim()} (0x{e.HResult:X8})");
+        }
+    }
+
+    // What Windows Update installed, by name (Installed has only KB numbers): newest first, the latest try of each
+    // update, without antivirus definitions, which come several times a day.
+    private static List<HistoryReport>? History(dynamic searcher)
+    {
+        try
+        {
+            var total = (int) searcher.GetTotalHistoryCount();
+            if (total <= 0)
+            {
+                return new List<HistoryReport>();
+            }
+            var all = new List<HistoryReport>();
+            foreach (dynamic entry in searcher.QueryHistory(0, Math.Min(total, 300)))
+            {
+                var title = Text((object) entry.Title);
+                if (title is null || (int) entry.Operation != 1 || title.IndexOf("Security Intelligence Update", StringComparison.OrdinalIgnoreCase) >= 0
+                    || title.IndexOf("Definition Update", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    continue;
+                }
+                var result = (int) entry.ResultCode;
+                all.Add(new HistoryReport
+                {
+                    Title = title, Kb = System.Text.RegularExpressions.Regex.Match(title, @"KB\d{6,8}").Value,
+                    Date = ((DateTime) entry.Date).ToUniversalTime().ToString("o", CultureInfo.InvariantCulture),
+                    Result = result is 2 or 3 ? "installed" : result == 4 ? "failed" : result == 5 ? "cancelled" : "pending",
+                });
+            }
+            return all.OrderByDescending(h => h.Date, StringComparer.Ordinal).GroupBy(h => h.Kb.Length > 0 ? h.Kb : h.Title).Select(g => g.First()).Take(100).ToList();
         }
         catch (Exception)
         {
-            // Windows Update is off, unreachable or busy: asked again in six hours.
+            return null; // the last history sent stays
         }
     }
 
@@ -529,6 +596,10 @@ internal static class Inventory
         {
             all.Append("|n:").Append(n.Mac).Append(':').Append(n.Ip).Append(':').Append(n.Up).Append(':').Append(n.Wake);
         }
+        foreach (var h in r.History ?? new List<HistoryReport>())
+        {
+            all.Append("|h:").Append(h.Title).Append(':').Append(h.Result);
+        }
         using var sha = SHA256.Create();
         return BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(all.ToString())));
     }
@@ -550,7 +621,9 @@ internal static class Inventory
         }
         catch (Exception e) when (e is ManagementException or System.Runtime.InteropServices.COMException or UnauthorizedAccessException or InvalidCastException or FormatException)
         {
-            // Windows wouldn't say: that part is left out.
+            // Windows wouldn't say: that part is left out, and the server hears what couldn't be read.
+            var from = System.Text.RegularExpressions.Regex.Match(query, @"FROM\s+(\w+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase).Groups[1].Value;
+            misses?.Add($"{from}: {e.Message.Trim()}");
         }
     }
 

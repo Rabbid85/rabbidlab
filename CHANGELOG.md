@@ -2,6 +2,13 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.203 (2026-11-15)
+
+- Clients from 1.1.203 send back the errors they run into: a client update that did not install, Windows Update not answering, parts of the inventory they could not read, and losing the server. They show in an Errors column, a Has errors view and at the top of the computer panel, with Clear.
+- The Software tab in a computer panel is a table with Name, Version and Publisher that sorts, with Find.
+- The Updates tab is one table of updates by name from Windows Update history, missing ones first, each Installed, Failed or Missing. Names need client 1.1.203.
+- Offline computers are greyed out in Computers and Windows updates.
+
 ## 1.1.202 (2026-11-15)
 
 - The Actions menu on Devices is organized in named groups: Power, Sessions, Run, Install and Selection, in two columns, with Remove from Devices at the bottom.

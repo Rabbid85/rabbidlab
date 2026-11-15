@@ -3,6 +3,11 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.203', [
+    'Clients from 1.1.203 send back the errors they run into: a client update that did not install, Windows Update not answering, parts of the inventory they could not read, and losing the server. They show in an Errors column, a Has errors view and at the top of the computer panel, with Clear.',
+    'The Software tab in a computer panel is a table with Name, Version and Publisher that sorts, with Find.',
+    'The Updates tab is one table of updates by name from Windows Update history, missing ones first, each Installed, Failed or Missing. Names need client 1.1.203.',
+    'Offline computers are greyed out in Computers and Windows updates.']],
   ['1.1.202', [
     'The Actions menu on Devices is organized in named groups: Power, Sessions, Run, Install and Selection, in two columns, with Remove from Devices at the bottom.']],
   ['1.1.201', [
@@ -1807,6 +1812,8 @@ const RELEASE_NOTES = [
   const addr = (a) => (a === '::1' || a === '127.0.0.1' ? 'This server' : (a || '').replace(/^::ffff:/i, ''));
   const stateOf = (c) => (!c.approved ? 'waiting' : c.online ? 'online' : 'offline');
   const STATE = { online: 'Online', offline: 'Offline', waiting: 'Waiting' };
+  // Where a client's error happened (its Problems.cs), as the panel names it.
+  const ERR_AREA = { update: 'Client update', 'windows-update': 'Windows Update', inventory: 'Inventory', connection: 'Reaching this server', orders: 'Jobs and orders', client: 'Client' };
   // State's pill; Waking for a few minutes after Wake (devices.js), until it comes online.
   const stateLabel = (c) => (stateOf(c) === 'offline' && dvHooks.waking?.(c) ? 'Waking' : STATE[stateOf(c)]);
   const stateCell = (c) => (stateLabel(c) === 'Waking' ? '<span class="state waiting">Waking</span>' : `<span class="state ${stateOf(c)}">${STATE[stateOf(c)]}</span>`);
@@ -1824,7 +1831,7 @@ const RELEASE_NOTES = [
   const DV_VIEWS = [['all', 'All computers', () => true], ['online', 'Online', (c) => stateOf(c) === 'online'], ['offline', 'Offline', (c) => stateOf(c) === 'offline'],
     ['waiting', 'Waiting for approval', (c) => stateOf(c) === 'waiting', 'amber'], null,
     ['updates', 'Needs updates', (c) => c.inventory?.missing > 0, 'amber'], ['restart', 'Needs restart', (c) => !!c.inventory?.restartNeeded, 'amber'],
-    ['disk', 'Low disk space', (c) => c.inventory?.disk != null && c.inventory.disk < 15, 'red'], ['behind', 'Older client', (c) => c.behind]];
+    ['disk', 'Low disk space', (c) => c.inventory?.disk != null && c.inventory.disk < 15, 'red'], ['errors', 'Has errors', (c) => c.problems?.length > 0, 'red'], ['behind', 'Older client', (c) => c.behind]];
   const DV = { computers: ['Computers', 'monitor', 'Every computer with the client, with views for what needs looking at.'],
     software: ['Software', 'box', 'What is installed, and on which computers.'],
     updates: ['Windows updates', 'updates', 'What each computer is missing, whether it waits for a restart, and when it last installed an update. Tick computers and install from here.'],
@@ -1920,6 +1927,8 @@ const RELEASE_NOTES = [
   const gb = (bytes) => `${Math.round(bytes / 1073741824).toLocaleString()} GB`;
   // The day something was installed, as the client sent it (2026-11-08), the way dates read here; anything else as it came.
   const dvDay = (text) => {
+    // A full time from Windows Update (2026-11-11T08:12:34Z) shows as its day where you are.
+    if (/^\d{4}-\d\d-\d\dT/.test(text || '')) return new Date(text).toLocaleDateString([], { dateStyle: 'medium' });
     const m = /^(\d{4})-(\d\d)-(\d\d)$/.exec(text || '');
     return m ? new Date(Number(m[1]), m[2] - 1, Number(m[3])).toLocaleDateString([], { dateStyle: 'medium' }) : text || '';
   };
@@ -1935,12 +1944,18 @@ const RELEASE_NOTES = [
     const chosen = JSON.parse(localStorage.getItem(k) || 'null');
     if (Array.isArray(chosen) && !chosen.includes('version') && !localStorage.getItem(`${k}.client`)) localStorage.setItem(k, JSON.stringify([...chosen, 'version']));
     localStorage.setItem(`${k}.client`, '1');
+    // Errors shows by default since 1.1.203, put in the same way once.
+    const now = JSON.parse(localStorage.getItem(k) || 'null');
+    if (Array.isArray(now) && !now.includes('problems') && !localStorage.getItem(`${k}.errors`)) localStorage.setItem(k, JSON.stringify([...now, 'problems']));
+    localStorage.setItem(`${k}.errors`, '1');
   } catch {
     // Not kept in this browser: the default shows it.
   }
   const seatsGrid = () => (seatsG ||= window.RabbidLab.grid({
     el: $('seats-table'),
     key: 'computers', // was devices: renamed in 1.1.172 so everyone gets the new default columns once
+    // An offline computer's row is greyed out, so the ones that are on stand out.
+    rowClass: (c) => (c.approved && !c.online ? 'off' : ''),
     // A tick on each row, for whoever may do something with several computers at once (devices.js).
     lead: () => dvHooks.lead?.() || null,
     sort: { key: 'computer', dir: 1 },
@@ -1956,6 +1971,9 @@ const RELEASE_NOTES = [
           : stateCell(c)) },
       { key: 'os', label: 'Windows', w: 135, on: true, get: (c) => c.os, cell: (c) => `<span class="ell">${esc(c.os || '')}</span>` },
       { key: 'user', label: 'Signed in', w: 110, on: true, get: (c) => c.user, cell: (c) => (c.user ? `<span class="ell">${esc(c.user)}</span>` : '<span class="nobody">Nobody</span>') },
+      // How many errors its client sent that nobody has cleared (the panel lists them).
+      { key: 'problems', label: 'Errors', w: 80, on: true, get: (c) => c.problems?.length || 0, text: (c) => c.problems?.length || '',
+        cell: (c) => (c.problems?.length ? `<span class="state bad">${c.problems.length} error${c.problems.length === 1 ? '' : 's'}</span>` : '<span class="muted">-</span>') },
       { key: 'missing', label: 'Updates', w: 90, on: true, get: (c) => c.inventory?.missing ?? -1, text: (c) => c.inventory?.missing ?? '',
         cell: (c) => (c.server ? '<span class="muted">-</span>' : c.inventory?.missing == null ? '<span class="muted">Not checked</span>' : c.inventory.missing ? `<span class="state waiting">${c.inventory.missing} missing</span>` : '<span class="state online">Up to date</span>') },
       { key: 'restart', label: 'Restart', w: 70, get: (c) => (c.inventory?.restartNeeded ? 1 : 0), text: (c) => (!c.inventory ? '' : c.inventory.restartNeeded ? 'Needed' : 'No'),
@@ -2048,6 +2066,7 @@ const RELEASE_NOTES = [
   const updPcGrid = () => (updPcG ||= window.RabbidLab.grid({
     el: $('dv-updpc'),
     key: 'update-computers',
+    rowClass: (c) => (c.approved && !c.online ? 'off' : ''),
     lead: () => dvHooks.lead?.() || null,
     sort: { key: 'missing', dir: -1 },
     cols: [
@@ -2459,20 +2478,72 @@ const RELEASE_NOTES = [
       const here = !seat.server ? '' : section('Manage it like the other computers', `<p class="dw-how">Install the ${esc(productName)} client on this server to see its hardware, software and Windows updates here, and to run scripts, updates, restarts and WMI queries on it. It's approved straight away and keeps itself up to date.</p>`
         + (can.has('seats.add') ? `<div class="seat-acts"><button type="button" class="primary" data-seat-here${hereStarted ? ' disabled' : ''}>${svg('download')}${hereStarted ? 'Installing the client' : 'Install the client here'}</button></div>` : ''));
       const more = st === 'waiting' ? null : dvHooks.seatPane?.(seat, seatTab);
-      const pane = more != null ? more : st === 'waiting' || seatTab === 'summary' ? section('Details', facts2(facts)) + hardware + network + here + lock
+      // Errors its client sent: what, where, when last and how often, with Clear for whoever may act on computers.
+      const errs = seat.problems || [];
+      const errors = !errs.length || st === 'waiting' ? '' : section(`Errors <small>${errs.length}</small>`,
+        `<div class="dw-list seat-list err-list">${errs.map((p) => `<div class="mrow"><div class="two"><b>${esc(ERR_AREA[p.area] || p.area)}</b><small>${esc(p.message)}</small></div>`
+          + `<span class="err-when">${esc(ago(p.at))}${p.count > 1 ? `<br>${p.count.toLocaleString()} times` : ''}</span></div>`).join('')}</div>`,
+        can.has('seats.actions') ? `<button type="button" class="small" data-seat-clear>${svg('x')}Clear</button>` : '');
+      const pane = more != null ? more : st === 'waiting' || seatTab === 'summary' ? errors + section('Details', facts2(facts)) + hardware + network + here + lock
         : !inv ? section(seatTab === 'software' ? 'Installed software' : 'Windows updates', none(waitingFor))
-        : seatTab === 'software' ? section(`Installed software <small>${inv.software.length}</small>`, inv.software.length ? list(inv.software.map((p) => [p.name, [p.version, p.publisher].filter(Boolean).join(' · ')])) : none('Nothing is listed.'))
-        : section(`Missing <small>${inv.missingChecked ? inv.missing.length : ''}</small>`, !inv.missingChecked ? none("Windows Update hasn't answered on this computer yet. It's asked every six hours.")
-          : inv.missing.length ? list(inv.missing.map((u) => [u.kb || 'No number', u.title || '', u.kind ? ['waiting', u.kind] : null])) : none('Nothing is missing.'))
-          + section(`Installed <small>${inv.updates.length}</small>`, inv.updates.length ? list(inv.updates.map((u) => [u.kb, [u.kind, dvDay(u.installed)].filter(Boolean).join(' · ')])) : none('Nothing is listed.'));
+        : seatTab === 'software' ? section(`Installed software <small>${inv.software.length}</small>`, inv.software.length
+          ? `<label class="side-find seat-find"><svg><use href="#i-search"/></svg><input type="search" id="seat-sw-find" placeholder="Find software" aria-label="Find software" autocomplete="off" spellcheck="false" value="${esc(swFind)}"></label><div class="table" id="seat-sw"></div>` : none('Nothing is listed.'))
+        : section(`Windows updates <small>${inv.missingChecked ? `${inv.missing.length} missing` : ''}</small>`, (!inv.missingChecked ? none("Windows Update hasn't answered on this computer yet. It's asked every six hours.") : '')
+          + (!inv.history && inv.updates.length ? `<p class="dw-how">Update names show once its client is on 1.1.203 or later. Until then it's what Windows lists by number.</p>` : '')
+          + `<div class="table" id="seat-upd"></div>`);
       panel.body.innerHTML = `<div class="dw-head"><span class="pic dw-pic">${svg(seat.server ? 'server' : 'monitor')}</span><div class="dw-name"><h2 id="dw-title">${esc(seat.computer)}</h2>`
         + `<p><span class="state ${stateLabel(seat) === 'Waking' ? 'waiting' : st}">${seat.server ? 'This server' : stateLabel(seat)}</span></p></div><button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>${bar}${tabs}${pane}`;
+      if (more == null && inv && seatTab === 'software') drawSoftware();
+      if (more == null && inv && seatTab === 'updates') drawUpdates();
     };
+    // Software and Windows updates in the panel: data grids like every other table (grid.js), made again with the panel.
+    let swFind = '';
+    const drawSoftware = () => {
+      const el = panel.body.querySelector('#seat-sw');
+      if (!el || !seatInv?.inventory) return;
+      const q = swFind.trim().toLowerCase();
+      const rows = seatInv.inventory.software.filter((p) => !q || `${p.name} ${p.publisher || ''}`.toLowerCase().includes(q));
+      window.RabbidLab.grid({
+        el, key: 'seat-software', headButton: true, sort: { key: 'name', dir: 1 }, redraw: drawSoftware, empty: 'Nothing matches.',
+        cols: [
+          { key: 'name', label: 'Name', w: 180, fixed: true, get: (p) => p.name },
+          { key: 'version', label: 'Version', w: 95, on: true, get: (p) => p.version || '' },
+          { key: 'publisher', label: 'Publisher', w: 130, on: true, get: (p) => p.publisher || '' },
+          { key: 'installed', label: 'Installed', w: 95, get: (p) => p.installed || '', text: (p) => p.installed || '', cell: (p) => `<span class="muted">${esc(dvDay(p.installed) || '-')}</span>` },
+        ],
+      }).draw(rows);
+    };
+    const UPD_STATE = { missing: ['waiting', 'Missing'], installed: ['online', 'Installed'], failed: ['bad', 'Failed'], cancelled: ['offline', 'Cancelled'], pending: ['waiting', 'Pending'] };
+    const drawUpdates = () => {
+      const el = panel.body.querySelector('#seat-upd');
+      const inv = seatInv?.inventory;
+      if (!el || !inv) return;
+      // Missing first, then what Windows Update installed by name; a client before 1.1.203 sends only KB numbers.
+      const done = inv.history ? inv.history.map((h) => ({ title: h.title, kb: h.kb, state: h.result, date: h.date }))
+        : inv.updates.map((u) => ({ title: [u.kind, u.kb].filter(Boolean).join(' '), kb: u.kb, state: 'installed', date: u.installed }));
+      const rows = [...(inv.missingChecked ? inv.missing.map((u) => ({ title: u.title || u.kb, kb: u.kb, state: 'missing', date: null })) : []), ...done];
+      window.RabbidLab.grid({
+        el, key: 'seat-updates', headButton: true, sort: { key: 'date', dir: -1 }, redraw: drawUpdates, empty: 'Nothing is listed.',
+        cols: [
+          { key: 'title', label: 'Update', w: 245, fixed: true, get: (r) => r.title },
+          { key: 'state', label: 'State', w: 85, on: true, get: (r) => (UPD_STATE[r.state] || ['', r.state])[1], cell: (r) => `<span class="state ${(UPD_STATE[r.state] || ['offline'])[0]}">${esc((UPD_STATE[r.state] || ['', r.state])[1])}</span>` },
+          // Missing ones have no date: they sort as the newest.
+          { key: 'date', label: 'Date', w: 90, on: true, get: (r) => (r.state === 'missing' ? '9999' : r.date || ''), text: (r) => r.date || '', cell: (r) => `<span class="muted">${esc(r.date ? dvDay(r.date) : '-')}</span>` },
+          { key: 'kb', label: 'KB', w: 90, get: (r) => r.kb || '' },
+        ],
+      }).draw(rows);
+    };
+    panel.body.addEventListener('input', (e) => {
+      if (e.target.id !== 'seat-sw-find') return;
+      swFind = e.target.value;
+      drawSoftware();
+    });
     const openSeat = (c) => {
       if (seat?.id !== c.id) {
         seatCode = null;
         seatInv = null;
         seatTab = 'summary';
+        swFind = '';
       }
       seat = c;
       drawSeat();
@@ -2568,6 +2639,12 @@ const RELEASE_NOTES = [
       };
       if (on('approve')) {
         await seatAct(seat, 'approve');
+        seats();
+      } else if (on('clear')) {
+        // The errors were looked at: gone from the panel and the Errors column.
+        await seatAct(seat, 'problems/clear');
+        seat.problems = [];
+        drawSeat();
         seats();
       } else if (on('here')) installHere();
       else if (on('allow')) lockTo({ allow: !seat.removalUntil });

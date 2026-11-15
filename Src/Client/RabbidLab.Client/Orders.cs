@@ -44,8 +44,9 @@ internal static class Orders
                 // Held too long by something in between: ask again.
                 pause = TimeSpan.FromSeconds(2);
             }
-            catch (Exception) when (!stop.IsCancellationRequested)
+            catch (Exception e) when (!stop.IsCancellationRequested)
             {
+                Problems.Note("orders", $"Listening for jobs and orders failed: {e.Message}");
                 pause = TimeSpan.FromMinutes(1);
             }
             try

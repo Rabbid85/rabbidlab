@@ -513,3 +513,10 @@ dialog.drawer:not(:modal) { z-index: 60; }
 .flt-num .stepper { height: 36px; }
 .dws-seg { margin: 0; }
 .dws-seg button { height: 34px; padding: 0 18px; font-size: 13px; }
+
+/* A computer's errors (its client's Problems.cs): the message wraps, when and how often sit on the right. */
+.err-list .mrow { align-items: flex-start; }
+.err-list .two small { white-space: normal; overflow: visible; text-overflow: clip; margin-top: 2px; line-height: 1.45; }
+.err-when { flex: none; margin-left: 10px; color: #6D7290; font-size: 11.5px; line-height: 1.45; text-align: right; white-space: nowrap; }
+/* Find over a table in the panel (Software). */
+.side-find.seat-find { display: flex; width: 100%; margin: 0 0 10px; }

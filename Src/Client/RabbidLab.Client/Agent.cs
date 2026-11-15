@@ -52,13 +52,18 @@ internal sealed class Agent
             }
             joined = held = true;
             var check = Removal.CodeCheck;
+            var problems = Problems.Waiting();
             var (answered, answer) = await api.Post<CheckInAnswer>("api/clients/checkin",
                 new CheckInRequest
                 {
                     Computer = Machine.Name, Os = Machine.Os, Version = Version, User = Machine.Users(),
-                    Code = check?.Substring(check.IndexOf(':') + 1), CodeUsed = Removal.CodeUsed,
+                    Code = check?.Substring(check.IndexOf(':') + 1), CodeUsed = Removal.CodeUsed, Problems = problems,
                 },
                 $"RabbidLab-Client {me.Id}:{me.Secret}", stop).ConfigureAwait(false);
+            if (answered == HttpStatusCode.OK && problems is not null)
+            {
+                Problems.Sent(problems);
+            }
             if (answered == HttpStatusCode.Unauthorized)
             {
                 Identity.Forget();
@@ -177,6 +182,8 @@ internal sealed class Agent
     {
         status.State = Status.Unreachable;
         status.Problem = why;
+        // Told to the server once it's reached again, so it knows why the computer was away.
+        Problems.Note("connection", $"Couldn't reach the server: {why}");
         try
         {
             if (held)

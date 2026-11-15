@@ -61,6 +61,11 @@ public static class ClientsApi
             {
                 workflows.CameOnline(c);
             }
+            // Errors its client ran into since its last check-in that got through.
+            if (form.Problems is { Count: > 0 } problems && c.Approved is not null)
+            {
+                clients.AddProblems(c.Id, problems);
+            }
             return Results.Ok(new
             {
                 approved = c.Approved is not null,
@@ -143,7 +148,23 @@ public static class ClientsApi
                 uninstalling = c.Uninstall,
                 inventory = Summary(inventories.Get(c.Id)),
                 thisServer = string.Equals(c.Computer, Environment.MachineName, StringComparison.OrdinalIgnoreCase), // this server, with the client on it too
+                problems = (c.Problems ?? []).Select(p => new { area = p.Area, message = p.Message, first = p.First, at = p.At, count = p.Count }),
             })) : Access.NotAllowed());
+
+        // The computer's errors were looked at: cleared from its list, for whoever may act on computers.
+        app.MapPost("/api/clients/{id}/problems/clear", (string id, HttpContext context, Clients clients, ActivityLog log) =>
+        {
+            if (Access.RefuseUnless(context, Permissions.SeatsActions) is { } refused)
+            {
+                return refused;
+            }
+            if (clients.ClearProblems(id) is not { } c)
+            {
+                return Results.NotFound(new { error = "That computer isn't in Devices any more." });
+            }
+            log.Record(context, "clients", "client.problems.clear", $"Cleared the errors on {c.Computer}");
+            return Results.Ok();
+        });
 
         // The client's inventory of its computer (Inventory.cs): hardware, drives, software, Windows updates. Kept only for
         // a computer that's been approved.
@@ -443,7 +464,7 @@ public static class ClientsApi
 
 public sealed record JoinForm(string? Computer, string? Os, string? Version);
 
-public sealed record CheckInForm(string? Computer, string? Os, string? Version, string? User, string? Code = null, string? CodeUsed = null);
+public sealed record CheckInForm(string? Computer, string? Os, string? Version, string? User, string? Code = null, string? CodeUsed = null, List<ProblemForm>? Problems = null);
 
 public sealed record ClientSettingsForm(bool? Approve = null, int? UnlockAfterDays = null);
 

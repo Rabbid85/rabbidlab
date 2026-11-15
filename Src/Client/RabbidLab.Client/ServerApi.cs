@@ -117,6 +117,9 @@ internal sealed class CheckInRequest
 
     /// <summary>When the uninstall code was last typed on this computer, as ISO 8601.</summary>
     [DataMember(Name = "codeUsed", EmitDefaultValue = false)] public string? CodeUsed { get; set; }
+
+    /// <summary>Errors waiting to be told (Problems.cs); left out when there are none.</summary>
+    [DataMember(Name = "problems", EmitDefaultValue = false)] public System.Collections.Generic.List<ProblemReport>? Problems { get; set; }
 }
 
 [DataContract]

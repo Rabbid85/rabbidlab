@@ -48,6 +48,15 @@ public sealed class DeviceNic
     public bool? Wake { get; set; }
 }
 
+/// <summary>An update in Windows Update's history: its name, KB, when, and installed, failed, cancelled or pending.</summary>
+public sealed class DeviceHistory
+{
+    public string Title { get; set; } = "";
+    public string? Kb { get; set; }
+    public DateTime? Date { get; set; }
+    public string Result { get; set; } = "installed";
+}
+
 /// <summary>A Windows update: installed on the computer (with the day), or missing from it.</summary>
 public sealed class DeviceUpdate
 {
@@ -101,6 +110,9 @@ public sealed class DeviceInventory
     /// <summary>Its network cards; null until a client from 1.1.195 on sends them. Kept while it's off, which is when Wake needs them.</summary>
     public List<DeviceNic>? Nics { get; set; }
 
+    /// <summary>What Windows Update installed, by name, newest first; null until a client from 1.1.203 on sends it.</summary>
+    public List<DeviceHistory>? History { get; set; }
+
     /// <summary>When this server got it.</summary>
     public DateTime Received { get; set; }
 }
@@ -149,6 +161,10 @@ public sealed class Inventories(DataFolder folder, TimeProvider clock)
         if (inventory.MissingChecked is null && Get(id) is { MissingChecked: not null } knew)
         {
             (inventory.Missing, inventory.MissingChecked) = (knew.Missing, knew.MissingChecked);
+        }
+        if (inventory.History is null && Get(id) is { History: not null } did)
+        {
+            inventory.History = did.History;
         }
         Save(id, inventory);
     }
@@ -233,6 +249,10 @@ public sealed class Inventories(DataFolder folder, TimeProvider clock)
             Kind = PrinterKinds.Contains(p.Kind) ? p.Kind : "local",
         })];
         i.PrinterDrivers = i.PrinterDrivers is null ? null : [.. i.PrinterDrivers.Select(Cut).OfType<string>().Distinct(StringComparer.OrdinalIgnoreCase).Take(MaxPrinters)];
+        i.History = i.History is null ? null : [.. i.History.Where(h => !string.IsNullOrWhiteSpace(h.Title)).Take(MaxHistory).Select(h => new DeviceHistory
+        {
+            Title = Cut(h.Title) ?? "", Kb = Cut(h.Kb), Date = h.Date, Result = HistoryResults.Contains(h.Result) ? h.Result : "installed",
+        })];
         i.Nics = i.Nics is null ? null : [.. i.Nics.Select(n => (Nic: n, Mac: WakeOnLan.Mac(n.Mac))).Where(n => n.Mac is not null).Take(WakeOnLan.Most).Select(n => new DeviceNic
         {
             Name = Cut(n.Nic.Name) ?? "", Mac = WakeOnLan.Text(n.Mac!), Kind = n.Nic.Kind == "wifi" ? "wifi" : "wired", Up = n.Nic.Up, Wake = n.Nic.Wake,
@@ -242,6 +262,8 @@ public sealed class Inventories(DataFolder folder, TimeProvider clock)
     }
 
     public const int MaxPrinters = 300;
+    public const int MaxHistory = 100;
+    public static readonly string[] HistoryResults = ["installed", "failed", "cancelled", "pending"];
     public static readonly string[] PrinterKinds = ["tcpip", "lpr", "ipp", "wsd", "share", "universal", "virtual", "local"];
 
     public static readonly string[] MemberKinds = ["local", "localgroup", "user", "group", "computer", "wellknown", "unknown"];
