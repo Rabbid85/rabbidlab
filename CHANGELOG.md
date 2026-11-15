@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.164 (2026-11-14)
+
+- Devices: the Windows version has a column of its own, next to the computer name, and no longer sits under it.
+
 ## 1.1.163 (2026-11-14)
 
 - After an update, open pages load the new version a little apart when many people are signed in, so the server is not asked for everything in the same second.

@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.164', [
+    'Devices: the Windows version has a column of its own, next to the computer name, and no longer sits under it.']],
   ['1.1.163', [
     'After an update, open pages load the new version a little apart when many people are signed in, so the server is not asked for everything in the same second.']],
   ['1.1.162', [
@@ -1459,16 +1461,20 @@ const RELEASE_NOTES = [
     key: 'seats',
     headButton: true,
     cols: [
-      { key: 'state', label: 'State', w: 90, on: true, get: (c) => ({ waiting: 0, online: 1, offline: 2 })[stateOf(c)], cell: (c) => `<span class="state ${stateOf(c)}">${STATE[stateOf(c)]}</span>` },
-      { key: 'computer', label: 'Computer', w: 180, fixed: true, get: (c) => c.computer,
-        cell: (c) => `<b>${esc(c.computer)}</b><small>${esc(c.uninstalling ? 'Uninstalling its client' : c.removalUntil ? `Uninstall allowed until ${new Date(c.removalUntil).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : c.os || '')}</small>` },
-      { key: 'user', label: 'Signed in to Windows', w: 160, on: true, get: (c) => c.user, cell: (c) => (c.user ? `<span class="ell">${esc(c.user)}</span>` : '<span class="nobody">Nobody</span>') },
-      { key: 'version', label: 'Client', w: 80, on: true, get: (c) => c.version, cell: (c) => `<span class="${c.behind ? 'old' : ''}">${esc(c.version || '?')}</span>` },
-      { key: 'address', label: 'Address', w: 130, on: true, get: (c) => addr(c.address), cell: (c) => `<span class="mono muted ell">${esc(addr(c.address))}</span>` },
-      { key: 'lastSeen', label: 'Last seen', w: 100, on: true, get: (c) => ms(c.lastSeen), cell: (c) => `<span class="muted">${esc(ago(c.lastSeen))}</span>` },
-      { key: 'os', label: 'Windows', w: 200, get: (c) => c.os },
+      { key: 'state', label: 'State', w: 80, on: true, get: (c) => ({ waiting: 0, online: 1, offline: 2 })[stateOf(c)], cell: (c) => `<span class="state ${stateOf(c)}">${STATE[stateOf(c)]}</span>` },
+      // Under the name only while something is going on with its client: Windows has a column of its own.
+      { key: 'computer', label: 'Computer', w: 140, fixed: true, get: (c) => c.computer,
+        cell: (c) => {
+          const note = c.uninstalling ? 'Uninstalling its client' : c.removalUntil ? `Uninstall allowed until ${new Date(c.removalUntil).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : '';
+          return `<b>${esc(c.computer)}</b>${note ? `<small>${esc(note)}</small>` : ''}`;
+        } },
+      { key: 'os', label: 'Windows', w: 145, on: true, get: (c) => c.os, cell: (c) => `<span class="ell">${esc(c.os || '')}</span>` },
+      { key: 'user', label: 'Signed in', w: 130, on: true, get: (c) => c.user, cell: (c) => (c.user ? `<span class="ell">${esc(c.user)}</span>` : '<span class="nobody">Nobody</span>') },
+      { key: 'version', label: 'Client', w: 70, on: true, get: (c) => c.version, cell: (c) => `<span class="${c.behind ? 'old' : ''}">${esc(c.version || '?')}</span>` },
+      { key: 'address', label: 'Address', w: 105, on: true, get: (c) => addr(c.address), cell: (c) => `<span class="mono muted ell">${esc(addr(c.address))}</span>` },
+      { key: 'lastSeen', label: 'Last seen', w: 75, on: true, get: (c) => ms(c.lastSeen), cell: (c) => `<span class="muted">${esc(ago(c.lastSeen))}</span>` },
     ],
-    tail: { w: 180, cell: (c) => { const st = stateOf(c); return `<span class="acts">${st === 'waiting' && can.has('seats.approve') ? '<button type="button" class="small primary" data-approve>Approve</button>' : ''}`
+    tail: { w: 160, cell: (c) => { const st = stateOf(c); return `<span class="acts">${st === 'waiting' && can.has('seats.approve') ? '<button type="button" class="small primary" data-approve>Approve</button>' : ''}`
       + `${st !== 'waiting' && can.has('seats.remove') ? '<button type="button" class="small quiet" data-uninstall>Uninstall</button>' : ''}`
       + `${can.has('seats.remove') ? '<button type="button" class="small quiet" data-forget>Remove</button>' : ''}</span>`; } },
     row: (c) => ` data-client="${esc(c.id)}"`,
