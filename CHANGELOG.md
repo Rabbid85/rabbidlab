@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.202 (2026-11-15)
+
+- The Actions menu on Devices is organized in named groups: Power, Sessions, Run, Install and Selection, in two columns, with Remove from Devices at the bottom.
+
 ## 1.1.201 (2026-11-15)
 
 - Icons in the side panel lists sit in the middle of their boxes again. A rule meant for small buttons was pushing them left.

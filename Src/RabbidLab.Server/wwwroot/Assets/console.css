@@ -654,6 +654,13 @@ body.ad-scoped [data-whole] { display: none !important; }
 .am-how b { color: #E6E8F2; font-size: 13px; font-weight: 600; }
 .am-how small { color: var(--muted); font-size: 12.5px; }
 .am-links { padding: 6px; border-top: 1px solid var(--line); }
+/* A group's name at the top of it, in a menu (Devices Actions). */
+.am-head { margin: 0; padding: 6px 12px 4px; color: #6D7290; font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+/* Two columns of named groups, a line between the columns and between groups in one. */
+.am-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); }
+.am-cols > .am-links { border-top: 0; }
+.am-cols > .am-links + .am-links { border-left: 1px solid var(--line); }
+.am-group + .am-group { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line); }
 .am-link { display: flex; align-items: center; gap: 12px; width: 100%; height: 38px; padding: 0 12px; border: 0; border-radius: 8px; background: none; color: #D7DAE8; font-size: 13.5px; text-align: left; }
 .am-link:hover { background: #1A1D2B; color: #fff; text-decoration: none; }
 .am-link[hidden] { display: none; }
