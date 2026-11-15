@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.166 (2026-11-14)
+
+- The hint on the version number in the top bar says Installed version.
+
 ## 1.1.165 (2026-11-14)
 
 - Devices is laid out like Active Directory now: Computers, Software, Windows updates and Signed in now down the left, with views for computers that need updates, need a restart, are low on disk space or have an older client.
