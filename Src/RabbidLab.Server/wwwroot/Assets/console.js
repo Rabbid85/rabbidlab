@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.177', [
+    'Tables show one thing per column. AD audit has the date and time on one line, and Type and Changed by as their own columns. The operating system version, logon names and usernames have their own columns too, under Columns.',
+    'On Devices, a computer whose client is being uninstalled says so in the State column instead of under its name.']],
   ['1.1.176', [
     'The row whose side panel is open no longer has an orange line down its left edge; it just turns a little darker. The wiki tips lost their orange edge too.']],
   ['1.1.175', [
@@ -1734,14 +1737,14 @@ const RELEASE_NOTES = [
     sort: { key: 'computer', dir: 1 },
     // What fits across the page shows; the rest (client, address, last seen, hardware) is under Columns.
     cols: [
-      // The name first with its icon, as on Active Directory. Under it only while something is going on with its client.
+      // The name first with its icon, as on Active Directory; one thing per column, so the name alone.
       { key: 'computer', label: 'Computer', w: 165, fixed: true, get: (c) => c.computer,
-        cell: (c) => {
-          const note = c.uninstalling ? 'Uninstalling its client' : c.removalUntil ? `Uninstall allowed until ${new Date(c.removalUntil).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : '';
-          const pic = `<span class="pic">${svg(/server/i.test(c.os || '') ? 'server' : 'laptop')}</span>`;
-          return `<div class="who">${pic}${note ? `<div class="two"><b>${esc(c.computer)}</b><small>${esc(note)}</small></div>` : `<b class="ell">${esc(c.computer)}</b>`}</div>`;
-        } },
-      { key: 'state', label: 'State', w: 70, on: true, get: (c) => ({ waiting: 0, online: 1, offline: 2 })[stateOf(c)], text: (c) => STATE[stateOf(c)], cell: (c) => `<span class="state ${stateOf(c)}">${STATE[stateOf(c)]}</span>` },
+        cell: (c) => `<div class="who"><span class="pic">${svg(/server/i.test(c.os || '') ? 'server' : 'laptop')}</span><b class="ell">${esc(c.computer)}</b></div>` },
+      // While its client is being uninstalled, or may be, State says so (the time is in the hint).
+      { key: 'state', label: 'State', w: 80, on: true, get: (c) => ({ waiting: 0, online: 1, offline: 2 })[stateOf(c)], text: (c) => STATE[stateOf(c)],
+        cell: (c) => (c.uninstalling ? '<span class="state waiting">Uninstalling</span>'
+          : c.removalUntil ? `<span class="state waiting" data-tip="${esc(`Uninstall allowed until ${new Date(c.removalUntil).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`)}">Unlocked</span>`
+          : `<span class="state ${stateOf(c)}">${STATE[stateOf(c)]}</span>`) },
       { key: 'os', label: 'Windows', w: 135, on: true, get: (c) => c.os, cell: (c) => `<span class="ell">${esc(c.os || '')}</span>` },
       { key: 'user', label: 'Signed in', w: 110, on: true, get: (c) => c.user, cell: (c) => (c.user ? `<span class="ell">${esc(c.user)}</span>` : '<span class="nobody">Nobody</span>') },
       { key: 'missing', label: 'Updates', w: 90, on: true, get: (c) => c.inventory?.missing ?? -1, text: (c) => c.inventory?.missing ?? '',
@@ -1776,9 +1779,10 @@ const RELEASE_NOTES = [
     el: $('sessions-table'),
     key: 'sessions',
     cols: [
-      { key: 'person', label: 'Person', w: 155, fixed: true, get: (s) => s.name || s.username, cell: (s) => `<b>${esc(s.name || s.username)}</b><small>${esc(s.username)}</small>` },
+      { key: 'person', label: 'Person', w: 155, fixed: true, get: (s) => s.name || s.username, cell: (s) => `<b class="ell">${esc(s.name || s.username)}</b>` },
+      { key: 'username', label: 'Username', w: 120, get: (s) => s.username, cell: (s) => `<span class="mono ell">${esc(s.username)}</span>` },
       { key: 'roles', label: 'Roles', w: 130, on: true, get: (s) => rolesOf(s).map((r) => r.name).join(', '), cell: (s) => `<span class="chips-in">${rolesOf(s).map(chip).join('')}</span>` },
-      { key: 'using', label: 'Using', w: 155, on: true, get: (s) => s.device, cell: (s) => `<span class="ell">${esc(s.device)}</span><small>${s.remembered ? 'Kept signed in' : 'Until the page closes'}</small>` },
+      { key: 'using', label: 'Using', w: 155, on: true, get: (s) => s.device, cell: (s) => `<span class="ell">${esc(s.device)}</span>` },
       { key: 'address', label: 'Address', w: 110, on: true, get: (s) => addr(s.address), cell: (s) => `<span class="mono muted ell">${esc(addr(s.address))}</span>` },
       { key: 'started', label: 'Signed in', w: 135, on: true, get: (s) => ms(s.started), text: (s) => s.started || '', cell: (s) => `<span class="muted">${esc(when(s.started))}</span>` },
       { key: 'lastSeen', label: 'Last seen', w: 75, on: true, get: (s) => ms(s.lastSeen), text: (s) => s.lastSeen || '', cell: (s) => `<span class="muted">${esc(ago(s.lastSeen))}</span>` },

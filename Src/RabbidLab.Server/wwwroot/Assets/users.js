@@ -11,7 +11,15 @@
   const stale = (iso) => !iso || Date.now() - new Date(iso) > 90 * DAY;
   const chip = (text, cls = '', icon = '') => `<span class="uchip ${cls}">${icon ? svg(icon) : ''}${esc(text)}</span>`;
   const badge = (text, tone) => `<span class="ubadge ${tone}">${esc(text)}</span>`;
-  const small = (a, b) => `<div class="two"><b>${esc(a)}</b>${b ? `<small>${esc(b)}</small>` : ''}</div>`;
+  // A moment on one line: Today 12:04 PM, Yesterday 4:34 PM, Nov 12 1:34 PM.
+  const stamp = (iso) => {
+    const d = new Date(iso);
+    const back = Math.round((new Date().setHours(0, 0, 0, 0) - new Date(iso).setHours(0, 0, 0, 0)) / DAY);
+    const date = back === 0 ? 'Today' : back === 1 ? 'Yesterday'
+      : d.toLocaleDateString([], { month: 'short', day: 'numeric', ...(d.getFullYear() === new Date().getFullYear() ? {} : { year: 'numeric' }) });
+    return `${date} ${d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+  };
+  const kindWord = (kind) => (kind === 'ou' ? 'OU' : kind ? kind.charAt(0).toUpperCase() + kind.slice(1) : '');
 
   // --- Active Directory: what each page lists, its views down the left, its columns and its CSV -------------------
 
@@ -264,7 +272,8 @@
   ];
   AD.computers.cols = [
     col('name', 'Computer', 'minmax(200px, 1.4fr)', (c) => c.name, { fixed: true, cell: (c) => `<div class="who"><span class="pic">${svg(server(c) ? 'server' : 'laptop')}</span><b class="ell">${esc(c.name)}</b></div>` }),
-    col('os', 'Operating system', 'minmax(170px, 1.2fr)', (c) => c.os, { on: true, cell: (c) => (c.os ? small(c.os, c.osVersion) : '<span class="muted">-</span>') }),
+    col('os', 'Operating system', 'minmax(170px, 1.2fr)', (c) => c.os, { on: true }),
+    col('osVersion', 'OS version', '120px', (c) => c.osVersion),
     col('host', 'DNS host name', 'minmax(170px, 1fr)', (c) => c.host),
     col('where', 'Organizational unit', 'minmax(140px, 1fr)', (c) => c.where || ad.state.domain, { on: true }),
     col('description', 'Description', 'minmax(160px, 1.2fr)', (c) => c.description),
@@ -275,7 +284,7 @@
   ];
 
   AD.domain.cols = [
-    col('name', 'Check', 300, (s) => s.name, { fixed: true, cell: (s) => `<div class="who"><span class="pic">${svg(AREA_ICON[s.area] || 'shield')}</span>${small(s.name, s.area)}</div>` }),
+    col('name', 'Check', 300, (s) => s.name, { fixed: true, cell: (s) => `<div class="who"><span class="pic">${svg(AREA_ICON[s.area] || 'shield')}</span><b class="ell">${esc(s.name)}</b></div>` }),
     col('area', 'Area', 170, (s) => Object.keys(AREA_ICON).indexOf(s.area), { cell: (s) => esc(s.area) }),
     col('now', 'Now', 200, (s) => s.now, { on: true }),
     col('recommended', 'Recommended', 210, (s) => s.recommended, { on: true, cell: (s) => `<span class="muted ell">${esc(s.recommended)}</span>` }),
@@ -284,17 +293,20 @@
     col('source', 'Source', 240, (s) => s.source || '', { cell: (s) => `<span class="muted ell">${esc(s.source || '')}</span>` }),
   ];
   AD.audit.cols = [
-    col('when', 'When', 120, (c) => time(c.at), { on: true, cell: (c) => small(ago(c.at), new Date(c.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })) }),
-    col('what', 'What', 110, (c) => c.what, { on: true, cell: (c) => badge(c.what.charAt(0).toUpperCase() + c.what.slice(1), WHAT[c.what]) }),
-    col('name', 'Object', 240, (c) => c.name, { fixed: true, cell: (c) => `<div class="who"><span class="pic">${svg(KIND_ICON[c.kind] || 'folder')}</span>${small(c.name, c.kind === 'ou' ? 'OU' : c.kind)}</div>` }),
-    col('where', 'Where', 200, (c) => c.where || ad.state.domain, { on: true }),
-    col('changed', 'Changed', 300, (c) => c.attributes.join(', '), { on: true,
-      cell: (c) => small(c.attributes.slice(0, 4).join(', ') + (c.attributes.length > 4 ? ` and ${c.attributes.length - 4} more` : ''), c.by ? `by ${c.by}, in ${R.app()}` : '') }),
+    col('when', 'When', 150, (c) => time(c.at), { on: true, cell: (c) => esc(stamp(c.at)) }),
+    col('what', 'What', 100, (c) => c.what, { on: true, cell: (c) => badge(c.what.charAt(0).toUpperCase() + c.what.slice(1), WHAT[c.what]) }),
+    col('name', 'Object', 200, (c) => c.name, { fixed: true, cell: (c) => `<div class="who"><span class="pic">${svg(KIND_ICON[c.kind] || 'folder')}</span><b class="ell">${esc(c.name)}</b></div>` }),
+    col('kind', 'Type', 100, (c) => c.kind, { on: true, cell: (c) => esc(kindWord(c.kind)) }),
+    col('where', 'Where', 180, (c) => c.where || ad.state.domain, { on: true }),
+    col('changed', 'Changed', 260, (c) => c.attributes.join(', '), { on: true,
+      cell: (c) => `<span class="ell">${esc(c.attributes.slice(0, 4).join(', ') + (c.attributes.length > 4 ? ` and ${c.attributes.length - 4} more` : ''))}</span>` }),
+    col('by', 'Changed by', 130, (c) => c.by || '', { on: true, cell: (c) => (c.by ? esc(c.by) : '<span class="muted">-</span>') }),
     col('dn', 'Distinguished name', 320, (c) => c.dn),
   ];
   AD.recycle.cols = [
-    col('name', 'Name', 240, (d) => d.name, { fixed: true, cell: (d) => `<div class="who"><span class="pic">${svg(KIND_ICON[d.kind] || 'folder')}</span>${small(d.name, d.username)}</div>` }),
-    col('kind', 'Type', 110, (d) => d.kind, { on: true, cell: (d) => esc(d.kind === 'ou' ? 'OU' : d.kind.charAt(0).toUpperCase() + d.kind.slice(1)) }),
+    col('name', 'Name', 240, (d) => d.name, { fixed: true, cell: (d) => `<div class="who"><span class="pic">${svg(KIND_ICON[d.kind] || 'folder')}</span><b class="ell">${esc(d.name)}</b></div>` }),
+    col('username', 'Logon name', 160, (d) => d.username),
+    col('kind', 'Type', 110, (d) => d.kind, { on: true, cell: (d) => esc(kindWord(d.kind)) }),
     col('wasIn', 'Was in', 220, (d) => d.wasIn || ad.state.domain, { on: true }),
     col('deleted', 'Deleted', 130, (d) => time(d.deleted), { on: true, cell: (d) => esc(d.deleted ? ago(d.deleted) : '-') }),
     col('dn', 'Distinguished name', 320, (d) => d.dn),

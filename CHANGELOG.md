@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.177 (2026-11-15)
+
+- Tables show one thing per column. AD audit has the date and time on one line, and Type and Changed by as their own columns. The operating system version, logon names and usernames have their own columns too, under Columns.
+- On Devices, a computer whose client is being uninstalled says so in the State column instead of under its name.
+
 ## 1.1.176 (2026-11-15)
 
 - The row whose side panel is open no longer has an orange line down its left edge; it just turns a little darker. The wiki tips lost their orange edge too.
