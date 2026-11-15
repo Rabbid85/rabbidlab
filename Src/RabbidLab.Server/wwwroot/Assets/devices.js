@@ -86,7 +86,7 @@
   let flows = null; // /api/devices/workflows
   const scriptOf = (id) => (scripts || []).find((s) => s.id === id);
   const jobTitle = (j) => (j.kind === 'workflow' ? `Workflow: ${j.title}` : j.kind === 'script' ? (j.title === 'A script typed in' ? 'Run a script typed in' : `Run script: ${j.title}`) : j.title);
-  const JOB_ICON = { script: 'code', restart: 'power', updates: 'updates', workflow: 'org' };
+  const JOB_ICON = { script: 'code', restart: 'power', updates: 'updates', workflow: 'org', printer: 'printer' };
   const STATE = { waiting: ['waiting', 'Waiting'], running: ['run', 'Running'], done: ['online', 'Done'], failed: ['bad', 'Failed'], refused: ['bad', 'Refused'],
     noanswer: ['bad', 'No answer'], cancelled: ['offline', 'Cancelled'], expired: ['offline', 'Expired'] };
   // How a job went across its computers, in a word or two.
@@ -455,7 +455,7 @@
     const item = (act, icon, label, hint = '', danger = false) => `<button type="button" role="menuitem" class="am-link${danger ? ' out' : ''}" data-dv-act="${act}">${svg(icon)}<span>${esc(label)}</span>${hint ? `<small>${esc(hint)}</small>` : ''}</button>`;
     const groups = [
       (canScripts() && approved ? item('script', 'code', 'Run a script…') : '') + (has('seats.actions') && approved ? item('updates', 'updates', 'Install Windows updates…') + item('restart', 'power', 'Restart…') : '')
-        + (has('seats.wmi') && approved ? item('wmi', 'list', 'Query with WMI…') : ''),
+        + (has('seats.wmi') && approved ? item('wmi', 'list', 'Query with WMI…') : '') + (approved ? D.hooks.actItems?.(item) || '' : ''),
       (has('seats.approve') && waiting ? item('approve', 'check', 'Approve', String(waiting)) : '') + item('export', 'csv', 'Export these') + item('clear', 'x', 'Clear the ticks'),
       has('seats.remove') ? item('remove', 'trash', 'Remove from Devices…', '', true) : '',
     ];
@@ -499,6 +499,8 @@
     } else if (act === 'wmi') {
       wq.want = 'ticked';
       location.hash = '#seats/wmi';
+    } else if (D.hooks.act?.(act, on)) {
+      // done by another part of the page (printers.js)
     } else openRun(act, on);
   });
 
@@ -1003,4 +1005,7 @@
     mark();
     watch();
   };
+  // For printers.js and the rest: confirming who it is before a run, and opening a job in the panel.
+  D.confirmed = confirmed;
+  D.openJob = (id) => openJob(id);
 })();

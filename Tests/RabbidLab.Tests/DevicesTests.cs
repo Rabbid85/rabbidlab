@@ -77,6 +77,30 @@ public sealed class DevicesTests : IDisposable
         await Id(await admin.PostAsJsonAsync("/api/devices/scripts", new { name, language = "cmd", text, minutes = 5 }));
 
     [Fact]
+    public async Task A_printer_goes_out_as_a_job_with_what_was_typed_checked_and_quoted()
+    {
+        var admin = await Admin();
+        var (id, client) = await Computer();
+
+        var ipp = await Id(await admin.PostAsJsonAsync("/api/devices/run", new { kind = "printer", clients = new[] { id }, printer = new { action = "add", way = "ipp", name = "Bob's printer", address = "192.168.3.20" } }));
+        var share = await Id(await admin.PostAsJsonAsync("/api/devices/run", new { kind = "printer", clients = new[] { id }, printer = new { action = "add", way = "share", share = @"\\dc01\Office" } }));
+        var badShare = await admin.PostAsJsonAsync("/api/devices/run", new { kind = "printer", clients = new[] { id }, printer = new { action = "add", way = "share", share = "dc01; Remove-Item" } });
+        var badHost = await admin.PostAsJsonAsync("/api/devices/run", new { kind = "printer", clients = new[] { id }, printer = new { action = "add", way = "tcpip", name = "X", address = "1.2.3.4; calc", driver = "Generic / Text Only" } });
+        var noDriver = await admin.PostAsJsonAsync("/api/devices/run", new { kind = "printer", clients = new[] { id }, printer = new { action = "add", way = "lpr", name = "X", address = "printer.amw.com", queue = "lp" } });
+        var taken = await Take(client);
+        var log = await (await admin.GetAsync("/api/activity")).Content.ReadAsStringAsync();
+
+        var first = taken.Single(j => j.GetProperty("id").GetString() == ipp).GetProperty("steps")[0].GetProperty("text").GetString()!;
+        Assert.Contains("-IppURL 'http://192.168.3.20:631/ipp/print'", first);
+        Assert.Contains("$name = 'Bob''s printer'", first); // a quote in the name stays inside the string
+        Assert.Contains("/ga", taken.Single(j => j.GetProperty("id").GetString() == share).GetProperty("steps")[0].GetProperty("text").GetString()!);
+        Assert.Equal(HttpStatusCode.BadRequest, badShare.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, badHost.StatusCode);
+        Assert.Contains("driver", await noDriver.Content.ReadAsStringAsync());
+        Assert.Contains("Add the printer Bob's printer on SHOP-PC", log.Replace("\\u0027", "'"));
+    }
+
+    [Fact]
     public async Task Running_a_script_takes_the_right_to_and_confirming_who_you_are()
     {
         var admin = await app.SignedIn();

@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.190 (2026-11-15)
+
+- Printers on Devices. Each computer has a Printers tab, and Browse has a Printers list. Add a printer by IP address, TCP/IP port, LPR, a shared printer or a device address, to one computer or to ticked computers from Actions. Remove one or print a test page from its row. Universal Print printers show too. Clients send their printers from 1.1.190 on.
+- The key icon sits in the middle of its square, and the arrows and chips on Administrators line up.
+
 ## 1.1.189 (2026-11-15)
 
 - The opening screen plays in full only after you sign in or after an update. A refresh opens straight away, and only shows the flask if loading takes a moment.

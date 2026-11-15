@@ -40,6 +40,27 @@ internal sealed class InventoryReport
 
     /// <summary>The computer's own accounts, without their groups.</summary>
     [DataMember(Name = "locals", EmitDefaultValue = false)] public List<RabbidLab.Shared.WindowsAccount>? Locals { get; set; }
+
+    /// <summary>Its printers, and the printer drivers it has to add one with; left out when Windows wouldn't say.</summary>
+    [DataMember(Name = "printers", EmitDefaultValue = false)] public List<PrinterReport>? Printers { get; set; }
+    [DataMember(Name = "printerDrivers", EmitDefaultValue = false)] public List<string>? PrinterDrivers { get; set; }
+}
+
+[DataContract]
+internal sealed class PrinterReport
+{
+    [DataMember(Name = "name")] public string Name { get; set; } = "";
+    [DataMember(Name = "driver", EmitDefaultValue = false)] public string? Driver { get; set; }
+    [DataMember(Name = "port", EmitDefaultValue = false)] public string? Port { get; set; }
+
+    /// <summary>tcpip, lpr, ipp, wsd, share, universal, virtual or local.</summary>
+    [DataMember(Name = "kind")] public string Kind { get; set; } = "local";
+
+    /// <summary>Its IP address or name, or IPP address, when Windows says.</summary>
+    [DataMember(Name = "address", EmitDefaultValue = false)] public string? Address { get; set; }
+    [DataMember(Name = "shared")] public bool Shared { get; set; }
+    [DataMember(Name = "offline")] public bool Offline { get; set; }
+    [DataMember(Name = "location", EmitDefaultValue = false)] public string? Location { get; set; }
 }
 
 [DataContract]
@@ -184,6 +205,7 @@ internal static class Inventory
             r.Admins = null;
             r.Locals = null;
         }
+        Printers(r);
         r.RestartNeeded = Exists(@"SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired")
             || Exists(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending");
         if (missingChecked is { } at2 && missing is not null)
@@ -192,6 +214,68 @@ internal static class Inventory
             r.MissingChecked = at2.ToString("o", CultureInfo.InvariantCulture);
         }
         return r;
+    }
+
+    // The printers, what kind each is (from its port and driver), and the drivers there are to add one with.
+    private static void Printers(InventoryReport r)
+    {
+        var ports = new Dictionary<string, (string Host, int Protocol, string? Queue)>(StringComparer.OrdinalIgnoreCase);
+        Wmi("SELECT Name, HostAddress, Protocol, Queue FROM Win32_TCPIPPrinterPort", o =>
+        {
+            if (Text(o["Name"]) is { } name)
+            {
+                ports[name] = (Text(o["HostAddress"]) ?? "", o["Protocol"] is null ? 1 : Convert.ToInt32(o["Protocol"], CultureInfo.InvariantCulture), Text(o["Queue"]));
+            }
+        });
+        var printers = new List<PrinterReport>();
+        Wmi("SELECT Name, DriverName, PortName, Shared, WorkOffline, Location FROM Win32_Printer", o =>
+        {
+            if (Text(o["Name"]) is not { } name)
+            {
+                return;
+            }
+            var p = new PrinterReport { Name = name, Driver = Text(o["DriverName"]), Port = Text(o["PortName"]), Location = Text(o["Location"]),
+                Shared = o["Shared"] is true, Offline = o["WorkOffline"] is true };
+            var port = p.Port ?? "";
+            var driver = p.Driver ?? "";
+            if (driver.IndexOf("Universal Print", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                p.Kind = "universal";
+            }
+            else if (ports.TryGetValue(port, out var tcp))
+            {
+                (p.Kind, p.Address) = (tcp.Protocol == 2 ? "lpr" : "tcpip", tcp.Host);
+            }
+            else if (name.StartsWith(@"\\", StringComparison.Ordinal))
+            {
+                p.Kind = "share";
+            }
+            else if (port.StartsWith("WSD", StringComparison.OrdinalIgnoreCase))
+            {
+                p.Kind = "wsd";
+            }
+            else if (port.IndexOf("://", StringComparison.Ordinal) > 0 || port.StartsWith("IPP", StringComparison.OrdinalIgnoreCase))
+            {
+                (p.Kind, p.Address) = ("ipp", port.IndexOf("://", StringComparison.Ordinal) > 0 ? port : null);
+            }
+            else if (port.EndsWith(":", StringComparison.Ordinal) || port.Length == 0 || driver.IndexOf("PDF", StringComparison.OrdinalIgnoreCase) >= 0
+                || driver.IndexOf("OneNote", StringComparison.OrdinalIgnoreCase) >= 0 || driver.IndexOf("XPS", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                p.Kind = "virtual"; // Print to PDF, OneNote, XPS, Fax and the like
+            }
+            printers.Add(p);
+        });
+        var drivers = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+        // Win32_PrinterDriver names read "HP Universal Printing PCL 6,3,Windows x64".
+        Wmi("SELECT Name FROM Win32_PrinterDriver", o =>
+        {
+            if (Text(o["Name"]) is { } full)
+            {
+                drivers.Add(full.Split(',')[0].Trim());
+            }
+        });
+        r.Printers = printers.OrderBy(p => p.Name, StringComparer.OrdinalIgnoreCase).ToList();
+        r.PrinterDrivers = drivers.ToList();
     }
 
     // Installed apps as Windows lists them: for the computer (64 and 32-bit), and for each person whose profile is loaded.
@@ -324,6 +408,11 @@ internal static class Inventory
         {
             all.Append("|l:").Append(l.Name).Append(':').Append(l.Enabled).Append(':').Append(l.NeverExpires);
         }
+        foreach (var p in r.Printers ?? new List<PrinterReport>())
+        {
+            all.Append("|p:").Append(p.Name).Append(':').Append(p.Port).Append(':').Append(p.Driver).Append(':').Append(p.Offline);
+        }
+        all.Append("|d:").Append(string.Join(",", r.PrinterDrivers ?? new List<string>()));
         using var sha = SHA256.Create();
         return BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(all.ToString())));
     }

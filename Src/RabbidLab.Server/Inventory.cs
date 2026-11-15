@@ -21,6 +21,19 @@ public sealed class DeviceProgram
     public string? Installed { get; set; }
 }
 
+/// <summary>A printer on a computer: its kind (tcpip, lpr, ipp, wsd, share, universal, virtual or local) and address when Windows says.</summary>
+public sealed class DevicePrinter
+{
+    public string Name { get; set; } = "";
+    public string? Driver { get; set; }
+    public string? Port { get; set; }
+    public string Kind { get; set; } = "local";
+    public string? Address { get; set; }
+    public bool Shared { get; set; }
+    public bool Offline { get; set; }
+    public string? Location { get; set; }
+}
+
 /// <summary>A Windows update: installed on the computer (with the day), or missing from it.</summary>
 public sealed class DeviceUpdate
 {
@@ -63,6 +76,10 @@ public sealed class DeviceInventory
 
     /// <summary>The computer's own accounts, without their groups: for Local admins' State and Last sign-in.</summary>
     public List<WindowsAccount>? Locals { get; set; }
+
+    /// <summary>Its printers, and the printer drivers it has; null until a client from 1.1.190 on sends them.</summary>
+    public List<DevicePrinter>? Printers { get; set; }
+    public List<string>? PrinterDrivers { get; set; }
 
     /// <summary>When Admins was last read on the computer.</summary>
     public DateTime? AdminsChecked { get; set; }
@@ -183,7 +200,16 @@ public sealed class Inventories(DataFolder folder, TimeProvider clock)
         i.Missing = Updates(i.Missing);
         i.Admins = i.Admins is null ? null : Members(i.Admins);
         i.Locals = i.Locals is null ? null : Accounts(i.Locals);
+        i.Printers = i.Printers is null ? null : [.. i.Printers.Where(p => !string.IsNullOrWhiteSpace(p.Name)).Take(MaxPrinters).Select(p => new DevicePrinter
+        {
+            Name = Cut(p.Name) ?? "", Driver = Cut(p.Driver), Port = Cut(p.Port), Address = Cut(p.Address), Location = Cut(p.Location), Shared = p.Shared, Offline = p.Offline,
+            Kind = PrinterKinds.Contains(p.Kind) ? p.Kind : "local",
+        })];
+        i.PrinterDrivers = i.PrinterDrivers is null ? null : [.. i.PrinterDrivers.Select(Cut).OfType<string>().Distinct(StringComparer.OrdinalIgnoreCase).Take(MaxPrinters)];
     }
+
+    public const int MaxPrinters = 300;
+    public static readonly string[] PrinterKinds = ["tcpip", "lpr", "ipp", "wsd", "share", "universal", "virtual", "local"];
 
     public static readonly string[] MemberKinds = ["local", "localgroup", "user", "group", "computer", "wellknown", "unknown"];
 

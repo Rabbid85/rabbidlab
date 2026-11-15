@@ -144,7 +144,7 @@
     const opens = m.kind === 'local' ? `data-acc-open="local:${esc(short(m.name))}"` : m.kind === 'user' ? `data-acc-open="user:${esc(m.name)}"` : g ? `data-acc-fold="${esc(m.sid)}"` : '';
     return `<div class="mrow${opens ? ' acc-row' : ''}" ${opens}>${pic(m.kind)}<div class="two"><b>${esc(m.name)}</b><small>${esc(second)}</small></div>`
       + `<span class="acc-chips">${a && !a.enabled ? chip('Disabled', 'off', 'power') : ''}</span>`
-      + `${g ? `<span class="acc-chev${isOpen ? ' up' : ''}">${svg('chevron-down')}</span>` : ''}`
+      + `<span class="acc-chev${isOpen ? ' up' : ''}">${g ? svg('chevron-down') : ''}</span>`
       + `${has('windows.change') && m.sid ? x(`data-acc-out="${esc(m.sid)}"`, `Take ${m.name} out of Administrators`) : ''}</div>${sub}`;
   };
 

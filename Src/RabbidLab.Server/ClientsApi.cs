@@ -185,6 +185,33 @@ public static class ClientsApi
                 })
                 .OrderBy(x => x.name, StringComparer.OrdinalIgnoreCase)));
 
+        // Printers across the approved computers: a row for each printer (by name and address), with the computers that have it.
+        // Drivers is every printer driver each computer has, for Add a printer.
+        app.MapGet("/api/devices/printers", (HttpContext context, Clients clients, Inventories inventories) =>
+        {
+            if (!Access.Can(context, Permissions.SeatsView))
+            {
+                return Access.NotAllowed();
+            }
+            var all = clients.All().Where(c => c.Approved is not null).Select(c => (Client: c, Inventory: inventories.Get(c.Id))).ToList();
+            return Results.Ok(new
+            {
+                printers = all.SelectMany(x => (x.Inventory?.Printers ?? []).Select(p => (x.Client, Printer: p)))
+                    .GroupBy(x => $"{x.Printer.Name}\n{x.Printer.Address}".ToUpperInvariant())
+                    .Select(g => new
+                    {
+                        name = g.First().Printer.Name,
+                        kind = g.First().Printer.Kind,
+                        address = g.First().Printer.Address,
+                        drivers = g.Select(x => x.Printer.Driver ?? "").Where(d => d.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+                        computers = g.Select(x => new { id = x.Client.Id, computer = x.Client.Computer, driver = x.Printer.Driver, port = x.Printer.Port, offline = x.Printer.Offline, shared = x.Printer.Shared })
+                            .DistinctBy(x => x.id).OrderBy(x => x.computer, StringComparer.OrdinalIgnoreCase).ToList(),
+                    })
+                    .OrderBy(x => x.name, StringComparer.OrdinalIgnoreCase).ToList(),
+                computers = all.Select(x => new { id = x.Client.Id, computer = x.Client.Computer, read = x.Inventory?.Printers is not null, drivers = x.Inventory?.PrinterDrivers ?? [] }).ToList(),
+            });
+        });
+
         // Windows updates across the approved computers: a row for each update, with the computers missing it and the ones that have it.
         app.MapGet("/api/devices/updates", (HttpContext context, Clients clients, Inventories inventories) =>
         {

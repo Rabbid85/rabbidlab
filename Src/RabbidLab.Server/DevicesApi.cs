@@ -95,7 +95,7 @@ public static class DevicesApi
             var needs = form.Kind switch
             {
                 DeviceJobs.Script => typed ? Permissions.ScriptsEdit : Permissions.ScriptsRun,
-                DeviceJobs.Restart or DeviceJobs.Updates => Permissions.SeatsActions,
+                DeviceJobs.Restart or DeviceJobs.Updates or DeviceJobs.Printer => Permissions.SeatsActions,
                 _ => null,
             };
             if (needs is null)
@@ -117,7 +117,16 @@ public static class DevicesApi
             }
             JobStep step;
             string title;
-            if (form.Kind == DeviceJobs.Restart)
+            if (form.Kind == DeviceJobs.Printer)
+            {
+                var (made, named, problem) = PrinterActions.Make(form.Printer);
+                if (made is null)
+                {
+                    return Results.BadRequest(new { error = problem });
+                }
+                (step, title) = (made, named);
+            }
+            else if (form.Kind == DeviceJobs.Restart)
             {
                 (step, title) = (DeviceActions.Restart(), "Restart");
             }
@@ -143,7 +152,7 @@ public static class DevicesApi
                 return Results.NotFound(new { error = "That script isn't here any more." });
             }
             var job = jobs.Add(ActivityLog.Who(context), form.Kind!, title, [step], on, Life, typed ? null : form.Script);
-            log.Record(context, "clients", "job.run", form.Kind == DeviceJobs.Script ? $"Ran {(typed ? "a script typed in" : $"the script {title}")} on {Workflows.Computers(on)}"
+            log.Record(context, "clients", "job.run", form.Kind == DeviceJobs.Printer ? $"{title} on {Workflows.Computers(on)}" : form.Kind == DeviceJobs.Script ? $"Ran {(typed ? "a script typed in" : $"the script {title}")} on {Workflows.Computers(on)}"
                 : $"{(form.Kind == DeviceJobs.Restart ? "Restarted" : "Installed Windows updates on")} {Workflows.Computers(on)}", "ok", $"Job {job.Id}, SHA-256 {DeviceActions.Fingerprint([step])}");
             return Results.Ok(new { id = job.Id });
         });
@@ -373,6 +382,7 @@ public sealed record WmiForm(List<string>? Clients, string? Space, string? Query
 public sealed record ScriptForm(string? Id, string? Name, string? About, string? Language, string? Text, int? Minutes);
 
 /// <summary>What to run and where: a library script by id, or one typed in (Language, Text), or an action. Count is the brake's answer.</summary>
-public sealed record RunForm(string? Kind, List<string>? Clients, string? Script = null, string? Language = null, string? Text = null, int? Minutes = null, int? Count = null);
+public sealed record RunForm(string? Kind, List<string>? Clients, string? Script = null, string? Language = null, string? Text = null, int? Minutes = null, int? Count = null,
+    PrinterForm? Printer = null);
 
 public sealed record WorkflowOnForm(bool On);

@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.190', [
+    'Printers on Devices. Each computer has a Printers tab, and Browse has a Printers list. Add a printer by IP address, TCP/IP port, LPR, a shared printer or a device address, to one computer or to ticked computers from Actions. Remove one or print a test page from its row. Universal Print printers show too. Clients send their printers from 1.1.190 on.',
+    'The key icon sits in the middle of its square, and the arrows and chips on Administrators line up.']],
   ['1.1.189', [
     'The opening screen plays in full only after you sign in or after an update. A refresh opens straight away, and only shows the flask if loading takes a moment.']],
   ['1.1.188', [
