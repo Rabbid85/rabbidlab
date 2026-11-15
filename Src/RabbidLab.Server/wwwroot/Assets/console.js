@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.207', [
+    'After an update the opening screen no longer sits for seconds with all its dots lit. It waits at most two and a half seconds for the rest of the page, and the update watch it keeps open does not count. Its last line stays up meanwhile.']],
   ['1.1.206', [
     'The opening screen can no longer stay up for good. If something goes wrong starting the page, the page still shows, and after 15 seconds at most whatever happens.',
     'Software and Windows updates are gone from the Devices list: they are in each computer panel, and a WMI query lists software across computers. Check for updates is in the Actions menu.']],
@@ -648,13 +650,16 @@ const RELEASE_NOTES = [
   // A session that ended (signed out elsewhere, or a password changed) goes back to the sign-in page.
   const plainFetch = window.fetch.bind(window);
   let pending = 0; // requests still out, so starting can wait for the page's first reads
+  // { held: true } is a request the server holds open until something changes (the update watch): it isn't a read the
+  // page is waiting for, so starting doesn't wait for it.
   const fetch = async (...args) => {
-    pending++;
+    const held = !!args[1]?.held;
+    if (!held) pending++;
     let r;
     try {
       r = await plainFetch(...args);
     } finally {
-      pending--;
+      if (!held) pending--;
     }
     if (r.status === 401) {
       toSignIn(idleMin > 0 && idleLeft() <= 0);
@@ -1212,7 +1217,7 @@ const RELEASE_NOTES = [
     const sent = Date.now();
     try {
       const r = await fetch(hold ? `/api/update?after=${encodeURIComponent(last.status)}` : last ? '/api/update' : '/api/update?opened=true',
-        { headers: { Accept: 'application/json' }, signal: AbortSignal.any([asking.signal, AbortSignal.timeout(hold ? 40000 : 4000)]) });
+        { headers: { Accept: 'application/json' }, held: hold, signal: AbortSignal.any([asking.signal, AbortSignal.timeout(hold ? 40000 : 4000)]) });
       if (mine !== asks) return;
       if (!r.ok) throw new Error(r.statusText);
       const u = await r.json();
@@ -1566,7 +1571,9 @@ const RELEASE_NOTES = [
       const last = steps[landed - 1];
       el.querySelector('.boot-level').style.transform = `translateY(${LEVEL(landed / steps.length)}px)`;
       el.querySelector('.boot-dots').innerHTML = steps.map((_, k) => `<i${k < landed ? ' class="on"' : ''}></i>`).join('');
-      el.querySelector('.boot-step').innerHTML = next ? `<b>${esc(doing(next))}…</b>${last && got[last.path] ? `<span> · ${esc(got[last.path])}</span>` : ''}` : '';
+      // All in and the page not quite ready: the last one stays, with what it found, so the line is never blank.
+      el.querySelector('.boot-step').innerHTML = next ? `<b>${esc(doing(next))}…</b>${last && got[last.path] ? `<span> · ${esc(got[last.path])}</span>` : ''}`
+        : last ? `<b>${esc(doing(last))}</b>${got[last.path] ? `<span> · ${esc(got[last.path])}</span>` : ''}` : '';
     };
     // Lands the next step when its read is back, then the welcome and the fade once all are in and the console is ready.
     const tick = () => {
@@ -2150,7 +2157,8 @@ const RELEASE_NOTES = [
     setInterval(uptime, 60000);
     // Starting: the rail and the page stay hidden (body.booting) until sign-in has answered and the page's first reads are back, so a
     // reload never shows the console half built. If that takes a moment the opening screen comes up (boot): the flask fills as each read
-    // comes back. The page shows as it is after a second and a half, or five seconds once the opening screen is up.
+    // comes back. The page shows as it is after a second and a half, or two and a half once the opening screen is up: the
+    // screen covers it until its own steps are in, so a slower read (Local admins, say) needn't hold it.
     const bootShow = setTimeout(() => boot.show(), 400);
     const started = () => {
       clearTimeout(bootShow);
@@ -2164,7 +2172,7 @@ const RELEASE_NOTES = [
       let quiet = 0;
       const look = () => {
         quiet = pending ? 0 : quiet + 1;
-        if (quiet >= 2 || Date.now() - from > (boot.shown ? 5000 : 1500)) started();
+        if (quiet >= 2 || Date.now() - from > (boot.shown ? 2500 : 1500)) started();
         else setTimeout(look, 25);
       };
       look();
