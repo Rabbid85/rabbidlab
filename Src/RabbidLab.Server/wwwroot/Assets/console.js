@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.181', [
+    'Find on the section pages is back to its normal height and lines up with the tab beside it: its top with the top of the tab, its bottom on the tab underline.']],
   ['1.1.180', [
     'Find on Active Directory, Domain health, Org chart, Attribute browser and Devices fills the height of the tabs beside it: its top lines up with the tabs and buttons, and its bottom sits on the line under them.']],
   ['1.1.179', [

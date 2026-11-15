@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.181 (2026-11-15)
+
+- Find on the section pages is back to its normal height and lines up with the tab beside it: its top with the top of the tab, its bottom on the tab underline.
+
 ## 1.1.180 (2026-11-15)
 
 - Find on Active Directory, Domain health, Org chart, Attribute browser and Devices fills the height of the tabs beside it: its top lines up with the tabs and buttons, and its bottom sits on the line under them.
