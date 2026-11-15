@@ -195,7 +195,6 @@ body.app.rail-small { grid-template-columns: 60px minmax(0, 1fr); }
 .uinstall { padding: 20px 22px; border: 1px solid color-mix(in srgb, var(--accent-line) 45%, transparent); border-radius: 12px; background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 10%, transparent), var(--panel) 55%); }
 .uinstall-top { display: flex; align-items: center; gap: 14px; }
 .uinstall .pct { font: 750 28px "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; color: var(--title); }
-.uinstall.only-say :is(.pct, .ubar, .steps) { display: none; }
 .ubar { height: 8px; margin: 16px 0 14px; border-radius: 8px; background: color-mix(in srgb, var(--accent-soft) 13%, transparent); overflow: hidden; }
 .ubar i { display: block; width: 0; height: 100%; border-radius: 8px; background: var(--ember); transition: width .6s ease; }
 .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
@@ -669,6 +668,8 @@ section.page.home.dir-top { max-width: none; padding: 0; gap: 0; }
 .dnav { position: sticky; top: 72px; display: flex; flex-direction: column; align-self: start; max-height: calc(100vh - 90px); padding-bottom: 8px; overflow-y: auto; scrollbar-gutter: stable;
   scrollbar-width: thin; scrollbar-color: #2A2D3E transparent; }
 .dnav > .side-find { flex: none; height: 32px; margin: 0; border-radius: 7px; }
+/* On a section page Find sits level with the tab beside it (its middle on the tab text). */
+:is(#dir-rail, #dv-rail) > .side-find { margin-top: 4px; }
 .dnav .rail-label { flex: none; margin: 30px 0 8px 12px; font-size: 11px; color: #9DA1B3; }
 .dnav > .rail-label:first-child, .dnav:not(.lists) > .side-find + .rail-label { margin-top: 10px; }
 .dnav a { position: relative; display: flex; flex: none; align-items: center; gap: 10px; height: 32px; padding: 0 10px 0 14px; color: #B8BCCB; font-size: 14px; font-weight: 500; white-space: nowrap; }

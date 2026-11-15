@@ -243,9 +243,9 @@
       $('update-check').hidden = !offerCheck;
       $('update-install').hidden = !offerInstall;
     };
-    let ours = false; // Install was clicked here: only then the bar shows, other pages just say it's updating
+    // Every open page shows the bar while it updates, with the same numbers.
     const bar = (pct) => {
-      $('update-bar').hidden = pct == null || !ours;
+      $('update-bar').hidden = pct == null;
       if (pct != null) $('update-fill').style.width = `${Math.min(100, pct)}%`;
     };
     // The download fills two thirds of the bar; while Rabbid Lab is stopped to install, it moves on the minute that takes.
@@ -302,7 +302,6 @@
     });
     $('update-install').addEventListener('click', async () => {
       say(`Starting version ${target}…`, 'busy');
-      ours = true;
       bar(4);
       try {
         const r = await fetch('/api/update/watch/install', { method: 'POST', headers: { 'X-Rabbid-Lab': '1', Accept: 'application/json' } });

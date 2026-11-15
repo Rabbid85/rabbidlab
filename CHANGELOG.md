@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.179 (2026-11-15)
+
+- Every open page shows the full update window while Rabbid Lab updates, with the same progress, not only the page Install was clicked on. You will see it from the update after this one.
+- Find on Active Directory, Domain health, Org chart, Attribute browser and Devices sits level with the tabs beside it.
+
 ## 1.1.178 (2026-11-15)
 
 - Domain health has the Browse heading under Find like the other Active Directory pages, so its list no longer sits right under the Find box.
