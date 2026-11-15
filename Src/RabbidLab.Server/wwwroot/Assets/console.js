@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.200', [
+    'The opening screen is about a third smaller: the flask, the name and the line under it.']],
   ['1.1.199', [
     'Updates on Devices no longer turns to Not checked after a client updates itself. The last answer from Windows Update stays until the new one comes in.']],
   ['1.1.198', [
@@ -1583,7 +1585,7 @@ const RELEASE_NOTES = [
       const x = box.left + box.width * (0.15 + Math.random() * 0.7);
       d.className = 'boot-drop';
       Object.assign(d.style, { left: `${x}px`, background: tiles[Math.floor(Math.random() * tiles.length)] });
-      d.style.setProperty('--dx', `${box.left + box.width / 2 - x - 8}px`);
+      d.style.setProperty('--dx', `${box.left + box.width / 2 - x - 6}px`);
       d.style.setProperty('--dy', `${box.top + box.height * 0.3 + 30}px`);
       el.append(d);
       setTimeout(() => d.remove(), 800);

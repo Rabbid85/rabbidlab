@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.200 (2026-11-15)
+
+- The opening screen is about a third smaller: the flask, the name and the line under it.
+
 ## 1.1.199 (2026-11-15)
 
 - Updates on Devices no longer turns to Not checked after a client updates itself. The last answer from Windows Update stays until the new one comes in.
