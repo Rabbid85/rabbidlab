@@ -412,7 +412,7 @@ public sealed class FakeUpdateSource : IUpdateSource
 {
     public UpdateOffer? Offer { get; set; }
 
-    public DateTime? CheckedAt { get; private set; }
+    public DateTime? CheckedAt { get; set; } // a test can make the last check older
 
     public string? Problem { get; set; }
 

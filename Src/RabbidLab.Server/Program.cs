@@ -81,7 +81,8 @@ builder.Services.Configure<HostOptions>(options =>
 // by itself once nobody is using Rabbid Lab. It is downloaded, checked against Rabbid Lab's release signature and installed
 // quietly; Setup restarts the service as the new version.
 builder.AddUpdates();
-builder.Services.AddSingleton<UpdateOptions>();
+// Rabbid Lab Dev looks for a new build every minute while a page is open, so a fresh one shows up within a minute or two.
+builder.Services.AddSingleton(new UpdateOptions { CheckWhileOpen = TimeSpan.FromMinutes(Product.Dev ? 1 : 5) });
 builder.Services.AddSingleton<InstallerRunner>();
 builder.Services.AddSingleton<IInstallerRunner, ConsoleInstallerRunner>(); // says what stopped an installer Windows wouldn't run
 builder.Services.AddSingleton<IUpdateHost, ConsoleUpdateHost>();

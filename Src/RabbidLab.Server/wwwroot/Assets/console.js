@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.182', [
+    'A new version shows up sooner. Opening a Rabbid Lab page now asks GitHub, unless that was done in the last minute. While a page stays open it asks again every minute on Rabbid Lab Dev and every 5 minutes otherwise. Before, only the sign-in page, Check for updates and a check every 12 hours did.']],
   ['1.1.181', [
     'Find on the section pages is back to its normal height and lines up with the tab beside it: its top with the top of the tab, its bottom on the tab underline.']],
   ['1.1.180', [
@@ -1128,7 +1130,7 @@ const RELEASE_NOTES = [
     const hold = !!last && !document.hidden && !underWay();
     const sent = Date.now();
     try {
-      const r = await fetch(hold ? `/api/update?after=${encodeURIComponent(last.status)}` : '/api/update',
+      const r = await fetch(hold ? `/api/update?after=${encodeURIComponent(last.status)}` : last ? '/api/update' : '/api/update?opened=true',
         { headers: { Accept: 'application/json' }, signal: AbortSignal.any([asking.signal, AbortSignal.timeout(hold ? 40000 : 4000)]) });
       if (mine !== asks) return;
       if (!r.ok) throw new Error(r.statusText);

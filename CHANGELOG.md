@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.182 (2026-11-15)
+
+- A new version shows up sooner. Opening a Rabbid Lab page now asks GitHub, unless that was done in the last minute. While a page stays open it asks again every minute on Rabbid Lab Dev and every 5 minutes otherwise. Before, only the sign-in page, Check for updates and a check every 12 hours did.
+
 ## 1.1.181 (2026-11-15)
 
 - Find on the section pages is back to its normal height and lines up with the tab beside it: its top with the top of the tab, its bottom on the tab underline.

@@ -50,4 +50,25 @@ public sealed class UpdatePageTests : IDisposable
         var heard = await waiting.WaitAsync(TimeSpan.FromSeconds(10));
         heard.EnsureSuccessStatusCode();
     }
+
+    [Fact]
+    public async Task Opening_a_page_asks_GitHub_unless_it_was_asked_a_moment_ago()
+    {
+        var admin = await app.SignedIn();
+        await Task.Delay(300); // anything asked when the server started has been asked by now
+        app.Updates.CheckedAt = DateTime.UtcNow.AddMinutes(-2);
+        var before = app.Updates.Checks;
+        (await admin.GetAsync("/api/update?opened=true")).EnsureSuccessStatusCode();
+        for (var i = 0; i < 100 && app.Updates.Checks == before; i++)
+        {
+            await Task.Delay(50);
+        }
+        Assert.Equal(before + 1, app.Updates.Checks);
+
+        // Asked again straight away, or by the page staying open: GitHub isn't asked again so soon.
+        (await admin.GetAsync("/api/update?opened=true")).EnsureSuccessStatusCode();
+        (await admin.GetAsync("/api/update")).EnsureSuccessStatusCode();
+        await Task.Delay(300);
+        Assert.Equal(before + 1, app.Updates.Checks);
+    }
 }

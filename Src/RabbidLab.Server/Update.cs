@@ -205,14 +205,15 @@ public static class UpdateApi
                 activity.Record(by, from, "admin", "update.install", $"{title}: {Product.Software} {done.Available ?? done.Version}", ok ? "ok" : "failed", ok ? null : done.Message);
             });
         }
-        // What GitHub last said, and any update under way. Opening the page asks GitHub nothing: the source asks when Rabbid
-        // Lab starts and every 12 hours, and Check for updates asks at once.
+        // What GitHub last said, and any update under way. An open page asks GitHub again as the sign-in page does: when it
+        // opens (opened=true) if the last check is over a minute old, and while it stays open once it's CheckWhileOpen old.
+        // The answer doesn't wait for GitHub; a held request hears of a new version the moment it's known.
         // With how many people are signed in: after an update every open page loads the new version, and with many of
         // them they do it a little apart, not all in the same second.
         // A page that already shows the step it names (?after=) is answered when the step changes, or after 25 seconds: every
         // open page hears an update has started the moment it does, not at its next look. Let go when this server stops,
         // so stopping to install is never held up by the pages waiting.
-        app.MapGet("/api/update", async (string? after, HttpContext context, UpdateEngine updates, IUpdateSource source, IUpdateHost host, SettingsStore store, GitHubOptions github,
+        app.MapGet("/api/update", async (string? after, bool? opened, HttpContext context, UpdateEngine updates, IUpdateSource source, IUpdateHost host, SettingsStore store, GitHubOptions github,
             Sessions sessions, TimeProvider clock, IHostApplicationLifetime life) =>
         {
             if (!Access.Can(context, Permissions.UpdatesView))
@@ -220,6 +221,7 @@ public static class UpdateApi
                 return Access.NotAllowed();
             }
             var stepped = updates.Stepped;
+            updates.Watch(opened == true);
             if (after == Word(updates.State.Status) && updates.State.Status is not (UpdateStatus.Downloading or UpdateStatus.Installing))
             {
                 using var stop = CancellationTokenSource.CreateLinkedTokenSource(context.RequestAborted, life.ApplicationStopping);
