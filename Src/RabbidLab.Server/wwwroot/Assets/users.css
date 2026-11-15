@@ -395,6 +395,10 @@ dialog.drawer::backdrop { background: rgba(5, 6, 10, .55); backdrop-filter: blur
 .dw-status { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0 0; }
 .dw-status:empty { display: none; }
 .dw-bar { display: flex; flex-wrap: wrap; gap: 4px; margin: 16px -8px 0; }
+/* A computer's panel: Approve and the Actions menu (devices.js) as buttons. */
+.dw-bar:has(.dw-acts) { gap: 8px; margin: 16px 0 0; }
+.dw-bar:has(.dw-acts) .small { display: inline-flex; align-items: center; gap: 7px; }
+.dw-bar:has(.dw-acts) .small svg { width: 15px; height: 15px; }
 .dw-qa { display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 10px; border: 0; border-radius: 8px; background: none; color: #D7DAE8; font: inherit; font-size: 13.5px; cursor: pointer; }
 .dw-qa:hover { background: #1A1D2B; color: #fff; }
 .dw-qa svg { width: 16px; height: 16px; color: var(--accent-soft); }

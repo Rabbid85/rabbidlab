@@ -2,6 +2,13 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.198 (2026-11-15)
+
+- Lock, Sign everyone out, Shut down and Send a message on Devices. Lock sends everyone back to the sign-in screen with their apps still open. These are for now: a computer offline for more than 15 minutes does not get them later.
+- A computer panel has one Actions button with the same menu as the toolbar, in place of a row of buttons.
+- Accounts on Devices show the same grey person and group icons as the rest of the console.
+- Wake on a computer that shows Online says it is already on: Wake-on-LAN starts a computer that is asleep or shut down, not the screen of one that is running.
+
 ## 1.1.197 (2026-11-15)
 
 - Moving columns works better on every grid: drag a heading sideways and a line down the table shows where it lands, even letting go between headings, and the table scrolls when you drag to its side.

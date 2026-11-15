@@ -122,6 +122,43 @@ public sealed class DevicesTests : IDisposable
     }
 
     [Fact]
+    public async Task Lock_sign_out_shut_down_and_a_message_go_out_as_jobs_that_are_for_now()
+    {
+        var admin = await Admin();
+        var (id, client) = await Computer();
+
+        var locked = await Id(await admin.PostAsJsonAsync("/api/devices/run", new { kind = "lock", clients = new[] { id } }));
+        await Id(await admin.PostAsJsonAsync("/api/devices/run", new { kind = "signout", clients = new[] { id } }));
+        await Id(await admin.PostAsJsonAsync("/api/devices/run", new { kind = "shutdown", clients = new[] { id } }));
+        var said = await Id(await admin.PostAsJsonAsync("/api/devices/run", new { kind = "message", clients = new[] { id }, text = "Bob's \"server\" restarts at 6.\r\nSave your work." }));
+        var empty = await admin.PostAsJsonAsync("/api/devices/run", new { kind = "message", clients = new[] { id }, text = "  " });
+        var tooLong = await admin.PostAsJsonAsync("/api/devices/run", new { kind = "message", clients = new[] { id }, text = new string('x', 251) });
+        Assert.Equal(HttpStatusCode.BadRequest, empty.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, tooLong.StatusCode);
+
+        var taken = await Take(client);
+        Assert.Equal(4, taken.Count);
+        string Text(string job) => taken.Single(j => j.GetProperty("id").GetString() == job).GetProperty("steps")[0].GetProperty("text").GetString()!;
+        Assert.Contains("tsdiscon.exe", Text(locked));
+        // One line, the double quotes gone and the single quote doubled, inside a single-quoted string.
+        Assert.Contains("/TIME:3600 'Bob''s ''server'' restarts at 6. Save your work.'", Text(said));
+
+        var log = (await (await admin.GetAsync("/api/activity")).Content.ReadAsStringAsync()).Replace("\\u0027", "'");
+        Assert.Contains("Locked SHOP-PC", log);
+        Assert.Contains("Signed everyone out of SHOP-PC", log);
+        Assert.Contains("Shut down SHOP-PC", log);
+        Assert.Contains("Sent a message to SHOP-PC", log);
+
+        // An offline computer doesn't get them hours later: they expire after 15 minutes, not a day.
+        var (late, _) = await Computer("LATE-PC");
+        var later = await Id(await admin.PostAsJsonAsync("/api/devices/run", new { kind = "lock", clients = new[] { late } }));
+        await Later(admin, 16);
+        app.Services.GetRequiredService<DeviceJobs>().Sweep();
+        var job = await admin.GetFromJsonAsync<JsonElement>($"/api/devices/jobs/{later}");
+        Assert.Equal("expired", job.GetProperty("targets")[0].GetProperty("state").GetString());
+    }
+
+    [Fact]
     public async Task Running_a_script_takes_the_right_to_and_confirming_who_you_are()
     {
         var admin = await app.SignedIn();

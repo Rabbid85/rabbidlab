@@ -86,7 +86,7 @@
   let flows = null; // /api/devices/workflows
   const scriptOf = (id) => (scripts || []).find((s) => s.id === id);
   const jobTitle = (j) => (j.kind === 'workflow' ? `Workflow: ${j.title}` : j.kind === 'script' ? (j.title === 'A script typed in' ? 'Run a script typed in' : `Run script: ${j.title}`) : j.title);
-  const JOB_ICON = { script: 'code', restart: 'power', updates: 'updates', workflow: 'org', printer: 'printer', check: 'refresh' };
+  const JOB_ICON = { script: 'code', restart: 'restart', updates: 'updates', workflow: 'org', printer: 'printer', check: 'refresh', lock: 'lock', signout: 'logout', shutdown: 'power', message: 'message' };
   const STATE = { waiting: ['waiting', 'Waiting'], running: ['run', 'Running'], done: ['online', 'Done'], failed: ['bad', 'Failed'], refused: ['bad', 'Refused'],
     noanswer: ['bad', 'No answer'], cancelled: ['offline', 'Cancelled'], expired: ['offline', 'Expired'] };
   // How a job went across its computers, in a word or two.
@@ -456,12 +456,15 @@
   const menu = $('dv-act-menu');
   // What can be done on computers, from this one list: the Actions menu for the ticked ones, and the buttons at the
   // top of a computer's panel (printers.js adds Add a printer through actItems).
+  // Two groups: the computer and who's on it (lock, sign out, restart, shut down, wake), then what runs on it.
   const doItems = (item, on) => {
-    if (!on.some((c) => c.approved)) return '';
+    if (!on.some((c) => c.approved)) return ['', ''];
     const off = on.filter((c) => c.approved && !c.online && !c.server).length;
-    return (canScripts() ? item('script', 'code', 'Run a script…') : '')
-      + (has('seats.actions') ? item('updates', 'updates', 'Install Windows updates…') + item('restart', 'power', 'Restart…') + item('wake', 'wake', 'Wake', String(off || '')) : '')
-      + (has('seats.wmi') ? item('wmi', 'list', 'Query with WMI…') : '') + (D.hooks.actItems?.(item) || '');
+    const acts = has('seats.actions');
+    return [acts ? item('lock', 'lock', 'Lock…') + item('signout', 'logout', 'Sign everyone out…') + item('restart', 'restart', 'Restart…') + item('shutdown', 'power', 'Shut down…')
+      + item('wake', 'wake', 'Wake', String(off || '')) : '',
+    (canScripts() ? item('script', 'code', 'Run a script…') : '') + (acts ? item('updates', 'updates', 'Install Windows updates…') + item('message', 'message', 'Send a message…') : '')
+      + (has('seats.wmi') ? item('wmi', 'list', 'Query with WMI…') : '') + (D.hooks.actItems?.(item) || '')];
   };
   // One of those, on these computers: from the menu, or from one computer's panel.
   const doAct = async (act, on, fromPanel = false) => {
@@ -477,20 +480,30 @@
       // done by another part of the page (printers.js)
     } else openRun(act, on);
   };
-  $('dv-act').addEventListener('click', () => {
-    const on = ticked();
+  // The Actions menu: for the ticked computers from the toolbar, or for one computer from its panel.
+  let menuOn = []; // the computers the open menu is for
+  let menuPanel = false; // opened from a computer's panel
+  const openActs = (button, on, inPanel) => {
+    menuOn = on;
+    menuPanel = inPanel;
     const waiting = on.filter((c) => !c.approved).length;
     const item = (act, icon, label, hint = '', danger = false) => `<button type="button" role="menuitem" class="am-link${danger ? ' out' : ''}" data-dv-act="${act}">${svg(icon)}<span>${esc(label)}</span>${hint ? `<small>${esc(hint)}</small>` : ''}</button>`;
     const groups = [
-      doItems(item, on),
-      (has('seats.approve') && waiting ? item('approve', 'check', 'Approve', String(waiting)) : '') + item('export', 'csv', 'Export these') + item('clear', 'x', 'Clear the ticks'),
+      ...doItems(item, on),
+      inPanel ? '' : (has('seats.approve') && waiting ? item('approve', 'check', 'Approve', String(waiting)) : '') + item('export', 'csv', 'Export these') + item('clear', 'x', 'Clear the ticks'),
       has('seats.remove') ? item('remove', 'trash', 'Remove from Devices…', '', true) : '',
     ];
     menu.innerHTML = groups.filter(Boolean).map((g) => `<div class="am-links">${g}</div>`).join('');
-    const r = $('dv-act').getBoundingClientRect();
-    menu.style.cssText = `position:fixed;inset:auto;width:250px;margin:0;left:${Math.max(8, r.right - 250)}px;top:${r.bottom + 6}px`;
+    const r = button.getBoundingClientRect();
+    menu.style.cssText = `position:fixed;inset:auto;width:250px;margin:0;left:${inPanel ? Math.min(r.left, innerWidth - 258) : Math.max(8, r.right - 250)}px;top:${r.bottom + 6}px`;
     menu.showPopover();
-  });
+    // Too tall for under the button: it opens above it.
+    if (r.bottom + 6 + menu.offsetHeight > innerHeight - 8) menu.style.top = `${Math.max(8, r.top - 6 - menu.offsetHeight)}px`;
+  };
+  $('dv-act').addEventListener('click', () => openActs($('dv-act'), ticked(), false));
+  // A computer's panel has the one button; what it opens is the same menu.
+  D.hooks.seatBar = (c) => (c.server || (!doItems(() => 'x', [c]).join('') && !has('seats.remove')) ? ''
+    : `<button type="button" class="small dw-acts" data-dv-menu aria-haspopup="menu">${svg('menu')}Actions${svg('chevron-down', 'chev')}</button>`);
   const each = async (list, path) => {
     let failed = 0;
     for (const c of list) {
@@ -507,7 +520,7 @@
     const b = e.target.closest('[data-dv-act]');
     if (!b) return;
     menu.hidePopover();
-    const on = ticked();
+    const on = menuOn;
     const act = b.dataset.dvAct;
     if (act === 'clear') {
       D.picked.clear();
@@ -518,26 +531,39 @@
       const failed = await each(list, 'approve');
       toast(failed ? `${failed} of ${list.length} couldn't be approved.` : `Approved ${many(list.length)}.`, '', failed ? { tone: 'warn' } : {});
     } else if (act === 'remove') {
-      sure(`Remove ${many(on.length)}?`, `${names(on)}. Each client asks to join again and waits for approval.`, 'Remove', async () => {
+      const one = on.length === 1;
+      sure(one ? `Remove ${on[0].computer}?` : `Remove ${many(on.length)}?`, one ? 'Its client asks to join again and waits for approval.' : `${names(on)}. Each client asks to join again and waits for approval.`, 'Remove', async () => {
         const failed = await each(on, 'remove');
-        D.picked.clear();
-        toast(failed ? `${failed} of ${on.length} couldn't be removed.` : `Removed ${many(on.length)}.`, '', failed ? { tone: 'warn' } : {});
+        if (menuPanel) panel.close();
+        else D.picked.clear();
+        toast(failed ? `${failed} of ${on.length} couldn't be removed.` : `Removed ${one ? on[0].computer : many(on.length)}.`, '', failed ? { tone: 'warn' } : {});
       });
-    } else await doAct(act, on);
+    } else await doAct(act, on, menuPanel);
   });
 
   // --- Running something on computers ---------------------------------------------------------------------------
   let run = null; // { kind, on, lang } while the window is open
+  // Each kind's words in the run window: its title, its button, what it does, the toast once sent, and whether it's
+  // for now (an offline computer gets it within 15 minutes, not a day).
+  const KINDS = {
+    script: { title: () => 'Run a script', go: 'Run', sent: 'Script sent.', note: 'It runs as SYSTEM. Who ran it, the script itself and what it wrote are kept under Jobs.' },
+    updates: { title: () => 'Install Windows updates', go: 'Install', sent: 'Updates started.', note: "Every missing update is downloaded and installed. The computer isn't restarted: one that needs it shows under Needs restart." },
+    check: { title: () => 'Check for updates', go: 'Check', sent: 'Checking for updates.', note: 'Each computer asks Windows Update what it is missing. Windows updates here shows the answer within a few minutes.' },
+    restart: { title: (n) => `Restart ${many(n)}?`, go: 'Restart', sent: 'Restart sent.', note: 'Anyone signed in gets a five minute warning first.' },
+    shutdown: { title: (n) => `Shut down ${many(n)}?`, go: 'Shut down', sent: 'Shut down sent.', now: true, note: 'Anyone signed in gets a five minute warning first.' },
+    lock: { title: (n) => `Lock ${many(n)}?`, go: 'Lock', sent: 'Lock sent.', now: true, note: 'Everyone signed in goes back to the sign-in screen. Their apps keep running, and getting back in takes their password.' },
+    signout: { title: (n) => `Sign everyone out of ${many(n)}?`, go: 'Sign out', sent: 'Sign out sent.', now: true, note: 'Everyone signed in is signed out straight away. Anything they had not saved is lost.' },
+    message: { title: () => 'Send a message', go: 'Send', sent: 'Message sent.', now: true, note: 'It pops up for everyone signed in, until they close it or an hour passes.' },
+  };
+  const kindOf = (kind) => KINDS[kind] || KINDS.script;
   const runNote = () => {
     const off = run.on.filter((c) => D.stateOf(c) === 'offline').length;
     const old = run.on.filter(older).length;
-    const base = run.kind === 'script' ? 'It runs as SYSTEM. Who ran it, the script itself and what it wrote are kept under Jobs.'
-      : run.kind === 'check' ? 'Each computer asks Windows Update what it is missing. Windows updates here shows the answer within a few minutes.'
-      : run.kind === 'restart' ? 'Anyone signed in gets a five minute warning first.'
-      : "Every missing update is downloaded and installed. The computer isn't restarted: one that needs it shows under Needs restart.";
+    const base = kindOf(run.kind).note;
+    const within = kindOf(run.kind).now ? 'within 15 minutes' : 'within a day';
     const all = run.on.length;
-    return base + (!off ? '' : off < all ? ` ${off} ${off === 1 ? 'is offline and gets' : 'are offline and get'} it once back, within a day.`
-      : all === 1 ? " It's offline and gets it once it's back, within a day." : " They're offline and get it once back, within a day.")
+    return base + (!off ? '' : off < all ? ` ${off} ${off === 1 ? 'is offline and gets' : 'are offline and get'} it once back, ${within}.`
+      : all === 1 ? ` It's offline and gets it once it's back, ${within}.` : ` They're offline and get it once back, ${within}.`)
       + (!old ? '' : old === all && all === 1 ? ` Its client is older than ${NEEDS} and gets it after updating.`
         : ` ${old} ${old === 1 ? 'has' : 'have'} a client older than ${NEEDS} and ${old === 1 ? 'gets' : 'get'} it after updating.`);
   };
@@ -552,8 +578,10 @@
     $('run-copy').hidden = !(script && picked && has('seats.scripts.edit'));
     $('run-save-row').hidden = !typed;
     $('run-test').hidden = !script || (!picked && !typed);
-    $('run-form').hidden = !script && run.on.length <= BRAKE;
-    $('run-go').disabled = script && !picked && !typed;
+    const message = run.kind === 'message';
+    for (const id of ['run-message', 'run-message-label']) $(id).hidden = !message;
+    $('run-form').hidden = !script && !message && run.on.length <= BRAKE;
+    $('run-go').disabled = (script && !picked && !typed) || (message && !$('run-message').value.trim());
     pressed($('run-lang'), 'lang', run.lang);
     $('run-text').placeholder = run.lang === 'cmd' ? 'ipconfig /flushdns' : 'Get-Service Spooler';
   };
@@ -582,7 +610,8 @@
     }
     run = { kind, on: list, lang: 'powershell' };
     const n = list.length;
-    $('run-title').textContent = kind === 'script' ? 'Run a script' : kind === 'restart' ? `Restart ${many(n)}?` : kind === 'check' ? 'Check for updates' : 'Install Windows updates';
+    $('run-title').textContent = kindOf(kind).title(n);
+    $('run-message').value = '';
     $('run-lead').textContent = `On ${names(list)}.`;
     fillScripts(preset);
     $('run-text').value = '';
@@ -596,13 +625,15 @@
     $('run-count').value = '';
     for (const id of ['run-count', 'run-count-label']) $(id).hidden = n <= BRAKE;
     $('run-count-label').textContent = `That's ${n} computers. Type ${n} to go ahead`;
-    $('run-go').textContent = kind === 'restart' ? 'Restart' : kind === 'updates' ? 'Install' : kind === 'check' ? 'Check' : 'Run';
+    $('run-go').textContent = kindOf(kind).go;
     $('run-note').textContent = runNote();
     say('run-problem', '');
     drawRun();
     $('run-dialog').showModal();
+    if (kind === 'message') $('run-message').focus();
   };
   $('run-script').addEventListener('change', drawRun);
+  $('run-message').addEventListener('input', drawRun);
   $('run-lang').addEventListener('click', (e) => {
     const b = e.target.closest('button');
     if (!b) return;
@@ -703,12 +734,13 @@
       if ($('run-script').value) body.script = $('run-script').value;
       else Object.assign(body, { language: run.lang, text: $('run-text').value });
     }
+    if (run.kind === 'message') body.text = $('run-message').value;
     if (run.on.length > BRAKE) body.count = Number($('run-count').value) || 0;
     $('run-go').disabled = true;
     try {
       const made = await confirmed(() => send('/api/devices/run', body));
       $('run-dialog').close();
-      toast(run.kind === 'restart' ? 'Restart sent.' : run.kind === 'updates' ? 'Updates started.' : run.kind === 'check' ? 'Checking for updates.' : 'Script sent.', `On ${names(run.on)}. It's under Jobs.`);
+      toast(kindOf(run.kind).sent, `On ${names(run.on)}. It's under Jobs.`);
       await openJob(made.id);
       if (D.at() === 'jobs') D.reload();
     } catch (e) {
@@ -1012,13 +1044,11 @@
   $('dv-new').addEventListener('click', () => (D.at() === 'workflows' ? openFlowEdit(null) : openScriptEdit(null)));
   panel.el.addEventListener('click', async (e) => {
     const on = (attr) => e.target.closest(`[${attr}]`);
-    // In a computer's panel (console.js draws it): the same actions as the Actions menu, on this one computer, and its jobs.
-    const act = on('data-dv-act');
-    if (act && panel.is('seats')) {
+    // In a computer's panel (console.js draws it): Actions opens the same menu, for this one computer; and its jobs.
+    const actsButton = on('data-dv-menu');
+    if (actsButton && panel.is('seats')) {
       const c = D.computers().find((x) => x.id === panel.key);
-      act.disabled = true;
-      if (c) await doAct(act.dataset.dvAct, [c], true);
-      act.disabled = false;
+      if (c) openActs(actsButton, [c], true);
       return;
     }
     const jobLink = on('data-job-open');
@@ -1103,7 +1133,10 @@
       D.draw();
       D.panelAgain();
       const via = [...new Set(sent.flatMap((r) => r.via))].join(' and ');
-      if (!failed.length) toast(`Sent a wake-up to ${names(sent)}.`, `From ${via}. It shows Online once Windows is up.`);
+      // One that shows Online is running: a wake-up can't turn its screen on.
+      const running = on.length === 1 && on[0].online;
+      if (!failed.length) toast(`Sent a wake-up to ${names(sent)}.`, running ? `It already shows Online. Wake turns on a computer that is asleep or shut down. It can't turn on the screen of one that is running.`
+        : `From ${via}. It shows Online once Windows is up.`);
       else if (!sent.length) toast(failed.length === 1 ? `Couldn't wake ${failed[0].computer}.` : `Couldn't wake ${many(failed.length)}.`, failed[0].problem, { tone: 'warn' });
       else toast(`Sent a wake-up to ${names(sent)}.`, `${names(failed)}: ${failed[0].problem}`, { tone: 'warn' });
     } catch (err) {
@@ -1113,7 +1146,6 @@
 
   // --- A computer's side panel: what can be run on it, and its jobs ---------------------------------------------
   const seatJobs = {}; // computer id -> its jobs, once asked for
-  D.hooks.seatBar = (c) => (c.server ? '' : doItems((act, icon, label) => qa(`data-dv-act="${act}"`, icon, label.replace(/…$/, '')), [c]));
   D.hooks.seatTabs = (c) => (canJobs() && !c.server ? [['jobs', 'Jobs', seatJobs[c.id] ? seatJobs[c.id].length : '']] : []);
   D.hooks.seatPane = (c, tab) => {
     if (tab !== 'jobs') return null;

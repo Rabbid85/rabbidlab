@@ -207,6 +207,10 @@ public sealed class DeviceJobs(DataFolder folder, TimeProvider clock, ClientComm
     public const string Workflow = "workflow";
     public const string Printer = "printer";
     public const string Check = "check";
+    public const string Lock = "lock";
+    public const string SignOut = "signout";
+    public const string Shutdown = "shutdown";
+    public const string Message = "message";
 
     public const string Waiting = "waiting";
     public const string Running = "running";
@@ -516,6 +520,82 @@ public static class DeviceActions
             'The computer restarts in 5 minutes.'
             """),
     };
+
+    // The sessions people are signed in to, by their Explorer (one per desktop, at the screen or over Remote Desktop),
+    // and Windows' own tool from System32 even when PowerShell runs 32-bit.
+    private const string Sessions = """
+        $ids = @(Get-Process -Name explorer -ErrorAction SilentlyContinue | Select-Object -ExpandProperty SessionId -Unique)
+        if (-not $ids) { 'Nobody is signed in.'; exit 0 }
+        function Tool($name) { @("$env:windir\Sysnative\$name", "$env:windir\System32\$name") | Where-Object { Test-Path $_ } | Select-Object -First 1 }
+        """;
+
+    private const string ShutdownWarning = "Your administrator is shutting down this computer in 5 minutes. Save your work.";
+
+    /// <summary>Everyone signed in goes back to the sign-in screen: their session is disconnected, so their apps keep running.</summary>
+    public static JobStep Lock() => new()
+    {
+        Title = "Lock", Language = DeviceScripts.PowerShell, Minutes = 2,
+        Text = DeviceScripts.Clean($$"""
+            {{Sessions}}
+            $tool = Tool 'tsdiscon.exe'
+            if (-not $tool) { 'This edition of Windows has no tsdiscon.exe to lock with.'; exit 1 }
+            $locked = 0
+            foreach ($id in $ids) { & $tool $id 2>&1 | ForEach-Object { "Session ${id}: $_" }; if ($LASTEXITCODE -eq 0) { $locked++ } }
+            if ($locked -eq 0) { 'No session could be locked.'; exit 1 }
+            "Locked $locked session(s). Their apps keep running, and getting back in takes their password."
+            """),
+    };
+
+    /// <summary>Everyone signed in is signed out now; what they hadn't saved is lost.</summary>
+    public static JobStep SignOut() => new()
+    {
+        Title = "Sign everyone out", Language = DeviceScripts.PowerShell, Minutes = 2,
+        Text = DeviceScripts.Clean($$"""
+            {{Sessions}}
+            $tool = Tool 'logoff.exe'
+            if (-not $tool) { 'This edition of Windows has no logoff.exe.'; exit 1 }
+            $out = 0
+            foreach ($id in $ids) { & $tool $id 2>&1 | ForEach-Object { "Session ${id}: $_" }; if ($LASTEXITCODE -eq 0) { $out++ } }
+            if ($out -eq 0) { 'Nobody could be signed out.'; exit 1 }
+            "Signed out $out session(s)."
+            """),
+    };
+
+    public static JobStep Shutdown() => new()
+    {
+        Title = "Shut down", Language = DeviceScripts.Command, Minutes = 2,
+        Text = DeviceScripts.Clean($"""
+            @echo off
+            shutdown.exe /s /t 300 /c "{ShutdownWarning}" /d p:0:0
+            if errorlevel 1 exit /b %errorlevel%
+            echo The computer shuts down in 5 minutes.
+            """),
+    };
+
+    public const int MessageMost = 250;
+
+    /// <summary>Why it can't be the message, or null when it can.</summary>
+    public static string? MessageProblem(string? text) =>
+        string.IsNullOrWhiteSpace(text) ? "Type the message." : text.Trim().Length > MessageMost ? $"Keep the message to {MessageMost} characters." : null;
+
+    /// <summary>A message that pops up for everyone signed in (msg.exe), until they close it or an hour passes.</summary>
+    public static JobStep Message(string text)
+    {
+        // One line, with no double quotes (Windows PowerShell passes them to msg.exe broken), as a single-quoted string.
+        var line = string.Join(' ', text.Trim().Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries)).Replace('"', '\'');
+        return new()
+        {
+            Title = "Send a message", Language = DeviceScripts.PowerShell, Minutes = 2,
+            Text = DeviceScripts.Clean($$"""
+                {{Sessions}}
+                $tool = Tool 'msg.exe'
+                if (-not $tool) { 'This edition of Windows has no msg.exe.'; exit 1 }
+                & $tool * /TIME:3600 '{{line.Replace("'", "''")}}' 2>&1
+                if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+                "Shown to $($ids.Count) session(s)."
+                """),
+        };
+    }
 
     /// <summary>Asks Windows Update what's missing now and says so. After any job the client asks again and sends its inventory, so Devices shows it.</summary>
     public static JobStep CheckUpdates() => new()

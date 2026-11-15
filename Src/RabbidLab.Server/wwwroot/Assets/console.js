@@ -3,6 +3,11 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.198', [
+    'Lock, Sign everyone out, Shut down and Send a message on Devices. Lock sends everyone back to the sign-in screen with their apps still open. These are for now: a computer offline for more than 15 minutes does not get them later.',
+    'A computer panel has one Actions button with the same menu as the toolbar, in place of a row of buttons.',
+    'Accounts on Devices show the same grey person and group icons as the rest of the console.',
+    'Wake on a computer that shows Online says it is already on: Wake-on-LAN starts a computer that is asleep or shut down, not the screen of one that is running.']],
   ['1.1.197', [
     'Moving columns works better on every grid: drag a heading sideways and a line down the table shows where it lands, even letting go between headings, and the table scrolls when you drag to its side.',
     'A click on a heading that wobbles a little still sorts, and Esc puts a column back while you move or resize it.']],
@@ -2377,10 +2382,6 @@ const RELEASE_NOTES = [
       }
       return said;
     };
-    const seatRemove = (c) => sure(`Remove ${c.computer}?`, 'Its client will ask to join again and wait for approval.', 'Remove', async () => {
-      await seatAct(c, 'remove');
-      seats();
-    });
     $('seats-table').addEventListener('click', async (e) => {
       if (e.target.closest('.tk')) return; // a tick is devices.js's
       const row = e.target.closest('[data-client]');
@@ -2409,9 +2410,9 @@ const RELEASE_NOTES = [
         : [['Windows', seat.os || 'Unknown'], ['Signed in', seat.user || 'Nobody'], ['Client', `${seat.version || '?'}${seat.behind ? ' (older than this server)' : ''}`],
           ['Address', addr(seat.address)], ['Last seen', ago(seat.lastSeen)], ['Joined', when(seat.joined)],
           seat.approved ? ['Approved', `${when(seat.approved)}${seat.approvedBy ? ` by ${seat.approvedBy}` : ''}`] : null].filter(Boolean);
-      const acts = (st === 'waiting' && can.has('seats.approve') ? `<button type="button" class="dw-qa" data-seat-approve>${svg('check')}<span>Approve</span></button>` : '')
-        + (dvHooks.seatBar?.(seat) || '')
-        + (can.has('seats.remove') && !seat.server ? `<button type="button" class="dw-qa" data-seat-remove>${svg('trash')}<span>Remove from Devices</span></button>` : '');
+      // Approve, then the Actions menu (devices.js), which has Remove from Devices too.
+      const acts = (st === 'waiting' && can.has('seats.approve') ? `<button type="button" class="small primary" data-seat-approve>${svg('check')}Approve</button>` : '')
+        + (dvHooks.seatBar?.(seat) || '');
       const bar = acts ? `<div class="dw-bar">${acts}</div>` : '';
       const open = !!seat.removalUntil;
       const lock = st === 'waiting' || seat.server || !can.has('seats.remove') ? ''
@@ -2560,8 +2561,7 @@ const RELEASE_NOTES = [
       if (on('approve')) {
         await seatAct(seat, 'approve');
         seats();
-      } else if (on('remove')) seatRemove(seat);
-      else if (on('here')) installHere();
+      } else if (on('here')) installHere();
       else if (on('allow')) lockTo({ allow: !seat.removalUntil });
       else if (on('now')) sure(`Uninstall the client on ${seat.computer}?`, 'The client removes itself from the computer within a minute.', 'Uninstall', () => lockTo({ allow: true, now: true }));
       else if (on('code')) {

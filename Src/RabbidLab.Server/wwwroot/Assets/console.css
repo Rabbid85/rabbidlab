@@ -434,6 +434,8 @@ input.pick:focus { outline: none; border-color: var(--accent); }
 .dialog.script-dialog { width: min(820px, calc(100vw - 32px)); }
 .script-dialog .form textarea { min-height: 300px; }
 #run-form textarea { min-height: 150px; }
+/* Send a message: plain words, not code, in a short box. */
+#run-form #run-message { min-height: 0; height: 84px; font-family: inherit; font-size: 14px; line-height: 1.5; }
 #run-form .code-box { max-height: 200px; margin: 8px 0 0; }
 /* Run a script: saving what was typed, a copy of a library script, and a test on one computer with what it wrote. */
 .run-save { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; }

@@ -8,13 +8,13 @@
 
   const NEEDS = '1.1.183'; // the first client that reads and changes Administrators
   const KIND = { local: 'Local account', localgroup: 'Local group', user: 'Domain user', group: 'Domain group', computer: 'Domain computer', wellknown: 'Windows group', unknown: 'Account Windows can’t name' };
-  const ICON = { local: 'key', localgroup: 'users', user: 'user', group: 'users', computer: 'monitor', wellknown: 'users', unknown: 'user' };
+  const ICON = { local: 'user', localgroup: 'users', user: 'user', group: 'users', computer: 'monitor', wellknown: 'users', unknown: 'user' };
   const chip = (text, cls = '', icon = '') => `<span class="uchip ${cls}">${icon ? svg(icon) : ''}${esc(text)}</span>`;
   const section = (title, body, right = '') => `<section class="dw-sec"><div class="dw-sec-head"><h3>${title}</h3>${right}</div>${body}</section>`;
   const fact = (label, value) => `<div class="dw-fact"><span class="l">${esc(label)}</span><span class="v">${value ? esc(value) : '<span class="muted">Not set</span>'}</span></div>`;
   const qa = (attr, icon, label) => `<button type="button" class="dw-qa" ${attr}>${svg(icon)}<span>${esc(label)}</span></button>`;
   const none = (text) => `<p class="muted dw-empty">${esc(text)}</p>`;
-  const pic = (kind, cls = 'small') => `<span class="pic ${cls}${kind === 'local' ? ' local' : ''}">${svg(ICON[kind] || 'user')}</span>`;
+  const pic = (kind, cls = 'small') => `<span class="pic ${cls}">${svg(ICON[kind] || 'user')}</span>`;
   const x = (attr, label) => `<button type="button" class="at-more dw-x" ${attr} data-tip="Take out" aria-label="${esc(label)}">${svg('x')}</button>`;
   const day = (iso) => new Date(iso).toLocaleDateString([], { dateStyle: 'medium' });
   const seen = (iso) => {

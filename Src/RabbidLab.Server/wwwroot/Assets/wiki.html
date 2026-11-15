@@ -99,9 +99,10 @@
   <p>On <a href="#seats">Devices</a> you can run a script on computers, install their missing Windows updates, or restart them. Scripts are PowerShell or Command, and run as SYSTEM.</p>
   <ul>
     <li><b>Several computers:</b> tick them, then click <b>Actions</b>. Shift-click ticks everything in between.</li>
-    <li><b>One computer:</b> click it. The buttons are at the top of its panel, and its <b>Jobs</b> tab lists what was run on it.</li>
+    <li><b>One computer:</b> click it. <b>Actions</b> at the top of its panel has the same menu, and its <b>Jobs</b> tab lists what was run on it.</li>
     <li><b>Scripts</b> is the library. <b>New script</b> adds one, and <b>Start from</b> fills in a common one to change. Each script has a time limit: it's stopped when that's up.</li>
     <li><b>Jobs</b> lists every run. Click one to see each computer, the exit code, what the script wrote there, and exactly what ran.</li>
+    <li><b>Lock</b> sends everyone signed in back to the sign-in screen with their apps still open. <b>Sign everyone out</b> signs them out straight away. <b>Send a message</b> pops up for whoever is signed in. These and <b>Shut down</b> are for now: a computer offline for more than 15 minutes does not get them later.</li>
     <li><b>Restart</b> gives anyone signed in a five minute warning. <b>Install Windows updates</b> doesn't restart: a computer that needs it shows under Needs restart.</li>
     <li>A computer that's offline gets the job when it's back, for a day. After that the job says Expired.</li>
     <li><b>Wake</b> turns on a computer that is off or asleep, with Wake-on-LAN. This server sends it to computers on its own network. For a computer on another network, an online computer there passes it on. Wake-on-LAN has to be on in the BIOS, and in Windows: the computer panel says which, and the built-in script <b>Turn on Wake-on-LAN</b> sets the Windows side.</li>
