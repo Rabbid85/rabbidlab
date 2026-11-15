@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.185', [
+    'This server can be a full row in Devices. Open it and click Install the client here: the server puts the client on itself and approves it, so it gets software, Windows updates, scripts, jobs and the tick box like the other computers.']],
   ['1.1.184', [
     'If your role can only see updates, Overview and Settings no longer say a new version is ready to install with nothing to click. They say it is out and how it gets installed: by an admin, or by itself when nobody is using Rabbid Lab.',
     'WMI query: picking a built-in query fills in the query box and waits for Run instead of running straight away. Examples is now called Built-in queries.',
@@ -1743,7 +1745,7 @@ const RELEASE_NOTES = [
     cols: [
       // The name first with its icon, as on Active Directory; one thing per column, so the name alone.
       { key: 'computer', label: 'Computer', w: 165, fixed: true, get: (c) => c.computer,
-        cell: (c) => `<div class="who"><span class="pic"${c.server ? ' data-tip="This server"' : ''}>${svg(c.server || /server/i.test(c.os || '') ? 'server' : 'laptop')}</span><b class="ell">${esc(c.computer)}</b></div>` },
+        cell: (c) => `<div class="who"><span class="pic"${c.server || c.thisServer ? ' data-tip="This server"' : ''}>${svg(c.server || c.thisServer || /server/i.test(c.os || '') ? 'server' : 'laptop')}</span><b class="ell">${esc(c.computer)}</b></div>` },
       // While its client is being uninstalled, or may be, State says so (the time is in the hint).
       { key: 'state', label: 'State', w: 80, on: true, get: (c) => ({ waiting: 0, online: 1, offline: 2 })[stateOf(c)], text: (c) => STATE[stateOf(c)],
         cell: (c) => (c.uninstalling ? '<span class="state waiting">Uninstalling</span>'
@@ -2181,8 +2183,11 @@ const RELEASE_NOTES = [
         ['Model', [inv.manufacturer, inv.model].filter(Boolean).join(' ') || 'Unknown'], inv.serial && ['Serial number', inv.serial], inv.processor && ['Processor', inv.processor],
         inv.memory ? ['Memory', gb(inv.memory)] : null, inv.started && ['Uptime', howLong(inv.started)], ['Restart', inv.restartNeeded ? 'Needed, to finish installing something' : 'Not needed'],
         ...inv.disks.map((d) => [`Drive ${d.name}`, d.total ? `${Math.round(100 * d.free / d.total)}% free of ${gb(d.total)}` : 'Unknown'])]));
+      // This server without the client: putting it on gives it everything the other computers have.
+      const here = !seat.server ? '' : section('Manage it like the other computers', `<p class="dw-how">Install the ${esc(productName)} client on this server to see its hardware, software and Windows updates here, and to run scripts, updates, restarts and WMI queries on it. It's approved straight away and keeps itself up to date.</p>`
+        + (can.has('seats.add') ? `<div class="seat-acts"><button type="button" class="primary" data-seat-here${hereStarted ? ' disabled' : ''}>${svg('download')}${hereStarted ? 'Installing the client' : 'Install the client here'}</button></div>` : ''));
       const more = st === 'waiting' ? null : dvHooks.seatPane?.(seat, seatTab);
-      const pane = more != null ? more : st === 'waiting' || seatTab === 'summary' ? section('Details', facts2(facts)) + hardware + lock
+      const pane = more != null ? more : st === 'waiting' || seatTab === 'summary' ? section('Details', facts2(facts)) + hardware + here + lock
         : !inv ? section(seatTab === 'software' ? 'Installed software' : 'Windows updates', none(waitingFor))
         : seatTab === 'software' ? section(`Installed software <small>${inv.software.length}</small>`, inv.software.length ? list(inv.software.map((p) => [p.name, [p.version, p.publisher].filter(Boolean).join(' · ')])) : none('Nothing is listed.'))
         : section(`Missing <small>${inv.missingChecked ? inv.missing.length : ''}</small>`, !inv.missingChecked ? none("Windows Update hasn't answered on this computer yet. It's asked every six hours.")
@@ -2238,6 +2243,19 @@ const RELEASE_NOTES = [
       });
     }
     // The list was read again: the computer that's open shows what it is now, or closes when it's gone.
+    // Install the client here: the server installs it on itself; its row turns into the client's within a minute or two.
+    let hereStarted = false;
+    const installHere = async () => {
+      try {
+        await send('/api/clients/install-here');
+        hereStarted = true;
+        toast(`Installing the client on ${seat.computer}.`, 'It joins by itself and shows up as a normal row within a minute or two.');
+        drawSeat();
+        for (const s of [20, 45, 90, 150]) setTimeout(() => seats(), s * 1000);
+      } catch (err) {
+        toast("That didn't work.", err.message, { tone: 'warn' });
+      }
+    };
     seatOn = (id, tab) => {
       const c = dvAll().find((x) => x.id === id);
       if (!c) return;
@@ -2280,6 +2298,7 @@ const RELEASE_NOTES = [
         await seatAct(seat, 'approve');
         seats();
       } else if (on('remove')) seatRemove(seat);
+      else if (on('here')) installHere();
       else if (on('allow')) lockTo({ allow: !seat.removalUntil });
       else if (on('now')) sure(`Uninstall the client on ${seat.computer}?`, 'The client removes itself from the computer within a minute.', 'Uninstall', () => lockTo({ allow: true, now: true }));
       else if (on('code')) {

@@ -342,6 +342,8 @@ input.pick:focus { outline: none; border-color: var(--accent); }
 .seat-lock svg { width: 14px; height: 14px; }
 .seat-lock.open { border-color: rgba(95, 212, 160, .4); color: var(--ok); }
 .seat-acts { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
+.seat-acts button { display: inline-flex; align-items: center; gap: 8px; }
+.seat-acts button svg { width: 15px; height: 15px; }
 .seat-code { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 12px; padding: 12px 12px 12px 16px; border: 1px solid var(--line-strong); border-radius: 12px; background: var(--night); }
 .seat-code code { color: var(--title); font: 600 19px/1.2 Consolas, "Cascadia Mono", monospace; letter-spacing: .06em; user-select: all; }
 .dw-how.warn { color: var(--amber); }

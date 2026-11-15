@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.185 (2026-11-15)
+
+- This server can be a full row in Devices. Open it and click Install the client here: the server puts the client on itself and approves it, so it gets software, Windows updates, scripts, jobs and the tick box like the other computers.
+
 ## 1.1.184 (2026-11-15)
 
 - If your role can only see updates, Overview and Settings no longer say a new version is ready to install with nothing to click. They say it is out and how it gets installed: by an admin, or by itself when nobody is using Rabbid Lab.

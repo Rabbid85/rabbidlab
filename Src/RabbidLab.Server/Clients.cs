@@ -188,8 +188,8 @@ public sealed class Clients(DataFolder folder, TimeProvider clock, IDataProtecti
         return code;
     }
 
-    /// <summary>A computer joining: its id and secret, or why the list has no room for it.</summary>
-    public (Client? Client, string? Secret, string? Problem) Join(string computer, string? os, string? version, string? address)
+    /// <summary>A computer joining: its id and secret, or why the list has no room for it. self: this server's own client, approved straight away.</summary>
+    public (Client? Client, string? Secret, string? Problem) Join(string computer, string? os, string? version, string? address, bool self = false)
     {
         lock (file.Gate)
         {
@@ -215,8 +215,8 @@ public sealed class Clients(DataFolder folder, TimeProvider clock, IDataProtecti
                 Address = address,
                 Joined = now,
                 LastSeen = now,
-                Approved = f.Approve ? null : now,
-                ApprovedBy = f.Approve ? null : "joining straight away",
+                Approved = f.Approve && !self ? null : now,
+                ApprovedBy = self ? "this server" : f.Approve ? null : "joining straight away",
                 SecretHash = Hash(secret),
             };
             NewCode(client);

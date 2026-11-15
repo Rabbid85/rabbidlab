@@ -29,7 +29,9 @@ public static class ClientsApi
                 limiter.GiveBack(from); // not a join
                 return Results.BadRequest(new { error = "Say which computer is joining." });
             }
-            var (client, secret, problem) = clients.Join(computer, form.Os, form.Version, from);
+            // This server's own client (Install the client here) is approved straight away: it joins from this computer, by its name.
+            var self = Addresses.OnServer(context.Connection.RemoteIpAddress) && string.Equals(computer, Environment.MachineName, StringComparison.OrdinalIgnoreCase);
+            var (client, secret, problem) = clients.Join(computer, form.Os, form.Version, from, self);
             if (client is null)
             {
                 return Results.Json(new { error = problem }, statusCode: StatusCodes.Status429TooManyRequests);
@@ -140,6 +142,7 @@ public static class ClientsApi
                 removalUntil = clients.RemovalUntil(c),
                 uninstalling = c.Uninstall,
                 inventory = Summary(inventories.Get(c.Id)),
+                thisServer = string.Equals(c.Computer, Environment.MachineName, StringComparison.OrdinalIgnoreCase), // this server, with the client on it too
             })) : Access.NotAllowed());
 
         // The client's inventory of its computer (Inventory.cs): hardware, drives, software, Windows updates. Kept only for
@@ -283,6 +286,45 @@ public static class ClientsApi
                 policy = File.Exists(ClientFiles.Policy),
                 version = Product.Version,
             });
+        });
+
+        // Install the client here: this server puts the client on itself, so it's in Devices with everything the others have.
+        app.MapPost("/api/clients/install-here", (HttpContext context, Clients clients, IConfiguration config, IHereClient here, ActivityLog log, ILogger<HereClient> logger) =>
+        {
+            if (Access.RefuseUnless(context, Permissions.SeatsAdd) is { } refused)
+            {
+                return refused;
+            }
+            if (!OperatingSystem.IsWindows() || Product.InContainer)
+            {
+                return Results.BadRequest(new { error = "The client is for Windows. This server isn't running on Windows." });
+            }
+            if (clients.All().Any(c => string.Equals(c.Computer, Environment.MachineName, StringComparison.OrdinalIgnoreCase)))
+            {
+                return Results.Conflict(new { error = $"{Environment.MachineName} already has the client. It's in the list." });
+            }
+            if (!File.Exists(ClientFiles.Msi))
+            {
+                return Results.NotFound(new { error = "This server has no client to install. Get it from the Rabbid Lab release on GitHub." });
+            }
+            // The client talks to this server on the same port the page uses; its key fingerprint makes the name not matter.
+            var server = $"https://localhost:{context.Request.Host.Port ?? 443}";
+            var who = ActivityLog.Who(context);
+            var from = ActivityLog.Address(context);
+            log.Record(context, "clients", "client.install-here", $"Started installing the client on {Environment.MachineName}, this server");
+            _ = Task.Run(async () =>
+            {
+                var code = await here.Install(server, ClientFiles.KeyFingerprint(config), CancellationToken.None);
+                // 0 is done, 3010 is done and wants a restart.
+                var ok = code is 0 or 3010;
+                log.Record(who, from, "clients", "client.install-here", ok ? $"Installed the client on {Environment.MachineName}, this server"
+                    : $"The client didn't install on {Environment.MachineName}: msiexec {(code is null ? "didn't run" : $"ended with {code}")}. Its log is in the data folder's Logs.", ok ? "ok" : "failed");
+                if (!ok)
+                {
+                    logger.LogWarning("The client didn't install on this server: msiexec ended with {Code}", code);
+                }
+            });
+            return Results.Accepted();
         });
 
         // The client's MSI, for anyone: computers installing it, and clients updating themselves to this server's version.

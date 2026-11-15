@@ -32,6 +32,9 @@ public sealed class TestApp(string data) : WebApplicationFactory<Program>
     /// <summary>Stands in for reading domain groups' people from AD: Domain Admins holds awiles and hpotter.</summary>
     public FakeAdminGroups AdminGroups { get; } = new();
 
+    /// <summary>Stands in for msiexec on this server: keeps what it was asked to install with.</summary>
+    public FakeHereClient Here { get; } = new();
+
     /// <summary>The time the server sees, moved on by hand.</summary>
     public FakeClock Clock { get; } = new();
 
@@ -71,6 +74,8 @@ public sealed class TestApp(string data) : WebApplicationFactory<Program>
             services.AddSingleton<IWindowsAccounts>(Windows);
             services.RemoveAll<IAdminGroups>();
             services.AddSingleton<IAdminGroups>(AdminGroups);
+            services.RemoveAll<IHereClient>();
+            services.AddSingleton<IHereClient>(Here);
             services.RemoveAll<ISensorProbe>();
             services.AddSingleton<ISensorProbe>(Probe);
             services.RemoveAll<IMailSender>();
@@ -194,6 +199,21 @@ public sealed class FakeDirectory : IDirectory
             return Task.FromResult<DirectoryUser?>(null);
         }
         return Task.FromResult<DirectoryUser?>(new DirectoryUser(name, w.Display, [.. groups.Where(g => w.Groups.Contains(g, StringComparer.OrdinalIgnoreCase))]));
+    }
+}
+
+/// <summary>Installing the client on this server, as the tests see it: nothing runs, and it says it worked.</summary>
+public sealed class FakeHereClient : IHereClient
+{
+    public List<(string Server, string? Fingerprint)> Asked { get; } = [];
+
+    public Task<int?> Install(string server, string? fingerprint, CancellationToken stop)
+    {
+        lock (Asked)
+        {
+            Asked.Add((server, fingerprint));
+        }
+        return Task.FromResult<int?>(0);
     }
 }
 

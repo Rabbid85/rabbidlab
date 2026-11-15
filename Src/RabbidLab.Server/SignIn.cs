@@ -40,6 +40,7 @@ public static class SignIn
         services.TryAddSingleton(TimeProvider.System);
         services.AddSingleton<Sessions>();
         services.AddSingleton<Clients>();
+        services.AddSingleton<IHereClient, HereClient>();
         services.AddSingleton<Inventories>();
         services.AddSingleton<Confirmations>();
         services.AddSingleton<DeviceScripts>();

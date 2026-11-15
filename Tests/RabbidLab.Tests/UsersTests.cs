@@ -237,6 +237,47 @@ public sealed class UsersTests : IDisposable
     }
 
     [Fact]
+    public async Task This_server_installs_its_own_client_once_and_that_client_is_approved_straight_away()
+    {
+        var admin = await app.SignedIn();
+        Directory.CreateDirectory(ClientFiles.Folder);
+        var made = !File.Exists(ClientFiles.Msi);
+        if (made)
+        {
+            await File.WriteAllTextAsync(ClientFiles.Msi, "not really an msi");
+        }
+        try
+        {
+            var started = await admin.PostAsync("/api/clients/install-here", null);
+            for (var i = 0; i < 100 && app.Here.Asked.Count == 0; i++)
+            {
+                await Task.Delay(20);
+            }
+            var clients = app.Services.GetRequiredService<Clients>();
+            (await admin.PostAsJsonAsync("/api/clients/settings", new { approve = true })).EnsureSuccessStatusCode();
+            var (self, _, _) = clients.Join(Environment.MachineName, "Windows 11 Pro", "1.1.184", "127.0.0.1", self: true);
+            var (other, _, _) = clients.Join("AMW-LT-099", "Windows 11 Pro", "1.1.184", "192.168.2.50");
+            var again = await admin.PostAsync("/api/clients/install-here", null);
+            var listed = (await Json(await admin.GetAsync("/api/clients"))).EnumerateArray().Single(c => c.GetProperty("id").GetString() == self!.Id);
+
+            Assert.Equal(HttpStatusCode.Accepted, started.StatusCode);
+            Assert.StartsWith("https://localhost:", app.Here.Asked.Single().Server);
+            Assert.NotNull(self!.Approved);
+            Assert.Equal("this server", self.ApprovedBy);
+            Assert.Null(other!.Approved);
+            Assert.Equal(HttpStatusCode.Conflict, again.StatusCode);
+            Assert.True(listed.GetProperty("thisServer").GetBoolean());
+        }
+        finally
+        {
+            if (made)
+            {
+                File.Delete(ClientFiles.Msi);
+            }
+        }
+    }
+
+    [Fact]
     public async Task Administrators_can_t_be_changed_through_an_older_client()
     {
         var admin = await app.SignedIn();
