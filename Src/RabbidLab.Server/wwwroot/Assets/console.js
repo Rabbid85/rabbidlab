@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.184', [
+    'If your role can only see updates, Overview and Settings no longer say a new version is ready to install with nothing to click. They say it is out and how it gets installed: by an admin, or by itself when nobody is using Rabbid Lab.',
+    'WMI query: picking a built-in query fills in the query box and waits for Run instead of running straight away. Examples is now called Built-in queries.',
+    'Long names in the side panel, like DNSServerSearchOrder on a WMI row, no longer run into their values.']],
   ['1.1.183', [
     'Local accounts moved into Devices. Click a computer and open its Accounts tab to see its local accounts and everyone in its Administrators group, domain users and groups included. You can add people to the group or take them out there.',
     'New Local admins list on Devices: who is an administrator of each computer, with domain groups opened up into people. This server has its own row in Devices now.']],
@@ -680,7 +684,7 @@ const RELEASE_NOTES = [
   let me = '';
   const allows = (list) => !!shown && list.split(/\s+/).some((p) => shown.has(p));
   const has = (p) => can.has(p);
-  const PAGES = { overview: 'overview.view', links: 'links.view', sensors: 'sensors.view', seats: 'seats.view sessions.view', people: 'access.view', ad: 'ad.view ad.connect', local: 'windows.view',
+  const PAGES = { overview: 'overview.view', links: 'links.view', sensors: 'sensors.view', seats: 'seats.view sessions.view', people: 'access.view', ad: 'ad.view ad.connect',
     org: 'ad.view', attrs: 'ad.view' };
   // Settings' pages and what each needs; About is for everyone, Developer for Rabbid Lab Dev only.
   const SUBS = { account: '', appearance: '', viewas: 'access.view', address: '', updates: 'updates.view', signin: 'access.roles', activity: 'activity.view', alerts: 'sensors.alerts', notifications: 'sensors.alerts', history: 'sensors.alerts',
@@ -1056,9 +1060,14 @@ const RELEASE_NOTES = [
     tick ||= setInterval(() => installing(version), 250);
   };
 
+  // Whether this page can install it: a role that allows it, on a server that installs its own updates (not Docker).
+  const mayInstall = (u) => !!u.canInstall && allows('updates.install');
+  // What someone who can't install it is told instead: how it gets installed.
+  const whoInstalls = (u) => (!u.canInstall ? 'Update the container to get it.'
+    : u.automatic ? `It installs by itself when nobody is using ${product}.` : 'An admin can install it.');
   // The hero says where updating stands in a few words; Settings > Updates has the rest.
   const headline = (u) => ({
-    available: `Version ${u.available} is ready to install.`,
+    available: mayInstall(u) ? `Version ${u.available} is ready to install.` : `Version ${u.available} is out. ${whoInstalls(u)}`,
     waiting: `Version ${u.available} installs in a moment.`,
     downloading: `Downloading version ${u.available}.`,
     installing: `Installing version ${u.available}.`,
@@ -1101,7 +1110,7 @@ const RELEASE_NOTES = [
         `From ${u.version}${u.total ? ` · ${mb(u.downloaded || 0)} of ${mb(u.total)}` : ''}`);
     } else bar(null);
     if (u.status === 'available') {
-      card('download', 'ember', `Rabbid Lab ${u.available} is ready`, u.automatic
+      card('download', 'ember', `Rabbid Lab ${u.available} is ready`, !mayInstall(u) ? `You have ${u.version}. ${whoInstalls(u)}` : u.automatic
         ? `You have ${u.version}. The update installs automatically when nobody is using ${product}, or click Install now.`
         : `You have ${u.version}. Installing takes about a minute, and Rabbid Lab is stopped while it does.`);
     } else if (u.status === 'waiting') card('clock', 'ember', `Version ${u.available} installs in a moment`, u.message);

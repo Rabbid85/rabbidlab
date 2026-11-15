@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.184 (2026-11-15)
+
+- If your role can only see updates, Overview and Settings no longer say a new version is ready to install with nothing to click. They say it is out and how it gets installed: by an admin, or by itself when nobody is using Rabbid Lab.
+- WMI query: picking a built-in query fills in the query box and waits for Run instead of running straight away. Examples is now called Built-in queries.
+- Long names in the side panel, like DNSServerSearchOrder on a WMI row, no longer run into their values.
+
 ## 1.1.183 (2026-11-15)
 
 - Local accounts moved into Devices. Click a computer and open its Accounts tab to see its local accounts and everyone in its Administrators group, domain users and groups included. You can add people to the group or take them out there.

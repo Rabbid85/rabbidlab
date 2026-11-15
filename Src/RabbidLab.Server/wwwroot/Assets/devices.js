@@ -269,8 +269,8 @@
     const on = wqTargets();
     const query = $('wq-text').value.trim();
     if (!query) {
-      $('wq-text').focus();
-      toast('Type a query first.', 'Or pick one under Examples.', { tone: 'warn' });
+      $('wq-text').focus({ preventScroll: true }); // Ctrl+Enter runs it from here
+      toast('Type a query first.', 'Or choose one under Built-in queries.', { tone: 'warn' });
       return;
     }
     if (!on.length) {
@@ -316,15 +316,16 @@
     }
     D.draw();
   };
-  $('wq-examples').innerHTML = '<option value="" selected>Pick one…</option>' + WQ_EXAMPLES.map(([label], i) => `<option value="${i}">${esc(label)}</option>`).join('');
+  // A built-in query fills the boxes; Run runs it. It stays picked until the query is changed by hand.
+  $('wq-examples').innerHTML = '<option value="" selected>Choose one</option>' + WQ_EXAMPLES.map(([label], i) => `<option value="${i}">${esc(label)}</option>`).join('');
   $('wq-examples').addEventListener('change', () => {
     const ex = WQ_EXAMPLES[Number($('wq-examples').value)];
-    $('wq-examples').value = '';
     if (!ex) return;
     $('wq-space').value = ex[1] || 'root\\cimv2';
     $('wq-text').value = ex[2];
-    runWmi();
+    $('wq-text').focus({ preventScroll: true }); // Ctrl+Enter runs it from here
   });
+  for (const id of ['wq-text', 'wq-space']) $(id).addEventListener('input', () => { $('wq-examples').value = ''; });
   $('wq-run').addEventListener('click', runWmi);
   $('wq-text').addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
@@ -337,7 +338,7 @@
     const r = wq.rows[i];
     if (!r) return;
     panel.body.innerHTML = head('list', r['@computer'], esc(`${wq.cls || 'WMI query'} · ${wq.space}`))
-      + section(`Properties <small>${wq.names.length}</small>`, `<ul class="does">${wq.names.map((n) => `<li><b>${esc(n)}</b><span>${r[n] === '' || r[n] == null ? dash : esc(r[n])}</span></li>`).join('')}</ul>`);
+      + section(`Properties <small>${wq.names.length}</small>`, `<ul class="does wide">${wq.names.map((n) => `<li><b>${esc(n)}</b><span>${r[n] === '' || r[n] == null ? dash : esc(r[n])}</span></li>`).join('')}</ul>`);
     panel.open('devices', `wmi:${i}`);
     mark();
   };
