@@ -17,3 +17,11 @@
 .wiki-next a.next { margin-left: auto; text-align: right; }
 .wiki-next small { display: block; color: var(--muted); font-size: 11.5px; }
 .wiki-next b { color: var(--title); font-size: 13.5px; }
+
+/* The contents down the left: each part with a line over its name, whole titles (no "…"), and the open article plain to see. */
+#wiki-toc .side-label { margin: 16px 0 6px; padding-top: 14px; border-top: 1px solid var(--line); color: #C9CCDA; font-size: 11.5px; }
+#wiki-toc .side-label:first-child { margin-top: 6px; padding-top: 0; border-top: 0; }
+#wiki-toc a { height: auto; min-height: 32px; padding: 6px 10px; line-height: 1.35; }
+#wiki-toc a .nm { white-space: normal; }
+#wiki-toc a[aria-current] { background: #262A3D; color: #fff; font-weight: 650; }
+#wiki-toc a[aria-current]::before { top: 5px; bottom: 5px; width: 4px; }

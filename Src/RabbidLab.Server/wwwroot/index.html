@@ -560,7 +560,6 @@
     <div class="dir-area">
       <!-- The lists of the Devices page down the left; Computers has views of its own under it (console.js). -->
       <nav class="dnav lists" id="dv-rail" aria-label="Devices">
-        <label class="side-find"><svg><use href="#i-search"/></svg><input type="search" id="dv-find" placeholder="Find" aria-label="Find" autocomplete="off" spellcheck="false"></label>
         <p class="rail-label" data-can="seats.view">Browse</p>
         <a href="#seats" data-dv="computers" data-can="seats.view"><svg><use href="#i-monitor"/></svg><span>Computers</span><i class="rail-dot" id="dv-dot" hidden></i><small id="dv-n-computers"></small></a>
         <div class="dkids" id="dv-views"></div>
@@ -575,13 +574,15 @@
         <a href="#seats/sessions" data-dv="sessions" data-can="sessions.view"><svg><use href="#i-users"/></svg><span>Signed in now</span><small id="dv-n-sessions"></small></a>
       </nav>
       <div class="dmain"><div class="lib" id="dv-lib"><div class="lib-body">
+        <!-- Every list's bar: Search, Columns and Filters first, then what this list can do. -->
         <div class="dbar"><div class="tabs2" id="dv-tabs"></div><span class="grow"></span>
-          <button type="button" class="small" id="dv-filter" aria-haspopup="dialog" aria-label="Filter" data-tip="Filter" hidden><svg><use href="#i-filter"/></svg><b class="cnt" hidden></b></button>
+          <label class="side-find tsearch"><svg><use href="#i-search"/></svg><input type="search" id="dv-find" placeholder="Search" aria-label="Search" autocomplete="off" spellcheck="false"></label>
+          <button type="button" class="small" id="dv-cols" aria-haspopup="menu"><svg><use href="#i-columns"/></svg>Columns<svg class="chev"><use href="#i-chevron-down"/></svg></button>
+          <button type="button" class="small" id="dv-filter" aria-haspopup="dialog" hidden><svg><use href="#i-filter"/></svg>Filters<b class="cnt" hidden></b></button>
           <button type="button" class="small flt-off" id="dv-filter-x" data-tip="Clear filter" aria-label="Clear filter" hidden><svg><use href="#i-x"/></svg></button>
-          <button type="button" class="small" id="dv-cols" aria-haspopup="menu"><svg><use href="#i-columns"/></svg>Columns</button>
           <button type="button" class="small" id="dv-act" aria-haspopup="menu" disabled data-tip="Tick computers first"><svg><use href="#i-menu"/></svg>Actions<b class="cnt" hidden></b><svg class="chev"><use href="#i-chevron-down"/></svg></button>
           <button type="button" class="small" id="dv-refresh" data-tip="Refresh" aria-label="Refresh"><svg><use href="#i-refresh"/></svg></button>
-          <button type="button" class="small" id="dv-export"><svg><use href="#i-csv"/></svg>Export</button>
+          <button type="button" class="small" id="dv-export" data-tip="Export" aria-label="Export"><svg><use href="#i-csv"/></svg></button>
           <button type="button" class="primary" id="seats-add" data-can="seats.add"><svg><use href="#i-plus"/></svg><span>Add computers</span></button>
           <button type="button" class="primary" id="dv-new" hidden><svg><use href="#i-plus"/></svg><span id="dv-new-text">New script</span></button></div>
         <!-- WMI query: which computers, the namespace and the query, then what they answered in the list below (devices.js). -->
@@ -787,7 +788,7 @@
           <div class="lfilter-menu" id="sn-groups" hidden></div>
         </div>
         <button type="button" class="small" id="sn-newgroup" data-can="sensors.edit"><svg><use href="#i-plus"/></svg>New group</button>
-        <button type="button" class="small" id="sn-cols" aria-haspopup="menu" hidden><svg><use href="#i-columns"/></svg>Columns</button>
+        <button type="button" class="small" id="sn-cols" aria-haspopup="menu" hidden><svg><use href="#i-columns"/></svg>Columns<svg class="chev"><use href="#i-chevron-down"/></svg></button>
         <div class="vswitch" id="sn-view"><button type="button" data-view="grid" title="Rows" aria-label="Rows"><svg><use href="#i-view-rows"/></svg></button><button type="button" data-view="cards" title="Tiles" aria-label="Tiles"><svg><use href="#i-view-tiles"/></svg></button></div>
       </div>
       <div id="sn-list" data-skel="tiles:6"></div>
@@ -811,8 +812,7 @@
     <div class="dgate" id="dir-setup" hidden></div>
     <!-- Active Directory's pages, down the left of whichever of them is open (console.js moves this there), then the open page's views (users.js). -->
     <nav class="dnav" id="dir-rail" aria-label="Active Directory">
-      <label class="side-find"><svg><use href="#i-search"/></svg><input type="search" id="dir-find" placeholder="Find" aria-label="Find" autocomplete="off" spellcheck="false"></label>
-      <!-- The Attribute browser's own find, in the same spot: anything in the domain by name, shown in place of the tree (directory.js). -->
+      <!-- The Attribute browser's own find, at the top of the list: anything in the domain by name, shown in place of the tree (directory.js). -->
       <label class="side-find rail-own" data-on="attrs"><svg><use href="#i-search"/></svg><input type="search" id="at-obj" placeholder="Find" aria-label="Find a user, group, computer or OU" autocomplete="off" spellcheck="false"></label>
       <label class="side-find rail-own" data-on="org"><svg><use href="#i-search"/></svg><input type="search" id="org-find" placeholder="Find" aria-label="Find a person" autocomplete="off" spellcheck="false"></label>
       <p class="rail-label">Browse</p>
@@ -833,14 +833,15 @@
     <div class="dmain">
     <div class="lib" id="dir-lib" hidden>
       <div class="lib-body">
-        <!-- Across the top of the list: its tabs, how it's sorted and laid out, and what can be done with it. -->
+        <!-- Across the top of the list: its tabs, then Search, Columns and Filters like every list, then what can be done with it. -->
         <div class="dbar"><div class="tabs2" id="dir-tabs"></div><span class="grow"></span>
-          <button type="button" class="small" id="dir-filter" aria-haspopup="dialog" aria-label="Filter" data-tip="Filter"><svg><use href="#i-filter"/></svg><b class="cnt" hidden></b></button>
+          <label class="side-find tsearch"><svg><use href="#i-search"/></svg><input type="search" id="dir-find" placeholder="Search" aria-label="Search" autocomplete="off" spellcheck="false"></label>
+          <button type="button" class="small" id="dir-cols" aria-haspopup="menu"><svg><use href="#i-columns"/></svg>Columns<svg class="chev"><use href="#i-chevron-down"/></svg></button>
+          <button type="button" class="small" id="dir-filter" aria-haspopup="dialog"><svg><use href="#i-filter"/></svg>Filters<b class="cnt" hidden></b></button>
           <button type="button" class="small flt-off" id="dir-filter-x" data-tip="Clear filter" aria-label="Clear filter" hidden><svg><use href="#i-x"/></svg></button>
-          <button type="button" class="small" id="dir-cols" aria-haspopup="menu"><svg><use href="#i-columns"/></svg>Columns</button>
           <button type="button" class="small" id="dir-act" aria-haspopup="menu" disabled><svg><use href="#i-menu"/></svg>Actions<b class="cnt" hidden></b><svg class="chev"><use href="#i-chevron-down"/></svg></button>
           <button type="button" class="small" id="dir-refresh" data-tip="Refresh" aria-label="Refresh"><svg><use href="#i-refresh"/></svg></button>
-          <button type="button" class="small" id="dir-export"><svg><use href="#i-csv"/></svg>Export</button>
+          <button type="button" class="small" id="dir-export" data-tip="Export" aria-label="Export"><svg><use href="#i-csv"/></svg></button>
           <button type="button" class="primary" id="dir-new" data-can="ad.create"><svg><use href="#i-plus"/></svg><span id="dir-new-text">New user</span></button></div>
         <p class="dnow" id="dir-now" hidden><b id="dir-view-title"></b><span class="bar-note" id="dir-count"></span><span class="dnow-filter" id="dir-filtered" hidden></span></p>
         <div class="dir-banner" id="dir-banner" hidden></div>

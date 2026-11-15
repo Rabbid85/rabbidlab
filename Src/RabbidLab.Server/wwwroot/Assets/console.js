@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.209', [
+    'Lists on Active Directory and Devices have one bar across the top: Search, Columns and Filters first, then Actions, Refresh, Export and New. Search moved there from the top of the list on the left, and says what it searches.',
+    'Every banner is the same height, with room for two lines under the title, so a longer description no longer pushes the page down.',
+    'The wiki contents are easier to follow: a line over each part, whole titles, and the open article in bold on a lighter background.']],
   ['1.1.208', [
     'Update the client in the Actions menu: the client installs the version this server has now, instead of at its next try or the next day after an install that did not take.']],
   ['1.1.207', [
@@ -1908,6 +1912,10 @@ const RELEASE_NOTES = [
     $('dv-stats').innerHTML = !can.has('seats.view') ? '' : dvStat(n((c) => stateOf(c) === 'online'), 'monitor', 'Online') + dvStat(n((c) => stateOf(c) === 'offline'), 'power', 'Offline')
       + dvStat(n((c) => stateOf(c) === 'waiting'), 'clock', 'Waiting for approval') + dvStat(n((c) => c.inventory?.missing > 0), 'updates', 'Need updates');
     $('dv-tabs').innerHTML = `<a aria-current="true">${svg(DV[dvAt][1])}${esc(DV[dvAt][0])} <small>${dvShown.length}</small></a>`;
+    // The bar's Search says what it searches: computers, scripts, printers.
+    const searching = `Search ${dvMore[dvAt]?.noun || { computers: 'computers', sessions: 'people' }[dvAt] || DV[dvAt][0].toLowerCase()}`;
+    $('dv-find').placeholder = searching;
+    $('dv-find').setAttribute('aria-label', searching);
     $('dv-view-title').textContent = dvAt === 'computers' ? view[1] : DV[dvAt][0];
     $('dv-count').textContent = `${dvShown.length} shown`;
     // As on Active Directory: only for a view, a find or a filter that narrows the list.

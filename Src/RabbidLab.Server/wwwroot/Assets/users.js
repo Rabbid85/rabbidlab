@@ -434,6 +434,9 @@
     $('dir-acct').textContent = `Service account: ${s.account}`;
     $('dir-new').hidden = !p.add;
     $('dir-new-text').textContent = p.add || '';
+    // The bar's Search says what it searches: users, groups, computers, changes.
+    $('dir-find').placeholder = `Search ${p.noun[1]}`;
+    $('dir-find').setAttribute('aria-label', `Search ${p.noun[1]}`);
     const v = viewOf(adView);
     const find = $('dir-find').value.trim().toLowerCase();
     const list = lists[adPage] || [];

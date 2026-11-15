@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.209 (2026-11-15)
+
+- Lists on Active Directory and Devices have one bar across the top: Search, Columns and Filters first, then Actions, Refresh, Export and New. Search moved there from the top of the list on the left, and says what it searches.
+- Every banner is the same height, with room for two lines under the title, so a longer description no longer pushes the page down.
+- The wiki contents are easier to follow: a line over each part, whole titles, and the open article in bold on a lighter background.
+
 ## 1.1.208 (2026-11-15)
 
 - Update the client in the Actions menu: the client installs the version this server has now, instead of at its next try or the next day after an install that did not take.

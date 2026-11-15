@@ -527,7 +527,8 @@ a.small-link { margin-top: 8px; padding: 6px 12px; font-size: 12.5px; }
 .hero .tile.dot { border-radius: 50%; }
 .eyebrow { margin: 0; font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
 .hero-title { margin: 8px 0 0; font: 800 64px/.95 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; letter-spacing: -.04em; color: #fff; }
-.hero-lead { max-width: 580px; min-height: 1.5em; margin: 10px 0 0; font-size: 15px; color: #C9CCDA; }
+/* Room for two lines on every banner, so a longer description never moves what is under it. */
+.hero-lead { max-width: 580px; min-height: 3em; margin: 10px 0 0; font-size: 15px; line-height: 1.5; color: #C9CCDA; }
 .hero-lead b { color: #fff; font-weight: 650; }
 .hero-actions { display: flex; flex-wrap: wrap; gap: 10px; min-height: 39px; margin-top: 16px; }
 .hero > .hero-actions { z-index: 2; } /* above the stats, so a button's hint isn't covered */
@@ -570,7 +571,7 @@ a.button:hover, label.button:hover { background: #222536; text-decoration: none;
 @media (max-width: 1180px) { .hero .hero-new { display: none; } }
 /* No room beside it for the squares: the card steps aside, and the line under the title still says what's down. */
 /* Every hero is the same height with its parts in the same places, so the line under it stays put from page to page. */
-@media (min-width: 701px) { .hero { min-height: 302px; } } /* the height Overview, Links and Sensors come to with one line under the title */
+@media (min-width: 701px) { .hero { min-height: 328px; } } /* the height Overview comes to with two lines under the title: every banner the same */
 #page-overview .hero-lead { max-width: 760px; }
 @media (max-width: 700px) {
   .hero { padding: 30px 18px 26px; }
@@ -717,7 +718,7 @@ section.page.home.dir-top { max-width: none; padding: 0; gap: 0; }
 /* On a section page Find lines up with the tab beside it: its top level with the tab text, its bottom on the tab underline. */
 :is(#dir-rail, #dv-rail) > .side-find { margin-top: 10px; }
 .dnav .rail-label { flex: none; margin: 30px 0 8px 12px; font-size: 11px; color: #9DA1B3; }
-.dnav > .rail-label:first-child, .dnav:not(.lists) > .side-find + .rail-label { margin-top: 10px; }
+.dnav > .rail-label:first-child, #dir-rail > p.rail-label:first-of-type, .dnav:not(.lists) > .side-find + .rail-label { margin-top: 10px; }
 .dnav a { position: relative; display: flex; flex: none; align-items: center; gap: 10px; height: 32px; padding: 0 10px 0 14px; color: #B8BCCB; font-size: 14px; font-weight: 500; white-space: nowrap; }
 .dnav a:hover { color: #fff; text-decoration: none; }
 .dnav a > svg { flex: none; width: 16px; height: 16px; color: #8B90A5; }
@@ -758,6 +759,10 @@ section.page.home.dir-top { max-width: none; padding: 0; gap: 0; }
 .dbar .vswitch { margin: 0 0 8px; }
 .dbar > .primary, .dbar > .small { display: inline-flex; align-items: center; gap: 7px; height: 34px; margin-bottom: 8px; }
 .dbar > .primary svg, .dbar > .small svg { width: 15px; height: 15px; }
+/* Every list's Search, at the start of its bar like Columns and Filters after it. */
+.dbar > .tsearch { flex: 1 1 130px; min-width: 0; max-width: 220px; height: 34px; margin: 0 0 8px; }
+.dbar > .tsearch input { flex: 1; width: 0; min-width: 0; }
+.dbar > .small svg.chev { width: 12px; height: 12px; margin-left: -2px; }
 .dnow { display: flex; align-items: baseline; gap: 10px; margin: 16px 0 0; }
 .dnow b { color: var(--title); font-size: 15px; font-weight: 650; }
 /* The list itself: a card to a row under the column headings, or tiles. */
