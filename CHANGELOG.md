@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.194 (2026-11-15)
+
+- Windows updates on Devices lists computers now, like Computers: how many updates each is missing, if it needs a restart, when it last checked and the latest update it installed.
+- Install updates and Check now work on the ticked computers. With none ticked, Install updates goes to every computer missing updates and Check now to all of them.
+- The squares behind sign-in drift fast enough to see now, and there are fewer of them.
+
 ## 1.1.193 (2026-11-15)
 
 - Built-in scripts: 16 of them, such as Clear a stuck print queue, Who is signed in, Uptime and Disk health, sit in the library for anyone to run, use in a workflow or duplicate. They can not be changed or deleted.

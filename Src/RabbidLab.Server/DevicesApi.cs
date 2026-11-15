@@ -99,7 +99,7 @@ public static class DevicesApi
             var needs = form.Kind switch
             {
                 DeviceJobs.Script => typed ? Permissions.ScriptsEdit : Permissions.ScriptsRun,
-                DeviceJobs.Restart or DeviceJobs.Updates or DeviceJobs.Printer => Permissions.SeatsActions,
+                DeviceJobs.Restart or DeviceJobs.Updates or DeviceJobs.Printer or DeviceJobs.Check => Permissions.SeatsActions,
                 _ => null,
             };
             if (needs is null)
@@ -134,6 +134,10 @@ public static class DevicesApi
             {
                 (step, title) = (DeviceActions.Restart(), "Restart");
             }
+            else if (form.Kind == DeviceJobs.Check)
+            {
+                (step, title) = (DeviceActions.CheckUpdates(), "Check for updates");
+            }
             else if (form.Kind == DeviceJobs.Updates)
             {
                 (step, title) = (DeviceActions.InstallUpdates(), "Install Windows updates");
@@ -156,7 +160,7 @@ public static class DevicesApi
                 return Results.NotFound(new { error = "That script isn't here any more." });
             }
             var job = jobs.Add(ActivityLog.Who(context), form.Kind!, title, [step], on, Life, typed ? null : form.Script);
-            log.Record(context, "clients", "job.run", form.Kind == DeviceJobs.Printer ? $"{title} on {Workflows.Computers(on)}" : form.Kind == DeviceJobs.Script ? $"Ran {(typed ? "a script typed in" : $"the script {title}")} on {Workflows.Computers(on)}"
+            log.Record(context, "clients", "job.run", form.Kind is DeviceJobs.Printer or DeviceJobs.Check ? $"{title} on {Workflows.Computers(on)}" : form.Kind == DeviceJobs.Script ? $"Ran {(typed ? "a script typed in" : $"the script {title}")} on {Workflows.Computers(on)}"
                 : $"{(form.Kind == DeviceJobs.Restart ? "Restarted" : "Installed Windows updates on")} {Workflows.Computers(on)}", "ok", $"Job {job.Id}, SHA-256 {DeviceActions.Fingerprint([step])}");
             return Results.Ok(new { id = job.Id });
         });

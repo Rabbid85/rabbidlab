@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.194', [
+    'Windows updates on Devices lists computers now, like Computers: how many updates each is missing, if it needs a restart, when it last checked and the latest update it installed.',
+    'Install updates and Check now work on the ticked computers. With none ticked, Install updates goes to every computer missing updates and Check now to all of them.',
+    'The squares behind sign-in drift fast enough to see now, and there are fewer of them.']],
   ['1.1.193', [
     'Built-in scripts: 16 of them, such as Clear a stuck print queue, Who is signed in, Uptime and Disk health, sit in the library for anyone to run, use in a workflow or duplicate. They can not be changed or deleted.',
     'Run a script lists Your scripts, Built-in and Type one now. Edit a copy of any script, save one you typed to the library, and test it on one computer first to see what it wrote, right in the window.']],
@@ -1763,6 +1767,7 @@ const RELEASE_NOTES = [
   // Devices: the computers with the client and everyone signed in, asked again every 30 seconds while it's open.
   let dvAt = 'computers'; // which list of the Devices page shows: computers, software, updates or sessions
   let dvView = 'all'; // and for computers, which view of them
+  let updTab = 'computers'; // Windows updates: a row per computer, or a row per update
   let dvShown = []; // the rows of the list that shows
   let software = null; // /api/devices/software, once the Software list was opened
   let updates = null; // /api/devices/updates
@@ -1796,7 +1801,7 @@ const RELEASE_NOTES = [
     ['disk', 'Low disk space', (c) => c.inventory?.disk != null && c.inventory.disk < 15, 'red'], ['behind', 'Older client', (c) => c.behind]];
   const DV = { computers: ['Computers', 'monitor', 'Every computer with the client, with views for what needs looking at.'],
     software: ['Software', 'box', 'What is installed, and on which computers.'],
-    updates: ['Windows updates', 'updates', 'What is missing and what is installed, by update.'],
+    updates: ['Windows updates', 'updates', 'What each computer is missing, whether it waits for a restart, and when it last installed an update. Tick computers and install from here.'],
     sessions: ['Signed in now', 'users', 'Everyone signed in to this console.'] };
   // What a row of Software or Windows updates is known by, on its row and in the side panel.
   const thingKey = (x) => ('kb' in x ? `u:${x.kb}:${x.title || ''}` : `s:${x.name}:${x.publisher || ''}`);
@@ -1815,11 +1820,12 @@ const RELEASE_NOTES = [
       fld('memory', 'Memory (GB)', 'number', (c) => (c.inventory?.memory ? Math.round(c.inventory.memory / 1073741824) : undefined))]],
   ];
   const dvFilter = {};
-  const dvFields = (at = dvAt) => (at === 'computers' ? DV_FIELDS : dvMore[at]?.fields?.() || null);
-  // The rows a list has before Find and Filter narrow it.
+  const dvFields = (at = dvAt) => (at === 'computers' || (at === 'updates' && updTab === 'computers') ? DV_FIELDS : dvMore[at]?.fields?.() || null);
+  // The rows a list has before Find and Filter narrow it. Windows updates is the approved computers, or a row per update.
   const dvBase = (at = dvAt) => {
     const view = DV_VIEWS.find((v) => v && v[0] === dvView) || DV_VIEWS[0];
-    return dvMore[at] ? dvMore[at].rows() : { computers: dvAll().filter(view[2]), software: software || [], updates: updates || [], sessions: sessionsNow }[at];
+    return dvMore[at] ? dvMore[at].rows() : { computers: dvAll().filter(view[2]), software: software || [],
+      updates: updTab === 'computers' ? computers.filter((c) => c.approved) : updates || [], sessions: sessionsNow }[at];
   };
   const drawSeats = () => {
     const n = (f) => dvAll().filter(f).length;
@@ -1850,7 +1856,7 @@ const RELEASE_NOTES = [
     $('dv-dot').hidden = !n((c) => stateOf(c) === 'waiting');
     $('dv-n-computers').textContent = dvAll().length || '';
     $('dv-n-software').textContent = software ? software.length : '';
-    $('dv-n-updates').textContent = updates ? updates.filter((u) => u.missing.length).length || '' : '';
+    $('dv-n-updates').textContent = n((c) => c.inventory?.missing > 0) || '';
     $('dv-n-sessions').textContent = sessionsNow.length || '';
     for (const [k, more] of Object.entries(dvMore)) $(`dv-n-${k}`).textContent = more.count?.() || '';
     $('page-seats').dataset.at = dvAt;
@@ -1858,15 +1864,20 @@ const RELEASE_NOTES = [
     $('dv-lead').textContent = DV[dvAt][2];
     $('dv-stats').innerHTML = !can.has('seats.view') ? '' : dvStat(n((c) => stateOf(c) === 'online'), 'monitor', 'Online') + dvStat(n((c) => stateOf(c) === 'offline'), 'power', 'Offline')
       + dvStat(n((c) => stateOf(c) === 'waiting'), 'clock', 'Waiting for approval') + dvStat(n((c) => c.inventory?.missing > 0), 'updates', 'Need updates');
-    $('dv-tabs').innerHTML = `<a aria-current="true">${svg(DV[dvAt][1])}${esc(DV[dvAt][0])} <small>${dvShown.length}</small></a>`;
+    $('dv-tabs').innerHTML = dvAt !== 'updates' ? `<a aria-current="true">${svg(DV[dvAt][1])}${esc(DV[dvAt][0])} <small>${dvShown.length}</small></a>`
+      : `<a href="#seats/updates" data-upd-tab="computers"${updTab === 'computers' ? ' aria-current="true"' : ''}>${svg('monitor')}Computers <small>${computers.filter((c) => c.approved).length}</small></a>`
+        + `<a href="#seats/updates" data-upd-tab="updates"${updTab === 'updates' ? ' aria-current="true"' : ''}>${svg('updates')}By update <small>${updates ? updates.length : ''}</small></a>`;
     $('dv-view-title').textContent = dvAt === 'computers' ? view[1] : DV[dvAt][0];
     $('dv-count').textContent = `${dvShown.length} shown`;
     // As on Active Directory: only for a view, a find or a filter that narrows the list.
     $('dv-now').hidden = !((dvAt === 'computers' && view[0] !== 'all') || find || nf);
-    for (const [k, id] of [['computers', 'seats-table'], ['software', 'dv-software'], ['updates', 'dv-updates'], ['sessions', 'sessions-table'],
+    for (const [k, id] of [['computers', 'seats-table'], ['software', 'dv-software'], ['sessions', 'sessions-table'],
       ...Object.entries(dvMore).map(([key, more]) => [key, more.table])]) $(id).hidden = k !== dvAt;
+    $('dv-updpc').hidden = !(dvAt === 'updates' && updTab === 'computers');
+    $('dv-updates').hidden = !(dvAt === 'updates' && updTab === 'updates');
     const late = 'A computer sends what it has within half an hour of being approved, with client 1.1.165 or later.';
     seatsEmpty = dvMore[dvAt] ? dvMore[dvAt].empty() : dvAt === 'software' ? (software ? `No software has been reported yet. ${late}` : 'Reading the list.')
+      : dvAt === 'updates' && updTab === 'computers' ? `No computers yet. Add computers to give people the ${esc(product)} client.`
       : dvAt === 'updates' ? (updates ? `No updates have been reported yet. ${late}` : 'Reading the list.')
       : computers.length ? 'None of the computers are like that right now.' : `No computers yet. Add computers to give people the ${esc(product)} client.`;
     dvGrid().draw(dvShown);
@@ -1888,7 +1899,7 @@ const RELEASE_NOTES = [
   };
   // The lists of the Devices page are data grids (grid.js), made the first time they're drawn. Columns and Export in the
   // bar work on the one that shows.
-  const dvGrid = () => (dvMore[dvAt]?.grid || { computers: seatsGrid, software: softwareGrid, updates: updatesGrid, sessions: sessionsGrid }[dvAt])();
+  const dvGrid = () => (dvMore[dvAt]?.grid || { computers: seatsGrid, software: softwareGrid, updates: updTab === 'computers' ? updPcGrid : updatesGrid, sessions: sessionsGrid }[dvAt])();
   const ms = (iso) => (iso ? new Date(iso).getTime() : 0);
   let seatsEmpty = '';
   let seatsG = null;
@@ -1920,7 +1931,7 @@ const RELEASE_NOTES = [
       { key: 'os', label: 'Windows', w: 135, on: true, get: (c) => c.os, cell: (c) => `<span class="ell">${esc(c.os || '')}</span>` },
       { key: 'user', label: 'Signed in', w: 110, on: true, get: (c) => c.user, cell: (c) => (c.user ? `<span class="ell">${esc(c.user)}</span>` : '<span class="nobody">Nobody</span>') },
       { key: 'missing', label: 'Updates', w: 90, on: true, get: (c) => c.inventory?.missing ?? -1, text: (c) => c.inventory?.missing ?? '',
-        cell: (c) => (c.inventory?.missing == null ? '<span class="muted">-</span>' : c.inventory.missing ? `<span class="state waiting">${c.inventory.missing} missing</span>` : '<span class="state online">Up to date</span>') },
+        cell: (c) => (c.server ? '<span class="muted">-</span>' : c.inventory?.missing == null ? '<span class="muted">Not checked</span>' : c.inventory.missing ? `<span class="state waiting">${c.inventory.missing} missing</span>` : '<span class="state online">Up to date</span>') },
       { key: 'restart', label: 'Restart', w: 70, get: (c) => (c.inventory?.restartNeeded ? 1 : 0), text: (c) => (!c.inventory ? '' : c.inventory.restartNeeded ? 'Needed' : 'No'),
         cell: (c) => (!c.inventory ? '<span class="muted">-</span>' : c.inventory.restartNeeded ? '<span class="state waiting">Needed</span>' : '<span class="muted">No</span>') },
       { key: 'disk', label: 'Free on C:', w: 75, on: true, get: (c) => c.inventory?.disk ?? -1, text: (c) => (c.inventory?.disk == null ? '' : `${c.inventory.disk}%`),
@@ -2000,6 +2011,34 @@ const RELEASE_NOTES = [
       { key: 'installed', label: 'Installed on', w: 105, on: true, get: (u) => u.installed.length, cell: (u) => String(u.installed.length) },
     ],
     row: (u) => ` data-thing="${esc(thingKey(u))}"`,
+    empty: () => seatsEmpty,
+    redraw: () => drawSeats(),
+  }));
+  // Windows updates, a row per computer: what's missing, a restart waiting, and when it last checked and installed.
+  const missingCell = (c) => (c.inventory?.missing == null ? '<span class="muted">Not checked yet</span>'
+    : c.inventory.missing ? `<span class="state waiting">${c.inventory.missing} missing</span>` : '<span class="state online">Up to date</span>');
+  let updPcG = null;
+  const updPcGrid = () => (updPcG ||= window.RabbidLab.grid({
+    el: $('dv-updpc'),
+    key: 'update-computers',
+    lead: () => dvHooks.lead?.() || null,
+    sort: { key: 'missing', dir: -1 },
+    cols: [
+      { key: 'computer', label: 'Computer', w: 165, fixed: true, get: (c) => c.computer,
+        cell: (c) => `<div class="who"><span class="pic"${c.thisServer ? ' data-tip="This server"' : ''}>${svg(c.thisServer || /server/i.test(c.os || '') ? 'server' : 'laptop')}</span><b class="ell">${esc(c.computer)}</b></div>` },
+      { key: 'state', label: 'State', w: 80, on: true, get: (c) => ({ waiting: 0, online: 1, offline: 2 })[stateOf(c)], text: (c) => STATE[stateOf(c)], cell: (c) => `<span class="state ${stateOf(c)}">${STATE[stateOf(c)]}</span>` },
+      { key: 'missing', label: 'Missing', w: 120, on: true, get: (c) => c.inventory?.missing ?? -1, text: (c) => (c.inventory?.missing == null ? 'Not checked yet' : c.inventory.missing), cell: missingCell },
+      { key: 'restart', label: 'Restart', w: 80, on: true, get: (c) => (c.inventory?.restartNeeded ? 1 : 0), text: (c) => (!c.inventory ? '' : c.inventory.restartNeeded ? 'Needed' : 'No'),
+        cell: (c) => (!c.inventory ? '<span class="muted">-</span>' : c.inventory.restartNeeded ? '<span class="state waiting">Needed</span>' : '<span class="muted">No</span>') },
+      { key: 'checked', label: 'Last checked', w: 110, on: true, get: (c) => ms(c.inventory?.missingChecked), text: (c) => c.inventory?.missingChecked || '',
+        cell: (c) => `<span class="muted">${c.inventory?.missingChecked ? esc(ago(c.inventory.missingChecked)) : 'Never'}</span>` },
+      { key: 'installed', label: 'Last installed', w: 120, on: true, get: (c) => c.inventory?.lastUpdate?.installed || '', text: (c) => c.inventory?.lastUpdate?.installed || '',
+        cell: (c) => `<span class="muted">${c.inventory?.lastUpdate ? esc(dvDay(c.inventory.lastUpdate.installed)) : '-'}</span>` },
+      { key: 'kb', label: 'Latest update', w: 110, on: true, get: (c) => c.inventory?.lastUpdate?.kb || '', cell: (c) => `<span class="mono muted">${esc(c.inventory?.lastUpdate?.kb || '')}</span>` },
+      { key: 'os', label: 'Windows', w: 135, get: (c) => c.os, cell: (c) => `<span class="ell">${esc(c.os || '')}</span>` },
+      { key: 'user', label: 'Signed in', w: 110, get: (c) => c.user, cell: (c) => (c.user ? `<span class="ell">${esc(c.user)}</span>` : '<span class="nobody">Nobody</span>') },
+    ],
+    row: (c) => ` data-client="${esc(c.id)}"`,
     empty: () => seatsEmpty,
     redraw: () => drawSeats(),
   }));
@@ -2258,6 +2297,38 @@ const RELEASE_NOTES = [
       if (opened) seats(); // its list is read as it opens
     });
     $('dv-find').addEventListener('input', drawSeats);
+    // Windows updates: its two tabs, a computer's row opening its Updates tab, and installing or checking from here.
+    $('dv-tabs').addEventListener('click', (e) => {
+      const t = e.target.closest('[data-upd-tab]');
+      if (!t) return;
+      e.preventDefault();
+      if (updTab === t.dataset.updTab) return;
+      updTab = t.dataset.updTab;
+      if (panel.is('seats')) panel.close();
+      drawSeats();
+      if (updTab === 'updates' && !updates) seats();
+    });
+    $('dv-updpc').addEventListener('click', (e) => {
+      if (e.target.closest('.tk')) return; // a tick is devices.js's
+      const row = e.target.closest('[data-client]');
+      if (!row) return;
+      if (panel.shows('seats', row.dataset.client)) panel.close();
+      else seatOn?.(row.dataset.client, 'updates');
+    });
+    // The ticked computers, or else every one that's missing an update (Install) or every one (Check now).
+    const updOn = (fallback) => {
+      const ticked = computers.filter((c) => c.approved && dvPicked.has(c.id));
+      return ticked.length ? ticked : computers.filter((c) => c.approved && fallback(c));
+    };
+    $('dv-upd-install').addEventListener('click', () => {
+      const on = updOn((c) => c.inventory?.missing > 0);
+      if (!on.length) toast('Nothing is missing.', 'Every computer that has checked is up to date. Check now asks again.');
+      else window.RabbidLab.devices.run?.('updates', on);
+    });
+    $('dv-upd-check').addEventListener('click', () => {
+      const on = updOn(() => true);
+      if (on.length) window.RabbidLab.devices.run?.('check', on);
+    });
     // Filter: the same window as Active Directory's (filter.js), on the list that's open.
     $('dv-filter').addEventListener('click', () => {
       const at = dvAt;

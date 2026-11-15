@@ -1,5 +1,5 @@
 // The moving background on setup and sign-in: tiles in Rabbid Lab's colours drifting slowly, some filled, some outlined,
-// with a few dots. It sizes itself to the screen: about one tile per patch of screen, spread evenly with no gaps, a
+// with a few dots. It sizes itself to the screen: one tile per patch of screen, spread evenly with no gaps, a
 // little bigger on big screens. It lays itself out again when the window changes size or moves to another monitor, and
 // uses fewer tiles when the computer can't keep up. Still when the system asks for reduced motion.
 (() => {
@@ -9,8 +9,8 @@
   const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   // Ember first, then the console's purple, green, amber and a pale grey (palette.js).
   const COLOURS = window.RabbidLabColours.tiles;
-  const PATCH = 165; // one tile for about every 165 × 165 pixels of screen
-  let most = 450; // enough to fill a 4K screen; lowered when frames run slow
+  const PATCH = 260; // one tile for about every 260 × 260 pixels of screen
+  let most = 200; // enough for a 4K screen; lowered when frames run slow
   let tiles = [];
   let width = 0;
   let height = 0;
@@ -25,13 +25,13 @@
   const make = (x, y) => {
     const depth = Math.random(); // 0 far, 1 near: nearer tiles are bigger, brighter and a little faster
     const angle = random(0, Math.PI * 2);
-    const speed = 3 + depth * 9; // pixels a second, before scaling
+    const speed = 12 + depth * 22; // pixels a second, before scaling
     return {
       x, y, base: 8 + depth * 18,
       kind: Math.random() < 0.18 ? 'dot' : Math.random() < 0.32 ? 'outline' : 'fill',
       colour: COLOURS[Math.floor(Math.random() * COLOURS.length)],
-      vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed - 2,
-      turn: random(-0.25, 0.25), rotation: random(0, Math.PI * 2),
+      vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed - 4,
+      turn: random(-0.6, 0.6), rotation: random(0, Math.PI * 2),
       bob: random(0, Math.PI * 2), alpha: 0.7 + depth * 0.3,
     };
   };
@@ -101,10 +101,10 @@
     const frame = now - last;
     const dt = Math.min(0.05, frame / 1000);
     last = now;
-    // Slower than 40 frames a second for a while: fewer tiles, never fewer than 60.
+    // Slower than 40 frames a second for a while: fewer tiles, never fewer than 20.
     slow = frame > 25 && frame < 250 ? slow + 1 : Math.max(0, slow - 1);
-    if (slow > 90 && tiles.length > 60) {
-      most = Math.max(60, Math.round(tiles.length * 0.8));
+    if (slow > 90 && tiles.length > 20) {
+      most = Math.max(20, Math.round(tiles.length * 0.8));
       tiles.length = most;
       slow = 0;
     }
@@ -116,7 +116,7 @@
         t.x += t.vx * scale * dt;
         t.y += t.vy * scale * dt;
         t.rotation += t.turn * dt;
-        t.bob += dt * 0.6;
+        t.bob += dt * 1.2;
         const m = size * 2;
         if (t.x < -m) t.x = width + m;
         if (t.x > width + m) t.x = -m;
@@ -124,7 +124,7 @@
         if (t.y > height + m) t.y = -m;
       }
       ctx.save();
-      ctx.translate(t.x, t.y + Math.sin(t.bob) * 3 * scale);
+      ctx.translate(t.x, t.y + Math.sin(t.bob) * 5 * scale);
       ctx.rotate(t.rotation);
       ctx.globalAlpha = t.alpha * fade;
       if (t.kind === 'dot') {

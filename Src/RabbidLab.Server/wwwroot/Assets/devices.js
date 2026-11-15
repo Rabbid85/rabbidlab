@@ -86,7 +86,7 @@
   let flows = null; // /api/devices/workflows
   const scriptOf = (id) => (scripts || []).find((s) => s.id === id);
   const jobTitle = (j) => (j.kind === 'workflow' ? `Workflow: ${j.title}` : j.kind === 'script' ? (j.title === 'A script typed in' ? 'Run a script typed in' : `Run script: ${j.title}`) : j.title);
-  const JOB_ICON = { script: 'code', restart: 'power', updates: 'updates', workflow: 'org', printer: 'printer' };
+  const JOB_ICON = { script: 'code', restart: 'power', updates: 'updates', workflow: 'org', printer: 'printer', check: 'refresh' };
   const STATE = { waiting: ['waiting', 'Waiting'], running: ['run', 'Running'], done: ['online', 'Done'], failed: ['bad', 'Failed'], refused: ['bad', 'Refused'],
     noanswer: ['bad', 'No answer'], cancelled: ['offline', 'Cancelled'], expired: ['offline', 'Expired'] };
   // How a job went across its computers, in a word or two.
@@ -418,35 +418,41 @@
     act.querySelector('.cnt').hidden = !n;
     act.querySelector('.cnt').textContent = n.toLocaleString();
     act.dataset.tip = n ? `${many(n)} ticked` : 'Tick computers first';
-    const boxes = [...$('seats-table').querySelectorAll('[data-tick]')];
-    boxes.forEach((box) => {
-      box.checked = D.picked.has(box.dataset.tick);
-      box.closest('.tr')?.classList.toggle('picked', box.checked);
-    });
-    const all = $('seats-table').querySelector('[data-tick-all]');
-    if (all) {
-      const on = boxes.filter((b) => b.checked).length;
-      all.checked = !!boxes.length && on === boxes.length;
-      all.indeterminate = on > 0 && on < boxes.length;
+    // Computers and Windows updates' own row per computer share the ticks.
+    for (const table of TICKED.map((id) => $(id))) {
+      const boxes = [...table.querySelectorAll('[data-tick]')];
+      boxes.forEach((box) => {
+        box.checked = D.picked.has(box.dataset.tick);
+        box.closest('.tr')?.classList.toggle('picked', box.checked);
+      });
+      const all = table.querySelector('[data-tick-all]');
+      if (all) {
+        const on = boxes.filter((b) => b.checked).length;
+        all.checked = !!boxes.length && on === boxes.length;
+        all.indeterminate = on > 0 && on < boxes.length;
+      }
     }
   };
   // Shift-click ticks every row between the last one ticked and this one.
   let lastTick = null;
-  $('seats-table').addEventListener('click', (e) => {
-    const box = e.target.closest('.tk')?.querySelector('input');
-    if (!box || e.target !== box) return; // the label's own click comes through the box
-    const boxes = [...$('seats-table').querySelectorAll('[data-tick]')];
-    const set = (b) => (box.checked ? D.picked.add(b.dataset.tick) : D.picked.delete(b.dataset.tick));
-    if (box.dataset.tickAll !== undefined) boxes.forEach(set);
-    else {
-      const i = boxes.indexOf(box);
-      const from = e.shiftKey && lastTick !== null ? Math.min(lastTick, i) : i;
-      const to = e.shiftKey && lastTick !== null ? Math.max(lastTick, i) : i;
-      boxes.slice(from, to + 1).forEach(set);
-      lastTick = i;
-    }
-    drawPicked();
-  });
+  const TICKED = ['seats-table', 'dv-updpc'];
+  for (const id of TICKED) {
+    $(id).addEventListener('click', (e) => {
+      const box = e.target.closest('.tk')?.querySelector('input');
+      if (!box || e.target !== box) return; // the label's own click comes through the box
+      const boxes = [...$(id).querySelectorAll('[data-tick]')];
+      const set = (b) => (box.checked ? D.picked.add(b.dataset.tick) : D.picked.delete(b.dataset.tick));
+      if (box.dataset.tickAll !== undefined) boxes.forEach(set);
+      else {
+        const i = boxes.indexOf(box);
+        const from = e.shiftKey && lastTick !== null ? Math.min(lastTick, i) : i;
+        const to = e.shiftKey && lastTick !== null ? Math.max(lastTick, i) : i;
+        boxes.slice(from, to + 1).forEach(set);
+        lastTick = i;
+      }
+      drawPicked();
+    });
+  }
   const menu = $('dv-act-menu');
   $('dv-act').addEventListener('click', () => {
     const on = ticked();
@@ -510,6 +516,7 @@
     const off = run.on.filter((c) => D.stateOf(c) === 'offline').length;
     const old = run.on.filter(older).length;
     const base = run.kind === 'script' ? 'It runs as SYSTEM. Who ran it, the script itself and what it wrote are kept under Jobs.'
+      : run.kind === 'check' ? 'Each computer asks Windows Update what it is missing. Windows updates here shows the answer within a few minutes.'
       : run.kind === 'restart' ? 'Anyone signed in gets a five minute warning first.'
       : "Every missing update is downloaded and installed. The computer isn't restarted: one that needs it shows under Needs restart.";
     const all = run.on.length;
@@ -559,7 +566,7 @@
     }
     run = { kind, on: list, lang: 'powershell' };
     const n = list.length;
-    $('run-title').textContent = kind === 'script' ? 'Run a script' : kind === 'restart' ? `Restart ${many(n)}?` : 'Install Windows updates';
+    $('run-title').textContent = kind === 'script' ? 'Run a script' : kind === 'restart' ? `Restart ${many(n)}?` : kind === 'check' ? 'Check for updates' : 'Install Windows updates';
     $('run-lead').textContent = `On ${names(list)}.`;
     fillScripts(preset);
     $('run-text').value = '';
@@ -573,7 +580,7 @@
     $('run-count').value = '';
     for (const id of ['run-count', 'run-count-label']) $(id).hidden = n <= BRAKE;
     $('run-count-label').textContent = `That's ${n} computers. Type ${n} to go ahead`;
-    $('run-go').textContent = kind === 'restart' ? 'Restart' : kind === 'updates' ? 'Install' : 'Run';
+    $('run-go').textContent = kind === 'restart' ? 'Restart' : kind === 'updates' ? 'Install' : kind === 'check' ? 'Check' : 'Run';
     $('run-note').textContent = runNote();
     say('run-problem', '');
     drawRun();
@@ -685,7 +692,7 @@
     try {
       const made = await confirmed(() => send('/api/devices/run', body));
       $('run-dialog').close();
-      toast(run.kind === 'restart' ? 'Restart sent.' : run.kind === 'updates' ? 'Updates started.' : 'Script sent.', `To ${names(run.on)}. It's under Jobs.`);
+      toast(run.kind === 'restart' ? 'Restart sent.' : run.kind === 'updates' ? 'Updates started.' : run.kind === 'check' ? 'Checking for updates.' : 'Script sent.', `On ${names(run.on)}. It's under Jobs.`);
       await openJob(made.id);
       if (D.at() === 'jobs') D.reload();
     } catch (e) {
@@ -1109,4 +1116,5 @@
   // For printers.js and the rest: confirming who it is before a run, and opening a job in the panel.
   D.confirmed = confirmed;
   D.openJob = (id) => openJob(id);
+  D.run = (kind, on) => openRun(kind, on);
 })();

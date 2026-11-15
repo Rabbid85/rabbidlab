@@ -206,6 +206,7 @@ public sealed class DeviceJobs(DataFolder folder, TimeProvider clock, ClientComm
     public const string Updates = "updates";
     public const string Workflow = "workflow";
     public const string Printer = "printer";
+    public const string Check = "check";
 
     public const string Waiting = "waiting";
     public const string Running = "running";
@@ -513,6 +514,19 @@ public static class DeviceActions
             shutdown.exe /r /t 300 /c "{{Warning}}" /d p:2:17
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
             'The computer restarts in 5 minutes.'
+            """),
+    };
+
+    /// <summary>Asks Windows Update what's missing now and says so. After any job the client asks again and sends its inventory, so Devices shows it.</summary>
+    public static JobStep CheckUpdates() => new()
+    {
+        Title = "Check for updates", Language = DeviceScripts.PowerShell, Minutes = 15,
+        Text = DeviceScripts.Clean("""
+            $ErrorActionPreference = 'Stop'
+            $found = (New-Object -ComObject Microsoft.Update.Session).CreateUpdateSearcher().Search("IsInstalled=0 and IsHidden=0 and Type='Software'").Updates
+            if ($found.Count -eq 0) { 'Nothing is missing.'; exit 0 }
+            "$($found.Count) update(s) missing:"
+            foreach ($u in $found) { "  $($u.Title)" }
             """),
     };
 
