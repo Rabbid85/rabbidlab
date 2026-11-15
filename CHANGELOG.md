@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.178 (2026-11-15)
+
+- Domain health has the Browse heading under Find like the other Active Directory pages, so its list no longer sits right under the Find box.
+
 ## 1.1.177 (2026-11-15)
 
 - Tables show one thing per column. AD audit has the date and time on one line, and Type and Changed by as their own columns. The operating system version, logon names and usernames have their own columns too, under Columns.
