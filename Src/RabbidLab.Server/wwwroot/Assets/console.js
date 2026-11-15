@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.167', [
+    'Hints stay hidden while a mouse button is held, so Drag to resize no longer pops up while you drag a column edge. A hint also stays away from something you just clicked until the pointer leaves it.']],
   ['1.1.166', [
     'The hint on the version number in the top bar says Installed version.']],
   ['1.1.165', [

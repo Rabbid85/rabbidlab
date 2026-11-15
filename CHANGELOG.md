@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.167 (2026-11-14)
+
+- Hints stay hidden while a mouse button is held, so Drag to resize no longer pops up while you drag a column edge. A hint also stays away from something you just clicked until the pointer leaves it.
+
 ## 1.1.166 (2026-11-14)
 
 - The hint on the version number in the top bar says Installed version.

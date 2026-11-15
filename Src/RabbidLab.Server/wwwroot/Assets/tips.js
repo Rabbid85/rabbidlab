@@ -54,7 +54,16 @@
   };
 
   document.body.append(box);
-  document.addEventListener('pointerover', (e) => later(tipOf(e.target), 250));
+  // No hint while a button is held (a dragged column edge keeps passing under the pointer), and none for the thing
+  // just pressed until the pointer has left it.
+  let pressed = null;
+  document.addEventListener('pointerover', (e) => {
+    const t = tipOf(e.target);
+    if (e.buttons || (t && t === pressed)) { hide(); return; }
+    pressed = null;
+    later(t, 250);
+  });
+  document.addEventListener('pointerdown', (e) => { pressed = tipOf(e.target); }, true);
   document.addEventListener('focusin', (e) => later(e.target.matches?.(':focus-visible') ? tipOf(e.target) : null, 0));
   ['pointerdown', 'scroll', 'focusout', 'keydown'].forEach((ev) => document.addEventListener(ev, hide, true));
   window.addEventListener('blur', hide);
