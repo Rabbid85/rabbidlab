@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.171', [
+    'The Devices lists look like the Active Directory ones: no box around the grid, the computer name first with its icon, sorted by name, and the "shown" line only when a view or Find narrows the list.',
+    'The Approve column only takes room while a computer is waiting, and Restart is off by default (it is still under Columns), so the list fits without scrolling sideways.']],
   ['1.1.170', [
     'Only the page you clicked Install on shows the update window and its progress. Other open pages show a small toast saying Rabbid Lab is updating, and reload when it is done.']],
   ['1.1.169', [
@@ -1573,6 +1576,8 @@ const RELEASE_NOTES = [
     $('dv-tabs').innerHTML = `<a aria-current="true">${svg(DV[dvAt][1])}${esc(DV[dvAt][0])} <small>${dvShown.length}</small></a>`;
     $('dv-view-title').textContent = dvAt === 'computers' ? view[1] : DV[dvAt][0];
     $('dv-count').textContent = `${dvShown.length} shown`;
+    // As on Active Directory: only for a view or a find that narrows the list.
+    $('dv-now').hidden = !((dvAt === 'computers' && view[0] !== 'all') || find);
     for (const [k, id] of [['computers', 'seats-table'], ['software', 'dv-software'], ['updates', 'dv-updates'], ['sessions', 'sessions-table'],
       ...Object.entries(dvMore).map(([key, more]) => [key, more.table])]) $(id).hidden = k !== dvAt;
     const late = 'A computer sends what it has within half an hour of being approved, with client 1.1.165 or later.';
@@ -1607,20 +1612,22 @@ const RELEASE_NOTES = [
     key: 'devices',
     // A tick on each row, for whoever may do something with several computers at once (devices.js).
     lead: () => dvHooks.lead?.() || null,
+    sort: { key: 'computer', dir: 1 },
     // What fits across the page shows; the rest (client, address, last seen, hardware) is under Columns.
     cols: [
-      { key: 'state', label: 'State', w: 70, on: true, get: (c) => ({ waiting: 0, online: 1, offline: 2 })[stateOf(c)], text: (c) => STATE[stateOf(c)], cell: (c) => `<span class="state ${stateOf(c)}">${STATE[stateOf(c)]}</span>` },
-      // Under the name only while something is going on with its client: Windows has a column of its own.
-      { key: 'computer', label: 'Computer', w: 130, fixed: true, get: (c) => c.computer,
+      // The name first with its icon, as on Active Directory. Under it only while something is going on with its client.
+      { key: 'computer', label: 'Computer', w: 165, fixed: true, get: (c) => c.computer,
         cell: (c) => {
           const note = c.uninstalling ? 'Uninstalling its client' : c.removalUntil ? `Uninstall allowed until ${new Date(c.removalUntil).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : '';
-          return `<b>${esc(c.computer)}</b>${note ? `<small>${esc(note)}</small>` : ''}`;
+          const pic = `<span class="pic">${svg(/server/i.test(c.os || '') ? 'server' : 'laptop')}</span>`;
+          return `<div class="who">${pic}${note ? `<div class="two"><b>${esc(c.computer)}</b><small>${esc(note)}</small></div>` : `<b class="ell">${esc(c.computer)}</b>`}</div>`;
         } },
+      { key: 'state', label: 'State', w: 70, on: true, get: (c) => ({ waiting: 0, online: 1, offline: 2 })[stateOf(c)], text: (c) => STATE[stateOf(c)], cell: (c) => `<span class="state ${stateOf(c)}">${STATE[stateOf(c)]}</span>` },
       { key: 'os', label: 'Windows', w: 135, on: true, get: (c) => c.os, cell: (c) => `<span class="ell">${esc(c.os || '')}</span>` },
       { key: 'user', label: 'Signed in', w: 110, on: true, get: (c) => c.user, cell: (c) => (c.user ? `<span class="ell">${esc(c.user)}</span>` : '<span class="nobody">Nobody</span>') },
       { key: 'missing', label: 'Updates', w: 90, on: true, get: (c) => c.inventory?.missing ?? -1, text: (c) => c.inventory?.missing ?? '',
         cell: (c) => (c.inventory?.missing == null ? '<span class="muted">-</span>' : c.inventory.missing ? `<span class="state waiting">${c.inventory.missing} missing</span>` : '<span class="state online">Up to date</span>') },
-      { key: 'restart', label: 'Restart', w: 70, on: true, get: (c) => (c.inventory?.restartNeeded ? 1 : 0), text: (c) => (!c.inventory ? '' : c.inventory.restartNeeded ? 'Needed' : 'No'),
+      { key: 'restart', label: 'Restart', w: 70, get: (c) => (c.inventory?.restartNeeded ? 1 : 0), text: (c) => (!c.inventory ? '' : c.inventory.restartNeeded ? 'Needed' : 'No'),
         cell: (c) => (!c.inventory ? '<span class="muted">-</span>' : c.inventory.restartNeeded ? '<span class="state waiting">Needed</span>' : '<span class="muted">No</span>') },
       { key: 'disk', label: 'Free on C:', w: 75, on: true, get: (c) => c.inventory?.disk ?? -1, text: (c) => (c.inventory?.disk == null ? '' : `${c.inventory.disk}%`),
         cell: (c) => (c.inventory?.disk == null ? '<span class="muted">-</span>' : `<span class="${c.inventory.disk < 15 ? 'old' : ''}">${c.inventory.disk}%</span>`) },
@@ -1635,7 +1642,9 @@ const RELEASE_NOTES = [
       { key: 'memory', label: 'Memory', w: 80, get: (c) => c.inventory?.memory || 0, text: (c) => (c.inventory?.memory ? gb(c.inventory.memory) : ''), cell: (c) => (c.inventory?.memory ? esc(gb(c.inventory.memory)) : '') },
     ],
     // Approve is on the row; removing a computer and uninstalling its client are in its side panel.
-    tail: { w: 84, cell: (c) => `<span class="acts">${stateOf(c) === 'waiting' && can.has('seats.approve') ? '<button type="button" class="small primary" data-approve>Approve</button>' : ''}</span>` },
+    // Only takes room while a computer is waiting to be approved.
+    tail: () => (can.has('seats.approve') && computers.some((c) => stateOf(c) === 'waiting')
+      ? { w: 84, cell: (c) => `<span class="acts">${stateOf(c) === 'waiting' ? '<button type="button" class="small primary" data-approve>Approve</button>' : ''}</span>` } : null),
     row: (c) => ` data-client="${esc(c.id)}"`,
     empty: () => seatsEmpty,
     redraw: () => drawSeats(),
