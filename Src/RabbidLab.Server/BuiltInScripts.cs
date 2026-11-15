@@ -49,6 +49,21 @@ public static class BuiltInScripts
         S("flush-dns", "Flush DNS", Cmd, "Empties the DNS cache.", "ipconfig /flushdns"),
         S("gpupdate", "Update Group Policy", Cmd, "Applies Group Policy now.", "gpupdate /force /wait:120", 5),
         S("network", "Network settings", Cmd, "Every network adapter with its addresses, gateway and DNS servers.", "ipconfig /all"),
+        S("wake-on-lan", "Turn on Wake-on-LAN", Ps, "Lets the wired network card wake the computer, and turns off Fast startup, which stops many cards waking a computer that was shut down. The BIOS has to allow it too.", """
+            $cards = Get-NetAdapter -Physical -ErrorAction SilentlyContinue | Where-Object { $_.NdisPhysicalMedium -eq 14 }
+            if (-not $cards) { 'No wired network card found.'; exit 1 }
+            foreach ($c in $cards) {
+                # The driver's own switch, where it has one, then Windows' Allow this device to wake the computer.
+                Get-NetAdapterAdvancedProperty -Name $c.Name -ErrorAction SilentlyContinue |
+                    Where-Object { $_.RegistryKeyword -in '*WakeOnMagicPacket', 'WakeOnMagicPacket' } |
+                    ForEach-Object { Set-NetAdapterAdvancedProperty -Name $c.Name -RegistryKeyword $_.RegistryKeyword -RegistryValue 1 -NoRestart -ErrorAction SilentlyContinue }
+                Set-NetAdapterPowerManagement -Name $c.Name -WakeOnMagicPacket Enabled -NoRestart -ErrorAction SilentlyContinue
+                & powercfg.exe /deviceenablewake "$($c.InterfaceDescription)" | Out-Null
+                "$($c.Name) ($($c.InterfaceDescription)) can wake this computer."
+            }
+            Set-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Power' -Name HiberbootEnabled -Value 0 -Type DWord
+            'Fast startup is off. Wake-on-LAN has to be on in the BIOS too.'
+            """),
         S("signed-in", "Who is signed in", Cmd, "Everyone signed in at the screen or over Remote Desktop.", """
             quser 2>nul
             if errorlevel 1 echo Nobody is signed in.

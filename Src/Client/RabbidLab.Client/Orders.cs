@@ -98,8 +98,8 @@ internal static class Orders
                 }
                 continue;
             }
-            // Reads (sensors, WMI queries) go ahead whatever Group Policy says about account changes.
-            var answer = SeatChecks.Is(order) ? SeatChecks.Do(order) : Wmi.Is(order) ? Wmi.Do(order) : now.AccountChanges ? Do(order)
+            // Reads (sensors, WMI queries) and wake-ups go ahead whatever Group Policy says about account changes.
+            var answer = SeatChecks.Is(order) ? SeatChecks.Do(order) : Wmi.Is(order) ? Wmi.Do(order) : Wake.Is(order) ? Wake.Do(order) : now.AccountChanges ? Do(order)
                 : AccountAnswer.Failed(order.Id, $"Account changes are turned off by Group Policy on {Machine.Name}.");
             answer.Id = order.Id;
             await Answer(api, answer, key, stop).ConfigureAwait(false);

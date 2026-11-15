@@ -104,9 +104,10 @@
     <li><b>Jobs</b> lists every run. Click one to see each computer, the exit code, what the script wrote there, and exactly what ran.</li>
     <li><b>Restart</b> gives anyone signed in a five minute warning. <b>Install Windows updates</b> doesn't restart: a computer that needs it shows under Needs restart.</li>
     <li>A computer that's offline gets the job when it's back, for a day. After that the job says Expired.</li>
+    <li><b>Wake</b> turns on a computer that is off or asleep, with Wake-on-LAN. This server sends it to computers on its own network. For a computer on another network, an online computer there passes it on. Wake-on-LAN has to be on in the BIOS, and in Windows: the computer panel says which, and the built-in script <b>Turn on Wake-on-LAN</b> sets the Windows side.</li>
   </ul>
   <p><b>Confirm it's you.</b> Before anything runs, or a script or workflow is saved, you're asked for a code from your authenticator app. Without MFA it's your password. It's asked again after 10 minutes. Running on more than 10 computers also takes typing how many.</p>
-  <p><b>Who can do it.</b> Four permissions under Devices in <a href="#people">Roles and people</a>: Restart computers and install updates, Run scripts, Write scripts, and Manage workflows. Write scripts means being able to run anything on every computer, so give it to few. Every run is in the activity log with who ran it and the script's SHA-256.</p>
+  <p><b>Who can do it.</b> Four permissions under Devices in <a href="#people">Roles and people</a>: Restart, wake and update computers, Run scripts, Write scripts, and Manage workflows. Write scripts means being able to run anything on every computer, so give it to few. Every run is in the activity log with who ran it and the script's SHA-256.</p>
   <p class="tip">To turn all of this off on some computers, set <b>Allow scripts and actions</b> to Disabled in the Group Policy template. Their jobs then say Refused. A computer needs client 1.1.168 or later to take jobs.</p>
 </article>
 

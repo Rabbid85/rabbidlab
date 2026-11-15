@@ -40,6 +40,8 @@
   <ItemGroup>
     <!-- Windows accounts, made and changed by the same code here and in the server. -->
     <Compile Include="..\..\Utilities\Shared\WindowsUsers.cs" Link="Shared\WindowsUsers.cs" />
+    <!-- Wake-on-LAN, sent the same way from here and from the server. -->
+    <Compile Include="..\..\Utilities\Shared\WakeOnLan.cs" Link="Shared\WakeOnLan.cs" />
   </ItemGroup>
 
 </Project>

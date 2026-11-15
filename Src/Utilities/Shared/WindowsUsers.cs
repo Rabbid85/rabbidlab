@@ -78,6 +78,9 @@ public sealed class AccountOrder
     public const string Wmi = "wmi";
     public const string WmiClasses = "wmi-classes";
 
+    /// <summary>Sends Wake-on-LAN for the MACs in Macs on this computer's networks, for a computer on one of them (WakeOnLan.cs).</summary>
+    public const string Wake = "wake";
+
     [DataMember(Name = "id")] public string? Id { get; set; }
     [DataMember(Name = "action")] public string? Action { get; set; }
     [DataMember(Name = "space")] public string? Space { get; set; }
@@ -90,6 +93,7 @@ public sealed class AccountOrder
     [DataMember(Name = "neverExpires")] public bool NeverExpires { get; set; }
     [DataMember(Name = "add")] public List<string>? Add { get; set; }
     [DataMember(Name = "remove")] public List<string>? Remove { get; set; }
+    [DataMember(Name = "macs", EmitDefaultValue = false)] public List<string>? Macs { get; set; }
 
     /// <summary>The characters neither a Windows nor an Active Directory account or group name can have.</summary>
     public static readonly char[] NotInNames = "\"/\\[]:;|=,+*?<>@".ToCharArray();

@@ -431,6 +431,8 @@ public static class ClientsApi
         missingChecked = i.MissingChecked,
         lastUpdate = i.Updates.Where(u => !string.IsNullOrEmpty(u.Installed)).OrderByDescending(u => u.Installed, StringComparer.Ordinal).Select(u => new { kb = u.Kb, installed = u.Installed }).FirstOrDefault(),
         software = i.Software.Count,
+        // Its first network card's MAC (wired first), for Wake.
+        mac = i.Nics?.FirstOrDefault()?.Mac,
         received = i.Received,
     };
 

@@ -165,6 +165,28 @@ public static class DevicesApi
             return Results.Ok(new { id = job.Id });
         });
 
+        // Wake-on-LAN for the computers picked: a broadcast on the network, no code on any computer, so the permission and a line in the log.
+        app.MapPost("/api/devices/wake", async (WakeForm form, HttpContext context, Clients clients, Waker waker, ActivityLog log) =>
+        {
+            if (Access.RefuseUnless(context, Permissions.SeatsActions) is { } refused)
+            {
+                return refused;
+            }
+            List<Client> on = [.. (form.Clients ?? []).Distinct().Select(clients.Find).OfType<Client>().Where(c => c.Approved is not null)];
+            if (on.Count == 0)
+            {
+                return Results.BadRequest(new { error = "Pick at least one approved computer." });
+            }
+            if (on.Count > Waker.Most)
+            {
+                return Results.BadRequest(new { error = $"Wake {Waker.Most} computers at a time at most." });
+            }
+            var results = await waker.Wake(on, context.RequestAborted);
+            log.Record(context, "clients", "devices.wake", $"Sent a wake-up to {Workflows.Computers(on)}", results.Any(r => r.Problem is null) ? "ok" : "failed",
+                string.Join("; ", results.Select(r => r.Problem is null ? $"{r.Computer} from {string.Join(" and ", r.Via)}" : $"{r.Computer}: {r.Problem}")));
+            return Results.Ok(new { results = results.Select(r => new { client = r.Client, computer = r.Computer, sent = r.Problem is null, via = r.Via, problem = r.Problem }) });
+        });
+
         // The jobs, newest first: one line each, or with ?client= the ones for one computer.
         app.MapGet("/api/devices/jobs", (string? client, HttpContext context, DeviceJobs jobs) =>
             !Seeing(context, Doing) ? Access.NotAllowed() : Results.Ok(jobs.Read(all => all.Where(j => client is null || j.Targets.Any(t => t.Client == client)).Select(j => new

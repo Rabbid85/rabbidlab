@@ -4,13 +4,17 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Management;
+using System.Diagnostics;
 using System.Net;
+using System.Net.NetworkInformation;
+using System.Net.Sockets;
 using System.Runtime.Serialization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Win32;
+using WakeOnLan = RabbidLab.Shared.WakeOnLan;
 
 namespace RabbidLab.Client;
 
@@ -44,6 +48,27 @@ internal sealed class InventoryReport
     /// <summary>Its printers, and the printer drivers it has to add one with; left out when Windows wouldn't say.</summary>
     [DataMember(Name = "printers", EmitDefaultValue = false)] public List<PrinterReport>? Printers { get; set; }
     [DataMember(Name = "printerDrivers", EmitDefaultValue = false)] public List<string>? PrinterDrivers { get; set; }
+
+    /// <summary>Its network cards, for Wake-on-LAN; left out when Windows wouldn't say.</summary>
+    [DataMember(Name = "nics", EmitDefaultValue = false)] public List<NicReport>? Nics { get; set; }
+}
+
+[DataContract]
+internal sealed class NicReport
+{
+    [DataMember(Name = "name")] public string Name { get; set; } = "";
+
+    /// <summary>As AA:BB:CC:DD:EE:FF.</summary>
+    [DataMember(Name = "mac")] public string Mac { get; set; } = "";
+
+    /// <summary>wired or wifi.</summary>
+    [DataMember(Name = "kind")] public string Kind { get; set; } = "wired";
+    [DataMember(Name = "ip", EmitDefaultValue = false)] public string? Ip { get; set; }
+    [DataMember(Name = "prefix", EmitDefaultValue = false)] public int Prefix { get; set; }
+    [DataMember(Name = "up")] public bool Up { get; set; }
+
+    /// <summary>Windows lets it wake the computer (powercfg's wake_armed list); left out when that couldn't be read.</summary>
+    [DataMember(Name = "wake", EmitDefaultValue = false)] public bool? Wake { get; set; }
 }
 
 [DataContract]
@@ -206,6 +231,7 @@ internal static class Inventory
             r.Locals = null;
         }
         Printers(r);
+        Nics(r);
         r.RestartNeeded = Exists(@"SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired")
             || Exists(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending");
         if (missingChecked is { } at2 && missing is not null)
@@ -279,6 +305,92 @@ internal static class Inventory
     }
 
     // Installed apps as Windows lists them: for the computer (64 and 32-bit), and for each person whose profile is loaded.
+    // The network cards in the computer (not VPN, Hyper-V or Bluetooth ones), wired first: what Wake-on-LAN needs.
+    private static void Nics(InventoryReport r)
+    {
+        // The cards Windows calls hardware, as Get-NetAdapter -Physical does, by interface index: 14 is Ethernet, 9 Wi-Fi.
+        var hardware = new Dictionary<int, int>();
+        var asked = false;
+        Wmi(@"root\StandardCimv2", "SELECT InterfaceIndex, HardwareInterface, NdisPhysicalMedium FROM MSFT_NetAdapter", o =>
+        {
+            asked = true;
+            if (o["HardwareInterface"] is true && o["InterfaceIndex"] is { } index)
+            {
+                hardware[Convert.ToInt32(index, CultureInfo.InvariantCulture)] = o["NdisPhysicalMedium"] is { } m ? Convert.ToInt32(m, CultureInfo.InvariantCulture) : 0;
+            }
+        });
+        var armed = WakeArmed();
+        var cards = new List<NicReport>();
+        try
+        {
+            foreach (var card in NetworkInterface.GetAllNetworkInterfaces())
+            {
+                var props = card.GetIPProperties();
+                int index;
+                try
+                {
+                    index = props.GetIPv4Properties()?.Index ?? -1;
+                }
+                catch (NetworkInformationException)
+                {
+                    index = -1;
+                }
+                var medium = hardware.TryGetValue(index, out var m2) ? m2 : -1;
+                var wifi = medium == 9 || card.NetworkInterfaceType == NetworkInterfaceType.Wireless80211;
+                var wired = medium is 0 or 14 || (!asked && card.NetworkInterfaceType is NetworkInterfaceType.Ethernet or NetworkInterfaceType.GigabitEthernet);
+                if ((asked && medium < 0) || !(wifi || wired) || Virtual(card.Description))
+                {
+                    continue;
+                }
+                if (WakeOnLan.Mac(card.GetPhysicalAddress().ToString()) is not { } mac)
+                {
+                    continue;
+                }
+                var v4 = props.UnicastAddresses.FirstOrDefault(a => a.Address.AddressFamily == AddressFamily.InterNetwork && !a.Address.ToString().StartsWith("169.254.", StringComparison.Ordinal));
+                cards.Add(new NicReport
+                {
+                    Name = card.Name, Mac = WakeOnLan.Text(mac), Kind = wifi ? "wifi" : "wired", Ip = v4?.Address.ToString(), Prefix = v4 is null ? 0 : WakeOnLan.Prefix(v4) ?? 0,
+                    Up = card.OperationalStatus == OperationalStatus.Up, Wake = armed?.Contains(card.Description),
+                });
+            }
+        }
+        catch (NetworkInformationException)
+        {
+            r.Nics = null; // the server keeps the cards it had
+            return;
+        }
+        r.Nics = cards.OrderBy(c => c.Kind == "wifi").ThenBy(c => !c.Up).Take(WakeOnLan.Most).ToList();
+    }
+
+    private static bool Virtual(string? description) =>
+        new[] { "virtual", "hyper-v", "vpn", "tap-", "bluetooth", "loopback", "miniport", "vmware", "virtualbox" }.Any(w => (description ?? "").IndexOf(w, StringComparison.OrdinalIgnoreCase) >= 0);
+
+    // The devices Windows lets wake the computer (Allow this device to wake the computer), by name; null when powercfg couldn't say.
+    private static HashSet<string>? WakeArmed()
+    {
+        try
+        {
+            using var run = Process.Start(new ProcessStartInfo(Path.Combine(Environment.SystemDirectory, "powercfg.exe"), "/devicequery wake_armed")
+            {
+                UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true,
+            });
+            if (run is null)
+            {
+                return null;
+            }
+            var said = run.StandardOutput.ReadToEndAsync();
+            if (!run.WaitForExit(10000) || !said.Wait(1000) || run.ExitCode != 0)
+            {
+                return null;
+            }
+            return new HashSet<string>(said.Result.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).Select(l => l.Trim()), StringComparer.OrdinalIgnoreCase);
+        }
+        catch (Exception e) when (e is System.ComponentModel.Win32Exception or InvalidOperationException or IOException)
+        {
+            return null;
+        }
+    }
+
     private static List<ProgramReport> Programs()
     {
         var found = new Dictionary<string, ProgramReport>(StringComparer.OrdinalIgnoreCase);
@@ -413,15 +525,21 @@ internal static class Inventory
             all.Append("|p:").Append(p.Name).Append(':').Append(p.Port).Append(':').Append(p.Driver).Append(':').Append(p.Offline);
         }
         all.Append("|d:").Append(string.Join(",", r.PrinterDrivers ?? new List<string>()));
+        foreach (var n in r.Nics ?? new List<NicReport>())
+        {
+            all.Append("|n:").Append(n.Mac).Append(':').Append(n.Ip).Append(':').Append(n.Up).Append(':').Append(n.Wake);
+        }
         using var sha = SHA256.Create();
         return BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(all.ToString())));
     }
 
-    private static void Wmi(string query, Action<ManagementBaseObject> each)
+    private static void Wmi(string query, Action<ManagementBaseObject> each) => Wmi(@"root\cimv2", query, each);
+
+    private static void Wmi(string space, string query, Action<ManagementBaseObject> each)
     {
         try
         {
-            using var searcher = new ManagementObjectSearcher(query);
+            using var searcher = new ManagementObjectSearcher(space, query);
             foreach (var found in searcher.Get())
             {
                 using (found)

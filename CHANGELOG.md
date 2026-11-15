@@ -2,6 +2,13 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.195 (2026-11-15)
+
+- Wake on Devices turns on computers that are off or asleep, with Wake-on-LAN. It is in the Actions menu and in an offline computer panel, and State says Waking until it comes online.
+- This server sends the wake-up on its own network. For a computer on another network, an online computer there passes it on.
+- Clients from 1.1.195 send their network cards. The computer panel lists them under Network with whether Windows lets the card wake it, and MAC address is under Columns.
+- New built-in script Turn on Wake-on-LAN sets the Windows side and turns off Fast startup. The BIOS has to allow it too.
+
 ## 1.1.194 (2026-11-15)
 
 - Windows updates on Devices lists computers now, like Computers: how many updates each is missing, if it needs a restart, when it last checked and the latest update it installed.

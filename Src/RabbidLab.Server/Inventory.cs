@@ -34,6 +34,20 @@ public sealed class DevicePrinter
     public string? Location { get; set; }
 }
 
+/// <summary>A network card on a computer, for Wake-on-LAN: its MAC, wired or wifi, its IPv4 address and prefix when it had one.</summary>
+public sealed class DeviceNic
+{
+    public string Name { get; set; } = "";
+    public string Mac { get; set; } = "";
+    public string Kind { get; set; } = "wired";
+    public string? Ip { get; set; }
+    public int Prefix { get; set; }
+    public bool Up { get; set; }
+
+    /// <summary>Windows lets it wake the computer; null when the computer couldn't say.</summary>
+    public bool? Wake { get; set; }
+}
+
 /// <summary>A Windows update: installed on the computer (with the day), or missing from it.</summary>
 public sealed class DeviceUpdate
 {
@@ -84,6 +98,9 @@ public sealed class DeviceInventory
     /// <summary>When Admins was last read on the computer.</summary>
     public DateTime? AdminsChecked { get; set; }
 
+    /// <summary>Its network cards; null until a client from 1.1.195 on sends them. Kept while it's off, which is when Wake needs them.</summary>
+    public List<DeviceNic>? Nics { get; set; }
+
     /// <summary>When this server got it.</summary>
     public DateTime Received { get; set; }
 }
@@ -122,6 +139,11 @@ public sealed class Inventories(DataFolder folder, TimeProvider clock)
         else if (Get(id) is { } before)
         {
             (inventory.Admins, inventory.Locals, inventory.AdminsChecked) = (before.Admins, before.Locals, before.AdminsChecked);
+        }
+        // The same for network cards: an older client, or one that couldn't read them, leaves the last ones.
+        if (inventory.Nics is null && Get(id) is { } had)
+        {
+            inventory.Nics = had.Nics;
         }
         Save(id, inventory);
     }
@@ -206,6 +228,12 @@ public sealed class Inventories(DataFolder folder, TimeProvider clock)
             Kind = PrinterKinds.Contains(p.Kind) ? p.Kind : "local",
         })];
         i.PrinterDrivers = i.PrinterDrivers is null ? null : [.. i.PrinterDrivers.Select(Cut).OfType<string>().Distinct(StringComparer.OrdinalIgnoreCase).Take(MaxPrinters)];
+        i.Nics = i.Nics is null ? null : [.. i.Nics.Select(n => (Nic: n, Mac: WakeOnLan.Mac(n.Mac))).Where(n => n.Mac is not null).Take(WakeOnLan.Most).Select(n => new DeviceNic
+        {
+            Name = Cut(n.Nic.Name) ?? "", Mac = WakeOnLan.Text(n.Mac!), Kind = n.Nic.Kind == "wifi" ? "wifi" : "wired", Up = n.Nic.Up, Wake = n.Nic.Wake,
+            Ip = System.Net.IPAddress.TryParse(n.Nic.Ip, out var ip) && ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork ? ip.ToString() : null,
+            Prefix = n.Nic.Prefix is >= 1 and <= 30 ? n.Nic.Prefix : 0,
+        })];
     }
 
     public const int MaxPrinters = 300;

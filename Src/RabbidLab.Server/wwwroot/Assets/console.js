@@ -3,6 +3,11 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.195', [
+    'Wake on Devices turns on computers that are off or asleep, with Wake-on-LAN. It is in the Actions menu and in an offline computer panel, and State says Waking until it comes online.',
+    'This server sends the wake-up on its own network. For a computer on another network, an online computer there passes it on.',
+    'Clients from 1.1.195 send their network cards. The computer panel lists them under Network with whether Windows lets the card wake it, and MAC address is under Columns.',
+    'New built-in script Turn on Wake-on-LAN sets the Windows side and turns off Fast startup. The BIOS has to allow it too.']],
   ['1.1.194', [
     'Windows updates on Devices lists computers now, like Computers: how many updates each is missing, if it needs a restart, when it last checked and the latest update it installed.',
     'Install updates and Check now work on the ticked computers. With none ticked, Install updates goes to every computer missing updates and Check now to all of them.',
@@ -1784,6 +1789,9 @@ const RELEASE_NOTES = [
   const addr = (a) => (a === '::1' || a === '127.0.0.1' ? 'This server' : (a || '').replace(/^::ffff:/i, ''));
   const stateOf = (c) => (!c.approved ? 'waiting' : c.online ? 'online' : 'offline');
   const STATE = { online: 'Online', offline: 'Offline', waiting: 'Waiting' };
+  // State's pill; Waking for a few minutes after Wake (devices.js), until it comes online.
+  const stateLabel = (c) => (stateOf(c) === 'offline' && dvHooks.waking?.(c) ? 'Waking' : STATE[stateOf(c)]);
+  const stateCell = (c) => (stateLabel(c) === 'Waking' ? '<span class="state waiting">Waking</span>' : `<span class="state ${stateOf(c)}">${STATE[stateOf(c)]}</span>`);
   let seatPanel = null; // draws the computer open in the side panel again, once that's set up
   let seatOn = null; // opens a computer's side panel on one of its tabs
   // What devices.js adds to this page: more lists (Scripts, Jobs, Workflows), the ticks on computers and what Actions
@@ -1927,7 +1935,7 @@ const RELEASE_NOTES = [
       { key: 'state', label: 'State', w: 80, on: true, get: (c) => ({ waiting: 0, online: 1, offline: 2 })[stateOf(c)], text: (c) => STATE[stateOf(c)],
         cell: (c) => (c.uninstalling ? '<span class="state waiting">Uninstalling</span>'
           : c.removalUntil ? `<span class="state waiting" data-tip="${esc(`Uninstall allowed until ${new Date(c.removalUntil).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`)}">Unlocked</span>`
-          : `<span class="state ${stateOf(c)}">${STATE[stateOf(c)]}</span>`) },
+          : stateCell(c)) },
       { key: 'os', label: 'Windows', w: 135, on: true, get: (c) => c.os, cell: (c) => `<span class="ell">${esc(c.os || '')}</span>` },
       { key: 'user', label: 'Signed in', w: 110, on: true, get: (c) => c.user, cell: (c) => (c.user ? `<span class="ell">${esc(c.user)}</span>` : '<span class="nobody">Nobody</span>') },
       { key: 'missing', label: 'Updates', w: 90, on: true, get: (c) => c.inventory?.missing ?? -1, text: (c) => c.inventory?.missing ?? '',
@@ -1944,6 +1952,7 @@ const RELEASE_NOTES = [
         cell: (c) => (c.server ? '<span class="muted">Not installed</span>'
           : `<span class="${c.behind ? 'old' : ''}"${c.behind ? ' data-tip="Older than this server"' : ''}>${esc(c.version || '?')}</span>`) },
       { key: 'address', label: 'Address', w: 105, get: (c) => addr(c.address), cell: (c) => `<span class="mono muted ell">${esc(addr(c.address))}</span>` },
+      { key: 'mac', label: 'MAC address', w: 135, get: (c) => c.inventory?.mac || '', cell: (c) => `<span class="mono muted ell">${esc(c.inventory?.mac || '-')}</span>` },
       { key: 'model', label: 'Model', w: 180, get: (c) => [c.inventory?.manufacturer, c.inventory?.model].filter(Boolean).join(' ') },
       { key: 'serial', label: 'Serial number', w: 140, get: (c) => c.inventory?.serial || '' },
       { key: 'processor', label: 'Processor', w: 220, get: (c) => c.inventory?.processor || '' },
@@ -2026,7 +2035,7 @@ const RELEASE_NOTES = [
     cols: [
       { key: 'computer', label: 'Computer', w: 165, fixed: true, get: (c) => c.computer,
         cell: (c) => `<div class="who"><span class="pic"${c.thisServer ? ' data-tip="This server"' : ''}>${svg(c.thisServer || /server/i.test(c.os || '') ? 'server' : 'laptop')}</span><b class="ell">${esc(c.computer)}</b></div>` },
-      { key: 'state', label: 'State', w: 80, on: true, get: (c) => ({ waiting: 0, online: 1, offline: 2 })[stateOf(c)], text: (c) => STATE[stateOf(c)], cell: (c) => `<span class="state ${stateOf(c)}">${STATE[stateOf(c)]}</span>` },
+      { key: 'state', label: 'State', w: 80, on: true, get: (c) => ({ waiting: 0, online: 1, offline: 2 })[stateOf(c)], text: (c) => STATE[stateOf(c)], cell: stateCell },
       { key: 'missing', label: 'Missing', w: 120, on: true, get: (c) => c.inventory?.missing ?? -1, text: (c) => (c.inventory?.missing == null ? 'Not checked yet' : c.inventory.missing), cell: missingCell },
       { key: 'restart', label: 'Restart', w: 80, on: true, get: (c) => (c.inventory?.restartNeeded ? 1 : 0), text: (c) => (!c.inventory ? '' : c.inventory.restartNeeded ? 'Needed' : 'No'),
         cell: (c) => (!c.inventory ? '<span class="muted">-</span>' : c.inventory.restartNeeded ? '<span class="state waiting">Needed</span>' : '<span class="muted">No</span>') },
@@ -2424,18 +2433,26 @@ const RELEASE_NOTES = [
         ['Model', [inv.manufacturer, inv.model].filter(Boolean).join(' ') || 'Unknown'], inv.serial && ['Serial number', inv.serial], inv.processor && ['Processor', inv.processor],
         inv.memory ? ['Memory', gb(inv.memory)] : null, inv.started && ['Uptime', howLong(inv.started)], ['Restart', inv.restartNeeded ? 'Needed, to finish installing something' : 'Not needed'],
         ...inv.disks.map((d) => [`Drive ${d.name}`, d.total ? `${Math.round(100 * d.free / d.total)}% free of ${gb(d.total)}` : 'Unknown'])]));
+      // Its network cards, and whether Windows lets the wired one wake it (Wake in devices.js).
+      const wired = (inv?.nics || []).filter((n) => n.kind === 'wired');
+      const wol = !wired.length ? ['Wi-Fi only', "Most Wi-Fi cards can't wake a computer. A network cable can."]
+        : wired.some((n) => n.wake === true) ? ['Allowed in Windows', '']
+        : wired.every((n) => n.wake === false) ? ['Off in Windows', 'Run the built-in script Turn on Wake-on-LAN on it. It has to be on in the BIOS too.'] : ['Not known', ''];
+      const network = seat.server || !inv ? '' : !inv.nics ? section('Network', none('Its network cards show here once its client is on 1.1.195 or later.'))
+        : section('Network', facts2([...inv.nics.map((n) => [n.name || (n.kind === 'wifi' ? 'Wi-Fi' : 'Ethernet'), [n.mac, n.ip].filter(Boolean).join(' · ')]), ['Wake-on-LAN', wol[0]]])
+          + (wol[1] ? `<p class="dw-how">${esc(wol[1])}</p>` : ''));
       // This server without the client: putting it on gives it everything the other computers have.
       const here = !seat.server ? '' : section('Manage it like the other computers', `<p class="dw-how">Install the ${esc(productName)} client on this server to see its hardware, software and Windows updates here, and to run scripts, updates, restarts and WMI queries on it. It's approved straight away and keeps itself up to date.</p>`
         + (can.has('seats.add') ? `<div class="seat-acts"><button type="button" class="primary" data-seat-here${hereStarted ? ' disabled' : ''}>${svg('download')}${hereStarted ? 'Installing the client' : 'Install the client here'}</button></div>` : ''));
       const more = st === 'waiting' ? null : dvHooks.seatPane?.(seat, seatTab);
-      const pane = more != null ? more : st === 'waiting' || seatTab === 'summary' ? section('Details', facts2(facts)) + hardware + here + lock
+      const pane = more != null ? more : st === 'waiting' || seatTab === 'summary' ? section('Details', facts2(facts)) + hardware + network + here + lock
         : !inv ? section(seatTab === 'software' ? 'Installed software' : 'Windows updates', none(waitingFor))
         : seatTab === 'software' ? section(`Installed software <small>${inv.software.length}</small>`, inv.software.length ? list(inv.software.map((p) => [p.name, [p.version, p.publisher].filter(Boolean).join(' · ')])) : none('Nothing is listed.'))
         : section(`Missing <small>${inv.missingChecked ? inv.missing.length : ''}</small>`, !inv.missingChecked ? none("Windows Update hasn't answered on this computer yet. It's asked every six hours.")
           : inv.missing.length ? list(inv.missing.map((u) => [u.kb || 'No number', u.title || '', u.kind ? ['waiting', u.kind] : null])) : none('Nothing is missing.'))
           + section(`Installed <small>${inv.updates.length}</small>`, inv.updates.length ? list(inv.updates.map((u) => [u.kb, [u.kind, dvDay(u.installed)].filter(Boolean).join(' · ')])) : none('Nothing is listed.'));
       panel.body.innerHTML = `<div class="dw-head"><span class="pic dw-pic">${svg(seat.server ? 'server' : 'monitor')}</span><div class="dw-name"><h2 id="dw-title">${esc(seat.computer)}</h2>`
-        + `<p><span class="state ${st}">${seat.server ? 'This server' : STATE[st]}</span></p></div><button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>${bar}${tabs}${pane}`;
+        + `<p><span class="state ${stateLabel(seat) === 'Waking' ? 'waiting' : st}">${seat.server ? 'This server' : stateLabel(seat)}</span></p></div><button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>${bar}${tabs}${pane}`;
     };
     const openSeat = (c) => {
       if (seat?.id !== c.id) {

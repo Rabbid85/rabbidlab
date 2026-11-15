@@ -42,6 +42,8 @@ public static class SignIn
         services.AddSingleton<Clients>();
         services.AddSingleton<IHereClient, HereClient>();
         services.AddSingleton<Inventories>();
+        services.AddSingleton<IWakeSender, WakeSender>();
+        services.AddSingleton<Waker>();
         services.AddSingleton<Confirmations>();
         services.AddSingleton<DeviceScripts>();
         services.AddSingleton<DeviceJobs>();

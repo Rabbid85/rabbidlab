@@ -35,6 +35,9 @@ public sealed class TestApp(string data) : WebApplicationFactory<Program>
     /// <summary>Stands in for msiexec on this server: keeps what it was asked to install with.</summary>
     public FakeHereClient Here { get; } = new();
 
+    /// <summary>Stands in for Wake-on-LAN: this server is on 192.168.2.0/24, and nothing goes on the real network.</summary>
+    public FakeWakeSender Wake { get; } = new();
+
     /// <summary>The time the server sees, moved on by hand.</summary>
     public FakeClock Clock { get; } = new();
 
@@ -76,6 +79,8 @@ public sealed class TestApp(string data) : WebApplicationFactory<Program>
             services.AddSingleton<IAdminGroups>(AdminGroups);
             services.RemoveAll<IHereClient>();
             services.AddSingleton<IHereClient>(Here);
+            services.RemoveAll<IWakeSender>();
+            services.AddSingleton<IWakeSender>(Wake);
             services.RemoveAll<ISensorProbe>();
             services.AddSingleton<ISensorProbe>(Probe);
             services.RemoveAll<IMailSender>();
@@ -214,6 +219,24 @@ public sealed class FakeHereClient : IHereClient
             Asked.Add((server, fingerprint));
         }
         return Task.FromResult<int?>(0);
+    }
+}
+
+/// <summary>Wake-on-LAN as the tests see it: the networks this server is on, and what it sent out of which address.</summary>
+public sealed class FakeWakeSender : IWakeSender
+{
+    public List<(System.Net.IPAddress Address, int Prefix)> Mine { get; } = [(System.Net.IPAddress.Parse("192.168.2.10"), 24)];
+    public List<(string From, List<string> Macs)> Sent { get; } = [];
+
+    public IReadOnlyList<(System.Net.IPAddress Address, int Prefix)> Networks() => Mine;
+
+    public int Send(System.Net.IPAddress from, int prefix, IReadOnlyList<byte[]> macs)
+    {
+        lock (Sent)
+        {
+            Sent.Add((from.ToString(), [.. macs.Select(WakeOnLan.Text)]));
+        }
+        return macs.Count * 6;
     }
 }
 
