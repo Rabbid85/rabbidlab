@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.189', [
+    'The opening screen plays in full only after you sign in or after an update. A refresh opens straight away, and only shows the flask if loading takes a moment.']],
   ['1.1.188', [
     'The opening screen now plays like the mockup every time the console opens: the flask fills one step at a time even when everything loads at once.',
     'The side panel has a soft, close shadow instead of the wide dark smear over the page.']],
@@ -1498,18 +1500,22 @@ const RELEASE_NOTES = [
     const got = {}; // path -> what it said
     let shownAt = 0;
     let news = null; // { version, note } when this browser opens a version for the first time
-    // It plays at its own pace, one step at a time, so the flask fills where it can be seen even when everything is back at once.
+    // Played in full, one step at a time, just after signing in or an update. A refresh only shows it when loading is slow,
+    // with the steps landing as fast as their reads come back.
+    let playing = false;
+    let signing = false; // came straight from the sign-in page
     let landed = 0; // steps shown as done
     let ready = false; // the console is ready underneath
     let timer = null;
-    const pace = () => (news ? 760 : 480); // between steps; slower after an update, with a note to read
+    const pace = () => (!playing ? 80 : news ? 760 : 480); // between steps; slower after an update, with a note to read
+    const doing = (s) => (s.path === '/api/signin' && !signing ? 'Checking your session' : s.doing);
     const draw = () => {
       if (!el) return;
       const next = steps[landed];
       const last = steps[landed - 1];
       el.querySelector('.boot-level').style.transform = `translateY(${LEVEL(landed / steps.length)}px)`;
       el.querySelector('.boot-dots').innerHTML = steps.map((_, k) => `<i${k < landed ? ' class="on"' : ''}></i>`).join('');
-      el.querySelector('.boot-step').innerHTML = next ? `<b>${esc(next.doing)}…</b>${last && got[last.path] ? `<span> · ${esc(got[last.path])}</span>` : ''}` : '';
+      el.querySelector('.boot-step').innerHTML = next ? `<b>${esc(doing(next))}…</b>${last && got[last.path] ? `<span> · ${esc(got[last.path])}</span>` : ''}` : '';
     };
     // Lands the next step when its read is back, then the welcome and the fade once all are in and the console is ready.
     const tick = () => {
@@ -1518,10 +1524,10 @@ const RELEASE_NOTES = [
       if (next && next.path in got) {
         landed++;
         drop();
-        setTimeout(draw, 550);
+        setTimeout(draw, playing ? 550 : 0);
       }
       if (landed >= steps.length && ready) {
-        timer = setTimeout(welcome, 650);
+        timer = setTimeout(welcome, playing ? 650 : 150);
         return;
       }
       timer = setTimeout(tick, pace());
@@ -1530,13 +1536,13 @@ const RELEASE_NOTES = [
       if (!el) return;
       const first = (meInfo?.name || meInfo?.username || '').split(' ')[0];
       const last = [...steps].reverse().find((s) => got[s.path]);
-      el.querySelector('.boot-step').innerHTML = first ? `<b>Welcome back, ${esc(first)}.</b>${last ? `<span> · ${esc(got[last.path])}</span>` : ''}` : '';
+      if (playing) el.querySelector('.boot-step').innerHTML = first ? `<b>${signing ? 'Welcome' : 'Welcome back'}, ${esc(first)}.</b>${last ? `<span> · ${esc(got[last.path])}</span>` : ''}` : '';
       const gone = el;
       el = null;
       setTimeout(() => {
         gone.classList.add('out');
         setTimeout(() => gone.remove(), 500);
-      }, Math.max(700, (news ? 3600 : 0) - (Date.now() - shownAt)));
+      }, !playing ? 0 : Math.max(700, (news ? 3600 : 0) - (Date.now() - shownAt)));
     };
     // A square of the banner's colours drops into the flask for each read that comes back.
     const drop = () => {
@@ -1564,19 +1570,26 @@ const RELEASE_NOTES = [
         }
       },
       // Sign-in answered: only the steps this person's roles read, and what's new when this browser hasn't seen this version.
-      // It comes up now, every time the console opens.
+      // Just signed in (the sign-in page says so) or just updated: it comes up now and plays in full.
       signedIn(s) {
         steps = BOOT.filter((x) => !x.can || can.has(x.can));
         let seen = null;
         try {
           seen = localStorage.getItem(SEEN);
           localStorage.setItem(SEEN, s.version);
+          signing = sessionStorage.getItem('rabbidlab.signedin') === '1';
+          sessionStorage.removeItem('rabbidlab.signedin');
         } catch {
-          // Not kept: no note.
+          // Not kept: no note, and a refresh is all it can be.
         }
         const note = seen && seen !== s.version ? RELEASE_NOTES.find(([v]) => v === s.version)?.[1]?.[0] : null;
         if (note) news = { version: s.version, note };
-        this.show();
+        if (signing || news) {
+          playing = true;
+          if (el) el.querySelector('.boot-news')?.remove(); // shown early by a slow sign-in: drawn again with the note
+          if (el && news) el.insertAdjacentHTML('beforeend', `<div class="boot-news"><span class="tag">New</span><p><b>Updated to ${esc(news.version)}.</b> ${esc(news.note)}</p></div>`);
+          this.show();
+        }
         draw();
       },
       show() {

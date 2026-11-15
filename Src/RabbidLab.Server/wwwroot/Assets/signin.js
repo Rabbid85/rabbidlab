@@ -30,6 +30,11 @@
     } catch { /* none */ }
     return back.startsWith('#') ? `/${back}` : '/';
   };
+  // Signed in just now: the console plays its opening screen for this one (not for a refresh).
+  const enter = () => {
+    try { sessionStorage.setItem('rabbidlab.signedin', '1'); } catch { /* it opens without it */ }
+    location.replace(home());
+  };
 
   // MFA, after a right password: the answer is a ticket to send the code with, and nobody is signed in yet. When a role
   // requires MFA and the account hasn't set it up, the answer also has the QR code to set it up with.
@@ -62,7 +67,7 @@
     try {
       const r = await fetch('/api/signin/mfa', { method: 'POST', headers, body: JSON.stringify({ ticket, code: $('mfa-code').value }) });
       if (r.ok) {
-        location.replace(home());
+        enter();
         return;
       }
       const said = await r.json().catch(() => null);
@@ -90,7 +95,7 @@
           askCode(said);
           return;
         }
-        location.replace(home());
+        enter();
         return;
       }
       const said = await r.json().catch(() => null);

@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.189 (2026-11-15)
+
+- The opening screen plays in full only after you sign in or after an update. A refresh opens straight away, and only shows the flask if loading takes a moment.
+
 ## 1.1.188 (2026-11-15)
 
 - The opening screen now plays like the mockup every time the console opens: the flask fills one step at a time even when everything loads at once.
