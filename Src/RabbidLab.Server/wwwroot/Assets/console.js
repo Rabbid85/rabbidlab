@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.199', [
+    'Updates on Devices no longer turns to Not checked after a client updates itself. The last answer from Windows Update stays until the new one comes in.']],
   ['1.1.198', [
     'Lock, Sign everyone out, Shut down and Send a message on Devices. Lock sends everyone back to the sign-in screen with their apps still open. These are for now: a computer offline for more than 15 minutes does not get them later.',
     'A computer panel has one Actions button with the same menu as the toolbar, in place of a row of buttons.',

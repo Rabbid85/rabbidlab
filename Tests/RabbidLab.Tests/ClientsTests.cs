@@ -367,6 +367,12 @@ public sealed class ClientsTests : IDisposable
         Assert.Equal(2, whole.GetProperty("software").GetArrayLength());
         Assert.Equal("KB5046617", whole.GetProperty("missing")[0].GetProperty("kb").GetString());
         Assert.True(File.Exists(Path.Combine(data, "Inventory", id + ".json")));
+
+        // The client restarts (its own update, say) and reports before Windows Update has answered it: the last answer stays.
+        (await SendInventory(id, secret, new { model = "OptiPlex 7090", disks = Array.Empty<object>() })).EnsureSuccessStatusCode();
+        var after = (await admin.GetFromJsonAsync<JsonElement>("/api/clients"))[0].GetProperty("inventory");
+        Assert.Equal(1, after.GetProperty("missing").GetInt32());
+        Assert.NotEqual(JsonValueKind.Null, after.GetProperty("missingChecked").ValueKind);
     }
 
     [Fact]

@@ -145,6 +145,11 @@ public sealed class Inventories(DataFolder folder, TimeProvider clock)
         {
             inventory.Nics = had.Nics;
         }
+        // A client that just started (after its own update, say) hasn't heard from Windows Update yet: the last answer stays.
+        if (inventory.MissingChecked is null && Get(id) is { MissingChecked: not null } knew)
+        {
+            (inventory.Missing, inventory.MissingChecked) = (knew.Missing, knew.MissingChecked);
+        }
         Save(id, inventory);
     }
 
