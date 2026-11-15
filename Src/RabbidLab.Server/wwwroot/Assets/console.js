@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.191', [
+    'After an update, the opening screen says Updated to and the version in a small pill, instead of a card with the whole note. The notes are under What is new.']],
   ['1.1.190', [
     'Printers on Devices. Each computer has a Printers tab, and Browse has a Printers list. Add a printer by IP address, TCP/IP port, LPR, a shared printer or a device address, to one computer or to ticked computers from Actions. Remove one or print a test page from its row. Universal Print printers show too. Clients send their printers from 1.1.190 on.',
     'The key icon sits in the middle of its square, and the arrows and chips on Administrators line up.']],
@@ -1501,8 +1503,7 @@ const RELEASE_NOTES = [
     let el = null;
     let steps = BOOT; // narrowed to what this person's roles read, once sign-in has answered
     const got = {}; // path -> what it said
-    let shownAt = 0;
-    let news = null; // { version, note } when this browser opens a version for the first time
+    let news = null; // { version } when this browser opens a version for the first time
     // Played in full, one step at a time, just after signing in or an update. A refresh only shows it when loading is slow,
     // with the steps landing as fast as their reads come back.
     let playing = false;
@@ -1510,7 +1511,7 @@ const RELEASE_NOTES = [
     let landed = 0; // steps shown as done
     let ready = false; // the console is ready underneath
     let timer = null;
-    const pace = () => (!playing ? 80 : news ? 760 : 480); // between steps; slower after an update, with a note to read
+    const pace = () => (!playing ? 80 : 480); // between steps
     const doing = (s) => (s.path === '/api/signin' && !signing ? 'Checking your session' : s.doing);
     const draw = () => {
       if (!el) return;
@@ -1545,7 +1546,7 @@ const RELEASE_NOTES = [
       setTimeout(() => {
         gone.classList.add('out');
         setTimeout(() => gone.remove(), 500);
-      }, !playing ? 0 : Math.max(700, (news ? 3600 : 0) - (Date.now() - shownAt)));
+      }, playing ? 700 : 0);
     };
     // A square of the banner's colours drops into the flask for each read that comes back.
     const drop = () => {
@@ -1585,26 +1586,23 @@ const RELEASE_NOTES = [
         } catch {
           // Not kept: no note, and a refresh is all it can be.
         }
-        const note = seen && seen !== s.version ? RELEASE_NOTES.find(([v]) => v === s.version)?.[1]?.[0] : null;
-        if (note) news = { version: s.version, note };
+        if (seen && seen !== s.version) news = { version: s.version };
         if (signing || news) {
           playing = true;
-          if (el) el.querySelector('.boot-news')?.remove(); // shown early by a slow sign-in: drawn again with the note
-          if (el && news) el.insertAdjacentHTML('beforeend', `<div class="boot-news"><span class="tag">New</span><p><b>Updated to ${esc(news.version)}.</b> ${esc(news.note)}</p></div>`);
+          if (el && news && !el.querySelector('.boot-new')) el.insertAdjacentHTML('beforeend', `<p class="boot-new">Updated to <b>${esc(news.version)}</b></p>`); // shown early by a slow sign-in
           this.show();
         }
         draw();
       },
       show() {
         if (el || !document.body.classList.contains('booting')) return;
-        shownAt = Date.now();
         timer = setTimeout(tick, 250);
         el = document.createElement('div');
         el.className = 'boot';
         el.setAttribute('role', 'status');
         el.innerHTML = `<div class="boot-flask">${FLASK.replace(/<path class="flask-wave"[^>]*\/>/, '<g class="boot-level"><path class="flask-wave" fill="url(#flask-ember)" d="M0 41Q8 37 16 41T32 41T48 41T64 41T80 41T96 41V96H0Z"/></g>')}</div>`
           + `<h1 class="boot-name">${esc(labName)}</h1><p class="boot-step"></p><div class="boot-dots"></div>`
-          + (news ? `<div class="boot-news"><span class="tag">New</span><p><b>Updated to ${esc(news.version)}.</b> ${esc(news.note)}</p></div>` : '');
+          + (news ? `<p class="boot-new">Updated to <b>${esc(news.version)}</b></p>` : '');
         document.body.append(el);
         draw();
       },

@@ -261,11 +261,9 @@ body.booting .rail > *, body.booting .top-links, body.booting .main > :not(.busy
 .boot-dots { display: flex; gap: 8px; margin-top: 16px; }
 .boot-dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--line-strong); transition: background .3s ease, box-shadow .3s ease; }
 .boot-dots i.on { background: var(--accent-line); box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 70%, transparent); }
-.boot-news { display: flex; gap: 12px; align-items: flex-start; max-width: 560px; margin-top: 22px; padding: 12px 14px; border: 1px solid var(--line-strong); border-radius: 12px;
-  background: color-mix(in srgb, var(--panel) 80%, transparent); text-align: left; }
-.boot-news .tag { flex: none; padding: 2px 7px; border-radius: 5px; background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--accent-line); font-size: 11px; font-weight: 700; }
-.boot-news p { margin: 0; color: var(--text); font-size: 13px; line-height: 1.55; }
-.boot-news b { color: var(--title); }
+.boot-new { margin: 22px 0 0; padding: 5px 12px; border: 1px solid color-mix(in srgb, var(--accent-line) 55%, transparent); border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--muted); font-size: 12.5px; }
+.boot-new b { color: var(--title); font-weight: 650; }
 .boot-drop { position: fixed; top: -30px; z-index: 1; width: 16px; height: 16px; border-radius: 24%; animation: boot-drop .75s cubic-bezier(.55, 0, .75, .4) forwards; }
 @keyframes boot-drop { to { transform: translate(var(--dx), var(--dy)) rotate(200deg) scale(.4); opacity: .2; } }
 @media (max-width: 700px) { .boot .flask { width: 150px; height: 150px; } .boot-name { font-size: 34px; } }

@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.191 (2026-11-15)
+
+- After an update, the opening screen says Updated to and the version in a small pill, instead of a card with the whole note. The notes are under What is new.
+
 ## 1.1.190 (2026-11-15)
 
 - Printers on Devices. Each computer has a Printers tab, and Browse has a Printers list. Add a printer by IP address, TCP/IP port, LPR, a shared printer or a device address, to one computer or to ticked computers from Actions. Remove one or print a test page from its row. Universal Print printers show too. Clients send their printers from 1.1.190 on.
