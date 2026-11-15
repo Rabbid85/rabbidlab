@@ -21,6 +21,9 @@ public sealed class Session
     public bool Remembered { get; set; }
     public DateTimeOffset Started { get; set; }
     public DateTimeOffset LastSeen { get; set; }
+
+    /// <summary>When they last did something: signed in, or a click, key or scroll the page reported. Polls don't count.</summary>
+    public DateTimeOffset Active { get; set; }
     public DateTimeOffset? Expires { get; set; }
     public string? Address { get; set; }
     public string? Agent { get; set; }
@@ -59,6 +62,11 @@ public sealed class Sessions : ITicketStore, IDisposable
         {
             foreach (var s in file.Read())
             {
+                // Saved before Active was kept: counted from when it was last seen.
+                if (s.Active == default)
+                {
+                    s.Active = s.LastSeen;
+                }
                 sessions[s.Id] = s;
             }
         }
@@ -90,6 +98,19 @@ public sealed class Sessions : ITicketStore, IDisposable
         lock (gate)
         {
             return sessions.GetValueOrDefault(id);
+        }
+    }
+
+    /// <summary>Marks a session as just used by its person, for Sign out when idle.</summary>
+    public void Touch(string id)
+    {
+        lock (gate)
+        {
+            if (sessions.TryGetValue(id, out var s))
+            {
+                s.Active = clock.GetUtcNow();
+                changed = true;
+            }
         }
     }
 
@@ -170,6 +191,7 @@ public sealed class Sessions : ITicketStore, IDisposable
             Remembered = ticket.Properties.IsPersistent,
             Started = now,
             LastSeen = now,
+            Active = now,
             Expires = ticket.Properties.ExpiresUtc,
             Address = context is null ? null : ActivityLog.Address(context),
             Agent = context?.Request.Headers.UserAgent.ToString(),
@@ -311,6 +333,20 @@ public static class SessionsApi
                 device = Sessions.Device(s.Agent),
                 current = s.Id == current,
             });
+        });
+
+        // The page saying its person clicked, typed or scrolled, which Sign out when idle counts from. Answers the setting.
+        app.MapPost("/api/sessions/active", (HttpContext context, Sessions sessions, SettingsStore settings) =>
+        {
+            if (Access.Refuse(context) is { } refused)
+            {
+                return refused;
+            }
+            if (Sessions.Current(context) is { } id)
+            {
+                sessions.Touch(id);
+            }
+            return Results.Ok(new { idle = settings.Current.IdleMinutes });
         });
 
         // Signs a session out: anyone their own, and others' with Sign other people out.

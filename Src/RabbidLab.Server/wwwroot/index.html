@@ -230,6 +230,7 @@
       <p class="rail-label">Server</p>
       <a href="#settings/address" data-sub="address"><svg><use href="#i-browser"/></svg><span>Console address</span></a>
       <a href="#settings/updates" data-sub="updates" data-can="updates.view"><svg><use href="#i-updates"/></svg><span>Updates</span><i class="rail-dot" id="srail-dot" hidden></i></a>
+      <a href="#settings/signin" data-sub="signin" data-can="access.roles"><svg><use href="#i-lock"/></svg><span>Sign-in</span></a>
       <a href="#settings/activity" data-sub="activity" data-can="activity.view"><svg class="all-flask" viewBox="0 0 24 24" aria-hidden="true"><path class="liquid" d="M6.6 15.2h10.8l2 3.2A1.7 1.7 0 0 1 17.9 21H6.1a1.7 1.7 0 0 1-1.5-2.6z"/><path d="M9 3h6M10 3v6.2L4.6 18.4A1.7 1.7 0 0 0 6.1 21h11.8a1.7 1.7 0 0 0 1.5-2.6L14 9.2V3"/></svg><span>Activity log</span></a>
       <div class="dkids" data-kids="activity">
         <a href="#settings/activity/signins" data-sub="activity" data-sec="signins"><span class="nm">Sign-ins</span></a>
@@ -360,6 +361,16 @@
         <div class="ds-row"><div class="ds-l"><b>Update automatically</b><span>New versions install when nobody is using <span data-app>Rabbid Lab</span>.</span></div>
           <div class="ds-r"><span class="sw-label" id="upd-auto-label">Off</span><input type="checkbox" class="switch" id="upd-auto" role="switch" aria-label="Update automatically"></div></div>
         <p class="ds-note"><svg><use href="#i-lock"/></svg><span>Updates come from <a id="upd-source" href="#" rel="noopener">GitHub</a> and only install if they're signed by Rabbid Lab.</span></p>
+      </section>
+    </section>
+
+    <!-- Sign-in: how long people stay signed in (console.js, SignIn.cs). -->
+    <section class="sub" data-sub="signin" data-title="Sign-in" hidden>
+      <header class="sub-head"><h2>Sign-in</h2><p>How long people stay signed in to <span data-app>Rabbid Lab</span>.</p></header>
+      <section class="ds-sec" data-sec="idle"><h3 class="ds-h">Signing out <small class="ds-scope">Everyone</small></h3>
+        <div class="ds-row"><div class="ds-l"><b>Sign out when idle</b><span>After this long without a click, key press or scroll in any of their tabs. They get a minute's warning first.</span></div>
+          <div class="ds-r"><select id="si-idle" aria-label="Sign out when idle"><option value="0">Never</option><option value="15">15 minutes</option><option value="30">30 minutes</option><option value="60">1 hour</option><option value="120">2 hours</option><option value="240">4 hours</option><option value="480">8 hours</option></select></div></div>
+        <p class="hint problem" id="si-problem" hidden></p>
       </section>
     </section>
 
@@ -1569,6 +1580,12 @@
   <div class="dialog-foot"><button type="button" id="fl-cancel">Cancel</button><button type="button" class="primary" id="fl-save">Save</button></div>
 </dialog>
 
+<!-- Sign out when idle (console.js): a minute's warning, then the sign-in page. -->
+<dialog class="dialog" id="idle-dialog" aria-labelledby="idle-title">
+  <h2 id="idle-title">Still there?</h2>
+  <p class="dialog-lead" id="idle-lead"></p>
+  <div class="dialog-foot"><button type="button" id="idle-out">Sign out</button><button type="button" class="primary" id="idle-stay" autofocus>Stay signed in</button></div>
+</dialog>
 <dialog class="dialog" id="sure-dialog" aria-labelledby="sure-title">
   <h2 id="sure-title"></h2>
   <p class="dialog-lead" id="sure-lead"></p>

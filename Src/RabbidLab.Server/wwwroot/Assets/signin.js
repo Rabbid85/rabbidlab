@@ -16,6 +16,21 @@
     $('error').hidden = !text;
   };
 
+  // Signed out for being idle (console.js): said here, and signing in goes back to the page they were on.
+  const idleFor = Number(new URLSearchParams(location.search).get('idle'));
+  if (idleFor > 0) {
+    $('idle-note').textContent = `You were signed out after ${idleFor % 60 ? `${idleFor} minutes` : idleFor === 60 ? '1 hour' : `${idleFor / 60} hours`} without activity.`;
+    $('idle-note').hidden = false;
+  }
+  const home = () => {
+    let back = '';
+    try {
+      back = sessionStorage.getItem('rabbidlab.back') || '';
+      sessionStorage.removeItem('rabbidlab.back');
+    } catch { /* none */ }
+    return back.startsWith('#') ? `/${back}` : '/';
+  };
+
   // MFA, after a right password: the answer is a ticket to send the code with, and nobody is signed in yet. When a role
   // requires MFA and the account hasn't set it up, the answer also has the QR code to set it up with.
   let ticket = '';
@@ -47,7 +62,7 @@
     try {
       const r = await fetch('/api/signin/mfa', { method: 'POST', headers, body: JSON.stringify({ ticket, code: $('mfa-code').value }) });
       if (r.ok) {
-        location.replace('/');
+        location.replace(home());
         return;
       }
       const said = await r.json().catch(() => null);
@@ -75,7 +90,7 @@
           askCode(said);
           return;
         }
-        location.replace('/');
+        location.replace(home());
         return;
       }
       const said = await r.json().catch(() => null);
@@ -308,7 +323,7 @@
 
   const start = async () => {
     const s = (await getJson('/api/signin')).body;
-    if (s.user) return location.replace('/');
+    if (s.user) return location.replace(home());
     const setup = !s.setUp;
 
     // What changes between setting up and signing in: the words and the confirm box.

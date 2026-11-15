@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.174 (2026-11-15)
+
+- Rabbid Lab signs people out after 30 minutes without a click, key press or scroll, even with the page left open. A minute before, it asks if you are still there.
+- Change how long, or turn it off, in Settings > Sign-in. The activity log says when someone was signed out for being idle.
+- Signing in again takes you back to the page you were on.
+
 ## 1.1.173 (2026-11-14)
 
 - Devices has a WMI query page under Tools. Pick computers, type a query or pick an example, and the answer from each computer shows as a list you can sort, filter and export. Classes lists every namespace and class on a computer.

@@ -81,13 +81,41 @@ public static class SignIn
                 }
                 // A role that requires MFA takes a code: a session from before it did ends, and signing in again asks for one.
                 var noCode = p is not null && p.FindFirstValue("mfa") is null && roles.NeedsMfa(Who.Of(p));
-                if (stamp is null || stamp != current || old || noCode || p is null || !roles.CanSignIn(Who.Of(p)))
+                if (stamp is null || stamp != current || old || noCode || p is null || !roles.CanSignIn(Who.Of(p)) || IdleOut(context.HttpContext, p))
                 {
                     context.RejectPrincipal();
                     await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
                 }
             };
         });
+    }
+
+    // Sign out when idle: the choices, in minutes (0 is never), and the slack the page's once-a-minute report needs.
+    public static readonly int[] IdleChoices = [0, 15, 30, 60, 120, 240, 480];
+    private static readonly TimeSpan IdleSlack = TimeSpan.FromMinutes(1);
+
+    public static string IdleWords(int minutes) => minutes % 60 == 0 ? (minutes == 60 ? "1 hour" : $"{minutes / 60} hours") : $"{minutes} minutes";
+
+    /// <summary>
+    /// Whether this session went longer than Sign out when idle allows without its person doing anything. The page signs
+    /// itself out first; this catches a page that couldn't, such as a sleeping laptop or a tab the browser froze.
+    /// </summary>
+    private static bool IdleOut(HttpContext context, ClaimsPrincipal p)
+    {
+        var minutes = context.RequestServices.GetRequiredService<SettingsStore>().Current.IdleMinutes;
+        var sessions = context.RequestServices.GetRequiredService<Sessions>();
+        if (minutes <= 0 || Sessions.Current(context) is not { } id || sessions.Find(id) is not { } s
+            || context.RequestServices.GetRequiredService<TimeProvider>().GetUtcNow() - s.Active <= TimeSpan.FromMinutes(minutes) + IdleSlack)
+        {
+            return false;
+        }
+        // Logged once, by whichever request ends it.
+        if (sessions.End(id))
+        {
+            context.RequestServices.GetRequiredService<ActivityLog>().Record(p.Identity?.Name ?? "", ActivityLog.Address(context), "sign-in", "signout.idle",
+                $"Signed out after {IdleWords(minutes)} without activity", "ok");
+        }
+        return true;
     }
 
     /// <summary>Who is asking, then the gate: until someone signs in, pages lead to setup or sign-in and the API says 401.</summary>
@@ -170,6 +198,7 @@ public static class SignIn
             thisDomain = accounts.SetUp ? null : ActiveDirectory.ThisDomain(),
             user = context.User.Identity?.IsAuthenticated == true ? Me(context.User, roles) : null,
             brand = Brand.Read(settings.Current), // the lab's own name, icon and accent, so the sign-in page wears them too
+            idle = settings.Current.IdleMinutes, // Sign out when idle, so the page can warn before it happens
         }));
 
         // The sign-in page's Change: the domains accounts may sign in from, and a domain's controllers and which ones answer now.
@@ -412,10 +441,33 @@ public static class SignIn
             return Results.Ok(new { user = Me(waiting.Principal, roles) });
         });
 
-        app.MapPost("/api/signout", async (HttpContext context) =>
+        app.MapPost("/api/signout", async (HttpContext context, bool? idle, SettingsStore settings, ActivityLog log) =>
         {
+            // The page signing itself out after Sign out when idle.
+            if (idle == true && context.User.Identity?.IsAuthenticated == true && settings.Current.IdleMinutes > 0)
+            {
+                log.Record(context, "sign-in", "signout.idle", $"Signed out after {IdleWords(settings.Current.IdleMinutes)} without activity");
+            }
             await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
             return Results.Ok();
+        });
+
+        // Sign out when idle, for everyone: how long without a click, key press or scroll before a session ends.
+        app.MapGet("/api/settings/signin", (HttpContext context, SettingsStore settings) =>
+            Access.Can(context, Permissions.AccessRoles) ? Results.Ok(new { idle = settings.Current.IdleMinutes }) : Access.NotAllowed());
+        app.MapPost("/api/settings/signin", (HttpContext context, SignInSettingsForm form, SettingsStore settings, ActivityLog log) =>
+        {
+            if (Access.RefuseUnless(context, Permissions.AccessRoles) is { } refused)
+            {
+                return refused;
+            }
+            if (!IdleChoices.Contains(form.Idle))
+            {
+                return Results.BadRequest(new { error = "Pick Never, 15 or 30 minutes, or 1, 2, 4 or 8 hours." });
+            }
+            settings.Change(s => s.IdleMinutes = form.Idle);
+            log.Record(context, "admin", "settings.idle", form.Idle == 0 ? "Turned off Sign out when idle" : $"Set Sign out when idle to {IdleWords(form.Idle)}");
+            return Results.Ok(new { idle = form.Idle });
         });
 
         // Your own password, for Rabbid Lab accounts only. Needs the current one; wrong ones count against sign-in's limit.
@@ -586,6 +638,8 @@ public sealed record DirectorySetupForm(string? Domain, string? Username, string
 public sealed record SignInForm(string? Username, string? Password, bool Remember, string? Server = null, bool Local = false, string? Domain = null);
 
 public sealed record MfaSignInForm(string? Ticket, string? Code);
+
+public sealed record SignInSettingsForm(int Idle);
 
 
 /// <summary>Ten wrong passwords from one address in ten minutes, then it waits.</summary>

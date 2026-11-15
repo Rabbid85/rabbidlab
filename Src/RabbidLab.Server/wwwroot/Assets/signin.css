@@ -76,6 +76,7 @@ button.go:hover { filter: brightness(1.08); background: var(--ember); }
 button.go:active { transform: translateY(1px); }
 button.go:disabled { filter: grayscale(.4); opacity: .6; }
 .auth-error { margin: 12px 0 0; padding: 8px 11px; border-radius: 8px; background: rgba(255, 107, 125, .07); border: 1px solid rgba(255, 107, 125, .35); color: #FF8D9B; font-size: 12.5px; line-height: 1.45; }
+.auth-note { margin: 0 0 14px; padding: 8px 11px; border-radius: 8px; background: rgba(242, 190, 107, .07); border: 1px solid rgba(242, 190, 107, .3); color: #F2CE8F; font-size: 12.5px; line-height: 1.45; }
 /* Local account or Active Directory: a link under the button. */
 .other-kind { align-self: center; margin-top: 14px; padding: 4px 8px; border: 0; background: transparent; color: var(--muted); font-size: 13px; font-weight: 600; }
 .other-kind:hover { background: transparent; color: var(--accent-soft); text-decoration: underline; text-underline-offset: 3px; }

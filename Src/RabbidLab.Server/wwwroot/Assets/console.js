@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.174', [
+    'Rabbid Lab signs people out after 30 minutes without a click, key press or scroll, even with the page left open. A minute before, it asks if you are still there.',
+    'Change how long, or turn it off, in Settings > Sign-in. The activity log says when someone was signed out for being idle.',
+    'Signing in again takes you back to the page you were on.']],
   ['1.1.173', [
     'Devices has a WMI query page under Tools. Pick computers, type a query or pick an example, and the answer from each computer shows as a list you can sort, filter and export. Classes lists every namespace and class on a computer.',
     'WMI queries only read, need the new Query computers with WMI permission, and each one is in the activity log. Computers answer once their client is 1.1.173, which they update to by themselves.',
@@ -565,11 +569,82 @@ const RELEASE_NOTES = [
       pending--;
     }
     if (r.status === 401) {
-      location.replace('/signin.html');
+      toSignIn(idleMin > 0 && idleLeft() <= 0);
       throw new Error('Signed out');
     }
     return r;
   };
+
+  // Sign out when idle: a click, key, scroll or mouse move in any open tab counts. A minute before the end, a warning;
+  // at the end, the sign-in page. The server hears at most once a minute and ends a session nobody used anyway.
+  const ACTIVE = 'rabbidlab.active';
+  let idleMin = 30;
+  let idleHere = Date.now();
+  let idleTold = 0;
+  let idleLater = null;
+  let idleGone = false;
+  let idleXY = '';
+  const idleLast = () => {
+    let t = idleHere;
+    try { t = Math.max(t, Number(localStorage.getItem(ACTIVE)) || 0); } catch { /* none */ }
+    return t;
+  };
+  const idleLeft = () => idleLast() + idleMin * 60000 - Date.now();
+  // Back to the sign-in page, which returns here after.
+  const toSignIn = (idle) => {
+    try { if (location.hash.length > 1) sessionStorage.setItem('rabbidlab.back', location.hash); } catch { /* none */ }
+    location.replace(idle ? `/signin.html?idle=${idleMin}` : '/signin.html');
+  };
+  const idleTell = () => {
+    idleTold = Date.now();
+    plainFetch('/api/sessions/active', { method: 'POST', headers }).then((r) => (r.ok ? r.json() : null))
+      .then((j) => { if (Number.isInteger(j?.idle)) idleMin = j.idle; }).catch(() => {});
+  };
+  const idleSeen = (e) => {
+    // Inside the warning only its buttons count.
+    if (idleGone || $('idle-dialog').contains(e.target)) return;
+    if (e.type === 'mousemove') {
+      // A real move only: browsers send one when the page shifts under a still mouse.
+      const xy = `${Math.round(e.screenX / 4)},${Math.round(e.screenY / 4)}`;
+      if (xy === idleXY) return;
+      idleXY = xy;
+    }
+    const now = Date.now();
+    if (now - idleHere < 2000) return;
+    idleHere = now;
+    try { localStorage.setItem(ACTIVE, String(now)); } catch { /* none */ }
+    if (now - idleTold >= 60000) idleTell();
+    else idleLater ??= setTimeout(() => { idleLater = null; idleTell(); }, 60000 - (now - idleTold));
+  };
+  const idleStay = () => {
+    idleHere = 0;
+    idleSeen({ type: 'stay', target: document.body });
+    $('idle-dialog').close();
+  };
+  const idleCheck = () => {
+    const d = $('idle-dialog');
+    if (idleGone) return;
+    const left = idleMin > 0 ? idleLeft() : Infinity;
+    if (left <= 0) {
+      idleGone = true;
+      plainFetch('/api/signout?idle=true', { method: 'POST', headers }).catch(() => {}).finally(() => toSignIn(true));
+    } else if (left > 60000) {
+      if (d.open) d.close(); // used again, here or in another tab
+    } else {
+      $('idle-lead').textContent = `Nothing has been clicked or typed in a while. You'll be signed out in ${Math.ceil(left / 1000)} seconds.`;
+      if (!d.open) d.showModal();
+    }
+  };
+  ['pointerdown', 'keydown', 'wheel', 'touchstart', 'mousemove'].forEach((t) => addEventListener(t, idleSeen, { capture: true, passive: true }));
+  $('idle-stay').addEventListener('click', idleStay);
+  $('idle-dialog').addEventListener('cancel', (e) => { e.preventDefault(); idleStay(); });
+  $('idle-out').addEventListener('click', async () => {
+    idleGone = true;
+    await plainFetch('/api/signout', { method: 'POST', headers }).catch(() => {});
+    location.replace('/signin.html');
+  });
+  idleTell(); // opening the page counts
+  setInterval(idleCheck, 1000);
   const WORDS = { current: 'Up to date', available: 'Update available', waiting: 'Waiting', downloading: 'Downloading', installing: 'Installing', failed: 'Failed' };
   let last = null;
   let timer = null;
@@ -587,7 +662,7 @@ const RELEASE_NOTES = [
   const PAGES = { overview: 'overview.view', links: 'links.view', sensors: 'sensors.view', seats: 'seats.view sessions.view', people: 'access.view', ad: 'ad.view ad.connect', local: 'windows.view',
     org: 'ad.view', attrs: 'ad.view' };
   // Settings' pages and what each needs; About is for everyone, Developer for Rabbid Lab Dev only.
-  const SUBS = { account: '', appearance: '', viewas: 'access.view', address: '', updates: 'updates.view', activity: 'activity.view', alerts: 'sensors.alerts', notifications: 'sensors.alerts', history: 'sensors.alerts',
+  const SUBS = { account: '', appearance: '', viewas: 'access.view', address: '', updates: 'updates.view', signin: 'access.roles', activity: 'activity.view', alerts: 'sensors.alerts', notifications: 'sensors.alerts', history: 'sensors.alerts',
     links: 'links.edit', sensors: 'sensors.edit', seats: 'seats.settings seats.add', ad: 'ad.connect', developer: 'updates.auto', support: '', about: '' };
   const subOk = (s) => s in SUBS && (!SUBS[s] || !shown || allows(SUBS[s])) && (s !== 'developer' || document.body.classList.contains('is-dev'));
   const pageOk = (key) => !shown || !PAGES[key] || allows(PAGES[key]);
@@ -1892,7 +1967,8 @@ const RELEASE_NOTES = [
     // The account chip: initials and name, with a menu saying how this session signed in.
     const signedIn = (s) => {
       const u = s.user;
-      if (!u) return location.replace('/signin.html');
+      if (!u) return toSignIn(false);
+      if (Number.isInteger(s.idle)) idleMin = s.idle;
       const name = u.name || u.username;
       const letters = initials(name);
       const domain = u.domain || s.domain;
@@ -2786,6 +2862,25 @@ const RELEASE_NOTES = [
     }
   };
   document.addEventListener('rabbidlab:show', (e) => { if (e.detail[0] === 'settings' && (!e.detail[1] || e.detail[1] === 'account')) drawMySessions(); });
+  // Settings, Sign-in: Sign out when idle, saved as it changes.
+  document.addEventListener('rabbidlab:show', async (e) => {
+    if (e.detail[0] !== 'settings' || e.detail[1] !== 'signin' || !has('access.roles')) return;
+    say('si-problem', '');
+    try {
+      $('si-idle').value = String((await get('/api/settings/signin')).idle);
+    } catch (err) {
+      say('si-problem', err.message);
+    }
+  });
+  $('si-idle').addEventListener('change', async () => {
+    say('si-problem', '');
+    try {
+      idleMin = (await send('/api/settings/signin', { idle: Number($('si-idle').value) })).idle;
+      toast('Saved', idleMin ? `Everyone is signed out after ${$('si-idle').selectedOptions[0].textContent} without activity.` : 'Nobody is signed out for being idle.');
+    } catch (err) {
+      say('si-problem', err.message);
+    }
+  });
   $('acc-sessions').addEventListener('click', async (e) => {
     if (e.target.closest('[data-signout]')) return $('signout').click(); // this browser: the usual sign-out
     const row = e.target.closest('[data-end]') && e.target.closest('[data-session]');

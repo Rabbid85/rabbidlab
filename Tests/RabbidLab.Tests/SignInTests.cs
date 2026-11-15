@@ -136,6 +136,7 @@ public sealed class SignInTests : IDisposable
     public async Task Keep_me_signed_in_lasts_for_days()
     {
         await app.SignedIn();
+        app.Services.GetRequiredService<SettingsStore>().Change(s => s.IdleMinutes = 0); // Sign out when idle off: days untouched
         var page = app.Page();
         (await page.PostAsJsonAsync("/api/signin", new { username = "admin", password = "correct horse", remember = true })).EnsureSuccessStatusCode();
 
@@ -295,6 +296,7 @@ public sealed class SignInTests : IDisposable
     [Fact]
     public async Task Active_Directory_and_Windows_sessions_end_a_week_after_signing_in_however_much_they_are_used()
     {
+        app.Services.GetRequiredService<SettingsStore>().Change(s => s.IdleMinutes = 0); // Sign out when idle off: days untouched
         await app.Page().PostAsJsonAsync("/api/setup/directory", new { domain = "amw.com", username = "awiles", password = "domain pass" });
         app.Services.GetRequiredService<Accounts>().AddAdmin("rescue", "rescue pass");
         var domain = app.Page();

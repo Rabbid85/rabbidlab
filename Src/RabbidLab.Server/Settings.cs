@@ -16,6 +16,9 @@ public sealed class ConsoleSettings
     public string? LabName { get; set; }
     public string? LabIcon { get; set; }
     public string? Accent { get; set; }
+
+    /// <summary>Sign out when idle: minutes without a click, key press or scroll before a session ends (SignIn.IdleOut). 0 is never.</summary>
+    public int IdleMinutes { get; set; } = 30;
 }
 
 /// <summary>Reads and writes settings.json in the data folder, and encrypts and decrypts the secrets in it.</summary>
