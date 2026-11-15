@@ -12,6 +12,9 @@ public interface IWindowsAccounts
 
     /// <summary>Lists or changes this computer's accounts (WindowsUsers, the same code the client runs).</summary>
     Task<AccountAnswer> Do(AccountOrder order, CancellationToken stop);
+
+    /// <summary>Who's in this computer's Administrators group, and its accounts without their groups; null when Windows won't say.</summary>
+    Task<(List<WindowsMember> Admins, List<WindowsAccount> Locals)?> ReadAdmins(CancellationToken stop);
 }
 
 public sealed class WindowsAccounts : IWindowsAccounts
@@ -22,6 +25,22 @@ public sealed class WindowsAccounts : IWindowsAccounts
 
     public Task<AccountAnswer> Do(AccountOrder order, CancellationToken stop) =>
         Task.Run(() => OperatingSystem.IsWindows() ? WindowsUsers.Do(order) : AccountAnswer.Failed(order.Id, $"{Product.Title} isn't running on Windows here, so this server has no Windows accounts."), stop);
+
+    public Task<(List<WindowsMember> Admins, List<WindowsAccount> Locals)?> ReadAdmins(CancellationToken stop) => Task.Run<(List<WindowsMember>, List<WindowsAccount>)?>(() =>
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return null;
+        }
+        try
+        {
+            return (WindowsUsers.Admins(), WindowsUsers.Locals());
+        }
+        catch (Exception e) when (e is SystemException or PrincipalException)
+        {
+            return null;
+        }
+    }, stop);
 
     [SupportedOSPlatform("windows")]
     private static string? Check(string name, string password)

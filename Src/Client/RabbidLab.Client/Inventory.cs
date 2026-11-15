@@ -34,6 +34,12 @@ internal sealed class InventoryReport
 
     /// <summary>When Windows Update last answered what's missing, as ISO 8601; left out until it has.</summary>
     [DataMember(Name = "missingChecked", EmitDefaultValue = false)] public string? MissingChecked { get; set; }
+
+    /// <summary>Everyone in Administrators; left out when Windows wouldn't say.</summary>
+    [DataMember(Name = "admins", EmitDefaultValue = false)] public List<RabbidLab.Shared.WindowsMember>? Admins { get; set; }
+
+    /// <summary>The computer's own accounts, without their groups.</summary>
+    [DataMember(Name = "locals", EmitDefaultValue = false)] public List<RabbidLab.Shared.WindowsAccount>? Locals { get; set; }
 }
 
 [DataContract]
@@ -167,6 +173,17 @@ internal static class Inventory
             // The drives read so far are sent.
         }
         r.Software = Programs();
+        try
+        {
+            r.Admins = RabbidLab.Shared.WindowsUsers.Admins();
+            r.Locals = RabbidLab.Shared.WindowsUsers.Locals();
+        }
+        catch (Exception)
+        {
+            // Sent without it: the server keeps the last list it had.
+            r.Admins = null;
+            r.Locals = null;
+        }
         r.RestartNeeded = Exists(@"SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired")
             || Exists(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending");
         if (missingChecked is { } at2 && missing is not null)
@@ -298,6 +315,14 @@ internal static class Inventory
         foreach (var u in r.Updates.Concat(r.Missing))
         {
             all.Append('|').Append(u.Kb).Append(':').Append(u.Title);
+        }
+        foreach (var a in r.Admins ?? new List<RabbidLab.Shared.WindowsMember>())
+        {
+            all.Append("|a:").Append(a.Sid ?? a.Name);
+        }
+        foreach (var l in r.Locals ?? new List<RabbidLab.Shared.WindowsAccount>())
+        {
+            all.Append("|l:").Append(l.Name).Append(':').Append(l.Enabled).Append(':').Append(l.NeverExpires);
         }
         using var sha = SHA256.Create();
         return BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(all.ToString())));

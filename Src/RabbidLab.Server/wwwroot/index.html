@@ -30,6 +30,7 @@
 <script src="Assets/wiki.js" defer></script>
 <script src="Assets/directory.js" defer></script>
 <script src="Assets/devices.js" defer></script>
+<script src="Assets/accounts.js" defer></script>
 </head>
 <!-- The console: the top bar, the rail down the left, and one page at a time (console.js picks it from the address). -->
 <body class="app booting">
@@ -166,7 +167,6 @@
   <a href="#ad/users" data-page="ad" id="rail-dir" title="Active Directory" data-can="ad.view ad.connect"><svg><use href="#i-users"/></svg><span>Active Directory</span><i class="rail-dot bad" id="rail-dir-dot" hidden></i></a>
   <a href="#ad/domain" data-page="domain" id="rail-domain" title="Domain health" data-can="ad.view ad.connect" data-whole><svg><use href="#i-shield"/></svg><span>Domain health</span><i class="rail-dot bad" id="rail-domain-dot" hidden></i></a>
   <p class="rail-label" data-can="access.view windows.view">Config</p>
-  <a href="#local" data-page="local" title="Local accounts" data-can="windows.view"><svg><use href="#i-key"/></svg><span>Local accounts</span></a>
   <a href="#people" data-page="people" title="Roles and people" data-can="access.view"><svg><use href="#i-shield"/></svg><span>Roles and people</span><small id="rail-roles"></small></a>
   <p class="rail-label">Help</p>
   <a href="#wiki" data-page="wiki" title="Wiki"><svg><use href="#i-book"/></svg><span>Wiki</span></a>
@@ -561,6 +561,7 @@
         <div class="dkids" id="dv-views"></div>
         <a href="#seats/software" data-dv="software" data-can="seats.view"><svg><use href="#i-box"/></svg><span>Software</span><small id="dv-n-software"></small></a>
         <a href="#seats/updates" data-dv="updates" data-can="seats.view"><svg><use href="#i-updates"/></svg><span>Windows updates</span><small id="dv-n-updates"></small></a>
+        <a href="#seats/admins" data-dv="admins" data-can="windows.view"><svg><use href="#i-shield"/></svg><span>Local admins</span><small id="dv-n-admins"></small></a>
         <p class="rail-label" data-can="seats.actions seats.scripts.run seats.scripts.edit seats.workflows seats.wmi">Tools</p>
         <a href="#seats/wmi" data-dv="wmi" data-can="seats.wmi"><svg><use href="#i-list"/></svg><span>WMI query</span><small id="dv-n-wmi"></small></a>
         <a href="#seats/scripts" data-dv="scripts" data-can="seats.scripts.run seats.scripts.edit seats.workflows"><svg><use href="#i-code"/></svg><span>Scripts</span><small id="dv-n-scripts"></small></a>
@@ -597,6 +598,8 @@
         <div class="table adt drows" id="dv-wmi" hidden></div>
         <div class="table adt drows" id="dv-software" hidden></div>
         <div class="table adt drows" id="dv-updates" hidden></div>
+        <div class="table adt drows" id="dv-admins" hidden></div>
+        <div class="table adt drows" id="dv-adminp" hidden></div>
         <div class="table adt drows" id="sessions-table" hidden></div>
         <div class="table adt drows" id="dv-scripts" hidden></div>
         <div class="table adt drows" id="dv-jobs" hidden></div>
@@ -849,30 +852,6 @@
   </div>
   </section>
 
-  <!-- Local accounts: the Windows accounts on this server and on each computer in Devices, whose client makes the change (users.js). -->
-  <section class="page people-page users-page" id="page-local" data-page="local" data-title="Local accounts" hidden>
-    <header class="page-head"><h1>Local accounts</h1>
-      <p>Local Windows accounts on this server and on every computer in Devices. No service account is needed: <span data-app>Rabbid Lab</span> changes accounts on this server itself, and its client changes them on the other computers.</p></header>
-    <div class="lib">
-      <aside class="side" aria-label="Computers">
-        <label class="side-find"><svg><use href="#i-search"/></svg><input type="search" id="us-find" placeholder="Find an account" aria-label="Find an account" autocomplete="off" spellcheck="false"></label>
-        <p class="side-label">Computers</p>
-        <div class="side-list" id="us-computers"></div>
-        <p class="side-label">Show</p>
-        <label class="tick"><input type="checkbox" id="us-off" checked>Disabled accounts</label>
-        <label class="tick"><input type="checkbox" id="us-system">Built-in accounts</label>
-      </aside>
-      <div class="lib-body">
-        <div class="lib-bar"><h2 id="us-pc-title"></h2><span class="bar-note" id="us-pc-line"></span>
-          <button type="button" class="primary" id="us-pc-new" data-can="windows.create"><svg><use href="#i-plus"/></svg>New account</button></div>
-        <p class="hint why" id="us-pc-why" hidden></p>
-        <div class="prows" id="us-pc-rows"></div>
-        <p class="hint problem" id="us-problem" hidden></p>
-        <p class="hint note" id="us-note" hidden></p>
-      </div>
-    </div>
-  </section>
-
   <!-- Org chart: who reports to whom, from each person's Manager in Active Directory (directory.js). -->
   <section class="page home dir-top org-page" id="page-org" data-page="org" data-title="Org chart" data-lead="Who reports to whom, from each person's Manager in Active Directory." hidden>
   <div class="dir-area">
@@ -1031,7 +1010,7 @@
           <div class="drop dset-drop" id="dset-drop" hidden></div></div>
         <label class="dset-fld"><span>Password</span><span class="dset-in"><svg><use href="#i-lock"/></svg><input id="dset-password" type="password" autocomplete="current-password"></span></label>
         <p class="dset-note"><svg><use href="#i-lock"/></svg><span id="dset-note"></span></p>
-        <p class="hint" data-can="windows.view">No domain, or you only need local accounts? Those need no service account: <a href="#local" id="dset-local">open Local accounts</a>.</p>
+        <p class="hint" data-can="windows.view">No domain, or you only need local accounts? Those need no service account: open a computer in <a href="#seats" id="dset-local">Devices</a> and use its Accounts tab.</p>
       </div>
       <div class="dset-pane" data-pane="account" hidden>
         <label class="dset-fld"><span>Service account name</span><span class="dset-in"><svg><use href="#i-user"/></svg><input id="dset-account" maxlength="20" autocomplete="off" spellcheck="false"></span></label>

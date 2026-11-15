@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.183', [
+    'Local accounts moved into Devices. Click a computer and open its Accounts tab to see its local accounts and everyone in its Administrators group, domain users and groups included. You can add people to the group or take them out there.',
+    'New Local admins list on Devices: who is an administrator of each computer, with domain groups opened up into people. This server has its own row in Devices now.']],
   ['1.1.182', [
     'A new version shows up sooner. Opening a Rabbid Lab page now asks GitHub, unless that was done in the last minute. While a page stays open it asks again every minute on Rabbid Lab Dev and every 5 minutes otherwise. Before, only the sign-in page, Check for updates and a check every 12 hours did.']],
   ['1.1.181', [
@@ -694,6 +697,7 @@ const RELEASE_NOTES = [
     if (['updates', 'activity', 'developer'].includes(h)) return ['settings', h, rest];
     if (h === 'settings') return ['settings', rest[0] in SUBS ? rest[0] : firstSetting(), rest.slice(1)];
     if (h === 'role') return ['people', 'role', rest];
+    if (h === 'local') return ['seats', 'seats', ['admins']]; // Local accounts moved to Devices in 1.1.183
     return [h || home(), h, rest];
   };
   const page = () => {
@@ -1608,11 +1612,14 @@ const RELEASE_NOTES = [
   const stateOf = (c) => (!c.approved ? 'waiting' : c.online ? 'online' : 'offline');
   const STATE = { online: 'Online', offline: 'Offline', waiting: 'Waiting' };
   let seatPanel = null; // draws the computer open in the side panel again, once that's set up
+  let seatOn = null; // opens a computer's side panel on one of its tabs
   // What devices.js adds to this page: more lists (Scripts, Jobs, Workflows), the ticks on computers and what Actions
   // does with them, and its parts of a computer's side panel.
   const dvMore = {}; // key -> { table, grid(), rows(), load(), empty(), count(), can() }
   const dvHooks = {}; // lead(), drawn(), seatBar(c), seatTabs(c), seatPane(c, tab), seatOpened(c)
   const dvPicked = new Set(); // the ticked computers, by id
+  // Every row of Computers: this server too (accounts.js gives it through hooks.extra), then the clients.
+  const dvAll = () => [...(dvHooks.extra?.() || []), ...computers];
   // The Devices page, laid out as Active Directory is: the lists down the left (Computers has views of its own), the
   // banner with four numbers, and the list that's open. Inventory is what each computer's client sent (Inventory.cs).
   const DV_VIEWS = [['all', 'All computers', () => true], ['online', 'Online', (c) => stateOf(c) === 'online'], ['offline', 'Offline', (c) => stateOf(c) === 'offline'],
@@ -1644,10 +1651,10 @@ const RELEASE_NOTES = [
   // The rows a list has before Find and Filter narrow it.
   const dvBase = (at = dvAt) => {
     const view = DV_VIEWS.find((v) => v && v[0] === dvView) || DV_VIEWS[0];
-    return dvMore[at] ? dvMore[at].rows() : { computers: computers.filter(view[2]), software: software || [], updates: updates || [], sessions: sessionsNow }[at];
+    return dvMore[at] ? dvMore[at].rows() : { computers: dvAll().filter(view[2]), software: software || [], updates: updates || [], sessions: sessionsNow }[at];
   };
   const drawSeats = () => {
-    const n = (f) => computers.filter(f).length;
+    const n = (f) => dvAll().filter(f).length;
     $('rail-seats').textContent = n((c) => stateOf(c) === 'online') || '';
     $('seats-dot').hidden = !n((c) => stateOf(c) === 'waiting');
     if (dvMore[dvAt] ? !dvMore[dvAt].can() : dvAt === 'sessions' ? !can.has('sessions.view') : !can.has('seats.view')) dvAt = can.has('seats.view') ? 'computers' : 'sessions';
@@ -1673,7 +1680,7 @@ const RELEASE_NOTES = [
       return `<a href="#seats/computers/${v[0]}"${v[0] === view[0] ? ' aria-current="page"' : ''}><span class="nm">${esc(v[1])}</span><small class="${count && v[3] ? `tone ${v[3]}` : ''}">${count}</small></a>`;
     }).join('');
     $('dv-dot').hidden = !n((c) => stateOf(c) === 'waiting');
-    $('dv-n-computers').textContent = computers.length || '';
+    $('dv-n-computers').textContent = dvAll().length || '';
     $('dv-n-software').textContent = software ? software.length : '';
     $('dv-n-updates').textContent = updates ? updates.filter((u) => u.missing.length).length || '' : '';
     $('dv-n-sessions').textContent = sessionsNow.length || '';
@@ -1727,7 +1734,7 @@ const RELEASE_NOTES = [
     cols: [
       // The name first with its icon, as on Active Directory; one thing per column, so the name alone.
       { key: 'computer', label: 'Computer', w: 165, fixed: true, get: (c) => c.computer,
-        cell: (c) => `<div class="who"><span class="pic">${svg(/server/i.test(c.os || '') ? 'server' : 'laptop')}</span><b class="ell">${esc(c.computer)}</b></div>` },
+        cell: (c) => `<div class="who"><span class="pic"${c.server ? ' data-tip="This server"' : ''}>${svg(c.server || /server/i.test(c.os || '') ? 'server' : 'laptop')}</span><b class="ell">${esc(c.computer)}</b></div>` },
       // While its client is being uninstalled, or may be, State says so (the time is in the hint).
       { key: 'state', label: 'State', w: 80, on: true, get: (c) => ({ waiting: 0, online: 1, offline: 2 })[stateOf(c)], text: (c) => STATE[stateOf(c)],
         cell: (c) => (c.uninstalling ? '<span class="state waiting">Uninstalling</span>'
@@ -1744,7 +1751,7 @@ const RELEASE_NOTES = [
       { key: 'uptime', label: 'Uptime', w: 80, get: (c) => ms(c.inventory?.started), text: (c) => (c.inventory?.started ? howLong(c.inventory.started) : ''),
         cell: (c) => `<span class="muted">${c.inventory?.started ? esc(howLong(c.inventory.started)) : '-'}</span>` },
       { key: 'lastSeen', label: 'Last seen', w: 80, get: (c) => ms(c.lastSeen), text: (c) => c.lastSeen || '', cell: (c) => `<span class="muted">${esc(ago(c.lastSeen))}</span>` },
-      { key: 'version', label: 'Client', w: 70, get: (c) => c.version, cell: (c) => `<span class="${c.behind ? 'old' : ''}">${esc(c.version || '?')}</span>` },
+      { key: 'version', label: 'Client', w: 70, get: (c) => (c.server ? '' : c.version), cell: (c) => (c.server ? '<span class="muted">-</span>' : `<span class="${c.behind ? 'old' : ''}">${esc(c.version || '?')}</span>`) },
       { key: 'address', label: 'Address', w: 105, get: (c) => addr(c.address), cell: (c) => `<span class="mono muted ell">${esc(addr(c.address))}</span>` },
       { key: 'model', label: 'Model', w: 180, get: (c) => [c.inventory?.manufacturer, c.inventory?.model].filter(Boolean).join(' ') },
       { key: 'serial', label: 'Serial number', w: 140, get: (c) => c.inventory?.serial || '' },
@@ -2111,7 +2118,7 @@ const RELEASE_NOTES = [
     $('seats-table').addEventListener('click', async (e) => {
       if (e.target.closest('.tk')) return; // a tick is devices.js's
       const row = e.target.closest('[data-client]');
-      const c = row && computers.find((x) => x.id === row.dataset.client);
+      const c = row && dvAll().find((x) => x.id === row.dataset.client);
       if (!c) return;
       if (e.target.matches('[data-approve]')) {
         await seatAct(c, 'approve');
@@ -2131,14 +2138,17 @@ const RELEASE_NOTES = [
     const clock = (iso) => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
     const drawSeat = () => {
       const st = stateOf(seat);
-      const facts = [['Windows', seat.os || 'Unknown'], ['Signed in', seat.user || 'Nobody'], ['Client', `${seat.version || '?'}${seat.behind ? ' (older than this server)' : ''}`],
-        ['Address', addr(seat.address)], ['Last seen', ago(seat.lastSeen)], ['Joined', when(seat.joined)],
-        seat.approved ? ['Approved', `${when(seat.approved)}${seat.approvedBy ? ` by ${seat.approvedBy}` : ''}`] : null].filter(Boolean);
-      const bar = `<div class="dw-bar">${st === 'waiting' && can.has('seats.approve') ? `<button type="button" class="dw-qa" data-seat-approve>${svg('check')}<span>Approve</span></button>` : ''}`
+      // This server has no client: nothing to approve, remove or uninstall, and no inventory yet.
+      const facts = seat.server ? [['Windows', seat.os || 'Unknown'], ['Address', 'This server'], [productName, seat.version || '?']]
+        : [['Windows', seat.os || 'Unknown'], ['Signed in', seat.user || 'Nobody'], ['Client', `${seat.version || '?'}${seat.behind ? ' (older than this server)' : ''}`],
+          ['Address', addr(seat.address)], ['Last seen', ago(seat.lastSeen)], ['Joined', when(seat.joined)],
+          seat.approved ? ['Approved', `${when(seat.approved)}${seat.approvedBy ? ` by ${seat.approvedBy}` : ''}`] : null].filter(Boolean);
+      const acts = (st === 'waiting' && can.has('seats.approve') ? `<button type="button" class="dw-qa" data-seat-approve>${svg('check')}<span>Approve</span></button>` : '')
         + (dvHooks.seatBar?.(seat) || '')
-        + `${can.has('seats.remove') ? `<button type="button" class="dw-qa" data-seat-remove>${svg('trash')}<span>Remove from Devices</span></button>` : ''}</div>`;
+        + (can.has('seats.remove') && !seat.server ? `<button type="button" class="dw-qa" data-seat-remove>${svg('trash')}<span>Remove from Devices</span></button>` : '');
+      const bar = acts ? `<div class="dw-bar">${acts}</div>` : '';
       const open = !!seat.removalUntil;
-      const lock = st === 'waiting' || !can.has('seats.remove') ? ''
+      const lock = st === 'waiting' || seat.server || !can.has('seats.remove') ? ''
         : `<section class="dw-sec"><div class="dw-sec-head"><h3>Uninstall the client</h3><span class="seat-lock${open ? ' open' : ''}">${svg(open ? 'check' : 'lock')}${open ? `Allowed until ${esc(clock(seat.removalUntil))}` : 'Locked'}</span></div>`
           + `<p class="dw-how">${open ? 'Someone at the computer can uninstall the client now, from Rabbid Lab Client or from Installed apps in Windows.' : "The client can't be uninstalled on the computer until you allow it here, or its uninstall code is entered there."}</p>`
           + `<div class="seat-acts"><button type="button" data-seat-allow>${open ? 'Lock again' : 'Allow for an hour'}</button>`
@@ -2155,9 +2165,10 @@ const RELEASE_NOTES = [
       const waitingFor = !seatInv ? 'Reading what this computer sent.' : "This computer hasn't sent its inventory yet. It does within half an hour of being approved, with client 1.1.165 or later.";
       const section = (title, body, right = '') => `<section class="dw-sec"><div class="dw-sec-head"><h3>${title}</h3>${right}</div>${body}</section>`;
       const facts2 = (rows2) => `<ul class="does">${rows2.filter(Boolean).map(([k, v]) => `<li><b>${esc(k)}</b><span>${esc(v)}</span></li>`).join('')}</ul>`;
-      const tabs = st === 'waiting' ? '' : `<div class="tabs2 dw-tabs" role="tablist">${[['summary', 'Summary', ''], ['software', 'Software', inv ? inv.software.length : ''], ['updates', 'Updates', inv?.missingChecked ? inv.missing.length : ''], ...(dvHooks.seatTabs?.(seat) || [])]
+      const tabs = st === 'waiting' ? '' : `<div class="tabs2 dw-tabs" role="tablist">${[['summary', 'Summary', ''],
+        ...(seat.server ? [] : [['software', 'Software', inv ? inv.software.length : ''], ['updates', 'Updates', inv?.missingChecked ? inv.missing.length : '']]), ...(dvHooks.seatTabs?.(seat) || [])]
         .map(([t, label, count]) => `<a role="tab" data-seat-tab="${t}"${seatTab === t ? ' aria-current="true"' : ''}>${label}${count === '' ? '' : ` <small>${count}</small>`}</a>`).join('')}</div>`;
-      const hardware = !inv ? (st === 'waiting' ? '' : section('Hardware', none(waitingFor))) : section('Hardware', facts2([
+      const hardware = seat.server ? '' : !inv ? (st === 'waiting' ? '' : section('Hardware', none(waitingFor))) : section('Hardware', facts2([
         ['Model', [inv.manufacturer, inv.model].filter(Boolean).join(' ') || 'Unknown'], inv.serial && ['Serial number', inv.serial], inv.processor && ['Processor', inv.processor],
         inv.memory ? ['Memory', gb(inv.memory)] : null, inv.started && ['Uptime', howLong(inv.started)], ['Restart', inv.restartNeeded ? 'Needed, to finish installing something' : 'Not needed'],
         ...inv.disks.map((d) => [`Drive ${d.name}`, d.total ? `${Math.round(100 * d.free / d.total)}% free of ${gb(d.total)}` : 'Unknown'])]));
@@ -2168,8 +2179,8 @@ const RELEASE_NOTES = [
         : section(`Missing <small>${inv.missingChecked ? inv.missing.length : ''}</small>`, !inv.missingChecked ? none("Windows Update hasn't answered on this computer yet. It's asked every six hours.")
           : inv.missing.length ? list(inv.missing.map((u) => [u.kb || 'No number', u.title || '', u.kind ? ['waiting', u.kind] : null])) : none('Nothing is missing.'))
           + section(`Installed <small>${inv.updates.length}</small>`, inv.updates.length ? list(inv.updates.map((u) => [u.kb, [u.kind, dvDay(u.installed)].filter(Boolean).join(' · ')])) : none('Nothing is listed.'));
-      panel.body.innerHTML = `<div class="dw-head"><span class="pic dw-pic">${svg('monitor')}</span><div class="dw-name"><h2 id="dw-title">${esc(seat.computer)}</h2>`
-        + `<p><span class="state ${st}">${STATE[st]}</span></p></div><button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>${bar}${tabs}${pane}`;
+      panel.body.innerHTML = `<div class="dw-head"><span class="pic dw-pic">${svg(seat.server ? 'server' : 'monitor')}</span><div class="dw-name"><h2 id="dw-title">${esc(seat.computer)}</h2>`
+        + `<p><span class="state ${st}">${seat.server ? 'This server' : STATE[st]}</span></p></div><button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>${bar}${tabs}${pane}`;
     };
     const openSeat = (c) => {
       if (seat?.id !== c.id) {
@@ -2182,6 +2193,7 @@ const RELEASE_NOTES = [
       panel.open('seats', c.id);
       markSeat();
       dvHooks.seatOpened?.(c);
+      if (c.server) return;
       // Its software and updates, asked for as it opens.
       get(`/api/clients/${encodeURIComponent(c.id)}/inventory`).then((got) => {
         if (seat?.id !== c.id) return;
@@ -2217,13 +2229,20 @@ const RELEASE_NOTES = [
       });
     }
     // The list was read again: the computer that's open shows what it is now, or closes when it's gone.
+    seatOn = (id, tab) => {
+      const c = dvAll().find((x) => x.id === id);
+      if (!c) return;
+      openSeat(c);
+      seatTab = tab;
+      drawSeat();
+    };
     seatPanel = () => {
       if (!panel.is('seats')) return;
       if (!seat) {
         markSeat(); // a program or an update is open: its row stays marked
         return;
       }
-      const c = computers.find((x) => x.id === panel.key);
+      const c = dvAll().find((x) => x.id === panel.key);
       if (!c) {
         panel.close();
         return;
@@ -3091,6 +3110,6 @@ const RELEASE_NOTES = [
   window.RabbidLab = { app: () => product, $, esc, svg, say, initials, when, daysAgo, send, get, keep, forget, has, paint, where, viewAs, place, popups, option, dropdown, sure, copy, busy, groupTools, groupFilter, skeleton, toast, stepper, panel,
     palette: window.RabbidLabColours.roles, me: () => meInfo,
     // The Devices page, for devices.js: its lists, what's ticked, and drawing or reading it again.
-    devices: { lists: DV, more: dvMore, hooks: dvHooks, picked: dvPicked, computers: () => computers, at: () => dvAt, shown: () => dvShown, grid: () => dvGrid(),
-      draw: () => drawSeats(), reload: () => seats(), panelAgain: () => seatPanel?.(), stateOf } };
+    devices: { lists: DV, more: dvMore, hooks: dvHooks, picked: dvPicked, computers: () => computers, rows: () => dvAll(), at: () => dvAt, shown: () => dvShown, grid: () => dvGrid(),
+      draw: () => drawSeats(), reload: () => seats(), panelAgain: () => seatPanel?.(), open: (id, tab = 'summary') => seatOn?.(id, tab), stateOf } };
 })();

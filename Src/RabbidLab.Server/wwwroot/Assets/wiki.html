@@ -40,7 +40,7 @@
   <ul>
     <li><b>Lab:</b> <a href="#overview">Overview</a> and <a href="#links">Links</a>, the sites in your lab.</li>
     <li><b>Active Directory:</b> <a href="#ad/users">Users</a>, <a href="#ad/groups">Groups</a> and <a href="#ad/computers">Computers</a> in your domain.</li>
-    <li><b>Config:</b> <a href="#seats">Devices</a> (the computers with the client), <a href="#local">Local accounts</a> on those computers, and <a href="#people">Roles and people</a>.</li>
+    <li><b>Config:</b> <a href="#seats">Devices</a> (the computers with the client, their Windows accounts and who is an administrator of each), and <a href="#people">Roles and people</a>.</li>
     <li><b>Help:</b> this wiki, What's new, and GitHub.</li>
     <li><b>Settings</b> at the bottom: updates and the activity log.</li>
   </ul>
@@ -122,7 +122,7 @@
 </article>
 
 <article data-key="client" data-group="Computers" data-title="The client on a computer">
-  <p>The client is a small Windows service with a tray icon. It checks in every minute, says who is signed in, keeps itself on the server's version, and makes the account changes you ask for under <a href="#local">Local accounts</a>.</p>
+  <p>The client is a small Windows service with a tray icon. It checks in every minute, says who is signed in, keeps itself on the server's version, and makes the account changes you ask for on a computer's Accounts tab in <a href="#seats">Devices</a>.</p>
   <ul>
     <li><b>Its window:</b> click the tray icon, or open <b>Rabbid Lab Client</b> from the Start menu. It shows whether the computer is connected, to which server, who is signed in to Windows, both versions and the last check-in.</li>
     <li><b>When the icon shows:</b> as soon as the client is installed by hand. After a quiet install (Intune, Group Policy) it shows at the next sign-in.</li>
@@ -190,7 +190,7 @@
 </article>
 
 <article data-key="dir-actions" data-group="Active Directory" data-title="Change users, groups and computers, one or many at once">
-  <p>Click a row anywhere in the console (Users, Groups, Computers, Domain health, AD audit, Recycle Bin, Local accounts, Roles and people) to open it in a panel from the right; click the same row again to close it: its details, its groups (and a group's members), and buttons for the everyday changes. Every row also has a menu with everything that can be changed: open it from <b>⋯</b> at the end of the row, or right-click the row.</p>
+  <p>Click a row anywhere in the console (Users, Groups, Computers, Domain health, AD audit, Recycle Bin, Devices, Roles and people) to open it in a panel from the right; click the same row again to close it: its details, its groups (and a group's members), and buttons for the everyday changes. Every row also has a menu with everything that can be changed: open it from <b>⋯</b> at the end of the row, or right-click the row.</p>
   <ol>
     <li>To change several at once, tick them on the left (Shift-click ticks a run of them), then click <b>Actions</b> in the toolbar. It shows how many are ticked.</li>
     <li>Pick a category: <b>Account</b> (enable, disable, unlock, expiration), <b>Password</b>, <b>Groups</b>, <b>Security</b> or <b>Organization</b> (edit properties, rename, move).</li>
@@ -314,9 +314,9 @@
   <p class="tip">Passwords, LAPS passwords and BitLocker keys are never shown.</p>
 </article>
 <article data-key="local-new" data-group="Local accounts" data-title="Make a Windows account on a computer">
-  <p>Local accounts are the Windows accounts on one computer: this server, or any computer in Devices. You do it all in the browser and no service account is needed: this server makes its own changes, and on the other computers the <span data-app>Rabbid Lab</span> client makes them, running as SYSTEM.</p>
+  <p>Local accounts are the Windows accounts on one computer: this server, or any computer in Devices. They live on each computer's Accounts tab. You do it all in the browser and no service account is needed: this server makes its own changes, and on the other computers the <span data-app>Rabbid Lab</span> client makes them, running as SYSTEM.</p>
   <ol>
-    <li>Open <a href="#local">Local accounts</a> and pick the computer on the left. A green dot means it's ready.</li>
+    <li>Open <a href="#seats">Devices</a>, click the computer (this server is the row with the server icon) and pick its <b>Accounts</b> tab.</li>
     <li>Click <b>New account</b>.</li>
     <li>Type the username, and a full name and description if you want.</li>
     <li>Pick the groups. Tick <b>Administrators</b> for a local admin; <b>Users</b> is ticked for you.</li>
@@ -327,7 +327,7 @@
 
 <article data-key="local-change" data-group="Local accounts" data-title="Change or delete a local account">
   <ol>
-    <li>Open <a href="#local">Local accounts</a>, pick the computer, then click the account.</li>
+    <li>Open <a href="#seats">Devices</a>, click the computer, pick its <b>Accounts</b> tab, then click the account.</li>
     <li><b>Set a password</b> also unlocks it.</li>
     <li><b>Disable</b> stops anyone signing in with it.</li>
     <li>Use the cross on a group, or <b>Add to…</b>, to change its groups.</li>
@@ -335,8 +335,19 @@
   </ol>
 </article>
 
+<article data-key="local-admins" data-group="Local accounts" data-title="Who is an administrator of a computer">
+  <p>A computer's Accounts tab lists everyone in its Administrators group, domain users and groups too. A domain admin is an administrator of every computer through Domain Admins, even though their account isn't on the computer.</p>
+  <ul>
+    <li><b>Members</b> is the group as Windows lists it. Click a domain group to see who is in it.</li>
+    <li><b>People</b> opens the groups up and says how each person gets in: added directly, or through which groups.</li>
+    <li><b>Add</b> puts a local account, or a domain user or group (DOMAIN\name), in the group. The cross takes someone out.</li>
+    <li><a href="#seats/admins">Local admins</a> on Devices shows all of this across every computer at once.</li>
+  </ul>
+  <p class="tip">The people in a domain group come from Active Directory, read as this server's own computer account. Computers send their Administrators group with their inventory, from client 1.1.183 on.</p>
+</article>
+
 <article data-key="seat-trouble" data-group="Local accounts" data-title="A computer that won't take changes">
-  <p>The dot beside each computer in Local accounts says whether it's ready: green is ready, amber is online but not ready, grey is offline. Hover it to see why.</p>
+  <p>When a computer can't take changes, its Accounts tab says why, and shows who was in Administrators the last time it said.</p>
   <ul>
     <li><b>It's offline:</b> the computer is off, or can't reach the server.</li>
     <li><b>Its client is older:</b> it updates itself to the server's version within a few minutes.</li>

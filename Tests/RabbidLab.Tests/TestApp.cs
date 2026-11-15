@@ -29,6 +29,9 @@ public sealed class TestApp(string data) : WebApplicationFactory<Program>
     /// <summary>Stands in for this computer's Windows accounts: localadmin, an administrator, password "windows pass".</summary>
     public FakeWindowsAccounts Windows { get; } = new();
 
+    /// <summary>Stands in for reading domain groups' people from AD: Domain Admins holds awiles and hpotter.</summary>
+    public FakeAdminGroups AdminGroups { get; } = new();
+
     /// <summary>The time the server sees, moved on by hand.</summary>
     public FakeClock Clock { get; } = new();
 
@@ -66,6 +69,8 @@ public sealed class TestApp(string data) : WebApplicationFactory<Program>
             services.AddSingleton<IDomainFinder>(Finder);
             services.RemoveAll<IWindowsAccounts>();
             services.AddSingleton<IWindowsAccounts>(Windows);
+            services.RemoveAll<IAdminGroups>();
+            services.AddSingleton<IAdminGroups>(AdminGroups);
             services.RemoveAll<ISensorProbe>();
             services.AddSingleton<ISensorProbe>(Probe);
             services.RemoveAll<IMailSender>();
@@ -192,6 +197,19 @@ public sealed class FakeDirectory : IDirectory
     }
 }
 
+/// <summary>Domain groups' people as the tests see them: only Domain Admins is known.</summary>
+public sealed class FakeAdminGroups : IAdminGroups
+{
+    public List<IReadOnlyCollection<string>> Asked { get; } = [];
+
+    public Task<Dictionary<string, AdminGroup>?> People(IReadOnlyCollection<string> sids, CancellationToken stop)
+    {
+        Asked.Add(sids);
+        return Task.FromResult<Dictionary<string, AdminGroup>?>(sids.Where(s => s.EndsWith("-512", StringComparison.Ordinal))
+            .ToDictionary(s => s, _ => new AdminGroup([new("awiles", "Anthony Wiles", true), new("hpotter", "Harry Potter", true)], false)));
+    }
+}
+
 /// <summary>This computer's Windows accounts as the tests see them: localadmin is an administrator, Administrator is off.</summary>
 public sealed class FakeWindowsAccounts : IWindowsAccounts
 {
@@ -204,6 +222,17 @@ public sealed class FakeWindowsAccounts : IWindowsAccounts
     /// <summary>Every order it was given, passwords and all.</summary>
     public List<AccountOrder> Orders { get; } = [];
 
+    /// <summary>The server's Administrators group as the tests see it.</summary>
+    public List<WindowsMember> Admins { get; } =
+    [
+        new() { Name = "SERVER\\Administrator", Sid = "S-1-5-21-1-2-3-500", Kind = "local" },
+        new() { Name = "SERVER\\localadmin", Sid = "S-1-5-21-1-2-3-1001", Kind = "local" },
+        new() { Name = "AMW\\Domain Admins", Sid = "S-1-5-21-9-8-7-512", Kind = "group" },
+    ];
+
+    public Task<(List<WindowsMember> Admins, List<WindowsAccount> Locals)?> ReadAdmins(CancellationToken stop) =>
+        Task.FromResult<(List<WindowsMember>, List<WindowsAccount>)?>((Admins, Accounts));
+
     public Task<string?> Administrator(string name, string password, CancellationToken stop) =>
         Task.FromResult(name == "localadmin" && password == "windows pass" ? "localadmin" : null);
 
@@ -215,7 +244,11 @@ public sealed class FakeWindowsAccounts : IWindowsAccounts
         switch (order.Action)
         {
             case AccountOrder.List:
-                return Task.FromResult(new AccountAnswer { Id = order.Id, Ok = true, Accounts = Accounts, Groups = [new() { Name = "Administrators", Sid = "S-1-5-32-544" }, new() { Name = "Users" }] });
+                return Task.FromResult(new AccountAnswer { Id = order.Id, Ok = true, Accounts = Accounts, Groups = [new() { Name = "Administrators", Sid = "S-1-5-32-544" }, new() { Name = "Users" }], Admins = Admins });
+            case AccountOrder.Admins:
+                Admins.RemoveAll(m => (order.Remove ?? []).Contains(m.Sid ?? ""));
+                Admins.AddRange((order.Add ?? []).Select(n => new WindowsMember { Name = n, Sid = $"S-1-5-21-9-8-7-{2000 + Admins.Count}", Kind = "user" }));
+                return Task.FromResult(new AccountAnswer { Id = order.Id, Ok = true, Admins = Admins });
             case AccountOrder.Create when a is not null:
                 return Task.FromResult(AccountAnswer.Failed(order.Id, $"There's already an account called {order.Name}."));
             case AccountOrder.Create:

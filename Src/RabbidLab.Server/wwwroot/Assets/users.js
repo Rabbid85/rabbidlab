@@ -1,6 +1,5 @@
-// Active Directory (#ad/<users|groups|computers>/<view>), changed as Rabbid Lab's own AD account, and Local accounts
-// (#local/<computer id>): the Windows accounts on this server ("server") or a computer in Devices, whose client makes the
-// change. console.js shares its helpers as window.RabbidLab.
+// Active Directory (#ad/<users|groups|computers>/<view>), changed as Rabbid Lab's own AD account, and the New account and
+// password windows a computer's Accounts tab on Devices uses (accounts.js). console.js shares its helpers as window.RabbidLab.
 (() => {
   const R = window.RabbidLab;
   const { $, esc, svg, say, initials, sure, has: can, daysAgo: ago } = R;
@@ -330,7 +329,7 @@
     tail: () => (picked[adPage] ? { w: 28, cell: (x, i) => `<div class="tr-more"><button type="button" class="at-more" data-row-menu="${i}" data-tip="Actions" aria-label="Actions for ${esc(x.name || x.username)}">${svg('dots')}</button></div>` } : null),
     row: (x, i) => ` tabindex="0" data-i="${i}"`,
     empty: () => emptyNow,
-    redraw: () => { closeCard(); drawAd(); },
+    redraw: () => drawAd(),
   });
   const PAGE_ICON = { users: 'user', groups: 'users', computers: 'laptop', domain: 'shield', audit: 'history', recycle: 'trash' };
   const total = {}; // how many each page had when it was last read, for the list down the left
@@ -579,7 +578,6 @@
   $('dir-tabs').addEventListener('click', (e) => {
     const t = e.target.closest('[data-tab]');
     if (!t || !tabs().length || t.dataset.tab === tab().key) return;
-    closeCard();
     adTab = t.dataset.tab;
     drawAd();
   });
@@ -601,7 +599,6 @@
       apply: (flt) => {
         if (flt) filterOn[pageKey] = flt;
         else delete filterOn[pageKey];
-        closeCard();
         drawAd();
       },
     });
@@ -651,7 +648,6 @@
   // --- The side panel's helpers ---------------------------------------------------------------------------------------
 
   // Local accounts close their panel when the list changes under it.
-  const closeCard = () => { if (R.panel.is('local')) R.panel.close(); };
   const KIND_PIC = { user: 'user', group: 'users', computer: 'laptop', other: 'user' };
 
   $('dir-table').addEventListener('click', (e) => {
@@ -928,7 +924,6 @@
       if (R.panel.is('ad')) drawDrawer(); // a switch flipped for nothing goes back
       return [];
     }
-    closeCard();
     say('dir-problem', '');
     say('dir-note', '');
     const answers = [];
@@ -1649,7 +1644,6 @@
     if (dw.kind !== k || dw.key !== key) Object.assign(dw, { tab: 'overview', members: null, membersFor: '' });
     dw.kind = k;
     dw.key = key;
-    closeCard();
     drawDrawer();
     // Not modal: the list beside it stays usable, and another row opens in the same panel.
     R.panel.open('ad', `${k}:${key}`);
@@ -1715,135 +1709,9 @@
     }
   });
 
-  // --- Local accounts: one computer's Windows accounts --------------------------------------------------------------
+  // --- Windows accounts on a computer: the New account and password windows, for its Accounts tab on Devices (accounts.js) --
 
-  let computers = [];
-  let pc = null; // { id, accounts, groups }
-  let pcId = null;
-  let local = [];
-  let openLocal = null;
-  const computer = () => computers.find((c) => c.id === pcId);
-  const adminsName = () => pc?.groups.find((g) => g.sid === ADMINS)?.name || 'Administrators';
-  const isAdmin = (a) => (a.groups || []).includes(adminsName());
-  const pcChips = (a) => [
-    isAdmin(a) && chip('Administrator', 'ember', 'shield'),
-    !a.enabled && chip('Disabled', 'off', 'power'),
-    a.locked && chip('Locked out', 'amber', 'lock'),
-    a.builtIn && chip('Built-in', 'muted'),
-    a.neverExpires && chip('Password never expires', 'muted'),
-  ].filter(Boolean).join('');
-  const localBase = (a) => `/api/windows/${encodeURIComponent(pcId)}/accounts/${encodeURIComponent(a.name)}`;
-
-  const drawLocal = () => {
-    $('us-computers').innerHTML = computers.map((c) => `<a href="#local/${encodeURIComponent(c.id)}" class="pc"${c.id === pcId ? ' aria-current="page"' : ''}>`
-      + `${svg(c.server ? 'server' : 'monitor')}<span class="nm">${esc(c.name)}</span>${c.here ? '<small>This computer</small>' : ''}`
-      + `<i class="pcdot ${c.ready ? 'on' : c.online ? 'warn' : 'off'}" title="${esc(c.ready ? 'Ready' : c.why || 'Offline')}"></i></a>`).join('')
-      || '<p class="side-sub">No computers in Devices yet.</p>';
-    const c = computer();
-    $('us-pc-title').textContent = c ? c.name : computers.length ? 'Not found' : 'No computers yet';
-    $('us-pc-line').textContent = c ? [c.server ? 'This server' : c.os, c.user ? `Signed in: ${c.user}` : ''].filter(Boolean).join(' · ') : '';
-    say('us-pc-why', c && !c.ready ? c.why : '');
-    $('us-pc-new').disabled = !c?.ready || !pc;
-    const find = $('us-find').value.trim().toLowerCase();
-    local = pc ? pc.accounts.filter((a) => ($('us-off').checked || a.enabled) && ($('us-system').checked || !a.builtIn)
-      && (!find || [a.name, a.fullName, a.description].some((v) => String(v || '').toLowerCase().includes(find)))) : [];
-    $('us-pc-rows').innerHTML = !pc ? '' : local.map((a, i) => `<div class="prow urow" tabindex="0" data-i="${i}">`
-      + `<div class="who"><span class="pic local">${svg('key')}</span><div><b>${esc(a.name)}</b><span>${esc(a.fullName || a.description || '')}</span></div></div>`
-      + `<div class="chips-in">${pcChips(a)}</div><div class="seen">${a.lastSignIn ? `Last sign-in: ${esc(ago(a.lastSignIn))}` : 'Never signed in'}</div></div>`).join('')
-      || '<p class="hint">No accounts to show.</p>';
-  };
-
-  const loadLocal = async () => {
-    const c = computer();
-    pc = null;
-    if (!c || !c.ready) return;
-    R.skeleton($('us-pc-rows'), 'rows', 6); // until Windows, or the computer's client, has answered
-    try {
-      const got = await R.get(`/api/windows/${encodeURIComponent(c.id)}/accounts`);
-      pc = { id: c.id, accounts: got.accounts, groups: got.groups };
-    } finally {
-      R.skeleton($('us-pc-rows'), '');
-    }
-  };
-
-  // One local account in the side panel: what it is, its groups, and what can be done to it.
-  const localPanel = (a) => {
-    const change = can('windows.change');
-    const others = pc.groups.filter((g) => !(a.groups || []).includes(g.name));
-    const btn = (actKey, icon, label) => `<button type="button" class="dw-qa" data-act="${actKey}">${svg(icon)}<span>${esc(label)}</span></button>`;
-    const acts = (change ? btn('password', 'key', 'Set a password') + btn('power', a.enabled ? 'user-off' : 'user-check', a.enabled ? 'Disable' : 'Enable') : '')
-      + (can('windows.delete') && !a.builtIn ? btn('delete', 'trash', 'Delete') : '');
-    const gs = a.groups || [];
-    return `<div class="dw-head"><span class="pic dw-pic local">${svg('key')}</span><div class="dw-name"><h2 id="dw-title">${esc(a.name)}</h2><p>${esc(computer()?.name || '')}</p></div>`
-      + `<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`
-      + `<div class="dw-status">${pcChips(a) || chip('Enabled', 'ok')}</div>${acts ? `<div class="dw-bar">${acts}</div>` : ''}`
-      + dwFacts('Account', [dwFact('Full name', e1(a.fullName)), dwFact('Last sign-in', esc(ago(a.lastSignIn))), dwFact('Description', e1(a.description), true)])
-      + `<section class="dw-sec"><div class="dw-sec-head"><h3>Groups <small>${gs.length}</small></h3>`
-      + `${change && others.length ? `<select class="gpick" data-act="group" aria-label="Add to a group"><option value="">Add to…</option>${others.map((g) => `<option>${esc(g.name)}</option>`).join('')}</select>` : ''}</div>`
-      + (gs.length ? `<div class="dw-list">${gs.map((g) => `<div class="mrow"><span class="pic small">${svg('users')}</span><div class="two"><b>${esc(g)}</b></div>`
-        + `${change ? `<button type="button" class="at-more dw-x" data-act="ungroup" data-g="${esc(g)}" data-tip="Remove" aria-label="Take out of ${esc(g)}">${svg('x')}</button>` : ''}</div>`).join('')}</div>`
-        : '<p class="muted dw-empty">Not in any groups.</p>') + '</section>';
-  };
-  const openLocalCard = (i) => {
-    openLocal = local[i];
-    R.panel.body.innerHTML = localPanel(openLocal);
-    R.panel.open('local', openLocal.name);
-    markLocal();
-  };
-  const toggleLocal = (i) => (R.panel.shows('local', local[i]?.name) ? R.panel.close() : openLocalCard(i));
-  const markLocal = () => document.querySelectorAll('#us-pc-rows [data-i]').forEach((row) => row.classList.toggle('dw-on', R.panel.is('local') && local[Number(row.dataset.i)] === openLocal));
-  R.panel.el.addEventListener('close', markLocal);
-
-  let localBusy = false;
-  const actLocal = async (path, body, gone = false) => {
-    if (localBusy || !openLocal) return;
-    localBusy = true;
-    const keep = openLocal.name;
-    say('us-note', '');
-    say('us-problem', '');
-    try {
-      const answer = await R.send(path, body);
-      if (answer.warning) say('us-note', answer.warning);
-    } catch (err) {
-      say('us-problem', err.message);
-    } finally {
-      localBusy = false;
-    }
-    await loadLocal().catch((err) => say('us-problem', err.message));
-    drawLocal();
-    const again = local.findIndex((a) => a.name === keep);
-    if (!gone && again >= 0) openLocalCard(again);
-    else closeCard();
-  };
-
-  $('us-pc-rows').addEventListener('click', (e) => {
-    const row = e.target.closest('[data-i]');
-    if (row) toggleLocal(Number(row.dataset.i));
-  });
-  $('us-pc-rows').addEventListener('keydown', (e) => {
-    const row = e.target.closest('[data-i]');
-    if (row && (e.key === 'Enter' || e.key === ' ')) {
-      e.preventDefault();
-      toggleLocal(Number(row.dataset.i));
-    }
-  });
-  R.panel.el.addEventListener('change', (e) => {
-    if (R.panel.is('local') && e.target.dataset.act === 'group' && e.target.value) actLocal(`${localBase(openLocal)}/groups`, { add: [e.target.value] });
-  });
-  R.panel.el.addEventListener('click', (e) => {
-    const b = e.target.closest('[data-act]');
-    if (!R.panel.is('local') || !b || !openLocal || b.tagName === 'SELECT') return;
-    const a = openLocal;
-    switch (b.dataset.act) {
-      case 'ungroup': actLocal(`${localBase(a)}/groups`, { remove: [b.dataset.g] }); break;
-      case 'power': actLocal(`${localBase(a)}/enable`, { on: !a.enabled }); break;
-      case 'password': reset(a.name, `${localBase(a)}/password`, `On ${computer()?.name}. It also unlocks the account if it's locked out.`); break;
-      case 'delete': sure(`Delete ${a.name}?`, `${a.name} is deleted from ${computer()?.name} for good. Its files stay in its profile folder.`, `Delete ${a.name}`, () => actLocal(`${localBase(a)}/delete`, {}, true)); break;
-    }
-  });
-  ['us-off', 'us-system'].forEach((id) => $(id).addEventListener('change', () => { closeCard(); drawLocal(); }));
-  $('us-find').addEventListener('input', () => { closeCard(); drawLocal(); });
-
+  let pcTarget = null; // { id, name, server, groups, done } of the computer a new account is for
 
   // --- Dialogs: a password, and showing a password once ---------------------------------------------------------------
 
@@ -1880,12 +1748,13 @@
     $('secret-dialog').close();
   });
 
-  // Where the page is now, to load again after a change in a dialog.
-  const reload = () => (R.where()[0] === 'local' ? loadLocal().then(drawLocal) : loadAd(true).then(drawAd)).catch(() => {});
+  // Active Directory, read again after a change in a dialog.
+  const reload = () => loadAd(true).then(drawAd).catch(() => {});
 
   let resetting = null;
-  const reset = (who, path, lead) => {
-    resetting = { who, path, users: null };
+  // done: what to read again afterwards, for a Windows account on Devices; else Active Directory.
+  const reset = (who, path, lead, done = null) => {
+    resetting = { who, path, users: null, done };
     $('reset-title').textContent = `A new password for ${who}`;
     $('reset-lead').textContent = lead;
     resetMode('reset-pwmode', 'reset-password');
@@ -1916,7 +1785,9 @@
       const answer = await R.send(resetting.path, { password, mustChange: $('reset-change').checked });
       $('reset-dialog').close();
       if (answer.password) secret(resetting.who, answer.password, null, $('reset-change').checked);
-      reload();
+      else if (resetting.done) R.toast(`${resetting.who} has a new password.`);
+      if (resetting.done) resetting.done();
+      else reload();
     } catch (err) {
       say('reset-problem', err.message);
     } finally {
@@ -1962,11 +1833,11 @@
       drawJoining();
       await placesInto('new-ou', ad.state.newUsers, 'new-problem');
     } else {
-      const c = computer();
+      const c = pcTarget;
       $('acct-title').textContent = `New Windows account on ${c.name}`;
       $('new-lead').textContent = c.server ? 'On this server.' : `${c.name}'s client makes it, straight away.`;
-      const common = ['S-1-5-32-544', 'S-1-5-32-545', 'S-1-5-32-555'];
-      const groups = [...pc.groups].sort((a, b) => (common.indexOf(b.sid) >= 0) - (common.indexOf(a.sid) >= 0));
+      const common = [ADMINS, 'S-1-5-32-545', 'S-1-5-32-555'];
+      const groups = [...c.groups].sort((a, b) => (common.indexOf(b.sid) >= 0) - (common.indexOf(a.sid) >= 0));
       $('new-pc-groups').innerHTML = groups.map((g) => `<label class="role-pick"><input type="checkbox" value="${esc(g.name)}"${g.sid === 'S-1-5-32-545' ? ' checked' : ''}>${esc(g.name)}</label>`).join('');
     }
     d.showModal();
@@ -2011,20 +1882,29 @@
         neverExpires: $('new-never').checked, groups: [...$('new-pc-groups').querySelectorAll('input:checked')].map((c) => c.value) };
     const who = kind === 'ad' ? body.username : body.name;
     $('new-go').disabled = true;
-    say('new-problem', kind === 'pc' && !computer()?.server ? `Asking ${computer()?.name}…` : '');
+    say('new-problem', kind === 'pc' && !pcTarget.server ? `Asking ${pcTarget.name}…` : '');
     try {
-      const answer = await R.send(kind === 'ad' ? '/api/ad/users' : `/api/windows/${encodeURIComponent(pcId)}/accounts`, body);
+      const answer = await R.send(kind === 'ad' ? '/api/ad/users' : `/api/windows/${encodeURIComponent(pcTarget.id)}/accounts`, body);
       $('new-dialog').close();
       if (answer.password) secret(who, answer.password, answer.warning, body.mustChange);
-      else say(kind === 'ad' ? 'dir-note' : 'us-note', answer.warning || `Made ${who}.`);
-      reload();
+      else if (kind === 'ad') say('dir-note', answer.warning || `Made ${who}.`);
+      else R.toast(`Made ${who}.`, answer.warning || '', answer.warning ? { tone: 'warn' } : {});
+      if (kind === 'ad') reload();
+      else pcTarget.done?.();
     } catch (err) {
       say('new-problem', err.message);
     } finally {
       $('new-go').disabled = false;
     }
   });
-  $('us-pc-new').addEventListener('click', () => openNew('pc'));
+  // For a computer's Accounts tab on Devices (accounts.js): a new account on it, and a new password for one of its accounts.
+  R.windowsAccounts = {
+    create: (target) => {
+      pcTarget = target;
+      openNew('pc');
+    },
+    password: (who, path, lead, done) => reset(who, path, lead, done),
+  };
 
   // A new user, group or computer account.
   $('dir-new').addEventListener('click', async () => {
@@ -2325,12 +2205,12 @@
     const allowed = can('ad.connect');
     const local = can('windows.view');
     // Local accounts are made by this server and by each computer's client, as SYSTEM: only Active Directory needs an account.
-    const noAccount = ' Windows accounts on this server and on computers in Devices need no service account: those are under Local accounts.';
+    const noAccount = ' Windows accounts on this server and on computers in Devices need no service account: open a computer in Devices and use its Accounts tab.';
     if (!info?.domain) {
       // No domain here: these pages have nothing to manage until one is connected.
       el.innerHTML = `<div class="dgate-card"><span class="big-ic ember">${svg('key')}</span><div class="ustatus-text"><b>This server isn't on a domain</b><span>`
         + esc(`The Active Directory pages need a domain.${noAccount}${allowed ? ' To manage a domain from here anyway, connect one.' : ''}`)
-        + `</span></div><div class="dgate-acts">${local ? '<a class="button primary" href="#local">Local accounts</a>' : ''}${allowed ? '<button type="button" data-setup>Connect a domain</button>' : ''}</div></div>`;
+        + `</span></div><div class="dgate-acts">${local ? '<a class="button primary" href="#seats">Devices</a>' : ''}${allowed ? '<button type="button" data-setup>Connect a domain</button>' : ''}</div></div>`;
     } else {
       el.innerHTML = `<div class="dgate-card"><span class="big-ic ember">${svg('key')}</span><div class="ustatus-text"><b>Set up the Active Directory service account</b><span>`
         + esc(allowed
@@ -2657,22 +2537,8 @@
     }
     drawAd();
   };
-  const refreshLocal = async () => {
-    const [, , rest] = R.where();
-    try {
-      computers = await R.get('/api/windows/computers');
-      pcId = decodeURIComponent(rest[0] || '') || computers.find((c) => c.here)?.id || computers[0]?.id;
-      await loadLocal();
-      say('us-problem', '');
-    } catch (err) {
-      say('us-problem', err.message);
-    }
-    drawLocal();
-  };
-
   let lastAdPage = null;
   document.addEventListener('rabbidlab:show', (e) => {
-    closeCard();
     const [pageName, , rest] = e.detail;
     if (pageName === 'ad') {
       // A new page of Active Directory is read again; another view of the same page draws from what's loaded.
@@ -2687,10 +2553,6 @@
       refreshAd(fresh);
     } else {
       lastAdPage = null;
-      if (pageName === 'local') {
-        say('us-note', '');
-        refreshLocal();
-      }
     }
   });
 })();

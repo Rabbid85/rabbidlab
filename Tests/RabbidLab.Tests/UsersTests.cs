@@ -185,6 +185,70 @@ public sealed class UsersTests : IDisposable
     }
 
     [Fact]
+    public async Task The_server_s_Administrators_come_with_its_accounts_and_change_by_name_and_SID()
+    {
+        var admin = await app.SignedIn();
+
+        var listed = await Json(await admin.GetAsync("/api/windows/server/accounts"));
+        var changed = await Json(await admin.PostAsJsonAsync("/api/windows/server/admins", new { add = new[] { "AMW\\hpotter" }, remove = new[] { "S-1-5-21-1-2-3-1001" } }));
+        var notSid = await admin.PostAsJsonAsync("/api/windows/server/admins", new { remove = new[] { "localadmin" } });
+        var nothing = await admin.PostAsJsonAsync("/api/windows/server/admins", new { add = Array.Empty<string>() });
+        var badName = await admin.PostAsJsonAsync("/api/windows/server/admins", new { add = new[] { "A\\B\\C" } });
+        var log = await (await admin.GetAsync("/api/activity")).Content.ReadAsStringAsync();
+
+        Assert.Equal(3, listed.GetProperty("admins").GetArrayLength());
+        var order = app.Windows.Orders.Single(o => o.Action == "admins");
+        Assert.Equal(["AMW\\hpotter"], order.Add!);
+        Assert.Equal(["S-1-5-21-1-2-3-1001"], order.Remove!);
+        Assert.Contains(changed.GetProperty("admins").EnumerateArray(), m => m.GetProperty("name").GetString() == "AMW\\hpotter");
+        Assert.DoesNotContain(changed.GetProperty("admins").EnumerateArray(), m => m.GetProperty("name").GetString() == "SERVER\\localadmin");
+        Assert.Equal(HttpStatusCode.BadRequest, notSid.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, nothing.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, badName.StatusCode);
+        Assert.Contains("added AMW\\\\hpotter; took out SERVER\\\\localadmin", log);
+    }
+
+    [Fact]
+    public async Task Local_admins_lists_each_computer_with_its_domain_groups_opened_up()
+    {
+        var admin = await app.SignedIn();
+        var (id, client) = await Seat(admin, version: "1.1.183");
+        (await client.PostAsJsonAsync("/api/clients/inventory", new
+        {
+            model = "OptiPlex",
+            admins = new[] { new { name = "AMW-LT-022\\kiosk", sid = "S-1-5-21-4-5-6-1001", kind = "local" }, new { name = "AMW\\Domain Admins", sid = "S-1-5-21-9-8-7-512", kind = "group" } },
+            locals = new[] { new { name = "kiosk", enabled = false, neverExpires = true } },
+        })).EnsureSuccessStatusCode();
+        // An older client's inventory (no admins) keeps the list it had.
+        (await client.PostAsJsonAsync("/api/clients/inventory", new { model = "OptiPlex 7090" })).EnsureSuccessStatusCode();
+
+        var all = await Json(await admin.GetAsync("/api/devices/admins"));
+        var computers = all.GetProperty("computers").EnumerateArray().ToList();
+        var seat = computers.Single(c => c.GetProperty("id").GetString() == id);
+        var mine = computers.Single(c => c.GetProperty("server").GetBoolean());
+        var people = all.GetProperty("groups").GetProperty("S-1-5-21-9-8-7-512").GetProperty("people");
+
+        Assert.Equal(2, seat.GetProperty("admins").GetArrayLength());
+        Assert.False(seat.GetProperty("locals")[0].GetProperty("enabled").GetBoolean());
+        Assert.Equal(3, mine.GetProperty("admins").GetArrayLength());
+        Assert.Equal(["awiles", "hpotter"], people.EnumerateArray().Select(p => p.GetProperty("account").GetString()));
+        Assert.Single(app.AdminGroups.Asked); // the same group on two computers is asked about once
+        Assert.Single(app.AdminGroups.Asked[0]);
+    }
+
+    [Fact]
+    public async Task Administrators_can_t_be_changed_through_an_older_client()
+    {
+        var admin = await app.SignedIn();
+        var (id, _) = await Seat(admin, version: "1.1.182");
+
+        var refused = await admin.PostAsJsonAsync($"/api/windows/{id}/admins", new { add = new[] { "AMW\\hpotter" } });
+
+        Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
+        Assert.Contains("1.1.182", await Error(refused));
+    }
+
+    [Fact]
     public async Task Rabbid_Lab_s_AD_account_is_set_up_once_then_makes_people()
     {
         var admin = await app.SignedIn();

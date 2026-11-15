@@ -407,7 +407,7 @@
   // --- Ticks, and what Actions does with them ------------------------------------------------------------------
   const ticked = () => D.computers().filter((c) => D.picked.has(c.id));
   D.hooks.lead = () => (canPick() ? { w: 18, head: '<label class="tk"><input type="checkbox" data-tick-all aria-label="Select all"></label>',
-    cell: (c) => `<label class="tk"><input type="checkbox" data-tick="${esc(c.id)}" aria-label="Select ${esc(c.computer)}"></label>` } : null);
+    cell: (c) => (c.server ? '' : `<label class="tk"><input type="checkbox" data-tick="${esc(c.id)}" aria-label="Select ${esc(c.computer)}"></label>`) } : null);
   // The ticks, each row's highlight and the count on Actions, without drawing the list again.
   const drawPicked = () => {
     const n = D.picked.size;
@@ -967,10 +967,10 @@
 
   // --- A computer's side panel: what can be run on it, and its jobs ---------------------------------------------
   const seatJobs = {}; // computer id -> its jobs, once asked for
-  D.hooks.seatBar = (c) => (!c.approved ? '' : (canScripts() ? qa('data-dv-do="script"', 'code', 'Run a script') : '')
+  D.hooks.seatBar = (c) => (!c.approved || c.server ? '' : (canScripts() ? qa('data-dv-do="script"', 'code', 'Run a script') : '')
     + (has('seats.actions') ? qa('data-dv-do="updates"', 'updates', 'Install updates') + qa('data-dv-do="restart"', 'power', 'Restart') : '')
     + (has('seats.wmi') ? qa('data-dv-wmi', 'list', 'WMI query') : ''));
-  D.hooks.seatTabs = (c) => (canJobs() ? [['jobs', 'Jobs', seatJobs[c.id] ? seatJobs[c.id].length : '']] : []);
+  D.hooks.seatTabs = (c) => (canJobs() && !c.server ? [['jobs', 'Jobs', seatJobs[c.id] ? seatJobs[c.id].length : '']] : []);
   D.hooks.seatPane = (c, tab) => {
     if (tab !== 'jobs') return null;
     const list = seatJobs[c.id];
@@ -978,7 +978,7 @@
       : `<div class="dw-list seat-list">${list.map((j) => `<div class="mrow job-row" data-job-open="${esc(j.id)}"><div class="two"><b>${esc(jobTitle(j))}</b><small>${esc(`${when(j.at)} · ${j.by}`)}</small></div>${pill(STATE[j.state] || ['offline', j.state])}</div>`).join('')}</div>`);
   };
   D.hooks.seatOpened = (c) => {
-    if (!canJobs()) return;
+    if (!canJobs() || c.server) return;
     get(`/api/devices/jobs?client=${encodeURIComponent(c.id)}`).then((list) => {
       seatJobs[c.id] = list;
       D.panelAgain();

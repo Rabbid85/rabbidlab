@@ -1,18 +1,38 @@
-/* Users: the same layout as Roles and people, with Active Directory and each computer down the left. */
-.users-page .lib-bar h2, .dir-page .lib-bar h2, .attrs-page .lib-bar h2 { margin-right: 0; }
+/* Users: the same layout as Roles and people, with Active Directory down the left. */
+.dir-page .lib-bar h2, .attrs-page .lib-bar h2 { margin-right: 0; }
 .bar-note { margin-right: auto; overflow: hidden; color: #5E6380; font-size: 12.5px; white-space: nowrap; text-overflow: ellipsis; }
-.users-page .lib-bar .primary { display: inline-flex; align-items: center; gap: 7px; }
-.users-page .lib-bar .primary:disabled { opacity: .45; }
 .side a .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .side-list { display: flex; flex-direction: column; gap: 2px; }
-.side a.pc small { margin-left: auto; }
-.side a .pcdot { flex: none; width: 7px; height: 7px; margin-left: auto; border-radius: 50%; background: #3A3E55; }
-.side a.pc small + .pcdot { margin-left: 6px; }
-.side a .pcdot.on { background: var(--ok); }
-.side a .pcdot.warn { background: var(--amber); }
-.hint.why, .hint.warn { color: var(--amber); }
+.hint.warn { color: var(--amber); }
 .hint.note { color: var(--ok); }
-#us-loading { color: var(--muted); }
+
+/* Devices, a computer's Accounts tab (accounts.js): its accounts, and Administrators with domain groups opened up. */
+.acc-row { cursor: pointer; }
+.acc-row .two small { display: block; }
+.acc-chips { display: inline-flex; flex: none; gap: 6px; }
+.acc-chips:empty { display: none; }
+.acc-chev { display: grid; flex: none; place-items: center; width: 22px; color: #6D7290; }
+.acc-chev svg { width: 15px; height: 15px; transition: transform .15s; }
+.acc-chev.up svg { transform: rotate(180deg); }
+.acc-sub { margin-left: 36px; }
+.acc-sub .pic.small { width: 22px; height: 22px; }
+.acc-sub .pic.small svg { width: 12px; height: 12px; }
+.acc-more { margin: 8px 6px 0; font-size: 12.5px; }
+.acc-right { display: flex; align-items: center; gap: 8px; }
+.acc-right .seg { margin: 0; }
+.acc-lead { margin: -2px 0 10px; color: var(--muted); font-size: 13px; }
+.acc-add { margin: 0 0 10px; }
+.acc-back { display: inline-flex; align-items: center; gap: 6px; margin: 2px 0 14px; }
+.acc-back svg { width: 15px; height: 15px; }
+.acc-head { display: flex; align-items: center; gap: 12px; }
+.acc-head h3 { margin: 0; font-size: 17px; }
+.acc-head p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+.acc-status { margin-top: 12px; }
+.acc-bar { margin-top: 10px; margin-bottom: 6px; }
+a.dw-qa { text-decoration: none; }
+a.dw-qa:hover { background: #181B29; }
+.acc-go { flex: none; width: 15px; height: 15px; color: #6D7290; }
+.acc-row:hover .acc-go { color: var(--title); }
 
 /* An account's state, as small chips. */
 .uchip { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 7px; border: 1px solid var(--line-strong); border-radius: 6px; color: var(--muted);

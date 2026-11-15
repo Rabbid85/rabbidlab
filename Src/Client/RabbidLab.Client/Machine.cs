@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
-using Microsoft.Win32;
 
 namespace RabbidLab.Client;
 
@@ -11,21 +10,8 @@ internal static class Machine
 {
     public static string Name => Environment.MachineName;
 
-    /// <summary>Such as Windows 11 Pro 24H2. Windows 11 still calls itself Windows 10 in the registry, so its build says which.</summary>
-    public static string Os
-    {
-        get
-        {
-            using var machine = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64);
-            using var key = machine.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion");
-            var product = key?.GetValue("ProductName") as string ?? "Windows";
-            if (int.TryParse(key?.GetValue("CurrentBuildNumber") as string, out var build) && build >= 22000)
-            {
-                product = product.Replace("Windows 10", "Windows 11");
-            }
-            return key?.GetValue("DisplayVersion") is string display ? $"{product} {display}" : product;
-        }
-    }
+    /// <summary>Such as Windows 11 Pro 24H2 (WindowsVersion, which the server uses for itself too).</summary>
+    public static string Os => RabbidLab.Shared.WindowsVersion.Name();
 
     /// <summary>Who is signed in, at the screen or over Remote Desktop, as DOMAIN\name; null for nobody.</summary>
     public static string? Users()

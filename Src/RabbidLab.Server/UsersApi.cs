@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 using RabbidLab.Shared;
 
 namespace RabbidLab.Server;
@@ -20,6 +19,7 @@ public static class UsersApi
         services.AddSingleton<IDirectoryExtras>(s => s.GetRequiredService<DirectoryTools>());
         services.AddSingleton<IDirectoryActions>(s => s.GetRequiredService<DirectoryTools>());
         services.AddSingleton<ClientCommands>();
+        services.AddSingleton<IAdminGroups, AdminGroups>();
     }
 
     public static void MapUsersApi(this WebApplication app)
@@ -215,21 +215,96 @@ public static class UsersApi
             var list = new List<object>();
             if (OperatingSystem.IsWindows())
             {
-                list.Add(new { id = Server, name = Environment.MachineName, server = true, os = RuntimeInformation.OSDescription, online = true, ready = true, why = (string?) null,
-                    user = (string?) null, here = here is "127.0.0.1" or "::1", lastSeen = (DateTime?) null });
+                list.Add(new { id = Server, name = Environment.MachineName, server = true, os = WindowsVersion.Name(), online = true, ready = true, why = (string?) null,
+                    user = (string?) null, here = here is "127.0.0.1" or "::1", lastSeen = (DateTime?) null, version = (string?) Product.Version });
             }
             foreach (var c in clients.All().Where(c => c.Approved is not null))
             {
                 var why = Why(c, clients, commands);
                 list.Add(new { id = c.Id, name = c.Computer, server = false, os = c.Os, online = clients.IsOnline(c), ready = why is null, why, user = c.User,
-                    here = here is not null && Normal(c.Address) == here, lastSeen = (DateTime?) c.LastSeen });
+                    here = here is not null && Normal(c.Address) == here, lastSeen = (DateTime?) c.LastSeen, version = c.Version });
             }
             return Results.Ok(list);
         });
 
-        app.MapGet("/api/windows/{id}/accounts", (string id, HttpContext context, Clients clients, ClientCommands commands, IWindowsAccounts windows) =>
+        // A computer's accounts and its Administrators group; the group is kept with its inventory for Local admins.
+        app.MapGet("/api/windows/{id}/accounts", (string id, HttpContext context, Clients clients, ClientCommands commands, IWindowsAccounts windows, Inventories inventories) =>
             Run(context, id, Permissions.WindowsView, new AccountOrder { Action = AccountOrder.List }, clients, commands, windows, (_, answer) =>
-                Results.Ok(new { accounts = answer.Accounts ?? [], groups = answer.Groups ?? [] })));
+            {
+                if (id != Server && answer.Admins is { } admins)
+                {
+                    inventories.SetAdmins(id, admins, answer.Accounts);
+                }
+                return Results.Ok(new { accounts = answer.Accounts ?? [], groups = answer.Groups ?? [], admins = answer.Admins });
+            }));
+
+        // Who's in Administrators: names in (DOMAIN\name, or a local account), SIDs out.
+        app.MapPost("/api/windows/{id}/admins", async (string id, AdminsForm form, HttpContext context, Clients clients, ClientCommands commands, IWindowsAccounts windows,
+            Inventories inventories, ActivityLog log) =>
+        {
+            var add = Clean(form.Add);
+            var remove = Clean(form.Remove);
+            if (add.Count + remove.Count is 0 or > MaxAdminChanges)
+            {
+                return Results.BadRequest(new { error = $"Add or take out between 1 and {MaxAdminChanges} at a time." });
+            }
+            if (add.FirstOrDefault(n => n.Length > 256 || n.Any(char.IsControl) || n.Count(c => c == '\\') > 1 || n.StartsWith('\\') || n.EndsWith('\\')) is { } bad)
+            {
+                return Results.BadRequest(new { error = $"{bad} isn't an account name. Use DOMAIN\\name for a domain user or group, or a local account's name." });
+            }
+            if (remove.Any(s => !SidShape.IsMatch(s)))
+            {
+                return Results.BadRequest(new { error = "Say who to take out by their SID." });
+            }
+            if (id != Server && clients.Find(id) is { } c && Version.TryParse(c.Version, out var v) && v < AdminsFrom)
+            {
+                return Results.Json(new { error = $"{c.Computer}'s client is {c.Version}, which can't change Administrators. It updates itself to {Product.Version} within a few minutes." },
+                    statusCode: StatusCodes.Status409Conflict);
+            }
+            // Who's being taken out, by name, for the activity log.
+            var before = id == Server ? (await windows.ReadAdmins(context.RequestAborted))?.Admins : inventories.Get(id)?.Admins;
+            var gone = remove.Select(s => before?.FirstOrDefault(m => string.Equals(m.Sid, s, StringComparison.OrdinalIgnoreCase))?.Name ?? s).ToList();
+            return await Run(context, id, Permissions.WindowsChange, new AccountOrder { Action = AccountOrder.Admins, Add = add, Remove = remove }, clients, commands, windows,
+                (computer, answer) =>
+                {
+                    if (id != Server && answer.Admins is { } admins)
+                    {
+                        inventories.SetAdmins(id, admins, null);
+                    }
+                    var said = string.Join("; ", new[] { add.Count > 0 ? $"added {string.Join(", ", add)}" : null, gone.Count > 0 ? $"took out {string.Join(", ", gone)}" : null }.Where(x => x is not null));
+                    log.Record(context, "users", "windows.admins", $"Changed who's in Administrators on {computer}: {said}", answer.Warning is null ? "ok" : "warning", answer.Warning);
+                    return Results.Ok(new { warning = answer.Warning, admins = answer.Admins });
+                });
+        });
+
+        // Local admins on Devices: each computer's Administrators group as last read (this server's, read now), and the
+        // people in the domain groups among them. Groups is null when Active Directory can't be read from here.
+        app.MapGet("/api/devices/admins", async (HttpContext context, Clients clients, Inventories inventories, IWindowsAccounts windows, IAdminGroups groups, TimeProvider clock) =>
+        {
+            if (!Access.Can(context, Permissions.WindowsView))
+            {
+                return Access.NotAllowed();
+            }
+            var stop = context.RequestAborted;
+            var computers = new List<object>();
+            var all = new List<WindowsMember>();
+            if (await windows.ReadAdmins(stop) is { } mine)
+            {
+                computers.Add(new { id = Server, computer = Environment.MachineName, server = true, online = true, version = Product.Version, @checked = (DateTime?) clock.GetUtcNow().UtcDateTime,
+                    admins = (List<WindowsMember>?) mine.Admins, locals = (List<WindowsAccount>?) mine.Locals });
+                all.AddRange(mine.Admins);
+            }
+            foreach (var c in clients.All().Where(c => c.Approved is not null))
+            {
+                var inventory = inventories.Get(c.Id);
+                computers.Add(new { id = c.Id, computer = c.Computer, server = false, online = clients.IsOnline(c), version = c.Version, @checked = inventory?.AdminsChecked,
+                    admins = inventory?.Admins, locals = inventory?.Locals });
+                all.AddRange(inventory?.Admins ?? []);
+            }
+            var sids = all.Where(m => m.Kind == "group" && m.Sid is not null).Select(m => m.Sid!).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            var people = sids.Count == 0 ? new Dictionary<string, AdminGroup>() : await groups.People(sids, stop);
+            return Results.Ok(new { computers, groups = people });
+        });
 
         app.MapPost("/api/windows/{id}/accounts", (string id, WindowsAccountForm form, HttpContext context, Clients clients, ClientCommands commands, IWindowsAccounts windows,
             ActivityLog log) =>
@@ -392,6 +467,15 @@ public static class UsersApi
         return commands.Listening(c.Id) ? null : "Its client isn't listening for changes yet. It starts within a minute.";
     }
 
+    /// <summary>The first client that reads and changes Administrators.</summary>
+    public static readonly Version AdminsFrom = new(1, 1, 183);
+
+    private const int MaxAdminChanges = 20;
+    private static readonly System.Text.RegularExpressions.Regex SidShape = new(@"^S-1-\d+(-\d+){1,14}$", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+    private static List<string> Clean(List<string>? list) =>
+        [.. (list ?? []).Select(n => n?.Trim() ?? "").Where(n => n.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase)];
+
     private static string Groups(IReadOnlyList<string> add, IReadOnlyList<string> remove, Func<string, string> name) =>
         (add.Count > 0 ? $": into {string.Join(", ", add.Select(name))}" : "") + (remove.Count > 0 ? $"{(add.Count > 0 ? ";" : ":")} out of {string.Join(", ", remove.Select(name))}" : "");
 
@@ -405,6 +489,8 @@ public sealed record PasswordReset(string? Password, bool MustChange);
 public sealed record OnForm(bool On);
 
 public sealed record GroupsForm(List<string>? Add, List<string>? Remove);
+
+public sealed record AdminsForm(List<string>? Add, List<string>? Remove);
 
 public sealed record GroupMembersForm(string? Dn, List<string>? Add, List<string>? Remove);
 

@@ -161,10 +161,11 @@ public static class ClientsApi
         });
 
         // One computer's whole inventory, for its side panel; null when its client hasn't sent one yet.
+        // Its Administrators and accounts only for whoever may see Windows accounts.
         app.MapGet("/api/clients/{id}/inventory", (string id, HttpContext context, Clients clients, Inventories inventories) =>
             !Access.Can(context, Permissions.SeatsView) ? Access.NotAllowed()
             : clients.Find(id) is null ? Results.NotFound(new { error = "That client isn't here any more." })
-            : Results.Ok(new { inventory = inventories.Get(id) }));
+            : Results.Ok(new { inventory = Access.Can(context, Permissions.WindowsView) ? (object?) inventories.Get(id) : WithoutAccounts(inventories.Get(id)) }));
 
         // Software across the approved computers: a row for each program and publisher, with the computers that have it.
         app.MapGet("/api/devices/software", (HttpContext context, Clients clients, Inventories inventories) =>
@@ -332,6 +333,18 @@ public static class ClientsApi
         Results.Json(new { error = $"This computer isn't one of {Product.Title}'s clients. It will rejoin automatically." }, statusCode: StatusCodes.Status401Unauthorized);
 
     /// <summary>The few facts about a computer the list shows; the rest is asked for when the computer is opened.</summary>
+    private static System.Text.Json.Nodes.JsonNode? WithoutAccounts(DeviceInventory? i)
+    {
+        if (System.Text.Json.JsonSerializer.SerializeToNode(i, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web)) is not System.Text.Json.Nodes.JsonObject o)
+        {
+            return null;
+        }
+        o.Remove("admins");
+        o.Remove("locals");
+        o.Remove("adminsChecked");
+        return o;
+    }
+
     private static object? Summary(DeviceInventory? i) => i is null ? null : new
     {
         manufacturer = i.Manufacturer,

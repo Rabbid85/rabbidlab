@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
+using RabbidLab.Shared;
 
 namespace RabbidLab.Server;
 
@@ -57,6 +58,15 @@ public sealed class DeviceInventory
     /// <summary>When Windows Update last answered what's missing; null when it hasn't, so Missing says nothing.</summary>
     public DateTime? MissingChecked { get; set; }
 
+    /// <summary>Everyone in the computer's Administrators group; null until a client from 1.1.183 on sends it.</summary>
+    public List<WindowsMember>? Admins { get; set; }
+
+    /// <summary>The computer's own accounts, without their groups: for Local admins' State and Last sign-in.</summary>
+    public List<WindowsAccount>? Locals { get; set; }
+
+    /// <summary>When Admins was last read on the computer.</summary>
+    public DateTime? AdminsChecked { get; set; }
+
     /// <summary>When this server got it.</summary>
     public DateTime Received { get; set; }
 }
@@ -80,12 +90,47 @@ public sealed class Inventories(DataFolder folder, TimeProvider clock)
 
     public void Set(string id, DeviceInventory inventory)
     {
-        if (File(id) is not { } path)
+        if (File(id) is null)
         {
             return;
         }
         Tidy(inventory);
-        inventory.Received = clock.GetUtcNow().UtcDateTime;
+        var now = clock.GetUtcNow().UtcDateTime;
+        inventory.Received = now;
+        // A client before 1.1.183, or one Windows wouldn't tell, sends no Administrators: the last list stays.
+        if (inventory.Admins is not null)
+        {
+            inventory.AdminsChecked = now;
+        }
+        else if (Get(id) is { } before)
+        {
+            (inventory.Admins, inventory.Locals, inventory.AdminsChecked) = (before.Admins, before.Locals, before.AdminsChecked);
+        }
+        Save(id, inventory);
+    }
+
+    /// <summary>Administrators as the computer just said, after a list or a change: kept with its inventory, when it has one.</summary>
+    public void SetAdmins(string id, List<WindowsMember> admins, List<WindowsAccount>? locals)
+    {
+        if (Get(id) is not { } inventory)
+        {
+            return;
+        }
+        inventory.Admins = Members(admins);
+        if (locals is not null)
+        {
+            inventory.Locals = Accounts(locals);
+        }
+        inventory.AdminsChecked = clock.GetUtcNow().UtcDateTime;
+        Save(id, inventory);
+    }
+
+    private void Save(string id, DeviceInventory inventory)
+    {
+        if (File(id) is not { } path)
+        {
+            return;
+        }
         Directory.CreateDirectory(dir);
         System.IO.File.WriteAllBytes(path + ".tmp", JsonSerializer.SerializeToUtf8Bytes(inventory, Json));
         System.IO.File.Move(path + ".tmp", path, overwrite: true);
@@ -136,7 +181,33 @@ public sealed class Inventories(DataFolder folder, TimeProvider clock)
         }
         i.Updates = Updates(i.Updates);
         i.Missing = Updates(i.Missing);
+        i.Admins = i.Admins is null ? null : Members(i.Admins);
+        i.Locals = i.Locals is null ? null : Accounts(i.Locals);
     }
+
+    public static readonly string[] MemberKinds = ["local", "localgroup", "user", "group", "computer", "wellknown", "unknown"];
+
+    private static List<WindowsMember> Members(List<WindowsMember> list) =>
+        [.. list.Where(m => !string.IsNullOrWhiteSpace(m.Name)).Take(WindowsMember.Max).Select(m => new WindowsMember
+        {
+            Name = Cut(m.Name) ?? "",
+            Sid = Cut(m.Sid),
+            Kind = MemberKinds.Contains(m.Kind) ? m.Kind : "unknown",
+        })];
+
+    private static List<WindowsAccount> Accounts(List<WindowsAccount> list) =>
+        [.. list.Where(a => !string.IsNullOrWhiteSpace(a.Name)).Take(WindowsMember.Max).Select(a => new WindowsAccount
+        {
+            Name = Cut(a.Name) ?? "",
+            FullName = Cut(a.FullName),
+            Description = Cut(a.Description),
+            Enabled = a.Enabled,
+            Locked = a.Locked,
+            NeverExpires = a.NeverExpires,
+            BuiltIn = a.BuiltIn,
+            LastSignIn = Cut(a.LastSignIn),
+            PasswordSet = Cut(a.PasswordSet),
+        })];
 
     private static List<DeviceUpdate> Updates(List<DeviceUpdate>? list)
     {

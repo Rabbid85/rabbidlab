@@ -37,6 +37,21 @@ public sealed class WindowsGroup
     [DataMember(Name = "description")] public string? Description { get; set; }
 }
 
+/// <summary>One member of a computer's Administrators group, as Windows lists it.</summary>
+[DataContract]
+public sealed class WindowsMember
+{
+    /// <summary>The most members a list keeps.</summary>
+    public const int Max = 500;
+
+    /// <summary>DOMAIN\name, or the SID when Windows can't name it (a deleted account).</summary>
+    [DataMember(Name = "name")] public string Name { get; set; } = "";
+    [DataMember(Name = "sid")] public string? Sid { get; set; }
+
+    /// <summary>local, localgroup, user, group, computer, wellknown or unknown.</summary>
+    [DataMember(Name = "kind")] public string Kind { get; set; } = "unknown";
+}
+
 /// <summary>What the server asks a computer to do with its accounts.</summary>
 [DataContract]
 public sealed class AccountOrder
@@ -48,6 +63,9 @@ public sealed class AccountOrder
     public const string Disable = "disable";
     public const string Groups = "groups";
     public const string Delete = "delete";
+
+    /// <summary>Changes who's in Administrators: Add has names (DOMAIN\name or a local account), Remove has SIDs.</summary>
+    public const string Admins = "admins";
 
     /// <summary>Reads for sensors, not changes: a service's state, and a drive's free space. Name is the service or the drive.</summary>
     public const string Service = "service";
@@ -108,6 +126,9 @@ public sealed class AccountAnswer
     [DataMember(Name = "warning")] public string? Warning { get; set; }
     [DataMember(Name = "accounts")] public List<WindowsAccount>? Accounts { get; set; }
     [DataMember(Name = "groups")] public List<WindowsGroup>? Groups { get; set; }
+
+    /// <summary>Everyone in Administrators, domain members too; null from clients before 1.1.183.</summary>
+    [DataMember(Name = "admins", EmitDefaultValue = false)] public List<WindowsMember>? Admins { get; set; }
 
     /// <summary>For a sensor: a service's state and start type and its names, or a drive's size and free space in bytes and its label.</summary>
     [DataMember(Name = "state")] public string? State { get; set; }
@@ -208,6 +229,26 @@ public static class SeatChecks
     }
 }
 
+/// <summary>This computer's Windows by name, the way the client reports it and the server shows its own.</summary>
+#if NET
+[System.Runtime.Versioning.SupportedOSPlatform("windows")]
+#endif
+public static class WindowsVersion
+{
+    /// <summary>Such as Windows 11 Pro 24H2. Windows 11 still calls itself Windows 10 in the registry, so its build says which.</summary>
+    public static string Name()
+    {
+        using var machine = Microsoft.Win32.RegistryKey.OpenBaseKey(Microsoft.Win32.RegistryHive.LocalMachine, Microsoft.Win32.RegistryView.Registry64);
+        using var key = machine.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion");
+        var product = key?.GetValue("ProductName") as string ?? "Windows";
+        if (int.TryParse(key?.GetValue("CurrentBuildNumber") as string, out var build) && build >= 22000)
+        {
+            product = product.Replace("Windows 10", "Windows 11");
+        }
+        return key?.GetValue("DisplayVersion") is string display ? $"{product} {display}" : product;
+    }
+}
+
 /// <summary>Text helpers the server and the client both use.</summary>
 public static class Words
 {
@@ -236,9 +277,11 @@ public static class WindowsUsers
             switch (order.Action)
             {
                 case AccountOrder.List:
-                    return new AccountAnswer { Id = id, Ok = true, Accounts = Accounts(machine), Groups = GroupsOf(machine) };
+                    return new AccountAnswer { Id = id, Ok = true, Accounts = Accounts(machine), Groups = GroupsOf(machine), Admins = AdminsOrNone() };
                 case AccountOrder.Create:
                     return Create(machine, order);
+                case AccountOrder.Admins:
+                    return ChangeAdmins(order);
             }
             if (name.Length == 0)
             {
@@ -412,7 +455,14 @@ public static class WindowsUsers
         }
     }
 
-    private static List<WindowsAccount> Accounts(PrincipalContext machine)
+    /// <summary>This computer's accounts without their groups (quicker), for the inventory.</summary>
+    public static List<WindowsAccount> Locals()
+    {
+        using var machine = new PrincipalContext(ContextType.Machine);
+        return Accounts(machine, false);
+    }
+
+    private static List<WindowsAccount> Accounts(PrincipalContext machine, bool withGroups = true)
     {
         var found = new List<WindowsAccount>();
         using var filter = new UserPrincipal(machine);
@@ -421,17 +471,20 @@ public static class WindowsUsers
         foreach (var p in all)
         {
             using var u = (UserPrincipal) p;
-            var groups = new List<string>();
+            List<string>? groups = withGroups ? new List<string>() : null;
             try
             {
-                using var memberOf = u.GetGroups();
-                foreach (var g in memberOf)
+                if (groups is not null)
                 {
-                    using (g)
+                    using var memberOf = u.GetGroups();
+                    foreach (var g in memberOf)
                     {
-                        if (!string.IsNullOrEmpty(g.Name))
+                        using (g)
                         {
-                            groups.Add(g.Name);
+                            if (!string.IsNullOrEmpty(g.Name))
+                            {
+                                groups.Add(g.Name);
+                            }
                         }
                     }
                 }
@@ -495,4 +548,195 @@ public static class WindowsUsers
     // The account API gives local times for these.
     private static string? Iso(DateTime? at) => at is { } t && t.Year > 1970
         ? (t.Kind == DateTimeKind.Utc ? t : DateTime.SpecifyKind(t, DateTimeKind.Local).ToUniversalTime()).ToString("o") : null;
+
+    // --- Administrators, domain members included ---------------------------------------------------------------------
+    // Read and changed with the NetLocalGroup calls: a deleted account in the group shows as its SID instead of failing the list.
+
+    private const int MoreData = 234;
+    private const int MemberNotIn = 1377; // ERROR_MEMBER_NOT_IN_ALIAS
+    private const int MemberIn = 1378; // ERROR_MEMBER_IN_ALIAS
+
+    /// <summary>Everyone in this computer's Administrators group.</summary>
+    public static List<WindowsMember> Admins()
+    {
+        var group = AdminsName();
+        var found = new List<WindowsMember>();
+        var resume = System.IntPtr.Zero;
+        int status;
+        do
+        {
+            status = NetLocalGroupGetMembers(null, group, 2, out var buffer, -1, out var read, out _, ref resume);
+            if (status != 0 && status != MoreData)
+            {
+                throw new System.ComponentModel.Win32Exception(status);
+            }
+            try
+            {
+                var size = System.Runtime.InteropServices.Marshal.SizeOf(typeof(MemberInfo2));
+                for (var i = 0; i < read && found.Count < WindowsMember.Max; i++)
+                {
+                    var m = (MemberInfo2) System.Runtime.InteropServices.Marshal.PtrToStructure(new System.IntPtr(buffer.ToInt64() + (long) i * size), typeof(MemberInfo2))!;
+                    found.Add(Member(m));
+                }
+            }
+            finally
+            {
+                if (buffer != System.IntPtr.Zero)
+                {
+                    NetApiBufferFree(buffer);
+                }
+            }
+        }
+        while (status == MoreData && found.Count < WindowsMember.Max);
+        return found;
+    }
+
+    // The list is extra: when Windows won't give it, the accounts still come back.
+    private static List<WindowsMember>? AdminsOrNone()
+    {
+        try
+        {
+            return Admins();
+        }
+        catch (SystemException)
+        {
+            return null;
+        }
+    }
+
+    private static WindowsMember Member(MemberInfo2 m)
+    {
+        var sid = m.Sid == System.IntPtr.Zero ? null : new System.Security.Principal.SecurityIdentifier(m.Sid).Value;
+        var name = string.IsNullOrEmpty(m.DomainAndName) ? sid ?? "" : m.DomainAndName!;
+        var slash = name.IndexOf('\\');
+        var local = slash > 0 && string.Equals(name.Substring(0, slash), Environment.MachineName, StringComparison.OrdinalIgnoreCase);
+        // A domain local group in AD is an alias (4) too: only this computer's and BUILTIN's are local groups.
+        var builtIn = sid is not null && sid.StartsWith("S-1-5-32-", StringComparison.Ordinal);
+        var kind = m.SidUsage switch
+        {
+            1 => local ? "local" : "user",
+            2 or 4 => local || builtIn ? "localgroup" : "group",
+            5 => "wellknown",
+            9 => "computer",
+            _ => "unknown",
+        };
+        return new WindowsMember { Name = name, Sid = sid, Kind = kind };
+    }
+
+    // Administrators by its SID, so it's found in any language.
+    private static string AdminsName()
+    {
+        var full = new System.Security.Principal.SecurityIdentifier(AdministratorsSid).Translate(typeof(System.Security.Principal.NTAccount)).Value;
+        return full.Substring(full.IndexOf('\\') + 1);
+    }
+
+    /// <summary>Adds the names in Add and takes out the SIDs in Remove; each is tried, and what didn't work is the warning.</summary>
+    private static AccountAnswer ChangeAdmins(AccountOrder order)
+    {
+        var group = AdminsName();
+        var problems = new List<string>();
+        var done = 0;
+        foreach (var name in (order.Add ?? new List<string>()).Select(n => n?.Trim() ?? "").Where(n => n.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            var info = new MemberInfo3 { DomainAndName = name };
+            var status = NetLocalGroupAddMembers(null, group, 3, ref info, 1);
+            if (status is 0 or MemberIn)
+            {
+                done++;
+            }
+            else
+            {
+                problems.Add($"{name}: {Said(status)}");
+            }
+        }
+        foreach (var text in (order.Remove ?? new List<string>()).Select(n => n?.Trim() ?? "").Where(n => n.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            System.Security.Principal.SecurityIdentifier sid;
+            try
+            {
+                sid = new System.Security.Principal.SecurityIdentifier(text);
+            }
+            catch (ArgumentException)
+            {
+                problems.Add($"{text}: that isn't a SID");
+                continue;
+            }
+            var bytes = new byte[sid.BinaryLength];
+            sid.GetBinaryForm(bytes, 0);
+            var pinned = System.Runtime.InteropServices.GCHandle.Alloc(bytes, System.Runtime.InteropServices.GCHandleType.Pinned);
+            try
+            {
+                var info = new MemberInfo0 { Sid = pinned.AddrOfPinnedObject() };
+                var status = NetLocalGroupDelMembers(null, group, 0, ref info, 1);
+                if (status is 0 or MemberNotIn)
+                {
+                    done++;
+                }
+                else
+                {
+                    problems.Add($"{Named(sid)}: {Said(status)}");
+                }
+            }
+            finally
+            {
+                pinned.Free();
+            }
+        }
+        var said = problems.Count == 0 ? null : string.Join("; ", problems) + ".";
+        return done == 0 && said is not null ? AccountAnswer.Failed(order.Id, $"Windows on {Environment.MachineName} said no. {said}")
+            : new AccountAnswer { Id = order.Id, Ok = true, Warning = said, Admins = AdminsOrNone() };
+    }
+
+    private static string Named(System.Security.Principal.SecurityIdentifier sid)
+    {
+        try
+        {
+            return sid.Translate(typeof(System.Security.Principal.NTAccount)).Value;
+        }
+        catch (System.Security.Principal.IdentityNotMappedException)
+        {
+            return sid.Value;
+        }
+    }
+
+    private static string Said(int status) => status switch
+    {
+        5 => "access denied",
+        1387 => "there's no account by that name",
+        1388 => "that kind of account can't go in a local group",
+        1371 => "Windows won't change that one", // a special account or group
+        _ => new System.ComponentModel.Win32Exception(status).Message.Trim().TrimEnd('.'),
+    };
+
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential, CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+    private struct MemberInfo2
+    {
+        public System.IntPtr Sid;
+        public int SidUsage;
+        public string? DomainAndName;
+    }
+
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential, CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+    private struct MemberInfo3
+    {
+        public string DomainAndName;
+    }
+
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+    private struct MemberInfo0
+    {
+        public System.IntPtr Sid;
+    }
+
+    [System.Runtime.InteropServices.DllImport("netapi32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+    private static extern int NetLocalGroupGetMembers(string? server, string group, int level, out System.IntPtr buffer, int max, out int read, out int total, ref System.IntPtr resume);
+
+    [System.Runtime.InteropServices.DllImport("netapi32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+    private static extern int NetLocalGroupAddMembers(string? server, string group, int level, ref MemberInfo3 info, int count);
+
+    [System.Runtime.InteropServices.DllImport("netapi32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+    private static extern int NetLocalGroupDelMembers(string? server, string group, int level, ref MemberInfo0 info, int count);
+
+    [System.Runtime.InteropServices.DllImport("netapi32.dll")]
+    private static extern int NetApiBufferFree(System.IntPtr buffer);
 }
