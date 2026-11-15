@@ -243,9 +243,32 @@ body.app.rail-small { grid-template-columns: 60px minmax(0, 1fr); }
 @media (prefers-reduced-motion: reduce) { .flask * { animation: none; } }
 /* Starting: the rail and the page stay out of sight until sign-in has answered and the page has what it shows, so a reload never shows them half built. */
 body.booting .rail > *, body.booting .top-links, body.booting .main > :not(.busy-cover) { visibility: hidden; }
-/* The page loading: a big flask over the whole window, top bar and rail included, the only thing on screen. */
-body.booting .main > .busy-cover { position: fixed; inset: 0; z-index: 100; place-content: center; padding: 0; border-radius: 0; background: var(--night); font-size: 15px; }
-body.booting .main > .busy-cover .flask { width: 168px; height: 168px; }
+/* The opening screen (console.js boot): the lab's name under the flask, which fills as the first reads come back, over
+   the whole window. After an update, the new version's first note under it. */
+.boot { position: fixed; inset: 0; z-index: 100; display: grid; place-content: center; justify-items: center; padding: 24px; overflow: hidden; text-align: center;
+  background: radial-gradient(48% 70% at 88% 4%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 70%), radial-gradient(40% 60% at 70% 100%, rgba(158, 89, 207, .10), transparent 70%), var(--night);
+  transition: opacity .45s ease; }
+.boot::before { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .045;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+.boot > * { position: relative; }
+.boot.out { opacity: 0; pointer-events: none; }
+.boot .flask { width: 190px; height: 190px; }
+.boot-level { transition: transform .7s cubic-bezier(.16, 1, .3, 1); }
+.boot-name { margin: 18px 0 0; font: 800 44px/.95 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; letter-spacing: -.04em; color: #fff; overflow-wrap: anywhere; }
+.boot-step { min-height: 24px; margin: 12px 0 0; color: var(--text); font-size: 15px; }
+.boot-step b { font-weight: 650; color: var(--title); }
+.boot-step span { color: var(--muted); }
+.boot-dots { display: flex; gap: 8px; margin-top: 16px; }
+.boot-dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--line-strong); transition: background .3s ease, box-shadow .3s ease; }
+.boot-dots i.on { background: var(--accent-line); box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 70%, transparent); }
+.boot-news { display: flex; gap: 12px; align-items: flex-start; max-width: 560px; margin-top: 22px; padding: 12px 14px; border: 1px solid var(--line-strong); border-radius: 12px;
+  background: color-mix(in srgb, var(--panel) 80%, transparent); text-align: left; }
+.boot-news .tag { flex: none; padding: 2px 7px; border-radius: 5px; background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--accent-line); font-size: 11px; font-weight: 700; }
+.boot-news p { margin: 0; color: var(--text); font-size: 13px; line-height: 1.55; }
+.boot-news b { color: var(--title); }
+.boot-drop { position: fixed; top: -30px; z-index: 1; width: 16px; height: 16px; border-radius: 24%; animation: boot-drop .75s cubic-bezier(.55, 0, .75, .4) forwards; }
+@keyframes boot-drop { to { transform: translate(var(--dx), var(--dy)) rotate(200deg) scale(.4); opacity: .2; } }
+@media (max-width: 700px) { .boot .flask { width: 150px; height: 150px; } .boot-name { font-size: 34px; } }
 .busy-host { position: relative; }
 dialog.busy-host { position: fixed; } /* a dialog stays where it is under its cover */
 .busy-host > .busy-cover { position: absolute; inset: 0; z-index: 2; display: grid; place-content: center; justify-items: center; gap: 12px; border-radius: inherit;

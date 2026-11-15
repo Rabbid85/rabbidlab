@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.187 (2026-11-15)
+
+- A new opening screen while the console loads: your lab name under the flask, which fills up as your links, sensors, devices and updates load, with what each one found. After an update it also shows what is new in that version.
+
 ## 1.1.186 (2026-11-15)
 
 - Devices shows a Client column with each computer client version (amber when it is older than the server), or Not installed for this server without the client.

@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.187', [
+    'A new opening screen while the console loads: your lab name under the flask, which fills up as your links, sensors, devices and updates load, with what each one found. After an update it also shows what is new in that version.']],
   ['1.1.186', [
     'Devices shows a Client column with each computer client version (amber when it is older than the server), or Not installed for this server without the client.']],
   ['1.1.185', [
@@ -600,6 +602,11 @@ const RELEASE_NOTES = [
     if (r.status === 401) {
       toSignIn(idleMin > 0 && idleLeft() <= 0);
       throw new Error('Signed out');
+    }
+    // While starting, the opening screen hears each of the first reads come back.
+    if (r.ok && document.body.classList.contains('booting')) {
+      const path = String(args[0]).split('?')[0];
+      if (BOOT.some((s) => s.path === path)) r.clone().json().then((j) => boot.heard(path, j)).catch(() => {});
     }
     return r;
   };
@@ -1465,6 +1472,113 @@ const RELEASE_NOTES = [
     + '<g class="flask-fizz" fill="#F2BE6B"><circle cx="25" cy="48" r="2.4"/><circle cx="37" cy="46" r="1.7"/><circle cx="31" cy="50" r="1.3"/></g></g>'
     + '<g class="flask-foam" fill="#F2BE6B"><circle cx="28.5" cy="15.5" r="5.5"/><circle cx="34.5" cy="12.5" r="6.2"/><circle cx="40.5" cy="16.5" r="4.5"/></g>'
     + '<g class="flask-pop" fill="#F2BE6B"><circle cx="46" cy="9.5" r="2.2"/><circle cx="21.5" cy="10" r="1.7"/></g></svg>';
+
+  // --- The opening screen: the lab's name under the flask, which fills as the console's first reads come back -------
+  // Each step is a read the console makes as it opens, the words for what came back, and the permission it needs.
+  const BOOT = [
+    { path: '/api/signin', doing: 'Signing you in', said: (j) => j.user?.name || j.user?.username || '' },
+    { path: '/api/links', doing: 'Reading your links', can: 'links.view', said: (j) => `${(j.links || []).length} links` },
+    { path: '/api/sensors', doing: 'Checking sensors', can: 'sensors.view', said: (j) => {
+      const all = j.sensors || [];
+      const up = all.filter((x) => x.status === 'up').length;
+      const down = all.filter((x) => x.status === 'down').length;
+      return down ? `${up} up, ${down} down` : `${up} up`;
+    } },
+    { path: '/api/clients', doing: 'Asking Devices', can: 'seats.view', said: (j) => `${(Array.isArray(j) ? j : []).filter((c) => c.approved && c.online).length} online` },
+    { path: '/api/update', doing: 'Checking for updates', can: 'updates.view', said: (j) => (j.status === 'available' ? `Version ${j.available} is out` : 'Up to date') },
+  ];
+  const boot = (() => {
+    const SEEN = 'rabbidlab.version.seen'; // the version this browser last opened on
+    const LEVEL = (share) => 14 - 24 * share; // the liquid's offset in the flask: 14 is empty, -10 is up the neck
+    let el = null;
+    let steps = BOOT; // narrowed to what this person's roles read, once sign-in has answered
+    const got = {}; // path -> what it said
+    let shownAt = 0;
+    let news = null; // { version, note } when this browser opens a version for the first time
+    const done = () => steps.filter((s) => s.path in got);
+    const draw = () => {
+      if (!el) return;
+      const n = done().length;
+      const next = steps.find((s) => !(s.path in got));
+      const last = [...steps].reverse().find((s) => s.path in got && got[s.path]);
+      el.querySelector('.boot-level').style.transform = `translateY(${LEVEL(n / steps.length)}px)`;
+      el.querySelector('.boot-dots').innerHTML = steps.map((s) => `<i${s.path in got ? ' class="on"' : ''}></i>`).join('');
+      el.querySelector('.boot-step').innerHTML = next ? `<b>${esc(next.doing)}…</b>${last ? `<span> · ${esc(got[last.path])}</span>` : ''}` : '';
+    };
+    // A square of the banner's colours drops into the flask for each read that comes back.
+    const drop = () => {
+      if (!el || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      const box = el.querySelector('.flask').getBoundingClientRect();
+      const tiles = window.RabbidLabColours?.tiles || ['#FF8A3D'];
+      const d = document.createElement('i');
+      const x = box.left + box.width * (0.15 + Math.random() * 0.7);
+      d.className = 'boot-drop';
+      Object.assign(d.style, { left: `${x}px`, background: tiles[Math.floor(Math.random() * tiles.length)] });
+      d.style.setProperty('--dx', `${box.left + box.width / 2 - x - 8}px`);
+      d.style.setProperty('--dy', `${box.top + box.height * 0.3 + 30}px`);
+      el.append(d);
+      setTimeout(() => d.remove(), 800);
+    };
+    return {
+      // A read came back while the console was starting.
+      heard(path, j) {
+        const s = BOOT.find((x) => x.path === path);
+        if (!s || s.path in got) return;
+        try {
+          got[s.path] = s.said(j);
+        } catch {
+          got[s.path] = '';
+        }
+        drop();
+        setTimeout(draw, el ? 600 : 0);
+      },
+      // Sign-in answered: only the steps this person's roles read, and what's new when this browser hasn't seen this version.
+      signedIn(s) {
+        steps = BOOT.filter((x) => !x.can || can.has(x.can));
+        let seen = null;
+        try {
+          seen = localStorage.getItem(SEEN);
+          localStorage.setItem(SEEN, s.version);
+        } catch {
+          // Not kept: no note.
+        }
+        const note = seen && seen !== s.version ? RELEASE_NOTES.find(([v]) => v === s.version)?.[1]?.[0] : null;
+        if (note) {
+          news = { version: s.version, note };
+          this.show(); // straight away, so there's time to read it
+        }
+        draw();
+      },
+      show() {
+        if (el || !document.body.classList.contains('booting')) return;
+        shownAt = Date.now();
+        el = document.createElement('div');
+        el.className = 'boot';
+        el.setAttribute('role', 'status');
+        el.innerHTML = `<div class="boot-flask">${FLASK.replace(/<path class="flask-wave"[^>]*\/>/, '<g class="boot-level"><path class="flask-wave" fill="url(#flask-ember)" d="M0 41Q8 37 16 41T32 41T48 41T64 41T80 41T96 41V96H0Z"/></g>')}</div>`
+          + `<h1 class="boot-name">${esc(labName)}</h1><p class="boot-step"></p><div class="boot-dots"></div>`
+          + (news ? `<div class="boot-news"><span class="tag">New</span><p><b>Updated to ${esc(news.version)}.</b> ${esc(news.note)}</p></div>` : '');
+        document.body.append(el);
+        draw();
+      },
+      get shown() { return !!el; },
+      // The console is ready: full, a welcome, then the screen fades away. A note about an update stays up long enough to read.
+      finish() {
+        if (!el) return;
+        for (const s of steps) if (!(s.path in got)) got[s.path] = '';
+        draw();
+        const first = (meInfo?.name || meInfo?.username || '').split(' ')[0];
+        const last = [...steps].reverse().find((s) => got[s.path]);
+        el.querySelector('.boot-step').innerHTML = first ? `<b>Welcome back, ${esc(first)}.</b>${last ? `<span> · ${esc(got[last.path])}</span>` : ''}` : '';
+        const gone = el;
+        el = null;
+        setTimeout(() => {
+          gone.classList.add('out');
+          setTimeout(() => gone.remove(), 500);
+        }, Math.max(650, (news ? 3200 : 0) - (Date.now() - shownAt)));
+      },
+    };
+  })();
   // Covers a part of the page with the flask, a line of text and smaller lines under it; no text takes the cover away.
   const busy = (host, text, detail) => {
     let cover = host.querySelector(':scope > .busy-cover');
@@ -1976,20 +2090,20 @@ const RELEASE_NOTES = [
     scatter($('dv-hero'), 20261125);
     setInterval(uptime, 60000);
     // Starting: the rail and the page stay hidden (body.booting) until sign-in has answered and the page's first reads are back, so a
-    // reload never shows the console half built. The flask comes up if that takes a moment; after a second and a half the page shows as it is.
-    const main = document.querySelector('.main');
-    const bootFlask = setTimeout(() => busy(main, 'Loading…'), 400);
+    // reload never shows the console half built. If that takes a moment the opening screen comes up (boot): the flask fills as each read
+    // comes back. The page shows as it is after a second and a half, or five seconds once the opening screen is up.
+    const bootShow = setTimeout(() => boot.show(), 400);
     const started = () => {
-      clearTimeout(bootFlask);
-      busy(main, '');
+      clearTimeout(bootShow);
       document.body.classList.remove('booting');
+      boot.finish();
     };
     const startWhenQuiet = () => {
-      const until = Date.now() + 1500;
+      const from = Date.now();
       let quiet = 0;
       const look = () => {
         quiet = pending ? 0 : quiet + 1;
-        if (quiet >= 2 || Date.now() > until) started();
+        if (quiet >= 2 || Date.now() - from > (boot.shown ? 5000 : 1500)) started();
         else setTimeout(look, 25);
       };
       look();
@@ -2009,6 +2123,7 @@ const RELEASE_NOTES = [
       document.body.classList.toggle('ad-scoped', !!u.adScoped);
       meInfo = u;
       me = u.username;
+      boot.signedIn(s);
       const top = (u.roles || []).filter((r) => r.id !== 'user');
       apply();
       if (can.has('updates.view')) update();
