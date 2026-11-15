@@ -87,9 +87,7 @@
   <p>Each computer's client reports what's on it: model, serial number, processor, memory, drives, uptime, whether Windows is waiting for a restart, the installed software, and the Windows updates installed and missing. Nothing is installed or changed on the computer for this.</p>
   <ul>
     <li><b>Computers</b> shows the short version on each row. The views on the left pick out what needs looking at: Needs updates, Needs restart, Low disk space (under 15% free on C:) and Older client. More columns are under <b>Columns</b>.</li>
-    <li><b>Click a computer</b> for its hardware, and tabs with its software and its updates.</li>
-    <li><b>Software</b> lists every program across the computers. Click one to see which computers have it, and which version.</li>
-    <li><b>Windows updates</b> lists every update. Click one to see where it's missing and where it's installed.</li>
+    <li><b>Click a computer</b> for its hardware, and tabs with its software and its Windows updates by name. To list software across every computer, run a WMI query.</li>
     <li><b>Export</b> saves the open list as a CSV file.</li>
   </ul>
   <p>The client looks every half hour and sends when something changed. It asks Windows Update what's missing every six hours; antivirus definition updates are left out. A computer needs client 1.1.165 or later.</p>

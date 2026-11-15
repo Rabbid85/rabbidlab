@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.206 (2026-11-15)
+
+- The opening screen can no longer stay up for good. If something goes wrong starting the page, the page still shows, and after 15 seconds at most whatever happens.
+- Software and Windows updates are gone from the Devices list: they are in each computer panel, and a WMI query lists software across computers. Check for updates is in the Actions menu.
+
 ## 1.1.205 (2026-11-15)
 
 - Active Directory lists keep one thing in a cell: Users and Computers have a Role column apart from Status (Service account or Privileged; Domain controller, Server or Workstation), and Groups have a Privileged column apart from Group type.

@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.206', [
+    'The opening screen can no longer stay up for good. If something goes wrong starting the page, the page still shows, and after 15 seconds at most whatever happens.',
+    'Software and Windows updates are gone from the Devices list: they are in each computer panel, and a WMI query lists software across computers. Check for updates is in the Actions menu.']],
   ['1.1.205', [
     'Active Directory lists keep one thing in a cell: Users and Computers have a Role column apart from Status (Service account or Privileged; Domain controller, Server or Workstation), and Groups have a Privileged column apart from Group type.',
     'Attribute browser values sit on one line in their row, and Values shows how many there are.']],
@@ -1652,8 +1655,8 @@ const RELEASE_NOTES = [
       },
       get shown() { return !!el; },
       // The console is ready underneath: the steps still to land do, then the welcome, then the screen fades away.
+      // Kept even when the screen isn't up yet, so one that comes up after can't wait for it forever.
       finish() {
-        if (!el) return;
         ready = true;
         for (const s of steps) if (!(s.path in got)) got[s.path] = ''; // a read the page didn't make this time
       },
@@ -1800,12 +1803,9 @@ const RELEASE_NOTES = [
   };
 
   // Devices: the computers with the client and everyone signed in, asked again every 30 seconds while it's open.
-  let dvAt = 'computers'; // which list of the Devices page shows: computers, software, updates or sessions
+  let dvAt = 'computers'; // which list of the Devices page shows: computers, sessions, or one of devices.js's
   let dvView = 'all'; // and for computers, which view of them
-  let updTab = 'computers'; // Windows updates: a row per computer, or a row per update
   let dvShown = []; // the rows of the list that shows
-  let software = null; // /api/devices/software, once the Software list was opened
-  let updates = null; // /api/devices/updates
   let computers = [];
   let seatTimer = null;
   const ago = (iso) => {
@@ -1839,12 +1839,9 @@ const RELEASE_NOTES = [
     ['waiting', 'Waiting for approval', (c) => stateOf(c) === 'waiting', 'amber'], null,
     ['updates', 'Needs updates', (c) => c.inventory?.missing > 0, 'amber'], ['restart', 'Needs restart', (c) => !!c.inventory?.restartNeeded, 'amber'],
     ['disk', 'Low disk space', (c) => c.inventory?.disk != null && c.inventory.disk < 15, 'red'], ['errors', 'Has errors', (c) => c.problems?.length > 0, 'red'], ['behind', 'Older client', (c) => c.behind]];
+  // A computer's software and Windows updates are in its side panel (Software and Updates tabs), not lists of their own.
   const DV = { computers: ['Computers', 'monitor', 'Every computer with the client, with views for what needs looking at.'],
-    software: ['Software', 'box', 'What is installed, and on which computers.'],
-    updates: ['Windows updates', 'updates', 'What each computer is missing, whether it waits for a restart, and when it last installed an update. Tick computers and install from here.'],
     sessions: ['Signed in now', 'users', 'Everyone signed in to this console.'] };
-  // What a row of Software or Windows updates is known by, on its row and in the side panel.
-  const thingKey = (x) => ('kb' in x ? `u:${x.kb}:${x.title || ''}` : `s:${x.name}:${x.publisher || ''}`);
   const dvStat = (n, icon, label) => `<div><b>${n}</b><span>${svg(icon)}${esc(label)}</span></div>`;
   // Filter (filter.js) on Computers, and on a list from devices.js that gives its own fields (WMI query). Kept per list
   // until it's cleared or the page is opened again.
@@ -1860,12 +1857,11 @@ const RELEASE_NOTES = [
       fld('memory', 'Memory (GB)', 'number', (c) => (c.inventory?.memory ? Math.round(c.inventory.memory / 1073741824) : undefined))]],
   ];
   const dvFilter = {};
-  const dvFields = (at = dvAt) => (at === 'computers' || (at === 'updates' && updTab === 'computers') ? DV_FIELDS : dvMore[at]?.fields?.() || null);
-  // The rows a list has before Find and Filter narrow it. Windows updates is the approved computers, or a row per update.
+  const dvFields = (at = dvAt) => (at === 'computers' ? DV_FIELDS : dvMore[at]?.fields?.() || null);
+  // The rows a list has before Find and Filter narrow it.
   const dvBase = (at = dvAt) => {
     const view = DV_VIEWS.find((v) => v && v[0] === dvView) || DV_VIEWS[0];
-    return dvMore[at] ? dvMore[at].rows() : { computers: dvAll().filter(view[2]), software: software || [],
-      updates: updTab === 'computers' ? computers.filter((c) => c.approved) : updates || [], sessions: sessionsNow }[at];
+    return dvMore[at] ? dvMore[at].rows() : { computers: dvAll().filter(view[2]), sessions: sessionsNow }[at];
   };
   const drawSeats = () => {
     const n = (f) => dvAll().filter(f).length;
@@ -1895,8 +1891,6 @@ const RELEASE_NOTES = [
     }).join('');
     $('dv-dot').hidden = !n((c) => stateOf(c) === 'waiting');
     $('dv-n-computers').textContent = dvAll().length || '';
-    $('dv-n-software').textContent = software ? software.length : '';
-    $('dv-n-updates').textContent = n((c) => c.inventory?.missing > 0) || '';
     $('dv-n-sessions').textContent = sessionsNow.length || '';
     for (const [k, more] of Object.entries(dvMore)) $(`dv-n-${k}`).textContent = more.count?.() || '';
     $('page-seats').dataset.at = dvAt;
@@ -1904,21 +1898,14 @@ const RELEASE_NOTES = [
     $('dv-lead').textContent = DV[dvAt][2];
     $('dv-stats').innerHTML = !can.has('seats.view') ? '' : dvStat(n((c) => stateOf(c) === 'online'), 'monitor', 'Online') + dvStat(n((c) => stateOf(c) === 'offline'), 'power', 'Offline')
       + dvStat(n((c) => stateOf(c) === 'waiting'), 'clock', 'Waiting for approval') + dvStat(n((c) => c.inventory?.missing > 0), 'updates', 'Need updates');
-    $('dv-tabs').innerHTML = dvAt !== 'updates' ? `<a aria-current="true">${svg(DV[dvAt][1])}${esc(DV[dvAt][0])} <small>${dvShown.length}</small></a>`
-      : `<a href="#seats/updates" data-upd-tab="computers"${updTab === 'computers' ? ' aria-current="true"' : ''}>${svg('monitor')}Computers <small>${computers.filter((c) => c.approved).length}</small></a>`
-        + `<a href="#seats/updates" data-upd-tab="updates"${updTab === 'updates' ? ' aria-current="true"' : ''}>${svg('updates')}By update <small>${updates ? updates.length : ''}</small></a>`;
+    $('dv-tabs').innerHTML = `<a aria-current="true">${svg(DV[dvAt][1])}${esc(DV[dvAt][0])} <small>${dvShown.length}</small></a>`;
     $('dv-view-title').textContent = dvAt === 'computers' ? view[1] : DV[dvAt][0];
     $('dv-count').textContent = `${dvShown.length} shown`;
     // As on Active Directory: only for a view, a find or a filter that narrows the list.
     $('dv-now').hidden = !((dvAt === 'computers' && view[0] !== 'all') || find || nf);
-    for (const [k, id] of [['computers', 'seats-table'], ['software', 'dv-software'], ['sessions', 'sessions-table'],
+    for (const [k, id] of [['computers', 'seats-table'], ['sessions', 'sessions-table'],
       ...Object.entries(dvMore).map(([key, more]) => [key, more.table])]) $(id).hidden = k !== dvAt;
-    $('dv-updpc').hidden = !(dvAt === 'updates' && updTab === 'computers');
-    $('dv-updates').hidden = !(dvAt === 'updates' && updTab === 'updates');
-    const late = 'A computer sends what it has within half an hour of being approved, with client 1.1.165 or later.';
-    seatsEmpty = dvMore[dvAt] ? dvMore[dvAt].empty() : dvAt === 'software' ? (software ? `No software has been reported yet. ${late}` : 'Reading the list.')
-      : dvAt === 'updates' && updTab === 'computers' ? `No computers yet. Add computers to give people the ${esc(product)} client.`
-      : dvAt === 'updates' ? (updates ? `No updates have been reported yet. ${late}` : 'Reading the list.')
+    seatsEmpty = dvMore[dvAt] ? dvMore[dvAt].empty()
       : computers.length ? 'None of the computers are like that right now.' : `No computers yet. Add computers to give people the ${esc(product)} client.`;
     dvGrid().draw(dvShown);
     if (dvAt === 'sessions') paint($('sessions-table'));
@@ -1941,7 +1928,7 @@ const RELEASE_NOTES = [
   };
   // The lists of the Devices page are data grids (grid.js), made the first time they're drawn. Columns and Export in the
   // bar work on the one that shows.
-  const dvGrid = () => (dvMore[dvAt]?.grid || { computers: seatsGrid, software: softwareGrid, updates: updTab === 'computers' ? updPcGrid : updatesGrid, sessions: sessionsGrid }[dvAt])();
+  const dvGrid = () => (dvMore[dvAt]?.grid || { computers: seatsGrid, sessions: sessionsGrid }[dvAt])();
   const ms = (iso) => (iso ? new Date(iso).getTime() : 0);
   let seatsEmpty = '';
   let seatsG = null;
@@ -2036,65 +2023,6 @@ const RELEASE_NOTES = [
     sessionsNow = list;
     drawSeats();
   };
-  // Software and Windows updates across the computers: a row opens which computers have it.
-  let softwareG = null;
-  const softwareGrid = () => (softwareG ||= window.RabbidLab.grid({
-    el: $('dv-software'),
-    key: 'software',
-    cols: [
-      { key: 'name', label: 'Name', w: 300, fixed: true, get: (s) => s.name, cell: (s) => `<b>${esc(s.name)}</b>` },
-      { key: 'version', label: 'Version', w: 170, on: true, get: (s) => s.versions.join(', '), cell: (s) => `<span class="mono muted ell">${esc(s.versions.length > 1 ? `${s.versions.length} versions` : s.versions[0] || '')}</span>` },
-      { key: 'publisher', label: 'Publisher', w: 220, on: true, get: (s) => s.publisher || '', cell: (s) => `<span class="ell">${esc(s.publisher || '')}</span>` },
-      { key: 'computers', label: 'Installed on', w: 130, on: true, get: (s) => s.computers.length, cell: (s) => `${s.computers.length} computer${s.computers.length === 1 ? '' : 's'}` },
-    ],
-    row: (s) => ` data-thing="${esc(thingKey(s))}"`,
-    empty: () => seatsEmpty,
-    redraw: () => drawSeats(),
-  }));
-  let updatesG = null;
-  const updatesGrid = () => (updatesG ||= window.RabbidLab.grid({
-    el: $('dv-updates'),
-    key: 'updates',
-    cols: [
-      { key: 'kb', label: 'Update', w: 110, fixed: true, get: (u) => u.kb, cell: (u) => `<b>${esc(u.kb || 'No number')}</b>` },
-      { key: 'title', label: 'Title', w: 350, on: true, get: (u) => u.title || '', cell: (u) => `<span class="ell">${esc(u.title || '')}</span>` },
-      { key: 'kind', label: 'Type', w: 150, on: true, get: (u) => u.kind || '', cell: (u) => `<span class="ell">${esc(u.kind || '')}</span>` },
-      { key: 'missing', label: 'Missing on', w: 105, on: true, get: (u) => u.missing.length, cell: (u) => (u.missing.length ? `<span class="state waiting">${u.missing.length}</span>` : '<span class="muted">None</span>') },
-      { key: 'installed', label: 'Installed on', w: 105, on: true, get: (u) => u.installed.length, cell: (u) => String(u.installed.length) },
-    ],
-    row: (u) => ` data-thing="${esc(thingKey(u))}"`,
-    empty: () => seatsEmpty,
-    redraw: () => drawSeats(),
-  }));
-  // Windows updates, a row per computer: what's missing, a restart waiting, and when it last checked and installed.
-  const missingCell = (c) => (c.inventory?.missing == null ? '<span class="muted">Not checked yet</span>'
-    : c.inventory.missing ? `<span class="state waiting">${c.inventory.missing} missing</span>` : '<span class="state online">Up to date</span>');
-  let updPcG = null;
-  const updPcGrid = () => (updPcG ||= window.RabbidLab.grid({
-    el: $('dv-updpc'),
-    key: 'update-computers',
-    rowClass: (c) => (c.approved && !c.online ? 'off' : ''),
-    lead: () => dvHooks.lead?.() || null,
-    sort: { key: 'missing', dir: -1 },
-    cols: [
-      { key: 'computer', label: 'Computer', w: 165, fixed: true, get: (c) => c.computer,
-        cell: (c) => `<div class="who"><span class="pic"${c.thisServer ? ' data-tip="This server"' : ''}>${svg(c.thisServer || /server/i.test(c.os || '') ? 'server' : 'laptop')}</span><b class="ell">${esc(c.computer)}</b></div>` },
-      { key: 'state', label: 'State', w: 80, on: true, get: (c) => ({ waiting: 0, online: 1, offline: 2 })[stateOf(c)], text: (c) => STATE[stateOf(c)], cell: stateCell },
-      { key: 'missing', label: 'Missing', w: 120, on: true, get: (c) => c.inventory?.missing ?? -1, text: (c) => (c.inventory?.missing == null ? 'Not checked yet' : c.inventory.missing), cell: missingCell },
-      { key: 'restart', label: 'Restart', w: 80, on: true, get: (c) => (c.inventory?.restartNeeded ? 1 : 0), text: (c) => (!c.inventory ? '' : c.inventory.restartNeeded ? 'Needed' : 'No'),
-        cell: (c) => (!c.inventory ? '<span class="muted">-</span>' : c.inventory.restartNeeded ? '<span class="state waiting">Needed</span>' : '<span class="muted">No</span>') },
-      { key: 'checked', label: 'Last checked', w: 110, on: true, get: (c) => ms(c.inventory?.missingChecked), text: (c) => c.inventory?.missingChecked || '',
-        cell: (c) => `<span class="muted">${c.inventory?.missingChecked ? esc(ago(c.inventory.missingChecked)) : 'Never'}</span>` },
-      { key: 'installed', label: 'Last installed', w: 120, on: true, get: (c) => c.inventory?.lastUpdate?.installed || '', text: (c) => c.inventory?.lastUpdate?.installed || '',
-        cell: (c) => `<span class="muted">${c.inventory?.lastUpdate ? esc(dvDay(c.inventory.lastUpdate.installed)) : '-'}</span>` },
-      { key: 'kb', label: 'Latest update', w: 110, on: true, get: (c) => c.inventory?.lastUpdate?.kb || '', cell: (c) => `<span class="mono muted">${esc(c.inventory?.lastUpdate?.kb || '')}</span>` },
-      { key: 'os', label: 'Windows', w: 135, get: (c) => c.os, cell: (c) => `<span class="ell">${esc(c.os || '')}</span>` },
-      { key: 'user', label: 'Signed in', w: 110, get: (c) => c.user, cell: (c) => (c.user ? `<span class="ell">${esc(c.user)}</span>` : '<span class="nobody">Nobody</span>') },
-    ],
-    row: (c) => ` data-client="${esc(c.id)}"`,
-    empty: () => seatsEmpty,
-    redraw: () => drawSeats(),
-  }));
   const seats = async () => {
     clearTimeout(seatTimer);
     try {
@@ -2106,11 +2034,9 @@ const RELEASE_NOTES = [
         drawSeats();
       }
       if (s.ok) drawSessions(await s.json());
-      // The list that's open across computers, read again with the rest.
-      if (c.ok && dvAt === 'software') software = await get('/api/devices/software');
-      if (c.ok && dvAt === 'updates') updates = await get('/api/devices/updates');
+      // A list of devices.js's that's open, read again with the rest.
       if (dvMore[dvAt]) await dvMore[dvAt].load();
-      if (dvAt === 'software' || dvAt === 'updates' || dvMore[dvAt]) drawSeats();
+      if (dvMore[dvAt]) drawSeats();
     } catch {
       // Asked again shortly.
     }
@@ -2231,6 +2157,8 @@ const RELEASE_NOTES = [
       document.body.classList.remove('booting');
       boot.finish();
     };
+    // Whatever went wrong getting there, the page shows after 15 seconds: the opening screen never stays up for good.
+    setTimeout(() => { if (document.body.classList.contains('booting') || boot.shown) started(); }, 15000);
     const startWhenQuiet = () => {
       const from = Date.now();
       let quiet = 0;
@@ -2257,6 +2185,15 @@ const RELEASE_NOTES = [
       meInfo = u;
       me = u.username;
       boot.signedIn(s);
+      // Whatever goes wrong drawing the rest, the page still starts: the opening screen waits for that, and would wait for good.
+      try {
+        account(s, u, name, letters, domain, dc);
+      } catch (err) {
+        console.error('Rabbid Lab: starting the page went wrong', err);
+      }
+      startWhenQuiet();
+    };
+    const account = (s, u, name, letters, domain, dc) => {
       const top = (u.roles || []).filter((r) => r.id !== 'user');
       apply();
       if (can.has('updates.view')) update();
@@ -2286,7 +2223,6 @@ const RELEASE_NOTES = [
       $('acc-password-row').hidden = u.source !== 'local';
       $('account').hidden = false;
       if (u.source === 'ad') $('hero-eyebrow').textContent = `${domain} · Lab console`;
-      startWhenQuiet();
     };
     // Asked again every 5 seconds until Rabbid Lab answers, so a failed first try doesn't leave the page empty.
     const start = async () => {
@@ -2337,51 +2273,20 @@ const RELEASE_NOTES = [
     $('upd-install').addEventListener('click', () => post('/api/update/install'));
     $('upd-auto').addEventListener('change', (e) => post('/api/update/settings', { automatic: e.target.checked }));
     // Devices: the filters, Approve and Remove on a computer, Sign out on a session, and the Add computers dialog.
-    // Which list and which view come from the address: #seats/software, #seats/computers/waiting.
+    // Which list and which view come from the address: #seats/sessions, #seats/computers/waiting. The old Software and
+    // Windows updates lists' addresses open Computers.
     document.addEventListener('rabbidlab:show', (e) => {
       if (e.detail[0] !== 'seats') return;
       const [list, view] = e.detail[2] || [];
       const at = DV[list] ? list : 'computers';
       if (at !== dvAt && (panel.is('seats') || panel.is('devices'))) panel.close();
-      const opened = at !== dvAt && (at === 'software' || at === 'updates' || !!dvMore[at]);
+      const opened = at !== dvAt && !!dvMore[at];
       dvAt = at;
       dvView = dvAt === 'computers' && DV_VIEWS.some((v) => v && v[0] === view) ? view : 'all';
       drawSeats();
       if (opened) seats(); // its list is read as it opens
     });
     $('dv-find').addEventListener('input', drawSeats);
-    // Windows updates: its two tabs, a computer's row opening its Updates tab, and installing or checking from here.
-    $('dv-tabs').addEventListener('click', (e) => {
-      const t = e.target.closest('[data-upd-tab]');
-      if (!t) return;
-      e.preventDefault();
-      if (updTab === t.dataset.updTab) return;
-      updTab = t.dataset.updTab;
-      if (panel.is('seats')) panel.close();
-      drawSeats();
-      if (updTab === 'updates' && !updates) seats();
-    });
-    $('dv-updpc').addEventListener('click', (e) => {
-      if (e.target.closest('.tk')) return; // a tick is devices.js's
-      const row = e.target.closest('[data-client]');
-      if (!row) return;
-      if (panel.shows('seats', row.dataset.client)) panel.close();
-      else seatOn?.(row.dataset.client, 'updates');
-    });
-    // The ticked computers, or else every one that's missing an update (Install) or every one (Check now).
-    const updOn = (fallback) => {
-      const ticked = computers.filter((c) => c.approved && dvPicked.has(c.id));
-      return ticked.length ? ticked : computers.filter((c) => c.approved && fallback(c));
-    };
-    $('dv-upd-install').addEventListener('click', () => {
-      const on = updOn((c) => c.inventory?.missing > 0);
-      if (!on.length) toast('Nothing is missing.', 'Every computer that has checked is up to date. Check now asks again.');
-      else window.RabbidLab.devices.run?.('updates', on);
-    });
-    $('dv-upd-check').addEventListener('click', () => {
-      const on = updOn(() => true);
-      if (on.length) window.RabbidLab.devices.run?.('check', on);
-    });
     // Filter: the same window as Active Directory's (filter.js), on the list that's open.
     $('dv-filter').addEventListener('click', () => {
       const at = dvAt;
@@ -2571,33 +2476,6 @@ const RELEASE_NOTES = [
         if (panel.shows('seats', c.id)) drawSeat();
       }).catch(() => {});
     };
-    // A program or an update: the computers that have it, or are missing it.
-    const openThing = (x) => {
-      const key = thingKey(x);
-      if (panel.shows('seats', key)) {
-        panel.close();
-        return;
-      }
-      seat = null;
-      const rows2 = (items, second) => (items.length ? `<div class="dw-list">${items.map((c) => `<div class="mrow"><span class="pic small">${svg('monitor')}</span><div class="two"><b>${esc(c.computer)}</b><small>${esc(second(c))}</small></div></div>`).join('')}</div>`
-        : '<p class="muted dw-empty">None.</p>');
-      const head = (icon, title, sub) => `<div class="dw-head"><span class="pic dw-pic">${svg(icon)}</span><div class="dw-name"><h2 id="dw-title">${esc(title)}</h2><p>${esc(sub)}</p></div>`
-        + `<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`;
-      const section = (title, count, body) => `<section class="dw-sec"><div class="dw-sec-head"><h3>${esc(title)} <small>${count}</small></h3></div>${body}</section>`;
-      panel.body.innerHTML = dvAt === 'software'
-        ? head('box', x.name, x.publisher || 'Publisher unknown') + section('Installed on', x.computers.length, rows2(x.computers, (c) => [c.version, c.installed && `Installed ${dvDay(c.installed)}`].filter(Boolean).join(' · ')))
-        : head('updates', x.kb || 'Update', x.kind || 'Windows update') + (x.title ? `<section class="dw-sec"><p class="dw-how">${esc(x.title)}</p></section>` : '')
-          + section('Missing on', x.missing.length, rows2(x.missing, () => 'Not installed')) + section('Installed on', x.installed.length, rows2(x.installed, (c) => (c.on ? `Installed ${dvDay(c.on)}` : 'Installed')));
-      panel.open('seats', key);
-      markSeat();
-    };
-    for (const id of ['dv-software', 'dv-updates']) {
-      $(id).addEventListener('click', (e) => {
-        const row = e.target.closest('[data-thing]');
-        const x = row && dvShown.find((y) => thingKey(y) === row.dataset.thing);
-        if (x) openThing(x);
-      });
-    }
     // The list was read again: the computer that's open shows what it is now, or closes when it's gone.
     // Install the client here: the server installs it on itself; its row turns into the client's within a minute or two.
     let hereStarted = false;
@@ -2622,7 +2500,7 @@ const RELEASE_NOTES = [
     seatPanel = () => {
       if (!panel.is('seats')) return;
       if (!seat) {
-        markSeat(); // a program or an update is open: its row stays marked
+        markSeat();
         return;
       }
       const c = dvAll().find((x) => x.id === panel.key);

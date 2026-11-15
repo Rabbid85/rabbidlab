@@ -435,7 +435,7 @@
   };
   // Shift-click ticks every row between the last one ticked and this one.
   let lastTick = null;
-  const TICKED = ['seats-table', 'dv-updpc'];
+  const TICKED = ['seats-table'];
   for (const id of TICKED) {
     $(id).addEventListener('click', (e) => {
       const box = e.target.closest('.tk')?.querySelector('input');
@@ -467,7 +467,7 @@
       left: named('Power', acts ? item('restart', 'restart', 'Restart…') + item('shutdown', 'power', 'Shut down…') + item('wake', 'wake', 'Wake', String(off || '')) : '')
         + named('Sessions', acts ? item('lock', 'lock', 'Lock…') + item('signout', 'logout', 'Sign everyone out…') + item('message', 'message', 'Send a message…') : ''),
       right: named('Run', (canScripts() ? item('script', 'code', 'Run a script…') : '') + (has('seats.wmi') ? item('wmi', 'list', 'Query with WMI…') : ''))
-        + named('Install', (acts ? item('updates', 'updates', 'Windows updates…') : '') + (D.hooks.actItems?.(item) || '')),
+        + named('Install', (acts ? item('updates', 'updates', 'Windows updates…') + item('check', 'refresh', 'Check for updates…') : '') + (D.hooks.actItems?.(item) || '')),
     };
   };
   // One of those, on these computers: from the menu, or from one computer's panel.

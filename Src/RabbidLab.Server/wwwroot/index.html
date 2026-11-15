@@ -564,8 +564,6 @@
         <p class="rail-label" data-can="seats.view">Browse</p>
         <a href="#seats" data-dv="computers" data-can="seats.view"><svg><use href="#i-monitor"/></svg><span>Computers</span><i class="rail-dot" id="dv-dot" hidden></i><small id="dv-n-computers"></small></a>
         <div class="dkids" id="dv-views"></div>
-        <a href="#seats/software" data-dv="software" data-can="seats.view"><svg><use href="#i-box"/></svg><span>Software</span><small id="dv-n-software"></small></a>
-        <a href="#seats/updates" data-dv="updates" data-can="seats.view"><svg><use href="#i-updates"/></svg><span>Windows updates</span><small id="dv-n-updates"></small></a>
         <a href="#seats/admins" data-dv="admins" data-can="windows.view"><svg><use href="#i-shield"/></svg><span>Local admins</span><small id="dv-n-admins"></small></a>
         <a href="#seats/printers" data-dv="printers" data-can="seats.view"><svg><use href="#i-printer"/></svg><span>Printers</span><small id="dv-n-printers"></small></a>
         <p class="rail-label" data-can="seats.actions seats.scripts.run seats.scripts.edit seats.workflows seats.wmi">Tools</p>
@@ -584,8 +582,6 @@
           <button type="button" class="small" id="dv-act" aria-haspopup="menu" disabled data-tip="Tick computers first"><svg><use href="#i-menu"/></svg>Actions<b class="cnt" hidden></b><svg class="chev"><use href="#i-chevron-down"/></svg></button>
           <button type="button" class="small" id="dv-refresh" data-tip="Refresh" aria-label="Refresh"><svg><use href="#i-refresh"/></svg></button>
           <button type="button" class="small" id="dv-export"><svg><use href="#i-csv"/></svg>Export</button>
-          <button type="button" class="small" id="dv-upd-check" data-can="seats.actions" data-tip="Ask Windows Update now, on the ticked computers or all of them"><svg><use href="#i-refresh"/></svg>Check now</button>
-          <button type="button" class="primary" id="dv-upd-install" data-can="seats.actions" data-tip="On the ticked computers, or every one missing updates"><svg><use href="#i-updates"/></svg><span>Install updates</span></button>
           <button type="button" class="primary" id="seats-add" data-can="seats.add"><svg><use href="#i-plus"/></svg><span>Add computers</span></button>
           <button type="button" class="primary" id="dv-new" hidden><svg><use href="#i-plus"/></svg><span id="dv-new-text">New script</span></button></div>
         <!-- WMI query: which computers, the namespace and the query, then what they answered in the list below (devices.js). -->
@@ -604,9 +600,6 @@
         <p class="dnow" id="dv-now" hidden><b id="dv-view-title"></b><span class="bar-note" id="dv-count"></span><span class="dnow-filter" id="dv-filtered" hidden></span></p>
         <div class="table adt drows" id="seats-table" data-can="seats.view" data-skel="rows:4"></div>
         <div class="table adt drows" id="dv-wmi" hidden></div>
-        <div class="table adt drows" id="dv-software" hidden></div>
-        <div class="table adt drows" id="dv-updpc" hidden></div>
-        <div class="table adt drows" id="dv-updates" hidden></div>
         <div class="table adt drows" id="dv-admins" hidden></div>
         <div class="table adt drows" id="dv-adminp" hidden></div>
         <div class="table adt drows" id="dv-printers" hidden></div>

@@ -370,9 +370,9 @@ input.pick:focus { outline: none; border-color: var(--accent); }
 .dw-how.warn { color: var(--amber); }
 /* Devices: the tables of computers, software, updates and sessions. The page itself is laid out as Active Directory is (.dir-page). */
 /* A computer, a program or an update opens the side panel, and the open one is marked. */
-.seats-page :is(#seats-table, #dv-software, #dv-updates, #dv-updpc, #dv-scripts, #dv-jobs, #dv-workflows, #dv-wmi) .tr:not(.th) { cursor: pointer; }
-.seats-page :is(#seats-table, #dv-software, #dv-updates, #dv-updpc, #dv-scripts, #dv-jobs, #dv-workflows, #dv-wmi) .tr:not(.th):hover { background: #151827; }
-.seats-page :is(#seats-table, #dv-software, #dv-updates, #dv-updpc, #dv-scripts, #dv-jobs, #dv-workflows, #dv-wmi) .tr.dw-on { background: #171B2C; }
+.seats-page :is(#seats-table, #dv-scripts, #dv-jobs, #dv-workflows, #dv-wmi) .tr:not(.th) { cursor: pointer; }
+.seats-page :is(#seats-table, #dv-scripts, #dv-jobs, #dv-workflows, #dv-wmi) .tr:not(.th):hover { background: #151827; }
+.seats-page :is(#seats-table, #dv-scripts, #dv-jobs, #dv-workflows, #dv-wmi) .tr.dw-on { background: #171B2C; }
 /* WMI query (devices.js): which computers, the namespace and the examples on one line, the query under them, then Run. */
 .wq { display: grid; gap: 10px; margin-top: 14px; }
 .wq[hidden] { display: none; }
@@ -461,10 +461,7 @@ input.pick:focus { outline: none; border-color: var(--accent); }
 .seat-list .two small { white-space: normal; }
 /* Add computers goes with the list of computers. */
 .seats-page:not([data-at="computers"]) #seats-add { display: none; }
-.seats-page:not([data-at="computers"]):not([data-at="updates"]) #dv-act { display: none; }
-.seats-page:not([data-at="updates"]) :is(#dv-upd-check, #dv-upd-install) { display: none; }
-#dv-upd-check, #dv-upd-install { display: inline-flex; align-items: center; gap: 7px; }
-#dv-upd-check svg, #dv-upd-install svg { width: 15px; height: 15px; }
+.seats-page:not([data-at="computers"]) #dv-act { display: none; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chips button { height: 30px; padding: 0 12px; background: transparent; color: var(--muted); font-size: 13px; font-weight: 600; }
 .chips button[aria-selected="true"] { background: #1A1D2B; border-color: #3A3E55; color: var(--title); }
