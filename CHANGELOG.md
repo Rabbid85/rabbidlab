@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.162 (2026-11-14)
+
+- An administrator at the computer can stop the client service again, as with Datto RMM. The block added in 1.1.160 is removed. Uninstalling still needs the uninstall code or an allowance from Rabbid Lab.
+- The client icon sits under the arrow with the other tray icons again and is no longer pinned to the taskbar. The client service still makes sure it is running.
+
 ## 1.1.161 (2026-11-14)
 
 - Local accounts is worded the way Active Directory is: Disabled, Disable and Enable in place of Turned off, plus Password never expires, Last sign-in and This computer.

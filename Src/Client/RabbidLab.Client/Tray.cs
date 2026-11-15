@@ -26,7 +26,7 @@ internal sealed class Tray : ApplicationContext
     private readonly EventWaitHandle signal = new(false, EventResetMode.AutoReset, ShowSignal);
     private StatusWindow? window;
     private Status? last;
-    private int shownTries; // how often the taskbar setting was looked for; -1 once it's settled
+    private int shownTries; // how often the taskbar switch was looked for; -1 once it's settled
     private readonly DateTime written = Written(); // this program's file as it was when the icon started
 
     public Tray(bool open)
@@ -93,7 +93,7 @@ internal sealed class Tray : ApplicationContext
             Quit();
             return;
         }
-        KeepOnTaskbar();
+        LeaveToWindows();
         var now = Status.Read() ?? new Status();
         heading.Text = now.Describe();
         var tip = $"Rabbid Lab: {now.Describe()}";
@@ -110,45 +110,48 @@ internal sealed class Tray : ApplicationContext
         }
     }
 
-    // Windows 11 puts a new icon under the ^ until someone drags it out. Each time the icon starts, its switch under
-    // Settings, Personalization, Taskbar, Other system tray icons is turned on, so it's on the taskbar itself. Windows
-    // lists the icon a moment after it first shows, so this looks a few times, then leaves it.
-    private void KeepOnTaskbar()
+    // Versions 1.1.155 to 1.1.161 turned on this icon's switch under Settings, Personalization, Taskbar, Other system
+    // tray icons, which put it on the taskbar itself. Where it sits is Windows' and the person's choice: the switch is
+    // put back once, so the icon is under the arrow with the others, and it's never touched again after that.
+    private void LeaveToWindows()
     {
-        if (shownTries < 0 || shownTries++ > 12)
+        if (shownTries < 0)
         {
             return;
         }
         try
         {
+            using var mine = Registry.CurrentUser.CreateSubKey(@"Software\Rabbid Lab\Client");
             using var all = Registry.CurrentUser.OpenSubKey(@"Control Panel\NotifyIconSettings");
-            if (all is null)
+            if (all is null || mine.GetValue("TaskbarIcon") is string)
             {
-                shownTries = -1; // not Windows 11: nothing to turn on
+                shownTries = -1; // not Windows 11, or done before
                 return;
             }
             var exe = Application.ExecutablePath;
-            var mine = "\\" + Path.Combine(Path.GetFileName(Path.GetDirectoryName(exe) ?? ""), Path.GetFileName(exe));
+            var tail = "\\" + Path.Combine(Path.GetFileName(Path.GetDirectoryName(exe) ?? ""), Path.GetFileName(exe));
             var found = false;
             var changed = false;
             foreach (var name in all.GetSubKeyNames())
             {
                 using var one = all.OpenSubKey(name, writable: true);
-                if (one?.GetValue("ExecutablePath") is not string path || !path.EndsWith(mine, StringComparison.OrdinalIgnoreCase))
+                if (one?.GetValue("ExecutablePath") is not string path || !path.EndsWith(tail, StringComparison.OrdinalIgnoreCase))
                 {
                     continue;
                 }
                 found = true;
-                if (!(one.GetValue("IsPromoted") is int on && on == 1))
+                if (one.GetValue("IsPromoted") is int on && on == 1)
                 {
-                    one.SetValue("IsPromoted", 1, RegistryValueKind.DWord);
+                    one.SetValue("IsPromoted", 0, RegistryValueKind.DWord);
                     changed = true;
                 }
             }
-            if (!found)
+            // Windows lists the icon a moment after it first shows: looked for a few times, then left.
+            if (!found && shownTries++ < 12)
             {
-                return; // not listed yet: looked for again at the next tick
+                return;
             }
+            mine.SetValue("TaskbarIcon", "left to Windows", RegistryValueKind.String);
             shownTries = -1;
             if (changed)
             {

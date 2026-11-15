@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.162', [
+    'An administrator at the computer can stop the client service again, as with Datto RMM. The block added in 1.1.160 is removed. Uninstalling still needs the uninstall code or an allowance from Rabbid Lab.',
+    'The client icon sits under the arrow with the other tray icons again and is no longer pinned to the taskbar. The client service still makes sure it is running.']],
   ['1.1.161', [
     'Local accounts is worded the way Active Directory is: Disabled, Disable and Enable in place of Turned off, plus Password never expires, Last sign-in and This computer.']],
   ['1.1.160', [
@@ -1782,7 +1785,7 @@ const RELEASE_NOTES = [
       const open = !!seat.removalUntil;
       const lock = st === 'waiting' || !can.has('seats.remove') ? ''
         : `<section class="dw-sec"><div class="dw-sec-head"><h3>Uninstall the client</h3><span class="seat-lock${open ? ' open' : ''}">${svg(open ? 'check' : 'lock')}${open ? `Allowed until ${esc(clock(seat.removalUntil))}` : 'Locked'}</span></div>`
-          + `<p class="dw-how">${open ? 'Someone at the computer can uninstall the client now, from Rabbid Lab Client or from Installed apps in Windows.' : "The client can't be stopped or uninstalled on the computer until you allow it here, or its uninstall code is entered there."}</p>`
+          + `<p class="dw-how">${open ? 'Someone at the computer can uninstall the client now, from Rabbid Lab Client or from Installed apps in Windows.' : "The client can't be uninstalled on the computer until you allow it here, or its uninstall code is entered there."}</p>`
           + `<div class="seat-acts"><button type="button" data-seat-allow>${open ? 'Lock again' : 'Allow for an hour'}</button>`
           + `<button type="button" class="danger" data-seat-now${seat.uninstalling ? ' disabled' : ''}>${svg('trash')}${seat.uninstalling ? 'Uninstalling' : 'Uninstall now'}</button></div></section>`
           + `<section class="dw-sec"><div class="dw-sec-head"><h3>Uninstall code</h3>${seatCode ? '' : `<button type="button" class="small" data-seat-code>${svg('eye')}Show code</button>`}</div>`

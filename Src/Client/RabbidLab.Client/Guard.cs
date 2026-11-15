@@ -7,45 +7,37 @@ using System.Security.AccessControl;
 namespace RabbidLab.Client;
 
 /// <summary>
-/// Keeps the client's service running while the computer is locked (Removal). Locked: only Windows itself (SYSTEM, which
-/// the installer and the service run as) may stop, pause, reconfigure or delete the service; administrators at the
-/// computer may still look at it and start it. Unlocked (allowed in Rabbid Lab, the uninstall code, too long without
-/// the server, or no server): the service's permissions are Windows' usual ones again. And whenever its process is
-/// ended without the service being stopped, Windows starts it again. An administrator who sets out to get round this
-/// still can; it stops the ordinary ways (Services, sc stop, net stop, Task Manager).
+/// The service's own settings in Windows. An administrator at the computer can stop it, as with Datto RMM's agent:
+/// the lock is on uninstalling (Removal), not on the service. Versions 1.1.160 and 1.1.161 took stopping away from
+/// administrators while the computer was locked; that is put back here. And when the service's process ends without
+/// the service being stopped (it crashed, or was ended in Task Manager), Windows starts it again.
 /// </summary>
 internal static class Guard
 {
-    // Windows' usual permissions for a service, and the same with administrators left only reading and starting.
+    // Windows' usual permissions for a service.
     private const string Usual = "D:(A;;CCLCSWRPWPDTLOCRRC;;;SY)(A;;CCDCLCSWRPWPDTLOCRSDRCWDWO;;;BA)(A;;CCLCSWLOCRRC;;;IU)(A;;CCLCSWLOCRRC;;;SU)";
-    private const string Guarded = "D:(A;;CCDCLCSWRPWPDTLOCRSDRCWDWO;;;SY)(A;;CCLCSWRPLOCRRC;;;BA)(A;;CCLCSWLOCRRC;;;IU)(A;;CCLCSWLOCRRC;;;SU)";
-    private static bool? guarded; // as it was last set by this process
 
-    /// <summary>Run by the service whenever it works out whether the computer is locked. Does nothing when nothing changed.</summary>
-    public static void Set(bool locked)
+    /// <summary>Puts the service's permissions back to Windows' usual ones. Run once as the service starts.</summary>
+    public static void UsualPermissions()
     {
-        if (guarded == locked)
-        {
-            return;
-        }
         var manager = IntPtr.Zero;
         var service = IntPtr.Zero;
         try
         {
-            var descriptor = new RawSecurityDescriptor(locked ? Guarded : Usual);
+            var descriptor = new RawSecurityDescriptor(Usual);
             var bytes = new byte[descriptor.BinaryLength];
             descriptor.GetBinaryForm(bytes, 0);
             const int connect = 0x0001, readControl = 0x00020000, writeDac = 0x00040000, dacl = 0x4;
             manager = OpenSCManager(null, null, connect);
             service = manager == IntPtr.Zero ? IntPtr.Zero : OpenService(manager, ClientService.Name, readControl | writeDac);
-            if (service != IntPtr.Zero && SetServiceObjectSecurity(service, dacl, bytes))
+            if (service != IntPtr.Zero)
             {
-                guarded = locked;
+                SetServiceObjectSecurity(service, dacl, bytes);
             }
         }
         catch (Exception e) when (e is ArgumentException or SystemException)
         {
-            // Not the service (--check-in), or Windows refused: tried again at the next round.
+            // Left as they are.
         }
         finally
         {

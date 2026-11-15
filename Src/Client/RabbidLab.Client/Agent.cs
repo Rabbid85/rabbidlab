@@ -138,8 +138,6 @@ internal sealed class Agent
         {
             var why = Removal.Apply(joined, until);
             status.Locked = why == Unlocked.Locked;
-            // Locked covers the service too: it can't be stopped at the computer (Guard).
-            Guard.Set(status.Locked);
             status.RemovalUntil = why == Unlocked.ByServer ? until : why == Unlocked.ByCode ? Removal.CodeUntil : null;
             status.Unlocked = why == Unlocked.ByCode ? Status.ByCode : why == Unlocked.Offline ? Status.ByOffline : null;
         }
