@@ -69,7 +69,12 @@ builder.Services.AddSingleton<ActivityLog>();
 builder.Services.AddSingleton<ServerStatus>();
 builder.Services.AddHttpClient();
 // A background service that fails in a way it didn't expect is logged and left stopped: Rabbid Lab itself keeps serving.
-builder.Services.Configure<HostOptions>(options => options.BackgroundServiceExceptionBehavior = BackgroundServiceExceptionBehavior.Ignore);
+// Stopping takes ten seconds at most: an update waits for the service to stop before it can install.
+builder.Services.Configure<HostOptions>(options =>
+{
+    options.BackgroundServiceExceptionBehavior = BackgroundServiceExceptionBehavior.Ignore;
+    options.ShutdownTimeout = TimeSpan.FromSeconds(10);
+});
 
 // Updating itself: the releases on GitHub (Updates.cs), and the update engine (Src/Utilities/RabbidLab.Updater) with Rabbid
 // Lab's side of it (Update.cs). A newer release is offered on the page and installed when someone chooses Install now, or
@@ -198,6 +203,7 @@ app.MapSessionsApi();
 app.MapRolesApi();
 app.MapMfaApi();
 app.MapClientsApi();
+app.MapDevicesApi();
 app.MapUsersApi();
 app.MapDirectoryExtrasApi();
 app.MapDirectoryActionsApi();

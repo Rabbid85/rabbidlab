@@ -28,6 +28,7 @@
 <script src="Assets/sensors.js" defer></script>
 <script src="Assets/wiki.js" defer></script>
 <script src="Assets/directory.js" defer></script>
+<script src="Assets/devices.js" defer></script>
 </head>
 <!-- The console: the top bar, the rail down the left, and one page at a time (console.js picks it from the address). -->
 <body class="app booting">
@@ -159,11 +160,11 @@
   <a href="#overview" data-page="overview" title="Overview" data-can="overview.view"><svg><use href="#i-overview"/></svg><span>Overview</span></a>
   <a href="#links" data-page="links" title="Links" data-can="links.view"><svg><use href="#i-link"/></svg><span>Links</span><small id="rail-links"></small><i class="rail-dot bad" id="links-dot" hidden></i></a>
   <a href="#sensors" data-page="sensors" title="Sensors" data-can="sensors.view"><svg><use href="#i-activity"/></svg><span>Sensors</span><i class="rail-dot bad" id="sensors-dot" hidden></i></a>
+  <a href="#seats" data-page="seats" title="Devices" data-can="seats.view sessions.view"><svg><use href="#i-monitor"/></svg><span>Devices</span><small id="rail-seats"></small><i class="rail-dot" id="seats-dot" hidden></i></a>
   <p class="rail-label" data-can="ad.view ad.connect">Directory</p>
   <a href="#ad/users" data-page="ad" id="rail-dir" title="Active Directory" data-can="ad.view ad.connect"><svg><use href="#i-users"/></svg><span>Active Directory</span><i class="rail-dot bad" id="rail-dir-dot" hidden></i></a>
   <a href="#ad/domain" data-page="domain" id="rail-domain" title="Domain health" data-can="ad.view ad.connect" data-whole><svg><use href="#i-shield"/></svg><span>Domain health</span><i class="rail-dot bad" id="rail-domain-dot" hidden></i></a>
-  <p class="rail-label" data-can="seats.view sessions.view access.view windows.view">Config</p>
-  <a href="#seats" data-page="seats" title="Devices" data-can="seats.view sessions.view"><svg><use href="#i-monitor"/></svg><span>Devices</span><small id="rail-seats"></small><i class="rail-dot" id="seats-dot" hidden></i></a>
+  <p class="rail-label" data-can="access.view windows.view">Config</p>
   <a href="#local" data-page="local" title="Local accounts" data-can="windows.view"><svg><use href="#i-key"/></svg><span>Local accounts</span></a>
   <a href="#people" data-page="people" title="Roles and people" data-can="access.view"><svg><use href="#i-shield"/></svg><span>Roles and people</span><small id="rail-roles"></small></a>
   <p class="rail-label">Help</p>
@@ -349,7 +350,7 @@
           </div>
           <div class="ubar"><i id="inst-fill"></i></div>
           <div class="steps"><span id="step-download">Downloaded</span><span id="step-install">Installing</span><span id="step-back">Restarting</span></div>
-          <p class="say" id="inst-say">Rabbid Lab is stopped for about a minute while the update installs. This page reloads when it is done.</p>
+          <p class="say" id="inst-say">Rabbid Lab is stopped for under a minute while the update installs. This page reloads when it is done.</p>
         </div>
         <p class="hint problem" id="upd-problem" hidden></p>
         <div class="ds-row"><div class="ds-l"><b id="upd-new-title">What's new</b><span id="upd-new-text"></span></div><div class="ds-r"><a class="ds-link" href="#whats-new">Read it<svg><use href="#i-right"/></svg></a></div></div>
@@ -548,20 +549,29 @@
         <div class="dkids" id="dv-views"></div>
         <a href="#seats/software" data-dv="software" data-can="seats.view"><svg><use href="#i-box"/></svg><span>Software</span><small id="dv-n-software"></small></a>
         <a href="#seats/updates" data-dv="updates" data-can="seats.view"><svg><use href="#i-updates"/></svg><span>Windows updates</span><small id="dv-n-updates"></small></a>
+        <p class="rail-label" data-can="seats.actions seats.scripts.run seats.scripts.edit seats.workflows">Tools</p>
+        <a href="#seats/scripts" data-dv="scripts" data-can="seats.scripts.run seats.scripts.edit seats.workflows"><svg><use href="#i-code"/></svg><span>Scripts</span><small id="dv-n-scripts"></small></a>
+        <a href="#seats/jobs" data-dv="jobs" data-can="seats.actions seats.scripts.run seats.scripts.edit seats.workflows"><svg><use href="#i-history"/></svg><span>Jobs</span><small id="dv-n-jobs"></small></a>
+        <a href="#seats/workflows" data-dv="workflows" data-can="seats.workflows"><svg><use href="#i-org"/></svg><span>Workflows</span><small id="dv-n-workflows"></small></a>
         <p class="rail-label" data-can="sessions.view">Console</p>
         <a href="#seats/sessions" data-dv="sessions" data-can="sessions.view"><svg><use href="#i-users"/></svg><span>Signed in now</span><small id="dv-n-sessions"></small></a>
       </nav>
       <div class="dmain"><div class="lib"><div class="lib-body">
         <div class="dbar"><div class="tabs2" id="dv-tabs"></div><span class="grow"></span>
           <button type="button" class="small" id="dv-cols" aria-haspopup="menu"><svg><use href="#i-columns"/></svg>Columns</button>
+          <button type="button" class="small" id="dv-act" aria-haspopup="menu" disabled data-tip="Tick computers first"><svg><use href="#i-menu"/></svg>Actions<b class="cnt" hidden></b><svg class="chev"><use href="#i-chevron-down"/></svg></button>
           <button type="button" class="small" id="dv-refresh" data-tip="Refresh" aria-label="Refresh"><svg><use href="#i-refresh"/></svg></button>
           <button type="button" class="small" id="dv-export"><svg><use href="#i-csv"/></svg>Export</button>
-          <button type="button" class="primary" id="seats-add" data-can="seats.add"><svg><use href="#i-plus"/></svg><span>Add computers</span></button></div>
+          <button type="button" class="primary" id="seats-add" data-can="seats.add"><svg><use href="#i-plus"/></svg><span>Add computers</span></button>
+          <button type="button" class="primary" id="dv-new" hidden><svg><use href="#i-plus"/></svg><span id="dv-new-text">New script</span></button></div>
         <p class="dnow"><b id="dv-view-title"></b><span class="bar-note" id="dv-count"></span></p>
         <div class="table" id="seats-table" data-can="seats.view" data-skel="rows:4"></div>
         <div class="table" id="dv-software" hidden></div>
         <div class="table" id="dv-updates" hidden></div>
         <div class="table" id="sessions-table" hidden></div>
+        <div class="table" id="dv-scripts" hidden></div>
+        <div class="table" id="dv-jobs" hidden></div>
+        <div class="table" id="dv-workflows" hidden></div>
         <p class="hint problem" id="seats-problem" hidden></p>
       </div></div></div>
     </div>
@@ -1454,6 +1464,77 @@
 </dialog>
 
 <!-- Are you sure: deleting, mostly. -->
+<!-- Devices: what Actions does with the ticked computers (devices.js fills it). -->
+<div class="gear-menu" id="dv-act-menu" popover role="menu"></div>
+
+<!-- Before anything runs on computers: who's asking, by a code from their authenticator app or their password (devices.js). -->
+<dialog class="dialog" id="confirm-dialog" aria-labelledby="cf-title">
+  <h2 id="cf-title">Confirm it's you</h2>
+  <p class="dialog-lead" id="cf-lead"></p>
+  <div class="form">
+    <label for="cf-code" id="cf-code-label">6-digit code</label><input id="cf-code" inputmode="numeric" maxlength="7" autocomplete="one-time-code" spellcheck="false">
+    <label for="cf-password" id="cf-password-label">Your password</label><input id="cf-password" type="password" autocomplete="current-password">
+  </div>
+  <p class="hint problem" id="cf-problem" role="alert" hidden></p>
+  <div class="dialog-foot"><button type="button" id="cf-cancel">Cancel</button><button type="button" class="primary" id="cf-go">Confirm</button></div>
+</dialog>
+
+<!-- Running a script, a restart or Windows updates on computers. -->
+<dialog class="dialog wide" id="run-dialog" aria-labelledby="run-title">
+  <h2 id="run-title">Run a script</h2>
+  <p class="dialog-lead" id="run-lead"></p>
+  <div class="form" id="run-form">
+    <label for="run-script" id="run-script-label">Script</label><select id="run-script"></select>
+    <div class="form-in" id="run-typed" hidden>
+      <p class="form-label">Language</p>
+      <div class="seg pw-mode" id="run-lang"><button type="button" data-lang="powershell" aria-pressed="true">PowerShell</button><button type="button" data-lang="cmd" aria-pressed="false">Command</button></div>
+      <label for="run-text">Script</label><textarea id="run-text" spellcheck="false" autocomplete="off" placeholder="Get-Service Spooler"></textarea>
+    </div>
+    <pre class="code-box" id="run-preview" hidden></pre>
+    <label for="run-count" id="run-count-label" hidden></label><input id="run-count" inputmode="numeric" maxlength="6" autocomplete="off" hidden>
+  </div>
+  <p class="hint" id="run-note"></p>
+  <p class="hint problem" id="run-problem" role="alert" hidden></p>
+  <div class="dialog-foot"><button type="button" id="run-cancel">Cancel</button><button type="button" class="primary" id="run-go">Run</button></div>
+</dialog>
+
+<!-- A script in the library: its name, what it's written in, how long it may run, and the script. -->
+<dialog class="dialog wide script-dialog" id="script-dialog" aria-labelledby="sc-title">
+  <h2 id="sc-title">New script</h2>
+  <p class="dialog-lead">Kept in the library, and run on computers as SYSTEM.</p>
+  <div class="form two">
+    <div><label for="sc-name">Name</label><input id="sc-name" maxlength="80" autocomplete="off" spellcheck="false" placeholder="Clear temp files"></div>
+    <div><label for="sc-about">Description</label><input id="sc-about" maxlength="200" autocomplete="off" placeholder="What it does"></div>
+    <div><p class="form-label">Language</p><div class="seg pw-mode" id="sc-lang"><button type="button" data-lang="powershell" aria-pressed="true">PowerShell</button><button type="button" data-lang="cmd" aria-pressed="false">Command</button></div></div>
+    <div><label for="sc-minutes">Time limit</label><span class="sc-min" id="sc-min"></span></div>
+    <div class="wide" id="sc-start-row"><label for="sc-start">Start from</label><select id="sc-start"></select></div>
+    <div class="wide"><label for="sc-text">Script</label><textarea id="sc-text" spellcheck="false" autocomplete="off"></textarea></div>
+  </div>
+  <p class="hint problem" id="sc-problem" role="alert" hidden></p>
+  <div class="dialog-foot"><button type="button" id="sc-cancel">Cancel</button><button type="button" class="primary" id="sc-save">Save</button></div>
+</dialog>
+
+<!-- A workflow: what starts it, on which computers, and its steps in order. -->
+<dialog class="dialog wide flow-dialog" id="flow-dialog" aria-labelledby="fl-title">
+  <h2 id="fl-title">New workflow</h2>
+  <p class="dialog-lead">Its steps run in order on each computer, and stop at the first one that fails.</p>
+  <div class="form two">
+    <div class="wide"><label for="fl-name">Name</label><input id="fl-name" maxlength="80" autocomplete="off" spellcheck="false" placeholder="Patch night"></div>
+    <div><label for="fl-when">When</label><select id="fl-when"></select></div>
+    <div id="fl-more">
+      <div class="form-in" id="fl-time-row"><label for="fl-hour">At</label><span class="fl-time"><select id="fl-hour" aria-label="Hour"></select><select id="fl-minute" aria-label="Minute"></select></span></div>
+      <div class="form-in" id="fl-below-row"><label for="fl-below">Below</label><span class="sc-min" id="fl-below-box"></span></div>
+    </div>
+    <div class="wide" id="fl-days-row"><p class="form-label">On</p><div class="seg pw-mode" id="fl-days"></div></div>
+    <div><label for="fl-if">On which computers</label><select id="fl-if"></select></div>
+    <div id="fl-if-row"><label for="fl-if-text" id="fl-if-label">Name</label><input id="fl-if-text" maxlength="100" autocomplete="off" spellcheck="false"></div>
+    <div class="wide"><p class="form-label">Steps</p><div class="dw-list fl-steps" id="fl-steps"></div><select id="fl-add" aria-label="Add a step"></select></div>
+  </div>
+  <div class="ticks"><label class="tick"><input type="checkbox" id="fl-on" checked>Enabled</label></div>
+  <p class="hint problem" id="fl-problem" role="alert" hidden></p>
+  <div class="dialog-foot"><button type="button" id="fl-cancel">Cancel</button><button type="button" class="primary" id="fl-save">Save</button></div>
+</dialog>
+
 <dialog class="dialog" id="sure-dialog" aria-labelledby="sure-title">
   <h2 id="sure-title"></h2>
   <p class="dialog-lead" id="sure-lead"></p>

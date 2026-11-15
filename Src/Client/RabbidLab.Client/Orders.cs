@@ -12,7 +12,8 @@ namespace RabbidLab.Client;
 /// <summary>
 /// Listens for the server's account changes: one request to api/clients/next kept open, an order down it when someone
 /// makes or changes a Windows account on this computer in Rabbid Lab, and how it went sent back to api/clients/done.
-/// Only those account orders exist, and Group Policy can turn them off (Allow account changes).
+/// Group Policy can turn those off (Allow account changes). The same request is how the server says jobs wait for
+/// this computer (Jobs.cs).
 /// </summary>
 internal static class Orders
 {
@@ -72,7 +73,8 @@ internal static class Orders
                 return TimeSpan.FromSeconds(1);
             }
             var asked = Stopwatch.StartNew();
-            var (code, order) = await api.Post<AccountOrder>("api/clients/next", new Nothing(), key, stop).ConfigureAwait(false);
+            // ?jobs tells the server this client knows the order that says jobs wait for it.
+            var (code, order) = await api.Post<AccountOrder>("api/clients/next?jobs=1", new Nothing(), key, stop).ConfigureAwait(false);
             if (code == HttpStatusCode.NoContent)
             {
                 // The server holds the request open; an empty answer straight away isn't asked again at once.
@@ -86,6 +88,15 @@ internal static class Orders
             {
                 // A server older than this client has no orders to give; one that doesn't know this computer, it rejoins first.
                 return code == HttpStatusCode.NotFound ? TimeSpan.FromMinutes(10) : TimeSpan.FromSeconds(30);
+            }
+            if (order.Action == AccountOrder.Jobs)
+            {
+                // Taken at once, so the server stops saying so; when it can't be asked, not again straight away.
+                if (!await Jobs.Take(api, key, stop).ConfigureAwait(false))
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(15), stop).ConfigureAwait(false);
+                }
+                continue;
             }
             // Reads for sensors go ahead whatever Group Policy says about account changes.
             var answer = SeatChecks.Is(order) ? SeatChecks.Do(order) : now.AccountChanges ? Do(order)

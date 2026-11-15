@@ -95,6 +95,32 @@
   <p>The client looks every half hour and sends when something changed. It asks Windows Update what's missing every six hours; antivirus definition updates are left out. A computer needs client 1.1.165 or later.</p>
 </article>
 
+<article data-key="scripts" data-group="Computers" data-title="Scripts, restarts and updates on computers">
+  <p>On <a href="#seats">Devices</a> you can run a script on computers, install their missing Windows updates, or restart them. Scripts are PowerShell or Command, and run as SYSTEM.</p>
+  <ul>
+    <li><b>Several computers:</b> tick them, then click <b>Actions</b>. Shift-click ticks everything in between.</li>
+    <li><b>One computer:</b> click it. The buttons are at the top of its panel, and its <b>Jobs</b> tab lists what was run on it.</li>
+    <li><b>Scripts</b> is the library. <b>New script</b> adds one, and <b>Start from</b> fills in a common one to change. Each script has a time limit: it's stopped when that's up.</li>
+    <li><b>Jobs</b> lists every run. Click one to see each computer, the exit code, what the script wrote there, and exactly what ran.</li>
+    <li><b>Restart</b> gives anyone signed in a five minute warning. <b>Install Windows updates</b> doesn't restart: a computer that needs it shows under Needs restart.</li>
+    <li>A computer that's offline gets the job when it's back, for a day. After that the job says Expired.</li>
+  </ul>
+  <p><b>Confirm it's you.</b> Before anything runs, or a script or workflow is saved, you're asked for a code from your authenticator app. Without MFA it's your password. It's asked again after 10 minutes. Running on more than 10 computers also takes typing how many.</p>
+  <p><b>Who can do it.</b> Four permissions under Devices in <a href="#people">Roles and people</a>: Restart computers and install updates, Run scripts, Write scripts, and Manage workflows. Write scripts means being able to run anything on every computer, so give it to few. Every run is in the activity log with who ran it and the script's SHA-256.</p>
+  <p class="tip">To turn all of this off on some computers, set <b>Allow scripts and actions</b> to Disabled in the Group Policy template. Their jobs then say Refused. A computer needs client 1.1.168 or later to take jobs.</p>
+</article>
+
+<article data-key="workflows" data-group="Computers" data-title="Workflows">
+  <p>A workflow runs steps on computers by itself. Open <a href="#seats/workflows">Workflows</a> under Devices and click <b>New workflow</b>.</p>
+  <ul>
+    <li><b>When:</b> a new computer is approved, on a schedule (days and a time, by this server's clock), a computer comes online, is missing Windows updates, needs a restart, or runs low on space on C:.</li>
+    <li><b>On which computers:</b> every computer, names like <code>SHOP-*</code>, Windows names that contain a word (or don't, such as Server), or only computers with nobody signed in.</li>
+    <li><b>Steps:</b> run a script from the library, install missing Windows updates, restart, or restart only if Windows needs it. They run in order on each computer and stop at the first one that fails.</li>
+    <li><b>Run now</b> starts it on every approved computer it's for. <b>Disable</b> keeps it without running it.</li>
+  </ul>
+  <p>Each run is a job under Jobs, by Workflow. A scheduled run reaches a computer that was offline if it's back within four hours. A workflow can only hold steps its maker may run by hand.</p>
+</article>
+
 <article data-key="client" data-group="Computers" data-title="The client on a computer">
   <p>The client is a small Windows service with a tray icon. It checks in every minute, says who is signed in, keeps itself on the server's version, and makes the account changes you ask for under <a href="#local">Local accounts</a>.</p>
   <ul>
@@ -102,6 +128,7 @@
     <li><b>When the icon shows:</b> as soon as the client is installed by hand. After a quiet install (Intune, Group Policy) it shows at the next sign-in.</li>
     <li><b>No server yet?</b> The window has <b>Connect to a server</b>.</li>
     <li><b>Stopping account changes on some computers:</b> in the Group Policy template, set <b>Allow account changes</b> to Disabled.</li>
+    <li><b>Stopping scripts and actions on some computers:</b> in the same template, set <b>Allow scripts and actions</b> to Disabled.</li>
   </ul>
   <p>If a computer won't take changes, see <a href="#wiki/seat-trouble">A computer that won't take changes</a>.</p>
 </article>
@@ -482,7 +509,7 @@
   <p>Rabbid Lab checks GitHub for a new version on start, every 12 hours, and when you click <b>Check for updates</b>.</p>
   <ul>
     <li>On Windows, a new version installs automatically once nobody has used <span data-app>Rabbid Lab</span> for a couple of minutes. Turn that off with <b>Update automatically</b> under <a href="#settings/updates">Settings, Updates</a>.</li>
-    <li><b>Install now</b> installs straight away. Rabbid Lab is stopped for about a minute while it installs.</li>
+    <li><b>Install now</b> installs straight away. Rabbid Lab is stopped for under a minute while it installs, and every open page shows the same progress.</li>
     <li>Only updates signed with Rabbid Lab's release key install.</li>
     <li>Computers in Devices update their client to the server's version by themselves.</li>
   </ul>

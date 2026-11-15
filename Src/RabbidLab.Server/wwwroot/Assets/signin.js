@@ -233,15 +233,17 @@
       if (pct != null) $('update-fill').style.width = `${Math.min(100, pct)}%`;
     };
     // The download fills two thirds of the bar; while Rabbid Lab is stopped to install, it moves on the minute that takes.
-    const installing = () => {
+    // Counted from when the server said installing began, as the console's own pages do.
+    const installing = (forSeconds) => {
+      if (forSeconds != null) since = Date.now() - forSeconds * 1000;
       since ||= Date.now();
-      bar(66 + 32 * (1 - Math.exp(-(Date.now() - since) / 30000)));
+      bar(66 + 32 * (1 - Math.exp(-(Date.now() - since) / 12000)));
       say(`Installing version ${target}. This page reloads when it's done.`, 'busy');
-      tick ||= setInterval(installing, 1000);
+      tick ||= setInterval(() => installing(), 250);
     };
     const draw = (u) => {
       target = u.available || target;
-      if (u.status === 'installing') return installing();
+      if (u.status === 'installing') return installing(u.installingFor);
       clearInterval(tick);
       tick = null;
       since = 0;
@@ -276,7 +278,7 @@
         // Not answering: restarting as the new version, or stopped.
         if (target) installing();
       }
-      timer = setTimeout(ask, busy ? 2000 : 30000);
+      timer = setTimeout(ask, busy ? 1000 : 30000);
     };
     $('update-check').addEventListener('click', () => {
       say('Checking for updates…');

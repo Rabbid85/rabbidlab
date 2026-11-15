@@ -16,7 +16,7 @@ public static class ClientsApi
         app.Lifetime.ApplicationStopping.Register(() => app.Services.GetRequiredService<Clients>().Flush());
 
         // Anyone can join; new computers wait to be let in. Joins are limited per address so nobody can flood the list.
-        app.MapPost("/api/clients/join", (JoinForm form, HttpContext context, Clients clients, JoinLimiter limiter, ActivityLog log) =>
+        app.MapPost("/api/clients/join", (JoinForm form, HttpContext context, Clients clients, JoinLimiter limiter, ActivityLog log, Workflows workflows) =>
         {
             var from = ActivityLog.Address(context);
             if (!limiter.Take(from))
@@ -35,13 +35,16 @@ public static class ClientsApi
                 return Results.Json(new { error = problem }, statusCode: StatusCodes.Status429TooManyRequests);
             }
             log.Record($"The client on {computer}", from, "clients", "client.join", client.Approved is null ? $"{computer} joined and is waiting for approval" : $"{computer} joined", "ok");
+            workflows.Happened(Workflows.Approved, client); // only when computers join without approval
             return Results.Ok(new { id = client.Id, secret, approved = client.Approved is not null, version = Product.Version });
         });
 
         // The answer carries the check for the computer's uninstall code and the days without this server after which the
         // lock lets go, so both work there when this server can't be reached (the client's Removal.cs).
-        app.MapPost("/api/clients/checkin", (CheckInForm form, HttpContext context, Clients clients, ActivityLog log) =>
+        app.MapPost("/api/clients/checkin", (CheckInForm form, HttpContext context, Clients clients, ActivityLog log, Workflows workflows) =>
         {
+            // Away until now: its client had stopped, or it hadn't checked in for a while.
+            var away = Credentials(context) is (var asking, _) && clients.Find(asking) is { Approved: not null } known && !clients.IsOnline(known);
             var used = DateTime.TryParse(form.CodeUsed, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind, out var at) ? at.ToUniversalTime() : (DateTime?) null;
             if (Credentials(context) is not (var id, var secret)
                 || clients.CheckIn(id, secret, form.Computer, form.Os, form.Version, form.User, ActivityLog.Address(context), form.Code, used, out var usedNow) is not { } c)
@@ -51,6 +54,10 @@ public static class ClientsApi
             if (usedNow)
             {
                 log.Record($"The client on {c.Computer}", ActivityLog.Address(context), "clients", "client.code.used", $"The uninstall code was used on {c.Computer}", "ok");
+            }
+            if (away)
+            {
+                workflows.CameOnline(c);
             }
             return Results.Ok(new
             {
@@ -68,17 +75,19 @@ public static class ClientsApi
             Credentials(context) is (var id, var secret) && clients.Stopping(id, secret) ? Results.Ok() : Unknown());
 
         // The client asking for its next order, held open until there is one (ClientCommands). Only computers let in get any.
-        app.MapPost("/api/clients/next", async (HttpContext context, Clients clients, ClientCommands commands) =>
+        app.MapPost("/api/clients/next", async (HttpContext context, Clients clients, ClientCommands commands, DeviceJobs jobs, IHostApplicationLifetime life) =>
         {
             if (Caller(context, clients) is not { } c)
             {
                 return Unknown();
             }
+            // Let go when this server stops: a held request would keep it from stopping, for up to half a minute.
+            using var stop = CancellationTokenSource.CreateLinkedTokenSource(context.RequestAborted, life.ApplicationStopping);
             if (c.Approved is null)
             {
                 try
                 {
-                    await Task.Delay(ClientCommands.Hold, context.RequestAborted);
+                    await Task.Delay(ClientCommands.Hold, stop.Token);
                 }
                 catch (TaskCanceledException)
                 {
@@ -86,7 +95,9 @@ public static class ClientsApi
                 }
                 return Results.NoContent();
             }
-            return await commands.Next(c.Id, context.RequestAborted) is { } order ? Results.Ok(order) : Results.NoContent();
+            // A client that asks with ?jobs knows the order that says jobs wait for it (1.1.168 and later).
+            Func<bool>? waiting = context.Request.Query.ContainsKey("jobs") ? () => jobs.Waits(c.Id) : null;
+            return await commands.Next(c.Id, stop.Token, waiting) is { } order ? Results.Ok(order) : Results.NoContent();
         });
 
         app.MapPost("/api/clients/done", (AccountAnswer answer, HttpContext context, Clients clients, ClientCommands commands) =>
@@ -133,7 +144,7 @@ public static class ClientsApi
 
         // The client's inventory of its computer (Inventory.cs): hardware, drives, software, Windows updates. Kept only for
         // a computer that's been approved.
-        app.MapPost("/api/clients/inventory", (DeviceInventory inventory, HttpContext context, Clients clients, Inventories inventories) =>
+        app.MapPost("/api/clients/inventory", (DeviceInventory inventory, HttpContext context, Clients clients, Inventories inventories, Workflows workflows) =>
         {
             if (Caller(context, clients) is not { } c)
             {
@@ -143,7 +154,9 @@ public static class ClientsApi
             {
                 return Results.Json(new { error = "This computer is waiting for approval." }, statusCode: StatusCodes.Status403Forbidden);
             }
+            var before = inventories.Get(c.Id);
             inventories.Set(c.Id, inventory);
+            workflows.InventoryChanged(c, before, inventory);
             return Results.Ok();
         });
 
@@ -189,7 +202,7 @@ public static class ClientsApi
                 .OrderByDescending(x => x.missing.Count).ThenByDescending(x => x.kb, StringComparer.OrdinalIgnoreCase));
         });
 
-        app.MapPost("/api/clients/{id}/approve", (string id, HttpContext context, Clients clients, ActivityLog log) =>
+        app.MapPost("/api/clients/{id}/approve", (string id, HttpContext context, Clients clients, ActivityLog log, Workflows workflows) =>
         {
             if (Access.RefuseUnless(context, Permissions.SeatsApprove) is { } refused)
             {
@@ -200,10 +213,11 @@ public static class ClientsApi
                 return Results.NotFound(new { error = "That client isn't here any more." });
             }
             log.Record(context, "clients", "client.approve", $"Approved {c.Computer}");
+            workflows.Happened(Workflows.Approved, c);
             return Results.Ok();
         });
 
-        app.MapPost("/api/clients/{id}/remove", (string id, HttpContext context, Clients clients, ClientCommands commands, Inventories inventories, ActivityLog log) =>
+        app.MapPost("/api/clients/{id}/remove", (string id, HttpContext context, Clients clients, ClientCommands commands, Inventories inventories, DeviceJobs jobs, ActivityLog log) =>
         {
             if (Access.RefuseUnless(context, Permissions.SeatsRemove) is { } refused)
             {
@@ -215,6 +229,7 @@ public static class ClientsApi
             }
             commands.Forget(c.Id);
             inventories.Forget(c.Id);
+            jobs.Forget(c.Id);
             log.Record(context, "clients", "client.remove", $"Removed {c.Computer}");
             return Results.Ok();
         });
@@ -310,10 +325,10 @@ public static class ClientsApi
     }
 
     /// <summary>The client whose id and secret the request carries.</summary>
-    private static Client? Caller(HttpContext context, Clients clients) =>
+    internal static Client? Caller(HttpContext context, Clients clients) =>
         Credentials(context) is (var id, var secret) ? clients.Verify(id, secret) : null;
 
-    private static IResult Unknown() =>
+    internal static IResult Unknown() =>
         Results.Json(new { error = $"This computer isn't one of {Product.Title}'s clients. It will rejoin automatically." }, statusCode: StatusCodes.Status401Unauthorized);
 
     /// <summary>The few facts about a computer the list shows; the rest is asked for when the computer is opened.</summary>

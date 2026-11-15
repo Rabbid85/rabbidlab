@@ -53,6 +53,9 @@ public sealed class AccountOrder
     public const string Service = "service";
     public const string Disk = "disk";
 
+    /// <summary>Not a change either: jobs wait for this computer, and its client comes to take them (the client's Jobs.cs).</summary>
+    public const string Jobs = "jobs";
+
     [DataMember(Name = "id")] public string? Id { get; set; }
     [DataMember(Name = "action")] public string? Action { get; set; }
     [DataMember(Name = "name")] public string? Name { get; set; }

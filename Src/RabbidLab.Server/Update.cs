@@ -192,7 +192,8 @@ public static class UpdateApi
         // What the sign-in page may know: versions and progress.
         static object Watched(UpdateState s, UpdateEngine updates, IUpdateSource source, IUpdateHost host) =>
             new { version = s.Version, available = s.Available, status = Word(s.Status), downloaded = s.Downloaded, total = s.Total,
-                checking = updates.Checking, checkedAt = source.CheckedAt, canInstall = host.CanInstall, installHere = Here(s, updates, host) };
+                checking = updates.Checking, checkedAt = source.CheckedAt, canInstall = host.CanInstall, installHere = Here(s, updates, host),
+                installingFor = updates.InstallingFor?.TotalSeconds };
         // Install now, from either page: answers at once, and the activity log records how it went once that is known.
         static UpdateState Install(HttpContext context, UpdateEngine updates, ActivityLog activity, string title)
         {
@@ -208,15 +209,41 @@ public static class UpdateApi
         // Lab starts and every 12 hours, and Check for updates asks at once.
         // With how many people are signed in: after an update every open page loads the new version, and with many of
         // them they do it a little apart, not all in the same second.
-        app.MapGet("/api/update", (HttpContext context, UpdateEngine updates, IUpdateSource source, IUpdateHost host, SettingsStore store, GitHubOptions github, Sessions sessions) =>
-            Access.Can(context, Permissions.UpdatesView) ? Results.Ok(View(updates.State, updates, source, host, store, github) with { Sessions = sessions.All().Count }) : Access.NotAllowed());
+        // A page that already shows the step it names (?after=) is answered when the step changes, or after 25 seconds: every
+        // open page hears an update has started the moment it does, not at its next look. Let go when this server stops,
+        // so stopping to install is never held up by the pages waiting.
+        app.MapGet("/api/update", async (string? after, HttpContext context, UpdateEngine updates, IUpdateSource source, IUpdateHost host, SettingsStore store, GitHubOptions github,
+            Sessions sessions, TimeProvider clock, IHostApplicationLifetime life) =>
+        {
+            if (!Access.Can(context, Permissions.UpdatesView))
+            {
+                return Access.NotAllowed();
+            }
+            var stepped = updates.Stepped;
+            if (after == Word(updates.State.Status) && updates.State.Status is not (UpdateStatus.Downloading or UpdateStatus.Installing))
+            {
+                using var stop = CancellationTokenSource.CreateLinkedTokenSource(context.RequestAborted, life.ApplicationStopping);
+                try
+                {
+                    await stepped.WaitAsync(TimeSpan.FromSeconds(25), stop.Token);
+                }
+                catch (Exception e) when (e is TimeoutException or OperationCanceledException)
+                {
+                    // Nothing new: it's told how things stand, and asks again.
+                }
+            }
+            // Only the people whose pages are open now: sessions kept signed in whose tabs are closed don't reload.
+            var lately = clock.GetUtcNow() - TimeSpan.FromMinutes(2);
+            return Results.Ok(View(updates.State, updates, source, host, store, github) with { Sessions = sessions.All().Count(s => s.LastSeen > lately) });
+        });
         // The sign-in page, when it opens (opened=true) and every 30 seconds while it's open: it asks GitHub when opened if
         // the last check is over a minute old, and otherwise over 5 minutes old. With wait=true the answer comes once the
         // check is done, or an update is on its way, or eight seconds are up. Anyone may ask, so it says versions and
         // progress only: why an update failed stays behind sign-in.
-        app.MapGet("/api/update/watch", async (bool? opened, bool? wait, UpdateEngine updates, IUpdateSource source, IUpdateHost host, CancellationToken cancel) =>
+        app.MapGet("/api/update/watch", async (bool? opened, bool? wait, UpdateEngine updates, IUpdateSource source, IUpdateHost host, IHostApplicationLifetime life, CancellationToken cancel) =>
         {
-            var s = wait == true ? await updates.Watch(opened == true, TimeSpan.FromSeconds(8), cancel) : updates.Watch(opened == true);
+            using var stop = CancellationTokenSource.CreateLinkedTokenSource(cancel, life.ApplicationStopping);
+            var s = wait == true ? await updates.Watch(opened == true, TimeSpan.FromSeconds(8), stop.Token) : updates.Watch(opened == true);
             return Watched(s, updates, source, host);
         });
         // Install now on the sign-in page: only while new versions install by themselves, so it starts sooner what would

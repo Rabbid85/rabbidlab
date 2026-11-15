@@ -3,6 +3,12 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.168', [
+    'Devices can do things on computers now. Tick computers and click Actions, or open one computer: run a script, install Windows updates or restart. Scripts are PowerShell or Command and run as SYSTEM.',
+    'Scripts, Jobs and Workflows are new lists under Devices. Scripts is the library, with examples to start from. Jobs shows every run, each computer and what the script wrote there. Workflows run steps by themselves, on a schedule or when something happens to a computer.',
+    'Before anything runs or is saved you confirm it is you: a code from your authenticator app, or your password without MFA. It is asked again after 10 minutes. Four new permissions under Devices decide who can do what, and Group Policy can turn scripts off on a computer.',
+    'Updating: every open page hears the update start at the same moment and shows the same progress, whichever page clicked Install. The server also stops in a few seconds to install, where it could take half a minute.',
+    'Devices moved from Config to Lab in the menu. A computer needs client 1.1.168 to take jobs.']],
   ['1.1.167', [
     'Hints stay hidden while a mouse button is held, so Drag to resize no longer pops up while you drag a column edge. A hint also stays away from something you just clicked until the pointer leaves it.']],
   ['1.1.166', [
@@ -878,7 +884,6 @@ const RELEASE_NOTES = [
       return;
     }
     const done = phase === 'done';
-    const watched = began; // a time only when this page saw it from the start
     began ||= Date.now();
     const steps = { download: ['now', '', ''], install: ['done', 'now', ''], done: ['done', 'done', 'done'] }[phase];
     const names = [phase === 'download' ? 'Downloading' : 'Downloaded', done ? 'Installed' : 'Installing', done ? 'Restarted' : 'Restarting'];
@@ -893,7 +898,7 @@ const RELEASE_NOTES = [
       : 'Downloading the update. You can keep using Rabbid Lab until it installs.';
     const size = dl?.total ? mb(dl.total) : '';
     const notes = [phase === 'download' ? (size && `${mb(dl.got)} of ${size}`) : size,
-      done ? (since && watched ? `took ${secs(Date.now() - since)} s` : '') : phase === 'install' ? 'about a minute' : '',
+      done ? (since ? `took ${secs(Date.now() - since)} s` : '') : phase === 'install' ? 'under a minute' : '',
       done ? 'opening it now' : 'this page reloads'];
     // How far each step has got: the line into the next dot fills with it.
     const part = [phase === 'download' ? (dl?.total ? dl.got / dl.total : 0) : 1, done ? 1 : phase === 'install' ? Math.max(0, (pct - 66) / 32) : 0];
@@ -907,8 +912,9 @@ const RELEASE_NOTES = [
     });
     // Done: Hide gives its place to how long it took, so the window keeps its size.
     $('updlg-hide').hidden = done;
-    $('updlg-took').hidden = !(done && watched);
-    if (done && watched) $('updlg-took').replaceChildren('Took ', Object.assign(document.createElement('b'), { textContent: took(secs(Date.now() - watched)) }));
+    // Counted from when installing began, which every page was told, so they all say the same.
+    $('updlg-took').hidden = !(done && since);
+    if (done && since) $('updlg-took').replaceChildren('Took ', Object.assign(document.createElement('b'), { textContent: took(secs(Date.now() - since)) }));
     if (!hid && !$('update-dialog').open) $('update-dialog').showModal();
     const n = Math.min(100, pct);
     const p = `${Math.round(n)}%`;
@@ -923,16 +929,16 @@ const RELEASE_NOTES = [
       $(`step-${id}`).textContent = names[i];
     });
     $('inst-say').textContent = done ? 'Done. This page opens the new version in a moment.'
-      : 'Rabbid Lab is stopped for about a minute while the update installs. This page reloads when it is done.';
+      : 'Rabbid Lab is stopped for under a minute while the update installs. This page reloads when it is done.';
   };
-  // The download fills two thirds of the bar; while Rabbid Lab is stopped to install, it moves on the minute that takes.
-  // Counted from when the server said installing began, or else from its last answer, so every page open on the console
-  // shows the same number.
+  // The download fills two thirds of the bar; while Rabbid Lab is stopped to install, the bar moves on from when the
+  // server said installing began. It says so a few seconds before it stops, so every page open on the console counts
+  // from the same moment and shows the same number.
   const installing = (version, forSeconds) => {
     if (forSeconds != null) since = Date.now() - forSeconds * 1000;
     since ||= heard || Date.now();
-    bar('install', 66 + 32 * (1 - Math.exp(-(Date.now() - since) / 30000)), version, last ? `From ${last.version}` : '');
-    tick ||= setInterval(() => installing(version), 1000);
+    bar('install', 66 + 32 * (1 - Math.exp(-(Date.now() - since) / 12000)), version, last ? `From ${last.version}` : '');
+    tick ||= setInterval(() => installing(version), 250);
   };
 
   // The hero says where updating stands in a few words; Settings > Updates has the rest.
@@ -944,14 +950,17 @@ const RELEASE_NOTES = [
     failed: `Version ${u.available} didn't install.`,
   })[u.status] || `${product} is up to date.`;
 
-  const draw = (u) => {
+  // unheld: the server answered at once with nothing new, where it was asked to wait for the next step.
+  const draw = (u, unheld = false) => {
     // Back as a new version: a full bar and the version for a moment, then the new page.
     if (last && u.version !== last.version) {
       clearInterval(tick);
-      bar('done', 100, u.version, `From ${last.version}`);
-      // Every open page sees the new version within seconds of each other. With many people signed in they load it a
-      // little apart (40 ms for each, half a minute at most), so the server isn't asked for everything at once.
-      setTimeout(() => location.reload(), 1500 + Math.random() * Math.min(30000, (u.sessions || 1) * 40));
+      // Every open page sees the new version within a second of each other. With many people's pages open they load
+      // it a little apart (40 ms for each, half a minute at most), so the server isn't asked for everything at once.
+      const apart = Math.random() * Math.min(30000, (u.sessions || 1) * 40);
+      // A page that never showed the update under way loads the new version without a window that flashes Done.
+      if (began) bar('done', 100, u.version, `From ${last.version}`);
+      setTimeout(() => location.reload(), (began ? 1500 : 0) + apart);
       return;
     }
     last = u;
@@ -991,29 +1000,60 @@ const RELEASE_NOTES = [
     $('upd-auto').checked = !!u.automatic;
     $('upd-auto-label').textContent = u.automatic ? 'On' : 'Off';
     $('upd-source').href = u.source;
-    schedule(busy ? 2000 : document.hidden ? 60000 : 15000);
+    // While an update is under way, every second. Otherwise the next request is held by the server until something
+    // changes (update below), so it's sent straight away; out of view, or to a server that doesn't hold, at the old pace.
+    schedule(busy ? 1000 : document.hidden ? 60000 : unheld ? 15000 : 300);
   };
 
+  let asks = 0; // which request is the newest: an older one's answer is dropped
+  let asking = null; // the newest request's AbortController
+  let failing = 0; // since when the server hasn't answered
+  const underWay = () => !!last && (last.status === 'installing' || last.status === 'downloading');
   const update = async () => {
+    clearTimeout(timer);
+    asking?.abort();
+    asking = new AbortController();
+    const mine = ++asks;
+    // Idle and in view: the server holds the request until the step changes, so this page hears of an update the moment
+    // it starts, whichever page started it.
+    const hold = !!last && !document.hidden && !underWay();
+    const sent = Date.now();
     try {
-      const r = await fetch('/api/update', { headers: { Accept: 'application/json' } });
+      const r = await fetch(hold ? `/api/update?after=${encodeURIComponent(last.status)}` : '/api/update',
+        { headers: { Accept: 'application/json' }, signal: AbortSignal.any([asking.signal, AbortSignal.timeout(hold ? 40000 : 4000)]) });
+      if (mine !== asks) return;
       if (!r.ok) throw new Error(r.statusText);
       const u = await r.json();
+      if (mine !== asks) return;
       heard = Date.now();
-      draw(u);
+      failing = 0;
+      draw(u, hold && u.status === last.status && Date.now() - sent < 2000);
     } catch {
-      // Setup stops Rabbid Lab to install, sometimes before this page has seen the download finish.
-      if (last && (last.status === 'installing' || last.status === 'downloading')) {
+      if (mine !== asks) return;
+      const down = Date.now() - (failing ||= Date.now());
+      // Setup stops Rabbid Lab to install, sometimes before this page has seen the download finish. Asked every second,
+      // so every page finds the new version at about the same moment.
+      if (underWay()) {
         $('rail-dot').hidden = false;
         installing(last.available);
-        schedule(3000);
+        schedule(down < 120000 ? 1000 : 3000);
       } else {
         card('alert', 'bad', "Can't reach the server", 'Retrying automatically.');
         $('hero-updates').textContent = 'Unreachable';
-        schedule(5000);
+        schedule(down < 30000 ? 1500 : down < 300000 ? 5000 : 15000);
       }
     }
   };
+  // Out of view a page holds no request open and asks once a minute; back in view it asks at once.
+  document.addEventListener('visibilitychange', () => {
+    if (!last) return;
+    if (!document.hidden) update();
+    else if (!underWay()) {
+      asks++;
+      asking?.abort();
+      schedule(60000);
+    }
+  });
 
   const schedule = (ms) => {
     clearTimeout(timer);
@@ -1033,6 +1073,10 @@ const RELEASE_NOTES = [
         $('upd-install').disabled = false;
         return;
       }
+      // The answer to the click is the newest: a request sent before it is dropped, and installing counts from now.
+      asks++;
+      asking?.abort();
+      heard = Date.now();
       draw(j);
       if (can.has('activity.view')) activity();
     } catch (e) {
@@ -1157,10 +1201,11 @@ const RELEASE_NOTES = [
   });
 
   // A change, as the page asks for it: the answer, or the error it gave.
+  // What the server said goes with the error (answer), for a caller that needs more than its words.
   const send = async (path, body) => {
     const r = await fetch(path, { method: 'POST', headers, body: JSON.stringify(body || {}) });
     const j = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(j.error || r.statusText || `The server answered ${r.status}.`);
+    if (!r.ok) throw Object.assign(new Error(j.error || r.statusText || `The server answered ${r.status}.`), { answer: j });
     return j;
   };
   const get = async (path) => {
@@ -1452,6 +1497,11 @@ const RELEASE_NOTES = [
   const stateOf = (c) => (!c.approved ? 'waiting' : c.online ? 'online' : 'offline');
   const STATE = { online: 'Online', offline: 'Offline', waiting: 'Waiting' };
   let seatPanel = null; // draws the computer open in the side panel again, once that's set up
+  // What devices.js adds to this page: more lists (Scripts, Jobs, Workflows), the ticks on computers and what Actions
+  // does with them, and its parts of a computer's side panel.
+  const dvMore = {}; // key -> { table, grid(), rows(), load(), empty(), count(), can() }
+  const dvHooks = {}; // lead(), drawn(), seatBar(c), seatTabs(c), seatPane(c, tab), seatOpened(c)
+  const dvPicked = new Set(); // the ticked computers, by id
   // The Devices page, laid out as Active Directory is: the lists down the left (Computers has views of its own), the
   // banner with four numbers, and the list that's open. Inventory is what each computer's client sent (Inventory.cs).
   const DV_VIEWS = [['all', 'All computers', () => true], ['online', 'Online', (c) => stateOf(c) === 'online'], ['offline', 'Offline', (c) => stateOf(c) === 'offline'],
@@ -1469,10 +1519,11 @@ const RELEASE_NOTES = [
     const n = (f) => computers.filter(f).length;
     $('rail-seats').textContent = n((c) => stateOf(c) === 'online') || '';
     $('seats-dot').hidden = !n((c) => stateOf(c) === 'waiting');
-    if (dvAt === 'sessions' ? !can.has('sessions.view') : !can.has('seats.view')) dvAt = can.has('seats.view') ? 'computers' : 'sessions';
+    if (dvMore[dvAt] ? !dvMore[dvAt].can() : dvAt === 'sessions' ? !can.has('sessions.view') : !can.has('seats.view')) dvAt = can.has('seats.view') ? 'computers' : 'sessions';
+    for (const id of [...dvPicked]) if (!computers.some((c) => c.id === id)) dvPicked.delete(id);
     const view = DV_VIEWS.find((v) => v && v[0] === dvView) || DV_VIEWS[0];
     const find = $('dv-find').value.trim().toLowerCase();
-    const all = { computers: computers.filter(view[2]), software: software || [], updates: updates || [], sessions: sessionsNow }[dvAt];
+    const all = dvMore[dvAt] ? dvMore[dvAt].rows() : { computers: computers.filter(view[2]), software: software || [], updates: updates || [], sessions: sessionsNow }[dvAt];
     dvShown = all.filter((x) => !find || JSON.stringify(x).toLowerCase().includes(find));
     document.querySelectorAll('#dv-rail a[data-dv]').forEach((a) => (a.dataset.dv === dvAt ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current')));
     $('dv-views').innerHTML = dvAt !== 'computers' ? '' : DV_VIEWS.map((v) => {
@@ -1485,6 +1536,7 @@ const RELEASE_NOTES = [
     $('dv-n-software').textContent = software ? software.length : '';
     $('dv-n-updates').textContent = updates ? updates.filter((u) => u.missing.length).length || '' : '';
     $('dv-n-sessions').textContent = sessionsNow.length || '';
+    for (const [k, more] of Object.entries(dvMore)) $(`dv-n-${k}`).textContent = more.count?.() || '';
     $('page-seats').dataset.at = dvAt;
     $('dv-state').textContent = `${DV[dvAt][0]}.`;
     $('dv-lead').textContent = DV[dvAt][2];
@@ -1493,14 +1545,16 @@ const RELEASE_NOTES = [
     $('dv-tabs').innerHTML = `<a aria-current="true">${svg(DV[dvAt][1])}${esc(DV[dvAt][0])} <small>${dvShown.length}</small></a>`;
     $('dv-view-title').textContent = dvAt === 'computers' ? view[1] : DV[dvAt][0];
     $('dv-count').textContent = `${dvShown.length} shown`;
-    for (const [k, id] of [['computers', 'seats-table'], ['software', 'dv-software'], ['updates', 'dv-updates'], ['sessions', 'sessions-table']]) $(id).hidden = k !== dvAt;
+    for (const [k, id] of [['computers', 'seats-table'], ['software', 'dv-software'], ['updates', 'dv-updates'], ['sessions', 'sessions-table'],
+      ...Object.entries(dvMore).map(([key, more]) => [key, more.table])]) $(id).hidden = k !== dvAt;
     const late = 'A computer sends what it has within half an hour of being approved, with client 1.1.165 or later.';
-    seatsEmpty = dvAt === 'software' ? (software ? `No software has been reported yet. ${late}` : 'Reading the list.')
+    seatsEmpty = dvMore[dvAt] ? dvMore[dvAt].empty() : dvAt === 'software' ? (software ? `No software has been reported yet. ${late}` : 'Reading the list.')
       : dvAt === 'updates' ? (updates ? `No updates have been reported yet. ${late}` : 'Reading the list.')
       : computers.length ? 'None of the computers are like that right now.' : `No computers yet. Add computers to give people the ${esc(product)} client.`;
     dvGrid().draw(dvShown);
     if (dvAt === 'sessions') paint($('sessions-table'));
     seatPanel?.();
+    dvHooks.drawn?.();
   };
   // How long ago something began, in a word or two: 5 hours, 3 days.
   const howLong = (iso) => {
@@ -1516,24 +1570,26 @@ const RELEASE_NOTES = [
   };
   // The lists of the Devices page are data grids (grid.js), made the first time they're drawn. Columns and Export in the
   // bar work on the one that shows.
-  const dvGrid = () => ({ computers: seatsGrid, software: softwareGrid, updates: updatesGrid, sessions: sessionsGrid })[dvAt]();
+  const dvGrid = () => (dvMore[dvAt]?.grid || { computers: seatsGrid, software: softwareGrid, updates: updatesGrid, sessions: sessionsGrid }[dvAt])();
   const ms = (iso) => (iso ? new Date(iso).getTime() : 0);
   let seatsEmpty = '';
   let seatsG = null;
   const seatsGrid = () => (seatsG ||= window.RabbidLab.grid({
     el: $('seats-table'),
     key: 'devices',
+    // A tick on each row, for whoever may do something with several computers at once (devices.js).
+    lead: () => dvHooks.lead?.() || null,
     // What fits across the page shows; the rest (client, address, last seen, hardware) is under Columns.
     cols: [
-      { key: 'state', label: 'State', w: 75, on: true, get: (c) => ({ waiting: 0, online: 1, offline: 2 })[stateOf(c)], text: (c) => STATE[stateOf(c)], cell: (c) => `<span class="state ${stateOf(c)}">${STATE[stateOf(c)]}</span>` },
+      { key: 'state', label: 'State', w: 70, on: true, get: (c) => ({ waiting: 0, online: 1, offline: 2 })[stateOf(c)], text: (c) => STATE[stateOf(c)], cell: (c) => `<span class="state ${stateOf(c)}">${STATE[stateOf(c)]}</span>` },
       // Under the name only while something is going on with its client: Windows has a column of its own.
-      { key: 'computer', label: 'Computer', w: 135, fixed: true, get: (c) => c.computer,
+      { key: 'computer', label: 'Computer', w: 130, fixed: true, get: (c) => c.computer,
         cell: (c) => {
           const note = c.uninstalling ? 'Uninstalling its client' : c.removalUntil ? `Uninstall allowed until ${new Date(c.removalUntil).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : '';
           return `<b>${esc(c.computer)}</b>${note ? `<small>${esc(note)}</small>` : ''}`;
         } },
-      { key: 'os', label: 'Windows', w: 145, on: true, get: (c) => c.os, cell: (c) => `<span class="ell">${esc(c.os || '')}</span>` },
-      { key: 'user', label: 'Signed in', w: 120, on: true, get: (c) => c.user, cell: (c) => (c.user ? `<span class="ell">${esc(c.user)}</span>` : '<span class="nobody">Nobody</span>') },
+      { key: 'os', label: 'Windows', w: 135, on: true, get: (c) => c.os, cell: (c) => `<span class="ell">${esc(c.os || '')}</span>` },
+      { key: 'user', label: 'Signed in', w: 110, on: true, get: (c) => c.user, cell: (c) => (c.user ? `<span class="ell">${esc(c.user)}</span>` : '<span class="nobody">Nobody</span>') },
       { key: 'missing', label: 'Updates', w: 90, on: true, get: (c) => c.inventory?.missing ?? -1, text: (c) => c.inventory?.missing ?? '',
         cell: (c) => (c.inventory?.missing == null ? '<span class="muted">-</span>' : c.inventory.missing ? `<span class="state waiting">${c.inventory.missing} missing</span>` : '<span class="state online">Up to date</span>') },
       { key: 'restart', label: 'Restart', w: 70, on: true, get: (c) => (c.inventory?.restartNeeded ? 1 : 0), text: (c) => (!c.inventory ? '' : c.inventory.restartNeeded ? 'Needed' : 'No'),
@@ -1551,7 +1607,7 @@ const RELEASE_NOTES = [
       { key: 'memory', label: 'Memory', w: 80, get: (c) => c.inventory?.memory || 0, text: (c) => (c.inventory?.memory ? gb(c.inventory.memory) : ''), cell: (c) => (c.inventory?.memory ? esc(gb(c.inventory.memory)) : '') },
     ],
     // Approve is on the row; removing a computer and uninstalling its client are in its side panel.
-    tail: { w: 90, cell: (c) => `<span class="acts">${stateOf(c) === 'waiting' && can.has('seats.approve') ? '<button type="button" class="small primary" data-approve>Approve</button>' : ''}</span>` },
+    tail: { w: 84, cell: (c) => `<span class="acts">${stateOf(c) === 'waiting' && can.has('seats.approve') ? '<button type="button" class="small primary" data-approve>Approve</button>' : ''}</span>` },
     row: (c) => ` data-client="${esc(c.id)}"`,
     empty: () => seatsEmpty,
     redraw: () => drawSeats(),
@@ -1626,7 +1682,8 @@ const RELEASE_NOTES = [
       // The list that's open across computers, read again with the rest.
       if (c.ok && dvAt === 'software') software = await get('/api/devices/software');
       if (c.ok && dvAt === 'updates') updates = await get('/api/devices/updates');
-      if (dvAt === 'software' || dvAt === 'updates') drawSeats();
+      if (dvMore[dvAt]) await dvMore[dvAt].load();
+      if (dvAt === 'software' || dvAt === 'updates' || dvMore[dvAt]) drawSeats();
     } catch {
       // Asked again shortly.
     }
@@ -1856,8 +1913,8 @@ const RELEASE_NOTES = [
       if (e.detail[0] !== 'seats') return;
       const [list, view] = e.detail[2] || [];
       const at = DV[list] ? list : 'computers';
-      if (at !== dvAt && panel.is('seats')) panel.close();
-      const opened = at !== dvAt && (at === 'software' || at === 'updates');
+      if (at !== dvAt && (panel.is('seats') || panel.is('devices'))) panel.close();
+      const opened = at !== dvAt && (at === 'software' || at === 'updates' || !!dvMore[at]);
       dvAt = at;
       dvView = dvAt === 'computers' && DV_VIEWS.some((v) => v && v[0] === view) ? view : 'all';
       drawSeats();
@@ -1884,6 +1941,7 @@ const RELEASE_NOTES = [
       seats();
     });
     $('seats-table').addEventListener('click', async (e) => {
+      if (e.target.closest('.tk')) return; // a tick is devices.js's
       const row = e.target.closest('[data-client]');
       const c = row && computers.find((x) => x.id === row.dataset.client);
       if (!c) return;
@@ -1909,6 +1967,7 @@ const RELEASE_NOTES = [
         ['Address', addr(seat.address)], ['Last seen', ago(seat.lastSeen)], ['Joined', when(seat.joined)],
         seat.approved ? ['Approved', `${when(seat.approved)}${seat.approvedBy ? ` by ${seat.approvedBy}` : ''}`] : null].filter(Boolean);
       const bar = `<div class="dw-bar">${st === 'waiting' && can.has('seats.approve') ? `<button type="button" class="dw-qa" data-seat-approve>${svg('check')}<span>Approve</span></button>` : ''}`
+        + (dvHooks.seatBar?.(seat) || '')
         + `${can.has('seats.remove') ? `<button type="button" class="dw-qa" data-seat-remove>${svg('trash')}<span>Remove from Devices</span></button>` : ''}</div>`;
       const open = !!seat.removalUntil;
       const lock = st === 'waiting' || !can.has('seats.remove') ? ''
@@ -1928,13 +1987,14 @@ const RELEASE_NOTES = [
       const waitingFor = !seatInv ? 'Reading what this computer sent.' : "This computer hasn't sent its inventory yet. It does within half an hour of being approved, with client 1.1.165 or later.";
       const section = (title, body, right = '') => `<section class="dw-sec"><div class="dw-sec-head"><h3>${title}</h3>${right}</div>${body}</section>`;
       const facts2 = (rows2) => `<ul class="does">${rows2.filter(Boolean).map(([k, v]) => `<li><b>${esc(k)}</b><span>${esc(v)}</span></li>`).join('')}</ul>`;
-      const tabs = st === 'waiting' ? '' : `<div class="tabs2 dw-tabs" role="tablist">${[['summary', 'Summary', ''], ['software', 'Software', inv ? inv.software.length : ''], ['updates', 'Updates', inv?.missingChecked ? inv.missing.length : '']]
+      const tabs = st === 'waiting' ? '' : `<div class="tabs2 dw-tabs" role="tablist">${[['summary', 'Summary', ''], ['software', 'Software', inv ? inv.software.length : ''], ['updates', 'Updates', inv?.missingChecked ? inv.missing.length : ''], ...(dvHooks.seatTabs?.(seat) || [])]
         .map(([t, label, count]) => `<a role="tab" data-seat-tab="${t}"${seatTab === t ? ' aria-current="true"' : ''}>${label}${count === '' ? '' : ` <small>${count}</small>`}</a>`).join('')}</div>`;
       const hardware = !inv ? (st === 'waiting' ? '' : section('Hardware', none(waitingFor))) : section('Hardware', facts2([
         ['Model', [inv.manufacturer, inv.model].filter(Boolean).join(' ') || 'Unknown'], inv.serial && ['Serial number', inv.serial], inv.processor && ['Processor', inv.processor],
         inv.memory ? ['Memory', gb(inv.memory)] : null, inv.started && ['Uptime', howLong(inv.started)], ['Restart', inv.restartNeeded ? 'Needed, to finish installing something' : 'Not needed'],
         ...inv.disks.map((d) => [`Drive ${d.name}`, d.total ? `${Math.round(100 * d.free / d.total)}% free of ${gb(d.total)}` : 'Unknown'])]));
-      const pane = st === 'waiting' || seatTab === 'summary' ? section('Details', facts2(facts)) + hardware + lock
+      const more = st === 'waiting' ? null : dvHooks.seatPane?.(seat, seatTab);
+      const pane = more != null ? more : st === 'waiting' || seatTab === 'summary' ? section('Details', facts2(facts)) + hardware + lock
         : !inv ? section(seatTab === 'software' ? 'Installed software' : 'Windows updates', none(waitingFor))
         : seatTab === 'software' ? section(`Installed software <small>${inv.software.length}</small>`, inv.software.length ? list(inv.software.map((p) => [p.name, [p.version, p.publisher].filter(Boolean).join(' · ')])) : none('Nothing is listed.'))
         : section(`Missing <small>${inv.missingChecked ? inv.missing.length : ''}</small>`, !inv.missingChecked ? none("Windows Update hasn't answered on this computer yet. It's asked every six hours.")
@@ -1953,6 +2013,7 @@ const RELEASE_NOTES = [
       drawSeat();
       panel.open('seats', c.id);
       markSeat();
+      dvHooks.seatOpened?.(c);
       // Its software and updates, asked for as it opens.
       get(`/api/clients/${encodeURIComponent(c.id)}/inventory`).then((got) => {
         if (seat?.id !== c.id) return;
@@ -2841,5 +2902,8 @@ const RELEASE_NOTES = [
 
   // What the other scripts use. Hints are tips.js and data grids are grid.js.
   window.RabbidLab = { app: () => product, $, esc, svg, say, initials, when, daysAgo, send, get, keep, forget, has, paint, where, viewAs, place, popups, option, dropdown, sure, copy, busy, groupTools, groupFilter, skeleton, toast, stepper, panel,
-    palette: window.RabbidLabColours.roles, me: () => meInfo };
+    palette: window.RabbidLabColours.roles, me: () => meInfo,
+    // The Devices page, for devices.js: its lists, what's ticked, and drawing or reading it again.
+    devices: { lists: DV, more: dvMore, hooks: dvHooks, picked: dvPicked, computers: () => computers, at: () => dvAt, shown: () => dvShown, grid: () => dvGrid(),
+      draw: () => drawSeats(), reload: () => seats(), panelAgain: () => seatPanel?.(), stateOf } };
 })();

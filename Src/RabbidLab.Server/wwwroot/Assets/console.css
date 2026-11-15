@@ -347,13 +347,51 @@ input.pick:focus { outline: none; border-color: var(--accent); }
 .dw-how.warn { color: var(--amber); }
 /* Devices: the tables of computers, software, updates and sessions. The page itself is laid out as Active Directory is (.dir-page). */
 /* A computer, a program or an update opens the side panel, and the open one is marked. */
-.seats-page :is(#seats-table, #dv-software, #dv-updates) .tr:not(.th) { cursor: pointer; }
-.seats-page :is(#seats-table, #dv-software, #dv-updates) .tr:not(.th):hover { background: #151827; }
-.seats-page :is(#seats-table, #dv-software, #dv-updates) .tr.dw-on { background: #171B2C; box-shadow: inset 3px 0 0 var(--accent); }
+.seats-page :is(#seats-table, #dv-software, #dv-updates, #dv-scripts, #dv-jobs, #dv-workflows) .tr:not(.th) { cursor: pointer; }
+.seats-page :is(#seats-table, #dv-software, #dv-updates, #dv-scripts, #dv-jobs, #dv-workflows) .tr:not(.th):hover { background: #151827; }
+.seats-page :is(#seats-table, #dv-software, #dv-updates, #dv-scripts, #dv-jobs, #dv-workflows) .tr.dw-on { background: #171B2C; box-shadow: inset 3px 0 0 var(--accent); }
+/* A tick on each computer, as Active Directory has, for doing something with several at once (devices.js). */
+.seats-page .tk { display: grid; place-items: center; align-self: stretch; cursor: pointer; }
+.seats-page .tk input { margin: 0; accent-color: var(--accent); }
+.seats-page .tr.picked { background: #141827; }
+/* How a job went: red for what failed, ember while it runs. */
+.state.bad { color: var(--red); }
+.state.run { color: var(--accent-soft); }
+/* A script, or what one wrote on a computer. */
+.code-box { max-height: 340px; margin: 0 0 12px; padding: 11px 13px; overflow: auto; border: 1px solid var(--line-strong); border-radius: 10px; background: #0C0E17; color: #D7DAE8;
+  font: 12.5px/1.55 Consolas, "Cascadia Mono", monospace; white-space: pre-wrap; overflow-wrap: anywhere; tab-size: 4; }
+.job-step { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin: 0 0 6px; font-size: 13px; }
+.job-step b { color: var(--title); font-weight: 600; }
+.job-step small, .job-what summary small { color: #6D7290; font-size: 12px; }
+.job-what { margin: 0 0 8px; }
+.job-what summary { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 6px 0; color: var(--title); font-size: 13px; cursor: pointer; }
+.job-what[open] summary { margin-bottom: 4px; }
+.job-row { cursor: pointer; }
+.job-what summary::before { content: "\25B8"; flex: none; color: #6D7290; }
+.job-what[open] summary::before { content: "\25BE"; }
+.job-what summary b { flex: 1; }
+.dw-body .dw-sec .small { display: inline-flex; align-items: center; gap: 7px; }
+.dw-body .dw-sec .small svg { width: 15px; height: 15px; }
+.fl-view .two small { color: #6D7290; }
+/* The windows for running a script, writing one and making a workflow. */
+.form-in { display: grid; gap: 6px; }
+.form-in > :first-child, .form.two > div > .form-label { margin-top: 0; }
+.script-dialog .seg.pw-mode { margin: 0; }
+.dialog.script-dialog { width: min(820px, calc(100vw - 32px)); }
+.script-dialog .form textarea { min-height: 300px; }
+#run-form textarea { min-height: 150px; }
+#run-form .code-box { max-height: 200px; margin: 8px 0 0; }
+.sc-min { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; }
+.fl-time { display: flex; gap: 8px; }
+.fl-time select { flex: 1; min-width: 0; }
+.flow-dialog .seg.pw-mode { margin: 0; }
+.flow-dialog .fl-steps { margin: 0 0 8px; }
+.flow-dialog .fl-steps .dw-empty { margin: 2px 0; }
+.flow-dialog .ticks { margin-top: 12px; }
 /* A computer's software and updates in the side panel: a long update title takes the lines it needs. */
 .seat-list .two small { white-space: normal; }
 /* Add computers goes with the list of computers. */
-.seats-page:not([data-at="computers"]) #seats-add { display: none; }
+.seats-page:not([data-at="computers"]) :is(#seats-add, #dv-act) { display: none; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chips button { height: 30px; padding: 0 12px; background: transparent; color: var(--muted); font-size: 13px; font-weight: 600; }
 .chips button[aria-selected="true"] { background: #1A1D2B; border-color: #3A3E55; color: var(--title); }

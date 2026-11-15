@@ -31,8 +31,26 @@ public sealed class UpdateEngine(UpdateOptions options, IUpdateSource source, IU
     private DateTime installingAt;
     private (string Version, string Why)? notStarted; // Windows wouldn't run this version's installer, and why
 
+    private UpdateState state = new(host.Version, null, UpdateStatus.Current, "Rabbid Lab is up to date.");
+    private TaskCompletionSource stepped = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
     /// <summary>Where updating stands now.</summary>
-    public UpdateState State { get; private set; } = new(host.Version, null, UpdateStatus.Current, "Rabbid Lab is up to date.");
+    public UpdateState State
+    {
+        get => state;
+        private set
+        {
+            var step = state.Status != value.Status;
+            state = value;
+            if (step)
+            {
+                Interlocked.Exchange(ref stepped, new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously)).TrySetResult();
+            }
+        }
+    }
+
+    /// <summary>Done when updating next moves to another step (downloading, installing, failed), for a page waiting to hear of it.</summary>
+    public Task Stepped => Volatile.Read(ref stepped).Task;
 
     /// <summary>How long the installer has been running, while it is: every page counts from the same moment with it.</summary>
     public TimeSpan? InstallingFor => State.Status == UpdateStatus.Installing && installingVersion is not null ? DateTime.UtcNow - installingAt : null;
@@ -296,6 +314,12 @@ public sealed class UpdateEngine(UpdateOptions options, IUpdateSource source, IU
         using var keep = held;
         var installer = held.Name;
         log.LogWarning("Updating Rabbid Lab from version {From} to {To}. The console will restart shortly.", current, version);
+        // Said a few seconds before Setup stops this service, so by the time nothing can be asked any more every open page
+        // has heard that installing began, and when: they all count from that moment.
+        installingVersion = version;
+        installingAt = DateTime.UtcNow;
+        State = Installing(version);
+        await Task.Delay(options.Announce, stop);
         var setupLog = Path.Combine(updates, $"update-{version}.log");
         try
         {
@@ -316,6 +340,7 @@ public sealed class UpdateEngine(UpdateOptions options, IUpdateSource source, IU
                 // The service log and the page still say it.
             }
             notStarted = (version, why);
+            installingVersion = null;
             if (!chosen)
             {
                 host.Record(new UpdateAttempt(version, why));
@@ -326,8 +351,6 @@ public sealed class UpdateEngine(UpdateOptions options, IUpdateSource source, IU
         {
             host.Record(new UpdateAttempt(version, null));
         }
-        installingVersion = version;
-        installingAt = DateTime.UtcNow;
         return Installing(version);
     }
 

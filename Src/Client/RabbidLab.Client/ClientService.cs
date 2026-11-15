@@ -76,7 +76,8 @@ internal sealed class ClientService : ServiceBase
             try
             {
                 status = await agent.Round(stop).ConfigureAwait(false);
-                if (status.State is Status.Connected or Status.Waiting)
+                // Not while a job runs: installing the new client stops this service, and the job with it.
+                if (status.State is Status.Connected or Status.Waiting && !Jobs.Busy)
                 {
                     await Updater.Follow(status, stop).ConfigureAwait(false);
                 }

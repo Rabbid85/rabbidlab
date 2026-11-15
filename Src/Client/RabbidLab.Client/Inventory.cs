@@ -81,6 +81,13 @@ internal static class Inventory
     private static DateTime asked = DateTime.MinValue;
     private static Task? asking;
 
+    /// <summary>Something here just changed (a job ran): it's read and Windows Update is asked again at the next round, not when their time comes.</summary>
+    public static void Soon()
+    {
+        looked = DateTime.MinValue;
+        asked = DateTime.MinValue;
+    }
+
     /// <summary>Run by the service after each check-in that found this computer approved.</summary>
     public static async Task Follow(CancellationToken stop)
     {

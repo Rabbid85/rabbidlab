@@ -39,7 +39,7 @@ public sealed class UpdateEngineTests : IDisposable
 
     private UpdateEngine Engine(Action<UpdateOptions>? change = null)
     {
-        var options = new UpdateOptions { SettleTime = TimeSpan.Zero, InstallWait = TimeSpan.Zero, ReleasePublicKey = release.ExportSubjectPublicKeyInfoPem() };
+        var options = new UpdateOptions { SettleTime = TimeSpan.Zero, InstallWait = TimeSpan.Zero, Announce = TimeSpan.Zero, ReleasePublicKey = release.ExportSubjectPublicKeyInfoPem() };
         change?.Invoke(options);
         return new UpdateEngine(options, source, host, runner, NullLogger<UpdateEngine>.Instance);
     }
@@ -70,6 +70,33 @@ public sealed class UpdateEngineTests : IDisposable
     }
 
     [Fact]
+    public async Task Installing_is_said_with_when_it_began_before_the_installer_is_started()
+    {
+        Offer("3.2.0", "pretend installer"u8.ToArray());
+        var engine = Engine(o => o.Announce = TimeSpan.FromSeconds(2));
+
+        var trying = engine.TryNow(CancellationToken.None);
+        // A page waiting for the next step is let go at each one: downloading, then installing.
+        while (true)
+        {
+            var next = engine.Stepped;
+            if (engine.State.Status == UpdateStatus.Installing)
+            {
+                break;
+            }
+            await next.WaitAsync(TimeSpan.FromSeconds(10));
+        }
+
+        // Every page can still ask, and is told when installing began: the installer hasn't been started yet.
+        Assert.Empty(runner.Runs);
+        Assert.NotNull(engine.InstallingFor);
+        var state = await trying;
+        Assert.Equal(UpdateStatus.Installing, state.Status);
+        Assert.Single(runner.Runs);
+        Assert.True(engine.InstallingFor >= TimeSpan.FromSeconds(1.5));
+    }
+
+    [Fact]
     public async Task A_download_bigger_than_the_release_is_cut_off_and_nothing_is_run()
     {
         var installer = "pretend installer"u8.ToArray();
@@ -90,7 +117,7 @@ public sealed class UpdateEngineTests : IDisposable
         Offer("3.2.0", "pretend installer"u8.ToArray());
         var runs = new Swapper();
 
-        var state = await new UpdateEngine(new UpdateOptions { SettleTime = TimeSpan.Zero, ReleasePublicKey = release.ExportSubjectPublicKeyInfoPem() }, source, host, runs,
+        var state = await new UpdateEngine(new UpdateOptions { SettleTime = TimeSpan.Zero, Announce = TimeSpan.Zero, ReleasePublicKey = release.ExportSubjectPublicKeyInfoPem() }, source, host, runs,
             NullLogger<UpdateEngine>.Instance).TryNow(CancellationToken.None);
 
         Assert.Equal(UpdateStatus.Installing, state.Status);

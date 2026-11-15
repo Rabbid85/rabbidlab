@@ -2,6 +2,14 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.168 (2026-11-14)
+
+- Devices can do things on computers now. Tick computers and click Actions, or open one computer: run a script, install Windows updates or restart. Scripts are PowerShell or Command and run as SYSTEM.
+- Scripts, Jobs and Workflows are new lists under Devices. Scripts is the library, with examples to start from. Jobs shows every run, each computer and what the script wrote there. Workflows run steps by themselves, on a schedule or when something happens to a computer.
+- Before anything runs or is saved you confirm it is you: a code from your authenticator app, or your password without MFA. It is asked again after 10 minutes. Four new permissions under Devices decide who can do what, and Group Policy can turn scripts off on a computer.
+- Updating: every open page hears the update start at the same moment and shows the same progress, whichever page clicked Install. The server also stops in a few seconds to install, where it could take half a minute.
+- Devices moved from Config to Lab in the menu. A computer needs client 1.1.168 to take jobs.
+
 ## 1.1.167 (2026-11-14)
 
 - Hints stay hidden while a mouse button is held, so Drag to resize no longer pops up while you drag a column edge. A hint also stays away from something you just clicked until the pointer leaves it.

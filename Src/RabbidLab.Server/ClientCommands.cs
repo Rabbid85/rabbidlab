@@ -72,8 +72,23 @@ public sealed class ClientCommands
         }
     }
 
-    /// <summary>The next order for the client, or null when there's none within Hold, or the client has gone.</summary>
-    public async Task<AccountOrder?> Next(string client, CancellationToken stop)
+    /// <summary>Wakes the client's open request, so it looks again at what's waiting for it (a job, say).</summary>
+    public void Ring(string client)
+    {
+        lock (gate)
+        {
+            if (lanes.TryGetValue(client, out var lane))
+            {
+                lane.Bell?.TrySetResult();
+            }
+        }
+    }
+
+    /// <summary>
+    /// The next order for the client, or null when there's none within Hold, or the client has gone. With jobs, a client
+    /// that has some waiting is told to come and take them (AccountOrder.Jobs), which nobody waits for an answer to.
+    /// </summary>
+    public async Task<AccountOrder?> Next(string client, CancellationToken stop, Func<bool>? jobs = null)
     {
         var until = DateTime.UtcNow + Hold;
         Lane lane;
@@ -98,6 +113,10 @@ public sealed class ClientCommands
                     lane.Jobs.Remove(job);
                     taken[job.Order.Id!] = job;
                     return job.Order;
+                }
+                if (jobs?.Invoke() == true)
+                {
+                    return new AccountOrder { Id = AccountOrder.Jobs, Action = AccountOrder.Jobs };
                 }
                 lane.Bell = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
                 bell = lane.Bell.Task;

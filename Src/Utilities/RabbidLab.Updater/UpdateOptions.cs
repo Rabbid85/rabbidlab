@@ -40,6 +40,9 @@ public sealed class UpdateOptions
     /// <summary>Once the installer has started, this long counts as installing: it restarts Rabbid Lab within it.</summary>
     public TimeSpan InstallWait { get; set; } = TimeSpan.FromMinutes(3);
 
+    /// <summary>How long the engine says it's installing before it starts the installer, which stops the console: long enough for every open page to hear it.</summary>
+    public TimeSpan Announce { get; set; } = TimeSpan.FromSeconds(3);
+
     /// <summary>The public key every release must be signed with (Rabbid Lab's offline release key; the tests use their own).</summary>
     public string ReleasePublicKey { get; set; } = Release.ReleaseKey;
 }

@@ -19,6 +19,10 @@ Only needed when the server uses a certificate these computers don't already tru
       <string id="AllowAccountChanges_Help">Controls whether Rabbid Lab admins can create, change and delete local Windows accounts on this computer, for example adding a local administrator.
 
 Not configured or Enabled: allowed, if the admin's role permits it. Disabled: the client rejects every account change, and Rabbid Lab reports that Group Policy turned them off.</string>
+      <string id="AllowScripts">Allow scripts and actions</string>
+      <string id="AllowScripts_Help">Controls whether Rabbid Lab admins can run scripts and actions on this computer from the Devices page: PowerShell and command scripts, restarting it, installing Windows updates, and workflows. They run as SYSTEM.
+
+Not configured or Enabled: allowed, if the admin's role permits it. Disabled: the client refuses every script and action, and the job in Rabbid Lab says Group Policy turned them off.</string>
     </stringTable>
     <presentationTable>
       <presentation id="Server">

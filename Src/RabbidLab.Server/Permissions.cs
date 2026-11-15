@@ -9,6 +9,10 @@ public static class Permissions
     public const string SeatsRemove = "seats.remove";
     public const string SeatsAdd = "seats.add";
     public const string SeatsSettings = "seats.settings";
+    public const string SeatsActions = "seats.actions";
+    public const string ScriptsRun = "seats.scripts.run";
+    public const string ScriptsEdit = "seats.scripts.edit";
+    public const string Workflows = "seats.workflows";
     public const string SessionsView = "sessions.view";
     public const string SessionsSignOut = "sessions.signout";
     public const string UpdatesView = "updates.view";
@@ -71,6 +75,10 @@ public static class Permissions
             new(SeatsRemove, "Remove computers", "Take a computer off the list. It has to join again."),
             new(SeatsAdd, "Add computers", "Get the client installer, the Connect link and the Group Policy template."),
             new(SeatsSettings, "Change client settings", "Whether new computers need approval."),
+            new(SeatsActions, "Restart computers and install updates", "Restart a computer and install its missing Windows updates. What was done is under Jobs."),
+            new(ScriptsRun, "Run scripts", "Run a script from the library on computers, as SYSTEM, and see its output under Jobs."),
+            new(ScriptsEdit, "Write scripts", "Add, change and delete scripts, and run one typed in. Whoever has this can run anything on every computer."),
+            new(Workflows, "Manage workflows", "Steps that run on computers by themselves, when something happens or on a schedule."),
         ]),
         new("sessions", "Sessions", "signout",
         [

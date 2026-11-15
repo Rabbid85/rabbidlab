@@ -27,6 +27,9 @@ internal sealed class Settings
     /// <summary>Whether the server may make and change this computer's Windows accounts. Group Policy can turn it off.</summary>
     public bool AccountChanges { get; private set; } = true;
 
+    /// <summary>Whether the server may run scripts and actions on this computer (Jobs.cs). Group Policy can turn it off.</summary>
+    public bool Scripts { get; private set; } = true;
+
     public static Settings Read()
     {
         var s = new Settings();
@@ -39,6 +42,7 @@ internal sealed class Settings
                 s.PolicyServer = Text(policy, "Server")?.TrimEnd('/');
                 policyFingerprint = CleanFingerprint(Text(policy, "CertificateFingerprint"));
                 s.AccountChanges = policy.GetValue("AllowAccountChanges") is not int allowed || allowed != 0;
+                s.Scripts = policy.GetValue("AllowScripts") is not int scripts || scripts != 0;
             }
         }
         using (var installed = machine.OpenSubKey(InstalledKey))
@@ -117,11 +121,14 @@ internal static class Folder
     /// <summary>Downloaded updates, which only SYSTEM and administrators can open.</summary>
     public static string Updates => Path.Combine(Data, "Updates");
 
+    /// <summary>The scripts of jobs while they run, which only SYSTEM and administrators can open.</summary>
+    public static string Jobs => Path.Combine(Data, "Jobs");
+
     public static string File(string name) => Path.Combine(Data, name);
 
     /// <summary>
     /// Makes the folders and sets their permissions: SYSTEM and Administrators full control, Users read, and Updates
-    /// without Users. Run by the service (and --check-in), never by the tray icon.
+    /// and Jobs without Users. Run by the service (and --check-in), never by the tray icon.
     /// </summary>
     public static void Secure()
     {
@@ -145,12 +152,26 @@ internal static class Folder
                         System.IO.File.Delete(file);
                     }
                 }
-                if (Directory.Exists(Updates) && !Ours(Directory.GetAccessControl(Updates, AccessControlSections.Owner)))
+                foreach (var folder in new[] { Updates, Jobs })
                 {
-                    Directory.Delete(Updates, recursive: true);
+                    if (Directory.Exists(folder) && !Ours(Directory.GetAccessControl(folder, AccessControlSections.Owner)))
+                    {
+                        Directory.Delete(folder, recursive: true);
+                    }
                 }
             }
             Lock(Updates, usersRead: false);
+            // A folder of Jobs someone else made is never run from: it's made again as ours, empty.
+            if (Directory.Exists(Jobs) && !Ours(Directory.GetAccessControl(Jobs, AccessControlSections.Owner)))
+            {
+                Directory.Delete(Jobs, recursive: true);
+            }
+            Lock(Jobs, usersRead: false);
+            // A script left by a job that was cut short (the computer restarted, say).
+            foreach (var left in Directory.GetFiles(Jobs))
+            {
+                System.IO.File.Delete(left);
+            }
         }
         catch (Exception)
         {

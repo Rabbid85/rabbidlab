@@ -41,6 +41,11 @@ public static class SignIn
         services.AddSingleton<Sessions>();
         services.AddSingleton<Clients>();
         services.AddSingleton<Inventories>();
+        services.AddSingleton<Confirmations>();
+        services.AddSingleton<DeviceScripts>();
+        services.AddSingleton<DeviceJobs>();
+        services.AddSingleton<Workflows>();
+        services.AddHostedService<WorkflowWorker>();
         services.AddSingleton<JoinLimiter>();
         // The cookie carries only the session's id; the session itself is kept by Sessions.
         services.AddOptions<CookieAuthenticationOptions>(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -122,7 +127,8 @@ public static class SignIn
         || path.StartsWithSegments("/api/setup") || path == "/api/signout" || path.StartsWithSegments("/api/update/watch") || ForClients(path);
 
     // The Rabbid Lab client's own endpoints: open (they carry the client's id and secret), and never someone working.
-    private static readonly string[] ClientPaths = ["/api/clients/join", "/api/clients/checkin", "/api/clients/next", "/api/clients/done", "/api/clients/bye", "/api/clients/inventory", "/api/clients/download"];
+    private static readonly string[] ClientPaths = ["/api/clients/join", "/api/clients/checkin", "/api/clients/next", "/api/clients/done", "/api/clients/bye", "/api/clients/inventory", "/api/clients/download",
+        "/api/clients/jobs/take", "/api/clients/jobs/done"];
 
     // What an open page asks by itself on a timer.
     private static readonly string[] Polled = ["/api/update", "/api/clients", "/api/sessions", "/api/links/states", "/api/clients/here"];
