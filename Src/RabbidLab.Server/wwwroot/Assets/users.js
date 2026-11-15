@@ -232,9 +232,10 @@
   const time = (iso) => (iso ? new Date(iso).getTime() : 0);
   // key, heading, width, the value (for sorting, and the cell unless it has its own), and options: on (shown by
   // default), fixed (always shown), cell. A width in pixels, or the default one for that column.
-  const DEFAULT_PX = { name: 210, username: 190, upn: 230, email: 210, department: 150, title: 150, company: 140, office: 120, phone: 120, manager: 160,
-    where: 180, description: 240, lastSignIn: 110, passwordSet: 130, passwordExpires: 130, accountExpires: 130, created: 110, status: 160, type: 160, scope: 120,
-    members: 90, notes: 200, os: 210, host: 200, location: 140 };
+  // Sized so the columns that show at first fit the page without scrolling sideways (Role and Privileged since 1.1.205).
+  const DEFAULT_PX = { name: 180, username: 165, upn: 230, email: 210, department: 140, title: 150, company: 140, office: 120, phone: 120, manager: 160,
+    where: 145, description: 240, lastSignIn: 105, passwordSet: 130, passwordExpires: 130, accountExpires: 130, created: 110, status: 100, type: 110, scope: 120,
+    members: 90, notes: 200, os: 175, host: 200, location: 140, role: 120, privileged: 105 };
   const minOf = (w) => Number((String(w).match(/(\d+)px/) || [0, 80])[1]);
   const col = (key, label, w, get, o = {}) => ({ key, label, w: typeof w === 'number' ? w : DEFAULT_PX[key] || minOf(w), get, ...o });
   AD.users.cols = [
@@ -256,12 +257,16 @@
     col('passwordExpires', 'Password expires', '130px', (u) => time(u.passwordExpires), { cell: (u) => (u.neverExpires ? '<span class="muted">Never</span>' : dateCell(u.passwordExpires)) }),
     col('accountExpires', 'Account expires', '130px', (u) => time(u.accountExpires), { cell: (u) => endOf(u.accountExpires) }),
     col('created', 'Created', '110px', (u) => time(u.created), { cell: (u) => dateCell(u.created) }),
-    col('status', 'Status', '150px', (u) => (u.locked ? 0 : !u.enabled ? 2 : 1), { on: true, cell: (u) => userStatus(u) + (u.service ? chip(R.app(), 'ember') : '') }),
+    col('status', 'Status', '150px', (u) => (u.locked ? 0 : !u.enabled ? 2 : 1), { on: true, cell: (u) => userStatus(u) }),
+    // One thing per column: what kind of account it is, apart from its status.
+    col('role', 'Role', '150px', (u) => (u.service ? 0 : u.protected ? 1 : 2), { on: true,
+      cell: (u) => (u.service ? chip('Service account', 'ember') : u.protected ? badge('Privileged', 'amber') : '<span class="muted">-</span>') }),
   ];
   AD.groups.cols = [
     col('name', 'Group', 'minmax(220px, 1.8fr)', (g) => g.name, { fixed: true, cell: (g) => `<div class="who"><span class="pic">${svg('users')}</span><b class="ell">${esc(g.name)}</b></div>` }),
     col('type', 'Group type', '150px', (g) => (g.security ? 'Security' : 'Distribution'), { on: true,
-      cell: (g) => `${g.security ? 'Security' : 'Distribution'}${g.protected ? ` ${badge('Privileged', 'amber')}` : ''}` }),
+      cell: (g) => (g.security ? 'Security' : 'Distribution') }),
+    col('privileged', 'Privileged', '110px', (g) => (g.protected ? 0 : 1), { on: true, cell: (g) => (g.protected ? badge('Privileged', 'amber') : '<span class="muted">-</span>') }),
     col('scope', 'Group scope', '120px', (g) => g.scope, { on: true }),
     col('members', 'Members', '90px', (g) => g.members, { on: true, cell: (g) => `<span class="num">${g.moreMembers ? '1,500+' : g.members.toLocaleString()}</span>` }),
     col('where', 'Organizational unit', 'minmax(140px, 1fr)', (g) => g.where || ad.state.domain, { on: true }),
@@ -279,7 +284,9 @@
     col('location', 'Location', 'minmax(120px, 1fr)', (c) => c.location),
     col('lastSignIn', 'Last sign-in', '110px', (c) => time(c.lastSignIn), { on: true, cell: (c) => esc(ago(c.lastSignIn)) }),
     col('created', 'Created', '110px', (c) => time(c.created), { cell: (c) => dateCell(c.created) }),
-    col('status', 'Status', '150px', (c) => (!c.enabled ? 2 : stale(c.lastSignIn) ? 1 : 0), { on: true, cell: (c) => pcStatus(c) + (c.controller ? chip('Domain controller', 'muted') : '') }),
+    col('status', 'Status', '150px', (c) => (!c.enabled ? 2 : stale(c.lastSignIn) ? 1 : 0), { on: true, cell: (c) => pcStatus(c) }),
+    // One thing per column: what the computer is, apart from its status.
+    col('role', 'Role', '150px', (c) => (c.controller ? 0 : server(c) ? 1 : 2), { on: true, cell: (c) => esc(c.controller ? 'Domain controller' : server(c) ? 'Server' : 'Workstation') }),
   ];
 
   AD.domain.cols = [
@@ -318,6 +325,18 @@
   // Every AD list is a data grid (grid.js): columns, widths and sort kept per page in this browser. Users, Groups and
   // Computers add a tick on the left and ⋯ on the right.
   let emptyNow = '';
+  // Role (Users, Computers) and Privileged (Groups) show by default since 1.1.205, out of Status and Group type:
+  // put once into a column list someone already chose, keeping the rest of it.
+  try {
+    for (const [list, key] of [['users', 'role'], ['computers', 'role'], ['groups', 'privileged']]) {
+      const k = `rabbidlab.ad.cols.${list}`;
+      const chosen = JSON.parse(localStorage.getItem(k) || 'null');
+      if (Array.isArray(chosen) && !chosen.includes(key) && !localStorage.getItem(`${k}.${key}`)) localStorage.setItem(k, JSON.stringify([...chosen, key]));
+      localStorage.setItem(`${k}.${key}`, '1');
+    }
+  } catch {
+    // Not kept in this browser: the defaults show them.
+  }
   const adGrid = R.grid({
     el: $('dir-table'),
     store: 'rabbidlab.ad',

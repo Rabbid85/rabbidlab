@@ -206,10 +206,11 @@
     key: 'attrs',
     cols: [
       { key: 'name', label: 'Attribute', w: 220, fixed: true, get: (a) => a.name, cell: (a) => `<span class="mono ell">${esc(a.name)}</span>` },
+      // One line in the row, however many values: the whole list is under More (Copy value, Edit).
       { key: 'value', label: 'Value', w: 420, on: true, get: (a) => a.values.join(' '),
-        cell: (a) => `<div class="vals">${a.set ? a.values.map((v) => `<span${a.hidden ? ' class="muted"' : ''}>${esc(v)}</span>`).join('') : '<span class="muted">Not set</span>'}</div>` },
-      { key: 'type', label: 'Type', w: 150, on: true, get: (a) => a.type, cell: (a) => `<span class="ty ell">${esc(a.type)}${a.values.length > 1 ? ` · ${a.values.length}` : ''}</span>` },
-      { key: 'count', label: 'Values', w: 80, get: (a) => a.values.length },
+        cell: (a) => (a.set ? `<span class="ell${a.hidden ? ' muted' : ''}">${esc(a.values.join(', '))}</span>` : '<span class="muted">Not set</span>') },
+      { key: 'type', label: 'Type', w: 150, on: true, get: (a) => a.type, cell: (a) => `<span class="ty ell">${esc(a.type)}</span>` },
+      { key: 'count', label: 'Values', w: 80, on: true, get: (a) => a.values.length },
     ],
     tail: { w: 30, cell: (a) => `<button type="button" class="at-more" data-attr-menu="${esc(a.name)}" data-tip="More" aria-label="More for ${esc(a.name)}">${svg('dots')}</button>` },
     row: (a) => ` data-attr="${esc(a.name)}"`,
