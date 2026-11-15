@@ -13,11 +13,13 @@
   const canJobs = () => canDo() || has('seats.workflows');
   const canPick = () => canDo() || has('seats.approve') || has('seats.remove');
   const many = (n, one = 'computer') => `${n.toLocaleString()} ${one}${n === 1 ? '' : 's'}`;
-  const older = (c) => {
-    const [a, b] = [c.version || '0', NEEDS].map((v) => v.split('.').map(Number));
+  // Whether a computer's client is older than the version given.
+  const below = (c, version) => {
+    const [a, b] = [c.version || '0', version].map((v) => v.split('.').map(Number));
     for (let i = 0; i < 3; i++) if ((a[i] || 0) !== b[i]) return (a[i] || 0) < b[i];
     return false;
   };
+  const older = (c) => below(c, NEEDS);
   const names = (list) => (list.length <= 4 ? list.map((c) => c.computer).join(', ') : many(list.length));
   const LANG = { powershell: 'PowerShell', cmd: 'Command' };
   const oops = (e) => { if (!e.cancelled) toast("That didn't work.", e.message, { tone: 'warn' }); };
@@ -173,6 +175,235 @@
     load: async () => { [flows, scripts] = await Promise.all([get('/api/devices/workflows'), get('/api/devices/scripts')]); },
     empty: () => (flows ? 'No workflows yet. New workflow adds the first one.' : 'Reading the list.') };
 
+  // --- WMI query ------------------------------------------------------------------------------------------------
+  // Anything Windows keeps in WMI, read on each computer picked, as SYSTEM, by its client (the client's Wmi.cs). What
+  // comes back is a list like the others: Columns, Export and Filter work on it, and a row opens all it has in the panel.
+  const WMI_FROM = '1.1.173'; // the first client that answers
+  const WQ_EXAMPLES = [
+    ['BIOS and serial number', '', 'SELECT Manufacturer, SMBIOSBIOSVersion, ReleaseDate, SerialNumber FROM Win32_BIOS'],
+    ['Make, model and memory', '', 'SELECT Manufacturer, Model, TotalPhysicalMemory, Domain, UserName FROM Win32_ComputerSystem'],
+    ['Windows version and last restart', '', 'SELECT Caption, Version, BuildNumber, InstallDate, LastBootUpTime FROM Win32_OperatingSystem'],
+    ['Processor', '', 'SELECT Name, NumberOfCores, NumberOfLogicalProcessors, MaxClockSpeed FROM Win32_Processor'],
+    ['Memory sticks', '', 'SELECT BankLabel, Capacity, Speed, Manufacturer, PartNumber FROM Win32_PhysicalMemory'],
+    ['Drives and free space', '', 'SELECT DeviceID, VolumeName, FileSystem, Size, FreeSpace FROM Win32_LogicalDisk WHERE DriveType = 3'],
+    ['Physical disks', '', 'SELECT Model, MediaType, Size, SerialNumber, Status FROM Win32_DiskDrive'],
+    ['Network adapters', '', 'SELECT Description, IPAddress, DefaultIPGateway, DNSServerSearchOrder, MACAddress, DHCPEnabled FROM Win32_NetworkAdapterConfiguration WHERE IPEnabled = TRUE'],
+    ['Automatic services that are stopped', '', "SELECT Name, DisplayName, State, StartMode FROM Win32_Service WHERE StartMode = 'Auto' AND State <> 'Running'"],
+    ['Programs that start with Windows', '', 'SELECT Name, Command, Location, User FROM Win32_StartupCommand'],
+    ['Installed updates', '', 'SELECT HotFixID, Description, InstalledOn, InstalledBy FROM Win32_QuickFixEngineering'],
+    ['User profiles', '', 'SELECT LocalPath, LastUseTime, Loaded FROM Win32_UserProfile WHERE Special = FALSE'],
+    ['Printers', '', 'SELECT Name, PortName, DriverName, Shared, Network FROM Win32_Printer'],
+    ['Shared folders', '', 'SELECT Name, Path, Description FROM Win32_Share'],
+    ['Monitors and their serial numbers', 'root\\wmi', 'SELECT ManufacturerName, UserFriendlyName, SerialNumberID, YearOfManufacture FROM WmiMonitorID'],
+    ['BitLocker on each drive', 'root\\cimv2\\Security\\MicrosoftVolumeEncryption', 'SELECT DriveLetter, ProtectionStatus, ConversionStatus, EncryptionMethod FROM Win32_EncryptableVolume'],
+    ['TPM', 'root\\cimv2\\Security\\MicrosoftTpm', 'SELECT IsActivated_InitialValue, IsEnabled_InitialValue, SpecVersion, ManufacturerVersion FROM Win32_Tpm'],
+    ['Microsoft Defender', 'root\\Microsoft\\Windows\\Defender', 'SELECT AMProductVersion, AntivirusSignatureLastUpdated, RealTimeProtectionEnabled, QuickScanEndTime FROM MSFT_MpComputerStatus'],
+    ['Antivirus Windows knows about', 'root\\SecurityCenter2', 'SELECT displayName, productState, timestamp FROM AntiVirusProduct'],
+    ['Battery', '', 'SELECT Name, EstimatedChargeRemaining, BatteryStatus FROM Win32_Battery'],
+    ['Running processes', '', 'SELECT Name, ProcessId, WorkingSetSize, ExecutablePath FROM Win32_Process'],
+  ];
+  // What the last run brought back: its columns and their kinds, the rows (with the computer each came from), and
+  // what each computer that didn't answer said. want is the Computers choice to make when the page opens next.
+  const wq = { names: [], kinds: {}, rows: [], problems: [], cls: '', space: '', asked: false, want: '' };
+  const dash = '<span class="muted">-</span>';
+  // A column wide enough for its heading and what's in it, within reason.
+  const wqWidth = (label, values) => Math.round(Math.min(320, Math.max(90, 7.4 * Math.max(label.length * 0.9, ...values.slice(0, 80).map((v) => String(v ?? '').length)) + 30)));
+  let wqCols = [];
+  const buildCols = () => {
+    wqCols = [{ key: '@computer', label: 'Computer', w: 150, fixed: true, get: (r) => r['@computer'], cell: (r) => `<b>${esc(r['@computer'])}</b>` },
+      ...wq.names.map((name) => {
+        const number = wq.kinds[name] === 'number';
+        return { key: name, label: name, w: wqWidth(name, wq.rows.map((r) => r[name])), on: true,
+          get: (r) => (number && r[name] !== '' && r[name] != null ? Number(r[name]) : r[name] ?? ''), text: (r) => r[name] ?? '',
+          cell: (r) => (r[name] === '' || r[name] == null ? dash : `<span class="ell">${esc(r[name])}</span>`) };
+      })];
+  };
+  let wqG = null;
+  const wqGrid = () => (wqG ||= R.grid({
+    el: $('dv-wmi'), key: () => `wmi.${wq.cls || 'query'}`, cols: () => wqCols,
+    row: (r) => ` data-row="wmi:${r['@i']}"`,
+    empty: () => D.more.wmi.empty(),
+    redraw: () => D.draw(),
+  }));
+  // Filter's fields: the computer, and each column by its kind; a column with few values offers them to pick.
+  const wqFields = () => (!wq.names.length ? null : [
+    ['Computer', [{ key: '@computer', label: 'Computer', type: 'choice', get: (r) => r['@computer'] }]],
+    ['Properties', wq.names.map((name) => {
+      const kind = wq.kinds[name];
+      const type = kind === 'number' ? 'number' : kind === 'date' ? 'days' : kind === 'yes' || new Set(wq.rows.map((r) => r[name])).size <= 20 ? 'choice' : 'text';
+      return { key: name, label: name, type, get: (r) => (r[name] === '' ? undefined : r[name]) };
+    })],
+  ]);
+  D.lists.wmi = ['WMI query', 'list', 'Ask computers for anything Windows keeps in WMI: hardware, settings, services, security. Read only.'];
+  D.more.wmi = { table: 'dv-wmi', grid: wqGrid, rows: () => wq.rows, count: () => '', can: () => has('seats.wmi'), noun: 'rows', fields: wqFields,
+    load: async () => {}, // nothing to read again: a query runs when Run is clicked
+    empty: () => (wq.asked ? 'No rows came back.' : 'Pick the computers, type a query or pick an example, then Run.') };
+
+  // Computers: the ticked ones, every online one, or one by name.
+  const wqTargets = () => {
+    const v = $('wq-on').value;
+    const approved = D.computers().filter((c) => c.approved);
+    if (v === 'ticked') return approved.filter((c) => D.picked.has(c.id));
+    if (v === 'online') return approved.filter((c) => D.stateOf(c) === 'online');
+    return approved.filter((c) => `c:${c.id}` === v);
+  };
+  let wqOnHtml = '';
+  const drawWqOn = () => {
+    const approved = D.computers().filter((c) => c.approved).sort((a, b) => a.computer.localeCompare(b.computer));
+    const ticked = approved.filter((c) => D.picked.has(c.id)).length;
+    const online = approved.filter((c) => D.stateOf(c) === 'online').length;
+    const html = (ticked ? `<option value="ticked">Ticked computers (${ticked})</option>` : '') + `<option value="online">Every online computer (${online})</option>`
+      + (approved.length ? `<optgroup label="One computer">${approved.map((c) => `<option value="c:${esc(c.id)}">${esc(c.computer)}${D.stateOf(c) === 'online' ? '' : ' (offline)'}${below(c, WMI_FROM) ? ' (older client)' : ''}</option>`).join('')}</optgroup>` : '');
+    const was = wq.want || $('wq-on').value;
+    wq.want = '';
+    // Drawn again only when what it offers changes, so an open list isn't shut by the page's next look.
+    if (html !== wqOnHtml) {
+      $('wq-on').innerHTML = html;
+      wqOnHtml = html;
+    }
+    const values = [...$('wq-on').options].map((o) => o.value);
+    $('wq-on').value = values.includes(was) ? was : ticked ? 'ticked' : 'online';
+  };
+  let wqAsking = 0;
+  const runWmi = async () => {
+    const on = wqTargets();
+    const query = $('wq-text').value.trim();
+    if (!query) {
+      $('wq-text').focus();
+      toast('Type a query first.', 'Or pick one under Examples.', { tone: 'warn' });
+      return;
+    }
+    if (!on.length) {
+      toast('No computers to ask.', 'Pick one under Computers, or tick some on the Computers list.', { tone: 'warn' });
+      return;
+    }
+    const mine = ++wqAsking;
+    const space = $('wq-space').value.trim() || 'root\\cimv2';
+    $('wq-run').disabled = true;
+    R.busy($('dv-lib'), `Asking ${names(on)}…`, 'Up to 40 seconds');
+    try {
+      const j = await send('/api/devices/wmi', { clients: on.map((c) => c.id), space, query });
+      if (mine !== wqAsking) return;
+      const heads = [];
+      const kinds = {};
+      const rows = [];
+      for (const res of j.results) {
+        if (!res.ok) continue;
+        res.columns.forEach((c, i) => {
+          if (!(c in kinds)) {
+            heads.push(c);
+            kinds[c] = res.kinds[i] || 'text';
+          }
+        });
+        for (const row of res.rows) {
+          const r = { '@computer': res.computer, '@client': res.client, '@i': rows.length };
+          res.columns.forEach((c, i) => { r[c] = row[i]; });
+          rows.push(r);
+        }
+      }
+      const cls = (/\bfrom\s+([A-Za-z0-9_]+)/i.exec(query) || /\bof\s*\{\s*([A-Za-z0-9_]+)/i.exec(query) || [])[1] || '';
+      Object.assign(wq, { names: heads, kinds, rows, cls, space, asked: true,
+        problems: j.results.filter((r) => !r.ok || r.more).map((r) => [r.computer || 'A computer', r.ok ? `Sent the first ${r.rows.length.toLocaleString()} rows, and had more. Ask for less with a WHERE.` : r.error]) });
+      buildCols();
+      if (panel.is('devices') && String(panel.key).startsWith('wmi:')) panel.close();
+    } catch (e) {
+      if (mine === wqAsking) oops(e);
+    } finally {
+      if (mine === wqAsking) {
+        R.busy($('dv-lib'), '');
+        $('wq-run').disabled = false;
+      }
+    }
+    D.draw();
+  };
+  $('wq-examples').innerHTML = '<option value="" selected>Pick one…</option>' + WQ_EXAMPLES.map(([label], i) => `<option value="${i}">${esc(label)}</option>`).join('');
+  $('wq-examples').addEventListener('change', () => {
+    const ex = WQ_EXAMPLES[Number($('wq-examples').value)];
+    $('wq-examples').value = '';
+    if (!ex) return;
+    $('wq-space').value = ex[1] || 'root\\cimv2';
+    $('wq-text').value = ex[2];
+    runWmi();
+  });
+  $('wq-run').addEventListener('click', runWmi);
+  $('wq-text').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      runWmi();
+    }
+  });
+  // One row: every property it came back with, in the side panel.
+  const openWmiRow = (i) => {
+    const r = wq.rows[i];
+    if (!r) return;
+    panel.body.innerHTML = head('list', r['@computer'], esc(`${wq.cls || 'WMI query'} · ${wq.space}`))
+      + section(`Properties <small>${wq.names.length}</small>`, `<ul class="does">${wq.names.map((n) => `<li><b>${esc(n)}</b><span>${r[n] === '' || r[n] == null ? dash : esc(r[n])}</span></li>`).join('')}</ul>`);
+    panel.open('devices', `wmi:${i}`);
+    mark();
+  };
+
+  // The class list: the namespaces down the left, the classes on the right, read from one of the computers picked.
+  // A class picked becomes SELECT * FROM it, and runs.
+  const wqc = { space: '', spaces: [], classes: [] };
+  let wqcAsking = 0;
+  const openClasses = async (space) => {
+    const on = wqTargets().filter((c) => !below(c, WMI_FROM));
+    const c = on.find((x) => D.stateOf(x) === 'online') || on[0];
+    if (!c) {
+      toast('Pick a computer first.', `The class list is read from one of them, with client ${WMI_FROM} or later.`, { tone: 'warn' });
+      return;
+    }
+    const mine = ++wqcAsking;
+    if (!$('wqc-dialog').open) {
+      $('wqc-find').value = '';
+      $('wqc-dialog').showModal();
+      $('wqc-find').focus();
+    }
+    $('wqc-lead').textContent = `Read from ${c.computer}. Pick a class to see everything it has.`;
+    $('wqc-list').innerHTML = `<p class="muted">Reading the classes in ${esc(space)}…</p>`;
+    $('wqc-count').textContent = '';
+    try {
+      const j = await send('/api/devices/wmi/classes', { clients: [c.id], space });
+      if (mine !== wqcAsking) return;
+      Object.assign(wqc, { space: j.space, spaces: j.spaces, classes: j.classes });
+      drawSpaces();
+      drawClassList();
+    } catch (e) {
+      if (mine === wqcAsking) $('wqc-list').innerHTML = `<p class="muted">${esc(e.message)}</p>`;
+    }
+  };
+  const drawSpaces = () => {
+    const parts = wqc.space.split('\\');
+    const up = parts.map((_, i) => parts.slice(0, i + 1).join('\\'));
+    $('wqc-spaces').innerHTML = '<p class="rail-label">Namespace</p>'
+      + up.map((s, i) => `<a data-space="${esc(s)}"${i === up.length - 1 ? ' aria-current="page"' : ''}>${svg('folder')}<span class="nm">${esc(i ? parts[i] : s)}</span></a>`).join('')
+      + (wqc.spaces.length ? `<div class="dkids open">${wqc.spaces.map((s) => `<a data-space="${esc(s)}"><span class="nm">${esc(s.split('\\').pop())}</span></a>`).join('')}</div>` : '');
+  };
+  const drawClassList = () => {
+    const find = $('wqc-find').value.trim().toLowerCase();
+    const list = wqc.classes.filter((c) => !find || c.toLowerCase().includes(find));
+    const shown = list.slice(0, 500);
+    $('wqc-list').innerHTML = (shown.map((c) => `<button type="button" data-class="${esc(c)}">${esc(c)}</button>`).join('')
+      + (list.length > shown.length ? `<p class="muted">And ${(list.length - shown.length).toLocaleString()} more. Find narrows the list.</p>` : ''))
+      || `<p class="muted">${wqc.classes.length ? 'No class has that in its name.' : 'No classes in this namespace.'}</p>`;
+    $('wqc-count').textContent = `${list.length.toLocaleString()} of ${wqc.classes.length.toLocaleString()} classes`;
+  };
+  $('wq-classes').addEventListener('click', () => openClasses($('wq-space').value.trim() || 'root\\cimv2'));
+  $('wqc-spaces').addEventListener('click', (e) => {
+    const a = e.target.closest('[data-space]');
+    if (a) openClasses(a.dataset.space);
+  });
+  $('wqc-find').addEventListener('input', drawClassList);
+  $('wqc-list').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-class]');
+    if (!b) return;
+    $('wq-space').value = wqc.space;
+    $('wq-text').value = `SELECT * FROM ${b.dataset.class}`;
+    $('wqc-dialog').close();
+    runWmi();
+  });
+  for (const id of ['wqc-x', 'wqc-cancel']) $(id).addEventListener('click', () => $('wqc-dialog').close());
+
   // --- Ticks, and what Actions does with them ------------------------------------------------------------------
   const ticked = () => D.computers().filter((c) => D.picked.has(c.id));
   D.hooks.lead = () => (canPick() ? { w: 18, head: '<label class="tk"><input type="checkbox" data-tick-all aria-label="Select all"></label>',
@@ -222,7 +453,8 @@
     const waiting = on.length - approved;
     const item = (act, icon, label, hint = '', danger = false) => `<button type="button" role="menuitem" class="am-link${danger ? ' out' : ''}" data-dv-act="${act}">${svg(icon)}<span>${esc(label)}</span>${hint ? `<small>${esc(hint)}</small>` : ''}</button>`;
     const groups = [
-      (canScripts() && approved ? item('script', 'code', 'Run a script…') : '') + (has('seats.actions') && approved ? item('updates', 'updates', 'Install Windows updates…') + item('restart', 'power', 'Restart…') : ''),
+      (canScripts() && approved ? item('script', 'code', 'Run a script…') : '') + (has('seats.actions') && approved ? item('updates', 'updates', 'Install Windows updates…') + item('restart', 'power', 'Restart…') : '')
+        + (has('seats.wmi') && approved ? item('wmi', 'list', 'Query with WMI…') : ''),
       (has('seats.approve') && waiting ? item('approve', 'check', 'Approve', String(waiting)) : '') + item('export', 'csv', 'Export these') + item('clear', 'x', 'Clear the ticks'),
       has('seats.remove') ? item('remove', 'trash', 'Remove from Devices…', '', true) : '',
     ];
@@ -263,6 +495,9 @@
         D.picked.clear();
         toast(failed ? `${failed} of ${on.length} couldn't be removed.` : `Removed ${many(on.length)}.`, '', failed ? { tone: 'warn' } : {});
       });
+    } else if (act === 'wmi') {
+      wq.want = 'ticked';
+      location.hash = '#seats/wmi';
     } else openRun(act, on);
   });
 
@@ -639,8 +874,9 @@
     if (kind === 'job') openJob(id);
     else if (kind === 'script' && scriptOf(id)) openScript(scriptOf(id));
     else if (kind === 'flow' && (flows || []).some((w) => w.id === id)) openFlow(flows.find((w) => w.id === id));
+    else if (kind === 'wmi') openWmiRow(Number(id));
   };
-  for (const id of ['dv-scripts', 'dv-jobs', 'dv-workflows']) {
+  for (const id of ['dv-scripts', 'dv-jobs', 'dv-workflows', 'dv-wmi']) {
     $(id).addEventListener('click', (e) => {
       const row = e.target.closest('[data-row]');
       if (row) openRow(row.dataset.row);
@@ -654,6 +890,11 @@
     if (act && panel.is('seats')) {
       const c = D.computers().find((x) => x.id === panel.key);
       if (c) openRun(act.dataset.dvDo, [c]);
+      return;
+    }
+    if (on('data-dv-wmi') && panel.is('seats')) {
+      wq.want = `c:${panel.key}`;
+      location.hash = '#seats/wmi';
       return;
     }
     const jobLink = on('data-job-open');
@@ -727,7 +968,8 @@
   // --- A computer's side panel: what can be run on it, and its jobs ---------------------------------------------
   const seatJobs = {}; // computer id -> its jobs, once asked for
   D.hooks.seatBar = (c) => (!c.approved ? '' : (canScripts() ? qa('data-dv-do="script"', 'code', 'Run a script') : '')
-    + (has('seats.actions') ? qa('data-dv-do="updates"', 'updates', 'Install updates') + qa('data-dv-do="restart"', 'power', 'Restart') : ''));
+    + (has('seats.actions') ? qa('data-dv-do="updates"', 'updates', 'Install updates') + qa('data-dv-do="restart"', 'power', 'Restart') : '')
+    + (has('seats.wmi') ? qa('data-dv-wmi', 'list', 'WMI query') : ''));
   D.hooks.seatTabs = (c) => (canJobs() ? [['jobs', 'Jobs', seatJobs[c.id] ? seatJobs[c.id].length : '']] : []);
   D.hooks.seatPane = (c, tab) => {
     if (tab !== 'jobs') return null;
@@ -750,6 +992,13 @@
     const make = at === 'scripts' ? has('seats.scripts.edit') && 'New script' : at === 'workflows' ? has('seats.workflows') && 'New workflow' : '';
     $('dv-new').hidden = !make;
     $('dv-new-text').textContent = make || '';
+    // WMI query: its box over the list, and what any computer that didn't answer said.
+    $('dv-wq').hidden = at !== 'wmi';
+    if (at === 'wmi') {
+      drawWqOn();
+      $('wq-problems').hidden = !wq.problems.length;
+      $('wq-problems').innerHTML = wq.problems.map(([who, why]) => `<li><b>${esc(who)}</b>${esc(why)}</li>`).join('');
+    }
     mark();
     watch();
   };

@@ -348,9 +348,40 @@ input.pick:focus { outline: none; border-color: var(--accent); }
 .dw-how.warn { color: var(--amber); }
 /* Devices: the tables of computers, software, updates and sessions. The page itself is laid out as Active Directory is (.dir-page). */
 /* A computer, a program or an update opens the side panel, and the open one is marked. */
-.seats-page :is(#seats-table, #dv-software, #dv-updates, #dv-scripts, #dv-jobs, #dv-workflows) .tr:not(.th) { cursor: pointer; }
-.seats-page :is(#seats-table, #dv-software, #dv-updates, #dv-scripts, #dv-jobs, #dv-workflows) .tr:not(.th):hover { background: #151827; }
-.seats-page :is(#seats-table, #dv-software, #dv-updates, #dv-scripts, #dv-jobs, #dv-workflows) .tr.dw-on { background: #171B2C; box-shadow: inset 3px 0 0 var(--accent); }
+.seats-page :is(#seats-table, #dv-software, #dv-updates, #dv-scripts, #dv-jobs, #dv-workflows, #dv-wmi) .tr:not(.th) { cursor: pointer; }
+.seats-page :is(#seats-table, #dv-software, #dv-updates, #dv-scripts, #dv-jobs, #dv-workflows, #dv-wmi) .tr:not(.th):hover { background: #151827; }
+.seats-page :is(#seats-table, #dv-software, #dv-updates, #dv-scripts, #dv-jobs, #dv-workflows, #dv-wmi) .tr.dw-on { background: #171B2C; box-shadow: inset 3px 0 0 var(--accent); }
+/* WMI query (devices.js): which computers, the namespace and the examples on one line, the query under them, then Run. */
+.wq { display: grid; gap: 10px; margin-top: 14px; }
+.wq[hidden] { display: none; }
+.wq-row { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; }
+.wq-field { display: grid; gap: 6px; min-width: 0; }
+.wq-field > span { color: #7D8297; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.wq-field :is(select, input) { width: 100%; height: 34px; padding-left: 10px; border: 1px solid var(--line-strong); border-radius: 8px; background-color: #0C0E17; color: var(--title); font: inherit; font-size: 13px; }
+.wq-field input { padding-right: 10px; font-family: Consolas, "Cascadia Mono", monospace; }
+.wq-field :is(select, input):focus { outline: none; border-color: var(--accent-line); }
+.wq-on { flex: 1 1 210px; }
+.wq-space { flex: 1 1 210px; }
+.wq-ex { flex: 1 1 190px; }
+#wq-classes { display: inline-flex; align-items: center; gap: 7px; height: 34px; }
+#wq-classes svg { width: 15px; height: 15px; }
+#wq-text { width: 100%; min-height: 76px; padding: 10px 12px; border: 1px solid var(--line-strong); border-radius: 8px; background: #0C0E17; color: var(--title);
+  font: 13px/1.6 Consolas, "Cascadia Mono", monospace; resize: vertical; }
+#wq-text:focus { outline: none; border-color: var(--accent-line); }
+.wq-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; }
+.wq-foot .primary { display: inline-flex; align-items: center; gap: 7px; height: 34px; }
+.wq-foot .primary svg { width: 15px; height: 15px; }
+.wq-note { color: var(--muted); font-size: 12.5px; }
+.wq-problems { display: grid; gap: 4px; margin: 0; padding: 10px 12px; list-style: none; border: 1px solid color-mix(in srgb, var(--red) 40%, transparent); border-radius: 10px;
+  background: color-mix(in srgb, var(--red) 6%, transparent); color: #E7A6B0; font-size: 12.5px; }
+.wq-problems[hidden] { display: none; }
+.wq-problems b { margin-right: 6px; color: #fff; }
+/* The WMI class list: namespaces down the left as in Pick an OU, the classes of the one picked on the right. */
+.wqc-list { display: grid; align-content: start; gap: 1px; height: min(352px, 48vh); margin-top: 10px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #2A2D3E transparent; }
+.wqc-list button { height: 30px; padding: 0 10px; border: 0; border-radius: 7px; background: none; color: #B8BCCB; font: 13px Consolas, "Cascadia Mono", monospace; text-align: left; }
+.wqc-list button:hover, .wqc-list button:focus-visible { background: #151827; color: #fff; }
+.wqc-list .muted { margin: 8px 10px; }
+#wqc-dialog .dialog-foot .bar-note { margin-right: auto; }
 /* A tick on each computer, as Active Directory has, for doing something with several at once (devices.js). */
 .seats-page .tk { display: grid; place-items: center; align-self: stretch; cursor: pointer; }
 .seats-page .tk input { margin: 0; accent-color: var(--accent); }

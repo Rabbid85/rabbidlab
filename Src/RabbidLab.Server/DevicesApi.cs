@@ -1,9 +1,12 @@
+using RabbidLab.Shared;
+
 namespace RabbidLab.Server;
 
 /// <summary>
 /// Doing things on the computers in Devices: the script library, running a script or an action on computers, the jobs
 /// and their output, and workflows. Everything that puts code on a computer takes its own permission and a fresh
 /// confirmation of who's asking (Confirm.cs), and is written to the activity log with the SHA-256 of what ran.
+/// WMI queries are reads, so they take only their own permission and a line in the activity log.
 /// </summary>
 public static class DevicesApi
 {
@@ -13,10 +16,18 @@ public static class DevicesApi
     /// <summary>How long a computer that's offline has to take a job someone ran by hand.</summary>
     public static readonly TimeSpan Life = TimeSpan.FromHours(24);
 
+    /// <summary>The first client that answers WMI queries.</summary>
+    public static readonly Version WmiFrom = new(1, 1, 173);
+
+    /// <summary>At most this many computers in one WMI query.</summary>
+    public const int WmiMost = 50;
+
     private static readonly string[] Doing = [Permissions.SeatsActions, Permissions.ScriptsRun, Permissions.ScriptsEdit, Permissions.Workflows];
 
     public static void MapDevicesApi(this WebApplication app)
     {
+        MapWmi(app);
+
         // Whether this session confirmed who it is lately, and what it's asked for when it hasn't.
         app.MapGet("/api/confirm", (HttpContext context, Confirmations confirm) =>
             Results.Ok(new { until = confirm.Until(context), method = confirm.Method(context.User) }));
@@ -263,7 +274,101 @@ public static class DevicesApi
     }
 
     private static bool Seeing(HttpContext context, params string[] any) => any.Any(p => Access.Can(context, p));
+
+    // WMI queries: a read on each computer picked, as SYSTEM, down its client's open request. The page gets the rows;
+    // nothing is kept but the line in the activity log.
+    private static void MapWmi(WebApplication app)
+    {
+        app.MapPost("/api/devices/wmi", async (WmiForm form, HttpContext context, Clients clients, ClientCommands commands, ActivityLog log) =>
+        {
+            if (Access.RefuseUnless(context, Permissions.SeatsWmi) is { } refused)
+            {
+                return refused;
+            }
+            if ((WmiAsk.BadSpace(form.Space) ?? WmiAsk.BadQuery(form.Query)) is { } bad)
+            {
+                return Results.BadRequest(new { error = bad });
+            }
+            var ids = (form.Clients ?? []).Where(id => !string.IsNullOrWhiteSpace(id)).Distinct().ToList();
+            if (ids.Count == 0)
+            {
+                return Results.BadRequest(new { error = "Pick the computers to ask." });
+            }
+            if (ids.Count > WmiMost)
+            {
+                return Results.BadRequest(new { error = $"Ask {WmiMost} computers at a time at most." });
+            }
+            var space = WmiAsk.Space(form.Space);
+            var query = form.Query!.Trim();
+            var found = ids.Select(id => (Id: id, Client: clients.Find(id))).ToList();
+            log.Record(context, "clients", "devices.wmi", $"Ran a WMI query on {Few(found.Where(f => f.Client is not null).Select(f => f.Client!.Computer).ToList())}", "ok", $"{space}: {query}");
+            var answers = await Task.WhenAll(found.Select(f => AskWmi(f.Client, new AccountOrder { Action = AccountOrder.Wmi, Space = space, Query = query }, commands, context.RequestAborted)));
+            return Results.Ok(new
+            {
+                results = found.Zip(answers, (f, a) => new
+                {
+                    client = f.Id, computer = f.Client?.Computer ?? "", ok = a.Error is null, error = a.Error,
+                    columns = a.Answer?.Columns ?? [], kinds = a.Answer?.Kinds ?? [], rows = a.Answer?.Rows ?? [], more = a.Answer?.More ?? false,
+                }),
+            });
+        });
+
+        // The namespaces and classes in a namespace on one computer, for the class list to pick from.
+        app.MapPost("/api/devices/wmi/classes", async (WmiForm form, HttpContext context, Clients clients, ClientCommands commands) =>
+        {
+            if (Access.RefuseUnless(context, Permissions.SeatsWmi) is { } refused)
+            {
+                return refused;
+            }
+            if (WmiAsk.BadSpace(form.Space) is { } bad)
+            {
+                return Results.BadRequest(new { error = bad });
+            }
+            var space = WmiAsk.Space(form.Space);
+            var (answer, error) = await AskWmi(clients.Find(form.Clients?.FirstOrDefault() ?? ""), new AccountOrder { Action = AccountOrder.WmiClasses, Space = space }, commands, context.RequestAborted);
+            return error is not null ? Results.BadRequest(new { error }) : Results.Ok(new { space, spaces = answer!.Spaces ?? [], classes = answer.Classes ?? [] });
+        });
+    }
+
+    // One computer's answer, or why there's none.
+    private static async Task<(AccountAnswer? Answer, string? Error)> AskWmi(Client? c, AccountOrder order, ClientCommands commands, CancellationToken stop)
+    {
+        if (c is null)
+        {
+            return (null, "That computer isn't in Devices any more.");
+        }
+        if (c.Approved is null)
+        {
+            return (null, "It's waiting to be approved.");
+        }
+        if (!Version.TryParse(c.Version, out var v) || v < WmiFrom)
+        {
+            return (null, $"Its client is {c.Version ?? "too old"}. WMI queries need {WmiFrom} or later, which it updates to by itself.");
+        }
+        if (!commands.Listening(c.Id))
+        {
+            return (null, "Its client isn't connected right now.");
+        }
+        var answer = await commands.Send(c.Id, order, stop);
+        if (answer is null)
+        {
+            return (null, $"It didn't answer within {ClientCommands.Answer.TotalSeconds:0} seconds.");
+        }
+        return answer.Ok ? (answer, null) : (null, answer.Error ?? "It couldn't read that.");
+    }
+
+    // GARAGE-PC, GARAGE-PC and OFFICE-PC, or 5 computers.
+    private static string Few(List<string> names) => names.Count switch
+    {
+        0 => "no computers",
+        1 => names[0],
+        2 => $"{names[0]} and {names[1]}",
+        _ => $"{names.Count} computers",
+    };
 }
+
+/// <summary>A WMI query: which computers, the namespace (root\cimv2 when empty) and the query. The class list takes one computer.</summary>
+public sealed record WmiForm(List<string>? Clients, string? Space, string? Query);
 
 public sealed record ScriptForm(string? Id, string? Name, string? About, string? Language, string? Text, int? Minutes);
 

@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.173', [
+    'Devices has a WMI query page under Tools. Pick computers, type a query or pick an example, and the answer from each computer shows as a list you can sort, filter and export. Classes lists every namespace and class on a computer.',
+    'WMI queries only read, need the new Query computers with WMI permission, and each one is in the activity log. Computers answer once their client is 1.1.173, which they update to by themselves.',
+    'Devices lists have a Filter, the same one Active Directory has.']],
   ['1.1.172', [
     'The Attribute browser and the Org chart have their Find at the top of the list down the left, where the other Active Directory pages have it.',
     'The sign-in page no longer has Keep me signed in. A sign-in lasts while a Rabbid Lab page is open and ends a few minutes after the last one closes.',
@@ -1550,6 +1554,26 @@ const RELEASE_NOTES = [
   // What a row of Software or Windows updates is known by, on its row and in the side panel.
   const thingKey = (x) => ('kb' in x ? `u:${x.kb}:${x.title || ''}` : `s:${x.name}:${x.publisher || ''}`);
   const dvStat = (n, icon, label) => `<div><b>${n}</b><span>${svg(icon)}${esc(label)}</span></div>`;
+  // Filter (filter.js) on Computers, and on a list from devices.js that gives its own fields (WMI query). Kept per list
+  // until it's cleared or the page is opened again.
+  const fld = (key, label, type, get, o = {}) => ({ key, label, type, get, ...o });
+  const DV_FIELDS = [
+    ['Computer', [fld('computer', 'Name', 'text', (c) => c.computer), fld('state', 'State', 'choice', (c) => STATE[stateOf(c)]), fld('os', 'Windows', 'choice', (c) => c.os),
+      fld('user', 'Signed in', 'choice', (c) => c.user), fld('version', 'Client version', 'choice', (c) => c.version), fld('address', 'Address', 'text', (c) => addr(c.address)),
+      fld('lastSeen', 'Last seen', 'days', (c) => c.lastSeen)]],
+    ['Health', [fld('missing', 'Missing updates', 'number', (c) => c.inventory?.missing), fld('restart', 'Needs a restart', 'yes', (c) => !!c.inventory?.restartNeeded),
+      fld('disk', 'Free on C: (%)', 'number', (c) => c.inventory?.disk), fld('started', 'Running since', 'days', (c) => c.inventory?.started)]],
+    ['Hardware', [fld('manufacturer', 'Manufacturer', 'choice', (c) => c.inventory?.manufacturer), fld('model', 'Model', 'choice', (c) => c.inventory?.model),
+      fld('serial', 'Serial number', 'text', (c) => c.inventory?.serial), fld('processor', 'Processor', 'choice', (c) => c.inventory?.processor),
+      fld('memory', 'Memory (GB)', 'number', (c) => (c.inventory?.memory ? Math.round(c.inventory.memory / 1073741824) : undefined))]],
+  ];
+  const dvFilter = {};
+  const dvFields = (at = dvAt) => (at === 'computers' ? DV_FIELDS : dvMore[at]?.fields?.() || null);
+  // The rows a list has before Find and Filter narrow it.
+  const dvBase = (at = dvAt) => {
+    const view = DV_VIEWS.find((v) => v && v[0] === dvView) || DV_VIEWS[0];
+    return dvMore[at] ? dvMore[at].rows() : { computers: computers.filter(view[2]), software: software || [], updates: updates || [], sessions: sessionsNow }[at];
+  };
   const drawSeats = () => {
     const n = (f) => computers.filter(f).length;
     $('rail-seats').textContent = n((c) => stateOf(c) === 'online') || '';
@@ -1558,8 +1582,18 @@ const RELEASE_NOTES = [
     for (const id of [...dvPicked]) if (!computers.some((c) => c.id === id)) dvPicked.delete(id);
     const view = DV_VIEWS.find((v) => v && v[0] === dvView) || DV_VIEWS[0];
     const find = $('dv-find').value.trim().toLowerCase();
-    const all = dvMore[dvAt] ? dvMore[dvAt].rows() : { computers: computers.filter(view[2]), software: software || [], updates: updates || [], sessions: sessionsNow }[dvAt];
-    dvShown = all.filter((x) => !find || JSON.stringify(x).toLowerCase().includes(find));
+    const F = window.RabbidLab?.filter;
+    const fields = F ? dvFields() : null;
+    const test = fields ? F.test(fields, dvFilter[dvAt]) : () => true;
+    const nf = fields ? F.count(fields, dvFilter[dvAt]) : 0;
+    dvShown = dvBase().filter((x) => test(x) && (!find || JSON.stringify(x).toLowerCase().includes(find)));
+    $('dv-filter').hidden = !fields;
+    $('dv-filter').classList.toggle('on', nf > 0);
+    $('dv-filter').querySelector('.cnt').hidden = !nf;
+    $('dv-filter').querySelector('.cnt').textContent = String(nf);
+    $('dv-filter-x').hidden = !nf;
+    $('dv-filtered').hidden = !nf;
+    $('dv-filtered').innerHTML = nf ? `${svg('filter')}<span>${esc(F.words(fields, dvFilter[dvAt]))}</span><button type="button" class="linkish" data-filter-clear>Clear filter</button>` : '';
     document.querySelectorAll('#dv-rail a[data-dv]').forEach((a) => (a.dataset.dv === dvAt ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current')));
     $('dv-views').innerHTML = dvAt !== 'computers' ? '' : DV_VIEWS.map((v) => {
       if (!v) return '<i></i>';
@@ -1580,8 +1614,8 @@ const RELEASE_NOTES = [
     $('dv-tabs').innerHTML = `<a aria-current="true">${svg(DV[dvAt][1])}${esc(DV[dvAt][0])} <small>${dvShown.length}</small></a>`;
     $('dv-view-title').textContent = dvAt === 'computers' ? view[1] : DV[dvAt][0];
     $('dv-count').textContent = `${dvShown.length} shown`;
-    // As on Active Directory: only for a view or a find that narrows the list.
-    $('dv-now').hidden = !((dvAt === 'computers' && view[0] !== 'all') || find);
+    // As on Active Directory: only for a view, a find or a filter that narrows the list.
+    $('dv-now').hidden = !((dvAt === 'computers' && view[0] !== 'all') || find || nf);
     for (const [k, id] of [['computers', 'seats-table'], ['software', 'dv-software'], ['updates', 'dv-updates'], ['sessions', 'sessions-table'],
       ...Object.entries(dvMore).map(([key, more]) => [key, more.table])]) $(id).hidden = k !== dvAt;
     const late = 'A computer sends what it has within half an hour of being approved, with client 1.1.165 or later.';
@@ -1962,6 +1996,25 @@ const RELEASE_NOTES = [
       if (opened) seats(); // its list is read as it opens
     });
     $('dv-find').addEventListener('input', drawSeats);
+    // Filter: the same window as Active Directory's (filter.js), on the list that's open.
+    $('dv-filter').addEventListener('click', () => {
+      const at = dvAt;
+      const fields = dvFields(at);
+      if (!fields) return;
+      const noun = dvMore[at]?.noun || (at === 'computers' ? 'computers' : 'rows');
+      window.RabbidLab.filter.open({ title: `Filter ${noun}`, fields, noun, now: dvFilter[at], rows: () => dvBase(at),
+        apply: (flt) => {
+          if (flt) dvFilter[at] = flt;
+          else delete dvFilter[at];
+          drawSeats();
+        } });
+    });
+    const dvUnfilter = () => {
+      delete dvFilter[dvAt];
+      drawSeats();
+    };
+    $('dv-filter-x').addEventListener('click', dvUnfilter);
+    $('dv-now').addEventListener('click', (e) => { if (e.target.closest('[data-filter-clear]')) dvUnfilter(); });
     $('dv-cols').addEventListener('click', () => dvGrid().menu($('dv-cols')));
     $('dv-export').addEventListener('click', () => dvGrid().csv(dvShown, `devices-${dvAt === 'computers' ? `computers-${dvView}` : dvAt}`));
     $('dv-refresh').addEventListener('click', () => seats());

@@ -56,8 +56,14 @@ public sealed class AccountOrder
     /// <summary>Not a change either: jobs wait for this computer, and its client comes to take them (the client's Jobs.cs).</summary>
     public const string Jobs = "jobs";
 
+    /// <summary>Reads too: a WMI query (Query, in Space), and the namespaces and classes in Space to pick from (the client's Wmi.cs).</summary>
+    public const string Wmi = "wmi";
+    public const string WmiClasses = "wmi-classes";
+
     [DataMember(Name = "id")] public string? Id { get; set; }
     [DataMember(Name = "action")] public string? Action { get; set; }
+    [DataMember(Name = "space")] public string? Space { get; set; }
+    [DataMember(Name = "query")] public string? Query { get; set; }
     [DataMember(Name = "name")] public string? Name { get; set; }
     [DataMember(Name = "fullName")] public string? FullName { get; set; }
     [DataMember(Name = "description")] public string? Description { get; set; }
@@ -110,7 +116,54 @@ public sealed class AccountAnswer
     [DataMember(Name = "total")] public long? Total { get; set; }
     [DataMember(Name = "free")] public long? Free { get; set; }
 
+    /// <summary>For a WMI query: the columns, each one's kind (text, number, date, yes), the rows as text, and whether it had more than it sent.</summary>
+    [DataMember(Name = "columns")] public List<string>? Columns { get; set; }
+    [DataMember(Name = "kinds")] public List<string>? Kinds { get; set; }
+    [DataMember(Name = "rows")] public List<List<string>>? Rows { get; set; }
+    [DataMember(Name = "more")] public bool More { get; set; }
+
+    /// <summary>For the WMI class list: the namespaces under the one asked about, and its classes.</summary>
+    [DataMember(Name = "spaces")] public List<string>? Spaces { get; set; }
+    [DataMember(Name = "classes")] public List<string>? Classes { get; set; }
+
     public static AccountAnswer Failed(string? id, string error) => new() { Id = id, Ok = false, Error = error };
+}
+
+/// <summary>What a WMI query from Devices may be: a read (SELECT, ASSOCIATORS OF or REFERENCES OF) in a namespace on the computer itself.</summary>
+public static class WmiAsk
+{
+    public const string DefaultSpace = @"root\cimv2";
+    public const int MaxQuery = 4000;
+
+    // root and names under it, never \\another-computer\root.
+    private static readonly System.Text.RegularExpressions.Regex SpaceShape =
+        new(@"^root(\\[A-Za-z0-9_]+)*$", System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+    private static readonly System.Text.RegularExpressions.Regex Reads =
+        new(@"^(select|associators\s+of|references\s+of)\s", System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+    public static string Space(string? space) => string.IsNullOrWhiteSpace(space) ? DefaultSpace : space!.Trim().Replace('/', '\\');
+
+    /// <summary>Why it can't be the namespace, or null when it can.</summary>
+    public static string? BadSpace(string? space)
+    {
+        var s = Space(space);
+        return s.Length <= 200 && SpaceShape.IsMatch(s) ? null : @"Use a namespace on the computer itself, such as root\cimv2.";
+    }
+
+    /// <summary>Why it can't be asked, or null when it can.</summary>
+    public static string? BadQuery(string? query)
+    {
+        var q = query?.Trim() ?? "";
+        if (q.Length == 0)
+        {
+            return "Type a query, such as SELECT * FROM Win32_BIOS.";
+        }
+        if (q.Length > MaxQuery)
+        {
+            return $"A query can be {MaxQuery} characters at most.";
+        }
+        return Reads.IsMatch(q) ? null : "Only reads: a query starts with SELECT, ASSOCIATORS OF or REFERENCES OF.";
+    }
 }
 
 /// <summary>What the client's sensors read on the computer itself: a service's state, or a drive's free space. Reads only.</summary>

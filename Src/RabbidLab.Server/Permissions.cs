@@ -5,6 +5,7 @@ public static class Permissions
 {
     public const string OverviewView = "overview.view";
     public const string SeatsView = "seats.view";
+    public const string SeatsWmi = "seats.wmi";
     public const string SeatsApprove = "seats.approve";
     public const string SeatsRemove = "seats.remove";
     public const string SeatsAdd = "seats.add";
@@ -71,6 +72,7 @@ public static class Permissions
         new("seats", "Devices", "monitor",
         [
             new(SeatsView, "See computers", "Every computer with the client, whether it's online, and who's on it."),
+            new(SeatsWmi, "Query computers with WMI", "Read anything Windows keeps in WMI on a computer: hardware, settings, services, security status. Read only, and each query is in the activity log."),
             new(SeatsApprove, "Approve new computers", "Approve a computer that's waiting to connect."),
             new(SeatsRemove, "Remove computers", "Take a computer off the list. It has to join again."),
             new(SeatsAdd, "Add computers", "Get the client installer, the Connect link and the Group Policy template."),

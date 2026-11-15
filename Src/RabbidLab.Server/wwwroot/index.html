@@ -21,6 +21,7 @@
 <script src="Assets/console.js" defer></script>
 <script src="Assets/tips.js" defer></script>
 <script src="Assets/grid.js" defer></script>
+<script src="Assets/filter.js" defer></script>
 <script src="Assets/people.js" defer></script>
 <script src="Assets/users.js" defer></script>
 <script src="Assets/alerts.js" defer></script>
@@ -549,23 +550,40 @@
         <div class="dkids" id="dv-views"></div>
         <a href="#seats/software" data-dv="software" data-can="seats.view"><svg><use href="#i-box"/></svg><span>Software</span><small id="dv-n-software"></small></a>
         <a href="#seats/updates" data-dv="updates" data-can="seats.view"><svg><use href="#i-updates"/></svg><span>Windows updates</span><small id="dv-n-updates"></small></a>
-        <p class="rail-label" data-can="seats.actions seats.scripts.run seats.scripts.edit seats.workflows">Tools</p>
+        <p class="rail-label" data-can="seats.actions seats.scripts.run seats.scripts.edit seats.workflows seats.wmi">Tools</p>
+        <a href="#seats/wmi" data-dv="wmi" data-can="seats.wmi"><svg><use href="#i-list"/></svg><span>WMI query</span><small id="dv-n-wmi"></small></a>
         <a href="#seats/scripts" data-dv="scripts" data-can="seats.scripts.run seats.scripts.edit seats.workflows"><svg><use href="#i-code"/></svg><span>Scripts</span><small id="dv-n-scripts"></small></a>
         <a href="#seats/jobs" data-dv="jobs" data-can="seats.actions seats.scripts.run seats.scripts.edit seats.workflows"><svg><use href="#i-history"/></svg><span>Jobs</span><small id="dv-n-jobs"></small></a>
         <a href="#seats/workflows" data-dv="workflows" data-can="seats.workflows"><svg><use href="#i-org"/></svg><span>Workflows</span><small id="dv-n-workflows"></small></a>
         <p class="rail-label" data-can="sessions.view">Console</p>
         <a href="#seats/sessions" data-dv="sessions" data-can="sessions.view"><svg><use href="#i-users"/></svg><span>Signed in now</span><small id="dv-n-sessions"></small></a>
       </nav>
-      <div class="dmain"><div class="lib"><div class="lib-body">
+      <div class="dmain"><div class="lib" id="dv-lib"><div class="lib-body">
         <div class="dbar"><div class="tabs2" id="dv-tabs"></div><span class="grow"></span>
+          <button type="button" class="small" id="dv-filter" aria-haspopup="dialog" aria-label="Filter" data-tip="Filter" hidden><svg><use href="#i-filter"/></svg><b class="cnt" hidden></b></button>
+          <button type="button" class="small flt-off" id="dv-filter-x" data-tip="Clear filter" aria-label="Clear filter" hidden><svg><use href="#i-x"/></svg></button>
           <button type="button" class="small" id="dv-cols" aria-haspopup="menu"><svg><use href="#i-columns"/></svg>Columns</button>
           <button type="button" class="small" id="dv-act" aria-haspopup="menu" disabled data-tip="Tick computers first"><svg><use href="#i-menu"/></svg>Actions<b class="cnt" hidden></b><svg class="chev"><use href="#i-chevron-down"/></svg></button>
           <button type="button" class="small" id="dv-refresh" data-tip="Refresh" aria-label="Refresh"><svg><use href="#i-refresh"/></svg></button>
           <button type="button" class="small" id="dv-export"><svg><use href="#i-csv"/></svg>Export</button>
           <button type="button" class="primary" id="seats-add" data-can="seats.add"><svg><use href="#i-plus"/></svg><span>Add computers</span></button>
           <button type="button" class="primary" id="dv-new" hidden><svg><use href="#i-plus"/></svg><span id="dv-new-text">New script</span></button></div>
-        <p class="dnow" id="dv-now" hidden><b id="dv-view-title"></b><span class="bar-note" id="dv-count"></span></p>
+        <!-- WMI query: which computers, the namespace and the query, then what they answered in the list below (devices.js). -->
+        <div class="wq" id="dv-wq" hidden>
+          <div class="wq-row">
+            <label class="wq-field wq-on"><span>Computers</span><select id="wq-on"></select></label>
+            <label class="wq-field wq-space"><span>Namespace</span><input id="wq-space" value="root\cimv2" spellcheck="false" autocomplete="off"></label>
+            <label class="wq-field wq-ex"><span>Examples</span><select id="wq-examples"></select></label>
+            <button type="button" class="small" id="wq-classes"><svg><use href="#i-list"/></svg>Classes…</button>
+          </div>
+          <textarea id="wq-text" spellcheck="false" autocomplete="off" rows="3" aria-label="Query" placeholder="SELECT * FROM Win32_BIOS"></textarea>
+          <div class="wq-foot"><button type="button" class="primary" id="wq-run"><svg><use href="#i-right"/></svg>Run</button>
+            <span class="wq-note">Read only. Runs as SYSTEM on each computer, up to 30 seconds. Ctrl+Enter runs it too.</span></div>
+          <ul class="wq-problems" id="wq-problems" hidden></ul>
+        </div>
+        <p class="dnow" id="dv-now" hidden><b id="dv-view-title"></b><span class="bar-note" id="dv-count"></span><span class="dnow-filter" id="dv-filtered" hidden></span></p>
         <div class="table adt drows" id="seats-table" data-can="seats.view" data-skel="rows:4"></div>
+        <div class="table adt drows" id="dv-wmi" hidden></div>
         <div class="table adt drows" id="dv-software" hidden></div>
         <div class="table adt drows" id="dv-updates" hidden></div>
         <div class="table adt drows" id="sessions-table" hidden></div>
@@ -1478,6 +1496,21 @@
   </div>
   <p class="hint problem" id="cf-problem" role="alert" hidden></p>
   <div class="dialog-foot"><button type="button" id="cf-cancel">Cancel</button><button type="button" class="primary" id="cf-go">Confirm</button></div>
+</dialog>
+
+<!-- WMI classes: the namespaces down the left and the classes in the one picked, read from one computer (devices.js). -->
+<dialog class="dialog oupick" id="wqc-dialog" aria-labelledby="wqc-title">
+  <button type="button" class="oupick-x" id="wqc-x" aria-label="Close"><svg><use href="#i-x"/></svg></button>
+  <h2 id="wqc-title">WMI classes</h2>
+  <p class="dialog-lead" id="wqc-lead"></p>
+  <div class="oupick-grid">
+    <nav class="dnav lists oupick-rail" id="wqc-spaces" aria-label="Namespaces"></nav>
+    <div class="oupick-page">
+      <label class="side-find"><svg><use href="#i-search"/></svg><input type="search" id="wqc-find" placeholder="Find a class" aria-label="Find a class" autocomplete="off" spellcheck="false"></label>
+      <div class="wqc-list" id="wqc-list"></div>
+    </div>
+  </div>
+  <div class="dialog-foot"><span class="bar-note" id="wqc-count"></span><button type="button" id="wqc-cancel">Close</button></div>
 </dialog>
 
 <!-- Running a script, a restart or Windows updates on computers. -->

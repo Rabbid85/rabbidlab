@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.173 (2026-11-14)
+
+- Devices has a WMI query page under Tools. Pick computers, type a query or pick an example, and the answer from each computer shows as a list you can sort, filter and export. Classes lists every namespace and class on a computer.
+- WMI queries only read, need the new Query computers with WMI permission, and each one is in the activity log. Computers answer once their client is 1.1.173, which they update to by themselves.
+- Devices lists have a Filter, the same one Active Directory has.
+
 ## 1.1.172 (2026-11-14)
 
 - The Attribute browser and the Org chart have their Find at the top of the list down the left, where the other Active Directory pages have it.
