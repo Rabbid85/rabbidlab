@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.192', [
+    'Printer kinds read WSD, TCP/IP, LPR, IPP, Shared, Universal Print, Virtual or Local.']],
   ['1.1.191', [
     'After an update, the opening screen says Updated to and the version in a small pill, instead of a card with the whole note. The notes are under What is new.']],
   ['1.1.190', [

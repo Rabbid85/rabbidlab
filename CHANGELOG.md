@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.192 (2026-11-15)
+
+- Printer kinds read WSD, TCP/IP, LPR, IPP, Shared, Universal Print, Virtual or Local.
+
 ## 1.1.191 (2026-11-15)
 
 - After an update, the opening screen says Updated to and the version in a small pill, instead of a card with the whole note. The notes are under What is new.

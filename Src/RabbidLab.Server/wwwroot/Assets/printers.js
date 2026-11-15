@@ -8,7 +8,7 @@
 
   const NEEDS = '1.1.190'; // the first client that reports its printers
   const BRAKE = 10;
-  const KIND = { tcpip: 'TCP/IP port', lpr: 'LPR', ipp: 'IPP', wsd: 'Found on the network (WSD)', share: 'Shared printer', universal: 'Universal Print', virtual: 'Built into Windows', local: 'Local' };
+  const KIND = { tcpip: 'TCP/IP', lpr: 'LPR', ipp: 'IPP', wsd: 'WSD', share: 'Shared', universal: 'Universal Print', virtual: 'Virtual', local: 'Local' };
   // Windows' own drivers, there to pick even when no computer reported them yet.
   const CLASS = ['Microsoft PCL6 Class Driver', 'Microsoft PS Class Driver', 'Microsoft IPP Class Driver', 'Generic / Text Only'];
   const many = (n) => `${n.toLocaleString()} computer${n === 1 ? '' : 's'}`;
@@ -66,7 +66,7 @@
     const built = p.printers.filter((x) => x.kind === 'virtual');
     return section(`Printers <small>${real.length}</small>`, (real.length ? `<div class="dw-list">${real.map((x) => row(c, x)).join('')}</div>` : none('No printers yet.'))
       + '<p class="dw-how pr-note">Added for everyone who uses the computer. Changes go out as jobs, and its list updates after each one.</p>', add)
-      + (built.length ? section(`Built into Windows <small>${built.length}</small>`, `<div class="dw-list">${built.map((x) => row(c, x)).join('')}</div>`) : '');
+      + (built.length ? section(`Virtual printers <small>${built.length}</small>`, `<div class="dw-list">${built.map((x) => row(c, x)).join('')}</div>`) : '');
   };
   const H = D.hooks;
   const tabs0 = H.seatTabs;
