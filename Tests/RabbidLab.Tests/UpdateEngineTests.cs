@@ -97,6 +97,33 @@ public sealed class UpdateEngineTests : IDisposable
     }
 
     [Fact]
+    public async Task An_install_that_did_not_take_is_said_with_why_before_it_is_offered_again()
+    {
+        Offer("3.2.0", "pretend installer"u8.ToArray());
+        host.Automatic = false;
+        var done = new TaskCompletionSource<UpdateState>();
+        Engine().InstallNow(done.SetResult);
+        Assert.Equal(UpdateStatus.Installing, (await done.Task.WaitAsync(TimeSpan.FromSeconds(10))).Status);
+        // Setup couldn't replace a file something had open, and started the old version again.
+        File.AppendAllText(Path.Combine(folder, "Updates", "update-3.2.0.log"),
+            "FAILED: System.IO.IOException: The process cannot access the file 'C:\\Program Files\\Rabbid Lab\\clrjit.dll' because it is being used by another process.\r\n   at System.IO.__Error.WinIOError()\r\nStarted the service again.\r\n");
+
+        // Back as the old version: it says what went wrong, with someone at the console or not, and doesn't just offer it again.
+        var back = Engine();
+        back.InUse();
+        var state = await back.TryNow(CancellationToken.None);
+        Assert.Equal(UpdateStatus.Failed, state.Status);
+        Assert.Equal("Version 3.2.0 didn't install. The process cannot access the file 'C:\\Program Files\\Rabbid Lab\\clrjit.dll' because it is being used by another process. Click Install now to try again.", state.Message);
+        Assert.Single(runner.Runs);
+
+        // Install now tries again.
+        var again = new TaskCompletionSource<UpdateState>();
+        back.InstallNow(again.SetResult);
+        await again.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        Assert.Equal(2, runner.Runs.Count);
+    }
+
+    [Fact]
     public async Task A_download_bigger_than_the_release_is_cut_off_and_nothing_is_run()
     {
         var installer = "pretend installer"u8.ToArray();
@@ -343,7 +370,7 @@ public sealed class UpdateEngineTests : IDisposable
 
         public bool CanInstall { get; set; } = true;
 
-        public bool Automatic => true;
+        public bool Automatic { get; set; } = true;
 
         public string ProductName { get; set; } = "Rabbid Lab";
 

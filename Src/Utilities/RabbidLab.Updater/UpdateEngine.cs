@@ -269,6 +269,17 @@ public sealed class UpdateEngine(UpdateOptions options, IUpdateSource source, IU
         {
             return Installing(version);
         }
+        // Tried not long ago and still on the old version: it didn't install. Said with why before anything else, so the
+        // page doesn't offer it again as if nothing had happened. Install now tries again whenever it's clicked.
+        var tried = Path.Combine(updates, "last-try.txt");
+        if (!chosen && File.Exists(tried) && File.ReadAllText(tried).Trim() == version && DateTime.UtcNow - File.GetLastWriteTimeUtc(tried) < options.RetryAfter)
+        {
+            var why = notStarted is { } n && n.Version == version ? n.Why : LogSaid(version);
+            var next = host.Automatic ? "Rabbid Lab tries again later." : "Click Install now to try again.";
+            return Say(UpdateStatus.Failed, version, why is null
+                ? $"Version {version} didn't install. {next} The installation log is in {updates}."
+                : $"Version {version} didn't install. {why} {next}");
+        }
         // Automatic installation turned off: offered, installed only when someone chooses Install now.
         if (!chosen && !host.Automatic)
         {
@@ -282,14 +293,6 @@ public sealed class UpdateEngine(UpdateOptions options, IUpdateSource source, IU
         if (!chosen && DateTime.UtcNow - started < options.SettleTime)
         {
             return Say(UpdateStatus.Waiting, version, $"Version {version} installs once Rabbid Lab has finished starting.");
-        }
-        var tried = Path.Combine(updates, "last-try.txt");
-        if (!chosen && File.Exists(tried) && File.ReadAllText(tried).Trim() == version && DateTime.UtcNow - File.GetLastWriteTimeUtc(tried) < options.RetryAfter)
-        {
-            var why = notStarted is { } n && n.Version == version ? n.Why : LogSaid(version);
-            return Say(UpdateStatus.Failed, version, why is null
-                ? $"Version {version} didn't install. Rabbid Lab tries again later. The installation log is in {updates}."
-                : $"Version {version} didn't install. {why} Rabbid Lab tries again later.");
         }
         Directory.CreateDirectory(updates);
         File.WriteAllText(tried, version);

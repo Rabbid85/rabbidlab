@@ -66,8 +66,10 @@ public static class Opener
         }
         try
         {
-            using var start = Process.Start(new ProcessStartInfo(setup, "/service start") { UseShellExecute = true });
-            start?.WaitForExit();
+            // Not waited for. Its window can stay open, and this process, which runs from the program's own folder, would
+            // keep the program's files in use for as long: no update could replace them. Whether the service answers is
+            // asked by the caller.
+            Process.Start(new ProcessStartInfo(setup, "/service start") { UseShellExecute = true })?.Dispose();
         }
         catch (Win32Exception)
         {

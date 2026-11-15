@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.169 (2026-11-14)
+
+- An update could fail over and over after the Start menu shortcut had been used to start the service: its small window, waiting for OK, kept the program files in use. Setup now ends anything still running from the program folder before it copies files, and that window closes by itself once the service is running.
+- An update that did not install says so, with the reason from Setup, where the page used to just offer it again.
+
 ## 1.1.168 (2026-11-14)
 
 - Devices can do things on computers now. Tick computers and click Actions, or open one computer: run a script, install Windows updates or restart. Scripts are PowerShell or Command and run as SYSTEM.

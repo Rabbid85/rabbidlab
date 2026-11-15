@@ -132,6 +132,7 @@ namespace RabbidLab.Setup
                 {
                     Step("Stopping the Rabbid Lab service", 0.02);
                     StopService();
+                    EndOthers(c.InstallDir);
 
                     Step("Copying program files", 0.05);
                     CopyFiles(c);
@@ -185,6 +186,36 @@ namespace RabbidLab.Setup
                 }
             }
 #endif
+        }
+
+        /// <summary>
+        /// Ends whatever else still runs from the install folder: the shortcut's opener, or a Setup window left open after
+        /// it started the service. Their files can't be replaced while they run, and the installation would fail on them.
+        /// </summary>
+        private void EndOthers(string dir)
+        {
+            var root = Path.GetFullPath(dir).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+            var me = Process.GetCurrentProcess().Id;
+            foreach (var p in Process.GetProcessesByName("RabbidLab.Server").Concat(Process.GetProcessesByName("RabbidLab-Setup")))
+            {
+                try
+                {
+                    if (p.Id != me && p.MainModule.FileName.StartsWith(root, StringComparison.OrdinalIgnoreCase))
+                    {
+                        Log($"Ending {p.ProcessName} (process {p.Id}), which was still running from {dir}.");
+                        p.Kill();
+                        p.WaitForExit(10000);
+                    }
+                }
+                catch (Exception)
+                {
+                    // Not ours to look at, or already gone.
+                }
+                finally
+                {
+                    p.Dispose();
+                }
+            }
         }
 
         private void CopyFiles(Choices c)
@@ -1277,22 +1308,7 @@ namespace RabbidLab.Setup
 
             Step("Stopping the Rabbid Lab service", 0.05);
             StopService();
-            foreach (var p in Process.GetProcessesByName("RabbidLab.Server"))
-            {
-                // A copy still running from the install folder would keep its files.
-                try
-                {
-                    if (p.MainModule.FileName.StartsWith(dir, StringComparison.OrdinalIgnoreCase))
-                    {
-                        p.Kill();
-                        p.WaitForExit(10000);
-                    }
-                }
-                catch (Exception)
-                {
-                    // Not ours to look at, or already gone.
-                }
-            }
+            EndOthers(dir);
 
             Step("Removing the Rabbid Lab service", 0.15);
             if (Choices.ServiceInstalled)

@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.169', [
+    'An update could fail over and over after the Start menu shortcut had been used to start the service: its small window, waiting for OK, kept the program files in use. Setup now ends anything still running from the program folder before it copies files, and that window closes by itself once the service is running.',
+    'An update that did not install says so, with the reason from Setup, where the page used to just offer it again.']],
   ['1.1.168', [
     'Devices can do things on computers now. Tick computers and click Actions, or open one computer: run a script, install Windows updates or restart. Scripts are PowerShell or Command and run as SYSTEM.',
     'Scripts, Jobs and Workflows are new lists under Devices. Scripts is the library, with examples to start from. Jobs shows every run, each computer and what the script wrote there. Workflows run steps by themselves, on a schedule or when something happens to a computer.',

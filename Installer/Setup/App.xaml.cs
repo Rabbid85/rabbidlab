@@ -71,17 +71,21 @@ namespace RabbidLab.Setup
                 var action = service + 1 < args.Length ? args[service + 1].ToLowerInvariant() : "restart";
                 // The window shows straight away; stopping and starting can take a minute each.
                 var doing = action == "stop" ? "Stopping" : action == "restart" ? "Restarting" : "Starting";
+                var worked = false;
                 Say($"{doing} the {Edition.Name} service…", () =>
                 {
                     try
                     {
-                        return Engine.ControlService(action);
+                        var said = Engine.ControlService(action);
+                        worked = true;
+                        return said;
                     }
                     catch (Exception ex)
                     {
                         return $"Unable to {action} the Rabbid Lab service: {ex.Message}\n\nFor more information, see Event Viewer > Windows Logs > Application.";
                     }
-                });
+                // Started from the shortcut: once it's running the window goes by itself, with nothing to click.
+                }, closes: () => action == "start" && worked);
                 Shutdown(0);
                 return;
             }
@@ -243,7 +247,7 @@ namespace RabbidLab.Setup
 
         /// <summary>A small window in Rabbid Lab's style with a message and OK, for /service.</summary>
         /// <remarks>With work: the message shows while it runs off the window's thread, then what it returns, and OK waits for it.</remarks>
-        private void Say(string message, Func<string> work = null)
+        private void Say(string message, Func<string> work = null, Func<bool> closes = null)
         {
             var ok = new Button { Content = "OK", Style = (Style) FindResource("Primary"), HorizontalAlignment = HorizontalAlignment.Right, IsDefault = true, IsCancel = true };
             var said = new TextBlock { Text = message, FontSize = 14, Foreground = (Brush) FindResource("Muted"), LineHeight = 21, Margin = new Thickness(0, 0, 0, 20) };
@@ -272,6 +276,11 @@ namespace RabbidLab.Setup
                     said.Text = await Task.Run(work);
                     busy = false;
                     ok.IsEnabled = true;
+                    if (closes != null && closes())
+                    {
+                        await Task.Delay(2500);
+                        window.Close();
+                    }
                 };
             }
             window.ShowDialog();
