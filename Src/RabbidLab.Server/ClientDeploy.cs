@@ -179,11 +179,12 @@ public static class GpoXml
 {
     /// <summary>
     /// An immediate task that runs once each policy refresh as SYSTEM: when the client isn't installed, msiexec installs it
-    /// quietly from the GPO's folder, pointed at this server. Once it's there the task does nothing.
+    /// quietly from the GPO's folder, pointed at this server, with QUIET=1 so people at the computer see nothing (no tray
+    /// icon, no messages); it still waits for approval. Once it's there the task does nothing.
     /// </summary>
     public static byte[] InstallTask(string msi, string server, string? fingerprint, DateTime now)
     {
-        var args = $"/c if not exist \"{DirectoryTools.ClientExe}\" msiexec.exe /i \"{msi}\" /qn /norestart /l*v \"%windir%\\Temp\\RabbidLab-Client-install.log\" SERVER={server}"
+        var args = $"/c if not exist \"{DirectoryTools.ClientExe}\" msiexec.exe /i \"{msi}\" /qn /norestart /l*v \"%windir%\\Temp\\RabbidLab-Client-install.log\" QUIET=1 SERVER={server}"
             + (string.IsNullOrEmpty(fingerprint) ? "" : $" FINGERPRINT={fingerprint}");
         const string name = "Install the Rabbid Lab client";
         var doc = new XElement("ScheduledTasks", new XAttribute("clsid", "{CC63F200-7309-4ba0-B154-A71CD118DBCC}"),

@@ -68,7 +68,7 @@
     <li>Open <a href="#seats/deploy">Devices, Deploy the client</a>. It takes Add computers and Change Group Policy, and Group Policy Management on this server.</li>
     <li>Pick the address every computer connects to. A full name, such as helpdesk.yourdomain.com, works anywhere in the domain.</li>
     <li>Click <b>Deploy to every computer</b> and confirm it's you. <span data-app>Rabbid Lab</span> makes the GPO <b>Rabbid Lab Client</b>, puts the installer in its SYSVOL folder, adds a task that installs it quietly as SYSTEM where it isn't installed, lets the client's file past Defender's attack surface reduction rules, and links the GPO to the domain.</li>
-    <li>Each computer installs it at its next policy refresh, within about 90 minutes, with no restart. New ones wait for approval under Computers.</li>
+    <li>Each computer installs it at its next policy refresh, within about 90 minutes, with no restart. People at the computer see nothing: no install, no tray icon and no messages (the installer is given QUIET=1). New ones wait for approval under Computers.</li>
   </ol>
   <p><b>Deploy again</b> puts this server's installer in the GPO after an update. <b>Stop deploying</b> takes the GPO off the domain; computers keep the client. If Intune manages Defender, the page shows the exclusion to add to your attack surface reduction policy there too.</p>
   <h3>With your own GPO</h3>
@@ -132,6 +132,7 @@
     <li><b>No server yet?</b> The window has <b>Connect to a server</b>.</li>
     <li><b>Stopping account changes on some computers:</b> in the Group Policy template, set <b>Allow account changes</b> to Disabled.</li>
     <li><b>Stopping scripts and actions on some computers:</b> in the same template, set <b>Allow scripts and actions</b> to Disabled.</li>
+    <li><b>Hiding the client from people:</b> set <b>Hide the client from people at the computer</b> to Enabled, or install with <code>QUIET=1</code> (the deploy GPO does). No tray icon and no messages; it still connects and waits for approval. Disabled shows the icon even after <code>QUIET=1</code>.</li>
   </ul>
   <p>If a computer won't take changes, see <a href="#wiki/seat-trouble">A computer that won't take changes</a>.</p>
 </article>

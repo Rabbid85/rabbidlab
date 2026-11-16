@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.225', [
+    'Clients from the deploy GPO install with QUIET=1: people at the computer see nothing, no install, no tray icon and no messages, and the computer still waits for approval in Rabbid Lab. The Rabbid Lab template has a Hide the client policy to turn it on or off for any computer.',
+  ]],
   ['1.1.224', [
     'Group Policy Management can be installed from the console: Install it on the Group Policy page or on Devices, Deploy the client shows the exact command, then runs it as SYSTEM on the server Rabbid Lab runs on. Windows Server gets Install-WindowsFeature GPMC, Windows 10 and 11 the RSAT capability. It takes changing Group Policy and confirming it is you, and the result goes in the activity log.',
     'The top bar and the sign-in card show the icon, a thin line, then the lab name.',

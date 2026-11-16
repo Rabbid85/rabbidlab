@@ -18,6 +18,11 @@ internal static class Program
     {
         if (args.Length == 0 || (args.Length == 1 && args[0] == "--tray"))
         {
+            // Quiet (the deploy GPO, or Group Policy): no icon at sign-in. Opened from the Start menu, it still shows.
+            if (args.Length == 1 && Settings.Read().Quiet)
+            {
+                return 0;
+            }
             // One tray icon for each person signed in. Started with nothing (the Start menu), it opens its window too.
             using var one = new Mutex(true, @"Local\RabbidLab.Client.Tray", out var first);
             if (!first)

@@ -46,5 +46,12 @@
       <enabledValue><decimal value="1" /></enabledValue>
       <disabledValue><decimal value="0" /></disabledValue>
     </policy>
+    <policy name="Quiet" class="Machine" displayName="$(string.Quiet)" explainText="$(string.Quiet_Help)"
+            key="Software\Policies\Rabbid Lab\Client" valueName="Quiet">
+      <parentCategory ref="Client" />
+      <supportedOn ref="windows:SUPPORTED_Windows_10_0" />
+      <enabledValue><decimal value="1" /></enabledValue>
+      <disabledValue><decimal value="0" /></disabledValue>
+    </policy>
   </policies>
 </policyDefinitions>

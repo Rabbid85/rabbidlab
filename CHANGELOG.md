@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.225 (2026-11-16)
+
+- Clients from the deploy GPO install with QUIET=1: people at the computer see nothing, no install, no tray icon and no messages, and the computer still waits for approval in Rabbid Lab. The Rabbid Lab template has a Hide the client policy to turn it on or off for any computer.
+
 ## 1.1.224 (2026-11-16)
 
 - Group Policy Management can be installed from the console: Install it on the Group Policy page or on Devices, Deploy the client shows the exact command, then runs it as SYSTEM on the server Rabbid Lab runs on. Windows Server gets Install-WindowsFeature GPMC, Windows 10 and 11 the RSAT capability. It takes changing Group Policy and confirming it is you, and the result goes in the activity log.

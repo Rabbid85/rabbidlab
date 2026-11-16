@@ -18,6 +18,10 @@ internal static class TrayStarter
 {
     public static void Ensure()
     {
+        if (Settings.Read().Quiet)
+        {
+            return; // nothing for people at the computer to see
+        }
         string exe;
         string installed; // where Windows says this service's own program file is: the installed one
         using (var me = Process.GetCurrentProcess())

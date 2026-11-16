@@ -58,7 +58,8 @@
       + `<ul class="deploy-does">${[
         ['policy', `Makes the GPO ${s.gpo ? esc(s.name) : 'Rabbid Lab Client'} and links it to the domain: every computer, domain controllers too.`],
         ['download', "Puts the client installer in the GPO's own folder in SYSVOL, which every domain computer can read."],
-        ['clock', 'Each computer installs it quietly as SYSTEM at its next policy refresh, within about 90 minutes. No restart, nothing on screen.'],
+        ['clock', 'Each computer installs it quietly as SYSTEM at its next policy refresh, within about 90 minutes. No restart.'],
+        ['eye', 'People at the computer see nothing: no install, no tray icon, no messages. The Hide the client policy in the Rabbid Lab template can show the icon again.'],
         ['shield', `Lets <code>${esc(s.clientPath)}</code> past Defender's attack surface reduction rules, until the client is code-signed.`],
         ['check', 'New computers wait under Computers, Waiting for approval.'],
       ].map(([icon, text]) => `<li>${svg(icon)}<span>${text}</span></li>`).join('')}</ul>`

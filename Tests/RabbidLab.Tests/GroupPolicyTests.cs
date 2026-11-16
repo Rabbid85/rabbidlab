@@ -359,7 +359,8 @@ public sealed class GroupPolicyTests : IDisposable
 
         Assert.Contains($@"{root}\GPT.INI", files.Files.Keys);
         Assert.Contains($@"if not exist ""{DirectoryTools.ClientExe}"" msiexec.exe /i ""{root}\Machine\Rabbid Lab\RabbidLab-Client.msi"" /qn", task);
-        Assert.Contains("SERVER=https://helpdesk.amw.com:8420 FINGERPRINT=ABCD12", task);
+        Assert.Contains("/qn /norestart", task);
+        Assert.Contains("QUIET=1 SERVER=https://helpdesk.amw.com:8420 FINGERPRINT=ABCD12", task);
         Assert.Contains(@"runAs=""NT AUTHORITY\System""", task);
         Assert.Contains("ASROnlyExclusions", reg);
         Assert.Contains(DirectoryTools.ClientExe, reg);

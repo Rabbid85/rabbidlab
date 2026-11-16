@@ -30,10 +30,14 @@ internal sealed class Settings
     /// <summary>Whether the server may run scripts and actions on this computer (Jobs.cs). Group Policy can turn it off.</summary>
     public bool Scripts { get; private set; } = true;
 
+    /// <summary>Nothing for people at the computer to see: no tray icon, no messages. Group Policy first, then the installer's QUIET=1.</summary>
+    public bool Quiet { get; private set; }
+
     public static Settings Read()
     {
         var s = new Settings();
         string? policyFingerprint = null, installedServer = null, installedFingerprint = null;
+        int? policyQuiet = null;
         using var machine = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64);
         using (var policy = machine.OpenSubKey(PolicyKey))
         {
@@ -43,6 +47,7 @@ internal sealed class Settings
                 policyFingerprint = CleanFingerprint(Text(policy, "CertificateFingerprint"));
                 s.AccountChanges = policy.GetValue("AllowAccountChanges") is not int allowed || allowed != 0;
                 s.Scripts = policy.GetValue("AllowScripts") is not int scripts || scripts != 0;
+                policyQuiet = policy.GetValue("Quiet") as int?;
             }
         }
         using (var installed = machine.OpenSubKey(InstalledKey))
@@ -51,6 +56,11 @@ internal sealed class Settings
             {
                 installedServer = Text(installed, "Server")?.TrimEnd('/');
                 installedFingerprint = CleanFingerprint(Text(installed, "CertificateFingerprint"));
+                s.Quiet = policyQuiet is int q ? q != 0 : installed.GetValue("Quiet") is int iq && iq != 0;
+            }
+            else
+            {
+                s.Quiet = policyQuiet is int q && q != 0;
             }
         }
         // Trying it out without installing: the same from environment variables.

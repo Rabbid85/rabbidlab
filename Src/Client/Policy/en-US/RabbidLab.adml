@@ -23,6 +23,10 @@ Not configured or Enabled: allowed, if the admin's role permits it. Disabled: th
       <string id="AllowScripts_Help">Controls whether Rabbid Lab admins can run scripts and actions on this computer from the Devices page: PowerShell and command scripts, restarting it, installing Windows updates, and workflows. They run as SYSTEM.
 
 Not configured or Enabled: allowed, if the admin's role permits it. Disabled: the client refuses every script and action, and the job in Rabbid Lab says Group Policy turned them off.</string>
+      <string id="Quiet">Hide the client from people at the computer</string>
+      <string id="Quiet_Help">Controls whether people signed in to this computer see the Rabbid Lab client: its tray icon and its messages, such as when the computer is approved. The client keeps running as a service either way.
+
+Enabled: nothing shows; the client still connects and waits for approval in Rabbid Lab. Disabled: the tray icon shows, even if the installer was given QUIET=1. Not configured: what the installer was given.</string>
     </stringTable>
     <presentationTable>
       <presentation id="Server">
