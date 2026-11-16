@@ -3,6 +3,12 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.237', [
+    'The Org chart is a real chart now, the one from NorthStack AD: each person a building, managers taller with their initials on a sign, every team on a platform under its manager, joined by reporting lines. Drag to move it, scroll to zoom, Fit shows it all.',
+    'Click someone to light up their line to the top and open them in the side panel, with who they report to and who reports to them. Show only this line draws just their line. Expand all, Collapse and the pill under each manager open and close teams.',
+    'Find a person, at the top left, searches by name, username, title or department and goes to whoever you pick. It used to only tint boxes.',
+    'By department is its own view, and the chart downloads as a picture or a drawing.',
+  ]],
   ['1.1.236', [
     'Missing Windows updates are counted the way the Windows Update page lists them: everything that is not installed, with the drivers Windows picks itself, where only software counted before. Antivirus definitions are listed but not counted, since they come several times a day.',
     'A computers Updates tab says when Windows Update was last asked. A computer whose Windows Update does not answer is asked again in half an hour, not six, and one that never answers is reported under Errors.',

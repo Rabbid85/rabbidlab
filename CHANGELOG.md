@@ -2,6 +2,13 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.237 (2026-11-16)
+
+- The Org chart is a real chart now, the one from NorthStack AD: each person a building, managers taller with their initials on a sign, every team on a platform under its manager, joined by reporting lines. Drag to move it, scroll to zoom, Fit shows it all.
+- Click someone to light up their line to the top and open them in the side panel, with who they report to and who reports to them. Show only this line draws just their line. Expand all, Collapse and the pill under each manager open and close teams.
+- Find a person, at the top left, searches by name, username, title or department and goes to whoever you pick. It used to only tint boxes.
+- By department is its own view, and the chart downloads as a picture or a drawing.
+
 ## 1.1.236 (2026-11-16)
 
 - Missing Windows updates are counted the way the Windows Update page lists them: everything that is not installed, with the drivers Windows picks itself, where only software counted before. Antivirus definitions are listed but not counted, since they come several times a day.

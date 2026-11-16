@@ -842,7 +842,9 @@
       <div class="dnav-sk" aria-hidden="true"><i class="sk sk-head"></i><span><i class="sk sq"></i><i class="sk"></i></span><span><i class="sk sq"></i><i class="sk"></i></span><span><i class="sk sq"></i><i class="sk"></i></span><i class="sk sk-head"></i><span><i class="sk sq"></i><i class="sk"></i></span><span><i class="sk sq"></i><i class="sk"></i></span><span><i class="sk sq"></i><i class="sk"></i></span><span><i class="sk sq"></i><i class="sk"></i></span></div>
       <!-- The Attribute browser's own find, at the top of the list: anything in the domain by name, shown in place of the tree (directory.js). -->
       <label class="side-find rail-own" data-on="attrs"><svg><use href="#i-search"/></svg><input type="search" id="at-obj" placeholder="Find" aria-label="Find a user, group, computer or OU" autocomplete="off" spellcheck="false"></label>
-      <label class="side-find rail-own" data-on="org"><svg><use href="#i-search"/></svg><input type="search" id="org-find" placeholder="Find" aria-label="Find a person" autocomplete="off" spellcheck="false"></label>
+      <label class="side-find rail-own" data-on="org"><svg><use href="#i-search"/></svg><input type="search" id="org-find" placeholder="Find a person" aria-label="Find a person" autocomplete="off" spellcheck="false"></label>
+      <!-- Who matches what's typed in the org chart's Find; picking one goes to them on the chart (directory.js). -->
+      <div class="org-matches rail-own" data-on="org" id="org-matches" hidden></div>
       <p class="rail-label">Browse</p>
       <a href="#ad/users" data-adpage="users" data-can="ad.view ad.connect"><svg><use href="#i-user"/></svg><span>Users</span><i class="rail-dot bad" id="dir-locked-dot" hidden></i><small data-n="users"></small></a>
       <a href="#ad/groups" data-adpage="groups" data-can="ad.view ad.connect"><svg><use href="#i-users"/></svg><span>Groups</span><small data-n="groups"></small></a>
@@ -929,9 +931,26 @@
   <div class="dir-area">
     <div class="dgate" id="org-setup" hidden></div>
     <div class="dmain">
-    <div class="ln-tools" id="org-tools" hidden><span class="bar-note" id="org-count"></span></div>
+    <!-- The chart's bar: Reporting lines or By department, how many people, then moving around it and downloading it. -->
+    <div class="dbar" id="org-tools" hidden>
+      <div class="tabs2" id="org-tabs"></div><span class="grow"></span>
+      <span class="bar-note" id="org-count"></span>
+      <button type="button" class="small primary" id="org-whole" hidden><svg><use href="#i-org"/></svg>Whole organization</button>
+      <button type="button" class="small" data-org-all="open">Expand all</button>
+      <button type="button" class="small" data-org-all="close">Collapse</button>
+      <button type="button" class="small" data-org-zoom="out" data-tip="Zoom out" aria-label="Zoom out"><svg><use href="#i-minus"/></svg></button>
+      <button type="button" class="small" data-org-zoom="in" data-tip="Zoom in" aria-label="Zoom in"><svg><use href="#i-plus"/></svg></button>
+      <button type="button" class="small" data-org-zoom="fit" data-tip="Show it all">Fit</button>
+      <button type="button" class="small" id="org-export" popovertarget="org-export-menu" data-tip="Download" aria-label="Download the chart"><svg><use href="#i-download"/></svg></button>
+      <div class="gear-menu" id="org-export-menu" popover>
+        <div class="am-links"><button type="button" class="am-link" data-org-export="png"><svg><use href="#i-download"/></svg>Picture (PNG)</button>
+          <button type="button" class="am-link" data-org-export="svg"><svg><use href="#i-download"/></svg>Drawing (SVG)</button></div>
+      </div>
+    </div>
     <p class="hint" id="org-note" hidden></p>
-    <div class="org" id="org-tree"></div>
+    <!-- The chart itself: drag to move, scroll to zoom, click a person (directory.js draws it). -->
+    <div id="org-wait"></div>
+    <div class="org-stage" id="org-stage" hidden><svg class="org-svg" id="org-svg" role="img" aria-label="Org chart"></svg></div>
     <p class="hint problem" id="org-problem" hidden></p>
     </div>
   </div>

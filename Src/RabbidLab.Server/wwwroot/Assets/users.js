@@ -2242,6 +2242,12 @@
     el.querySelector('[data-not-now]')?.addEventListener('click', () => readOnly(true));
   };
   R.adSetupCard = setupCard;
+  // Another page asks for a person in Users: over there, with them open.
+  let wanted = null;
+  R.adOpenUser = (username) => {
+    wanted = username;
+    location.hash = '#ad/users';
+  };
   // Turns read-only on (confirming it's you first) or off, then every Active Directory page reads again.
   const readOnly = async (on) => {
     try {
@@ -2592,6 +2598,12 @@
       say('dir-problem', err.message);
     }
     drawAd();
+    // Asked for from another page (the org chart): that person, open in the panel, once the list is in.
+    if (wanted && adPage === 'users') {
+      const u = (lists.users || []).find((x) => x.username === wanted);
+      wanted = null;
+      if (u) openDrawer('users', u);
+    }
   };
   let lastAdPage = null;
   document.addEventListener('rabbidlab:show', (e) => {
