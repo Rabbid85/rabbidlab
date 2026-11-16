@@ -31,17 +31,17 @@ public static class ConsoleAddress
     /// </summary>
     public sealed record Report(string Scheme, int Port, List<Address> Addresses, CertificateInfo? Certificate, int? RedirectPort,
         bool RedirectTaken, bool? Firewall, bool Installed, bool Docker, bool CanAdd, string? Domain, AuthorityInfo? Authority, NamesInfo? Signed, NamesInfo? Local,
-        IReadOnlyList<RedirectByName.Claim>? RedirectNames = null, List<Address>? Hidden = null);
+        IReadOnlyList<RedirectByName.Claim>? RedirectNames = null, List<Address>? Hidden = null, ConsoleAlso.Plan? Also = null);
 
     private static string AuthorityFile => $"{Product.Name} certificate authority.cer";
 
-    public static void MapConsoleAddressApi(this WebApplication app, Redirect.Plan? redirect)
+    public static void MapConsoleAddressApi(this WebApplication app, Redirect.Plan? redirect, ConsoleAlso.Plan? also = null)
     {
         // Port 80 shared by name (Redirect.cs): which names come here.
         var byName = app.Services.GetService<RedirectByName>();
-        app.MapGet("/api/console", (IServer server, IConfiguration config, ConsoleNames names, INamesCertificate named) => Read(server, config, redirect, names, named) with
+        app.MapGet("/api/console", (IServer server, IConfiguration config, ConsoleNames names, INamesCertificate named) => Read(server, config, redirect, names, named, also) with
         {
-            RedirectNames = byName?.Claims,
+            RedirectNames = byName?.Claims, Also = also,
         });
         // The console's own certificate; with ?authority=true the certificate authority for added addresses, and with
         // ?names=true the self-signed one for the added names the authority can't sign for.
@@ -51,12 +51,12 @@ public static class ConsoleAddress
                 : Results.NotFound(new { error = "This console doesn't have that certificate." }));
     }
 
-    private static Report Read(IServer server, IConfiguration config, Redirect.Plan? redirect, ConsoleNames names, INamesCertificate named)
+    private static Report Read(IServer server, IConfiguration config, Redirect.Plan? redirect, ConsoleNames names, INamesCertificate named, ConsoleAlso.Plan? also = null)
     {
-        // The console's own address, not port 80's redirect.
+        // The console's own address: not port 80's redirect, and not port 443 when it answers there as well.
         var listening = (server.Features.Get<IServerAddressesFeature>()?.Addresses ?? [])
             .Select(a => Uri.TryCreate(a.Replace("://+", "://localhost").Replace("://*", "://localhost"), UriKind.Absolute, out var u) ? u : null)
-            .FirstOrDefault(u => u is not null && u.Port != redirect?.Port);
+            .FirstOrDefault(u => u is not null && u.Port != redirect?.Port && !(also?.Listening == true && u.Port == ConsoleAlso.Port));
         var scheme = listening?.Scheme ?? "http";
         var port = listening?.Port ?? Product.DefaultPort;
         string Url(string host) => $"{scheme}://{host}:{port}";

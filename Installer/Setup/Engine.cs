@@ -58,6 +58,8 @@ namespace RabbidLab.Setup
         public const string RuleName = Edition.Name;
         /// <summary>The rule for port 80 when the Windows HTTP service has it: its traffic comes in as System, not Rabbid Lab.</summary>
         public const string Port80RuleName = Edition.Name + " (port 80)";
+        /// <summary>The rule the console makes when port 443 is turned on in Settings, Console address. Setup only takes it away.</summary>
+        public const string Port443RuleName = Edition.Name + " (port 443)";
         /// <summary>What PortUser calls HTTP.sys, which shares port 80 by name with Rabbid Lab.</summary>
         public const string HttpSys = "the Windows HTTP service (HTTP.sys)";
         public const string CertSubject = Edition.CertSubject;
@@ -1341,6 +1343,7 @@ namespace RabbidLab.Setup
             Step("Removing the Windows Firewall rule", 0.25);
             Run("netsh.exe", $"advfirewall firewall delete rule name=\"{RuleName}\"", okCodes: new[] { 0, 1 });
             Run("netsh.exe", $"advfirewall firewall delete rule name=\"{Port80RuleName}\"", okCodes: new[] { 0, 1 });
+            Run("netsh.exe", $"advfirewall firewall delete rule name=\"{Port443RuleName}\"", okCodes: new[] { 0, 1 });
 
             Step("Removing the certificate created by Setup", 0.35);
             RemoveOwnCertificates();

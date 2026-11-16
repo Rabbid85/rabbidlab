@@ -56,6 +56,12 @@ internal sealed class Tray : ApplicationContext
         timer.Tick += (_, _) => Refresh();
         timer.Start();
         Refresh();
+        // An update asks this program to close before it replaces its file, the way signing out does. Leaving at once
+        // takes the icon down with it. Waiting to be stopped left a dead icon in the tray after every update, which only
+        // went when the mouse passed over it.
+        SystemEvents.SessionEnding += Leaving;
+        SystemEvents.SessionEnded += Left;
+        Application.ApplicationExit += (_, _) => icon.Visible = false;
         pump.CreateControl();
         ThreadPool.RegisterWaitForSingleObject(signal, (_, _) =>
         {
@@ -210,9 +216,15 @@ internal sealed class Tray : ApplicationContext
     private void Quit()
     {
         timer.Stop();
+        SystemEvents.SessionEnding -= Leaving;
+        SystemEvents.SessionEnded -= Left;
         icon.Visible = false;
         ExitThread();
     }
+
+    private void Leaving(object? sender, SessionEndingEventArgs e) => Quit();
+
+    private void Left(object? sender, SessionEndedEventArgs e) => Quit();
 
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
     private static extern int RegisterApplicationRestart(string commandLine, int flags);

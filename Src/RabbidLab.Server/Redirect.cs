@@ -17,7 +17,7 @@ public static class Redirect
     public sealed record Plan(int Port, string Scheme, int To, bool Taken);
 
     /// <summary>Listens on the redirect port too, if console.json asks for it and the port is free.</summary>
-    public static Plan? AddRedirectPort(this WebApplicationBuilder builder)
+    public static Plan? AddRedirectPort(this WebApplicationBuilder builder, int? to = null)
     {
         var port = builder.Configuration.GetValue<int>("Redirect:Port");
         var url = (builder.Configuration["Kestrel:Endpoints:Console:Url"] ?? "").Replace("://*", "://localhost").Replace("://+", "://localhost");
@@ -26,7 +26,8 @@ public static class Redirect
             return null;
         }
         var held = Bind(port);
-        var plan = new Plan(port, console.Scheme, console.Port, held is null);
+        // to: the console also answers on port 443 (ConsoleAlso.cs), so people are sent to the address with no port in it.
+        var plan = new Plan(port, console.Scheme, to ?? console.Port, held is null);
         if (!plan.Taken)
         {
             builder.WebHost.ConfigureKestrel(kestrel => kestrel.ListenAnyIP(port));
@@ -47,7 +48,7 @@ public static class Redirect
     /// The port, bound the way Kestrel binds it, or null when another program has it. The listener table missed another
     /// console's port 80 redirect, and a failed bind stops Rabbid Lab altogether.
     /// </summary>
-    private static Socket? Bind(int port)
+    internal static Socket? Bind(int port)
     {
         var dual = Socket.OSSupportsIPv6;
         var socket = new Socket(dual ? AddressFamily.InterNetworkV6 : AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);

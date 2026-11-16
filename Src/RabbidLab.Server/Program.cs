@@ -89,8 +89,13 @@ builder.Services.AddSingleton<IUpdateHost, ConsoleUpdateHost>();
 builder.Services.AddSingleton<UpdateEngine>();
 builder.Services.AddHostedService<UpdateWorker>();
 
+// The console on port 443 too, when someone turned that on (ConsoleAlso.cs): decided first, so port 80 knows where to send people.
+var also = builder.PlanAlso(InstalledAlsoPort.WantedNow);
+builder.Services.AddSingleton<IAlsoPort, InstalledAlsoPort>();
+
 // Typing just the name: port 80 sends people on to Rabbid Lab's address (Redirect.cs), when Setup asked for it.
-var redirect = builder.AddRedirectPort();
+var redirect = builder.AddRedirectPort(also.Listening ? ConsoleAlso.Port : null);
+builder.AddAlso(also); // after the redirect's, whose socket is handed to Kestrel the same way
 
 // Signing in: a local account or Active Directory, set up on the first visit (SignIn.cs).
 builder.Services.AddSignIn();
@@ -198,7 +203,8 @@ app.UseStaticFiles(new StaticFileOptions
 app.MapGet("/api/health", () => Results.Ok(new { ok = true })); // open, for Docker's health check
 app.MapSignIn();
 app.MapStatusApi();
-app.MapConsoleAddressApi(redirect);
+app.MapConsoleAddressApi(redirect, also);
+app.MapConsoleAlsoApi(also);
 app.MapConsoleNamesApi();
 app.MapActivityApi();
 app.MapSessionsApi();

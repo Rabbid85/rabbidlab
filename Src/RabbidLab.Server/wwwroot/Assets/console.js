@@ -3,6 +3,11 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.240', [
+    'The console can answer on port 443 as well as its own port, so https://name opens it with no port typed. Turn it on under Settings, Console address, Port and firewall. Its own port keeps working, computers in Devices keep using it, and typing just the name now lands on the address with no port.',
+    'Turning port 443 on or off restarts Rabbid Lab, which takes a few seconds, and the page comes back by itself. If another program on the server has port 443, the page says so and nothing else changes.',
+    'Updating the client no longer leaves a dead Rabbid Lab icon in the tray. The icon closes itself when the update asks it to, where it used to wait to be stopped.',
+  ]],
   ['1.1.239', [
     'Missing Windows updates now match the Windows Update page. Windows keeps several update services and its page adds them together, while Rabbid Lab asked only one, so a server showed 1 missing where Windows showed 5. Every service is asked now and each update counts once. A computer pointed at a WSUS server is still asked through that alone.',
     'Check for updates lists what is missing, then what is offered but not counted and why: antivirus definitions, optional drivers, or a new version of Windows.',
@@ -3107,13 +3112,64 @@ const RELEASE_NOTES = [
       : named.length ? `Port ${c.redirectPort} is shared with another web server. ${goes} here.`
       : refused ? `Port ${c.redirectPort} redirect is on, but ${refused.problem.charAt(0).toLowerCase() + refused.problem.slice(1)}`
       : `Port ${c.redirectPort} redirect is on, but another program has port ${c.redirectPort}. Add a host name of its own to redirect just that name.`;
+    // The same console on port 443 as well, so https://name needs no port typed (ConsoleAlso.cs).
+    const also = c.also?.can ? c.also : null;
+    // A full name to show it by, when there is one: that's what people type.
+    const nice = new URL((list.find((a) => /^[a-z]/i.test(new URL(a.url).hostname) && new URL(a.url).hostname.includes('.')) || list[0]).url).hostname;
+    const alsoHelp = !also ? '' : also.taken ? `It's turned on, but another program on this server has port ${also.port}, so the console isn't answering there.`
+      : also.listening ? `On. The console also opens at https://${nice} with no port typed. Computers in Devices keep using port ${c.port}.`
+        : `Turn it on to open the console at https://${nice} with no port typed. Port ${c.port} keeps working.`;
     $('ca-net').innerHTML = caRow('plug', 'Port', esc(moved) || `${c.scheme.toUpperCase()}, on every address above.`, `<span class="ds-v">${c.port}</span>`)
+      + (also ? caRow('plug', `Port ${also.port}`, esc(alsoHelp),
+        `<input type="checkbox" class="switch" id="ca-443" role="switch" aria-label="Also answer on port ${also.port}"${also.wanted ? ' checked' : ''}${mine ? '' : ' disabled'}>`, { tone: also.taken ? 'warn' : '' }) : '')
       + (c.firewall == null ? '' : caRow('lock', 'Windows Firewall', c.firewall
-        ? `Inbound on port ${c.port}, Domain and Private profiles.`
-        : `Setup didn't add a rule. Other computers connect only if a rule allows port ${c.port}.`,
+        ? `Inbound on port ${c.port}${also?.listening ? ` and ${also.port}` : ''}, Domain and Private profiles.`
+        : `Setup didn't add a rule. Other computers connect only if a rule allows port ${c.port}${also?.listening ? ` and ${also.port}` : ''}.`,
         `<span class="ds-v">${c.firewall ? 'Allowed' : 'No rule'}</span>`, { tone: c.firewall ? 'ok' : 'warn' }));
     $('ca-setup').hidden = !c.installed;
   };
+  // Port 443 on or off (ConsoleAlso.cs). Rabbid Lab restarts to start or stop listening there, so the page waits for it
+  // to go and come back, then reads itself again.
+  const alsoPort = (on, box) => {
+    box.checked = !on; // as it is, until it's really changed
+    sure(on ? 'Answer on port 443 too?' : 'Stop answering on port 443?',
+      on ? `The console opens at https://${location.hostname} with no port typed. Port ${ca.port} keeps working, and the computers in Devices keep using it. ${productName} restarts, which takes a few seconds.`
+        : `https://${location.hostname} with no port stops working. Port ${ca.port} stays. ${productName} restarts, which takes a few seconds.`,
+      on ? 'Turn on' : 'Turn off', async () => {
+        const host = $('ca-net').closest('.ds-sec') || $('ca-net');
+        try {
+          const done = await send('/api/console/443', { on });
+          if (!done.restarting) {
+            toast(on ? 'Saved. Port 443 starts with the next restart.' : 'Saved. Port 443 stops with the next restart.', `${productName} isn't running as a service here, so restart it yourself.`);
+            consoleAddress();
+            return;
+          }
+          busy(host, `Restarting ${productName}`, 'This page comes back by itself.');
+          // Gone, then back: asked every second for up to a minute.
+          const answers = async () => {
+            try {
+              return (await fetch('/api/health', { cache: 'no-store' })).ok;
+            } catch {
+              return false;
+            }
+          };
+          const pause = (ms) => new Promise((r) => { setTimeout(r, ms); });
+          let went = false;
+          for (let i = 0; i < 60; i++) {
+            await pause(1000);
+            const up = await answers();
+            if (!up) went = true;
+            else if (went || i > 12) break;
+          }
+          location.reload();
+        } catch (err) {
+          busy(host, '');
+          toast("That didn't work.", err.message, { tone: 'warn' });
+          consoleAddress();
+        }
+      });
+  };
+  $('ca-net').addEventListener('change', (e) => { if (e.target.id === 'ca-443') alsoPort(e.target.checked, e.target); });
   // Copy works over plain HTTP too, where the browser has no clipboard API.
   const copyClick = async (e) => {
     const b = e.target.closest('[data-copy]');

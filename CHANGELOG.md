@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.240 (2026-11-16)
+
+- The console can answer on port 443 as well as its own port, so https://name opens it with no port typed. Turn it on under Settings, Console address, Port and firewall. Its own port keeps working, computers in Devices keep using it, and typing just the name now lands on the address with no port.
+- Turning port 443 on or off restarts Rabbid Lab, which takes a few seconds, and the page comes back by itself. If another program on the server has port 443, the page says so and nothing else changes.
+- Updating the client no longer leaves a dead Rabbid Lab icon in the tray. The icon closes itself when the update asks it to, where it used to wait to be stopped.
+
 ## 1.1.239 (2026-11-16)
 
 - Missing Windows updates now match the Windows Update page. Windows keeps several update services and its page adds them together, while Rabbid Lab asked only one, so a server showed 1 missing where Windows showed 5. Every service is asked now and each update counts once. A computer pointed at a WSUS server is still asked through that alone.

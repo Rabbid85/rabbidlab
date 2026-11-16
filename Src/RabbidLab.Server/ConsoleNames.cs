@@ -417,16 +417,21 @@ public static class ConsoleNamesApi
 {
     /// <summary>
     /// The console shows a browser that asks for an added name (SNI) the names' own certificate, and everyone else its
-    /// own certificate, which computers in Devices pin. Only for the Console endpoint Setup writes in console.json.
+    /// own certificate, which computers in Devices pin. For the Console endpoint Setup writes in console.json, and the
+    /// same console on port 443 when that's on (Web, ConsoleAlso.cs).
     /// </summary>
     public static void ServeNames(this IWebHostBuilder host, Func<string?, X509Certificate2?> forName) =>
-        host.ConfigureKestrel((context, kestrel) => kestrel.Configure(context.Configuration.GetSection("Kestrel")).Endpoint("Console", endpoint =>
+        host.ConfigureKestrel((context, kestrel) =>
         {
-            if (endpoint.IsHttps && endpoint.HttpsOptions.ServerCertificate is { } own)
+            void Names(Microsoft.AspNetCore.Server.Kestrel.EndpointConfiguration endpoint)
             {
-                endpoint.HttpsOptions.ServerCertificateSelector = (_, name) => forName(name) ?? own;
+                if (endpoint.IsHttps && endpoint.HttpsOptions.ServerCertificate is { } own)
+                {
+                    endpoint.HttpsOptions.ServerCertificateSelector = (_, name) => forName(name) ?? own;
+                }
             }
-        }));
+            kestrel.Configure(context.Configuration.GetSection("Kestrel")).Endpoint("Console", Names).Endpoint("Web", Names);
+        });
 
     public static void MapConsoleNamesApi(this WebApplication app)
     {

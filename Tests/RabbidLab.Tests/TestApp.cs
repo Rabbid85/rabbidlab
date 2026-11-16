@@ -53,6 +53,9 @@ public sealed class TestApp(string data) : WebApplicationFactory<Program>
     /// <summary>Stands in for the printers: each says what the test gave it, and none gets a packet.</summary>
     public FakePrinterSnmp PrinterSnmp { get; } = new();
 
+    /// <summary>Stands in for the switch that puts the console on port 443: nothing is saved, opened in a firewall or restarted.</summary>
+    public FakeAlsoPort AlsoPort { get; } = new();
+
     /// <summary>Stands in for the mail server: keeps what would have been sent.</summary>
     public FakeMail Mail { get; } = new();
 
@@ -112,6 +115,9 @@ public sealed class TestApp(string data) : WebApplicationFactory<Program>
             // Nor a real printer about itself.
             services.RemoveAll<IPrinterSnmp>();
             services.AddSingleton<IPrinterSnmp>(PrinterSnmp);
+            // Nor this computer's registry, firewall or services for port 443.
+            services.RemoveAll<IAlsoPort>();
+            services.AddSingleton<IAlsoPort>(AlsoPort);
             // The tests run each round of checks themselves.
             foreach (var worker in services.Where(d => d.ImplementationType == typeof(SensorWorker)).ToList())
             {
@@ -174,6 +180,28 @@ public sealed class FakeClock : TimeProvider
     public override DateTimeOffset GetUtcNow() => now;
 
     public void Advance(TimeSpan by) => now += by;
+}
+
+/// <summary>The port 443 switch, remembered only: what was asked of it, in order.</summary>
+public sealed class FakeAlsoPort : IAlsoPort
+{
+    public bool On { get; set; }
+
+    public List<string> Asked { get; } = [];
+
+    public bool Wanted() => On;
+
+    public void Want(bool on)
+    {
+        On = on;
+        Asked.Add(on ? "on" : "off");
+    }
+
+    public bool Restart()
+    {
+        Asked.Add("restart");
+        return true;
+    }
 }
 
 /// <summary>Printers that say what the test gave them: one it wasn't given doesn't answer.</summary>
