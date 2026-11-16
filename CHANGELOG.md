@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.210 (2026-11-15)
+
+- The cross and bin on rows in a computer panel show all the time now, not only when the mouse is over them: take someone out of Administrators or a group, delete a local account, remove a printer.
+- Local admins has ticks like the other lists. Actions takes the ticked ones out of Administrators on every computer they were added to, or deletes local accounts. A member panel has a cross on each computer to take them out of just that one.
+
 ## 1.1.209 (2026-11-15)
 
 - Lists on Active Directory and Devices have one bar across the top: Search, Columns and Filters first, then Actions, Refresh, Export and New. Search moved there from the top of the list on the left, and says what it searches.

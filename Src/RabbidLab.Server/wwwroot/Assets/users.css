@@ -423,8 +423,8 @@ dialog.drawer::backdrop { background: rgba(5, 6, 10, .55); backdrop-filter: blur
 .dw-list .mrow { padding: 7px 6px; }
 .dw-list .tk { display: grid; place-items: center; width: 18px; flex: none; cursor: pointer; }
 .dw-list .tk input { margin: 0; }
-.dw-x { margin: 0; }
-.dw-list .mrow:hover .dw-x { opacity: 1; }
+.dw-x { flex: none; margin: 0; opacity: .7; }
+.dw-list .mrow:hover .dw-x, .dw-x:focus-visible { opacity: 1; }
 .dw-empty { margin: 4px 0 10px; }
 .dw-list .dwf-open { margin: 0; opacity: .6; }
 .dw-list .mrow:hover .dwf-open, .dw-list .dwf-open:focus-visible { opacity: 1; }

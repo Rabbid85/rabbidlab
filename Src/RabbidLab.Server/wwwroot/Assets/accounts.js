@@ -16,6 +16,7 @@
   const none = (text) => `<p class="muted dw-empty">${esc(text)}</p>`;
   const pic = (kind, cls = 'small') => `<span class="pic ${cls}">${svg(ICON[kind] || 'user')}</span>`;
   const x = (attr, label) => `<button type="button" class="at-more dw-x" ${attr} data-tip="Take out" aria-label="${esc(label)}">${svg('x')}</button>`;
+  const del = (attr, label) => `<button type="button" class="at-more dw-x" ${attr} data-tip="Delete" aria-label="${esc(label)}">${svg('trash')}</button>`;
   const day = (iso) => new Date(iso).toLocaleDateString([], { dateStyle: 'medium' });
   const seen = (iso) => {
     if (!iso) return 'Never signed in';
@@ -125,7 +126,8 @@
     const isAdmin = (a) => (l.admins ? adminNames.has(a.name.toUpperCase()) : (a.groups || []).some((g) => g === adminsName(l)));
     const rows = list.map((a) => `<div class="mrow acc-row" data-acc-open="local:${esc(a.name)}">${pic('local')}`
       + `<div class="two"><b>${esc(a.name)}</b><small>${esc(seen(a.lastSignIn))}${a.neverExpires ? ' · Password never expires' : ''}</small></div>`
-      + `<span class="acc-chips">${isAdmin(a) ? chip('Administrator', 'ember', 'shield') : ''}${a.enabled ? '' : chip('Disabled', 'off', 'power')}${a.locked ? chip('Locked out', 'amber', 'lock') : ''}</span></div>`).join('');
+      + `<span class="acc-chips">${isAdmin(a) ? chip('Administrator', 'ember', 'shield') : ''}${a.enabled ? '' : chip('Disabled', 'off', 'power')}${a.locked ? chip('Locked out', 'amber', 'lock') : ''}</span>`
+      + `${has('windows.delete') && !a.builtIn && !ready[c.id] ? del(`data-acc-del="${esc(a.name)}"`, `Delete ${a.name}`) : ''}</div>`).join('');
     const more = hidden ? `<button type="button" class="linkish acc-more" data-acc-built>Show ${hidden} built-in account${hidden === 1 ? '' : 's'}</button>`
       : showBuilt && all.some((a) => a.builtIn) ? '<button type="button" class="linkish acc-more" data-acc-built>Hide built-in accounts</button>' : '';
     return section(`Local accounts <small>${list.length}</small>`, `${rows ? `<div class="dw-list">${rows}</div>` : none('No accounts besides the built-in ones.')}${more}`,
@@ -330,6 +332,11 @@
       const who = m?.name || sid;
       sure(`Take ${who} out of Administrators?`, `${who} stops being an administrator of ${c.computer}.${m?.kind === 'group' ? ' Its people still are if they’re in the group some other way.' : ''}`, 'Take out',
         () => change(id, `/api/windows/${encodeURIComponent(id)}/admins`, { remove: [sid] }, `${who} is out of Administrators on ${c.computer}.`));
+    } else if ((b = on('del'))) {
+      e.stopPropagation();
+      const name = b.dataset.accDel;
+      sure(`Delete ${name}?`, `${name} is deleted from ${c.computer} for good. Its files stay in its profile folder.`, `Delete ${name}`,
+        () => change(id, `${base(name)}/delete`, {}, `${name} is deleted.`));
     } else if ((b = on('fold'))) {
       const sid = b.dataset.accFold;
       if (folded.has(sid)) folded.delete(sid);
@@ -425,9 +432,14 @@
   };
   const who = (kind, text) => `<div class="who">${pic(kind, '')}<b class="ell">${esc(text)}</b></div>`;
   const ms = (iso) => (iso ? new Date(iso).getTime() : 0);
+  // Ticks, like every list: what's ticked goes to Actions.
+  const picked = new Set();
+  const canTick = () => has('windows.change') || has('windows.delete');
+  const lead = () => (canTick() ? { w: 18, head: '<label class="tk"><input type="checkbox" data-adm-tick-all aria-label="Select all"></label>',
+    cell: (r) => `<label class="tk"><input type="checkbox" data-adm-tick="${esc(r.key)}" aria-label="Select ${esc(r.name)}"></label>` } : null);
   let membersG = null;
   const membersGrid = () => (membersG ||= R.grid({
-    el: $('dv-admins'), key: 'admins', sort: { key: 'member', dir: 1 },
+    el: $('dv-admins'), key: 'admins', sort: { key: 'member', dir: 1 }, lead,
     cols: [
       { key: 'member', label: 'Member', w: 250, fixed: true, get: (r) => r.name, cell: (r) => who(r.kind, r.name) },
       { key: 'type', label: 'Type', w: 140, on: true, get: (r) => r.type },
@@ -443,7 +455,7 @@
   }));
   let peopleG = null;
   const peopleGrid = () => (peopleG ||= R.grid({
-    el: $('dv-adminp'), key: 'admin-people', sort: { key: 'person', dir: 1 },
+    el: $('dv-adminp'), key: 'admin-people', sort: { key: 'person', dir: 1 }, lead,
     cols: [
       { key: 'person', label: 'Person', w: 180, fixed: true, get: (r) => r.shown, cell: (r) => who(r.kind, r.shown) },
       { key: 'account', label: 'Account', w: 210, on: true, get: (r) => r.name, cell: (r) => `<span class="mono ell">${esc(r.name)}</span>` },
@@ -471,7 +483,99 @@
     noun: 'administrators',
     fields: () => FIELDS,
     empty: () => (!adm ? 'Reading the list.' : adm.computers.length ? `No computer has sent its Administrators group yet. Clients send it from ${NEEDS} on, within half an hour.` : 'No computers yet.'),
+    acts: { can: canTick, count: () => pickedRows().length, open: (button) => openActs(button) },
   };
+
+  // --- What the ticks can do: take people out of Administrators, delete local accounts ------------------------------
+  const pickedRows = () => (tab === 'people' ? personList() : memberList()).filter((r) => picked.has(r.key));
+  // Each computer a ticked row was added to directly, with the SID it was added with.
+  const outOf = (rows) => rows.flatMap((r) => (tab === 'people'
+    ? r.on.filter((o) => o.direct && sidOn(o.c, r.name)).map((o) => ({ pc: o.c, sid: sidOn(o.c, r.name), name: r.name }))
+    : r.sid ? r.on.map((c) => ({ pc: c, sid: r.sid, name: r.name })) : [])).filter((t) => !ready[t.pc.id]);
+  const deletable = (rows) => rows.filter((r) => r.kind === 'local' && localOf(r) && !localOf(r).builtIn && !ready[r.pc.id]).map((r) => ({ pc: r.pc, name: short(r.name), full: r.name }));
+  const drawTicks = () => {
+    const table = $(tab === 'people' ? 'dv-adminp' : 'dv-admins');
+    const boxes = [...table.querySelectorAll('[data-adm-tick]')];
+    boxes.forEach((b) => {
+      b.checked = picked.has(b.dataset.admTick);
+      b.closest('.tr')?.classList.toggle('picked', b.checked);
+    });
+    const all = table.querySelector('[data-adm-tick-all]');
+    if (all) {
+      const on = boxes.filter((b) => b.checked).length;
+      all.checked = !!boxes.length && on === boxes.length;
+      all.indeterminate = on > 0 && on < boxes.length;
+    }
+    D.drawPicked?.();
+  };
+  let lastTick = null;
+  const tick = (table, box, shift) => {
+    const boxes = [...table.querySelectorAll('[data-adm-tick]')];
+    const set = (b) => (box.checked ? picked.add(b.dataset.admTick) : picked.delete(b.dataset.admTick));
+    if (box.dataset.admTickAll !== undefined) boxes.forEach(set);
+    else {
+      const i = boxes.indexOf(box);
+      const from = shift && lastTick !== null ? Math.min(lastTick, i) : i;
+      const to = shift && lastTick !== null ? Math.max(lastTick, i) : i;
+      boxes.slice(from, to + 1).forEach(set);
+      lastTick = i;
+    }
+    drawTicks();
+  };
+  const menu = $('dv-act-menu');
+  const openActs = (button) => {
+    const rows = pickedRows();
+    const out = has('windows.change') ? outOf(rows) : [];
+    const gone = has('windows.delete') ? deletable(rows) : [];
+    const item = (act, icon, label, hint = '', danger = false) => `<button type="button" role="menuitem" class="am-link${danger ? ' out' : ''}" data-adm-act="${act}">${svg(icon)}<span>${esc(label)}</span>${hint ? `<small>${esc(hint)}</small>` : ''}</button>`;
+    menu.innerHTML = `<div class="am-links">${out.length ? item('out', 'user-minus', 'Take out of Administrators…', String(out.length)) : ''}${item('export', 'csv', 'Export these')}${item('clear', 'x', 'Clear the ticks')}</div>`
+      + (gone.length ? `<div class="am-links">${item('delete', 'trash', 'Delete local accounts…', String(gone.length), true)}</div>` : '');
+    const r = button.getBoundingClientRect();
+    menu.style.cssText = `position:fixed;inset:auto;width:270px;margin:0;left:${Math.max(8, r.right - 270)}px;top:${r.bottom + 6}px`;
+    menu.showPopover();
+  };
+  // One change on each computer, then everything read again.
+  const each = async (list, work, done) => {
+    R.busy($('dv-lib'), `Asking ${list.length === 1 ? list[0].pc.computer : `${new Set(list.map((t) => t.pc.id)).size} computers`}`);
+    let failed = 0;
+    for (const t of list) {
+      try {
+        await work(t);
+      } catch {
+        failed++;
+      }
+      delete live[t.pc.id];
+    }
+    R.busy($('dv-lib'), '');
+    toast(failed ? `${failed} of ${list.length} didn't work.` : done, failed ? 'The computers that didn’t answer may be offline. The rest are done.' : '', failed ? { tone: 'warn' } : {});
+    picked.clear();
+    admAt = 0;
+    await fresh();
+    D.draw();
+  };
+  const pairs = (list) => list.map((t) => `${t.name} on ${t.pc.computer}`);
+  menu.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-adm-act]');
+    if (!b) return;
+    menu.hidePopover();
+    const rows = pickedRows();
+    const act = b.dataset.admAct;
+    if (act === 'clear') {
+      picked.clear();
+      drawTicks();
+    } else if (act === 'export') {
+      const g = tab === 'people' ? peopleGrid() : membersGrid();
+      g.csv(g.sorted(rows), 'local-admins-ticked');
+    } else if (act === 'out') {
+      const list = outOf(rows);
+      sure(`Take ${list.length === 1 ? list[0].name : `${list.length} memberships`} out of Administrators?`, `${and(pairs(list).slice(0, 6))}${list.length > 6 ? ` and ${list.length - 6} more` : ''}. Domain groups still make their people administrators wherever else they're added.`, 'Take out',
+        () => each(list, (t) => send(`/api/windows/${encodeURIComponent(t.pc.id)}/admins`, { remove: [t.sid] }), `Taken out of Administrators: ${list.length === 1 ? `${list[0].name} on ${list[0].pc.computer}` : `${list.length} memberships`}.`));
+    } else if (act === 'delete') {
+      const list = deletable(rows);
+      sure(`Delete ${list.length === 1 ? list[0].full : `${list.length} local accounts`}?`, `${and(list.slice(0, 6).map((t) => t.full))}${list.length > 6 ? ` and ${list.length - 6} more` : ''}. Gone for good. Their files stay in their profile folders.`, 'Delete',
+        () => each(list, (t) => send(`/api/windows/${encodeURIComponent(t.pc.id)}/accounts/${encodeURIComponent(t.name)}/delete`, {}), `Deleted ${list.length === 1 ? list[0].full : `${list.length} local accounts`}.`));
+    }
+  });
 
   const drawn0 = H.drawn;
   H.drawn = () => {
@@ -483,6 +587,7 @@
       $('dv-tabs').innerHTML = `<a href="#seats/admins" data-acc-tab="members"${tab === 'members' ? ' aria-current="true"' : ''}>${svg('shield')}Members <small>${adm ? memberList().length : ''}</small></a>`
         + `<a href="#seats/admins" data-acc-tab="people"${tab === 'people' ? ' aria-current="true"' : ''}>${svg('user')}People <small>${adm ? personList().length : ''}</small></a>`;
       markRow();
+      drawTicks();
     } else if (panel.is('admins')) panel.close();
   };
   $('dv-tabs').addEventListener('click', (e) => {
@@ -491,6 +596,7 @@
     e.preventDefault();
     if (tab === a.dataset.accTab) return;
     tab = a.dataset.accTab;
+    picked.clear(); // a member and a person aren't the same row
     if (panel.is('admins')) panel.close();
     D.draw();
   });
@@ -500,17 +606,26 @@
   panel.el.addEventListener('close', markRow);
   const head = (kind, title, sub) => `<div class="dw-head">${pic(kind, 'dw-pic')}<div class="dw-name"><h2 id="dw-title">${esc(title)}</h2><p>${esc(sub)}</p></div>`
     + `<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`;
-  const pcRow = (c, second) => `<div class="mrow acc-row" data-acc-pc="${esc(c.id)}"><span class="pic small">${svg(c.server ? 'server' : 'monitor')}</span>`
-    + `<div class="two"><b>${esc(c.computer)}</b><small>${esc(second)}</small></div>${svg('right', 'acc-go')}</div>`;
+  // A computer it's an administrator of, with a take-out button when it was added there directly.
+  const pcRow = (c, second, sid = null, name = '') => `<div class="mrow acc-row" data-acc-pc="${esc(c.id)}"><span class="pic small">${svg(c.server ? 'server' : 'monitor')}</span>`
+    + `<div class="two"><b>${esc(c.computer)}</b><small>${esc(second)}</small></div>`
+    + `${sid && has('windows.change') && !ready[c.id] ? x(`data-adm-out="${esc(c.id)}" data-sid="${esc(sid)}" data-name="${esc(name)}"`, `Take ${name} out of Administrators on ${c.computer}`) : svg('right', 'acc-go')}</div>`;
   const openRow = (key) => {
     if (panel.shows('admins', key)) {
       panel.close();
       return;
     }
+    const html = rowHtml(key);
+    if (!html) return;
+    panel.body.innerHTML = html;
+    panel.open('admins', key);
+    markRow();
+  };
+  const rowHtml = (key) => {
     let html = '';
     if (tab === 'members') {
       const r = memberList().find((y) => y.key === key);
-      if (!r) return;
+      if (!r) return '';
       const a = localOf(r);
       const g = r.kind === 'group' ? groupOf(r.sid) : null;
       html = head(r.kind, r.name, r.type)
@@ -519,26 +634,59 @@
         + (r.kind === 'group' ? section(`People <small>${g ? g.people.length : ''}</small>`, g ? (g.people.length ? `<div class="dw-list">${g.people.map((u) => `<div class="mrow">${pic('user')}`
           + `<div class="two"><b>${esc(u.name || u.account)}</b><small>${esc(`${prefix(r.name)}\\${u.account}`)}</small></div><span class="acc-chips">${u.enabled ? '' : chip('Disabled', 'off', 'power')}</span></div>`).join('')}</div>` : none('Nobody is in it.'))
           : none(adm?.groups ? 'It isn’t in this domain, so who is in it isn’t known here.' : 'Active Directory can’t be read from this server, so who is in it isn’t known.')) : '')
-        + section(`Administrator of <small>${r.on.length}</small>`, `<div class="dw-list">${r.on.map((c) => pcRow(c, r.kind === 'local' ? 'Its own account' : 'In its Administrators group')).join('')}</div>`);
+        + section(`Administrator of <small>${r.on.length}</small>`, `<div class="dw-list">${r.on.map((c) => pcRow(c, r.kind === 'local' ? 'Its own account' : 'In its Administrators group', r.sid, r.name)).join('')}</div>`);
     } else {
       const r = personList().find((y) => y.key === key);
-      if (!r) return;
+      if (!r) return '';
       html = head(r.kind, r.shown, r.name)
         + (r.kind === 'user' && has('ad.view') ? `<div class="dw-bar"><a class="dw-qa" href="#ad/users">${svg('users')}<span>Open Active Directory</span></a></div>` : '')
-        + section(`Administrator of <small>${r.on.length}</small>`, `<div class="dw-list">${r.on.map((o) => pcRow(o.c, r.unread ? 'Who is in it isn’t known here' : how(o))).join('')}</div>`);
+        + section(`Administrator of <small>${r.on.length}</small>`, `<div class="dw-list">${r.on.map((o) => pcRow(o.c, r.unread ? 'Who is in it isn’t known here' : how(o), o.direct ? sidOn(o.c, r.name) : null, r.name)).join('')}</div>`);
     }
-    panel.body.innerHTML = html;
-    panel.open('admins', key);
-    markRow();
+    return html;
   };
+  // The SID a name was added to a computer's Administrators with.
+  const sidOn = (c, name) => (c.admins || []).find((m) => m.name.toUpperCase() === name.toUpperCase())?.sid || null;
   for (const id of ['dv-admins', 'dv-adminp']) {
     $(id).addEventListener('click', (e) => {
+      const box = e.target.closest('.tk')?.querySelector('input');
+      if (box) {
+        if (e.target === box) tick($(id), box, e.shiftKey); // the label's own click comes through the box
+        return;
+      }
       const row = e.target.closest('[data-acc-row]');
       if (row) openRow(row.dataset.accRow);
     });
   }
-  // A computer there opens its own panel, on its Accounts tab.
+  // A computer there opens its own panel, on its Accounts tab; its x takes the account out of Administrators there.
   panel.el.addEventListener('click', (e) => {
+    const out = e.target.closest('[data-adm-out]');
+    if (out && panel.is('admins')) {
+      e.stopPropagation();
+      const key = panel.key;
+      const { admOut: pcId, sid, name } = out.dataset;
+      const pc = (adm?.computers || []).find((k) => k.id === pcId);
+      sure(`Take ${name} out of Administrators?`, `${name} stops being an administrator of ${pc?.computer || 'that computer'}.`, 'Take out', async () => {
+        R.busy(panel.body, `Asking ${pc?.computer || 'the computer'}`);
+        try {
+          const answer = await send(`/api/windows/${encodeURIComponent(pcId)}/admins`, { remove: [sid] });
+          toast(`${name} is out of Administrators on ${pc?.computer}.`, answer?.warning || '', answer?.warning ? { tone: 'warn' } : {});
+        } catch (err) {
+          oops(err);
+        } finally {
+          R.busy(panel.body, '');
+        }
+        delete live[pcId];
+        admAt = 0;
+        await fresh();
+        D.draw();
+        if (panel.shows('admins', key)) {
+          const html = rowHtml(key);
+          if (html) panel.body.innerHTML = html;
+          else panel.close();
+        }
+      });
+      return;
+    }
     const b = e.target.closest('[data-acc-pc]');
     if (b && panel.is('admins')) {
       view = tab === 'people' ? 'people' : 'members';

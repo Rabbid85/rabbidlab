@@ -461,7 +461,7 @@ input.pick:focus { outline: none; border-color: var(--accent); }
 .seat-list .two small { white-space: normal; }
 /* Add computers goes with the list of computers. */
 .seats-page:not([data-at="computers"]) #seats-add { display: none; }
-.seats-page:not([data-at="computers"]) #dv-act { display: none; }
+.seats-page:not([data-at="computers"]):not([data-at="admins"]) #dv-act { display: none; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chips button { height: 30px; padding: 0 12px; background: transparent; color: var(--muted); font-size: 13px; font-weight: 600; }
 .chips button[aria-selected="true"] { background: #1A1D2B; border-color: #3A3E55; color: var(--title); }

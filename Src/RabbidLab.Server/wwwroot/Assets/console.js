@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.210', [
+    'The cross and bin on rows in a computer panel show all the time now, not only when the mouse is over them: take someone out of Administrators or a group, delete a local account, remove a printer.',
+    'Local admins has ticks like the other lists. Actions takes the ticked ones out of Administrators on every computer they were added to, or deletes local accounts. A member panel has a cross on each computer to take them out of just that one.',
+  ]],
   ['1.1.209', [
     'Lists on Active Directory and Devices have one bar across the top: Search, Columns and Filters first, then Actions, Refresh, Export and New. Search moved there from the top of the list on the left, and says what it searches.',
     'Every banner is the same height, with room for two lines under the title, so a longer description no longer pushes the page down.',

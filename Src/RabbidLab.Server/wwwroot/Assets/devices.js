@@ -411,13 +411,14 @@
     cell: (c) => (c.server ? '' : `<label class="tk"><input type="checkbox" data-tick="${esc(c.id)}" aria-label="Select ${esc(c.computer)}"></label>`) } : null);
   // The ticks, each row's highlight and the count on Actions, without drawing the list again.
   const drawPicked = () => {
-    const n = D.picked.size;
+    const own = D.more[D.at()]?.acts; // a list with ticks of its own (Local admins)
+    const n = own ? own.count() : D.picked.size;
     const act = $('dv-act');
-    act.hidden = !canPick();
+    act.hidden = own ? !own.can() : !canPick();
     act.disabled = !n;
     act.querySelector('.cnt').hidden = !n;
     act.querySelector('.cnt').textContent = n.toLocaleString();
-    act.dataset.tip = n ? `${many(n)} ticked` : 'Tick computers first';
+    act.dataset.tip = own ? (n ? `${n.toLocaleString()} ticked` : 'Tick some first') : n ? `${many(n)} ticked` : 'Tick computers first';
     // Computers and Windows updates' own row per computer share the ticks.
     for (const table of TICKED.map((id) => $(id))) {
       const boxes = [...table.querySelectorAll('[data-tick]')];
@@ -504,7 +505,11 @@
     // Too tall for under the button: it opens above it, when there's more room there.
     if (r.bottom + 6 + menu.offsetHeight > innerHeight - 8 && r.top > innerHeight - r.bottom) menu.style.top = `${Math.max(8, r.top - 6 - menu.offsetHeight)}px`;
   };
-  $('dv-act').addEventListener('click', () => openActs($('dv-act'), ticked(), false));
+  $('dv-act').addEventListener('click', () => {
+    const own = D.more[D.at()]?.acts;
+    if (own) own.open($('dv-act'));
+    else openActs($('dv-act'), ticked(), false);
+  });
   // A computer's panel has the one button; what it opens is the same menu.
   D.hooks.seatBar = (c) => (c.server || (!Object.values(doItems(() => 'x', [c])).join('') && !has('seats.remove')) ? ''
     : `<button type="button" class="small dw-acts" data-dv-menu aria-haspopup="menu">${svg('menu')}Actions${svg('chevron-down', 'chev')}</button>`);
@@ -1193,6 +1198,7 @@
   };
   // For printers.js and the rest: confirming who it is before a run, and opening a job in the panel.
   D.confirmed = confirmed;
+  D.drawPicked = drawPicked;
   D.openJob = (id) => openJob(id);
   D.run = (kind, on) => openRun(kind, on);
 })();
