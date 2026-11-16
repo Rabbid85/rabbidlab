@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.221', [
+    'What is new and GitHub are gone from the left rail. Both are in the top bar.',
+  ]],
   ['1.1.220', [
     'New role permission under Active Directory: See it while read-only. Give it to a role to let its people see Active Directory and Group Policy while read-only is on, in the role scope. People who can set up the service account always can, and only they can turn read-only on.',
     'Roles and people says it plainly: a group panel says everyone in the group gets its roles when they sign in, groups inside it too, and each person role shows which group it came from.',
@@ -1056,8 +1059,6 @@ const RELEASE_NOTES = [
     const s = await r.json();
     productName = s.product.replace(/ Dev$/, ''); // the DEV tag in the top bar says it's Dev
     drawBrand();
-    $('rail-version').textContent = s.version;
-    $('rail-repo').href = s.repository;
     $('top-version').textContent = s.version;
     document.body.classList.toggle('is-dev', !!s.dev);
     if (s.dev) devTools();

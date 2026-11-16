@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.221 (2026-11-16)
+
+- What is new and GitHub are gone from the left rail. Both are in the top bar.
+
 ## 1.1.220 (2026-11-16)
 
 - New role permission under Active Directory: See it while read-only. Give it to a role to let its people see Active Directory and Group Policy while read-only is on, in the role scope. People who can set up the service account always can, and only they can turn read-only on.
