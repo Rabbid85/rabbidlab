@@ -110,7 +110,7 @@
     $('ln-view').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.view === view));
     $('ln-empty').hidden = links.length > 0 || groups.length > 0;
     $('ln-empty-text').textContent = can('links.edit')
-      ? `Put the sites in your lab here: the router, the NAS, the hypervisor, iDRACs. Paste an address and ${R.app()} fills in the name, icon and IP.`
+      ? `Add the stuff you log into every day, like your router, NAS or iDRACs. Paste an address and ${R.app()} grabs the name, icon and IP for you.`
       : 'Nobody has put any here yet.';
     R.paint($('ln-list'));
     rail();
@@ -121,7 +121,7 @@
 
   const at = (iso) => (iso ? new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '');
   const checked = (l) => /^https?:/i.test(l.url);
-  const EVERY_SHORT = { 15: '15 s', 30: '30 s', 60: '1 min', 300: '5 min' };
+  const EVERY_SHORT = { 15: 'Every 15 sec', 30: 'Every 30 sec', 60: 'Every minute', 300: 'Every 5 min' };
   const drawHero = () => {
     const web = links.filter(checked);
     const known = web.filter((l) => states[l.id]);
@@ -130,10 +130,10 @@
     const late = known.filter((l) => !states[l.id].up && !states[l.id].down);
     const first = down[0];
     $('ln-hero').classList.toggle('bad', down.length > 0);
-    $('ln-lead').textContent = !links.length ? 'Nothing here yet.' : first ? `${first.name} stopped answering${states[first.id].since ? ` at ${at(states[first.id].since)}` : ''}.`
+    $('ln-lead').textContent = !links.length ? 'No links yet.' : first ? `${first.name} stopped answering${states[first.id].since ? ` at ${at(states[first.id].since)}` : ''}.`
       : !web.length ? 'The places in your lab, one click away.' : late.length ? `${late[0].name} didn't answer just now.`
-        : known.length < web.length ? 'The first check is under way.' : 'Everything is answering.';
-    $('ln-lead-more').textContent = !links.length ? (can('links.edit') ? 'Add the sites in your lab: the router, the NAS, the hypervisor, iDRACs.' : 'Nobody has put any here yet.')
+        : known.length < web.length ? 'Checking them now.' : 'Everything is answering.';
+    $('ln-lead-more').textContent = !links.length ? (can('links.edit') ? 'Add the stuff you log into every day, like your router, NAS or iDRACs.' : 'Nobody has added any yet.')
       : down.length > 1 ? `So did ${down.slice(1, 4).map((l) => l.name).join(', ')}${down.length > 4 ? ` and ${down.length - 4} more` : ''}.`
         : !first && late.length ? `Trying again. It shows as down after ${span(checks.downAfter)} with no answer.` : '';
     $('ln-count').textContent = links.length;
@@ -141,7 +141,7 @@
     $('ln-watched-wrap').hidden = !seen;
     $('ln-watched').textContent = seen;
     $('ln-answering').textContent = !web.length ? '0' : known.length ? `${up.length} of ${web.length}` : '…';
-    $('ln-every').textContent = EVERY_SHORT[checks.every] || `${checks.every} s`;
+    $('ln-every').textContent = EVERY_SHORT[checks.every] || `Every ${checks.every} sec`;
     $('ln-card').hidden = !first;
     if (first) {
       $('ln-card-title').textContent = first.name;

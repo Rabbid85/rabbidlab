@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.227', [
+    'The cogwheel on Links and Sensors is the same height as the buttons beside it again.',
+    'Links reads more plainly: No links yet, add the stuff you log into every day, and the check tile says Every minute.',
+  ]],
   ['1.1.226', [
     'Banner numbers are tiles now: an icon, a thin line, then the number over a spaced label, with the buttons straight after.',
     'The Overview banner has Check for updates with its icon, a More menu (Activity log, What is new, Wiki), and how the sensors are doing when there are any.',

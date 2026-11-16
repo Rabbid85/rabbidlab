@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.227 (2026-11-16)
+
+- The cogwheel on Links and Sensors is the same height as the buttons beside it again.
+- Links reads more plainly: No links yet, add the stuff you log into every day, and the check tile says Every minute.
+
 ## 1.1.226 (2026-11-16)
 
 - Banner numbers are tiles now: an icon, a thin line, then the number over a spaced label, with the buttons straight after.
