@@ -34,6 +34,7 @@
 <script src="Assets/accounts.js" defer></script>
 <script src="Assets/printers.js" defer></script>
 <script src="Assets/gpo.js" defer></script>
+<script src="Assets/deploy.js" defer></script>
 </head>
 <!-- The console: the top bar, the rail down the left, and one page at a time (console.js picks it from the address). -->
 <body class="app booting">
@@ -126,9 +127,9 @@
 <div class="sky" aria-hidden="true"></div>
 <header class="top">
   <a class="brand" href="#overview">
-    <svg class="mark" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="15" fill="#0B0C14"/><g fill="#F2F3FA" transform="translate(10 14) scale(.9)"><rect width="11" height="40"/><path fill-rule="evenodd" d="M0 0H18A13 13 0 0 1 18 26H0ZM11 9V17H18A4 4 0 0 0 18 9Z"/><path d="M13 22H24L33 40H22Z"/></g><rect class="mark-dot" x="44" y="39" width="11" height="11" rx="1.5" fill="#FF6A45"/></svg>
-    <img class="mark mark-img" id="brand-img" alt="" hidden>
-    <span class="name" id="brand-name">Rabbid Lab</span>
+    <svg class="mark" data-brand-mark viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="15" fill="#0B0C14"/><g fill="#F2F3FA" transform="translate(10 14) scale(.9)"><rect width="11" height="40"/><path fill-rule="evenodd" d="M0 0H18A13 13 0 0 1 18 26H0ZM11 9V17H18A4 4 0 0 0 18 9Z"/><path d="M13 22H24L33 40H22Z"/></g><rect class="mark-dot" x="44" y="39" width="11" height="11" rx="1.5" fill="#FF6A45"/></svg>
+    <img class="mark mark-img" id="brand-img" data-brand-img alt="" hidden>
+    <span class="name" id="brand-name" data-brand-name>Rabbid Lab</span>
     <span class="dev-tag" aria-label="Dev build">DEV</span>
   </a>
   <!-- Shortcuts on every page: updates, the activity log, what's new, and the source on GitHub. -->
@@ -164,6 +165,7 @@
     </div>
   </div>
 </header>
+<script src="Assets/brand-paint.js"></script>
 
 <!-- The rail: the pages, in groups, and Settings at the foot. Collapse shrinks it to icons. -->
 <nav class="rail" aria-label="Pages">
@@ -199,7 +201,8 @@
     <!-- The hero: the name big, how Rabbid Lab is doing, and the way to each page. -->
     <header class="hero" id="hero">
       <p class="eyebrow" id="hero-eyebrow">Lab console</p>
-      <h1 class="hero-title" id="hero-title">Rabbid Lab</h1>
+      <h1 class="hero-title" id="hero-title" data-brand-name>Rabbid Lab</h1>
+      <script src="Assets/brand-paint.js"></script>
       <p class="hero-lead"><b id="hero-state">Looking…</b> <span id="hero-where"></span></p>
       <!-- The numbers, then the buttons after a thin line, so a banner with buttons is no taller than one without. -->
       <div class="hero-row">
@@ -572,11 +575,12 @@
         <a href="#seats/admins" data-dv="admins" data-can="windows.view"><svg><use href="#i-shield"/></svg><span>Local admins</span><small id="dv-n-admins"></small></a>
         <a href="#seats/gplocal" data-dv="gplocal" data-can="seats.view"><svg><use href="#i-policy"/></svg><span>Group Policy</span><small id="dv-n-gplocal"></small></a>
         <a href="#seats/printers" data-dv="printers" data-can="seats.view"><svg><use href="#i-printer"/></svg><span>Printers</span><small id="dv-n-printers"></small></a>
-        <p class="rail-label" data-can="seats.actions seats.scripts.run seats.scripts.edit seats.workflows seats.wmi">Tools</p>
+        <p class="rail-label" data-can="seats.actions seats.scripts.run seats.scripts.edit seats.workflows seats.wmi seats.add">Tools</p>
         <a href="#seats/wmi" data-dv="wmi" data-can="seats.wmi"><svg><use href="#i-list"/></svg><span>WMI query</span><small id="dv-n-wmi"></small></a>
         <a href="#seats/scripts" data-dv="scripts" data-can="seats.scripts.run seats.scripts.edit seats.workflows"><svg><use href="#i-code"/></svg><span>Scripts</span><small id="dv-n-scripts"></small></a>
         <a href="#seats/jobs" data-dv="jobs" data-can="seats.actions seats.scripts.run seats.scripts.edit seats.workflows"><svg><use href="#i-history"/></svg><span>Jobs</span><small id="dv-n-jobs"></small></a>
         <a href="#seats/workflows" data-dv="workflows" data-can="seats.workflows"><svg><use href="#i-org"/></svg><span>Workflows</span><small id="dv-n-workflows"></small></a>
+        <a href="#seats/deploy" data-dv="deploy" data-can="seats.add"><svg><use href="#i-download"/></svg><span>Deploy the client</span><small id="dv-n-deploy"></small></a>
         <p class="rail-label" data-can="sessions.view">Console</p>
         <a href="#seats/sessions" data-dv="sessions" data-can="sessions.view"><svg><use href="#i-users"/></svg><span>Signed in now</span><small id="dv-n-sessions"></small></a>
       </nav>
@@ -608,6 +612,7 @@
         <p class="dnow" id="dv-now" hidden><b id="dv-view-title"></b><span class="bar-note" id="dv-count"></span><span class="dnow-filter" id="dv-filtered" hidden></span></p>
         <div class="table adt drows" id="seats-table" data-can="seats.view" data-skel="rows:4"></div>
         <div class="table adt drows" id="dv-gplocal" hidden></div>
+        <div class="dv-deploy" id="dv-deploy" hidden></div>
         <div class="table adt drows" id="dv-wmi" hidden></div>
         <div class="table adt drows" id="dv-admins" hidden></div>
         <div class="table adt drows" id="dv-adminp" hidden></div>

@@ -337,11 +337,10 @@
     const name = brand.name || product;
     document.title = (setup ? 'Set up ' : 'Sign in to ') + name;
     document.querySelectorAll('[data-product]').forEach((e) => { e.textContent = name; });
-    if (brand.icon) {
-      document.getElementById('band-img').src = brand.icon;
-      document.getElementById('band-img').hidden = false;
-      document.querySelector('svg.band-mark').style.display = 'none';
-    }
+    // The icon this browser kept went on before this (brand-paint.js); the server's wins, or Rabbid Lab's mark when there's none.
+    document.getElementById('band-img').hidden = !brand.icon;
+    document.querySelector('svg.band-mark').classList.toggle('gone', !!brand.icon);
+    if (brand.icon) document.getElementById('band-img').src = brand.icon;
     document.querySelectorAll('[data-version]').forEach((e) => {
       e.textContent = `${s.machine} · ${s.version}`;
       e.title = `${product} ${s.version} on ${s.machine} (${s.platform})`;

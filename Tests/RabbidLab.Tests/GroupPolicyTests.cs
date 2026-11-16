@@ -335,6 +335,55 @@ public sealed class GroupPolicyTests : IDisposable
           </SecurityDescriptor>
         </GPO>
         """;
+
+    [Fact]
+    public async Task Deploying_the_client_makes_its_GPO_with_the_installer_task_and_exclusion_and_links_it_at_the_domain()
+    {
+        await Connect();
+        var files = new FakeSysvol();
+        tools.Sysvol = files;
+        // The stand-in records changes without making them: the domain's links as last written.
+        void Linked() => ad.Rows.Find(r => r.Dn == Domain)!.Values["gPLink"] = [(string) ad.Mods.Last(m => m.Dn == Domain && m.Mod.Attribute == "gPLink").Mod.Values[0]];
+
+        var id = await tools.DeployClient("https://helpdesk.amw.com:8420/", "ABCD12", [1, 2, 3], None, "admin", Stop);
+        Linked();
+        var root = $@"\\amw.com\SYSVOL\amw.com\Policies\{id}";
+        var dn = $"CN={id},{Policies}";
+        var task = System.Text.Encoding.UTF8.GetString(files.Files[$@"{root}\Machine\Preferences\ScheduledTasks\ScheduledTasks.xml"]);
+        var reg = System.Text.Encoding.UTF8.GetString(files.Files[$@"{root}\Machine\Preferences\Registry\Registry.xml"]);
+        var deployed = await tools.ClientDeploy(Stop);
+        var again = await tools.DeployClient("https://helpdesk.amw.com:8420", "ABCD12", [4, 5], None, "admin", Stop);
+        await tools.StopClientDeploy(None, Stop);
+        Linked();
+        var stopped = await tools.ClientDeploy(Stop);
+
+        Assert.Contains($@"{root}\GPT.INI", files.Files.Keys);
+        Assert.Contains($@"if not exist ""{DirectoryTools.ClientExe}"" msiexec.exe /i ""{root}\Machine\Rabbid Lab\RabbidLab-Client.msi"" /qn", task);
+        Assert.Contains("SERVER=https://helpdesk.amw.com:8420 FINGERPRINT=ABCD12", task);
+        Assert.Contains(@"runAs=""NT AUTHORITY\System""", task);
+        Assert.Contains("ASROnlyExclusions", reg);
+        Assert.Contains(DirectoryTools.ClientExe, reg);
+        Assert.Contains("[{00000000-0000-0000-0000-000000000000}{BEE07A6A-EC9F-4659-B8C9-0B1937907C83}{CAB54552-DEEA-4691-817E-ED4A4D1AFC72}]",
+            (string) ad.Mods.Last(m => m.Dn == dn && m.Mod.Attribute == "gPCMachineExtensionNames").Mod.Values[0]);
+        Assert.Equal(["1", "2"], ad.Mods.Where(m => m.Dn == dn && m.Mod.Attribute == "versionNumber").Select(m => (string) m.Mod.Values[0]));
+        Assert.Equal(id, again); // the same GPO, brought up to date
+        Assert.Equal([4, 5], files.Files[$@"{root}\Machine\Rabbid Lab\RabbidLab-Client.msi"]);
+        Assert.True(deployed.Linked);
+        Assert.Equal(DirectoryTools.ClientGpoName, deployed.Name);
+        Assert.Equal("https://helpdesk.amw.com:8420", deployed.Server);
+        Assert.False(stopped.Linked);
+        Assert.Equal(id, stopped.Gpo); // still there, just not linked
+    }
+
+    [Fact]
+    public void The_GPO_s_extension_list_keeps_what_it_had_and_stays_sorted()
+    {
+        var names = GpoText.AddExtensions("[{827D319E-6EAC-11D2-A4EA-00C04F79F83A}{803E14A0-B4FB-11D0-A0D0-00A0C90F574B}]",
+            [("{AADCED64-746C-4633-A97C-D61349046527}", "{CAB54552-DEEA-4691-817E-ED4A4D1AFC72}")]);
+
+        Assert.Equal("[{00000000-0000-0000-0000-000000000000}{CAB54552-DEEA-4691-817E-ED4A4D1AFC72}][{827D319E-6EAC-11D2-A4EA-00C04F79F83A}{803E14A0-B4FB-11D0-A0D0-00A0C90F574B}]"
+            + "[{AADCED64-746C-4633-A97C-D61349046527}{CAB54552-DEEA-4691-817E-ED4A4D1AFC72}]", names);
+    }
 }
 
 /// <summary>Stands in for Group Policy Management: keeps what it was asked to do, as whom, and backups in memory.</summary>

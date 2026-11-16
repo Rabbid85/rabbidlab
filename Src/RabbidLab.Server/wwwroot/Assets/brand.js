@@ -66,5 +66,18 @@
   };
   colours();
   tabIcon();
-  window.RabbidLabBrand = { SWATCHES, swatch, shades, apply, get now() { return now; } };
+  // Before the page's own scripts run: the lab's name and icon wherever the page marks them (data-brand-name,
+  // data-brand-img, data-brand-mark), from what this browser kept, so a reload never shows Rabbid Lab's first.
+  // brand-paint.js calls it right after those parts are drawn.
+  const paint = (root = document) => {
+    if (now.name) root.querySelectorAll('[data-brand-name]').forEach((e) => { e.textContent = now.name; });
+    if (!now.icon) return;
+    root.querySelectorAll('[data-brand-img]').forEach((e) => {
+      e.src = now.icon;
+      e.hidden = false;
+    });
+    root.querySelectorAll('[data-brand-mark]').forEach((e) => e.classList.add('gone'));
+  };
+  if (now.name) document.title = now.name;
+  window.RabbidLabBrand = { SWATCHES, swatch, shades, apply, paint, get now() { return now; } };
 })();

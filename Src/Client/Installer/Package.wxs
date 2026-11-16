@@ -81,8 +81,16 @@
     <CustomAction Id="RemovalLocked" Error="The Rabbid Lab client is locked on this computer. To uninstall it, open Rabbid Lab Client from the Start menu, click Uninstall and enter this computer's uninstall code. Or have an admin allow it in Rabbid Lab: go to Devices, click Uninstall next to this computer, and choose Allow." />
     <!-- The tray icon straight away for whoever installed it by hand; a quiet install shows it at the next sign-in. -->
     <CustomAction Id="StartTray" FileRef="ClientExe" ExeCommand="--tray" Return="asyncNoWait" Impersonate="yes" />
+    <!-- Defender's attack surface reduction rules block new, unsigned programs: this one file is let past them, as SYSTEM
+         before the service starts, until the client is code-signed. Uninstalling takes it out again. -->
+    <CustomAction Id="AllowInDefender" Directory="INSTALLFOLDER" Execute="deferred" Impersonate="no" Return="ignore"
+                  ExeCommand="&quot;[System64Folder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoProfile -NonInteractive -WindowStyle Hidden -Command &quot;Add-MpPreference -AttackSurfaceReductionOnlyExclusions '[#ClientExe]'&quot;" />
+    <CustomAction Id="ForgetInDefender" Directory="INSTALLFOLDER" Execute="deferred" Impersonate="no" Return="ignore"
+                  ExeCommand="&quot;[System64Folder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoProfile -NonInteractive -WindowStyle Hidden -Command &quot;Remove-MpPreference -AttackSurfaceReductionOnlyExclusions '[#ClientExe]'&quot;" />
     <InstallExecuteSequence>
       <Custom Action="RemovalLocked" After="AppSearch" Condition="REMOVE=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE AND NOT REMOVALALLOWED" />
+      <Custom Action="AllowInDefender" Before="StartServices" Condition="NOT REMOVE" />
+      <Custom Action="ForgetInDefender" Before="RemoveFiles" Condition="REMOVE=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE" />
       <Custom Action="StartTray" After="InstallFinalize" Condition="NOT REMOVE AND UILevel &gt; 2" />
     </InstallExecuteSequence>
     <InstallUISequence>

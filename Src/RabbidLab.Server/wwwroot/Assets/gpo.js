@@ -115,6 +115,7 @@
       R.busy(where, '');
     }
   };
+  R.gpoChange = change; // Devices, Deploy the client (deploy.js)
 
   // --- The page: four lists down the left, one grid ----------------------------------------------------------------
   const VIEWS = [['all', 'All GPOs', () => true], ['linked', 'Linked', (g) => linksOf(g.id).length > 0], ['unlinked', 'Not linked', (g) => !linksOf(g.id).length, 'amber'],

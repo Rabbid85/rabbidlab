@@ -26,6 +26,7 @@ public sealed class WindowsSysvol : ISysvol
 
     public Task Write(string path, byte[] data, string username, string password, CancellationToken stop) => As(username, password, () =>
     {
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!); // a new GPO's folders aren't there yet
         File.WriteAllBytes(path, data);
         return true;
     });
@@ -34,7 +35,7 @@ public sealed class WindowsSysvol : ISysvol
     {
         if (!OperatingSystem.IsWindows())
         {
-            throw new ToolProblem($"Changing the password policy needs {Product.Title} on Windows, where it can reach SYSVOL.");
+            throw new ToolProblem($"Writing Group Policy files needs {Product.Title} on Windows, where it can reach SYSVOL.");
         }
         return Task.Run(() => Windows(username, password, work));
     }
@@ -57,7 +58,7 @@ public sealed class WindowsSysvol : ISysvol
             }
             catch (UnauthorizedAccessException)
             {
-                throw new ToolProblem($"{Ldap.Account(username)} isn't allowed to change the Default Domain Policy in SYSVOL. It takes a Domain Admin.");
+                throw new ToolProblem($"{Ldap.Account(username)} isn't allowed to change that GPO's files in SYSVOL. It takes a Domain Admin, or rights given in Group Policy Management.");
             }
             catch (IOException e)
             {

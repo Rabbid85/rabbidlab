@@ -44,6 +44,15 @@ public sealed class GpoNeedsLogin(string message) : Exception(message);
 
 public interface IGroupPolicy
 {
+    /// <summary>The client deployed with Group Policy, if it is, and whether it can be.</summary>
+    Task<ClientDeployView> ClientDeploy(CancellationToken stop);
+
+    /// <summary>Puts the client on every computer through the Rabbid Lab Client GPO; its ID.</summary>
+    Task<string> DeployClient(string server, string? fingerprint, byte[] msi, GpoLogin login, string by, CancellationToken stop);
+
+    /// <summary>Takes the Rabbid Lab Client GPO's link off the domain: no new installs.</summary>
+    Task StopClientDeploy(GpoLogin login, CancellationToken stop);
+
     Task<GroupPolicyView> GroupPolicy(CancellationToken stop);
 
     Task<GpoDetail> GpoDetail(string id, CancellationToken stop);

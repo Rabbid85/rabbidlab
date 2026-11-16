@@ -102,3 +102,4 @@ button.go:disabled { filter: grayscale(.4); opacity: .6; }
   .band { padding: 16px 20px 14px; }
   .card-body, .card-foot { padding-left: 20px; padding-right: 20px; }
 }
+.band-mark.gone { display: none; }

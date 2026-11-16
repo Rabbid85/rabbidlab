@@ -63,13 +63,16 @@
     <li>Copy the install line. It has this server's address and its public key fingerprint, which is how the client knows the server.</li>
     <li>Run it on the computer, or paste it into Intune as the install command.</li>
   </ol>
-  <h3>With Group Policy</h3>
+  <h3>With Group Policy, in one click</h3>
   <ol>
-    <li>In <b>Add computers</b>, download the MSI and the Group Policy template.</li>
-    <li>Copy the template into PolicyDefinitions (the central store, or C:\Windows\PolicyDefinitions).</li>
-    <li>In a GPO: Computer Configuration, Policies, Software Settings, Software Installation, assign the MSI.</li>
-    <li>In the same GPO: Administrative Templates, Rabbid Lab, Client. Set <b>Server address</b>, and <b>Server certificate fingerprint</b> if you need it.</li>
+    <li>Open <a href="#seats/deploy">Devices, Deploy the client</a>. It takes Add computers and Change Group Policy, and Group Policy Management on this server.</li>
+    <li>Pick the address every computer connects to. A full name, such as helpdesk.yourdomain.com, works anywhere in the domain.</li>
+    <li>Click <b>Deploy to every computer</b> and confirm it's you. <span data-app>Rabbid Lab</span> makes the GPO <b>Rabbid Lab Client</b>, puts the installer in its SYSVOL folder, adds a task that installs it quietly as SYSTEM where it isn't installed, lets the client's file past Defender's attack surface reduction rules, and links the GPO to the domain.</li>
+    <li>Each computer installs it at its next policy refresh, within about 90 minutes, with no restart. New ones wait for approval under Computers.</li>
   </ol>
+  <p><b>Deploy again</b> puts this server's installer in the GPO after an update. <b>Stop deploying</b> takes the GPO off the domain; computers keep the client. If Intune manages Defender, the page shows the exclusion to add to your attack surface reduction policy there too.</p>
+  <h3>With your own GPO</h3>
+  <p>In <b>Add computers</b>, download the MSI and the Group Policy template. Assign the MSI under Software Installation, and set <b>Server address</b> under Administrative Templates, Rabbid Lab, Client.</p>
   <p class="tip">Group Policy wins over anything the installer or Connect was given.</p>
 </article>
 

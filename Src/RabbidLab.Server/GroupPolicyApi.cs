@@ -134,6 +134,34 @@ public static class GroupPolicyApi
             return Results.Ok(new { id });
         }));
 
+
+        // Devices, Deploy: the client on every computer through the Rabbid Lab Client GPO. Deploying takes adding computers
+        // and changing Group Policy both, a confirmed session, and goes in the activity log.
+        app.MapGet("/api/gpo/client", (HttpContext context, IGroupPolicy gp) => Gpo(context, Permissions.GpoView, async () =>
+            Results.Ok(await gp.ClientDeploy(context.RequestAborted)), change: false));
+
+        app.MapPost("/api/gpo/client", (ClientDeployForm form, HttpContext context, IGroupPolicy gp, IConfiguration config, ActivityLog log) => Gpo(context, Permissions.GpoChange, async () =>
+        {
+            if (Access.RefuseUnless(context, Permissions.SeatsAdd) is { } refused)
+            {
+                return refused;
+            }
+            if (!File.Exists(ClientFiles.Msi))
+            {
+                return Results.BadRequest(new { error = "The client installer isn't on this server. Run Setup again to put it back." });
+            }
+            var fingerprint = ClientFiles.Certificate(config) is { } cert ? ClientFiles.Fingerprint(cert) : null;
+            var id = await gp.DeployClient(form.Server ?? "", fingerprint, await File.ReadAllBytesAsync(ClientFiles.Msi, context.RequestAborted), form.Login, ActivityLog.Who(context), context.RequestAborted);
+            log.Record(context, "users", "gpo.client", $"Deployed the client {Product.Version} to every computer with the GPO {DirectoryTools.ClientGpoName}, pointed at {form.Server}");
+            return Results.Ok(new { id });
+        }));
+
+        app.MapPost("/api/gpo/client/stop", (GpoForm form, HttpContext context, IGroupPolicy gp, ActivityLog log) => Gpo(context, Permissions.GpoLink, async () =>
+        {
+            await gp.StopClientDeploy(form.Login, context.RequestAborted);
+            log.Record(context, "users", "gpo.client.stop", $"Stopped deploying the client: {DirectoryTools.ClientGpoName} is no longer linked to the domain");
+            return Results.Ok(new { });
+        }));
         app.MapPost("/api/gpo/wmi-filters/{id}/delete", (string id, GpoForm form, HttpContext context, IGroupPolicy gp, ActivityLog log) => Gpo(context, Permissions.GpoChange, async () =>
         {
             await gp.DeleteWmiFilter(id, form.Login, context.RequestAborted);

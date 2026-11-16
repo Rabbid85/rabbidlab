@@ -3,6 +3,11 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.223', [
+    'Devices, Deploy the client: one button makes the GPO Rabbid Lab Client, puts the installer in it, and links it to the domain. Every computer installs the client quietly as SYSTEM at its next policy refresh, with no restart, and waits for approval. Stop deploying takes it off the domain.',
+    'The client is let past Defender attack surface reduction rules until it is code-signed: the deploy GPO and the client installer both add the exclusion for its one file, and the Deploy page shows the same entry for Intune.',
+    'Reloading a page shows the lab name and icon straight away, not Rabbid Lab first, in the top bar, the Overview banner, the browser tab and the sign-in page.',
+  ]],
   ['1.1.222', [
     'Every password box in the console has an eye to show what is typed, and it hides again when its window closes.',
   ]],
