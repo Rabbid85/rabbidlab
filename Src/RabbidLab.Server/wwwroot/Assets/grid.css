@@ -32,6 +32,8 @@ body.col-dragging, body.col-dragging * { cursor: col-resize !important; user-sel
 .table.dgrid.compact .tr.th { min-height: 34px; border-bottom-color: var(--line-strong); background: #12141F; }
 .table.dgrid.compact .tr:last-child { border-bottom: 0; }
 .table.dgrid .tr:not(.th):hover { background: #151827; }
+/* A list still being read: placeholder rows under the headings, staying put when the columns are wider than the page. */
+.table.dgrid > .grid-loading { position: sticky; left: 0; }
 .table.dgrid.relaxed:not(.drows) .tr:not(.th) { min-height: 54px; }
 
 /* Columns: Compact or Relaxed at the top, then a tick for each column. */

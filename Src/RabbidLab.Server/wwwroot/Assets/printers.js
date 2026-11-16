@@ -255,7 +255,7 @@
       { key: 'published', label: 'In AD', w: 80, get: (p) => (p.published ? 'Yes' : 'No') },
     ],
     row: (p) => ` data-pr-row="${esc(`${p.name}\n${p.address || ''}`)}"`,
-    empty: () => D.more.printers.empty(),
+    empty: () => D.more.printers.empty(), loading: () => !all,
     redraw: () => D.draw(),
   }));
   // The servers that share printers, and the ones that couldn't be asked.
@@ -270,7 +270,7 @@
       { key: 'at', label: 'Asked', w: 170, on: true, get: (s) => new Date(s.at).getTime(), text: (s) => s.at, cell: (s) => `<span class="muted">${esc(R.when(s.at))}</span>` },
     ],
     row: (s) => ` data-ps-row="${esc(s.server)}"`,
-    empty: () => D.more.printers.empty(),
+    empty: () => D.more.printers.empty(), loading: () => !all,
     redraw: () => D.draw(),
   }));
   const shown = () => rows;

@@ -450,7 +450,7 @@
       { key: 'sid', label: 'SID', w: 300, get: (r) => r.sid || '', cell: (r) => `<span class="mono muted ell">${esc(r.sid || '')}</span>` },
     ],
     row: (r) => ` data-acc-row="${esc(r.key)}"`,
-    empty: () => D.more.admins.empty(),
+    empty: () => D.more.admins.empty(), loading: () => !adm,
     redraw: () => D.draw(),
   }));
   let peopleG = null;
@@ -465,7 +465,7 @@
       { key: 'state', label: 'State', w: 90, on: true, get: (r) => stateText(r.enabled), cell: (r) => stateCell(r.enabled) },
     ],
     row: (r) => ` data-acc-row="${esc(r.key)}"`,
-    empty: () => D.more.admins.empty(),
+    empty: () => D.more.admins.empty(), loading: () => !adm,
     redraw: () => D.draw(),
   }));
   const fld = (key, label, type, get1) => ({ key, label, type, get: get1 });

@@ -31,8 +31,10 @@
   document.body.append(menu);
   let menuFor = null;
 
-  // o: { el, key, store, cols, sort, lead: { w, head, cell }, tail: { w, cell }, row(x, i), rowClass(x), empty, redraw,
-  // headButton }. el, key, cols, sort, lead, tail and empty can be functions, for a grid that shows different pages.
+  // o: { el, key, store, cols, sort, lead: { w, head, cell }, tail: { w, cell }, row(x, i), rowClass(x), empty, loading,
+  // redraw, headButton }. el, key, cols, sort, lead, tail and empty can be functions, for a grid that shows different pages.
+  // loading: true (or a function saying so) while the list is still being read, so it shows grey placeholder rows
+  // under its headings and not what empty says.
   // headButton puts Columns at the end of the heading row, for a grid with no toolbar of its own. el is the table for
   // draw(); for a page with several tables sharing the columns (one per group), el holds them and table() makes each.
   const grid = (o) => {
@@ -105,6 +107,13 @@
       t.classList.toggle('compact', density() === 'compact');
       t.classList.toggle('relaxed', density() === 'relaxed');
       t.innerHTML = html;
+      // Still being read: placeholder rows where the empty text would be.
+      const none = !rows.length && of(o.loading) ? t.querySelector(':scope > .empty') : null;
+      if (none) {
+        none.className = 'grid-loading';
+        if (t.clientWidth) none.style.width = `${t.clientWidth}px`; // as wide as what shows, however wide the columns are
+        R.skeleton(none, 'rows', 8);
+      }
       return rows;
     };
     // One of several tables inside el, as HTML (cls: its own classes).

@@ -129,7 +129,7 @@
       { key: 'workflows', label: 'Workflows', w: 180, get: (s) => s.workflows.join(', ') },
     ],
     row: (s) => ` data-row="script:${esc(s.id)}"`,
-    empty: () => D.more.scripts.empty(),
+    empty: () => D.more.scripts.empty(), loading: () => !scripts,
     redraw: () => D.draw(),
   }));
   let jobsG = null;
@@ -143,7 +143,7 @@
       { key: 'result', label: 'Result', w: 140, on: true, get: (j) => result(j)[1], cell: (j) => pill(result(j)) },
     ],
     row: (j) => ` data-row="job:${esc(j.id)}"`,
-    empty: () => D.more.jobs.empty(),
+    empty: () => D.more.jobs.empty(), loading: () => !jobs,
     redraw: () => D.draw(),
   }));
   let flowsG = null;
@@ -158,7 +158,7 @@
       { key: 'if', label: 'Computers', w: 200, get: (w) => ifText(w) || 'Every computer' },
     ],
     row: (w) => ` data-row="flow:${esc(w.id)}"`,
-    empty: () => D.more.workflows.empty(),
+    empty: () => D.more.workflows.empty(), loading: () => !flows,
     redraw: () => D.draw(),
   }));
   D.lists.scripts = ['Scripts', 'code', 'PowerShell and command scripts to run on computers, as SYSTEM.'];

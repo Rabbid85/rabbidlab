@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.234', [
+    'Printers shows grey placeholder rows under its headings while it is being read, where it used to say Reading the list. Local admins, Scripts, Jobs and Workflows do the same.',
+  ]],
   ['1.1.233', [
     'Devices, Printers finds your print servers by itself and lists every printer they share, not only the ones listed in Active Directory. It asks each Windows Server in the domain over file and printer sharing, as this server, and only reads.',
     'Each printer shows its print server, address, status and jobs waiting, and a Problems column says what looks wrong: a queue that is offline, one printer shared twice, a stale listing in Active Directory, or computers printing around the server.',

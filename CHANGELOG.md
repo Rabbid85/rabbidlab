@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.234 (2026-11-16)
+
+- Printers shows grey placeholder rows under its headings while it is being read, where it used to say Reading the list. Local admins, Scripts, Jobs and Workflows do the same.
+
 ## 1.1.233 (2026-11-16)
 
 - Devices, Printers finds your print servers by itself and lists every printer they share, not only the ones listed in Active Directory. It asks each Windows Server in the domain over file and printer sharing, as this server, and only reads.
