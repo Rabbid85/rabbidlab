@@ -56,21 +56,38 @@ public sealed class DirectoryToolsTests : IDisposable
     private static Task<ToolProblem> Refused(Func<Task> change) => Assert.ThrowsAsync<ToolProblem>(change);
 
     [Fact]
-    public async Task Before_it_is_set_up_it_reads_as_this_computer_and_refuses_every_change()
+    public async Task Read_only_is_off_until_an_admin_turns_it_on_and_only_admins_read_and_nothing_is_changed()
     {
+        var none = CancellationToken.None;
+        var signedIn = await app.SignedIn();
+        var boss = await InRole(signedIn, "AD admins", "boss1", ["ad.view", "ad.connect"]);
+        var helpdesk = await InRole(signedIn, "Helpdesk", "help1", ["ad.view"]);
         tools.ComputerDomain = () => "amw.com";
-        Assert.Null(tools.Reading()); // nothing to read as here, as in Docker
+        Assert.False(tools.CanReadHere); // nothing to read as here, as in Docker
         tools.AsComputer = (domain, host, stop) => ad.Open(domain, host, "", "right", stop);
+        As(boss, Permissions.AdView);
+        var off = await Refused(() => tools.Users(none));
+        var notOn = tools.Reading();
 
+        tools.ReadHere(true, "boss1");
         var reading = tools.Reading();
-        var (users, _) = await tools.Users(CancellationToken.None);
-        var refused = await Refused(() => tools.Unlock("jreyes", CancellationToken.None));
+        var (users, _) = await tools.Users(none);
+        var change = await Refused(() => tools.Unlock("jreyes", none));
+        As(helpdesk, Permissions.AdView);
+        var other = await Refused(() => tools.Users(none));
+        Caller.Set(null);
+        var nobody = await Refused(() => tools.Users(none));
 
+        Assert.True(tools.CanReadHere);
+        Assert.Equal(StatusCodes.Status409Conflict, off.Status);
+        Assert.Null(notOn);
         Assert.Null(tools.State());
         Assert.True(reading?.ReadOnly);
         Assert.Contains(users, u => u.Username == "jreyes");
-        Assert.Equal(StatusCodes.Status409Conflict, refused.Status);
-        Assert.Equal(DirectoryTools.ReadOnlyText, refused.Message);
+        Assert.Equal(StatusCodes.Status409Conflict, change.Status);
+        Assert.Equal(DirectoryTools.ReadOnlyText, change.Message);
+        Assert.Equal(StatusCodes.Status403Forbidden, other.Status);
+        Assert.Equal(StatusCodes.Status403Forbidden, nobody.Status);
         Assert.DoesNotContain(ad.Log, l => l.StartsWith("modify", StringComparison.Ordinal));
 
         // Set up: the service account from then on.

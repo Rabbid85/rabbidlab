@@ -2232,39 +2232,39 @@
       el.innerHTML = card("This server isn't on a domain", allowed ? 'Connect one to manage it from here.' : 'There is nothing to manage here yet.',
         allowed ? '<button type="button" class="primary" data-setup>Connect a domain</button>' : '');
     } else {
-      // Not now: the pages read the domain as this server, and only changes need the account.
+      // Not now: read-only as this server for the whole server, which only people who can set up the account may choose and see.
       el.innerHTML = card('Set up the service account', allowed ? `${R.app()} makes its changes in ${info.domain} as this account.` : 'Someone who can set up the service account has to do this first.',
-        (allowed ? '<button type="button" class="primary" data-setup>Set up</button>' : '') + (info.reading ? '<button type="button" data-not-now>Not now</button>' : ''));
+        (allowed ? '<button type="button" class="primary" data-setup>Set up</button>' : '') + (allowed && info.canRead ? '<button type="button" data-not-now>Not now</button>' : ''));
     }
     el.hidden = false;
     el.querySelector('[data-setup]')?.addEventListener('click', () => openSetup(info?.domain));
-    el.querySelector('[data-not-now]')?.addEventListener('click', () => {
-      try {
-        localStorage.setItem(NOT_NOW, '1');
-      } catch {
-        // Not kept: the card comes back next time.
-      }
-      readAnyway = true;
-      R.forget();
-      ad = null;
-      Object.keys(lists).forEach((k) => delete lists[k]);
-      if (R.where()[0] === 'ad') refreshAd(true);
-      document.dispatchEvent(new CustomEvent('rabbidlab:ad'));
-    });
+    el.querySelector('[data-not-now]')?.addEventListener('click', () => readOnly(true));
   };
   R.adSetupCard = setupCard;
-  // Not now on that card, kept in this browser: until the account is set up, the pages read the domain as this server.
-  const NOT_NOW = 'rabbidlab.ad.notNow';
-  let readAnyway = (() => {
+  // Turns read-only on (confirming it's you first) or off, then every Active Directory page reads again.
+  const readOnly = async (on) => {
     try {
-      return localStorage.getItem(NOT_NOW) === '1';
-    } catch {
-      return false;
+      await R.devices.confirmed(() => R.send('/api/ad/read-only', { on }));
+    } catch (err) {
+      if (!err.cancelled) R.toast("That didn't work.", err.message, { tone: 'warn' });
+      return;
     }
-  })();
+    R.forget();
+    ad = null;
+    Object.keys(lists).forEach((k) => delete lists[k]);
+    if (R.where()[0] === 'ad') refreshAd(true);
+    if (R.where()[0] === 'settings' && R.where()[1] === 'ad') drawAdSettings(true);
+    document.dispatchEvent(new CustomEvent('rabbidlab:ad'));
+  };
+  // Read-only is the server's to say now: forget what an earlier version kept in this browser.
+  try {
+    localStorage.removeItem('rabbidlab.ad.notNow');
+  } catch {
+    // Nothing kept.
+  }
   R.adInfo = async () => {
     const info = await R.get('/api/ad');
-    return !info.state && info.reading && readAnyway ? { ...info, state: info.reading } : info;
+    return !info.state && info.reading ? { ...info, state: info.reading } : info;
   };
   $('dset-local').addEventListener('click', () => $('dset-dialog').close());
   // Picking a card picks the way; a double-click goes straight on to signing in.
@@ -2516,9 +2516,10 @@
     $('as-account').textContent = s ? s.account : 'No service account';
     $('as-about').textContent = s
       ? `In ${s.domain}, ${s.made ? 'with delegated permissions on' : 'managing'} ${s.scopeName}. ${s.made ? 'Created' : 'Connected'} by ${s.by}${s.at ? ` on ${R.when(s.at)}` : ''}. Its password is stored encrypted on this server.`
-      : ad?.state?.readOnly ? `The Active Directory pages read ${ad.domain} as this server. Set up a service account to make changes.`
+      : ad?.state?.readOnly ? `Read-only: ${ad.domain} is read as this server, and only people who can set up the service account see it. Set one up to make changes.`
       : ad?.domain ? `${R.app()} makes its changes in ${ad.domain} as a service account. Set one up to use the Active Directory pages.` : "This server isn't on a domain. Connect one to manage it from here.";
     $('as-setup').hidden = !!s;
+    $('as-ro-off').hidden = !ad?.state?.readOnly;
     $('as-setup').textContent = ad?.domain ? 'Set up' : 'Connect a domain';
     ['as-ou-row', 'as-gou-row', 'as-cou-row'].forEach((id) => { $(id).hidden = !s; });
     $('as-danger').classList.toggle('gone', !s);
@@ -2532,6 +2533,7 @@
     $('adset-cou').value = s.newComputers || '';
   };
   $('as-setup').addEventListener('click', () => openSetup(ad?.domain));
+  $('as-ro-off').addEventListener('click', () => readOnly(false));
   $('dset-dialog').addEventListener('close', () => { if (R.where()[0] === 'settings' && R.where()[1] === 'ad') drawAdSettings(true); });
   // Each default OU saves as it changes: users, groups and computers.
   [['adset-ou', 'newUsers'], ['adset-gou', 'newGroups'], ['adset-cou', 'newComputers']].forEach(([id, field]) => $(id).addEventListener('change', async () => {

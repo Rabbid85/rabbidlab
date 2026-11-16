@@ -371,6 +371,25 @@ public sealed class UsersTests : IDisposable
     }
 
     [Fact]
+    public async Task Only_someone_who_can_set_up_the_account_turns_read_only_on_and_only_once_confirmed()
+    {
+        var admin = await app.SignedIn();
+        var help = await Role(admin, "Viewer", "ad.view");
+        (await admin.PostAsJsonAsync("/api/accounts", new { username = "mlopez", password = "user password", roles = new[] { help } })).EnsureSuccessStatusCode();
+        var viewer = await SignIn("mlopez", "user password");
+
+        var refused = await viewer.PostAsJsonAsync("/api/ad/read-only", new { on = true });
+        var unconfirmed = await admin.PostAsJsonAsync("/api/ad/read-only", new { on = true });
+        var seen = await viewer.GetFromJsonAsync<JsonElement>("/api/ad");
+
+        Assert.Equal(HttpStatusCode.Forbidden, refused.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, unconfirmed.StatusCode);
+        Assert.Contains("confirm", await unconfirmed.Content.ReadAsStringAsync());
+        Assert.False(seen.GetProperty("canRead").GetBoolean());
+        Assert.Equal(JsonValueKind.Null, seen.GetProperty("reading").ValueKind);
+    }
+
+    [Fact]
     public async Task The_directory_tools_take_their_permissions_and_wait_for_Rabbid_Lab_s_account()
     {
         var admin = await app.SignedIn();

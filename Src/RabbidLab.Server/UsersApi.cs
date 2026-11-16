@@ -28,10 +28,41 @@ public static class UsersApi
         // --- Active Directory ----------------------------------------------------------------------------------------
 
         // scoped: this person's roles only show part of Active Directory, so the pages about the whole domain aren't theirs.
-        // reading: until the service account is set up, what the pages read Active Directory as (this computer), read-only.
+        // reading and canRead: until the service account is set up, read-only as this computer, which only people who can
+        // set up the account may turn on and see.
         app.MapGet("/api/ad", (HttpContext context, IDirectoryTools tools, Roles roles) =>
-            !Access.Can(context, Permissions.AdView) && !Access.Can(context, Permissions.AdConnect) ? Access.NotAllowed()
-            : Results.Ok(new { domain = tools.Domain, state = tools.State(), reading = tools.Reading(), scoped = Access.Can(context, Permissions.AdView) && roles.Reach(Who.Of(context.User), Permissions.AdView) is not null }));
+        {
+            if (!Access.Can(context, Permissions.AdView) && !Access.Can(context, Permissions.AdConnect))
+            {
+                return Access.NotAllowed();
+            }
+            var state = tools.State();
+            var admin = state is null && Access.Can(context, Permissions.AdConnect);
+            return Results.Ok(new { domain = tools.Domain, state, reading = admin ? tools.Reading() : null, canRead = admin && tools.CanReadHere,
+                scoped = Access.Can(context, Permissions.AdView) && roles.Reach(Who.Of(context.User), Permissions.AdView) is not null });
+        });
+
+        // Not now on the setup card: read-only as this computer for the whole server, confirmed and logged. Off again in Settings.
+        app.MapPost("/api/ad/read-only", (ReadOnlyForm form, HttpContext context, IDirectoryTools tools, Confirmations confirm, ActivityLog log) =>
+        {
+            if (Access.RefuseUnless(context, Permissions.AdConnect) is { } refused)
+            {
+                return refused;
+            }
+            if (form.On && confirm.Refuse(context) is { } unconfirmed)
+            {
+                return unconfirmed;
+            }
+            if (form.On && !tools.CanReadHere)
+            {
+                return Results.BadRequest(new { error = "This server can't read Active Directory as itself. Set up the service account instead." });
+            }
+            tools.ReadHere(form.On, ActivityLog.Who(context));
+            log.Record(context, "users", form.On ? "ad.readonly.on" : "ad.readonly.off", form.On
+                ? $"Turned on read-only Active Directory, read as {Environment.MachineName}, for people who can set up the service account"
+                : "Turned off read-only Active Directory");
+            return Results.Ok(new { });
+        });
 
         // Setting up, step one: the OUs to pick from, read with the admin sign-in given (which isn't kept).
         app.MapPost("/api/ad/look", (SetupForm form, HttpContext context, IDirectoryTools tools) => Try(context, Permissions.AdConnect, async () =>

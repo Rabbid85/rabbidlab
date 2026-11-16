@@ -349,6 +349,12 @@ public sealed class FakeDirectoryTools : IDirectoryTools
 
     public DirectoryToolsState? Reading() => null;
 
+    public bool CanReadHere => false;
+
+    public void ReadHere(bool on, string by)
+    {
+    }
+
     public Task<SetupLook> Look(string? domain, string username, string password, CancellationToken stop) =>
         password == "domain pass" ? Task.FromResult(new SetupLook("amw.com", "DC=amw,DC=com", [new("OU=Lab,DC=amw,DC=com", "Lab", "Lab")], "CN=Users,DC=amw,DC=com", "svc-rabbidlab"))
         : throw new ToolProblem("That username or password is wrong.");

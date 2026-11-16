@@ -35,6 +35,14 @@ public sealed class DirectoryToolsFile
     public bool ReadOnly { get; set; }
 }
 
+/// <summary>Read-only Active Directory as this computer, until the service account is set up: who turned it on, and when.</summary>
+public sealed class DirectoryReadOnlyFile
+{
+    public bool On { get; set; }
+    public string? By { get; set; }
+    public DateTime? At { get; set; }
+}
+
 /// <summary>What the tools are working with, for the page.</summary>
 public sealed record DirectoryToolsState(string Domain, string Account, string Scope, string ScopeName, string NewUsers, string NewUsersName, bool Made, string? By, DateTime? At,
     string NewGroups = "", string NewGroupsName = "", string NewComputers = "", string NewComputersName = "", bool ReadOnly = false);
@@ -68,6 +76,9 @@ public sealed record SetupLook(string Domain, string BaseDn, List<AdOu> Places, 
 
 public sealed record SetupForm(string? Domain, string? Username, string? Password, bool Existing, string? Account, string? Ou, string? Scope);
 
+/// <summary>Read-only Active Directory as this computer, on or off.</summary>
+public sealed record ReadOnlyForm(bool On);
+
 public sealed record NewAdUser(string? First, string? Last, string? Display, string? Username, string? Ou, string? Password, bool MustChange, bool Enabled, bool NeverExpires,
     string? Description, string? Email, string? Title, List<string>? Groups);
 
@@ -87,6 +98,12 @@ public interface IDirectoryTools
 
     /// <summary>Until it's set up: what the pages work with while reading as this computer, or null where that can't be.</summary>
     DirectoryToolsState? Reading();
+
+    /// <summary>Whether this server could read Active Directory as itself.</summary>
+    bool CanReadHere { get; }
+
+    /// <summary>Turns read-only as this server on or off, for the whole server.</summary>
+    void ReadHere(bool on, string by);
 
     Task<SetupLook> Look(string? domain, string username, string password, CancellationToken stop);
 
@@ -220,7 +237,34 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
         return f.Account is null || f.Domain is null || f.Scope is null ? null : StateOf(f);
     }
 
+    /// <summary>Read-only as this computer, when someone who can set up the service account turned it on.</summary>
     public DirectoryToolsState? Reading() => State() is null && ReadOnlyFile() is { } f ? StateOf(f) : null;
+
+    /// <summary>Whether this server could read Active Directory as itself: Windows, in a domain.</summary>
+    public bool CanReadHere => AsComputer is not null && ComputerDomain() is { Length: > 0 };
+
+    private readonly JsonFile<DirectoryReadOnlyFile> readOnly = folder.Json<DirectoryReadOnlyFile>("directory-read-only.json", Json);
+
+    /// <summary>Turns read-only on or off for the whole server (Not now on the setup card, Settings to turn it off).</summary>
+    public void ReadHere(bool on, string by)
+    {
+        lock (readOnly.Gate)
+        {
+            readOnly.Save(new DirectoryReadOnlyFile { On = on, By = by, At = DateTime.UtcNow });
+        }
+        pool?.Flush();
+    }
+
+    private bool ReadingHere()
+    {
+        lock (readOnly.Gate)
+        {
+            return readOnly.Read().On;
+        }
+    }
+
+    /// <summary>What everyone without the right to set up the service account is told while it's read-only.</summary>
+    public static string OnlyAdminsText => $"{Product.Title} isn't set up for Active Directory yet. Someone who can set up its service account has to do that first.";
 
     private DirectoryToolsState StateOf(DirectoryToolsFile f)
     {
@@ -232,11 +276,11 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
             newGroups, ScopeName(newGroups, baseDn, f.Domain!), newComputers, ScopeName(newComputers, baseDn, f.Domain!), f.ReadOnly);
     }
 
-    /// <summary>The whole of this computer's domain, as this computer: what Ready gives until it's set up.</summary>
     /// <summary>The domain this computer is in (tests give one).</summary>
     public Func<string?> ComputerDomain { get; set; } = ActiveDirectory.ThisDomain;
 
-    private DirectoryToolsFile? ReadOnlyFile() => AsComputer is not null && ComputerDomain() is { Length: > 0 } domain
+    /// <summary>The whole of this computer's domain, as this computer: what Ready gives until it's set up, once read-only is on.</summary>
+    private DirectoryToolsFile? ReadOnlyFile() => AsComputer is not null && ComputerDomain() is { Length: > 0 } domain && ReadingHere()
         ? new DirectoryToolsFile { Domain = domain, Account = Environment.MachineName.ToUpperInvariant() + "$", Scope = BaseOf(domain), ReadOnly = true }
         : null;
 
@@ -746,8 +790,14 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
     private DirectoryToolsFile Ready()
     {
         var f = Load();
-        return f.Account is not null && f.Domain is not null && f.Scope is not null ? f
-            : ReadOnlyFile() ?? throw new ToolProblem($"{Product.Title} doesn't have its Active Directory account yet. Set it up first.", StatusCodes.Status409Conflict);
+        if (f.Account is not null && f.Domain is not null && f.Scope is not null)
+        {
+            return f;
+        }
+        var read = ReadOnlyFile() ?? throw new ToolProblem($"{Product.Title} doesn't have its Active Directory account yet. Set it up first.", StatusCodes.Status409Conflict);
+        // Read-only is for the people who can set up the service account, asking themselves: never anyone else, nor nobody.
+        return Caller.Current is { } c && c.Roles.Allowed(c.Who).Contains(Permissions.AdConnect) ? read
+            : throw new ToolProblem(OnlyAdminsText, StatusCodes.Status403Forbidden);
     }
 
     // The domain controller sign-in uses, when this is its domain; else the quickest that answers.
