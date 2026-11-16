@@ -11,7 +11,15 @@
   let loading = null;
   const when = (iso) => (iso ? new Date(iso).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '');
   const may = () => has('seats.add') && has('gpo.change');
-  const row = (title, text, right = '') => `<div class="ds-row"><div class="ds-l"><b>${title}</b><span>${text}</span></div>${right ? `<div class="ds-r">${right}</div>` : ''}</div>`;
+  // What deploying does, as six small tiles: icon, a few words, one line.
+  const DOES = [
+    ['policy', 'One GPO', 'Rabbid Lab Client, linked to the whole domain. Domain controllers too.'],
+    ['download', 'Installer in SYSVOL', 'Every domain computer can already read it there.'],
+    ['clock', 'At the next policy refresh', 'Within about 90 minutes. No restart.'],
+    ['eye-off', 'Nothing on screen', 'No installer window, no tray icon, no messages.'],
+    ['shield', 'Allowed in Defender', 'Past attack surface reduction, until the client is code-signed.'],
+    ['check', 'You approve each one', 'New computers wait under Computers.'],
+  ];
   const copyBtn = (text) => `<button type="button" class="ds-btn ds-ibtn" data-deploy-copy="${esc(text)}" data-tip="Copy" aria-label="Copy">${svg('copy')}</button>`;
 
   const load = () => (loading ||= (async () => {
@@ -44,34 +52,26 @@
     }
     const s = state;
     const picked = s.server && addresses.includes(s.server) ? s.server : addresses[0] || '';
-    const status = s.gpo
-      ? row(`${esc(s.name)} ${s.linked ? '<span class="ubadge green">Linked to the domain</span>' : '<span class="ubadge amber">Not linked</span>'}`,
-        esc(`Client ${s.version}, pointed at ${s.server}. Deployed by ${s.by} on ${when(s.at)}.${s.version !== s.thisVersion ? ` This server is on ${s.thisVersion}: Deploy again puts that installer in it.` : ''}`),
-        may() && s.linked ? '<button type="button" class="ds-btn" data-deploy-stop>Stop deploying</button>' : '')
-      : row('Not deployed yet', 'Nothing has gone out with Group Policy. Deploy to every computer, below, does it.');
-    const gpmc = s.gpmc ? '' : `<p class="ds-note deploy-warn">${svg('alert')}<span>Group Policy Management isn't on this server, and it's needed to make the GPO.`
-      + `${has('gpo.change') ? ' <button type="button" class="linkish" data-install-gpmc>Install it…</button>' : ' Someone who can change Group Policy can install it from here.'}</span></p>`;
+    const badge = !s.gpo ? '<span class="ubadge grey">Not deployed</span>' : s.linked ? '<span class="ubadge green">Deployed</span>' : '<span class="ubadge amber">Not linked</span>';
+    // Under the buttons: who deployed what, or what pressing Deploy asks for.
+    const fine = !may() ? 'Deploying takes Add computers and Change Group Policy.'
+      : s.gpo ? `Client ${s.version}, pointed at ${s.server}. Deployed by ${s.by} on ${when(s.at)}.${s.version !== s.thisVersion ? ` This server is on ${s.thisVersion}. Deploy again puts that installer in the GPO.` : ''}`
+        : "You confirm it's you first. It goes in the activity log.";
+    const gpmc = s.gpmc ? '' : `<div class="dp-note">${svg('alert')}<span>Group Policy Management isn't installed on this server. It makes the GPO.</span>`
+      + `${has('gpo.change') ? '<button type="button" class="ds-btn" data-install-gpmc>Install it…</button>' : ''}</div>`;
     el.innerHTML = '<div class="deploy">'
-      + `<section class="ds-sec"><h3 class="ds-h">With Group Policy</h3>${status}`
-      + row('Server address', 'What every computer connects to. A full name works anywhere in the domain.',
-        `<select id="deploy-server"${may() ? '' : ' disabled'}>${addresses.map((u) => `<option${u === picked ? ' selected' : ''}>${esc(u)}</option>`).join('')}</select>`)
-      + `<ul class="deploy-does">${[
-        ['policy', `Makes the GPO ${s.gpo ? esc(s.name) : 'Rabbid Lab Client'} and links it to the domain: every computer, domain controllers too.`],
-        ['download', "Puts the client installer in the GPO's own folder in SYSVOL, which every domain computer can read."],
-        ['clock', 'Each computer installs it quietly as SYSTEM at its next policy refresh, within about 90 minutes. No restart.'],
-        ['eye', 'People at the computer see nothing: no install, no tray icon, no messages. The Hide the client policy in the Rabbid Lab template can show the icon again.'],
-        ['shield', `Lets <code>${esc(s.clientPath)}</code> past Defender's attack surface reduction rules, until the client is code-signed.`],
-        ['check', 'New computers wait under Computers, Waiting for approval.'],
-      ].map(([icon, text]) => `<li>${svg(icon)}<span>${text}</span></li>`).join('')}</ul>`
+      + `<section class="card dp-card"><div class="dp-head"><span class="big-ic ember">${svg('policy')}</span>`
+      + `<div class="dp-title"><b>Deploy with Group Policy</b><span>One GPO puts the client on every computer in ${esc(s.domain || 'the domain')}. Nobody at the computer sees a thing.</span></div>${badge}</div>`
+      + `<ul class="dp-does">${DOES.map(([icon, title, text]) => `<li>${svg(icon)}<b>${title}</b><span>${text}</span></li>`).join('')}</ul>`
       + gpmc
-      + (may() ? `<div class="deploy-go"><button type="button" class="primary" data-deploy-go${s.gpmc && addresses.length ? '' : ' disabled'}>${svg('policy')}${s.gpo ? 'Deploy again' : 'Deploy to every computer'}</button>`
-        + '<span class="muted">You confirm it\'s you first. It goes in the activity log.</span></div>'
-        : '<p class="muted">Deploying takes Add computers and Change Group Policy.</p>')
-      + '</section>'
-      + '<section class="ds-sec"><h3 class="ds-h">Intune</h3>'
-      + row('Defender exclusion', esc("When Intune manages Defender, add this to your attack surface reduction policy too: Endpoint security, Attack surface reduction, your policy, Attack Surface Reduction Only Exclusions."),
-        `<code class="deploy-path">${esc(s.clientPath)}</code>${copyBtn(s.clientPath)}`)
-      + '</section></div>';
+      + `<div class="dp-foot"><label class="dp-addr"><span>Server address</span><select id="deploy-server"${may() ? '' : ' disabled'}>${addresses.map((u) => `<option${u === picked ? ' selected' : ''}>${esc(u)}</option>`).join('')}</select></label>`
+      + (may() ? `<span class="dp-acts">${s.linked ? '<button type="button" class="ds-btn" data-deploy-stop>Stop deploying</button>' : ''}`
+        + `<button type="button" class="primary" data-deploy-go${s.gpmc && addresses.length ? '' : ' disabled'}>${svg('policy')}${s.gpo ? 'Deploy again' : 'Deploy to every computer'}</button></span>` : '')
+      + `</div><p class="dp-fine">${esc(fine)}</p></section>`
+      + `<section class="card dp-card"><div class="dp-head"><span class="big-ic ember">${svg('shield')}</span>`
+      + '<div class="dp-title"><b>Using Intune for Defender?</b><span>Add this path to your attack surface reduction policy, under Attack Surface Reduction Only Exclusions.</span></div></div>'
+      + `<div class="dp-copy"><code>${esc(s.clientPath)}</code>${copyBtn(s.clientPath)}</div></section>`
+      + '</div>';
   };
 
   D.lists.deploy = ['Deploy the client', 'download', 'Put the client on every computer with one GPO, and what Intune needs.'];

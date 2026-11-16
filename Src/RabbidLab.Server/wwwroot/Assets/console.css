@@ -999,16 +999,35 @@ input::-ms-reveal { display: none; }
 
 /* Devices, Deploy the client (deploy.js): a page of its own where the other views have a list. */
 .seats-page[data-at="deploy"] .dbar > :not(.tabs2):not(.grow) { display: none; }
-.deploy { max-width: 940px; padding-top: 6px; }
-.deploy-does { display: grid; gap: 10px; margin: 6px 0 18px; padding: 0; list-style: none; }
-.deploy-does li { display: flex; align-items: flex-start; gap: 10px; color: var(--text); font-size: 13.5px; line-height: 1.5; }
-.deploy-does svg { flex: none; width: 16px; height: 16px; margin-top: 2px; color: var(--accent-soft); }
-.deploy-go { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; }
-.deploy-warn { align-items: flex-start; margin: 0 0 16px; color: var(--amber); font-size: 13px; line-height: 1.5; }
-.deploy-warn svg { margin-top: 2px; }
-.deploy-path { font-size: 12.5px; color: var(--title); word-break: break-all; }
-.deploy-go .primary { display: inline-flex; align-items: center; gap: 8px; }
-.deploy-go .primary svg { flex: none; width: 16px; height: 16px; }
+.deploy { display: grid; gap: 16px; max-width: 900px; padding-top: 18px; }
+.dp-card { display: grid; gap: 18px; padding: 22px 24px; }
+.dp-head { display: flex; align-items: center; gap: 16px; }
+.dp-title { display: grid; flex: 1; gap: 4px; min-width: 0; }
+.dp-title b { color: var(--title); font: 700 18px/1.25 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; }
+.dp-title span { color: var(--muted); font-size: 13.5px; line-height: 1.45; }
+.dp-head .ubadge { flex: none; align-self: flex-start; margin: 4px 0 0; }
+/* What deploying does: six small tiles, three across. */
+.dp-does { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
+.dp-does li { display: grid; grid-template-columns: auto 1fr; align-content: start; gap: 3px 12px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: rgba(9, 10, 18, .45); }
+.dp-does svg { grid-row: 1 / 3; width: 18px; height: 18px; margin-top: 1px; color: var(--accent-soft); }
+.dp-does b { color: var(--title); font-size: 13.5px; font-weight: 650; }
+.dp-does span { color: var(--muted); font-size: 12.5px; line-height: 1.45; }
+@media (max-width: 1250px) { .dp-does { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 720px) { .dp-does { grid-template-columns: 1fr; } }
+.dp-note { display: flex; align-items: center; gap: 12px; min-height: 54px; padding: 8px 8px 8px 14px; border: 1px solid var(--line); border-radius: 10px; background: #0C0E17; color: var(--text); font-size: 13.5px; }
+.dp-note > svg { flex: none; width: 18px; height: 18px; color: var(--amber); }
+.dp-note span { flex: 1; }
+.dp-foot { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px; padding-top: 18px; border-top: 1px solid var(--line); }
+.dp-addr { display: grid; flex: 1; gap: 6px; min-width: 240px; max-width: 400px; color: var(--muted); font-size: 12.5px; font-weight: 600; }
+.dp-addr select { width: 100%; height: 40px; padding-left: 12px; border: 1px solid var(--line-strong); border-radius: 8px; background-color: #0C0E17; color: var(--title); font: inherit; font-size: 13.5px; }
+.dp-acts { display: flex; flex-wrap: wrap; gap: 10px; margin-left: auto; }
+.dp-acts button { height: 40px; }
+.dp-acts .primary { display: inline-flex; align-items: center; gap: 8px; padding: 0 18px; border-radius: 8px; }
+.dp-acts .primary svg { flex: none; width: 16px; height: 16px; }
+.dp-fine { margin: -6px 0 0; color: var(--muted); font-size: 12.5px; line-height: 1.5; }
+.dp-copy { display: flex; align-items: center; gap: 8px; }
+.dp-copy code { flex: 1; min-width: 0; height: 40px; padding: 0 14px; border: 1px solid var(--line-strong); border-radius: 8px; background: #0C0E17; color: var(--title); font-size: 12.5px; line-height: 38px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dp-copy .ds-btn.ds-ibtn { flex: none; width: 40px; height: 40px; }
 .seats-page[data-at="deploy"] #dv-tabs small { display: none; }
 /* A command an Are you sure shows before it runs. */
 .sure-code { margin: 0 0 18px; padding: 12px 14px; border: 1px solid var(--line-strong); border-radius: 10px; background: #0C0E17; color: var(--title);

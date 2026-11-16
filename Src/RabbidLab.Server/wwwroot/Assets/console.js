@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.232', [
+    'Devices, Deploy the client is two short cards now instead of a page of text: what deploying does as six small tiles, the server address and the button together, and the Intune path in a box with a copy button.',
+  ]],
   ['1.1.231', [
     'Devices, Printers also lists the printers your print servers publish in Active Directory, with their print server and location. Open one to see its share and which computers have it.',
     'How the sensors are doing moved from the Overview banner to the top bar, beside the version, so it shows on every page. It is green when all are up and red with a count when some are down.',

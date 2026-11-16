@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.232 (2026-11-16)
+
+- Devices, Deploy the client is two short cards now instead of a page of text: what deploying does as six small tiles, the server address and the button together, and the Intune path in a box with a copy button.
+
 ## 1.1.231 (2026-11-16)
 
 - Devices, Printers also lists the printers your print servers publish in Active Directory, with their print server and location. Open one to see its share and which computers have it.
