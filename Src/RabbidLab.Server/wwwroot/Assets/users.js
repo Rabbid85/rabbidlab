@@ -2516,7 +2516,7 @@
     $('as-account').textContent = s ? s.account : 'No service account';
     $('as-about').textContent = s
       ? `In ${s.domain}, ${s.made ? 'with delegated permissions on' : 'managing'} ${s.scopeName}. ${s.made ? 'Created' : 'Connected'} by ${s.by}${s.at ? ` on ${R.when(s.at)}` : ''}. Its password is stored encrypted on this server.`
-      : ad?.state?.readOnly ? `Read-only: ${ad.domain} is read as this server, and only people who can set up the service account see it. Set one up to make changes.`
+      : ad?.state?.readOnly ? `Read-only: ${ad.domain} is read as this server, and only people who can set up the service account, or whose role may see it while read-only, see it. Set one up to make changes.`
       : ad?.domain ? `${R.app()} makes its changes in ${ad.domain} as a service account. Set one up to use the Active Directory pages.` : "This server isn't on a domain. Connect one to manage it from here.";
     $('as-setup').hidden = !!s;
     $('as-ro-off').hidden = !ad?.state?.readOnly;

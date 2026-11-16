@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.220', [
+    'New role permission under Active Directory: See it while read-only. Give it to a role to let its people see Active Directory and Group Policy while read-only is on, in the role scope. People who can set up the service account always can, and only they can turn read-only on.',
+    'Roles and people says it plainly: a group panel says everyone in the group gets its roles when they sign in, groups inside it too, and each person role shows which group it came from.',
+  ]],
   ['1.1.219', [
     'Read-only Active Directory is now a setting for the whole server, not each browser. Only people who can set up the service account can turn it on, they confirm it is them first, and it goes in the Activity log. Settings, Active Directory has Turn off read-only.',
     'While it is read-only, only people who can set up the service account see the Active Directory and Group Policy pages. Everyone else waits for the service account, and the server refuses their reads.',

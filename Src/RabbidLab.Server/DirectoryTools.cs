@@ -795,8 +795,8 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
             return f;
         }
         var read = ReadOnlyFile() ?? throw new ToolProblem($"{Product.Title} doesn't have its Active Directory account yet. Set it up first.", StatusCodes.Status409Conflict);
-        // Read-only is for the people who can set up the service account, asking themselves: never anyone else, nor nobody.
-        return Caller.Current is { } c && c.Roles.Allowed(c.Who).Contains(Permissions.AdConnect) ? read
+        // Read-only is for people who can set up the service account, or whose role may see it: never anyone else, nor nobody.
+        return Caller.Current is { } c && c.Roles.Allowed(c.Who) is var may && (may.Contains(Permissions.AdConnect) || may.Contains(Permissions.AdReadOnly)) ? read
             : throw new ToolProblem(OnlyAdminsText, StatusCodes.Status403Forbidden);
     }
 

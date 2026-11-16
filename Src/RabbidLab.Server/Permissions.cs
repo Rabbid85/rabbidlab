@@ -36,6 +36,7 @@ public static class Permissions
     public const string AdDelete = "ad.delete";
     public const string AdConnect = "ad.connect";
     public const string AdAttributes = "ad.attributes";
+    public const string AdReadOnly = "ad.readonly";
     public const string GpoView = "gpo.view";
     public const string GpoLink = "gpo.link";
     public const string GpoChange = "gpo.change";
@@ -119,6 +120,7 @@ public static class Permissions
             new(AdChange, "Edit properties and account options", "Details, account options and expiry, rename, move, and restore from the Recycle Bin."),
             new(AdDelete, "Delete users, groups and computers", "Gone from the domain for good."),
             new(AdConnect, "Set up Rabbid Lab's AD account", "Make the service account Rabbid Lab changes Active Directory with, or take it away."),
+            new(AdReadOnly, "See it while read-only", "Before the service account is set up, see Active Directory and Group Policy read as this server, when read-only is on. People who can set up the account always can."),
             new(AdAttributes, "Edit attributes", "Change any attribute in the Attribute browser, as ADSI Edit does, inside the service account's scope."),
         ]),
         new("gpo", "Group Policy", "policy",

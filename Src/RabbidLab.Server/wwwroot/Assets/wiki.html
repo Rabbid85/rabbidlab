@@ -161,7 +161,7 @@
   <h3>Use one you have</h3>
   <p>Click <b>Use one I have</b>, sign in as the service account, then check it on Review. It needs permission to create and manage users, groups and computers where it works: the whole domain, or the OU you pick with <b>Change</b>.</p>
   <h3>Not now</h3>
-  <p><b>Not now</b> on the card turns on read-only for the whole server, after you confirm it's you. Only people whose role can set up the service account see it, and see the button: everyone else waits for the service account. The pages read the domain as this server's own computer account, which can read most of it, and nothing can be changed until the service account is set up. Group Policy changes still work with a domain admin login. Turning it on or off goes in the Activity log, and <a href="#settings/ad">Settings, Active Directory</a> has <b>Turn off read-only</b>.</p>
+  <p><b>Not now</b> on the card turns on read-only for the whole server, after you confirm it's you. Only people whose role can set up the service account can turn it on. They see it, and so does anyone whose role has <b>See it while read-only</b>, in their role's scope: everyone else waits for the service account. The pages read the domain as this server's own computer account, which can read most of it, and nothing can be changed until the service account is set up. Group Policy changes still work with a domain admin login. Turning it on or off goes in the Activity log, and <a href="#settings/ad">Settings, Active Directory</a> has <b>Turn off read-only</b>.</p>
   <h3>Picking an OU</h3>
   <p><b>Browse…</b> beside any OU list opens the OUs the way Settings lists its pages. An OU with OUs inside has the flask and opens when you click it. Type in <b>Find an OU</b> to search, then click <b>Use this OU</b>, or double-click it.</p>
   <h3>Change it later</h3>
@@ -453,7 +453,7 @@
     <li>Search for an Active Directory group, a person, or a local account, and click it.</li>
     <li>Tick the roles, then click <b>Add</b>.</li>
   </ol>
-  <p>A group in a role counts for everyone in it, the next time they sign in. The + beside someone's roles gives them another one, and the cross on a role takes it away.</p>
+  <p>A group in a role counts for everyone in it, people in groups inside it too, the next time they sign in. Their role shows which group it came from, and the group's panel says so. The + beside someone's roles gives them another one, and the cross on a role takes it away.</p>
   <p class="tip">An Active Directory account that isn't in any role can't sign in. Everyone in AD is in User to begin with.</p>
 </article>
 

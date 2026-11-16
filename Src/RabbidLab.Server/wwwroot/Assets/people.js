@@ -74,7 +74,7 @@
       if (['user', 'local'].includes(row.kind)) give(row, user, null, false);
       row.roles.sort((a, b) => data.roles.indexOf(a.role) - data.roles.indexOf(b.role));
       if (row.sub) return;
-      row.sub = row.kind === 'group' ? `Group${data.domain ? ` · ${data.domain}` : ''}`
+      row.sub = row.kind === 'group' ? `AD group${data.domain ? ` in ${data.domain}` : ''}`
         : row.kind === 'everyone' ? `Anyone who can sign in to ${data.domain || 'Active Directory'}`
           : row.kind === 'local' ? 'Local account'
             : row.source === 'windows' ? `Windows administrator · ${row.name.split('\\')[0]}`
@@ -93,7 +93,7 @@
   const chip = (row, x) => {
     const removable = x.direct && x.role.manage && mine('access.members') && !(x.role.id === 'admin' && x.role.members.length === 1);
     const title = x.direct ? `In ${x.role.name}` : x.via ? `From ${x.via}` : x.role.id === 'user' ? 'Everyone who signs in has User' : `Built in`;
-    return `<span class="rchip${x.via ? ' via' : ''}" data-color="${esc(x.role.color)}" title="${esc(title)}"><i class="dot"></i>${esc(x.role.name)}`
+    return `<span class="rchip${x.via ? ' via' : ''}" data-color="${esc(x.role.color)}" data-tip="${esc(title)}"><i class="dot"></i>${esc(x.role.name)}`
       + (x.via ? `<small>${svg('users')}${esc(x.via)}</small>` : '')
       + (removable ? `<button type="button" class="chip-x" data-take="${esc(x.role.id)}" aria-label="Take out of ${esc(x.role.name)}">${svg('x')}</button>` : '')
       + '</span>';
@@ -227,7 +227,8 @@
         + `<p class="dw-how">${esc(row.mfa ? `On since ${R.when(row.mfa)}.` : needs.length ? 'Not set up. They set it up at their next sign-in.' : 'Not set up.')}${needs.length ? ` Required by ${esc(needs.join(', '))}.` : ''}</p></section>`;
     R.panel.body.innerHTML = `<div class="dw-head">${pic(row).replace('class="pic', 'class="pic dw-pic')}<div class="dw-name"><h2 id="dw-title">${esc(nameOf(row))}</h2>`
       + `<p>${esc(row.sub)}${row.seen ? ` · ${esc(since(row.seen).toLowerCase())}` : ''}</p></div><button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>${acts}`
-      + `<section class="dw-sec"><div class="dw-sec-head"><h3>Roles <small>${row.roles.length}</small></h3></div><div class="chips-in">${row.roles.map((x) => chip(row, x)).join('') || '<span class="muted">None</span>'}</div></section>${mfa}`
+      + `<section class="dw-sec"><div class="dw-sec-head"><h3>Roles <small>${row.roles.length}</small></h3></div><div class="chips-in">${row.roles.map((x) => chip(row, x)).join('') || '<span class="muted">None</span>'}</div>`
+      + (row.kind === 'group' ? `<p class="dw-how">Everyone in ${esc(nameOf(row))} gets these roles when they sign in, people in groups inside it too. Each person's role shows which group it came from.</p>` : '') + `</section>${mfa}`
       + (give.length ? `<section class="dw-sec"><div class="dw-sec-head"><h3>Give a role</h3></div><div class="chips-in dw-give">${give.map((r) => `<button type="button" class="small" data-give-role="${esc(r.id)}" data-color="${esc(r.color)}"><i class="dot"></i>${esc(r.name)}</button>`).join('')}</div></section>` : '')
       + `<section class="dw-sec"><div class="dw-sec-head"><h3>${row.kind === 'group' || row.kind === 'everyone' ? 'Its roles allow' : 'Can do'}</h3></div><ul class="does">${does}</ul></section>`;
     R.paint(R.panel.body);
@@ -452,7 +453,7 @@
       ? `<div class="row still"><span class="pic windows">${svg('monitor')}</span><span class="t"><b>Windows administrators</b><span>Of ${esc(data.machine)}: they sign in as a local account, or with .\\ before their name. Built in.</span></span></div>` : '';
     const everyone = r.id === 'user' ? `<div class="row still"><span class="pic">${svg('users')}</span><span class="t"><b>Everyone signed in</b><span>Everyone has User, whatever's below. Groups and people below can sign in with just User.</span></span></div>` : '';
     $('member-list').innerHTML = everyone + built + (r.members.map((m) => `<div class="row still"><span class="pic ${m.kind}">${m.kind === 'user' ? esc(initials(m.display || m.name)) : svg(ICON[m.kind])}</span>`
-      + `<span class="t"><b>${esc(memberLabel(m))}</b><span>${esc(KIND[m.kind])}${m.kind === 'user' && m.display ? ` · ${esc(m.name)}` : ''}${m.addedBy ? ` · added by ${esc(m.addedBy)}, ${esc(R.when(m.added))}` : ''}</span></span>`
+      + `<span class="t"><b>${esc(memberLabel(m))}</b><span>${m.kind === 'group' ? 'AD group · everyone in it gets this role when they sign in, groups inside it too' : esc(KIND[m.kind])}${m.kind === 'user' && m.display ? ` · ${esc(m.name)}` : ''}${m.addedBy ? ` · added by ${esc(m.addedBy)}, ${esc(R.when(m.added))}` : ''}</span></span>`
       + (takeable && !(r.id === 'admin' && r.members.length === 1) ? `<button type="button" class="icon" data-take-member="${esc(m.kind)}" data-name="${esc(m.name)}" aria-label="Take ${esc(memberLabel(m))} out">${svg('x')}</button>` : '')
       + '</div>').join('') || (built || everyone ? '' : '<div class="empty">Nobody yet.</div>'));
     $('member-add').hidden = !takeable;

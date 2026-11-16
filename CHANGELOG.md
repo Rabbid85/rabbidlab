@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.220 (2026-11-16)
+
+- New role permission under Active Directory: See it while read-only. Give it to a role to let its people see Active Directory and Group Policy while read-only is on, in the role scope. People who can set up the service account always can, and only they can turn read-only on.
+- Roles and people says it plainly: a group panel says everyone in the group gets its roles when they sign in, groups inside it too, and each person role shows which group it came from.
+
 ## 1.1.219 (2026-11-16)
 
 - Read-only Active Directory is now a setting for the whole server, not each browser. Only people who can set up the service account can turn it on, they confirm it is them first, and it goes in the Activity log. Settings, Active Directory has Turn off read-only.

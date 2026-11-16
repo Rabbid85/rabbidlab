@@ -29,7 +29,7 @@ public static class UsersApi
 
         // scoped: this person's roles only show part of Active Directory, so the pages about the whole domain aren't theirs.
         // reading and canRead: until the service account is set up, read-only as this computer, which only people who can
-        // set up the account may turn on and see.
+        // set up the account may turn on, and only they and roles allowed to see it while read-only may see.
         app.MapGet("/api/ad", (HttpContext context, IDirectoryTools tools, Roles roles) =>
         {
             if (!Access.Can(context, Permissions.AdView) && !Access.Can(context, Permissions.AdConnect))
@@ -38,7 +38,8 @@ public static class UsersApi
             }
             var state = tools.State();
             var admin = state is null && Access.Can(context, Permissions.AdConnect);
-            return Results.Ok(new { domain = tools.Domain, state, reading = admin ? tools.Reading() : null, canRead = admin && tools.CanReadHere,
+            var reader = admin || (state is null && Access.Can(context, Permissions.AdReadOnly));
+            return Results.Ok(new { domain = tools.Domain, state, reading = reader ? tools.Reading() : null, canRead = admin && tools.CanReadHere,
                 scoped = Access.Can(context, Permissions.AdView) && roles.Reach(Who.Of(context.User), Permissions.AdView) is not null });
         });
 

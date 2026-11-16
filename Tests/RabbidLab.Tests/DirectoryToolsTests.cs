@@ -56,12 +56,13 @@ public sealed class DirectoryToolsTests : IDisposable
     private static Task<ToolProblem> Refused(Func<Task> change) => Assert.ThrowsAsync<ToolProblem>(change);
 
     [Fact]
-    public async Task Read_only_is_off_until_an_admin_turns_it_on_and_only_admins_read_and_nothing_is_changed()
+    public async Task Read_only_is_off_until_an_admin_turns_it_on_and_only_admins_and_allowed_roles_read_and_nothing_is_changed()
     {
         var none = CancellationToken.None;
         var signedIn = await app.SignedIn();
         var boss = await InRole(signedIn, "AD admins", "boss1", ["ad.view", "ad.connect"]);
         var helpdesk = await InRole(signedIn, "Helpdesk", "help1", ["ad.view"]);
+        var reader = await InRole(signedIn, "Readers", "read1", ["ad.view", "ad.readonly"]);
         tools.ComputerDomain = () => "amw.com";
         Assert.False(tools.CanReadHere); // nothing to read as here, as in Docker
         tools.AsComputer = (domain, host, stop) => ad.Open(domain, host, "", "right", stop);
@@ -75,6 +76,8 @@ public sealed class DirectoryToolsTests : IDisposable
         var change = await Refused(() => tools.Unlock("jreyes", none));
         As(helpdesk, Permissions.AdView);
         var other = await Refused(() => tools.Users(none));
+        As(reader, Permissions.AdView);
+        var (seen, _) = await tools.Users(none);
         Caller.Set(null);
         var nobody = await Refused(() => tools.Users(none));
 
@@ -87,6 +90,7 @@ public sealed class DirectoryToolsTests : IDisposable
         Assert.Equal(StatusCodes.Status409Conflict, change.Status);
         Assert.Equal(DirectoryTools.ReadOnlyText, change.Message);
         Assert.Equal(StatusCodes.Status403Forbidden, other.Status);
+        Assert.Contains(seen, u => u.Username == "jreyes");
         Assert.Equal(StatusCodes.Status403Forbidden, nobody.Status);
         Assert.DoesNotContain(ad.Log, l => l.StartsWith("modify", StringComparison.Ordinal));
 
