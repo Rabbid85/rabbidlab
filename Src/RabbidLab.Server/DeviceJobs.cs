@@ -645,28 +645,68 @@ public static class DeviceActions
         };
     }
 
+    /// <summary>
+    /// The start of both update scripts: what isn't installed, from every update service Windows has on the computer, the
+    /// way its own Windows Update page puts them together. Asking only the usual service gave a server one update where
+    /// its page showed five. It leaves $session, $missing (what Windows would put in itself), $apart (offered, but not
+    /// counted) and Kind, which says why one is apart. The client asks the same way for the inventory (Inventory.cs).
+    /// </summary>
+    private const string FindUpdates = """
+        $ErrorActionPreference = 'Stop'
+        # Every update service here: the one Automatic Updates uses first, then the others (Microsoft Update, the one
+        # drivers come from). A computer pointed at a WSUS server is asked through that alone. Each update counts once.
+        $session = New-Object -ComObject Microsoft.Update.Session
+        $session.ClientApplicationID = 'Rabbid Lab'
+        $services = @((New-Object -ComObject Microsoft.Update.ServiceManager).Services)
+        $managed = @($services | Where-Object { $_.IsDefaultAUService -and $_.IsManaged }).Count -gt 0
+        $seen = @{}
+        $all = New-Object System.Collections.ArrayList
+        $asked = 0
+        $problem = $null
+        function Ask($service) {
+            $searcher = $session.CreateUpdateSearcher()
+            if ($service) { $searcher.ServerSelection = 3; $searcher.ServiceID = $service.ServiceID }
+            foreach ($u in $searcher.Search('IsInstalled=0 and IsHidden=0').Updates) {
+                $id = $u.Identity.UpdateID
+                if (-not $seen.ContainsKey($id)) { $seen[$id] = $true; [void]$all.Add($u) }
+            }
+        }
+        try { Ask $null; $asked++ } catch { $problem = $_.Exception.Message }
+        if (-not $managed) { foreach ($s in $services) { try { Ask $s; $asked++ } catch { if (-not $problem) { $problem = $_.Exception.Message } } } }
+        if ($asked -eq 0) { throw "Windows Update didn't answer: $problem" }
+        # Missing is what Windows would put in for you. Antivirus definitions come several times a day, optional drivers
+        # are the ones under Optional updates, and a new version of Windows is its own decision: apart, not counted.
+        function Kind($u) {
+            $cats = @($u.Categories | ForEach-Object { $_.CategoryID })
+            if ($cats -contains 'e0789628-ce08-4437-be74-2495b842f43b') { return 'antivirus definitions' }
+            if ($cats -contains '3689bdc8-b205-4af4-8d4a-a63924c5e9d5') { return 'a new version of Windows' }
+            if ($u.Type -eq 2 -and -not $u.AutoSelectOnWebSites) { return 'optional driver' }
+            return ''
+        }
+        $missing = @($all | Where-Object { (Kind $_) -eq '' })
+        $apart = @($all | Where-Object { (Kind $_) -ne '' })
+
+        """;
+
     /// <summary>Asks Windows Update what's missing now and says so. After any job the client asks again and sends its inventory, so Devices shows it.</summary>
     public static JobStep CheckUpdates() => new()
     {
         Title = "Check for updates", Language = DeviceScripts.PowerShell, Minutes = 15,
-        Text = DeviceScripts.Clean("""
-            $ErrorActionPreference = 'Stop'
-            $found = (New-Object -ComObject Microsoft.Update.Session).CreateUpdateSearcher().Search("IsInstalled=0 and IsHidden=0 and Type='Software'").Updates
-            if ($found.Count -eq 0) { 'Nothing is missing.'; exit 0 }
-            "$($found.Count) update(s) missing:"
-            foreach ($u in $found) { "  $($u.Title)" }
+        Text = DeviceScripts.Clean(FindUpdates + """
+            if ($missing.Count -eq 0) { 'Nothing is missing.' } else { "$($missing.Count) update(s) missing:"; foreach ($u in $missing) { "  $($u.Title)" } }
+            if ($apart.Count) { 'Also offered, and not counted:'; foreach ($u in $apart) { "  $($u.Title) ($(Kind $u))" } }
             """),
     };
 
-    /// <summary>Every missing update Windows Update offers, downloaded and installed. It doesn't restart the computer.</summary>
+    /// <summary>
+    /// Every missing update Windows offers, from any of its update services, downloaded and installed, and antivirus
+    /// definitions with them. Not optional drivers or a new version of Windows. It doesn't restart the computer.
+    /// </summary>
     public static JobStep InstallUpdates() => new()
     {
         Title = "Install Windows updates", Language = DeviceScripts.PowerShell, Minutes = 180,
-        Text = DeviceScripts.Clean("""
-            $ErrorActionPreference = 'Stop'
-            $session = New-Object -ComObject Microsoft.Update.Session
-            $session.ClientApplicationID = 'Rabbid Lab'
-            $found = $session.CreateUpdateSearcher().Search("IsInstalled=0 and IsHidden=0 and Type='Software'").Updates
+        Text = DeviceScripts.Clean(FindUpdates + """
+            $found = @($missing) + @($apart | Where-Object { (Kind $_) -eq 'antivirus definitions' })
             $wanted = New-Object -ComObject Microsoft.Update.UpdateColl
             foreach ($u in $found) {
                 if ($u.InstallationBehavior.CanRequestUserInput) { "Skipped, it asks questions: $($u.Title)"; continue }

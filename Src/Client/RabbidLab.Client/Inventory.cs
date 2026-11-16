@@ -563,6 +563,9 @@ internal static class Inventory
     // Windows Update's id for the Definition Updates kind, the same in every language.
     private const string DefinitionUpdates = "e0789628-ce08-4437-be74-2495b842f43b";
 
+    // And for Upgrades: a new version of Windows.
+    private const string Upgrades = "3689bdc8-b205-4af4-8d4a-a63924c5e9d5";
+
     // Asks Windows Update what this computer is missing. It goes to Microsoft (or the WSUS server the computer uses),
     // and can take minutes. When it doesn't answer, what it said last time stands.
     private static void AskWindowsUpdate()
@@ -575,40 +578,102 @@ internal static class Inventory
                 return;
             }
             dynamic session = Activator.CreateInstance(type);
-            dynamic searcher = session.CreateUpdateSearcher();
-            // Everything that isn't installed, as Windows' own Update page asks: software, and drivers too.
-            dynamic result = searcher.Search("IsInstalled=0 and IsHidden=0");
-            var list = new List<UpdateReport>();
-            foreach (dynamic update in result.Updates)
+            // Windows keeps several update services (Windows Update, Microsoft Update, the one drivers come from) and its
+            // own Update page puts their answers together. Asking only the usual one gave a server one update where its
+            // page showed five. So each is asked, and an update counts once. A computer pointed at a WSUS server is asked
+            // through that alone: what its administrators approved is what it's missing.
+            var services = new List<object>();
+            var managed = false;
+            try
             {
-                // A driver Windows wouldn't pick itself is one of its optional updates, which its page keeps apart: not missing.
-                if ((int) update.Type == 2 && !(bool) update.AutoSelectOnWebSites)
+                if (Type.GetTypeFromProgID("Microsoft.Update.ServiceManager") is { } managerType)
                 {
-                    continue;
-                }
-                var kb = "";
-                foreach (dynamic id in update.KBArticleIDs)
-                {
-                    kb = "KB" + (string) id;
-                    break;
-                }
-                // An update is in several categories: its kind (Security Updates, Updates...) and the products it's for.
-                string? kind = null;
-                var definitions = false;
-                foreach (dynamic category in update.Categories)
-                {
-                    if (kind is null || string.Equals((string) category.Type, "UpdateClassification", StringComparison.OrdinalIgnoreCase))
+                    dynamic manager = Activator.CreateInstance(managerType);
+                    foreach (dynamic service in manager.Services)
                     {
-                        kind = (string) category.Name;
+                        services.Add(service);
+                        managed |= (bool) service.IsDefaultAUService && (bool) service.IsManaged;
                     }
-                    definitions |= string.Equals((string) category.CategoryID, DefinitionUpdates, StringComparison.OrdinalIgnoreCase);
                 }
-                // Antivirus definitions come out several times a day: listed, as Windows lists them, and marked so they aren't counted.
-                list.Add(new UpdateReport { Kb = kb, Title = (string) update.Title, Kind = kind, Definition = definitions });
             }
-            missing = list;
+            catch (Exception)
+            {
+                // The services can't be listed here: the usual one is still asked.
+            }
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var list = new List<UpdateReport>();
+            var answered = 0;
+            Exception? failed = null;
+            void Ask(object? service)
+            {
+                dynamic searcher = session.CreateUpdateSearcher();
+                if (service is not null)
+                {
+                    searcher.ServerSelection = 3; // another service, named by its id
+                    searcher.ServiceID = (string) ((dynamic) service).ServiceID;
+                }
+                // Everything that isn't installed, as the Update page asks: software, and drivers too.
+                dynamic result = searcher.Search("IsInstalled=0 and IsHidden=0");
+                foreach (dynamic update in result.Updates)
+                {
+                    // A driver Windows wouldn't pick itself is one of its optional updates, which its page keeps apart: not missing.
+                    if (!seen.Add((string) update.Identity.UpdateID) || ((int) update.Type == 2 && !(bool) update.AutoSelectOnWebSites))
+                    {
+                        continue;
+                    }
+                    var kb = "";
+                    foreach (dynamic id in update.KBArticleIDs)
+                    {
+                        kb = "KB" + (string) id;
+                        break;
+                    }
+                    // An update is in several categories: its kind (Security Updates, Updates...) and the products it's for.
+                    string? kind = null;
+                    var (definitions, upgrade) = (false, false);
+                    foreach (dynamic category in update.Categories)
+                    {
+                        if (kind is null || string.Equals((string) category.Type, "UpdateClassification", StringComparison.OrdinalIgnoreCase))
+                        {
+                            kind = (string) category.Name;
+                        }
+                        definitions |= string.Equals((string) category.CategoryID, DefinitionUpdates, StringComparison.OrdinalIgnoreCase);
+                        upgrade |= string.Equals((string) category.CategoryID, Upgrades, StringComparison.OrdinalIgnoreCase);
+                    }
+                    if (upgrade)
+                    {
+                        continue; // a new version of Windows is its own decision, not a missing update
+                    }
+                    // Antivirus definitions come out several times a day: listed, as Windows lists them, and marked so they aren't counted.
+                    list.Add(new UpdateReport { Kb = kb, Title = (string) update.Title, Kind = kind, Definition = definitions });
+                }
+                answered++;
+            }
+            try
+            {
+                Ask(null);
+            }
+            catch (Exception e)
+            {
+                failed = e;
+            }
+            foreach (var service in managed ? new List<object>() : services)
+            {
+                try
+                {
+                    Ask(service);
+                }
+                catch (Exception e)
+                {
+                    failed ??= e; // one service that won't answer doesn't lose the others
+                }
+            }
+            if (answered == 0)
+            {
+                throw failed ?? new InvalidOperationException("Windows Update has no service to ask.");
+            }
+            missing = list.OrderBy(u => u.Definition).ThenBy(u => u.Title, StringComparer.OrdinalIgnoreCase).ToList();
             missingChecked = DateTime.UtcNow;
-            history = History(searcher);
+            history = History(session.CreateUpdateSearcher());
         }
         catch (Exception e)
         {

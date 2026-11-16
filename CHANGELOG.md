@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.239 (2026-11-16)
+
+- Missing Windows updates now match the Windows Update page. Windows keeps several update services and its page adds them together, while Rabbid Lab asked only one, so a server showed 1 missing where Windows showed 5. Every service is asked now and each update counts once. A computer pointed at a WSUS server is still asked through that alone.
+- Check for updates lists what is missing, then what is offered but not counted and why: antivirus definitions, optional drivers, or a new version of Windows.
+- Install Windows updates installs from every service too, with antivirus definitions, and leaves optional drivers and new versions of Windows alone.
+
 ## 1.1.238 (2026-11-16)
 
 - The client window on a computer no longer flashes every few seconds while it is open. It was making its list of facts again from nothing each time, where now it only changes what changed.
