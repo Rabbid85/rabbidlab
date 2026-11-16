@@ -22,6 +22,8 @@ public static class UsersApi
         services.AddSingleton<GpmcSetup>();
         services.AddSingleton<IPrintServerProbe>(_ => OperatingSystem.IsWindows() ? new WindowsPrintServerProbe() : new NoPrintServerProbe());
         services.AddSingleton<PrintServers>();
+        services.AddSingleton<IPrinterSnmp, PrinterSnmp>();
+        services.AddSingleton<PrinterDevices>();
         services.AddSingleton<ClientCommands>();
         services.AddSingleton<IAdminGroups, AdminGroups>();
     }

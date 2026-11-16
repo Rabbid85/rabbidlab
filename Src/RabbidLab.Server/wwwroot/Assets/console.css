@@ -1034,6 +1034,20 @@ input::-ms-reveal { display: none; }
 .pr-probs { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; font-size: 13px; line-height: 1.45; }
 .pr-probs li { display: flex; align-items: flex-start; gap: 9px; color: var(--text); }
 .pr-probs svg { flex: none; width: 15px; height: 15px; margin-top: 2px; color: var(--amber); }
+/* A printer's supplies in its panel: a bar each, in the ink's own colour; the number turns amber when it's nearly out. */
+.pr-sups { display: grid; gap: 9px; margin-bottom: 14px; }
+.pr-sup { display: grid; grid-template-columns: minmax(0, 1fr) 120px 40px; align-items: center; gap: 10px; font-size: 12.5px; color: var(--text); }
+.pr-sup span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pr-sup b { color: var(--title); font-weight: 600; text-align: right; }
+.pr-sup.low b { color: var(--amber); }
+.pr-sup progress { --ink: #8A8FA8; width: 100%; height: 7px; border: 0; border-radius: 999px; background: #1F2232; overflow: hidden; appearance: none; -webkit-appearance: none; }
+.pr-sup progress::-webkit-progress-bar { background: #1F2232; }
+.pr-sup progress::-webkit-progress-value { border-radius: 999px; background: var(--ink); }
+.pr-sup progress::-moz-progress-bar { border-radius: 999px; background: var(--ink); }
+.pr-sup.k progress { --ink: #C9CCDA; }
+.pr-sup.c progress { --ink: #35C2D6; }
+.pr-sup.m progress { --ink: #DB5FA8; }
+.pr-sup.y progress { --ink: #E8C547; }
 /* A command an Are you sure shows before it runs. */
 .sure-code { margin: 0 0 18px; padding: 12px 14px; border: 1px solid var(--line-strong); border-radius: 10px; background: #0C0E17; color: var(--title);
   font: 13px/1.5 "Cascadia Mono", Consolas, monospace; white-space: pre-wrap; word-break: break-all; }

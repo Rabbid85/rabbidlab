@@ -177,6 +177,7 @@
   // --- Printers: every printer the domain's servers share, and every printer on the computers ------------------
   let all = null; // /api/devices/printers
   let adp = null; // /api/ad/printers: what the servers share (asked one by one, PrintServers.cs) and what's in Active Directory
+  let dev = null; // /api/devices/printers/supplies: what each printer says about itself over SNMP (PrinterDevices.cs)
   let rows = []; // the two together: a printer a server shares and computers have is one row
   let tab = 'printers'; // or servers: the print servers found, and the servers that couldn't be asked
   let again = false; // Refresh was pressed: the servers are asked again
@@ -187,7 +188,18 @@
     const m = /^\\\\([^\\]+)\\(.+)$/.exec(text || '');
     return m ? `${m[1].split('.')[0]}\\${m[2]}`.toLowerCase() : '';
   };
-  const direct = (p) => ((p.kind === 'tcpip' || p.kind === 'lpr') && p.address ? p.address : '');
+  // The printer's own address, as the server worked it out from a computer's port or the printer's location.
+  const direct = (p) => p.ip || ((p.kind === 'tcpip' || p.kind === 'lpr') && p.address ? p.address : '');
+  const LOW = 10; // a supply at this many percent or less is nearly out
+  // Which ink a supply is, from its name, for its bar's colour: k, c, m, y, or nothing for a drum or a waste box.
+  const ink = (name) => (/black|\bbk\b|\bk\b/i.test(name) ? 'k' : /cyan/i.test(name) ? 'c' : /magenta/i.test(name) ? 'm' : /yellow/i.test(name) ? 'y' : '');
+  // The supply with the least left, among the ones the printer gives a level for.
+  const lowest = (p) => (p.device?.supplies || []).filter((s) => s.percent != null).sort((a, b) => a.percent - b.percent)[0];
+  // Toner, in a word: the lowest supply, OK when the printer answers without levels, nothing when it didn't answer.
+  const toner = (p) => {
+    const s = lowest(p);
+    return s ? `${s.name} ${s.percent}%` : p.device?.answered && p.device.supplies.length ? 'OK' : '';
+  };
   // One row per printer, the way a person counts them. What a server shares is the row, and the computers connected to it
   // (by its share, or straight to its address) go on it. What only computers have gets a row of its own. Each computer
   // keeps the name it has the printer under (as), which is what Remove needs.
@@ -229,6 +241,12 @@
       else if (managed && row.ip) row.problems.push("Added by hand on computers. It's on no print server, so nobody manages it.");
       rows.push(row);
     }
+    // What each printer says about itself, onto every row at its address; a supply that's nearly out is a problem.
+    const said = new Map((dev?.devices || []).map((d) => [d.ip, d]));
+    for (const r of rows) {
+      r.device = r.ip ? said.get(r.ip) : null;
+      for (const s of r.device?.supplies || []) if (s.percent != null && s.percent <= LOW) r.problems.push(`${s.name} is at ${s.percent}%: nearly out.`);
+    }
   };
   // What shows under Address: the printer's own address, never the share (that has its own column).
   const addr = (p) => p.ip || (p.listed ? '' : p.address) || '';
@@ -243,8 +261,15 @@
       { key: 'address', label: 'Address', w: 125, on: true, get: addr, cell: (p) => `<span class="mono muted ell">${esc(addr(p))}</span>` },
       // A queue its server listed with nothing wrong is Ready; one only computers have says nothing.
       { key: 'status', label: 'Status', w: 110, on: true, get: (p) => p.status || (p.found ? 'Ready' : ''), cell: (p) => `<span class="ell ${p.status ? 'pr-bad' : 'muted'}">${esc(p.status || (p.found ? 'Ready' : ''))}</span>` },
+      // The supply with the least left, from the printer itself: sorts by how much that is, the ones that didn't say last.
+      { key: 'toner', label: 'Toner', w: 200, on: true, get: (p) => lowest(p)?.percent ?? (toner(p) ? 100 : 101), text: toner,
+        cell: (p) => `<span class="ell ${lowest(p)?.percent <= LOW ? 'pr-bad' : ''}">${esc(toner(p))}</span>` },
       { key: 'problems', label: 'Problems', w: 250, on: true, get: (p) => p.problems?.length || 0, text: (p) => (p.problems || []).join(' '), cell: (p) => `<span class="ell pr-bad">${esc(probs(p))}</span>` },
       { key: 'on', label: 'On', w: 120, on: true, get: (p) => p.computers.length, text: (p) => onText(p.computers.length), cell: (p) => esc(onText(p.computers.length)) },
+      // What the printer calls itself, which the driver's name often isn't.
+      { key: 'model', label: 'Model', w: 220, on: true, get: (p) => p.device?.model || '', cell: (p) => `<span class="ell">${esc(p.device?.model || '')}</span>` },
+      { key: 'serial', label: 'Serial number', w: 140, get: (p) => p.device?.serial || '', cell: (p) => `<span class="mono muted ell">${esc(p.device?.serial || '')}</span>` },
+      { key: 'pages', label: 'Pages printed', w: 120, get: (p) => p.device?.pages ?? '', cell: (p) => esc(p.device?.pages?.toLocaleString() ?? '') },
       { key: 'driver', label: 'Driver', w: 210, on: true, get: (p) => p.drivers.join(', '), cell: (p) => `<span class="ell">${esc(p.drivers.length > 1 ? `${p.drivers.length} drivers` : p.drivers[0] || '')}</span>` },
       { key: 'location', label: 'Location', w: 140, on: true, get: (p) => p.location || '', cell: (p) => `<span class="ell">${esc(p.location || '')}</span>` },
       { key: 'kind', label: 'Kind', w: 130, on: true, get: (p) => KIND[p.kind] || p.kind },
@@ -278,7 +303,24 @@
     { key: 'on', label: 'On (computers)', type: 'number', get: (p) => p.computers.length }, { key: 'server', label: 'Print server', type: 'choice', get: (p) => p.server || '' },
     { key: 'location', label: 'Location', type: 'text', get: (p) => p.location || '' }, { key: 'published', label: 'In AD', type: 'choice', get: (p) => (p.published ? 'Yes' : 'No') },
     { key: 'status', label: 'Status', type: 'choice', get: (p) => p.status || (p.found ? 'Ready' : '') }, { key: 'problems', label: 'Has problems', type: 'choice', get: (p) => (p.problems?.length ? 'Yes' : 'No') },
-    { key: 'jobs', label: 'Jobs waiting', type: 'number', get: (p) => p.jobs ?? 0 }]]];
+    { key: 'jobs', label: 'Jobs waiting', type: 'number', get: (p) => p.jobs ?? 0 }, { key: 'toner', label: 'Lowest supply (%)', type: 'number', get: (p) => lowest(p)?.percent },
+    { key: 'model', label: 'Model', type: 'choice', get: (p) => p.device?.model || '' }, { key: 'pages', label: 'Pages printed', type: 'number', get: (p) => p.device?.pages }]]];
+  // What the printers say about themselves, read after the list so the list never waits on a printer. Their cells
+  // fill in when it comes; printers still answering are read again shortly, for a couple of minutes at most.
+  let supplyTimer = 0;
+  let supplyTries = 0;
+  const supplies = async (ask = false) => {
+    clearTimeout(supplyTimer);
+    try {
+      dev = await get(`/api/devices/printers/supplies${ask ? '?again=true' : ''}`);
+    } catch {
+      return; // the list stands without them
+    }
+    merge();
+    if (D.at() !== 'printers') return;
+    D.draw();
+    if (dev.asking && supplyTries++ < 20) supplyTimer = setTimeout(() => supplies(), 5000);
+  };
   D.lists.printers = ['Printers', 'printer', 'Every printer your servers share and every printer on the computers. Add one from a computer, or tick computers and use Actions.'];
   D.more.printers = {
     get table() { return tab === 'servers' ? 'dv-pservers' : 'dv-printers'; },
@@ -293,6 +335,8 @@
       again = false;
       [all, adp] = await Promise.all([get('/api/devices/printers'), has('ad.view') ? get(`/api/ad/printers${ask ? '?again=true' : ''}`).catch(() => null) : null]);
       merge();
+      supplyTries = 0;
+      supplies(ask);
       // Servers still answering: read again shortly. The server calls a search over after 90 seconds, so this ends.
       clearTimeout(followTimer);
       if (adp?.scanning && D.at() === 'printers') {
@@ -328,6 +372,11 @@
       + `<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`
       + (can() && p.kind !== 'universal' && p.computers.length ? `<div class="dw-bar"><button type="button" class="dw-qa" data-prl-remove>${svg('trash')}<span>Remove from these computers</span></button></div>` : '')
       + (p.problems?.length ? section(`Problems <small>${p.problems.length}</small>`, `<ul class="pr-probs">${p.problems.map((t) => `<li>${svg('alert')}<span>${esc(t)}</span></li>`).join('')}</ul>`) : '')
+      // What the printer itself said over SNMP: its supplies as bars in their own colours, then who it is.
+      + (!p.device ? '' : !p.device.answered ? section('From the printer', none(`It didn't answer over SNMP at ${p.ip}. It may be off, on a network this server can't reach, or have SNMP turned off.`))
+        : section('From the printer', (p.device.supplies.length ? `<div class="pr-sups">${p.device.supplies.map((s) => `<div class="pr-sup ${ink(s.name)}${s.percent != null && s.percent <= LOW ? ' low' : ''}"><span>${esc(s.name)}</span>`
+          + `${s.percent != null ? `<progress max="100" value="${s.percent}"></progress><b>${s.percent}%</b>` : `<i></i><b>${s.some ? 'OK' : ''}</b>`}</div>`).join('')}</div>` : '')
+          + `<ul class="does wide">${line('Model', p.device.model)}${line('Serial number', p.device.serial, true)}${line('Pages printed', p.device.pages?.toLocaleString())}${line('Asked', R.when(p.device.at))}</ul>`))
       + (p.listed ? section('On the print server', `<ul class="does wide">${line('Print server', p.server)}${line('Share', p.share, true)}${line('Address', p.ip, true)}${line('Port', p.port, true)}`
         + `${line('Location', p.location || 'Not set')}${line('Comment', p.description)}${line('Status', p.found ? p.status || 'Ready' : '')}${line('Jobs waiting', p.found ? p.jobs ?? '' : '')}`
         + `${line('In Active Directory', p.published ? 'Listed' : 'Not listed')}</ul>`) : '')

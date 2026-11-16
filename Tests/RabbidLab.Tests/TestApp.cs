@@ -50,6 +50,9 @@ public sealed class TestApp(string data) : WebApplicationFactory<Program>
     /// <summary>Stands in for the print servers: each answers what the test says, and none is really asked.</summary>
     public FakePrintServerProbe PrintProbe { get; } = new();
 
+    /// <summary>Stands in for the printers: each says what the test gave it, and none gets a packet.</summary>
+    public FakePrinterSnmp PrinterSnmp { get; } = new();
+
     /// <summary>Stands in for the mail server: keeps what would have been sent.</summary>
     public FakeMail Mail { get; } = new();
 
@@ -106,6 +109,9 @@ public sealed class TestApp(string data) : WebApplicationFactory<Program>
             // No test asks a real server for its printers.
             services.RemoveAll<IPrintServerProbe>();
             services.AddSingleton<IPrintServerProbe>(PrintProbe);
+            // Nor a real printer about itself.
+            services.RemoveAll<IPrinterSnmp>();
+            services.AddSingleton<IPrinterSnmp>(PrinterSnmp);
             // The tests run each round of checks themselves.
             foreach (var worker in services.Where(d => d.ImplementationType == typeof(SensorWorker)).ToList())
             {
@@ -168,6 +174,24 @@ public sealed class FakeClock : TimeProvider
     public override DateTimeOffset GetUtcNow() => now;
 
     public void Advance(TimeSpan by) => now += by;
+}
+
+/// <summary>Printers that say what the test gave them: one it wasn't given doesn't answer.</summary>
+public sealed class FakePrinterSnmp : IPrinterSnmp
+{
+    public Dictionary<string, PrinterDevice> Says { get; } = [];
+
+    /// <summary>Every address asked, in order.</summary>
+    public List<string> Asked { get; } = [];
+
+    public PrinterDevice Ask(string ip, DateTime now)
+    {
+        lock (Asked)
+        {
+            Asked.Add(ip);
+        }
+        return Says.TryGetValue(ip, out var said) ? said with { At = now } : new PrinterDevice(ip, false, null, null, null, [], now);
+    }
 }
 
 /// <summary>Print servers that answer what the test gave them: nothing shared unless it says so.</summary>

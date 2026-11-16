@@ -2,6 +2,13 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.235 (2026-11-16)
+
+- Printers asks each printer about itself over SNMP and shows its toner. A Toner column gives the supply with the least left, and a printer panel has a bar for every supply with the model, serial number and pages printed. A supply at 10 percent or less is listed under Problems.
+- Model, Serial number and Pages printed are columns too. Printers are asked with the read community public, a few at a time, and the answers are kept for six hours. Refresh asks again.
+- A printer a computer has by WSD shows its address, when its location gives it.
+- A link to a site that sends you to a sign-in page somewhere else no longer takes that page as its name and icon, such as Something went wrong with a Microsoft logo. Refresh icons puts the right icon on a link that has the wrong one. Its name is yours to change.
+
 ## 1.1.234 (2026-11-16)
 
 - Printers shows grey placeholder rows under its headings while it is being read, where it used to say Reading the list. Local admins, Scripts, Jobs and Workflows do the same.

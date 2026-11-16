@@ -461,6 +461,43 @@ public sealed class LinksTests : IDisposable
     }
 
     [Fact]
+    public async Task A_site_that_sends_readers_to_a_sign_in_page_somewhere_else_keeps_its_own_icon_and_doesn_t_take_that_page_s_name()
+    {
+        byte[] own = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3, 4];
+        byte[] theirs = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 9, 9, 9, 9];
+        // The sign-in service, on another address: an error page with its own logo.
+        using var signIn = new TinySite(new()
+        {
+            ["/"] = ("text/html", Encoding.UTF8.GetBytes("<html><head><title>Something went wrong</title><link rel=\"icon\" href=\"/logo.png\"></head></html>")),
+            ["/logo.png"] = ("image/png", theirs),
+        }, at: "127.0.0.2");
+        // A helpdesk that sends anyone not signed in over there, and still serves its own icon.
+        using var helpdesk = new TinySite(new()
+        {
+            ["/"] = ("text/html", Encoding.UTF8.GetBytes($"<html><head><meta http-equiv=\"refresh\" content=\"0;url=http://127.0.0.2:{signIn.Port}/\"></head></html>")),
+            ["/favicon.ico"] = ("image/png", own),
+        });
+
+        var look = await Links.Look($"http://127.0.0.1:{helpdesk.Port}", CancellationToken.None, guarded: false);
+
+        Assert.Null(look.Name);
+        Assert.Equal("data:image/png;base64," + Convert.ToBase64String(own), look.Icon);
+    }
+
+    [Theory]
+    [InlineData("helpdesk.spgusa.com", "helpdesk.spgusa.com", true)]
+    [InlineData("helpdesk.spgusa.com", "login.microsoftonline.com", false)]
+    [InlineData("example.com", "www.example.com", true)]
+    [InlineData("nas", "nas.amw.com", true)]
+    [InlineData("nas", "plex.amw.com", false)]
+    [InlineData("shop.example.co.uk", "login.example.co.uk", true)]
+    [InlineData("shop.example.co.uk", "login.other.co.uk", false)]
+    [InlineData("192.168.2.23", "192.168.2.24", false)]
+    [InlineData("192.168.2.23", "truenas.amw.com", false)]
+    public void A_page_that_ends_up_under_another_name_is_the_same_site_only_under_the_same_domain(string from, string to, bool same) =>
+        Assert.Equal(same, Links.SameSite(from, to));
+
+    [Fact]
     public void Known_products_are_recognised_by_name_host_name_or_page()
     {
         Assert.Equal("TrueNAS storage", KnownSites.Describe("nas01", "https://truenas.amw.com"));
@@ -540,11 +577,14 @@ public sealed class LinksTests : IDisposable
     /// <summary>A web server on a real port, answering GETs for the paths it's given.</summary>
     internal sealed class TinySite : IDisposable
     {
-        private readonly TcpListener listener = new(IPAddress.Loopback, 0);
+        private readonly TcpListener listener;
         private readonly CancellationTokenSource stop = new();
 
-        public TinySite(Dictionary<string, (string Type, byte[] Body)> pages)
+        /// <param name="pages">What each path answers.</param>
+        /// <param name="at">Another loopback address (127.0.0.2) for a site that has to be somewhere else.</param>
+        public TinySite(Dictionary<string, (string Type, byte[] Body)> pages, string at = "127.0.0.1")
         {
+            listener = new TcpListener(IPAddress.Parse(at), 0);
             listener.Start();
             Port = ((IPEndPoint) listener.LocalEndpoint).Port;
             _ = Task.Run(async () =>

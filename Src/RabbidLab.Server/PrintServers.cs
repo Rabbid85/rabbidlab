@@ -130,6 +130,15 @@ public sealed class PrintServers(IPrintServerProbe probe, TimeProvider? clock = 
         }
     }
 
+    /// <summary>The printers' own addresses among what the servers listed last time. Nothing is asked.</summary>
+    public List<string> Addresses()
+    {
+        lock (gate)
+        {
+            return [.. answers.Values.SelectMany(a => a.Printers).Select(p => p.Ip).OfType<string>().Distinct()];
+        }
+    }
+
     private async Task Search(List<AdServer> servers)
     {
         lock (gate)

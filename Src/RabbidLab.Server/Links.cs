@@ -622,6 +622,12 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
         {
             var http = guarded ? Reader : Http;
             var (html, where, ok) = await Page(http, uri, cut.Token);
+            // Sent on to another site, such as a sign-in page somewhere else: that page's name and icon aren't this site's
+            // ("Something went wrong" with Microsoft's logo). The site's own icon is still asked for, where it usually is.
+            if (!SameSite(uri.Host, where.Host) && await Ip(where.Host, cut.Token) != ip)
+            {
+                (html, where, ok) = ("", uri, false);
+            }
             var name = ok ? Named(html) : null; // an error page's title ("Not Found") is no name
             var about = ok ? Meta(html, "description") : null;
             var (icon, from, saw) = await Icon(http, html, where, cut.Token, same: served);
@@ -653,6 +659,31 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
                 ? $"{uri.Host} is on this server or a link-local address, which {Product.Title} doesn't read, so fill it in yourself."
                 : $"{uri.Host} didn't answer, so fill it in yourself.");
         }
+    }
+
+    /// <summary>
+    /// Whether a page that ended up at another host is still the same site: the same name, a shorter or longer form of it
+    /// (nas and nas.amw.com), or another name under the same domain (www.example.com and app.example.com). Addresses only
+    /// match themselves.
+    /// </summary>
+    public static bool SameSite(string from, string to)
+    {
+        if (string.Equals(from, to, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+        if (IPAddress.TryParse(from.Trim('[', ']'), out _) || IPAddress.TryParse(to.Trim('[', ']'), out _))
+        {
+            return false;
+        }
+        var (a, b) = (from.ToLowerInvariant().Split('.'), to.ToLowerInvariant().Split('.'));
+        if (a.Length == 1 || b.Length == 1)
+        {
+            return a[0] == b[0];
+        }
+        // The last two labels are the domain, or three where the last two are a country's (example.co.uk).
+        var keep = a[^1].Length == 2 && a[^2].Length <= 3 ? 3 : 2;
+        return a.Length >= keep && b.Length >= keep && a[^keep..].SequenceEqual(b[^keep..]);
     }
 
     /// <summary>Whether a lookup must not read from this address: this server itself, or a link-local one.</summary>

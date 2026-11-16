@@ -224,6 +224,8 @@ public static class ClientsApi
                         name = g.First().Printer.Name,
                         kind = g.First().Printer.Kind,
                         address = g.First().Printer.Address,
+                        // The printer's own address where a computer's port or location gives it away (PrinterDevices.cs).
+                        ip = g.Select(x => PrinterDevices.IpOf(x.Printer)).FirstOrDefault(a => a is not null),
                         drivers = g.Select(x => x.Printer.Driver ?? "").Where(d => d.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
                         computers = g.Select(x => new { id = x.Client.Id, computer = x.Client.Computer, driver = x.Printer.Driver, port = x.Printer.Port, offline = x.Printer.Offline, shared = x.Printer.Shared })
                             .DistinctBy(x => x.id).OrderBy(x => x.computer, StringComparer.OrdinalIgnoreCase).ToList(),
@@ -231,6 +233,21 @@ public static class ClientsApi
                     .OrderBy(x => x.name, StringComparer.OrdinalIgnoreCase).ToList(),
                 computers = all.Select(x => new { id = x.Client.Id, computer = x.Client.Computer, read = x.Inventory?.Printers is not null, drivers = x.Inventory?.PrinterDrivers ?? [] }).ToList(),
             });
+        });
+
+        // What the printers say about themselves over SNMP: model, serial number, pages printed and supply levels, for each
+        // address a computer's printer or a server's queue points at. Kept six hours; again=true asks them again now.
+        // The servers' queues only for someone who may see Active Directory, as on the list itself.
+        app.MapGet("/api/devices/printers/supplies", async (bool? again, HttpContext context, Clients clients, Inventories inventories, PrintServers servers, PrinterDevices devices) =>
+        {
+            if (!Access.Can(context, Permissions.SeatsView))
+            {
+                return Access.NotAllowed();
+            }
+            var own = clients.All().Where(c => c.Approved is not null).SelectMany(c => inventories.Get(c.Id)?.Printers ?? []).Select(PrinterDevices.IpOf).OfType<string>();
+            var queues = Access.Can(context, Permissions.AdView) ? servers.Addresses().Where(PrinterDevices.Private) : [];
+            var (said, asking) = await devices.Read(own.Concat(queues), again == true, context.RequestAborted);
+            return Results.Ok(new { devices = said, asking });
         });
 
         // Windows updates across the approved computers: a row for each update, with the computers missing it and the ones that have it.
