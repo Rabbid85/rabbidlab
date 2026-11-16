@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.230 (2026-11-16)
+
+- The banner squares and its second glow follow the accent colour, on every page and on the sign-in page. With the standard accent they look as they always did.
+
 ## 1.1.229 (2026-11-16)
 
 - Active Directory shows its grey placeholder rows and numbers every time it reads a list, from the moment the page opens, not only on later visits.

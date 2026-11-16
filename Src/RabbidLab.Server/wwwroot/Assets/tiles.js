@@ -7,8 +7,16 @@
   if (!canvas || !canvas.getContext) return;
   const ctx = canvas.getContext('2d');
   const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  // Ember first, then the console's purple, green, amber and a pale grey (palette.js).
-  const COLOURS = window.RabbidLabColours.tiles;
+  // The accent and the colours that go with it, then a pale grey (palette.js). They're CSS, which a canvas can't read, so
+  // each is turned into a plain colour first.
+  const probe = document.createElement('i');
+  probe.hidden = true;
+  document.body.append(probe);
+  const COLOURS = window.RabbidLabColours.tiles.map((c) => {
+    probe.style.color = c;
+    return getComputedStyle(probe).color;
+  });
+  probe.remove();
   const PATCH = 260; // one tile for about every 260 × 260 pixels of screen
   let most = 200; // enough for a 4K screen; lowered when frames run slow
   let tiles = [];

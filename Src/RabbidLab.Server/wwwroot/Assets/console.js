@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.230', [
+    'The banner squares and its second glow follow the accent colour, on every page and on the sign-in page. With the standard accent they look as they always did.',
+  ]],
   ['1.1.229', [
     'Active Directory shows its grey placeholder rows and numbers every time it reads a list, from the moment the page opens, not only on later visits.',
     'Initials leave out brackets and other marks: (service) ADFS shows SA, not (A.',

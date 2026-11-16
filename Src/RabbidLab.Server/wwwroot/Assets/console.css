@@ -5,6 +5,9 @@
   --accent: #E8542F; --accent-line: #FF6A45; --accent-hover: #FF7452; --accent-soft: #FF8A3D;
   --ok: #5FD4A0; --red: #FF6B7D; --amber: #F2BE6B;
   --ember: linear-gradient(90deg, #FF8A3D, #E8542F); /* primary buttons, switches that are on, progress bars */
+  /* The banner's squares and its second glow, from the accent: with Ember the orange, amber, purple and green they always were. */
+  --tile-a: var(--accent); --tile-b: var(--accent-soft); --tile-c: hsl(from var(--accent-soft) calc(h + 15) s l);
+  --tile-d: hsl(from var(--accent) calc(h + 270) s l); --tile-e: hsl(from var(--accent) calc(h + 140) calc(s * .7) l);
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; min-height: 100%; }
@@ -519,7 +522,7 @@ a.small-link { margin-top: 8px; padding: 6px 12px; font-size: 12.5px; }
 /* Overview: the hero across the top, the news under it, then this machine. */
 .page.home { max-width: none; padding: 0; gap: 0; }
 .hero { position: relative; overflow: hidden; padding: 32px 44px 26px; border-bottom: 1px solid var(--line);
-  --glow: color-mix(in srgb, var(--accent) 22%, transparent); --glow-2: rgba(158, 89, 207, .14);
+  --glow: color-mix(in srgb, var(--accent) 22%, transparent); --glow-2: color-mix(in srgb, var(--tile-d) 14%, transparent);
   /* Eased fades sized to the banner, so the glow has no edge to it at any width. */
   background: radial-gradient(48% 125% at 88% 4%, var(--glow) 0%, color-mix(in srgb, var(--glow) 95%, transparent) 15%, color-mix(in srgb, var(--glow) 82%, transparent) 29%, color-mix(in srgb, var(--glow) 65%, transparent) 41%, color-mix(in srgb, var(--glow) 45%, transparent) 53%, color-mix(in srgb, var(--glow) 26%, transparent) 65%, color-mix(in srgb, var(--glow) 11%, transparent) 77%, color-mix(in srgb, var(--glow) 3%, transparent) 88%, transparent 100%),
     radial-gradient(34% 95% at 70% 100%, var(--glow-2) 0%, color-mix(in srgb, var(--glow-2) 95%, transparent) 15%, color-mix(in srgb, var(--glow-2) 82%, transparent) 29%, color-mix(in srgb, var(--glow-2) 65%, transparent) 41%, color-mix(in srgb, var(--glow-2) 45%, transparent) 53%, color-mix(in srgb, var(--glow-2) 26%, transparent) 65%, color-mix(in srgb, var(--glow-2) 11%, transparent) 77%, color-mix(in srgb, var(--glow-2) 3%, transparent) 88%, transparent 100%), #0C0D16; }
