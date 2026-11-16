@@ -2,8 +2,8 @@
 #   1. publishes the console with its own copy of .NET (so the computer needs nothing else installed),
 #   2. zips it, and
 #   3. builds Setup (Installer\Setup, a small WPF program on .NET Framework 4.7.2) with the zip inside it.
-# -Stage Console does step 1 only, -Stage Setup steps 2 and 3 (from artifacts\publish), so a build on GitHub can have
-# the console signed in between (.github\workflows\build.yml). The default does all three.
+# -Stage Console does step 1 only, -Stage Setup steps 2 and 3 (from artifacts\publish), so the console can be
+# code-signed in between, when there's something to sign it with. The default does all three.
 # -Stage Client builds only the client program, and -KeepClient has -Stage Console put that one (signed by then) in the
 # client's MSI instead of building it again.
 # -Dev builds Rabbid Lab Dev instead (Installer\Setup\Edition.cs), which installs beside the release.

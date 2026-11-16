@@ -1,13 +1,11 @@
 #!/usr/bin/env bash
 # Releases Rabbid Lab on GitHub:
 #   1. tags the version (v1.2.3) and pushes the tag,
-#   2. builds the installer and uninstaller: here, or once SignPath is set up, by starting the Build workflow
-#      (.github/workflows/build.yml) for the tag, which builds on GitHub and has them code-signed, then downloading them,
+#   2. builds the installer and uninstaller here, on this PC (Installer/build.ps1),
 #   3. adds the release signature (Tools/ReleaseSign, with the release key on this PC) and writes release.json,
 #   4. makes the Docker download and creates the GitHub release with all of it attached.
-#   bash Installer/publish.sh            release what main holds: built on GitHub once SignPath signs there, else here
-#   bash Installer/publish.sh --local    build here anyway (unsigned)
-#   bash Installer/publish.sh --github   build on GitHub anyway
+#   bash Installer/publish.sh            release what main holds
+# Nothing is built on GitHub: there is no workflow, and GitHub only holds the code and the releases.
 # Needs gh, signed in (gh auth login).
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -37,34 +35,8 @@ mkdir -p artifacts
 git rev-parse -q --verify "refs/tags/$tag" >/dev/null || git tag "$tag"
 git push -q origin "refs/tags/$tag"
 
-# GitHub's build only adds something when SignPath signs it there (its secret and variable are set; SignPath only signs
-# what GitHub built from this repo). Until then the same unsigned files are built here, in a few minutes, not ten.
-how="${1:-}"
-if [ -z "$how" ]; then
-  if gh secret list 2>/dev/null | grep -q '^SIGNPATH_API_TOKEN' && gh variable list 2>/dev/null | grep -q '^SIGNPATH_ORGANIZATION_ID'; then
-    how=--github
-  else
-    how=--local
-    echo "SignPath isn't set up on GitHub yet, so this builds here (unsigned, as GitHub's would be)."
-  fi
-fi
-if [ "$how" = "--local" ]; then
-  powershell.exe -NoProfile -ExecutionPolicy Bypass -File Installer/build.ps1 -Release
-else
-  # The workflow only runs when started (a tag alone doesn't start it), so it's started here for this tag.
-  gh workflow run build.yml --ref "$tag"
-  echo "Waiting for the Build workflow for $tag..."
-  run=""
-  for _ in $(seq 1 30); do
-    run=$(gh run list --workflow build.yml --json databaseId,headBranch --jq ".[] | select(.headBranch == \"$tag\") | .databaseId" | head -1)
-    [ -n "$run" ] && break
-    sleep 10
-  done
-  [ -n "$run" ] || { echo "No Build workflow started for $tag."; exit 1; }
-  gh run watch "$run" --exit-status
-  rm -f "$setup" "$remover" "$client" "$policy"
-  gh run download "$run" --name "RabbidLab-$version" --dir artifacts
-fi
+# Built here, in a few minutes. The files aren't code-signed.
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File Installer/build.ps1 -Release
 for f in "$setup" "$remover" "$client" "$policy"; do
   [ -f "$f" ] || { echo "$f is missing, so nothing was published."; exit 1; }
 done

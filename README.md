@@ -29,16 +29,9 @@ What changed in each version: [CHANGELOG.md](CHANGELOG.md).
 
 Running the installer again updates Rabbid Lab and keeps its settings. Uninstall from Settings > Apps.
 
-## Code signing policy
+## How releases are built
 
-Free code signing provided by [SignPath.io](https://about.signpath.io/), certificate by [SignPath Foundation](https://signpath.org/).
-
-| Role | Members |
-|---|---|
-| Committers and reviewers | [Rabbid85](https://github.com/Rabbid85) |
-| Approvers | [Rabbid85](https://github.com/Rabbid85) |
-
-Releases are built by [GitHub Actions](.github/workflows/build.yml) from this repository. The installer, the uninstaller, Rabbid Lab's own files (`RabbidLab.Server.exe`, `RabbidLab.Server.dll`, `RabbidLab.Updater.dll`), the client (`RabbidLab-Client.exe`) and its installer (`RabbidLab-Client.msi`) are signed, and every signing request is approved by hand. Dev builds are not signed.
+Releases are built from this repository on the maintainer's PC and uploaded here. Nothing is built on GitHub. The installers aren't code-signed yet, so Windows may warn the first time you run one. Each release does carry Rabbid Lab's own signature, and the built-in updater checks it before installing anything.
 
 ## Privacy
 
