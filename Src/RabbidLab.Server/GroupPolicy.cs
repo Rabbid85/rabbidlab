@@ -282,7 +282,7 @@ public sealed partial class DirectoryTools : IGroupPolicy
                 return had.Detail;
             }
         }
-        var xml = await Gpm(new GpoLogin(null, null), t => Gpmc.Report(t, g.Id, false, stop), stop);
+        var xml = await Gpm(new GpoLogin(null, null), t => Gpmc.Report(t, g.Id, false, stop), stop, reads: true);
         var detail = GpoReports.Parse(g.Id, xml);
         lock (details)
         {
@@ -294,7 +294,7 @@ public sealed partial class DirectoryTools : IGroupPolicy
     public async Task<(string Html, string Name)> GpoReport(string id, CancellationToken stop)
     {
         var g = await FindGpo(id, stop);
-        return (await Gpm(new GpoLogin(null, null), t => Gpmc.Report(t, g.Id, true, stop), stop), g.Name);
+        return (await Gpm(new GpoLogin(null, null), t => Gpmc.Report(t, g.Id, true, stop), stop, reads: true), g.Name);
     }
 
     private async Task<GpoView> FindGpo(string id, CancellationToken stop)
@@ -529,6 +529,10 @@ public sealed partial class DirectoryTools : IGroupPolicy
     private async Task<T> Change<T>(GpoLogin login, Func<ILdap, DirectoryToolsFile, Task<T>> work, CancellationToken stop)
     {
         var f = Ready();
+        if (f.ReadOnly && !login.Given)
+        {
+            throw new GpoNeedsLogin(ReadOnlyNeedsAdmin);
+        }
         using var ldap = login.Given ? await AsLogin(f, login, stop) : await Open(stop);
         try
         {
@@ -551,6 +555,8 @@ public sealed partial class DirectoryTools : IGroupPolicy
             await work(ldap, f);
             return true;
         }, stop);
+
+    private static string ReadOnlyNeedsAdmin => $"{Product.Title} is only reading Active Directory until its service account is set up. Sign in as a domain admin to make this change.";
 
     private static string NeedsAdmin(DirectoryToolsFile f) =>
         $"{f.Account} isn't allowed to change Group Policy. Sign in as a domain admin to make this change.";
@@ -686,7 +692,7 @@ public sealed partial class DirectoryTools : IGroupPolicy
     }
 
     // As Rabbid Lab's own account, or the login given (checked first, since Windows only tries it once it's used).
-    private async Task<T> Gpm<T>(GpoLogin login, Func<GpmcTarget, Task<T>> work, CancellationToken stop)
+    private async Task<T> Gpm<T>(GpoLogin login, Func<GpmcTarget, Task<T>> work, CancellationToken stop, bool reads = false)
     {
         var f = Ready();
         if (!Gpmc.Here)
@@ -702,6 +708,11 @@ public sealed partial class DirectoryTools : IGroupPolicy
             }
             var u = login.Username!.Trim();
             target = new GpmcTarget(f.Domain!, host, u.Contains('\\') || u.Contains('@') ? u : $"{u}@{f.Domain}", login.Password ?? "");
+        }
+        else if (f.ReadOnly)
+        {
+            // Reports are read as this computer; changes take a login.
+            target = reads ? new GpmcTarget(f.Domain!, host, "", "") : throw new GpoNeedsLogin(ReadOnlyNeedsAdmin);
         }
         else
         {

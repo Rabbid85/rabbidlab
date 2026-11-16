@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.216 (2026-11-16)
+
+- The service account card on the Active Directory pages is down to one line, with Not now beside Set up.
+- Not now opens the Active Directory and Group Policy pages read-only. They read the domain as this server, and changes wait until the service account is set up. Group Policy changes still work with a domain admin login.
+
 ## 1.1.215 (2026-11-16)
 
 - This server has the Actions button at the top of its panel like the other computers, and Install the client here is in its menu.

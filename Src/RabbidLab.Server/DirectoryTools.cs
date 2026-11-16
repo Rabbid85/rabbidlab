@@ -29,11 +29,15 @@ public sealed class DirectoryToolsFile
     public bool Made { get; set; }
     public string? By { get; set; }
     public DateTime? At { get; set; }
+
+    /// <summary>Not set up: Active Directory read as this computer until it is (never saved).</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool ReadOnly { get; set; }
 }
 
 /// <summary>What the tools are working with, for the page.</summary>
 public sealed record DirectoryToolsState(string Domain, string Account, string Scope, string ScopeName, string NewUsers, string NewUsersName, bool Made, string? By, DateTime? At,
-    string NewGroups = "", string NewGroupsName = "", string NewComputers = "", string NewComputersName = "");
+    string NewGroups = "", string NewGroupsName = "", string NewComputers = "", string NewComputersName = "", bool ReadOnly = false);
 
 /// <summary>An OU or container. Fixed says why nothing new can go in it (Builtin, Domain Controllers), or is null.</summary>
 public sealed record AdOu(string Dn, string Name, string Path, string? Fixed = null);
@@ -80,6 +84,9 @@ public interface IDirectoryTools
 
     /// <summary>What it works with, or null until it's set up.</summary>
     DirectoryToolsState? State();
+
+    /// <summary>Until it's set up: what the pages work with while reading as this computer, or null where that can't be.</summary>
+    DirectoryToolsState? Reading();
 
     Task<SetupLook> Look(string? domain, string username, string password, CancellationToken stop);
 
@@ -200,20 +207,41 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
 
     public string? Domain => accounts.Directory?.Domain ?? ActiveDirectory.ThisDomain();
 
+    /// <summary>
+    /// Until the service account is set up, Active Directory is read as this computer, which can read most of it, and
+    /// every change is refused. Null where that can't be: tests, Docker, a server outside a domain.
+    /// </summary>
+    public Func<string, string, CancellationToken, Task<ILdap?>>? AsComputer { get; set; } =
+        opener is null && OperatingSystem.IsWindows() && !Product.InContainer ? Ldap.OpenAnonymous : null;
+
     public DirectoryToolsState? State()
     {
         var f = Load();
-        if (f.Account is null || f.Domain is null || f.Scope is null)
-        {
-            return null;
-        }
-        var baseDn = BaseOf(f.Domain);
+        return f.Account is null || f.Domain is null || f.Scope is null ? null : StateOf(f);
+    }
+
+    public DirectoryToolsState? Reading() => State() is null && ReadOnlyFile() is { } f ? StateOf(f) : null;
+
+    private DirectoryToolsState StateOf(DirectoryToolsFile f)
+    {
+        var baseDn = BaseOf(f.Domain!);
         var newUsers = NewUsersOf(f);
         var newGroups = NewGroupsOf(f);
         var newComputers = NewComputersOf(f);
-        return new DirectoryToolsState(f.Domain, f.Account, f.Scope, ScopeName(f.Scope, baseDn, f.Domain), newUsers, ScopeName(newUsers, baseDn, f.Domain), f.Made, f.By, f.At,
-            newGroups, ScopeName(newGroups, baseDn, f.Domain), newComputers, ScopeName(newComputers, baseDn, f.Domain));
+        return new DirectoryToolsState(f.Domain!, f.Account!, f.Scope!, ScopeName(f.Scope!, baseDn, f.Domain!), newUsers, ScopeName(newUsers, baseDn, f.Domain!), f.Made, f.By, f.At,
+            newGroups, ScopeName(newGroups, baseDn, f.Domain!), newComputers, ScopeName(newComputers, baseDn, f.Domain!), f.ReadOnly);
     }
+
+    /// <summary>The whole of this computer's domain, as this computer: what Ready gives until it's set up.</summary>
+    /// <summary>The domain this computer is in (tests give one).</summary>
+    public Func<string?> ComputerDomain { get; set; } = ActiveDirectory.ThisDomain;
+
+    private DirectoryToolsFile? ReadOnlyFile() => AsComputer is not null && ComputerDomain() is { Length: > 0 } domain
+        ? new DirectoryToolsFile { Domain = domain, Account = Environment.MachineName.ToUpperInvariant() + "$", Scope = BaseOf(domain), ReadOnly = true }
+        : null;
+
+    /// <summary>What a change says while Active Directory is only read.</summary>
+    public static string ReadOnlyText => $"{Product.Title} is only reading Active Directory until its service account is set up. Set it up to make changes.";
 
     public async Task<SetupLook> Look(string? domain, string username, string password, CancellationToken stop)
     {
@@ -689,6 +717,19 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
     private async Task<ILdap> SignIn(CancellationToken stop)
     {
         var f = Ready();
+        if (f.ReadOnly)
+        {
+            try
+            {
+                var read = await AsComputer!(f.Domain!, await Host(f.Domain!, stop), stop)
+                    ?? throw new ToolProblem($"{f.Account} couldn't read {f.Domain}. Set up the service account instead.", StatusCodes.Status409Conflict);
+                return new ReadOnlyLdap(read);
+            }
+            catch (DirectoryProblem e)
+            {
+                throw new ToolProblem(e.Message, StatusCodes.Status503ServiceUnavailable);
+            }
+        }
         var password = secrets.TryDecrypt(f.Password) ?? throw new ToolProblem($"{Product.Title}'s Active Directory password can't be read here any more. Set it up again.", StatusCodes.Status409Conflict);
         try
         {
@@ -705,9 +746,8 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
     private DirectoryToolsFile Ready()
     {
         var f = Load();
-        return f.Account is null || f.Domain is null || f.Scope is null
-            ? throw new ToolProblem($"{Product.Title} doesn't have its Active Directory account yet. Set it up first.", StatusCodes.Status409Conflict)
-            : f;
+        return f.Account is not null && f.Domain is not null && f.Scope is not null ? f
+            : ReadOnlyFile() ?? throw new ToolProblem($"{Product.Title} doesn't have its Active Directory account yet. Set it up first.", StatusCodes.Status409Conflict);
     }
 
     // The domain controller sign-in uses, when this is its domain; else the quickest that answers.
@@ -1333,4 +1373,28 @@ public sealed class LdapPool : IDisposable
             }
         }
     }
+}
+
+/// <summary>Active Directory read as this computer until the service account is set up: reads go through, every change is refused.</summary>
+public sealed class ReadOnlyLdap(ILdap inner) : ILdap
+{
+    public string BaseDn => inner.BaseDn;
+    public bool Encrypted => inner.Encrypted;
+
+    public Task<List<LdapRow>> Find(string root, string filter, bool subtree, string[] attributes, int limit, CancellationToken stop) => inner.Find(root, filter, subtree, attributes, limit, stop);
+    public Task<List<LdapRow>> FindDeleted(string root, string filter, bool subtree, string[] attributes, int limit, CancellationToken stop) => inner.FindDeleted(root, filter, subtree, attributes, limit, stop);
+    public Task<Dictionary<string, byte[][]>?> ReadAll(string dn, CancellationToken stop) => inner.ReadAll(dn, stop);
+    public Task<List<LdapRow>> FindChildren(string dn, string[] attributes, int limit, CancellationToken stop) => inner.FindChildren(dn, attributes, limit, stop);
+    public Task<string?> WhoAmI(CancellationToken stop) => inner.WhoAmI(stop);
+
+    public Task Add(string dn, IReadOnlyDictionary<string, object[]> attributes, CancellationToken stop) => Refuse();
+    public Task Modify(string dn, IReadOnlyList<LdapMod> changes, CancellationToken stop) => Refuse();
+    public Task Delete(string dn, CancellationToken stop) => Refuse();
+    public Task WriteDacl(string dn, byte[] descriptor, CancellationToken stop) => Refuse();
+    public Task Rename(string dn, string rdn, string parent, CancellationToken stop) => Refuse();
+    public Task Restore(string dn, string newDn, CancellationToken stop) => Refuse();
+
+    public void Dispose() => inner.Dispose();
+
+    private static Task Refuse() => throw new ToolProblem(DirectoryTools.ReadOnlyText, StatusCodes.Status409Conflict);
 }

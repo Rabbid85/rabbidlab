@@ -431,8 +431,8 @@
       $('rail-domain-dot').hidden = true;
       return;
     }
-    $('dir-acct').textContent = `Service account: ${s.account}`;
-    $('dir-new').hidden = !p.add;
+    $('dir-acct').textContent = s.readOnly ? 'Read-only for now' : `Service account: ${s.account}`;
+    $('dir-new').hidden = !p.add || s.readOnly;
     $('dir-new-text').textContent = p.add || '';
     // The bar's Search says what it searches: users, groups, computers, changes.
     $('dir-find').placeholder = `Search ${p.noun[1]}`;
@@ -527,7 +527,7 @@
     drawHero(at);
     if (ad) return;
     try {
-      ad = await R.get('/api/ad'); // the domain's name for the banner, when the page was opened first
+      ad = await R.adInfo(); // the domain's name for the banner, when the page was opened first
     } catch { return; }
     if (R.where()[0] === at) drawHero(at);
   });
@@ -2225,25 +2225,47 @@
   // No service account yet: Active Directory's pages wait under a cover, with what to do in the middle of it.
   const setupCard = (el, info) => {
     const allowed = can('ad.connect');
-    const local = can('windows.view');
-    // Local accounts are made by this server and by each computer's client, as SYSTEM: only Active Directory needs an account.
-    const noAccount = ' Windows accounts on this server and on computers in Devices need no service account: open a computer in Devices and use its Accounts tab.';
+    const card = (title, text, acts) => `<div class="dgate-card"><span class="big-ic ember">${svg('key')}</span><div class="ustatus-text"><b>${esc(title)}</b>`
+      + `<span>${esc(text)}</span></div><div class="dgate-acts">${acts}</div></div>`;
     if (!info?.domain) {
       // No domain here: these pages have nothing to manage until one is connected.
-      el.innerHTML = `<div class="dgate-card"><span class="big-ic ember">${svg('key')}</span><div class="ustatus-text"><b>This server isn't on a domain</b><span>`
-        + esc(`The Active Directory pages need a domain.${noAccount}${allowed ? ' To manage a domain from here anyway, connect one.' : ''}`)
-        + `</span></div><div class="dgate-acts">${local ? '<a class="button primary" href="#seats">Devices</a>' : ''}${allowed ? '<button type="button" data-setup>Connect a domain</button>' : ''}</div></div>`;
+      el.innerHTML = card("This server isn't on a domain", allowed ? 'Connect one to manage it from here.' : 'There is nothing to manage here yet.',
+        allowed ? '<button type="button" class="primary" data-setup>Connect a domain</button>' : '');
     } else {
-      el.innerHTML = `<div class="dgate-card"><span class="big-ic ember">${svg('key')}</span><div class="ustatus-text"><b>Set up the Active Directory service account</b><span>`
-        + esc(allowed
-          ? `${R.app()} makes its Active Directory changes as a dedicated service account (svc-rabbidlab). Create it with a domain admin login for ${info.domain}: ${R.app()} creates the account, delegates it permissions on users, groups and computers, and stores its password encrypted. The admin login is only used for this and isn't saved.${local ? noAccount : ''}`
-          : 'Someone whose roles allow setting up the service account has to do this first.')
-        + `</span></div><div class="dgate-acts">${allowed ? '<button type="button" class="primary" data-setup>Set up</button>' : ''}</div></div>`;
+      // Not now: the pages read the domain as this server, and only changes need the account.
+      el.innerHTML = card('Set up the service account', allowed ? `${R.app()} makes its changes in ${info.domain} as this account.` : 'Someone who can set up the service account has to do this first.',
+        (allowed ? '<button type="button" class="primary" data-setup>Set up</button>' : '') + (info.reading ? '<button type="button" data-not-now>Not now</button>' : ''));
     }
     el.hidden = false;
     el.querySelector('[data-setup]')?.addEventListener('click', () => openSetup(info?.domain));
+    el.querySelector('[data-not-now]')?.addEventListener('click', () => {
+      try {
+        localStorage.setItem(NOT_NOW, '1');
+      } catch {
+        // Not kept: the card comes back next time.
+      }
+      readAnyway = true;
+      R.forget();
+      ad = null;
+      Object.keys(lists).forEach((k) => delete lists[k]);
+      if (R.where()[0] === 'ad') refreshAd(true);
+      document.dispatchEvent(new CustomEvent('rabbidlab:ad'));
+    });
   };
   R.adSetupCard = setupCard;
+  // Not now on that card, kept in this browser: until the account is set up, the pages read the domain as this server.
+  const NOT_NOW = 'rabbidlab.ad.notNow';
+  let readAnyway = (() => {
+    try {
+      return localStorage.getItem(NOT_NOW) === '1';
+    } catch {
+      return false;
+    }
+  })();
+  R.adInfo = async () => {
+    const info = await R.get('/api/ad');
+    return !info.state && info.reading && readAnyway ? { ...info, state: info.reading } : info;
+  };
   $('dset-local').addEventListener('click', () => $('dset-dialog').close());
   // Picking a card picks the way; a double-click goes straight on to signing in.
   $('dset-choose').addEventListener('click', (e) => {
@@ -2484,15 +2506,17 @@
   const drawAdSettings = async (fresh) => {
     say('adset-problem', '');
     try {
-      if (fresh || !ad) ad = await R.get('/api/ad');
+      if (fresh || !ad) ad = await R.adInfo();
     } catch (err) {
       say('adset-problem', err.message);
       return;
     }
-    const s = ad?.state;
+    // Read-only (Not now) is no account at all here.
+    const s = ad?.state?.readOnly ? null : ad?.state;
     $('as-account').textContent = s ? s.account : 'No service account';
     $('as-about').textContent = s
       ? `In ${s.domain}, ${s.made ? 'with delegated permissions on' : 'managing'} ${s.scopeName}. ${s.made ? 'Created' : 'Connected'} by ${s.by}${s.at ? ` on ${R.when(s.at)}` : ''}. Its password is stored encrypted on this server.`
+      : ad?.state?.readOnly ? `The Active Directory pages read ${ad.domain} as this server. Set up a service account to make changes.`
       : ad?.domain ? `${R.app()} makes its changes in ${ad.domain} as a service account. Set one up to use the Active Directory pages.` : "This server isn't on a domain. Connect one to manage it from here.";
     $('as-setup').hidden = !!s;
     $('as-setup').textContent = ad?.domain ? 'Set up' : 'Connect a domain';
@@ -2514,7 +2538,7 @@
     say('as-done', '');
     try {
       await R.send('/api/ad/settings', { [field]: $(id).value });
-      ad = await R.get('/api/ad');
+      ad = await R.adInfo();
       say('adset-problem', '');
     } catch (err) {
       say('adset-problem', err.message);
@@ -2550,7 +2574,7 @@
     adView = viewOf(rest[1]).key;
     try {
       if (fresh || !ad) {
-        ad = await R.get('/api/ad');
+        ad = await R.adInfo();
         Object.keys(lists).forEach((k) => delete lists[k]);
       }
       await loadAd(false);

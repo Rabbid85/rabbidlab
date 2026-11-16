@@ -33,7 +33,7 @@
   const detail = {}; // GPO id -> { data } | { error } | { loading }
   const load = () => (loading ||= (async () => {
     try {
-      ad = await get('/api/ad');
+      ad = await R.adInfo();
       if (ad?.state) {
         gp = await get('/api/gpo');
         problem = '';
@@ -245,6 +245,13 @@
     view = list === 'gpos' && VIEWS.some((x) => x[0] === v) ? v : 'all';
     draw();
     if (!gp && !loading && !problem) load();
+  });
+  // Set up, disconnected, or Not now on the card: read again.
+  document.addEventListener('rabbidlab:ad', () => {
+    ad = null;
+    gp = null;
+    problem = '';
+    if (R.where()[0] === 'gpo') load();
   });
   $('gpo-find').addEventListener('input', draw);
   $('gpo-cols').addEventListener('click', () => g0.menu($('gpo-cols')));

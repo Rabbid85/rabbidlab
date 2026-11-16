@@ -65,6 +65,10 @@ public sealed class TestApp(string data) : WebApplicationFactory<Program>
         {
             services.RemoveAll<IDirectoryTools>();
             services.AddSingleton<IDirectoryTools>(Tools);
+            // The real tools behind the domain pages never read this computer's own domain in a test.
+            services.RemoveAll<DirectoryTools>();
+            services.AddSingleton(s => new DirectoryTools(s.GetRequiredService<DataFolder>(), s.GetRequiredService<SettingsStore>(), s.GetRequiredService<Accounts>(),
+                s.GetRequiredService<IDomainFinder>()) { AsComputer = null });
             services.RemoveAll<TimeProvider>();
             services.AddSingleton<TimeProvider>(Clock);
             services.RemoveAll<IUpdateSource>();
@@ -337,6 +341,8 @@ public sealed class FakeDirectoryTools : IDirectoryTools
     public bool More { get; set; }
 
     public DirectoryToolsState? State() => state;
+
+    public DirectoryToolsState? Reading() => null;
 
     public Task<SetupLook> Look(string? domain, string username, string password, CancellationToken stop) =>
         password == "domain pass" ? Task.FromResult(new SetupLook("amw.com", "DC=amw,DC=com", [new("OU=Lab,DC=amw,DC=com", "Lab", "Lab")], "CN=Users,DC=amw,DC=com", "svc-rabbidlab"))

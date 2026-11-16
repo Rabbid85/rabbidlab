@@ -8,7 +8,7 @@
   // Whether the service account is set up: asked until it is, then again only after it changes or a read fails.
   let ad = null;
   const ready = async () => {
-    if (!ad?.state) ad = await R.get('/api/ad');
+    if (!ad?.state) ad = await R.adInfo();
     return ad;
   };
 

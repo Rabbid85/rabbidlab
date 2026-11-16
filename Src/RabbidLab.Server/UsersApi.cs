@@ -28,9 +28,10 @@ public static class UsersApi
         // --- Active Directory ----------------------------------------------------------------------------------------
 
         // scoped: this person's roles only show part of Active Directory, so the pages about the whole domain aren't theirs.
+        // reading: until the service account is set up, what the pages read Active Directory as (this computer), read-only.
         app.MapGet("/api/ad", (HttpContext context, IDirectoryTools tools, Roles roles) =>
             !Access.Can(context, Permissions.AdView) && !Access.Can(context, Permissions.AdConnect) ? Access.NotAllowed()
-            : Results.Ok(new { domain = tools.Domain, state = tools.State(), scoped = Access.Can(context, Permissions.AdView) && roles.Reach(Who.Of(context.User), Permissions.AdView) is not null }));
+            : Results.Ok(new { domain = tools.Domain, state = tools.State(), reading = tools.Reading(), scoped = Access.Can(context, Permissions.AdView) && roles.Reach(Who.Of(context.User), Permissions.AdView) is not null }));
 
         // Setting up, step one: the OUs to pick from, read with the admin sign-in given (which isn't kept).
         app.MapPost("/api/ad/look", (SetupForm form, HttpContext context, IDirectoryTools tools) => Try(context, Permissions.AdConnect, async () =>

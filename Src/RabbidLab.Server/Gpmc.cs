@@ -187,6 +187,33 @@ public sealed class WindowsGpmc : IGpmc
         {
             try
             {
+                T Go()
+                {
+                    dynamic gpm = Activator.CreateInstance(Type.GetTypeFromProgID("GPMgmt.GPM", true)!)!;
+                    dynamic k = gpm.GetConstants();
+                    dynamic d = gpm.GetDomain(t.Domain, t.Host, k.UseAnyDC);
+                    try
+                    {
+                        return work(gpm, k, d);
+                    }
+                    finally
+                    {
+                        // Let go here, on its own thread, rather than whenever the collector gets to them.
+                        foreach (object o in new object[] { d, k, gpm })
+                        {
+                            if (Marshal.IsComObject(o))
+                            {
+                                Marshal.FinalReleaseComObject(o);
+                            }
+                        }
+                    }
+                }
+                // No login: as this computer, for reading before the service account is set up.
+                if (t.Username.Length == 0)
+                {
+                    done.SetResult(Go());
+                    return;
+                }
                 var at = t.Username.IndexOf('\\');
                 var (user, domain) = at > 0 ? (t.Username[(at + 1)..], t.Username[..at]) : (t.Username, (string?) null);
                 if (!LogonUser(user, domain, t.Password, NewCredentials, WinNt50, out var token))
@@ -195,27 +222,7 @@ public sealed class WindowsGpmc : IGpmc
                 }
                 using (token)
                 {
-                    done.SetResult(WindowsIdentity.RunImpersonated(token, () =>
-                    {
-                        dynamic gpm = Activator.CreateInstance(Type.GetTypeFromProgID("GPMgmt.GPM", true)!)!;
-                        dynamic k = gpm.GetConstants();
-                        dynamic d = gpm.GetDomain(t.Domain, t.Host, k.UseAnyDC);
-                        try
-                        {
-                            return work(gpm, k, d);
-                        }
-                        finally
-                        {
-                            // Let go here, on its own thread, rather than whenever the collector gets to them.
-                            foreach (object o in new object[] { d, k, gpm })
-                            {
-                                if (Marshal.IsComObject(o))
-                                {
-                                    Marshal.FinalReleaseComObject(o);
-                                }
-                            }
-                        }
-                    }));
+                    done.SetResult(WindowsIdentity.RunImpersonated(token, Go));
                 }
             }
             catch (COMException e) when (e.HResult is AccessDenied or LdapRights)

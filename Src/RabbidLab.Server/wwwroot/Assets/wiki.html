@@ -160,6 +160,8 @@
   <p>The service account gets Full Control over user, group and computer objects there, the same as the Delegation of Control wizard.</p>
   <h3>Use one you have</h3>
   <p>Click <b>Use one I have</b>, sign in as the service account, then check it on Review. It needs permission to create and manage users, groups and computers where it works: the whole domain, or the OU you pick with <b>Change</b>.</p>
+  <h3>Not now</h3>
+  <p>Click <b>Not now</b> on the card to use the Active Directory and Group Policy pages without a service account. They read the domain as this server's own computer account, which can read most of it, and nothing can be changed until the service account is set up. Group Policy changes still work with a domain admin login. This browser remembers the choice.</p>
   <h3>Picking an OU</h3>
   <p><b>Browse…</b> beside any OU list opens the OUs the way Settings lists its pages. An OU with OUs inside has the flask and opens when you click it. Type in <b>Find an OU</b> to search, then click <b>Use this OU</b>, or double-click it.</p>
   <h3>Change it later</h3>

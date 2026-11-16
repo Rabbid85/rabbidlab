@@ -56,6 +56,30 @@ public sealed class DirectoryToolsTests : IDisposable
     private static Task<ToolProblem> Refused(Func<Task> change) => Assert.ThrowsAsync<ToolProblem>(change);
 
     [Fact]
+    public async Task Before_it_is_set_up_it_reads_as_this_computer_and_refuses_every_change()
+    {
+        tools.ComputerDomain = () => "amw.com";
+        Assert.Null(tools.Reading()); // nothing to read as here, as in Docker
+        tools.AsComputer = (domain, host, stop) => ad.Open(domain, host, "", "right", stop);
+
+        var reading = tools.Reading();
+        var (users, _) = await tools.Users(CancellationToken.None);
+        var refused = await Refused(() => tools.Unlock("jreyes", CancellationToken.None));
+
+        Assert.Null(tools.State());
+        Assert.True(reading?.ReadOnly);
+        Assert.Contains(users, u => u.Username == "jreyes");
+        Assert.Equal(StatusCodes.Status409Conflict, refused.Status);
+        Assert.Equal(DirectoryTools.ReadOnlyText, refused.Message);
+        Assert.DoesNotContain(ad.Log, l => l.StartsWith("modify", StringComparison.Ordinal));
+
+        // Set up: the service account from then on.
+        await Connect();
+        Assert.Null(tools.Reading());
+        Assert.False(tools.State()!.ReadOnly);
+    }
+
+    [Fact]
     public void Security_template_keys_change_where_they_are_or_join_their_section_and_the_policy_version_goes_up()
     {
         var inf = "[Unicode]\r\nUnicode=yes\r\n[System Access]\r\nMinimumPasswordLength = 7\r\nPasswordComplexity = 1\r\n\r\n[Version]\r\nsignature=\"$CHICAGO$\"\r\n";
