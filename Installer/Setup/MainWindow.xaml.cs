@@ -171,18 +171,39 @@ namespace RabbidLab.Setup
             }
         }
 
-        /// <summary>Port 80 is another program's: the redirect can't work there, so it's off and says who has it.</summary>
+        /// <summary>
+        /// Port 80 is another program's: the redirect can't work there, so it's off and says who has it. The Windows HTTP
+        /// service (IIS and the like) shares it by name, so with a host name of its own only that name is sent here.
+        /// </summary>
         private async void CheckRedirectPort() => ShowPortUser(await Task.Run(() => Engine.PortUser(80)));
+
+        /// <summary>Who has port 80, or null when it's free.</summary>
+        private string port80User;
 
         private void ShowPortUser(string user)
         {
-            if (user == null)
+            port80User = user;
+            ShowRedirect();
+        }
+
+        private void ShowRedirect()
+        {
+            if (port80User == null)
             {
                 return;
             }
-            RedirectBox.IsChecked = false;
-            RedirectBox.IsEnabled = false;
-            RedirectNote.Text = $"Not available: port 80 is used by {user}.";
+            var name = TypedName;
+            var shared = port80User == Engine.HttpSys;
+            var can = shared && name.Length > 0 && Choices.IsDnsName(name) && !System.Net.IPAddress.TryParse(name, out _)
+                && name != Environment.MachineName.ToLowerInvariant() && name != "localhost";
+            if (RedirectBox.IsEnabled != can)
+            {
+                RedirectBox.IsEnabled = can;
+                RedirectBox.IsChecked = can && choices.Redirect;
+            }
+            RedirectNote.Text = !shared ? $"Not available: port 80 is used by {port80User}."
+                : can ? $"Port 80 is shared with {Engine.HttpSys}: only http://{name} comes here, other names stay where they are."
+                : $"Type a host name above to use this. Port 80 is shared with {Engine.HttpSys}, so only that name can come here.";
             RedirectNote.Visibility = Visibility.Visible;
         }
 
@@ -1236,6 +1257,7 @@ namespace RabbidLab.Setup
             if (sender == NameBox)
             {
                 CheckDnsSoon();
+                ShowRedirect();
             }
         }
 

@@ -75,4 +75,20 @@ public sealed class RedirectTests
         Assert.Equal("http://127.0.0.1:0/links?x=1", sent.Headers.Location?.OriginalString);
         await app.StopAsync();
     }
+
+    [Fact]
+    public void A_shared_port_80_asks_only_for_the_consoles_own_names()
+    {
+        var names = Redirect.OwnNames("HelpDesk", ["lab", "lab.spg.zone", "helpdesk", "AZU01-VM-GEN-01", "azu01-vm-gen-01.spg.zone", "172.16.30.7", "localhost", "bad name"],
+            "AZU01-VM-GEN-01", "spg.zone");
+
+        Assert.Equal(["helpdesk", "helpdesk.spg.zone", "lab", "lab.spg.zone"], names);
+    }
+
+    [Fact]
+    public void The_redirect_keeps_the_name_and_drops_a_default_port()
+    {
+        Assert.Equal("https://helpdesk:8420/links?x=1", Redirect.Target(new Redirect.Plan(80, "https", 8420, true), "helpdesk", "/links?x=1"));
+        Assert.Equal("https://helpdesk/", Redirect.Target(new Redirect.Plan(80, "https", 443, true), "helpdesk", "/"));
+    }
 }

@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.214', [
+    'The port 80 redirect works when IIS or another Windows web service already has port 80. Rabbid Lab takes only its own host name there, so http://helpdesk goes to the console and everything else on port 80 stays where it was. Setup no longer greys the option out in that case.',
+    'Settings, Console address shows which names port 80 sends to the console.',
+  ]],
   ['1.1.213', [
     'Banner numbers follow the description straight away, with no blank line between them when the description is one line. Every banner is still the same height.',
   ]],
@@ -2937,9 +2941,14 @@ const RELEASE_NOTES = [
     $('ca-list').innerHTML = list.map((a) => caRow(caIcon(a.what), esc(a.url) + (a.url.toLowerCase() === here ? '<small class="ds-scope">This page</small>' : ''), esc(a.what),
       a.name && has('console.address') ? `<span class="ds-pair">${remove(a)}${caCopy(a.url)}</span>` : caCopy(a.url))).join('');
     $('ca-add').hidden = !c.canAdd || !has('console.address');
-    const redirect = c.redirectPort === 80 && !c.redirectTaken;
+    // Port 80 shared with another web server (IIS): only the console's own names come here.
+    const named = (c.redirectNames || []).filter((n) => n.works).map((n) => `http://${n.name}`);
+    const goes = `${named.join(' and ')} ${named.length > 1 ? 'redirect' : 'redirects'}`;
+    const redirect = c.redirectPort === 80 && (!c.redirectTaken || named.length > 0);
     $('ca-redirect').hidden = !redirect;
-    if (redirect) $('ca-redirect').querySelector('span').textContent = `Port 80 redirects here, so http://${new URL(list[0].url).hostname} works without a port number.`;
+    if (redirect) $('ca-redirect').querySelector('span').textContent = c.redirectTaken
+      ? `Port 80 is shared with another web server, and ${goes} here without a port number.`
+      : `Port 80 redirects here, so http://${new URL(list[0].url).hostname} works without a port number.`;
     const cert = c.certificate;
     const fp = cert ? cert.fingerprint.match(/../g).join(':') : '';
     $('ca-cert').innerHTML = c.scheme !== 'https'
@@ -2961,8 +2970,13 @@ const RELEASE_NOTES = [
           c.authority ? `Self-signed, for ${esc(c.local.names.join(', '))}. Trusted on this computer only. From other computers, use the full name.`
             : 'Made again when one is added or removed, and deleted with the last. Trust it on other computers too, as above.',
           `<span class="ds-v">Expires ${caDate(c.local.expires)}</span>${caGet('/api/console/certificate?names=true')}`, { tone: 'warn' }));
-    const moved = c.redirectPort ? (c.redirectTaken ? `Port ${c.redirectPort} redirect is on, but another program has port ${c.redirectPort}.` : `Requests to port ${c.redirectPort} are redirected here.`) : '';
-    $('ca-net').innerHTML = caRow('plug', 'Port', moved || `${c.scheme.toUpperCase()}, on every address above.`, `<span class="ds-v">${c.port}</span>`)
+    const refused = (c.redirectNames || []).find((n) => !n.works);
+    const moved = !c.redirectPort ? ''
+      : !c.redirectTaken ? `Requests to port ${c.redirectPort} are redirected here.`
+      : named.length ? `Port ${c.redirectPort} is shared with another web server. ${goes} here.`
+      : refused ? `Port ${c.redirectPort} redirect is on, but ${refused.problem.charAt(0).toLowerCase() + refused.problem.slice(1)}`
+      : `Port ${c.redirectPort} redirect is on, but another program has port ${c.redirectPort}. Add a host name of its own to redirect just that name.`;
+    $('ca-net').innerHTML = caRow('plug', 'Port', esc(moved) || `${c.scheme.toUpperCase()}, on every address above.`, `<span class="ds-v">${c.port}</span>`)
       + (c.firewall == null ? '' : caRow('lock', 'Windows Firewall', c.firewall
         ? `Inbound on port ${c.port}, Domain and Private profiles.`
         : `Setup didn't add a rule. Other computers connect only if a rule allows port ${c.port}.`,

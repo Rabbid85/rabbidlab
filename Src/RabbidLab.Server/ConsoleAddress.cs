@@ -27,13 +27,19 @@ public static class ConsoleAddress
     /// the certificate from the authority, Local the self-signed one for the names it can't sign for (ConsoleCertificates.cs).
     /// </summary>
     public sealed record Report(string Scheme, int Port, List<Address> Addresses, CertificateInfo? Certificate, int? RedirectPort,
-        bool RedirectTaken, bool? Firewall, bool Installed, bool Docker, bool CanAdd, string? Domain, AuthorityInfo? Authority, NamesInfo? Signed, NamesInfo? Local);
+        bool RedirectTaken, bool? Firewall, bool Installed, bool Docker, bool CanAdd, string? Domain, AuthorityInfo? Authority, NamesInfo? Signed, NamesInfo? Local,
+        IReadOnlyList<RedirectByName.Claim>? RedirectNames = null);
 
     private static string AuthorityFile => $"{Product.Name} certificate authority.cer";
 
     public static void MapConsoleAddressApi(this WebApplication app, Redirect.Plan? redirect)
     {
-        app.MapGet("/api/console", (IServer server, IConfiguration config, ConsoleNames names, INamesCertificate named) => Read(server, config, redirect, names, named));
+        // Port 80 shared by name (Redirect.cs): which names come here.
+        var byName = app.Services.GetService<RedirectByName>();
+        app.MapGet("/api/console", (IServer server, IConfiguration config, ConsoleNames names, INamesCertificate named) => Read(server, config, redirect, names, named) with
+        {
+            RedirectNames = byName?.Claims,
+        });
         // The console's own certificate; with ?authority=true the certificate authority for added addresses, and with
         // ?names=true the self-signed one for the added names the authority can't sign for.
         app.MapGet("/api/console/certificate", (IConfiguration config, INamesCertificate named, bool? names, bool? authority) =>

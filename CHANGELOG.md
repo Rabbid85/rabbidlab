@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.214 (2026-11-16)
+
+- The port 80 redirect works when IIS or another Windows web service already has port 80. Rabbid Lab takes only its own host name there, so http://helpdesk goes to the console and everything else on port 80 stays where it was. Setup no longer greys the option out in that case.
+- Settings, Console address shows which names port 80 sends to the console.
+
 ## 1.1.213 (2026-11-16)
 
 - Banner numbers follow the description straight away, with no blank line between them when the description is one line. Every banner is still the same height.

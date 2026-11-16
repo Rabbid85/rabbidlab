@@ -46,6 +46,9 @@ public sealed class ConsoleNames(DataFolder folder, IConsoleDns dns, INamesCerti
 
     private Lock gate => file.Gate;
 
+    /// <summary>A name was added or removed.</summary>
+    public event Action? Changed;
+
     public IReadOnlyList<ConsoleName> All()
     {
         lock (gate)
@@ -206,6 +209,7 @@ public sealed class ConsoleNames(DataFolder folder, IConsoleDns dns, INamesCerti
             file.Save(f);
             names = Covered(f);
         }
+        Changed?.Invoke();
         steps.AddRange(Certify(names));
         var (leads, where) = dns.Lookup(full);
         steps.Add(leads switch
@@ -263,6 +267,7 @@ public sealed class ConsoleNames(DataFolder folder, IConsoleDns dns, INamesCerti
             file.Save(f);
             names = Covered(f);
         }
+        Changed?.Invoke();
         if (certificate.Https && (certificate.Now is { Signed: not null } or { Local: not null } || names.Count > 0))
         {
             steps.AddRange(Certify(names));

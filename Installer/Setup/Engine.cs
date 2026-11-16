@@ -56,6 +56,10 @@ namespace RabbidLab.Setup
     public sealed class Engine
     {
         public const string RuleName = Edition.Name;
+        /// <summary>The rule for port 80 when the Windows HTTP service has it: its traffic comes in as System, not Rabbid Lab.</summary>
+        public const string Port80RuleName = Edition.Name + " (port 80)";
+        /// <summary>What PortUser calls HTTP.sys, which shares port 80 by name with Rabbid Lab.</summary>
+        public const string HttpSys = "the Windows HTTP service (HTTP.sys)";
         public const string CertSubject = Edition.CertSubject;
         public const string CertFriendlyName = Edition.Name + " console";
         public static readonly string DataDir = Edition.DataDir;
@@ -370,6 +374,7 @@ namespace RabbidLab.Setup
         private void SetFirewall(Choices c)
         {
             Run("netsh.exe", $"advfirewall firewall delete rule name=\"{RuleName}\"", okCodes: new[] { 0, 1 });
+            Run("netsh.exe", $"advfirewall firewall delete rule name=\"{Port80RuleName}\"", okCodes: new[] { 0, 1 });
             if (c.Firewall)
             {
                 var exe = Path.Combine(c.InstallDir, "RabbidLab.Server.exe");
@@ -377,6 +382,13 @@ namespace RabbidLab.Setup
                 Run("netsh.exe", $"advfirewall firewall add rule name=\"{RuleName}\" dir=in action=allow protocol=TCP localport={ports} "
                     + $"program=\"{exe}\" profile=domain,private enable=yes description=\"Allows other computers to connect to the Rabbid Lab console.\"");
                 Log($"Windows Firewall allows inbound TCP port {ports} on domain and private networks.");
+                // Port 80 shared with the Windows HTTP service: the redirect's requests arrive through it, not Rabbid Lab's program.
+                if (c.Redirect && c.Port != 80 && PortUser(80) == HttpSys)
+                {
+                    Run("netsh.exe", $"advfirewall firewall add rule name=\"{Port80RuleName}\" dir=in action=allow protocol=TCP localport=80 "
+                        + "profile=domain,private enable=yes description=\"Allows other computers to reach the Rabbid Lab redirect on port 80, which the Windows HTTP service shares with other web servers.\"");
+                    Log("Port 80 is shared with the Windows HTTP service: Windows Firewall allows inbound TCP port 80 on domain and private networks.");
+                }
             }
             else
             {
@@ -556,7 +568,7 @@ namespace RabbidLab.Setup
                             }
                         }
                         // Process 4 is Windows itself: HTTP.sys, which IIS and other web servers listen through.
-                        return pid == 4 ? "the Windows HTTP service (HTTP.sys)" : Process.GetProcessById((int) pid).ProcessName;
+                        return pid == 4 ? HttpSys : Process.GetProcessById((int) pid).ProcessName;
                     }
                 }
             }
@@ -1328,6 +1340,7 @@ namespace RabbidLab.Setup
 
             Step("Removing the Windows Firewall rule", 0.25);
             Run("netsh.exe", $"advfirewall firewall delete rule name=\"{RuleName}\"", okCodes: new[] { 0, 1 });
+            Run("netsh.exe", $"advfirewall firewall delete rule name=\"{Port80RuleName}\"", okCodes: new[] { 0, 1 });
 
             Step("Removing the certificate created by Setup", 0.35);
             RemoveOwnCertificates();
