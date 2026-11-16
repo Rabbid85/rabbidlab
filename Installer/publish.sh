@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Releases Rabbid Lab on GitHub:
-#   1. tags the version (v1.2.3) and pushes the tag, which starts the Build workflow (.github/workflows/build.yml): it
-#      builds the installer and uninstaller on GitHub and has them code-signed by SignPath,
-#   2. waits for that build and downloads the installers,
+#   1. tags the version (v1.2.3) and pushes the tag,
+#   2. builds the installer and uninstaller: here, or once SignPath is set up, by starting the Build workflow
+#      (.github/workflows/build.yml) for the tag, which builds on GitHub and has them code-signed, then downloading them,
 #   3. adds the release signature (Tools/ReleaseSign, with the release key on this PC) and writes release.json,
 #   4. makes the Docker download and creates the GitHub release with all of it attached.
 #   bash Installer/publish.sh            release what main holds: built on GitHub once SignPath signs there, else here
@@ -51,6 +51,8 @@ fi
 if [ "$how" = "--local" ]; then
   powershell.exe -NoProfile -ExecutionPolicy Bypass -File Installer/build.ps1 -Release
 else
+  # The workflow only runs when started (a tag alone doesn't start it), so it's started here for this tag.
+  gh workflow run build.yml --ref "$tag"
   echo "Waiting for the Build workflow for $tag..."
   run=""
   for _ in $(seq 1 30); do

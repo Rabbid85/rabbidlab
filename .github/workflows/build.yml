@@ -1,12 +1,11 @@
 # Builds the Windows installer and uninstaller on GitHub's own machines, and has them signed by SignPath once it's set up
 # (the SIGNPATH_API_TOKEN secret and the SIGNPATH_ORGANIZATION_ID variable): the client program, then the console and the
-# client's MSI, then Setup and its uninstaller. Runs for a version tag (v1.2.3) and when started by hand, not on every
-# push. Installer/publish.sh downloads what it built and makes the release; until signing is set up it builds here instead.
+# client's MSI, then Setup and its uninstaller. Runs only when started: Installer/publish.sh starts it for a version tag
+# (v1.2.3) once signing is set up, downloads what it built and makes the release. Until then releases are built on the
+# release PC, and nothing here runs: a tag alone doesn't start it, so no build is made just to be thrown away.
 name: Build
 
 on:
-  push:
-    tags: ['v*']
   workflow_dispatch:
 
 permissions:
