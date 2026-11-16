@@ -38,7 +38,7 @@ Free code signing provided by [SignPath.io](https://about.signpath.io/), certifi
 | Committers and reviewers | [Rabbid85](https://github.com/Rabbid85) |
 | Approvers | [Rabbid85](https://github.com/Rabbid85) |
 
-Releases are built by [GitHub Actions](.github/workflows/build.yml) from this repository. The installer, the uninstaller and Rabbid Lab's own files (`RabbidLab.Server.exe`, `RabbidLab.Server.dll`, `RabbidLab.Updater.dll`) are signed, and every signing request is approved by hand.
+Releases are built by [GitHub Actions](.github/workflows/build.yml) from this repository. The installer, the uninstaller, Rabbid Lab's own files (`RabbidLab.Server.exe`, `RabbidLab.Server.dll`, `RabbidLab.Updater.dll`), the client (`RabbidLab-Client.exe`) and its installer (`RabbidLab-Client.msi`) are signed, and every signing request is approved by hand. Dev builds are not signed.
 
 ## Privacy
 

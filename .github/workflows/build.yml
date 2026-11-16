@@ -1,6 +1,7 @@
 # Builds the Windows installer and uninstaller on GitHub's own machines, and has them signed by SignPath once it's set up
-# (the SIGNPATH_API_TOKEN secret and the SIGNPATH_ORGANIZATION_ID variable). Runs for a version tag (v1.2.3) and when
-# started by hand, not on every push. Installer/publish.sh downloads what it built and makes the release.
+# (the SIGNPATH_API_TOKEN secret and the SIGNPATH_ORGANIZATION_ID variable): the client program, then the console and the
+# client's MSI, then Setup and its uninstaller. Runs for a version tag (v1.2.3) and when started by hand, not on every
+# push. Installer/publish.sh downloads what it built and makes the release; until signing is set up it builds here instead.
 name: Build
 
 on:
@@ -34,9 +35,43 @@ jobs:
       - name: Test
         run: dotnet test Tests/RabbidLab.Tests -c Release
 
+      # The client program first, signed before it goes into its MSI: Defender's attack surface reduction rules let a
+      # signed program run on the computers.
+      - name: Build the client
+        shell: powershell
+        run: ./Installer/build.ps1 -Stage Client
+
+      - name: Upload the client for signing
+        id: client
+        if: env.SIGN == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: client-unsigned
+          path: artifacts/client/
+
+      - name: Sign the client
+        if: env.SIGN == 'true'
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: rabbidlab
+          signing-policy-slug: release-signing
+          artifact-configuration-slug: client
+          github-artifact-id: ${{ steps.client.outputs.artifact-id }}
+          parameters: |
+            version: "${{ steps.version.outputs.version }}"
+          wait-for-completion: true
+          output-artifact-directory: artifacts/client-signed
+
+      - name: Use the signed client
+        if: env.SIGN == 'true'
+        shell: powershell
+        run: Copy-Item artifacts/client-signed/* artifacts/client/ -Recurse -Force
+
       - name: Publish the console
         shell: powershell
-        run: ./Installer/build.ps1 -Stage Console
+        run: ./Installer/build.ps1 -Stage Console -KeepClient
 
       - name: Upload the console for signing
         id: console
@@ -64,7 +99,9 @@ jobs:
       - name: Use the signed console
         if: env.SIGN == 'true'
         shell: powershell
-        run: Copy-Item artifacts/console-signed/* artifacts/publish/ -Recurse -Force
+        run: |
+          Copy-Item artifacts/console-signed/* artifacts/publish/ -Recurse -Force
+          Copy-Item artifacts/publish/Client/RabbidLab-Client.msi "artifacts/RabbidLab-Client-${{ steps.version.outputs.version }}.msi" -Force
 
       - name: Build the installer and uninstaller
         shell: powershell

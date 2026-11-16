@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- SignPath artifact configuration "console": Rabbid Lab's own files in the published console. Everything else in that
-     folder is Microsoft's .NET, already signed by Microsoft. -->
+<!-- SignPath artifact configuration "console": Rabbid Lab's own files in the published console, and the client installer
+     it hands out (its program inside was signed already, by "client"). Everything else in that folder is Microsoft's
+     .NET, already signed by Microsoft. -->
 <artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
   <parameters>
     <parameter name="version" required="true" />
@@ -14,5 +15,8 @@
         <authenticode-sign />
       </for-each>
     </pe-file-set>
+    <msi-file path="Client/RabbidLab-Client.msi">
+      <authenticode-sign />
+    </msi-file>
   </zip-file>
 </artifact-configuration>

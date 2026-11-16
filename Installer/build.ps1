@@ -4,10 +4,12 @@
 #   3. builds Setup (Installer\Setup, a small WPF program on .NET Framework 4.7.2) with the zip inside it.
 # -Stage Console does step 1 only, -Stage Setup steps 2 and 3 (from artifacts\publish), so a build on GitHub can have
 # the console signed in between (.github\workflows\build.yml). The default does all three.
+# -Stage Client builds only the client program, and -KeepClient has -Stage Console put that one (signed by then) in the
+# client's MSI instead of building it again.
 # -Dev builds Rabbid Lab Dev instead (Installer\Setup\Edition.cs), which installs beside the release.
 # -Preview builds artifacts\setup-preview\RabbidLab-Setup.exe instead: the same window, no administrator prompt and
 # nothing inside it. Pictures of every page: artifacts\setup-preview\RabbidLab-Setup.exe --snapshot <folder>
-param([switch]$Preview, [switch]$Dev, [switch]$Release, [ValidateSet('All', 'Console', 'Setup')][string]$Stage = 'All')
+param([switch]$Preview, [switch]$Dev, [switch]$Release, [ValidateSet('All', 'Console', 'Setup', 'Client')][string]$Stage = 'All', [switch]$KeepClient)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $server = Join-Path $root 'Src\RabbidLab.Server'
@@ -28,6 +30,16 @@ if ($Preview) {
     return
 }
 
+$client = Join-Path $root 'Src\Client'
+$clientOut = Join-Path $artifacts "client$suffix"
+if ($Stage -eq 'Client') {
+    if (Test-Path $clientOut) { Remove-Item $clientOut -Recurse -Force }
+    dotnet build (Join-Path $client 'RabbidLab.Client\RabbidLab.Client.csproj') --no-incremental -c Release -p:Version=$version -o $clientOut
+    if ($LASTEXITCODE) { throw 'Building the client failed.' }
+    "Client built to $clientOut"
+    return
+}
+
 if ($Stage -ne 'Setup') {
     if (Test-Path $publish) { Remove-Item $publish -Recurse -Force }
     # Restored first, then published without restoring again (the publish's own restore sometimes lost its win-x64 target).
@@ -43,11 +55,13 @@ if ($Stage -ne 'Setup') {
     }
     # The client for the computers that connect to this server (Src\Client): its MSI and the Group Policy template, inside
     # the console, which hands them out (Client\), and beside the installer for the release.
-    $client = Join-Path $root 'Src\Client'
-    $clientOut = Join-Path $artifacts "client$suffix"
-    if (Test-Path $clientOut) { Remove-Item $clientOut -Recurse -Force }
-    dotnet build (Join-Path $client 'RabbidLab.Client\RabbidLab.Client.csproj') --no-incremental -c Release -p:Version=$version -o $clientOut
-    if ($LASTEXITCODE) { throw 'Building the client failed.' }
+    if (-not $KeepClient) {
+        if (Test-Path $clientOut) { Remove-Item $clientOut -Recurse -Force }
+        dotnet build (Join-Path $client 'RabbidLab.Client\RabbidLab.Client.csproj') --no-incremental -c Release -p:Version=$version -o $clientOut
+        if ($LASTEXITCODE) { throw 'Building the client failed.' }
+    } elseif (-not (Test-Path (Join-Path $clientOut 'RabbidLab-Client.exe'))) {
+        throw "No client to put in the MSI: build.ps1 -Stage Client first ($clientOut is missing)."
+    }
     dotnet build (Join-Path $client 'Installer\RabbidLab.Client.Installer.wixproj') -c Release -p:Version=$version "-p:ClientDir=$clientOut" -o (Join-Path $clientOut 'msi')
     if ($LASTEXITCODE) { throw 'Building the client MSI failed.' }
     $handout = Join-Path $publish 'Client'

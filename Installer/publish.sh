@@ -5,8 +5,9 @@
 #   2. waits for that build and downloads the installers,
 #   3. adds the release signature (Tools/ReleaseSign, with the release key on this PC) and writes release.json,
 #   4. makes the Docker download and creates the GitHub release with all of it attached.
-#   bash Installer/publish.sh           release what main holds
-#   bash Installer/publish.sh --local   build here instead of on GitHub (unsigned; when Actions can't be used)
+#   bash Installer/publish.sh            release what main holds: built on GitHub once SignPath signs there, else here
+#   bash Installer/publish.sh --local    build here anyway (unsigned)
+#   bash Installer/publish.sh --github   build on GitHub anyway
 # Needs gh, signed in (gh auth login).
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -36,7 +37,18 @@ mkdir -p artifacts
 git rev-parse -q --verify "refs/tags/$tag" >/dev/null || git tag "$tag"
 git push -q origin "refs/tags/$tag"
 
-if [ "${1:-}" = "--local" ]; then
+# GitHub's build only adds something when SignPath signs it there (its secret and variable are set; SignPath only signs
+# what GitHub built from this repo). Until then the same unsigned files are built here, in a few minutes, not ten.
+how="${1:-}"
+if [ -z "$how" ]; then
+  if gh secret list 2>/dev/null | grep -q '^SIGNPATH_API_TOKEN' && gh variable list 2>/dev/null | grep -q '^SIGNPATH_ORGANIZATION_ID'; then
+    how=--github
+  else
+    how=--local
+    echo "SignPath isn't set up on GitHub yet, so this builds here (unsigned, as GitHub's would be)."
+  fi
+fi
+if [ "$how" = "--local" ]; then
   powershell.exe -NoProfile -ExecutionPolicy Bypass -File Installer/build.ps1 -Release
 else
   echo "Waiting for the Build workflow for $tag..."
