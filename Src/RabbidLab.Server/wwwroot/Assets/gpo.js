@@ -132,7 +132,7 @@
       } catch (e) {
         return oops(e);
       }
-      R.busy(where, 'Installing Group Policy Management');
+      R.busy(where, 'Installing Group Policy Management', 'Starting');
       const poll = async () => {
         let now = null;
         try {
@@ -140,16 +140,36 @@
         } catch {
           // Asked again below.
         }
-        if (!now || now.running) return setTimeout(poll, 4000);
+        if (!now || now.running) {
+          // How far Windows says it is, under the flask.
+          if (now?.percent != null) R.busy(where, 'Installing Group Policy Management', `${now.percent}%`);
+          return setTimeout(poll, 2000);
+        }
         R.busy(where, '');
+        gpmcWaits = !!now.restart;
         if (now.here) toast('Group Policy Management is installed.', 'Everything on the Group Policy pages works now.');
+        else if (now.restart) toast('Group Policy Management is installed.', 'Windows needs a restart to finish. Restart this server and the Group Policy pages work.', { stay: true });
         else toast("Group Policy Management didn't install.", (now.output || '').split('\n').filter(Boolean).pop() || 'See the activity log.', { tone: 'warn', stay: true });
         document.dispatchEvent(new CustomEvent('rabbidlab:gpmc'));
       };
-      setTimeout(poll, 4000);
+      setTimeout(poll, 2000);
     }, { code: s.command, safe: true });
   };
   R.installGpmc = installGpmc;
+  // Installed, with Windows waiting for a restart: asked once when a page finds it missing, and known after an install.
+  let gpmcWaits = null;
+  const gpmcWaiting = () => {
+    if (gpmcWaits === null) {
+      gpmcWaits = false;
+      get('/api/gpo/gpmc').then((s) => {
+        if (!s.restart) return;
+        gpmcWaits = true;
+        document.dispatchEvent(new CustomEvent('rabbidlab:gpmc'));
+      }).catch(() => { /* the note says it's missing */ });
+    }
+    return gpmcWaits;
+  };
+  R.gpmcWaiting = gpmcWaiting; // deploy.js
   document.addEventListener('click', (e) => { if (e.target.closest('[data-install-gpmc]')) installGpmc(e.target.closest('.lib') || document.body); });
   document.addEventListener('rabbidlab:gpmc', () => {
     gp = null;
@@ -268,7 +288,9 @@
     $('gpo-problem').hidden = !problem;
     $('gpo-problem').textContent = problem;
     $('gpo-note').hidden = !(gp && !gp.gpmc && list !== 'wmi' && list !== 'linked');
-    $('gpo-note').innerHTML = esc('Group Policy Management isn\'t on this server, so GPO settings, who a GPO applies to, new GPOs, copies, deletes and backups aren\'t here yet. Links, names, status and WMI filters work without it.')
+    const waits = gp && !gp.gpmc && gpmcWaiting();
+    $('gpo-note').innerHTML = waits ? esc('Group Policy Management is installed, and Windows needs a restart to finish. Restart this server and GPO settings, new GPOs, copies, deletes and backups work.')
+      : esc('Group Policy Management isn\'t on this server, so GPO settings, who a GPO applies to, new GPOs, copies, deletes and backups aren\'t here yet. Links, names, status and WMI filters work without it.')
       + (has('gpo.change') ? ' <button type="button" class="linkish" data-install-gpmc>Install it…</button>' : '');
     if (gp || problem) g0.draw(rows);
     else R.skeleton($('gpo-table'), 'rows', 6);

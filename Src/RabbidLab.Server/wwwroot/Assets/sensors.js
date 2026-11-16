@@ -901,7 +901,7 @@
     if (e.detail[0] === 'settings' && e.detail[1] === 'sensors' && can('sensors.edit')) loadCreds();
   });
 
-  // --- Watch it, in Add a link: a sensor checks the link and alerts by the alert type picked (links.js asks for these) ----------
+  // --- Alert when it's down, in Add a link: a sensor checks the link and alerts by the alert type picked (links.js asks for these) ----------
 
   let watching = null; // { on, type } for the link in the dialog; null when this person can't watch links
   const webAddress = () => {
@@ -913,8 +913,8 @@
     const w = watching;
     const web = webAddress();
     if (!web) w.on = false;
-    $('ln-watch').innerHTML = alRow('Watch it', web ? 'Checked every minute from this server, and it alerts when it\'s down. It shows on Sensors too.' : 'Only web addresses (http:// or https://) can be watched.',
-      `<input type="checkbox" class="switch" data-al="on" role="switch" aria-label="Watch it"${w.on ? ' checked' : ''}${web ? '' : ' disabled'}>`) + (w.on ? typeRow(w.type) : '');
+    $('ln-watch').innerHTML = alRow('Alert when it\'s down', web ? 'Checked every minute from this server. It shows on Sensors too.' : 'Only web addresses (http:// or https://) can be checked.',
+      `<input type="checkbox" class="switch" data-al="on" role="switch" aria-label="Alert when it's down"${w.on ? ' checked' : ''}${web ? '' : ' disabled'}>`) + (w.on ? typeRow(w.type) : '');
   };
   $('ln-watch').addEventListener('change', (e) => {
     if (e.target.dataset.al === 'on') {

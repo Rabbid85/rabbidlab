@@ -474,6 +474,11 @@
 
   D.lists.admins = ['Local admins', 'shield', 'Who is in the Administrators group on each computer: local accounts, and domain users and groups.'];
   D.more.admins = {
+    // A tab beside Computers, not a list of its own down the left. Members and People are its views, where Computers' are.
+    under: 'computers',
+    tabs: (make) => make('#seats/admins', D.at() === 'admins', 'shield', 'Local admins', adm ? memberList().length : ''),
+    views: () => [['members', 'Members', memberList], ['people', 'People', personList]].map(([key, label, rows]) =>
+      `<a href="#seats/admins" data-acc-tab="${key}"${tab === key ? ' aria-current="page"' : ''}><span class="nm">${label}</span><small>${adm ? rows().length : ''}</small></a>`).join(''),
     get table() { return tab === 'people' ? 'dv-adminp' : 'dv-admins'; },
     grid: () => (tab === 'people' ? peopleGrid() : membersGrid()),
     rows: () => (tab === 'people' ? personList() : memberList()),
@@ -584,13 +589,12 @@
     $('dv-admins').hidden = !(on && tab === 'members');
     $('dv-adminp').hidden = !(on && tab === 'people');
     if (on) {
-      $('dv-tabs').innerHTML = `<a href="#seats/admins" data-acc-tab="members"${tab === 'members' ? ' aria-current="true"' : ''}>${svg('shield')}Members <small>${adm ? memberList().length : ''}</small></a>`
-        + `<a href="#seats/admins" data-acc-tab="people"${tab === 'people' ? ' aria-current="true"' : ''}>${svg('user')}People <small>${adm ? personList().length : ''}</small></a>`;
       markRow();
       drawTicks();
     } else if (panel.is('admins')) panel.close();
   };
-  $('dv-tabs').addEventListener('click', (e) => {
+  // Members or People, picked under Computers down the left (console.js draws them there with the tab).
+  $('dv-views').addEventListener('click', (e) => {
     const a = e.target.closest('[data-acc-tab]');
     if (!a) return;
     e.preventDefault();

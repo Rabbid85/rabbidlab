@@ -57,7 +57,8 @@
     const fine = !may() ? 'Deploying takes Add computers and Change Group Policy.'
       : s.gpo ? `Client ${s.version}, pointed at ${s.server}. Deployed by ${s.by} on ${when(s.at)}.${s.version !== s.thisVersion ? ` This server is on ${s.thisVersion}. Deploy again puts that installer in the GPO.` : ''}`
         : "You confirm it's you first. It goes in the activity log.";
-    const gpmc = s.gpmc ? '' : `<div class="dp-note">${svg('alert')}<span>Group Policy Management isn't installed on this server. It makes the GPO.</span>`
+    const gpmc = s.gpmc ? '' : R.gpmcWaiting?.() ? `<div class="dp-note">${svg('alert')}<span>Group Policy Management is installed, and Windows needs a restart to finish. Restart this server, then deploy.</span></div>`
+      : `<div class="dp-note">${svg('alert')}<span>Group Policy Management isn't installed on this server. It makes the GPO.</span>`
       + `${has('gpo.change') ? '<button type="button" class="ds-btn" data-install-gpmc>Install it…</button>' : ''}</div>`;
     el.innerHTML = '<div class="deploy">'
       + `<section class="card dp-card"><div class="dp-head"><span class="big-ic ember">${svg('policy')}</span>`

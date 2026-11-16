@@ -2,6 +2,15 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.242 (2026-11-16)
+
+- Local admins is a tab beside Computers on Devices, not an entry of its own in the list. Members and People are its views, down the left where the views of Computers are.
+- Pages use the full width of the window by default. Centered is still there in Settings under Layout.
+- Installing Group Policy Management shows a percentage while it runs. When Windows installs it and asks for a restart, the page says that and no longer calls it a failure.
+- The Watch it switch in Add a link is now called Alert when it is down.
+- After a client update the old tray icon takes itself down. The new service used to end it first, which left a dead icon in the tray until the mouse passed over it.
+- Missing updates count a driver when Windows marks it as one it installs itself, which is how its Update page sorts them. The mark used before left out a driver that page listed. Check for updates also says what was installed in the last two days and by what.
+
 ## 1.1.241 (2026-11-16)
 
 - Check for updates and the missing count also ask Microsoft Update directly and, on Windows Server, its own scan, because asking every registered update service still missed updates the Windows Update page shows. The check ends with a line saying what each source answered.

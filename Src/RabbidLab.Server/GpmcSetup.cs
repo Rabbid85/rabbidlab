@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text;
 using Microsoft.Win32;
 
 namespace RabbidLab.Server;
@@ -10,11 +11,18 @@ namespace RabbidLab.Server;
 /// </summary>
 public sealed class GpmcSetup(ActivityLog log)
 {
-    public sealed record View(bool Here, bool Can, string Command, bool Running, bool? Ok, string? Output, DateTime? Started, DateTime? Finished, string Machine);
+    /// <summary>Restart: Windows installed it and wants a restart before it works.</summary>
+    public sealed record View(bool Here, bool Can, string Command, bool Running, bool? Ok, string? Output, DateTime? Started, DateTime? Finished, string Machine,
+        int? Percent, bool Restart);
+
+    /// <summary>How a run ended: whether Windows said it installed, whether it wants a restart, and what it wrote.</summary>
+    public sealed record Ended(bool Ok, bool Restart, string Text);
 
     private readonly Lock gate = new();
     private Task? running;
     private bool? ok;
+    private bool restart;
+    private int? percent;
     private string? output;
     private DateTime? started;
     private DateTime? finished;
@@ -30,7 +38,8 @@ public sealed class GpmcSetup(ActivityLog log)
     {
         lock (gate)
         {
-            return new View(here, Can, Command, running is { IsCompleted: false }, ok, output, started, finished, Environment.MachineName);
+            var busy = running is { IsCompleted: false };
+            return new View(here, Can, Command, busy, ok, output, started, finished, Environment.MachineName, busy ? percent : null, ok == true && restart && !here);
         }
     }
 
@@ -43,7 +52,7 @@ public sealed class GpmcSetup(ActivityLog log)
             {
                 return false;
             }
-            (ok, output, started, finished) = (null, null, DateTime.UtcNow, null);
+            (ok, restart, percent, output, started, finished) = (null, false, null, null, DateTime.UtcNow, null);
             running = Task.Run(() => Run(by, from));
             return true;
         }
@@ -52,41 +61,101 @@ public sealed class GpmcSetup(ActivityLog log)
     private async Task Run(string by, string? from)
     {
         var command = Command;
-        bool done;
-        string text;
+        Ended ended;
         try
         {
-            var start = new ProcessStartInfo(Path.Combine(Environment.SystemDirectory, @"WindowsPowerShell\v1.0\powershell.exe"),
-                $"-NoProfile -NonInteractive -ExecutionPolicy Bypass -Command \"{command}\"")
-            { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true };
-            using var p = Process.Start(start) ?? throw new InvalidOperationException("PowerShell didn't start.");
-            var said = p.StandardOutput.ReadToEndAsync();
-            var errors = p.StandardError.ReadToEndAsync();
-            using var limit = new CancellationTokenSource(TimeSpan.FromMinutes(30));
-            try
-            {
-                await p.WaitForExitAsync(limit.Token);
-            }
-            catch (OperationCanceledException)
-            {
-                p.Kill(entireProcessTree: true);
-                throw new TimeoutException("It was still running after 30 minutes, so it was stopped.");
-            }
-            var err = (await errors).Trim();
-            text = $"{(await said).Trim()}\n{err}".Trim();
-            done = p.ExitCode == 0 && err.Length == 0;
+            ended = await Install(command, p => { lock (gate) { percent = p; } }, TimeSpan.FromMinutes(30));
         }
         catch (Exception e) when (e is InvalidOperationException or System.ComponentModel.Win32Exception or TimeoutException or IOException)
         {
-            text = e.Message;
-            done = false;
+            ended = new Ended(false, false, e.Message);
         }
+        var text = ended.Text;
         lock (gate)
         {
-            (ok, output, finished) = (done, text.Length > 4000 ? text[^4000..] : text, DateTime.UtcNow);
+            (ok, restart, output, finished) = (ended.Ok, ended.Restart, text.Length > 4000 ? text[^4000..] : text, DateTime.UtcNow);
         }
-        log.Record(by, from, "users", "gpo.gpmc", done ? "Installed Group Policy Management on this server" : "Couldn't install Group Policy Management on this server",
-            done ? "ok" : "failed", $"{command}{(text.Length > 0 ? $": {(text.Length > 500 ? text[^500..] : text)}" : "")}");
+        var summary = !ended.Ok ? "Couldn't install Group Policy Management on this server"
+            : ended.Restart ? "Installed Group Policy Management on this server: it needs a restart to finish"
+            : "Installed Group Policy Management on this server";
+        log.Record(by, from, "users", "gpo.gpmc", summary, ended.Ok ? "ok" : "failed", $"{command}{(text.Length > 0 ? $": {(text.Length > 500 ? text[^500..] : text)}" : "")}");
+    }
+
+    /// <summary>
+    /// The command in a runspace of its own, so its progress can be read: a PCT line for each new percentage, then one
+    /// RESULT line with whether it worked and whether Windows wants a restart. A warning is said, and isn't a failure.
+    /// </summary>
+    internal static string Script(string command) => $$"""
+        $ErrorActionPreference = 'Stop'
+        $ps = [powershell]::Create()
+        [void]$ps.AddScript('{{command.Replace("'", "''")}}')
+        $seen = -1
+        $run = $ps.BeginInvoke()
+        while (-not $run.IsCompleted) {
+            Start-Sleep -Milliseconds 400
+            $n = $ps.Streams.Progress.Count
+            if ($n) {
+                $p = $ps.Streams.Progress[$n - 1].PercentComplete
+                if ($p -gt $seen -and $p -le 100) { $seen = $p; "PCT $p" }
+            }
+        }
+        $r = @($ps.EndInvoke($run)) | Select-Object -Last 1
+        foreach ($w in $ps.Streams.Warning) { "$w" }
+        if ($ps.Streams.Error.Count) {
+            foreach ($e in $ps.Streams.Error) { [Console]::Error.WriteLine("$e") }
+            exit 1
+        }
+        $worked = $null -eq $r -or $null -eq $r.Success -or [bool]$r.Success
+        $restart = $null -ne $r -and "$($r.RestartNeeded)" -in 'Yes', 'True'
+        "RESULT $worked $restart"
+        if (-not $worked) { exit 1 }
+        """;
+
+    /// <summary>Runs the command with Windows PowerShell and says how it ended; percent hears each new percentage.</summary>
+    public static async Task<Ended> Install(string command, Action<int> percent, TimeSpan limit)
+    {
+        var encoded = Convert.ToBase64String(Encoding.Unicode.GetBytes(Script(command)));
+        var start = new ProcessStartInfo(Path.Combine(Environment.SystemDirectory, @"WindowsPowerShell\v1.0\powershell.exe"),
+            $"-NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand {encoded}")
+        { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true };
+        using var p = Process.Start(start) ?? throw new InvalidOperationException("PowerShell didn't start.");
+        var said = new StringBuilder();
+        bool? worked = null;
+        var restart = false;
+        var reading = Task.Run(async () =>
+        {
+            while (await p.StandardOutput.ReadLineAsync() is { } line)
+            {
+                var parts = line.Split(' ');
+                if (parts is ["PCT", var n] && int.TryParse(n, out var at))
+                {
+                    percent(at);
+                }
+                else if (parts is ["RESULT", var w, var r])
+                {
+                    (worked, restart) = (w == "True", r == "True");
+                }
+                else if (line.Trim().Length > 0)
+                {
+                    said.AppendLine(line.Trim());
+                }
+            }
+        });
+        var errors = p.StandardError.ReadToEndAsync();
+        using var stop = new CancellationTokenSource(limit);
+        try
+        {
+            await p.WaitForExitAsync(stop.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            p.Kill(entireProcessTree: true);
+            throw new TimeoutException($"It was still running after {limit.TotalMinutes:0} minutes, so it was stopped.");
+        }
+        await reading;
+        var err = (await errors).Trim();
+        var text = $"{said.ToString().Trim()}\n{err}".Trim();
+        return new Ended(p.ExitCode == 0 && worked == true, restart, text);
     }
 
     private static bool IsServer()

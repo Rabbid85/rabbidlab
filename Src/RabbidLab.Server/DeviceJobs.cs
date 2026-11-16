@@ -697,13 +697,14 @@ public static class DeviceActions
             if ($_.Exception.Message -notmatch 'Invalid namespace|Invalid class') { [void]$said.Add("Windows' own scan didn't answer") }
         }
         if ($script:answered -eq 0) { throw "Windows Update didn't answer: $($said -join ', ')" }
-        # Missing is what Windows would put in for you. Antivirus definitions come several times a day, optional drivers
-        # are the ones under Optional updates, and a new version of Windows is its own decision: apart, not counted.
+        # Missing is what Windows would put in for you. Antivirus definitions come several times a day, a new version of
+        # Windows is its own decision, and Windows marks the ones under Optional updates itself (DeploymentAction 4;
+        # the ones it puts in are 1): apart, not counted.
         function Kind($u) {
             $cats = @($u.Categories | ForEach-Object { $_.CategoryID })
             if ($cats -contains 'e0789628-ce08-4437-be74-2495b842f43b') { return 'antivirus definitions' }
             if ($cats -contains '3689bdc8-b205-4af4-8d4a-a63924c5e9d5') { return 'a new version of Windows' }
-            if ($u.Type -eq 2 -and -not $u.AutoSelectOnWebSites) { return 'optional driver' }
+            if ($u.DeploymentAction -eq 4) { if ($u.Type -eq 2) { return 'optional driver' } else { return 'optional update' } }
             return ''
         }
         $missing = @($all | Where-Object { (Kind $_) -eq '' })
@@ -728,6 +729,22 @@ public static class DeviceActions
                 foreach ($u in $apart) { "  $($u.Title) ($(Kind $u))" }
                 foreach ($u in $moreApart) { "  $($u.Title) (antivirus definitions)" }
             }
+            # What went in over the last two days and who put it in. Windows' own page keeps listing an update something
+            # else installed until it looks again, so this says why it can show more than is missing.
+            try {
+                $past = $session.CreateUpdateSearcher()
+                $total = $past.GetTotalHistoryCount()
+                if ($total) {
+                    $since = (Get-Date).ToUniversalTime().AddDays(-2)
+                    $defs = 0
+                    $recent = @($past.QueryHistory(0, [Math]::Min($total, 80)) | Where-Object { $_.Operation -eq 1 -and $_.ResultCode -eq 2 -and $_.Date -ge $since } |
+                        Where-Object { $_.Title -notmatch 'Security Intelligence Update|Definition Update' -or ($defs++) -eq 0 } | Select-Object -First 12)
+                    if ($recent.Count) {
+                        'Installed in the last two days:'
+                        foreach ($h in $recent) { "  $($h.Title) ($($h.Date.ToLocalTime().ToString('MMM d, HH:mm')), by $($h.ClientApplicationID))" }
+                    }
+                }
+            } catch { }
             "Asked: $($said -join ', ')."
             """),
     };

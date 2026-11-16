@@ -3,6 +3,14 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.242', [
+    'Local admins is a tab beside Computers on Devices, not an entry of its own in the list. Members and People are its views, down the left where the views of Computers are.',
+    'Pages use the full width of the window by default. Centered is still there in Settings under Layout.',
+    'Installing Group Policy Management shows a percentage while it runs. When Windows installs it and asks for a restart, the page says that and no longer calls it a failure.',
+    'The Watch it switch in Add a link is now called Alert when it is down.',
+    'After a client update the old tray icon takes itself down. The new service used to end it first, which left a dead icon in the tray until the mouse passed over it.',
+    'Missing updates count a driver when Windows marks it as one it installs itself, which is how its Update page sorts them. The mark used before left out a driver that page listed. Check for updates also says what was installed in the last two days and by what.',
+  ]],
   ['1.1.241', [
     'Check for updates and the missing count also ask Microsoft Update directly and, on Windows Server, its own scan, because asking every registered update service still missed updates the Windows Update page shows. The check ends with a line saying what each source answered.',
     'A new built-in script, Windows Update: what every source says, lists a computer its update settings and what each source offers, for when the count and the Windows Update page disagree.',
@@ -1011,16 +1019,16 @@ const RELEASE_NOTES = [
     $('rail-collapse-text').textContent = small ? 'Expand' : 'Collapse';
     $('rail-collapse').title = small ? 'Expand' : 'Collapse';
   };
-  // Layout, in the Settings list: pages in a column in the middle, or the whole window.
+  // Layout, in the Settings list: the whole window unless Centered was picked.
   const layout = () => {
-    let wide = false;
-    try { wide = localStorage.getItem('rabbidlab.layout') === 'wide'; } catch { /* centered */ }
+    let wide = true;
+    try { wide = localStorage.getItem('rabbidlab.layout') !== 'centered'; } catch { /* full width */ }
     document.body.classList.toggle('layout-wide', wide);
     $('set-layout').value = wide ? 'wide' : 'centered';
   };
   $('set-layout').addEventListener('change', () => {
     try {
-      if ($('set-layout').value === 'wide') localStorage.setItem('rabbidlab.layout', 'wide');
+      if ($('set-layout').value === 'centered') localStorage.setItem('rabbidlab.layout', 'centered');
       else localStorage.removeItem('rabbidlab.layout');
     } catch { /* this visit only */ }
     layout();
@@ -2041,8 +2049,11 @@ const RELEASE_NOTES = [
     $('dv-filter-x').hidden = !nf;
     $('dv-filtered').hidden = !nf;
     $('dv-filtered').innerHTML = nf ? `${svg('filter')}<span>${esc(F.words(fields, dvFilter[dvAt]))}</span><button type="button" class="linkish" data-filter-clear>Clear filter</button>` : '';
-    document.querySelectorAll('#dv-rail a[data-dv]').forEach((a) => (a.dataset.dv === dvAt ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current')));
-    $('dv-views').innerHTML = dvAt !== 'computers' ? '' : DV_VIEWS.map((v) => {
+    // A list that is a tab of Computers (Local admins) keeps Computers lit in the rail, and has no entry of its own.
+    const group = dvMore[dvAt]?.under || dvAt;
+    document.querySelectorAll('#dv-rail a[data-dv]').forEach((a) => (a.dataset.dv === group ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current')));
+    // Under Computers down the left: the views of the tab that shows (a tab under Computers can give its own).
+    $('dv-views').innerHTML = group !== 'computers' ? '' : dvAt !== 'computers' ? dvMore[dvAt].views?.() || '' : DV_VIEWS.map((v) => {
       if (!v) return '<i></i>';
       const count = n(v[2]);
       return `<a href="#seats/computers/${v[0]}"${v[0] === view[0] ? ' aria-current="page"' : ''}><span class="nm">${esc(v[1])}</span><small class="${count && v[3] ? `tone ${v[3]}` : ''}">${count}</small></a>`;
@@ -2050,13 +2061,19 @@ const RELEASE_NOTES = [
     $('dv-dot').hidden = !n((c) => stateOf(c) === 'waiting');
     $('dv-n-computers').textContent = dvAll().length || '';
     $('dv-n-sessions').textContent = sessionsNow.length || '';
-    for (const [k, more] of Object.entries(dvMore)) $(`dv-n-${k}`).textContent = more.count?.() || '';
+    for (const [k, more] of Object.entries(dvMore)) if ($(`dv-n-${k}`)) $(`dv-n-${k}`).textContent = more.count?.() || '';
     $('page-seats').dataset.at = dvAt;
     $('dv-state').textContent = `${DV[dvAt][0]}.`;
     $('dv-lead').textContent = DV[dvAt][2];
     $('dv-stats').innerHTML = !can.has('seats.view') ? '' : dvStat(n((c) => stateOf(c) === 'online'), 'monitor', 'Online') + dvStat(n((c) => stateOf(c) === 'offline'), 'power', 'Offline')
       + dvStat(n((c) => stateOf(c) === 'waiting'), 'clock', 'Waiting for approval') + dvStat(n((c) => c.inventory?.missing > 0), 'updates', 'Need updates');
-    $('dv-tabs').innerHTML = `<a aria-current="true">${svg(DV[dvAt][1])}${esc(DV[dvAt][0])} <small>${dvShown.length}</small></a>`;
+    // Computers and the lists under it are tabs of one page; any other list has the one tab.
+    const dvTab = (href, on, icon, label, count, more = '') => `<a href="${href}"${more}${on ? ' aria-current="true"' : ''}>${svg(icon)}${esc(label)} <small>${count}</small></a>`;
+    const under = group === 'computers' ? Object.values(dvMore).filter((m) => m.under === 'computers' && m.can()) : [];
+    $('dv-tabs').innerHTML = under.length
+      ? (can.has('seats.view') ? dvTab(`#seats${dvView === 'all' ? '' : `/computers/${dvView}`}`, dvAt === 'computers', DV.computers[1], DV.computers[0], dvAt === 'computers' ? dvShown.length : dvBase('computers').length) : '')
+        + under.map((m) => m.tabs(dvTab)).join('')
+      : `<a aria-current="true">${svg(DV[dvAt][1])}${esc(DV[dvAt][0])} <small>${dvShown.length}</small></a>`;
     // The bar's Search says what it searches: computers, scripts, printers.
     const searching = `Search ${dvMore[dvAt]?.noun || { computers: 'computers', sessions: 'people' }[dvAt] || DV[dvAt][0].toLowerCase()}`;
     $('dv-find').placeholder = searching;

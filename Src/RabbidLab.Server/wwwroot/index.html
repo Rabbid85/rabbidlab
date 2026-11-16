@@ -330,8 +330,8 @@
         <p class="hint problem" id="br-problem" hidden></p>
       </section>
       <section class="ds-sec" data-sec="layout"><h3 class="ds-h">Layout <small class="ds-scope">Just you</small></h3>
-        <div class="ds-row"><div class="ds-l"><b>Page width</b><span>Centered keeps pages in a column in the middle. Full width uses the whole window, so lists show more at once.</span></div>
-          <div class="ds-r"><select id="set-layout" aria-label="Page width"><option value="centered">Centered</option><option value="wide">Full width</option></select></div></div>
+        <div class="ds-row"><div class="ds-l"><b>Page width</b><span>Full width uses the whole window, so lists show more at once. Centered keeps pages in a column in the middle.</span></div>
+          <div class="ds-r"><select id="set-layout" aria-label="Page width"><option value="wide">Full width</option><option value="centered">Centered</option></select></div></div>
       </section>
       <section class="ds-sec" data-sec="toasts"><h3 class="ds-h has-reset">Toasts <small class="ds-scope">Just you</small><span class="ds-pair"><button type="button" class="ds-btn ds-ibtn" id="toast-test" data-tip="Show a test" aria-label="Show a test toast"><svg><use href="#i-eye"/></svg></button><button type="button" class="ds-btn" id="toast-reset">Reset</button></span></h3>
         <p class="sq-lead">The message that pops up after you do something, like Refresh icons. Changing one shows a sample.</p>
@@ -575,12 +575,12 @@
       <div class="hero-stats" id="dv-stats"></div>
     </header>
     <div class="dir-area">
-      <!-- The lists of the Devices page down the left; Computers has views of its own under it (console.js). -->
+      <!-- The lists of the Devices page down the left; Computers has views of its own under it (console.js), and
+           Local admins as a tab beside it (accounts.js). -->
       <nav class="dnav lists" id="dv-rail" aria-label="Devices">
         <p class="rail-label" data-can="seats.view">Browse</p>
         <a href="#seats" data-dv="computers" data-can="seats.view"><svg><use href="#i-monitor"/></svg><span>Computers</span><i class="rail-dot" id="dv-dot" hidden></i><small id="dv-n-computers"></small></a>
         <div class="dkids" id="dv-views"></div>
-        <a href="#seats/admins" data-dv="admins" data-can="windows.view"><svg><use href="#i-shield"/></svg><span>Local admins</span><small id="dv-n-admins"></small></a>
         <a href="#seats/gplocal" data-dv="gplocal" data-can="seats.view"><svg><use href="#i-policy"/></svg><span>Group Policy</span><small id="dv-n-gplocal"></small></a>
         <a href="#seats/printers" data-dv="printers" data-can="seats.view"><svg><use href="#i-printer"/></svg><span>Printers</span><small id="dv-n-printers"></small></a>
         <p class="rail-label" data-can="seats.actions seats.scripts.run seats.scripts.edit seats.workflows seats.wmi seats.add">Tools</p>
@@ -1272,7 +1272,7 @@
       <input type="file" id="ln-icon-file" accept="image/*" hidden>
     </aside>
   </div>
-  <!-- Watch it: a sensor checks the link and alerts, with the same alert rows as a sensor (sensors.js fills it, links.js sends it). -->
+  <!-- Alert when it is down: a sensor checks the link and alerts, with the same alert rows as a sensor (sensors.js fills it, links.js sends it). -->
   <div class="form two sd-form ld-alerts one" id="ln-alerts" hidden>
     <div class="sd-div wide"><b>Alerts</b><i></i></div>
     <div class="wide al-rows" id="ln-watch"></div>

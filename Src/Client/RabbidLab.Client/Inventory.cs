@@ -622,8 +622,10 @@ internal static class Inventory
                 {
                     // Seen by name too, so Windows' own scan below doesn't count it a second time.
                     titles.Add((string) update.Title);
-                    // A driver Windows wouldn't pick itself is one of its optional updates, which its page keeps apart: not missing.
-                    if (!seen.Add((string) update.Identity.UpdateID) || ((int) update.Type == 2 && !(bool) update.AutoSelectOnWebSites))
+                    // Windows marks each update as one it puts in itself (1) or an optional one (4), and its page keeps the
+                    // optional ones apart under Optional updates: not missing. AutoSelectOnWebSites isn't that mark: a
+                    // driver on the main list had it off, and was left out.
+                    if (!seen.Add((string) update.Identity.UpdateID) || (int) update.DeploymentAction == 4)
                     {
                         continue;
                     }

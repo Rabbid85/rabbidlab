@@ -710,7 +710,7 @@
     drawMode();
     drawFound();
     drawIcon();
-    R.watchLink?.open(l); // Watch it: sensors.js fills it in
+    R.watchLink?.open(l); // Alert when it's down: sensors.js fills it in
     $('link-dialog').showModal();
     $('ln-url').focus();
   };

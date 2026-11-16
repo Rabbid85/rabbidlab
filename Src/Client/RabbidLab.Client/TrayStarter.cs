@@ -10,12 +10,17 @@ namespace RabbidLab.Client;
 /// <summary>
 /// Keeps the tray icon there: every round, the service starts the icon for anyone signed in to Windows who hasn't got
 /// one, as that person and on their desktop. So it shows straight after an install or an update, and comes back if it
-/// stops, without waiting for the next sign-in. A copy left running from before an update or a reinstall is ended
-/// first: it runs a program file that has since been moved aside, shows no icon, and would keep the new one from
-/// starting (there is one icon for each person).
+/// stops, without waiting for the next sign-in. A copy left running from before an update or a reinstall runs a
+/// program file that has since been moved aside. It notices within seconds, starts the new one and takes its own icon
+/// down as it goes, so it's left to do that: ending it here straight away left a dead icon in the tray after every
+/// update. Only one that's still there a round later is ended (there is one icon for each person).
 /// </summary>
 internal static class TrayStarter
 {
+    // When each copy from before an update was first seen, by process id.
+    private static readonly Dictionary<int, DateTime> old = new();
+    private static readonly TimeSpan Grace = TimeSpan.FromSeconds(20);
+
     public static void Ensure()
     {
         if (Settings.Read().Quiet)
@@ -30,6 +35,7 @@ internal static class TrayStarter
             installed = Where(me.Id) ?? exe;
         }
         var name = Path.GetFileNameWithoutExtension(exe);
+        var seen = new HashSet<int>();
         foreach (var session in SignedIn())
         {
             var there = false;
@@ -43,6 +49,17 @@ internal static class TrayStarter
                     }
                     // The same file as the service's, or Windows won't say: it's left alone.
                     if (Where(p.Id) is not { } file || string.Equals(file, installed, StringComparison.OrdinalIgnoreCase))
+                    {
+                        there = true;
+                        continue;
+                    }
+                    // From before an update: it gets a little while to start the new one and leave by itself.
+                    seen.Add(p.Id);
+                    if (!old.TryGetValue(p.Id, out var since))
+                    {
+                        old[p.Id] = since = DateTime.UtcNow;
+                    }
+                    if (DateTime.UtcNow - since < Grace)
                     {
                         there = true;
                         continue;
@@ -61,6 +78,14 @@ internal static class TrayStarter
             if (!there)
             {
                 Start(session, exe);
+            }
+        }
+        // The ones that have gone are forgotten, so a later program with the same id starts fresh.
+        foreach (var id in new List<int>(old.Keys))
+        {
+            if (!seen.Contains(id))
+            {
+                old.Remove(id);
             }
         }
     }
