@@ -530,8 +530,13 @@ a.small-link { margin-top: 8px; padding: 6px 12px; font-size: 12.5px; }
 /* Room for two lines on every banner, so a longer description never moves what is under it. */
 .hero-lead { max-width: 580px; min-height: 3em; margin: 10px 0 0; font-size: 15px; line-height: 1.5; color: #C9CCDA; }
 .hero-lead b { color: #fff; font-weight: 650; }
-.hero-actions { display: flex; flex-wrap: wrap; gap: 10px; min-height: 39px; margin-top: 16px; }
-.hero > .hero-actions { z-index: 2; } /* above the stats, so a button's hint isn't covered */
+.hero-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.hero-actions .checked-note { align-self: center; }
+/* Buttons sit at the end of the numbers, after a thin line, so a banner with buttons is the height of one without. */
+.hero-row { display: flex; flex-wrap: wrap; align-items: center; gap: 18px 50px; margin-top: 18px; }
+.hero > .hero-row { z-index: 2; } /* above the tiles, so a button's hint isn't covered */
+.hero-row > .hero-stats { margin-top: 0; }
+.hero-row > .hero-actions { padding-left: 28px; border-left: 1px solid var(--line-strong); }
 /* A cogwheel's menu at the top of Links and Sensors. A popover, so the banner doesn't clip it; under its cogwheel where the browser can anchor it. */
 .gear-menu { width: 210px; margin: auto; padding: 0; overflow: hidden; border: 1px solid var(--line-strong); border-radius: 12px; background: #131522; color: var(--text); box-shadow: 0 20px 50px rgba(0, 0, 0, .55); }
 .gear-menu .am-links:first-child { border-top: 0; }
@@ -548,8 +553,10 @@ a.small-link { margin-top: 8px; padding: 6px 12px; font-size: 12.5px; }
 .hero-actions .primary:hover { background: var(--ember); filter: brightness(1.08); }
 a.button, label.button { display: inline-flex; cursor: pointer; align-items: center; padding: 8px 16px; border-radius: 8px; border: 1px solid var(--line-strong); background: #1A1C28; color: var(--text); font-size: 14px; }
 a.button:hover, label.button:hover { background: #222536; text-decoration: none; }
-.hero-stats { display: flex; flex-wrap: wrap; gap: 18px 50px; margin-top: 18px; }
-.hero-stats b { display: block; font: 750 27px/1.1 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; color: #fff; }
+/* One row of numbers is always the same height, loading or empty, so every banner is too. */
+.hero-stats { display: flex; flex-wrap: wrap; gap: 18px 50px; min-height: 53px; margin-top: 18px; }
+.hero-stats b { display: block; height: 30px; font: 750 27px/1.1 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; color: #fff; }
+.hero-stats b .sk-num { vertical-align: top; }
 .hero-stats span { display: flex; align-items: center; gap: 6px; margin-top: 4px; font-size: 12.5px; color: var(--muted); }
 .hero-stats svg { width: 14px; height: 14px; }
 .hero .hero-new { position: absolute; right: 36px; top: 40px; z-index: 4; width: 250px; padding: 14px 16px; border: 1px solid var(--line-strong); border-radius: 12px; background: #0F111A; }
@@ -570,12 +577,13 @@ a.button:hover, label.button:hover { background: #222536; text-decoration: none;
 .home .machine { margin: 22px var(--side) 0; }
 @media (max-width: 1180px) { .hero .hero-new { display: none; } }
 /* No room beside it for the squares: the card steps aside, and the line under the title still says what's down. */
-/* Every hero is the same height with its parts in the same places, so the line under it stays put from page to page. */
-@media (min-width: 701px) { .hero { min-height: 328px; } } /* the height Overview comes to with two lines under the title: every banner the same */
+/* Every hero is the same height with its parts in the same places, so the line under it stays put from page to page:
+   two lines under the title, then one row of numbers (and buttons, where there are any). */
 #page-overview .hero-lead { max-width: 760px; }
 @media (max-width: 700px) {
   .hero { padding: 30px 18px 26px; }
   .hero-title { font-size: 46px; }
+  .hero-row > .hero-actions { padding-left: 0; border-left: 0; } /* on its own line here: no line before it */
   .news { padding: 22px 18px 4px; }
   .home .machine { margin: 18px 18px 0; }
 }
@@ -707,7 +715,7 @@ section.page.home.dir-top { max-width: none; padding: 0; gap: 0; }
 .dir-top > .dir-area > .dnav, .dir-top > .dir-area > .dmain { grid-row: 1; }
 /* No buttons in this one, so its numbers sit at the bottom, where they are on the other banners. */
 #dir-hero, #dv-hero, #gpo-hero { display: flex; flex-direction: column; }
-#dir-hero > .hero-stats, #dv-hero > .hero-stats, #gpo-hero > .hero-stats { margin-top: auto; padding-top: 18px; }
+#dir-hero > .hero-stats, #dv-hero > .hero-stats, #gpo-hero > .hero-stats { min-height: 71px; margin-top: auto; padding-top: 18px; }
 #dir-hero .hero-lead, #dv-hero .hero-lead, #gpo-hero .hero-lead { max-width: 720px; }
 .dhead h1 { font: 800 30px/1.15 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; letter-spacing: -.02em; color: #fff; }
 .dhead p { max-width: 680px; margin-top: 10px; color: #B4B8C8; font-size: 14px; line-height: 1.55; }

@@ -201,16 +201,19 @@
       <p class="eyebrow" id="hero-eyebrow">Lab console</p>
       <h1 class="hero-title" id="hero-title">Rabbid Lab</h1>
       <p class="hero-lead"><b id="hero-state">Looking…</b> <span id="hero-where"></span></p>
+      <!-- The numbers, then the buttons after a thin line, so a banner with buttons is no taller than one without. -->
+      <div class="hero-row">
+      <div class="hero-stats">
+        <div><b id="hero-version"><i class="sk sk-num"></i></b><span><svg><use href="#i-new"/></svg>Version</span></div>
+        <div><b id="hero-uptime"><i class="sk sk-num"></i></b><span><svg><use href="#i-clock"/></svg>Running</span></div>
+        <div data-can="updates.view"><b id="hero-updates"><i class="sk sk-num"></i></b><span><svg><use href="#i-updates"/></svg>Updates</span></div>
+      </div>
       <div class="hero-actions">
         <button type="button" class="primary" id="hero-install" data-can="updates.install" hidden>Install now</button>
         <button type="button" class="primary" id="hero-check" data-can="updates.check">Check for updates</button>
         <a class="button" href="#activity" data-can="activity.view">Activity</a>
         <span class="checked-note" id="hero-note" role="status" hidden></span>
       </div>
-      <div class="hero-stats">
-        <div><b id="hero-version"><i class="sk sk-num"></i></b><span><svg><use href="#i-new"/></svg>Version</span></div>
-        <div><b id="hero-uptime"><i class="sk sk-num"></i></b><span><svg><use href="#i-clock"/></svg>Running</span></div>
-        <div data-can="updates.view"><b id="hero-updates"><i class="sk sk-num"></i></b><span><svg><use href="#i-updates"/></svg>Updates</span></div>
       </div>
     </header>
 
@@ -710,6 +713,13 @@
       <p class="eyebrow">Links</p>
       <h1 class="hero-title">Links</h1>
       <p class="hero-lead"><b id="ln-lead"></b> <span id="ln-lead-more"></span></p>
+      <div class="hero-row">
+      <div class="hero-stats">
+        <div><b id="ln-count"><i class="sk sk-num"></i></b><span><svg><use href="#i-link"/></svg>Links</span></div>
+        <div><b id="ln-answering"><i class="sk sk-num"></i></b><span><svg><use href="#i-activity"/></svg>Answering</span></div>
+        <div><b id="ln-every"><i class="sk sk-num"></i></b><span><svg><use href="#i-clock"/></svg>Checked every</span></div>
+        <div id="ln-watched-wrap" hidden><b id="ln-watched"></b><span><svg><use href="#i-eye"/></svg>Watched</span></div>
+      </div>
       <div class="hero-actions">
         <button type="button" class="primary" id="ln-add" data-can="links.edit">Add a link</button>
         <button type="button" class="hero-gear" id="ln-checks" data-can="links.edit" data-tip="Settings, export, import" aria-label="Links settings, export and import" popovertarget="ln-gear-menu"><svg><use href="#i-gear"/></svg></button>
@@ -719,11 +729,6 @@
             <button type="button" class="am-link" id="ln-import"><svg><use href="#i-upload"/></svg>Import links</button></div>
         </div><input type="file" id="ln-import-file" accept=".json,application/json" hidden>
       </div>
-      <div class="hero-stats">
-        <div><b id="ln-count"><i class="sk sk-num"></i></b><span><svg><use href="#i-link"/></svg>Links</span></div>
-        <div><b id="ln-answering"><i class="sk sk-num"></i></b><span><svg><use href="#i-activity"/></svg>Answering</span></div>
-        <div><b id="ln-every"><i class="sk sk-num"></i></b><span><svg><use href="#i-clock"/></svg>Checked every</span></div>
-        <div id="ln-watched-wrap" hidden><b id="ln-watched"></b><span><svg><use href="#i-eye"/></svg>Watched</span></div>
       </div>
       <aside class="hero-new bad" id="ln-card" hidden>
         <p class="eyebrow">Down now</p>
@@ -764,6 +769,12 @@
       <p class="eyebrow">Sensors</p>
       <h1 class="hero-title" id="sn-title">Sensors</h1>
       <p class="hero-lead"><b id="sn-lead"></b> <span id="sn-lead-more"></span></p>
+      <div class="hero-row">
+      <div class="hero-stats">
+        <div><b id="sn-answering"><i class="sk sk-num"></i></b><span><svg><use href="#i-activity"/></svg>Answering</span></div>
+        <div><b id="sn-week"><i class="sk sk-num"></i></b><span><svg><use href="#i-clock"/></svg>Up, last 7 days</span></div>
+        <div><b id="sn-last"><i class="sk sk-num"></i></b><span><svg><use href="#i-updates"/></svg>Last check</span></div>
+      </div>
       <div class="hero-actions">
         <button type="button" class="primary" id="sn-add" data-can="sensors.edit">Add a sensor</button>
         <button type="button" class="hero-gear" id="sn-gear" data-can="sensors.alerts sensors.edit" data-tip="Alerts and settings" aria-label="Alert rules, notifications and sensor settings" popovertarget="sn-gear-menu"><svg><use href="#i-gear"/></svg></button>
@@ -773,10 +784,6 @@
           <div class="am-links"><a class="am-link" href="#settings/sensors" data-can="sensors.edit"><svg><use href="#i-key"/></svg>Saved credentials</a></div>
         </div>
       </div>
-      <div class="hero-stats">
-        <div><b id="sn-answering"><i class="sk sk-num"></i></b><span><svg><use href="#i-activity"/></svg>Answering</span></div>
-        <div><b id="sn-week"><i class="sk sk-num"></i></b><span><svg><use href="#i-clock"/></svg>Up, last 7 days</span></div>
-        <div><b id="sn-last"><i class="sk sk-num"></i></b><span><svg><use href="#i-updates"/></svg>Last check</span></div>
       </div>
       <aside class="hero-new" id="sn-card" hidden>
         <p class="eyebrow" id="sn-card-kind"></p>

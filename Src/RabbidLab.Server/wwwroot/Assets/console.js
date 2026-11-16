@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.212', [
+    'Banner buttons sit at the end of the numbers, after a thin line, so every banner is the same height with or without buttons and the empty gap is gone.',
+    'The sign-in card is bigger: wider, with larger boxes, button and text.',
+  ]],
   ['1.1.211', [
     'Group Policy, under Directory: every GPO in the domain, where each is linked, WMI filters and backups. Make, copy, rename, link, enforce, reorder, back up, restore and delete GPOs, turn their settings off, and pick who they apply to.',
     'A GPO panel shows its settings and who it applies to from its settings report, and saves the full report. Settings, new GPOs, copies, deletes and backups need Group Policy Management on the server.',
