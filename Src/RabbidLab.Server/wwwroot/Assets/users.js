@@ -515,7 +515,8 @@
     $('dir-state').textContent = adPage !== 'domain' ? `${p.title}.` : !list ? '' : bad || warn
       ? `${bad ? `${bad} not as recommended` : 'Nothing is off'}${warn ? `, ${warn} worth a look` : ''}.` : 'Everything is as recommended.';
     $('dir-lead').textContent = p.lead;
-    $('dir-stats').innerHTML = !ad?.state ? '' : HERO_STATS[adPage].map((key) => {
+    // Placeholder numbers while it's read (ad not known yet, or the list not read); none when there's no account.
+    $('dir-stats').innerHTML = ad && !ad.state ? '' : HERO_STATS[adPage].map((key) => {
       const v = allViews().find((x) => x.key === key);
       const label = key === 'all' ? p.noun[1].charAt(0).toUpperCase() + p.noun[1].slice(1) : v?.label || key;
       return stat(list ? n[key] ?? 0 : null, key === 'all' ? PAGE_ICON[adPage] : STAT_ICON[key] || PAGE_ICON[adPage], label);
@@ -2574,6 +2575,13 @@
     const [, , rest] = R.where();
     adPage = AD[rest[0]] ? rest[0] : 'users';
     adView = viewOf(rest[1]).key;
+    // The placeholder rows straight away, every time a list has to be read, while the domain is looked at too. The
+    // setup card takes their place when there's no account.
+    if (fresh || !ad || !lists[adPage]) {
+      $('dir-lib').hidden = false;
+      R.skeleton($('dir-table'), 'rows', 8);
+      drawHero();
+    }
     try {
       if (fresh || !ad) {
         ad = await R.adInfo();

@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.229 (2026-11-16)
+
+- Active Directory shows its grey placeholder rows and numbers every time it reads a list, from the moment the page opens, not only on later visits.
+- Initials leave out brackets and other marks: (service) ADFS shows SA, not (A.
+
 ## 1.1.228 (2026-11-16)
 
 - Fixed the Overview banner when an update is waiting: Check for updates showed a huge icon instead of a normal button beside Install now.

@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.229', [
+    'Active Directory shows its grey placeholder rows and numbers every time it reads a list, from the moment the page opens, not only on later visits.',
+    'Initials leave out brackets and other marks: (service) ADFS shows SA, not (A.',
+  ]],
   ['1.1.228', [
     'Fixed the Overview banner when an update is waiting: Check for updates showed a huge icon instead of a normal button beside Install now.',
   ]],
@@ -719,7 +723,8 @@ const RELEASE_NOTES = [
     $(id).textContent = text || '';
   };
   const initials = (name) => {
-    const w = String(name || '?').split(/[\s.@\\_-]+/).filter(Boolean);
+    // Letters and digits only: "(service) ADFS" is SA, not "(A".
+    const w = String(name || '?').split(/[^\p{L}\p{N}]+/u).filter(Boolean);
     return ((w[0]?.[0] || '?') + (w.length > 1 ? w[w.length - 1][0] : '')).toUpperCase();
   };
   // How long ago in days: Today, Yesterday, 12 days ago, then the date.
