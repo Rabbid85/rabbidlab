@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.238 (2026-11-16)
+
+- The client window on a computer no longer flashes every few seconds while it is open. It was making its list of facts again from nothing each time, where now it only changes what changed.
+
 ## 1.1.237 (2026-11-16)
 
 - The Org chart is a real chart now, the one from NorthStack AD: each person a building, managers taller with their initials on a sign, every team on a platform under its manager, joined by reporting lines. Drag to move it, scroll to zoom, Fit shows it all.

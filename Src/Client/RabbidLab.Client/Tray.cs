@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
@@ -230,6 +231,8 @@ internal sealed class StatusWindow : Form
         ColumnCount = 2, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Dock = DockStyle.Top,
         BackColor = Look.Field, Padding = new Padding(14, 10, 14, 10), Margin = new Padding(0, 16, 0, 0),
     };
+    private readonly List<Label> said = new(); // each fact's value, made once (Draw)
+    private float madeFor; // the screen scale those were made for
     private readonly Button connect = Look.Button("Connect to a server", primary: false);
     private readonly Button remove = Look.Button("Uninstall", primary: false);
     private Status shown = new();
@@ -300,29 +303,52 @@ internal sealed class StatusWindow : Form
         hint.Text = s.Hint();
         connect.Visible = s.State is Status.NoServer or Status.Unreachable;
         var joined = s.State is Status.Connected or Status.Waiting or Status.Unreachable or Status.Refused;
-        facts.SuspendLayout();
-        facts.Controls.Clear();
-        facts.RowStyles.Clear();
-        facts.RowCount = 0;
-        Fact("Server", s.Server ?? "Not set");
-        Fact("Computer name", s.Computer);
-        Fact("Signed-in user", string.IsNullOrEmpty(s.User) ? Environment.UserName : s.User!);
-        Fact("Last check-in", s.CheckedIn is { } at ? at.ToLocalTime().ToString("g") : "Never");
-        Fact("Client version", s.Version);
-        Fact("Server version", s.ServerVersion ?? "Unknown");
-        Fact("Uninstall", !joined ? "Allowed (not connected to a server)"
-            : s.Locked ? $"Locked by {s.Host}"
-            : s.Unlocked == Status.ByOffline ? $"Allowed (server not reached for {Removal.OfflineDays} days)"
-            : s.RemovalUntil is { } until ? $"Allowed until {until.ToLocalTime():t}{(s.Unlocked == Status.ByCode ? " (uninstall code)" : "")}" : "Allowed");
-        facts.ResumeLayout();
-    }
-
-    private void Fact(string label, string value)
-    {
-        facts.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        var gap = (int) Math.Round(4 * fit);
-        facts.Controls.Add(new Label { Text = label, AutoSize = true, ForeColor = Look.Muted, Margin = new Padding(0, gap, 0, gap) });
-        facts.Controls.Add(new Label { Text = value, AutoSize = true, ForeColor = Look.Ink, Margin = new Padding(0, gap, 0, gap), MaximumSize = new Size((int) Math.Round(250 * fit), 0) });
+        var rows = new (string Label, string Value)[]
+        {
+            ("Server", s.Server ?? "Not set"),
+            ("Computer name", s.Computer),
+            ("Signed-in user", string.IsNullOrEmpty(s.User) ? Environment.UserName : s.User!),
+            ("Last check-in", s.CheckedIn is { } at ? at.ToLocalTime().ToString("g") : "Never"),
+            ("Client version", s.Version),
+            ("Server version", s.ServerVersion ?? "Unknown"),
+            ("Uninstall", !joined ? "Allowed (not connected to a server)"
+                : s.Locked ? $"Locked by {s.Host}"
+                : s.Unlocked == Status.ByOffline ? $"Allowed (server not reached for {Removal.OfflineDays} days)"
+                : s.RemovalUntil is { } until ? $"Allowed until {until.ToLocalTime():t}{(s.Unlocked == Status.ByCode ? " (uninstall code)" : "")}" : "Allowed"),
+        };
+        // The rows are made once, and again only when the window learns its screen's scale (OnLoad). After that only a
+        // value that changed is set: clearing and making them all again every five seconds flashed the whole box, and
+        // left the old labels behind.
+        if (said.Count != rows.Length || madeFor != fit)
+        {
+            facts.SuspendLayout();
+            while (facts.Controls.Count > 0)
+            {
+                facts.Controls[0].Dispose(); // which takes it out of the table too
+            }
+            facts.RowStyles.Clear();
+            facts.RowCount = 0;
+            said.Clear();
+            madeFor = fit;
+            var gap = (int) Math.Round(4 * fit);
+            foreach (var (label, value) in rows)
+            {
+                facts.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+                facts.Controls.Add(new Label { Text = label, AutoSize = true, ForeColor = Look.Muted, Margin = new Padding(0, gap, 0, gap) });
+                var text = new Label { Text = value, AutoSize = true, ForeColor = Look.Ink, Margin = new Padding(0, gap, 0, gap), MaximumSize = new Size((int) Math.Round(250 * fit), 0) };
+                facts.Controls.Add(text);
+                said.Add(text);
+            }
+            facts.ResumeLayout();
+            return;
+        }
+        for (var i = 0; i < rows.Length; i++)
+        {
+            if (said[i].Text != rows[i].Value)
+            {
+                said[i].Text = rows[i].Value;
+            }
+        }
     }
 
     // Uninstalling goes through Windows Installer, which refuses unless the server has allowed it (Removal).
