@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.228 (2026-11-16)
+
+- Fixed the Overview banner when an update is waiting: Check for updates showed a huge icon instead of a normal button beside Install now.
+
 ## 1.1.227 (2026-11-16)
 
 - The cogwheel on Links and Sensors is the same height as the buttons beside it again.
