@@ -794,6 +794,16 @@ section.page.home.dir-top { max-width: none; padding: 0; gap: 0; }
 .dgate-acts { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
 .dgate-acts:empty { display: none; }
 .dgate-acts .primary { padding: 9px 22px; }
+/* Under the cover the list down the left is placeholders too, so nothing real shows through. */
+.dnav-sk { display: none; }
+.page:has(.dgate:not([hidden])) .dnav > :not(.dnav-sk) { display: none !important; }
+.page:has(.dgate:not([hidden])) :is(.dbar, .hero-row, .hero-stats) { visibility: hidden; }
+.page:has(.dgate:not([hidden])) .dnav-sk { display: grid; gap: 12px; padding: 4px 12px; }
+.dnav-sk > span { display: flex; align-items: center; gap: 10px; }
+.dnav-sk .sq { flex: none; width: 16px; height: 16px; border-radius: 5px; }
+.dnav-sk > span > .sk:last-child { width: 62%; height: 11px; }
+.dnav-sk > span:nth-of-type(even) > .sk:last-child { width: 48%; }
+.dnav-sk .sk-head { width: 70px; height: 9px; margin: 8px 0 2px; }
 @media (max-width: 900px) {
   section.page.dir-area, section.page.set-area, .layout-wide section.page.dir-area, .layout-wide section.page.set-area { grid-template-columns: minmax(0, 1fr); padding: 30px 18px; }
   .dir-area > .dnav, .set-area > .dnav, .dmain { grid-column: 1; }

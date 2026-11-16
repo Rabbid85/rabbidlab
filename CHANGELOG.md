@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.218 (2026-11-16)
+
+- Under the service account card, the list down the left shows grey placeholder lines like the rest of the page, and the Group Policy toolbar and numbers are hidden too.
+
 ## 1.1.217 (2026-11-16)
 
 - Every address in Settings, Console address can be removed. Setup host name goes like an added one, with the DNS alias Setup made if you say so. This computer name and IP addresses only come off the list, since the console still answers there, and Show them brings them back.

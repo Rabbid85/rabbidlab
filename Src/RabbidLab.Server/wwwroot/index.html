@@ -824,6 +824,8 @@
     <div class="dgate" id="dir-setup" hidden></div>
     <!-- Active Directory's pages, down the left of whichever of them is open (console.js moves this there), then the open page's views (users.js). -->
     <nav class="dnav" id="dir-rail" aria-label="Active Directory">
+      <!-- Placeholders while the setup cover is up (console.css), like the page behind it. -->
+      <div class="dnav-sk" aria-hidden="true"><i class="sk sk-head"></i><span><i class="sk sq"></i><i class="sk"></i></span><span><i class="sk sq"></i><i class="sk"></i></span><span><i class="sk sq"></i><i class="sk"></i></span><i class="sk sk-head"></i><span><i class="sk sq"></i><i class="sk"></i></span><span><i class="sk sq"></i><i class="sk"></i></span><span><i class="sk sq"></i><i class="sk"></i></span><span><i class="sk sq"></i><i class="sk"></i></span></div>
       <!-- The Attribute browser's own find, at the top of the list: anything in the domain by name, shown in place of the tree (directory.js). -->
       <label class="side-find rail-own" data-on="attrs"><svg><use href="#i-search"/></svg><input type="search" id="at-obj" placeholder="Find" aria-label="Find a user, group, computer or OU" autocomplete="off" spellcheck="false"></label>
       <label class="side-find rail-own" data-on="org"><svg><use href="#i-search"/></svg><input type="search" id="org-find" placeholder="Find" aria-label="Find a person" autocomplete="off" spellcheck="false"></label>
@@ -879,6 +881,7 @@
     <div class="dir-area">
       <div class="dgate" id="gpo-setup" hidden></div>
       <nav class="dnav lists" id="gpo-rail" aria-label="Group Policy">
+        <div class="dnav-sk" aria-hidden="true"><i class="sk sk-head"></i><span><i class="sk sq"></i><i class="sk"></i></span><span><i class="sk sq"></i><i class="sk"></i></span><span><i class="sk sq"></i><i class="sk"></i></span><i class="sk sk-head"></i><span><i class="sk sq"></i><i class="sk"></i></span><span><i class="sk sq"></i><i class="sk"></i></span><span><i class="sk sq"></i><i class="sk"></i></span><span><i class="sk sq"></i><i class="sk"></i></span></div>
         <p class="rail-label">Browse</p>
         <a href="#gpo" data-gpo="gpos"><svg><use href="#i-policy"/></svg><span>Group Policy Objects</span><small id="gpo-n-gpos"></small></a>
         <div class="dkids" id="gpo-views"></div>

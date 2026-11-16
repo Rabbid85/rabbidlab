@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.218', [
+    'Under the service account card, the list down the left shows grey placeholder lines like the rest of the page, and the Group Policy toolbar and numbers are hidden too.',
+  ]],
   ['1.1.217', [
     'Every address in Settings, Console address can be removed. Setup host name goes like an added one, with the DNS alias Setup made if you say so. This computer name and IP addresses only come off the list, since the console still answers there, and Show them brings them back.',
     'The port 80 note lists its names with commas.',
