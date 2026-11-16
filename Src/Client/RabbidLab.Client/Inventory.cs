@@ -137,6 +137,9 @@ internal sealed class UpdateReport
     [DataMember(Name = "title", EmitDefaultValue = false)] public string? Title { get; set; }
     [DataMember(Name = "kind", EmitDefaultValue = false)] public string? Kind { get; set; }
     [DataMember(Name = "installed", EmitDefaultValue = false)] public string? Installed { get; set; }
+
+    /// <summary>Antivirus definitions: listed as Windows lists them, but they come several times a day, so not counted as missing.</summary>
+    [DataMember(Name = "definition", EmitDefaultValue = false)] public bool Definition { get; set; }
 }
 
 /// <summary>
@@ -177,8 +180,14 @@ internal static class Inventory
     public static async Task Follow(CancellationToken stop)
     {
         var now = DateTime.UtcNow;
-        if ((asking is null || asking.IsCompleted) && now - asked > Resend)
+        if (now - asked > Resend)
         {
+            // Windows Update can hang on a question for good. One still unanswered after six hours is given up on and said,
+            // so the answer on the server doesn't quietly go stale.
+            if (asking is { IsCompleted: false })
+            {
+                Problems.Note("windows-update", "Windows Update was asked what's missing six hours ago and never answered. Asking again.");
+            }
             asked = now;
             asking = Task.Run(AskWindowsUpdate);
         }
@@ -567,10 +576,16 @@ internal static class Inventory
             }
             dynamic session = Activator.CreateInstance(type);
             dynamic searcher = session.CreateUpdateSearcher();
-            dynamic result = searcher.Search("IsInstalled=0 and IsHidden=0 and Type='Software'");
+            // Everything that isn't installed, as Windows' own Update page asks: software, and drivers too.
+            dynamic result = searcher.Search("IsInstalled=0 and IsHidden=0");
             var list = new List<UpdateReport>();
             foreach (dynamic update in result.Updates)
             {
+                // A driver Windows wouldn't pick itself is one of its optional updates, which its page keeps apart: not missing.
+                if ((int) update.Type == 2 && !(bool) update.AutoSelectOnWebSites)
+                {
+                    continue;
+                }
                 var kb = "";
                 foreach (dynamic id in update.KBArticleIDs)
                 {
@@ -588,11 +603,8 @@ internal static class Inventory
                     }
                     definitions |= string.Equals((string) category.CategoryID, DefinitionUpdates, StringComparison.OrdinalIgnoreCase);
                 }
-                if (definitions)
-                {
-                    continue; // antivirus definitions come out several times a day and install themselves
-                }
-                list.Add(new UpdateReport { Kb = kb, Title = (string) update.Title, Kind = kind });
+                // Antivirus definitions come out several times a day: listed, as Windows lists them, and marked so they aren't counted.
+                list.Add(new UpdateReport { Kb = kb, Title = (string) update.Title, Kind = kind, Definition = definitions });
             }
             missing = list;
             missingChecked = DateTime.UtcNow;
@@ -600,8 +612,9 @@ internal static class Inventory
         }
         catch (Exception e)
         {
-            // Windows Update is off, unreachable or busy: asked again in six hours, and the server is told.
+            // Windows Update is off, unreachable or busy: the server is told, and it's asked again in half an hour, not six.
             Problems.Note("windows-update", $"Windows Update didn't answer: {e.Message.Trim()} (0x{e.HResult:X8})");
+            asked = DateTime.UtcNow - Resend + TimeSpan.FromMinutes(30);
         }
     }
 

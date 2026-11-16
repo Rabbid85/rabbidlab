@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.236 (2026-11-16)
+
+- Missing Windows updates are counted the way the Windows Update page lists them: everything that is not installed, with the drivers Windows picks itself, where only software counted before. Antivirus definitions are listed but not counted, since they come several times a day.
+- A computers Updates tab says when Windows Update was last asked. A computer whose Windows Update does not answer is asked again in half an hour, not six, and one that never answers is reported under Errors.
+- Group Policy errors on a computer leave out two things that are not errors: Windows not being able to measure the link speed, and a part of Group Policy only saying it completed. A part that really failed says which one and its error code.
+
 ## 1.1.235 (2026-11-16)
 
 - Printers asks each printer about itself over SNMP and shows its toner. A Toner column gives the supply with the least left, and a printer panel has a bar for every supply with the model, serial number and pages printed. A supply at 10 percent or less is listed under Problems.

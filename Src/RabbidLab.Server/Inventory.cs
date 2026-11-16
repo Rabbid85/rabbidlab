@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using RabbidLab.Shared;
 
 namespace RabbidLab.Server;
@@ -67,6 +68,9 @@ public sealed class DeviceUpdate
     public string? Title { get; set; }
     public string? Kind { get; set; }
     public string? Installed { get; set; }
+
+    /// <summary>Antivirus definitions: listed, as Windows lists them, but they come several times a day, so they aren't counted as missing.</summary>
+    public bool Definition { get; set; }
 }
 
 /// <summary>What Group Policy did on a computer: for the computer and the person signed in, its errors, and the local policy it ended up with.</summary>
@@ -185,7 +189,7 @@ public sealed class DeviceInventory
 /// The inventory of every computer in Devices, one file each in the data folder's Inventory folder, and kept in memory
 /// once read. Only a computer's own client can replace its inventory, and what it sends is cut to size.
 /// </summary>
-public sealed class Inventories(DataFolder folder, TimeProvider clock)
+public sealed partial class Inventories(DataFolder folder, TimeProvider clock)
 {
     public const int MaxPrograms = 3000;
     public const int MaxUpdates = 3000;
@@ -280,7 +284,10 @@ public sealed class Inventories(DataFolder folder, TimeProvider clock)
     {
         try
         {
-            return File(id) is { } path && System.IO.File.Exists(path) ? JsonSerializer.Deserialize<DeviceInventory>(System.IO.File.ReadAllBytes(path), Json) : null;
+            var read = File(id) is { } path && System.IO.File.Exists(path) ? JsonSerializer.Deserialize<DeviceInventory>(System.IO.File.ReadAllBytes(path), Json) : null;
+            // What an older client called a Group Policy error and isn't goes, without waiting for the computer to send again.
+            read?.GroupPolicy?.Errors.RemoveAll(e => GpNoise(e.Text));
+            return read;
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException)
         {
@@ -356,7 +363,7 @@ public sealed class Inventories(DataFolder folder, TimeProvider clock)
             Checked = p.Checked,
             Computer = Side(p.Computer),
             User = Side(p.User),
-            Errors = [.. (p.Errors ?? []).Where(e => !string.IsNullOrWhiteSpace(e.Text)).Take(10).Select(e => new DeviceGpError
+            Errors = [.. (p.Errors ?? []).Where(e => !string.IsNullOrWhiteSpace(e.Text) && !GpNoise(e.Text)).Take(10).Select(e => new DeviceGpError
             {
                 When = e.When, Source = Cut(e.Source) ?? "Group Policy", Text = e.Text.Trim() is { Length: > 400 } t ? t[..400] : e.Text.Trim(), Warning = e.Warning,
             })],
@@ -367,6 +374,16 @@ public sealed class Inventories(DataFolder folder, TimeProvider clock)
             },
         };
     }
+
+    /// <summary>
+    /// Not a Group Policy error, though a client before 1.1.236 sends it as one: Windows couldn't measure the link's speed and
+    /// carried on, or a part of Group Policy "completed" with nothing saying what went wrong.
+    /// </summary>
+    public static bool GpNoise(string? text) => text is not null && (text.StartsWith("Group Policy bandwidth estimation failed", StringComparison.OrdinalIgnoreCase)
+        || GpCompleted().IsMatch(text.Trim()));
+
+    [GeneratedRegex(@"^Completed .+ Extension Processing in \d+ milliseconds\.$", RegexOptions.IgnoreCase)]
+    private static partial Regex GpCompleted();
 
     public const int MaxPrinters = 300;
     public const int MaxHistory = 100;

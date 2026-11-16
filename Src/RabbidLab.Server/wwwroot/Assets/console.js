@@ -3,6 +3,11 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.236', [
+    'Missing Windows updates are counted the way the Windows Update page lists them: everything that is not installed, with the drivers Windows picks itself, where only software counted before. Antivirus definitions are listed but not counted, since they come several times a day.',
+    'A computers Updates tab says when Windows Update was last asked. A computer whose Windows Update does not answer is asked again in half an hour, not six, and one that never answers is reported under Errors.',
+    'Group Policy errors on a computer leave out two things that are not errors: Windows not being able to measure the link speed, and a part of Group Policy only saying it completed. A part that really failed says which one and its error code.',
+  ]],
   ['1.1.235', [
     'Printers asks each printer about itself over SNMP and shows its toner. A Toner column gives the supply with the least left, and a printer panel has a bar for every supply with the model, serial number and pages printed. A supply at 10 percent or less is listed under Problems.',
     'Model, Serial number and Pages printed are columns too. Printers are asked with the read community public, a few at a time, and the answers are kept for six hours. Refresh asks again.',
@@ -2506,7 +2511,7 @@ const RELEASE_NOTES = [
       const section = (title, body, right = '') => `<section class="dw-sec"><div class="dw-sec-head"><h3>${title}</h3>${right}</div>${body}</section>`;
       const facts2 = (rows2) => `<ul class="does">${rows2.filter(Boolean).map(([k, v]) => `<li><b>${esc(k)}</b><span>${esc(v)}</span></li>`).join('')}</ul>`;
       const tabs = st === 'waiting' ? '' : `<div class="tabs2 dw-tabs" role="tablist">${[['summary', 'Summary', ''],
-        ...(seat.server ? [] : [['software', 'Software', inv ? inv.software.length : ''], ['updates', 'Updates', inv?.missingChecked ? inv.missing.length : '']]), ...(dvHooks.seatTabs?.(seat) || [])]
+        ...(seat.server ? [] : [['software', 'Software', inv ? inv.software.length : ''], ['updates', 'Updates', inv?.missingChecked ? inv.missing.filter((u) => !u.definition).length : '']]), ...(dvHooks.seatTabs?.(seat) || [])]
         .map(([t, label, count]) => `<a role="tab" data-seat-tab="${t}"${seatTab === t ? ' aria-current="true"' : ''}>${label}${count === '' || count === 0 ? '' : ` <small>${count}</small>`}</a>`).join('')}</div>`;
       const hardware = seat.server ? '' : !inv ? (st === 'waiting' ? '' : section('Hardware', none(waitingFor))) : section('Hardware', facts2([
         ['Model', [inv.manufacturer, inv.model].filter(Boolean).join(' ') || 'Unknown'], inv.serial && ['Serial number', inv.serial], inv.processor && ['Processor', inv.processor],
@@ -2539,7 +2544,8 @@ const RELEASE_NOTES = [
         : !inv ? section(seatTab === 'software' ? 'Installed software' : 'Windows updates', none(waitingFor))
         : seatTab === 'software' ? section(`Installed software <small>${inv.software.length}</small>`, inv.software.length
           ? `<label class="side-find seat-find"><svg><use href="#i-search"/></svg><input type="search" id="seat-sw-find" placeholder="Find software" aria-label="Find software" autocomplete="off" spellcheck="false" value="${esc(swFind)}"></label><div class="table" id="seat-sw"></div>` : none('Nothing is listed.'))
-        : section(`Windows updates <small>${inv.missingChecked ? `${inv.missing.length} missing` : ''}</small>`, (!inv.missingChecked ? none("Windows Update hasn't answered on this computer yet. It's asked every six hours.") : '')
+        : section(`Windows updates <small>${inv.missingChecked ? `${inv.missing.filter((u) => !u.definition).length} missing` : ''}</small>`, (!inv.missingChecked ? none("Windows Update hasn't answered on this computer yet. It's asked every six hours.")
+          : `<p class="dw-how">Windows Update was asked ${esc(when(inv.missingChecked))}. It's asked again every six hours, or now with Check for updates under Actions. Antivirus definitions are listed but not counted.</p>`)
           + (!inv.history && inv.updates.length ? `<p class="dw-how">Update names show once its client is on 1.1.203 or later. Until then it's what Windows lists by number.</p>` : '')
           + `<div class="table" id="seat-upd"></div>`);
       panel.body.innerHTML = `<div class="dw-head"><span class="pic dw-pic">${svg(seat.server ? 'server' : 'monitor')}</span><div class="dw-name"><h2 id="dw-title">${esc(seat.computer)}</h2>`
@@ -2564,7 +2570,7 @@ const RELEASE_NOTES = [
         ],
       }).draw(rows);
     };
-    const UPD_STATE = { missing: ['waiting', 'Missing'], installed: ['online', 'Installed'], failed: ['bad', 'Failed'], cancelled: ['offline', 'Cancelled'], pending: ['waiting', 'Pending'] };
+    const UPD_STATE = { missing: ['waiting', 'Missing'], definition: ['offline', 'Definitions'], installed: ['online', 'Installed'], failed: ['bad', 'Failed'], cancelled: ['offline', 'Cancelled'], pending: ['waiting', 'Pending'] };
     const drawUpdates = () => {
       const el = panel.body.querySelector('#seat-upd');
       const inv = seatInv?.inventory;
@@ -2572,14 +2578,14 @@ const RELEASE_NOTES = [
       // Missing first, then what Windows Update installed by name; a client before 1.1.203 sends only KB numbers.
       const done = inv.history ? inv.history.map((h) => ({ title: h.title, kb: h.kb, state: h.result, date: h.date }))
         : inv.updates.map((u) => ({ title: [u.kind, u.kb].filter(Boolean).join(' '), kb: u.kb, state: 'installed', date: u.installed }));
-      const rows = [...(inv.missingChecked ? inv.missing.map((u) => ({ title: u.title || u.kb, kb: u.kb, state: 'missing', date: null })) : []), ...done];
+      const rows = [...(inv.missingChecked ? inv.missing.map((u) => ({ title: u.title || u.kb, kb: u.kb, state: u.definition ? 'definition' : 'missing', date: null })) : []), ...done];
       window.RabbidLab.grid({
         el, key: 'seat-updates', headButton: true, sort: { key: 'date', dir: -1 }, redraw: drawUpdates, empty: 'Nothing is listed.',
         cols: [
           { key: 'title', label: 'Update', w: 245, fixed: true, get: (r) => r.title },
           { key: 'state', label: 'State', w: 85, on: true, get: (r) => (UPD_STATE[r.state] || ['', r.state])[1], cell: (r) => `<span class="state ${(UPD_STATE[r.state] || ['offline'])[0]}">${esc((UPD_STATE[r.state] || ['', r.state])[1])}</span>` },
           // Missing ones have no date: they sort as the newest.
-          { key: 'date', label: 'Date', w: 90, on: true, get: (r) => (r.state === 'missing' ? '9999' : r.date || ''), text: (r) => r.date || '', cell: (r) => `<span class="muted">${esc(r.date ? dvDay(r.date) : '-')}</span>` },
+          { key: 'date', label: 'Date', w: 90, on: true, get: (r) => (r.state === 'missing' || r.state === 'definition' ? '9999' : r.date || ''), text: (r) => r.date || '', cell: (r) => `<span class="muted">${esc(r.date ? dvDay(r.date) : '-')}</span>` },
           { key: 'kb', label: 'KB', w: 90, get: (r) => r.kb || '' },
         ],
       }).draw(rows);

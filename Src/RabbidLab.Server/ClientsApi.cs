@@ -464,7 +464,8 @@ public static class ClientsApi
         // Free space on the Windows drive, as a percentage.
         disk = i.Disks.FirstOrDefault(d => d.Name.StartsWith('C') || d.Name.StartsWith('c')) is { Total: > 0 } c ? (int?) Math.Round(100.0 * c.Free / c.Total) : null,
         // How many updates are missing; null until Windows Update has answered once.
-        missing = i.MissingChecked is null ? (int?) null : i.Missing.Count,
+        // Antivirus definitions are listed but not counted: they come several times a day.
+        missing = i.MissingChecked is null ? (int?) null : i.Missing.Count(u => !u.Definition),
         // When Windows Update last answered, and the newest update it has installed.
         missingChecked = i.MissingChecked,
         lastUpdate = i.Updates.Where(u => !string.IsNullOrEmpty(u.Installed)).OrderByDescending(u => u.Installed, StringComparer.Ordinal).Select(u => new { kb = u.Kb, installed = u.Installed }).FirstOrDefault(),

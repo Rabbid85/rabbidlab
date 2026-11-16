@@ -216,6 +216,11 @@ internal static class GroupPolicy
                         {
                             continue;
                         }
+                        // Not being able to measure the link's speed isn't a problem: Windows says so itself and carries on.
+                        if (e.Id == 6314)
+                        {
+                            continue;
+                        }
                         string text;
                         try
                         {
@@ -226,6 +231,18 @@ internal static class GroupPolicy
                             text = $"Event {e.Id}";
                         }
                         text = string.Join(" ", text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).Select(l => l.Trim()));
+                        // A part of Group Policy that ended badly only says "Completed … Extension Processing in 16 milliseconds",
+                        // which reads like success. Its name and error code are in the event's data: said plainly, or left out
+                        // when the code is nothing or only that the computer is already enrolled in device management.
+                        if (e.Id is 6016 or 7016)
+                        {
+                            var (part, code) = Ended(e);
+                            if (code is 0 or 0x8018000A)
+                            {
+                                continue;
+                            }
+                            text = $"{part ?? "A part of Group Policy"} {(e.Id == 7016 ? "didn't apply" : "applied with a warning")}: error 0x{code:X8}.";
+                        }
                         found.Add(new GpErrorReport
                         {
                             When = (e.TimeCreated ?? DateTime.Now).ToUniversalTime().ToString("o", CultureInfo.InvariantCulture),
@@ -244,6 +261,24 @@ internal static class GroupPolicy
         From("Microsoft-Windows-GroupPolicy/Operational", _ => true);
         From("Application", s => s.StartsWith("Group Policy", StringComparison.OrdinalIgnoreCase));
         return found.GroupBy(f => f.Text).Select(g => g.First()).OrderByDescending(f => f.When, StringComparer.Ordinal).Take(10).ToList();
+    }
+
+    // The name and error code of the part of Group Policy an "ended" event (6016, 7016) is about, from its data.
+    private static (string? Part, uint Code) Ended(EventRecord e)
+    {
+        try
+        {
+            var xml = e.ToXml();
+            string? Data(string name) => System.Text.RegularExpressions.Regex.Match(xml, $"<Data Name=['\"]{name}['\"]>([^<]*)</Data>") is { Success: true } m
+                ? System.Net.WebUtility.HtmlDecode(m.Groups[1].Value).Trim() : null;
+            var code = uint.TryParse(Data("ErrorCode"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var n) ? n
+                : long.TryParse(Data("ErrorCode"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var signed) ? unchecked((uint) signed) : 1u;
+            return (Data("CSEExtensionName") is { Length: > 0 } part ? part : null, code);
+        }
+        catch (EventLogException)
+        {
+            return (null, 1u); // unreadable: still an error, with no more to say about it
+        }
     }
 
     // --- The local policy Windows uses now ------------------------------------------------------------------------

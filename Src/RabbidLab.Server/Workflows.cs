@@ -247,7 +247,7 @@ public sealed class Workflows(DataFolder folder, TimeProvider clock, DeviceScrip
     /// <summary>A computer sent its inventory: what's newly wrong with it since the one before starts its workflows.</summary>
     public void InventoryChanged(Client c, DeviceInventory? before, DeviceInventory after)
     {
-        if (after.MissingChecked is not null && after.Missing.Count > 0 && (before?.Missing.Count ?? 0) == 0)
+        if (after.MissingChecked is not null && after.Missing.Any(u => !u.Definition) && before?.Missing.Any(u => !u.Definition) != true)
         {
             Happened(NeedsUpdates, c);
         }
