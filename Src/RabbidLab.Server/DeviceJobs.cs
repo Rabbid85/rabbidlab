@@ -212,6 +212,7 @@ public sealed class DeviceJobs(DataFolder folder, TimeProvider clock, ClientComm
     public const string Shutdown = "shutdown";
     public const string Message = "message";
     public const string Client = "client";
+    public const string GpUpdate = "gpupdate";
 
     public const string Waiting = "waiting";
     public const string Running = "running";
@@ -592,6 +593,32 @@ public static class DeviceActions
     };
 
     private const string ClientServiceName = "RabbidLabClient";
+
+    /// <summary>
+    /// Group Policy applied again now: the computer's here, as SYSTEM, and each signed-in person's through a scheduled task
+    /// that runs in their session, as Invoke-GPUpdate does it. The client reads the results again after any job.
+    /// </summary>
+    public static JobStep GpUpdate() => new()
+    {
+        Title = "Run gpupdate", Language = DeviceScripts.PowerShell, Minutes = 10,
+        Text = DeviceScripts.Clean("""
+            $tool = Join-Path $env:windir 'Sysnative\gpupdate.exe'
+            if (-not (Test-Path $tool)) { $tool = Join-Path $env:windir 'System32\gpupdate.exe' }
+            & $tool /target:computer /force /wait:300 2>&1 | Where-Object { $_ -and "$_".Trim() } | ForEach-Object { "$_".Trim() }
+            $code = $LASTEXITCODE
+            if (Get-Process explorer -ErrorAction SilentlyContinue) {
+                $name = 'Rabbid Lab gpupdate'
+                $action = New-ScheduledTaskAction -Execute $tool -Argument '/target:user /force'
+                $who = New-ScheduledTaskPrincipal -GroupId 'S-1-5-4' -RunLevel Limited
+                Register-ScheduledTask -TaskName $name -Action $action -Principal $who -Force | Out-Null
+                Start-ScheduledTask -TaskName $name
+                Start-Sleep -Seconds 45
+                Unregister-ScheduledTask -TaskName $name -Confirm:$false
+                'User policy refreshed for everyone signed in.'
+            } else { 'Nobody is signed in, so only computer policy was refreshed.' }
+            exit $code
+            """),
+    };
 
     public const int MessageMost = 250;
 

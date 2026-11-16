@@ -454,6 +454,22 @@ public static class ClientsApi
         software = i.Software.Count,
         // Its first network card's MAC (wired first), for Wake.
         mac = i.Nics?.FirstOrDefault()?.Mac,
+        // Group Policy, for the Group Policy list and for running gpupdate where a GPO applies.
+        gp = i.GroupPolicy is not { } gp ? null : new
+        {
+            refreshed = gp.Computer?.Refreshed,
+            took = gp.Computer?.Took,
+            som = gp.Computer?.Som,
+            computer = gp.Computer?.Applied.Count,
+            user = gp.User?.Applied.Count,
+            who = gp.User?.Who,
+            errors = gp.Errors.Count(e => !e.Warning),
+            warnings = gp.Errors.Count(e => e.Warning),
+            gpos = (gp.Computer?.Applied ?? []).Concat(gp.Computer?.Denied ?? []).Concat(gp.User?.Applied ?? []).Concat(gp.User?.Denied ?? []).Select(g => g.Id).Distinct(),
+            minLength = gp.Local?.MinLength,
+            firewall = gp.Local?.Firewall,
+            rdp = gp.Local?.Rdp,
+        },
         received = i.Received,
     };
 

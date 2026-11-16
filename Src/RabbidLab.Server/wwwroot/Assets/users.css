@@ -403,8 +403,8 @@ dialog.drawer::backdrop { background: rgba(5, 6, 10, .55); backdrop-filter: blur
 .dw-qa:hover { background: #1A1D2B; color: #fff; }
 .dw-qa svg { width: 16px; height: 16px; color: var(--accent-soft); }
 .dw-note { margin: 12px 0 0; }
-.dw-tabs { margin: 18px 0 0; border-bottom: 1px solid var(--line); }
-.dw-tabs a { cursor: pointer; }
+.dw-tabs { gap: 18px; margin: 18px 0 0; border-bottom: 1px solid var(--line); }
+.dw-tabs a { white-space: nowrap; cursor: pointer; }
 .dw-panel { padding-top: 6px; }
 .dw-sec { padding: 18px 0 6px; border-bottom: 1px solid var(--line); }
 .dw-sec:last-of-type { border-bottom: 0; }

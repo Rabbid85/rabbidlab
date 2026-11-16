@@ -69,6 +69,61 @@ public sealed class DeviceUpdate
     public string? Installed { get; set; }
 }
 
+/// <summary>What Group Policy did on a computer: for the computer and the person signed in, its errors, and the local policy it ended up with.</summary>
+public sealed class DeviceGroupPolicy
+{
+    public DateTime? Checked { get; set; }
+    public DeviceGpSide? Computer { get; set; }
+    public DeviceGpSide? User { get; set; }
+    public List<DeviceGpError> Errors { get; set; } = [];
+    public DeviceLocalPolicy? Local { get; set; }
+}
+
+/// <summary>One side's results: who, where it is in the domain, when Group Policy last finished and how long it took, what applied and what didn't.</summary>
+public sealed class DeviceGpSide
+{
+    public string Who { get; set; } = "";
+    public string? Som { get; set; }
+    public DateTime? Refreshed { get; set; }
+    public double Took { get; set; }
+    public bool Slow { get; set; }
+    public string? Dc { get; set; }
+    public List<DeviceGpo> Applied { get; set; } = [];
+    public List<DeviceGpo> Denied { get; set; } = [];
+}
+
+/// <summary>A GPO in a computer's results. Why it didn't apply: security, wmi, disabled, link or empty.</summary>
+public sealed class DeviceGpo
+{
+    public string Id { get; set; } = "";
+    public string Name { get; set; } = "";
+    public string? Link { get; set; }
+    public string? Why { get; set; }
+}
+
+public sealed class DeviceGpError
+{
+    public DateTime? When { get; set; }
+    public string Source { get; set; } = "";
+    public string Text { get; set; } = "";
+    public bool Warning { get; set; }
+}
+
+/// <summary>The local policy Windows uses now: password and lockout rules, firewall, Remote Desktop, UAC, SMBv1, sign-in auditing.</summary>
+public sealed class DeviceLocalPolicy
+{
+    public int? MinLength { get; set; }
+    public int? MaxAge { get; set; }
+    public int? History { get; set; }
+    public int? Lockout { get; set; }
+    public int? LockoutMinutes { get; set; }
+    public string? Firewall { get; set; }
+    public string? Rdp { get; set; }
+    public bool? Uac { get; set; }
+    public bool? Smb1 { get; set; }
+    public string? AuditLogon { get; set; }
+}
+
 /// <summary>
 /// What a computer's client found on it: the hardware, the drives, the installed software, and the Windows updates
 /// installed and missing. The client sends it when it changes, and every few hours.
@@ -118,6 +173,9 @@ public sealed class DeviceInventory
 
     /// <summary>Fast startup is on, which stops most computers waking after Shut down; null until a client from 1.1.204 on says.</summary>
     public bool? FastStartup { get; set; }
+
+    /// <summary>What Group Policy did; null until a client from 1.1.211 on sends it. Kept when a report comes without it.</summary>
+    public DeviceGroupPolicy? GroupPolicy { get; set; }
 
     /// <summary>When this server got it.</summary>
     public DateTime Received { get; set; }
@@ -171,6 +229,11 @@ public sealed class Inventories(DataFolder folder, TimeProvider clock)
         if (inventory.History is null && Get(id) is { History: not null } did)
         {
             inventory.History = did.History;
+        }
+        // Group Policy is read every two hours on its own: a report from before then keeps the last results.
+        if (inventory.GroupPolicy is null && Get(id) is { GroupPolicy: not null } gp)
+        {
+            inventory.GroupPolicy = gp.GroupPolicy;
         }
         Save(id, inventory);
     }
@@ -265,6 +328,44 @@ public sealed class Inventories(DataFolder folder, TimeProvider clock)
             Ip = System.Net.IPAddress.TryParse(n.Nic.Ip, out var ip) && ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork ? ip.ToString() : null,
             Prefix = n.Nic.Prefix is >= 1 and <= 30 ? n.Nic.Prefix : 0,
         })];
+        i.GroupPolicy = Policy(i.GroupPolicy);
+    }
+
+    public const int MaxGpos = 60;
+    public static readonly string[] GpoWhy = ["security", "wmi", "disabled", "link", "empty"];
+
+    private static DeviceGroupPolicy? Policy(DeviceGroupPolicy? p)
+    {
+        if (p is null)
+        {
+            return null;
+        }
+        static List<DeviceGpo> Gpos(List<DeviceGpo>? list, bool denied) =>
+            [.. (list ?? []).Where(g => !string.IsNullOrWhiteSpace(g.Id)).Take(MaxGpos).Select(g => new DeviceGpo
+            {
+                Id = Cut(g.Id)!.ToUpperInvariant(), Name = Cut(g.Name) ?? Cut(g.Id)!, Link = Cut(g.Link), Why = denied ? GpoWhy.Contains(g.Why) ? g.Why : "empty" : null,
+            })];
+        static DeviceGpSide? Side(DeviceGpSide? s) => s is null ? null : new DeviceGpSide
+        {
+            Who = Cut(s.Who) ?? "", Som = Cut(s.Som), Refreshed = s.Refreshed, Took = double.IsFinite(s.Took) ? Math.Clamp(s.Took, 0, 86400) : 0, Slow = s.Slow, Dc = Cut(s.Dc),
+            Applied = Gpos(s.Applied, false), Denied = Gpos(s.Denied, true),
+        };
+        static int? Small(int? n) => n is >= 0 and <= 100_000 ? n : null;
+        return new DeviceGroupPolicy
+        {
+            Checked = p.Checked,
+            Computer = Side(p.Computer),
+            User = Side(p.User),
+            Errors = [.. (p.Errors ?? []).Where(e => !string.IsNullOrWhiteSpace(e.Text)).Take(10).Select(e => new DeviceGpError
+            {
+                When = e.When, Source = Cut(e.Source) ?? "Group Policy", Text = e.Text.Trim() is { Length: > 400 } t ? t[..400] : e.Text.Trim(), Warning = e.Warning,
+            })],
+            Local = p.Local is not { } l ? null : new DeviceLocalPolicy
+            {
+                MinLength = Small(l.MinLength), MaxAge = Small(l.MaxAge), History = Small(l.History), Lockout = Small(l.Lockout), LockoutMinutes = Small(l.LockoutMinutes),
+                Firewall = Cut(l.Firewall), Rdp = Cut(l.Rdp), Uac = l.Uac, Smb1 = l.Smb1, AuditLogon = Cut(l.AuditLogon),
+            },
+        };
     }
 
     public const int MaxPrinters = 300;

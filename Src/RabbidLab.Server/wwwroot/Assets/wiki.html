@@ -313,6 +313,57 @@
   </ol>
   <p class="tip">Passwords, LAPS passwords and BitLocker keys are never shown.</p>
 </article>
+
+<article data-key="gpo" data-group="Group Policy" data-title="GPOs: see, make and change them">
+  <p><a href="#gpo">Group Policy</a> lists every GPO in the domain: its status, where it's linked, its WMI filter and when it last changed. The views under Group Policy Objects show the ones not linked anywhere, ones with settings turned off, and ones changed this week.</p>
+  <ol>
+    <li>Click a GPO to open it. <b>Details</b> has its versions in AD and SYSVOL, <b>Links</b> where it applies, <b>Settings</b> what it sets, and <b>Delegation</b> who it applies to and who can change it.</li>
+    <li><b>Actions</b> on its panel links it, turns its computer or user settings off, sets its WMI filter, renames, copies, backs it up, restores it, saves its settings report or deletes it.</li>
+    <li><b>New GPO</b> makes an empty one, or a copy of another, and can link it straight away. Its settings are then set in the Group Policy editor (gpmc.msc).</li>
+    <li>On <b>Delegation</b>, type a group, user or computer to make the GPO apply to it. The cross stops it applying there; it can still read the GPO, so computers keep working.</li>
+    <li>Tick GPOs in the list to link, back up, run gpupdate or delete several at once.</li>
+  </ol>
+  <p class="tip">Changes are made as the AD service account. When it isn't allowed, you're asked for a domain admin login. That login is kept in the browser tab for 15 minutes, then forgotten, and never saved on the server. Settings, delegation, new GPOs, copies, deletes and backups need Group Policy Management on the server: <code>Add-WindowsCapability -Online -Name Rsat.GroupPolicy.Management.Tools~~~~0.0.1.0</code> on Windows 10 or 11, <code>Install-WindowsFeature GPMC</code> on Windows Server.</p>
+</article>
+
+<article data-key="gpo-links" data-group="Group Policy" data-title="Link a GPO, and the order they apply">
+  <p>A GPO does nothing until it's linked to the domain or an OU. It then applies to the users and computers in there, and in the OUs under it.</p>
+  <ul>
+    <li><b>Where linked</b> lists the domain and every OU with the GPOs linked to each. Click one to see them in order.</li>
+    <li>Link order 1 wins: it applies last, over the others. A new link goes at the end, so the ones there already keep winning. Use the <b>…</b> on a link to move it up or down, turn it off, enforce it or remove it.</li>
+    <li><b>Enforced</b> makes a link apply even where an OU below blocks inheritance, and win over GPOs linked lower down.</li>
+    <li><b>Block inheritance</b> on an OU stops GPOs linked higher up applying there, unless they're enforced.</li>
+  </ul>
+</article>
+
+<article data-key="gpo-wmi" data-group="Group Policy" data-title="WMI filters">
+  <p>A WMI filter limits a GPO to the computers where its query finds something, such as only Windows 11 or only laptops.</p>
+  <ol>
+    <li>Open <a href="#gpo/wmi">WMI filters</a> and click <b>New WMI filter</b>. Give it a name and a WQL query.</li>
+    <li>Try the query first on a few computers under <a href="#seats/wmi">Devices, WMI query</a>: if it finds something there, the filter lets the GPO apply there.</li>
+    <li>Open a GPO, then <b>Actions</b>, <b>WMI filter…</b> to use it.</li>
+  </ol>
+  <p class="tip">A filter that a GPO uses can't be deleted until it's taken off.</p>
+</article>
+
+<article data-key="gpo-backups" data-group="Group Policy" data-title="Back up and restore GPOs">
+  <p>Backups are kept on the server, in the same form Group Policy Management uses, under <a href="#gpo/backups">Backups</a>.</p>
+  <ul>
+    <li>Back up one GPO from its <b>Actions</b>, several by ticking them, or all of them with <b>Back up all GPOs</b>.</li>
+    <li>Deleting a GPO backs it up first. Restoring a deleted one brings it back with the same ID.</li>
+    <li>Restoring backs up what the GPO has now first. Links aren't part of a backup, so they stay as they are.</li>
+  </ul>
+</article>
+
+<article data-key="gpo-results" data-group="Group Policy" data-title="What Group Policy did on a computer">
+  <p>Each computer's client reads its Group Policy results every two hours, and right after gpupdate, and sends them with its inventory.</p>
+  <ul>
+    <li>Open a computer in <a href="#seats">Devices</a> and pick its <b>Group Policy</b> tab: when it last refreshed and from which domain controller, any errors, what applied to the computer and to whoever is signed in, what didn't apply and why, and the local policy it ended up with.</li>
+    <li><a href="#seats/gplocal">Devices, Group Policy</a> shows the same for every computer in one list.</li>
+    <li><b>Run gpupdate</b> applies Group Policy again now: computer policy as SYSTEM, and user policy for whoever is signed in. It's in a computer's Actions menu too, and on a GPO, where it runs on the computers that GPO reaches.</li>
+  </ul>
+  <p class="tip">Clients send this from 1.1.211 on.</p>
+</article>
 <article data-key="local-new" data-group="Local accounts" data-title="Make a Windows account on a computer">
   <p>Local accounts are the Windows accounts on one computer: this server, or any computer in Devices. They live on each computer's Accounts tab. You do it all in the browser and no service account is needed: this server makes its own changes, and on the other computers the <span data-app>Rabbid Lab</span> client makes them, running as SYSTEM.</p>
   <ol>

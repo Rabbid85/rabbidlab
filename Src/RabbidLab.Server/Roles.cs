@@ -81,7 +81,7 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
     private const int MostRoles = 50;
     private const int MostPeople = 2000;
     private const int MostPlaces = 20;
-    private const int Current = 2; // 2: Change users, groups and computers became four permissions
+    private const int Current = 3; // 2: Change users, groups and computers became four permissions; 3: Group Policy
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { WriteIndented = true };
     // Watched: --add-admin writes it while the service runs.
     private readonly JsonFile<RolesFile> file = folder.Json<RolesFile>("roles.json", Json, watch: true);
@@ -762,6 +762,13 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
         foreach (var r in f.Roles.Where(r => r.Permissions.Contains(Permissions.AdChange)))
         {
             r.Permissions = [.. r.Permissions.Union(Permissions.WasChange).Order()];
+        }
+        // Group Policy is the whole domain's: all of it for roles that set up the AD account, seeing it for those that see all of AD.
+        foreach (var r in f.Roles.Where(_ => f.Version < 3))
+        {
+            var add = r.Permissions.Contains(Permissions.AdConnect) ? Permissions.Gpo
+                : r.Permissions.Contains(Permissions.AdView) && r.Scope.Count == 0 ? [Permissions.GpoView] : [];
+            r.Permissions = [.. r.Permissions.Union(add).Order()];
         }
         f.Version = Current;
         return true;

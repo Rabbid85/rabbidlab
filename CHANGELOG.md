@@ -2,6 +2,16 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.211 (2026-11-16)
+
+- Group Policy, under Directory: every GPO in the domain, where each is linked, WMI filters and backups. Make, copy, rename, link, enforce, reorder, back up, restore and delete GPOs, turn their settings off, and pick who they apply to.
+- A GPO panel shows its settings and who it applies to from its settings report, and saves the full report. Settings, new GPOs, copies, deletes and backups need Group Policy Management on the server.
+- When the AD service account is not allowed to change Group Policy, the console asks for a domain admin login. It stays in the browser tab for 15 minutes and is never saved.
+- Each computer has a Group Policy tab, and Devices has a Group Policy list: last refresh, what applied, what did not and why, errors, and the local policy it ended up with. Clients send it every two hours.
+- Run gpupdate is in the Actions menu of a computer and of a GPO.
+- Roles have Group Policy permissions. Roles that could set up the AD account get all of them, and roles that see all of AD get See Group Policy.
+- A computer panel leaves out tab counts of zero, so its tabs fit on one line.
+
 ## 1.1.210 (2026-11-15)
 
 - The cross and bin on rows in a computer panel show all the time now, not only when the mouse is over them: take someone out of Administrators or a group, delete a local account, remove a printer.

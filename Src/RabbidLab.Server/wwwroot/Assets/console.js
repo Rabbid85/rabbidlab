@@ -3,6 +3,15 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.211', [
+    'Group Policy, under Directory: every GPO in the domain, where each is linked, WMI filters and backups. Make, copy, rename, link, enforce, reorder, back up, restore and delete GPOs, turn their settings off, and pick who they apply to.',
+    'A GPO panel shows its settings and who it applies to from its settings report, and saves the full report. Settings, new GPOs, copies, deletes and backups need Group Policy Management on the server.',
+    'When the AD service account is not allowed to change Group Policy, the console asks for a domain admin login. It stays in the browser tab for 15 minutes and is never saved.',
+    'Each computer has a Group Policy tab, and Devices has a Group Policy list: last refresh, what applied, what did not and why, errors, and the local policy it ended up with. Clients send it every two hours.',
+    'Run gpupdate is in the Actions menu of a computer and of a GPO.',
+    'Roles have Group Policy permissions. Roles that could set up the AD account get all of them, and roles that see all of AD get See Group Policy.',
+    'A computer panel leaves out tab counts of zero, so its tabs fit on one line.',
+  ]],
   ['1.1.210', [
     'The cross and bin on rows in a computer panel show all the time now, not only when the mouse is over them: take someone out of Administrators or a group, delete a local account, remove a printer.',
     'Local admins has ticks like the other lists. Actions takes the ticked ones out of Administrators on every computer they were added to, or deletes local accounts. A member panel has a cross on each computer to take them out of just that one.',
@@ -820,7 +829,7 @@ const RELEASE_NOTES = [
     sub.classList.toggle('one-sec', !!one);
     // Active Directory's pages are listed down the left of whichever of them is open, with that page's views (users.js).
     // Domain health is its own area: its own entry in the sidebar, and only its views down the left.
-    const dir = now.classList.contains('dir-top') && now.id !== 'page-seats'; // Devices is laid out the same way, with a banner and a list of its own
+    const dir = now.classList.contains('dir-top') && now.id !== 'page-seats' && now.id !== 'page-gpo'; // Devices and Group Policy are laid out the same way, with a banner and a list of their own
     const domain = now.dataset.page === 'ad' && rest[0] === 'domain';
     if (now.dataset.page !== 'ad') $('dir-rail').classList.remove('lists'); // Find, views and filters are for the pages that list things
     $('dir-rail').classList.toggle('domain-only', domain);
@@ -1837,7 +1846,7 @@ const RELEASE_NOTES = [
   const stateOf = (c) => (!c.approved ? 'waiting' : c.online ? 'online' : 'offline');
   const STATE = { online: 'Online', offline: 'Offline', waiting: 'Waiting' };
   // Where a client's error happened (its Problems.cs), as the panel names it.
-  const ERR_AREA = { update: 'Client update', 'windows-update': 'Windows Update', inventory: 'Inventory', connection: 'Reaching this server', orders: 'Jobs and orders', client: 'Client' };
+  const ERR_AREA = { update: 'Client update', 'windows-update': 'Windows Update', inventory: 'Inventory', connection: 'Reaching this server', orders: 'Jobs and orders', client: 'Client', 'group policy': 'Group Policy' };
   // State's pill; Waking for a few minutes after Wake (devices.js), until it comes online.
   const stateLabel = (c) => (stateOf(c) === 'offline' && dvHooks.waking?.(c) ? 'Waking' : STATE[stateOf(c)]);
   const stateCell = (c) => (stateLabel(c) === 'Waking' ? '<span class="state waiting">Waking</span>' : `<span class="state ${stateOf(c)}">${STATE[stateOf(c)]}</span>`);
@@ -2395,7 +2404,7 @@ const RELEASE_NOTES = [
       const facts2 = (rows2) => `<ul class="does">${rows2.filter(Boolean).map(([k, v]) => `<li><b>${esc(k)}</b><span>${esc(v)}</span></li>`).join('')}</ul>`;
       const tabs = st === 'waiting' ? '' : `<div class="tabs2 dw-tabs" role="tablist">${[['summary', 'Summary', ''],
         ...(seat.server ? [] : [['software', 'Software', inv ? inv.software.length : ''], ['updates', 'Updates', inv?.missingChecked ? inv.missing.length : '']]), ...(dvHooks.seatTabs?.(seat) || [])]
-        .map(([t, label, count]) => `<a role="tab" data-seat-tab="${t}"${seatTab === t ? ' aria-current="true"' : ''}>${label}${count === '' ? '' : ` <small>${count}</small>`}</a>`).join('')}</div>`;
+        .map(([t, label, count]) => `<a role="tab" data-seat-tab="${t}"${seatTab === t ? ' aria-current="true"' : ''}>${label}${count === '' || count === 0 ? '' : ` <small>${count}</small>`}</a>`).join('')}</div>`;
       const hardware = seat.server ? '' : !inv ? (st === 'waiting' ? '' : section('Hardware', none(waitingFor))) : section('Hardware', facts2([
         ['Model', [inv.manufacturer, inv.model].filter(Boolean).join(' ') || 'Unknown'], inv.serial && ['Serial number', inv.serial], inv.processor && ['Processor', inv.processor],
         inv.memory ? ['Memory', gb(inv.memory)] : null, inv.started && ['Uptime', howLong(inv.started)], ['Restart', inv.restartNeeded ? 'Needed, to finish installing something' : 'Not needed'],
@@ -3396,7 +3405,7 @@ const RELEASE_NOTES = [
   });
 
   // What the other scripts use. Hints are tips.js and data grids are grid.js.
-  window.RabbidLab = { app: () => product, $, esc, svg, say, initials, when, daysAgo, send, get, keep, forget, has, paint, where, viewAs, place, popups, option, dropdown, sure, copy, busy, groupTools, groupFilter, skeleton, toast, stepper, panel,
+  window.RabbidLab = { app: () => product, $, esc, svg, say, initials, when, daysAgo, send, get, keep, forget, has, paint, where, viewAs, place, popups, option, dropdown, sure, copy, busy, groupTools, groupFilter, skeleton, toast, stepper, panel, scatter,
     palette: window.RabbidLabColours.roles, me: () => meInfo,
     // The Devices page, for devices.js: its lists, what's ticked, and drawing or reading it again.
     devices: { lists: DV, more: dvMore, hooks: dvHooks, picked: dvPicked, computers: () => computers, rows: () => dvAll(), at: () => dvAt, shown: () => dvShown, grid: () => dvGrid(),

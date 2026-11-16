@@ -268,10 +268,11 @@ public sealed class RolesTests : IDisposable
         var admin = await app.SignedIn();
         var old = await Make(admin, "Old desk", "ad.view", "ad.change");
         var viewer = await Make(admin, "Viewer", "ad.view");
+        var setup = await Make(admin, "AD setup", "ad.view", "ad.connect");
         app.Dispose();
         // As a version before the split wrote it: no version, and Change alone.
         var path = Path.Combine(data, "roles.json");
-        File.WriteAllText(path, File.ReadAllText(path).Replace("\"version\": 2,", ""));
+        File.WriteAllText(path, File.ReadAllText(path).Replace("\"version\": 3,", ""));
         File.Delete(path + ".bak");
 
         using var again = new TestApp(data);
@@ -280,11 +281,13 @@ public sealed class RolesTests : IDisposable
         var roles = (await Json(page, "/api/roles")).GetProperty("roles").EnumerateArray().ToDictionary(r => r.GetProperty("id").GetString()!,
             r => r.GetProperty("permissions").EnumerateArray().Select(p => p.GetString()).ToList());
 
-        Assert.Equal(["ad.change", "ad.enable", "ad.groups", "ad.password", "ad.view"], roles[old]);
-        Assert.Equal(["ad.view"], roles[viewer]);
+        // Group Policy came after: seeing it for roles that see all of AD, all of it for roles that set up the AD account.
+        Assert.Equal(["ad.change", "ad.enable", "ad.groups", "ad.password", "ad.view", "gpo.view"], roles[old]);
+        Assert.Equal(["ad.view", "gpo.view"], roles[viewer]);
+        Assert.Equal(["ad.connect", "ad.view", "gpo.change", "gpo.delete", "gpo.link", "gpo.view"], roles[setup]);
         // Once upgraded it stays as it's set: taking one away isn't undone at the next start.
         (await page.PostAsJsonAsync($"/api/roles/{old}", new { name = "Old desk", color = "#5FD4A0", permissions = new[] { "ad.view", "ad.change" } })).EnsureSuccessStatusCode();
-        Assert.Contains("\"version\": 2", File.ReadAllText(path));
+        Assert.Contains("\"version\": 3", File.ReadAllText(path));
     }
 
     [Fact]

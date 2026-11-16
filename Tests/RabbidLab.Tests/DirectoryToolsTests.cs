@@ -834,11 +834,15 @@ public sealed class FakeLdap : ILdap
         return true;
     });
 
+    /// <summary>Every attribute change with its values, in order.</summary>
+    public List<(string Dn, LdapMod Mod)> Mods { get; } = [];
+
     public async Task Modify(string dn, IReadOnlyList<LdapMod> changes, CancellationToken stop)
     {
         foreach (var m in changes)
         {
             await Do($"modify {dn} {m.Attribute}", () => true);
+            Mods.Add((dn, m));
         }
     }
 

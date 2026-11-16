@@ -18,6 +18,7 @@ public static class UsersApi
         services.AddSingleton<IDirectoryTools>(s => s.GetRequiredService<DirectoryTools>());
         services.AddSingleton<IDirectoryExtras>(s => s.GetRequiredService<DirectoryTools>());
         services.AddSingleton<IDirectoryActions>(s => s.GetRequiredService<DirectoryTools>());
+        services.AddSingleton<IGroupPolicy>(s => s.GetRequiredService<DirectoryTools>());
         services.AddSingleton<ClientCommands>();
         services.AddSingleton<IAdminGroups, AdminGroups>();
     }

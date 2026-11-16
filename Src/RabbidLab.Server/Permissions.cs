@@ -36,6 +36,10 @@ public static class Permissions
     public const string AdDelete = "ad.delete";
     public const string AdConnect = "ad.connect";
     public const string AdAttributes = "ad.attributes";
+    public const string GpoView = "gpo.view";
+    public const string GpoLink = "gpo.link";
+    public const string GpoChange = "gpo.change";
+    public const string GpoDelete = "gpo.delete";
     public const string WindowsView = "windows.view";
     public const string WindowsCreate = "windows.create";
     public const string WindowsChange = "windows.change";
@@ -117,6 +121,13 @@ public static class Permissions
             new(AdConnect, "Set up Rabbid Lab's AD account", "Make the service account Rabbid Lab changes Active Directory with, or take it away."),
             new(AdAttributes, "Edit attributes", "Change any attribute in the Attribute browser, as ADSI Edit does, inside the service account's scope."),
         ]),
+        new("gpo", "Group Policy", "policy",
+        [
+            new(GpoView, "See Group Policy", "Every GPO, where it's linked, its settings and who it applies to, WMI filters, backups, and what applied on each computer."),
+            new(GpoLink, "Link GPOs", "Link and unlink GPOs, turn links off, enforce them, change their order, and block inheritance on an OU."),
+            new(GpoChange, "Make and change GPOs", "New GPOs and copies, rename, turn settings off, WMI filters, who a GPO applies to, back up and restore."),
+            new(GpoDelete, "Delete GPOs", "Gone from the domain, with their links. Each is backed up first."),
+        ]),
         new("windows", "Windows accounts", "key",
         [
             new(WindowsView, "See Windows accounts", "The accounts on this server and on the computers in Devices."),
@@ -131,6 +142,9 @@ public static class Permissions
 
     /// <summary>What Change users, groups and computers was split into. Roles that had it keep all of it.</summary>
     public static readonly IReadOnlyList<string> WasChange = [AdPassword, AdEnable, AdGroups];
+
+    /// <summary>Group Policy, for roles that could set up the AD account (the whole domain's) before it was here.</summary>
+    public static readonly IReadOnlyList<string> Gpo = [GpoView, GpoLink, GpoChange, GpoDelete];
 
     public static readonly IReadOnlySet<string> All = Parts.SelectMany(p => p.Actions).Select(a => a.Key).ToHashSet();
 

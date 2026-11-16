@@ -57,6 +57,9 @@ internal sealed class InventoryReport
 
     /// <summary>Fast startup is on (Shut down isn't a real one, and many cards then don't wake it); left out when Windows wouldn't say.</summary>
     [DataMember(Name = "fastStartup", EmitDefaultValue = false)] public bool? FastStartup { get; set; }
+
+    /// <summary>What Group Policy did here; left out until it's been read once.</summary>
+    [DataMember(Name = "groupPolicy", EmitDefaultValue = false)] public GroupPolicyReport? GroupPolicy { get; set; }
 }
 
 [DataContract]
@@ -156,12 +159,18 @@ internal static class Inventory
     private static List<string>? misses; // what WMI wouldn't read during this Gather, with why
     private static DateTime asked = DateTime.MinValue;
     private static Task? asking;
+    private static readonly TimeSpan PolicyEvery = TimeSpan.FromHours(2);
+    private static GroupPolicyReport? policy;
+    private static DateTime policyAsked = DateTime.MinValue;
+    private static Task? policyAsking;
+    private static string? sentPolicy; // the Group Policy read that was last sent, by its time
 
     /// <summary>Something here just changed (a job ran): it's read and Windows Update is asked again at the next round, not when their time comes.</summary>
     public static void Soon()
     {
         looked = DateTime.MinValue;
         asked = DateTime.MinValue;
+        policyAsked = DateTime.MinValue;
     }
 
     /// <summary>Run by the service after each check-in that found this computer approved.</summary>
@@ -173,8 +182,24 @@ internal static class Inventory
             asked = now;
             asking = Task.Run(AskWindowsUpdate);
         }
+        // gpresult takes a few seconds, so Group Policy is read on a thread of its own and sent once it's in.
+        if ((policyAsking is null || policyAsking.IsCompleted) && now - policyAsked > PolicyEvery)
+        {
+            policyAsked = now;
+            policyAsking = Task.Run(() =>
+            {
+                try
+                {
+                    policy = GroupPolicy.Read();
+                }
+                catch (Exception e)
+                {
+                    Problems.Note("group policy", $"Couldn't read Group Policy: {e.Message}");
+                }
+            });
+        }
         var settings = Settings.Read();
-        if (settings.Server is null || (now - looked < Look && sentTo == settings.Server && missingChecked?.ToString("o") == sentMissing))
+        if (settings.Server is null || (now - looked < Look && sentTo == settings.Server && missingChecked?.ToString("o") == sentMissing && policy?.Checked == sentPolicy))
         {
             return;
         }
@@ -194,7 +219,7 @@ internal static class Inventory
         var (code, _) = await api.Post<CheckInAnswer>("api/clients/inventory", report, $"RabbidLab-Client {me.Id}:{me.Secret}", stop).ConfigureAwait(false);
         if (code == HttpStatusCode.OK)
         {
-            (sentAs, sentTo, sent, sentMissing) = (print, settings.Server, now, report.MissingChecked);
+            (sentAs, sentTo, sent, sentMissing, sentPolicy) = (print, settings.Server, now, report.MissingChecked, report.GroupPolicy?.Checked);
         }
         else
         {
@@ -270,6 +295,7 @@ internal static class Inventory
             r.MissingChecked = at2.ToString("o", CultureInfo.InvariantCulture);
         }
         r.History = history;
+        r.GroupPolicy = policy;
         if (misses.Count > 0)
         {
             Problems.Note("inventory", $"Couldn't read {misses.Count} part(s) of the inventory. {misses[0]}");
@@ -654,6 +680,7 @@ internal static class Inventory
         {
             all.Append("|h:").Append(h.Title).Append(':').Append(h.Result);
         }
+        all.Append("|g:").Append(r.GroupPolicy?.Checked);
         using var sha = SHA256.Create();
         return BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(all.ToString())));
     }

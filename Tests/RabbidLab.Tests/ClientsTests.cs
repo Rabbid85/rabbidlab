@@ -410,6 +410,41 @@ public sealed class ClientsTests : IDisposable
     }
 
     [Fact]
+    public async Task Group_Policy_results_come_with_the_inventory_are_cut_to_size_and_stay_when_a_report_comes_without_them()
+    {
+        var admin = await app.SignedIn();
+        var (id, secret, _) = await Join();
+        (await admin.PostAsync($"/api/clients/{id}/approve", null)).EnsureSuccessStatusCode();
+        var gpo = (int n, string? why) => new { id = $"{{{n:D8}-0000-0000-0000-000000000000}}", name = $"GPO {n}", link = "amw.com/Workstations", why };
+        (await SendInventory(id, secret, new
+        {
+            model = "OptiPlex 7090",
+            groupPolicy = new
+            {
+                @checked = DateTime.UtcNow,
+                computer = new { who = @"AMW\AMW-LT-022$", som = "amw.com/Workstations", refreshed = DateTime.UtcNow.AddMinutes(-5), took = 2.4, applied = Enumerable.Range(1, 80).Select(n => gpo(n, null)), denied = new[] { gpo(90, "made up") } },
+                user = new { who = @"AMW\mwiles", applied = new[] { gpo(91, null) }, denied = Array.Empty<object>() },
+                errors = new[] { new { when = DateTime.UtcNow, source = "Drive Maps", text = new string('x', 900), warning = false }, new { when = DateTime.UtcNow, source = "Registry", text = "slow", warning = true } },
+                local = new { minLength = 14, firewall = "On", rdp = "Off", lockout = -3 },
+            },
+        })).EnsureSuccessStatusCode();
+        (await SendInventory(id, secret, new { model = "OptiPlex 7090" })).EnsureSuccessStatusCode();
+
+        var gp = (await admin.GetFromJsonAsync<JsonElement>($"/api/clients/{id}/inventory")).GetProperty("inventory").GetProperty("groupPolicy");
+        var row = (await admin.GetFromJsonAsync<JsonElement>("/api/clients"))[0].GetProperty("inventory").GetProperty("gp");
+        Assert.Equal(Inventories.MaxGpos, gp.GetProperty("computer").GetProperty("applied").GetArrayLength());
+        Assert.Equal("empty", gp.GetProperty("computer").GetProperty("denied")[0].GetProperty("why").GetString());
+        Assert.Equal(400, gp.GetProperty("errors")[0].GetProperty("text").GetString()!.Length);
+        Assert.Equal(JsonValueKind.Null, gp.GetProperty("local").GetProperty("lockout").ValueKind);
+        Assert.Equal(Inventories.MaxGpos, row.GetProperty("computer").GetInt32());
+        Assert.Equal(1, row.GetProperty("user").GetInt32());
+        Assert.Equal(1, row.GetProperty("errors").GetInt32());
+        Assert.Equal(1, row.GetProperty("warnings").GetInt32());
+        Assert.Equal("amw.com/Workstations", row.GetProperty("som").GetString());
+        Assert.Contains(row.GetProperty("gpos").EnumerateArray(), g => g.GetString() == "{00000091-0000-0000-0000-000000000000}");
+    }
+
+    [Fact]
     public async Task Software_and_updates_are_listed_across_computers_and_go_when_a_computer_is_removed()
     {
         var admin = await app.SignedIn();

@@ -32,6 +32,7 @@
 <script src="Assets/devices.js" defer></script>
 <script src="Assets/accounts.js" defer></script>
 <script src="Assets/printers.js" defer></script>
+<script src="Assets/gpo.js" defer></script>
 </head>
 <!-- The console: the top bar, the rail down the left, and one page at a time (console.js picks it from the address). -->
 <body class="app booting">
@@ -63,6 +64,7 @@
   <symbol id="i-certificate" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 17H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v5"/><path d="M7 8h8M7 12h4"/><circle cx="18" cy="15" r="3"/><path d="M16.5 17.6 16 21l2-1 2 1-.5-3.4"/></symbol>
   <symbol id="i-signpost" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M9 21h6"/><path d="M5 5h12l2.5 2.5L17 10H5z"/><path d="M19 12H7l-2.5 2.5L7 17h12z"/></symbol>
   <symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/></symbol>
+  <symbol id="i-policy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h5"/><path d="M14 3v5h5"/><path d="M19 8v2"/><path d="M17.5 13.5 21 15v2.6c0 2.2-1.5 3.7-3.5 4.4-2-.7-3.5-2.2-3.5-4.4V15Z"/><path d="M8 9h3M8 13h4M8 17h3"/></symbol>
   <symbol id="i-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c1-3.5 3.6-5.5 6.5-5.5s5.5 2 6.5 5.5"/><path d="M15.5 4.8a3.5 3.5 0 0 1 0 6.4M17.5 14.8c2 .7 3.4 2.4 4 5.2"/></symbol>
   <symbol id="i-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-3.5 4.5-5 8-5s6.5 1.5 8 5"/></symbol>
   <symbol id="i-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></symbol>
@@ -170,6 +172,7 @@
   <a href="#seats" data-page="seats" title="Devices" data-can="seats.view sessions.view"><svg><use href="#i-monitor"/></svg><span>Devices</span><small id="rail-seats"></small><i class="rail-dot" id="seats-dot" hidden></i></a>
   <p class="rail-label" data-can="ad.view ad.connect">Directory</p>
   <a href="#ad/users" data-page="ad" id="rail-dir" title="Active Directory" data-can="ad.view ad.connect"><svg><use href="#i-users"/></svg><span>Active Directory</span><i class="rail-dot bad" id="rail-dir-dot" hidden></i></a>
+  <a href="#gpo" data-page="gpo" id="rail-gpo" title="Group Policy" data-can="gpo.view"><svg><use href="#i-policy"/></svg><span>Group Policy</span></a>
   <a href="#ad/domain" data-page="domain" id="rail-domain" title="Domain health" data-can="ad.view ad.connect" data-whole><svg><use href="#i-shield"/></svg><span>Domain health</span><i class="rail-dot bad" id="rail-domain-dot" hidden></i></a>
   <p class="rail-label" data-can="access.view windows.view">Config</p>
   <a href="#people" data-page="people" title="Roles and people" data-can="access.view"><svg><use href="#i-shield"/></svg><span>Roles and people</span><small id="rail-roles"></small></a>
@@ -564,6 +567,7 @@
         <a href="#seats" data-dv="computers" data-can="seats.view"><svg><use href="#i-monitor"/></svg><span>Computers</span><i class="rail-dot" id="dv-dot" hidden></i><small id="dv-n-computers"></small></a>
         <div class="dkids" id="dv-views"></div>
         <a href="#seats/admins" data-dv="admins" data-can="windows.view"><svg><use href="#i-shield"/></svg><span>Local admins</span><small id="dv-n-admins"></small></a>
+        <a href="#seats/gplocal" data-dv="gplocal" data-can="seats.view"><svg><use href="#i-policy"/></svg><span>Group Policy</span><small id="dv-n-gplocal"></small></a>
         <a href="#seats/printers" data-dv="printers" data-can="seats.view"><svg><use href="#i-printer"/></svg><span>Printers</span><small id="dv-n-printers"></small></a>
         <p class="rail-label" data-can="seats.actions seats.scripts.run seats.scripts.edit seats.workflows seats.wmi">Tools</p>
         <a href="#seats/wmi" data-dv="wmi" data-can="seats.wmi"><svg><use href="#i-list"/></svg><span>WMI query</span><small id="dv-n-wmi"></small></a>
@@ -600,6 +604,7 @@
         </div>
         <p class="dnow" id="dv-now" hidden><b id="dv-view-title"></b><span class="bar-note" id="dv-count"></span><span class="dnow-filter" id="dv-filtered" hidden></span></p>
         <div class="table adt drows" id="seats-table" data-can="seats.view" data-skel="rows:4"></div>
+        <div class="table adt drows" id="dv-gplocal" hidden></div>
         <div class="table adt drows" id="dv-wmi" hidden></div>
         <div class="table adt drows" id="dv-admins" hidden></div>
         <div class="table adt drows" id="dv-adminp" hidden></div>
@@ -854,6 +859,45 @@
     </div>
     <!-- One user, group or computer: what it is, and what can be done to it. -->
   </div>
+  </section>
+
+  <!-- Group Policy: GPOs, where they're linked, WMI filters and backups, laid out like Active Directory with a banner and list of its own (gpo.js). -->
+  <section class="page home dir-top people-page dir-page gpo-page" id="page-gpo" data-page="gpo" data-title="Group Policy" hidden>
+    <header class="hero" id="gpo-hero">
+      <p class="eyebrow" id="gpo-eyebrow">Directory</p>
+      <h1 class="hero-title">Group Policy</h1>
+      <p class="hero-lead"><b id="gpo-state"></b> <span id="gpo-lead"></span></p>
+      <div class="hero-stats" id="gpo-stats"></div>
+    </header>
+    <div class="dir-area">
+      <div class="dgate" id="gpo-setup" hidden></div>
+      <nav class="dnav lists" id="gpo-rail" aria-label="Group Policy">
+        <p class="rail-label">Browse</p>
+        <a href="#gpo" data-gpo="gpos"><svg><use href="#i-policy"/></svg><span>Group Policy Objects</span><small id="gpo-n-gpos"></small></a>
+        <div class="dkids" id="gpo-views"></div>
+        <a href="#gpo/linked" data-gpo="linked"><svg><use href="#i-tree"/></svg><span>Where linked</span><small id="gpo-n-linked"></small></a>
+        <a href="#gpo/wmi" data-gpo="wmi"><svg><use href="#i-filter"/></svg><span>WMI filters</span><small id="gpo-n-wmi"></small></a>
+        <p class="rail-label">Tools</p>
+        <a href="#gpo/backups" data-gpo="backups"><svg><use href="#i-history"/></svg><span>Backups</span><small id="gpo-n-backups"></small></a>
+        <a href="#seats/gplocal" data-can="seats.view"><svg><use href="#i-monitor"/></svg><span>Results on a computer</span></a>
+      </nav>
+      <div class="dmain">
+        <div class="lib" id="gpo-lib"><div class="lib-body">
+          <!-- Search, Columns, then what this list can do, like every list. -->
+          <div class="dbar"><div class="tabs2" id="gpo-tabs"></div><span class="grow"></span>
+            <label class="side-find tsearch"><svg><use href="#i-search"/></svg><input type="search" id="gpo-find" placeholder="Search GPOs" aria-label="Search" autocomplete="off" spellcheck="false"></label>
+            <button type="button" class="small" id="gpo-cols" aria-haspopup="menu"><svg><use href="#i-columns"/></svg>Columns<svg class="chev"><use href="#i-chevron-down"/></svg></button>
+            <button type="button" class="small" id="gpo-act" aria-haspopup="menu" disabled data-tip="Tick GPOs first"><svg><use href="#i-menu"/></svg>Actions<b class="cnt" hidden></b><svg class="chev"><use href="#i-chevron-down"/></svg></button>
+            <button type="button" class="small" id="gpo-refresh" data-tip="Refresh" aria-label="Refresh"><svg><use href="#i-refresh"/></svg></button>
+            <button type="button" class="small" id="gpo-export" data-tip="Export" aria-label="Export"><svg><use href="#i-csv"/></svg></button>
+            <button type="button" class="primary" id="gpo-new" hidden><svg><use href="#i-plus"/></svg><span id="gpo-new-text">New GPO</span></button></div>
+          <p class="dnow" id="gpo-now" hidden><b id="gpo-view-title"></b><span class="bar-note" id="gpo-count"></span></p>
+          <p class="hint note" id="gpo-note" hidden></p>
+          <div class="table adt drows" id="gpo-table" data-skel="rows:6"></div>
+          <p class="hint problem" id="gpo-problem" hidden></p>
+        </div></div>
+      </div>
+    </div>
   </section>
 
   <!-- Org chart: who reports to whom, from each person's Manager in Active Directory (directory.js). -->
@@ -1602,6 +1646,28 @@
   <p class="dialog-lead" id="idle-lead"></p>
   <div class="dialog-foot"><button type="button" id="idle-out">Sign out</button><button type="button" class="primary" id="idle-stay" autofocus>Stay signed in</button></div>
 </dialog>
+<!-- Group Policy: the one window its changes ask in (gpo.js fills the form), the domain admin login for a change the
+     service account isn't allowed to make (never saved), and the Actions menu. -->
+<dialog class="dialog" id="gpo-dialog" aria-labelledby="gpo-d-title">
+  <h2 id="gpo-d-title"></h2>
+  <p class="dialog-lead" id="gpo-d-lead"></p>
+  <div class="form" id="gpo-d-form"></div>
+  <p class="hint problem" id="gpo-d-problem" role="alert" hidden></p>
+  <div class="dialog-foot"><button type="button" id="gpo-d-cancel">Cancel</button><button type="button" class="primary" id="gpo-d-go">OK</button></div>
+</dialog>
+<dialog class="dialog" id="gpo-login-dialog" aria-labelledby="gpo-l-title">
+  <h2 id="gpo-l-title">Sign in as a domain admin</h2>
+  <p class="dialog-lead" id="gpo-l-lead"></p>
+  <div class="form">
+    <label for="gpo-l-user">Username</label><input id="gpo-l-user" autocomplete="username" spellcheck="false" placeholder="AMW\admin">
+    <label for="gpo-l-password">Password</label><input id="gpo-l-password" type="password" autocomplete="current-password">
+  </div>
+  <p class="hint">Used for this change and any others in the next 15 minutes, then forgotten. It's kept in this tab only, never saved.</p>
+  <p class="hint problem" id="gpo-l-problem" role="alert" hidden></p>
+  <div class="dialog-foot"><button type="button" id="gpo-l-cancel">Cancel</button><button type="button" class="primary" id="gpo-l-go">Sign in</button></div>
+</dialog>
+<div class="gear-menu" id="gpo-menu" popover role="menu"></div>
+
 <dialog class="dialog" id="sure-dialog" aria-labelledby="sure-title">
   <h2 id="sure-title"></h2>
   <p class="dialog-lead" id="sure-lead"></p>

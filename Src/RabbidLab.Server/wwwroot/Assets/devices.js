@@ -86,7 +86,7 @@
   let flows = null; // /api/devices/workflows
   const scriptOf = (id) => (scripts || []).find((s) => s.id === id);
   const jobTitle = (j) => (j.kind === 'workflow' ? `Workflow: ${j.title}` : j.kind === 'script' ? (j.title === 'A script typed in' ? 'Run a script typed in' : `Run script: ${j.title}`) : j.title);
-  const JOB_ICON = { script: 'code', restart: 'restart', updates: 'updates', workflow: 'org', printer: 'printer', check: 'refresh', lock: 'lock', signout: 'logout', shutdown: 'power', message: 'message', client: 'download' };
+  const JOB_ICON = { script: 'code', restart: 'restart', updates: 'updates', workflow: 'org', printer: 'printer', check: 'refresh', lock: 'lock', signout: 'logout', shutdown: 'power', message: 'message', client: 'download', gpupdate: 'policy' };
   const STATE = { waiting: ['waiting', 'Waiting'], running: ['run', 'Running'], done: ['online', 'Done'], failed: ['bad', 'Failed'], refused: ['bad', 'Refused'],
     noanswer: ['bad', 'No answer'], cancelled: ['offline', 'Cancelled'], expired: ['offline', 'Expired'] };
   // How a job went across its computers, in a word or two.
@@ -467,7 +467,7 @@
     return {
       left: named('Power', acts ? item('restart', 'restart', 'Restart…') + item('shutdown', 'power', 'Shut down…') + item('wake', 'wake', 'Wake', String(off || '')) : '')
         + named('Sessions', acts ? item('lock', 'lock', 'Lock…') + item('signout', 'logout', 'Sign everyone out…') + item('message', 'message', 'Send a message…') : ''),
-      right: named('Run', (canScripts() ? item('script', 'code', 'Run a script…') : '') + (has('seats.wmi') ? item('wmi', 'list', 'Query with WMI…') : ''))
+      right: named('Run', (canScripts() ? item('script', 'code', 'Run a script…') : '') + (has('seats.wmi') ? item('wmi', 'list', 'Query with WMI…') : '') + (acts ? item('gpupdate', 'policy', 'Run gpupdate…') : ''))
         + named('Install', (acts ? item('updates', 'updates', 'Windows updates…') + item('check', 'refresh', 'Check for updates…') + item('client', 'download', 'Update the client…', String(on.filter((c) => c.approved && c.behind).length || '')) : '') + (D.hooks.actItems?.(item) || '')),
     };
   };
@@ -564,6 +564,7 @@
     signout: { title: (n) => `Sign everyone out of ${many(n)}?`, go: 'Sign out', sent: 'Sign out sent.', now: true, note: 'Everyone signed in is signed out straight away. Anything they had not saved is lost.' },
     message: { title: () => 'Send a message', go: 'Send', sent: 'Message sent.', now: true, note: 'It pops up for everyone signed in, until they close it or an hour passes.' },
     client: { title: (n) => `Update the client on ${many(n)}?`, go: 'Update', sent: 'Client update sent.', now: true, note: 'Each client restarts and installs the version this server has, now instead of at its next try. One that is already on it just restarts.' },
+    gpupdate: { title: (n) => `Run gpupdate on ${many(n)}?`, go: 'Run gpupdate', sent: 'gpupdate sent.', now: true, note: 'Computer policy is applied again now, and user policy for whoever is signed in. Each Group Policy tab reads the results again a minute or two after.' },
   };
   const kindOf = (kind) => KINDS[kind] || KINDS.script;
   const runNote = () => {

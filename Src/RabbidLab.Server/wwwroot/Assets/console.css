@@ -461,7 +461,7 @@ input.pick:focus { outline: none; border-color: var(--accent); }
 .seat-list .two small { white-space: normal; }
 /* Add computers goes with the list of computers. */
 .seats-page:not([data-at="computers"]) #seats-add { display: none; }
-.seats-page:not([data-at="computers"]):not([data-at="admins"]) #dv-act { display: none; }
+.seats-page:not([data-at="computers"]):not([data-at="admins"]):not([data-at="gplocal"]) #dv-act { display: none; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chips button { height: 30px; padding: 0 12px; background: transparent; color: var(--muted); font-size: 13px; font-weight: 600; }
 .chips button[aria-selected="true"] { background: #1A1D2B; border-color: #3A3E55; color: var(--title); }
@@ -706,9 +706,9 @@ section.page.home.dir-top { max-width: none; padding: 0; gap: 0; }
 .dir-top > .dir-area { display: grid; grid-template-columns: 224px minmax(0, 1fr); gap: 22px 16px; align-content: start; padding: 28px var(--side) 40px; }
 .dir-top > .dir-area > .dnav, .dir-top > .dir-area > .dmain { grid-row: 1; }
 /* No buttons in this one, so its numbers sit at the bottom, where they are on the other banners. */
-#dir-hero, #dv-hero { display: flex; flex-direction: column; }
-#dir-hero > .hero-stats, #dv-hero > .hero-stats { margin-top: auto; padding-top: 18px; }
-#dir-hero .hero-lead, #dv-hero .hero-lead { max-width: 720px; }
+#dir-hero, #dv-hero, #gpo-hero { display: flex; flex-direction: column; }
+#dir-hero > .hero-stats, #dv-hero > .hero-stats, #gpo-hero > .hero-stats { margin-top: auto; padding-top: 18px; }
+#dir-hero .hero-lead, #dv-hero .hero-lead, #gpo-hero .hero-lead { max-width: 720px; }
 .dhead h1 { font: 800 30px/1.15 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; letter-spacing: -.02em; color: #fff; }
 .dhead p { max-width: 680px; margin-top: 10px; color: #B4B8C8; font-size: 14px; line-height: 1.55; }
 .dmain { grid-column: 2; display: grid; gap: 18px; align-content: start; min-width: 0; }
