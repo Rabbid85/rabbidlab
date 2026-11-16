@@ -58,6 +58,9 @@ public sealed class TestApp(string data) : WebApplicationFactory<Program>
 
     public FakeNamesCertificate Named { get; } = new();
 
+    /// <summary>Setup's host name and alias, so no test reads or changes this computer's registry.</summary>
+    public FakeInstallName Install { get; } = new();
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseSetting("DataPath", data);
@@ -95,6 +98,8 @@ public sealed class TestApp(string data) : WebApplicationFactory<Program>
             services.AddSingleton<IConsoleDns>(Dns);
             services.RemoveAll<INamesCertificate>();
             services.AddSingleton<INamesCertificate>(Named);
+            services.RemoveAll<IInstallName>();
+            services.AddSingleton<IInstallName>(Install);
             // The tests run each round of checks themselves.
             foreach (var worker in services.Where(d => d.ImplementationType == typeof(SensorWorker)).ToList())
             {
@@ -643,4 +648,16 @@ public sealed class FakeNamesCertificate : INamesCertificate
         Current = request.CreateSelfSigned(DateTimeOffset.Now.AddDays(-1), DateTimeOffset.Now.AddYears(5));
         return Now;
     }
+}
+
+/// <summary>Setup's host name and the alias it added, as Setup would have saved them.</summary>
+public sealed class FakeInstallName : IInstallName
+{
+    public string? Saved { get; set; }
+    public (string Name, string Zone, string Server, string Target)? SavedAlias { get; set; }
+
+    public string? Name() => string.IsNullOrEmpty(Saved) ? null : Saved;
+    public (string Name, string Zone, string Server, string Target)? Alias() => SavedAlias;
+    public void Forget() => Saved = "";
+    public void ForgetAlias() => SavedAlias = null;
 }

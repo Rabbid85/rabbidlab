@@ -184,7 +184,7 @@ public sealed class RedirectByName(Redirect.Plan plan, ConsoleNames names, ILogg
     private async Task Sync(CancellationToken stop)
     {
         var domain = (IPGlobalProperties.GetIPGlobalProperties().DomainName ?? "").ToLowerInvariant();
-        var wanted = Redirect.OwnNames(ConsoleAddress.ExtraName(), names.All().SelectMany(n => new[] { n.Name, n.Full }), Environment.MachineName, domain);
+        var wanted = Redirect.OwnNames(names.Install.Name(), names.All().SelectMany(n => new[] { n.Name, n.Full }), Environment.MachineName, domain);
         foreach (var gone in open.Keys.Except(wanted, StringComparer.OrdinalIgnoreCase).ToList())
         {
             open[gone].Close();

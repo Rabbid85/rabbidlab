@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.217 (2026-11-16)
+
+- Every address in Settings, Console address can be removed. Setup host name goes like an added one, with the DNS alias Setup made if you say so. This computer name and IP addresses only come off the list, since the console still answers there, and Show them brings them back.
+- The port 80 note lists its names with commas.
+
 ## 1.1.216 (2026-11-16)
 
 - The service account card on the Active Directory pages is down to one line, with Not now beside Set up.

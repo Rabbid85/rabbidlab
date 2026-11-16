@@ -25,6 +25,9 @@ public sealed class ConsoleName
 public sealed class ConsoleNamesFile
 {
     public List<ConsoleName> Names { get; set; } = [];
+
+    /// <summary>This computer's own addresses (its name, full name or an IP) taken off the list. The console still answers there.</summary>
+    public List<string> Hidden { get; set; } = [];
 }
 
 /// <summary>A name to add or remove; with Dns, its alias is added or taken out too, as the account typed.</summary>
@@ -38,7 +41,7 @@ public sealed record NameStep(bool Ok, string Title, string Text);
 /// domain's DNS, as an account typed for that, by Setup's rules (DnsPlan), and makes the names a certificate of their own.
 /// Removing one takes its alias out again, only if Rabbid Lab added it, and only while it still points here.
 /// </summary>
-public sealed class ConsoleNames(DataFolder folder, IConsoleDns dns, INamesCertificate certificate, TimeProvider clock) : IDisposable
+public sealed class ConsoleNames(DataFolder folder, IConsoleDns dns, INamesCertificate certificate, TimeProvider clock, IInstallName install) : IDisposable
 {
     private Timer? daily;
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { WriteIndented = true };
@@ -48,6 +51,72 @@ public sealed class ConsoleNames(DataFolder folder, IConsoleDns dns, INamesCerti
 
     /// <summary>A name was added or removed.</summary>
     public event Action? Changed;
+
+    /// <summary>Setup's host name and its alias, which Remove can take away too.</summary>
+    public IInstallName Install => install;
+
+    /// <summary>This computer's own addresses taken off the list, lower case.</summary>
+    public IReadOnlyList<string> Hidden()
+    {
+        lock (gate)
+        {
+            return [.. file.Read().Hidden];
+        }
+    }
+
+    /// <summary>Takes one of this computer's own addresses off the list, or with show false puts every one back.</summary>
+    public void Hide(string? address, bool show = false)
+    {
+        var host = (address ?? "").Trim().TrimEnd('.').ToLowerInvariant();
+        lock (gate)
+        {
+            var f = file.Read();
+            if (show)
+            {
+                f.Hidden.Clear();
+            }
+            else if (host.Length > 0 && !f.Hidden.Contains(host))
+            {
+                f.Hidden.Add(host);
+            }
+            file.Save(f);
+        }
+    }
+
+    /// <summary>Setup's host name: its alias out of DNS when asked and Setup added it, then forgotten, so it stops opening the console.</summary>
+    private (List<NameStep>? Steps, string? Full, string? Problem) RemoveSetupName(NameForm form, string name)
+    {
+        var steps = new List<NameStep>();
+        var alias = Install.Alias();
+        var full = alias?.Name ?? (name.Contains('.') || dns.Domain is null ? name : $"{name}.{dns.Domain}");
+        if (alias is { } a)
+        {
+            if (!form.Dns)
+            {
+                steps.Add(new(false, "Left in DNS", $"The alias {a.Name} is still on {Short(a.Server)}. Take it out there if nothing else uses it."));
+            }
+            else if (Login(form) is not { } login)
+            {
+                return (null, null, "Type the username and password of an account that can change DNS, or leave the alias in DNS.");
+            }
+            else
+            {
+                try
+                {
+                    steps.Add(new(true, "Out of DNS", dns.Remove(a.Name, a.Zone, a.Server, a.Target, login)));
+                    Install.ForgetAlias();
+                }
+                catch (DnsProblem e)
+                {
+                    return (null, null, e.Message);
+                }
+            }
+        }
+        Install.Forget();
+        steps.Add(new(true, "Taken off this console", "Setup's certificate still lists it, which does no harm."));
+        Changed?.Invoke();
+        return (steps, full, null);
+    }
 
     public IReadOnlyList<ConsoleName> All()
     {
@@ -97,7 +166,7 @@ public sealed class ConsoleNames(DataFolder folder, IConsoleDns dns, INamesCerti
             return "Type a name of letters, numbers and hyphens, such as lab or monitor.";
         }
         var full = Full(name);
-        var mine = new[] { Environment.MachineName, dns.Target, "localhost", ConsoleAddress.ExtraName() ?? "" };
+        var mine = new[] { Environment.MachineName, dns.Target, "localhost", install.Name() ?? "" };
         if (mine.Any(m => m.Length > 0 && (string.Equals(m, name, StringComparison.OrdinalIgnoreCase) || string.Equals(m, full, StringComparison.OrdinalIgnoreCase))))
         {
             return "That's one of this computer's own names. It's in the list already.";
@@ -234,7 +303,7 @@ public sealed class ConsoleNames(DataFolder folder, IConsoleDns dns, INamesCerti
         }
         if (n is null)
         {
-            return (null, null, "That address isn't here any more.");
+            return Install.Name() == name && name.Length > 0 ? RemoveSetupName(form, name) : (null, null, "That address isn't here any more.");
         }
         var steps = new List<NameStep>();
         if (n.Zone is not null && n.Server is not null && n.Target is not null)
@@ -402,6 +471,29 @@ public static class ConsoleNamesApi
             }
             log.Record(context, "settings", "console.name.remove", $"Removed the console address {full}{(steps.Any(s => s.Title == "Out of DNS") ? " and its alias in DNS" : "")}");
             return Results.Ok(new { full, steps });
+        });
+
+        // This computer's own name, full name or an IP taken off the list (the console still answers there), or all put back.
+        app.MapPost("/api/console/names/hide", (NameForm form, HttpContext context, ConsoleNames names, ActivityLog log) =>
+        {
+            if (Access.RefuseUnless(context, Permissions.ConsoleAddresses) is { } refused)
+            {
+                return refused;
+            }
+            names.Hide(form.Name);
+            log.Record(context, "settings", "console.name.hide", $"Took {form.Name} off the console's address list");
+            return Results.Ok(new { });
+        });
+
+        app.MapPost("/api/console/names/show", (HttpContext context, ConsoleNames names, ActivityLog log) =>
+        {
+            if (Access.RefuseUnless(context, Permissions.ConsoleAddresses) is { } refused)
+            {
+                return refused;
+            }
+            names.Hide(null, show: true);
+            log.Record(context, "settings", "console.name.show", "Put this computer's addresses back on the console's address list");
+            return Results.Ok(new { });
         });
     }
 }

@@ -112,6 +112,34 @@ public sealed class ConsoleNamesTests : IDisposable
         Assert.Null(app.Named.Current);
     }
 
+    [Fact]
+    public async Task Setups_host_name_can_be_removed_with_its_alias_and_this_computers_addresses_only_come_off_the_list()
+    {
+        var admin = await app.SignedIn();
+        app.Install.Saved = "homelab";
+        app.Install.SavedAlias = ("homelab.amw.com", "amw.com", "dc01.amw.com", "server1.amw.com");
+        var before = await admin.GetFromJsonAsync<JsonElement>("/api/console");
+        var hosts = before.GetProperty("addresses").EnumerateArray().Select(a => new Uri(a.GetProperty("url").GetString()!).Host).ToList();
+
+        var removed = await admin.PostAsJsonAsync("/api/console/names/remove", new { name = "homelab", dns = true, username = @"AMW\awiles", password = "right" });
+        (await admin.PostAsJsonAsync("/api/console/names/hide", new { name = Environment.MachineName })).EnsureSuccessStatusCode();
+        var after = await admin.GetFromJsonAsync<JsonElement>("/api/console");
+        var left = after.GetProperty("addresses").EnumerateArray().Select(a => new Uri(a.GetProperty("url").GetString()!).Host).ToList();
+        (await admin.PostAsJsonAsync("/api/console/names/show", new { })).EnsureSuccessStatusCode();
+        var back = await admin.GetFromJsonAsync<JsonElement>("/api/console");
+
+        Assert.Contains("homelab", hosts);
+        Assert.Equal("homelab", before.GetProperty("addresses").EnumerateArray().First(a => a.GetProperty("url").GetString()!.Contains("//homelab:")).GetProperty("name").GetString());
+        removed.EnsureSuccessStatusCode();
+        Assert.Equal(["homelab.amw.com in amw.com on dc01.amw.com to server1.amw.com"], app.Dns.Removed);
+        Assert.Null(app.Install.Name());
+        Assert.Null(app.Install.Alias());
+        Assert.DoesNotContain("homelab", left);
+        Assert.DoesNotContain(Environment.MachineName.ToLowerInvariant(), left);
+        Assert.Single(after.GetProperty("hidden").EnumerateArray());
+        Assert.Contains(back.GetProperty("addresses").EnumerateArray(), a => new Uri(a.GetProperty("url").GetString()!).Host == Environment.MachineName.ToLowerInvariant());
+    }
+
     [Theory]
     [InlineData("lab_1", "letters, numbers and hyphens")]
     [InlineData("-lab", "letters, numbers and hyphens")]

@@ -117,6 +117,7 @@ builder.Services.AddSingleton<IConsoleDns>(_ => OperatingSystem.IsWindows() && !
 builder.Services.AddSingleton<INamesCertificate>(services => OperatingSystem.IsWindows() && !Product.InContainer
     ? new StoreNamesCertificate(services.GetRequiredService<IConfiguration>(), services.GetRequiredService<DataFolder>().Path, () => services.GetRequiredService<IConsoleDns>().Domain)
     : new NoNamesCertificate());
+builder.Services.AddSingleton<IInstallName, RegistryInstallName>();
 builder.Services.AddSingleton<ConsoleNames>();
 INamesCertificate? named = null; // there once the services are built
 if (OperatingSystem.IsWindows() && !Product.InContainer)

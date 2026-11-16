@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.217', [
+    'Every address in Settings, Console address can be removed. Setup host name goes like an added one, with the DNS alias Setup made if you say so. This computer name and IP addresses only come off the list, since the console still answers there, and Show them brings them back.',
+    'The port 80 note lists its names with commas.',
+  ]],
   ['1.1.216', [
     'The service account card on the Active Directory pages is down to one line, with Not now beside Set up.',
     'Not now opens the Active Directory and Group Policy pages read-only. They read the domain as this server, and changes wait until the service account is set up. Group Policy changes still work with a domain admin login.',
@@ -2944,14 +2948,20 @@ const RELEASE_NOTES = [
     const here = location.origin.toLowerCase();
     const list = c.addresses.length ? c.addresses : [{ url: location.origin, what: c.docker ? 'This page. In Docker, use the host address and the port you published.' : 'This page' }];
     ca = c;
-    // An address added here can be removed; Add an address is for Windows installs, to people who may.
-    const remove = (a) => `<button type="button" class="ds-btn ds-ibtn" data-name-remove="${esc(a.name)}" data-tip="Remove" aria-label="Remove ${esc(a.name)}">${svg('trash')}</button>`;
+    // Every address can be removed: a name added here or Setup's goes for good, this computer's own only comes off the list.
+    const remove = (a) => (a.name
+      ? `<button type="button" class="ds-btn ds-ibtn" data-name-remove="${esc(a.name)}" data-tip="Remove" aria-label="Remove ${esc(a.name)}">${svg('trash')}</button>`
+      : `<button type="button" class="ds-btn ds-ibtn" data-addr-hide="${esc(a.hide)}" data-tip="Remove" aria-label="Remove ${esc(a.hide)} from the list">${svg('trash')}</button>`);
+    const mine = has('console.address');
+    const off = mine ? c.hidden || [] : [];
     $('ca-list').innerHTML = list.map((a) => caRow(caIcon(a.what), esc(a.url) + (a.url.toLowerCase() === here ? '<small class="ds-scope">This page</small>' : ''), esc(a.what),
-      a.name && has('console.address') ? `<span class="ds-pair">${remove(a)}${caCopy(a.url)}</span>` : caCopy(a.url))).join('');
+      (a.name || a.hide) && mine ? `<span class="ds-pair">${remove(a)}${caCopy(a.url)}</span>` : caCopy(a.url))).join('')
+      + (off.length ? caRow('eye', `${off.length === 1 ? '1 address' : `${off.length} addresses`} taken off the list`, esc(`${off.map((a) => new URL(a.url).hostname).join(', ')}. The console still answers there.`),
+        `<button type="button" class="ds-btn" data-addr-show>${off.length === 1 ? 'Show it' : 'Show them'}</button>`) : '');
     $('ca-add').hidden = !c.canAdd || !has('console.address');
     // Port 80 shared with another web server (IIS): only the console's own names come here.
     const named = (c.redirectNames || []).filter((n) => n.works).map((n) => `http://${n.name}`);
-    const goes = `${named.join(' and ')} ${named.length > 1 ? 'redirect' : 'redirects'}`;
+    const goes = `${named.length > 1 ? `${named.slice(0, -1).join(', ')} and ${named.at(-1)}` : named[0]} ${named.length > 1 ? 'redirect' : 'redirects'}`;
     const redirect = c.redirectPort === 80 && (!c.redirectTaken || named.length > 0);
     $('ca-redirect').hidden = !redirect;
     if (redirect) $('ca-redirect').querySelector('span').textContent = c.redirectTaken
@@ -3130,6 +3140,21 @@ const RELEASE_NOTES = [
   $('ca-list').addEventListener('click', (e) => {
     const b = e.target.closest('[data-name-remove]');
     if (b) nmOpen(b.dataset.nameRemove);
+    // This computer's own name or IP: off the list only, and back with Show them.
+    const hide = e.target.closest('[data-addr-hide]');
+    if (hide) {
+      sure(`Remove ${hide.dataset.addrHide} from the list?`, 'The console still answers there. Show it, at the bottom of the list, puts it back.', 'Remove', async () => {
+        try {
+          await send('/api/console/names/hide', { name: hide.dataset.addrHide });
+          await consoleAddress();
+        } catch (err) {
+          toast("That didn't work.", err.message, { tone: 'warn' });
+        }
+      });
+    }
+    if (e.target.closest('[data-addr-show]')) {
+      send('/api/console/names/show', {}).then(consoleAddress).catch((err) => toast("That didn't work.", err.message, { tone: 'warn' }));
+    }
   });
   $('nm-name').addEventListener('input', () => {
     clearTimeout(nmTimer);
