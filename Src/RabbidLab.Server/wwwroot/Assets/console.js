@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.213', [
+    'Banner numbers follow the description straight away, with no blank line between them when the description is one line. Every banner is still the same height.',
+  ]],
   ['1.1.212', [
     'Banner buttons sit at the end of the numbers, after a thin line, so every banner is the same height with or without buttons and the empty gap is gone.',
     'The sign-in card is bigger: wider, with larger boxes, button and text.',

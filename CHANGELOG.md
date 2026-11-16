@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.213 (2026-11-16)
+
+- Banner numbers follow the description straight away, with no blank line between them when the description is one line. Every banner is still the same height.
+
 ## 1.1.212 (2026-11-16)
 
 - Banner buttons sit at the end of the numbers, after a thin line, so every banner is the same height with or without buttons and the empty gap is gone.
