@@ -646,34 +646,57 @@ public static class DeviceActions
     }
 
     /// <summary>
-    /// The start of both update scripts: what isn't installed, from every update service Windows has on the computer, the
-    /// way its own Windows Update page puts them together. Asking only the usual service gave a server one update where
-    /// its page showed five. It leaves $session, $missing (what Windows would put in itself), $apart (offered, but not
-    /// counted) and Kind, which says why one is apart. The client asks the same way for the inventory (Inventory.cs).
+    /// The start of both update scripts: what isn't installed, from everywhere Windows can be asked, the way its own
+    /// Windows Update page puts things together. The old Windows Update interface asked through one service gave a server
+    /// one update where its page showed five, and asked through every registered service still missed three. So it asks
+    /// the usual service, each registered one, Microsoft Update by its id, and Windows Server's own scan (the one sconfig
+    /// and Windows Admin Center use), and says at the end what each answered. It leaves $session, $missing (what Windows
+    /// would put in itself) and $apart (offered, not counted) from the old interface, $more and $moreApart from Windows'
+    /// own scan alone, Kind for why one is apart, and $said. The client asks the same way for the inventory (Inventory.cs).
     /// </summary>
     private const string FindUpdates = """
         $ErrorActionPreference = 'Stop'
-        # Every update service here: the one Automatic Updates uses first, then the others (Microsoft Update, the one
-        # drivers come from). A computer pointed at a WSUS server is asked through that alone. Each update counts once.
         $session = New-Object -ComObject Microsoft.Update.Session
         $session.ClientApplicationID = 'Rabbid Lab'
         $services = @((New-Object -ComObject Microsoft.Update.ServiceManager).Services)
-        $managed = @($services | Where-Object { $_.IsDefaultAUService -and $_.IsManaged }).Count -gt 0
         $seen = @{}
         $all = New-Object System.Collections.ArrayList
-        $asked = 0
-        $problem = $null
-        function Ask($service) {
-            $searcher = $session.CreateUpdateSearcher()
-            if ($service) { $searcher.ServerSelection = 3; $searcher.ServiceID = $service.ServiceID }
-            foreach ($u in $searcher.Search('IsInstalled=0 and IsHidden=0').Updates) {
-                $id = $u.Identity.UpdateID
-                if (-not $seen.ContainsKey($id)) { $seen[$id] = $true; [void]$all.Add($u) }
+        $said = New-Object System.Collections.ArrayList
+        $script:answered = 0
+        # One source asked: each update counts once, however many sources offer it.
+        function Ask($name, $id) {
+            try {
+                $searcher = $session.CreateUpdateSearcher()
+                if ($id) { $searcher.ServerSelection = 3; $searcher.ServiceID = $id }
+                $found = $searcher.Search('IsInstalled=0 and IsHidden=0').Updates
+                foreach ($u in $found) {
+                    $key = $u.Identity.UpdateID
+                    if (-not $seen.ContainsKey($key)) { $seen[$key] = $true; [void]$all.Add($u) }
+                }
+                [void]$said.Add("$name $($found.Count)")
+                $script:answered++
+            } catch {
+                $e = $_.Exception
+                while ($e.InnerException) { $e = $e.InnerException }
+                [void]$said.Add("$name didn't answer (0x$('{0:X8}' -f $e.HResult))")
             }
         }
-        try { Ask $null; $asked++ } catch { $problem = $_.Exception.Message }
-        if (-not $managed) { foreach ($s in $services) { try { Ask $s; $asked++ } catch { if (-not $problem) { $problem = $_.Exception.Message } } } }
-        if ($asked -eq 0) { throw "Windows Update didn't answer: $problem" }
+        Ask 'the usual service' $null
+        foreach ($s in $services) { Ask $s.Name $s.ServiceID }
+        $mu = '7971f918-a847-4430-9279-4a52d1efe18d'
+        if (-not ($services | Where-Object { $_.ServiceID -eq $mu })) { Ask 'Microsoft Update' $mu }
+        # Windows Server's own scan, where the computer has it. What it lists that the others didn't is kept apart: it
+        # comes without the details the others give.
+        $own = @()
+        try {
+            $scan = Invoke-CimMethod -Namespace root/Microsoft/Windows/WindowsUpdate -ClassName MSFT_WUOperations -MethodName ScanForUpdates -Arguments @{ SearchCriteria = 'IsInstalled=0' } -ErrorAction Stop
+            $own = @($scan.Updates | Where-Object { $_.Title })
+            [void]$said.Add("Windows' own scan $($own.Count)")
+            $script:answered++
+        } catch {
+            if ($_.Exception.Message -notmatch 'Invalid namespace|Invalid class') { [void]$said.Add("Windows' own scan didn't answer") }
+        }
+        if ($script:answered -eq 0) { throw "Windows Update didn't answer: $($said -join ', ')" }
         # Missing is what Windows would put in for you. Antivirus definitions come several times a day, optional drivers
         # are the ones under Optional updates, and a new version of Windows is its own decision: apart, not counted.
         function Kind($u) {
@@ -685,6 +708,11 @@ public static class DeviceActions
         }
         $missing = @($all | Where-Object { (Kind $_) -eq '' })
         $apart = @($all | Where-Object { (Kind $_) -ne '' })
+        $titles = @{}
+        foreach ($u in $all) { $titles[$u.Title] = $true }
+        $only = @($own | Where-Object { -not $seen.ContainsKey([string]$_.UpdateID) -and -not $titles.ContainsKey($_.Title) })
+        $more = @($only | Where-Object { $_.Title -notmatch 'Security Intelligence Update|Definition Update' })
+        $moreApart = @($only | Where-Object { $_.Title -match 'Security Intelligence Update|Definition Update' })
 
         """;
 
@@ -693,8 +721,14 @@ public static class DeviceActions
     {
         Title = "Check for updates", Language = DeviceScripts.PowerShell, Minutes = 15,
         Text = DeviceScripts.Clean(FindUpdates + """
-            if ($missing.Count -eq 0) { 'Nothing is missing.' } else { "$($missing.Count) update(s) missing:"; foreach ($u in $missing) { "  $($u.Title)" } }
-            if ($apart.Count) { 'Also offered, and not counted:'; foreach ($u in $apart) { "  $($u.Title) ($(Kind $u))" } }
+            $count = $missing.Count + $more.Count
+            if ($count -eq 0) { 'Nothing is missing.' } else { "$count update(s) missing:"; foreach ($u in @($missing) + @($more)) { "  $($u.Title)" } }
+            if ($apart.Count + $moreApart.Count) {
+                'Also offered, and not counted:'
+                foreach ($u in $apart) { "  $($u.Title) ($(Kind $u))" }
+                foreach ($u in $moreApart) { "  $($u.Title) (antivirus definitions)" }
+            }
+            "Asked: $($said -join ', ')."
             """),
     };
 
@@ -713,25 +747,45 @@ public static class DeviceActions
                 if (-not $u.EulaAccepted) { $u.AcceptEula() }
                 [void]$wanted.Add($u)
             }
-            if ($wanted.Count -eq 0) { 'Nothing is missing.'; exit 0 }
-            "Downloading $($wanted.Count) update(s)."
-            $down = $session.CreateUpdateDownloader()
-            $down.Updates = $wanted
-            [void]$down.Download()
-            $ready = New-Object -ComObject Microsoft.Update.UpdateColl
-            foreach ($u in $wanted) { if ($u.IsDownloaded) { [void]$ready.Add($u) } else { "Not downloaded: $($u.Title)" } }
-            if ($ready.Count -eq 0) { 'Nothing could be downloaded.'; exit 1 }
-            "Installing $($ready.Count) update(s)."
-            $installer = $session.CreateUpdateInstaller()
-            $installer.Updates = $ready
-            $result = $installer.Install()
-            $failed = $wanted.Count - $ready.Count
-            for ($i = 0; $i -lt $ready.Count; $i++) {
-                $one = $result.GetUpdateResult($i)
-                if ($one.ResultCode -eq 2 -or $one.ResultCode -eq 3) { "Installed: $($ready.Item($i).Title)" }
-                else { $failed++; "Failed (0x$('{0:X8}' -f $one.HResult)): $($ready.Item($i).Title)" }
+            # What only Windows' own scan lists goes in through that scan's own installer, after the rest.
+            $rest = @($more) + @($moreApart)
+            if ($wanted.Count -eq 0 -and $rest.Count -eq 0) { 'Nothing is missing.'; exit 0 }
+            $failed = 0
+            $restart = $false
+            if ($wanted.Count) {
+                "Downloading $($wanted.Count) update(s)."
+                $down = $session.CreateUpdateDownloader()
+                $down.Updates = $wanted
+                [void]$down.Download()
+                $ready = New-Object -ComObject Microsoft.Update.UpdateColl
+                foreach ($u in $wanted) { if ($u.IsDownloaded) { [void]$ready.Add($u) } else { $failed++; "Not downloaded: $($u.Title)" } }
+                if ($ready.Count) {
+                    "Installing $($ready.Count) update(s)."
+                    $installer = $session.CreateUpdateInstaller()
+                    $installer.Updates = $ready
+                    $result = $installer.Install()
+                    for ($i = 0; $i -lt $ready.Count; $i++) {
+                        $one = $result.GetUpdateResult($i)
+                        if ($one.ResultCode -eq 2 -or $one.ResultCode -eq 3) { "Installed: $($ready.Item($i).Title)" }
+                        else { $failed++; "Failed (0x$('{0:X8}' -f $one.HResult)): $($ready.Item($i).Title)" }
+                    }
+                    if ($result.RebootRequired) { $restart = $true }
+                }
             }
-            if ($result.RebootRequired) { 'Windows needs a restart to finish.' }
+            if ($rest.Count) {
+                "Installing $($rest.Count) more through Windows' own scan."
+                try {
+                    $done = Invoke-CimMethod -Namespace root/Microsoft/Windows/WindowsUpdate -ClassName MSFT_WUOperations -MethodName InstallUpdates -Arguments @{ Updates = [ciminstance[]]$rest } -ErrorAction Stop
+                    foreach ($u in $rest) { "Installed: $($u.Title)" }
+                    if ($done.RebootRequired) { $restart = $true }
+                } catch {
+                    $failed += $rest.Count
+                    "Failed: $($_.Exception.Message)"
+                    foreach ($u in $rest) { "  $($u.Title)" }
+                }
+            }
+            if ($restart) { 'Windows needs a restart to finish.' }
+            "Asked: $($said -join ', ')."
             if ($failed) { exit 1 }
             """),
     };

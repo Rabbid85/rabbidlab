@@ -28,6 +28,56 @@ public static class BuiltInScripts
 
     public static readonly IReadOnlyList<DeviceScript> All =
     [
+        S("windows-update-sources", "Windows Update: what every source says", Ps,
+            "For when the missing updates here and the Windows Update page disagree: its update settings, every update service, and what each one offers with the details that decide what counts. It only reads.", """
+            $ErrorActionPreference = 'Continue'
+            "== $((Get-CimInstance Win32_OperatingSystem).Caption) $([Environment]::OSVersion.Version), as $([Security.Principal.WindowsIdentity]::GetCurrent().Name)"
+            '== Settings'
+            foreach ($key in 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate', 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU',
+                'HKLM:\SOFTWARE\Microsoft\WindowsUpdate\UX\Settings', 'HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\Update') {
+                $at = Get-ItemProperty -Path $key -ErrorAction SilentlyContinue
+                if (-not $at) { "  $key : not there"; continue }
+                "  $key"
+                $at.PSObject.Properties | Where-Object { $_.Name -notlike 'PS*' } | ForEach-Object { "    $($_.Name) = $($_.Value)" }
+            }
+            '== Services'
+            $services = @((New-Object -ComObject Microsoft.Update.ServiceManager).Services)
+            foreach ($s in $services) { "  $($s.ServiceID) $($s.Name): default=$($s.IsDefaultAUService) managed=$($s.IsManaged) withAU=$($s.IsRegisteredWithAU) windows=$($s.OffersWindowsUpdates)" }
+            $session = New-Object -ComObject Microsoft.Update.Session
+            $session.ClientApplicationID = 'Rabbid Lab'
+            function Show($name, $id, $selection, $online) {
+                "== $name"
+                try {
+                    $searcher = $session.CreateUpdateSearcher()
+                    if ($id) { $searcher.ServerSelection = 3; $searcher.ServiceID = $id } elseif ($selection) { $searcher.ServerSelection = $selection }
+                    $searcher.Online = $online
+                    $found = $searcher.Search('IsInstalled=0 and IsHidden=0').Updates
+                    "  $($found.Count) update(s)"
+                    foreach ($u in $found) {
+                        $kinds = ($u.Categories | ForEach-Object { $_.Name }) -join '; '
+                        "  - $($u.Title)"
+                        "      type=$($u.Type) autoSelect=$($u.AutoSelectOnWebSites) browseOnly=$($u.BrowseOnly) mandatory=$($u.IsMandatory) autoSelection=$($u.AutoSelection) autoDownload=$($u.AutoDownload) downloaded=$($u.IsDownloaded) action=$($u.DeploymentAction) id=$($u.Identity.UpdateID)"
+                        "      $kinds"
+                    }
+                } catch {
+                    $e = $_.Exception
+                    while ($e.InnerException) { $e = $e.InnerException }
+                    "  didn't answer: 0x$('{0:X8}' -f $e.HResult) $($e.Message.Trim())"
+                }
+            }
+            Show 'The usual service, asked online' $null 0 $true
+            Show 'The usual service, from what Windows already has (no network)' $null 0 $false
+            foreach ($s in $services) { Show "$($s.Name), by its id" $s.ServiceID 0 $true }
+            $mu = '7971f918-a847-4430-9279-4a52d1efe18d'
+            if (-not ($services | Where-Object { $_.ServiceID -eq $mu })) { Show 'Microsoft Update, by its id (not registered here)' $mu 0 $true }
+            Show 'Windows Update itself, past any WSUS server' $null 2 $true
+            "== Windows' own scan (Windows Server)"
+            try {
+                $scan = Invoke-CimMethod -Namespace root/Microsoft/Windows/WindowsUpdate -ClassName MSFT_WUOperations -MethodName ScanForUpdates -Arguments @{ SearchCriteria = 'IsInstalled=0' } -ErrorAction Stop
+                "  $(@($scan.Updates).Count) update(s)"
+                foreach ($u in $scan.Updates) { "  - $($u.Title)   KB$($u.KBArticleID) id=$($u.UpdateID) severity=$($u.MsrcSeverity)" }
+            } catch { "  didn't answer: $($_.Exception.Message.Trim())" }
+            """, 20),
         S("clear-temp", "Clear temp files", Ps, "Empties the Windows and user temp folders.", """
             Get-ChildItem "$env:windir\Temp", 'C:\Users\*\AppData\Local\Temp' -Force -ErrorAction SilentlyContinue |
                 Get-ChildItem -Force -ErrorAction SilentlyContinue |

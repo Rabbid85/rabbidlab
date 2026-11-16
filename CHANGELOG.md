@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.241 (2026-11-16)
+
+- Check for updates and the missing count also ask Microsoft Update directly and, on Windows Server, its own scan, because asking every registered update service still missed updates the Windows Update page shows. The check ends with a line saying what each source answered.
+- A new built-in script, Windows Update: what every source says, lists a computer its update settings and what each source offers, for when the count and the Windows Update page disagree.
+- Install Windows updates also installs what only the Windows Server scan lists.
+
 ## 1.1.240 (2026-11-16)
 
 - The console can answer on port 443 as well as its own port, so https://name opens it with no port typed. Turn it on under Settings, Console address, Port and firewall. Its own port keeps working, computers in Devices keep using it, and typing just the name now lands on the address with no port.

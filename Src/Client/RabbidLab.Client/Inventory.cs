@@ -566,6 +566,9 @@ internal static class Inventory
     // And for Upgrades: a new version of Windows.
     private const string Upgrades = "3689bdc8-b205-4af4-8d4a-a63924c5e9d5";
 
+    // The Microsoft Update service: Windows Update with Microsoft's other products.
+    private const string MicrosoftUpdate = "7971f918-a847-4430-9279-4a52d1efe18d";
+
     // Asks Windows Update what this computer is missing. It goes to Microsoft (or the WSUS server the computer uses),
     // and can take minutes. When it doesn't answer, what it said last time stands.
     private static void AskWindowsUpdate()
@@ -580,10 +583,10 @@ internal static class Inventory
             dynamic session = Activator.CreateInstance(type);
             // Windows keeps several update services (Windows Update, Microsoft Update, the one drivers come from) and its
             // own Update page puts their answers together. Asking only the usual one gave a server one update where its
-            // page showed five. So each is asked, and an update counts once. A computer pointed at a WSUS server is asked
-            // through that alone: what its administrators approved is what it's missing.
+            // page showed five, and each registered one still missed three. So each is asked, and Microsoft Update by its id,
+            // and Windows Server's own scan (the one sconfig uses), and an update counts once (DeviceJobs.FindUpdates does the same).
             var services = new List<object>();
-            var managed = false;
+            var ids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             try
             {
                 if (Type.GetTypeFromProgID("Microsoft.Update.ServiceManager") is { } managerType)
@@ -592,7 +595,7 @@ internal static class Inventory
                     foreach (dynamic service in manager.Services)
                     {
                         services.Add(service);
-                        managed |= (bool) service.IsDefaultAUService && (bool) service.IsManaged;
+                        ids.Add((string) service.ServiceID);
                     }
                 }
             }
@@ -604,18 +607,21 @@ internal static class Inventory
             var list = new List<UpdateReport>();
             var answered = 0;
             Exception? failed = null;
-            void Ask(object? service)
+            var titles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            void Ask(string? service)
             {
                 dynamic searcher = session.CreateUpdateSearcher();
                 if (service is not null)
                 {
                     searcher.ServerSelection = 3; // another service, named by its id
-                    searcher.ServiceID = (string) ((dynamic) service).ServiceID;
+                    searcher.ServiceID = service;
                 }
                 // Everything that isn't installed, as the Update page asks: software, and drivers too.
                 dynamic result = searcher.Search("IsInstalled=0 and IsHidden=0");
                 foreach (dynamic update in result.Updates)
                 {
+                    // Seen by name too, so Windows' own scan below doesn't count it a second time.
+                    titles.Add((string) update.Title);
                     // A driver Windows wouldn't pick itself is one of its optional updates, which its page keeps apart: not missing.
                     if (!seen.Add((string) update.Identity.UpdateID) || ((int) update.Type == 2 && !(bool) update.AutoSelectOnWebSites))
                     {
@@ -648,24 +654,56 @@ internal static class Inventory
                 }
                 answered++;
             }
-            try
+            // The usual service, each registered one, and Microsoft Update whether it's registered or not.
+            var sources = new List<string?> { null };
+            sources.AddRange(ids);
+            if (!ids.Contains(MicrosoftUpdate))
             {
-                Ask(null);
+                sources.Add(MicrosoftUpdate);
             }
-            catch (Exception e)
-            {
-                failed = e;
-            }
-            foreach (var service in managed ? new List<object>() : services)
+            foreach (var source in sources)
             {
                 try
                 {
-                    Ask(service);
+                    Ask(source);
                 }
                 catch (Exception e)
                 {
                     failed ??= e; // one service that won't answer doesn't lose the others
                 }
+            }
+            // Windows Server's own scan, where the computer has it: what it lists that none of those did. It gives a title
+            // and a KB number and no more, so definitions are told by their name.
+            try
+            {
+                using var scan = new ManagementClass(@"root\Microsoft\Windows\WindowsUpdate", "MSFT_WUOperations", null);
+                using var ask = scan.GetMethodParameters("ScanForUpdates");
+                ask["SearchCriteria"] = "IsInstalled=0";
+                using var found = scan.InvokeMethod("ScanForUpdates", ask, new InvokeMethodOptions { Timeout = TimeSpan.FromMinutes(15) });
+                foreach (var one in found?["Updates"] as ManagementBaseObject[] ?? new ManagementBaseObject[0])
+                {
+                    using (one)
+                    {
+                        var title = one["Title"] as string;
+                        var id = one["UpdateID"] as string;
+                        if (string.IsNullOrWhiteSpace(title) || (id is not null && !seen.Add(id)) || !titles.Add(title!))
+                        {
+                            continue;
+                        }
+                        var number = one["KBArticleID"] as string;
+                        list.Add(new UpdateReport
+                        {
+                            Kb = string.IsNullOrEmpty(number) ? "" : "KB" + number, Title = title,
+                            Definition = title!.IndexOf("Security Intelligence Update", StringComparison.OrdinalIgnoreCase) >= 0
+                                || title.IndexOf("Definition Update", StringComparison.OrdinalIgnoreCase) >= 0,
+                        });
+                    }
+                }
+                answered++;
+            }
+            catch (Exception e) when (e is ManagementException or System.Runtime.InteropServices.COMException or UnauthorizedAccessException or InvalidCastException)
+            {
+                // Not on this edition of Windows (it's Windows Server's), or it wouldn't answer: the services' answers stand.
             }
             if (answered == 0)
             {
