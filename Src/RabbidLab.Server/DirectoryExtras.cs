@@ -5,14 +5,17 @@ using System.Text.RegularExpressions;
 
 namespace RabbidLab.Server;
 
+/// <summary>A printer a print server published in Active Directory: its name, the share computers connect to, and where it is.</summary>
+public sealed record AdPrinter(string Name, string? Server, string? Share, string? Driver, string? Location, string? Description, string? Port);
+
+/// <summary>A computer in Active Directory to ask for the printers it shares: its name, and the full name to reach it by.</summary>
+public sealed record AdServer(string Name, string Host);
+
 /// <summary>
 /// One domain setting beside what's recommended. Tone: good, warn, bad, or unknown when it couldn't be read. Edit: number
 /// or switch when it can be changed here, with its Value (1 or 0 for a switch), Min, Max and Unit; How says how it's
 /// changed otherwise.
 /// </summary>
-/// <summary>A printer a print server published in Active Directory: its name, the share computers connect to, and where it is.</summary>
-public sealed record AdPrinter(string Name, string? Server, string? Share, string? Driver, string? Location, string? Description, string? Port);
-
 public sealed record AdSetting(string Key, string Area, string Name, string Now, string Recommended, string Tone, string About,
     string? Edit = null, long? Value = null, int? Min = null, int? Max = null, string? Unit = null, string? How = null)
 {
@@ -64,6 +67,12 @@ public interface IDirectoryExtras
 
     /// <summary>The printers print servers published in Active Directory (printQueue objects).</summary>
     Task<(List<AdPrinter> Printers, bool More)> Printers(CancellationToken stop);
+
+    /// <summary>
+    /// Where to look for print servers: the Windows Servers in Active Directory that are enabled and signed in lately, and the
+    /// computers its published printers are on. Only computers Active Directory has, by the full name it has for them.
+    /// </summary>
+    Task<List<AdServer>> PrintServerCandidates(CancellationToken stop);
 
     /// <summary>Changes one domain setting, signed in as the domain admin given (not saved), and gives the settings as they are now.</summary>
     Task<List<AdSetting>> SetDomainSetting(string key, string value, string username, string password, CancellationToken stop);
@@ -128,9 +137,54 @@ public sealed partial class DirectoryTools
         "unicodePwd", "dBCSPwd", "lmPwdHistory", "ntPwdHistory", "supplementalCredentials", "pwdLastSet",
     };
 
+    // --- Printers ----------------------------------------------------------------------------------------------------
+
+    public async Task<(List<AdPrinter> Printers, bool More)> Printers(CancellationToken stop)
+    {
+        using var ldap = await Open(stop);
+        Ready();
+        var rows = await ldap.Find(ldap.BaseDn, "(objectCategory=printQueue)", true,
+            ["printerName", "shortServerName", "serverName", "uNCName", "driverName", "location", "description", "portName"], Limit, stop);
+        var printers = rows.Select(r => new AdPrinter(r.Text("printerName") ?? r.Text("cn") ?? "", r.Text("shortServerName") ?? r.Text("serverName"), r.Text("uNCName"),
+            r.Text("driverName"), r.Text("location"), r.Text("description"), r.Text("portName")))
+            .Where(p => p.Name.Length > 0).OrderBy(p => p.Name, StringComparer.OrdinalIgnoreCase).ToList();
+        return (printers, rows.Count >= Limit);
+    }
+
+    private static readonly TimeSpan ServerGone = TimeSpan.FromDays(60); // a server that hasn't signed in for this long isn't asked
+
+    public async Task<List<AdServer>> PrintServerCandidates(CancellationToken stop)
+    {
+        using var ldap = await Open(stop);
+        Ready();
+        var found = new Dictionary<string, AdServer>(StringComparer.OrdinalIgnoreCase);
+        var servers = await ldap.Find(ldap.BaseDn, "(&(objectCategory=computer)(operatingSystem=*Server*))", true,
+            ["name", "dNSHostName", "userAccountControl", "lastLogonTimestamp"], Limit, stop);
+        foreach (var r in servers)
+        {
+            var disabled = long.TryParse(r.Text("userAccountControl"), CultureInfo.InvariantCulture, out var uac) && (uac & 2) != 0;
+            var gone = long.TryParse(r.Text("lastLogonTimestamp"), CultureInfo.InvariantCulture, out var seen) && seen > 0
+                && DateTime.UtcNow - DateTime.FromFileTimeUtc(seen) > ServerGone;
+            if (!disabled && !gone && r.Text("name") is { Length: > 0 } name && r.Text("dNSHostName") is { Length: > 0 } host)
+            {
+                found[name] = new AdServer(name, host);
+            }
+        }
+        // A computer that published a printer shares printers, whatever Windows it runs.
+        var queues = await ldap.Find(ldap.BaseDn, "(objectCategory=printQueue)", true, ["shortServerName", "serverName"], Limit, stop);
+        foreach (var r in queues)
+        {
+            if (r.Text("serverName") is { Length: > 0 } host)
+            {
+                var name = r.Text("shortServerName") is { Length: > 0 } s ? s : host.Split('.')[0];
+                found.TryAdd(name, new AdServer(name, host));
+            }
+        }
+        return [.. found.Values.OrderBy(s => s.Name, StringComparer.OrdinalIgnoreCase)];
+    }
+
     // --- Domain settings ---------------------------------------------------------------------------------------------
 
-public async Task<(List<AdPrinter> Printers, bool More)> Printers(CancellationToken stop)    {        using var ldap = await Open(stop);        Ready();        var rows = await ldap.Find(ldap.BaseDn, "(objectCategory=printQueue)", true,            ["printerName", "shortServerName", "serverName", "uNCName", "driverName", "location", "description", "portName"], Limit, stop);        var printers = rows.Select(r => new AdPrinter(r.Text("printerName") ?? r.Text("cn") ?? "", r.Text("shortServerName") ?? r.Text("serverName"), r.Text("uNCName"),            r.Text("driverName"), r.Text("location"), r.Text("description"), r.Text("portName")))            .Where(p => p.Name.Length > 0).OrderBy(p => p.Name, StringComparer.OrdinalIgnoreCase).ToList();        return (printers, rows.Count >= Limit);    }
     public async Task<List<AdSetting>> DomainSettings(CancellationToken stop)
     {
         using var ldap = await Open(stop);
@@ -826,11 +880,13 @@ public static class DirectoryExtrasApi
 {
     public static void MapDirectoryExtrasApi(this WebApplication app)
     {
-        // The printers print servers published in Active Directory, for Devices, Printers.
-        app.MapGet("/api/ad/printers", (HttpContext context, IDirectoryExtras tools) => UsersApi.Try(context, Permissions.AdView, async () =>
+        // Every printer the domain's servers share, for Devices, Printers: the ones published in Active Directory, and the ones
+        // each server lists when it's asked (PrintServers.cs). again=true asks the servers again now.
+        app.MapGet("/api/ad/printers", (bool? again, HttpContext context, IDirectoryExtras tools, PrintServers servers) => UsersApi.Try(context, Permissions.AdView, async () =>
         {
-            var (printers, more) = await tools.Printers(context.RequestAborted);
-            return Results.Ok(new { printers, more });
+            var (published, more) = await tools.Printers(context.RequestAborted);
+            var scan = await servers.Read(() => tools.PrintServerCandidates(context.RequestAborted), again == true, context.RequestAborted);
+            return Results.Ok(new { printers = PrintServers.Together(published, scan), more, servers = scan.Servers, scanning = scan.Scanning, at = scan.At });
         }, change: false));
 
         app.MapGet("/api/ad/domain", (HttpContext context, IDirectoryExtras tools) => UsersApi.Try(context, Permissions.AdView, async () =>

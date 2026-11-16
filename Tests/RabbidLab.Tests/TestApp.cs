@@ -47,6 +47,9 @@ public sealed class TestApp(string data) : WebApplicationFactory<Program>
     /// <summary>Stands in for the network: what each sensor's check finds is whatever the test says.</summary>
     public FakeProbe Probe { get; } = new();
 
+    /// <summary>Stands in for the print servers: each answers what the test says, and none is really asked.</summary>
+    public FakePrintServerProbe PrintProbe { get; } = new();
+
     /// <summary>Stands in for the mail server: keeps what would have been sent.</summary>
     public FakeMail Mail { get; } = new();
 
@@ -100,6 +103,9 @@ public sealed class TestApp(string data) : WebApplicationFactory<Program>
             services.AddSingleton<INamesCertificate>(Named);
             services.RemoveAll<IInstallName>();
             services.AddSingleton<IInstallName>(Install);
+            // No test asks a real server for its printers.
+            services.RemoveAll<IPrintServerProbe>();
+            services.AddSingleton<IPrintServerProbe>(PrintProbe);
             // The tests run each round of checks themselves.
             foreach (var worker in services.Where(d => d.ImplementationType == typeof(SensorWorker)).ToList())
             {
@@ -162,6 +168,24 @@ public sealed class FakeClock : TimeProvider
     public override DateTimeOffset GetUtcNow() => now;
 
     public void Advance(TimeSpan by) => now += by;
+}
+
+/// <summary>Print servers that answer what the test gave them: nothing shared unless it says so.</summary>
+public sealed class FakePrintServerProbe : IPrintServerProbe
+{
+    public Dictionary<string, PrintServerAnswer> Answers { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Every server asked, in order.</summary>
+    public List<string> Asked { get; } = [];
+
+    public PrintServerAnswer Ask(AdServer server)
+    {
+        lock (Asked)
+        {
+            Asked.Add(server.Name);
+        }
+        return Answers.TryGetValue(server.Name, out var answer) ? answer : new([]);
+    }
 }
 
 /// <summary>A domain with two people: awiles in Domain Admins, and jreyes in Domain Users.</summary>

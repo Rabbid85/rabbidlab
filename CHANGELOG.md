@@ -2,6 +2,13 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.233 (2026-11-16)
+
+- Devices, Printers finds your print servers by itself and lists every printer they share, not only the ones listed in Active Directory. It asks each Windows Server in the domain over file and printer sharing, as this server, and only reads.
+- Each printer shows its print server, address, status and jobs waiting, and a Problems column says what looks wrong: a queue that is offline, one printer shared twice, a stale listing in Active Directory, or computers printing around the server.
+- A Print servers tab lists the servers that share printers and the ones that could not be asked, with why. Refresh asks them again.
+- A printer on a server and the same printer on computers is one row now, with those computers on it.
+
 ## 1.1.232 (2026-11-16)
 
 - Devices, Deploy the client is two short cards now instead of a page of text: what deploying does as six small tiles, the server address and the button together, and the Intune path in a box with a copy button.

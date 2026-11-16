@@ -417,11 +417,12 @@ public sealed class UsersTests : IDisposable
         (await admin.PostAsJsonAsync("/api/accounts", new { username = "nobody1", password = "user password" })).EnsureSuccessStatusCode();
         var user = await SignIn("nobody1", "user password");
 
-        foreach (var path in new[] { "/api/ad/domain", "/api/ad/audit", "/api/ad/recycle", "/api/ad/browse", "/api/ad/object?dn=DC=amw,DC=com" })
+        foreach (var path in new[] { "/api/ad/domain", "/api/ad/audit", "/api/ad/recycle", "/api/ad/browse", "/api/ad/object?dn=DC=amw,DC=com", "/api/ad/printers", "/api/ad/printers?again=true" })
         {
             Assert.Equal(HttpStatusCode.Forbidden, (await user.GetAsync(path)).StatusCode);
             Assert.Equal(HttpStatusCode.Conflict, (await viewer.GetAsync(path)).StatusCode); // allowed, but there's no AD account yet
         }
+        Assert.Empty(app.PrintProbe.Asked); // nobody could read Active Directory, so no server was asked for its printers
         Assert.Equal(HttpStatusCode.Forbidden, (await viewer.PostAsJsonAsync("/api/ad/recycle/restore", new { dn = "x" })).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await viewer.PostAsJsonAsync("/api/ad/recycle/enable", new { username = "a", password = "b" })).StatusCode);
     }

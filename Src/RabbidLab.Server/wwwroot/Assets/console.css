@@ -1029,6 +1029,11 @@ input::-ms-reveal { display: none; }
 .dp-copy code { flex: 1; min-width: 0; height: 40px; padding: 0 14px; border: 1px solid var(--line-strong); border-radius: 8px; background: #0C0E17; color: var(--title); font-size: 12.5px; line-height: 38px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dp-copy .ds-btn.ds-ibtn { flex: none; width: 40px; height: 40px; }
 .seats-page[data-at="deploy"] #dv-tabs small { display: none; }
+/* Devices, Printers (printers.js): what is wrong with a printer, in a cell and listed in its panel. */
+.pr-bad { color: var(--amber); }
+.pr-probs { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; font-size: 13px; line-height: 1.45; }
+.pr-probs li { display: flex; align-items: flex-start; gap: 9px; color: var(--text); }
+.pr-probs svg { flex: none; width: 15px; height: 15px; margin-top: 2px; color: var(--amber); }
 /* A command an Are you sure shows before it runs. */
 .sure-code { margin: 0 0 18px; padding: 12px 14px; border: 1px solid var(--line-strong); border-radius: 10px; background: #0C0E17; color: var(--title);
   font: 13px/1.5 "Cascadia Mono", Consolas, monospace; white-space: pre-wrap; word-break: break-all; }

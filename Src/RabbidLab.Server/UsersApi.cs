@@ -20,6 +20,8 @@ public static class UsersApi
         services.AddSingleton<IDirectoryActions>(s => s.GetRequiredService<DirectoryTools>());
         services.AddSingleton<IGroupPolicy>(s => s.GetRequiredService<DirectoryTools>());
         services.AddSingleton<GpmcSetup>();
+        services.AddSingleton<IPrintServerProbe>(_ => OperatingSystem.IsWindows() ? new WindowsPrintServerProbe() : new NoPrintServerProbe());
+        services.AddSingleton<PrintServers>();
         services.AddSingleton<ClientCommands>();
         services.AddSingleton<IAdminGroups, AdminGroups>();
     }
