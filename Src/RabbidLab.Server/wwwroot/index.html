@@ -129,7 +129,7 @@
   <a class="brand" href="#overview">
     <svg class="mark" data-brand-mark viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="15" fill="#0B0C14"/><g fill="#F2F3FA" transform="translate(10 14) scale(.9)"><rect width="11" height="40"/><path fill-rule="evenodd" d="M0 0H18A13 13 0 0 1 18 26H0ZM11 9V17H18A4 4 0 0 0 18 9Z"/><path d="M13 22H24L33 40H22Z"/></g><rect class="mark-dot" x="44" y="39" width="11" height="11" rx="1.5" fill="#FF6A45"/></svg>
     <img class="mark mark-img" id="brand-img" data-brand-img alt="" hidden>
-    <span class="name" id="brand-name" data-brand-name>Rabbid Lab</span>
+    <span class="brand-text"><span class="name" id="brand-name" data-brand-name>Rabbid Lab</span><small class="brand-tag">Lab console</small></span>
     <span class="dev-tag" aria-label="Dev build">DEV</span>
   </a>
   <!-- Shortcuts on every page: updates, the activity log, what's new, and the source on GitHub. -->
@@ -213,8 +213,16 @@
       </div>
       <div class="hero-actions">
         <button type="button" class="primary" id="hero-install" data-can="updates.install" hidden>Install now</button>
-        <button type="button" class="primary" id="hero-check" data-can="updates.check">Check for updates</button>
-        <a class="button" href="#activity" data-can="activity.view">Activity</a>
+        <button type="button" class="primary" id="hero-check" data-can="updates.check"><svg><use href="#i-refresh"/></svg>Check for updates</button>
+        <!-- More: the pages that used to have their own buttons here. -->
+        <button type="button" class="hero-more" id="hero-more" popovertarget="hero-more-menu" aria-haspopup="menu">More<svg class="chev"><use href="#i-chevron-down"/></svg></button>
+        <div class="gear-menu" id="hero-more-menu" popover>
+          <div class="am-links"><a class="am-link" href="#activity" data-can="activity.view"><svg><use href="#i-activity"/></svg>Activity log</a>
+            <a class="am-link" href="#whats-new"><svg><use href="#i-new"/></svg>What's new</a>
+            <a class="am-link" href="#wiki"><svg><use href="#i-book"/></svg>Wiki</a></div>
+        </div>
+        <!-- How the lab is doing: its sensors when there are any (console.js). -->
+        <a class="hero-ok" id="hero-ok" href="#sensors" hidden></a>
         <span class="checked-note" id="hero-note" role="status" hidden></span>
       </div>
       </div>

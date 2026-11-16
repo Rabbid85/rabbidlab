@@ -3,6 +3,11 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.226', [
+    'Banner numbers are tiles now: an icon, a thin line, then the number over a spaced label, with the buttons straight after.',
+    'The Overview banner has Check for updates with its icon, a More menu (Activity log, What is new, Wiki), and how the sensors are doing when there are any.',
+    'The top bar shows the icon, a line, then the lab name over a Lab console tagline.',
+  ]],
   ['1.1.225', [
     'Clients from the deploy GPO install with QUIET=1: people at the computer see nothing, no install, no tray icon and no messages, and the computer still waits for approval in Rabbid Lab. The Rabbid Lab template has a Hide the client policy to turn it on or off for any computer.',
   ]],
@@ -1354,12 +1359,18 @@ const RELEASE_NOTES = [
 
   // Check for updates says Checking while it asks; when nothing is newer, a short line beside it says so.
   const check = async (button, note) => {
+    // The words change; an icon the button has stays.
+    const icon = button.querySelector('svg');
+    const say = (text) => {
+      button.textContent = text;
+      if (icon) button.prepend(icon);
+    };
     button.disabled = true;
-    button.textContent = 'Checking…';
+    say('Checking…');
     note.hidden = true;
     await post('/api/update/check');
     button.disabled = !!last && ['downloading', 'installing'].includes(last.status);
-    button.textContent = 'Check for updates';
+    say('Check for updates');
     if (!last || last.status !== 'current') return;
     note.textContent = '✓ You have the newest version';
     note.hidden = false;
@@ -2909,6 +2920,7 @@ const RELEASE_NOTES = [
     };
     const [s, who, upd, dir, links, sensors, seats] = await Promise.all([ask('/api/status'), ask('/api/signin'), ask('/api/update/watch'), ask('/api/ad', has('ad.view') || has('ad.connect')),
       ask('/api/links', has('links.view')), ask('/api/sensors', has('sensors.view')), ask('/api/clients', has('seats.view'))]);
+    lastSensors = sensors;
     const list = [];
     const add = (label, value) => { if (value != null && value !== '') list.push([label, value]); };
     const since = s ? Math.max(0, Date.now() - new Date(s.startedAt).getTime()) / 3600000 : 0;
@@ -2934,9 +2946,20 @@ const RELEASE_NOTES = [
     const list = [...await facts(), ['Page', location.origin], ['Browser', navigator.userAgent.replace(/^Mozilla\/5\.0 /, '')], ['Copied', new Date().toString().replace(/ \(.*\)$/, '')]];
     return `\`\`\`\n${list.map(([label, value]) => `${`${label}:`.padEnd(17)}${value}`).join('\n')}\n\`\`\``;
   };
+  // How the lab is doing, beside the Overview's buttons: its sensors when there are any (paused ones don't count).
+  let lastSensors = null; // what facts() last read
+  const health = () => {
+    const live = lastSensors?.sensors?.filter((x) => x.status !== 'paused') || [];
+    const down = live.filter((x) => x.status === 'down').length;
+    $('hero-ok').hidden = !live.length;
+    $('hero-ok').classList.toggle('bad', down > 0);
+    $('hero-ok').textContent = down ? `${down} sensor${down === 1 ? '' : 's'} down` : 'All sensors up';
+  };
+  $('hero-more-menu').addEventListener('click', (e) => { if (e.target.closest('.am-link')) $('hero-more-menu').hidePopover(); });
   // This machine, on the Overview: in two columns, filled each time the page is shown.
   const machine = async () => {
     const list = await facts();
+    health();
     if (!list.length) return;
     const half = Math.ceil(list.length / 2);
     const column = (rows) => `<dl class="facts">${rows.map(([label, value]) => `<dt>${esc(label)}</dt><dd${label === 'Data folder' ? ' class="mono"' : ''}>${esc(value)}</dd>`).join('')}</dl>`;

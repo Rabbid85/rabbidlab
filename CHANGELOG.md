@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.226 (2026-11-16)
+
+- Banner numbers are tiles now: an icon, a thin line, then the number over a spaced label, with the buttons straight after.
+- The Overview banner has Check for updates with its icon, a More menu (Activity log, What is new, Wiki), and how the sensors are doing when there are any.
+- The top bar shows the icon, a line, then the lab name over a Lab console tagline.
+
 ## 1.1.225 (2026-11-16)
 
 - Clients from the deploy GPO install with QUIET=1: people at the computer see nothing, no install, no tray icon and no messages, and the computer still waits for approval in Rabbid Lab. The Rabbid Lab template has a Hide the client policy to turn it on or off for any computer.
