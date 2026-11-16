@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.222', [
+    'Every password box in the console has an eye to show what is typed, and it hides again when its window closes.',
+  ]],
   ['1.1.221', [
     'What is new and GitHub are gone from the left rail. Both are in the top bar.',
   ]],

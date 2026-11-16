@@ -966,3 +966,13 @@ input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-o
 .stepper button:hover { background: #1A1D2B; color: var(--title); }
 .stepper button svg { width: 14px; height: 14px; }
 .dialog .mfa-qr { margin-top: 14px; }
+
+/* The eye in every password box (reveal.js); the browser's own is hidden, so there's one. */
+.pw-wrap { position: relative; display: block; }
+.pw-wrap:has(> input[hidden]) { display: none; }
+.pw-wrap > input[type] { width: 100%; padding-right: 40px; }
+.pw-eye { position: absolute; top: 50%; right: 6px; translate: 0 -50%; display: grid; place-items: center; width: 30px; height: 30px; min-height: 0; margin: 0; padding: 0; border: 0; border-radius: 7px;
+  background: transparent; color: #6D7290; }
+.pw-eye:hover { background: #1A1D2B; color: var(--text); }
+.pw-eye svg { width: 16px; height: 16px; }
+input::-ms-reveal { display: none; }

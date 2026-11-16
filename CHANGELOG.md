@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.222 (2026-11-16)
+
+- Every password box in the console has an eye to show what is typed, and it hides again when its window closes.
+
 ## 1.1.221 (2026-11-16)
 
 - What is new and GitHub are gone from the left rail. Both are in the top bar.
