@@ -25,6 +25,9 @@ body.app.rail-small { grid-template-columns: 60px minmax(0, 1fr); }
   background: var(--night); border-bottom: 1px solid var(--line); }
 .brand { display: inline-flex; align-items: center; gap: 10px; color: var(--title); font-weight: 650; font-size: 15.5px; }
 .brand:hover { text-decoration: none; }
+/* The icon, a thin line, then the name, as a company banner has it. */
+.brand .name { display: inline-flex; align-items: center; gap: 12px; }
+.brand .name::before { content: ""; flex: none; width: 1px; height: 22px; background: var(--line-strong); }
 .mark { width: 28px; height: 28px; border-radius: 7px; }
 
 /* The rail: small grey group labels over the pages, the one showing marked in ember. */
@@ -990,3 +993,6 @@ input::-ms-reveal { display: none; }
 .deploy-go .primary { display: inline-flex; align-items: center; gap: 8px; }
 .deploy-go .primary svg { flex: none; width: 16px; height: 16px; }
 .seats-page[data-at="deploy"] #dv-tabs small { display: none; }
+/* A command an Are you sure shows before it runs. */
+.sure-code { margin: 0 0 18px; padding: 12px 14px; border: 1px solid var(--line-strong); border-radius: 10px; background: #0C0E17; color: var(--title);
+  font: 13px/1.5 "Cascadia Mono", Consolas, monospace; white-space: pre-wrap; word-break: break-all; }

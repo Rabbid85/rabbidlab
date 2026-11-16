@@ -371,6 +371,24 @@ public sealed class UsersTests : IDisposable
     }
 
     [Fact]
+    public async Task Installing_Group_Policy_Management_takes_changing_Group_Policy_and_a_confirmed_session()
+    {
+        var admin = await app.SignedIn();
+        var help = await Role(admin, "Viewer", "ad.view", "gpo.view");
+        (await admin.PostAsJsonAsync("/api/accounts", new { username = "mlopez", password = "user password", roles = new[] { help } })).EnsureSuccessStatusCode();
+        var viewer = await SignIn("mlopez", "user password");
+
+        var seen = await viewer.GetFromJsonAsync<JsonElement>("/api/gpo/gpmc");
+        var refused = await viewer.PostAsJsonAsync("/api/gpo/gpmc/install", new { });
+        var unconfirmed = await admin.PostAsJsonAsync("/api/gpo/gpmc/install", new { });
+
+        Assert.False(string.IsNullOrEmpty(seen.GetProperty("command").GetString()));
+        Assert.Equal(HttpStatusCode.Forbidden, refused.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, unconfirmed.StatusCode);
+        Assert.Contains("confirm", await unconfirmed.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
     public async Task Only_someone_who_can_set_up_the_account_turns_read_only_on_and_only_once_confirmed()
     {
         var admin = await app.SignedIn();

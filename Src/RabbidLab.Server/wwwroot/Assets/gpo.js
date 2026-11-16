@@ -116,6 +116,46 @@
     }
   };
   R.gpoChange = change; // Devices, Deploy the client (deploy.js)
+  // Group Policy Management on this server: the command shows first, then runs as SYSTEM while the page asks how it's
+  // going. The Group Policy page and Devices, Deploy the client both offer it (rabbidlab:gpmc when it's done).
+  const installGpmc = async (where) => {
+    let s;
+    try {
+      s = await get('/api/gpo/gpmc');
+    } catch (e) {
+      return oops(e);
+    }
+    const download = s.command.startsWith('Add-WindowsCapability') ? ' It downloads from Windows Update.' : '';
+    sure('Install Group Policy Management?', `This runs on ${s.machine}, the server ${R.app()} runs on, as SYSTEM. It can take a few minutes.${download}`, 'Install', async () => {
+      try {
+        await D.confirmed(() => send('/api/gpo/gpmc/install', {}));
+      } catch (e) {
+        return oops(e);
+      }
+      R.busy(where, 'Installing Group Policy Management');
+      const poll = async () => {
+        let now = null;
+        try {
+          now = await get('/api/gpo/gpmc');
+        } catch {
+          // Asked again below.
+        }
+        if (!now || now.running) return setTimeout(poll, 4000);
+        R.busy(where, '');
+        if (now.here) toast('Group Policy Management is installed.', 'Everything on the Group Policy pages works now.');
+        else toast("Group Policy Management didn't install.", (now.output || '').split('\n').filter(Boolean).pop() || 'See the activity log.', { tone: 'warn', stay: true });
+        document.dispatchEvent(new CustomEvent('rabbidlab:gpmc'));
+      };
+      setTimeout(poll, 4000);
+    }, { code: s.command, safe: true });
+  };
+  R.installGpmc = installGpmc;
+  document.addEventListener('click', (e) => { if (e.target.closest('[data-install-gpmc]')) installGpmc(e.target.closest('.lib') || document.body); });
+  document.addEventListener('rabbidlab:gpmc', () => {
+    gp = null;
+    problem = '';
+    if (R.where()[0] === 'gpo') load();
+  });
 
   // --- The page: four lists down the left, one grid ----------------------------------------------------------------
   const VIEWS = [['all', 'All GPOs', () => true], ['linked', 'Linked', (g) => linksOf(g.id).length > 0], ['unlinked', 'Not linked', (g) => !linksOf(g.id).length, 'amber'],
@@ -228,7 +268,8 @@
     $('gpo-problem').hidden = !problem;
     $('gpo-problem').textContent = problem;
     $('gpo-note').hidden = !(gp && !gp.gpmc && list !== 'wmi' && list !== 'linked');
-    $('gpo-note').textContent = 'Group Policy Management isn\'t on this server, so GPO settings, who a GPO applies to, new GPOs, copies, deletes and backups aren\'t here yet. Links, names, status and WMI filters work without it. Install it with: Add-WindowsCapability -Online -Name Rsat.GroupPolicy.Management.Tools~~~~0.0.1.0';
+    $('gpo-note').innerHTML = esc('Group Policy Management isn\'t on this server, so GPO settings, who a GPO applies to, new GPOs, copies, deletes and backups aren\'t here yet. Links, names, status and WMI filters work without it.')
+      + (has('gpo.change') ? ' <button type="button" class="linkish" data-install-gpmc>Install it…</button>' : '');
     if (gp || problem) g0.draw(rows);
     else R.skeleton($('gpo-table'), 'rows', 6);
     drawTicks();

@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.224 (2026-11-16)
+
+- Group Policy Management can be installed from the console: Install it on the Group Policy page or on Devices, Deploy the client shows the exact command, then runs it as SYSTEM on the server Rabbid Lab runs on. Windows Server gets Install-WindowsFeature GPMC, Windows 10 and 11 the RSAT capability. It takes changing Group Policy and confirming it is you, and the result goes in the activity log.
+- The top bar and the sign-in card show the icon, a thin line, then the lab name.
+
 ## 1.1.223 (2026-11-16)
 
 - Devices, Deploy the client: one button makes the GPO Rabbid Lab Client, puts the installer in it, and links it to the domain. Every computer installs the client quietly as SYSTEM at its next policy refresh, with no restart, and waits for approval. Stop deploying takes it off the domain.

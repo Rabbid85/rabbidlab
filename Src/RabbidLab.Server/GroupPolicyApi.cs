@@ -162,6 +162,28 @@ public static class GroupPolicyApi
             log.Record(context, "users", "gpo.client.stop", $"Stopped deploying the client: {DirectoryTools.ClientGpoName} is no longer linked to the domain");
             return Results.Ok(new { });
         }));
+
+        // Group Policy Management on this server: whether it's here, and installing it, the command shown before it runs.
+        app.MapGet("/api/gpo/gpmc", (HttpContext context, DirectoryTools tools, GpmcSetup setup) => Gpo(context, Permissions.GpoView, () =>
+            Task.FromResult(Results.Ok(setup.Now(tools.Gpmc.Here))), change: false));
+
+        app.MapPost("/api/gpo/gpmc/install", (HttpContext context, DirectoryTools tools, GpmcSetup setup, ActivityLog log) => Gpo(context, Permissions.GpoChange, () =>
+        {
+            if (!GpmcSetup.Can)
+            {
+                return Task.FromResult(Results.BadRequest(new { error = $"Group Policy Management can only be installed when {Product.Title} runs on Windows." }));
+            }
+            if (tools.Gpmc.Here)
+            {
+                return Task.FromResult(Results.BadRequest(new { error = "Group Policy Management is already on this server." }));
+            }
+            if (!setup.Start(ActivityLog.Who(context), ActivityLog.Address(context)))
+            {
+                return Task.FromResult(Results.BadRequest(new { error = "It's already being installed." }));
+            }
+            log.Record(context, "users", "gpo.gpmc.start", "Started installing Group Policy Management on this server", "ok", GpmcSetup.Command);
+            return Task.FromResult(Results.Ok(setup.Now(false)));
+        }));
         app.MapPost("/api/gpo/wmi-filters/{id}/delete", (string id, GpoForm form, HttpContext context, IGroupPolicy gp, ActivityLog log) => Gpo(context, Permissions.GpoChange, async () =>
         {
             await gp.DeleteWmiFilter(id, form.Login, context.RequestAborted);

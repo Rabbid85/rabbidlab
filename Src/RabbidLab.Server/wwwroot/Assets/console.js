@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.224', [
+    'Group Policy Management can be installed from the console: Install it on the Group Policy page or on Devices, Deploy the client shows the exact command, then runs it as SYSTEM on the server Rabbid Lab runs on. Windows Server gets Install-WindowsFeature GPMC, Windows 10 and 11 the RSAT capability. It takes changing Group Policy and confirming it is you, and the result goes in the activity log.',
+    'The top bar and the sign-in card show the icon, a thin line, then the lab name.',
+  ]],
   ['1.1.223', [
     'Devices, Deploy the client: one button makes the GPO Rabbid Lab Client, puts the installer in it, and links it to the domain. Every computer installs the client quietly as SYSTEM at its next policy refresh, with no restart, and waits for approval. Stop deploying takes it off the domain.',
     'The client is let past Defender attack surface reduction rules until it is code-signed: the deploy GPO and the client installer both add the exclusion for its one file, and the Deploy page shows the same entry for Intune.',
@@ -1850,12 +1854,16 @@ const RELEASE_NOTES = [
   $('toast-reset').addEventListener('click', () => toastSet(null));
   $('toast-test').addEventListener('click', () => toast('This is a test toast.', `It shows for ${toastPrefs().secs} seconds.`, { action: { label: 'Details', href: '#settings/appearance' } }));
   toastSettings();
-  // Are you sure: a title, what happens, the button's words, and what to do on yes.
+  // Are you sure: a title, what happens, the button's words, and what to do on yes. code: a command shown as it will run;
+  // safe: a plain button, for something that isn't destructive.
   let sureDo = null;
-  const sure = (title, lead, button, then) => {
+  const sure = (title, lead, button, then, { code = '', safe = false } = {}) => {
     $('sure-title').textContent = title;
     $('sure-lead').textContent = lead;
+    $('sure-code').textContent = code;
+    $('sure-code').hidden = !code;
     $('sure-go').textContent = button;
+    $('sure-go').className = safe ? 'primary' : 'danger solid';
     sureDo = then;
     $('sure-dialog').showModal();
   };

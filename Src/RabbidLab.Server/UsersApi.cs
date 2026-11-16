@@ -19,6 +19,7 @@ public static class UsersApi
         services.AddSingleton<IDirectoryExtras>(s => s.GetRequiredService<DirectoryTools>());
         services.AddSingleton<IDirectoryActions>(s => s.GetRequiredService<DirectoryTools>());
         services.AddSingleton<IGroupPolicy>(s => s.GetRequiredService<DirectoryTools>());
+        services.AddSingleton<GpmcSetup>();
         services.AddSingleton<ClientCommands>();
         services.AddSingleton<IAdminGroups, AdminGroups>();
     }

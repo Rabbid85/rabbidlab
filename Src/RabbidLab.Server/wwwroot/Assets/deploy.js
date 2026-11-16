@@ -49,7 +49,8 @@
         esc(`Client ${s.version}, pointed at ${s.server}. Deployed by ${s.by} on ${when(s.at)}.${s.version !== s.thisVersion ? ` This server is on ${s.thisVersion}: Deploy again puts that installer in it.` : ''}`),
         may() && s.linked ? '<button type="button" class="ds-btn" data-deploy-stop>Stop deploying</button>' : '')
       : row('Not deployed yet', 'Computers get the client one by one, from Add computers, until it is.');
-    const gpmc = s.gpmc ? '' : `<p class="ds-note deploy-warn">${svg('alert')}<span>Group Policy Management isn't on this server, and it's needed to make the GPO. Install it, then come back: on Windows Server <code>Install-WindowsFeature GPMC</code>, on Windows 10 or 11 <code>Add-WindowsCapability -Online -Name Rsat.GroupPolicy.Management.Tools~~~~0.0.1.0</code>.</span></p>`;
+    const gpmc = s.gpmc ? '' : `<p class="ds-note deploy-warn">${svg('alert')}<span>Group Policy Management isn't on this server, and it's needed to make the GPO.`
+      + `${has('gpo.change') ? ' <button type="button" class="linkish" data-install-gpmc>Install it…</button>' : ' Someone who can change Group Policy can install it from here.'}</span></p>`;
     el.innerHTML = '<div class="deploy">'
       + `<section class="ds-sec"><h3 class="ds-h">With Group Policy</h3>${status}`
       + row('Server address', 'What every computer connects to. A full name works anywhere in the domain.',
@@ -77,6 +78,12 @@
     table: 'dv-deploy', rows: () => [], count: () => '', can: () => has('seats.add') && has('gpo.view'), noun: 'settings',
     grid: () => ({ draw }), load: async () => load(), empty: () => '',
   };
+
+  // Group Policy Management just went on (gpo.js): read again.
+  document.addEventListener('rabbidlab:gpmc', () => {
+    state = null;
+    load();
+  });
 
   document.addEventListener('click', async (e) => {
     const c = e.target.closest('[data-deploy-copy]');
