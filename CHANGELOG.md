@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.215 (2026-11-16)
+
+- This server has the Actions button at the top of its panel like the other computers, and Install the client here is in its menu.
+
 ## 1.1.214 (2026-11-16)
 
 - The port 80 redirect works when IIS or another Windows web service already has port 80. Rabbid Lab takes only its own host name there, so http://helpdesk goes to the console and everything else on port 80 stays where it was. Setup no longer greys the option out in that case.

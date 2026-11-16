@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.215', [
+    'This server has the Actions button at the top of its panel like the other computers, and Install the client here is in its menu.',
+  ]],
   ['1.1.214', [
     'The port 80 redirect works when IIS or another Windows web service already has port 80. Rabbid Lab takes only its own host name there, so http://helpdesk goes to the console and everything else on port 80 stays where it was. Setup no longer greys the option out in that case.',
     'Settings, Console address shows which names port 80 sends to the console.',
@@ -2435,8 +2438,7 @@ const RELEASE_NOTES = [
           [off ? 'Wake from sleep' : 'Wake-on-LAN', wol[0]], off && ['Wake from off', off[0]]])
           + (how ? `<p class="dw-how">${esc(how)}</p>` : ''));
       // This server without the client: putting it on gives it everything the other computers have.
-      const here = !seat.server ? '' : section('Manage it like the other computers', `<p class="dw-how">Install the ${esc(productName)} client on this server to see its hardware, software and Windows updates here, and to run scripts, updates, restarts and WMI queries on it. It's approved straight away and keeps itself up to date.</p>`
-        + (can.has('seats.add') ? `<div class="seat-acts"><button type="button" class="primary" data-seat-here${hereStarted ? ' disabled' : ''}>${svg('download')}${hereStarted ? 'Installing the client' : 'Install the client here'}</button></div>` : ''));
+      const here = !seat.server ? '' : section('Manage it like the other computers', `<p class="dw-how">${hereStarted ? `The ${esc(productName)} client is being installed on this server. It shows up as a normal row within a minute or two.` : `Install the ${esc(productName)} client on this server, from Actions, to see its hardware, software and Windows updates here, and to run scripts, updates, restarts and WMI queries on it. It's approved straight away and keeps itself up to date.`}</p>`);
       const more = st === 'waiting' ? null : dvHooks.seatPane?.(seat, seatTab);
       // Errors its client sent: what, where, when last and how often, with Clear for whoever may act on computers.
       const errs = seat.problems || [];
@@ -2532,6 +2534,9 @@ const RELEASE_NOTES = [
         toast("That didn't work.", err.message, { tone: 'warn' });
       }
     };
+    // It's in this server's Actions menu (devices.js).
+    dvHooks.installHere = installHere;
+    dvHooks.hereStarted = () => hereStarted;
     seatOn = (id, tab) => {
       const c = dvAll().find((x) => x.id === id);
       if (!c) return;
@@ -2579,8 +2584,7 @@ const RELEASE_NOTES = [
         seat.problems = [];
         drawSeat();
         seats();
-      } else if (on('here')) installHere();
-      else if (on('allow')) lockTo({ allow: !seat.removalUntil });
+      } else if (on('allow')) lockTo({ allow: !seat.removalUntil });
       else if (on('now')) sure(`Uninstall the client on ${seat.computer}?`, 'The client removes itself from the computer within a minute.', 'Uninstall', () => lockTo({ allow: true, now: true }));
       else if (on('code')) {
         seatCode = (await seatAct(seat, 'code')) || seatCode;

@@ -493,6 +493,15 @@
     menuPanel = inPanel;
     const waiting = on.filter((c) => !c.approved).length;
     const item = (act, icon, label, hint = '', danger = false) => `<button type="button" role="menuitem" class="am-link${danger ? ' out' : ''}" data-dv-act="${act}">${svg(icon)}<span>${esc(label)}</span>${hint ? `<small>${esc(hint)}</small>` : ''}</button>`;
+    // This server without the client: putting it on is all there is to do.
+    if (on.length === 1 && on[0].server) {
+      const started = D.hooks.hereStarted?.();
+      menu.innerHTML = `<div class="am-links">${named('Install', `<button type="button" role="menuitem" class="am-link" data-dv-act="here"${started ? ' disabled' : ''}>${svg('download')}<span>${started ? 'Installing the client' : 'Install the client here'}</span></button>`)}</div>`;
+      const r = button.getBoundingClientRect();
+      menu.style.cssText = `position:fixed;inset:auto;width:250px;margin:0;left:${Math.max(8, Math.min(r.left, innerWidth - 258))}px;top:${r.bottom + 6}px`;
+      menu.showPopover();
+      return;
+    }
     const { left, right: run } = doItems(item, on);
     const right = run + (inPanel ? '' : named('Selection', (has('seats.approve') && waiting ? item('approve', 'check', 'Approve', String(waiting)) : '') + item('export', 'csv', 'Export these') + item('clear', 'x', 'Clear the ticks')));
     const cols = [left, right].filter(Boolean);
@@ -511,7 +520,7 @@
     else openActs($('dv-act'), ticked(), false);
   });
   // A computer's panel has the one button; what it opens is the same menu.
-  D.hooks.seatBar = (c) => (c.server || (!Object.values(doItems(() => 'x', [c])).join('') && !has('seats.remove')) ? ''
+  D.hooks.seatBar = (c) => ((c.server ? !has('seats.add') : !Object.values(doItems(() => 'x', [c])).join('') && !has('seats.remove')) ? ''
     : `<button type="button" class="small dw-acts" data-dv-menu aria-haspopup="menu">${svg('menu')}Actions${svg('chevron-down', 'chev')}</button>`);
   const each = async (list, path) => {
     let failed = 0;
@@ -531,7 +540,8 @@
     menu.hidePopover();
     const on = menuOn;
     const act = b.dataset.dvAct;
-    if (act === 'clear') {
+    if (act === 'here') D.hooks.installHere?.();
+    else if (act === 'clear') {
       D.picked.clear();
       drawPicked();
     } else if (act === 'export') D.grid().csv(D.grid().sorted(on), 'devices-ticked');
@@ -1058,7 +1068,7 @@
     // In a computer's panel (console.js draws it): Actions opens the same menu, for this one computer; and its jobs.
     const actsButton = on('data-dv-menu');
     if (actsButton && panel.is('seats')) {
-      const c = D.computers().find((x) => x.id === panel.key);
+      const c = D.rows().find((x) => x.id === panel.key); // this server's row too
       if (c) openActs(actsButton, [c], true);
       return;
     }
