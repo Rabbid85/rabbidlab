@@ -56,6 +56,23 @@ public sealed class DirectoryToolsTests : IDisposable
     private static Task<ToolProblem> Refused(Func<Task> change) => Assert.ThrowsAsync<ToolProblem>(change);
 
     [Fact]
+    public async Task Printers_published_in_Active_Directory_are_listed_with_their_share_and_location()
+    {
+        await Connect();
+        ad.Add("CN=PRINT01-COV01-PR-SHP-01,CN=PRINT01,OU=Lab,DC=amw,DC=com", ("objectClass", "printQueue"), ("objectCategory", "printQueue"), ("printerName", "COV01-PR-SHP-01"),
+            ("shortServerName", "PRINT01"), ("uNCName", @"\\print01.amw.com\COV01-PR-SHP-01"), ("driverName", "HP Universal Printing PCL 6"), ("location", "Shipping"));
+
+        var (printers, more) = await tools.Printers(CancellationToken.None);
+
+        var p = Assert.Single(printers);
+        Assert.False(more);
+        Assert.Equal("COV01-PR-SHP-01", p.Name);
+        Assert.Equal("PRINT01", p.Server);
+        Assert.Equal(@"\\print01.amw.com\COV01-PR-SHP-01", p.Share);
+        Assert.Equal("Shipping", p.Location);
+    }
+
+    [Fact]
     public async Task Read_only_is_off_until_an_admin_turns_it_on_and_only_admins_and_allowed_roles_read_and_nothing_is_changed()
     {
         var none = CancellationToken.None;

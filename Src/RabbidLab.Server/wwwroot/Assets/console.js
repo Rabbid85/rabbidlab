@@ -3,6 +3,12 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.231', [
+    'Devices, Printers also lists the printers your print servers publish in Active Directory, with their print server and location. Open one to see its share and which computers have it.',
+    'How the sensors are doing moved from the Overview banner to the top bar, beside the version, so it shows on every page. It is green when all are up and red with a count when some are down.',
+    'Toasts show at the top middle unless you picked somewhere else in Settings, Appearance.',
+    'Deploy the client says plainly when nothing has gone out with Group Policy yet.',
+  ]],
   ['1.1.230', [
     'The banner squares and its second glow follow the accent colour, on every page and on the sign-in page. With the standard accent they look as they always did.',
   ]],
@@ -1804,7 +1810,7 @@ const RELEASE_NOTES = [
   // A toast: the flask, a bold result and a line, and a link. It goes after a few seconds unless it stays (work under way).
   // Where it shows, its style and how long it stays are each person's own (Settings, Appearance, Toasts; kept in this browser).
   const TOAST_FLASK = '<svg class="all-flask" viewBox="0 0 24 24" aria-hidden="true"><path class="liquid" d="M6.6 15.2h10.8l2 3.2A1.7 1.7 0 0 1 17.9 21H6.1a1.7 1.7 0 0 1-1.5-2.6z"/><path d="M9 3h6M10 3v6.2L4.6 18.4A1.7 1.7 0 0 0 6.1 21h11.8a1.7 1.7 0 0 0 1.5-2.6L14 9.2V3"/></svg>';
-  const TOAST_DEFAULT = { at: 'bc', style: 'pill', secs: 6 };
+  const TOAST_DEFAULT = { at: 'tc', style: 'pill', secs: 6 };
   const toastPrefs = () => {
     try {
       return { ...TOAST_DEFAULT, ...JSON.parse(localStorage.getItem('rabbidlab.toast') || '{}') };
@@ -2935,7 +2941,6 @@ const RELEASE_NOTES = [
     };
     const [s, who, upd, dir, links, sensors, seats] = await Promise.all([ask('/api/status'), ask('/api/signin'), ask('/api/update/watch'), ask('/api/ad', has('ad.view') || has('ad.connect')),
       ask('/api/links', has('links.view')), ask('/api/sensors', has('sensors.view')), ask('/api/clients', has('seats.view'))]);
-    lastSensors = sensors;
     const list = [];
     const add = (label, value) => { if (value != null && value !== '') list.push([label, value]); };
     const since = s ? Math.max(0, Date.now() - new Date(s.startedAt).getTime()) / 3600000 : 0;
@@ -2961,20 +2966,21 @@ const RELEASE_NOTES = [
     const list = [...await facts(), ['Page', location.origin], ['Browser', navigator.userAgent.replace(/^Mozilla\/5\.0 /, '')], ['Copied', new Date().toString().replace(/ \(.*\)$/, '')]];
     return `\`\`\`\n${list.map(([label, value]) => `${`${label}:`.padEnd(17)}${value}`).join('\n')}\n\`\`\``;
   };
-  // How the lab is doing, beside the Overview's buttons: its sensors when there are any (paused ones don't count).
-  let lastSensors = null; // what facts() last read
-  const health = () => {
-    const live = lastSensors?.sensors?.filter((x) => x.status !== 'paused') || [];
+  // How the lab is doing, in the top bar beside the version: its sensors when there are any (paused ones don't count).
+  // sensors.js says what it read, once a minute on any page, so this asks for nothing itself.
+  document.addEventListener('rabbidlab:sensors', (e) => {
+    const live = (e.detail || []).filter((x) => x.status !== 'paused');
     const down = live.filter((x) => x.status === 'down').length;
-    $('hero-ok').hidden = !live.length;
-    $('hero-ok').classList.toggle('bad', down > 0);
-    $('hero-ok').textContent = down ? `${down} sensor${down === 1 ? '' : 's'} down` : 'All sensors up';
-  };
+    const text = down ? `${down} sensor${down === 1 ? '' : 's'} down` : 'All sensors up';
+    $('top-ok').hidden = !live.length;
+    $('top-ok').classList.toggle('bad', down > 0);
+    $('top-ok').setAttribute('aria-label', text);
+    $('top-ok-text').textContent = text;
+  });
   $('hero-more-menu').addEventListener('click', (e) => { if (e.target.closest('.am-link')) $('hero-more-menu').hidePopover(); });
   // This machine, on the Overview: in two columns, filled each time the page is shown.
   const machine = async () => {
     const list = await facts();
-    health();
     if (!list.length) return;
     const half = Math.ceil(list.length / 2);
     const column = (rows) => `<dl class="facts">${rows.map(([label, value]) => `<dt>${esc(label)}</dt><dd${label === 'Data folder' ? ' class="mono"' : ''}>${esc(value)}</dd>`).join('')}</dl>`;

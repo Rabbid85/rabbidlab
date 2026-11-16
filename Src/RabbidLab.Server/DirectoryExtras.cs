@@ -10,6 +10,9 @@ namespace RabbidLab.Server;
 /// or switch when it can be changed here, with its Value (1 or 0 for a switch), Min, Max and Unit; How says how it's
 /// changed otherwise.
 /// </summary>
+/// <summary>A printer a print server published in Active Directory: its name, the share computers connect to, and where it is.</summary>
+public sealed record AdPrinter(string Name, string? Server, string? Share, string? Driver, string? Location, string? Description, string? Port);
+
 public sealed record AdSetting(string Key, string Area, string Name, string Now, string Recommended, string Tone, string About,
     string? Edit = null, long? Value = null, int? Min = null, int? Max = null, string? Unit = null, string? How = null)
 {
@@ -58,6 +61,9 @@ public sealed record AdAccountHit(string Username, string? Name, string? Descrip
 public interface IDirectoryExtras
 {
     Task<List<AdSetting>> DomainSettings(CancellationToken stop);
+
+    /// <summary>The printers print servers published in Active Directory (printQueue objects).</summary>
+    Task<(List<AdPrinter> Printers, bool More)> Printers(CancellationToken stop);
 
     /// <summary>Changes one domain setting, signed in as the domain admin given (not saved), and gives the settings as they are now.</summary>
     Task<List<AdSetting>> SetDomainSetting(string key, string value, string username, string password, CancellationToken stop);
@@ -124,6 +130,7 @@ public sealed partial class DirectoryTools
 
     // --- Domain settings ---------------------------------------------------------------------------------------------
 
+public async Task<(List<AdPrinter> Printers, bool More)> Printers(CancellationToken stop)    {        using var ldap = await Open(stop);        Ready();        var rows = await ldap.Find(ldap.BaseDn, "(objectCategory=printQueue)", true,            ["printerName", "shortServerName", "serverName", "uNCName", "driverName", "location", "description", "portName"], Limit, stop);        var printers = rows.Select(r => new AdPrinter(r.Text("printerName") ?? r.Text("cn") ?? "", r.Text("shortServerName") ?? r.Text("serverName"), r.Text("uNCName"),            r.Text("driverName"), r.Text("location"), r.Text("description"), r.Text("portName")))            .Where(p => p.Name.Length > 0).OrderBy(p => p.Name, StringComparer.OrdinalIgnoreCase).ToList();        return (printers, rows.Count >= Limit);    }
     public async Task<List<AdSetting>> DomainSettings(CancellationToken stop)
     {
         using var ldap = await Open(stop);
@@ -819,6 +826,13 @@ public static class DirectoryExtrasApi
 {
     public static void MapDirectoryExtrasApi(this WebApplication app)
     {
+        // The printers print servers published in Active Directory, for Devices, Printers.
+        app.MapGet("/api/ad/printers", (HttpContext context, IDirectoryExtras tools) => UsersApi.Try(context, Permissions.AdView, async () =>
+        {
+            var (printers, more) = await tools.Printers(context.RequestAborted);
+            return Results.Ok(new { printers, more });
+        }, change: false));
+
         app.MapGet("/api/ad/domain", (HttpContext context, IDirectoryExtras tools) => UsersApi.Try(context, Permissions.AdView, async () =>
             Results.Ok(await tools.DomainSettings(context.RequestAborted)), change: false, whole: true));
 

@@ -48,7 +48,7 @@
       ? row(`${esc(s.name)} ${s.linked ? '<span class="ubadge green">Linked to the domain</span>' : '<span class="ubadge amber">Not linked</span>'}`,
         esc(`Client ${s.version}, pointed at ${s.server}. Deployed by ${s.by} on ${when(s.at)}.${s.version !== s.thisVersion ? ` This server is on ${s.thisVersion}: Deploy again puts that installer in it.` : ''}`),
         may() && s.linked ? '<button type="button" class="ds-btn" data-deploy-stop>Stop deploying</button>' : '')
-      : row('Not deployed yet', 'Computers get the client one by one, from Add computers, until it is.');
+      : row('Not deployed yet', 'Nothing has gone out with Group Policy. Deploy to every computer, below, does it.');
     const gpmc = s.gpmc ? '' : `<p class="ds-note deploy-warn">${svg('alert')}<span>Group Policy Management isn't on this server, and it's needed to make the GPO.`
       + `${has('gpo.change') ? ' <button type="button" class="linkish" data-install-gpmc>Install it…</button>' : ' Someone who can change Group Policy can install it from here.'}</span></p>`;
     el.innerHTML = '<div class="deploy">'

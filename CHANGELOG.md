@@ -2,6 +2,13 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.231 (2026-11-16)
+
+- Devices, Printers also lists the printers your print servers publish in Active Directory, with their print server and location. Open one to see its share and which computers have it.
+- How the sensors are doing moved from the Overview banner to the top bar, beside the version, so it shows on every page. It is green when all are up and red with a count when some are down.
+- Toasts show at the top middle unless you picked somewhere else in Settings, Appearance.
+- Deploy the client says plainly when nothing has gone out with Group Policy yet.
+
 ## 1.1.230 (2026-11-16)
 
 - The banner squares and its second glow follow the accent colour, on every page and on the sign-in page. With the standard accent they look as they always did.

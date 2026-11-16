@@ -280,6 +280,7 @@
     gather = answer.gather || gather;
     lastCheck = answer.last;
     loadFaces();
+    document.dispatchEvent(new CustomEvent('rabbidlab:sensors', { detail: sensors })); // the top bar's status (console.js)
   };
   const refresh = async () => {
     try {

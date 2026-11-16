@@ -176,7 +176,19 @@
 
   // --- Printers: one list across the computers -----------------------------------------------------------------
   let all = null; // /api/devices/printers
-  const onText = (n) => many(n);
+  let adp = null; // /api/ad/printers: the ones print servers published in Active Directory
+  let rows = []; // the two together: a printer computers have and AD lists is one row
+  const merge = () => {
+    rows = (all?.printers || []).filter((p) => p.kind !== 'virtual').map((p) => ({ ...p }));
+    for (const a of adp?.printers || []) {
+      const short = (a.server || '').split('.')[0].toLowerCase();
+      const same = (p) => (p.address && a.share && p.address.toLowerCase() === a.share.toLowerCase()) || p.name.toLowerCase().startsWith(`${a.name} on ${short}`.toLowerCase());
+      const match = rows.find(same);
+      if (match) Object.assign(match, { server: a.server, location: a.location, share: a.share, published: true });
+      else rows.push({ name: a.name, kind: 'share', address: a.share || '', drivers: a.driver ? [a.driver] : [], computers: [], server: a.server, location: a.location, share: a.share, published: true });
+    }
+  };
+  const onText = (n) => (n ? many(n) : 'No computers yet');
   let printersG = null;
   const printersGrid = () => (printersG ||= R.grid({
     el: $('dv-printers'), key: 'printers', sort: { key: 'name', dir: 1 },
@@ -185,20 +197,28 @@
       { key: 'kind', label: 'Kind', w: 150, on: true, get: (p) => KIND[p.kind] || p.kind },
       { key: 'address', label: 'Address', w: 170, on: true, get: (p) => p.address || '', cell: (p) => `<span class="mono muted ell">${esc(p.address || '')}</span>` },
       { key: 'driver', label: 'Driver', w: 220, on: true, get: (p) => p.drivers.join(', '), cell: (p) => `<span class="ell">${esc(p.drivers.length > 1 ? `${p.drivers.length} drivers` : p.drivers[0] || '')}</span>` },
+      { key: 'server', label: 'Print server', w: 150, on: true, get: (p) => p.server || '', cell: (p) => `<span class="ell">${esc(p.server || '')}</span>` },
+      { key: 'location', label: 'Location', w: 140, on: true, get: (p) => p.location || '', cell: (p) => `<span class="ell">${esc(p.location || '')}</span>` },
+      { key: 'published', label: 'In AD', w: 80, get: (p) => (p.published ? 'Yes' : 'No') },
       { key: 'on', label: 'On', w: 120, on: true, get: (p) => p.computers.length, text: (p) => onText(p.computers.length), cell: (p) => esc(onText(p.computers.length)) },
     ],
     row: (p) => ` data-pr-row="${esc(`${p.name}\n${p.address || ''}`)}"`,
     empty: () => D.more.printers.empty(),
     redraw: () => D.draw(),
   }));
-  const shown = () => (all?.printers || []).filter((p) => p.kind !== 'virtual');
-  D.lists.printers = ['Printers', 'printer', 'Every printer on the computers, and which have it. Add one from a computer, or tick computers and use Actions.'];
+  const shown = () => rows;
+  D.lists.printers = ['Printers', 'printer', 'Every printer on the computers, and the ones your print servers publish in Active Directory. Add one from a computer, or tick computers and use Actions.'];
   D.more.printers = {
     table: 'dv-printers', grid: printersGrid, rows: shown, count: () => (all ? shown().length : ''), can: () => has('seats.view'), noun: 'printers',
-    load: async () => { all = await get('/api/devices/printers'); },
+    load: async () => {
+      // The computers' printers, and AD's when this person may see Active Directory (none when it isn't set up).
+      [all, adp] = await Promise.all([get('/api/devices/printers'), has('ad.view') ? get('/api/ad/printers').catch(() => null) : null]);
+      merge();
+    },
     empty: () => (!all ? 'Reading the list.' : all.computers.some((c) => c.read) ? 'No printers on the computers yet.' : `No computer has sent its printers yet. Clients send them from ${NEEDS} on, within half an hour.`),
     fields: () => [['Printer', [{ key: 'name', label: 'Name', type: 'text', get: (p) => p.name }, { key: 'kind', label: 'Kind', type: 'choice', get: (p) => KIND[p.kind] || p.kind },
-      { key: 'on', label: 'On (computers)', type: 'number', get: (p) => p.computers.length }]]],
+      { key: 'on', label: 'On (computers)', type: 'number', get: (p) => p.computers.length }, { key: 'server', label: 'Print server', type: 'text', get: (p) => p.server || '' },
+      { key: 'location', label: 'Location', type: 'text', get: (p) => p.location || '' }, { key: 'published', label: 'In AD', type: 'choice', get: (p) => (p.published ? 'Yes' : 'No') }]]],
   };
   const markRow = () => document.querySelectorAll('#dv-printers [data-pr-row]').forEach((el) => el.classList.toggle('dw-on', panel.shows('printers', el.dataset.prRow)));
   panel.el.addEventListener('close', markRow);
@@ -215,9 +235,11 @@
     const pcs = p.computers.map((x) => D.rows().find((c) => c.id === x.id)).filter(Boolean);
     panel.body.innerHTML = `<div class="dw-head"><span class="pic dw-pic">${svg('printer')}</span><div class="dw-name"><h2 id="dw-title">${esc(p.name)}</h2><p>${esc(where(p))}</p></div>`
       + `<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`
-      + (can() && p.kind !== 'universal' ? `<div class="dw-bar"><button type="button" class="dw-qa" data-prl-remove>${svg('trash')}<span>Remove from these computers</span></button></div>` : '')
-      + section(`On <small>${p.computers.length}</small>`, `<div class="dw-list">${p.computers.map((x) => `<div class="mrow acc-row" data-prl-pc="${esc(x.id)}"><span class="pic small">${svg('monitor')}</span>`
-        + `<div class="two"><b>${esc(x.computer)}</b><small>${esc([x.driver, x.port].filter(Boolean).join(' · '))}</small></div>${x.offline ? chip('Offline', 'off', 'power') : ''}${svg('right', 'acc-go')}</div>`).join('')}</div>`);
+      + (can() && p.kind !== 'universal' && p.computers.length ? `<div class="dw-bar"><button type="button" class="dw-qa" data-prl-remove>${svg('trash')}<span>Remove from these computers</span></button></div>` : '')
+      + (p.published ? section('In Active Directory', `<ul class="does"><li><b>Print server</b><span>${esc(p.server || '')}</span></li><li><b>Location</b><span>${esc(p.location || 'Not set')}</span></li>`
+        + `<li><b>Share</b><span class="mono">${esc(p.share || p.address || '')}</span></li></ul>`) : '')
+      + section(`On <small>${p.computers.length}</small>`, p.computers.length ? `<div class="dw-list">${p.computers.map((x) => `<div class="mrow acc-row" data-prl-pc="${esc(x.id)}"><span class="pic small">${svg('monitor')}</span>`
+        + `<div class="two"><b>${esc(x.computer)}</b><small>${esc([x.driver, x.port].filter(Boolean).join(' · '))}</small></div>${x.offline ? chip('Offline', 'off', 'power') : ''}${svg('right', 'acc-go')}</div>`).join('')}</div>` : none('No computer has it yet. Add it from a computer, or tick computers and use Actions.'));
     panel.open('printers', key);
     markRow();
     panel.body.querySelector('[data-prl-remove]')?.addEventListener('click', () => sure(`Remove ${p.name} from ${many(pcs.length)}?`, `${names(pcs)}. It's taken off each one for everyone who uses it.`, 'Remove',
