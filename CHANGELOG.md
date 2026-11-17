@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.243 (2026-11-17)
+
+- Removing the server with all of its data now uninstalls the client on that same computer too. It used to be left behind, locked to a server that was gone, and could not be uninstalled.
+- The Remove page of Setup says how many other computers still have the client. Uninstall it from them first, because they stay locked once the server is gone.
+
 ## 1.1.242 (2026-11-16)
 
 - Local admins is a tab beside Computers on Devices, not an entry of its own in the list. Members and People are its views, down the left where the views of Computers are.

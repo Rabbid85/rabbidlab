@@ -121,7 +121,7 @@ namespace RabbidLab.Setup
                     var removed = Quietly(log, everything ? "Removing Rabbid Lab and all associated data" : "Removing Rabbid Lab and retaining its settings",
                         () => remover.Uninstall(everything));
                     // What it could not take out, and has to be removed by hand.
-                    foreach (var left in new[] { remover.LeftoverMessage, remover.DnsMessage }.Where(m => m != null))
+                    foreach (var left in new[] { remover.ClientMessage, remover.LeftoverMessage, remover.DnsMessage }.Where(m => m != null))
                     {
                         Write(log, left);
                     }

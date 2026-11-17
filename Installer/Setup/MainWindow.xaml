@@ -327,7 +327,7 @@
         <RadioButton x:Name="EverythingChoice" Style="{StaticResource CardChoice}" GroupName="remove" IsChecked="True">
           <StackPanel>
             <TextBlock Text="Remove the program and all of its data" FontWeight="SemiBold" FontSize="13.5" />
-            <TextBlock Style="{StaticResource Hint}" Margin="0,3,0,0" Text="Removes the program, service, settings, saved credentials, encryption keys, certificate, firewall rule, shortcuts, registry entries and logs. This cannot be undone." />
+            <TextBlock x:Name="EverythingText" Style="{StaticResource Hint}" Margin="0,3,0,0" Text="Removes the program, service, settings, saved credentials, encryption keys, certificate, firewall rule, shortcuts, registry entries and logs. This cannot be undone." />
           </StackPanel>
         </RadioButton>
         <RadioButton Style="{StaticResource CardChoice}" GroupName="remove">
@@ -336,6 +336,10 @@
             <TextBlock x:Name="DataPathText" Style="{StaticResource Hint}" Margin="0,3,0,0" Text="Select this option if you plan to reinstall. Settings and saved credentials are retained for the new installation." />
           </StackPanel>
         </RadioButton>
+        <!-- Other computers with this server's client: removing all data leaves them locked (ClientPlan). -->
+        <Border x:Name="OthersChip" Style="{StaticResource Note}" Margin="0,6,0,0" Visibility="Collapsed">
+          <TextBlock x:Name="OthersText" FontSize="12.5" LineHeight="19" TextWrapping="Wrap" />
+        </Border>
       </StackPanel>
       </ScrollViewer>
     </Grid>

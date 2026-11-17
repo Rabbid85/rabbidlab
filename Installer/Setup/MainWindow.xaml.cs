@@ -89,6 +89,7 @@ namespace RabbidLab.Setup
                 WorkTitle.Text = "Removing " + Edition.Name;
                 RemoveLead.Text = $"{Edition.Name} {choices.InstalledVersion ?? Engine.Version} is installed on this computer. Select what to remove, and then select Remove.";
                 DataPathText.Text = $"Select this option if you plan to reinstall. Settings and saved credentials are retained in {Engine.DataDir} for the new installation.";
+                ShowClients();
             }
             TitleText.Text = Title;
             // Tall enough for the most it shows: a new installation lists every action.
@@ -933,6 +934,42 @@ namespace RabbidLab.Setup
 
         // --- Doing it --------------------------------------------------------------------------------------
 
+        /// <summary>
+        /// The Remove page, about computers with this server's client: the one on this computer goes with everything
+        /// (Engine.Remove), and the others are counted, since removing all data leaves them locked. Looked up off the
+        /// window's thread: telling whether an address is this computer can take a DNS lookup.
+        /// </summary>
+        private void ShowClients()
+        {
+#if PREVIEW
+            // /previewclients=3: as if this computer and three others had this server's client.
+            if (int.TryParse(App.StartArgs.Select(Choices.SplitArg).FirstOrDefault(a => a.Name == "previewclients").Value, out var count))
+            {
+                DescribeClients(true, count, ClientPlan.UsualDays);
+            }
+#else
+            Task.Run(() =>
+            {
+                var here = ClientHere.Find() != null;
+                var (others, days) = ClientHere.Others();
+                Dispatcher.BeginInvoke(new Action(() => DescribeClients(here, others, days)));
+            });
+#endif
+        }
+
+        private void DescribeClients(bool here, int others, int days)
+        {
+            if (here)
+            {
+                EverythingText.Text += " The Rabbid Lab client on this computer is connected to this server, so it is uninstalled too.";
+            }
+            if (ClientPlan.OthersNote(others, days) is string note)
+            {
+                OthersText.Text = note;
+                OthersChip.Visibility = Visibility.Visible;
+            }
+        }
+
         private async void Run()
         {
             if (working)
@@ -1121,7 +1158,7 @@ namespace RabbidLab.Setup
                     ? (EverythingChoice.IsChecked == true ? "Rabbid Lab was removed from this computer, including the program, service, settings, saved credentials, encryption keys, certificate, firewall rule, shortcuts, registry entries and logs." : $"The program, service, firewall rule, certificate and shortcuts were removed. Settings and saved credentials are retained in {Engine.DataDir} and are used if Rabbid Lab is reinstalled.")
                     : error.Message;
                 // What Setup could not take out, and has to be removed by hand.
-                foreach (var left in new[] { engine?.LeftoverMessage, engine?.DnsMessage }.Where(m => m != null))
+                foreach (var left in new[] { engine?.ClientMessage, engine?.LeftoverMessage, engine?.DnsMessage }.Where(m => m != null))
                 {
                     DoneLead.Text += " " + left;
                 }

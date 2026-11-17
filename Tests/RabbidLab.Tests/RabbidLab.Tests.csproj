@@ -29,6 +29,8 @@
     <!-- How the client knows its server (Pin.cs), tested against the certificates the server makes. -->
     <Compile Include="..\..\Src\Client\RabbidLab.Client\Pin.cs" Link="Client\Pin.cs" />
     <Compile Include="..\..\Src\Client\RabbidLab.Client\UninstallCode.cs" Link="Client\UninstallCode.cs" />
+    <!-- What removing the server does about computers with its client (Setup's ClientPlan.cs). -->
+    <Compile Include="..\..\Installer\Setup\ClientPlan.cs" Link="Setup\ClientPlan.cs" />
   </ItemGroup>
 
 </Project>

@@ -79,6 +79,9 @@ namespace RabbidLab.Setup
         /// <summary>Removing: files Setup could not delete, for the last page. Null when it deleted them all.</summary>
         public string LeftoverMessage { get; private set; }
 
+        /// <summary>Removing: what became of the Rabbid Lab client on this computer, for the last page. Null when it wasn't this server's.</summary>
+        public string ClientMessage { get; private set; }
+
         /// <summary>The log of what this Engine last did: Setup\install.log, or uninstall.log in the data folder.</summary>
         public string LogPath { get; private set; }
 
@@ -1318,6 +1321,12 @@ namespace RabbidLab.Setup
             if (everything)
             {
                 RemoveConsoleAliases();
+            }
+            if (everything && ClientHere.Find() is string client)
+            {
+                // This server's own client: with the server and its data gone, nothing could allow its uninstall.
+                Step("Uninstalling the Rabbid Lab client from this computer", 0.03);
+                ClientMessage = ClientHere.Uninstall(client, Log) ?? "The Rabbid Lab client on this computer was connected to this server, so it was uninstalled too.";
             }
 
             Step("Stopping the Rabbid Lab service", 0.05);
