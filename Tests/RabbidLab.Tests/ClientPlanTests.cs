@@ -62,7 +62,8 @@ public class ClientPlanTests
         Assert.Null(ClientPlan.OthersNote(0, 30));
         Assert.Contains("1 other computer,", ClientPlan.OthersNote(1, 30));
         Assert.Contains("3 other computers,", ClientPlan.OthersNote(3, 30));
-        Assert.Contains("until 30 days after", ClientPlan.OthersNote(3, 30));
+        Assert.Contains("releases 30 days later", ClientPlan.OthersNote(3, 30));
+        Assert.Contains("Remove-RabbidLabClient.ps1", ClientPlan.OthersNote(3, 0));
         Assert.Contains("never release", ClientPlan.OthersNote(3, 0));
     }
 }

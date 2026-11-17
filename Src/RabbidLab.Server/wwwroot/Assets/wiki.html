@@ -151,6 +151,14 @@
   </ul>
   <h3>Before you remove the server</h3>
   <p>Uninstall the client from the other computers first, with <b>Uninstall now</b>. Once the server and its data are gone, nothing can allow it and the uninstall codes are gone too, so those computers stay locked for the 30 days. Setup's Remove page says how many computers still have the client. The client on the server itself is uninstalled along with it.</p>
+  <h3>When the server is already gone</h3>
+  <p><code>Remove-RabbidLabClient.ps1</code>, in Tools on Rabbid Lab's GitHub page, clears the lock and uninstalls the client. It needs administrator rights on the computer and writes a line to its Application event log.</p>
+  <ul>
+    <li><b>One computer.</b> Run it there in PowerShell started as administrator.</li>
+    <li><b>Many that are on.</b> Run it from one computer with <code>-ComputerName</code> and the names. PowerShell remoting has to be on there. The ones that don't answer are listed.</li>
+    <li><b>Ones that are off.</b> Add it to a new policy in Group Policy Management as a startup script: Computer Configuration, Policies, Windows Settings, Scripts, Startup, PowerShell Scripts. Each computer runs it the next time it starts, and one without the client is left alone.</li>
+  </ul>
+  <p>Delete the <b>Rabbid Lab Client</b> policy first if you deployed the client with Group Policy. It installs the client again wherever it's missing.</p>
   <p>A locked computer can't be connected to a different server until it's unlocked. The lock stops the normal ways of removing the client. Someone with administrator rights on the computer who removes it by hand still can, and the computer then shows as Offline.</p>
 </article>
 

@@ -29,6 +29,8 @@ What changed in each version: [CHANGELOG.md](CHANGELOG.md).
 
 Running the installer again updates Rabbid Lab and keeps its settings. Uninstall from Settings > Apps.
 
+The client on each computer is locked to its server, so uninstall it from Devices before you remove the server. If the server is already gone, run [Tools/Remove-RabbidLabClient.ps1](Tools/Remove-RabbidLabClient.ps1) on the computer as administrator. It also takes `-ComputerName` for many at once, and works as a Group Policy startup script for the ones that are off.
+
 ## How releases are built
 
 Releases are built from this repository on the maintainer's PC and uploaded here. Nothing is built on GitHub. The installers aren't code-signed yet, so Windows may warn the first time you run one. Each release does carry Rabbid Lab's own signature, and the built-in updater checks it before installing anything.

@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.244 (2026-11-17)
+
+- New script for when the server was removed before its clients: Tools/Remove-RabbidLabClient.ps1 clears the lock and uninstalls the client. Run it on the computer as administrator, for many with -ComputerName, or as a Group Policy startup script to get the ones that are off.
+- The Remove page of Setup and the wiki say where that script is.
+
 ## 1.1.243 (2026-11-17)
 
 - Removing the server with all of its data now uninstalls the client on that same computer too. It used to be left behind, locked to a server that was gone, and could not be uninstalled.

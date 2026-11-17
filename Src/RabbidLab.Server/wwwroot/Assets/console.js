@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.244', [
+    'New script for when the server was removed before its clients: Tools/Remove-RabbidLabClient.ps1 clears the lock and uninstalls the client. Run it on the computer as administrator, for many with -ComputerName, or as a Group Policy startup script to get the ones that are off.',
+    'The Remove page of Setup and the wiki say where that script is.']],
   ['1.1.243', [
     'Removing the server with all of its data now uninstalls the client on that same computer too. It used to be left behind, locked to a server that was gone, and could not be uninstalled.',
     'The Remove page of Setup says how many other computers still have the client. Uninstall it from them first, because they stay locked once the server is gone.']],
