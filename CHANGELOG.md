@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.246 (2026-11-18)
+
+- The side panel is wider and laid out again. What can be done sits at the end of the name, the main thing as one button and then Actions, with the first facts in a row under it.
+- Its sections are cards that fold on a click of their heading, facts read as label and value in two columns, and a tab that lists things says how many.
+- The new header is on users, groups and computers in Active Directory and on computers in Devices so far. Every other panel has the cards and the columns.
+
 ## 1.1.245 (2026-11-18)
 
 - Lists have a new filter bar: a search of one column or all of them, then a chip for each column worth filtering by. A chip lists the values in that column with how many rows have each, and Add/remove filters picks which chips show.

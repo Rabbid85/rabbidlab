@@ -567,3 +567,48 @@ dialog.drawer:not(:modal) { z-index: 60; }
 .side-find.seat-find { display: flex; width: 100%; margin: 0 0 10px; }
 /* A hint under a section's facts (the Network section's Wake-on-LAN, say) keeps its distance. */
 .dw-sec .does + .dw-how { margin-top: 10px; }
+
+/* --- The side panel's look: wide, with what can be done at the end of the name, the first facts in a row under it,
+   counts as pills, sections as cards that fold, and facts as label and value in two columns ------------------------ */
+dialog.drawer { width: min(1100px, 62vw); min-width: min(580px, 100vw); }
+.dw-body { padding: 20px 24px 30px; }
+.dw-name h2 { font-size: 22px; }
+.dw-do { display: flex; flex: none; align-items: center; gap: 8px; }
+.dw-do > .small, .dw-do > .primary { display: inline-flex; align-items: center; gap: 7px; height: 34px; white-space: nowrap; }
+.dw-do > .small svg, .dw-do > .primary svg { width: 15px; height: 15px; }
+.dw-do .chev { width: 12px; height: 12px; }
+.dw-head .dw-close { align-self: center; }
+.dw-path { margin: 10px 0 0 66px; color: #B8BCCB; font-size: 13.5px; font-weight: 650; overflow-wrap: anywhere; }
+.dw-strip { display: flex; flex-wrap: wrap; gap: 12px 28px; margin: 16px 0 0; }
+.dw-strip > div { display: grid; gap: 7px; min-width: 0; }
+.dw-strip .l { color: #9DA1B3; font-size: 12px; }
+.dw-strip .v { color: var(--title); font-size: 13.5px; white-space: nowrap; }
+.dw-strip .ubadge { gap: 8px; height: auto; margin: 0; padding: 0; border-radius: 0; background: none; color: var(--title); font-size: 13.5px; font-weight: 500; }
+.dw-strip .ubadge::before { content: "✓"; flex: none; width: 15px; height: 15px; border-radius: 50%; background: var(--ok); color: var(--night); font: 800 10px/15px "Segoe UI", system-ui, sans-serif; text-align: center; }
+.dw-strip .ubadge.red::before { content: "!"; background: var(--red); }
+.dw-strip .ubadge.amber::before { content: "!"; background: var(--amber); }
+.dw-strip .ubadge.grey::before { content: "–"; background: #5E6380; }
+.dw-status { margin-top: 12px; }
+.dw-tabs { gap: 22px; margin-top: 18px; }
+.dw-tabs a small { margin-left: 7px; padding: 1px 8px; border-radius: 999px; background: #1A1D2B; color: #B8BCCB; font-size: 11.5px; font-weight: 600; }
+.dw-panel { padding-top: 2px; }
+/* A section is a card. A click on its heading folds it. */
+.dw-sec, .dw-sec:last-of-type { margin-top: 12px; padding: 15px 18px 13px; border: 1px solid var(--line); border-radius: 12px; background: #0F111A; }
+.dw-sec h3 { font-size: 16px; }
+.dw-sec h3 small { margin-left: 8px; padding: 1px 8px; border-radius: 999px; background: #1A1D2B; color: #B8BCCB; font-size: 11.5px; font-weight: 600; }
+.dw-sec > .dw-sec-head { justify-content: flex-start; cursor: pointer; }
+.dw-sec > .dw-sec-head > h3 { margin-right: auto; }
+.dw-sec > h3:first-child { display: flex; align-items: center; cursor: pointer; }
+.dw-sec > .dw-sec-head::after, .dw-sec > h3:first-child::after { content: ""; flex: none; width: 13px; height: 13px; background: #8B90A5; transition: transform .12s;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 15l6-6 6 6'/%3E%3C/svg%3E") center / contain no-repeat; }
+.dw-sec > h3:first-child::after { margin-left: auto; }
+.dw-sec.shut > .dw-sec-head::after, .dw-sec.shut > h3:first-child::after { transform: rotate(180deg); }
+.dw-sec.shut > :not(.dw-sec-head):not(h3:first-child) { display: none; }
+.dw-sec.shut > .dw-sec-head, .dw-sec.shut > h3:first-child { margin-bottom: 0; }
+/* Facts: the label, then its value beside it, down two columns with a line between when the panel is wide enough. */
+.dw-facts, .dw-sec .does:not(.wide) { display: block; columns: 300px 2; column-gap: 44px; column-rule: 1px solid var(--line-strong); margin-bottom: 6px; font-size: 13.5px; }
+.dw-fact, .dw-sec .does:not(.wide) li { display: grid; grid-template-columns: minmax(120px, 40%) minmax(0, 1fr); align-items: start; gap: 12px; padding: 6px 0; break-inside: avoid; }
+.dw-fact.wide { column-span: all; grid-template-columns: minmax(120px, 19%) minmax(0, 1fr); }
+.dw-fact .l, .dw-sec .does:not(.wide) b { color: #9DA1B3; font-size: 13.5px; font-weight: 400; }
+.dw-fact .v, .dw-sec .does:not(.wide) span { color: var(--title); }
+.dw-fact.dw-sw { grid-template-columns: minmax(0, 1fr) auto; }

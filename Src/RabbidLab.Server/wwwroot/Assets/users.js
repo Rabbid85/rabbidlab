@@ -1350,7 +1350,8 @@
       + `<input type="checkbox" class="switch" data-dw-on="${onCmd}" data-dw-off="${offCmd}"${on ? ' checked' : ''}${off ? ' disabled' : ''}></label>`;
   };
   const e1 = (v) => (v ? esc(v) : '');
-  const qa = (cmd, icon, label) => (dwNot.has(cmd) || !may(cmd) ? '' : `<button type="button" class="dw-qa" data-dw-cmd="${cmd}">${svg(icon)}<span>${esc(label)}</span></button>`);
+  // A command as a button; main is the panel's one primary button, beside Actions.
+  const qa = (cmd, icon, label, main = false) => (dwNot.has(cmd) || !may(cmd) ? '' : `<button type="button" class="${main ? 'primary' : 'dw-qa'}" data-dw-cmd="${cmd}">${svg(icon)}<span>${esc(label)}</span></button>`);
   // Why a few things aren't there, for the ones that have them.
   const dwWhy = (k, x) => (k === 'users' && x.service ? `That's ${ad.state.account}, ${R.app()}'s own account. Its password and sign-in settings stay as they are, so ${R.app()} keeps working.`
     : k === 'computers' && x.controller ? 'A domain controller: it can\'t be disabled, moved or deleted here.' : '');
@@ -1358,21 +1359,25 @@
   const dwHead = (k, x) => {
     const pic = k === 'users' ? `<span class="pic user dw-pic">${esc(initials(nameOf(x)))}</span>` : `<span class="pic dw-pic">${svg(k === 'groups' ? 'users' : server(x) ? 'server' : 'laptop')}</span>`;
     const sub = k === 'users' ? [x.username, x.upn].filter(Boolean).join(' · ') : k === 'computers' ? x.host || '' : x.description || '';
-    const status = k === 'users' ? userStatus(x) + (x.mustChange ? badge('Must change password', 'amber') : '') + (x.protected ? badge('Privileged', 'amber') : '')
-      + (x.service ? chip(R.app(), 'ember') : '')
-      : k === 'computers' ? pcStatus(x) + (x.controller ? chip('Domain controller', 'muted') : '') + (server(x) ? chip('Server', 'muted') : '')
-        : badge(x.security ? 'Security group' : 'Distribution group', 'grey') + badge(x.scope, 'grey') + (x.protected ? badge('Privileged', 'amber') : '');
-    // The everyday actions as buttons; More opens the whole menu.
-    const quick = !anyChange() ? '' : k === 'users'
-      ? qa('password', 'key', 'Reset password') + (x.locked ? qa('unlock', 'unlock', 'Unlock') : '') + qa(x.enabled ? 'disable' : 'enable', x.enabled ? 'user-off' : 'user-check', x.enabled ? 'Disable' : 'Enable')
-        + qa('edit', 'edit', 'Edit') + qa('groups-add', 'user-plus', 'Add to groups')
-      : k === 'groups' ? qa('members-add', 'user-plus', 'Add members') + qa('groups-add', 'org', 'Add to groups') + qa('edit', 'edit', 'Edit')
-        : qa(x.enabled ? 'disable' : 'enable', x.enabled ? 'user-off' : 'user-check', x.enabled ? 'Disable' : 'Enable') + qa('groups-add', 'user-plus', 'Add to groups') + qa('edit', 'edit', 'Edit');
+    // What else it is, beside its status in the strip below.
+    const status = k === 'users' ? (x.protected ? badge('Privileged', 'amber') : '') + (x.service ? chip(R.app(), 'ember') : '')
+      : k === 'computers' ? (x.controller ? chip('Domain controller', 'muted') : '') + (server(x) ? chip('Server', 'muted') : '') : x.protected ? badge('Privileged', 'amber') : '';
+    // The thing done most as the one button (unlocking, when it's locked out); Actions opens the whole menu.
+    const main = !anyChange() ? '' : k === 'users' ? (x.locked ? qa('unlock', 'unlock', 'Unlock', true) : qa('password', 'key', 'Reset password', true))
+      : k === 'groups' ? qa('members-add', 'user-plus', 'Add members', true) : qa('edit', 'edit', 'Edit', true);
+    // The facts looked at first, in a row under the name.
+    const password = x.mustChange ? 'Must change at next sign-in' : x.neverExpires ? 'Never expires' : x.passwordExpires ? `Expires ${day(x.passwordExpires)}` : '';
+    const strip = (k === 'users' ? [['Status', userStatus(x)], ['Logon name', `<span class="mono">${esc(x.username)}</span>`], ['Password', esc(password)], ['Last sign-in', esc(ago(x.lastSignIn))], ['Created', x.created ? esc(day(x.created)) : '']]
+      : k === 'computers' ? [['Status', pcStatus(x)], ['Operating system', esc(x.os || '')], ['Last sign-in', esc(ago(x.lastSignIn))], ['Created', x.created ? esc(day(x.created)) : '']]
+        : [['Group type', x.security ? 'Security' : 'Distribution'], ['Group scope', esc(x.scope)], ['Members', x.moreMembers ? '1,500 or more' : esc(x.members.toLocaleString())]])
+      .filter(([, v]) => v).map(([l, v]) => `<div><span class="l">${l}</span><span class="v">${v}</span></div>`).join('');
     const why = dwWhy(k, x);
     return `<div class="dw-head">${pic}<div class="dw-name"><h2 id="dw-title">${esc(nameOf(x))}</h2>${sub ? `<p>${esc(sub)}</p>` : ''}</div>`
+      + `<div class="dw-do">${main}<button type="button" class="small" data-dw-more aria-haspopup="menu">Actions${svg('chevron-down', 'chev')}</button></div>`
       + `<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`
+      + `<p class="dw-path">${esc([ad.state.domain, x.where].filter(Boolean).join(' / '))}</p>`
+      + `<div class="dw-strip">${strip}</div>`
       + `<div class="dw-status">${status}</div>`
-      + `<div class="dw-bar">${quick}<button type="button" class="dw-qa dw-more" data-dw-more aria-haspopup="menu">${svg('dots')}<span>More</span></button></div>`
       + (why && anyChange() ? `<p class="hint dw-note">${esc(why)}</p>` : '');
   };
 
@@ -1608,11 +1613,13 @@
       return;
     }
     dwNot = blocked(k, x);
-    const tabsFor = k === 'groups' ? [['overview', 'Overview'], ['members', 'Members'], ['memberof', 'Member of']] : [['overview', 'Overview'], ['memberof', 'Member of']];
+    // Each tab that lists things says how many.
+    const inGroups = (x.groups || []).length;
+    const tabsFor = k === 'groups' ? [['overview', 'Overview'], ['members', 'Members', x.moreMembers ? '1,500+' : x.members], ['memberof', 'Member of', inGroups]] : [['overview', 'Overview'], ['memberof', 'Member of', inGroups]];
     const body = dw.tab === 'members' ? dwMembers(x) : dw.tab === 'memberof' ? dwMemberOf(k, x) : dwOverview(k, x);
     const scroll = $('dw-body').scrollTop;
     $('dw-body').innerHTML = dwHead(k, x)
-      + `<div class="tabs2 dw-tabs" role="tablist">${tabsFor.map(([t, label]) => `<a role="tab" data-dw-tab="${t}"${dw.tab === t ? ' aria-current="true"' : ''}>${esc(label)}</a>`).join('')}</div>`
+      + `<div class="tabs2 dw-tabs" role="tablist">${tabsFor.map(([t, label, n]) => `<a role="tab" data-dw-tab="${t}"${dw.tab === t ? ' aria-current="true"' : ''}>${esc(label)}${n == null ? '' : `<small>${esc(n.toLocaleString())}</small>`}</a>`).join('')}</div>`
       + `<div class="dw-panel">${body}</div>`;
     $('dw-body').scrollTop = scroll;
   };

@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.246', [
+    'The side panel is wider and laid out again. What can be done sits at the end of the name, the main thing as one button and then Actions, with the first facts in a row under it.',
+    'Its sections are cards that fold on a click of their heading, facts read as label and value in two columns, and a tab that lists things says how many.',
+    'The new header is on users, groups and computers in Active Directory and on computers in Devices so far. Every other panel has the cards and the columns.']],
   ['1.1.245', [
     'Lists have a new filter bar: a search of one column or all of them, then a chip for each column worth filtering by. A chip lists the values in that column with how many rows have each, and Add/remove filters picks which chips show.',
     'The arrow at the end of the filter bar opens every chip out side by side, to tick values without opening each one.',
@@ -2516,7 +2520,6 @@ const RELEASE_NOTES = [
       // Approve, then the Actions menu (devices.js), which has Remove from Devices too.
       const acts = (st === 'waiting' && can.has('seats.approve') ? `<button type="button" class="small primary" data-seat-approve>${svg('check')}Approve</button>` : '')
         + (dvHooks.seatBar?.(seat) || '');
-      const bar = acts ? `<div class="dw-bar">${acts}</div>` : '';
       const open = !!seat.removalUntil;
       const lock = st === 'waiting' || seat.server || !can.has('seats.remove') ? ''
         : `<section class="dw-sec"><div class="dw-sec-head"><h3>Uninstall the client</h3><span class="seat-lock${open ? ' open' : ''}">${svg(open ? 'check' : 'lock')}${open ? `Allowed until ${esc(clock(seat.removalUntil))}` : 'Locked'}</span></div>`
@@ -2573,8 +2576,16 @@ const RELEASE_NOTES = [
           : `<p class="dw-how">Windows Update was asked ${esc(when(inv.missingChecked))}. It's asked again every six hours, or now with Check for updates under Actions. Antivirus definitions are listed but not counted.</p>`)
           + (!inv.history && inv.updates.length ? `<p class="dw-how">Update names show once its client is on 1.1.203 or later. Until then it's what Windows lists by number.</p>` : '')
           + `<div class="table" id="seat-upd"></div>`);
+      // Its name with what can be done to it at the end (Approve, then Actions), and under it the facts looked at first.
+      const model = [inv?.manufacturer, inv?.model].filter(Boolean).join(' ');
+      const missing = inv?.missingChecked ? inv.missing.filter((u) => !u.definition).length : null;
+      const strip = [['State', `<span class="state ${stateLabel(seat) === 'Waking' ? 'waiting' : st}">${seat.server ? 'This server' : stateLabel(seat)}</span>`],
+        seat.server ? null : ['Signed in', seat.user ? esc(seat.user) : '<span class="muted">Nobody</span>'], ['Windows', esc(seat.os || 'Unknown')],
+        seat.server || missing === null ? null : ['Updates', missing ? `<span class="state waiting">${missing} missing</span>` : '<span class="state">Up to date</span>'],
+        seat.server ? null : ['Last seen', esc(ago(seat.lastSeen))]].filter(Boolean).map(([l, v]) => `<div><span class="l">${l}</span><span class="v">${v}</span></div>`).join('');
       panel.body.innerHTML = `<div class="dw-head"><span class="pic dw-pic">${svg(seat.server ? 'server' : 'monitor')}</span><div class="dw-name"><h2 id="dw-title">${esc(seat.computer)}</h2>`
-        + `<p><span class="state ${stateLabel(seat) === 'Waking' ? 'waiting' : st}">${seat.server ? 'This server' : stateLabel(seat)}</span></p></div><button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>${bar}${tabs}${pane}`;
+        + `${model ? `<p>${esc(model)}</p>` : ''}</div>${acts ? `<div class="dw-do">${acts}</div>` : ''}<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`
+        + `<div class="dw-strip">${strip}</div>${tabs}${pane}`;
       if (more == null && inv && seatTab === 'software') drawSoftware();
       if (more == null && inv && seatTab === 'updates') drawUpdates();
     };
@@ -3614,6 +3625,21 @@ const RELEASE_NOTES = [
     shows: (owner, key) => panel.is(owner) && panel.key === key,
   };
   panel.el.addEventListener('click', (e) => { if (e.target.closest('[data-dw-close]')) panel.close(); });
+  // A section of the panel folds on a click of its heading (not of a button in it), and stays folded while the panel
+  // is drawn again, until the console is opened again.
+  const folded = new Set();
+  const foldKey = (sec) => `${panel.owner}:${(sec.querySelector('h3')?.firstChild?.textContent || '').trim()}`;
+  panel.el.addEventListener('click', (e) => {
+    const head = e.target.closest('.dw-sec > .dw-sec-head, .dw-sec > h3');
+    if (!head || e.target.closest('button, a, input, select, label')) return;
+    const k = foldKey(head.parentElement);
+    if (folded.has(k)) folded.delete(k);
+    else folded.add(k);
+    head.parentElement.classList.toggle('shut', folded.has(k));
+  });
+  new MutationObserver(() => {
+    if (folded.size) panel.body.querySelectorAll('.dw-sec').forEach((sec) => sec.classList.toggle('shut', folded.has(foldKey(sec))));
+  }).observe(panel.body, { childList: true, subtree: true });
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && panel.el.open && !document.querySelector('dialog[open]:modal, :popover-open')) panel.close();
   });
