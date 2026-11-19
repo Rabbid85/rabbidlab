@@ -104,7 +104,7 @@ public static class ClientsApi
             }
             // A client that asks with ?jobs knows the order that says jobs wait for it (1.1.168 and later).
             Func<bool>? waiting = context.Request.Query.ContainsKey("jobs") ? () => jobs.Waits(c.Id) : null;
-            return await commands.Next(c.Id, stop.Token, waiting) is { } order ? Results.Ok(order) : Results.NoContent();
+            return await commands.Next(c.Id, stop.Token, waiting, context.Request.IsHttps) is { } order ? Results.Ok(order) : Results.NoContent();
         });
 
         app.MapPost("/api/clients/done", (AccountAnswer answer, HttpContext context, Clients clients, ClientCommands commands) =>

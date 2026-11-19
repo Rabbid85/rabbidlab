@@ -401,7 +401,9 @@ public static class SignIn
                 }
                 if (principal is null)
                 {
-                    log.Record(name.Length > 0 ? name : "Unknown user", from, "sign-in", "signin.failed", "Sign-in failed", "failed");
+                    // Under its name only when that's an account here: what was typed may be a password in the wrong box.
+                    var known = name.Length > 0 && (accounts.Find(name) is not null || await windows.Recheck(name, context.RequestAborted) is { Found: true });
+                    log.Record(known ? name : Unknown, from, "sign-in", "signin.failed", "Sign-in failed", "failed");
                     return wrong;
                 }
                 return await Enter(principal, principal.FindFirstValue("name") ?? name);
@@ -429,12 +431,12 @@ public static class SignIn
             }
             catch (DirectoryProblem e)
             {
-                log.Record(name, from, "sign-in", "signin.failed", "Sign-in failed", "failed", e.Message);
+                log.Record(KnownIn(roles, name, domain, settings.Domain), from, "sign-in", "signin.failed", "Sign-in failed", "failed", e.Message);
                 return Results.Json(new { error = $"Couldn't check your password with {domain}: {e.Message}" }, statusCode: StatusCodes.Status503ServiceUnavailable);
             }
             if (user is null)
             {
-                log.Record(name.Length > 0 ? name : "Unknown user", from, "sign-in", "signin.failed", "Sign-in failed", "failed");
+                log.Record(KnownIn(roles, name, domain, settings.Domain), from, "sign-in", "signin.failed", "Sign-in failed", "failed");
                 return wrong;
             }
             // Accounts from another domain keep it in their name, so awiles@lab.amw.com isn't taken for amw.com's awiles.
@@ -471,7 +473,12 @@ public static class SignIn
                 pending.Remove(form.Ticket!);
                 return Results.BadRequest(new { error = "MFA was set up for this account just now. Sign in again.", again = true });
             }
-            switch (waiting.Secret is null ? mfa.Check(who, form.Code) : mfa.Enable(who, waiting.Secret, form.Code))
+            if (waiting.Secret is not null && pending.Secret(waiting) is null)
+            {
+                pending.Remove(form.Ticket!);
+                return Results.BadRequest(new { error = "That took too long. Sign in again.", again = true });
+            }
+            switch (waiting.Secret is null ? mfa.Check(who, form.Code) : mfa.Enable(who, pending.Secret(waiting)!, form.Code))
             {
                 case MfaAnswer.Wait:
                     return Results.Json(new { error = MfaApi.TooMany }, statusCode: StatusCodes.Status429TooManyRequests);
@@ -622,6 +629,25 @@ public static class SignIn
             // Their roles show only part of Active Directory, so the pages about the whole domain aren't theirs.
             adScoped = roles.Allowed(who).Contains(Permissions.AdView) && roles.Reach(who, Permissions.AdView) is not null,
         };
+    }
+
+    /// <summary>Who a failed sign-in is logged under when what was typed isn't an account here.</summary>
+    public const string Unknown = "Unknown user";
+
+    /// <summary>
+    /// A failed domain sign-in's name for the log: the account when it has signed in here before, otherwise Unknown user,
+    /// so a password typed into the username box never lands in the log.
+    /// </summary>
+    private static string KnownIn(Roles roles, string typed, string domain, string setUp)
+    {
+        var sam = Ldap.Account(typed);
+        if (sam.Length == 0)
+        {
+            return Unknown;
+        }
+        var username = domain == setUp ? sam : $"{sam}@{domain}";
+        return roles.Snapshot().People.FirstOrDefault(p => p.Source == Directory && string.Equals(p.Username, username, StringComparison.OrdinalIgnoreCase)) is { } person
+            ? person.Username : Unknown;
     }
 
     // Never kept past the browser, whatever a request asks.

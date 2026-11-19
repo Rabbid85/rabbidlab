@@ -16,6 +16,8 @@ public sealed class ClientCommands
     /// <summary>How long the page waits for a client to answer.</summary>
     public static readonly TimeSpan Answer = TimeSpan.FromSeconds(40);
 
+    public const string PlainHttp = "This computer's client connects to the server over plain HTTP, so no password is sent to it. Connect the client with the server's https:// address, then try again.";
+
     private readonly Lock gate = new();
     private readonly Dictionary<string, Lane> lanes = [];
     private readonly Dictionary<string, Job> taken = [];
@@ -88,7 +90,7 @@ public sealed class ClientCommands
     /// The next order for the client, or null when there's none within Hold, or the client has gone. With jobs, a client
     /// that has some waiting is told to come and take them (AccountOrder.Jobs), which nobody waits for an answer to.
     /// </summary>
-    public async Task<AccountOrder?> Next(string client, CancellationToken stop, Func<bool>? jobs = null)
+    public async Task<AccountOrder?> Next(string client, CancellationToken stop, Func<bool>? jobs = null, bool secure = true)
     {
         var until = DateTime.UtcNow + Hold;
         Lane lane;
@@ -106,6 +108,12 @@ public sealed class ClientCommands
                 if (lane.Gone || stop.IsCancellationRequested)
                 {
                     return null;
+                }
+                // A password never goes down a plain HTTP request: the order fails here and the page says why.
+                foreach (var open in lane.Jobs.Where(j => !secure && !string.IsNullOrEmpty(j.Order.NewPassword)).ToList())
+                {
+                    lane.Jobs.Remove(open);
+                    open.Done.TrySetResult(AccountAnswer.Failed(open.Order.Id, PlainHttp));
                 }
                 var job = lane.Jobs.FirstOrDefault();
                 if (job is not null)

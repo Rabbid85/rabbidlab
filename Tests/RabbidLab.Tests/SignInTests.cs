@@ -148,6 +148,57 @@ public sealed class SignInTests : IDisposable
     }
 
     [Fact]
+    public async Task A_failed_sign_in_is_logged_by_name_only_when_the_name_is_an_account_here()
+    {
+        await app.SignedIn();
+        var page = app.Page();
+        await page.PostAsJsonAsync("/api/signin", new { username = "admin", password = "wrong" });
+        await page.PostAsJsonAsync("/api/signin", new { username = "Hunter2-My-Password!", password = "" }); // the password in the username box
+        await page.PostAsJsonAsync("/api/signin", new { username = @".\localadmin", password = "wrong" }); // an administrator of this computer
+
+        var log = File.ReadAllText(Path.Combine(data, "activity.jsonl"));
+        Assert.DoesNotContain("Hunter2", log);
+        var failed = log.Split('\n').Where(l => l.Contains("signin.failed")).ToList();
+        Assert.Equal(3, failed.Count);
+        Assert.Contains("\"admin\"", failed[0]);
+        Assert.Contains(RabbidLab.Server.SignIn.Unknown, failed[1]);
+        Assert.Contains("localadmin", failed[2]);
+    }
+
+    [Fact]
+    public async Task A_failed_domain_sign_in_is_logged_by_name_only_for_an_account_that_has_signed_in_here()
+    {
+        await app.Page().PostAsJsonAsync("/api/setup/directory", new { domain = "amw.com", username = "awiles", password = "domain pass" });
+        var page = app.Page();
+        await page.PostAsJsonAsync("/api/signin", new { username = "awiles", password = "wrong" });
+        await page.PostAsJsonAsync("/api/signin", new { username = "jreyes", password = "wrong" }); // in the domain, never signed in here
+        await page.PostAsJsonAsync("/api/signin", new { username = @"AMW\Hunter2-My-Password!", password = "x" });
+
+        var failed = File.ReadAllText(Path.Combine(data, "activity.jsonl")).Split('\n').Where(l => l.Contains("signin.failed")).ToList();
+        Assert.Equal(3, failed.Count);
+        Assert.Contains("awiles", failed[0]);
+        Assert.Contains(RabbidLab.Server.SignIn.Unknown, failed[1]);
+        Assert.DoesNotContain("Hunter2", failed[2]);
+    }
+
+    [Fact]
+    public async Task An_MFA_secret_being_set_up_is_kept_encrypted_until_its_first_code()
+    {
+        var admin = await app.SignedIn();
+        var secret = (await (await admin.PostAsJsonAsync("/api/mfa/setup", new { })).Content.ReadFromJsonAsync<JsonElement>()).GetProperty("secret").GetString()!;
+
+        // What the server holds for the draft isn't the secret.
+        var mfa = app.Services.GetRequiredService<Mfa>();
+        var drafts = (System.Collections.IDictionary) typeof(Mfa).GetField("drafts", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(mfa)!;
+        var held = drafts.Values.Cast<(string Secret, DateTimeOffset Until)>().Single().Secret;
+        Assert.NotEqual(secret, held);
+        Assert.DoesNotContain(secret, held);
+
+        // And it still turns on with a code from it.
+        (await admin.PostAsJsonAsync("/api/mfa/on", new { code = Totp.Code(secret, Totp.Step(app.Clock.GetUtcNow())) })).EnsureSuccessStatusCode();
+    }
+
+    [Fact]
     public async Task A_domain_account_that_is_disabled_reset_or_out_of_every_role_is_signed_out_within_minutes()
     {
         app.Services.GetRequiredService<SettingsStore>().Change(s => s.IdleMinutes = 0);

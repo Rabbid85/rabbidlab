@@ -39,8 +39,8 @@ public sealed class UsersTests : IDisposable
 
     private static async Task<string> Error(HttpResponseMessage r) => (await Json(r)).GetProperty("error").GetString()!;
 
-    /// <summary>A computer that joined, was let in and checked in with the client version given; its own client for the server.</summary>
-    private async Task<(string Id, HttpClient Client)> Seat(HttpClient admin, string version = "0.4.0", bool letIn = true)
+    /// <summary>A computer that joined, was let in and checked in with the client version given; its own client for the server, over HTTPS unless asked.</summary>
+    private async Task<(string Id, HttpClient Client)> Seat(HttpClient admin, string version = "0.4.0", bool letIn = true, bool https = true)
     {
         var joined = await Json(await app.CreateClient().PostAsJsonAsync("/api/clients/join", new { computer = "AMW-LT-022", os = "Windows 11 Pro", version }));
         var id = joined.GetProperty("id").GetString()!;
@@ -48,7 +48,7 @@ public sealed class UsersTests : IDisposable
         {
             (await admin.PostAsync($"/api/clients/{id}/approve", null)).EnsureSuccessStatusCode();
         }
-        var client = app.CreateClient();
+        var client = app.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { BaseAddress = new Uri(https ? "https://localhost" : "http://localhost") });
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("RabbidLab-Client", $"{id}:{joined.GetProperty("secret").GetString()}");
         (await client.PostAsJsonAsync("/api/clients/checkin", new { computer = "AMW-LT-022", os = "Windows 11 Pro", version })).EnsureSuccessStatusCode();
         return (id, client);
@@ -143,6 +143,29 @@ public sealed class UsersTests : IDisposable
         Assert.Equal("Windows on AMW-LT-022 said no.", await Error(refused));
         Assert.Contains("Made the Windows account kiosk2 on AMW-LT-022", log);
         Assert.DoesNotContain(password, log);
+    }
+
+    [Fact]
+    public async Task A_password_is_never_sent_to_a_client_that_connects_over_plain_HTTP()
+    {
+        var admin = await app.SignedIn();
+        var (id, client) = await Seat(admin, https: false);
+        using var gone = new CancellationTokenSource();
+        var next = client.PostAsync("/api/clients/next", null, gone.Token);
+        var commands = app.Services.GetRequiredService<ClientCommands>();
+        while (!commands.Listening(id))
+        {
+            await Task.Delay(10);
+        }
+
+        var reset = await admin.PostAsJsonAsync($"/api/windows/{id}/accounts/kiosk/password", new { password = "Not over HTTP 1" });
+        var made = await admin.PostAsJsonAsync($"/api/windows/{id}/accounts", new { name = "kiosk2" }); // a password made here, same thing
+
+        Assert.Equal(HttpStatusCode.BadRequest, reset.StatusCode);
+        Assert.Contains("plain HTTP", await Error(reset));
+        Assert.Equal(HttpStatusCode.BadRequest, made.StatusCode);
+        Assert.False(next.IsCompleted); // the client got nothing: its request is still waiting
+        await gone.CancelAsync();
     }
 
     [Fact]

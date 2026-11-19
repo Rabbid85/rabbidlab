@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.250', [
+    'A failed sign-in is logged under the username only when it is an account here, or for Active Directory one that has signed in here before. Anything else shows as Unknown user, so a password typed into the username box never lands in the log.',
+    'An MFA secret being set up is kept encrypted until its first code, like saved ones.',
+    'A Windows account password is never sent to a computer whose client connects over plain HTTP. The page says why: connect the client with the https address of the server.']],
   ['1.1.249', [
     'Active Directory and Windows accounts are checked again every 5 minutes while signed in. One that is disabled, deleted, has its password reset or is in no role any more is signed out, and a change to its groups changes what it can do.',
     'The Confirm window (your password or MFA code) now comes up before AD password resets, new AD users and AD group changes, Windows accounts and Administrators changes, local accounts and their passwords, putting people in roles, giving a role more permissions, turning off required MFA and resetting MFA.',

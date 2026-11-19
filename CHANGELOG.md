@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.250 (2026-11-18)
+
+- A failed sign-in is logged under the username only when it is an account here, or for Active Directory one that has signed in here before. Anything else shows as Unknown user, so a password typed into the username box never lands in the log.
+- An MFA secret being set up is kept encrypted until its first code, like saved ones.
+- A Windows account password is never sent to a computer whose client connects over plain HTTP. The page says why: connect the client with the https address of the server.
+
 ## 1.1.249 (2026-11-18)
 
 - Active Directory and Windows accounts are checked again every 5 minutes while signed in. One that is disabled, deleted, has its password reset or is in no role any more is signed out, and a change to its groups changes what it can do.

@@ -39,7 +39,7 @@ public sealed class Mfa(DataFolder folder, SettingsStore secrets, TimeProvider c
     private static readonly TimeSpan DraftLife = TimeSpan.FromMinutes(10);
     private readonly JsonFile<MfaFile> file = folder.Json<MfaFile>("mfa.json", Json);
     private readonly Limiter limiter = new(5, clock);
-    // Secrets being set up from Settings, by person, until the first code confirms them.
+    // Secrets being set up from Settings, by person, until the first code confirms them. Kept encrypted, like mfa.json.
     private readonly Dictionary<string, (string Secret, DateTimeOffset Until)> drafts = [];
 
     private Lock gate => file.Gate;
@@ -89,7 +89,7 @@ public sealed class Mfa(DataFolder folder, SettingsStore secrets, TimeProvider c
             {
                 drafts.Remove(old);
             }
-            drafts[Key(who.Source, who.Username)] = (secret, now + DraftLife);
+            drafts[Key(who.Source, who.Username)] = (secrets.Encrypt(secret), now + DraftLife);
         }
         return secret;
     }
@@ -100,11 +100,12 @@ public sealed class Mfa(DataFolder folder, SettingsStore secrets, TimeProvider c
         string secret;
         lock (gate)
         {
-            if (!drafts.TryGetValue(Key(who.Source, who.Username), out var draft) || draft.Until < clock.GetUtcNow())
+            if (!drafts.TryGetValue(Key(who.Source, who.Username), out var draft) || draft.Until < clock.GetUtcNow()
+                || secrets.TryDecrypt(draft.Secret) is not { } opened)
             {
                 return null;
             }
-            secret = draft.Secret;
+            secret = opened;
         }
         var answer = Enable(who, secret, code);
         if (answer == MfaAnswer.Right)
@@ -177,12 +178,15 @@ public sealed class Mfa(DataFolder folder, SettingsStore secrets, TimeProvider c
     private static string Key(string source, string username) => $"{source}:{username.ToLowerInvariant()}";
 }
 
-/// <summary>A sign-in whose password was right, waiting for its code (or for the app to be set up, with the secret to set up).</summary>
+/// <summary>A sign-in whose password was right, waiting for its code (or for the app to be set up, with the secret to set up, encrypted).</summary>
 public sealed record PendingSignIn(ClaimsPrincipal Principal, string Name, string? Secret, DateTimeOffset Until);
 
 /// <summary>Sign-ins between the password and the code, by a ticket only the page that typed the password has. Ten minutes each.</summary>
-public sealed class PendingSignIns(TimeProvider clock)
+public sealed class PendingSignIns(TimeProvider clock, SettingsStore secrets)
 {
+    /// <summary>The secret being set up, opened only to check the code with; null when there's none or it can't be opened.</summary>
+    public string? Secret(PendingSignIn waiting) => waiting.Secret is null ? null : secrets.TryDecrypt(waiting.Secret);
+
     private static readonly TimeSpan Life = TimeSpan.FromMinutes(10);
     private const int Most = 1000;
     private readonly Lock gate = new();
@@ -203,7 +207,7 @@ public sealed class PendingSignIns(TimeProvider clock)
             {
                 waiting.Remove(old);
             }
-            waiting[ticket] = new PendingSignIn(principal, name, secret, now + Life);
+            waiting[ticket] = new PendingSignIn(principal, name, secret is null ? null : secrets.Encrypt(secret), now + Life);
         }
         return ticket;
     }
