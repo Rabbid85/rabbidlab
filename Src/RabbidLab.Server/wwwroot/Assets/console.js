@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.258', [
+    'The side panel has a round arrow button on its left edge that closes it.']],
   ['1.1.257', [
     'The side panel has square corners.']],
   ['1.1.256', [

@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.258 (2026-11-19)
+
+- The side panel has a round arrow button on its left edge that closes it.
+
 ## 1.1.257 (2026-11-19)
 
 - The side panel has square corners.
