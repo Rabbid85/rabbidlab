@@ -740,7 +740,6 @@
         <div id="ln-watched-wrap" hidden><b id="ln-watched"></b><span><svg><use href="#i-eye"/></svg>Watched</span></div>
       </div>
       <div class="hero-actions">
-        <button type="button" class="primary" id="ln-add" data-can="links.edit">Add a link</button>
         <button type="button" class="hero-gear" id="ln-checks" data-can="links.edit" data-tip="Settings, export, import" aria-label="Links settings, export and import" popovertarget="ln-gear-menu"><svg><use href="#i-gear"/></svg></button>
         <div class="gear-menu" id="ln-gear-menu" popover>
           <div class="am-links"><a class="am-link" href="#settings/links"><svg><use href="#i-gear"/></svg>Links settings</a></div>
@@ -759,10 +758,12 @@
     <section class="news sn-body">
     <!-- The filter bar every list has (filter.js): it narrows whichever view shows. -->
     <div id="ln-fbar" hidden></div>
+    <!-- The bar over the links, like every list's: the views, Refresh icons, and Add a link with New group under its arrow. -->
     <div class="ln-tools">
-      <button type="button" class="small" id="ln-newgroup" data-can="links.edit"><svg><use href="#i-plus"/></svg>New group</button>
-      <button type="button" class="small" id="ln-refresh" data-can="links.edit" title="Read every link's site again and bring its icon, description and IP up to date"><svg><use href="#i-refresh"/></svg>Refresh icons</button>
       <div class="vswitch" id="ln-view"><button type="button" data-view="grid" title="Rows" aria-label="Rows"><svg><use href="#i-view-rows"/></svg></button><button type="button" data-view="cards" title="Tiles" aria-label="Tiles"><svg><use href="#i-view-tiles"/></svg></button><button type="button" data-view="links" title="Links" aria-label="Links"><svg><use href="#i-view-list"/></svg></button><button type="button" data-view="icons" title="Icons" aria-label="Icons"><svg><use href="#i-view-icons"/></svg></button></div>
+      <div class="gdock" data-can="links.edit"><button type="button" id="ln-refresh" data-tip="Refresh icons" aria-label="Refresh icons: read every link's site again for its icon, description and IP"><svg><use href="#i-refresh"/></svg></button></div>
+      <div class="gsplit"><button type="button" class="primary gnew" id="ln-add" data-can="links.edit"><svg><use href="#i-plus"/></svg><span>Add a link</span></button>
+        <button type="button" class="gsplit-more" aria-haspopup="menu" data-tip="More" aria-label="More"><svg class="chev"><use href="#i-chevron-down"/></svg></button></div>
     </div>
     <p class="hint note ln-done" id="ln-done" role="status" hidden></p>
     <div id="ln-list" data-skel="tiles:8"></div>
@@ -792,7 +793,6 @@
         <div><b id="sn-last"><i class="sk sk-num"></i></b><span><svg><use href="#i-updates"/></svg>Last check</span></div>
       </div>
       <div class="hero-actions">
-        <button type="button" class="primary" id="sn-add" data-can="sensors.edit">Add a sensor</button>
         <button type="button" class="hero-gear" id="sn-gear" data-can="sensors.alerts sensors.edit" data-tip="Alerts and settings" aria-label="Alert rules, notifications and sensor settings" popovertarget="sn-gear-menu"><svg><use href="#i-gear"/></svg></button>
         <div class="gear-menu" id="sn-gear-menu" popover>
           <div class="am-links"><a class="am-link" href="#settings/alerts" data-can="sensors.alerts"><svg><use href="#i-alert"/></svg>Alert rules</a>
@@ -811,8 +811,9 @@
     <section class="news sn-body">
       <div id="sn-fbar" hidden></div>
       <div class="ln-tools" id="sn-tools">
-        <button type="button" class="small" id="sn-newgroup" data-can="sensors.edit"><svg><use href="#i-plus"/></svg>New group</button>
         <div class="vswitch" id="sn-view"><button type="button" data-view="grid" title="Rows" aria-label="Rows"><svg><use href="#i-view-rows"/></svg></button><button type="button" data-view="cards" title="Tiles" aria-label="Tiles"><svg><use href="#i-view-tiles"/></svg></button></div>
+        <div class="gsplit"><button type="button" class="primary gnew" id="sn-add" data-can="sensors.edit"><svg><use href="#i-plus"/></svg><span>Add a sensor</span></button>
+          <button type="button" class="gsplit-more" aria-haspopup="menu" data-tip="More" aria-label="More"><svg class="chev"><use href="#i-chevron-down"/></svg></button></div>
       </div>
       <div id="sn-list" data-skel="tiles:6"></div>
       <div class="ln-empty" id="sn-empty" hidden><span class="big-ic ember"><svg><use href="#i-activity"/></svg></span>

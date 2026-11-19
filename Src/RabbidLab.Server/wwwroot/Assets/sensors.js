@@ -330,7 +330,7 @@
       draw();
     },
   });
-  $('sn-newgroup').addEventListener('click', tools.create);
+  R.grid.more($('sn-add'), () => [{ label: 'New group', icon: 'folder', run: tools.create }]); // under Add a sensor's arrow
   $('sn-view').addEventListener('click', (e) => {
     const b = e.target.closest('[data-view]');
     if (!b) return;

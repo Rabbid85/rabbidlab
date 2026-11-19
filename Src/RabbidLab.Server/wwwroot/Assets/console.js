@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.260', [
+    'Links and Sensors have the same bar as the other lists: the views, Refresh icons, and Add a link or Add a sensor with New group under its arrow. Add a link and Add a sensor moved there from the banner.',
+    'The arrow on a New button is the same colour as the button, whatever the accent.']],
   ['1.1.259', [
     'The bar over every list is redone. Actions and Group by look like the filter chips, Refresh and Export are icons side by side, and New has an arrow with the other things the page can make.',
     'Side panels have an orange Edit button next to Actions. When your role is not allowed to edit, or the thing is built in, it stays there in grey and its hint says why.']],

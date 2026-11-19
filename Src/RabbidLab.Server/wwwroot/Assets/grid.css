@@ -131,19 +131,21 @@ body.col-moving, body.col-moving * { cursor: grabbing !important; user-select: n
 .gbar .gby:has(:checked) + .gby-pick:hover { background: color-mix(in srgb, var(--accent) 24%, transparent); }
 .gbar .gby-pick .chev { stroke: var(--accent-soft); }
 .gbar .gcount { margin-left: 4px; color: #8B90A5; font-size: 12.5px; }
-.gbar .vswitch, .gdock { display: inline-flex; flex: none; gap: 2px; margin: 0; padding: 2px; border: 0; border-radius: 8px; background: #1A1D2B; }
-.gbar .vswitch button, .gdock > button { display: grid; place-items: center; width: 30px; height: 28px; padding: 0; border: 0; border-radius: 6px; background: none; color: #8B90A5; }
+.gbar .vswitch { margin: 0; }
+/* The same chips on the bar over Links and Sensors (.ln-tools). */
+:is(.gbar, .ln-tools) .vswitch, .gdock { display: inline-flex; flex: none; gap: 2px; padding: 2px; border: 0; border-radius: 8px; background: #1A1D2B; }
+:is(.gbar, .ln-tools) .vswitch button, .gdock > button { display: grid; place-items: center; width: 30px; height: 28px; padding: 0; border: 0; border-radius: 6px; background: none; color: #8B90A5; }
 .gdock > button { color: #B8BCCB; }
-.gbar .vswitch button:hover, .gdock > button:hover { background: #2C3046; color: var(--title); }
-.gbar .vswitch button[aria-pressed="true"] { background: #2C3046; color: var(--title); }
-.gbar .vswitch svg, .gdock svg { width: 15px; height: 15px; }
+:is(.gbar, .ln-tools) .vswitch button:hover, .gdock > button:hover:not(:disabled) { background: #2C3046; color: var(--title); }
+:is(.gbar, .ln-tools) .vswitch button[aria-pressed="true"] { background: #2C3046; color: var(--title); }
+:is(.gbar, .ln-tools) .vswitch svg, .gdock svg { width: 15px; height: 15px; }
 .gsplit { display: inline-flex; flex: none; }
-.gbar:not(.has-new) > .gsplit, .gbar.no-more .gsplit-more { display: none; }
-.gbar.no-more .gsplit > .gnew { border-radius: 8px; }
+.gsplit:not(.has-new), .gsplit.no-more > .gsplit-more { display: none; }
+.gsplit.no-more > .gnew { border-radius: 8px; }
 .gsplit > .gnew { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px 0 11px; border-radius: 8px 0 0 8px; font-size: 13px; font-weight: 700; white-space: nowrap; }
 .gsplit > .gnew svg { width: 14px; height: 14px; }
 .gsplit > .gsplit-more { display: grid; place-items: center; width: 30px; height: 32px; padding: 0; border: 0; border-left: 1px solid rgba(255, 255, 255, .3); border-radius: 0 8px 8px 0;
-  background: #E8542F; color: #fff; }
+  background: var(--accent); color: #fff; } /* the end of the button's own colour, whatever the accent */
 .gsplit > .gsplit-more:hover, .gsplit > .gsplit-more[aria-expanded="true"] { background: var(--accent-hover); }
 .gsplit > .gsplit-more .chev { width: 13px; height: 13px; stroke: currentColor; }
 /* A button that reads as words: Load filter, Export, Clear. */

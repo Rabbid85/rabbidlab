@@ -273,7 +273,7 @@
       draw();
     },
   });
-  $('ln-newgroup').addEventListener('click', tools.create);
+  R.grid.more($('ln-add'), () => [{ label: 'New group', icon: 'folder', run: tools.create }]); // under Add a link's arrow
   // Open all: every link in the group in a tab of its own. A browser lets one click open one tab until pop-ups are
   // allowed for this site, so the ones it stopped are kept, with the steps to allow them and a button to open the rest.
   let waiting = []; // the addresses the browser stopped

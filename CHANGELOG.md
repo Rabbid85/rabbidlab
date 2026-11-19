@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.260 (2026-11-19)
+
+- Links and Sensors have the same bar as the other lists: the views, Refresh icons, and Add a link or Add a sensor with New group under its arrow. Add a link and Add a sensor moved there from the banner.
+- The arrow on a New button is the same colour as the button, whatever the accent.
+
 ## 1.1.259 (2026-11-19)
 
 - The bar over every list is redone. Actions and Group by look like the filter chips, Refresh and Export are icons side by side, and New has an arrow with the other things the page can make.
