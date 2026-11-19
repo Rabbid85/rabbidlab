@@ -745,14 +745,6 @@
         <div><b id="ln-every"><i class="sk sk-num"></i></b><span><svg><use href="#i-clock"/></svg>Checks</span></div>
         <div id="ln-watched-wrap" hidden><b id="ln-watched"></b><span><svg><use href="#i-eye"/></svg>Watched</span></div>
       </div>
-      <div class="hero-actions">
-        <button type="button" class="hero-gear" id="ln-checks" data-can="links.edit" data-tip="Settings, export, import" aria-label="Links settings, export and import" popovertarget="ln-gear-menu"><svg><use href="#i-gear"/></svg></button>
-        <div class="gear-menu" id="ln-gear-menu" popover>
-          <div class="am-links"><a class="am-link" href="#settings/links"><svg><use href="#i-gear"/></svg>Links settings</a></div>
-          <div class="am-links"><button type="button" class="am-link" id="ln-export"><svg><use href="#i-download"/></svg>Export links</button>
-            <button type="button" class="am-link" id="ln-import"><svg><use href="#i-upload"/></svg>Import links</button></div>
-        </div><input type="file" id="ln-import-file" accept=".json,application/json" hidden>
-      </div>
       </div>
       <aside class="hero-new bad" id="ln-card" hidden>
         <p class="eyebrow">Down now</p>
@@ -761,7 +753,7 @@
         <a class="more" id="ln-card-more" target="_blank" rel="noopener noreferrer">Open the link →</a>
       </aside>
     </header>
-    <!-- The command bar along the bottom of the banner: what can be done here, and the view on the right. -->
+    <!-- The command bar along the bottom of the banner: what can be done here, then the view and the gear on the right. -->
     <div class="cmdbar" role="toolbar" aria-label="Links">
       <button type="button" class="cmd" id="ln-add" data-can="links.edit"><svg><use href="#i-plus"/></svg><span>Add a link</span></button>
       <button type="button" class="cmd" id="ln-newgroup" data-can="links.edit"><svg><use href="#i-folder"/></svg><span>New group</span></button>
@@ -769,6 +761,12 @@
       <span class="grow"></span>
       <span class="cmd-l">View</span>
       <div class="vswitch" id="ln-view"><button type="button" data-view="grid" title="Rows" aria-label="Rows"><svg><use href="#i-view-rows"/></svg></button><button type="button" data-view="cards" title="Tiles" aria-label="Tiles"><svg><use href="#i-view-tiles"/></svg></button><button type="button" data-view="links" title="Links" aria-label="Links"><svg><use href="#i-view-list"/></svg></button><button type="button" data-view="icons" title="Icons" aria-label="Icons"><svg><use href="#i-view-icons"/></svg></button></div>
+      <button type="button" class="cmd-gear" id="ln-checks" data-can="links.edit" data-tip="Settings, export, import" aria-label="Links settings, export and import" popovertarget="ln-gear-menu"><svg><use href="#i-gear"/></svg></button>
+      <div class="gear-menu" id="ln-gear-menu" popover>
+        <div class="am-links"><a class="am-link" href="#settings/links"><svg><use href="#i-gear"/></svg>Links settings</a></div>
+        <div class="am-links"><button type="button" class="am-link" id="ln-export"><svg><use href="#i-download"/></svg>Export links</button>
+          <button type="button" class="am-link" id="ln-import"><svg><use href="#i-upload"/></svg>Import links</button></div>
+      </div><input type="file" id="ln-import-file" accept=".json,application/json" hidden>
     </div>
     <section class="news sn-body">
     <!-- The filter bar every list has (filter.js): it narrows whichever view shows. -->
@@ -800,14 +798,6 @@
         <div><b id="sn-week"><i class="sk sk-num"></i></b><span><svg><use href="#i-clock"/></svg>Up, last 7 days</span></div>
         <div><b id="sn-last"><i class="sk sk-num"></i></b><span><svg><use href="#i-updates"/></svg>Last check</span></div>
       </div>
-      <div class="hero-actions">
-        <button type="button" class="hero-gear" id="sn-gear" data-can="sensors.alerts sensors.edit" data-tip="Alerts and settings" aria-label="Alert rules, notifications and sensor settings" popovertarget="sn-gear-menu"><svg><use href="#i-gear"/></svg></button>
-        <div class="gear-menu" id="sn-gear-menu" popover>
-          <div class="am-links"><a class="am-link" href="#settings/alerts" data-can="sensors.alerts"><svg><use href="#i-alert"/></svg>Alert rules</a>
-            <a class="am-link" href="#settings/notifications" data-can="sensors.alerts"><svg><use href="#i-bell"/></svg>Notifications</a></div>
-          <div class="am-links"><a class="am-link" href="#settings/sensors" data-can="sensors.edit"><svg><use href="#i-key"/></svg>Saved credentials</a></div>
-        </div>
-      </div>
       </div>
       <aside class="hero-new" id="sn-card" hidden>
         <p class="eyebrow" id="sn-card-kind"></p>
@@ -816,13 +806,19 @@
         <a class="more" href="#sensors" id="sn-card-more">Open the sensor →</a>
       </aside>
     </header>
-    <!-- The command bar along the bottom of the banner, as on Links. Hidden with no sensors: the empty card has Add. -->
+    <!-- The command bar along the bottom of the banner, as on Links. With no sensors only the gear shows: the empty card has Add. -->
     <div class="cmdbar" id="sn-tools" role="toolbar" aria-label="Sensors">
       <button type="button" class="cmd" id="sn-add" data-can="sensors.edit"><svg><use href="#i-plus"/></svg><span>Add a sensor</span></button>
       <button type="button" class="cmd" id="sn-newgroup" data-can="sensors.edit"><svg><use href="#i-folder"/></svg><span>New group</span></button>
       <span class="grow"></span>
       <span class="cmd-l">View</span>
       <div class="vswitch" id="sn-view"><button type="button" data-view="grid" title="Rows" aria-label="Rows"><svg><use href="#i-view-rows"/></svg></button><button type="button" data-view="cards" title="Tiles" aria-label="Tiles"><svg><use href="#i-view-tiles"/></svg></button></div>
+      <button type="button" class="cmd-gear" id="sn-gear" data-can="sensors.alerts sensors.edit" data-tip="Alerts and settings" aria-label="Alert rules, notifications and sensor settings" popovertarget="sn-gear-menu"><svg><use href="#i-gear"/></svg></button>
+      <div class="gear-menu" id="sn-gear-menu" popover>
+        <div class="am-links"><a class="am-link" href="#settings/alerts" data-can="sensors.alerts"><svg><use href="#i-alert"/></svg>Alert rules</a>
+          <a class="am-link" href="#settings/notifications" data-can="sensors.alerts"><svg><use href="#i-bell"/></svg>Notifications</a></div>
+        <div class="am-links"><a class="am-link" href="#settings/sensors" data-can="sensors.edit"><svg><use href="#i-key"/></svg>Saved credentials</a></div>
+      </div>
     </div>
     <section class="news sn-body">
       <div id="sn-fbar" hidden></div>

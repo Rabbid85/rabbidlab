@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.272 (2026-11-19)
+
+- The cogwheel on Links and Sensors moved from the banner to the right end of the bar under it, after View. Its menu is the same.
+
 ## 1.1.271 (2026-11-19)
 
 - Check for updates turns its icon while it asks, and says you have the newest version in a toast instead of a green line beside the button.

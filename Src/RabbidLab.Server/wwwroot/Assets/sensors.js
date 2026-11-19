@@ -258,7 +258,7 @@
 
   const draw = () => {
     drawHero();
-    $('sn-tools').hidden = !sensors.length && !groups.length;
+    $('sn-tools').classList.toggle('bare', !sensors.length && !groups.length); // only the gear: the empty card has Add
     $('sn-fbar').hidden = !sensors.length;
     $('sn-view').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.view === view));
     const find = bar().any(); // the filter bar narrows the page
