@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.262 (2026-11-19)
+
+- The new-tab sign-in check from 1.1.261 is gone: a reload showed the page and then went to sign-in. Closing the last tab ends the session as it did before.
+
 ## 1.1.261 (2026-11-19)
 
 - Refresh on a list shows it is working: the icon turns and the flask covers the list while it reads again.

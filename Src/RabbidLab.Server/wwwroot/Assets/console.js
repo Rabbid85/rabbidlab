@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.262', [
+    'The new-tab sign-in check from 1.1.261 is gone: a reload showed the page and then went to sign-in. Closing the last tab ends the session as it did before.']],
   ['1.1.261', [
     'Refresh on a list shows it is working: the icon turns and the flask covers the list while it reads again.',
     'Closing the console tab signs you out. A new tab asks you to sign in again, unless another console tab is still open, and a reload keeps you signed in.']],
@@ -911,30 +913,6 @@ const RELEASE_NOTES = [
     try { if (location.hash.length > 1) sessionStorage.setItem('rabbidlab.back', location.hash); } catch { /* none */ }
     location.replace(idle ? `/signin.html?idle=${idleMin}` : '/signin.html');
   };
-  // Closing the tab signs out. Each tab keeps a mark in sessionStorage (its own, kept through a reload, gone with the tab):
-  // it gets one by signing in, or from a console tab already open beside it. A tab opened without one, with no console
-  // tab open to vouch for it, signs out and goes to sign-in, even when the browser never said the old tab closed.
-  const MARK = 'rabbidlab.tab';
-  const marked = () => { try { return sessionStorage.getItem(MARK) === '1' || sessionStorage.getItem('rabbidlab.signedin') === '1'; } catch { return true; } };
-  const markTab = () => { try { sessionStorage.setItem(MARK, '1'); } catch { /* no storage: no check */ } };
-  const tabsNear = 'BroadcastChannel' in window ? new BroadcastChannel('rabbidlab.tabs') : null;
-  let tabOk = marked();
-  if (tabOk) markTab();
-  tabsNear?.addEventListener('message', (e) => {
-    if (e.data === 'open?' && tabOk) tabsNear.postMessage('open');
-    else if (e.data === 'open' && !tabOk) {
-      tabOk = true;
-      markTab();
-    }
-  });
-  if (!tabOk) {
-    tabsNear?.postMessage('open?');
-    setTimeout(() => {
-      if (tabOk) return;
-      idleGone = true;
-      plainFetch('/api/signout', { method: 'POST', headers }).catch(() => {}).finally(() => toSignIn(false));
-    }, 700);
-  }
   const idleTell = () => {
     idleTold = Date.now();
     plainFetch('/api/sessions/active', { method: 'POST', headers }).then((r) => (r.ok ? r.json() : null))
