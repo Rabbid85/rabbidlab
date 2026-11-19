@@ -30,4 +30,10 @@ public interface IUpdateSource
     /// engine says (to the administrator who chose Install now, and in the log).
     /// </summary>
     Task Fetch(UpdateOffer offer, Func<Stream, CancellationToken, Task> read, CancellationToken cancel);
+
+    /// <summary>
+    /// One piece of the installer, bytes from to to (inclusive), so it can come down over several connections at once.
+    /// False when the source only hands over the whole file (it ignored the range); then Fetch is used instead.
+    /// </summary>
+    Task<bool> FetchPiece(UpdateOffer offer, long from, long to, Func<Stream, CancellationToken, Task> read, CancellationToken cancel) => Task.FromResult(false);
 }

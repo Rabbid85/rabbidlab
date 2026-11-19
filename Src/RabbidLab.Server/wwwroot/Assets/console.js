@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.253', [
+    'Updates download much faster: the installer now comes from GitHub in pieces over six connections at once, so one slow connection no longer holds up the whole download. It takes effect from the update after this one.',
+    'The More button on the Overview banner is gone. The activity log, the release notes and the wiki are in the top bar and the menu.']],
   ['1.1.252', [
     'Links and Sensors filter by group in the filter bar now, with a Group chip that shows how many are in each and can pick several at once. The All groups button is gone.']],
   ['1.1.251', [
@@ -3028,7 +3031,6 @@ const RELEASE_NOTES = [
     $('top-ok').setAttribute('aria-label', text);
     $('top-ok-text').textContent = text;
   });
-  $('hero-more-menu').addEventListener('click', (e) => { if (e.target.closest('.am-link')) $('hero-more-menu').hidePopover(); });
   // This machine, on the Overview: in two columns, filled each time the page is shown.
   const machine = async () => {
     const list = await facts();

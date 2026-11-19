@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.253 (2026-11-19)
+
+- Updates download much faster: the installer now comes from GitHub in pieces over six connections at once, so one slow connection no longer holds up the whole download. It takes effect from the update after this one.
+- The More button on the Overview banner is gone. The activity log, the release notes and the wiki are in the top bar and the menu.
+
 ## 1.1.252 (2026-11-18)
 
 - Links and Sensors filter by group in the filter bar now, with a Group chip that shows how many are in each and can pick several at once. The All groups button is gone.

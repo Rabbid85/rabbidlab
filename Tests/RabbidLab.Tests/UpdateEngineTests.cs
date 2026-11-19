@@ -70,6 +70,46 @@ public sealed class UpdateEngineTests : IDisposable
     }
 
     [Fact]
+    public async Task The_installer_comes_down_in_pieces_over_several_connections_and_is_checked_whole()
+    {
+        var installer = RandomNumberGenerator.GetBytes(5 * 1024 * 1024 + 12345); // three pieces, the last one short
+        Offer("3.2.0", installer);
+        source.Pieces = true;
+
+        var state = await Engine().TryNow(CancellationToken.None);
+
+        Assert.Equal(UpdateStatus.Installing, state.Status);
+        Assert.Equal(0, source.Fetches);
+        Assert.Equal([0L, 2097152L, 4194304L], source.Asked.Order());
+        Assert.Equal(installer, File.ReadAllBytes(Assert.Single(runner.Runs).Installer));
+    }
+
+    [Fact]
+    public async Task A_piece_stuck_on_a_slow_connection_is_asked_for_again_on_a_free_one()
+    {
+        var installer = RandomNumberGenerator.GetBytes(5 * 1024 * 1024);
+        Offer("3.2.0", installer);
+        (source.Pieces, source.StuckAt) = (true, 2097152L);
+
+        var state = await Engine(o => o.RaceAfter = TimeSpan.FromMilliseconds(200)).TryNow(CancellationToken.None);
+
+        Assert.Equal(UpdateStatus.Installing, state.Status);
+        Assert.Equal(2, source.Asked.Count(a => a == 2097152L)); // the stuck try, then the one that won
+        Assert.Equal(installer, File.ReadAllBytes(Assert.Single(runner.Runs).Installer));
+    }
+
+    [Fact]
+    public async Task A_source_that_only_hands_over_the_whole_file_is_downloaded_in_one_go()
+    {
+        Offer("3.2.0", RandomNumberGenerator.GetBytes(3 * 1024 * 1024));
+
+        var state = await Engine().TryNow(CancellationToken.None);
+
+        Assert.Equal(UpdateStatus.Installing, state.Status);
+        Assert.Equal(1, source.Fetches);
+    }
+
+    [Fact]
     public async Task Installing_is_said_with_when_it_began_before_the_installer_is_started()
     {
         Offer("3.2.0", "pretend installer"u8.ToArray());
@@ -375,6 +415,32 @@ public sealed class UpdateEngineTests : IDisposable
             Fetches++;
             await using Stream body = Stall ? new StalledStream() : new MemoryStream(Installer);
             await read(body, cancel);
+        }
+
+        /// <summary>Hands over pieces by byte range, as GitHub does; off by default, so the source only hands over the whole file.</summary>
+        public bool Pieces { get; set; }
+
+        /// <summary>The first try of this piece (by where it starts) never sends a byte, like a connection to a slow server.</summary>
+        public long? StuckAt { get; set; }
+
+        /// <summary>The pieces asked for, by where each starts.</summary>
+        public List<long> Asked { get; } = [];
+
+        public async Task<bool> FetchPiece(UpdateOffer offer, long from, long to, Func<Stream, CancellationToken, Task> read, CancellationToken cancel)
+        {
+            if (!Pieces)
+            {
+                return false;
+            }
+            bool stuck;
+            lock (Asked)
+            {
+                stuck = from == StuckAt && !Asked.Contains(from);
+                Asked.Add(from);
+            }
+            await using Stream body = stuck ? new StalledStream() : new MemoryStream(Installer, (int) from, (int) (to - from + 1));
+            await read(body, cancel);
+            return true;
         }
     }
 

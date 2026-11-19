@@ -97,6 +97,32 @@ public sealed class GitHubUpdateSource(IHttpClientFactory http, GitHubOptions op
         await using var body = await response.Content.ReadAsStreamAsync(cancel);
         await read(body, cancel);
     }
+
+    // A piece of the installer by a byte range (GitHub's file servers honour them), for downloading over several connections.
+    public async Task<bool> FetchPiece(UpdateOffer offer, long from, long to, Func<Stream, CancellationToken, Task> read, CancellationToken cancel)
+    {
+        if (!offer.Url.StartsWith(options.Downloads, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidDataException("the update is not one of the repository's own releases on GitHub");
+        }
+        using var client = http.CreateClient("updates");
+        client.Timeout = TimeSpan.FromMinutes(1); // for the answer's headers; the engine limits the piece itself
+        using var request = new HttpRequestMessage(HttpMethod.Get, offer.Url);
+        request.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(from, to);
+        using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancel);
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new HttpRequestException($"GitHub returned HTTP {(int)response.StatusCode} {response.ReasonPhrase}");
+        }
+        // The whole file instead of the piece: then it's downloaded in one go.
+        if (response.StatusCode != HttpStatusCode.PartialContent || response.Content.Headers.ContentRange is not { From: { } f, To: { } t } || f != from || t != to)
+        {
+            return false;
+        }
+        await using var body = await response.Content.ReadAsStreamAsync(cancel);
+        await read(body, cancel);
+        return true;
+    }
 }
 
 /// <summary>

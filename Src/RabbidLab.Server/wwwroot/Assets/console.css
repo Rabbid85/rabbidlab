@@ -1057,7 +1057,7 @@ input::-ms-reveal { display: none; }
 .sure-code { margin: 0 0 18px; padding: 12px 14px; border: 1px solid var(--line-strong); border-radius: 10px; background: #0C0E17; color: var(--title);
   font: 13px/1.5 "Cascadia Mono", Consolas, monospace; white-space: pre-wrap; word-break: break-all; }
 
-/* The Overview banner's buttons: Check for updates with its icon, More with its menu, then how the lab is doing. */
+/* The Overview banner's buttons: Check for updates with its icon, then how the lab is doing. */
 .hero-actions > button, .hero-actions > a.button { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 18px; border-radius: 9px; }
 .hero-actions > button svg, .hero-actions > a.button svg { flex: none; width: 16px; height: 16px; }
 /* A banner button that is not the main one (Check for updates while Install now is): plain, dark, the same size. */
@@ -1066,9 +1066,3 @@ input::-ms-reveal { display: none; }
 /* The cogwheel on Links and Sensors: the same height and look as the buttons beside it. */
 .hero-actions .hero-gear { height: 40px; border: 1px solid rgba(255, 255, 255, .12); border-radius: 9px; background: rgba(9, 10, 18, .55); color: var(--title); }
 .hero-actions .hero-gear:hover { background: #1A1C28; }
-.hero-more { border: 1px solid rgba(255, 255, 255, .12); background: rgba(9, 10, 18, .55); color: var(--title); font: inherit; font-size: 13.5px; font-weight: 600; }
-.hero-more:hover { background: #1A1C28; }
-@supports (anchor-name: --a) {
-  #hero-more { anchor-name: --hero-more; }
-  #hero-more-menu { position-anchor: --hero-more; }
-}

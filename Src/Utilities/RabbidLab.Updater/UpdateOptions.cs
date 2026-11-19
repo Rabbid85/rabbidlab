@@ -37,6 +37,9 @@ public sealed class UpdateOptions
     /// <summary>The longest a download may go without a byte arriving: a stalled one ends with its reason.</summary>
     public TimeSpan StallAfter { get; set; } = TimeSpan.FromMinutes(2);
 
+    /// <summary>A piece of the download still coming this long, once nothing else is left to start, is asked for again on a free connection.</summary>
+    public TimeSpan RaceAfter { get; set; } = TimeSpan.FromSeconds(4);
+
     /// <summary>Once the installer has started, this long counts as installing: it restarts Rabbid Lab within it.</summary>
     public TimeSpan InstallWait { get; set; } = TimeSpan.FromMinutes(3);
 
