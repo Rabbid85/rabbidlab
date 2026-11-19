@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.266 (2026-11-19)
+
+- The round › on the side panel folds it into a thin strip on the right instead of closing it. Click the strip or the row to open it again; the × still closes it.
+
 ## 1.1.265 (2026-11-19)
 
 - The ⋮ on a column name can pin that column to the left or right, so it stays put when the list scrolls sideways. It can also autosize every column and open Choose columns.

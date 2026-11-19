@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.266', [
+    'The round › on the side panel folds it into a thin strip on the right instead of closing it. Click the strip or the row to open it again; the × still closes it.']],
   ['1.1.265', [
     'The ⋮ on a column name can pin that column to the left or right, so it stays put when the list scrolls sideways. It can also autosize every column and open Choose columns.']],
   ['1.1.264', [
@@ -3653,18 +3655,21 @@ const RELEASE_NOTES = [
 
   // The side panel, for every page: a row opens what it is on the right, as the Microsoft 365 and Entra admin centers
   // do, while the page beside it stays usable. There's one; the page that opened it last owns it, and draws into body.
-  // Its × ([data-dw-close]), Esc or going to another page closes it.
+  // Its × ([data-dw-close]), Esc or going to another page closes it. The round › on its edge folds it to a strip at the
+  // right side instead (tucked): still open and kept up to date, and a click on the strip or its row brings it back.
   const panel = {
     el: $('side-panel'),
     body: $('dw-body'),
     owner: '',
     page: '',
     key: '',
+    tucked: false,
     // key: what's shown (a row's own key); shows() says whether it's that one, so clicking its row again closes it.
     open: (owner, key = '') => {
       panel.key = key;
       panel.owner = owner;
       panel.page = where()[0];
+      if (panel.tucked) tuck(false);
       if (!panel.el.open) {
         widthTo(savedWidth());
         panel.el.show();
@@ -3674,7 +3679,30 @@ const RELEASE_NOTES = [
     is: (owner) => panel.el.open && panel.owner === owner,
     shows: (owner, key) => panel.is(owner) && panel.key === key,
   };
-  panel.el.addEventListener('click', (e) => { if (e.target.closest('[data-dw-close]')) panel.close(); });
+  const tuck = (on) => {
+    panel.tucked = on && panel.el.open;
+    panel.el.classList.toggle('tucked', panel.tucked);
+    const b = panel.el.querySelector('.dw-hide');
+    const tip = panel.tucked ? 'Show panel' : 'Hide panel';
+    b.dataset.tip = tip;
+    b.setAttribute('aria-label', tip);
+    panel.el.querySelector('.dw-tab').textContent = panel.tucked ? ($('dw-title')?.textContent || '').trim() : '';
+    if (panel.tucked && panel.body.contains(document.activeElement)) b.focus();
+  };
+  panel.el.addEventListener('click', (e) => {
+    if (e.target.closest('.dw-hide')) tuck(!panel.tucked);
+    else if (panel.tucked) tuck(false);
+    else if (e.target.closest('[data-dw-close]')) panel.close();
+  });
+  panel.el.addEventListener('close', () => tuck(false));
+  // While it's tucked, a click on the row it shows brings it back (and doesn't close it, as a click on that row would).
+  document.addEventListener('click', (e) => {
+    if (!panel.tucked || panel.el.contains(e.target) || e.target.closest('button, a, input, select, label')) return;
+    if (!e.target.closest('.dw-on')) return;
+    e.stopPropagation();
+    e.preventDefault();
+    tuck(false);
+  }, true);
   // Its left edge drags it wider or narrower, and the width is kept for next time. A double-click puts it back.
   const WIDE = 'rabbidlab.panel.width';
   const savedWidth = () => { try { return Number(localStorage.getItem(WIDE)) || 0; } catch { return 0; } };

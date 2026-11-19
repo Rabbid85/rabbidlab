@@ -578,6 +578,16 @@ dialog.drawer { overflow: visible; }
   background: #1A1D2B; color: #B8BCCB; box-shadow: 0 4px 14px rgba(0, 0, 0, .45); cursor: pointer; }
 .dw-hide:hover { border-color: var(--accent-line); background: #222536; color: var(--title); }
 .dw-hide svg { width: 16px; height: 16px; }
+/* Tucked (that ›): a strip at the right side with the name of what it shows down it; a click on it brings it back. */
+dialog.drawer.tucked { width: 30px !important; min-width: 0; max-width: none; cursor: pointer; animation: dw-tuck .18s ease-out; }
+dialog.drawer.tucked:hover { background: #151827; }
+dialog.drawer.tucked :is(.dw-body, .dw-grip) { display: none; }
+dialog.drawer.tucked .dw-hide svg { transform: rotate(180deg); }
+@keyframes dw-tuck { from { opacity: 0; } }
+.dw-tab { display: none; }
+dialog.drawer.tucked .dw-tab { position: absolute; top: 82px; left: 50%; display: block; max-height: calc(100% - 100px); overflow: hidden; color: #8B90A5; font-size: 12.5px; font-weight: 600;
+  white-space: nowrap; text-overflow: ellipsis; writing-mode: vertical-rl; translate: -50% 0; }
+dialog.drawer.tucked:hover .dw-tab { color: var(--title); }
 /* Its left edge: drag to resize (console.js). A line shows where it is on hover and while dragging. */
 .dw-grip { position: absolute; z-index: 3; inset: 0 auto 0 0; width: 8px; cursor: col-resize; touch-action: none; }
 .dw-grip::after { content: ""; position: absolute; inset: 0 auto 0 0; width: 2px; background: transparent; transition: background .12s; }
