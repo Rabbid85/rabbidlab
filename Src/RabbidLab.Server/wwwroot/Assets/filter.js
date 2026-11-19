@@ -290,20 +290,21 @@
       const f = fields() && fieldOf(fields(), c.key);
       if (f) return QUICK[f.type] ? f.type : 'text';
       let n = 0;
-      const seen = { number: 0, date: 0, future: 0, yes: 0 };
+      const seen = { number: 0, zero: 0, date: 0, future: 0, yes: 0 }; // a 0 is a count of none, or a date column's never
       for (const x of o.rows()) {
         const v = c.get(x);
         if (v === null || v === undefined || v === '') continue;
         n += 1;
         const when = typeof v === 'number' && v > 1e11 ? v : typeof v === 'string' && /^\d{4}-\d\d-\d\dT/.test(v) ? Date.parse(v) : NaN;
         if (typeof v === 'boolean') seen.yes += 1;
+        else if (v === 0) seen.zero += 1;
         else if (!Number.isNaN(when)) { seen.date += 1; if (when > Date.now()) seen.future += 1; } else if (typeof v === 'number' && Number.isFinite(v)) seen.number += 1;
         if (n >= 200) break;
       }
       if (!n) return 'text';
       if (seen.yes === n) return 'yes';
-      if (seen.number === n) return 'number';
-      if (seen.date === n) return seen.future > n / 2 ? 'until' : 'days';
+      if (seen.date && seen.date + seen.zero === n) return seen.future > seen.date / 2 ? 'until' : 'days';
+      if (seen.number + seen.zero === n) return 'number';
       return 'text';
     };
     const searchCol = () => { const s = st(); return s.col === '*' ? null : colOf(s.col); };

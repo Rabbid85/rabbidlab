@@ -56,6 +56,27 @@ public sealed class DirectoryToolsTests : IDisposable
     private static Task<ToolProblem> Refused(Func<Task> change) => Assert.ThrowsAsync<ToolProblem>(change);
 
     [Fact]
+    public async Task Computers_come_with_the_rest_of_their_account_SPNs_LAPS_and_Kerberos_encryption()
+    {
+        await Connect();
+        byte[] sid = [1, 5, 0, 0, 0, 0, 0, 5, 21, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0, 0xE8, 3, 0, 0]; // S-1-5-21-1-2-3-1000
+        ad.Add("CN=PC01,OU=Lab,DC=amw,DC=com", ("objectClass", "computer"), ("objectCategory", "computer"), ("cn", "PC01"), ("sAMAccountName", "PC01$"),
+            ("userAccountControl", "528384"), ("servicePrincipalName", "HOST/PC01"), ("servicePrincipalName", "HOST/pc01.amw.com"), ("msDS-SupportedEncryptionTypes", "28"),
+            ("msLAPS-PasswordExpirationTime", "134100000000000000"), ("objectSid", sid), ("managedBy", "CN=Jo Reyes,OU=Lab,DC=amw,DC=com"));
+
+        var (computers, _) = await tools.Computers(CancellationToken.None);
+
+        var pc = Assert.Single(computers, c => c.Name == "PC01");
+        Assert.Equal("PC01$", pc.Username);
+        Assert.Equal(2, pc.Spns);
+        Assert.Equal("AES256, AES128, RC4", pc.Encryption);
+        Assert.True(pc.Delegation); // trusted for delegation (0x80000) on a workstation account (0x1000)
+        Assert.NotNull(pc.LapsExpires);
+        Assert.Equal("S-1-5-21-1-2-3-1000", pc.Sid);
+        Assert.Equal("Jo Reyes", pc.ManagedBy);
+    }
+
+    [Fact]
     public async Task Printers_published_in_Active_Directory_are_listed_with_their_share_and_location()
     {
         await Connect();

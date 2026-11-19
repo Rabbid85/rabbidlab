@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.277', [
+    'Users, Groups and Computers in Active Directory have far more columns to show and filter by: address, phone numbers, employee ID, home folder, profile path, logon script, logon and bad password counts, custom attributes 1 to 15, SID, distinguished name, changed, member of, and each account option as yes or no.',
+    'Computers add the pre-Windows 2000 name, service pack, password last set, managed by, service principal names, Kerberos encryption types, when the LAPS password changes next, and trusted for delegation. Groups add managed by, created, changed and SID.']],
   ['1.1.276', [
     'Add/remove filters lists every column the list has, not only the few it picks to show at first.']],
   ['1.1.275', [

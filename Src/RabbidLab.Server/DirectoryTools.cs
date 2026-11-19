@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using RabbidLab.Shared;
 using RoleMember = RabbidLab.Server.Member;
@@ -54,14 +55,17 @@ public sealed record AdGroupRef(string Dn, string Name);
 
 /// <summary>A group: its scope (Global, Domain local or Universal), whether it's a security group, and how many members it has.</summary>
 public sealed record AdGroup(string Dn, string Name, string? Description, string Where, string Scope = "Global", bool Security = true, int Members = 0, bool MoreMembers = false,
-    bool Protected = false, bool System = false, List<AdGroupRef>? Groups = null, string? Email = null, string? Notes = null);
+    bool Protected = false, bool System = false, List<AdGroupRef>? Groups = null, string? Email = null, string? Notes = null,
+    string? Username = null, string? ManagedBy = null, DateTime? Created = null, DateTime? Changed = null, string? Sid = null);
 
 /// <summary>Someone or something in a group: a person ("user"), a group, a computer, or "other" (a contact, say).</summary>
 public sealed record AdMember(string Dn, string Name, string Kind, string? Username, string Where);
 
 /// <summary>A computer's account in the domain.</summary>
 public sealed record AdComputer(string Name, string Dn, string Where, string? Host, string? Os, string? OsVersion, string? Description, bool Enabled, bool Controller,
-    DateTime? LastSignIn, DateTime? Created, List<AdGroupRef>? Groups = null, string? Location = null);
+    DateTime? LastSignIn, DateTime? Created, List<AdGroupRef>? Groups = null, string? Location = null,
+    string? Username = null, string? ServicePack = null, DateTime? Changed = null, DateTime? PasswordSet = null, string? ManagedBy = null, int Spns = 0,
+    string? Sid = null, DateTime? LapsExpires = null, bool Delegation = false, string? Encryption = null);
 
 public sealed record NewAdGroup(string? Name, string? Scope, bool Security, string? Ou, string? Description);
 
@@ -69,7 +73,14 @@ public sealed record AdUser(string Username, string? Name, string? Upn, string? 
     bool Enabled, bool Locked, bool NeverExpires, bool MustChange, bool Protected, bool Service, bool System, DateTime? LastSignIn, DateTime? PasswordSet, DateTime? Created,
     List<AdGroupRef> Groups, string? Department = null, string? Manager = null, DateTime? PasswordExpires = null, DateTime? AccountExpires = null, string? ManagerDn = null,
     string? First = null, string? Last = null, string? Office = null, string? Phone = null, string? Company = null,
-    bool Sensitive = false, bool Smartcard = false, bool Reversible = false, bool DesOnly = false, bool NoPreauth = false);
+    bool Sensitive = false, bool Smartcard = false, bool Reversible = false, bool DesOnly = false, bool NoPreauth = false,
+    AdUserMore? More = null);
+
+/// <summary>The rest of what Active Directory Users and Computers shows for a user, for the list's other columns.</summary>
+public sealed record AdUserMore(string? Initials, string? Mobile, string? IpPhone, string? Fax, string? Street, string? City, string? State, string? PostalCode,
+    string? Country, string? EmployeeId, string? EmployeeNumber, string? EmployeeType, string? HomeFolder, string? HomeDrive, string? ProfilePath,
+    string? LogonScript, string? WebPage, string? Notes, DateTime? Changed, int? BadPasswords, DateTime? LastBadPassword, int? Logons, string? Sid,
+    bool NoPasswordNeeded, bool Delegation, List<string> Aliases, Dictionary<string, string> Custom);
 
 /// <summary>The OUs to pick from while setting up, read with the admin sign-in given.</summary>
 public sealed record SetupLook(string Domain, string BaseDn, List<AdOu> Places, string AccountOu, string Account);
@@ -204,12 +215,19 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
 
     private static readonly string[] UserAttributes = ["sAMAccountName", "displayName", "userPrincipalName", "mail", "title", "description",
         "userAccountControl", "msDS-User-Account-Control-Computed", "lockoutTime", "lastLogonTimestamp", "pwdLastSet", "whenCreated", "memberOf", "adminCount", "isCriticalSystemObject",
-        "department", "manager", "accountExpires", "msDS-UserPasswordExpiryTimeComputed", "givenName", "sn", "physicalDeliveryOfficeName", "telephoneNumber", "company"];
+        "department", "manager", "accountExpires", "msDS-UserPasswordExpiryTimeComputed", "givenName", "sn", "physicalDeliveryOfficeName", "telephoneNumber", "company",
+        // The rest of the user's tabs in Active Directory Users and Computers, for the other columns.
+        "initials", "mobile", "ipPhone", "facsimileTelephoneNumber", "streetAddress", "l", "st", "postalCode", "co", "employeeID", "employeeNumber", "employeeType",
+        "homeDirectory", "homeDrive", "profilePath", "scriptPath", "wWWHomePage", "info", "whenChanged", "badPwdCount", "badPasswordTime", "logonCount", "objectSid",
+        "proxyAddresses", .. Enumerable.Range(1, 15).Select(i => $"extensionAttribute{i}")];
 
-    private static readonly string[] GroupAttributes = ["cn", "sAMAccountName", "description", "groupType", "member", "adminCount", "isCriticalSystemObject", "objectSid", "memberOf", "mail", "info"];
+    private static readonly string[] GroupAttributes = ["cn", "sAMAccountName", "description", "groupType", "member", "adminCount", "isCriticalSystemObject", "objectSid", "memberOf", "mail", "info",
+        "managedBy", "whenCreated", "whenChanged"];
 
     private static readonly string[] ComputerAttributes = ["cn", "dNSHostName", "operatingSystem", "operatingSystemVersion", "description", "userAccountControl",
-        "lastLogonTimestamp", "whenCreated", "memberOf", "location"];
+        "lastLogonTimestamp", "whenCreated", "memberOf", "location",
+        "sAMAccountName", "operatingSystemServicePack", "whenChanged", "pwdLastSet", "managedBy", "servicePrincipalName", "objectSid",
+        "ms-Mcs-AdmPwdExpirationTime", "msLAPS-PasswordExpirationTime", "msDS-SupportedEncryptionTypes"];
 
     private static readonly string[] MemberAttributes = ["objectClass", "sAMAccountName", "displayName", "cn"];
 
@@ -1115,8 +1133,41 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
             ManagerDn: r.Text("manager"),
             First: r.Text("givenName"), Last: r.Text("sn"), Office: r.Text("physicalDeliveryOfficeName"), Phone: r.Text("telephoneNumber"), Company: r.Text("company"),
             Sensitive: (flags & NotDelegated) != 0, Smartcard: (flags & SmartcardRequired) != 0, Reversible: (flags & ReversiblePassword) != 0,
-            DesOnly: (flags & DesKeysOnly) != 0, NoPreauth: (flags & NoPreauthNeeded) != 0);
+            DesOnly: (flags & DesKeysOnly) != 0, NoPreauth: (flags & NoPreauthNeeded) != 0,
+            More: new AdUserMore(r.Text("initials"), r.Text("mobile"), r.Text("ipPhone"), r.Text("facsimileTelephoneNumber"), r.Text("streetAddress"), r.Text("l"), r.Text("st"),
+                r.Text("postalCode"), r.Text("co"), r.Text("employeeID"), r.Text("employeeNumber"), r.Text("employeeType"), r.Text("homeDirectory"), r.Text("homeDrive"),
+                r.Text("profilePath"), r.Text("scriptPath"), r.Text("wWWHomePage"), r.Text("info"), When(r.Text("whenChanged")),
+                (int?)r.Number("badPwdCount"), FileTime(r.Number("badPasswordTime")), (int?)r.Number("logonCount"), SidText(r.Bytes("objectSid")),
+                NoPasswordNeeded: (flags & PasswordNotRequired) != 0, Delegation: (flags & TrustedForDelegation) != 0,
+                // Other email addresses: the smtp ones besides the main one (SMTP:).
+                Aliases: [.. r.Texts("proxyAddresses").Where(p => p.StartsWith("smtp:", StringComparison.Ordinal)).Select(p => p[5..]).Order(StringComparer.OrdinalIgnoreCase)],
+                Custom: Enumerable.Range(1, 15).Select(i => (Key: i.ToString(CultureInfo.InvariantCulture), Value: r.Text($"extensionAttribute{i}")))
+                    .Where(x => !string.IsNullOrEmpty(x.Value)).ToDictionary(x => x.Key, x => x.Value!)));
     }
+
+    /// <summary>A SID in its usual written form (S-1-5-21-…), from the bytes Active Directory keeps; on Docker too.</summary>
+    internal static string? SidText(byte[]? b)
+    {
+        if (b is not { Length: >= 8 } || b.Length < 8 + (b[1] * 4))
+        {
+            return null;
+        }
+        long authority = 0;
+        for (var i = 2; i < 8; i++)
+        {
+            authority = (authority << 8) | b[i];
+        }
+        var text = new StringBuilder($"S-{b[0]}-{authority}");
+        for (var i = 0; i < b[1]; i++)
+        {
+            text.Append('-').Append(BitConverter.ToUInt32(b, 8 + (i * 4)));
+        }
+        return text.ToString();
+    }
+
+    /// <summary>The Kerberos encryption types msDS-SupportedEncryptionTypes allows, in words; null when it isn't set.</summary>
+    private static string? Encryption(long? bits) => bits is not { } b ? null : string.Join(", ",
+        new (int Bit, string Name)[] { (0x10, "AES256"), (0x8, "AES128"), (0x4, "RC4"), (0x2, "DES-MD5"), (0x1, "DES-CRC") }.Where(x => (b & x.Bit) != 0).Select(x => x.Name)) is { Length: > 0 } s ? s : "None";
 
     private static AdGroup Group(LdapRow r, string baseDn)
     {
@@ -1129,7 +1180,9 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
             MoreMembers: more,
             Protected: r.Number("adminCount") == 1,
             System: r.Text("isCriticalSystemObject") == "TRUE" || (type & 1) != 0,
-            Groups: MemberOf(r), Email: r.Text("mail"), Notes: r.Text("info"));
+            Groups: MemberOf(r), Email: r.Text("mail"), Notes: r.Text("info"),
+            Username: r.Text("sAMAccountName"), ManagedBy: r.Text("managedBy") is { } boss ? Ldap.Name(boss) : null,
+            Created: When(r.Text("whenCreated")), Changed: When(r.Text("whenChanged")), Sid: SidText(r.Bytes("objectSid")));
     }
 
     /// <summary>The last part of its SID, which is what primaryGroupID holds. Null without an objectSid.</summary>
@@ -1150,7 +1203,13 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
             r.Text("operatingSystemVersion"), r.Text("description"), Enabled: (flags & Disabled) == 0, Controller: (flags & 0x2000) != 0,
             LastSignIn: FileTime(r.Number("lastLogonTimestamp")),
             Created: When(r.Text("whenCreated")),
-            Groups: MemberOf(r), Location: r.Text("location"));
+            Groups: MemberOf(r), Location: r.Text("location"),
+            Username: r.Text("sAMAccountName"), ServicePack: r.Text("operatingSystemServicePack"), Changed: When(r.Text("whenChanged")),
+            PasswordSet: FileTime(r.Number("pwdLastSet")), ManagedBy: r.Text("managedBy") is { } boss ? Ldap.Name(boss) : null,
+            Spns: r.Texts("servicePrincipalName").Count(), Sid: SidText(r.Bytes("objectSid")),
+            // Windows LAPS, or the older Microsoft LAPS: when the local admin password is changed next.
+            LapsExpires: FileTime(r.Number("msLAPS-PasswordExpirationTime") ?? r.Number("ms-Mcs-AdmPwdExpirationTime")),
+            Delegation: (flags & TrustedForDelegation) != 0, Encryption: Encryption(r.Number("msDS-SupportedEncryptionTypes")));
     }
 
     /// <summary>The groups it is directly in, by name.</summary>

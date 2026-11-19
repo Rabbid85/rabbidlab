@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.277 (2026-11-19)
+
+- Users, Groups and Computers in Active Directory have far more columns to show and filter by: address, phone numbers, employee ID, home folder, profile path, logon script, logon and bad password counts, custom attributes 1 to 15, SID, distinguished name, changed, member of, and each account option as yes or no.
+- Computers add the pre-Windows 2000 name, service pack, password last set, managed by, service principal names, Kerberos encryption types, when the LAPS password changes next, and trusted for delegation. Groups add managed by, created, changed and SID.
+
 ## 1.1.276 (2026-11-19)
 
 - Add/remove filters lists every column the list has, not only the few it picks to show at first.

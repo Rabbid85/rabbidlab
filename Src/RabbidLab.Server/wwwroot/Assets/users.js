@@ -238,6 +238,12 @@
     members: 90, notes: 200, os: 175, host: 200, location: 140, role: 120, privileged: 105 };
   const minOf = (w) => Number((String(w).match(/(\d+)px/) || [0, 80])[1]);
   const col = (key, label, w, get, o = {}) => ({ key, label, w: typeof w === 'number' ? w : DEFAULT_PX[key] || minOf(w), get, ...o });
+  // A yes-or-no column: Yes, or a grey No; it filters as yes or no.
+  const yesCol = (key, label, get) => col(key, label, `${Math.max(110, label.length * 7 + 30)}px`, (x) => !!get(x),
+    { cell: (x) => (get(x) ? 'Yes' : '<span class="muted">No</span>'), text: (x) => (get(x) ? 'Yes' : 'No') });
+  const mono = (v) => (v ? `<span class="mono ell">${esc(v)}</span>` : '');
+  // How many groups it's directly in, with their names in the hint.
+  const groupsCell = (gs) => (gs?.length ? `<span class="num" data-tip="${esc(gs.map((g) => g.name).join(', '))}">${gs.length}</span>` : '<span class="muted">0</span>');
   AD.users.cols = [
     col('name', 'Name', 'minmax(200px, 1.5fr)', (u) => u.name || u.username, { fixed: true,
       cell: (u) => `<div class="who"><span class="pic user">${esc(initials(u.name || u.username))}</span><b class="ell">${esc(u.name || u.username)}</b></div>` }),
@@ -261,6 +267,47 @@
     // One thing per column: what kind of account it is, apart from its status.
     col('role', 'Role', '150px', (u) => (u.service ? 0 : u.protected ? 1 : 2), { on: true,
       cell: (u) => (u.service ? chip('Service account', 'ember') : u.protected ? badge('Privileged', 'amber') : '<span class="muted">-</span>') }),
+    // The rest of the account, as Active Directory Users and Computers has it: hidden until picked under Columns.
+    col('first', 'First name', 'minmax(110px, 1fr)', (u) => u.first),
+    col('last', 'Last name', 'minmax(110px, 1fr)', (u) => u.last),
+    col('initials', 'Initials', '90px', (u) => u.more?.initials),
+    col('mobile', 'Mobile', 'minmax(110px, .8fr)', (u) => u.more?.mobile),
+    col('ipPhone', 'IP phone', 'minmax(110px, .8fr)', (u) => u.more?.ipPhone),
+    col('fax', 'Fax', 'minmax(110px, .8fr)', (u) => u.more?.fax),
+    col('street', 'Street', 'minmax(160px, 1.2fr)', (u) => u.more?.street),
+    col('city', 'City', 'minmax(110px, 1fr)', (u) => u.more?.city),
+    col('state', 'State or province', 'minmax(120px, 1fr)', (u) => u.more?.state),
+    col('postalCode', 'ZIP or postal code', '130px', (u) => u.more?.postalCode),
+    col('country', 'Country', 'minmax(110px, 1fr)', (u) => u.more?.country),
+    col('employeeId', 'Employee ID', '120px', (u) => u.more?.employeeId),
+    col('employeeNumber', 'Employee number', '140px', (u) => u.more?.employeeNumber),
+    col('employeeType', 'Employee type', '130px', (u) => u.more?.employeeType),
+    col('homeFolder', 'Home folder', 'minmax(170px, 1.2fr)', (u) => u.more?.homeFolder, { cell: (u) => mono(u.more?.homeFolder) }),
+    col('homeDrive', 'Home drive', '100px', (u) => u.more?.homeDrive),
+    col('profilePath', 'Profile path', 'minmax(170px, 1.2fr)', (u) => u.more?.profilePath, { cell: (u) => mono(u.more?.profilePath) }),
+    col('logonScript', 'Logon script', 'minmax(130px, 1fr)', (u) => u.more?.logonScript),
+    col('webPage', 'Web page', 'minmax(140px, 1fr)', (u) => u.more?.webPage),
+    col('notes', 'Notes', 'minmax(160px, 1.2fr)', (u) => u.more?.notes),
+    col('aliases', 'Email aliases', 'minmax(180px, 1.2fr)', (u) => (u.more?.aliases || []).join(', ')),
+    col('memberOf', 'Member of', '110px', (u) => (u.groups || []).length, { cell: (u) => groupsCell(u.groups) }),
+    col('logons', 'Logon count', '115px', (u) => u.more?.logons ?? ''),
+    col('badPasswords', 'Bad password count', '150px', (u) => u.more?.badPasswords ?? ''),
+    col('lastBadPassword', 'Last bad password', '145px', (u) => time(u.more?.lastBadPassword), { cell: (u) => dateCell(u.more?.lastBadPassword) }),
+    col('changed', 'Changed', '110px', (u) => time(u.more?.changed), { cell: (u) => dateCell(u.more?.changed) }),
+    col('sid', 'SID', 'minmax(230px, 1.2fr)', (u) => u.more?.sid, { cell: (u) => mono(u.more?.sid) }),
+    col('dn', 'Distinguished name', 'minmax(260px, 1.6fr)', (u) => u.dn, { cell: (u) => mono(u.dn) }),
+    yesCol('enabled', 'Enabled', (u) => u.enabled),
+    yesCol('locked', 'Locked out', (u) => u.locked),
+    yesCol('neverExpires', 'Password never expires', (u) => u.neverExpires),
+    yesCol('mustChange', 'Must change password', (u) => u.mustChange),
+    yesCol('smartcard', 'Smart card required', (u) => u.smartcard),
+    yesCol('sensitive', 'Sensitive, cannot be delegated', (u) => u.sensitive),
+    yesCol('delegation', 'Trusted for delegation', (u) => u.more?.delegation),
+    yesCol('noPassword', 'Password not required', (u) => u.more?.noPasswordNeeded),
+    yesCol('reversible', 'Reversible encryption', (u) => u.reversible),
+    yesCol('desOnly', 'DES encryption only', (u) => u.desOnly),
+    yesCol('noPreauth', 'No Kerberos preauthentication', (u) => u.noPreauth),
+    ...Array.from({ length: 15 }, (_, i) => col(`ext${i + 1}`, `Custom attribute ${i + 1}`, 'minmax(130px, 1fr)', (u) => u.more?.custom?.[i + 1])),
   ];
   AD.groups.cols = [
     col('name', 'Group', 'minmax(220px, 1.8fr)', (g) => g.name, { fixed: true, cell: (g) => `<div class="who"><span class="pic">${svg('users')}</span><b class="ell">${esc(g.name)}</b></div>` }),
@@ -273,6 +320,14 @@
     col('description', 'Description', 'minmax(160px, 1.4fr)', (g) => g.description),
     col('email', 'Email', 'minmax(160px, 1fr)', (g) => g.email),
     col('notes', 'Notes', 'minmax(160px, 1.2fr)', (g) => g.notes),
+    col('username', 'Pre-Windows 2000 name', 'minmax(170px, 1fr)', (g) => g.username, { cell: (g) => mono(g.username) }),
+    col('managedBy', 'Managed by', 'minmax(140px, 1fr)', (g) => g.managedBy),
+    col('memberOf', 'Member of', '110px', (g) => (g.groups || []).length, { cell: (g) => groupsCell(g.groups) }),
+    col('created', 'Created', '110px', (g) => time(g.created), { cell: (g) => dateCell(g.created) }),
+    col('changed', 'Changed', '110px', (g) => time(g.changed), { cell: (g) => dateCell(g.changed) }),
+    col('sid', 'SID', 'minmax(230px, 1.2fr)', (g) => g.sid, { cell: (g) => mono(g.sid) }),
+    col('dn', 'Distinguished name', 'minmax(260px, 1.6fr)', (g) => g.dn, { cell: (g) => mono(g.dn) }),
+    yesCol('system', 'Built in', (g) => g.system),
   ];
   AD.computers.cols = [
     col('name', 'Computer', 'minmax(200px, 1.4fr)', (c) => c.name, { fixed: true, cell: (c) => `<div class="who"><span class="pic">${svg(server(c) ? 'server' : 'laptop')}</span><b class="ell">${esc(c.name)}</b></div>` }),
@@ -287,6 +342,20 @@
     col('status', 'Status', '150px', (c) => (!c.enabled ? 2 : stale(c.lastSignIn) ? 1 : 0), { on: true, filter: true, cell: (c) => pcStatus(c) }),
     // One thing per column: what the computer is, apart from its status.
     col('role', 'Role', '150px', (c) => (c.controller ? 0 : server(c) ? 1 : 2), { on: true, cell: (c) => esc(c.controller ? 'Domain controller' : server(c) ? 'Server' : 'Workstation') }),
+    col('username', 'Pre-Windows 2000 name', 'minmax(170px, 1fr)', (c) => c.username, { cell: (c) => mono(c.username) }),
+    col('servicePack', 'Service pack', '120px', (c) => c.servicePack),
+    col('managedBy', 'Managed by', 'minmax(140px, 1fr)', (c) => c.managedBy),
+    col('memberOf', 'Member of', '110px', (c) => (c.groups || []).length, { cell: (c) => groupsCell(c.groups) }),
+    col('passwordSet', 'Password last set', '140px', (c) => time(c.passwordSet), { cell: (c) => dateCell(c.passwordSet) }),
+    col('changed', 'Changed', '110px', (c) => time(c.changed), { cell: (c) => dateCell(c.changed) }),
+    col('lapsExpires', 'LAPS password expires', '170px', (c) => time(c.lapsExpires), { cell: (c) => (c.lapsExpires ? dateCell(c.lapsExpires) : '<span class="muted">No LAPS</span>') }),
+    col('spns', 'Service principal names', '180px', (c) => c.spns ?? 0),
+    col('encryption', 'Kerberos encryption', 'minmax(150px, 1fr)', (c) => c.encryption || ''),
+    col('sid', 'SID', 'minmax(230px, 1.2fr)', (c) => c.sid, { cell: (c) => mono(c.sid) }),
+    col('dn', 'Distinguished name', 'minmax(260px, 1.6fr)', (c) => c.dn, { cell: (c) => mono(c.dn) }),
+    yesCol('enabled', 'Enabled', (c) => c.enabled),
+    yesCol('controller', 'Domain controller', (c) => c.controller),
+    yesCol('delegation', 'Trusted for delegation', (c) => c.delegation),
   ];
 
   AD.domain.cols = [
@@ -362,25 +431,51 @@
       fld('neverExpires', 'Password never expires', 'yes', (u) => u.neverExpires), fld('mustChange', 'Must change password at next sign-in', 'yes', (u) => u.mustChange),
       fld('lastSignIn', 'Last sign-in', 'days', (u) => u.lastSignIn, { never: true }), fld('passwordSet', 'Password last set', 'days', (u) => u.passwordSet),
       fld('passwordExpires', 'Password expires', 'until', (u) => (u.neverExpires ? null : u.passwordExpires)), fld('accountExpires', 'Account expires', 'until', (u) => u.accountExpires),
-      fld('created', 'Created', 'days', (u) => u.created)]],
-    ['Identity', [fld('name', 'Name', 'text', (u) => u.name), fld('username', 'Pre-Windows 2000 logon name', 'text', (u) => u.username), fld('upn', 'User principal name', 'text', (u) => u.upn),
-      fld('email', 'Email', 'text', (u) => u.email), fld('description', 'Description', 'text', (u) => u.description)]],
+      fld('created', 'Created', 'days', (u) => u.created), fld('changed', 'Changed', 'days', (u) => u.more?.changed),
+      fld('lastBadPassword', 'Last bad password', 'days', (u) => u.more?.lastBadPassword), fld('badPasswords', 'Bad password count', 'number', (u) => u.more?.badPasswords),
+      fld('logons', 'Logon count', 'number', (u) => u.more?.logons)]],
+    ['Security', [fld('smartcard', 'Smart card required', 'yes', (u) => u.smartcard), fld('sensitive', 'Sensitive, cannot be delegated', 'yes', (u) => u.sensitive),
+      fld('delegation', 'Trusted for delegation', 'yes', (u) => u.more?.delegation), fld('noPassword', 'Password not required', 'yes', (u) => u.more?.noPasswordNeeded),
+      fld('reversible', 'Reversible encryption', 'yes', (u) => u.reversible), fld('desOnly', 'DES encryption only', 'yes', (u) => u.desOnly),
+      fld('noPreauth', 'No Kerberos preauthentication', 'yes', (u) => u.noPreauth)]],
+    ['Identity', [fld('name', 'Name', 'text', (u) => u.name), fld('first', 'First name', 'text', (u) => u.first), fld('last', 'Last name', 'text', (u) => u.last),
+      fld('initials', 'Initials', 'text', (u) => u.more?.initials), fld('username', 'Pre-Windows 2000 logon name', 'text', (u) => u.username), fld('upn', 'User principal name', 'text', (u) => u.upn),
+      fld('email', 'Email', 'text', (u) => u.email), fld('aliases', 'Email aliases', 'text', (u) => (u.more?.aliases || []).join(', ')), fld('description', 'Description', 'text', (u) => u.description),
+      fld('notes', 'Notes', 'text', (u) => u.more?.notes), fld('sid', 'SID', 'text', (u) => u.more?.sid), fld('dn', 'Distinguished name', 'text', (u) => u.dn)]],
     ['Organization', [fld('department', 'Department', 'choice', (u) => u.department), fld('title', 'Job title', 'choice', (u) => u.title), fld('company', 'Company', 'choice', (u) => u.company),
-      fld('office', 'Office', 'choice', (u) => u.office), fld('manager', 'Manager', 'choice', (u) => u.manager), fld('where', 'Organizational unit', 'ou', OU)]],
-    ['Membership', [fld('groups', 'Member of group', 'member', IN)]],
+      fld('office', 'Office', 'choice', (u) => u.office), fld('manager', 'Manager', 'choice', (u) => u.manager), fld('where', 'Organizational unit', 'ou', OU),
+      fld('employeeId', 'Employee ID', 'text', (u) => u.more?.employeeId), fld('employeeNumber', 'Employee number', 'text', (u) => u.more?.employeeNumber),
+      fld('employeeType', 'Employee type', 'choice', (u) => u.more?.employeeType)]],
+    ['Contact and address', [fld('phone', 'Phone', 'text', (u) => u.phone), fld('mobile', 'Mobile', 'text', (u) => u.more?.mobile), fld('ipPhone', 'IP phone', 'text', (u) => u.more?.ipPhone),
+      fld('fax', 'Fax', 'text', (u) => u.more?.fax), fld('street', 'Street', 'text', (u) => u.more?.street), fld('city', 'City', 'choice', (u) => u.more?.city),
+      fld('state', 'State or province', 'choice', (u) => u.more?.state), fld('postalCode', 'ZIP or postal code', 'text', (u) => u.more?.postalCode),
+      fld('country', 'Country', 'choice', (u) => u.more?.country), fld('webPage', 'Web page', 'text', (u) => u.more?.webPage)]],
+    ['Profile', [fld('homeFolder', 'Home folder', 'text', (u) => u.more?.homeFolder), fld('homeDrive', 'Home drive', 'choice', (u) => u.more?.homeDrive),
+      fld('profilePath', 'Profile path', 'text', (u) => u.more?.profilePath), fld('logonScript', 'Logon script', 'choice', (u) => u.more?.logonScript)]],
+    ['Membership', [fld('groups', 'Member of group', 'member', IN), fld('memberOf', 'Number of groups', 'number', (u) => (u.groups || []).length)]],
+    ['Custom attributes', Array.from({ length: 15 }, (_, i) => fld(`ext${i + 1}`, `Custom attribute ${i + 1}`, 'text', (u) => u.more?.custom?.[i + 1]))],
   ];
   AD.groups.fields = [
     ['Group', [fld('name', 'Name', 'text', (g) => g.name), fld('description', 'Description', 'text', (g) => g.description), fld('type', 'Group type', 'choice', (g) => (g.security ? 'Security' : 'Distribution')),
       fld('scope', 'Group scope', 'choice', (g) => g.scope), fld('members', 'Members', 'number', (g) => g.members), fld('protected', 'Privileged', 'yes', (g) => g.protected),
-      fld('email', 'Email', 'text', (g) => g.email), fld('where', 'Organizational unit', 'ou', OU)]],
-    ['Membership', [fld('groups', 'Member of group', 'member', IN)]],
+      fld('email', 'Email', 'text', (g) => g.email), fld('where', 'Organizational unit', 'ou', OU), fld('username', 'Pre-Windows 2000 name', 'text', (g) => g.username),
+      fld('managedBy', 'Managed by', 'choice', (g) => g.managedBy), fld('notes', 'Notes', 'text', (g) => g.notes), fld('system', 'Built in', 'yes', (g) => g.system),
+      fld('created', 'Created', 'days', (g) => g.created), fld('changed', 'Changed', 'days', (g) => g.changed), fld('sid', 'SID', 'text', (g) => g.sid),
+      fld('dn', 'Distinguished name', 'text', (g) => g.dn)]],
+    ['Membership', [fld('groups', 'Member of group', 'member', IN), fld('memberOf', 'Number of groups', 'number', (g) => (g.groups || []).length)]],
   ];
   AD.computers.fields = [
     ['Computer', [fld('name', 'Name', 'text', (c) => c.name), fld('host', 'DNS host name', 'text', (c) => c.host), fld('description', 'Description', 'text', (c) => c.description),
-      fld('os', 'Operating system', 'choice', (c) => c.os), fld('location', 'Location', 'choice', (c) => c.location), fld('where', 'Organizational unit', 'ou', OU)]],
+      fld('os', 'Operating system', 'choice', (c) => c.os), fld('osVersion', 'OS version', 'choice', (c) => c.osVersion), fld('servicePack', 'Service pack', 'choice', (c) => c.servicePack),
+      fld('location', 'Location', 'choice', (c) => c.location), fld('where', 'Organizational unit', 'ou', OU), fld('username', 'Pre-Windows 2000 name', 'text', (c) => c.username),
+      fld('managedBy', 'Managed by', 'choice', (c) => c.managedBy), fld('sid', 'SID', 'text', (c) => c.sid), fld('dn', 'Distinguished name', 'text', (c) => c.dn)]],
     ['Account', [fld('enabled', 'Enabled', 'yes', (c) => c.enabled), fld('controller', 'Domain controller', 'yes', (c) => c.controller),
-      fld('lastSignIn', 'Last sign-in', 'days', (c) => c.lastSignIn, { never: true }), fld('created', 'Created', 'days', (c) => c.created)]],
-    ['Membership', [fld('groups', 'Member of group', 'member', IN)]],
+      fld('lastSignIn', 'Last sign-in', 'days', (c) => c.lastSignIn, { never: true }), fld('passwordSet', 'Password last set', 'days', (c) => c.passwordSet),
+      fld('created', 'Created', 'days', (c) => c.created), fld('changed', 'Changed', 'days', (c) => c.changed),
+      fld('lapsExpires', 'LAPS password expires', 'until', (c) => c.lapsExpires)]],
+    ['Security', [fld('delegation', 'Trusted for delegation', 'yes', (c) => c.delegation), fld('spns', 'Service principal names', 'number', (c) => c.spns ?? 0),
+      fld('encryption', 'Kerberos encryption', 'choice', (c) => c.encryption)]],
+    ['Membership', [fld('groups', 'Member of group', 'member', IN), fld('memberOf', 'Number of groups', 'number', (c) => (c.groups || []).length)]],
   ];
   // The filter bar over the list (filter.js, the same for every list): a search, a chip for each column worth filtering
   // by, saved filters, and the conditions window with the fields above. What's picked stays per page until it's cleared
