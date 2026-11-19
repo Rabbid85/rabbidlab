@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.247', [
+    'Every side panel now has its buttons at the end of the name, like users and computers got in 1.1.246: the main one first, then the rest. Two sit side by side, and more than that go under Actions.',
+    'A Group Policy Object shows its status, how many places it is linked to, its WMI filter and when it last changed in a row under its name.']],
   ['1.1.246', [
     'The side panel is wider and laid out again. What can be done sits at the end of the name, the main thing as one button and then Actions, with the first facts in a row under it.',
     'Its sections are cards that fold on a click of their heading, facts read as label and value in two columns, and a tab that lists things says how many.',
@@ -3637,7 +3640,62 @@ const RELEASE_NOTES = [
     else folded.add(k);
     head.parentElement.classList.toggle('shut', folded.has(k));
   });
+  // Every panel's buttons sit at the end of its name, as a list's do in its bar: the one it's opened for most, then
+  // the rest (one more beside it, several under Actions). A page draws them in a .dw-bar under the name as it always
+  // has, and they work as they did; this moves them up once the panel is drawn. A page that puts its own .dw-do in the
+  // heading is left alone.
+  const RISKY = /^(remove|delete|disable|cancel|uninstall|sign out|stop|turn off|forget)/i;
+  const arrange = () => {
+    const head = panel.body.querySelector('.dw-head');
+    if (!head || head.querySelector('.dw-do')) return;
+    const bar = [...panel.body.querySelectorAll('.dw-bar')].find((b) => !b.closest('.dw-sec'));
+    const items = bar ? [...bar.children].filter((b) => b.matches('button, a') && !b.hidden) : [];
+    if (!items.length) return;
+    const box = document.createElement('div');
+    box.className = 'dw-do';
+    // One with an Actions menu of its own keeps it; otherwise the first button that isn't a way to undo something is the main one.
+    const own = items.some((b) => b.matches('.dw-acts, [data-dw-more]'));
+    const main = own ? null : items.find((b) => b.tagName === 'BUTTON' && !RISKY.test(b.textContent.trim()));
+    const others = items.filter((b) => b !== main);
+    others.forEach((b) => b.classList.toggle('danger', /^(remove|delete|uninstall)/i.test(b.textContent.trim()))); // in red, as in every menu
+    if (main) {
+      main.classList.remove('dw-qa', 'small');
+      main.classList.add('primary');
+      box.append(main);
+    }
+    if (own || others.length < 2) box.append(...others);
+    else {
+      const menu = document.createElement('div');
+      menu.className = 'gear-menu dw-rest';
+      menu.id = 'dw-rest';
+      menu.setAttribute('popover', 'auto');
+      const links = document.createElement('div');
+      links.className = 'am-links';
+      links.append(...others);
+      menu.append(links);
+      const more = document.createElement('button');
+      more.type = 'button';
+      more.className = 'small';
+      more.setAttribute('popovertarget', 'dw-rest');
+      more.setAttribute('aria-haspopup', 'menu');
+      more.innerHTML = `Actions${svg('chevron-down', 'chev')}`;
+      // Under the button, from its right edge; it closes once something in it is picked.
+      menu.addEventListener('beforetoggle', (e) => {
+        if (e.newState !== 'open') return;
+        const r = more.getBoundingClientRect();
+        menu.style.setProperty('left', `${Math.max(8, r.right - 230)}px`);
+        menu.style.setProperty('top', `${r.bottom + 6}px`);
+      });
+      menu.addEventListener('click', () => setTimeout(() => { if (menu.isConnected && menu.matches(':popover-open')) menu.hidePopover(); }, 0));
+      box.append(more, menu);
+    }
+    const close = head.querySelector('.dw-close');
+    if (close) close.before(box);
+    else head.append(box);
+    bar.remove();
+  };
   new MutationObserver(() => {
+    arrange();
     if (folded.size) panel.body.querySelectorAll('.dw-sec').forEach((sec) => sec.classList.toggle('shut', folded.has(foldKey(sec))));
   }).observe(panel.body, { childList: true, subtree: true });
   document.addEventListener('keydown', (e) => {

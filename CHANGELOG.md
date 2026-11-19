@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.247 (2026-11-18)
+
+- Every side panel now has its buttons at the end of the name, like users and computers got in 1.1.246: the main one first, then the rest. Two sit side by side, and more than that go under Actions.
+- A Group Policy Object shows its status, how many places it is linked to, its WMI filter and when it last changed in a row under its name.
+
 ## 1.1.246 (2026-11-18)
 
 - The side panel is wider and laid out again. What can be done sits at the end of the name, the main thing as one button and then Actions, with the first facts in a row under it.

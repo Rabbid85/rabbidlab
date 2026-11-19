@@ -483,7 +483,10 @@
         ['Unique ID', `<span class="mono">${esc(g.id)}</span>`]]));
     }
     const count = (k) => (d?.data ? d.data[k].length : '');
-    panel.body.innerHTML = head('policy', g.name, where) + actsButton(has('gpo.change') || has('gpo.link') || has('gpo.delete') || has('seats.actions'))
+    // The facts looked at first, in a row under the name.
+    const strip = `<div class="dw-strip">${[['Status', badge(...statusOf(g))], ['Linked to', links.length ? esc(plural(links.length, 'place')) : badge('Not linked', 'amber')],
+      ['WMI filter', g.wmi ? esc(filterOf(g.wmi)?.name || 'Missing filter') : muted('None')], ['Changed', esc(since(g.changed))]].map(([l, v]) => `<div><span class="l">${l}</span><span class="v">${v}</span></div>`).join('')}</div>`;
+    panel.body.innerHTML = head('policy', g.name, where) + actsButton(has('gpo.change') || has('gpo.link') || has('gpo.delete') || has('seats.actions')) + strip
       + tabs([['details', 'Details'], ['links', 'Links', links.length], ['settings', 'Settings', d?.data ? count('computer') + count('user') : ''], ['who', 'Delegation']]) + pane;
     const skel = panel.body.querySelector('[data-gpo-skel]');
     if (skel) R.skeleton(skel, 'rows', 4);
