@@ -541,7 +541,12 @@ a.small-link { margin-top: 8px; padding: 6px 12px; font-size: 12.5px; }
 .hero .tile.dot { border-radius: 50%; }
 .eyebrow { margin: 0; font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
 .hero-title { margin: 8px 0 0; font: 800 64px/.95 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; letter-spacing: -.04em; color: #fff; }
-.hero-lead { max-width: 580px; margin: 10px 0 0; font-size: 15px; line-height: 1.5; color: #C9CCDA; }
+/* The line under a banner's title: always one line, so a longer one never makes the banner taller and moves the page;
+   cut short with … only where the window is too narrow. It stops short of the card some banners have on the right. */
+.hero-lead { max-width: min(1000px, 100%); margin: 10px 0 0; overflow: hidden; font-size: 15px; line-height: 1.5; color: #C9CCDA; white-space: nowrap; text-overflow: ellipsis; }
+.hero:has(> .hero-new:not([hidden])) .hero-lead { max-width: calc(100% - 300px); }
+@media (max-width: 1180px) { .hero:has(> .hero-new:not([hidden])) .hero-lead { max-width: min(1000px, 100%); } } /* the card isn't shown there */
+@media (max-width: 700px) { .hero-lead { white-space: normal; } } /* a phone: the banner grows anyway, so the whole line shows */
 .hero-lead b { color: #fff; font-weight: 650; }
 .hero-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 .hero-actions .checked-note { align-self: center; }
@@ -602,7 +607,6 @@ a.button:hover, label.button:hover { background: #222536; text-decoration: none;
 /* Every hero is the same height, so the page under it stays put whatever the description: the numbers follow the
    description straight away, and a one-line description leaves its spare room at the foot, not between them. */
 @media (min-width: 701px) { .hero { display: flex; flex-direction: column; min-height: 270px; } }
-#page-overview .hero-lead { max-width: 760px; }
 @media (max-width: 700px) {
   .hero { padding: 30px 18px 26px; }
   .hero-title { font-size: 46px; }
@@ -697,6 +701,24 @@ body.ad-scoped [data-whole] { display: none !important; }
 .am-link small { margin-left: auto; color: #5E6380; font-size: 11.5px; }
 .am-link.out { color: #FF8A97; }
 .am-link.out svg { color: #FF6B7D; }
+/* An Actions menu (actions.js): one column of plain words under its button, sub-menus beside their row, a note on top. */
+.gear-menu.xact { width: auto; min-width: 250px; max-width: 360px; padding: 6px; overflow: visible; }
+.xact-note { display: flex; gap: 10px; margin: 0 0 6px; padding: 10px 12px; border: 1px solid rgba(242, 190, 107, .3); border-radius: 9px; background: rgba(242, 190, 107, .07); color: #F2CE8F; font-size: 12.5px; line-height: 1.45; white-space: normal; }
+.xact-note svg { flex: none; width: 16px; height: 16px; margin-top: 1px; color: var(--amber); }
+.xact-item { display: flex; align-items: center; gap: 10px; width: 100%; height: 36px; padding: 0 12px; border: 0; border-radius: 8px; background: none; color: #D7DAE8; font: inherit; font-size: 13.5px; text-align: left; white-space: nowrap; cursor: pointer; }
+.xact-item:hover, .xact-item:focus-visible, .xact-item.on { background: #1A1D2B; color: #fff; outline: none; }
+.xact-item small { margin-left: auto; padding-left: 16px; color: #5E6380; font-size: 11.5px; }
+.xact-item .xact-more { flex: none; width: 14px; height: 14px; margin-left: auto; color: #8B90A5; }
+.xact-item small + .xact-more { margin-left: 8px; }
+.xact-item.out { color: #FF8A97; }
+.xact-item:disabled { opacity: .45; cursor: default; }
+.xact-item:disabled:hover { background: none; }
+.xact hr { margin: 6px -6px; border: 0; border-top: 1px solid var(--line); }
+.xact-none { margin: 0; padding: 10px 12px; color: var(--muted); font-size: 13px; }
+.xact-sub { position: absolute; min-width: 220px; padding: 6px; border: 1px solid var(--line-strong); border-radius: 12px; background: #131522; box-shadow: 0 20px 50px rgba(0, 0, 0, .55); }
+/* The button whose menu is open: lit, its arrow pointing up. */
+button[aria-expanded="true"] > .chev { transform: rotate(180deg); }
+button.small[aria-haspopup="menu"][aria-expanded="true"] { border-color: var(--accent-line); color: var(--title); }
 @media (max-width: 560px) { .account-name { display: none; } }
 
 /* Scroll bars, everywhere: one thin, dark kind. The standard properties, because an open drop-down list (::picker,
@@ -735,7 +757,6 @@ section.page.home.dir-top { max-width: none; padding: 0; gap: 0; }
 .dir-top > .dir-area { display: grid; grid-template-columns: 224px minmax(0, 1fr); gap: 22px 16px; align-content: start; padding: 28px var(--side) 40px; }
 .dir-top > .dir-area > .dnav, .dir-top > .dir-area > .dmain { grid-row: 1; }
 #dir-hero, #dv-hero, #gpo-hero { display: flex; flex-direction: column; }
-#dir-hero .hero-lead, #dv-hero .hero-lead, #gpo-hero .hero-lead { max-width: 720px; }
 .dhead h1 { font: 800 30px/1.15 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; letter-spacing: -.02em; color: #fff; }
 .dhead p { max-width: 680px; margin-top: 10px; color: #B4B8C8; font-size: 14px; line-height: 1.55; }
 .dmain { grid-column: 2; display: grid; gap: 18px; align-content: start; min-width: 0; }

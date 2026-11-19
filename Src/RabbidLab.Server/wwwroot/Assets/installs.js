@@ -54,7 +54,7 @@
     fld('on', 'Installed on (computers)', 'number', (a) => a.on.length), fld('by', 'Added by', 'choice', source), fld('winget', 'winget ID', 'text', (a) => a.winget)]]];
   const pickedRows = () => (apps || []).filter((a) => picked.has(a.id));
 
-  D.lists.installs = ['Installs', 'box', 'Apps to install on computers with winget, for everyone on the computer. Tick apps or open one, then Install.'];
+  D.lists.installs = ['Installs', 'box', 'Apps to install on computers with winget, for everyone on them.'];
   D.more.installs = { table: 'dv-installs', grid, rows: () => apps || [], count: () => apps?.length, can, noun: 'apps', fields: () => FIELDS, load,
     empty: () => 'No apps like that.',
     acts: { can, count: () => pickedRows().length, open: (button) => openActs(button) },
@@ -103,31 +103,25 @@
     else if (appOf(key.slice(4))) openApp(appOf(key.slice(4)));
   });
 
-  // What Actions does with the ticked apps.
-  const menu = $('dv-act-menu');
+  // What Actions does with the ticked apps (actions.js).
   const openActs = (button) => {
     const rows = pickedRows();
     const mine = rows.filter((a) => !a.builtIn);
-    const item = (act, icon, label, hint = '', danger = false) => `<button type="button" role="menuitem" class="am-link${danger ? ' out' : ''}" data-app-act="${act}">${svg(icon)}<span>${esc(label)}</span>${hint ? `<small>${esc(hint)}</small>` : ''}</button>`;
-    menu.innerHTML = `<div class="am-links">${item('install', 'download', 'Install on computers…', String(rows.length))}${item('export', 'csv', 'Export these')}${item('clear', 'x', 'Clear the ticks')}</div>`
-      + (mine.length ? `<div class="am-links">${item('delete', 'trash', 'Delete…', String(mine.length), true)}</div>` : '');
-    const r = button.getBoundingClientRect();
-    menu.style.cssText = `position:fixed;inset:auto;width:270px;margin:0;left:${Math.max(8, r.right - 270)}px;top:${r.bottom + 6}px`;
-    menu.showPopover();
+    R.actions.open(button, {
+      items: [{ act: 'install', label: 'Install on computers…', hint: String(rows.length) }, { act: 'export', label: 'Export these' }, { act: 'clear', label: 'Clear the ticks' },
+        ...(mine.length ? ['-', { act: 'delete', label: 'Delete…', hint: String(mine.length), danger: true }] : [])],
+      note: mine.length && mine.length < rows.length ? `${rows.length - mine.length} of ${rows.length} are built in, so Delete leaves them on the page.` : '',
+      pick: (act) => {
+        const now = pickedRows();
+        if (act === 'clear') {
+          picked.clear();
+          drawTicks();
+        } else if (act === 'export') grid().csv(grid().sorted(now), 'installs-ticked');
+        else if (act === 'install') openInstall({ apps: now.sort(byName) });
+        else if (act === 'delete') remove(now.filter((a) => !a.builtIn));
+      },
+    });
   };
-  menu.addEventListener('click', (e) => {
-    const b = e.target.closest('[data-app-act]');
-    if (!b) return;
-    menu.hidePopover();
-    const rows = pickedRows();
-    const act = b.dataset.appAct;
-    if (act === 'clear') {
-      picked.clear();
-      drawTicks();
-    } else if (act === 'export') grid().csv(grid().sorted(rows), 'installs-ticked');
-    else if (act === 'install') openInstall({ apps: rows.sort(byName) });
-    else if (act === 'delete') remove(rows.filter((a) => !a.builtIn));
-  });
 
   // --- An app in the side panel ---------------------------------------------------------------------------------
   let shown = null; // the app that's open
@@ -311,7 +305,7 @@
   // In Computers' Actions, for the ticked computers, and in a computer's own Actions.
   const H = D.hooks;
   const items0 = H.actItems;
-  H.actItems = (item) => (items0?.(item) || '') + (can() ? item('install', 'box', 'Install an app…') : '');
+  H.actItems = (item) => [...(items0?.(item) || []), ...(can() ? [item('install', 'Install an app…')] : [])];
   const act0 = H.act;
   H.act = (act, on) => (act === 'install' ? (openInstall({ on }), true) : act0?.(act, on) || false);
   const drawn0 = H.drawn;

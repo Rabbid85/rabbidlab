@@ -154,13 +154,24 @@
     // or Relaxed. A page gives the element once (again each draw, where several grids share one bar).
     let bar = null;
     let shownNow = 0;
+    // How many rows show; with some ticked (o.picked), how many of them: 3/7 Items selected.
+    const count = () => {
+      const ticked = of(o.picked) || 0;
+      return ticked ? `${ticked.toLocaleString()}/${shownNow.toLocaleString()} ${shownNow === 1 ? 'Item' : 'Items'} selected`
+        : `${shownNow.toLocaleString()} ${shownNow === 1 ? 'Item' : 'Items'}`;
+    };
+    // The count again, after the ticks changed without the rows being drawn.
+    g.recount = () => {
+      const el = bar && tools.get(bar) === g ? bar.querySelector('.gcount') : null;
+      if (el) el.textContent = count();
+    };
     const drawTools = () => {
       if (tools.get(bar) !== g) return; // another grid has the bar now
       const s = groupSet();
       const by = s.keys.map((k) => cols().find((c) => c.key === k)?.label).filter(Boolean).join(', ');
       bar.innerHTML = `<label class="gby"><input type="checkbox" class="switch" data-grid-group-on${s.on && by ? ' checked' : ''}><span>Group by</span></label>`
         + `<button type="button" class="gby-pick" data-grid-group-pick>${esc(by || 'Pick a column')}${svg('chevron-down', 'chev')}</button>`
-        + `<span class="gcount">${shownNow.toLocaleString()} ${shownNow === 1 ? 'Item' : 'Items'}</span><span class="grow"></span>`
+        + `<span class="gcount">${count()}</span><span class="grow"></span>`
         + `<div class="vswitch">${[['compact', 'Compact rows', 'view-list'], ['relaxed', 'Relaxed rows', 'view-rows']].map(([d, tip, icon]) => `<button type="button" data-density="${d}" aria-pressed="${density() === d}" data-tip="${tip}" aria-label="${tip}">${svg(icon)}</button>`).join('')}</div>`;
     };
     const pickGroup = (button) => {

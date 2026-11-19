@@ -472,7 +472,7 @@
   const FIELDS = [['Administrator', [fld('name', 'Name', 'text', (r) => r.name), fld('type', 'Type', 'choice', (r) => (tab === 'people' ? typeOf(r, r.pc) : r.type)),
     fld('state', 'State', 'choice', (r) => stateText(tab === 'people' ? r.enabled : memberState(r))), fld('on', 'Administrator of (computers)', 'number', (r) => r.on.length)]]];
 
-  D.lists.admins = ['Local admins', 'shield', 'Who is in the Administrators group on each computer: local accounts, and domain users and groups.'];
+  D.lists.admins = ['Local admins', 'shield', 'Who is in the Administrators group on each computer.'];
   D.more.admins = {
     // A tab beside Computers, not a list of its own down the left. Members and People are its views, where Computers' are.
     under: 'computers',
@@ -527,17 +527,19 @@
     }
     drawTicks();
   };
-  const menu = $('dv-act-menu');
+  // The Actions menu (actions.js): taking people out of Administrators, and deleting local accounts last.
   const openActs = (button) => {
     const rows = pickedRows();
     const out = has('windows.change') ? outOf(rows) : [];
     const gone = has('windows.delete') ? deletable(rows) : [];
-    const item = (act, icon, label, hint = '', danger = false) => `<button type="button" role="menuitem" class="am-link${danger ? ' out' : ''}" data-adm-act="${act}">${svg(icon)}<span>${esc(label)}</span>${hint ? `<small>${esc(hint)}</small>` : ''}</button>`;
-    menu.innerHTML = `<div class="am-links">${out.length ? item('out', 'user-minus', 'Take out of Administrators…', String(out.length)) : ''}${item('export', 'csv', 'Export these')}${item('clear', 'x', 'Clear the ticks')}</div>`
-      + (gone.length ? `<div class="am-links">${item('delete', 'trash', 'Delete local accounts…', String(gone.length), true)}</div>` : '');
-    const r = button.getBoundingClientRect();
-    menu.style.cssText = `position:fixed;inset:auto;width:270px;margin:0;left:${Math.max(8, r.right - 270)}px;top:${r.bottom + 6}px`;
-    menu.showPopover();
+    const left = rows.length - new Set([...out.map((t) => t.name), ...gone.map((t) => t.full)]).size;
+    R.actions.open(button, {
+      items: [...(out.length ? [{ act: 'out', label: 'Take out of Administrators…', hint: String(out.length) }] : []), { act: 'export', label: 'Export these' }, { act: 'clear', label: 'Clear the ticks' },
+        ...(gone.length ? ['-', { act: 'delete', label: 'Delete local accounts…', hint: String(gone.length), danger: true }] : [])],
+      // Built-in accounts and computers still being read can't be changed: said when some ticked are those.
+      note: (out.length || gone.length) && left > 0 ? `${left} of ${rows.length} ticked can't be changed here: built-in accounts, or computers still being read.` : '',
+      pick: actPicked,
+    });
   };
   // One change on each computer, then everything read again.
   const each = async (list, work, done) => {
@@ -559,12 +561,8 @@
     D.draw();
   };
   const pairs = (list) => list.map((t) => `${t.name} on ${t.pc.computer}`);
-  menu.addEventListener('click', (e) => {
-    const b = e.target.closest('[data-adm-act]');
-    if (!b) return;
-    menu.hidePopover();
+  function actPicked(act) {
     const rows = pickedRows();
-    const act = b.dataset.admAct;
     if (act === 'clear') {
       picked.clear();
       drawTicks();
@@ -580,7 +578,7 @@
       sure(`Delete ${list.length === 1 ? list[0].full : `${list.length} local accounts`}?`, `${and(list.slice(0, 6).map((t) => t.full))}${list.length > 6 ? ` and ${list.length - 6} more` : ''}. Gone for good. Their files stay in their profile folders.`, 'Delete',
         () => each(list, (t) => send(`/api/windows/${encodeURIComponent(t.pc.id)}/accounts/${encodeURIComponent(t.name)}/delete`, {}), `Deleted ${list.length === 1 ? list[0].full : `${list.length} local accounts`}.`));
     }
-  });
+  }
 
   const drawn0 = H.drawn;
   H.drawn = () => {

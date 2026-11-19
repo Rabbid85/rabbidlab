@@ -170,7 +170,7 @@
 
   // In Actions, for the ticked computers.
   const items0 = H.actItems;
-  H.actItems = (item) => (items0?.(item) || '') + (can() ? item('printer', 'printer', 'Add a printer…') : '');
+  H.actItems = (item) => [...(items0?.(item) || []), ...(can() ? [item('printer', 'Add a printer…')] : [])];
   const act0 = H.act;
   H.act = (act, on) => (act === 'printer' ? (openAdd(on), true) : act0?.(act, on) || false);
 
@@ -321,7 +321,7 @@
     D.draw();
     if (dev.asking && supplyTries++ < 20) supplyTimer = setTimeout(() => supplies(), 5000);
   };
-  D.lists.printers = ['Printers', 'printer', 'Every printer your servers share and every printer on the computers. Add one from a computer, or tick computers and use Actions.'];
+  D.lists.printers = ['Printers', 'printer', 'Every printer on your print servers and computers.'];
   D.more.printers = {
     get table() { return tab === 'servers' ? 'dv-pservers' : 'dv-printers'; },
     get noun() { return tab === 'servers' ? 'print servers' : 'printers'; },

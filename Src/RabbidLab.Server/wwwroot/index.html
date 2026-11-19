@@ -21,6 +21,7 @@
 <script src="Assets/console.js" defer></script>
 <script src="Assets/tips.js" defer></script>
 <script src="Assets/picker.js" defer></script>
+<script src="Assets/actions.js" defer></script>
 <script src="Assets/reveal.js" defer></script>
 <script src="Assets/grid.js" defer></script>
 <script src="Assets/filter.js" defer></script>
@@ -1482,7 +1483,7 @@
 
 <!-- A user's menu (row ⋯, right-click, or Actions over ticked users): categories that open to the side. -->
 <!-- One user, group or computer, in a panel from the right (users.js draws it). -->
-<dialog class="drawer" id="side-panel" aria-labelledby="dw-title"><div class="dw-body" id="dw-body"></div></dialog>
+<dialog class="drawer" id="side-panel" aria-labelledby="dw-title"><div class="dw-body" id="dw-body"></div><div class="dw-grip" role="separator" aria-orientation="vertical" aria-label="Panel width" tabindex="0" data-tip="Drag to resize"></div></dialog>
 <div class="gear-menu cmd-menu" id="cmd-menu" popover role="menu"></div>
 <!-- Columns: which ones the list shows; Users, Groups and Computers each keep their own. -->
 
@@ -1564,8 +1565,6 @@
 </dialog>
 
 <!-- Are you sure: deleting, mostly. -->
-<!-- Devices: what Actions does with the ticked computers (devices.js fills it). -->
-<div class="gear-menu" id="dv-act-menu" popover role="menu"></div>
 
 <!-- Before anything runs on computers: who's asking, by a code from their authenticator app or their password (devices.js). -->
 <dialog class="dialog" id="confirm-dialog" aria-labelledby="cf-title">

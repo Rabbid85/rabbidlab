@@ -1098,7 +1098,7 @@
     }
     D.drawPicked?.();
   };
-  D.lists.gplocal = ['Group Policy', 'policy', 'What Group Policy did on each computer: when it last refreshed, what applied, errors, and the local policy it ended up with.'];
+  D.lists.gplocal = ['Group Policy', 'policy', 'What Group Policy applied on each computer, and any errors.'];
   D.more.gplocal = {
     table: 'dv-gplocal', grid: localGrid, rows: pcs, count: () => pcs().filter((c) => G(c)).length || '', can: () => has('seats.view'), noun: 'computers',
     load: async () => { if (has('gpo.view') && !gp && !loading) load(); },
@@ -1108,25 +1108,19 @@
       count: () => pcs().filter((c) => ticks.has(c.id)).length,
       open: (button) => {
         const on = pcs().filter((c) => ticks.has(c.id));
-        const m = $('dv-act-menu');
-        m.innerHTML = `<div class="am-links"><button type="button" role="menuitem" class="am-link" data-gpl-act="gpupdate">${svg('refresh')}<span>Run gpupdate…</span><small>${on.length}</small></button>`
-          + `<button type="button" role="menuitem" class="am-link" data-gpl-act="clear">${svg('x')}<span>Clear the ticks</span></button></div>`;
-        const r = button.getBoundingClientRect();
-        m.style.cssText = `position:fixed;inset:auto;width:250px;margin:0;left:${Math.max(8, r.right - 250)}px;top:${r.bottom + 6}px`;
-        m.showPopover();
+        R.actions.open(button, {
+          items: [{ act: 'gpupdate', label: 'Run gpupdate…', hint: String(on.length) }, { act: 'clear', label: 'Clear the ticks' }],
+          pick: (act) => {
+            if (act === 'gpupdate') D.run('gpupdate', pcs().filter((c) => ticks.has(c.id)));
+            else {
+              ticks.clear();
+              drawLocalTicks();
+            }
+          },
+        });
       },
     },
   };
-  $('dv-act-menu').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-gpl-act]');
-    if (!b) return;
-    $('dv-act-menu').hidePopover();
-    if (b.dataset.gplAct === 'gpupdate') D.run('gpupdate', pcs().filter((c) => ticks.has(c.id)));
-    else {
-      ticks.clear();
-      drawLocalTicks();
-    }
-  });
   let lastLocal = null;
   $('dv-gplocal').addEventListener('click', (e) => {
     const box = e.target.closest('.tk')?.querySelector('input');

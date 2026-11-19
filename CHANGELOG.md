@@ -2,6 +2,13 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.256 (2026-11-19)
+
+- The side panel can be dragged wider or narrower by its left edge, and it keeps that width. A double-click on the edge puts it back.
+- In the side panel the name, the facts under it and the tabs stay put while the rest scrolls, and the sections have bigger text and more room.
+- Actions menus under Devices are one plain list now, with sub-menus that open to the side. The bar above the list says how many are selected, such as 2/7 Items selected.
+- The line under a page title stays on one line, so the banner no longer grows taller in a narrow window. Some of those lines are shorter too.
+
 ## 1.1.255 (2026-11-19)
 
 - Every scroll bar is the same thin, dark one now, open drop-down lists included. They used to show the grey Windows scroll bar with arrows.

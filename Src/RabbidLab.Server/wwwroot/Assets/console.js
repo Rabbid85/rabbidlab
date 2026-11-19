@@ -3,6 +3,11 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.256', [
+    'The side panel can be dragged wider or narrower by its left edge, and it keeps that width. A double-click on the edge puts it back.',
+    'In the side panel the name, the facts under it and the tabs stay put while the rest scrolls, and the sections have bigger text and more room.',
+    'Actions menus under Devices are one plain list now, with sub-menus that open to the side. The bar above the list says how many are selected, such as 2/7 Items selected.',
+    'The line under a page title stays on one line, so the banner no longer grows taller in a narrow window. Some of those lines are shorter too.']],
   ['1.1.255', [
     'Every scroll bar is the same thin, dark one now, open drop-down lists included. They used to show the grey Windows scroll bar with arrows.',
     'Roles that can run or write scripts get Install apps, so Installs shows under Devices for them too.']],
@@ -2143,6 +2148,7 @@ const RELEASE_NOTES = [
   const seatsGrid = () => (seatsG ||= window.RabbidLab.grid({
     el: $('seats-table'),
     key: 'computers', // was devices: renamed in 1.1.172 so everyone gets the new default columns once
+    picked: () => dvShown.filter((c) => dvPicked.has(c.id)).length, // the count says how many of those showing are ticked
     // An offline computer's row is greyed out, so the ones that are on stand out.
     rowClass: (c) => (c.approved && !c.online ? 'off' : ''),
     // A tick on each row, for whoever may do something with several computers at once (devices.js).
@@ -3624,13 +3630,76 @@ const RELEASE_NOTES = [
       panel.key = key;
       panel.owner = owner;
       panel.page = where()[0];
-      if (!panel.el.open) panel.el.show();
+      if (!panel.el.open) {
+        widthTo(savedWidth());
+        panel.el.show();
+      }
     },
     close: () => { if (panel.el.open) panel.el.close(); },
     is: (owner) => panel.el.open && panel.owner === owner,
     shows: (owner, key) => panel.is(owner) && panel.key === key,
   };
   panel.el.addEventListener('click', (e) => { if (e.target.closest('[data-dw-close]')) panel.close(); });
+  // Its left edge drags it wider or narrower, and the width is kept for next time. A double-click puts it back.
+  const WIDE = 'rabbidlab.panel.width';
+  const savedWidth = () => { try { return Number(localStorage.getItem(WIDE)) || 0; } catch { return 0; } };
+  const widthTo = (w) => {
+    if (w) panel.el.style.setProperty('width', `${Math.round(Math.min(Math.max(w, 480), innerWidth - 240))}px`);
+    else panel.el.style.removeProperty('width');
+  };
+  const keepWidth = (w) => { try { if (w) localStorage.setItem(WIDE, String(Math.round(w))); else localStorage.removeItem(WIDE); } catch { /* no storage: it just isn't kept */ } };
+  const grip = panel.el.querySelector('.dw-grip');
+  grip.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    try { grip.setPointerCapture(e.pointerId); } catch { /* not a real pointer */ }
+    document.body.classList.add('dw-sizing');
+    const stop = new AbortController();
+    const done = () => {
+      stop.abort();
+      document.body.classList.remove('dw-sizing');
+      keepWidth(panel.el.getBoundingClientRect().width);
+    };
+    grip.addEventListener('pointermove', (m) => widthTo(innerWidth - m.clientX), { signal: stop.signal });
+    grip.addEventListener('pointerup', done, { signal: stop.signal });
+    grip.addEventListener('pointercancel', done, { signal: stop.signal });
+  });
+  grip.addEventListener('dblclick', () => { widthTo(0); keepWidth(0); });
+  grip.addEventListener('keydown', (e) => {
+    const step = { ArrowLeft: 40, ArrowRight: -40 }[e.key];
+    if (!step) return;
+    e.preventDefault();
+    widthTo(panel.el.getBoundingClientRect().width + step);
+    keepWidth(panel.el.getBoundingClientRect().width);
+  });
+  // The name, the first facts and the tabs stay put while what's under them scrolls. Pages draw the whole panel into
+  // body as always; this moves what comes after that top part into .dw-scroll, and keeps where it was scrolled to
+  // while the same thing and tab are drawn again.
+  const TOP = '.dw-head, .dw-path, .dw-strip, .dw-status, .dw-note, .dw-tabs';
+  let scrolled = { at: '', top: 0 };
+  const spot = () => `${panel.owner}|${panel.key}|${panel.body.querySelector(':scope > .dw-tabs [aria-current]')?.textContent || ''}`;
+  panel.body.addEventListener('scroll', (e) => { if (e.target.classList?.contains('dw-scroll')) scrolled = { at: spot(), top: e.target.scrollTop }; }, true);
+  const pin = () => {
+    const kids = [...panel.body.children].filter((c) => !c.matches('.busy-cover')); // the flask over the panel stays where busy() looks for it
+    const n = kids.findIndex((c) => !c.matches(TOP));
+    const rest = n < 0 ? [] : kids.slice(n);
+    const on = n > 0 && rest.length > 0;
+    panel.body.classList.toggle('pinned', on);
+    if (!on || (rest.length === 1 && rest[0].classList.contains('dw-scroll'))) return;
+    let box = rest.find((c) => c.classList.contains('dw-scroll'));
+    if (box) {
+      const at = rest.indexOf(box);
+      box.prepend(...rest.slice(0, at));
+      box.append(...rest.slice(at + 1));
+      return;
+    }
+    box = document.createElement('div');
+    box.className = 'dw-scroll';
+    box.append(...rest);
+    panel.body.append(box);
+    if (scrolled.at === spot()) box.scrollTop = scrolled.top;
+    else scrolled = { at: spot(), top: 0 };
+  };
   // A section of the panel folds on a click of its heading (not of a button in it), and stays folded while the panel
   // is drawn again, until the console is opened again.
   const folded = new Set();
@@ -3699,6 +3768,7 @@ const RELEASE_NOTES = [
   };
   new MutationObserver(() => {
     arrange();
+    pin();
     if (folded.size) panel.body.querySelectorAll('.dw-sec').forEach((sec) => sec.classList.toggle('shut', folded.has(foldKey(sec))));
   }).observe(panel.body, { childList: true, subtree: true });
   document.addEventListener('keydown', (e) => {

@@ -241,7 +241,7 @@
       return { key: name, label: name, type, get: (r) => (r[name] === '' ? undefined : r[name]) };
     })],
   ]);
-  D.lists.wmi = ['WMI query', 'list', 'Ask computers for anything Windows keeps in WMI: hardware, settings, services, security. Read only.'];
+  D.lists.wmi = ['WMI query', 'list', 'Read anything Windows keeps in WMI, on any computer. Read only.'];
   D.more.wmi = { table: 'dv-wmi', grid: wqGrid, rows: () => wq.rows, count: () => '', can: () => has('seats.wmi'), noun: 'rows', fields: wqFields,
     load: async () => {}, // nothing to read again: a query runs when Run is clicked
     empty: () => (wq.asked ? 'No rows came back.' : 'Pick the computers, type a query or pick an example, then Run.') };
@@ -420,6 +420,7 @@
   const drawPicked = () => {
     const own = D.more[D.at()]?.acts; // a list with ticks of its own (Local admins)
     const n = own ? own.count() : D.picked.size;
+    D.grid().recount?.(); // 3/7 Items selected
     const act = $('dv-act');
     act.hidden = own ? !own.can() : !canPick();
     act.disabled = !n;
@@ -461,22 +462,31 @@
       drawPicked();
     });
   }
-  const menu = $('dv-act-menu');
-  // What can be done on computers, from this one list: the Actions menu for the ticked ones, and the buttons at the
-  // top of a computer's panel (printers.js adds Add a printer through actItems).
-  // Named groups: Power and Sessions (whoever is signed in) on the left, Run and Install on the right. A group with
-  // nothing in it is left out.
-  const named = (name, items) => (items ? `<div class="am-group"><p class="am-head">${name}</p>${items}</div>` : '');
-  const doItems = (item, on) => {
-    if (!on.some((c) => c.approved)) return { left: '', right: '' };
+  // What can be done on computers, from this one list: the Actions menu for the ticked ones, and the Actions button of
+  // a computer's panel (actions.js draws it). Related ones go in a sub-menu; a group of one is a row of its own.
+  // printers.js and installs.js add theirs through actItems.
+  const E = (act, label, hint = '', danger = false) => ({ act, label, hint: hint ? String(hint) : '', danger });
+  const group = (label, sub) => (!sub.length ? [] : sub.length === 1 ? sub : [{ label, sub }]);
+  const doItems = (on) => {
+    if (!on.some((c) => c.approved)) return [];
     const off = on.filter((c) => c.approved && !c.online && !c.server).length;
     const acts = has('seats.actions');
-    return {
-      left: named('Power', acts ? item('restart', 'restart', 'Restart…') + item('shutdown', 'power', 'Shut down…') + item('wake', 'wake', 'Wake', String(off || '')) : '')
-        + named('Sessions', acts ? item('lock', 'lock', 'Lock…') + item('signout', 'logout', 'Sign everyone out…') + item('message', 'message', 'Send a message…') : ''),
-      right: named('Run', (canScripts() ? item('script', 'code', 'Run a script…') : '') + (has('seats.wmi') ? item('wmi', 'list', 'Query with WMI…') : '') + (acts ? item('gpupdate', 'policy', 'Run gpupdate…') : ''))
-        + named('Install', (acts ? item('updates', 'updates', 'Windows updates…') + item('check', 'refresh', 'Check for updates…') + item('client', 'download', 'Update the client…', String(on.filter((c) => c.approved && c.behind).length || '')) : '') + (D.hooks.actItems?.(item) || '')),
-    };
+    const behind = on.filter((c) => c.approved && c.behind).length;
+    return [
+      ...group('Power', acts ? [E('restart', 'Restart…'), E('shutdown', 'Shut down…'), E('wake', 'Wake', off || '')] : []),
+      ...group('Sessions', acts ? [E('lock', 'Lock…'), E('signout', 'Sign everyone out…'), E('message', 'Send a message…')] : []),
+      ...group('Run', [...(canScripts() ? [E('script', 'Run a script…')] : []), ...(has('seats.wmi') ? [E('wmi', 'Query with WMI…')] : []), ...(acts ? [E('gpupdate', 'Run gpupdate…')] : [])]),
+      ...group('Install', [...(acts ? [E('updates', 'Windows updates…'), E('check', 'Check for updates…'), E('client', 'Update the client…', behind || '')] : []), ...(D.hooks.actItems?.(E) || [])]),
+    ];
+  };
+  // Said over the menu when not every computer ticked takes everything in it.
+  const noteFor = (on) => {
+    const waiting = on.filter((c) => !c.approved).length;
+    const off = on.filter((c) => c.approved && !c.online && !c.server).length;
+    const all = on.length;
+    const some = (n) => (n === all ? (all === 1 ? 'It is' : 'They are') : `${n} of ${all} ${n === 1 ? 'is' : 'are'}`);
+    return [waiting ? `${some(waiting)} waiting for approval, so only Approve and Remove apply${waiting === all ? '' : ` to ${waiting === 1 ? 'it' : 'them'}`}.` : '',
+      off ? `${some(off)} offline. What you run reaches ${off === 1 ? 'it' : 'them'} once back online.` : ''].filter(Boolean).join(' ');
   };
   // One of those, on these computers: from the menu, or from one computer's panel.
   const doAct = async (act, on, fromPanel = false) => {
@@ -498,28 +508,17 @@
   const openActs = (button, on, inPanel) => {
     menuOn = on;
     menuPanel = inPanel;
-    const waiting = on.filter((c) => !c.approved).length;
-    const item = (act, icon, label, hint = '', danger = false) => `<button type="button" role="menuitem" class="am-link${danger ? ' out' : ''}" data-dv-act="${act}">${svg(icon)}<span>${esc(label)}</span>${hint ? `<small>${esc(hint)}</small>` : ''}</button>`;
     // This server without the client: putting it on is all there is to do.
     if (on.length === 1 && on[0].server) {
       const started = D.hooks.hereStarted?.();
-      menu.innerHTML = `<div class="am-links">${named('Install', `<button type="button" role="menuitem" class="am-link" data-dv-act="here"${started ? ' disabled' : ''}>${svg('download')}<span>${started ? 'Installing the client' : 'Install the client here'}</span></button>`)}</div>`;
-      const r = button.getBoundingClientRect();
-      menu.style.cssText = `position:fixed;inset:auto;width:250px;margin:0;left:${Math.max(8, Math.min(r.left, innerWidth - 258))}px;top:${r.bottom + 6}px`;
-      menu.showPopover();
+      R.actions.open(button, { items: [{ act: 'here', label: started ? 'Installing the client' : 'Install the client here', disabled: !!started }], pick: picked });
       return;
     }
-    const { left, right: run } = doItems(item, on);
-    const right = run + (inPanel ? '' : named('Selection', (has('seats.approve') && waiting ? item('approve', 'check', 'Approve', String(waiting)) : '') + item('export', 'csv', 'Export these') + item('clear', 'x', 'Clear the ticks')));
-    const cols = [left, right].filter(Boolean);
-    const remove = has('seats.remove') ? item('remove', 'trash', 'Remove from Devices…', '', true) : '';
-    menu.innerHTML = (cols.length ? `<div class="am-cols">${cols.map((c) => `<div class="am-links">${c}</div>`).join('')}</div>` : '') + (remove ? `<div class="am-links">${remove}</div>` : '');
-    const w = cols.length > 1 ? 500 : 250;
-    const r = button.getBoundingClientRect();
-    menu.style.cssText = `position:fixed;inset:auto;width:${w}px;margin:0;left:${Math.max(8, inPanel ? Math.min(r.left, innerWidth - w - 8) : r.right - w)}px;top:${r.bottom + 6}px`;
-    menu.showPopover();
-    // Too tall for under the button: it opens above it, when there's more room there.
-    if (r.bottom + 6 + menu.offsetHeight > innerHeight - 8 && r.top > innerHeight - r.bottom) menu.style.top = `${Math.max(8, r.top - 6 - menu.offsetHeight)}px`;
+    const waiting = on.filter((c) => !c.approved).length;
+    const items = doItems(on);
+    if (!inPanel) items.push('-', ...(has('seats.approve') && waiting ? [E('approve', 'Approve', waiting)] : []), E('export', 'Export these'), E('clear', 'Clear the ticks'));
+    if (has('seats.remove')) items.push('-', E('remove', 'Remove from Devices…', '', true));
+    R.actions.open(button, { items, pick: picked, note: noteFor(on) });
   };
   $('dv-act').addEventListener('click', () => {
     const own = D.more[D.at()]?.acts;
@@ -527,7 +526,7 @@
     else openActs($('dv-act'), ticked(), false);
   });
   // A computer's panel has the one button; what it opens is the same menu.
-  D.hooks.seatBar = (c) => ((c.server ? !has('seats.add') : !Object.values(doItems(() => 'x', [c])).join('') && !has('seats.remove')) ? ''
+  D.hooks.seatBar = (c) => ((c.server ? !has('seats.add') : !doItems([c]).length && !has('seats.remove')) ? ''
     : `<button type="button" class="small dw-acts" data-dv-menu aria-haspopup="menu">${svg('menu')}Actions${svg('chevron-down', 'chev')}</button>`);
   const each = async (list, path) => {
     let failed = 0;
@@ -541,12 +540,9 @@
     D.reload();
     return failed;
   };
-  menu.addEventListener('click', async (e) => {
-    const b = e.target.closest('[data-dv-act]');
-    if (!b) return;
-    menu.hidePopover();
+  // What was picked in the menu, for the computers it was opened for.
+  async function picked(act) {
     const on = menuOn;
-    const act = b.dataset.dvAct;
     if (act === 'here') D.hooks.installHere?.();
     else if (act === 'clear') {
       D.picked.clear();
@@ -565,7 +561,7 @@
         toast(failed ? `${failed} of ${on.length} couldn't be removed.` : `Removed ${one ? on[0].computer : many(on.length)}.`, '', failed ? { tone: 'warn' } : {});
       });
     } else await doAct(act, on, menuPanel);
-  });
+  }
 
   // --- Running something on computers ---------------------------------------------------------------------------
   let run = null; // { kind, on, lang } while the window is open
