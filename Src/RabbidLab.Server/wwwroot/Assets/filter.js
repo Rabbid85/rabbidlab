@@ -8,13 +8,13 @@
 
   // What each kind of field can be asked. Ops in NO_VALUE need nothing filled in.
   const OPS = {
-    text: [['contains', 'contains'], ['notContains', 'does not contain'], ['is', 'is'], ['isNot', 'is not'], ['starts', 'starts with'], ['empty', 'is empty'], ['set', 'is not empty']],
+    text: [['contains', 'contains'], ['notContains', 'does not contain'], ['is', 'is'], ['isNot', 'is not'], ['starts', 'starts with'], ['ends', 'ends with'], ['empty', 'is empty'], ['set', 'is not empty']],
     choice: [['in', 'is any of'], ['notIn', 'is none of'], ['empty', 'is empty'], ['set', 'is not empty']],
     member: [['in', 'is any of'], ['notIn', 'is none of']],
     ou: [['under', 'is in or under'], ['in', 'is directly in']],
     days: [['olderThan', 'more than'], ['within', 'in the last'], ['empty', 'never'], ['set', 'is set']],
     until: [['next', 'in the next'], ['past', 'has passed'], ['empty', 'never'], ['set', 'is set']],
-    number: [['more', 'more than'], ['fewer', 'fewer than'], ['eq', 'exactly']],
+    number: [['more', 'more than'], ['fewer', 'fewer than'], ['eq', 'exactly'], ['atLeast', 'at least'], ['atMost', 'at most']],
     yes: [['is', 'is'], ['isNot', 'is not']],
   };
   const NO_VALUE = ['empty', 'set', 'past'];
@@ -37,7 +37,7 @@
       case 'text': {
         const want = lc(one);
         return { empty: (x) => !f.get(x), set: (x) => !!f.get(x), is: (x) => lc(f.get(x)) === want, isNot: (x) => lc(f.get(x)) !== want,
-          starts: (x) => lc(f.get(x)).startsWith(want), notContains: (x) => !lc(f.get(x)).includes(want) }[r.op] || ((x) => lc(f.get(x)).includes(want));
+          starts: (x) => lc(f.get(x)).startsWith(want), ends: (x) => lc(f.get(x)).endsWith(want), notContains: (x) => !lc(f.get(x)).includes(want) }[r.op] || ((x) => lc(f.get(x)).includes(want));
       }
       case 'choice': {
         const want = new Set(values.map(lc));
@@ -59,7 +59,7 @@
         if (r.op === 'set') return (x) => !!f.get(x);
         if (r.op === 'past') return (x) => !!f.get(x) && dayDiff(f.get(x)) > 0;
         return (x) => !!f.get(x) && dayDiff(f.get(x)) <= 0 && -dayDiff(f.get(x)) <= n;
-      case 'number': return r.op === 'more' ? (x) => num(f.get(x)) > n : r.op === 'fewer' ? (x) => num(f.get(x)) < n : (x) => num(f.get(x)) === n;
+      case 'number': return { more: (x) => num(f.get(x)) > n, fewer: (x) => num(f.get(x)) < n, atLeast: (x) => num(f.get(x)) >= n, atMost: (x) => num(f.get(x)) <= n }[r.op] || ((x) => num(f.get(x)) === n);
       case 'yes': return (x) => (!!f.get(x) === (one !== false && one !== 'false')) === (r.op !== 'isNot');
       default: return () => true;
     }
@@ -221,8 +221,22 @@
   const read = (k) => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch { return null; } };
   const keep = (k, v) => { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)); } catch { /* not kept, then */ } };
   const of = (v) => (typeof v === 'function' ? v() : v);
-  const HIT = { contains: (t, q) => t.includes(q), is: (t, q) => t === q, starts: (t, q) => t.startsWith(q) };
-  const HIT_WORD = { contains: 'contains', is: 'is', starts: 'starts with' };
+  // The search box's tests follow the column picked: words for text, more or less for a number, days for a date, yes
+  // or no for a column that is one or the other. Ops in QUICK_BARE need nothing typed, so the box hides.
+  const QUICK = {
+    any: [['contains', 'contains'], ['notContains', 'does not contain'], ['is', 'is'], ['starts', 'starts with']],
+    text: OPS.text,
+    number: [['more', 'more than'], ['fewer', 'less than'], ['eq', 'exactly'], ['atLeast', 'at least'], ['atMost', 'at most']],
+    days: [['within', 'in the last'], ['olderThan', 'more than'], ['empty', 'never'], ['set', 'is set']],
+    until: [['next', 'in the next'], ['past', 'has passed'], ['empty', 'never'], ['set', 'is set']],
+    yes: [['yes', 'is yes'], ['no', 'is no']],
+  };
+  const QUICK_BARE = ['empty', 'set', 'past', 'yes', 'no'];
+  const QUICK_BOX = { number: 'A number', days: 'Days', until: 'Days' }; // what the box asks for, where it isn't words
+  const UNIT = { within: ' days', olderThan: ' days ago', next: ' days' };
+  const opFor = (kind, op) => (QUICK[kind].some(([k]) => k === op) ? op : QUICK[kind][0][0]);
+  const HIT = { contains: (t, q) => t.includes(q), notContains: (t, q) => !t.includes(q), is: (t, q) => t === q, isNot: (t, q) => t !== q,
+    starts: (t, q) => t.startsWith(q), ends: (t, q) => t.endsWith(q), empty: (t) => !t, set: (t) => !!t };
   const NUMBERISH = /^[\d.,\s]+(%|gb|mb|ms|min|h|days?|hours?|minutes?)?$/i; // 3, 89%, 16 GB: not worth a chip
   const NONE = 'None'; // a row with nothing in that column
   const picked = {}; // what's filtered on each list, by its name
@@ -239,6 +253,29 @@
     const fields = () => of(o.fields) || null;
     const b = {};
     let typing = null;
+    // What the column picked holds: the page's field type when it has one, or else what its values look like.
+    const kindOf = (c) => {
+      if (!c) return 'any';
+      const f = fields() && fieldOf(fields(), c.key);
+      if (f) return QUICK[f.type] ? f.type : 'text';
+      let n = 0;
+      const seen = { number: 0, date: 0, future: 0, yes: 0 };
+      for (const x of o.rows()) {
+        const v = c.get(x);
+        if (v === null || v === undefined || v === '') continue;
+        n += 1;
+        const when = typeof v === 'number' && v > 1e11 ? v : typeof v === 'string' && /^\d{4}-\d\d-\d\dT/.test(v) ? Date.parse(v) : NaN;
+        if (typeof v === 'boolean') seen.yes += 1;
+        else if (!Number.isNaN(when)) { seen.date += 1; if (when > Date.now()) seen.future += 1; } else if (typeof v === 'number' && Number.isFinite(v)) seen.number += 1;
+        if (n >= 200) break;
+      }
+      if (!n) return 'text';
+      if (seen.yes === n) return 'yes';
+      if (seen.number === n) return 'number';
+      if (seen.date === n) return seen.future > n / 2 ? 'until' : 'days';
+      return 'text';
+    };
+    const searchCol = () => { const s = st(); return s.col === '*' ? null : colOf(s.col); };
 
     // One test for a row from everything picked; skip leaves one chip out, to count what each of its values would give.
     b.test = (skip) => {
@@ -246,24 +283,39 @@
       const g = grid();
       const tests = [];
       const q = s.text.trim().toLowerCase();
-      if (q) {
-        const hit = HIT[s.op] || HIT.contains;
-        const c = s.col === '*' ? null : colOf(s.col);
-        if (c) tests.push((x) => hit(g.text(c, x).toLowerCase(), q));
-        else if (o.find) tests.push((x) => o.find(x).some((t) => hit(String(t ?? '').toLowerCase(), q)));
-        else { const all = g.cols(); tests.push((x) => all.some((col) => hit(g.text(col, x).toLowerCase(), q))); }
+      const c = searchCol();
+      const kind = kindOf(c);
+      const op = opFor(kind, s.op);
+      if (q || (c && QUICK_BARE.includes(op))) {
+        const hit = HIT[op] || HIT.contains;
+        if (kind === 'yes') tests.push((x) => !!c.get(x) === (op === 'yes'));
+        else if (kind !== 'text' && kind !== 'any') {
+          const f = fields() && fieldOf(fields(), c.key);
+          tests.push(ruleTest([['', [{ key: c.key, type: kind, get: c.get, never: !!f?.never }]]], { field: c.key, op, value: q }));
+        } else if (c) tests.push((x) => hit(g.text(c, x).toLowerCase(), q));
+        else {
+          const all = g.cols();
+          const texts = (x) => (o.find ? o.find(x).map((t) => String(t ?? '')) : all.map((col) => g.text(col, x))).map((t) => t.toLowerCase());
+          tests.push(op === 'notContains' ? (x) => !texts(x).some((t) => t.includes(q)) : (x) => texts(x).some((t) => hit(t, q)));
+        }
       }
       Object.entries(s.chips).forEach(([k, set]) => { const c = colOf(k); if (c && set.size && k !== skip) tests.push((x) => set.has(g.text(c, x) || NONE)); });
       if (s.adv && fields()) tests.push(test(fields(), s.adv));
       return tests.length ? (x) => tests.every((t) => t(x)) : () => true;
     };
     // Whether anything narrows the list.
-    b.any = () => { const s = st(); return !!s.text.trim() || Object.values(s.chips).some((set) => set.size) || !!(s.adv && fields()); };
+    const bareSearch = () => { const c = searchCol(); return !!c && QUICK_BARE.includes(opFor(kindOf(c), st().op)); };
+    b.any = () => { const s = st(); return !!s.text.trim() || bareSearch() || Object.values(s.chips).some((set) => set.size) || !!(s.adv && fields()); };
     // What's picked, in words: a saved filter's name.
     const say = () => {
       const s = st();
       const parts = Object.entries(s.chips).filter(([k, set]) => set.size && colOf(k)).map(([k, set]) => `${colOf(k).label}: ${[...set].join(', ')}`);
-      if (s.text.trim()) parts.push(`${colOf(s.col)?.label || 'Any column'} ${HIT_WORD[s.op] || 'contains'} "${s.text.trim()}"`);
+      const c = searchCol();
+      const kind = kindOf(c);
+      const op = opFor(kind, s.op);
+      const word = QUICK[kind].find(([k]) => k === op)[1];
+      if (bareSearch()) parts.push(`${c.label} ${word}`);
+      else if (s.text.trim()) parts.push(`${c?.label || 'Any column'} ${word} ${kind === 'text' || kind === 'any' ? `"${s.text.trim()}"` : `${s.text.trim()}${UNIT[op] || ''}`}`);
       if (s.adv && fields()) parts.push(words(fields(), s.adv));
       return parts.join(' · ');
     };
@@ -303,7 +355,7 @@
         el.classList.add('fbar');
         el.innerHTML = `<button type="button" class="tlink" data-fb="load">Load filter${svg('chevron-down', 'chev')}</button>`
           + `<button type="button" class="gcols" data-fb="save" data-tip="Save this filter" aria-label="Save this filter">${svg('save')}</button>`
-          + `<span class="fcombo"><select data-fb="col" aria-label="Column"></select><select data-fb="op" aria-label="Test">${Object.entries(HIT_WORD).map(([k, w]) => `<option value="${k}">${w}</option>`).join('')}</select>`
+          + '<span class="fcombo"><select data-fb="col" aria-label="Column"></select><select data-fb="op" aria-label="Test"></select>'
           + '<input type="search" data-fb="text" autocomplete="off" spellcheck="false"></span>'
           + `<span class="fchips"></span><button type="button" class="fchip" data-fb="more">${svg('plus')}Add/remove filters</button><span class="grow"></span>`
           + '<button type="button" class="tlink" data-fb="clear" hidden>Clear</button>'
@@ -335,8 +387,17 @@
           }
           const f = e.target.dataset.fb;
           if (f !== 'col' && f !== 'op') return;
-          st()[f] = e.target.value;
-          if (st().text.trim()) change();
+          const s = st();
+          const was = kindOf(searchCol());
+          s[f] = e.target.value;
+          // Another kind of column has other tests, and what was typed for the last one means nothing to it.
+          const kind = kindOf(searchCol());
+          s.op = opFor(kind, s.op);
+          if (kind !== was) {
+            s.text = '';
+            el.querySelector('[data-fb="text"]').value = '';
+          }
+          change();
         });
         el.addEventListener('click', (e) => {
           const t = e.target.closest('[data-fb]');
@@ -354,11 +415,21 @@
         col.innerHTML = `<option value="*">Any column</option>${g.cols().map((c) => `<option value="${esc(c.key)}">${esc(c.label)}</option>`).join('')}`;
       }
       col.value = s.col;
-      el.querySelector('[data-fb="op"]').value = s.op;
+      // The tests for that kind of column; a number or days are typed, yes or no and never need nothing typed.
+      const kind = kindOf(searchCol());
+      s.op = opFor(kind, s.op);
+      const opBox = el.querySelector('[data-fb="op"]');
+      if (opBox.dataset.kind !== kind) {
+        opBox.dataset.kind = kind;
+        opBox.innerHTML = QUICK[kind].map(([k, w]) => `<option value="${k}">${esc(w)}</option>`).join('');
+      }
+      opBox.value = s.op;
       const box = el.querySelector('[data-fb="text"]');
       const noun = of(o.noun) || 'this list';
-      box.placeholder = `Search ${noun}`;
-      box.setAttribute('aria-label', `Search ${noun}`);
+      box.hidden = QUICK_BARE.includes(s.op);
+      box.inputMode = QUICK_BOX[kind] ? 'decimal' : 'search';
+      box.placeholder = QUICK_BOX[kind] || `Search ${noun}`;
+      box.setAttribute('aria-label', QUICK_BOX[kind] || `Search ${noun}`);
       if (box.value !== s.text && document.activeElement !== box) box.value = s.text;
       const advOn = s.adv && fields();
       const keys = chipKeys();
@@ -450,7 +521,7 @@
       const s = st();
       s.chips = Object.fromEntries(Object.entries(f.chips || {}).filter(([k]) => colOf(k)).map(([k, v]) => [k, new Set(v)]));
       s.col = f.col && colOf(f.col) ? f.col : '*';
-      s.op = HIT[f.op] ? f.op : 'contains';
+      s.op = f.op || 'contains'; // drawing puts it right for the column's kind
       s.text = f.text || '';
       s.adv = f.adv || null;
       // Its chips show, whatever was chosen under Add/remove filters.
@@ -479,6 +550,8 @@
       s.chips = {};
       s.text = '';
       s.adv = null;
+      s.col = '*'; // a column with a test that needs nothing typed (is yes, never) would still filter
+      s.op = 'contains';
       if (el.dataset.fbar) el.querySelector('[data-fb="text"]').value = '';
       change();
     };

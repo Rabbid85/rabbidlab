@@ -179,6 +179,8 @@ body.col-moving, body.col-moving * { cursor: grabbing !important; user-select: n
 .fbar .fcombo select + select:not([multiple]) { color: #B8BCCB; font-weight: 500; }
 .fcombo input { flex: 1; min-width: 80px; height: 30px; padding: 0 10px; border: 0; outline: 0; background: none; color: var(--title); font: inherit; font-size: 13px; }
 .fcombo input::placeholder { color: #6D7290; }
+.fcombo input[hidden] { display: none; } /* a test that needs nothing typed: is yes, never */
+.fcombo:has(input[hidden]) { min-width: 0; }
 .fchips { display: contents; }
 .fchip { display: inline-flex; align-items: center; gap: 6px; height: 32px; max-width: 340px; padding: 0 11px; border: 1px solid transparent; border-radius: 8px; background: #1A1D2B; color: var(--text); font-size: 13px; font-weight: 600; white-space: nowrap; }
 .fchip:hover { background: #222536; }

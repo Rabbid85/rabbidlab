@@ -227,7 +227,9 @@
 
   const H = D.hooks;
   const tabs0 = H.seatTabs;
-  H.seatTabs = (c) => [...(tabs0?.(c) || []), ...(has('windows.view') && c.approved ? [['accounts', 'Accounts', live[c.id]?.accounts ? live[c.id].accounts.filter((a) => !a.builtIn).length : '']] : [])];
+  // Its count before the tab opens comes from the last fleet read (known), until the computer itself answers.
+  const accCount = (c) => { const list = live[c.id]?.accounts || known(c.id)?.locals; return list ? list.filter((a) => !a.builtIn).length : ''; };
+  H.seatTabs = (c) => [...(tabs0?.(c) || []), ...(has('windows.view') && c.approved ? [['accounts', 'Accounts', accCount(c)]] : [])];
   const pane0 = H.seatPane;
   H.seatPane = (c, tab) => {
     if (tab !== 'accounts') return pane0 ? pane0(c, tab) : null;

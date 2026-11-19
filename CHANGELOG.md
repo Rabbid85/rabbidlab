@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.274 (2026-11-19)
+
+- The search in the filter bar asks what fits the column picked: more than, less than or at least for a number like Errors, in the last or more than so many days for a date, and is yes or is no for a column that is one or the other.
+- A computer panel shows how many accounts, printers and Group Policy objects it has as soon as it opens, before you click those tabs.
+- Clicking a row no longer sometimes selects all the text in the side panel.
+
 ## 1.1.273 (2026-11-19)
 
 - Active Directory has one split New button in the bar under the banner: New makes what the open list holds, and its arrow has New user, New group and New computer.

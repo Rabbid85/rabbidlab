@@ -35,10 +35,10 @@
 
   // --- A computer's Printers tab -------------------------------------------------------------------------------
   const inv = {}; // computer id -> { printers, drivers } from its inventory, or { error }
+  const keepInv = (id, got) => { inv[id] = { printers: got?.printers ?? null, drivers: got?.printerDrivers || [], sent: !!got }; };
   const loadInv = async (id) => {
     try {
-      const got = (await get(`/api/clients/${encodeURIComponent(id)}/inventory`)).inventory;
-      inv[id] = { printers: got?.printers ?? null, drivers: got?.printerDrivers || [], sent: !!got };
+      keepInv(id, (await get(`/api/clients/${encodeURIComponent(id)}/inventory`)).inventory);
     } catch (e) {
       inv[id] = { error: e.message };
     }
@@ -85,6 +85,12 @@
   H.seatOpened = (c) => {
     delete inv[c.id]; // read again for each opening
     opened0?.(c);
+  };
+  // The inventory the panel reads as it opens: the tab's count shows before the tab is opened.
+  const inv0 = H.seatInventory;
+  H.seatInventory = (c, got) => {
+    keepInv(c.id, got?.inventory);
+    inv0?.(c, got);
   };
   panel.el.addEventListener('click', (e) => {
     if (!panel.is('seats')) return;

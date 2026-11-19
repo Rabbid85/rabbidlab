@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.274', [
+    'The search in the filter bar asks what fits the column picked: more than, less than or at least for a number like Errors, in the last or more than so many days for a date, and is yes or is no for a column that is one or the other.',
+    'A computer panel shows how many accounts, printers and Group Policy objects it has as soon as it opens, before you click those tabs.',
+    'Clicking a row no longer sometimes selects all the text in the side panel.']],
   ['1.1.273', [
     'Active Directory has one split New button in the bar under the banner: New makes what the open list holds, and its arrow has New user, New group and New computer.']],
   ['1.1.272', [
@@ -2075,7 +2079,7 @@ const RELEASE_NOTES = [
   // What devices.js adds to this page: more lists (Scripts, Jobs, Workflows), the ticks on computers and what Actions
   // does with them, and its parts of a computer's side panel.
   const dvMore = {}; // key -> { table, grid(), rows(), load(), empty(), count(), can() }
-  const dvHooks = {}; // lead(), drawn(), seatBar(c), seatTabs(c), seatPane(c, tab), seatOpened(c)
+  const dvHooks = {}; // lead(), drawn(), seatBar(c), seatTabs(c), seatPane(c, tab), seatOpened(c), seatInventory(c, got)
   const dvPicked = new Set(); // the ticked computers, by id
   // Every row of Computers: this server too (accounts.js gives it through hooks.extra), then the clients.
   const dvAll = () => [...(dvHooks.extra?.() || []), ...computers];
@@ -2709,10 +2713,11 @@ const RELEASE_NOTES = [
       markSeat();
       dvHooks.seatOpened?.(c);
       if (c.server) return;
-      // Its software and updates, asked for as it opens.
+      // Its inventory, asked for once as it opens: software and updates here, and the other tabs' counts (printers.js, gpo.js).
       get(`/api/clients/${encodeURIComponent(c.id)}/inventory`).then((got) => {
         if (seat?.id !== c.id) return;
         seatInv = got;
+        dvHooks.seatInventory?.(c, got);
         if (panel.shows('seats', c.id)) drawSeat();
       }).catch(() => {});
     };
@@ -3710,6 +3715,16 @@ const RELEASE_NOTES = [
     else if (e.target.closest('[data-dw-close]')) panel.close();
   });
   panel.el.addEventListener('close', () => tuck(false));
+  // A press that starts outside the panel never leaves its text selected: a list redrawn under the pointer, or a quick
+  // double click on a row, can otherwise select the whole panel.
+  const unselect = () => {
+    const s = getSelection();
+    if (s && !s.isCollapsed && s.containsNode(panel.body, true)) s.removeAllRanges();
+  };
+  let pressedOutside = false;
+  document.addEventListener('pointerdown', (e) => { pressedOutside = !panel.el.contains(e.target); }, true);
+  document.addEventListener('pointerup', () => { if (pressedOutside && panel.el.open) setTimeout(unselect); }, true);
+  panel.el.addEventListener('toggle', () => { if (panel.el.open) unselect(); });
   // A click on the row it shows tucks it to the edge, like the ›, and brings it back while it's tucked. The page never
   // sees that click, so it doesn't close the panel.
   document.addEventListener('click', (e) => {

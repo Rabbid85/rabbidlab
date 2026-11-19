@@ -1011,9 +1011,10 @@
   const gpoName = (x) => (gp ? gpoOf(x.id)?.name : null) || (x.name && !/^\{[0-9A-F-]+\}$/i.test(x.name) ? x.name : x.id === 'LOCALGPO' ? 'Local Group Policy' : x.name || x.id);
   const linkWords = (x) => (x.link === 'Local' ? 'This computer\'s own policy' : x.link ? `Linked to ${x.link}` : '');
   const gpRows = (list2, why) => rows2(list2.map((x) => [gpoName(x), why ? WHY[x.why] || 'Not applied' : linkWords(x), gp && gpoOf(x.id) ? svg('right', 'acc-go') : '', gp && gpoOf(x.id) && has('gpo.view') ? `data-gpo-open-pc="${esc(x.id)}"` : '']));
-  const errCount = (p) => (p?.errors || []).filter((e) => !e.warning).length;
   const tabs0 = D.hooks.seatTabs;
-  D.hooks.seatTabs = (c) => [...(tabs0?.(c) || []), ...(c.approved && !c.server ? [['gp', 'Group Policy', errCount(inv[c.id]?.data) || '']] : [])];
+  // Its count is how many GPOs applied, to the computer and to whoever was signed in.
+  const appliedCount = (p) => (p ? (p.computer?.applied.length || 0) + (p.user?.applied.length || 0) : '');
+  D.hooks.seatTabs = (c) => [...(tabs0?.(c) || []), ...(c.approved && !c.server ? [['gp', 'Group Policy', appliedCount(inv[c.id]?.data)]] : [])];
   const pane0 = D.hooks.seatPane;
   D.hooks.seatPane = (c, which) => {
     if (which !== 'gp') return pane0?.(c, which) ?? null;
@@ -1055,6 +1056,12 @@
     if (!inv[c.id]?.at || Date.now() - inv[c.id].at > 60000) delete inv[c.id];
     if (has('gpo.view') && !gp && !loading) load(); // for GPO names
     opened0?.(c);
+  };
+  // The inventory the panel reads as it opens: the tab's error count shows before the tab is opened.
+  const inv0 = D.hooks.seatInventory;
+  D.hooks.seatInventory = (c, got) => {
+    if (!inv[c.id]?.data) inv[c.id] = { data: got?.inventory?.groupPolicy || null, at: Date.now() };
+    inv0?.(c, got);
   };
   panel.el.addEventListener('click', (e) => {
     if (!panel.is('seats')) return;
