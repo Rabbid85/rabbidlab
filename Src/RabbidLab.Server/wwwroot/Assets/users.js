@@ -539,7 +539,7 @@
     const picks = !!picked[adPage];
     $('dir-act').hidden = !picks;
     adBar.draw();
-    adGrid.tools($('dir-tools'));
+    adGrid.tools($('dir-tools'), $('dir-rows'));
     if (picks && lists[adPage]) [...picked[adPage]].forEach((k) => { if (!byKey(k)) picked[adPage].delete(k); });
     $('dir-table').className = `table adt ${adPage} drows${picks ? ' picks' : ''}`;
     emptyNow = list.length ? (adBar.any() ? 'Nothing matches the filter.' : 'Nothing here right now.') : 'Nothing yet.';
@@ -579,9 +579,12 @@
     const at = R.where()[0];
     if (!other && at !== 'ad') other = at === 'org' || at === 'attrs' ? at : ''; // a list read again while another page is open
     if (!other && at !== 'ad') return;
-    // The bar under it: New, once the account is known; none without one or read-only. New makes the open list's kind.
-    $('dir-cmd').hidden = !!ad && (!ad.state || ad.state.readOnly);
-    $('dir-cmd').querySelectorAll('button').forEach((b) => { b.disabled = !ad?.state; });
+    // The bar under it, once the account is known: New (not while read-only), which makes the open list's kind, and on
+    // the pages that list things, the rows, Refresh and Export.
+    $('dir-cmd').hidden = !!ad && !ad.state;
+    $('dir-new-split').hidden = !!ad?.state?.readOnly;
+    $('dir-side').hidden = !!other;
+    $('dir-new-split').querySelectorAll('button').forEach((b) => { b.disabled = !ad?.state; });
     $('dir-new').dataset.tip = MAKES.find(([k]) => k === makeKind())[2];
     const hero = $('dir-hero');
     $('dir-eyebrow').textContent = ad?.state ? `${ad.state.domain} · Directory` : 'Directory';

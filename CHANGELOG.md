@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.278 (2026-11-19)
+
+- On Active Directory, Devices and Group Policy, Compact or Relaxed rows, Refresh and Export moved up to the right end of the bar under the banner, after View, like Links. The list keeps Actions, Group by and the count.
+
 ## 1.1.277 (2026-11-19)
 
 - Users, Groups and Computers in Active Directory have far more columns to show and filter by: address, phone numbers, employee ID, home folder, profile path, logon script, logon and bad password counts, custom attributes 1 to 15, SID, distinguished name, changed, member of, and each account option as yes or no.

@@ -177,6 +177,7 @@
     // The grid's part of a list bar: Group by with its switch and what it groups by, how many rows show, and Compact
     // or Relaxed. A page gives the element once (again each draw, where several grids share one bar).
     let bar = null;
+    let rowsBar = null; // where Compact or Relaxed goes, when not at the end of the bar
     let shownNow = 0;
     // How many rows show; with some ticked (o.picked), how many of them: 3/7 Items selected.
     const count = () => {
@@ -193,29 +194,36 @@
       if (tools.get(bar) !== g) return; // another grid has the bar now
       const s = groupSet();
       const by = s.keys.map((k) => cols().find((c) => c.key === k)?.label).filter(Boolean).join(', ');
+      const rows = `<div class="vswitch">${[['compact', 'Compact rows', 'view-list'], ['relaxed', 'Relaxed rows', 'view-rows']].map(([d, tip, icon]) => `<button type="button" data-density="${d}" aria-pressed="${density() === d}" data-tip="${tip}" aria-label="${tip}">${svg(icon)}</button>`).join('')}</div>`;
       bar.innerHTML = `<label class="gby"><input type="checkbox" class="switch" data-grid-group-on${s.on && by ? ' checked' : ''}><span>Group by</span></label>`
         + `<button type="button" class="gby-pick" data-grid-group-pick>${esc(by || 'Pick a column')}${svg('chevron-down', 'chev')}</button>`
-        + `<span class="gcount">${count()}</span><span class="grow"></span>`
-        + `<div class="vswitch">${[['compact', 'Compact rows', 'view-list'], ['relaxed', 'Relaxed rows', 'view-rows']].map(([d, tip, icon]) => `<button type="button" data-density="${d}" aria-pressed="${density() === d}" data-tip="${tip}" aria-label="${tip}">${svg(icon)}</button>`).join('')}</div>`;
+        + `<span class="gcount">${count()}</span>${rowsBar ? '' : `<span class="grow"></span>${rows}`}`;
+      if (rowsBar) rowsBar.innerHTML = rows;
     };
     const pickGroup = (button) => {
       const s = groupSet();
       R.picker.open(button, { key: `group.${name('g')}`, items: cols().filter((c) => !c.fixed && !c.nogroup).map((c) => ({ key: c.key, label: c.label })), picked: new Set(s.keys),
         change: (picked) => { keep(name('group'), { on: picked.size > 0, keys: [...picked] }); o.redraw(); } });
     };
-    g.tools = (el) => {
+    // el: the list bar's part for this grid (Group by, the count). rows: where Compact or Relaxed goes instead of the
+    // end of el, such as the command bar under the banner.
+    g.tools = (el, rows = null) => {
       bar = el;
+      rowsBar = rows;
       tools.set(el, g);
-      if (el.dataset.gridTools) return;
-      el.dataset.gridTools = '1';
+      if (rows) tools.set(rows, g);
       el.classList.add('gtools');
-      // One set of listeners for the element: they go to whichever grid has it.
-      el.addEventListener('change', (e) => { if (e.target.matches('[data-grid-group-on]')) tools.get(el).groupOn(e.target); });
-      el.addEventListener('click', (e) => {
-        const d = e.target.closest('[data-density]');
-        if (d) tools.get(el).density(d.dataset.density);
-        else if (e.target.closest('[data-grid-group-pick]')) tools.get(el).pickGroup(e.target.closest('[data-grid-group-pick]'));
-      });
+      for (const node of [el, rows].filter(Boolean)) {
+        if (node.dataset.gridTools) continue;
+        node.dataset.gridTools = '1';
+        // One set of listeners for the element: they go to whichever grid has it.
+        node.addEventListener('change', (e) => { if (e.target.matches('[data-grid-group-on]')) tools.get(node).groupOn(e.target); });
+        node.addEventListener('click', (e) => {
+          const d = e.target.closest('[data-density]');
+          if (d) tools.get(node).density(d.dataset.density);
+          else if (e.target.closest('[data-grid-group-pick]')) tools.get(node).pickGroup(e.target.closest('[data-grid-group-pick]'));
+        });
+      }
     };
     g.pickGroup = pickGroup;
     g.density = (d) => { keep(DENSITY, d); o.redraw(); };

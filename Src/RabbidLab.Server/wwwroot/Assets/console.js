@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.278', [
+    'On Active Directory, Devices and Group Policy, Compact or Relaxed rows, Refresh and Export moved up to the right end of the bar under the banner, after View, like Links. The list keeps Actions, Group by and the count.']],
   ['1.1.277', [
     'Users, Groups and Computers in Active Directory have far more columns to show and filter by: address, phone numbers, employee ID, home folder, profile path, logon script, logon and bad password counts, custom attributes 1 to 15, SID, distinguished name, changed, member of, and each account option as yes or no.',
     'Computers add the pre-Windows 2000 name, service pack, password last set, managed by, service principal names, Kerberos encryption types, when the LAPS password changes next, and trusted for delegation. Groups add managed by, created, changed and SID.']],
@@ -2168,8 +2170,9 @@ const RELEASE_NOTES = [
     // The filter bar, and the grid's part of the list's bar (Group by, the count, Compact or Relaxed), for the list that shows.
     if (listed) {
       dvBar().draw();
-      dvGrid().tools($('dv-tools'));
+      dvGrid().tools($('dv-tools'), $('dv-rows'));
     }
+    $('dv-side').hidden = !listed;
     dvGrid().draw(dvShown);
     if (dvAt === 'sessions') paint($('sessions-table'));
     seatPanel?.();

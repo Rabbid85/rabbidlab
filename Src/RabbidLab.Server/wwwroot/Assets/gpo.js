@@ -292,10 +292,10 @@
     // The bar under the banner: what each list makes, waiting until Group Policy has been read.
     const cmds = Object.entries(LISTS).filter(([, x]) => x.make()).map(([k, x]) => `<button type="button" class="cmd" data-make="${k}"${gp ? '' : ' disabled'}>${svg(x.icon)}<span>${esc(x.make())}</span></button>`).join('');
     if (cmds !== drawnCmds) $('gpo-cmd').innerHTML = drawnCmds = cmds;
-    $('gpo-cmd').hidden = !!setup;
+    $('gpo-cmdbar').hidden = !!setup;
     // The filter bar, and the grid's part of the list's bar (Group by, the count, Compact or Relaxed).
     gpoBar.draw();
-    g0.tools($('gpo-tools'));
+    g0.tools($('gpo-tools'), $('gpo-rows'));
     $('gpo-problem').hidden = !problem;
     $('gpo-problem').textContent = problem;
     $('gpo-note').hidden = !(gp && !gp.gpmc && list !== 'wmi' && list !== 'linked');

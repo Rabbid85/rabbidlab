@@ -614,9 +614,16 @@ a.button:hover, label.button:hover { background: #222536; text-decoration: none;
 .cmdbar { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; min-height: 52px; padding: 0 32px; border-bottom: 1px solid var(--line); background: #0F111A; }
 .cmdbar[hidden], .cmdbar:not(:has(> :not(.cant, [hidden], .grow))) { display: none; }
 .cmdbar .grow { flex: 1; }
+/* The open list's own tools on the right (Active Directory, Devices, Group Policy): View with Compact or Relaxed, then
+   Refresh and Export in one box. */
+.cmdbar .cmd-side { display: flex; align-items: center; gap: 8px; }
+.cmdbar .cmd-side[hidden] { display: none; }
+.cmdbar .cmd-side .cmd-l { margin-right: 2px; }
+.cmdbar .cmd-set { display: contents; } /* commands a page draws itself (Group Policy) */
 /* New as a split button (Active Directory): one button in the primary colour, the left half makes what the open list
    holds, the arrow opens the menu of everything the page makes. */
 .cmdbar .cmd-split { display: inline-flex; flex: none; margin-right: 6px; border-radius: 8px; background: var(--ember); }
+.cmdbar .cmd-split[hidden] { display: none; }
 .cmd-split > button { display: inline-flex; align-items: center; height: 34px; margin: 0; border: 0; border-radius: 0; background: none; color: #fff; font-size: 14px; font-weight: 700; }
 .cmd-split > .cmd-new { gap: 7px; padding: 0 14px 0 12px; border-radius: 8px 0 0 8px; }
 .cmd-split > .cmd-more { justify-content: center; width: 32px; padding: 0; border-left: 1px solid rgba(255, 255, 255, .3); border-radius: 0 8px 8px 0; }

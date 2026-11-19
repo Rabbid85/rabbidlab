@@ -575,12 +575,17 @@
       <p class="hero-lead"><b id="dv-state"></b> <span id="dv-lead"></span></p>
       <div class="hero-stats" id="dv-stats"></div>
     </header>
-    <!-- The command bar under the banner, as on Links: what can be added here, whichever list is open. -->
+    <!-- The command bar under the banner, as on Links: what can be added here, whichever list is open; then the open
+         list's rows (Compact or Relaxed, grid.js), Refresh and Export on the right. -->
     <div class="cmdbar" id="dv-cmd" role="toolbar" aria-label="Devices">
       <button type="button" class="cmd" id="seats-add" data-can="seats.add"><svg><use href="#i-monitor"/></svg><span>Add computers</span></button>
       <button type="button" class="cmd" id="dv-new-app" data-can="seats.installs"><svg><use href="#i-box"/></svg><span>Add an app</span></button>
       <button type="button" class="cmd" id="dv-new-script" data-can="seats.scripts.edit"><svg><use href="#i-code"/></svg><span>New script</span></button>
       <button type="button" class="cmd" id="dv-new-flow" data-can="seats.workflows"><svg><use href="#i-org"/></svg><span>New workflow</span></button>
+      <span class="grow"></span>
+      <div class="cmd-side" id="dv-side"><span class="cmd-l">View</span><span id="dv-rows"></span>
+        <div class="gdock"><button type="button" id="dv-refresh" data-tip="Refresh" aria-label="Refresh"><svg><use href="#i-refresh"/></svg></button>
+          <button type="button" class="gexp" id="dv-export" data-tip="Export" aria-label="Export"><svg><use href="#i-download"/></svg></button></div></div>
     </div>
     <div class="dir-area">
       <!-- The lists of the Devices page down the left; Computers has views of its own under it (console.js), and
@@ -617,16 +622,14 @@
             <span class="wq-note">Read only. Runs as SYSTEM on each computer, up to 30 seconds. Ctrl+Enter runs it too.</span></div>
           <ul class="wq-problems" id="wq-problems" hidden></ul>
         </div>
-        <!-- The filter bar (filter.js), then whichever list is open in its card: Actions, Group by and the count (grid.js),
-             Refresh and Export. Deploy the client is a page of its own, with neither. -->
+        <!-- The filter bar (filter.js), then whichever list is open in its card: Actions, Group by and the count (grid.js).
+             Deploy the client is a page of its own, with neither. -->
         <div id="dv-fbar"></div>
         <div class="dv-deploy" id="dv-deploy" hidden></div>
         <div class="gcard" id="dv-card">
           <div class="gbar">
             <button type="button" class="small" id="dv-act" aria-haspopup="menu" disabled data-tip="Tick computers first">Actions<b class="cnt" hidden></b><svg class="chev"><use href="#i-chevron-down"/></svg></button>
             <div id="dv-tools"></div>
-            <div class="gdock"><button type="button" id="dv-refresh" data-tip="Refresh" aria-label="Refresh"><svg><use href="#i-refresh"/></svg></button>
-              <button type="button" class="gexp" id="dv-export" data-tip="Export" aria-label="Export"><svg><use href="#i-download"/></svg></button></div>
           </div>
           <div class="table adt drows" id="seats-table" data-can="seats.view" data-skel="rows:4"></div>
           <div class="table adt drows" id="dv-gplocal" hidden></div>
@@ -846,6 +849,11 @@
         <button type="button" class="cmd-new" id="dir-new" data-tip="New user"><svg><use href="#i-plus"/></svg><span>New</span></button>
         <button type="button" class="cmd-more" id="dir-new-more" aria-haspopup="menu" data-tip="New user, group or computer" aria-label="New user, group or computer"><svg class="chev"><use href="#i-chevron-down"/></svg></button>
       </div>
+      <span class="grow"></span>
+      <!-- The open list's rows (Compact or Relaxed, grid.js), Refresh and Export; not on Org chart or Attribute browser. -->
+      <div class="cmd-side" id="dir-side"><span class="cmd-l">View</span><span id="dir-rows"></span>
+        <div class="gdock"><button type="button" id="dir-refresh" data-tip="Refresh" aria-label="Refresh"><svg><use href="#i-refresh"/></svg></button>
+          <button type="button" class="gexp" id="dir-export" data-tip="Export" aria-label="Export"><svg><use href="#i-download"/></svg></button></div></div>
     </div>
   <div class="dir-area">
     <div class="dgate" id="dir-setup" hidden></div>
@@ -877,7 +885,7 @@
     <div class="lib" id="dir-lib" hidden>
       <div class="lib-body">
         <!-- The list's tabs, the filter bar (filter.js), then the list in its card under its own bar: Actions, Group by and
-             the count (grid.js), Refresh, Export. -->
+             the count (grid.js). -->
         <div class="dbar"><div class="tabs2" id="dir-tabs"></div></div>
         <div id="dir-fbar"></div>
         <div class="dir-banner" id="dir-banner" hidden></div>
@@ -885,8 +893,6 @@
           <div class="gbar">
             <button type="button" class="small" id="dir-act" aria-haspopup="menu" disabled>Actions<b class="cnt" hidden></b><svg class="chev"><use href="#i-chevron-down"/></svg></button>
             <div id="dir-tools"></div>
-            <div class="gdock"><button type="button" id="dir-refresh" data-tip="Refresh" aria-label="Refresh"><svg><use href="#i-refresh"/></svg></button>
-              <button type="button" class="gexp" id="dir-export" data-tip="Export" aria-label="Export"><svg><use href="#i-download"/></svg></button></div>
           </div>
           <div class="table" id="dir-table"></div>
         </div>
@@ -908,8 +914,15 @@
       <p class="hero-lead"><b id="gpo-state"></b> <span id="gpo-lead"></span></p>
       <div class="hero-stats" id="gpo-stats"></div>
     </header>
-    <!-- The command bar under the banner, as on Links: what each list makes (gpo.js draws it). -->
-    <div class="cmdbar" id="gpo-cmd" role="toolbar" aria-label="Group Policy"></div>
+    <!-- The command bar under the banner, as on Links: what each list makes (gpo.js draws it), then the list's rows
+         (Compact or Relaxed, grid.js), Refresh and Export on the right. -->
+    <div class="cmdbar" id="gpo-cmdbar" role="toolbar" aria-label="Group Policy">
+      <span class="cmd-set" id="gpo-cmd"></span>
+      <span class="grow"></span>
+      <div class="cmd-side"><span class="cmd-l">View</span><span id="gpo-rows"></span>
+        <div class="gdock"><button type="button" id="gpo-refresh" data-tip="Refresh" aria-label="Refresh"><svg><use href="#i-refresh"/></svg></button>
+          <button type="button" class="gexp" id="gpo-export" data-tip="Export" aria-label="Export"><svg><use href="#i-download"/></svg></button></div></div>
+    </div>
     <div class="dir-area">
       <div class="dgate" id="gpo-setup" hidden></div>
       <nav class="dnav lists" id="gpo-rail" aria-label="Group Policy">
@@ -933,8 +946,6 @@
             <div class="gbar">
               <button type="button" class="small" id="gpo-act" aria-haspopup="menu" disabled data-tip="Tick GPOs first">Actions<b class="cnt" hidden></b><svg class="chev"><use href="#i-chevron-down"/></svg></button>
               <div id="gpo-tools"></div>
-              <div class="gdock"><button type="button" id="gpo-refresh" data-tip="Refresh" aria-label="Refresh"><svg><use href="#i-refresh"/></svg></button>
-                <button type="button" class="gexp" id="gpo-export" data-tip="Export" aria-label="Export"><svg><use href="#i-download"/></svg></button></div>
             </div>
             <div class="table adt drows" id="gpo-table" data-skel="rows:6"></div>
           </div>
