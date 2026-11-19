@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text.Json;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using RabbidLab.Server;
 using RabbidLab.Updater;
@@ -145,6 +146,94 @@ public sealed class SignInTests : IDisposable
         Assert.DoesNotContain(signedIn.Headers.GetValues("Set-Cookie"), c => c.Contains("expires=", StringComparison.OrdinalIgnoreCase));
         app.Clock.Advance(TimeSpan.FromMinutes(6)); // no page open
         Assert.Equal(HttpStatusCode.Unauthorized, (await page.GetAsync("/api/status")).StatusCode);
+    }
+
+    /// <summary>A request from another address, as Kestrel would give it: plain HTTP, with the headers given.</summary>
+    private async Task<(int Status, string Body, string? Cookie)> From(string address, string method, string path, object? body = null,
+        Dictionary<string, string>? headers = null, string? cookie = null)
+    {
+        var c = await app.Server.SendAsync(c =>
+        {
+            c.Request.Method = method;
+            c.Request.Path = path;
+            c.Request.Scheme = "http";
+            c.Connection.RemoteIpAddress = IPAddress.Parse(address);
+            c.Request.Headers["X-Rabbid-Lab"] = "1";
+            foreach (var (k, v) in headers ?? [])
+            {
+                c.Request.Headers[k] = v;
+            }
+            if (cookie is not null)
+            {
+                c.Request.Headers.Cookie = cookie;
+            }
+            if (body is not null)
+            {
+                var bytes = JsonSerializer.SerializeToUtf8Bytes(body, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+                c.Request.ContentType = "application/json";
+                c.Request.ContentLength = bytes.Length;
+                c.Request.Body = new MemoryStream(bytes);
+                c.Features.Set<Microsoft.AspNetCore.Http.Features.IHttpRequestBodyDetectionFeature>(new HasBody());
+            }
+        });
+        var said = await new StreamReader(c.Response.Body).ReadToEndAsync();
+        var set = c.Response.Headers.SetCookie.FirstOrDefault(v => v?.StartsWith(RabbidLab.Server.SignIn.Cookie + "=", StringComparison.Ordinal) == true);
+        return (c.Response.StatusCode, said, set?.Split(';')[0]);
+    }
+
+    // TestServer's SendAsync otherwise takes a request as one without a body.
+    private sealed class HasBody : Microsoft.AspNetCore.Http.Features.IHttpRequestBodyDetectionFeature
+    {
+        public bool CanHaveBody => true;
+    }
+
+    [Fact]
+    public async Task Over_plain_HTTP_from_another_computer_nobody_signs_in_unless_HTTPS_came_through_a_trusted_proxy()
+    {
+        await app.SignedIn();
+        var me = new { username = "admin", password = "correct horse", local = true };
+
+        var plain = await From("192.168.2.40", "POST", "/api/signin", me);
+        var page = await From("192.168.2.40", "GET", "/api/signin");
+        var here = await From("127.0.0.1", "POST", "/api/signin", me); // on the server itself: nothing crosses the network
+        var proxied = await From("127.0.0.1", "POST", "/api/signin", me, new() { ["X-Forwarded-Proto"] = "https", ["X-Forwarded-For"] = "192.168.2.40" });
+        var claimed = await From("192.168.2.50", "POST", "/api/signin", me, new() { ["X-Forwarded-Proto"] = "https" }); // a proxy nobody trusts
+
+        Assert.Equal(403, plain.Status);
+        Assert.Contains("plain HTTP", plain.Body);
+        Assert.Null(plain.Cookie);
+        Assert.Contains("\"plain\":\"refused\"", page.Body);
+        Assert.True(here.Status == 200, here.Body);
+        Assert.Equal(200, proxied.Status);
+        Assert.Equal(403, claimed.Status);
+        Assert.Equal(403, (await From("192.168.2.40", "POST", "/api/setup/local", new { username = "x", password = "a long password" })).Status);
+
+        // A session taken over to plain HTTP from another computer ends, here too.
+        Assert.Equal(200, (await From("127.0.0.1", "GET", "/api/status", cookie: here.Cookie)).Status);
+        Assert.Equal(401, (await From("192.168.2.40", "GET", "/api/status", cookie: here.Cookie)).Status);
+        Assert.Equal(401, (await From("127.0.0.1", "GET", "/api/status", cookie: here.Cookie)).Status);
+    }
+
+    [Theory]
+    [InlineData("192.168.2.40", false, false, true, "refused")]
+    [InlineData("192.168.2.40", false, true, false, "allowed")] // AllowPlainHttp: let through, and the page warns
+    [InlineData("192.168.2.40", true, false, false, null)]
+    [InlineData("127.0.0.1", false, false, false, null)]
+    [InlineData("::1", false, false, false, null)]
+    [InlineData("::ffff:127.0.0.1", false, false, false, null)]
+    public void Plain_HTTP_is_from_another_computer_without_HTTPS(string address, bool https, bool allowed, bool exposed, string? said)
+    {
+        var config = new Microsoft.Extensions.Configuration.ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["AllowPlainHttp"] = allowed ? "true" : null }).Build();
+        var context = new Microsoft.AspNetCore.Http.DefaultHttpContext
+        {
+            RequestServices = new ServiceCollection().AddSingleton<Microsoft.Extensions.Configuration.IConfiguration>(config).BuildServiceProvider(),
+        };
+        context.Connection.RemoteIpAddress = IPAddress.Parse(address);
+        context.Request.Scheme = https ? "https" : "http";
+
+        Assert.Equal(exposed, PlainHttp.Exposed(context));
+        Assert.Equal(said, PlainHttp.Said(context));
     }
 
     [Fact]

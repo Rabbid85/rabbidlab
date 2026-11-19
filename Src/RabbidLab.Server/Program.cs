@@ -65,6 +65,7 @@ builder.Services.AddSingleton<IConfigureOptions<KeyManagementOptions>>(services 
     options.XmlRepository = new FileSystemXmlRepository(
         new DirectoryInfo(Path.Combine(services.GetRequiredService<DataFolder>().Path, "Keys")), services.GetRequiredService<ILoggerFactory>())));
 builder.Services.AddSingleton<SettingsStore>();
+builder.Services.AddProxies();
 builder.Services.AddSingleton<ActivityLog>();
 builder.Services.AddSingleton<ServerStatus>();
 builder.Services.AddHttpClient();
@@ -146,6 +147,8 @@ if (app.ResetMfaCommand(args) is int reset)
     return reset;
 }
 
+// A reverse proxy's X-Forwarded-Proto and -For, from trusted proxies only (PlainHttp.cs), before anything reads them.
+app.UseForwardedHeaders();
 app.UseRedirectPort(redirect);
 app.Use(async (context, next) =>
 {

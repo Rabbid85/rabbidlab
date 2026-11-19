@@ -93,7 +93,8 @@ public static class SignIn
                 }
                 // A role that requires MFA takes a code: a session from before it did ends, and signing in again asks for one.
                 var noCode = p is not null && p.FindFirstValue("mfa") is null && roles.NeedsMfa(Who.Of(p));
-                if (stamp is null || stamp != current || old || noCode || p is null || !roles.CanSignIn(Who.Of(p)) || IdleOut(context.HttpContext, p))
+                if (stamp is null || stamp != current || old || noCode || p is null || !roles.CanSignIn(Who.Of(p)) || PlainHttp.Exposed(context.HttpContext)
+                    || IdleOut(context.HttpContext, p))
                 {
                     context.RejectPrincipal();
                     await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
@@ -186,6 +187,14 @@ public static class SignIn
                 await context.Response.WriteAsJsonAsync(new { error = "That request is too large." });
                 return;
             }
+            // Plain HTTP from another computer: no password goes in (PlainHttp.cs). Sessions are refused in OnValidatePrincipal.
+            if (HttpMethods.IsPost(context.Request.Method) && (path.StartsWithSegments("/api/signin") || path.StartsWithSegments("/api/setup")
+                || path == "/api/confirm" || path == "/api/me/password") && PlainHttp.Exposed(context))
+            {
+                context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                await context.Response.WriteAsJsonAsync(new { error = PlainHttp.Refused, plain = true });
+                return;
+            }
             if (signedIn || Open(path))
             {
                 await next(context);
@@ -252,6 +261,7 @@ public static class SignIn
             user = context.User.Identity?.IsAuthenticated == true ? Me(context.User, roles) : null,
             brand = Brand.Read(settings.Current), // the lab's own name, icon and accent, so the sign-in page wears them too
             idle = settings.Current.IdleMinutes, // Sign out when idle, so the page can warn before it happens
+            plain = PlainHttp.Said(context), // plain HTTP from another computer: refused, or allowed by AllowPlainHttp
         }));
 
         // The sign-in page's Change: the domains accounts may sign in from, and a domain's controllers and which ones answer now.

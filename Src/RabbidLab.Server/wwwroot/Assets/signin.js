@@ -513,6 +513,17 @@
     });
 
     choose(setup ? (location.hash === '#ad' ? 'ad' : 'local') : s.domain && remembered() !== 'local' ? 'ad' : 'local');
+    // Plain HTTP from another computer (PlainHttp.cs): no form to type a password into, and what to do instead. When
+    // AllowPlainHttp lets it through anyway, a warning over the form.
+    if (s.plain) {
+      const https = location.hostname ? ` (such as https://${location.hostname})` : '';
+      $('plain-note').textContent = s.plain === 'refused'
+        ? `This console is on plain HTTP, so your password and session would cross the network unencrypted. Open it with its HTTPS address${https}. To set one up, run Setup again and pick a certificate, or put a reverse proxy that does HTTPS in front of it.`
+        : 'This console is on plain HTTP: your password and session cross the network unencrypted. An administrator allowed this with AllowPlainHttp.';
+      $('plain-note').classList.toggle('warn', s.plain !== 'refused');
+      $('plain-note').hidden = false;
+      if (s.plain === 'refused') ['local-form', 'ad-form', 'other-kind'].forEach((id) => { $(id).hidden = true; });
+    }
     document.body.classList.remove('loading'); // drawn once, already in its final layout
     watchUpdates();
   };

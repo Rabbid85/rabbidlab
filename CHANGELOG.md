@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.251 (2026-11-18)
+
+- Signing in over plain HTTP from another computer is refused, so a password or session never crosses the network unencrypted. The sign-in page says why and what to do. Signing in on the server itself still works.
+- A reverse proxy that does HTTPS in front of Rabbid Lab now counts as HTTPS. Only proxies on this machine, or listed in Proxy:Trusted, are believed.
+- AllowPlainHttp set to true lets plain HTTP sign-ins through, with a warning on the sign-in page. Only use it on a network you trust completely.
+
 ## 1.1.250 (2026-11-18)
 
 - A failed sign-in is logged under the username only when it is an account here, or for Active Directory one that has signed in here before. Anything else shows as Unknown user, so a password typed into the username box never lands in the log.

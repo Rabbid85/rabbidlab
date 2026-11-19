@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.251', [
+    'Signing in over plain HTTP from another computer is refused, so a password or session never crosses the network unencrypted. The sign-in page says why and what to do. Signing in on the server itself still works.',
+    'A reverse proxy that does HTTPS in front of Rabbid Lab now counts as HTTPS. Only proxies on this machine, or listed in Proxy:Trusted, are believed.',
+    'AllowPlainHttp set to true lets plain HTTP sign-ins through, with a warning on the sign-in page. Only use it on a network you trust completely.']],
   ['1.1.250', [
     'A failed sign-in is logged under the username only when it is an account here, or for Active Directory one that has signed in here before. Anything else shows as Unknown user, so a password typed into the username box never lands in the log.',
     'An MFA secret being set up is kept encrypted until its first code, like saved ones.',

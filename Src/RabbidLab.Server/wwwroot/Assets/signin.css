@@ -78,6 +78,9 @@ button.go:hover { filter: brightness(1.08); background: var(--ember); }
 button.go:active { transform: translateY(1px); }
 button.go:disabled { filter: grayscale(.4); opacity: .6; }
 .auth-error { margin: 14px 0 0; padding: 10px 13px; border-radius: 9px; background: rgba(255, 107, 125, .07); border: 1px solid rgba(255, 107, 125, .35); color: #FF8D9B; font-size: 13.5px; line-height: 1.45; }
+/* Plain HTTP from another computer: red when sign-in is refused, amber when AllowPlainHttp lets it through. */
+.plain-note { margin: 0 0 16px; }
+.plain-note.warn { background: rgba(242, 190, 107, .07); border-color: rgba(242, 190, 107, .3); color: #F2CE8F; }
 .auth-note { margin: 0 0 16px; padding: 10px 13px; border-radius: 9px; background: rgba(242, 190, 107, .07); border: 1px solid rgba(242, 190, 107, .3); color: #F2CE8F; font-size: 13.5px; line-height: 1.45; }
 /* Local account or Active Directory: a link under the button. */
 .other-kind { align-self: center; margin-top: 16px; padding: 4px 8px; border: 0; background: transparent; color: var(--muted); font-size: 14px; font-weight: 600; }

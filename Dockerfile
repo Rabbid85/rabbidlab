@@ -2,6 +2,8 @@
 #   docker build -t rabbidlab .
 #   docker run -d -p 8420:8420 -v rabbidlab:/data --name rabbidlab rabbidlab
 # Everything it keeps is in /data: mount a volume there, or it's lost when the container is replaced.
+# It serves plain HTTP, and takes no password that way from another computer: put a reverse proxy that does HTTPS in
+# front and set Proxy__Trusted to its address (README, HTTPS).
 # It builds for x64 and ARM (a Raspberry Pi): the SDK runs on the machine building it and publishes for the one asked
 # for (docker buildx build --platform linux/arm64 .), so nothing is emulated but the last step.
 

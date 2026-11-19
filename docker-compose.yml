@@ -1,4 +1,7 @@
-# Rabbid Lab with Docker Compose:  docker compose up -d   then open http://<this machine>:8420
+# Rabbid Lab with Docker Compose:  docker compose up -d
+# The container serves plain HTTP on 8420, and Rabbid Lab won't take a password over plain HTTP from another computer.
+# Put a reverse proxy that does HTTPS in front of it (Caddy, nginx, Traefik) and list it in Proxy__Trusted below, then
+# open the proxy's https:// address.
 services:
   rabbidlab:
     build: .
@@ -12,6 +15,10 @@ services:
       - rabbidlab:/data
     environment:
       - TZ=America/New_York
+      # The reverse proxy's address or network: only its X-Forwarded-Proto is believed.
+      # - Proxy__Trusted=172.16.0.0/12
+      # Sign-in over plain HTTP from other computers, passwords unencrypted. Only on a network you trust completely.
+      # - AllowPlainHttp=true
 
 volumes:
   rabbidlab:

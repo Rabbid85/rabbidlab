@@ -29,6 +29,14 @@ What changed in each version: [CHANGELOG.md](CHANGELOG.md).
 
 Running the installer again updates Rabbid Lab and keeps its settings. Uninstall from Settings > Apps.
 
+### HTTPS
+
+Rabbid Lab won't take a password over plain HTTP from another computer, so your password and session never cross the network unencrypted. Signing in on the server itself works either way.
+
+- **Windows:** pick a certificate in Setup (self-signed or your own). If you picked "None (HTTP only)", run Setup again and pick one.
+- **Docker:** the container serves plain HTTP on port 8420. Put a reverse proxy that does HTTPS in front of it (Caddy, nginx, Traefik) and set `Proxy__Trusted` to the proxy's address or network, such as `172.16.0.0/12`. Rabbid Lab only believes `X-Forwarded-Proto` from proxies listed there, and from the machine it runs on.
+- **No HTTPS at all:** set `AllowPlainHttp` to `true` (in `console.json`, or as an environment variable). Passwords then cross the network unencrypted, so only do this on a network you trust completely. The sign-in page warns about it.
+
 The client on each computer is locked to its server, so uninstall it from Devices before you remove the server. If the server is already gone, run [Tools/Remove-RabbidLabClient.ps1](Tools/Remove-RabbidLabClient.ps1) on the computer as administrator. It also takes `-ComputerName` for many at once, and works as a Group Policy startup script for the ones that are off.
 
 ## How releases are built
