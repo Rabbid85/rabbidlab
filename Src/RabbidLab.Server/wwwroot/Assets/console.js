@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.270', [
+    'Clicking the open row again folds the side panel into the strip on the right, the same as the round button, instead of closing it.']],
   ['1.1.269', [
     'The install line in Add computers wraps again, so the window no longer scrolls sideways and its Copy button is back.']],
   ['1.1.268', [
@@ -3702,13 +3704,14 @@ const RELEASE_NOTES = [
     else if (e.target.closest('[data-dw-close]')) panel.close();
   });
   panel.el.addEventListener('close', () => tuck(false));
-  // While it's tucked, a click on the row it shows brings it back (and doesn't close it, as a click on that row would).
+  // A click on the row it shows tucks it to the edge, like the ›, and brings it back while it's tucked. The page never
+  // sees that click, so it doesn't close the panel.
   document.addEventListener('click', (e) => {
-    if (!panel.tucked || panel.el.contains(e.target) || e.target.closest('button, a, input, select, label')) return;
+    if (!panel.el.open || panel.el.contains(e.target) || e.target.closest('button, a, input, select, label')) return;
     if (!e.target.closest('.dw-on')) return;
     e.stopPropagation();
     e.preventDefault();
-    tuck(false);
+    tuck(!panel.tucked);
   }, true);
   // Its left edge drags it wider or narrower, and the width is kept for next time. A double-click puts it back.
   const WIDE = 'rabbidlab.panel.width';
