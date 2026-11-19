@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.275', [
+    'Saving a filter asks what to call it, and each saved filter under Load filter has a pencil to rename it. What it filters shows when you hover it.']],
   ['1.1.274', [
     'The search in the filter bar asks what fits the column picked: more than, less than or at least for a number like Errors, in the last or more than so many days for a date, and is yes or is no for a column that is one or the other.',
     'A computer panel shows how many accounts, printers and Group Policy objects it has as soon as it opens, before you click those tabs.',

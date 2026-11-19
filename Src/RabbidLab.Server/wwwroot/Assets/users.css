@@ -420,6 +420,11 @@ button.danger.solid:hover { background: #DB4860; }
 #flt-dialog .dialog-foot { align-items: center; }
 #flt-clear { margin-right: 14px; }
 .flt-count { margin-right: auto; color: var(--muted); font-size: 13px; }
+/* Save filter: what the filter does, under its name. */
+.fsave-what { display: grid; gap: 4px; margin: 14px 0 0; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: #0C0E17; font-size: 13px; }
+.fsave-what span { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.fsave-what b { color: var(--title); font-weight: 600; overflow-wrap: anywhere; }
+#fsave-note { margin: 10px 0 0; }
 .cmd-head .cmd-clear { float: right; font-size: 12.5px; font-weight: 500; }
 
 /* The side panel: what a row is, sliding in from the right under the top bar. */

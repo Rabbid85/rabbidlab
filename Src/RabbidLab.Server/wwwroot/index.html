@@ -1512,6 +1512,15 @@
   <button type="button" class="small flt-add" id="flt-add"><svg><use href="#i-plus"/></svg>Add a condition</button>
   <div class="dialog-foot"><button type="button" class="linkish" id="flt-clear">Clear all</button><span class="flt-count" id="flt-count"></span><button type="button" id="flt-cancel">Cancel</button><button type="button" class="primary" id="flt-apply">Apply</button></div>
 </dialog>
+<!-- Save filter, and Rename on a saved one: its name, and what it filters (filter.js). -->
+<dialog class="dialog" id="fsave-dialog" aria-labelledby="fsave-title">
+  <h2 id="fsave-title">Save filter</h2>
+  <p class="dialog-lead">It goes under Load filter on this list, in this browser.</p>
+  <div class="form"><label for="fsave-name">Name</label><input id="fsave-name" maxlength="60" autocomplete="off" spellcheck="false"></div>
+  <p class="fsave-what"><span>What it filters</span><b id="fsave-what"></b></p>
+  <p class="hint" id="fsave-note" hidden></p>
+  <div class="dialog-foot"><button type="button" id="fsave-cancel">Cancel</button><button type="button" class="primary" id="fsave-go">Save filter</button></div>
+</dialog>
 <select id="mv-ou" hidden aria-hidden="true" tabindex="-1" data-always></select>
 
 <!-- Set account expiration: the last day the account works. -->

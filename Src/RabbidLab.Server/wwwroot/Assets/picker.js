@@ -98,7 +98,8 @@
     find.focus();
   };
 
-  // items: { label, icon, on, off, danger, run, remove } (remove puts a × beside it), { head }, or '-' for a line.
+  // items: { label, icon, tip, on, off, danger, run, edit, remove } (edit puts a pencil beside it, remove a ×),
+  // { head }, or '-' for a line.
   const menu = (anchor, items, o = {}) => {
     if (!start(o.key)) return;
     const list = items.filter(Boolean);
@@ -106,17 +107,18 @@
     list.forEach((it, i) => (it === '-' ? groups.push([]) : groups[groups.length - 1].push([it, i])));
     box.className = 'gear-menu xpick xpick-menu';
     box.innerHTML = groups.filter((g) => g.length).map((g) => `<div class="am-links">${g.map(([it, i]) => (it.head ? `<p class="cmd-head">${esc(it.head)}</p>`
-      : `<div class="xpick-item"><button type="button" class="am-link${it.on ? ' on' : ''}${it.danger ? ' out' : ''}" data-pick-item="${i}"${it.off ? ' disabled' : ''}>${it.icon ? svg(it.icon) : ''}<span class="ell">${esc(it.label)}</span></button>`
+      : `<div class="xpick-item"><button type="button" class="am-link${it.on ? ' on' : ''}${it.danger ? ' out' : ''}" data-pick-item="${i}"${it.off ? ' disabled' : ''}${it.tip ? ` data-tip="${esc(it.tip)}"` : ''}>${it.icon ? svg(it.icon) : ''}<span class="ell">${esc(it.label)}</span></button>`
+        + `${it.edit ? `<button type="button" class="at-more xpick-x" data-pick-edit="${i}" data-tip="Rename" aria-label="Rename ${esc(it.label)}">${svg('edit')}</button>` : ''}`
         + `${it.remove ? `<button type="button" class="at-more xpick-x" data-pick-remove="${i}" data-tip="Remove" aria-label="Remove ${esc(it.label)}">${svg('x')}</button>` : ''}</div>`)).join('')}</div>`).join('');
     now = {
       key: o.key,
       click: (e) => {
-        const x = e.target.closest('[data-pick-remove]');
-        const b = e.target.closest('[data-pick-item]');
-        if (!x && !b) return;
-        const it = list[Number((x || b).dataset.pickRemove ?? (x || b).dataset.pickItem)];
+        const b = e.target.closest('[data-pick-remove], [data-pick-edit], [data-pick-item]');
+        if (!b) return;
+        const it = list[Number(b.dataset.pickRemove ?? b.dataset.pickEdit ?? b.dataset.pickItem)];
         box.hidePopover();
-        if (x) it.remove();
+        if (b.dataset.pickRemove !== undefined) it.remove();
+        else if (b.dataset.pickEdit !== undefined) it.edit();
         else it.run?.();
       },
     };

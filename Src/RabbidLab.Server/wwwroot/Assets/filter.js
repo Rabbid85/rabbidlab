@@ -213,6 +213,37 @@
     draft.apply(kept.length ? { join: draft.join, rules: kept } : null);
   });
 
+  // Save filter and Rename, for every list's bar: one window with the name and what the filter does. o: { title,
+  // button, name, what, taken(name) (another saved filter has it), done(name) }.
+  let naming = null;
+  const noteName = () => {
+    const n = $('fsave-name').value.trim();
+    const clash = !!n && naming?.taken(n);
+    $('fsave-note').hidden = !clash;
+    $('fsave-note').textContent = clash ? `A filter called ${n} is saved already. Saving replaces it.` : '';
+    $('fsave-go').disabled = !n;
+  };
+  const askName = (o) => {
+    naming = o;
+    $('fsave-title').textContent = o.title;
+    $('fsave-go').textContent = o.button;
+    $('fsave-name').value = o.name.slice(0, 60);
+    $('fsave-what').textContent = o.what;
+    noteName();
+    $('fsave-dialog').showModal();
+    $('fsave-name').select();
+  };
+  const nameDone = () => {
+    const n = $('fsave-name').value.trim();
+    if (!n || !naming) return;
+    $('fsave-dialog').close();
+    naming.done(n);
+  };
+  $('fsave-name').addEventListener('input', noteName);
+  $('fsave-name').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); nameDone(); } });
+  $('fsave-go').addEventListener('click', nameDone);
+  $('fsave-cancel').addEventListener('click', () => $('fsave-dialog').close());
+
   // --- The filter bar --------------------------------------------------------------------------------------------
   // Over a list: Load filter (the ones saved, and the conditions window above for anything a chip can't say), a search
   // of one column or all of them, a chip for each column worth filtering by, and Add/remove filters. A chip lists that
@@ -510,10 +541,12 @@
         } });
     };
     // Load filter: the ones saved in this browser, and the conditions window.
+    const savedList = () => read(`${name()}.saved`) || [];
     const load = (button) => {
-      const saved = read(`${name()}.saved`) || [];
+      const saved = savedList();
       R.picker.menu(button, [{ head: 'Saved filters' },
-        ...(saved.length ? saved.map((f, i) => ({ label: f.name, icon: 'filter', run: () => use(f), remove: () => { saved.splice(i, 1); keep(`${name()}.saved`, saved.length ? saved : null); } }))
+        ...(saved.length ? saved.map((f, i) => ({ label: f.name, icon: 'filter', tip: f.what && f.what !== f.name ? f.what : '', run: () => use(f), edit: () => rename(f.name),
+          remove: () => { saved.splice(i, 1); keep(`${name()}.saved`, saved.length ? saved : null); } }))
           : [{ label: 'Nothing saved yet', off: true }]),
         ...(fields() ? ['-', { label: 'Advanced filter…', icon: 'columns', on: !!st().adv, run: advanced }] : [])], { key: `load.${name()}` });
     };
@@ -531,14 +564,23 @@
       el.querySelector('[data-fb="text"]').value = s.text;
       change();
     };
+    // Save: named in the window, with what it filters filled in to start with. A name already used replaces that one.
     const save = () => {
       const s = st();
-      const text = say();
-      if (!text) { R.toast('Nothing to save.', 'Pick a filter or search first.'); return; }
-      const saved = (read(`${name()}.saved`) || []).filter((f) => f.name !== text);
-      saved.push({ name: text, chips: Object.fromEntries(Object.entries(s.chips).filter(([, set]) => set.size).map(([k, set]) => [k, [...set]])), col: s.col, op: s.op, text: s.text.trim(), adv: s.adv });
-      keep(`${name()}.saved`, saved);
-      R.toast('Filter saved.', 'It is under Load filter.');
+      const what = say();
+      if (!what) { R.toast('Nothing to save.', 'Pick a filter or search first.'); return; }
+      const f = { what, chips: Object.fromEntries(Object.entries(s.chips).filter(([, set]) => set.size).map(([k, set]) => [k, [...set]])), col: s.col, op: s.op, text: s.text.trim(), adv: s.adv };
+      askName({ title: 'Save filter', button: 'Save filter', name: what, what, taken: (n) => savedList().some((g) => same(g.name, n)),
+        done: (n) => {
+          keep(`${name()}.saved`, [...savedList().filter((g) => !same(g.name, n)), { name: n, ...f }]);
+          R.toast(`${n} is saved.`, 'It is under Load filter.');
+        } });
+    };
+    const rename = (old) => {
+      const f = savedList().find((g) => g.name === old);
+      if (!f) return;
+      askName({ title: 'Rename filter', button: 'Save', name: f.name, what: f.what || f.name, taken: (n) => savedList().some((g) => g.name !== old && same(g.name, n)),
+        done: (n) => keep(`${name()}.saved`, savedList().filter((g) => g.name === old || !same(g.name, n)).map((g) => (g.name === old ? { ...g, name: n } : g))) });
     };
     // The conditions window, for what a chip can't say: older than, does not contain, any of these or all.
     const advanced = () => {

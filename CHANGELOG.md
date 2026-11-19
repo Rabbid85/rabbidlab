@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.275 (2026-11-19)
+
+- Saving a filter asks what to call it, and each saved filter under Load filter has a pencil to rename it. What it filters shows when you hover it.
+
 ## 1.1.274 (2026-11-19)
 
 - The search in the filter bar asks what fits the column picked: more than, less than or at least for a number like Errors, in the last or more than so many days for a date, and is yes or is no for a column that is one or the other.

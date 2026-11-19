@@ -226,5 +226,6 @@ body.col-moving, body.col-moving * { cursor: grabbing !important; user-select: n
 .xpick-item .am-link.on { color: var(--accent-soft); font-weight: 650; }
 .xpick-item .am-link.on svg { color: var(--accent-soft); }
 .xpick-item .xpick-x { flex: none; margin: 0 4px 0 0; opacity: .7; }
+.xpick-item .xpick-x + .xpick-x { margin-left: -2px; }
 .xpick-item .xpick-x:hover { opacity: 1; }
 .gear-menu.xpick .cmd-head { padding: 8px 12px 4px; color: #5E6380; font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
