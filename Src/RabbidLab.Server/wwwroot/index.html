@@ -839,11 +839,13 @@
       <p class="hero-lead"><b id="dir-state"></b> <span id="dir-lead"></span></p>
       <div class="hero-stats" id="dir-stats"></div>
     </header>
-    <!-- The command bar under the banner, as on Links: what can be made here (users.js). It moves with the banner. -->
+    <!-- The command bar under the banner, as on Links (users.js). It moves with the banner. New is a split button: the
+         left half makes what the open list holds, the arrow has New user, New group and New computer. -->
     <div class="cmdbar" id="dir-cmd" role="toolbar" aria-label="Active Directory">
-      <button type="button" class="cmd" data-make="users" data-can="ad.create"><svg><use href="#i-user-plus"/></svg><span>New user</span></button>
-      <button type="button" class="cmd" data-make="groups" data-can="ad.create"><svg><use href="#i-users"/></svg><span>New group</span></button>
-      <button type="button" class="cmd" data-make="computers" data-can="ad.create"><svg><use href="#i-laptop"/></svg><span>New computer</span></button>
+      <div class="cmd-split" id="dir-new-split" data-can="ad.create">
+        <button type="button" class="cmd-new" id="dir-new" data-tip="New user"><svg><use href="#i-plus"/></svg><span>New</span></button>
+        <button type="button" class="cmd-more" id="dir-new-more" aria-haspopup="menu" data-tip="New user, group or computer" aria-label="New user, group or computer"><svg class="chev"><use href="#i-chevron-down"/></svg></button>
+      </div>
     </div>
   <div class="dir-area">
     <div class="dgate" id="dir-setup" hidden></div>

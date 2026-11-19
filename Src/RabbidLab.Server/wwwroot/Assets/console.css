@@ -614,6 +614,17 @@ a.button:hover, label.button:hover { background: #222536; text-decoration: none;
 .cmdbar { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; min-height: 52px; padding: 0 32px; border-bottom: 1px solid var(--line); background: #0F111A; }
 .cmdbar[hidden], .cmdbar:not(:has(> :not(.cant, [hidden], .grow))) { display: none; }
 .cmdbar .grow { flex: 1; }
+/* New as a split button (Active Directory): one button in the primary colour, the left half makes what the open list
+   holds, the arrow opens the menu of everything the page makes. */
+.cmdbar .cmd-split { display: inline-flex; flex: none; margin-right: 6px; border-radius: 8px; background: var(--ember); }
+.cmd-split > button { display: inline-flex; align-items: center; height: 34px; margin: 0; border: 0; border-radius: 0; background: none; color: #fff; font-size: 14px; font-weight: 700; }
+.cmd-split > .cmd-new { gap: 7px; padding: 0 14px 0 12px; border-radius: 8px 0 0 8px; }
+.cmd-split > .cmd-more { justify-content: center; width: 32px; padding: 0; border-left: 1px solid rgba(255, 255, 255, .3); border-radius: 0 8px 8px 0; }
+.cmd-split > button:hover:not(:disabled) { background: rgba(255, 255, 255, .14); }
+.cmd-split > button:disabled { opacity: 1; cursor: default; }
+.cmd-split:has(:disabled) { opacity: .45; }
+.cmd-split svg { width: 15px; height: 15px; }
+.cmd-split .chev { width: 14px; height: 14px; stroke: currentColor; }
 /* The page's settings menu, at the very end of the bar (Links, Sensors). */
 .cmdbar .cmd-gear { display: grid; flex: none; place-items: center; width: 36px; height: 36px; margin-left: 8px; padding: 0; border: 0; border-radius: 7px; background: none; color: #B8BCCB; }
 .cmdbar .cmd-gear:hover, .cmdbar .cmd-gear:has(+ .gear-menu:popover-open) { background: #1A1D2B; color: var(--title); }

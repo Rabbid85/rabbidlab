@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.273 (2026-11-19)
+
+- Active Directory has one split New button in the bar under the banner: New makes what the open list holds, and its arrow has New user, New group and New computer.
+
 ## 1.1.272 (2026-11-19)
 
 - The cogwheel on Links and Sensors moved from the banner to the right end of the bar under it, after View. Its menu is the same.

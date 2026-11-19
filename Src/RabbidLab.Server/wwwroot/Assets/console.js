@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.273', [
+    'Active Directory has one split New button in the bar under the banner: New makes what the open list holds, and its arrow has New user, New group and New computer.']],
   ['1.1.272', [
     'The cogwheel on Links and Sensors moved from the banner to the right end of the bar under it, after View. Its menu is the same.']],
   ['1.1.271', [

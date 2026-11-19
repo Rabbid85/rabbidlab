@@ -477,13 +477,17 @@
   const STAT_ICON = { locked: 'lock', expired: 'key', inactive: 'hourglass', stale: 'hourglass', security: 'shield', privileged: 'crown', empty: 'users', servers: 'server',
     workstations: 'laptop', off: 'alert', look: 'eye', notes: 'list', week: 'calendar', day: 'clock', deleted: 'trash', users: 'user', groups: 'users', computers: 'laptop' };
   const stat = (n, icon, label) => `<div><b>${n === null ? '<i class="sk sk-num"></i>' : esc(n.toLocaleString())}</b><span>${svg(icon)}${esc(label)}</span></div>`;
+  // What New makes: the open list's kind, and a user on the pages that list none of these.
+  const MAKES = [['users', 'user-plus', 'New user'], ['groups', 'users', 'New group'], ['computers', 'laptop', 'New computer']];
+  const makeKind = () => (R.where()[0] === 'ad' && MAKES.some(([k]) => k === adPage) ? adPage : 'users');
   const drawHero = (other = '') => {
     const at = R.where()[0];
     if (!other && at !== 'ad') other = at === 'org' || at === 'attrs' ? at : ''; // a list read again while another page is open
     if (!other && at !== 'ad') return;
-    // The bar under it: New user, group and computer, once the account is known; none without one or read-only.
+    // The bar under it: New, once the account is known; none without one or read-only. New makes the open list's kind.
     $('dir-cmd').hidden = !!ad && (!ad.state || ad.state.readOnly);
-    $('dir-cmd').querySelectorAll('.cmd').forEach((b) => { b.disabled = !ad?.state; });
+    $('dir-cmd').querySelectorAll('button').forEach((b) => { b.disabled = !ad?.state; });
+    $('dir-new').dataset.tip = MAKES.find(([k]) => k === makeKind())[2];
     const hero = $('dir-hero');
     $('dir-eyebrow').textContent = ad?.state ? `${ad.state.domain} · Directory` : 'Directory';
     if (other) {
@@ -1919,9 +1923,10 @@
     $('group-dialog').showModal();
     $('grp-name').focus();
   };
-  $('dir-cmd').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-make]');
-    if (b && ad?.state && !ad.state.readOnly) makeNew(b.dataset.make);
+  const mayMake = () => ad?.state && !ad.state.readOnly;
+  $('dir-new').addEventListener('click', () => { if (mayMake()) makeNew(makeKind()); });
+  $('dir-new-more').addEventListener('click', () => {
+    if (mayMake()) R.picker.menu($('dir-new-split'), MAKES.map(([k, icon, label]) => ({ label, icon, run: () => makeNew(k) })), { key: 'dir.new' });
   });
   $('grp-type').addEventListener('click', (e) => {
     const b = e.target.closest('[data-type]');
