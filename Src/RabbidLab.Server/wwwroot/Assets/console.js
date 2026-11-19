@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.264', [
+    'Boxes the browser fills in, like a saved username or password, stay dark instead of turning white, on the sign-in page and everywhere else.']],
   ['1.1.263', [
     'Links and Sensors have a command bar along the bottom of the banner: Add a link or Add a sensor, New group, Refresh icons on Links, and the view on the right.']],
   ['1.1.262', [

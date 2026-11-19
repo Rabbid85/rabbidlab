@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.264 (2026-11-19)
+
+- Boxes the browser fills in, like a saved username or password, stay dark instead of turning white, on the sign-in page and everywhere else.
+
 ## 1.1.263 (2026-11-19)
 
 - Links and Sensors have a command bar along the bottom of the banner: Add a link or Add a sensor, New group, Refresh icons on Links, and the view on the right.
