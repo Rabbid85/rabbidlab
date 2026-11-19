@@ -616,10 +616,11 @@
           <div class="gbar">
             <button type="button" class="small" id="dv-act" aria-haspopup="menu" disabled data-tip="Tick computers first">Actions<b class="cnt" hidden></b><svg class="chev"><use href="#i-chevron-down"/></svg></button>
             <div id="dv-tools"></div>
-            <button type="button" class="gcols" id="dv-refresh" data-tip="Refresh" aria-label="Refresh"><svg><use href="#i-refresh"/></svg></button>
-            <button type="button" class="tlink" id="dv-export"><svg><use href="#i-download"/></svg>Export</button>
-            <button type="button" class="primary" id="seats-add" data-can="seats.add"><svg><use href="#i-plus"/></svg><span>Add computers</span></button>
-            <button type="button" class="primary" id="dv-new" hidden><svg><use href="#i-plus"/></svg><span id="dv-new-text">New script</span></button>
+            <div class="gdock"><button type="button" id="dv-refresh" data-tip="Refresh" aria-label="Refresh"><svg><use href="#i-refresh"/></svg></button>
+              <button type="button" class="gexp" id="dv-export" data-tip="Export" aria-label="Export"><svg><use href="#i-download"/></svg></button></div>
+            <div class="gsplit"><button type="button" class="primary gnew" id="seats-add" data-can="seats.add"><svg><use href="#i-plus"/></svg><span>Add computers</span></button>
+              <button type="button" class="primary gnew" id="dv-new" hidden><svg><use href="#i-plus"/></svg><span id="dv-new-text">New script</span></button>
+              <button type="button" class="gsplit-more" aria-haspopup="menu" data-tip="More" aria-label="More"><svg class="chev"><use href="#i-chevron-down"/></svg></button></div>
           </div>
           <div class="table adt drows" id="seats-table" data-can="seats.view" data-skel="rows:4"></div>
           <div class="table adt drows" id="dv-gplocal" hidden></div>
@@ -868,9 +869,10 @@
           <div class="gbar">
             <button type="button" class="small" id="dir-act" aria-haspopup="menu" disabled>Actions<b class="cnt" hidden></b><svg class="chev"><use href="#i-chevron-down"/></svg></button>
             <div id="dir-tools"></div>
-            <button type="button" class="gcols" id="dir-refresh" data-tip="Refresh" aria-label="Refresh"><svg><use href="#i-refresh"/></svg></button>
-            <button type="button" class="tlink" id="dir-export"><svg><use href="#i-download"/></svg>Export</button>
-            <button type="button" class="primary" id="dir-new" data-can="ad.create"><svg><use href="#i-plus"/></svg><span id="dir-new-text">New user</span></button>
+            <div class="gdock"><button type="button" id="dir-refresh" data-tip="Refresh" aria-label="Refresh"><svg><use href="#i-refresh"/></svg></button>
+              <button type="button" class="gexp" id="dir-export" data-tip="Export" aria-label="Export"><svg><use href="#i-download"/></svg></button></div>
+            <div class="gsplit"><button type="button" class="primary gnew" id="dir-new" data-can="ad.create"><svg><use href="#i-plus"/></svg><span id="dir-new-text">New user</span></button>
+              <button type="button" class="gsplit-more" aria-haspopup="menu" data-tip="More" aria-label="More"><svg class="chev"><use href="#i-chevron-down"/></svg></button></div>
           </div>
           <div class="table" id="dir-table"></div>
         </div>
@@ -915,9 +917,10 @@
             <div class="gbar">
               <button type="button" class="small" id="gpo-act" aria-haspopup="menu" disabled data-tip="Tick GPOs first">Actions<b class="cnt" hidden></b><svg class="chev"><use href="#i-chevron-down"/></svg></button>
               <div id="gpo-tools"></div>
-              <button type="button" class="gcols" id="gpo-refresh" data-tip="Refresh" aria-label="Refresh"><svg><use href="#i-refresh"/></svg></button>
-              <button type="button" class="tlink" id="gpo-export"><svg><use href="#i-download"/></svg>Export</button>
-              <button type="button" class="primary" id="gpo-new" hidden><svg><use href="#i-plus"/></svg><span id="gpo-new-text">New GPO</span></button>
+              <div class="gdock"><button type="button" id="gpo-refresh" data-tip="Refresh" aria-label="Refresh"><svg><use href="#i-refresh"/></svg></button>
+                <button type="button" class="gexp" id="gpo-export" data-tip="Export" aria-label="Export"><svg><use href="#i-download"/></svg></button></div>
+              <div class="gsplit"><button type="button" class="primary gnew" id="gpo-new" hidden><svg><use href="#i-plus"/></svg><span id="gpo-new-text">New GPO</span></button>
+                <button type="button" class="gsplit-more" aria-haspopup="menu" data-tip="More" aria-label="More"><svg class="chev"><use href="#i-chevron-down"/></svg></button></div>
             </div>
             <div class="table adt drows" id="gpo-table" data-skel="rows:6"></div>
           </div>

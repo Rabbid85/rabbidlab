@@ -867,7 +867,8 @@
   const openScript = (s) => {
     shown = s;
     panel.body.innerHTML = head('code', s.name, esc(`${LANG[s.language]} · time limit ${s.minutes} minutes`))
-      + `<div class="dw-bar">${has('seats.scripts.run') ? qa('data-sc-run', 'right', 'Run…') : ''}${has('seats.scripts.edit') ? (s.builtIn ? '' : qa('data-sc-edit', 'edit', 'Edit')) + qa('data-sc-copy', 'copy', 'Duplicate') + (s.builtIn ? '' : qa('data-sc-del', 'trash', 'Delete')) : ''}</div>`
+      + `<div class="dw-bar">${R.editButton('data-sc-edit', !has('seats.scripts.edit') ? 'Your role can\'t change scripts' : s.builtIn ? 'Built-in scripts can\'t be changed. Duplicate makes a copy you can change.' : '')}`
+      + `${has('seats.scripts.run') ? qa('data-sc-run', 'right', 'Run…') : ''}${has('seats.scripts.edit') ? qa('data-sc-copy', 'copy', 'Duplicate') + (s.builtIn ? '' : qa('data-sc-del', 'trash', 'Delete')) : ''}</div>`
       + (s.builtIn ? `<p class="dw-how">Built into ${esc(R.app())}. Duplicate it to make one of your own to change.</p>` : '')
       + (s.about ? section('About', `<p class="dw-how">${esc(s.about)}</p>`) : '')
       + section('Script', `<pre class="code-box">${esc(s.text)}</pre>`)
@@ -944,7 +945,7 @@
     shown = w;
     const row = (k, v, icon) => `<div class="mrow"><span class="pic small">${svg(icon)}</span><div class="two"><small>${esc(k)}</small><b>${esc(v)}</b></div></div>`;
     panel.body.innerHTML = head('org', w.name, pill(w.on ? ['online', 'Enabled'] : ['offline', 'Disabled']))
-      + `<div class="dw-bar">${qa('data-fl-toggle', 'power', w.on ? 'Disable' : 'Enable')}${qa('data-fl-edit', 'edit', 'Edit')}${qa('data-fl-run', 'right', 'Run now')}${qa('data-fl-del', 'trash', 'Delete')}</div>`
+      + `<div class="dw-bar">${R.editButton('data-fl-edit')}${qa('data-fl-toggle', 'power', w.on ? 'Disable' : 'Enable')}${qa('data-fl-run', 'right', 'Run now')}${qa('data-fl-del', 'trash', 'Delete')}</div>`
       + section('Steps', `<div class="dw-list seat-list fl-view">${row('When', whenText(w), 'clock')}${ifText(w) ? row('Only on', ifText(w), 'filter') : ''}${w.steps.map((s, i) => row(i ? 'Then' : 'Do', stepText(s), 'right')).join('')}</div>`)
       + section('Last run', w.lastRun ? facts([['When', when(w.lastRun)]]) + (w.lastJob ? `<div class="seat-acts"><button type="button" class="small" data-job-open="${esc(w.lastJob)}">${svg('history')}Open its job</button></div>` : '') : none("It hasn't run yet."))
       + section('Changed', facts([['When', when(w.changed)], w.by && ['By', w.by]]));
@@ -1073,6 +1074,16 @@
     if (own) own.open();
     else if (D.at() === 'workflows') openFlowEdit(null);
     else openScriptEdit(null);
+  });
+  // New's arrow: what else this page makes, whichever list is open.
+  R.grid.more($('dv-new'), () => {
+    const at = D.at();
+    return [
+      at !== 'computers' && has('seats.add') && { label: 'Add computers', icon: 'monitor', run: () => $('seats-add').click() },
+      at !== 'scripts' && has('seats.scripts.edit') && { label: 'New script', icon: 'code', run: () => openScriptEdit(null) },
+      at !== 'workflows' && has('seats.workflows') && { label: 'New workflow', icon: 'org', run: () => openFlowEdit(null) },
+      ...Object.entries(D.more).filter(([k, m]) => k !== at && m.add?.can()).map(([, m]) => ({ label: m.add.label, icon: m.add.icon || 'box', run: () => m.add.open() })),
+    ].filter(Boolean);
   });
   panel.el.addEventListener('click', async (e) => {
     const on = (attr) => e.target.closest(`[${attr}]`);

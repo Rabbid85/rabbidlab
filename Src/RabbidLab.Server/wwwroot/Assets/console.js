@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.259', [
+    'The bar over every list is redone. Actions and Group by look like the filter chips, Refresh and Export are icons side by side, and New has an arrow with the other things the page can make.',
+    'Side panels have an orange Edit button next to Actions. When your role is not allowed to edit, or the thing is built in, it stays there in grey and its hint says why.']],
   ['1.1.258', [
     'The side panel has a round arrow button on its left edge that closes it.']],
   ['1.1.257', [
@@ -3729,14 +3732,18 @@ const RELEASE_NOTES = [
     if (!items.length) return;
     const box = document.createElement('div');
     box.className = 'dw-do';
-    // One with an Actions menu of its own keeps it; otherwise the first button that isn't a way to undo something is the main one.
-    const own = items.some((b) => b.matches('.dw-acts, [data-dw-more]'));
-    const main = own ? null : items.find((b) => b.tagName === 'BUTTON' && !RISKY.test(b.textContent.trim()));
-    const others = items.filter((b) => b !== main);
+    // Edit (editButton) comes first when there is one. One with an Actions menu of its own keeps it; otherwise the
+    // first button that isn't a way to undo something is the main one.
+    const edit = items.find((b) => b.classList.contains('dw-edit'));
+    const rest = items.filter((b) => b !== edit);
+    const own = rest.some((b) => b.matches('.dw-acts, [data-dw-more]'));
+    const main = own ? null : rest.find((b) => b.tagName === 'BUTTON' && !RISKY.test(b.textContent.trim()));
+    const others = rest.filter((b) => b !== main);
     others.forEach((b) => b.classList.toggle('danger', /^(remove|delete|uninstall)/i.test(b.textContent.trim()))); // in red, as in every menu
+    if (edit) box.append(edit);
     if (main) {
-      main.classList.remove('dw-qa', 'small');
-      main.classList.add('primary');
+      main.classList.remove('dw-qa', 'small', 'primary');
+      main.classList.add(edit ? 'small' : 'primary'); // beside Edit it's a plain button: one orange button per panel
       box.append(main);
     }
     if (own || others.length < 2) box.append(...others);
@@ -3794,8 +3801,14 @@ const RELEASE_NOTES = [
     box.dispatchEvent(new Event('change', { bubbles: true }));
   });
 
+  // A side panel's Edit: the orange button with the pencil, first at the end of the name (arrange). With why (your role
+  // can't, or it's built in) it stays there, grey, with why as its hint, and does nothing.
+  const editButton = (attrs, why = '') => (why
+    ? `<button type="button" class="primary dw-edit" aria-disabled="true" data-tip="${esc(why)}">${svg('edit')}<span>Edit</span></button>`
+    : `<button type="button" class="primary dw-edit" ${attrs}>${svg('edit')}<span>Edit</span></button>`);
+
   // What the other scripts use. Hints are tips.js and data grids are grid.js.
-  window.RabbidLab = { app: () => product, $, esc, svg, say, initials, when, daysAgo, send, get, keep, forget, has, paint, where, viewAs, place, popups, option, dropdown, sure, copy, busy, groupTools, skeleton, toast, stepper, panel, scatter,
+  window.RabbidLab = { app: () => product, $, esc, svg, say, initials, when, daysAgo, send, get, keep, forget, has, paint, where, viewAs, place, popups, option, dropdown, sure, copy, busy, groupTools, skeleton, toast, stepper, panel, scatter, editButton,
     palette: window.RabbidLabColours.roles, me: () => meInfo,
     // The Devices page, for devices.js: its lists, what's ticked, and drawing or reading it again.
     devices: { lists: DV, more: dvMore, hooks: dvHooks, picked: dvPicked, computers: () => computers, rows: () => dvAll(), at: () => dvAt, shown: () => dvShown, grid: () => dvGrid(),

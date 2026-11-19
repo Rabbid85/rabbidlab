@@ -198,7 +198,12 @@
     // The switch: off, or on with what was picked; with nothing picked yet it opens the picker.
     g.groupOn = (box) => {
       const s = groupSet();
-      if (box.checked && !s.keys.length) { box.checked = false; pickGroup(bar.querySelector('[data-grid-group-pick]')); return; }
+      if (box.checked && !s.keys.length) {
+        box.checked = false;
+        const pick = bar.querySelector('[data-grid-group-pick]');
+        pickGroup(pick.offsetParent ? pick : box.closest('.gby')); // under the chip when the pick is hidden
+        return;
+      }
       keep(name('group'), { on: box.checked, keys: s.keys });
       o.redraw();
     };
@@ -431,5 +436,34 @@
 
   // A list that isn't a table (Links' tiles) still has columns to filter by: the cols() and text() a grid gives.
   grid.columns = (cols) => ({ cols: () => of(cols) || [], text });
+  // A list bar's New is a split button (.gsplit in index.html): its first half makes what the open list holds, its arrow
+  // the other things that page can make, from more(newButton, () => [{ label, icon, run }]). The bar gets has-new while
+  // a New shows, and no-more when the arrow has nothing (grid.css).
+  const mores = new Map(); // a list bar -> what its arrow offers
+  const splitSync = (bar) => {
+    const news = [...bar.querySelectorAll(':scope > .gsplit > .gnew')];
+    bar.classList.toggle('has-new', news.some((b) => getComputedStyle(b).display !== 'none'));
+    bar.classList.toggle('no-more', !(mores.get(bar)?.() || []).length);
+  };
+  document.querySelectorAll('.gbar').forEach((bar) => {
+    const split = bar.querySelector(':scope > .gsplit');
+    if (!split) return;
+    // Again whenever a New is hidden or shown, or says something else (another list is open).
+    const watch = new MutationObserver(() => splitSync(bar));
+    split.querySelectorAll('.gnew').forEach((b) => watch.observe(b, { attributes: true, attributeFilter: ['hidden', 'class'], childList: true, characterData: true, subtree: true }));
+    const page = bar.closest('.page');
+    if (page) watch.observe(page, { attributes: true, attributeFilter: ['data-at'] });
+    split.querySelector('.gsplit-more')?.addEventListener('click', (e) => {
+      const items = mores.get(bar)?.() || [];
+      if (items.length) R.picker.menu(e.currentTarget, items, { key: `gsplit.${page?.id || ''}`, right: true });
+    });
+    splitSync(bar);
+  });
+  grid.more = (newButton, items) => {
+    const bar = newButton.closest('.gbar');
+    mores.set(bar, items);
+    splitSync(bar);
+  };
+
   R.grid = grid;
 })();

@@ -1350,8 +1350,8 @@
       + `<input type="checkbox" class="switch" data-dw-on="${onCmd}" data-dw-off="${offCmd}"${on ? ' checked' : ''}${off ? ' disabled' : ''}></label>`;
   };
   const e1 = (v) => (v ? esc(v) : '');
-  // A command as a button; main is the panel's one primary button, beside Actions.
-  const qa = (cmd, icon, label, main = false) => (dwNot.has(cmd) || !may(cmd) ? '' : `<button type="button" class="${main ? 'primary' : 'dw-qa'}" data-dw-cmd="${cmd}">${svg(icon)}<span>${esc(label)}</span></button>`);
+  // A command as a button; look is its class in the panel's heading (small, beside Edit), or a quick action.
+  const qa = (cmd, icon, label, look = 'dw-qa') => (dwNot.has(cmd) || !may(cmd) ? '' : `<button type="button" class="${look}" data-dw-cmd="${cmd}">${svg(icon)}<span>${esc(label)}</span></button>`);
   // Why a few things aren't there, for the ones that have them.
   const dwWhy = (k, x) => (k === 'users' && x.service ? `That's ${ad.state.account}, ${R.app()}'s own account. Its password and sign-in settings stay as they are, so ${R.app()} keeps working.`
     : k === 'computers' && x.controller ? 'A domain controller: it can\'t be disabled, moved or deleted here.' : '');
@@ -1362,9 +1362,12 @@
     // What else it is, beside its status in the strip below.
     const status = k === 'users' ? (x.protected ? badge('Privileged', 'amber') : '') + (x.service ? chip(R.app(), 'ember') : '')
       : k === 'computers' ? (x.controller ? chip('Domain controller', 'muted') : '') + (server(x) ? chip('Server', 'muted') : '') : x.protected ? badge('Privileged', 'amber') : '';
-    // The thing done most as the one button (unlocking, when it's locked out); Actions opens the whole menu.
-    const main = !anyChange() ? '' : k === 'users' ? (x.locked ? qa('unlock', 'unlock', 'Unlock', true) : qa('password', 'key', 'Reset password', true))
-      : k === 'groups' ? qa('members-add', 'user-plus', 'Add members', true) : qa('edit', 'edit', 'Edit', true);
+    // Edit first (grey with why when this role can't), then the thing done most beside it (unlocking, when it's locked
+    // out); Actions opens the whole menu.
+    const what = k === 'users' ? 'user' : k === 'groups' ? 'group' : 'computer';
+    const edit = dwNot.has('edit') ? '' : R.editButton('data-dw-cmd="edit"', may('edit') ? '' : `Your role can't edit this ${what}`);
+    const main = !anyChange() ? '' : k === 'users' ? (x.locked ? qa('unlock', 'unlock', 'Unlock', 'small') : qa('password', 'key', 'Reset password', 'small'))
+      : k === 'groups' ? qa('members-add', 'user-plus', 'Add members', 'small') : '';
     // The facts looked at first, in a row under the name.
     const password = x.mustChange ? 'Must change at next sign-in' : x.neverExpires ? 'Never expires' : x.passwordExpires ? `Expires ${day(x.passwordExpires)}` : '';
     const strip = (k === 'users' ? [['Status', userStatus(x)], ['Logon name', `<span class="mono">${esc(x.username)}</span>`], ['Password', esc(password)], ['Last sign-in', esc(ago(x.lastSignIn))], ['Created', x.created ? esc(day(x.created)) : '']]
@@ -1373,7 +1376,7 @@
       .filter(([, v]) => v).map(([l, v]) => `<div><span class="l">${l}</span><span class="v">${v}</span></div>`).join('');
     const why = dwWhy(k, x);
     return `<div class="dw-head">${pic}<div class="dw-name"><h2 id="dw-title">${esc(nameOf(x))}</h2>${sub ? `<p>${esc(sub)}</p>` : ''}</div>`
-      + `<div class="dw-do">${main}<button type="button" class="small" data-dw-more aria-haspopup="menu">Actions${svg('chevron-down', 'chev')}</button></div>`
+      + `<div class="dw-do">${edit}${main}<button type="button" class="small" data-dw-more aria-haspopup="menu">Actions${svg('chevron-down', 'chev')}</button></div>`
       + `<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`
       + `<p class="dw-path">${esc([ad.state.domain, x.where].filter(Boolean).join(' / '))}</p>`
       + `<div class="dw-strip">${strip}</div>`
@@ -1873,8 +1876,10 @@
       if (answer.password) secret(who, answer.password, answer.warning, body.mustChange);
       else if (kind === 'ad') say('dir-note', answer.warning || `Made ${who}.`);
       else R.toast(`Made ${who}.`, answer.warning || '', answer.warning ? { tone: 'warn' } : {});
-      if (kind === 'ad') reload();
-      else pcTarget.done?.();
+      if (kind === 'ad') {
+        delete lists.users; // read again when it's next open, if it was made from another list
+        reload();
+      } else pcTarget.done?.();
     } catch (err) {
       say('new-problem', err.message);
     } finally {
@@ -1890,13 +1895,13 @@
     password: (who, path, lead, done) => reset(who, path, lead, done),
   };
 
-  // A new user, group or computer account.
-  $('dir-new').addEventListener('click', async () => {
-    if (adPage === 'users') {
+  // A new user, group or computer account: New makes the open list's kind, its arrow the other two.
+  const makeNew = async (k) => {
+    if (k === 'users') {
       openNew('ad');
       return;
     }
-    if (adPage === 'computers') {
+    if (k === 'computers') {
       $('pcnew-name').value = '';
       $('pcnew-about').value = '';
       $('pcnew-lead').textContent = `In ${ad.state.domain}, made by ${ad.state.account}, ready for a computer of that name to join.`;
@@ -1915,7 +1920,10 @@
     await placesInto('grp-ou', ad.state.newGroups || ad.state.newUsers, 'grp-problem');
     $('group-dialog').showModal();
     $('grp-name').focus();
-  });
+  };
+  $('dir-new').addEventListener('click', () => makeNew(adPage));
+  const MAKES = [['users', 'user', 'New user'], ['groups', 'users', 'New group'], ['computers', 'laptop', 'New computer']];
+  R.grid.more($('dir-new'), () => (ad?.state?.readOnly ? [] : MAKES.filter(([k]) => k !== adPage).map(([k, icon, label]) => ({ label, icon, run: () => makeNew(k) }))));
   $('grp-type').addEventListener('click', (e) => {
     const b = e.target.closest('[data-type]');
     if (b) $('grp-type').querySelectorAll('[data-type]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
@@ -1928,6 +1936,7 @@
       const c = await R.send('/api/ad/computers', { name: $('pcnew-name').value, description: $('pcnew-about').value, ou: $('pcnew-ou').value });
       $('pcnew-dialog').close();
       R.toast(`Made the computer account ${c.name}`, `A computer called ${c.name} can join the domain into it.`);
+      delete lists.computers;
       reload();
     } catch (err) {
       say('pcnew-problem', err.message);
@@ -1942,6 +1951,7 @@
         security: $('grp-type').querySelector('[aria-pressed="true"]').dataset.type === 'security' });
       $('group-dialog').close();
       say('dir-note', `Made ${g.name}. Open it to add members.`);
+      delete lists.groups;
       reload();
     } catch (err) {
       say('grp-problem', err.message);

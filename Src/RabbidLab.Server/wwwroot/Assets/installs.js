@@ -135,7 +135,7 @@
       + `<pre class="code-box">${a.extensions.map((x) => `code --install-extension ${esc(x.id)}`).join('\n')}</pre>` : '';
     panel.body.innerHTML = `<div class="dw-head"><span class="pic dw-pic">${svg('box')}</span><div class="dw-name"><h2 id="dw-title">${esc(a.name)}</h2><p>${esc([a.publisher, a.winget].filter(Boolean).join(' · '))}</p></div>`
       + `<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`
-      + `<div class="dw-bar">${qa('data-app-install', 'download', 'Install…')}${a.builtIn ? '' : qa('data-app-edit', 'edit', 'Edit') + qa('data-app-del', 'trash', 'Delete')}</div>`
+      + `<div class="dw-bar">${R.editButton('data-app-edit', a.builtIn ? 'Built-in apps can\'t be changed.' : '')}${qa('data-app-install', 'download', 'Install…')}${a.builtIn ? '' : qa('data-app-del', 'trash', 'Delete')}</div>`
       + `<div class="dw-strip">${strip}</div>`
       + section('About', `<p class="dw-how">${esc(a.about || 'No description.')}</p><p class="dw-how">winget installs it for everyone on the computer, as SYSTEM. One that's already there is brought up to date.</p>${extras}`)
       + section(`Installed on <small>${a.on.length}</small>`, a.on.length ? `<div class="dw-list">${a.on.map((x) => `<div class="mrow acc-row" data-app-pc="${esc(x.id)}"><span class="pic small">${svg('monitor')}</span>`

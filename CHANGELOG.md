@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.259 (2026-11-19)
+
+- The bar over every list is redone. Actions and Group by look like the filter chips, Refresh and Export are icons side by side, and New has an arrow with the other things the page can make.
+- Side panels have an orange Edit button next to Actions. When your role is not allowed to edit, or the thing is built in, it stays there in grey and its hint says why.
+
 ## 1.1.258 (2026-11-19)
 
 - The side panel has a round arrow button on its left edge that closes it.

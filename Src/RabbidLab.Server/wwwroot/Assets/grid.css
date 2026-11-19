@@ -105,6 +105,47 @@ body.col-moving, body.col-moving * { cursor: grabbing !important; user-select: n
 .gby-pick:hover { background: #1A1D2B; }
 .gby-pick .chev { width: 13px; height: 13px; }
 .gcount { color: var(--muted); font-size: 12px; white-space: nowrap; }
+/* The list bar's controls as filter-bar chips: Actions, + Group by, the rows switch, Refresh and Export in one icon box,
+   and New as a split button whose arrow makes the page's other things (grid.js). */
+.gbar { gap: 8px; }
+.gbar .gtools { gap: 8px; }
+.gbar > .small { height: 32px; padding: 0 11px; gap: 6px; border: 1px solid transparent; border-radius: 8px; background: #1A1D2B; color: var(--text); font-size: 13px; font-weight: 600; }
+.gbar > .small:hover:not(:disabled) { background: #222536; color: var(--title); }
+.gbar > .small:disabled { opacity: .4; }
+.gbar > .small[aria-expanded="true"] { border-color: var(--accent-line); }
+.gbar > .small .chev { width: 13px; height: 13px; color: currentColor; }
+.gbar .gby { position: relative; height: 32px; margin: 0; padding: 0 11px; gap: 6px; border: 1px solid transparent; border-radius: 8px; background: #1A1D2B; font-weight: 600; }
+.gbar .gby:hover { background: #222536; }
+.gbar .gby input.switch { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.gbar .gby:has(:focus-visible) { outline: 2px solid var(--accent-line); outline-offset: 1px; }
+.gbar .gby::before { content: ""; flex: none; width: 14px; height: 14px; background: currentColor;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M12 5v14M5 12h14'/%3E%3C/svg%3E") center / contain no-repeat; }
+.gbar .gby:not(:has(:checked)) + .gby-pick { display: none; }
+/* On, it reads "× Group by: Department ▾": the left half turns it off, the right half picks the columns. */
+.gbar .gby:has(:checked) { padding-right: 2px; border-color: var(--accent-line); border-right: 0; border-radius: 8px 0 0 8px; background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent-soft); }
+.gbar .gby:has(:checked)::before { width: 12px; height: 12px;
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M6 6l12 12M18 6L6 18'/%3E%3C/svg%3E"); }
+.gbar .gby:has(:checked) span::after { content: ":"; }
+.gbar .gby:has(:checked) + .gby-pick { height: 32px; margin-left: -8px; padding: 0 10px 0 4px; border: 1px solid var(--accent-line); border-left: 0; border-radius: 0 8px 8px 0;
+  background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--title); }
+.gbar .gby:has(:checked) + .gby-pick:hover { background: color-mix(in srgb, var(--accent) 24%, transparent); }
+.gbar .gby-pick .chev { stroke: var(--accent-soft); }
+.gbar .gcount { margin-left: 4px; color: #8B90A5; font-size: 12.5px; }
+.gbar .vswitch, .gdock { display: inline-flex; flex: none; gap: 2px; margin: 0; padding: 2px; border: 0; border-radius: 8px; background: #1A1D2B; }
+.gbar .vswitch button, .gdock > button { display: grid; place-items: center; width: 30px; height: 28px; padding: 0; border: 0; border-radius: 6px; background: none; color: #8B90A5; }
+.gdock > button { color: #B8BCCB; }
+.gbar .vswitch button:hover, .gdock > button:hover { background: #2C3046; color: var(--title); }
+.gbar .vswitch button[aria-pressed="true"] { background: #2C3046; color: var(--title); }
+.gbar .vswitch svg, .gdock svg { width: 15px; height: 15px; }
+.gsplit { display: inline-flex; flex: none; }
+.gbar:not(.has-new) > .gsplit, .gbar.no-more .gsplit-more { display: none; }
+.gbar.no-more .gsplit > .gnew { border-radius: 8px; }
+.gsplit > .gnew { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px 0 11px; border-radius: 8px 0 0 8px; font-size: 13px; font-weight: 700; white-space: nowrap; }
+.gsplit > .gnew svg { width: 14px; height: 14px; }
+.gsplit > .gsplit-more { display: grid; place-items: center; width: 30px; height: 32px; padding: 0; border: 0; border-left: 1px solid rgba(255, 255, 255, .3); border-radius: 0 8px 8px 0;
+  background: #E8542F; color: #fff; }
+.gsplit > .gsplit-more:hover, .gsplit > .gsplit-more[aria-expanded="true"] { background: var(--accent-hover); }
+.gsplit > .gsplit-more .chev { width: 13px; height: 13px; stroke: currentColor; }
 /* A button that reads as words: Load filter, Export, Clear. */
 .tlink { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 8px; border: 0; border-radius: 7px; background: none; color: var(--accent-soft); font-size: 13px; font-weight: 600; white-space: nowrap; }
 .tlink:hover { background: color-mix(in srgb, var(--accent-soft) 10%, transparent); }

@@ -328,7 +328,10 @@
   });
   $('gpo-export').addEventListener('click', () => g0.csv(g0.sorted(shown()), `group-policy-${list}`));
   $('gpo-refresh').addEventListener('click', () => { Object.keys(detail).forEach((k) => delete detail[k]); load(); });
-  $('gpo-new').addEventListener('click', () => (list === 'gpos' ? newGpo() : list === 'linked' ? linkTo(null, null) : list === 'wmi' ? editFilter(null) : backupAll()));
+  const makeIn = (k) => (k === 'gpos' ? newGpo() : k === 'linked' ? linkTo(null, null) : k === 'wmi' ? editFilter(null) : backupAll());
+  $('gpo-new').addEventListener('click', () => makeIn(list));
+  // New's arrow: what the other lists make.
+  R.grid.more($('gpo-new'), () => (!gp ? [] : Object.entries(LISTS).filter(([k, l]) => k !== list && l.make()).map(([k, l]) => ({ label: l.make(), icon: l.icon, run: () => makeIn(k) }))));
 
   // --- Ticks, and what Actions does with them --------------------------------------------------------------------
   const tickedRows = () => L().rows().filter((x) => picked.has(L().key(x)));

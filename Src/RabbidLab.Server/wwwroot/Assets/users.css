@@ -388,7 +388,7 @@ button.danger.solid:hover { background: #DB4860; }
 .dbar .small .chev { width: 12px; height: 12px; color: #8B90A5; }
 #dir-act:disabled { opacity: .45; cursor: default; }
 /* Filter on Active Directory and Devices: the same button on both. */
-:is(#dir-filter, #dir-refresh, #dv-filter) { padding: 0 9px; } /* just the icon (and the funnel's count) */
+:is(#dir-filter, #dv-filter) { padding: 0 9px; } /* just the icon (and the funnel's count) */
 :is(#dir-filter, #dv-filter)[hidden] { display: none; }
 :is(#dir-filter, #dv-filter).on { border-color: var(--accent-line); color: var(--title); }
 /* Clear filter sits joined to Filter while one is on. */
@@ -599,6 +599,8 @@ body.dw-sizing { cursor: col-resize; user-select: none; }
 .dw-do > .small, .dw-do > .primary { display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 16px; font-size: 14px; white-space: nowrap; }
 .dw-do > .small svg, .dw-do > .primary svg { width: 16px; height: 16px; }
 .dw-do .chev { width: 12px; height: 12px; }
+/* Edit when this role can't, or it's built in: still there, grey, with why as its hint (editButton in console.js). */
+button.primary.dw-edit[aria-disabled="true"], button.primary.dw-edit[aria-disabled="true"]:hover { background: #2A2D3D; color: #6E7389; cursor: default; }
 .dw-head .dw-close { align-self: center; }
 .dw-path { margin: 10px 0 0 62px; color: #B8BCCB; font-size: 14px; font-weight: 650; overflow-wrap: anywhere; }
 .dw-strip { display: flex; flex-wrap: wrap; gap: 14px 44px; margin: 20px 0 0; }
