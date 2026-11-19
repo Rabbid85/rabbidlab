@@ -174,7 +174,7 @@ public sealed class DevicesTests : IDisposable
     [Fact]
     public async Task Running_a_script_takes_the_right_to_and_confirming_who_you_are()
     {
-        var admin = await app.SignedIn();
+        var admin = await app.SignedIn(confirmed: false);
         (await admin.PostAsJsonAsync("/api/clients/settings", new { approve = false })).EnsureSuccessStatusCode();
         var (id, _) = await Computer();
         var run = new { kind = "script", clients = new[] { id }, language = "powershell", text = "Get-Date" };
@@ -484,7 +484,7 @@ public sealed class DevicesTests : IDisposable
     [Fact]
     public async Task Installing_takes_its_own_right_and_confirming_who_you_are()
     {
-        var admin = await app.SignedIn();
+        var admin = await app.SignedIn(confirmed: false);
         (await admin.PostAsJsonAsync("/api/clients/settings", new { approve = false })).EnsureSuccessStatusCode();
         var (id, _) = await Computer();
         var run = new { kind = "install", apps = new[] { "builtin-vscode" }, clients = new[] { id } };

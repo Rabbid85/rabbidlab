@@ -133,16 +133,92 @@ public sealed class SignInTests : IDisposable
     }
 
     [Fact]
-    public async Task Keep_me_signed_in_lasts_for_days()
+    public async Task Asking_to_be_kept_signed_in_is_ignored_and_the_session_ends_with_the_browser()
     {
         await app.SignedIn();
-        app.Services.GetRequiredService<SettingsStore>().Change(s => s.IdleMinutes = 0); // Sign out when idle off: days untouched
+        app.Services.GetRequiredService<SettingsStore>().Change(s => s.IdleMinutes = 0); // Sign out when idle off
         var page = app.Page();
-        (await page.PostAsJsonAsync("/api/signin", new { username = "admin", password = "correct horse", remember = true })).EnsureSuccessStatusCode();
+        var signedIn = await page.PostAsJsonAsync("/api/signin", new { username = "admin", password = "correct horse", remember = true });
+        signedIn.EnsureSuccessStatusCode();
 
-        app.Clock.Advance(TimeSpan.FromDays(6));
+        // A cookie for this browser session only: no expiry date, so it goes when the browser closes.
+        Assert.DoesNotContain(signedIn.Headers.GetValues("Set-Cookie"), c => c.Contains("expires=", StringComparison.OrdinalIgnoreCase));
+        app.Clock.Advance(TimeSpan.FromMinutes(6)); // no page open
+        Assert.Equal(HttpStatusCode.Unauthorized, (await page.GetAsync("/api/status")).StatusCode);
+    }
 
-        Assert.Equal(HttpStatusCode.OK, (await page.GetAsync("/api/status")).StatusCode);
+    [Fact]
+    public async Task A_domain_account_that_is_disabled_reset_or_out_of_every_role_is_signed_out_within_minutes()
+    {
+        app.Services.GetRequiredService<SettingsStore>().Change(s => s.IdleMinutes = 0);
+        await app.Page().PostAsJsonAsync("/api/setup/directory", new { domain = "amw.com", username = "awiles", password = "domain pass" });
+        var admin = app.Page();
+        (await admin.PostAsJsonAsync("/api/signin", new { username = "awiles", password = "domain pass" })).EnsureSuccessStatusCode();
+        var user = app.Page();
+        (await user.PostAsJsonAsync("/api/signin", new { username = "jreyes", password = "user pass" })).EnsureSuccessStatusCode();
+        // A page left open asks every minute or so.
+        async Task Open(int minutes)
+        {
+            for (var i = 0; i < minutes; i++)
+            {
+                app.Clock.Advance(TimeSpan.FromMinutes(1));
+                await admin.GetAsync("/api/status");
+                await user.GetAsync("/api/status");
+            }
+        }
+
+        // The domain can't be asked: both go on as they were.
+        app.Directory.Unreachable = true;
+        await Open(6);
+        Assert.Equal(HttpStatusCode.OK, (await admin.GetAsync("/api/status")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await user.GetAsync("/api/status")).StatusCode);
+        app.Directory.Unreachable = false;
+
+        // jreyes is turned off in the domain; awiles's password is reset. Each is signed out at the next check.
+        app.Directory.Disabled.Add("jreyes");
+        app.Directory.PasswordSet["awiles"] = 200;
+        await Open(6);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await user.GetAsync("/api/status")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await admin.GetAsync("/api/status")).StatusCode);
+        var log = File.ReadAllText(Path.Combine(data, "activity.jsonl"));
+        Assert.Contains("The account was disabled.", log);
+        Assert.Contains("password was changed or reset", log);
+
+        // Signing in again with the new password works.
+        var again = app.Page();
+        (await again.PostAsJsonAsync("/api/signin", new { username = "awiles", password = "domain pass" })).EnsureSuccessStatusCode();
+        Assert.Equal(HttpStatusCode.OK, (await again.GetAsync("/api/status")).StatusCode);
+    }
+
+    [Fact]
+    public async Task A_Windows_administrator_taken_out_of_Administrators_is_signed_out_within_minutes()
+    {
+        await app.SignedIn();
+        app.Services.GetRequiredService<SettingsStore>().Change(s => s.IdleMinutes = 0);
+        var page = app.Page();
+        (await page.PostAsJsonAsync("/api/signin", new { username = @".\localadmin", password = "windows pass" })).EnsureSuccessStatusCode();
+
+        app.Windows.Accounts.Single(a => a.Name == "localadmin").Groups = ["Users"];
+        for (var i = 0; i < 6; i++)
+        {
+            app.Clock.Advance(TimeSpan.FromMinutes(1));
+            await page.GetAsync("/api/status");
+        }
+
+        Assert.Equal(HttpStatusCode.Unauthorized, (await page.GetAsync("/api/status")).StatusCode);
+    }
+
+    [Theory]
+    [InlineData("https://lab.amw.com/", true)]
+    [InlineData("https://lab.amw.com:8420/", false)] // http://lab.amw.com would be sent to port 443, which may have nothing on it
+    [InlineData("http://lab.amw.com/", false)]
+    [InlineData("https://localhost/", false)]
+    [InlineData("https://192.168.2.40/", false)]
+    public async Task HSTS_is_sent_only_over_HTTPS_on_port_443_by_a_name(string address, bool sent)
+    {
+        var page = app.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { BaseAddress = new Uri(address), AllowAutoRedirect = false });
+        var answer = await page.GetAsync("/api/health");
+        Assert.Equal(sent, answer.Headers.Contains("Strict-Transport-Security"));
     }
 
     [Fact]
@@ -257,7 +333,7 @@ public sealed class SignInTests : IDisposable
         Assert.False(engine.InUseNow);
 
         // What an open page asks by itself.
-        var admin = await app.SignedIn();
+        var admin = await app.SignedIn(confirmed: false);
         foreach (var poll in new[] { "/api/update", "/api/clients", "/api/sessions", "/api/links/states", "/api/clients/here", "/api/health", "/api/update/watch" })
         {
             Assert.Equal(HttpStatusCode.OK, (await admin.GetAsync(poll)).StatusCode);
@@ -302,18 +378,15 @@ public sealed class SignInTests : IDisposable
         var domain = app.Page();
         var windows = app.Page();
         var local = app.Page();
-        (await domain.PostAsJsonAsync("/api/signin", new { username = "awiles", password = "domain pass", remember = true })).EnsureSuccessStatusCode();
-        (await windows.PostAsJsonAsync("/api/signin", new { username = @".\localadmin", password = "windows pass", remember = true })).EnsureSuccessStatusCode();
-        (await local.PostAsJsonAsync("/api/signin", new { username = @".\rescue", password = "rescue pass", remember = true })).EnsureSuccessStatusCode();
+        (await domain.PostAsJsonAsync("/api/signin", new { username = "awiles", password = "domain pass" })).EnsureSuccessStatusCode();
+        (await windows.PostAsJsonAsync("/api/signin", new { username = @".\localadmin", password = "windows pass" })).EnsureSuccessStatusCode();
+        (await local.PostAsJsonAsync("/api/signin", new { username = @".\rescue", password = "rescue pass" })).EnsureSuccessStatusCode();
 
-        foreach (var _ in Enumerable.Range(0, 3))
+        // Kept open and in use for a week: as if they had signed in eight days ago.
+        foreach (var s in app.Services.GetRequiredService<Sessions>().All())
         {
-            app.Clock.Advance(TimeSpan.FromDays(2));
-            Assert.Equal(HttpStatusCode.OK, (await domain.GetAsync("/api/status")).StatusCode);
-            Assert.Equal(HttpStatusCode.OK, (await windows.GetAsync("/api/status")).StatusCode);
-            Assert.Equal(HttpStatusCode.OK, (await local.GetAsync("/api/status")).StatusCode);
+            s.Started -= TimeSpan.FromDays(8);
         }
-        app.Clock.Advance(TimeSpan.FromDays(2)); // eight days since they signed in
 
         Assert.Equal(HttpStatusCode.Unauthorized, (await domain.GetAsync("/api/status")).StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, (await windows.GetAsync("/api/status")).StatusCode);

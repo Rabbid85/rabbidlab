@@ -87,6 +87,7 @@ public sealed class UsersTests : IDisposable
     {
         var page = app.Page();
         (await page.PostAsJsonAsync("/api/signin", new { username, password })).EnsureSuccessStatusCode();
+        await TestApp.Confirm(page, password);
         return page;
     }
 
@@ -160,6 +161,38 @@ public sealed class UsersTests : IDisposable
         Assert.Contains("0.3.0", await Error(tooOld));
         Assert.Equal(HttpStatusCode.NotFound, notLetIn.StatusCode);
         Assert.Contains("offline", await Error(offline));
+    }
+
+    [Fact]
+    public async Task Passwords_new_accounts_group_and_role_changes_take_confirming_who_you_are()
+    {
+        var admin = await app.SignedIn();
+        (await admin.PostAsJsonAsync("/api/ad/connect", new { username = "awiles", password = "domain pass", account = "svc-rabbidlab" })).EnsureSuccessStatusCode();
+        var page = await app.SignedIn(confirmed: false); // signed in, and nothing confirmed in this session
+        (string Path, object Body)[] guarded =
+        [
+            ("/api/ad/users/jreyes/password", new { password = "New pass 1" }),
+            ("/api/ad/users", new { username = "newbie", first = "New", last = "Person" }),
+            ("/api/ad/users/jreyes/groups", new { add = new[] { "CN=Domain Admins,CN=Users,DC=amw,DC=com" } }),
+            ("/api/windows/server/admins", new { add = new[] { @"AMW\jreyes" } }),
+            ("/api/windows/server/accounts", new { name = "backdoor" }),
+            ("/api/windows/server/accounts/localadmin/password", new { password = "New pass 1" }),
+            ("/api/windows/server/accounts/localadmin/groups", new { add = new[] { "Administrators" } }),
+            ("/api/accounts", new { username = "backdoor", password = "a long password" }),
+            ("/api/accounts/admin/password", new { password = "a long password" }),
+            ("/api/roles/admin/members", new { kind = "local", name = "admin" }),
+            ("/api/mfa/reset", new { source = "local", username = "admin" }),
+        ];
+        foreach (var (path, body) in guarded)
+        {
+            var answer = await page.PostAsJsonAsync(path, body);
+            Assert.True(answer.StatusCode == HttpStatusCode.Forbidden, $"{path}: {answer.StatusCode}");
+            Assert.Equal("password", (await answer.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("confirm").GetString());
+        }
+        Assert.DoesNotContain(app.Windows.Orders, o => o.Action != RabbidLab.Shared.AccountOrder.List);
+
+        await TestApp.Confirm(page, "correct horse");
+        Assert.Equal(HttpStatusCode.OK, (await page.PostAsJsonAsync("/api/ad/users/jreyes/password", new { password = "New pass 1" })).StatusCode);
     }
 
     [Fact]
@@ -380,7 +413,7 @@ public sealed class UsersTests : IDisposable
 
         var seen = await viewer.GetFromJsonAsync<JsonElement>("/api/gpo/gpmc");
         var refused = await viewer.PostAsJsonAsync("/api/gpo/gpmc/install", new { });
-        var unconfirmed = await admin.PostAsJsonAsync("/api/gpo/gpmc/install", new { });
+        var unconfirmed = await (await app.SignedIn(confirmed: false)).PostAsJsonAsync("/api/gpo/gpmc/install", new { });
 
         Assert.False(string.IsNullOrEmpty(seen.GetProperty("command").GetString()));
         Assert.Equal(HttpStatusCode.Forbidden, refused.StatusCode);
@@ -397,7 +430,7 @@ public sealed class UsersTests : IDisposable
         var viewer = await SignIn("mlopez", "user password");
 
         var refused = await viewer.PostAsJsonAsync("/api/ad/read-only", new { on = true });
-        var unconfirmed = await admin.PostAsJsonAsync("/api/ad/read-only", new { on = true });
+        var unconfirmed = await (await app.SignedIn(confirmed: false)).PostAsJsonAsync("/api/ad/read-only", new { on = true });
         var seen = await viewer.GetFromJsonAsync<JsonElement>("/api/ad");
 
         Assert.Equal(HttpStatusCode.Forbidden, refused.StatusCode);

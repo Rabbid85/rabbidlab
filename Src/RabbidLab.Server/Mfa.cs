@@ -178,7 +178,7 @@ public sealed class Mfa(DataFolder folder, SettingsStore secrets, TimeProvider c
 }
 
 /// <summary>A sign-in whose password was right, waiting for its code (or for the app to be set up, with the secret to set up).</summary>
-public sealed record PendingSignIn(ClaimsPrincipal Principal, bool Remember, string Name, string? Secret, DateTimeOffset Until);
+public sealed record PendingSignIn(ClaimsPrincipal Principal, string Name, string? Secret, DateTimeOffset Until);
 
 /// <summary>Sign-ins between the password and the code, by a ticket only the page that typed the password has. Ten minutes each.</summary>
 public sealed class PendingSignIns(TimeProvider clock)
@@ -188,7 +188,7 @@ public sealed class PendingSignIns(TimeProvider clock)
     private readonly Lock gate = new();
     private readonly Dictionary<string, PendingSignIn> waiting = [];
 
-    public string Add(ClaimsPrincipal principal, bool remember, string name, string? secret)
+    public string Add(ClaimsPrincipal principal, string name, string? secret)
     {
         var ticket = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
         lock (gate)
@@ -203,7 +203,7 @@ public sealed class PendingSignIns(TimeProvider clock)
             {
                 waiting.Remove(old);
             }
-            waiting[ticket] = new PendingSignIn(principal, remember, name, secret, now + Life);
+            waiting[ticket] = new PendingSignIn(principal, name, secret, now + Life);
         }
         return ticket;
     }
@@ -303,9 +303,9 @@ public static class MfaApi
         });
 
         // Someone else's, for a lost phone: they set it up again at their next sign-in if a role of theirs requires it.
-        app.MapPost("/api/mfa/reset", (MfaResetForm form, HttpContext context, Mfa mfa, Roles roles, ActivityLog log) =>
+        app.MapPost("/api/mfa/reset", (MfaResetForm form, HttpContext context, Mfa mfa, Roles roles, Confirmations confirm, ActivityLog log) =>
         {
-            if (Access.RefuseUnless(context, Permissions.AccessMfa) is { } refused)
+            if ((Access.RefuseUnless(context, Permissions.AccessMfa) ?? confirm.Refuse(context)) is { } refused)
             {
                 return refused;
             }

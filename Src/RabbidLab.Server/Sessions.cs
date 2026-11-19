@@ -250,6 +250,7 @@ public sealed class Sessions : ITicketStore, IDisposable
             {
                 s.Expires = ticket.Properties.ExpiresUtc;
                 s.Remembered = ticket.Properties.IsPersistent;
+                s.Groups = [.. ticket.Principal.FindAll("group").Select(c => c.Value)]; // the account check may have changed them
                 s.Ticket = Protect(ticket);
                 tickets[key] = ticket;
                 changed = true;

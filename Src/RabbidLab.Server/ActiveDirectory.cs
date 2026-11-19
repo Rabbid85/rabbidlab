@@ -2,8 +2,11 @@ using System.Net.NetworkInformation;
 
 namespace RabbidLab.Server;
 
-/// <summary>Someone Active Directory signed in: their username, display name, and which of the groups asked about they're in.</summary>
-public sealed record DirectoryUser(string Username, string Name, IReadOnlyList<string> Groups);
+/// <summary>Someone Active Directory signed in: their username, display name, which of the groups asked about they're in, and pwdLastSet.</summary>
+public sealed record DirectoryUser(string Username, string Name, IReadOnlyList<string> Groups, long? PasswordSet = null);
+
+/// <summary>An account as Active Directory has it now: whether it's there and enabled, its pwdLastSet, and which of the groups asked about it's in.</summary>
+public sealed record DirectoryAccount(bool Found, bool Enabled, long? PasswordSet, IReadOnlyList<string> Groups);
 
 /// <summary>A security group ("group") or a person ("user") found in the domain.</summary>
 public sealed record DirectoryEntry(string Kind, string Name, string? Display, string? Description);
@@ -33,6 +36,13 @@ public interface IDirectory
     /// Read as this computer (Windows) or anonymously (elsewhere); when the domain won't say, just the domain itself.
     /// </summary>
     Task<IReadOnlyList<string>> Domains(string domain, CancellationToken stop);
+
+    /// <summary>
+    /// A signed-in account as it is now, read as this computer (Windows) or anonymously (elsewhere), for sessions that
+    /// last: whether it's there and enabled, when its password was set, and which of these groups it's in. Null when the
+    /// domain won't say.
+    /// </summary>
+    Task<DirectoryAccount?> Recheck(string domain, string host, string username, IReadOnlyCollection<string> groups, CancellationToken stop);
 }
 
 /// <summary>
@@ -79,7 +89,7 @@ public sealed class ActiveDirectory : IDirectory
         }
         try
         {
-            var user = await Ldap.Bound(ldap, name, ["sAMAccountName", "displayName"], stop)
+            var user = await Ldap.Bound(ldap, name, ["sAMAccountName", "displayName", "pwdLastSet"], stop)
                 ?? throw new DirectoryProblem($"{Ldap.Account(name)} signed in, but wasn't found in {domain}.");
             var sam = user.Text("sAMAccountName") ?? Ldap.Account(name);
             List<string> member = [];
@@ -95,12 +105,72 @@ public sealed class ActiveDirectory : IDirectory
                     }
                 }
             }
-            return new DirectoryUser(sam, user.Text("displayName") ?? sam, [.. member.Distinct(StringComparer.OrdinalIgnoreCase)]);
+            return new DirectoryUser(sam, user.Text("displayName") ?? sam, [.. member.Distinct(StringComparer.OrdinalIgnoreCase)], user.Number("pwdLastSet"));
         }
         catch (LdapRefused e)
         {
             throw new DirectoryProblem($"{domain} couldn't be searched: {e.Message}.");
         }
+    }
+
+    public async Task<DirectoryAccount?> Recheck(string domain, string host, string username, IReadOnlyCollection<string> groups, CancellationToken stop)
+    {
+        var wanted = groups.Where(g => !string.IsNullOrWhiteSpace(g)).Select(g => g.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        using var ldap = await Ldap.OpenAnonymous(domain, host, stop);
+        if (ldap is null)
+        {
+            return null;
+        }
+        try
+        {
+            var user = (await ldap.Find(ldap.BaseDn, $"(&(objectCategory=person)(objectClass=user)(sAMAccountName={Escape(username)}))", true,
+                ["userAccountControl", "pwdLastSet", "objectSid", "primaryGroupID"], 1, stop)).FirstOrDefault();
+            if (user is null)
+            {
+                return new DirectoryAccount(false, false, null, []);
+            }
+            List<string> member = [];
+            if (wanted.Count > 0)
+            {
+                // Nested groups by the in-chain match on member (anyone signed in may read it; tokenGroups of another
+                // account often isn't), and the primary group, which isn't in member, by its SID.
+                var inChain = $"(member:1.2.840.113556.1.4.1941:={Escape(user.Dn)})";
+                var named = GroupsFilter(wanted);
+                foreach (var g in await ldap.Find(ldap.BaseDn, $"(&{named}{inChain})", true, ["cn", "sAMAccountName"], 1000, stop))
+                {
+                    member.AddRange(Named(wanted, g.Text("cn"), g.Text("sAMAccountName")));
+                }
+                if (PrimaryGroup(user.Bytes("objectSid"), user.Number("primaryGroupID")) is { } primary)
+                {
+                    foreach (var g in await ldap.Find(ldap.BaseDn, named, true, ["objectSid", "cn", "sAMAccountName"], 1000, stop))
+                    {
+                        if (g.Bytes("objectSid") is { } sid && sid.AsSpan().SequenceEqual(primary))
+                        {
+                            member.AddRange(Named(wanted, g.Text("cn"), g.Text("sAMAccountName")));
+                        }
+                    }
+                }
+            }
+            // Bit 2 of userAccountControl is a disabled account.
+            var enabled = ((user.Number("userAccountControl") ?? 0) & 2) == 0;
+            return new DirectoryAccount(true, enabled, user.Number("pwdLastSet"), [.. member.Distinct(StringComparer.OrdinalIgnoreCase)]);
+        }
+        catch (LdapRefused)
+        {
+            return null; // this computer, or an anonymous connection, isn't allowed to read it
+        }
+    }
+
+    /// <summary>The primary group's SID: the account's own SID with its last part (the RID) replaced by primaryGroupID.</summary>
+    internal static byte[]? PrimaryGroup(byte[]? userSid, long? rid)
+    {
+        if (userSid is not { Length: >= 12 } || rid is not { } r || r is < 0 or > uint.MaxValue)
+        {
+            return null;
+        }
+        var sid = userSid.ToArray();
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt32LittleEndian(sid.AsSpan(sid.Length - 4), (uint) r);
+        return sid;
     }
 
     public async Task<DirectoryList?> Search(string domain, string host, string? search, CancellationToken stop)

@@ -84,13 +84,18 @@ public static class RolesApi
             return Results.Ok();
         });
 
-        app.MapPost("/api/roles/{id}", (string id, RoleForm form, HttpContext context, Roles roles, ActivityLog log) =>
+        app.MapPost("/api/roles/{id}", (string id, RoleForm form, HttpContext context, Roles roles, Confirmations confirm, ActivityLog log) =>
         {
             if (Access.RefuseUnless(context, Permissions.AccessRoles) is { } refused)
             {
                 return refused;
             }
             var before = roles.Find(id);
+            // Giving a role more takes Confirm it's you; a name, a colour or taking something away doesn't.
+            if (before is not null && (form.Permissions ?? []).Except(before.Permissions).Any() && confirm.Refuse(context) is { } unconfirmed)
+            {
+                return unconfirmed;
+            }
             if (roles.Change(id, form.Name, form.About, form.Color, form.Permissions, Who.Of(context.User), form.Scope) is { } problem)
             {
                 return Results.BadRequest(new { error = problem });
@@ -101,9 +106,10 @@ public static class RolesApi
         });
 
         // Whether everyone in the role signs in with a code as well. Saved as it's switched, Administrator's too.
-        app.MapPost("/api/roles/{id}/mfa", (string id, OnForm form, HttpContext context, Roles roles, ActivityLog log) =>
+        app.MapPost("/api/roles/{id}/mfa", (string id, OnForm form, HttpContext context, Roles roles, Confirmations confirm, ActivityLog log) =>
         {
-            if (Access.RefuseUnless(context, Permissions.AccessRoles) is { } refused)
+            // Turning it off takes Confirm it's you; turning it on is never held up.
+            if ((Access.RefuseUnless(context, Permissions.AccessRoles) ?? (form.On ? null : confirm.Refuse(context))) is { } refused)
             {
                 return refused;
             }
@@ -132,9 +138,10 @@ public static class RolesApi
 
         // A group or person from Active Directory, a local account, or everyone in Active Directory, into a role.
         app.MapPost("/api/roles/{id}/members", async (string id, MemberForm form, HttpContext context, Roles roles, Accounts accounts, IDirectory directory,
-            IDomainFinder finder, ActivityLog log, CancellationToken stop) =>
+            IDomainFinder finder, Confirmations confirm, ActivityLog log, CancellationToken stop) =>
         {
-            if (Access.RefuseUnless(context, Permissions.AccessMembers) is { } refused)
+            // Putting someone in a role gives them what it allows, so it takes Confirm it's you. Everyone has User anyway.
+            if ((Access.RefuseUnless(context, Permissions.AccessMembers) ?? (id == Roles.User ? null : confirm.Refuse(context))) is { } refused)
             {
                 return refused;
             }
@@ -226,9 +233,9 @@ public static class RolesApi
         });
 
         // Rabbid Lab's own accounts: everyone has User, and they can go in other roles too.
-        app.MapPost("/api/accounts", (AccountForm form, HttpContext context, Accounts accounts, Roles roles, ActivityLog log) =>
+        app.MapPost("/api/accounts", (AccountForm form, HttpContext context, Accounts accounts, Roles roles, Confirmations confirm, ActivityLog log) =>
         {
-            if (Access.RefuseUnless(context, Permissions.AccessLocal) is { } refused)
+            if ((Access.RefuseUnless(context, Permissions.AccessLocal) ?? confirm.Refuse(context)) is { } refused)
             {
                 return refused;
             }
@@ -256,9 +263,9 @@ public static class RolesApi
             return Results.Ok();
         });
 
-        app.MapPost("/api/accounts/{username}/password", (string username, PasswordForm form, HttpContext context, Accounts accounts, Roles roles, ActivityLog log) =>
+        app.MapPost("/api/accounts/{username}/password", (string username, PasswordForm form, HttpContext context, Accounts accounts, Roles roles, Confirmations confirm, ActivityLog log) =>
         {
-            if (Access.RefuseUnless(context, Permissions.AccessLocal) is { } refused)
+            if ((Access.RefuseUnless(context, Permissions.AccessLocal) ?? confirm.Refuse(context)) is { } refused)
             {
                 return refused;
             }

@@ -502,7 +502,7 @@
     $('ad-form').addEventListener('submit', (e) => {
       e.preventDefault();
       if (setup) {
-        post('/api/setup/directory', { domain: domain(), server, username: $('ad-user').value, password: $('ad-password').value, remember: false }, e.submitter);
+        post('/api/setup/directory', { domain: domain(), server, username: $('ad-user').value, password: $('ad-password').value }, e.submitter);
         return;
       }
       remember('ad');

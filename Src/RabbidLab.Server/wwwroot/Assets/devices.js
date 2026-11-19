@@ -1225,6 +1225,7 @@
   };
   // For printers.js and the rest: confirming who it is before a run, and opening a job in the panel.
   D.confirmed = confirmed;
+  R.askConfirm = askConfirm; // send() in console.js asks with it, for changes on any page
   D.mark = mark;
   D.drawPicked = drawPicked;
   D.openJob = (id) => openJob(id);

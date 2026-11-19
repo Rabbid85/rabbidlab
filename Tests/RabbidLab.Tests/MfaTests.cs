@@ -66,6 +66,7 @@ public sealed class MfaTests : IDisposable
         (await admin.PostAsJsonAsync("/api/accounts", new { username = account, password = "user password", roles = new[] { id } })).EnsureSuccessStatusCode();
         var page = app.Page();
         (await Password(page, account)).EnsureSuccessStatusCode();
+        await TestApp.Confirm(page, "user password");
         return (id, page);
     }
 

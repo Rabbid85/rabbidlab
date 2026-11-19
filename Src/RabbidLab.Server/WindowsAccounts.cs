@@ -15,7 +15,13 @@ public interface IWindowsAccounts
 
     /// <summary>Who's in this computer's Administrators group, and its accounts without their groups; null when Windows won't say.</summary>
     Task<(List<WindowsMember> Admins, List<WindowsAccount> Locals)?> ReadAdmins(CancellationToken stop);
+
+    /// <summary>A signed-in administrator's account as it is now, for sessions that last; null when Windows won't say.</summary>
+    Task<WindowsAdminCheck?> Recheck(string name, CancellationToken stop);
 }
+
+/// <summary>Whether the account is still there, enabled and in Administrators, and when its password was last set (UTC ticks).</summary>
+public sealed record WindowsAdminCheck(bool Found, bool Enabled, bool Admin, long? PasswordSet);
 
 public sealed class WindowsAccounts : IWindowsAccounts
 {
@@ -41,6 +47,29 @@ public sealed class WindowsAccounts : IWindowsAccounts
             return null;
         }
     }, stop);
+
+    public Task<WindowsAdminCheck?> Recheck(string name, CancellationToken stop) =>
+        name.Length == 0 ? Task.FromResult<WindowsAdminCheck?>(null) : Task.Run(() => OperatingSystem.IsWindows() ? Read(name) : null, stop);
+
+    [SupportedOSPlatform("windows")]
+    private static WindowsAdminCheck? Read(string name)
+    {
+        try
+        {
+            using var machine = new PrincipalContext(ContextType.Machine);
+            using var user = UserPrincipal.FindByIdentity(machine, IdentityType.SamAccountName, name);
+            if (user is null)
+            {
+                return new WindowsAdminCheck(false, false, false, null);
+            }
+            using var admins = GroupPrincipal.FindByIdentity(machine, IdentityType.Sid, "S-1-5-32-544");
+            return new WindowsAdminCheck(true, user.Enabled != false, admins is not null && user.IsMemberOf(admins), user.LastPasswordSet?.ToUniversalTime().Ticks);
+        }
+        catch (Exception e) when (e is PrincipalException or System.Runtime.InteropServices.COMException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
 
     [SupportedOSPlatform("windows")]
     private static string? Check(string name, string password)

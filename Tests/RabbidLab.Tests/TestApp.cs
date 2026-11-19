@@ -134,8 +134,11 @@ public sealed class TestApp(string data) : WebApplicationFactory<Program>
         return client;
     }
 
-    /// <summary>A page signed in as a local administrator, setting Rabbid Lab up first when it isn't yet.</summary>
-    public async Task<HttpClient> SignedIn(string username = "admin", string password = "correct horse")
+    /// <summary>
+    /// A page signed in as a local administrator, setting Rabbid Lab up first when it isn't yet. It has confirmed who it
+    /// is too (Confirm it's you, for ten minutes), unless the test is about that.
+    /// </summary>
+    public async Task<HttpClient> SignedIn(string username = "admin", string password = "correct horse", bool confirmed = true)
     {
         var client = Page();
         var setup = await client.PostAsJsonAsync("/api/setup/local", new { username, password });
@@ -143,8 +146,16 @@ public sealed class TestApp(string data) : WebApplicationFactory<Program>
         {
             (await client.PostAsJsonAsync("/api/signin", new { username, password })).EnsureSuccessStatusCode();
         }
+        if (confirmed)
+        {
+            await Confirm(client, password);
+        }
         return client;
     }
+
+    /// <summary>Confirm it's you, with the password, for the next ten minutes.</summary>
+    public static async Task Confirm(HttpClient page, string password) =>
+        (await page.PostAsJsonAsync("/api/confirm", new { password })).EnsureSuccessStatusCode();
 
     /// <summary>Adds a notification and gives back its id: an email one through Gmail, or a webhook kind at an address.</summary>
     public static async Task<string> Notification(HttpClient admin, string name = "Me", string kind = "email", string? url = null)
@@ -282,13 +293,41 @@ public sealed class FakeDirectory : IDirectory
         }
         var name = username.Trim();
         name = name[(name.LastIndexOf('\\') + 1)..];
-        (string Display, string[] Groups)? who = name == "awiles" && password == "domain pass" ? ("Anthony Wiles", ["Domain Admins", "Domain Users"])
-            : name == "jreyes" && password == "user pass" ? ("Jordan Reyes", ["Domain Users"]) : null;
-        if (who is not { } w)
+        (string Display, string[] Groups)? who = name == "awiles" && password == "domain pass" ? ("Anthony Wiles", GroupsOf(name)!)
+            : name == "jreyes" && password == "user pass" ? ("Jordan Reyes", GroupsOf(name)!) : null;
+        if (who is not { } w || Disabled.Contains(name))
         {
             return Task.FromResult<DirectoryUser?>(null);
         }
-        return Task.FromResult<DirectoryUser?>(new DirectoryUser(name, w.Display, [.. groups.Where(g => w.Groups.Contains(g, StringComparer.OrdinalIgnoreCase))]));
+        return Task.FromResult<DirectoryUser?>(new DirectoryUser(name, w.Display, [.. groups.Where(g => w.Groups.Contains(g, StringComparer.OrdinalIgnoreCase))], PasswordSet.GetValueOrDefault(name)));
+    }
+
+    /// <summary>Accounts turned off in the domain since signing in.</summary>
+    public HashSet<string> Disabled { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Each account's pwdLastSet: changing one is a password reset.</summary>
+    public Dictionary<string, long> PasswordSet { get; } = new(StringComparer.OrdinalIgnoreCase) { ["awiles"] = 100, ["jreyes"] = 100 };
+
+    /// <summary>The groups each account is in; tests take some away.</summary>
+    public Dictionary<string, string[]> Groups { get; } = new(StringComparer.OrdinalIgnoreCase) { ["awiles"] = ["Domain Admins", "Domain Users"], ["jreyes"] = ["Domain Users"] };
+
+    /// <summary>When true, the domain can't be asked about an account.</summary>
+    public bool Unreachable { get; set; }
+
+    /// <summary>How many times an account was asked about again.</summary>
+    public int Rechecks { get; private set; }
+
+    private string[]? GroupsOf(string name) => Groups.GetValueOrDefault(name);
+
+    public Task<DirectoryAccount?> Recheck(string domain, string host, string username, IReadOnlyCollection<string> groups, CancellationToken stop)
+    {
+        Rechecks++;
+        if (Unreachable || Problem is not null)
+        {
+            return Task.FromResult<DirectoryAccount?>(null);
+        }
+        return Task.FromResult<DirectoryAccount?>(GroupsOf(username) is not { } mine ? new DirectoryAccount(false, false, null, [])
+            : new DirectoryAccount(true, !Disabled.Contains(username), PasswordSet.GetValueOrDefault(username), [.. groups.Where(g => mine.Contains(g, StringComparer.OrdinalIgnoreCase))]));
     }
 }
 
@@ -363,6 +402,16 @@ public sealed class FakeWindowsAccounts : IWindowsAccounts
 
     public Task<string?> Administrator(string name, string password, CancellationToken stop) =>
         Task.FromResult(name == "localadmin" && password == "windows pass" ? "localadmin" : null);
+
+    /// <summary>Each account's last password change (ticks): changing one is a password reset.</summary>
+    public Dictionary<string, long> PasswordSet { get; } = new(StringComparer.OrdinalIgnoreCase) { ["localadmin"] = 100 };
+
+    public Task<WindowsAdminCheck?> Recheck(string name, CancellationToken stop)
+    {
+        var a = Accounts.FirstOrDefault(x => string.Equals(x.Name, name, StringComparison.OrdinalIgnoreCase));
+        return Task.FromResult<WindowsAdminCheck?>(a is null ? new WindowsAdminCheck(false, false, false, null)
+            : new WindowsAdminCheck(true, a.Enabled, (a.Groups ?? []).Contains("Administrators"), PasswordSet.TryGetValue(name, out var set) ? set : null));
+    }
 
     public Task<AccountAnswer> Do(AccountOrder order, CancellationToken stop)
     {

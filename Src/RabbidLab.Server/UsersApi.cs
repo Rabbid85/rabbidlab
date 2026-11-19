@@ -141,7 +141,7 @@ public static class UsersApi
             log.Record(context, "users", "ad.create", $"Made the AD account {user.Username} in {(user.Where.Length > 0 ? user.Where : tools.State()?.Domain)}",
                 warning is null ? "ok" : "warning", warning);
             return Results.Ok(new { user, warning, password = string.IsNullOrEmpty(form.Password) ? password : null });
-        }));
+        }, confirm: true));
 
         app.MapPost("/api/ad/users/{username}/password", (string username, PasswordReset form, HttpContext context, IDirectoryTools tools, ActivityLog log) =>
             Try(context, Permissions.AdPassword, async () =>
@@ -150,7 +150,7 @@ public static class UsersApi
                 await tools.Password(username, password, form.MustChange, context.RequestAborted);
                 log.Record(context, "users", "ad.password", $"Set a new password for {username}" + (form.MustChange ? ", to be changed at their next sign-in" : ""));
                 return Results.Ok(new { password = string.IsNullOrEmpty(form.Password) ? password : null });
-            }));
+            }, confirm: true));
 
         app.MapPost("/api/ad/users/{username}/unlock", (string username, HttpContext context, IDirectoryTools tools, ActivityLog log) => Try(context, Permissions.AdPassword, async () =>
         {
@@ -175,7 +175,7 @@ public static class UsersApi
                 var warning = await tools.ChangeGroups(username, add, remove, context.RequestAborted);
                 log.Record(context, "users", "ad.groups", $"Changed {username}'s groups" + Groups(add, remove, Ldap.Name), warning is null ? "ok" : "warning", warning);
                 return Results.Ok(new { warning });
-            }));
+            }, confirm: true));
 
         app.MapPost("/api/ad/users/{username}/delete", (string username, HttpContext context, IDirectoryTools tools, ActivityLog log) => Try(context, Permissions.AdDelete, async () =>
         {
@@ -212,7 +212,7 @@ public static class UsersApi
             log.Record(context, "users", "ad.group.members", $"Changed who's in {Ldap.Name(form.Dn ?? "")}" + Groups(add, remove, Ldap.Name).Replace(": into ", ": added ").Replace("out of", "took out"),
                 warning is null ? "ok" : "warning", warning);
             return Results.Ok(new { warning });
-        }));
+        }, confirm: true));
 
         app.MapPost("/api/ad/groups/delete", (GroupMembersForm form, HttpContext context, IDirectoryTools tools, ActivityLog log) => Try(context, Permissions.AdDelete, async () =>
         {
@@ -313,7 +313,7 @@ public static class UsersApi
                     var said = string.Join("; ", new[] { add.Count > 0 ? $"added {string.Join(", ", add)}" : null, gone.Count > 0 ? $"took out {string.Join(", ", gone)}" : null }.Where(x => x is not null));
                     log.Record(context, "users", "windows.admins", $"Changed who's in Administrators on {computer}: {said}", answer.Warning is null ? "ok" : "warning", answer.Warning);
                     return Results.Ok(new { warning = answer.Warning, admins = answer.Admins });
-                });
+                }, confirm: true);
         });
 
         // Local admins on Devices: each computer's Administrators group as last read (this server's, read now), and the
@@ -363,7 +363,7 @@ public static class UsersApi
                 log.Record(context, "users", "windows.create", $"Made the Windows account {order.Name} on {computer}" + Groups(order.Add, [], g => g),
                     answer.Warning is null ? "ok" : "warning", answer.Warning);
                 return Results.Ok(new { warning = answer.Warning, password = string.IsNullOrEmpty(form.Password) ? password : null });
-            });
+            }, confirm: true);
         });
 
         app.MapPost("/api/windows/{id}/accounts/{name}/password", (string id, string name, PasswordReset form, HttpContext context, Clients clients, ClientCommands commands,
@@ -375,7 +375,7 @@ public static class UsersApi
                 {
                     log.Record(context, "users", "windows.password", $"Set a new password for {name} on {computer}" + (form.MustChange ? ", to be changed at its next sign-in" : ""));
                     return Results.Ok(new { password = string.IsNullOrEmpty(form.Password) ? password : null });
-                });
+                }, confirm: true);
         });
 
         app.MapPost("/api/windows/{id}/accounts/{name}/enable", (string id, string name, OnForm form, HttpContext context, Clients clients, ClientCommands commands,
@@ -396,7 +396,7 @@ public static class UsersApi
                     log.Record(context, "users", "windows.groups", $"Changed {name}'s groups on {computer}" + Groups(form.Add ?? [], form.Remove ?? [], g => g),
                         answer.Warning is null ? "ok" : "warning", answer.Warning);
                     return Results.Ok(new { warning = answer.Warning });
-                }));
+                }, confirm: true));
 
         app.MapPost("/api/windows/{id}/accounts/{name}/delete", (string id, string name, HttpContext context, Clients clients, ClientCommands commands,
             IWindowsAccounts windows, ActivityLog log) =>
@@ -423,11 +423,16 @@ public static class UsersApi
     /// The tools are told who's asking (Caller), so they stay inside the scope of that person's roles; a page about the
     /// whole domain (whole) is only for roles that cover all of it.
     /// </summary>
-    internal static async Task<IResult> Try(HttpContext context, string permission, Func<Task<IResult>> work, bool change = true, bool whole = false)
+    internal static async Task<IResult> Try(HttpContext context, string permission, Func<Task<IResult>> work, bool change = true, bool whole = false, bool confirm = false)
     {
         if ((change ? Access.RefuseUnless(context, permission) : Access.Can(context, permission) ? null : Access.NotAllowed()) is { } refused)
         {
             return refused;
+        }
+        // Passwords, new accounts and group changes take Confirm it's you, so a session someone else got hold of can't take over accounts.
+        if (confirm && context.RequestServices.GetRequiredService<Confirmations>().Refuse(context) is { } unconfirmed)
+        {
+            return unconfirmed;
         }
         var caller = new Caller(Who.Of(context.User), permission, context.RequestServices.GetRequiredService<Roles>());
         if (whole && Permissions.Scoped.Contains(permission) && caller.Reach() is not null)
@@ -455,11 +460,15 @@ public static class UsersApi
 
     /// <summary>An order for a computer's accounts: run here for this server, or sent to the computer's client.</summary>
     private static async Task<IResult> Run(HttpContext context, string id, string permission, AccountOrder order, Clients clients, ClientCommands commands,
-        IWindowsAccounts windows, Func<string, AccountAnswer, IResult> done)
+        IWindowsAccounts windows, Func<string, AccountAnswer, IResult> done, bool confirm = false)
     {
         if ((order.Action == AccountOrder.List ? (Access.Can(context, permission) ? null : Access.NotAllowed()) : Access.RefuseUnless(context, permission)) is { } refused)
         {
             return refused;
+        }
+        if (confirm && context.RequestServices.GetRequiredService<Confirmations>().Refuse(context) is { } unconfirmed)
+        {
+            return unconfirmed;
         }
         string computer;
         AccountAnswer? answer;

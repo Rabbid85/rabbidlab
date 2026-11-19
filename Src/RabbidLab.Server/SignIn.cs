@@ -16,9 +16,8 @@ public static class SignIn
 {
     // Release and Dev both run on localhost, and browsers don't keep cookies apart by port.
     public static readonly string Cookie = Product.Dev ? "rabbidlab-dev" : "rabbidlab";
-    // A sign-in that isn't kept (the sign-in page no longer offers keeping one): an open console checks in every minute or less, so this ends soon after its last page closes.
+    // Sessions aren't kept past the browser: an open console checks in every minute or less, so this ends soon after its last page closes.
     public static readonly TimeSpan Session = TimeSpan.FromMinutes(5);
-    public static readonly TimeSpan Remembered = TimeSpan.FromDays(30);
     // Active Directory and Windows accounts sign in again this long after they did, so a change there counts by then.
     public static readonly TimeSpan Longest = TimeSpan.FromDays(7);
     public const int MaxUsername = 256;
@@ -33,6 +32,7 @@ public static class SignIn
         services.AddSingleton<SignInLimiter>();
         services.AddSingleton<Mfa>();
         services.AddSingleton<PendingSignIns>();
+        services.AddSingleton<AccountChecks>();
         services.AddSingleton<IDirectory, ActiveDirectory>();
         services.AddSingleton<IWindowsAccounts, WindowsAccounts>();
         services.AddMemoryCache();
@@ -52,8 +52,16 @@ public static class SignIn
         services.AddHostedService<WorkflowWorker>();
         services.AddSingleton<JoinLimiter>();
         // The cookie carries only the session's id; the session itself is kept by Sessions.
+        // When the console is HTTPS, the cookie says so too: a browser never sends it over plain HTTP.
         services.AddOptions<CookieAuthenticationOptions>(CookieAuthenticationDefaults.AuthenticationScheme)
-            .Configure<Sessions>((options, sessions) => options.SessionStore = sessions);
+            .Configure<Sessions, IConfiguration>((options, sessions, config) =>
+            {
+                options.SessionStore = sessions;
+                if (HttpsOnly(config))
+                {
+                    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+                }
+            });
         services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme).AddCookie(options =>
         {
             options.Cookie.Name = Cookie;
@@ -75,8 +83,8 @@ public static class SignIn
                     Windows => Windows, // Windows checks the password; the session simply runs its course
                     _ => accounts.Find(p?.Identity?.Name)?.Stamp,
                 };
-                // Sessions without Keep me signed in used to last 12 hours; those end now.
-                var old = !context.Properties.IsPersistent && context.Properties.ExpiresUtc - context.Properties.IssuedUtc > Session;
+                // A session kept past the browser (Keep me signed in, gone since 1.1.172), or one from when they lasted 12 hours, ends now.
+                var old = context.Properties.IsPersistent || context.Properties.ExpiresUtc - context.Properties.IssuedUtc > Session;
                 // Staying signed in renews a session, but never past Longest for an account Rabbid Lab doesn't keep itself.
                 if (p?.FindFirstValue("source") is Directory or Windows && Sessions.Current(context.HttpContext) is { } id
                     && context.HttpContext.RequestServices.GetRequiredService<Sessions>().Find(id) is { } session)
@@ -89,9 +97,50 @@ public static class SignIn
                 {
                     context.RejectPrincipal();
                     await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+                    return;
+                }
+                // Active Directory and Windows accounts: asked again every few minutes (AccountChecks).
+                var verdict = await context.HttpContext.RequestServices.GetRequiredService<AccountChecks>().Check(p, context.HttpContext.RequestAborted);
+                if (verdict.Problem is { } problem)
+                {
+                    if (Sessions.Current(context.HttpContext) is { } ending && context.HttpContext.RequestServices.GetRequiredService<Sessions>().End(ending))
+                    {
+                        context.HttpContext.RequestServices.GetRequiredService<ActivityLog>().Record(p.Identity?.Name ?? "", ActivityLog.Address(context.HttpContext), "sign-in",
+                            "signout.account", "Signed out by the account check", "ok", problem);
+                    }
+                    context.RejectPrincipal();
+                    await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+                    return;
+                }
+                // Its groups changed but it can still sign in: what it may do follows them from now on.
+                if (verdict.Groups is { } groups)
+                {
+                    var claims = p.Claims.Where(c => c.Type != "group").Select(c => new Claim(c.Type, c.Value)).Concat(groups.Select(g => new Claim("group", g)));
+                    context.ReplacePrincipal(new ClaimsPrincipal(new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme)));
+                    context.ShouldRenew = true;
                 }
             };
         });
+    }
+
+    /// <summary>Whether the console only answers over HTTPS (Setup's console.json, or --urls with https only).</summary>
+    public static bool HttpsOnly(IConfiguration config)
+    {
+        var urls = config["Kestrel:Endpoints:Console:Url"] ?? config["urls"] ?? Environment.GetEnvironmentVariable("ASPNETCORE_URLS") ?? "";
+        var all = urls.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return all.Length > 0 && all.All(u => u.StartsWith("https://", StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// Whether an answer carries HSTS, so the browser only ever uses HTTPS for this name: HTTPS on port 443, by a name.
+    /// Not on another port, where a browser sent from http://name would land on a port 443 with nothing on it, and not
+    /// for localhost or an IP address.
+    /// </summary>
+    public static bool Hsts(HttpRequest request)
+    {
+        var host = request.Host.Host;
+        return request.IsHttps && request.Host.Port is null or 443 && Uri.CheckHostName(host) == UriHostNameType.Dns
+            && !host.Equals("localhost", StringComparison.OrdinalIgnoreCase) && !host.EndsWith(".localhost", StringComparison.OrdinalIgnoreCase);
     }
 
     // Sign out when idle: the choices, in minutes (0 is never), and the slack the page's once-a-minute report needs.
@@ -235,7 +284,7 @@ public static class SignIn
             roles.SetUp(new Member { Kind = Member.Local, Name = account.Username }, null);
             log.Record(account.Username, ActivityLog.Address(context), "sign-in", "setup.local", $"Set up {Product.Title} with a local account", "ok");
             var principal = Principal(account.Username, account.Username, Local, account.Stamp);
-            await Start(context, principal, remember: false);
+            await Start(context, principal);
             roles.Seen(Who.Of(principal), account.Username);
             return Results.Ok(new { user = Me(principal, roles) });
         });
@@ -293,8 +342,8 @@ public static class SignIn
             log.Record(user.Username, from, "sign-in", "setup.directory", $"Set up {Product.Title} with Active Directory ({domain}, {server ?? "automatic"}, anyone in the domain)", "ok");
             // Whoever sets it up is the administrator; everyone in the domain gets User.
             roles.SetUp(new Member { Kind = Member.Person, Name = user.Username, Display = user.Name }, new Member { Kind = Member.Everyone, Name = "ad" });
-            var principal = Principal(user.Username, user.Name, Directory, accounts.Directory!.Stamp, domain, setupHost, user.Groups);
-            await Start(context, principal, form.Remember);
+            var principal = Principal(user.Username, user.Name, Directory, accounts.Directory!.Stamp, domain, setupHost, user.Groups, Stamp(user.PasswordSet));
+            await Start(context, principal);
             roles.Seen(Who.Of(principal), user.Name);
             return Results.Ok(new { user = Me(principal, roles) });
         }).AddEndpointFilter(Limited);
@@ -315,14 +364,14 @@ public static class SignIn
                 var who = Who.Of(principal);
                 if (mfa.Has(who))
                 {
-                    return Results.Ok(new { mfa = "code", ticket = pending.Add(principal, form.Remember, shown, null) });
+                    return Results.Ok(new { mfa = "code", ticket = pending.Add(principal, shown, null) });
                 }
                 if (roles.NeedsMfa(who))
                 {
                     var secret = Totp.NewSecret();
-                    return Results.Ok(new { mfa = "setup", ticket = pending.Add(principal, form.Remember, shown, secret), setup = MfaApi.Setup(who, secret) });
+                    return Results.Ok(new { mfa = "setup", ticket = pending.Add(principal, shown, secret), setup = MfaApi.Setup(who, secret) });
                 }
-                await Start(context, principal, form.Remember);
+                await Start(context, principal);
                 roles.Seen(who, shown);
                 log.Record(principal.Identity!.Name!, from, "sign-in", "signin", "Signed in", "ok");
                 return Results.Ok(new { user = Me(principal, roles) });
@@ -347,7 +396,8 @@ public static class SignIn
                 }
                 else if (await windows.Administrator(name, form.Password ?? "", context.RequestAborted) is { } admin)
                 {
-                    principal = Principal($"{Environment.MachineName}\\{admin}", admin, Windows, Windows, Environment.MachineName);
+                    var now = await windows.Recheck(admin, context.RequestAborted);
+                    principal = Principal($"{Environment.MachineName}\\{admin}", admin, Windows, Windows, Environment.MachineName, password: Stamp(now?.PasswordSet));
                 }
                 if (principal is null)
                 {
@@ -397,7 +447,7 @@ public static class SignIn
                 return Results.Json(new { error = $"Your account isn't in any of {Product.Title}'s roles yet, so it can't sign in. Ask whoever runs {Product.Title} to add you." },
                     statusCode: StatusCodes.Status403Forbidden);
             }
-            return await Enter(Principal(username, user.Name, Directory, settings.Stamp, domain, host, user.Groups), user.Name);
+            return await Enter(Principal(username, user.Name, Directory, settings.Stamp, domain, host, user.Groups, Stamp(user.PasswordSet)), user.Name);
         }).AddEndpointFilter(Limited);
 
         // The second step: the code from the authenticator app, with the ticket the password step gave. When the app is
@@ -435,7 +485,7 @@ public static class SignIn
                 return Results.BadRequest(new { error = "Sign in again.", again = true });
             }
             ((ClaimsIdentity) waiting.Principal.Identity).AddClaim(new Claim("mfa", "1"));
-            await Start(context, waiting.Principal, waiting.Remember);
+            await Start(context, waiting.Principal);
             roles.Seen(who, waiting.Name);
             if (waiting.Secret is not null)
             {
@@ -537,9 +587,13 @@ public static class SignIn
     /// groups in roles they're in. What their roles allow is worked out on each request, so role changes count at once.
     /// </summary>
     private static ClaimsPrincipal Principal(string username, string name, string source, string stamp, string? domain = null, string? server = null,
-        IEnumerable<string>? groups = null)
+        IEnumerable<string>? groups = null, string? password = null)
     {
         List<Claim> claims = [new(ClaimTypes.Name, username), new("name", name), new("source", source), new("stamp", stamp)];
+        if (password is not null)
+        {
+            claims.Add(new Claim(AccountChecks.PasswordClaim, password)); // when the password was set, not the password
+        }
         if (domain is not null)
         {
             claims.Add(new Claim("domain", domain));
@@ -570,14 +624,11 @@ public static class SignIn
         };
     }
 
-    private static Task Start(HttpContext context, ClaimsPrincipal principal, bool remember) =>
-        context.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal, new AuthenticationProperties
-        {
-            IsPersistent = remember,
-            ExpiresUtc = !remember ? null : context.RequestServices.GetRequiredService<TimeProvider>().GetUtcNow()
-                + (principal.FindFirstValue("source") is Directory or Windows ? Longest : Remembered),
-            AllowRefresh = true,
-        });
+    // Never kept past the browser, whatever a request asks.
+    private static Task Start(HttpContext context, ClaimsPrincipal principal) =>
+        context.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal, new AuthenticationProperties { IsPersistent = false, AllowRefresh = true });
+
+    private static string? Stamp(long? passwordSet) => passwordSet?.ToString(System.Globalization.CultureInfo.InvariantCulture);
 
     /// <summary>Takes one of the address's tries before a sign-in is checked, and gives it back unless the answer is a wrong password (401).</summary>
     private static async ValueTask<object?> Limited(EndpointFilterInvocationContext invocation, EndpointFilterDelegate next)
@@ -637,9 +688,9 @@ public sealed record LocalSetupForm(string? Username, string? Password);
 
 public sealed record MyPasswordForm(string? Current, string? Password);
 
-public sealed record DirectorySetupForm(string? Domain, string? Username, string? Password, bool Remember, string? Server = null);
+public sealed record DirectorySetupForm(string? Domain, string? Username, string? Password, string? Server = null);
 
-public sealed record SignInForm(string? Username, string? Password, bool Remember, string? Server = null, bool Local = false, string? Domain = null);
+public sealed record SignInForm(string? Username, string? Password, string? Server = null, bool Local = false, string? Domain = null);
 
 public sealed record MfaSignInForm(string? Ticket, string? Code);
 

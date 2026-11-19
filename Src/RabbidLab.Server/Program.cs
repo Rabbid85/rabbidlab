@@ -154,6 +154,11 @@ app.Use(async (context, next) =>
         + "connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'";
     headers["Referrer-Policy"] = "same-origin";
     headers.XContentTypeOptions = "nosniff";
+    // HTTPS on port 443 by a name: the browser uses only HTTPS for it from now on (SignIn.Hsts says when).
+    if (SignIn.Hsts(context.Request))
+    {
+        headers.StrictTransportSecurity = "max-age=31536000";
+    }
     var path = context.Request.Path;
     if (path.StartsWithSegments("/api"))
     {

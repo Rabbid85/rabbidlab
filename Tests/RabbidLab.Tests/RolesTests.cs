@@ -49,6 +49,7 @@ public sealed class RolesTests : IDisposable
     {
         var page = app.Page();
         (await page.PostAsJsonAsync("/api/signin", new { username, password })).EnsureSuccessStatusCode();
+        await TestApp.Confirm(page, password);
         return page;
     }
 
@@ -111,6 +112,7 @@ public sealed class RolesTests : IDisposable
     {
         var setup = app.Page();
         (await setup.PostAsJsonAsync("/api/setup/directory", new { domain = "amw.com", username = "awiles", password = "domain pass" })).EnsureSuccessStatusCode();
+        await TestApp.Confirm(setup, "domain pass");
         app.Directory.ListsAnonymously = true;
         (await setup.PostAsJsonAsync("/api/roles/user/members/remove", new { kind = "everyone", name = "ad" })).EnsureSuccessStatusCode();
 
@@ -214,6 +216,7 @@ public sealed class RolesTests : IDisposable
     {
         var setup = app.Page();
         (await setup.PostAsJsonAsync("/api/setup/directory", new { domain = "amw.com", username = "awiles", password = "domain pass" })).EnsureSuccessStatusCode();
+        await TestApp.Confirm(setup, "domain pass");
         app.Services.GetRequiredService<Accounts>().AddAdmin("rescue", "rescue pass");
         (await setup.PostAsJsonAsync("/api/accounts", new { username = "kiosk", password = "kiosk password" })).EnsureSuccessStatusCode();
         app.Dispose();
@@ -335,6 +338,7 @@ public sealed class RolesTests : IDisposable
     {
         var setup = app.Page();
         (await setup.PostAsJsonAsync("/api/setup/directory", new { domain = "amw.com", username = "awiles", password = "domain pass" })).EnsureSuccessStatusCode();
+        await TestApp.Confirm(setup, "domain pass");
         app.Directory.ListsAnonymously = true;
         (await setup.PostAsJsonAsync("/api/accounts", new { username = "jr-kiosk", password = "kiosk password" })).EnsureSuccessStatusCode();
 

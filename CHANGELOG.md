@@ -2,6 +2,13 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.249 (2026-11-18)
+
+- Active Directory and Windows accounts are checked again every 5 minutes while signed in. One that is disabled, deleted, has its password reset or is in no role any more is signed out, and a change to its groups changes what it can do.
+- The Confirm window (your password or MFA code) now comes up before AD password resets, new AD users and AD group changes, Windows accounts and Administrators changes, local accounts and their passwords, putting people in roles, giving a role more permissions, turning off required MFA and resetting MFA.
+- With an HTTPS console the sign-in cookie is only ever sent over HTTPS. On port 443 by name, the browser is also told to always use HTTPS (HSTS).
+- The server no longer accepts Keep me signed in from a request, and any session kept that way ends. Sessions end a few minutes after the last page closes.
+
 ## 1.1.248 (2026-11-18)
 
 - Devices has an Installs page: Chrome, Firefox, VS Code, Git, 7-Zip and 23 more apps that winget installs for everyone on a computer. Tick apps or open one, then Install. It goes out as a job, and workflows can install apps too.
