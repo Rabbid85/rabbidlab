@@ -554,7 +554,6 @@ a.small-link { margin-top: 8px; padding: 6px 12px; font-size: 12.5px; }
 @media (max-width: 700px) { .hero-lead { white-space: normal; } } /* a phone: the banner grows anyway, so the whole line shows */
 .hero-lead b { color: #fff; font-weight: 650; }
 .hero-actions { display: flex; flex-wrap: wrap; gap: 10px; }
-.hero-actions .checked-note { align-self: center; }
 /* Buttons sit at the end of the numbers, after a thin line, so a banner with buttons is the height of one without. */
 .hero-row { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 22px; margin-top: 18px; }
 .hero > .hero-row { z-index: 2; } /* above the tiles, so a button's hint isn't covered */
@@ -664,7 +663,7 @@ button:disabled { opacity: .5; cursor: default; }
 button.primary, a.button.primary { border: 0; background: var(--ember); color: #fff; font-weight: 600; }
 button.primary:hover { background: var(--accent-hover); }
 a.button.primary:hover { background: var(--ember); }
-.checked-note { align-self: center; color: var(--ok); font-size: 13px; font-weight: 600; }
+#hero-check.turning svg { animation: spin .8s linear infinite; } /* Check for updates while it asks; the answer is a toast */
 .notes { margin: 0; padding-left: 0; list-style: none; }
 .notes > li { margin-bottom: 10px; }
 .notes b { color: var(--title); }

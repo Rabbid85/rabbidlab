@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.271 (2026-11-19)
+
+- Check for updates turns its icon while it asks, and says you have the newest version in a toast instead of a green line beside the button.
+
 ## 1.1.270 (2026-11-19)
 
 - Clicking the open row again folds the side panel into the strip on the right, the same as the round button, instead of closing it.

@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.271', [
+    'Check for updates turns its icon while it asks, and says you have the newest version in a toast instead of a green line beside the button.']],
   ['1.1.270', [
     'Clicking the open row again folds the side panel into the strip on the right, the same as the round button, instead of closing it.']],
   ['1.1.269', [
@@ -1527,24 +1529,24 @@ const RELEASE_NOTES = [
   };
 
   // Check for updates says Checking while it asks; when nothing is newer, a short line beside it says so.
-  const check = async (button, note) => {
-    // The words change; an icon the button has stays.
+  const check = async (button) => {
+    // The words change and its icon turns; an icon the button has stays.
     const icon = button.querySelector('svg');
     const say = (text) => {
       button.textContent = text;
       if (icon) button.prepend(icon);
     };
     button.disabled = true;
+    button.classList.add('turning');
     say('Checking…');
-    note.hidden = true;
+    const until = Date.now() + 700;
     await post('/api/update/check');
+    await new Promise((r) => setTimeout(r, Math.max(0, until - Date.now())));
+    button.classList.remove('turning');
     button.disabled = !!last && ['downloading', 'installing'].includes(last.status);
     say('Check for updates');
-    if (!last || last.status !== 'current') return;
-    note.textContent = '✓ You have the newest version';
-    note.hidden = false;
-    clearTimeout(note.timer);
-    note.timer = setTimeout(() => { note.hidden = true; }, 6000);
+    if (!$('upd-problem').hidden) toast("Couldn't check for updates", $('upd-problem').textContent, { tone: 'warn' });
+    else if (last?.status === 'current') toast('You have the newest version', `${product} ${last.version}.`);
   };
 
   // Settings, Activity log: found on the server, newest first, by day, and a run of the same change by the same person
@@ -2515,8 +2517,8 @@ const RELEASE_NOTES = [
     // The update dialog goes away with Hide or Escape, and stays away until the update is over.
     $('updlg-hide').addEventListener('click', () => $('update-dialog').close());
     $('update-dialog').addEventListener('close', () => { if (!$('upd-installing').hidden) hid = true; });
-    $('upd-check').addEventListener('click', (e) => check(e.currentTarget, $('upd-note')));
-    $('hero-check').addEventListener('click', (e) => check(e.currentTarget, $('hero-note')));
+    $('upd-check').addEventListener('click', (e) => check(e.currentTarget));
+    $('hero-check').addEventListener('click', (e) => check(e.currentTarget));
     $('hero-install').addEventListener('click', () => post('/api/update/install'));
     $('upd-install').addEventListener('click', () => post('/api/update/install'));
     $('upd-auto').addEventListener('change', (e) => post('/api/update/settings', { automatic: e.target.checked }));
