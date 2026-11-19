@@ -429,8 +429,6 @@
       return;
     }
     $('dir-acct').textContent = s.readOnly ? 'Read-only for now' : `Service account: ${s.account}`;
-    $('dir-new').hidden = !p.add || s.readOnly;
-    $('dir-new-text').textContent = p.add || '';
     const v = viewOf(adView);
     const list = lists[adPage] || [];
     if (lists[adPage]) total[adPage] = (p.tabs ? list.filter(p.tabs[0].where) : list).length;
@@ -483,6 +481,9 @@
     const at = R.where()[0];
     if (!other && at !== 'ad') other = at === 'org' || at === 'attrs' ? at : ''; // a list read again while another page is open
     if (!other && at !== 'ad') return;
+    // The bar under it: New user, group and computer, once the account is known; none without one or read-only.
+    $('dir-cmd').hidden = !!ad && (!ad.state || ad.state.readOnly);
+    $('dir-cmd').querySelectorAll('.cmd').forEach((b) => { b.disabled = !ad?.state; });
     const hero = $('dir-hero');
     $('dir-eyebrow').textContent = ad?.state ? `${ad.state.domain} · Directory` : 'Directory';
     if (other) {
@@ -1892,7 +1893,7 @@
     password: (who, path, lead, done) => reset(who, path, lead, done),
   };
 
-  // A new user, group or computer account: New makes the open list's kind, its arrow the other two.
+  // A new user, group or computer account, from the bar under the banner.
   const makeNew = async (k) => {
     if (k === 'users') {
       openNew('ad');
@@ -1918,9 +1919,10 @@
     $('group-dialog').showModal();
     $('grp-name').focus();
   };
-  $('dir-new').addEventListener('click', () => makeNew(adPage));
-  const MAKES = [['users', 'user', 'New user'], ['groups', 'users', 'New group'], ['computers', 'laptop', 'New computer']];
-  R.grid.more($('dir-new'), () => (ad?.state?.readOnly ? [] : MAKES.filter(([k]) => k !== adPage).map(([k, icon, label]) => ({ label, icon, run: () => makeNew(k) }))));
+  $('dir-cmd').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-make]');
+    if (b && ad?.state && !ad.state.readOnly) makeNew(b.dataset.make);
+  });
   $('grp-type').addEventListener('click', (e) => {
     const b = e.target.closest('[data-type]');
     if (b) $('grp-type').querySelectorAll('[data-type]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));

@@ -101,7 +101,7 @@ body.col-moving, body.col-moving * { cursor: grabbing !important; user-select: n
 .table.dgrid .tr.off:hover > div:not(.lead):not(.tr-tail):not(.pin):not(:has(> .state.waiting)),
 .table.dgrid .tr.off:hover > .pin:not(.lead):not(.tr-tail):not(:has(> .state.waiting)) > * { opacity: .7; }
 
-/* --- The list's card and its bar: Actions, Group by, how many, Compact or Relaxed, Refresh, Export, New ------------ */
+/* --- The list's card and its bar: Actions, Group by, how many, Compact or Relaxed, Refresh, Export ----------------- */
 .gcard { margin-top: 12px; overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
 .gcard[hidden], .gbar > [hidden] { display: none; }
 .gbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 12px; }
@@ -121,8 +121,8 @@ body.col-moving, body.col-moving * { cursor: grabbing !important; user-select: n
 .gby-pick:hover { background: #1A1D2B; }
 .gby-pick .chev { width: 13px; height: 13px; }
 .gcount { color: var(--muted); font-size: 12px; white-space: nowrap; }
-/* The list bar's controls as filter-bar chips: Actions, + Group by, the rows switch, Refresh and Export in one icon box,
-   and New as a split button whose arrow makes the page's other things (grid.js). */
+/* The list bar's controls as filter-bar chips: Actions, + Group by, the rows switch, Refresh and Export in one icon box.
+   What the page makes is in the command bar under the banner (.cmdbar, console.css). */
 .gbar { gap: 8px; }
 .gbar .gtools { gap: 8px; }
 .gbar > .small { height: 32px; padding: 0 11px; gap: 6px; border: 1px solid transparent; border-radius: 8px; background: #1A1D2B; color: var(--text); font-size: 13px; font-weight: 600; }
@@ -157,15 +157,6 @@ body.col-moving, body.col-moving * { cursor: grabbing !important; user-select: n
 :is(.gbar, .cmdbar) .vswitch svg, .gdock svg { width: 15px; height: 15px; }
 .gdock > .turning { color: var(--title); }
 .gdock > .turning svg { animation: spin .8s linear infinite; } /* Refresh while it reads (R.refresh) */
-.gsplit { display: inline-flex; flex: none; }
-.gsplit:not(.has-new), .gsplit.no-more > .gsplit-more { display: none; }
-.gsplit.no-more > .gnew { border-radius: 8px; }
-.gsplit > .gnew { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px 0 11px; border-radius: 8px 0 0 8px; font-size: 13px; font-weight: 700; white-space: nowrap; }
-.gsplit > .gnew svg { width: 14px; height: 14px; }
-.gsplit > .gsplit-more { display: grid; place-items: center; width: 30px; height: 32px; padding: 0; border: 0; border-left: 1px solid rgba(255, 255, 255, .3); border-radius: 0 8px 8px 0;
-  background: var(--accent); color: #fff; } /* the end of the button's own colour, whatever the accent */
-.gsplit > .gsplit-more:hover, .gsplit > .gsplit-more[aria-expanded="true"] { background: var(--accent-hover); }
-.gsplit > .gsplit-more .chev { width: 13px; height: 13px; stroke: currentColor; }
 /* A button that reads as words: Load filter, Clear. Plain, not in the accent. */
 .tlink { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 8px; border: 0; border-radius: 7px; background: none; color: var(--text); font-size: 13px; font-weight: 600; white-space: nowrap; }
 .tlink:hover, .tlink[aria-expanded="true"] { background: #1A1D2B; color: var(--title); }

@@ -57,8 +57,8 @@
   D.lists.installs = ['Installs', 'box', 'Apps to install on computers with winget, for everyone on them.'];
   D.more.installs = { table: 'dv-installs', grid, rows: () => apps || [], count: () => apps?.length, can, noun: 'apps', fields: () => FIELDS, load,
     empty: () => 'No apps like that.',
-    acts: { can, count: () => pickedRows().length, open: (button) => openActs(button) },
-    add: { can, label: 'Add an app', open: () => openEdit(null) } };
+    acts: { can, count: () => pickedRows().length, open: (button) => openActs(button) } };
+  $('dv-new-app').addEventListener('click', () => openEdit(null)); // Add an app, in the bar under the banner
 
   // Ticks, like every list: what's ticked goes to Actions.
   const drawTicks = () => {

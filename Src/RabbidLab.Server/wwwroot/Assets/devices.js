@@ -1068,23 +1068,9 @@
       if (row) openRow(row.dataset.row);
     });
   }
-  // New: a script or a workflow here, or what a list from another file adds (installs.js).
-  $('dv-new').addEventListener('click', () => {
-    const own = D.more[D.at()]?.add;
-    if (own) own.open();
-    else if (D.at() === 'workflows') openFlowEdit(null);
-    else openScriptEdit(null);
-  });
-  // New's arrow: what else this page makes, whichever list is open.
-  R.grid.more($('dv-new'), () => {
-    const at = D.at();
-    return [
-      at !== 'computers' && has('seats.add') && { label: 'Add computers', icon: 'monitor', run: () => $('seats-add').click() },
-      at !== 'scripts' && has('seats.scripts.edit') && { label: 'New script', icon: 'code', run: () => openScriptEdit(null) },
-      at !== 'workflows' && has('seats.workflows') && { label: 'New workflow', icon: 'org', run: () => openFlowEdit(null) },
-      ...Object.entries(D.more).filter(([k, m]) => k !== at && m.add?.can()).map(([, m]) => ({ label: m.add.label, icon: m.add.icon || 'box', run: () => m.add.open() })),
-    ].filter(Boolean);
-  });
+  // The bar under the banner: a new script or workflow (Add computers is console.js's, Add an app installs.js's).
+  $('dv-new-script').addEventListener('click', () => openScriptEdit(null));
+  $('dv-new-flow').addEventListener('click', () => openFlowEdit(null));
   panel.el.addEventListener('click', async (e) => {
     const on = (attr) => e.target.closest(`[${attr}]`);
     // In a computer's panel (console.js draws it): Actions opens the same menu, for this one computer; and its jobs.
@@ -1212,14 +1198,10 @@
     }).catch(() => {});
   };
 
-  // After the page drew: the ticks, which New shows, the open row, and watching what's still running.
+  // After the page drew: the ticks, the open row, and watching what's still running.
   D.hooks.drawn = () => {
     drawPicked();
     const at = D.at();
-    const own = D.more[at]?.add;
-    const make = own ? own.can() && own.label : at === 'scripts' ? has('seats.scripts.edit') && 'New script' : at === 'workflows' ? has('seats.workflows') && 'New workflow' : '';
-    $('dv-new').hidden = !make;
-    $('dv-new-text').textContent = make || '';
     // WMI query: its box over the list, and what any computer that didn't answer said.
     $('dv-wq').hidden = at !== 'wmi';
     if (at === 'wmi') {

@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.268 (2026-11-19)
+
+- Active Directory, Devices and Group Policy have the command bar under the banner, like Links. New user, New group, Add computers, New GPO and the rest are there now, instead of the split New button on the list.
+
 ## 1.1.267 (2026-11-19)
 
 - Load filter and Clear in the filter bar are plain text now, not in the accent colour.

@@ -475,32 +475,6 @@
 
   // A list that isn't a table (Links' tiles) still has columns to filter by: the cols() and text() a grid gives.
   grid.columns = (cols) => ({ cols: () => of(cols) || [], text });
-  // A list bar's New is a split button (.gsplit in index.html): its first half makes what the open list holds, its arrow
-  // the other things that page can make, from more(newButton, () => [{ label, icon, run }]). The split gets has-new
-  // while a New shows, and no-more when the arrow has nothing (grid.css).
-  const mores = new Map(); // a split button -> what its arrow offers
-  const splitSync = (split) => {
-    const news = [...split.querySelectorAll(':scope > .gnew')];
-    split.classList.toggle('has-new', news.some((b) => getComputedStyle(b).display !== 'none'));
-    split.classList.toggle('no-more', !(mores.get(split)?.() || []).length);
-  };
-  document.querySelectorAll('.gsplit').forEach((split) => {
-    // Again whenever a New is hidden or shown, or says something else (another list is open).
-    const watch = new MutationObserver(() => splitSync(split));
-    split.querySelectorAll('.gnew').forEach((b) => watch.observe(b, { attributes: true, attributeFilter: ['hidden', 'class'], childList: true, characterData: true, subtree: true }));
-    const page = split.closest('.page');
-    if (page) watch.observe(page, { attributes: true, attributeFilter: ['data-at'] });
-    split.querySelector('.gsplit-more')?.addEventListener('click', (e) => {
-      const items = mores.get(split)?.() || [];
-      if (items.length) R.picker.menu(e.currentTarget, items, { key: `gsplit.${page?.id || ''}`, right: true });
-    });
-    splitSync(split);
-  });
-  grid.more = (newButton, items) => {
-    const split = newButton.closest('.gsplit');
-    mores.set(split, items);
-    splitSync(split);
-  };
 
   R.grid = grid;
 })();

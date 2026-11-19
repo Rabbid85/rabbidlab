@@ -262,6 +262,7 @@
   const shown = () => L().rows().filter(gpoBar.test());
   const stat = (num, icon, label) => `<div><b>${num}</b><span>${svg(icon)}${esc(label)}</span></div>`;
   let tiled = false;
+  let drawnCmds = null; // what the bar under the banner has, so a redraw keeps its buttons
   const draw = () => {
     if (!tiled) {
       R.scatter?.($('gpo-hero'), 20261116);
@@ -288,9 +289,10 @@
     $('gpo-n-backups').textContent = gp ? gp.backups.length : '';
     const rows = shown();
     $('gpo-tabs').innerHTML = `<a aria-current="true">${svg(l.icon)}${esc(l.name)} <small>${gp ? rows.length : ''}</small></a>`;
-    const make = l.make();
-    $('gpo-new').hidden = !make || !gp;
-    $('gpo-new-text').textContent = make || '';
+    // The bar under the banner: what each list makes, waiting until Group Policy has been read.
+    const cmds = Object.entries(LISTS).filter(([, x]) => x.make()).map(([k, x]) => `<button type="button" class="cmd" data-make="${k}"${gp ? '' : ' disabled'}>${svg(x.icon)}<span>${esc(x.make())}</span></button>`).join('');
+    if (cmds !== drawnCmds) $('gpo-cmd').innerHTML = drawnCmds = cmds;
+    $('gpo-cmd').hidden = !!setup;
     // The filter bar, and the grid's part of the list's bar (Group by, the count, Compact or Relaxed).
     gpoBar.draw();
     g0.tools($('gpo-tools'));
@@ -332,9 +334,10 @@
     return load();
   }));
   const makeIn = (k) => (k === 'gpos' ? newGpo() : k === 'linked' ? linkTo(null, null) : k === 'wmi' ? editFilter(null) : backupAll());
-  $('gpo-new').addEventListener('click', () => makeIn(list));
-  // New's arrow: what the other lists make.
-  R.grid.more($('gpo-new'), () => (!gp ? [] : Object.entries(LISTS).filter(([k, l]) => k !== list && l.make()).map(([k, l]) => ({ label: l.make(), icon: l.icon, run: () => makeIn(k) }))));
+  $('gpo-cmd').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-make]');
+    if (b && gp) makeIn(b.dataset.make);
+  });
 
   // --- Ticks, and what Actions does with them --------------------------------------------------------------------
   const tickedRows = () => L().rows().filter((x) => picked.has(L().key(x)));
