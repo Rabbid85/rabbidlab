@@ -9,9 +9,7 @@
   let checks = { every: 60, downAfter: 30 }; // seconds: between checks, and unanswered before a link shows as down
   let revision = 0; // goes up when the server changes links by itself; a new one means read them again
   let groups = []; // their names, in the order they are shown
-  let group = '';
-  let lost = ''; // the group that was picked when it went away, in case it was only renamed
-  const NO_GROUP = ' none'; // the filter's choice of links with no group: no group's name starts with a space
+  const NO_GROUP = 'No group'; // what the Group chip calls links in none
   let editing = null; // the link being changed, or null for a new one
   let icon = null; // the dialog's icon: a data: URL, or null for a letter
   let looked = null; // what the site said, for From the site
@@ -82,14 +80,16 @@
     $('rail-links').textContent = links.length || '';
     $('links-dot').hidden = !links.some((l) => states[l.id] && states[l.id].down);
   };
-  // The filter bar over the links (filter.js): a search, a chip for each column worth one, saved filters, and the
-  // conditions window. Links aren't a table, so these columns are only what the bar filters by. It narrows every view.
-  // The group picked narrows first, so the chips count what's in it.
+  // The filter bar over the links (filter.js): a search, a chip for each column worth one (the groups too), saved
+  // filters, and the conditions window. Links aren't a table, so these columns are only what the bar filters by. It
+  // narrows every view.
   const stateOf = (l) => (!checked(l) ? [4, 'Not checked'] : !states[l.id] ? [3, 'Checking'] : states[l.id].up ? [2, 'Up'] : states[l.id].down ? [0, 'Down'] : [1, 'No answer']);
   const protocol = (l) => (/^([a-z][a-z0-9+.-]*):/i.exec(l.url) || ['', ''])[1].toUpperCase();
   const COLS = R.grid.columns([
     { key: 'name', label: 'Link', get: (l) => l.name },
     { key: 'state', label: 'State', filter: true, get: (l) => stateOf(l)[0], word: (l) => stateOf(l)[1] },
+    // The chip lists the groups in the page's order, No group last.
+    { key: 'group', label: 'Group', filter: true, get: (l) => (l.group ? groups.indexOf(l.group) : groups.length), word: (l) => l.group || NO_GROUP },
     { key: 'about', label: 'Detail', nofilter: true, get: (l) => l.description || '' },
     { key: 'host', label: 'Address', get: (l) => host(l.url) },
     { key: 'ip', label: 'IP', get: (l) => l.address || '' },
@@ -99,6 +99,7 @@
   const FIELDS = [['Link', [
     { key: 'name', label: 'Name', type: 'text', get: (l) => l.name },
     { key: 'state', label: 'State', type: 'choice', get: (l) => stateOf(l)[1] },
+    { key: 'group', label: 'Group', type: 'choice', get: (l) => l.group || NO_GROUP },
     { key: 'about', label: 'Detail', type: 'text', get: (l) => l.description || '' },
     { key: 'url', label: 'Address', type: 'text', get: (l) => l.url },
     { key: 'ip', label: 'IP', type: 'text', get: (l) => l.address || '' },
@@ -106,30 +107,21 @@
     { key: 'protocol', label: 'Protocol', type: 'choice', get: (l) => protocol(l) },
     { key: 'icon', label: 'Has an icon', type: 'yes', get: (l) => own(l) },
   ]]];
-  const inGroup = () => {
-    const only = group === NO_GROUP ? '' : group; // the one group shown, as the links have it
-    return links.filter((l) => !group || (l.group || '') === only);
-  };
   let barOn = null;
-  const bar = () => (barOn ||= R.filter.bar({ el: $('ln-fbar'), key: 'links', grid: () => COLS, rows: inGroup, noun: 'links', fields: () => FIELDS,
+  const bar = () => (barOn ||= R.filter.bar({ el: $('ln-fbar'), key: 'links', grid: () => COLS, rows: () => links, noun: 'links', fields: () => FIELDS,
     find: (l) => [l.name, l.description, l.url, l.address, l.group, stateOf(l)[1]], redraw: () => draw() }));
+  // The one group the Group chip shows, when it shows exactly one: where a new link starts.
+  const oneGroup = () => {
+    const picked = bar().picked('group');
+    return picked.length === 1 && picked[0] !== NO_GROUP ? picked[0] : '';
+  };
   const draw = () => {
-    // The group picked may be gone after a change: back to all of them.
-    if (group && group !== NO_GROUP && !groups.includes(group)) {
-      lost = group;
-      group = '';
-    }
-    // The filter narrows the page to one group, so it only shows when that would leave something out.
-    const narrows = groups.length > 1 || (groups.length === 1 && links.some((l) => l.group !== groups[0]));
-    if (!narrows || (group === NO_GROUP && links.every((l) => l.group))) group = '';
-    filter(narrows, group === NO_GROUP ? 'No group' : group);
-    const only = group === NO_GROUP ? '' : group; // the one group shown, as the links have it
     $('ln-fbar').hidden = !links.length;
     const find = bar().any(); // the filter bar narrows the page
-    const shown = inGroup().filter(bar().test());
+    const shown = links.filter(bar().test());
     bar().draw();
     // Every group in its order, the empty ones too unless something is being looked for; links with no group go last.
-    const by = (group ? [only] : [...groups, '']).map((g) => [g, shown.filter((l) => (l.group || '') === g)])
+    const by = [...groups, ''].map((g) => [g, shown.filter((l) => (l.group || '') === g)])
       .filter(([g, list]) => list.length || (g && !find));
     $('ln-list').classList.toggle('lx-cols', view === 'links'); // the Links view flows its groups down columns
     $('ln-list').innerHTML = by.map(([g, list]) => `<section class="lgroup" data-name="${esc(g)}">${groups.length ? tools.heading(g, list.length) : ''}`
@@ -226,18 +218,6 @@
     draw();
   });
 
-  // --- The filter: a menu of the groups, to show one of them (console.js has it, for Sensors too). ------------------
-  const filter = R.groupFilter('ln', {
-    rows: () => {
-      const loose = links.filter((l) => !l.group).length;
-      return [['', 'All groups', links.length], ...groups.map((g) => [g, g, links.filter((l) => l.group === g).length]), ...(loose ? [[NO_GROUP, 'No group', loose]] : [])];
-    },
-    picked: () => group,
-    pick: (g) => {
-      group = g;
-      draw();
-    },
-  });
   // Names compared the way people read them: case ignored, esxi2 before esxi10.
   const byName = (a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
   // A link dragged to another place: its group's links in their new order. Shown straight away, then saved.
@@ -287,10 +267,9 @@
     },
     take,
     draw,
-    // The group being looked at keeps being looked at under its new name.
+    // A group picked in the Group chip stays picked under its new name.
     renamed: (name, to) => {
-      if (lost !== name) return;
-      group = to;
+      bar().rename('group', name, to);
       draw();
     },
   });
@@ -727,7 +706,7 @@
     $('ln-name').value = l?.name || '';
     $('ln-about').value = l?.description || '';
     const options = '<option value="">No group</option>' + groups.map((g) => `<option value="${esc(g)}">${esc(g)}</option>`).join('') + `<option value="${NEW_GROUP}">New group…</option>`;
-    const start = l ? l.group || '' : into ?? (group === NO_GROUP ? '' : group);
+    const start = l ? l.group || '' : into ?? oneGroup();
     for (const id of ['ln-group', 'ln-many-group']) {
       $(id).innerHTML = options;
       $(id).value = start;

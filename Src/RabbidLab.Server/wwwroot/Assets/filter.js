@@ -482,6 +482,13 @@
       if (el.dataset.fbar) el.querySelector('[data-fb="text"]').value = '';
       change();
     };
+    // What's picked in one chip, such as the groups on Links (a new link starts in the one group picked).
+    b.picked = (k) => [...(st().chips[k] || [])];
+    // A value that was renamed (a group) stays picked under its new name. The page draws itself after.
+    b.rename = (k, from, to) => {
+      const set = st().chips[k];
+      if (set?.delete(from)) set.add(to);
+    };
     // The search box emptied without drawing, for a page that's about to draw anyway.
     b.forget = () => {
       st().text = '';

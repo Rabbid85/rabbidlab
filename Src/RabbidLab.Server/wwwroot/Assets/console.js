@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.252', [
+    'Links and Sensors filter by group in the filter bar now, with a Group chip that shows how many are in each and can pick several at once. The All groups button is gone.']],
   ['1.1.251', [
     'Signing in over plain HTTP from another computer is refused, so a password or session never crosses the network unencrypted. The sign-in page says why and what to do. Signing in on the server itself still works.',
     'A reverse proxy that does HTTPS in front of Rabbid Lab now counts as HTTPS. Only proxies on this machine, or listed in Proxy:Trusted, are believed.',
@@ -1637,44 +1639,6 @@ const RELEASE_NOTES = [
   const popups = (inside, close) => {
     document.addEventListener('click', (e) => { if (!e.target.closest(`${inside}, dialog`)) close(); });
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !document.querySelector('dialog[open]')) close(); });
-  };
-  // A filter button with a menu under it, to show one group, on Links and Sensors: id-filter holds id-filter-open, id-filter-name and id-groups.
-  // rows() gives each choice as [value, name, count, colour]. Past a handful the menu has its own search.
-  const groupFilter = (id, { rows, picked, pick }) => {
-    const menu = $(`${id}-groups`);
-    const button = $(`${id}-filter-open`);
-    const close = () => {
-      menu.hidden = true;
-      button.setAttribute('aria-expanded', 'false');
-    };
-    const open = () => {
-      const list = rows();
-      menu.innerHTML = (list.length > 9 ? `<label class="side-find">${svg('search')}<input type="search" id="${id}-filter-find" placeholder="Find a group" aria-label="Find a group" autocomplete="off" spellcheck="false"></label>` : '')
-        + list.map(([g, name, n, colour]) => `<button type="button" class="opt" data-group="${esc(g)}" aria-pressed="${g === picked()}">${colour ? `<i class="sq" data-color="${esc(colour)}"></i>` : ''}<span class="t"><b>${esc(name)}</b></span><small>${n}</small></button>`).join('');
-      paint(menu);
-      menu.hidden = false;
-      button.setAttribute('aria-expanded', 'true');
-      menu.querySelector('input')?.focus();
-    };
-    button.addEventListener('click', () => (menu.hidden ? open() : close()));
-    menu.addEventListener('input', (e) => {
-      const text = e.target.value.trim().toLowerCase();
-      menu.querySelectorAll('.opt').forEach((b) => { b.hidden = !!text && !b.textContent.toLowerCase().includes(text); });
-    });
-    menu.addEventListener('click', (e) => {
-      const b = e.target.closest('[data-group]');
-      if (!b) return;
-      close();
-      pick(b.dataset.group);
-    });
-    popups(`#${id}-filter`, close);
-    // Shown only when picking one would leave something out; the button says what is picked.
-    return (narrows, name) => {
-      $(`${id}-filter`).hidden = !narrows;
-      if (!narrows) close();
-      $(`${id}-filter-name`).textContent = name || 'All groups';
-      button.classList.toggle('on', !!name);
-    };
   };
   // One line of a search list: a picture, a name and a detail.
   const option = (attrs, pic, name, detail) => `<button type="button" class="opt"${attrs}>${pic}<span class="t"><b>${esc(name)}</b><span>${esc(detail || '')}</span></span></button>`;
@@ -3742,7 +3706,7 @@ const RELEASE_NOTES = [
   });
 
   // What the other scripts use. Hints are tips.js and data grids are grid.js.
-  window.RabbidLab = { app: () => product, $, esc, svg, say, initials, when, daysAgo, send, get, keep, forget, has, paint, where, viewAs, place, popups, option, dropdown, sure, copy, busy, groupTools, groupFilter, skeleton, toast, stepper, panel, scatter,
+  window.RabbidLab = { app: () => product, $, esc, svg, say, initials, when, daysAgo, send, get, keep, forget, has, paint, where, viewAs, place, popups, option, dropdown, sure, copy, busy, groupTools, skeleton, toast, stepper, panel, scatter,
     palette: window.RabbidLabColours.roles, me: () => meInfo,
     // The Devices page, for devices.js: its lists, what's ticked, and drawing or reading it again.
     devices: { lists: DV, more: dvMore, hooks: dvHooks, picked: dvPicked, computers: () => computers, rows: () => dvAll(), at: () => dvAt, shown: () => dvShown, grid: () => dvGrid(),

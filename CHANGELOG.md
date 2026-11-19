@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.252 (2026-11-18)
+
+- Links and Sensors filter by group in the filter bar now, with a Group chip that shows how many are in each and can pick several at once. The All groups button is gone.
+
 ## 1.1.251 (2026-11-18)
 
 - Signing in over plain HTTP from another computer is refused, so a password or session never crosses the network unencrypted. The sign-in page says why and what to do. Signing in on the server itself still works.

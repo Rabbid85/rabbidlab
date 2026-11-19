@@ -4,7 +4,6 @@
 (() => {
   const R = window.RabbidLab;
   const { $, esc, svg, say, has: can } = R;
-  const COLOURS = ['#FF8A3D', '#F2BE6B', '#B07CE8', '#6FA8FF', '#3CC7C7', '#F06BB4', '#7C83FF']; // a group's colour; green and red are left to up and down
   const KIND = { ping: 'Ping', port: 'Port', web: 'Web page', dns: 'DNS lookup', cert: 'Certificate', hw: 'Server hardware', nas: 'Storage', vmware: 'VMware', snmp: 'SNMP', svc: 'Windows service', disk: 'Disk space' };
   const WORD = { up: 'Up', down: 'Down', warn: 'Warning', paused: 'Paused', new: 'Checking', wait: 'Waiting' };
   // A sensor's icon when it doesn't watch a link with one, and the badge on its corner for how it is.
@@ -12,16 +11,13 @@
   const BADGE = { up: 'check', warn: 'alert', down: 'x', paused: 'pause', wait: 'clock', new: 'clock' };
   const TAG = { warn: 'Warning', down: 'Down', paused: 'Paused', wait: 'Waiting', new: 'New' };
   const TIMED = ['ping', 'port', 'web', 'dns']; // kinds whose reply time is worth a line
-  const DOWN = ' down'; // the filter's choice of everything that's down: no group's name starts with a space
-  const NO_GROUP = ' none'; // and its choice of sensors with no group
+  const NO_GROUP = 'No group'; // what the Group chip calls sensors in none
   const NEW_GROUP = ' new';
   let sensors = [];
   let groups = [];
   let limits = { cert: 21, space: 10 }; // what new sensors warn at
   let gather = { on: false, secs: 60 }; // one alert for several
   let lastCheck = null;
-  let group = ''; // the group being looked at, DOWN, or '' for all of them
-  let lost = ''; // the group that was picked when it went away, in case it was only renamed
   let timer = null;
 
   const stored = (key) => { try { return localStorage.getItem(key); } catch { return null; } };
@@ -153,6 +149,8 @@
     // filter: the filter bar always offers a chip for it; word: what the chip lists when the cell says more (Down 5 min).
     cols: [
       { key: 'state', label: 'State', w: 110, on: true, filter: true, get: (s) => STATE_ORDER[s.status] ?? 9, word: (s) => WORD[s.status] || s.status, cell: CELL.state },
+      // Each group is its own table, so this one is for the filter bar's Group chip (the page's order, No group last), and off unless picked.
+      { key: 'group', label: 'Group', w: 130, filter: true, get: (s) => (s.group ? groups.indexOf(s.group) : groups.length), word: (s) => s.group || NO_GROUP },
       { key: 'name', label: 'Sensor', w: 200, fixed: true, get: (s) => s.name, cell: CELL.name },
       { key: 'check', label: 'Check', w: 110, on: true, filter: true, get: (s) => check(s), word: (s) => check(s), cell: CELL.check },
       { key: 'where', label: 'Address', w: 170, on: true, get: (s) => where(s), cell: CELL.where },
@@ -165,11 +163,12 @@
     rowClass: (s) => `sn s-${s.status}`,
     redraw: () => draw(),
   });
-  // The filter bar over the sensors (filter.js): a search, a chip for each column worth one, saved filters, and the
-  // conditions window. It narrows both views. The group picked narrows first, so the chips count what's in it.
+  // The filter bar over the sensors (filter.js): a search, a chip for each column worth one (the groups too), saved
+  // filters, and the conditions window. It narrows both views.
   const FILTER_FIELDS = [['Sensor', [
     { key: 'name', label: 'Name', type: 'text', get: (s) => s.name },
     { key: 'state', label: 'State', type: 'choice', get: (s) => WORD[s.status] || s.status },
+    { key: 'group', label: 'Group', type: 'choice', get: (s) => s.group || NO_GROUP },
     { key: 'kind', label: 'Kind', type: 'choice', get: (s) => KIND[s.kind] || s.kind },
     { key: 'where', label: 'Address', type: 'text', get: (s) => where(s) },
     { key: 'alerts', label: 'Alert type', type: 'choice', get: (s) => typeOf(s.type)?.name || "Don't alert" },
@@ -177,13 +176,14 @@
     { key: 'reply', label: 'Reply (ms)', type: 'number', get: (s) => s.ms },
     { key: 'up', label: 'Up, 7 days (%)', type: 'number', get: (s) => s.up7 },
   ]]];
-  const inGroup = () => {
-    const only = group === NO_GROUP ? '' : group; // the one group shown, as the sensors have it
-    return sensors.filter((s) => (group === DOWN ? notAnswering(s) : !group || (s.group || '') === only));
-  };
   let barOn = null;
-  const bar = () => (barOn ||= R.filter.bar({ el: $('sn-fbar'), key: 'sensors', grid: () => snGrid, rows: inGroup, noun: 'sensors', fields: () => FILTER_FIELDS,
+  const bar = () => (barOn ||= R.filter.bar({ el: $('sn-fbar'), key: 'sensors', grid: () => snGrid, rows: () => sensors, noun: 'sensors', fields: () => FILTER_FIELDS,
     find: (s) => [s.name, s.target, s.group, KIND[s.kind], check(s), WORD[s.status], s.note, typeOf(s.type)?.name, ...(s.tags || [])], redraw: () => draw() }));
+  // The one group the Group chip shows, when it shows exactly one: where a new sensor starts.
+  const oneGroup = () => {
+    const picked = bar().picked('group');
+    return picked.length === 1 && picked[0] !== NO_GROUP ? picked[0] : '';
+  };
 
   // --- The sensors, in their groups ----------------------------------------------------------------------------------------
 
@@ -257,34 +257,22 @@
     + `<small>${esc(said(s))}</small><span class="sn-foot">${foot(s)}</span></span></button></div>`;
 
   const draw = () => {
-    const down = sensors.filter(notAnswering); // down, and waiting on something that's down
-    // The group picked may be gone after a change, and nothing may be down any more: back to all of them.
-    if (group === DOWN ? !down.length : group && group !== NO_GROUP && !groups.includes(group)) {
-      lost = group;
-      group = '';
-    }
-    // The filter narrows the page to one group or to what's down, so it only shows when that would leave something out.
-    const loose = sensors.some((s) => !s.group);
-    const narrows = groups.length > 1 || (groups.length === 1 && loose) || (down.length > 0 && down.length < sensors.length);
-    if (!narrows || (group === NO_GROUP && !loose)) group = '';
     drawHero();
     $('sn-tools').hidden = !sensors.length && !groups.length;
     $('sn-fbar').hidden = !sensors.length;
-    filter(narrows, group === DOWN ? 'Down' : group === NO_GROUP ? 'No group' : group);
     $('sn-view').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.view === view));
-    const only = group === NO_GROUP ? '' : group; // the one group shown, as the sensors have it
     const find = bar().any(); // the filter bar narrows the page
-    const shown = inGroup().filter(bar().test());
+    const shown = sensors.filter(bar().test());
     bar().draw();
     // Every group in its order, the empty ones too unless something is being looked for; sensors with no group go last.
-    const by = (group && group !== DOWN ? [only] : [...groups, '']).map((g) => [g, shown.filter((s) => (s.group || '') === g)])
-      .filter(([g, list]) => list.length || (g && !find && group !== DOWN));
+    const by = [...groups, ''].map((g) => [g, shown.filter((s) => (s.group || '') === g)])
+      .filter(([g, list]) => list.length || (g && !find));
     $('sn-list').innerHTML = by.map(([g, list]) => `<section class="lgroup" data-name="${esc(g)}">${groups.length ? tools.heading(g, list.length) : ''}`
       + (!list.length ? `<p class="hint lnone">No sensors in this group yet.${can('sensors.edit') ? ` <button type="button" class="link" data-addto="${esc(g)}">Add one</button>` : ''}</p>`
         : view === 'grid' ? snGrid.table(list) : `<div class="ltiles sn-tiles">${list.map(card).join('')}</div>`)
       + '</section>').join('')
       || (sensors.length ? '<p class="hint">Nothing matches.</p>' : '');
-    if (!find && group !== DOWN) $('sn-list').insertAdjacentHTML('beforeend', tools.out(by.some(([g]) => !g)));
+    if (!find) $('sn-list').insertAdjacentHTML('beforeend', tools.out(by.some(([g]) => !g)));
     tools.settle();
     $('sn-empty').hidden = sensors.length > 0 || groups.length > 0;
     paint($('sn-list'));
@@ -336,24 +324,9 @@
     },
     take,
     draw,
+    // A group picked in the Group chip stays picked under its new name.
     renamed: (name, to) => {
-      if (lost !== name) return;
-      group = to;
-      draw();
-    },
-  });
-
-  // The filter: a menu of what's down and the groups, each with its colour, to show one of them.
-  const filter = R.groupFilter('sn', {
-    rows: () => {
-      const down = sensors.filter(notAnswering).length;
-      const loose = sensors.filter((s) => !s.group).length;
-      return [['', 'All groups', sensors.length], ...(down ? [[DOWN, 'Down', down, 'var(--red)']] : []),
-        ...groups.map((g, i) => [g, g, sensors.filter((s) => s.group === g).length, COLOURS[i % COLOURS.length]]), ...(loose ? [[NO_GROUP, 'No group', loose, '#C9CCDA']] : [])];
-    },
-    picked: () => group,
-    pick: (g) => {
-      group = g;
+      bar().rename('group', name, to);
       draw();
     },
   });
@@ -746,7 +719,7 @@
     $('sd-title').textContent = s ? `Change ${s.name}` : 'Add a sensor';
     $('sd-name').value = s?.name || '';
     $('sd-group').innerHTML = '<option value="">No group</option>' + groups.map((g) => `<option value="${esc(g)}">${esc(g)}</option>`).join('') + `<option value="${NEW_GROUP}">New group…</option>`;
-    $('sd-group').value = s ? s.group || '' : into ?? (group === DOWN || group === NO_GROUP ? '' : group);
+    $('sd-group').value = s ? s.group || '' : into ?? oneGroup();
     $('sd-group-new').value = '';
     pickGroup();
     $('sd-every').value = String(s?.every || 60);
