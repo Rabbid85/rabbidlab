@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.269', [
+    'The install line in Add computers wraps again, so the window no longer scrolls sideways and its Copy button is back.']],
   ['1.1.268', [
     'Active Directory, Devices and Group Policy have the command bar under the banner, like Links. New user, New group, Add computers, New GPO and the rest are there now, instead of the split New button on the list.']],
   ['1.1.267', [

@@ -616,13 +616,14 @@ a.button:hover, label.button:hover { background: #222536; text-decoration: none;
    icon-and-word commands, the view on the right. With nothing it may do here, it isn't there. */
 .cmdbar { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; min-height: 52px; padding: 0 32px; border-bottom: 1px solid var(--line); background: #0F111A; }
 .cmdbar[hidden], .cmdbar:not(:has(> :not(.cant, [hidden], .grow))) { display: none; }
-.cmd[hidden] { display: none; }
-.cmd:disabled { opacity: .45; }
 .cmdbar .grow { flex: 1; }
-.cmd { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; border: 0; border-radius: 7px; background: none; color: var(--text); font-size: 14px; font-weight: 600; white-space: nowrap; }
-.cmd:hover:not(:disabled) { background: #1A1D2B; color: var(--title); }
-.cmd svg { flex: none; width: 16px; height: 16px; color: var(--accent-soft); }
-.cmd.turning svg { animation: spin .8s linear infinite; } /* Refresh icons while it works */
+/* Only in the bar: code.cmd is the install line in Add computers, which wraps. */
+.cmdbar .cmd { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; border: 0; border-radius: 7px; background: none; color: var(--text); font-size: 14px; font-weight: 600; white-space: nowrap; }
+.cmdbar .cmd[hidden] { display: none; }
+.cmdbar .cmd:disabled { opacity: .45; }
+.cmdbar .cmd:hover:not(:disabled) { background: #1A1D2B; color: var(--title); }
+.cmdbar .cmd svg { flex: none; width: 16px; height: 16px; color: var(--accent-soft); }
+.cmdbar .cmd.turning svg { animation: spin .8s linear infinite; } /* Refresh icons while it works */
 .cmd-l { margin-right: 10px; color: var(--muted); font-size: 13px; font-weight: 600; }
 @media (max-width: 700px) { .cmdbar { padding: 6px 6px; } .cmd-l { display: none; } }
 @media (max-width: 700px) {
