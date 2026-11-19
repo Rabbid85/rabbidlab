@@ -67,6 +67,19 @@ body.col-dragging, body.col-dragging * { cursor: col-resize !important; user-sel
 .gcols svg { width: 15px; height: 15px; }
 .table.dgrid .tr.th > .tr-tail:has(.gcols) { position: sticky; right: 0; z-index: 2; background: var(--panel); overflow: visible; }
 
+/* Pinned columns (⋮ > Pin to left or right): held at that side while the grid scrolls sideways, with a line where the
+   rest go under. Each reaches half way into the gaps, and over the row's padding at the outside, and is as tall as its row
+   with what's in it still in the middle, so nothing shows through. */
+.table.dgrid .tr > .pin { position: sticky; z-index: 1; align-self: stretch; align-content: center; align-items: center; margin: 0 -10px; padding: 0 10px; background-color: var(--panel); }
+.table.dgrid .tr.th > .th-cell.pin, .table.dgrid .tr.th > .pin { position: sticky; z-index: 2; }
+.table.dgrid .tr > .pin.edge-l { margin-left: -16px; padding-left: 16px; }
+.table.dgrid .tr > .pin.edge-r { margin-right: -16px; padding-right: 16px; }
+.table.dgrid .tr > .pin-l.last { box-shadow: 1px 0 0 var(--line-strong); }
+.table.dgrid .tr > .pin-r.first { box-shadow: -1px 0 0 var(--line-strong); }
+.table.dgrid .tr:not(.th):where(:hover, :focus-visible, .picked, .dw-on) > .pin { background-color: inherit; }
+.table.dgrid .tr.th > .pin > .th-grip { right: -7px; }
+:is(.dgrid.measuring, .measuring .dgrid) .tr > .pin { margin: 0 !important; padding: 0 !important; }
+
 /* Moving a column: drag its heading sideways. Its label follows the pointer, the column fades, and a line down the
    table shows where it lands. */
 .table.dgrid .tr.th { user-select: none; }
@@ -82,8 +95,11 @@ body.col-moving, body.col-moving * { cursor: grabbing !important; user-select: n
 .col-ghost[hidden], .col-line[hidden] { display: none; }
 
 /* A row for something that's off (an offline computer): greyed out, a little less on hover. Its tick and a Waking state stay bright. */
-.table.dgrid .tr.off > div:not(.lead):not(.tr-tail):not(:has(> .state.waiting)) { opacity: .45; }
-.table.dgrid .tr.off:hover > div:not(.lead):not(.tr-tail):not(:has(> .state.waiting)) { opacity: .7; }
+/* A pinned cell stays solid and greys what's in it, or the rest would show through it. */
+.table.dgrid .tr.off > div:not(.lead):not(.tr-tail):not(.pin):not(:has(> .state.waiting)),
+.table.dgrid .tr.off > .pin:not(.lead):not(.tr-tail):not(:has(> .state.waiting)) > * { opacity: .45; }
+.table.dgrid .tr.off:hover > div:not(.lead):not(.tr-tail):not(.pin):not(:has(> .state.waiting)),
+.table.dgrid .tr.off:hover > .pin:not(.lead):not(.tr-tail):not(:has(> .state.waiting)) > * { opacity: .7; }
 
 /* --- The list's card and its bar: Actions, Group by, how many, Compact or Relaxed, Refresh, Export, New ------------ */
 .gcard { margin-top: 12px; overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }

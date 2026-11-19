@@ -1,8 +1,9 @@
 // Data grids, for every table: the one place columns come from. A page hands R.grid its columns and rows and the grid
-// does the rest: a heading sorts (again turns it round), its ⋮ menu sorts, groups by it or hides it, a heading's right
-// edge drags to resize and a double-click fits it to what's in it, the button at the end of the headings picks what
-// shows, Group by gathers the rows under a heading for each value, and rows are Compact or Relaxed. Columns, widths,
-// sort and grouping are kept in this browser for each grid; Compact or Relaxed is one setting for every list.
+// does the rest: a heading sorts (again turns it round), its ⋮ menu sorts, pins it to the left or right, groups by it,
+// hides it, fits every column or picks which show, a heading's right edge drags to resize and a double-click fits it to
+// what's in it, the button at the end of the headings picks what shows, Group by gathers the rows under a heading for
+// each value, and rows are Compact or Relaxed. Columns, widths, pins, sort and grouping are kept in this browser for
+// each grid; Compact or Relaxed is one setting for every list.
 (() => {
   const R = window.RabbidLab;
   const { esc, svg } = R;
@@ -11,6 +12,8 @@
   const DENSITY = 'rabbidlab.ad.density';
   const density = () => (read(DENSITY) === 'relaxed' ? 'relaxed' : 'compact');
   const GAP = 20; // between columns, with the line in the middle
+  const PAD = 16; // a row's own padding at each side (console.css .tr)
+  const EXT = GAP / 2; // a pinned cell reaches half way into the gap at each side, so nothing shows through
   const of = (v) => (typeof v === 'function' ? v() : v);
   const blank = '<span class="muted">-</span>';
   // What a cell says, without its markup: for grouping, filtering and finding.
@@ -59,9 +62,13 @@
     const groupSet = () => { const s = read(name('group')); return { on: !!s?.on, keys: Array.isArray(s?.keys) ? s.keys : [] }; };
     const groupCols = () => { const s = groupSet(); return s.on ? s.keys.map((k) => cols().find((c) => c.key === k && !c.nogroup)).filter(Boolean) : []; };
     const folded = new Set(); // the groups that are closed, until the page is opened again
+    // Pinned columns: { key: 'left' | 'right' }. They show first or last, and stay put when the grid scrolls sideways.
+    const pins = () => { const p = read(name('pins')); return p && typeof p === 'object' && !Array.isArray(p) ? p : {}; };
     g.shown = () => {
       const keys = read(name('cols'));
-      return cols().filter((c) => c.fixed || (Array.isArray(keys) ? keys.includes(c.key) : c.on));
+      const p = pins();
+      const side = (c) => (p[c.key] === 'left' ? 0 : p[c.key] === 'right' ? 2 : 1);
+      return cols().filter((c) => c.fixed || (Array.isArray(keys) ? keys.includes(c.key) : c.on)).sort((a, b) => side(a) - side(b));
     };
     g.sortBy = () => {
       const s = read(name('sort'));
@@ -76,6 +83,14 @@
       const t = el();
       t.style.setProperty('--cols', `${lead ? `${lead.w}px ` : ''}${list.join(' ')} minmax(${tail}px, 1fr)`);
       t.style.setProperty('--minw', `${(lead ? lead.w + GAP : 0) + shown.reduce((n, c) => n + widthOf(c) + GAP, 0) + tail + 32}px`);
+      // Where each pinned column stays: its outer edge's distance from its side (a sticky cell is held by its border box).
+      const px = list.map((w) => parseFloat(w));
+      if (px.some((w) => Number.isNaN(w))) return; // being measured
+      const p = pins();
+      let x = PAD + (lead ? lead.w + GAP : 0);
+      shown.forEach((c, i) => { if (p[c.key] === 'left') t.style.setProperty(`--gpin${i}`, `${x === PAD ? 0 : x - EXT}px`); x += px[i] + GAP; });
+      let r = PAD + tail + GAP;
+      for (let i = shown.length - 1; i >= 0; i -= 1) if (p[shown[i].key] === 'right') { t.style.setProperty(`--gpin${i}`, `${r - EXT}px`); r += px[i] + GAP; }
     };
     // Blanks go last either way.
     g.sorted = (list) => {
@@ -99,18 +114,27 @@
       const tail = of(o.tail);
       const by = groupCols();
       setTracks(shown);
-      const head = shown.map((c) => `<div class="th-cell" data-grid-col="${c.key}">${c.nosort ? `<span class="th-sort still"><span class="lbl">${esc(c.label)}</span></span>`
+      // Pinned cells: left ones first, with a line after the last; right ones last, with a line before the first. With
+      // any pinned, the ticks (left) or the row's buttons (right) stay put beside them.
+      const p = pins();
+      const lefts = shown.filter((c) => p[c.key] === 'left').length;
+      const rights = shown.filter((c) => p[c.key] === 'right').length;
+      const pin = shown.map((c, i) => (i < lefts ? { cls: ` pin pin-l${i === lefts - 1 ? ' last' : ''}${i === 0 && !lead ? ' edge-l' : ''}`, at: ` style="left:var(--gpin${i})"` }
+        : i >= shown.length - rights ? { cls: ` pin pin-r${i === shown.length - rights ? ' first' : ''}`, at: ` style="right:var(--gpin${i})"` } : { cls: '', at: '' }));
+      const leadPin = lefts ? ' pin pin-l edge-l" style="left:0' : '';
+      const tailPin = rights ? ' pin pin-r edge-r" style="right:0' : '';
+      const head = shown.map((c, i) => `<div class="th-cell${pin[i].cls}" data-grid-col="${c.key}"${pin[i].at}>${c.nosort ? `<span class="th-sort still"><span class="lbl">${esc(c.label)}</span></span>`
         : `<button type="button" class="th-sort${s?.key === c.key ? ' on' : ''}" data-grid-sort="${c.key}" title="${esc(c.label)}"><span class="lbl">${esc(c.label)}</span>`
           + `${s?.key === c.key ? svg(s.dir > 0 ? 'arrow-up' : 'arrow-down', 'arr') : ''}</button>`}`
-        + `<button type="button" class="th-menu" data-grid-menu="${c.key}" aria-label="${esc(c.label)}: sort, group, hide">${svg('dots')}</button><i class="th-grip" data-grid-grip="${c.key}" data-tip="Drag to resize"></i></div>`).join('');
+        + `<button type="button" class="th-menu" data-grid-menu="${c.key}" aria-label="${esc(c.label)}: sort, pin, group, hide">${svg('dots')}</button><i class="th-grip" data-grid-grip="${c.key}" data-tip="Drag to resize"></i></div>`).join('');
       const button = o.headButton === false ? '' : `<button type="button" class="gcols" data-grid-cols data-tip="Columns" aria-label="Columns">${svg('columns')}</button>`;
       // rows: in the order shown, so a row's number is its place in what draw() gives back, grouped or not.
       const rows = [];
       const row = (x) => {
         const i = rows.push(x) - 1;
-        return `<div class="tr${o.rowClass ? ` ${o.rowClass(x)}` : ''}"${o.row ? o.row(x, i) : ''}>${lead ? `<div class="lead">${lead.cell(x, i)}</div>` : ''}`
-          + shown.map((c) => { const v = c.cell ? c.cell(x) : c.get(x); return `<div>${c.cell ? v : v === '' || v == null ? blank : `<span class="ell">${esc(v)}</span>`}</div>`; }).join('')
-          + `<div class="tr-tail">${tail?.cell ? tail.cell(x, i) : ''}</div></div>`;
+        return `<div class="tr${o.rowClass ? ` ${o.rowClass(x)}` : ''}"${o.row ? o.row(x, i) : ''}>${lead ? `<div class="lead${leadPin}">${lead.cell(x, i)}</div>` : ''}`
+          + shown.map((c, k) => { const v = c.cell ? c.cell(x) : c.get(x); return `<div${pin[k].cls ? ` class="${pin[k].cls.trim()}"${pin[k].at}` : ''}>${c.cell ? v : v === '' || v == null ? blank : `<span class="ell">${esc(v)}</span>`}</div>`; }).join('')
+          + `<div class="tr-tail${tailPin}">${tail?.cell ? tail.cell(x, i) : ''}</div></div>`;
       };
       // A heading for each value of the column grouped by, then its rows (or the next column's groups) unless it's closed.
       const groups = (part, depth, path) => {
@@ -127,7 +151,7 @@
             + `<span class="ell">${esc(c.label)}: ${esc(v)}</span><small>${xs.length.toLocaleString()}</small></div></div>${shut ? '' : groups(xs, depth + 1, `${path}/${v}`)}`;
         }).join('');
       };
-      const html = `<div class="tr th">${lead ? `<div class="lead">${lead.head || ''}</div>` : ''}${head}<div class="tr-tail">${button}</div></div>`
+      const html = `<div class="tr th">${lead ? `<div class="lead${leadPin}">${lead.head || ''}</div>` : ''}${head}<div class="tr-tail${tailPin}">${button}</div></div>`
         + (sorted.length ? groups(sorted, 0, '') : `<div class="empty">${of(o.empty) || 'Nothing here.'}</div>`);
       return { rows, html };
     };
@@ -230,20 +254,48 @@
       R.picker.open(button, { key: `cols.${name('g')}`, right: true, stars: false, clear: false,
         items: cols().filter((c) => !c.fixed).map((c) => ({ key: c.key, label: c.label })), picked: new Set(g.shown().filter((c) => !c.fixed).map((c) => c.key)),
         change: (picked) => { keep(name('cols'), [...picked]); o.redraw(); },
-        foot: [{ label: 'Reset columns, order, widths and sort', icon: 'refresh', run: () => { ['cols', 'widths', 'sort', 'order', 'group'].forEach((w) => keep(name(w), null)); o.redraw(); } }] });
+        foot: [{ label: 'Reset columns, order, widths and sort', icon: 'refresh', run: () => { ['cols', 'widths', 'sort', 'order', 'group', 'pins'].forEach((w) => keep(name(w), null)); o.redraw(); } }] });
     };
-    // A heading's ⋮: sort by it either way, group by it, hide it.
+    // Fits columns to what's in them: every cell measured at its natural width.
+    const fit = (keys) => {
+      const shown = g.shown();
+      const t = el();
+      const wd = widths();
+      const on = shown.map((c) => keys.includes(c.key));
+      if (!on.some(Boolean)) return;
+      t.classList.add('measuring');
+      setTracks(shown, shown.map((c, i) => (on[i] ? 'max-content' : `${widthOf(c, wd)}px`)));
+      const before = of(o.lead) ? 1 : 0;
+      shown.forEach((c, i) => {
+        if (!on[i]) return;
+        const widest = Math.max(...[...t.querySelectorAll(`.tr:not(.grp) > :nth-child(${i + 1 + before})`)].map((cell) => cell.getBoundingClientRect().width));
+        wd[c.key] = Math.min(700, Math.max(60, Math.ceil(widest) + 4));
+      });
+      t.classList.remove('measuring');
+      keep(name('widths'), wd);
+      setTracks(shown);
+    };
+    // A heading's ⋮: sort by it either way, pin it to a side, group by it, hide it, fit every column, pick which show.
     const colMenu = (button) => {
       const c = cols().find((x) => x.key === button.dataset.gridMenu);
       if (!c) return;
       const s = groupSet();
       const grouped = s.on && s.keys.length === 1 && s.keys[0] === c.key;
       const sort = (dir) => () => { keep(name('sort'), { key: c.key, dir }); o.redraw(); };
+      const side = pins()[c.key];
+      const pin = (to) => () => { const p = pins(); if (to) p[c.key] = to; else delete p[c.key]; keep(name('pins'), Object.keys(p).length ? p : null); o.redraw(); };
+      const unpin = { label: 'Unpin', icon: 'pin-off', run: pin(null) };
       R.picker.menu(button, [
         ...(c.nosort ? [] : [{ label: 'Sort A to Z', icon: 'sort', run: sort(1) }, { label: 'Sort Z to A', icon: 'sort-za', run: sort(-1) }, '-']),
+        side === 'left' ? unpin : { label: 'Pin to left', icon: 'pin', run: pin('left') },
+        side === 'right' ? unpin : { label: 'Pin to right', icon: 'pin-right', run: pin('right') },
+        '-',
         ...(c.fixed || c.nogroup ? [] : [grouped ? { label: 'Stop grouping', icon: 'list', run: () => { keep(name('group'), { on: false, keys: s.keys }); o.redraw(); } }
-          : { label: 'Group by this column', icon: 'list', run: () => { keep(name('group'), { on: true, keys: [c.key] }); o.redraw(); } }, '-']),
+          : { label: 'Group by this column', icon: 'list', run: () => { keep(name('group'), { on: true, keys: [c.key] }); o.redraw(); } }]),
         ...(c.fixed ? [] : [{ label: 'Hide column', icon: 'eye-off', run: () => { keep(name('cols'), g.shown().filter((x) => !x.fixed && x.key !== c.key).map((x) => x.key)); o.redraw(); } }]),
+        '-',
+        { label: 'Autosize all columns', icon: 'fit', run: () => fit(g.shown().map((x) => x.key)) },
+        { label: 'Choose columns', icon: 'columns', run: () => g.menu(button) },
       ], { key: `col.${name('g')}.${c.key}` });
     };
 
@@ -413,23 +465,10 @@
       const th = e.target.closest('[data-grid-col]');
       if (th && el().contains(th)) pickUp(e, th);
     });
-    // Fits a column to what's in it: every cell measured at its natural width.
+    // A double-click on an edge fits that column.
     t0.addEventListener('dblclick', (e) => {
       const grip = e.target.closest('[data-grid-grip]');
-      if (!grip) return;
-      const shown = g.shown();
-      const at = shown.findIndex((c) => c.key === grip.dataset.gridGrip);
-      if (at < 0) return;
-      const t = el();
-      const wd = widths();
-      t.classList.add('measuring');
-      setTracks(shown, shown.map((c, i) => (i === at ? 'max-content' : `${widthOf(c, wd)}px`)));
-      const nth = at + 1 + (of(o.lead) ? 1 : 0);
-      const widest = Math.max(...[...t.querySelectorAll(`.tr:not(.grp) > :nth-child(${nth})`)].map((cell) => cell.getBoundingClientRect().width));
-      t.classList.remove('measuring');
-      wd[grip.dataset.gridGrip] = Math.min(700, Math.max(60, Math.ceil(widest) + 4));
-      keep(name('widths'), wd);
-      setTracks(shown);
+      if (grip) fit([grip.dataset.gridGrip]);
     });
     return g;
   };

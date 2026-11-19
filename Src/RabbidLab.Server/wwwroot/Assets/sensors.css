@@ -59,6 +59,7 @@
 .tr.sn { min-height: 52px; cursor: pointer; }
 .tr.sn:not(.th):hover { background: #151827; }
 .table.dgrid .tr.sn.s-down { background: rgba(255, 107, 125, .06); }
+.table.dgrid .tr.sn.s-down > .pin { background: linear-gradient(rgba(255, 107, 125, .06), rgba(255, 107, 125, .06)) var(--panel); }
 .tr.sn > * { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .state.down { --mark: var(--red); }
 .state.down::before, .state.warn::before { content: "!"; }

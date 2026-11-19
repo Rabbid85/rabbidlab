@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.265', [
+    'The ⋮ on a column name can pin that column to the left or right, so it stays put when the list scrolls sideways. It can also autosize every column and open Choose columns.']],
   ['1.1.264', [
     'Boxes the browser fills in, like a saved username or password, stay dark instead of turning white, on the sign-in page and everywhere else.']],
   ['1.1.263', [

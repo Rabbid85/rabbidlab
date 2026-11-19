@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.265 (2026-11-19)
+
+- The ⋮ on a column name can pin that column to the left or right, so it stays put when the list scrolls sideways. It can also autosize every column and open Choose columns.
+
 ## 1.1.264 (2026-11-19)
 
 - Boxes the browser fills in, like a saved username or password, stay dark instead of turning white, on the sign-in page and everywhere else.
