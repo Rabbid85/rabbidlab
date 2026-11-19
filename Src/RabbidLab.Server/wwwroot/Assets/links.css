@@ -5,12 +5,8 @@
 .hero-gear svg { width: 17px; height: 17px; }
 .ln-empty .primary, #link-dialog .primary { display: inline-flex; align-items: center; gap: 7px; }
 .ln-empty .primary svg { flex: none; width: 15px; height: 15px; }
-/* Over the links (and the sensors): the filter bar, then the bar with the view switch, Refresh icons and Add (grid.css). */
-.sn-body > .fbar { margin: 4px 0 12px; }
-.sn-body > .fbar:not([hidden]) + .ln-tools { margin-top: 0; }
-.ln-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 4px 0 18px; }
-.ln-tools .chips { margin: 0; }
-.ln-tools .chips:empty { display: none; }
+/* Over the links (and the sensors): the filter bar; the commands and the view are in the bar under the banner. */
+.sn-body > .fbar { margin: 4px 0 18px; }
 .lgroup { position: relative; margin-bottom: 22px; }
 /* A group's heading: hover it for the handle that drags it, the pencil and the bin. */
 .lhead { display: flex; align-items: center; gap: 8px; min-height: 30px; margin: 0 0 8px; }

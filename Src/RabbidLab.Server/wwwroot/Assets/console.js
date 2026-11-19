@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.263', [
+    'Links and Sensors have a command bar along the bottom of the banner: Add a link or Add a sensor, New group, Refresh icons on Links, and the view on the right.']],
   ['1.1.262', [
     'The new-tab sign-in check from 1.1.261 is gone: a reload showed the page and then went to sign-in. Closing the last tab ends the session as it did before.']],
   ['1.1.261', [

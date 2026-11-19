@@ -2,7 +2,6 @@
 #page-sensors > * { min-width: 0; }
 .sn-body { padding-bottom: 26px; }
 .sn-body .table { max-width: 100%; }
-.sn-body .ln-tools .vswitch { margin-left: auto; }
 .hero.bad { --glow: rgba(255, 107, 125, .26); }
 .hero-actions button:not(.primary) { background: #1A1C28; }
 .hero-new.bad { border-color: rgba(255, 107, 125, .5); }

@@ -132,13 +132,13 @@ body.col-moving, body.col-moving * { cursor: grabbing !important; user-select: n
 .gbar .gby-pick .chev { stroke: var(--accent-soft); }
 .gbar .gcount { margin-left: 4px; color: #8B90A5; font-size: 12.5px; }
 .gbar .vswitch { margin: 0; }
-/* The same chips on the bar over Links and Sensors (.ln-tools). */
-:is(.gbar, .ln-tools) .vswitch, .gdock { display: inline-flex; flex: none; gap: 2px; padding: 2px; border: 0; border-radius: 8px; background: #1A1D2B; }
-:is(.gbar, .ln-tools) .vswitch button, .gdock > button { display: grid; place-items: center; width: 30px; height: 28px; padding: 0; border: 0; border-radius: 6px; background: none; color: #8B90A5; }
+/* The same chip box for the view switch in the command bar over Links and Sensors (.cmdbar, console.css). */
+:is(.gbar, .cmdbar) .vswitch, .gdock { display: inline-flex; flex: none; gap: 2px; padding: 2px; border: 0; border-radius: 8px; background: #1A1D2B; }
+:is(.gbar, .cmdbar) .vswitch button, .gdock > button { display: grid; place-items: center; width: 30px; height: 28px; padding: 0; border: 0; border-radius: 6px; background: none; color: #8B90A5; }
 .gdock > button { color: #B8BCCB; }
-:is(.gbar, .ln-tools) .vswitch button:hover, .gdock > button:hover:not(:disabled) { background: #2C3046; color: var(--title); }
-:is(.gbar, .ln-tools) .vswitch button[aria-pressed="true"] { background: #2C3046; color: var(--title); }
-:is(.gbar, .ln-tools) .vswitch svg, .gdock svg { width: 15px; height: 15px; }
+:is(.gbar, .cmdbar) .vswitch button:hover, .gdock > button:hover:not(:disabled) { background: #2C3046; color: var(--title); }
+:is(.gbar, .cmdbar) .vswitch button[aria-pressed="true"] { background: #2C3046; color: var(--title); }
+:is(.gbar, .cmdbar) .vswitch svg, .gdock svg { width: 15px; height: 15px; }
 .gdock > .turning { color: var(--title); }
 .gdock > .turning svg { animation: spin .8s linear infinite; } /* Refresh while it reads (R.refresh) */
 .gsplit { display: inline-flex; flex: none; }

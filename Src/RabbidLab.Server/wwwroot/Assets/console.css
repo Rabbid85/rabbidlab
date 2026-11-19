@@ -607,6 +607,16 @@ a.button:hover, label.button:hover { background: #222536; text-decoration: none;
 /* Every hero is the same height, so the page under it stays put whatever the description: the numbers follow the
    description straight away, and a one-line description leaves its spare room at the foot, not between them. */
 @media (min-width: 701px) { .hero { display: flex; flex-direction: column; min-height: 270px; } }
+/* A command bar along the bottom of a banner (Links, Sensors): plain icon-and-word commands, the view on the right. */
+.cmdbar { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; min-height: 52px; padding: 0 32px; border-bottom: 1px solid var(--line); background: #0F111A; }
+.cmdbar[hidden] { display: none; }
+.cmdbar .grow { flex: 1; }
+.cmd { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; border: 0; border-radius: 7px; background: none; color: var(--text); font-size: 14px; font-weight: 600; white-space: nowrap; }
+.cmd:hover:not(:disabled) { background: #1A1D2B; color: var(--title); }
+.cmd svg { flex: none; width: 16px; height: 16px; color: var(--accent-soft); }
+.cmd.turning svg { animation: spin .8s linear infinite; } /* Refresh icons while it works */
+.cmd-l { margin-right: 10px; color: var(--muted); font-size: 13px; font-weight: 600; }
+@media (max-width: 700px) { .cmdbar { padding: 6px 6px; } .cmd-l { display: none; } }
 @media (max-width: 700px) {
   .hero { padding: 30px 18px 26px; }
   .hero-title { font-size: 46px; }
