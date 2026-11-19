@@ -3,6 +3,12 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.245', [
+    'Lists have a new filter bar: a search of one column or all of them, then a chip for each column worth filtering by. A chip lists the values in that column with how many rows have each, and Add/remove filters picks which chips show.',
+    'The arrow at the end of the filter bar opens every chip out side by side, to tick values without opening each one.',
+    'The save button keeps a filter under Load filter. The conditions window is still there, as Advanced filter in the same menu.',
+    'Group by gathers a list under a heading for each value of a column, with a count. The dots beside every column name sort by it, group by it or hide it, and Columns moved to the end of the column names.',
+    'A list now sits in a card under its own bar: Actions, Group by, how many rows, Compact or Relaxed, Refresh, Export. States show as a round mark and the word. This is on Active Directory, Devices and Group Policy so far, and every other table has the new grid.']],
   ['1.1.244', [
     'New script for when the server was removed before its clients: Tools/Remove-RabbidLabClient.ps1 clears the lock and uninstalls the client. Run it on the computer as administrator, for many with -ComputerName, or as a Group Policy startup script to get the ones that are off.',
     'The Remove page of Setup and the wiki say where that script is.']],
@@ -2028,8 +2034,12 @@ const RELEASE_NOTES = [
       fld('serial', 'Serial number', 'text', (c) => c.inventory?.serial), fld('processor', 'Processor', 'choice', (c) => c.inventory?.processor),
       fld('memory', 'Memory (GB)', 'number', (c) => (c.inventory?.memory ? Math.round(c.inventory.memory / 1073741824) : undefined))]],
   ];
-  const dvFilter = {};
   const dvFields = (at = dvAt) => (at === 'computers' ? DV_FIELDS : dvMore[at]?.fields?.() || null);
+  // The filter bar over whichever list is open (filter.js), made the first time the page draws: a search, a chip for
+  // each column worth filtering by, saved filters, and the conditions window for a list that has fields.
+  let dvBarOn = null;
+  const dvBar = () => (dvBarOn ||= window.RabbidLab.filter.bar({ el: $('dv-fbar'), key: () => dvAt, grid: () => dvGrid(), rows: () => dvBase(), fields: () => dvFields(),
+    noun: () => dvMore[dvAt]?.noun || { computers: 'computers', sessions: 'people' }[dvAt] || DV[dvAt][0].toLowerCase(), redraw: () => drawSeats() }));
   // The rows a list has before Find and Filter narrow it.
   const dvBase = (at = dvAt) => {
     const view = DV_VIEWS.find((v) => v && v[0] === dvView) || DV_VIEWS[0];
@@ -2042,19 +2052,11 @@ const RELEASE_NOTES = [
     if (dvMore[dvAt] ? !dvMore[dvAt].can() : dvAt === 'sessions' ? !can.has('sessions.view') : !can.has('seats.view')) dvAt = can.has('seats.view') ? 'computers' : 'sessions';
     for (const id of [...dvPicked]) if (!computers.some((c) => c.id === id)) dvPicked.delete(id);
     const view = DV_VIEWS.find((v) => v && v[0] === dvView) || DV_VIEWS[0];
-    const find = $('dv-find').value.trim().toLowerCase();
-    const F = window.RabbidLab?.filter;
-    const fields = F ? dvFields() : null;
-    const test = fields ? F.test(fields, dvFilter[dvAt]) : () => true;
-    const nf = fields ? F.count(fields, dvFilter[dvAt]) : 0;
-    dvShown = dvBase().filter((x) => test(x) && (!find || JSON.stringify(x).toLowerCase().includes(find)));
-    $('dv-filter').hidden = !fields;
-    $('dv-filter').classList.toggle('on', nf > 0);
-    $('dv-filter').querySelector('.cnt').hidden = !nf;
-    $('dv-filter').querySelector('.cnt').textContent = String(nf);
-    $('dv-filter-x').hidden = !nf;
-    $('dv-filtered').hidden = !nf;
-    $('dv-filtered').innerHTML = nf ? `${svg('filter')}<span>${esc(F.words(fields, dvFilter[dvAt]))}</span><button type="button" class="linkish" data-filter-clear>Clear filter</button>` : '';
+    // The filter bar narrows the list that's open; a page with no list of its own (Deploy the client) has neither.
+    const listed = !!window.RabbidLab?.filter && typeof dvGrid().cols === 'function';
+    $('dv-fbar').hidden = !listed;
+    $('dv-card').hidden = !listed;
+    dvShown = listed ? dvBase().filter(dvBar().test()) : dvBase();
     // A list that is a tab of Computers (Local admins) keeps Computers lit in the rail, and has no entry of its own.
     const group = dvMore[dvAt]?.under || dvAt;
     document.querySelectorAll('#dv-rail a[data-dv]').forEach((a) => (a.dataset.dv === group ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current')));
@@ -2080,18 +2082,15 @@ const RELEASE_NOTES = [
       ? (can.has('seats.view') ? dvTab(`#seats${dvView === 'all' ? '' : `/computers/${dvView}`}`, dvAt === 'computers', DV.computers[1], DV.computers[0], dvAt === 'computers' ? dvShown.length : dvBase('computers').length) : '')
         + under.map((m) => m.tabs(dvTab)).join('')
       : `<a aria-current="true">${svg(DV[dvAt][1])}${esc(DV[dvAt][0])} <small>${dvShown.length}</small></a>`;
-    // The bar's Search says what it searches: computers, scripts, printers.
-    const searching = `Search ${dvMore[dvAt]?.noun || { computers: 'computers', sessions: 'people' }[dvAt] || DV[dvAt][0].toLowerCase()}`;
-    $('dv-find').placeholder = searching;
-    $('dv-find').setAttribute('aria-label', searching);
-    $('dv-view-title').textContent = dvAt === 'computers' ? view[1] : DV[dvAt][0];
-    $('dv-count').textContent = `${dvShown.length} shown`;
-    // As on Active Directory: only for a view, a find or a filter that narrows the list.
-    $('dv-now').hidden = !((dvAt === 'computers' && view[0] !== 'all') || find || nf);
     for (const [k, id] of [['computers', 'seats-table'], ['sessions', 'sessions-table'],
       ...Object.entries(dvMore).map(([key, more]) => [key, more.table])]) $(id).hidden = k !== dvAt;
     seatsEmpty = dvMore[dvAt] ? dvMore[dvAt].empty()
       : computers.length ? 'None of the computers are like that right now.' : `No computers yet. Add computers to give people the ${esc(product)} client.`;
+    // The filter bar, and the grid's part of the list's bar (Group by, the count, Compact or Relaxed), for the list that shows.
+    if (listed) {
+      dvBar().draw();
+      dvGrid().tools($('dv-tools'));
+    }
     dvGrid().draw(dvShown);
     if (dvAt === 'sessions') paint($('sessions-table'));
     seatPanel?.();
@@ -2144,7 +2143,7 @@ const RELEASE_NOTES = [
       { key: 'computer', label: 'Computer', w: 165, fixed: true, get: (c) => c.computer,
         cell: (c) => `<div class="who"><span class="pic"${c.server || c.thisServer ? ' data-tip="This server"' : ''}>${svg(c.server || c.thisServer || /server/i.test(c.os || '') ? 'server' : 'laptop')}</span><b class="ell">${esc(c.computer)}</b></div>` },
       // While its client is being uninstalled, or may be, State says so (the time is in the hint).
-      { key: 'state', label: 'State', w: 80, on: true, get: (c) => ({ waiting: 0, online: 1, offline: 2 })[stateOf(c)], text: (c) => STATE[stateOf(c)],
+      { key: 'state', label: 'State', w: 80, on: true, filter: true, get: (c) => ({ waiting: 0, online: 1, offline: 2 })[stateOf(c)], text: (c) => STATE[stateOf(c)],
         cell: (c) => (c.uninstalling ? '<span class="state waiting">Uninstalling</span>'
           : c.removalUntil ? `<span class="state waiting" data-tip="${esc(`Uninstall allowed until ${new Date(c.removalUntil).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`)}">Unlocked</span>`
           : stateCell(c)) },
@@ -2472,27 +2471,6 @@ const RELEASE_NOTES = [
       drawSeats();
       if (opened) seats(); // its list is read as it opens
     });
-    $('dv-find').addEventListener('input', drawSeats);
-    // Filter: the same window as Active Directory's (filter.js), on the list that's open.
-    $('dv-filter').addEventListener('click', () => {
-      const at = dvAt;
-      const fields = dvFields(at);
-      if (!fields) return;
-      const noun = dvMore[at]?.noun || (at === 'computers' ? 'computers' : 'rows');
-      window.RabbidLab.filter.open({ title: `Filter ${noun}`, fields, noun, now: dvFilter[at], rows: () => dvBase(at),
-        apply: (flt) => {
-          if (flt) dvFilter[at] = flt;
-          else delete dvFilter[at];
-          drawSeats();
-        } });
-    });
-    const dvUnfilter = () => {
-      delete dvFilter[dvAt];
-      drawSeats();
-    };
-    $('dv-filter-x').addEventListener('click', dvUnfilter);
-    $('dv-now').addEventListener('click', (e) => { if (e.target.closest('[data-filter-clear]')) dvUnfilter(); });
-    $('dv-cols').addEventListener('click', () => dvGrid().menu($('dv-cols')));
     $('dv-export').addEventListener('click', () => dvGrid().csv(dvShown, `devices-${dvAt === 'computers' ? `computers-${dvView}` : dvAt}`));
     $('dv-refresh').addEventListener('click', () => seats());
     // A row opens its computer in the side panel; the row's own buttons do what they say. Uninstall opens the panel too.

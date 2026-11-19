@@ -376,8 +376,6 @@ button.danger.solid:hover { background: #DB4860; }
 
 /* The AD lists are data grids (grid.js, grid.css); these are their own touches. */
 .adt .who b.ell { color: var(--title); font-weight: 600; }
-.adt.dgrid .tr.th { border-radius: 8px 8px 0 0; }
-.adt.dgrid.compact .tr:last-child { border-bottom: 1px solid var(--line); }
 .adt.dgrid.compact .tr.picked { background: #161A2B; }
 .adt.dgrid.compact .who { gap: 9px; }
 .adt.dgrid.compact .who .pic { width: 24px; height: 24px; font-size: 10px; }

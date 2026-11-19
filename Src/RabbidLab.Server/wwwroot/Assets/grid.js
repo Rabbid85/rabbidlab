@@ -1,7 +1,8 @@
 // Data grids, for every table: the one place columns come from. A page hands R.grid its columns and rows and the grid
-// does the rest: a heading sorts (again turns it round), a heading's right edge drags to resize and a double-click fits
-// it to what's in it, Columns picks what shows, and rows are Compact or Relaxed. Columns, widths and sort are kept in
-// this browser for each grid; Compact or Relaxed is one setting for every list.
+// does the rest: a heading sorts (again turns it round), its ⋮ menu sorts, groups by it or hides it, a heading's right
+// edge drags to resize and a double-click fits it to what's in it, the button at the end of the headings picks what
+// shows, Group by gathers the rows under a heading for each value, and rows are Compact or Relaxed. Columns, widths,
+// sort and grouping are kept in this browser for each grid; Compact or Relaxed is one setting for every list.
 (() => {
   const R = window.RabbidLab;
   const { esc, svg } = R;
@@ -12,6 +13,10 @@
   const GAP = 20; // between columns, with the line in the middle
   const of = (v) => (typeof v === 'function' ? v() : v);
   const blank = '<span class="muted">-</span>';
+  // What a cell says, without its markup: for grouping, filtering and finding.
+  const ENT = { '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'" };
+  const plain = (html) => String(html).replace(/<[^>]*>/g, '').replace(/&(amp|lt|gt|quot|#39);/g, (m) => ENT[m]).trim();
+  const tools = new WeakMap(); // a list bar's tools element -> the grid it's showing
 
   // While a heading is dragged: its label following the pointer, and a line down the table where it lands.
   const ghost = document.createElement('div');
@@ -24,19 +29,13 @@
   const MOVE = 6; // pixels a press moves before it's a drag and not a click
   const EDGE = 48; // this near a table's side while dragging, it scrolls that way
 
-  // The Columns menu, one for every grid.
-  const menu = document.createElement('div');
-  menu.className = 'gear-menu col-menu';
-  menu.setAttribute('popover', 'auto');
-  document.body.append(menu);
-  let menuFor = null;
-
   // o: { el, key, store, cols, sort, lead: { w, head, cell }, tail: { w, cell }, row(x, i), rowClass(x), empty, loading,
   // redraw, headButton }. el, key, cols, sort, lead, tail and empty can be functions, for a grid that shows different pages.
   // loading: true (or a function saying so) while the list is still being read, so it shows grey placeholder rows
   // under its headings and not what empty says.
-  // headButton puts Columns at the end of the heading row, for a grid with no toolbar of its own. el is the table for
+  // Columns is the button at the end of the heading row (headButton: false leaves it out). el is the table for
   // draw(); for a page with several tables sharing the columns (one per group), el holds them and table() makes each.
+  // A column: { key, label, w, get(x), cell(x), text(x), on, fixed, nosort, nogroup }.
   const grid = (o) => {
     const el = () => of(o.el);
     const name = (what) => `${o.store || 'rabbidlab.grid'}.${what}.${of(o.key)}`;
@@ -49,6 +48,16 @@
       return [...all].sort((a, b) => at(a) - at(b));
     };
     const g = {};
+    g.cols = cols;
+    // What a cell shows as plain words ('' for a blank one).
+    g.text = (c, x) => {
+      const v = c.cell ? plain(c.cell(x)) : c.get(x);
+      return v == null || v === '-' ? '' : String(v);
+    };
+    // Group by: on or off, and the columns the rows are gathered by, outermost first.
+    const groupSet = () => { const s = read(name('group')); return { on: !!s?.on, keys: Array.isArray(s?.keys) ? s.keys : [] }; };
+    const groupCols = () => { const s = groupSet(); return s.on ? s.keys.map((k) => cols().find((c) => c.key === k && !c.nogroup)).filter(Boolean) : []; };
+    const folded = new Set(); // the groups that are closed, until the page is opened again
     g.shown = () => {
       const keys = read(name('cols'));
       return cols().filter((c) => c.fixed || (Array.isArray(keys) ? keys.includes(c.key) : c.on));
@@ -62,7 +71,7 @@
     // The tracks: the lead (a tick), each column at its width in pixels, and the tail taking what's left.
     const setTracks = (shown, list = shown.map((c) => `${widthOf(c)}px`)) => {
       const lead = of(o.lead);
-      const tail = of(o.tail)?.w || 8;
+      const tail = Math.max(of(o.tail)?.w || 8, o.headButton === false ? 0 : 30); // room for Columns at the end
       const t = el();
       t.style.setProperty('--cols', `${lead ? `${lead.w}px ` : ''}${list.join(' ')} minmax(${tail}px, 1fr)`);
       t.style.setProperty('--minw', `${(lead ? lead.w + GAP : 0) + shown.reduce((n, c) => n + widthOf(c) + GAP, 0) + tail + 32}px`);
@@ -80,23 +89,45 @@
         return (x < y ? -1 : x > y ? 1 : 0) * s.dir;
       });
     };
-    // The heading and the rows, sorted: { rows (in the order shown), html }.
+    // The heading and the rows, sorted and grouped: { rows (in the order shown), html }.
     const body = (list) => {
-      const rows = g.sorted(list);
+      const sorted = g.sorted(list);
       const shown = g.shown();
       const s = g.sortBy();
       const lead = of(o.lead);
       const tail = of(o.tail);
+      const by = groupCols();
       setTracks(shown);
       const head = shown.map((c) => `<div class="th-cell" data-grid-col="${c.key}">${c.nosort ? `<span class="th-sort still"><span class="lbl">${esc(c.label)}</span></span>`
         : `<button type="button" class="th-sort${s?.key === c.key ? ' on' : ''}" data-grid-sort="${c.key}" title="${esc(c.label)}"><span class="lbl">${esc(c.label)}</span>`
-          + `${s?.key === c.key ? svg(s.dir > 0 ? 'chevron-up' : 'chevron-down', 'arr') : ''}</button>`}<i class="th-grip" data-grid-grip="${c.key}" data-tip="Drag to resize"></i></div>`).join('');
-      const button = o.headButton ? `<button type="button" class="gcols" data-grid-cols data-tip="Columns" aria-label="Columns">${svg('columns')}</button>` : '';
-      const html = `<div class="tr th">${lead ? `<div class="lead">${lead.head || ''}</div>` : ''}${head}<div class="tr-tail">${button}</div></div>`
-        + (rows.length ? rows.map((x, i) => `<div class="tr${o.rowClass ? ` ${o.rowClass(x)}` : ''}"${o.row ? o.row(x, i) : ''}>${lead ? `<div class="lead">${lead.cell(x, i)}</div>` : ''}`
+          + `${s?.key === c.key ? svg(s.dir > 0 ? 'arrow-up' : 'arrow-down', 'arr') : ''}</button>`}`
+        + `<button type="button" class="th-menu" data-grid-menu="${c.key}" aria-label="${esc(c.label)}: sort, group, hide">${svg('dots')}</button><i class="th-grip" data-grid-grip="${c.key}" data-tip="Drag to resize"></i></div>`).join('');
+      const button = o.headButton === false ? '' : `<button type="button" class="gcols" data-grid-cols data-tip="Columns" aria-label="Columns">${svg('columns')}</button>`;
+      // rows: in the order shown, so a row's number is its place in what draw() gives back, grouped or not.
+      const rows = [];
+      const row = (x) => {
+        const i = rows.push(x) - 1;
+        return `<div class="tr${o.rowClass ? ` ${o.rowClass(x)}` : ''}"${o.row ? o.row(x, i) : ''}>${lead ? `<div class="lead">${lead.cell(x, i)}</div>` : ''}`
           + shown.map((c) => { const v = c.cell ? c.cell(x) : c.get(x); return `<div>${c.cell ? v : v === '' || v == null ? blank : `<span class="ell">${esc(v)}</span>`}</div>`; }).join('')
-          + `<div class="tr-tail">${tail?.cell ? tail.cell(x, i) : ''}</div></div>`).join('')
-          : `<div class="empty">${of(o.empty) || 'Nothing here.'}</div>`);
+          + `<div class="tr-tail">${tail?.cell ? tail.cell(x, i) : ''}</div></div>`;
+      };
+      // A heading for each value of the column grouped by, then its rows (or the next column's groups) unless it's closed.
+      const groups = (part, depth, path) => {
+        if (depth >= by.length) return part.map(row).join('');
+        const c = by[depth];
+        const sets = new Map();
+        part.forEach((x) => { const v = g.text(c, x) || 'None'; if (!sets.has(v)) sets.set(v, []); sets.get(v).push(x); });
+        const rank = (v) => { const r = c.get(v); return typeof r === 'number' ? r : String(r ?? '').toLowerCase(); };
+        return [...sets].sort((a, b) => { const x = rank(a[1][0]); const y = rank(b[1][0]); return x < y ? -1 : x > y ? 1 : 0; }).map(([v, xs]) => {
+          const id = `${of(o.key)}${path}/${v}`;
+          const shut = folded.has(id);
+          if (shut) rows.push(...xs); // still part of the list: ticking everything counts them
+          return `<div class="tr grp${shut ? ' shut' : ''}" data-grid-group="${esc(id)}" data-depth="${Math.min(depth, 3)}" tabindex="0"><div class="grp-cell">${svg('chevron-down', 'grp-chev')}`
+            + `<span class="ell">${esc(c.label)}: ${esc(v)}</span><small>${xs.length.toLocaleString()}</small></div></div>${shut ? '' : groups(xs, depth + 1, `${path}/${v}`)}`;
+        }).join('');
+      };
+      const html = `<div class="tr th">${lead ? `<div class="lead">${lead.head || ''}</div>` : ''}${head}<div class="tr-tail">${button}</div></div>`
+        + (sorted.length ? groups(sorted, 0, '') : `<div class="empty">${of(o.empty) || 'Nothing here.'}</div>`);
       return { rows, html };
     };
     // Draws the table that el is, and gives back the rows in the order shown.
@@ -114,7 +145,50 @@
         if (t.clientWidth) none.style.width = `${t.clientWidth}px`; // as wide as what shows, however wide the columns are
         R.skeleton(none, 'rows', 8);
       }
+      shownNow = rows.length;
+      if (bar) drawTools();
       return rows;
+    };
+    // The grid's part of a list bar: Group by with its switch and what it groups by, how many rows show, and Compact
+    // or Relaxed. A page gives the element once (again each draw, where several grids share one bar).
+    let bar = null;
+    let shownNow = 0;
+    const drawTools = () => {
+      if (tools.get(bar) !== g) return; // another grid has the bar now
+      const s = groupSet();
+      const by = s.keys.map((k) => cols().find((c) => c.key === k)?.label).filter(Boolean).join(', ');
+      bar.innerHTML = `<label class="gby"><input type="checkbox" class="switch" data-grid-group-on${s.on && by ? ' checked' : ''}><span>Group by</span></label>`
+        + `<button type="button" class="gby-pick" data-grid-group-pick>${esc(by || 'Pick a column')}${svg('chevron-down', 'chev')}</button>`
+        + `<span class="gcount">${shownNow.toLocaleString()} ${shownNow === 1 ? 'Item' : 'Items'}</span><span class="grow"></span>`
+        + `<div class="vswitch">${[['compact', 'Compact rows', 'view-list'], ['relaxed', 'Relaxed rows', 'view-rows']].map(([d, tip, icon]) => `<button type="button" data-density="${d}" aria-pressed="${density() === d}" data-tip="${tip}" aria-label="${tip}">${svg(icon)}</button>`).join('')}</div>`;
+    };
+    const pickGroup = (button) => {
+      const s = groupSet();
+      R.picker.open(button, { key: `group.${name('g')}`, items: cols().filter((c) => !c.fixed && !c.nogroup).map((c) => ({ key: c.key, label: c.label })), picked: new Set(s.keys),
+        change: (picked) => { keep(name('group'), { on: picked.size > 0, keys: [...picked] }); o.redraw(); } });
+    };
+    g.tools = (el) => {
+      bar = el;
+      tools.set(el, g);
+      if (el.dataset.gridTools) return;
+      el.dataset.gridTools = '1';
+      el.classList.add('gtools');
+      // One set of listeners for the element: they go to whichever grid has it.
+      el.addEventListener('change', (e) => { if (e.target.matches('[data-grid-group-on]')) tools.get(el).groupOn(e.target); });
+      el.addEventListener('click', (e) => {
+        const d = e.target.closest('[data-density]');
+        if (d) tools.get(el).density(d.dataset.density);
+        else if (e.target.closest('[data-grid-group-pick]')) tools.get(el).pickGroup(e.target.closest('[data-grid-group-pick]'));
+      });
+    };
+    g.pickGroup = pickGroup;
+    g.density = (d) => { keep(DENSITY, d); o.redraw(); };
+    // The switch: off, or on with what was picked; with nothing picked yet it opens the picker.
+    g.groupOn = (box) => {
+      const s = groupSet();
+      if (box.checked && !s.keys.length) { box.checked = false; pickGroup(bar.querySelector('[data-grid-group-pick]')); return; }
+      keep(name('group'), { on: box.checked, keys: s.keys });
+      o.redraw();
     };
     // One of several tables inside el, as HTML (cls: its own classes).
     g.table = (list, cls = '') => `<div class="table dgrid ${density()}${cls ? ` ${cls}` : ''}">${body(list).html}</div>`;
@@ -134,44 +208,26 @@
       a.click();
       setTimeout(() => URL.revokeObjectURL(a.href), 5000);
     };
-    // Columns: Compact or Relaxed, a tick for each column, and Reset.
-    const drawMenu = () => {
-      const on = g.shown().map((c) => c.key);
-      const free = cols().filter((c) => !c.fixed);
-      menu.innerHTML = `<div class="col-dens"><span>Rows</span><div class="seg">${[['compact', 'Compact'], ['relaxed', 'Relaxed']].map(([d, label]) => `<button type="button" data-density="${d}" aria-pressed="${density() === d}">${label}</button>`).join('')}</div></div>`
-        + (free.length ? `<p class="cmd-head">Columns</p><div class="am-links col-list">${free.map((c) => `<label class="am-link col-check"><input type="checkbox" data-col="${c.key}"${on.includes(c.key) ? ' checked' : ''}><span>${esc(c.label)}</span></label>`).join('')}</div>` : '')
-        + `<div class="am-links"><button type="button" class="am-link" data-col-reset>${svg('refresh')}<span>Reset columns, order, widths and sort</span></button></div>`;
-    };
+    // Columns: a tick for each column that can be hidden, and Reset (picker.js draws it).
     g.menu = (button) => {
-      if (menu.matches(':popover-open') && menuFor === g) { menu.hidePopover(); return; }
-      menuFor = g;
-      drawMenu();
-      const r = button.getBoundingClientRect();
-      menu.style.setProperty('left', '0px');
-      menu.style.setProperty('top', '0px');
-      menu.showPopover();
-      menu.style.setProperty('left', `${Math.max(8, Math.min(r.right - menu.offsetWidth, innerWidth - menu.offsetWidth - 8))}px`);
-      menu.style.setProperty('top', `${r.bottom + 6}px`);
+      R.picker.open(button, { key: `cols.${name('g')}`, right: true, stars: false, clear: false,
+        items: cols().filter((c) => !c.fixed).map((c) => ({ key: c.key, label: c.label })), picked: new Set(g.shown().filter((c) => !c.fixed).map((c) => c.key)),
+        change: (picked) => { keep(name('cols'), [...picked]); o.redraw(); },
+        foot: [{ label: 'Reset columns, order, widths and sort', icon: 'refresh', run: () => { ['cols', 'widths', 'sort', 'order', 'group'].forEach((w) => keep(name(w), null)); o.redraw(); } }] });
     };
-    g.menuChange = (e) => {
-      const box = e.target.closest('[data-col]');
-      if (!box) return;
-      const keys = g.shown().filter((c) => !c.fixed).map((c) => c.key).filter((k) => k !== box.dataset.col);
-      if (box.checked) keys.push(box.dataset.col);
-      keep(name('cols'), keys);
-      o.redraw();
-    };
-    g.menuClick = (e) => {
-      const d = e.target.closest('[data-density]');
-      if (d) {
-        keep(DENSITY, d.dataset.density);
-        drawMenu();
-        o.redraw();
-      } else if (e.target.closest('[data-col-reset]')) {
-        ['cols', 'widths', 'sort', 'order'].forEach((w) => keep(name(w), null));
-        drawMenu();
-        o.redraw();
-      }
+    // A heading's ⋮: sort by it either way, group by it, hide it.
+    const colMenu = (button) => {
+      const c = cols().find((x) => x.key === button.dataset.gridMenu);
+      if (!c) return;
+      const s = groupSet();
+      const grouped = s.on && s.keys.length === 1 && s.keys[0] === c.key;
+      const sort = (dir) => () => { keep(name('sort'), { key: c.key, dir }); o.redraw(); };
+      R.picker.menu(button, [
+        ...(c.nosort ? [] : [{ label: 'Sort A to Z', icon: 'sort', run: sort(1) }, { label: 'Sort Z to A', icon: 'sort-za', run: sort(-1) }, '-']),
+        ...(c.fixed || c.nogroup ? [] : [grouped ? { label: 'Stop grouping', icon: 'list', run: () => { keep(name('group'), { on: false, keys: s.keys }); o.redraw(); } }
+          : { label: 'Group by this column', icon: 'list', run: () => { keep(name('group'), { on: true, keys: [c.key] }); o.redraw(); } }, '-']),
+        ...(c.fixed ? [] : [{ label: 'Hide column', icon: 'eye-off', run: () => { keep(name('cols'), g.shown().filter((x) => !x.fixed && x.key !== c.key).map((x) => x.key)); o.redraw(); } }]),
+      ], { key: `col.${name('g')}.${c.key}` });
     };
 
     // The heading: click to sort, drag a heading sideways to move its column, drag an edge to resize, double-click an
@@ -184,6 +240,16 @@
     t0.addEventListener('click', (e) => {
       const cb = e.target.closest('[data-grid-cols]');
       if (cb) { g.menu(cb); return; }
+      const mb = e.target.closest('[data-grid-menu]');
+      if (mb && el().contains(mb)) { colMenu(mb); return; }
+      // A group's heading opens and closes it.
+      const gr = e.target.closest('[data-grid-group]');
+      if (gr && el().contains(gr)) {
+        if (folded.has(gr.dataset.gridGroup)) folded.delete(gr.dataset.gridGroup);
+        else folded.add(gr.dataset.gridGroup);
+        o.redraw();
+        return;
+      }
       const b = e.target.closest('[data-grid-sort]');
       if (!b || !el().contains(b)) return;
       const s = g.sortBy();
@@ -259,7 +325,7 @@
       const from = () => heads().findIndex((h) => h.dataset.gridCol === key);
       const cells = () => {
         const nth = from() + 1 + (row.querySelector(':scope > .lead') ? 1 : 0);
-        return el().querySelectorAll(`.tr > :nth-child(${nth})`);
+        return el().querySelectorAll(`.tr:not(.grp) > :nth-child(${nth})`);
       };
       const place = () => {
         const hs = heads();
@@ -326,6 +392,7 @@
       if (e.button !== 0) return;
       const grip = e.target.closest('[data-grid-grip]');
       if (grip) { resize(e, grip); return; }
+      if (e.target.closest('[data-grid-menu]')) return; // its ⋮ is a button, not a place to drag from
       const th = e.target.closest('[data-grid-col]');
       if (th && el().contains(th)) pickUp(e, th);
     });
@@ -341,7 +408,7 @@
       t.classList.add('measuring');
       setTracks(shown, shown.map((c, i) => (i === at ? 'max-content' : `${widthOf(c, wd)}px`)));
       const nth = at + 1 + (of(o.lead) ? 1 : 0);
-      const widest = Math.max(...[...t.querySelectorAll(`.tr > :nth-child(${nth})`)].map((cell) => cell.getBoundingClientRect().width));
+      const widest = Math.max(...[...t.querySelectorAll(`.tr:not(.grp) > :nth-child(${nth})`)].map((cell) => cell.getBoundingClientRect().width));
       t.classList.remove('measuring');
       wd[grip.dataset.gridGrip] = Math.min(700, Math.max(60, Math.ceil(widest) + 4));
       keep(name('widths'), wd);
@@ -350,7 +417,5 @@
     return g;
   };
 
-  menu.addEventListener('change', (e) => menuFor?.menuChange(e));
-  menu.addEventListener('click', (e) => menuFor?.menuClick(e));
   R.grid = grid;
 })();

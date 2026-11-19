@@ -1,55 +1,71 @@
-/* Data grids (grid.js): every table in the console looks and works the same. The columns chosen, at the widths set (in
-   --cols), a header band with a line between each column that drags to resize, sideways scroll when wide, and compact
-   (the default) or relaxed rows. */
+/* Lists: the filter bar (filter.js), the list's card with its own bar, the data grid (grid.js) and the pop-up lists
+   (picker.js). Every table in the console looks and works the same: the columns chosen, at the widths set (in --cols),
+   headings that stay put with a line between each that drags to resize, sideways scroll when wide, rows gathered under
+   a heading when grouped, and compact (the default) or relaxed rows. */
 .table.dgrid .tr { grid-template-columns: var(--cols); min-width: var(--minw); column-gap: 20px; }
 .table.dgrid .tr > div { min-width: 0; overflow: hidden; }
 .ell { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+/* A grid is a card of its own, or sits flush in a list's card under that list's bar. */
+.table.adt.dgrid { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+.gcard > .table.adt, .gcard > .table { margin-top: 0; border: 0; border-top: 1px solid var(--line); border-radius: 0; background: none; }
+/* A long list scrolls inside its card, so its bar and headings stay in reach. */
+.gcard > .table { max-height: calc(100vh - 130px); overflow: auto; }
 
-/* The heading row: a band, each heading sorts, a line between columns that turns orange when grabbed. */
-.table.dgrid .tr.th { background: #12141F; }
-.table.dgrid .tr.th > .th-cell { position: relative; display: flex; align-items: center; min-width: 0; align-self: stretch; overflow: visible; }
+/* The heading row: plain words, each sorts, ⋮ for its menu, a line between columns that turns orange when grabbed. */
+.table.dgrid .tr.th, .table.dgrid.compact .tr.th { position: sticky; top: 0; z-index: 3; min-height: 36px; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: var(--panel);
+  color: #9DA1B3; font-size: 12px; font-weight: 600; letter-spacing: 0; text-transform: none; }
+.table.dgrid .tr.th > .th-cell { position: relative; display: flex; align-items: center; gap: 4px; min-width: 0; align-self: stretch; overflow: visible; }
 .th-sort { display: inline-flex; align-items: center; gap: 4px; min-width: 0; max-width: 100%; overflow: hidden; padding: 0; border: 0; background: none; color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; white-space: nowrap; cursor: pointer; }
-.th-sort:hover, .th-sort.on { color: var(--title); }
+.th-sort:hover, .th-sort.on { background: none; color: var(--title); }
 .th-sort.still { cursor: default; }
 .th-sort.still:hover { color: inherit; }
-.th-sort .arr { flex: none; width: 12px; height: 12px; }
+.th-sort .arr { flex: none; width: 12px; height: 12px; color: var(--accent-soft); }
 .th-sort .lbl { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.th-menu { display: grid; place-items: center; flex: none; width: 18px; height: 22px; margin-left: auto; padding: 0; border: 0; border-radius: 4px; background: none; color: #5E6380; }
+.th-menu:hover { background: #1A1D2B; color: var(--title); }
+.th-menu svg { width: 13px; height: 13px; transform: rotate(90deg); }
 .th-grip { position: absolute; top: 0; right: -17px; bottom: 0; z-index: 1; width: 14px; cursor: col-resize; }
-.th-grip::after { content: ""; position: absolute; top: 8px; bottom: 8px; left: 6.5px; width: 1px; background: #363B55; }
+.th-grip::after { content: ""; position: absolute; top: 9px; bottom: 9px; left: 6.5px; width: 1px; background: var(--line-strong); }
 .th-grip:hover::after, .th-grip.on::after { top: 4px; bottom: 4px; left: 5.5px; width: 3px; border-radius: 2px; background: var(--accent); }
 body.col-dragging, body.col-dragging * { cursor: col-resize !important; user-select: none; }
 .table.dgrid .tr > .lead { display: grid; place-items: center; align-self: stretch; overflow: visible; }
-.table.dgrid .tr.th > .lead { position: relative; }
-.table.dgrid .tr.th > .lead::after { content: ""; position: absolute; top: 8px; right: -10.5px; bottom: 8px; width: 1px; background: #363B55; }
 .table.dgrid .tr-tail { display: flex; justify-content: flex-end; }
 
 /* While a column is fitted to what's in it (double-click its edge), nothing is cut short. */
 :is(.dgrid.measuring, .measuring .dgrid) .tr > div, :is(.dgrid.measuring, .measuring .dgrid) .tr > div *, :is(.dgrid.measuring, .measuring .dgrid) .th-sort .lbl { overflow: visible !important; max-width: none !important; text-overflow: clip !important; }
 
-/* Compact rows: one line each, joined like a table. Relaxed rows are taller. */
-.table.dgrid.compact { gap: 0; }
-.table.dgrid.compact .tr { min-height: 38px; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: none; }
-.table.dgrid.compact .tr.th { min-height: 34px; border-bottom-color: var(--line-strong); background: #12141F; }
-.table.dgrid.compact .tr:last-child { border-bottom: 0; }
+/* Rows: one line each, joined like a table. Relaxed rows are taller. */
+.table.dgrid { display: block; gap: 0; }
+.table.dgrid .tr:not(.th) { min-height: 38px; border: 0; border-bottom: 1px solid #171A27; border-radius: 0; background: none; }
+.table.dgrid.relaxed .tr:not(.th) { min-height: 48px; }
+.table.dgrid .tr:not(.th):last-child { border-bottom: 0; }
 .table.dgrid .tr:not(.th):hover { background: #151827; }
 /* A list still being read: placeholder rows under the headings, staying put when the columns are wider than the page. */
 .table.dgrid > .grid-loading { position: sticky; left: 0; }
-.table.dgrid.relaxed:not(.drows) .tr:not(.th) { min-height: 54px; }
 
-/* Columns: Compact or Relaxed at the top, then a tick for each column. */
-.gear-menu.col-menu { position: fixed; inset: auto; width: 270px; max-height: min(560px, 80vh); margin: 0; overflow-y: auto; }
-.col-check { cursor: pointer; }
-.col-check input { flex: none; margin: 0; }
-.col-dens { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px 12px 18px; border-bottom: 1px solid var(--line); }
-.col-dens > span { color: var(--title); font-size: 13px; font-weight: 700; }
-.col-dens .seg button { height: 28px; padding: 0 12px; font-size: 12.5px; }
+/* Group by: a heading for each value, with how many rows it has; a click closes or opens it. */
+.table.dgrid .tr.grp { display: flex; min-height: 36px; background: #0D0F18; color: var(--title); font-weight: 650; cursor: pointer; }
+.table.dgrid .tr.grp:hover, .table.dgrid .tr.grp:focus-visible { background: #10121C; outline: none; }
+.table.dgrid .tr.grp > .grp-cell { position: sticky; left: 16px; display: flex; align-items: center; gap: 8px; overflow: visible; }
+.tr.grp[data-depth="1"] > .grp-cell { padding-left: 22px; }
+.tr.grp[data-depth="2"] > .grp-cell { padding-left: 44px; }
+.tr.grp[data-depth="3"] > .grp-cell { padding-left: 66px; }
+.grp-chev { flex: none; width: 15px; height: 15px; color: #8B90A5; transition: transform .12s; }
+.tr.grp.shut .grp-chev { transform: rotate(-90deg); }
+.tr.grp .grp-cell small { display: inline-block; overflow: visible; padding: 1px 8px; border-radius: 999px; background: #1A1D2B; color: #B8BCCB; font-size: 11.5px; font-weight: 600; }
 
-/* Columns at the end of the heading row, for a grid with no toolbar. */
-.gcols { display: grid; place-items: center; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 7px; background: none; color: #8B90A5; }
+/* A badge in a cell is a state like any other: the round mark, then the word. */
+.table.dgrid .tr > div > .ubadge { gap: 8px; height: auto; margin: 0; padding: 0; border-radius: 0; background: none; color: var(--text); font-size: 13px; font-weight: 500; }
+.table.dgrid .tr > div > .ubadge::before { content: "✓"; flex: none; width: 15px; height: 15px; border-radius: 50%; background: var(--ok); color: var(--night); font: 800 10px/15px "Segoe UI", system-ui, sans-serif; text-align: center; }
+.table.dgrid .tr > div > .ubadge.red::before { content: "!"; background: var(--red); }
+.table.dgrid .tr > div > .ubadge.amber::before { content: "!"; background: var(--amber); }
+.table.dgrid .tr > div > .ubadge.grey::before { content: "–"; background: #5E6380; }
+
+/* Columns, at the end of the heading row: in reach at the right edge when the grid scrolls sideways. */
+.gcols { display: grid; place-items: center; flex: none; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 7px; background: none; color: #8B90A5; }
 .gcols:hover { background: #1A1D2B; color: #fff; }
 .gcols svg { width: 15px; height: 15px; }
-/* It stays in reach at the right edge when the grid scrolls sideways. */
-.table.dgrid .tr.th > .tr-tail:has(.gcols) { position: sticky; right: 0; z-index: 2; background: #12141F; }
+.table.dgrid .tr.th > .tr-tail:has(.gcols) { position: sticky; right: 0; z-index: 2; background: var(--panel); overflow: visible; }
 
 /* Moving a column: drag its heading sideways. Its label follows the pointer, the column fades, and a line down the
    table shows where it lands. */
@@ -58,8 +74,7 @@ body.col-dragging, body.col-dragging * { cursor: col-resize !important; user-sel
 .table.dgrid .col-lift { opacity: .35; }
 body.col-moving, body.col-moving * { cursor: grabbing !important; user-select: none; }
 .col-ghost { position: fixed; top: 0; left: 0; z-index: 1000; display: flex; align-items: center; gap: 7px; max-width: 240px; padding: 7px 12px; border: 1px solid var(--line-strong);
-  border-radius: 9px; background: #1A1D2B; box-shadow: 0 10px 28px rgba(0, 0, 0, .45); color: var(--title); font-size: 11px; font-weight: 700; letter-spacing: .06em;
-  text-transform: uppercase; white-space: nowrap; pointer-events: none; }
+  border-radius: 9px; background: #1A1D2B; box-shadow: 0 10px 28px rgba(0, 0, 0, .45); color: var(--title); font-size: 12px; font-weight: 600; white-space: nowrap; pointer-events: none; }
 .col-ghost span { overflow: hidden; text-overflow: ellipsis; }
 .col-ghost svg { flex: none; width: 13px; height: 13px; color: #8B90A5; }
 .col-line { position: fixed; z-index: 999; width: 2px; border-radius: 1px; background: var(--accent); pointer-events: none; }
@@ -69,3 +84,89 @@ body.col-moving, body.col-moving * { cursor: grabbing !important; user-select: n
 /* A row for something that's off (an offline computer): greyed out, a little less on hover. Its tick and a Waking state stay bright. */
 .table.dgrid .tr.off > div:not(.lead):not(.tr-tail):not(:has(> .state.waiting)) { opacity: .45; }
 .table.dgrid .tr.off:hover > div:not(.lead):not(.tr-tail):not(:has(> .state.waiting)) { opacity: .7; }
+
+/* --- The list's card and its bar: Actions, Group by, how many, Compact or Relaxed, Refresh, Export, New ------------ */
+.gcard { margin-top: 12px; overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+.gcard[hidden], .gbar > [hidden] { display: none; }
+.gbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 12px; }
+.gbar > .small, .gbar > .primary { display: inline-flex; align-items: center; gap: 7px; height: 34px; white-space: nowrap; }
+.gbar > .small svg, .gbar > .primary svg { width: 15px; height: 15px; }
+.gbar > .small .chev { width: 12px; height: 12px; color: #8B90A5; }
+.gbar .cnt { display: inline-grid; min-width: 19px; height: 19px; place-items: center; padding: 0 6px; border-radius: 999px; background: var(--accent); color: #fff; font-size: 11px; font-weight: 700; }
+.gbar .cnt[hidden] { display: none; }
+.gbar > .gcols, .fbar > .gcols { width: 32px; height: 32px; border-radius: 8px; }
+.gtools { display: flex; flex: 1; align-items: center; gap: 10px; min-width: 0; }
+.gtools .grow { flex: 1; }
+.gby { display: inline-flex; align-items: center; gap: 8px; margin-left: 4px; color: var(--text); font-size: 13px; white-space: nowrap; cursor: pointer; }
+.gby input.switch { width: 32px; height: 18px; }
+.gby input.switch::after { top: 3px; left: 3px; width: 12px; height: 12px; }
+.gby input.switch:checked::after { left: 17px; }
+.gby-pick { display: inline-flex; align-items: center; gap: 4px; height: 28px; margin-left: -6px; padding: 0 6px; border: 0; border-radius: 6px; background: none; color: var(--title); font-size: 13px; font-weight: 700; white-space: nowrap; }
+.gby-pick:hover { background: #1A1D2B; }
+.gby-pick .chev { width: 13px; height: 13px; }
+.gcount { color: var(--muted); font-size: 12px; white-space: nowrap; }
+/* A button that reads as words: Load filter, Export, Clear. */
+.tlink { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 8px; border: 0; border-radius: 7px; background: none; color: var(--accent-soft); font-size: 13px; font-weight: 600; white-space: nowrap; }
+.tlink:hover { background: color-mix(in srgb, var(--accent-soft) 10%, transparent); }
+.tlink[hidden] { display: none; }
+.tlink svg { flex: none; width: 15px; height: 15px; }
+.tlink .chev { width: 13px; height: 13px; stroke: currentColor; }
+
+/* --- The filter bar: Load filter, Save, the search of one column or all, a chip for each filter, Add/remove filters -- */
+.fbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+.fbar[hidden] { display: none; }
+.fbar .grow { flex: 1; }
+.fcombo { display: flex; align-items: center; height: 32px; min-width: 320px; border: 1px solid var(--line-strong); border-radius: 8px; background: #0C0E17; }
+.fcombo:focus-within { border-color: var(--accent-line); }
+.fbar .fcombo select:not([multiple]) { height: 30px; max-width: 180px; padding: 0 24px 0 10px; border: 0; border-radius: 0; outline: 0; color: var(--text); font: inherit; font-size: 12.5px; font-weight: 600;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238A8FA8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 7px center / 12px; }
+.fbar .fcombo select + select:not([multiple]) { color: #B8BCCB; font-weight: 500; }
+.fcombo input { flex: 1; min-width: 80px; height: 30px; padding: 0 10px; border: 0; outline: 0; background: none; color: var(--title); font: inherit; font-size: 13px; }
+.fcombo input::placeholder { color: #6D7290; }
+.fchips { display: contents; }
+.fchip { display: inline-flex; align-items: center; gap: 6px; height: 32px; max-width: 340px; padding: 0 11px; border: 1px solid transparent; border-radius: 8px; background: #1A1D2B; color: var(--text); font-size: 13px; font-weight: 600; white-space: nowrap; }
+.fchip:hover { background: #222536; }
+.fchip.set { border-color: var(--accent-line); background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent-soft); }
+.fchip.set > span::after { content: ":"; }
+.fchip b { min-width: 0; color: var(--title); font-weight: 700; }
+.fchip svg { flex: none; width: 14px; height: 14px; }
+.fchip .chev { width: 13px; height: 13px; stroke: currentColor; }
+/* The bar opened out (the caret at its end): every filter side by side with its values and counts, scrolling sideways. */
+.fbar > [data-fb="wide"] svg { transition: transform .12s; }
+.fbar > [data-fb="wide"][aria-expanded="true"] svg { transform: rotate(180deg); }
+.fwide { display: flex; flex-basis: 100%; margin: 2px -12px -10px; border-top: 1px solid var(--line); overflow-x: auto; }
+.fwide[hidden] { display: none; }
+.fw-col { flex: none; width: 250px; padding: 8px 6px; border-right: 1px solid var(--line); }
+.fw-head { display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 2px 0 8px; color: #9DA1B3; font-size: 12px; font-weight: 600; }
+.fw-head .ell { flex: 1; }
+.fw-head input { flex: 1; min-width: 0; padding: 0; border: 0; outline: 0; background: none; color: var(--title); font: inherit; font-size: 12.5px; }
+.fw-head input::placeholder { color: #6D7290; }
+.fw-rows { max-height: 214px; overflow-y: auto; }
+
+/* --- Pop-up lists (picker.js): ticks with a find box, Clear all and a star or a count; and plain menus -------------- */
+.gear-menu.xpick { position: fixed; inset: auto; width: 250px; max-height: min(520px, 80vh); margin: 0; overflow-y: auto; }
+.xpick-find { display: flex; align-items: center; gap: 8px; margin: 12px 14px 0; padding: 2px 0 8px; border-bottom: 2px solid var(--accent-line); color: var(--muted); }
+.xpick-find svg { flex: none; width: 15px; height: 15px; }
+.xpick-find input { flex: 1; min-width: 0; padding: 0; border: 0; outline: 0; background: none; color: var(--title); font: inherit; font-size: 13px; }
+.xpick-find input::placeholder { color: #6D7290; }
+.xpick-clear { display: block; margin: 7px 14px 2px auto; padding: 0; border: 0; background: none; color: var(--accent-soft); font-size: 12px; font-weight: 600; }
+.xpick-clear:hover { background: none; text-decoration: underline; }
+.xpick-rows { padding: 2px 6px 6px; }
+.xpick-row { display: flex; align-items: center; gap: 10px; min-height: 34px; padding: 0 8px; border-radius: 8px; color: #D7DAE8; font-size: 13.5px; cursor: pointer; }
+.xpick-row:hover { background: #1A1D2B; color: #fff; }
+.xpick-row[hidden] { display: none; }
+.xpick-row input { flex: none; margin: 0; }
+.xpick-row .ell { flex: 1; min-width: 0; }
+.xpick-n { flex: none; color: #B8BCCB; font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.xpick-n.zero { color: #3A3E55; }
+.xpick-star { flex: none; width: 18px; height: 18px; padding: 0; border: 0; background: none; color: #3A3E55; font-size: 14px; line-height: 18px; }
+.xpick-star:hover { background: none; color: #6D7290; }
+.xpick-star.on { color: var(--amber); }
+.xpick-none { margin: 0; padding: 12px 8px; color: var(--muted); font-size: 13px; }
+.xpick-item { display: flex; align-items: center; gap: 2px; }
+.xpick-item .am-link { flex: 1; min-width: 0; }
+.xpick-item .am-link.on { color: var(--accent-soft); font-weight: 650; }
+.xpick-item .am-link.on svg { color: var(--accent-soft); }
+.xpick-item .xpick-x { flex: none; margin: 0 4px 0 0; opacity: .7; }
+.xpick-item .xpick-x:hover { opacity: 1; }
+.gear-menu.xpick .cmd-head { padding: 8px 12px 4px; color: #5E6380; font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }

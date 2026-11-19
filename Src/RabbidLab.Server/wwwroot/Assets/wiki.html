@@ -217,14 +217,25 @@
   <p>Protected and built-in accounts and groups can be changed too: Active Directory refuses whatever the service account isn't allowed to do. A few things are never offered: the password, sign-in settings and deleting of <span data-app>Rabbid Lab</span>'s own account (it would lock itself out), disabling, moving or deleting a domain controller, and deleting a built-in group. Every change goes in the Activity log.</p>
 </article>
 
-<article data-key="dir-columns" data-group="Active Directory" data-title="Filter, sort and pick columns">
+<article data-key="dir-columns" data-group="Active Directory" data-title="Filter, group, sort and pick columns">
+  <p>The bar over a list filters it:</p>
   <ul>
-    <li>The <b>funnel</b> button filters the list. It keeps the rows that match your conditions: pick a field (Department, Last sign-in, Member of group and so on), how to test it, and a value. Match all of them or any. The window shows how many match as you go. While a filter is on, the funnel shows how many conditions are on and the <b>×</b> beside it clears them.</li>
-    <li><b>Columns</b> picks what the list shows, such as email, job title, office, manager, OU or password dates. Reset puts it back.</li>
-    <li>Click a column name to sort by it, and again to turn the order round. Drag the edge of a column name to make it wider or narrower; double-click the edge to fit the column to what is in it.</li>
-    <li><b>Rows</b>, at the top of Columns, switches between <b>Compact</b> (the default) and <b>Relaxed</b>.</li>
+    <li>The <b>search box</b> looks in every column. Pick one column in front of it to look only there, and <b>contains</b>, <b>is</b> or <b>starts with</b>.</li>
+    <li>Each <b>chip</b> after it (Status, Department and so on) lists that column's values with how many rows have each. Tick the ones you want. The numbers follow whatever else is picked.</li>
+    <li><b>Add/remove filters</b> picks which columns have a chip. A star keeps one at the top of that list.</li>
+    <li>The <b>arrow</b> at the end of the bar opens every chip out side by side, to tick values without opening each one. The magnifier over a column finds a value in it.</li>
+    <li>The <b>save</b> button keeps what is picked under <b>Load filter</b>, in this browser. <b>Advanced filter</b>, in the same menu on Users, Groups, Computers and the Devices list, is for what a chip cannot say: older than so many days, does not contain, member of a group, any of the conditions or all of them.</li>
+    <li><b>Clear</b> takes everything off.</li>
   </ul>
-  <p>Every table in the console works the same way: Domain health, AD audit, Recycle Bin, the Attribute browser and the lists under Devices too. Drag a heading onto another to move that column. Columns, order, widths and sort are kept in this browser for each table; Compact or Relaxed is one setting for all of them.</p>
+  <p>The list has a bar of its own:</p>
+  <ul>
+    <li><b>Actions</b> is for the rows you ticked, and shows how many.</li>
+    <li><b>Group by</b> gathers the rows under a heading for each value of the column picked beside it, with a count. Click a heading to close or open it. Pick two columns to group inside groups.</li>
+    <li>The two buttons after the count switch between <b>Compact</b> rows (the default) and <b>Relaxed</b>.</li>
+    <li>Click a column name to sort by it, and again to turn the order round. The <b>⋮</b> beside it sorts, groups by that column or hides it. Drag the edge of a column name to make it wider or narrower; double-click the edge to fit the column to what is in it.</li>
+    <li>The button at the end of the column names picks what the list shows, such as email, job title, office, manager, OU or password dates. Reset puts it back.</li>
+  </ul>
+  <p>Every table in the console works the same way: Domain health, AD audit, Recycle Bin, Group Policy, the Attribute browser and the lists under Devices too. Drag a heading onto another to move that column. Columns, order, widths, sort and grouping are kept in this browser for each table; Compact or Relaxed is one setting for all of them.</p>
 </article>
 
 <article data-key="dir-off" data-group="Active Directory" data-title="Turn accounts off, or delete them">

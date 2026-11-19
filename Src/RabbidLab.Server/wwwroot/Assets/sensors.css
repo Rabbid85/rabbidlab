@@ -61,9 +61,11 @@
 .tr.sn:not(.th):hover { background: #151827; }
 .table.dgrid .tr.sn.s-down { background: rgba(255, 107, 125, .06); }
 .tr.sn > * { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.tr.sn .state.down { color: var(--red); }
-.tr.sn .state.warn { color: var(--amber); }
-.tr.sn .state.paused, .tr.sn .state.new { color: #5E6380; }
+.state.down { --mark: var(--red); }
+.state.down::before, .state.warn::before { content: "!"; }
+.state.warn { --mark: var(--amber); }
+.state.paused, .state.new, .state.wait { --mark: #5E6380; }
+.state.paused::before, .state.new::before, .state.wait::before { content: "–"; }
 .tr.sn .nm { display: flex; align-items: center; gap: 11px; }
 .tr.sn .nm .lic { width: 30px; height: 30px; border-radius: 8px; }
 .tr.sn .nm .lic img { width: 20px; height: 20px; }
@@ -240,7 +242,6 @@
 
 /* Waiting on something that's down: grey, not red, and it doesn't add to the count. */
 .s-wait { --c: #8A8FA8; }
-.tr.sn .state.wait { color: #B8BCCB; }
 
 /* Use these alerts on other sensors. */
 .cp-dialog { width: min(640px, calc(100vw - 32px)); }

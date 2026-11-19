@@ -213,5 +213,282 @@
     draft.apply(kept.length ? { join: draft.join, rules: kept } : null);
   });
 
-  R.filter = { open, test, count, words };
+  // --- The filter bar --------------------------------------------------------------------------------------------
+  // Over a list: Load filter (the ones saved, and the conditions window above for anything a chip can't say), a search
+  // of one column or all of them, a chip for each column worth filtering by, and Add/remove filters. A chip lists that
+  // column's values with how many rows have each. What's picked stays until it's cleared or the page is opened again;
+  // which chips show and the saved filters are kept in this browser.
+  const read = (k) => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch { return null; } };
+  const keep = (k, v) => { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)); } catch { /* not kept, then */ } };
+  const of = (v) => (typeof v === 'function' ? v() : v);
+  const HIT = { contains: (t, q) => t.includes(q), is: (t, q) => t === q, starts: (t, q) => t.startsWith(q) };
+  const HIT_WORD = { contains: 'contains', is: 'is', starts: 'starts with' };
+  const NUMBERISH = /^[\d.,\s]+(%|gb|mb|ms|min|h|days?|hours?|minutes?)?$/i; // 3, 89%, 16 GB: not worth a chip
+  const NONE = 'None'; // a row with nothing in that column
+  const picked = {}; // what's filtered on each list, by its name
+
+  // o: { el, store, key, grid() (the list's grid, for its columns), rows() (what the bar narrows: the open tab and
+  //      view), noun (plural), find(x) (the words Any column looks in; every column when not given), fields() (for the
+  //      conditions window; without them it's left out), redraw }
+  const bar = (o) => {
+    const el = o.el;
+    const name = () => `${o.store || 'rabbidlab.grid'}.filter.${of(o.key)}`;
+    const st = () => (picked[name()] ||= { chips: {}, col: '*', op: 'contains', text: '', adv: null });
+    const grid = () => o.grid();
+    const colOf = (k) => grid().cols().find((c) => c.key === k);
+    const fields = () => of(o.fields) || null;
+    const b = {};
+    let typing = null;
+
+    // One test for a row from everything picked; skip leaves one chip out, to count what each of its values would give.
+    b.test = (skip) => {
+      const s = st();
+      const g = grid();
+      const tests = [];
+      const q = s.text.trim().toLowerCase();
+      if (q) {
+        const hit = HIT[s.op] || HIT.contains;
+        const c = s.col === '*' ? null : colOf(s.col);
+        if (c) tests.push((x) => hit(g.text(c, x).toLowerCase(), q));
+        else if (o.find) tests.push((x) => o.find(x).some((t) => hit(String(t ?? '').toLowerCase(), q)));
+        else { const all = g.cols(); tests.push((x) => all.some((col) => hit(g.text(col, x).toLowerCase(), q))); }
+      }
+      Object.entries(s.chips).forEach(([k, set]) => { const c = colOf(k); if (c && set.size && k !== skip) tests.push((x) => set.has(g.text(c, x) || NONE)); });
+      if (s.adv && fields()) tests.push(test(fields(), s.adv));
+      return tests.length ? (x) => tests.every((t) => t(x)) : () => true;
+    };
+    // Whether anything narrows the list.
+    b.any = () => { const s = st(); return !!s.text.trim() || Object.values(s.chips).some((set) => set.size) || !!(s.adv && fields()); };
+    // What's picked, in words: a saved filter's name.
+    const say = () => {
+      const s = st();
+      const parts = Object.entries(s.chips).filter(([k, set]) => set.size && colOf(k)).map(([k, set]) => `${colOf(k).label}: ${[...set].join(', ')}`);
+      if (s.text.trim()) parts.push(`${colOf(s.col)?.label || 'Any column'} ${HIT_WORD[s.op] || 'contains'} "${s.text.trim()}"`);
+      if (s.adv && fields()) parts.push(words(fields(), s.adv));
+      return parts.join(' · ');
+    };
+    // The columns worth a chip: a handful of values that rows share (not a name each), and not numbers or times. A
+    // column can ask (filter: true) or refuse (nofilter).
+    const candidates = () => {
+      const rows = o.rows();
+      const g = grid();
+      const most = Math.min(40, Math.max(2, rows.length * 0.6));
+      return g.cols().filter((c) => {
+        if (c.nofilter) return false;
+        if (c.filter) return true;
+        const seen = new Set();
+        for (const x of rows) {
+          const raw = c.get(x);
+          if (typeof raw === 'number' && raw > 1e11) return false; // a time
+          const v = g.text(c, x);
+          if (v) seen.add(v);
+          if (seen.size > most) return false;
+        }
+        return seen.size > 1 && ![...seen].every((v) => NUMBERISH.test(v));
+      });
+    };
+    // The chips that show: the ones chosen under Add/remove filters, or the first few worth having.
+    const chipKeys = (cand = candidates()) => {
+      const chosen = read(`${name()}.chips`);
+      if (Array.isArray(chosen)) return chosen.filter(colOf);
+      return [...cand.filter((c) => c.filter), ...cand.filter((c) => !c.filter)].slice(0, 5).map((c) => c.key);
+    };
+    const change = () => { o.redraw(); };
+
+    b.draw = () => {
+      const s = st();
+      const g = grid();
+      if (!el.dataset.fbar) {
+        el.dataset.fbar = '1';
+        el.classList.add('fbar');
+        el.innerHTML = `<button type="button" class="tlink" data-fb="load">Load filter${svg('chevron-down', 'chev')}</button>`
+          + `<button type="button" class="gcols" data-fb="save" data-tip="Save this filter" aria-label="Save this filter">${svg('save')}</button>`
+          + `<span class="fcombo"><select data-fb="col" aria-label="Column"></select><select data-fb="op" aria-label="Test">${Object.entries(HIT_WORD).map(([k, w]) => `<option value="${k}">${w}</option>`).join('')}</select>`
+          + '<input type="search" data-fb="text" autocomplete="off" spellcheck="false"></span>'
+          + `<span class="fchips"></span><button type="button" class="fchip" data-fb="more">${svg('plus')}Add/remove filters</button><span class="grow"></span>`
+          + '<button type="button" class="tlink" data-fb="clear" hidden>Clear</button>'
+          + `<button type="button" class="gcols" data-fb="wide" data-tip="Show every filter" aria-label="Show every filter" aria-expanded="false">${svg('chevron-down')}</button>`
+          + '<div class="fwide" hidden></div>';
+        // Typing draws once it pauses: a list can be 1,000 long.
+        el.addEventListener('input', (e) => {
+          // A column's own find box hides the values that don't match, there and then.
+          if (e.target.dataset.fwq !== undefined) {
+            const c = e.target.closest('.fw-col');
+            const q = e.target.value.trim().toLowerCase();
+            finds[c.dataset.k] = e.target.value;
+            c.querySelectorAll('.xpick-row').forEach((r) => { r.hidden = !!q && !r.textContent.toLowerCase().includes(q); });
+            return;
+          }
+          if (e.target.dataset.fb !== 'text') return;
+          st().text = e.target.value;
+          clearTimeout(typing);
+          typing = setTimeout(change, 150);
+        });
+        el.addEventListener('change', (e) => {
+          // A value ticked in the opened-out bar.
+          if (e.target.dataset.fw !== undefined) {
+            const set = (st().chips[e.target.closest('.fw-col').dataset.k] ||= new Set());
+            if (e.target.checked) set.add(e.target.dataset.fw);
+            else set.delete(e.target.dataset.fw);
+            change();
+            return;
+          }
+          const f = e.target.dataset.fb;
+          if (f !== 'col' && f !== 'op') return;
+          st()[f] = e.target.value;
+          if (st().text.trim()) change();
+        });
+        el.addEventListener('click', (e) => {
+          const t = e.target.closest('[data-fb]');
+          if (!t) return;
+          const act = { load, save, more, clear: b.clear, adv: advanced, chip: () => values(t), wide: wideToggle, wfind: wideFind }[t.dataset.fb];
+          if (act) act(t);
+        });
+      }
+      // The columns to search in follow the list that shows.
+      const col = el.querySelector('[data-fb="col"]');
+      const sig = `${name()}|${g.cols().map((c) => c.key).join(',')}`;
+      if (el.dataset.cols !== sig) {
+        el.dataset.cols = sig;
+        if (s.col !== '*' && !colOf(s.col)) s.col = '*';
+        col.innerHTML = `<option value="*">Any column</option>${g.cols().map((c) => `<option value="${esc(c.key)}">${esc(c.label)}</option>`).join('')}`;
+      }
+      col.value = s.col;
+      el.querySelector('[data-fb="op"]').value = s.op;
+      const box = el.querySelector('[data-fb="text"]');
+      const noun = of(o.noun) || 'this list';
+      box.placeholder = `Search ${noun}`;
+      box.setAttribute('aria-label', `Search ${noun}`);
+      if (box.value !== s.text && document.activeElement !== box) box.value = s.text;
+      const advOn = s.adv && fields();
+      const keys = chipKeys();
+      drawWide(keys);
+      el.querySelector('.fchips').innerHTML = keys.map((k) => {
+        const sel = [...(s.chips[k] || [])];
+        return `<button type="button" class="fchip${sel.length ? ' set' : ''}" data-fb="chip" data-k="${esc(k)}"><span>${esc(colOf(k).label)}</span>`
+          + `${sel.length ? `<b class="ell">${esc(sel.length === 1 ? sel[0] : `${sel.length} picked`)}</b>` : ''}${svg('chevron-down', 'chev')}</button>`;
+      }).join('') + (advOn ? `<button type="button" class="fchip set" data-fb="adv" data-tip="${esc(words(fields(), s.adv))}">${svg('filter')}<span>Advanced</span><b>${count(fields(), s.adv)} ${count(fields(), s.adv) === 1 ? 'condition' : 'conditions'}</b></button>` : '');
+      el.querySelector('[data-fb="clear"]').hidden = !b.any();
+    };
+
+    // A filter's values, each with how many rows have it once everything else picked is applied.
+    const valuesOf = (k) => {
+      const c = colOf(k);
+      const g = grid();
+      const set = (st().chips[k] ||= new Set());
+      const n = new Map();
+      const rank = new Map();
+      o.rows().filter(b.test(k)).forEach((x) => { const v = g.text(c, x) || NONE; n.set(v, (n.get(v) || 0) + 1); if (!rank.has(v)) rank.set(v, c.get(x)); });
+      // In the column's own order when it sorts by something other than its words (a status), else by name; None last.
+      const ranked = [...rank.values()].every((r) => typeof r === 'number');
+      const order = (a, z) => (a === NONE) - (z === NONE) || (ranked && rank.has(a) && rank.has(z) ? rank.get(a) - rank.get(z) : 0) || a.localeCompare(z, undefined, { numeric: true, sensitivity: 'base' });
+      return [...new Set([...n.keys(), ...set])].sort(order).map((v) => ({ key: v, label: v, n: n.get(v) || 0 }));
+    };
+    // A chip opens its values in the picker.
+    const values = (button) => {
+      const k = button.dataset.k;
+      R.picker.open(button, { key: `chip.${name()}.${k}`, stars: false, items: valuesOf(k), picked: st().chips[k], change });
+    };
+    // The bar opened out (the caret at its end): every filter side by side with its values and counts, to tick in place.
+    const wideKey = `${o.store || 'rabbidlab.grid'}.filter.wide`;
+    const finds = {}; // what's typed in a column's own find box, by filter
+    const drawWide = (keys) => {
+      const wide = el.querySelector('.fwide');
+      const open = !!read(wideKey);
+      el.querySelector('[data-fb="wide"]').setAttribute('aria-expanded', String(open));
+      wide.hidden = !open;
+      if (!open) return;
+      // Where each column was scrolled to, put back after the redraw.
+      const left = wide.scrollLeft;
+      const tops = Object.fromEntries([...wide.querySelectorAll('.fw-col')].map((c) => [c.dataset.k, c.querySelector('.fw-rows').scrollTop]));
+      wide.innerHTML = keys.map((k) => {
+        const q = finds[k];
+        const set = st().chips[k] || new Set();
+        const rows = valuesOf(k).map((v) => `<label class="xpick-row"${q && !v.label.toLowerCase().includes(q.toLowerCase()) ? ' hidden' : ''}><input type="checkbox" data-fw="${esc(v.key)}"${set.has(v.key) ? ' checked' : ''}>`
+          + `<span class="ell">${esc(v.label)}</span><small class="xpick-n${v.n ? '' : ' zero'}">${v.n.toLocaleString()}</small></label>`).join('');
+        return `<div class="fw-col" data-k="${esc(k)}"><div class="fw-head">${q == null ? `<span class="ell">${esc(colOf(k).label)}</span>`
+          : `<input type="search" data-fwq value="${esc(q)}" placeholder="Find in ${esc(colOf(k).label)}" aria-label="Find in ${esc(colOf(k).label)}" autocomplete="off" spellcheck="false">`}`
+          + `<button type="button" class="gcols" data-fb="wfind" data-tip="${q == null ? 'Find a value' : 'Close'}" aria-label="Find a value">${svg(q == null ? 'search' : 'x')}</button></div>`
+          + `<div class="fw-rows">${rows || '<p class="xpick-none">Nothing to pick.</p>'}</div></div>`;
+      }).join('') || '<p class="xpick-none">No filters show. Add some with Add/remove filters.</p>';
+      wide.scrollLeft = left;
+      wide.querySelectorAll('.fw-col').forEach((c) => { c.querySelector('.fw-rows').scrollTop = tops[c.dataset.k] || 0; });
+    };
+    const wideToggle = () => {
+      keep(wideKey, read(wideKey) ? null : true);
+      b.draw();
+    };
+    // A column's magnifier: a box to find a value in it, or back to its name.
+    const wideFind = (button) => {
+      const k = button.closest('.fw-col').dataset.k;
+      finds[k] = finds[k] == null ? '' : null;
+      b.draw();
+      el.querySelector(`.fw-col[data-k="${CSS.escape(k)}"] [data-fwq]`)?.focus();
+    };
+    // Add/remove filters: which columns have a chip.
+    const more = (button) => {
+      const cand = candidates();
+      const shown = chipKeys(cand);
+      const on = new Set(shown);
+      R.picker.open(button, { key: `chips.${name()}`, picked: on,
+        items: grid().cols().filter((c) => cand.includes(c) || on.has(c.key)).map((c) => ({ key: c.key, label: c.label })),
+        change: () => {
+          keep(`${name()}.chips`, [...on]);
+          Object.keys(st().chips).forEach((k) => { if (!on.has(k)) delete st().chips[k]; });
+          change();
+        } });
+    };
+    // Load filter: the ones saved in this browser, and the conditions window.
+    const load = (button) => {
+      const saved = read(`${name()}.saved`) || [];
+      R.picker.menu(button, [{ head: 'Saved filters' },
+        ...(saved.length ? saved.map((f, i) => ({ label: f.name, icon: 'filter', run: () => use(f), remove: () => { saved.splice(i, 1); keep(`${name()}.saved`, saved.length ? saved : null); } }))
+          : [{ label: 'Nothing saved yet', off: true }]),
+        ...(fields() ? ['-', { label: 'Advanced filter…', icon: 'columns', on: !!st().adv, run: advanced }] : [])], { key: `load.${name()}` });
+    };
+    const use = (f) => {
+      const s = st();
+      s.chips = Object.fromEntries(Object.entries(f.chips || {}).filter(([k]) => colOf(k)).map(([k, v]) => [k, new Set(v)]));
+      s.col = f.col && colOf(f.col) ? f.col : '*';
+      s.op = HIT[f.op] ? f.op : 'contains';
+      s.text = f.text || '';
+      s.adv = f.adv || null;
+      // Its chips show, whatever was chosen under Add/remove filters.
+      const shown = chipKeys();
+      const missing = Object.keys(s.chips).filter((k) => !shown.includes(k));
+      if (missing.length) keep(`${name()}.chips`, [...shown, ...missing]);
+      el.querySelector('[data-fb="text"]').value = s.text;
+      change();
+    };
+    const save = () => {
+      const s = st();
+      const text = say();
+      if (!text) { R.toast('Nothing to save.', 'Pick a filter or search first.'); return; }
+      const saved = (read(`${name()}.saved`) || []).filter((f) => f.name !== text);
+      saved.push({ name: text, chips: Object.fromEntries(Object.entries(s.chips).filter(([, set]) => set.size).map(([k, set]) => [k, [...set]])), col: s.col, op: s.op, text: s.text.trim(), adv: s.adv });
+      keep(`${name()}.saved`, saved);
+      R.toast('Filter saved.', 'It is under Load filter.');
+    };
+    // The conditions window, for what a chip can't say: older than, does not contain, any of these or all.
+    const advanced = () => {
+      const noun = of(o.noun) || 'rows';
+      open({ title: `Filter ${noun}`, fields: fields(), noun, now: st().adv, rows: () => o.rows(), apply: (flt) => { st().adv = flt; change(); } });
+    };
+    b.clear = () => {
+      const s = st();
+      s.chips = {};
+      s.text = '';
+      s.adv = null;
+      if (el.dataset.fbar) el.querySelector('[data-fb="text"]').value = '';
+      change();
+    };
+    // The search box emptied without drawing, for a page that's about to draw anyway.
+    b.forget = () => {
+      st().text = '';
+      if (el.dataset.fbar) el.querySelector('[data-fb="text"]').value = '';
+    };
+    return b;
+  };
+
+  R.filter = { open, test, count, words, bar };
 })();

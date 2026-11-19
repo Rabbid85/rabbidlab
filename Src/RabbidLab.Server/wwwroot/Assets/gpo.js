@@ -246,10 +246,9 @@
       cell: (x) => `<label class="tk"><input type="checkbox" data-gpo-tick="${esc(L().key(x))}" aria-label="Select"></label>` } : null),
     row: (x) => ` data-gpo-row="${esc(L().key(x))}"`, empty: () => (problem ? '' : gp ? 'Nothing here.' : 'Reading Group Policy.'), redraw: () => draw(),
   });
-  const shown = () => {
-    const q = $('gpo-find').value.trim().toLowerCase();
-    return L().rows().filter((x) => !q || L().cols.some((c) => String(c.text ? c.text(x) : c.get(x) ?? '').toLowerCase().includes(q)));
-  };
+  // The filter bar over the list (filter.js): a search, a chip for each column worth filtering by, and saved filters.
+  const gpoBar = R.filter.bar({ el: $('gpo-fbar'), store: 'rabbidlab.gpo', key: () => list, grid: () => g0, noun: () => L().noun, rows: () => L().rows(), redraw: () => draw() });
+  const shown = () => L().rows().filter(gpoBar.test());
   const stat = (num, icon, label) => `<div><b>${num}</b><span>${svg(icon)}${esc(label)}</span></div>`;
   let tiled = false;
   const draw = () => {
@@ -278,13 +277,12 @@
     $('gpo-n-backups').textContent = gp ? gp.backups.length : '';
     const rows = shown();
     $('gpo-tabs').innerHTML = `<a aria-current="true">${svg(l.icon)}${esc(l.name)} <small>${gp ? rows.length : ''}</small></a>`;
-    $('gpo-now').hidden = !(list === 'gpos' && view !== 'all');
-    $('gpo-view-title').textContent = (VIEWS.find((v) => v[0] === view) || VIEWS[0])[1];
-    $('gpo-count').textContent = `${rows.length} shown`;
     const make = l.make();
     $('gpo-new').hidden = !make || !gp;
     $('gpo-new-text').textContent = make || '';
-    $('gpo-find').placeholder = `Search ${l.noun}`;
+    // The filter bar, and the grid's part of the list's bar (Group by, the count, Compact or Relaxed).
+    gpoBar.draw();
+    g0.tools($('gpo-tools'));
     $('gpo-problem').hidden = !problem;
     $('gpo-problem').textContent = problem;
     $('gpo-note').hidden = !(gp && !gp.gpmc && list !== 'wmi' && list !== 'linked');
@@ -317,8 +315,6 @@
     problem = '';
     if (R.where()[0] === 'gpo') load();
   });
-  $('gpo-find').addEventListener('input', draw);
-  $('gpo-cols').addEventListener('click', () => g0.menu($('gpo-cols')));
   $('gpo-export').addEventListener('click', () => g0.csv(g0.sorted(shown()), `group-policy-${list}`));
   $('gpo-refresh').addEventListener('click', () => { Object.keys(detail).forEach((k) => delete detail[k]); load(); });
   $('gpo-new').addEventListener('click', () => (list === 'gpos' ? newGpo() : list === 'linked' ? linkTo(null, null) : list === 'wmi' ? editFilter(null) : backupAll()));
@@ -394,7 +390,7 @@
     } else html = `<div class="am-links">${sel}</div>`;
     showMenu($('gpo-act'), html, 270);
     const r = $('gpo-act').getBoundingClientRect();
-    menu.style.left = `${Math.max(8, r.right - 270)}px`;
+    menu.style.left = `${Math.max(8, Math.min(r.left, innerWidth - 278))}px`; // under the button, from its left edge
   });
 
   // --- A row's side panel: a GPO, a place, a filter or a backup --------------------------------------------------

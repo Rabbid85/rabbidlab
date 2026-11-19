@@ -265,7 +265,6 @@
       || (sensors.length ? '<p class="hint">Nothing matches.</p>' : '');
     if (!find && group !== DOWN) $('sn-list').insertAdjacentHTML('beforeend', tools.out(by.some(([g]) => !g)));
     tools.settle();
-    $('sn-cols').hidden = view !== 'grid';
     $('sn-empty').hidden = sensors.length > 0 || groups.length > 0;
     paint($('sn-list'));
   };
@@ -346,7 +345,6 @@
     store('rabbidlab.sensors.view', view);
     draw();
   });
-  $('sn-cols').addEventListener('click', () => snGrid.menu($('sn-cols')));
 
   // --- One sensor: how it is and what happened to it -------------------------------------------------------------------------
 

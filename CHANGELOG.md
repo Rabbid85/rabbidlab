@@ -2,6 +2,14 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.245 (2026-11-18)
+
+- Lists have a new filter bar: a search of one column or all of them, then a chip for each column worth filtering by. A chip lists the values in that column with how many rows have each, and Add/remove filters picks which chips show.
+- The arrow at the end of the filter bar opens every chip out side by side, to tick values without opening each one.
+- The save button keeps a filter under Load filter. The conditions window is still there, as Advanced filter in the same menu.
+- Group by gathers a list under a heading for each value of a column, with a count. The dots beside every column name sort by it, group by it or hide it, and Columns moved to the end of the column names.
+- A list now sits in a card under its own bar: Actions, Group by, how many rows, Compact or Relaxed, Refresh, Export. States show as a round mark and the word. This is on Active Directory, Devices and Group Policy so far, and every other table has the new grid.
+
 ## 1.1.244 (2026-11-17)
 
 - New script for when the server was removed before its clients: Tools/Remove-RabbidLabClient.ps1 clears the lock and uninstalls the client. Run it on the computer as administrator, for many with -ComputerName, or as a Group Policy startup script to get the ones that are off.

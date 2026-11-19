@@ -418,8 +418,10 @@ input.pick:focus { outline: none; border-color: var(--accent); }
 .seats-page .tk input { margin: 0; accent-color: var(--accent); }
 .seats-page .tr.picked { background: #141827; }
 /* How a job went: red for what failed, ember while it runs. */
-.state.bad { color: var(--red); }
-.state.run { color: var(--accent-soft); }
+.state.bad { --mark: var(--red); }
+.state.bad::before { content: "!"; }
+.state.run { --mark: var(--accent-soft); }
+.state.run::before { content: "›"; }
 /* A script, or what one wrote on a computer. */
 .code-box { max-height: 340px; margin: 0 0 12px; padding: 11px 13px; overflow: auto; border: 1px solid var(--line-strong); border-radius: 10px; background: #0C0E17; color: #D7DAE8;
   font: 12.5px/1.55 Consolas, "Cascadia Mono", monospace; white-space: pre-wrap; overflow-wrap: anywhere; tab-size: 4; }
@@ -490,10 +492,13 @@ input.pick:focus { outline: none; border-color: var(--accent); }
 .tr .old { color: var(--amber); font-weight: 600; }
 .tr .nobody { color: #5E6380; font-style: italic; }
 .tr .you { color: var(--muted); font-size: 12px; }
-.state { display: inline-flex; align-items: center; gap: 6px; color: var(--ok); font-size: 12.5px; font-weight: 600; }
-.state::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
-.state.offline { color: #5E6380; }
-.state.waiting { color: #FF8A3D; }
+/* A state: a round mark in its colour, then the word in plain text. */
+.state { --mark: var(--ok); display: inline-flex; align-items: center; gap: 8px; color: var(--text); font-size: 13px; font-weight: 500; }
+.state::before { content: "✓"; flex: none; width: 15px; height: 15px; border-radius: 50%; background: var(--mark); color: var(--night); font: 800 10px/15px "Segoe UI", system-ui, sans-serif; text-align: center; }
+.state.offline { --mark: #5E6380; }
+.state.offline::before { content: "–"; }
+.state.waiting { --mark: var(--amber); }
+.state.waiting::before { content: "!"; }
 .empty { padding: 26px 18px; color: var(--muted); font-size: 13.5px; text-align: center; }
 
 /* A dialog over the page, such as Add computers. */
@@ -795,9 +800,9 @@ section.page.home.dir-top { max-width: none; padding: 0; gap: 0; }
 .dnow b { color: var(--title); font-size: 15px; font-weight: 650; }
 /* The list itself: a card to a row under the column headings, or tiles. */
 .table.adt { margin-top: 14px; border: 0; border-radius: 0; background: none; }
-.adt.drows { display: grid; gap: 6px; }
-.adt.drows .tr { min-height: 56px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
-.adt.drows .tr.th { min-height: 28px; border-color: transparent; background: none; }
+.adt.drows:not(.dgrid) { display: grid; gap: 6px; }
+.adt.drows:not(.dgrid) .tr { min-height: 56px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+.adt.drows:not(.dgrid) .tr.th { min-height: 28px; border-color: transparent; background: none; }
 .adt.drows .who .pic { width: 36px; height: 36px; }
 .adt.dtiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; overflow: visible; }
 .table.adt.dtiles .tr.dtile { display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; gap: 12px; min-width: 0; min-height: 0; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }

@@ -257,7 +257,7 @@
     col('passwordExpires', 'Password expires', '130px', (u) => time(u.passwordExpires), { cell: (u) => (u.neverExpires ? '<span class="muted">Never</span>' : dateCell(u.passwordExpires)) }),
     col('accountExpires', 'Account expires', '130px', (u) => time(u.accountExpires), { cell: (u) => endOf(u.accountExpires) }),
     col('created', 'Created', '110px', (u) => time(u.created), { cell: (u) => dateCell(u.created) }),
-    col('status', 'Status', '150px', (u) => (u.locked ? 0 : !u.enabled ? 2 : 1), { on: true, cell: (u) => userStatus(u) }),
+    col('status', 'Status', '150px', (u) => (u.locked ? 0 : !u.enabled ? 2 : 1), { on: true, filter: true, cell: (u) => userStatus(u) }),
     // One thing per column: what kind of account it is, apart from its status.
     col('role', 'Role', '150px', (u) => (u.service ? 0 : u.protected ? 1 : 2), { on: true,
       cell: (u) => (u.service ? chip('Service account', 'ember') : u.protected ? badge('Privileged', 'amber') : '<span class="muted">-</span>') }),
@@ -284,7 +284,7 @@
     col('location', 'Location', 'minmax(120px, 1fr)', (c) => c.location),
     col('lastSignIn', 'Last sign-in', '110px', (c) => time(c.lastSignIn), { on: true, cell: (c) => esc(ago(c.lastSignIn)) }),
     col('created', 'Created', '110px', (c) => time(c.created), { cell: (c) => dateCell(c.created) }),
-    col('status', 'Status', '150px', (c) => (!c.enabled ? 2 : stale(c.lastSignIn) ? 1 : 0), { on: true, cell: (c) => pcStatus(c) }),
+    col('status', 'Status', '150px', (c) => (!c.enabled ? 2 : stale(c.lastSignIn) ? 1 : 0), { on: true, filter: true, cell: (c) => pcStatus(c) }),
     // One thing per column: what the computer is, apart from its status.
     col('role', 'Role', '150px', (c) => (c.controller ? 0 : server(c) ? 1 : 2), { on: true, cell: (c) => esc(c.controller ? 'Domain controller' : server(c) ? 'Server' : 'Workstation') }),
   ];
@@ -294,7 +294,7 @@
     col('area', 'Area', 170, (s) => Object.keys(AREA_ICON).indexOf(s.area), { cell: (s) => esc(s.area) }),
     col('now', 'Now', 200, (s) => s.now, { on: true }),
     col('recommended', 'Recommended', 210, (s) => s.recommended, { on: true, cell: (s) => `<span class="muted ell">${esc(s.recommended)}</span>` }),
-    col('result', 'Result', 170, (s) => ({ bad: 0, warn: 1, info: 2, unknown: 3, good: 4 })[s.tone] ?? 5, { on: true, cell: (s) => TONE[s.tone] || '' }),
+    col('result', 'Result', 170, (s) => ({ bad: 0, warn: 1, info: 2, unknown: 3, good: 4 })[s.tone] ?? 5, { on: true, filter: true, cell: (s) => TONE[s.tone] || '' }),
     col('about', 'Why it matters', 320, (s) => s.about),
     col('source', 'Source', 240, (s) => s.source || '', { cell: (s) => `<span class="muted ell">${esc(s.source || '')}</span>` }),
   ];
@@ -382,14 +382,11 @@
       fld('lastSignIn', 'Last sign-in', 'days', (c) => c.lastSignIn, { never: true }), fld('created', 'Created', 'days', (c) => c.created)]],
     ['Membership', [fld('groups', 'Member of group', 'member', IN)]],
   ];
-  // What's filtered on each page, until it's cleared or the page is read again in a new tab. The tests and the Filter
-  // window are filter.js, the same for every list.
-  const filterOn = {};
-  const fieldsOf = (pageKey) => AD[pageKey].fields || [];
-  const filterCount = (pageKey = adPage) => R.filter.count(fieldsOf(pageKey), filterOn[pageKey]);
-  const filterTest = (pageKey, flt) => R.filter.test(fieldsOf(pageKey), flt);
-  const filtering = () => filterCount() > 0;
-  const filterWords = (pageKey, flt) => R.filter.words(fieldsOf(pageKey), flt);
+  // The filter bar over the list (filter.js, the same for every list): a search, a chip for each column worth filtering
+  // by, saved filters, and the conditions window with the fields above. What's picked stays per page until it's cleared
+  // or the console is opened again.
+  const adBar = R.filter.bar({ el: $('dir-fbar'), store: 'rabbidlab.ad', key: () => adPage, grid: () => adGrid, noun: () => page().noun[1],
+    rows: () => (lists[adPage] || []).filter((x) => inView(viewOf(adView), x)), find: (x) => page().find(x), fields: () => AD[adPage].fields || null, redraw: () => drawAd() });
 
   // How many are in each view, counted again only when the list or the tab changes.
   let counted = { list: null, page: '', tab: '', n: {} };
@@ -434,37 +431,25 @@
     $('dir-acct').textContent = s.readOnly ? 'Read-only for now' : `Service account: ${s.account}`;
     $('dir-new').hidden = !p.add || s.readOnly;
     $('dir-new-text').textContent = p.add || '';
-    // The bar's Search says what it searches: users, groups, computers, changes.
-    $('dir-find').placeholder = `Search ${p.noun[1]}`;
-    $('dir-find').setAttribute('aria-label', `Search ${p.noun[1]}`);
     const v = viewOf(adView);
-    const find = $('dir-find').value.trim().toLowerCase();
     const list = lists[adPage] || [];
     if (lists[adPage]) total[adPage] = (p.tabs ? list.filter(p.tabs[0].where) : list).length;
-    const test = filterTest(adPage, filterOn[adPage]);
-    rows = list.filter((x) => inView(v, x) && test(x) && (!find || p.find(x).some((t) => String(t || '').toLowerCase().includes(find))));
+    // The open view, then what the filter bar narrows it to.
+    const test = adBar.test();
+    rows = list.filter((x) => inView(v, x) && test(x));
     // The tabs, or the page's own name where it has none.
     const openTab = tab();
     $('dir-tabs').innerHTML = (p.tabs || [{ key: '', label: p.title, icon: PAGE_ICON[adPage], where: () => true }])
       .map((t) => `<a data-tab="${t.key}"${!openTab || t.key === openTab.key ? ' aria-current="true"' : ''}>${svg(t.icon)}${esc(t.label)} <small>${list.filter(t.where).length.toLocaleString()}</small></a>`).join('');
-    // Filter, Columns and Actions are for the pages that list users, groups and computers.
+    // Actions is for the pages that list users, groups and computers. The filter bar and the grid's part of the list's
+    // bar (Group by, the count, Compact or Relaxed) draw themselves.
     const picks = !!picked[adPage];
-    ['dir-filter', 'dir-act'].forEach((id) => { $(id).hidden = !picks; });
-    $('dir-cols').hidden = !p.cols;
-    const nf = filterCount();
-    $('dir-filter-x').hidden = !picks || !nf;
-    $('dir-filter').classList.toggle('on', nf > 0);
-    $('dir-filter').querySelector('.cnt').hidden = !nf;
-    $('dir-filter').querySelector('.cnt').textContent = String(nf);
-    // What's open says so over the list once it's narrower than everything.
-    $('dir-now').hidden = !(adView !== allViews()[0].key || find || filtering());
-    $('dir-view-title').textContent = v.label;
-    $('dir-count').textContent = `${rows.length.toLocaleString()} ${p.noun[rows.length === 1 ? 0 : 1]}`;
-    $('dir-filtered').hidden = !filtering();
-    $('dir-filtered').innerHTML = filtering() ? `${svg('filter')}<span>${esc(filterWords(adPage, filterOn[adPage]))}</span><button type="button" class="linkish" data-filter-clear>Clear filter</button>` : '';
+    $('dir-act').hidden = !picks;
+    adBar.draw();
+    adGrid.tools($('dir-tools'));
     if (picks && lists[adPage]) [...picked[adPage]].forEach((k) => { if (!byKey(k)) picked[adPage].delete(k); });
     $('dir-table').className = `table adt ${adPage} drows${picks ? ' picks' : ''}`;
-    emptyNow = list.length ? (filtering() ? 'Nothing matches the filter.' : 'Nothing here right now.') : 'Nothing yet.';
+    emptyNow = list.length ? (adBar.any() ? 'Nothing matches the filter.' : 'Nothing here right now.') : 'Nothing yet.';
     rows = adGrid.draw(rows);
     $('dir-more').hidden = !more[adPage];
     drawPicked();
@@ -591,50 +576,19 @@
     }
   };
 
-  // Find draws once typing pauses: the list can be 1,000 long.
-  let adFindTimer = null;
-  $('dir-find').addEventListener('input', () => {
-    clearTimeout(adFindTimer);
-    adFindTimer = setTimeout(drawAd, 150);
-  });
-  // The tabs, the sort, rows or tiles, and the filters: each draws the list again from what's loaded.
+  // The tabs: each draws the list again from what's loaded.
   $('dir-tabs').addEventListener('click', (e) => {
     const t = e.target.closest('[data-tab]');
     if (!t || !tabs().length || t.dataset.tab === tab().key) return;
     adTab = t.dataset.tab;
     drawAd();
   });
-  // Columns opens the grid's own menu (grid.js): Compact or Relaxed, which columns, and Reset.
-  $('dir-cols').addEventListener('click', () => adGrid.menu($('dir-cols')));
-
-  // Actions: the menu for what's ticked, the same one as a row's ⋯.
+  // Actions: the menu for what's ticked, the same one as a row's ⋯. It opens under the button, from its left edge.
   $('dir-act').addEventListener('click', () => {
     const r = $('dir-act').getBoundingClientRect();
-    openCmd(selectedObjs(), r.right - CMD_W, r.bottom + 6);
+    openCmd(selectedObjs(), r.left, r.bottom + 6);
   });
 
-  // --- Filter: conditions, each a field, a test and a value; all of them or any (the window is filter.js) ---------
-  $('dir-filter').addEventListener('click', () => {
-    const pageKey = adPage;
-    R.filter.open({
-      title: `Filter ${AD[pageKey].noun[1]}`, fields: fieldsOf(pageKey), noun: AD[pageKey].noun[1], now: filterOn[pageKey],
-      rows: () => (lists[pageKey] || []).filter((x) => inView(viewOf(adView), x)),
-      apply: (flt) => {
-        if (flt) filterOn[pageKey] = flt;
-        else delete filterOn[pageKey];
-        drawAd();
-      },
-    });
-  });
-  // Clear filter, beside Filter and on the line over the list.
-  const clearFilter = () => {
-    delete filterOn[adPage];
-    drawAd();
-  };
-  $('dir-filter-x').addEventListener('click', clearFilter);
-  $('dir-now').addEventListener('click', (e) => {
-    if (e.target.closest('[data-filter-clear]')) clearFilter();
-  });
   // The page's columns for each row given, as a CSV download.
   const csvOf = (list, name) => {
     const p = page();
@@ -2615,7 +2569,7 @@
       say('dir-note', '');
       if (fresh) {
         // Another page starts on its first tab with Find cleared; its columns, sort and filter stay as they were.
-        $('dir-find').value = '';
+        adBar.forget();
         adTab = '';
       }
       refreshAd(fresh);

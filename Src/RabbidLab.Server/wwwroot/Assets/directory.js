@@ -770,7 +770,6 @@
     empty: () => attrEmpty,
     redraw: () => drawObject(),
   });
-  $('at-cols').addEventListener('click', () => attrGrid.menu($('at-cols')));
 
   // Copying: the clipboard, or a box to copy from where the browser won't (plain HTTP).
   const copyText = async (text, what) => {

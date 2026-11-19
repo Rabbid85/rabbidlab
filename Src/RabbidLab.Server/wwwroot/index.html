@@ -20,6 +20,7 @@
 <script src="Assets/palette.js" defer></script>
 <script src="Assets/console.js" defer></script>
 <script src="Assets/tips.js" defer></script>
+<script src="Assets/picker.js" defer></script>
 <script src="Assets/reveal.js" defer></script>
 <script src="Assets/grid.js" defer></script>
 <script src="Assets/filter.js" defer></script>
@@ -123,6 +124,9 @@
   <symbol id="i-chevron-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></symbol>
   <symbol id="i-chevron-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></symbol>
   <symbol id="i-columns" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 5h-7M10 5H3M21 12h-9M8 12H3M21 19h-5M12 19H3M14 3v4M8 10v4M16 17v4"/></symbol>
+  <symbol id="i-save" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h11l4 4v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M8 3v5h7V3M8 21v-7h8v7"/></symbol>
+  <symbol id="i-arrow-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"/></symbol>
+  <symbol id="i-arrow-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M6 13l6 6 6-6"/></symbol>
 </svg>
 <div class="sky" aria-hidden="true"></div>
 <header class="top">
@@ -593,17 +597,8 @@
         <a href="#seats/sessions" data-dv="sessions" data-can="sessions.view"><svg><use href="#i-users"/></svg><span>Signed in now</span><small id="dv-n-sessions"></small></a>
       </nav>
       <div class="dmain"><div class="lib" id="dv-lib"><div class="lib-body">
-        <!-- Every list's bar: Search, Columns and Filters first, then what this list can do. -->
-        <div class="dbar"><div class="tabs2" id="dv-tabs"></div><span class="grow"></span>
-          <label class="side-find tsearch"><svg><use href="#i-search"/></svg><input type="search" id="dv-find" placeholder="Search" aria-label="Search" autocomplete="off" spellcheck="false"></label>
-          <button type="button" class="small" id="dv-cols" aria-haspopup="menu"><svg><use href="#i-columns"/></svg>Columns<svg class="chev"><use href="#i-chevron-down"/></svg></button>
-          <button type="button" class="small" id="dv-filter" aria-haspopup="dialog" hidden><svg><use href="#i-filter"/></svg>Filters<b class="cnt" hidden></b></button>
-          <button type="button" class="small flt-off" id="dv-filter-x" data-tip="Clear filter" aria-label="Clear filter" hidden><svg><use href="#i-x"/></svg></button>
-          <button type="button" class="small" id="dv-act" aria-haspopup="menu" disabled data-tip="Tick computers first"><svg><use href="#i-menu"/></svg>Actions<b class="cnt" hidden></b><svg class="chev"><use href="#i-chevron-down"/></svg></button>
-          <button type="button" class="small" id="dv-refresh" data-tip="Refresh" aria-label="Refresh"><svg><use href="#i-refresh"/></svg></button>
-          <button type="button" class="small" id="dv-export" data-tip="Export" aria-label="Export"><svg><use href="#i-csv"/></svg></button>
-          <button type="button" class="primary" id="seats-add" data-can="seats.add"><svg><use href="#i-plus"/></svg><span>Add computers</span></button>
-          <button type="button" class="primary" id="dv-new" hidden><svg><use href="#i-plus"/></svg><span id="dv-new-text">New script</span></button></div>
+        <!-- The open list's tabs. Its filter bar and its card with the list's own bar come after the WMI query box. -->
+        <div class="dbar"><div class="tabs2" id="dv-tabs"></div></div>
         <!-- WMI query: which computers, the namespace and the query, then what they answered in the list below (devices.js). -->
         <div class="wq" id="dv-wq" hidden>
           <div class="wq-row">
@@ -617,19 +612,31 @@
             <span class="wq-note">Read only. Runs as SYSTEM on each computer, up to 30 seconds. Ctrl+Enter runs it too.</span></div>
           <ul class="wq-problems" id="wq-problems" hidden></ul>
         </div>
-        <p class="dnow" id="dv-now" hidden><b id="dv-view-title"></b><span class="bar-note" id="dv-count"></span><span class="dnow-filter" id="dv-filtered" hidden></span></p>
-        <div class="table adt drows" id="seats-table" data-can="seats.view" data-skel="rows:4"></div>
-        <div class="table adt drows" id="dv-gplocal" hidden></div>
+        <!-- The filter bar (filter.js), then whichever list is open in its card: Actions, Group by and the count (grid.js),
+             Refresh, Export and what this list can add. Deploy the client is a page of its own, with neither. -->
+        <div id="dv-fbar"></div>
         <div class="dv-deploy" id="dv-deploy" hidden></div>
-        <div class="table adt drows" id="dv-wmi" hidden></div>
-        <div class="table adt drows" id="dv-admins" hidden></div>
-        <div class="table adt drows" id="dv-adminp" hidden></div>
-        <div class="table adt drows" id="dv-printers" hidden></div>
-        <div class="table adt drows" id="dv-pservers" hidden></div>
-        <div class="table adt drows" id="sessions-table" hidden></div>
-        <div class="table adt drows" id="dv-scripts" hidden></div>
-        <div class="table adt drows" id="dv-jobs" hidden></div>
-        <div class="table adt drows" id="dv-workflows" hidden></div>
+        <div class="gcard" id="dv-card">
+          <div class="gbar">
+            <button type="button" class="small" id="dv-act" aria-haspopup="menu" disabled data-tip="Tick computers first">Actions<b class="cnt" hidden></b><svg class="chev"><use href="#i-chevron-down"/></svg></button>
+            <div id="dv-tools"></div>
+            <button type="button" class="gcols" id="dv-refresh" data-tip="Refresh" aria-label="Refresh"><svg><use href="#i-refresh"/></svg></button>
+            <button type="button" class="tlink" id="dv-export"><svg><use href="#i-download"/></svg>Export</button>
+            <button type="button" class="primary" id="seats-add" data-can="seats.add"><svg><use href="#i-plus"/></svg><span>Add computers</span></button>
+            <button type="button" class="primary" id="dv-new" hidden><svg><use href="#i-plus"/></svg><span id="dv-new-text">New script</span></button>
+          </div>
+          <div class="table adt drows" id="seats-table" data-can="seats.view" data-skel="rows:4"></div>
+          <div class="table adt drows" id="dv-gplocal" hidden></div>
+          <div class="table adt drows" id="dv-wmi" hidden></div>
+          <div class="table adt drows" id="dv-admins" hidden></div>
+          <div class="table adt drows" id="dv-adminp" hidden></div>
+          <div class="table adt drows" id="dv-printers" hidden></div>
+          <div class="table adt drows" id="dv-pservers" hidden></div>
+          <div class="table adt drows" id="sessions-table" hidden></div>
+          <div class="table adt drows" id="dv-scripts" hidden></div>
+          <div class="table adt drows" id="dv-jobs" hidden></div>
+          <div class="table adt drows" id="dv-workflows" hidden></div>
+        </div>
         <p class="hint problem" id="seats-problem" hidden></p>
       </div></div></div>
     </div>
@@ -814,7 +821,6 @@
           <div class="lfilter-menu" id="sn-groups" hidden></div>
         </div>
         <button type="button" class="small" id="sn-newgroup" data-can="sensors.edit"><svg><use href="#i-plus"/></svg>New group</button>
-        <button type="button" class="small" id="sn-cols" aria-haspopup="menu" hidden><svg><use href="#i-columns"/></svg>Columns<svg class="chev"><use href="#i-chevron-down"/></svg></button>
         <div class="vswitch" id="sn-view"><button type="button" data-view="grid" title="Rows" aria-label="Rows"><svg><use href="#i-view-rows"/></svg></button><button type="button" data-view="cards" title="Tiles" aria-label="Tiles"><svg><use href="#i-view-tiles"/></svg></button></div>
       </div>
       <div id="sn-list" data-skel="tiles:6"></div>
@@ -863,19 +869,21 @@
     <div class="dmain">
     <div class="lib" id="dir-lib" hidden>
       <div class="lib-body">
-        <!-- Across the top of the list: its tabs, then Search, Columns and Filters like every list, then what can be done with it. -->
-        <div class="dbar"><div class="tabs2" id="dir-tabs"></div><span class="grow"></span>
-          <label class="side-find tsearch"><svg><use href="#i-search"/></svg><input type="search" id="dir-find" placeholder="Search" aria-label="Search" autocomplete="off" spellcheck="false"></label>
-          <button type="button" class="small" id="dir-cols" aria-haspopup="menu"><svg><use href="#i-columns"/></svg>Columns<svg class="chev"><use href="#i-chevron-down"/></svg></button>
-          <button type="button" class="small" id="dir-filter" aria-haspopup="dialog"><svg><use href="#i-filter"/></svg>Filters<b class="cnt" hidden></b></button>
-          <button type="button" class="small flt-off" id="dir-filter-x" data-tip="Clear filter" aria-label="Clear filter" hidden><svg><use href="#i-x"/></svg></button>
-          <button type="button" class="small" id="dir-act" aria-haspopup="menu" disabled><svg><use href="#i-menu"/></svg>Actions<b class="cnt" hidden></b><svg class="chev"><use href="#i-chevron-down"/></svg></button>
-          <button type="button" class="small" id="dir-refresh" data-tip="Refresh" aria-label="Refresh"><svg><use href="#i-refresh"/></svg></button>
-          <button type="button" class="small" id="dir-export" data-tip="Export" aria-label="Export"><svg><use href="#i-csv"/></svg></button>
-          <button type="button" class="primary" id="dir-new" data-can="ad.create"><svg><use href="#i-plus"/></svg><span id="dir-new-text">New user</span></button></div>
-        <p class="dnow" id="dir-now" hidden><b id="dir-view-title"></b><span class="bar-note" id="dir-count"></span><span class="dnow-filter" id="dir-filtered" hidden></span></p>
+        <!-- The list's tabs, the filter bar (filter.js), then the list in its card under its own bar: Actions, Group by and
+             the count (grid.js), Refresh, Export, New. -->
+        <div class="dbar"><div class="tabs2" id="dir-tabs"></div></div>
+        <div id="dir-fbar"></div>
         <div class="dir-banner" id="dir-banner" hidden></div>
-        <div class="table" id="dir-table"></div>
+        <div class="gcard">
+          <div class="gbar">
+            <button type="button" class="small" id="dir-act" aria-haspopup="menu" disabled>Actions<b class="cnt" hidden></b><svg class="chev"><use href="#i-chevron-down"/></svg></button>
+            <div id="dir-tools"></div>
+            <button type="button" class="gcols" id="dir-refresh" data-tip="Refresh" aria-label="Refresh"><svg><use href="#i-refresh"/></svg></button>
+            <button type="button" class="tlink" id="dir-export"><svg><use href="#i-download"/></svg>Export</button>
+            <button type="button" class="primary" id="dir-new" data-can="ad.create"><svg><use href="#i-plus"/></svg><span id="dir-new-text">New user</span></button>
+          </div>
+          <div class="table" id="dir-table"></div>
+        </div>
         <p class="hint" id="dir-more" hidden>Active Directory has more than the 1,000 listed here.</p>
       </div>
     </div>
@@ -909,17 +917,20 @@
       </nav>
       <div class="dmain">
         <div class="lib" id="gpo-lib"><div class="lib-body">
-          <!-- Search, Columns, then what this list can do, like every list. -->
-          <div class="dbar"><div class="tabs2" id="gpo-tabs"></div><span class="grow"></span>
-            <label class="side-find tsearch"><svg><use href="#i-search"/></svg><input type="search" id="gpo-find" placeholder="Search GPOs" aria-label="Search" autocomplete="off" spellcheck="false"></label>
-            <button type="button" class="small" id="gpo-cols" aria-haspopup="menu"><svg><use href="#i-columns"/></svg>Columns<svg class="chev"><use href="#i-chevron-down"/></svg></button>
-            <button type="button" class="small" id="gpo-act" aria-haspopup="menu" disabled data-tip="Tick GPOs first"><svg><use href="#i-menu"/></svg>Actions<b class="cnt" hidden></b><svg class="chev"><use href="#i-chevron-down"/></svg></button>
-            <button type="button" class="small" id="gpo-refresh" data-tip="Refresh" aria-label="Refresh"><svg><use href="#i-refresh"/></svg></button>
-            <button type="button" class="small" id="gpo-export" data-tip="Export" aria-label="Export"><svg><use href="#i-csv"/></svg></button>
-            <button type="button" class="primary" id="gpo-new" hidden><svg><use href="#i-plus"/></svg><span id="gpo-new-text">New GPO</span></button></div>
-          <p class="dnow" id="gpo-now" hidden><b id="gpo-view-title"></b><span class="bar-note" id="gpo-count"></span></p>
+          <!-- The list's tab, the filter bar (filter.js), then the list in its card under its own bar, like every list. -->
+          <div class="dbar"><div class="tabs2" id="gpo-tabs"></div></div>
+          <div id="gpo-fbar"></div>
           <p class="hint note" id="gpo-note" hidden></p>
-          <div class="table adt drows" id="gpo-table" data-skel="rows:6"></div>
+          <div class="gcard">
+            <div class="gbar">
+              <button type="button" class="small" id="gpo-act" aria-haspopup="menu" disabled data-tip="Tick GPOs first">Actions<b class="cnt" hidden></b><svg class="chev"><use href="#i-chevron-down"/></svg></button>
+              <div id="gpo-tools"></div>
+              <button type="button" class="gcols" id="gpo-refresh" data-tip="Refresh" aria-label="Refresh"><svg><use href="#i-refresh"/></svg></button>
+              <button type="button" class="tlink" id="gpo-export"><svg><use href="#i-download"/></svg>Export</button>
+              <button type="button" class="primary" id="gpo-new" hidden><svg><use href="#i-plus"/></svg><span id="gpo-new-text">New GPO</span></button>
+            </div>
+            <div class="table adt drows" id="gpo-table" data-skel="rows:6"></div>
+          </div>
           <p class="hint problem" id="gpo-problem" hidden></p>
         </div></div>
       </div>
@@ -970,7 +981,7 @@
       <div class="lib-body">
         <div class="lib-bar"><h2 id="at-title">Pick something on the left</h2><span class="bar-note" id="at-line"></span>
           <span class="at-tools" id="at-tools" hidden><label class="at-hide"><input type="checkbox" class="switch" id="at-empty" role="switch" checked><span>Hide empty</span></label>
-            <span class="ds-pair"><button type="button" class="ds-btn ds-ibtn" id="at-cols" data-tip="Columns" aria-label="Columns"><svg><use href="#i-columns"/></svg></button><button type="button" class="ds-btn ds-ibtn" id="at-copy-dn" data-tip="Copy DN" aria-label="Copy the distinguished name"><svg><use href="#i-copy"/></svg></button><button type="button" class="ds-btn ds-ibtn" id="at-export" data-tip="Export CSV" aria-label="Export every attribute to a CSV file"><svg><use href="#i-download"/></svg></button></span></span></div>
+            <span class="ds-pair"><button type="button" class="ds-btn ds-ibtn" id="at-copy-dn" data-tip="Copy DN" aria-label="Copy the distinguished name"><svg><use href="#i-copy"/></svg></button><button type="button" class="ds-btn ds-ibtn" id="at-export" data-tip="Export CSV" aria-label="Export every attribute to a CSV file"><svg><use href="#i-download"/></svg></button></span></span></div>
         <label class="side-find at-find" id="at-find-row" hidden><svg><use href="#i-search"/></svg><input type="search" id="at-find" placeholder="Find an attribute or value" aria-label="Find an attribute or value" autocomplete="off" spellcheck="false"></label>
         <div class="table attrs" id="at-table"></div>
         <p class="hint problem" id="at-problem" hidden></p>
