@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.261 (2026-11-19)
+
+- Refresh on a list shows it is working: the icon turns and the flask covers the list while it reads again.
+- Closing the console tab signs you out. A new tab asks you to sign in again, unless another console tab is still open, and a reload keeps you signed in.
+
 ## 1.1.260 (2026-11-19)
 
 - Links and Sensors have the same bar as the other lists: the views, Refresh icons, and Add a link or Add a sensor with New group under its arrow. Add a link and Add a sensor moved there from the banner.

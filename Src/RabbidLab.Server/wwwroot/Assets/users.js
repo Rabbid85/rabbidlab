@@ -606,21 +606,18 @@
   };
   $('dir-export').addEventListener('click', () => csvOf(rows, `${adPage}-${adView}`));
   // Refresh: the open page's list read again from Active Directory, with the flask while it reads.
-  $('dir-refresh').addEventListener('click', async () => {
+  $('dir-refresh').addEventListener('click', () => R.refresh($('dir-refresh'), $('dir-lib'), 'Reading Active Directory again…', async () => {
     const k = adPage;
-    R.busy($('dir-lib'), 'Reading Active Directory again…');
     try {
       lists[k] = await AD[k].load();
       say('dir-problem', '');
     } catch (err) {
       say('dir-problem', err.message);
-    } finally {
-      R.busy($('dir-lib'), '');
     }
     if (k !== adPage) return;
     drawAd();
     if (R.panel.is('ad')) drawDrawer();
-  });
+  }));
 
   // --- The side panel's helpers ---------------------------------------------------------------------------------------
 

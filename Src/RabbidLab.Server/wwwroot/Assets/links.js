@@ -353,6 +353,7 @@
     if (!todo.length) return say(note, 'No links with a web address to refresh.');
     refreshing = true;
     $('ln-refresh').disabled = true;
+    $('ln-refresh').classList.add('turning');
     const got = { icon: 0, description: 0, IP: 0 };
     let done = 0;
     let filled = 0;
@@ -408,6 +409,7 @@
     if (!onPage) R.busy(host, '');
     refreshing = false;
     $('ln-refresh').disabled = false;
+    $('ln-refresh').classList.remove('turning');
     draw(); // each link was taken in as it came back: nothing to read again
     const what = [got.icon && count(got.icon, 'icon'), got.description && count(got.description, 'description'), got.IP && count(got.IP, 'IP')].filter(Boolean);
     // The result in a toast, with the activity log for what changed.

@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.261', [
+    'Refresh on a list shows it is working: the icon turns and the flask covers the list while it reads again.',
+    'Closing the console tab signs you out. A new tab asks you to sign in again, unless another console tab is still open, and a reload keeps you signed in.']],
   ['1.1.260', [
     'Links and Sensors have the same bar as the other lists: the views, Refresh icons, and Add a link or Add a sensor with New group under its arrow. Add a link and Add a sensor moved there from the banner.',
     'The arrow on a New button is the same colour as the button, whatever the accent.']],
@@ -908,6 +911,30 @@ const RELEASE_NOTES = [
     try { if (location.hash.length > 1) sessionStorage.setItem('rabbidlab.back', location.hash); } catch { /* none */ }
     location.replace(idle ? `/signin.html?idle=${idleMin}` : '/signin.html');
   };
+  // Closing the tab signs out. Each tab keeps a mark in sessionStorage (its own, kept through a reload, gone with the tab):
+  // it gets one by signing in, or from a console tab already open beside it. A tab opened without one, with no console
+  // tab open to vouch for it, signs out and goes to sign-in, even when the browser never said the old tab closed.
+  const MARK = 'rabbidlab.tab';
+  const marked = () => { try { return sessionStorage.getItem(MARK) === '1' || sessionStorage.getItem('rabbidlab.signedin') === '1'; } catch { return true; } };
+  const markTab = () => { try { sessionStorage.setItem(MARK, '1'); } catch { /* no storage: no check */ } };
+  const tabsNear = 'BroadcastChannel' in window ? new BroadcastChannel('rabbidlab.tabs') : null;
+  let tabOk = marked();
+  if (tabOk) markTab();
+  tabsNear?.addEventListener('message', (e) => {
+    if (e.data === 'open?' && tabOk) tabsNear.postMessage('open');
+    else if (e.data === 'open' && !tabOk) {
+      tabOk = true;
+      markTab();
+    }
+  });
+  if (!tabOk) {
+    tabsNear?.postMessage('open?');
+    setTimeout(() => {
+      if (tabOk) return;
+      idleGone = true;
+      plainFetch('/api/signout', { method: 'POST', headers }).catch(() => {}).finally(() => toSignIn(false));
+    }, 700);
+  }
   const idleTell = () => {
     idleTold = Date.now();
     plainFetch('/api/sessions/active', { method: 'POST', headers }).then((r) => (r.ok ? r.json() : null))
@@ -1881,6 +1908,20 @@ const RELEASE_NOTES = [
     cover.querySelector('b').textContent = text;
     cover.querySelector('small').textContent = detail || ''; // what it's doing just now, a line for each thing
   };
+  // A list's Refresh: its icon turns and the flask covers host while work() reads again, for long enough to see.
+  const refresh = async (button, host, text, work) => {
+    if (button.classList.contains('turning')) return;
+    button.classList.add('turning');
+    busy(host, text);
+    const until = Date.now() + 700;
+    try {
+      await work();
+    } finally {
+      await new Promise((r) => setTimeout(r, Math.max(0, until - Date.now())));
+      busy(host, '');
+      button.classList.remove('turning');
+    }
+  };
   // Grey placeholders the shape of what's loading, pulsing, until a page's first read is back: tiles for Links and Sensors,
   // rows for lists. What's loaded takes their place when it's drawn; no kind takes them away if they're still there.
   const SKELETON = {
@@ -2499,7 +2540,7 @@ const RELEASE_NOTES = [
       if (opened) seats(); // its list is read as it opens
     });
     $('dv-export').addEventListener('click', () => dvGrid().csv(dvShown, `devices-${dvAt === 'computers' ? `computers-${dvView}` : dvAt}`));
-    $('dv-refresh').addEventListener('click', () => seats());
+    $('dv-refresh').addEventListener('click', () => refresh($('dv-refresh'), $('dv-lib'), 'Reading the list again…', seats));
     // A row opens its computer in the side panel; the row's own buttons do what they say. Uninstall opens the panel too.
     const seatAct = async (c, what, body) => {
       let said = null;
@@ -3811,7 +3852,7 @@ const RELEASE_NOTES = [
     : `<button type="button" class="primary dw-edit" ${attrs}>${svg('edit')}<span>Edit</span></button>`);
 
   // What the other scripts use. Hints are tips.js and data grids are grid.js.
-  window.RabbidLab = { app: () => product, $, esc, svg, say, initials, when, daysAgo, send, get, keep, forget, has, paint, where, viewAs, place, popups, option, dropdown, sure, copy, busy, groupTools, skeleton, toast, stepper, panel, scatter, editButton,
+  window.RabbidLab = { app: () => product, $, esc, svg, say, initials, when, daysAgo, send, get, keep, forget, has, paint, where, viewAs, place, popups, option, dropdown, sure, copy, busy, refresh, groupTools, skeleton, toast, stepper, panel, scatter, editButton,
     palette: window.RabbidLabColours.roles, me: () => meInfo,
     // The Devices page, for devices.js: its lists, what's ticked, and drawing or reading it again.
     devices: { lists: DV, more: dvMore, hooks: dvHooks, picked: dvPicked, computers: () => computers, rows: () => dvAll(), at: () => dvAt, shown: () => dvShown, grid: () => dvGrid(),

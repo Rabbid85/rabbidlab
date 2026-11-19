@@ -327,7 +327,10 @@
     if (R.where()[0] === 'gpo') load();
   });
   $('gpo-export').addEventListener('click', () => g0.csv(g0.sorted(shown()), `group-policy-${list}`));
-  $('gpo-refresh').addEventListener('click', () => { Object.keys(detail).forEach((k) => delete detail[k]); load(); });
+  $('gpo-refresh').addEventListener('click', () => R.refresh($('gpo-refresh'), $('gpo-lib'), 'Reading Group Policy again…', () => {
+    Object.keys(detail).forEach((k) => delete detail[k]);
+    return load();
+  }));
   const makeIn = (k) => (k === 'gpos' ? newGpo() : k === 'linked' ? linkTo(null, null) : k === 'wmi' ? editFilter(null) : backupAll());
   $('gpo-new').addEventListener('click', () => makeIn(list));
   // New's arrow: what the other lists make.
