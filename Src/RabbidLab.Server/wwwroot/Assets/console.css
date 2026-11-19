@@ -408,7 +408,7 @@ input.pick:focus { outline: none; border-color: var(--accent); }
 .wq-problems[hidden] { display: none; }
 .wq-problems b { margin-right: 6px; color: #fff; }
 /* The WMI class list: namespaces down the left as in Pick an OU, the classes of the one picked on the right. */
-.wqc-list { display: grid; align-content: start; gap: 1px; height: min(352px, 48vh); margin-top: 10px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #2A2D3E transparent; }
+.wqc-list { display: grid; align-content: start; gap: 1px; height: min(352px, 48vh); margin-top: 10px; overflow-y: auto; }
 .wqc-list button { height: 30px; padding: 0 10px; border: 0; border-radius: 7px; background: none; color: #B8BCCB; font: 13px Consolas, "Cascadia Mono", monospace; text-align: left; }
 .wqc-list button:hover, .wqc-list button:focus-visible { background: #151827; color: #fff; }
 .wqc-list .muted { margin: 8px 10px; }
@@ -699,15 +699,9 @@ body.ad-scoped [data-whole] { display: none !important; }
 .am-link.out svg { color: #FF6B7D; }
 @media (max-width: 560px) { .account-name { display: none; } }
 
-/* Scroll bars, everywhere: thin and dark, a rounded thumb and no arrows. Firefox takes the standard properties instead. */
-::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
-::-webkit-scrollbar-thumb { border: 3px solid transparent; border-radius: 10px; background: #2B2F44 padding-box; }
-::-webkit-scrollbar-thumb:hover { background-color: #3D4260; }
-::-webkit-scrollbar-button { display: none; }
-@supports not selector(::-webkit-scrollbar) {
-  * { scrollbar-width: thin; scrollbar-color: #2B2F44 transparent; }
-}
+/* Scroll bars, everywhere: one thin, dark kind. The standard properties, because an open drop-down list (::picker,
+   below) takes only these; nothing sets its own. */
+* { scrollbar-width: thin; scrollbar-color: #2B2F44 transparent; }
 
 /* Support info: the i in the top bar, and the text it gathers to copy. */
 .top .top-info { width: 32px; height: 32px; margin: 0 8px 0 6px; border-radius: 50%; color: var(--muted); }
@@ -745,8 +739,7 @@ section.page.home.dir-top { max-width: none; padding: 0; gap: 0; }
 .dhead h1 { font: 800 30px/1.15 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; letter-spacing: -.02em; color: #fff; }
 .dhead p { max-width: 680px; margin-top: 10px; color: #B4B8C8; font-size: 14px; line-height: 1.55; }
 .dmain { grid-column: 2; display: grid; gap: 18px; align-content: start; min-width: 0; }
-.dnav { position: sticky; top: 72px; display: flex; flex-direction: column; align-self: start; max-height: calc(100vh - 90px); padding-bottom: 8px; overflow-y: auto; scrollbar-gutter: stable;
-  scrollbar-width: thin; scrollbar-color: #2A2D3E transparent; }
+.dnav { position: sticky; top: 72px; display: flex; flex-direction: column; align-self: start; max-height: calc(100vh - 90px); padding-bottom: 8px; overflow-y: auto; scrollbar-gutter: stable; }
 .dnav > .side-find { flex: none; height: 32px; margin: 0; border-radius: 7px; }
 /* On a section page Find lines up with the tab beside it: its top level with the tab text, its bottom on the tab underline. */
 :is(#dir-rail, #dv-rail) > .side-find { margin-top: 10px; }
@@ -856,7 +849,8 @@ select:not([multiple]):not([size]):hover { border-color: #3A3E55; }
   select:not([multiple]):not([size])::picker-icon { display: none; } /* the arrow is the background image above */
   select:not([multiple]):not([size]) { align-items: center; padding-top: 0; padding-bottom: 0; }
   /* Opens below; goes above only when it doesn't fit (the browser's default picks whichever side has more room). */
-  select:not([multiple]):not([size])::picker(select) { position-try-order: normal; position-try-fallbacks: flip-block; margin: 4px 0; padding: 4px; border: 1px solid var(--line-strong); border-radius: 10px; background: #141725; color: #D7DAE8; box-shadow: 0 18px 44px rgba(0, 0, 0, .55); max-height: 340px; }
+  select:not([multiple]):not([size])::picker(select) { position-try-order: normal; position-try-fallbacks: flip-block; margin: 4px 0; padding: 4px; border: 1px solid var(--line-strong); border-radius: 10px; background: #141725; color: #D7DAE8; box-shadow: 0 18px 44px rgba(0, 0, 0, .55); max-height: 340px;
+    scrollbar-width: thin; scrollbar-color: #2B2F44 transparent; } /* the page's scroll bar; * doesn't reach the list */
   select:not([multiple]):not([size]) option { min-height: 34px; padding: 7px 12px; border-radius: 7px; background: none; color: #D7DAE8; font-size: 13.5px; }
   select:not([multiple]):not([size]) option:hover, select:not([multiple]):not([size]) option:focus-visible { background: #1E2132; color: #fff; outline: none; }
   select:not([multiple]):not([size]) option:checked { background: color-mix(in srgb, var(--accent) 16%, transparent); color: #fff; font-weight: 600; }

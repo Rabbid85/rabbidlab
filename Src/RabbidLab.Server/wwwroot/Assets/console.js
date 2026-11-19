@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.255', [
+    'Every scroll bar is the same thin, dark one now, open drop-down lists included. They used to show the grey Windows scroll bar with arrows.',
+    'Roles that can run or write scripts get Install apps, so Installs shows under Devices for them too.']],
   ['1.1.254', [
     'Closing the last console tab signs you out a few seconds later, so opening it again asks you to sign in. A refresh, or another console tab still open, keeps you signed in.',
     'The Browse heading on Group Policy lines up with the one on Active Directory and Devices.']],

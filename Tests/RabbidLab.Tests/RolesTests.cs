@@ -272,10 +272,11 @@ public sealed class RolesTests : IDisposable
         var old = await Make(admin, "Old desk", "ad.view", "ad.change");
         var viewer = await Make(admin, "Viewer", "ad.view");
         var setup = await Make(admin, "AD setup", "ad.view", "ad.connect");
+        var scripts = await Make(admin, "Scripts", "seats.view", "seats.scripts.run");
         app.Dispose();
         // As a version before the split wrote it: no version, and Change alone.
         var path = Path.Combine(data, "roles.json");
-        File.WriteAllText(path, File.ReadAllText(path).Replace("\"version\": 3,", ""));
+        File.WriteAllText(path, File.ReadAllText(path).Replace("\"version\": 4,", "").Replace(",\n      \"seats.installs\"", "").Replace(",\r\n      \"seats.installs\"", ""));
         File.Delete(path + ".bak");
 
         using var again = new TestApp(data);
@@ -288,9 +289,12 @@ public sealed class RolesTests : IDisposable
         Assert.Equal(["ad.change", "ad.enable", "ad.groups", "ad.password", "ad.view", "gpo.view"], roles[old]);
         Assert.Equal(["ad.view", "gpo.view"], roles[viewer]);
         Assert.Equal(["ad.connect", "ad.view", "gpo.change", "gpo.delete", "gpo.link", "gpo.view"], roles[setup]);
+        // Install apps came after that: roles that run scripts get it.
+        Assert.Equal(["seats.installs", "seats.scripts.run", "seats.view"], roles[scripts]);
+        Assert.DoesNotContain("seats.installs", roles[viewer]);
         // Once upgraded it stays as it's set: taking one away isn't undone at the next start.
         (await page.PostAsJsonAsync($"/api/roles/{old}", new { name = "Old desk", color = "#5FD4A0", permissions = new[] { "ad.view", "ad.change" } })).EnsureSuccessStatusCode();
-        Assert.Contains("\"version\": 3", File.ReadAllText(path));
+        Assert.Contains("\"version\": 4", File.ReadAllText(path));
     }
 
     [Fact]

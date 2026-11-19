@@ -496,7 +496,7 @@ dialog.drawer:not(:modal) { z-index: 60; }
 /* The picker, as NorthStack AD has it: everyone in a list with a tick each, a box to find in it, and the count. */
 .pk-bar { display: flex; align-items: center; gap: 14px; margin-top: 14px; }
 .pk-bar .pk-find { flex: 1; margin: 0; }
-.pk-list { height: min(52vh, 440px); margin-top: 10px; overflow-y: auto; border: 1px solid var(--line); border-radius: 12px; background: #0F111A; scrollbar-width: thin; scrollbar-color: #2A2D3E transparent; }
+.pk-list { height: min(52vh, 440px); margin-top: 10px; overflow-y: auto; border: 1px solid var(--line); border-radius: 12px; background: #0F111A; }
 .pk-row { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 6px 14px; border-top: 1px solid var(--line); cursor: pointer; }
 .pk-row:first-child { border-top: 0; }
 .pk-row:hover { background: #151827; }

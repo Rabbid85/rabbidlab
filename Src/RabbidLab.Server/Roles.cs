@@ -81,7 +81,7 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
     private const int MostRoles = 50;
     private const int MostPeople = 2000;
     private const int MostPlaces = 20;
-    private const int Current = 3; // 2: Change users, groups and computers became four permissions; 3: Group Policy
+    private const int Current = 4; // 2: Change users, groups and computers became four permissions; 3: Group Policy; 4: Install apps
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { WriteIndented = true };
     // Watched: --add-admin writes it while the service runs.
     private readonly JsonFile<RolesFile> file = folder.Json<RolesFile>("roles.json", Json, watch: true);
@@ -769,6 +769,11 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
             var add = r.Permissions.Contains(Permissions.AdConnect) ? Permissions.Gpo
                 : r.Permissions.Contains(Permissions.AdView) && r.Scope.Count == 0 ? [Permissions.GpoView] : [];
             r.Permissions = [.. r.Permissions.Union(add).Order()];
+        }
+        // Install apps came after: roles that run scripts on computers could install an app that way already.
+        foreach (var r in f.Roles.Where(r => f.Version < 4 && (r.Permissions.Contains(Permissions.ScriptsRun) || r.Permissions.Contains(Permissions.ScriptsEdit))))
+        {
+            r.Permissions = [.. r.Permissions.Union([Permissions.SeatsInstalls]).Order()];
         }
         f.Version = Current;
         return true;

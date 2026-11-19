@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.255 (2026-11-19)
+
+- Every scroll bar is the same thin, dark one now, open drop-down lists included. They used to show the grey Windows scroll bar with arrows.
+- Roles that can run or write scripts get Install apps, so Installs shows under Devices for them too.
+
 ## 1.1.254 (2026-11-19)
 
 - Closing the last console tab signs you out a few seconds later, so opening it again asks you to sign in. A refresh, or another console tab still open, keeps you signed in.
