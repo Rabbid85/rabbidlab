@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.257 (2026-11-19)
+
+- The side panel has square corners.
+
 ## 1.1.256 (2026-11-19)
 
 - The side panel can be dragged wider or narrower by its left edge, and it keeps that width. A double-click on the edge puts it back.

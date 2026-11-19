@@ -424,7 +424,7 @@ button.danger.solid:hover { background: #DB4860; }
 
 /* The side panel: what a row is, sliding in from the right under the top bar. */
 dialog.drawer { position: fixed; inset: 52px 0 0 auto; width: min(580px, 100vw); height: calc(100% - 52px); max-height: calc(100% - 52px); margin: 0; padding: 0; overflow: hidden; border: 0; border-left: 1px solid var(--line-strong);
-  border-radius: 18px 0 0 18px; background: #11131D; color: var(--text); box-shadow: -8px 0 24px -14px rgba(0, 0, 0, .5); animation: dw-in .24s cubic-bezier(.16, 1, .3, 1); }
+  border-radius: 0; background: #11131D; color: var(--text); box-shadow: -8px 0 24px -14px rgba(0, 0, 0, .5); animation: dw-in .24s cubic-bezier(.16, 1, .3, 1); }
 dialog.drawer::backdrop { background: rgba(5, 6, 10, .55); backdrop-filter: blur(2px); }
 @keyframes dw-in { from { transform: translateX(48px); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { dialog.drawer { animation: none; } }
@@ -574,7 +574,7 @@ dialog.drawer { width: min(1100px, 62vw); min-width: min(580px, 100vw); max-widt
 @media (max-width: 900px) { dialog.drawer { width: 100vw !important; max-width: 100vw; } dialog.drawer .dw-grip { display: none; } }
 /* Its left edge: drag to resize (console.js). A line shows where it is on hover and while dragging. */
 .dw-grip { position: absolute; z-index: 3; inset: 0 auto 0 0; width: 8px; cursor: col-resize; touch-action: none; }
-.dw-grip::after { content: ""; position: absolute; inset: 18px auto 18px 0; width: 2px; border-radius: 2px; background: transparent; transition: background .12s; }
+.dw-grip::after { content: ""; position: absolute; inset: 0 auto 0 0; width: 2px; background: transparent; transition: background .12s; }
 .dw-grip:hover::after, .dw-grip:focus-visible::after, body.dw-sizing .dw-grip::after { background: var(--accent); }
 .dw-grip:focus-visible { outline: 0; }
 body.dw-sizing { cursor: col-resize; user-select: none; }
