@@ -166,9 +166,9 @@ body.col-moving, body.col-moving * { cursor: grabbing !important; user-select: n
   background: var(--accent); color: #fff; } /* the end of the button's own colour, whatever the accent */
 .gsplit > .gsplit-more:hover, .gsplit > .gsplit-more[aria-expanded="true"] { background: var(--accent-hover); }
 .gsplit > .gsplit-more .chev { width: 13px; height: 13px; stroke: currentColor; }
-/* A button that reads as words: Load filter, Export, Clear. */
-.tlink { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 8px; border: 0; border-radius: 7px; background: none; color: var(--accent-soft); font-size: 13px; font-weight: 600; white-space: nowrap; }
-.tlink:hover { background: color-mix(in srgb, var(--accent-soft) 10%, transparent); }
+/* A button that reads as words: Load filter, Clear. Plain, not in the accent. */
+.tlink { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 8px; border: 0; border-radius: 7px; background: none; color: var(--text); font-size: 13px; font-weight: 600; white-space: nowrap; }
+.tlink:hover, .tlink[aria-expanded="true"] { background: #1A1D2B; color: var(--title); }
 .tlink[hidden] { display: none; }
 .tlink svg { flex: none; width: 15px; height: 15px; }
 .tlink .chev { width: 13px; height: 13px; stroke: currentColor; }

@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.267', [
+    'Load filter and Clear in the filter bar are plain text now, not in the accent colour.']],
   ['1.1.266', [
     'The round › on the side panel folds it into a thin strip on the right instead of closing it. Click the strip or the row to open it again; the × still closes it.']],
   ['1.1.265', [

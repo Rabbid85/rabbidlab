@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.267 (2026-11-19)
+
+- Load filter and Clear in the filter bar are plain text now, not in the accent colour.
+
 ## 1.1.266 (2026-11-19)
 
 - The round › on the side panel folds it into a thin strip on the right instead of closing it. Click the strip or the row to open it again; the × still closes it.
