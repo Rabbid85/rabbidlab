@@ -751,7 +751,7 @@ section.page.home.dir-top { max-width: none; padding: 0; gap: 0; }
 /* On a section page Find lines up with the tab beside it: its top level with the tab text, its bottom on the tab underline. */
 :is(#dir-rail, #dv-rail) > .side-find { margin-top: 10px; }
 .dnav .rail-label { flex: none; margin: 30px 0 8px 12px; font-size: 11px; color: #9DA1B3; }
-.dnav > .rail-label:first-child, #dir-rail > p.rail-label:first-of-type, .dnav:not(.lists) > .side-find + .rail-label { margin-top: 10px; }
+.dnav > .rail-label:first-child, .dnav > .dnav-sk + .rail-label, #dir-rail > p.rail-label:first-of-type, .dnav:not(.lists) > .side-find + .rail-label { margin-top: 10px; }
 .dnav a { position: relative; display: flex; flex: none; align-items: center; gap: 10px; height: 32px; padding: 0 10px 0 14px; color: #B8BCCB; font-size: 14px; font-weight: 500; white-space: nowrap; }
 .dnav a:hover { color: #fff; text-decoration: none; }
 .dnav a > svg { flex: none; width: 16px; height: 16px; color: #8B90A5; }

@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.254', [
+    'Closing the last console tab signs you out a few seconds later, so opening it again asks you to sign in. A refresh, or another console tab still open, keeps you signed in.',
+    'The Browse heading on Group Policy lines up with the one on Active Directory and Devices.']],
   ['1.1.253', [
     'Updates download much faster: the installer now comes from GitHub in pieces over six connections at once, so one slow connection no longer holds up the whole download. It takes effect from the update after this one.',
     'The More button on the Overview banner is gone. The activity log, the release notes and the wiki are in the top bar and the menu.']],
@@ -937,6 +940,13 @@ const RELEASE_NOTES = [
   });
   idleTell(); // opening the page counts
   setInterval(idleCheck, 1000);
+  // This tab, to the server: open, still open every half minute, and closed. When the last tab closes, the server ends
+  // the session a few seconds later, so reopening the console means signing in. A reload opens again well within that.
+  const TAB = Array.from(crypto.getRandomValues(new Uint8Array(12)), (b) => b.toString(16).padStart(2, '0')).join('');
+  const tabSay = (gone) => plainFetch('/api/sessions/tab', { method: 'POST', headers, body: JSON.stringify({ id: TAB, gone }), keepalive: gone }).catch(() => {});
+  tabSay(false);
+  setInterval(() => tabSay(false), 30000);
+  addEventListener('pagehide', () => tabSay(true));
   const WORDS = { current: 'Up to date', available: 'Update available', waiting: 'Waiting', downloading: 'Downloading', installing: 'Installing', failed: 'Failed' };
   let last = null;
   let timer = null;

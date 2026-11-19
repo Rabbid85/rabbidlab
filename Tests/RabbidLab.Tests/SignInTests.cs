@@ -237,6 +237,34 @@ public sealed class SignInTests : IDisposable
     }
 
     [Fact]
+    public async Task Closing_the_last_console_tab_ends_the_session_and_a_reload_or_another_tab_keeps_it()
+    {
+        var admin = await app.SignedIn();
+        app.Services.GetRequiredService<SettingsStore>().Change(s => s.IdleMinutes = 0);
+        async Task Tab(string id, bool gone) => (await admin.PostAsJsonAsync("/api/sessions/tab", new { id, gone })).EnsureSuccessStatusCode();
+        await Tab("a1", false);
+
+        // A reload: the page goes, and the new one says it's open a moment later.
+        await Tab("a1", true);
+        app.Clock.Advance(TimeSpan.FromSeconds(1));
+        await Tab("a2", false);
+        app.Clock.Advance(TimeSpan.FromSeconds(10));
+        Assert.Equal(HttpStatusCode.OK, (await admin.GetAsync("/api/status")).StatusCode);
+
+        // Two tabs: one closes, the other keeps the session going.
+        await Tab("b1", false);
+        await Tab("a2", true);
+        app.Clock.Advance(TimeSpan.FromSeconds(10));
+        Assert.Equal(HttpStatusCode.OK, (await admin.GetAsync("/api/status")).StatusCode);
+
+        // The last tab closes: a few seconds later the session is over, and reopening means signing in.
+        await Tab("b1", true);
+        app.Clock.Advance(TimeSpan.FromSeconds(6));
+        Assert.Equal(HttpStatusCode.Unauthorized, (await admin.GetAsync("/api/status")).StatusCode);
+        Assert.Empty(app.Services.GetRequiredService<Sessions>().All().Where(s => s.Username == "admin" && s.LastSeen > app.Clock.GetUtcNow().AddSeconds(-30)));
+    }
+
+    [Fact]
     public async Task A_failed_sign_in_is_logged_by_name_only_when_the_name_is_an_account_here()
     {
         await app.SignedIn();

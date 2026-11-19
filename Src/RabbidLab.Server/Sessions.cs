@@ -50,7 +50,61 @@ public sealed class Sessions : ITicketStore, IDisposable
     private readonly Dictionary<string, AuthenticationTicket> tickets = [];
     private bool changed;
 
+    /// <summary>A console tab counts as open this long after it was last heard from: a hidden tab may check in once a minute.</summary>
+    public static readonly TimeSpan TabAlive = TimeSpan.FromMinutes(3);
+
+    /// <summary>After the last tab closes, the session ends this long after, unless a tab opens again (a reload does, in a second or two).</summary>
+    public static readonly TimeSpan Closing = TimeSpan.FromSeconds(5);
+
+    // The console tabs open on each session (by the id each tab made when it opened, and when each was last heard from),
+    // and when a session whose last tab closed ends. Kept in memory only.
+    private readonly Dictionary<string, Dictionary<string, DateTimeOffset>> tabs = [];
+    private readonly Dictionary<string, DateTimeOffset> leaving = [];
+
     private Lock gate => file.Gate;
+
+    /// <summary>A console tab opened or is still open (gone false), or closed (gone true).</summary>
+    public void Tab(string session, string tab, bool gone)
+    {
+        lock (gate)
+        {
+            if (!sessions.ContainsKey(session))
+            {
+                return;
+            }
+            var now = clock.GetUtcNow();
+            if (!tabs.TryGetValue(session, out var open))
+            {
+                tabs[session] = open = [];
+            }
+            foreach (var old in open.Where(t => now - t.Value > TabAlive).Select(t => t.Key).ToList())
+            {
+                open.Remove(old);
+            }
+            if (gone)
+            {
+                open.Remove(tab);
+                if (open.Count == 0)
+                {
+                    leaving[session] = now + Closing;
+                }
+            }
+            else
+            {
+                open[tab] = now;
+                leaving.Remove(session);
+            }
+        }
+    }
+
+    /// <summary>Whether this session's last console tab closed and none opened again since: it's over.</summary>
+    public bool Closed(string session)
+    {
+        lock (gate)
+        {
+            return leaving.TryGetValue(session, out var at) && clock.GetUtcNow() >= at;
+        }
+    }
 
     public Sessions(DataFolder folder, IDataProtectionProvider protection, TimeProvider clock)
     {
@@ -120,6 +174,8 @@ public sealed class Sessions : ITicketStore, IDisposable
         lock (gate)
         {
             tickets.Remove(id);
+            tabs.Remove(id);
+            leaving.Remove(id);
             if (!sessions.Remove(id))
             {
                 return false;
@@ -350,6 +406,26 @@ public static class SessionsApi
             return Results.Ok(new { idle = settings.Current.IdleMinutes });
         });
 
+        // A console tab opening, still open (every half minute), or closing. When the last one closes, the session ends a few
+        // seconds later, so the console isn't open to whoever reopens the browser.
+        app.MapPost("/api/sessions/tab", (TabForm form, HttpContext context, Sessions sessions) =>
+        {
+            if (Access.Refuse(context) is { } refused)
+            {
+                return refused;
+            }
+            var tab = form.Id ?? "";
+            if (tab.Length is 0 or > 64 || !tab.All(c => char.IsAsciiLetterOrDigit(c) || c == '-'))
+            {
+                return Results.BadRequest(new { error = "That isn't a tab." });
+            }
+            if (Sessions.Current(context) is { } id)
+            {
+                sessions.Tab(id, tab, form.Gone);
+            }
+            return Results.Ok();
+        });
+
         // Signs a session out: anyone their own, and others' with Sign other people out.
         app.MapPost("/api/sessions/{id}/signout", (string id, HttpContext context, Sessions sessions, ActivityLog log) =>
         {
@@ -378,3 +454,6 @@ public static class SessionsApi
         return s.Username == me.Username && s.Source == me.Source && s.Domain == me.Domain;
     }
 }
+
+/// <summary>A console tab, by the id it made when it opened: open, or gone (closed).</summary>
+public sealed record TabForm(string? Id, bool Gone = false);

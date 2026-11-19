@@ -93,8 +93,10 @@ public static class SignIn
                 }
                 // A role that requires MFA takes a code: a session from before it did ends, and signing in again asks for one.
                 var noCode = p is not null && p.FindFirstValue("mfa") is null && roles.NeedsMfa(Who.Of(p));
+                // Its last console tab closed a few seconds ago (Sessions.Tab): whoever opens it again signs in.
+                var closed = Sessions.Current(context.HttpContext) is { } sid && context.HttpContext.RequestServices.GetRequiredService<Sessions>().Closed(sid);
                 if (stamp is null || stamp != current || old || noCode || p is null || !roles.CanSignIn(Who.Of(p)) || PlainHttp.Exposed(context.HttpContext)
-                    || IdleOut(context.HttpContext, p))
+                    || closed || IdleOut(context.HttpContext, p))
                 {
                     context.RejectPrincipal();
                     await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
