@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.276 (2026-11-19)
+
+- Add/remove filters lists every column the list has, not only the few it picks to show at first.
+
 ## 1.1.275 (2026-11-19)
 
 - Saving a filter asks what to call it, and each saved filter under Load filter has a pencil to rename it. What it filters shows when you hover it.

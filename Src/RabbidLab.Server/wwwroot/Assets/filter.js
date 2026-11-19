@@ -527,13 +527,12 @@
       b.draw();
       el.querySelector(`.fw-col[data-k="${CSS.escape(k)}"] [data-fwq]`)?.focus();
     };
-    // Add/remove filters: which columns have a chip.
+    // Add/remove filters: which columns have a chip. Every column the list has can have one; the few worth it
+    // (candidates) are only the ones shown to start with.
     const more = (button) => {
-      const cand = candidates();
-      const shown = chipKeys(cand);
-      const on = new Set(shown);
+      const on = new Set(chipKeys());
       R.picker.open(button, { key: `chips.${name()}`, picked: on,
-        items: grid().cols().filter((c) => cand.includes(c) || on.has(c.key)).map((c) => ({ key: c.key, label: c.label })),
+        items: grid().cols().filter((c) => !c.nofilter || on.has(c.key)).map((c) => ({ key: c.key, label: c.label })),
         change: () => {
           keep(`${name()}.chips`, [...on]);
           Object.keys(st().chips).forEach((k) => { if (!on.has(k)) delete st().chips[k]; });
