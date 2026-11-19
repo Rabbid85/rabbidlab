@@ -419,4 +419,143 @@ public sealed class DevicesTests : IDisposable
         Assert.Equal("admin", job.GetProperty("by").GetString());
         Assert.Equal(id, (await admin.GetFromJsonAsync<JsonElement>($"/api/devices/jobs/{job.GetProperty("id").GetString()}")).GetProperty("targets")[0].GetProperty("client").GetString());
     }
+
+    private static async Task<List<JsonElement>> Apps(HttpClient admin) => [.. (await admin.GetFromJsonAsync<JsonElement>("/api/devices/apps")).EnumerateArray()];
+
+    private static JsonElement App(List<JsonElement> apps, string id) => apps.Single(a => a.GetProperty("id").GetString() == id);
+
+    [Fact]
+    public async Task Installs_lists_the_apps_with_the_computers_that_have_each_by_its_name_under_Installed_apps()
+    {
+        var admin = await Admin();
+        var (id, client) = await Computer();
+        var software = new[] { new { name = "Microsoft Visual Studio Code", version = "1.146.0" }, new { name = "Git", version = "2.56.0" }, new { name = "GitHub Copilot CLI", version = "1.0" }, new { name = "7-Zip 26.06 (x64)", version = "26.06" } };
+        (await client.PostAsJsonAsync("/api/clients/inventory", new { software })).EnsureSuccessStatusCode();
+
+        var apps = await Apps(admin);
+        var code = App(apps, "builtin-vscode");
+        Assert.Equal("Microsoft.VisualStudioCode", code.GetProperty("winget").GetString());
+        Assert.Equal("anthropic.claude-code", Assert.Single(code.GetProperty("extensions").EnumerateArray()).GetProperty("id").GetString());
+        var on = Assert.Single(code.GetProperty("on").EnumerateArray());
+        Assert.Equal(id, on.GetProperty("id").GetString());
+        Assert.Equal("1.146.0", on.GetProperty("version").GetString());
+        Assert.Single(App(apps, "builtin-git").GetProperty("on").EnumerateArray());
+        Assert.Single(App(apps, "builtin-7zip").GetProperty("on").EnumerateArray());
+        Assert.Empty(App(apps, "builtin-github-cli").GetProperty("on").EnumerateArray()); // GitHub Copilot CLI isn't GitHub CLI
+        Assert.Empty(App(apps, "builtin-chrome").GetProperty("on").EnumerateArray());
+
+        // A new inventory is looked at again.
+        (await client.PostAsJsonAsync("/api/clients/inventory", new { software = new[] { new { name = "Google Chrome", version = "157.0" } } })).EnsureSuccessStatusCode();
+        apps = await Apps(admin);
+        Assert.Single(App(apps, "builtin-chrome").GetProperty("on").EnumerateArray());
+        Assert.Empty(App(apps, "builtin-vscode").GetProperty("on").EnumerateArray());
+    }
+
+    [Fact]
+    public async Task An_install_goes_out_as_a_job_with_a_step_for_each_app_and_VS_Code_brings_Claude_Code()
+    {
+        var admin = await Admin();
+        var (id, client) = await Computer();
+
+        await Id(await admin.PostAsJsonAsync("/api/devices/run", new { kind = "install", apps = new[] { "builtin-vscode", "builtin-7zip" }, clients = new[] { id } }));
+
+        var job = Assert.Single(await Jobs(admin));
+        Assert.Equal("install", job.GetProperty("kind").GetString());
+        Assert.Equal("Install Visual Studio Code, 7-Zip", job.GetProperty("title").GetString());
+        var steps = Assert.Single(await Take(client)).GetProperty("steps").EnumerateArray().Select(s => s.GetProperty("text").GetString()!).ToList();
+        Assert.Equal(2, steps.Count);
+        Assert.Contains("$id = 'Microsoft.VisualStudioCode'", steps[0]);
+        Assert.Contains("install --id $id --exact --source winget --scope machine --silent", steps[0]);
+        // The extension goes in as each person, by VS Code's own command.
+        Assert.Contains("$extensions = @('anthropic.claude-code')", steps[0]);
+        Assert.Contains("--install-extension $e", steps[0]);
+        Assert.Contains("$id = '7zip.7zip'", steps[1]);
+        Assert.DoesNotContain("install-extension", steps[1]);
+        Assert.DoesNotContain("{{", steps[0]);
+
+        // What runs is there to read before anything is installed.
+        var script = await admin.GetFromJsonAsync<JsonElement>("/api/devices/apps/builtin-vscode/script");
+        Assert.Equal(steps[0], script.GetProperty("text").GetString());
+
+        Assert.Equal(HttpStatusCode.BadRequest, (await admin.PostAsJsonAsync("/api/devices/run", new { kind = "install", apps = new[] { "builtin-nothing" }, clients = new[] { id } })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await admin.PostAsJsonAsync("/api/devices/run", new { kind = "install", clients = new[] { id } })).StatusCode);
+    }
+
+    [Fact]
+    public async Task Installing_takes_its_own_right_and_confirming_who_you_are()
+    {
+        var admin = await app.SignedIn();
+        (await admin.PostAsJsonAsync("/api/clients/settings", new { approve = false })).EnsureSuccessStatusCode();
+        var (id, _) = await Computer();
+        var run = new { kind = "install", apps = new[] { "builtin-vscode" }, clients = new[] { id } };
+
+        Assert.Equal("password", (await Json(await admin.PostAsJsonAsync("/api/devices/run", run))).GetProperty("confirm").GetString());
+        (await admin.PostAsJsonAsync("/api/confirm", new { password = "correct horse" })).EnsureSuccessStatusCode();
+
+        // Restarting and updating computers doesn't come with installing apps.
+        var made = await admin.PostAsJsonAsync("/api/roles", new { name = "Patchers", color = "#5FD4A0" });
+        var role = (await Json(made)).GetProperty("id").GetString()!;
+        (await admin.PostAsJsonAsync($"/api/roles/{role}", new { name = "Patchers", color = "#5FD4A0", permissions = new[] { "seats.view", "seats.actions", "seats.workflows" } })).EnsureSuccessStatusCode();
+        app.Services.GetRequiredService<Accounts>().Add("pat", "patch password", Roles.User);
+        (await admin.PostAsJsonAsync($"/api/roles/{role}/members", new { kind = "local", name = "pat" })).EnsureSuccessStatusCode();
+        var pat = app.Page();
+        (await pat.PostAsJsonAsync("/api/signin", new { username = "pat", password = "patch password" })).EnsureSuccessStatusCode();
+        (await pat.PostAsJsonAsync("/api/confirm", new { password = "patch password" })).EnsureSuccessStatusCode();
+        Assert.Equal(HttpStatusCode.Forbidden, (await pat.PostAsJsonAsync("/api/devices/run", run)).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await pat.PostAsJsonAsync("/api/devices/apps", new { name = "OBS Studio", winget = "OBSProject.OBSStudio" })).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await pat.PostAsJsonAsync("/api/devices/workflows", new { name = "Sneaky", on = true, when = "online", steps = new object[] { new { kind = "install", app = "builtin-vscode" } } })).StatusCode);
+
+        (await admin.PostAsJsonAsync($"/api/roles/{role}", new { name = "Patchers", color = "#5FD4A0", permissions = new[] { "seats.view", "seats.actions", "seats.workflows", "seats.installs" } })).EnsureSuccessStatusCode();
+        await Id(await pat.PostAsJsonAsync("/api/devices/run", run));
+    }
+
+    [Fact]
+    public async Task An_app_added_by_its_winget_ID_is_checked_and_goes_into_the_script_as_a_quoted_string()
+    {
+        var admin = await Admin();
+        var (id, client) = await Computer();
+
+        Assert.Equal(HttpStatusCode.BadRequest, (await admin.PostAsJsonAsync("/api/devices/apps", new { name = "Bad", winget = "Vendor.App'; Remove-Item C:\\ -Recurse" })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await admin.PostAsJsonAsync("/api/devices/apps", new { name = "Bad", winget = "NoDots" })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await admin.PostAsJsonAsync("/api/devices/apps", new { name = "", winget = "Vendor.App" })).StatusCode);
+        var again = await admin.PostAsJsonAsync("/api/devices/apps", new { name = "Chrome again", winget = "google.chrome" });
+        Assert.Contains("Google Chrome already installs", (await Json(again)).GetProperty("error").GetString());
+
+        var mine = await Id(await admin.PostAsJsonAsync("/api/devices/apps", new { name = "Sam's player", winget = "OBSProject.OBSStudio", category = "Media", shows = "OBS Studio" }));
+        (await client.PostAsJsonAsync("/api/clients/inventory", new { software = new[] { new { name = "OBS Studio 33.0.0" } } })).EnsureSuccessStatusCode();
+        var listed = App(await Apps(admin), mine);
+        Assert.False(listed.GetProperty("builtIn").GetBoolean());
+        Assert.Equal("Media", listed.GetProperty("category").GetString());
+        Assert.Single(listed.GetProperty("on").EnumerateArray());
+
+        await Id(await admin.PostAsJsonAsync("/api/devices/run", new { kind = "install", apps = new[] { mine }, clients = new[] { id } }));
+        var text = Assert.Single(Assert.Single(await Take(client)).GetProperty("steps").EnumerateArray()).GetProperty("text").GetString()!;
+        Assert.Contains("$id = 'OBSProject.OBSStudio'", text);
+        Assert.Contains("$name = 'Sam''s player'", text);
+
+        // A workflow can install it, and then it can't be deleted from under the workflow.
+        await Id(await admin.PostAsJsonAsync("/api/devices/workflows", new { name = "New computer", on = true, when = "approved", steps = new object[] { new { kind = "install", app = mine }, new { kind = "install", app = "builtin-vscode" } } }));
+        var held = await admin.PostAsync($"/api/devices/apps/{mine}/delete", null);
+        Assert.Equal(HttpStatusCode.BadRequest, held.StatusCode);
+        Assert.Contains("New computer", (await Json(held)).GetProperty("error").GetString());
+        Assert.Equal(HttpStatusCode.BadRequest, (await admin.PostAsync("/api/devices/apps/builtin-vscode/delete", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await admin.PostAsJsonAsync("/api/devices/apps", new { id = "builtin-vscode", name = "Mine now", winget = "Evil.App" })).StatusCode);
+    }
+
+    [Fact]
+    public async Task A_workflow_installs_apps_when_a_computer_is_approved()
+    {
+        var admin = await Admin(approve: true);
+        await Id(await admin.PostAsJsonAsync("/api/devices/workflows", new { name = "Developer PC", on = true, when = "approved", steps = new object[] { new { kind = "install", app = "builtin-vscode" }, new { kind = "install", app = "builtin-git" } } }));
+        Assert.Equal(HttpStatusCode.BadRequest, (await admin.PostAsJsonAsync("/api/devices/workflows", new { name = "Nothing", on = true, when = "approved", steps = new object[] { new { kind = "install", app = "gone" } } })).StatusCode);
+
+        var (id, client) = await Computer();
+        (await admin.PostAsync($"/api/clients/{id}/approve", null)).EnsureSuccessStatusCode();
+
+        var steps = Assert.Single(await Take(client)).GetProperty("steps").EnumerateArray().ToList();
+        Assert.Equal(2, steps.Count);
+        Assert.Contains("'Microsoft.VisualStudioCode'", steps[0].GetProperty("text").GetString());
+        Assert.Contains("'Git.Git'", steps[1].GetProperty("text").GetString());
+        Assert.Equal("Developer PC", Assert.Single(App(await Apps(admin), "builtin-git").GetProperty("workflows").EnumerateArray()).GetString());
+    }
 }

@@ -150,20 +150,40 @@
   const snGrid = R.grid({
     el: $('sn-list'),
     key: 'sensors',
+    // filter: the filter bar always offers a chip for it; word: what the chip lists when the cell says more (Down 5 min).
     cols: [
-      { key: 'state', label: 'State', w: 110, on: true, get: (s) => STATE_ORDER[s.status] ?? 9, cell: CELL.state },
+      { key: 'state', label: 'State', w: 110, on: true, filter: true, get: (s) => STATE_ORDER[s.status] ?? 9, word: (s) => WORD[s.status] || s.status, cell: CELL.state },
       { key: 'name', label: 'Sensor', w: 200, fixed: true, get: (s) => s.name, cell: CELL.name },
-      { key: 'check', label: 'Check', w: 110, on: true, get: (s) => check(s), cell: CELL.check },
+      { key: 'check', label: 'Check', w: 110, on: true, filter: true, get: (s) => check(s), word: (s) => check(s), cell: CELL.check },
       { key: 'where', label: 'Address', w: 170, on: true, get: (s) => where(s), cell: CELL.where },
-      { key: 'reply', label: 'Reply', w: 100, on: true, get: (s) => s.ms ?? '', cell: CELL.reply },
-      { key: 'line', label: 'Last hour', w: 200, on: true, nosort: true, get: () => '', cell: CELL.line },
-      { key: 'up', label: 'Up, 7 days', w: 90, on: true, get: (s) => s.up7 ?? '', cell: CELL.up },
-      { key: 'alerts', label: 'Alert type', w: 110, on: true, get: (s) => typeOf(s.type)?.name || '', cell: CELL.alerts },
+      { key: 'reply', label: 'Reply', w: 100, on: true, nofilter: true, get: (s) => s.ms ?? '', cell: CELL.reply },
+      { key: 'line', label: 'Last hour', w: 200, on: true, nosort: true, nofilter: true, get: () => '', cell: CELL.line },
+      { key: 'up', label: 'Up, 7 days', w: 90, on: true, nofilter: true, get: (s) => s.up7 ?? '', cell: CELL.up },
+      { key: 'alerts', label: 'Alert type', w: 110, on: true, filter: true, get: (s) => typeOf(s.type)?.name || '', cell: CELL.alerts },
     ],
     row: (s) => ` data-open="${esc(s.id)}"`,
     rowClass: (s) => `sn s-${s.status}`,
     redraw: () => draw(),
   });
+  // The filter bar over the sensors (filter.js): a search, a chip for each column worth one, saved filters, and the
+  // conditions window. It narrows both views. The group picked narrows first, so the chips count what's in it.
+  const FILTER_FIELDS = [['Sensor', [
+    { key: 'name', label: 'Name', type: 'text', get: (s) => s.name },
+    { key: 'state', label: 'State', type: 'choice', get: (s) => WORD[s.status] || s.status },
+    { key: 'kind', label: 'Kind', type: 'choice', get: (s) => KIND[s.kind] || s.kind },
+    { key: 'where', label: 'Address', type: 'text', get: (s) => where(s) },
+    { key: 'alerts', label: 'Alert type', type: 'choice', get: (s) => typeOf(s.type)?.name || "Don't alert" },
+    { key: 'tags', label: 'Tags', type: 'member', get: (s) => s.tags || [] },
+    { key: 'reply', label: 'Reply (ms)', type: 'number', get: (s) => s.ms },
+    { key: 'up', label: 'Up, 7 days (%)', type: 'number', get: (s) => s.up7 },
+  ]]];
+  const inGroup = () => {
+    const only = group === NO_GROUP ? '' : group; // the one group shown, as the sensors have it
+    return sensors.filter((s) => (group === DOWN ? notAnswering(s) : !group || (s.group || '') === only));
+  };
+  let barOn = null;
+  const bar = () => (barOn ||= R.filter.bar({ el: $('sn-fbar'), key: 'sensors', grid: () => snGrid, rows: inGroup, noun: 'sensors', fields: () => FILTER_FIELDS,
+    find: (s) => [s.name, s.target, s.group, KIND[s.kind], check(s), WORD[s.status], s.note, typeOf(s.type)?.name, ...(s.tags || [])], redraw: () => draw() }));
 
   // --- The sensors, in their groups ----------------------------------------------------------------------------------------
 
@@ -237,7 +257,6 @@
     + `<small>${esc(said(s))}</small><span class="sn-foot">${foot(s)}</span></span></button></div>`;
 
   const draw = () => {
-    const find = $('sn-find').value.trim().toLowerCase();
     const down = sensors.filter(notAnswering); // down, and waiting on something that's down
     // The group picked may be gone after a change, and nothing may be down any more: back to all of them.
     if (group === DOWN ? !down.length : group && group !== NO_GROUP && !groups.includes(group)) {
@@ -250,11 +269,13 @@
     if (!narrows || (group === NO_GROUP && !loose)) group = '';
     drawHero();
     $('sn-tools').hidden = !sensors.length && !groups.length;
+    $('sn-fbar').hidden = !sensors.length;
     filter(narrows, group === DOWN ? 'Down' : group === NO_GROUP ? 'No group' : group);
     $('sn-view').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.view === view));
     const only = group === NO_GROUP ? '' : group; // the one group shown, as the sensors have it
-    const shown = sensors.filter((s) => (group === DOWN ? notAnswering(s) : !group || (s.group || '') === only)
-      && (!find || [s.name, s.target, s.group, KIND[s.kind], s.note, ...(s.tags || [])].some((v) => String(v || '').toLowerCase().includes(find))));
+    const find = bar().any(); // the filter bar narrows the page
+    const shown = inGroup().filter(bar().test());
+    bar().draw();
     // Every group in its order, the empty ones too unless something is being looked for; sensors with no group go last.
     const by = (group && group !== DOWN ? [only] : [...groups, '']).map((g) => [g, shown.filter((s) => (s.group || '') === g)])
       .filter(([g, list]) => list.length || (g && !find && group !== DOWN));
@@ -322,7 +343,6 @@
     },
   });
 
-  $('sn-find').addEventListener('input', draw);
   // The filter: a menu of what's down and the groups, each with its colour, to show one of them.
   const filter = R.groupFilter('sn', {
     rows: () => {
@@ -770,6 +790,8 @@
     drawFields();
   });
   $('sd-cancel').addEventListener('click', () => $('sensor-dialog').close());
+  // A device password typed here isn't kept by the page once the window closes, saved or not.
+  $('sensor-dialog').addEventListener('close', () => { for (const k of ['password', 'privacyPassword']) delete vals[k]; });
   // What Check now found, as a status card: what answered and how, or what went wrong.
   const found = (f) => {
     const answered = f.ms == null ? '' : `Answered in ${ms(f.ms)}`;

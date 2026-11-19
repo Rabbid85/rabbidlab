@@ -3,6 +3,12 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.248', [
+    'Devices has an Installs page: Chrome, Firefox, VS Code, Git, 7-Zip and 23 more apps that winget installs for everyone on a computer. Tick apps or open one, then Install. It goes out as a job, and workflows can install apps too.',
+    'Visual Studio Code also adds the Claude Code extension in VS Code for each person who uses the computer: straight away for whoever is signed in, and for everyone else when they sign in.',
+    'Add an app puts any winget package on the page by its ID. Installing apps is its own permission under Devices.',
+    'Links and Sensors have the same filter bar as the other lists, in place of Find.',
+    'The admin login for Group Policy changes is no longer kept by the page for 15 minutes. It is sent with that change only, and password boxes are emptied as soon as they are sent.']],
   ['1.1.247', [
     'Every side panel now has its buttons at the end of the name, like users and computers got in 1.1.246: the main one first, then the rest. Two sit side by side, and more than that go under Actions.',
     'A Group Policy Object shows its status, how many places it is linked to, its WMI filter and when it last changed in a row under its name.']],

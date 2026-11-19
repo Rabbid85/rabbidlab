@@ -83,11 +83,14 @@
     $('mfa-go').disabled = false;
   });
 
+  // A password that was sent isn't left in its box: not behind the MFA step, and not after a wrong one.
+  const forget = () => ['local-password', 'local-confirm', 'ad-password'].forEach((id) => { $(id).value = ''; });
   const post = async (url, body, button) => {
     showError('');
     button.disabled = true;
     try {
       const r = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
+      forget();
       if (r.ok) {
         const said = await r.json().catch(() => null);
         if (said?.mfa) {

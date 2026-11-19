@@ -16,6 +16,11 @@
   // What a cell says, without its markup: for grouping, filtering and finding.
   const ENT = { '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'" };
   const plain = (html) => String(html).replace(/<[^>]*>/g, '').replace(/&(amp|lt|gt|quot|#39);/g, (m) => ENT[m]).trim();
+  // What a cell shows as plain words ('' for a blank one). A column whose cell says more than its value (Down 5 min) gives the value as word(x).
+  const text = (c, x) => {
+    const v = c.word ? c.word(x) : c.cell ? plain(c.cell(x)) : c.get(x);
+    return v == null || v === '-' ? '' : String(v);
+  };
   const tools = new WeakMap(); // a list bar's tools element -> the grid it's showing
 
   // While a heading is dragged: its label following the pointer, and a line down the table where it lands.
@@ -35,7 +40,7 @@
   // under its headings and not what empty says.
   // Columns is the button at the end of the heading row (headButton: false leaves it out). el is the table for
   // draw(); for a page with several tables sharing the columns (one per group), el holds them and table() makes each.
-  // A column: { key, label, w, get(x), cell(x), text(x), on, fixed, nosort, nogroup }.
+  // A column: { key, label, w, get(x), cell(x), text(x), word(x), on, fixed, nosort, nogroup }.
   const grid = (o) => {
     const el = () => of(o.el);
     const name = (what) => `${o.store || 'rabbidlab.grid'}.${what}.${of(o.key)}`;
@@ -49,11 +54,7 @@
     };
     const g = {};
     g.cols = cols;
-    // What a cell shows as plain words ('' for a blank one).
-    g.text = (c, x) => {
-      const v = c.cell ? plain(c.cell(x)) : c.get(x);
-      return v == null || v === '-' ? '' : String(v);
-    };
+    g.text = text;
     // Group by: on or off, and the columns the rows are gathered by, outermost first.
     const groupSet = () => { const s = read(name('group')); return { on: !!s?.on, keys: Array.isArray(s?.keys) ? s.keys : [] }; };
     const groupCols = () => { const s = groupSet(); return s.on ? s.keys.map((k) => cols().find((c) => c.key === k && !c.nogroup)).filter(Boolean) : []; };
@@ -417,5 +418,7 @@
     return g;
   };
 
+  // A list that isn't a table (Links' tiles) still has columns to filter by: the cols() and text() a grid gives.
+  grid.columns = (cols) => ({ cols: () => of(cols) || [], text });
   R.grid = grid;
 })();

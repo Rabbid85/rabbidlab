@@ -82,8 +82,38 @@
     $('rail-links').textContent = links.length || '';
     $('links-dot').hidden = !links.some((l) => states[l.id] && states[l.id].down);
   };
+  // The filter bar over the links (filter.js): a search, a chip for each column worth one, saved filters, and the
+  // conditions window. Links aren't a table, so these columns are only what the bar filters by. It narrows every view.
+  // The group picked narrows first, so the chips count what's in it.
+  const stateOf = (l) => (!checked(l) ? [4, 'Not checked'] : !states[l.id] ? [3, 'Checking'] : states[l.id].up ? [2, 'Up'] : states[l.id].down ? [0, 'Down'] : [1, 'No answer']);
+  const protocol = (l) => (/^([a-z][a-z0-9+.-]*):/i.exec(l.url) || ['', ''])[1].toUpperCase();
+  const COLS = R.grid.columns([
+    { key: 'name', label: 'Link', get: (l) => l.name },
+    { key: 'state', label: 'State', filter: true, get: (l) => stateOf(l)[0], word: (l) => stateOf(l)[1] },
+    { key: 'about', label: 'Detail', nofilter: true, get: (l) => l.description || '' },
+    { key: 'host', label: 'Address', get: (l) => host(l.url) },
+    { key: 'ip', label: 'IP', get: (l) => l.address || '' },
+    { key: 'watched', label: 'Watched', get: (l) => (l.sensor ? 'Yes' : 'No') },
+    { key: 'protocol', label: 'Protocol', get: (l) => protocol(l) },
+  ]);
+  const FIELDS = [['Link', [
+    { key: 'name', label: 'Name', type: 'text', get: (l) => l.name },
+    { key: 'state', label: 'State', type: 'choice', get: (l) => stateOf(l)[1] },
+    { key: 'about', label: 'Detail', type: 'text', get: (l) => l.description || '' },
+    { key: 'url', label: 'Address', type: 'text', get: (l) => l.url },
+    { key: 'ip', label: 'IP', type: 'text', get: (l) => l.address || '' },
+    { key: 'watched', label: 'Watched', type: 'yes', get: (l) => !!l.sensor },
+    { key: 'protocol', label: 'Protocol', type: 'choice', get: (l) => protocol(l) },
+    { key: 'icon', label: 'Has an icon', type: 'yes', get: (l) => own(l) },
+  ]]];
+  const inGroup = () => {
+    const only = group === NO_GROUP ? '' : group; // the one group shown, as the links have it
+    return links.filter((l) => !group || (l.group || '') === only);
+  };
+  let barOn = null;
+  const bar = () => (barOn ||= R.filter.bar({ el: $('ln-fbar'), key: 'links', grid: () => COLS, rows: inGroup, noun: 'links', fields: () => FIELDS,
+    find: (l) => [l.name, l.description, l.url, l.address, l.group, stateOf(l)[1]], redraw: () => draw() }));
   const draw = () => {
-    const find = $('ln-find').value.trim().toLowerCase();
     // The group picked may be gone after a change: back to all of them.
     if (group && group !== NO_GROUP && !groups.includes(group)) {
       lost = group;
@@ -94,8 +124,10 @@
     if (!narrows || (group === NO_GROUP && links.every((l) => l.group))) group = '';
     filter(narrows, group === NO_GROUP ? 'No group' : group);
     const only = group === NO_GROUP ? '' : group; // the one group shown, as the links have it
-    const shown = links.filter((l) => (!group || (l.group || '') === only)
-      && (!find || [l.name, l.description, l.url, l.address, l.group].some((v) => String(v || '').toLowerCase().includes(find))));
+    $('ln-fbar').hidden = !links.length;
+    const find = bar().any(); // the filter bar narrows the page
+    const shown = inGroup().filter(bar().test());
+    bar().draw();
     // Every group in its order, the empty ones too unless something is being looked for; links with no group go last.
     const by = (group ? [only] : [...groups, '']).map((g) => [g, shown.filter((l) => (l.group || '') === g)])
       .filter(([g, list]) => list.length || (g && !find));
@@ -185,7 +217,6 @@
     check();
   };
 
-  $('ln-find').addEventListener('input', draw);
   // Cards or a grid, remembered in this browser.
   $('ln-view').addEventListener('click', (e) => {
     const b = e.target.closest('[data-view]');
@@ -210,12 +241,12 @@
   // Names compared the way people read them: case ignored, esxi2 before esxi10.
   const byName = (a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
   // A link dragged to another place: its group's links in their new order. Shown straight away, then saved.
-  // whole: ids is the whole group already (Sort A to Z), so a search on the page changes nothing.
+  // whole: ids is the whole group already (Sort A to Z), so a filter on the page changes nothing.
   const arrange = async (id, to, ids, whole = false) => {
     const l = links.find((x) => x.id === id);
     if (!l) return draw();
-    // With a search on, the page shows only part of the group: the link joins the end of all of it.
-    if (!whole && $('ln-find').value.trim()) ids = [...links.filter((x) => (x.group || '') === to && x.id !== id).map((x) => x.id), id];
+    // With a filter on, the page shows only part of the group: the link joins the end of all of it.
+    if (!whole && bar().any()) ids = [...links.filter((x) => (x.group || '') === to && x.id !== id).map((x) => x.id), id];
     l.group = to || null;
     links = [...links.filter((x) => !ids.includes(x.id)), ...ids.map((x) => links.find((y) => y.id === x)).filter(Boolean)];
     draw();

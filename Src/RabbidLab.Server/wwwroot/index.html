@@ -34,6 +34,7 @@
 <script src="Assets/devices.js" defer></script>
 <script src="Assets/accounts.js" defer></script>
 <script src="Assets/printers.js" defer></script>
+<script src="Assets/installs.js" defer></script>
 <script src="Assets/gpo.js" defer></script>
 <script src="Assets/deploy.js" defer></script>
 </head>
@@ -587,10 +588,11 @@
         <div class="dkids" id="dv-views"></div>
         <a href="#seats/gplocal" data-dv="gplocal" data-can="seats.view"><svg><use href="#i-policy"/></svg><span>Group Policy</span><small id="dv-n-gplocal"></small></a>
         <a href="#seats/printers" data-dv="printers" data-can="seats.view"><svg><use href="#i-printer"/></svg><span>Printers</span><small id="dv-n-printers"></small></a>
-        <p class="rail-label" data-can="seats.actions seats.scripts.run seats.scripts.edit seats.workflows seats.wmi seats.add">Tools</p>
+        <p class="rail-label" data-can="seats.actions seats.installs seats.scripts.run seats.scripts.edit seats.workflows seats.wmi seats.add">Tools</p>
         <a href="#seats/wmi" data-dv="wmi" data-can="seats.wmi"><svg><use href="#i-list"/></svg><span>WMI query</span><small id="dv-n-wmi"></small></a>
+        <a href="#seats/installs" data-dv="installs" data-can="seats.installs"><svg><use href="#i-box"/></svg><span>Installs</span><small id="dv-n-installs"></small></a>
         <a href="#seats/scripts" data-dv="scripts" data-can="seats.scripts.run seats.scripts.edit seats.workflows"><svg><use href="#i-code"/></svg><span>Scripts</span><small id="dv-n-scripts"></small></a>
-        <a href="#seats/jobs" data-dv="jobs" data-can="seats.actions seats.scripts.run seats.scripts.edit seats.workflows"><svg><use href="#i-history"/></svg><span>Jobs</span><small id="dv-n-jobs"></small></a>
+        <a href="#seats/jobs" data-dv="jobs" data-can="seats.actions seats.installs seats.scripts.run seats.scripts.edit seats.workflows"><svg><use href="#i-history"/></svg><span>Jobs</span><small id="dv-n-jobs"></small></a>
         <a href="#seats/workflows" data-dv="workflows" data-can="seats.workflows"><svg><use href="#i-org"/></svg><span>Workflows</span><small id="dv-n-workflows"></small></a>
         <a href="#seats/deploy" data-dv="deploy" data-can="seats.add"><svg><use href="#i-download"/></svg><span>Deploy the client</span><small id="dv-n-deploy"></small></a>
         <p class="rail-label" data-can="sessions.view">Console</p>
@@ -633,6 +635,7 @@
           <div class="table adt drows" id="dv-printers" hidden></div>
           <div class="table adt drows" id="dv-pservers" hidden></div>
           <div class="table adt drows" id="sessions-table" hidden></div>
+          <div class="table adt drows" id="dv-installs" hidden></div>
           <div class="table adt drows" id="dv-scripts" hidden></div>
           <div class="table adt drows" id="dv-jobs" hidden></div>
           <div class="table adt drows" id="dv-workflows" hidden></div>
@@ -759,8 +762,9 @@
       </aside>
     </header>
     <section class="news sn-body">
+    <!-- The filter bar every list has (filter.js): it narrows whichever view shows. -->
+    <div id="ln-fbar" hidden></div>
     <div class="ln-tools">
-      <label class="side-find"><svg><use href="#i-search"/></svg><input type="search" id="ln-find" placeholder="Find a link" aria-label="Find a link" autocomplete="off" spellcheck="false"></label>
       <div class="lfilter" id="ln-filter" hidden>
         <button type="button" class="small" id="ln-filter-open" aria-haspopup="true" aria-expanded="false" title="Show one group"><svg><use href="#i-filter"/></svg><span id="ln-filter-name">All groups</span></button>
         <div class="lfilter-menu" id="ln-groups" hidden></div>
@@ -814,8 +818,8 @@
       </aside>
     </header>
     <section class="news sn-body">
+      <div id="sn-fbar" hidden></div>
       <div class="ln-tools" id="sn-tools">
-        <label class="side-find"><svg><use href="#i-search"/></svg><input type="search" id="sn-find" placeholder="Find a sensor" aria-label="Find a sensor" autocomplete="off" spellcheck="false"></label>
         <div class="lfilter" id="sn-filter" hidden>
           <button type="button" class="small" id="sn-filter-open" aria-haspopup="true" aria-expanded="false" title="Show one group"><svg><use href="#i-filter"/></svg><span id="sn-filter-name">All groups</span></button>
           <div class="lfilter-menu" id="sn-groups" hidden></div>
@@ -1655,6 +1659,37 @@
   <p class="hint" id="pr-note"></p>
   <p class="hint problem" id="pr-problem" role="alert" hidden></p>
   <div class="dialog-foot"><button type="button" id="pr-cancel">Cancel</button><button type="button" class="primary" id="pr-go">Add</button></div>
+</dialog>
+
+<!-- Install apps: the apps from the Installs page and the computers to put them on, as a job (installs.js). -->
+<dialog class="dialog wide" id="ins-dialog" aria-labelledby="ins-title">
+  <h2 id="ins-title">Install an app</h2>
+  <p class="dialog-lead" id="ins-lead"></p>
+  <div class="form">
+    <label for="ins-app" id="ins-app-label">App</label><select id="ins-app"></select>
+    <label for="ins-on" id="ins-on-label">Computers</label><select id="ins-on"></select>
+    <label for="ins-count" id="ins-count-label" hidden></label><input id="ins-count" inputmode="numeric" maxlength="6" autocomplete="off" hidden>
+  </div>
+  <p class="hint" id="ins-note"></p>
+  <p class="hint problem" id="ins-problem" role="alert" hidden></p>
+  <div class="dialog-foot"><button type="button" id="ins-cancel">Cancel</button><button type="button" class="primary" id="ins-go">Install</button></div>
+</dialog>
+
+<!-- An app on the Installs page: its name and its ID in the winget repository (installs.js). -->
+<dialog class="dialog wide" id="app-dialog" aria-labelledby="app-title">
+  <h2 id="app-title">Add an app</h2>
+  <p class="dialog-lead">Any package in the winget repository, by its ID. It installs for everyone on the computer, as SYSTEM.</p>
+  <div class="form two">
+    <div><label for="app-name">Name</label><input id="app-name" maxlength="80" autocomplete="off" spellcheck="false" placeholder="OBS Studio"></div>
+    <div><label for="app-winget">winget ID</label><input id="app-winget" maxlength="128" autocomplete="off" spellcheck="false" placeholder="OBSProject.OBSStudio"></div>
+    <div><label for="app-publisher">Publisher (optional)</label><input id="app-publisher" maxlength="80" autocomplete="off" spellcheck="false" placeholder="OBS Project"></div>
+    <div><label for="app-category">Category</label><select id="app-category"></select></div>
+    <div class="wide"><label for="app-about">Description (optional)</label><input id="app-about" maxlength="200" autocomplete="off" placeholder="What it is"></div>
+    <div class="wide"><label for="app-shows">Name under Installed apps (optional)</label><input id="app-shows" maxlength="80" autocomplete="off" spellcheck="false" placeholder="How its name starts in Windows, when that isn't the name above"></div>
+  </div>
+  <p class="hint">Find an ID with winget search and the app's name. The name under Installed apps is how this page counts the computers that have it. A package that only installs for one person can't be installed this way.</p>
+  <p class="hint problem" id="app-problem" role="alert" hidden></p>
+  <div class="dialog-foot"><button type="button" id="app-cancel">Cancel</button><button type="button" class="primary" id="app-save">Save</button></div>
 </dialog>
 
 <!-- A script in the library: its name, what it's written in, how long it may run, and the script. -->

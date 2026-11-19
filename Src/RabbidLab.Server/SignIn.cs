@@ -46,6 +46,7 @@ public static class SignIn
         services.AddSingleton<Waker>();
         services.AddSingleton<Confirmations>();
         services.AddSingleton<DeviceScripts>();
+        services.AddSingleton<DeviceApps>();
         services.AddSingleton<DeviceJobs>();
         services.AddSingleton<Workflows>();
         services.AddHostedService<WorkflowWorker>();

@@ -5,11 +5,12 @@
 .hero-gear svg { width: 17px; height: 17px; }
 .ln-tools .primary, .ln-tools .small, .ln-empty .primary, #link-dialog .primary { display: inline-flex; align-items: center; gap: 7px; }
 .ln-tools button svg, .ln-empty .primary svg { flex: none; width: 15px; height: 15px; }
-/* One row over the links: the search box, the filter, and New group. */
+/* Over the links (and the sensors): the filter bar, then one row with the group filter, New group and the view switch. */
+.sn-body > .fbar { margin: 4px 0 12px; }
+.sn-body > .fbar:not([hidden]) + .ln-tools { margin-top: 0; }
 .ln-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 4px 0 18px; }
 .ln-tools .primary { height: 34px; padding: 0 14px; }
 .ln-tools .small { height: 30px; padding: 0 11px; color: var(--muted); }
-.ln-tools .side-find { width: 260px; margin: 0; }
 .ln-tools .chips { margin: 0; }
 .ln-tools .chips:empty { display: none; }
 .lgroup { position: relative; margin-bottom: 22px; }
@@ -62,9 +63,6 @@
 #ln-mode { margin: 12px 0 8px; }
 #link-dialog .dialog-foot { align-items: center; }
 #link-dialog .grow { flex: 1; }
-@media (max-width: 700px) {
-  .ln-tools .side-find { width: 100%; }
-}
 
 /* The filter: one group at a time, picked from a menu under its button. */
 .lfilter { position: relative; }

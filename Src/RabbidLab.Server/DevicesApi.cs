@@ -25,7 +25,7 @@ public static class DevicesApi
     /// <summary>At most this many computers in one WMI query.</summary>
     public const int WmiMost = 50;
 
-    private static readonly string[] Doing = [Permissions.SeatsActions, Permissions.ScriptsRun, Permissions.ScriptsEdit, Permissions.Workflows];
+    private static readonly string[] Doing = [Permissions.SeatsActions, Permissions.SeatsInstalls, Permissions.ScriptsRun, Permissions.ScriptsEdit, Permissions.Workflows];
 
     public static void MapDevicesApi(this WebApplication app)
     {
@@ -95,13 +95,78 @@ public static class DevicesApi
             return Results.Ok();
         });
 
-        // Runs a library script, a script typed in, a restart or Windows updates on the computers picked.
-        app.MapPost("/api/devices/run", (RunForm form, HttpContext context, Clients clients, DeviceScripts scripts, DeviceJobs jobs, Confirmations confirm, ActivityLog log) =>
+        // The apps on the Installs page, each with the computers that have it, by what Windows lists under Installed apps.
+        // Whoever makes workflows sees them too, to name an install step.
+        app.MapGet("/api/devices/apps", (HttpContext context, DeviceApps apps, Clients clients, Inventories inventories, Workflows workflows) =>
+        {
+            if (!Seeing(context, Permissions.SeatsInstalls, Permissions.Workflows))
+            {
+                return Access.NotAllowed();
+            }
+            List<(Client Client, IReadOnlyDictionary<string, DeviceProgram> Has)> on = !Access.Can(context, Permissions.SeatsView) ? []
+                : [.. clients.All().Where(c => c.Approved is not null).Select(c => (c, apps.On(inventories.Get(c.Id))))];
+            var flows = workflows.All();
+            return Results.Ok(apps.All().Select(a => new
+            {
+                id = a.Id, name = a.Name, publisher = a.Publisher, about = a.About, category = a.Category, winget = a.Winget, shows = a.Shows, builtIn = a.BuiltIn, by = a.By, changed = a.Changed,
+                extensions = a.Extensions.Select(e => new { id = e.Id, name = e.Name }),
+                on = on.Where(x => x.Has.ContainsKey(a.Id)).Select(x => new { id = x.Client.Id, computer = x.Client.Computer, version = x.Has[a.Id].Version })
+                    .OrderBy(x => x.computer, StringComparer.OrdinalIgnoreCase),
+                workflows = flows.Where(w => w.Steps.Any(s => s.Kind == Workflows.InstallApp && s.App == a.Id)).Select(w => w.Name),
+            }));
+        });
+
+        // What installing one runs, to the letter. Asked for when its panel opens, not with the list.
+        app.MapGet("/api/devices/apps/{id}/script", (string id, HttpContext context, DeviceApps apps) =>
+            !Seeing(context, Permissions.SeatsInstalls, Permissions.Workflows) ? Access.NotAllowed()
+            : apps.Find(id) is not { } a ? Results.NotFound(new { error = "That app isn't here any more." })
+            : Results.Ok(new { text = DeviceApps.Step(a).Text, minutes = DeviceApps.Minutes }));
+
+        app.MapPost("/api/devices/apps", (AppForm form, HttpContext context, DeviceApps apps, Confirmations confirm, ActivityLog log) =>
+        {
+            if ((Access.RefuseUnless(context, Permissions.SeatsInstalls) ?? confirm.Refuse(context)) is { } refused)
+            {
+                return refused;
+            }
+            var (made, problem) = apps.Save(form, ActivityLog.Who(context));
+            if (made is null)
+            {
+                return Results.BadRequest(new { error = problem });
+            }
+            log.Record(context, "clients", "app.save", $"{(string.IsNullOrEmpty(form.Id) ? "Added" : "Changed")} the app {made.Name} on Installs", "ok", $"winget {made.Winget}");
+            return Results.Ok(new { id = made.Id });
+        });
+
+        app.MapPost("/api/devices/apps/{id}/delete", (string id, HttpContext context, DeviceApps apps, Workflows workflows, Confirmations confirm, ActivityLog log) =>
+        {
+            if ((Access.RefuseUnless(context, Permissions.SeatsInstalls) ?? confirm.Refuse(context)) is { } refused)
+            {
+                return refused;
+            }
+            if (BuiltInApps.Is(id))
+            {
+                return Results.BadRequest(new { error = "Built-in apps can't be deleted." });
+            }
+            if (workflows.Installing(id) is { Count: > 0 } used)
+            {
+                return Results.BadRequest(new { error = $"The workflow {used[0].Name} installs this app. Take it out of the workflow first." });
+            }
+            if (apps.Delete(id) is not { } gone)
+            {
+                return Results.NotFound(new { error = "That app isn't here any more." });
+            }
+            log.Record(context, "clients", "app.delete", $"Deleted the app {gone.Name} from Installs");
+            return Results.Ok();
+        });
+
+        // Runs a library script, a script typed in, a restart, Windows updates or app installs on the computers picked.
+        app.MapPost("/api/devices/run", (RunForm form, HttpContext context, Clients clients, DeviceScripts scripts, DeviceApps apps, DeviceJobs jobs, Confirmations confirm, ActivityLog log) =>
         {
             var typed = form.Kind == DeviceJobs.Script && string.IsNullOrEmpty(form.Script);
             var needs = form.Kind switch
             {
                 DeviceJobs.Script => typed ? Permissions.ScriptsEdit : Permissions.ScriptsRun,
+                DeviceJobs.Install => Permissions.SeatsInstalls,
                 DeviceJobs.Restart or DeviceJobs.Updates or DeviceJobs.Printer or DeviceJobs.Check
                     or DeviceJobs.Lock or DeviceJobs.SignOut or DeviceJobs.Shutdown or DeviceJobs.Message or DeviceJobs.Client or DeviceJobs.GpUpdate => Permissions.SeatsActions,
                 _ => null,
@@ -125,7 +190,25 @@ public static class DevicesApi
             }
             JobStep step;
             string title;
-            if (form.Kind == DeviceJobs.Printer)
+            List<JobStep> steps = []; // more than one only for installs: a step for each app
+            string? installed = null;
+            if (form.Kind == DeviceJobs.Install)
+            {
+                var ids = (form.Apps ?? []).Distinct().ToList();
+                List<DeviceApp> picked = [.. ids.Select(apps.Find).OfType<DeviceApp>()];
+                if (picked.Count == 0 || picked.Count != ids.Count)
+                {
+                    return Results.BadRequest(new { error = picked.Count == 0 ? "Pick an app to install." : "One of those apps isn't here any more." });
+                }
+                if (picked.Count > DeviceApps.MostAtOnce)
+                {
+                    return Results.BadRequest(new { error = $"Install {DeviceApps.MostAtOnce} apps at a time at most." });
+                }
+                steps = [.. picked.Select(DeviceApps.Step)];
+                installed = DeviceApps.Names(picked);
+                (step, title) = (steps[0], $"Install {installed}");
+            }
+            else if (form.Kind == DeviceJobs.Printer)
             {
                 var (made, named, problem) = PrinterActions.Make(form.Printer);
                 if (made is null)
@@ -193,11 +276,16 @@ public static class DevicesApi
             }
             // Locking, signing out, shutting down and a message are for now: a computer that's offline longer doesn't get them later.
             var now = form.Kind is DeviceJobs.Lock or DeviceJobs.SignOut or DeviceJobs.Shutdown or DeviceJobs.Message or DeviceJobs.Client or DeviceJobs.GpUpdate;
-            var job = jobs.Add(ActivityLog.Who(context), form.Kind!, title, [step], on, now ? Soon : Life, typed ? null : form.Script);
+            if (steps.Count == 0)
+            {
+                steps.Add(step);
+            }
+            var job = jobs.Add(ActivityLog.Who(context), form.Kind!, title, steps, on, now ? Soon : Life, typed ? null : form.Script);
             var computers = Workflows.Computers(on);
             log.Record(context, "clients", "job.run", form.Kind switch
             {
                 DeviceJobs.Printer or DeviceJobs.Check => $"{title} on {computers}",
+                DeviceJobs.Install => $"Installed {installed} on {computers}",
                 DeviceJobs.Script => $"Ran {(typed ? "a script typed in" : $"the script {title}")} on {computers}",
                 DeviceJobs.Restart => $"Restarted {computers}",
                 DeviceJobs.Lock => $"Locked {computers}",
@@ -207,7 +295,7 @@ public static class DevicesApi
                 DeviceJobs.Client => $"Updated the client on {computers}",
                 DeviceJobs.GpUpdate => $"Ran gpupdate on {computers}",
                 _ => $"Installed Windows updates on {computers}",
-            }, "ok", $"Job {job.Id}, SHA-256 {DeviceActions.Fingerprint([step])}{(form.Kind == DeviceJobs.Message ? $", message: {form.Text!.Trim()}" : "")}");
+            }, "ok", $"Job {job.Id}, SHA-256 {DeviceActions.Fingerprint(steps)}{(form.Kind == DeviceJobs.Message ? $", message: {form.Text!.Trim()}" : "")}");
             return Results.Ok(new { id = job.Id });
         });
 
@@ -283,7 +371,7 @@ public static class DevicesApi
             !Seeing(context, Permissions.Workflows) ? Access.NotAllowed() : Results.Ok(workflows.All().Select(w => new
             {
                 id = w.Id, name = w.Name, on = w.On, when = w.When, days = w.Days, time = w.Time, below = w.Below, @if = w.If, ifText = w.IfText,
-                steps = w.Steps.Select(s => new { kind = s.Kind, script = s.Script }), by = w.By, changed = w.Changed, lastRun = w.LastRun, lastJob = w.LastJob,
+                steps = w.Steps.Select(s => new { kind = s.Kind, script = s.Script, app = s.App }), by = w.By, changed = w.Changed, lastRun = w.LastRun, lastJob = w.LastJob,
             })));
 
         // A workflow can only do what the person saving it may do by hand.
@@ -293,7 +381,8 @@ public static class DevicesApi
             {
                 return refused;
             }
-            if ((form.Steps ?? []).Any(s => !Access.Can(context, s.Kind == Workflows.RunScript ? Permissions.ScriptsRun : Permissions.SeatsActions)))
+            if ((form.Steps ?? []).Any(s => !Access.Can(context, s.Kind == Workflows.RunScript ? Permissions.ScriptsRun
+                : s.Kind == Workflows.InstallApp ? Permissions.SeatsInstalls : Permissions.SeatsActions)))
             {
                 return Results.Json(new { error = "Your roles don't let you do one of these steps by hand, so you can't put it in a workflow." }, statusCode: StatusCodes.Status403Forbidden);
             }
@@ -459,6 +548,6 @@ public sealed record ScriptForm(string? Id, string? Name, string? About, string?
 
 /// <summary>What to run and where: a library script by id, or one typed in (Language, Text), or an action. Count is the brake's answer.</summary>
 public sealed record RunForm(string? Kind, List<string>? Clients, string? Script = null, string? Language = null, string? Text = null, int? Minutes = null, int? Count = null,
-    PrinterForm? Printer = null);
+    PrinterForm? Printer = null, List<string>? Apps = null);
 
 public sealed record WorkflowOnForm(bool On);

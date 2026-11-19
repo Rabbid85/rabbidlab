@@ -11,6 +11,9 @@ public sealed class WorkflowStep
 
     /// <summary>The library script's id, for a script step.</summary>
     public string? Script { get; set; }
+
+    /// <summary>The app's id on the Installs page, for an install step.</summary>
+    public string? App { get; set; }
 }
 
 /// <summary>Steps that run on computers by themselves: when something happens or on a schedule, and only on computers that fit.</summary>
@@ -57,7 +60,7 @@ public sealed record WorkflowForm(string? Id, string? Name, bool On, string? Whe
 /// missing, a restart needed, C: running low) or at its scheduled time for every computer, and queues its steps as one
 /// job (DeviceJobs), so they run in order on each computer and stop at the first that fails.
 /// </summary>
-public sealed class Workflows(DataFolder folder, TimeProvider clock, DeviceScripts scripts, DeviceJobs jobs, Clients clients, ActivityLog log)
+public sealed class Workflows(DataFolder folder, TimeProvider clock, DeviceScripts scripts, DeviceApps apps, DeviceJobs jobs, Clients clients, ActivityLog log)
 {
     public const string Approved = "approved";
     public const string Schedule = "schedule";
@@ -78,7 +81,8 @@ public sealed class Workflows(DataFolder folder, TimeProvider clock, DeviceScrip
     public const string InstallUpdates = "updates";
     public const string Restart = "restart";
     public const string RestartIfNeeded = "restart-if-needed";
-    public static readonly IReadOnlyList<string> StepKinds = [RunScript, InstallUpdates, Restart, RestartIfNeeded];
+    public const string InstallApp = "install";
+    public static readonly IReadOnlyList<string> StepKinds = [RunScript, InstallUpdates, Restart, RestartIfNeeded, InstallApp];
 
     public const int MaxWorkflows = 100;
     public const int MaxSteps = 20;
@@ -119,6 +123,9 @@ public sealed class Workflows(DataFolder folder, TimeProvider clock, DeviceScrip
     /// <summary>The workflows a library script is a step of.</summary>
     public IReadOnlyList<Workflow> Using(string script) => [.. All().Where(w => w.Steps.Any(s => s.Kind == RunScript && s.Script == script))];
 
+    /// <summary>The workflows that install an app from the Installs page.</summary>
+    public IReadOnlyList<Workflow> Installing(string app) => [.. All().Where(w => w.Steps.Any(s => s.Kind == InstallApp && s.App == app))];
+
     /// <summary>Adds a workflow, or changes the one with this id.</summary>
     public (Workflow? Workflow, string? Problem) Save(WorkflowForm form, string by)
     {
@@ -156,6 +163,10 @@ public sealed class Workflows(DataFolder folder, TimeProvider clock, DeviceScrip
             {
                 return (null, step.Kind == RunScript ? "Pick a script for each Run a script step." : "One of the steps isn't something a workflow can do.");
             }
+            if (step.Kind == InstallApp && apps.Find(step.App) is null)
+            {
+                return (null, "Pick an app for each Install an app step.");
+            }
         }
         lock (file.Gate)
         {
@@ -180,7 +191,7 @@ public sealed class Workflows(DataFolder folder, TimeProvider clock, DeviceScrip
             }
             (w.Name, w.On, w.When, w.Days, w.Time) = (name, form.On, form.When!, days, form.When == Schedule ? form.Time : null);
             (w.Below, w.If, w.IfText) = (Math.Clamp(form.Below ?? 10, 1, 90), form.If ?? Always, words.Length > 0 ? words : null);
-            w.Steps = [.. steps.Select(s => new WorkflowStep { Kind = s.Kind, Script = s.Kind == RunScript ? s.Script : null })];
+            w.Steps = [.. steps.Select(s => new WorkflowStep { Kind = s.Kind, Script = s.Kind == RunScript ? s.Script : null, App = s.Kind == InstallApp ? s.App : null })];
             (w.By, w.Changed) = (by, Now);
             file.Save(f);
             return (w, null);
@@ -301,13 +312,15 @@ public sealed class Workflows(DataFolder folder, TimeProvider clock, DeviceScrip
         foreach (var step in w.Steps)
         {
             var script = step.Kind == RunScript ? scripts.Find(step.Script) : null;
-            if (step.Kind == RunScript && script is null)
+            var app = step.Kind == InstallApp ? apps.Find(step.App) : null;
+            if ((step.Kind == RunScript && script is null) || (step.Kind == InstallApp && app is null))
             {
-                log.Record("Workflow", null, "clients", "workflow.failed", $"The workflow {w.Name} didn't run: one of its scripts was deleted", "failed");
+                log.Record("Workflow", null, "clients", "workflow.failed", $"The workflow {w.Name} didn't run: one of its {(step.Kind == InstallApp ? "apps" : "scripts")} was deleted", "failed");
                 return null;
             }
             steps.Add(step.Kind switch
             {
+                InstallApp => DeviceApps.Step(app!),
                 InstallUpdates => DeviceActions.InstallUpdates(),
                 Restart => DeviceActions.Restart(),
                 RestartIfNeeded => DeviceActions.RestartIfNeeded(),

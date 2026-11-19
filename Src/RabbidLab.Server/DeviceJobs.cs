@@ -213,6 +213,7 @@ public sealed class DeviceJobs(DataFolder folder, TimeProvider clock, ClientComm
     public const string Message = "message";
     public const string Client = "client";
     public const string GpUpdate = "gpupdate";
+    public const string Install = "install";
 
     public const string Waiting = "waiting";
     public const string Running = "running";

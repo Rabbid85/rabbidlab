@@ -9,7 +9,7 @@
   const NEEDS = '1.1.168'; // the first client that takes jobs
   const BRAKE = 10; // more computers than this, and how many has to be typed
   const canScripts = () => has('seats.scripts.run') || has('seats.scripts.edit');
-  const canDo = () => canScripts() || has('seats.actions');
+  const canDo = () => canScripts() || has('seats.actions') || has('seats.installs');
   const canJobs = () => canDo() || has('seats.workflows');
   const canPick = () => canDo() || has('seats.approve') || has('seats.remove');
   const many = (n, one = 'computer') => `${n.toLocaleString()} ${one}${n === 1 ? '' : 's'}`;
@@ -50,8 +50,10 @@
   const confirmGo = async () => {
     if (!asking) return;
     $('cf-go').disabled = true;
+    const typed = asking.how === 'code' ? { code: $('cf-code').value } : { password: $('cf-password').value };
+    $('cf-password').value = ''; // sent once, and not left in the page
     try {
-      await send('/api/confirm', asking.how === 'code' ? { code: $('cf-code').value } : { password: $('cf-password').value });
+      await send('/api/confirm', typed);
       const { ok } = asking;
       asking = null;
       $('confirm-dialog').close();
@@ -65,6 +67,8 @@
   $('cf-cancel').addEventListener('click', () => $('confirm-dialog').close());
   for (const id of ['cf-code', 'cf-password']) $(id).addEventListener('keydown', (e) => { if (e.key === 'Enter') confirmGo(); });
   $('confirm-dialog').addEventListener('close', () => {
+    $('cf-password').value = '';
+    $('cf-code').value = '';
     if (!asking) return;
     const { no } = asking;
     asking = null;
@@ -86,7 +90,7 @@
   let flows = null; // /api/devices/workflows
   const scriptOf = (id) => (scripts || []).find((s) => s.id === id);
   const jobTitle = (j) => (j.kind === 'workflow' ? `Workflow: ${j.title}` : j.kind === 'script' ? (j.title === 'A script typed in' ? 'Run a script typed in' : `Run script: ${j.title}`) : j.title);
-  const JOB_ICON = { script: 'code', restart: 'restart', updates: 'updates', workflow: 'org', printer: 'printer', check: 'refresh', lock: 'lock', signout: 'logout', shutdown: 'power', message: 'message', client: 'download', gpupdate: 'policy' };
+  const JOB_ICON = { script: 'code', restart: 'restart', updates: 'updates', workflow: 'org', printer: 'printer', check: 'refresh', lock: 'lock', signout: 'logout', shutdown: 'power', message: 'message', client: 'download', gpupdate: 'policy', install: 'box' };
   const STATE = { waiting: ['waiting', 'Waiting'], running: ['run', 'Running'], done: ['online', 'Done'], failed: ['bad', 'Failed'], refused: ['bad', 'Refused'],
     noanswer: ['bad', 'No answer'], cancelled: ['offline', 'Cancelled'], expired: ['offline', 'Expired'] };
   // How a job went across its computers, in a word or two.
@@ -113,7 +117,10 @@
   const whenText = (w) => (w.when === 'schedule' ? `${w.days.length === 7 ? 'Every day' : w.days.map((d) => DAYS[d]).join(', ')} at ${clock(w.time)}`
     : w.when === 'disk' ? `Free space on C: drops below ${w.below}%` : WHEN.find((x) => x[0] === w.when)?.[1] || w.when);
   const ifText = (w) => (w.if === 'always' ? '' : w.if === 'nobody' ? 'Nobody is signed in' : `${IF.find((x) => x[0] === w.if)?.[1] || w.if} ${w.ifText || ''}`);
-  const stepText = (s) => (s.kind === 'script' ? `Run script: ${scriptOf(s.script)?.name || 'a script that was deleted'}` : ACTIONS.find((a) => a[0] === s.kind)?.[1] || s.kind);
+  // An install step is named by its app on the Installs page (installs.js keeps those).
+  const appName = (id) => D.apps?.().find((a) => a.id === id)?.name;
+  const stepText = (s) => (s.kind === 'script' ? `Run script: ${scriptOf(s.script)?.name || 'a script that was deleted'}`
+    : s.kind === 'install' ? `Install ${appName(s.app) || 'an app that was deleted'}` : ACTIONS.find((a) => a[0] === s.kind)?.[1] || s.kind);
   const ms = (iso) => (iso ? new Date(iso).getTime() : 0);
 
   let scriptsG = null;
@@ -171,8 +178,8 @@
     load: async () => { jobs = await get('/api/devices/jobs'); },
     empty: () => (jobs ? 'Nothing has been run on a computer yet.' : 'Reading the list.') };
   D.more.workflows = { table: 'dv-workflows', grid: flowsGrid, rows: () => flows || [], count: () => flows?.length, can: () => has('seats.workflows'),
-    // A workflow's steps are shown by their script's name.
-    load: async () => { [flows, scripts] = await Promise.all([get('/api/devices/workflows'), get('/api/devices/scripts')]); },
+    // A workflow's steps are shown by their script's name, or their app's.
+    load: async () => { [flows, scripts] = await Promise.all([get('/api/devices/workflows'), get('/api/devices/scripts'), D.loadApps?.()?.catch(() => {})]); },
     empty: () => (flows ? 'No workflows yet. New workflow adds the first one.' : 'Reading the list.') };
 
   // --- WMI query ------------------------------------------------------------------------------------------------
@@ -970,11 +977,13 @@
       + `<button type="button" class="icon" data-step-x="${i}" data-tip="Remove" aria-label="Remove this step">${svg('x')}</button></div>`).join('') || none('No steps yet. Add the first one below.');
     const run1 = has('seats.scripts.run') && (scripts || []).length ? `<optgroup label="Run a script">${scripts.map((s) => `<option value="script:${esc(s.id)}">${esc(s.name)}</option>`).join('')}</optgroup>` : '';
     const acts = has('seats.actions') ? `<optgroup label="Actions">${ACTIONS.map(([k, label]) => `<option value="${k}">${esc(label)}</option>`).join('')}</optgroup>` : '';
-    $('fl-add').innerHTML = `<option value="" selected>Add a step…</option>${run1}${acts}`;
+    const installs = has('seats.installs') && D.apps?.().length ? `<optgroup label="Install an app">${[...D.apps()].sort((a, b) => a.name.localeCompare(b.name))
+      .map((a) => `<option value="install:${esc(a.id)}">${esc(a.name)}</option>`).join('')}</optgroup>` : '';
+    $('fl-add').innerHTML = `<option value="" selected>Add a step…</option>${run1}${installs}${acts}`;
   };
   const openFlowEdit = async (w) => {
     try {
-      scripts = await get('/api/devices/scripts');
+      [scripts] = await Promise.all([get('/api/devices/scripts'), D.loadApps?.()?.catch(() => {})]);
     } catch (e) {
       oops(e);
       return;
@@ -1007,7 +1016,7 @@
   $('fl-add').addEventListener('change', () => {
     const v = $('fl-add').value;
     if (!v) return;
-    flow.steps.push(v.startsWith('script:') ? { kind: 'script', script: v.slice(7) } : { kind: v });
+    flow.steps.push(v.startsWith('script:') ? { kind: 'script', script: v.slice(7) } : v.startsWith('install:') ? { kind: 'install', app: v.slice(8) } : { kind: v });
     drawFlow();
   });
   $('fl-steps').addEventListener('click', (e) => {
@@ -1062,7 +1071,13 @@
       if (row) openRow(row.dataset.row);
     });
   }
-  $('dv-new').addEventListener('click', () => (D.at() === 'workflows' ? openFlowEdit(null) : openScriptEdit(null)));
+  // New: a script or a workflow here, or what a list from another file adds (installs.js).
+  $('dv-new').addEventListener('click', () => {
+    const own = D.more[D.at()]?.add;
+    if (own) own.open();
+    else if (D.at() === 'workflows') openFlowEdit(null);
+    else openScriptEdit(null);
+  });
   panel.el.addEventListener('click', async (e) => {
     const on = (attr) => e.target.closest(`[${attr}]`);
     // In a computer's panel (console.js draws it): Actions opens the same menu, for this one computer; and its jobs.
@@ -1194,7 +1209,8 @@
   D.hooks.drawn = () => {
     drawPicked();
     const at = D.at();
-    const make = at === 'scripts' ? has('seats.scripts.edit') && 'New script' : at === 'workflows' ? has('seats.workflows') && 'New workflow' : '';
+    const own = D.more[at]?.add;
+    const make = own ? own.can() && own.label : at === 'scripts' ? has('seats.scripts.edit') && 'New script' : at === 'workflows' ? has('seats.workflows') && 'New workflow' : '';
     $('dv-new').hidden = !make;
     $('dv-new-text').textContent = make || '';
     // WMI query: its box over the list, and what any computer that didn't answer said.
@@ -1209,6 +1225,7 @@
   };
   // For printers.js and the rest: confirming who it is before a run, and opening a job in the panel.
   D.confirmed = confirmed;
+  D.mark = mark;
   D.drawPicked = drawPicked;
   D.openJob = (id) => openJob(id);
   D.run = (kind, on) => openRun(kind, on);

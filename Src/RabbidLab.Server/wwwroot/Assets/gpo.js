@@ -58,14 +58,25 @@
   const userOn = (g) => (g.status & 1) === 0;
 
   // --- The admin login, for a change the service account isn't allowed to make ---------------------------------------
-  let login = null; // { username, password, until }
-  const loginNow = () => (login && login.until > Date.now() ? login : null);
+  // Typed for one action and sent with its requests. The password is never kept: it's gone when the action ends.
+  let login = null; // { username, password } while the action that asked for it runs
+  let lastUser = ''; // the username typed last, to fill it in again
+  let acting = 0; // actions under way
+  // Several changes as one action (the ticked GPOs, say): the login is asked for once, and forgotten after the last.
+  const together = async (work) => {
+    acting++;
+    try {
+      return await work();
+    } finally {
+      if (--acting === 0) login = null;
+    }
+  };
   let asking = null;
   const askLogin = (why) => new Promise((ok, no) => {
     asking = { ok, no };
     $('gpo-l-lead').textContent = why;
     $('gpo-l-problem').hidden = true;
-    $('gpo-l-user').value = login?.username || '';
+    $('gpo-l-user').value = lastUser;
     $('gpo-l-password').value = '';
     $('gpo-login-dialog').showModal();
     ($('gpo-l-user').value ? $('gpo-l-password') : $('gpo-l-user')).focus();
@@ -78,7 +89,8 @@
       $('gpo-l-problem').hidden = false;
       return;
     }
-    login = { username, password, until: Date.now() + 15 * 60000 };
+    login = { username, password };
+    lastUser = username;
     const { ok } = asking;
     asking = null;
     $('gpo-login-dialog').close();
@@ -88,33 +100,32 @@
   $('gpo-l-cancel').addEventListener('click', () => $('gpo-login-dialog').close());
   for (const id of ['gpo-l-user', 'gpo-l-password']) $(id).addEventListener('keydown', (e) => { if (e.key === 'Enter') loginGo(); });
   $('gpo-login-dialog').addEventListener('close', () => {
+    $('gpo-l-password').value = ''; // not left in the page
     if (!asking) return;
     const { no } = asking;
     asking = null;
     no(Object.assign(new Error('Cancelled.'), { cancelled: true }));
   });
   // A change: confirmed it's you (as Devices asks), then as the service account, or with the login when it isn't allowed.
-  const change = async (path, body = {}, where = $('gpo-lib')) => {
+  const change = (path, body = {}, where = $('gpo-lib')) => together(async () => {
     const attempt = async () => {
-      const l = loginNow();
+      const l = login;
       try {
         return await send(path, { ...body, ...(l ? { username: l.username, password: l.password } : {}) });
       } catch (e) {
         if (!e.answer?.login) throw e;
-        if (l) login = null; // that login didn't work
+        login = null; // that login didn't work
         await askLogin(e.message);
         return attempt();
       }
     };
     R.busy(where, 'Changing Group Policy');
     try {
-      const r = await D.confirmed(attempt);
-      if (loginNow()) login.until = Date.now() + 15 * 60000;
-      return r;
+      return await D.confirmed(attempt);
     } finally {
       R.busy(where, '');
     }
-  };
+  });
   R.gpoChange = change; // Devices, Deploy the client (deploy.js)
   // Group Policy Management on this server: the command shows first, then runs as SYSTEM while the page asks how it's
   // going. The Group Policy page and Devices, Deploy the client both offer it (rabbidlab:gpmc when it's done).
@@ -783,14 +794,16 @@
       const failed = [];
       R.busy($('gpo-lib'), 'Backing up');
       try {
-        for (const g of rows) {
-          try {
-            await change(`/api/gpo/${encodeURIComponent(g.id)}/backup`, { comment: '' });
-          } catch (err) {
-            if (err.cancelled) throw err;
-            failed.push(g.name);
+        await together(async () => {
+          for (const g of rows) {
+            try {
+              await change(`/api/gpo/${encodeURIComponent(g.id)}/backup`, { comment: '' });
+            } catch (err) {
+              if (err.cancelled) throw err;
+              failed.push(g.name);
+            }
           }
-        }
+        });
       } finally {
         R.busy($('gpo-lib'), '');
       }
@@ -804,14 +817,16 @@
       }
       sure(`Delete ${plural(list2.length, 'GPO')}?`, `${list2.slice(0, 6).map((g) => g.name).join(', ')}${list2.length > 6 ? ` and ${list2.length - 6} more` : ''}. Their links go too. Each is backed up first.${builtIn.length ? ' The two default GPOs stay: Windows needs them.' : ''}`, 'Delete', async () => {
         const failed = [];
-        for (const g of list2) {
-          try {
-            await change(`/api/gpo/${encodeURIComponent(g.id)}/delete`, {});
-          } catch (err) {
-            if (err.cancelled) break;
-            failed.push(g.name);
+        await together(async () => {
+          for (const g of list2) {
+            try {
+              await change(`/api/gpo/${encodeURIComponent(g.id)}/delete`, {});
+            } catch (err) {
+              if (err.cancelled) break;
+              failed.push(g.name);
+            }
           }
-        }
+        });
         picked.clear();
         await after(failed.length ? `${failed.length} of ${list2.length} weren't deleted.` : `Deleted ${plural(list2.length, 'GPO')}.`, failed.length ? failed.join(', ') : 'Backups are under Backups.');
       });
@@ -941,18 +956,20 @@
         const enforced = $('gpo-f-enf').checked;
         const failed = [];
         let done = 0;
-        for (const id of ids) {
-          for (const target of targets) {
-            if (placeOf(target)?.links.some((l) => l.gpo === id)) continue;
-            try {
-              await change('/api/gpo/link', { gpo: id, target, add: true, enforced }, $('gpo-dialog'));
-              done++;
-            } catch (err) {
-              if (err.cancelled) throw err;
-              failed.push(`${nameOf(id)}: ${err.message}`);
+        await together(async () => {
+          for (const id of ids) {
+            for (const target of targets) {
+              if (placeOf(target)?.links.some((l) => l.gpo === id)) continue;
+              try {
+                await change('/api/gpo/link', { gpo: id, target, add: true, enforced }, $('gpo-dialog'));
+                done++;
+              } catch (err) {
+                if (err.cancelled) throw err;
+                failed.push(`${nameOf(id)}: ${err.message}`);
+              }
             }
           }
-        }
+        });
         if (!done && failed.length) throw new Error(failed[0]);
         if (!done) throw new Error(ids.length === 1 && targets.length === 1 ? 'It\'s already linked there.' : 'They\'re already linked there.');
         await after(`Linked ${ids.length === 1 ? nameOf(ids[0]) : plural(ids.length, 'GPO')} to ${targets.length === 1 ? placeOf(targets[0])?.name || 'the OU' : plural(targets.length, 'place')}.`, failed.join('; '));
