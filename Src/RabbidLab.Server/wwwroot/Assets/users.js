@@ -1795,10 +1795,10 @@
     }
     // Notes (notes.js) go by its SID, which a move or rename doesn't change.
     const sid = x.sid || x.more?.sid;
-    const notesOn = sid && R.notes ? `ad:${sid}` : '';
-    if (notesOn) tabsFor.push(['notes', 'Notes', R.notes.count(notesOn, () => { if (R.panel.is('ad')) drawDrawer(); }) || null]);
+    const notesOn = sid && R.notesTab ? `ad:${sid}` : '';
+    if (notesOn) tabsFor.push(['notes', 'Notes', R.notesTab.count(notesOn, () => { if (R.panel.is('ad')) drawDrawer(); }) || null]);
     if (dw.tab === 'notes' && !notesOn) dw.tab = 'overview';
-    const body = dw.tab === 'notes' ? R.notes.pane(notesOn, x.name) : dw.tab === 'attrs' ? dwAttrs(x) : dw.tab === 'members' ? dwMembers(x) : dw.tab === 'memberof' ? dwMemberOf(k, x) : dwOverview(k, x);
+    const body = dw.tab === 'notes' ? R.notesTab.pane(notesOn, x.name) : dw.tab === 'attrs' ? dwAttrs(x) : dw.tab === 'members' ? dwMembers(x) : dw.tab === 'memberof' ? dwMemberOf(k, x) : dwOverview(k, x);
     const scroll = $('dw-body').scrollTop;
     // Typing in Find keeps its place when the panel is drawn again.
     const typing = document.activeElement?.id === 'dwa-find' ? [document.activeElement.selectionStart, document.activeElement.selectionEnd] : null;

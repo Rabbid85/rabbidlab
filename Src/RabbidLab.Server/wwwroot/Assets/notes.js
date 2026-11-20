@@ -1,5 +1,5 @@
 // Notes in the side panel: on a computer (seat:{id}), an AD user, group or computer (ad:{SID}) and a GPO (gpo:{id}).
-// One engine for every panel: a page puts R.notes.count(on, again) in its tabs and R.notes.pane(on, name) as the
+// One engine for every panel: a page puts R.notesTab.count(on, again) in its tabs and R.notesTab.pane(on, name) as the
 // Notes tab. The notes themselves are /api/notes (Notes.cs). Devices gets its tab through the panel hooks here.
 (() => {
   const R = window.RabbidLab;
@@ -393,5 +393,5 @@
   const pane0 = D.hooks.seatPane;
   D.hooks.seatPane = (c, tab) => (tab === 'notes' ? pane(`seat:${c.id}`, c.computer) : pane0 ? pane0(c, tab) : null);
 
-  R.notes = { count, pane };
+  R.notesTab = { count, pane };
 })();

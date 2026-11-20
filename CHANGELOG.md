@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.291 (2026-11-20)
+
+- Add a sensor opens again. It broke in 1.1.284 when the Notes tab was added.
+- Restore in the Recycle Bin is a normal button again, not a huge icon.
+
 ## 1.1.290 (2026-11-19)
 
 - Edit and Clear always show on an attribute menu. When they can not be used they are greyed out and say why: outside the service account scope, your roles, or what the service account may write.

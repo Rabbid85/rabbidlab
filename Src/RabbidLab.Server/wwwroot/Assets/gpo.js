@@ -483,8 +483,8 @@
       : d?.error ? `<p class="hint problem">${esc(d.error)}</p>` : !d?.data ? '<div data-gpo-skel></div>' : body(d.data));
     const versions = (ad2, sys) => esc(sys == null ? `${ad2}` : ad2 === sys ? `${ad2} (AD and SYSVOL match)` : `AD ${ad2}, SYSVOL ${sys}: not in step yet`);
     let pane;
-    const notesOn = R.notes ? `gpo:${g.id}` : '';
-    if (tab === 'notes' && notesOn) pane = R.notes.pane(notesOn, g.name);
+    const notesOn = R.notesTab ? `gpo:${g.id}` : '';
+    if (tab === 'notes' && notesOn) pane = R.notesTab.pane(notesOn, g.name);
     else if (tab === 'links') {
       pane = section(`Links <small>${links.length}</small>`, links.length ? '<div class="table" id="gpo-p-links"></div>' : none('It isn\'t linked anywhere, so it applies to nothing.'),
         has('gpo.link') ? `<button type="button" class="small" data-gpo-do="link">${svg('plus')}Link to an OU</button>` : '');
@@ -520,7 +520,7 @@
       ['WMI filter', g.wmi ? esc(filterOf(g.wmi)?.name || 'Missing filter') : muted('None')], ['Changed', esc(since(g.changed))]].map(([l, v]) => `<div><span class="l">${l}</span><span class="v">${v}</span></div>`).join('')}</div>`;
     panel.body.innerHTML = head('policy', g.name, where) + actsButton(has('gpo.change') || has('gpo.link') || has('gpo.delete') || has('seats.actions')) + strip
       + tabs([['details', 'Details'], ['links', 'Links', links.length], ['settings', 'Settings', d?.data ? count('computer') + count('user') : ''], ['who', 'Delegation'],
-        ...(notesOn ? [['notes', 'Notes', R.notes.count(notesOn, () => { if (panel.shows('gpo', `gpos:${g.id}`)) drawPanel(); })]] : [])]) + pane;
+        ...(notesOn ? [['notes', 'Notes', R.notesTab.count(notesOn, () => { if (panel.shows('gpo', `gpos:${g.id}`)) drawPanel(); })]] : [])]) + pane;
     const skel = panel.body.querySelector('[data-gpo-skel]');
     if (skel) R.skeleton(skel, 'rows', 4);
     if (tab === 'links' && links.length) {

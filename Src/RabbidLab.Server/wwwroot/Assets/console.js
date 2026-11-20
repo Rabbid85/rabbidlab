@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.291', [
+    'Add a sensor opens again. It broke in 1.1.284 when the Notes tab was added.',
+    'Restore in the Recycle Bin is a normal button again, not a huge icon.']],
   ['1.1.290', [
     'Edit and Clear always show on an attribute menu. When they can not be used they are greyed out and say why: outside the service account scope, your roles, or what the service account may write.',
     'The Attributes tab and the Attribute browser say Read only here, and why, when nothing on that object can be changed.',
