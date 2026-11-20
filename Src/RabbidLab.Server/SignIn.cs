@@ -49,6 +49,7 @@ public static class SignIn
         services.AddSingleton<DeviceApps>();
         services.AddSingleton<DeviceJobs>();
         services.AddSingleton<Workflows>();
+        services.AddSingleton<Notes>();
         services.AddHostedService<WorkflowWorker>();
         services.AddSingleton<JoinLimiter>();
         // The cookie carries only the session's id; the session itself is kept by Sessions.

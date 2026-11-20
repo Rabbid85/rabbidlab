@@ -47,6 +47,16 @@
   <p>Your name in the top right shows how you signed in and has Sign out. <b>Collapse</b> at the bottom shrinks the rail to icons.</p>
 </article>
 
+<article data-key="notes" data-group="Getting started" data-title="Notes">
+  <p>Computers on Devices, users, groups and computers in Active Directory, and GPOs each have a <b>Notes</b> tab in their side panel. Its number says how many notes there are.</p>
+  <ul>
+    <li>Type in the box, then click <b>Add note</b> or press Ctrl+Enter. The toolbar does bold, italic, underline, strikethrough, headings, quotes, lists, code and links (Ctrl+K). Pasted text comes in plain.</li>
+    <li>Everyone who can see the computer, account or GPO reads its notes and can add one. Notes stay on an AD account when it's moved or renamed.</li>
+    <li>The pencil changes your own notes. The bin deletes your own, and whoever can change that kind of thing can delete anyone's.</li>
+    <li>Adding, changing and deleting notes is in the activity log.</li>
+  </ul>
+</article>
+
 <article data-key="add-computer" data-group="Computers" data-title="Add a computer">
   <p>A computer shows up under Devices once it has the <span data-app>Rabbid Lab</span> client. There's no key: the client only needs the server's address. New computers wait until an admin approves them.</p>
   <h3>From the computer itself (easiest)</h3>
@@ -102,6 +112,7 @@
     <li><b>Several computers:</b> tick them, then click <b>Actions</b>. Shift-click ticks everything in between.</li>
     <li><b>One computer:</b> click it. <b>Actions</b> at the top of its panel has the same menu, and its <b>Jobs</b> tab lists what was run on it.</li>
     <li><b>Scripts</b> is the library. <b>New</b> adds one while Scripts is open (it's also under New's arrow), and <b>Start from</b> fills in a common one to change. Each script has a time limit: it's stopped when that's up.</li>
+    <li>The built-in domain checks only read: <b>Domain trust (secure channel)</b>, <b>Domain controller it uses</b>, <b>Every domain controller</b>, <b>Domain trusts</b>, <b>Account scripts run as</b>, and <b>Domain report</b> with all of them. Domain trust fails the job when the computer's link with the domain is broken.</li>
     <li><b>Jobs</b> lists every run. Click one to see each computer, the exit code, what the script wrote there, and exactly what ran.</li>
     <li><b>Lock</b> sends everyone signed in back to the sign-in screen with their apps still open. <b>Sign everyone out</b> signs them out straight away. <b>Send a message</b> pops up for whoever is signed in. These and <b>Shut down</b> are for now: a computer offline for more than 15 minutes does not get them later.</li>
     <li><b>Restart</b> gives anyone signed in a five minute warning. <b>Install Windows updates</b> doesn't restart: a computer that needs it shows under Needs restart.</li>

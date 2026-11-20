@@ -223,6 +223,7 @@ app.MapDevicesApi();
 app.MapUsersApi();
 app.MapDirectoryExtrasApi();
 app.MapGroupPolicyApi();
+app.MapNotesApi();
 app.MapDirectoryActionsApi();
 app.MapLinksApi();
 app.MapSensorsApi();

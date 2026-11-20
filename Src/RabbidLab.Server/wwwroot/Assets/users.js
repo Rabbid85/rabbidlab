@@ -1717,7 +1717,12 @@
     // Each tab that lists things says how many.
     const inGroups = (x.groups || []).length;
     const tabsFor = k === 'groups' ? [['overview', 'Overview'], ['members', 'Members', x.moreMembers ? '1,500+' : x.members], ['memberof', 'Member of', inGroups]] : [['overview', 'Overview'], ['memberof', 'Member of', inGroups]];
-    const body = dw.tab === 'members' ? dwMembers(x) : dw.tab === 'memberof' ? dwMemberOf(k, x) : dwOverview(k, x);
+    // Notes (notes.js) go by its SID, which a move or rename doesn't change.
+    const sid = x.sid || x.more?.sid;
+    const notesOn = sid && R.notes ? `ad:${sid}` : '';
+    if (notesOn) tabsFor.push(['notes', 'Notes', R.notes.count(notesOn, () => { if (R.panel.is('ad')) drawDrawer(); }) || null]);
+    if (dw.tab === 'notes' && !notesOn) dw.tab = 'overview';
+    const body = dw.tab === 'notes' ? R.notes.pane(notesOn, x.name) : dw.tab === 'members' ? dwMembers(x) : dw.tab === 'memberof' ? dwMemberOf(k, x) : dwOverview(k, x);
     const scroll = $('dw-body').scrollTop;
     $('dw-body').innerHTML = dwHead(k, x)
       + `<div class="tabs2 dw-tabs" role="tablist">${tabsFor.map(([t, label, n]) => `<a role="tab" data-dw-tab="${t}"${dw.tab === t ? ' aria-current="true"' : ''}>${esc(label)}${n == null ? '' : `<small>${esc(n.toLocaleString())}</small>`}</a>`).join('')}</div>`

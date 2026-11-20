@@ -1,0 +1,48 @@
+/* Notes in the side panel (notes.js): the editor with its toolbar, then each note with who wrote it and when. */
+.notes .dw-sec-head { min-height: 34px; }
+.notes .notes-find { width: min(240px, 50%); margin: 0; }
+.notes .notes-find[hidden] { display: none; }
+
+/* The editor: a toolbar over a box to type in, in one frame. */
+.note-box { border: 1px solid var(--line-strong); border-radius: 10px; background: #0C0E17; }
+.note-box:focus-within { border-color: var(--accent-line); }
+.note-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.note-tools button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 30px; padding: 0 8px; border: 0; border-radius: 7px;
+  background: none; color: #B8BCCB; font-size: 13px; }
+.note-tools button:hover { background: #1A1D2B; color: var(--title); }
+.note-tools .note-t { width: 30px; padding: 0; }
+.note-tools svg { width: 16px; height: 16px; }
+.note-tools .note-block .chev { width: 13px; height: 13px; color: #8B90A5; }
+.note-rule { width: 1px; height: 18px; margin: 0 5px; background: var(--line-strong); }
+.note-edit { min-height: 96px; max-height: 360px; overflow-y: auto; padding: 12px 14px; outline: 0; color: var(--text); font-size: 14px; line-height: 1.55; overflow-wrap: anywhere; }
+.note-edit.blank::before { content: attr(data-ph); position: absolute; color: #5E6380; pointer-events: none; }
+.note-url { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-top: 1px solid var(--line); }
+.note-url[hidden] { display: none; }
+.note-url input { flex: 1; min-width: 0; height: 32px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 7px; outline: 0; background: #11131D; color: var(--text); font: inherit; font-size: 13px; }
+.note-url input:focus { border-color: var(--accent-line); }
+.note-foot { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin: 10px 0 4px; }
+.note-keys { margin-right: auto; color: #5E6380; font-size: 12.5px; }
+
+/* What a note can hold, the same in the editor and the list. */
+:is(.note-edit, .note-body) :is(p, div, h3, ul, ol, pre, blockquote) { margin: 0; }
+:is(.note-edit, .note-body) h3 { margin: 4px 0; color: var(--title); font-size: 15.5px; font-weight: 650; }
+:is(.note-edit, .note-body) :is(ul, ol) { padding-left: 22px; }
+:is(.note-edit, .note-body) blockquote { margin: 4px 0; padding: 2px 12px; border-left: 3px solid var(--line-strong); color: #B8BCCB; }
+:is(.note-edit, .note-body) code { padding: 1px 5px; border-radius: 5px; background: #1A1D2B; color: #F2BE6B; font: 12.5px Consolas, "Cascadia Mono", monospace; }
+:is(.note-edit, .note-body) pre { margin: 4px 0; padding: 8px 10px; border-radius: 7px; background: #1A1D2B; color: var(--text); font: 12.5px/1.5 Consolas, "Cascadia Mono", monospace; white-space: pre-wrap; }
+:is(.note-edit, .note-body) pre code { padding: 0; background: none; color: inherit; }
+.note-edit a { color: #9E59CF; text-decoration: underline; }
+
+/* The notes: newest first, each a card with who and when, and Edit and Delete for whoever may. */
+.note-list { display: grid; gap: 10px; margin-top: 14px; }
+.note-list > .dw-empty { margin: 4px 0 6px; }
+.note { padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: #0F111A; }
+.note-top { display: flex; align-items: center; gap: 8px; min-width: 0; margin-bottom: 6px; }
+.note-top b { color: var(--title); font-size: 13.5px; font-weight: 650; }
+.note-pic.pic { width: 26px; height: 26px; border-radius: 50%; background: linear-gradient(135deg, #3A3E55, #23263A); color: var(--title); font-size: 10.5px; }
+.note-when { flex: none; color: #6D7290; font-size: 12.5px; }
+.note-top .grow { flex: 1; }
+.note-top .note-x { margin: -4px 0; opacity: 1; }
+.note-top .note-x[hidden] { display: none; }
+.note-body { color: var(--text); font-size: 14px; line-height: 1.55; overflow-wrap: anywhere; }
+.note-body .note-box { margin-top: 2px; }

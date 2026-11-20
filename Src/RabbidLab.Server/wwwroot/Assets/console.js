@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.284', [
+    'Notes: computers, AD users, groups and computers, and GPOs have a Notes tab in their side panel, with bold, lists, code, links and more. The tab shows how many before you click it.',
+    'Everyone who can see something can read and add its notes. You change and delete your own, and whoever can change that kind of thing can delete any of them. All of it is in the activity log.']],
   ['1.1.283', [
     'Six domain checks in the script library to run on any computer: Domain trust (secure channel), Domain controller it uses, Every domain controller, Domain trusts, Account scripts run as, and a Domain report with all of them. They only read.']],
   ['1.1.282', [
