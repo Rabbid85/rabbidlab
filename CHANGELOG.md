@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.290 (2026-11-19)
+
+- Edit and Clear always show on an attribute menu. When they can not be used they are greyed out and say why: outside the service account scope, your roles, or what the service account may write.
+- The Attributes tab and the Attribute browser say Read only here, and why, when nothing on that object can be changed.
+- The update window has no shadow around it.
+
 ## 1.1.289 (2026-11-19)
 
 - The Find box and Show empty on the Attributes tab line up.

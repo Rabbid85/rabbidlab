@@ -47,7 +47,8 @@ public sealed record AdPlace(string Dn, string Name, string Path, string? Parent
 /// may have is listed). Editable: the service account may write it, it's inside the scope, and it holds text, numbers,
 /// dates or names that can be typed; Raw is then its values as stored, which Edit starts from. Single: it holds one value.
 /// </summary>
-public sealed record AdAttribute(string Name, List<string> Values, bool Hidden, string Type = "", bool Set = true, bool Editable = false, bool Single = false, List<string>? Raw = null);
+public sealed record AdAttribute(string Name, List<string> Values, bool Hidden, string Type = "", bool Set = true, bool Editable = false, bool Single = false, List<string>? Raw = null,
+    string? Why = null);
 
 public sealed record AdObject(string Dn, string Name, string Kind, List<AdAttribute> Attributes);
 
@@ -618,24 +619,33 @@ public sealed partial class DirectoryTools
         var writable = new HashSet<string>(allowed?.Texts("allowedAttributesEffective") ?? [], StringComparer.OrdinalIgnoreCase);
         await Describe(ldap, set.Keys.Concat(may), stop);
         // Editable only where the caller's roles let them edit attributes, which may be less than where they can look.
-        var inScope = Ldap.Under(at, Ready().Scope!)
-            && (Caller.Current is not { } caller || caller.Roles.Reach(caller.Who, Permissions.AdAttributes) is not { } reach || reach.Any(r => Ldap.Under(at, r)));
-        bool CanEdit(string name) => inScope && writable.Contains(name) && SchemaOf.TryGetValue(name, out var s) && Editable(name, s.Syntax);
+        var inScope = Ldap.Under(at, Ready().Scope!);
+        var roleReaches = Caller.Current is not { } caller || caller.Roles.Reach(caller.Who, Permissions.AdAttributes) is not { } reach || reach.Any(r => Ldap.Under(at, r));
+        // Why it can't be edited here, or null when it can: the page greys out Edit… and says this.
+        string? WhyNot(string name) =>
+            Secret.Contains(name) ? "Active Directory never shows or hands out this one."
+            : !inScope ? "It's outside the service account's scope."
+            : !roleReaches ? "Your roles don't let you edit attributes here."
+            : Identity.Contains(name) ? "Rename or move it to change this."
+            : !SchemaOf.TryGetValue(name, out var s) || !Editable(name, s.Syntax) ? "This kind of value can't be typed in."
+            : !writable.Contains(name) ? (writable.Count == 0 ? "The service account can't write to this object." : "The service account can't write this attribute.")
+            : null;
         var rows = set.Select(a =>
         {
             var s = SchemaOf.GetValueOrDefault(a.Key);
             if (Secret.Contains(a.Key))
             {
-                return new AdAttribute(a.Key, ["(hidden)"], true, TypeOf(s.Syntax));
+                return new AdAttribute(a.Key, ["(hidden)"], true, TypeOf(s.Syntax), Why: WhyNot(a.Key));
             }
-            var edit = CanEdit(a.Key);
-            return new AdAttribute(a.Key, [.. a.Value.Select(v => Show(a.Key, v))], false, TypeOf(s.Syntax), true, edit, s.Single,
-                edit ? [.. a.Value.Select(v => Encoding.UTF8.GetString(v))] : null);
+            var why = WhyNot(a.Key);
+            return new AdAttribute(a.Key, [.. a.Value.Select(v => Show(a.Key, v))], false, TypeOf(s.Syntax), true, why is null, s.Single,
+                why is null ? [.. a.Value.Select(v => Encoding.UTF8.GetString(v))] : null, why);
         }).ToList();
         foreach (var name in may.Where(m => !set.ContainsKey(m)).Distinct(StringComparer.OrdinalIgnoreCase))
         {
             var s = SchemaOf.GetValueOrDefault(name);
-            rows.Add(new AdAttribute(name, [], Secret.Contains(name), TypeOf(s.Syntax), false, !Secret.Contains(name) && CanEdit(name), s.Single));
+            var why = WhyNot(name);
+            rows.Add(new AdAttribute(name, [], Secret.Contains(name), TypeOf(s.Syntax), false, why is null, s.Single, Why: why));
         }
         return new AdObject(at, Ldap.Name(at), kind == "container" ? "other" : kind, [.. rows.OrderBy(a => a.Name, StringComparer.OrdinalIgnoreCase)]);
     }

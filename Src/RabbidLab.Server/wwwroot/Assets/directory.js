@@ -745,7 +745,8 @@
     const rows = object.attributes.filter((a) => (!hide || a.set) && (!find || a.name.toLowerCase().includes(find) || a.values.some((v) => v.toLowerCase().includes(find))));
     const withValue = object.attributes.filter((a) => a.set).length;
     $('at-title').textContent = object.name;
-    $('at-line').textContent = `${object.attributes.length} attributes, ${withValue} with a value`;
+    const ro = R.attrs.locked(object);
+    $('at-line').textContent = `${object.attributes.length} attributes, ${withValue} with a value${ro ? `. Read only here: ${ro}` : ''}`;
     $('at-find-row').hidden = false;
     $('at-tools').hidden = false;
     attrEmpty = find ? 'No attribute matches.' : 'No attribute has a value.';
@@ -795,10 +796,16 @@
     menuFor = t.get()?.attributes.find((a) => a.name === name);
     if (!menuFor) return;
     const m = $('at-menu');
-    const may = R.has('ad.attributes') && menuFor.editable;
-    m.querySelector('[data-at="edit"]').hidden = !may;
-    m.querySelector('[data-at="clear"]').hidden = !may || !menuFor.set;
-    $('at-menu-change').hidden = !may;
+    // Edit… and Clear always show; when they can't be used they're greyed out and say why (the server's reason).
+    const why = !R.has('ad.attributes') ? 'Your role doesn\'t have Edit attributes.' : menuFor.editable ? '' : menuFor.why || 'This one can\'t be changed here.';
+    const off = (b, reason) => {
+      if (reason) b.setAttribute('aria-disabled', 'true');
+      else b.removeAttribute('aria-disabled');
+      if (reason) b.dataset.tip = reason;
+      else delete b.dataset.tip;
+    };
+    off(m.querySelector('[data-at="edit"]'), why);
+    off(m.querySelector('[data-at="clear"]'), why || (menuFor.set ? '' : 'It has no value to clear.'));
     m.querySelector('[data-at="value"]').hidden = !menuFor.set || menuFor.hidden;
     m.querySelector('[data-at="line"]').hidden = !menuFor.set || menuFor.hidden;
     m.style.setProperty('left', `${Math.max(8, Math.min(x, window.innerWidth - 230))}px`);
@@ -819,7 +826,7 @@
   });
   $('at-menu').addEventListener('click', (e) => {
     const b = e.target.closest('[data-at]');
-    if (!b || !menuFor) return;
+    if (!b || !menuFor || b.getAttribute('aria-disabled') === 'true') return;
     $('at-menu').hidePopover();
     const a = menuFor;
     if (b.dataset.at === 'value') copyText(a.values.join('\n'), 'the value');
@@ -898,7 +905,10 @@
   };
   $('at-export').addEventListener('click', () => { if (object) exportAttrs(object); });
   // The AD side panel's Attributes tab (users.js) uses the same menu, Edit… and Export, on the object it shows.
-  R.attrs = { menu: openMenu, export: exportAttrs, href: (dn) => `#attrs/${enc(parentOf(dn))}/${enc(dn)}` };
+  // Why nothing on an object can be edited (the scope, the role or the service account's rights), or '' when something can.
+  const locked = (o) => (!R.has('ad.attributes') || o.attributes.some((a) => a.editable) ? ''
+    : o.attributes.map((a) => a.why).find((w) => w && /scope|roles|service account/i.test(w)) || '');
+  R.attrs = { menu: openMenu, export: exportAttrs, locked, href: (dn) => `#attrs/${enc(parentOf(dn))}/${enc(dn)}` };
   const showAttrs = async () => {
     const [, , rest] = R.where();
     const at = dec(rest[0]);

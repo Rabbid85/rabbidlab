@@ -1558,6 +1558,7 @@
     if (o.problem) return `<section class="dw-sec">${head()}<p class="hint problem">${esc(o.problem)}</p></section>`;
     return `<section class="dw-sec dwa">${head(`<span class="dw-sec-do"><button type="button" class="small" data-dwa-export>${svg('download')}Export</button>`
       + `<button type="button" class="small" data-dwa-open>${svg('list')}Attribute browser</button></span>`)}`
+      + (R.attrs.locked(o) ? `<p class="dw-how">Read only here: ${esc(R.attrs.locked(o))}</p>` : '')
       + `<div class="dwa-bar"><label class="side-find"><svg><use href="#i-search"/></svg><input type="search" id="dwa-find" placeholder="Find an attribute or value" aria-label="Find an attribute or value" autocomplete="off" spellcheck="false" value="${esc(dw.attrs.find)}"></label>`
       + `<label class="dwa-all"><input type="checkbox" id="dwa-all"${dw.attrs.all ? ' checked' : ''}>Show empty</label></div><div class="table attrs" id="dwa-table"></div></section>`;
   };
