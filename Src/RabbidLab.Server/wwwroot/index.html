@@ -320,7 +320,7 @@
         <div class="ds-row" id="acc-password-row" hidden><div class="ds-l"><b>Password</b><span>Changing it signs you out everywhere, here too.</span></div><div class="ds-r"><button type="button" class="ds-btn" id="acc-password">Change</button></div></div>
       </section>
       <section class="ds-sec" data-sec="mfa"><h3 class="ds-h">Multi-factor authentication</h3>
-        <div class="ds-row"><div class="ds-l"><b>Authenticator app</b><span id="acc-mfa-text"></span></div><div class="ds-r"><button type="button" class="ds-btn" id="acc-mfa" hidden>Set up</button></div></div>
+        <div class="ds-row"><div class="ds-l"><b>Authenticator app</b><span id="acc-mfa-text"></span><span class="acc-mfa-warn" id="acc-mfa-warn" hidden></span></div><div class="ds-r"><button type="button" class="ds-btn" id="acc-mfa" hidden>Set up</button></div></div>
       </section>
       <section class="ds-sec" data-sec="sessions"><h3 class="ds-h">Where you're signed in</h3>
         <div id="acc-sessions" data-skel="rows:2"></div>
@@ -715,8 +715,7 @@
             <p class="lib-label">Where it sits</p>
             <p class="hint" id="role-where"></p>
             <p class="lib-label">Sign-in</p>
-            <div class="rows"><label class="row still perm" id="role-mfa-row"><span class="t"><b>Require MFA</b><span>Everyone in this role signs in with their password and a code from an authenticator app. Anyone without it sets it up at their next sign-in, and anyone signed in without a code is signed out.</span></span>
-              <input type="checkbox" class="switch" role="switch" id="role-mfa" aria-label="Require MFA"></label></div>
+            <p class="hint">Everyone signs in with their password and a code from an authenticator app: MFA is required for everyone, in every role.</p>
             <div class="rows" id="role-delete-row"><div class="row still"><span class="t"><b id="role-delete-title">Delete this role</b><span>Everyone in it loses what it gives them. Anything their other roles allow stays.</span></span>
               <button type="button" class="danger" id="role-delete"><svg><use href="#i-trash"/></svg>Delete role</button></div></div>
           </div>

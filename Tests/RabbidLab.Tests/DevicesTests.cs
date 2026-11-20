@@ -45,7 +45,7 @@ public sealed class DevicesTests : IDisposable
     {
         var admin = await app.SignedIn();
         (await admin.PostAsJsonAsync("/api/clients/settings", new { approve })).EnsureSuccessStatusCode();
-        (await admin.PostAsJsonAsync("/api/confirm", new { password = "correct horse" })).EnsureSuccessStatusCode();
+        await TestApp.Confirm(admin, "correct horse");
         return admin;
     }
 
@@ -182,10 +182,10 @@ public sealed class DevicesTests : IDisposable
         // Signed in isn't enough: the page is told what to ask for.
         var first = await admin.PostAsJsonAsync("/api/devices/run", run);
         Assert.Equal(HttpStatusCode.Forbidden, first.StatusCode);
-        Assert.Equal("password", (await Json(first)).GetProperty("confirm").GetString());
+        Assert.Equal("code", (await Json(first)).GetProperty("confirm").GetString()); // MFA is on for everyone
         Assert.Equal(HttpStatusCode.BadRequest, (await admin.PostAsJsonAsync("/api/confirm", new { password = "wrong" })).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await admin.PostAsJsonAsync("/api/devices/run", run)).StatusCode);
-        (await admin.PostAsJsonAsync("/api/confirm", new { password = "correct horse" })).EnsureSuccessStatusCode();
+        await TestApp.Confirm(admin, "correct horse");
         await Id(await admin.PostAsJsonAsync("/api/devices/run", run));
 
         // Ten minutes later it's asked again.
@@ -196,7 +196,7 @@ public sealed class DevicesTests : IDisposable
         app.Services.GetRequiredService<Accounts>().Add("mlopez", "user password", Roles.User);
         var user = app.Page();
         (await user.PostAsJsonAsync("/api/signin", new { username = "mlopez", password = "user password" })).EnsureSuccessStatusCode();
-        (await user.PostAsJsonAsync("/api/confirm", new { password = "user password" })).EnsureSuccessStatusCode();
+        await TestApp.Confirm(user, "user password");
         Assert.Equal(HttpStatusCode.Forbidden, (await user.PostAsJsonAsync("/api/devices/run", run)).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await user.PostAsJsonAsync("/api/devices/run", new { kind = "restart", clients = new[] { id } })).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await user.GetAsync("/api/devices/jobs")).StatusCode);
@@ -207,14 +207,11 @@ public sealed class DevicesTests : IDisposable
     [Fact]
     public async Task With_MFA_on_the_confirmation_is_a_code_from_the_app()
     {
-        var admin = await app.SignedIn();
-        var secret = (await Json(await admin.PostAsJsonAsync("/api/mfa/setup", new { }))).GetProperty("secret").GetString()!;
-        (await admin.PostAsJsonAsync("/api/mfa/on", new { code = Totp.Code(secret, Totp.Step(app.Clock.GetUtcNow())) })).EnsureSuccessStatusCode();
+        var admin = await app.SignedIn(confirmed: false); // MFA is on for everyone, set up at this first sign-in
 
         Assert.Equal("code", (await admin.GetFromJsonAsync<JsonElement>("/api/confirm")).GetProperty("method").GetString());
         Assert.Equal(HttpStatusCode.BadRequest, (await admin.PostAsJsonAsync("/api/confirm", new { password = "correct horse" })).StatusCode); // the password isn't asked for any more
-        app.Clock.Advance(TimeSpan.FromSeconds(31)); // a code is taken once
-        (await admin.PostAsJsonAsync("/api/confirm", new { code = Totp.Code(secret, Totp.Step(app.Clock.GetUtcNow())) })).EnsureSuccessStatusCode();
+        (await admin.PostAsJsonAsync("/api/confirm", new { code = app.MfaCode("admin") })).EnsureSuccessStatusCode();
         Assert.Equal(JsonValueKind.String, (await admin.GetFromJsonAsync<JsonElement>("/api/confirm")).GetProperty("until").ValueKind);
     }
 
@@ -405,7 +402,7 @@ public sealed class DevicesTests : IDisposable
         (await admin.PostAsJsonAsync($"/api/roles/{role}/members", new { kind = "local", name = "pat" })).EnsureSuccessStatusCode();
         var pat = app.Page();
         (await pat.PostAsJsonAsync("/api/signin", new { username = "pat", password = "patch password" })).EnsureSuccessStatusCode();
-        (await pat.PostAsJsonAsync("/api/confirm", new { password = "patch password" })).EnsureSuccessStatusCode();
+        await TestApp.Confirm(pat, "patch password");
 
         Assert.Equal(HttpStatusCode.Forbidden, (await pat.PostAsJsonAsync("/api/devices/workflows", new { name = "Sneaky", on = true, when = "online", steps = new object[] { new { kind = "script", script } } })).StatusCode);
         await Id(await pat.PostAsJsonAsync("/api/devices/workflows", new { name = "Restarts", on = true, when = "restart", steps = new object[] { new { kind = "restart" } } }));
@@ -413,7 +410,7 @@ public sealed class DevicesTests : IDisposable
         // Run now starts it on every approved computer it fits, by the person who clicked.
         await Later(admin, 11);
         Assert.Equal(HttpStatusCode.Forbidden, (await admin.PostAsync($"/api/devices/workflows/{patch}/run", null)).StatusCode);
-        (await admin.PostAsJsonAsync("/api/confirm", new { password = "correct horse" })).EnsureSuccessStatusCode();
+        await TestApp.Confirm(admin, "correct horse");
         (await admin.PostAsync($"/api/devices/workflows/{patch}/run", null)).EnsureSuccessStatusCode();
         var job = Assert.Single(await Jobs(admin));
         Assert.Equal("admin", job.GetProperty("by").GetString());
@@ -489,8 +486,8 @@ public sealed class DevicesTests : IDisposable
         var (id, _) = await Computer();
         var run = new { kind = "install", apps = new[] { "builtin-vscode" }, clients = new[] { id } };
 
-        Assert.Equal("password", (await Json(await admin.PostAsJsonAsync("/api/devices/run", run))).GetProperty("confirm").GetString());
-        (await admin.PostAsJsonAsync("/api/confirm", new { password = "correct horse" })).EnsureSuccessStatusCode();
+        Assert.Equal("code", (await Json(await admin.PostAsJsonAsync("/api/devices/run", run))).GetProperty("confirm").GetString()); // MFA is on for everyone
+        await TestApp.Confirm(admin, "correct horse");
 
         // Restarting and updating computers doesn't come with installing apps.
         var made = await admin.PostAsJsonAsync("/api/roles", new { name = "Patchers", color = "#5FD4A0" });
@@ -500,7 +497,7 @@ public sealed class DevicesTests : IDisposable
         (await admin.PostAsJsonAsync($"/api/roles/{role}/members", new { kind = "local", name = "pat" })).EnsureSuccessStatusCode();
         var pat = app.Page();
         (await pat.PostAsJsonAsync("/api/signin", new { username = "pat", password = "patch password" })).EnsureSuccessStatusCode();
-        (await pat.PostAsJsonAsync("/api/confirm", new { password = "patch password" })).EnsureSuccessStatusCode();
+        await TestApp.Confirm(pat, "patch password");
         Assert.Equal(HttpStatusCode.Forbidden, (await pat.PostAsJsonAsync("/api/devices/run", run)).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await pat.PostAsJsonAsync("/api/devices/apps", new { name = "OBS Studio", winget = "OBSProject.OBSStudio" })).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await pat.PostAsJsonAsync("/api/devices/workflows", new { name = "Sneaky", on = true, when = "online", steps = new object[] { new { kind = "install", app = "builtin-vscode" } } })).StatusCode);

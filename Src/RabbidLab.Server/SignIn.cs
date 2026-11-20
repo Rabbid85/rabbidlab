@@ -283,7 +283,7 @@ public static class SignIn
         });
 
         // First run, a local administrator account.
-        app.MapPost("/api/setup/local", async (HttpContext context, Accounts accounts, Roles roles, ActivityLog log, LocalSetupForm form) =>
+        app.MapPost("/api/setup/local", (HttpContext context, Accounts accounts, Roles roles, ActivityLog log, Mfa mfa, PendingSignIns pending, LocalSetupForm form) =>
         {
             if (Access.Refuse(context) is { } refused)
             {
@@ -296,10 +296,8 @@ public static class SignIn
             }
             roles.SetUp(new Member { Kind = Member.Local, Name = account.Username }, null);
             log.Record(account.Username, ActivityLog.Address(context), "sign-in", "setup.local", $"Set up {Product.Title} with a local account", "ok");
-            var principal = Principal(account.Username, account.Username, Local, account.Stamp);
-            await Start(context, principal);
-            roles.Seen(Who.Of(principal), account.Username);
-            return Results.Ok(new { user = Me(principal, roles) });
+            // MFA is required for everyone, the person setting it up too: they scan the code before they're signed in.
+            return SetUpMfa(Principal(account.Username, account.Username, Local, account.Stamp), account.Username, mfa, pending);
         });
 
         // First run, the Domain and Domain controller boxes: the domains this machine can find, and a domain's controllers.
@@ -312,7 +310,7 @@ public static class SignIn
 
         // First run, Active Directory: the person setting it up signs in, and becomes the administrator.
         app.MapPost("/api/setup/directory", async (HttpContext context, Accounts accounts, Roles roles, ActivityLog log, IDirectory directory,
-            IDomainFinder finder, DirectorySetupForm form) =>
+            IDomainFinder finder, Mfa mfa, PendingSignIns pending, DirectorySetupForm form) =>
         {
             if (Access.Refuse(context) is { } refused)
             {
@@ -356,9 +354,8 @@ public static class SignIn
             // Whoever sets it up is the administrator; everyone in the domain gets User.
             roles.SetUp(new Member { Kind = Member.Person, Name = user.Username, Display = user.Name }, new Member { Kind = Member.Everyone, Name = "ad" });
             var principal = Principal(user.Username, user.Name, Directory, accounts.Directory!.Stamp, domain, setupHost, user.Groups, Stamp(user.PasswordSet));
-            await Start(context, principal);
-            roles.Seen(Who.Of(principal), user.Name);
-            return Results.Ok(new { user = Me(principal, roles) });
+            // MFA is required for everyone, the person setting it up too: they scan the code before they're signed in.
+            return SetUpMfa(principal, user.Name, mfa, pending);
         }).AddEndpointFilter(Limited);
 
         // Rabbid Lab's own accounts for .\name or Local account, otherwise Active Directory when it's set up.
@@ -371,7 +368,7 @@ public static class SignIn
             }
             var from = ActivityLog.Address(context);
             // The password was right. With MFA the page gets a ticket to send its code with, and nobody is signed in yet;
-            // someone whose role requires MFA and hasn't set it up gets the secret to set it up with first.
+            // someone who hasn't set it up gets the secret to set it up with first, and after a reset also needs its code.
             async Task<IResult> Enter(ClaimsPrincipal principal, string shown)
             {
                 var who = Who.Of(principal);
@@ -381,8 +378,7 @@ public static class SignIn
                 }
                 if (roles.NeedsMfa(who))
                 {
-                    var secret = Totp.NewSecret();
-                    return Results.Ok(new { mfa = "setup", ticket = pending.Add(principal, shown, secret), setup = MfaApi.Setup(who, secret) });
+                    return SetUpMfa(principal, shown, mfa, pending);
                 }
                 await Start(context, principal);
                 roles.Seen(who, shown);
@@ -491,6 +487,19 @@ public static class SignIn
                 pending.Remove(form.Ticket!);
                 return Results.BadRequest(new { error = "That took too long. Sign in again.", again = true });
             }
+            // After a reset, a new app takes the one-time code too, so a password alone can't put someone else's app on it.
+            var afterReset = waiting.Secret is not null && mfa.ResetWaiting(who);
+            if (afterReset)
+            {
+                switch (mfa.CheckReset(who, form.Reset))
+                {
+                    case MfaAnswer.Wait:
+                        return Results.Json(new { error = MfaApi.TooMany }, statusCode: StatusCodes.Status429TooManyRequests);
+                    case MfaAnswer.Wrong:
+                        log.Record(username, from, "sign-in", "signin.failed", "Sign-in failed", "failed", "Wrong one-time code after an MFA reset");
+                        return Results.Json(new { error = "That one-time code isn't right. Ask whoever reset your MFA for it again." }, statusCode: StatusCodes.Status401Unauthorized);
+                }
+            }
             switch (waiting.Secret is null ? mfa.Check(who, form.Code) : mfa.Enable(who, pending.Secret(waiting)!, form.Code))
             {
                 case MfaAnswer.Wait:
@@ -500,6 +509,10 @@ public static class SignIn
                     return Results.Json(new { error = MfaApi.WrongCode }, statusCode: StatusCodes.Status401Unauthorized);
             }
             pending.Remove(form.Ticket!);
+            if (afterReset)
+            {
+                mfa.ClearReset(who);
+            }
             if (!roles.CanSignIn(who))
             {
                 return Results.BadRequest(new { error = "Sign in again.", again = true });
@@ -509,7 +522,7 @@ public static class SignIn
             roles.Seen(who, waiting.Name);
             if (waiting.Secret is not null)
             {
-                log.Record(username, from, "access", "mfa.on", "Turned on MFA", "ok", "At sign-in, as their role requires");
+                log.Record(username, from, "access", "mfa.on", "Turned on MFA", "ok", afterReset ? "At sign-in, with the one-time code from a reset" : "At sign-in");
             }
             log.Record(username, from, "sign-in", "signin", "Signed in", "ok");
             return Results.Ok(new { user = Me(waiting.Principal, roles) });
@@ -600,6 +613,17 @@ public static class SignIn
         app.Services.GetRequiredService<ActivityLog>().Record(username, null, "sign-in", "account.add-admin", "Added an administrator from the command line", "ok");
         Console.WriteLine($"{username} can sign in to {Product.Name} with the password {password}");
         return 0;
+    }
+
+    /// <summary>
+    /// The MFA step for someone who hasn't set it up: a ticket and the secret for their app. After a reset (reset: true) the
+    /// page also asks for the one-time code whoever reset it was given.
+    /// </summary>
+    private static IResult SetUpMfa(ClaimsPrincipal principal, string shown, Mfa mfa, PendingSignIns pending)
+    {
+        var who = Who.Of(principal);
+        var secret = Totp.NewSecret();
+        return Results.Ok(new { mfa = "setup", ticket = pending.Add(principal, shown, secret), setup = MfaApi.Setup(who, secret), reset = mfa.ResetWaiting(who) });
     }
 
     /// <summary>
@@ -731,7 +755,7 @@ public sealed record DirectorySetupForm(string? Domain, string? Username, string
 
 public sealed record SignInForm(string? Username, string? Password, string? Server = null, bool Local = false, string? Domain = null);
 
-public sealed record MfaSignInForm(string? Ticket, string? Code);
+public sealed record MfaSignInForm(string? Ticket, string? Code, string? Reset = null);
 
 public sealed record SignInSettingsForm(int Idle);
 

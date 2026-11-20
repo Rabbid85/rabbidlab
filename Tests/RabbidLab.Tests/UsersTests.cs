@@ -210,7 +210,7 @@ public sealed class UsersTests : IDisposable
         {
             var answer = await page.PostAsJsonAsync(path, body);
             Assert.True(answer.StatusCode == HttpStatusCode.Forbidden, $"{path}: {answer.StatusCode}");
-            Assert.Equal("password", (await answer.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("confirm").GetString());
+            Assert.Equal("code", (await answer.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("confirm").GetString()); // MFA is on for everyone
         }
         Assert.DoesNotContain(app.Windows.Orders, o => o.Action != RabbidLab.Shared.AccountOrder.List);
 

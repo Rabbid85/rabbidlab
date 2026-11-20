@@ -170,7 +170,8 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
         }
     }
 
-    public bool NeedsMfa(Who who) => MfaRoles(who).Count > 0;
+    /// <summary>MFA is required for everyone (since 1.1.296, like Datto RMM and NinjaOne): every sign-in takes a code.</summary>
+    public bool NeedsMfa(Who who) => true;
 
     /// <summary>
     /// Whether a role requires MFA. Administrator's can be set too, by an administrator: it's the one thing about that role

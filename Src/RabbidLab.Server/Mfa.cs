@@ -14,9 +14,19 @@ public sealed class MfaEntry
     public long Used { get; set; }
 }
 
+/// <summary>A reset waiting to be used: the one-time code (only its hash) that setting MFA up again takes, and until when.</summary>
+public sealed class MfaReset
+{
+    public string Source { get; set; } = "";
+    public string Username { get; set; } = "";
+    public string Hash { get; set; } = "";
+    public DateTime Until { get; set; }
+}
+
 public sealed class MfaFile
 {
     public List<MfaEntry> People { get; set; } = [];
+    public List<MfaReset> Resets { get; set; } = [];
 }
 
 public enum MfaAnswer
@@ -29,9 +39,9 @@ public enum MfaAnswer
 }
 
 /// <summary>
-/// Multi-factor authentication: a code from an authenticator app (Totp.cs) after the password. Anyone can turn it on for
-/// themselves, and a role can require it (Roles.NeedsMfa). Secrets are kept in mfa.json in the data folder, encrypted.
-/// Five wrong codes for one person in ten minutes, then they wait.
+/// Multi-factor authentication: a code from an authenticator app (Totp.cs) after the password, required for everyone.
+/// Secrets are kept in mfa.json in the data folder, encrypted. Five wrong codes for one person in ten minutes, then they
+/// wait. A reset (Datto's way) leaves a one-time code the person needs, with their password, to set it up again.
 /// </summary>
 public sealed class Mfa(DataFolder folder, SettingsStore secrets, TimeProvider clock)
 {
@@ -156,20 +166,85 @@ public sealed class Mfa(DataFolder folder, SettingsStore secrets, TimeProvider c
         }
     }
 
-    /// <summary>Takes it off every account with this username, however it signs in (--reset-mfa). How many had it.</summary>
-    public int RemoveAll(string username)
+    public static readonly TimeSpan ResetLife = TimeSpan.FromHours(24);
+    private const string ResetLetters = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O or 1/I to misread
+
+    /// <summary>
+    /// A lost phone: takes their app off and gives the one-time code that setting it up again takes, shown to whoever reset
+    /// it once and kept only as a hash. Good once, for 24 hours. A newer reset replaces an older one.
+    /// </summary>
+    public string Reset(string source, string username)
+    {
+        var raw = RandomNumberGenerator.GetString(ResetLetters, 12);
+        var code = $"{raw[..4]}-{raw[4..8]}-{raw[8..]}";
+        lock (gate)
+        {
+            var f = file.Read();
+            f.People.RemoveAll(e => Same(e, source, username));
+            f.Resets.RemoveAll(r => Same(r, source, username) || r.Until < clock.GetUtcNow().UtcDateTime);
+            f.Resets.Add(new MfaReset { Source = source, Username = username, Hash = HashOf(code), Until = (clock.GetUtcNow() + ResetLife).UtcDateTime });
+            file.Save(f);
+        }
+        return code;
+    }
+
+    /// <summary>Whether setting MFA up for this person takes a reset code first.</summary>
+    public bool ResetWaiting(Who who)
+    {
+        lock (gate)
+        {
+            return file.Read().Resets.Any(r => Same(r, who.Source, who.Username) && r.Until > clock.GetUtcNow().UtcDateTime);
+        }
+    }
+
+    /// <summary>Whether this is their reset code. It counts against the same five tries as a wrong app code.</summary>
+    public MfaAnswer CheckReset(Who who, string? code)
+    {
+        var key = Key(who.Source, who.Username);
+        if (!limiter.Take(key))
+        {
+            return MfaAnswer.Wait;
+        }
+        var typed = HashOf((code ?? "").Trim().ToUpperInvariant().Replace(" ", "", StringComparison.Ordinal));
+        lock (gate)
+        {
+            if (file.Read().Resets.FirstOrDefault(r => Same(r, who.Source, who.Username) && r.Until > clock.GetUtcNow().UtcDateTime) is { } reset
+                && CryptographicOperations.FixedTimeEquals(Convert.FromHexString(reset.Hash), Convert.FromHexString(typed)))
+            {
+                limiter.GiveBack(key);
+                return MfaAnswer.Right;
+            }
+        }
+        return MfaAnswer.Wrong;
+    }
+
+    /// <summary>Uses up their reset code, once the new app is set up.</summary>
+    public void ClearReset(Who who)
     {
         lock (gate)
         {
             var f = file.Read();
-            var gone = f.People.RemoveAll(e => string.Equals(e.Username, username, StringComparison.OrdinalIgnoreCase));
-            if (gone > 0)
+            if (f.Resets.RemoveAll(r => Same(r, who.Source, who.Username)) > 0)
             {
                 file.Save(f);
             }
-            return gone;
         }
     }
+
+    /// <summary>Every account with this username, however it signs in, that has MFA set up (--reset-mfa).</summary>
+    public List<(string Source, string Username)> WithName(string username)
+    {
+        lock (gate)
+        {
+            return [.. file.Read().People.Where(e => string.Equals(e.Username, username, StringComparison.OrdinalIgnoreCase)).Select(e => (e.Source, e.Username))];
+        }
+    }
+
+    // Dashes and spaces don't count, so XXXX-XXXX-XXXX and XXXXXXXXXXXX are the same code.
+    private static string HashOf(string code) =>
+        Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(code.Replace("-", "", StringComparison.Ordinal))));
+
+    private static bool Same(MfaReset r, string source, string username) => r.Source == source && string.Equals(r.Username, username, StringComparison.OrdinalIgnoreCase);
 
     private static MfaEntry? Of(MfaFile f, string source, string username) => f.People.FirstOrDefault(e => Same(e, source, username));
 
@@ -249,10 +324,15 @@ public static class MfaApi
 
     public static void MapMfaApi(this WebApplication app)
     {
+        // Theirs, and for anyone who manages roles, how many administrators have it: with one, a lost phone means the server.
         app.MapGet("/api/mfa", (HttpContext context, Mfa mfa, Roles roles) =>
         {
             var who = Who.Of(context.User);
-            return Results.Ok(new { since = mfa.Since(who.Source, who.Username), requiredBy = roles.MfaRoles(who).Select(r => r.Name) });
+            int? admins = Access.Can(context, Permissions.AccessRoles)
+                ? roles.Snapshot().People.Count(p => mfa.Since(p.Source, p.Username) is not null
+                    && roles.Of(new Who(p.Source, p.Username, p.Domain, p.Groups)).Any(r => r.Id == Roles.Admin))
+                : null;
+            return Results.Ok(new { since = mfa.Since(who.Source, who.Username), admins });
         });
 
         // Only while it's off: with it on, a new app would take the old one's place without a code from the old one.
@@ -306,7 +386,8 @@ public static class MfaApi
             }
         });
 
-        // Someone else's, for a lost phone: they set it up again at their next sign-in if a role of theirs requires it.
+        // Someone else's, for a lost phone (Datto's way): their app stops working, and the answer is a one-time code to give
+        // them. At their next sign-in they need it, with their password, to set up a new app.
         app.MapPost("/api/mfa/reset", (MfaResetForm form, HttpContext context, Mfa mfa, Roles roles, Confirmations confirm, ActivityLog log) =>
         {
             if ((Access.RefuseUnless(context, Permissions.AccessMfa) ?? confirm.Refuse(context)) is { } refused)
@@ -329,15 +410,16 @@ public static class MfaApi
             {
                 return Results.Json(new { error = $"{person.Username} is in {role.Name}. Only someone above {role.Name} can reset their MFA." }, statusCode: StatusCodes.Status403Forbidden);
             }
-            mfa.Remove(person.Source, person.Username);
-            log.Record(context, "access", "mfa.reset", $"Reset MFA for {person.Username}");
-            return Results.Ok();
+            var code = mfa.Reset(person.Source, person.Username);
+            log.Record(context, "access", "mfa.reset", $"Reset MFA for {person.Username}", "ok", "Gave a one-time code to set it up again");
+            return Results.Ok(new { code, hours = (int) Mfa.ResetLife.TotalHours });
         });
     }
 
     /// <summary>
-    /// --reset-mfa username: takes MFA off that account, for when its phone is gone and nobody else can reset it. Run it on
-    /// the machine Rabbid Lab is on, as an administrator (in Docker, with docker exec). The exit code, or null to run.
+    /// --reset-mfa username: resets that account's MFA, for when its phone is gone and nobody else can, and prints the
+    /// one-time code it needs to set up a new app. Run it on the machine Rabbid Lab is on, as an administrator (in Docker,
+    /// with docker exec). The exit code, or null to run.
     /// </summary>
     public static int? ResetMfaCommand(this WebApplication app, string[] args)
     {
@@ -352,14 +434,20 @@ public static class MfaApi
             return 1;
         }
         var username = args[at + 1];
-        var gone = app.Services.GetRequiredService<Mfa>().RemoveAll(username);
-        if (gone == 0)
+        var mfa = app.Services.GetRequiredService<Mfa>();
+        var accounts = mfa.WithName(username);
+        if (accounts.Count == 0)
         {
             Console.Error.WriteLine($"{username} doesn't have MFA set up.");
             return 1;
         }
-        app.Services.GetRequiredService<ActivityLog>().Record(username, null, "access", "mfa.reset", "Reset MFA from the command line", "ok");
-        Console.WriteLine($"{username} signs in to {Product.Name} with just a password now, and sets MFA up again if a role requires it.");
+        foreach (var (source, name) in accounts)
+        {
+            var code = mfa.Reset(source, name);
+            app.Services.GetRequiredService<ActivityLog>().Record(name, null, "access", "mfa.reset", "Reset MFA from the command line", "ok");
+            Console.WriteLine($"{name} ({source}): at the next sign-in to {Product.Name}, type the password, then this one-time code, then set up the new app: {code}");
+        }
+        Console.WriteLine($"Each code works once, for {(int) Mfa.ResetLife.TotalHours} hours.");
         return 0;
     }
 }

@@ -126,12 +126,55 @@ public sealed class TestApp(string data) : WebApplicationFactory<Program>
         });
     }
 
-    /// <summary>A browser on Rabbid Lab's own page: its changes carry the header. It keeps cookies and doesn't follow redirects.</summary>
+    /// <summary>
+    /// A browser on Rabbid Lab's own page: its changes carry the header. It keeps cookies and doesn't follow redirects. MFA
+    /// is required for everyone, so like a person it finishes the code step after a right password (AutoMfa); a test about
+    /// that step itself uses RawPage.
+    /// </summary>
     public HttpClient Page()
+    {
+        var client = CreateDefaultClient(new Uri("http://localhost"), new AutoMfa(this), new Microsoft.AspNetCore.Mvc.Testing.Handlers.CookieContainerHandler());
+        client.DefaultRequestHeaders.Add("X-Rabbid-Lab", "1");
+        Made.AddOrUpdate(client, this);
+        return client;
+    }
+
+    /// <summary>The same browser, stopping at the MFA step: the page's own answer to the password comes back as it is.</summary>
+    public HttpClient RawPage()
     {
         var client = CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
         client.DefaultRequestHeaders.Add("X-Rabbid-Lab", "1");
+        Made.AddOrUpdate(client, this);
         return client;
+    }
+
+    // Which app made a browser, so Confirm can type that account's code.
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<HttpClient, TestApp> Made = new();
+
+    // Kept by data folder, so a test that starts Rabbid Lab again on the same data still has the accounts' phones.
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, Dictionary<string, string>> SecretsByData = new();
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, Dictionary<string, long>> StepsByData = new();
+
+    /// <summary>Each account's authenticator secret, as AutoMfa scanned it at setup: by username, lowercase.</summary>
+    public Dictionary<string, string> MfaSecrets => SecretsByData.GetOrAdd(data, _ => []);
+
+    /// <summary>
+    /// A code from that account's app. A code works once, so it's the step after the last one used; the server also takes
+    /// the next 30 seconds' code, so the clock is left alone unless that's further ahead (or a Rabbid Lab started again has
+    /// an earlier clock), and then it moves just enough.
+    /// </summary>
+    public string MfaCode(string username)
+    {
+        var key = username.ToLowerInvariant();
+        var steps = StepsByData.GetOrAdd(data, _ => []);
+        var now = Totp.Step(Clock.GetUtcNow());
+        var step = steps.TryGetValue(key, out var last) ? Math.Max(now, last + 1) : now;
+        if (step > now + 1)
+        {
+            Clock.Advance(TimeSpan.FromSeconds((step - now - 1) * 30));
+        }
+        steps[key] = step;
+        return Totp.Code(MfaSecrets[key], step);
     }
 
     /// <summary>
@@ -153,9 +196,24 @@ public sealed class TestApp(string data) : WebApplicationFactory<Program>
         return client;
     }
 
-    /// <summary>Confirm it's you, with the password, for the next ten minutes.</summary>
-    public static async Task Confirm(HttpClient page, string password) =>
-        (await page.PostAsJsonAsync("/api/confirm", new { password })).EnsureSuccessStatusCode();
+    /// <summary>
+    /// Confirm it's you, for the next ten minutes. With MFA on (everyone, once set up) that takes a code from their app, so
+    /// it sends the signed-in account's code along with the password.
+    /// </summary>
+    public static async Task Confirm(HttpClient page, string password)
+    {
+        string? code = null;
+        if (Made.TryGetValue(page, out var app))
+        {
+            var me = (await page.GetFromJsonAsync<System.Text.Json.JsonElement>("/api/signin")).GetProperty("user");
+            var username = me.ValueKind == System.Text.Json.JsonValueKind.Object ? me.GetProperty("username").GetString() ?? "" : "";
+            if (app.MfaSecrets.ContainsKey(username.ToLowerInvariant()))
+            {
+                code = app.MfaCode(username);
+            }
+        }
+        (await page.PostAsJsonAsync("/api/confirm", new { password, code })).EnsureSuccessStatusCode();
+    }
 
     /// <summary>Adds a notification and gives back its id: an email one through Gmail, or a webhook kind at an address.</summary>
     public static async Task<string> Notification(HttpClient admin, string name = "Me", string kind = "email", string? url = null)
@@ -791,4 +849,68 @@ public sealed class FakeInstallName : IInstallName
     public (string Name, string Zone, string Server, string Target)? Alias() => SavedAlias;
     public void Forget() => Saved = "";
     public void ForgetAlias() => SavedAlias = null;
+}
+
+/// <summary>
+/// What a person does after a right password, now that MFA is required: scans the code at setup (keeping the secret, as
+/// their phone would) or types the app's code, so tests that just sign in get a session. Only for /api/signin and setup.
+/// </summary>
+public sealed class AutoMfa(TestApp app) : DelegatingHandler
+{
+    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        var sent = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
+        var answer = await base.SendAsync(request, cancellationToken);
+        var path = request.RequestUri!.AbsolutePath;
+        if (request.Method != HttpMethod.Post || !answer.IsSuccessStatusCode || !(path == "/api/signin" || path.StartsWith("/api/setup/", StringComparison.Ordinal)))
+        {
+            return answer;
+        }
+        var body = await answer.Content.ReadAsStringAsync(cancellationToken);
+        System.Text.Json.JsonElement said;
+        try
+        {
+            said = System.Text.Json.JsonDocument.Parse(body).RootElement;
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return Again(answer, body);
+        }
+        if (said.ValueKind != System.Text.Json.JsonValueKind.Object || !said.TryGetProperty("mfa", out var kind))
+        {
+            return Again(answer, body);
+        }
+        var typed = sent is null ? "" : System.Text.Json.JsonDocument.Parse(sent).RootElement.TryGetProperty("username", out var u) ? u.GetString() ?? "" : "";
+        var username = typed.StartsWith(@".\", StringComparison.Ordinal) || typed.StartsWith("./", StringComparison.Ordinal) ? typed[2..] : typed;
+        if (kind.GetString() == "setup")
+        {
+            var setup = said.GetProperty("setup");
+            app.MfaSecrets[setup.GetProperty("account").GetString()!.ToLowerInvariant()] = setup.GetProperty("secret").GetString()!;
+            username = setup.GetProperty("account").GetString()!;
+        }
+        if (!app.MfaSecrets.ContainsKey(username.ToLowerInvariant()))
+        {
+            return Again(answer, body); // a test that set MFA up some other way types its own code
+        }
+        var next = new HttpRequestMessage(HttpMethod.Post, new Uri(request.RequestUri, "/api/signin/mfa"))
+        {
+            Content = JsonContent.Create(new { ticket = said.GetProperty("ticket").GetString(), code = app.MfaCode(username) }),
+        };
+        foreach (var header in request.Headers)
+        {
+            next.Headers.TryAddWithoutValidation(header.Key, header.Value);
+        }
+        return await base.SendAsync(next, cancellationToken);
+    }
+
+    // The answer as it came, its body read once already.
+    private static HttpResponseMessage Again(HttpResponseMessage answer, string body)
+    {
+        var copy = new HttpResponseMessage(answer.StatusCode) { Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json"), RequestMessage = answer.RequestMessage };
+        foreach (var header in answer.Headers)
+        {
+            copy.Headers.TryAddWithoutValidation(header.Key, header.Value);
+        }
+        return copy;
+    }
 }

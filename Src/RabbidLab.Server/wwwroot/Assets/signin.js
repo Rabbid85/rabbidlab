@@ -36,8 +36,8 @@
     location.replace(home());
   };
 
-  // MFA, after a right password: the answer is a ticket to send the code with, and nobody is signed in yet. When a role
-  // requires MFA and the account hasn't set it up, the answer also has the QR code to set it up with.
+  // MFA, after a right password: the answer is a ticket to send the code with, and nobody is signed in yet. MFA is
+  // required for everyone, so an account without it gets the QR code to set it up with; after a reset, the one-time code too.
   let ticket = '';
   const askCode = (said) => {
     ticket = said.ticket;
@@ -45,9 +45,11 @@
     ['local-form', 'ad-form', 'other-kind'].forEach((id) => { $(id).hidden = true; });
     $('heading').textContent = setup ? 'Set up MFA' : 'Enter your code';
     $('lead').hidden = false;
-    $('lead').textContent = setup
-      ? 'Your role requires multi-factor authentication. Scan this with an authenticator app, such as Microsoft Authenticator or Google Authenticator, then type the 6-digit code it shows.'
-      : 'Type the 6-digit code from your authenticator app.';
+    $('lead').textContent = !setup ? 'Type the 6-digit code from your authenticator app.'
+      : said.reset ? 'Your MFA was reset. Type the one-time code you were given, then scan this with your authenticator app and type the 6-digit code it shows.'
+        : 'Signing in takes a code from an authenticator app, such as Microsoft Authenticator or Google Authenticator. Scan this with it, then type the 6-digit code it shows.';
+    $('mfa-reset-box').hidden = !said.reset;
+    $('mfa-reset').value = '';
     $('mfa-setup').hidden = !setup;
     if (setup) {
       $('mfa-qr').innerHTML = said.setup.qr; // an SVG picture drawn by the server
@@ -57,7 +59,7 @@
     $('mfa-code').value = '';
     $('mfa-form').hidden = false;
     $('mfa-back').hidden = false;
-    $('mfa-code').focus();
+    (said.reset ? $('mfa-reset') : $('mfa-code')).focus();
   };
   $('mfa-back').addEventListener('click', () => location.reload());
   $('mfa-form').addEventListener('submit', async (e) => {
@@ -65,7 +67,7 @@
     showError('');
     $('mfa-go').disabled = true;
     try {
-      const r = await fetch('/api/signin/mfa', { method: 'POST', headers, body: JSON.stringify({ ticket, code: $('mfa-code').value }) });
+      const r = await fetch('/api/signin/mfa', { method: 'POST', headers, body: JSON.stringify({ ticket, code: $('mfa-code').value, reset: $('mfa-reset').value || null }) });
       if (r.ok) {
         enter();
         return;

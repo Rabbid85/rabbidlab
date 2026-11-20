@@ -105,21 +105,9 @@ public static class RolesApi
             return Results.Ok();
         });
 
-        // Whether everyone in the role signs in with a code as well. Saved as it's switched, Administrator's too.
-        app.MapPost("/api/roles/{id}/mfa", (string id, OnForm form, HttpContext context, Roles roles, Confirmations confirm, ActivityLog log) =>
-        {
-            // Turning it off takes Confirm it's you; turning it on is never held up.
-            if ((Access.RefuseUnless(context, Permissions.AccessRoles) ?? (form.On ? null : confirm.Refuse(context))) is { } refused)
-            {
-                return refused;
-            }
-            if (roles.RequireMfa(id, form.On, Who.Of(context.User)) is { } problem)
-            {
-                return Results.BadRequest(new { error = problem });
-            }
-            log.Record(context, "access", form.On ? "role.mfa.on" : "role.mfa.off", form.On ? $"Made MFA required for {RoleName(roles, id)}" : $"Stopped requiring MFA for {RoleName(roles, id)}");
-            return Results.Ok();
-        });
+        // MFA is required for everyone since 1.1.296, so there's no per-role switch any more; a page from before gets told so.
+        app.MapPost("/api/roles/{id}/mfa", (string id, HttpContext context) =>
+            Access.RefuseUnless(context, Permissions.AccessRoles) ?? Results.BadRequest(new { error = "MFA is required for everyone, so roles no longer have their own switch." }));
 
         app.MapPost("/api/roles/{id}/delete", (string id, HttpContext context, Roles roles, ActivityLog log) =>
         {

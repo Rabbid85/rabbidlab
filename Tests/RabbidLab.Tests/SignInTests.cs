@@ -207,6 +207,10 @@ public sealed class SignInTests : IDisposable
         Assert.Equal(200, proxied.Status);
         Assert.Equal(403, claimed.Status);
         Assert.Equal(403, (await From("192.168.2.40", "POST", "/api/setup/local", new { username = "x", password = "a long password" })).Status);
+        // The password step on the server itself, then its MFA code: that's the session.
+        var ticket = JsonDocument.Parse(here.Body).RootElement.GetProperty("ticket").GetString();
+        here = await From("127.0.0.1", "POST", "/api/signin/mfa", new { ticket, code = app.MfaCode("admin") });
+        Assert.True(here.Status == 200, here.Body);
 
         // A session taken over to plain HTTP from another computer ends, here too.
         Assert.Equal(200, (await From("127.0.0.1", "GET", "/api/status", cookie: here.Cookie)).Status);
@@ -302,6 +306,8 @@ public sealed class SignInTests : IDisposable
     public async Task An_MFA_secret_being_set_up_is_kept_encrypted_until_its_first_code()
     {
         var admin = await app.SignedIn();
+        // Moving to a new phone: off with the old app's code, then the new secret is a draft until its first code.
+        (await admin.PostAsJsonAsync("/api/mfa/off", new { code = app.MfaCode("admin") })).EnsureSuccessStatusCode();
         var secret = (await (await admin.PostAsJsonAsync("/api/mfa/setup", new { })).Content.ReadFromJsonAsync<JsonElement>()).GetProperty("secret").GetString()!;
 
         // What the server holds for the draft isn't the secret.

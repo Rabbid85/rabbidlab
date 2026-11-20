@@ -141,6 +141,8 @@ body.app.rail-small { grid-template-columns: 60px minmax(0, 1fr); }
 .sure-type[hidden] { display: none; }
 .sure-type label { color: var(--muted); font-size: 13px; }
 .sure-type .ds-input { width: 100%; }
+.ds-l > .acc-mfa-warn { display: block; margin-top: 6px; color: var(--amber); font-size: 13px; }
+.ds-l > .acc-mfa-warn[hidden] { display: none; }
 .ds-icon { display: grid; place-items: center; width: 44px; height: 44px; overflow: hidden; border: 1px solid var(--line-strong); border-radius: 10px; background: #0C0E17; }
 .ds-icon svg, .ds-icon img { width: 32px; height: 32px; border-radius: 7px; object-fit: cover; }
 .ds-swatches { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 8px; max-width: 420px; }

@@ -78,6 +78,7 @@
       <!-- After a right password, for an account with MFA: the code from its authenticator app. A role that requires MFA
            sets it up here first, from the QR code. -->
       <form id="mfa-form" novalidate hidden>
+        <div class="input" id="mfa-reset-box" hidden><svg><use href="#i-user"/></svg><input id="mfa-reset" maxlength="20" aria-label="One-time code from whoever reset your MFA" placeholder="One-time code, like K7QX-M2PD-9FHT" autocomplete="off" spellcheck="false"></div>
         <div id="mfa-setup" hidden>
           <div class="mfa-qr" id="mfa-qr"></div>
           <p class="mfa-key">Can't scan it? Type this key into the app instead:<code id="mfa-secret"></code></p>

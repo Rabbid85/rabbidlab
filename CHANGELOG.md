@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.296 (2026-11-20)
+
+- MFA is required for everyone, like Datto RMM. After this update everyone is signed out once, and each person sets up an authenticator app at their next sign-in, including whoever sets Rabbid Lab up. Roles no longer have a Require MFA switch.
+- Reset MFA gives a one-time code to hand over. With it and their password, the person sets up their new phone at the next sign-in. --reset-mfa on the server prints the same kind of code.
+- Settings, Account has Move to a new phone instead of Turn off, and warns while only one administrator has MFA.
+
 ## 1.1.295 (2026-11-20)
 
 - Links and Sensors keep their bar under the banner, and once you scroll past it a dock at the top holds the views, Refresh icons and Add.

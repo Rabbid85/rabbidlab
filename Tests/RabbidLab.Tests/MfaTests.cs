@@ -7,7 +7,10 @@ using RabbidLab.Server;
 
 namespace RabbidLab.Tests;
 
-/// <summary>MFA: a code from an authenticator app after the password, set up in Settings or at sign-in when a role requires it.</summary>
+/// <summary>
+/// MFA: a code from an authenticator app after the password, required for everyone. Set up at the first sign-in (or when
+/// setting Rabbid Lab up); a reset leaves a one-time code that setting it up again takes, Datto's way.
+/// </summary>
 public sealed class MfaTests : IDisposable
 {
     private readonly string data = Path.Combine(Path.GetTempPath(), "rabbidlab-mfa-" + Guid.NewGuid().ToString("N"));
@@ -45,20 +48,12 @@ public sealed class MfaTests : IDisposable
         return Enumerable.Range(0, 10).Select(i => i.ToString("D6")).First(c => !right.Contains(c));
     }
 
-    /// <summary>Turns MFA on for whoever the page is signed in as, and gives the secret their app holds.</summary>
-    private async Task<string> TurnOn(HttpClient page)
-    {
-        var secret = (await Json(await page.PostAsJsonAsync("/api/mfa/setup", new { }))).GetProperty("secret").GetString()!;
-        (await page.PostAsJsonAsync("/api/mfa/on", new { code = Code(secret) })).EnsureSuccessStatusCode();
-        return secret;
-    }
-
     private Task<HttpResponseMessage> Password(HttpClient page, string username, string password = "user password") =>
         page.PostAsJsonAsync("/api/signin", new { username, password });
 
     private static async Task<bool> SignedIn(HttpClient page) => (await Json(await page.GetAsync("/api/signin"))).GetProperty("user").ValueKind == JsonValueKind.Object;
 
-    /// <summary>A role with these permissions and a local account in it that has signed in. Roles made later rank lower.</summary>
+    /// <summary>A role with these permissions and a local account in it that has signed in (and so set MFA up). Roles made later rank lower.</summary>
     private async Task<(string Role, HttpClient Page)> InRole(HttpClient admin, string role, string account, params string[] permissions)
     {
         var id = (await Json(await admin.PostAsJsonAsync("/api/roles", new { name = role, color = "#5FD4A0" }))).GetProperty("id").GetString()!;
@@ -93,15 +88,30 @@ public sealed class MfaTests : IDisposable
     }
 
     [Fact]
-    public async Task Once_it_s_on_signing_in_takes_the_password_then_a_code_and_a_code_works_once()
+    public async Task Setting_Rabbid_Lab_up_asks_for_MFA_before_anyone_is_signed_in()
+    {
+        var page = app.RawPage();
+        var first = await Json(await page.PostAsJsonAsync("/api/setup/local", new { username = "admin", password = "correct horse" }));
+        var secret = first.GetProperty("setup").GetProperty("secret").GetString()!;
+
+        Assert.Equal("setup", first.GetProperty("mfa").GetString());
+        Assert.False(first.GetProperty("reset").GetBoolean());
+        Assert.False(first.TryGetProperty("user", out _));
+        Assert.False(await SignedIn(page));
+        Assert.Equal(HttpStatusCode.OK, (await page.PostAsJsonAsync("/api/signin/mfa", new { ticket = first.GetProperty("ticket").GetString(), code = Code(secret) })).StatusCode);
+        Assert.True(await SignedIn(page));
+        Assert.Equal(1, (await Json(await page.GetAsync("/api/mfa"))).GetProperty("admins").GetInt32());
+    }
+
+    [Fact]
+    public async Task Signing_in_takes_the_password_then_a_code_and_a_code_works_once()
     {
         var admin = await app.SignedIn();
-        Assert.Equal(JsonValueKind.Null, (await Json(await admin.GetAsync("/api/mfa"))).GetProperty("since").ValueKind);
-        var secret = await TurnOn(admin);
+        var secret = app.MfaSecrets["admin"];
         Assert.Equal(JsonValueKind.String, (await Json(await admin.GetAsync("/api/mfa"))).GetProperty("since").ValueKind);
         Assert.DoesNotContain(secret, File.ReadAllText(Path.Combine(data, "mfa.json"))); // kept encrypted
 
-        var page = app.Page();
+        var page = app.RawPage();
         var first = await Json(await Password(page, "admin", "correct horse"));
         var ticket = first.GetProperty("ticket").GetString();
         Assert.Equal("code", first.GetProperty("mfa").GetString());
@@ -109,13 +119,13 @@ public sealed class MfaTests : IDisposable
         Assert.False(first.TryGetProperty("setup", out _));
         Assert.False(await SignedIn(page));
 
-        // The code that turned it on was taken then; a wrong one and no ticket get nowhere either.
+        // The code the first sign-in typed was taken then; a wrong one and no ticket get nowhere either.
         Assert.Equal(HttpStatusCode.Unauthorized, (await page.PostAsJsonAsync("/api/signin/mfa", new { ticket, code = Code(secret) })).StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, (await page.PostAsJsonAsync("/api/signin/mfa", new { ticket, code = Wrong(secret) })).StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, (await page.PostAsJsonAsync("/api/signin/mfa", new { ticket = "nope", code = Code(secret) })).StatusCode);
         Assert.False(await SignedIn(page));
 
-        app.Clock.Advance(TimeSpan.FromSeconds(30));
+        app.Clock.Advance(TimeSpan.FromSeconds(60)); // past the codes the first sign-in and its Confirm it's you took
         var code = Code(secret);
         var second = await page.PostAsJsonAsync("/api/signin/mfa", new { ticket, code });
         Assert.Equal(HttpStatusCode.OK, second.StatusCode);
@@ -124,7 +134,7 @@ public sealed class MfaTests : IDisposable
 
         // The ticket is spent, and so is the code: another browser with the password and that same code stays out.
         Assert.Equal(HttpStatusCode.BadRequest, (await page.PostAsJsonAsync("/api/signin/mfa", new { ticket, code })).StatusCode);
-        var other = app.Page();
+        var other = app.RawPage();
         var again = (await Json(await Password(other, "admin", "correct horse"))).GetProperty("ticket").GetString();
         Assert.Equal(HttpStatusCode.Unauthorized, (await other.PostAsJsonAsync("/api/signin/mfa", new { ticket = again, code })).StatusCode);
 
@@ -134,15 +144,12 @@ public sealed class MfaTests : IDisposable
     }
 
     [Fact]
-    public async Task A_role_that_requires_it_ends_sessions_without_a_code_and_sets_it_up_at_the_next_sign_in()
+    public async Task Everyone_sets_it_up_at_their_first_sign_in_and_roles_have_no_switch_for_it()
     {
         var admin = await app.SignedIn();
-        var (desk, mlopez) = await InRole(admin, "Help desk", "mlopez", "seats.view");
-        Assert.Equal(HttpStatusCode.OK, (await mlopez.GetAsync("/api/clients")).StatusCode);
+        (await admin.PostAsJsonAsync("/api/accounts", new { username = "mlopez", password = "user password", roles = Array.Empty<string>() })).EnsureSuccessStatusCode();
 
-        (await admin.PostAsJsonAsync($"/api/roles/{desk}/mfa", new { on = true })).EnsureSuccessStatusCode();
-
-        Assert.Equal(HttpStatusCode.Unauthorized, (await mlopez.GetAsync("/api/clients")).StatusCode);
+        var mlopez = app.RawPage();
         var first = await Json(await Password(mlopez, "mlopez"));
         var ticket = first.GetProperty("ticket").GetString();
         var secret = first.GetProperty("setup").GetProperty("secret").GetString()!;
@@ -152,45 +159,41 @@ public sealed class MfaTests : IDisposable
         Assert.False(await SignedIn(mlopez));
         Assert.Equal(HttpStatusCode.Unauthorized, (await mlopez.PostAsJsonAsync("/api/signin/mfa", new { ticket, code = Wrong(secret) })).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await mlopez.PostAsJsonAsync("/api/signin/mfa", new { ticket, code = Code(secret) })).StatusCode);
-        Assert.Equal(HttpStatusCode.OK, (await mlopez.GetAsync("/api/clients")).StatusCode);
-        Assert.Equal(["Help desk"], (await Json(await mlopez.GetAsync("/api/mfa"))).GetProperty("requiredBy").EnumerateArray().Select(r => r.GetString()));
+        Assert.True(await SignedIn(mlopez));
+        Assert.Equal(JsonValueKind.Null, (await Json(await mlopez.GetAsync("/api/mfa"))).GetProperty("admins").ValueKind); // not theirs to see
 
         // A ticket to set up with, got with the password before the account had MFA, can't replace the app set up since.
-        var late = await Json(await Password(app.Page(), "admin", "correct horse"));
-        Assert.True(late.TryGetProperty("user", out _)); // admin's role doesn't require it yet
-        var (strict, kiosk) = await InRole(admin, "Kiosk", "kiosk1", "seats.view");
-        (await admin.PostAsJsonAsync($"/api/roles/{strict}/mfa", new { on = true })).EnsureSuccessStatusCode();
+        (await admin.PostAsJsonAsync("/api/accounts", new { username = "kiosk1", password = "user password", roles = Array.Empty<string>() })).EnsureSuccessStatusCode();
+        var kiosk = app.RawPage();
         var early = await Json(await Password(kiosk, "kiosk1"));
-        var real = await Json(await Password(app.Page(), "kiosk1"));
+        var real = await Json(await Password(app.RawPage(), "kiosk1"));
         var realSecret = real.GetProperty("setup").GetProperty("secret").GetString()!;
-        Assert.Equal(HttpStatusCode.OK, (await app.Page().PostAsJsonAsync("/api/signin/mfa", new { ticket = real.GetProperty("ticket").GetString(), code = Code(realSecret) })).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await app.RawPage().PostAsJsonAsync("/api/signin/mfa", new { ticket = real.GetProperty("ticket").GetString(), code = Code(realSecret) })).StatusCode);
         var stolen = await kiosk.PostAsJsonAsync("/api/signin/mfa", new { ticket = early.GetProperty("ticket").GetString(), code = Code(early.GetProperty("setup").GetProperty("secret").GetString()!) });
         Assert.Equal(HttpStatusCode.BadRequest, stolen.StatusCode);
         Assert.False(await SignedIn(kiosk));
 
         // From then on it's the code, and the roles page shows who has it.
         app.Clock.Advance(TimeSpan.FromSeconds(30));
-        var next = app.Page();
+        var next = app.RawPage();
         var asked = await Json(await Password(next, "mlopez"));
         Assert.Equal("code", asked.GetProperty("mfa").GetString());
         Assert.Equal(HttpStatusCode.OK, (await next.PostAsJsonAsync("/api/signin/mfa", new { ticket = asked.GetProperty("ticket").GetString(), code = Code(secret) })).StatusCode);
         var roles = await Json(await admin.GetAsync("/api/roles"));
-        Assert.True(roles.GetProperty("roles").EnumerateArray().First(r => r.GetProperty("id").GetString() == desk).GetProperty("mfa").GetBoolean());
         Assert.Equal(JsonValueKind.String, roles.GetProperty("people").EnumerateArray().First(p => p.GetProperty("username").GetString() == "mlopez").GetProperty("mfa").ValueKind);
-        Assert.Equal(JsonValueKind.Null, roles.GetProperty("people").EnumerateArray().First(p => p.GetProperty("username").GetString() == "admin").GetProperty("mfa").ValueKind);
 
-        // Only someone above a role sets it, and Administrator's can be set too: the administrator who did is asked as well.
-        Assert.Equal(HttpStatusCode.Forbidden, (await next.PostAsJsonAsync($"/api/roles/{desk}/mfa", new { on = false })).StatusCode);
-        (await admin.PostAsJsonAsync("/api/roles/admin/mfa", new { on = true })).EnsureSuccessStatusCode();
-        Assert.Equal(HttpStatusCode.Unauthorized, (await admin.GetAsync("/api/roles")).StatusCode);
-        Assert.Equal("setup", (await Json(await Password(admin, "admin", "correct horse"))).GetProperty("mfa").GetString());
+        // There's no role switch to turn it off.
+        var off = await admin.PostAsJsonAsync("/api/roles/admin/mfa", new { on = false });
+        Assert.Equal(HttpStatusCode.BadRequest, off.StatusCode);
+        Assert.Contains("required for everyone", (await Json(off)).GetProperty("error").GetString());
+        Assert.Equal(HttpStatusCode.OK, (await admin.GetAsync("/api/roles")).StatusCode);
     }
 
     [Fact]
-    public async Task Turning_it_off_takes_a_code_and_five_wrong_codes_wait()
+    public async Task Moving_to_a_new_phone_takes_a_code_and_five_wrong_codes_wait()
     {
         var admin = await app.SignedIn();
-        var secret = await TurnOn(admin);
+        var secret = app.MfaSecrets["admin"];
         app.Clock.Advance(TimeSpan.FromSeconds(30));
 
         for (var i = 0; i < 5; i++)
@@ -200,17 +203,16 @@ public sealed class MfaTests : IDisposable
         Assert.Equal(HttpStatusCode.TooManyRequests, (await admin.PostAsJsonAsync("/api/mfa/off", new { code = Code(secret) })).StatusCode);
         Assert.Equal(JsonValueKind.String, (await Json(await admin.GetAsync("/api/mfa"))).GetProperty("since").ValueKind);
 
-        // The session ran out while waiting: back in with one code, and the next one turns it off.
+        // Once the wait is over, a code from the old app takes it off this session's account...
         app.Clock.Advance(TimeSpan.FromMinutes(11));
-        var back = (await Json(await Password(admin, "admin", "correct horse"))).GetProperty("ticket").GetString();
-        (await admin.PostAsJsonAsync("/api/signin/mfa", new { ticket = back, code = Code(secret) })).EnsureSuccessStatusCode();
+        (await Password(admin, "admin", "correct horse")).EnsureSuccessStatusCode();
         app.Clock.Advance(TimeSpan.FromSeconds(30));
         Assert.Equal(HttpStatusCode.OK, (await admin.PostAsJsonAsync("/api/mfa/off", new { code = Code(secret) })).StatusCode);
         Assert.Equal(JsonValueKind.Null, (await Json(await admin.GetAsync("/api/mfa"))).GetProperty("since").ValueKind);
-        var page = app.Page();
-        Assert.True((await Json(await Password(page, "admin", "correct horse"))).TryGetProperty("user", out _));
+        // ...and a new sign-in has to set one up again: it's required.
+        Assert.Equal("setup", (await Json(await Password(app.RawPage(), "admin", "correct horse"))).GetProperty("mfa").GetString());
 
-        // Setting it up again from Settings: the first code has to be the new secret's.
+        // The new phone, from Settings: the first code has to be the new secret's.
         var again = (await Json(await admin.PostAsJsonAsync("/api/mfa/setup", new { }))).GetProperty("secret").GetString()!;
         Assert.NotEqual(secret, again);
         Assert.Equal(HttpStatusCode.BadRequest, (await admin.PostAsJsonAsync("/api/mfa/on", new { code = Wrong(again) })).StatusCode);
@@ -221,32 +223,57 @@ public sealed class MfaTests : IDisposable
     }
 
     [Fact]
-    public async Task Reset_MFA_clears_it_for_people_below_and_the_command_line_for_anyone()
+    public async Task A_reset_gives_a_one_time_code_that_setting_it_up_again_takes()
     {
         var admin = await app.SignedIn();
         var (_, lead) = await InRole(admin, "Lead", "lead1", "access.view", "access.mfa");
         var (_, desk) = await InRole(admin, "Help desk", "desk1", "seats.view");
-        await TurnOn(admin);
-        await TurnOn(desk);
+        (await admin.PostAsJsonAsync("/api/accounts", new { username = "fresh1", password = "user password", roles = Array.Empty<string>() })).EnsureSuccessStatusCode();
         object Whose(string username) => new { source = "local", username };
 
         var above = await lead.PostAsJsonAsync("/api/mfa/reset", Whose("admin"));
         var notAllowed = await desk.PostAsJsonAsync("/api/mfa/reset", Whose("lead1"));
-        var none = await lead.PostAsJsonAsync("/api/mfa/reset", Whose("lead1"));
+        var none = await lead.PostAsJsonAsync("/api/mfa/reset", Whose("fresh1")); // never signed in, so never set it up
+        var own = await admin.PostAsJsonAsync("/api/mfa/reset", Whose("admin")); // that's Move to a new phone, which takes a code
         var below = await lead.PostAsJsonAsync("/api/mfa/reset", Whose("desk1"));
-        var own = await admin.PostAsJsonAsync("/api/mfa/reset", Whose("admin")); // that's Turn off, which takes a code
-        Assert.Equal(HttpStatusCode.BadRequest, own.StatusCode);
 
         Assert.Equal(HttpStatusCode.Forbidden, above.StatusCode);
         Assert.Contains("Only someone above Administrator can reset their MFA", (await Json(above)).GetProperty("error").GetString());
         Assert.Equal(HttpStatusCode.Forbidden, notAllowed.StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, none.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, own.StatusCode);
         Assert.Equal(HttpStatusCode.OK, below.StatusCode);
-        Assert.True((await Json(await Password(app.Page(), "desk1"))).TryGetProperty("user", out _));
-        Assert.Equal("code", (await Json(await Password(app.Page(), "admin", "correct horse"))).GetProperty("mfa").GetString());
+        var given = await Json(below);
+        var oneTime = given.GetProperty("code").GetString()!;
+        Assert.Matches("^[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}$", oneTime);
+        Assert.Equal(24, given.GetProperty("hours").GetInt32());
+        Assert.DoesNotContain(oneTime.Replace("-", ""), File.ReadAllText(Path.Combine(data, "mfa.json"))); // only its hash
 
-        // --reset-mfa does this for an account nobody else can reset.
-        Assert.Equal(1, app.Services.GetRequiredService<Mfa>().RemoveAll("ADMIN"));
-        Assert.True((await Json(await Password(app.Page(), "admin", "correct horse"))).TryGetProperty("user", out _));
+        // desk1's old app no longer works; setting up a new one takes the password, the one-time code and the new app's code.
+        var page = app.RawPage();
+        var first = await Json(await Password(page, "desk1"));
+        var ticket = first.GetProperty("ticket").GetString();
+        var secret = first.GetProperty("setup").GetProperty("secret").GetString()!;
+        Assert.Equal("setup", first.GetProperty("mfa").GetString());
+        Assert.True(first.GetProperty("reset").GetBoolean());
+        Assert.Equal(HttpStatusCode.Unauthorized, (await page.PostAsJsonAsync("/api/signin/mfa", new { ticket, code = Code(secret) })).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await page.PostAsJsonAsync("/api/signin/mfa", new { ticket, code = Code(secret), reset = "AAAA-BBBB-CCCC" })).StatusCode);
+        Assert.False(await SignedIn(page));
+        var ok = await page.PostAsJsonAsync("/api/signin/mfa", new { ticket, code = Code(secret), reset = oneTime.ToLowerInvariant().Replace("-", " ") });
+        Assert.Equal(HttpStatusCode.OK, ok.StatusCode);
+        Assert.True(await SignedIn(page));
+
+        // The code is used up: from now on it's just the new app's code.
+        app.Clock.Advance(TimeSpan.FromSeconds(30));
+        Assert.Equal("code", (await Json(await Password(app.RawPage(), "desk1"))).GetProperty("mfa").GetString());
+        Assert.Equal("code", (await Json(await Password(app.RawPage(), "admin", "correct horse"))).GetProperty("mfa").GetString());
+
+        // --reset-mfa does this for an account nobody else can reset: it takes the same kind of one-time code.
+        var mfa = app.Services.GetRequiredService<Mfa>();
+        Assert.Single(mfa.WithName("ADMIN"));
+        mfa.Reset("local", "admin");
+        var afterCommand = await Json(await Password(app.RawPage(), "admin", "correct horse"));
+        Assert.Equal("setup", afterCommand.GetProperty("mfa").GetString());
+        Assert.True(afterCommand.GetProperty("reset").GetBoolean());
     }
 }

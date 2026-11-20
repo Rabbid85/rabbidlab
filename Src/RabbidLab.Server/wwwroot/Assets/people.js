@@ -298,16 +298,20 @@
     const give = e.target.closest('[data-give-role]');
     if (give) return giveRole(row, give.dataset.giveRole);
     if (e.target.closest('[data-reset-mfa]')) {
-      sure(`Reset MFA for ${nameOf(row)}?`, 'Their authenticator app stops working here. If a role of theirs requires MFA, they set it up again at their next sign-in.', 'Reset MFA', async () => {
+      sure(`Reset MFA for ${nameOf(row)}?`, 'Their authenticator app stops working here. You get a one-time code to give them: with it and their password, they set up MFA on their new phone.', 'Reset MFA', async () => {
         try {
-          await R.send('/api/mfa/reset', { source: row.source, username: row.name });
+          const given = await R.send('/api/mfa/reset', { source: row.source, username: row.name });
           problem('');
-          R.toast('MFA reset', nameOf(row));
+          closeCard();
+          refresh();
+          // Shown once: the server keeps only its hash.
+          sure(`Give ${nameOf(row)} this one-time code`, `They type it at their next sign-in, after their password, to set up MFA again. It works once, for ${given.hours} hours, and isn't shown again.`,
+            'Done', null, { code: given.code, safe: true, info: true });
         } catch (err) {
           problem(err.message);
+          closeCard();
+          refresh();
         }
-        closeCard();
-        refresh();
       });
       return;
     }
@@ -424,10 +428,6 @@
       + `<span class="rchip via" data-color="${esc(draft.color)}"><i class="dot"></i>${esc(draft.name || 'Untitled role')}<small>${svg('users')}${esc(group)}</small></span>`
       + '<span class="hint">Dashed: from a group.</span>';
     $('role-where').textContent = placeText(r);
-    // Require MFA is saved as it's switched, Administrator's too: it isn't part of the changes waiting to be saved.
-    $('role-mfa').checked = !!r.mfa;
-    $('role-mfa').disabled = !(r.manage && mine('access.roles'));
-    $('role-mfa-row').classList.toggle('locked', $('role-mfa').disabled);
     $('role-delete-row').hidden = r.builtIn || !can;
     $('role-delete-title').textContent = `Delete ${r.name}`;
 
@@ -477,17 +477,6 @@
     if (!b || b.disabled) return;
     draft.color = b.dataset.swatch;
     drawRole(role(draft.id), 'display');
-  });
-  $('role-mfa').addEventListener('change', async (e) => {
-    const r = role(draft.id);
-    try {
-      await R.send(`/api/roles/${encodeURIComponent(r.id)}/mfa`, { on: e.target.checked });
-      problem('');
-      R.toast(e.target.checked ? 'MFA required' : 'MFA not required', r.name);
-    } catch (err) {
-      problem(err.message);
-    }
-    refresh();
   });
   $('perm-list').addEventListener('change', (e) => {
     if (e.target.id === 'role-scope-add' && e.target.value) {

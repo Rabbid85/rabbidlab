@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.296', [
+    'MFA is required for everyone, like Datto RMM. After this update everyone is signed out once, and each person sets up an authenticator app at their next sign-in, including whoever sets Rabbid Lab up. Roles no longer have a Require MFA switch.',
+    'Reset MFA gives a one-time code to hand over. With it and their password, the person sets up their new phone at the next sign-in. --reset-mfa on the server prints the same kind of code.',
+    'Settings, Account has Move to a new phone instead of Turn off, and warns while only one administrator has MFA.']],
   ['1.1.295', [
     'Links and Sensors keep their bar under the banner, and once you scroll past it a dock at the top holds the views, Refresh icons and Add.']],
   ['1.1.294', [
@@ -2116,14 +2120,16 @@ const RELEASE_NOTES = [
   $('toast-test').addEventListener('click', () => toast('This is a test toast.', `It shows for ${toastPrefs().secs} seconds.`, { action: { label: 'Details', href: '#settings/appearance' } }));
   toastSettings();
   // Are you sure: a title, what happens, the button's words, and what to do on yes. code: a command shown as it will run;
-  // safe: a plain button, for something that isn't destructive; type: a name to type before the button works.
+  // safe: a plain button, for something that isn't destructive; type: a name to type before the button works; info: only
+  // the one button, for something to read (a one-time code).
   let sureDo = null;
   let sureType = '';
-  const sure = (title, lead, button, then, { code = '', safe = false, type = '' } = {}) => {
+  const sure = (title, lead, button, then, { code = '', safe = false, type = '', info = false } = {}) => {
     $('sure-title').textContent = title;
     $('sure-lead').textContent = lead;
     $('sure-code').textContent = code;
     $('sure-code').hidden = !code;
+    $('sure-cancel').hidden = info;
     $('sure-go').textContent = button;
     $('sure-go').className = safe ? 'primary' : 'danger solid';
     sureType = type;
@@ -3626,16 +3632,20 @@ const RELEASE_NOTES = [
     }
     drawMySessions();
   });
-  // MFA for yourself: a code from an authenticator app at sign-in. Set up shows the QR code and takes the first code;
-  // turning it off takes a code too, so a browser left signed in can't.
+  // MFA for yourself: a code from an authenticator app at sign-in, required for everyone. Move to a new phone takes a code
+  // from the old app first, then sets up the new one, so a browser left signed in can't swap it.
   let mfaNow = null;
   const drawMfa = async () => {
     try {
       mfaNow = await get('/api/mfa');
-      const need = mfaNow.requiredBy.length ? ` Required by ${mfaNow.requiredBy.length === 1 ? 'the role' : 'the roles'} ${mfaNow.requiredBy.join(', ')}.` : '';
-      $('acc-mfa-text').textContent = (mfaNow.since ? `On since ${when(mfaNow.since)}.` : 'Off. When it is on, signing in takes your password and a 6-digit code from an authenticator app.') + need;
-      $('acc-mfa').textContent = mfaNow.since ? 'Turn off' : 'Set up';
+      $('acc-mfa-text').textContent = mfaNow.since ? `On since ${when(mfaNow.since)}. Required for everyone.`
+        : 'Not set up. It is required for everyone: set it up now, or your next sign-in asks you to.';
+      $('acc-mfa').textContent = mfaNow.since ? 'Move to a new phone' : 'Set up';
       $('acc-mfa').hidden = false;
+      // Datto's advice: more than one administrator, so a lost phone isn't a trip to the server.
+      const few = Number.isInteger(mfaNow.admins) && mfaNow.admins < 2;
+      $('acc-mfa-warn').hidden = !few;
+      $('acc-mfa-warn').textContent = few ? `Only ${mfaNow.admins === 1 ? 'one administrator has' : 'no administrator has'} MFA set up. If that phone is lost, only --reset-mfa on the server gets back in. Give a second person the Administrator role.` : '';
     } catch (err) {
       $('acc-mfa-text').textContent = err.message;
     }
@@ -3646,23 +3656,28 @@ const RELEASE_NOTES = [
     $('mfa-qr').innerHTML = s.qr; // an SVG picture drawn by the server
     $('mfa-secret').textContent = s.secret.replace(/(.{4})/g, '$1 ').trim();
   };
-  $('acc-mfa').addEventListener('click', async () => {
-    const off = !!mfaNow?.since;
-    $('mfa-dialog').dataset.mode = off ? 'off' : 'on';
-    $('mfa-title').textContent = off ? 'Turn off MFA' : 'Set up MFA';
-    $('mfa-lead').textContent = off
-      ? `Type a code from your authenticator app to turn it off.${mfaNow.requiredBy.length ? ' Your role requires MFA, so you set it up again at your next sign-in.' : ''}`
-      : 'Scan this with an authenticator app, such as Microsoft Authenticator or Google Authenticator. Then type the 6-digit code it shows.';
-    $('mfa-setup').hidden = off;
-    $('mfa-save').textContent = off ? 'Turn off' : 'Turn on';
+  // The window's two steps: a code from the old app (off), then the new app's QR code (on).
+  const mfaStep = async (mode, moving) => {
+    $('mfa-dialog').dataset.mode = mode;
+    $('mfa-dialog').dataset.moving = moving ? '1' : '';
+    $('mfa-title').textContent = moving ? 'Move to a new phone' : 'Set up MFA';
+    $('mfa-lead').textContent = mode === 'off'
+      ? 'First, type a code from the authenticator app on your old phone.'
+      : `${moving ? 'Now scan this with the authenticator app on your new phone' : 'Scan this with an authenticator app, such as Microsoft Authenticator or Google Authenticator'}. Then type the 6-digit code it shows.`;
+    $('mfa-setup').hidden = mode === 'off';
+    $('mfa-save').textContent = mode === 'off' ? 'Next' : 'Turn on';
     $('mfa-save').disabled = false;
     $('mfa-code').value = '';
     say('mfa-problem', '');
     try {
-      if (!off) await mfaSecret();
+      if (mode === 'on') await mfaSecret();
     } catch (err) {
       say('mfa-problem', err.message);
     }
+  };
+  $('acc-mfa').addEventListener('click', async () => {
+    const moving = !!mfaNow?.since;
+    await mfaStep(moving ? 'off' : 'on', moving);
     $('mfa-dialog').showModal();
     $('mfa-code').focus();
   });
@@ -3670,12 +3685,20 @@ const RELEASE_NOTES = [
   $('mfa-code').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('mfa-save').click(); });
   $('mfa-save').addEventListener('click', async () => {
     const off = $('mfa-dialog').dataset.mode === 'off';
+    const moving = $('mfa-dialog').dataset.moving === '1';
     $('mfa-save').disabled = true;
     say('mfa-problem', '');
     try {
       await send(off ? '/api/mfa/off' : '/api/mfa/on', { code: $('mfa-code').value });
+      if (off) {
+        // The old app is off: straight on to the new one. Closing now means the next sign-in sets it up.
+        await mfaStep('on', true);
+        $('mfa-code').focus();
+        drawMfa();
+        return;
+      }
       $('mfa-dialog').close();
-      toast(off ? 'MFA is off' : 'MFA is on', off ? 'Signing in takes just your password.' : 'Your next sign-in asks for a code.');
+      toast(moving ? 'MFA moved to the new phone' : 'MFA is on', 'Your next sign-in asks for a code from it.');
       drawMfa();
     } catch (err) {
       say('mfa-problem', err.message);
