@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.281', [
+    'The rows switch by View really lines up with the Refresh and Export box now: an old margin from the tabs row was lifting it.']],
   ['1.1.280', [
     'Boxes stay dark while the browser shows its saved names and addresses to fill in, instead of turning blue.',
     'The rows switch lines up with the Refresh and Export box beside it.']],

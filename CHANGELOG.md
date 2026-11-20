@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.281 (2026-11-19)
+
+- The rows switch by View really lines up with the Refresh and Export box now: an old margin from the tabs row was lifting it.
+
 ## 1.1.280 (2026-11-19)
 
 - Boxes stay dark while the browser shows its saved names and addresses to fill in, instead of turning blue.
