@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.292 (2026-11-20)
+
+- This machine on the Overview says Windows 11 instead of Windows 10.0, 1 hour instead of 1 hours, and shows the data folder in the same font as the rest.
+- This machine drops the sensor email line, which always said not set up.
+
 ## 1.1.291 (2026-11-20)
 
 - Add a sensor opens again. It broke in 1.1.284 when the Notes tab was added.

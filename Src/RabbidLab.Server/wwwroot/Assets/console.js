@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.292', [
+    'This machine on the Overview says Windows 11 instead of Windows 10.0, 1 hour instead of 1 hours, and shows the data folder in the same font as the rest.',
+    'This machine drops the sensor email line, which always said not set up.']],
   ['1.1.291', [
     'Add a sensor opens again. It broke in 1.1.284 when the Notes tab was added.',
     'Restore in the Recycle Bin is a normal button again, not a huge icon.']],
@@ -3123,21 +3126,22 @@ const RELEASE_NOTES = [
     const list = [];
     const add = (label, value) => { if (value != null && value !== '') list.push([label, value]); };
     const since = s ? Math.max(0, Date.now() - new Date(s.startedAt).getTime()) / 3600000 : 0;
+    const count = (k, word) => `${k} ${word}${k === 1 ? '' : 's'}`;
     add('Product', s && `${productName} ${s.version}${s.dev ? ' (dev build)' : ''}`);
     add('Machine', s?.server);
     add('Installed as', s?.platform);
-    add('Windows / OS', s?.os);
+    add('OS', s?.os);
     add('.NET', s?.dotNet);
-    add('Running since', s && `${when(s.startedAt)} (${since < 1 ? `${Math.round(since * 60)} minutes` : since < 48 ? `${Math.round(since)} hours` : `${Math.round(since / 24)} days`})`);
+    add('Running since', s && `${when(s.startedAt)} (${since < 1 ? count(Math.round(since * 60), 'minute') : since < 48 ? count(Math.round(since), 'hour') : count(Math.round(since / 24), 'day')})`);
     add('Data folder', s?.dataFolder);
     add('Sign-in', who && (who.domain ? `Active Directory, ${who.domain}${who.server ? ` (domain controller ${who.server})` : ''}` : 'Local accounts only'));
     add('Service account', dir && (dir.state ? `${dir.state.account} in ${dir.state.domain}, ${dir.state.made ? 'created by Rabbid Lab' : 'an existing account'}, scope ${dir.state.scopeName}` : 'Not set up'));
-    add('Updates', upd && `${{ current: 'up to date', available: 'update available', downloading: 'downloading', installing: 'installing', failed: 'last update failed' }[upd.status] || upd.status}`
+    add('Updates', upd && `${{ current: 'Up to date', available: 'Update available', downloading: 'Downloading', installing: 'Installing', failed: 'Last update failed' }[upd.status] || upd.status}`
       + `${upd.available ? ` (${upd.available})` : ''}, checked ${upd.checkedAt ? when(upd.checkedAt) : 'never'}`);
     add('Devices', Array.isArray(seats) ? `${seats.length} computer${seats.length === 1 ? '' : 's'}, ${seats.filter((c) => c.online).length} online` : null);
-    add('Links', links && `${links.links.length} in ${links.groups?.length || 0} group${links.groups?.length === 1 ? '' : 's'}`);
-    add('Sensors', sensors && `${sensors.sensors.length}, ${sensors.sensors.filter((x) => x.status === 'down').length} down, email ${sensors.mail ? 'set up' : 'not set up'}`);
-    add('Signed in as', meInfo && `${meInfo.source === 'ad' ? 'an Active Directory account' : meInfo.source === 'windows' ? 'a Windows account' : 'a local account'}, roles: ${(meInfo.roles || []).map((r) => r.name || r).join(', ') || 'none'}`);
+    add('Links', links && `${count(links.links.length, 'link')} in ${count(links.groups?.length || 0, 'group')}`);
+    add('Sensors', sensors && `${count(sensors.sensors.length, 'sensor')}, ${sensors.sensors.filter((x) => x.status === 'down').length} down`);
+    add('Signed in as', meInfo && `${meInfo.source === 'ad' ? 'An Active Directory account' : meInfo.source === 'windows' ? 'A Windows account' : 'A local account'}, roles: ${(meInfo.roles || []).map((r) => r.name || r).join(', ') || 'none'}`);
     return list;
   };
   // Support info: the same, with where it was copied from, in a code block a chat keeps in columns.
@@ -3161,7 +3165,7 @@ const RELEASE_NOTES = [
     const list = await facts();
     if (!list.length) return;
     const half = Math.ceil(list.length / 2);
-    const column = (rows) => `<dl class="facts">${rows.map(([label, value]) => `<dt>${esc(label)}</dt><dd${label === 'Data folder' ? ' class="mono"' : ''}>${esc(value)}</dd>`).join('')}</dl>`;
+    const column = (rows) => `<dl class="facts">${rows.map(([label, value]) => `<dt>${esc(label)}</dt><dd>${esc(value)}</dd>`).join('')}</dl>`;
     $('st-facts').innerHTML = column(list.slice(0, half)) + column(list.slice(half));
   };
   document.addEventListener('rabbidlab:show', (e) => { if (e.detail[0] === 'overview') machine(); });

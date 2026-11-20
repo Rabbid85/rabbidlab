@@ -10,8 +10,11 @@ public sealed class ServerStatus(DataFolder folder)
 {
     private readonly DateTime started = DateTime.UtcNow;
 
+    // Windows 11 Pro 25H2 rather than .NET's Microsoft Windows 10.0.26300.
+    private readonly string os = OperatingSystem.IsWindows() ? RabbidLab.Shared.WindowsVersion.Name() : RuntimeInformation.OSDescription;
+
     public StatusReport Read() => new(Product.Name, Product.Version, Product.Dev, Environment.MachineName, Product.Platform,
-        RuntimeInformation.OSDescription, RuntimeInformation.FrameworkDescription, started, Product.Repository, folder.Path);
+        os, RuntimeInformation.FrameworkDescription, started, Product.Repository, folder.Path);
 }
 
 public static class StatusApi
