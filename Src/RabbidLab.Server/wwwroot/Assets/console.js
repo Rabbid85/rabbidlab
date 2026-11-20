@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.295', [
+    'Links and Sensors keep their bar under the banner, and once you scroll past it a dock at the top holds the views, Refresh icons and Add.']],
   ['1.1.294', [
     'New on Active Directory, Devices and Group Policy says what it makes, such as New user or Add computers, in a thin grey outline. The bar under the banner is slimmer, with New in line with the list.',
     'Disconnect service account names the account in the line under it, and you type its name to confirm.']],

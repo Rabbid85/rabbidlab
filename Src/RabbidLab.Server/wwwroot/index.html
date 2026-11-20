@@ -40,6 +40,7 @@
 <script src="Assets/gpo.js" defer></script>
 <script src="Assets/notes.js" defer></script>
 <script src="Assets/deploy.js" defer></script>
+<script src="Assets/dock.js" defer></script>
 </head>
 <!-- The console: the top bar, the rail down the left, and one page at a time (console.js picks it from the address). -->
 <body class="app booting">
@@ -770,7 +771,7 @@
       </aside>
     </header>
     <!-- The command bar along the bottom of the banner: what can be done here, then the view and the gear on the right. -->
-    <div class="cmdbar" role="toolbar" aria-label="Links">
+    <div class="cmdbar" id="ln-tools" role="toolbar" aria-label="Links" data-dock="ln-view ln-refresh ln-add">
       <button type="button" class="cmd" id="ln-add" data-can="links.edit"><svg><use href="#i-plus"/></svg><span>Add a link</span></button>
       <button type="button" class="cmd" id="ln-newgroup" data-can="links.edit"><svg><use href="#i-folder"/></svg><span>New group</span></button>
       <button type="button" class="cmd" id="ln-refresh" data-can="links.edit"><svg><use href="#i-refresh"/></svg><span>Refresh icons</span></button>
@@ -823,7 +824,7 @@
       </aside>
     </header>
     <!-- The command bar along the bottom of the banner, as on Links. With no sensors only the gear shows: the empty card has Add. -->
-    <div class="cmdbar" id="sn-tools" role="toolbar" aria-label="Sensors">
+    <div class="cmdbar" id="sn-tools" role="toolbar" aria-label="Sensors" data-dock="sn-view sn-add">
       <button type="button" class="cmd" id="sn-add" data-can="sensors.edit"><svg><use href="#i-plus"/></svg><span>Add a sensor</span></button>
       <button type="button" class="cmd" id="sn-newgroup" data-can="sensors.edit"><svg><use href="#i-folder"/></svg><span>New group</span></button>
       <span class="grow"></span>

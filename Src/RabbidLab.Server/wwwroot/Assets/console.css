@@ -1128,3 +1128,14 @@ input::-ms-reveal { display: none; }
 /* A banner button that is not the main one (Check for updates while Install now is): plain, dark, the same size. */
 .hero-actions > button:not(.primary) { border: 1px solid rgba(255, 255, 255, .12); background: rgba(9, 10, 18, .55); color: var(--title); font: inherit; font-size: 14px; font-weight: 600; }
 .hero-actions > button:not(.primary):hover { background: #1A1C28; }
+/* The dock (dock.js): once a page's command bar has scrolled away, its views, Refresh and Add in a pill at the top. */
+.dock { position: fixed; top: 64px; z-index: 60; display: flex; align-items: center; gap: 10px; padding: 8px 10px; transform: translateX(-50%); border: 1px solid var(--line-strong); border-radius: 14px; background: #161927; box-shadow: 0 18px 44px rgba(0, 0, 0, .6); animation: dock-in .16s ease-out; }
+.dock[hidden] { display: none; }
+.dock-sep { width: 1px; height: 22px; background: var(--line-strong); }
+.dock-btn { display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 8px; background: none; color: #B8BCCB; }
+.dock-btn:hover { background: #1F2232; color: var(--title); }
+.dock-btn svg { width: 17px; height: 17px; }
+.dock-main { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 16px; border-radius: 9px; }
+.dock-main svg { width: 16px; height: 16px; }
+@keyframes dock-in { from { opacity: 0; transform: translate(-50%, -6px); } }
+@media (prefers-reduced-motion: reduce) { .dock { animation: none; } }

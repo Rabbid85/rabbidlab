@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.295 (2026-11-20)
+
+- Links and Sensors keep their bar under the banner, and once you scroll past it a dock at the top holds the views, Refresh icons and Add.
+
 ## 1.1.294 (2026-11-20)
 
 - New on Active Directory, Devices and Group Policy says what it makes, such as New user or Add computers, in a thin grey outline. The bar under the banner is slimmer, with New in line with the list.
