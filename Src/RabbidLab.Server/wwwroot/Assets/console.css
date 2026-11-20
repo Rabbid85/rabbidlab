@@ -137,6 +137,10 @@ body.app.rail-small { grid-template-columns: 60px minmax(0, 1fr); }
 .br-tag { height: 26px; padding: 0 9px; border: 1px solid var(--line-strong); border-radius: 7px; background: #141623; color: #C9CCDA; font: 12.5px Consolas, "Cascadia Mono", monospace; cursor: pointer; }
 .br-tag:hover:not(:disabled) { border-color: var(--accent-line); color: var(--title); }
 .br-tag:disabled { opacity: .45; cursor: default; }
+.sure-type { margin-top: 14px; }
+.sure-type[hidden] { display: none; }
+.sure-type label { color: var(--muted); font-size: 13px; }
+.sure-type .ds-input { width: 100%; }
 .ds-icon { display: grid; place-items: center; width: 44px; height: 44px; overflow: hidden; border: 1px solid var(--line-strong); border-radius: 10px; background: #0C0E17; }
 .ds-icon svg, .ds-icon img { width: 32px; height: 32px; border-radius: 7px; object-fit: cover; }
 .ds-swatches { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 8px; max-width: 420px; }
@@ -626,14 +630,17 @@ a.button:hover, label.button:hover { background: #222536; text-decoration: none;
 .cmd-side[hidden] { display: none; }
 .cmd-side .cmd-l { margin-right: 2px; }
 #dir-rows, #dv-rows, #gpo-rows { display: contents; } /* the switch lines up with the box beside it, not on the text */
-/* New, plain like the bar's other commands: "+ New" makes what the open list holds, a thin line, then the arrow with
-   everything the page makes (Active Directory, Devices, Group Policy). */
-.cmdbar .cmd-pair { display: inline-flex; flex: none; align-items: center; gap: 2px; }
+/* New, with a thin grey edge round both halves: the left half says what it makes for the open list (New user), the
+   arrow has everything the page makes (Active Directory, Devices, Group Policy). */
+.cmdbar .cmd-pair { display: inline-flex; flex: none; align-items: stretch; gap: 0; border: 1px solid #383C52; border-radius: 8px; }
 .cmdbar .cmd-pair[hidden] { display: none; }
-.cmd-pair > .cmd-rule { width: 1px; height: 18px; background: #2A2D3E; }
-.cmdbar .cmd-pair > .cmd-arrow { justify-content: center; width: 28px; padding: 0; }
+.cmd-pair > .cmd-rule { width: 1px; background: #383C52; }
+.cmdbar .cmd-pair > .cmd { height: 32px; border-radius: 7px 0 0 7px; color: var(--title); font-weight: 650; }
+.cmdbar .cmd-pair > .cmd-arrow { justify-content: center; width: 30px; padding: 0; border-radius: 0 7px 7px 0; }
 .cmdbar .cmd-pair > .cmd-arrow svg { width: 14px; height: 14px; color: #8B90A5; stroke: currentColor; }
 .cmdbar .cmd-pair > .cmd-arrow:hover:not(:disabled) svg { color: var(--title); }
+/* The lists' bar (Active Directory, Devices, Group Policy) is slim, with New in line with the list under it. */
+#dir-cmd, #dv-cmd, #gpo-cmdbar { min-height: 42px; padding-left: calc(var(--side, 44px) - 12px); }
 /* The page's settings menu, at the very end of the bar (Links, Sensors). */
 .cmdbar .cmd-gear { display: grid; flex: none; place-items: center; width: 36px; height: 36px; margin-left: 8px; padding: 0; border: 0; border-radius: 7px; background: none; color: #B8BCCB; }
 .cmdbar .cmd-gear:hover, .cmdbar .cmd-gear:has(+ .gear-menu:popover-open) { background: #1A1D2B; color: var(--title); }

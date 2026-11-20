@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.294 (2026-11-20)
+
+- New on Active Directory, Devices and Group Policy says what it makes, such as New user or Add computers, in a thin grey outline. The bar under the banner is slimmer, with New in line with the list.
+- Disconnect service account names the account in the line under it, and you type its name to confirm.
+
 ## 1.1.293 (2026-11-20)
 
 - A tagline under the lab name, in Settings, Appearance. It shows in the top bar, the Overview banner and the sign-in page, and can hold tags like {username} and {hostname} that fill in for whoever is looking.

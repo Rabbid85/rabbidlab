@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.294', [
+    'New on Active Directory, Devices and Group Policy says what it makes, such as New user or Add computers, in a thin grey outline. The bar under the banner is slimmer, with New in line with the list.',
+    'Disconnect service account names the account in the line under it, and you type its name to confirm.']],
   ['1.1.293', [
     'A tagline under the lab name, in Settings, Appearance. It shows in the top bar, the Overview banner and the sign-in page, and can hold tags like {username} and {hostname} that fill in for whoever is looking.']],
   ['1.1.292', [
@@ -2111,18 +2114,33 @@ const RELEASE_NOTES = [
   $('toast-test').addEventListener('click', () => toast('This is a test toast.', `It shows for ${toastPrefs().secs} seconds.`, { action: { label: 'Details', href: '#settings/appearance' } }));
   toastSettings();
   // Are you sure: a title, what happens, the button's words, and what to do on yes. code: a command shown as it will run;
-  // safe: a plain button, for something that isn't destructive.
+  // safe: a plain button, for something that isn't destructive; type: a name to type before the button works.
   let sureDo = null;
-  const sure = (title, lead, button, then, { code = '', safe = false } = {}) => {
+  let sureType = '';
+  const sure = (title, lead, button, then, { code = '', safe = false, type = '' } = {}) => {
     $('sure-title').textContent = title;
     $('sure-lead').textContent = lead;
     $('sure-code').textContent = code;
     $('sure-code').hidden = !code;
     $('sure-go').textContent = button;
     $('sure-go').className = safe ? 'primary' : 'danger solid';
+    sureType = type;
+    $('sure-type').hidden = !type;
+    $('sure-type-label').textContent = `Type ${type} to confirm`;
+    $('sure-typed').value = '';
+    $('sure-go').disabled = !!type;
     sureDo = then;
     $('sure-dialog').showModal();
+    if (type) $('sure-typed').focus();
   };
+  // The New button's left half says what it makes, with that thing's icon (the bar on AD, Devices and Group Policy).
+  const newLabel = (button, icon, text) => {
+    if (!button) return;
+    button.innerHTML = `${svg(icon)}<span>${esc(text)}</span>`;
+    delete button.dataset.tip;
+  };
+  $('sure-typed').addEventListener('input', () => { $('sure-go').disabled = $('sure-typed').value.trim().toLowerCase() !== sureType.toLowerCase(); });
+  $('sure-typed').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !$('sure-go').disabled) $('sure-go').click(); });
   // Copies an element's text. Over plain HTTP browsers have no clipboard, so it selects the text to copy by hand.
   const copy = async (el, button) => {
     try {
@@ -3993,7 +4011,7 @@ const RELEASE_NOTES = [
     : `<button type="button" class="primary dw-edit" ${attrs}>${svg('edit')}<span>Edit</span></button>`);
 
   // What the other scripts use. Hints are tips.js and data grids are grid.js.
-  window.RabbidLab = { app: () => product, $, esc, svg, say, initials, when, daysAgo, send, get, keep, forget, has, paint, where, viewAs, place, popups, option, dropdown, sure, copy, busy, refresh, groupTools, skeleton, toast, stepper, panel, scatter, editButton,
+  window.RabbidLab = { app: () => product, $, esc, svg, say, initials, when, daysAgo, send, get, keep, forget, has, paint, where, viewAs, place, popups, option, dropdown, sure, newLabel, copy, busy, refresh, groupTools, skeleton, toast, stepper, panel, scatter, editButton,
     palette: window.RabbidLabColours.roles, me: () => meInfo,
     // The Devices page, for devices.js: its lists, what's ticked, and drawing or reading it again.
     devices: { lists: DV, more: dvMore, hooks: dvHooks, picked: dvPicked, computers: () => computers, rows: () => dvAll(), at: () => dvAt, shown: () => dvShown, grid: () => dvGrid(),

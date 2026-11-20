@@ -583,7 +583,8 @@
     $('dir-cmd').hidden = !!ad && !ad.state;
     $('dir-new-split').hidden = !!ad?.state?.readOnly;
     $('dir-new-split').querySelectorAll('button').forEach((b) => { b.disabled = !ad?.state; });
-    $('dir-new').dataset.tip = MAKES.find(([k]) => k === makeKind())[2];
+    const [, makeIcon, makeText] = MAKES.find(([k]) => k === makeKind());
+    R.newLabel($('dir-new'), makeIcon, makeText);
     const hero = $('dir-hero');
     $('dir-eyebrow').textContent = ad?.state ? `${ad.state.domain} · Directory` : 'Directory';
     if (other) {
@@ -2756,8 +2757,8 @@
     ['as-ou-row', 'as-gou-row', 'as-cou-row'].forEach((id) => { $(id).hidden = !s; });
     $('as-danger').classList.toggle('gone', !s);
     if (!s) return;
-    $('adset-stop-title').textContent = `Disconnect ${s.account}`;
-    $('adset-stop-text').textContent = `${R.app()} deletes the stored password and stops using ${s.account}.${s.made ? ' The account and its delegated permissions stay in AD until you delete them.' : ''}`;
+    $('adset-stop-title').textContent = 'Disconnect service account';
+    $('adset-stop-text').textContent = `${s.account}: ${R.app()} deletes its stored password and stops using it.${s.made ? ' The account and its delegated permissions stay in AD until you delete them.' : ''}`;
     await placesInto('adset-ou', s.newUsers, 'adset-problem');
     $('adset-gou').innerHTML = $('adset-ou').innerHTML;
     $('adset-cou').innerHTML = $('adset-ou').innerHTML;
@@ -2797,7 +2798,7 @@
         await refreshAd(true);
         drawAdSettings();
         document.dispatchEvent(new CustomEvent('rabbidlab:ad'));
-      });
+      }, { type: s.account });
   });
 
   // --- Showing the pages -------------------------------------------------------------------------------------------

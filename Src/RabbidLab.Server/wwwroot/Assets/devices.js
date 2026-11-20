@@ -1211,7 +1211,7 @@
   D.hooks.drawn = () => {
     drawPicked();
     const at = D.at();
-    $('dv-new').dataset.tip = addHere()?.[2] || 'New';
+    R.newLabel($('dv-new'), addHere()?.[1] || 'plus', addHere()?.[2] || 'New');
     // WMI query: its box over the list, and what any computer that didn't answer said.
     $('dv-wq').hidden = at !== 'wmi';
     if (at === 'wmi') {

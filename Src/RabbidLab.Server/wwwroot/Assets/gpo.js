@@ -294,7 +294,7 @@
     const makes = Object.entries(LISTS).filter(([, x]) => x.make());
     const here = makes.find(([k]) => k === list) || makes[0];
     const off = gp ? '' : ' disabled';
-    const cmds = !here ? '' : `<div class="cmd-pair"><button type="button" class="cmd" data-make="${here[0]}" data-tip="${esc(here[1].make())}"${off}>${svg('plus')}<span>New</span></button><i class="cmd-rule"></i>`
+    const cmds = !here ? '' : `<div class="cmd-pair"><button type="button" class="cmd" data-make="${here[0]}"${off}>${svg(here[1].icon || 'plus')}<span>${esc(here[1].make())}</span></button><i class="cmd-rule"></i>`
       + `<button type="button" class="cmd cmd-arrow" data-make-more aria-haspopup="menu" data-tip="New GPO, link, WMI filter or backup" aria-label="Everything Group Policy makes"${off}>${svg('chevron-down', 'chev')}</button></div>`;
     if (cmds !== drawnCmds) $('gpo-cmd').innerHTML = drawnCmds = cmds;
     $('gpo-cmdbar').hidden = !!setup;
