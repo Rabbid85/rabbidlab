@@ -289,8 +289,13 @@
     $('gpo-n-backups').textContent = gp ? gp.backups.length : '';
     const rows = shown();
     $('gpo-tabs').innerHTML = `<a aria-current="true">${svg(l.icon)}${esc(l.name)} <small>${gp ? rows.length : ''}</small></a>`;
-    // The bar under the banner: what each list makes, waiting until Group Policy has been read.
-    const cmds = Object.entries(LISTS).filter(([, x]) => x.make()).map(([k, x]) => `<button type="button" class="cmd" data-make="${k}"${gp ? '' : ' disabled'}>${svg(x.icon)}<span>${esc(x.make())}</span></button>`).join('');
+    // The bar under the banner: New makes what the open list holds, its arrow has what every list makes; both wait until
+    // Group Policy has been read.
+    const makes = Object.entries(LISTS).filter(([, x]) => x.make());
+    const here = makes.find(([k]) => k === list) || makes[0];
+    const off = gp ? '' : ' disabled';
+    const cmds = !here ? '' : `<div class="cmd-pair"><button type="button" class="cmd" data-make="${here[0]}" data-tip="${esc(here[1].make())}"${off}>${svg('plus')}<span>New</span></button><i class="cmd-rule"></i>`
+      + `<button type="button" class="cmd cmd-arrow" data-make-more aria-haspopup="menu" data-tip="New GPO, link, WMI filter or backup" aria-label="Everything Group Policy makes"${off}>${svg('chevron-down', 'chev')}</button></div>`;
     if (cmds !== drawnCmds) $('gpo-cmd').innerHTML = drawnCmds = cmds;
     $('gpo-cmdbar').hidden = !!setup;
     // The filter bar, and the grid's part of the list's bar (Group by, the count, Compact or Relaxed).
@@ -335,8 +340,13 @@
   }));
   const makeIn = (k) => (k === 'gpos' ? newGpo() : k === 'linked' ? linkTo(null, null) : k === 'wmi' ? editFilter(null) : backupAll());
   $('gpo-cmd').addEventListener('click', (e) => {
+    if (!gp) return;
     const b = e.target.closest('[data-make]');
-    if (b && gp) makeIn(b.dataset.make);
+    if (b) makeIn(b.dataset.make);
+    else if (e.target.closest('[data-make-more]')) {
+      const made = Object.entries(LISTS).filter(([, x]) => x.make()).map(([k, x]) => ({ label: x.make(), icon: x.icon, run: () => makeIn(k) }));
+      R.picker.menu(e.target.closest('.cmd-pair'), made.flatMap((m, i) => (i && m.label === LISTS.backups.make() ? ['-', m] : [m])), { key: 'gpo.new' });
+    }
   });
 
   // --- Ticks, and what Actions does with them --------------------------------------------------------------------

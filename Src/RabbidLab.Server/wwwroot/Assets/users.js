@@ -579,11 +579,9 @@
     const at = R.where()[0];
     if (!other && at !== 'ad') other = at === 'org' || at === 'attrs' ? at : ''; // a list read again while another page is open
     if (!other && at !== 'ad') return;
-    // The bar under it, once the account is known: New (not while read-only), which makes the open list's kind, and on
-    // the pages that list things, the rows, Refresh and Export.
+    // The bar under it, once the account is known: New, which makes the open list's kind; read-only, nothing.
     $('dir-cmd').hidden = !!ad && !ad.state;
     $('dir-new-split').hidden = !!ad?.state?.readOnly;
-    $('dir-side').hidden = !!other;
     $('dir-new-split').querySelectorAll('button').forEach((b) => { b.disabled = !ad?.state; });
     $('dir-new').dataset.tip = MAKES.find(([k]) => k === makeKind())[2];
     const hero = $('dir-hero');

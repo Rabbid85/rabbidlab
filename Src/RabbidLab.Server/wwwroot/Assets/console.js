@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.279', [
+    'View with Compact or Relaxed rows, Refresh and Export sit at the right end of the list tabs (People and System accounts, Computers and Local admins) instead of the bar under the banner.',
+    'Active Directory, Devices and Group Policy have one plain New in the bar under the banner, like the bar on Links. New makes what the open list holds, and its arrow has everything the page makes.']],
   ['1.1.278', [
     'On Active Directory, Devices and Group Policy, Compact or Relaxed rows, Refresh and Export moved up to the right end of the bar under the banner, after View, like Links. The list keeps Actions, Group by and the count.']],
   ['1.1.277', [
@@ -2813,7 +2816,8 @@ const RELEASE_NOTES = [
       }
       seats();
     });
-    $('seats-add').addEventListener('click', async () => {
+    // Add computers, from New in the bar under the banner (devices.js).
+    dvHooks.addComputers = async () => {
       $('add-dialog').showModal();
       try {
         joining = await get('/api/clients/settings');
@@ -2823,7 +2827,7 @@ const RELEASE_NOTES = [
       }
       drawJoining();
       $('join-approve').checked = joining.approve;
-    });
+    };
     $('line-copy').addEventListener('click', async () => {
       await copy($('install-line'), $('line-copy'));
       setTimeout(() => { $('line-copy').textContent = 'Copy'; }, 2000);

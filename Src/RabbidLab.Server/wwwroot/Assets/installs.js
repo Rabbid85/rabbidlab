@@ -58,7 +58,7 @@
   D.more.installs = { table: 'dv-installs', grid, rows: () => apps || [], count: () => apps?.length, can, noun: 'apps', fields: () => FIELDS, load,
     empty: () => 'No apps like that.',
     acts: { can, count: () => pickedRows().length, open: (button) => openActs(button) } };
-  $('dv-new-app').addEventListener('click', () => openEdit(null)); // Add an app, in the bar under the banner
+  D.hooks.addApp = () => openEdit(null); // Add an app, from New in the bar under the banner (devices.js)
 
   // Ticks, like every list: what's ticked goes to Actions.
   const drawTicks = () => {

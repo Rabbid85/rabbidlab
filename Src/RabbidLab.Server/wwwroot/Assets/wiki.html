@@ -59,7 +59,7 @@
   </ol>
   <h3>Quietly, from a command line or Intune</h3>
   <ol>
-    <li>Open <a href="#seats">Devices</a> and click <b>Add computers</b>.</li>
+    <li>Open <a href="#seats">Devices</a> and click <b>New</b> in the bar under the banner, or pick <b>Add computers</b> from its arrow.</li>
     <li>Copy the install line. It has this server's address and its public key fingerprint, which is how the client knows the server.</li>
     <li>Run it on the computer, or paste it into Intune as the install command.</li>
   </ol>
@@ -101,7 +101,7 @@
   <ul>
     <li><b>Several computers:</b> tick them, then click <b>Actions</b>. Shift-click ticks everything in between.</li>
     <li><b>One computer:</b> click it. <b>Actions</b> at the top of its panel has the same menu, and its <b>Jobs</b> tab lists what was run on it.</li>
-    <li><b>Scripts</b> is the library. <b>New script</b> adds one, and <b>Start from</b> fills in a common one to change. Each script has a time limit: it's stopped when that's up.</li>
+    <li><b>Scripts</b> is the library. <b>New</b> adds one while Scripts is open (it's also under New's arrow), and <b>Start from</b> fills in a common one to change. Each script has a time limit: it's stopped when that's up.</li>
     <li><b>Jobs</b> lists every run. Click one to see each computer, the exit code, what the script wrote there, and exactly what ran.</li>
     <li><b>Lock</b> sends everyone signed in back to the sign-in screen with their apps still open. <b>Sign everyone out</b> signs them out straight away. <b>Send a message</b> pops up for whoever is signed in. These and <b>Shut down</b> are for now: a computer offline for more than 15 minutes does not get them later.</li>
     <li><b>Restart</b> gives anyone signed in a five minute warning. <b>Install Windows updates</b> doesn't restart: a computer that needs it shows under Needs restart.</li>
@@ -114,7 +114,7 @@
 </article>
 
 <article data-key="workflows" data-group="Computers" data-title="Workflows">
-  <p>A workflow runs steps on computers by itself. Open <a href="#seats/workflows">Workflows</a> under Devices and click <b>New workflow</b>.</p>
+  <p>A workflow runs steps on computers by itself. Open <a href="#seats/workflows">Workflows</a> under Devices and click <b>New</b>, or pick <b>New workflow</b> from New's arrow.</p>
   <ul>
     <li><b>When:</b> a new computer is approved, on a schedule (days and a time, by this server's clock), a computer comes online, is missing Windows updates, needs a restart, or runs low on space on C:.</li>
     <li><b>On which computers:</b> every computer, names like <code>SHOP-*</code>, Windows names that contain a word (or don't, such as Server), or only computers with nobody signed in.</li>
@@ -353,7 +353,7 @@
   <ol>
     <li>Click a GPO to open it. <b>Details</b> has its versions in AD and SYSVOL, <b>Links</b> where it applies, <b>Settings</b> what it sets, and <b>Delegation</b> who it applies to and who can change it.</li>
     <li><b>Actions</b> on its panel links it, turns its computer or user settings off, sets its WMI filter, renames, copies, backs it up, restores it, saves its settings report or deletes it.</li>
-    <li><b>New GPO</b> makes an empty one, or a copy of another, and can link it straight away. Its settings are then set in the Group Policy editor (gpmc.msc).</li>
+    <li><b>New</b> (or <b>New GPO</b> under its arrow) makes an empty one, or a copy of another, and can link it straight away. Its settings are then set in the Group Policy editor (gpmc.msc).</li>
     <li>On <b>Delegation</b>, type a group, user or computer to make the GPO apply to it. The cross stops it applying there; it can still read the GPO, so computers keep working.</li>
     <li>Tick GPOs in the list to link, back up, run gpupdate or delete several at once.</li>
   </ol>

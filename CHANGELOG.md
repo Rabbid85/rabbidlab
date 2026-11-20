@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.279 (2026-11-19)
+
+- View with Compact or Relaxed rows, Refresh and Export sit at the right end of the list tabs (People and System accounts, Computers and Local admins) instead of the bar under the banner.
+- Active Directory, Devices and Group Policy have one plain New in the bar under the banner, like the bar on Links. New makes what the open list holds, and its arrow has everything the page makes.
+
 ## 1.1.278 (2026-11-19)
 
 - On Active Directory, Devices and Group Policy, Compact or Relaxed rows, Refresh and Export moved up to the right end of the bar under the banner, after View, like Links. The list keeps Actions, Group by and the count.

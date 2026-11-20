@@ -1068,9 +1068,18 @@
       if (row) openRow(row.dataset.row);
     });
   }
-  // The bar under the banner: a new script or workflow (Add computers is console.js's, Add an app installs.js's).
-  $('dv-new-script').addEventListener('click', () => openScriptEdit(null));
-  $('dv-new-flow').addEventListener('click', () => openFlowEdit(null));
+  // New in the bar under the banner: it adds what the open list holds (Add computers anywhere else), and its arrow has
+  // everything this page adds. Add computers is console.js's, Add an app installs.js's.
+  const ADDS = [
+    ['computers', 'monitor', 'Add computers', () => has('seats.add'), () => D.hooks.addComputers?.()],
+    ['installs', 'box', 'Add an app', () => has('seats.installs'), () => D.hooks.addApp?.()],
+    ['scripts', 'code', 'New script', () => has('seats.scripts.edit'), () => openScriptEdit(null)],
+    ['workflows', 'org', 'New workflow', () => has('seats.workflows'), () => openFlowEdit(null)],
+  ];
+  const addHere = () => { const ok = ADDS.filter((a) => a[3]()); return ok.find((a) => a[0] === D.at()) || ok[0]; };
+  $('dv-new').addEventListener('click', () => addHere()?.[4]());
+  $('dv-new-more').addEventListener('click', () => R.picker.menu($('dv-new-pair'),
+    ADDS.filter((a) => a[3]()).map(([, icon, label, , run]) => ({ label, icon, run })), { key: 'dv.new' }));
   panel.el.addEventListener('click', async (e) => {
     const on = (attr) => e.target.closest(`[${attr}]`);
     // In a computer's panel (console.js draws it): Actions opens the same menu, for this one computer; and its jobs.
@@ -1198,10 +1207,11 @@
     }).catch(() => {});
   };
 
-  // After the page drew: the ticks, the open row, and watching what's still running.
+  // After the page drew: the ticks, what New adds here, the open row, and watching what's still running.
   D.hooks.drawn = () => {
     drawPicked();
     const at = D.at();
+    $('dv-new').dataset.tip = addHere()?.[2] || 'New';
     // WMI query: its box over the list, and what any computer that didn't answer said.
     $('dv-wq').hidden = at !== 'wmi';
     if (at === 'wmi') {
