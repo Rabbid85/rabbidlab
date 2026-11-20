@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.287 (2026-11-19)
+
+- Member of, and Members on a group, have ticks and Select all in the side panel, with Remove (and how many) beside Add, so several come out at once. The cross on a row still takes out one.
+- The line under the open side panel tab sits right under its name.
+
 ## 1.1.286 (2026-11-19)
 
 - Every side panel tab shows when the window is narrow: the tabs close up, then wrap onto a second line, instead of folding under More.

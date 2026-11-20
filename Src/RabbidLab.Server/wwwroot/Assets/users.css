@@ -472,6 +472,9 @@ dialog.drawer::backdrop { background: rgba(5, 6, 10, .55); backdrop-filter: blur
 .dw-list .mrow { padding: 7px 6px; }
 .dw-list .tk { display: grid; place-items: center; width: 18px; flex: none; cursor: pointer; }
 .dw-list .tk input { margin: 0; }
+/* Ticks on Member of and Members: Select all over the rows, and Remove with the count beside Add. */
+.dw-sec-do { display: inline-flex; align-items: center; gap: 8px; }
+.dw-list .dw-pick-head { padding-top: 2px; padding-bottom: 6px; border-bottom: 1px solid var(--line); color: #8B90A5; font-size: 12.5px; font-weight: 600; }
 .dw-x { flex: none; margin: 0; opacity: .7; }
 .dw-list .mrow:hover .dw-x, .dw-x:focus-visible { opacity: 1; }
 .dw-empty { margin: 4px 0 10px; }
@@ -629,7 +632,7 @@ button.primary.dw-edit[aria-disabled="true"], button.primary.dw-edit[aria-disabl
 .dw-strip .ubadge.grey::before { content: "–"; background: #5E6380; }
 .dw-status { margin-top: 12px; }
 .dw-tabs { gap: 28px; margin-top: 22px; }
-.dw-tabs a { font-size: 14.5px; }
+.dw-tabs a { padding-bottom: 5px; font-size: 14.5px; } /* the line sits just under the name */
 .dw-tabs a small { margin-left: 7px; padding: 1px 8px; border-radius: 999px; background: #1A1D2B; color: #B8BCCB; font-size: 12px; font-weight: 600; }
 /* Every tab always shows: too many for the panel's width close up (tight), then wrap onto a second line (console.js fitTabs). */
 .dw-tabs { flex-wrap: wrap; row-gap: 6px; }

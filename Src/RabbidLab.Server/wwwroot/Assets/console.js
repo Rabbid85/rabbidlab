@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.287', [
+    'Member of, and Members on a group, have ticks and Select all in the side panel, with Remove (and how many) beside Add, so several come out at once. The cross on a row still takes out one.',
+    'The line under the open side panel tab sits right under its name.']],
   ['1.1.286', [
     'Every side panel tab shows when the window is narrow: the tabs close up, then wrap onto a second line, instead of folding under More.']],
   ['1.1.285', [

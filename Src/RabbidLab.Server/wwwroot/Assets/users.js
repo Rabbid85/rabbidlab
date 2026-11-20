@@ -1431,7 +1431,7 @@
   // status, the everyday actions (More has the rest), and tabs for its details and its groups (a group's members too).
   // Each section has its own actions, and settings are switches. The list stays usable: another row opens in it.
 
-  const dw = { kind: '', key: '', tab: 'overview', members: null, membersFor: '' };
+  const dw = { kind: '', key: '', tab: 'overview', members: null, membersFor: '', picks: new Set() };
   const dwObj = () => (lists[dw.kind] || []).find((x) => String(AD[dw.kind].key(x)) === dw.key);
   const dwFact = (label, value, wide = false) => `<div class="dw-fact${wide ? ' wide' : ''}"><span class="l">${esc(label)}</span><span class="v">${value || '<span class="muted">Not set</span>'}</span></div>`;
   // A section: its heading with its actions (only those this may do), then its facts.
@@ -1517,12 +1517,25 @@
       + `<p class="hint dw-dn">${esc(x.dn)}</p>`;
   };
 
-  // Its groups, each with a way out, and Add to groups.
+  // Ticks on the panel's Member of and Members lists, like every list: tick some (or all), then Remove with the count.
+  const dwPicked = (dn) => [...dw.picks].some((d) => same(d, dn));
+  const dwTick = (dn, name) => `<label class="tk"><input type="checkbox" data-dw-pick="${esc(dn)}"${dwPicked(dn) ? ' checked' : ''} aria-label="Select ${esc(name)}"></label>`;
+  const dwTickAll = (dns) => {
+    [...dw.picks].forEach((d) => { if (!dns.some((x) => same(x, d))) dw.picks.delete(d); });
+    const n = dw.picks.size;
+    return `<div class="mrow dw-pick-head"><label class="tk"><input type="checkbox" data-dw-pick-all${n && n === dns.length ? ' checked' : ''}${n && n < dns.length ? ' data-mixed' : ''} aria-label="Select all"></label>`
+      + `<span>${n ? `${n} selected` : 'Select all'}</span></div>`;
+  };
+  const dwRemove = () => `<button type="button" class="small" data-dw-remove${dw.picks.size ? '' : ' disabled'}>${svg('user-minus')}Remove${dw.picks.size ? ` (${dw.picks.size})` : ''}</button>`;
+
+  // Its groups, each with a tick and a way out, and Add to groups.
   const dwMemberOf = (k, x) => {
     const change = can('ad.groups') && mayChange(k, x);
     const gs = x.groups || [];
-    return `<section class="dw-sec"><div class="dw-sec-head"><h3>Member of <small>${gs.length}</small></h3>${change ? `<button type="button" class="small" data-dw-cmd="groups-add">${svg('user-plus')}Add to groups</button>` : ''}</div>`
-      + (gs.length ? `<div class="dw-list">${gs.map((g) => `<div class="mrow"><span class="pic small">${svg('users')}</span><div class="two"><b>${esc(g.name)}</b><small>${esc(pathOf(g.dn))}</small></div>`
+    const ticks = change && gs.length;
+    return `<section class="dw-sec"><div class="dw-sec-head"><h3>Member of <small>${gs.length}</small></h3>`
+      + `${change ? `<span class="dw-sec-do">${ticks ? dwRemove() : ''}<button type="button" class="small" data-dw-cmd="groups-add">${svg('user-plus')}Add to groups</button></span>` : ''}</div>`
+      + (gs.length ? `<div class="dw-list">${ticks ? dwTickAll(gs.map((g) => g.dn)) : ''}${gs.map((g) => `<div class="mrow">${ticks ? dwTick(g.dn, g.name) : ''}<span class="pic small">${svg('users')}</span><div class="two"><b>${esc(g.name)}</b><small>${esc(pathOf(g.dn))}</small></div>`
         + `${change ? `<button type="button" class="at-more dw-x" data-dw-leave="${esc(g.dn)}" data-tip="Remove" aria-label="Remove from ${esc(g.name)}">${svg('x')}</button>` : ''}</div>`).join('')}</div>`
         : `<p class="muted dw-empty">${k === 'users' ? 'Only Domain Users, the primary group.' : k === 'computers' ? 'Only Domain Computers, the primary group.' : 'Not in any groups.'}</p>`)
       + '</section>';
@@ -1539,14 +1552,15 @@
         .catch((err) => { if (dw.membersFor === g.dn) { dw.members = { problem: err.message }; drawDrawer(); } });
     }
     const ms = dw.members;
+    const ticks = change && Array.isArray(ms) && ms.length;
     const body = ms === null ? `<div class="op-items">${'<i class="sk op-sk"></i>'.repeat(4)}</div>`
       : ms.problem ? `<p class="hint problem">${esc(ms.problem)}</p>`
-        : ms.length ? `<div class="dw-list">${ms.map((m) => `<div class="mrow"><span class="pic small${m.kind === 'user' ? ' user' : ''}">${m.kind === 'user' ? esc(initials(m.name)) : svg(KIND_PIC[m.kind] || 'user')}</span>`
+        : ms.length ? `<div class="dw-list">${ticks ? dwTickAll(ms.map((m) => m.dn)) : ''}${ms.map((m) => `<div class="mrow">${ticks ? dwTick(m.dn, m.name) : ''}<span class="pic small${m.kind === 'user' ? ' user' : ''}">${m.kind === 'user' ? esc(initials(m.name)) : svg(KIND_PIC[m.kind] || 'user')}</span>`
           + `<div class="two"><b>${esc(m.name)}</b><small>${esc(m.sub || '')}</small></div>`
           + `${change ? `<button type="button" class="at-more dw-x" data-dw-out="${esc(m.dn)}" data-tip="Remove" aria-label="Take ${esc(m.name)} out">${svg('x')}</button>` : ''}</div>`).join('')}</div>`
           : '<p class="muted dw-empty">Nobody yet.</p>';
     return `<section class="dw-sec"><div class="dw-sec-head"><h3>Members${Array.isArray(ms) ? ` <small>${ms.length}</small>` : ''}</h3>`
-      + `${change ? `<button type="button" class="small" data-dw-cmd="members-add">${svg('user-plus')}Add members</button>` : ''}</div>${body}</section>`;
+      + `${change ? `<span class="dw-sec-do">${ticks ? dwRemove() : ''}<button type="button" class="small" data-dw-cmd="members-add">${svg('user-plus')}Add members</button></span>` : ''}</div>${body}</section>`;
   };
 
   // A domain setting: how it is, what's recommended and why, and changing it here (signed in as a domain admin for it,
@@ -1727,11 +1741,12 @@
     $('dw-body').innerHTML = dwHead(k, x)
       + `<div class="tabs2 dw-tabs" role="tablist">${tabsFor.map(([t, label, n]) => `<a role="tab" data-dw-tab="${t}"${dw.tab === t ? ' aria-current="true"' : ''}>${esc(label)}${n == null ? '' : `<small>${esc(n.toLocaleString())}</small>`}</a>`).join('')}</div>`
       + `<div class="dw-panel">${body}</div>`;
+    $('dw-body').querySelectorAll('[data-mixed]').forEach((b) => { b.indeterminate = true; });
     $('dw-body').scrollTop = scroll;
   };
   const openDrawer = (k, x) => {
     const key = String(AD[k].key(x));
-    if (dw.kind !== k || dw.key !== key) Object.assign(dw, { tab: 'overview', members: null, membersFor: '' });
+    if (dw.kind !== k || dw.key !== key) Object.assign(dw, { tab: 'overview', members: null, membersFor: '', picks: new Set() });
     dw.kind = k;
     dw.key = key;
     drawDrawer();
@@ -1746,6 +1761,22 @@
   };
   // The side panel (R.panel, console.js) closes itself on Esc, its × and leaving the page; this marks the row.
   R.panel.el.addEventListener('close', markOpenRow);
+  // A tick on Member of or Members, or Select all.
+  R.panel.el.addEventListener('change', (e) => {
+    const one = e.target.closest('[data-dw-pick]');
+    const all = e.target.closest('[data-dw-pick-all]');
+    const x = R.panel.is('ad') && dwObj();
+    if ((!one && !all) || !x) return;
+    if (one) {
+      const had = [...dw.picks].find((d) => same(d, one.dataset.dwPick));
+      if (had) dw.picks.delete(had);
+      else dw.picks.add(one.dataset.dwPick);
+    } else {
+      const dns = dw.tab === 'members' ? (Array.isArray(dw.members) ? dw.members.map((m) => m.dn) : []) : (x.groups || []).map((g) => g.dn);
+      dw.picks = all.checked ? new Set(dns) : new Set();
+    }
+    drawDrawer();
+  });
   // A switch makes its change straight away; the panel shows how it came out.
   R.panel.el.addEventListener('change', (e) => {
     const sw = e.target.closest('[data-dw-on]');
@@ -1776,7 +1807,24 @@
       return;
     }
     const t = e.target.closest('[data-dw-tab]');
-    if (t) { dw.tab = t.dataset.dwTab; drawDrawer(); return; }
+    if (t) { dw.tab = t.dataset.dwTab; dw.picks.clear(); drawDrawer(); return; }
+    // Remove what's ticked: its groups on Member of, or a group's members on Members.
+    if (e.target.closest('[data-dw-remove]') && dw.picks.size) {
+      const dns = [...dw.picks];
+      const members = dw.tab === 'members';
+      const names = dns.map((d) => (members ? (dw.members || []).find((m) => same(m.dn, d))?.name : (x.groups || []).find((g) => same(g.dn, d))?.name) || d);
+      const what = members ? `${count(dns.length, 'member', 'members')} out of ${x.name}` : `${nameOf(x)} from ${dns.length === 1 ? names[0] : count(dns.length, 'group', 'groups')}`;
+      const go = () => {
+        dw.picks.clear();
+        if (members) {
+          dw.membersFor = ''; // read again after
+          each(k, [x], 'Removing members', `Took ${what}`, (g) => membersOf(g, [], dns));
+        } else each(k, [x], 'Removing from groups', `Removed ${what}`, (y) => memberOf(k, y, [], dns));
+      };
+      if (dns.length === 1) go();
+      else sure(members ? `Take ${what}?` : `Remove ${what}?`, names.join(', '), members ? 'Take them out' : 'Remove from groups', go);
+      return;
+    }
     const cmd = e.target.closest('[data-dw-cmd]');
     if (cmd) { runCmd(cmd.dataset.dwCmd, k, [x]); return; }
     const more = e.target.closest('[data-dw-more]');
