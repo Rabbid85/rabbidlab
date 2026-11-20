@@ -787,8 +787,12 @@
     }
   };
   let menuFor = null;
-  const openMenu = (name, x, y) => {
-    menuFor = object?.attributes.find((a) => a.name === name);
+  // Whose attributes the menu and Edit… change: the browser's object, or one a side panel shows (R.attrs.menu).
+  const browser = { get: () => object, set: (o) => { object = o; }, draw: () => drawObject() };
+  let on = browser;
+  const openMenu = (name, x, y, t = browser) => {
+    on = t;
+    menuFor = t.get()?.attributes.find((a) => a.name === name);
     if (!menuFor) return;
     const m = $('at-menu');
     const may = R.has('ad.attributes') && menuFor.editable;
@@ -823,7 +827,7 @@
     if (b.dataset.at === 'line') copyText(`${a.name}: ${a.values.join('; ')}`, `${a.name} and its value`);
     if (b.dataset.at === 'edit') openEdit(a);
     if (b.dataset.at === 'clear') {
-      R.sure(`Clear ${a.name}?`, `It's taken off ${object.name} in Active Directory.`, 'Clear', () => saveAttr(a, []));
+      R.sure(`Clear ${a.name}?`, `It's taken off ${on.get().name} in Active Directory.`, 'Clear', () => saveAttr(a, []));
     }
   });
 
@@ -842,7 +846,7 @@
     const bool = a.type === 'Boolean';
     const raw = a.raw || [];
     $('attr-title').textContent = `Edit ${a.name}`;
-    $('attr-lead').textContent = `${a.type || 'Value'}, ${a.single ? 'one value' : 'one value a line'}. On ${object.name}.`;
+    $('attr-lead').textContent = `${a.type || 'Value'}, ${a.single ? 'one value' : 'one value a line'}. On ${on.get().name}.`;
     $('attr-one').hidden = !a.single || bool;
     $('attr-bool').hidden = !bool;
     $('attr-many').hidden = a.single || bool;
@@ -858,8 +862,8 @@
   };
   const saveAttr = async (a, values) => {
     try {
-      object = await R.send('/api/ad/object/attribute', { dn: object.dn, name: a.name, values });
-      drawObject();
+      on.set(await R.send('/api/ad/object/attribute', { dn: on.get().dn, name: a.name, values }));
+      on.draw();
       if ($('attr-dialog').open) $('attr-dialog').close();
       R.toast(values.some((v) => v.trim()) ? `Saved ${a.name}.` : `Cleared ${a.name}.`);
     } catch (err) {
@@ -880,19 +884,21 @@
   $('at-empty').addEventListener('change', drawObject);
   $('at-copy-dn').addEventListener('click', () => object && copyText(object.dn, 'the distinguished name'));
   // Export CSV: every attribute with a value, a row each value, the way ADSI Edit's lists copy out.
-  $('at-export').addEventListener('click', () => {
-    if (!object) return;
+  const exportAttrs = (o) => {
     const cell = (s) => `"${String(s).replace(/"/g, '""')}"`;
     const lines = [['Attribute', 'Value', 'Type'].map(cell).join(',')];
-    object.attributes.filter((a) => a.set && !a.hidden).forEach((a) => a.values.forEach((v) => lines.push([a.name, v, a.type].map(cell).join(','))));
+    o.attributes.filter((a) => a.set && !a.hidden).forEach((a) => a.values.forEach((v) => lines.push([a.name, v, a.type].map(cell).join(','))));
     const link = document.createElement('a');
     link.href = URL.createObjectURL(new Blob([`﻿${lines.join('\r\n')}\r\n`], { type: 'text/csv' }));
-    link.download = `${object.name.replace(/[\\/:*?"<>|]/g, '_')} attributes.csv`;
+    link.download = `${o.name.replace(/[\\/:*?"<>|]/g, '_')} attributes.csv`;
     document.body.append(link);
     link.click();
     link.remove();
     setTimeout(() => URL.revokeObjectURL(link.href), 4000);
-  });
+  };
+  $('at-export').addEventListener('click', () => { if (object) exportAttrs(object); });
+  // The AD side panel's Attributes tab (users.js) uses the same menu, Edit… and Export, on the object it shows.
+  R.attrs = { menu: openMenu, export: exportAttrs, href: (dn) => `#attrs/${enc(parentOf(dn))}/${enc(dn)}` };
   const showAttrs = async () => {
     const [, , rest] = R.where();
     const at = dec(rest[0]);

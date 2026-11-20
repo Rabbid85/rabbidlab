@@ -472,6 +472,11 @@ dialog.drawer::backdrop { background: rgba(5, 6, 10, .55); backdrop-filter: blur
 .dw-list .mrow { padding: 7px 6px; }
 .dw-list .tk { display: grid; place-items: center; width: 18px; flex: none; cursor: pointer; }
 .dw-list .tk input { margin: 0; }
+/* Attributes in the panel: Find and Show empty over the grid (users.js dwAttrs). */
+.dwa-bar { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
+.dwa-bar .side-find { flex: 1; min-width: 0; margin: 0; }
+.dwa-all { display: inline-flex; align-items: center; gap: 7px; flex: none; color: #B8BCCB; font-size: 13px; cursor: pointer; }
+.dwa-all input { margin: 0; accent-color: var(--accent); }
 /* Ticks on Member of and Members: Select all over the rows, and Remove with the count beside Add. */
 .dw-sec-do { display: inline-flex; align-items: center; gap: 8px; }
 .dw-list .dw-pick-head { padding-top: 2px; padding-bottom: 6px; border-bottom: 1px solid var(--line); color: #8B90A5; font-size: 12.5px; font-weight: 600; }

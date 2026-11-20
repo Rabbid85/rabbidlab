@@ -1431,7 +1431,7 @@
   // status, the everyday actions (More has the rest), and tabs for its details and its groups (a group's members too).
   // Each section has its own actions, and settings are switches. The list stays usable: another row opens in it.
 
-  const dw = { kind: '', key: '', tab: 'overview', members: null, membersFor: '', picks: new Set() };
+  const dw = { kind: '', key: '', tab: 'overview', members: null, membersFor: '', picks: new Set(), attrs: { for: '', obj: null, find: '', all: false } };
   const dwObj = () => (lists[dw.kind] || []).find((x) => String(AD[dw.kind].key(x)) === dw.key);
   const dwFact = (label, value, wide = false) => `<div class="dw-fact${wide ? ' wide' : ''}"><span class="l">${esc(label)}</span><span class="v">${value || '<span class="muted">Not set</span>'}</span></div>`;
   // A section: its heading with its actions (only those this may do), then its facts.
@@ -1540,6 +1540,62 @@
         : `<p class="muted dw-empty">${k === 'users' ? 'Only Domain Users, the primary group.' : k === 'computers' ? 'Only Domain Computers, the primary group.' : 'Not in any groups.'}</p>`)
       + '</section>';
   };
+  // Attributes: everything the account has in Active Directory, as ADSI Edit shows it (/api/ad/object), read as the
+  // panel opens. Find, Show empty, Export, and each row's menu (directory.js: Copy, Edit…, Clear) as in the Attribute browser.
+  const loadAttrs = (x) => {
+    const dn = x.dn;
+    dw.attrs = { ...dw.attrs, for: dn, obj: null };
+    R.get(`/api/ad/object?dn=${encodeURIComponent(dn)}`)
+      .then((o) => { if (dw.attrs.for === dn) dw.attrs.obj = o; })
+      .catch((err) => { if (dw.attrs.for === dn) dw.attrs.obj = { problem: err.message }; })
+      .finally(() => { if (dw.attrs.for === dn && R.panel.is('ad')) drawDrawer(); });
+  };
+  const attrsSet = (x) => (dw.attrs.for === x.dn && dw.attrs.obj?.attributes ? dw.attrs.obj.attributes.filter((a) => a.set).length : null);
+  const dwAttrs = (x) => {
+    const o = dw.attrs.for === x.dn ? dw.attrs.obj : null;
+    const head = (right = '') => `<div class="dw-sec-head"><h3>Attributes${o?.attributes ? ` <small>${attrsSet(x)} of ${o.attributes.length} set</small>` : ''}</h3>${right}</div>`;
+    if (!o) return `<section class="dw-sec">${head()}<div data-dwa-skel></div></section>`;
+    if (o.problem) return `<section class="dw-sec">${head()}<p class="hint problem">${esc(o.problem)}</p></section>`;
+    return `<section class="dw-sec dwa">${head(`<span class="dw-sec-do"><button type="button" class="small" data-dwa-export>${svg('download')}Export</button>`
+      + `<button type="button" class="small" data-dwa-open>${svg('list')}Attribute browser</button></span>`)}`
+      + `<div class="dwa-bar"><label class="side-find seat-find"><svg><use href="#i-search"/></svg><input type="search" id="dwa-find" placeholder="Find an attribute or value" aria-label="Find an attribute or value" autocomplete="off" spellcheck="false" value="${esc(dw.attrs.find)}"></label>`
+      + `<label class="dwa-all"><input type="checkbox" id="dwa-all"${dw.attrs.all ? ' checked' : ''}>Show empty</label></div><div class="table attrs" id="dwa-table"></div></section>`;
+  };
+  const drawAttrGrid = () => {
+    const el = $('dw-body').querySelector('#dwa-table');
+    const o = dw.attrs.obj;
+    if (!el || !o?.attributes) return;
+    const q = dw.attrs.find.trim().toLowerCase();
+    const rows = o.attributes.filter((a) => (dw.attrs.all || a.set) && (!q || a.name.toLowerCase().includes(q) || a.values.some((v) => v.toLowerCase().includes(q))));
+    R.grid({
+      el, key: 'dw-attrs', headButton: true, sort: { key: 'name', dir: 1 }, redraw: drawAttrGrid, empty: q ? 'No attribute matches.' : 'No attribute has a value.',
+      cols: [
+        { key: 'name', label: 'Attribute', w: 190, fixed: true, get: (a) => a.name, cell: (a) => `<span class="mono ell">${esc(a.name)}</span>` },
+        { key: 'value', label: 'Value', w: 300, on: true, get: (a) => a.values.join(' '),
+          cell: (a) => (a.set ? `<span class="ell${a.hidden ? ' muted' : ''}" title="${esc(a.values.join('\n'))}">${esc(a.values.join(', '))}</span>` : '<span class="muted">Not set</span>') },
+        { key: 'type', label: 'Type', w: 130, get: (a) => a.type, cell: (a) => `<span class="ty ell">${esc(a.type)}</span>` },
+      ],
+      tail: { w: 30, cell: (a) => `<button type="button" class="at-more dwa-more" data-dwa-menu="${esc(a.name)}" data-tip="More" aria-label="More for ${esc(a.name)}">${svg('dots')}</button>` },
+      row: (a) => ` data-dwa="${esc(a.name)}"`,
+      rowClass: (a) => (a.set ? '' : 'unset'),
+    }).draw(rows);
+  };
+  // The menu's Edit… and Clear save through directory.js, then the account is read again so every tab shows the change.
+  const attrTarget = (k, x) => ({
+    get: () => dw.attrs.obj,
+    set: (o) => { dw.attrs.obj = o; },
+    draw: async () => {
+      drawAttrGrid();
+      try {
+        if (k === 'users' && lists.users?.includes(x)) {
+          lists.users[lists.users.indexOf(x)] = await R.get(userPath(x));
+          counted.list = null;
+        } else if (k === adPage) await loadAd(true);
+      } catch { /* the grid already shows it */ }
+      drawAd();
+      if (R.panel.is('ad')) drawDrawer();
+    },
+  });
   const pathOf = (dn) => dn.split(/(?<!\\),/).slice(1).filter((p) => !/^DC=/i.test(p)).map((p) => p.slice(p.indexOf('=') + 1)).reverse().join(' / ') || ad.state.domain;
 
   // A group's members, read when the tab opens.
@@ -1731,17 +1787,34 @@
     // Each tab that lists things says how many.
     const inGroups = (x.groups || []).length;
     const tabsFor = k === 'groups' ? [['overview', 'Overview'], ['members', 'Members', x.moreMembers ? '1,500+' : x.members], ['memberof', 'Member of', inGroups]] : [['overview', 'Overview'], ['memberof', 'Member of', inGroups]];
+    // Every attribute it has, read as the panel opens so the tab says how many are set.
+    if (x.dn && R.attrs) {
+      if (dw.attrs.for !== x.dn) loadAttrs(x);
+      tabsFor.push(['attrs', 'Attributes', attrsSet(x)]);
+    }
     // Notes (notes.js) go by its SID, which a move or rename doesn't change.
     const sid = x.sid || x.more?.sid;
     const notesOn = sid && R.notes ? `ad:${sid}` : '';
     if (notesOn) tabsFor.push(['notes', 'Notes', R.notes.count(notesOn, () => { if (R.panel.is('ad')) drawDrawer(); }) || null]);
     if (dw.tab === 'notes' && !notesOn) dw.tab = 'overview';
-    const body = dw.tab === 'notes' ? R.notes.pane(notesOn, x.name) : dw.tab === 'members' ? dwMembers(x) : dw.tab === 'memberof' ? dwMemberOf(k, x) : dwOverview(k, x);
+    const body = dw.tab === 'notes' ? R.notes.pane(notesOn, x.name) : dw.tab === 'attrs' ? dwAttrs(x) : dw.tab === 'members' ? dwMembers(x) : dw.tab === 'memberof' ? dwMemberOf(k, x) : dwOverview(k, x);
     const scroll = $('dw-body').scrollTop;
+    // Typing in Find keeps its place when the panel is drawn again.
+    const typing = document.activeElement?.id === 'dwa-find' ? [document.activeElement.selectionStart, document.activeElement.selectionEnd] : null;
     $('dw-body').innerHTML = dwHead(k, x)
       + `<div class="tabs2 dw-tabs" role="tablist">${tabsFor.map(([t, label, n]) => `<a role="tab" data-dw-tab="${t}"${dw.tab === t ? ' aria-current="true"' : ''}>${esc(label)}${n == null ? '' : `<small>${esc(n.toLocaleString())}</small>`}</a>`).join('')}</div>`
       + `<div class="dw-panel">${body}</div>`;
     $('dw-body').querySelectorAll('[data-mixed]').forEach((b) => { b.indeterminate = true; });
+    if (dw.tab === 'attrs') {
+      const skel = $('dw-body').querySelector('[data-dwa-skel]');
+      if (skel) R.skeleton(skel, 'rows', 6);
+      drawAttrGrid();
+      const find = typing && $('dw-body').querySelector('#dwa-find');
+      if (find) {
+        find.focus();
+        find.setSelectionRange(...typing);
+      }
+    }
     $('dw-body').scrollTop = scroll;
   };
   const openDrawer = (k, x) => {
@@ -1761,6 +1834,24 @@
   };
   // The side panel (R.panel, console.js) closes itself on Esc, its × and leaving the page; this marks the row.
   R.panel.el.addEventListener('close', markOpenRow);
+  // Attributes: Find and Show empty narrow the grid only, so the box keeps its focus; a right-click on a row opens its menu.
+  R.panel.el.addEventListener('input', (e) => {
+    if (e.target.id !== 'dwa-find' || !R.panel.is('ad')) return;
+    dw.attrs.find = e.target.value;
+    drawAttrGrid();
+  });
+  R.panel.el.addEventListener('change', (e) => {
+    if (e.target.id !== 'dwa-all' || !R.panel.is('ad')) return;
+    dw.attrs.all = e.target.checked;
+    drawAttrGrid();
+  });
+  R.panel.el.addEventListener('contextmenu', (e) => {
+    const row = R.panel.is('ad') && e.target.closest('.tr[data-dwa]');
+    const x = row && dwObj();
+    if (!x) return;
+    e.preventDefault();
+    R.attrs.menu(row.dataset.dwa, e.clientX, e.clientY, attrTarget(dw.kind, x));
+  });
   // A tick on Member of or Members, or Select all.
   R.panel.el.addEventListener('change', (e) => {
     const one = e.target.closest('[data-dw-pick]');
@@ -1808,6 +1899,15 @@
     }
     const t = e.target.closest('[data-dw-tab]');
     if (t) { dw.tab = t.dataset.dwTab; dw.picks.clear(); drawDrawer(); return; }
+    // Attributes: a row's menu, Export, and the same object in the Attribute browser.
+    const am = e.target.closest('[data-dwa-menu]');
+    if (am) {
+      const r = am.getBoundingClientRect();
+      R.attrs.menu(am.dataset.dwaMenu, r.right - 220, r.bottom + 6, attrTarget(k, x));
+      return;
+    }
+    if (e.target.closest('[data-dwa-export]') && dw.attrs.obj?.attributes) { R.attrs.export(dw.attrs.obj); return; }
+    if (e.target.closest('[data-dwa-open]')) { location.hash = R.attrs.href(x.dn); return; }
     // Remove what's ticked: its groups on Member of, or a group's members on Members.
     if (e.target.closest('[data-dw-remove]') && dw.picks.size) {
       const dns = [...dw.picks];

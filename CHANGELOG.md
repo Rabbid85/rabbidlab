@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.288 (2026-11-19)
+
+- Users, groups and computers have an Attributes tab in the side panel: every attribute they have in Active Directory, as ADSI Edit shows them, with Find, Show empty and Export.
+- Each attribute row has the Attribute browser menu: copy it, or edit and clear it with Edit attributes in your role. The tab says how many are set before you click it.
+
 ## 1.1.287 (2026-11-19)
 
 - Member of, and Members on a group, have ticks and Select all in the side panel, with Remove (and how many) beside Add, so several come out at once. The cross on a row still takes out one.
