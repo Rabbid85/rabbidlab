@@ -1111,8 +1111,9 @@ input::-ms-reveal { display: none; }
   font: 13px/1.5 "Cascadia Mono", Consolas, monospace; white-space: pre-wrap; word-break: break-all; }
 
 /* The Overview banner's buttons: Check for updates with its icon, then how the lab is doing. */
-.hero-actions > button, .hero-actions > a.button { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 18px; border-radius: 9px; }
+.hero-actions > button, .hero-actions > a.button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 18px;
+  border: 1px solid transparent; border-radius: 9px; }
 .hero-actions > button svg, .hero-actions > a.button svg { flex: none; width: 16px; height: 16px; }
 /* A banner button that is not the main one (Check for updates while Install now is): plain, dark, the same size. */
-.hero-actions > button:not(.primary) { border: 1px solid rgba(255, 255, 255, .12); background: rgba(9, 10, 18, .55); color: var(--title); font: inherit; font-size: 13.5px; font-weight: 600; }
+.hero-actions > button:not(.primary) { border: 1px solid rgba(255, 255, 255, .12); background: rgba(9, 10, 18, .55); color: var(--title); font: inherit; font-size: 14px; font-weight: 600; }
 .hero-actions > button:not(.primary):hover { background: #1A1C28; }

@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.282', [
+    'Check for updates keeps its size while it says Checking, and when Install now shows up beside it.']],
   ['1.1.281', [
     'The rows switch by View really lines up with the Refresh and Export box now: an old margin from the tabs row was lifting it.']],
   ['1.1.280', [
@@ -1561,6 +1563,8 @@ const RELEASE_NOTES = [
       button.textContent = text;
       if (icon) button.prepend(icon);
     };
+    // Same width while it says Checking.
+    button.style.minWidth = `${button.getBoundingClientRect().width}px`;
     button.disabled = true;
     button.classList.add('turning');
     say('Checking…');
@@ -1570,6 +1574,7 @@ const RELEASE_NOTES = [
     button.classList.remove('turning');
     button.disabled = !!last && ['downloading', 'installing'].includes(last.status);
     say('Check for updates');
+    button.style.minWidth = '';
     if (!$('upd-problem').hidden) toast("Couldn't check for updates", $('upd-problem').textContent, { tone: 'warn' });
     else if (last?.status === 'current') toast('You have the newest version', `${product} ${last.version}.`);
   };
