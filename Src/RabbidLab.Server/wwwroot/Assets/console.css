@@ -19,7 +19,8 @@ body { background: var(--night); color: var(--text); font: 15px/1.5 "Segoe UI Va
    !important beats a box's own transition (signin.css has one), which would let the fill back in. */
 input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:focus, input:-webkit-autofill:active,
 textarea:-webkit-autofill, textarea:-webkit-autofill:hover, textarea:-webkit-autofill:focus, select:-webkit-autofill, select:-webkit-autofill:focus {
-  -webkit-text-fill-color: var(--text) !important; caret-color: var(--text); transition: background-color 600000s 0s, color 600000s 0s !important; }
+  -webkit-text-fill-color: var(--text) !important; caret-color: var(--text); transition: background-color 600000s 0s, color 600000s 0s !important;
+  box-shadow: 0 0 0 1000px #0C0E17 inset !important; } /* painted over the blue Chrome shows while it previews a fill (its list open) */
 input:autofill, textarea:autofill, select:autofill { filter: none; } /* Firefox tints it with a filter instead */
 a { color: #9E59CF; text-decoration: none; }
 a:hover { text-decoration: underline; }
@@ -620,6 +621,7 @@ a.button:hover, label.button:hover { background: #222536; text-decoration: none;
 .cmd-side { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
 .cmd-side[hidden] { display: none; }
 .cmd-side .cmd-l { margin-right: 2px; }
+#dir-rows, #dv-rows, #gpo-rows { display: contents; } /* the switch lines up with the box beside it, not on the text */
 /* New, plain like the bar's other commands: "+ New" makes what the open list holds, a thin line, then the arrow with
    everything the page makes (Active Directory, Devices, Group Policy). */
 .cmdbar .cmd-pair { display: inline-flex; flex: none; align-items: center; gap: 2px; }

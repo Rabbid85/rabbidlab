@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.280 (2026-11-19)
+
+- Boxes stay dark while the browser shows its saved names and addresses to fill in, instead of turning blue.
+- The rows switch lines up with the Refresh and Export box beside it.
+
 ## 1.1.279 (2026-11-19)
 
 - View with Compact or Relaxed rows, Refresh and Export sit at the right end of the list tabs (People and System accounts, Computers and Local admins) instead of the bar under the banner.

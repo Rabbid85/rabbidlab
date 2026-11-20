@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.280', [
+    'Boxes stay dark while the browser shows its saved names and addresses to fill in, instead of turning blue.',
+    'The rows switch lines up with the Refresh and Export box beside it.']],
   ['1.1.279', [
     'View with Compact or Relaxed rows, Refresh and Export sit at the right end of the list tabs (People and System accounts, Computers and Local admins) instead of the bar under the banner.',
     'Active Directory, Devices and Group Policy have one plain New in the bar under the banner, like the bar on Links. New makes what the open list holds, and its arrow has everything the page makes.']],
