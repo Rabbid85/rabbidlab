@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.289 (2026-11-19)
+
+- The Find box and Show empty on the Attributes tab line up.
+
 ## 1.1.288 (2026-11-19)
 
 - Users, groups and computers have an Attributes tab in the side panel: every attribute they have in Active Directory, as ADSI Edit shows them, with Find, Show empty and Export.
