@@ -39,6 +39,28 @@ public sealed class BrandTests
         Assert.NotNull(Brand.Problem(new BrandForm(name, icon, accent)));
 
     [Fact]
+    public void A_tagline_keeps_its_tags_and_an_empty_one_puts_Lab_console_back()
+    {
+        var s = new ConsoleSettings();
+
+        Assert.Null(Brand.Problem(new BrandForm(null, null, null, "  {name} on {hostname} · {role}  ")));
+        Brand.Apply(s, new BrandForm(null, null, null, "  {name} on {hostname} · {role}  "));
+        var set = s.LabTagline;
+        Brand.Apply(s, new BrandForm(null, null, null, ""));
+
+        Assert.Equal("{name} on {hostname} · {role}", set);
+        Assert.Null(s.LabTagline);
+    }
+
+    [Theory]
+    [InlineData("{password} is shown here")]
+    [InlineData("Hi {UserName}")]
+    [InlineData("A tagline that goes on and on far past what fits under the name")]
+    [InlineData("Two\nlines")]
+    public void A_tagline_with_an_unknown_tag_or_too_long_is_refused(string tagline) =>
+        Assert.NotNull(Brand.Problem(new BrandForm(null, null, null, tagline)));
+
+    [Fact]
     public async Task The_look_is_still_there_after_a_restart_such_as_an_update_and_the_sign_in_page_is_given_it()
     {
         var data = Path.Combine(Path.GetTempPath(), "rabbidlab-brand-" + Guid.NewGuid().ToString("N"));

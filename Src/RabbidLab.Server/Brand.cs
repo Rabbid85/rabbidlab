@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 namespace RabbidLab.Server;
 
 /// <summary>A change to the lab's look. Null leaves that part as it is; an empty string puts Rabbid Lab's own back.</summary>
-public sealed record BrandForm(string? Name, string? Icon, string? Accent);
+public sealed record BrandForm(string? Name, string? Icon, string? Accent, string? Tagline = null);
 
 /// <summary>
 /// The lab's own look, the same for everyone who signs in: its name in the top bar and the browser tab, its icon, and the
@@ -15,13 +15,20 @@ public static partial class Brand
     public static string? Named { get; internal set; }
 
     public const int NameLength = 40;
+    public const int TaglineLength = 60;
     public const int IconBytes = 256 * 1024;
     private static readonly string[] IconKinds = ["data:image/png;base64,", "data:image/svg+xml;base64,"];
+
+    /// <summary>The tags a tagline may hold; the page fills them in (brand.js fill).</summary>
+    public static readonly string[] Tags = ["name", "username", "hostname", "domain", "version", "role"];
 
     [GeneratedRegex("^#[0-9A-Fa-f]{6}$")]
     private static partial Regex Hex();
 
-    public static object Read(ConsoleSettings s) => new { name = s.LabName, icon = s.LabIcon, accent = s.Accent };
+    [GeneratedRegex(@"\{([^{}]*)\}")]
+    private static partial Regex Tag();
+
+    public static object Read(ConsoleSettings s) => new { name = s.LabName, icon = s.LabIcon, accent = s.Accent, tagline = s.LabTagline };
 
     /// <summary>Why a change can't be saved, or null when it can.</summary>
     public static string? Problem(BrandForm form)
@@ -51,6 +58,17 @@ public static partial class Brand
         {
             return "The accent has to be a colour such as #3D7FE6.";
         }
+        if (form.Tagline is { Length: > 0 } tagline)
+        {
+            if (tagline.Trim().Length > TaglineLength || tagline.Any(char.IsControl))
+            {
+                return $"Keep the tagline to {TaglineLength} characters, on one line.";
+            }
+            if (Tag().Matches(tagline).Select(m => m.Groups[1].Value).FirstOrDefault(t => !Tags.Contains(t, StringComparer.Ordinal)) is { } unknown)
+            {
+                return $"{{{unknown}}} isn't a tag. Use {string.Join(", ", Tags.Select(t => $"{{{t}}}"))}.";
+            }
+        }
         return null;
     }
 
@@ -68,6 +86,10 @@ public static partial class Brand
         if (form.Accent is not null)
         {
             s.Accent = form.Accent.Length > 0 ? form.Accent.ToUpperInvariant() : null;
+        }
+        if (form.Tagline is not null)
+        {
+            s.LabTagline = form.Tagline.Trim() is { Length: > 0 } t ? t : null;
         }
     }
 
@@ -87,7 +109,7 @@ public static partial class Brand
                 return Results.BadRequest(new { error = problem });
             }
             settings.Change(s => Apply(s, form));
-            var what = new[] { form.Name is null ? null : "name", form.Icon is null ? null : "icon", form.Accent is null ? null : "accent colour" }.OfType<string>();
+            var what = new[] { form.Name is null ? null : "name", form.Icon is null ? null : "icon", form.Accent is null ? null : "accent colour", form.Tagline is null ? null : "tagline" }.OfType<string>();
             log.Record(context, "admin", "brand", $"Changed the lab's {string.Join(" and ", what)}");
             return Results.Ok(Read(settings.Current));
         });

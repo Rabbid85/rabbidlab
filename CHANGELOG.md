@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.293 (2026-11-20)
+
+- A tagline under the lab name, in Settings, Appearance. It shows in the top bar, the Overview banner and the sign-in page, and can hold tags like {username} and {hostname} that fill in for whoever is looking.
+
 ## 1.1.292 (2026-11-20)
 
 - This machine on the Overview says Windows 11 instead of Windows 10.0, 1 hour instead of 1 hours, and shows the data folder in the same font as the rest.

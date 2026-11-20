@@ -20,7 +20,7 @@
     const i = swatch(accent);
     return i >= 0 ? [SWATCHES[i][1], SWATCHES[i][2]] : [lighter(accent, 0.15), accent];
   };
-  let now = { name: null, icon: null, accent: null };
+  let now = { name: null, icon: null, accent: null, tagline: null };
   try {
     now = { ...now, ...JSON.parse(localStorage.getItem(KEY) || '{}') };
   } catch {
@@ -54,7 +54,7 @@
     if (mine === asked) link.href = href;
   };
   const apply = (brand) => {
-    now = { name: brand?.name || null, icon: brand?.icon || null, accent: brand?.accent || null };
+    now = { name: brand?.name || null, icon: brand?.icon || null, accent: brand?.accent || null, tagline: brand?.tagline || null };
     try {
       localStorage.setItem(KEY, JSON.stringify(now));
     } catch {
@@ -69,8 +69,23 @@
   // Before the page's own scripts run: the lab's name and icon wherever the page marks them (data-brand-name,
   // data-brand-img, data-brand-mark), from what this browser kept, so a reload never shows Rabbid Lab's first.
   // brand-paint.js calls it right after those parts are drawn.
+  // The tagline with its tags filled in from what the page knows; null when a tag has nothing here (the sign-in page
+  // knows no username), so the page shows Lab console rather than half a line.
+  const TAG = 'Lab console';
+  const fill = (tagline, known = {}) => {
+    if (!tagline) return null;
+    let missing = false;
+    const text = tagline.replace(/\{([a-z]+)\}/g, (all, k) => {
+      const v = known[k];
+      if (v == null || v === '') missing = true;
+      return v ?? '';
+    });
+    return missing ? null : text;
+  };
   const paint = (root = document) => {
     if (now.name) root.querySelectorAll('[data-brand-name]').forEach((e) => { e.textContent = now.name; });
+    const tag = fill(now.tagline);
+    if (tag) root.querySelectorAll('[data-brand-tag]').forEach((e) => { e.textContent = tag; });
     if (!now.icon) return;
     root.querySelectorAll('[data-brand-img]').forEach((e) => {
       e.src = now.icon;
@@ -79,5 +94,5 @@
     root.querySelectorAll('[data-brand-mark]').forEach((e) => e.classList.add('gone'));
   };
   if (now.name) document.title = now.name;
-  window.RabbidLabBrand = { SWATCHES, swatch, shades, apply, paint, get now() { return now; } };
+  window.RabbidLabBrand = { SWATCHES, swatch, shades, apply, paint, fill, TAG, get now() { return now; } };
 })();

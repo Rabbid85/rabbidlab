@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.293', [
+    'A tagline under the lab name, in Settings, Appearance. It shows in the top bar, the Overview banner and the sign-in page, and can hold tags like {username} and {hostname} that fill in for whoever is looking.']],
   ['1.1.292', [
     'This machine on the Overview says Windows 11 instead of Windows 10.0, 1 hour instead of 1 hours, and shows the data folder in the same font as the rest.',
     'This machine drops the sensor email line, which always said not set up.']],
@@ -1229,11 +1231,17 @@ const RELEASE_NOTES = [
   const Brand = window.RabbidLabBrand;
   let brand = Brand.now; // the look last seen in this browser, until the server's is read
   let productName = 'Rabbid Lab';
+  let tagKnown = {}; // what the tagline's tags fill in with, once someone is signed in
+  let eyebrow = 'Lab console'; // the Overview banner's line with no tagline set: the domain first for AD accounts
   const drawBrand = () => {
     labName = brand.name || productName;
     product = productName;
     $('brand-name').textContent = labName;
     $('hero-title').textContent = labName;
+    // The tagline with its tags filled in for whoever is looking; Lab console until they're known, or with none set.
+    const tag = Brand.fill(brand.tagline, tagKnown) || Brand.TAG;
+    $('brand-tag').textContent = tag;
+    $('hero-eyebrow').textContent = brand.tagline ? tag : eyebrow;
     document.querySelectorAll('[data-app]').forEach((e) => { e.textContent = product; }); // the app's name in the page's words, never the lab's
     title();
     $('brand-img').hidden = !brand.icon;
@@ -1241,6 +1249,7 @@ const RELEASE_NOTES = [
     if (brand.icon) $('brand-img').src = brand.icon;
     // Settings, Appearance.
     if (document.activeElement !== $('br-name')) $('br-name').value = brand.name || '';
+    if (document.activeElement !== $('br-tag')) $('br-tag').value = brand.tagline || '';
     $('br-icon').innerHTML = brand.icon ? '<img alt="">' : document.querySelector('.brand svg.mark').outerHTML.replace(' gone', '');
     if (brand.icon) $('br-icon').querySelector('img').src = brand.icon;
     const may = has('appearance.brand');
@@ -1249,9 +1258,12 @@ const RELEASE_NOTES = [
       + `<label class="ds-sw custom${may ? '' : ' off'}" title="Any colour" aria-pressed="${at === -1}"><input type="color" id="br-custom" value="${Brand.shades(brand.accent)[1] || Brand.SWATCHES[0][2]}"${may ? '' : ' disabled'}></label>`;
     paint($('br-swatches'));
     $('br-name').disabled = !may;
+    $('br-tag').disabled = !may;
+    document.querySelectorAll('.br-tag').forEach((b) => { b.disabled = !may; });
     document.querySelectorAll('.br-edit').forEach((b) => b.classList.toggle('cant', !may));
     // Each Reset puts Rabbid Lab's own back, and has nothing to do while that's what there is.
     $('br-name-reset').disabled = !brand.name;
+    $('br-tag-reset').disabled = !brand.tagline;
     $('br-reset').disabled = !brand.icon;
     $('br-accent-reset').disabled = !brand.accent;
     $('br-cant').hidden = may;
@@ -1267,6 +1279,26 @@ const RELEASE_NOTES = [
   };
   $('br-name').addEventListener('change', () => saveBrand({ name: $('br-name').value }));
   $('br-name').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('br-name').blur(); });
+  $('br-tag').addEventListener('change', () => saveBrand({ tagline: $('br-tag').value }));
+  $('br-tag').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('br-tag').blur(); });
+  // A tag goes in where the cursor last was (the end, before any typing), and is saved at once so the top bar shows it.
+  let tagAt = null;
+  ['keyup', 'click', 'select', 'input'].forEach((ev) => $('br-tag').addEventListener(ev, () => { tagAt = [$('br-tag').selectionStart, $('br-tag').selectionEnd]; }));
+  $('br-tags').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-tag]');
+    if (!b) return;
+    const box = $('br-tag');
+    const [at, end] = tagAt ?? [box.value.length, box.value.length];
+    const t = `${at > 0 && !/\s$/.test(box.value.slice(0, at)) ? ' ' : ''}{${b.dataset.tag}}`;
+    box.value = box.value.slice(0, at) + t + box.value.slice(end);
+    tagAt = [at + t.length, at + t.length];
+    saveBrand({ tagline: box.value });
+  });
+  $('br-tag-reset').addEventListener('click', () => {
+    $('br-tag').value = '';
+    tagAt = null;
+    saveBrand({ tagline: '' });
+  });
   $('br-swatches').addEventListener('click', (e) => {
     const b = e.target.closest('[data-accent]');
     if (b) saveBrand({ accent: b.dataset.accent === '0' ? '' : Brand.SWATCHES[b.dataset.accent][2] });
@@ -2504,6 +2536,8 @@ const RELEASE_NOTES = [
     };
     const account = (s, u, name, letters, domain, dc) => {
       const top = (u.roles || []).filter((r) => r.id !== 'user');
+      tagKnown = { name, username: u.username, hostname: s.machine, domain: domain || '', version: s.version, role: (top[0] || (u.roles || [])[0])?.name || '' };
+      eyebrow = u.source === 'ad' && domain ? `${domain} · Lab console` : 'Lab console';
       apply();
       if (can.has('updates.view')) update();
       else $('hero-state').textContent = `Welcome, ${name}.`;
@@ -2531,7 +2565,6 @@ const RELEASE_NOTES = [
       $('menu-password').hidden = u.source !== 'local';
       $('acc-password-row').hidden = u.source !== 'local';
       $('account').hidden = false;
-      if (u.source === 'ad') $('hero-eyebrow').textContent = `${domain} · Lab console`;
     };
     // Asked again every 5 seconds until Rabbid Lab answers, so a failed first try doesn't leave the page empty.
     const start = async () => {

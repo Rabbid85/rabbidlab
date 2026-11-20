@@ -17,6 +17,9 @@ public sealed class ConsoleSettings
     public string? LabIcon { get; set; }
     public string? Accent { get; set; }
 
+    /// <summary>The line under the name, with tags such as {username} filled in by the page. Null: "Lab console".</summary>
+    public string? LabTagline { get; set; }
+
     /// <summary>Sign out when idle: minutes without a click, key press or scroll before a session ends (SignIn.IdleOut). 0 is never.</summary>
     public int IdleMinutes { get; set; } = 30;
 }

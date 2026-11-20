@@ -149,7 +149,7 @@
   <a class="brand" href="#overview">
     <svg class="mark" data-brand-mark viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="15" fill="#0B0C14"/><g fill="#F2F3FA" transform="translate(10 14) scale(.9)"><rect width="11" height="40"/><path fill-rule="evenodd" d="M0 0H18A13 13 0 0 1 18 26H0ZM11 9V17H18A4 4 0 0 0 18 9Z"/><path d="M13 22H24L33 40H22Z"/></g><rect class="mark-dot" x="44" y="39" width="11" height="11" rx="1.5" fill="#FF6A45"/></svg>
     <img class="mark mark-img" id="brand-img" data-brand-img alt="" hidden>
-    <span class="brand-text"><span class="name" id="brand-name" data-brand-name>Rabbid Lab</span><small class="brand-tag">Lab console</small></span>
+    <span class="brand-text"><span class="name" id="brand-name" data-brand-name>Rabbid Lab</span><small class="brand-tag" id="brand-tag" data-brand-tag>Lab console</small></span>
     <span class="dev-tag" aria-label="Dev build">DEV</span>
   </a>
   <!-- Shortcuts on every page: updates, the activity log, what's new, and the source on GitHub. -->
@@ -333,6 +333,9 @@
       <section class="ds-sec" data-sec="lab"><h3 class="ds-h">Your lab <small class="ds-scope">Everyone</small></h3>
         <div class="ds-row"><div class="ds-l"><b>Name</b><span>In the top bar and the browser tab. Leave it empty for Rabbid Lab.</span></div>
           <div class="ds-r"><input class="ds-input" id="br-name" maxlength="40" placeholder="Rabbid Lab" autocomplete="off" spellcheck="false" aria-label="Lab name"><button type="button" class="ds-btn br-edit" id="br-name-reset">Reset</button></div></div>
+        <div class="ds-row"><div class="ds-l"><b>Tagline</b><span>Under the name in the top bar, the Overview banner and the sign-in page. Click a tag to add it; each person sees their own. Leave it empty for Lab console.</span>
+            <span class="br-tags" id="br-tags"><button type="button" class="br-tag" data-tag="name">{name}</button><button type="button" class="br-tag" data-tag="username">{username}</button><button type="button" class="br-tag" data-tag="hostname">{hostname}</button><button type="button" class="br-tag" data-tag="domain">{domain}</button><button type="button" class="br-tag" data-tag="role">{role}</button><button type="button" class="br-tag" data-tag="version">{version}</button></span></div>
+          <div class="ds-r"><input class="ds-input" id="br-tag" maxlength="60" placeholder="Lab console" autocomplete="off" spellcheck="false" aria-label="Tagline"><button type="button" class="ds-btn br-edit" id="br-tag-reset">Reset</button></div></div>
         <div class="ds-row"><div class="ds-l"><b>Icon</b><span>A square PNG or SVG, 64 pixels or more and under 256 KB. In the top bar and the browser tab.</span></div>
           <div class="ds-r"><span class="ap-icon"><span class="ds-icon" id="br-icon"></span><label class="ds-btn br-edit" for="br-file">Upload</label><input type="file" id="br-file" accept="image/png,image/svg+xml" hidden></span><button type="button" class="ds-btn br-edit" id="br-reset">Reset</button></div></div>
       </section>

@@ -340,6 +340,9 @@
     const name = brand.name || product;
     document.title = (setup ? 'Set up ' : 'Sign in to ') + name;
     document.querySelectorAll('[data-product]').forEach((e) => { e.textContent = name; });
+    // The tagline, with what's known before anyone signs in; one asking for {username} or {name} shows Lab console here.
+    document.getElementById('band-sub').textContent = window.RabbidLabBrand.fill(brand.tagline, { hostname: s.machine, version: s.version, domain: s.domain })
+      || window.RabbidLabBrand.TAG;
     // The icon this browser kept went on before this (brand-paint.js); the server's wins, or Rabbid Lab's mark when there's none.
     document.getElementById('band-img').hidden = !brand.icon;
     document.querySelector('svg.band-mark').classList.toggle('gone', !!brand.icon);

@@ -133,6 +133,10 @@ body.app.rail-small { grid-template-columns: 60px minmax(0, 1fr); }
 /* Appearance: the lab's name, icon and accent; and Layout and Sidebar as little drawings, the one in use outlined. */
 .ds-input { width: 260px; max-width: 100%; height: 38px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: 8px; background: #0C0E17; color: var(--title); font: inherit; font-size: 14px; }
 .ds-input:focus { border-color: var(--accent-line); outline: 0; }
+.ds-l > .br-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.br-tag { height: 26px; padding: 0 9px; border: 1px solid var(--line-strong); border-radius: 7px; background: #141623; color: #C9CCDA; font: 12.5px Consolas, "Cascadia Mono", monospace; cursor: pointer; }
+.br-tag:hover:not(:disabled) { border-color: var(--accent-line); color: var(--title); }
+.br-tag:disabled { opacity: .45; cursor: default; }
 .ds-icon { display: grid; place-items: center; width: 44px; height: 44px; overflow: hidden; border: 1px solid var(--line-strong); border-radius: 10px; background: #0C0E17; }
 .ds-icon svg, .ds-icon img { width: 32px; height: 32px; border-radius: 7px; object-fit: cover; }
 .ds-swatches { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 8px; max-width: 420px; }
