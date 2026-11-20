@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.285 (2026-11-19)
+
+- Notes load in the console again: reading them was refused as if it were a change.
+- Side panel tabs that do not fit when the window is narrow go under More at the end, instead of running off the edge. The open tab always stays out.
+
 ## 1.1.284 (2026-11-19)
 
 - Notes: computers, AD users, groups and computers, and GPOs have a Notes tab in their side panel, with bold, lists, code, links and more. The tab shows how many before you click it.

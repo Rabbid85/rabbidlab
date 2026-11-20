@@ -1,5 +1,6 @@
 /* Notes in the side panel (notes.js): the editor with its toolbar, then each note with who wrote it and when. */
 .notes .dw-sec-head { min-height: 34px; }
+.notes h3 small:empty { display: none; }
 .notes .notes-find { width: min(240px, 50%); margin: 0; }
 .notes .notes-find[hidden] { display: none; }
 

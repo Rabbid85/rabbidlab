@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.285', [
+    'Notes load in the console again: reading them was refused as if it were a change.',
+    'Side panel tabs that do not fit when the window is narrow go under More at the end, instead of running off the edge. The open tab always stays out.']],
   ['1.1.284', [
     'Notes: computers, AD users, groups and computers, and GPOs have a Notes tab in their side panel, with bold, lists, code, links and more. The tab shows how many before you click it.',
     'Everyone who can see something can read and add its notes. You change and delete your own, and whoever can change that kind of thing can delete any of them. All of it is in the activity log.']],
@@ -3893,9 +3896,45 @@ const RELEASE_NOTES = [
     else head.append(box);
     bar.remove();
   };
+  // Tabs that don't fit the panel go under More at the end, as in the Microsoft 365 admin center; the open one always
+  // stays out. A pick clicks the real tab, so the page that drew it does the rest.
+  const fitTabs = () => {
+    const bar = panel.body.querySelector(':scope > .dw-tabs');
+    if (!bar) return;
+    const tabs = [...bar.querySelectorAll(':scope > a:not(.dw-tabs-more)')];
+    let more = bar.querySelector(':scope > .dw-tabs-more');
+    tabs.forEach((a) => { a.hidden = false; });
+    if (more) more.hidden = true;
+    if (bar.scrollWidth <= bar.clientWidth + 1) return;
+    if (!more) {
+      more = document.createElement('a');
+      more.className = 'dw-tabs-more';
+      more.setAttribute('role', 'tab');
+      more.setAttribute('aria-haspopup', 'menu');
+      more.innerHTML = `More${svg('chevron-down', 'chev')}`;
+      bar.append(more);
+    }
+    more.hidden = false;
+    for (const a of tabs.filter((t) => !t.hasAttribute('aria-current')).reverse()) {
+      if (bar.scrollWidth <= bar.clientWidth + 1) break;
+      a.hidden = true;
+    }
+  };
+  panel.el.addEventListener('click', (e) => {
+    const more = e.target.closest('.dw-tabs-more');
+    if (!more) return;
+    const hid = [...more.parentElement.querySelectorAll(':scope > a[hidden]')];
+    window.RabbidLab.picker.menu(more, hid.map((a) => {
+      const n = a.querySelector('small')?.textContent.trim();
+      return { label: `${a.childNodes[0].textContent.trim()}${n ? ` (${n})` : ''}`, run: () => a.click() };
+    }), { key: 'dw-tabs-more', right: true });
+  });
+  // The panel opening, or getting wider or narrower, fits them again.
+  new ResizeObserver(() => fitTabs()).observe(panel.body);
   new MutationObserver(() => {
     arrange();
     pin();
+    fitTabs();
     if (folded.size) panel.body.querySelectorAll('.dw-sec').forEach((sec) => sec.classList.toggle('shut', folded.has(foldKey(sec))));
   }).observe(panel.body, { childList: true, subtree: true });
   document.addEventListener('keydown', (e) => {

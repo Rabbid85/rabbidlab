@@ -195,10 +195,11 @@ public static class NotesApi
             {
                 return Results.BadRequest(new { error = "That isn't something notes can go on." });
             }
+            // A read: the role decides, as for every list (the header is only for changes).
             var (see, tidy) = Notes.PermissionsFor(on!);
-            if (Access.RefuseUnless(context, see) is { } refused)
+            if (!Access.Can(context, see))
             {
-                return refused;
+                return Access.NotAllowed();
             }
             var me = ActivityLog.Who(context);
             var all = Access.Can(context, tidy);
@@ -212,11 +213,7 @@ public static class NotesApi
             {
                 return Results.BadRequest(new { error = "Ask for seat, ad or gpo." });
             }
-            if (Access.RefuseUnless(context, Notes.PermissionsFor(kind + ":x").See) is { } refused)
-            {
-                return refused;
-            }
-            return Results.Ok(notes.Counts(kind + ":"));
+            return !Access.Can(context, Notes.PermissionsFor(kind + ":x").See) ? Access.NotAllowed() : Results.Ok(notes.Counts(kind + ":"));
         });
 
         app.MapPost("/api/notes", (NoteForm form, HttpContext context, Notes notes, ActivityLog log) =>

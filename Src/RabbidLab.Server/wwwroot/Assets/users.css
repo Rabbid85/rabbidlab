@@ -631,6 +631,10 @@ button.primary.dw-edit[aria-disabled="true"], button.primary.dw-edit[aria-disabl
 .dw-tabs { gap: 28px; margin-top: 22px; }
 .dw-tabs a { font-size: 14.5px; }
 .dw-tabs a small { margin-left: 7px; padding: 1px 8px; border-radius: 999px; background: #1A1D2B; color: #B8BCCB; font-size: 12px; font-weight: 600; }
+/* The tabs that don't fit, under More at the end (console.js fitTabs). */
+.dw-tabs > a[hidden] { display: none; }
+.dw-tabs > .dw-tabs-more { display: inline-flex; align-items: center; gap: 5px; flex: none; }
+.dw-tabs > .dw-tabs-more .chev { width: 13px; height: 13px; }
 .dw-panel { padding-top: 2px; }
 /* A section is a card. A click on its heading folds it; the arrow sits at the end, past a short line. */
 .dw-sec, .dw-sec:last-of-type { margin-top: 14px; padding: 18px 22px 16px; border: 1px solid var(--line); border-radius: 12px; background: #0F111A; }

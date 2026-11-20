@@ -75,7 +75,12 @@ public sealed class NotesTests : IDisposable
         var id = (await added.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetString()!;
 
         var viewer = await Person(admin, "mlopez", "seats.view");
+        // The page reads without the X-Rabbid-Lab header (R.get sends it only with changes).
+        viewer.DefaultRequestHeaders.Remove(Access.Header);
         var notes = await Read(viewer, on);
+        Assert.Equal(HttpStatusCode.OK, (await viewer.GetAsync("/api/notes/counts?kind=seat")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await viewer.PostAsJsonAsync("/api/notes", new { on, text = "No header." })).StatusCode);
+        viewer.DefaultRequestHeaders.Add(Access.Header, "1");
         Assert.Single(notes);
         Assert.Equal("Replaced the <b>SSD</b>.", notes[0].GetProperty("text").GetString());
         Assert.False(notes[0].GetProperty("mine").GetBoolean());
