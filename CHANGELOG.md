@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.286 (2026-11-19)
+
+- Every side panel tab shows when the window is narrow: the tabs close up, then wrap onto a second line, instead of folding under More.
+
 ## 1.1.285 (2026-11-19)
 
 - Notes load in the console again: reading them was refused as if it were a change.

@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.286', [
+    'Every side panel tab shows when the window is narrow: the tabs close up, then wrap onto a second line, instead of folding under More.']],
   ['1.1.285', [
     'Notes load in the console again: reading them was refused as if it were a change.',
     'Side panel tabs that do not fit when the window is narrow go under More at the end, instead of running off the edge. The open tab always stays out.']],
@@ -3896,39 +3898,15 @@ const RELEASE_NOTES = [
     else head.append(box);
     bar.remove();
   };
-  // Tabs that don't fit the panel go under More at the end, as in the Microsoft 365 admin center; the open one always
-  // stays out. A pick clicks the real tab, so the page that drew it does the rest.
+  // Every tab always shows: a row too long for the panel first closes up its gaps (tight), then wraps onto a second line.
   const fitTabs = () => {
     const bar = panel.body.querySelector(':scope > .dw-tabs');
     if (!bar) return;
-    const tabs = [...bar.querySelectorAll(':scope > a:not(.dw-tabs-more)')];
-    let more = bar.querySelector(':scope > .dw-tabs-more');
-    tabs.forEach((a) => { a.hidden = false; });
-    if (more) more.hidden = true;
-    if (bar.scrollWidth <= bar.clientWidth + 1) return;
-    if (!more) {
-      more = document.createElement('a');
-      more.className = 'dw-tabs-more';
-      more.setAttribute('role', 'tab');
-      more.setAttribute('aria-haspopup', 'menu');
-      more.innerHTML = `More${svg('chevron-down', 'chev')}`;
-      bar.append(more);
-    }
-    more.hidden = false;
-    for (const a of tabs.filter((t) => !t.hasAttribute('aria-current')).reverse()) {
-      if (bar.scrollWidth <= bar.clientWidth + 1) break;
-      a.hidden = true;
-    }
+    const tabs = [...bar.children];
+    const rows = () => new Set(tabs.map((a) => a.offsetTop)).size;
+    bar.classList.remove('tight');
+    if (tabs.length && rows() > 1) bar.classList.add('tight');
   };
-  panel.el.addEventListener('click', (e) => {
-    const more = e.target.closest('.dw-tabs-more');
-    if (!more) return;
-    const hid = [...more.parentElement.querySelectorAll(':scope > a[hidden]')];
-    window.RabbidLab.picker.menu(more, hid.map((a) => {
-      const n = a.querySelector('small')?.textContent.trim();
-      return { label: `${a.childNodes[0].textContent.trim()}${n ? ` (${n})` : ''}`, run: () => a.click() };
-    }), { key: 'dw-tabs-more', right: true });
-  });
   // The panel opening, or getting wider or narrower, fits them again.
   new ResizeObserver(() => fitTabs()).observe(panel.body);
   new MutationObserver(() => {
