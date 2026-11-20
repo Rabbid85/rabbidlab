@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.283 (2026-11-19)
+
+- Six domain checks in the script library to run on any computer: Domain trust (secure channel), Domain controller it uses, Every domain controller, Domain trusts, Account scripts run as, and a Domain report with all of them. They only read.
+
 ## 1.1.282 (2026-11-19)
 
 - Check for updates keeps its size while it says Checking, and when Install now shows up beside it.

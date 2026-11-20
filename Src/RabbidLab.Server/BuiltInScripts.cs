@@ -26,6 +26,20 @@ public static class BuiltInScripts
         if (-not $winget) { 'winget is not on this computer.'; exit 1 }
         """;
 
+    // The computer's domain for nltest, or a plain stop on a computer that isn't in one.
+    private const string FindDomain = """
+        $cs = Get-CimInstance Win32_ComputerSystem
+        if (-not $cs.PartOfDomain) { "$env:COMPUTERNAME isn't in a domain (workgroup $($cs.Domain))."; exit 1 }
+        $domain = $cs.Domain
+        """;
+
+    // Whether the computer's trust with the domain works, first as one line, then nltest's own answer.
+    private const string SecureChannel = """
+        $ok = Test-ComputerSecureChannel -ErrorAction SilentlyContinue
+        "Secure channel to ${domain}: $(if ($ok) { 'healthy' } else { 'BROKEN' })"
+        & nltest.exe "/sc_query:$domain"
+        """;
+
     public static readonly IReadOnlyList<DeviceScript> All =
     [
         S("windows-update-sources", "Windows Update: what every source says", Ps,
@@ -124,6 +138,44 @@ public static class BuiltInScripts
             'Fast startup is off.'
             'The BIOS has to allow it too: waking from the network on (often Power On By PCI-E, or Wake on LAN), and ErP or deep sleep off.'
             """),
+        S("secure-channel", "Domain trust (secure channel)", Ps, "Whether the computer's link with the domain works, from Test-ComputerSecureChannel and nltest /sc_query. Fails the job when it's broken. It only reads.", $$"""
+            {{FindDomain}}
+            {{SecureChannel}}
+            if (-not $ok) { exit 1 }
+            """),
+        S("find-dc", "Domain controller it uses", Ps, "The domain controller and site this computer finds, from nltest /dsgetdc. It only reads.", $$"""
+            {{FindDomain}}
+            & nltest.exe "/dsgetdc:$domain"
+            ''
+            & nltest.exe /dsgetsite
+            """),
+        S("dc-list", "Every domain controller", Ps, "Each domain controller in the domain with its site and roles, from nltest /dclist. It only reads.", $$"""
+            {{FindDomain}}
+            & nltest.exe "/dclist:$domain"
+            """),
+        S("domain-trusts", "Domain trusts", Cmd, "The domain's trust relationships, from nltest /domain_trusts /all_trusts. It only reads.", "nltest /domain_trusts /all_trusts"),
+        S("whoami", "Account scripts run as", Cmd, "The account scripts run as on this computer (SYSTEM), with its groups and privileges, from whoami. It only reads.", @"%SystemRoot%\System32\whoami.exe /user /groups /priv"),
+        S("domain-report", "Domain report", Ps, "All of the domain checks in one: secure channel, domain controller and site, every domain controller, trusts, and the account scripts run as. It only reads.", $$"""
+            {{FindDomain}}
+            "== $env:COMPUTERNAME in $domain"
+            ''
+            '== Secure channel'
+            {{SecureChannel}}
+            ''
+            '== Domain controller it uses'
+            & nltest.exe "/dsgetdc:$domain"
+            & nltest.exe /dsgetsite
+            ''
+            '== Every domain controller'
+            & nltest.exe "/dclist:$domain"
+            ''
+            '== Trusts'
+            & nltest.exe /domain_trusts /all_trusts
+            ''
+            '== Account scripts run as'
+            & "$env:SystemRoot\System32\whoami.exe" /user /groups /priv
+            if (-not $ok) { exit 1 }
+            """, 10),
         S("signed-in", "Who is signed in", Cmd, "Everyone signed in at the screen or over Remote Desktop.", """
             quser 2>nul
             if errorlevel 1 echo Nobody is signed in.

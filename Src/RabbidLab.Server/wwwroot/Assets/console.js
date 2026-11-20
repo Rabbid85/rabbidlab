@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.283', [
+    'Six domain checks in the script library to run on any computer: Domain trust (secure channel), Domain controller it uses, Every domain controller, Domain trusts, Account scripts run as, and a Domain report with all of them. They only read.']],
   ['1.1.282', [
     'Check for updates keeps its size while it says Checking, and when Install now shows up beside it.']],
   ['1.1.281', [
