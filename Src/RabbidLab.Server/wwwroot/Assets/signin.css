@@ -14,8 +14,8 @@ body.loading .card-body > *, body.loading .card-foot > *, body.loading .side-sub
 .side { position: relative; grid-row: 1 / 3; overflow: hidden; border-right: 1px solid var(--line); background: linear-gradient(180deg, #0C0D15, #090A10); }
 /* The time and the name share one left edge, and the ink of the time sits as far from the top as the name's from the foot. */
 .side-clock { position: absolute; left: 44px; right: 44px; top: 30px; z-index: 1; color: #fff; }
-/* The time in the same type as the tagline and the name over it: Segoe UI Variable, bold. */
-.side-time { display: block; font: 700 112px/.95 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; letter-spacing: -.045em; white-space: nowrap; }
+/* The time in the same type as the tagline and the name over it: Segoe UI Variable, a little lighter than bold. */
+.side-time { display: block; font: 600 112px/.95 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; letter-spacing: -.045em; white-space: nowrap; }
 .side-date { display: block; margin-top: 10px; color: #D7DAE8; font-size: 20px; font-weight: 500; }
 .side-day { height: 6px; margin-top: 26px; border-radius: 3px; background: rgba(255, 255, 255, .1); overflow: hidden; }
 .side-day i { display: block; width: 0; height: 100%; border-radius: 3px; background: var(--accent); }

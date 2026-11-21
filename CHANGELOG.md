@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.309 (2026-11-21)
+
+- The time on the sign-in page is a little lighter.
+
 ## 1.1.308 (2026-11-21)
 
 - The sign-in boxes are smaller, with each name inside the box that moves up as you type. The avatar stays a person, and Sign in is less round.
