@@ -36,7 +36,7 @@
   };
   clock();
   // What moves behind the card (Settings, Appearance): as this browser last saw it, then the server's.
-  const showBackdrop = window.RabbidLabBackdrop.on(document.querySelector('canvas.backdrop'));
+  const showBackdrop = window.RabbidLabBackdrop.on(document.querySelector('canvas.backdrop'), { fit: true });
   const look = (brand) => showBackdrop(brand.background || 'squares');
   look(window.RabbidLabBrand.now);
 

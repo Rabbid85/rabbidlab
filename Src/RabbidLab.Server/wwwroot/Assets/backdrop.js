@@ -31,8 +31,9 @@
   };
 
   // Draws one kind on a canvas until stopped. width: draw as if the canvas were that wide, so a small preview looks like the
-  // page scaled down. Returns stop().
-  const run = (canvas, kind, { width = 0 } = {}) => {
+  // page scaled down. fit: draw the picture a 4K screen gets and scale it to this one, so a 1440p screen shows the same fine
+  // sparks rather than fewer, bigger ones (never smaller than 0.6 of a real pixel). Returns stop().
+  const run = (canvas, kind, { width = 0, fit = false } = {}) => {
     const ctx = canvas.getContext('2d');
     const { A, L, tiles: TILES } = colours();
     let w = 0;
@@ -371,7 +372,7 @@
       const ratio = Math.min(devicePixelRatio || 1, 2);
       const cw = canvas.clientWidth;
       const ch = canvas.clientHeight;
-      const zoom = width && cw ? cw / width : 1;
+      const zoom = width && cw ? cw / width : fit && cw ? Math.min(1, Math.max(cw / 3840, 0.6 / ratio)) : 1;
       const was = [w, h];
       w = cw / zoom;
       h = ch / zoom;

@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.306 (2026-11-21)
+
+- The sign-in backgrounds look the same on every screen: a 1440p monitor shows the same fine sparks, stars and bubbles as a 4K one, instead of fewer, bigger ones.
+
 ## 1.1.305 (2026-11-21)
 
 - The sign-in page always has the Day bar on its left, and the Left side setting is gone from Settings, Appearance.

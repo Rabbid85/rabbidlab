@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.306', [
+    'The sign-in backgrounds look the same on every screen: a 1440p monitor shows the same fine sparks, stars and bubbles as a 4K one, instead of fewer, bigger ones.']],
   ['1.1.305', [
     'The sign-in page always has the Day bar on its left, and the Left side setting is gone from Settings, Appearance.',
     'The Sign in heading is bigger.']],
