@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.311 (2026-11-21)
+
+- The top bar no longer shows whether all sensors are up.
+- With an update to install, Updates in the top bar turns into a pill in your accent that says which version, and opens the Updates page. It shows downloading and installing the same way, and turns red if the update did not install.
+
 ## 1.1.310 (2026-11-21)
 
 - No empty strip down the right edge of the console on a page too short to scroll. Room for the scroll bar is kept only with the Centered page width.

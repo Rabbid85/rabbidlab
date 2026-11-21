@@ -806,11 +806,12 @@ button.small[aria-haspopup="menu"][aria-expanded="true"] { border-color: var(--a
 .top-version { cursor: default; }
 .top-links a.gh, .top-links a.gh svg { color: #9E59CF; } /* the purple the links on the page are */
 .top-links a.gh:hover, .top-links a.gh:hover svg { color: #B57BE6; }
-/* How the lab is doing, beside the version: green when every sensor is up, red with how many are down. */
-.top-links a.top-ok, .top-links a.top-ok:hover { gap: 8px; color: var(--ok); }
-.top-links a.top-ok.bad, .top-links a.top-ok.bad:hover { color: var(--red); }
-.top-ok::before { content: ""; flex: none; width: 8px; height: 8px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor; }
-@media (max-width: 1100px) { .top-links a span, .top-version svg { display: none; } .top-links a, .top-version { padding: 0 9px; } }
+/* Updates in the top bar, with a version on its way: a pill in the accent saying which (red when it didn't install). */
+.top-links a.top-updates.ready, .top-links a.top-updates.ready svg { color: #fff; }
+.top-links a.top-updates.ready { background: var(--accent); font-weight: 650; }
+.top-links a.top-updates.ready:hover { background: var(--accent); filter: brightness(1.1); }
+.top-links a.top-updates.ready.bad, .top-links a.top-updates.ready.bad:hover { background: var(--red); }
+@media (max-width: 1100px) { .top-links a span, .top-version svg { display: none; } .top-links a, .top-version { padding: 0 9px; } .top-links a.top-updates.ready span { display: inline; } }
 @media (max-width: 640px) { .top-links { display: none; } .top .top-info { margin-left: auto; } }
 .about-text { max-height: 52vh; margin: 12px 0 0; padding: 14px 16px; overflow: auto; border: 1px solid var(--line); border-radius: 10px; background: #0C0E17; color: var(--text);
   font: 12.5px/1.6 Consolas, "Cascadia Mono", monospace; white-space: pre-wrap; word-break: break-word; user-select: all; }

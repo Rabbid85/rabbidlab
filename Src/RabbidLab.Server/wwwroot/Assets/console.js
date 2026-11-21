@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.311', [
+    'The top bar no longer shows whether all sensors are up.',
+    'With an update to install, Updates in the top bar turns into a pill in your accent that says which version, and opens the Updates page. It shows downloading and installing the same way, and turns red if the update did not install.']],
   ['1.1.310', [
     'No empty strip down the right edge of the console on a page too short to scroll. Room for the scroll bar is kept only with the Centered page width.']],
   ['1.1.309', [
@@ -1601,6 +1604,12 @@ const RELEASE_NOTES = [
       $(id).hidden = !['available', 'downloading', 'installing', 'failed'].includes(u.status);
       $(id).classList.toggle('bad', u.status === 'failed');
     }
+    // Updates in the top bar: a version on its way says which, as a pill in the accent (red when it didn't install).
+    const TOP = { available: `Update to ${u.available}`, waiting: `${u.available} in a moment`, downloading: `Downloading ${u.available}`,
+      installing: `Installing ${u.available}`, failed: `${u.available} didn't install` };
+    $('top-updates').classList.toggle('ready', !!TOP[u.status]);
+    $('top-updates').classList.toggle('bad', u.status === 'failed');
+    $('top-updates-text').textContent = TOP[u.status] || 'Updates';
     const busy = u.status === 'downloading' || u.status === 'installing';
     // While the update dialog is up it does the talking: the words behind it stay as they were.
     if (!busy || hid) {
@@ -3303,17 +3312,6 @@ const RELEASE_NOTES = [
     const list = [...await facts(), ['Page', location.origin], ['Browser', navigator.userAgent.replace(/^Mozilla\/5\.0 /, '')], ['Copied', new Date().toString().replace(/ \(.*\)$/, '')]];
     return `\`\`\`\n${list.map(([label, value]) => `${`${label}:`.padEnd(17)}${value}`).join('\n')}\n\`\`\``;
   };
-  // How the lab is doing, in the top bar beside the version: its sensors when there are any (paused ones don't count).
-  // sensors.js says what it read, once a minute on any page, so this asks for nothing itself.
-  document.addEventListener('rabbidlab:sensors', (e) => {
-    const live = (e.detail || []).filter((x) => x.status !== 'paused');
-    const down = live.filter((x) => x.status === 'down').length;
-    const text = down ? `${down} sensor${down === 1 ? '' : 's'} down` : 'All sensors up';
-    $('top-ok').hidden = !live.length;
-    $('top-ok').classList.toggle('bad', down > 0);
-    $('top-ok').setAttribute('aria-label', text);
-    $('top-ok-text').textContent = text;
-  });
   // This machine, on the Overview: in two columns, filled each time the page is shown.
   const machine = async () => {
     const list = await facts();
