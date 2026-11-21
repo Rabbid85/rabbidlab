@@ -62,19 +62,32 @@ public static class DevTools
             return; // nothing of this in a release
         }
         // A read: anyone signed in, with no header asked for (Access.Refuse is for changes).
-        app.MapGet("/api/devtools", (SettingsStore settings) => Results.Ok(new { on = settings.Current.DevTools }));
+        app.MapGet("/api/devtools", (SettingsStore settings) => Results.Ok(new { on = settings.Current.DevTools, skipMfa = settings.Current.DevSkipMfa }));
 
-        app.MapPost("/api/devtools", (DevToolsForm form, HttpContext context, SettingsStore settings, ActivityLog log) =>
+        // Developer tools, and Skip MFA this time on the server itself. Turning the skip back on asks who it is first.
+        app.MapPost("/api/devtools", (DevToolsForm form, HttpContext context, SettingsStore settings, Confirmations confirm, ActivityLog log) =>
         {
             if (Access.RefuseUnless(context, Permissions.UpdatesAuto) is { } refused)
             {
                 return refused;
             }
-            settings.Change(s => s.DevTools = form.On);
-            log.Record(context, "admin", "devtools", form.On ? "Turned Developer tools on" : "Turned Developer tools off");
-            return Results.Ok(new { on = settings.Current.DevTools });
+            if (form.SkipMfa is { } skip)
+            {
+                if (skip && !settings.Current.DevSkipMfa && confirm.Refuse(context) is { } unconfirmed)
+                {
+                    return unconfirmed;
+                }
+                settings.Change(s => s.DevSkipMfa = skip);
+                log.Record(context, "access", "devtools.skipmfa", skip ? "Let sign-ins on this server skip MFA (Rabbid Lab Dev)" : "Stopped sign-ins on this server skipping MFA");
+            }
+            if (form.On is { } on)
+            {
+                settings.Change(s => s.DevTools = on);
+                log.Record(context, "admin", "devtools", on ? "Turned Developer tools on" : "Turned Developer tools off");
+            }
+            return Results.Ok(new { on = settings.Current.DevTools, skipMfa = settings.Current.DevSkipMfa });
         });
     }
 }
 
-public sealed record DevToolsForm(bool On);
+public sealed record DevToolsForm(bool? On = null, bool? SkipMfa = null);

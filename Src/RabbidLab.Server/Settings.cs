@@ -12,6 +12,9 @@ public sealed class ConsoleSettings
     /// <summary>Rabbid Lab Dev: the Developer tools switch in Settings, Developer, which shows the DEV buttons in Add a link and Add a sensor.</summary>
     public bool DevTools { get; set; }
 
+    /// <summary>Rabbid Lab Dev only: the MFA step shows Skip MFA this time for sign-ins on the server itself (SignIn.MaySkipMfa).</summary>
+    public bool DevSkipMfa { get; set; } = true;
+
     /// <summary>The lab's own name, icon (a PNG or SVG data URL) and accent colour, for everyone. Null: Rabbid Lab's own.</summary>
     public string? LabName { get; set; }
     public string? LabIcon { get; set; }

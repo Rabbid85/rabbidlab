@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.297', [
+    'Rabbid Lab Dev only: signing in on the server itself, the code step has a Skip MFA this time checkbox, so testing there does not need your phone. It is on in Settings, Developer, and other computers still need the code.']],
   ['1.1.296', [
     'MFA is required for everyone, like Datto RMM. After this update everyone is signed out once, and each person sets up an authenticator app at their next sign-in, including whoever sets Rabbid Lab up. Roles no longer have a Require MFA switch.',
     'Reset MFA gives a one-time code to hand over. With it and their password, the person sets up their new phone at the next sign-in. --reset-mfa on the server prints the same kind of code.',
@@ -1223,18 +1225,23 @@ const RELEASE_NOTES = [
   apply();
 
   // Rabbid Lab Dev's Developer tools: the switch in Settings, Developer, and the DEV buttons it shows in Add a link and Add a sensor.
-  const devTools = async (on) => {
+  // And Skip MFA this time: the checkbox the sign-in page shows on this server itself (Rabbid Lab Dev only).
+  const devTools = async (change) => {
     try {
-      const d = on === undefined ? await get('/api/devtools') : await send('/api/devtools', { on });
+      const d = change === undefined ? await get('/api/devtools') : await send('/api/devtools', typeof change === 'boolean' ? { on: change } : change);
       document.body.classList.toggle('dev-tools', !!d.on);
       $('dev-tools').checked = !!d.on;
       $('dev-tools-label').textContent = d.on ? 'On' : 'Off';
+      $('dev-skip-mfa').checked = !!d.skipMfa;
+      $('dev-skip-mfa-label').textContent = d.skipMfa ? 'On' : 'Off';
       say('dev-problem', '');
     } catch (err) {
       say('dev-problem', err.message);
+      devTools();
     }
   };
   $('dev-tools').addEventListener('change', (e) => devTools(e.target.checked));
+  $('dev-skip-mfa').addEventListener('change', (e) => devTools({ skipMfa: e.target.checked }));
   // The lab's own look, the same for everyone (Settings, Appearance): its name, its icon, and the accent colour. Nothing set:
   // Rabbid Lab's own. brand.js keeps the colours and the tab's icon; here are the name, the mark in the top bar, and Appearance.
   const Brand = window.RabbidLabBrand;

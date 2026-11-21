@@ -87,6 +87,28 @@ public sealed class MfaTests : IDisposable
         Assert.StartsWith("<svg", Totp.Qr(Totp.Uri("Rabbid Lab", "awiles", secret)));
     }
 
+    [Theory]
+    [InlineData(true, true, "127.0.0.1", "127.0.0.1", true)]
+    [InlineData(true, true, "::1", "::1", true)]
+    [InlineData(true, true, "::ffff:192.168.2.50", "192.168.2.50", true)] // a browser on the server, by the server's own name
+    [InlineData(true, true, "192.168.2.40", "192.168.2.50", false)] // another computer
+    [InlineData(true, false, "127.0.0.1", "127.0.0.1", false)] // switched off in Settings, Developer
+    [InlineData(false, true, "127.0.0.1", "127.0.0.1", false)] // the release never skips
+    public void Skipping_MFA_is_Rabbid_Lab_Dev_only_switched_on_and_on_the_server_itself(bool dev, bool allowed, string from, string to, bool skips) =>
+        Assert.Equal(skips, RabbidLab.Server.SignIn.SkipsMfa(dev, allowed, System.Net.IPAddress.Parse(from), System.Net.IPAddress.Parse(to)));
+
+    [Fact]
+    public async Task The_release_never_offers_or_takes_a_skip()
+    {
+        await app.SignedIn();
+        var page = app.RawPage();
+        var first = await Json(await Password(page, "admin", "correct horse"));
+        Assert.False(first.GetProperty("skip").GetBoolean());
+        var skipped = await page.PostAsJsonAsync("/api/signin/mfa", new { ticket = first.GetProperty("ticket").GetString(), skip = true });
+        Assert.Equal(HttpStatusCode.Forbidden, skipped.StatusCode);
+        Assert.False(await SignedIn(page));
+    }
+
     [Fact]
     public async Task Setting_Rabbid_Lab_up_asks_for_MFA_before_anyone_is_signed_in()
     {

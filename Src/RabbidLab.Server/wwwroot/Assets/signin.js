@@ -55,19 +55,36 @@
       $('mfa-qr').innerHTML = said.setup.qr; // an SVG picture drawn by the server
       $('mfa-secret').textContent = said.setup.secret.replace(/(.{4})/g, '$1 ').trim();
     }
-    $('mfa-go').textContent = setup ? 'Turn on and sign in' : 'Verify';
     $('mfa-code').value = '';
+    // Rabbid Lab Dev, in a browser on the server itself: a checkbox to sign in without the code while testing.
+    $('mfa-skip-row').hidden = !said.skip;
+    $('mfa-skip').checked = false;
+    resetShown = !!said.reset;
+    skipping(setup);
     $('mfa-form').hidden = false;
     $('mfa-back').hidden = false;
     (said.reset ? $('mfa-reset') : $('mfa-code')).focus();
   };
+  // With Skip ticked, the code boxes and the QR code step aside and the button says what it does.
+  let setupShown = false;
+  let resetShown = false;
+  const skipping = (setup = setupShown) => {
+    setupShown = setup;
+    const skip = $('mfa-skip').checked;
+    $('mfa-code-box').hidden = skip;
+    $('mfa-setup').hidden = !setup || skip;
+    $('mfa-reset-box').hidden = skip || !resetShown;
+    $('mfa-go').textContent = skip ? 'Sign in without a code' : setup ? 'Turn on and sign in' : 'Verify';
+  };
+  $('mfa-skip').addEventListener('change', () => skipping());
   $('mfa-back').addEventListener('click', () => location.reload());
   $('mfa-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     showError('');
     $('mfa-go').disabled = true;
     try {
-      const r = await fetch('/api/signin/mfa', { method: 'POST', headers, body: JSON.stringify({ ticket, code: $('mfa-code').value, reset: $('mfa-reset').value || null }) });
+      const skip = $('mfa-skip').checked && !$('mfa-skip-row').hidden;
+      const r = await fetch('/api/signin/mfa', { method: 'POST', headers, body: JSON.stringify({ ticket, code: skip ? null : $('mfa-code').value, reset: skip ? null : $('mfa-reset').value || null, skip }) });
       if (r.ok) {
         enter();
         return;

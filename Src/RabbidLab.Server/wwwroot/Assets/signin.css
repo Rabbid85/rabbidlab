@@ -109,3 +109,7 @@ button.go:disabled { filter: grayscale(.4); opacity: .6; }
   .card-body, .card-foot { padding-left: 20px; padding-right: 20px; }
 }
 .band-mark.gone { display: none; }
+/* Skip MFA this time: Rabbid Lab Dev, in a browser on the server itself. */
+.mfa-skip { display: flex; align-items: center; gap: 10px; margin: 2px 0 14px; color: var(--text); font-size: 14px; cursor: pointer; }
+.mfa-skip[hidden] { display: none; }
+.mfa-skip small { display: block; color: var(--muted); font-size: 12px; }

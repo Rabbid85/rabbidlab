@@ -93,7 +93,7 @@ public static class SignIn
                     old |= context.HttpContext.RequestServices.GetRequiredService<TimeProvider>().GetUtcNow() - session.Started > Longest;
                 }
                 // A role that requires MFA takes a code: a session from before it did ends, and signing in again asks for one.
-                var noCode = p is not null && p.FindFirstValue("mfa") is null && roles.NeedsMfa(Who.Of(p));
+                var noCode = p is not null && (p.FindFirstValue("mfa") is null && roles.NeedsMfa(Who.Of(p)) || p.FindFirstValue("mfa") == Skipped && !MaySkipMfa(context.HttpContext));
                 // Its last console tab closed a few seconds ago (Sessions.Tab): whoever opens it again signs in.
                 var closed = Sessions.Current(context.HttpContext) is { } sid && context.HttpContext.RequestServices.GetRequiredService<Sessions>().Closed(sid);
                 if (stamp is null || stamp != current || old || noCode || p is null || !roles.CanSignIn(Who.Of(p)) || PlainHttp.Exposed(context.HttpContext)
@@ -297,7 +297,7 @@ public static class SignIn
             roles.SetUp(new Member { Kind = Member.Local, Name = account.Username }, null);
             log.Record(account.Username, ActivityLog.Address(context), "sign-in", "setup.local", $"Set up {Product.Title} with a local account", "ok");
             // MFA is required for everyone, the person setting it up too: they scan the code before they're signed in.
-            return SetUpMfa(Principal(account.Username, account.Username, Local, account.Stamp), account.Username, mfa, pending);
+            return SetUpMfa(Principal(account.Username, account.Username, Local, account.Stamp), account.Username, mfa, pending, MaySkipMfa(context));
         });
 
         // First run, the Domain and Domain controller boxes: the domains this machine can find, and a domain's controllers.
@@ -355,7 +355,7 @@ public static class SignIn
             roles.SetUp(new Member { Kind = Member.Person, Name = user.Username, Display = user.Name }, new Member { Kind = Member.Everyone, Name = "ad" });
             var principal = Principal(user.Username, user.Name, Directory, accounts.Directory!.Stamp, domain, setupHost, user.Groups, Stamp(user.PasswordSet));
             // MFA is required for everyone, the person setting it up too: they scan the code before they're signed in.
-            return SetUpMfa(principal, user.Name, mfa, pending);
+            return SetUpMfa(principal, user.Name, mfa, pending, MaySkipMfa(context));
         }).AddEndpointFilter(Limited);
 
         // Rabbid Lab's own accounts for .\name or Local account, otherwise Active Directory when it's set up.
@@ -374,11 +374,11 @@ public static class SignIn
                 var who = Who.Of(principal);
                 if (mfa.Has(who))
                 {
-                    return Results.Ok(new { mfa = "code", ticket = pending.Add(principal, shown, null) });
+                    return Results.Ok(new { mfa = "code", ticket = pending.Add(principal, shown, null), skip = MaySkipMfa(context) });
                 }
                 if (roles.NeedsMfa(who))
                 {
-                    return SetUpMfa(principal, shown, mfa, pending);
+                    return SetUpMfa(principal, shown, mfa, pending, MaySkipMfa(context));
                 }
                 await Start(context, principal);
                 roles.Seen(who, shown);
@@ -476,6 +476,24 @@ public static class SignIn
             var from = ActivityLog.Address(context);
             var who = Who.Of(waiting.Principal);
             var username = waiting.Principal.Identity!.Name!;
+            // Skip MFA this time: Rabbid Lab Dev, on the server itself, while Settings, Developer allows it. Nothing is set up.
+            if (form.Skip)
+            {
+                if (!MaySkipMfa(context))
+                {
+                    return Results.Json(new { error = "MFA can't be skipped here." }, statusCode: StatusCodes.Status403Forbidden);
+                }
+                pending.Remove(form.Ticket!);
+                if (!roles.CanSignIn(who))
+                {
+                    return Results.BadRequest(new { error = "Sign in again.", again = true });
+                }
+                ((ClaimsIdentity) waiting.Principal.Identity).AddClaim(new Claim("mfa", Skipped));
+                await Start(context, waiting.Principal);
+                roles.Seen(who, waiting.Name);
+                log.Record(username, from, "sign-in", "signin", "Signed in without MFA", "ok", $"{Product.Name}, on the server itself, with Skip MFA this time");
+                return Results.Ok(new { user = Me(waiting.Principal, roles) });
+            }
             // Set up some other way since the password was typed: this ticket's secret doesn't take that one's place.
             if (waiting.Secret is not null && mfa.Has(who))
             {
@@ -617,13 +635,38 @@ public static class SignIn
 
     /// <summary>
     /// The MFA step for someone who hasn't set it up: a ticket and the secret for their app. After a reset (reset: true) the
-    /// page also asks for the one-time code whoever reset it was given.
+    /// page also asks for the one-time code whoever reset it was given. skip: the page may offer Skip MFA this time.
     /// </summary>
-    private static IResult SetUpMfa(ClaimsPrincipal principal, string shown, Mfa mfa, PendingSignIns pending)
+    private static IResult SetUpMfa(ClaimsPrincipal principal, string shown, Mfa mfa, PendingSignIns pending, bool skip)
     {
         var who = Who.Of(principal);
         var secret = Totp.NewSecret();
-        return Results.Ok(new { mfa = "setup", ticket = pending.Add(principal, shown, secret), setup = MfaApi.Setup(who, secret), reset = mfa.ResetWaiting(who) });
+        return Results.Ok(new { mfa = "setup", ticket = pending.Add(principal, shown, secret), setup = MfaApi.Setup(who, secret), reset = mfa.ResetWaiting(who), skip });
+    }
+
+    /// <summary>The claim a session gets when its sign-in skipped MFA: it lasts only while skipping is still allowed for it.</summary>
+    public const string Skipped = "skipped";
+
+    /// <summary>
+    /// Whether the MFA step may be skipped: only in Rabbid Lab Dev, only while Settings, Developer allows it, and only for a
+    /// browser on the server itself, so testing there doesn't need a phone and nobody elsewhere gets past the code.
+    /// </summary>
+    public static bool MaySkipMfa(HttpContext context) =>
+        SkipsMfa(Product.Dev, context.RequestServices.GetRequiredService<SettingsStore>().Current.DevSkipMfa, context.Connection.RemoteIpAddress, context.Connection.LocalIpAddress);
+
+    /// <summary>
+    /// The rule behind MaySkipMfa. On the server itself means loopback, or a browser there that used one of the server's own
+    /// addresses (by its name), where the connection comes from the address it arrives at.
+    /// </summary>
+    public static bool SkipsMfa(bool dev, bool allowed, System.Net.IPAddress? from, System.Net.IPAddress? to)
+    {
+        if (!dev || !allowed || from is null)
+        {
+            return false;
+        }
+        var remote = from.IsIPv4MappedToIPv6 ? from.MapToIPv4() : from;
+        var local = to is null ? null : to.IsIPv4MappedToIPv6 ? to.MapToIPv4() : to;
+        return System.Net.IPAddress.IsLoopback(remote) || remote.Equals(local);
     }
 
     /// <summary>
@@ -755,7 +798,7 @@ public sealed record DirectorySetupForm(string? Domain, string? Username, string
 
 public sealed record SignInForm(string? Username, string? Password, string? Server = null, bool Local = false, string? Domain = null);
 
-public sealed record MfaSignInForm(string? Ticket, string? Code, string? Reset = null);
+public sealed record MfaSignInForm(string? Ticket, string? Code, string? Reset = null, bool Skip = false);
 
 public sealed record SignInSettingsForm(int Idle);
 

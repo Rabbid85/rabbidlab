@@ -83,7 +83,8 @@
           <div class="mfa-qr" id="mfa-qr"></div>
           <p class="mfa-key">Can't scan it? Type this key into the app instead:<code id="mfa-secret"></code></p>
         </div>
-        <div class="input"><svg><use href="#i-lock"/></svg><input id="mfa-code" inputmode="numeric" maxlength="7" aria-label="6-digit code" placeholder="6-digit code" autocomplete="one-time-code" spellcheck="false"></div>
+        <div class="input" id="mfa-code-box"><svg><use href="#i-lock"/></svg><input id="mfa-code" inputmode="numeric" maxlength="7" aria-label="6-digit code" placeholder="6-digit code" autocomplete="one-time-code" spellcheck="false"></div>
+        <label class="mfa-skip" id="mfa-skip-row" hidden><input type="checkbox" id="mfa-skip"><span>Skip MFA this time <small>Rabbid Lab Dev, on this computer</small></span></label>
         <button class="go" type="submit" id="mfa-go">Verify</button>
       </form>
 
