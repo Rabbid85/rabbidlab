@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.300 (2026-11-20)
+
+- Your name is back beside your avatar, with a switch to hide it in Settings, Account, Name in the top bar. It's just for you, in that browser.
+
 ## 1.1.299 (2026-11-20)
 
 - The top bar shows just your avatar, without your name. Your name is still in the menu it opens.

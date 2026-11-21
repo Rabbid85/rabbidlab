@@ -1197,6 +1197,22 @@ const RELEASE_NOTES = [
     layout();
   });
   layout();
+  // Your name beside the avatar, top right (Settings, Account): off in this browser while someone's watching.
+  const nameShown = () => {
+    let shown = true;
+    try { shown = localStorage.getItem('rabbidlab.name') !== 'hidden'; } catch { /* shown */ }
+    document.body.classList.toggle('hide-name', !shown);
+    $('acc-showname').checked = shown;
+    $('acc-showname-label').textContent = shown ? 'On' : 'Off';
+  };
+  $('acc-showname').addEventListener('change', (e) => {
+    try {
+      if (e.target.checked) localStorage.removeItem('rabbidlab.name');
+      else localStorage.setItem('rabbidlab.name', 'hidden');
+    } catch { /* this visit only */ }
+    nameShown();
+  });
+  nameShown();
   rail();
   // Find a setting: the pages whose name or settings have the words, and their groups' headings.
   $('set-find').addEventListener('input', () => {
