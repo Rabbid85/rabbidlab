@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.308 (2026-11-21)
+
+- The sign-in boxes are smaller, with each name inside the box that moves up as you type. The avatar stays a person, and Sign in is less round.
+- The foot of the sign-in card is centred: whether it is up to date in a small pill with the refresh icon, and the computer and version under it.
+- The time on the sign-in page is bold, in the same type as the name of your lab.
+
 ## 1.1.307 (2026-11-21)
 
 - A new sign-in form: a ringed avatar over Welcome back that takes the initials of the username as you type it, boxes as lines with small labels, a round Sign in button, and where it signs in (the domain and controller) under the button.

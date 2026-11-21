@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.308', [
+    'The sign-in boxes are smaller, with each name inside the box that moves up as you type. The avatar stays a person, and Sign in is less round.',
+    'The foot of the sign-in card is centred: whether it is up to date in a small pill with the refresh icon, and the computer and version under it.',
+    'The time on the sign-in page is bold, in the same type as the name of your lab.']],
   ['1.1.307', [
     'A new sign-in form: a ringed avatar over Welcome back that takes the initials of the username as you type it, boxes as lines with small labels, a round Sign in button, and where it signs in (the domain and controller) under the button.',
     'The foot of the sign-in card is one line: whether it is up to date, the computer and version, and a refresh icon to check now.']],

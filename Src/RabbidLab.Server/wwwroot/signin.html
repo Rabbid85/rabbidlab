@@ -52,21 +52,19 @@
     <script src="Assets/brand-paint.js"></script>
 
     <div class="card-body">
-      <!-- Who is signing in: a ringed avatar that takes the initials of the username as it's typed, over the heading. -->
-      <span class="hello-av" id="hello-av" aria-hidden="true"><svg><use href="#i-user"/></svg><b id="hello-initials"></b></span>
+      <!-- A ringed avatar over the heading. -->
+      <span class="hello-av" aria-hidden="true"><svg><use href="#i-user"/></svg></span>
       <h2 id="heading">Welcome back</h2>
       <p class="card-lead" id="lead"></p>
       <p class="auth-note" id="idle-note" role="status" hidden></p>
       <p class="auth-error plain-note" id="plain-note" role="alert" hidden></p>
 
+      <!-- Each box's name sits in it and moves up small once it has focus or something in it (placeholder " " tells which). -->
       <form id="local-form" novalidate>
-        <label class="fld" for="local-user">Username</label>
-        <div class="input"><svg><use href="#i-user"/></svg><input id="local-user" placeholder="Your username" autocomplete="username" spellcheck="false"></div>
-        <label class="fld" for="local-password">Password</label>
-        <div class="input"><svg><use href="#i-lock"/></svg><input id="local-password" type="password" placeholder="Your password" autocomplete="current-password"><button type="button" class="end" data-reveal="local-password" aria-label="Show password"><svg class="eye-open"><use href="#i-eye"/></svg><svg class="eye-shut"><use href="#i-eye-off"/></svg></button></div>
+        <div class="input"><input id="local-user" placeholder=" " autocomplete="username" spellcheck="false"><label class="fld" for="local-user">Username</label></div>
+        <div class="input"><input id="local-password" type="password" placeholder=" " autocomplete="current-password"><label class="fld" for="local-password" id="local-password-label">Password</label><button type="button" class="end" data-reveal="local-password" aria-label="Show password"><svg class="eye-open"><use href="#i-eye"/></svg><svg class="eye-shut"><use href="#i-eye-off"/></svg></button></div>
         <p class="caps" id="local-password-caps" hidden>Caps Lock is on</p>
-        <label class="fld" for="local-confirm" id="confirm-label" hidden>Confirm password</label>
-        <div class="input" id="confirm-row" hidden><svg><use href="#i-lock"/></svg><input id="local-confirm" type="password" placeholder="The same again" autocomplete="new-password"><button type="button" class="end" data-reveal="local-confirm" aria-label="Show password"><svg class="eye-open"><use href="#i-eye"/></svg><svg class="eye-shut"><use href="#i-eye-off"/></svg></button></div>
+        <div class="input" id="confirm-row" hidden><input id="local-confirm" type="password" placeholder=" " autocomplete="new-password"><label class="fld" for="local-confirm" id="confirm-label">Confirm password</label><button type="button" class="end" data-reveal="local-confirm" aria-label="Show password"><svg class="eye-open"><use href="#i-eye"/></svg><svg class="eye-shut"><use href="#i-eye-off"/></svg></button></div>
         <p class="caps" id="local-confirm-caps" hidden>Caps Lock is on</p>
         <button class="go" type="submit" id="local-go">Sign in</button>
       </form>
@@ -74,21 +72,17 @@
       <form id="ad-form" novalidate hidden>
         <!-- Setting up, or signing in after Change: the domains it may sign in from, and their controllers. -->
         <div id="ad-where">
-          <label class="fld" for="ad-domain">Domain</label>
           <div class="combo">
-            <div class="input"><svg><use href="#i-globe"/></svg><input id="ad-domain" role="combobox" aria-expanded="false" aria-controls="domain-list" aria-autocomplete="list" placeholder="Such as home.lan" autocomplete="off" spellcheck="false" data-1p-ignore data-lpignore="true" data-bwignore><button type="button" class="end" id="domain-open" tabindex="-1" aria-label="Show domains"><svg><use href="#i-down"/></svg></button></div>
+            <div class="input"><input id="ad-domain" role="combobox" aria-expanded="false" aria-controls="domain-list" aria-autocomplete="list" placeholder=" " autocomplete="off" spellcheck="false" data-1p-ignore data-lpignore="true" data-bwignore><label class="fld" for="ad-domain">Domain, such as home.lan</label><button type="button" class="end" id="domain-open" tabindex="-1" aria-label="Show domains"><svg><use href="#i-down"/></svg></button></div>
             <ul class="combo-list" id="domain-list" role="listbox" hidden></ul>
           </div>
-          <label class="fld" for="ad-server">Domain controller</label>
           <div class="combo" id="server-combo">
-            <div class="input server"><svg><use href="#i-server"/></svg><input id="ad-server" role="combobox" aria-expanded="false" aria-controls="server-list" readonly value="Automatic" data-1p-ignore data-lpignore="true" data-bwignore><span class="now" id="server-now" hidden></span><button type="button" class="end" id="server-open" tabindex="-1" aria-label="Show domain controllers"><svg><use href="#i-down"/></svg></button></div>
+            <div class="input server"><input id="ad-server" role="combobox" aria-expanded="false" aria-controls="server-list" readonly value="Automatic" data-1p-ignore data-lpignore="true" data-bwignore><label class="fld" for="ad-server">Domain controller</label><span class="now" id="server-now" hidden></span><button type="button" class="end" id="server-open" tabindex="-1" aria-label="Show domain controllers"><svg><use href="#i-down"/></svg></button></div>
             <ul class="combo-list" id="server-list" role="listbox" hidden></ul>
           </div>
         </div>
-        <label class="fld" for="ad-user">Username</label>
-        <div class="input"><svg><use href="#i-user"/></svg><input id="ad-user" placeholder="hpotter" autocomplete="username" spellcheck="false"></div>
-        <label class="fld" for="ad-password">Password</label>
-        <div class="input"><svg><use href="#i-lock"/></svg><input id="ad-password" type="password" placeholder="Your password" autocomplete="current-password"><button type="button" class="end" data-reveal="ad-password" aria-label="Show password"><svg class="eye-open"><use href="#i-eye"/></svg><svg class="eye-shut"><use href="#i-eye-off"/></svg></button></div>
+        <div class="input"><input id="ad-user" placeholder=" " autocomplete="username" spellcheck="false"><label class="fld" for="ad-user">Username</label></div>
+        <div class="input"><input id="ad-password" type="password" placeholder=" " autocomplete="current-password"><label class="fld" for="ad-password">Password</label><button type="button" class="end" data-reveal="ad-password" aria-label="Show password"><svg class="eye-open"><use href="#i-eye"/></svg><svg class="eye-shut"><use href="#i-eye-off"/></svg></button></div>
         <p class="caps" id="ad-password-caps" hidden>Caps Lock is on</p>
         <button class="go" type="submit" id="ad-go">Sign in</button>
         <!-- Signing in: where it signs in, under the button; Change opens the domains and controllers above. -->
@@ -98,14 +92,12 @@
       <!-- After a right password, for an account with MFA: the code from its authenticator app. A role that requires MFA
            sets it up here first, from the QR code. -->
       <form id="mfa-form" novalidate hidden>
-        <label class="fld" for="mfa-reset" id="mfa-reset-label" hidden>One-time code from whoever reset your MFA</label>
-        <div class="input" id="mfa-reset-box" hidden><svg><use href="#i-user"/></svg><input id="mfa-reset" maxlength="20" placeholder="Like K7QX-M2PD-9FHT" autocomplete="off" spellcheck="false"></div>
+        <div class="input" id="mfa-reset-box" hidden><input id="mfa-reset" maxlength="20" placeholder=" " autocomplete="off" spellcheck="false"><label class="fld" for="mfa-reset" id="mfa-reset-label">One-time code, like K7QX-M2PD-9FHT</label></div>
         <div id="mfa-setup" hidden>
           <div class="mfa-qr" id="mfa-qr"></div>
           <p class="mfa-key">Can't scan it? Type this key into the app instead:<code id="mfa-secret"></code></p>
         </div>
-        <label class="fld" for="mfa-code" id="mfa-code-label">Code</label>
-        <div class="input" id="mfa-code-box"><svg><use href="#i-lock"/></svg><input id="mfa-code" inputmode="numeric" maxlength="7" placeholder="6 digits from your authenticator app" autocomplete="one-time-code" spellcheck="false"></div>
+        <div class="input" id="mfa-code-box"><input id="mfa-code" inputmode="numeric" maxlength="7" placeholder=" " autocomplete="one-time-code" spellcheck="false"><label class="fld" for="mfa-code" id="mfa-code-label">6-digit code</label></div>
         <label class="mfa-skip" id="mfa-skip-row" hidden><input type="checkbox" id="mfa-skip"><span>Skip MFA this time <small>Rabbid Lab Dev, on this computer</small></span></label>
         <button class="go" type="submit" id="mfa-go">Verify</button>
       </form>
@@ -115,15 +107,15 @@
       <button type="button" class="other-kind" id="mfa-back" hidden>Back to sign-in</button>
     </div>
 
-    <!-- One line: where updating stands (signin.js asks /api/update/watch), this computer and the version, and a refresh
-         icon to check now. While an update downloads, its bar is the foot's top edge. -->
+    <!-- Centred: where updating stands (signin.js asks /api/update/watch) in a small pill with a refresh icon to check now,
+         and this computer and the version faint under it. While an update downloads, its bar is the foot's top edge. -->
     <footer class="card-foot">
-      <div class="foot-update">
+      <div class="foot-pill">
         <p class="update" id="update" hidden><span id="update-text"></span><button type="button" id="update-install" hidden>Install now</button></p>
-        <div class="update-bar" id="update-bar" hidden><i id="update-fill"></i></div>
+        <button type="button" class="foot-check" id="update-check" data-tip="Check for updates" aria-label="Check for updates" hidden><svg><use href="#i-refresh"/></svg></button>
       </div>
       <p class="where" data-version></p>
-      <button type="button" class="foot-check" id="update-check" data-tip="Check for updates" aria-label="Check for updates" hidden><svg><use href="#i-refresh"/></svg></button>
+      <div class="update-bar" id="update-bar" hidden><i id="update-fill"></i></div>
     </footer>
   </section>
 </main>

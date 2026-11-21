@@ -410,7 +410,7 @@
     $('ad-go').textContent = setup ? 'Connect and sign in' : 'Sign in';
     if (setup) {
       $('local-user').value = 'admin';
-      $('local-password').placeholder = 'Password, at least 8 characters';
+      $('local-password-label').textContent = 'Password, at least 8 characters'; // the box's name, in the box until it's typed in
       $('local-password').autocomplete = 'new-password';
     }
 
@@ -498,15 +498,6 @@
       if (domain()) domainChanged();
     };
 
-    // The avatar over the heading: the initials of the username as it's typed in the box that shows (DOMAIN\name and
-    // name@domain count as name), or the person icon while it's empty.
-    const hello = () => {
-      const box = $('ad-form').hidden ? $('local-user') : $('ad-user');
-      const initials = box.value.trim().split(/[\\/]/).pop().split('@')[0].replace(/[^a-z0-9]/gi, '').slice(0, 2).toUpperCase();
-      $('hello-initials').textContent = initials;
-      $('hello-av').classList.toggle('on', !!initials);
-    };
-    ['local-user', 'ad-user'].forEach((id) => $(id).addEventListener('input', hello));
     // One way shows at a time; the link under the button switches to the other.
     let showing = 'local';
     const choose = (kind, focus = true) => {
@@ -517,8 +508,6 @@
       $('lead').textContent = setup ? (kind === 'ad' ? `Connect ${name} to your domain.` : 'Create the administrator account.')
         : kind === 'ad' ? `Use your ${s.domain} account.` : s.domain ? 'Use a local account.' : `Use your ${name} account.`;
       $('other-kind').textContent = kind === 'ad' ? 'Use a local account instead' : 'Use Active Directory instead';
-      $('ad-password').placeholder = setup ? 'Your domain password' : `Your ${s.domain} password`;
-      hello();
       showError('');
       if (kind === 'ad') startDirectory();
       if (!focus) return;
