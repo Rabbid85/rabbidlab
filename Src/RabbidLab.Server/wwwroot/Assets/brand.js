@@ -20,7 +20,7 @@
     const i = swatch(accent);
     return i >= 0 ? [SWATCHES[i][1], SWATCHES[i][2]] : [lighter(accent, 0.15), accent];
   };
-  let now = { name: null, icon: null, accent: null, tagline: null, side: null, background: null };
+  let now = { name: null, icon: null, accent: null, tagline: null, background: null };
   try {
     now = { ...now, ...JSON.parse(localStorage.getItem(KEY) || '{}') };
   } catch {
@@ -67,9 +67,6 @@
   };
   colours();
   tabIcon();
-  // Before the page's own scripts run: the lab's name and icon wherever the page marks them (data-brand-name,
-  // data-brand-img, data-brand-mark), from what this browser kept, so a reload never shows Rabbid Lab's first.
-  // brand-paint.js calls it right after those parts are drawn.
   // The tagline with its tags filled in from what the page knows; null when a tag has nothing here (the sign-in page
   // knows no username), so the page shows Lab console rather than half a line.
   const TAG = 'Lab console';
@@ -83,6 +80,9 @@
     });
     return missing ? null : text;
   };
+  // Before the page's own scripts run: the lab's name and icon wherever the page marks them (data-brand-name,
+  // data-brand-img, data-brand-mark), from what this browser kept, so a reload never shows Rabbid Lab's first.
+  // brand-paint.js calls it right after those parts are drawn.
   const paint = (root = document) => {
     if (now.name) root.querySelectorAll('[data-brand-name]').forEach((e) => { e.textContent = now.name; });
     const tag = fill(now.tagline);

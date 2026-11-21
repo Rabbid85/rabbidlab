@@ -2,6 +2,16 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.313 (2026-11-21)
+
+- The sign-in page no longer says it is installing an update when the server just cannot be reached, and it no longer asks every second while it waits.
+- The arrow on the Domain and Domain controller boxes opens the list every time. A quick click could open it and shut it again.
+- Changing the domain twice in a row no longer shows the controllers of the first one.
+- After a wrong password the box goes back to hiding what is typed, even if Show password was on.
+- Signing out only works from the console itself, so another website cannot sign you out.
+- A wrong password goes through the same steps whether or not the username is an account, so how long the answer takes does not give away usernames.
+- Sign-in code cleaned up: unused parts removed and repeated code folded together. Nothing looks different.
+
 ## 1.1.312 (2026-11-21)
 
 - A Background pill at the foot of the sign-in page picks the background and the theme for that browser. The background set in Appearance stays the default.

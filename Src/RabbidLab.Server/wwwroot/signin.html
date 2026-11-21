@@ -23,9 +23,6 @@
 <body class="auth loading">
 <svg width="0" height="0" class="sprite" aria-hidden="true">
   <symbol id="i-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-3.5 4.5-5 8-5s6.5 1.5 8 5"/></symbol>
-  <symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol>
-  <symbol id="i-globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.5 3.8 5.5 3.8 9s-1.3 6.5-3.8 9c-2.5-2.5-3.8-5.5-3.8-9S9.5 5.5 12 3z"/></symbol>
-  <symbol id="i-server" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="13" width="18" height="7" rx="2"/><path d="M7 7.5h.01M7 16.5h.01"/></symbol>
   <symbol id="i-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></symbol>
   <symbol id="i-eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18M10.6 5.1A10.8 10.8 0 0 1 12 5c6.4 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.1M6.6 6.6C3.7 8.5 2 12 2 12s3.6 7 10 7a10.4 10.4 0 0 0 5.4-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2"/></symbol>
   <symbol id="i-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></symbol>
@@ -37,7 +34,7 @@
   <section class="signin-card">
     <!-- The left side: this computer's time and date on a plain panel, a bar for how much of the day has gone, and the lab's
          name at the foot. -->
-    <aside class="side" id="side">
+    <aside class="side">
       <div class="side-clock" aria-hidden="true">
         <b class="side-time" id="side-time"></b>
         <span class="side-date" id="side-date"></span>
@@ -77,7 +74,7 @@
             <div class="input"><input id="ad-domain" role="combobox" aria-expanded="false" aria-controls="domain-list" aria-autocomplete="list" placeholder=" " autocomplete="off" spellcheck="false" data-1p-ignore data-lpignore="true" data-bwignore><label class="fld" for="ad-domain">Domain, such as home.lan</label><button type="button" class="end" id="domain-open" tabindex="-1" aria-label="Show domains"><svg><use href="#i-down"/></svg></button></div>
             <ul class="combo-list" id="domain-list" role="listbox" hidden></ul>
           </div>
-          <div class="combo" id="server-combo">
+          <div class="combo">
             <div class="input server"><input id="ad-server" role="combobox" aria-expanded="false" aria-controls="server-list" readonly value="Automatic" data-1p-ignore data-lpignore="true" data-bwignore><label class="fld" for="ad-server">Domain controller</label><span class="now" id="server-now" hidden></span><button type="button" class="end" id="server-open" tabindex="-1" aria-label="Show domain controllers"><svg><use href="#i-down"/></svg></button></div>
             <ul class="combo-list" id="server-list" role="listbox" hidden></ul>
           </div>
@@ -90,7 +87,7 @@
         <p class="context" id="ad-context" hidden><span class="context-dot" aria-hidden="true"></span><span>Signing in to <b id="ad-context-domain"></b> through <span class="dc unknown" id="ad-context-dc">Automatic</span></span><span class="sep">·</span><button type="button" class="change" id="ad-change" aria-controls="ad-where" aria-expanded="false">Change</button></p>
       </form>
 
-      <!-- After a right password, for an account with MFA: the code from its authenticator app. A role that requires MFA
+      <!-- After a right password: the code from the account's authenticator app. An account without MFA yet
            sets it up here first, from the QR code. -->
       <form id="mfa-form" novalidate hidden>
         <div class="input" id="mfa-reset-box" hidden><input id="mfa-reset" maxlength="20" placeholder=" " autocomplete="off" spellcheck="false"><label class="fld" for="mfa-reset" id="mfa-reset-label">One-time code, like K7QX-M2PD-9FHT</label></div>

@@ -464,8 +464,12 @@ public sealed class FakeWindowsAccounts : IWindowsAccounts
     /// <summary>Each account's last password change (ticks): changing one is a password reset.</summary>
     public Dictionary<string, long> PasswordSet { get; } = new(StringComparer.OrdinalIgnoreCase) { ["localadmin"] = 100 };
 
+    /// <summary>Every name it was asked to look up again.</summary>
+    public System.Collections.Concurrent.ConcurrentQueue<string> Rechecked { get; } = [];
+
     public Task<WindowsAdminCheck?> Recheck(string name, CancellationToken stop)
     {
+        Rechecked.Enqueue(name);
         var a = Accounts.FirstOrDefault(x => string.Equals(x.Name, name, StringComparison.OrdinalIgnoreCase));
         return Task.FromResult<WindowsAdminCheck?>(a is null ? new WindowsAdminCheck(false, false, false, null)
             : new WindowsAdminCheck(true, a.Enabled, (a.Groups ?? []).Contains("Administrators"), PasswordSet.TryGetValue(name, out var set) ? set : null));

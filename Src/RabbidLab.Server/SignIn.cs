@@ -39,19 +39,7 @@ public static class SignIn
         services.AddSingleton<IDomainFinder, DomainFinder>();
         services.TryAddSingleton(TimeProvider.System);
         services.AddSingleton<Sessions>();
-        services.AddSingleton<Clients>();
-        services.AddSingleton<IHereClient, HereClient>();
-        services.AddSingleton<Inventories>();
-        services.AddSingleton<IWakeSender, WakeSender>();
-        services.AddSingleton<Waker>();
         services.AddSingleton<Confirmations>();
-        services.AddSingleton<DeviceScripts>();
-        services.AddSingleton<DeviceApps>();
-        services.AddSingleton<DeviceJobs>();
-        services.AddSingleton<Workflows>();
-        services.AddSingleton<Notes>();
-        services.AddHostedService<WorkflowWorker>();
-        services.AddSingleton<JoinLimiter>();
         // The cookie carries only the session's id; the session itself is kept by Sessions.
         // When the console is HTTPS, the cookie says so too: a browser never sends it over plain HTTP.
         services.AddOptions<CookieAuthenticationOptions>(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -74,46 +62,57 @@ public static class SignIn
             // A session ends when its password or the directory settings change, or when an Active Directory account is in no role any more.
             options.Events.OnValidatePrincipal = async context =>
             {
-                var accounts = context.HttpContext.RequestServices.GetRequiredService<Accounts>();
-                var roles = context.HttpContext.RequestServices.GetRequiredService<Roles>();
-                var p = context.Principal;
-                var stamp = p?.FindFirstValue("stamp");
-                var current = p?.FindFirstValue("source") switch
+                var http = context.HttpContext;
+                async Task SignOut()
+                {
+                    context.RejectPrincipal();
+                    await http.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+                }
+                if (context.Principal is not { } p)
+                {
+                    await SignOut();
+                    return;
+                }
+                var accounts = http.RequestServices.GetRequiredService<Accounts>();
+                var roles = http.RequestServices.GetRequiredService<Roles>();
+                var sessions = http.RequestServices.GetRequiredService<Sessions>();
+                var id = Sessions.Current(http);
+                var who = Who.Of(p);
+                var source = p.FindFirstValue("source");
+                var mfa = p.FindFirstValue("mfa");
+                var stamp = p.FindFirstValue("stamp");
+                var current = source switch
                 {
                     Directory => accounts.Directory?.Stamp,
                     Windows => Windows, // Windows checks the password; the session simply runs its course
-                    _ => accounts.Find(p?.Identity?.Name)?.Stamp,
+                    _ => accounts.Find(p.Identity?.Name)?.Stamp,
                 };
                 // A session kept past the browser (Keep me signed in, gone since 1.1.172), or one from when they lasted 12 hours, ends now.
                 var old = context.Properties.IsPersistent || context.Properties.ExpiresUtc - context.Properties.IssuedUtc > Session;
                 // Staying signed in renews a session, but never past Longest for an account Rabbid Lab doesn't keep itself.
-                if (p?.FindFirstValue("source") is Directory or Windows && Sessions.Current(context.HttpContext) is { } id
-                    && context.HttpContext.RequestServices.GetRequiredService<Sessions>().Find(id) is { } session)
+                if (source is Directory or Windows && id is not null && sessions.Find(id) is { } session)
                 {
-                    old |= context.HttpContext.RequestServices.GetRequiredService<TimeProvider>().GetUtcNow() - session.Started > Longest;
+                    old |= http.RequestServices.GetRequiredService<TimeProvider>().GetUtcNow() - session.Started > Longest;
                 }
-                // A role that requires MFA takes a code: a session from before it did ends, and signing in again asks for one.
-                var noCode = p is not null && (p.FindFirstValue("mfa") is null && roles.NeedsMfa(Who.Of(p)) || p.FindFirstValue("mfa") == Skipped && !MaySkipMfa(context.HttpContext));
+                // Every sign-in takes a code (Roles.NeedsMfa): a session without one ends, and signing in again asks for it.
+                var noCode = mfa is null && roles.NeedsMfa(who) || mfa == Skipped && !MaySkipMfa(http);
                 // Its last console tab closed a few seconds ago (Sessions.Tab): whoever opens it again signs in.
-                var closed = Sessions.Current(context.HttpContext) is { } sid && context.HttpContext.RequestServices.GetRequiredService<Sessions>().Closed(sid);
-                if (stamp is null || stamp != current || old || noCode || p is null || !roles.CanSignIn(Who.Of(p)) || PlainHttp.Exposed(context.HttpContext)
-                    || closed || IdleOut(context.HttpContext, p))
+                var closed = id is not null && sessions.Closed(id);
+                if (stamp is null || stamp != current || old || noCode || !roles.CanSignIn(who) || PlainHttp.Exposed(http) || closed || IdleOut(http, p, sessions, id))
                 {
-                    context.RejectPrincipal();
-                    await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+                    await SignOut();
                     return;
                 }
                 // Active Directory and Windows accounts: asked again every few minutes (AccountChecks).
-                var verdict = await context.HttpContext.RequestServices.GetRequiredService<AccountChecks>().Check(p, context.HttpContext.RequestAborted);
+                var verdict = await http.RequestServices.GetRequiredService<AccountChecks>().Check(p, http.RequestAborted);
                 if (verdict.Problem is { } problem)
                 {
-                    if (Sessions.Current(context.HttpContext) is { } ending && context.HttpContext.RequestServices.GetRequiredService<Sessions>().End(ending))
+                    if (id is not null && sessions.End(id))
                     {
-                        context.HttpContext.RequestServices.GetRequiredService<ActivityLog>().Record(p.Identity?.Name ?? "", ActivityLog.Address(context.HttpContext), "sign-in",
+                        http.RequestServices.GetRequiredService<ActivityLog>().Record(p.Identity?.Name ?? "", ActivityLog.Address(http), "sign-in",
                             "signout.account", "Signed out by the account check", "ok", problem);
                     }
-                    context.RejectPrincipal();
-                    await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+                    await SignOut();
                     return;
                 }
                 // Its groups changed but it can still sign in: what it may do follows them from now on.
@@ -157,11 +156,10 @@ public static class SignIn
     /// Whether this session went longer than Sign out when idle allows without its person doing anything. The page signs
     /// itself out first; this catches a page that couldn't, such as a sleeping laptop or a tab the browser froze.
     /// </summary>
-    private static bool IdleOut(HttpContext context, ClaimsPrincipal p)
+    private static bool IdleOut(HttpContext context, ClaimsPrincipal p, Sessions sessions, string? id)
     {
         var minutes = context.RequestServices.GetRequiredService<SettingsStore>().Current.IdleMinutes;
-        var sessions = context.RequestServices.GetRequiredService<Sessions>();
-        if (minutes <= 0 || Sessions.Current(context) is not { } id || sessions.Find(id) is not { } s
+        if (minutes <= 0 || id is null || sessions.Find(id) is not { } s
             || context.RequestServices.GetRequiredService<TimeProvider>().GetUtcNow() - s.Active <= TimeSpan.FromMinutes(minutes) + IdleSlack)
         {
             return false;
@@ -183,8 +181,9 @@ public static class SignIn
         {
             var path = context.Request.Path;
             var signedIn = context.User.Identity?.IsAuthenticated == true;
+            var open = !signedIn && Open(path);
             // What anyone can send is kept small: a client's answer may list a computer's accounts, the rest is a form.
-            if (!signedIn && Open(path) && TooBig(context, path == "/api/clients/done" || path == "/api/clients/inventory" ? 2 * 1024 * 1024 : 64 * 1024))
+            if (open && TooBig(context, path == "/api/clients/done" || path == "/api/clients/inventory" ? 2 * 1024 * 1024 : 64 * 1024))
             {
                 context.Response.StatusCode = StatusCodes.Status413PayloadTooLarge;
                 await context.Response.WriteAsJsonAsync(new { error = "That request is too large." });
@@ -198,7 +197,7 @@ public static class SignIn
                 await context.Response.WriteAsJsonAsync(new { error = PlainHttp.Refused, plain = true });
                 return;
             }
-            if (signedIn || Open(path))
+            if (signedIn || open)
             {
                 await next(context);
                 return;
@@ -220,13 +219,16 @@ public static class SignIn
         || path.StartsWithSegments("/api/setup") || path == "/api/signout" || path.StartsWithSegments("/api/update/watch") || ForClients(path);
 
     // The Rabbid Lab client's own endpoints: open (they carry the client's id and secret), and never someone working.
-    private static readonly string[] ClientPaths = ["/api/clients/join", "/api/clients/checkin", "/api/clients/next", "/api/clients/done", "/api/clients/bye", "/api/clients/inventory", "/api/clients/download",
-        "/api/clients/jobs/take", "/api/clients/jobs/done"];
+    private static readonly HashSet<string> ClientPaths = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "/api/clients/join", "/api/clients/checkin", "/api/clients/next", "/api/clients/done", "/api/clients/bye", "/api/clients/inventory", "/api/clients/download",
+        "/api/clients/jobs/take", "/api/clients/jobs/done",
+    };
 
     // What an open page asks by itself on a timer.
-    private static readonly string[] Polled = ["/api/update", "/api/clients", "/api/sessions", "/api/links/states", "/api/clients/here"];
+    private static readonly HashSet<string> Polled = new(StringComparer.OrdinalIgnoreCase) { "/api/update", "/api/clients", "/api/sessions", "/api/links/states", "/api/clients/here" };
 
-    public static bool ForClients(PathString path) => ClientPaths.Any(p => path == p);
+    public static bool ForClients(PathString path) => ClientPaths.Contains(path.Value ?? "");
 
     /// <summary>Whether this request is a signed-in person working (not a poll, the health check or a client), so a new version waits.</summary>
     public static bool Working(HttpContext context)
@@ -234,7 +236,7 @@ public static class SignIn
         var path = context.Request.Path;
         return context.User.Identity?.IsAuthenticated == true && path.StartsWithSegments("/api") && !ForClients(path)
             && !path.StartsWithSegments("/api/update/watch") && path != "/api/health"
-            && !(HttpMethods.IsGet(context.Request.Method) && Polled.Any(p => path == p));
+            && !(HttpMethods.IsGet(context.Request.Method) && Polled.Contains(path.Value ?? ""));
     }
 
     /// <summary>Whether the request says its body is over the limit; the server cuts off one that doesn't say.</summary>
@@ -332,7 +334,7 @@ public static class SignIn
                 return Results.BadRequest(new { error = "Enter your domain username and password." });
             }
             DirectoryUser? user;
-            var setupHost = domain;
+            string setupHost;
             try
             {
                 setupHost = await finder.Host(domain, server, context.RequestAborted);
@@ -380,10 +382,7 @@ public static class SignIn
                 {
                     return SetUpMfa(principal, shown, mfa, pending, MaySkipMfa(context));
                 }
-                await Start(context, principal);
-                roles.Seen(who, shown);
-                log.Record(principal.Identity!.Name!, from, "sign-in", "signin", "Signed in", "ok");
-                return Results.Ok(new { user = Me(principal, roles) });
+                return await Finish(context, roles, log, principal, shown);
             }
             var name = form.Username?.Trim() ?? "";
             if (name.Length > MaxUsername)
@@ -391,8 +390,9 @@ public static class SignIn
                 return Results.BadRequest(new { error = "That username is too long." });
             }
             // .\name is one of Rabbid Lab's own accounts, the way Windows uses .\ for the computer itself.
-            var local = form.Local || name.StartsWith(@".\", StringComparison.Ordinal) || name.StartsWith("./", StringComparison.Ordinal);
-            name = name.StartsWith(@".\", StringComparison.Ordinal) || name.StartsWith("./", StringComparison.Ordinal) ? name[2..] : name;
+            var dotted = name.StartsWith(@".\", StringComparison.Ordinal) || name.StartsWith("./", StringComparison.Ordinal);
+            var local = form.Local || dotted;
+            name = dotted ? name[2..] : name;
             var wrong = Results.Json(new { error = "That username or password is wrong." }, statusCode: StatusCodes.Status401Unauthorized);
             var settings = accounts.Directory;
             if (local || settings is null)
@@ -411,7 +411,9 @@ public static class SignIn
                 if (principal is null)
                 {
                     // Under its name only when that's an account here: what was typed may be a password in the wrong box.
-                    var known = name.Length > 0 && (accounts.Find(name) is not null || await windows.Recheck(name, context.RequestAborted) is { Found: true });
+                    // Windows is asked either way, so a name that is an account here answers no sooner than one that isn't.
+                    var onWindows = await windows.Recheck(name, context.RequestAborted) is { Found: true };
+                    var known = name.Length > 0 && (accounts.Find(name) is not null || onWindows);
                     log.Record(known ? name : Unknown, from, "sign-in", "signin.failed", "Sign-in failed", "failed");
                     return wrong;
                 }
@@ -430,7 +432,7 @@ public static class SignIn
                 return Results.BadRequest(new { error = $"{chosen} isn't one of {domain}'s domain controllers." });
             }
             DirectoryUser? user;
-            var host = domain;
+            string host;
             try
             {
                 // The controller set up for the domain unless another is picked; other domains start on Automatic.
@@ -489,10 +491,7 @@ public static class SignIn
                     return Results.BadRequest(new { error = "Sign in again.", again = true });
                 }
                 ((ClaimsIdentity) waiting.Principal.Identity).AddClaim(new Claim("mfa", Skipped));
-                await Start(context, waiting.Principal);
-                roles.Seen(who, waiting.Name);
-                log.Record(username, from, "sign-in", "signin", "Signed in without MFA", "ok", $"{Product.Name}, on the server itself, with Skip MFA this time");
-                return Results.Ok(new { user = Me(waiting.Principal, roles) });
+                return await Finish(context, roles, log, waiting.Principal, waiting.Name, "Signed in without MFA", $"{Product.Name}, on the server itself, with Skip MFA this time");
             }
             // Set up some other way since the password was typed: this ticket's secret doesn't take that one's place.
             if (waiting.Secret is not null && mfa.Has(who))
@@ -536,18 +535,20 @@ public static class SignIn
                 return Results.BadRequest(new { error = "Sign in again.", again = true });
             }
             ((ClaimsIdentity) waiting.Principal.Identity).AddClaim(new Claim("mfa", "1"));
-            await Start(context, waiting.Principal);
-            roles.Seen(who, waiting.Name);
             if (waiting.Secret is not null)
             {
                 log.Record(username, from, "access", "mfa.on", "Turned on MFA", "ok", afterReset ? "At sign-in, with the one-time code from a reset" : "At sign-in");
             }
-            log.Record(username, from, "sign-in", "signin", "Signed in", "ok");
-            return Results.Ok(new { user = Me(waiting.Principal, roles) });
+            return await Finish(context, roles, log, waiting.Principal, waiting.Name);
         });
 
         app.MapPost("/api/signout", async (HttpContext context, bool? idle, SettingsStore settings, ActivityLog log) =>
         {
+            // From the console's own page only, so another site can't sign anyone out.
+            if (Access.Refuse(context) is { } refused)
+            {
+                return refused;
+            }
             // The page signing itself out after Sign out when idle.
             if (idle == true && context.User.Identity?.IsAuthenticated == true && settings.Current.IdleMinutes > 0)
             {
@@ -697,6 +698,7 @@ public static class SignIn
     private static object Me(ClaimsPrincipal p, Roles roles)
     {
         var who = Who.Of(p);
+        var can = roles.Allowed(who);
         return new
         {
             username = p.Identity?.Name,
@@ -705,9 +707,9 @@ public static class SignIn
             domain = p.FindFirstValue("domain"),
             server = p.FindFirstValue("server"),
             roles = Roles.Brief(roles.Of(who)),
-            can = roles.Allowed(who).Order(),
+            can = can.Order(),
             // Their roles show only part of Active Directory, so the pages about the whole domain aren't theirs.
-            adScoped = roles.Allowed(who).Contains(Permissions.AdView) && roles.Reach(who, Permissions.AdView) is not null,
+            adScoped = can.Contains(Permissions.AdView) && roles.Reach(who, Permissions.AdView) is not null,
         };
     }
 
@@ -733,6 +735,15 @@ public static class SignIn
     // Never kept past the browser, whatever a request asks.
     private static Task Start(HttpContext context, ClaimsPrincipal principal) =>
         context.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal, new AuthenticationProperties { IsPersistent = false, AllowRefresh = true });
+
+    /// <summary>The end of every sign-in: the session starts, the person is noted as seen, and it's logged.</summary>
+    private static async Task<IResult> Finish(HttpContext context, Roles roles, ActivityLog log, ClaimsPrincipal principal, string shown, string title = "Signed in", string? detail = null)
+    {
+        await Start(context, principal);
+        roles.Seen(Who.Of(principal), shown);
+        log.Record(principal.Identity!.Name!, ActivityLog.Address(context), "sign-in", "signin", title, "ok", detail);
+        return Results.Ok(new { user = Me(principal, roles) });
+    }
 
     private static string? Stamp(long? passwordSet) => passwordSet?.ToString(System.Globalization.CultureInfo.InvariantCulture);
 

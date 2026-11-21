@@ -101,6 +101,22 @@ builder.AddAlso(also); // after the redirect's, whose socket is handed to Kestre
 // Signing in: a local account or Active Directory, set up on the first visit (SignIn.cs).
 builder.Services.AddSignIn();
 
+// The Rabbid Lab client on computers and what it's asked to do there (ClientsApi.cs): inventory, waking, scripts, installs, jobs, workflows.
+builder.Services.AddSingleton<Clients>();
+builder.Services.AddSingleton<IHereClient, HereClient>();
+builder.Services.AddSingleton<Inventories>();
+builder.Services.AddSingleton<IWakeSender, WakeSender>();
+builder.Services.AddSingleton<Waker>();
+builder.Services.AddSingleton<DeviceScripts>();
+builder.Services.AddSingleton<DeviceApps>();
+builder.Services.AddSingleton<DeviceJobs>();
+builder.Services.AddSingleton<Workflows>();
+builder.Services.AddHostedService<WorkflowWorker>();
+builder.Services.AddSingleton<JoinLimiter>();
+
+// Notes on computers, Active Directory objects and GPOs (Notes.cs).
+builder.Services.AddSingleton<Notes>();
+
 // The user tools: Active Directory and Windows accounts (UsersApi.cs).
 builder.Services.AddUserTools();
 builder.Services.AddSingleton<Links>();

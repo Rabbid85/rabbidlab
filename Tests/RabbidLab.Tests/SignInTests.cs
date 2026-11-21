@@ -287,6 +287,20 @@ public sealed class SignInTests : IDisposable
     }
 
     [Fact]
+    public async Task A_wrong_password_asks_Windows_about_the_name_whether_or_not_it_is_an_account_here()
+    {
+        await app.SignedIn();
+        var page = app.Page();
+        app.Windows.Rechecked.Clear();
+
+        await page.PostAsJsonAsync("/api/signin", new { username = "admin", password = "wrong" });
+        await page.PostAsJsonAsync("/api/signin", new { username = "nobody", password = "wrong" });
+
+        // The same steps for both, so how long the answer takes doesn't say which names are accounts.
+        Assert.Equal(["admin", "nobody"], app.Windows.Rechecked);
+    }
+
+    [Fact]
     public async Task A_failed_domain_sign_in_is_logged_by_name_only_for_an_account_that_has_signed_in_here()
     {
         await app.Page().PostAsJsonAsync("/api/setup/directory", new { domain = "amw.com", username = "awiles", password = "domain pass" });
@@ -417,6 +431,16 @@ public sealed class SignInTests : IDisposable
         await page.PostAsync("/api/signout", null);
 
         Assert.Equal(HttpStatusCode.Unauthorized, (await page.GetAsync("/api/status")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Signing_out_needs_the_page_header_so_another_site_cannot_do_it()
+    {
+        var page = await app.SignedIn();
+        page.DefaultRequestHeaders.Remove("X-Rabbid-Lab");
+
+        Assert.Equal(HttpStatusCode.Forbidden, (await page.PostAsync("/api/signout", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await page.GetAsync("/api/status")).StatusCode);
     }
 
     [Fact]

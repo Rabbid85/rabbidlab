@@ -25,8 +25,8 @@
       .filter((p) => p.type !== 'dayPeriod').map((p) => p.value).join('').trim();
     // Big digits start a few pixels in from their box, a 2 more than a 1: the first is pulled left by its own amount, so
     // the time lines up with the date under it.
-    const look = getComputedStyle(time);
-    ink.font = `${look.fontWeight} ${look.fontSize} ${look.fontFamily}`;
+    const style = getComputedStyle(time);
+    ink.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
     time.style.marginLeft = `${Math.min(0, ink.measureText(time.textContent[0] || '0').actualBoundingBoxLeft)}px`;
     $('side-date').textContent = now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
     const gone = Math.round(((now.getHours() * 60 + now.getMinutes()) / 1440) * 100);
@@ -144,22 +144,36 @@
     location.replace(home());
   };
 
+  const unreachable = (then) => `Couldn't reach ${window.RabbidLabBrand.now.name || 'Rabbid Lab'}. Check that it's running, then ${then}.`;
+  // Sends a form with its button off meanwhile. Null when the server can't be reached, which the page then says.
+  const send = async (url, body, button) => {
+    showError('');
+    button.disabled = true;
+    try {
+      const r = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
+      const said = await r.json().catch(() => null);
+      return { ok: r.ok, said, problem: said?.error || `Something went wrong (${r.status}). Try again.` };
+    } catch {
+      showError(unreachable('try again'));
+      button.disabled = false;
+      return null;
+    }
+  };
+
   // MFA, after a right password: the answer is a ticket to send the code with, and nobody is signed in yet. MFA is
   // required for everyone, so an account without it gets the QR code to set it up with; after a reset, the one-time code too.
   let ticket = '';
+  const hideForms = () => ['local-form', 'ad-form', 'other-kind'].forEach((id) => { $(id).hidden = true; });
   const askCode = (said) => {
     ticket = said.ticket;
     const setup = said.mfa === 'setup';
-    ['local-form', 'ad-form', 'other-kind'].forEach((id) => { $(id).hidden = true; });
+    hideForms();
     $('heading').textContent = setup ? 'Set up MFA' : 'Enter your code';
     $('lead').hidden = false;
     $('lead').textContent = !setup ? 'Type the 6-digit code from your authenticator app.'
       : said.reset ? 'Your MFA was reset. Type the one-time code you were given, then scan this with your authenticator app and type the 6-digit code it shows.'
         : 'Signing in takes a code from an authenticator app, such as Microsoft Authenticator or Google Authenticator. Scan this with it, then type the 6-digit code it shows.';
-    $('mfa-reset-box').hidden = !said.reset;
-    $('mfa-reset-label').hidden = !said.reset;
     $('mfa-reset').value = '';
-    $('mfa-setup').hidden = !setup;
     if (setup) {
       $('mfa-qr').innerHTML = said.setup.qr; // an SVG picture drawn by the server
       $('mfa-secret').textContent = said.setup.secret.replace(/(.{4})/g, '$1 ').trim();
@@ -181,76 +195,53 @@
     setupShown = setup;
     const skip = $('mfa-skip').checked;
     $('mfa-code-box').hidden = skip;
-    $('mfa-code-label').hidden = skip;
     $('mfa-setup').hidden = !setup || skip;
     $('mfa-reset-box').hidden = skip || !resetShown;
-    $('mfa-reset-label').hidden = skip || !resetShown;
     $('mfa-go').textContent = skip ? 'Sign in without a code' : setup ? 'Turn on and sign in' : 'Verify';
   };
   $('mfa-skip').addEventListener('change', () => skipping());
   $('mfa-back').addEventListener('click', () => location.reload());
   $('mfa-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    showError('');
-    $('mfa-go').disabled = true;
-    try {
-      const skip = $('mfa-skip').checked && !$('mfa-skip-row').hidden;
-      const r = await fetch('/api/signin/mfa', { method: 'POST', headers, body: JSON.stringify({ ticket, code: skip ? null : $('mfa-code').value, reset: skip ? null : $('mfa-reset').value || null, skip }) });
-      if (r.ok) {
-        enter();
-        return;
-      }
-      const said = await r.json().catch(() => null);
-      if (said?.again) {
-        location.reload(); // the ticket ran out: the password again
-        return;
-      }
-      showError(said?.error || `Something went wrong (${r.status}). Try again.`);
-      $('mfa-code').select();
-    } catch {
-      showError(`Couldn't reach ${window.RabbidLabBrand.now.name || 'Rabbid Lab'}. Check that it's running, then try again.`);
-    }
+    const skip = $('mfa-skip').checked && !$('mfa-skip-row').hidden;
+    const r = await send('/api/signin/mfa', { ticket, code: skip ? null : $('mfa-code').value, reset: skip ? null : $('mfa-reset').value || null, skip }, $('mfa-go'));
+    if (!r) return;
+    if (r.ok) return enter();
+    if (r.said?.again) return location.reload(); // the ticket ran out: the password again
+    showError(r.problem);
     $('mfa-go').disabled = false;
+    $('mfa-code').select();
   });
 
-  // A password that was sent isn't left in its box: not behind the MFA step, and not after a wrong one.
-  const forget = () => ['local-password', 'local-confirm', 'ad-password'].forEach((id) => { $(id).value = ''; });
-  const post = async (url, body, button) => {
-    showError('');
-    button.disabled = true;
-    try {
-      const r = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
-      forget();
-      if (r.ok) {
-        const said = await r.json().catch(() => null);
-        if (said?.mfa) {
-          button.disabled = false;
-          askCode(said);
-          return;
-        }
-        enter();
-        return;
-      }
-      const said = await r.json().catch(() => null);
-      showError(said?.error || `Something went wrong (${r.status}). Try again.`);
-    } catch {
-      showError(`Couldn't reach ${window.RabbidLabBrand.now.name || 'Rabbid Lab'}. Check that it's running, then try again.`);
-    }
-    button.disabled = false;
-  };
-
   // The eye in a password box shows or hides what's typed.
-  document.querySelectorAll('[data-reveal]').forEach((button) => button.addEventListener('click', () => {
-    const input = $(button.dataset.reveal);
-    const show = input.type === 'password';
-    input.type = show ? 'text' : 'password';
+  const reveal = (button, show) => {
+    $(button.dataset.reveal).type = show ? 'text' : 'password';
     button.classList.toggle('on', show);
     button.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
-    input.focus();
+  };
+  document.querySelectorAll('[data-reveal]').forEach((button) => button.addEventListener('click', () => {
+    reveal(button, $(button.dataset.reveal).type === 'password');
+    $(button.dataset.reveal).focus();
   }));
 
+  // A password that was sent isn't left in its box or showing: not behind the MFA step, and not after a wrong one.
+  const PASSWORDS = ['local-password', 'local-confirm', 'ad-password'];
+  const forget = () => {
+    PASSWORDS.forEach((id) => { $(id).value = ''; });
+    document.querySelectorAll('[data-reveal]').forEach((button) => reveal(button, false));
+  };
+  const post = async (url, body, button) => {
+    const r = await send(url, body, button);
+    if (!r) return;
+    forget();
+    if (r.ok && !r.said?.mfa) return enter();
+    button.disabled = false;
+    if (r.ok) askCode(r.said);
+    else showError(r.problem);
+  };
+
   // Caps Lock on while typing a password: a line under the box says so.
-  ['local-password', 'local-confirm', 'ad-password'].forEach((id) => {
+  PASSWORDS.forEach((id) => {
     const warn = $(`${id}-caps`);
     const check = (e) => { warn.hidden = !e.getModifierState?.('CapsLock'); };
     ['keydown', 'keyup', 'mousedown'].forEach((type) => $(id).addEventListener(type, check));
@@ -261,6 +252,7 @@
   const combo = ({ input, list, toggle, items, label, detail = () => '', tone = () => '', empty, typing = true, pick }) => {
     let shown = [];
     let active = -1;
+    let closing = 0; // the close that waits a moment after the box loses focus
 
     const render = (opening) => {
       list.replaceChildren();
@@ -305,6 +297,7 @@
     };
 
     const open = () => {
+      clearTimeout(closing);
       const all = items();
       const text = input.value.trim().toLowerCase();
       const exact = all.some((x) => label(x).toLowerCase() === text);
@@ -326,7 +319,7 @@
 
     input.addEventListener('focus', open);
     input.addEventListener('click', () => { if (list.hidden) open(); });
-    input.addEventListener('blur', () => setTimeout(close, 120));
+    input.addEventListener('blur', () => { closing = setTimeout(close, 120); });
     input.addEventListener('input', open);
     input.addEventListener('keydown', (e) => {
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
@@ -341,9 +334,12 @@
         close();
       }
     });
+    // The arrow leaves the box its focus, so the list doesn't close under the click.
+    toggle.addEventListener('mousedown', (e) => e.preventDefault());
     toggle.addEventListener('click', () => {
-      if (list.hidden) input.focus();
-      else close();
+      if (!list.hidden) close();
+      else if (document.activeElement === input) open();
+      else input.focus();
     });
     return { refresh: () => { if (!list.hidden) open(); } };
   };
@@ -367,10 +363,11 @@
   };
 
   // Where updating stands, at the foot of the card: asked when the page opens and every 30 seconds while it's open, and
-  // every 2 while an update is under way. Once Rabbid Lab answers as another version, the page reloads as it.
+  // every second while an update is under way. Once Rabbid Lab answers as another version, the page reloads as it.
   const watchUpdates = () => {
     let timer = null;
     let target = '';
+    let under = false; // the last answer said an update is downloading or installing
     let running = ''; // the version that answered first: another one means it updated
     let since = 0; // when installing began
     let tick = null;
@@ -391,12 +388,14 @@
     const installing = (forSeconds) => {
       if (forSeconds != null) since = Date.now() - forSeconds * 1000;
       since ||= Date.now();
-      bar(66 + 32 * (1 - Math.exp(-(Date.now() - since) / 12000)));
+      const move = () => bar(66 + 32 * (1 - Math.exp(-(Date.now() - since) / 12000)));
+      move();
       say(`Installing version ${target}. This page reloads when it's done.`, 'busy');
-      tick ||= setInterval(() => installing(), 250);
+      tick ||= setInterval(move, 250);
     };
     const draw = (u) => {
       target = u.available || target;
+      under = ['waiting', 'downloading', 'installing'].includes(u.status);
       if (u.status === 'installing') return installing(u.installingFor);
       clearInterval(tick);
       tick = null;
@@ -413,7 +412,7 @@
     };
     const ask = async (opened = false, wait = false) => {
       clearTimeout(timer);
-      let busy = !!target;
+      let busy = under;
       try {
         const r = await fetch(`/api/update/watch?opened=${opened}&wait=${wait}`, { headers: { Accept: 'application/json' } });
         if (!r.ok) throw new Error(r.statusText);
@@ -427,17 +426,18 @@
         }
         running = u.version;
         draw(u);
-        busy = u.checking || ['waiting', 'downloading', 'installing'].includes(u.status);
+        busy = u.checking || under;
       } catch {
-        // Not answering: restarting as the new version, or stopped.
-        if (target) installing();
+        // Not answering in the middle of an update: restarting as the new version. Any other time, nothing is installing.
+        if (under) installing();
       }
       timer = setTimeout(ask, busy ? 1000 : 30000);
     };
-    $('update-check').addEventListener('click', () => {
+    const check = () => {
       say('Checking for updates…');
       ask(true, true);
-    });
+    };
+    $('update-check').addEventListener('click', check);
     $('update-install').addEventListener('click', async () => {
       say(`Starting version ${target}…`, 'busy');
       bar(4);
@@ -454,8 +454,7 @@
       }
       ask();
     });
-    say('Checking for updates…');
-    ask(true, true);
+    check();
   };
 
   const start = async () => {
@@ -463,7 +462,6 @@
     if (s.user) return location.replace(home());
     const setup = !s.setUp;
 
-    // What changes between setting up and signing in: the words and the confirm box.
     // The lab's own look: its colours (brand.js), its name in place of Rabbid Lab's, its icon in place of the mark.
     const brand = window.RabbidLabBrand.apply(s.brand);
     const product = s.product.replace(/ Dev$/, ''); // the DEV tag says it's Dev
@@ -481,12 +479,10 @@
       e.title = `${product} ${s.version} on ${s.machine} (${s.platform})`;
     });
     document.body.classList.toggle('is-dev', !!s.dev);
+    // What changes between setting up and signing in: the words and the confirm box.
     $('heading').textContent = setup ? 'Set up' : 'Welcome back';
     $('other-kind').hidden = !setup && !s.domain;
     $('confirm-row').hidden = !setup;
-    $('confirm-label').hidden = !setup;
-    document.querySelectorAll('[data-signed-in]').forEach((e) => { e.hidden = setup; });
-    document.querySelectorAll('[data-setup]').forEach((e) => { e.hidden = !setup; });
     // Signing in with Active Directory, the domain and its controller show on one line, and Change opens the list.
     $('ad-context').hidden = setup;
     $('ad-where').hidden = !setup;
@@ -504,15 +500,18 @@
     let server = setup ? '' : s.server || ''; // empty is Automatic
     let lookedUp = '';
     let started = false;
+    let asked = 0; // counts the controller lookups, so only the last one's answer shows
     const domain = () => $('ad-domain').value.trim();
     const showServer = () => markServer(controllers, server);
 
     const loadControllers = async () => {
+      const mine = ++asked;
       controllers = [];
       showServer();
       if (!domain()) return;
       const url = `${setup ? '/api/setup/directory/controllers' : '/api/signin/controllers'}?domain=${encodeURIComponent(domain())}`;
       const r = await getJson(url).catch(() => null);
+      if (mine !== asked) return; // the domain changed meanwhile
       controllers = r?.ok ? r.body.controllers : [];
       showServer();
       serverBox.refresh();
@@ -588,9 +587,11 @@
       showing = kind;
       $('local-form').hidden = kind !== 'local';
       $('ad-form').hidden = kind !== 'ad';
-      $('lead').hidden = !setup && kind === 'ad'; // the domain line says it
-      $('lead').textContent = setup ? (kind === 'ad' ? `Connect ${name} to your domain.` : 'Create the administrator account.')
-        : kind === 'ad' ? `Use your ${s.domain} account.` : s.domain ? 'Use a local account.' : `Use your ${name} account.`;
+      // Signing in with Active Directory has no lead: the domain line under the button says it.
+      const lead = setup ? (kind === 'ad' ? `Connect ${name} to your domain.` : 'Create the administrator account.')
+        : kind === 'ad' ? '' : s.domain ? 'Use a local account.' : `Use your ${name} account.`;
+      $('lead').textContent = lead;
+      $('lead').hidden = !lead;
       $('other-kind').textContent = kind === 'ad' ? 'Use a local account instead' : 'Use Active Directory instead';
       showError('');
       if (kind === 'ad') startDirectory();
@@ -655,7 +656,7 @@
         : 'This console is on plain HTTP: your password and session cross the network unencrypted. An administrator allowed this with AllowPlainHttp.';
       $('plain-note').classList.toggle('warn', s.plain !== 'refused');
       $('plain-note').hidden = false;
-      if (s.plain === 'refused') ['local-form', 'ad-form', 'other-kind'].forEach((id) => { $(id).hidden = true; });
+      if (s.plain === 'refused') hideForms();
     }
     document.body.classList.remove('loading'); // drawn once, already in its final layout
     watchUpdates();
@@ -663,6 +664,6 @@
 
   start().catch(() => {
     document.body.classList.remove('loading');
-    showError(`Couldn't reach ${window.RabbidLabBrand.now.name || 'Rabbid Lab'}. Check that it's running, then refresh the page.`);
+    showError(unreachable('refresh the page'));
   });
 })();

@@ -56,7 +56,6 @@ body.loading .card-body > *, body.loading .card-foot > *, body.loading .side-sub
 .input input:focus { outline: none; border-color: var(--accent); }
 .fld { position: absolute; left: 15px; top: 15px; max-width: calc(100% - 64px); overflow: hidden; color: #6D7290; font-size: 15px; line-height: 20px;
   white-space: nowrap; text-overflow: ellipsis; pointer-events: none; transition: top .15s, font-size .15s, color .15s; }
-.fld[hidden] { display: none; }
 .input input:focus + .fld, .input input:not(:placeholder-shown) + .fld { top: 6px; color: #8E92A8; font-size: 11px; font-weight: 600; line-height: 14px; }
 .input input:focus + .fld { color: var(--accent-soft); }
 /* Browser autofill paints the box: the box's own colour instead. */
@@ -88,11 +87,10 @@ body.loading .card-body > *, body.loading .card-foot > *, body.loading .side-sub
 .combo-list li.active, .combo-list li:hover { background: #1D2133; }
 .combo-list li.empty { cursor: default; color: var(--muted); font-size: 12.5px; }
 
-/* Sign in (and Create account, Verify): round, the width of the form, with an arrow after the words. */
+/* Sign in (and Create account, Verify): the width of the form, with an arrow after the words. */
 button.go { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; height: 50px; margin-top: 6px; border: 0; border-radius: 12px;
   color: #fff; font-size: 15.5px; font-weight: 700; background: var(--ember); transition: filter .15s, transform .15s; }
 button.go::after { content: ""; width: 18px; height: 18px; background: currentColor;
-  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12h14M13 6l6 6-6 6'/%3E%3C/svg%3E") center / contain no-repeat;
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12h14M13 6l6 6-6 6'/%3E%3C/svg%3E") center / contain no-repeat; }
 button.go:hover { filter: brightness(1.08); background: var(--ember); }
 button.go:active { transform: translateY(1px); }
