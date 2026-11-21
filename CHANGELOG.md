@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.310 (2026-11-21)
+
+- No empty strip down the right edge of the console on a page too short to scroll. Room for the scroll bar is kept only with the Centered page width.
+
 ## 1.1.309 (2026-11-21)
 
 - The time on the sign-in page is a little lighter.

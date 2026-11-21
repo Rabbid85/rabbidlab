@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.310', [
+    'No empty strip down the right edge of the console on a page too short to scroll. Room for the scroll bar is kept only with the Centered page width.']],
   ['1.1.309', [
     'The time on the sign-in page is a little lighter.']],
   ['1.1.308', [

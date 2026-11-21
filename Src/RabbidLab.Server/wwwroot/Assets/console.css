@@ -11,8 +11,9 @@
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; min-height: 100%; }
-/* Room for the scrollbar is always kept, so a centred page doesn't jump sideways between a long page and a short one. */
-html { scrollbar-gutter: stable; }
+/* Centered page width only: room for the scrollbar is kept, so the column doesn't jump sideways between a long page and a
+   short one. Full width doesn't, so a page too short to scroll has no empty strip down its right edge. */
+html:has(body.app:not(.layout-wide)) { scrollbar-gutter: stable; }
 body { background: var(--night); color: var(--text); font: 15px/1.5 "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif; position: relative; }
 /* A box the browser filled in (a saved name, address or password) keeps its own dark look: the browser's white or blue
    fill never comes in (the long transition holds it back) and the text stays light. Every page loads this file; the
