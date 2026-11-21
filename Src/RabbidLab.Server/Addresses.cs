@@ -15,6 +15,18 @@ internal static class Addresses
 
     public static IPAddress Normal(IPAddress ip) => ip.IsIPv4MappedToIPv6 ? ip.MapToIPv4() : ip;
 
+    /// <summary>What an address is counted under by the limits: itself, or for IPv6 its /64, since one computer can use any address in it.</summary>
+    public static string Network(string? address)
+    {
+        if (!IPAddress.TryParse(address, out var ip) || ip.AddressFamily != System.Net.Sockets.AddressFamily.InterNetworkV6 || ip.IsIPv4MappedToIPv6)
+        {
+            return address ?? "";
+        }
+        var bytes = ip.GetAddressBytes();
+        Array.Clear(bytes, 8, 8);
+        return new IPAddress(bytes) + "/64";
+    }
+
     /// <summary>Whether the address is this computer's own: loopback, or one of its network cards'.</summary>
     public static bool OnServer(IPAddress? ip)
     {

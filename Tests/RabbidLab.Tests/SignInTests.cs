@@ -108,6 +108,7 @@ public sealed class SignInTests : IDisposable
         await app.SignedIn("admin", "correct horse");
 
         var wrong = await app.Page().PostAsJsonAsync("/api/signin", new { username = "admin", password = "wrong one" });
+        app.Clock.Advance(TimeSpan.FromSeconds(3)); // a wrong password makes the name's next try wait
         var page = app.Page();
         var right = await page.PostAsJsonAsync("/api/signin", new { username = "ADMIN", password = "correct horse" });
 
@@ -478,7 +479,8 @@ public sealed class SignInTests : IDisposable
             Assert.Equal(HttpStatusCode.OK, (await app.Page().PostAsJsonAsync("/api/signin", new { username = "admin", password = "correct horse" })).StatusCode);
         }
         var page = app.Page();
-        var together = await Task.WhenAll(Enumerable.Range(0, 30).Select(i => page.PostAsJsonAsync("/api/signin", new { username = "admin", password = "wrong " + i })));
+        // Thirty names, since tries for one name are checked one at a time (SignInLockTests): this is the limit per address.
+        var together = await Task.WhenAll(Enumerable.Range(0, 30).Select(i => page.PostAsJsonAsync("/api/signin", new { username = "nobody" + i, password = "wrong " + i })));
 
         Assert.Equal(10, together.Count(r => r.StatusCode == HttpStatusCode.Unauthorized));
         Assert.Equal(20, together.Count(r => r.StatusCode == HttpStatusCode.TooManyRequests));
@@ -634,6 +636,7 @@ public sealed class SignInTests : IDisposable
         var page = app.Page();
 
         var wrong = await page.PostAsJsonAsync("/api/signin", new { username = "awiles", password = "nope" });
+        app.Clock.Advance(TimeSpan.FromSeconds(3)); // a wrong password makes the name's next try wait
         var right = await page.PostAsJsonAsync("/api/signin", new { username = "awiles", password = "domain pass" });
         var me = await (await page.GetAsync("/api/signin")).Content.ReadFromJsonAsync<JsonElement>();
 
@@ -750,6 +753,7 @@ public sealed class SignInTests : IDisposable
         var page = app.Page();
 
         var wrong = await app.Page().PostAsJsonAsync("/api/signin", new { username = @".\localadmin", password = "nope" });
+        app.Clock.Advance(TimeSpan.FromSeconds(3)); // a wrong password makes the name's next try wait
         var right = await page.PostAsJsonAsync("/api/signin", new { username = @".\localadmin", password = "windows pass" });
         var me = await (await page.GetAsync("/api/signin")).Content.ReadFromJsonAsync<JsonElement>();
 

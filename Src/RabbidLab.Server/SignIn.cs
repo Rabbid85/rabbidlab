@@ -16,6 +16,8 @@ public static class SignIn
 {
     // Release and Dev both run on localhost, and browsers don't keep cookies apart by port.
     public static readonly string Cookie = Product.Dev ? "rabbidlab-dev" : "rabbidlab";
+    // Kept by a browser that has signed in: a token that says so (SignInLocks), nothing more. Scripts can't read it either.
+    public static readonly string Known = Cookie + "-known";
     // Sessions aren't kept past the browser: an open console checks in every minute or less, so this ends soon after its last page closes.
     public static readonly TimeSpan Session = TimeSpan.FromMinutes(5);
     // Active Directory and Windows accounts sign in again this long after they did, so a change there counts by then.
@@ -30,6 +32,8 @@ public static class SignIn
         services.AddSingleton<Accounts>();
         services.AddSingleton<Roles>();
         services.AddSingleton<SignInLimiter>();
+        services.AddSingleton<SignInLocks>();
+        services.AddSingleton<SignInFlood>();
         services.AddSingleton<Mfa>();
         services.AddSingleton<PendingSignIns>();
         services.AddSingleton<AccountChecks>();
@@ -148,6 +152,8 @@ public static class SignIn
 
     // Sign out when idle: the choices, in minutes (0 is never), and the slack the page's once-a-minute report needs.
     public static readonly int[] IdleChoices = [0, 15, 30, 60, 120, 240, 480];
+    // How many wrong passwords lock a name: the choices in Settings, Sign-in.
+    public static readonly int[] LockChoices = [3, 5, 10];
     private static readonly TimeSpan IdleSlack = TimeSpan.FromMinutes(1);
 
     public static string IdleWords(int minutes) => minutes % 60 == 0 ? (minutes == 60 ? "1 hour" : $"{minutes / 60} hours") : $"{minutes} minutes";
@@ -182,6 +188,23 @@ public static class SignIn
             var path = context.Request.Path;
             var signedIn = context.User.Identity?.IsAuthenticated == true;
             var open = !signedIn && Open(path);
+            // The stopper for a script hammering the sign-in (SignInFlood): past its limit, turned away before anything is read.
+            // Only requests with the page's own header count: without it they're refused anyway, and another site, which
+            // can't send it, can't use up a visitor's requests.
+            var signing = HttpMethods.IsPost(context.Request.Method) && (path.StartsWithSegments("/api/signin") || path.StartsWithSegments("/api/setup"));
+            if (signing && context.Request.Headers.ContainsKey(Access.Header) && !OnServer(context)
+                && !context.RequestServices.GetRequiredService<SignInFlood>().Let(ActivityLog.Address(context), out var justOut))
+            {
+                if (justOut)
+                {
+                    context.RequestServices.GetRequiredService<ActivityLog>().Record(ActivityLog.Who(context), ActivityLog.Address(context), "sign-in", "signin.flood",
+                        "Sign-in requests turned away for 15 minutes", "failed", $"More than {SignInFlood.PerMinute * 10} in a minute from this address");
+                }
+                context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+                context.Response.Headers.RetryAfter = "60";
+                await context.Response.WriteAsJsonAsync(new { error = "Too many sign-in requests from this computer. Wait a minute, then try again.", wait = 60 });
+                return;
+            }
             // What anyone can send is kept small: a client's answer may list a computer's accounts, the rest is a form.
             if (open && TooBig(context, path == "/api/clients/done" || path == "/api/clients/inventory" ? 2 * 1024 * 1024 : 64 * 1024))
             {
@@ -190,8 +213,7 @@ public static class SignIn
                 return;
             }
             // Plain HTTP from another computer: no password goes in (PlainHttp.cs). Sessions are refused in OnValidatePrincipal.
-            if (HttpMethods.IsPost(context.Request.Method) && (path.StartsWithSegments("/api/signin") || path.StartsWithSegments("/api/setup")
-                || path == "/api/confirm" || path == "/api/me/password") && PlainHttp.Exposed(context))
+            if ((signing || (HttpMethods.IsPost(context.Request.Method) && (path == "/api/confirm" || path == "/api/me/password"))) && PlainHttp.Exposed(context))
             {
                 context.Response.StatusCode = StatusCodes.Status403Forbidden;
                 await context.Response.WriteAsJsonAsync(new { error = PlainHttp.Refused, plain = true });
@@ -360,30 +382,16 @@ public static class SignIn
             return SetUpMfa(principal, user.Name, mfa, pending, MaySkipMfa(context));
         }).AddEndpointFilter(Limited);
 
-        // Rabbid Lab's own accounts for .\name or Local account, otherwise Active Directory when it's set up.
+        // Rabbid Lab's own accounts for .\name or Local account, otherwise Active Directory when it's set up. Wrong
+        // passwords are counted for the name typed (SignInLocks): each makes the next try wait longer, and enough lock it.
         app.MapPost("/api/signin", async (HttpContext context, Accounts accounts, Roles roles, ActivityLog log, IDirectory directory, IDomainFinder finder,
-            IWindowsAccounts windows, IMemoryCache cache, Mfa mfa, PendingSignIns pending, SignInForm form) =>
+            IWindowsAccounts windows, IMemoryCache cache, Mfa mfa, PendingSignIns pending, SignInLocks locks, SettingsStore store, SignInForm form) =>
         {
             if (Access.Refuse(context) is { } refused)
             {
                 return refused;
             }
             var from = ActivityLog.Address(context);
-            // The password was right. With MFA the page gets a ticket to send its code with, and nobody is signed in yet;
-            // someone who hasn't set it up gets the secret to set it up with first, and after a reset also needs its code.
-            async Task<IResult> Enter(ClaimsPrincipal principal, string shown)
-            {
-                var who = Who.Of(principal);
-                if (mfa.Has(who))
-                {
-                    return Results.Ok(new { mfa = "code", ticket = pending.Add(principal, shown, null), skip = MaySkipMfa(context) });
-                }
-                if (roles.NeedsMfa(who))
-                {
-                    return SetUpMfa(principal, shown, mfa, pending, MaySkipMfa(context));
-                }
-                return await Finish(context, roles, log, principal, shown);
-            }
             var name = form.Username?.Trim() ?? "";
             if (name.Length > MaxUsername)
             {
@@ -391,37 +399,127 @@ public static class SignIn
             }
             // .\name is one of Rabbid Lab's own accounts, the way Windows uses .\ for the computer itself.
             var dotted = name.StartsWith(@".\", StringComparison.Ordinal) || name.StartsWith("./", StringComparison.Ordinal);
-            var local = form.Local || dotted;
             name = dotted ? name[2..] : name;
-            var wrong = Results.Json(new { error = "That username or password is wrong." }, statusCode: StatusCodes.Status401Unauthorized);
             var settings = accounts.Directory;
-            if (local || settings is null)
+            var own = form.Local || dotted || settings is null; // Rabbid Lab's own accounts and this computer's, not the domain's
+            var key = name.Length == 0 ? null : SignInLocks.Key(own ? Local : Directory, name);
+            // Too soon after a wrong password, or locked: said before any password is looked at, and the same for a name that isn't
+            // an account. A try that may go ahead takes the name's turn until this request is answered, so tries sent together
+            // wait for each other and each is counted before the next is checked.
+            var asker = key is null ? default : Asking(context, locks, key);
+            LockAnswer standing = default;
+            using var turn = key is null ? null : locks.Begin(key, asker, out standing);
+            // From here a try is seen through and counted even if whoever sent it hangs up.
+            var stop = CancellationToken.None;
+            // A locked name sent with a code is an administrator's way back in: the code is checked first, then the password.
+            var unlocking = standing.State == LockState.Locked && !string.IsNullOrWhiteSpace(form.Code);
+            if (standing.State == LockState.Locked && !unlocking)
             {
+                return LockedOut(name);
+            }
+            if (standing.Seconds > 0)
+            {
+                return TooSoon(standing.Seconds, unlocking);
+            }
+            var most = LockChoices.Contains(store.Current.LockAfter) ? store.Current.LockAfter : SignInLocks.Most; // Settings, Sign-in: 3, 5 or 10
+            // Unlocking: whose code it is, once it's right. Without the app nothing else is looked at, and no password goes to the domain.
+            Who? proven = null;
+            bool Coded(Who asked)
+            {
+                proven = mfa.Check(asked, form.Code) == MfaAnswer.Right ? asked : null;
+                return proven is not null;
+            }
+            // A wrong password (unlocking, a wrong code too): logged, counted for the name, and answered with the wait before the next
+            // try. Unlocking with the code right and the password wrong counts for more: whoever sent it has the authenticator.
+            IResult Failed(string by, bool known, string? detail = null)
+            {
+                log.Record(by, from, "sign-in", "signin.failed", "Sign-in failed", "failed", detail);
+                if (key is null)
+                {
+                    return Results.Json(new { error = WrongText }, statusCode: StatusCodes.Status401Unauthorized);
+                }
+                var now = locks.Wrong(key, from, asker, known, most, heavy: unlocking && proven is not null);
+                if (now.Just)
+                {
+                    log.Record(by, from, "sign-in", "signin.locked", "Sign-in locked", "failed", "Too many wrong passwords");
+                }
+                var locked = now.State == LockState.Locked;
+                return Results.Json(new { error = unlocking ? WrongWithCode : locked ? LockedText(name) : WrongText, wait = now.Seconds, locked }, statusCode: StatusCodes.Status401Unauthorized);
+            }
+            // The password was right. With MFA the page gets a ticket to send its code with, and nobody is signed in yet;
+            // someone who hasn't set it up gets the secret to set it up with first, and after a reset also needs its code.
+            async Task<IResult> Enter(ClaimsPrincipal principal, string shown)
+            {
+                var who = Who.Of(principal);
+                // Counted under the account's own name too, so another spelling of it gets around neither its lock nor its count.
+                var counted = SignInLocks.Key(who.Source, who.Username);
+                if (counted != key && locks.Check(counted, Asking(context, locks, counted)).State != LockState.Open)
+                {
+                    // Typed another way than the account is named, and the account is locked or waiting: answered like a wrong
+                    // password, so the other spelling can't be used to find out whether a password is right.
+                    return Failed(who.Username, true, "Right password, but the account is locked or waiting under its own name");
+                }
+                string[] keys = key is null || key == counted ? [counted] : [counted, key];
+                if (unlocking)
+                {
+                    // Password and code were both right. Only an administrator unlocks itself this way, and only with its own code.
+                    if (proven is null || proven.Source != who.Source || !string.Equals(proven.Username, who.Username, StringComparison.OrdinalIgnoreCase)
+                        || !roles.CanSignIn(who) || !roles.Of(who).Any(r => r.Id == Roles.Admin))
+                    {
+                        return Failed(who.Username, true, "Locked, and not an administrator with that code");
+                    }
+                    locks.Unlock(key!);
+                    ((ClaimsIdentity) principal.Identity!).AddClaim(new Claim("mfa", "1"));
+                    log.Record(who.Username, from, "sign-in", "signin.unlock", "Unlocked their own sign-in", "ok", "With the password and the authenticator code together");
+                    return await Finish(context, roles, log, locks, principal, shown, keys);
+                }
+                if (mfa.Has(who))
+                {
+                    return Results.Ok(new { mfa = "code", ticket = pending.Add(principal, shown, null, keys), skip = MaySkipMfa(context) });
+                }
+                if (roles.NeedsMfa(who))
+                {
+                    return SetUpMfa(principal, shown, mfa, pending, MaySkipMfa(context), keys);
+                }
+                return await Finish(context, roles, log, locks, principal, shown, keys);
+            }
+            if (own)
+            {
+                var mine = accounts.Find(name);
+                if (unlocking && !Coded(mine is not null ? new Who(Local, mine.Username, null, [])
+                    : new Who(Windows, $"{Environment.MachineName}\\{Ldap.Account(name)}", Environment.MachineName, [])))
+                {
+                    return Failed(mine is not null ? name : Unknown, mine is not null, "Locked, and the code was wrong");
+                }
                 // Rabbid Lab's own accounts, then, on Windows, an administrator of this computer with its own Windows account.
+                // A name with a domain in it (AMW\name, name@domain) is this computer's only when the domain is this computer:
+                // any other is never sent to Windows from here, where it would be checked with the domain behind the domain's lock.
+                var computer = Environment.MachineName + @"\";
+                var onThisComputer = name.StartsWith(computer, StringComparison.OrdinalIgnoreCase) ? name[computer.Length..]
+                    : name.Contains('\\') || name.Contains('@') ? "" : name;
                 ClaimsPrincipal? principal = null;
                 if (accounts.Check(name, form.Password) is { } account)
                 {
                     principal = Principal(account.Username, account.Username, Local, account.Stamp);
                 }
-                else if (await windows.Administrator(name, form.Password ?? "", context.RequestAborted) is { } admin)
+                else if (await windows.Administrator(onThisComputer, form.Password ?? "", stop) is { } admin)
                 {
-                    var now = await windows.Recheck(admin, context.RequestAborted);
+                    var now = await windows.Recheck(admin, stop);
                     principal = Principal($"{Environment.MachineName}\\{admin}", admin, Windows, Windows, Environment.MachineName, password: Stamp(now?.PasswordSet));
                 }
                 if (principal is null)
                 {
                     // Under its name only when that's an account here: what was typed may be a password in the wrong box.
                     // Windows is asked either way, so a name that is an account here answers no sooner than one that isn't.
-                    var onWindows = await windows.Recheck(name, context.RequestAborted) is { Found: true };
-                    var known = name.Length > 0 && (accounts.Find(name) is not null || onWindows);
-                    log.Record(known ? name : Unknown, from, "sign-in", "signin.failed", "Sign-in failed", "failed");
-                    return wrong;
+                    var onWindows = await windows.Recheck(onThisComputer, stop) is { Found: true };
+                    var known = mine is not null || onWindows;
+                    return Failed(known ? name : Unknown, known);
                 }
                 return await Enter(principal, principal.FindFirstValue("name") ?? name);
             }
             // Another domain only when the one set up shares its forest or trusts it, so nobody can send the check to a domain of their own.
-            var domain = string.IsNullOrWhiteSpace(form.Domain) ? settings.Domain : Clean(form.Domain);
-            if (domain != settings.Domain && !(await Allowed(cache, directory, settings.Domain, context.RequestAborted)).Contains(domain))
+            var domain = string.IsNullOrWhiteSpace(form.Domain) ? settings!.Domain : Clean(form.Domain);
+            if (domain != settings!.Domain && !(await Allowed(cache, directory, settings.Domain, context.RequestAborted)).Contains(domain))
             {
                 return Results.BadRequest(new { error = NotTrusted(domain, settings.Domain) });
             }
@@ -431,24 +529,35 @@ public static class SignIn
             {
                 return Results.BadRequest(new { error = $"{chosen} isn't one of {domain}'s domain controllers." });
             }
+            // The account's name for the log when it has signed in here before, otherwise Unknown user.
+            var logged = KnownIn(roles, name, domain, settings.Domain);
+            var sam = Ldap.Account(name);
+            if (unlocking && !Coded(new Who(Directory, domain == settings.Domain ? sam : $"{sam}@{domain}", domain, [])))
+            {
+                return Failed(logged, logged != Unknown, "Locked, and the code was wrong");
+            }
             DirectoryUser? user;
             string host;
             try
             {
                 // The controller set up for the domain unless another is picked; other domains start on Automatic.
                 var server = !string.IsNullOrEmpty(chosen) ? chosen : domain == settings.Domain ? settings.Server : null;
-                host = await finder.Host(domain, server, context.RequestAborted);
-                user = await directory.SignIn(domain, host, roles.Groups(), name, form.Password ?? "", context.RequestAborted);
+                host = await finder.Host(domain, server, stop);
+                // Every wrong password here is a failed logon in the domain too: locked here one short of where the domain locks the account itself.
+                most = await Most(cache, directory, domain, most, stop);
+                user = await directory.SignIn(domain, host, roles.Groups(), name, form.Password ?? "", stop);
             }
             catch (DirectoryProblem e)
             {
-                log.Record(KnownIn(roles, name, domain, settings.Domain), from, "sign-in", "signin.failed", "Sign-in failed", "failed", e.Message);
+                log.Record(logged, from, "sign-in", "signin.failed", "Sign-in failed", "failed", e.Message);
                 return Results.Json(new { error = $"Couldn't check your password with {domain}: {e.Message}" }, statusCode: StatusCodes.Status503ServiceUnavailable);
             }
             if (user is null)
             {
-                log.Record(KnownIn(roles, name, domain, settings.Domain), from, "sign-in", "signin.failed", "Sign-in failed", "failed");
-                return wrong;
+                // Whether it's an account in the domain (asked as this computer, for every wrong password alike): one that is gets
+                // kept by name when it locks, so it shows in Settings and can be unlocked.
+                var found = await directory.Recheck(domain, host, sam, [], stop) is { Found: true };
+                return Failed(logged, found || logged != Unknown);
             }
             // Accounts from another domain keep it in their name, so awiles@lab.amw.com isn't taken for amw.com's awiles.
             var username = domain == settings.Domain ? user.Username : $"{user.Username}@{domain}";
@@ -465,7 +574,7 @@ public static class SignIn
 
         // The second step: the code from the authenticator app, with the ticket the password step gave. When the app is
         // being set up, the first code also turns MFA on.
-        app.MapPost("/api/signin/mfa", async (HttpContext context, Roles roles, ActivityLog log, Mfa mfa, PendingSignIns pending, MfaSignInForm form) =>
+        app.MapPost("/api/signin/mfa", async (HttpContext context, Roles roles, ActivityLog log, Mfa mfa, PendingSignIns pending, SignInLocks locks, SettingsStore store, MfaSignInForm form) =>
         {
             if (Access.Refuse(context) is { } refused)
             {
@@ -478,6 +587,24 @@ public static class SignIn
             var from = ActivityLog.Address(context);
             var who = Who.Of(waiting.Principal);
             var username = waiting.Principal.Identity!.Name!;
+            // Locked since the password was typed: back to the password step, which says so.
+            if (waiting.Keys.Any(k => locks.Check(k, Asking(context, locks, k)).State == LockState.Locked))
+            {
+                pending.Remove(form.Ticket!);
+                return Results.BadRequest(new { error = "Sign in again.", again = true });
+            }
+            // A wrong code counts for the name like a wrong password, so a right password can't be followed by endless codes.
+            IResult WrongCode(string error, string detail)
+            {
+                log.Record(username, from, "sign-in", "signin.failed", "Sign-in failed", "failed", detail);
+                if (waiting.Keys.Count == 0 || !locks.Wrong(waiting.Keys[0], from, Asking(context, locks, waiting.Keys[0]), known: true, most: store.Current.LockAfter).Just)
+                {
+                    return Results.Json(new { error }, statusCode: StatusCodes.Status401Unauthorized);
+                }
+                pending.Remove(form.Ticket!);
+                log.Record(username, from, "sign-in", "signin.locked", "Sign-in locked", "failed", "Too many wrong passwords and codes");
+                return Results.Json(new { error = LockedText(username), again = true }, statusCode: StatusCodes.Status401Unauthorized);
+            }
             // Skip MFA this time: Rabbid Lab Dev, on the server itself, while Settings, Developer allows it. Nothing is set up.
             if (form.Skip)
             {
@@ -491,7 +618,7 @@ public static class SignIn
                     return Results.BadRequest(new { error = "Sign in again.", again = true });
                 }
                 ((ClaimsIdentity) waiting.Principal.Identity).AddClaim(new Claim("mfa", Skipped));
-                return await Finish(context, roles, log, waiting.Principal, waiting.Name, "Signed in without MFA", $"{Product.Name}, on the server itself, with Skip MFA this time");
+                return await Finish(context, roles, log, locks, waiting.Principal, waiting.Name, waiting.Keys, "Signed in without MFA", $"{Product.Name}, on the server itself, with Skip MFA this time");
             }
             // Set up some other way since the password was typed: this ticket's secret doesn't take that one's place.
             if (waiting.Secret is not null && mfa.Has(who))
@@ -513,8 +640,7 @@ public static class SignIn
                     case MfaAnswer.Wait:
                         return Results.Json(new { error = MfaApi.TooMany }, statusCode: StatusCodes.Status429TooManyRequests);
                     case MfaAnswer.Wrong:
-                        log.Record(username, from, "sign-in", "signin.failed", "Sign-in failed", "failed", "Wrong one-time code after an MFA reset");
-                        return Results.Json(new { error = "That one-time code isn't right. Ask whoever reset your MFA for it again." }, statusCode: StatusCodes.Status401Unauthorized);
+                        return WrongCode("That one-time code isn't right. Ask whoever reset your MFA for it again.", "Wrong one-time code after an MFA reset");
                 }
             }
             switch (waiting.Secret is null ? mfa.Check(who, form.Code) : mfa.Enable(who, pending.Secret(waiting)!, form.Code))
@@ -522,8 +648,7 @@ public static class SignIn
                 case MfaAnswer.Wait:
                     return Results.Json(new { error = MfaApi.TooMany }, statusCode: StatusCodes.Status429TooManyRequests);
                 case MfaAnswer.Wrong:
-                    log.Record(username, from, "sign-in", "signin.failed", "Sign-in failed", "failed", "Wrong MFA code");
-                    return Results.Json(new { error = MfaApi.WrongCode }, statusCode: StatusCodes.Status401Unauthorized);
+                    return WrongCode(MfaApi.WrongCode, "Wrong MFA code");
             }
             pending.Remove(form.Ticket!);
             if (afterReset)
@@ -539,7 +664,7 @@ public static class SignIn
             {
                 log.Record(username, from, "access", "mfa.on", "Turned on MFA", "ok", afterReset ? "At sign-in, with the one-time code from a reset" : "At sign-in");
             }
-            return await Finish(context, roles, log, waiting.Principal, waiting.Name);
+            return await Finish(context, roles, log, locks, waiting.Principal, waiting.Name, waiting.Keys);
         });
 
         app.MapPost("/api/signout", async (HttpContext context, bool? idle, SettingsStore settings, ActivityLog log) =>
@@ -560,24 +685,61 @@ public static class SignIn
 
         // Sign out when idle, for everyone: how long without a click, key press or scroll before a session ends.
         app.MapGet("/api/settings/signin", (HttpContext context, SettingsStore settings) =>
-            Access.Can(context, Permissions.AccessRoles) ? Results.Ok(new { idle = settings.Current.IdleMinutes }) : Access.NotAllowed());
+            Access.Can(context, Permissions.AccessRoles) ? Results.Ok(new { idle = settings.Current.IdleMinutes, lockAfter = settings.Current.LockAfter }) : Access.NotAllowed());
         app.MapPost("/api/settings/signin", (HttpContext context, SignInSettingsForm form, SettingsStore settings, ActivityLog log) =>
         {
             if (Access.RefuseUnless(context, Permissions.AccessRoles) is { } refused)
             {
                 return refused;
             }
-            if (!IdleChoices.Contains(form.Idle))
+            if (form.Idle is { } idle)
             {
-                return Results.BadRequest(new { error = "Pick Never, 15 or 30 minutes, or 1, 2, 4 or 8 hours." });
+                if (!IdleChoices.Contains(idle))
+                {
+                    return Results.BadRequest(new { error = "Pick Never, 15 or 30 minutes, or 1, 2, 4 or 8 hours." });
+                }
+                settings.Change(s => s.IdleMinutes = idle);
+                log.Record(context, "admin", "settings.idle", idle == 0 ? "Turned off Sign out when idle" : $"Set Sign out when idle to {IdleWords(idle)}");
             }
-            settings.Change(s => s.IdleMinutes = form.Idle);
-            log.Record(context, "admin", "settings.idle", form.Idle == 0 ? "Turned off Sign out when idle" : $"Set Sign out when idle to {IdleWords(form.Idle)}");
-            return Results.Ok(new { idle = form.Idle });
+            if (form.LockAfter is { } after)
+            {
+                if (!LockChoices.Contains(after))
+                {
+                    return Results.BadRequest(new { error = "Pick 3, 5 or 10 wrong passwords." });
+                }
+                settings.Change(s => s.LockAfter = after);
+                log.Record(context, "admin", "settings.lock", $"Set sign-in to lock a name after {after} wrong passwords");
+            }
+            return Results.Ok(new { idle = settings.Current.IdleMinutes, lockAfter = settings.Current.LockAfter });
+        });
+
+        // Settings, Sign-in: the accounts locked after too many wrong passwords, and unlocking one. Names that aren't
+        // accounts here are only counted: they may be passwords typed in the wrong box.
+        app.MapGet("/api/settings/signin/locks", (HttpContext context, SignInLocks locks) =>
+        {
+            if (!Access.Can(context, Permissions.AccessUnlock))
+            {
+                return Access.NotAllowed();
+            }
+            var (locked, others) = locks.Locked();
+            return Results.Ok(new { locked = locked.Select(e => new { key = e.Id, name = e.Name, wrong = e.Wrong, since = e.Locked, from = e.From }), others });
+        });
+        app.MapPost("/api/settings/signin/locks/unlock", (HttpContext context, UnlockForm form, SignInLocks locks, Confirmations confirm, ActivityLog log) =>
+        {
+            if ((Access.RefuseUnless(context, Permissions.AccessUnlock) ?? confirm.Refuse(context)) is { } refused)
+            {
+                return refused;
+            }
+            if (locks.Locked().Accounts.FirstOrDefault(e => e.Id == form.Key) is not { } entry || !locks.Unlock(entry.Id))
+            {
+                return Results.NotFound(new { error = "That name isn't locked any more." });
+            }
+            log.Record(context, "access", "signin.unlock", $"Unlocked sign-in for {entry.Name}");
+            return Results.Ok();
         });
 
         // Your own password, for Rabbid Lab accounts only. Needs the current one; wrong ones count against sign-in's limit.
-        app.MapPost("/api/me/password", (HttpContext context, Accounts accounts, ActivityLog log, SignInLimiter limiter, MyPasswordForm form) =>
+        app.MapPost("/api/me/password", (HttpContext context, Accounts accounts, ActivityLog log, SignInLimiter limiter, SignInLocks locks, MyPasswordForm form) =>
         {
             if (Access.Refuse(context) is { } refused)
             {
@@ -604,6 +766,7 @@ public static class SignIn
             {
                 return Results.BadRequest(new { error = problem });
             }
+            locks.ForgetBrowsers(SignInLocks.Key(Local, username)); // a new password: the browsers remembered for it are strangers again
             log.Record(context, "access", "account.password", "Changed their own password");
             return Results.Ok();
         });
@@ -635,14 +798,43 @@ public static class SignIn
     }
 
     /// <summary>
+    /// --unlock name: unlocks a name locked after too many wrong passwords, for when no administrator can sign in to do
+    /// it. Run it on the machine Rabbid Lab is on, as an administrator. The exit code, or null to run.
+    /// </summary>
+    public static int? UnlockCommand(this WebApplication app, string[] args)
+    {
+        var at = Array.IndexOf(args, "--unlock");
+        if (at < 0)
+        {
+            return null;
+        }
+        if (at + 1 >= args.Length || args[at + 1].StartsWith('-'))
+        {
+            Console.Error.WriteLine("Say which name: --unlock name");
+            return 1;
+        }
+        var name = args[at + 1];
+        // The name may be one of Rabbid Lab's or this computer's, or the domain's: whichever is locked. The file is changed
+        // as it is (SignInLocks.UnlockInFile), and the running server sees that.
+        if (SignInLocks.UnlockInFile(app.Services.GetRequiredService<DataFolder>(), [SignInLocks.Key(Local, name), SignInLocks.Key(Directory, name)]) == 0)
+        {
+            Console.WriteLine($"{name} isn't locked.");
+            return 0;
+        }
+        app.Services.GetRequiredService<ActivityLog>().Record(name, null, "sign-in", "signin.unlock", "Unlocked from the command line", "ok");
+        Console.WriteLine($"{name} can sign in to {Product.Name} again.");
+        return 0;
+    }
+
+    /// <summary>
     /// The MFA step for someone who hasn't set it up: a ticket and the secret for their app. After a reset (reset: true) the
     /// page also asks for the one-time code whoever reset it was given. skip: the page may offer Skip MFA this time.
     /// </summary>
-    private static IResult SetUpMfa(ClaimsPrincipal principal, string shown, Mfa mfa, PendingSignIns pending, bool skip)
+    private static IResult SetUpMfa(ClaimsPrincipal principal, string shown, Mfa mfa, PendingSignIns pending, bool skip, IReadOnlyList<string>? keys = null)
     {
         var who = Who.Of(principal);
         var secret = Totp.NewSecret();
-        return Results.Ok(new { mfa = "setup", ticket = pending.Add(principal, shown, secret), setup = MfaApi.Setup(who, secret), reset = mfa.ResetWaiting(who), skip });
+        return Results.Ok(new { mfa = "setup", ticket = pending.Add(principal, shown, secret, keys ?? []), setup = MfaApi.Setup(who, secret), reset = mfa.ResetWaiting(who), skip });
     }
 
     /// <summary>The claim a session gets when its sign-in skipped MFA: it lasts only while skipping is still allowed for it.</summary>
@@ -736,10 +928,24 @@ public static class SignIn
     private static Task Start(HttpContext context, ClaimsPrincipal principal) =>
         context.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal, new AuthenticationProperties { IsPersistent = false, AllowRefresh = true });
 
-    /// <summary>The end of every sign-in: the session starts, the person is noted as seen, and it's logged.</summary>
-    private static async Task<IResult> Finish(HttpContext context, Roles roles, ActivityLog log, ClaimsPrincipal principal, string shown, string title = "Signed in", string? detail = null)
+    /// <summary>
+    /// The end of every sign-in: the session starts, the name's wrong passwords are forgotten (keys: what they were
+    /// counted under), the person is noted as seen, and it's logged.
+    /// </summary>
+    private static async Task<IResult> Finish(HttpContext context, Roles roles, ActivityLog log, SignInLocks locks, ClaimsPrincipal principal, string shown,
+        IReadOnlyList<string> keys, string title = "Signed in", string? detail = null)
     {
         await Start(context, principal);
+        foreach (var key in keys)
+        {
+            locks.Right(key, Asking(context, locks, key));
+        }
+        // This browser has now signed in as the account: its wrong passwords for it are counted apart from everyone else's.
+        if (keys.Count > 0 && !OnServer(context))
+        {
+            context.Response.Cookies.Append(Known, locks.Remember(context.Request.Cookies[Known], keys[0]), new CookieOptions
+                { HttpOnly = true, SameSite = SameSiteMode.Strict, Secure = context.Request.IsHttps, MaxAge = TimeSpan.FromDays(SignInLocks.BrowserDays), IsEssential = true });
+        }
         roles.Seen(Who.Of(principal), shown);
         log.Record(principal.Identity!.Name!, ActivityLog.Address(context), "sign-in", "signin", title, "ok", detail);
         return Results.Ok(new { user = Me(principal, roles) });
@@ -751,7 +957,20 @@ public static class SignIn
     private static async ValueTask<object?> Limited(EndpointFilterInvocationContext invocation, EndpointFilterDelegate next)
     {
         var limiter = invocation.HttpContext.RequestServices.GetRequiredService<SignInLimiter>();
-        var from = ActivityLog.Address(invocation.HttpContext);
+        // A browser signing in as the account it has signed in as before is counted by itself, so wrong passwords from its
+        // neighbours on the network don't stop it. For any other name it is counted with its address, like everyone.
+        var http = invocation.HttpContext;
+        var locks = http.RequestServices.GetRequiredService<SignInLocks>();
+        var token = http.Request.Cookies[Known];
+        var typed = invocation.Arguments.OfType<SignInForm>().FirstOrDefault()?.Username?.Trim();
+        var browser = string.IsNullOrEmpty(typed) || typed.Length > MaxUsername ? null
+            : locks.Browser(token, SignInLocks.Key(Local, typed)) ?? locks.Browser(token, SignInLocks.Key(Directory, typed));
+        var from = browser is not null ? "browser:" + browser : ActivityLog.Address(http);
+        // The server itself is the way back in when everything else is locked: its tries are slowed by name, never stopped here.
+        if (OnServer(http))
+        {
+            return await next(invocation);
+        }
         if (!limiter.Take(from))
         {
             return TooMany();
@@ -797,6 +1016,55 @@ public static class SignIn
     private static string NotTrusted(string domain, string setUp) =>
         $"{domain} isn't in {setUp}'s forest and {setUp} doesn't trust it, so its accounts can't sign in here.";
 
+    private const string WrongText = "That username or password is wrong.";
+    private const string WrongWithCode = "That username, password or code is wrong.";
+
+    /// <summary>Said for any name, an account or not. Without a number: the domain's own may be lower than Rabbid Lab's.</summary>
+    private static string LockedText(string name) => $"{name} is locked after too many wrong passwords. An administrator has to unlock it.";
+
+    /// <summary>A locked name: nothing is checked.</summary>
+    private static IResult LockedOut(string name) => Results.Json(new { error = LockedText(name), locked = true }, statusCode: StatusCodes.Status403Forbidden);
+
+    /// <summary>Too soon after a wrong password: nothing is checked, and the page counts the seconds down.</summary>
+    private static IResult TooSoon(int seconds, bool locked) => Results.Json(new
+    {
+        error = $"Too many wrong passwords. Try again in {(seconds < 60 ? $"{seconds} second{(seconds == 1 ? "" : "s")}" : $"{(seconds + 59) / 60} minute{(seconds <= 60 ? "" : "s")}")}.",
+        wait = seconds,
+        locked,
+    }, statusCode: StatusCodes.Status429TooManyRequests);
+
+    /// <summary>
+    /// Whether the request comes from the server itself (loopback, after a trusted proxy's X-Forwarded-For): its wrong
+    /// passwords are counted apart and never lock a name, so whoever can get to the server can always get in.
+    /// </summary>
+    private static bool OnServer(HttpContext context) => context.Connection.RemoteIpAddress is { } ip && System.Net.IPAddress.IsLoopback(Addresses.Normal(ip));
+
+    /// <summary>Whose count a try for this name goes on: the server itself and a browser that has signed in as it before have their own.</summary>
+    private static Asker Asking(HttpContext context, SignInLocks locks, string key) =>
+        OnServer(context) ? new(Here: true) : new(locks.Browser(context.Request.Cookies[Known], key));
+
+    private const int UnknownDomain = 4; // a domain that won't say where it locks: one short of the usual five
+
+    /// <summary>
+    /// How many wrong passwords lock a domain account here: Rabbid Lab's own number, or one short of where the domain's
+    /// policy locks accounts itself when that comes sooner, so wrong passwords typed here stop before the domain locks the
+    /// account in Windows. A stricter policy set on the account alone isn't read. Asked every ten minutes.
+    /// </summary>
+    private static async Task<int> Most(IMemoryCache cache, IDirectory directory, string domain, int own, CancellationToken stop)
+    {
+        var threshold = await cache.GetOrCreateAsync($"signin.lockout:{domain}", async entry =>
+        {
+            entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10);
+            return await directory.LockoutThreshold(domain, stop);
+        });
+        return threshold switch
+        {
+            > 0 => Math.Clamp(threshold.Value - 1, 1, own),
+            0 => own, // the domain never locks an account
+            _ => Math.Min(own, UnknownDomain),
+        };
+    }
+
     private static IResult TooMany() =>
         Results.Json(new { error = "Too many wrong passwords from this computer. Wait a few minutes, then try again." }, statusCode: StatusCodes.Status429TooManyRequests);
 }
@@ -807,18 +1075,21 @@ public sealed record MyPasswordForm(string? Current, string? Password);
 
 public sealed record DirectorySetupForm(string? Domain, string? Username, string? Password, string? Server = null);
 
-public sealed record SignInForm(string? Username, string? Password, string? Server = null, bool Local = false, string? Domain = null);
+/// <summary>Code: the authenticator code, sent with the password only to unlock a locked administrator.</summary>
+public sealed record SignInForm(string? Username, string? Password, string? Server = null, bool Local = false, string? Domain = null, string? Code = null);
+
+public sealed record UnlockForm(string? Key);
 
 public sealed record MfaSignInForm(string? Ticket, string? Code, string? Reset = null, bool Skip = false);
 
-public sealed record SignInSettingsForm(int Idle);
+public sealed record SignInSettingsForm(int? Idle = null, int? LockAfter = null);
 
 
 /// <summary>Ten wrong passwords from one address in ten minutes, then it waits.</summary>
-public sealed class SignInLimiter(TimeProvider clock) : Limiter(10, clock);
+public sealed class SignInLimiter(TimeProvider clock) : Limiter(10, clock, byAddress: true);
 
 /// <summary>So many tries from one address in ten minutes: taken before the work, and given back when it doesn't count.</summary>
-public class Limiter(int most, TimeProvider clock)
+public class Limiter(int most, TimeProvider clock, bool byAddress = false)
 {
     private static readonly TimeSpan Window = TimeSpan.FromMinutes(10);
     private readonly Lock gate = new();
@@ -844,7 +1115,7 @@ public class Limiter(int most, TimeProvider clock)
         lock (gate)
         {
             Sweep(now);
-            var key = from ?? "";
+            var key = Group(from);
             if (!tries.TryGetValue(key, out var taken))
             {
                 tries[key] = taken = [];
@@ -864,7 +1135,7 @@ public class Limiter(int most, TimeProvider clock)
     {
         lock (gate)
         {
-            var key = from ?? "";
+            var key = Group(from);
             if (tries.TryGetValue(key, out var taken) && taken.Count > 0)
             {
                 taken.RemoveAt(taken.Count - 1);
@@ -875,6 +1146,9 @@ public class Limiter(int most, TimeProvider clock)
             }
         }
     }
+
+    /// <summary>What a try is counted under: with byAddress, an IPv6 address by its /64 (Addresses.Network).</summary>
+    private string Group(string? from) => byAddress ? Addresses.Network(from) : from ?? "";
 
     /// <summary>Once a minute, forgets the addresses whose tries have all run out.</summary>
     private void Sweep(DateTimeOffset now)

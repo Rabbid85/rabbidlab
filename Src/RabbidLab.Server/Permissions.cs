@@ -28,6 +28,7 @@ public static class Permissions
     public const string AccessRoles = "access.roles";
     public const string AccessLocal = "access.local";
     public const string AccessMfa = "access.mfa";
+    public const string AccessUnlock = "access.unlock";
     public const string AdView = "ad.view";
     public const string AdCreate = "ad.create";
     public const string AdChange = "ad.change";
@@ -111,6 +112,7 @@ public static class Permissions
             new(AccessRoles, "Make and change roles", "Only roles below their own highest role."),
             new(AccessLocal, "Manage local accounts", "Add Rabbid Lab's own accounts, set their passwords and remove them."),
             new(AccessMfa, "Reset MFA", "Clear someone's authenticator app, for a lost phone. Only for people in roles below their own."),
+            new(AccessUnlock, "Unlock sign-ins", "Unlock a name that locked after too many wrong passwords, in Settings, Sign-in."),
         ]),
         new("ad", "Active Directory", "users",
         [

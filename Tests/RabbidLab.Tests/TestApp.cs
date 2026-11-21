@@ -326,6 +326,11 @@ public sealed class FakeDirectory : IDirectory
     /// <summary>amw.com trusts lab.amw.com, and nothing else.</summary>
     public Task<IReadOnlyList<string>> Domains(string domain, CancellationToken stop) => Task.FromResult<IReadOnlyList<string>>([domain, "lab.amw.com"]);
 
+    /// <summary>The domain's own Lock out after; null when it won't say.</summary>
+    public int? Threshold { get; set; }
+
+    public Task<int?> LockoutThreshold(string domain, CancellationToken stop) => Task.FromResult(Threshold);
+
     public Task<DirectoryList?> Search(string domain, string host, string? search, CancellationToken stop)
     {
         LastHost = host;
@@ -341,8 +346,15 @@ public sealed class FakeDirectory : IDirectory
     }
 
     /// <summary>awiles (password "domain pass") is in Domain Admins and Domain Users; jreyes ("user pass") only in Domain Users.</summary>
+    /// <summary>Other names an account signs in by (the first part of its UPN), and the account each is.</summary>
+    public Dictionary<string, string> Upns { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>How many passwords were sent to the domain to check.</summary>
+    public int SignIns { get; private set; }
+
     public Task<DirectoryUser?> SignIn(string domain, string host, IReadOnlyCollection<string> groups, string username, string password, CancellationToken stop)
     {
+        SignIns++;
         LastHost = host;
         LastDomain = domain;
         if (Problem is not null)
@@ -351,6 +363,8 @@ public sealed class FakeDirectory : IDirectory
         }
         var name = username.Trim();
         name = name[(name.LastIndexOf('\\') + 1)..];
+        name = name.Contains('@') ? name[..name.IndexOf('@')] : name;
+        name = Upns.GetValueOrDefault(name, name);
         (string Display, string[] Groups)? who = name == "awiles" && password == "domain pass" ? ("Anthony Wiles", GroupsOf(name)!)
             : name == "jreyes" && password == "user pass" ? ("Jordan Reyes", GroupsOf(name)!) : null;
         if (who is not { } w || Disabled.Contains(name))

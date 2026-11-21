@@ -57,14 +57,18 @@
       <p class="auth-note" id="idle-note" role="status" hidden></p>
       <p class="auth-error plain-note" id="plain-note" role="alert" hidden></p>
 
-      <!-- Each box's name sits in it and moves up small once it has focus or something in it (placeholder " " tells which). -->
+      <!-- Each box's name sits in it and moves up small once it has focus or something in it (placeholder " " tells which).
+           The 6-digit code box shows only for an administrator unlocking a locked name. -->
       <form id="local-form" novalidate>
         <div class="input"><input id="local-user" placeholder=" " autocomplete="username" spellcheck="false"><label class="fld" for="local-user">Username</label></div>
         <div class="input"><input id="local-password" type="password" placeholder=" " autocomplete="current-password"><label class="fld" for="local-password" id="local-password-label">Password</label><button type="button" class="end" data-reveal="local-password" aria-label="Show password"><svg class="eye-open"><use href="#i-eye"/></svg><svg class="eye-shut"><use href="#i-eye-off"/></svg></button></div>
         <p class="caps" id="local-password-caps" hidden>Caps Lock is on</p>
         <div class="input" id="confirm-row" hidden><input id="local-confirm" type="password" placeholder=" " autocomplete="new-password"><label class="fld" for="local-confirm" id="confirm-label">Confirm password</label><button type="button" class="end" data-reveal="local-confirm" aria-label="Show password"><svg class="eye-open"><use href="#i-eye"/></svg><svg class="eye-shut"><use href="#i-eye-off"/></svg></button></div>
         <p class="caps" id="local-confirm-caps" hidden>Caps Lock is on</p>
+        <div class="input" id="local-code-box" hidden><input id="local-code" inputmode="numeric" maxlength="7" placeholder=" " autocomplete="one-time-code" spellcheck="false"><label class="fld" for="local-code">6-digit code</label></div>
         <button class="go" type="submit" id="local-go">Sign in</button>
+        <!-- Signing in with a local account where a domain is set up too: said under the button, where the domain line sits. -->
+        <p class="context" id="local-context" hidden><span class="context-dot local" aria-hidden="true"></span><span>Signing in to <b id="local-context-name"></b> with a local account</span></p>
       </form>
 
       <form id="ad-form" novalidate hidden>
@@ -82,6 +86,7 @@
         <div class="input"><input id="ad-user" placeholder=" " autocomplete="username" spellcheck="false"><label class="fld" for="ad-user">Username</label></div>
         <div class="input"><input id="ad-password" type="password" placeholder=" " autocomplete="current-password"><label class="fld" for="ad-password">Password</label><button type="button" class="end" data-reveal="ad-password" aria-label="Show password"><svg class="eye-open"><use href="#i-eye"/></svg><svg class="eye-shut"><use href="#i-eye-off"/></svg></button></div>
         <p class="caps" id="ad-password-caps" hidden>Caps Lock is on</p>
+        <div class="input" id="ad-code-box" hidden><input id="ad-code" inputmode="numeric" maxlength="7" placeholder=" " autocomplete="one-time-code" spellcheck="false"><label class="fld" for="ad-code">6-digit code</label></div>
         <button class="go" type="submit" id="ad-go">Sign in</button>
         <!-- Signing in: where it signs in, under the button; Change opens the domains and controllers above. -->
         <p class="context" id="ad-context" hidden><span class="context-dot" aria-hidden="true"></span><span>Signing in to <b id="ad-context-domain"></b> through <span class="dc unknown" id="ad-context-dc">Automatic</span></span><span class="sep">·</span><button type="button" class="change" id="ad-change" aria-controls="ad-where" aria-expanded="false">Change</button></p>
@@ -101,6 +106,8 @@
       </form>
 
       <p class="auth-error" id="error" role="alert" hidden></p>
+      <!-- A locked name (SignInLocks.cs): an administrator gets back in with the password and the authenticator code together. -->
+      <button type="button" class="other-kind" id="admin-unlock" hidden>Administrator? Unlock with your authenticator code</button>
       <button type="button" class="other-kind" id="other-kind"></button>
       <button type="button" class="other-kind" id="mfa-back" hidden>Back to sign-in</button>
     </div>

@@ -542,6 +542,7 @@ public sealed class AlertWatch(Alerts alerts, Clients clients, RabbidLab.Updater
     private readonly System.Collections.Concurrent.ConcurrentQueue<(DateTime At, string Who, string? From)> failures = new();
     private readonly List<(DateTime At, string Who, string? From)> recent = [];
     private readonly Dictionary<string, DateTime> toldSignIns = [];
+    private readonly System.Collections.Concurrent.ConcurrentQueue<(string Who, string? From)> locked = new(); // accounts locked after too many wrong passwords
 
     private DateTime Now => clock.GetUtcNow().UtcDateTime;
 
@@ -568,6 +569,10 @@ public sealed class AlertWatch(Alerts alerts, Clients clients, RabbidLab.Updater
         if (e.Action == "signin.failed")
         {
             failures.Enqueue((Now, e.By, e.From));
+        }
+        else if (e.Action == "signin.locked" && e.By != SignIn.Unknown)
+        {
+            locked.Enqueue((e.By, e.From)); // only accounts here: a made-up name locking tells nobody anything
         }
     };
 
@@ -672,7 +677,18 @@ public sealed class AlertWatch(Alerts alerts, Clients clients, RabbidLab.Updater
         var rule = alerts.Rule("signin.failing");
         if (!rule.On || rule.To.Count == 0)
         {
+            locked.Clear();
             return;
+        }
+        // An account that locked is told about at once, under the same rule: it stays locked until someone unlocks it.
+        while (locked.TryDequeue(out var l))
+        {
+            var title = $"{l.Who} is locked after too many wrong passwords";
+            if (!Hold("signin.failing", "locked:" + l.Who, title))
+            {
+                await alerts.Send("signin.failing", new MailNote(title, "down", [("Account", l.Who), ("Last from", l.From ?? "an unknown address")],
+                    new AlertCard("down", title, "Unlock it in Settings, Sign-in.", [new("🔐 Last from", [l.From ?? "an unknown address"])], Product.Lab, Now)), rule.To, stop);
+            }
         }
         foreach (var group in recent.GroupBy(f => f.Who, StringComparer.OrdinalIgnoreCase).Where(g => g.Count() >= rule.Limit && !toldSignIns.ContainsKey(g.Key)).ToList())
         {

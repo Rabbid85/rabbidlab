@@ -28,6 +28,9 @@ public sealed class ConsoleSettings
 
     /// <summary>Sign out when idle: minutes without a click, key press or scroll before a session ends (SignIn.IdleOut). 0 is never.</summary>
     public int IdleMinutes { get; set; } = 30;
+
+    /// <summary>How many wrong passwords lock a name (SignInLocks): 3, 5 or 10.</summary>
+    public int LockAfter { get; set; } = 10;
 }
 
 /// <summary>Reads and writes settings.json in the data folder, and encrypts and decrypts the secrets in it.</summary>

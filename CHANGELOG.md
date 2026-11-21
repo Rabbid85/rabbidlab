@@ -2,6 +2,19 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.314 (2026-11-21)
+
+- Wrong passwords now slow a name down and then lock it. Each wrong password makes the next try for that name wait longer, from 2 seconds up to 5 minutes, and the 10th locks it. Settings, Sign-in can make that the 3rd or 5th.
+- A locked name is unlocked in Settings, Sign-in, after typing UNLOCK, by anyone whose role has the new Unlock sign-ins permission. A locked administrator gets back in by typing the password and the authenticator code together.
+- Signing in on the server itself is never locked, and --unlock name on the server unlocks a name.
+- A browser that has signed in as you before keeps its own count, so wrong passwords from somewhere else do not lock you out of it. A changed password makes it a stranger again.
+- Wrong MFA codes count toward the same lock. Locks and counts are kept through restarts and updates.
+- Domain accounts lock here one wrong password before the domain policy would lock them itself, so wrong passwords typed on this page stop short of locking the account in Windows.
+- A script hammering the sign-in is turned away after 120 requests a minute from its address, before anything is checked, and for 15 minutes if it keeps going.
+- The Sign-ins keep failing alert also tells you when an account locks.
+- The limit of 10 wrong passwords per address counts an IPv6 computer by its network, so it cannot change address for fresh tries.
+- On the sign-in page, switching between the domain and a local account no longer moves the form: which one it is shows under the button. Use a local account instead sits closer to that line and has an icon.
+
 ## 1.1.313 (2026-11-21)
 
 - The sign-in page no longer says it is installing an update when the server just cannot be reached, and it no longer asks every second while it waits.

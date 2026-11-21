@@ -506,4 +506,4 @@ public sealed record ClientSettingsForm(bool? Approve = null, int? UnlockAfterDa
 public sealed record RemovalForm(bool Allow, bool Now);
 
 /// <summary>How many joins one address gets: 30 in ten minutes, so nobody can flood Devices. Kept apart from sign-ins.</summary>
-public sealed class JoinLimiter(TimeProvider clock) : Limiter(30, clock);
+public sealed class JoinLimiter(TimeProvider clock) : Limiter(30, clock, byAddress: true);

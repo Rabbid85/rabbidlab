@@ -9,7 +9,7 @@ namespace RabbidLab.Server;
 /// change in its groups changes what the session may do. Rabbid Lab's own accounts don't need this: they're checked on
 /// every request. When the domain or Windows can't be asked, the session goes on as it was.
 /// </summary>
-public sealed class AccountChecks(IDirectory directory, IWindowsAccounts windows, IDomainFinder finder, Accounts accounts, Roles roles, TimeProvider clock)
+public sealed class AccountChecks(IDirectory directory, IWindowsAccounts windows, IDomainFinder finder, Accounts accounts, Roles roles, SignInLocks locks, TimeProvider clock)
 {
     public static readonly TimeSpan Every = TimeSpan.FromMinutes(5);
     private static readonly TimeSpan Wait = TimeSpan.FromSeconds(15);
@@ -119,6 +119,7 @@ public sealed class AccountChecks(IDirectory directory, IWindowsAccounts windows
         }
         if (p.FindFirstValue(PasswordClaim) is { } was && r.PasswordSet is { } set && was != set)
         {
+            locks.ForgetBrowsers(SignInLocks.Key(who.Source, who.Username)); // the browsers remembered for it are strangers again
             return new("The account's password was changed or reset.", null);
         }
         if (r.Groups is not { } groups)

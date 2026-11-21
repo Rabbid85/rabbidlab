@@ -213,6 +213,7 @@ public sealed class ChannelsTests : IDisposable
         for (var i = 0; i < 3; i++)
         {
             await app.Page().PostAsJsonAsync("/api/signin", new { username = "admin", password = "not it" });
+            app.Clock.Advance(TimeSpan.FromSeconds(10)); // past the wait each wrong password sets
         }
         await watch.Round(CancellationToken.None);
         var signIns = app.Mail.Sent.Select(m => m.Subject).ToList();

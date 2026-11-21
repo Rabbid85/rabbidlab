@@ -3,6 +3,17 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.314', [
+    'Wrong passwords now slow a name down and then lock it. Each wrong password makes the next try for that name wait longer, from 2 seconds up to 5 minutes, and the 10th locks it. Settings, Sign-in can make that the 3rd or 5th.',
+    'A locked name is unlocked in Settings, Sign-in, after typing UNLOCK, by anyone whose role has the new Unlock sign-ins permission. A locked administrator gets back in by typing the password and the authenticator code together.',
+    'Signing in on the server itself is never locked, and --unlock name on the server unlocks a name.',
+    'A browser that has signed in as you before keeps its own count, so wrong passwords from somewhere else do not lock you out of it. A changed password makes it a stranger again.',
+    'Wrong MFA codes count toward the same lock. Locks and counts are kept through restarts and updates.',
+    'Domain accounts lock here one wrong password before the domain policy would lock them itself, so wrong passwords typed on this page stop short of locking the account in Windows.',
+    'A script hammering the sign-in is turned away after 120 requests a minute from its address, before anything is checked, and for 15 minutes if it keeps going.',
+    'The Sign-ins keep failing alert also tells you when an account locks.',
+    'The limit of 10 wrong passwords per address counts an IPv6 computer by its network, so it cannot change address for fresh tries.',
+    'On the sign-in page, switching between the domain and a local account no longer moves the form: which one it is shows under the button. Use a local account instead sits closer to that line and has an icon.']],
   ['1.1.313', [
     'The sign-in page no longer says it is installing an update when the server just cannot be reached, and it no longer asks every second while it waits.',
     'The arrow on the Domain and Domain controller boxes opens the list every time. A quick click could open it and shut it again.',
@@ -1122,7 +1133,7 @@ const RELEASE_NOTES = [
   const PAGES = { overview: 'overview.view', links: 'links.view', sensors: 'sensors.view', seats: 'seats.view sessions.view', people: 'access.view', ad: 'ad.view ad.connect',
     org: 'ad.view', attrs: 'ad.view' };
   // Settings' pages and what each needs; About is for everyone, Developer for Rabbid Lab Dev only.
-  const SUBS = { account: '', appearance: '', viewas: 'access.view', address: '', updates: 'updates.view', signin: 'access.roles', activity: 'activity.view', alerts: 'sensors.alerts', notifications: 'sensors.alerts', history: 'sensors.alerts',
+  const SUBS = { account: '', appearance: '', viewas: 'access.view', address: '', updates: 'updates.view', signin: 'access.roles access.unlock', activity: 'activity.view', alerts: 'sensors.alerts', notifications: 'sensors.alerts', history: 'sensors.alerts',
     links: 'links.edit', sensors: 'sensors.edit', seats: 'seats.settings seats.add', ad: 'ad.connect', developer: 'updates.auto', support: '', about: '' };
   const subOk = (s) => s in SUBS && (!SUBS[s] || !shown || allows(SUBS[s])) && (s !== 'developer' || document.body.classList.contains('is-dev'));
   const pageOk = (key) => !shown || !PAGES[key] || allows(PAGES[key]);
@@ -3707,13 +3718,53 @@ const RELEASE_NOTES = [
   document.addEventListener('rabbidlab:show', (e) => { if (e.detail[0] === 'settings' && (!e.detail[1] || e.detail[1] === 'account')) drawMySessions(); });
   // Settings, Sign-in: Sign out when idle, saved as it changes.
   document.addEventListener('rabbidlab:show', async (e) => {
-    if (e.detail[0] !== 'settings' || e.detail[1] !== 'signin' || !has('access.roles')) return;
+    if (e.detail[0] !== 'settings' || e.detail[1] !== 'signin' || !allows('access.roles access.unlock')) return;
     say('si-problem', '');
+    if (has('access.unlock')) drawLocks();
+    if (!has('access.roles')) return;
     try {
-      $('si-idle').value = String((await get('/api/settings/signin')).idle);
+      const s = await get('/api/settings/signin');
+      $('si-idle').value = String(s.idle);
+      $('si-lock').value = String(s.lockAfter);
     } catch (err) {
       say('si-problem', err.message);
     }
+  });
+  $('si-lock').addEventListener('change', async () => {
+    say('si-problem', '');
+    try {
+      const s = await send('/api/settings/signin', { lockAfter: Number($('si-lock').value) });
+      toast('Saved', `A name locks after ${s.lockAfter} wrong passwords.`);
+    } catch (err) {
+      say('si-problem', err.message);
+    }
+  });
+  // Settings, Sign-in: the accounts locked after too many wrong passwords (SignInLocks.cs). Unlock asks for UNLOCK to be typed.
+  const drawLocks = async () => {
+    say('si-locks-problem', '');
+    try {
+      const { locked, others } = await get('/api/settings/signin/locks');
+      $('si-locks').innerHTML = locked.map((l) => `<div class="ds-row"><div class="ds-l"><b>${esc(l.name)}</b><span>${esc(`Locked ${ago(l.since) === 'Now' ? 'just now' : ago(l.since)} · ${l.wrong} wrong passwords${l.from ? `, the last from ${addr(l.from)}` : ''}`)}</span></div>`
+        + `<div class="ds-r"><button type="button" class="ds-btn" data-unlock="${esc(l.key)}" data-name="${esc(l.name)}">Unlock</button></div></div>`).join('');
+      $('si-locks-none').hidden = locked.length > 0;
+      $('si-locks-others').textContent = others ? `${others} other name${others === 1 ? ' that is not an account here is' : 's that are not accounts here are'} locked too. They unlock by themselves after a day.` : '';
+      $('si-locks-others').hidden = !others;
+    } catch (err) {
+      say('si-locks-problem', err.message);
+    }
+  };
+  $('si-locks').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-unlock]');
+    if (!b) return;
+    sure(`Unlock ${b.dataset.name}?`, `${b.dataset.name} can sign in again right away, with no wrong passwords counted.`, 'Unlock', async () => {
+      try {
+        await send('/api/settings/signin/locks/unlock', { key: b.dataset.unlock });
+        toast(b.dataset.name, 'unlocked');
+      } catch (err) {
+        say('si-locks-problem', err.message);
+      }
+      drawLocks();
+    }, { type: 'UNLOCK', safe: true });
   });
   $('si-idle').addEventListener('change', async () => {
     say('si-problem', '');

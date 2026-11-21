@@ -42,6 +42,7 @@ body.loading .card-body > *, body.loading .card-foot > *, body.loading .side-sub
 .context-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }
 .context:has(.dc.off) .context-dot { background: var(--red); }
 .context:has(.dc.unknown) .context-dot { background: #3A3E55; }
+.context-dot.local { background: var(--accent-soft); }
 .context b { color: var(--title); font-weight: 600; }
 .context .sep { color: #3A3E55; }
 .context .change { padding: 0; border: 0; background: transparent; color: var(--accent-soft); font-size: 13px; font-weight: 600; }
@@ -95,14 +96,30 @@ button.go::after { content: ""; width: 18px; height: 18px; background: currentCo
 button.go:hover { filter: brightness(1.08); background: var(--ember); }
 button.go:active { transform: translateY(1px); }
 button.go:disabled { filter: grayscale(.4); opacity: .6; }
+/* After a wrong password the next try waits, longer each time (SignInLocks.cs): the button fills as the wait runs down.
+   A locked name's button says so. */
+button.go.wait, button.go.wait:hover { filter: none; opacity: 1; background: #23263A; color: #C9CCDA; font-variant-numeric: tabular-nums; }
+button.go.wait::after { display: none; }
+button.go.fill, button.go.fill:hover { background: linear-gradient(var(--accent), var(--accent)) left / 0% 100% no-repeat #23263A; color: #fff; }
+button.go.locked, button.go.locked:hover { background: rgba(255, 107, 125, .14); color: var(--red); }
+.input input:disabled { opacity: .45; }
 .auth-error { margin: 14px 0 0; padding: 10px 13px; border-radius: 9px; background: rgba(255, 107, 125, .07); border: 1px solid rgba(255, 107, 125, .35); color: #FF8D9B; font-size: 13.5px; line-height: 1.45; }
 /* Plain HTTP from another computer: red when sign-in is refused, amber when AllowPlainHttp lets it through. */
 .plain-note { margin: 0 0 16px; }
 .plain-note.warn { background: rgba(242, 190, 107, .07); border-color: rgba(242, 190, 107, .3); color: #F2CE8F; }
 .auth-note { margin: 0 0 16px; padding: 10px 13px; border-radius: 9px; background: rgba(242, 190, 107, .07); border: 1px solid rgba(242, 190, 107, .3); color: #F2CE8F; font-size: 13.5px; line-height: 1.45; }
-/* Local account or Active Directory: a link under the button. */
+/* Local account or Active Directory: a link under the button, close under the domain line when that shows, with an icon of
+   what it switches to. */
 .other-kind { align-self: center; margin-top: 12px; padding: 4px 8px; border: 0; background: transparent; color: var(--muted); font-size: 14px; font-weight: 600; }
 .other-kind:hover { background: transparent; color: var(--accent-soft); text-decoration: underline; text-underline-offset: 3px; }
+.other-kind[hidden] { display: none; }
+form:not([hidden]):has(.context:not([hidden])) ~ .other-kind { margin-top: 2px; }
+#other-kind { color: #C9CCDA; }
+#other-kind:hover { color: var(--accent-soft); }
+#other-kind:not([hidden]) { display: inline-flex; align-items: center; gap: 7px; }
+#other-kind::before { content: ""; flex: none; width: 15px; height: 15px; background: var(--accent-soft);
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='8' r='4'/%3E%3Cpath d='M4 20c1.5-3.5 4.5-5 8-5s6.5 1.5 8 5'/%3E%3C/svg%3E") center / contain no-repeat; }
+#other-kind.to-ad::before { mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='9' y='3' width='6' height='5' rx='1'/%3E%3Crect x='3' y='16' width='6' height='5' rx='1'/%3E%3Crect x='15' y='16' width='6' height='5' rx='1'/%3E%3Cpath d='M12 8v4M6 16v-2h12v2'/%3E%3C/svg%3E"); }
 
 /* The foot, centred: where updating stands in a small pill with a refresh icon to check now, this computer and the version
    faint under it. */

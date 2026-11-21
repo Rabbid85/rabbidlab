@@ -251,7 +251,7 @@ public static class RolesApi
             return Results.Ok();
         });
 
-        app.MapPost("/api/accounts/{username}/password", (string username, PasswordForm form, HttpContext context, Accounts accounts, Roles roles, Confirmations confirm, ActivityLog log) =>
+        app.MapPost("/api/accounts/{username}/password", (string username, PasswordForm form, HttpContext context, Accounts accounts, Roles roles, Confirmations confirm, SignInLocks locks, ActivityLog log) =>
         {
             if ((Access.RefuseUnless(context, Permissions.AccessLocal) ?? confirm.Refuse(context)) is { } refused)
             {
@@ -266,6 +266,7 @@ public static class RolesApi
             {
                 return Results.BadRequest(new { error = problem });
             }
+            locks.ForgetBrowsers(SignInLocks.Key(SignIn.Local, username)); // the browsers remembered for it are strangers again
             log.Record(context, "access", "account.password", $"Set a new password for {username}");
             return Results.Ok();
         });

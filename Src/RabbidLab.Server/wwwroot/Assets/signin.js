@@ -163,7 +163,7 @@
   // MFA, after a right password: the answer is a ticket to send the code with, and nobody is signed in yet. MFA is
   // required for everyone, so an account without it gets the QR code to set it up with; after a reset, the one-time code too.
   let ticket = '';
-  const hideForms = () => ['local-form', 'ad-form', 'other-kind'].forEach((id) => { $(id).hidden = true; });
+  const hideForms = () => ['local-form', 'ad-form', 'other-kind', 'admin-unlock'].forEach((id) => { $(id).hidden = true; });
   const askCode = (said) => {
     ticket = said.ticket;
     const setup = said.mfa === 'setup';
@@ -227,17 +227,84 @@
   // A password that was sent isn't left in its box or showing: not behind the MFA step, and not after a wrong one.
   const PASSWORDS = ['local-password', 'local-confirm', 'ad-password'];
   const forget = () => {
-    PASSWORDS.forEach((id) => { $(id).value = ''; });
+    [...PASSWORDS, 'local-code', 'ad-code'].forEach((id) => { $(id).value = ''; });
     document.querySelectorAll('[data-reveal]').forEach((button) => reveal(button, false));
   };
+
+  // Wrong passwords make the next try wait, longer each time, and enough of them lock the name (SignInLocks.cs). The
+  // button counts the wait down; a locked name offers an administrator the code box, to send with the password.
+  let counting = 0;
+  const kindOf = (button) => button.form.id.split('-')[0]; // local or ad: what its boxes' ids start with
+  const coded = (kind) => !$(`${kind}-code-box`).hidden;
+  const codeOf = (kind) => (coded(kind) ? $(`${kind}-code`).value : undefined);
+  // Back to a form that can be sent.
+  const release = (button) => {
+    clearInterval(counting);
+    button.disabled = false;
+    button.classList.remove('wait', 'fill', 'locked');
+    button.style.removeProperty('transition');
+    button.style.removeProperty('background-size');
+    button.textContent = coded(kindOf(button)) ? 'Unlock and sign in' : button.dataset.words;
+    $(`${kindOf(button)}-password`).disabled = false;
+  };
+  const hold = (button, said) => {
+    const kind = kindOf(button);
+    button.dataset.words ||= button.textContent;
+    release(button);
+    if (said?.locked && !coded(kind)) {
+      button.disabled = true;
+      button.classList.add('wait', 'locked');
+      button.textContent = 'Locked';
+      $(`${kind}-password`).disabled = true;
+      $('admin-unlock').hidden = false;
+      return;
+    }
+    if (!said?.wait) return;
+    // The fill is one CSS transition over the whole wait; only the words change, once a second.
+    const until = Date.now() + said.wait * 1000;
+    button.disabled = true;
+    button.classList.add('wait', 'fill');
+    button.style.setProperty('transition', 'none');
+    button.style.setProperty('background-size', '0% 100%');
+    void button.offsetWidth;
+    button.style.setProperty('transition', `background-size ${said.wait}s linear`);
+    button.style.setProperty('background-size', '100% 100%');
+    const tick = () => {
+      const left = Math.ceil((until - Date.now()) / 1000);
+      if (left <= 0) return release(button);
+      button.textContent = `${coded(kind) ? 'Try again in' : 'Wait'} ${left < 60 ? `${left} s` : `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`}`;
+    };
+    tick();
+    counting = setInterval(tick, 1000);
+  };
+  // Another name typed, or the other kind of account picked: whatever held the form is that name's, not this one's.
+  const fresh = (kind) => {
+    const button = $(`${kind}-go`);
+    if (!button.dataset.words) return;
+    $(`${kind}-code-box`).hidden = true;
+    $('admin-unlock').hidden = true;
+    showError('');
+    release(button);
+  };
+  ['local', 'ad'].forEach((kind) => $(`${kind}-user`).addEventListener('input', () => fresh(kind)));
+  $('admin-unlock').addEventListener('click', () => {
+    const kind = $('ad-form').hidden ? 'local' : 'ad';
+    $(`${kind}-code-box`).hidden = false;
+    $('admin-unlock').hidden = true;
+    showError('');
+    release($(`${kind}-go`));
+    $(`${kind}-password`).focus();
+  });
+
   const post = async (url, body, button) => {
     const r = await send(url, body, button);
     if (!r) return;
     forget();
     if (r.ok && !r.said?.mfa) return enter();
     button.disabled = false;
-    if (r.ok) askCode(r.said);
-    else showError(r.problem);
+    if (r.ok) return askCode(r.said);
+    showError(r.problem);
+    hold(button, r.said);
   };
 
   // Caps Lock on while typing a password: a line under the box says so.
@@ -486,6 +553,9 @@
     // Signing in with Active Directory, the domain and its controller show on one line, and Change opens the list.
     $('ad-context').hidden = setup;
     $('ad-where').hidden = !setup;
+    // The same line for a local account, where there is a domain to tell it from.
+    $('local-context').hidden = setup || !s.domain;
+    $('local-context-name').textContent = s.machine;
     $('local-go').textContent = setup ? 'Create account' : 'Sign in';
     $('ad-go').textContent = setup ? 'Connect and sign in' : 'Sign in';
     if (setup) {
@@ -587,12 +657,15 @@
       showing = kind;
       $('local-form').hidden = kind !== 'local';
       $('ad-form').hidden = kind !== 'ad';
-      // Signing in with Active Directory has no lead: the domain line under the button says it.
+      // Signing in where a domain is set up has no lead: the line under the button says which account it is, so switching
+      // between the two moves nothing.
       const lead = setup ? (kind === 'ad' ? `Connect ${name} to your domain.` : 'Create the administrator account.')
-        : kind === 'ad' ? '' : s.domain ? 'Use a local account.' : `Use your ${name} account.`;
+        : s.domain ? '' : `Use your ${name} account.`;
       $('lead').textContent = lead;
       $('lead').hidden = !lead;
       $('other-kind').textContent = kind === 'ad' ? 'Use a local account instead' : 'Use Active Directory instead';
+      $('other-kind').classList.toggle('to-ad', kind !== 'ad'); // its icon: what it switches to
+      $('admin-unlock').hidden = !$(`${kind}-go`).classList.contains('locked');
       showError('');
       if (kind === 'ad') startDirectory();
       if (!focus) return;
@@ -631,7 +704,7 @@
         return;
       }
       remember('local');
-      post('/api/signin', { username: $('local-user').value, password: $('local-password').value, local: true }, e.submitter);
+      post('/api/signin', { username: $('local-user').value, password: $('local-password').value, local: true, code: codeOf('local') }, e.submitter);
     });
     $('ad-form').addEventListener('submit', (e) => {
       e.preventDefault();
@@ -642,7 +715,7 @@
       remember('ad');
       post('/api/signin', {
         username: $('ad-user').value, password: $('ad-password').value,
-        server, domain: domain() !== s.domain ? domain() : undefined,
+        server, domain: domain() !== s.domain ? domain() : undefined, code: codeOf('ad'),
       }, e.submitter);
     });
 

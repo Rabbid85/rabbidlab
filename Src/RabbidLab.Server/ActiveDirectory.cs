@@ -43,6 +43,12 @@ public interface IDirectory
     /// domain won't say.
     /// </summary>
     Task<DirectoryAccount?> Recheck(string domain, string host, string username, IReadOnlyCollection<string> groups, CancellationToken stop);
+
+    /// <summary>
+    /// How many wrong passwords the domain allows before it locks an account itself (0: it never does), read as this
+    /// computer (Windows) or anonymously (elsewhere). Null when the domain won't say.
+    /// </summary>
+    Task<int?> LockoutThreshold(string domain, CancellationToken stop);
 }
 
 /// <summary>
@@ -229,6 +235,20 @@ public sealed class ActiveDirectory : IDirectory
         }
         var others = found.Select(d => d.Trim().TrimEnd('.').ToLowerInvariant()).Where(d => d.Length > 0 && d != domain).Distinct().Order();
         return [domain, .. others];
+    }
+
+    public async Task<int?> LockoutThreshold(string domain, CancellationToken stop)
+    {
+        try
+        {
+            using var ldap = await Ldap.OpenAnonymous(domain, domain, stop);
+            var head = ldap is null ? null : (await ldap.Find(ldap.BaseDn, "(objectClass=*)", false, ["lockoutThreshold"], 1, stop)).FirstOrDefault();
+            return (int?) head?.Number("lockoutThreshold");
+        }
+        catch (Exception e) when (e is DirectoryProblem or LdapRefused)
+        {
+            return null; // unreachable now, or not allowed to read it: Rabbid Lab's own number stands
+        }
     }
 
     /// <summary>The groups with these names, by sAMAccountName or cn.</summary>

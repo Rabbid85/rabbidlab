@@ -163,6 +163,12 @@ if (app.ResetMfaCommand(args) is int reset)
     return reset;
 }
 
+// --unlock: unlocks a name locked after too many wrong passwords, then it exits.
+if (app.UnlockCommand(args) is int unlocked)
+{
+    return unlocked;
+}
+
 // A reverse proxy's X-Forwarded-Proto and -For, from trusted proxies only (PlainHttp.cs), before anything reads them.
 app.UseForwardedHeaders();
 app.UseRedirectPort(redirect);
