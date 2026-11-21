@@ -6,7 +6,7 @@ body.auth { overflow-x: hidden; }
 body.loading .card-body > *, body.loading .card-foot > *, body.loading .side-sub { visibility: hidden; }
 /* The card's top stays put whichever form shows: only its foot moves. */
 .auth-shell { position: relative; z-index: 1; min-height: 100vh; display: flex; justify-content: center; align-items: flex-start;
-  padding: max(28px, calc(50vh - 300px)) 16px 28px; }
+  padding: max(28px, calc(50vh - 300px)) 16px 72px; }
 .signin-card { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); grid-template-rows: 1fr auto; width: 100%; max-width: 1040px;
   min-height: 600px; background: #11131D; border: 1px solid var(--line); border-radius: 18px; overflow: hidden; }
 
@@ -15,14 +15,14 @@ body.loading .card-body > *, body.loading .card-foot > *, body.loading .side-sub
 /* The time and the name share one left edge, and the ink of the time sits as far from the top as the name's from the foot. */
 .side-clock { position: absolute; left: 44px; right: 44px; top: 30px; z-index: 1; color: #fff; }
 /* The time in the same type as the tagline and the name over it: Segoe UI Variable, a little lighter than bold. */
-.side-time { display: block; font: 600 112px/.95 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; letter-spacing: -.045em; white-space: nowrap; }
+.side-time { display: block; font: 500 112px/.95 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; letter-spacing: -.045em; white-space: nowrap; }
 .side-date { display: block; margin-top: 10px; color: #D7DAE8; font-size: 20px; font-weight: 500; }
 .side-day { height: 6px; margin-top: 26px; border-radius: 3px; background: rgba(255, 255, 255, .1); overflow: hidden; }
 .side-day i { display: block; width: 0; height: 100%; border-radius: 3px; background: var(--accent); }
 .side-day-text { display: block; margin-top: 10px; color: #8E92A8; font-size: 13.5px; }
 /* The lab's name at the foot: the tagline over it when there is one, and what it's the console for under it. */
 .side-name { position: absolute; left: 44px; right: 44px; bottom: 44px; z-index: 1; }
-.side-tag { margin: 0 0 8px; font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.side-tag { margin: 0 0 1px; font-size: 11px; line-height: 1.2; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
 .side-title { margin: 0; font: 800 40px/1 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; letter-spacing: -.045em; color: #fff; overflow-wrap: anywhere; }
 .side-title .dev-tag { margin-top: 4px; vertical-align: top; font-family: "Segoe UI", system-ui, sans-serif; font-size: 12px; letter-spacing: .08em; }
 .side-sub { margin: 12px 0 0; color: #C9CCDA; font-size: 15px; }
@@ -128,6 +128,38 @@ button.go:disabled { filter: grayscale(.4); opacity: .6; }
 .update-bar { position: absolute; left: 0; right: 0; top: -1px; height: 2px; margin: 0; background: transparent; overflow: hidden; }
 .update-bar[hidden] { display: none; }
 .update-bar i { display: block; height: 100%; width: 0; background: var(--ember); transition: width .3s; }
+
+/* The page's foot: a see-through pill with the background's name that opens a panel over it, the backgrounds as moving tiles
+   and the themes as chips. */
+.look { position: absolute; left: 50%; bottom: 20px; z-index: 6; transform: translateX(-50%); }
+body.loading .look { visibility: hidden; }
+.look-pill { display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 12px 0 11px; border: 1px solid var(--line-strong); border-radius: 999px;
+  background: rgba(12, 14, 23, .7); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); color: #A9ADC2; font-size: 13px; font-weight: 600;
+  white-space: nowrap; transition: color .15s, border-color .15s; }
+.look-pill:hover, .look-pill[aria-expanded="true"] { background: rgba(12, 14, 23, .7); border-color: var(--accent-line); color: var(--title); }
+.look-ic { width: 16px; height: 16px; color: var(--accent-soft); }
+.look-chev { width: 13px; height: 13px; opacity: .7; transform: rotate(180deg); transition: transform .2s; }
+.look-pill[aria-expanded="true"] .look-chev { transform: none; }
+.look-pop { position: absolute; left: 50%; bottom: calc(100% + 10px); width: min(600px, calc(100vw - 32px)); padding: 14px 16px 16px; transform: translateX(-50%);
+  background: #11131D; border: 1px solid var(--line-strong); border-radius: 16px; animation: look-in .16s ease-out; }
+.look-pop[hidden] { display: none; }
+@keyframes look-in { from { opacity: 0; transform: translate(-50%, 6px); } }
+.look-head { display: flex; align-items: baseline; justify-content: space-between; margin: 0 2px 10px; }
+.look-head b { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+.look-head span { color: #5E6380; font-size: 12px; }
+.look-bgs { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 12px 10px; margin-bottom: 16px; }
+.look-bg { display: grid; gap: 6px; padding: 0; border: 0; background: transparent; color: #8E92A8; font-size: 12px; font-weight: 600; cursor: pointer; }
+.look-bg:hover { background: transparent; color: var(--title); }
+.look-bg canvas { display: block; width: 100%; aspect-ratio: 16 / 10; border: 1px solid var(--line-strong); border-radius: 9px; background: var(--night); transition: border-color .15s; }
+.look-bg:hover canvas { border-color: #3A3E55; }
+.look-bg[aria-checked="true"] { color: var(--title); }
+.look-bg[aria-checked="true"] canvas { border-color: var(--accent); outline: 2px solid var(--accent); outline-offset: 2px; }
+.look-themes { display: flex; flex-wrap: wrap; gap: 8px; }
+.look-th { display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 12px 0 6px; border: 1px solid var(--line-strong); border-radius: 999px;
+  background: transparent; color: #A9ADC2; font-size: 12.5px; font-weight: 600; }
+.look-th:hover { background: transparent; border-color: #3A3E55; color: var(--title); }
+.look-th[aria-checked="true"] { border-color: var(--accent); color: var(--title); }
+.look-th i { flex: none; width: 20px; height: 20px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .16); }
 
 /* Narrow windows: one column, the name on top as a band and no clock. */
 @media (max-width: 900px) {

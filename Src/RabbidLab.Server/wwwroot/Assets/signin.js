@@ -35,10 +35,94 @@
     setTimeout(clock, 60000 - (Date.now() % 60000) + 50);
   };
   clock();
-  // What moves behind the card (Settings, Appearance): as this browser last saw it, then the server's.
-  const showBackdrop = window.RabbidLabBackdrop.on(document.querySelector('canvas.backdrop'), { fit: true });
-  const look = (brand) => showBackdrop(brand.background || 'squares');
+  // What moves behind the card: the lab's (Settings, Appearance), or what this browser picked at the page's foot.
+  const Backdrop = window.RabbidLabBackdrop;
+  const Theme = window.RabbidLabTheme;
+  const BG = 'rabbidlab.backdrop';
+  const showBackdrop = Backdrop.on(document.querySelector('canvas.backdrop'), { fit: true });
+  let labBg = 'squares';
+  let pickedBg = '';
+  try { pickedBg = localStorage.getItem(BG) || ''; } catch { /* the lab's */ }
+  if (!Backdrop.KINDS.some(([k]) => k === pickedBg)) pickedBg = '';
+  const bgNow = () => pickedBg || labBg;
+  const showBg = () => {
+    showBackdrop(bgNow());
+    $('look-name').textContent = Backdrop.KINDS.find(([k]) => k === bgNow())?.[1] || 'Squares';
+  };
+  const look = (brand) => {
+    labBg = brand.background || 'squares';
+    showBg();
+  };
   look(window.RabbidLabBrand.now);
+
+  // The page's foot: a pill opening tiles of every background, each moving as the page would (only while open), and the themes.
+  let tiles = [];
+  const drawLook = () => {
+    tiles.forEach((stop) => stop());
+    $('look-bgs').replaceChildren(...Backdrop.KINDS.map(([k, name]) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'look-bg';
+      b.dataset.kind = k;
+      b.setAttribute('role', 'radio');
+      b.setAttribute('aria-checked', String(k === bgNow()));
+      b.innerHTML = '<canvas aria-hidden="true"></canvas><span></span>';
+      b.lastChild.textContent = name;
+      return b;
+    }));
+    tiles = [...$('look-bgs').querySelectorAll('canvas')].map((c) => Backdrop.run(c, c.parentElement.dataset.kind, { width: 240 }));
+    const [, , lp] = Theme.THEMES.find(([t]) => t === 'light');
+    const [, , dp] = Theme.THEMES.find(([t]) => t === 'dark');
+    $('look-themes').replaceChildren(...Theme.THEMES.map(([k, name, page, , card]) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'look-th';
+      b.dataset.pick = k; // not data-theme: that would put the theme's rules on the button
+      b.setAttribute('role', 'radio');
+      b.setAttribute('aria-checked', String(Theme.picked === k));
+      b.innerHTML = '<i></i><span></span>';
+      b.lastChild.textContent = name;
+      b.firstChild.style.background = `linear-gradient(135deg, ${k === 'system' ? lp : page} 0 50%, ${k === 'system' ? dp : card} 50%)`;
+      return b;
+    }));
+  };
+  const lookOpen = (open) => {
+    $('look-pop').hidden = !open;
+    $('look-open').setAttribute('aria-expanded', String(open));
+    if (open) drawLook();
+    else {
+      tiles.forEach((stop) => stop());
+      tiles = [];
+    }
+  };
+  $('look-open').addEventListener('click', () => lookOpen($('look-pop').hidden));
+  document.addEventListener('pointerdown', (e) => { if (!$('look-pop').hidden && !$('look').contains(e.target)) lookOpen(false); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || $('look-pop').hidden) return;
+    lookOpen(false);
+    $('look-open').focus();
+  });
+  $('look-bgs').addEventListener('click', (e) => {
+    const b = e.target.closest('.look-bg');
+    if (!b) return;
+    // The lab's own again: this browser follows the lab's from then on.
+    pickedBg = b.dataset.kind === labBg ? '' : b.dataset.kind;
+    try {
+      if (pickedBg) localStorage.setItem(BG, pickedBg);
+      else localStorage.removeItem(BG);
+    } catch { /* this visit only */ }
+    $('look-bgs').querySelectorAll('.look-bg').forEach((t) => t.setAttribute('aria-checked', String(t === b)));
+    showBg();
+  });
+  $('look-themes').addEventListener('click', (e) => {
+    const b = e.target.closest('.look-th');
+    if (b) Theme.set(b.dataset.pick);
+  });
+  // Another theme: the background again in its colours, and the tiles too while they show.
+  window.addEventListener('rabbidlab:theme', () => {
+    showBg();
+    if (!$('look-pop').hidden) drawLook();
+  });
 
   // Signed out for being idle (console.js): said here, and signing in goes back to the page they were on.
   const idleFor = Number(new URLSearchParams(location.search).get('idle'));

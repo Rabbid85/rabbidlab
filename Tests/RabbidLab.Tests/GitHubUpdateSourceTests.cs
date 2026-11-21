@@ -113,6 +113,28 @@ public sealed class GitHubUpdateSourceTests : IDisposable
     }
 
     [Fact]
+    public async Task An_older_release_json_than_one_already_read_is_GitHub_s_cache_and_keeps_the_newer_offer()
+    {
+        static string Manifest(string version) =>
+            $$$"""{"version":"{{{version}}}","windows":{"version":"{{{version}}}","size":1,"sha256":"ab","url":"https://github.com/Rabbid85/rabbidlab/releases/download/dev-latest/RabbidLab-Setup-{{{version}}}.exe"}}""";
+        var github = new GitHub(Manifest("1.1.311"));
+        var source = Source(github);
+
+        await source.Check(CancellationToken.None);
+        Assert.Equal("1.1.311", source.Offer!.Version);
+
+        github.Json = Manifest("1.1.310");
+        await source.Check(CancellationToken.None);
+        Assert.Equal("1.1.311", source.Offer!.Version);
+        Assert.Null(source.Problem);
+        Assert.Equal(2, github.Asked.Count);
+
+        github.Json = Manifest("1.1.312");
+        await source.Check(CancellationToken.None);
+        Assert.Equal("1.1.312", source.Offer!.Version);
+    }
+
+    [Fact]
     public void The_manifest_links_are_the_repository_s_own()
     {
         var options = new GitHubOptions { Repository = Repository + "/" };
@@ -125,14 +147,16 @@ public sealed class GitHubUpdateSourceTests : IDisposable
     {
         public List<string> Asked { get; } = [];
 
+        public string? Json { get; set; } = json;
+
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancel)
         {
             Asked.Add(request.RequestUri!.ToString());
-            if (json is null && status == HttpStatusCode.OK)
+            if (Json is null && status == HttpStatusCode.OK)
             {
                 throw new HttpRequestException("No such host is known.");
             }
-            return Task.FromResult(new HttpResponseMessage(status) { Content = new StringContent(json ?? "Not Found", Encoding.UTF8, json is null ? "text/html" : "application/json") });
+            return Task.FromResult(new HttpResponseMessage(status) { Content = new StringContent(Json ?? "Not Found", Encoding.UTF8, Json is null ? "text/html" : "application/json") });
         }
     }
 

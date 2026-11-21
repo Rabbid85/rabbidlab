@@ -2,6 +2,14 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.312 (2026-11-21)
+
+- A Background pill at the foot of the sign-in page picks the background and the theme for that browser. The background set in Appearance stays the default.
+- The sign-in backgrounds are lighter on the computer. They draw 30 frames a second at the most instead of one per screen refresh, and Glass and Lava lamp draw at a quarter of the pixels.
+- Starfield has far fewer stars, and shooting stars come less often.
+- The time on the sign-in page is a little lighter again, and the tagline sits closer to the lab name.
+- Check for updates no longer says you have the newest version when GitHub still hands out the old release list just after a release.
+
 ## 1.1.311 (2026-11-21)
 
 - The top bar no longer shows whether all sensors are up.

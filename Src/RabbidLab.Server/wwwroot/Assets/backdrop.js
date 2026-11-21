@@ -59,7 +59,7 @@
           squaresFill();
         },
         frame: (t, dt, ms) => {
-          state.slow = ms > 25 && ms < 250 ? state.slow + 1 : Math.max(0, state.slow - 1);
+          state.slow = ms > 60 && ms < 250 ? state.slow + 1 : Math.max(0, state.slow - 1); // 30 a second is ~33 ms apart
           if (state.slow > 90 && state.tiles.length > 20) {
             state.most = Math.max(20, Math.round(state.tiles.length * 0.8));
             state.tiles.length = state.most;
@@ -106,7 +106,7 @@
       },
       // Bubbles: the flask's bubbles rising from the bottom, wobbling, some outlined.
       bubbles: {
-        setup: () => { state.b = Array.from({ length: Math.round(w / 48) }, () => ({ x: rnd(0, w), y: rnd(0, h), r: rnd(3, 16), v: rnd(10, 40), p: rnd(0, 6), c: Math.random() < .25 ? L : A, o: Math.random() < .4 })); },
+        setup: () => { state.b = Array.from({ length: Math.max(8, Math.round(w / 48)) }, () => ({ x: rnd(0, w), y: rnd(0, h), r: rnd(3, 16), v: rnd(10, 40), p: rnd(0, 6), c: Math.random() < .25 ? L : A, o: Math.random() < .4 })); },
         frame: (t, dt) => {
           for (const b of state.b) {
             if (!still) {
@@ -123,6 +123,8 @@
       },
       // Glass: big soft lights in the accent, blue and violet, drifting behind frosted dark.
       glass: {
+        res: .25, // soft all over: a quarter of the pixels, scaled up
+        fps: 12,
         setup: () => { state.blobs = [A, BLUE, VIOLET, L, A].map((c, i) => ({ c, x: rnd(0, w), y: rnd(0, h), r: rnd(.28, .45) * Math.max(w, h), sx: rnd(-1, 1), sy: rnd(-1, 1), p: i })); },
         frame: (t) => {
           ctx.globalCompositeOperation = 'lighter';
@@ -141,7 +143,7 @@
       // Network: the lab's machines as points drifting, near ones linked, a pulse running along a link now and then.
       net: {
         setup: () => {
-          state.dots = Array.from({ length: Math.round((w * h) / 26000) }, () => ({ x: rnd(0, w), y: rnd(0, h), vx: rnd(-.15, .15), vy: rnd(-.15, .15), c: Math.random() < .2 ? BLUE : A }));
+          state.dots = Array.from({ length: Math.max(8, Math.round((w * h) / 26000)) }, () => ({ x: rnd(0, w), y: rnd(0, h), vx: rnd(-.15, .15), vy: rnd(-.15, .15), c: Math.random() < .2 ? BLUE : A }));
           state.pulses = [];
         },
         frame: (t, dt) => {
@@ -156,7 +158,10 @@
           ctx.lineWidth = 1;
           for (let i = 0; i < d.length; i++) {
             for (let j = i + 1; j < d.length; j++) {
-              const r = Math.hypot(d[i].x - d[j].x, d[i].y - d[j].y);
+              const dx = d[i].x - d[j].x;
+              const dy = d[i].y - d[j].y;
+              if (dx > near || dx < -near || dy > near || dy < -near) continue;
+              const r = Math.sqrt(dx * dx + dy * dy);
               if (r > near) continue;
               ctx.strokeStyle = rgba(A, (1 - r / near) * .22);
               ctx.beginPath();
@@ -183,7 +188,21 @@
       },
       // Fireflies: soft glowing dots drifting and blinking slowly.
       fireflies: {
-        setup: () => { state.f = Array.from({ length: Math.round((w * h) / 30000) }, () => ({ x: rnd(0, w), y: rnd(0, h), a: rnd(0, 6), v: rnd(.2, .6), p: rnd(0, 6), c: Math.random() < .25 ? BLUE : Math.random() < .5 ? L : A })); },
+        setup: () => {
+          state.f = Array.from({ length: Math.max(8, Math.round((w * h) / 30000)) }, () => ({ x: rnd(0, w), y: rnd(0, h), a: rnd(0, 6), v: rnd(.2, .6), p: rnd(0, 6), c: Math.random() < .25 ? BLUE : Math.random() < .5 ? L : A }));
+          // Each colour's glow drawn once, then stamped: no gradient made per firefly per frame.
+          state.glow = new Map([BLUE, L, A].map((c) => {
+            const g = document.createElement('canvas');
+            g.width = g.height = 72;
+            const x = g.getContext('2d');
+            const r = x.createRadialGradient(36, 36, 0, 36, 36, 36);
+            r.addColorStop(0, rgba(c, .55));
+            r.addColorStop(1, rgba(c, 0));
+            x.fillStyle = r;
+            x.fillRect(0, 0, 72, 72);
+            return [c, g];
+          }));
+        },
         frame: (t, dt) => {
           ctx.globalCompositeOperation = 'lighter';
           for (const f of state.f) {
@@ -192,13 +211,10 @@
               f.x = (f.x + Math.cos(f.a) * f.v * dt * 30 + w) % w;
               f.y = (f.y + Math.sin(f.a) * f.v * dt * 30 + h) % h;
             }
-            const glow = .25 + .75 * Math.max(0, Math.sin(t * .8 + f.p));
-            const g = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, 18);
-            g.addColorStop(0, rgba(f.c, .55 * glow));
-            g.addColorStop(1, rgba(f.c, 0));
-            ctx.fillStyle = g;
-            ctx.fillRect(f.x - 18, f.y - 18, 36, 36);
+            ctx.globalAlpha = .25 + .75 * Math.max(0, Math.sin(t * .8 + f.p));
+            ctx.drawImage(state.glow.get(f.c), f.x - 18, f.y - 18, 36, 36);
           }
+          ctx.globalAlpha = 1;
           ctx.globalCompositeOperation = 'source-over';
         },
       },
@@ -246,10 +262,12 @@
       },
       // Lava lamp: soft blobs of liquid rising, sinking and running into each other.
       lava: {
+        res: .25, // blurred anyway: a quarter of the pixels, scaled up, and the blur with it
+        fps: 20,
         setup: () => { state.l = Array.from({ length: 9 }, (_, i) => ({ x: rnd(.1, .9), y: rnd(0, 1), r: rnd(.07, .14), v: rnd(.015, .04) * (i % 2 ? 1 : -1), p: rnd(0, 6), c: i % 3 === 0 ? BLUE : i % 3 === 1 ? A : VIOLET })); },
         frame: (t) => {
           ctx.save();
-          ctx.filter = `blur(${Math.round(26 * (state.zoom || 1))}px)`;
+          ctx.filter = `blur(${(26 * (state.zoom || 1) * .25).toFixed(1)}px)`; // in canvas pixels, a quarter as many
           for (const b of state.l) {
             const y = (((b.y + t * b.v) % 1.3) + 1.3) % 1.3 - .15;
             const x = b.x + Math.sin(t * .2 + b.p) * .05;
@@ -262,12 +280,12 @@
           ctx.restore();
         },
       },
-      // Starfield: stars twinkling and drifting slowly, the near ones faster, and now and then a shooting star.
+      // Starfield: a few stars twinkling and drifting slowly, the near ones faster, and once in a while a shooting star.
       stars: {
         setup: () => {
-          state.s = Array.from({ length: Math.round((w * h) / 4500) }, () => ({ x: rnd(0, w), y: rnd(0, h), z: Math.random(), p: rnd(0, 6), c: Math.random() < .15 ? L : Math.random() < .2 ? BLUE : PALE }));
+          state.s = Array.from({ length: Math.max(24, Math.round((w * h) / 20000)) }, () => ({ x: rnd(0, w), y: rnd(0, h), z: Math.random(), p: rnd(0, 6), c: rgba(Math.random() < .15 ? L : Math.random() < .2 ? BLUE : PALE, 1) }));
           state.shot = null;
-          state.next = rnd(1.5, 4);
+          state.next = rnd(4, 8);
         },
         frame: (t, dt) => {
           for (const s of state.s) {
@@ -276,11 +294,13 @@
               if (s.x < -2) { s.x = w + 2; s.y = rnd(0, h); }
             }
             const r = .8 + s.z * 1.6;
-            ctx.fillStyle = rgba(s.c, (.4 + .6 * s.z) * (.55 + .45 * Math.sin(t * (.8 + s.z * 2) + s.p)));
+            ctx.globalAlpha = Math.min(1, (.4 + .6 * s.z) * (.55 + .45 * Math.sin(t * (.8 + s.z * 2) + s.p)));
+            ctx.fillStyle = s.c;
             ctx.beginPath();
             ctx.arc(s.x, s.y, r, 0, Math.PI * 2);
             ctx.fill();
           }
+          ctx.globalAlpha = 1;
           if (still) return;
           state.next -= dt;
           if (!state.shot && state.next <= 0) state.shot = { x: rnd(w * .35, w * .95), y: rnd(0, h * .35), k: 0, a: rnd(2.45, 2.75) };
@@ -304,14 +324,15 @@
           ctx.stroke();
           if (s.k > .9) {
             state.shot = null;
-            state.next = rnd(4, 9);
+            state.next = rnd(12, 22);
           }
         },
       },
       // Embers: sparks rising off the flask's burner, flickering and drifting, fading out as they climb.
       embers: {
         setup: () => {
-          state.spark = (y) => ({ x: rnd(0, w), y, v: rnd(25, 75), drift: rnd(-14, 14), p: rnd(0, 6), r: rnd(1, 2.6), c: Math.random() < .5 ? L : A });
+          const hot = [rgba(L, 1), rgba(A, 1)];
+          state.spark = (y) => ({ x: rnd(0, w), y, v: rnd(25, 75), drift: rnd(-14, 14), p: rnd(0, 6), r: rnd(1, 2.6), c: hot[Math.random() < .5 ? 0 : 1] });
           state.e = Array.from({ length: Math.round(w / 9) }, () => state.spark(rnd(0, h)));
         },
         frame: (t, dt) => {
@@ -322,16 +343,19 @@
               e.x += (e.drift + Math.sin(t * 1.7 + e.p) * 12) * dt;
               if (e.y < -10) Object.assign(e, state.spark(h + rnd(0, 40)));
             }
-            const a = Math.pow(Math.max(0, e.y / h), .8) * (.6 + .4 * Math.sin(t * 9 + e.p * 3));
-            ctx.fillStyle = rgba(e.c, a * .22);
+            const a = Math.min(1, Math.pow(Math.max(0, e.y / h), .8)) * (.6 + .4 * Math.sin(t * 9 + e.p * 3));
+            ctx.globalAlpha = a * .22;
+            ctx.fillStyle = e.c;
             ctx.beginPath();
             ctx.arc(e.x, e.y, e.r * 4, 0, Math.PI * 2);
             ctx.fill();
-            ctx.fillStyle = `rgba(255,236,226,${a * .9})`;
+            ctx.globalAlpha = a * .9;
+            ctx.fillStyle = '#FFECE2';
             ctx.beginPath();
             ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2);
             ctx.fill();
           }
+          ctx.globalAlpha = 1;
           ctx.globalCompositeOperation = 'source-over';
         },
       },
@@ -349,7 +373,7 @@
         };
       };
       state.scale = Math.min(1.8, Math.max(0.85, Math.min(w, h) / 900));
-      const count = Math.min(state.most, Math.round((w * h) / (260 * 260 * state.scale)));
+      const count = Math.min(state.most, Math.max(5, Math.round((w * h) / (260 * 260 * state.scale)))); // a few even in a small preview
       if (state.tiles.length > count) {
         state.tiles.length = count;
         return;
@@ -369,7 +393,7 @@
     let seen = true; // off screen (Settings closed, say), nothing is drawn
     // The canvas's own size, sharp on high-DPI screens; laid out again when it changes size.
     const size = () => {
-      const ratio = Math.min(devicePixelRatio || 1, 2);
+      const ratio = Math.min(devicePixelRatio || 1, 2) * (k?.res || 1);
       const cw = canvas.clientWidth;
       const ch = canvas.clientHeight;
       const zoom = width && cw ? cw / width : fit && cw ? Math.min(1, Math.max(cw / 3840, 0.6 / ratio)) : 1;
@@ -393,10 +417,16 @@
     }
     draw(8, 0, 16);
     let last = performance.now();
+    // 30 frames a second at the most (fewer for the slow soft ones), not one per screen refresh: 144 Hz screens drew 144.
+    const gap = 1000 / (k?.fps || 30) - 4;
     const loop = (now) => {
       raf = 0;
       if (!alive || !seen) return;
       const ms = now - last;
+      if (ms < gap) {
+        raf = requestAnimationFrame(loop);
+        return;
+      }
       last = now;
       draw(now / 1000, Math.min(.05, ms / 1000), ms);
       raf = requestAnimationFrame(loop);

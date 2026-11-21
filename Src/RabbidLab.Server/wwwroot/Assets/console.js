@@ -3,6 +3,12 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.312', [
+    'A Background pill at the foot of the sign-in page picks the background and the theme for that browser. The background set in Appearance stays the default.',
+    'The sign-in backgrounds are lighter on the computer. They draw 30 frames a second at the most instead of one per screen refresh, and Glass and Lava lamp draw at a quarter of the pixels.',
+    'Starfield has far fewer stars, and shooting stars come less often.',
+    'The time on the sign-in page is a little lighter again, and the tagline sits closer to the lab name.',
+    'Check for updates no longer says you have the newest version when GitHub still hands out the old release list just after a release.']],
   ['1.1.311', [
     'The top bar no longer shows whether all sensors are up.',
     'With an update to install, Updates in the top bar turns into a pill in your accent that says which version, and opens the Updates page. It shows downloading and installing the same way, and turns red if the update did not install.']],

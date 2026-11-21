@@ -50,12 +50,22 @@ public sealed class GitHubUpdateSource(IHttpClientFactory http, GitHubOptions op
 
     public string? Problem { get; private set; }
 
+    private Version? newest; // the newest release.json version read so far
+
     public async Task Check(CancellationToken cancel)
     {
         try
         {
             using var client = http.CreateClient("updates");
             var manifest = await client.GetFromJsonAsync<ReleaseManifest>(options.Manifest, Json, cancel);
+            // Just after a release GitHub can hand out the old release.json for a while: one older than already read is ignored.
+            var read = Version.TryParse(manifest?.Version, out var v) ? v : null;
+            if (read is not null && read < newest)
+            {
+                Problem = null;
+                return;
+            }
+            newest = read ?? newest;
             Offer = host.CanInstall
                 ? manifest?.Windows is { } w ? new(w.Version ?? manifest.Version ?? "", w.Size, w.Sha256 ?? "", w.Url ?? "", w.Signature) : null
                 : manifest?.Docker is { } d ? new(d.Version ?? manifest.Version ?? "", 0, "", "", null) : null;
