@@ -162,6 +162,19 @@ body.app.rail-small { grid-template-columns: 60px minmax(0, 1fr); }
 /* Sign-in page: the background picked, moving in a little window under the list (backdrop.js). */
 .br-bg-preview { grid-column: 1; display: block; width: 100%; aspect-ratio: 16 / 10; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--night); }
 .ds-row:has(.br-bg-preview) { align-items: flex-start; }
+/* Appearance, Theme: a little drawing of each (its colours set by console.js, so no theme turns them), the one in use outlined. */
+.ap-rows .ds-r:has(.ap-themes) { grid-template-columns: minmax(0, 394px); }
+.ap-themes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; width: 100%; }
+.ap-th { display: grid; gap: 6px; padding: 6px 6px 8px; border: 1px solid var(--line-strong); border-radius: 10px; background: transparent; color: var(--text); font: inherit; font-size: 12.5px; font-weight: 600; text-align: left; cursor: pointer; }
+.ap-th:hover { border-color: #3A3E55; background: transparent; }
+.ap-th[aria-checked="true"] { border-color: var(--accent-line); box-shadow: inset 0 0 0 1px var(--accent-line); }
+.ap-th > span { padding-left: 2px; }
+.ap-sw { position: relative; display: block; height: 46px; padding: 0; border-radius: 6px; overflow: hidden; }
+.ap-sw i { position: absolute; display: block; }
+.ap-sw .s { left: 0; top: 0; bottom: 0; width: 26%; }
+.ap-sw .d { left: 8%; top: 18%; width: 10%; height: 14%; border-radius: 2px; background: var(--accent); }
+.ap-sw .c1 { left: 34%; right: 8%; top: 20%; height: 24%; border-radius: 3px; }
+.ap-sw .c2 { left: 34%; right: 30%; top: 56%; height: 24%; border-radius: 3px; }
 .ap-icon .ds-icon { flex: none; width: 38px; height: 38px; border-radius: 8px; }
 .ap-icon .ds-icon svg, .ap-icon .ds-icon img { width: 26px; height: 26px; }
 .ap-icon .ds-btn { flex: 1; }

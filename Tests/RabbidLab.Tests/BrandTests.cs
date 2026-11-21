@@ -64,7 +64,7 @@ public sealed class BrandTests
     public void The_sign_in_left_side_and_background_are_saved_and_empty_ones_put_day_and_squares_back()
     {
         var s = new ConsoleSettings();
-        string?[] Look() { var b = JsonSerializer.SerializeToElement(Brand.Read(s)); return [b.GetProperty("side").GetString(), b.GetProperty("background").GetString()]; }
+        string[] Look() { var b = JsonSerializer.SerializeToElement(Brand.Read(s)); return [b.GetProperty("side").GetString()!, b.GetProperty("background").GetString()!]; }
 
         var fresh = Look();
         Assert.Null(Brand.Problem(new BrandForm(null, null, null, Side: "clock", Background: "bubbles")));

@@ -1,0 +1,4 @@
+/* What the themes made from the style sheets (Themes.cs, themes.css) get wrong, put right by hand. Loaded after them. */
+[data-theme="light"] { color-scheme: light; }
+/* Light: the sign-in page's left side a soft grey of its own, so it doesn't melt into the page behind. */
+[data-theme="light"] .side { background: linear-gradient(180deg, #E6E7EE, #DFE0E8); }

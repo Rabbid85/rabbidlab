@@ -456,7 +456,8 @@
     let stop = null;
     let shown = '';
     return (kind) => {
-      const key = `${kind}|${getComputedStyle(document.documentElement).getPropertyValue('--accent')}`;
+      // Again when the accent or the theme changes, so the colours are the ones on screen.
+      const key = `${kind}|${getComputedStyle(document.documentElement).getPropertyValue('--accent')}|${document.documentElement.dataset.theme || ''}`;
       if (key === shown) return;
       shown = key;
       stop?.();

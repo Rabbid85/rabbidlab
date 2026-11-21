@@ -209,6 +209,7 @@ app.UseStaticFiles(new StaticFileOptions
     OnPrepareResponse = context => context.Context.Response.Headers.CacheControl = "no-cache",
 });
 app.MapGet("/api/health", () => Results.Ok(new { ok = true })); // open, for Docker's health check
+app.MapThemesApi();
 app.MapSignIn();
 app.MapStatusApi();
 app.MapConsoleAddressApi(redirect, also);

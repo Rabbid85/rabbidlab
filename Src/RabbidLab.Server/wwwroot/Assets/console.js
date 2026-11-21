@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.304', [
+    'Themes in Settings, Appearance: System, Dark, Light, Carbon, Mocha and Slate. Each person picks their own, kept in their browser, and the sign-in page wears it too. System follows Windows light or dark.']],
   ['1.1.303', [
     'Fizz is back as a sign-in background, as a few thin streams spread across the page with far fewer bubbles. Ink is gone; a lab that picked it shows Squares.']],
   ['1.1.302', [
@@ -1211,6 +1213,38 @@ const RELEASE_NOTES = [
     layout();
   });
   layout();
+  // The theme (Settings, Appearance), just for this browser: a tile per theme drawn in its own colours (set here, so no theme
+  // turns them), the one in use outlined. theme.js puts it on.
+  const Theme = window.RabbidLabTheme;
+  const drawThemes = () => {
+    const [, , lp, ls, lc] = Theme.THEMES.find(([t]) => t === 'light');
+    const [, , dp, ds, dc] = Theme.THEMES.find(([t]) => t === 'dark');
+    // System: the left half Light, the right half Dark, the cards split on the same line (at 50% of the tile).
+    const split = (a, z, at = 50) => `linear-gradient(90deg, ${a} 0 ${at}%, ${z} ${at}%)`;
+    $('set-theme').replaceChildren(...Theme.THEMES.map(([k, name, page, side, card]) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'ap-th';
+      b.dataset.pick = k; // not data-theme: that would put the theme's rules on the tile
+      b.setAttribute('role', 'radio');
+      b.setAttribute('aria-checked', String(Theme.picked === k));
+      b.innerHTML = '<span class="ap-sw"><i class="s"></i><i class="d"></i><i class="c1"></i><i class="c2"></i></span><span></span>';
+      b.lastChild.textContent = name;
+      const sw = b.querySelector('.ap-sw');
+      sw.style.background = k === 'system' ? split(lp, dp) : page;
+      sw.querySelector('.s').style.background = k === 'system' ? ls : side;
+      sw.querySelector('.c1').style.background = k === 'system' ? split(lc, dc, 27.6) : card; // 34% to 92% of the tile
+      sw.querySelector('.c2').style.background = k === 'system' ? split(lc, dc, 44.4) : card; // 34% to 70%
+      return b;
+    }));
+  };
+  $('set-theme').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-pick]');
+    if (!b) return;
+    Theme.set(b.dataset.pick);
+    drawThemes();
+  });
+  drawThemes();
   // Your name beside the avatar, top right (Settings, Account): off in this browser while someone's watching.
   const nameShown = () => {
     let shown = true;
@@ -1322,6 +1356,7 @@ const RELEASE_NOTES = [
   };
   $('br-bg').innerHTML = window.RabbidLabBackdrop.KINDS.map(([k, label]) => `<option value="${k}">${label}</option>`).join('');
   const bgPreview = window.RabbidLabBackdrop.on($('br-bg-preview'), { width: 760 });
+  window.addEventListener('rabbidlab:theme', () => bgPreview(brand.background || 'squares'));
   $('br-side').addEventListener('change', () => saveBrand({ side: $('br-side').value }));
   $('br-bg').addEventListener('change', () => saveBrand({ background: $('br-bg').value }));
   const saveBrand = async (change) => {
