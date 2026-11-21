@@ -17,10 +17,17 @@
   };
 
   // The left side's time, date and how much of the day has gone: this computer's, as a lock screen's are. Again on each minute.
+  const ink = document.createElement('canvas').getContext('2d');
   const clock = () => {
     const now = new Date();
-    $('side-time').textContent = new Intl.DateTimeFormat([], { hour: 'numeric', minute: '2-digit' }).formatToParts(now)
+    const time = $('side-time');
+    time.textContent = new Intl.DateTimeFormat([], { hour: 'numeric', minute: '2-digit' }).formatToParts(now)
       .filter((p) => p.type !== 'dayPeriod').map((p) => p.value).join('').trim();
+    // Big digits start a few pixels in from their box, a 2 more than a 1: the first is pulled left by its own amount, so
+    // the time lines up with the date under it.
+    const look = getComputedStyle(time);
+    ink.font = `${look.fontWeight} ${look.fontSize} ${look.fontFamily}`;
+    time.style.marginLeft = `${Math.min(0, ink.measureText(time.textContent[0] || '0').actualBoundingBoxLeft)}px`;
     $('side-date').textContent = now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
     const gone = Math.round(((now.getHours() * 60 + now.getMinutes()) / 1440) * 100);
     $('side-day-fill').style.width = `${gone}%`;

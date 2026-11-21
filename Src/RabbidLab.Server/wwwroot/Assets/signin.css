@@ -13,8 +13,9 @@ body.loading .card-body > *, body.loading .card-foot > *, body.loading .side-sub
 /* The left side: this computer's time and the lab's name. Day: a plain panel, the time at the top with a bar for the day. */
 .side { position: relative; grid-row: 1 / 3; overflow: hidden; border-right: 1px solid var(--line); background: #10121C; }
 .side-lights { position: absolute; inset: 0; display: none; width: 100%; height: 100%; }
-.side-clock { position: absolute; left: 44px; right: 44px; top: 46px; z-index: 1; color: #fff; }
-.side-time { display: block; font: 200 128px/.95 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; letter-spacing: -.05em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* The time and the name share one left edge, and the ink of the time sits as far from the top as the name's from the foot. */
+.side-clock { position: absolute; left: 44px; right: 44px; top: 30px; z-index: 1; color: #fff; }
+.side-time { display: block; font: 200 128px/.95 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; letter-spacing: -.05em; white-space: nowrap; }
 .side-date { display: block; margin-top: 10px; color: #D7DAE8; font-size: 20px; font-weight: 500; }
 .side-day { height: 6px; margin-top: 26px; border-radius: 3px; background: rgba(255, 255, 255, .1); overflow: hidden; }
 .side-day i { display: block; width: 0; height: 100%; border-radius: 3px; background: var(--accent); }
@@ -23,12 +24,12 @@ body.loading .card-body > *, body.loading .card-foot > *, body.loading .side-sub
 .side[data-side="clock"] { --glow: color-mix(in srgb, var(--accent) 26%, transparent); --glow-2: color-mix(in srgb, var(--tile-d) 20%, transparent);
   background: radial-gradient(80% 70% at 85% 5%, var(--glow), transparent 70%), radial-gradient(70% 60% at 15% 100%, var(--glow-2), transparent 70%), #0D0F18; }
 .side[data-side="clock"] .side-lights { display: block; }
-.side[data-side="clock"] .side-clock { top: auto; bottom: 156px; }
+.side[data-side="clock"] .side-clock { top: auto; bottom: 160px; }
 .side[data-side="clock"] .side-time { font-weight: 300; font-size: 118px; text-shadow: 0 2px 24px rgba(0, 0, 0, .45); }
 .side[data-side="clock"] .side-date { margin-top: 8px; }
 .side[data-side="clock"] .side-day, .side[data-side="clock"] .side-day-text { display: none; }
 /* The lab's name at the foot: the tagline over it when there is one, and what it's the console for under it. */
-.side-name { position: absolute; left: 42px; right: 42px; bottom: 40px; z-index: 1; }
+.side-name { position: absolute; left: 44px; right: 44px; bottom: 44px; z-index: 1; }
 .side-tag { margin: 0 0 8px; font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
 .side-title { margin: 0; font: 800 40px/1 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; letter-spacing: -.045em; color: #fff; overflow-wrap: anywhere; }
 .side-title .dev-tag { margin-top: 4px; vertical-align: top; font-family: "Segoe UI", system-ui, sans-serif; font-size: 12px; letter-spacing: .08em; }

@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.301 (2026-11-20)
+
+- The sign-in page's left side lines up: the time, date and name start at one edge, with the same space above the time as under the name.
+
 ## 1.1.300 (2026-11-20)
 
 - Your name is back beside your avatar, with a switch to hide it in Settings, Account, Name in the top bar. It's just for you, in that browser.
