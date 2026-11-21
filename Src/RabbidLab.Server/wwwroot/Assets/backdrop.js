@@ -3,7 +3,7 @@
 // preview in Appearance. One frame and no movement when the system asks for reduced motion.
 (() => {
   const KINDS = [['none', 'None'], ['squares', 'Squares'], ['bubbles', 'Bubbles'], ['glass', 'Glass'], ['net', 'Network'], ['fireflies', 'Fireflies'],
-    ['lava', 'Lava lamp'], ['stars', 'Starfield'], ['embers', 'Embers'], ['ink', 'Ink']];
+    ['fizz', 'Fizz'], ['lava', 'Lava lamp'], ['stars', 'Starfield'], ['embers', 'Embers']];
   const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const BLUE = [61, 127, 230];
   const VIOLET = [142, 82, 214];
@@ -201,6 +201,48 @@
           ctx.globalCompositeOperation = 'source-over';
         },
       },
+      // Fizz: a few thin streams of small bubbles rising like soda, spread across the page and fanning out as they climb, now
+      // and then a bigger one. Each stream wanders a little.
+      fizz: {
+        setup: () => {
+          const n = Math.max(3, Math.round(w / 180));
+          state.bubble = (s, y) => ({ x: s.x + rnd(-2, 2), y, vx: rnd(-9, 9), r: Math.random() < .05 ? rnd(3.5, 6) : rnd(1.2, 2.6), v: rnd(60, 120), p: rnd(0, 6), c: Math.random() < .5 ? L : A });
+          state.streams = Array.from({ length: n }, (_, i) => {
+            const x = ((i + rnd(.25, .75)) * w) / n;
+            return { x, home: x, rate: rnd(.8, 2), acc: 0, p: rnd(0, 6) };
+          });
+          // Already under way, so the first frame isn't empty.
+          state.b = state.streams.flatMap((s) => Array.from({ length: Math.round(s.rate * 9) }, () => {
+            const b = state.bubble(s, rnd(0, h));
+            b.x += b.vx * ((h - b.y) / b.v);
+            return b;
+          }));
+        },
+        frame: (t, dt) => {
+          if (!still) {
+            for (const s of state.streams) {
+              s.x = s.home + Math.sin(t * .07 + s.p) * 40;
+              s.acc += s.rate * dt;
+              while (s.acc > 1) {
+                s.acc -= 1;
+                state.b.push(state.bubble(s, h + 4));
+              }
+            }
+          }
+          ctx.lineWidth = 1.2;
+          for (const b of state.b) {
+            if (!still) {
+              b.y -= b.v * dt * (1 + b.r * .05);
+              b.x += b.vx * dt;
+            }
+            ctx.strokeStyle = rgba(b.c, Math.min(1, b.y / h) * .75);
+            ctx.beginPath();
+            ctx.arc(b.x + Math.sin(t * 2.4 + b.p) * 3, b.y, b.r, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+          state.b = state.b.filter((b) => b.y > -10);
+        },
+      },
       // Lava lamp: soft blobs of liquid rising, sinking and running into each other.
       lava: {
         setup: () => { state.l = Array.from({ length: 9 }, (_, i) => ({ x: rnd(.1, .9), y: rnd(0, 1), r: rnd(.07, .14), v: rnd(.015, .04) * (i % 2 ? 1 : -1), p: rnd(0, 6), c: i % 3 === 0 ? BLUE : i % 3 === 1 ? A : VIOLET })); },
@@ -290,51 +332,6 @@
             ctx.fill();
           }
           ctx.globalCompositeOperation = 'source-over';
-        },
-      },
-      // Ink: drops of coloured ink blooming in water, curling outward and fading, a new drop somewhere else now and then.
-      ink: {
-        setup: () => {
-          state.p = [];
-          state.drop = (c) => ({ x: rnd(.15, .85) * w, y: rnd(.15, .85) * h, c, acc: 0, life: rnd(5, 9) });
-          state.src = [L, BLUE, VIOLET].map(state.drop);
-          state.step = (t, dt) => {
-            for (const s of state.src) {
-              s.life -= dt;
-              if (s.life < 0) Object.assign(s, state.drop(s.c));
-              if (s.life < 1.5) continue; // a pause before the next drop
-              s.acc += 6 * dt;
-              while (s.acc > 1) {
-                s.acc -= 1;
-                const a = rnd(0, Math.PI * 2);
-                const v = rnd(8, 30);
-                state.p.push({ x: s.x, y: s.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, r: rnd(6, 12), grow: rnd(9, 16), life: 1, fade: rnd(.11, .16), c: s.c });
-              }
-            }
-            for (const p of state.p) {
-              p.vx += Math.sin(p.y * .012 + t * .4) * 5 * dt;
-              p.vy += Math.cos(p.x * .012 + t * .3) * 5 * dt;
-              p.vx *= 1 - .25 * dt;
-              p.vy *= 1 - .25 * dt;
-              p.x += p.vx * dt;
-              p.y += p.vy * dt;
-              p.r += p.grow * dt;
-              p.life -= p.fade * dt;
-            }
-            state.p = state.p.filter((p) => p.life > 0);
-          };
-          // Already blooming on the first frame.
-          for (let i = 0; i < 150; i++) state.step(i / 30, 1 / 30);
-        },
-        frame: (t, dt) => {
-          if (!still) state.step(t, dt);
-          for (const p of state.p) {
-            const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r);
-            g.addColorStop(0, rgba(p.c, .16 * p.life));
-            g.addColorStop(1, rgba(p.c, 0));
-            ctx.fillStyle = g;
-            ctx.fillRect(p.x - p.r, p.y - p.r, p.r * 2, p.r * 2);
-          }
         },
       },
       // Lights: the sign-in page's Clock side, three soft lights drifting slowly behind the time.

@@ -26,7 +26,7 @@ public static partial class Brand
     public static readonly string[] Sides = ["day", "clock"];
 
     /// <summary>What shows behind the sign-in card (backdrop.js draws them); none is the page's plain colour.</summary>
-    public static readonly string[] Backgrounds = ["none", "squares", "bubbles", "glass", "net", "fireflies", "lava", "stars", "embers", "ink"];
+    public static readonly string[] Backgrounds = ["none", "squares", "bubbles", "glass", "net", "fireflies", "fizz", "lava", "stars", "embers"];
 
     [GeneratedRegex("^#[0-9A-Fa-f]{6}$")]
     private static partial Regex Hex();
@@ -38,7 +38,7 @@ public static partial class Brand
     {
         name = s.LabName, icon = s.LabIcon, accent = s.Accent, tagline = s.LabTagline,
         side = s.SignInSide ?? Sides[0],
-        // One picked before it left the list (1.1.302 dropped Data rain, Drops and others) shows as Squares.
+        // One picked before it left the list (such as Data rain or Ink) shows as Squares.
         background = Backgrounds.Contains(s.SignInBackground, StringComparer.Ordinal) ? s.SignInBackground : "squares",
     };
 

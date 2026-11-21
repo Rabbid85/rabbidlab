@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.303 (2026-11-20)
+
+- Fizz is back as a sign-in background, as a few thin streams spread across the page with far fewer bubbles. Ink is gone; a lab that picked it shows Squares.
+
 ## 1.1.302 (2026-11-20)
 
 - The left side of the sign-in page is darker.

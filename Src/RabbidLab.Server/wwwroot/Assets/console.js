@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.303', [
+    'Fizz is back as a sign-in background, as a few thin streams spread across the page with far fewer bubbles. Ink is gone; a lab that picked it shows Squares.']],
   ['1.1.302', [
     'The left side of the sign-in page is darker.',
     'Sign-in backgrounds are now None, Squares, Bubbles, Glass, Network, Fireflies, Lava lamp, and new Starfield, Embers and Ink. A lab that picked one of those taken out shows Squares.']],
