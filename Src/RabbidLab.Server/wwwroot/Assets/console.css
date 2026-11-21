@@ -720,6 +720,8 @@ body.ad-scoped [data-whole] { display: none !important; }
 .account-chip { display: inline-flex; align-items: center; gap: 9px; padding: 3px 10px 3px 3px; border-radius: 999px; background: transparent; color: var(--title); }
 .account-chip:hover, .account-chip[aria-expanded="true"] { background: #1A1C28; }
 .account-name { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+/* Hidden for now at the user's ask (1.1.299): the top bar shows just the avatar. */
+.account-name { display: none; }
 .chev { width: 14px; height: 14px; fill: none; stroke: var(--muted); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: transform .15s; }
 .account-chip[aria-expanded="true"] .chev { transform: rotate(180deg); }
 .avatar { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--ember);

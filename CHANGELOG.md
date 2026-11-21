@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.299 (2026-11-20)
+
+- The top bar shows just your avatar, without your name. Your name is still in the menu it opens.
+
 ## 1.1.298 (2026-11-20)
 
 - The sign-in page is wider, with the time and your lab's name on the left and the form on the right.
