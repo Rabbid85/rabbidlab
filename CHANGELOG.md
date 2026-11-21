@@ -2,13 +2,18 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.302 (2026-11-20)
+
+- The left side of the sign-in page is darker.
+- Sign-in backgrounds are now None, Squares, Bubbles, Glass, Network, Fireflies, Lava lamp, and new Starfield, Embers and Ink. A lab that picked one of those taken out shows Squares.
+
 ## 1.1.301 (2026-11-20)
 
-- The sign-in page's left side lines up: the time, date and name start at one edge, with the same space above the time as under the name.
+- The left side of the sign-in page lines up: the time, date and name start at one edge, with the same space above the time as under the name.
 
 ## 1.1.300 (2026-11-20)
 
-- Your name is back beside your avatar, with a switch to hide it in Settings, Account, Name in the top bar. It's just for you, in that browser.
+- Your name is back beside your avatar, with a switch to hide it in Settings, Account, Name in the top bar. It is just for you, in that browser.
 
 ## 1.1.299 (2026-11-20)
 
@@ -16,7 +21,7 @@ What changed in each version of Rabbid Lab. The console shows the same notes und
 
 ## 1.1.298 (2026-11-20)
 
-- The sign-in page is wider, with the time and your lab's name on the left and the form on the right.
+- The sign-in page is wider, with the time and the name of your lab on the left and the form on the right.
 - Settings, Appearance has a Sign-in page section: pick the left side (Day bar or Clock) and what moves behind the card (None, Squares, Bubbles and ten more), with a preview.
 
 ## 1.1.297 (2026-11-20)

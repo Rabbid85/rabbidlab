@@ -3,6 +3,18 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.302', [
+    'The left side of the sign-in page is darker.',
+    'Sign-in backgrounds are now None, Squares, Bubbles, Glass, Network, Fireflies, Lava lamp, and new Starfield, Embers and Ink. A lab that picked one of those taken out shows Squares.']],
+  ['1.1.301', [
+    'The left side of the sign-in page lines up: the time, date and name start at one edge, with the same space above the time as under the name.']],
+  ['1.1.300', [
+    'Your name is back beside your avatar, with a switch to hide it in Settings, Account, Name in the top bar. It is just for you, in that browser.']],
+  ['1.1.299', [
+    'The top bar shows just your avatar, without your name. Your name is still in the menu it opens.']],
+  ['1.1.298', [
+    'The sign-in page is wider, with the time and the name of your lab on the left and the form on the right.',
+    'Settings, Appearance has a Sign-in page section: pick the left side (Day bar or Clock) and what moves behind the card (None, Squares, Bubbles and ten more), with a preview.']],
   ['1.1.297', [
     'Rabbid Lab Dev only: signing in on the server itself, the code step has a Skip MFA this time checkbox, so testing there does not need your phone. It is on in Settings, Developer, and other computers still need the code.']],
   ['1.1.296', [

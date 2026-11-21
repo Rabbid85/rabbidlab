@@ -80,6 +80,15 @@ public sealed class BrandTests
         Assert.Equal(["day", "squares"], Look());
     }
 
+    [Fact]
+    public void A_background_picked_before_it_left_the_list_shows_as_squares()
+    {
+        var s = new ConsoleSettings { SignInBackground = "rain" }; // Data rain, gone in 1.1.302
+
+        Assert.Equal("squares", JsonSerializer.SerializeToElement(Brand.Read(s)).GetProperty("background").GetString());
+        Assert.NotNull(Brand.Problem(new BrandForm(null, null, null, Background: "rain")));
+    }
+
     [Theory]
     [InlineData("flask", null)]
     [InlineData("Day", null)]

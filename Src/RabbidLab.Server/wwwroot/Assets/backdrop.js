@@ -2,8 +2,8 @@
 // in the accent and the colours that go with it. The same code draws the soft lights on the sign-in page's Clock side and the
 // preview in Appearance. One frame and no movement when the system asks for reduced motion.
 (() => {
-  const KINDS = [['none', 'None'], ['squares', 'Squares'], ['bubbles', 'Bubbles'], ['glass', 'Glass'], ['net', 'Network'], ['rain', 'Data rain'],
-    ['fireflies', 'Fireflies'], ['drops', 'Drops'], ['fizz', 'Fizz'], ['lava', 'Lava lamp'], ['liquid', 'Liquid'], ['steam', 'Steam'], ['molecules', 'Molecules']];
+  const KINDS = [['none', 'None'], ['squares', 'Squares'], ['bubbles', 'Bubbles'], ['glass', 'Glass'], ['net', 'Network'], ['fireflies', 'Fireflies'],
+    ['lava', 'Lava lamp'], ['stars', 'Starfield'], ['embers', 'Embers'], ['ink', 'Ink']];
   const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const BLUE = [61, 127, 230];
   const VIOLET = [142, 82, 214];
@@ -180,22 +180,6 @@
           }
         },
       },
-      // Data rain: short lines falling down columns at their own speeds, brighter at the head.
-      rain: {
-        setup: () => { state.cols = Array.from({ length: Math.round(w / 34) }, (_, i) => ({ x: i * 34 + 17, y: rnd(-h, h), v: rnd(60, 160), len: rnd(60, 180), c: Math.random() < .2 ? BLUE : A })); },
-        frame: (t, dt) => {
-          for (const c of state.cols) {
-            if (!still) { c.y += c.v * dt; if (c.y - c.len > h) { c.y = rnd(-200, 0); c.v = rnd(60, 160); } }
-            const g = ctx.createLinearGradient(0, c.y - c.len, 0, c.y);
-            g.addColorStop(0, rgba(c.c, 0));
-            g.addColorStop(1, rgba(c.c, .55));
-            ctx.fillStyle = g;
-            ctx.fillRect(c.x - 1, c.y - c.len, 2, c.len);
-            ctx.fillStyle = rgba(L, .9);
-            ctx.fillRect(c.x - 1.5, c.y - 3, 3, 3);
-          }
-        },
-      },
       // Fireflies: soft glowing dots drifting and blinking slowly.
       fireflies: {
         setup: () => { state.f = Array.from({ length: Math.round((w * h) / 30000) }, () => ({ x: rnd(0, w), y: rnd(0, h), a: rnd(0, 6), v: rnd(.2, .6), p: rnd(0, 6), c: Math.random() < .25 ? BLUE : Math.random() < .5 ? L : A })); },
@@ -217,107 +201,6 @@
           ctx.globalCompositeOperation = 'source-over';
         },
       },
-      // Drops: data rain as liquid, round drops falling faster as they go, splashing into a pool along the bottom.
-      drops: {
-        setup: () => {
-          state.drop = (y) => ({ x: rnd(0, w), y, v: rnd(0, 40), r: rnd(3, 7), c: Math.random() < .22 ? BLUE : Math.random() < .3 ? L : A, wait: rnd(0, 2.5) });
-          state.d = Array.from({ length: Math.round(w / 26) }, () => state.drop(rnd(-h * .6, h * .8)));
-          state.bits = []; // droplets thrown up by a landing
-          state.rings = []; // ripples on the pool
-          state.floor = h - 22;
-        },
-        frame: (t, dt) => {
-          const G = 380; // pixels per second, per second; drops stop speeding up at 560
-          const floor = state.floor;
-          const pool = ctx.createLinearGradient(0, floor - 4, 0, h);
-          pool.addColorStop(0, rgba(L, .16));
-          pool.addColorStop(1, rgba(A, .06));
-          ctx.fillStyle = pool;
-          ctx.beginPath();
-          ctx.moveTo(0, h);
-          for (let x = 0; x <= w; x += 12) ctx.lineTo(x, floor + Math.sin(x * .02 + t * 1.4) * 1.5);
-          ctx.lineTo(w, h);
-          ctx.closePath();
-          ctx.fill();
-          for (const d of state.d) {
-            if (!still) {
-              if (d.wait > 0) { d.wait -= dt; continue; }
-              d.v = Math.min(560, d.v + G * dt * (.6 + d.r * .08));
-              d.y += d.v * dt;
-              if (d.y + d.r > floor) {
-                state.rings.push({ x: d.x, c: d.c, k: 0, size: d.r });
-                for (let i = 0; i < 3 + Math.round(d.r); i++) state.bits.push({ x: d.x, y: floor - 1, vx: rnd(-90, 90), vy: -rnd(90, 210) * (d.r / 5), r: rnd(.8, 1.8), c: d.c, life: 1 });
-                Object.assign(d, state.drop(rnd(-80, -10)));
-                continue;
-              }
-            }
-            // The drop, longer the faster it falls, with a shine on it.
-            const stretch = 1 + Math.min(1.6, d.v / 420);
-            ctx.save();
-            ctx.translate(d.x, d.y);
-            const body = ctx.createLinearGradient(0, -d.r * 2 * stretch, 0, d.r);
-            body.addColorStop(0, rgba(L, .55));
-            body.addColorStop(1, rgba(d.c, .9));
-            ctx.fillStyle = body;
-            ctx.beginPath();
-            ctx.moveTo(0, -d.r * 2.4 * stretch);
-            ctx.bezierCurveTo(d.r * .5, -d.r * 1.2 * stretch, d.r * 1.05, -d.r * .2, d.r, d.r * .15);
-            ctx.arc(0, d.r * .15, d.r, 0, Math.PI);
-            ctx.bezierCurveTo(-d.r * 1.05, -d.r * .2, -d.r * .5, -d.r * 1.2 * stretch, 0, -d.r * 2.4 * stretch);
-            ctx.fill();
-            ctx.fillStyle = 'rgba(255,255,255,.55)';
-            ctx.beginPath();
-            ctx.ellipse(-d.r * .35, -d.r * .2, d.r * .22, d.r * .38, -.3, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.restore();
-          }
-          state.bits = state.bits.filter((b) => b.life > 0 && b.y < floor + 2);
-          for (const b of state.bits) {
-            if (!still) { b.vy += G * dt; b.x += b.vx * dt; b.y += b.vy * dt; b.life -= dt * .9; }
-            ctx.fillStyle = rgba(b.c, Math.max(0, b.life) * .85);
-            ctx.beginPath();
-            ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
-            ctx.fill();
-          }
-          state.rings = state.rings.filter((s) => (s.k += dt * 1.1) < 1);
-          ctx.lineWidth = 1.4;
-          for (const s of state.rings) {
-            ctx.strokeStyle = rgba(s.c, (1 - s.k) * .55);
-            for (const lag of [0, .25]) {
-              const k = Math.max(0, s.k - lag);
-              if (!k) continue;
-              ctx.beginPath();
-              ctx.ellipse(s.x, floor + 2, s.size * 2 + k * s.size * 9, 1.2 + k * 3.5, 0, 0, Math.PI * 2);
-              ctx.stroke();
-            }
-          }
-        },
-      },
-      // Fizz: streams of tiny bubbles rising from the bottom like soda, now and then a bigger one.
-      fizz: {
-        setup: () => {
-          state.streams = Array.from({ length: Math.round(w / 38) }, () => ({ x: rnd(0, w), rate: rnd(4, 12), acc: 0 }));
-          // Already under way, so the first frame isn't empty.
-          state.b = Array.from({ length: Math.round(w / 6) }, () => ({ x: rnd(0, w), y: rnd(0, h), r: Math.random() < .06 ? rnd(4, 7) : rnd(1, 2.6), v: rnd(70, 140), p: rnd(0, 6), c: Math.random() < .15 ? L : A }));
-        },
-        frame: (t, dt) => {
-          if (!still) {
-            for (const s of state.streams) {
-              s.acc += s.rate * dt;
-              while (s.acc > 1) { s.acc -= 1; state.b.push({ x: s.x + rnd(-3, 3), y: h + 4, r: Math.random() < .06 ? rnd(4, 7) : rnd(1, 2.6), v: rnd(70, 140), p: rnd(0, 6), c: Math.random() < .15 ? L : A }); }
-            }
-          }
-          ctx.lineWidth = 1.2;
-          for (const b of state.b) {
-            if (!still) b.y -= b.v * dt * (1 + b.r * .05);
-            ctx.strokeStyle = rgba(b.c, Math.min(1, b.y / h) * .8);
-            ctx.beginPath();
-            ctx.arc(b.x + Math.sin(t * 3 + b.p) * 2, b.y, b.r, 0, Math.PI * 2);
-            ctx.stroke();
-          }
-          state.b = state.b.filter((b) => b.y > -10);
-        },
-      },
       // Lava lamp: soft blobs of liquid rising, sinking and running into each other.
       lava: {
         setup: () => { state.l = Array.from({ length: 9 }, (_, i) => ({ x: rnd(.1, .9), y: rnd(0, 1), r: rnd(.07, .14), v: rnd(.015, .04) * (i % 2 ? 1 : -1), p: rnd(0, 6), c: i % 3 === 0 ? BLUE : i % 3 === 1 ? A : VIOLET })); },
@@ -336,73 +219,121 @@
           ctx.restore();
         },
       },
-      // Liquid: the bottom of the screen filled like the flask, its surface moving, bubbles rising through it.
-      liquid: {
-        setup: () => { state.b = Array.from({ length: Math.round(w / 30) }, () => ({ x: rnd(0, w), y: rnd(h * .7, h), r: rnd(2, 6), v: rnd(15, 45), p: rnd(0, 6) })); },
+      // Starfield: stars twinkling and drifting slowly, the near ones faster, and now and then a shooting star.
+      stars: {
+        setup: () => {
+          state.s = Array.from({ length: Math.round((w * h) / 4500) }, () => ({ x: rnd(0, w), y: rnd(0, h), z: Math.random(), p: rnd(0, 6), c: Math.random() < .15 ? L : Math.random() < .2 ? BLUE : PALE }));
+          state.shot = null;
+          state.next = rnd(1.5, 4);
+        },
         frame: (t, dt) => {
-          const top = (x) => h * .74 + Math.sin(x * .006 + t * .8) * 14 + Math.sin(x * .013 - t * .5) * 8;
-          const g = ctx.createLinearGradient(0, h * .68, 0, h);
-          g.addColorStop(0, rgba(L, .32));
-          g.addColorStop(1, rgba(A, .14));
-          ctx.fillStyle = g;
-          ctx.beginPath();
-          ctx.moveTo(0, h);
-          for (let x = 0; x <= w; x += 10) ctx.lineTo(x, top(x));
-          ctx.lineTo(w, h);
-          ctx.closePath();
-          ctx.fill();
-          ctx.strokeStyle = rgba(L, .5);
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          for (let x = 0; x <= w; x += 10) ctx.lineTo(x, top(x));
-          ctx.stroke();
-          ctx.fillStyle = 'rgba(255,255,255,.18)';
-          for (const b of state.b) {
-            if (!still) { b.y -= b.v * dt; if (b.y < top(b.x) + 4) { b.y = h + rnd(0, 30); b.x = rnd(0, w); } }
+          for (const s of state.s) {
+            if (!still) {
+              s.x -= (2 + s.z * 9) * dt;
+              if (s.x < -2) { s.x = w + 2; s.y = rnd(0, h); }
+            }
+            const r = .8 + s.z * 1.6;
+            ctx.fillStyle = rgba(s.c, (.4 + .6 * s.z) * (.55 + .45 * Math.sin(t * (.8 + s.z * 2) + s.p)));
             ctx.beginPath();
-            ctx.arc(b.x + Math.sin(t * 2 + b.p) * 3, b.y, b.r, 0, Math.PI * 2);
+            ctx.arc(s.x, s.y, r, 0, Math.PI * 2);
             ctx.fill();
           }
-        },
-      },
-      // Steam: soft wisps rising from the bottom and fading, like the flask on its burner.
-      steam: {
-        setup: () => { state.s = Array.from({ length: 14 }, () => ({ x: rnd(0, 1), p: rnd(0, 1), sp: rnd(.04, .08), wob: rnd(0, 6), c: Math.random() < .3 ? A : PALE })); },
-        frame: (t) => {
+          if (still) return;
+          state.next -= dt;
+          if (!state.shot && state.next <= 0) state.shot = { x: rnd(w * .35, w * .95), y: rnd(0, h * .35), k: 0, a: rnd(2.45, 2.75) };
+          const s = state.shot;
+          if (!s) return;
+          s.k += dt;
+          const d = s.k * 900;
+          const hx = s.x + Math.cos(s.a) * d;
+          const hy = s.y + Math.sin(s.a) * d;
+          const tail = ctx.createLinearGradient(hx, hy, hx - Math.cos(s.a) * 180, hy - Math.sin(s.a) * 180);
+          const fade = Math.max(0, 1 - s.k / .9);
+          tail.addColorStop(0, rgba(PALE, .9 * fade));
+          tail.addColorStop(.3, rgba(L, .5 * fade));
+          tail.addColorStop(1, rgba(L, 0));
+          ctx.strokeStyle = tail;
+          ctx.lineWidth = 2;
           ctx.lineCap = 'round';
-          for (const s of state.s) {
-            const k = (s.p + t * s.sp) % 1;
-            const x = s.x * w + Math.sin(t * .4 + s.wob) * 40;
-            const y = h - k * h * 1.1;
-            ctx.strokeStyle = rgba(s.c, Math.sin(k * Math.PI) * (s.c === A ? .16 : .09));
-            ctx.lineWidth = 18 + k * 50;
-            ctx.beginPath();
-            ctx.moveTo(x, y + 60);
-            ctx.bezierCurveTo(x + 40 * Math.sin(t * .6 + s.wob), y + 20, x - 40 * Math.cos(t * .5 + s.wob), y - 20, x + 20 * Math.sin(t * .7), y - 60);
-            ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(hx, hy);
+          ctx.lineTo(hx - Math.cos(s.a) * 180, hy - Math.sin(s.a) * 180);
+          ctx.stroke();
+          if (s.k > .9) {
+            state.shot = null;
+            state.next = rnd(4, 9);
           }
         },
       },
-      // Molecules: atoms joined by bonds, each molecule turning slowly as it drifts.
-      molecules: {
+      // Embers: sparks rising off the flask's burner, flickering and drifting, fading out as they climb.
+      embers: {
         setup: () => {
-          const shapes = [[[0, 0], [1, 0]], [[0, 0], [1, 0], [-.5, .87]], [[0, 0], [1, 0], [1.5, .87], [1, 1.73], [0, 1.73], [-.5, .87]], [[0, 0], [1, .3], [2, 0], [1, 1.3]]];
-          state.m = Array.from({ length: Math.round((w * h) / 120000) + 4 }, () => ({ x: rnd(0, w), y: rnd(0, h), a: rnd(0, 6), va: rnd(-.15, .15), vx: rnd(-6, 6), vy: rnd(-6, 6), s: rnd(18, 34), atoms: shapes[Math.floor(rnd(0, shapes.length))], c: Math.random() < .3 ? BLUE : A }));
+          state.spark = (y) => ({ x: rnd(0, w), y, v: rnd(25, 75), drift: rnd(-14, 14), p: rnd(0, 6), r: rnd(1, 2.6), c: Math.random() < .5 ? L : A });
+          state.e = Array.from({ length: Math.round(w / 9) }, () => state.spark(rnd(0, h)));
         },
         frame: (t, dt) => {
-          ctx.lineWidth = 2;
-          for (const m of state.m) {
-            if (!still) { m.a += m.va * dt; m.x = (m.x + m.vx * dt + w) % w; m.y = (m.y + m.vy * dt + h) % h; }
-            const pts = m.atoms.map(([px, py]) => [m.x + (px * Math.cos(m.a) - py * Math.sin(m.a)) * m.s, m.y + (px * Math.sin(m.a) + py * Math.cos(m.a)) * m.s]);
-            ctx.strokeStyle = rgba(m.c, .3);
-            for (let i = 1; i < pts.length; i++) { ctx.beginPath(); ctx.moveTo(...pts[i - 1]); ctx.lineTo(...pts[i]); ctx.stroke(); }
-            if (pts.length === 6) { ctx.beginPath(); ctx.moveTo(...pts[5]); ctx.lineTo(...pts[0]); ctx.stroke(); }
-            pts.forEach(([px, py], i) => {
-              ctx.fillStyle = rgba(i === 0 ? L : m.c, .75);
-              ctx.beginPath();
-              ctx.arc(px, py, i === 0 ? 6 : 4.5, 0, Math.PI * 2);
-              ctx.fill();
-            });
+          ctx.globalCompositeOperation = 'lighter';
+          for (const e of state.e) {
+            if (!still) {
+              e.y -= e.v * dt;
+              e.x += (e.drift + Math.sin(t * 1.7 + e.p) * 12) * dt;
+              if (e.y < -10) Object.assign(e, state.spark(h + rnd(0, 40)));
+            }
+            const a = Math.pow(Math.max(0, e.y / h), .8) * (.6 + .4 * Math.sin(t * 9 + e.p * 3));
+            ctx.fillStyle = rgba(e.c, a * .22);
+            ctx.beginPath();
+            ctx.arc(e.x, e.y, e.r * 4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = `rgba(255,236,226,${a * .9})`;
+            ctx.beginPath();
+            ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.globalCompositeOperation = 'source-over';
+        },
+      },
+      // Ink: drops of coloured ink blooming in water, curling outward and fading, a new drop somewhere else now and then.
+      ink: {
+        setup: () => {
+          state.p = [];
+          state.drop = (c) => ({ x: rnd(.15, .85) * w, y: rnd(.15, .85) * h, c, acc: 0, life: rnd(5, 9) });
+          state.src = [L, BLUE, VIOLET].map(state.drop);
+          state.step = (t, dt) => {
+            for (const s of state.src) {
+              s.life -= dt;
+              if (s.life < 0) Object.assign(s, state.drop(s.c));
+              if (s.life < 1.5) continue; // a pause before the next drop
+              s.acc += 6 * dt;
+              while (s.acc > 1) {
+                s.acc -= 1;
+                const a = rnd(0, Math.PI * 2);
+                const v = rnd(8, 30);
+                state.p.push({ x: s.x, y: s.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, r: rnd(6, 12), grow: rnd(9, 16), life: 1, fade: rnd(.11, .16), c: s.c });
+              }
+            }
+            for (const p of state.p) {
+              p.vx += Math.sin(p.y * .012 + t * .4) * 5 * dt;
+              p.vy += Math.cos(p.x * .012 + t * .3) * 5 * dt;
+              p.vx *= 1 - .25 * dt;
+              p.vy *= 1 - .25 * dt;
+              p.x += p.vx * dt;
+              p.y += p.vy * dt;
+              p.r += p.grow * dt;
+              p.life -= p.fade * dt;
+            }
+            state.p = state.p.filter((p) => p.life > 0);
+          };
+          // Already blooming on the first frame.
+          for (let i = 0; i < 150; i++) state.step(i / 30, 1 / 30);
+        },
+        frame: (t, dt) => {
+          if (!still) state.step(t, dt);
+          for (const p of state.p) {
+            const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r);
+            g.addColorStop(0, rgba(p.c, .16 * p.life));
+            g.addColorStop(1, rgba(p.c, 0));
+            ctx.fillStyle = g;
+            ctx.fillRect(p.x - p.r, p.y - p.r, p.r * 2, p.r * 2);
           }
         },
       },

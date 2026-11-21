@@ -26,7 +26,7 @@ public static partial class Brand
     public static readonly string[] Sides = ["day", "clock"];
 
     /// <summary>What shows behind the sign-in card (backdrop.js draws them); none is the page's plain colour.</summary>
-    public static readonly string[] Backgrounds = ["none", "squares", "bubbles", "glass", "net", "rain", "fireflies", "drops", "fizz", "lava", "liquid", "steam", "molecules"];
+    public static readonly string[] Backgrounds = ["none", "squares", "bubbles", "glass", "net", "fireflies", "lava", "stars", "embers", "ink"];
 
     [GeneratedRegex("^#[0-9A-Fa-f]{6}$")]
     private static partial Regex Hex();
@@ -37,7 +37,9 @@ public static partial class Brand
     public static object Read(ConsoleSettings s) => new
     {
         name = s.LabName, icon = s.LabIcon, accent = s.Accent, tagline = s.LabTagline,
-        side = s.SignInSide ?? Sides[0], background = s.SignInBackground ?? "squares",
+        side = s.SignInSide ?? Sides[0],
+        // One picked before it left the list (1.1.302 dropped Data rain, Drops and others) shows as Squares.
+        background = Backgrounds.Contains(s.SignInBackground, StringComparer.Ordinal) ? s.SignInBackground : "squares",
     };
 
     /// <summary>Why a change can't be saved, or null when it can.</summary>
