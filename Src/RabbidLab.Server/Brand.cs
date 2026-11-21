@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 namespace RabbidLab.Server;
 
 /// <summary>A change to the lab's look. Null leaves that part as it is; an empty string puts Rabbid Lab's own back.</summary>
-public sealed record BrandForm(string? Name, string? Icon, string? Accent, string? Tagline = null);
+public sealed record BrandForm(string? Name, string? Icon, string? Accent, string? Tagline = null, string? Side = null, string? Background = null);
 
 /// <summary>
 /// The lab's own look, the same for everyone who signs in: its name in the top bar and the browser tab, its icon, and the
@@ -22,13 +22,23 @@ public static partial class Brand
     /// <summary>The tags a tagline may hold; the page fills them in (brand.js fill).</summary>
     public static readonly string[] Tags = ["name", "username", "hostname", "domain", "version", "role"];
 
+    /// <summary>The sign-in page's left side: the time with a bar for how much of the day has gone, or the time over soft lights.</summary>
+    public static readonly string[] Sides = ["day", "clock"];
+
+    /// <summary>What shows behind the sign-in card (backdrop.js draws them); none is the page's plain colour.</summary>
+    public static readonly string[] Backgrounds = ["none", "squares", "bubbles", "glass", "net", "rain", "fireflies", "drops", "fizz", "lava", "liquid", "steam", "molecules"];
+
     [GeneratedRegex("^#[0-9A-Fa-f]{6}$")]
     private static partial Regex Hex();
 
     [GeneratedRegex(@"\{([^{}]*)\}")]
     private static partial Regex Tag();
 
-    public static object Read(ConsoleSettings s) => new { name = s.LabName, icon = s.LabIcon, accent = s.Accent, tagline = s.LabTagline };
+    public static object Read(ConsoleSettings s) => new
+    {
+        name = s.LabName, icon = s.LabIcon, accent = s.Accent, tagline = s.LabTagline,
+        side = s.SignInSide ?? Sides[0], background = s.SignInBackground ?? "squares",
+    };
 
     /// <summary>Why a change can't be saved, or null when it can.</summary>
     public static string? Problem(BrandForm form)
@@ -69,6 +79,14 @@ public static partial class Brand
                 return $"{{{unknown}}} isn't a tag. Use {string.Join(", ", Tags.Select(t => $"{{{t}}}"))}.";
             }
         }
+        if (form.Side is { Length: > 0 } side && !Sides.Contains(side, StringComparer.Ordinal))
+        {
+            return "Pick Day bar or Clock for the sign-in page.";
+        }
+        if (form.Background is { Length: > 0 } background && !Backgrounds.Contains(background, StringComparer.Ordinal))
+        {
+            return "Pick a sign-in background from the list.";
+        }
         return null;
     }
 
@@ -91,6 +109,14 @@ public static partial class Brand
         {
             s.LabTagline = form.Tagline.Trim() is { Length: > 0 } t ? t : null;
         }
+        if (form.Side is not null)
+        {
+            s.SignInSide = form.Side.Length > 0 ? form.Side : null;
+        }
+        if (form.Background is not null)
+        {
+            s.SignInBackground = form.Background.Length > 0 ? form.Background : null;
+        }
     }
 
     public static void MapBrandApi(this WebApplication app)
@@ -109,7 +135,8 @@ public static partial class Brand
                 return Results.BadRequest(new { error = problem });
             }
             settings.Change(s => Apply(s, form));
-            var what = new[] { form.Name is null ? null : "name", form.Icon is null ? null : "icon", form.Accent is null ? null : "accent colour", form.Tagline is null ? null : "tagline" }.OfType<string>();
+            var what = new[] { form.Name is null ? null : "name", form.Icon is null ? null : "icon", form.Accent is null ? null : "accent colour", form.Tagline is null ? null : "tagline",
+                form.Side is null ? null : "sign-in left side", form.Background is null ? null : "sign-in background" }.OfType<string>();
             log.Record(context, "admin", "brand", $"Changed the lab's {string.Join(" and ", what)}");
             return Results.Ok(Read(settings.Current));
         });

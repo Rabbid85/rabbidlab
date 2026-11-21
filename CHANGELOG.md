@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.298 (2026-11-20)
+
+- The sign-in page is wider, with the time and your lab's name on the left and the form on the right.
+- Settings, Appearance has a Sign-in page section: pick the left side (Day bar or Clock) and what moves behind the card (None, Squares, Bubbles and ten more), with a preview.
+
 ## 1.1.297 (2026-11-20)
 
 - Rabbid Lab Dev only: signing in on the server itself, the code step has a Skip MFA this time checkbox, so testing there does not need your phone. It is on in Settings, Developer, and other computers still need the code.

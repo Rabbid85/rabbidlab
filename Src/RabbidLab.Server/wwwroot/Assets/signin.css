@@ -1,26 +1,41 @@
-/* Setup and sign-in: drifting tiles behind one card with the logo and name at the top, the form under it, and where
-   updating stands at its foot. */
+/* Setup and sign-in: a background (backdrop.js) behind one wide card, the time and the lab's name on its left side, the form
+   on its right and where updating stands at the form's foot. */
 body.auth { overflow-x: hidden; }
-.tiles { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 0; pointer-events: none; }
-/* Until the page knows whether it's setting up or signing in, the card stays blank, so it's drawn once in its final layout. */
-body.loading .card-body > *, body.loading .card-foot > * { visibility: hidden; }
+.backdrop { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 0; pointer-events: none; }
+/* Until the page knows whether it's setting up or signing in, the form stays blank, so it's drawn once in its final layout. */
+body.loading .card-body > *, body.loading .card-foot > *, body.loading .side-sub { visibility: hidden; }
 /* The card's top stays put whichever form shows: only its foot moves. */
 .auth-shell { position: relative; z-index: 1; min-height: 100vh; display: flex; justify-content: center; align-items: flex-start;
-  padding: max(28px, calc(50vh - 340px)) 16px 28px; }
-.signin-card { width: 100%; max-width: 460px; background: #11131D; border: 1px solid var(--line); border-radius: 18px; overflow: hidden; }
+  padding: max(28px, calc(50vh - 300px)) 16px 28px; }
+.signin-card { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); grid-template-rows: 1fr auto; width: 100%; max-width: 1040px;
+  min-height: 600px; background: #11131D; border: 1px solid var(--line); border-radius: 18px; overflow: hidden; }
 
-/* The header: the logo beside the name, the way the console's top bar shows them. */
-.band { display: grid; grid-template-columns: auto 1fr; column-gap: 14px; align-items: center; padding: 24px 34px 22px; background: #0C0E17; border-bottom: 1px solid var(--line); }
-.band-mark { grid-row: 1 / 3; display: block; width: 44px; height: 44px; border-radius: 11px; }
-img.band-mark { object-fit: cover; }
-.band-title { grid-column: 2; margin: 0; font: 650 23px/1.2 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; letter-spacing: -.01em; color: var(--title); }
-.band-title .dev-tag { vertical-align: middle; font-family: "Segoe UI", system-ui, sans-serif; letter-spacing: .08em; }
-.band-sub { grid-column: 2; margin: 0; padding-top: 3px; font-size: 14px; font-weight: 500; color: var(--muted); }
-/* The icon, a thin line, then the name and what it is, as a company banner has it. */
-.band-title, .band-sub { padding-left: 16px; border-left: 1px solid var(--line-strong); }
+/* The left side: this computer's time and the lab's name. Day: a plain panel, the time at the top with a bar for the day. */
+.side { position: relative; grid-row: 1 / 3; overflow: hidden; border-right: 1px solid var(--line); background: #10121C; }
+.side-lights { position: absolute; inset: 0; display: none; width: 100%; height: 100%; }
+.side-clock { position: absolute; left: 44px; right: 44px; top: 46px; z-index: 1; color: #fff; }
+.side-time { display: block; font: 200 128px/.95 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; letter-spacing: -.05em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.side-date { display: block; margin-top: 10px; color: #D7DAE8; font-size: 20px; font-weight: 500; }
+.side-day { height: 6px; margin-top: 26px; border-radius: 3px; background: rgba(255, 255, 255, .1); overflow: hidden; }
+.side-day i { display: block; width: 0; height: 100%; border-radius: 3px; background: var(--accent); }
+.side-day-text { display: block; margin-top: 10px; color: #8E92A8; font-size: 13.5px; }
+/* Clock: soft lights moving behind, the time lower down just above the name, and no day bar. */
+.side[data-side="clock"] { --glow: color-mix(in srgb, var(--accent) 26%, transparent); --glow-2: color-mix(in srgb, var(--tile-d) 20%, transparent);
+  background: radial-gradient(80% 70% at 85% 5%, var(--glow), transparent 70%), radial-gradient(70% 60% at 15% 100%, var(--glow-2), transparent 70%), #0D0F18; }
+.side[data-side="clock"] .side-lights { display: block; }
+.side[data-side="clock"] .side-clock { top: auto; bottom: 156px; }
+.side[data-side="clock"] .side-time { font-weight: 300; font-size: 118px; text-shadow: 0 2px 24px rgba(0, 0, 0, .45); }
+.side[data-side="clock"] .side-date { margin-top: 8px; }
+.side[data-side="clock"] .side-day, .side[data-side="clock"] .side-day-text { display: none; }
+/* The lab's name at the foot: the tagline over it when there is one, and what it's the console for under it. */
+.side-name { position: absolute; left: 42px; right: 42px; bottom: 40px; z-index: 1; }
+.side-tag { margin: 0 0 8px; font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.side-title { margin: 0; font: 800 40px/1 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; letter-spacing: -.045em; color: #fff; overflow-wrap: anywhere; }
+.side-title .dev-tag { margin-top: 4px; vertical-align: top; font-family: "Segoe UI", system-ui, sans-serif; font-size: 12px; letter-spacing: .08em; }
+.side-sub { margin: 12px 0 0; color: #C9CCDA; font-size: 15px; }
 
-/* The form. */
-.card-body { padding: 30px 34px 22px; display: flex; flex-direction: column; }
+/* The form. The heading starts at the same place whichever form shows. */
+.card-body { padding: 92px 46px 22px; display: flex; flex-direction: column; }
 .card-body h2 { margin: 0 0 18px; font: 750 28px/1.2 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; color: var(--title); }
 .card-lead { margin: -12px 0 18px; color: var(--muted); font-size: 14.5px; line-height: 1.5; }
 
@@ -88,7 +103,7 @@ button.go:disabled { filter: grayscale(.4); opacity: .6; }
 .other-kind:hover { background: transparent; color: var(--accent-soft); text-decoration: underline; text-underline-offset: 3px; }
 
 /* The foot: where updating stands, then this computer and the version. */
-.card-foot { display: flex; flex-direction: column; align-items: flex-start; padding: 15px 34px; border-top: 1px solid var(--line); }
+.card-foot { display: flex; flex-direction: column; align-items: flex-start; padding: 18px 46px 24px; border-top: 1px solid var(--line); }
 .foot-update { align-self: stretch; }
 .foot-update:has(> :not([hidden])) { margin-bottom: 7px; }
 .card-foot .where { margin: 0; color: #5E6380; font-size: 12px; }
@@ -103,12 +118,22 @@ button.go:disabled { filter: grayscale(.4); opacity: .6; }
 .update-bar { width: 100%; height: 3px; margin: 8px 0 2px; border-radius: 3px; background: #22253A; overflow: hidden; }
 .update-bar i { display: block; height: 100%; width: 0; background: var(--ember); transition: width .3s; }
 
+/* Narrow windows: one column, the name on top as a band and no clock. */
+@media (max-width: 900px) {
+  .signin-card { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr auto; max-width: 460px; min-height: 0; }
+  .side { grid-row: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+  .side-clock { display: none; }
+  .side-name { position: relative; left: auto; right: auto; bottom: auto; padding: 24px 34px 22px; }
+  .side-title { font-size: 28px; }
+  .side-sub { margin-top: 6px; font-size: 14px; }
+  .card-body { padding: 30px 34px 22px; }
+  .card-foot { padding: 15px 34px; }
+}
 @media (max-width: 480px) {
   .auth-shell { padding-top: 16px; }
-  .band { padding: 16px 20px 14px; }
+  .side-name { padding: 16px 20px 14px; }
   .card-body, .card-foot { padding-left: 20px; padding-right: 20px; }
 }
-.band-mark.gone { display: none; }
 /* Skip MFA this time: Rabbid Lab Dev, in a browser on the server itself. */
 .mfa-skip { display: flex; align-items: center; gap: 10px; margin: 2px 0 14px; color: var(--text); font-size: 14px; cursor: pointer; }
 .mfa-skip[hidden] { display: none; }

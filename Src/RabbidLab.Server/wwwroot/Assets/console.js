@@ -1283,7 +1283,17 @@ const RELEASE_NOTES = [
     $('br-reset').disabled = !brand.icon;
     $('br-accent-reset').disabled = !brand.accent;
     $('br-cant').hidden = may;
+    // The sign-in page's left side and background, the background moving in the preview.
+    $('br-side').value = brand.side || 'day';
+    $('br-bg').value = brand.background || 'squares';
+    $('br-side').disabled = !may;
+    $('br-bg').disabled = !may;
+    bgPreview(brand.background || 'squares');
   };
+  $('br-bg').innerHTML = window.RabbidLabBackdrop.KINDS.map(([k, label]) => `<option value="${k}">${label}</option>`).join('');
+  const bgPreview = window.RabbidLabBackdrop.on($('br-bg-preview'), { width: 760 });
+  $('br-side').addEventListener('change', () => saveBrand({ side: $('br-side').value }));
+  $('br-bg').addEventListener('change', () => saveBrand({ background: $('br-bg').value }));
   const saveBrand = async (change) => {
     try {
       brand = Brand.apply(await send('/api/brand', change));

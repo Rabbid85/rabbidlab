@@ -16,6 +16,29 @@
     $('error').hidden = !text;
   };
 
+  // The left side's time, date and how much of the day has gone: this computer's, as a lock screen's are. Again on each minute.
+  const clock = () => {
+    const now = new Date();
+    $('side-time').textContent = new Intl.DateTimeFormat([], { hour: 'numeric', minute: '2-digit' }).formatToParts(now)
+      .filter((p) => p.type !== 'dayPeriod').map((p) => p.value).join('').trim();
+    $('side-date').textContent = now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
+    const gone = Math.round(((now.getHours() * 60 + now.getMinutes()) / 1440) * 100);
+    $('side-day-fill').style.width = `${gone}%`;
+    $('side-day-text').textContent = `${now.toLocaleDateString([], { weekday: 'long' })} · ${gone}% of the day gone`;
+    setTimeout(clock, 60000 - (Date.now() % 60000) + 50);
+  };
+  clock();
+  // The left side and what moves behind the card (Settings, Appearance): as this browser last saw them, then the server's.
+  const showBackdrop = window.RabbidLabBackdrop.on(document.querySelector('canvas.backdrop'));
+  const showLights = window.RabbidLabBackdrop.on($('side-lights'));
+  const look = (brand) => {
+    const side = brand.side === 'clock' ? 'clock' : 'day';
+    $('side').dataset.side = side;
+    showBackdrop(brand.background || 'squares');
+    showLights(side === 'clock' ? 'lights' : 'none');
+  };
+  look(window.RabbidLabBrand.now);
+
   // Signed out for being idle (console.js): said here, and signing in goes back to the page they were on.
   const idleFor = Number(new URLSearchParams(location.search).get('idle'));
   if (idleFor > 0) {
@@ -359,13 +382,12 @@
     const name = brand.name || product;
     document.title = (setup ? 'Set up ' : 'Sign in to ') + name;
     document.querySelectorAll('[data-product]').forEach((e) => { e.textContent = name; });
-    // The tagline, with what's known before anyone signs in; one asking for {username} or {name} shows Lab console here.
-    document.getElementById('band-sub').textContent = window.RabbidLabBrand.fill(brand.tagline, { hostname: s.machine, version: s.version, domain: s.domain })
-      || window.RabbidLabBrand.TAG;
-    // The icon this browser kept went on before this (brand-paint.js); the server's wins, or Rabbid Lab's mark when there's none.
-    document.getElementById('band-img').hidden = !brand.icon;
-    document.querySelector('svg.band-mark').classList.toggle('gone', !!brand.icon);
-    if (brand.icon) document.getElementById('band-img').src = brand.icon;
+    // The tagline over the name, with what's known before anyone signs in; one asking for {username} or {name} isn't shown here.
+    const tag = window.RabbidLabBrand.fill(brand.tagline, { hostname: s.machine, version: s.version, domain: s.domain });
+    $('side-tag').textContent = tag || '';
+    $('side-tag').hidden = !tag;
+    $('side-sub').textContent = s.domain ? `Lab console for ${s.domain}` : window.RabbidLabBrand.TAG;
+    look(brand);
     document.querySelectorAll('[data-version]').forEach((e) => {
       e.textContent = `${s.machine} · ${s.version}`;
       e.title = `${product} ${s.version} on ${s.machine} (${s.platform})`;

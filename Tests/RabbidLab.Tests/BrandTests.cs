@@ -61,6 +61,35 @@ public sealed class BrandTests
         Assert.NotNull(Brand.Problem(new BrandForm(null, null, null, tagline)));
 
     [Fact]
+    public void The_sign_in_left_side_and_background_are_saved_and_empty_ones_put_day_and_squares_back()
+    {
+        var s = new ConsoleSettings();
+        string?[] Look() { var b = JsonSerializer.SerializeToElement(Brand.Read(s)); return [b.GetProperty("side").GetString(), b.GetProperty("background").GetString()]; }
+
+        var fresh = Look();
+        Assert.Null(Brand.Problem(new BrandForm(null, null, null, Side: "clock", Background: "bubbles")));
+        Brand.Apply(s, new BrandForm(null, null, null, Side: "clock", Background: "bubbles"));
+        var set = Look();
+        Brand.Apply(s, new BrandForm("Wiles Lab", null, null)); // another change leaves them be
+        var kept = Look();
+        Brand.Apply(s, new BrandForm(null, null, null, Side: "", Background: ""));
+
+        Assert.Equal(["day", "squares"], fresh);
+        Assert.Equal(["clock", "bubbles"], set);
+        Assert.Equal(["clock", "bubbles"], kept);
+        Assert.Equal(["day", "squares"], Look());
+    }
+
+    [Theory]
+    [InlineData("flask", null)]
+    [InlineData("Day", null)]
+    [InlineData(null, "matrix")]
+    [InlineData(null, "Squares")]
+    [InlineData(null, "../tiles")]
+    public void A_sign_in_side_or_background_not_on_the_list_is_refused(string? side, string? background) =>
+        Assert.NotNull(Brand.Problem(new BrandForm(null, null, null, Side: side, Background: background)));
+
+    [Fact]
     public async Task The_look_is_still_there_after_a_restart_such_as_an_update_and_the_sign_in_page_is_given_it()
     {
         var data = Path.Combine(Path.GetTempPath(), "rabbidlab-brand-" + Guid.NewGuid().ToString("N"));

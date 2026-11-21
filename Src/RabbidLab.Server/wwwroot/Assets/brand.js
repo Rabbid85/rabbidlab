@@ -20,7 +20,7 @@
     const i = swatch(accent);
     return i >= 0 ? [SWATCHES[i][1], SWATCHES[i][2]] : [lighter(accent, 0.15), accent];
   };
-  let now = { name: null, icon: null, accent: null, tagline: null };
+  let now = { name: null, icon: null, accent: null, tagline: null, side: null, background: null };
   try {
     now = { ...now, ...JSON.parse(localStorage.getItem(KEY) || '{}') };
   } catch {
@@ -54,7 +54,8 @@
     if (mine === asked) link.href = href;
   };
   const apply = (brand) => {
-    now = { name: brand?.name || null, icon: brand?.icon || null, accent: brand?.accent || null, tagline: brand?.tagline || null };
+    now = { name: brand?.name || null, icon: brand?.icon || null, accent: brand?.accent || null, tagline: brand?.tagline || null,
+      side: brand?.side || null, background: brand?.background || null };
     try {
       localStorage.setItem(KEY, JSON.stringify(now));
     } catch {
@@ -86,6 +87,8 @@
     if (now.name) root.querySelectorAll('[data-brand-name]').forEach((e) => { e.textContent = now.name; });
     const tag = fill(now.tagline);
     if (tag) root.querySelectorAll('[data-brand-tag]').forEach((e) => { e.textContent = tag; });
+    // The sign-in page's left side (Settings, Appearance): the day bar, or the clock over soft lights.
+    root.querySelectorAll('[data-brand-side]').forEach((e) => { e.dataset.side = now.side || 'day'; });
     if (!now.icon) return;
     root.querySelectorAll('[data-brand-img]').forEach((e) => {
       e.src = now.icon;

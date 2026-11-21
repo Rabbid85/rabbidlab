@@ -159,6 +159,9 @@ body.app.rail-small { grid-template-columns: 60px minmax(0, 1fr); }
 .ap-rows .ds-h.has-reset .ds-btn:not(.ds-ibtn) { min-width: 80px; justify-content: center; }
 .ap-rows .ds-r select, .ap-rows .ds-r .ds-input { width: 100%; }
 .ap-icon { display: flex; align-items: center; gap: 10px; }
+/* Sign-in page: the background picked, moving in a little window under the list (backdrop.js). */
+.br-bg-preview { grid-column: 1; display: block; width: 100%; aspect-ratio: 16 / 10; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--night); }
+.ds-row:has(.br-bg-preview) { align-items: flex-start; }
 .ap-icon .ds-icon { flex: none; width: 38px; height: 38px; border-radius: 8px; }
 .ap-icon .ds-icon svg, .ap-icon .ds-icon img { width: 26px; height: 26px; }
 .ap-icon .ds-btn { flex: 1; }

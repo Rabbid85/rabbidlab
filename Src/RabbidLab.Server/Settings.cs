@@ -23,6 +23,10 @@ public sealed class ConsoleSettings
     /// <summary>The line under the name, with tags such as {username} filled in by the page. Null: "Lab console".</summary>
     public string? LabTagline { get; set; }
 
+    /// <summary>The sign-in page's left side (Brand.Sides) and what shows behind the card (Brand.Backgrounds). Null: day, squares.</summary>
+    public string? SignInSide { get; set; }
+    public string? SignInBackground { get; set; }
+
     /// <summary>Sign out when idle: minutes without a click, key press or scroll before a session ends (SignIn.IdleOut). 0 is never.</summary>
     public int IdleMinutes { get; set; } = 30;
 }

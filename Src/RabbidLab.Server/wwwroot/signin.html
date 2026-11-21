@@ -12,7 +12,7 @@
 <link rel="stylesheet" href="Assets/signin.css">
 <link rel="stylesheet" href="Assets/edition.css">
 <script src="Assets/palette.js" defer></script>
-<script src="Assets/tiles.js" defer></script>
+<script src="Assets/backdrop.js" defer></script>
 <script src="Assets/signin.js" defer></script>
 <script src="Assets/tips.js" defer></script>
 </head>
@@ -27,15 +27,25 @@
   <symbol id="i-eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18M10.6 5.1A10.8 10.8 0 0 1 12 5c6.4 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.1M6.6 6.6C3.7 8.5 2 12 2 12s3.6 7 10 7a10.4 10.4 0 0 0 5.4-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2"/></symbol>
   <symbol id="i-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></symbol>
 </svg>
-<canvas class="tiles" aria-hidden="true"></canvas>
+<canvas class="backdrop" aria-hidden="true"></canvas>
 <main class="auth-shell">
   <section class="signin-card">
-    <!-- The header: the logo and the name, as the console's top bar shows them. -->
-    <header class="band">
-      <svg class="band-mark" data-brand-mark viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="15" fill="#0B0C14"/><g fill="#F2F3FA" transform="translate(10 14) scale(.9)"><rect width="11" height="40"/><path fill-rule="evenodd" d="M0 0H18A13 13 0 0 1 18 26H0ZM11 9V17H18A4 4 0 0 0 18 9Z"/><path d="M13 22H24L33 40H22Z"/></g><rect class="mark-dot" x="44" y="39" width="11" height="11" rx="1.5" fill="#FF6A45"/></svg><img class="band-mark" id="band-img" data-brand-img alt="" hidden>
-      <h1 class="band-title"><span data-product data-brand-name>Rabbid Lab</span> <span class="dev-tag" aria-label="Dev build">DEV</span></h1>
-      <p class="band-sub" id="band-sub" data-brand-tag>Lab console</p>
-    </header>
+    <!-- The left side (Settings, Appearance, Sign-in page): this computer's time and the lab's name. Day: the time on a plain
+         panel with a bar for how much of the day has gone. Clock: the time bigger, over soft lights. -->
+    <aside class="side" id="side" data-brand-side data-side="day">
+      <canvas class="side-lights" id="side-lights" aria-hidden="true"></canvas>
+      <div class="side-clock" aria-hidden="true">
+        <b class="side-time" id="side-time"></b>
+        <span class="side-date" id="side-date"></span>
+        <div class="side-day"><i id="side-day-fill"></i></div>
+        <span class="side-day-text" id="side-day-text"></span>
+      </div>
+      <div class="side-name">
+        <p class="side-tag" id="side-tag" hidden></p>
+        <h1 class="side-title"><span data-product data-brand-name>Rabbid Lab</span> <span class="dev-tag" aria-label="Dev build">DEV</span></h1>
+        <p class="side-sub" id="side-sub">Lab console</p>
+      </div>
+    </aside>
     <script src="Assets/brand-paint.js"></script>
 
     <div class="card-body">
