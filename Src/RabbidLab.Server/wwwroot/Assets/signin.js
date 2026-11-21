@@ -73,6 +73,7 @@
       : said.reset ? 'Your MFA was reset. Type the one-time code you were given, then scan this with your authenticator app and type the 6-digit code it shows.'
         : 'Signing in takes a code from an authenticator app, such as Microsoft Authenticator or Google Authenticator. Scan this with it, then type the 6-digit code it shows.';
     $('mfa-reset-box').hidden = !said.reset;
+    $('mfa-reset-label').hidden = !said.reset;
     $('mfa-reset').value = '';
     $('mfa-setup').hidden = !setup;
     if (setup) {
@@ -96,8 +97,10 @@
     setupShown = setup;
     const skip = $('mfa-skip').checked;
     $('mfa-code-box').hidden = skip;
+    $('mfa-code-label').hidden = skip;
     $('mfa-setup').hidden = !setup || skip;
     $('mfa-reset-box').hidden = skip || !resetShown;
+    $('mfa-reset-label').hidden = skip || !resetShown;
     $('mfa-go').textContent = skip ? 'Sign in without a code' : setup ? 'Turn on and sign in' : 'Verify';
   };
   $('mfa-skip').addEventListener('change', () => skipping());
@@ -274,7 +277,7 @@
     // The same, on the line above the account boxes when signing in.
     const dc = $('ad-context-dc');
     dc.textContent = server ? short(server) + (chosen && !chosen.online ? ', not answering' : '')
-      : nearest ? `${short(nearest.name)}, automatic` : controllers.length ? 'None answering' : 'Automatic';
+      : nearest ? short(nearest.name) : controllers.length ? 'a controller (none answering)' : 'the quickest controller';
     dc.classList.toggle('off', server ? !!chosen && !chosen.online : controllers.length > 0 && !nearest);
     dc.classList.toggle('unknown', !controllers.length);
   };
@@ -394,9 +397,10 @@
       e.title = `${product} ${s.version} on ${s.machine} (${s.platform})`;
     });
     document.body.classList.toggle('is-dev', !!s.dev);
-    $('heading').textContent = setup ? 'Set up' : 'Sign in';
+    $('heading').textContent = setup ? 'Set up' : 'Welcome back';
     $('other-kind').hidden = !setup && !s.domain;
     $('confirm-row').hidden = !setup;
+    $('confirm-label').hidden = !setup;
     document.querySelectorAll('[data-signed-in]').forEach((e) => { e.hidden = setup; });
     document.querySelectorAll('[data-setup]').forEach((e) => { e.hidden = !setup; });
     // Signing in with Active Directory, the domain and its controller show on one line, and Change opens the list.
@@ -494,6 +498,15 @@
       if (domain()) domainChanged();
     };
 
+    // The avatar over the heading: the initials of the username as it's typed in the box that shows (DOMAIN\name and
+    // name@domain count as name), or the person icon while it's empty.
+    const hello = () => {
+      const box = $('ad-form').hidden ? $('local-user') : $('ad-user');
+      const initials = box.value.trim().split(/[\\/]/).pop().split('@')[0].replace(/[^a-z0-9]/gi, '').slice(0, 2).toUpperCase();
+      $('hello-initials').textContent = initials;
+      $('hello-av').classList.toggle('on', !!initials);
+    };
+    ['local-user', 'ad-user'].forEach((id) => $(id).addEventListener('input', hello));
     // One way shows at a time; the link under the button switches to the other.
     let showing = 'local';
     const choose = (kind, focus = true) => {
@@ -504,6 +517,8 @@
       $('lead').textContent = setup ? (kind === 'ad' ? `Connect ${name} to your domain.` : 'Create the administrator account.')
         : kind === 'ad' ? `Use your ${s.domain} account.` : s.domain ? 'Use a local account.' : `Use your ${name} account.`;
       $('other-kind').textContent = kind === 'ad' ? 'Use a local account instead' : 'Use Active Directory instead';
+      $('ad-password').placeholder = setup ? 'Your domain password' : `Your ${s.domain} password`;
+      hello();
       showError('');
       if (kind === 'ad') startDirectory();
       if (!focus) return;
