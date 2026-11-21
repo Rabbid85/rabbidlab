@@ -1,6 +1,6 @@
 // What moves behind the sign-in card (Settings, Appearance, Sign-in page): none, today's squares, or one of the others, all
-// in the accent and the colours that go with it. The same code draws the soft lights on the sign-in page's Clock side and the
-// preview in Appearance. One frame and no movement when the system asks for reduced motion.
+// in the accent and the colours that go with it. The same code draws the preview in Appearance. One frame and no movement
+// when the system asks for reduced motion.
 (() => {
   const KINDS = [['none', 'None'], ['squares', 'Squares'], ['bubbles', 'Bubbles'], ['glass', 'Glass'], ['net', 'Network'], ['fireflies', 'Fireflies'],
     ['fizz', 'Fizz'], ['lava', 'Lava lamp'], ['stars', 'Starfield'], ['embers', 'Embers']];
@@ -331,23 +331,6 @@
             ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2);
             ctx.fill();
           }
-          ctx.globalCompositeOperation = 'source-over';
-        },
-      },
-      // Lights: the sign-in page's Clock side, three soft lights drifting slowly behind the time.
-      lights: {
-        setup: () => {},
-        frame: (t) => {
-          ctx.globalCompositeOperation = 'lighter';
-          [[A, .2, .25, 0], [BLUE, .75, .7, 2], [VIOLET, .4, .85, 4]].forEach(([c, fx, fy, p]) => {
-            const x = w * fx + Math.sin(t * .07 + p) * w * .15;
-            const y = h * fy + Math.cos(t * .05 + p) * h * .12;
-            const g = ctx.createRadialGradient(x, y, 0, x, y, Math.max(w, h) * .55);
-            g.addColorStop(0, rgba(c, .28));
-            g.addColorStop(1, rgba(c, 0));
-            ctx.fillStyle = g;
-            ctx.fillRect(0, 0, w, h);
-          });
           ctx.globalCompositeOperation = 'source-over';
         },
       },

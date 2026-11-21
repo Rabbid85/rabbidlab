@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.305 (2026-11-21)
+
+- The sign-in page always has the Day bar on its left, and the Left side setting is gone from Settings, Appearance.
+- The Sign in heading is bigger.
+
 ## 1.1.304 (2026-11-20)
 
 - Themes in Settings, Appearance: System, Dark, Light, Carbon, Mocha and Slate. Each person picks their own, kept in their browser, and the sign-in page wears it too. System follows Windows light or dark.

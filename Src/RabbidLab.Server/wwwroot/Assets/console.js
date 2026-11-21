@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.305', [
+    'The sign-in page always has the Day bar on its left, and the Left side setting is gone from Settings, Appearance.',
+    'The Sign in heading is bigger.']],
   ['1.1.304', [
     'Themes in Settings, Appearance: System, Dark, Light, Carbon, Mocha and Slate. Each person picks their own, kept in their browser, and the sign-in page wears it too. System follows Windows light or dark.']],
   ['1.1.303', [
@@ -1347,17 +1350,14 @@ const RELEASE_NOTES = [
     $('br-reset').disabled = !brand.icon;
     $('br-accent-reset').disabled = !brand.accent;
     $('br-cant').hidden = may;
-    // The sign-in page's left side and background, the background moving in the preview.
-    $('br-side').value = brand.side || 'day';
+    // The sign-in page's background, moving in the preview.
     $('br-bg').value = brand.background || 'squares';
-    $('br-side').disabled = !may;
     $('br-bg').disabled = !may;
     bgPreview(brand.background || 'squares');
   };
   $('br-bg').innerHTML = window.RabbidLabBackdrop.KINDS.map(([k, label]) => `<option value="${k}">${label}</option>`).join('');
   const bgPreview = window.RabbidLabBackdrop.on($('br-bg-preview'), { width: 760 });
   window.addEventListener('rabbidlab:theme', () => bgPreview(brand.background || 'squares'));
-  $('br-side').addEventListener('change', () => saveBrand({ side: $('br-side').value }));
   $('br-bg').addEventListener('change', () => saveBrand({ background: $('br-bg').value }));
   const saveBrand = async (change) => {
     try {

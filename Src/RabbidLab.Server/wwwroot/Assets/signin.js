@@ -35,15 +35,9 @@
     setTimeout(clock, 60000 - (Date.now() % 60000) + 50);
   };
   clock();
-  // The left side and what moves behind the card (Settings, Appearance): as this browser last saw them, then the server's.
+  // What moves behind the card (Settings, Appearance): as this browser last saw it, then the server's.
   const showBackdrop = window.RabbidLabBackdrop.on(document.querySelector('canvas.backdrop'));
-  const showLights = window.RabbidLabBackdrop.on($('side-lights'));
-  const look = (brand) => {
-    const side = brand.side === 'clock' ? 'clock' : 'day';
-    $('side').dataset.side = side;
-    showBackdrop(brand.background || 'squares');
-    showLights(side === 'clock' ? 'lights' : 'none');
-  };
+  const look = (brand) => showBackdrop(brand.background || 'squares');
   look(window.RabbidLabBrand.now);
 
   // Signed out for being idle (console.js): said here, and signing in goes back to the page they were on.
