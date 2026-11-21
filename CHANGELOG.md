@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.315 (2026-11-21)
+
+- The Background pill at the foot of the sign-in page is now a two-part button: the background name, then an arrow.
+
 ## 1.1.314 (2026-11-21)
 
 - Wrong passwords now slow a name down and then lock it. Each wrong password makes the next try for that name wait longer, from 2 seconds up to 5 minutes, and the 10th locks it. Settings, Sign-in can make that the 3rd or 5th.

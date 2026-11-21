@@ -144,14 +144,15 @@ form:not([hidden]):has(.context:not([hidden])) ~ .other-kind { margin-top: 2px; 
 .update-bar[hidden] { display: none; }
 .update-bar i { display: block; height: 100%; width: 0; background: var(--ember); transition: width .3s; }
 
-/* The page's foot: a see-through pill with the background's name that opens a panel over it, the backgrounds as moving tiles
-   and the themes as chips. */
+/* The page's foot: a two-part button, the background's name and an arrow, that opens a panel over it, the backgrounds as
+   moving tiles and the themes as chips. */
 .look { position: absolute; left: 50%; bottom: 20px; z-index: 6; transform: translateX(-50%); }
 body.loading .look { visibility: hidden; }
-.look-pill { display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 12px 0 11px; border: 1px solid var(--line-strong); border-radius: 999px;
-  background: rgba(12, 14, 23, .7); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); color: #A9ADC2; font-size: 13px; font-weight: 600;
-  white-space: nowrap; transition: color .15s, border-color .15s; }
-.look-pill:hover, .look-pill[aria-expanded="true"] { background: rgba(12, 14, 23, .7); border-color: var(--accent-line); color: var(--title); }
+.look-pill { display: inline-flex; align-items: stretch; height: 34px; padding: 0; border: 1px solid var(--line-strong); border-radius: 10px; background: #11131D;
+  color: #A9ADC2; font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; transition: color .15s, background .15s; }
+.look-pill:hover, .look-pill[aria-expanded="true"] { background: #161926; border-color: var(--line-strong); color: var(--title); }
+.look-pill > span { display: inline-flex; align-items: center; gap: 8px; padding: 0 12px; }
+.look-pill > span + span { padding: 0 9px; border-left: 1px solid var(--line-strong); }
 .look-ic { width: 16px; height: 16px; color: var(--accent-soft); }
 .look-chev { width: 13px; height: 13px; opacity: .7; transform: rotate(180deg); transition: transform .2s; }
 .look-pill[aria-expanded="true"] .look-chev { transform: none; }

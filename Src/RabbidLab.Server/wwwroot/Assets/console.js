@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.315', [
+    'The Background pill at the foot of the sign-in page is now a two-part button: the background name, then an arrow.']],
   ['1.1.314', [
     'Wrong passwords now slow a name down and then lock it. Each wrong password makes the next try for that name wait longer, from 2 seconds up to 5 minutes, and the 10th locks it. Settings, Sign-in can make that the 3rd or 5th.',
     'A locked name is unlocked in Settings, Sign-in, after typing UNLOCK, by anyone whose role has the new Unlock sign-ins permission. A locked administrator gets back in by typing the password and the authenticator code together.',
