@@ -60,6 +60,9 @@ internal sealed class InventoryReport
 
     /// <summary>What Group Policy did here; left out until it's been read once.</summary>
     [DataMember(Name = "groupPolicy", EmitDefaultValue = false)] public GroupPolicyReport? GroupPolicy { get; set; }
+
+    /// <summary>Its security settings, for the server's Domain health; left out when they couldn't be read.</summary>
+    [DataMember(Name = "hardening", EmitDefaultValue = false)] public HardeningReport? Hardening { get; set; }
 }
 
 [DataContract]
@@ -305,6 +308,14 @@ internal static class Inventory
         }
         r.History = history;
         r.GroupPolicy = policy;
+        try
+        {
+            r.Hardening = Hardening.Read();
+        }
+        catch (Exception e)
+        {
+            misses?.Add($"Security settings: {e.Message}");
+        }
         if (misses.Count > 0)
         {
             Problems.Note("inventory", $"Could not read {misses.Count} part(s) of the inventory. {misses[0]}");
@@ -799,6 +810,12 @@ internal static class Inventory
             all.Append("|h:").Append(h.Title).Append(':').Append(h.Result);
         }
         all.Append("|g:").Append(r.GroupPolicy?.Checked);
+        // The security settings by their values, not when they were read, so a change is sent straight away.
+        if (r.Hardening is { } s)
+        {
+            all.Append("|s:").Append(string.Join(",", new object?[] { s.SmbSigning, s.Smb1, s.LmLevel, s.SpoolerRunning, s.SpoolerStart, s.Tls10, s.Tls11, s.Etypes, s.LapsDirectory,
+                s.LapsDsrm, s.LapsLegacy, s.Multicast, s.LdapIntegrity, s.ChannelBinding }));
+        }
         using var sha = SHA256.Create();
         return BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(all.ToString())));
     }

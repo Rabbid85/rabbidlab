@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.360 (2026-11-22)
+
+- Servers and PCs on On each computer now come from the Rabbid Lab client: it reads its own security settings and sends them with its inventory. Only computers with the client show, and they need no Remote Registry or open port 445.
+- Domain controllers are still read over the network. A DC that also has the client is listed once, as a domain controller.
+- Re-check reads the domain controllers again. Servers and PCs send a change within 30 minutes, and their settings at least every 6 hours.
+
 ## 1.1.359 (2026-11-22)
 
 - On each DC is now On each computer: member servers and PCs are read too, with views for All computers, Domain controllers, Servers and PCs. The numbers, the list and the side panel count the kind of computer whose view is open.

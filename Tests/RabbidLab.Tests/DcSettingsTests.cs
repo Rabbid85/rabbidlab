@@ -136,32 +136,34 @@ public sealed class DcSettingsTests : IDisposable
     }
 
     [Fact]
-    public async Task Servers_and_pcs_are_read_too_with_the_settings_meant_for_them()
+    public async Task Servers_and_pcs_come_from_their_clients_with_the_settings_meant_for_them()
     {
         var dc1 = new SyncDc("DC01", "dc01.amw.com", "HQ", false);
         var ad = new FakeAuditDirectory { Login = new AuditLogin("amw.com", "svc-rabbidlab", "pass", [dc1]) };
         var clock = new FakeClock();
-        var now = clock.GetUtcNow().UtcDateTime;
-        AdComputer Pc(string name, string os, bool enabled = true, bool dc = false, int days = 1) =>
-            new(name, $"CN={name},CN=Computers,DC=amw,DC=com", "Computers", $"{name.ToLowerInvariant()}.amw.com", os, null, null, enabled, dc, now.AddDays(-days), null);
+        var at = clock.GetUtcNow().UtcDateTime.AddMinutes(-20);
+        var set = new DeviceHardening { Checked = at, SmbSigning = true, Smb1 = false, LmLevel = 5, SpoolerRunning = true, SpoolerStart = 2, LapsDirectory = 2, Multicast = 0, Tls10 = 0, Tls11 = 1 };
         var computers = new FakeComputers();
-        computers.Machines.AddRange([Pc("DC01", "Windows Server 2022 Standard", dc: true), Pc("FS01", "Windows Server 2019 Standard"), Pc("TOM-LT", "Windows 11 Pro"),
-            Pc("OLD-PC", "Windows 10 Pro", days: 200), Pc("GONE-PC", "Windows 11 Pro", enabled: false), Pc("NAS", "Linux")]);
+        computers.Machines.AddRange([new("DC01", "Windows Server 2022 Standard", set), new("FS01", "Windows Server 2019 Standard", set), new("TOM-LT", "Windows 11 Pro", set),
+            new("NEW-PC", "Windows 11 Pro", null)]);
         var probe = new FakeDcProbe();
-        foreach (var name in new[] { "DC01", "FS01", "TOM-LT" })
-        {
-            probe.Said[name] = new() { ["ldapsign"] = DcRules.LdapSigning(2), ["lapsm"] = DcRules.MemberLaps(2, null), ["llmnr"] = DcRules.Llmnr(0), ["spool"] = DcRules.Spooler(true, 2) };
-        }
+        probe.Said["DC01"] = new() { ["ldapsign"] = DcRules.LdapSigning(2), ["spool"] = DcRules.Spooler(true, 2) };
         var settings = new DcSettings(Folder(), ad, computers, probe, clock, NullLogger<DcSettings>.Instance);
 
         var view = Json(await settings.View(again: true, null, CancellationToken.None));
 
         var kinds = view.GetProperty("computers").EnumerateArray().ToDictionary(c => c.GetProperty("name").GetString()!, c => c.GetProperty("kind").GetString());
-        Assert.Equal(new Dictionary<string, string?> { ["DC01"] = "dc", ["FS01"] = "server", ["TOM-LT"] = "pc" }, kinds); // inactive, disabled and non-Windows left out
+        Assert.Equal(new Dictionary<string, string?> { ["DC01"] = "dc", ["FS01"] = "server", ["TOM-LT"] = "pc", ["NEW-PC"] = "pc" }, kinds); // the DC's own client doesn't make it twice
+        Assert.Equal(["DC01"], probe.Asked); // only DCs are read over the network
         Assert.Equal(["DC01"], Setting(view, "ldapsign").GetProperty("values").EnumerateObject().Select(p => p.Name));
         Assert.Equal(["DC01"], Setting(view, "spool").GetProperty("values").EnumerateObject().Select(p => p.Name));
-        Assert.Equal(["FS01", "TOM-LT"], Setting(view, "lapsm").GetProperty("values").EnumerateObject().Select(p => p.Name).Order());
-        Assert.Equal(3, Setting(view, "llmnr").GetProperty("values").EnumerateObject().Count());
+        var laps = Setting(view, "lapsm").GetProperty("values");
+        Assert.Equal("Backs up to Active Directory", laps.GetProperty("FS01").GetProperty("value").GetString());
+        Assert.Equal("client", laps.GetProperty("NEW-PC").GetProperty("why").GetString()); // its client hasn't sent any yet
+        var tls = Setting(view, "tls").GetProperty("values").GetProperty("TOM-LT");
+        Assert.Equal("TLS 1.1 enabled", tls.GetProperty("value").GetString());
+        Assert.False(tls.GetProperty("ok").GetBoolean());
+        Assert.Equal(at, view.GetProperty("computers").EnumerateArray().Single(c => c.GetProperty("name").GetString() == "FS01").GetProperty("at").GetDateTime());
         Assert.Equal(["server", "pc"], Setting(view, "lapsm").GetProperty("kinds").EnumerateArray().Select(k => k.GetString()));
         Assert.Equal("server", DcSettings.KindOf("Windows Server 2025 Datacenter"));
         Assert.Equal("pc", DcSettings.KindOf("Windows 11 Enterprise"));
@@ -175,12 +177,12 @@ public sealed class DcSettingsTests : IDisposable
     private DataFolder Folder() => DataFolder.Resolve(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { ["DataPath"] = Path.Combine(data, Guid.NewGuid().ToString("N")) }).Build());
 }
 
-/// <summary>The domain's computers, as Active Directory lists them.</summary>
+/// <summary>The computers with the client, and what each one's client last sent.</summary>
 public sealed class FakeComputers : IHardeningComputers
 {
-    public List<AdComputer> Machines { get; } = [];
+    public List<ClientComputer> Machines { get; } = [];
 
-    public Task<IReadOnlyList<AdComputer>> List(CancellationToken stop) => Task.FromResult<IReadOnlyList<AdComputer>>(Machines);
+    public IReadOnlyList<ClientComputer> List() => Machines;
 }
 
 /// <summary>What each DC says when read, and the ones whose read fails.</summary>

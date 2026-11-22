@@ -106,14 +106,15 @@
     if (!i.account) return `${svg('alert')}<span><b>Settings are read from each computer as the service account.</b> Set up the service account to read them.</span>`;
     const cs = computersOf(rs, kind);
     if (!cs.length) {
-      return i.reading ? `${svg('refresh', 'dcs-spin')}<span><b>Reading security settings from each computer.</b> They show here as soon as they are read.</span>`
-        : `${svg('server')}<span><b>No ${esc(WORDS[kind][1])} to read.</b> Servers and PCs are read when they are enabled and signed in within 90 days.</span>`;
+      return i.reading && kind !== 'server' && kind !== 'pc' ? `${svg('refresh', 'dcs-spin')}<span><b>Reading security settings from each domain controller.</b> They show here as soon as they are read.</span>`
+        : `${svg('server')}<span><b>No ${esc(WORDS[kind][1])} yet.</b> Servers and PCs show here once the ${esc(R.app())} client is installed and approved on them. It sends their settings with its inventory.</span>`;
     }
     const n = shown(rs, kind).length;
     const off = offCount(rs, kind);
     const last = cs.reduce((m, c) => (!m || c.at > m ? c.at : m), '');
+    const how = kind === 'dc' ? '' : kind === 'all' ? ' Domain controllers are read over the network; servers and PCs send theirs through the client.' : ' Each one’s client sends them with its inventory.';
     let html = `${svg('server')}<span><b>${off ? `${off} of ${n} settings are not compliant on one or more ${esc(WORDS[kind][1])}.` : `All ${n} settings are compliant on every ${esc(WORDS[kind][0])} read.`}</b> `
-      + `${i.reading ? 'Reading the computers again.' : `${esc(words(cs.length, kind))} read, last at ${esc(at(last))}.`}</span>`;
+      + `${i.reading && kind !== 'server' && kind !== 'pc' ? 'Reading the domain controllers again.' : `${esc(words(cs.length, kind))}, last read at ${esc(at(last))}.`}${how}</span>`;
     const why = problems(rs, kind);
     const names = (k) => some([...why.get(k)].sort());
     if (why.has('denied')) {
@@ -122,7 +123,8 @@
     }
     if (why.has('registry')) html += `<span class="warn">The Remote Registry service is not running on ${esc(names('registry'))}. Set it to Automatic with a GPO, under System Services.</span>`;
     if (why.has('unreachable')) html += `<span class="warn">${esc(names('unreachable'))} could not be reached on port 445. Check that they are on, and that the firewall allows File and Printer Sharing.</span>`;
-    [...why.keys()].filter((k) => !['denied', 'registry', 'unreachable'].includes(k)).slice(0, 2).forEach((p) => { html += `<span class="warn">${esc(p)}</span>`; });
+    if (why.has('client')) html += `<span class="warn">The client on ${esc(names('client'))} has not sent its security settings yet. It sends them with its next inventory, once it has updated to this version.</span>`;
+    [...why.keys()].filter((k) => !['denied', 'registry', 'unreachable', 'client'].includes(k)).slice(0, 2).forEach((p) => { html += `<span class="warn">${esc(p)}</span>`; });
     return html;
   };
   const copyPaths = async (rs) => {
@@ -168,6 +170,12 @@
   // Where the fix goes: the DCs' policy for DC settings, a GPO on the members' OUs for theirs, both for settings everywhere.
   const gpoOf = (s, kind) => s.gpo || (kind === 'dc' ? DC_GPO : kind === 'all' ? `${DC_GPO} for the DCs, and a GPO linked to the servers’ and PCs’ OUs` : MEMBER_GPO);
   const dcGpo = (s, kind) => s.gpo === DC_GPO || (!s.gpo && kind === 'dc');
+  // Domain controllers are read over the network; servers and PCs by their own client.
+  const readFrom = (s, kind, short) => {
+    const net = short ? s.readFrom.split(':')[0] : s.readFrom;
+    if (kind === 'server' || kind === 'pc' || !s.kinds.includes('dc')) return `The ${R.app()} client`;
+    return kind === 'dc' || s.kinds.length === 1 ? net : short ? `${net} and the client` : `${net} on domain controllers, and the ${R.app()} client on servers and PCs`;
+  };
   const panel = (s, rs, kind) => {
     if (P.for !== s.key) Object.assign(P, { for: s.key, q: '' });
     const t = of(s, kind);
@@ -190,19 +198,25 @@
       + `<div class="dw-status">${top}</div>`
       + `<div class="dw-bar"><button type="button" class="dw-qa" data-dcs-recheck>${svg('refresh')}<span>Re-check</span></button>${gpo}`
       + `<button type="button" class="dw-qa" data-dcs-copy>${svg('copy')}<span>Copy path</span></button></div>`
-      + `<div class="dw-strip">${[['Current', current(s, kind) || '-'], ['Recommended', s.recommended], ['Compliant on', n ? `${t.good.length} of ${n}` : '-'], ['Read from', s.readFrom.split(':')[0]]]
+      + `<div class="dw-strip">${[['Current', current(s, kind) || '-'], ['Recommended', s.recommended], ['Compliant on', n ? `${t.good.length} of ${n}` : '-'], ['Read from', readFrom(s, kind, true)]]
         .map(([l, v]) => `<div><span class="l">${esc(l)}</span><span class="v">${esc(v)}</span></div>`).join('')}</div>`
       + `<section class="dw-sec"><div class="dw-sec-head"><h3>On each ${esc(WORDS[kind][0])} <small>${n}</small></h3></div>${tools}<div data-dcs-rows>${rowsHtml(s, rs, kind)}</div>`
-      + `<p class="dw-src">Read from: ${esc(s.readFrom)}</p></section>`
+      + `<p class="dw-src">Read from: ${esc(readFrom(s, kind, false))}</p></section>`
       + `<section class="dw-sec"><div class="dw-sec-head"><h3>Why it matters</h3></div><p class="dw-how">${esc(s.about)}</p></section>`
       + fix;
   };
   // The panel's own controls. again(names) reads those computers again (users.js, which draws the list and the panel after).
   const click = (e, s, rs, again, kind) => {
     if (e.target.closest('[data-dcs-recheck]')) {
+      // DCs are read again here; servers and PCs send their own with their next inventory.
       const t = of(s, kind);
-      const names = [...t.off, ...t.unread];
-      again(names.length ? names : computersOf(rs, kind).filter((c) => s.values[c.name]).map((c) => c.name));
+      const dc = (n) => s.kindOf[n] === 'dc';
+      const names = [...t.off, ...t.unread].filter(dc);
+      const all = computersOf(rs, kind).filter((c) => c.kind === 'dc' && s.values[c.name]).map((c) => c.name);
+      if (kind !== 'server' && kind !== 'pc' && all.length) again(names.length ? names : all);
+      if (kind !== 'dc' && computersOf(rs, kind).some((c) => c.kind !== 'dc')) {
+        R.toast('Servers and PCs send their settings through the client.', 'With their inventory: within 30 minutes of a change, and at least every 6 hours.');
+      }
     } else if (e.target.closest('[data-dcs-gpo]')) {
       if (dcGpo(s, kind)) R.openGpo?.(DC_GPO_ID);
       else location.hash = '#gpo';

@@ -181,8 +181,34 @@ public sealed class DeviceInventory
     /// <summary>What Group Policy did; null until a client from 1.1.211 on sends it. Kept when a report comes without it.</summary>
     public DeviceGroupPolicy? GroupPolicy { get; set; }
 
+    /// <summary>Its security settings, for Domain health › On each computer; null until a client from 1.1.360 on sends them. Kept when a report comes without it.</summary>
+    public DeviceHardening? Hardening { get; set; }
+
     /// <summary>When this server got it.</summary>
     public DateTime Received { get; set; }
+}
+
+/// <summary>
+/// The security settings a client read on its own computer, as raw values (null when not set): SMB from a negotiate to
+/// itself, the Print Spooler from the service, the rest from the registry. DcRules says what each means.
+/// </summary>
+public sealed class DeviceHardening
+{
+    public DateTime? Checked { get; set; }
+    public bool? SmbSigning { get; set; }
+    public bool? Smb1 { get; set; }
+    public int? LmLevel { get; set; }
+    public bool? SpoolerRunning { get; set; }
+    public int? SpoolerStart { get; set; }
+    public int? Tls10 { get; set; }
+    public int? Tls11 { get; set; }
+    public int? Etypes { get; set; }
+    public int? LapsDirectory { get; set; }
+    public int? LapsDsrm { get; set; }
+    public int? LapsLegacy { get; set; }
+    public int? Multicast { get; set; }
+    public int? LdapIntegrity { get; set; }
+    public int? ChannelBinding { get; set; }
 }
 
 /// <summary>
@@ -238,6 +264,11 @@ public sealed partial class Inventories(DataFolder folder, TimeProvider clock)
         if (inventory.GroupPolicy is null && Get(id) is { GroupPolicy: not null } gp)
         {
             inventory.GroupPolicy = gp.GroupPolicy;
+        }
+        // The same for the security settings: an older client sends none, and the last ones stay.
+        if (inventory.Hardening is null && Get(id) is { Hardening: not null } hard)
+        {
+            inventory.Hardening = hard.Hardening;
         }
         Save(id, inventory);
     }

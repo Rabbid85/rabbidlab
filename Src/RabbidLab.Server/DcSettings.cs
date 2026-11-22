@@ -44,21 +44,27 @@ public interface IDcProbe
     Task<Dictionary<string, DcValue>> Read(SyncDc computer, AuditLogin login, CancellationToken stop);
 }
 
-/// <summary>The domain's computers, for reading member servers and PCs as well as the DCs. Tests stand in for it.</summary>
+/// <summary>A computer with the Rabbid Lab client, and the security settings its client last sent (null until it has).</summary>
+public sealed record ClientComputer(string Name, string? Os, DeviceHardening? Hardening);
+
+/// <summary>The computers with the Rabbid Lab client installed, for servers and PCs. Tests stand in for it.</summary>
 public interface IHardeningComputers
 {
-    Task<IReadOnlyList<AdComputer>> List(CancellationToken stop);
+    IReadOnlyList<ClientComputer> List();
 }
 
-public sealed class DirectoryHardeningComputers(IDirectoryTools tools) : IHardeningComputers
+/// <summary>The approved clients in Devices, with the security settings each one's inventory carries.</summary>
+public sealed class ClientHardeningComputers(Clients clients, Inventories inventories) : IHardeningComputers
 {
-    public async Task<IReadOnlyList<AdComputer>> List(CancellationToken stop) => (await tools.Computers(stop)).Computers;
+    public IReadOnlyList<ClientComputer> List() =>
+        [.. clients.All().Where(c => c.Approved is not null && !c.Uninstall).Select(c => new ClientComputer(c.Computer, c.Os, inventories.Get(c.Id)?.Hardening))];
 }
 
 /// <summary>
-/// Hardening on each computer, for Domain health's On each computer tab: the DCs, and the member servers and PCs that signed in
-/// within 90 days. Each is read over the network as the service account and kept in dc-settings.json: read when nothing has
-/// been yet, again on Re-check, and in the background once the last read is 6 hours old. 15 are read at a time.
+/// Hardening on each computer, for Domain health's On each computer tab. Domain controllers are read over the network as the
+/// service account and kept in dc-settings.json: read when nothing has been yet, again on Re-check, and in the background
+/// once the last read is 6 hours old, 15 at a time. Servers and PCs come from the Rabbid Lab client, which reads its own
+/// settings and sends them with its inventory, so only computers with the client are listed.
 /// </summary>
 public sealed class DcSettings(DataFolder folder, IAuditDirectory directory, IHardeningComputers computers, IDcProbe probe, TimeProvider clock, ILogger<DcSettings> log)
 {
@@ -105,10 +111,6 @@ public sealed class DcSettings(DataFolder folder, IAuditDirectory directory, IHa
     private readonly JsonFile<DcReadingsFile> file = folder.Json<DcReadingsFile>("dc-settings.json", Json);
     private readonly SemaphoreSlim one = new(1, 1);
     private volatile bool reading;
-    private (DateTime At, List<Target> List)? known; // the computers to read, looked up at most every 5 minutes
-
-    private sealed record Target(SyncDc Computer, string Kind);
-
     public bool Reading => reading;
 
     public IReadOnlyList<DcReading> Readings => file.Read().Dcs;
@@ -119,35 +121,38 @@ public sealed class DcSettings(DataFolder folder, IAuditDirectory directory, IHa
     /// <summary>Whether a setting is read on that kind of computer.</summary>
     public static bool Applies(string key, string kind) => All.FirstOrDefault(s => s.Key == key)?.Kinds.Contains(kind) == true;
 
-    // The DCs, then the enabled Windows servers and PCs that signed in within 90 days.
-    private async Task<List<Target>> Targets(AuditLogin login, CancellationToken stop)
+    /// <summary>What a client's raw values mean, for the settings of its kind. Before its client sends any, each says why not.</summary>
+    public static Dictionary<string, DcValue> FromClient(string name, string kind, DeviceHardening? h)
     {
-        var now = clock.GetUtcNow().UtcDateTime;
-        if (known is { } k && now - k.At < TimeSpan.FromMinutes(5) && k.List.Count(t => t.Kind == "dc") == login.Dcs.Count)
+        if (h is null)
         {
-            return k.List;
+            return All.Where(s => s.Kinds.Contains(kind)).ToDictionary(s => s.Key,
+                _ => new DcValue("Not sent yet", null, $"The client on {name} has not sent its security settings yet. It sends them with its next inventory, once it runs 1.1.360 or later.", "client"));
         }
-        var list = login.Dcs.Select(d => new Target(d, "dc")).ToList();
-        try
+        var values = new Dictionary<string, DcValue>
         {
-            foreach (var c in (await computers.List(stop)).Where(c => c.Enabled && !c.Controller && !string.IsNullOrWhiteSpace(c.Host)
-                && c.Os?.Contains("Windows", StringComparison.OrdinalIgnoreCase) == true && c.LastSignIn is { } l && now - l < TimeSpan.FromDays(90)))
-            {
-                if (!list.Any(t => Same(t.Computer.Name, c.Name)))
-                {
-                    list.Add(new Target(new SyncDc(c.Name, c.Host!, null, false), KindOf(c.Os)));
-                }
-            }
-        }
-        catch (Exception e) when (e is not OperationCanceledException)
-        {
-            log.LogWarning(e, "Could not list the computers to read security settings from; reading the DCs only");
-        }
-        known = (now, list);
-        return list;
+            ["smb"] = h.SmbSigning is { } signing ? DcRules.SmbSigning(signing) : new DcValue("Could not be read", null, $"{name} did not answer an SMB negotiate from its own client.", "error"),
+            ["smb1"] = h.Smb1 is { } smb1 ? DcRules.Smb1(smb1) : new DcValue("Could not be read", null, $"{name} did not answer an SMB negotiate from its own client.", "error"),
+            ["ldapsign"] = DcRules.LdapSigning(h.LdapIntegrity),
+            ["cbt"] = DcRules.ChannelBinding(h.ChannelBinding),
+            ["ntlm"] = DcRules.LmLevel(h.LmLevel),
+            ["spool"] = DcRules.Spooler(h.SpoolerRunning == true, h.SpoolerStart),
+            ["tls"] = DcRules.Tls(h.Tls10, h.Tls11),
+            ["kerb"] = DcRules.Kerberos(h.Etypes),
+            ["laps"] = DcRules.Laps(h.LapsDirectory, h.LapsDsrm),
+            ["lapsm"] = DcRules.MemberLaps(h.LapsDirectory, h.LapsLegacy),
+            ["llmnr"] = DcRules.Llmnr(h.Multicast),
+        };
+        return values.Where(v => Applies(v.Key, kind)).ToDictionary(v => v.Key, v => v.Value);
     }
 
-    /// <summary>Reads the computers named (every one when none are), 15 at a time, and keeps what each said. False without a service account.</summary>
+    // The servers and PCs with the client, as their clients last said. A DC with the client is still read over the network.
+    private List<DcReading> WithClient(AuditLogin? login) => [.. computers.List()
+        .Where(c => login is null || !login.Dcs.Any(d => Same(d.Name, c.Name)))
+        .Select(c => new DcReading { Name = c.Name, Kind = KindOf(c.Os), At = c.Hardening?.Checked ?? default, Values = FromClient(c.Name, KindOf(c.Os), c.Hardening) })
+        .OrderBy(d => d.Kind == "server" ? 0 : 1).ThenBy(d => d.Name, StringComparer.OrdinalIgnoreCase)];
+
+    /// <summary>Reads the DCs named (every DC when none are), 15 at a time, and keeps what each said. False without a service account.</summary>
     public async Task<bool> Read(IReadOnlyCollection<string>? only, CancellationToken stop)
     {
         var login = await directory.AuditLogin(stop);
@@ -159,32 +164,27 @@ public sealed class DcSettings(DataFolder folder, IAuditDirectory directory, IHa
         reading = true;
         try
         {
-            var targets = await Targets(login, stop);
-            var picked = targets.Where(t => only is not { Count: > 0 } || only.Contains(t.Computer.Name, StringComparer.OrdinalIgnoreCase)).ToList();
+            var picked = login.Dcs.Where(d => only is not { Count: > 0 } || only.Contains(d.Name, StringComparer.OrdinalIgnoreCase)).ToList();
             var got = new ConcurrentBag<DcReading>();
-            await Parallel.ForEachAsync(picked, new ParallelOptions { MaxDegreeOfParallelism = AtOnce, CancellationToken = stop }, async (t, token) =>
+            await Parallel.ForEachAsync(picked, new ParallelOptions { MaxDegreeOfParallelism = AtOnce, CancellationToken = stop }, async (dc, token) =>
             {
                 Dictionary<string, DcValue> values;
                 try
                 {
-                    values = await probe.Read(t.Computer, login, token);
+                    values = await probe.Read(dc, login, token);
                 }
                 catch (Exception e) when (e is not OperationCanceledException)
                 {
-                    log.LogWarning(e, "Could not read the security settings on {Computer}", t.Computer.Name);
-                    values = Each(new DcValue("Could not be read", null, $"{t.Computer.Name} could not be read: {e.Message.Trim().TrimEnd('.')}.", "error"));
+                    log.LogWarning(e, "Could not read the security settings on {Dc}", dc.Name);
+                    values = Each(new DcValue("Could not be read", null, $"{dc.Name} could not be read: {e.Message.Trim().TrimEnd('.')}.", "error"));
                 }
-                got.Add(new DcReading
-                {
-                    Name = t.Computer.Name, Kind = t.Kind, Site = t.Computer.Site, At = clock.GetUtcNow().UtcDateTime,
-                    Values = values.Where(v => Applies(v.Key, t.Kind)).ToDictionary(v => v.Key, v => v.Value),
-                });
+                got.Add(new DcReading { Name = dc.Name, Kind = "dc", Site = dc.Site, At = clock.GetUtcNow().UtcDateTime, Values = values.Where(v => Applies(v.Key, "dc")).ToDictionary(v => v.Key, v => v.Value) });
             });
             lock (file.Gate)
             {
-                // What was read replaces what was; computers no longer read (gone, disabled or inactive) go.
-                var kept = file.Read().Dcs.Where(d => !got.Any(g => Same(g.Name, d.Name)) && targets.Any(x => Same(x.Computer.Name, d.Name)));
-                file.Save(new DcReadingsFile { Dcs = [.. kept.Concat(got).OrderBy(d => d.Kind == "dc" ? 0 : d.Kind == "server" ? 1 : 2).ThenBy(d => d.Name, StringComparer.OrdinalIgnoreCase)] });
+                // What was read replaces what was; DCs no longer in the domain go.
+                var kept = file.Read().Dcs.Where(d => d.Kind == "dc" && !got.Any(g => Same(g.Name, d.Name)) && login.Dcs.Any(x => Same(x.Name, d.Name)));
+                file.Save(new DcReadingsFile { Dcs = [.. kept.Concat(got).OrderBy(d => d.Name, StringComparer.OrdinalIgnoreCase)] });
             }
             return true;
         }
@@ -197,8 +197,8 @@ public sealed class DcSettings(DataFolder folder, IAuditDirectory directory, IHa
 
     /// <summary>
     /// What the page shows: each setting with its value on each computer it's for, and each computer's kind and when it was
-    /// read. again reads them first (only those in only, when given). With some not read yet, or 6 hours old, it reads in the
-    /// background.
+    /// read. again reads the DCs first (only those in only, when given). With a DC not read yet, or 6 hours old, they're read
+    /// in the background. Servers and PCs are as their clients last sent.
     /// </summary>
     public async Task<object> View(bool again, IReadOnlyCollection<string>? only, CancellationToken stop)
     {
@@ -207,10 +207,9 @@ public sealed class DcSettings(DataFolder folder, IAuditDirectory directory, IHa
         {
             await Read(only, stop);
         }
-        var targets = login is null ? null : await Targets(login, stop);
-        var read = file.Read().Dcs.Where(d => targets is null || targets.Any(x => Same(x.Computer.Name, d.Name))).ToList();
+        var dcs = file.Read().Dcs.Where(d => d.Kind == "dc" && (login is null || login.Dcs.Any(x => Same(x.Name, d.Name)))).ToList();
         var now = clock.GetUtcNow().UtcDateTime;
-        if (targets is not null && !reading && (read.Count < targets.Count || read.Any(d => now - d.At > Stale)))
+        if (login is not null && !reading && (dcs.Count < login.Dcs.Count || dcs.Any(d => now - d.At > Stale)))
         {
             reading = true; // said straight away, so the page knows to look again
             _ = Task.Run(async () =>
@@ -222,10 +221,11 @@ public sealed class DcSettings(DataFolder folder, IAuditDirectory directory, IHa
                 catch (Exception e)
                 {
                     reading = false;
-                    log.LogWarning(e, "Could not read the computers' security settings");
+                    log.LogWarning(e, "Could not read the domain controllers' security settings");
                 }
             }, CancellationToken.None);
         }
+        var read = dcs.Concat(WithClient(login)).ToList();
         return new
         {
             settings = All.Select(s => new
@@ -233,7 +233,7 @@ public sealed class DcSettings(DataFolder folder, IAuditDirectory directory, IHa
                 s.Key, s.Name, s.Severity, s.Recommended, s.ReadFrom, s.Gpo, s.Path, s.Policy, s.SetTo, s.About, s.Kinds,
                 values = read.Where(d => s.Kinds.Contains(d.Kind)).ToDictionary(d => d.Name, d => d.Values.GetValueOrDefault(s.Key) ?? new DcValue("Not read yet", null), StringComparer.OrdinalIgnoreCase),
             }),
-            computers = read.Select(d => new { d.Name, d.Kind, d.Site, d.At }),
+            computers = read.Select(d => new { d.Name, d.Kind, d.Site, At = d.At == default ? (DateTime?) null : d.At }),
             reading,
             account = login is not null,
             user = login?.User,
@@ -588,7 +588,7 @@ public static class DcSettingsApi
     public static void AddDcSettings(this IServiceCollection services)
     {
         services.AddSingleton<IDcProbe, NetworkDcProbe>();
-        services.AddSingleton<IHardeningComputers, DirectoryHardeningComputers>();
+        services.AddSingleton<IHardeningComputers, ClientHardeningComputers>();
         services.AddSingleton<DcSettings>();
     }
 

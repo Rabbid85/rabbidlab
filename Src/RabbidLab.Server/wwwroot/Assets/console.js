@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.360', [
+    'Servers and PCs on On each computer now come from the Rabbid Lab client: it reads its own security settings and sends them with its inventory. Only computers with the client show, and they need no Remote Registry or open port 445.',
+    'Domain controllers are still read over the network. A DC that also has the client is listed once, as a domain controller.',
+    'Re-check reads the domain controllers again. Servers and PCs send a change within 30 minutes, and their settings at least every 6 hours.']],
   ['1.1.359', [
     'On each DC is now On each computer: member servers and PCs are read too, with views for All computers, Domain controllers, Servers and PCs. The numbers, the list and the side panel count the kind of computer whose view is open.',
     'Each setting is read only where it applies: LDAP signing, channel binding, the Print Spooler and LAPS for DSRM on domain controllers, and a new Windows LAPS setting on servers and PCs.',
@@ -1142,6 +1146,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.360': ['2026-11-22', 'update', 'Servers and PCs read through the client'],
   '1.1.359': ['2026-11-22', 'feature', 'Security settings on every computer, with a Current column', 'computers.jpg'],
   '1.1.358': ['2026-11-22', 'feature', 'Security settings on each DC', 'hardening.jpg'],
   '1.1.357': ['2026-11-22', 'feature', 'AD security alerts, with conditions of your own', 'adalerts.jpg'],
