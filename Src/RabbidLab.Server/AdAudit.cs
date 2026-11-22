@@ -956,7 +956,9 @@ public static class AuditApi
             var events = store.Since(DateTime.UtcNow.AddDays(-span));
             var rows = AuditView.Rows(events.Count > Most ? events[^Most..] : events, changes, Ours(log), ad.ServiceAccount);
             var dcs = AuditView.Dcs(collector.Dcs(), rows);
-            return Results.Ok(new { rows = rows.Take(Most), dcs, keep, more = more || events.Count > Most || rows.Count > Most, windows = OperatingSystem.IsWindows() });
+            // account: the logs are read as the service account, so read-only mode reads none.
+            return Results.Ok(new { rows = rows.Take(Most), dcs, keep, more = more || events.Count > Most || rows.Count > Most, windows = OperatingSystem.IsWindows(),
+                account = ad.ServiceAccount is not null });
         }, change: false, whole: true));
 
         // One object's changes, for its History tab: inside the caller's roles, as the panel is.

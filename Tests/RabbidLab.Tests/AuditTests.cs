@@ -465,6 +465,7 @@ public sealed class AuditTests : IDisposable
         Assert.Equal("DC02", phone.GetProperty("dc").GetString());
         Assert.DoesNotContain(rows, r => r.GetProperty("attribute").GetString() == "lastLogonTimestamp");
         Assert.Equal(90, page.GetProperty("keep").GetInt32());
+        Assert.True(page.GetProperty("account").GetBoolean()); // the logs are read as svc-existing
         var told = history.GetProperty("rows").EnumerateArray().Select(r => (r.GetProperty("attribute").GetString(), r.GetProperty("name").GetString())).ToList();
         Assert.Equal([("title", "Greg Sutton"), ("telephoneNumber", "Greg Sutton"), ("department", "Greg Sutton")], told);
         Assert.Equal(HttpStatusCode.BadRequest, blank.StatusCode);

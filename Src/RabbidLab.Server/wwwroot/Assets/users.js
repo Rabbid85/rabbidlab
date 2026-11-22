@@ -224,7 +224,7 @@
       load: async (fresh) => {
         const j = await R.get(`/api/ad/audit${fresh ? '?again=true' : ''}`);
         more.audit = j.more;
-        j.rows.info = { dcs: j.dcs, keep: j.keep, windows: j.windows };
+        j.rows.info = { dcs: j.dcs, keep: j.keep, windows: j.windows, account: j.account };
         noteAudit(j.rows);
         return j.rows;
       },
@@ -745,7 +745,7 @@
   const KEEP = [[30, '30 days'], [90, '90 days'], [365, '1 year']];
   const keepWords = (d) => KEEP.find(([n]) => n === d)?.[1] || `${d} days`;
   const listOf = (names) => (names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`);
-  const auditBanner = ({ dcs = [], keep, windows }) => {
+  const auditBanner = ({ dcs = [], keep, windows, account }) => {
     const off = dcs.filter((d) => d.state === 'silent' || d.state === 'denied').map((d) => d.name);
     const down = dcs.filter((d) => d.state === 'unreachable' || d.state === 'error');
     const reading = dcs.filter((d) => d.state === 'recording').map((d) => d.name);
@@ -756,6 +756,8 @@
     let line;
     if (!windows) {
       line = `${svg('alert')}<span><b>Security logs are read only when ${esc(R.app())} runs on Windows.</b> Changes show the new value read from Active Directory, without Modified by or the old value.${kept}</span>`;
+    } else if (!account) {
+      line = `${svg('alert')}<span><b>Security logs are read as the service account.</b> Until it is set up, changes show the new value read from Active Directory, without Modified by or the old value.${kept}</span>`;
     } else if (off.length) {
       line = `${svg('alert')}<span><b>${esc(listOf(off))} ${off.length === 1 ? 'does' : 'do'} not record directory changes in ${off.length === 1 ? 'its' : 'their'} Security log.</b> `
         + `To fix this, turn on Audit Directory Service Changes (Success) in the Default Domain Controllers Policy and add ${esc(ad.state.account)} to the Event Log Readers group.</span>`;
