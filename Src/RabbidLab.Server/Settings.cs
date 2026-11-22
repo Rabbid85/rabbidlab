@@ -45,6 +45,9 @@ public sealed class ConsoleSettings
 
     /// <summary>How many wrong passwords lock a name (SignInLocks): 3, 5 or 10.</summary>
     public int LockAfter { get; set; } = 10;
+
+    /// <summary>How many days the AD audit keeps the changes read from Security logs (AdAudit.cs): 30, 90 or 365.</summary>
+    public int AuditDays { get; set; } = 90;
 }
 
 /// <summary>Reads and writes settings.json in the data folder, and encrypts and decrypts the secrets in it.</summary>

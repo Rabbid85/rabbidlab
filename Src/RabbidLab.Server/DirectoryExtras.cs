@@ -29,8 +29,14 @@ public sealed record AdSetting(string Key, string Area, string Name, string Now,
     public string? Act { get; init; }
 }
 
-/// <summary>Something that changed in Active Directory: made, changed or deleted, when, and which attributes (when AD says).</summary>
-public sealed record AdChange(string Dn, string Name, string Kind, string Where, DateTime At, string What, List<string> Attributes, string? By = null);
+/// <summary>
+/// One attribute's last change, from replication metadata: when, the DC it was made on, and its values now (null when they
+/// aren't read). A group's member comes as the members added, or removed, at that moment.
+/// </summary>
+public sealed record AdAttributeChange(string Name, DateTime At, string? Dc, List<string>? Now, bool Removed = false);
+
+/// <summary>Something that changed in Active Directory, from its replication metadata: made, changed, restored or deleted, when, and each attribute.</summary>
+public sealed record AdChange(string Dn, string Name, string Kind, string Where, DateTime At, string What, List<AdAttributeChange> Attributes, string? Guid = null);
 
 public sealed record DeletedObject(string Dn, string Name, string Kind, string? WasIn, DateTime? Deleted, string? Username);
 
@@ -81,6 +87,9 @@ public interface IDirectoryExtras
     /// <summary>What changed in the last days. More when Active Directory had more than it sent, so some changes are missing.</summary>
     Task<(List<AdChange> Changes, bool More)> Changes(int days, CancellationToken stop);
 
+    /// <summary>One object's changes in the last days, for its History tab, inside the caller's roles. Null when nothing changed.</summary>
+    Task<AdChange?> ChangesOf(string dn, int days, CancellationToken stop);
+
     Task<RecycleState> RecycleBin(CancellationToken stop);
 
     Task<string> Restore(string dn, CancellationToken stop);
@@ -113,27 +122,27 @@ public sealed partial class DirectoryTools
     private const string RecycleFeature = "766ddcd8-acd0-445e-f3b9-a7f9b6744f2a";
 
     // Attributes whose values are secrets: shown as hidden, never sent.
-    private static readonly HashSet<string> Secret = new(StringComparer.OrdinalIgnoreCase)
+    internal static readonly HashSet<string> Secret = new(StringComparer.OrdinalIgnoreCase)
     {
         "unicodePwd", "dBCSPwd", "lmPwdHistory", "ntPwdHistory", "supplementalCredentials", "userPassword", "unixUserPassword", "ms-Mcs-AdmPwd", "msLAPS-Password",
         "msLAPS-EncryptedPassword", "msLAPS-EncryptedPasswordHistory", "msLAPS-EncryptedDSRMPassword", "msLAPS-EncryptedDSRMPasswordHistory", "msFVE-RecoveryPassword",
         "msFVE-KeyPackage", "msTPM-OwnerInformation", "msTPM-TpmInformationForComputer", "msDS-ManagedPassword", "trustAuthIncoming", "trustAuthOutgoing", "currentValue", "priorValue",
     };
 
-    private static readonly HashSet<string> FileTimes = new(StringComparer.OrdinalIgnoreCase)
+    internal static readonly HashSet<string> FileTimes = new(StringComparer.OrdinalIgnoreCase)
     {
         "pwdLastSet", "lastLogon", "lastLogonTimestamp", "badPasswordTime", "accountExpires", "lockoutTime", "lastLogoff", "msDS-LastSuccessfulInteractiveLogonTime",
         "msDS-LastFailedInteractiveLogonTime", "ms-Mcs-AdmPwdExpirationTime", "msLAPS-PasswordExpirationTime", "creationTime", "msDS-UserPasswordExpiryTimeComputed",
     };
 
     // Changes nobody made on purpose: sign-ins and replication housekeeping. The audit leaves objects out when these are all that changed.
-    private static readonly HashSet<string> Noise = new(StringComparer.OrdinalIgnoreCase)
+    internal static readonly HashSet<string> Noise = new(StringComparer.OrdinalIgnoreCase)
     {
         "lastLogonTimestamp", "dSCorePropagationData", "msDS-LastSuccessfulInteractiveLogonTime", "msDS-LastFailedInteractiveLogonTime", "msDS-FailedInteractiveLogonCount",
         "msDS-FailedInteractiveLogonCountAtLastSuccessfulLogon", "logonCount", "badPwdCount", "badPasswordTime", "lastLogon", "msDS-KeyCredentialLink", "msDS-SupportedEncryptionTypes",
     };
 
-    private static readonly HashSet<string> Passwordy = new(StringComparer.OrdinalIgnoreCase)
+    internal static readonly HashSet<string> Passwordy = new(StringComparer.OrdinalIgnoreCase)
     {
         "unicodePwd", "dBCSPwd", "lmPwdHistory", "ntPwdHistory", "supplementalCredentials", "pwdLastSet",
     };
@@ -330,54 +339,32 @@ public sealed partial class DirectoryTools
 
     // --- The AD audit: what changed lately ---------------------------------------------------------------------------
 
+    private const string AuditKinds = "(|(&(objectCategory=person)(objectClass=user))(objectCategory=group)(objectCategory=computer)(objectClass=organizationalUnit))";
+
+    // What a changed attribute holds now, for the audit's rows that no Security log recorded. Big and secret ones aren't read.
+    private static readonly string[] AuditNow = ["displayName", "givenName", "sn", "initials", "title", "department", "company", "manager", "telephoneNumber", "mobile",
+        "ipPhone", "facsimileTelephoneNumber", "mail", "proxyAddresses", "physicalDeliveryOfficeName", "streetAddress", "l", "st", "postalCode", "co", "description", "info",
+        "userPrincipalName", "sAMAccountName", "userAccountControl", "pwdLastSet", "accountExpires", "lockoutTime", "employeeID", "employeeNumber", "employeeType",
+        "homeDirectory", "homeDrive", "profilePath", "scriptPath", "wWWHomePage", "managedBy", "groupType", "location", "operatingSystem", "operatingSystemVersion",
+        "dNSHostName", "name", .. Enumerable.Range(1, 15).Select(i => $"extensionAttribute{i}")];
+
+    private static readonly string[] AuditRead = ["objectClass", "objectGUID", "cn", "ou", "whenChanged", "whenCreated", "msDS-ReplAttributeMetaData", "msDS-ReplValueMetaData", .. AuditNow];
+
     public async Task<(List<AdChange> Changes, bool More)> Changes(int days, CancellationToken stop)
     {
         using var ldap = await Open(stop);
-        var since = DateTime.UtcNow.AddDays(-Math.Clamp(days, 1, 90));
+        var since = DateTime.UtcNow.AddDays(-Math.Clamp(days, 1, 366));
         var stamp = since.ToString("yyyyMMddHHmmss.0Z", CultureInfo.InvariantCulture);
-        var kinds = "(|(&(objectCategory=person)(objectClass=user))(objectCategory=group)(objectCategory=computer)(objectClass=organizationalUnit))";
-        var rows = await ldap.Find(ldap.BaseDn, $"(&(whenChanged>={stamp}){kinds})", true,
-            ["objectClass", "cn", "ou", "displayName", "whenChanged", "whenCreated", "msDS-ReplAttributeMetaData"], Limit, stop);
+        var rows = await ldap.Find(ldap.BaseDn, $"(&(whenChanged>={stamp}){AuditKinds})", true, AuditRead, Limit, stop);
         var more = rows.Count >= Limit;
-        var changes = new List<AdChange>();
-        foreach (var r in rows)
-        {
-            if (DnsPartition(r.Dn))
-            {
-                continue;
-            }
-            var changed = When(r.Text("whenChanged")) ?? DateTime.UtcNow;
-            var made = When(r.Text("whenCreated"));
-            var attributes = r.Texts("msDS-ReplAttributeMetaData").Select(Meta).Where(m => m.At >= since).ToList();
-            var kind = KindOf(r);
-            // A computer changes its own password every 30 days; a person's password change shows as just "password".
-            var real = attributes.Where(a => !Noise.Contains(a.Name) && !(kind == "computer" && Passwordy.Contains(a.Name)))
-                .Select(a => Passwordy.Contains(a.Name) ? "password" : a.Name).Distinct(StringComparer.OrdinalIgnoreCase).Order(StringComparer.OrdinalIgnoreCase).ToList();
-            // Only sign-ins and housekeeping since then: not a change anyone made. Groups change members in a way this doesn't list.
-            if (attributes.Count > 0 && real.Count == 0 && !(made >= since))
-            {
-                continue;
-            }
-            if (attributes.Count == 0 && kind == "group" && !(made >= since))
-            {
-                real.Add("member");
-            }
-            // Brought back from the Recycle Bin: isDeleted went away. Something new: every attribute is new, so none are listed.
-            var what = made >= since ? "made" : real.Contains("isDeleted", StringComparer.OrdinalIgnoreCase) ? "restored" : "changed";
-            if (what != "changed")
-            {
-                real.Clear();
-            }
-            var name = kind == "user" ? r.Text("displayName") ?? r.Text("cn") : r.Text("cn") ?? r.Text("ou");
-            changes.Add(new AdChange(r.Dn, name ?? Ldap.Name(r.Dn), kind, Ldap.Path(Ldap.Parent(r.Dn), ldap.BaseDn), changed, what, real));
-        }
+        var changes = rows.Where(r => !DnsPartition(r.Dn)).Select(r => ChangeOf(r, since, ldap.BaseDn)).OfType<AdChange>().ToList();
         try
         {
             var gone = await ldap.FindDeleted(ldap.BaseDn, $"(&(isDeleted=TRUE)(whenChanged>={stamp})(|(objectClass=user)(objectClass=group)(objectClass=organizationalUnit)))", true,
-                ["objectClass", "msDS-LastKnownRDN", "lastKnownParent", "whenChanged"], 500, stop);
+                ["objectClass", "objectGUID", "msDS-LastKnownRDN", "lastKnownParent", "whenChanged"], 500, stop);
             more |= gone.Count >= 500;
             changes.AddRange(gone.Where(g => !g.Dn.StartsWith("CN=Deleted Objects,", StringComparison.OrdinalIgnoreCase) && !DnsPartition(g.Dn)).Select(g => new AdChange(g.Dn, g.Text("msDS-LastKnownRDN") ?? Ldap.Name(g.Dn),
-                KindOf(g), g.Text("lastKnownParent") is { } p ? Ldap.Path(p, ldap.BaseDn) : "", When(g.Text("whenChanged")) ?? DateTime.UtcNow, "deleted", [])));
+                KindOf(g), g.Text("lastKnownParent") is { } p ? Ldap.Path(p, ldap.BaseDn) : "", When(g.Text("whenChanged")) ?? DateTime.UtcNow, "deleted", [], GuidOf(g))));
         }
         catch (LdapRefused)
         {
@@ -386,22 +373,62 @@ public sealed partial class DirectoryTools
         return ([.. changes.OrderByDescending(c => c.At)], more);
     }
 
+    public async Task<AdChange?> ChangesOf(string dn, int days, CancellationToken stop)
+    {
+        using var ldap = await Open(stop);
+        var at = Inside(dn, ldap.BaseDn);
+        Reached(at);
+        try
+        {
+            var row = (await ldap.Find(at, "(objectClass=*)", false, AuditRead, 1, stop)).FirstOrDefault();
+            return row is null ? null : ChangeOf(row, DateTime.UtcNow.AddDays(-Math.Clamp(days, 1, 366)), ldap.BaseDn);
+        }
+        catch (LdapRefused e) when (e.Code == LdapRefused.NoSuchObject)
+        {
+            return null; // gone: its history is what the logs kept
+        }
+    }
+
+    // One object's changes since then, attribute by attribute; null when only sign-ins and housekeeping changed.
+    private static AdChange? ChangeOf(LdapRow r, DateTime since, string baseDn)
+    {
+        var changed = When(r.Text("whenChanged")) ?? DateTime.UtcNow;
+        var made = When(r.Text("whenCreated"));
+        var kind = KindOf(r);
+        var attributes = r.TextsInRanges("msDS-ReplAttributeMetaData").Select(SyncCompare.Attribute).Where(m => m.Name.Length > 0 && m.At >= since).ToList();
+        // A computer changes its own password every 30 days; a person's password change shows as pwdLastSet.
+        var real = attributes.Where(a => !Noise.Contains(a.Name) && !a.Name.Equals("member", StringComparison.OrdinalIgnoreCase) && !(kind == "computer" && Passwordy.Contains(a.Name)))
+            .Select(a => Passwordy.Contains(a.Name) ? a with { Name = "pwdLastSet" } : a)
+            .GroupBy(a => a.Name, StringComparer.OrdinalIgnoreCase).Select(g => g.MaxBy(a => a.At)!).ToList();
+        var members = r.TextsInRanges("msDS-ReplValueMetaData").Select(SyncCompare.Value)
+            .Where(v => v.At >= since && v.Name.Equals("member", StringComparison.OrdinalIgnoreCase)).ToList();
+        if (attributes.Count > 0 && real.Count == 0 && members.Count == 0 && !(made >= since))
+        {
+            return null;
+        }
+        // Brought back from the Recycle Bin: isDeleted went away. Something new: every attribute is new, so none are listed.
+        var what = made >= since ? "made" : real.Any(a => a.Name.Equals("isDeleted", StringComparison.OrdinalIgnoreCase)) ? "restored" : "changed";
+        var list = new List<AdAttributeChange>();
+        if (what == "changed")
+        {
+            list.AddRange(real.Select(a => new AdAttributeChange(a.Name, a.At, SyncCompare.Server(a.Dsa), AuditNow.Contains(a.Name, StringComparer.OrdinalIgnoreCase) ? [.. r.Texts(a.Name)] : null)));
+            // Members added or removed, by the moment and the DC: one change each.
+            list.AddRange(members.GroupBy(v => (v.At, v.Deleted, v.Dsa)).Select(g => new AdAttributeChange("member", g.Key.At, SyncCompare.Server(g.Key.Dsa), [.. g.Select(v => v.Value)], g.Key.Deleted)));
+            // A group whose members changed in a way the metadata doesn't list.
+            if (list.Count == 0 && kind == "group")
+            {
+                list.Add(new AdAttributeChange("member", changed, null, null));
+            }
+        }
+        var name = kind == "user" ? r.Text("displayName") ?? r.Text("cn") : r.Text("cn") ?? r.Text("ou");
+        return new AdChange(r.Dn, name ?? Ldap.Name(r.Dn), kind, Ldap.Path(Ldap.Parent(r.Dn), baseDn), what == "made" ? made ?? changed : changed, what, list, GuidOf(r));
+    }
+
+    private static string? GuidOf(LdapRow r) => r.Bytes("objectGUID") is { Length: 16 } g ? SyncCompare.Id(g) : null;
+
     /// <summary>The DNS partitions (DomainDnsZones, ForestDnsZones), which the domain's own searches can wander into.</summary>
     private static bool DnsPartition(string dn) =>
         dn.Contains(",DC=DomainDnsZones,", StringComparison.OrdinalIgnoreCase) || dn.Contains(",DC=ForestDnsZones,", StringComparison.OrdinalIgnoreCase);
-
-    /// <summary>The attribute and when it last changed, from one msDS-ReplAttributeMetaData value. Read by hand: there are thousands, and parsing each as XML is slow.</summary>
-    private static (string Name, DateTime At) Meta(string xml)
-    {
-        static string? Tag(string xml, string tag)
-        {
-            var from = xml.IndexOf($"<{tag}>", StringComparison.Ordinal);
-            var to = from < 0 ? -1 : xml.IndexOf("</", from, StringComparison.Ordinal);
-            return to < 0 ? null : xml[(from + tag.Length + 2)..to];
-        }
-        return (Tag(xml, "pszAttributeName") ?? "", DateTime.TryParse(Tag(xml, "ftimeLastOriginatingChange"), CultureInfo.InvariantCulture,
-            DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var at) ? at : DateTime.MinValue);
-    }
 
     private static DateTime? When(string? generalized) =>
         DateTime.TryParseExact(generalized, "yyyyMMddHHmmss.0Z", CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var at) ? at : null;
@@ -930,19 +957,8 @@ public static class DirectoryExtrasApi
             return Results.Ok(list);
         }));
 
-        // What changed lately; who made it when Rabbid Lab made it.
-        app.MapGet("/api/ad/audit", (int? days, HttpContext context, IDirectoryExtras tools, ActivityLog log) => UsersApi.Try(context, Permissions.AdView, async () =>
-        {
-            var (changes, more) = await tools.Changes(days ?? 30, context.RequestAborted);
-            // Rabbid Lab's own AD changes, by the minute they happened, so each change only looks at the few around it.
-            var ours = log.Recent(1000).Where(e => e.Area == "users" && e.Action.StartsWith("ad.", StringComparison.Ordinal)).ToLookup(e => e.At.Ticks / TimeSpan.TicksPerMinute);
-            UsersApi.More(context, more);
-            return Results.Ok(changes.Select(c => c with
-            {
-                By = Enumerable.Range(-3, 7).SelectMany(m => ours[(c.At.Ticks / TimeSpan.TicksPerMinute) + m])
-                    .Where(e => Math.Abs((e.At - c.At).TotalMinutes) < 3 && Mentions(e.Title, c.Name)).MinBy(e => Math.Abs((e.At - c.At).Ticks))?.By,
-            }));
-        }, change: false, whole: true));
+        // The AD audit, a History tab's changes and how long they're kept (AdAudit.cs).
+        app.MapAuditApi();
 
         app.MapGet("/api/ad/recycle", (HttpContext context, IDirectoryExtras tools) => UsersApi.Try(context, Permissions.AdView, async () =>
             Results.Ok(await tools.RecycleBin(context.RequestAborted)), change: false, whole: true));

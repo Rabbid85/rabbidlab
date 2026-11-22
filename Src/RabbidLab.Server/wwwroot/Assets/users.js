@@ -10,14 +10,15 @@
   const stale = (iso) => !iso || Date.now() - new Date(iso) > 90 * DAY;
   const chip = (text, cls = '', icon = '') => `<span class="uchip ${cls}">${icon ? svg(icon) : ''}${esc(text)}</span>`;
   const badge = (text, tone) => `<span class="ubadge ${tone}">${esc(text)}</span>`;
-  // A moment on one line: Today 12:04 PM, Yesterday 4:34 PM, Nov 12 1:34 PM.
-  const stamp = (iso) => {
+  // A moment on one line: Today 12:04 PM, Yesterday 4:34 PM, Nov 12 1:34 PM. dayOf is its day.
+  const dayOf = (iso) => {
     const d = new Date(iso);
     const back = Math.round((new Date().setHours(0, 0, 0, 0) - new Date(iso).setHours(0, 0, 0, 0)) / DAY);
-    const date = back === 0 ? 'Today' : back === 1 ? 'Yesterday'
+    return back === 0 ? 'Today' : back === 1 ? 'Yesterday'
       : d.toLocaleDateString([], { month: 'short', day: 'numeric', ...(d.getFullYear() === new Date().getFullYear() ? {} : { year: 'numeric' }) });
-    return `${date} ${d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
   };
+  const clock = (iso) => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  const stamp = (iso) => `${dayOf(iso)} ${clock(iso)}`;
   const kindWord = (kind) => (kind === 'ou' ? 'OU' : kind ? kind.charAt(0).toUpperCase() + kind.slice(1) : '');
 
   // --- Active Directory: what each page lists, its views down the left, its columns and its CSV -------------------
@@ -30,8 +31,8 @@
   let rows = [];
   let places = null;
 
-  // What's ticked on Users, Groups and Computers (by each page's key), kept while the list is read again.
-  const picked = { users: new Set(), groups: new Set(), computers: new Set() };
+  // What's ticked on Users, Groups, Computers and the AD audit (by each page's key), kept while the list is read again.
+  const picked = { users: new Set(), groups: new Set(), computers: new Set(), audit: new Set() };
   const pickedHere = () => picked[adPage] || new Set();
   const keyOf = (x) => String(AD[adPage].key(x));
   const byKey = (key) => (lists[adPage] || []).find((x) => keyOf(x) === key);
@@ -64,8 +65,57 @@
   // Domain health's areas, in order, each with its own icon.
   const AREA_ICON = { 'Passwords and lockout': 'lock', 'Privileged accounts': 'crown', 'Kerberos and delegation': 'ticket', 'Stale objects': 'hourglass',
     'Domain and forest': 'tree', 'Domain controllers': 'server', 'Certificates (AD CS)': 'certificate', Trusts: 'link', DNS: 'signpost' };
-  const WHAT = { made: 'green', changed: 'grey', deleted: 'red', restored: 'amber' };
+  const WHAT = { made: 'green', changed: 'grey', moved: 'grey', deleted: 'red', restored: 'amber' };
+  // Each kind of change in the words Event Viewer uses.
+  const WHAT_WORD = { made: 'Created', changed: 'Modified', moved: 'Moved', deleted: 'Deleted', restored: 'Restored' };
   const KIND_ICON = { user: 'user', group: 'users', computer: 'laptop', ou: 'folder', container: 'folder', other: 'folder' };
+
+  // --- AD audit and History: values, the operation in a sentence, and new changes easing in -----------------------
+  // An audit value on one line: missing when no Security log recorded it (or it wasn't read), - when it was empty.
+  const auditVals = (vs, missing) => (vs == null ? `<span class="muted">${missing}</span>` : vs.length ? `<span class="ell">${esc(vs.join('; '))}</span>` : '<span class="muted">-</span>');
+  const auditPic = (c, cls = '') => (c.kind === 'user' ? `<span class="pic user${cls}">${esc(initials(c.name))}</span>` : `<span class="pic${cls}">${svg(KIND_ICON[c.kind] || 'folder')}</span>`);
+  // An operation (one LDAP request, its rows xs) as a sentence: Priya Nair modified 4 attributes on Greg Sutton.
+  const opSay = (xs) => {
+    const x = xs[0];
+    const who = x.by ? `<b>${esc(x.by)}</b>` : '<b class="dir-op-nobody">Unknown user</b>';
+    const obj = `<b>${esc(x.name)}</b>`;
+    const kind = esc(x.kind === 'ou' ? 'OU' : x.kind);
+    const first = (vs) => `${esc(vs[0])}${vs.length > 1 ? ` and ${vs.length - 1} more` : ''}`;
+    const one = xs.length === 1 ? x : null;
+    const what = ['made', 'deleted', 'restored', 'moved'].find((w) => xs.some((r) => r.what === w));
+    if (what === 'made') return `${who} created ${kind} ${obj}`;
+    if (what === 'deleted') return `${who} deleted ${kind} ${obj}`;
+    if (what === 'restored') return `${who} restored ${kind} ${obj}`;
+    if (what === 'moved') return `${who} ${xs.find((r) => r.what === 'moved').label === 'Name' ? 'renamed' : 'moved'} ${obj}`;
+    if (one?.label === 'Member added' && one.new?.length) return `${who} added ${first(one.new)} to ${obj}`;
+    if (one?.label === 'Member removed' && one.old?.length) return `${who} removed ${first(one.old)} from ${obj}`;
+    return `${who} modified ${one ? esc(one.label) : `${xs.length} attributes`} on ${obj}`;
+  };
+  const plainSay = (xs) => opSay(xs).replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+  // Each operation's rows, for the list read last.
+  let opsFor = { list: null, ops: new Map() };
+  const opRows = (c) => {
+    const list = lists.audit || [];
+    if (opsFor.list !== list) {
+      const ops = new Map();
+      list.forEach((r) => { if (!ops.has(r.op)) ops.set(r.op, []); ops.get(r.op).push(r); });
+      opsFor = { list, ops };
+    }
+    return opsFor.ops.get(c.op) || [c];
+  };
+  // A row that arrived while the page was open eases in once: when it was first seen is kept, so a redraw carries the
+  // animation on (a negative delay) instead of starting it again.
+  const IN_MS = 2400;
+  const born = new Map();
+  let auditSeen = null; // the ids in the last list read; null before the first
+  const noteAudit = (list) => {
+    const ids = new Set(list.map((c) => c.id));
+    if (auditSeen) ids.forEach((id) => { if (!auditSeen.has(id)) born.set(id, Date.now()); });
+    auditSeen = ids;
+    for (const [id, t] of born) if (Date.now() - t > IN_MS) born.delete(id);
+  };
+  const ageOf = (c) => (born.has(c.id) ? Date.now() - born.get(c.id) : IN_MS);
+  const freshRow = (c) => ageOf(c) < IN_MS;
   let recycle = null; // /api/ad/recycle: whether it's on, and what's in it
 
   const AD = {
@@ -166,20 +216,30 @@
       csv: [['Area', (s) => s.area], ['Check', (s) => s.name], ['Current', (s) => s.now], ['Recommended', (s) => s.recommended], ['Result', (s) => s.tone], ['Details', (s) => s.about],
         ['Found', (s) => (s.found || []).map((f) => f.name).join('; ')], ['Source', (s) => s.source]],
     },
+    // One row per attribute change (AdAudit.cs), grouped by the operation it was part of. The DCs' state and how long
+    // changes are kept come with the rows, as rows.info. Refresh reads the Security logs first (fresh).
     audit: {
-      title: 'AD audit', noun: ['change', 'changes'], add: null, key: (c) => `${c.dn}|${c.at}`,
-      lead: 'Changes to Active Directory objects in the last 30 days, from any tool, including Active Directory Users and Computers and PowerShell. Sign-ins and system maintenance are not included.',
-      load: async () => { const l = await R.get('/api/ad/audit?days=30'); more.audit = l.more; return l; },
-      find: (c) => [c.name, c.where, c.attributes.join(' '), c.by],
+      title: 'AD audit', noun: ['change', 'changes'], add: null, key: (c) => c.id,
+      lead: 'Every attribute change with its old and new value, who made it, and the domain controller it was made on.',
+      load: async (fresh) => {
+        const j = await R.get(`/api/ad/audit${fresh ? '?again=true' : ''}`);
+        more.audit = j.more;
+        j.rows.info = { dcs: j.dcs, keep: j.keep, windows: j.windows, account: j.account };
+        noteAudit(j.rows);
+        return j.rows;
+      },
+      find: (c) => [c.name, c.where, c.label, c.attribute, c.by, c.account, c.dc, ...(c.old || []), ...(c.new || [])],
+      group: { on: true, keys: ['op'] },
       views: [
         ['When', [
-          { key: 'all', label: 'Last 30 days' },
+          { key: 'all', label: 'All changes' },
           { key: 'week', label: 'Last 7 days', where: (c) => Date.now() - new Date(c.at) < 7 * DAY },
           { key: 'day', label: 'Last 24 hours', where: (c) => Date.now() - new Date(c.at) < DAY },
         ]],
         ['Change', [
           { key: 'made', label: 'Created', where: (c) => c.what === 'made' },
-          { key: 'changed', label: 'Changed', where: (c) => c.what === 'changed' },
+          { key: 'changed', label: 'Modified', where: (c) => c.what === 'changed' },
+          { key: 'moved', label: 'Moved or renamed', quiet: true, where: (c) => c.what === 'moved' },
           { key: 'deleted', label: 'Deleted', tone: 'red', where: (c) => c.what === 'deleted' },
           { key: 'restored', label: 'Restored', quiet: true, where: (c) => c.what === 'restored' },
         ]],
@@ -189,9 +249,12 @@
           { key: 'computers', label: 'Computers', where: (c) => c.kind === 'computer' },
           { key: 'ous', label: 'OUs', quiet: true, where: (c) => c.kind === 'ou' },
         ]],
+        ['Recorded', [{ key: 'unrecorded', label: 'Not in a Security log', tone: 'amber', quiet: true, where: (c) => !c.event }]],
       ],
-      csv: [['When', (c) => c.at], ['Change', (c) => c.what], ['Type', (c) => c.kind], ['Name', (c) => c.name], ['Location', (c) => c.where], ['Attributes changed', (c) => c.attributes.join(' ')],
-        ['Changed by', (c) => c.by], ['Distinguished name', (c) => c.dn]],
+      csv: [['When', (c) => c.at], ['Modified by', (c) => c.by], ['Account', (c) => c.account], ['Object', (c) => c.name], ['Type', (c) => c.kind], ['Location', (c) => c.where],
+        ['Change', (c) => c.what], ['Attribute', (c) => c.label], ['LDAP name', (c) => c.attribute], ['Old value', (c) => (c.old == null ? 'Not recorded' : c.old.join('; '))],
+        ['New value', (c) => (c.new == null ? 'Not read' : c.new.join('; '))], ['Originating DC', (c) => c.dc], ['Event ID', (c) => c.event], ['Operation', (c) => c.op],
+        ['Distinguished name', (c) => c.dn]],
     },
     recycle: {
       title: 'Recycle Bin', noun: ['deleted object', 'deleted objects'], add: null, key: (d) => d.dn,
@@ -367,16 +430,33 @@
     col('about', 'Details', 320, (s) => s.about),
     col('source', 'Source', 240, (s) => s.source || '', { cell: (s) => `<span class="muted ell">${esc(s.source || '')}</span>` }),
   ];
+  const oldText = (c) => (c.old == null ? 'Not recorded' : c.old.join('; '));
+  const newText = (c) => (c.new == null ? 'Not read' : c.new.join('; '));
   AD.audit.cols = [
-    col('when', 'When', 150, (c) => time(c.at), { on: true, cell: (c) => esc(stamp(c.at)) }),
-    col('what', 'Change', 100, (c) => c.what, { on: true, cell: (c) => badge(c.what.charAt(0).toUpperCase() + c.what.slice(1), WHAT[c.what]) }),
-    col('name', 'Object', 200, (c) => c.name, { fixed: true, cell: (c) => `<div class="who"><span class="pic">${svg(KIND_ICON[c.kind] || 'folder')}</span><b class="ell">${esc(c.name)}</b></div>` }),
-    col('kind', 'Type', 100, (c) => c.kind, { on: true, cell: (c) => esc(kindWord(c.kind)) }),
-    col('where', 'Location', 180, (c) => c.where || ad.state.domain, { on: true }),
-    col('changed', 'Attributes changed', 260, (c) => c.attributes.join(', '), { on: true,
-      cell: (c) => `<span class="ell">${esc(c.attributes.slice(0, 4).join(', ') + (c.attributes.length > 4 ? ` and ${c.attributes.length - 4} more` : ''))}</span>` }),
-    col('by', 'Changed by', 130, (c) => c.by || '', { on: true, cell: (c) => (c.by ? esc(c.by) : '<span class="muted">-</span>') }),
-    col('dn', 'Distinguished name', 320, (c) => c.dn),
+    // Sized so the columns that show at first fit the page without scrolling sideways.
+    col('when', 'When', 112, (c) => time(c.at), { on: true, cell: (c) => esc(stamp(c.at)) }),
+    col('by', 'Modified by', 104, (c) => c.by || '', { on: true, filter: true, cell: (c) => (c.by ? `<span class="ell">${esc(c.by)}</span>` : '<span class="muted">Unknown</span>') }),
+    col('name', 'Object', 132, (c) => c.name, { fixed: true, filter: true, cell: (c) => `<div class="who">${auditPic(c)}<b class="ell">${esc(c.name)}</b></div>` }),
+    col('label', 'Attribute', 104, (c) => c.label, { on: true, filter: true }),
+    col('old', 'Old value', 104, oldText, { on: true, nofilter: true, cell: (c) => `<span class="dir-old">${auditVals(c.old, 'Not recorded')}</span>`, text: oldText }),
+    col('new', 'New value', 104, newText, { on: true, nofilter: true, cell: (c) => auditVals(c.new, 'Not read'), text: newText }),
+    col('dc', 'Originating DC', 112, (c) => c.dc || '', { on: true, filter: true }),
+    col('what', 'Change', 110, (c) => c.what, { cell: (c) => badge(WHAT_WORD[c.what] || c.what, WHAT[c.what] || 'grey') }),
+    col('kind', 'Type', 100, (c) => c.kind, { cell: (c) => esc(kindWord(c.kind)) }),
+    col('where', 'Location', 180, (c) => c.where || ad.state.domain),
+    col('account', 'Account', 170, (c) => c.account || ''),
+    col('attribute', 'LDAP name', 170, (c) => c.attribute, { cell: (c) => mono(c.attribute) }),
+    col('event', 'Event ID', 100, (c) => c.event || 0, { cell: (c) => (c.event ? esc(String(c.event)) : '<span class="muted">None</span>'), text: (c) => c.event || '' }),
+    // Group by Operation (on by default) puts each operation's rows under a sentence that says what was done.
+    col('op', 'Operation', 280, (c) => time(c.at), { nofilter: true, nosort: true, cell: (c) => `<span class="ell">${esc(plainSay(opRows(c)))}</span>`, text: (c) => plainSay(opRows(c)),
+      group: {
+        key: (c) => c.op,
+        rank: (c) => -time(c.at),
+        head: (xs) => `${xs[0].by ? `<span class="pic user small">${esc(initials(xs[0].by))}</span>` : `<span class="pic small">${svg('server')}</span>`}<span class="ell dir-op-say">${opSay(xs)}</span>`,
+        side: (xs) => `<span class="dir-op-side"><span>${esc(stamp(xs[0].at))}</span>${xs[0].dc ? `<span class="dir-op-dc">${esc(xs[0].dc)}</span>` : ''}</span>`,
+        cls: (xs) => `dir-op${xs.some(freshRow) ? ' dir-audit-in' : ''}`,
+      } }),
+    col('dn', 'Distinguished name', 320, (c) => c.dn, { cell: (c) => mono(c.dn) }),
   ];
   AD.recycle.cols = [
     col('name', 'Name', 240, (d) => d.name, { fixed: true, cell: (d) => `<div class="who"><span class="pic">${svg(KIND_ICON[d.kind] || 'folder')}</span><b class="ell">${esc(d.name)}</b></div>` }),
@@ -391,8 +471,8 @@
   AD.audit.sort = { key: 'when', dir: -1 };
   AD.recycle.sort = { key: 'deleted', dir: -1 };
 
-  // Every AD list is a data grid (grid.js): columns, widths and sort kept per page in this browser. Users, Groups and
-  // Computers add a tick on the left and ⋯ on the right.
+  // Every AD list is a data grid (grid.js): columns, widths and sort kept per page in this browser. Users, Groups,
+  // Computers and the AD audit add a tick on the left and ⋯ on the right.
   let emptyNow = '';
   let adFailed = ''; // why the open page couldn't be read, until it's read again
   let orgFailed = false; // the Org chart's people couldn't be counted, for the banner
@@ -414,6 +494,8 @@
     key: () => adPage,
     cols: () => page().cols,
     sort: () => page().sort || null,
+    group: () => page().group || null,
+    rowClass: (x) => (adPage === 'audit' && freshRow(x) ? 'dir-audit-in' : ''),
     lead: () => (picked[adPage] ? { w: 18, head: '<label class="tk"><input type="checkbox" data-tick-all aria-label="Select all"></label>',
       cell: (x) => `<label class="tk"><input type="checkbox" data-tick="${esc(keyOf(x))}" aria-label="Select ${esc(x.name || x.username)}"></label>` } : null),
     tail: () => (picked[adPage] ? { w: 28, cell: (x, i) => `<div class="tr-more"><button type="button" class="at-more" data-row-menu="${i}" data-tip="Actions" aria-label="Actions for ${esc(x.name || x.username)}">${svg('dots')}</button></div>` } : null),
@@ -541,8 +623,8 @@
     const test = adBar.test();
     rows = list.filter((x) => inView(v, x) && test(x));
     drawTabs();
-    // Actions is for the pages that list users, groups and computers. The filter bar and the grid's part of the list's
-    // bar (Group by, the count, Compact or Relaxed) draw themselves.
+    // Actions is for the pages that list users, groups, computers and changes. The filter bar and the grid's part of the
+    // list's bar (Group by, the count, Compact or Relaxed) draw themselves.
     const picks = !!picked[adPage];
     $('dir-act').hidden = !picks;
     adBar.draw();
@@ -551,7 +633,10 @@
     $('dir-table').className = `table adt ${adPage} drows${picks ? ' picks' : ''}`;
     emptyNow = list.length ? (adBar.any() ? 'No items match the filter.' : 'No items in this view.') : lists[adPage] || !adFailed ? 'No items found.' : esc(adFailed);
     rows = adGrid.draw(rows);
+    // A new audit row drawn again mid-way through easing in carries on from where it was.
+    if (adPage === 'audit') $('dir-table').querySelectorAll('.tr.dir-audit-in[data-i]').forEach((r) => r.style.setProperty('animation-delay', `-${ageOf(rows[Number(r.dataset.i)])}ms`));
     $('dir-more').hidden = !more[adPage];
+    $('dir-more').textContent = adPage === 'audit' ? 'Only the newest 2,000 changes are shown.' : 'Only the first 1,000 results are shown.';
     drawPicked();
     drawViews();
     // The side panel belongs to the page it was opened on.
@@ -650,12 +735,64 @@
         : `${svg('alert')}<span><b>The AD Recycle Bin is not enabled.</b> Restored objects lose their group memberships and most attributes.</span>`
           + (can('ad.connect') ? '<button type="button" class="small primary" data-banner="enable">Enable</button>' : '');
       if (recycle.problem) html += `<span class="warn">${esc(recycle.problem)}</span>`;
-    } else if (adPage === 'audit') {
-      html = `${svg('history')}<span>Changed by is shown for changes made in ${esc(R.app())}. For changes made in other tools, check the security logs on the domain controllers.</span>`;
+    } else if (adPage === 'audit' && lists.audit?.info) {
+      html = auditBanner(lists.audit.info);
     }
     b.innerHTML = html;
     b.hidden = !html;
   };
+  // The audit's line: which DCs don't record changes and how to fix that, or whose logs it reads; and how long changes are kept.
+  const KEEP = [[30, '30 days'], [90, '90 days'], [365, '1 year']];
+  const keepWords = (d) => KEEP.find(([n]) => n === d)?.[1] || `${d} days`;
+  const listOf = (names) => (names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`);
+  const auditBanner = ({ dcs = [], keep, windows, account }) => {
+    const off = dcs.filter((d) => d.state === 'silent' || d.state === 'denied').map((d) => d.name);
+    const down = dcs.filter((d) => d.state === 'unreachable' || d.state === 'error');
+    const reading = dcs.filter((d) => d.state === 'recording').map((d) => d.name);
+    const logs = (n) => (n === 1 ? 'log' : 'logs');
+    const pick = can('ad.connect') ? `<label class="dir-keep"><span>Keep changes for</span><select data-banner="keep" aria-label="Keep changes for">`
+      + `${KEEP.map(([d, w]) => `<option value="${d}"${d === keep ? ' selected' : ''}>${w}</option>`).join('')}</select></label>` : '';
+    const kept = pick ? '' : ` Changes are kept for ${keepWords(keep)}.`;
+    let line;
+    if (!windows) {
+      line = `${svg('alert')}<span><b>Security logs are read only when ${esc(R.app())} runs on Windows.</b> Changes show the new value read from Active Directory, without Modified by or the old value.${kept}</span>`;
+    } else if (!account) {
+      line = `${svg('alert')}<span><b>Security logs are read as the service account.</b> Until it is set up, changes show the new value read from Active Directory, without Modified by or the old value.${kept}</span>`;
+    } else if (off.length) {
+      line = `${svg('alert')}<span><b>${esc(listOf(off))} ${off.length === 1 ? 'does' : 'do'} not record directory changes in ${off.length === 1 ? 'its' : 'their'} Security log.</b> `
+        + `To fix this, turn on Audit Directory Service Changes (Success) in the Default Domain Controllers Policy and add ${esc(ad.state.account)} to the Event Log Readers group.</span>`;
+    } else if (reading.length) {
+      line = `${svg('check')}<span><b>Changes are read from the Security ${logs(reading.length)} of ${esc(listOf(reading))}.</b>${kept}</span>`;
+    } else if (down.length) {
+      line = `${svg('alert')}<span><b>The Security ${logs(down.length)} of ${esc(listOf(down.map((d) => d.name)))} could not be read.</b>${kept}</span>`;
+    } else {
+      line = `${svg('history')}<span><b>Reading the domain controllers' Security logs.</b> Changes with their old values appear here within a few minutes.${kept}</span>`;
+    }
+    return line + pick + down.map((d) => `<span class="warn">${esc(d.problem || `The Security log of ${d.name} could not be read.`)}</span>`).join('');
+  };
+  // Keep changes for: a shorter time removes the older changes for good, so it asks first.
+  $('dir-banner').addEventListener('change', (e) => {
+    const box = e.target.closest('[data-banner="keep"]');
+    if (!box) return;
+    const days = Number(box.value);
+    const was = lists.audit?.info?.keep || 90;
+    const go = async () => {
+      try {
+        const { keep } = await R.send('/api/ad/audit/keep', { days });
+        lists.audit = await AD.audit.load();
+        R.toast(`Changes are now kept for ${keepWords(keep)}.`, keep < was ? `Changes older than ${keepWords(keep)} were removed.` : '');
+      } catch (err) {
+        R.toast('Could not change how long changes are kept.', err.message, { tone: 'warn' });
+      }
+      if (adPage === 'audit') drawAd();
+    };
+    if (days >= was) {
+      go();
+      return;
+    }
+    sure(`Keep changes for ${keepWords(days)}?`, `Changes older than ${keepWords(days)} are removed from the AD audit. This cannot be undone.`, `Keep for ${keepWords(days)}`, go);
+    $('sure-dialog').addEventListener('close', () => { if (adPage === 'audit') drawBanner(); }, { once: true });
+  });
   $('dir-banner').addEventListener('click', (e) => {
     if (!e.target.closest('[data-banner="enable"]')) return;
     $('rb-user').value = R.me()?.source === 'ad' ? R.me().username : '';
@@ -727,11 +864,12 @@
     setTimeout(() => URL.revokeObjectURL(a.href), 5000);
   };
   $('dir-export').addEventListener('click', () => csvOf(rows, `${adPage}-${adView}`));
-  // Refresh: the open page's list read again from Active Directory, with the flask while it reads.
-  $('dir-refresh').addEventListener('click', () => R.refresh($('dir-refresh'), $('dir-lib'), 'Refreshing Active Directory…', async () => {
+  // Refresh: the open page's list read again from Active Directory (the AD audit reads the Security logs first), with the
+  // flask while it reads.
+  $('dir-refresh').addEventListener('click', () => R.refresh($('dir-refresh'), $('dir-lib'), adPage === 'audit' ? 'Reading Security logs…' : 'Refreshing Active Directory…', async () => {
     const k = adPage;
     try {
-      lists[k] = await AD[k].load();
+      lists[k] = await AD[k].load(true);
       say('dir-problem', '');
     } catch (err) {
       say('dir-problem', err.message);
@@ -750,9 +888,10 @@
       const k = adPage;
       if (!ad) ad = await R.adInfo(); // its first read failed before the domain was known
       if (!ad.state) throw new Error('Not set up.');
-      return { k, list: await AD[k].load(), failed: '' };
+      const list = await AD[k].load();
+      return { k, list, failed: '', info: list.info || null }; // info: the audit's DCs and how long it keeps changes
     },
-    now: () => ({ k: adPage, list: lists[adPage], failed: adFailed }),
+    now: () => ({ k: adPage, list: lists[adPage], failed: adFailed, info: lists[adPage]?.info || null }),
     draw: ({ k, list }) => {
       const open = R.panel.is('ad') ? JSON.stringify(dwObj()) : '';
       lists[k] = list;
@@ -876,7 +1015,7 @@
     enable: 'ad.enable', disable: 'ad.enable',
     'groups-add': 'ad.groups', 'groups-remove': 'ad.groups', 'groups-remove-all': 'ad.groups', 'groups-copy': 'ad.groups', 'groups-copy-to': 'ad.groups',
     'members-add': 'ad.groups', 'members-remove': 'ad.groups', 'members-copy': 'ad.groups', 'members-copy-to': 'ad.groups' };
-  const FREE = new Set(['open', 'clear-sel', 'attrs', 'export', 'delete', 'copy']);
+  const FREE = new Set(['open', 'openobj', 'clear-sel', 'attrs', 'export', 'delete', 'copy']);
   const may = (cmd) => FREE.has(cmd.split(':')[0]) || can(NEEDS[cmd] || 'ad.change');
   const anyChange = () => ['ad.change', 'ad.password', 'ad.enable', 'ad.groups'].some(can);
   const mi = (cmd, icon, label, { off = false, hint = '', danger = false } = {}) => (off || !may(cmd) || menuHide.has(cmd) || menuHide.has(cmd.split(':')[0]) ? ''
@@ -919,6 +1058,13 @@
   const menuHtml = (k, objs) => {
     const [one, many] = AD[k].noun;
     const all = objs.length;
+    // AD audit rows: the change, the object it was made to, and a CSV of the ones ticked.
+    if (k === 'audit') {
+      const x = all === 1 ? objs[0] : null;
+      return (x ? part(mi('open', 'history', 'Properties')) : `<p class="cmd-head">${esc(count(all, one, many))} selected<button type="button" class="linkish cmd-clear" data-cmd="clear-sel">Clear</button></p>`)
+        + (x && PAGE_OF[x.kind] && x.what !== 'deleted' ? part(mi('openobj', KIND_ICON[x.kind], `Open ${x.name}`)) : '')
+        + part(mi('export', 'csv', all === 1 ? 'Export to CSV' : `Export ${count(all, one, many)} to CSV`));
+    }
     const xs = objs.filter((x) => mayChange(k, x));
     const n = xs.length;
     const has = (f) => xs.filter(f).length;
@@ -1120,6 +1266,7 @@
         drawPicked();
         break;
       case 'open': openDrawer(k, objs[0]); break;
+      case 'openobj': openChanged(objs[0]); break;
       case 'enable':
       case 'disable': {
         const on = what === 'enable';
@@ -1804,13 +1951,40 @@
   const dwTop = (icon, name, sub, status) => `<div class="dw-head"><span class="pic dw-pic">${svg(icon)}</span><div class="dw-name"><h2 id="dw-title">${esc(name)}</h2>`
     + `${sub ? `<p>${esc(sub)}</p>` : ''}</div><button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div><div class="dw-status">${status}</div>`;
   const PAGE_OF = { user: 'users', group: 'groups', computer: 'computers' };
-  const dwChange = (c) => dwTop(KIND_ICON[c.kind] || 'folder', c.name, c.where || ad.state.domain, badge(c.what.charAt(0).toUpperCase() + c.what.slice(1), WHAT[c.what]))
-    + (PAGE_OF[c.kind] && c.what !== 'deleted' ? `<div class="dw-bar"><button type="button" class="dw-qa" data-dwa-open>${svg('right')}<span>Open</span></button></div>` : '')
-    + dwFacts('Change', [dwFact('When', esc(new Date(c.at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }))), dwFact('Type', esc(c.kind === 'ou' ? 'OU' : c.kind)),
-      dwFact('Changed by', c.by ? esc(`${c.by} (${R.app()})`) : `<span class="muted">Unknown. The change was made outside ${esc(R.app())}.</span>`, true),
-      dwFact('Distinguished name', `<span class="mono">${esc(c.dn)}</span>`, true)])
-    + (c.attributes.length ? `<section class="dw-sec"><div class="dw-sec-head"><h3>Attributes changed <small>${c.attributes.length}</small></h3></div>`
-      + `<div class="chips-in">${c.attributes.map((a) => `<span class="gchip">${esc(a)}</span>`).join('')}</div></section>` : '');
+  // An AD audit row: the old value over the new one in full, every value on its own line, the operation's other changes,
+  // and the Security event that recorded it (or why there is none).
+  const EVENT_SAYS = { 5136: 'A directory service object was modified.', 5137: 'A directory service object was created.', 5138: 'A directory service object was undeleted.',
+    5139: 'A directory service object was moved.', 5141: 'A directory service object was deleted.' };
+  const dwSide = (label, vs, missing, cls) => `<div class="dir-ba ${cls}"><span class="l">${label}</span><div class="v">${vs == null ? `<span class="muted">${esc(missing)}</span>`
+    : vs.length ? vs.map((v) => `<span>${esc(v)}</span>`).join('') : '<span class="muted">Not set</span>'}</div></div>`;
+  const dwChange = (c) => {
+    const same = opRows(c);
+    const by = c.by ? esc(c.by) : '<span class="muted">Unknown</span>';
+    return `<div class="dw-head">${auditPic(c, ' dw-pic')}<div class="dw-name"><h2 id="dw-title">${esc(c.name)}</h2>`
+      + `<p>${esc(`${c.label}: ${(WHAT_WORD[c.what] || c.what).toLowerCase()}${c.by ? ` by ${c.by}` : ''}`)}</p></div>`
+      + `<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`
+      + `<p class="dw-path">${esc([ad.state.domain, c.where].filter(Boolean).join(' / '))}</p>`
+      + `<div class="dw-strip"><div><span class="l">When</span><span class="v">${esc(stamp(c.at))}</span></div><div><span class="l">Modified by</span><span class="v">${by}</span></div>`
+      + `<div><span class="l">Originating DC</span><span class="v">${c.dc ? esc(c.dc) : '<span class="muted">Unknown</span>'}</span></div>`
+      + `<div><span class="l">Event ID</span><span class="v">${c.event ? esc(String(c.event)) : '<span class="muted">None</span>'}</span></div></div>`
+      + (PAGE_OF[c.kind] && c.what !== 'deleted' ? `<div class="dw-bar"><button type="button" class="dw-qa" data-dwa-open>${svg('right')}<span>Open ${esc(c.name)}</span></button></div>` : '')
+      + `<section class="dw-sec"><div class="dw-sec-head"><h3>${esc(c.label)}</h3></div><div class="dir-bas">${dwSide('Old value', c.old, 'Not recorded', 'old')}`
+      + `${dwSide('New value', c.new, 'Not read. Open the object to see its value now.', 'new')}</div></section>`
+      + (same.length > 1 ? `<section class="dw-sec"><div class="dw-sec-head"><h3>Same operation <small>${same.length}</small></h3></div><p class="dw-how">${opSay(same)}.</p>`
+        + `<div class="dir-mini"><div class="dir-mini-h"><span>Attribute</span><span>Old value</span><span>New value</span></div>${same.map((x) => `<div class="dir-mini-r${x.id === c.id ? ' on' : ''}" data-dwa-row="${esc(x.id)}">`
+          + `<span class="ell">${esc(x.label)}</span><span class="dir-old">${auditVals(x.old, 'Not recorded')}</span><span>${auditVals(x.new, 'Not read')}</span></div>`).join('')}</div></section>` : '')
+      + `<section class="dw-sec"><div class="dw-sec-head"><h3>Security event</h3></div>`
+      + (c.event ? `<div class="dw-facts">${dwFact('Event', esc(`${c.event}: ${EVENT_SAYS[c.event] || ''}`), true)}${dwFact('Log', esc(`Security on ${c.dc}`))}`
+        + `${dwFact('Account', c.account ? esc(c.account) : '')}${c.app ? dwFact('Made in', esc(`${R.app()}, by ${c.by}`), true) : ''}${dwFact('Correlation ID', `<span class="mono">${esc(c.op)}</span>`, true)}</div>`
+        : `<p class="dw-how">${esc(unrecorded(c))}</p>`)
+      + `</section><p class="dw-src">${esc(c.dn)}</p>`;
+  };
+  // Why a change has no event, and what that leaves out.
+  const unrecorded = (c) => {
+    const unknown = [c.old == null ? 'the old value' : '', c.by ? '' : 'who made it'].filter(Boolean);
+    return `${c.dc ? `${c.dc} did not record this change in its Security log` : 'No Security log recorded this change'}`
+      + `${unknown.length ? `, so ${unknown.join(' and ')} ${unknown.length > 1 ? 'are' : 'is'} not known` : ''}.${c.new != null ? ' The new value was read from Active Directory.' : ''}`;
+  };
   const dwDeleted = (d) => dwTop(KIND_ICON[d.kind] || 'folder', d.name, d.wasIn || ad.state.domain, badge('Deleted', 'red'))
     + dwFacts('Deleted', [dwFact('Logon name', e1(d.username)), dwFact('Last known location', esc(d.wasIn || ad.state.domain)), dwFact('Deleted', d.deleted ? esc(day(d.deleted)) : '')])
     + (can('ad.change') ? '<section class="dw-sec"><div class="dw-sec-head"><h3>Restore</h3></div><p class="dw-how">The object is restored to its last known location with its group memberships and attributes.</p>'
@@ -1834,6 +2008,56 @@
       R.busy($('dw-body'), '');
     }
   };
+  // --- History: one user's, group's or computer's changes (/api/ad/history), a timeline of its operations -----------
+  // Read as the panel opens, so the tab says how many, and again when the panel is drawn a minute or more later.
+  const hist = { for: '', rows: null, error: '', at: 0, keep: 90 };
+  const loadHistory = (x) => {
+    const dn = x.dn;
+    if (hist.for !== dn) Object.assign(hist, { for: dn, rows: null, error: '' });
+    hist.at = Date.now();
+    R.get(`/api/ad/history?dn=${encodeURIComponent(dn)}`).then((j) => {
+      if (hist.for !== dn || JSON.stringify(j.rows) === JSON.stringify(hist.rows)) return;
+      Object.assign(hist, { rows: j.rows, keep: j.keep, error: '' });
+      if (R.panel.is('ad')) drawDrawer();
+    }).catch((err) => {
+      if (hist.for !== dn || hist.rows) return; // what was read stays
+      hist.error = err.message;
+      if (R.panel.is('ad')) drawDrawer();
+    });
+  };
+  // The rows by operation, newest first.
+  const histOps = () => {
+    const ops = new Map();
+    (hist.rows || []).forEach((r) => { if (!ops.has(r.op)) ops.set(r.op, []); ops.get(r.op).push(r); });
+    return [...ops.values()];
+  };
+  const histCount = (x) => (hist.for === x.dn && hist.rows ? histOps().length : null);
+  const dwHistory = (x) => {
+    const ops = hist.rows ? histOps() : [];
+    const head = `<div class="dw-sec-head"><h3>History${hist.rows ? ` <small>${ops.length.toLocaleString()}</small>` : ''}</h3></div>`;
+    if (hist.error) return `<section class="dw-sec">${head}<p class="hint problem">${esc(hist.error)}</p></section>`;
+    if (!hist.rows) return `<section class="dw-sec">${head}<div data-dwh-skel></div></section>`;
+    if (!ops.length) return `<section class="dw-sec">${head}<p class="muted dw-empty">No changes to ${esc(nameOf(x))} in the last ${keepWords(hist.keep)}.</p></section>`;
+    let lastDay = '';
+    const items = ops.map((xs) => {
+      const c = xs[0];
+      const d = dayOf(c.at);
+      const heading = d !== lastDay ? `<p class="dir-tl-day">${esc(d)}</p>` : '';
+      lastDay = d;
+      const what = ['made', 'deleted', 'restored', 'moved'].find((w) => xs.some((r) => r.what === w)) || 'changed';
+      // Undo, for a change the Undo journal kept (change), once it's there to call.
+      const undo = R.undo ? [...new Set(xs.map((r) => r.change).filter(Boolean))].map((id) => `<button type="button" class="dw-link" data-dwh-undo="${esc(id)}">${svg('restart')}Undo</button>`).join('') : '';
+      return `${heading}<div class="dir-tl-ev${c.event ? '' : ' unknown'}"><div class="dir-tl-head"><b>${esc(clock(c.at))}</b>`
+        + `<span class="ell">${c.by ? esc(c.by) : '<span class="muted">Unknown</span>'}</span>${c.dc ? `<span class="muted">${esc(c.dc)}</span>` : ''}<span class="grow"></span>${badge(WHAT_WORD[what], WHAT[what])}</div>`
+        + `<div class="dir-tl-rows">${xs.map((r) => `<span class="a ell">${esc(r.label)}</span><span class="o">${auditVals(r.old, 'Not recorded')}</span>${svg('arrow')}<span class="n">${auditVals(r.new, 'Not read')}</span>`).join('')}</div>`
+        + (c.event ? '' : `<p class="dir-tl-why">${esc(unrecorded(c))}</p>`)
+        + (undo ? `<div class="dir-tl-do">${undo}</div>` : '')
+        + '</div>';
+    }).join('');
+    return `<section class="dw-sec dir-hist">${head}<p class="hint dir-tl-lead">Changes to ${esc(nameOf(x))} in the last ${keepWords(hist.keep)}, read from the Security logs of the domain controllers.</p>`
+      + `<div class="dir-tl">${items}</div></section>`;
+  };
+
   // Domain Admins in Groups, opened in the panel once its list is there.
   let dwNext = null;
   const openAdmins = () => {
@@ -1856,6 +2080,11 @@
     // Each tab that lists things says how many.
     const inGroups = (x.groups || []).length;
     const tabsFor = k === 'groups' ? [['overview', 'Overview'], ['members', 'Members', x.moreMembers ? '1,500+' : x.members], ['memberof', 'Member of', inGroups]] : [['overview', 'Overview'], ['memberof', 'Member of', inGroups]];
+    // Its changes, read as the panel opens so the tab says how many, and again after a minute.
+    if (x.dn) {
+      if (hist.for !== x.dn || Date.now() - hist.at > 60000) loadHistory(x);
+      tabsFor.push(['history', 'History', histCount(x)]);
+    }
     // Every attribute it has, read as the panel opens so the tab says how many are set.
     if (x.dn && R.attrs) {
       if (dw.attrs.for !== x.dn) loadAttrs(x);
@@ -1866,7 +2095,8 @@
     const notesOn = sid && R.notesTab ? `ad:${sid}` : '';
     if (notesOn) tabsFor.push(['notes', 'Notes', R.notesTab.count(notesOn, () => { if (R.panel.is('ad')) drawDrawer(); }) || null]);
     if (dw.tab === 'notes' && !notesOn) dw.tab = 'overview';
-    const body = dw.tab === 'notes' ? R.notesTab.pane(notesOn, x.name) : dw.tab === 'attrs' ? dwAttrs(x) : dw.tab === 'members' ? dwMembers(x) : dw.tab === 'memberof' ? dwMemberOf(k, x) : dwOverview(k, x);
+    const body = dw.tab === 'notes' ? R.notesTab.pane(notesOn, x.name) : dw.tab === 'attrs' ? dwAttrs(x) : dw.tab === 'history' ? dwHistory(x) : dw.tab === 'members' ? dwMembers(x)
+      : dw.tab === 'memberof' ? dwMemberOf(k, x) : dwOverview(k, x);
     const scroll = $('dw-body').scrollTop;
     // Typing in Find keeps its place when the panel is drawn again.
     const typing = document.activeElement?.id === 'dwa-find' ? [document.activeElement.selectionStart, document.activeElement.selectionEnd] : null;
@@ -1874,6 +2104,8 @@
       + `<div class="tabs2 dw-tabs" role="tablist">${tabsFor.map(([t, label, n]) => `<a role="tab" data-dw-tab="${t}"${dw.tab === t ? ' aria-current="true"' : ''}>${esc(label)}${n == null ? '' : `<small>${esc(n.toLocaleString())}</small>`}</a>`).join('')}</div>`
       + `<div class="dw-panel">${body}</div>`;
     $('dw-body').querySelectorAll('[data-mixed]').forEach((b) => { b.indeterminate = true; });
+    const histSkel = dw.tab === 'history' && $('dw-body').querySelector('[data-dwh-skel]');
+    if (histSkel) R.skeleton(histSkel, 'rows', 4);
     if (dw.tab === 'attrs') {
       const skel = $('dw-body').querySelector('[data-dwa-skel]');
       if (skel) R.skeleton(skel, 'rows', 6);
@@ -1950,7 +2182,12 @@
     if (!x) return;
     const k = dw.kind;
     if (k === 'audit') {
+      const other = e.target.closest('[data-dwa-row]');
       if (e.target.closest('[data-dwa-open]')) openChanged(x);
+      else if (other && other.dataset.dwaRow !== x.id) {
+        const y = (lists.audit || []).find((r) => r.id === other.dataset.dwaRow);
+        if (y) openDrawer('audit', y);
+      }
       return;
     }
     if (k === 'recycle') {
@@ -1968,6 +2205,9 @@
     }
     const t = e.target.closest('[data-dw-tab]');
     if (t) { dw.tab = t.dataset.dwTab; dw.picks.clear(); drawDrawer(); return; }
+    // History: Undo, which the Undo journal does (R.undo) for a change it kept.
+    const undo = e.target.closest('[data-dwh-undo]');
+    if (undo) { R.undo?.(undo.dataset.dwhUndo); return; }
     // Attributes: a row's menu, Export, and the same object in the Attribute browser.
     const am = e.target.closest('[data-dwa-menu]');
     if (am) {

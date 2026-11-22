@@ -70,6 +70,12 @@ public sealed class TestApp(string data) : WebApplicationFactory<Program>
     /// <summary>Setup's host name and alias, so no test reads or changes this computer's registry.</summary>
     public FakeInstallName Install { get; } = new();
 
+    /// <summary>Stands in for the domain controllers' Security logs, so no test reads a real one.</summary>
+    public FakeSecurityLog SecurityLog { get; } = new();
+
+    /// <summary>When set, the real tools behind the domain pages (DirectoryTools) read this stand-in for Active Directory.</summary>
+    public FakeLdap? Ldap { get; init; }
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseSetting("DataPath", data);
@@ -80,7 +86,9 @@ public sealed class TestApp(string data) : WebApplicationFactory<Program>
             // The real tools behind the domain pages never read this computer's own domain in a test.
             services.RemoveAll<DirectoryTools>();
             services.AddSingleton(s => new DirectoryTools(s.GetRequiredService<DataFolder>(), s.GetRequiredService<SettingsStore>(), s.GetRequiredService<Accounts>(),
-                s.GetRequiredService<IDomainFinder>()) { AsComputer = null });
+                s.GetRequiredService<IDomainFinder>(), Ldap is { } ldap ? ldap.Open : null) { AsComputer = null });
+            services.RemoveAll<ISecurityLog>();
+            services.AddSingleton<ISecurityLog>(SecurityLog);
             services.RemoveAll<TimeProvider>();
             services.AddSingleton<TimeProvider>(Clock);
             services.RemoveAll<IUpdateSource>();

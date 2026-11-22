@@ -28,6 +28,7 @@ public static class UsersApi
         services.AddSingleton<PrinterDevices>();
         services.AddSingleton<ClientCommands>();
         services.AddSingleton<IAdminGroups, AdminGroups>();
+        services.AddAudit();
     }
 
     public static void MapUsersApi(this WebApplication app)

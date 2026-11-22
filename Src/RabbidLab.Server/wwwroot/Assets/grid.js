@@ -44,7 +44,9 @@
   // under its headings and not what empty says.
   // Columns is the button at the end of the heading row (headButton: false leaves it out). el is the table for
   // draw(); for a page with several tables sharing the columns (one per group), el holds them and table() makes each.
-  // A column: { key, label, w, get(x), cell(x), text(x), word(x), on, fixed, nosort, nogroup }.
+  // A column: { key, label, w, get(x), cell(x), text(x), word(x), on, fixed, nosort, nogroup, group }. group says how its
+  // headings look when the rows are grouped by it: { key(x), head(xs), side(xs), rank(x), cls(xs) }. o.group: grouped
+  // by these until someone picks otherwise, { on, keys }.
   const grid = (o) => {
     const el = () => of(o.el);
     const name = (what) => `${o.store || 'rabbidlab.grid'}.${what}.${of(o.key)}`;
@@ -60,7 +62,7 @@
     g.cols = cols;
     g.text = text;
     // Group by: on or off, and the columns the rows are gathered by, outermost first.
-    const groupSet = () => { const s = read(name('group')); return { on: !!s?.on, keys: Array.isArray(s?.keys) ? s.keys : [] }; };
+    const groupSet = () => { const s = read(name('group')) ?? of(o.group); return { on: !!s?.on, keys: Array.isArray(s?.keys) ? s.keys : [] }; };
     const groupCols = () => { const s = groupSet(); return s.on ? s.keys.map((k) => cols().find((c) => c.key === k && !c.nogroup)).filter(Boolean) : []; };
     const folded = new Set(); // the groups that are closed, until the page is opened again
     // Pinned columns: { key: 'left' | 'right' }. They show first or last, and stay put when the grid scrolls sideways.
@@ -141,15 +143,18 @@
       const groups = (part, depth, path) => {
         if (depth >= by.length) return part.map(row).join('');
         const c = by[depth];
+        const gc = c.group || {};
         const sets = new Map();
-        part.forEach((x) => { const v = g.text(c, x) || 'None'; if (!sets.has(v)) sets.set(v, []); sets.get(v).push(x); });
-        const rank = (v) => { const r = c.get(v); return typeof r === 'number' ? r : String(r ?? '').toLowerCase(); };
+        part.forEach((x) => { const v = gc.key ? gc.key(x) : g.text(c, x) || 'None'; if (!sets.has(v)) sets.set(v, []); sets.get(v).push(x); });
+        const rank = (v) => { const r = (gc.rank || c.get)(v); return typeof r === 'number' ? r : String(r ?? '').toLowerCase(); };
         return [...sets].sort((a, b) => { const x = rank(a[1][0]); const y = rank(b[1][0]); return x < y ? -1 : x > y ? 1 : 0; }).map(([v, xs]) => {
           const id = `${of(o.key)}${path}/${v}`;
           const shut = folded.has(id);
           if (shut) rows.push(...xs); // still part of the list: ticking everything counts them
-          return `<div class="tr grp${shut ? ' shut' : ''}" data-grid-group="${esc(id)}" data-depth="${Math.min(depth, 3)}" tabindex="0"><div class="grp-cell">${svg('chevron-down', 'grp-chev')}`
-            + `<span class="ell">${esc(c.label)}: ${esc(v)}</span><small>${xs.length.toLocaleString()}</small></div></div>${shut ? '' : groups(xs, depth + 1, `${path}/${v}`)}`;
+          const cls = gc.cls ? gc.cls(xs) : '';
+          return `<div class="tr grp${shut ? ' shut' : ''}${cls ? ` ${cls}` : ''}" data-grid-group="${esc(id)}" data-depth="${Math.min(depth, 3)}" tabindex="0"><div class="grp-cell">${svg('chevron-down', 'grp-chev')}`
+            + `${gc.head ? gc.head(xs) : `<span class="ell">${esc(c.label)}: ${esc(v)}</span>`}<small>${xs.length.toLocaleString()}</small></div>${gc.side ? gc.side(xs) : ''}</div>`
+            + (shut ? '' : groups(xs, depth + 1, `${path}/${v}`));
         }).join('');
       };
       const html = `<div class="tr th">${lead ? `<div class="lead${leadPin}">${lead.head || ''}</div>` : ''}${head}<div class="tr-tail${tailPin}">${button}</div></div>`
