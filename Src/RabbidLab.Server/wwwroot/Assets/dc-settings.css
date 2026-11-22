@@ -1,0 +1,42 @@
+/* Domain health › On each DC (dc-settings.js): the count and severity cells, the side panel's list of DCs, and How to fix it. */
+
+/* A mark and its words: a tick in green, ! in red, nothing in grey. */
+.dcs-v { display: block; min-width: 0; overflow: hidden; }
+.dcs-v .ubadge { gap: 8px; max-width: 100%; height: auto; margin: 0; padding: 0; border-radius: 0; background: none; color: var(--text); font-size: 13px; font-weight: 500; }
+.dcs-t { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.dcs-v .ubadge.green::before, .dcs-v .ubadge.red::before { flex: none; width: 15px; height: 15px; border-radius: 50%; color: var(--night); font: 800 10px/15px "Segoe UI", system-ui, sans-serif; text-align: center; }
+.dcs-v .ubadge.green::before { content: "✓"; background: var(--ok); }
+.dcs-v .ubadge.red::before { content: "!"; background: var(--red); }
+.dcs-v .ubadge.grey { color: var(--muted); }
+
+/* Severity: one word in its own colour. */
+.dcs-sev { font-size: 13px; font-weight: 600; }
+.dcs-sev.high { color: var(--red); }
+.dcs-sev.medium { color: var(--amber); }
+.dcs-sev.low { color: var(--muted); }
+
+/* While the DCs are read for the first time. */
+.dir-banner svg.dcs-spin { animation: spin .8s linear infinite; }
+
+/* The side panel: each DC's value, under a heading per site when grouped. */
+.dcs-mini { margin-bottom: 8px; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.dcs-mini-h, .dcs-mini-r { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, .9fr) minmax(0, 1.1fr) 132px 72px; gap: 12px; align-items: center; min-height: 36px; padding: 0 12px; }
+.dcs-mini-h { background: #0F111A; color: #9DA1B3; font-size: 12px; font-weight: 600; }
+.dcs-mini-h > span { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.dcs-mini-r { border-top: 1px solid #171A27; font-size: 13px; }
+.dcs-mini-r > span { display: flex; align-items: center; gap: 8px; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.dcs-mini-r svg { flex: none; width: 15px; height: 15px; color: #8B90A5; }
+.dcs-mini-r .ubadge { margin: 0; }
+.dcs-mini-g { display: flex; align-items: center; gap: 10px; min-height: 38px; padding: 0 12px; border-top: 1px solid #171A27; background: #0D0F18; color: var(--title); font-size: 13px; }
+.dcs-mini-g > svg { flex: none; width: 15px; height: 15px; color: #8B90A5; }
+.dcs-mini-g b { font-weight: 650; }
+.dcs-mini-g .dcs-v { margin-left: auto; }
+.dcs-none { margin: 0; padding: 12px; border-top: 1px solid #171A27; color: var(--muted); font-size: 13px; }
+
+/* How to fix it: the GPO, where the setting is in it, and what to set it to. */
+.dcs-fix { margin-bottom: 10px; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.dcs-fix > div { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 12px; padding: 9px 12px; border-top: 1px solid #171A27; font-size: 13px; }
+.dcs-fix > div:first-child { border-top: 0; }
+.dcs-fix .l { color: #6D7290; font-weight: 600; }
+.dcs-fix .v { color: var(--text); overflow-wrap: anywhere; }
+.dcs-fix .v b { color: var(--title); }

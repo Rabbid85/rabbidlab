@@ -45,6 +45,7 @@
     }
     draw();
     if (panel.is('gpo')) drawPanel();
+    openWanted();
   })());
   const gpoOf = (id) => gp?.gpos.find((g) => g.id === id);
   const placeOf = (dn) => gp?.places.find((p) => p.dn.toLowerCase() === String(dn).toLowerCase());
@@ -327,7 +328,20 @@
     view = list === 'gpos' && VIEWS.some((x) => x[0] === v) ? v : 'all';
     draw();
     if (!gp && !loading && !problem) load();
+    else openWanted();
   });
+  // Another page asks for one GPO (Domain health › On each DC, How to fix): it opens in the panel once the list is read.
+  let wanted = '';
+  const openWanted = () => {
+    if (!wanted || !gpoOf(wanted)) return;
+    const id = wanted;
+    wanted = '';
+    openGpo(id);
+  };
+  R.openGpo = (id) => {
+    wanted = String(id).toUpperCase();
+    location.hash = '#gpo';
+  };
   // Set up, disconnected, or Not now on the card: read again.
   document.addEventListener('rabbidlab:ad', () => {
     ad = null;

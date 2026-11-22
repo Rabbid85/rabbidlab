@@ -2,6 +2,13 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.358 (2026-11-22)
+
+- Domain health has a second tab, On each DC: ten security settings read from every domain controller, such as SMB signing, SMBv1, LDAP signing and channel binding, the NTLM level, the Print Spooler, TLS 1.0 and 1.1, Kerberos encryption types, LAPS for DSRM and LLMNR.
+- Each setting is one row with how many DCs are compliant and which are not, so the list is as wide with 90 DCs as with 2. A row opens every DC’s value, not compliant first, with Find, Group by site, and the GPO setting that fixes it.
+- SMB signing and SMBv1 come from how each DC answers on port 445. The rest is read from each DC’s registry as the service account, which needs to be an administrator on the DCs, or the registry paths added to Network access: Remotely accessible registry paths and subpaths. Copy the paths gives the list.
+- Re-check reads the DCs again, and they are read again by themselves every 6 hours.
+
 ## 1.1.357 (2026-11-22)
 
 - AD security alerts, read from the domain controllers’ Security logs: too many failed sign-ins, an account locked out, password spraying, a disabled or expired account signing in, sign-ins to many computers, a computer or hour an account doesn’t usually use, objects deleted, and someone added to a privileged group.

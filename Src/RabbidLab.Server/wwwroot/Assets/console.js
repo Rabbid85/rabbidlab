@@ -3,6 +3,11 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.358', [
+    'Domain health has a second tab, On each DC: ten security settings read from every domain controller, such as SMB signing, SMBv1, LDAP signing and channel binding, the NTLM level, the Print Spooler, TLS 1.0 and 1.1, Kerberos encryption types, LAPS for DSRM and LLMNR.',
+    'Each setting is one row with how many DCs are compliant and which are not, so the list is as wide with 90 DCs as with 2. A row opens every DC’s value, not compliant first, with Find, Group by site, and the GPO setting that fixes it.',
+    'SMB signing and SMBv1 come from how each DC answers on port 445. The rest is read from each DC’s registry as the service account, which needs to be an administrator on the DCs, or the registry paths added to Network access: Remotely accessible registry paths and subpaths. Copy the paths gives the list.',
+    'Re-check reads the DCs again, and they are read again by themselves every 6 hours.']],
   ['1.1.357', [
     'AD security alerts, read from the domain controllers’ Security logs: too many failed sign-ins, an account locked out, password spraying, a disabled or expired account signing in, sign-ins to many computers, a computer or hour an account doesn’t usually use, objects deleted, and someone added to a privileged group.',
     'They are in Alerts, Rules to start with, and change like any other alert. Every alert can have its own name, how often (so many times, or so many different accounts, addresses or computers, in so many minutes, for each of something) and conditions of your own, such as Changed by is not, or Hour is between 9-17.',
@@ -1132,6 +1137,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.358': ['2026-11-22', 'feature', 'Security settings on each DC', 'hardening.jpg'],
   '1.1.357': ['2026-11-22', 'feature', 'AD security alerts, with conditions of your own', 'adalerts.jpg'],
   '1.1.356': ['2026-11-22', 'feature', 'Alerts for anything that can happen', 'alerts.jpg'],
   '1.1.355': ['2026-11-22', 'update', 'Sign-in warns when a VPN or DNS blocks the domain'],
@@ -1706,7 +1712,7 @@ const RELEASE_INFO = {
     // Active Directory's pages are listed down the left of whichever of them is open, with that page's views (users.js).
     // Domain health is its own area: its own entry in the sidebar, and only its views down the left.
     const dir = now.classList.contains('dir-top') && now.id !== 'page-seats' && now.id !== 'page-gpo'; // Devices and Group Policy are laid out the same way, with a banner and a list of their own
-    const domain = now.dataset.page === 'ad' && rest[0] === 'domain';
+    const domain = now.dataset.page === 'ad' && (rest[0] === 'domain' || rest[0] === 'dcs'); // its checks, and its settings on each DC
     if (now.dataset.page !== 'ad') $('dir-rail').classList.remove('lists'); // Find, views and filters are for the pages that list things
     $('dir-rail').classList.toggle('domain-only', domain);
     if (now.id === 'page-ad') {
@@ -1721,7 +1727,7 @@ const RELEASE_INFO = {
       if (now.id !== 'page-ad') $('dir-title').textContent = 'Active Directory';
       $(domain ? 'rail-domain' : 'rail-dir').setAttribute('aria-current', 'page');
       if (domain) $('rail-dir').removeAttribute('aria-current');
-      mark(document.querySelectorAll('#dir-rail a[data-adpage]'), 'adpage', now.dataset.page === 'ad' ? where()[2][0] || 'users' : now.dataset.page);
+      mark(document.querySelectorAll('#dir-rail a[data-adpage]'), 'adpage', now.dataset.page === 'ad' ? (domain ? 'domain' : where()[2][0] || 'users') : now.dataset.page);
     }
     // Back to where you jumped from, at the top of the page: in its banner, or over its title.
     const backlink = $('backlink');

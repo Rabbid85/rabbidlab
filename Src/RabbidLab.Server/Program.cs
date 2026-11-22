@@ -142,6 +142,8 @@ builder.Services.AddHostedService<OffboardWorker>();
 // Print queues and the print history (PrintQueues.cs).
 builder.Services.AddPrintQueues();
 builder.Services.AddEventAlerts();
+// Domain health › On each DC: security settings read from each domain controller (DcSettings.cs).
+builder.Services.AddDcSettings();
 // People workflows: steps for AD users, run by hand (PeopleWorkflows.cs).
 builder.Services.AddSingleton<PeopleWorkflows>();
 builder.Services.AddSingleton<FlowRunner>();
@@ -266,6 +268,7 @@ app.MapDirectoryActionsApi();
 app.MapOffboardingApi();
 app.MapPrintQueuesApi();
 app.MapEventAlertsApi();
+app.MapDcSettingsApi();
 app.MapPeopleWorkflowsApi();
 app.MapChangesApi();
 app.MapLinksApi();
