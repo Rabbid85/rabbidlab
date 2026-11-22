@@ -255,3 +255,9 @@ html[data-si-card="split"][data-sty-signin] .card-body, html[data-si-card="split
 .quote-next:hover { background: rgba(255, 255, 255, .07); color: #fff; }
 .quote-next svg { width: 15px; height: 15px; }
 @media (max-width: 900px) { .side-quote { display: none; } }
+
+/* Signed in: the card and the look pill fade away over the background, and the console's opening window comes up in the
+   middle of the same background (signin.js enter, console.js boot). */
+body.leaving .signin-card { opacity: 0; transform: translateY(10px) scale(.98); transition: opacity .35s ease, transform .35s ease; pointer-events: none; }
+body.leaving .auth-shell > .look { opacity: 0; transition: opacity .35s ease; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { body.leaving .signin-card { transform: none; } }

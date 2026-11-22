@@ -168,9 +168,11 @@
     return back.startsWith('#') ? `/${back}` : '/';
   };
   // Signed in just now: the console plays its opening screen for this one (not for a refresh).
+  // Signed in: the card fades away over the background, then the console's opening window comes up on the same one.
   const enter = () => {
     try { sessionStorage.setItem('rabbidlab.signedin', '1'); } catch { /* it opens without it */ }
-    location.replace(home());
+    document.body.classList.add('leaving');
+    setTimeout(() => location.replace(home()), matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 380);
   };
 
   const unreachable = (then) => `Could not connect to the server. Check that the Rabbid Lab service is running, then ${then}.`;

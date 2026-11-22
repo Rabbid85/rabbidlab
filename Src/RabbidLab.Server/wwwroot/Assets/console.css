@@ -324,6 +324,9 @@ body.booting .top, body.booting .rail, body.booting .main > :not(.busy-cover) { 
 .boot.win { background: var(--night); }
 .boot.win::before { display: none; }
 .boot-bg { position: absolute !important; inset: 0; width: 100%; height: 100%; }
+/* The window fades in where it sits, over the background that was already there. */
+.boot.win .boot-box { animation: boot-in .4s ease both; }
+@keyframes boot-in { from { opacity: 0; } }
 .boot-box { display: grid; justify-items: center; width: min(380px, calc(100vw - 32px)); padding: 30px 36px 26px; border: 1px solid var(--sty-boot-edge, var(--line-strong)); border-radius: 20px;
   background: var(--sty-boot-bg, #11131D); backdrop-filter: var(--sty-boot-blur, none); }
 /* With each read: the flask in the middle of the left side, the name and one line on the right, then a row for each read

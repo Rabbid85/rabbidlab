@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.335 (2026-11-22)
+
+- After you sign in, the sign-in card fades away and the opening window comes up in the middle of the same background, then the background fades into the console.
+
 ## 1.1.334 (2026-11-22)
 
 - The opening screen is a smoked glass window over the sign-in background, with a row for each read that turns from Loading links to Loaded links and shows what came back. It never changes size.

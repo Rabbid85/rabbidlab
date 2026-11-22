@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.335', [
+    'After you sign in, the sign-in card fades away and the opening window comes up in the middle of the same background, then the background fades into the console.']],
   ['1.1.334', [
     'The opening screen is a smoked glass window over the sign-in background, with a row for each read that turns from Loading links to Loaded links and shows what came back. It never changes size.',
     'Settings, Appearance, Opening screen picks the window (With each read, Small window or Full screen), when it plays and what it says after an update, and Show it plays it. Its style is under Style, Opening screen.']],
@@ -1055,6 +1057,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.335': ['2026-11-22', 'update', 'From sign-in to the console on one background'],
   '1.1.334': ['2026-11-22', 'feature', 'A glass opening screen with each read'],
   '1.1.333': ['2026-11-22', 'feature', 'A style engine, a glass sign-in card and System'],
   '1.1.332': ['2026-11-22', 'feature', 'Toasts stack, with all their options in Appearance'],
@@ -2632,30 +2635,48 @@ const RELEASE_INFO = {
       const first = RELEASE_NOTES.find(([x]) => x === v)?.[1]?.[0];
       return openingPrefs().note === 'note' && first ? `<p class="${cls}"><b>New in ${esc(v)}:</b> ${esc(first)}</p>` : `<p class="${cls}"><b>Version ${esc(v)}</b> is installed.</p>`;
     };
+    // The sign-in background behind a window, as the sign-in page had it: this browser's pick, else the lab's.
+    let bgOnly = null; // the background up on its own, just after signing in, until the window comes
+    const background = (host) => {
+      host.insertAdjacentHTML('afterbegin', '<canvas class="boot-bg" aria-hidden="true"></canvas>');
+      let mine = '';
+      try { mine = localStorage.getItem('rabbidlab.backdrop') || ''; } catch { /* the lab's */ }
+      stopBg = window.RabbidLabBackdrop.run(host.querySelector('.boot-bg'), mine || brand.background || 'squares', { fit: true });
+    };
+    // The background on its own goes when the window won't come after all; it fades into the console.
+    const unBackground = () => {
+      if (!bgOnly) return;
+      const gone = bgOnly;
+      bgOnly = null;
+      gone.classList.add('out');
+      setTimeout(() => { gone.remove(); stopBg?.(); stopBg = null; }, 500);
+    };
     // Draws the screen in the window this person picked. A window shows the sign-in background behind it after signing in
-    // or an update, as the sign-in page had it.
+    // or an update, and fades in over it where it sits.
     const build = () => {
       kind = openingPrefs().kind;
-      el = document.createElement('div');
+      if (kind === 'full') unBackground();
+      el = bgOnly || document.createElement('div');
+      const had = !!bgOnly;
+      bgOnly = null;
       el.className = `boot${kind === 'full' ? '' : ` win ${kind}`}`;
+      el.removeAttribute('aria-hidden');
       el.setAttribute('role', 'status');
       const flask = `<div class="boot-flask">${FLASK.replace(/<path class="flask-wave"[^>]*\/>/, '<g class="boot-level"><path class="flask-wave" fill="url(#flask-ember)" d="M0 41Q8 37 16 41T32 41T48 41T64 41T80 41T96 41V96H0Z"/></g>')}</div>`;
       const name = `<h1 class="boot-name">${esc(labName)}</h1>`;
+      let body;
       if (kind === 'reads') {
         const rows = steps.map((s) => `<div class="boot-row" data-s="wait"><span class="boot-ic"><i></i>${svg('check')}</span><span class="boot-lbl">${esc(doing(s))}</span><small></small></div>`).join('');
-        el.innerHTML = `<div class="boot-box">${flask}<div class="boot-side">${name}<p class="boot-step"><b>Loading…</b></p><div class="boot-rows">${rows}</div>`
+        body = `<div class="boot-box">${flask}<div class="boot-side">${name}<p class="boot-step"><b>Loading…</b></p><div class="boot-rows">${rows}</div>`
           + `${news ? note(news.version, 'boot-note') : ''}</div></div>`;
       } else {
         const inner = `${flask}${name}<p class="boot-step"></p><div class="boot-dots"></div>${news ? note(news.version, 'boot-note') : ''}`;
-        el.innerHTML = kind === 'small' ? `<div class="boot-box">${inner}</div>` : inner;
+        body = kind === 'small' ? `<div class="boot-box">${inner}</div>` : inner;
       }
-      if (kind !== 'full' && window.RabbidLabBackdrop) {
-        el.insertAdjacentHTML('afterbegin', '<canvas class="boot-bg" aria-hidden="true"></canvas>');
-        let mine = '';
-        try { mine = localStorage.getItem('rabbidlab.backdrop') || ''; } catch { /* the lab's */ }
-        stopBg = window.RabbidLabBackdrop.run(el.querySelector('.boot-bg'), mine || brand.background || 'squares', { fit: true });
-      }
-      document.body.append(el);
+      if (had) el.insertAdjacentHTML('beforeend', body);
+      else el.innerHTML = body;
+      if (!had && kind !== 'full' && window.RabbidLabBackdrop) background(el);
+      if (!el.isConnected) document.body.append(el);
       draw();
     };
     return {
@@ -2687,8 +2708,21 @@ const RELEASE_INFO = {
         if ((signing && openingPrefs().when === 'both') || news) {
           playing = true;
           this.show();
-        }
+        } else unBackground();
         draw();
+      },
+      // Just signed in (the sign-in page says so): the sign-in background comes up at once, before sign-in has answered,
+      // so the card fading on the sign-in page leads straight to the window rising on the same background.
+      early() {
+        let fresh = false;
+        try { fresh = sessionStorage.getItem('rabbidlab.signedin') === '1'; } catch { /* no */ }
+        const p = openingPrefs();
+        if (!fresh || p.when !== 'both' || p.kind === 'full' || !window.RabbidLabBackdrop) return;
+        bgOnly = document.createElement('div');
+        bgOnly.className = `boot win ${p.kind}`;
+        bgOnly.setAttribute('aria-hidden', 'true');
+        document.body.append(bgOnly);
+        background(bgOnly);
       },
       show() {
         if (el || !playing || !document.body.classList.contains('booting')) return;
@@ -2714,9 +2748,11 @@ const RELEASE_INFO = {
       finish() {
         ready = true;
         for (const s of steps) if (!(s.path in got)) got[s.path] = ''; // a read the page didn't make this time
+        if (!el) unBackground(); // the console is ready and no window came: the background fades into it
       },
     };
   })();
+  boot.early();
   // Covers a part of the page with the flask, a line of text and smaller lines under it; no text takes the cover away.
   const busy = (host, text, detail) => {
     let cover = host.querySelector(':scope > .busy-cover');
