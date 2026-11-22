@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.347 (2026-11-22)
+
+- Undo for Active Directory changes. Edits, group membership, enable and disable, account options, expiry, moves, renames, attribute edits and deletes into the Recycle Bin can be undone for 30 days.
+- The toast after a change has Undo. The Activity log has it too: a row opens the side panel with the values before and after and Undo, and Actions, Undo undoes the selected rows.
+- Undo needs the same permission as the change. It refuses when the object was changed again since, and says what changed. A password reset, an unlock, or creating an object says why it cannot be undone.
+
 ## 1.1.346 (2026-11-22)
 
 - The Activity log has a summary on top: how many entries, sign-ins, changes and problems in the chosen period, then By user and By area with share bars. A row opens the side panel with its latest entries.
