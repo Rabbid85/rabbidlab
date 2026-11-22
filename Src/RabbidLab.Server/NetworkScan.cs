@@ -240,7 +240,32 @@ public sealed class NetworkScan(DataFolder folder, INetProbe probe, Clients clie
         var gateways = probe.Gateways();
         var oses = Oses();
         var first = file.Read().LastScan is null;
-        var alive = new ConcurrentBag<(NetRange Range, IPAddress Ip, int? Ms, int? Ttl, bool? Tcp)>();
+        var community = file.Read().Community;
+        var seen = new ConcurrentDictionary<string, byte>();
+        var asking = new ConcurrentBag<Task>();
+        using var gate = new SemaphoreSlim(Identify);
+        // What one is, as soon as it has answered, a few at a time while the ping goes on: so each device is identified,
+        // and shows on the page, right where the sweep finds it, not in a second pass after it.
+        async Task Identify1(NetRange r, IPAddress ip, int? ms, int? ttl)
+        {
+            await gate.WaitAsync(stop);
+            var key = ip.ToString();
+            run.Busy[key] = 0;
+            try
+            {
+                Keep(r, await Ask(ip, ms, ttl, probe.Arp(), gateways, community, oses, stop), first);
+            }
+            catch (Exception e) when (e is not OperationCanceledException)
+            {
+                logger.LogDebug(e, "Could not identify {Ip}", ip);
+            }
+            finally
+            {
+                run.Busy.TryRemove(key, out _);
+                Interlocked.Increment(ref run.Asked);
+                gate.Release();
+            }
+        }
         // Every address: ping, then a knock on a few ports for those that block ping.
         foreach (var r in run.Ranges)
         {
@@ -250,11 +275,12 @@ public sealed class NetworkScan(DataFolder folder, INetProbe probe, Clients clie
             {
                 var key = ip.ToString();
                 run.Busy[key] = 0;
+                (bool Up, int? Ms, int? Ttl) reply = (false, null, null);
+                bool? tcp = null;
                 try
                 {
-                    var (up, ms, ttl) = await probe.Ping(ip, token);
-                    bool? tcp = null;
-                    if (!up)
+                    reply = await probe.Ping(ip, token);
+                    if (!reply.Up)
                     {
                         foreach (var port in Knock)
                         {
@@ -264,54 +290,41 @@ public sealed class NetworkScan(DataFolder folder, INetProbe probe, Clients clie
                             }
                         }
                     }
-                    if (up || tcp is not null)
-                    {
-                        alive.Add((r, ip, ms, ttl, tcp));
-                        Interlocked.Increment(ref run.Found);
-                    }
                 }
                 finally
                 {
                     run.Busy.TryRemove(key, out _);
                     run.Done.AddOrUpdate(r.Id, 1, (_, n) => n + 1);
                 }
+                // Started after its ping is done with Busy, so the two never take each other's mark away.
+                if ((reply.Up || tcp is not null) && seen.TryAdd(key, 0))
+                {
+                    Interlocked.Increment(ref run.Found);
+                    asking.Add(Identify1(r, ip, reply.Ms, reply.Ttl));
+                }
             });
         }
-        // The ARP table now has the MAC of everything on this server's own networks that answered ARP, ping or not.
+        // The ARP table now has the MAC of everything on this server's own networks that answered ARP, ping or not:
+        // those are the last few to identify.
         var arp = probe.Arp();
-        var seen = alive.Select(a => a.Ip.ToString()).ToHashSet();
         foreach (var r in run.Ranges)
         {
-            foreach (var (ip, _) in arp.Where(a => !seen.Contains(a.Key) && InRange(a.Key, r.Cidr)))
+            foreach (var (ip, _) in arp.Where(a => !seen.ContainsKey(a.Key) && InRange(a.Key, r.Cidr)))
             {
-                alive.Add((r, IPAddress.Parse(ip), null, null, null));
-                seen.Add(ip);
-                Interlocked.Increment(ref run.Found);
+                if (seen.TryAdd(ip, 0))
+                {
+                    Interlocked.Increment(ref run.Found);
+                    asking.Add(Identify1(r, IPAddress.Parse(ip), null, null));
+                }
             }
         }
-        // What each one is, a few at a time, each kept as soon as it's known so the page shows it.
         run.Identifying = true;
-        var community = file.Read().Community;
-        await Parallel.ForEachAsync(alive, new ParallelOptions { MaxDegreeOfParallelism = Identify, CancellationToken = stop }, async (a, token) =>
-        {
-            var key = a.Ip.ToString();
-            run.Busy[key] = 0;
-            try
-            {
-                var facts = await Ask(a.Ip, a.Ms, a.Ttl, arp, gateways, community, oses, token);
-                Keep(a.Range, facts, first);
-            }
-            finally
-            {
-                run.Busy.TryRemove(key, out _);
-                Interlocked.Increment(ref run.Asked);
-            }
-        });
+        await Task.WhenAll(asking);
         // Whatever didn't answer in these ranges is offline now.
         lock (file.Gate)
         {
             var f = Copy(file.Read());
-            foreach (var d in f.Devices.Where(d => run.Ranges.Any(r => r.Id == d.Range) && !seen.Contains(d.Ip)))
+            foreach (var d in f.Devices.Where(d => run.Ranges.Any(r => r.Id == d.Range) && !seen.ContainsKey(d.Ip)))
             {
                 d.Online = false;
                 d.Ping = null;

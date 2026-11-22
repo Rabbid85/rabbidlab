@@ -122,7 +122,8 @@
       const on = data.ranges.filter((r) => sc.ranges.includes(r.id));
       const total = on.reduce((t, r) => t + r.size, 0);
       const done = on.reduce((t, r) => t + (r.done || 0), 0);
-      return sc.identifying ? `Identifying: ${sc.asked} of ${count(sc.found, 'device')}` : `Scanning: ${done.toLocaleString()} of ${total.toLocaleString()} addresses`;
+      return sc.identifying ? `Identifying the last ${count(Math.max(0, sc.found - sc.asked), 'device')}`
+        : `Scanning: ${done.toLocaleString()} of ${total.toLocaleString()} addresses${sc.found ? ` · ${sc.asked} of ${count(sc.found, 'device')} identified` : ''}`;
     }
     const t = data.scheduleText || '';
     return `${data.lastScan ? `Last scan: ${ago(data.lastScan).replace(/^J/, 'j')}.` : 'Not scanned yet.'} Scans ${t.charAt(0).toLowerCase()}${t.slice(1)}.`;
@@ -211,9 +212,11 @@
     const since = sc ? ms(sc.started) : 0;
     sec.querySelectorAll('[data-n]').forEach((c, i) => {
       const a = Number(c.dataset.n);
-      c.classList.toggle('ahead', pinging && a - s.first >= Math.ceil(done / per) * per);
+      const ahead = pinging && a - s.first >= Math.ceil(done / per) * per;
+      c.classList.toggle('ahead', ahead);
+      // Each device is identified as soon as the ping finds it, so behind the line it waits only until it's asked.
       const d = c.dataset.netCell ? devOf(c.dataset.netCell) : null;
-      const waits = naming && !!d && d.online && ms(d.last) < since;
+      const waits = mine && !ahead && !!d && d.online && ms(d.last) < since;
       if (d && !waits && was.has(d.id)) {
         c.classList.remove('settle');
         void c.offsetWidth;
@@ -221,8 +224,10 @@
       }
       if (d) { if (waits) was.add(d.id); else was.delete(d.id); }
       c.classList.toggle('waiting', waits);
+      // Being asked just now: a device, or in the last few (found only in the ARP table) an address with none yet. An
+      // address being pinged doesn't count, or a hundred would breathe at once.
       let asked = false;
-      for (let x = a; x < a + per && naming && !asked; x += 1) asked = busy.has(x);
+      for (let x = a; x < a + per && (d || naming) && !ahead && !asked; x += 1) asked = busy.has(x);
       c.classList.toggle('asking', asked);
       if (asked) c.style.setProperty('--d', `${-((i * 0.37) % 2.4).toFixed(2)}s`);
     });
@@ -237,7 +242,7 @@
     const sc = data.scan;
     if (!sc || !sc.ranges.includes(r.id)) return '';
     const done = Math.min(r.done || 0, s.n);
-    return sc.identifying ? `Identifying ${sc.asked} of ${sc.found}` : !done ? 'Queued' : done >= s.n ? 'Pinged' : ipOf(s.first + done - 1);
+    return sc.identifying ? `Identifying the last ${Math.max(0, sc.found - sc.asked)}` : !done ? 'Queued' : done >= s.n ? 'Pinged' : ipOf(s.first + done - 1);
   };
   const sweep = (ranges) => {
     const busy = busyNow();

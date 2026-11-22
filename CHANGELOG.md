@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.367 (2026-11-22)
+
+- Network identifies each device as soon as the ping finds it, while the scan goes on, not in a second pass after the whole range is pinged. Only devices found in the ARP table are left to the end.
+- The bar says how many devices are identified so far, such as 12 of 30 devices identified.
+
 ## 1.1.366 (2026-11-22)
 
 - Pinned columns stay put again when a list scrolls sideways, on every list. The console’s security policy was stopping them, so they scrolled away with the rest.
