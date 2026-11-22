@@ -118,8 +118,8 @@ public sealed class TestApp(string data) : WebApplicationFactory<Program>
             // Nor this computer's registry, firewall or services for port 443.
             services.RemoveAll<IAlsoPort>();
             services.AddSingleton<IAlsoPort>(AlsoPort);
-            // The tests run each round of checks themselves.
-            foreach (var worker in services.Where(d => d.ImplementationType == typeof(SensorWorker)).ToList())
+            // The tests run each round of checks, and each look at the report schedule, themselves.
+            foreach (var worker in services.Where(d => d.ImplementationType == typeof(SensorWorker) || d.ImplementationType == typeof(ReportWorker)).ToList())
             {
                 services.Remove(worker);
             }

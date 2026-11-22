@@ -20,6 +20,7 @@
 <link rel="stylesheet" href="Assets/wiki.css">
 <link rel="stylesheet" href="Assets/notes.css">
 <link rel="stylesheet" href="Assets/sync.css">
+<link rel="stylesheet" href="Assets/report.css">
 <link rel="stylesheet" href="Assets/news.css">
 <link rel="stylesheet" href="Assets/edition.css">
 <link rel="stylesheet" href="Assets/themes.css">
@@ -37,6 +38,7 @@
 <script src="Assets/people.js" defer></script>
 <script src="Assets/users.js" defer></script>
 <script src="Assets/alerts.js" defer></script>
+<script src="Assets/report.js" defer></script>
 <script src="Assets/links.js" defer></script>
 <script src="Assets/sensors.js" defer></script>
 <script src="Assets/wiki.js" defer></script>
@@ -285,6 +287,7 @@
         <a href="#settings/activity/seats" data-sub="activity" data-sec="seats"><span class="nm">Devices</span></a>
         <a href="#settings/activity/admin" data-sub="activity" data-sec="admin"><span class="nm">Updates and settings</span></a>
       </div>
+      <a href="#settings/reports" data-sub="reports" data-can="activity.view"><svg><use href="#i-calendar"/></svg><span>Reports</span></a>
       <p class="rail-label" data-can="sensors.alerts">Alerts</p>
       <a href="#settings/alerts" data-sub="alerts" data-can="sensors.alerts"><svg class="all-flask" viewBox="0 0 24 24" aria-hidden="true"><path class="liquid" d="M6.6 15.2h10.8l2 3.2A1.7 1.7 0 0 1 17.9 21H6.1a1.7 1.7 0 0 1-1.5-2.6z"/><path d="M9 3h6M10 3v6.2L4.6 18.4A1.7 1.7 0 0 0 6.1 21h11.8a1.7 1.7 0 0 0 1.5-2.6L14 9.2V3"/></svg><span>Alert rules</span></a>
       <div class="dkids" data-kids="alerts">
@@ -542,11 +545,54 @@
         <select id="al-who" aria-label="User"><option value="">All users</option></select>
         <div class="seg" id="al-range"><button type="button" data-days="1">Today</button><button type="button" data-days="7" aria-pressed="true">7 days</button><button type="button" data-days="30">30 days</button><button type="button" data-days="0">All</button></div>
         <div class="seg" id="al-res"><button type="button" data-problems="" aria-pressed="true">All</button><button type="button" data-problems="1">Problems</button></div>
+        <button type="button" class="ds-btn" id="al-report"><svg><use href="#i-printer"/></svg>Report</button>
         <a class="ds-btn" id="al-export" href="/api/activity/export" download><svg><use href="#i-csv"/></svg>Export</a>
       </div>
+      <!-- Summary: what the bar picks, counted by user and by area; rows open the side panel (report.js). -->
+      <section class="ds-sec al-sum" id="al-sum">
+        <h3 class="ds-h">Summary</h3>
+        <p class="sq-lead" id="al-sum-lead"><i class="sk sk-text"></i></p>
+        <h4 class="al-sum-h">By user</h4>
+        <div class="gcard"><div class="gbar"><button type="button" class="small" id="al-u-act" aria-haspopup="menu" disabled>Actions<b class="cnt" hidden></b><svg class="chev"><use href="#i-chevron-down"/></svg></button><span class="gcount" id="al-u-count"></span></div>
+          <div class="table adt drows" id="al-users"></div></div>
+        <h4 class="al-sum-h">By area</h4>
+        <div class="gcard"><div class="gbar"><button type="button" class="small" id="al-a-act" aria-haspopup="menu" disabled>Actions<b class="cnt" hidden></b><svg class="chev"><use href="#i-chevron-down"/></svg></button><span class="gcount" id="al-a-count"></span></div>
+          <div class="table adt drows" id="al-areas"></div></div>
+      </section>
+      <h3 class="ds-h al-log-h">Log</h3>
       <p class="al-count" id="al-count"></p>
       <div id="activity-list" data-skel="rows:7"></div>
       <div class="al-more" id="al-more"></div>
+    </section>
+
+    <!-- Reports: the Activity report emailed on a schedule, and every report sent (report.js, Reports.cs). -->
+    <section class="sub" data-sub="reports" data-title="Reports" hidden>
+      <header class="sub-head"><h2>Reports</h2><p>Email the Activity log as a report on a schedule.</p></header>
+      <section class="ds-sec" data-sec="activity"><h3 class="ds-h">Activity report</h3>
+        <div class="ds-row"><div class="ds-l"><b>Email the report</b><span>Sends the summary by user and by area, with every entry attached as a CSV file.</span></div>
+          <div class="ds-r"><span class="sw-label" id="rp-on-label"></span><input type="checkbox" class="switch" id="rp-on" role="switch" aria-label="Email the report" disabled></div></div>
+        <div class="ds-row"><div class="ds-l"><b>How often</b></div>
+          <div class="ds-r"><select id="rp-every" aria-label="How often" disabled><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option></select></div></div>
+        <div class="ds-row" id="rp-day-row"><div class="ds-l"><b>Day</b><span id="rp-day-help"></span></div>
+          <div class="ds-r"><select id="rp-day" aria-label="Day" disabled></select></div></div>
+        <div class="ds-row"><div class="ds-l"><b>Time</b><span>Uses the server's time zone.</span></div>
+          <div class="ds-r"><select id="rp-hour" aria-label="Time" disabled></select></div></div>
+        <div class="ds-row"><div class="ds-l"><b>Period</b><span>The days the report covers. The period ends at midnight before the report is sent.</span></div>
+          <div class="ds-r"><select id="rp-covers" aria-label="Period" disabled><option value="1">The previous day</option><option value="7">The previous 7 days</option><option value="30">The previous 30 days</option></select></div></div>
+        <div class="ds-row"><div class="ds-l"><b>Send to</b><span>Email notifications from Settings &gt; Notifications. Each one sends to its own recipients.</span></div>
+          <div class="ds-r"><span class="rp-to" id="rp-to"></span></div></div>
+        <div class="ds-row"><div class="ds-l"><b>Next report</b><span id="rp-next-help"></span></div>
+          <div class="ds-r"><span class="ds-v" id="rp-next"></span></div></div>
+        <div class="ds-row"><div class="ds-l"><b>Test the report</b><span>Sends the report now to the notifications under Send to. It includes today's entries so far.</span></div>
+          <div class="ds-r"><button type="button" class="ds-btn" id="rp-test" disabled><svg><use href="#i-message"/></svg>Send a test report</button></div></div>
+        <p class="hint" id="rp-cant" hidden>Changing the schedule requires the Manage alerts and email permission.</p>
+        <p class="hint problem" id="rp-problem" hidden></p>
+      </section>
+      <section class="ds-sec" data-sec="sent"><h3 class="ds-h">Sent reports</h3>
+        <p class="sq-lead">Every Activity report sent from here in the last year, scheduled or test.</p>
+        <div class="gcard"><div class="gbar"><button type="button" class="small" id="rp-act" aria-haspopup="menu" disabled>Actions<b class="cnt" hidden></b><svg class="chev"><use href="#i-chevron-down"/></svg></button><span class="gcount" id="rp-count"></span></div>
+          <div class="table adt drows" id="rp-sent"></div></div>
+      </section>
     </section>
 
     <!-- Links: how often each link is checked, the descriptions, and export and import (links.js). Saved as they're changed. -->
@@ -1138,6 +1184,24 @@
     <header class="page-head"><h1>What's new</h1><p>Release notes for each version.</p></header>
     <!-- A timeline down the left, a card per version (console.js, notes()). -->
     <div class="nw-tl" id="notes"></div>
+  </section>
+
+  <!-- Activity report: the Activity log as printed pages, for the period and filters picked here (report.js). -->
+  <section class="page rp-page" id="page-report" data-page="report" data-title="Activity report" hidden>
+    <header class="page-head"><h1>Activity report</h1><p>Print preview. The pages update when you change the settings.</p></header>
+    <div class="fbar rp-picks">
+      <span class="rp-l">Period</span>
+      <div class="seg" id="rp-range"><button type="button" data-r="1">Today</button><button type="button" data-r="7">Last 7 days</button><button type="button" data-r="30">Last 30 days</button><button type="button" data-r="month">This month</button><button type="button" data-r="0">All</button><button type="button" data-r="custom">Custom</button></div>
+      <span class="rp-dates" id="rp-dates" hidden><input type="date" id="rp-from" aria-label="From"><span>to</span><input type="date" id="rp-until" aria-label="To"></span>
+      <span class="rp-pair"><span class="rp-l">User</span><select id="rp-who" aria-label="User"><option value="">All users</option></select></span>
+      <span class="rp-break"></span>
+      <span class="rp-l">Areas</span>
+      <span class="rp-areas" id="rp-areas"></span>
+      <label class="rp-sw"><input type="checkbox" class="switch" id="rp-probs"><span>Warnings and failures only</span></label>
+    </div>
+    <div class="rp-do"><span class="rp-count" id="rp-pages"></span><span class="grow"></span><span class="rp-pdf">To save a PDF, select Save as PDF as the printer.</span>
+      <button type="button" class="primary" id="rp-print"><svg><use href="#i-printer"/></svg>Print</button></div>
+    <div class="rp-stage" id="rp-stage"></div>
   </section>
 </main>
 
