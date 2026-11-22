@@ -289,8 +289,9 @@ body.app.rail-small { grid-template-columns: 60px minmax(0, 1fr); }
 @keyframes flask-fizz { 0% { transform: translateY(4px); opacity: 0; } 35% { opacity: 1; } 100% { transform: translateY(-6px); opacity: 0; } }
 @keyframes flask-pop { 0% { transform: translateY(6px); opacity: 0; } 30% { opacity: 1; } 100% { transform: translateY(-7px); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .flask * { animation: none; } }
-/* Starting: the rail and the page stay out of sight until sign-in has answered and the page has what it shows, so a reload never shows them half built. */
-body.booting .rail > *, body.booting .top-links, body.booting .main > :not(.busy-cover) { visibility: hidden; }
+/* Starting: nothing of the console shows (top bar, rail or page) until sign-in has answered and the page has what it shows,
+   so a reload, however quick, never shows it half built: just the plain background, then all of it at once. */
+body.booting .top, body.booting .rail, body.booting .main > :not(.busy-cover) { visibility: hidden; }
 /* The opening screen (console.js boot): the lab's name under the flask, which fills as the first reads come back, over
    the whole window. After an update, the new version's first note under it. */
 .boot { position: fixed; inset: 0; z-index: 100; display: grid; place-content: center; justify-items: center; padding: 24px; overflow: hidden; text-align: center;

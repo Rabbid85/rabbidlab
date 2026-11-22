@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.331 (2026-11-22)
+
+- Reloading the console no longer flashes the top bar and the empty sidebar. Until the page is ready only the plain background shows, then all of it appears at once.
+
 ## 1.1.330 (2026-11-22)
 
 - The update pill on the sign-in page keeps its size while it checks. The refresh button spins in place, and clicking it again during a check does nothing, so the card no longer jumps around.
