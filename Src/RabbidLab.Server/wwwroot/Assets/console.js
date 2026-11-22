@@ -1073,7 +1073,7 @@ const RELEASE_NOTES = [
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
   '1.1.341': ['2026-11-22', 'fix', 'No Up to date pill on the sign-in card'],
-  '1.1.340':['2026-11-22', 'feature', 'Use at your own risk, read to the end before the first sign-in'],
+  '1.1.340': ['2026-11-22', 'feature', 'Use at your own risk, read to the end before the first sign-in'],
   '1.1.339': ['2026-11-22', 'feature', 'Lock in place, and reconnect when the server drops'],
   '1.1.338': ['2026-11-22', 'fix', 'The background holds still while you resize'],
   '1.1.337': ['2026-11-22', 'update', 'A steady update window in glass'],
