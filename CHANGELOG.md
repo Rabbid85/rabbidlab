@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.348 (2026-11-22)
+
+- AD audit shows the old value and new value of each change, who made it and the domain controller it was made on, read from the Security log of each domain controller. It is grouped by operation, such as Priya Nair modified 4 attributes on Greg Sutton, and Group by can turn that off.
+- Users, groups and computers have a History tab in their side panel: every change to them, old to new, with Undo on the ones made in Rabbid Lab.
+- A domain controller that does not record changes is named at the top of AD audit with how to fix it. Changes are kept for 90 days, or 30 days or a year under Keep changes for.
+
 ## 1.1.347 (2026-11-22)
 
 - Undo for Active Directory changes. Edits, group membership, enable and disable, account options, expiry, moves, renames, attribute edits and deletes into the Recycle Bin can be undone for 30 days.

@@ -235,7 +235,7 @@ public static class AuditView
             }
             var (label, old, now) = Words(e);
             rows.Add(new AuditRow(e.Id, e.At, app?.By ?? e.ByName ?? (e.Account is { } who ? Ldap.Account(who) : null), e.Account, app is not null, e.Dn, name, e.Kind,
-                Where(e.Dn), e.Guid, e.Attribute, label, old, now, e.Dc, e.Op, e.What, e.Event));
+                Where(e.Dn), e.Guid, e.Attribute, label, old, now, e.Dc, e.Op, e.What, e.Event, app?.Change));
         }
 
         // The events about each object, by its GUID and its DN, to find the metadata changes they cover.
@@ -267,7 +267,7 @@ public static class AuditView
                 var (old, now) = WholeWords(c.What, c.Where.Length > 0 ? c.Where : DomainOf(c.Dn));
                 var app = Ours(c.At, c.Name);
                 rows.Add(new AuditRow($"meta:{key}:{c.What}:{c.At.Ticks}", c.At, app?.By, null, app is not null, c.Dn, c.Name, c.Kind, c.Where, c.Guid,
-                    AuditEntries.Whole, "Object", old, now, null, $"meta:{key}:{c.At:yyyyMMddHHmmss}", c.What, null));
+                    AuditEntries.Whole, "Object", old, now, null, $"meta:{key}:{c.At:yyyyMMddHHmmss}", c.What, null, app?.Change));
                 continue;
             }
             foreach (var a in c.Attributes)
@@ -286,7 +286,7 @@ public static class AuditView
                 }
                 var app = Ours(a.At, c.Name);
                 rows.Add(new AuditRow($"meta:{key}:{a.Name}:{a.At.Ticks}{(a.Removed ? ":out" : "")}", a.At, app?.By, null, app is not null, c.Dn, c.Name, c.Kind, c.Where, c.Guid,
-                    a.Name, Label(a.Name, old, now), old, now, a.Dc, $"meta:{key}:{a.At:yyyyMMddHHmmss}", "changed", null));
+                    a.Name, Label(a.Name, old, now), old, now, a.Dc, $"meta:{key}:{a.At:yyyyMMddHHmmss}", "changed", null, app?.Change));
             }
         }
         return [.. rows.OrderByDescending(r => r.At).ThenBy(r => r.Id, StringComparer.Ordinal)];
@@ -962,8 +962,8 @@ public static class AuditApi
         }, change: false, whole: true));
 
         // One object's changes, for its History tab: inside the caller's roles, as the panel is.
-        app.MapGet("/api/ad/history", (string? dn, HttpContext context, IDirectoryExtras tools, AuditStore store, AuditCollector collector, IAuditDirectory ad, ActivityLog log) =>
-            UsersApi.Try(context, Permissions.AdView, async () =>
+        app.MapGet("/api/ad/history", (string? dn, HttpContext context, IDirectoryExtras tools, AuditStore store, AuditCollector collector, IAuditDirectory ad, ActivityLog log,
+            ChangeJournal journal) => UsersApi.Try(context, Permissions.AdView, async () =>
         {
             if (string.IsNullOrWhiteSpace(dn))
             {
@@ -971,8 +971,10 @@ public static class AuditApi
             }
             var keep = collector.Keep;
             var now = await tools.ChangesOf(dn, keep, context.RequestAborted);
-            var rows = AuditView.Rows(store.Of(dn.Trim(), now?.Guid, DateTime.UtcNow.AddDays(-keep)), now is null ? [] : [now], Ours(log), ad.ServiceAccount);
-            return Results.Ok(new { rows = rows.Take(Most), keep });
+            var rows = AuditView.Rows(store.Of(dn.Trim(), now?.Guid, DateTime.UtcNow.AddDays(-keep)), now is null ? [] : [now], Ours(log), ad.ServiceAccount).Take(Most).ToList();
+            // Whether each change made in Rabbid Lab can be undone by whoever asks, or was, as the Activity log says it.
+            var changes = rows.Select(r => r.Change).OfType<string>().Distinct().Select(journal.Find).OfType<Change>().ToDictionary(c => c.Id, c => journal.Brief(context, c));
+            return Results.Ok(new { rows, keep, changes });
         }, change: false));
 
         // How long changes are kept, for everyone.

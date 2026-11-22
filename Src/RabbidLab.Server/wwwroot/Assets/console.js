@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.348', [
+    'AD audit shows the old value and new value of each change, who made it and the domain controller it was made on, read from the Security log of each domain controller. It is grouped by operation, such as Priya Nair modified 4 attributes on Greg Sutton, and Group by can turn that off.',
+    'Users, groups and computers have a History tab in their side panel: every change to them, old to new, with Undo on the ones made in Rabbid Lab.',
+    'A domain controller that does not record changes is named at the top of AD audit with how to fix it. Changes are kept for 90 days, or 30 days or a year under Keep changes for.']],
   ['1.1.347', [
     'Undo for Active Directory changes. Edits, group membership, enable and disable, account options, expiry, moves, renames, attribute edits and deletes into the Recycle Bin can be undone for 30 days.',
     'The toast after a change has Undo. The Activity log has it too: a row opens the side panel with the values before and after and Undo, and Actions, Undo undoes the selected rows.',
@@ -1090,6 +1094,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.348': ['2026-11-22', 'feature', 'AD audit with old and new values, and a History tab'],
   '1.1.347': ['2026-11-22', 'feature', 'Undo for Active Directory changes'],
   '1.1.346': ['2026-11-22', 'feature', 'Activity report: summary, print preview and email'],
   '1.1.345': ['2026-11-22', 'fix', 'Check for updates back after 3 seconds'],

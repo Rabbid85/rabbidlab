@@ -910,6 +910,7 @@
     Object.keys(lists).filter((k) => k !== adPage).forEach((k) => delete lists[k]);
     dw.membersFor = '';
     dw.attrs.for = '';
+    if (hist.for) loadHistory({ dn: hist.for }); // its Undo turns into Undone
     adLive.now();
   });
   // Domain health's dot from the start: its checks are read in the background once signed in, not only when it's opened.
@@ -2016,8 +2017,8 @@
     if (hist.for !== dn) Object.assign(hist, { for: dn, rows: null, error: '' });
     hist.at = Date.now();
     R.get(`/api/ad/history?dn=${encodeURIComponent(dn)}`).then((j) => {
-      if (hist.for !== dn || JSON.stringify(j.rows) === JSON.stringify(hist.rows)) return;
-      Object.assign(hist, { rows: j.rows, keep: j.keep, error: '' });
+      if (hist.for !== dn || JSON.stringify([j.rows, j.changes]) === JSON.stringify([hist.rows, hist.changes])) return;
+      Object.assign(hist, { rows: j.rows, keep: j.keep, changes: j.changes || {}, error: '' });
       if (R.panel.is('ad')) drawDrawer();
     }).catch((err) => {
       if (hist.for !== dn || hist.rows) return; // what was read stays
@@ -2045,8 +2046,12 @@
       const heading = d !== lastDay ? `<p class="dir-tl-day">${esc(d)}</p>` : '';
       lastDay = d;
       const what = ['made', 'deleted', 'restored', 'moved'].find((w) => xs.some((r) => r.what === w)) || 'changed';
-      // Undo, for a change the Undo journal kept (change), once it's there to call.
-      const undo = R.undo ? [...new Set(xs.map((r) => r.change).filter(Boolean))].map((id) => `<button type="button" class="dw-link" data-dwh-undo="${esc(id)}">${svg('restart')}Undo</button>`).join('') : '';
+      // Undo for a change the Undo journal kept, when this person may undo it now; Undone once it was.
+      const undo = R.undo ? [...new Set(xs.map((r) => r.change).filter(Boolean))].map((id) => {
+        const b = hist.changes?.[id];
+        if (b?.undone) return `<span class="muted">Undone by ${esc(b.undone.by)}</span>`;
+        return b?.undo ? `<button type="button" class="dw-link" data-dwh-undo="${esc(id)}">${svg('restart')}Undo</button>` : '';
+      }).join('') : '';
       return `${heading}<div class="dir-tl-ev${c.event ? '' : ' unknown'}"><div class="dir-tl-head"><b>${esc(clock(c.at))}</b>`
         + `<span class="ell">${c.by ? esc(c.by) : '<span class="muted">Unknown</span>'}</span>${c.dc ? `<span class="muted">${esc(c.dc)}</span>` : ''}<span class="grow"></span>${badge(WHAT_WORD[what], WHAT[what])}</div>`
         + `<div class="dir-tl-rows">${xs.map((r) => `<span class="a ell">${esc(r.label)}</span><span class="o">${auditVals(r.old, 'Not recorded')}</span>${svg('arrow')}<span class="n">${auditVals(r.new, 'Not read')}</span>`).join('')}</div>`
