@@ -116,7 +116,9 @@ public sealed class NetworkScan(DataFolder folder, INetProbe probe, Clients clie
         public required DateTime Started { get; init; }
         public required List<NetRange> Ranges { get; init; }
         public ConcurrentDictionary<string, int> Done { get; } = new();
+        public ConcurrentDictionary<string, byte> Busy { get; } = new(); // the addresses being pinged or identified just now
         public int Found;
+        public int Asked; // devices identified so far
         public bool Identifying;
     }
 
@@ -246,24 +248,33 @@ public sealed class NetworkScan(DataFolder folder, INetProbe probe, Clients clie
             run.Done[r.Id] = 0;
             await Parallel.ForEachAsync(list, new ParallelOptions { MaxDegreeOfParallelism = AtOnce, CancellationToken = stop }, async (ip, token) =>
             {
-                var (up, ms, ttl) = await probe.Ping(ip, token);
-                bool? tcp = null;
-                if (!up)
+                var key = ip.ToString();
+                run.Busy[key] = 0;
+                try
                 {
-                    foreach (var port in Knock)
+                    var (up, ms, ttl) = await probe.Ping(ip, token);
+                    bool? tcp = null;
+                    if (!up)
                     {
-                        if ((tcp = await probe.Tcp(ip, port, token)) is not null)
+                        foreach (var port in Knock)
                         {
-                            break;
+                            if ((tcp = await probe.Tcp(ip, port, token)) is not null)
+                            {
+                                break;
+                            }
                         }
                     }
+                    if (up || tcp is not null)
+                    {
+                        alive.Add((r, ip, ms, ttl, tcp));
+                        Interlocked.Increment(ref run.Found);
+                    }
                 }
-                if (up || tcp is not null)
+                finally
                 {
-                    alive.Add((r, ip, ms, ttl, tcp));
-                    Interlocked.Increment(ref run.Found);
+                    run.Busy.TryRemove(key, out _);
+                    run.Done.AddOrUpdate(r.Id, 1, (_, n) => n + 1);
                 }
-                run.Done.AddOrUpdate(r.Id, 1, (_, n) => n + 1);
             });
         }
         // The ARP table now has the MAC of everything on this server's own networks that answered ARP, ping or not.
@@ -283,8 +294,18 @@ public sealed class NetworkScan(DataFolder folder, INetProbe probe, Clients clie
         var community = file.Read().Community;
         await Parallel.ForEachAsync(alive, new ParallelOptions { MaxDegreeOfParallelism = Identify, CancellationToken = stop }, async (a, token) =>
         {
-            var facts = await Ask(a.Ip, a.Ms, a.Ttl, arp, gateways, community, oses, token);
-            Keep(a.Range, facts, first);
+            var key = a.Ip.ToString();
+            run.Busy[key] = 0;
+            try
+            {
+                var facts = await Ask(a.Ip, a.Ms, a.Ttl, arp, gateways, community, oses, token);
+                Keep(a.Range, facts, first);
+            }
+            finally
+            {
+                run.Busy.TryRemove(key, out _);
+                Interlocked.Increment(ref run.Asked);
+            }
         });
         // Whatever didn't answer in these ranges is offline now.
         lock (file.Gate)
@@ -543,7 +564,7 @@ public sealed class NetworkScan(DataFolder folder, INetProbe probe, Clients clie
                 client = ClientOf(d), managed = ClientOf(d) is not null,
             }),
             ranges = f.Ranges.Select(r => new { r.Id, r.Name, r.Cidr, r.On, r.From, size = Addresses(r.Cidr)?.Count ?? 0, done = run?.Done.GetValueOrDefault(r.Id) }),
-            scan = run is null ? null : new { run.By, run.Started, ranges = run.Ranges.Select(r => r.Id), run.Found, run.Identifying },
+            scan = run is null ? null : new { run.By, run.Started, ranges = run.Ranges.Select(r => r.Id), run.Found, asked = run.Asked, run.Identifying, busy = run.Busy.Keys.ToList() },
             lastScan = f.LastScan,
             schedule = f.Schedule,
             scheduleText = Schedules.GetValueOrDefault(f.Schedule, Schedules["day"]),

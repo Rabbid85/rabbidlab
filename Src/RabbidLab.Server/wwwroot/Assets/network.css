@@ -9,6 +9,18 @@
 #net-table .tr.picked { background: #141827; }
 #net-table .tr.dw-on { background: #171B2C; }
 #net-table .tr:hover .at-more, #net-table .at-more:focus-visible { opacity: 1; }
+/* Each type's colour, by data-net-kind: the console's CSP refuses style attributes, so it can't come from the markup. */
+[data-net-kind="router"] { --t: #FF8A3D; }
+[data-net-kind="switch"] { --t: #F2BE6B; }
+[data-net-kind="ap"] { --t: #6FA8FF; }
+[data-net-kind="server"] { --t: #9E59CF; }
+[data-net-kind="pc"] { --t: #5FD4A0; }
+[data-net-kind="printer"] { --t: #E8A04A; }
+[data-net-kind="camera"] { --t: #E0566B; }
+[data-net-kind="phone"] { --t: #4FA3E0; }
+[data-net-kind="nas"] { --t: #B07CE8; }
+[data-net-kind="iot"] { --t: #46C2C9; }
+[data-net-kind="unknown"] { --t: #8B90A5; }
 .pic.net-pic { background: color-mix(in srgb, var(--t) 15%, transparent); color: var(--t); }
 .ubadge.net-new { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent-soft); }
 .table.dgrid .tr > div > .ubadge.net-new { color: var(--title); }
@@ -53,17 +65,22 @@
 
 /* A tick: coloured by what answered, dark where nothing did, faint when it stopped answering. */
 .net-u { position: relative; display: block; min-width: 0; height: 100%; padding: 0; border: 0; border-radius: 1px; background: color-mix(in srgb, var(--t) 85%, #000); cursor: pointer; transition: opacity .2s; }
-.net-u.free { background: #191C29; cursor: default; }
+.net-u.free { background: #2A2F42; cursor: default; }
 .net-u.off { opacity: .35; }
 .net-u.dim { opacity: .15; }
 .net-u:not(.free):hover { filter: brightness(1.35); }
 .net-u.on { z-index: 1; box-shadow: 0 0 0 2px #fff; }
-/* The ping reaching an address lights its tick a moment; a device found grows in white over its neighbours, glows in
-   its type's colour, then cools into it. */
+/* What the scan is working on just now pulses until it's done: an address being pinged, a device being identified. The
+   ping reaching an address lights its tick a moment; a device found grows in white over its neighbours, glows in its
+   type's colour, then cools into it. */
+.net-u.busy { z-index: 1; animation: net-ubusy 1.1s ease-in-out infinite; }
+@keyframes net-ubusy { 0%, 100% { filter: none; box-shadow: none; } 50% { filter: brightness(1.6); box-shadow: 0 0 6px 1px color-mix(in srgb, var(--accent-soft) 70%, transparent); } }
+.net-u.free.busy { animation-name: net-ubusy-free; }
+@keyframes net-ubusy-free { 0%, 100% { background: #2A2F42; } 50% { background: color-mix(in srgb, var(--accent-soft) 65%, #2A2F42); } }
 .net-u.swept { animation: net-swept .9s ease-out; }
 @keyframes net-swept { 0% { background: var(--accent-soft); filter: brightness(1.3); } 100% { filter: none; } }
 .net-u.free.swept { animation-name: net-swept-free; }
-@keyframes net-swept-free { 0% { background: color-mix(in srgb, var(--accent-soft) 70%, transparent); } 100% { background: #191C29; } }
+@keyframes net-swept-free { 0% { background: color-mix(in srgb, var(--accent-soft) 70%, transparent); } 100% { background: #2A2F42; } }
 .net-u.arrive { z-index: 2; animation: net-found 1.9s cubic-bezier(.2, .7, .3, 1) var(--arrive-at, 0ms) both; }
 @keyframes net-found {
   0% { opacity: 0; transform: scaleY(0); background: #fff; box-shadow: 0 0 0 0 transparent; }
@@ -71,7 +88,10 @@
   40% { transform: none; background: color-mix(in srgb, var(--t) 60%, #fff); box-shadow: 0 0 8px 1px color-mix(in srgb, var(--t) 60%, transparent); }
   100% { box-shadow: 0 0 0 0 transparent; }
 }
-@media (prefers-reduced-motion: reduce) { .net-u.swept, .net-u.arrive, .net-scan.turning svg { animation: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .net-u.swept, .net-u.arrive, .net-u.busy, .net-scan.turning svg { animation: none; }
+  .net-u.busy { box-shadow: 0 0 0 1px var(--accent-soft); }
+}
 
 /* The list's bar: List or Map; Group by and Compact or Relaxed are only for the list. */
 .seg.net-vseg { margin: 0; }
@@ -103,12 +123,16 @@
 .net-grid { display: grid; grid-template-columns: repeat(32, minmax(0, 1fr)); gap: 3px; }
 .net-n { position: relative; display: grid; place-items: center; min-width: 0; height: 20px; padding: 0; border: 0; border-radius: 4px; background: color-mix(in srgb, var(--t) 88%, #000);
   color: #0B0D14; font: 700 10.5px Consolas, "Cascadia Mono", monospace; font-variant-numeric: tabular-nums; cursor: pointer; transition: opacity .2s; }
-.net-n.free { background: transparent; color: #2E3346; font-weight: 500; cursor: default; }
+.net-n.free { background: transparent; color: #5C6380; font-weight: 500; cursor: default; }
 .net-n.off { background: transparent; color: var(--t); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--t) 75%, transparent); }
 .net-n.new::after { content: ""; position: absolute; top: -2px; right: -2px; width: 7px; height: 7px; border-radius: 50%; background: #FF8A3D; box-shadow: 0 0 0 2px var(--panel); }
 .net-n.dim { opacity: .18; }
 .net-n:not(.free):hover { filter: brightness(1.25); }
 .net-n.on { z-index: 1; box-shadow: 0 0 0 2px #fff; }
+.net-n.busy { z-index: 1; animation: net-nbusy 1.1s ease-in-out infinite; }
+@keyframes net-nbusy { 0%, 100% { box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--accent-soft) 60%, transparent); } 50% { box-shadow: 0 0 0 2px var(--accent-soft), 0 0 10px 1px color-mix(in srgb, var(--accent-soft) 55%, transparent); } }
+.net-n.free.busy { animation-name: net-nbusy-free; }
+@keyframes net-nbusy-free { 0%, 100% { color: #5C6380; background: transparent; } 50% { color: #fff; background: color-mix(in srgb, var(--accent-soft) 35%, transparent); } }
 .net-n.swept { animation: net-swept .9s ease-out; }
 .net-n.free.swept { animation-name: net-nswept-free; }
 @keyframes net-nswept-free { 0% { color: #fff; background: color-mix(in srgb, var(--accent-soft) 45%, transparent); } 100% { background: transparent; } }
@@ -119,7 +143,10 @@
   40% { transform: none; background: color-mix(in srgb, var(--t) 60%, #fff); box-shadow: 0 0 12px 2px color-mix(in srgb, var(--t) 60%, transparent); }
   100% { box-shadow: 0 0 0 0 transparent; }
 }
-@media (prefers-reduced-motion: reduce) { .net-n.swept, .net-n.arrive { animation: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .net-n.swept, .net-n.arrive, .net-n.busy { animation: none; }
+  .net-n.busy { box-shadow: 0 0 0 2px var(--accent-soft); }
+}
 
 /* The side panel: open ports, a line each. */
 .net-prow { gap: 14px; }

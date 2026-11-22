@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.363 (2026-11-22)
+
+- Network shows each device in its type’s colour again, on the strips and the map. The console’s security policy was blocking the colours, so devices looked like free addresses.
+- Free addresses are lighter on the strips and the map.
+- While a scan runs, each address being pinged and each device being identified pulses until it is done, and identifying counts up, such as Identifying 12 of 30.
+
 ## 1.1.362 (2026-11-22)
 
 - Network has a small card above the list: Scan now on its bar, and each range as one thin strip of its addresses, coloured by what answered. The ping sweeps along each strip while it scans, and the row says which address it has got to.

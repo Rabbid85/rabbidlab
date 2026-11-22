@@ -10,8 +10,8 @@
 
   const KIND = { router: ['Router', 'router'], switch: ['Switch', 'switch'], ap: ['Access point', 'wifi'], server: ['Server', 'server'], pc: ['PC', 'laptop'],
     printer: ['Printer', 'printer'], camera: ['Camera', 'camera'], phone: ['Phone or tablet', 'phone'], nas: ['NAS', 'disk'], iot: ['Smart device', 'chip'], unknown: ['Unknown', 'unknown'] };
-  const TONE = { router: '#FF8A3D', switch: '#F2BE6B', ap: '#6FA8FF', server: '#9E59CF', pc: '#5FD4A0', printer: '#E8A04A', camera: '#E0566B', phone: '#4FA3E0', nas: '#B07CE8',
-    iot: '#46C2C9', unknown: '#8B90A5' };
+  // A type's colour comes from network.css by data-net-kind: the console's CSP refuses style attributes.
+  const tone = (k) => ` data-net-kind="${KIND[k] ? k : 'unknown'}"`;
   const PORT = { 21: 'FTP', 22: 'SSH', 23: 'Telnet', 53: 'DNS', 80: 'HTTP', 88: 'Kerberos', 135: 'RPC endpoint mapper', 139: 'NetBIOS session', 389: 'LDAP', 443: 'HTTPS',
     445: 'SMB', 515: 'LPD printing', 554: 'RTSP video', 631: 'IPP printing', 902: 'VMware ESXi', 3389: 'Remote Desktop', 5000: 'Web (Synology DSM and others)',
     5001: 'Web, secure (Synology DSM and others)', 5985: 'WinRM', 8000: 'Web (alternate)', 8080: 'Web (alternate)', 9100: 'Raw printing (JetDirect)', 62078: 'Apple device sync' };
@@ -55,7 +55,7 @@
 
   // --- The list ------------------------------------------------------------------------------------------------------
   const mono = (v) => (v ? `<span class="mono muted ell">${esc(v)}</span>` : '<span class="muted">-</span>');
-  const pic = (d) => `<span class="pic net-pic" style="--t:${TONE[d.kind] || TONE.unknown}">${svg(kindOf(d)[1])}</span>`;
+  const pic = (d) => `<span class="pic net-pic"${tone(d.kind)}>${svg(kindOf(d)[1])}</span>`;
   const COLS = [
     { key: 'name', label: 'Name', w: 190, fixed: true, get: (d) => nameOf(d).toLowerCase(), text: nameOf, cell: (d) => `<div class="who">${pic(d)}<b class="ell">${esc(nameOf(d))}</b></div>` },
     { key: 'ip', label: 'IP address', w: 118, on: true, nofilter: true, get: (d) => ipNum(d.ip), text: (d) => d.ip, cell: (d) => mono(d.ip) },
@@ -122,7 +122,7 @@
       const on = data.ranges.filter((r) => sc.ranges.includes(r.id));
       const total = on.reduce((t, r) => t + r.size, 0);
       const done = on.reduce((t, r) => t + (r.done || 0), 0);
-      return sc.identifying ? `Identifying ${count(sc.found, 'device')}…` : `Scanning: ${done.toLocaleString()} of ${total.toLocaleString()} addresses`;
+      return sc.identifying ? `Identifying: ${sc.asked} of ${count(sc.found, 'device')}` : `Scanning: ${done.toLocaleString()} of ${total.toLocaleString()} addresses`;
     }
     const t = data.scheduleText || '';
     return `${data.lastScan ? `Last scan: ${ago(data.lastScan).replace(/^J/, 'j')}.` : 'Not scanned yet.'} Scans ${t.charAt(0).toLowerCase()}${t.slice(1)}.`;
@@ -154,9 +154,9 @@
     const b = Math.min(s.first + s.n - 1, a + s.per - 1);
     let d = null;
     for (let x = a; x <= b && !d; x += 1) d = byIp.get(x) || null;
-    if (!d) return `<i class="net-u free" data-tip="${esc(`${a === b ? ipOf(a) : `${ipOf(a)} to .${b % 256}`} · No reply`)}"></i>`;
+    if (!d) return `<i class="net-u free" data-n="${a}" data-tip="${esc(`${a === b ? ipOf(a) : `${ipOf(a)} to .${b % 256}`} · No reply`)}"></i>`;
     const cls = `${d.online ? '' : ' off'}${panel.shows('network', d.id) ? ' on' : ''}${inList.has(d.id) ? '' : ' dim'}`;
-    return `<button type="button" class="net-u${cls}" data-net-cell="${esc(d.id)}" style="--t:${TONE[d.kind] || TONE.unknown}"`
+    return `<button type="button" class="net-u${cls}" data-n="${a}" data-net-cell="${esc(d.id)}"${tone(d.kind)}`
       + ` data-tip="${esc(`${d.ip} · ${nameOf(d)} · ${kindOf(d)[0]} · ${pingText(d)}`)}" aria-label="${esc(`${d.ip}, ${nameOf(d)}`)}"></button>`;
   };
   let stripsDrawn = '';
@@ -169,7 +169,7 @@
       return;
     }
     const kinds = Object.keys(KIND).filter((k) => data.devices.some((d) => d.kind === k));
-    const key = kinds.map((k) => `<span style="--t:${TONE[k]}"><i></i>${esc(KIND[k][0])}</span>`).join('');
+    const key = kinds.map((k) => `<span${tone(k)}><i></i>${esc(KIND[k][0])}</span>`).join('');
     if (key !== keyDrawn) $('net-key').innerHTML = keyDrawn = key;
     const inList = new Set((bar.any() ? rows : data.devices).map((d) => d.id));
     const byIp = new Map(data.devices.map((d) => [ipNum(d.ip), d]));
@@ -179,7 +179,7 @@
       const on = data.devices.filter((d) => d.range === r.id);
       const ticks = Math.ceil(s.n / s.per);
       return `<div class="net-srow" data-net-range="${esc(r.id)}"><div class="net-slabel"><b>${esc(r.name)}</b><span class="mono">${esc(r.cidr)}</span></div>`
-        + `<div class="net-strip${ticks > 254 ? ' fine' : ''}" style="--n:${ticks}">${Array.from({ length: ticks }, (_, i) => tick(s, i, byIp, inList)).join('')}</div>`
+        + `<div class="net-strip${ticks > 254 ? ' fine' : ''}" data-ticks="${ticks}">${Array.from({ length: ticks }, (_, i) => tick(s, i, byIp, inList)).join('')}</div>`
         + `<div class="net-sside"><small>${on.filter((d) => d.online).length.toLocaleString()} answering · ${Math.max(0, r.size - on.length).toLocaleString()} free</small><span class="net-sprog"></span></div>`
         + (may() ? `<button type="button" class="gcols" data-net-scanone="${esc(r.id)}" data-tip="Scan ${esc(r.name)}" aria-label="Scan ${esc(r.name)}">${svg('refresh')}</button>` : '<span></span>')
         + '</div>';
@@ -188,6 +188,7 @@
     if (html !== stripsDrawn) {
       R.skeleton(box, '');
       box.innerHTML = stripsDrawn = html;
+      box.querySelectorAll('[data-ticks]').forEach((el) => el.style.setProperty('--n', el.dataset.ticks));
       box.querySelectorAll('[data-net-cell]').forEach((c) => {
         const t = came.get(c.dataset.netCell);
         if (t && Date.now() - t < 1900) { c.style.setProperty('--arrive-at', `${t - Date.now()}ms`); c.classList.add('arrive'); }
@@ -195,17 +196,34 @@
     }
     sweep(ranges);
   };
-  // While a range is pinged, the ticks reached since the last look light up one after another, and the row says which
-  // address the ping has got to.
+  // What the scan is working on right now (scan.busy): the addresses being pinged, then the devices being identified.
+  // Each pulses until it's done, so a slow address or a device that takes a while shows the scan is still going.
+  const busyNow = () => new Set((data?.scan?.busy || []).map(ipNum));
+  const markBusy = (row, per, busy) => row.querySelectorAll('[data-n]').forEach((c) => {
+    const a = Number(c.dataset.n);
+    let on = false;
+    for (let x = a; x < a + per && !on; x += 1) on = busy.has(x);
+    c.classList.toggle('busy', on);
+  });
+  // Where a range has got to: the last address pinged, or how many devices have been identified.
+  const progress = (r, s) => {
+    const sc = data.scan;
+    if (!sc || !sc.ranges.includes(r.id)) return '';
+    const done = Math.min(r.done || 0, s.n);
+    return sc.identifying ? `Identifying ${sc.asked} of ${sc.found}` : !done ? 'Queued' : done >= s.n ? 'Pinged' : ipOf(s.first + done - 1);
+  };
+  // While a range is pinged, the ticks reached since the last look light up one after another.
   const sweep = (ranges) => {
     const sc = data.scan;
+    const busy = busyNow();
     for (const r of ranges) {
       const row = $('net-strips').querySelector(`[data-net-range="${CSS.escape(r.id)}"]`);
       if (!row) continue;
       const s = spanOf(r);
       const mine = !!sc && sc.ranges.includes(r.id);
       const done = Math.min(r.done || 0, s.n);
-      row.querySelector('.net-sprog').textContent = !mine ? '' : sc.identifying ? 'Identifying' : !done ? 'Queued' : done >= s.n ? 'Pinged' : ipOf(s.first + done - 1);
+      row.querySelector('.net-sprog').textContent = progress(r, s);
+      markBusy(row, s.per, busy);
       if (!mine || sc.identifying) { swept[r.id] = 0; continue; }
       const to = Math.ceil(done / s.per);
       const from = Math.min(swept[r.id] || 0, to);
@@ -234,7 +252,7 @@
   };
   const mapKey = (rows) => {
     const kinds = Object.keys(KIND).filter((k) => rows.some((d) => d.kind === k));
-    return `<div class="net-mkey">${kinds.map((k) => `<button type="button" class="net-k${hl === k ? ' on' : ''}${hl && hl !== k ? ' dim' : ''}" data-net-hl="${k}" style="--t:${TONE[k]}" aria-pressed="${hl === k}">`
+    return `<div class="net-mkey">${kinds.map((k) => `<button type="button" class="net-k${hl === k ? ' on' : ''}${hl && hl !== k ? ' dim' : ''}" data-net-hl="${k}"${tone(k)} aria-pressed="${hl === k}">`
       + `<i></i>${esc(KIND[k][0])}<small>${rows.filter((d) => d.kind === k).length}</small></button>`).join('')}`
       + '<span class="grow"></span><span class="net-k2"><i class="off"></i>No reply</span><span class="net-k2"><i class="new"></i>New</span></div>';
   };
@@ -242,7 +260,7 @@
     const o = n % 256;
     if (!d) return `<i class="net-n free" data-n="${n}" data-tip="${esc(`${ipOf(n)} · No reply`)}">${o}</i>`;
     const cls = `${d.online ? '' : ' off'}${d.isNew ? ' new' : ''}${panel.shows('network', d.id) ? ' on' : ''}${!inList || (hl && hl !== d.kind) ? ' dim' : ''}`;
-    return `<button type="button" class="net-n${cls}" data-n="${n}" data-net-cell="${esc(d.id)}" style="--t:${TONE[d.kind] || TONE.unknown}"`
+    return `<button type="button" class="net-n${cls}" data-n="${n}" data-net-cell="${esc(d.id)}"${tone(d.kind)}`
       + ` data-tip="${esc(`${d.ip} · ${nameOf(d)} · ${kindOf(d)[0]} · ${pingText(d)}`)}" aria-label="${esc(`${d.ip}, ${nameOf(d)}`)}">${o}</button>`;
   };
   let mapDrawn = '';
@@ -275,13 +293,15 @@
     }
     // While a range is pinged, the addresses reached since the last look light up one after another.
     const sc = data.scan;
+    const busy = busyNow();
     for (const r of ranges) {
       const sec = box.querySelector(`[data-net-range="${CSS.escape(r.id)}"]`);
       if (!sec) continue;
       const s = spanOf(r);
       const mine = !!sc && sc.ranges.includes(r.id);
       const done = Math.min(r.done || 0, s.n);
-      sec.querySelector('.net-rprog').textContent = !mine ? '' : sc.identifying ? 'Identifying' : !done ? 'Queued' : done >= s.n ? 'Pinged' : ipOf(s.first + done - 1);
+      sec.querySelector('.net-rprog').textContent = progress(r, s);
+      markBusy(sec, 1, busy);
       if (!mine || sc.identifying) { mapSwept[r.id] = 0; continue; }
       const from = Math.min(mapSwept[r.id] || 0, done);
       const lit = [...sec.querySelectorAll('.net-n')].filter((c) => { const k = Number(c.dataset.n) - s.first; return k >= from && k < done; });
@@ -482,7 +502,7 @@
       + `${WEB[p] && d.online ? `<a class="linkish" href="${WEB[p]}://${esc(d.ip)}${[80, 443].includes(p) ? '' : `:${p}`}" target="_blank" rel="noopener noreferrer">Open</a>` : ''}</div>`).join('')}</div>`
       : `<p class="muted dw-empty">${d.online ? 'None of the common ports checked are open.' : 'Not checked: the device did not answer the last scan.'}</p>`;
     const why = [d.why, d.custom && d.kind !== d.detected ? `The scan detected ${(KIND[d.detected] || KIND.unknown)[0].toLowerCase()}; the type was changed with Edit.` : ''].filter(Boolean).join(' ');
-    panel.body.innerHTML = `<div class="dw-head"><span class="pic dw-pic net-pic" style="--t:${TONE[d.kind] || TONE.unknown}">${svg(k[1])}</span><div class="dw-name"><h2 id="dw-title">${esc(nameOf(d))}</h2>`
+    panel.body.innerHTML = `<div class="dw-head"><span class="pic dw-pic net-pic"${tone(d.kind)}>${svg(k[1])}</span><div class="dw-name"><h2 id="dw-title">${esc(nameOf(d))}</h2>`
       + `<p>${esc([k[0], d.vendor].filter(Boolean).join(' · '))}</p></div><button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`
       + `<div class="dw-bar">${R.editButton('data-net-edit', may() ? '' : 'Your role does not include changing Network.')}`
       + (d.client && has('seats.view') ? qa('data-net-pc', 'monitor', 'Open in Devices') : '')
