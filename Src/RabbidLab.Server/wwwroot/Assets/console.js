@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.344', [
+    'Toasts go away on time even while you are on another tab. Before, their timer stopped in the background, so coming back found old toasts still up.']],
   ['1.1.343', [
     'Check for updates rests for a minute after each check and says Checked just now, so clicking it again does nothing until then.',
     'A toast with the same words as one already showing renews that one at the top instead of stacking another copy.']],
@@ -1078,6 +1080,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.344': ['2026-11-22', 'fix', 'Toasts leave on time, even in another tab'],
   '1.1.343': ['2026-11-22', 'fix', 'No more pile of Up to date toasts'],
   '1.1.342': ['2026-11-22', 'fix', 'The notice opens before you sign in'],
   '1.1.341': ['2026-11-22', 'fix', 'No Up to date pill on the sign-in card'],
@@ -3081,6 +3084,7 @@ const RELEASE_INFO = {
         toastGone(el);
       });
       document.body.append(toastBox);
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) toastTick(); });
       new ResizeObserver(toastReplace).observe(document.querySelector('.main'));
       window.addEventListener('resize', toastReplace);
     }
@@ -3132,6 +3136,26 @@ const RELEASE_INFO = {
       more.textContent = `${extra} more · Clear`;
     } else more?.remove();
   };
+  // Timed toasts count down on the clock, not on their line's animation, which a tab in the background stops: back on
+  // the tab, the ones whose time ran out are gone. The pointer resting on one holds it, as its line shows.
+  let toastClock = 0;
+  const toastTick = () => {
+    const now = Date.now();
+    const timed = toastBox ? [...toastBox.querySelectorAll('.tst.timed:not(.out)')] : [];
+    const deck = !!toastBox?.classList.contains('t-deck') && toastBox.matches(':hover');
+    timed.forEach((el) => {
+      if (document.hidden || !(deck || el.matches(':hover'))) el.toastLeft -= now - el.toastAt;
+      el.toastAt = now;
+      if (el.toastLeft <= 0) { toastGone(el); return; }
+      const line = el.querySelector('.tst-bar i')?.getAnimations?.()[0];
+      const want = el.toastSecs * 1000 - el.toastLeft;
+      if (line && Math.abs((line.currentTime || 0) - want) > 300) line.currentTime = want;
+    });
+    if (!timed.length) {
+      clearInterval(toastClock);
+      toastClock = 0;
+    }
+  };
   // One toast's insides: its icon (the flask while work runs), the words, its link, a close, and the line for the time
   // left. Work under way, and errors when this person wants, stay until closed.
   const toastDraw = (el, t, p) => {
@@ -3147,6 +3171,10 @@ const RELEASE_INFO = {
     el.classList.toggle('timed', secs > 0);
     if (!secs) return;
     el.style.setProperty('--toast-s', `${secs}s`);
+    el.toastSecs = secs;
+    el.toastLeft = secs * 1000;
+    el.toastAt = Date.now();
+    toastClock ||= setInterval(toastTick, 500);
     el.querySelector('.tst-bar i').addEventListener('animationend', () => toastGone(el), { once: true });
   };
   // A new toast goes on top of the stack. One that follows work still under way takes its place instead, so long work

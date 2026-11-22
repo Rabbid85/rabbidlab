@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.344 (2026-11-22)
+
+- Toasts go away on time even while you are on another tab. Before, their timer stopped in the background, so coming back found old toasts still up.
+
 ## 1.1.343 (2026-11-22)
 
 - Check for updates rests for a minute after each check and says Checked just now, so clicking it again does nothing until then.
