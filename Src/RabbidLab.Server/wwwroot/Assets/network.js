@@ -1,7 +1,9 @@
 // Network (NetworkScan.cs): everything that answers on the network ranges. Every address is pinged, as a network scanner
-// does, and whatever answers is identified by its ports, names, MAC vendor, SNMP and the TTL of its reply. The list, or a
-// map of every range (List or Map on the list's bar); a device opens the side panel; Scan now runs here, and what it finds
-// comes in while the page is open. Settings › Lab › Network has the ranges, the schedule and the SNMP community.
+// does, and whatever answers is identified by its ports, names, MAC vendor, SNMP and the TTL of its reply. A small card
+// above the list has Scan now and each range as one thin strip of its addresses, coloured by what answered, which the ping
+// sweeps along. Under it the list, or Map: every address of every range, numbered (List or Map on the list's bar). A
+// device opens the side panel, and what a scan finds comes in while the page is open. Settings › Lab › Network has the
+// ranges, the schedule and the SNMP community.
 (() => {
   const R = window.RabbidLab;
   const { $, esc, svg, has, panel, toast, sure, get, send } = R;
@@ -136,22 +138,103 @@
     document.querySelectorAll('[data-net-view]').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.netView === view)));
   };
 
-  // The map: every address of every range that's on, numbered by its last part. A device is filled in its type's colour,
-  // no reply is an outline, New has a dot; a free address is only its faint number. A range bigger than a /24 shows the
-  // /24 blocks where something answered. The key picks out a type.
-  const blocksOf = (r) => {
+  // The strips: each range that's on as one thin strip of its addresses in order, a tick each, coloured by the type of
+  // what answered there, dark where nothing did. A range bigger than 1,022 addresses shares each tick between a few. Point
+  // at a tick for what it is, click it to open it; ↻ at the row's end scans that range alone. A filter on the list dims
+  // what it leaves out.
+  const MOST = 1022;
+  const spanOf = (r) => {
     const [ip, b] = r.cidr.split('/');
     const size = 2 ** (32 - Number(b));
-    const start = Math.floor(ipNum(ip) / size) * size;
-    const first = start + 1;
-    const last = start + size - 2;
+    const n = Math.max(1, size - 2);
+    return { first: Math.floor(ipNum(ip) / size) * size + 1, n, per: Math.ceil(n / MOST) };
+  };
+  const tick = (s, i, byIp, inList) => {
+    const a = s.first + i * s.per;
+    const b = Math.min(s.first + s.n - 1, a + s.per - 1);
+    let d = null;
+    for (let x = a; x <= b && !d; x += 1) d = byIp.get(x) || null;
+    if (!d) return `<i class="net-u free" data-tip="${esc(`${a === b ? ipOf(a) : `${ipOf(a)} to .${b % 256}`} · No reply`)}"></i>`;
+    const cls = `${d.online ? '' : ' off'}${panel.shows('network', d.id) ? ' on' : ''}${inList.has(d.id) ? '' : ' dim'}`;
+    return `<button type="button" class="net-u${cls}" data-net-cell="${esc(d.id)}" style="--t:${TONE[d.kind] || TONE.unknown}"`
+      + ` data-tip="${esc(`${d.ip} · ${nameOf(d)} · ${kindOf(d)[0]} · ${pingText(d)}`)}" aria-label="${esc(`${d.ip}, ${nameOf(d)}`)}"></button>`;
+  };
+  let stripsDrawn = '';
+  let keyDrawn = '';
+  const swept = {}; // range id -> how many of its ticks the sweep has lit
+  const drawStrips = (rows) => {
+    const box = $('net-strips');
+    if (!data) {
+      if (!problem && !stripsDrawn) R.skeleton(box, 'rows', 3);
+      return;
+    }
+    const kinds = Object.keys(KIND).filter((k) => data.devices.some((d) => d.kind === k));
+    const key = kinds.map((k) => `<span style="--t:${TONE[k]}"><i></i>${esc(KIND[k][0])}</span>`).join('');
+    if (key !== keyDrawn) $('net-key').innerHTML = keyDrawn = key;
+    const inList = new Set((bar.any() ? rows : data.devices).map((d) => d.id));
+    const byIp = new Map(data.devices.map((d) => [ipNum(d.ip), d]));
+    const ranges = data.ranges.filter((r) => r.on);
+    const html = !ranges.length ? '<p class="net-none">No range is on. Add or turn on a range in Settings, Network.</p>' : ranges.map((r) => {
+      const s = spanOf(r);
+      const on = data.devices.filter((d) => d.range === r.id);
+      const ticks = Math.ceil(s.n / s.per);
+      return `<div class="net-srow" data-net-range="${esc(r.id)}"><div class="net-slabel"><b>${esc(r.name)}</b><span class="mono">${esc(r.cidr)}</span></div>`
+        + `<div class="net-strip${ticks > 254 ? ' fine' : ''}" style="--n:${ticks}">${Array.from({ length: ticks }, (_, i) => tick(s, i, byIp, inList)).join('')}</div>`
+        + `<div class="net-sside"><small>${on.filter((d) => d.online).length.toLocaleString()} answering · ${Math.max(0, r.size - on.length).toLocaleString()} free</small><span class="net-sprog"></span></div>`
+        + (may() ? `<button type="button" class="gcols" data-net-scanone="${esc(r.id)}" data-tip="Scan ${esc(r.name)}" aria-label="Scan ${esc(r.name)}">${svg('refresh')}</button>` : '<span></span>')
+        + '</div>';
+    }).join('');
+    // Drawn again only when something on it changed, so the sweep and a new device's glow run on.
+    if (html !== stripsDrawn) {
+      R.skeleton(box, '');
+      box.innerHTML = stripsDrawn = html;
+      box.querySelectorAll('[data-net-cell]').forEach((c) => {
+        const t = came.get(c.dataset.netCell);
+        if (t && Date.now() - t < 1900) { c.style.setProperty('--arrive-at', `${t - Date.now()}ms`); c.classList.add('arrive'); }
+      });
+    }
+    sweep(ranges);
+  };
+  // While a range is pinged, the ticks reached since the last look light up one after another, and the row says which
+  // address the ping has got to.
+  const sweep = (ranges) => {
+    const sc = data.scan;
+    for (const r of ranges) {
+      const row = $('net-strips').querySelector(`[data-net-range="${CSS.escape(r.id)}"]`);
+      if (!row) continue;
+      const s = spanOf(r);
+      const mine = !!sc && sc.ranges.includes(r.id);
+      const done = Math.min(r.done || 0, s.n);
+      row.querySelector('.net-sprog').textContent = !mine ? '' : sc.identifying ? 'Identifying' : !done ? 'Queued' : done >= s.n ? 'Pinged' : ipOf(s.first + done - 1);
+      if (!mine || sc.identifying) { swept[r.id] = 0; continue; }
+      const to = Math.ceil(done / s.per);
+      const from = Math.min(swept[r.id] || 0, to);
+      const ticks = row.querySelectorAll('.net-u');
+      for (let i = from; i < to; i += 1) {
+        const c = ticks[i];
+        c.classList.remove('swept');
+        void c.offsetWidth;
+        c.style.animationDelay = `${Math.round(((i - from) / Math.max(1, to - from)) * 900)}ms`;
+        c.classList.add('swept');
+      }
+      swept[r.id] = to;
+    }
+    document.querySelectorAll('[data-net-scanone]').forEach((b) => { b.disabled = !!sc || acting > 0; });
+  };
+
+  // Map, in the list's place: every address of every range that's on, numbered by its last part. A device is filled in
+  // its type's colour, no reply is an outline, New has a dot; a free address is only its faint number. A range bigger
+  // than a /24 shows the /24 blocks where something answered. The key, with how many of each, picks out a type.
+  const blocksOf = (r) => {
+    const s = spanOf(r);
+    const last = s.first + s.n - 1;
     const out = [];
-    for (let s = Math.floor(first / 256) * 256; s <= last; s += 256) out.push([Math.max(first, s), Math.min(last, s + 255)]);
+    for (let b = Math.floor(s.first / 256) * 256; b <= last; b += 256) out.push([Math.max(s.first, b), Math.min(last, b + 255)]);
     return out;
   };
   const mapKey = (rows) => {
     const kinds = Object.keys(KIND).filter((k) => rows.some((d) => d.kind === k));
-    return `<div class="net-key">${kinds.map((k) => `<button type="button" class="net-k${hl === k ? ' on' : ''}${hl && hl !== k ? ' dim' : ''}" data-net-hl="${k}" style="--t:${TONE[k]}" aria-pressed="${hl === k}">`
+    return `<div class="net-mkey">${kinds.map((k) => `<button type="button" class="net-k${hl === k ? ' on' : ''}${hl && hl !== k ? ' dim' : ''}" data-net-hl="${k}" style="--t:${TONE[k]}" aria-pressed="${hl === k}">`
       + `<i></i>${esc(KIND[k][0])}<small>${rows.filter((d) => d.kind === k).length}</small></button>`).join('')}`
       + '<span class="grow"></span><span class="net-k2"><i class="off"></i>No reply</span><span class="net-k2"><i class="new"></i>New</span></div>';
   };
@@ -163,56 +246,52 @@
       + ` data-tip="${esc(`${d.ip} · ${nameOf(d)} · ${kindOf(d)[0]} · ${pingText(d)}`)}" aria-label="${esc(`${d.ip}, ${nameOf(d)}`)}">${o}</button>`;
   };
   let mapDrawn = '';
-  const swept = {}; // range id -> how many of its addresses have been lit
+  const mapSwept = {}; // range id -> how many of its addresses the sweep has lit
   const drawMap = (rows) => {
     const box = $('net-maps');
+    if (!data) return;
     const inList = new Set(rows.map((d) => d.id));
-    const byIp = new Map((data?.devices || []).map((d) => [ipNum(d.ip), d]));
-    const ranges = (data?.ranges || []).filter((r) => r.on);
-    const html = !data ? '' : !ranges.length ? '<p class="net-none">No range is on. Add or turn on a range in Settings, Network.</p>'
+    const byIp = new Map(data.devices.map((d) => [ipNum(d.ip), d]));
+    const ranges = data.ranges.filter((r) => r.on);
+    const html = !ranges.length ? '<p class="net-none">No range is on. Add or turn on a range in Settings, Network.</p>'
       : mapKey(rows) + ranges.map((r) => {
         const blocks = blocksOf(r);
-        const used = blocks.filter(([a, b]) => [...byIp.keys()].some((n) => n >= a && n <= b));
-        const show = blocks.length === 1 ? blocks : used;
-        const on = (data.devices || []).filter((d) => d.range === r.id);
-        const answering = on.filter((d) => d.online).length;
+        const show = blocks.length === 1 ? blocks : blocks.filter(([a, b]) => [...byIp.keys()].some((n) => n >= a && n <= b));
+        const on = data.devices.filter((d) => d.range === r.id);
         return `<div class="net-range" data-net-range="${esc(r.id)}"><div class="net-rhead"><b>${esc(r.name)}</b><span class="mono">${esc(r.cidr)}</span>`
-          + `<small>${answering.toLocaleString()} answering · ${Math.max(0, r.size - on.length).toLocaleString()} free</small>`
+          + `<small>${on.filter((d) => d.online).length.toLocaleString()} answering · ${Math.max(0, r.size - on.length).toLocaleString()} free</small>`
           + `${blocks.length > show.length ? `<small>${count(blocks.length - show.length, 'block')} with nothing that answers not shown</small>` : ''}<span class="net-rprog"></span></div>`
-          + show.map(([a, b]) => `${show.length > 1 || blocks.length > 1 ? `<p class="net-block mono">${esc(ipOf(a).replace(/\.\d+$/, '.x'))}</p>` : ''}`
+          + show.map(([a, b]) => `${blocks.length > 1 ? `<p class="net-block mono">${esc(ipOf(a).replace(/\.\d+$/, '.x'))}</p>` : ''}`
             + `<div class="net-grid">${Array.from({ length: b - a + 1 }, (_, i) => cell(a + i, byIp.get(a + i), inList.has(byIp.get(a + i)?.id))).join('')}</div>`).join('')
           + '</div>';
       }).join('');
     // Drawn again only when something on it changed, so the sweep and a new device's glow run on.
     if (html !== mapDrawn) {
-      box.innerHTML = html;
-      mapDrawn = html;
+      box.innerHTML = mapDrawn = html;
       box.querySelectorAll('[data-net-cell]').forEach((c) => {
         const t = came.get(c.dataset.netCell);
         if (t && Date.now() - t < 1900) { c.style.setProperty('--arrive-at', `${t - Date.now()}ms`); c.classList.add('arrive'); }
       });
     }
-    sweep(ranges);
-  };
-  // While a range is pinged, the addresses reached since the last look light up one after another.
-  const sweep = (ranges) => {
-    const sc = data?.scan;
+    // While a range is pinged, the addresses reached since the last look light up one after another.
+    const sc = data.scan;
     for (const r of ranges) {
-      const prog = $('net-maps').querySelector(`[data-net-range="${CSS.escape(r.id)}"] .net-rprog`);
-      const going = sc && sc.ranges.includes(r.id) && !sc.identifying;
-      if (prog) prog.textContent = going && r.done != null ? (r.done >= r.size ? 'Pinged' : `Pinging ${(r.done || 0).toLocaleString()} of ${r.size.toLocaleString()}`) : '';
-      if (!going) { swept[r.id] = 0; continue; }
-      const from = swept[r.id] || 0;
-      const to = Math.min(r.done || 0, r.size);
-      if (to <= from) continue;
-      const cells = [...$('net-maps').querySelectorAll(`[data-net-range="${CSS.escape(r.id)}"] .net-n`)];
-      cells.slice(from, to).forEach((c, k) => {
+      const sec = box.querySelector(`[data-net-range="${CSS.escape(r.id)}"]`);
+      if (!sec) continue;
+      const s = spanOf(r);
+      const mine = !!sc && sc.ranges.includes(r.id);
+      const done = Math.min(r.done || 0, s.n);
+      sec.querySelector('.net-rprog').textContent = !mine ? '' : sc.identifying ? 'Identifying' : !done ? 'Queued' : done >= s.n ? 'Pinged' : ipOf(s.first + done - 1);
+      if (!mine || sc.identifying) { mapSwept[r.id] = 0; continue; }
+      const from = Math.min(mapSwept[r.id] || 0, done);
+      const lit = [...sec.querySelectorAll('.net-n')].filter((c) => { const k = Number(c.dataset.n) - s.first; return k >= from && k < done; });
+      lit.forEach((c, k) => {
         c.classList.remove('swept');
         void c.offsetWidth;
-        c.style.animationDelay = `${Math.round((k / Math.max(1, to - from)) * 900)}ms`;
+        c.style.animationDelay = `${Math.round((k / Math.max(1, lit.length)) * 900)}ms`;
         c.classList.add('swept');
       });
-      swept[r.id] = to;
+      mapSwept[r.id] = done;
     }
   };
 
@@ -233,6 +312,7 @@
     [...picked].forEach((id) => { if (!devOf(id)) picked.delete(id); });
     if (data || problem) grid.draw(rows);
     else R.skeleton($('net-table'), 'rows', 6);
+    drawStrips(rows);
     if (view === 'map') drawMap(rows);
     // Devices found while the page is open come in as rows do everywhere (R.arrive).
     came.forEach((t, id) => {
@@ -245,7 +325,7 @@
   };
   const mark = () => {
     document.querySelectorAll('#net-table [data-net-row]').forEach((el) => el.classList.toggle('dw-on', panel.shows('network', el.dataset.netRow)));
-    document.querySelectorAll('#net-maps [data-net-cell]').forEach((el) => el.classList.toggle('on', panel.shows('network', el.dataset.netCell)));
+    document.querySelectorAll('#net-strips [data-net-cell], #net-maps [data-net-cell]').forEach((el) => el.classList.toggle('on', panel.shows('network', el.dataset.netCell)));
   };
   const drawTicks = () => {
     const boxes = [...$('net-table').querySelectorAll('[data-net-tick]')];
@@ -313,7 +393,7 @@
       draw();
       if (panel.is('network')) { const d = devOf(panel.key); if (d) openDevice(d, true); else panel.close(); }
     },
-    areas: () => [$('net-table'), $('net-maps')],
+    areas: () => [$('net-table'), $('net-strips'), $('net-maps')],
   });
   document.addEventListener('rabbidlab:show', (e) => {
     if (e.detail[0] === 'network' && has('network.view')) {
@@ -341,9 +421,10 @@
       if (panel.is('network')) { const d = devOf(panel.key); if (d) openDevice(d, true); else panel.close(); }
     }
   };
-  const scan = async () => {
-    const on = (data?.ranges || []).filter((r) => r.on);
-    if (await act(() => send('/api/network/scan', {}))) {
+  // Every range that's on, or one range (↻ on its strip).
+  const scan = async (range = '') => {
+    const on = (data?.ranges || []).filter((r) => r.on && (!range || r.id === range));
+    if (await act(() => send('/api/network/scan', range ? { range } : {}))) {
       wasScan = data.scan;
       soon();
       toast('Scan started.', `${count(on.reduce((t, r) => t + r.size, 0), 'address', 'addresses')} in ${on.map((r) => r.name).join(', ')}.`);
@@ -526,14 +607,19 @@
     });
   });
   $('net-scan').addEventListener('click', () => { if (!$('net-scan').disabled) scan(); });
+  $('net-strips').addEventListener('click', (e) => {
+    const one = e.target.closest('[data-net-scanone]');
+    if (one) { if (!one.disabled) scan(one.dataset.netScanone); return; }
+    const c = e.target.closest('[data-net-cell]');
+    if (c) rowClick(c.dataset.netCell);
+  });
   $('net-card').addEventListener('click', (e) => {
     const v = e.target.closest('[data-net-view]');
-    if (v && v.dataset.netView !== view) {
-      view = v.dataset.netView;
-      keep('rabbidlab.network.view', view);
-      mapDrawn = '';
-      draw();
-    }
+    if (!v || v.dataset.netView === view) return;
+    view = v.dataset.netView;
+    keep('rabbidlab.network.view', view);
+    mapDrawn = '';
+    draw();
   });
   $('net-maps').addEventListener('click', (e) => {
     const k = e.target.closest('[data-net-hl]');

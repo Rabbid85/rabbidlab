@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.362', [
+    'Network has a small card above the list: Scan now on its bar, and each range as one thin strip of its addresses, coloured by what answered. The ping sweeps along each strip while it scans, and the row says which address it has got to.',
+    'Point at a tick on a strip for what it is, and click it to open it. ↻ at the end of a range scans that range alone.',
+    'List and Map stay on the list’s bar, and Map is still every address by its number.']],
   ['1.1.361', [
     'Network is a new page under Lab. Scan now pings every address on your ranges, as a network scanner does, and lists everything that answers with its name, IP and MAC address, vendor, ping and what kind of device it is, such as a router, printer, camera, phone or PC.',
     'Devices that block ping are still found through common ports and this server’s ARP table. What each one is comes from its open ports, DNS and NetBIOS names, MAC vendor, SNMP and the TTL of its reply.',
@@ -1151,6 +1155,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.362': ['2026-11-22', 'feature', 'Network: address strips above the list', 'strips.jpg'],
   '1.1.361': ['2026-11-22', 'feature', 'Network: everything on your network, found and identified', 'network.jpg'],
   '1.1.360': ['2026-11-22', 'update', 'Servers and PCs read through the client'],
   '1.1.359': ['2026-11-22', 'feature', 'Security settings on every computer, with a Current column', 'computers.jpg'],

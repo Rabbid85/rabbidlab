@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.362 (2026-11-22)
+
+- Network has a small card above the list: Scan now on its bar, and each range as one thin strip of its addresses, coloured by what answered. The ping sweeps along each strip while it scans, and the row says which address it has got to.
+- Point at a tick on a strip for what it is, and click it to open it. ↻ at the end of a range scans that range alone.
+- List and Map stay on the list’s bar, and Map is still every address by its number.
+
 ## 1.1.361 (2026-11-22)
 
 - Network is a new page under Lab. Scan now pings every address on your ranges, as a network scanner does, and lists everything that answers with its name, IP and MAC address, vendor, ping and what kind of device it is, such as a router, printer, camera, phone or PC.

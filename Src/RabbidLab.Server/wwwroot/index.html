@@ -858,7 +858,7 @@
   </section>
 
   <!-- Network: everything that answers on the network ranges, pinged and identified like a network scanner (network.js,
-       NetworkScan.cs). Scan now, Actions, List or Map and the gear are on the list's own bar. -->
+       NetworkScan.cs). A small card of address strips with Scan now on its bar, then the list or the map. -->
   <section class="page home net-page" id="page-network" data-page="network" data-title="Network" hidden>
     <header class="hero" id="net-hero">
       <p class="eyebrow">Lab</p>
@@ -874,16 +874,24 @@
       </div>
     </header>
     <div class="net-body">
+      <!-- The address strips: each range one thin strip of its addresses, coloured by what answered, swept by the ping. -->
+      <section class="gcard net-strips-card">
+        <div class="net-sbar">
+          <button type="button" class="small primary net-scan" id="net-scan" data-can="network.scan"><svg><use href="#i-radar"/></svg><span>Scan now</span></button>
+          <span class="net-when" id="net-when"></span><span class="grow"></span>
+          <div class="net-key" id="net-key"></div>
+          <a class="gcols" href="#settings/network" id="net-gear" data-can="network.settings" data-tip="Ranges and schedule" aria-label="Network settings"><svg><use href="#i-gear"/></svg></a>
+        </div>
+        <div class="net-strips" id="net-strips"></div>
+      </section>
       <div id="net-fbar"></div>
+      <!-- The list, or Map: every address of every range, numbered (List or Map on the card's bar). -->
       <div class="gcard net-card" id="net-card">
         <div class="gbar">
-          <button type="button" class="small primary net-scan" id="net-scan" data-can="network.scan"><svg><use href="#i-radar"/></svg><span>Scan now</span></button>
           <button type="button" class="small" id="net-act" aria-haspopup="menu" disabled data-tip="Select devices first">Actions<b class="cnt" hidden></b><svg class="chev"><use href="#i-chevron-down"/></svg></button>
           <div id="net-tools"></div>
-          <span class="net-when" id="net-when"></span>
           <div class="seg net-vseg" role="group" aria-label="View"><button type="button" data-net-view="list" aria-pressed="true"><svg><use href="#i-view-list"/></svg>List</button><button type="button" data-net-view="map" aria-pressed="false"><svg><use href="#i-view-icons"/></svg>Map</button></div>
           <span id="net-rows"></span>
-          <a class="gcols" href="#settings/network" id="net-gear" data-can="network.settings" data-tip="Ranges and schedule" aria-label="Network settings"><svg><use href="#i-gear"/></svg></a>
         </div>
         <div class="net-maps" id="net-maps" hidden></div>
         <div class="table adt drows" id="net-table" data-skel="rows:6"></div>
