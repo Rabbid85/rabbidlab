@@ -93,17 +93,17 @@
   const composer = (mode) => `<div class="note-box"><div class="note-tools" role="toolbar" aria-label="Formatting">`
     + `<button type="button" class="note-block" data-nt="block" aria-haspopup="menu"><span>Normal text</span>${svg('chevron-down', 'chev')}</button><i class="note-rule"></i>`
     + TOOLS.map((t) => (t === '-' ? '<i class="note-rule"></i>' : `<button type="button" class="note-t" data-nt="${t[0]}" data-tip="${t[2]}" aria-label="${t[2]}">${svg(t[1])}</button>`)).join('')
-    + `</div><div class="note-edit blank" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Note" data-ph="${mode === 'add' ? 'Type your note…' : ''}" data-note-ed></div>`
+    + `</div><div class="note-edit blank" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Note" data-ph="${mode === 'add' ? 'Add a note…' : ''}" data-note-ed></div>`
     + '<div class="note-url" hidden><input type="text" data-note-url placeholder="https://" aria-label="Link address" autocomplete="off" spellcheck="false">'
     + '<button type="button" class="small primary" data-note-url-ok>Add link</button><button type="button" class="small" data-note-url-no>Cancel</button></div></div>'
-    + `<div class="note-foot">${mode === 'add' ? '<span class="note-keys">Ctrl+Enter adds it</span><button type="button" class="primary" data-note-add disabled>Add note</button>'
+    + `<div class="note-foot">${mode === 'add' ? '<span class="note-keys">Ctrl+Enter to add</span><button type="button" class="primary" data-note-add disabled>Add note</button>'
       : '<button type="button" data-note-cancel>Cancel</button><button type="button" class="primary" data-note-save>Save</button>'}</div>`;
 
   const make = (on) => {
     const box = document.createElement('section');
     box.className = 'dw-sec notes';
     box.innerHTML = '<div class="dw-sec-head"><h3>Notes <small data-notes-n></small></h3>'
-      + `<label class="side-find notes-find" hidden><svg><use href="#i-search"/></svg><input type="search" data-notes-find placeholder="Find in notes" aria-label="Find in notes" autocomplete="off" spellcheck="false"></label></div>`
+      + `<label class="side-find notes-find" hidden><svg><use href="#i-search"/></svg><input type="search" data-notes-find placeholder="Search notes" aria-label="Search notes" autocomplete="off" spellcheck="false"></label></div>`
       + `<div class="note-new">${composer('add')}</div><div class="note-list" data-notes-list></div>`;
     Object.assign(box, { on, find: '', editing: '', focused: null, mark: null });
     wire(box);
@@ -132,7 +132,7 @@
     const keep = box.editing ? el.querySelector(`[data-note="${CSS.escape(box.editing)}"]`) : null;
     el.replaceChildren();
     if (!rows.length) {
-      el.innerHTML = `<p class="muted dw-empty">${got.length ? 'No notes match.' : 'No notes yet.'}</p>`;
+      el.innerHTML = `<p class="muted dw-empty">${got.length ? 'No notes match the search.' : 'No notes yet.'}</p>`;
       return;
     }
     for (const x of rows) {
@@ -144,7 +144,7 @@
       card.className = 'note';
       card.dataset.note = x.id;
       card.innerHTML = `<div class="note-top"><span class="pic note-pic">${esc(R.initials(x.by))}</span><b class="ell">${esc(x.by)}</b>`
-        + `<span class="note-when" data-tip="${esc(R.when(x.at))}">${esc(ago(x.at))}</span>${x.changed ? `<span class="note-when" data-tip="Changed ${esc(R.when(x.changed))}">· edited</span>` : ''}<span class="grow"></span>`
+        + `<span class="note-when" data-tip="${esc(R.when(x.at))}">${esc(ago(x.at))}</span>${x.changed ? `<span class="note-when" data-tip="Edited ${esc(R.when(x.changed))}">· edited</span>` : ''}<span class="grow"></span>`
         + (x.mine ? `<button type="button" class="at-more note-x" data-note-edit data-tip="Edit note" aria-label="Edit note">${svg('edit')}</button>` : '')
         + (x.canDelete ? `<button type="button" class="at-more note-x" data-note-del data-tip="Delete note" aria-label="Delete note">${svg('trash')}</button>` : '')
         + '</div><div class="note-body"></div>';
@@ -236,7 +236,7 @@
       refresh(box, ed);
       await load(box.on);
     } catch (e) {
-      R.toast("The note wasn't added.", e.message, { tone: 'warn' });
+      R.toast('Could not add the note.', e.message, { tone: 'warn' });
       refresh(box, ed);
     }
   };
@@ -257,7 +257,7 @@
   const save = async (box, card) => {
     const ed = card.querySelector('[data-note-ed]');
     if (blank(ed)) {
-      R.toast('A note needs some text.', 'Delete it instead to take it away.', { tone: 'warn' });
+      R.toast('The note is empty.', 'Enter some text, or delete the note.', { tone: 'warn' });
       return;
     }
     try {
@@ -265,19 +265,19 @@
       box.editing = '';
       await load(box.on);
     } catch (e) {
-      R.toast("The note wasn't saved.", e.message, { tone: 'warn' });
+      R.toast('Could not save the note.', e.message, { tone: 'warn' });
     }
   };
   const remove = (box, card) => {
     const x = (lists.get(box.on) || []).find((n) => n.id === card.dataset.note);
     if (!x) return;
-    R.sure('Delete this note?', x.mine ? 'It\'s gone for everyone.' : `It's ${x.by}'s note. It's gone for everyone.`, 'Delete', async () => {
+    R.sure('Delete this note?', x.mine ? 'The note is deleted for all users.' : `This note was written by ${x.by}. It is deleted for all users.`, 'Delete', async () => {
       try {
         await R.send(`/api/notes/${encodeURIComponent(x.id)}/delete`, { name: names.get(box.on) || '' });
         await load(box.on);
-        R.toast('Note deleted', names.get(box.on) || '');
+        R.toast('Note deleted.', names.get(box.on) || '');
       } catch (e) {
-        R.toast("The note wasn't deleted.", e.message, { tone: 'warn' });
+        R.toast('Could not delete the note.', e.message, { tone: 'warn' });
       }
     });
   };

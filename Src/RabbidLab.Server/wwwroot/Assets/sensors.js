@@ -5,11 +5,11 @@
   const R = window.RabbidLab;
   const { $, esc, svg, say, has: can } = R;
   const KIND = { ping: 'Ping', port: 'Port', web: 'Web page', dns: 'DNS lookup', cert: 'Certificate', hw: 'Server hardware', nas: 'Storage', vmware: 'VMware', snmp: 'SNMP', svc: 'Windows service', disk: 'Disk space' };
-  const WORD = { up: 'Up', down: 'Down', warn: 'Warning', paused: 'Paused', new: 'Checking', wait: 'Waiting' };
+  const WORD = { up: 'Up', down: 'Down', warn: 'Warning', paused: 'Paused', new: 'Pending', wait: 'Unreachable' };
   // A sensor's icon when it doesn't watch a link with one, and the badge on its corner for how it is.
   const GLYPH = { ping: 'activity', port: 'plug', web: 'globe', dns: 'search', cert: 'lock', hw: 'server', nas: 'disk', vmware: 'monitor', snmp: 'org', svc: 'gear', disk: 'disk' };
   const BADGE = { up: 'check', warn: 'alert', down: 'x', paused: 'pause', wait: 'clock', new: 'clock' };
-  const TAG = { warn: 'Warning', down: 'Down', paused: 'Paused', wait: 'Waiting', new: 'New' };
+  const TAG = { warn: 'Warning', down: 'Down', paused: 'Paused', wait: 'Unreachable', new: 'Pending' };
   const TIMED = ['ping', 'port', 'web', 'dns']; // kinds whose reply time is worth a line
   const NO_GROUP = 'No group'; // what the Group chip calls sensors in none
   const NEW_GROUP = ' new';
@@ -47,7 +47,7 @@
     return d.toDateString() === new Date().toDateString() ? time : `${d.toLocaleDateString([], { weekday: 'short' })} ${time}`;
   };
   // When it alerts, in a few words: After 5 min, Right away, Never.
-  const alertShort = (a) => (!a ? '' : a.after < 0 ? 'Never' : a.after === 0 ? 'Right away' : `After ${a.after === 60 ? '1 hour' : `${a.after} min`}`);
+  const alertShort = (a) => (!a ? '' : a.after < 0 ? 'Never' : a.after === 0 ? 'Immediately' : `After ${a.after === 60 ? '1 hour' : `${a.after} min`}`);
   const notAnswering = (s) => s.status === 'down' || s.status === 'wait';
   const percent = (p) => (p == null ? '' : `${p === 100 ? 100 : p.toFixed(p > 99.9 ? 2 : 1)}%`);
   const paint = (root) => {
@@ -107,13 +107,13 @@
     $('sn-hero').classList.toggle('bad', down.length > 0);
     // The title says Sensors, as Links says Links; how they're doing is the line under it.
     const first = down[0] || warn[0];
-    $('sn-lead').textContent = !sensors.length ? 'Nothing is being checked.' : down.length ? `${first.name} stopped answering ${first.since ? `${long(first.since)} ago` : 'just now'}.`
-      : warn.length ? `${first.name}: ${first.note || 'needs attention'}.` : fresh ? 'The first checks are under way.' : live.length ? 'Everything is answering.' : 'Nothing is being checked.';
+    $('sn-lead').textContent = !sensors.length ? 'No sensors yet.' : down.length ? `${first.name} went down ${first.since ? `${long(first.since)} ago` : 'just now'}.`
+      : warn.length ? `${first.name}: ${first.note || 'needs attention'}.` : fresh ? 'First checks in progress.' : live.length ? 'All sensors are up.' : 'All sensors are paused.';
     // What waits on the ones that are down says nothing until they're back.
     const waiting = live.filter((s) => s.status === 'wait').length;
-    const behind = !down.length || !waiting ? '' : ` ${waiting} sensor${waiting === 1 ? '' : 's'} behind ${down.length === 1 ? 'it' : 'them'} ${waiting === 1 ? 'is' : 'are'} waiting instead of alerting.`;
-    $('sn-lead-more').textContent = !sensors.length ? 'Add a sensor to watch a server, a service or a certificate.'
-      : (down.length > 1 ? `So did ${down.slice(1, 4).map((s) => s.name).join(', ')}${down.length > 4 ? ` and ${down.length - 4} more` : ''}.` : '') + behind;
+    const behind = !down.length || !waiting ? '' : ` ${waiting} dependent sensor${waiting === 1 ? '' : 's'} ${waiting === 1 ? 'is' : 'are'} unreachable and not alerting.`;
+    $('sn-lead-more').textContent = !sensors.length ? 'Add a sensor to monitor a server, service or certificate.'
+      : (down.length > 1 ? `Also down: ${down.slice(1, 4).map((s) => s.name).join(', ')}${down.length > 4 ? ` and ${down.length - 4} more` : ''}.` : '') + behind;
     $('sn-answering').textContent = sensors.length ? `${live.filter((s) => s.status === 'up' || s.status === 'warn').length} of ${live.length}` : '0';
     const week = sensors.map((s) => s.up7).filter((p) => p != null);
     $('sn-week').textContent = week.length ? percent(Math.round(week.reduce((a, b) => a + b, 0) / week.length * 100) / 100) : '…';
@@ -121,9 +121,9 @@
     $('sn-card').hidden = !first;
     if (first) {
       $('sn-card').className = `hero-new ${down.length ? 'bad' : 'warn'}`;
-      $('sn-card-kind').textContent = down.length ? 'Down now' : 'Needs attention';
+      $('sn-card-kind').textContent = down.length ? 'Down' : 'Needs attention';
       $('sn-card-title').textContent = first.name;
-      $('sn-card-text').textContent = down.length ? `${check(first)} to ${where(first)}: ${(first.note || 'no reply').toLowerCase()}${first.since ? ` since ${R.when(first.since)}` : ''}.`
+      $('sn-card-text').textContent = down.length ? `${check(first)} to ${where(first)}: ${(first.note || 'no response').toLowerCase()}${first.since ? ` since ${R.when(first.since)}` : ''}.`
         : `${check(first)} for ${where(first)}: ${first.note || ''}.`;
       $('sn-card-more').dataset.open = first.id;
     }
@@ -134,12 +134,12 @@
   const CELL = {
     state: (s) => `<span class="state ${s.status}">${s.status === 'down' && s.since ? `Down ${short(s.since)}` : s.status === 'paused' && s.pausedUntil ? `Until ${clock(s.pausedUntil)}` : WORD[s.status] || s.status}</span>`,
     name: (s) => `<div class="nm"><span class="lic">${faces[s.id] ? `<img src="${esc(faces[s.id])}" alt="">` : svg(glyph(s))}</span><b>${esc(s.name)}</b></div>`,
-    check: (s) => `<span>${esc(check(s))}${s.waits ? ` · waits on ${esc(s.waits)}` : ''}</span>`,
+    check: (s) => `<span>${esc(check(s))}${s.waits ? ` · depends on ${esc(s.waits)}` : ''}</span>`,
     where: (s) => `<span class="dim" title="${esc(where(s))}">${esc(where(s))}</span>`,
     reply: (s) => `<span class="num">${esc(s.status === 'up' || s.status === 'warn' ? (s.kind === 'cert' ? days(s.note) : ['hw', 'nas', 'vmware', 'snmp', 'svc', 'disk'].includes(s.kind) ? s.note || 'All OK' : s.ms == null ? '' : ms(s.ms)) : '')}</span>`,
     line: (s) => line(s.recent, s.status),
     up: (s) => `<span class="num">${percent(s.up7)}</span>`,
-    alerts: (s) => `<span class="dim">${esc(typeOf(s.type)?.name || "Don't alert")}</span>`,
+    alerts: (s) => `<span class="dim">${esc(typeOf(s.type)?.name || 'No alert')}</span>`,
   };
   // The Rows view is a data grid (grid.js): a table for each group, all sharing the same columns.
   const STATE_ORDER = { down: 0, warn: 1, wait: 2, new: 3, paused: 4, up: 5 };
@@ -154,9 +154,9 @@
       { key: 'name', label: 'Sensor', w: 200, fixed: true, get: (s) => s.name, cell: CELL.name },
       { key: 'check', label: 'Check', w: 110, on: true, filter: true, get: (s) => check(s), word: (s) => check(s), cell: CELL.check },
       { key: 'where', label: 'Address', w: 170, on: true, get: (s) => where(s), cell: CELL.where },
-      { key: 'reply', label: 'Reply', w: 100, on: true, nofilter: true, get: (s) => s.ms ?? '', cell: CELL.reply },
+      { key: 'reply', label: 'Response', w: 100, on: true, nofilter: true, get: (s) => s.ms ?? '', cell: CELL.reply },
       { key: 'line', label: 'Last hour', w: 200, on: true, nosort: true, nofilter: true, get: () => '', cell: CELL.line },
-      { key: 'up', label: 'Up, 7 days', w: 90, on: true, nofilter: true, get: (s) => s.up7 ?? '', cell: CELL.up },
+      { key: 'up', label: 'Uptime (7 days)', w: 90, on: true, nofilter: true, get: (s) => s.up7 ?? '', cell: CELL.up },
       { key: 'alerts', label: 'Alert type', w: 110, on: true, filter: true, get: (s) => typeOf(s.type)?.name || '', cell: CELL.alerts },
     ],
     row: (s) => ` data-open="${esc(s.id)}"`,
@@ -169,12 +169,12 @@
     { key: 'name', label: 'Name', type: 'text', get: (s) => s.name },
     { key: 'state', label: 'State', type: 'choice', get: (s) => WORD[s.status] || s.status },
     { key: 'group', label: 'Group', type: 'choice', get: (s) => s.group || NO_GROUP },
-    { key: 'kind', label: 'Kind', type: 'choice', get: (s) => KIND[s.kind] || s.kind },
+    { key: 'kind', label: 'Sensor type', type: 'choice', get: (s) => KIND[s.kind] || s.kind },
     { key: 'where', label: 'Address', type: 'text', get: (s) => where(s) },
-    { key: 'alerts', label: 'Alert type', type: 'choice', get: (s) => typeOf(s.type)?.name || "Don't alert" },
+    { key: 'alerts', label: 'Alert type', type: 'choice', get: (s) => typeOf(s.type)?.name || 'No alert' },
     { key: 'tags', label: 'Tags', type: 'member', get: (s) => s.tags || [] },
-    { key: 'reply', label: 'Reply (ms)', type: 'number', get: (s) => s.ms },
-    { key: 'up', label: 'Up, 7 days (%)', type: 'number', get: (s) => s.up7 },
+    { key: 'reply', label: 'Response time (ms)', type: 'number', get: (s) => s.ms },
+    { key: 'up', label: 'Uptime, 7 days (%)', type: 'number', get: (s) => s.up7 },
   ]]];
   let barOn = null;
   const bar = () => (barOn ||= R.filter.bar({ el: $('sn-fbar'), key: 'sensors', grid: () => snGrid, rows: () => sensors, noun: 'sensors', fields: () => FILTER_FIELDS,
@@ -188,11 +188,11 @@
   // --- The sensors, in their groups ----------------------------------------------------------------------------------------
 
   // The card's one line: reply time and the week for a timed check that's up, else what the last check said.
-  const said = (s) => (s.status === 'down' ? `${s.note || 'No reply'}${s.since ? ` for ${long(s.since)}` : ''}`
-    : s.status === 'wait' ? `Waits on ${s.waits}`
-    : s.status === 'paused' ? (s.pausedUntil ? `Paused until ${clock(s.pausedUntil)}` : 'Paused until you resume it')
+  const said = (s) => (s.status === 'down' ? `${s.note || 'No response'}${s.since ? ` for ${long(s.since)}` : ''}`
+    : s.status === 'wait' ? `Depends on ${s.waits}, which is down`
+    : s.status === 'paused' ? (s.pausedUntil ? `Paused until ${clock(s.pausedUntil)}` : 'Paused until resumed')
     : s.status === 'new' ? 'Not checked yet'
-    : TIMED.includes(s.kind) && s.status === 'up' && !s.invert ? [s.ms == null ? '' : ms(s.ms), s.up7 == null ? '' : `${percent(s.up7)} this week`].filter(Boolean).join(' · ') || 'Up'
+    : TIMED.includes(s.kind) && s.status === 'up' && !s.invert ? [s.ms == null ? '' : ms(s.ms), s.up7 == null ? '' : `${percent(s.up7)} over 7 days`].filter(Boolean).join(' · ') || 'Up'
     : s.note || WORD[s.status]);
   const quiet = (text) => `<span class="sn-quiet">${esc(text)}</span>`;
   // The last hour of replies, smoothed. Checks with no reply leave a gap.
@@ -204,7 +204,7 @@
     return `C${(b[0] + (q[0] - a[0]) / 6).toFixed(1)} ${(b[1] + (q[1] - a[1]) / 6).toFixed(1)} ${(q[0] - (d[0] - b[0]) / 6).toFixed(1)} ${(q[1] - (d[1] - b[1]) / 6).toFixed(1)} ${q[0].toFixed(1)} ${q[1].toFixed(1)}`;
   }).join('');
   const trace = (recent) => {
-    if (recent.length < 2) return quiet('First checks under way');
+    if (recent.length < 2) return quiet('First checks in progress');
     const [w, h] = [300, 34];
     const got = recent.filter((n) => n >= 0);
     const top = Math.max(...got, 1) * 1.15;
@@ -217,7 +217,7 @@
     return `<svg class="sn-trace" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true">${d ? `<path d="${d}"/>` : ''}</svg>`;
   };
   // A server, pool, vCenter or UPS: up to four of its parts in a word or two, the full answer on hover.
-  const LABEL = { health: 'Health', power: 'PSU', fans: 'Fans', temps: 'Temp', disks: 'Disks', pools: 'Pool', space: 'Free', hosts: 'Hosts', alarms: 'Alarms', uptime: 'Up', battery: 'Battery', iface: 'Port' };
+  const LABEL = { health: 'Health', power: 'PSU', fans: 'Fans', temps: 'Temp', disks: 'Disks', pools: 'Pool', space: 'Free', hosts: 'Hosts', alarms: 'Alarms', uptime: 'Uptime', battery: 'Battery', iface: 'Port' };
   const POWER = { 'On line power': 'Line', 'On battery': 'Battery', 'On bypass': 'Bypass', 'No output': 'Off' };
   const word = (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
   const brief = (s, p) => {
@@ -245,8 +245,8 @@
     return pct == null ? null : `<span class="sn-meter"><i data-pct="${Math.max(2, Math.round(pct))}"></i></span>`;
   };
   const foot = (s) => (s.status === 'paused' ? quiet('No checks or alerts while paused')
-    : s.status === 'wait' ? quiet(`Checked again once ${s.waits} answers`)
-    : s.status === 'new' ? quiet('First check under way')
+    : s.status === 'wait' ? quiet(`Checks resume when ${s.waits} is up`)
+    : s.status === 'new' ? quiet('First check in progress')
     : TIMED.includes(s.kind) ? trace(s.recent)
     : s.parts?.length ? cells(s)
     : (s.status !== 'down' && left(s)) || quiet(s.kind === 'svc' || s.kind === 'disk' ? `Checked by the client on ${s.target}` : where(s)));
@@ -268,10 +268,10 @@
     const by = [...groups, ''].map((g) => [g, shown.filter((s) => (s.group || '') === g)])
       .filter(([g, list]) => list.length || (g && !find));
     $('sn-list').innerHTML = by.map(([g, list]) => `<section class="lgroup" data-name="${esc(g)}">${groups.length ? tools.heading(g, list.length) : ''}`
-      + (!list.length ? `<p class="hint lnone">No sensors in this group yet.${can('sensors.edit') ? ` <button type="button" class="link" data-addto="${esc(g)}">Add one</button>` : ''}</p>`
+      + (!list.length ? `<p class="hint lnone">No sensors in this group yet.${can('sensors.edit') ? ` <button type="button" class="link" data-addto="${esc(g)}">Add a sensor</button>` : ''}</p>`
         : view === 'grid' ? snGrid.table(list) : `<div class="ltiles sn-tiles">${list.map(card).join('')}</div>`)
       + '</section>').join('')
-      || (sensors.length ? '<p class="hint">Nothing matches.</p>' : '');
+      || (sensors.length ? '<p class="hint">No sensors match the filter.</p>' : '');
     if (!find) $('sn-list').insertAdjacentHTML('beforeend', tools.out(by.some(([g]) => !g)));
     tools.settle();
     $('sn-empty').hidden = sensors.length > 0 || groups.length > 0;
@@ -279,7 +279,9 @@
   };
 
   // What the server answers to a read or a change: the sensors and groups in order, when new sensors alert, and gathering.
+  let answered = null; // that answer as it came, for the Overview and for telling what changed
   const take = (answer) => {
+    answered = answer;
     sensors = answer.sensors;
     groups = answer.groups || [];
     types = answer.types || types;
@@ -288,17 +290,27 @@
     gather = answer.gather || gather;
     lastCheck = answer.last;
     loadFaces();
-    document.dispatchEvent(new CustomEvent('rabbidlab:sensors', { detail: sensors })); // the top bar's status (console.js)
   };
+  R.sensorsNow = () => answered;
   const refresh = async () => {
     try {
       take(await R.get('/api/sensors'));
       say('sn-problem', '');
     } catch (err) {
+      answered = null; // the next read that works draws, and takes the box away
       say('sn-problem', err.message);
     }
     // Not under a drag, a column being sized or a name being typed: it catches up on the next read.
     if (!tools.busy() && !snGrid.busy()) draw();
+  };
+  // Off the page only the rail's dot needs them: no box saying why when it fails, and only the banner drawn.
+  const quietly = async () => {
+    try {
+      take(await R.get('/api/sensors'));
+      drawHero();
+    } catch {
+      // The dot stays as it was.
+    }
   };
   const tools = R.groupTools($('sn-list'), {
     api: '/api/sensors/groups',
@@ -342,8 +354,8 @@
   // --- One sensor: how it is and what happened to it -------------------------------------------------------------------------
 
   let showing = null; // the sensor in the dialog
-  const EVENT = { down: ['Went down', 's-down'], up: ['Came back', 's-up'], warn: ['Warning', 's-warn'], email: ['Alert sent', 's-new'], problem: ['Alert not sent', 's-down'],
-    pause: ['Paused', 's-paused'], resume: ['Started again', 's-new'] };
+  const EVENT = { down: ['Down', 's-down'], up: ['Up', 's-up'], warn: ['Warning', 's-warn'], email: ['Alert sent', 's-new'], problem: ['Alert failed', 's-down'],
+    pause: ['Paused', 's-paused'], resume: ['Resumed', 's-new'] };
   // Names as a list: a, b and c.
   const and = (names) => (names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`);
   // What depends on a sensor, directly or through others.
@@ -364,21 +376,21 @@
     showing = s;
     const a = s.alert;
     $('sv-title').textContent = s.name;
-    $('sv-what').textContent = `${check(s)} · ${where(s)} · every ${{ 30: '30 seconds', 60: 'minute', 300: '5 minutes', 3600: 'hour' }[s.every] || `${s.every} s`} · ${a.after < 0 ? 'never alerts' : `${typeOf(s.type)?.name || 'alerts'}: ${alertShort(a).toLowerCase()}`}`;
+    $('sv-what').textContent = `${check(s)} · ${where(s)} · every ${{ 30: '30 seconds', 60: 'minute', 300: '5 minutes', 3600: 'hour' }[s.every] || `${s.every} s`} · ${a.after < 0 ? 'no alerts' : `${typeOf(s.type)?.name || 'alert'}: ${alertShort(a).toLowerCase()}`}`;
     // What it waits on, and what waits on it.
     const mine = sensors.filter((x) => x.dependsOn === s.id).map((x) => x.name);
     const above = sensors.find((x) => x.id === s.dependsOn);
     $('sv-deps').hidden = !mine.length && !above;
-    $('sv-deps').innerHTML = (above ? `<p>${svg('link')}<span>It depends on <b>${esc(above.name)}</b>: while that's down, this one waits instead of alerting.</span></p>` : '')
-      + (mine.length ? `<p>${svg('link')}<span><b>${esc(and(mine))}</b> depend${mine.length === 1 ? 's' : ''} on it: while it's down, ${mine.length === 1 ? 'that one waits' : 'they wait'} instead of alerting.</span></p>` : '');
+    $('sv-deps').innerHTML = (above ? `<p>${svg('link')}<span>Depends on <b>${esc(above.name)}</b>. While that sensor is down, this one shows as Unreachable and does not alert.</span></p>` : '')
+      + (mine.length ? `<p>${svg('link')}<span><b>${esc(and(mine))}</b> depend${mine.length === 1 ? 's' : ''} on this sensor. While this sensor is down, ${mine.length === 1 ? 'that sensor does' : 'those sensors do'} not alert.</span></p>` : '');
     $('sv-now').className = `sv-now s-${s.status}`;
-    $('sv-state').textContent = s.status === 'down' ? `Down for ${s.since ? long(s.since) : 'a moment'}` : s.status === 'wait' ? `Down, waiting on ${s.waits}`
+    $('sv-state').textContent = s.status === 'down' ? `Down for ${s.since ? long(s.since) : 'a moment'}` : s.status === 'wait' ? `Unreachable (${s.waits} is down)`
       : s.status === 'up' ? `Up${s.since ? ` for ${long(s.since)}` : ''}` : s.status === 'warn' ? 'Needs attention'
         : s.status === 'paused' ? (s.pausedUntil ? `Paused until ${clock(s.pausedUntil)}` : 'Paused') : 'Not checked yet';
-    const alerted = s.status !== 'down' ? '' : d.alerted ? `Alerted ${R.when(d.alerted)}` : a.after < 0 ? 'It never alerts' : a.after ? `Alerts after ${a.after === 60 ? 'an hour' : `${a.after} minutes`} down` : 'Alerts right away';
-    $('sv-note').textContent = s.status === 'paused' ? `It isn't checked, and nobody is alerted.${s.pausedUntil ? ' It starts again on its own.' : ''}`
-      : s.status === 'wait' ? `${s.note || 'No reply'}. No alert while ${s.waits} is down. If it's still down once ${s.waits} is back, it alerts then.`
-        : `${[s.note, s.checked ? `Checked ${short(s.checked)} ago` : '', alerted].filter(Boolean).join('. ')}.`;
+    const alerted = s.status !== 'down' ? '' : d.alerted ? `Alert sent ${R.when(d.alerted)}` : a.after < 0 ? 'Alerts are disabled' : a.after ? `Alerts after ${a.after === 60 ? '1 hour' : `${a.after} minutes`} down` : 'Alerts immediately';
+    $('sv-note').textContent = s.status === 'paused' ? `Checks and alerts are paused.${s.pausedUntil ? ' Resumes automatically.' : ''}`
+      : s.status === 'wait' ? `${s.note || 'No response'}. No alert is sent while ${s.waits} is down. If this sensor is still down when ${s.waits} is back up, an alert is sent then.`
+        : `${[s.note, s.checked ? `Last checked ${short(s.checked)} ago` : '', alerted].filter(Boolean).join('. ')}.`;
     $('sv-ms').textContent = s.status === 'up' || s.status === 'warn' ? (s.kind === 'cert' ? days(s.note) : s.ms == null ? '-' : ms(s.ms)) : '-';
     $('sv-up24').textContent = percent(d.up24) || '-';
     $('sv-up7').textContent = percent(d.up7) || '-';
@@ -386,7 +398,7 @@
     $('sv-events').hidden = !d.events.length;
     $('sv-events').innerHTML = d.events.slice(0, 40).map((e) => `<div class="row still ${(EVENT[e.what] || ['', ''])[1]}"><i></i><time>${esc(R.when(e.at))}</time>`
       + `<span class="t"><b>${esc((EVENT[e.what] || [e.what])[0])}</b><span>${esc(e.text)}</span></span></div>`).join('');
-    $('sv-pause').innerHTML = s.paused ? 'Start again' : `Pause${svg('right')}`;
+    $('sv-pause').innerHTML = s.paused ? 'Resume' : `Pause${svg('right')}`;
     $('sv-pause').classList.toggle('menu-btn', !s.paused);
     shut();
     paint($('sv-line'));
@@ -433,9 +445,9 @@
     eight.setHours(8, 0, 0, 0);
     const deps = behindOf(showing.id).filter((x) => x.status !== 'paused');
     $('sv-menu').innerHTML = `<span class="sv-menu-h">Pause ${esc(showing.name)}</span>`
-      + [[15, 'For 15 minutes'], [60, 'For an hour'], [240, 'For 4 hours'], [Math.ceil((eight - t) / 60000), 'Until 8:00 AM tomorrow', eight], [0, 'Until I start it again']]
+      + [[15, 'For 15 minutes'], [60, 'For 1 hour'], [240, 'For 4 hours'], [Math.ceil((eight - t) / 60000), 'Until 8:00 AM tomorrow', eight], [0, 'Until resumed']]
         .map(([m, text, end]) => `<button type="button" role="menuitem" data-mins="${m}">${text}${m ? `<small>${esc(clock(end || t + m * 60000))}</small>` : ''}</button>`).join('')
-      + (deps.length ? `<label class="sv-menu-all"><input type="checkbox" id="sv-menu-deps" checked> Pause the ${deps.length === 1 ? 'one' : deps.length} that depend${deps.length === 1 ? 's' : ''} on it too</label>` : '');
+      + (deps.length ? `<label class="sv-menu-all"><input type="checkbox" id="sv-menu-deps" checked> Also pause ${deps.length === 1 ? 'the dependent sensor' : `${deps.length} dependent sensors`}</label>` : '');
     $('sv-menu').hidden = false;
     $('sv-pause').setAttribute('aria-expanded', 'true');
     $('sv-menu').querySelector('button')?.focus();
@@ -461,11 +473,11 @@
     $('sv-test').disabled = true;
     try {
       const r = await R.send(`/api/sensors/${encodeURIComponent(id)}/test`, {});
-      if (r.went.length) R.toast('Sent a test alert', `to ${and(r.went)}.${r.failed.length ? ` ${r.failed.join(' ')}` : ''}`, { tone: r.failed.length ? 'warn' : '' });
-      else R.toast("The test alert didn't go", r.failed.join(' '), { tone: 'warn' });
+      if (r.went.length) R.toast('Test alert sent.', `Sent to ${and(r.went)}.${r.failed.length ? ` ${r.failed.join(' ')}` : ''}`, { tone: r.failed.length ? 'warn' : '' });
+      else R.toast('Could not send the test alert.', r.failed.join(' '), { tone: 'warn' });
       if ($('sview-dialog').open && showing?.id === id) await open(id);
     } catch (err) {
-      R.toast("The test alert didn't go", err.message, { tone: 'warn' });
+      R.toast('Could not send the test alert.', err.message, { tone: 'warn' });
     }
     $('sv-test').disabled = false;
   });
@@ -484,19 +496,19 @@
   let editing = null; // the sensor being changed, or null for a new one
   let kind = 'ping';
   const vals = {}; // what has been typed, kept while the kind changes
-  const GROUPS = [['answer', 'Is it answering'], ['health', 'Health'], ['seat', 'On a computer']];
+  const GROUPS = [['answer', 'Availability'], ['health', 'Health'], ['seat', 'On a computer']];
   const TYPES = [
-    { id: 'ping', g: 'answer', icon: 'activity', about: 'Answers ping.' },
+    { id: 'ping', g: 'answer', icon: 'activity', about: 'Responds to ping.' },
     { id: 'port', g: 'answer', icon: 'plug', about: 'A TCP port is open.' },
-    { id: 'web', g: 'answer', icon: 'globe', about: 'The page answers, with what you expect on it.' },
-    { id: 'dns', g: 'answer', icon: 'search', about: 'A name resolves, to the address it should.' },
+    { id: 'web', g: 'answer', icon: 'globe', about: 'The page responds with the expected content.' },
+    { id: 'dns', g: 'answer', icon: 'search', about: 'A name resolves to the expected address.' },
     { id: 'cert', g: 'answer', icon: 'lock', about: 'Days until a certificate expires.' },
     { id: 'hw', g: 'health', icon: 'server', about: 'iDRAC, iLO or Supermicro over Redfish: power supplies, fans, temperature and disks.', signs: true },
     { id: 'nas', g: 'health', icon: 'disk', about: 'TrueNAS or Synology: pool health, disks and free space.', signs: true },
     { id: 'vmware', g: 'health', icon: 'monitor', about: 'ESXi or vCenter: hosts connected, datastore free space and triggered alarms.', signs: true },
-    { id: 'snmp', g: 'health', icon: 'org', about: 'Switches, UPS units and printers: one value you pick, such as a UPS battery or a switch port.', signs: true },
+    { id: 'snmp', g: 'health', icon: 'org', about: 'Switches, UPS units and printers: one value you select, such as a UPS battery or a switch port.', signs: true },
     { id: 'svc', g: 'seat', icon: 'gear', about: 'A Windows service is running, checked by the client on that computer.' },
-    { id: 'disk', g: 'seat', icon: 'disk', about: 'Free space on a drive of a computer in Devices, read by its client.' },
+    { id: 'disk', g: 'seat', icon: 'disk', about: 'Free space on a drive of a computer in Devices, checked by its client.' },
   ];
   // The fields, in the console's form markup; each keeps its value in vals under its key.
   const wide = (on) => (on ? ' class="wide"' : '');
@@ -526,7 +538,7 @@
         + field('password', 'Auth password', { type: 'password', max: 500 }) + choice('privacy', 'Privacy', [['AES-128', 'AES-128'], ['None', 'None']], { value: 'AES-128' })
         + (vals.privacy === 'None' ? '' : field('privacyPassword', 'Privacy password', { type: 'password', wide: true, max: 500 })) + save('SNMPv3 monitor'),
     };
-    return '<div class="sd-div wide"><b>Sign in</b><i></i></div>' + choice('login', 'Credentials', opts, { wide: true })
+    return '<div class="sd-div wide"><b>Authentication</b><i></i></div>' + choice('login', 'Credentials', opts, { wide: true })
       + (vals.login === NEW_LOGIN ? typed[k]() : '')
       + `<p class="hint">${k === 'community' ? 'SNMP v2c sends the community in clear text. Use v3 where the device has it. ' : ''}Stored encrypted on this server and only sent to this address.${role ? ` ${role}` : ''}</p>`;
   };
@@ -534,7 +546,7 @@
   let seats = [];
   const SEAT_HINT = () => `<p class="hint">Checked by the ${R.esc(R.app())} client on that computer, which runs as SYSTEM. No credentials needed.</p>`;
   const seatPick = () => {
-    if (!seats.length) return '<p class="hint">No computers in Devices yet. Add one under Devices, then pick it here.</p>';
+    if (!seats.length) return '<p class="hint">No computers in Devices yet. Add one under Devices, then select it here.</p>';
     if (!seats.some((c) => c.id === vals.seat)) vals.seat = seats[0].id;
     return choice('seat', 'Computer', seats.map((c) => [c.id, `${c.computer}${c.connected ? '' : ' (client not connected)'}`]), { wide: true });
   };
@@ -542,33 +554,33 @@
     ping: () => field('target', 'Address', { wide: true, ph: '192.168.2.23 or nas.example.com' }),
     port: () => field('target', 'Host', { ph: '192.168.2.23 or nas.example.com' }) + field('port', 'Port', { num: true, max: 5, ph: '445, 636, 3389…' }),
     web: () => field('target', 'Address', { wide: true, ph: 'https://192.168.2.23' })
-      + picks('expect', 'Counts as up when', [['', 'It answers'], ['ok', 'Status 200 to 399'], ['text', 'The page has this text']])
-      + (vals.expect === 'text' ? field('text', 'Text on the page', { wide: true, max: 200, ph: 'Words the page shows when it works' }) : ''),
-    dns: () => field('target', 'Name to look up', { ph: 'nas.example.com' }) + field('address', 'Should resolve to', { ph: 'Any address' })
-      + field('server', 'DNS server to ask', { wide: true, max: 250, ph: 'The one this server uses' }),
+      + picks('expect', 'Up when', [['', 'Any response'], ['ok', 'Status 200 to 399'], ['text', 'Page contains text']])
+      + (vals.expect === 'text' ? field('text', 'Expected text', { wide: true, max: 200, ph: 'Text the page shows when working' }) : ''),
+    dns: () => field('target', 'Name to look up', { ph: 'nas.example.com' }) + field('address', 'Expected address', { ph: 'Any address' })
+      + field('server', 'DNS server', { wide: true, max: 250, ph: 'Default' }),
     cert: () => field('target', 'Host', { ph: 'nas.example.com' }) + field('port', 'Port', { num: true, max: 5, ph: '443' })
-      + choice('warn', 'Warn when it has less than', [[14, '14 days'], [21, '21 days'], [30, '30 days'], [60, '60 days']], { value: limits.cert }),
+      + choice('warn', 'Warn when expiring within', [[14, '14 days'], [21, '21 days'], [30, '30 days'], [60, '60 days']], { value: limits.cert }),
     hw: () => field('target', 'iDRAC, iLO or BMC address', { wide: true, ph: '192.168.2.7' }) + signIn('An iDRAC or iLO user with the Read Only role is enough.'),
     svc: () => seatPick() + field('service', 'Service', { wide: true, max: 256, ph: 'Spooler or Print Spooler' }) + SEAT_HINT(),
     disk: () => seatPick() + field('drive', 'Drive', { max: 3, ph: 'C' })
       + choice('warnFree', 'Warn when free space is below', [[5, '5 %'], [10, '10 %'], [20, '20 %']], { value: limits.space }) + SEAT_HINT(),
     snmp: () => field('target', 'Address', { wide: true, ph: '192.168.2.30 or ups.example.com' })
-      + choice('value', 'Value to watch', [['uptime', 'Uptime: it answers'], ['ups', 'UPS battery and power'], ['iface', 'Interface up'], ['oid', 'Custom OID']], { value: 'uptime', wide: true })
-      + (vals.value === 'iface' ? field('iface', 'Interface', { wide: true, max: 100, ph: 'Port 5 or eth0' }) + '<p class="hint">As the device names it. When the name is not found, Check now lists the names it has.</p>' : '')
+      + choice('value', 'Value to monitor', [['uptime', 'Uptime (responds)'], ['ups', 'UPS battery and power'], ['iface', 'Interface up'], ['oid', 'Custom OID']], { value: 'uptime', wide: true })
+      + (vals.value === 'iface' ? field('iface', 'Interface', { wide: true, max: 100, ph: 'Port 5 or eth0' }) + '<p class="hint">Use the name the device reports. If the name is not found, Check now lists the available interface names.</p>' : '')
       + (vals.value === 'oid' ? field('oid', 'OID', { wide: true, max: 300, ph: '1.3.6.1.2.1.1.3.0' }) : '')
       + picks('snmpVersion', 'Version', [['', 'v2c'], ['v3', 'v3']]) + signIn(''),
     vmware: () => field('target', 'ESXi or vCenter address', { wide: true, ph: 'vcenter.example.com' }) + signIn('A vSphere user with the Read-only role is enough.')
       + choice('warnFree', 'Warn when datastore free space is below', [[5, '5 %'], [10, '10 %'], [20, '20 %']], { value: limits.space }),
     nas: () => picks('product', 'Product', [['', 'TrueNAS'], ['synology', 'Synology']])
-      + field('target', 'Address', { wide: true, ph: vals.product === 'synology' ? 'backup.example.com (port 5001 unless you add another)' : 'truenas.example.com' })
-      + (vals.product === 'synology' ? signIn('DSM only gives storage details to an account in the administrators group. Turn off 2-step verification for it.')
-        : signIn('Make one in TrueNAS under Credentials, API Keys.'))
+      + field('target', 'Address', { wide: true, ph: vals.product === 'synology' ? 'backup.example.com (port 5001 by default)' : 'truenas.example.com' })
+      + (vals.product === 'synology' ? signIn('DSM returns storage details only to members of the administrators group. Disable 2-step verification for this account.')
+        : signIn('Create one in TrueNAS under Credentials > API Keys.'))
       + choice('warnFree', 'Warn when free space is below', [[5, '5 %'], [10, '10 %'], [20, '20 %']], { value: limits.space }),
   };
   const signs = () => TYPES.find((t) => t.id === kind)?.signs;
   const drawFields = () => {
     $('sd-fields').innerHTML = FIELDS[kind]();
-    $('sd-out').innerHTML = signs() ? '<p class="hint">Check now signs in and shows what it can watch.</p>' : '';
+    $('sd-out').innerHTML = signs() ? '<p class="hint">Check now signs in and lists what can be monitored.</p>' : '';
     drawMore();
   };
   // The kinds down the left, narrowed to what Find a check has.
@@ -577,7 +589,7 @@
     const hit = (x) => !q || `${KIND[x.id]} ${x.about}`.toLowerCase().includes(q);
     $('sd-type-list').innerHTML = GROUPS.map(([g, name]) => [name, TYPES.filter((x) => x.g === g && hit(x))]).filter(([, list]) => list.length)
       .map(([name, list]) => `<p class="rail-label">${name}</p>` + list.map((x) => `<a href="#" data-kind="${x.id}"${x.id === kind ? ' aria-current="true"' : ''}>${svg(x.icon)}<span>${KIND[x.id]}</span>${x.signs ? svg('key', 'sd-key') : ''}</a>`).join('')).join('')
-      || '<p class="hint sd-none">No check like that.</p>';
+      || '<p class="hint sd-none">No matching sensor types.</p>';
   };
   $('sd-find').addEventListener('input', drawTypes);
   const setKind = (k) => {
@@ -595,7 +607,7 @@
     drawAlerts();
   };
   // More, folded: alert when it answers, how long a check waits, and for a web page over https its certificate.
-  const MORE = { web: 'More for web pages', ping: 'More for ping', port: 'More for ports', dns: 'More for DNS lookups' };
+  const MORE = { web: 'Web page options', ping: 'Ping options', port: 'Port options', dns: 'DNS lookup options' };
   const WAIT = { web: 10, ping: 5, port: 5, dns: 5 };
   const moreRow = (name, about, right) => `<div class="ds-row"><div class="ds-l"><b>${name}</b><span>${about}</span></div><div class="ds-r">${right}</div></div>`;
   const drawMore = () => {
@@ -603,12 +615,12 @@
     if (!(kind in MORE)) return;
     $('sd-more-title').textContent = MORE[kind];
     const wait = vals.timeout || WAIT[kind];
-    $('sd-more-rows').innerHTML = (kind === 'web' ? moreRow('Warn before the certificate expires', 'For an https address: a warning this many days before it expires.',
+    $('sd-more-rows').innerHTML = (kind === 'web' ? moreRow('Warn before the certificate expires', 'For an HTTPS address, warn this many days before the certificate expires.',
       `<select id="sd-cert" aria-label="Warn before the certificate expires">${[[7, '7 days'], [14, '14 days'], [30, '30 days'], [0, 'Never']]
         .map(([v, text]) => `<option value="${v}"${Number(vals.certDays || 0) === v ? ' selected' : ''}>${text}</option>`).join('')}</select>`) : '')
-      + (kind === 'dns' ? '' : moreRow('Alert when it answers instead', 'For things that should be off, like a test server or a guest network.',
-        `<input type="checkbox" class="switch" id="sd-invert" role="switch" aria-label="Alert when it answers instead"${vals.invert ? ' checked' : ''}>`))
-      + moreRow('Give up waiting after', 'How long one check waits for an answer.',
+      + (kind === 'dns' ? '' : moreRow('Invert: alert when it responds', 'For hosts that should be offline, such as a test server or guest network.',
+        `<input type="checkbox" class="switch" id="sd-invert" role="switch" aria-label="Invert: alert when it responds"${vals.invert ? ' checked' : ''}>`))
+      + moreRow('Timeout', 'How long each check waits for a response.',
         `<div class="seg">${[5, 10, 30].map((v) => `<button type="button" data-wait="${v}" aria-pressed="${wait === v}">${v} s</button>`).join('')}</div>`);
   };
   $('sd-more-rows').addEventListener('change', (e) => {
@@ -624,7 +636,7 @@
   // Tags as chips: Enter or a comma adds one, Backspace in the empty box takes the last off.
   const drawTags = () => {
     $('sd-tags').querySelectorAll('.sd-tag').forEach((t) => t.remove());
-    $('sd-tag-in').insertAdjacentHTML('beforebegin', (vals.tags || []).map((t) => `<span class="sd-tag">${esc(t)}<button type="button" data-untag="${esc(t)}" aria-label="Take the tag ${esc(t)} off">×</button></span>`).join(''));
+    $('sd-tag-in').insertAdjacentHTML('beforebegin', (vals.tags || []).map((t) => `<span class="sd-tag">${esc(t)}<button type="button" data-untag="${esc(t)}" aria-label="Remove tag ${esc(t)}">×</button></span>`).join(''));
   };
   const addTag = () => {
     const t = $('sd-tag-in').value.replace(/,/g, '').trim().toLowerCase();
@@ -655,21 +667,21 @@
   let types = [];
   let startType = '';
   const typeOf = (id) => types.find((t) => t.id === id);
-  const mins = (m) => (m === 60 ? 'an hour' : m === 1 ? 'a minute' : `${m} minutes`);
+  const mins = (m) => (m === 60 ? '1 hour' : m === 1 ? '1 minute' : `${m} minutes`);
   // An alert type in words: After 5 minutes down, once, and an all-clear when it's back, to Rabbid Lab Links.
   const typeWords = (id) => {
     const t = typeOf(id);
-    if (!t) return 'It never alerts: it only shows here.';
+    if (!t) return 'No alerts. Status is shown on this page only.';
     const to = can('sensors.alerts') && R.notes.list() ? R.notes.words(t.to) : '';
-    return `${t.after ? `After ${mins(t.after)} down` : 'As soon as it\'s down'}, ${t.again ? `again every ${{ 60: 'hour', 360: '6 hours', 1440: 'day' }[t.again]} while it stays down` : 'once'}`
-      + `${t.back ? ', and an all-clear when it\'s back' : ''}${to ? `, to ${to}` : ''}.${t.to.length ? '' : ' It has nowhere to send yet.'}`;
+    return `${t.after ? `After ${mins(t.after)} down` : 'Immediately when down'}, ${t.again ? `repeated every ${{ 60: 'hour', 360: '6 hours', 1440: 'day' }[t.again]} while down` : 'once'}`
+      + `${t.back ? ', with a recovery alert when back up' : ''}${to ? `, to ${to}` : ''}.${t.to.length ? '' : ' No notification channels are set.'}`;
   };
   const alRow = (name, about, right) => `<div class="ds-row"><div class="ds-l"><b>${name}</b><span>${about}</span></div><div class="ds-r">${right}</div></div>`;
   const NEW_TYPE = ' new';
   // Alert type: the types by name, Don't alert, and New alert type… for people who may set alerts up.
   const typeRow = (id) => alRow('Alert type', esc(typeWords(id)), `<select data-al="type" aria-label="Alert type">`
     + types.map((t) => `<option value="${esc(t.id)}"${t.id === id ? ' selected' : ''}>${esc(t.name)}</option>`).join('')
-    + `<option value="none"${id === 'none' ? ' selected' : ''}>Don't alert</option>${can('sensors.alerts') ? `<option value="${NEW_TYPE}">New alert type…</option>` : ''}</select>`);
+    + `<option value="none"${id === 'none' ? ' selected' : ''}>No alert</option>${can('sensors.alerts') ? `<option value="${NEW_TYPE}">New alert type…</option>` : ''}</select>`);
   // New alert type… opens its dialog; once it's added it's the one picked, and until then the old pick stays.
   const pickType = (e, current, set) => {
     if (e.target.value !== NEW_TYPE) return set(e.target.value);
@@ -716,7 +728,7 @@
     $('sd-tag-in').value = '';
     drawTags();
     if (s?.kind === 'snmp' && logins.find((l) => l.id === s.login)?.kind === 'snmpv3') vals.snmpVersion = 'v3';
-    $('sd-title').textContent = s ? `Change ${s.name}` : 'Add a sensor';
+    $('sd-title').textContent = s ? `Edit ${s.name}` : 'Add a sensor';
     $('sd-name').value = s?.name || '';
     $('sd-group').innerHTML = '<option value="">No group</option>' + groups.map((g) => `<option value="${esc(g)}">${esc(g)}</option>`).join('') + `<option value="${NEW_GROUP}">New group…</option>`;
     $('sd-group').value = s ? s.group || '' : into ?? oneGroup();
@@ -727,7 +739,7 @@
     setKind(s?.kind || 'ping');
     $('sd-delete').hidden = !s;
     $('sd-dev').hidden = !!s;
-    $('sd-save').textContent = s ? 'Save' : 'Add the sensor';
+    $('sd-save').textContent = s ? 'Save' : 'Add sensor';
     say('sd-problem', '');
     $('sensor-dialog').showModal();
     $('sd-fields').querySelector('input')?.focus();
@@ -767,9 +779,9 @@
   $('sensor-dialog').addEventListener('close', () => { for (const k of ['password', 'privacyPassword']) delete vals[k]; });
   // What Check now found, as a status card: what answered and how, or what went wrong.
   const found = (f) => {
-    const answered = f.ms == null ? '' : `Answered in ${ms(f.ms)}`;
-    const title = !f.ok ? f.note || 'No answer' : kind === 'port' ? `Port ${vals.port} is open` : kind === 'dns' || kind === 'cert' || signs() || onSeat() ? f.note || 'It answered' : answered || 'It answered';
-    const line = !f.ok ? [f.detail, 'You can still add it.'].filter(Boolean).join(' · ')
+    const answered = f.ms == null ? '' : `Responded in ${ms(f.ms)}`;
+    const title = !f.ok ? f.note || 'No response' : kind === 'port' ? `Port ${vals.port} is open` : kind === 'dns' || kind === 'cert' || signs() || onSeat() ? f.note || 'Responded' : answered || 'Responded';
+    const line = !f.ok ? [f.detail, 'You can still add the sensor.'].filter(Boolean).join(' · ')
       : [kind === 'web' ? f.note : kind === 'port' || kind === 'dns' ? answered : '', f.detail].filter(Boolean).join(' · ');
     const look = !f.ok ? ' bad' : f.warn ? ' ember' : '';
     return `<div class="ustatus"><span class="big-ic${look}">${svg(f.ok && !f.warn ? 'check' : 'alert')}</span><div class="ustatus-text"><b>${esc(title)}</b><span>${esc(line)}</span></div></div>`;
@@ -780,7 +792,7 @@
   const pinNote = (pin) => {
     const bytes = pin.split(':');
     const short = bytes.length > 6 ? `${bytes.slice(0, 4).join(':')}:…:${bytes.slice(-2).join(':')}` : pin;
-    return `<p class="sd-pin">${svg('alert')}<span>It has a self-signed certificate. ${esc(R.app())} trusts this one, <code title="${esc(pin)}">SHA-256 ${esc(short)}</code>, and warns you if it changes.</span></p>`;
+    return `<p class="sd-pin">${svg('alert')}<span>The device uses a self-signed certificate. ${esc(R.app())} trusts this certificate (<code title="${esc(pin)}">SHA-256 ${esc(short)}</code>) and warns if it changes.</span></p>`;
   };
   const foundAll = (f) => {
     if (signs()) vals.pin = f.pin || null;
@@ -819,7 +831,7 @@
   $('sd-delete').addEventListener('click', () => {
     if (!editing) return;
     const gone = editing;
-    R.sure(`Delete the sensor ${gone.name}?`, 'Its history goes with it.', 'Delete', async () => {
+    R.sure(`Delete ${gone.name}?`, 'The sensor history is also deleted.', 'Delete', async () => {
       try {
         take(await R.send(`/api/sensors/${encodeURIComponent(gone.id)}/delete`, {}));
         $('sensor-dialog').close();
@@ -843,21 +855,21 @@
   const downText = () => {
     const n = Number($('sd-down').value) || 2;
     const secs = n * (Number($('sd-every').value) || 60);
-    const about = secs < 90 ? `${secs} seconds` : secs < 3600 ? `${Math.round(secs / 60)} minutes` : secs === 3600 ? 'an hour' : `${Math.round(secs / 3600)} hours`;
-    return `Down after ${n === 1 ? 'one miss' : `${n} misses in a row`}, about ${about}.`;
+    const about = secs < 90 ? `${secs} seconds` : secs < 3600 ? `${Math.round(secs / 60)} minutes` : secs === 3600 ? '1 hour' : `${Math.round(secs / 3600)} hours`;
+    return `Marked down after ${n === 1 ? '1 failed check' : `${n} failed checks in a row`} (about ${about}).`;
   };
   // The rows: its alert type, and Depends on: any other sensor, but not one that depends on this one already.
   const drawAlerts = () => {
     const mine = new Set(editing ? [editing.id, ...behindOf(editing.id).map((x) => x.id)] : []);
     const above = sensors.filter((x) => !mine.has(x.id));
     if (vals.dependsOn && !above.some((x) => x.id === vals.dependsOn)) vals.dependsOn = '';
-    $('sd-alerts').innerHTML = typeRow(vals.rule) + alRow('Depends on', 'While that one is down, this one waits instead of alerting.',
-      `<select data-al="dep" aria-label="Depends on"><option value="">Nothing</option>${above.map((x) => `<option value="${esc(x.id)}"${x.id === vals.dependsOn ? ' selected' : ''}>${esc(x.name)} · ${esc(where(x))}</option>`).join('')}</select>`);
+    $('sd-alerts').innerHTML = typeRow(vals.rule) + alRow('Depends on', 'While the selected sensor is down, this sensor does not alert.',
+      `<select data-al="dep" aria-label="Depends on"><option value="">None</option>${above.map((x) => `<option value="${esc(x.id)}"${x.id === vals.dependsOn ? ' selected' : ''}>${esc(x.name)} · ${esc(where(x))}</option>`).join('')}</select>`);
     drawSum();
   };
   const drawSum = () => {
     const dep = sensors.find((x) => x.id === vals.dependsOn);
-    $('sd-alert-sum').innerHTML = `<p class="sd-sum">${svg('info')}<span>${esc(`${downText()}${dep ? ` Says nothing while ${dep.name} is down.` : ''}`)}</span></p>`;
+    $('sd-alert-sum').innerHTML = `<p class="sd-sum">${svg('info')}<span>${esc(`${downText()}${dep ? ` No alerts while ${dep.name} is down.` : ''}`)}</span></p>`;
   };
   $('sd-alerts').addEventListener('change', (e) => {
     if (e.target.dataset.al === 'type') {
@@ -879,7 +891,7 @@
   const KINDS = { user: 'Username and password', key: 'API key', community: 'SNMP v2c community', snmpv3: 'SNMPv3 user' };
   const drawCreds = (list) => {
     $('sn-creds').innerHTML = list.length ? list.map((l) => `<div class="ds-row"><div class="ds-l"><b>${esc(l.name)}</b><span>${esc([KINDS[l.kind] || 'Credentials', l.username].filter(Boolean).join(' · '))}</span></div>`
-      + `<div class="ds-r"><span class="ds-v">${l.used} sensor${l.used === 1 ? '' : 's'}</span></div></div>`).join('') : '<p class="ds-empty">None yet. Credentials are saved when you add a sensor that signs in.</p>';
+      + `<div class="ds-r"><span class="ds-v">${l.used} sensor${l.used === 1 ? '' : 's'}</span></div></div>`).join('') : '<p class="ds-empty">No saved credentials. Credentials are saved when you add a sensor that signs in.</p>';
   };
   const loadCreds = async () => {
     try {
@@ -906,8 +918,8 @@
     const w = watching;
     const web = webAddress();
     if (!web) w.on = false;
-    $('ln-watch').innerHTML = alRow('Alert when it\'s down', web ? 'Checked every minute from this server. It shows on Sensors too.' : 'Only web addresses (http:// or https://) can be checked.',
-      `<input type="checkbox" class="switch" data-al="on" role="switch" aria-label="Alert when it's down"${w.on ? ' checked' : ''}${web ? '' : ' disabled'}>`) + (w.on ? typeRow(w.type) : '');
+    $('ln-watch').innerHTML = alRow('Alert when down', web ? 'Checked every minute from this server. Also listed under Sensors.' : 'Only web addresses (http:// or https://) can be checked.',
+      `<input type="checkbox" class="switch" data-al="on" role="switch" aria-label="Alert when down"${w.on ? ' checked' : ''}${web ? '' : ' disabled'}>`) + (w.on ? typeRow(w.type) : '');
   };
   $('ln-watch').addEventListener('change', (e) => {
     if (e.target.dataset.al === 'on') {
@@ -950,10 +962,22 @@
   document.addEventListener('rabbidlab:show', (e) => {
     clearInterval(timer);
     if (!can('sensors.view')) return;
-    const here = e.detail[0] === 'sensors';
-    if (here) refresh();
-    // On the page it keeps up with the checks; elsewhere it only needs the rail's dot.
-    timer = setInterval(refresh, here ? 10000 : 60000);
+    if (e.detail[0] === 'sensors') refresh();
+    else timer = setInterval(quietly, 60000); // elsewhere it only needs the rail's dot
+  });
+  // On the page it keeps up with the checks every 10 seconds, drawn only when something changed.
+  R.live({
+    page: () => R.where()[0] === 'sensors' && can('sensors.view'),
+    hold: () => tools.busy() || snGrid.busy(),
+    every: 10000,
+    read: () => R.get('/api/sensors'),
+    now: () => answered,
+    draw: (answer) => {
+      take(answer);
+      say('sn-problem', '');
+      draw();
+    },
+    areas: () => [$('sn-list')],
   });
   document.addEventListener('rabbidlab:me', () => { if (can('sensors.view') && R.where()[0] !== 'sensors') refresh(); });
 })();

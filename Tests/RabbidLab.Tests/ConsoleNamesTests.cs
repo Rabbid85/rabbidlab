@@ -88,9 +88,9 @@ public sealed class ConsoleNamesTests : IDisposable
 
         Assert.Equal(HttpStatusCode.BadRequest, noAccount.StatusCode);
         Assert.Contains("password is wrong", await wrong.Content.ReadAsStringAsync());
-        Assert.Contains("isn't in a domain", await noDomain.Content.ReadAsStringAsync());
+        Assert.Contains("not joined to a domain", await noDomain.Content.ReadAsStringAsync());
         onItsOwn.EnsureSuccessStatusCode();
-        Assert.Contains("doesn't answer yet", await onItsOwn.Content.ReadAsStringAsync());
+        Assert.Contains("does not resolve yet", await onItsOwn.Content.ReadAsStringAsync());
         Assert.Equal(["lab.home.arpa"], app.Named.Made.Single());
     }
 
@@ -165,7 +165,7 @@ public sealed class ConsoleNamesTests : IDisposable
         var look = await Json(await admin.PostAsJsonAsync("/api/console/names/look", new { name = "LAB" }));
 
         Assert.Equal(HttpStatusCode.BadRequest, again.StatusCode);
-        Assert.Contains("in the list already", look.GetProperty("problem").GetString());
+        Assert.Contains("already in the list", look.GetProperty("problem").GetString());
     }
 
     [Fact]

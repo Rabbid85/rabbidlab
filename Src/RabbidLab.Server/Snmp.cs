@@ -31,7 +31,7 @@ public static class Snmp
         }
         catch (Exception e) when (e is SocketException or InvalidOperationException)
         {
-            return new Probe(false, Note: "No such name");
+            return new Probe(false, Note: "Host not found");
         }
         var device = new Device(new IPEndPoint(ip, s.Port ?? 161), login);
         try
@@ -55,7 +55,7 @@ public static class Snmp
                     var value = device.Get([s.Oid ?? SysUpTime])[0];
                     if (value.Data.TypeCode is SnmpType.NoSuchObject or SnmpType.NoSuchInstance or SnmpType.EndOfMibView)
                     {
-                        return new Probe(false, Note: $"Nothing at {s.Oid}");
+                        return new Probe(false, Note: $"No value at OID {s.Oid}");
                     }
                     found.Add(new ProbePart("oid", s.Oid ?? "Value", Said(value.Data), "ok"));
                     break;
@@ -64,12 +64,12 @@ public static class Snmp
                     break;
             }
             var describe = sys[1].Data.ToString() ?? "";
-            return JsonBits.Result(s, found, ms, $"SNMP {(login.Kind == "snmpv3" ? "v3" : "v2c")} answered in {ms} ms",
+            return JsonBits.Result(s, found, ms, $"SNMP {(login.Kind == "snmpv3" ? "v3" : "v2c")} responded in {ms} ms",
                 $"sysName {sys[0].Data} · {(describe.Length > 70 ? describe[..70] + "…" : describe)}", null);
         }
         catch (Lextm.SharpSnmpLib.Messaging.TimeoutException)
         {
-            return new Probe(false, Note: login.Kind == "snmpv3" ? "No answer: check the address and the SNMPv3 user" : "No answer: check the address and the community");
+            return new Probe(false, Note: login.Kind == "snmpv3" ? "No response. Check the address and the SNMPv3 user" : "No response. Check the address and the community string");
         }
         catch (Refused r)
         {
@@ -77,7 +77,7 @@ public static class Snmp
         }
         catch (Exception e) when (e is SnmpException or SocketException or ErrorException)
         {
-            return new Probe(false, Note: $"SNMP said: {e.Message}");
+            return new Probe(false, Note: $"SNMP error: {e.Message}");
         }
     }
 
@@ -107,12 +107,12 @@ public static class Snmp
         }
         if (found.Count == 0)
         {
-            throw new Refused("It answers, but not as a UPS (no UPS-MIB or APC values)");
+            throw new Refused("The device responds, but not as a UPS (no UPS-MIB or APC values)");
         }
     }
 
     private static string? Interface(Device device, string name) => device.Index(name) is null
-        ? $"No interface named {name}. It has: {string.Join(", ", device.Names().Take(10))}" : null;
+        ? $"No interface named {name}. Available interfaces: {string.Join(", ", device.Names().Take(10))}" : null;
 
     private static void Port(Device device, string name, List<ProbePart> found)
     {
@@ -120,10 +120,10 @@ public static class Snmp
         var status = device.Get([$"1.3.6.1.2.1.2.2.1.8.{index}", $"1.3.6.1.2.1.2.2.1.7.{index}"]);
         var (now, state) = (Number(status[1].Data), Number(status[0].Data)) switch
         {
-            (2, _) => ("Turned off", "warn"),
+            (2, _) => ("Disabled", "warn"),
             (_, 1) => ("Up", "ok"),
             (_, 5) => ("Dormant", "ok"),
-            (_, 7) => ("Down: nothing connected", "bad"),
+            (_, 7) => ("Down: no link", "bad"),
             _ => ("Down", "bad"),
         };
         found.Add(new ProbePart("iface", $"Interface {name}", now, state));
@@ -173,14 +173,14 @@ public static class Snmp
             if (reply.Pdu().TypeCode == SnmpType.ReportPdu)
             {
                 var said = reply.Pdu().Variables.FirstOrDefault()?.Id.ToString() ?? "";
-                throw new Refused(said.StartsWith("1.3.6.1.6.3.15.1.1.3", StringComparison.Ordinal) ? "Sign-in failed: no such SNMPv3 user"
-                    : said.StartsWith("1.3.6.1.6.3.15.1.1.5", StringComparison.Ordinal) ? "Sign-in failed: check the auth password and the authentication type"
+                throw new Refused(said.StartsWith("1.3.6.1.6.3.15.1.1.3", StringComparison.Ordinal) ? "Sign-in failed: unknown SNMPv3 user"
+                    : said.StartsWith("1.3.6.1.6.3.15.1.1.5", StringComparison.Ordinal) ? "Sign-in failed: check the authentication password and type"
                     : said.StartsWith("1.3.6.1.6.3.15.1.1.6", StringComparison.Ordinal) ? "Sign-in failed: check the privacy password and type"
-                    : "Sign-in failed: the device turned the SNMPv3 user away");
+                    : "Sign-in failed: the device rejected the SNMPv3 user");
             }
             if (reply.Pdu().ErrorStatus.ToInt32() != 0)
             {
-                throw new Refused($"SNMP said: error {reply.Pdu().ErrorStatus.ToInt32()}");
+                throw new Refused($"SNMP error {reply.Pdu().ErrorStatus.ToInt32()}");
             }
             return reply.Pdu().Variables;
         }

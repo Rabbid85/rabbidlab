@@ -15,7 +15,7 @@
   const section = (title, body, right = '') => `<section class="dw-sec"><div class="dw-sec-head"><h3>${title}</h3>${right}</div>${body}</section>`;
   const none = (text) => `<p class="muted dw-empty">${esc(text)}</p>`;
   const qa = (attr, icon, label) => `<button type="button" class="dw-qa" ${attr}>${svg(icon)}<span>${esc(label)}</span></button>`;
-  const oops = (e) => { if (!e.cancelled) toast("That didn't work.", e.message, { tone: 'warn' }); };
+  const oops = (e) => { if (!e.cancelled) toast('The operation failed.', e.message, { tone: 'warn' }); };
   const ms = (iso) => (iso ? new Date(iso).getTime() : 0);
   const byName = (a, b) => a.name.localeCompare(b.name);
   const source = (a) => (a.builtIn ? 'Built-in' : a.by || '');
@@ -43,7 +43,7 @@
       { key: 'about', label: 'Description', w: 320, on: true, nofilter: true, get: (a) => a.about || '', cell: (a) => `<span class="ell muted">${esc(a.about || '')}</span>` },
       { key: 'winget', label: 'winget ID', w: 230, nofilter: true, get: (a) => a.winget, cell: (a) => `<span class="mono muted ell">${esc(a.winget)}</span>` },
       { key: 'by', label: 'Added by', w: 120, get: source },
-      { key: 'changed', label: 'Changed', w: 150, nofilter: true, get: (a) => ms(a.changed), text: (a) => a.changed || '', cell: (a) => `<span class="muted">${esc(when(a.changed))}</span>` },
+      { key: 'changed', label: 'Modified', w: 150, nofilter: true, get: (a) => ms(a.changed), text: (a) => a.changed || '', cell: (a) => `<span class="muted">${esc(when(a.changed))}</span>` },
     ],
     row: (a) => ` data-row="app:${esc(a.id)}"`,
     empty: () => D.more.installs.empty(), loading: () => !apps && !D.failed(),
@@ -51,12 +51,12 @@
   }));
   const fld = (key, label, type, value) => ({ key, label, type, get: value });
   const FIELDS = [['App', [fld('name', 'Name', 'text', (a) => a.name), fld('publisher', 'Publisher', 'choice', (a) => a.publisher || ''), fld('category', 'Category', 'choice', (a) => a.category),
-    fld('on', 'Installed on (computers)', 'number', (a) => a.on.length), fld('by', 'Added by', 'choice', source), fld('winget', 'winget ID', 'text', (a) => a.winget)]]];
+    fld('on', 'Installed on', 'number', (a) => a.on.length), fld('by', 'Added by', 'choice', source), fld('winget', 'winget ID', 'text', (a) => a.winget)]]];
   const pickedRows = () => (apps || []).filter((a) => picked.has(a.id));
 
-  D.lists.installs = ['Installs', 'box', 'Apps to install on computers with winget, for everyone on them.'];
+  D.lists.installs = ['Installs', 'box', 'Apps to install on computers with winget, for all users.'];
   D.more.installs = { table: 'dv-installs', grid, rows: () => apps || [], count: () => apps?.length, can, noun: 'apps', fields: () => FIELDS, load,
-    empty: () => (apps ? 'No apps like that.' : "The list couldn't be read."),
+    empty: () => (apps ? 'No matching apps.' : 'Could not load the list.'),
     acts: { can, count: () => pickedRows().length, open: (button) => openActs(button) } };
   D.hooks.addApp = () => openEdit(null); // Add an app, from New in the bar under the banner (devices.js)
 
@@ -108,9 +108,9 @@
     const rows = pickedRows();
     const mine = rows.filter((a) => !a.builtIn);
     R.actions.open(button, {
-      items: [{ act: 'install', label: 'Install on computers…', hint: String(rows.length) }, { act: 'export', label: 'Export these' }, { act: 'clear', label: 'Clear the ticks' },
+      items: [{ act: 'install', label: 'Install on computers…', hint: String(rows.length) }, { act: 'export', label: 'Export selected' }, { act: 'clear', label: 'Clear selection' },
         ...(mine.length ? ['-', { act: 'delete', label: 'Delete…', hint: String(mine.length), danger: true }] : [])],
-      note: mine.length && mine.length < rows.length ? `${rows.length - mine.length} of ${rows.length} are built in, so Delete leaves them on the page.` : '',
+      note: mine.length && mine.length < rows.length ? `${rows.length - mine.length} of ${rows.length} are built-in and cannot be deleted.` : '',
       pick: (act) => {
         const now = pickedRows();
         if (act === 'clear') {
@@ -131,19 +131,19 @@
     const ran = scripts[a.id];
     const strip = [['Category', esc(a.category)], ['Installed on', esc(onText(a.on.length))], ['Added by', esc(source(a) || 'Unknown')]]
       .map(([l, v]) => `<div><span class="l">${l}</span><span class="v">${v}</span></div>`).join('');
-    const extras = a.extensions.length ? `<p class="dw-how">It also adds ${esc(a.extensions.map((x) => x.name).join(', '))} to VS Code, for each person who uses the computer. Whoever is signed in gets it straight away, and everyone else the first time they sign in. It's added once per person, so one they remove later stays removed.</p>`
+    const extras = a.extensions.length ? `<p class="dw-how">Also adds ${esc(a.extensions.map((x) => x.name).join(', '))} to VS Code for each user of the computer. The signed-in user gets it immediately, and other users at their first sign-in. It is added once per user, so if a user removes it, it is not added again.</p>`
       + `<pre class="code-box">${a.extensions.map((x) => `code --install-extension ${esc(x.id)}`).join('\n')}</pre>` : '';
     panel.body.innerHTML = `<div class="dw-head"><span class="pic dw-pic">${svg('box')}</span><div class="dw-name"><h2 id="dw-title">${esc(a.name)}</h2><p>${esc([a.publisher, a.winget].filter(Boolean).join(' · '))}</p></div>`
       + `<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`
-      + `<div class="dw-bar">${R.editButton('data-app-edit', a.builtIn ? 'Built-in apps can\'t be changed.' : '')}${qa('data-app-install', 'download', 'Install…')}${a.builtIn ? '' : qa('data-app-del', 'trash', 'Delete')}</div>`
+      + `<div class="dw-bar">${R.editButton('data-app-edit', a.builtIn ? 'Built-in apps cannot be edited.' : '')}${qa('data-app-install', 'download', 'Install…')}${a.builtIn ? '' : qa('data-app-del', 'trash', 'Delete')}</div>`
       + `<div class="dw-strip">${strip}</div>`
-      + section('About', `<p class="dw-how">${esc(a.about || 'No description.')}</p><p class="dw-how">winget installs it for everyone on the computer, as SYSTEM. One that's already there is brought up to date.</p>${extras}`)
+      + section('About', `<p class="dw-how">${esc(a.about || 'No description.')}</p><p class="dw-how">winget installs the app for all users as SYSTEM. If the app is already installed, it is updated.</p>${extras}`)
       + section(`Installed on <small>${a.on.length}</small>`, a.on.length ? `<div class="dw-list">${a.on.map((x) => `<div class="mrow acc-row" data-app-pc="${esc(x.id)}"><span class="pic small">${svg('monitor')}</span>`
         + `<div class="two"><b>${esc(x.computer)}</b><small>${esc(x.version ? `Version ${x.version}` : '')}</small></div>${svg('right', 'acc-go')}</div>`).join('')}</div>`
-        : none(has('seats.view') ? "No computer lists it under Installed apps yet. A computer's list updates a minute or two after an install." : ''))
-      + section('What runs', ran ? `<details class="job-what"><summary><b>Install ${esc(a.name)}</b><small>PowerShell · as SYSTEM · time limit ${ran.minutes} min</small></summary><pre class="code-box">${esc(ran.text)}</pre></details>` : '<div data-app-skel></div>')
-      + (a.workflows.length ? section(`Workflows that install it <small>${a.workflows.length}</small>`, `<div class="dw-list">${a.workflows.map((w) => `<div class="mrow"><span class="pic small">${svg('org')}</span><div class="two"><b>${esc(w)}</b></div></div>`).join('')}</div>`) : '')
-      + (a.builtIn ? '' : section('Changed', `<ul class="does"><li><b>When</b><span>${esc(when(a.changed))}</span></li>${a.by ? `<li><b>By</b><span>${esc(a.by)}</span></li>` : ''}</ul>`));
+        : none(has('seats.view') ? "Not listed under Installed apps on any computer. A computer's list updates a minute or two after an install." : ''))
+      + section('Install script', ran ? `<details class="job-what"><summary><b>Install ${esc(a.name)}</b><small>PowerShell · as SYSTEM · time limit ${ran.minutes} min</small></summary><pre class="code-box">${esc(ran.text)}</pre></details>` : '<div data-app-skel></div>')
+      + (a.workflows.length ? section(`Used by workflows <small>${a.workflows.length}</small>`, `<div class="dw-list">${a.workflows.map((w) => `<div class="mrow"><span class="pic small">${svg('org')}</span><div class="two"><b>${esc(w)}</b></div></div>`).join('')}</div>`) : '')
+      + (a.builtIn ? '' : section('Modified', `<ul class="does"><li><b>When</b><span>${esc(when(a.changed))}</span></li>${a.by ? `<li><b>By</b><span>${esc(a.by)}</span></li>` : ''}</ul>`));
     panel.open('devices', `app:${a.id}`);
     D.mark?.();
     if (ran) return;
@@ -154,13 +154,13 @@
       if (shown?.id === a.id && panel.shows('devices', `app:${a.id}`)) openApp(appOf(a.id) || a);
     }).catch((err) => {
       const sk = shown?.id === a.id && panel.shows('devices', `app:${a.id}`) && panel.body.querySelector('[data-app-skel]');
-      if (sk) sk.outerHTML = none(`What runs couldn't be read. ${err.message}`);
+      if (sk) sk.outerHTML = none(`Could not load the install script. ${err.message}`);
     });
   };
   const remove = (list) => {
     if (!list.length) return;
     const one = list.length === 1;
-    sure(one ? `Delete ${list[0].name}?` : `Delete ${list.length} apps?`, `${one ? 'It goes' : `${appNames(list)}. They go`} from this page. Nothing is uninstalled from any computer.`, 'Delete', async () => {
+    sure(one ? `Delete ${list[0].name}?` : `Delete ${list.length} apps?`, `${one ? 'The app is removed' : `${appNames(list)}. The apps are removed`} from this list. Nothing is uninstalled from any computer.`, 'Delete', async () => {
       let failed = '';
       for (const a of list) {
         try {
@@ -175,8 +175,8 @@
       if (panel.is('devices') && String(panel.key).startsWith('app:')) panel.close();
       await load().catch(() => {});
       D.draw();
-      if (failed) toast(one ? `${list[0].name} wasn't deleted.` : "Some weren't deleted.", failed, { tone: 'warn' });
-      else toast(one ? 'App deleted.' : `Deleted ${list.length} apps.`, one ? list[0].name : '');
+      if (failed) toast(one ? `Could not delete ${list[0].name}.` : 'Could not delete some apps.', failed, { tone: 'warn' });
+      else toast(one ? 'App deleted.' : `${list.length} apps deleted.`, one ? list[0].name : '');
     });
   };
   panel.el.addEventListener('click', (e) => {
@@ -206,13 +206,13 @@
     const list = chosen();
     const n = on.length;
     for (const id of ['ins-count', 'ins-count-label']) $(id).hidden = n <= BRAKE;
-    $('ins-count-label').textContent = `That's ${n} computers. Type ${n} to go ahead`;
+    $('ins-count-label').textContent = `This affects ${n} computers. Type ${n} to confirm`;
     $('ins-go').disabled = !n || !list.length;
     const off = on.filter((c) => D.stateOf(c) === 'offline').length;
-    const extras = list.filter((a) => a.extensions.length).map((a) => ` ${a.name} also gets ${a.extensions.map((x) => x.name).join(', ')} in VS Code, for each person who uses the computer.`).join('');
-    $('ins-note').textContent = `winget installs ${list.length > 1 ? 'them' : 'it'} for everyone on the computer, as SYSTEM. An app that's already there is brought up to date.${extras}`
-      + (!off ? '' : off < n ? ` ${off} ${off === 1 ? 'is offline and gets' : 'are offline and get'} it once back, within a day.` : n === 1 ? " It's offline and gets it once it's back, within a day." : " They're offline and get it once back, within a day.")
-      + ' Who ran it and what winget wrote are kept under Jobs.';
+    const extras = list.filter((a) => a.extensions.length).map((a) => ` ${a.name} also adds ${a.extensions.map((x) => x.name).join(', ')} to VS Code for each user.`).join('');
+    $('ins-note').textContent = `winget installs ${list.length > 1 ? 'the apps' : 'the app'} for all users as SYSTEM. Apps that are already installed are updated.${extras}`
+      + (!off ? '' : off < n ? ` ${off} ${off === 1 ? 'is offline and receives' : 'are offline and receive'} the job when back online, within a day.` : n === 1 ? ' The computer is offline. The job runs when it is back online, within a day.' : ' The computers are offline. The job runs when they are back online, within a day.')
+      + ' The winget output and who ran it are recorded under Jobs.';
   };
   const openInstall = async ({ apps: given = null, on = null }) => {
     if (!apps) {
@@ -225,28 +225,28 @@
     }
     const pcs = on ? on.filter((c) => c.approved && !c.server) : null;
     if (pcs && !pcs.length) {
-      toast('Nothing to install it on.', 'Pick computers that are approved.', { tone: 'warn' });
+      toast('No computers selected.', 'Select approved computers.', { tone: 'warn' });
       return;
     }
     ins = { apps: given, on: pcs };
-    $('ins-title').textContent = !given ? 'Install an app' : given.length === 1 ? `Install ${given[0].name}` : `Install ${given.length} apps`;
+    $('ins-title').textContent = !given ? 'Install app' : given.length === 1 ? `Install ${given[0].name}` : `Install ${given.length} apps`;
     const lead = [given && given.length > 1 ? `${given.map((a) => a.name).join(', ')}.` : '', pcs ? `On ${names(pcs)}.` : ''].filter(Boolean).join(' ');
     $('ins-lead').textContent = lead;
     $('ins-lead').hidden = !lead;
     for (const id of ['ins-app', 'ins-app-label']) $(id).hidden = !!given;
     if (!given) {
       const group = (label, list) => (list.length ? `<optgroup label="${esc(label)}">${list.sort(byName).map((a) => `<option value="${esc(a.id)}">${esc(a.name)}</option>`).join('')}</optgroup>` : '');
-      $('ins-app').innerHTML = '<option value="" selected disabled>Pick an app</option>' + CATEGORIES.map((c) => group(c, apps.filter((a) => a.category === c))).join('');
+      $('ins-app').innerHTML = '<option value="" selected disabled>Select an app</option>' + CATEGORIES.map((c) => group(c, apps.filter((a) => a.category === c))).join('');
     }
     for (const id of ['ins-on', 'ins-on-label']) $(id).hidden = !!pcs;
     if (!pcs) {
       const all = approved();
       const ticked = all.filter((c) => D.picked.has(c.id)).length;
       const online = all.filter((c) => D.stateOf(c) === 'online').length;
-      $('ins-on').innerHTML = `<option value="" disabled${ticked ? '' : ' selected'}>Pick the computers</option>`
-        + (ticked ? `<option value="ticked" selected>Ticked computers (${ticked})</option>` : '')
-        + `<option value="online">Every online computer (${online})</option><option value="all">Every approved computer (${all.length})</option>`
-        + (all.length ? `<optgroup label="One computer">${all.map((c) => `<option value="c:${esc(c.id)}">${esc(c.computer)}${D.stateOf(c) === 'online' ? '' : ' (offline)'}</option>`).join('')}</optgroup>` : '');
+      $('ins-on').innerHTML = `<option value="" disabled${ticked ? '' : ' selected'}>Select computers</option>`
+        + (ticked ? `<option value="ticked" selected>Selected computers (${ticked})</option>` : '')
+        + `<option value="online">All online computers (${online})</option><option value="all">All approved computers (${all.length})</option>`
+        + (all.length ? `<optgroup label="Single computer">${all.map((c) => `<option value="c:${esc(c.id)}">${esc(c.computer)}${D.stateOf(c) === 'online' ? '' : ' (offline)'}</option>`).join('')}</optgroup>` : '');
     }
     $('ins-count').value = '';
     say('ins-problem', '');
@@ -266,7 +266,7 @@
       $('ins-dialog').close();
       picked.clear();
       drawTicks();
-      toast('Install sent.', `${appNames(list)} on ${names(on)}. It's under Jobs.`);
+      toast('Installation requested.', `${appNames(list)} on ${names(on)}. View progress under Jobs.`);
       D.openJob(made.id);
       if (D.at() === 'jobs') D.reload();
     } catch (e) {
@@ -279,7 +279,7 @@
   let editing = null; // its id, or null for a new one
   const openEdit = (a) => {
     editing = a?.id || null;
-    $('app-title').textContent = a ? 'Edit app' : 'Add an app';
+    $('app-title').textContent = a ? 'Edit app' : 'Add app';
     for (const [id, value] of [['app-name', a?.name], ['app-winget', a?.winget], ['app-publisher', a?.publisher], ['app-about', a?.about], ['app-shows', a?.shows]]) $(id).value = value || '';
     $('app-category').innerHTML = CATEGORIES.map((c) => `<option${c === (a?.category || 'Other') ? ' selected' : ''}>${esc(c)}</option>`).join('');
     say('app-problem', '');
@@ -308,7 +308,7 @@
   // In Computers' Actions, for the ticked computers, and in a computer's own Actions.
   const H = D.hooks;
   const items0 = H.actItems;
-  H.actItems = (item) => [...(items0?.(item) || []), ...(can() ? [item('install', 'Install an app…')] : [])];
+  H.actItems = (item) => [...(items0?.(item) || []), ...(can() ? [item('install', 'Install app…')] : [])];
   const act0 = H.act;
   H.act = (act, on) => (act === 'install' ? (openInstall({ on }), true) : act0?.(act, on) || false);
   const drawn0 = H.drawn;

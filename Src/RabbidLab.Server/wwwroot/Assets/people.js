@@ -5,7 +5,7 @@
   const R = window.RabbidLab;
   const { $, esc, svg, say, initials, sure } = R;
   const SWATCHES = R.palette;
-  const KIND = { group: 'Group', user: 'Person', local: 'Local account', everyone: 'Everyone', windows: 'Built in' };
+  const KIND = { group: 'Group', user: 'User', local: 'Local account', everyone: 'Everyone', windows: 'Built-in' };
   const ICON = { group: 'users', user: 'user', local: 'key', everyone: 'users', windows: 'monitor' };
   const BROWSE = { all: 'Everyone', people: 'People', groups: 'Groups', local: 'Local accounts' };
   let data = null; // what /api/roles said
@@ -22,7 +22,7 @@
     if (!iso) return '';
     const m = Math.floor((Date.now() - new Date(iso)) / 60000);
     const days = Math.floor(m / 1440);
-    return m < 2 ? 'Signed in now' : m < 60 ? `Signed in ${m} min ago` : m < 120 ? 'Signed in an hour ago' : m < 1440 ? `Signed in ${Math.floor(m / 60)} hours ago`
+    return m < 2 ? 'Signed in just now' : m < 60 ? `Signed in ${m} min ago` : m < 120 ? 'Signed in an hour ago' : m < 1440 ? `Signed in ${Math.floor(m / 60)} hours ago`
       : days === 1 ? 'Signed in yesterday' : `Signed in ${days} days ago`;
   };
   const current = (el, on) => (on ? el.setAttribute('aria-current', 'page') : el.removeAttribute('aria-current'));
@@ -53,7 +53,7 @@
     data.local.forEach((a) => add('local', a.username));
     if (data.windowsAdmins) {
       const row = add('windows', 'Windows administrators');
-      row.sub = `Built in · of ${data.machine}`;
+      row.sub = `Built-in · ${data.machine}`;
       give(row, role('admin'), null, false);
     }
     data.people.forEach((p) => {
@@ -78,7 +78,7 @@
         : row.kind === 'everyone' ? `Anyone who can sign in to ${data.domain || 'Active Directory'}`
           : row.kind === 'local' ? 'Local account'
             : row.source === 'windows' ? `Windows administrator · ${row.name.split('\\')[0]}`
-              : `${row.name}${row.domain ? ` · ${row.domain}` : ''}${row.seen ? '' : " · hasn't signed in yet"}`;
+              : `${row.name}${row.domain ? ` · ${row.domain}` : ''}${row.seen ? '' : ' · Never signed in'}`;
     });
     return [...rows.values()];
   };
@@ -92,10 +92,10 @@
 
   const chip = (row, x) => {
     const removable = x.direct && x.role.manage && mine('access.members') && !(x.role.id === 'admin' && x.role.members.length === 1);
-    const title = x.direct ? `In ${x.role.name}` : x.via ? `From ${x.via}` : x.role.id === 'user' ? 'Everyone who signs in has User' : `Built in`;
+    const title = x.direct ? 'Assigned directly' : x.via ? `Through ${x.via}` : x.role.id === 'user' ? 'Assigned to everyone' : 'Built-in';
     return `<span class="rchip${x.via ? ' via' : ''}" data-color="${esc(x.role.color)}" data-tip="${esc(title)}"><i class="dot"></i>${esc(x.role.name)}`
       + (x.via ? `<small>${svg('users')}${esc(x.via)}</small>` : '')
-      + (removable ? `<button type="button" class="chip-x" data-take="${esc(x.role.id)}" aria-label="Take out of ${esc(x.role.name)}">${svg('x')}</button>` : '')
+      + (removable ? `<button type="button" class="chip-x" data-take="${esc(x.role.id)}" aria-label="Remove from ${esc(x.role.name)}">${svg('x')}</button>` : '')
       + '</span>';
   };
   const pic = (row) => `<span class="pic ${row.kind}${row.source === 'windows' ? ' windows' : ''}">${row.kind === 'user' ? esc(initials(row.display || row.name)) : svg(ICON[row.kind])}</span>`;
@@ -103,14 +103,14 @@
   const parts = (r) => {
     if (r.id === 'admin') return ['Everything'];
     const found = data.catalog.filter((p) => p.actions.some((a) => r.permissions.includes(a.key))).map((p) => p.name);
-    return found.length ? found : ['Nothing yet'];
+    return found.length ? found : ['No permissions'];
   };
   const cards = () => data.roles.map((r) => {
     const p = parts(r);
     const who = r.members.map(memberLabel);
     return `<a class="rcard" href="#role/${encodeURIComponent(r.id)}" data-color="${esc(r.color)}"><b><i class="dot"></i>${esc(r.name)}${r.id === 'admin' ? svg('lock', 'lk') : ''}</b>`
       + `<p>${esc(r.about || '')}</p><div class="parts">${p.slice(0, 3).map((x) => `<span>${esc(x)}</span>`).join('')}${p.length > 3 ? `<span>+${p.length - 3}</span>` : ''}</div>`
-      + `<div class="n">${svg('users')}${esc(who.length ? who.join(', ') : 'Nobody yet')}</div></a>`;
+      + `<div class="n">${svg('users')}${esc(who.length ? who.join(', ') : 'No members')}</div></a>`;
   }).join('');
 
   const drawList = (browse) => {
@@ -132,9 +132,9 @@
     $('ppl-cards-label').hidden = browse !== 'all';
     $('ppl-cards').innerHTML = cards();
     $('ppl-rows').innerHTML = list.length ? list.map((row, i) => `<div class="prow" data-row="${i}" tabindex="0"><div class="who">${pic(row)}<div><b>${esc(nameOf(row))}</b><span>${esc(row.sub)}</span></div></div>`
-      + `<div class="chips-in">${row.roles.map((x) => chip(row, x)).join('')}${giveable(row).length ? `<button type="button" class="addrole" data-give aria-label="Give ${esc(nameOf(row))} a role">${svg('plus')}</button>` : ''}</div>`
+      + `<div class="chips-in">${row.roles.map((x) => chip(row, x)).join('')}${giveable(row).length ? `<button type="button" class="addrole" data-give aria-label="Assign a role to ${esc(nameOf(row))}">${svg('plus')}</button>` : ''}</div>`
       + `<div class="seen">${esc(row.seen ? since(row.seen) : '')}</div></div>`).join('')
-      : '<div class="empty">Nobody here matches.</div>';
+      : '<div class="empty">No matches.</div>';
     document.querySelectorAll('.side a[data-browse]').forEach((a) => current(a, a.dataset.browse === browse));
     R.paint($('ppl-list'));
     // The side panel follows the list: drawn again as it is now, or closed when its row has gone.
@@ -149,6 +149,7 @@
   // --- The column on the left: browse, the roles in order (drag to move), and filters ------------------------------
 
   let dragging = null;
+  let roleOptions = ''; // what the Role filter lists
   const drawSide = (current) => {
     $('ppl-roles').innerHTML = data.roles.map((r) => {
       const movable = r.manage && !r.builtIn && mine('access.roles');
@@ -157,7 +158,8 @@
     }).join('');
     const pick = $('ppl-role-filter');
     const was = pick.value;
-    pick.innerHTML = '<option value="">Any role</option>' + data.roles.map((r) => `<option value="${esc(r.id)}">${esc(r.name)}</option>`).join('');
+    const options = '<option value="">Any role</option>' + data.roles.map((r) => `<option value="${esc(r.id)}">${esc(r.name)}</option>`).join('');
+    if (options !== roleOptions) pick.innerHTML = roleOptions = options; // the same roles leave it alone, open or not
     pick.value = data.roles.some((r) => r.id === was) ? was : '';
     $('rail-roles').textContent = data.roles.length;
     R.paint($('ppl-roles'));
@@ -212,25 +214,25 @@
   const drawCard = (row) => {
     panelRow = row;
     const can = allowedOf(row);
-    const does = can === null ? '<li><b>Everything</b><span>Administrator allows it all.</span></li>'
+    const does = can === null ? '<li><b>Everything</b><span>The Administrator role has every permission.</span></li>'
       : data.catalog.map((p) => {
         const on = p.actions.filter((a) => can.has(a.key));
         return on.length ? `<li><b>${esc(p.name)}</b><span>${esc(on.map((a) => a.name.charAt(0).toLowerCase() + a.name.slice(1)).join(', '))}</span></li>` : '';
-      }).join('') || '<li><span>Nothing yet.</span></li>';
+      }).join('') || '<li><span>No permissions.</span></li>';
     const give = giveable(row);
     const acts = row.kind === 'local' && mine('access.local')
-      ? `<div class="dw-bar"><button type="button" class="dw-qa" data-password>${svg('key')}<span>New password</span></button><button type="button" class="dw-qa" data-remove-account>${svg('trash')}<span>Remove account</span></button></div>` : '';
+      ? `<div class="dw-bar"><button type="button" class="dw-qa" data-password>${svg('key')}<span>New password</span></button><button type="button" class="dw-qa" data-remove-account>${svg('trash')}<span>Delete account</span></button></div>` : '';
     // MFA, for someone who signs in: whether their authenticator app is set up, and Reset for a lost phone.
     const needs = row.roles.filter((x) => x.role.mfa).map((x) => x.role.name);
     const mfa = !['user', 'local'].includes(row.kind) ? ''
       : `<section class="dw-sec"><div class="dw-sec-head"><h3>MFA</h3>${row.mfa && mine('access.mfa') ? `<button type="button" class="small" data-reset-mfa>${svg('refresh')}Reset MFA</button>` : ''}</div>`
-        + `<p class="dw-how">${esc(row.mfa ? `On since ${R.when(row.mfa)}.` : needs.length ? 'Not set up. They set it up at their next sign-in.' : 'Not set up.')}${needs.length ? ` Required by ${esc(needs.join(', '))}.` : ''}</p></section>`;
+        + `<p class="dw-how">${esc(row.mfa ? `Enabled since ${R.when(row.mfa)}.` : needs.length ? 'Not set up. Setup is required at the next sign-in.' : 'Not set up.')}${needs.length ? ` Required by ${esc(needs.join(', '))}.` : ''}</p></section>`;
     R.panel.body.innerHTML = `<div class="dw-head">${pic(row).replace('class="pic', 'class="pic dw-pic')}<div class="dw-name"><h2 id="dw-title">${esc(nameOf(row))}</h2>`
       + `<p>${esc(row.sub)}${row.seen ? ` · ${esc(since(row.seen).toLowerCase())}` : ''}</p></div><button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>${acts}`
       + `<section class="dw-sec"><div class="dw-sec-head"><h3>Roles <small>${row.roles.length}</small></h3></div><div class="chips-in">${row.roles.map((x) => chip(row, x)).join('') || '<span class="muted">None</span>'}</div>`
-      + (row.kind === 'group' ? `<p class="dw-how">Everyone in ${esc(nameOf(row))} gets these roles when they sign in, people in groups inside it too. Each person's role shows which group it came from.</p>` : '') + `</section>${mfa}`
-      + (give.length ? `<section class="dw-sec"><div class="dw-sec-head"><h3>Give a role</h3></div><div class="chips-in dw-give">${give.map((r) => `<button type="button" class="small" data-give-role="${esc(r.id)}" data-color="${esc(r.color)}"><i class="dot"></i>${esc(r.name)}</button>`).join('')}</div></section>` : '')
-      + `<section class="dw-sec"><div class="dw-sec-head"><h3>${row.kind === 'group' || row.kind === 'everyone' ? 'Its roles allow' : 'Can do'}</h3></div><ul class="does">${does}</ul></section>`;
+      + (row.kind === 'group' ? `<p class="dw-how">Members of ${esc(nameOf(row))}, including members of nested groups, get these roles when they sign in. Each user's role shows the group it comes from.</p>` : '') + `</section>${mfa}`
+      + (give.length ? `<section class="dw-sec"><div class="dw-sec-head"><h3>Assign a role</h3></div><div class="chips-in dw-give">${give.map((r) => `<button type="button" class="small" data-give-role="${esc(r.id)}" data-color="${esc(r.color)}"><i class="dot"></i>${esc(r.name)}</button>`).join('')}</div></section>` : '')
+      + `<section class="dw-sec"><div class="dw-sec-head"><h3>${row.kind === 'group' || row.kind === 'everyone' ? 'Permissions granted' : 'Effective permissions'}</h3></div><ul class="does">${does}</ul></section>`;
     R.paint(R.panel.body);
   };
   // Clicking the row that's open closes it; another row opens in its place.
@@ -247,7 +249,7 @@
   };
   const openMenu = (i, el) => {
     const row = list[i];
-    $('rmenu').innerHTML = `<p>Give ${esc(nameOf(row))}</p>` + giveable(row).map((r) => `<button type="button" data-give-role="${esc(r.id)}" data-color="${esc(r.color)}"><i class="dot"></i>${esc(r.name)}</button>`).join('');
+    $('rmenu').innerHTML = `<p>Assign a role to ${esc(nameOf(row))}</p>` + giveable(row).map((r) => `<button type="button" data-give-role="${esc(r.id)}" data-color="${esc(r.color)}"><i class="dot"></i>${esc(r.name)}</button>`).join('');
     $('rmenu').dataset.row = i;
     R.paint($('rmenu'));
     place($('rmenu'), el);
@@ -262,10 +264,10 @@
     closeCard();
     refresh();
   };
-  const TAKE_OUT = 'They lose what only this role allows. Their other roles stay.';
+  const TAKE_OUT = 'Permissions granted only by this role are removed. Other role assignments are not affected.';
   const takeRole = (row, id) => {
     const r = role(id);
-    sure(`Take ${nameOf(row)} out of ${r.name}?`, TAKE_OUT, 'Take out', async () => {
+    sure(`Remove ${nameOf(row)} from ${r.name}?`, TAKE_OUT, 'Remove', async () => {
       try {
         await R.send(`/api/roles/${encodeURIComponent(id)}/members/remove`, { kind: asMember(row), name: row.name });
         problem('');
@@ -298,14 +300,14 @@
     const give = e.target.closest('[data-give-role]');
     if (give) return giveRole(row, give.dataset.giveRole);
     if (e.target.closest('[data-reset-mfa]')) {
-      sure(`Reset MFA for ${nameOf(row)}?`, 'Their authenticator app stops working here. You get a one-time code to give them: with it and their password, they set up MFA on their new phone.', 'Reset MFA', async () => {
+      sure(`Reset MFA for ${nameOf(row)}?`, 'Their current authenticator app stops working. You receive a one-time code to give them, which they enter with their password to set up MFA on a new device.', 'Reset MFA', async () => {
         try {
           const given = await R.send('/api/mfa/reset', { source: row.source, username: row.name });
           problem('');
           closeCard();
           refresh();
           // Shown once: the server keeps only its hash.
-          sure(`Give ${nameOf(row)} this one-time code`, `They type it at their next sign-in, after their password, to set up MFA again. It works once, for ${given.hours} hours, and isn't shown again.`,
+          sure(`One-time code for ${nameOf(row)}`, `They enter this code after their password at the next sign-in to set up MFA again. The code works once, expires in ${given.hours} hours and is not shown again.`,
             'Done', null, { code: given.code, safe: true, info: true });
         } catch (err) {
           problem(err.message);
@@ -316,13 +318,13 @@
       return;
     }
     if (e.target.closest('[data-password]')) {
-      $('password-lead').textContent = `For the local account ${row.name}. It's signed out everywhere.`;
+      $('password-lead').textContent = `For the local account ${row.name}. All of its sessions are signed out.`;
       $('pw-new').value = '';
       $('pw-problem').hidden = true;
       $('password-dialog').dataset.user = row.name;
       $('password-dialog').showModal();
     } else if (e.target.closest('[data-remove-account]')) {
-      sure(`Remove the local account ${row.name}?`, "It's signed out straight away.", 'Remove account', async () => {
+      sure(`Delete the local account ${row.name}?`, 'All of its sessions are signed out immediately.', 'Delete account', async () => {
         try {
           await R.send(`/api/accounts/${encodeURIComponent(row.name)}/remove`);
           problem('');
@@ -378,9 +380,9 @@
     const left = (ous?.list || []).filter((p) => !draft.scope.includes(p.dn));
     const chips = draft.scope.map((dn) => `<span class="gchip" title="${esc(dn)}">${svg('folder')}${esc(ouPath(dn))}`
       + (can ? `<button type="button" class="chip-x" data-scope-x="${esc(dn)}" aria-label="Remove ${esc(ouPath(dn))}">${svg('x')}</button>` : '') + '</span>').join('');
-    const say = draft.scope.length ? 'Its Active Directory permissions only work in these OUs and everything inside them.'
-      : 'All of Active Directory that the service account reaches. Add an OU to limit its Active Directory permissions to it.';
-    const why = ous?.problem ? ` OUs can't be listed: ${ous.problem}` : '';
+    const say = draft.scope.length ? 'This role\'s Active Directory permissions apply only to these OUs and the objects in them.'
+      : 'Everything the service account has access to. Add an OU to limit this role\'s Active Directory permissions to that OU.';
+    const why = ous?.problem ? ` Could not list OUs: ${ous.problem}` : '';
     return `<div class="row still scope"><span class="t"><b>Scope</b><span>${esc(say + why)}</span>${chips ? `<span class="scope-ous">${chips}</span>` : ''}</span>`
       + (can && left.length ? `<span class="ou-row"><select id="role-scope-add" aria-label="Add an OU"><option value="">Add an OU…</option>`
         + left.map((p) => `<option value="${esc(p.dn)}">${esc(p.path || p.name)}</option>`).join('')
@@ -389,9 +391,9 @@
   const unsaved = (r) => { $('role-unsaved').hidden = !dirty(r); };
   const placeText = (r) => {
     const i = data.roles.indexOf(r);
-    if (r.id === 'admin') return 'Administrator is always at the top, and allows everything.';
-    if (r.id === 'user') return 'User is always at the bottom. Everyone who signs in has it, whatever else they have.';
-    return `Below ${data.roles[i - 1].name} and above ${data.roles[i + 1].name}. Drag roles in the list on the left to move them. People can only change roles below their own highest one.`;
+    if (r.id === 'admin') return 'Administrator is always at the top and has every permission.';
+    if (r.id === 'user') return 'User is always at the bottom. Every signed-in user has this role.';
+    return `Below ${data.roles[i - 1].name} and above ${data.roles[i + 1].name}. Drag roles in the list on the left to reorder them. You can change only roles below your highest role.`;
   };
 
   const drawRole = (r, tab) => {
@@ -411,8 +413,8 @@
       current(a, a.dataset.tab === tab);
     });
     document.querySelectorAll('#role-view [data-pane]').forEach((p) => { p.hidden = p.dataset.pane !== tab; });
-    const note = r.id === 'admin' ? "Administrator always allows everything, so only who's in it can change."
-      : !r.manage ? `Only someone above ${r.name} can change it.` : !mine('access.roles') ? "Your roles don't let you change roles." : '';
+    const note = r.id === 'admin' ? 'Administrator always has every permission. Only its members can be changed.'
+      : !r.manage ? `Only users with a role above ${r.name} can change this role.` : !mine('access.roles') ? 'You do not have permission to change roles.' : '';
     $('role-note').hidden = !note || tab === 'members';
     $('role-note').textContent = note;
     const can = editable(r);
@@ -426,7 +428,7 @@
     const group = r.members.find((m) => m.kind === 'group')?.name || 'a group';
     $('role-preview').innerHTML = `<span class="rchip" data-color="${esc(draft.color)}"><i class="dot"></i>${esc(draft.name || 'Untitled role')}</span>`
       + `<span class="rchip via" data-color="${esc(draft.color)}"><i class="dot"></i>${esc(draft.name || 'Untitled role')}<small>${svg('users')}${esc(group)}</small></span>`
-      + '<span class="hint">Dashed: from a group.</span>';
+      + '<span class="hint">Dashed: assigned through a group.</span>';
     $('role-where').textContent = placeText(r);
     $('role-delete-row').hidden = r.builtIn || !can;
     $('role-delete-title').textContent = `Delete ${r.name}`;
@@ -441,21 +443,21 @@
         + (p.key === 'ad' ? scopeRow(r, can) : '')
         + acts.map((a) => {
           const locked = !can || !mine(a.key);
-          return `<label class="row still perm${locked ? ' locked' : ''}"><span class="t"><b>${esc(a.name)}</b><span>${esc(a.about)}${can && !mine(a.key) ? " Your roles don't allow this, so you can't give it." : ''}</span></span>`
+          return `<label class="row still perm${locked ? ' locked' : ''}"><span class="t"><b>${esc(a.name)}</b><span>${esc(a.about)}${can && !mine(a.key) ? ' You cannot grant a permission your roles do not include.' : ''}</span></span>`
             + `<input type="checkbox" class="switch" role="switch" data-perm="${esc(a.key)}" aria-label="${esc(a.name)}"${r.id === 'admin' || draft.permissions.has(a.key) ? ' checked' : ''}${locked ? ' disabled' : ''}></label>`;
         }).join('') + '</div>';
-    }).join('') || '<div class="empty">No permission matches.</div>';
+    }).join('') || '<div class="empty">No matching permissions.</div>';
     $('perm-clear').hidden = !can;
 
     // Members: who's in it, and adding more.
     const takeable = r.manage && mine('access.members');
     const built = r.id === 'admin' && data.windowsAdmins
-      ? `<div class="row still"><span class="pic windows">${svg('monitor')}</span><span class="t"><b>Windows administrators</b><span>Of ${esc(data.machine)}: they sign in as a local account, or with .\\ before their name. Built in.</span></span></div>` : '';
-    const everyone = r.id === 'user' ? `<div class="row still"><span class="pic">${svg('users')}</span><span class="t"><b>Everyone signed in</b><span>Everyone has User, whatever's below. Groups and people below can sign in with just User.</span></span></div>` : '';
+      ? `<div class="row still"><span class="pic windows">${svg('monitor')}</span><span class="t"><b>Windows administrators</b><span>Members of the Administrators group on ${esc(data.machine)}. They sign in with a local account, or with .\\ before the username. Built-in.</span></span></div>` : '';
+    const everyone = r.id === 'user' ? `<div class="row still"><span class="pic">${svg('users')}</span><span class="t"><b>All signed-in users</b><span>Every signed-in user has this role. Groups and users listed below can sign in with only this role.</span></span></div>` : '';
     $('member-list').innerHTML = everyone + built + (r.members.map((m) => `<div class="row still"><span class="pic ${m.kind}">${m.kind === 'user' ? esc(initials(m.display || m.name)) : svg(ICON[m.kind])}</span>`
-      + `<span class="t"><b>${esc(memberLabel(m))}</b><span>${m.kind === 'group' ? 'AD group · everyone in it gets this role when they sign in, groups inside it too' : esc(KIND[m.kind])}${m.kind === 'user' && m.display ? ` · ${esc(m.name)}` : ''}${m.addedBy ? ` · added by ${esc(m.addedBy)}, ${esc(R.when(m.added))}` : ''}</span></span>`
-      + (takeable && !(r.id === 'admin' && r.members.length === 1) ? `<button type="button" class="icon" data-take-member="${esc(m.kind)}" data-name="${esc(m.name)}" aria-label="Take ${esc(memberLabel(m))} out">${svg('x')}</button>` : '')
-      + '</div>').join('') || (built || everyone ? '' : '<div class="empty">Nobody yet.</div>'));
+      + `<span class="t"><b>${esc(memberLabel(m))}</b><span>${m.kind === 'group' ? 'AD group · members, including nested groups, get this role at sign-in' : esc(KIND[m.kind])}${m.kind === 'user' && m.display ? ` · ${esc(m.name)}` : ''}${m.addedBy ? ` · added by ${esc(m.addedBy)}, ${esc(R.when(m.added))}` : ''}</span></span>`
+      + (takeable && !(r.id === 'admin' && r.members.length === 1) ? `<button type="button" class="icon" data-take-member="${esc(m.kind)}" data-name="${esc(m.name)}" aria-label="Remove ${esc(memberLabel(m))}">${svg('x')}</button>` : '')
+      + '</div>').join('') || (built || everyone ? '' : '<div class="empty">No members.</div>'));
     $('member-add').hidden = !takeable;
 
     R.paint($('role-view'));
@@ -517,7 +519,7 @@
   });
   $('role-delete').addEventListener('click', () => {
     const r = role(draft.id);
-    sure(`Delete ${r.name}?`, 'Everyone in it loses what it gives them.', 'Delete role', async () => {
+    sure(`Delete ${r.name}?`, 'Its members lose the permissions this role grants.', 'Delete role', async () => {
       try {
         await R.send(`/api/roles/${encodeURIComponent(r.id)}/delete`);
         draft = null;
@@ -539,7 +541,7 @@
     if (!b) return;
     const r = role(draft.id);
     const member = { kind: b.dataset.takeMember, name: b.dataset.name };
-    sure(`Take ${b.closest('.row').querySelector('b').textContent} out of ${r.name}?`, TAKE_OUT, 'Take out', async () => {
+    sure(`Remove ${b.closest('.row').querySelector('b').textContent} from ${r.name}?`, TAKE_OUT, 'Remove', async () => {
       try {
         await R.send(`/api/roles/${encodeURIComponent(r.id)}/members/remove`, member);
         problem('');
@@ -555,8 +557,8 @@
     const found = await R.get(`/api/roles/search?q=${encodeURIComponent(text)}`);
     // When the domain can't be searched, what's typed can still be added as a group or a person.
     if (found.problem && text) {
-      found.entries.push({ kind: 'group', name: text, display: null, description: `Add the group ${text} as typed` },
-        { kind: 'user', name: text, display: null, description: `Add the account ${text} as typed` });
+      found.entries.push({ kind: 'group', name: text, display: null, description: `Add group ${text} as entered` },
+        { kind: 'user', name: text, display: null, description: `Add user ${text} as entered` });
     }
     return found;
   };
@@ -603,7 +605,7 @@
   const pdTab = (tab) => {
     $('people-tabs').querySelectorAll('[data-ptab]').forEach((a) => current(a, a.dataset.ptab === tab));
     document.querySelectorAll('#people-dialog [data-ppane]').forEach((p) => { p.hidden = p.dataset.ppane !== tab; });
-    $('pd-go').textContent = tab === 'local' ? 'Make the account' : 'Add';
+    $('pd-go').textContent = tab === 'local' ? 'Create account' : 'Add';
     $('people-dialog').dataset.tab = tab;
   };
   const pdList = async () => {
@@ -612,7 +614,7 @@
       pdFound = found.entries;
       $('pd-results').innerHTML = (found.problem ? `<p class="drop-note">${esc(found.problem)}</p>` : '')
         + (pdFound.map((e, i) => entry(e, ` data-entry="${i}" aria-pressed="${!!picked && picked.kind === e.kind && same(picked.name, e.name)}"`)).join('')
-          || '<p class="drop-note">Nothing found.</p>');
+          || '<p class="drop-note">No results.</p>');
     } catch (err) {
       say('pd-problem', err.message);
     }
@@ -655,8 +657,8 @@
       if ($('people-dialog').dataset.tab === 'local') {
         await R.send('/api/accounts', { username: $('pd-user').value, password: $('pd-password').value, roles: mine('access.members') ? roles : [] });
       } else {
-        if (!picked) return tell('Pick a group, a person or a local account first.');
-        if (!roles.length) return tell('Pick at least one role.');
+        if (!picked) return tell('Select a group, user or local account first.');
+        if (!roles.length) return tell('Select at least one role.');
         for (const id of roles) {
           // Local accounts have User already.
           if (!(picked.kind === 'local' && id === 'user')) await R.send(`/api/roles/${encodeURIComponent(id)}/members`, { kind: picked.kind, name: picked.name, display: picked.display });
@@ -695,11 +697,14 @@
     else drawList(BROWSE[rest[0]] ? rest[0] : 'all');
   };
   // Loads again, then draws.
+  let failed = false; // the last read didn't work, so the next one that does draws
   const refresh = async () => {
     try {
       data = await R.get('/api/roles');
+      failed = false;
       problem('');
     } catch (err) {
+      failed = true;
       problem(err.message);
       for (const id of ['ppl-rows', 'ppl-cards', 'ppl-roles']) R.skeleton($(id), '');
       for (const k of Object.keys(BROWSE)) if ($(`b-${k}`).querySelector('.sk')) $(`b-${k}`).textContent = '';
@@ -721,5 +726,23 @@
   // The count in the rail, when the page itself hasn't asked already.
   document.addEventListener('rabbidlab:me', () => {
     if (R.has('access.view') && !here) refresh();
+  });
+  // While it's open: every 10 seconds, but not over a role with changes that aren't saved, or the menu of roles to give.
+  const unsavedRole = () => !!draft && !!role(draft.id) && dirty(role(draft.id));
+  R.live({
+    page: () => here,
+    hold: () => unsavedRole() || !$('rmenu').hidden,
+    every: 10000,
+    read: () => R.get('/api/roles'),
+    now: () => (failed ? null : data),
+    draw: (got) => {
+      data = got;
+      failed = false;
+      draft = null; // nothing unsaved: the role open shows what it is now
+      problem('');
+      $('rail-roles').textContent = data.roles.length;
+      route();
+    },
+    areas: () => [$('ppl-rows'), $('role-view')],
   });
 })();

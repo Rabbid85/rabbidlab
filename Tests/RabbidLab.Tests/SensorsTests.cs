@@ -74,7 +74,7 @@ public sealed class SensorsTests : IDisposable
         Assert.True((await Web("/", "text", "welcome")).Ok);
         var missing = await Web("/", "text", "Sign in");
         Assert.False(missing.Ok);
-        Assert.Equal("The text isn't on the page", missing.Note);
+        Assert.Equal("Expected text not found on the page", missing.Note);
 
         var named = await probe.Check(new Sensor { Kind = "dns", Target = "localhost", Address = "127.0.0.1" }, CancellationToken.None);
         var wrong = await probe.Check(new Sensor { Kind = "dns", Target = "localhost", Address = "192.0.2.9" }, CancellationToken.None);
@@ -136,7 +136,7 @@ public sealed class SensorsTests : IDisposable
         Assert.False(some.Warn);
         Assert.Equal("All OK", some.Note);
         Assert.False(none.Ok);
-        Assert.Contains("No Redfish", none.Note);
+        Assert.Contains("Redfish not found", none.Note);
     }
 
     [Fact]
@@ -252,11 +252,11 @@ public sealed class SensorsTests : IDisposable
         Assert.True(battery.Warn);
         Assert.Equal("Power: On battery", battery.Note);
         Assert.Equal("96 %", battery.Parts!.Single(p => p.Key == "battery").Now);
-        Assert.StartsWith("SNMP v2c answered", battery.Title);
+        Assert.StartsWith("SNMP v2c responded", battery.Title);
         Assert.StartsWith("sysName ups01 · APC", battery.Detail);
         Assert.Equal("Up 1 day", uptime.Parts!.Single().Now);
         Assert.False(wrong.Ok);
-        Assert.Equal("No answer: check the address and the community", wrong.Note);
+        Assert.Equal("No response. Check the address and the community string", wrong.Note);
     }
 
     [Fact]
@@ -313,7 +313,7 @@ public sealed class SensorsTests : IDisposable
         await serving;
 
         Assert.False(offline.Ok);
-        Assert.Equal("The client on PC1 isn't connected", offline.Note);
+        Assert.Equal("The client on PC1 is not connected", offline.Note);
         Assert.False(service.Ok);
         Assert.Equal("Stop pending", service.Note);
         Assert.Equal("Print Spooler (Spooler) is stop pending on PC1", service.Title);

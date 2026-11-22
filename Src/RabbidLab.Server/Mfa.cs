@@ -313,9 +313,9 @@ public sealed class PendingSignIns(TimeProvider clock, SettingsStore secrets)
 /// </summary>
 public static class MfaApi
 {
-    public const string WrongCode = "That code isn't right. Codes change every 30 seconds, so check the app and type the one it shows now.";
-    public const string TooMany = "Too many wrong codes. Wait a few minutes, then try again.";
-    private const string AlreadyOn = "MFA is already on. Turn it off first, with a code from your app, then set it up again.";
+    public const string WrongCode = "The code is incorrect. Codes change every 30 seconds. Enter the code your authenticator app shows now.";
+    public const string TooMany = "Too many incorrect codes. Wait a few minutes, then try again.";
+    private const string AlreadyOn = "MFA is already enabled. Disable it with a code from your authenticator app, then set it up again.";
 
     /// <summary>What the app is asked to add: the secret, its QR code, and the account's name as the app will list it.</summary>
     public static object Setup(Who who, string secret) => new
@@ -356,13 +356,13 @@ public static class MfaApi
             switch (mfa.Confirm(Who.Of(context.User), form.Code))
             {
                 case null:
-                    return Results.BadRequest(new { error = "That took too long, so there's a new QR code. Scan it and try again.", again = true });
+                    return Results.BadRequest(new { error = "MFA setup took too long. Scan the new QR code and try again.", again = true });
                 case MfaAnswer.Wait:
                     return Results.Json(new { error = TooMany }, statusCode: StatusCodes.Status429TooManyRequests);
                 case MfaAnswer.Wrong:
                     return Results.BadRequest(new { error = WrongCode });
                 default:
-                    log.Record(context, "access", "mfa.on", "Turned on MFA");
+                    log.Record(context, "access", "mfa.on", "Enabled MFA");
                     return Results.Ok();
             }
         });
@@ -380,11 +380,11 @@ public static class MfaApi
                 case MfaAnswer.Wait:
                     return Results.Json(new { error = TooMany }, statusCode: StatusCodes.Status429TooManyRequests);
                 case MfaAnswer.Wrong:
-                    log.Record(context, "access", "mfa.off.failed", "Typed a wrong MFA code", "failed");
+                    log.Record(context, "access", "mfa.off.failed", "Entered an incorrect MFA code", "failed");
                     return Results.BadRequest(new { error = WrongCode });
                 default:
                     mfa.Remove(who.Source, who.Username);
-                    log.Record(context, "access", "mfa.off", "Turned off MFA");
+                    log.Record(context, "access", "mfa.off", "Disabled MFA");
                     return Results.Ok();
             }
         });
@@ -400,21 +400,21 @@ public static class MfaApi
             var person = roles.Snapshot().People.FirstOrDefault(p => p.Source == form.Source && string.Equals(p.Username, form.Username, StringComparison.OrdinalIgnoreCase));
             if (person is null || mfa.Since(person.Source, person.Username) is null)
             {
-                return Results.BadRequest(new { error = "They don't have MFA set up." });
+                return Results.BadRequest(new { error = "MFA is not set up for this account." });
             }
             var me = Who.Of(context.User);
             if (person.Source == me.Source && string.Equals(person.Username, me.Username, StringComparison.OrdinalIgnoreCase))
             {
-                return Results.BadRequest(new { error = "Your own MFA is turned off in Settings, Account, with a code from your app." });
+                return Results.BadRequest(new { error = "To reset your own MFA, disable it in Settings > Account with a code from your authenticator app." });
             }
             // Nobody above the one asking: with their password too, that would be their account.
             var above = roles.Outranking(Who.Of(context.User)).Select(r => r.Id).ToHashSet();
             if (roles.Of(new Who(person.Source, person.Username, person.Domain, person.Groups)).FirstOrDefault(r => above.Contains(r.Id)) is { } role)
             {
-                return Results.Json(new { error = $"{person.Username} is in {role.Name}. Only someone above {role.Name} can reset their MFA." }, statusCode: StatusCodes.Status403Forbidden);
+                return Results.Json(new { error = $"{person.Username} has the {role.Name} role. Only admins in a role above {role.Name} can reset their MFA." }, statusCode: StatusCodes.Status403Forbidden);
             }
             var code = mfa.Reset(person.Source, person.Username);
-            log.Record(context, "access", "mfa.reset", $"Reset MFA for {person.Username}", "ok", "Gave a one-time code to set it up again");
+            log.Record(context, "access", "mfa.reset", $"Reset MFA for {person.Username}", "ok", "Issued a one-time code to set up MFA again");
             return Results.Ok(new { code, hours = (int) Mfa.ResetLife.TotalHours });
         });
     }
@@ -433,7 +433,7 @@ public static class MfaApi
         }
         if (at + 1 >= args.Length || args[at + 1].StartsWith('-'))
         {
-            Console.Error.WriteLine("Whose? --reset-mfa username");
+            Console.Error.WriteLine("Specify a username: --reset-mfa <username>");
             return 1;
         }
         var username = args[at + 1];
@@ -441,16 +441,16 @@ public static class MfaApi
         var accounts = mfa.WithName(username);
         if (accounts.Count == 0)
         {
-            Console.Error.WriteLine($"{username} doesn't have MFA set up.");
+            Console.Error.WriteLine($"MFA is not set up for {username}.");
             return 1;
         }
         foreach (var (source, name) in accounts)
         {
             var code = mfa.Reset(source, name);
             app.Services.GetRequiredService<ActivityLog>().Record(name, null, "access", "mfa.reset", "Reset MFA from the command line", "ok");
-            Console.WriteLine($"{name} ({source}): at the next sign-in to {Product.Name}, type the password, then this one-time code, then set up the new app: {code}");
+            Console.WriteLine($"{name} ({source}): at the next sign-in to {Product.Name}, enter the password, then this one-time code, then set up the new authenticator app: {code}");
         }
-        Console.WriteLine($"Each code works once, for {(int) Mfa.ResetLife.TotalHours} hours.");
+        Console.WriteLine($"Each code can be used once and expires after {(int) Mfa.ResetLife.TotalHours} hours.");
         return 0;
     }
 }

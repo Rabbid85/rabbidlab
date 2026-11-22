@@ -131,7 +131,7 @@ internal static class GroupPolicy
                 // A person who signed in without Group Policy data (a local account, say) has none to read: only the computer's is a problem.
                 if (user is null)
                 {
-                    Problems.Note("group policy", "gpresult couldn't read the computer's Group Policy results.");
+                    Problems.Note("group policy", "gpresult could not read the computer's Group Policy results.");
                 }
                 return null;
             }
@@ -179,7 +179,7 @@ internal static class GroupPolicy
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or System.Xml.XmlException or InvalidOperationException or System.ComponentModel.Win32Exception)
         {
-            Problems.Note("group policy", $"Couldn't read Group Policy's results for the {scope}: {e.Message}");
+            Problems.Note("group policy", $"Could not read the Group Policy results for the {scope}: {e.Message}");
             return null;
         }
         finally
@@ -241,7 +241,7 @@ internal static class GroupPolicy
                             {
                                 continue;
                             }
-                            text = $"{part ?? "A part of Group Policy"} {(e.Id == 7016 ? "didn't apply" : "applied with a warning")}: error 0x{code:X8}.";
+                            text = $"{part ?? "A Group Policy extension"} {(e.Id == 7016 ? "failed" : "completed with a warning")}: error 0x{code:X8}.";
                         }
                         found.Add(new GpErrorReport
                         {
@@ -331,10 +331,10 @@ internal static class GroupPolicy
                 on.Add(name);
             }
         }
-        l.Firewall = known == 0 ? null : on.Count == known ? "On" : on.Count == 0 ? "Off" : $"On for {string.Join(", ", on)}";
+        l.Firewall = known == 0 ? null : on.Count == known ? "On" : on.Count == 0 ? "Off" : $"On ({string.Join(", ", on)})";
         var deny = Dword(@"SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services", "fDenyTSConnections") ?? Dword(@"SYSTEM\CurrentControlSet\Control\Terminal Server", "fDenyTSConnections");
         var nla = Dword(@"SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services", "UserAuthentication") ?? Dword(@"SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp", "UserAuthentication");
-        l.Rdp = deny is null ? null : deny == 1 ? "Off" : nla == 1 ? "On, with NLA" : "On";
+        l.Rdp = deny is null ? null : deny == 1 ? "Off" : nla == 1 ? "On (NLA required)" : "On";
         l.Uac = Dword(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System", "EnableLUA") is { } lua ? lua != 0 : null;
         try
         {

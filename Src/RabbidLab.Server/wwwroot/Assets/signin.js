@@ -31,7 +31,7 @@
     $('side-date').textContent = now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
     const gone = Math.round(((now.getHours() * 60 + now.getMinutes()) / 1440) * 100);
     $('side-day-fill').style.width = `${gone}%`;
-    $('side-day-text').textContent = `${now.toLocaleDateString([], { weekday: 'long' })} · ${gone}% of the day gone`;
+    $('side-day-text').textContent = `${now.toLocaleDateString([], { weekday: 'long' })} · ${gone}% of the day elapsed`;
     setTimeout(clock, 60000 - (Date.now() % 60000) + 50);
   };
   clock();
@@ -127,7 +127,7 @@
   // Signed out for being idle (console.js): said here, and signing in goes back to the page they were on.
   const idleFor = Number(new URLSearchParams(location.search).get('idle'));
   if (idleFor > 0) {
-    $('idle-text').textContent = `You were signed out after ${idleFor % 60 ? `${idleFor} minutes` : idleFor === 60 ? '1 hour' : `${idleFor / 60} hours`} without activity.`;
+    $('idle-text').textContent = `You were signed out after ${idleFor % 60 ? `${idleFor} minutes` : idleFor === 60 ? '1 hour' : `${idleFor / 60} hours`} of inactivity.`;
     $('idle-note').hidden = false;
   }
   const home = () => {
@@ -144,7 +144,7 @@
     location.replace(home());
   };
 
-  const unreachable = (then) => `Couldn't reach ${window.RabbidLabBrand.now.name || 'Rabbid Lab'}. Check that it's running, then ${then}.`;
+  const unreachable = (then) => `Could not connect to the server. Check that the Rabbid Lab service is running, then ${then}.`;
   // Sends a form with its button off meanwhile. Null when the server can't be reached, which the page then says.
   const send = async (url, body, button) => {
     showError('');
@@ -152,7 +152,7 @@
     try {
       const r = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
       const said = await r.json().catch(() => null);
-      return { ok: r.ok, said, problem: said?.error || `Something went wrong (${r.status}). Try again.` };
+      return { ok: r.ok, said, problem: said?.error || `The server returned HTTP ${r.status}. Try again.` };
     } catch {
       showError(unreachable('try again'));
       button.disabled = false;
@@ -170,9 +170,9 @@
     hideForms();
     $('heading').textContent = setup ? 'Set up MFA' : 'Enter your code';
     $('lead').hidden = false;
-    $('lead').textContent = !setup ? 'Type the 6-digit code from your authenticator app.'
-      : said.reset ? 'Your MFA was reset. Type the one-time code you were given, then scan this with your authenticator app and type the 6-digit code it shows.'
-        : 'Signing in takes a code from an authenticator app, such as Microsoft Authenticator or Google Authenticator. Scan this with it, then type the 6-digit code it shows.';
+    $('lead').textContent = !setup ? 'Enter the 6-digit code from your authenticator app.'
+      : said.reset ? 'Your MFA was reset. Enter the one-time code you received, then scan the QR code with your authenticator app and enter the 6-digit code.'
+        : 'Sign-in requires a code from an authenticator app, such as Microsoft Authenticator or Google Authenticator. Scan the QR code with the app, then enter the 6-digit code.';
     $('mfa-reset').value = '';
     if (setup) {
       $('mfa-qr').innerHTML = said.setup.qr; // an SVG picture drawn by the server
@@ -197,7 +197,7 @@
     $('mfa-code-box').hidden = skip;
     $('mfa-setup').hidden = !setup || skip;
     $('mfa-reset-box').hidden = skip || !resetShown;
-    $('mfa-go').textContent = skip ? 'Sign in without a code' : setup ? 'Turn on and sign in' : 'Verify';
+    $('mfa-go').textContent = skip ? 'Sign in without a code' : setup ? 'Enable and sign in' : 'Verify';
   };
   $('mfa-skip').addEventListener('change', () => skipping());
   $('mfa-back').addEventListener('click', () => location.reload());
@@ -254,7 +254,7 @@
     if (said?.locked && !coded(kind)) {
       button.disabled = true;
       button.classList.add('wait', 'locked');
-      button.textContent = 'Locked';
+      button.textContent = 'Locked out';
       $(`${kind}-password`).disabled = true;
       $('admin-unlock').hidden = false;
       return;
@@ -272,7 +272,7 @@
     const tick = () => {
       const left = Math.ceil((until - Date.now()) / 1000);
       if (left <= 0) return release(button);
-      button.textContent = `${coded(kind) ? 'Try again in' : 'Wait'} ${left < 60 ? `${left} s` : `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`}`;
+      button.textContent = `${coded(kind) ? 'Try again in' : 'Retry in'}${left < 60 ? `${left} s` : `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`}`;
     };
     tick();
     counting = setInterval(tick, 1000);
@@ -417,14 +417,14 @@
     const now = $('server-now');
     const chosen = controllers.find((c) => c.name === server);
     const nearest = controllers.find((c) => c.online);
-    const text = server ? (chosen ? (chosen.online ? 'online' : 'not answering') : '') : nearest ? `now ${short(nearest.name)}` : controllers.length ? 'none answering' : '';
+    const text = server ? (chosen ? (chosen.online ? 'online' : 'unreachable') : '') : nearest ? `using ${short(nearest.name)}` : controllers.length ? 'none reachable' : '';
     now.textContent = text;
     now.hidden = !text;
     now.classList.toggle('off', server ? !!chosen && !chosen.online : !nearest);
     // The same, on the line above the account boxes when signing in.
     const dc = $('ad-context-dc');
-    dc.textContent = server ? short(server) + (chosen && !chosen.online ? ', not answering' : '')
-      : nearest ? short(nearest.name) : controllers.length ? 'a controller (none answering)' : 'the quickest controller';
+    dc.textContent = server ? short(server) + (chosen && !chosen.online ? ' (unreachable)' : '')
+      : nearest ? short(nearest.name) : controllers.length ? 'a domain controller (none reachable)' : 'the fastest domain controller';
     dc.classList.toggle('off', server ? !!chosen && !chosen.online : controllers.length > 0 && !nearest);
     dc.classList.toggle('unknown', !controllers.length);
   };
@@ -457,7 +457,7 @@
       since ||= Date.now();
       const move = () => bar(66 + 32 * (1 - Math.exp(-(Date.now() - since) / 12000)));
       move();
-      say(`Installing version ${target}. This page reloads when it's done.`, 'busy');
+      say(`Installing version ${target}. This page reloads when the update is complete.`, 'busy');
       tick ||= setInterval(move, 250);
     };
     const draw = (u) => {
@@ -471,9 +471,9 @@
       if (u.status === 'available') {
         const how = u.installHere ? '' : u.canInstall ? ' Sign in to install it.' : '';
         say(`Version ${u.available} is available.${how}`, 'busy', false, !!u.installHere);
-      } else if (u.status === 'waiting') say(`Version ${u.available} installs in a moment.`, 'busy');
+      } else if (u.status === 'waiting') say(`Version ${u.available} will install shortly.`, 'busy');
       else if (u.status === 'downloading') say(`Downloading version ${u.available}…`, 'busy');
-      else if (u.status === 'failed') say(`Version ${u.available} didn't install. Sign in to see why.`, 'bad');
+      else if (u.status === 'failed') say(`Version ${u.available} failed to install. Sign in for details.`, 'bad');
       else if (u.checking) say('Checking for updates…');
       else say('Up to date', 'ok', true);
     };
@@ -488,7 +488,7 @@
         if (running && u.version !== running) {
           clearInterval(tick);
           bar(100);
-          say(`Updated to version ${u.version}.`, 'ok');
+          say(`Update installed. Now running version ${u.version}.`, 'ok');
           return setTimeout(() => location.reload(), 1500);
         }
         running = u.version;
@@ -506,7 +506,7 @@
     };
     $('update-check').addEventListener('click', check);
     $('update-install').addEventListener('click', async () => {
-      say(`Starting version ${target}…`, 'busy');
+      say(`Starting the update to version ${target}…`, 'busy');
       bar(4);
       try {
         const r = await fetch('/api/update/watch/install', { method: 'POST', headers: { 'X-Rabbid-Lab': '1', Accept: 'application/json' } });
@@ -560,7 +560,7 @@
     $('ad-go').textContent = setup ? 'Connect and sign in' : 'Sign in';
     if (setup) {
       $('local-user').value = 'admin';
-      $('local-password-label').textContent = 'Password, at least 8 characters'; // the box's name, in the box until it's typed in
+      $('local-password-label').textContent = 'Password (at least 8 characters)';// the box's name, in the box until it's typed in
       $('local-password').autocomplete = 'new-password';
     }
 
@@ -599,7 +599,7 @@
     const domainBox = combo({
       input: $('ad-domain'), list: $('domain-list'), toggle: $('domain-open'), typing: setup,
       items: () => domains, label: (d) => d,
-      empty: () => 'No domains found from this computer. Type the domain name.',
+      empty: () => 'No domains found from this computer. Enter the domain name.',
       pick: domainChanged,
     });
     if (setup) {
@@ -616,9 +616,9 @@
       detail: (c) => {
         if (c.auto) {
           const nearest = controllers.find((x) => x.online);
-          return nearest ? `The quickest that answers at each sign-in. Now ${nearest.name}.` : 'The quickest domain controller that answers at each sign-in.';
+          return nearest ? `The fastest available domain controller at each sign-in. Currently ${nearest.name}.` : 'The fastest available domain controller at each sign-in.';
         }
-        return c.online ? `Answering in ${c.ms} ms` : 'Not answering';
+        return c.online ? `Responded in ${c.ms} ms` : 'Unreachable';
       },
       tone: (c) => (c.auto ? '' : c.online ? 'ok' : 'bad'),
       empty: () => 'Enter the domain first.',
@@ -659,8 +659,8 @@
       $('ad-form').hidden = kind !== 'ad';
       // Signing in where a domain is set up has no lead: the line under the button says which account it is, so switching
       // between the two moves nothing.
-      const lead = setup ? (kind === 'ad' ? `Connect ${name} to your domain.` : 'Create the administrator account.')
-        : s.domain ? '' : `Use your ${name} account.`;
+      const lead = setup ? (kind === 'ad' ? 'Connect to your Active Directory domain.' : 'Create the administrator account.')
+        : s.domain ? '' : 'Sign in with your local account.';
       $('lead').textContent = lead;
       $('lead').hidden = !lead;
       $('other-kind').textContent = kind === 'ad' ? 'Use a local account instead' : 'Use Active Directory instead';
@@ -725,8 +725,8 @@
     if (s.plain) {
       const https = location.hostname ? ` (such as https://${location.hostname})` : '';
       $('plain-note').textContent = s.plain === 'refused'
-        ? `This console is on plain HTTP, so your password and session would cross the network unencrypted. Open it with its HTTPS address${https}. To set one up, run Setup again and pick a certificate, or put a reverse proxy that does HTTPS in front of it.`
-        : 'This console is on plain HTTP: your password and session cross the network unencrypted. An administrator allowed this with AllowPlainHttp.';
+        ? `This console uses plain HTTP, so your password and session would be sent over the network unencrypted. Open the console at its HTTPS address${https}. To set up HTTPS, run Setup again and select a certificate, or put an HTTPS reverse proxy in front of the console.`
+        : 'This console uses plain HTTP. Your password and session are sent over the network unencrypted. An administrator allowed this with AllowPlainHttp.';
       $('plain-note').classList.toggle('warn', s.plain !== 'refused');
       $('plain-note').hidden = false;
       if (s.plain === 'refused') hideForms();

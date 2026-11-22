@@ -758,7 +758,7 @@ public sealed class SignInTests : IDisposable
         var me = await (await page.GetAsync("/api/signin")).Content.ReadFromJsonAsync<JsonElement>();
 
         Assert.Equal(HttpStatusCode.Unauthorized, wrong.StatusCode);
-        Assert.Contains("wrong", await wrong.Content.ReadAsStringAsync());
+        Assert.Contains("incorrect", await wrong.Content.ReadAsStringAsync());
         Assert.Equal(HttpStatusCode.OK, right.StatusCode);
         Assert.Equal("windows", me.GetProperty("user").GetProperty("source").GetString());
         Assert.Equal(HttpStatusCode.OK, (await page.GetAsync("/api/status")).StatusCode);

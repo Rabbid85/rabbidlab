@@ -94,7 +94,7 @@ public static class Dacl
     {
         if (descriptor.Length < 20 || descriptor[0] != 1)
         {
-            throw new FormatException("That isn't a security descriptor.");
+            throw new FormatException("The value is not a valid security descriptor.");
         }
         var control = BinaryPrimitives.ReadUInt16LittleEndian(descriptor.AsSpan(2));
         var owner = Part(descriptor, 4, Sid);
@@ -106,7 +106,7 @@ public static class Dacl
         var total = 8 + aces.Sum(a => a.Length);
         if (total > ushort.MaxValue)
         {
-            throw new FormatException("The DACL has no room for more entries.");
+            throw new FormatException("The DACL is full and cannot hold more entries.");
         }
         var newDacl = new List<byte>(total);
         var size = (ushort) total;
@@ -171,7 +171,7 @@ public static class Dacl
             return null;
         }
         var n = length(sd, offset);
-        return offset + n > sd.Length ? throw new FormatException("The security descriptor is cut short.") : sd[offset..(offset + n)];
+        return offset + n > sd.Length ? throw new FormatException("The security descriptor is truncated.") : sd[offset..(offset + n)];
     }
 
     private static int Sid(byte[] b, int at) => 8 + (4 * b[at + 1]);
@@ -188,7 +188,7 @@ public static class Dacl
             var size = BinaryPrimitives.ReadUInt16LittleEndian(acl.AsSpan(at + 2));
             if (size < 4 || at + size > acl.Length)
             {
-                throw new FormatException("The DACL is cut short.");
+                throw new FormatException("The DACL is truncated.");
             }
             list.Add(acl[at..(at + size)]);
             at += size;

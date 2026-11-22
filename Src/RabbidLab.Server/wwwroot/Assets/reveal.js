@@ -21,8 +21,8 @@
     const eye = wrap.querySelector('.pw-eye');
     input.type = on ? 'text' : 'password';
     eye.innerHTML = icon(on);
-    eye.dataset.tip = on ? 'Hide' : 'Show';
-    eye.setAttribute('aria-label', on ? 'Hide the password' : 'Show the password');
+    eye.dataset.tip = on ? 'Hide password' : 'Show password';
+    eye.setAttribute('aria-label', on ? 'Hide password' : 'Show password');
     eye.setAttribute('aria-pressed', String(on));
   };
 

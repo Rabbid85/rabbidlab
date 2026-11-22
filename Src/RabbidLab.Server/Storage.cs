@@ -108,7 +108,7 @@ public static class TrueNas
             }
             var version = JsonBits.Text(info, "version") ?? "TrueNAS";
             return JsonBits.Result(s, found, (int) watch.ElapsedMilliseconds, $"Signed in to {(version.StartsWith("TrueNAS", StringComparison.OrdinalIgnoreCase) ? version : $"TrueNAS {version}")}",
-                $"{JsonBits.Text(info, "hostname")} · {pools.Count} pool{(pools.Count == 1 ? "" : "s")} · with the API key", device.Offer);
+                $"{JsonBits.Text(info, "hostname")} · {pools.Count} pool{(pools.Count == 1 ? "" : "s")} · using the API key", device.Offer);
         }
         catch (Exception e) when (e is HttpRequestException or IOException or JsonException && device.Said(e) is not null)
         {
@@ -170,8 +170,8 @@ public static class Synology
                 return new Probe(false, Note: JsonBits.Number(auth, "error", "code") switch
                 {
                     400 or 401 => "Sign-in failed: check the username and password",
-                    402 => "That account isn't allowed to use DSM",
-                    403 or 404 or 406 => "That account has 2-step verification on. Use one without it.",
+                    402 => "The account is not allowed to use DSM",
+                    403 or 404 or 406 => "The account has 2-step verification enabled. Use an account without it.",
                     407 => "DSM has blocked this server's IP address",
                     var code => $"DSM refused the sign-in (error {code})",
                 }, Pin: device.Offer);
@@ -182,7 +182,7 @@ public static class Synology
                 var storage = await JsonBits.Get(device.Http, $"{root}/webapi/entry.cgi?api=SYNO.Storage.CGI.Storage&version=1&method=load_info&_sid={Uri.EscapeDataString(sid)}", stop);
                 if (storage.TryGetProperty("success", out var ok) && ok.ValueKind == JsonValueKind.False)
                 {
-                    return new Probe(false, Note: "DSM didn't give the storage details: the account has to be in the administrators group", Pin: device.Offer);
+                    return new Probe(false, Note: "DSM did not return storage details. The account must be in the administrators group", Pin: device.Offer);
                 }
                 var volumes = JsonBits.Items(storage, "data", "volumes").ToList();
                 var disks = JsonBits.Items(storage, "data", "disks").ToList();

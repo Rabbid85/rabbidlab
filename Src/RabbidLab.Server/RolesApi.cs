@@ -65,7 +65,7 @@ public static class RolesApi
             {
                 return Results.BadRequest(new { error = problem });
             }
-            log.Record(context, "access", "role.add", $"Made the role {role.Name}");
+            log.Record(context, "access", "role.add", $"Created the role {role.Name}");
             return Results.Ok(new { id = role.Id });
         });
 
@@ -107,7 +107,7 @@ public static class RolesApi
 
         // MFA is required for everyone since 1.1.296, so there's no per-role switch any more; a page from before gets told so.
         app.MapPost("/api/roles/{id}/mfa", (string id, HttpContext context) =>
-            Access.RefuseUnless(context, Permissions.AccessRoles) ?? Results.BadRequest(new { error = "MFA is required for everyone, so roles no longer have their own switch." }));
+            Access.RefuseUnless(context, Permissions.AccessRoles) ?? Results.BadRequest(new { error = "MFA is required for everyone. Roles no longer have their own MFA setting." }));
 
         app.MapPost("/api/roles/{id}/delete", (string id, HttpContext context, Roles roles, ActivityLog log) =>
         {
@@ -139,14 +139,14 @@ public static class RolesApi
             {
                 if (accounts.Directory is not { } d)
                 {
-                    return Results.BadRequest(new { error = "Active Directory isn't set up here, so add local accounts instead." });
+                    return Results.BadRequest(new { error = "Active Directory is not configured. Add local accounts instead." });
                 }
                 try
                 {
                     var found = await directory.Search(d.Domain, await finder.Host(d.Domain, d.Server, stop), name, stop);
                     if (found is not null && !found.Entries.Any(e => e.Kind == form.Kind && string.Equals(e.Name, name, StringComparison.OrdinalIgnoreCase)))
                     {
-                        return Results.BadRequest(new { error = $"There's no {(form.Kind == Member.Group ? "group" : "account")} called {name} in {d.Domain}." });
+                        return Results.BadRequest(new { error = $"The {(form.Kind == Member.Group ? "group" : "account")} {name} was not found in {d.Domain}." });
                     }
                 }
                 catch (DirectoryProblem)
@@ -156,13 +156,13 @@ public static class RolesApi
             }
             if (form.Kind == Member.Everyone && accounts.Directory is null)
             {
-                return Results.BadRequest(new { error = "Active Directory isn't set up here." });
+                return Results.BadRequest(new { error = "Active Directory is not configured." });
             }
             if (roles.AddMember(id, form.Kind, name, form.Display, Who.Of(context.User)) is { } problem)
             {
                 return Results.BadRequest(new { error = problem });
             }
-            log.Record(context, "access", "role.member.add", $"Put {Said(form)} in {RoleName(roles, id)}");
+            log.Record(context, "access", "role.member.add", $"Added {Said(form)} to {RoleName(roles, id)}");
             return Results.Ok();
         });
 
@@ -176,7 +176,7 @@ public static class RolesApi
             {
                 return Results.BadRequest(new { error = problem });
             }
-            log.Record(context, "access", "role.member.remove", $"Took {Said(form)} out of {RoleName(roles, id)}");
+            log.Record(context, "access", "role.member.remove", $"Removed {Said(form)} from {RoleName(roles, id)}");
             return Results.Ok();
         });
 
@@ -195,14 +195,14 @@ public static class RolesApi
             {
                 if (text.Length == 0 || "everyone".StartsWith(text, StringComparison.OrdinalIgnoreCase))
                 {
-                    entries.Add(new { kind = Member.Everyone, name = "ad", display = "Everyone in Active Directory", description = $"Anyone who can sign in to {d.Domain} or a domain it trusts" });
+                    entries.Add(new { kind = Member.Everyone, name = "ad", display = "Everyone in Active Directory", description = $"Any account that can sign in to {d.Domain} or a trusted domain" });
                 }
                 try
                 {
                     var found = await directory.Search(d.Domain, await finder.Host(d.Domain, d.Server, stop), text, stop);
                     if (found is null)
                     {
-                        problem = $"This computer can't search {d.Domain}, so type the exact name of the group or account.";
+                        problem = $"This computer cannot search {d.Domain}. Enter the exact name of the group or account.";
                     }
                     else
                     {
@@ -231,12 +231,12 @@ public static class RolesApi
             var wanted = form.Roles ?? [];
             if (wanted.Count > 0 && !Access.Can(context, Permissions.AccessMembers))
             {
-                return Results.BadRequest(new { error = "Your roles don't let you put people in roles. Make the account without any." });
+                return Results.BadRequest(new { error = "Your roles do not allow you to assign roles. Create the account without roles." });
             }
             var managed = roles.Managed(by);
             if (wanted.FirstOrDefault(id => !managed.Contains(id)) is { } beyond)
             {
-                return Results.BadRequest(new { error = $"You can't put people in {roles.Find(beyond)?.Name ?? "that role"}." });
+                return Results.BadRequest(new { error = $"You cannot add members to {roles.Find(beyond)?.Name ?? "that role"}." });
             }
             if (accounts.Create(form.Username, form.Password) is { } problem)
             {
@@ -279,7 +279,7 @@ public static class RolesApi
             }
             if (Self(context, username))
             {
-                return Results.BadRequest(new { error = "You can't remove the account you're signed in with." });
+                return Results.BadRequest(new { error = "You cannot remove the account you are signed in with." });
             }
             if (roles.Forget(username, Who.Of(context.User), () => accounts.Remove(username)) is { } problem)
             {
@@ -319,11 +319,11 @@ public static class RolesApi
         var removed = before.Permissions.Except(after.Permissions).ToList();
         if (added.Count > 0)
         {
-            said.Add($"Now allows: {Names(added)}.");
+            said.Add($"Permissions added: {Names(added)}.");
         }
         if (removed.Count > 0)
         {
-            said.Add($"No longer allows: {Names(removed)}.");
+            said.Add($"Permissions removed: {Names(removed)}.");
         }
         if (before.Scope.Count != after.Scope.Count || before.Scope.Except(after.Scope, StringComparer.OrdinalIgnoreCase).Any())
         {
@@ -331,7 +331,7 @@ public static class RolesApi
         }
         if (before.Color != after.Color || before.About != after.About)
         {
-            said.Add("New look or description.");
+            said.Add("Colour or description changed.");
         }
         return said.Count > 0 ? string.Join(" ", said) : null;
     }

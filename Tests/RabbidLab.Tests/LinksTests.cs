@@ -133,7 +133,7 @@ public sealed class LinksTests : IDisposable
         Assert.Equal(10, first.GetProperty("next").GetInt32()); // and it's tried again sooner
         Assert.Equal((false, false), State(second, quiet));
         Assert.Equal((false, true), State(third, quiet)); // 30 seconds with no answer
-        Assert.Equal("it refused the connection", third.GetProperty("states").GetProperty(quiet).GetProperty("why").GetString()); // and why
+        Assert.Equal("connection refused", third.GetProperty("states").GetProperty(quiet).GetProperty("why").GetString()); // and why
         Assert.Equal((true, false), State(third, up));
         Assert.Equal(60, third.GetProperty("next").GetInt32());
         Assert.Equal(HttpStatusCode.BadRequest, unknown.StatusCode);
@@ -225,6 +225,24 @@ public sealed class LinksTests : IDisposable
 
         Assert.Equal(["Charlie", "Alpha", "Bravo", "Delta"], links.Select(l => l.GetProperty("name").GetString()));
         Assert.All(links, l => Assert.Equal("Lab", l.GetProperty("group").GetString()));
+    }
+
+    [Fact]
+    public void Every_change_to_the_links_moves_the_revision_on_so_open_pages_read_them_again()
+    {
+        var links = app.Services.GetRequiredService<Links>();
+        var seen = new List<int> { links.Revision };
+        var (link, _) = links.Save(null, new LinkForm("NAS", "https://nas", null, null, null, null), "test");
+        seen.Add(links.Revision);
+        links.AddGroup("Storage");
+        seen.Add(links.Revision);
+        links.Arrange("Storage", [link!.Id]);
+        seen.Add(links.Revision);
+        links.Delete(link.Id);
+        seen.Add(links.Revision);
+
+        Assert.Equal(seen.Order(), seen);
+        Assert.Equal(seen.Count, seen.Distinct().Count());
     }
 
     [Fact]

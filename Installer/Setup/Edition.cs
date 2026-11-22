@@ -39,7 +39,7 @@ namespace RabbidLab.Setup
         public const bool EarlierHttps = true;
 
         /// <summary>What to do once a new installation is done, on Setup's last page.</summary>
-        public const string FirstSignIn = "Open Rabbid Lab to finish setting it up: create an administrator account, or connect it to Active Directory.";
+        public const string FirstSignIn = "Open Rabbid Lab to complete the setup. Create an administrator account, or connect Rabbid Lab to Active Directory.";
 
         /// <summary>
         /// Rabbid Lab's repository on GitHub, whose releases are where updates come from, as Rabbid Lab itself reads them

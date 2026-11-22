@@ -358,7 +358,7 @@ public sealed class Sessions : ITicketStore, IDisposable
             return $"{Product.Title} client";
         }
         var browser = agent.Contains("Edg/") ? "Edge" : agent.Contains("OPR/") ? "Opera" : agent.Contains("Firefox/") ? "Firefox"
-            : agent.Contains("Chrome/") ? "Chrome" : agent.Contains("Safari/") ? "Safari" : "A browser";
+            : agent.Contains("Chrome/") ? "Chrome" : agent.Contains("Safari/") ? "Safari" : "Unknown browser";
         var system = agent.Contains("Windows") ? "Windows" : agent.Contains("Android") ? "Android" : agent.Contains("iPhone") || agent.Contains("iPad") ? "iOS"
             : agent.Contains("Mac OS X") ? "macOS" : agent.Contains("Linux") ? "Linux" : null;
         return system is null ? browser : $"{browser} on {system}";
@@ -417,7 +417,7 @@ public static class SessionsApi
             var tab = form.Id ?? "";
             if (tab.Length is 0 or > 64 || !tab.All(c => char.IsAsciiLetterOrDigit(c) || c == '-'))
             {
-                return Results.BadRequest(new { error = "That isn't a tab." });
+                return Results.BadRequest(new { error = "The tab ID is not valid." });
             }
             if (Sessions.Current(context) is { } id)
             {
@@ -435,7 +435,7 @@ public static class SessionsApi
             }
             if (sessions.Find(id) is not { } s)
             {
-                return Results.NotFound(new { error = "That session has already ended." });
+                return Results.NotFound(new { error = "The session has already ended." });
             }
             if (!Mine(s, context) && !Access.Can(context, Permissions.SessionsSignOut))
             {

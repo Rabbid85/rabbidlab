@@ -203,7 +203,7 @@ public sealed class PrintServers(IPrintServerProbe probe, TimeProvider? clock = 
             }
             if (p.Ip is { Length: > 0 } && !byIp.TryAdd(p.Ip, p))
             {
-                problems.Add($"Same address as {byIp[p.Ip].Name} on {byIp[p.Ip].Server}: likely one printer shared twice.");
+                problems.Add($"Same IP address as {byIp[p.Ip].Name} on {byIp[p.Ip].Server}. This is likely one printer shared twice.");
             }
             rows[Key(p.Server, p.Share, p.Name)] = new ListedPrinter(p.Name, p.Server, p.Share, p.Driver, p.Location, p.Description, p.Port, p.Published, Found: true, p.Ip, p.Status, p.Jobs, problems);
         }
@@ -219,11 +219,11 @@ public sealed class PrintServers(IPrintServerProbe probe, TimeProvider? clock = 
             // Its server answered and no longer shares it: Active Directory is out of date. A server that didn't answer says nothing.
             var stale = scan.Answered.Contains(Short(p.Server));
             rows[key] = new ListedPrinter(p.Name, p.Server, p.Share, p.Driver, p.Location, p.Description, p.Port, Published: true, Found: false, IpIn(p.Port), null, null,
-                stale ? [$"Listed in Active Directory, but {Short(p.Server)} doesn't share it any more. The listing is stale."] : []);
+                stale ? [$"Published in Active Directory, but {Short(p.Server)} no longer shares it. The directory listing is stale."] : []);
         }
         foreach (var (key, row) in rows.Where(r => r.Value is { Found: true, Published: false } && lists.Contains(r.Value.Server ?? "")).ToList())
         {
-            rows[key] = row with { Problems = [.. row.Problems, "Shared but not listed in Active Directory, so it doesn't show when people search for printers."] };
+            rows[key] = row with { Problems = [.. row.Problems, "Shared but not published in Active Directory, so it does not appear when users search for printers."] };
         }
         return [.. rows.Values.OrderBy(p => p.Name, StringComparer.OrdinalIgnoreCase).ThenBy(p => p.Server, StringComparer.OrdinalIgnoreCase)];
     }
@@ -246,7 +246,7 @@ public sealed class PrintServers(IPrintServerProbe probe, TimeProvider? clock = 
         (uint Bit, string Text)[] known =
         [
             (0x80, "Offline"), (0x2, "Error"), (0x8, "Paper jam"), (0x10, "Out of paper"), (0x40000, "Out of toner"), (0x400000, "Door open"),
-            (0x100000, "Needs attention"), (0x1, "Paused"), (0x1000, "Not available"), (0x40, "Paper problem"), (0x800, "Output bin full"),
+            (0x100000, "User intervention required"), (0x1, "Paused"), (0x1000, "Not available"), (0x40, "Paper problem"), (0x800, "Output bin full"),
             (0x200000, "Out of memory"), (0x20000, "Toner low"),
         ];
         return known.Where(k => (status & k.Bit) != 0).Select(k => k.Text).FirstOrDefault();
@@ -272,7 +272,7 @@ public sealed class WindowsPrintServerProbe : IPrintServerProbe
             {
                 if (!tcp.ConnectAsync(server.Host, Port).Wait(Knock))
                 {
-                    return new([], $"No answer on port {Port} (file and printer sharing).");
+                    return new([], $"No response on port {Port} (File and Printer Sharing).");
                 }
             }
         }
@@ -280,7 +280,7 @@ public sealed class WindowsPrintServerProbe : IPrintServerProbe
         {
             var inner = (e as AggregateException)?.GetBaseException() ?? e;
             return new([], inner is SocketException { SocketErrorCode: SocketError.HostNotFound or SocketError.NoData }
-                ? "Its name isn't in DNS." : $"No answer on port {Port} (file and printer sharing).");
+                ? "Host name not found in DNS." : $"No response on port {Port} (File and Printer Sharing).");
         }
         List<(string Name, string? Remark)> shares;
         try
@@ -289,7 +289,7 @@ public sealed class WindowsPrintServerProbe : IPrintServerProbe
         }
         catch (Win32Exception e)
         {
-            return new([], e.NativeErrorCode == 5 ? $"It didn't let {Environment.MachineName} list its shares (access denied)." : $"Couldn't list its shares: {e.Message}");
+            return new([], e.NativeErrorCode == 5 ? $"Access denied. {Environment.MachineName} cannot list the shares on this server." : $"Could not list shares: {e.Message}");
         }
         if (shares.Count == 0)
         {

@@ -185,11 +185,11 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
             var index = f.Roles.FindIndex(r => r.Id == id);
             if (index < 0)
             {
-                return "That role isn't there any more.";
+                return "The role no longer exists.";
             }
             if (!Manages(f, by, index))
             {
-                return $"Only someone above {f.Roles[index].Name} can change it.";
+                return $"Only admins in a role above {f.Roles[index].Name} can change this role.";
             }
             if (f.Roles[index].Mfa != on)
             {
@@ -243,7 +243,7 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
     {
         lock (gate)
         {
-            return Above(Fresh(), username, by) is { } role ? $"{username} is in {role.Name}. Only someone above {role.Name} can change that account." : null;
+            return Above(Fresh(), username, by) is { } role ? $"{username} has the {role.Name} role. Only admins in a role above {role.Name} can change this account." : null;
         }
     }
 
@@ -315,11 +315,11 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
             var f = Fresh();
             if (f.Roles.Count >= MostRoles)
             {
-                return (null, $"That's {MostRoles} roles already. Delete one first.");
+                return (null, $"The limit of {MostRoles} roles has been reached. Delete a role first.");
             }
             if (!Manages(f, by, f.Roles.Count - 1))
             {
-                return (null, "Your roles don't let you make roles.");
+                return (null, "Your roles do not allow you to create roles.");
             }
             var role = new Role { Id = Convert.ToHexString(RandomNumberGenerator.GetBytes(5)).ToLowerInvariant(), Color = "#6FA8FF" };
             if (Describe(f, role, name, about, color) is { } problem)
@@ -349,20 +349,20 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
             var index = f.Roles.FindIndex(r => r.Id == id);
             if (index < 0)
             {
-                return "That role isn't there any more.";
+                return "The role no longer exists.";
             }
             var role = f.Roles[index];
             if (role.Id == Admin)
             {
-                return "Administrator always allows everything, so it can't be changed. Only who's in it can.";
+                return "The Administrator role always has every permission and cannot be changed. Only its members can be changed.";
             }
             if (!Manages(f, by, index))
             {
-                return $"Only someone above {role.Name} can change it.";
+                return $"Only admins in a role above {role.Name} can change this role.";
             }
             if (role.Id == User && name is not null && name.Trim() != role.Name)
             {
-                return "User keeps its name: it's everyone who signs in.";
+                return "The User role cannot be renamed. It applies to everyone who signs in.";
             }
             var copy = new Role { Id = role.Id, Name = role.Name, About = role.About, Color = role.Color };
             if (Describe(f, copy, name ?? role.Name, about ?? role.About, color ?? role.Color) is { } problem)
@@ -374,14 +374,14 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
             {
                 if (permissions.FirstOrDefault(p => !Permissions.All.Contains(p)) is { } unknown)
                 {
-                    return $"There's no permission called {unknown}.";
+                    return $"The permission {unknown} does not exist.";
                 }
                 // Nobody gives or takes away what they can't do themselves.
                 var mine = Allowed(f, by);
                 var changed = permissions.Except(role.Permissions).Concat(role.Permissions.Except(permissions));
                 if (changed.FirstOrDefault(p => !mine.Contains(p)) is { } beyond)
                 {
-                    return $"You can only change what your own roles allow, and they don't allow {PermissionName(beyond).ToLowerInvariant()}.";
+                    return $"You can only grant permissions your own roles have. Your roles do not allow you to {PermissionName(beyond).ToLowerInvariant()}.";
                 }
                 allows = [.. permissions.Distinct().Order()];
             }
@@ -391,18 +391,18 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
                 places = Tidy(scope);
                 if (places.FirstOrDefault(d => !IsDn(d)) is { } not)
                 {
-                    return $"{not} isn't an OU in Active Directory.";
+                    return $"{not} is not an OU in Active Directory.";
                 }
                 if (places.Count > MostPlaces)
                 {
-                    return $"A role's scope is {MostPlaces} OUs at most.";
+                    return $"A role's scope can include up to {MostPlaces} OUs.";
                 }
             }
             // Nor a wider scope: what the role does in Active Directory stays inside what their own roles cover.
             var moved = places.Count != role.Scope.Count || places.Except(role.Scope, StringComparer.OrdinalIgnoreCase).Any();
             if (allows.Where(Permissions.Scoped.Contains).Any(p => (moved || !role.Permissions.Contains(p)) && !Covers(Reach(f, by, p), places)))
             {
-                return "This role's scope can only cover what your own roles cover in Active Directory.";
+                return "This role's scope cannot go beyond the scope of your own roles in Active Directory.";
             }
             role.Permissions = allows;
             role.Scope = places;
@@ -422,15 +422,15 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
             var index = f.Roles.FindIndex(r => r.Id == id);
             if (index < 0)
             {
-                return "That role isn't there any more.";
+                return "The role no longer exists.";
             }
             if (id is Admin or User)
             {
-                return $"{f.Roles[index].Name} is built in, so it can't be deleted.";
+                return $"{f.Roles[index].Name} is a built-in role and cannot be deleted.";
             }
             if (!Manages(f, by, index))
             {
-                return $"Only someone above {f.Roles[index].Name} can delete it.";
+                return $"Only admins in a role above {f.Roles[index].Name} can delete this role.";
             }
             f.Roles.RemoveAt(index);
             Save(f);
@@ -447,7 +447,7 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
             var middle = f.Roles.Skip(1).Take(f.Roles.Count - 2).ToList();
             if (ids.Count != middle.Count || !ids.Order().SequenceEqual(middle.Select(r => r.Id).Order()))
             {
-                return "The roles changed since this page loaded. Try again.";
+                return "The roles have changed since this page loaded. Try again.";
             }
             List<Role> order = [f.Roles[0], .. ids.Select(id => middle.First(r => r.Id == id)), f.Roles[^1]];
             // Roles at or above someone's own highest one stay where they are, and nothing moves above them.
@@ -455,7 +455,7 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
             {
                 if (!Manages(f, by, i) && order.IndexOf(f.Roles[i]) != i)
                 {
-                    return $"Only someone above {f.Roles[i].Name} can move it, or move a role above it.";
+                    return $"Only admins in a role above {f.Roles[i].Name} can move this role or move a role above it.";
                 }
             }
             f.Roles = order;
@@ -472,26 +472,26 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
             var index = f.Roles.FindIndex(r => r.Id == id);
             if (index < 0)
             {
-                return "That role isn't there any more.";
+                return "The role no longer exists.";
             }
             var role = f.Roles[index];
             if (!Manages(f, by, index))
             {
-                return $"Only someone above {role.Name} can add people to it.";
+                return $"Only admins in a role above {role.Name} can add members to this role.";
             }
             var n = kind == Member.Everyone ? "ad" : name?.Trim() ?? "";
             if (kind is not (Member.Group or Member.Person or Member.Local or Member.Everyone) || n.Length is 0 or > 256)
             {
-                return "Pick a group, a person or a local account to add.";
+                return "Select a group, user or local account to add.";
             }
             if (kind == Member.Local && accounts.Find(n) is null)
             {
-                return $"There's no local account called {n}.";
+                return $"The local account {n} does not exist.";
             }
             if (role.Members.Any(m => m.Kind == kind && Same(m.Name, n)))
             {
                 var words = Words(kind, n);
-                return $"{(kind == Member.Person ? words : char.ToUpperInvariant(words[0]) + words[1..])} is already in {role.Name}.";
+                return $"{(kind == Member.Person ? words : char.ToUpperInvariant(words[0]) + words[1..])} is already a member of {role.Name}.";
             }
             role.Members.Add(new Member { Kind = kind, Name = n, Display = display?.Trim() is { Length: > 0 } d ? d : null, Added = DateTime.UtcNow, AddedBy = by.Username });
             Save(f);
@@ -507,21 +507,21 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
             var index = f.Roles.FindIndex(r => r.Id == id);
             if (index < 0)
             {
-                return "That role isn't there any more.";
+                return "The role no longer exists.";
             }
             var role = f.Roles[index];
             if (!Manages(f, by, index))
             {
-                return $"Only someone above {role.Name} can take people out of it.";
+                return $"Only admins in a role above {role.Name} can remove members from this role.";
             }
             var member = role.Members.FirstOrDefault(m => m.Kind == kind && Same(m.Name, name));
             if (member is null)
             {
-                return "They're not in that role any more.";
+                return "This member is no longer in the role.";
             }
             if (role.Id == Admin && role.Members.Count == 1)
             {
-                return "Administrator needs someone in it. Add someone else first.";
+                return "The Administrator role must have at least one member. Add another member first.";
             }
             role.Members.Remove(member);
             Save(f);
@@ -537,12 +537,12 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
             var f = Fresh();
             if (Above(f, username, by) is { } above)
             {
-                return $"{username} is in {above.Name}. Only someone above {above.Name} can remove that account.";
+                return $"{username} has the {above.Name} role. Only admins in a role above {above.Name} can remove this account.";
             }
             var admins = f.Roles[0].Members;
             if (admins.Count == 1 && admins[0].Kind == Member.Local && Same(admins[0].Name, username))
             {
-                return $"{username} is the only one in Administrator. Add someone else to it first.";
+                return $"{username} is the only member of the Administrator role. Add another member first.";
             }
             if (remove() is { } problem)
             {
@@ -637,21 +637,21 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
         var n = name?.Trim() ?? "";
         if (n.Length is 0 or > 40)
         {
-            return "Give the role a name of up to 40 characters.";
+            return "Enter a role name of up to 40 characters.";
         }
         if (f.Roles.Any(r => r.Id != role.Id && Same(r.Name, n)))
         {
-            return $"There's already a role called {n}.";
+            return $"A role named {n} already exists.";
         }
         var a = about?.Trim() ?? "";
         if (a.Length > 160)
         {
-            return "Keep what it's for to 160 characters.";
+            return "The description can be up to 160 characters.";
         }
         var c = color?.Trim() ?? role.Color;
         if (!Colour().IsMatch(c))
         {
-            return "Pick one of the colours.";
+            return "Select one of the colours.";
         }
         role.Name = n;
         role.About = a;
@@ -664,8 +664,8 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
         Version = Current,
         Roles =
         [
-            new Role { Id = Admin, Name = "Administrator", About = "Everything, including who gets in. Always at the top.", Color = "#FF6A45" },
-            new Role { Id = User, Name = "User", About = "Everyone who signs in has it. Always at the bottom.", Color = "#8A8FA8", Permissions = [.. Permissions.Basic] },
+            new Role { Id = Admin, Name = "Administrator", About = "All permissions, including access management. Always the highest role.", Color = "#FF6A45" },
+            new Role { Id = User, Name = "User", About = "Assigned to everyone who signs in. Always the lowest role.", Color = "#8A8FA8", Permissions = [.. Permissions.Basic] },
         ],
     };
 

@@ -71,15 +71,15 @@ public sealed partial class Notes(DataFolder folder, TimeProvider clock)
     {
         if (string.IsNullOrWhiteSpace(Regex.Replace(text ?? "", "<[^>]*>|&nbsp;", "")))
         {
-            return "Write something first.";
+            return "Enter the note text.";
         }
         if (text!.Length > MaxText)
         {
-            return $"A note is {MaxText:N0} characters at most.";
+            return $"Notes can be up to {MaxText:N0} characters.";
         }
         if (text.Any(c => char.IsControl(c) && c is not '\n' and not '\r' and not '\t'))
         {
-            return "The note has characters it can't keep.";
+            return "The note contains characters that are not allowed.";
         }
         foreach (Match m in Tag().Matches(text))
         {
@@ -88,11 +88,11 @@ public sealed partial class Notes(DataFolder folder, TimeProvider clock)
             var ok = Tags.Contains(name) && (rest.Length == 0 || (name == "a" && m.Groups[1].Value.Length == 0 && Href().IsMatch(rest)));
             if (!ok)
             {
-                return "The note has formatting it can't keep.";
+                return "The note contains formatting that is not supported.";
             }
         }
         // Outside the tags, < and > only as &lt; and &gt;.
-        return Tag().Replace(text, "").IndexOfAny(['<', '>']) >= 0 ? "The note has formatting it can't keep." : null;
+        return Tag().Replace(text, "").IndexOfAny(['<', '>']) >= 0 ? "The note contains formatting that is not supported." : null;
     }
 
     public IReadOnlyList<Note> On(string on)
@@ -124,7 +124,7 @@ public sealed partial class Notes(DataFolder folder, TimeProvider clock)
     {
         if (!Fits(on))
         {
-            return (null, "That isn't something notes can go on.");
+            return (null, "Notes are not supported on this item.");
         }
         if (BadText(text) is { } bad)
         {
@@ -135,11 +135,11 @@ public sealed partial class Notes(DataFolder folder, TimeProvider clock)
             var f = file.Read();
             if (f.Notes.Count(n => n.On == on) >= MaxOnOne)
             {
-                return (null, $"It has {MaxOnOne} notes already. Delete some first.");
+                return (null, $"This item has the maximum of {MaxOnOne} notes. Delete some first.");
             }
             if (f.Notes.Count >= MaxAll)
             {
-                return (null, $"{MaxAll:N0} notes are kept at most. Delete some first.");
+                return (null, $"The maximum of {MaxAll:N0} notes has been reached. Delete some first.");
             }
             var note = new Note { Id = Convert.ToHexString(RandomNumberGenerator.GetBytes(8)).ToLowerInvariant(), On = on, Text = text, By = by, At = clock.GetUtcNow().UtcDateTime };
             f.Notes.Add(note);
@@ -159,7 +159,7 @@ public sealed partial class Notes(DataFolder folder, TimeProvider clock)
             var f = file.Read();
             if (f.Notes.FirstOrDefault(n => n.Id == id) is not { } note)
             {
-                return (null, "That note isn't here any more.");
+                return (null, "Note not found. It may have been deleted.");
             }
             (note.Text, note.Changed) = (text, clock.GetUtcNow().UtcDateTime);
             file.Save(f);
@@ -193,7 +193,7 @@ public static class NotesApi
         {
             if (!Notes.Fits(on))
             {
-                return Results.BadRequest(new { error = "That isn't something notes can go on." });
+                return Results.BadRequest(new { error = "Notes are not supported on this item." });
             }
             // A read: the role decides, as for every list (the header is only for changes).
             var (see, tidy) = Notes.PermissionsFor(on!);
@@ -211,7 +211,7 @@ public static class NotesApi
         {
             if (kind is not ("seat" or "ad" or "gpo"))
             {
-                return Results.BadRequest(new { error = "Ask for seat, ad or gpo." });
+                return Results.BadRequest(new { error = "Specify seat, ad or gpo." });
             }
             return !Access.Can(context, Notes.PermissionsFor(kind + ":x").See) ? Access.NotAllowed() : Results.Ok(notes.Counts(kind + ":"));
         });
@@ -220,7 +220,7 @@ public static class NotesApi
         {
             if (!Notes.Fits(form.On))
             {
-                return Results.BadRequest(new { error = "That isn't something notes can go on." });
+                return Results.BadRequest(new { error = "Notes are not supported on this item." });
             }
             if (Access.RefuseUnless(context, Notes.PermissionsFor(form.On!).See) is { } refused)
             {
@@ -244,11 +244,11 @@ public static class NotesApi
             }
             if (notes.Find(id) is not { } was)
             {
-                return Results.NotFound(new { error = "That note isn't here any more." });
+                return Results.NotFound(new { error = "Note not found. It may have been deleted." });
             }
             if (!Access.Can(context, Notes.PermissionsFor(was.On).See) || !Same(was.By, ActivityLog.Who(context)))
             {
-                return Results.Json(new { error = "Only whoever wrote a note can change it." }, statusCode: StatusCodes.Status403Forbidden);
+                return Results.Json(new { error = "Only the author of a note can edit it." }, statusCode: StatusCodes.Status403Forbidden);
             }
             var (note, problem) = notes.Change(id, form.Text ?? "");
             if (note is null)
@@ -268,12 +268,12 @@ public static class NotesApi
             }
             if (notes.Find(id) is not { } was)
             {
-                return Results.NotFound(new { error = "That note isn't here any more." });
+                return Results.NotFound(new { error = "Note not found. It may have been deleted." });
             }
             var (see, tidy) = Notes.PermissionsFor(was.On);
             if (!Access.Can(context, see) || !(Same(was.By, ActivityLog.Who(context)) || Access.Can(context, tidy)))
             {
-                return Results.Json(new { error = "Only whoever wrote a note, or someone who can change it, can delete it." }, statusCode: StatusCodes.Status403Forbidden);
+                return Results.Json(new { error = "Only the author, or a user with permission to edit the item, can delete a note." }, statusCode: StatusCodes.Status403Forbidden);
             }
             notes.Delete(id);
             log.Record(context, Notes.Area(was.On), "note.delete", $"Deleted {(Same(was.By, ActivityLog.Who(context)) ? "their" : $"{was.By}'s")} note on {Named(form?.Name, was.On)}");

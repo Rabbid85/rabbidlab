@@ -29,11 +29,11 @@
       <Directory Id="INSTALLFOLDER" Name="Rabbid Lab Client">
         <Component Id="Program">
           <File Id="ClientExe" Source="$(ClientDir)\RabbidLab-Client.exe" KeyPath="yes">
-            <Shortcut Id="StartMenu" Directory="ProgramMenuFolder" Name="Rabbid Lab Client" Description="Shows whether this computer is connected to Rabbid Lab."
+            <Shortcut Id="StartMenu" Directory="ProgramMenuFolder" Name="Rabbid Lab Client" Description="Shows this computer's Rabbid Lab connection status."
                       WorkingDirectory="INSTALLFOLDER" Advertise="yes" Icon="rabbidlab.ico" />
           </File>
           <File Id="ClientConfig" Source="$(ClientDir)\RabbidLab-Client.exe.config" />
-          <ServiceInstall Name="RabbidLabClient" DisplayName="Rabbid Lab Client" Description="Connects this computer to its Rabbid Lab server."
+          <ServiceInstall Name="RabbidLabClient" DisplayName="Rabbid Lab Client" Description="Connects this computer to the Rabbid Lab server for management."
                           Type="ownProcess" Start="auto" ErrorControl="normal" Account="LocalSystem" Arguments="--service" Vital="yes" />
           <ServiceControl Id="ClientService" Name="RabbidLabClient" Start="install" Stop="both" Remove="uninstall" Wait="yes" />
           <!-- The tray icon for everyone who signs in. -->
@@ -85,7 +85,7 @@
     <Property Id="REMOVALALLOWED">
       <RegistrySearch Id="RemovalAllowed" Root="HKLM" Key="SOFTWARE\Rabbid Lab\Client" Name="RemovalAllowed" Type="raw" Bitness="always64" />
     </Property>
-    <CustomAction Id="RemovalLocked" Error="The Rabbid Lab client is locked on this computer. To uninstall it, open Rabbid Lab Client from the Start menu, click Uninstall and enter this computer's uninstall code. Or have an admin allow it in Rabbid Lab: go to Devices, click Uninstall next to this computer, and choose Allow." />
+    <CustomAction Id="RemovalLocked" Error="Uninstall of the Rabbid Lab client is locked on this computer. To uninstall the client, open Rabbid Lab Client from the Start menu, click Uninstall, and enter this computer's uninstall code. Or ask an admin to allow the uninstall in Rabbid Lab: go to Devices, click Uninstall next to this computer, and then click Allow." />
     <!-- The tray icon straight away for whoever installed it by hand; a quiet install shows it at the next sign-in. -->
     <CustomAction Id="StartTray" FileRef="ClientExe" ExeCommand="--tray" Return="asyncNoWait" Impersonate="yes" />
     <!-- Defender's attack surface reduction rules block new, unsigned programs: this one file is let past them, as SYSTEM

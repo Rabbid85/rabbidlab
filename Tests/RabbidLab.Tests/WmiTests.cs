@@ -120,12 +120,12 @@ public sealed class WmiTests : IDisposable
     {
         var admin = await Admin();
         var (id, client) = await Computer("SHOP-PC");
-        var served = await Listening(id, client, o => new { id = o.GetProperty("id").GetString(), ok = false, error = "SHOP-PC has no class like that in root\\cimv2." });
+        var served = await Listening(id, client, o => new { id = o.GetProperty("id").GetString(), ok = false, error = "Class not found in root\\cimv2." });
         var r = await admin.PostAsJsonAsync("/api/devices/wmi", new { clients = new[] { id }, query = "SELECT * FROM Win32_Nothing" });
         await served;
         var one = (await Json(r)).GetProperty("results")[0];
         Assert.False(one.GetProperty("ok").GetBoolean());
-        Assert.Equal("SHOP-PC has no class like that in root\\cimv2.", one.GetProperty("error").GetString());
+        Assert.Equal("Class not found in root\\cimv2.", one.GetProperty("error").GetString());
     }
 
     [Fact]

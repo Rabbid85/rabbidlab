@@ -25,13 +25,13 @@
     const now = articles.find((a) => a.key === key) || articles[0];
     $('wiki-toc').innerHTML = groups.map((g) => `<p class="side-label">${esc(g)}</p>`
       + shown.filter((a) => a.group === g).map((a) => `<a href="#wiki/${a.key}"${a === now ? ' aria-current="page"' : ''}><span class="nm">${esc(a.title)}</span></a>`).join('')).join('')
-      || '<p class="side-sub">Nothing mentions that.</p>';
+      || '<p class="side-sub">No articles found.</p>';
     const i = articles.indexOf(now);
     $('wiki-body').innerHTML = `<p class="wiki-group">${esc(now.group)}</p><h2>${esc(now.title)}</h2>${now.html}`;
     $('wiki-body').querySelectorAll('[data-app]').forEach((e) => { e.textContent = R.app(); }); // the app's name, never the lab's
     const prev = articles[i - 1];
     const next = articles[i + 1];
-    $('wiki-next').innerHTML = (prev ? `<a href="#wiki/${prev.key}" class="prev"><small>Before</small><b>${esc(prev.title)}</b></a>` : '<span></span>')
+    $('wiki-next').innerHTML = (prev ? `<a href="#wiki/${prev.key}" class="prev"><small>Previous</small><b>${esc(prev.title)}</b></a>` : '<span></span>')
       + (next ? `<a href="#wiki/${next.key}" class="next"><small>Next</small><b>${esc(next.title)}</b></a>` : '');
   };
 
@@ -45,8 +45,8 @@
     try {
       await load();
     } catch {
-      $('wiki-toc').innerHTML = '<p class="side-sub">The articles couldn\'t be read.</p>';
-      $('wiki-body').innerHTML = '<p class="hint problem">The wiki couldn\'t be read. Open it again to retry.</p>';
+      $('wiki-toc').innerHTML = '<p class="side-sub">Could not load the articles.</p>';
+      $('wiki-body').innerHTML = '<p class="hint problem">Could not load the wiki. Open it again to retry.</p>';
       return;
     }
     draw(rest[0]);

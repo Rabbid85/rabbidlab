@@ -196,15 +196,15 @@ public sealed class Alerts(DataFolder folder, Channels channels, TimeProvider cl
         var name = form.Name?.Trim() ?? "";
         if (name.Length == 0)
         {
-            return (null, "Give it a name, such as Critical, Normal or Office hours. It's what sensors and links pick it by.");
+            return (null, "Enter a name, such as Critical, Normal or Office hours. Sensors and links select the alert type by this name.");
         }
         if (name.Length > 40)
         {
-            return (null, "Keep the name to 40 characters.");
+            return (null, "Names can be up to 40 characters.");
         }
         if (form.After is not (0 or 1 or 5 or 10 or 30 or 60) || form.Again is not (0 or 60 or 360 or 1440))
         {
-            return (null, "Pick one of the times offered.");
+            return (null, "Select one of the listed times.");
         }
         lock (file.Gate)
         {
@@ -212,16 +212,16 @@ public sealed class Alerts(DataFolder folder, Channels channels, TimeProvider cl
             EnsureTypes(f);
             if (f.Types.Any(t => t.Id != id && string.Equals(t.Name, name, StringComparison.OrdinalIgnoreCase)))
             {
-                return (null, $"There's an alert type called {name} already. Give this one another name.");
+                return (null, $"An alert type named {name} already exists. Enter a different name.");
             }
             var t = id is null ? new AlertType { Id = NewId() } : f.Types.FirstOrDefault(x => x.Id == id);
             if (t is null)
             {
-                return (null, "That alert type isn't here any more.");
+                return (null, "Alert type not found. It may have been deleted.");
             }
             if (id is null && f.Types.Count >= 20)
             {
-                return (null, "That's 20 alert types, which is as many as there's room for.");
+                return (null, $"{Product.Title} supports up to 20 alert types.");
             }
             (t.Name, t.After, t.Again, t.Back) = (name, form.After.Value, form.Again.Value, form.Back ?? true);
             t.To = [.. (form.To ?? []).Where(channels.Known).Distinct()];
@@ -247,11 +247,11 @@ public sealed class Alerts(DataFolder folder, Channels channels, TimeProvider cl
             EnsureTypes(f);
             if (f.Types.All(t => t.Id != id))
             {
-                return (null, "That alert type isn't here any more.");
+                return (null, "Alert type not found. It may have been deleted.");
             }
             if (f.Types.Count == 1)
             {
-                return (null, "It's the only alert type. Make another one first.");
+                return (null, "You cannot delete the only alert type. Create another one first.");
             }
             f.Types.RemoveAll(t => t.Id == id);
             if (f.StartType == id || f.Types.All(t => t.Id != f.StartType))
@@ -323,7 +323,7 @@ public sealed class Alerts(DataFolder folder, Channels channels, TimeProvider cl
     {
         if (!Keys.Contains(key))
         {
-            return "That isn't one of the alert rules.";
+            return "Unknown alert rule.";
         }
         var r = Rule(key);
         r.On = form.On ?? r.On;
@@ -331,7 +331,7 @@ public sealed class Alerts(DataFolder folder, Channels channels, TimeProvider cl
         {
             if (form.After is not (null or 0 or 1 or 5 or 10 or 30 or 60) || form.Again is not (null or 0 or 60 or 360 or 1440))
             {
-                return "Pick one of the times offered.";
+                return "Select one of the listed times.";
             }
             r.After = form.After ?? r.After;
             r.Again = form.Again ?? r.Again;
@@ -343,7 +343,7 @@ public sealed class Alerts(DataFolder folder, Channels channels, TimeProvider cl
             int[] agains = key == "sensor.cert" ? [0, 1440, 10080] : [0, 60, 360, 1440];
             if (form.Limit is { } limit && key != "sensor.hardware" && !limits.Contains(limit) || form.Again is { } again && !agains.Contains(again))
             {
-                return "Pick one of the times offered.";
+                return "Select one of the listed times.";
             }
             r.Limit = key == "sensor.hardware" ? 0 : form.Limit ?? r.Limit;
             r.Again = form.Again ?? r.Again;
@@ -352,7 +352,7 @@ public sealed class Alerts(DataFolder folder, Channels channels, TimeProvider cl
         {
             if (form.Limit is not (null or 5 or 15 or 30 or 60))
             {
-                return "Pick one of the times offered.";
+                return "Select one of the listed times.";
             }
             r.Limit = form.Limit ?? r.Limit;
             r.Back = form.Back ?? r.Back;
@@ -361,7 +361,7 @@ public sealed class Alerts(DataFolder folder, Channels channels, TimeProvider cl
         {
             if (form.Limit is not (null or 3 or 5 or 10))
             {
-                return "Pick one of the numbers offered.";
+                return "Select one of the listed numbers.";
             }
             r.Limit = form.Limit ?? r.Limit;
         }
@@ -415,7 +415,7 @@ public sealed class Alerts(DataFolder folder, Channels channels, TimeProvider cl
         static bool Time(string? t) => t is not null && TimeOnly.TryParseExact(t, "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var at) && at.Minute % 30 == 0;
         if (form.From is not null && !Time(form.From) || form.To is not null && !Time(form.To))
         {
-            return "Pick one of the times offered.";
+            return "Select one of the listed times.";
         }
         lock (file.Gate)
         {
@@ -624,15 +624,15 @@ public sealed class AlertWatch(Alerts alerts, Clients clients, RabbidLab.Updater
                 }
                 quietSeats[c.Id] = Now;
                 await alerts.Send("seat.offline", new MailNote(title, "down", [("Computer", c.Computer), ("Last checked in", c.LastSeen.ToString("u"))],
-                    new AlertCard("down", title, "Its client last checked in at {when}.",
-                        [new("🔴 What happened", [$"Quiet for {Math.Round((Now - c.LastSeen).TotalMinutes)} minutes", c.User is { } who ? $"{who} was signed in" : "Nobody was signed in"]),
+                    new AlertCard("down", title, "The client last checked in at {when}.",
+                        [new("🔴 What happened", [$"No check-in for {Math.Round((Now - c.LastSeen).TotalMinutes)} minutes", c.User is { } who ? $"Signed-in user: {who}" : "No user signed in"]),
                             new("📍 Where", [c.Address ?? "Address unknown", c.Os ?? "Windows"])], Product.Lab, c.LastSeen)), rule.To, stop);
             }
             else if (!quiet && quietSeats.Remove(c.Id) && rule.Back)
             {
                 var title = $"{c.Computer} is checking in again";
                 await alerts.Send("seat.offline", new MailNote(title, "up", [("Computer", c.Computer)],
-                    new AlertCard("up", title, "Its client checked in at {when}.", [new("🟢 Now", ["Checking in", c.Address ?? "Address unknown"])], Product.Lab, c.LastSeen)), rule.To, stop);
+                    new AlertCard("up", title, "The client checked in again at {when}.", [new("🟢 Now", ["Online", c.Address ?? "Address unknown"])], Product.Lab, c.LastSeen)), rule.To, stop);
             }
         }
     }
@@ -643,22 +643,22 @@ public sealed class AlertWatch(Alerts alerts, Clients clients, RabbidLab.Updater
         if (s.Status is RabbidLab.Updater.UpdateStatus.Available or RabbidLab.Updater.UpdateStatus.Waiting && s.Available is { } ready
             && alerts.Rule("update.ready") is { On: true, To.Count: > 0 } r && alerts.NotTold("ready", ready))
         {
-            var title = $"{Product.Title} {ready} is ready";
+            var title = $"{Product.Title} {ready} is available";
             if (!Hold("update.ready", "ready:" + ready, title))
             {
                 alerts.Told("ready", ready);
-                await alerts.Send("update.ready", new MailNote(title, "note", [("Now", s.Version), ("Ready", ready)],
-                    new AlertCard("up", title, $"You have {s.Version}. Install it from Settings, Updates.", [new("🆕 What's new", [$"Version {ready}", "What's new in the console has the notes"])], Product.Lab)), r.To, stop);
+                await alerts.Send("update.ready", new MailNote(title, "note", [("Installed version", s.Version), ("Available version", ready)],
+                    new AlertCard("up", title, $"Installed version: {s.Version}. Install the update in Settings > Updates.", [new("🆕 What's new", [$"Version {ready}", "Release notes are under What's new in the console"])], Product.Lab)), r.To, stop);
             }
         }
         if (s.Status == RabbidLab.Updater.UpdateStatus.Failed && alerts.Rule("update.failed") is { On: true, To.Count: > 0 } f && alerts.NotTold("failed", $"{s.Available} {s.Message}"))
         {
-            var title = $"{Product.Title} {s.Available} didn't install";
+            var title = $"{Product.Title} {s.Available} failed to install";
             if (!Hold("update.failed", "failed:" + s.Available, title))
             {
                 alerts.Told("failed", $"{s.Available} {s.Message}");
-                await alerts.Send("update.failed", new MailNote(title, "down", [("Still on", s.Version), ("What it said", s.Message)],
-                    new AlertCard("down", title, $"It's still on {s.Version}.", [new("🔴 What it said", [s.Message])], Product.Lab)), f.To, stop);
+                await alerts.Send("update.failed", new MailNote(title, "down", [("Installed version", s.Version), ("Error", s.Message)],
+                    new AlertCard("down", title, $"Version {s.Version} is still installed.", [new("🔴 Error", [s.Message])], Product.Lab)), f.To, stop);
             }
         }
     }
@@ -683,11 +683,11 @@ public sealed class AlertWatch(Alerts alerts, Clients clients, RabbidLab.Updater
         // An account that locked is told about at once, under the same rule: it stays locked until someone unlocks it.
         while (locked.TryDequeue(out var l))
         {
-            var title = $"{l.Who} is locked after too many wrong passwords";
+            var title = $"{l.Who} is locked out after too many failed sign-ins";
             if (!Hold("signin.failing", "locked:" + l.Who, title))
             {
-                await alerts.Send("signin.failing", new MailNote(title, "down", [("Account", l.Who), ("Last from", l.From ?? "an unknown address")],
-                    new AlertCard("down", title, "Unlock it in Settings, Sign-in.", [new("🔐 Last from", [l.From ?? "an unknown address"])], Product.Lab, Now)), rule.To, stop);
+                await alerts.Send("signin.failing", new MailNote(title, "down", [("Account", l.Who), ("Last attempt from", l.From ?? "Unknown address")],
+                    new AlertCard("down", title, "Unlock the account in Settings > Sign-in.", [new("🔐 Last attempt from", [l.From ?? "Unknown address"])], Product.Lab, Now)), rule.To, stop);
             }
         }
         foreach (var group in recent.GroupBy(f => f.Who, StringComparer.OrdinalIgnoreCase).Where(g => g.Count() >= rule.Limit && !toldSignIns.ContainsKey(g.Key)).ToList())
@@ -698,9 +698,9 @@ public sealed class AlertWatch(Alerts alerts, Clients clients, RabbidLab.Updater
                 continue;
             }
             toldSignIns[group.Key] = Now;
-            var from = group.Select(f => f.From ?? "an unknown address").Distinct().ToList();
+            var from = group.Select(f => f.From ?? "Unknown address").Distinct().ToList();
             await alerts.Send("signin.failing", new MailNote(title, "warn", [("Account", group.Key), ("From", string.Join(", ", from))],
-                new AlertCard("warn", title, "In the 10 minutes up to {when}.", [new("🔐 From", [.. from.Take(8)])], Product.Lab, Now)), rule.To, stop);
+                new AlertCard("warn", title, "In the 10 minutes before {when}.", [new("🔐 From", [.. from.Take(8)])], Product.Lab, Now)), rule.To, stop);
         }
     }
 }
@@ -771,7 +771,7 @@ public static class AlertsApi
                 return Results.BadRequest(new { error = problem });
             }
             var moved = sensors.Retype(id, movedTo);
-            log.Record(context, "sensors", "alerts.type.delete", $"Deleted the alert type {name}; {moved} moved to {alerts.Type(movedTo)?.Name}");
+            log.Record(context, "sensors", "alerts.type.delete", $"Deleted the alert type {name}. Moved {moved} sensor{(moved == 1 ? "" : "s")} to {alerts.Type(movedTo)?.Name}");
             return Results.Ok(new { moved, now = alerts.View(), counts = sensors.RuleCounts(), gather = sensors.Gathering() });
         });
 

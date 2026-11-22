@@ -35,7 +35,7 @@ public sealed class WindowsSysvol : ISysvol
     {
         if (!OperatingSystem.IsWindows())
         {
-            throw new ToolProblem($"Writing Group Policy files needs {Product.Title} on Windows, where it can reach SYSVOL.");
+            throw new ToolProblem($"Writing Group Policy files requires {Product.Title} running on Windows with access to SYSVOL.");
         }
         return Task.Run(() => Windows(username, password, work));
     }
@@ -48,7 +48,7 @@ public sealed class WindowsSysvol : ISysvol
         var (user, domain) = at > 0 ? (username[(at + 1)..], username[..at]) : (username, null);
         if (!LogonUser(user, domain, password, NewCredentials, WinNt50, out var token))
         {
-            throw new ToolProblem("Windows couldn't use that login to reach SYSVOL.");
+            throw new ToolProblem("Windows could not use those credentials to access SYSVOL.");
         }
         using (token)
         {
@@ -58,11 +58,11 @@ public sealed class WindowsSysvol : ISysvol
             }
             catch (UnauthorizedAccessException)
             {
-                throw new ToolProblem($"{Ldap.Account(username)} isn't allowed to change that GPO's files in SYSVOL. It takes a Domain Admin, or rights given in Group Policy Management.");
+                throw new ToolProblem($"Access denied. {Ldap.Account(username)} does not have permission to change this GPO's files in SYSVOL. This requires a Domain Admin, or permissions delegated in Group Policy Management.");
             }
             catch (IOException e)
             {
-                throw new ToolProblem($"Couldn't reach SYSVOL: {e.Message}");
+                throw new ToolProblem($"Could not reach SYSVOL: {e.Message}");
             }
         }
     }
@@ -158,7 +158,7 @@ public sealed partial class DirectoryTools
         ["history"] = new("number", 0, 24, "passwords"),
         ["maxage"] = new("number", 1, 999, "days"),
         ["minage"] = new("number", 0, 998, "days"),
-        ["lockout"] = new("number", 0, 999, "wrong passwords"),
+        ["lockout"] = new("number", 0, 999, "invalid attempts"),
         ["duration"] = new("number", 1, 99_999, "minutes"),
         ["quota"] = new("number", 0, 100, "computers"),
         ["guest"] = new("switch"),
@@ -167,15 +167,15 @@ public sealed partial class DirectoryTools
 
     private static readonly Dictionary<string, string> How = new()
     {
-        ["dfl"] = "Raised in Active Directory Domains and Trusts. It can't be lowered again, so it isn't changed from here.",
-        ["ffl"] = "Raised in Active Directory Domains and Trusts. It can't be lowered again, so it isn't changed from here.",
-        ["krbtgt"] = "Reset it with Microsoft's New-KrbtgtKeys script: twice, a day apart, so tickets signed with the old one run out first.",
-        ["admins"] = "Open Domain Admins under Groups to see who's in it and take people out.",
-        ["pso"] = "Made in Active Directory Administrative Center, under System, Password Settings Container.",
-        ["recycle"] = "Turned on from the Recycle Bin page. It can't be turned off again.",
+        ["dfl"] = "Raise it in Active Directory Domains and Trusts. Functional levels cannot be lowered, so this setting is not changed here.",
+        ["ffl"] = "Raise it in Active Directory Domains and Trusts. Functional levels cannot be lowered, so this setting is not changed here.",
+        ["krbtgt"] = "Reset it with Microsoft's New-KrbtgtKeys script, twice and a day apart, so tickets signed with the old key expire first.",
+        ["admins"] = "Open Domain Admins under Groups to review and remove members.",
+        ["pso"] = "Create them in Active Directory Administrative Center, under System > Password Settings Container.",
+        ["recycle"] = "Enable it from the Recycle Bin page. Once enabled, it cannot be disabled.",
         ["dcs"] = "Add a domain controller by promoting another Windows Server.",
-        ["dcos"] = "Upgrade by promoting a newer Windows Server, then retiring the old one.",
-        ["laps"] = "Set up with Update-LapsADSchema and a Group Policy for Windows LAPS.",
+        ["dcos"] = "Upgrade by promoting a newer Windows Server, then demoting the old one.",
+        ["laps"] = "Configure it with Update-LapsADSchema and a Group Policy for Windows LAPS.",
     };
 
     /// <summary>A setting with what it takes to change it: its value as a number (1 or 0 for on and off), or how it's changed instead.</summary>
@@ -186,17 +186,17 @@ public sealed partial class DirectoryTools
     public async Task<List<AdSetting>> SetDomainSetting(string key, string value, string username, string password, CancellationToken stop)
     {
         var f = Ready();
-        var spec = Edits.GetValueOrDefault(key) ?? throw new ToolProblem("That setting isn't changed from here.");
+        var spec = Edits.GetValueOrDefault(key) ?? throw new ToolProblem("This setting cannot be changed here.");
         var v = (value ?? "").Trim().ToLowerInvariant();
         long n = spec.Kind == "switch"
-            ? v is "true" or "on" or "1" ? 1 : v is "false" or "off" or "0" ? 0 : throw new ToolProblem("Say on or off.")
+            ? v is "true" or "on" or "1" ? 1 : v is "false" or "off" or "0" ? 0 : throw new ToolProblem("Enter on or off.")
             : long.TryParse(v, NumberStyles.Integer, CultureInfo.InvariantCulture, out var num) && num >= spec.Min && num <= spec.Max ? num
-            : throw new ToolProblem($"Give a number from {spec.Min} to {spec.Max}.");
+            : throw new ToolProblem($"Enter a number from {spec.Min} to {spec.Max}.");
         if (string.IsNullOrWhiteSpace(username) || string.IsNullOrEmpty(password))
         {
-            throw new ToolProblem("Sign in as a domain admin to change it. The login isn't saved.");
+            throw new ToolProblem("Sign in as a domain admin to change this setting. These credentials are used once and are not stored.");
         }
-        using var ldap = await open(f.Domain!, await Host(f.Domain!, stop), username.Trim(), password, stop) ?? throw new ToolProblem("That username or password is wrong.");
+        using var ldap = await open(f.Domain!, await Host(f.Domain!, stop), username.Trim(), password, stop) ?? throw new ToolProblem("The username or password is incorrect.");
         try
         {
             switch (key)
@@ -207,9 +207,9 @@ public sealed partial class DirectoryTools
                 case "guest":
                 {
                     var sid = (await ldap.Find(ldap.BaseDn, "(objectClass=*)", false, ["objectSid"], 1, stop)).FirstOrDefault()?.Bytes("objectSid")
-                        ?? throw new ToolProblem("Active Directory didn't say the domain's SID.");
+                        ?? throw new ToolProblem("Active Directory did not return the domain SID.");
                     var guest = (await ldap.Find(ldap.BaseDn, $"(objectSid={Sid(sid)}-501)", true, ["userAccountControl"], 1, stop)).FirstOrDefault()
-                        ?? throw new ToolProblem("The Guest account wasn't found.");
+                        ?? throw new ToolProblem("The Guest account was not found.");
                     var flags = guest.Number("userAccountControl") ?? (NormalAccount | Disabled);
                     flags = n == 1 ? flags & ~Disabled : flags | Disabled;
                     await ldap.Modify(guest.Dn, [new(LdapChange.Replace, "userAccountControl", flags.ToString(CultureInfo.InvariantCulture))], stop);
@@ -218,7 +218,7 @@ public sealed partial class DirectoryTools
                 case "tombstone":
                 {
                     var config = (await ldap.Find("", "(objectClass=*)", false, ["configurationNamingContext"], 1, stop)).FirstOrDefault()?.Text("configurationNamingContext")
-                        ?? throw new ToolProblem("Active Directory didn't say where its configuration is.");
+                        ?? throw new ToolProblem("Active Directory did not return its configuration partition.");
                     await ldap.Modify($"CN=Directory Service,CN=Windows NT,CN=Services,{config}", [new(LdapChange.Replace, "tombstoneLifetime", n.ToString(CultureInfo.InvariantCulture))], stop);
                     break;
                 }
@@ -230,8 +230,8 @@ public sealed partial class DirectoryTools
         catch (LdapRefused e)
         {
             throw new ToolProblem(e.Code == LdapRefused.InsufficientRights
-                ? $"{Ldap.Account(username)} isn't allowed to change it. {(key == "tombstone" ? "It takes an Enterprise Admin." : "It takes a Domain Admin.")}"
-                : $"Active Directory said: {e.Message}");
+                ? $"Access denied. {Ldap.Account(username)} does not have permission to change this setting. {(key == "tombstone" ? "This requires an Enterprise Admin." : "This requires a Domain Admin.")}"
+                : $"Active Directory returned an error: {e.Message}");
         }
         return await DomainSettings(stop);
     }
@@ -243,10 +243,10 @@ public sealed partial class DirectoryTools
     {
         var gpoDn = $"CN={DefaultDomainPolicy},CN=Policies,CN=System,{ldap.BaseDn}";
         var gpo = (await ldap.Find(gpoDn, "(objectClass=*)", false, ["gPCFileSysPath", "versionNumber"], 1, stop)).FirstOrDefault()
-            ?? throw new ToolProblem("The Default Domain Policy wasn't found, so the password policy can't be changed from here.");
-        var path = gpo.Text("gPCFileSysPath") ?? throw new ToolProblem("The Default Domain Policy doesn't say where its files are.");
+            ?? throw new ToolProblem("The Default Domain Policy was not found, so the password policy cannot be changed here.");
+        var path = gpo.Text("gPCFileSysPath") ?? throw new ToolProblem("The Default Domain Policy has no file system path (gPCFileSysPath).");
         var now = (await ldap.Find(ldap.BaseDn, "(objectClass=*)", false, ["pwdProperties", "maxPwdAge", "minPwdAge", "lockoutDuration", "lockOutObservationWindow"], 1, stop)).FirstOrDefault()
-            ?? throw new ToolProblem("The domain's own object couldn't be read.");
+            ?? throw new ToolProblem("Could not read the domain object.");
         var inf = new Dictionary<string, string>();
         var mods = new List<LdapMod>();
         void Set(string infKey, long infValue, string attribute, long attributeValue)
@@ -267,14 +267,14 @@ public sealed partial class DirectoryTools
             case "maxage":
                 if (n <= minAge)
                 {
-                    throw new ToolProblem($"It has to be longer than the minimum password age ({minAge} days).");
+                    throw new ToolProblem($"The maximum password age must be longer than the minimum password age ({minAge} days).");
                 }
                 Set("MaximumPasswordAge", n, "maxPwdAge", -n * Day);
                 break;
             case "minage":
                 if (maxAge is { } most && n >= most)
                 {
-                    throw new ToolProblem($"It has to be shorter than the maximum password age ({most} days).");
+                    throw new ToolProblem($"The minimum password age must be shorter than the maximum password age ({most} days).");
                 }
                 Set("MinimumPasswordAge", n, "minPwdAge", -n * Day);
                 break;
@@ -299,7 +299,7 @@ public sealed partial class DirectoryTools
                 }
                 break;
             default:
-                throw new ToolProblem("That setting isn't changed from here.");
+                throw new ToolProblem("This setting cannot be changed here.");
         }
         var template = $@"{path}\MACHINE\Microsoft\Windows NT\SecEdit\GptTmpl.inf";
         var ini = $@"{path}\GPT.INI";

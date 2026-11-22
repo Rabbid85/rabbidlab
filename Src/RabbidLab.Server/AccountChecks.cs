@@ -107,7 +107,7 @@ public sealed class AccountChecks(IDirectory directory, IWindowsAccounts windows
         var windowsAccount = who.Source == SignIn.Windows;
         if (!r.Found)
         {
-            return new($"The account isn't in {(windowsAccount ? Environment.MachineName : who.Domain)} any more.", null);
+            return new($"The account no longer exists in {(windowsAccount ? Environment.MachineName : who.Domain)}.", null);
         }
         if (!r.Enabled)
         {
@@ -115,7 +115,7 @@ public sealed class AccountChecks(IDirectory directory, IWindowsAccounts windows
         }
         if (!r.Admin)
         {
-            return new($"The account isn't in {Environment.MachineName}'s Administrators group any more.", null);
+            return new($"The account is no longer a member of the Administrators group on {Environment.MachineName}.", null);
         }
         if (p.FindFirstValue(PasswordClaim) is { } was && r.PasswordSet is { } set && was != set)
         {
@@ -128,7 +128,7 @@ public sealed class AccountChecks(IDirectory directory, IWindowsAccounts windows
         }
         if (!roles.CanSignIn(who with { Groups = groups }))
         {
-            return new($"The account isn't in any of {Product.Title}'s roles any more.", null);
+            return new($"The account is no longer assigned to any {Product.Title} role.", null);
         }
         return who.Groups.ToHashSet(StringComparer.OrdinalIgnoreCase).SetEquals(groups) ? Fine : new(null, groups);
     }

@@ -65,9 +65,9 @@ public sealed class DeviceScripts(DataFolder folder, TimeProvider clock)
 
     /// <summary>Why a script can't be kept or run as it is, or null.</summary>
     public static string? Problem(string? language, string? text) =>
-        language is not (PowerShell or Command) ? "Pick PowerShell or Command."
+        language is not (PowerShell or Command) ? "Select PowerShell or Command."
         : string.IsNullOrWhiteSpace(text) ? "The script is empty."
-        : text.Length > MaxText ? $"A script is {MaxText:N0} characters at most."
+        : text.Length > MaxText ? $"Scripts can be up to {MaxText:N0} characters."
         : null;
 
     /// <summary>A script's text the way it's run: Windows line ends, and none of the blank lines at its end.</summary>
@@ -80,12 +80,12 @@ public sealed class DeviceScripts(DataFolder folder, TimeProvider clock)
     {
         if (BuiltInScripts.Is(id))
         {
-            return (null, "Built-in scripts can't be changed. Duplicate it to make one of your own.");
+            return (null, "Built-in scripts cannot be edited. Duplicate the script to create your own copy.");
         }
         var n = name?.Trim() ?? "";
         if (n.Length is 0 or > MaxName)
         {
-            return (null, n.Length == 0 ? "Give the script a name." : $"A name is {MaxName} characters at most.");
+            return (null, n.Length == 0 ? "Script name is required." : $"Names can be up to {MaxName} characters.");
         }
         if (Problem(language, text) is { } problem)
         {
@@ -96,18 +96,18 @@ public sealed class DeviceScripts(DataFolder folder, TimeProvider clock)
             var f = file.Read();
             if (f.Scripts.Any(s => s.Id != id && string.Equals(s.Name, n, StringComparison.OrdinalIgnoreCase)))
             {
-                return (null, $"There's already a script called {n}.");
+                return (null, $"A script named {n} already exists.");
             }
             var script = f.Scripts.FirstOrDefault(s => s.Id == id);
             if (script is null)
             {
                 if (!string.IsNullOrEmpty(id))
                 {
-                    return (null, "That script isn't here any more.");
+                    return (null, "That script no longer exists.");
                 }
                 if (f.Scripts.Count >= MaxScripts)
                 {
-                    return (null, $"The library holds {MaxScripts} scripts at most.");
+                    return (null, $"The script library is limited to {MaxScripts} scripts.");
                 }
                 script = new DeviceScript { Id = Convert.ToHexString(RandomNumberGenerator.GetBytes(8)).ToLowerInvariant() };
                 f.Scripts.Add(script);
@@ -328,9 +328,9 @@ public sealed class DeviceJobs(DataFolder folder, TimeProvider clock, ClientComm
             var bad = steps.FindIndex(s => s.TimedOut || s.Exit != 0);
             target.State = report.Refused ? Refused : bad < 0 && steps.Count == job.Steps.Count ? Done : Failed;
             target.Problem = Cut(report.Problem, 300) ?? (target.State != Failed ? null
-                : bad < 0 ? "It stopped before every step had run."
-                : steps[bad].TimedOut ? $"{job.Steps[bad].Title} was stopped after {job.Steps[bad].Minutes} minutes."
-                : $"{job.Steps[bad].Title} ended with exit code {steps[bad].Exit?.ToString() ?? "unknown"}.");
+                : bad < 0 ? "The job stopped before all steps completed."
+                : steps[bad].TimedOut ? $"{job.Steps[bad].Title} timed out after {job.Steps[bad].Minutes} minutes."
+                : $"{job.Steps[bad].Title} failed with exit code {steps[bad].Exit?.ToString() ?? "unknown"}.");
             Directory.CreateDirectory(dir);
             File.WriteAllBytes(OutputFile(job.Id, client), JsonSerializer.SerializeToUtf8Bytes(steps.Select(s => Cut(s.Output, MaxOutput) ?? "").ToList(), Json));
             Save(job);
@@ -380,7 +380,7 @@ public sealed class DeviceJobs(DataFolder folder, TimeProvider clock, ClientComm
                     }
                     else if (t.State == Running && t.Sent + longest <= now)
                     {
-                        (t.State, t.Finished, t.Problem, changed) = (NoAnswer, now, "The computer took the job and never answered. It may have restarted or lost the server.", true);
+                        (t.State, t.Finished, t.Problem, changed) = (NoAnswer, now, "The computer started the job but never reported a result. It may have restarted or lost its connection to the server.", true);
                     }
                 }
                 if (changed)
@@ -489,7 +489,7 @@ public sealed class DeviceJobs(DataFolder folder, TimeProvider clock, ClientComm
     // What a client sends is its own computer's words: the middle of a long output goes, its start and end stay.
     private static string? Cut(string? text, int most) => string.IsNullOrEmpty(text) ? null
         : text.Length <= most ? text
-        : string.Concat(text.AsSpan(0, most / 4), "\r\n\r\n[... the middle was cut ...]\r\n\r\n", text.AsSpan(text.Length - (most - most / 4)));
+        : string.Concat(text.AsSpan(0, most / 4), "\r\n\r\n[... output truncated ...]\r\n\r\n", text.AsSpan(text.Length - (most - most / 4)));
 }
 
 /// <summary>The actions Rabbid Lab has built in. Each is a script the client runs like any other, so a client needs nothing new for one.</summary>
@@ -510,7 +510,7 @@ public static class DeviceActions
 
     public static JobStep RestartIfNeeded() => new()
     {
-        Title = "Restart if Windows needs it", Language = DeviceScripts.PowerShell, Minutes = 2,
+        Title = "Restart if a restart is pending", Language = DeviceScripts.PowerShell, Minutes = 2,
         Text = DeviceScripts.Clean($$"""
             $keys = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired',
                 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending'
@@ -625,7 +625,7 @@ public static class DeviceActions
 
     /// <summary>Why it can't be the message, or null when it can.</summary>
     public static string? MessageProblem(string? text) =>
-        string.IsNullOrWhiteSpace(text) ? "Type the message." : text.Trim().Length > MessageMost ? $"Keep the message to {MessageMost} characters." : null;
+        string.IsNullOrWhiteSpace(text) ? "Enter a message." : text.Trim().Length > MessageMost ? $"Messages can be up to {MessageMost} characters." : null;
 
     /// <summary>A message that pops up for everyone signed in (msg.exe), until they close it or an hour passes.</summary>
     public static JobStep Message(string text)

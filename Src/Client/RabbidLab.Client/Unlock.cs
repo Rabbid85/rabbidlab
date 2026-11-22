@@ -43,7 +43,7 @@ internal sealed class UnlockWindow : Form
         var lead = new Label
         {
             Text = has ? $"Uninstalling is locked by {now.Host}. An admin can find this computer's uninstall code in Rabbid Lab: go to Devices, click Uninstall next to {Machine.Name}, then click Show."
-                : "This computer doesn't have an uninstall code yet. It gets one the next time it checks in with the server. Until then, an admin has to allow uninstalling in Rabbid Lab.",
+                : "This computer does not have an uninstall code yet. The server assigns one at the next check-in. Until then, an admin must allow the uninstall in Rabbid Lab.",
             AutoSize = false, Height = 78, Dock = DockStyle.Top, ForeColor = Look.Muted,
         };
         code.Font = new Font("Consolas", 11f);
@@ -102,7 +102,7 @@ internal sealed class UnlockWindow : Form
             }
             if (!Removal.Uninstall(quiet: false))
             {
-                Say("The uninstall didn't start. Use Settings > Apps > Installed apps instead.", Look.Red);
+                Say("Could not start the uninstall. Use Settings > Apps > Installed apps instead.", Look.Red);
                 return;
             }
             Close();
@@ -112,7 +112,7 @@ internal sealed class UnlockWindow : Form
         {
             if (Removal.UnlockWith(code.Text) is not { } until)
             {
-                Say("That code isn't right. Check it and try again.", Look.Red);
+                Say("The uninstall code is incorrect. Check it and try again.", Look.Red);
                 code.SelectAll();
                 code.Focus();
                 return;
@@ -123,7 +123,7 @@ internal sealed class UnlockWindow : Form
         }
         catch (Exception e) when (e is UnauthorizedAccessException or System.Security.SecurityException)
         {
-            Say("This needs administrator permission. Close this window and click Uninstall again, then choose Yes.", Look.Red);
+            Say("Administrator permission is required. Close this window, click Uninstall again, and then select Yes.", Look.Red);
         }
     }
 

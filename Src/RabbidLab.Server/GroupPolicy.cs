@@ -214,8 +214,8 @@ public sealed partial class DirectoryTools : IGroupPolicy
     // The two GPOs every domain has, which Windows needs.
     private static readonly HashSet<string> BuiltInGpos = new(StringComparer.OrdinalIgnoreCase) { "{31B2F340-016D-11D2-945F-00C04FB984F9}", "{6AC1786C-016F-11D2-945F-00C04FB984F9}" };
 
-    private const string NoGpmcHere = "This needs Group Policy Management on this server. On Windows 10 or 11, run in PowerShell as administrator: "
-        + "Add-WindowsCapability -Online -Name Rsat.GroupPolicy.Management.Tools~~~~0.0.1.0. On Windows Server: Install-WindowsFeature GPMC.";
+    private const string NoGpmcHere = "Group Policy Management is not installed on this server. On Windows 10 or 11, run this in an elevated PowerShell: "
+        + "Add-WindowsCapability -Online -Name Rsat.GroupPolicy.Management.Tools~~~~0.0.1.0. On Windows Server, run: Install-WindowsFeature GPMC.";
 
     private readonly Dictionary<string, (string Key, GpoDetail Detail)> details = [];
 
@@ -311,7 +311,7 @@ public sealed partial class DirectoryTools : IGroupPolicy
         var guid = GuidOf(id);
         using var ldap = await Open(stop);
         return (await ldap.Find($"CN={guid},{Policies(ldap.BaseDn)}", "(objectClass=groupPolicyContainer)", false, GpoAttributes, 1, stop)).Select(Gpo).OfType<GpoView>().FirstOrDefault()
-            ?? throw new ToolProblem("That GPO isn't in the domain any more.", StatusCodes.Status404NotFound);
+            ?? throw new ToolProblem("The GPO no longer exists in the domain.", StatusCodes.Status404NotFound);
     }
 
     public async Task<string> GpoName(string id, CancellationToken stop)
@@ -335,7 +335,7 @@ public sealed partial class DirectoryTools : IGroupPolicy
 
     private static string GuidOf(string? id) =>
         id is not null && GpoLinks.Guid().Match(id.Trim()) is { Success: true } m && m.Length == id.Trim().Length ? m.Value.ToUpperInvariant()
-        : throw new ToolProblem("That isn't a GPO's ID.");
+        : throw new ToolProblem("That is not a valid GPO ID.");
 
     // --- Changes in Active Directory ------------------------------------------------------------------------------
 
@@ -368,7 +368,7 @@ public sealed partial class DirectoryTools : IGroupPolicy
         var w = GuidOf(filter);
         if ((await ldap.Find(Som(ldap.BaseDn), $"(&(objectClass=msWMI-Som)(msWMI-ID={ActiveDirectory.Escape(w)}))", true, ["msWMI-ID"], 1, stop)).Count == 0)
         {
-            throw new ToolProblem("That WMI filter isn't in the domain any more.");
+            throw new ToolProblem("The WMI filter no longer exists in the domain.");
         }
         await ldap.Modify(g.Dn, [new(LdapChange.Replace, "gPCWQLFilter", $"[{f.Domain};{w};0]")], stop);
     }, stop);
@@ -387,7 +387,7 @@ public sealed partial class DirectoryTools : IGroupPolicy
         {
             if (at >= 0)
             {
-                throw new ToolProblem("It's already linked there.");
+                throw new ToolProblem("The GPO is already linked to that location.");
             }
             // A new link goes last, as Group Policy Management adds it: it applies first, so the ones there already win.
             links.Add(new GpoLinks.Entry(GpoLinks.PathOf(id, ldap.BaseDn), id, change.Enforced == true ? GpoLinks.Enforced : 0));
@@ -396,7 +396,7 @@ public sealed partial class DirectoryTools : IGroupPolicy
         {
             if (at < 0)
             {
-                throw new ToolProblem("It isn't linked there any more.");
+                throw new ToolProblem("The GPO is no longer linked to that location.");
             }
             var e = links[at];
             links.RemoveAt(at);
@@ -422,23 +422,23 @@ public sealed partial class DirectoryTools : IGroupPolicy
         var t = await Target(ldap, target, stop);
         if (string.Equals(t.Dn, ldap.BaseDn, StringComparison.OrdinalIgnoreCase))
         {
-            throw new ToolProblem("The domain has nothing above it to block.");
+            throw new ToolProblem("Inheritance cannot be blocked at the domain level.");
         }
         await ldap.Modify(t.Dn, [new(LdapChange.Replace, "gPOptions", blocked ? "1" : "0")], stop);
     }, stop);
 
     public Task<string> SaveWmiFilter(string? id, string name, string? description, string query, string? space, GpoLogin login, string by, CancellationToken stop) => Change(login, async (ldap, f) =>
     {
-        var n = Words.Blank(name) ?? throw new ToolProblem("Give the filter a name.");
+        var n = Words.Blank(name) ?? throw new ToolProblem("Enter a name for the filter.");
         var q = System.Text.RegularExpressions.Regex.Replace(query ?? "", @"\s+", " ").Trim();
         if (!q.StartsWith("SELECT ", StringComparison.OrdinalIgnoreCase) || q.Length > 4000 || q.Contains(';', StringComparison.Ordinal))
         {
-            throw new ToolProblem("The query is one WQL SELECT, such as SELECT * FROM Win32_OperatingSystem WHERE ProductType = 1.");
+            throw new ToolProblem("Enter a single WQL SELECT query, for example SELECT * FROM Win32_OperatingSystem WHERE ProductType = 1.");
         }
         var ns = Words.Blank(space) ?? WmiQueries.DefaultSpace;
         if (!System.Text.RegularExpressions.Regex.IsMatch(ns, @"^root(\\[A-Za-z0-9_]+)*$"))
         {
-            throw new ToolProblem(@"The namespace looks like root\CIMv2.");
+            throw new ToolProblem(@"Enter a namespace such as root\CIMv2.");
         }
         var d = Words.Blank(description);
         var som = Som(ldap.BaseDn);
@@ -448,7 +448,7 @@ public sealed partial class DirectoryTools : IGroupPolicy
         {
             if (same.Count > 0)
             {
-                throw new ToolProblem($"There's already a WMI filter called {n}.");
+                throw new ToolProblem($"A WMI filter named {n} already exists.");
             }
             var made = $"{{{System.Guid.NewGuid().ToString().ToUpperInvariant()}}}";
             var attributes = new Dictionary<string, object[]>
@@ -471,10 +471,10 @@ public sealed partial class DirectoryTools : IGroupPolicy
         }
         var w = GuidOf(id);
         var row = (await ldap.Find(som, $"(&(objectClass=msWMI-Som)(msWMI-ID={ActiveDirectory.Escape(w)}))", true, FilterAttributes, 1, stop)).FirstOrDefault()
-            ?? throw new ToolProblem("That WMI filter isn't in the domain any more.", StatusCodes.Status404NotFound);
+            ?? throw new ToolProblem("The WMI filter no longer exists in the domain.", StatusCodes.Status404NotFound);
         if (same.Any(s => !string.Equals(s.Text("msWMI-ID"), w, StringComparison.OrdinalIgnoreCase)))
         {
-            throw new ToolProblem($"There's already a WMI filter called {n}.");
+            throw new ToolProblem($"A WMI filter named {n} already exists.");
         }
         List<LdapMod> mods = [new(LdapChange.Replace, "msWMI-Name", n), new(LdapChange.Replace, "msWMI-Parm2", WmiQueries.Build(ns, q)), new(LdapChange.Replace, "msWMI-ChangeDate", now)];
         if (d is not null)
@@ -493,11 +493,11 @@ public sealed partial class DirectoryTools : IGroupPolicy
     {
         var w = GuidOf(id);
         var row = (await ldap.Find(Som(ldap.BaseDn), $"(&(objectClass=msWMI-Som)(msWMI-ID={ActiveDirectory.Escape(w)}))", true, ["msWMI-Name"], 1, stop)).FirstOrDefault()
-            ?? throw new ToolProblem("That WMI filter isn't in the domain any more.", StatusCodes.Status404NotFound);
+            ?? throw new ToolProblem("The WMI filter no longer exists in the domain.", StatusCodes.Status404NotFound);
         var users = await ldap.Find(Policies(ldap.BaseDn), $"(&(objectClass=groupPolicyContainer)(gPCWQLFilter=*{ActiveDirectory.Escape(w)}*))", true, ["displayName"], 50, stop);
         if (users.Count > 0)
         {
-            throw new ToolProblem($"{string.Join(", ", users.Select(u => u.Text("displayName")))} {(users.Count == 1 ? "uses" : "use")} it. Take it off {(users.Count == 1 ? "that GPO" : "those GPOs")} first.");
+            throw new ToolProblem($"{string.Join(", ", users.Select(u => u.Text("displayName")))} {(users.Count == 1 ? "uses" : "use")} this filter. Remove it from {(users.Count == 1 ? "that GPO" : "those GPOs")} first.");
         }
         await ldap.Delete(row.Dn, stop);
         return true;
@@ -505,8 +505,8 @@ public sealed partial class DirectoryTools : IGroupPolicy
 
     private static string GpoName(string? name)
     {
-        var n = Words.Blank(name) ?? throw new ToolProblem("Give the GPO a name.");
-        return n.Length > 200 ? throw new ToolProblem("That name is too long.") : n;
+        var n = Words.Blank(name) ?? throw new ToolProblem("Enter a name for the GPO.");
+        return n.Length > 200 ? throw new ToolProblem("The name is too long. Use 200 characters or fewer.") : n;
     }
 
     private static async Task Taken(ILdap ldap, string name, string? except, CancellationToken stop)
@@ -514,24 +514,24 @@ public sealed partial class DirectoryTools : IGroupPolicy
         var same = await ldap.Find(Policies(ldap.BaseDn), $"(&(objectClass=groupPolicyContainer)(displayName={ActiveDirectory.Escape(name)}))", true, ["cn"], 2, stop);
         if (same.Any(s => !string.Equals(s.Dn, except, StringComparison.OrdinalIgnoreCase)))
         {
-            throw new ToolProblem($"There's already a GPO called {name}.");
+            throw new ToolProblem($"A GPO named {name} already exists.");
         }
     }
 
     private static async Task<LdapRow> GpoRow(ILdap ldap, string id, CancellationToken stop) =>
         (await ldap.Find($"CN={GuidOf(id)},{Policies(ldap.BaseDn)}", "(objectClass=groupPolicyContainer)", false, GpoAttributes, 1, stop)).FirstOrDefault()
-        ?? throw new ToolProblem("That GPO isn't in the domain any more.", StatusCodes.Status404NotFound);
+        ?? throw new ToolProblem("The GPO no longer exists in the domain.", StatusCodes.Status404NotFound);
 
     // The domain itself, or an OU in it.
     private static async Task<LdapRow> Target(ILdap ldap, string? dn, CancellationToken stop)
     {
-        var d = Words.Blank(dn) ?? throw new ToolProblem("Pick where to link it.");
+        var d = Words.Blank(dn) ?? throw new ToolProblem("Select where to link the GPO.");
         if (!d.EndsWith(ldap.BaseDn, StringComparison.OrdinalIgnoreCase))
         {
-            throw new ToolProblem("That isn't in this domain.");
+            throw new ToolProblem("That location is not in this domain.");
         }
         return (await ldap.Find(d, "(|(objectClass=organizationalUnit)(objectClass=domainDNS))", false, ["gPLink", "gPOptions"], 1, stop)).FirstOrDefault()
-            ?? throw new ToolProblem("That OU isn't there any more.", StatusCodes.Status404NotFound);
+            ?? throw new ToolProblem("The OU no longer exists.", StatusCodes.Status404NotFound);
     }
 
     // As Rabbid Lab's own account, or the login given; refused for rights with no login given, the page asks for one.
@@ -549,12 +549,12 @@ public sealed partial class DirectoryTools : IGroupPolicy
         }
         catch (LdapRefused e) when (e.Code == LdapRefused.InsufficientRights)
         {
-            throw login.Given ? new ToolProblem($"{Ldap.Account(login.Username!)} isn't allowed to do that. It takes a Domain Admin, or rights given in Group Policy Management.")
+            throw login.Given ? new ToolProblem($"Access denied. {Ldap.Account(login.Username!)} does not have permission. This requires a Domain Admin, or permissions delegated in Group Policy Management.")
                 : new GpoNeedsLogin(NeedsAdmin(f));
         }
         catch (LdapRefused e)
         {
-            throw new ToolProblem($"Active Directory said: {e.Message}");
+            throw new ToolProblem($"Active Directory returned an error: {e.Message}");
         }
     }
 
@@ -565,17 +565,17 @@ public sealed partial class DirectoryTools : IGroupPolicy
             return true;
         }, stop);
 
-    private static string ReadOnlyNeedsAdmin => $"{Product.Title} is only reading Active Directory until its service account is set up. Sign in as a domain admin to make this change.";
+    private static string ReadOnlyNeedsAdmin => "Active Directory is read-only until the service account is configured. Sign in as a domain admin to make this change.";
 
     private static string NeedsAdmin(DirectoryToolsFile f) =>
-        $"{f.Account} isn't allowed to change Group Policy. Sign in as a domain admin to make this change.";
+        $"Access denied. {f.Account} does not have permission to change Group Policy. Sign in as a domain admin to make this change.";
 
     private async Task<ILdap> AsLogin(DirectoryToolsFile f, GpoLogin login, CancellationToken stop)
     {
         try
         {
             return await open(f.Domain!, await Host(f.Domain!, stop), login.Username!.Trim(), login.Password ?? "", stop)
-                ?? throw new GpoNeedsLogin("That username or password is wrong.");
+                ?? throw new GpoNeedsLogin("The username or password is incorrect.");
         }
         catch (DirectoryProblem e)
         {
@@ -605,7 +605,7 @@ public sealed partial class DirectoryTools : IGroupPolicy
         }
         catch (Exception e) when (e is ToolProblem or GpoNeedsLogin)
         {
-            return (id, $"It was made, but couldn't be linked: {e.Message}");
+            return (id, $"The GPO was created, but could not be linked: {e.Message}");
         }
     }
 
@@ -614,10 +614,10 @@ public sealed partial class DirectoryTools : IGroupPolicy
         var g = await FindGpo(id, stop);
         if (BuiltInGpos.Contains(g.Id))
         {
-            throw new ToolProblem($"Windows needs the {g.Name}. Change its settings instead.");
+            throw new ToolProblem($"{g.Name} is required by Windows and cannot be deleted. Change its settings instead.");
         }
         // Kept first, so it can come back; then its links, then the GPO.
-        await BackupGpo(g.Id, "Before it was deleted", login, by, stop);
+        await BackupGpo(g.Id, "Automatic backup before deletion", login, by, stop);
         await Change(login, async (ldap, f) =>
         {
             foreach (var t in await ldap.Find(ldap.BaseDn, $"(gPLink=*{ActiveDirectory.Escape(g.Id)}*)", true, ["gPLink"], Limit, stop))
@@ -640,7 +640,7 @@ public sealed partial class DirectoryTools : IGroupPolicy
     public async Task SetGpoApply(string id, string trustee, bool apply, GpoLogin login, CancellationToken stop)
     {
         var g = await FindGpo(id, stop);
-        var who = Words.Blank(trustee) ?? throw new ToolProblem("Say who: a group, user or computer, such as AMW\\G-Workstations.");
+        var who = Words.Blank(trustee) ?? throw new ToolProblem("Enter a group, user or computer, for example AMW\\G-Workstations.");
         await Gpm(login, async t =>
         {
             await Gpmc.SetApply(t, g.Id, who, apply, stop);
@@ -682,11 +682,11 @@ public sealed partial class DirectoryTools : IGroupPolicy
     public async Task<string> RestoreGpo(string backup, GpoLogin login, string by, CancellationToken stop)
     {
         var b = Backups().FirstOrDefault(x => string.Equals(x.Id, backup?.Trim(), StringComparison.OrdinalIgnoreCase))
-            ?? throw new ToolProblem("That backup isn't here any more.", StatusCodes.Status404NotFound);
+            ?? throw new ToolProblem("The backup no longer exists.", StatusCodes.Status404NotFound);
         // What it has now is kept too, when it's still there.
         try
         {
-            await BackupGpo(b.Gpo, $"Before restoring the backup from {b.At:yyyy-MM-dd HH:mm} UTC", login, by, stop);
+            await BackupGpo(b.Gpo, $"Automatic backup before restoring the backup from {b.At:yyyy-MM-dd HH:mm} UTC", login, by, stop);
         }
         catch (ToolProblem e) when (e.Status == StatusCodes.Status404NotFound)
         {
@@ -726,7 +726,7 @@ public sealed partial class DirectoryTools : IGroupPolicy
         else
         {
             target = new GpmcTarget(f.Domain!, host, $"{f.Account}@{f.Domain}", secrets.TryDecrypt(f.Password)
-                ?? throw new ToolProblem($"{Product.Title}'s Active Directory password can't be read here any more. Set it up again.", StatusCodes.Status409Conflict));
+                ?? throw new ToolProblem("The service account password could not be decrypted on this server. Configure the service account again.", StatusCodes.Status409Conflict));
         }
         try
         {
@@ -734,7 +734,7 @@ public sealed partial class DirectoryTools : IGroupPolicy
         }
         catch (GpmcDenied)
         {
-            throw login.Given ? new ToolProblem($"{Ldap.Account(login.Username!)} isn't allowed to do that. It takes a Domain Admin, or rights given in Group Policy Management.")
+            throw login.Given ? new ToolProblem($"Access denied. {Ldap.Account(login.Username!)} does not have permission. This requires a Domain Admin, or permissions delegated in Group Policy Management.")
                 : new GpoNeedsLogin(NeedsAdmin(f));
         }
     }

@@ -80,7 +80,7 @@ public sealed partial class DirectoryTools : IDirectoryActions
     private static async Task<(LdapRow Row, string Kind)> ChangeableObject(ILdap ldap, DirectoryToolsFile f, string dn, CancellationToken stop)
     {
         var row = (await ldap.Find(Inside(dn, ldap.BaseDn), "(objectClass=*)", false, ObjectAttributes, 1, stop)).FirstOrDefault()
-            ?? throw new ToolProblem("That isn't in Active Directory any more.", StatusCodes.Status404NotFound);
+            ?? throw new ToolProblem("The object no longer exists in Active Directory.", StatusCodes.Status404NotFound);
         InScope(row.Dn, f, ldap.BaseDn);
         var kind = KindOf(row);
         switch (kind)
@@ -100,14 +100,14 @@ public sealed partial class DirectoryTools : IDirectoryActions
     {
         if (string.IsNullOrWhiteSpace(ou))
         {
-            throw new ToolProblem("Pick where to move it.");
+            throw new ToolProblem("Select a destination OU.");
         }
         using var ldap = await Open(stop);
         var f = Ready();
         var (row, kind) = await ChangeableObject(ldap, f, dn, stop);
         if (kind == "computer" && ((row.Number("userAccountControl") ?? 0) & 0x2000) != 0)
         {
-            throw new ToolProblem($"{Ldap.Name(row.Dn)} is a domain controller. Domain controllers stay in Domain Controllers.");
+            throw new ToolProblem($"{Ldap.Name(row.Dn)} is a domain controller. Domain controllers must stay in the Domain Controllers OU.");
         }
         var into = await Into(ldap, ou, f.Scope!, stop);
         InScope(into, f, ldap.BaseDn);
@@ -134,19 +134,19 @@ public sealed partial class DirectoryTools : IDirectoryActions
         var name = (form.Name ?? "").Trim().ToUpperInvariant();
         if (name.Length is 0 or > 15 || !System.Text.RegularExpressions.Regex.IsMatch(name, "^[A-Z0-9-]+$") || name.StartsWith('-') || name.All(char.IsAsciiDigit))
         {
-            throw new ToolProblem("Computer names are 1 to 15 letters, digits and hyphens. They can't be all digits or start with a hyphen.");
+            throw new ToolProblem("Computer names must be 1 to 15 letters, digits or hyphens, cannot be all digits, and cannot start with a hyphen.");
         }
         using var ldap = await Open(stop);
         var f = Ready();
         var ou = await Into(ldap, form.Ou, NewComputersOf(f), stop);
         if (!Ldap.Under(ou, f.Scope!))
         {
-            throw new ToolProblem($"{Product.Title}'s account can only make computers in {ScopeName(f.Scope!, ldap.BaseDn, f.Domain!)}.");
+            throw new ToolProblem($"The service account can only create computers in {ScopeName(f.Scope!, ldap.BaseDn, f.Domain!)}.");
         }
         Reached(ou);
         if (await Taken(ldap, name + "$", stop))
         {
-            throw new ToolProblem($"There's already a computer called {name} in {f.Domain}.");
+            throw new ToolProblem($"A computer named {name} already exists in {f.Domain}.");
         }
         var dn = $"CN={Ldap.Escape(name)},{ou}";
         var attributes = new Dictionary<string, object[]>
@@ -168,13 +168,13 @@ public sealed partial class DirectoryTools : IDirectoryActions
         {
             throw new ToolProblem(e.Code switch
             {
-                LdapRefused.EntryExists => $"There's already something called {name} in {Ldap.Path(ou, ldap.BaseDn)}.",
-                LdapRefused.InsufficientRights => $"{f.Account} isn't allowed to make computers in {Ldap.Path(ou, ldap.BaseDn)}.",
+                LdapRefused.EntryExists => $"An object named {name} already exists in {Ldap.Path(ou, ldap.BaseDn)}.",
+                LdapRefused.InsufficientRights => $"Access denied. {f.Account} does not have permission to create computers in {Ldap.Path(ou, ldap.BaseDn)}.",
                 _ => Said(e, f.Account!),
             });
         }
         var made = (await ldap.Find(dn, "(objectClass=*)", false, ComputerAttributes, 1, stop)).FirstOrDefault();
-        return made is null ? throw new ToolProblem($"{name} was made, but couldn't be read back.") : Computer(made, ldap.BaseDn);
+        return made is null ? throw new ToolProblem($"{name} was created, but could not be read back.") : Computer(made, ldap.BaseDn);
     }
 
     public async Task<List<string>> EditObject(ObjectEdit form, CancellationToken stop)
@@ -186,7 +186,7 @@ public sealed partial class DirectoryTools : IDirectoryActions
         {
             "group" => [("description", "description", 1024, form.Description), ("mail", "email", 256, form.Email), ("info", "notes", 1024, form.Notes)],
             "computer" => [("description", "description", 1024, form.Description), ("location", "location", 1024, form.Location)],
-            _ => throw new ToolProblem("Users are edited with Edit properties on Users."),
+            _ => throw new ToolProblem("Edit users from the Users page."),
         };
         var changes = new List<LdapMod>();
         var changed = new List<string>();
@@ -199,11 +199,11 @@ public sealed partial class DirectoryTools : IDirectoryActions
             var value = attribute == "info" ? typed.Trim().Replace("\r\n", "\n").Replace("\n", "\r\n") : typed.Trim();
             if (value.Length > max)
             {
-                throw new ToolProblem($"The {label} is {max} characters at most.");
+                throw new ToolProblem($"The {label} can be up to {max} characters.");
             }
             if (value.Any(c => char.IsControl(c) && c is not ('\r' or '\n')))
             {
-                throw new ToolProblem($"The {label} has characters that can't be stored.");
+                throw new ToolProblem($"The {label} contains characters that cannot be stored.");
             }
             var was = row.Text(attribute) ?? "";
             if (string.Equals(was, value, StringComparison.Ordinal) || (value.Length == 0 && was.Length == 0))
@@ -240,28 +240,28 @@ public sealed partial class DirectoryTools : IDirectoryActions
             case "mustchange":
                 if (on && (flags & DontExpire) != 0)
                 {
-                    throw new ToolProblem($"{username}'s password never expires, so it can't be made to change at the next sign-in. Set it to expire per policy first.");
+                    throw new ToolProblem($"The password for {username} never expires, so a change at next sign-in cannot be required. Set the password to expire per policy first.");
                 }
                 // 0 makes them change it; -1 counts the password as set just now.
                 await Change(ldap, user.Dn, [new(LdapChange.Replace, "pwdLastSet", on ? "0" : "-1")], f, password: false, stop);
                 return;
             case "cannotchange":
-                var dacl = await ldap.ReadDacl(user.Dn, stop) ?? throw new ToolProblem($"{f.Account} can't read the permissions on {username}.");
+                var dacl = await ldap.ReadDacl(user.Dn, stop) ?? throw new ToolProblem($"Access denied. {f.Account} cannot read the permissions on {username}.");
                 try
                 {
                     await ldap.WriteDacl(user.Dn, Dacl.SetCannotChangePassword(dacl, on), stop);
                 }
                 catch (LdapRefused e)
                 {
-                    throw new ToolProblem(e.Code == LdapRefused.InsufficientRights ? $"{f.Account} isn't allowed to change the permissions on {username}." : Said(e, f.Account!));
+                    throw new ToolProblem(e.Code == LdapRefused.InsufficientRights ? $"Access denied. {f.Account} does not have permission to change the permissions on {username}." : Said(e, f.Account!));
                 }
                 catch (FormatException e)
                 {
-                    throw new ToolProblem($"The permissions on {username} couldn't be changed: {e.Message}");
+                    throw new ToolProblem($"Could not change the permissions on {username}: {e.Message}");
                 }
                 return;
             default:
-                throw new ToolProblem("That isn't an account option.");
+                throw new ToolProblem("That is not a valid account option.");
         }
     }
 
@@ -307,16 +307,16 @@ public sealed partial class DirectoryTools : IDirectoryActions
             var value = typed.Trim();
             if (value.Length > max)
             {
-                throw new ToolProblem($"The {label} is {max} characters at most.");
+                throw new ToolProblem($"The {label} can be up to {max} characters.");
             }
             if (value.Any(char.IsControl))
             {
-                throw new ToolProblem($"The {label} has characters that can't be stored.");
+                throw new ToolProblem($"The {label} contains characters that cannot be stored.");
             }
             if (field == "Manager" && value.Length > 0)
             {
                 var boss = (await ldap.Find(Inside(value, ldap.BaseDn), "(&(objectCategory=person)(objectClass=user))", false, ["distinguishedName"], 1, stop)).FirstOrDefault()
-                    ?? throw new ToolProblem("That manager isn't in Active Directory any more.");
+                    ?? throw new ToolProblem("The selected manager no longer exists in Active Directory.");
                 value = boss.Dn;
             }
             var was = now.Text(attribute) ?? "";
@@ -345,10 +345,10 @@ public sealed partial class DirectoryTools : IDirectoryActions
 
     public async Task Rename(string username, string name, CancellationToken stop)
     {
-        var to = Words.Blank(name) ?? throw new ToolProblem("Type the new name.");
+        var to = Words.Blank(name) ?? throw new ToolProblem("Enter the new name.");
         if (to.Length > 64)
         {
-            throw new ToolProblem("The name is 64 characters at most.");
+            throw new ToolProblem("Names can be up to 64 characters.");
         }
         using var ldap = await Open(stop);
         var f = Ready();
@@ -366,7 +366,7 @@ public sealed partial class DirectoryTools : IDirectoryActions
     {
         if (string.IsNullOrWhiteSpace(ou))
         {
-            throw new ToolProblem("Pick where to move it.");
+            throw new ToolProblem("Select a destination OU.");
         }
         using var ldap = await Open(stop);
         var f = Ready();
@@ -390,8 +390,8 @@ public sealed partial class DirectoryTools : IDirectoryActions
         {
             throw new ToolProblem(e.Code switch
             {
-                LdapRefused.EntryExists => $"There's already something called {Ldap.Name(rdn)} in {Ldap.Path(parent, ldap.BaseDn)}.",
-                LdapRefused.InsufficientRights => $"{f.Account} isn't allowed to move or rename {Ldap.Name(dn)} there.",
+                LdapRefused.EntryExists => $"An object named {Ldap.Name(rdn)} already exists in {Ldap.Path(parent, ldap.BaseDn)}.",
+                LdapRefused.InsufficientRights => $"Access denied. {f.Account} does not have permission to move or rename {Ldap.Name(dn)} to that location.",
                 _ => Said(e, f.Account!),
             });
         }
@@ -402,15 +402,15 @@ public static class DirectoryActionsApi
 {
     private static readonly Dictionary<string, (string On, string Off)> FlagWords = new()
     {
-        ["mustchange"] = ("Made {0} change their password at the next sign-in", "Cleared the password change requirement on {0}"),
+        ["mustchange"] = ("Required {0} to change password at next sign-in", "Cleared the requirement for {0} to change password at next sign-in"),
         ["noexpiry"] = ("Set {0}'s password to never expire", "Set {0}'s password to expire per policy"),
-        ["cannotchange"] = ("Stopped {0} from changing their password", "Let {0} change their password"),
+        ["cannotchange"] = ("Prevented {0} from changing their password", "Allowed {0} to change their password"),
         ["sensitive"] = ("Marked {0} as sensitive and cannot be delegated", "Allowed delegation for {0}"),
-        ["smartcard"] = ("Required a smart card for {0}", "Stopped requiring a smart card for {0}"),
-        ["reversible"] = ("Turned on reversible password encryption for {0}", "Turned off reversible password encryption for {0}"),
-        ["des"] = ("Set {0} to use only Kerberos DES encryption types", "Stopped {0} using only Kerberos DES encryption types"),
-        ["preauth"] = ("Turned off Kerberos preauthentication for {0}", "Turned on Kerberos preauthentication for {0}"),
-        ["notreq"] = ("Let {0} have no password", "Required a password for {0}"),
+        ["smartcard"] = ("Required a smart card for {0}", "Removed the smart card requirement for {0}"),
+        ["reversible"] = ("Enabled reversible password encryption for {0}", "Disabled reversible password encryption for {0}"),
+        ["des"] = ("Set {0} to use only Kerberos DES encryption types", "Cleared the Kerberos DES-only setting for {0}"),
+        ["preauth"] = ("Disabled Kerberos preauthentication for {0}", "Enabled Kerberos preauthentication for {0}"),
+        ["notreq"] = ("Set {0} to not require a password", "Required a password for {0}"),
     };
 
     public static void MapDirectoryActionsApi(this WebApplication app)
@@ -420,7 +420,7 @@ public static class DirectoryActionsApi
             UsersApi.Try(context, Permissions.AdCreate, async () =>
             {
                 var c = await tools.CreateComputer(form, context.RequestAborted);
-                log.Record(context, "users", "ad.computer.create", $"Made the computer account {c.Name} in {(c.Where is { Length: > 0 } w ? w : "the domain")}");
+                log.Record(context, "users", "ad.computer.create", $"Created the computer account {c.Name} in {(c.Where is { Length: > 0 } w ? w : "the domain")}");
                 return Results.Ok(c);
             }));
 
@@ -439,8 +439,8 @@ public static class DirectoryActionsApi
                 var add = form.Add ?? [];
                 var remove = form.Remove ?? [];
                 var warning = await tools.ChangeMemberOf(form.Dn ?? "", add, remove, context.RequestAborted);
-                var said = string.Join("; ", new[] { add.Count > 0 ? "added to " + string.Join(", ", add.Select(Ldap.Name)) : null, remove.Count > 0 ? "taken out of " + string.Join(", ", remove.Select(Ldap.Name)) : null }.OfType<string>());
-                log.Record(context, "users", "ad.memberof", $"Changed the groups {Ldap.Name(form.Dn ?? "")} is in", warning is null ? "ok" : "warning", said + (warning is null ? "" : $". {warning}"));
+                var said = string.Join("; ", new[] { add.Count > 0 ? "added to " + string.Join(", ", add.Select(Ldap.Name)) : null, remove.Count > 0 ? "removed from " + string.Join(", ", remove.Select(Ldap.Name)) : null }.OfType<string>());
+                log.Record(context, "users", "ad.memberof", $"Changed group membership for {Ldap.Name(form.Dn ?? "")}", warning is null ? "ok" : "warning", said + (warning is null ? "" : $". {warning}"));
                 return Results.Ok(new { warning });
             }));
 
@@ -450,7 +450,7 @@ public static class DirectoryActionsApi
                 var changed = await tools.EditObject(form, context.RequestAborted);
                 if (changed.Count > 0)
                 {
-                    log.Record(context, "users", "ad.edit", $"Edited {Ldap.Name(form.Dn ?? "")}'s properties", detail: "Changed " + string.Join(", ", changed));
+                    log.Record(context, "users", "ad.edit", $"Edited properties of {Ldap.Name(form.Dn ?? "")}", detail: "Changed " + string.Join(", ", changed));
                 }
                 return Results.Ok(new { changed });
             }));
@@ -462,7 +462,7 @@ public static class DirectoryActionsApi
                 var flag = form.Flag?.Trim().ToLowerInvariant() ?? "";
                 if (!DirectoryTools.KnownFlag(flag))
                 {
-                    throw new ToolProblem("That isn't an account option.");
+                    throw new ToolProblem("That is not a valid account option.");
                 }
                 await tools.SetFlag(username, flag, form.On, context.RequestAborted);
                 var words = FlagWords[flag];
@@ -478,7 +478,7 @@ public static class DirectoryActionsApi
                 {
                     if (!DateOnly.TryParseExact(form.Date.Trim(), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d))
                     {
-                        throw new ToolProblem("Pick the last day the account works.");
+                        throw new ToolProblem("Select the account expiration date.");
                     }
                     last = d;
                 }
@@ -494,7 +494,7 @@ public static class DirectoryActionsApi
                 var changed = await tools.Edit(username, form, context.RequestAborted);
                 if (changed.Count > 0)
                 {
-                    log.Record(context, "users", "ad.edit", $"Edited {username}'s properties", detail: "Changed " + string.Join(", ", changed));
+                    log.Record(context, "users", "ad.edit", $"Edited properties of {username}", detail: "Changed " + string.Join(", ", changed));
                 }
                 return Results.Ok(new { changed });
             }));

@@ -1,655 +1,657 @@
 <!-- The wiki's articles, read by wiki.js: one <article> each, with its group, title and key (its address is #wiki/<key>). -->
 
 <article data-key="install" data-group="Getting started" data-title="Install Rabbid Lab">
-  <p><span data-app>Rabbid Lab</span> runs on one machine (the server) and everyone uses it in a browser. Put it on a machine that stays on.</p>
+  <p><span data-app>Rabbid Lab</span> runs on one server, and admins use it in a browser. Install it on a computer that is always on.</p>
   <h3>On Windows</h3>
   <ol>
     <li>Download <code>RabbidLab-Setup-&lt;version&gt;.exe</code> from the latest release on GitHub.</li>
-    <li>Run it and say yes to the admin prompt.</li>
-    <li>Pick the folder and shortcuts, then the address (port 8420 unless you change it), then the HTTPS certificate. Rabbid Lab can make its own, or use one you already have.</li>
-    <li>Click <b>Install</b>. Rabbid Lab installs as a Windows service and starts straight away.</li>
+    <li>Run it and select Yes at the User Account Control prompt.</li>
+    <li>Select the installation folder and shortcuts, then the address (port 8420 by default), then the HTTPS certificate. Rabbid Lab can create its own certificate or use an existing one.</li>
+    <li>Select <b>Install</b>. Rabbid Lab is installed as a Windows service and starts immediately.</li>
     <li>Open <code>https://localhost:8420</code> on the server, or <code>https://&lt;server name&gt;:8420</code> from another computer.</li>
   </ol>
-  <p class="tip">Running Setup again updates Rabbid Lab and keeps its settings.</p>
+  <p class="tip">Running Setup again updates Rabbid Lab. Its settings are kept.</p>
   <h3>In Docker</h3>
   <ol>
     <li>Run <code>docker compose up -d</code> in the repository folder.</li>
-    <li>Open <code>http://&lt;host&gt;:8420</code>. Everything Rabbid Lab keeps goes in the <code>rabbidlab</code> volume.</li>
+    <li>Open <code>http://&lt;host&gt;:8420</code>. All Rabbid Lab data is stored in the <code>rabbidlab</code> volume.</li>
   </ol>
-  <p>Next: <a href="#wiki/setup">set it up</a>.</p>
+  <p>Next: <a href="#wiki/setup">complete the first-time setup</a>.</p>
 </article>
 
 <article data-key="setup" data-group="Getting started" data-title="First sign-in and setup">
-  <p>The first time anyone opens <span data-app>Rabbid Lab</span>, it asks how people sign in. Do this right after installing: until it's done, anyone who can reach the port can do it.</p>
+  <p>The first time <span data-app>Rabbid Lab</span> is opened, it asks how users sign in. Complete this step immediately after installation. Until it is complete, anyone who can reach the port can complete it.</p>
   <h3>With Active Directory</h3>
   <ol>
-    <li>Pick <b>Active Directory</b>.</li>
-    <li>Check the domain, and leave the domain controller on Automatic unless you want a particular one.</li>
-    <li>Sign in with your own domain account. You become an Administrator, and everyone in the domain can sign in as a User.</li>
+    <li>On the setup page, use the Active Directory form. If the local account form is shown, select <b>Use Active Directory instead</b>.</li>
+    <li>Check the domain name. Leave <b>Domain controller</b> set to <b>Automatic</b> unless you need a specific domain controller.</li>
+    <li>Enter your own domain account and password, then select <b>Connect and sign in</b>. Your account becomes an Administrator, and all domain users can sign in with the User role.</li>
   </ol>
   <h3>With a local account</h3>
   <ol>
-    <li>Pick <b>Local account</b>.</li>
-    <li>Make a username and password. That account is the first Administrator.</li>
+    <li>Select <b>Use a local account instead</b>.</li>
+    <li>Enter a username and password, then select <b>Create account</b>. This account is the first Administrator.</li>
   </ol>
-  <p class="tip">Who gets what is up to you afterwards, under <a href="#wiki/roles">Roles</a>.</p>
+  <p class="tip">To set which users have which permissions, see <a href="#wiki/roles">Roles</a>.</p>
 </article>
 
-<article data-key="around" data-group="Getting started" data-title="Find your way around">
-  <p>Everything is in the rail down the left. You only see what your roles allow.</p>
+<article data-key="around" data-group="Getting started" data-title="Navigate the console">
+  <p>All pages are in the navigation pane on the left. You see only the pages your roles allow.</p>
   <ul>
-    <li><b>Lab:</b> <a href="#overview">Overview</a> and <a href="#links">Links</a>, the sites in your lab.</li>
-    <li><b>Active Directory:</b> <a href="#ad/users">Users</a>, <a href="#ad/groups">Groups</a> and <a href="#ad/computers">Computers</a> in your domain.</li>
-    <li><b>Config:</b> <a href="#seats">Devices</a> (the computers with the client, their Windows accounts and who is an administrator of each), and <a href="#people">Roles and people</a>.</li>
-    <li><b>Help:</b> this wiki, What's new, and GitHub.</li>
-    <li><b>Settings</b> at the bottom: updates and the activity log.</li>
+    <li><b>Lab:</b> <a href="#overview">Overview</a>, <a href="#links">Links</a> (the sites in your lab), Sensors, and <a href="#seats">Devices</a> (computers with the client, their local accounts and their local administrators).</li>
+    <li><b>Directory:</b> Active Directory (<a href="#ad/users">Users</a>, <a href="#ad/groups">Groups</a> and <a href="#ad/computers">Computers</a> in your domain), Group Policy, Domain health and Sync.</li>
+    <li><b>Config:</b> <a href="#people">Roles and people</a>.</li>
+    <li><b>Help:</b> this wiki. What's new and GitHub are in the top bar.</li>
+    <li><b>Settings</b>, at the bottom: your account, updates, alerts, the activity log and server settings.</li>
   </ul>
-  <p>Your name in the top right shows how you signed in and has Sign out. <b>Collapse</b> at the bottom shrinks the rail to icons.</p>
+  <p>The top bar also has shortcuts to Updates and Activity. Your name in the top right shows how you signed in and has <b>Sign out</b>. <b>Collapse</b>, at the bottom of the navigation pane, reduces it to icons.</p>
 </article>
 
 <article data-key="notes" data-group="Getting started" data-title="Notes">
-  <p>Computers on Devices, users, groups and computers in Active Directory, and GPOs each have a <b>Notes</b> tab in their side panel. Its number says how many notes there are.</p>
+  <p>Computers in Devices, users, groups and computers in Active Directory, and GPOs each have a <b>Notes</b> tab in their side panel. The number on the tab is the number of notes.</p>
   <ul>
-    <li>Type in the box, then click <b>Add note</b> or press Ctrl+Enter. The toolbar does bold, italic, underline, strikethrough, headings, quotes, lists, code and links (Ctrl+K). Pasted text comes in plain.</li>
-    <li>Everyone who can see the computer, account or GPO reads its notes and can add one. Notes stay on an AD account when it's moved or renamed.</li>
-    <li>The pencil changes your own notes. The bin deletes your own, and whoever can change that kind of thing can delete anyone's.</li>
-    <li>Adding, changing and deleting notes is in the activity log.</li>
+    <li>Type in the box, then select <b>Add note</b> or press Ctrl+Enter. The toolbar supports bold, italic, underline, strikethrough, headings, quotes, lists, code and links (Ctrl+K). Pasted text is inserted as plain text.</li>
+    <li>Anyone who can view the computer, account or GPO can read its notes and add a note. Notes stay with an AD object when it is moved or renamed.</li>
+    <li>Use the pencil to edit your own notes and the bin to delete them. Users with permission to change that type of object can delete any note on it.</li>
+    <li>Adding, editing and deleting notes is recorded in the activity log.</li>
   </ul>
 </article>
 
 <article data-key="add-computer" data-group="Computers" data-title="Add a computer">
-  <p>A computer shows up under Devices once it has the <span data-app>Rabbid Lab</span> client. There's no key: the client only needs the server's address. New computers wait until an admin approves them.</p>
-  <h3>From the computer itself (easiest)</h3>
+  <p>A computer appears under Devices after the <span data-app>Rabbid Lab</span> client is installed on it. No key is required: the client needs only the server address. New computers show as Pending approval until an admin approves them.</p>
+  <h3>From the computer (recommended)</h3>
   <ol>
     <li>On that computer, open <span data-app>Rabbid Lab</span> in a browser and sign in.</li>
-    <li>The bar at the top says it isn't connected yet. Click <b>Download the client</b> and run the MSI.</li>
-    <li>Click <b>Connect this computer</b>. The client opens with this server's address filled in.</li>
-    <li>Check the address, click <b>Connect</b>, and choose Yes at the Windows administrator prompt.</li>
-    <li><a href="#wiki/let-in">Approve it</a> under Devices.</li>
+    <li>The bar at the top says <b>This computer is not connected.</b> Select <b>Download the client</b> and run the MSI.</li>
+    <li>Select <b>Connect this computer</b>. The client opens with this server's address filled in.</li>
+    <li>Check the address, select <b>Connect</b>, and select Yes at the User Account Control prompt.</li>
+    <li><a href="#wiki/let-in">Approve the computer</a> under Devices.</li>
   </ol>
-  <h3>Quietly, from a command line or Intune</h3>
+  <h3>Silent install, from a command line or Intune</h3>
   <ol>
-    <li>Open <a href="#seats">Devices</a> and click <b>New</b> in the bar under the banner, or pick <b>Add computers</b> from its arrow.</li>
-    <li>Copy the install line. It has this server's address and its public key fingerprint, which is how the client knows the server.</li>
-    <li>Run it on the computer, or paste it into Intune as the install command.</li>
+    <li>Open <a href="#seats">Devices</a> and select <b>New</b> in the bar under the banner, or select <b>Add computers</b> from its arrow.</li>
+    <li>Copy the install command. It contains this server's address and public key fingerprint, which the client uses to verify the server.</li>
+    <li>Run it on the computer, or enter it in Intune as the install command.</li>
   </ol>
-  <h3>With Group Policy, in one click</h3>
+  <h3>With Group Policy</h3>
   <ol>
-    <li>Open <a href="#seats/deploy">Devices, Deploy the client</a>. It takes Add computers and Change Group Policy, and Group Policy Management on this server.</li>
-    <li>Pick the address every computer connects to. A full name, such as helpdesk.yourdomain.com, works anywhere in the domain.</li>
-    <li>Click <b>Deploy to every computer</b> and confirm it's you. <span data-app>Rabbid Lab</span> makes the GPO <b>Rabbid Lab Client</b>, puts the installer in its SYSVOL folder, adds a task that installs it quietly as SYSTEM where it isn't installed, lets the client's file past Defender's attack surface reduction rules, and links the GPO to the domain.</li>
-    <li>Each computer installs it at its next policy refresh, within about 90 minutes, with no restart. People at the computer see nothing: no install, no tray icon and no messages (the installer is given QUIET=1). New ones wait for approval under Computers.</li>
+    <li>Open <a href="#seats/deploy">Devices &gt; Deploy the client</a>. This requires the Add computers and Create and edit GPOs permissions, and Group Policy Management on this server.</li>
+    <li>Select the server address that computers connect to. A fully qualified name, such as helpdesk.yourdomain.com, works anywhere in the domain.</li>
+    <li>Select <b>Deploy to all computers</b> and verify your identity. <span data-app>Rabbid Lab</span> creates the <b>Rabbid Lab Client</b> GPO, copies the installer to its SYSVOL folder, adds a task that silently installs the client as SYSTEM on computers that do not have it, excludes the client from Defender attack surface reduction rules, and links the GPO to the domain.</li>
+    <li>Each computer installs the client at its next Group Policy refresh, within about 90 minutes, with no restart. Signed-in users see nothing: no installer window, no tray icon and no messages (the installer runs with QUIET=1). New computers show as Pending approval under Computers.</li>
   </ol>
-  <p><b>Deploy again</b> puts this server's installer in the GPO after an update. <b>Stop deploying</b> takes the GPO off the domain; computers keep the client. If Intune manages Defender, the page shows the exclusion to add to your attack surface reduction policy there too.</p>
+  <p><b>Deploy again</b> updates the installer in the GPO after a <span data-app>Rabbid Lab</span> update. <b>Stop deploying</b> stops the GPO from applying to the domain; computers keep the client. If Intune manages Defender, the page shows the exclusion to add to your attack surface reduction policy.</p>
   <h3>With your own GPO</h3>
-  <p>In <b>Add computers</b>, download the MSI and the Group Policy template. Assign the MSI under Software Installation, and set <b>Server address</b> under Administrative Templates, Rabbid Lab, Client.</p>
-  <p class="tip">Group Policy wins over anything the installer or Connect was given.</p>
+  <p>In <b>Add computers</b>, download the MSI and the Group Policy template. Assign the MSI under Software Installation, and set <b>Server address</b> under Administrative Templates &gt; Rabbid Lab &gt; Client.</p>
+  <p class="tip">Group Policy settings take precedence over settings from the installer or from Connect.</p>
 </article>
 
-<article data-key="let-in" data-group="Computers" data-title="Approve computers, or remove them">
+<article data-key="let-in" data-group="Computers" data-title="Approve or remove computers">
   <ol>
-    <li>Open <a href="#seats">Devices</a>. New computers show as <b>Waiting</b>.</li>
-    <li>Click <b>Approve</b> next to the computer. It's connected from then on.</li>
-    <li>To remove a computer, click it, then <b>Remove from Devices</b> in the panel on the right. If the client is still installed on it, it connects again and waits for approval.</li>
+    <li>Open <a href="#seats">Devices</a>. New computers show as <b>Pending</b>.</li>
+    <li>Select <b>Approve</b> on the computer's row. The computer stays connected after it is approved.</li>
+    <li>To remove a computer, select it, then select <b>Actions</b> &gt; <b>Remove from Devices</b> in the panel on the right. If the client is still installed, the computer reconnects and needs approval again.</li>
   </ol>
-  <p>Don't want to approve each one? In <b>Add computers</b>, turn off <b>Require approval for new computers</b> and they connect right away.</p>
-  <p class="tip">The views under Computers on the left (Online, Offline, Waiting for approval and the rest) narrow the list.</p>
+  <p>To approve new computers automatically, set <b>Require approval for new computers</b> to Off in <b>Add computers</b>. New computers then connect immediately.</p>
+  <p class="tip">The views under Computers on the left (Online, Offline, Pending approval and others) filter the list.</p>
 </article>
 
 <article data-key="inventory" data-group="Computers" data-title="Hardware, software and Windows updates">
-  <p>Each computer's client reports what's on it: model, serial number, processor, memory, drives, uptime, whether Windows is waiting for a restart, the installed software, and the Windows updates installed and missing. Nothing is installed or changed on the computer for this.</p>
+  <p>Each computer's client reports its model, serial number, processor, memory, drives, uptime, whether a restart is pending, its installed software, and its installed and missing Windows updates. Collecting this information does not install or change anything on the computer.</p>
   <ul>
-    <li><b>Computers</b> shows the short version on each row. The views on the left pick out what needs looking at: Needs updates, Needs restart, Low disk space (under 15% free on C:) and Older client. More columns are under <b>Columns</b>.</li>
-    <li><b>Click a computer</b> for its hardware, and tabs with its software and its Windows updates by name. To list software across every computer, run a WMI query.</li>
-    <li><b>Export</b> saves the open list as a CSV file.</li>
+    <li><b>Computers</b> shows a summary on each row. The views on the left list computers that need attention: Needs updates, Needs restart, Low disk space (less than 15% free on C:), Has errors and Client out of date. To add columns, use <b>Choose columns</b>.</li>
+    <li><b>Select a computer</b> to view its hardware, with tabs for its installed software and its Windows updates. To list software across all computers, run a WMI query.</li>
+    <li><b>Export</b> saves the current list as a CSV file.</li>
   </ul>
-  <p>The client looks every half hour and sends when something changed. It asks Windows Update what's missing every six hours; antivirus definition updates are left out. A computer needs client 1.1.165 or later.</p>
+  <p>The client collects inventory every 30 minutes and sends it when something changes. It checks Windows Update for missing updates every six hours; antivirus definition updates are excluded. Requires client 1.1.165 or later.</p>
 </article>
 
 <article data-key="scripts" data-group="Computers" data-title="Scripts, restarts and updates on computers">
-  <p>On <a href="#seats">Devices</a> you can run a script on computers, install their missing Windows updates, or restart them. Scripts are PowerShell or Command, and run as SYSTEM.</p>
+  <p>On <a href="#seats">Devices</a>, you can run scripts on computers, install missing Windows updates, or restart computers. Scripts are written in PowerShell or Command and run as SYSTEM.</p>
   <ul>
-    <li><b>Several computers:</b> tick them, then click <b>Actions</b>. Shift-click ticks everything in between.</li>
-    <li><b>One computer:</b> click it. <b>Actions</b> at the top of its panel has the same menu, and its <b>Jobs</b> tab lists what was run on it.</li>
-    <li><b>Scripts</b> is the library. <b>New</b> adds one while Scripts is open (it's also under New's arrow), and <b>Start from</b> fills in a common one to change. Each script has a time limit: it's stopped when that's up.</li>
-    <li>The built-in domain checks only read: <b>Domain trust (secure channel)</b>, <b>Domain controller it uses</b>, <b>Every domain controller</b>, <b>Domain trusts</b>, <b>Account scripts run as</b>, and <b>Domain report</b> with all of them. Domain trust fails the job when the computer's link with the domain is broken.</li>
-    <li><b>Jobs</b> lists every run. Click one to see each computer, the exit code, what the script wrote there, and exactly what ran.</li>
-    <li><b>Lock</b> sends everyone signed in back to the sign-in screen with their apps still open. <b>Sign everyone out</b> signs them out straight away. <b>Send a message</b> pops up for whoever is signed in. These and <b>Shut down</b> are for now: a computer offline for more than 15 minutes does not get them later.</li>
-    <li><b>Restart</b> gives anyone signed in a five minute warning. <b>Install Windows updates</b> doesn't restart: a computer that needs it shows under Needs restart.</li>
-    <li>A computer that's offline gets the job when it's back, for a day. After that the job says Expired.</li>
-    <li><b>Wake</b> turns on a computer that is off or asleep, with Wake-on-LAN. This server sends it to computers on its own network. For a computer on another network, an online computer there passes it on. Wake-on-LAN has to be on in the BIOS, and in Windows: the computer panel says which, and the built-in script <b>Turn on Wake-on-LAN</b> sets the Windows side.</li>
+    <li><b>Several computers:</b> tick them, then select <b>Actions</b>. Shift-click selects a range.</li>
+    <li><b>One computer:</b> select it. <b>Actions</b> at the top of its panel has the same menu, and its <b>Jobs</b> tab lists the jobs that ran on it.</li>
+    <li><b>Scripts</b> is the script library. While Scripts is open, <b>New</b> creates a script (it is also in the <b>New</b> menu), and <b>Start from</b> fills in a common script for you to edit. Each script has a time limit and is stopped when the limit is reached.</li>
+    <li>The built-in domain scripts are read-only: <b>Domain trust (secure channel)</b>, <b>Domain controller in use</b>, <b>List domain controllers</b>, <b>Domain trusts</b>, <b>Script run-as account</b>, and <b>Domain report</b>, which runs all of them. Domain trust fails the job when the computer's secure channel with the domain is broken.</li>
+    <li><b>Jobs</b> lists every run. Select a job to view each computer, its exit code, the script output and the exact script that ran.</li>
+    <li><b>Lock</b> returns signed-in users to the sign-in screen with their apps still open. <b>Sign out all users</b> signs them out immediately. <b>Send a message</b> shows a message to signed-in users. These actions and <b>Shut down</b> run immediately: a computer that is offline for more than 15 minutes does not receive them later.</li>
+    <li><b>Restart</b> gives signed-in users a five-minute warning. <b>Windows updates</b> installs missing updates but does not restart: computers that need a restart are listed under Needs restart.</li>
+    <li>An offline computer receives a job when it is back online, for up to one day. After that, the job status is Expired.</li>
+    <li><b>Wake</b> uses Wake-on-LAN to turn on a computer that is shut down or asleep. This server sends the packet to computers on its own network. For a computer on another network, an online computer on that network relays it. Wake-on-LAN must be enabled in the BIOS and in Windows: the computer panel shows which settings are missing, and the built-in script <b>Enable Wake-on-LAN</b> configures the Windows settings.</li>
   </ul>
-  <p><b>Confirm it's you.</b> Before anything runs, or a script or workflow is saved, you're asked for a code from your authenticator app. Without MFA it's your password. It's asked again after 10 minutes. Running on more than 10 computers also takes typing how many.</p>
-  <p><b>Who can do it.</b> Four permissions under Devices in <a href="#people">Roles and people</a>: Restart, wake and update computers, Run scripts, Write scripts, and Manage workflows. Write scripts means being able to run anything on every computer, so give it to few. Every run is in the activity log with who ran it and the script's SHA-256.</p>
-  <p class="tip">To turn all of this off on some computers, set <b>Allow scripts and actions</b> to Disabled in the Group Policy template. Their jobs then say Refused. A computer needs client 1.1.168 or later to take jobs.</p>
+  <p><b>Verify your identity.</b> Before a job runs, or a script or workflow is saved, you are asked for a code from your authenticator app, or for your password if MFA is not set up. You are asked again after 10 minutes. To run a job on more than 10 computers, you also enter the number of computers.</p>
+  <p><b>Permissions.</b> Four permissions under Devices in <a href="#people">Roles and people</a> control this: Restart, wake and update computers; Run scripts; Manage scripts; and Manage workflows. Manage scripts allows running any code on every computer, so assign it to as few people as possible. Every run is recorded in the activity log with who ran it and the script's SHA-256 hash.</p>
+  <p class="tip">To block scripts and actions on specific computers, set <b>Allow scripts and actions</b> to Disabled in the Group Policy template. Their jobs then show as Rejected. Computers need client 1.1.168 or later to run jobs.</p>
 </article>
 
 <article data-key="workflows" data-group="Computers" data-title="Workflows">
-  <p>A workflow runs steps on computers by itself. Open <a href="#seats/workflows">Workflows</a> under Devices and click <b>New</b>, or pick <b>New workflow</b> from New's arrow.</p>
+  <p>A workflow runs steps on computers automatically. Open <a href="#seats/workflows">Workflows</a> under Devices and select <b>New</b>, or select <b>New workflow</b> from the <b>New</b> menu.</p>
   <ul>
-    <li><b>When:</b> a new computer is approved, on a schedule (days and a time, by this server's clock), a computer comes online, is missing Windows updates, needs a restart, or runs low on space on C:.</li>
-    <li><b>On which computers:</b> every computer, names like <code>SHOP-*</code>, Windows names that contain a word (or don't, such as Server), or only computers with nobody signed in.</li>
-    <li><b>Steps:</b> run a script from the library, install missing Windows updates, restart, or restart only if Windows needs it. They run in order on each computer and stop at the first one that fails.</li>
-    <li><b>Run now</b> starts it on every approved computer it's for. <b>Disable</b> keeps it without running it.</li>
+    <li><b>When:</b> a new computer is approved; on a schedule (days and a time, in this server's time zone); or a computer comes online, has missing Windows updates, needs a restart, or is low on space on C:.</li>
+    <li><b>Computers:</b> all computers, names that match a pattern such as <code>SHOP-*</code>, computers whose Windows version contains (or does not contain) a word such as Server, or only computers with no signed-in user.</li>
+    <li><b>Steps:</b> run a script from the library, install missing Windows updates, restart, or restart if a restart is pending. Steps run in order on each computer, and the workflow stops at the first step that fails.</li>
+    <li><b>Run now</b> starts the workflow on every approved computer it applies to. <b>Disable</b> keeps the workflow without running it.</li>
   </ul>
-  <p>Each run is a job under Jobs, by Workflow. A scheduled run reaches a computer that was offline if it's back within four hours. A workflow can only hold steps its maker may run by hand.</p>
+  <p>Each run is a job under Jobs, listed as a workflow. A scheduled run reaches a computer that was offline if the computer comes back online within four hours. A workflow can contain only steps that its creator has permission to run.</p>
 </article>
 
-<article data-key="client" data-group="Computers" data-title="The client on a computer">
-  <p>The client is a small Windows service with a tray icon. It checks in every minute, says who is signed in, keeps itself on the server's version, and makes the account changes you ask for on a computer's Accounts tab in <a href="#seats">Devices</a>.</p>
+<article data-key="client" data-group="Computers" data-title="The Rabbid Lab client">
+  <p>The client is a Windows service with a tray icon. It checks in every minute, reports the signed-in user, updates itself to the server's version, and makes the local account changes you request on a computer's Accounts tab in <a href="#seats">Devices</a>.</p>
   <ul>
-    <li><b>Its window:</b> click the tray icon, or open <b>Rabbid Lab Client</b> from the Start menu. It shows whether the computer is connected, to which server, who is signed in to Windows, both versions and the last check-in.</li>
-    <li><b>When the icon shows:</b> as soon as the client is installed by hand. After a quiet install (Intune, Group Policy) it shows at the next sign-in.</li>
-    <li><b>No server yet?</b> The window has <b>Connect to a server</b>.</li>
-    <li><b>Stopping account changes on some computers:</b> in the Group Policy template, set <b>Allow account changes</b> to Disabled.</li>
-    <li><b>Stopping scripts and actions on some computers:</b> in the same template, set <b>Allow scripts and actions</b> to Disabled.</li>
-    <li><b>Hiding the client from people:</b> set <b>Hide the client from people at the computer</b> to Enabled, or install with <code>QUIET=1</code> (the deploy GPO does). No tray icon and no messages; it still connects and waits for approval. Disabled shows the icon even after <code>QUIET=1</code>.</li>
+    <li><b>Client window:</b> select the tray icon, or open <b>Rabbid Lab Client</b> from the Start menu. It shows the connection status, the server, the signed-in Windows user, both versions and the last check-in.</li>
+    <li><b>Tray icon:</b> shown as soon as the client is installed manually. After a silent install (Intune, Group Policy), it appears at the next sign-in.</li>
+    <li><b>Not connected to a server?</b> The window has <b>Connect to a server</b>.</li>
+    <li><b>Block account changes on specific computers:</b> in the Group Policy template, set <b>Allow account changes</b> to Disabled.</li>
+    <li><b>Block scripts and actions on specific computers:</b> in the same template, set <b>Allow scripts and actions</b> to Disabled.</li>
+    <li><b>Hide the client from users:</b> set <b>Hide the client from signed-in users</b> to Enabled, or install with <code>QUIET=1</code> (the deploy GPO does this). There is no tray icon and there are no messages; the client still connects and needs approval. Disabled shows the icon even after <code>QUIET=1</code>.</li>
   </ul>
-  <p>If a computer won't take changes, see <a href="#wiki/seat-trouble">A computer that won't take changes</a>.</p>
+  <p>If a computer does not accept changes, see <a href="#wiki/seat-trouble">Computer does not accept changes</a>.</p>
 </article>
 
 <article data-key="client-uninstall" data-group="Computers" data-title="Uninstall the client">
-  <p>Once a computer has connected to a server, the client is locked on it: Windows won't uninstall it from Installed apps or from the Rabbid Lab Client window. An administrator at the computer can still stop its service; the lock is on uninstalling. A client that never connected to a server isn't locked.</p>
+  <p>After a computer connects to a server, the client is locked on it: Windows cannot uninstall it from Installed apps or from the Rabbid Lab Client window. An administrator on the computer can still stop the service; the lock applies only to uninstalling. A client that has never connected to a server is not locked.</p>
   <ol>
-    <li>Open <a href="#seats">Devices</a> and click the computer. It opens in a panel on the right.</li>
-    <li><b>Uninstall now</b> makes the client uninstall itself within a minute. The computer then shows as Offline: click <b>Remove</b> to take it off the list.</li>
-    <li>Or click <b>Allow for an hour</b> so someone at the computer can uninstall it. <b>Lock again</b> ends that early.</li>
+    <li>Open <a href="#seats">Devices</a> and select the computer. It opens in a panel on the right.</li>
+    <li><b>Uninstall now</b> makes the client uninstall itself within a minute. The computer then shows as Offline: select <b>Actions</b> &gt; <b>Remove from Devices</b> to remove it from the list.</li>
+    <li>Or select <b>Allow for an hour</b> so that a user on the computer can uninstall the client. <b>Lock again</b> ends that period early.</li>
   </ol>
-  <h3>When the computer can't reach the server</h3>
+  <h3>When the computer cannot reach the server</h3>
   <ul>
-    <li><b>Uninstall code.</b> Every computer has its own. Click <b>Show code</b> under Uninstall code in the same panel. On the computer, open Rabbid Lab Client, click <b>Uninstall</b> and enter the code. It allows uninstalling for an hour and needs no connection. Showing a code and using one are both in the activity log, and using one is also in the computer's Windows event log.</li>
-    <li><b>30 days offline.</b> A computer that hasn't reached this server for 30 days unlocks by itself, so nothing is stuck if the server is gone for good. Turn this off in <a href="#settings/seats">Settings, Devices</a>.</li>
+    <li><b>Uninstall code.</b> Each computer has its own code. Select <b>Show code</b> under Uninstall code in the same panel. On the computer, open Rabbid Lab Client, select <b>Uninstall</b> and enter the code. Uninstalling is then allowed for one hour, with no connection required. Showing and using a code are both recorded in the activity log, and using a code is also recorded in the computer's Windows event log.</li>
+    <li><b>30 days offline.</b> A computer that has not reached this server for 30 days is unlocked automatically, so computers are not left locked if the server is permanently removed. To change this, use <b>Release the lock after 30 days offline</b> in <a href="#settings/seats">Settings &gt; Devices</a>.</li>
   </ul>
   <h3>Before you remove the server</h3>
-  <p>Uninstall the client from the other computers first, with <b>Uninstall now</b>. Once the server and its data are gone, nothing can allow it and the uninstall codes are gone too, so those computers stay locked for the 30 days. Setup's Remove page says how many computers still have the client. The client on the server itself is uninstalled along with it.</p>
-  <h3>When the server is already gone</h3>
-  <p><code>Remove-RabbidLabClient.ps1</code>, in Tools on Rabbid Lab's GitHub page, clears the lock and uninstalls the client. It needs administrator rights on the computer and writes a line to its Application event log.</p>
+  <p>First uninstall the client from the other computers with <b>Uninstall now</b>. After the server and its data are removed, uninstalling cannot be allowed and the uninstall codes are lost, so those computers stay locked for 30 days. The Remove page in Setup shows how many computers still have the client. The client on the server itself is uninstalled with the server.</p>
+  <h3>When the server has been removed</h3>
+  <p><code>Remove-RabbidLabClient.ps1</code>, in the Tools folder of the Rabbid Lab GitHub repository, removes the lock and uninstalls the client. It requires administrator rights on the computer and writes an entry to the Application event log.</p>
   <ul>
-    <li><b>One computer.</b> Run it there in PowerShell started as administrator.</li>
-    <li><b>Many that are on.</b> Run it from one computer with <code>-ComputerName</code> and the names. PowerShell remoting has to be on there. The ones that don't answer are listed.</li>
-    <li><b>Ones that are off.</b> Add it to a new policy in Group Policy Management as a startup script: Computer Configuration, Policies, Windows Settings, Scripts, Startup, PowerShell Scripts. Each computer runs it the next time it starts, and one without the client is left alone.</li>
+    <li><b>One computer.</b> Run it on that computer in PowerShell as administrator.</li>
+    <li><b>Several computers that are on.</b> Run it from one computer with <code>-ComputerName</code> and the computer names. PowerShell remoting must be enabled on the target computers. Computers that do not respond are listed.</li>
+    <li><b>Computers that are off.</b> Add it to a new GPO in Group Policy Management as a startup script: Computer Configuration &gt; Policies &gt; Windows Settings &gt; Scripts &gt; Startup &gt; PowerShell Scripts. Each computer runs it at its next startup. Computers without the client are not affected.</li>
   </ul>
-  <p>Delete the <b>Rabbid Lab Client</b> policy first if you deployed the client with Group Policy. It installs the client again wherever it's missing.</p>
-  <p>A locked computer can't be connected to a different server until it's unlocked. The lock stops the normal ways of removing the client. Someone with administrator rights on the computer who removes it by hand still can, and the computer then shows as Offline.</p>
+  <p>If you deployed the client with Group Policy, delete the <b>Rabbid Lab Client</b> GPO first. Otherwise it reinstalls the client wherever it is missing.</p>
+  <p>A locked computer cannot connect to a different server until it is unlocked. The lock blocks the standard ways of removing the client. An administrator on the computer can still remove it manually, and the computer then shows as Offline.</p>
 </article>
 
 <article data-key="dir-setup" data-group="Active Directory" data-title="Set up the AD service account">
-  <p><span data-app>Rabbid Lab</span> makes every Active Directory change as a dedicated service account, <code>svc-rabbidlab</code>. Its password is long, random and stored encrypted on the server. You set this up once.</p>
-  <h3>Create a new one</h3>
+  <p><span data-app>Rabbid Lab</span> makes all Active Directory changes as a dedicated service account, <code>svc-rabbidlab</code>. Its password is long, random and stored encrypted on the server. You set it up once.</p>
+  <h3>Create a new account</h3>
   <ol>
-    <li>Open <a href="#ad/users">Users</a> and click <b>Set up</b>. The steps run down the left: Sign in, Account, Review.</li>
-    <li><b>Sign in</b>: enter a domain admin username and password. They're only used to create the service account and aren't saved.</li>
-    <li><b>Account</b>: name it and pick the OU to create it in, from the list or with <b>Browse…</b>.</li>
-    <li><b>Review</b>: check it, then click <b>Create service account</b>. <b>Can manage</b> starts as the whole domain; <b>Change</b> limits it to one OU.</li>
+    <li>Open <a href="#ad/users">Users</a> and select <b>Set up</b>. The steps are listed on the left: Choose, Sign in, Account, Review.</li>
+    <li><b>Choose</b>: select <b>Create a new account</b>.</li>
+    <li><b>Sign in</b>: enter a domain admin username and password. These credentials are used once to create the service account and are not stored.</li>
+    <li><b>Account</b>: enter a name and select the OU to create the account in, from the list or with <b>Browse…</b>.</li>
+    <li><b>Review</b>: check the settings, then select <b>Create service account</b>. <b>Scope</b> is the entire domain by default; select <b>Change</b> to limit it to one OU.</li>
   </ol>
-  <p>The service account gets Full Control over user, group and computer objects there, the same as the Delegation of Control wizard.</p>
-  <h3>Use one you have</h3>
-  <p>Click <b>Use one I have</b>, sign in as the service account, then check it on Review. It needs permission to create and manage users, groups and computers where it works: the whole domain, or the OU you pick with <b>Change</b>.</p>
+  <p>The service account gets Full Control over user, group and computer objects in its scope, like the Delegation of Control Wizard.</p>
+  <h3>Use an existing account</h3>
+  <p>Select <b>Use an existing account</b>, sign in as the service account, then confirm on Review. The account needs permission to create and manage users, groups and computers in its scope: the entire domain, or the OU you select with <b>Change</b>.</p>
   <h3>Not now</h3>
-  <p><b>Not now</b> on the card turns on read-only for the whole server, after you confirm it's you. Only people whose role can set up the service account can turn it on. They see it, and so does anyone whose role has <b>See it while read-only</b>, in their role's scope: everyone else waits for the service account. The pages read the domain as this server's own computer account, which can read most of it, and nothing can be changed until the service account is set up. Group Policy changes still work with a domain admin login. Turning it on or off goes in the Activity log, and <a href="#settings/ad">Settings, Active Directory</a> has <b>Turn off read-only</b>.</p>
-  <h3>Picking an OU</h3>
-  <p><b>Browse…</b> beside any OU list opens the OUs the way Settings lists its pages. An OU with OUs inside has the flask and opens when you click it. Type in <b>Find an OU</b> to search, then click <b>Use this OU</b>, or double-click it.</p>
-  <h3>Change it later</h3>
-  <p><a href="#settings/ad">Settings, Active Directory</a> (the gear at the bottom of the views on any Active Directory page opens it) sets the default OU for new users and groups, and has <b>Disconnect</b>. Disconnecting deletes the stored password; the account and its permissions stay in AD until you delete them in Active Directory Users and Computers.</p>
-  <p class="tip">Admin accounts protected by AdminSDHolder (Domain Admins and the like) can be viewed but not changed by the service account.</p>
+  <p><b>Not now</b> on the setup card enables read-only mode for the whole server, after you verify your identity. Only admins whose role can set up the service account can enable it. Those admins, and users whose role has <b>View in read-only mode</b>, can view the Active Directory pages within their role's scope. Other users cannot until the service account is set up. In read-only mode, the pages read the domain as this server's computer account, which can read most of the directory, and no changes can be made until the service account is set up. Group Policy changes still work with domain admin credentials. Enabling or disabling read-only mode is recorded in the Activity log. To exit read-only mode, select <b>Disable read-only</b> in <a href="#settings/ad">Settings &gt; Active Directory</a>.</p>
+  <h3>Select an OU</h3>
+  <p><b>Browse…</b> beside any OU list opens <b>Select an OU</b>, with the OUs listed on the left. An OU that contains other OUs expands when you select it. Type in <b>Find an OU</b> to search, then select <b>Use this OU</b>, or double-click the OU.</p>
+  <h3>Change the settings later</h3>
+  <p><a href="#settings/ad">Settings &gt; Active Directory</a> (the gear at the bottom of the views on any Active Directory page opens it) sets the default OUs for new users, groups and computers, and has <b>Disconnect</b>. Disconnecting deletes the stored password. The account and its permissions remain in AD until you delete them in Active Directory Users and Computers.</p>
+  <p class="tip">Admin accounts protected by AdminSDHolder (members of Domain Admins and similar groups) can be viewed but not changed by the service account.</p>
 </article>
 
-<article data-key="dir-new-user" data-group="Active Directory" data-title="Make a user">
+<article data-key="dir-new-user" data-group="Active Directory" data-title="Create a user">
   <ol>
-    <li>Open <a href="#ad/users">Users</a> and click <b>New</b> in the bar under the banner. Its arrow has New user, New group and New computer on any Active Directory page.</li>
-    <li>Type the first and last name. The display name and username fill themselves in; change them if you like.</li>
-    <li>Pick where it goes, and add an email, job title and description if you want.</li>
-    <li>Leave <b>Make one for me</b> for the password, or pick <b>Type one</b>.</li>
-    <li>Keep <b>Change it at the first sign-in</b> on, so the person picks their own.</li>
-    <li>Add groups if you want, then click <b>Make the account</b>.</li>
-    <li>Copy the password <span data-app>Rabbid Lab</span> shows. It's shown once and not kept.</li>
+    <li>Open <a href="#ad/users">Users</a> and select <b>New</b> in the bar under the banner. Its arrow has New user, New group and New computer on every Active Directory page.</li>
+    <li>Enter the first and last name. The display name and username are filled in automatically; you can change them.</li>
+    <li>Select the OU, and optionally enter an email address, job title and description.</li>
+    <li>Leave <b>Generate password</b> selected, or select <b>Enter password</b>.</li>
+    <li>Leave <b>User must change password at next sign-in</b> selected so that the user sets their own password.</li>
+    <li>Optionally add groups, then select <b>Create account</b>.</li>
+    <li>Copy the password that <span data-app>Rabbid Lab</span> shows. It is shown only once and is not stored.</li>
   </ol>
 </article>
 
-<article data-key="dir-password" data-group="Active Directory" data-title="Reset a password or unlock someone">
+<article data-key="dir-password" data-group="Active Directory" data-title="Reset a password or unlock an account">
   <ol>
-    <li>Open <a href="#ad/users/locked">Users, Locked out</a>, or find the person in <a href="#ad/users">All users</a>.</li>
-    <li>Click them to open their card.</li>
-    <li>Locked out? Click <b>Unlock</b>.</li>
-    <li>Forgot their password? Click <b>Set a password</b>, pick <b>Make one for me</b> or type one, and keep <b>Change it at the next sign-in</b> on. Setting a password unlocks them too.</li>
-    <li>Copy the new password and give it to them.</li>
+    <li>Open <a href="#ad/users/locked">Users &gt; Locked out</a>, or find the user in <a href="#ad/users">All users</a>.</li>
+    <li>Select the user to open their panel.</li>
+    <li>If the account is locked out, select <b>Unlock</b>.</li>
+    <li>If the user forgot their password, select <b>Reset password</b>, select <b>Generate password</b> or enter a password, and leave <b>User must change password at next sign-in</b> selected. Resetting the password also unlocks the account.</li>
+    <li>Copy the new password and give it to the user.</li>
   </ol>
 </article>
 
-<article data-key="dir-actions" data-group="Active Directory" data-title="Change users, groups and computers, one or many at once">
-  <p>Click a row anywhere in the console (Users, Groups, Computers, Domain health, AD audit, Recycle Bin, Devices, Roles and people) to open it in a panel from the right; click the same row again to close it: its details, its groups (and a group's members), and buttons for the everyday changes. The round <b>›</b> on the panel's edge, or a click on its row again, folds it into a thin strip on the right with the name down it; click the strip, or the row, to open it again. Every row also has a menu with everything that can be changed: open it from <b>⋯</b> at the end of the row, or right-click the row.</p>
+<article data-key="dir-actions" data-group="Active Directory" data-title="Edit users, groups and computers">
+  <p>Select a row anywhere in the console (Users, Groups, Computers, Domain health, AD audit, Recycle Bin, Devices, Roles and people) to open it in a panel on the right. The panel shows the object's details, its groups (and a group's members), and buttons for common changes. Select the round <b>›</b> on the panel's edge, or the row again, to collapse the panel to a narrow strip on the right; select the strip or the row to expand it again. Each row also has a menu with every available change: open it from <b>⋯</b> at the end of the row, or right-click the row.</p>
   <ol>
-    <li>To change several at once, tick them on the left (Shift-click ticks a run of them), then click <b>Actions</b> in the toolbar. It shows how many are ticked.</li>
-    <li>Pick a category: <b>Account</b> (enable, disable, unlock, expiration), <b>Password</b>, <b>Groups</b>, <b>Security</b> or <b>Organization</b> (edit properties, rename, move).</li>
+    <li>To change several objects at once, tick them on the left (Shift-click selects a range), then select <b>Actions</b> in the toolbar. It shows how many are selected.</li>
+    <li>Select a category: <b>Account</b> (enable, disable, unlock, expiration), <b>Password</b>, <b>Groups</b>, <b>Security</b> or <b>Organization</b> (edit properties, rename, move).</li>
     <li>Groups have <b>Members</b> (add, remove, copy from or to another group) and <b>Member of</b>. Computers have <b>Account</b>, <b>Groups</b> and <b>Organization</b>.</li>
-    <li>The menu only lists what applies. With several picked, an item says how many of them it applies to.</li>
-    <li>The panel's <b>Attributes</b> tab lists every attribute the user, group or computer has in Active Directory, as ADSI Edit shows them. Find narrows it, <b>Show empty</b> adds the ones with no value, and <b>Export</b> saves them as a CSV. Each row's <b>⋯</b> (or a right-click) copies it and, with Edit attributes in your role, edits or clears it. <b>Attribute browser</b> opens the same object there.</li>
-    <li>In the panel, <b>Member of</b> and a group's <b>Members</b> have a tick on each row and <b>Select all</b> above them. Tick some, then <b>Remove</b> beside Add takes them all out at once, after asking when it's more than one. The cross on a row takes out just that one.</li>
-    <li>Add to groups, Add members, the Remove ones and Copy show everyone there is in a list with a tick each: find to narrow it, tick as many as you need (<b>Tick all shown</b> ticks everything the find left), and the count shows at the bottom. What they are already in, or who is already a member, is left out.</li>
+    <li>The menu lists only the actions that apply. With several objects selected, each item shows how many of them it applies to.</li>
+    <li>The panel's <b>Attributes</b> tab lists every attribute of the user, group or computer in Active Directory, as ADSI Edit shows them. Search filters the list, <b>Show empty</b> adds attributes with no value, and <b>Export</b> saves them as a CSV file. Each row's <b>⋯</b> (or a right-click) copies the attribute and, with the Edit attributes permission, edits or clears it. <b>Attribute browser</b> opens the same object in the Attribute browser.</li>
+    <li>In the panel, <b>Member of</b> and a group's <b>Members</b> have a tick on each row and <b>Select all</b> above them. Tick some, then select <b>Remove</b> to remove them all at once; you are asked to confirm when more than one is selected. The cross on a row removes only that one.</li>
+    <li><b>Add to groups</b>, <b>Add members</b> and the remove and copy actions show a list with a tick on each item. Search to filter it, tick as many items as you need (<b>Select all shown</b> ticks every item in the filtered list), and the count shows at the bottom. Groups the object is already a member of, and existing members, are not listed.</li>
   </ol>
-  <p>Protected and built-in accounts and groups can be changed too: Active Directory refuses whatever the service account isn't allowed to do. A few things are never offered: the password, sign-in settings and deleting of <span data-app>Rabbid Lab</span>'s own account (it would lock itself out), disabling, moving or deleting a domain controller, and deleting a built-in group. Every change goes in the Activity log.</p>
+  <p>Protected and built-in accounts and groups can also be changed; Active Directory rejects any change the service account does not have permission to make. Some actions are never offered: changing the password or sign-in settings of the <span data-app>Rabbid Lab</span> service account, or deleting it (it would lock itself out); disabling, moving or deleting a domain controller; and deleting a built-in group. Every change is recorded in the Activity log.</p>
 </article>
 
-<article data-key="dir-columns" data-group="Active Directory" data-title="Filter, group, sort and pick columns">
-  <p>The bar over a list filters it:</p>
+<article data-key="dir-columns" data-group="Active Directory" data-title="Filter, group, sort and choose columns">
+  <p>The bar above a list filters it:</p>
   <ul>
-    <li>The <b>search box</b> looks in every column. Pick one column in front of it to look only there, and <b>contains</b>, <b>is</b> or <b>starts with</b>.</li>
-    <li>Each <b>chip</b> after it (Status, Department and so on) lists that column's values with how many rows have each. Tick the ones you want. The numbers follow whatever else is picked.</li>
-    <li><b>Add/remove filters</b> picks which columns have a chip. A star keeps one at the top of that list.</li>
-    <li>The <b>arrow</b> at the end of the bar opens every chip out side by side, to tick values without opening each one. The magnifier over a column finds a value in it.</li>
-    <li>The <b>save</b> button keeps what is picked under <b>Load filter</b>, in this browser, with a name you give it. The pencil beside a saved filter renames it and the × deletes it. <b>Advanced filter</b>, in the same menu on Users, Groups, Computers and the Devices list, is for what a chip cannot say: older than so many days, does not contain, member of a group, any of the conditions or all of them.</li>
-    <li><b>Clear</b> takes everything off.</li>
+    <li>The <b>search box</b> searches every column. Select a column in front of it to search only that column, and <b>contains</b>, <b>is</b> or <b>starts with</b>.</li>
+    <li>Each <b>chip</b> after it (Status, Department and so on) lists the column's values with the number of rows for each. Tick the values you want. The counts reflect the other filters.</li>
+    <li><b>Add/remove filters</b> sets which columns have a chip. A star keeps a column at the top of that list.</li>
+    <li>The <b>arrow</b> at the end of the bar expands all chips side by side, so you can tick values without opening each one. The magnifier above a column searches for a value in it.</li>
+    <li>The <b>save</b> button saves the current filter under <b>Load filter</b>, in this browser, with a name you choose. The pencil beside a saved filter renames it and the × deletes it. <b>Advanced filter</b>, in the same menu on Users, Groups, Computers and the Devices list, handles conditions a chip cannot: older than a number of days, does not contain, member of a group, and any or all of several conditions.</li>
+    <li><b>Clear</b> removes all filters.</li>
   </ul>
-  <p>The list has a bar of its own:</p>
+  <p>The list has its own bar:</p>
   <ul>
-    <li><b>Actions</b> is for the rows you ticked, and shows how many.</li>
-    <li><b>Group by</b> gathers the rows under a heading for each value of the column picked beside it, with a count. Click a heading to close or open it. Pick two columns to group inside groups.</li>
-    <li>The two buttons after the count switch between <b>Compact</b> rows (the default) and <b>Relaxed</b>.</li>
-    <li>Click a column name to sort by it, and again to turn the order round. The <b>⋮</b> beside it sorts, pins that column to the left or right so it stays put when the list scrolls sideways, groups by it or hides it. <b>Autosize all columns</b> fits every column to what is in it, and <b>Choose columns</b> picks which ones show. Drag the edge of a column name to make it wider or narrower; double-click the edge to fit the column to what is in it.</li>
-    <li>The button at the end of the column names picks what the list shows, such as email, job title, office, manager, OU or password dates. Reset puts it back.</li>
+    <li><b>Actions</b> applies to the ticked rows, and shows how many are selected.</li>
+    <li><b>Group by</b> groups the rows under a heading for each value of the selected column, with a count. Select a heading to collapse or expand it. Select two columns to create nested groups.</li>
+    <li>The two buttons after the count switch between <b>Compact</b> rows (the default) and <b>Relaxed</b> rows.</li>
+    <li>Select a column name to sort by it, and select it again to reverse the order. The <b>⋮</b> beside it sorts, pins the column to the left or right so it stays in place when the list scrolls horizontally, groups by the column or hides it. <b>Autosize all columns</b> fits every column to its contents, and <b>Choose columns</b> sets which columns show. Drag the edge of a column name to resize the column; double-click the edge to fit the column to its contents.</li>
+    <li>The button at the end of the column names sets which columns the list shows, such as email, job title, office, manager, OU or password dates. <b>Reset columns, order, widths and sort</b> restores the defaults.</li>
   </ul>
-  <p>Every table in the console works the same way: Domain health, AD audit, Recycle Bin, Group Policy, the Attribute browser and the lists under Devices too. Drag a heading onto another to move that column. Columns, order, widths, sort and grouping are kept in this browser for each table; Compact or Relaxed is one setting for all of them.</p>
+  <p>Every table in the console works the same way: Domain health, AD audit, Recycle Bin, Group Policy, the Attribute browser and the lists under Devices. Drag a column heading onto another to move the column. Columns, order, widths, sort and grouping are saved in this browser for each table; Compact or Relaxed is one setting for all tables.</p>
 </article>
 
-<article data-key="dir-off" data-group="Active Directory" data-title="Turn accounts off, or delete them">
-  <p>Someone left? Turn their account off first. It can be turned back on; deleting can't be undone.</p>
+<article data-key="dir-off" data-group="Active Directory" data-title="Disable or delete accounts">
+  <p>When a user leaves, disable their account first. A disabled account can be enabled again; deleting cannot be undone.</p>
   <ol>
-    <li>Open their card in <a href="#ad/users">Users</a>.</li>
-    <li>Click <b>Disable</b>. They show under <b>Disabled</b>.</li>
-    <li>When you're sure, open it in the side panel again, click <b>Actions</b>, then <b>Delete</b>, and confirm.</li>
+    <li>Open the user's panel in <a href="#ad/users">Users</a>.</li>
+    <li>Select <b>Actions</b> &gt; <b>Account</b> &gt; <b>Disable account</b>. The user is then listed under <b>Disabled</b>.</li>
+    <li>When you are sure, open the user's panel again, select <b>Actions</b> &gt; <b>Delete…</b>, and confirm.</li>
   </ol>
 </article>
 
-<article data-key="dir-groups" data-group="Active Directory" data-title="Groups: make one, and change who's in it">
-  <h3>Make a group</h3>
+<article data-key="dir-groups" data-group="Active Directory" data-title="Create groups and manage members">
+  <h3>Create a group</h3>
   <ol>
-    <li>Open <a href="#ad/groups">Groups</a> and click <b>New</b>, or pick <b>New group</b> from its arrow.</li>
-    <li>Name it, pick where it goes, its scope (Global is usual) and its type (Security for permissions, Distribution for email only).</li>
-    <li>Click <b>Make the group</b>.</li>
+    <li>Open <a href="#ad/groups">Groups</a> and select <b>New</b>, or select <b>New group</b> from its arrow.</li>
+    <li>Enter a name, and select the OU, the group scope (Global is typical) and the group type (Security for permissions, Distribution for email only).</li>
+    <li>Select <b>Create group</b>.</li>
   </ol>
-  <h3>Add or take out members</h3>
+  <h3>Add or remove members</h3>
   <ol>
-    <li>Click the group. Its side panel lists who's in it under Members.</li>
-    <li>Type in <b>Add a user, group or computer</b> and click who you want.</li>
-    <li>To take someone out, click the cross beside them.</li>
+    <li>Select the group. Its panel lists its members under Members.</li>
+    <li>Select <b>Add members</b>, tick the users, groups or computers to add, then select <b>Add members</b> again to confirm.</li>
+    <li>To remove a member, select the cross beside it.</li>
   </ol>
-  <p>You can also change a person's groups from their own card in <a href="#ad/users">Users</a>.</p>
-  <p class="tip"><a href="#ad/groups/empty">Empty groups</a> lists groups nobody is in, for tidying up.</p>
+  <p>You can also change a user's group memberships from their panel in <a href="#ad/users">Users</a>.</p>
+  <p class="tip"><a href="#ad/groups/empty">Empty groups</a> lists groups with no members, for cleanup.</p>
 </article>
 
 <article data-key="dir-computers" data-group="Active Directory" data-title="Computers in the domain">
-  <p><a href="#ad/computers">Computers</a> lists every computer account in the domain, servers and workstations.</p>
+  <p><a href="#ad/computers">Computers</a> lists every computer account in the domain, including servers and workstations.</p>
   <ol>
-    <li>Open <a href="#ad/computers/stale">Inactive (90+ days)</a> to find computers nobody has used in a while.</li>
-    <li>Click one and <b>Disable</b> its account. Nobody can sign in to it with a domain account until it's enabled again.</li>
-    <li>Gone for good? <b>Delete</b> it. The computer would have to join the domain again.</li>
+    <li>Open <a href="#ad/computers/stale">Inactive (90+ days)</a> to find computers that have not signed in to the domain recently.</li>
+    <li>Select one, then select <b>Actions</b> &gt; <b>Account</b> &gt; <b>Disable account</b>. Domain users cannot sign in to the computer until the account is enabled again.</li>
+    <li>If the computer is permanently retired, <b>Delete</b> it. To use it again, it must rejoin the domain.</li>
   </ol>
-  <p class="tip">Domain controllers are shown but can't be changed here.</p>
+  <p class="tip">Domain controllers are listed but cannot be changed here.</p>
 </article>
 
-<article data-key="dir-views" data-group="Active Directory" data-title="Views and exporting">
-  <p>Each Active Directory page has views down the left, with how many are in each. Views that would be empty stay hidden, so the list shows what needs looking at.</p>
+<article data-key="dir-views" data-group="Active Directory" data-title="Views and export">
+  <p>Each Active Directory page has views on the left, with the number of objects in each. Empty views are hidden, so the list shows what needs attention.</p>
   <ul>
-    <li><b>Users:</b> Locked out, Expired and Expiring passwords (within 14 days), Inactive (90+ days), Privileged accounts, Password never expires, Never signed in, and more.</li>
+    <li><b>Users:</b> Locked out, Expired passwords, Expiring passwords (within 14 days), Inactive (90+ days), Privileged accounts, Password never expires, Never signed in, and more.</li>
     <li><b>Groups:</b> Security, Distribution, Privileged, Empty groups.</li>
-    <li><b>Computers:</b> Servers, Workstations, Inactive, Disabled.</li>
+    <li><b>Computers:</b> Servers, Workstations, Inactive (90+ days), Disabled.</li>
   </ul>
-  <p>Find, at the top of the views, narrows the list. <b>Export</b> saves what's on screen as a CSV for Excel.</p>
+  <p>Search, at the top of the views, filters the list. <b>Export</b> saves the current list as a CSV file for Excel.</p>
 </article>
 
 
 <article data-key="dir-domain" data-group="Active Directory" data-title="Domain health">
-  <p><a href="#ad/domain">Domain health</a> has its own place in the left menu, under Directory. It checks how the domain is set up and what's in it against what Microsoft, PingCastle and Defender for Identity recommend. The checks are grouped into areas: passwords and lockout, privileged accounts, Kerberos and delegation, stale objects, domain and forest, domain controllers, certificates (AD CS), trusts and DNS. Everything is read over LDAP with <span data-app>Rabbid Lab</span>'s account, so nothing gets installed on the domain controllers.</p>
+  <p><a href="#ad/domain">Domain health</a> has its own entry in the navigation pane, under Directory. It checks the domain's configuration and objects against Microsoft, PingCastle and Defender for Identity recommendations. The checks are grouped into areas: passwords and lockout, privileged accounts, Kerberos and delegation, stale objects, domain and forest, domain controllers, certificates (AD CS), trusts and DNS. All data is read over LDAP with the <span data-app>Rabbid Lab</span> service account, so nothing is installed on the domain controllers.</p>
   <ol>
-    <li>Open <a href="#ad/domain/off">Not as recommended</a> first. Those are the ones worth fixing.</li>
-    <li>Click a check to open it in the panel on the right. It shows what it is now, what's recommended and why, and what it found (accounts, computers, groups, templates, trusts or zones).</li>
-    <li>Click the arrow on something it found to open it in its own page.</li>
-    <li>Where there's a fix button (Require a password, Disable, Mark sensitive and so on), tick the ones to change and click it. Disabling asks first. The check runs again after.</li>
-    <li>Under <b>How to fix it</b> is what to do by hand for the rest.</li>
-    <li>Under <b>Change it</b>, set the new value, sign in as a domain admin (used for that change only, not saved) and click Save. Password and lockout rules are saved in the Default Domain Policy, as Group Policy Management does, and set on the domain straight away. The machine account quota, Guest and the tombstone lifetime are set in Active Directory itself (the tombstone lifetime takes an Enterprise Admin).</li>
+    <li>Open <a href="#ad/domain/off">Failed</a> first. These checks need fixing.</li>
+    <li>Select a check to open it in the panel on the right. It shows the current value, the recommended value and why it matters, and the affected objects (accounts, computers, groups, templates, trusts or zones).</li>
+    <li>Select the arrow on an affected object to open it on its own page.</li>
+    <li>Where a fix button is available (Require a password, Disable, Mark as sensitive and others), tick the objects to change and select the button. Disabling asks for confirmation. The check runs again afterwards.</li>
+    <li><b>How to fix it</b> describes the manual steps for the other checks.</li>
+    <li>Under <b>Change setting</b>, enter the new value, sign in as a domain admin (the credentials are used once and are not stored) and select Save. Password and lockout settings are saved in the Default Domain Policy, as Group Policy Management does, and applied to the domain immediately. The machine account quota, Guest and the tombstone lifetime are set in Active Directory itself (the tombstone lifetime requires an Enterprise Admin).</li>
   </ol>
-  <p class="tip">"Couldn't be read" means <span data-app>Rabbid Lab</span>'s account isn't allowed to see that one, which is normal for fine-grained password policies. "For your notes" isn't a problem by itself, just something to know about. The Source column (under Columns) shows which PingCastle rule or guidance each check comes from.</p>
+  <p class="tip">"Unknown" means the <span data-app>Rabbid Lab</span> service account does not have permission to read that check, which is normal for fine-grained password policies. "Info" is not a problem, only information. The Source column (add it with Choose columns) shows which PingCastle rule or guidance each check is based on.</p>
 </article>
 
-<article data-key="dir-audit" data-group="Active Directory" data-title="AD audit: what changed">
-  <p><a href="#ad/audit">AD audit</a> lists what changed in Active Directory in the last 30 days, wherever it was done: here, Active Directory Users and Computers, or PowerShell. Sign-ins and other housekeeping are left out, and so is a computer changing its own password.</p>
+<article data-key="dir-audit" data-group="Active Directory" data-title="AD audit">
+  <p><a href="#ad/audit">AD audit</a> lists changes made in Active Directory in the last 30 days, from any tool: <span data-app>Rabbid Lab</span>, Active Directory Users and Computers or PowerShell. Sign-ins and system maintenance are excluded, and so are computers changing their own passwords.</p>
   <ol>
-    <li>Pick a view: Last 24 hours, Made, Deleted, Users, and so on.</li>
-    <li>Click a change to see which attributes changed.</li>
+    <li>Select a view: Last 24 hours, Created, Deleted, Users and others.</li>
+    <li>Select a change to see which attributes changed.</li>
   </ol>
-  <p>When the change was made in <span data-app>Rabbid Lab</span>, it says who made it. For changes made elsewhere, the domain controllers' security logs have that.</p>
+  <p>For changes made in <span data-app>Rabbid Lab</span>, it shows who made the change. For changes made elsewhere, check the Security logs on the domain controllers.</p>
 </article>
 
-<article data-key="dir-recycle" data-group="Active Directory" data-title="Recycle Bin: bring back something deleted">
-  <p>With the AD Recycle Bin on, a deleted user, group, computer or OU can come back as it was, groups and all, for 180 days (by default).</p>
-  <h3>Turn it on (once)</h3>
+<article data-key="dir-recycle" data-group="Active Directory" data-title="Recycle Bin: restore deleted objects">
+  <p>With the AD Recycle Bin enabled, a deleted user, group, computer or OU can be restored with its attributes and group memberships for 180 days (by default).</p>
+  <h3>Enable the Recycle Bin (once)</h3>
   <ol>
-    <li>Open <a href="#ad/recycle">Recycle Bin</a>. If it's off, click <b>Turn it on</b>.</li>
-    <li>Sign in with an Enterprise Admin. It's used for this once and not kept.</li>
+    <li>Open <a href="#ad/recycle">Recycle Bin</a>. If the Recycle Bin is not enabled, select <b>Enable</b>.</li>
+    <li>Sign in with an Enterprise Admin account. These credentials are used once and are not stored.</li>
   </ol>
-  <p class="tip">It's for the whole forest, and it can't be turned off again. That's how Active Directory works.</p>
-  <h3>Restore something</h3>
+  <p class="tip">The Recycle Bin applies to the whole forest and cannot be disabled after it is enabled. This is how Active Directory works.</p>
+  <h3>Restore an object</h3>
   <ol>
-    <li>Find it in <a href="#ad/recycle">Recycle Bin</a> and click it.</li>
-    <li>Click <b>Restore</b>. It goes back where it was.</li>
+    <li>Find it in <a href="#ad/recycle">Recycle Bin</a> and select it.</li>
+    <li>Select <b>Restore</b>. The object is restored to its last known location.</li>
   </ol>
-  <p>Looking in Deleted Objects and restoring take rights only Domain Admins have by default. If <span data-app>Rabbid Lab</span>'s account doesn't have them, the page says so.</p>
+  <p>Reading Deleted Objects and restoring objects require permissions that only Domain Admins have by default. If the <span data-app>Rabbid Lab</span> service account does not have them, the page says so.</p>
 </article>
 
 <article data-key="org" data-group="Active Directory" data-title="Org chart">
-  <p>The <a href="#org">Org chart</a> draws who reports to whom from each person's <b>Manager</b> in Active Directory. Each person is a building, managers are the tall ones with their initials on a sign, and each manager's team stands on a platform below them.</p>
+  <p>The <a href="#org">Org chart</a> shows reporting lines based on each user's <b>Manager</b> attribute in Active Directory. Each person is a building, managers are the tall buildings with their initials on a sign, and each manager's team stands on a platform below them.</p>
   <ul>
-    <li>Drag to move it, scroll to zoom, and <b>Fit</b> shows it all. <b>Expand all</b> and <b>Collapse</b> open and close every team; the pill under a manager does one.</li>
-    <li>Click someone to light up their line to the top and open them in the side panel, with who they report to and who reports to them. <b>Show only this line</b> draws just their line, and <b>Whole organization</b> goes back.</li>
-    <li><b>Find a person</b>, at the top left, lists who matches by name, username, title or department. Pick one to go to them.</li>
-    <li><b>By department</b> puts people on a platform for each department. It works with no managers set.</li>
-    <li>The download button saves the chart as a picture (PNG) or a drawing (SVG).</li>
+    <li>Drag to move the chart, scroll to zoom, and select <b>Fit</b> to show the whole chart. <b>Expand all</b> and <b>Collapse all</b> open and close every team; the pill under a manager opens or closes that team.</li>
+    <li>Select a person to highlight their reporting line to the top and open them in the side panel, with their manager and direct reports. <b>Show only this reporting line</b> shows only that line, and <b>Whole organization</b> returns to the full chart.</li>
+    <li><b>Find a person</b>, at the top left, searches by name, username, title or department. Select a result to go to that person.</li>
+    <li><b>By department</b> places people on a platform for each department. It works without managers set.</li>
+    <li>The download button saves the chart as a <b>PNG image</b> or an <b>SVG image</b>.</li>
   </ul>
-  <p>Nobody has a manager set? It shows everyone by department. Set Manager on the Organization tab in Active Directory Users and Computers, and Reporting lines draws itself.</p>
+  <p>If no users have a manager set, the chart shows users by department. To show <b>Reporting lines</b>, set Manager on the Organization tab in Active Directory Users and Computers.</p>
 </article>
 
 <article data-key="attrs" data-group="Active Directory" data-title="Attribute browser">
-  <p>The <a href="#attrs">Attribute browser</a> shows the whole domain as folders, and every attribute of whatever you pick.</p>
+  <p>The <a href="#attrs">Attribute browser</a> shows the whole domain as a tree, and every attribute of the selected object.</p>
   <ol>
-    <li>Type in the find box over the folders to find any user, group, computer or OU by name, anywhere in the domain. Click one to open it; the matches stay until you clear the box.</li>
-    <li>Click an OU or container to go into it, and the path at the top to come back out.</li>
-    <li>Click a user, group or computer to see its attributes. SIDs, GUIDs, dates and flags are shown in words.</li>
-    <li>Type in <b>Find an attribute or value</b> to narrow the list. <b>Hide empty</b> shows only the attributes with a value; turn it off to see every one the object can have.</li>
-    <li>Click <b>…</b> on an attribute, or right-click it, to copy it, or to <b>Edit…</b> or <b>Clear value</b> as ADSI Edit does. Editing needs the <b>Edit attributes</b> permission, works inside the service account's scope, and every change goes in the Activity log.</li>
+    <li>Type in the search box above the tree to find any user, group, computer or OU by name, anywhere in the domain. Select a result to open it; the results stay until you clear the box.</li>
+    <li>Select an OU or container to open it, and select the path at the top to go back up.</li>
+    <li>Select a user, group or computer to view its attributes. SIDs, GUIDs, dates and flags are shown in readable form.</li>
+    <li>Type in <b>Find an attribute or value</b> to filter the list. <b>Hide empty</b> shows only attributes with a value; set it to off to see every attribute the object can have.</li>
+    <li>Select <b>…</b> on an attribute, or right-click it, to copy it, or to select <b>Edit…</b> or <b>Clear value</b>, as in ADSI Edit. Editing requires the <b>Edit attributes</b> permission and works only within the service account's scope. Every change is recorded in the Activity log.</li>
     <li>The buttons at the top copy the object's distinguished name and export its attributes to a CSV file.</li>
   </ol>
-  <p class="tip">Passwords, LAPS passwords and BitLocker keys are never shown.</p>
+  <p class="tip">Passwords, LAPS passwords and BitLocker recovery keys are never shown.</p>
 </article>
 
-<article data-key="gpo" data-group="Group Policy" data-title="GPOs: see, make and change them">
-  <p><a href="#gpo">Group Policy</a> lists every GPO in the domain: its status, where it's linked, its WMI filter and when it last changed. The views under Group Policy Objects show the ones not linked anywhere, ones with settings turned off, and ones changed this week.</p>
+<article data-key="gpo" data-group="Group Policy" data-title="Manage GPOs">
+  <p><a href="#gpo">Group Policy</a> lists every GPO in the domain: its status, where it is linked, its WMI filter and when it was last modified. The views under Group Policy Objects list GPOs that are Not linked, have Settings disabled, or were Modified this week.</p>
   <ol>
-    <li>Click a GPO to open it. <b>Details</b> has its versions in AD and SYSVOL, <b>Links</b> where it applies, <b>Settings</b> what it sets, and <b>Delegation</b> who it applies to and who can change it.</li>
-    <li><b>Actions</b> on its panel links it, turns its computer or user settings off, sets its WMI filter, renames, copies, backs it up, restores it, saves its settings report or deletes it.</li>
-    <li><b>New</b> (or <b>New GPO</b> under its arrow) makes an empty one, or a copy of another, and can link it straight away. Its settings are then set in the Group Policy editor (gpmc.msc).</li>
-    <li>On <b>Delegation</b>, type a group, user or computer to make the GPO apply to it. The cross stops it applying there; it can still read the GPO, so computers keep working.</li>
-    <li>Tick GPOs in the list to link, back up, run gpupdate or delete several at once.</li>
+    <li>Select a GPO to open it. <b>Details</b> shows its versions in AD and SYSVOL, <b>Links</b> where it is linked, <b>Settings</b> the settings it configures, and <b>Delegation</b> its security filtering and edit permissions.</li>
+    <li><b>Actions</b> in its panel links the GPO, disables or enables its computer or user configuration settings, sets its WMI filter, renames, copies, backs up or restores it, saves its settings report, runs gpupdate, or deletes it.</li>
+    <li><b>New</b> (or <b>New GPO</b> from its arrow) creates an empty GPO or a copy of another, and can link it immediately. Edit its settings in Group Policy Management (gpmc.msc).</li>
+    <li>On <b>Delegation</b>, type a group, user or computer in <b>Add a group, user or computer</b> to add it to security filtering, so that the GPO applies to it. The cross removes it from security filtering; it keeps read access to the GPO, so computers keep working.</li>
+    <li>Tick GPOs in the list to link, back up, run gpupdate on or delete several at once.</li>
   </ol>
-  <p class="tip">Changes are made as the AD service account. When it isn't allowed, you're asked for a domain admin login. That login is kept in the browser tab for 15 minutes, then forgotten, and never saved on the server. Settings, delegation, new GPOs, copies, deletes and backups need Group Policy Management on the server: <code>Add-WindowsCapability -Online -Name Rsat.GroupPolicy.Management.Tools~~~~0.0.1.0</code> on Windows 10 or 11, <code>Install-WindowsFeature GPMC</code> on Windows Server.</p>
+  <p class="tip">Changes are made as the AD service account. When the service account does not have permission, you are asked for domain admin credentials. These credentials are kept in the browser tab for 15 minutes, then cleared, and are never stored on the server. Settings, delegation, new GPOs, copies, deletions and backups require Group Policy Management on the server: <code>Add-WindowsCapability -Online -Name Rsat.GroupPolicy.Management.Tools~~~~0.0.1.0</code> on Windows 10 or 11, <code>Install-WindowsFeature GPMC</code> on Windows Server.</p>
 </article>
 
-<article data-key="gpo-links" data-group="Group Policy" data-title="Link a GPO, and the order they apply">
-  <p>A GPO does nothing until it's linked to the domain or an OU. It then applies to the users and computers in there, and in the OUs under it.</p>
+<article data-key="gpo-links" data-group="Group Policy" data-title="Link GPOs and set link order">
+  <p>A GPO has no effect until it is linked to the domain or an OU. It then applies to the users and computers in that container and in the OUs below it.</p>
   <ul>
-    <li><b>Where linked</b> lists the domain and every OU with the GPOs linked to each. Click one to see them in order.</li>
-    <li>Link order 1 wins: it applies last, over the others. A new link goes at the end, so the ones there already keep winning. Use the <b>…</b> on a link to move it up or down, turn it off, enforce it or remove it.</li>
-    <li><b>Enforced</b> makes a link apply even where an OU below blocks inheritance, and win over GPOs linked lower down.</li>
-    <li><b>Block inheritance</b> on an OU stops GPOs linked higher up applying there, unless they're enforced.</li>
+    <li><b>Where linked</b> lists the domain and every OU with the GPOs linked to each. Select one to see its links in order.</li>
+    <li>Link order 1 has the highest precedence: it is applied last, over the others. A new link is added at the end, so existing links keep their precedence. Use the <b>…</b> on a link to <b>Move up</b> or <b>Move down</b>, <b>Disable link</b>, <b>Enforce</b> or <b>Remove link…</b>.</li>
+    <li><b>Enforced</b> makes a link apply even where an OU below blocks inheritance, and take precedence over GPOs linked lower down.</li>
+    <li><b>Block inheritance</b> on an OU stops GPOs linked higher up from applying there, unless they are enforced.</li>
   </ul>
 </article>
 
 <article data-key="gpo-wmi" data-group="Group Policy" data-title="WMI filters">
-  <p>A WMI filter limits a GPO to the computers where its query finds something, such as only Windows 11 or only laptops.</p>
+  <p>A WMI filter limits a GPO to computers where its query returns a result, such as only Windows 11 computers or only laptops.</p>
   <ol>
-    <li>Open <a href="#gpo/wmi">WMI filters</a> and click <b>New WMI filter</b>. Give it a name and a WQL query.</li>
-    <li>Try the query first on a few computers under <a href="#seats/wmi">Devices, WMI query</a>: if it finds something there, the filter lets the GPO apply there.</li>
-    <li>Open a GPO, then <b>Actions</b>, <b>WMI filter…</b> to use it.</li>
+    <li>Open <a href="#gpo/wmi">WMI filters</a> and select <b>New WMI filter</b>. Enter a name and a WQL query.</li>
+    <li>Test the query on a few computers under <a href="#seats/wmi">Devices &gt; WMI query</a> first: if it returns a result on a computer, the filter lets the GPO apply there.</li>
+    <li>Open a GPO, then select <b>Actions</b> &gt; <b>WMI filter…</b> to apply the filter.</li>
   </ol>
-  <p class="tip">A filter that a GPO uses can't be deleted until it's taken off.</p>
+  <p class="tip">A WMI filter that a GPO uses cannot be deleted until it is removed from that GPO.</p>
 </article>
 
 <article data-key="gpo-backups" data-group="Group Policy" data-title="Back up and restore GPOs">
-  <p>Backups are kept on the server, in the same form Group Policy Management uses, under <a href="#gpo/backups">Backups</a>.</p>
+  <p>Backups are stored on the server, in the same format Group Policy Management uses, under <a href="#gpo/backups">Backups</a>.</p>
   <ul>
-    <li>Back up one GPO from its <b>Actions</b>, several by ticking them, or all of them with <b>Back up all GPOs</b>.</li>
-    <li>Deleting a GPO backs it up first. Restoring a deleted one brings it back with the same ID.</li>
-    <li>Restoring backs up what the GPO has now first. Links aren't part of a backup, so they stay as they are.</li>
+    <li>Back up one GPO from its <b>Actions</b> menu, several by ticking them, or all GPOs with <b>Back up all GPOs</b>.</li>
+    <li>Deleting a GPO backs it up first. Restoring a deleted GPO restores it with its original ID.</li>
+    <li>Restoring a GPO backs up its current settings first. Links are not part of a backup, so they are not changed.</li>
   </ul>
 </article>
 
-<article data-key="gpo-results" data-group="Group Policy" data-title="What Group Policy did on a computer">
-  <p>Each computer's client reads its Group Policy results every two hours, and right after gpupdate, and sends them with its inventory.</p>
+<article data-key="gpo-results" data-group="Group Policy" data-title="Group Policy results on a computer">
+  <p>Each computer's client reads its Group Policy results every two hours, and immediately after gpupdate, and sends them with its inventory.</p>
   <ul>
-    <li>Open a computer in <a href="#seats">Devices</a> and pick its <b>Group Policy</b> tab: when it last refreshed and from which domain controller, any errors, what applied to the computer and to whoever is signed in, what didn't apply and why, and the local policy it ended up with.</li>
-    <li><a href="#seats/gplocal">Devices, Group Policy</a> shows the same for every computer in one list.</li>
-    <li><b>Run gpupdate</b> applies Group Policy again now: computer policy as SYSTEM, and user policy for whoever is signed in. It's in a computer's Actions menu too, and on a GPO, where it runs on the computers that GPO reaches.</li>
+    <li>Open a computer in <a href="#seats">Devices</a> and select its <b>Group Policy</b> tab: the last refresh and the domain controller used, any errors, the GPOs applied to the computer and to the signed-in user, the GPOs not applied and why, and the resulting local policy.</li>
+    <li><a href="#seats/gplocal">Devices &gt; Group Policy</a> shows the same for every computer in one list. It is also under <b>Group Policy results</b> on the Group Policy page.</li>
+    <li><b>Run gpupdate</b> reapplies Group Policy immediately: computer policy as SYSTEM, and user policy for the signed-in user. It is in a computer's Actions menu, and on a GPO, where it runs on the computers that the GPO applies to.</li>
   </ul>
-  <p class="tip">Clients send this from 1.1.211 on.</p>
+  <p class="tip">Requires client 1.1.211 or later.</p>
 </article>
-<article data-key="local-new" data-group="Local accounts" data-title="Make a Windows account on a computer">
-  <p>Local accounts are the Windows accounts on one computer: this server, or any computer in Devices. They live on each computer's Accounts tab. You do it all in the browser and no service account is needed: this server makes its own changes, and on the other computers the <span data-app>Rabbid Lab</span> client makes them, running as SYSTEM.</p>
+<article data-key="local-new" data-group="Local accounts" data-title="Create a local account on a computer">
+  <p>Local accounts are the Windows accounts on one computer: this server, or any computer in Devices. They are on each computer's Accounts tab. Everything is done in the browser and no service account is needed: this server makes its own changes, and on other computers the <span data-app>Rabbid Lab</span> client makes them as SYSTEM.</p>
   <ol>
-    <li>Open <a href="#seats">Devices</a>, click the computer (this server is the row with the server icon) and pick its <b>Accounts</b> tab.</li>
-    <li>Click <b>New account</b>.</li>
-    <li>Type the username, and a full name and description if you want.</li>
-    <li>Pick the groups. Tick <b>Administrators</b> for a local admin; <b>Users</b> is ticked for you.</li>
-    <li>Click <b>Make the account</b>. On a computer in Devices, its client makes it within a second or two.</li>
-    <li>Copy the password <span data-app>Rabbid Lab</span> shows.</li>
+    <li>Open <a href="#seats">Devices</a>, select the computer (this server is the row with the server icon) and select its <b>Accounts</b> tab.</li>
+    <li>Select <b>New account</b>.</li>
+    <li>Enter the username, and optionally a full name and description.</li>
+    <li>Select the groups. Tick <b>Administrators</b> for a local administrator; <b>Users</b> is selected by default.</li>
+    <li>Select <b>Create account</b>. On a computer in Devices, the client creates the account within a few seconds.</li>
+    <li>Copy the password that <span data-app>Rabbid Lab</span> shows.</li>
   </ol>
 </article>
 
-<article data-key="local-change" data-group="Local accounts" data-title="Change or delete a local account">
+<article data-key="local-change" data-group="Local accounts" data-title="Edit or delete a local account">
   <ol>
-    <li>Open <a href="#seats">Devices</a>, click the computer, pick its <b>Accounts</b> tab, then click the account.</li>
-    <li><b>Set a password</b> also unlocks it.</li>
-    <li><b>Disable</b> stops anyone signing in with it.</li>
-    <li>Use the cross on a group, or <b>Add to…</b>, to change its groups.</li>
-    <li><b>Delete</b> removes it, or use the bin on its row in the list. Its files stay in its profile folder. Built-in accounts, like Administrator, can only be disabled.</li>
+    <li>Open <a href="#seats">Devices</a>, select the computer, select its <b>Accounts</b> tab, then select the account.</li>
+    <li><b>Set password</b> also unlocks the account.</li>
+    <li><b>Disable</b> prevents sign-in with the account.</li>
+    <li>Use the cross on a group, or <b>Add to…</b>, to change its group memberships.</li>
+    <li><b>Delete</b> deletes the account, or use the bin on its row in the list. Its profile folder and files are kept. Built-in accounts, such as Administrator, can only be disabled.</li>
   </ol>
 </article>
 
-<article data-key="local-admins" data-group="Local accounts" data-title="Who is an administrator of a computer">
-  <p>A computer's Accounts tab lists everyone in its Administrators group, domain users and groups too. A domain admin is an administrator of every computer through Domain Admins, even though their account isn't on the computer.</p>
+<article data-key="local-admins" data-group="Local accounts" data-title="Local administrators on a computer">
+  <p>A computer's Accounts tab lists all members of its Administrators group, including domain users and groups. A domain admin is an administrator of every computer through Domain Admins, even though their account is not on the computer.</p>
   <ul>
-    <li><b>Members</b> is the group as Windows lists it. Click a domain group to see who is in it.</li>
-    <li><b>People</b> opens the groups up and says how each person gets in: added directly, or through which groups.</li>
-    <li><b>Add</b> puts a local account, or a domain user or group (DOMAIN\name), in the group. The cross takes someone out.</li>
-    <li>The <a href="#seats/admins">Local admins</a> tab on Devices, beside Computers, shows all of this across every computer at once. Tick rows there, then <b>Actions</b> takes them out of Administrators or deletes local accounts. In a member's panel, the cross on a computer takes them out of just that one.</li>
+    <li><b>Members</b> shows the group as Windows lists it. Select a domain group to see its members.</li>
+    <li><b>Effective</b> expands nested groups and shows how each account is a member: directly, or through which groups.</li>
+    <li><b>Add</b> adds a local account, or a domain user or group (DOMAIN\name), to the group. The cross removes a member.</li>
+    <li>The <a href="#seats/admins">Local admins</a> tab on Devices, beside Computers, shows this for every computer at once. Tick rows there, then use <b>Actions</b> to remove them from Administrators or delete local accounts. In a member's panel, the cross on a computer removes the member from that computer only.</li>
   </ul>
-  <p class="tip">The people in a domain group come from Active Directory, read as this server's own computer account. Computers send their Administrators group with their inventory, from client 1.1.183 on.</p>
+  <p class="tip">Members of domain groups are read from Active Directory with this server's computer account. Computers send their Administrators group with their inventory, from client 1.1.183.</p>
 </article>
 
-<article data-key="seat-trouble" data-group="Local accounts" data-title="A computer that won't take changes">
-  <p>When a computer can't take changes, its Accounts tab says why, and shows who was in Administrators the last time it said.</p>
+<article data-key="seat-trouble" data-group="Local accounts" data-title="Computer does not accept changes">
+  <p>When a computer cannot accept changes, its Accounts tab shows the reason, and the members of Administrators as of its last report.</p>
   <ul>
-    <li><b>It's offline:</b> the computer is off, or can't reach the server.</li>
-    <li><b>Its client is older:</b> it updates itself to the server's version within a few minutes.</li>
-    <li><b>Not listening yet:</b> the client was just started or updated. Give it a minute.</li>
-    <li><b>Group Policy turns account changes off:</b> Allow account changes is Disabled for that computer.</li>
+    <li><b>Offline:</b> the computer is off, or cannot reach the server.</li>
+    <li><b>Client out of date:</b> the client updates itself to the server's version within a few minutes.</li>
+    <li><b>Client not ready:</b> the client was just started or updated. Wait a minute.</li>
+    <li><b>Account changes disabled by Group Policy:</b> Allow account changes is set to Disabled for that computer.</li>
   </ul>
 </article>
 
-<article data-key="roles" data-group="Access" data-title="Roles: who can do what">
-  <p>Everything in <span data-app>Rabbid Lab</span> is allowed by roles. People can have several roles and get everything those roles allow.</p>
+<article data-key="roles" data-group="Access" data-title="Roles and permissions">
+  <p>All access in <span data-app>Rabbid Lab</span> is granted by roles. A user can have several roles and gets every permission those roles grant.</p>
   <ul>
-    <li><b>Administrator</b> is always at the top and allows everything. The server's Windows administrators are always in it.</li>
+    <li><b>Administrator</b> is always at the top and has every permission. The server's local Windows administrators are always members.</li>
     <li><b>User</b> is always at the bottom, and everyone who signs in has it.</li>
   </ul>
-  <h3>Make a role</h3>
+  <h3>Create a role</h3>
   <ol>
-    <li>Open <a href="#people">Roles and people</a> and click <b>New role</b>.</li>
-    <li>On <b>Display</b>, name it and pick a colour.</li>
-    <li>On <b>Permissions</b>, switch on what it allows, part by part.</li>
-    <li>Under <b>Active Directory</b>, <b>Scope</b> limits the role to the OUs you add, and everything inside them. With none, it works everywhere the service account does.</li>
-    <li>On <b>Members</b>, add who's in it.</li>
-    <li>Click <b>Save changes</b>.</li>
+    <li>Open <a href="#people">Roles and people</a> and select <b>New role</b>.</li>
+    <li>On <b>Display</b>, enter a name and select a colour.</li>
+    <li>On <b>Permissions</b>, select the permissions the role grants, area by area.</li>
+    <li>Under <b>Active Directory</b>, <b>Scope</b> limits the role to the OUs you add and everything in them. With no OUs, the role applies everywhere the service account does.</li>
+    <li>On <b>Members</b>, add the role's members.</li>
+    <li>Select <b>Save changes</b>.</li>
   </ol>
-  <p>Roles are in order, highest first: drag them to reorder. People can only change roles below their own highest one. <b>Preview as</b> shows what that role sees.</p>
-  <p>The order counts in Active Directory too. Nobody can reset the password of, or otherwise change, an account that's in a role above their own, or change a group that puts people in one. A help desk role can't take over an admin that way.</p>
+  <p>Roles are ordered, highest first: drag them to reorder. Users can change only roles below their own highest role. <b>Preview as</b> shows the console as that role sees it.</p>
+  <p>The order also applies in Active Directory. No one can reset the password of, or otherwise change, an account that has a role above their own, or change a group that grants such a role. This prevents a help desk role from taking over an admin account.</p>
 </article>
 
 <article data-key="mfa" data-group="Access" data-title="Multi-factor authentication (MFA)">
-  <p>MFA is required for everyone: signing in takes your password and then a 6-digit code from an authenticator app, such as Microsoft Authenticator, Google Authenticator or 1Password. It works the same for local accounts, Active Directory accounts and Windows administrators, and for whoever sets Rabbid Lab up.</p>
-  <h3>Setting it up</h3>
+  <p>MFA is required for everyone: signing in requires your password and then a 6-digit code from an authenticator app, such as Microsoft Authenticator, Google Authenticator or 1Password. This applies to local accounts, Active Directory accounts and Windows administrators, including the person who sets up Rabbid Lab.</p>
+  <h3>Set up MFA</h3>
   <ol>
-    <li>At your first sign-in, after your password, scan the QR code with the app, or type the key in.</li>
-    <li>Type the code the app shows and click <b>Turn on and sign in</b>.</li>
+    <li>At your first sign-in, after your password, scan the QR code with the app, or enter the key manually.</li>
+    <li>Enter the code the app shows and select <b>Enable and sign in</b>.</li>
   </ol>
-  <p>You can also set it up beforehand in <a href="#settings/account">Settings, Account</a>.</p>
-  <h3>A new phone</h3>
-  <p>In <a href="#settings/account">Settings, Account</a>, click <b>Move to a new phone</b>. Type a code from the old phone first, then scan the new QR code with the new one.</p>
-  <h3>A lost phone</h3>
+  <p>You can also set it up in advance in <a href="#settings/account">Settings &gt; Account</a>.</p>
+  <h3>New phone</h3>
+  <p>In <a href="#settings/account">Settings &gt; Account</a>, select <b>Move to a new phone</b>. Enter a code from the old phone first, then scan the new QR code with the new phone.</p>
+  <h3>Lost phone</h3>
   <ul>
-    <li>Someone with the <b>Reset MFA</b> permission opens the person in Roles and people and clicks <b>Reset MFA</b>. It works on people in roles below their own. They get a one-time code to give the person, who types it at their next sign-in after their password, then sets up the new phone. It works once, for 24 hours.</li>
-    <li>If nobody can, run <code>"C:\Program Files\Rabbid Lab\RabbidLab.Server.exe" --reset-mfa username</code> on the server, as an administrator. It prints the one-time code. In Docker: <code>docker exec rabbidlab dotnet RabbidLab.Server.dll --reset-mfa username</code></li>
-    <li>Keep more than one administrator, so a lost phone doesn't mean a trip to the server. Settings, Account warns while only one administrator has MFA.</li>
+    <li>A user with the <b>Reset MFA</b> permission opens the person in Roles and people and selects <b>Reset MFA</b>. This works for users in roles below their own. They receive a one-time code to give to the user, who enters it at their next sign-in after their password and then sets up the new phone. The code works once, within 24 hours.</li>
+    <li>If no one can reset it, run <code>"C:\Program Files\Rabbid Lab\RabbidLab.Server.exe" --reset-mfa username</code> on the server as an administrator. It prints the one-time code. In Docker: <code>docker exec rabbidlab dotnet RabbidLab.Server.dll --reset-mfa username</code></li>
+    <li>Keep more than one administrator so that a lost phone does not require access to the server. Settings &gt; Account shows a warning while only one administrator has MFA set up.</li>
   </ul>
-  <p>The codes come from the time, so the server's clock and the phone's have to agree to within about 30 seconds.</p>
+  <p>Codes are based on the time, so the server's clock and the phone's clock must match to within about 30 seconds.</p>
 </article>
 
-<article data-key="people" data-group="Access" data-title="Put people in roles">
+<article data-key="people" data-group="Access" data-title="Assign roles">
   <ol>
-    <li>Open <a href="#people">Roles and people</a> and click <b>Add people</b>.</li>
-    <li>Search for an Active Directory group, a person, or a local account, and click it.</li>
-    <li>Tick the roles, then click <b>Add</b>.</li>
+    <li>Open <a href="#people">Roles and people</a> and select <b>Add people</b>.</li>
+    <li>Search for an Active Directory group, a user or a local account, and select it.</li>
+    <li>Select the roles, then select <b>Add</b>.</li>
   </ol>
-  <p>A group in a role counts for everyone in it, people in groups inside it too, the next time they sign in. Their role shows which group it came from, and the group's panel says so. The + beside someone's roles gives them another one, and the cross on a role takes it away.</p>
-  <p class="tip">An Active Directory account that isn't in any role can't sign in. Everyone in AD is in User to begin with.</p>
+  <p>A group in a role applies to all its members, including members of nested groups, at their next sign-in. The user's role shows which group granted it, and the group's panel shows the same. Use the + beside a user's roles to assign another role, and the cross on a role to remove it.</p>
+  <p class="tip">An Active Directory account with no role cannot sign in. All AD users have the User role by default.</p>
 </article>
 
 <article data-key="local-signin" data-group="Access" data-title="Local accounts">
-  <p>Local accounts in <span data-app>Rabbid Lab</span> are its own sign-ins, separate from Windows and AD. Use them when there's no domain, or as a way in if AD is down.</p>
+  <p>Local accounts in <span data-app>Rabbid Lab</span> are sign-in accounts that belong to <span data-app>Rabbid Lab</span>, separate from Windows and AD. Use them when there is no domain, or as a fallback if AD is unavailable.</p>
   <ol>
-    <li>In <a href="#people">Roles and people</a>, click <b>Add people</b>, then <b>New local account</b>.</li>
-    <li>Pick a username and a password of 8 characters or more, and its roles.</li>
+    <li>In <a href="#people">Roles and people</a>, select <b>Add people</b>, then <b>New local account</b>.</li>
+    <li>Enter a username and a password of at least 8 characters, and select its roles.</li>
   </ol>
-  <p>To sign in with one when AD is set up, pick Local account on the sign-in page, or type <code>.\</code> before the username.</p>
+  <p>To sign in with a local account when AD is set up, select <b>Use a local account instead</b> on the sign-in page, or type <code>.\</code> before the username.</p>
 </article>
 
-<article data-key="sessions" data-group="Access" data-title="See who's signed in">
+<article data-key="sessions" data-group="Access" data-title="View active sessions">
   <ol>
-    <li>Open <a href="#seats">Devices</a> and click <b>Signed in now</b> on the left. It lists everyone signed in to <span data-app>Rabbid Lab</span>, with their roles, browser and address.</li>
-    <li>Click <b>Sign out</b> on someone to end their session straight away.</li>
+    <li>Open <a href="#seats">Devices</a> and select <b>Sessions</b> on the left. It lists everyone signed in to <span data-app>Rabbid Lab</span>, with their roles, browser and IP address.</li>
+    <li>Select <b>Sign out</b> on a session to end it immediately.</li>
   </ol>
 </article>
 
 <article data-key="links" data-group="Links" data-title="Add a link">
   <ol>
-    <li>Open <a href="#links">Links</a> and click <b>Add a link</b>.</li>
-    <li>Paste the address, like <code>https://192.168.2.23</code>. <span data-app>Rabbid Lab</span> reads the site and fills in the name, detail, icon and IP.</li>
-    <li>Change anything you like, and pick a group to put it under. <b>New group…</b> at the bottom of the list makes one.</li>
-    <li>Click <b>Add the link</b>.</li>
+    <li>Open <a href="#links">Links</a> and select <b>Add a link</b>.</li>
+    <li>Paste the address, such as <code>https://192.168.2.23</code>. <span data-app>Rabbid Lab</span> reads the site and fills in the name, description, icon and IP address.</li>
+    <li>Change any field, and select a group. <b>New group…</b> at the bottom of the list creates a group.</li>
+    <li>Select <b>Add link</b>.</li>
   </ol>
-  <p>Hover a link and click the pencil to change it or delete it. <b>Upload</b> sets your own icon, <b>Letter</b> shows the first letter of the name, and <b>None</b> leaves the tile with no icon at all.</p>
-  <p>To add several at once, click <b>Add a link</b>, then <b>A list</b>, and paste the addresses: one on each line, or separated by commas or semicolons. Each site is read for its name, icon and IP, and they all go in the group you pick. Addresses that are already on Links are left out.</p>
+  <p>To edit or delete a link, hover over it and select the pencil. The strip under the preview sets the icon: the site icon, <b>First letter</b>, <b>Upload an image</b> or <b>No icon</b>.</p>
+  <p>To add several links at once, select <b>Add a link</b>, then <b>Bulk add</b>, and paste the addresses: one per line, or separated by commas or semicolons. Each site is read for its name, icon and IP address, and all links are added to the group you select. Addresses already on Links are skipped.</p>
 </article>
 
-<article data-key="link-checks" data-group="Links" data-title="The dot on a link, and how often it's checked">
-  <p>The dot on each link says whether its site answers: green is up, amber didn't answer just now and is being tried again, red is down. Hover the dot for the detail. Any answer counts as up, a sign-in page included.</p>
-  <p>The cogwheel on <a href="#links">Links</a>, at the right end of the bar under the banner, sets two things:</p>
+<article data-key="link-checks" data-group="Links" data-title="Link status and check interval">
+  <p>The dot on each link shows whether its site responds: green is up, amber means the site did not respond to the last check and is being retried, and red is down. Hover over the dot for details. Any response counts as up, including a sign-in page.</p>
+  <p>The gear on <a href="#links">Links</a>, at the right end of the bar under the banner, opens <b>Links settings</b> (Settings &gt; Links), which sets:</p>
   <ul>
-    <li><b>Heartbeat interval</b>: 15 seconds to 5 minutes. A minute to begin with.</li>
-    <li><b>Show a link as down after no answer for</b>: right away, or 15 seconds to 5 minutes. 30 seconds to begin with, so one slow reply doesn't turn a link red.</li>
+    <li><b>Heartbeat interval</b>: 15 seconds to 5 minutes. The default is 1 minute.</li>
+    <li><b>Show a link as down after</b>: immediately, or 15 seconds to 5 minutes. The default is 30 seconds, so one slow response does not mark a link as down.</li>
   </ul>
-  <p>Links are checked while the console is open on the Links page. For checks around the clock, with email when something goes down, add a <a href="#sensors">sensor</a>.</p>
-  <p>The same cogwheel has <b>Export</b> and <b>Import</b>. Export saves every link with its icon, the groups in their order and these settings as one file. Import adds what's in a file like it beside what's already there: its groups, its links and its settings. A link whose address is already on Links is left as it is, so importing the same file twice adds nothing.</p>
+  <p>Links are checked only while the Links page is open in the console. For checks around the clock, with alerts when a site goes down, add a <a href="#sensors">sensor</a> or watch the link.</p>
+  <p>The same gear menu has <b>Export links</b> and <b>Import links</b>. Export saves every link with its icon, the groups in their order and these settings in one file. Import adds the groups, links and settings from such a file to the existing ones. A link whose address is already on Links is not changed, so importing the same file twice adds nothing.</p>
 </article>
 
-<article data-key="link-groups" data-group="Links" data-title="Groups of links">
+<article data-key="link-groups" data-group="Links" data-title="Link groups">
   <ul>
-    <li><b>New group</b>, in the bar along the bottom of the banner, makes an empty group.</li>
-    <li>Hover a group's name for its tools. Drag the handle to move the group up or down, click the pencil to rename it, and click the bin to delete it.</li>
+    <li><b>New group</b>, in the bar under the banner, creates an empty group.</li>
+    <li>Hover over a group's name to show its tools. Drag the handle to move the group up or down, select the pencil to rename it, and select the bin to delete it.</li>
     <li>Deleting a group keeps its links. They move to <b>No group</b> at the bottom of the page.</li>
-    <li>To move a link to another group, hover it, click the pencil and pick the group.</li>
-    <li>Drag a link onto another group to move it there, or onto another link to put it beside that one: a line shows which side it lands on. To take it out of its group, drop it on <b>No group</b>, which shows at the bottom while you drag.</li>
-    <li><b>Open all</b>, beside a group's name when you hover it, opens every link in the group in a tab of its own. Your browser stops all but the first until you allow pop-ups for the console.</li>
-    <li><b>Cards</b> and <b>Grid</b>, at the right of the row above the links, switch between tiles and a row to a link. Your browser remembers which.</li>
-    <li>The filter button beside the search box shows one group at a time: click it and pick the group, or <b>All groups</b> to see everything again. It appears once there is more than one group to pick from, and past eight groups its menu has a search box.</li>
+    <li>To move a link to another group, hover over it, select the pencil and select the group.</li>
+    <li>Drag a link onto another group to move it there, or onto another link to place it beside that link: a line shows which side it will be placed on. To remove a link from its group, drop it on <b>No group</b>, which appears at the bottom while you drag.</li>
+    <li><b>Open all</b>, beside a group's name when you hover over it, opens every link in the group in its own tab. Your browser blocks all but the first until you allow pop-ups for the console.</li>
+    <li>The <b>View</b> buttons at the right end of the bar under the banner switch between Rows, Tiles, Links and Icons. Your browser remembers the choice.</li>
+    <li>The <b>Group</b> chip in the filter bar shows only the groups you tick.</li>
   </ul>
 </article>
 
 <article data-key="sensors" data-group="Sensors" data-title="Add a sensor">
-  <p>A sensor checks one thing on a timer, from this server, and the <a href="#sensors">Sensors</a> page shows what's down.</p>
+  <p>A sensor runs one check on a schedule, from this server or through the client on a computer in Devices, and the <a href="#sensors">Sensors</a> page shows which sensors are down.</p>
   <ol>
-    <li>Open <a href="#sensors">Sensors</a> and click <b>Add a sensor</b>.</li>
-    <li>Pick the check:
+    <li>Open <a href="#sensors">Sensors</a> and select <b>Add a sensor</b>.</li>
+    <li>Select the check type:
       <ul>
-        <li><b>Ping</b>: the machine answers.</li>
-        <li><b>Port</b>: a port is open, such as 445 for file shares, 636 for LDAPS or 3389 for remote desktop.</li>
-        <li><b>Web page</b>: the page answers. A sign-in page counts as up; an error 500 or higher counts as down.</li>
-        <li><b>DNS lookup</b>: a name resolves, on the DNS server you name or the one this server uses.</li>
-        <li><b>Certificate</b>: warns when a site's certificate has under 21 days left, and is down once it expires.</li>
-      </ul></li>
-    <li>Type the address. <b>Check now</b> tries it before you save.</li>
-    <li>Pick a group, how often to check, and when it alerts, then click <b>Add the sensor</b>.</li>
+        <li><b>Ping</b>: the host responds to ping.</li>
+        <li><b>Port</b>: a TCP port is open, such as 445 for file shares, 636 for LDAPS or 3389 for Remote Desktop.</li>
+        <li><b>Web page</b>: the page responds. A sign-in page counts as up; HTTP 500 or higher counts as down.</li>
+        <li><b>DNS lookup</b>: a name resolves, on the DNS server you specify or the one this server uses.</li>
+        <li><b>Certificate</b>: warns before a site's certificate expires, and is down once the certificate has expired.</li>
+      </ul>
+      Other check types cover server hardware, storage, VMware, SNMP, Windows services and disk space.</li>
+    <li>Enter the host. <b>Check now</b> tests the check before you save.</li>
+    <li>Select a group, the check interval and the alert type, then select <b>Add sensor</b>.</li>
   </ol>
-  <p>A sensor is down after two misses in a row, so one lost reply isn't an outage; change it with <b>Down after</b>. Its alerts go to the channels ticked under <b>Send to</b>: email, Discord, Teams, Slack, ntfy or any webhook, set up once in Settings, Notifications. Click a sensor for its history, to pause it, or to change it.</p>
+  <p>By default, a sensor is down after two failed checks in a row, so one lost response is not an outage; change this with <b>Down after</b>. Alerts are sent according to the sensor's alert type, to email, Discord, Teams, Slack, ntfy or any webhook, set up in Settings &gt; Notifications. Select a sensor to view its history, pause it or edit it.</p>
 </article>
 
-<article data-key="sensor-views" data-group="Sensors" data-title="Cards and the grid">
+<article data-key="sensor-views" data-group="Sensors" data-title="Sensor views">
   <ul>
-    <li><b>Cards</b> and <b>Grid</b>, at the right of the row above the sensors, switch between the two. Your browser remembers which.</li>
-    <li>The Rows view is a table like every other one: click a heading to sort, drag a heading onto another to move it, drag its right edge to resize, and <b>Columns</b> picks what shows and has Reset.</li>
-    <li>Groups work as they do on Links: drag a card onto another group to move it, <b>New group</b> in the bar under the banner, the filter button to show one group or only the sensors that are down, and hover a group's name to drag, rename or delete it.</li>
+    <li>The <b>View</b> buttons at the right end of the bar under the banner switch between Rows and Tiles. Your browser remembers the choice.</li>
+    <li>The Rows view is a table like every other table: select a heading to sort, drag a heading onto another to move it, drag its right edge to resize it, and use <b>Choose columns</b> to set which columns show.</li>
+    <li>Groups work as they do on Links: drag a sensor onto another group to move it, <b>New group</b> is in the bar under the banner, the <b>Group</b> chip in the filter bar shows only the groups you tick, and hovering over a group's name lets you drag, rename or delete it.</li>
   </ul>
 </article>
 
 <article data-key="sensor-alerts" data-group="Sensors" data-title="Alerts and email">
-  <p>Each sensor says when it alerts, under <b>Alerts</b> when you add or change it:</p>
+  <p>Each sensor uses an alert type, selected under <b>Alerts</b> when you add or edit the sensor. Alert types are set up in Settings &gt; Alert rules, and each one defines:</p>
   <ul>
-    <li><b>Alert when it has been down for</b>: right away, 1 to 30 minutes, an hour, or never (it only shows on the page).</li>
-    <li><b>While it stays down</b>: once, or again every hour, 6 hours or day.</li>
-    <li><b>When it comes back</b>: an all-clear, only after a down alert went.</li>
-    <li><b>Depends on</b>: while that sensor is down, this one waits instead of alerting, and shows as Waiting. If it's still down once the other is back, it alerts then.</li>
-    <li><b>Send to</b>: email and the channels set up in Settings, Notifications. A kind that isn't set up yet can be set up from there.</li>
+    <li><b>Alert after down for</b>: immediately, 1 to 30 minutes, or 1 hour. To show a sensor on the page without alerting, select <b>No alert</b> as its alert type.</li>
+    <li><b>Reminders</b>: alert once, or repeat every hour, 6 hours or day while the sensor is down.</li>
+    <li><b>Recovery alert</b>: sent when the sensor is back up, only after a down alert was sent.</li>
+    <li><b>Send to</b>: the notification channels set up in Settings &gt; Notifications.</li>
+    <li><b>Default for new sensors and links</b>: new sensors and watched links start with this alert type.</li>
   </ul>
-  <p>New sensors start with what's set in <a href="#settings/sensors">Settings, Sensors</a>. <b>Use these alerts on other sensors</b> copies one sensor's alerts to others; <b>Use on every sensor</b> in Settings does it for all of them. Something that comes back before its time is up alerts nobody.</p>
-  <p>On a sensor, <b>Send a test alert</b> sends its alert, marked as a test, to its channels. <b>Pause</b> stops it for 15 minutes, an hour, 4 hours, until 8 tomorrow or until you start it again, and can take what depends on it along. <b>Gather alerts</b> in Settings, Sensors sends one alert when several go down close together.</p>
-  <p>On Links, <b>Watch it</b> in a link's dialog gives it a sensor that checks it every minute and alerts the same way. Its dot comes from that sensor, and a small eye shows it's watched. <b>Watch links</b> in the bar above the links ticks many at once: tick them (or <b>Tick all</b> in a group), pick when to alert and where, and click <b>Watch</b>. Untick one to stop watching it.</p>
-  <p>Set up email under <a href="#settings/notifications">Settings, Notifications</a>, with <b>Edit</b> on the Email row:</p>
+  <p>Changing an alert type applies to every sensor and link that uses it. <b>Depends on</b>, also under Alerts on a sensor, selects another sensor: while that sensor is down, this one shows as Unreachable and does not alert. If it is still down after the other sensor is back up, it alerts then. A sensor that is back up before its alert delay ends sends no alert.</p>
+  <p>On a sensor, <b>Send a test alert</b> sends its alert, marked as a test, to its channels. <b>Pause</b> stops checks and alerts for 15 minutes, 1 hour, 4 hours, until 8:00 AM tomorrow or until resumed, and can also pause dependent sensors. <b>Group alerts</b>, in Settings &gt; Alert rules, sends one alert when several sensors or links go down within a short time. Credentials that sensors use to sign in are in <a href="#settings/sensors">Settings &gt; Sensors</a>.</p>
+  <p>On Links, <b>Alert when down</b> in a link's dialog adds a sensor that checks the link every minute and alerts the same way. The link's dot then comes from that sensor, and a small eye shows that the link is watched. To watch many links at once, select <b>Select links</b> under <b>Watch links</b> in Settings &gt; Links: tick the links (or <b>Select all</b> in a group), select an alert type, and select <b>Watch</b>. Clear a link's tick to stop watching it.</p>
+  <p>To set up email, open <a href="#settings/notifications">Settings &gt; Notifications</a>, select <b>Add channel</b>, select <b>Email</b>, then select how to send it:</p>
   <ul>
-    <li><b>Gmail</b>: your address and an app password (Google Account, Security, 2-Step Verification, App passwords).</li>
-    <li><b>Microsoft 365</b>: an app registration in Microsoft Entra with the Mail.Send application permission and admin consent. Type the tenant, the application (client) ID and a client secret. From has to be a mailbox in the tenant.</li>
-    <li><b>Another mail server</b>: any server or relay that takes STARTTLS on port 587.</li>
+    <li><b>Gmail</b>: your address and an app password (Google Account &gt; Security &gt; 2-Step Verification &gt; App passwords).</li>
+    <li><b>Microsoft 365</b>: an app registration in Microsoft Entra with the Mail.Send application permission and admin consent. Enter the tenant, the application (client) ID and a client secret. The From address must be a mailbox in the tenant.</li>
+    <li><b>Other mail server</b>: any SMTP server or relay, with STARTTLS on port 587, SSL/TLS on port 465 or no encryption on port 25.</li>
   </ul>
-  <p><b>Send a test email</b> saves the settings and sends one to everyone on the list. <b>Test</b> on any channel's row sends it one. Passwords and secrets are stored encrypted on this server.</p>
+  <p><b>Send test</b> in the dialog sends a test message to the channel. <b>Test</b> on any channel's row does the same. Passwords and secrets are stored encrypted on this server.</p>
 </article>
 
-<article data-key="console-address" data-group="Keeping it running" data-title="Console address">
-  <p><a href="#settings/address">Settings, Console address</a> lists where to open <span data-app>Rabbid Lab</span>: this computer's names and IP addresses, and any you add. It also shows the HTTPS certificate, the port and the firewall rule.</p>
+<article data-key="console-address" data-group="Maintenance" data-title="Console address">
+  <p><a href="#settings/address">Settings &gt; Console address</a> lists the addresses for opening <span data-app>Rabbid Lab</span>: this computer's names and IP addresses, and any addresses you add. It also shows the HTTPS certificate, the port and the firewall rule.</p>
   <ul>
-    <li><b>Add an address</b> gives the console a name of your own, such as <b>lab</b>. On a computer in a domain it can add an alias (CNAME) for it in DNS on a domain controller, with an account you type for that. The account needs DNS admin rights, and it isn't saved. It never changes a record that's already there, or takes a computer's name.</li>
-    <li>Not in a domain? Add the name on whatever answers DNS for your network, such as your router or Pi-hole. The dialog shows the record to add.</li>
-    <li>Added addresses get certificates of their own. The console's own certificate doesn't change, and computers in Devices connect through any of the addresses. In a domain, an address in the domain is signed by a certificate authority made for this install, which can sign only for names in that domain. To open it from other computers without a warning, <b>Download</b> the authority on the page and add it to Trusted Root Certification Authorities there, or run the <code>certutil</code> line shown to put it on every domain computer. Short names, names outside the domain and installs with no domain get a self-signed certificate, trusted on this computer.</li>
-    <li><b>Port 443</b>, under Port and firewall, makes the console answer there as well, so <code>https://lab.home.lan</code> opens it with no port typed. Its own port keeps working, and computers in Devices keep using it. Turning it on or off restarts <span data-app>Rabbid Lab</span>, which takes a few seconds, and adds or removes a firewall rule if Setup made the console's. If another program on the server already has port 443, the page says so and nothing else changes.</li>
-    <li><b>Remove</b> takes an address off, and its alias out of DNS if <span data-app>Rabbid Lab</span> added it. Removing <span data-app>Rabbid Lab</span> with everything takes the aliases out too. Setup's host name can be removed the same way, with the alias Setup added. This computer's own name and IP addresses only come off the list, since the console still answers there: <b>Show them</b> at the bottom puts them back.</li>
+    <li><b>Add address</b> gives the console a name of your own, such as <b>lab</b>. On a computer in a domain, it can add an alias (CNAME) for the name in DNS on a domain controller, using an account you enter for that change. The account must be a member of DnsAdmins or Domain Admins, and the credentials are not stored. It never changes an existing record or uses a computer's name.</li>
+    <li>Not in a domain? Add the name on the DNS server for your network, such as your router or Pi-hole. The dialog shows the record to add.</li>
+    <li>Added addresses get their own certificates. The console's own certificate does not change, and computers in Devices connect through any of the addresses. In a domain, an address in the domain gets a certificate signed by a certificate authority created for this installation, which can issue certificates only for names in that domain. To open the console from other computers without a warning, download the certificate authority from the page and add it to Trusted Root Certification Authorities on those computers, or run the <code>certutil</code> command shown to publish it to every domain computer. Short names, names outside the domain and installations with no domain get a self-signed certificate, trusted on this computer only.</li>
+    <li><b>Port 443</b>, under Port and firewall, makes the console also listen on port 443, so <code>https://lab.home.lan</code> opens it without a port number. The console's own port keeps working, and computers in Devices keep using it. Enabling or disabling port 443 restarts <span data-app>Rabbid Lab</span>, which takes a few seconds, and adds or removes a firewall rule if Setup created the console's rule. If another program on the server is already using port 443, the page says so and nothing changes.</li>
+    <li><b>Remove</b> removes an address, and its alias from DNS if <span data-app>Rabbid Lab</span> added it. Uninstalling <span data-app>Rabbid Lab</span> with all data also removes the aliases. Setup's host name can be removed the same way, with the alias that Setup added. This computer's own names and IP addresses are only hidden from the list, because the console still listens on them: <b>Show all</b> at the bottom restores them.</li>
   </ul>
 </article>
 
-<article data-key="support-info" data-group="Keeping it running" data-title="Support info">
-  <p>The <b>i</b> at the top right gathers what someone helping you needs to know: the version, the machine, how it's installed, the sign-in domain, and how many devices, links and sensors there are. Click <b>Copy</b> and paste it into your message. It has no passwords in it, and only shows what your roles let you see.</p>
+<article data-key="support-info" data-group="Maintenance" data-title="Support info">
+  <p>The <b>i</b> button at the top right (Support info) collects the details a support person needs: the version, the server, the installation type, the sign-in domain, and the number of devices, links and sensors. Select <b>Copy</b> and paste the text into your message. It contains no passwords, and shows only what your roles allow you to view.</p>
 </article>
 
-<article data-key="updates" data-group="Keeping it running" data-title="Updates">
-  <p>Rabbid Lab checks GitHub for a new version on start, every 12 hours, and when you click <b>Check for updates</b>.</p>
+<article data-key="updates" data-group="Maintenance" data-title="Updates">
+  <p>Rabbid Lab checks GitHub for a new version at startup, every 12 hours, and when you select <b>Check for updates</b>.</p>
   <ul>
-    <li>On Windows, a new version installs automatically once nobody has used <span data-app>Rabbid Lab</span> for a couple of minutes. Turn that off with <b>Update automatically</b> under <a href="#settings/updates">Settings, Updates</a>.</li>
-    <li><b>Install now</b> installs straight away. Rabbid Lab is stopped for under a minute while it installs, and every open page shows the same progress.</li>
-    <li>Only updates signed with Rabbid Lab's release key install.</li>
-    <li>Computers in Devices update their client to the server's version by themselves.</li>
+    <li>On Windows, a new version installs automatically when <span data-app>Rabbid Lab</span> has not been used for a few minutes. To turn this off, set <b>Update automatically</b> to Off in <a href="#settings/updates">Settings &gt; Updates</a>.</li>
+    <li><b>Install now</b> installs the update immediately. Rabbid Lab is unavailable for up to a minute while the update installs, and every open page shows the same progress.</li>
+    <li>Only updates signed with the Rabbid Lab release key are installed.</li>
+    <li>Computers in Devices update their client to the server's version automatically.</li>
   </ul>
   <p>In Docker, update with <code>docker compose up -d --build</code>.</p>
 </article>
 
-<article data-key="activity" data-group="Keeping it running" data-title="The activity log">
-  <p><a href="#settings/activity">Settings, Activity log</a> lists every sign-in and change, who made it, and when. That covers accounts made, passwords set, groups changed, computers approved and updates installed. Passwords are never in it.</p>
+<article data-key="activity" data-group="Maintenance" data-title="Activity log">
+  <p><a href="#settings/activity">Settings &gt; Activity log</a> lists every sign-in and change, who made it and when. This includes accounts created, passwords reset, group changes, computers approved and updates installed. Passwords are never recorded.</p>
 </article>
 
-<article data-key="locked-out" data-group="Keeping it running" data-title="Nobody can sign in">
-  <p>If nobody can get in (AD is down, or the last admin left), add a local administrator on the server itself:</p>
+<article data-key="locked-out" data-group="Maintenance" data-title="No one can sign in">
+  <p>If no one can sign in (AD is unavailable, or the last admin left), add a local administrator on the server:</p>
   <ol>
     <li>Open a command prompt as administrator on the server.</li>
     <li>Run <code>"C:\Program Files\Rabbid Lab\RabbidLab.Server.exe" --add-admin admin</code></li>
-    <li>Sign in with Local account, <code>admin</code>, and the password it prints.</li>
+    <li>On the sign-in page, select <b>Use a local account instead</b>, then sign in with <code>admin</code> and the password the command prints.</li>
   </ol>
   <p>In Docker: <code>docker exec rabbidlab dotnet RabbidLab.Server.dll --add-admin admin</code></p>
 </article>
 
-<article data-key="data" data-group="Keeping it running" data-title="Where Rabbid Lab keeps things">
-  <p>Everything is in one data folder: <code>C:\ProgramData\Rabbid Lab</code> on Windows, <code>/data</code> in Docker. Back it up to keep everything.</p>
+<article data-key="data" data-group="Maintenance" data-title="Data folder">
+  <p>All data is in one folder: <code>C:\ProgramData\Rabbid Lab</code> on Windows, <code>/data</code> in Docker. Back up this folder to back up everything.</p>
   <ul>
-    <li><code>accounts.json</code>: how people sign in, and <span data-app>Rabbid Lab</span>'s own accounts.</li>
-    <li><code>roles.json</code>: roles, what they allow, and who's in them.</li>
-    <li><code>sessions.json</code>: who's signed in, encrypted.</li>
+    <li><code>accounts.json</code>: sign-in settings and <span data-app>Rabbid Lab</span> local accounts.</li>
+    <li><code>roles.json</code>: roles, their permissions and their members.</li>
+    <li><code>sessions.json</code>: active sessions, encrypted.</li>
     <li><code>clients.json</code>: the computers in Devices.</li>
-    <li><code>directory-tools.json</code>: <span data-app>Rabbid Lab</span>'s AD account, its password encrypted.</li>
+    <li><code>directory-tools.json</code>: the AD service account, with its password encrypted.</li>
     <li><code>links.json</code>: the Links page.</li>
     <li><code>activity.jsonl</code>: the activity log.</li>
-    <li><code>Keys</code>: the keys the encrypted parts use. Without them, the encrypted parts can't be read on another machine.</li>
+    <li><code>Keys</code>: the encryption keys. Without them, encrypted data cannot be read on another computer.</li>
   </ul>
 </article>

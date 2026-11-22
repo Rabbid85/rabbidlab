@@ -317,7 +317,7 @@ internal sealed class StatusWindow : Form
         var joined = s.State is Status.Connected or Status.Waiting or Status.Unreachable or Status.Refused;
         var rows = new (string Label, string Value)[]
         {
-            ("Server", s.Server ?? "Not set"),
+            ("Server", s.Server ?? "Not configured"),
             ("Computer name", s.Computer),
             ("Signed-in user", string.IsNullOrEmpty(s.User) ? Environment.UserName : s.User!),
             ("Last check-in", s.CheckedIn is { } at ? at.ToLocalTime().ToString("g") : "Never"),
@@ -325,7 +325,7 @@ internal sealed class StatusWindow : Form
             ("Server version", s.ServerVersion ?? "Unknown"),
             ("Uninstall", !joined ? "Allowed (not connected to a server)"
                 : s.Locked ? $"Locked by {s.Host}"
-                : s.Unlocked == Status.ByOffline ? $"Allowed (server not reached for {Removal.OfflineDays} days)"
+                : s.Unlocked == Status.ByOffline ? $"Allowed (server unreachable for {Removal.OfflineDays} days)"
                 : s.RemovalUntil is { } until ? $"Allowed until {until.ToLocalTime():t}{(s.Unlocked == Status.ByCode ? " (uninstall code)" : "")}" : "Allowed"),
         };
         // The rows are made once, and again only when the window learns its screen's scale (OnLoad). After that only a
@@ -385,7 +385,7 @@ internal sealed class StatusWindow : Form
         }
         if (!Removal.Uninstall(quiet: false))
         {
-            MessageBox.Show(this, "The uninstall didn't start. Use Settings > Apps > Installed apps instead.", "Rabbid Lab Client", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MessageBox.Show(this, "Could not start the uninstall. Use Settings > Apps > Installed apps instead.", "Rabbid Lab Client", MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
     }
 

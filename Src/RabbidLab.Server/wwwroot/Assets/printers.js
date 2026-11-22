@@ -18,7 +18,7 @@
   const none = (text) => `<p class="muted dw-empty">${esc(text)}</p>`;
   const where = (p) => [KIND[p.kind] || p.kind, p.address].filter(Boolean).join(' · ');
   const can = () => has('seats.actions');
-  const oops = (e) => { if (!e.cancelled) toast("That didn't work.", e.message, { tone: 'warn' }); };
+  const oops = (e) => { if (!e.cancelled) toast('The operation failed.', e.message, { tone: 'warn' }); };
   const below = (version, than) => {
     const [a, b] = [version || '0', than].map((v) => v.split('.').map(Number));
     for (let i = 0; i < 3; i++) if ((a[i] || 0) !== b[i]) return (a[i] || 0) < b[i];
@@ -57,15 +57,15 @@
       return '<div data-pr-skel></div>';
     }
     if (p.error) return section('Printers', none(p.error));
-    const add = can() && c.approved ? `<button type="button" class="small" data-pr-add>${svg('plus')}Add a printer</button>` : '';
+    const add = can() && c.approved ? `<button type="button" class="small" data-pr-add>${svg('plus')}Add printer</button>` : '';
     if (!p.printers) {
-      return section('Printers', none(!p.sent ? "This computer hasn't sent its inventory yet." : below(c.version, NEEDS)
-        ? `Its printers show once its client is ${NEEDS} or later. It updates itself within a few minutes.` : 'Windows didn’t say which printers it has.'), add);
+      return section('Printers', none(!p.sent ? 'This computer has not reported its inventory yet.' : below(c.version, NEEDS)
+        ? `Printers appear with client ${NEEDS} or later. The client updates automatically within a few minutes.` : 'Windows did not report any printers.'), add);
     }
     const real = p.printers.filter((x) => x.kind !== 'virtual');
     const built = p.printers.filter((x) => x.kind === 'virtual');
-    return section(`Printers <small>${real.length}</small>`, (real.length ? `<div class="dw-list">${real.map((x) => row(c, x)).join('')}</div>` : none('No printers yet.'))
-      + '<p class="dw-how pr-note">Added for everyone who uses the computer. Changes go out as jobs, and its list updates after each one.</p>', add)
+    return section(`Printers <small>${real.length}</small>`, (real.length ? `<div class="dw-list">${real.map((x) => row(c, x)).join('')}</div>` : none('No printers.'))
+      + '<p class="dw-how pr-note">Printers are added for all users of this computer. Changes run as jobs, and this list updates after each job.</p>', add)
       + (built.length ? section(`Virtual printers <small>${built.length}</small>`, `<div class="dw-list">${built.map((x) => row(c, x)).join('')}</div>`) : '');
   };
   const H = D.hooks;
@@ -102,8 +102,8 @@
     else if (t) runPrinter([c], { action: 'testpage', name: t.dataset.prTest }).then(() => toast('Test page sent.', `To ${t.dataset.prTest} on ${c.computer}.`)).catch(oops);
     else if (r) {
       const name = r.dataset.prRemove;
-      sure(`Remove ${name}?`, `It's taken off ${c.computer} for everyone who uses it.`, 'Remove', () => runPrinter([c], { action: 'remove', name })
-        .then(() => toast('Remove sent.', `${name} on ${c.computer}. It's under Jobs.`)).catch(oops));
+      sure(`Remove ${name}?`, `The printer is removed from ${c.computer} for all users.`, 'Remove', () => runPrinter([c], { action: 'remove', name })
+        .then(() => toast('Printer removal requested.', `${name} on ${c.computer}. View progress under Jobs.`)).catch(oops));
     }
   });
 
@@ -115,24 +115,24 @@
     $('pr-dialog').querySelectorAll('[data-pr]').forEach((el) => { el.hidden = !el.dataset.pr.split(' ').includes(way); });
     $('pr-driver-typed-row').hidden = !(['tcpip', 'lpr'].includes(way) && $('pr-driver').value === '');
     const all = adding.on.length;
-    $('pr-note').textContent = way === 'share' ? 'Everyone who signs in to the computer gets it, the next time they sign in. Its driver comes from the print server.'
-      : way === 'ipp' ? 'Uses Windows’ own IPP driver, so nothing has to be downloaded. Most network printers from the last ten years work this way.'
-      : way === 'url' ? 'For a printer that gives a web services (WSD) address. Windows picks its driver.'
-      : 'Uses the driver picked. A driver the computer doesn’t have comes from the driver file, when there is one.';
-    $('pr-note').textContent += ` It goes out as a job${all > 1 ? ` to ${many(all)}` : ''} and runs as SYSTEM.`;
+    $('pr-note').textContent = way === 'share' ? 'Added for all users at their next sign-in. The driver is installed from the print server.'
+      : way === 'ipp' ? 'Uses the built-in Microsoft IPP Class Driver, so no download is needed. Most network printers from the last ten years support IPP.'
+      : way === 'url' ? 'For printers with a Web Services for Devices (WSD) address. Windows selects the driver.'
+      : 'Uses the selected driver. If the computer does not have it, the driver is installed from the driver file, if one is given.';
+    $('pr-note').textContent += ` Runs as a SYSTEM job${all > 1 ? ` on ${many(all)}` : ''}.`;
   };
   const openAdd = async (on) => {
     const list = on.filter((c) => c.approved && !c.server);
     if (!list.length) {
-      toast('Nothing to add it to.', 'Pick computers that are approved.', { tone: 'warn' });
+      toast('No computers selected.', 'Select approved computers.', { tone: 'warn' });
       return true;
     }
     adding = { on: list, way: 'ipp' };
     for (const id of ['pr-name', 'pr-address', 'pr-ipp', 'pr-queue', 'pr-share', 'pr-url', 'pr-driver-typed', 'pr-inf', 'pr-count']) $(id).value = '';
     $('pr-port').value = '9100';
-    $('pr-lead').textContent = `On ${names(list)}, for everyone who uses ${list.length === 1 ? 'it' : 'them'}.`;
+    $('pr-lead').textContent = `On ${names(list)}, for all users.`;
     $('pr-count-row').hidden = list.length <= BRAKE;
-    $('pr-count-label').textContent = `That's ${list.length} computers. Type ${list.length} to go ahead`;
+    $('pr-count-label').textContent = `This affects ${list.length} computers. Type ${list.length} to confirm`;
     // Drivers the computers reported, Windows' own first.
     let drivers = [];
     try {
@@ -142,7 +142,7 @@
       // Windows' own are still there to pick.
     }
     const known = [...new Set([...drivers, ...CLASS])].filter((d) => !/OneNote|Print To PDF|Universal Print|Virtual Print|Point and Print/i.test(d));
-    $('pr-driver').innerHTML = known.map((d) => `<option>${esc(d)}</option>`).join('') + '<option value="">Another driver…</option>';
+    $('pr-driver').innerHTML = known.map((d) => `<option>${esc(d)}</option>`).join('') + '<option value="">Other driver…</option>';
     say('pr-problem', '');
     drawAdd();
     $('pr-dialog').showModal();
@@ -167,7 +167,7 @@
     try {
       await runPrinter(adding.on, printer, adding.on.length > BRAKE ? Number(v('pr-count')) || 0 : 0);
       $('pr-dialog').close();
-      toast('Printer sent.', `${way === 'share' ? printer.share : printer.name} to ${names(adding.on)}. It's under Jobs.`);
+      toast('Printer installation requested.', `${way === 'share' ? printer.share : printer.name} on ${names(adding.on)}. View progress under Jobs.`);
     } catch (e) {
       if (!e.cancelled) say('pr-problem', e.message);
     }
@@ -176,7 +176,7 @@
 
   // In Actions, for the ticked computers.
   const items0 = H.actItems;
-  H.actItems = (item) => [...(items0?.(item) || []), ...(can() ? [item('printer', 'Add a printer…')] : [])];
+  H.actItems = (item) => [...(items0?.(item) || []), ...(can() ? [item('printer', 'Add printer…')] : [])];
   const act0 = H.act;
   H.act = (act, on) => (act === 'printer' ? (openAdd(on), true) : act0?.(act, on) || false);
 
@@ -236,28 +236,28 @@
       const queue = direct(p) && byIp.get(direct(p));
       if (queue) {
         fold(queue, p);
-        const around = 'Some computers print straight to its address, around the server queue.';
+        const around = 'Some computers print directly to the printer IP address, bypassing the server queue.';
         if (!queue.problems.includes(around)) queue.problems.push(around);
         continue;
       }
       const row = { ...p, computers: p.computers.map((c) => ({ ...c, as: p.name })), drivers: [...p.drivers], ip: direct(p), problems: [] };
       const from = unc(p.name).split('\\')[0];
       // Its server answered, shares printers, and this isn't one of them any more.
-      if (from && servers().some((s) => s.server.toLowerCase() === from && !s.problem)) row.problems.push(`Computers connect to it on ${from.toUpperCase()}, but that server doesn't share it any more.`);
-      else if (managed && row.ip) row.problems.push("Added by hand on computers. It's on no print server, so nobody manages it.");
+      if (from && servers().some((s) => s.server.toLowerCase() === from && !s.problem)) row.problems.push(`Computers connect to it on ${from.toUpperCase()}, but that server no longer shares it.`);
+      else if (managed && row.ip) row.problems.push('Added manually on computers. It is not on a print server, so it is not centrally managed.');
       rows.push(row);
     }
     // What each printer says about itself, onto every row at its address; a supply that's nearly out is a problem.
     const said = new Map((dev?.devices || []).map((d) => [d.ip, d]));
     for (const r of rows) {
       r.device = r.ip ? said.get(r.ip) : null;
-      for (const s of r.device?.supplies || []) if (s.percent != null && s.percent <= LOW) r.problems.push(`${s.name} is at ${s.percent}%: nearly out.`);
+      for (const s of r.device?.supplies || []) if (s.percent != null && s.percent <= LOW) r.problems.push(`${s.name} is low (${s.percent}%).`);
     }
   };
   // What shows under Address: the printer's own address, never the share (that has its own column).
   const addr = (p) => p.ip || (p.listed ? '' : p.address) || '';
   const probs = (p) => (p.problems?.length > 1 ? `${p.problems.length} problems` : p.problems?.[0] || '');
-  const onText = (n) => (n ? many(n) : 'No computers yet');
+  const onText = (n) => (n ? many(n) : 'None');
   let printersG = null;
   const printersGrid = () => (printersG ||= R.grid({
     el: $('dv-printers'), key: 'printers', sort: { key: 'name', dir: 1 },
@@ -271,19 +271,19 @@
       { key: 'toner', label: 'Toner', w: 200, on: true, get: (p) => lowest(p)?.percent ?? (toner(p) ? 100 : 101), text: toner,
         cell: (p) => `<span class="ell ${lowest(p)?.percent <= LOW ? 'pr-bad' : ''}">${esc(toner(p))}</span>` },
       { key: 'problems', label: 'Problems', w: 250, on: true, get: (p) => p.problems?.length || 0, text: (p) => (p.problems || []).join(' '), cell: (p) => `<span class="ell pr-bad">${esc(probs(p))}</span>` },
-      { key: 'on', label: 'On', w: 120, on: true, get: (p) => p.computers.length, text: (p) => onText(p.computers.length), cell: (p) => esc(onText(p.computers.length)) },
+      { key: 'on', label: 'Computers', w: 120, on: true, get: (p) => p.computers.length, text: (p) => onText(p.computers.length), cell: (p) => esc(onText(p.computers.length)) },
       // What the printer calls itself, which the driver's name often isn't.
       { key: 'model', label: 'Model', w: 220, on: true, get: (p) => p.device?.model || '', cell: (p) => `<span class="ell">${esc(p.device?.model || '')}</span>` },
       { key: 'serial', label: 'Serial number', w: 140, get: (p) => p.device?.serial || '', cell: (p) => `<span class="mono muted ell">${esc(p.device?.serial || '')}</span>` },
       { key: 'pages', label: 'Pages printed', w: 120, get: (p) => p.device?.pages ?? '', cell: (p) => esc(p.device?.pages?.toLocaleString() ?? '') },
       { key: 'driver', label: 'Driver', w: 210, on: true, get: (p) => p.drivers.join(', '), cell: (p) => `<span class="ell">${esc(p.drivers.length > 1 ? `${p.drivers.length} drivers` : p.drivers[0] || '')}</span>` },
       { key: 'location', label: 'Location', w: 140, on: true, get: (p) => p.location || '', cell: (p) => `<span class="ell">${esc(p.location || '')}</span>` },
-      { key: 'kind', label: 'Kind', w: 130, on: true, get: (p) => KIND[p.kind] || p.kind },
-      { key: 'jobs', label: 'Jobs waiting', w: 110, get: (p) => p.jobs ?? '', cell: (p) => esc(p.jobs ?? '') },
+      { key: 'kind', label: 'Type', w: 130, on: true, get: (p) => KIND[p.kind] || p.kind },
+      { key: 'jobs', label: 'Jobs in queue', w: 110, get: (p) => p.jobs ?? '', cell: (p) => esc(p.jobs ?? '') },
       { key: 'share', label: 'Share', w: 240, get: (p) => p.share || '', cell: (p) => `<span class="mono muted ell">${esc(p.share || '')}</span>` },
       { key: 'port', label: 'Port', w: 150, get: (p) => p.port || '', cell: (p) => `<span class="mono muted ell">${esc(p.port || '')}</span>` },
       { key: 'description', label: 'Comment', w: 180, get: (p) => p.description || '', cell: (p) => `<span class="ell">${esc(p.description || '')}</span>` },
-      { key: 'published', label: 'In AD', w: 80, get: (p) => (p.published ? 'Yes' : 'No') },
+      { key: 'published', label: 'Listed in AD', w: 80, get: (p) => (p.published ? 'Yes' : 'No') },
     ],
     row: (p) => ` data-pr-row="${esc(`${p.name}\n${p.address || ''}`)}"`,
     empty: () => D.more.printers.empty(), loading: () => !all && !D.failed(),
@@ -297,19 +297,19 @@
       { key: 'server', label: 'Server', w: 220, fixed: true, get: (s) => s.server, cell: (s) => `<div class="who"><span class="pic">${svg('server')}</span><b class="ell">${esc(s.server)}</b></div>` },
       { key: 'host', label: 'Full name', w: 230, on: true, get: (s) => s.host, cell: (s) => `<span class="mono muted ell">${esc(s.host)}</span>` },
       { key: 'printers', label: 'Printers', w: 100, on: true, get: (s) => s.printers },
-      { key: 'status', label: 'Status', w: 380, on: true, get: (s) => s.problem || 'Answered', cell: (s) => `<span class="ell${s.problem ? '' : ' muted'}">${esc(s.problem || 'Answered')}</span>` },
-      { key: 'at', label: 'Asked', w: 170, on: true, get: (s) => new Date(s.at).getTime(), text: (s) => s.at, cell: (s) => `<span class="muted">${esc(R.when(s.at))}</span>` },
+      { key: 'status', label: 'Status', w: 380, on: true, get: (s) => s.problem || 'OK', cell: (s) => `<span class="ell${s.problem ? '' : ' muted'}">${esc(s.problem || 'OK')}</span>` },
+      { key: 'at', label: 'Last checked', w: 170, on: true, get: (s) => new Date(s.at).getTime(), text: (s) => s.at, cell: (s) => `<span class="muted">${esc(R.when(s.at))}</span>` },
     ],
     row: (s) => ` data-ps-row="${esc(s.server)}"`,
     empty: () => D.more.printers.empty(), loading: () => !all && !D.failed(),
     redraw: () => D.draw(),
   }));
   const shown = () => rows;
-  const PRINTER_FIELDS = [['Printer', [{ key: 'name', label: 'Name', type: 'text', get: (p) => p.name }, { key: 'kind', label: 'Kind', type: 'choice', get: (p) => KIND[p.kind] || p.kind },
-    { key: 'on', label: 'On (computers)', type: 'number', get: (p) => p.computers.length }, { key: 'server', label: 'Print server', type: 'choice', get: (p) => p.server || '' },
-    { key: 'location', label: 'Location', type: 'text', get: (p) => p.location || '' }, { key: 'published', label: 'In AD', type: 'choice', get: (p) => (p.published ? 'Yes' : 'No') },
+  const PRINTER_FIELDS = [['Printer', [{ key: 'name', label: 'Name', type: 'text', get: (p) => p.name }, { key: 'kind', label: 'Type', type: 'choice', get: (p) => KIND[p.kind] || p.kind },
+    { key: 'on', label: 'Computers', type: 'number', get: (p) => p.computers.length }, { key: 'server', label: 'Print server', type: 'choice', get: (p) => p.server || '' },
+    { key: 'location', label: 'Location', type: 'text', get: (p) => p.location || '' }, { key: 'published', label: 'Listed in AD', type: 'choice', get: (p) => (p.published ? 'Yes' : 'No') },
     { key: 'status', label: 'Status', type: 'choice', get: (p) => p.status || (p.found ? 'Ready' : '') }, { key: 'problems', label: 'Has problems', type: 'choice', get: (p) => (p.problems?.length ? 'Yes' : 'No') },
-    { key: 'jobs', label: 'Jobs waiting', type: 'number', get: (p) => p.jobs ?? 0 }, { key: 'toner', label: 'Lowest supply (%)', type: 'number', get: (p) => lowest(p)?.percent },
+    { key: 'jobs', label: 'Jobs in queue', type: 'number', get: (p) => p.jobs ?? 0 }, { key: 'toner', label: 'Lowest supply (%)', type: 'number', get: (p) => lowest(p)?.percent },
     { key: 'model', label: 'Model', type: 'choice', get: (p) => p.device?.model || '' }, { key: 'pages', label: 'Pages printed', type: 'number', get: (p) => p.device?.pages }]]];
   // What the printers say about themselves, read after the list so the list never waits on a printer. Their cells
   // fill in when it comes; printers still answering are read again shortly, for a couple of minutes at most.
@@ -317,6 +317,7 @@
   let supplyTries = 0;
   const supplies = async (ask = false) => {
     clearTimeout(supplyTimer);
+    const was = JSON.stringify(dev);
     try {
       dev = await get(`/api/devices/printers/supplies${ask ? '?again=true' : ''}`);
     } catch {
@@ -324,16 +325,17 @@
     }
     merge();
     if (D.at() !== 'printers') return;
-    D.draw();
+    if (JSON.stringify(dev) !== was) D.draw(); // drawn again only when a printer said something new
     if (dev.asking && supplyTries++ < 20) supplyTimer = setTimeout(() => supplies(), 5000);
   };
-  D.lists.printers = ['Printers', 'printer', 'Every printer on your print servers and computers.'];
+  D.lists.printers = ['Printers', 'printer', 'All printers on your print servers and computers.'];
   D.more.printers = {
     get table() { return tab === 'servers' ? 'dv-pservers' : 'dv-printers'; },
     get noun() { return tab === 'servers' ? 'print servers' : 'printers'; },
     grid: () => (tab === 'servers' ? serversGrid() : printersGrid()),
     rows: () => (tab === 'servers' ? servers() : shown()),
     count: () => (all ? shown().length : ''), can: () => has('seats.view'),
+    every: 60000, // read again a minute apart while it's open: Active Directory and the printers are asked too
     load: async () => {
       // The computers' printers, and the servers' when this person may see Active Directory (none when it isn't set up).
       // The servers are asked at most every six hours; Refresh asks them again.
@@ -354,9 +356,9 @@
       }
     },
     empty: () => {
-      if (!all) return "The list couldn't be read.";
-      if (tab === 'servers') return !adp ? "Active Directory isn't set up, so there's nowhere to look for print servers." : adp.scanning ? 'Still asking the servers.' : 'No server in Active Directory shares a printer.';
-      return all.computers.some((c) => c.read) ? 'No printers on the servers or the computers yet.' : `No printers on the servers, and no computer has sent its printers yet. Clients send them from ${NEEDS} on, within half an hour.`;
+      if (!all) return 'Could not load the list.';
+      if (tab === 'servers') return !adp ? 'Active Directory is not configured, so print servers cannot be found.' : adp.scanning ? 'Querying print servers…' : 'No print servers found in Active Directory.';
+      return all.computers.some((c) => c.read) ? 'No printers found on print servers or computers.' : `No printers found on print servers, and no computer has reported its printers yet. Clients ${NEEDS} and later report printers within 30 minutes.`;
     },
     fields: () => (tab === 'servers' ? null : PRINTER_FIELDS),
   };
@@ -376,18 +378,18 @@
     const line = (label, value, mono = false) => (value === '' || value == null ? '' : `<li><b>${label}</b><span${mono ? ' class="mono"' : ''}>${esc(value)}</span></li>`);
     panel.body.innerHTML = `<div class="dw-head"><span class="pic dw-pic">${svg('printer')}</span><div class="dw-name"><h2 id="dw-title">${esc(p.name)}</h2><p>${esc([KIND[p.kind] || p.kind, addr(p) || p.server].filter(Boolean).join(' · '))}</p></div>`
       + `<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`
-      + (can() && p.kind !== 'universal' && p.computers.length ? `<div class="dw-bar"><button type="button" class="dw-qa" data-prl-remove>${svg('trash')}<span>Remove from these computers</span></button></div>` : '')
+      + (can() && p.kind !== 'universal' && p.computers.length ? `<div class="dw-bar"><button type="button" class="dw-qa" data-prl-remove>${svg('trash')}<span>Remove from all computers</span></button></div>` : '')
       + (p.problems?.length ? section(`Problems <small>${p.problems.length}</small>`, `<ul class="pr-probs">${p.problems.map((t) => `<li>${svg('alert')}<span>${esc(t)}</span></li>`).join('')}</ul>`) : '')
       // What the printer itself said over SNMP: its supplies as bars in their own colours, then who it is.
-      + (!p.device ? '' : !p.device.answered ? section('From the printer', none(`It didn't answer over SNMP at ${p.ip}. It may be off, on a network this server can't reach, or have SNMP turned off.`))
-        : section('From the printer', (p.device.supplies.length ? `<div class="pr-sups">${p.device.supplies.map((s) => `<div class="pr-sup ${ink(s.name)}${s.percent != null && s.percent <= LOW ? ' low' : ''}"><span>${esc(s.name)}</span>`
+      + (!p.device ? '' : !p.device.answered ? section('Printer status (SNMP)', none(`No SNMP response from ${p.ip}. The printer may be off, on a network this server cannot reach, or have SNMP disabled.`))
+        : section('Printer status (SNMP)', (p.device.supplies.length ? `<div class="pr-sups">${p.device.supplies.map((s) => `<div class="pr-sup ${ink(s.name)}${s.percent != null && s.percent <= LOW ? ' low' : ''}"><span>${esc(s.name)}</span>`
           + `${s.percent != null ? `<progress max="100" value="${s.percent}"></progress><b>${s.percent}%</b>` : `<i></i><b>${s.some ? 'OK' : ''}</b>`}</div>`).join('')}</div>` : '')
-          + `<ul class="does wide">${line('Model', p.device.model)}${line('Serial number', p.device.serial, true)}${line('Pages printed', p.device.pages?.toLocaleString())}${line('Asked', R.when(p.device.at))}</ul>`))
-      + (p.listed ? section('On the print server', `<ul class="does wide">${line('Print server', p.server)}${line('Share', p.share, true)}${line('Address', p.ip, true)}${line('Port', p.port, true)}`
-        + `${line('Location', p.location || 'Not set')}${line('Comment', p.description)}${line('Status', p.found ? p.status || 'Ready' : '')}${line('Jobs waiting', p.found ? p.jobs ?? '' : '')}`
+          + `<ul class="does wide">${line('Model', p.device.model)}${line('Serial number', p.device.serial, true)}${line('Pages printed', p.device.pages?.toLocaleString())}${line('Last checked', R.when(p.device.at))}</ul>`))
+      + (p.listed ? section('Print server', `<ul class="does wide">${line('Print server', p.server)}${line('Share', p.share, true)}${line('Address', p.ip, true)}${line('Port', p.port, true)}`
+        + `${line('Location', p.location || 'Not set')}${line('Comment', p.description)}${line('Status', p.found ? p.status || 'Ready' : '')}${line('Jobs in queue', p.found ? p.jobs ?? '' : '')}`
         + `${line('In Active Directory', p.published ? 'Listed' : 'Not listed')}</ul>`) : '')
-      + section(`On <small>${p.computers.length}</small>`, p.computers.length ? `<div class="dw-list">${p.computers.map((x) => `<div class="mrow acc-row" data-prl-pc="${esc(x.id)}"><span class="pic small">${svg('monitor')}</span>`
-        + `<div class="two"><b>${esc(x.computer)}</b><small>${esc([x.driver, x.port].filter(Boolean).join(' · '))}</small></div>${x.offline ? chip('Offline', 'off', 'power') : ''}${svg('right', 'acc-go')}</div>`).join('')}</div>` : none('No computer has it yet. Add it from a computer, or tick computers and use Actions.'));
+      + section(`Computers <small>${p.computers.length}</small>`, p.computers.length ? `<div class="dw-list">${p.computers.map((x) => `<div class="mrow acc-row" data-prl-pc="${esc(x.id)}"><span class="pic small">${svg('monitor')}</span>`
+        + `<div class="two"><b>${esc(x.computer)}</b><small>${esc([x.driver, x.port].filter(Boolean).join(' · '))}</small></div>${x.offline ? chip('Offline', 'off', 'power') : ''}${svg('right', 'acc-go')}</div>`).join('')}</div>` : none('Not installed on any computer. Add it from a computer panel, or select computers and use Actions.'));
     panel.open('printers', key);
     markRow();
     // Each computer has it under its own name (a connection is \\server\Printer there): one job for each name.
@@ -396,10 +398,10 @@
       const pc = pcs.find((c) => c.id === x.id);
       if (pc) named.set(x.as || p.name, [...(named.get(x.as || p.name) || []), pc]);
     }
-    panel.body.querySelector('[data-prl-remove]')?.addEventListener('click', () => sure(`Remove ${p.name} from ${many(pcs.length)}?`, `${names(pcs)}. It's taken off each one for everyone who uses it.`, 'Remove', async () => {
+    panel.body.querySelector('[data-prl-remove]')?.addEventListener('click', () => sure(`Remove ${p.name} from ${many(pcs.length)}?`, `${names(pcs)}. The printer is removed for all users on each computer.`, 'Remove', async () => {
       try {
         for (const [name, on] of named) await runPrinter(on, { action: 'remove', name }, on.length > BRAKE ? on.length : 0);
-        toast('Remove sent.', `${p.name} on ${names(pcs)}. It's under Jobs.`);
+        toast('Printer removal requested.', `${p.name} on ${names(pcs)}. View progress under Jobs.`);
       } catch (e) {
         oops(e);
       }
@@ -421,10 +423,10 @@
     const its = rows.filter((p) => p.found && (p.server || '').toLowerCase() === s.server.toLowerCase());
     panel.body.innerHTML = `<div class="dw-head"><span class="pic dw-pic">${svg('server')}</span><div class="dw-name"><h2 id="dw-title">${esc(s.server)}</h2><p>${esc(s.host)}</p></div>`
       + `<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`
-      + (s.problem ? section('Couldn\'t be asked', `<ul class="pr-probs"><li>${svg('alert')}<span>${esc(s.problem)}</span></li></ul>`
-        + `<p class="muted dw-empty">${esc(R.app())} asks over file and printer sharing (port 445), as this server's own computer account. Asked ${esc(R.when(s.at))}.</p>`) : '')
+      + (s.problem ? section('Unreachable', `<ul class="pr-probs"><li>${svg('alert')}<span>${esc(s.problem)}</span></li></ul>`
+        + `<p class="muted dw-empty">${esc(R.app())} connects over File and Printer Sharing (port 445) using this server's computer account. Last checked ${esc(R.when(s.at))}.</p>`) : '')
       + (s.problem ? '' : section(`Printers <small>${its.length}</small>`, its.length ? `<div class="dw-list">${its.map((p) => `<div class="mrow acc-row" data-ps-printer="${esc(`${p.name}\n${p.address || ''}`)}"><span class="pic small">${svg('printer')}</span>`
-        + `<div class="two"><b>${esc(p.name)}</b><small>${esc([p.drivers[0], p.ip || p.port].filter(Boolean).join(' · '))}</small></div>${p.status ? chip(p.status, 'off') : ''}${svg('right', 'acc-go')}</div>`).join('')}</div>` : none('It shares none right now.')));
+        + `<div class="two"><b>${esc(p.name)}</b><small>${esc([p.drivers[0], p.ip || p.port].filter(Boolean).join(' · '))}</small></div>${p.status ? chip(p.status, 'off') : ''}${svg('right', 'acc-go')}</div>`).join('')}</div>` : none('No shared printers.')));
     panel.open('pservers', key);
     markServer();
   });

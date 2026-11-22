@@ -74,7 +74,7 @@ public static class VMware
         }
         catch (SoapFault f)
         {
-            return new Probe(false, Note: $"vSphere said: {f.Message}", Pin: device.Offer);
+            return new Probe(false, Note: $"vSphere error: {f.Message}", Pin: device.Offer);
         }
         catch (Exception e) when (e is HttpRequestException or IOException or System.Xml.XmlException && device.Said(e) is not null)
         {

@@ -41,7 +41,7 @@ internal sealed class Agent
                 if (code == (HttpStatusCode) 429)
                 {
                     status.State = Status.Refused;
-                    status.Problem = "The server is busy with other computers connecting. This computer will try again in a few minutes.";
+                    status.Problem = "The server is busy with other connection requests. This computer will retry in a few minutes.";
                     return status.Save();
                 }
                 if (made is null)
@@ -103,12 +103,12 @@ internal sealed class Agent
             // It answered, but not with the certificate this computer accepts: said plainly, not as Windows words it.
             var why = !api.Untrusted ? (e.InnerException ?? e).Message
                 : settings.Fingerprint is null ? "Windows doesn't trust the server's certificate."
-                : "The server's certificate doesn't match the fingerprint saved on this computer. Connect again from the Rabbid Lab page.";
+                : "The server's certificate does not match the fingerprint stored on this computer. To reconnect, open Rabbid Lab in a browser on this computer and click Connect this computer.";
             return Unreachable(status, held, why);
         }
         catch (TaskCanceledException) when (!stop.IsCancellationRequested)
         {
-            return Unreachable(status, held, "The server didn't respond in time.");
+            return Unreachable(status, held, "The connection to the server timed out.");
         }
     }
 
@@ -183,7 +183,7 @@ internal sealed class Agent
         status.State = Status.Unreachable;
         status.Problem = why;
         // Told to the server once it's reached again, so it knows why the computer was away.
-        Problems.Note("connection", $"Couldn't reach the server: {why}");
+        Problems.Note("connection", $"Could not reach the server: {why}");
         try
         {
             if (held)

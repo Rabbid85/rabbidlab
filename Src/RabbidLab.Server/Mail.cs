@@ -74,11 +74,11 @@ public sealed partial class Mail(SettingsStore secrets, ILogger<Mail> log) : IMa
         var to = (form.To ?? []).Select(a => a.Trim()).Where(a => a.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         if (to.Count == 0)
         {
-            return (null, "Add at least one address under Send alerts to.");
+            return (null, "Add at least one recipient under Send alerts to.");
         }
         if (to.Count > 20 || to.Any(a => !MailAddress.TryCreate(a, out _)))
         {
-            return (null, to.Count > 20 ? "That's more than 20 addresses. Send to a group address instead." : $"{to.First(a => !MailAddress.TryCreate(a, out _))} isn't an email address.");
+            return (null, to.Count > 20 ? "Enter 20 addresses or fewer. For more recipients, use a distribution list." : $"{to.First(a => !MailAddress.TryCreate(a, out _))} is not a valid email address.");
         }
         // A secret is kept only while it's for the same kind of sending.
         var same = old?.Provider == provider;
@@ -88,19 +88,19 @@ public sealed partial class Mail(SettingsStore secrets, ILogger<Mail> log) : IMa
             var address = form.Username?.Trim() ?? "";
             if (!MailAddress.TryCreate(address, out _))
             {
-                return (null, "Type the Gmail address alerts are sent from.");
+                return (null, "Enter the Gmail address to send alerts from.");
             }
             (next.Host, next.Port, next.Security, next.Username, next.From) = ("smtp.gmail.com", 587, "starttls", address, address);
             if (!string.IsNullOrEmpty(form.Password))
             {
                 next.Password = secrets.Encrypt(form.Password.Replace(" ", ""));
             }
-            return string.IsNullOrEmpty(next.Password) ? (null, "Gmail needs an app password. Make one under Google Account, Security, 2-Step Verification, App passwords.") : (next, null);
+            return string.IsNullOrEmpty(next.Password) ? (null, "Gmail requires an app password. Create one in your Google Account under Security > 2-Step Verification > App passwords.") : (next, null);
         }
         next.From = form.From?.Trim() ?? "";
         if (!MailAddress.TryCreate(next.From, out _))
         {
-            return (null, "From has to be an email address, such as rabbidlab@example.com.");
+            return (null, "From must be an email address, for example rabbidlab@example.com.");
         }
         if (provider == "m365")
         {
@@ -108,13 +108,13 @@ public sealed partial class Mail(SettingsStore secrets, ILogger<Mail> log) : IMa
             next.ClientId = form.ClientId?.Trim();
             if (next.Tenant is not { Length: > 0 } tenant || !TenantName().IsMatch(tenant) || !Guid.TryParse(next.ClientId, out _))
             {
-                return (null, "Microsoft 365 needs the tenant (its ID, or a name such as contoso.onmicrosoft.com) and the application (client) ID of the app registration.");
+                return (null, "Microsoft 365 requires the tenant (ID or domain, such as contoso.onmicrosoft.com) and the application (client) ID of the app registration.");
             }
             if (!string.IsNullOrEmpty(form.ClientSecret))
             {
                 next.ClientSecret = secrets.Encrypt(form.ClientSecret);
             }
-            return string.IsNullOrEmpty(next.ClientSecret) ? (null, "Microsoft 365 needs the client secret of the app registration.") : (next, null);
+            return string.IsNullOrEmpty(next.ClientSecret) ? (null, "Microsoft 365 requires the client secret of the app registration.") : (next, null);
         }
         next.Host = form.Host?.Trim();
         next.Port = form.Port ?? 587;
@@ -122,7 +122,7 @@ public sealed partial class Mail(SettingsStore secrets, ILogger<Mail> log) : IMa
         next.Username = string.IsNullOrWhiteSpace(form.Username) ? null : form.Username.Trim();
         if (next.Host is not { Length: > 0 and <= 200 } || next.Port is < 1 or > 65535)
         {
-            return (null, "Type the mail server's name, such as smtp.example.com, and its port.");
+            return (null, "Enter the SMTP server name, for example smtp.example.com, and the port.");
         }
         if (!string.IsNullOrEmpty(form.Password))
         {
@@ -139,7 +139,7 @@ public sealed partial class Mail(SettingsStore secrets, ILogger<Mail> log) : IMa
     {
         if (!Ready(s))
         {
-            return "Its mail settings aren't finished. Edit it and fill them in.";
+            return "The email settings are incomplete. Edit the notification and complete them.";
         }
         try
         {
@@ -188,7 +188,7 @@ public sealed partial class Mail(SettingsStore secrets, ILogger<Mail> log) : IMa
         if (!asked.IsSuccessStatusCode || !token.TryGetProperty("access_token", out var access))
         {
             var said = token.ValueKind == JsonValueKind.Object && token.TryGetProperty("error_description", out var d) ? d.GetString()?.Split('\n')[0].Trim() : null;
-            return $"Microsoft 365 didn't sign the app in: {said ?? asked.StatusCode.ToString()}";
+            return $"Microsoft 365 sign-in failed for the app registration: {said ?? asked.StatusCode.ToString()}";
         }
         using var request = new HttpRequestMessage(HttpMethod.Post, $"https://graph.microsoft.com/v1.0/users/{Uri.EscapeDataString(s.From!)}/sendMail")
         {
@@ -212,8 +212,8 @@ public sealed partial class Mail(SettingsStore secrets, ILogger<Mail> log) : IMa
         var error = await sent.Content.ReadFromJsonAsync<JsonElement>(stop);
         var message = error.ValueKind == JsonValueKind.Object && error.TryGetProperty("error", out var e) && e.TryGetProperty("message", out var m) ? m.GetString() : null;
         return sent.StatusCode == HttpStatusCode.Forbidden
-            ? "Microsoft 365 refused: the app registration needs the Mail.Send application permission, with admin consent."
-            : $"Microsoft 365 refused: {message ?? sent.StatusCode.ToString()}";
+            ? "Access denied by Microsoft 365. The app registration requires the Mail.Send application permission with admin consent."
+            : $"Microsoft 365 rejected the message: {message ?? sent.StatusCode.ToString()}";
     }
 
     // What went wrong, in words that say what to do about it.
@@ -222,18 +222,18 @@ public sealed partial class Mail(SettingsStore secrets, ILogger<Mail> log) : IMa
         var server = s.Provider == "m365" ? "Microsoft 365" : s.Provider == "gmail" ? "Gmail" : s.Host;
         if (e is OperationCanceledException)
         {
-            return $"{server} didn't answer in time.";
+            return $"{server} did not respond in time.";
         }
         var said = (e.InnerException?.Message ?? e.Message).Trim();
         if (e is AuthenticationException)
         {
-            return $"{server} didn't accept the username and password." + (s.Provider == "gmail" ? " Gmail needs an app password, not your usual one." : "") + $" It said: {said}";
+            return $"{server} rejected the username and password." + (s.Provider == "gmail" ? " Gmail requires an app password, not your account password." : "") + $" Error: {said}";
         }
         if (e is SslHandshakeException)
         {
-            return $"{server} and {Product.Title} couldn't agree on encryption. Check the port: 587 is STARTTLS, 465 is SSL/TLS. It said: {said}";
+            return $"Could not negotiate encryption with {server}. Check the port: 587 uses STARTTLS and 465 uses SSL/TLS. Error: {said}";
         }
-        return $"{server} couldn't be reached or refused the message: {said}";
+        return $"Could not connect to {server}, or the server rejected the message: {said}";
     }
 
     private static string Text(MailNote note) =>

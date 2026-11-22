@@ -43,43 +43,43 @@ public static partial class Brand
     {
         if (form.Name is { Length: > 0 } name && (name.Trim().Length > NameLength || name.Any(char.IsControl)))
         {
-            return $"Keep the name to {NameLength} characters, on one line.";
+            return $"The name can be up to {NameLength} characters on one line.";
         }
         if (form.Icon is { Length: > 0 } icon)
         {
             var kind = IconKinds.FirstOrDefault(k => icon.StartsWith(k, StringComparison.Ordinal));
             if (kind is null)
             {
-                return "The icon has to be a PNG or SVG file.";
+                return "The icon must be a PNG or SVG file.";
             }
             var data = icon[kind.Length..];
             if (data.Length > IconBytes * 4 / 3 + 4 || !Convert.TryFromBase64String(data, new byte[data.Length], out var bytes))
             {
-                return $"That icon isn't a PNG or SVG {Product.Title} can read, or it's over 256 KB.";
+                return $"The icon is not a PNG or SVG file {Product.Title} can read, or it is larger than 256 KB.";
             }
             if (bytes > IconBytes)
             {
-                return "Keep the icon under 256 KB.";
+                return "The icon must be smaller than 256 KB.";
             }
         }
         if (form.Accent is { Length: > 0 } accent && !Hex().IsMatch(accent))
         {
-            return "The accent has to be a colour such as #3D7FE6.";
+            return "The accent colour must be a hex colour, such as #3D7FE6.";
         }
         if (form.Tagline is { Length: > 0 } tagline)
         {
             if (tagline.Trim().Length > TaglineLength || tagline.Any(char.IsControl))
             {
-                return $"Keep the tagline to {TaglineLength} characters, on one line.";
+                return $"The tagline can be up to {TaglineLength} characters on one line.";
             }
             if (Tag().Matches(tagline).Select(m => m.Groups[1].Value).FirstOrDefault(t => !Tags.Contains(t, StringComparer.Ordinal)) is { } unknown)
             {
-                return $"{{{unknown}}} isn't a tag. Use {string.Join(", ", Tags.Select(t => $"{{{t}}}"))}.";
+                return $"{{{unknown}}} is not a valid tag. Use {string.Join(", ", Tags.Select(t => $"{{{t}}}"))}.";
             }
         }
         if (form.Background is { Length: > 0 } background && !Backgrounds.Contains(background, StringComparer.Ordinal))
         {
-            return "Pick a sign-in background from the list.";
+            return "Select a sign-in background from the list.";
         }
         return null;
     }

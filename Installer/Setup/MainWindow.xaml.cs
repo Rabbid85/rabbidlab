@@ -202,9 +202,9 @@ namespace RabbidLab.Setup
                 RedirectBox.IsEnabled = can;
                 RedirectBox.IsChecked = can && choices.Redirect;
             }
-            RedirectNote.Text = !shared ? $"Not available: port 80 is used by {port80User}."
-                : can ? $"Port 80 is shared with {Engine.HttpSys}: only http://{name} comes here, other names stay where they are."
-                : $"Type a host name above to use this. Port 80 is shared with {Engine.HttpSys}, so only that name can come here.";
+            RedirectNote.Text = !shared ? $"Not available. Port 80 is in use by {port80User}."
+                : can ? $"Port 80 is shared with {Engine.HttpSys}. Only requests for http://{name} are redirected. Other host names are not affected."
+                : $"Enter a host name above to use this option. Port 80 is shared with {Engine.HttpSys}, so only requests for that host name can be redirected.";
             RedirectNote.Visibility = Visibility.Visible;
         }
 
@@ -774,7 +774,7 @@ namespace RabbidLab.Setup
             {
                 if (download && !upgrade)
                 {
-                    ShowNewer($"Rabbid Lab {newer.Version} is available. When you select Next, Setup downloads it and installs it instead of version {Engine.Version}.");
+                    ShowNewer($"Rabbid Lab {newer.Version} is available. When you select Next, Setup downloads and installs it instead of version {Engine.Version}.");
                 }
                 else
                 {
@@ -818,7 +818,7 @@ namespace RabbidLab.Setup
                 || ex is UnauthorizedAccessException || ex is System.ComponentModel.Win32Exception)
             {
                 NextButton.IsEnabled = true;
-                ShowNewer($"Setup could not download version {newer.Version} ({ex.Message.TrimEnd('.')}). To install version {Engine.Version} instead, select {nextWord}. Rabbid Lab updates itself to the latest version shortly after it starts.");
+                ShowNewer($"Setup could not download version {newer.Version} ({ex.Message.TrimEnd('.')}). To install version {Engine.Version} instead, select {nextWord}. Rabbid Lab installs the latest update automatically shortly after it starts.");
                 DescribeUpdate();
             }
         }
@@ -1110,7 +1110,7 @@ namespace RabbidLab.Setup
             AllowButton.IsEnabled = false;
             NextButton.IsEnabled = false;
             AllowResult.Visibility = Visibility.Visible;
-            AllowResult.Text = retry ? "Starting Rabbid Lab…" : "Excluding Rabbid Lab from the attack surface reduction rules and starting it…";
+            AllowResult.Text = retry ? "Starting the Rabbid Lab service…" : "Adding the Microsoft Defender exclusion and starting the Rabbid Lab service…";
             try
             {
                 await Task.Run(() =>
@@ -1135,7 +1135,7 @@ namespace RabbidLab.Setup
                 if (FixPanel.Visibility == Visibility.Visible)
                 {
                     AllowResult.Visibility = Visibility.Visible; // the same page again still shows the click did something
-                    AllowResult.Text = $"Last tried at {DateTime.Now:t}.";
+                    AllowResult.Text = $"Last attempt: {DateTime.Now:t}.";
                 }
             }
             working = false;
@@ -1190,7 +1190,7 @@ namespace RabbidLab.Setup
                 // An update or a repair: it was set up already, so no first-time instructions.
                 DoneTitle.Text = nextWord == "Repair" ? "Repair complete" : "Update complete";
                 DoneLead.Text = $"{Edition.Name} {Engine.Version} is running on this computer. "
-                    + (KeepSettings ? "Your configuration and saved credentials were preserved." : "The changed settings are applied, and saved credentials were preserved.");
+                    + (KeepSettings ? "Your configuration and saved credentials were preserved." : "The changed settings were applied, and saved credentials were preserved.");
                 DoneNext.Text = "";
             }
             else
@@ -1222,7 +1222,7 @@ namespace RabbidLab.Setup
             try
             {
                 await Task.Run(() => Engine.RemoveExclusions(dir));
-                DevResult.Text = $"Removed the Defender exclusions for {dir}. Stop the service and run Setup again (Repair) to see the block.";
+                DevResult.Text = $"Defender exclusions removed for {dir}. To test the block, stop the service and run Setup again (Repair).";
             }
             catch (Exception ex)
             {
@@ -1601,7 +1601,7 @@ namespace RabbidLab.Setup
                         if (arg("previewtried") == "yes")
                         {
                             AllowResult.Visibility = Visibility.Visible; // /previewtried=yes: after a Try again that failed
-                            AllowResult.Text = $"Last tried at {DateTime.Now:t}.";
+                            AllowResult.Text = $"Last attempt: {DateTime.Now:t}.";
                         }
                         Show(i);
                         Shoot($"{i + 1}-{pages[i].Key}");

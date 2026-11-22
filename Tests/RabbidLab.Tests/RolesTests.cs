@@ -200,7 +200,7 @@ public sealed class RolesTests : IDisposable
         var adminStill = await admin.GetAsync("/api/sessions");
 
         Assert.Equal(HttpStatusCode.BadRequest, wrong.StatusCode);
-        Assert.Contains("current password is wrong", await wrong.Content.ReadAsStringAsync());
+        Assert.Contains("current password is incorrect", await wrong.Content.ReadAsStringAsync());
         Assert.Equal(HttpStatusCode.BadRequest, tooShort.StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, notOurs.StatusCode);
         Assert.Equal(HttpStatusCode.OK, right.StatusCode);

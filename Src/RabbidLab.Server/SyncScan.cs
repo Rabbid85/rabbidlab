@@ -387,9 +387,9 @@ public sealed partial class DirectoryTools
     {
         if (f.ReadOnly)
         {
-            return await AsComputer!(f.Domain!, host, stop) ?? throw new ToolProblem($"{host} couldn't be read as this computer.");
+            return await AsComputer!(f.Domain!, host, stop) ?? throw new ToolProblem($"Could not read {host} as this computer.");
         }
-        var password = secrets.TryDecrypt(f.Password) ?? throw new ToolProblem($"{Product.Title}'s Active Directory password can't be read here any more. Set it up again.", StatusCodes.Status409Conflict);
+        var password = secrets.TryDecrypt(f.Password) ?? throw new ToolProblem("The stored service account password could not be decrypted on this server. Enter the service account again in Settings > Active Directory.", StatusCodes.Status409Conflict);
         return await open(f.Domain!, host, $"{f.Account}@{f.Domain}", password, stop) ?? throw new ToolProblem($"{host} turned down {f.Account}'s password.");
     }
 

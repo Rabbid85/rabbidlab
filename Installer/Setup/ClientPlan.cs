@@ -63,12 +63,12 @@ namespace RabbidLab.Setup
                 return null;
             }
             var what = others == 1 ? "The Rabbid Lab client is installed on 1 other computer" : $"The Rabbid Lab client is installed on {others} other computers";
-            var each = others == 1 ? "it" : "each one";
-            const string script = "After this server is removed, the client can only be taken off with Remove-RabbidLabClient.ps1 (in Tools on Rabbid Lab's GitHub page)";
+            var each = others == 1 ? "that computer" : "each computer";
+            const string script = "After this server is removed, the client can be removed only with Remove-RabbidLabClient.ps1 (in the Tools folder of the Rabbid Lab GitHub repository)";
             var after = days > 0
-                ? $"{script}, or uninstalled once the lock releases {days} days later."
-                : $"{script}: this server is set to never release the lock on its own.";
-            return $"{what}, and uninstalling it is locked to this server. Before you remove all data, uninstall the client from {each}: "
+                ? $"{script}, or uninstalled after the uninstall lock expires {days} days later."
+                : $"{script}. This server is configured to never release the uninstall lock.";
+            return $"{what}, and uninstalling the client requires approval from this server. Before you remove all data, uninstall the client from {each}: "
                 + $"in Rabbid Lab, go to Devices, select the computer, and then select Uninstall now. {after}";
         }
     }

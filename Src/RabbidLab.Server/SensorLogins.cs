@@ -88,19 +88,19 @@ public sealed class SensorLogins(DataFolder folder, SettingsStore secrets, TimeP
         {
             return kind switch
             {
-                "key" => "Paste the API key, or pick a saved one.",
-                "community" => "Type the community, or pick a saved one.",
-                "snmpv3" => "Type the SNMPv3 username and auth password, or pick a saved user.",
-                _ => "Type the username and password, or pick saved credentials.",
+                "key" => "Paste the API key, or select a saved one.",
+                "community" => "Enter the community string, or select a saved one.",
+                "snmpv3" => "Enter the SNMPv3 username and authentication password, or select a saved user.",
+                _ => "Enter the username and password, or select saved credentials.",
             };
         }
         if ((form.Username?.Length ?? 0) > 120 || form.Password.Length > 500 || (form.PrivacyPassword?.Length ?? 0) > 500 || (form.Name?.Length ?? 0) > 60)
         {
-            return "That's too long: usernames are 120 characters at most, names 60.";
+            return "Too long. Usernames can be up to 120 characters and names up to 60.";
         }
         if (kind == "snmpv3" && (form.Password.Length < 8 || (form.Privacy != "None" && (form.PrivacyPassword?.Length ?? 0) < 8)))
         {
-            return "SNMPv3 passwords are 8 characters at least, the privacy one too.";
+            return "SNMPv3 authentication and privacy passwords must be at least 8 characters.";
         }
         return null;
     }

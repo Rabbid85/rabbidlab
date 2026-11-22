@@ -150,7 +150,7 @@ public sealed class Channels(DataFolder folder, SettingsStore secrets, IMailSend
     {
         lock (file.Gate)
         {
-            return Read().Channels.FirstOrDefault(c => c.Id == id) is { } c ? Label(c) : "A notification that's gone";
+            return Read().Channels.FirstOrDefault(c => c.Id == id) is { } c ? Label(c) : "Deleted notification";
         }
     }
 
@@ -173,7 +173,7 @@ public sealed class Channels(DataFolder folder, SettingsStore secrets, IMailSend
             var f = Read();
             if (f.Channels.Count >= Most)
             {
-                return (null, $"That's {Most} notifications, which is as many as {Product.Title} keeps.");
+                return (null, $"{Product.Title} supports up to {Most} notifications.");
             }
             var (made, problem) = Build(form, null, f.Channels);
             if (made is null)
@@ -197,7 +197,7 @@ public sealed class Channels(DataFolder folder, SettingsStore secrets, IMailSend
             var at = f.Channels.FindIndex(c => c.Id == id);
             if (at < 0)
             {
-                return "That notification isn't here any more.";
+                return "Notification not found. It may have been deleted.";
             }
             var (next, problem) = Build(form, f.Channels[at], f.Channels);
             if (next is null)
@@ -216,20 +216,20 @@ public sealed class Channels(DataFolder folder, SettingsStore secrets, IMailSend
         var kind = old?.Kind ?? (Kinds.Contains(form.Kind) ? form.Kind! : "");
         if (kind.Length == 0)
         {
-            return (null, "Pick what kind of notification it is.");
+            return (null, "Select a notification type.");
         }
         var name = form.Name?.Trim() ?? "";
         if (name.Length == 0)
         {
-            return (null, "Give it a name, such as Anthony, Ops team or Lab alerts. It's what sensors and links pick it by.");
+            return (null, "Enter a name, such as Anthony, Ops team or Lab alerts. Sensors and links select the notification by this name.");
         }
         if (name.Length > 40)
         {
-            return (null, "Keep the name to 40 characters.");
+            return (null, "Names can be up to 40 characters.");
         }
         if (all.Any(c => c.Id != old?.Id && string.Equals(Label(c), name, StringComparison.OrdinalIgnoreCase)))
         {
-            return (null, $"There's a notification called {name} already. Give this one another name.");
+            return (null, $"A notification named {name} already exists. Enter a different name.");
         }
         var next = new Channel
         {
@@ -282,7 +282,7 @@ public sealed class Channels(DataFolder folder, SettingsStore secrets, IMailSend
         }
         if (c is null)
         {
-            return "That notification isn't here any more.";
+            return "Notification not found. It may have been deleted.";
         }
         var problem = await Post(c, note, stop);
         lock (file.Gate)
@@ -301,15 +301,15 @@ public sealed class Channels(DataFolder folder, SettingsStore secrets, IMailSend
     private Task<string?> Post(Channel c, MailNote note, CancellationToken stop) =>
         c.Kind == "email" ? mail.Send(c.Mail ?? new MailSettings(), note, stop)
         : secrets.TryDecrypt(c.Url) is { } url ? sender.Send(c.Kind, url, note, stop)
-        : Task.FromResult<string?>("Its address can't be read here any more. Type it again.");
+        : Task.FromResult<string?>("The stored address could not be decrypted. Enter it again.");
 
     /// <summary>A test message: to a saved notification, to one as typed, or to a saved one with what's typed over it.</summary>
     public async Task<string?> Test(ChannelTestForm form, CancellationToken stop)
     {
-        var note = new MailNote($"Test from {Product.Lab}", "note", [("What", "A test message. Alerts will look like this.")],
-            new AlertCard("test", "Alerts work here", $"This notification gets alerts from {Product.Lab}.",
-                [new("🔔 What you'll get", ["A message when something goes down, and one when it's back", "Reminders while it stays down, if its alert rule asks for them"])],
-                "Sent from Settings, Notifications"));
+        var note = new MailNote($"Test from {Product.Lab}", "note", [("Message", "This is a test. Alerts will look like this.")],
+            new AlertCard("test", "This notification is working", "Alerts will be sent to this notification.",
+                [new("🔔 What you will receive", ["An alert when a sensor or link goes down, and another when it is back up", "Reminders while it stays down, if the alert rule repeats"])],
+                "Sent from Settings > Notifications"));
         Channel? old;
         List<Channel> all;
         lock (file.Gate)
@@ -319,7 +319,7 @@ public sealed class Channels(DataFolder folder, SettingsStore secrets, IMailSend
         }
         if (form.Id is not null && old is null)
         {
-            return "That notification isn't here any more.";
+            return "Notification not found. It may have been deleted.";
         }
         if (form.Form is null)
         {
@@ -336,34 +336,34 @@ public sealed class Channels(DataFolder folder, SettingsStore secrets, IMailSend
     {
         if (string.IsNullOrWhiteSpace(url) || url.Length > 500 || !Uri.TryCreate(url.Trim(), UriKind.Absolute, out var u) || u.Scheme is not ("http" or "https") || u.Host.Length == 0)
         {
-            return kind == "ntfy" ? "Type the topic's address, such as https://ntfy.sh/lab-alerts." : "Paste the webhook address. It starts with https://.";
+            return kind == "ntfy" ? "Enter the topic URL, for example https://ntfy.sh/lab-alerts." : "Paste the webhook URL. It starts with https://.";
         }
         return kind switch
         {
             "discord" when !u.Host.EndsWith("discord.com", StringComparison.OrdinalIgnoreCase) && !u.Host.EndsWith("discordapp.com", StringComparison.OrdinalIgnoreCase)
                 || !u.AbsolutePath.StartsWith("/api/webhooks/", StringComparison.Ordinal)
-                => "That isn't a Discord webhook address. In Discord: channel settings, Integrations, Webhooks, New Webhook, Copy Webhook URL.",
+                => "This is not a Discord webhook URL. In Discord, open the channel settings and select Integrations > Webhooks > New Webhook > Copy Webhook URL.",
             "slack" when !u.Host.Equals("hooks.slack.com", StringComparison.OrdinalIgnoreCase)
-                => "That isn't a Slack webhook address. It starts with https://hooks.slack.com/.",
+                => "This is not a Slack webhook URL. It starts with https://hooks.slack.com/.",
             "teams" when u.Scheme != "https"
-                => "Teams gives an address starting with https:// when you add the Workflows webhook to a channel.",
+                => "Enter the https:// URL that Teams shows when you add the Workflows webhook to a channel.",
             "ntfy" when u.AbsolutePath.Trim('/').Length == 0
-                => "Add the topic to the address, such as https://ntfy.sh/lab-alerts.",
+                => "Include the topic in the URL, for example https://ntfy.sh/lab-alerts.",
             _ => null,
         };
     }
 
     // The address shortened for the page: the host and the last few characters.
-    private static string Where(string? url) => Uri.TryCreate(url, UriKind.Absolute, out var u) ? $"{u.Host} · …{url![^Math.Min(4, url.Length)..]}" : "Address can't be read";
+    private static string Where(string? url) => Uri.TryCreate(url, UriKind.Absolute, out var u) ? $"{u.Host} · …{url![^Math.Min(4, url.Length)..]}" : "Address unavailable";
 
     // How an email one sends, in a few words: from alerts@gmail.com to anthony@amw.com and 1 more.
     private static string MailWhere(MailSettings? m)
     {
         if (m is null)
         {
-            return "Not set up";
+            return "Not configured";
         }
-        var to = m.To.Count == 0 ? "nobody yet" : m.To.Count == 1 ? m.To[0] : $"{m.To[0]} and {m.To.Count - 1} more";
+        var to = m.To.Count == 0 ? "no recipients" : m.To.Count == 1 ? m.To[0] : $"{m.To[0]} and {m.To.Count - 1} more";
         return m.Provider switch
         {
             "m365" => $"Microsoft 365 · from {m.From} to {to}",
@@ -407,11 +407,11 @@ public sealed class ChannelSender : IChannelSender
                 return null;
             }
             var said = (await answer.Content.ReadAsStringAsync(stop)).Trim();
-            return $"It answered {(int) answer.StatusCode} {answer.ReasonPhrase}{(said.Length > 0 ? $": {(said.Length > 160 ? said[..160] + "…" : said)}" : "")}";
+            return $"The service returned HTTP {(int) answer.StatusCode} {answer.ReasonPhrase}{(said.Length > 0 ? $": {(said.Length > 160 ? said[..160] + "…" : said)}" : "")}";
         }
         catch (Exception e) when (e is HttpRequestException or TaskCanceledException)
         {
-            return e is TaskCanceledException ? "It didn't answer in 15 seconds." : $"It couldn't be reached: {e.Message}";
+            return e is TaskCanceledException ? "No response within 15 seconds." : $"Could not connect: {e.Message}";
         }
     }
 
@@ -673,7 +673,7 @@ public static class ChannelsApi
             var name = channels.Name(id);
             if (!channels.Remove(id))
             {
-                return Results.NotFound(new { error = "That notification isn't here any more." });
+                return Results.NotFound(new { error = "Notification not found. It may have been deleted." });
             }
             alerts.Forget(id);
             log.Record(context, "sensors", "channel.delete", $"Deleted the notification {name}");

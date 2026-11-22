@@ -71,7 +71,7 @@ public sealed class PrintServersTests : IDisposable
     public async Task Every_printer_the_servers_share_is_listed_and_only_print_servers_and_the_ones_that_could_not_be_asked_show()
     {
         probe.Answers["PRINT01"] = new([Shared("PRINT01", "Front-Office"), Shared("PRINT01", "Warehouse")]);
-        probe.Answers["DOWN01"] = new([], "No answer on port 445 (file and printer sharing).");
+        probe.Answers["DOWN01"] = new([], "No response on port 445 (File and Printer Sharing).");
         var search = new PrintServers(probe, clock);
         static Task<List<AdServer>> Three() => Task.FromResult<List<AdServer>>([new("PRINT01", "print01.amw.com"), new("FILE01", "file01.amw.com"), new("DOWN01", "down01.amw.com")]);
 
@@ -81,7 +81,7 @@ public sealed class PrintServersTests : IDisposable
         Assert.Equal(["Front-Office", "Warehouse"], scan.Printers.Select(p => p.Name));
         Assert.Equal(["PRINT01", "DOWN01"], scan.Servers.Select(s => s.Server)); // FILE01 answered and shares none: not a print server
         Assert.Equal(2, scan.Servers[0].Printers);
-        Assert.Equal("No answer on port 445 (file and printer sharing).", scan.Servers[1].Problem);
+        Assert.Equal("No response on port 445 (File and Printer Sharing).", scan.Servers[1].Problem);
     }
 
     [Fact]
@@ -159,12 +159,12 @@ public sealed class PrintServersTests : IDisposable
         Assert.Equal(["The queue reports: Offline."], rows["Front-Office"].Problems);
         Assert.Equal(4, rows["Front-Office"].Jobs);
         // The second queue at one address, and the one printer its server left out of Active Directory.
-        Assert.Equal(["Same address as Front-Office on PRINT01: likely one printer shared twice.",
-            "Shared but not listed in Active Directory, so it doesn't show when people search for printers."], rows["Front-Office-Colour"].Problems);
+        Assert.Equal(["Same IP address as Front-Office on PRINT01. This is likely one printer shared twice.",
+            "Shared but not published in Active Directory, so it does not appear when users search for printers."], rows["Front-Office-Colour"].Problems);
         // PRINT02 lists nothing in Active Directory at all: not listing is how it's run, not a problem.
         Assert.Empty(rows["Lab"].Problems);
         // PRINT01 answered and doesn't share it any more; PRINT09 wasn't asked, so nothing is said.
-        Assert.Equal(["Listed in Active Directory, but PRINT01 doesn't share it any more. The listing is stale."], rows["Old-Plotter"].Problems);
+        Assert.Equal(["Published in Active Directory, but PRINT01 no longer shares it. The directory listing is stale."], rows["Old-Plotter"].Problems);
         Assert.Equal("10.1.2.40", rows["Old-Plotter"].Ip);
         Assert.Empty(rows["Elsewhere"].Problems);
     }

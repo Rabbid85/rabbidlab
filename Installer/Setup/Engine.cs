@@ -27,7 +27,7 @@ namespace RabbidLab.Setup
     /// <summary>How to get Rabbid Lab's service past what stopped it: for the last page of Setup.</summary>
     public sealed class StartFix
     {
-        public string Title = "Rabbid Lab didn't start";
+        public string Title = "The Rabbid Lab service did not start";
         public string Summary = "";
         public List<string> Steps = new List<string>();
 
@@ -102,7 +102,7 @@ namespace RabbidLab.Setup
                 }
                 // Setup's own folder may be there from an installation that didn't finish.
                 var others = Directory.EnumerateFileSystemEntries(installDir).Any(e => !string.Equals(Path.GetFileName(e), "Setup", StringComparison.OrdinalIgnoreCase));
-                return others ? $"The folder {installDir} already contains other files. Choose an empty folder or a new one." : null;
+                return others ? $"The folder {installDir} already contains other files. Select an empty folder or a new folder." : null;
             }
             catch (Exception e) when (e is IOException || e is UnauthorizedAccessException || e is ArgumentException || e is NotSupportedException)
             {
@@ -152,7 +152,7 @@ namespace RabbidLab.Setup
                         PrepareCertificate(c);
                     }
 
-                    Step("Saving the web address configuration", 0.78);
+                    Step("Saving the console address configuration", 0.78);
                     WriteConsoleJson(c);
 
                     Step("Configuring the Windows Firewall rule", 0.81);
@@ -413,7 +413,7 @@ namespace RabbidLab.Setup
             {
                 Run("sc.exe", $"create {Choices.ServiceName} {bin} start= delayed-auto DisplayName= \"{Edition.Name} Server\"");
             }
-            Run("sc.exe", $"description {Choices.ServiceName} \"Hosts the {Edition.Name} web console: one page for a homelab, in a browser.\"");
+            Run("sc.exe", $"description {Choices.ServiceName} \"Hosts the {Edition.Name} web console for managing a homelab and Active Directory.\"");
             Run("sc.exe", $"failure {Choices.ServiceName} reset= 86400 actions= restart/60000/restart/60000/restart/300000");
             Log("The Rabbid Lab service runs as Local System, starts automatically with Windows (delayed start), and restarts if it stops.");
         }
@@ -720,118 +720,118 @@ namespace RabbidLab.Setup
                     if (excluded && localCounts)
                     {
                         // Excluded, and local exclusions count here: Defender just hadn't applied it yet.
-                        fix.Title = "Rabbid Lab didn't start";
+                        fix.Title = "The Rabbid Lab service did not start";
                         fix.Summary = "Setup added the Defender exclusion, but Defender still blocked the service. New exclusions can take a few seconds to apply.";
                         TryAgain();
                         fix.Steps.Add("Select Try again.");
-                        fix.Steps.Add("If it still won't start, restart the computer, then " + StartIt);
+                        fix.Steps.Add("If the service still does not start, restart the computer, and then " + StartIt);
                         break;
                     }
                     fix.Title = "Microsoft Defender blocked Rabbid Lab";
                     fix.Summary = excluded
-                        ? "Setup added an exclusion, but Defender still blocked Rabbid Lab. This computer ignores exclusions made on it."
-                        : "Rabbid Lab installed fine, but Microsoft Defender won't let it run. "
+                        ? "Setup added an exclusion, but Defender still blocked Rabbid Lab. This computer's Defender policy ignores locally configured exclusions."
+                        : "Rabbid Lab was installed, but Microsoft Defender blocked it from running. "
                             + (string.Equals(rule, "01443614-cd74-433a-b99e-2ecdc07bfc25", StringComparison.OrdinalIgnoreCase)
-                                ? "One of its attack surface reduction rules blocks programs that few computers have run yet, and a new install counts as one."
-                                : name != null ? $"Its attack surface reduction rule “{name}” stopped the service." : "One of its attack surface reduction rules stopped the service.");
+                                ? "An attack surface reduction rule blocks programs that do not meet a prevalence, age or trusted list criterion, and newly installed programs do not meet it."
+                                : name != null ? $"The attack surface reduction rule “{name}” blocked the service." : "An attack surface reduction rule blocked the service.");
                     if (localCounts)
                     {
                         fix.CanAllow = true;
-                        fix.Steps.Add("Select Allow in Microsoft Defender. Setup adds an exclusion for Rabbid Lab on this computer only, then starts it.");
-                        fix.Steps.Add("Or run the command below yourself. It does the same thing.");
+                        fix.Steps.Add("Select Allow in Microsoft Defender. Setup adds an exclusion for Rabbid Lab on this computer only, and then starts the service.");
+                        fix.Steps.Add("Alternatively, run the following command. It performs the same actions.");
                         if (managedBy != null)
                         {
-                            fix.Steps.Add($"This computer gets its Defender rules from {managedBy}. To allow Rabbid Lab on your other computers too, add {folder} to the attack surface reduction exclusions in {managedBy}.");
+                            fix.Steps.Add($"This computer receives its Defender rules from {managedBy}. To allow Rabbid Lab on other computers, add {folder} to the attack surface reduction exclusions in {managedBy}.");
                         }
                         Copy(allowCommand);
                     }
                     else if (managedBy == "Intune")
                     {
-                        fix.Summary += " Its Defender rules come from Intune, so the exclusion has to be added there.";
+                        fix.Summary += " This computer's Defender rules are managed by Intune, so the exclusion must be added in Intune.";
                         fix.Steps.Add("In the Intune admin center, go to Endpoint security > Attack surface reduction and open the policy for this computer.");
-                        fix.Steps.Add($"Add {folder} under Attack Surface Reduction Only Exclusions, then save.");
+                        fix.Steps.Add($"Add {folder} under Attack Surface Reduction Only Exclusions, and then select Save.");
                         fix.Steps.Add("Sync this computer: Settings > Accounts > Access work or school > your account > Info > Sync.");
                         fix.Steps.Add("Then " + StartIt);
                     }
                     else if (managedBy == "Group Policy")
                     {
-                        fix.Summary += " Its Defender rules come from Group Policy, so the exclusion has to be added there.";
+                        fix.Summary += " This computer's Defender rules are managed by Group Policy, so the exclusion must be added in the GPO.";
                         fix.Steps.Add("In Group Policy Management, edit the GPO that sets this computer's attack surface reduction rules.");
                         fix.Steps.Add("Go to Computer Configuration > Policies > Administrative Templates > Windows Components > Microsoft Defender Antivirus > Microsoft Defender Exploit Guard > Attack Surface Reduction, and open Exclude files and paths from Attack Surface Reduction Rules.");
-                        fix.Steps.Add($"Choose Enabled, then Show. Add {folder} as the value name with 0 as the value, and select OK twice.");
-                        fix.Steps.Add("Run the command below on this computer. It applies the policy and starts Rabbid Lab.");
+                        fix.Steps.Add($"Select Enabled, and then select Show. Add {folder} as the value name with 0 as the value, and then select OK twice.");
+                        fix.Steps.Add("Run the following command on this computer. It applies the policy and starts the Rabbid Lab service.");
                         Copy("gpupdate /force; Start-Service " + Edition.Id);
                     }
                     else
                     {
-                        fix.Summary += " Its Defender rules are managed centrally, so the exclusion has to be added there.";
-                        fix.Steps.Add($"Ask whoever manages Defender for your organization to exclude {folder} from the attack surface reduction rules.");
-                        fix.Steps.Add("Once that reaches this computer, " + StartIt);
+                        fix.Summary += " This computer's Defender rules are managed centrally, so the exclusion must be added there.";
+                        fix.Steps.Add($"Ask your Microsoft Defender administrator to exclude {folder} from the attack surface reduction rules.");
+                        fix.Steps.Add("After the policy is applied to this computer, " + StartIt);
                     }
                     break;
                 case "defender":
-                    fix.Title = "Microsoft Defender flagged Rabbid Lab";
-                    fix.Summary = "Defender Antivirus thinks RabbidLab.Server.exe is a threat and blocked it. If you got Setup from the Rabbid Lab releases on GitHub, that's a false positive.";
-                    fix.Steps.Add("Open Windows Security > Virus & threat protection > Protection history, pick the entry for RabbidLab.Server.exe, and choose Actions > Allow on device.");
-                    fix.Steps.Add("Run Setup again to put back anything Defender removed.");
-                    fix.Steps.Add("Report the false positive at microsoft.com/wdsi/filesubmission so it doesn't happen on other computers.");
+                    fix.Title = "Microsoft Defender Antivirus blocked Rabbid Lab";
+                    fix.Summary = "Microsoft Defender Antivirus detected RabbidLab.Server.exe as a threat and blocked it. If you downloaded Setup from the Rabbid Lab releases on GitHub, this is a false positive.";
+                    fix.Steps.Add("Open Windows Security > Virus & threat protection > Protection history, select the entry for RabbidLab.Server.exe, and then select Actions > Allow on device.");
+                    fix.Steps.Add("Run Setup again to restore any files that Defender removed.");
+                    fix.Steps.Add("Report the false positive at microsoft.com/wdsi/filesubmission to prevent the same detection on other computers.");
                     HashToCopy();
                     break;
                 case "applocker":
                     fix.Title = "AppLocker blocked Rabbid Lab";
-                    fix.Summary = $"AppLocker on this computer doesn't allow {exe} to run.";
-                    fix.Steps.Add("Open the AppLocker policy for this computer: Local Security Policy, or its GPO in Group Policy Management.");
-                    fix.Steps.Add("Go to Security Settings > Application Control Policies > AppLocker > Executable Rules and choose Create New Rule.");
-                    fix.Steps.Add($"Choose Allow and Everyone, then Path. Enter {folder}\\* and choose Create.");
-                    fix.Steps.Add("Run the command below on this computer. It applies the policy and starts Rabbid Lab.");
+                    fix.Summary = $"AppLocker on this computer does not allow {exe} to run.";
+                    fix.Steps.Add("Open the AppLocker policy for this computer in Local Security Policy, or edit its GPO in Group Policy Management.");
+                    fix.Steps.Add("Go to Security Settings > Application Control Policies > AppLocker > Executable Rules, and select Create New Rule.");
+                    fix.Steps.Add($"Select Allow and Everyone, and then select Path. Enter {folder}\\* and select Create.");
+                    fix.Steps.Add("Run the following command on this computer. It applies the policy and starts the Rabbid Lab service.");
                     Copy("gpupdate /force; Start-Service " + Edition.Id);
                     break;
                 case "wdac":
                     fix.Title = "Application Control blocked Rabbid Lab";
-                    fix.Summary = $"This computer's Windows Defender Application Control policy doesn't allow {exe} to run.";
-                    fix.Steps.Add($"Ask whoever manages Application Control for your organization to allow Rabbid Lab by its folder, {folder}, or by the hash below.");
-                    fix.Steps.Add("Once the new policy is on this computer, " + StartIt);
+                    fix.Summary = $"This computer's Windows Defender Application Control policy does not allow {exe} to run.";
+                    fix.Steps.Add($"Ask your Application Control administrator to allow Rabbid Lab by its folder path, {folder}, or by the hash below.");
+                    fix.Steps.Add("After the updated policy is applied to this computer, " + StartIt);
                     HashToCopy();
                     break;
                 case "stopped":
-                    fix.Title = "Rabbid Lab didn't start";
-                    fix.Summary = error != null ? $"The service started, then crashed with this error: {error}" : "The service started, then stopped. Windows didn't record why.";
+                    fix.Title = "The Rabbid Lab service stopped unexpectedly";
+                    fix.Summary = error != null ? $"The service started and then stopped with this error: {error}" : "The service started and then stopped. Windows did not record a reason.";
                     TryAgain();
                     var inUse = System.Text.RegularExpressions.Regex.Match(error ?? "", @":(\d+): address already in use");
                     if (inUse.Success)
                     {
-                        fix.Steps.Add($"Another program is already using port {inUse.Groups[1].Value}. Close it, or run Setup again and pick a different port.");
+                        fix.Steps.Add($"Port {inUse.Groups[1].Value} is in use by another program. Close that program, or run Setup again and select a different port.");
                     }
                     fix.Steps.Add("Select Try again.");
-                    fix.Steps.Add("If it keeps stopping, check the setup log, or look for .NET Runtime errors in Event Viewer > Windows Logs > Application.");
+                    fix.Steps.Add("If the service keeps stopping, view the setup log, or check Event Viewer > Windows Logs > Application for .NET Runtime errors.");
                     break;
                 case "silent":
-                    fix.Title = "Rabbid Lab isn't responding";
-                    fix.Summary = $"The service is running, but nothing answers on port {error}.";
+                    fix.Title = "Rabbid Lab is not responding";
+                    fix.Summary = $"The service is running, but it does not respond on port {error}.";
                     TryAgain();
                     fix.Steps.Add("Select Try again.");
-                    fix.Steps.Add("If it still doesn't answer, restart the service with the command below.");
+                    fix.Steps.Add("If the service still does not respond, restart it with the following command.");
                     Copy("Restart-Service " + Edition.Id);
                     break;
                 case "notallowed":
-                    fix.Title = "Couldn't add the Defender exclusion";
-                    fix.Summary = $"Microsoft Defender refused the exclusion: {error}";
+                    fix.Title = "Could not add the Defender exclusion";
+                    fix.Summary = $"Microsoft Defender rejected the exclusion: {error}";
                     fix.CanAllow = true;
                     fix.AllowText = "Try again";
                     fix.Steps.Add("Select Try again.");
-                    fix.Steps.Add("Or run the command below yourself. It does the same thing.");
+                    fix.Steps.Add("Alternatively, run the following command. It performs the same actions.");
                     Copy(allowCommand);
                     break;
                 case "error":
-                    fix.Summary = $"Windows couldn't start the service: {error}.";
+                    fix.Summary = $"Windows could not start the service: {error}.";
                     fix.Steps.Add("Check Event Viewer > Windows Logs > System for Service Control Manager errors about Rabbid Lab.");
-                    fix.Steps.Add("Fix what it says, then " + StartIt);
+                    fix.Steps.Add("Resolve the reported error, and then " + StartIt);
                     break;
                 default:
-                    fix.Title = "Something blocked Rabbid Lab";
-                    fix.Summary = $"Windows wasn't allowed to run {exe}, but Defender, AppLocker and Application Control didn't log a block. Other security software, like an endpoint protection product, most likely stopped it.";
-                    fix.Steps.Add("In that product's console, such as CrowdStrike Falcon, SentinelOne, Sophos or Trend Micro, find the block for RabbidLab.Server.exe on this computer.");
-                    fix.Steps.Add($"Allow it by its path, {exe}, or by the hash below.");
+                    fix.Title = "Security software blocked Rabbid Lab";
+                    fix.Summary = $"Windows was denied access when it tried to run {exe}, but Microsoft Defender, AppLocker and Application Control did not log a block. Other security software, such as an endpoint protection product, most likely blocked it.";
+                    fix.Steps.Add("In the management console of that product (for example, CrowdStrike Falcon, SentinelOne, Sophos or Trend Micro), find the block event for RabbidLab.Server.exe on this computer.");
+                    fix.Steps.Add($"Allow the program by its path, {exe}, or by the hash below.");
                     fix.Steps.Add("Then " + StartIt);
                     HashToCopy();
                     break;
@@ -1642,7 +1642,7 @@ namespace RabbidLab.Setup
         {
             if (!Choices.ServiceInstalled)
             {
-                return "Rabbid Lab isn't installed on this computer. Run Rabbid Lab Setup to install it.";
+                return "Rabbid Lab is not installed on this computer. Run Rabbid Lab Setup to install it.";
             }
             using (var service = new ServiceController(Choices.ServiceName))
             {
@@ -1655,7 +1655,7 @@ namespace RabbidLab.Setup
                     }
                     if (action == "stop")
                     {
-                        return "Rabbid Lab is stopped. It starts again when you open it from the Start menu or restart the computer.";
+                        return "The Rabbid Lab service is stopped. It starts again when you open Rabbid Lab from the Start menu or restart the computer.";
                     }
                 }
                 if (service.Status == ServiceControllerStatus.Stopped)
@@ -1663,7 +1663,7 @@ namespace RabbidLab.Setup
                     service.Start();
                 }
                 service.WaitForStatus(ServiceControllerStatus.Running, TimeSpan.FromSeconds(60));
-                return action == "restart" ? "Rabbid Lab restarted. Give it a few seconds before you open it." : "Rabbid Lab is running.";
+                return action == "restart" ? "The Rabbid Lab service restarted. Wait a few seconds before you open the console." : "The Rabbid Lab service is running.";
             }
         }
 

@@ -61,8 +61,8 @@ public sealed class DeviceHttp : IDisposable
         {
             if (inner is AuthenticationException)
             {
-                return Pin is not null && Seen is not null && Seen != Pin ? "The certificate changed. Open the sensor and run Check now to see the new one."
-                    : "The certificate isn't trusted. Open the sensor and run Check now to trust it.";
+                return Pin is not null && Seen is not null && Seen != Pin ? "The certificate has changed. Edit the sensor and select Check now to review it."
+                    : "The certificate is not trusted. Edit the sensor and select Check now to trust it.";
             }
         }
         return e is HttpRequestException { StatusCode: HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden } ? "Sign-in failed: check the username and password"

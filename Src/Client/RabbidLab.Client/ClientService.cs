@@ -89,7 +89,7 @@ internal sealed class ClientService : ServiceBase
             }
             catch (Exception e) when (!stop.IsCancellationRequested)
             {
-                Problems.Note("client", $"A round with the server failed: {e.Message}");
+                Problems.Note("client", $"Check-in with the server failed: {e.Message}");
                 status = new Status { State = Status.Unreachable, Problem = e.Message };
                 try
                 {
@@ -153,7 +153,7 @@ internal static class Updater
             if (told != status.ServerVersion && DateTime.UtcNow - File.GetLastWriteTimeUtc(tried) > TimeSpan.FromMinutes(10))
             {
                 told = status.ServerVersion;
-                Problems.Note("update", $"Client {status.ServerVersion} didn't install{InstallerSaid()}. It tries again tomorrow; update.log on the computer has the details.");
+                Problems.Note("update", $"Client {status.ServerVersion} failed to install{InstallerSaid()}. The install is retried in 24 hours. See update.log on the computer for details.");
             }
             return;
         }
@@ -181,7 +181,7 @@ internal static class Updater
         if (!downloaded)
         {
             // A server without the MSI, or a download cut short: tried again in ten minutes.
-            Problems.Note("update", $"Couldn't download client {status.ServerVersion} from the server.");
+            Problems.Note("update", $"Could not download client {status.ServerVersion} from the server.");
             return;
         }
         // msiexec carries on after this service stops for the upgrade, and starts the new one.

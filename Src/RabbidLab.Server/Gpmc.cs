@@ -218,7 +218,7 @@ public sealed class WindowsGpmc : IGpmc
                 var (user, domain) = at > 0 ? (t.Username[(at + 1)..], t.Username[..at]) : (t.Username, (string?) null);
                 if (!LogonUser(user, domain, t.Password, NewCredentials, WinNt50, out var token))
                 {
-                    throw new ToolProblem("Windows couldn't use that login.");
+                    throw new ToolProblem("Windows could not sign in with those credentials.");
                 }
                 using (token)
                 {
@@ -231,11 +231,11 @@ public sealed class WindowsGpmc : IGpmc
             }
             catch (COMException e) when (e.HResult == LogonFailure)
             {
-                done.SetException(new ToolProblem("Windows turned the login down: the username or password is wrong."));
+                done.SetException(new ToolProblem("Windows rejected the sign-in. The username or password is incorrect."));
             }
             catch (COMException e)
             {
-                done.SetException(new ToolProblem($"Group Policy Management said: {e.Message.Trim()}"));
+                done.SetException(new ToolProblem($"Group Policy Management returned an error: {e.Message.Trim()}"));
             }
             catch (UnauthorizedAccessException e)
             {
@@ -243,7 +243,7 @@ public sealed class WindowsGpmc : IGpmc
             }
             catch (Exception e)
             {
-                done.SetException(e is ToolProblem ? e : new ToolProblem($"Group Policy Management couldn't do it: {e.Message}"));
+                done.SetException(e is ToolProblem ? e : new ToolProblem($"Group Policy Management could not complete the operation: {e.Message}"));
             }
         }) { IsBackground = true, Name = "Group Policy" };
         thread.SetApartmentState(ApartmentState.STA);

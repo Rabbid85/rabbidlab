@@ -7,7 +7,7 @@
   const { $, esc, svg, has, panel, toast, sure, get, send } = R;
 
   const NEEDS = '1.1.183'; // the first client that reads and changes Administrators
-  const KIND = { local: 'Local account', localgroup: 'Local group', user: 'Domain user', group: 'Domain group', computer: 'Domain computer', wellknown: 'Windows group', unknown: 'Account Windows can’t name' };
+  const KIND = { local: 'Local account', localgroup: 'Local group', user: 'Domain user', group: 'Domain group', computer: 'Domain computer', wellknown: 'Windows group', unknown: 'Unknown account' };
   const ICON = { local: 'user', localgroup: 'users', user: 'user', group: 'users', computer: 'monitor', wellknown: 'users', unknown: 'user' };
   const chip = (text, cls = '', icon = '') => `<span class="uchip ${cls}">${icon ? svg(icon) : ''}${esc(text)}</span>`;
   const section = (title, body, right = '') => `<section class="dw-sec"><div class="dw-sec-head"><h3>${title}</h3>${right}</div>${body}</section>`;
@@ -15,7 +15,7 @@
   const qa = (attr, icon, label) => `<button type="button" class="dw-qa" ${attr}>${svg(icon)}<span>${esc(label)}</span></button>`;
   const none = (text) => `<p class="muted dw-empty">${esc(text)}</p>`;
   const pic = (kind, cls = 'small') => `<span class="pic ${cls}">${svg(ICON[kind] || 'user')}</span>`;
-  const x = (attr, label) => `<button type="button" class="at-more dw-x" ${attr} data-tip="Take out" aria-label="${esc(label)}">${svg('x')}</button>`;
+  const x = (attr, label) => `<button type="button" class="at-more dw-x" ${attr} data-tip="Remove" aria-label="${esc(label)}">${svg('x')}</button>`;
   const del = (attr, label) => `<button type="button" class="at-more dw-x" ${attr} data-tip="Delete" aria-label="${esc(label)}">${svg('trash')}</button>`;
   const day = (iso) => new Date(iso).toLocaleDateString([], { dateStyle: 'medium' });
   const seen = (iso) => {
@@ -24,7 +24,7 @@
     return `Last sign-in ${d < 1 ? 'today' : d < 30 ? `${d} day${d === 1 ? '' : 's'} ago` : day(iso)}`;
   };
   const and = (list) => (list.length < 2 ? list.join('') : `${list.slice(0, -1).join(', ')} and ${list[list.length - 1]}`);
-  const how = (p) => (p.direct && p.via.length ? `Added directly, and through ${and(p.via)}` : p.direct ? 'Added directly' : `Through ${and(p.via)}`);
+  const how = (p) => (p.direct && p.via.length ? `Direct member, also through ${and(p.via)}` : p.direct ? 'Direct member' : `Member through ${and(p.via)}`);
   const short = (name) => name.slice(name.indexOf('\\') + 1); // AMW\mwiles -> mwiles
   const prefix = (name) => (name.includes('\\') ? name.slice(0, name.indexOf('\\')) : '');
   const below = (version, than) => {
@@ -32,7 +32,7 @@
     for (let i = 0; i < 3; i++) if ((a[i] || 0) !== b[i]) return (a[i] || 0) < b[i];
     return false;
   };
-  const oops = (e) => toast("That didn't work.", e.message, { tone: 'warn' });
+  const oops = (e) => toast('The operation failed.', e.message, { tone: 'warn' });
 
   // --- What's known -----------------------------------------------------------------------------------------------
   let adm = null; // /api/devices/admins: { computers: [{ id, computer, server, online, version, checked, admins, locals }], groups }
@@ -83,7 +83,7 @@
       const list = await get('/api/windows/computers');
       const s = list.find((c) => c.server);
       server = s ? { id: 'server', computer: s.name, os: s.os, server: true, approved: true, online: true, version: s.version, address: '::1', user: null } : null;
-      ready = Object.fromEntries(list.map((c) => [c.id, c.ready ? null : c.why || 'It can’t take changes now.']));
+      ready = Object.fromEntries(list.map((c) => [c.id, c.ready ? null : c.why || 'This computer cannot be changed right now.']));
     } catch {
       // Without it there's no server row: the clients still list.
     }
@@ -130,7 +130,7 @@
       + `${has('windows.delete') && !a.builtIn && !ready[c.id] ? del(`data-acc-del="${esc(a.name)}"`, `Delete ${a.name}`) : ''}</div>`).join('');
     const more = hidden ? `<button type="button" class="linkish acc-more" data-acc-built>Show ${hidden} built-in account${hidden === 1 ? '' : 's'}</button>`
       : showBuilt && all.some((a) => a.builtIn) ? '<button type="button" class="linkish acc-more" data-acc-built>Hide built-in accounts</button>' : '';
-    return section(`Local accounts <small>${list.length}</small>`, `${rows ? `<div class="dw-list">${rows}</div>` : none('No accounts besides the built-in ones.')}${more}`,
+    return section(`Local accounts <small>${list.length}</small>`, `${rows ? `<div class="dw-list">${rows}</div>` : none('No accounts other than the built-in accounts.')}${more}`,
       has('windows.create') && !ready[c.id] ? `<button type="button" class="small" data-acc-new>${svg('plus')}New account</button>` : '');
   };
   const adminsName = (l) => (l.groups || []).find((g) => g.sid === 'S-1-5-32-544')?.name || 'Administrators';
@@ -138,7 +138,7 @@
   const memberRow = (m, locals) => {
     const a = m.kind === 'local' ? (locals || []).find((y) => y.name.toUpperCase() === short(m.name).toUpperCase()) : null;
     const g = m.kind === 'group' ? groupOf(m.sid) : null;
-    const second = m.kind === 'group' ? (g ? `Domain group · ${g.people.length}${g.more ? '+' : ''} ${g.people.length === 1 ? 'person' : 'people'}` : 'Domain group')
+    const second = m.kind === 'group' ? (g ? `Domain group · ${g.people.length}${g.more ? '+' : ''} ${g.people.length === 1 ? 'member' : 'members'}` : 'Domain group')
       : a?.builtIn ? 'Built-in account' : KIND[m.kind] || KIND.unknown;
     const isOpen = g && folded.has(m.sid);
     const sub = !isOpen ? '' : g.people.map((u) => `<div class="mrow acc-row acc-sub" data-acc-open="user:${esc(`${prefix(m.name)}\\${u.account}`)}">${pic('user')}`
@@ -147,28 +147,28 @@
     return `<div class="mrow${opens ? ' acc-row' : ''}" ${opens}>${pic(m.kind)}<div class="two"><b>${esc(m.name)}</b><small>${esc(second)}</small></div>`
       + `<span class="acc-chips">${a && !a.enabled ? chip('Disabled', 'off', 'power') : ''}</span>`
       + `<span class="acc-chev${isOpen ? ' up' : ''}">${g ? svg('chevron-down') : ''}</span>`
-      + `${has('windows.change') && m.sid ? x(`data-acc-out="${esc(m.sid)}"`, `Take ${m.name} out of Administrators`) : ''}</div>${sub}`;
+      + `${has('windows.change') && m.sid ? x(`data-acc-out="${esc(m.sid)}"`, `Remove ${m.name} from Administrators`) : ''}</div>${sub}`;
   };
 
   const personRow = (p) => `<div class="mrow${p.kind === 'local' || p.kind === 'user' ? ' acc-row' : ''}"${p.kind === 'local' ? ` data-acc-open="local:${esc(short(p.name))}"` : p.kind === 'user' ? ` data-acc-open="user:${esc(p.name)}"` : ''}>`
-    + `${pic(p.kind)}<div class="two"><b>${esc(p.shown)}</b><small>${esc(p.unread ? `${p.name} · Who's in it isn't known here` : `${p.name} · ${how(p)}`)}</small></div>`
+    + `${pic(p.kind)}<div class="two"><b>${esc(p.shown)}</b><small>${esc(p.unread ? `${p.name} · Members not available` : `${p.name} · ${how(p)}`)}</small></div>`
     + `<span class="acc-chips">${p.enabled === false ? chip('Disabled', 'off', 'power') : ''}</span></div>`;
 
   const adminsSection = (c, admins, locals, note) => {
     if (!admins) {
-      return section('Administrators', none(below(c.version, NEEDS) && !c.server ? `Shows once its client is ${NEEDS} or later. It updates itself within a few minutes.` : 'Windows didn’t say who is in it.'));
+      return section('Administrators', none(below(c.version, NEEDS) && !c.server ? `Requires client ${NEEDS} or later. The client updates automatically within a few minutes.` : 'Windows did not return the group members.'));
     }
     const people = peopleOf(admins, locals);
     const can = has('windows.change') && !ready[c.id] && !note;
     const right = `<div class="acc-right"><div class="seg"><button type="button" data-acc-view="members" aria-pressed="${view === 'members'}">Members</button>`
-      + `<button type="button" data-acc-view="people" aria-pressed="${view === 'people'}">People</button></div>`
+      + `<button type="button" data-acc-view="people" aria-pressed="${view === 'people'}">Effective</button></div>`
       + (can ? `<button type="button" class="small" data-acc-add aria-pressed="${adding}">${svg(adding ? 'x' : 'plus')}${adding ? 'Done' : 'Add'}</button>` : '') + '</div>';
-    const lead = note || (view === 'members' ? `Everyone in this group is an administrator of ${c.computer}.${admins.some((m) => groupOf(m.sid)) ? ' Click a domain group to see who is in it.' : ''}`
-      : `Everyone who ends up an administrator of ${c.computer}.${adm && !adm.groups ? ' Active Directory can’t be read from this server, so domain groups aren’t opened up.' : ''}`);
+    const lead = note || (view === 'members' ? `Members of this group are administrators of ${c.computer}.${admins.some((m) => groupOf(m.sid)) ? ' Click a domain group to see its members.' : ''}`
+      : `Every account with administrator rights on ${c.computer}, including members of domain groups.${adm && !adm.groups ? ' Active Directory cannot be read from this server, so domain group members are not listed.' : ''}`);
     const add = !(adding && can) ? '' : '<div class="adder acc-add"><label class="find"><svg><use href="#i-search"/></svg>'
-      + '<input type="search" id="acc-add-find" data-find placeholder="A local account, or DOMAIN\\name" aria-label="Who to add" autocomplete="off" spellcheck="false"></label><div class="drop" data-drop hidden></div></div>';
+      + '<input type="search" id="acc-add-find" data-find placeholder="Local account or DOMAIN\\name" aria-label="Account to add" autocomplete="off" spellcheck="false"></label><div class="drop" data-drop hidden></div></div>';
     const rows = view === 'members' ? admins.map((m) => memberRow(m, locals)).join('') : people.map(personRow).join('');
-    return section(`Administrators <small>${view === 'members' ? admins.length : people.length}</small>`, `<p class="dw-how acc-lead">${esc(lead)}</p>${add}<div class="dw-list">${rows || none('Nobody.')}</div>`, right);
+    return section(`Administrators <small>${view === 'members' ? admins.length : people.length}</small>`, `<p class="dw-how acc-lead">${esc(lead)}</p>${add}<div class="dw-list">${rows || none('No members.')}</div>`, right);
   };
 
   const back = `<button type="button" class="linkish acc-back" data-acc-back>${svg('back')}All accounts</button>`;
@@ -182,7 +182,7 @@
       const gs = a.groups || [];
       const others = (l.groups || []).map((g) => g.name).filter((g) => !gs.includes(g));
       const change = has('windows.change') && !ready[c.id];
-      const acts = (change ? qa('data-acc-act="password"', 'key', 'Set a password') + qa('data-acc-act="power"', a.enabled ? 'user-off' : 'user-check', a.enabled ? 'Disable' : 'Enable') : '')
+      const acts = (change ? qa('data-acc-act="password"', 'key', 'Set password') + qa('data-acc-act="power"', a.enabled ? 'user-off' : 'user-check', a.enabled ? 'Disable' : 'Enable') : '')
         + (has('windows.delete') && !a.builtIn && !ready[c.id] ? qa('data-acc-act="delete"', 'trash', 'Delete') : '');
       return `${back}<div class="acc-head">${pic('local', 'dw-pic')}<div><h3>${esc(a.name)}</h3><p>${a.builtIn ? 'Built-in account' : 'Local account'} on ${esc(c.computer)}</p></div></div>`
         + `<div class="dw-status acc-status">${gs.includes(adminsName(l)) ? chip('Administrator', 'ember', 'shield') : ''}${a.enabled ? chip('Enabled', 'ok') : chip('Disabled', 'off', 'power')}`
@@ -191,7 +191,7 @@
         + `<section class="dw-sec"><div class="dw-sec-head"><h3>Account</h3></div><div class="dw-facts">${fact('Full name', a.fullName)}${fact('Last sign-in', a.lastSignIn ? day(a.lastSignIn) : 'Never')}`
         + `${fact('Password set', a.passwordSet ? day(a.passwordSet) : '')}${fact('Description', a.description)}</div></section>`
         + section(`Groups <small>${gs.length}</small>`, gs.length ? `<div class="dw-list">${gs.map((g) => `<div class="mrow"><span class="pic small">${svg('users')}</span><div class="two"><b>${esc(g)}</b></div>`
-          + `${change ? x(`data-acc-ungroup="${esc(g)}"`, `Take out of ${g}`) : ''}</div>`).join('')}</div>` : none('Not in any groups.'),
+          + `${change ? x(`data-acc-ungroup="${esc(g)}"`, `Remove from ${g}`) : ''}</div>`).join('')}</div>` : none('Not a member of any groups.'),
         change && others.length ? `<select class="gpick" data-acc-group aria-label="Add to a group"><option value="">Add to…</option>${others.map((g) => `<option>${esc(g)}</option>`).join('')}</select>` : '');
     }
     // A domain user: how they're an administrator here, and where else.
@@ -201,11 +201,11 @@
     const elsewhere = (adm?.computers || []).filter((k) => k.id !== c.id).map((k) => [k, peopleOf(k.admins, k.locals).find((p) => p.key === open.name.toUpperCase())]).filter(([, p]) => p);
     return `${back}<div class="acc-head">${pic('user', 'dw-pic')}<div><h3>${esc(here?.shown || open.name)}</h3><p>${esc(open.name)} · Domain user</p></div></div>`
       + `<div class="dw-bar acc-bar">${has('ad.view') ? `<a class="dw-qa" href="#ad/users">${svg('users')}<span>Open Active Directory</span></a>` : ''}`
-      + `${direct && has('windows.change') && !ready[c.id] ? qa(`data-acc-out="${esc(direct.sid)}"`, 'user-minus', 'Take out of Administrators') : ''}</div>`
-      + section(`On ${esc(c.computer)}`, `<p class="dw-how">${here ? `${esc(how(here))}.` : `Not an administrator of ${esc(c.computer)}.`}${here && !direct ? ' To change that, take them out of the group in Active Directory.' : ''}</p>`)
+      + `${direct && has('windows.change') && !ready[c.id] ? qa(`data-acc-out="${esc(direct.sid)}"`, 'user-minus', 'Remove from Administrators') : ''}</div>`
+      + section(`On ${esc(c.computer)}`, `<p class="dw-how">${here ? `${esc(how(here))}.` : `Not an administrator of ${esc(c.computer)}.`}${here && !direct ? ' To change this, remove the user from the group in Active Directory.' : ''}</p>`)
       + section(`Also an administrator of <small>${elsewhere.length}</small>`, elsewhere.length ? `<div class="dw-list">${elsewhere.map(([k, p]) => `<div class="mrow acc-row" data-acc-pc="${esc(k.id)}">`
         + `<span class="pic small">${svg(k.server ? 'server' : 'monitor')}</span><div class="two"><b>${esc(k.computer)}</b><small>${esc(how(p))}</small></div>${svg('right', 'acc-go')}</div>`).join('')}</div>`
-        : none(adm ? 'No other computers.' : 'Reading the other computers.'));
+        : none(adm ? 'No other computers.' : 'Loading…'));
   };
 
   // The tab: what the computer said just now, or what was last known when it can't answer.
@@ -218,8 +218,8 @@
     if (open && l.accounts) return detail(c, l);
     if (!l.accounts) {
       const k = known(c.id);
-      const note = k?.checked ? `${c.computer} can’t answer now, so this is who was in it on ${R.when(k.checked)}.` : null;
-      return section('Local accounts', `<p class="dw-how warn">${esc(l.error || 'It can’t answer now.')}</p>`, `<button type="button" class="small" data-acc-again>${svg('refresh')}Try again</button>`)
+      const note = k?.checked ? `${c.computer} is unreachable. Showing members as of ${R.when(k.checked)}.` : null;
+      return section('Local accounts', `<p class="dw-how warn">${esc(l.error || 'The computer is unreachable.')}</p>`, `<button type="button" class="small" data-acc-again>${svg('refresh')}Try again</button>`)
         + (k?.admins ? adminsSection(c, k.admins, k.locals, note) : '');
     }
     return accountsSection(c, l) + adminsSection(c, l.admins, l.accounts);
@@ -274,7 +274,7 @@
   };
   const change = async (id, path, body, said) => {
     const c = D.rows().find((y) => y.id === id);
-    R.busy(panel.body, c?.server ? 'Changing it on this server' : `Asking ${c?.computer || 'the computer'}`);
+    R.busy(panel.body, c?.server ? 'Applying changes on this server' : `Contacting ${c?.computer || 'the computer'}`);
     try {
       const answer = await send(path, body);
       toast(said, answer?.warning || '', answer?.warning ? { tone: 'warn' } : {});
@@ -288,7 +288,7 @@
 
   // Who to add: this computer's own accounts as typed, and AD's users and groups when Active Directory is set up.
   R.dropdown(panel.body, {
-    none: 'Nobody matches. Type DOMAIN\\name to add someone by name.',
+    none: 'No matches. Type DOMAIN\\name to add an account by name.',
     find: async (q) => {
       const id = at;
       const l = live[id] || {};
@@ -315,7 +315,7 @@
     pick: (f) => {
       if (!panel.is('seats') || !at) return;
       const c = D.rows().find((y) => y.id === at);
-      change(at, `/api/windows/${encodeURIComponent(at)}/admins`, { add: [f.name] }, `${f.name} is an administrator of ${c?.computer} now.`);
+      change(at, `/api/windows/${encodeURIComponent(at)}/admins`, { add: [f.name] }, `${f.name} added to Administrators on ${c?.computer}.`);
     },
   });
 
@@ -332,13 +332,13 @@
       const sid = b.dataset.accOut;
       const m = (live[id]?.admins || []).find((y) => y.sid === sid);
       const who = m?.name || sid;
-      sure(`Take ${who} out of Administrators?`, `${who} stops being an administrator of ${c.computer}.${m?.kind === 'group' ? ' Its people still are if they’re in the group some other way.' : ''}`, 'Take out',
-        () => change(id, `/api/windows/${encodeURIComponent(id)}/admins`, { remove: [sid] }, `${who} is out of Administrators on ${c.computer}.`));
+      sure(`Remove ${who} from Administrators?`, `${who} will no longer be an administrator of ${c.computer}.${m?.kind === 'group' ? ' Members who are administrators through another group keep that access.' : ''}`, 'Remove',
+        () => change(id, `/api/windows/${encodeURIComponent(id)}/admins`, { remove: [sid] }, `${who} removed from Administrators on ${c.computer}.`));
     } else if ((b = on('del'))) {
       e.stopPropagation();
       const name = b.dataset.accDel;
-      sure(`Delete ${name}?`, `${name} is deleted from ${c.computer} for good. Its files stay in its profile folder.`, `Delete ${name}`,
-        () => change(id, `${base(name)}/delete`, {}, `${name} is deleted.`));
+      sure(`Delete ${name}?`, `${name} will be permanently deleted from ${c.computer}. Its profile folder and files are kept.`, `Delete ${name}`,
+        () => change(id, `${base(name)}/delete`, {}, `${name} deleted.`));
     } else if ((b = on('fold'))) {
       const sid = b.dataset.accFold;
       if (folded.has(sid)) folded.delete(sid);
@@ -370,26 +370,26 @@
       R.windowsAccounts.create({ id, name: c.computer, server: !!c.server, groups: live[id]?.groups || [], done: () => after(id) });
     } else if ((b = on('ungroup'))) {
       const g = b.dataset.accUngroup;
-      change(id, `${base(open.name)}/groups`, { remove: [g] }, `${open.name} is out of ${g}.`);
+      change(id, `${base(open.name)}/groups`, { remove: [g] }, `${open.name} removed from ${g}.`);
     } else if ((b = on('act'))) {
       const name = open.name;
       const a = (live[id]?.accounts || []).find((y) => y.name === name);
       if (!a) return;
       if (b.dataset.accAct === 'password') {
-        R.windowsAccounts.password(a.name, `${base(a.name)}/password`, `On ${c.computer}. It also unlocks the account if it's locked out.`, () => after(id));
+        R.windowsAccounts.password(a.name, `${base(a.name)}/password`, `On ${c.computer}. Setting a password also unlocks the account if it is locked out.`, () => after(id));
       } else if (b.dataset.accAct === 'power') {
-        change(id, `${base(a.name)}/enable`, { on: !a.enabled }, `${a.name} is ${a.enabled ? 'disabled' : 'enabled'}.`);
+        change(id, `${base(a.name)}/enable`, { on: !a.enabled }, `${a.name} ${a.enabled ? 'disabled' : 'enabled'}.`);
       } else if (b.dataset.accAct === 'delete') {
-        sure(`Delete ${a.name}?`, `${a.name} is deleted from ${c.computer} for good. Its files stay in its profile folder.`, `Delete ${a.name}`, async () => {
+        sure(`Delete ${a.name}?`, `${a.name} will be permanently deleted from ${c.computer}. Its profile folder and files are kept.`, `Delete ${a.name}`, async () => {
           open = null;
-          await change(id, `${base(a.name)}/delete`, {}, `${a.name} is deleted.`);
+          await change(id, `${base(a.name)}/delete`, {}, `${a.name} deleted.`);
         });
       }
     }
   });
   panel.el.addEventListener('change', (e) => {
     if (!panel.is('seats') || panel.key !== at || !e.target.matches('[data-acc-group]') || !e.target.value || !open) return;
-    change(at, `/api/windows/${encodeURIComponent(at)}/accounts/${encodeURIComponent(open.name)}/groups`, { add: [e.target.value] }, `${open.name} is in ${e.target.value} now.`);
+    change(at, `/api/windows/${encodeURIComponent(at)}/accounts/${encodeURIComponent(open.name)}/groups`, { add: [e.target.value] }, `${open.name} added to ${e.target.value}.`);
   });
 
   // --- Local admins: one list across the computers -------------------------------------------------------------------
@@ -430,7 +430,7 @@
   const howAll = (r) => {
     const d = r.on.some((o) => o.direct);
     const v = r.on.some((o) => o.via.length);
-    return r.unread ? 'Members not known' : d && v ? 'Directly and through groups' : d ? 'Added directly' : 'Through groups';
+    return r.unread ? 'Members not available' : d && v ? 'Direct and through groups' : d ? 'Direct' : 'Through groups';
   };
   const who = (kind, text) => `<div class="who">${pic(kind, '')}<b class="ell">${esc(text)}</b></div>`;
   const ms = (iso) => (iso ? new Date(iso).getTime() : 0);
@@ -459,11 +459,11 @@
   const peopleGrid = () => (peopleG ||= R.grid({
     el: $('dv-adminp'), key: 'admin-people', sort: { key: 'person', dir: 1 }, lead,
     cols: [
-      { key: 'person', label: 'Person', w: 180, fixed: true, get: (r) => r.shown, cell: (r) => who(r.kind, r.shown) },
+      { key: 'person', label: 'Name', w: 180, fixed: true, get: (r) => r.shown, cell: (r) => who(r.kind, r.shown) },
       { key: 'account', label: 'Account', w: 210, on: true, get: (r) => r.name, cell: (r) => `<span class="mono ell">${esc(r.name)}</span>` },
       { key: 'type', label: 'Type', w: 120, on: true, get: (r) => typeOf(r, r.pc) },
       { key: 'on', label: 'Administrator of', w: 140, on: true, get: (r) => r.on.length, text: (r) => onText(r.on.length), cell: (r) => esc(onText(r.on.length)) },
-      { key: 'how', label: 'How', w: 180, on: true, get: howAll },
+      { key: 'how', label: 'Membership', w: 180, on: true, get: howAll },
       { key: 'state', label: 'State', w: 90, on: true, get: (r) => stateText(r.enabled), cell: (r) => stateCell(r.enabled) },
     ],
     row: (r) => ` data-acc-row="${esc(r.key)}"`,
@@ -474,12 +474,12 @@
   const FIELDS = [['Administrator', [fld('name', 'Name', 'text', (r) => r.name), fld('type', 'Type', 'choice', (r) => (tab === 'people' ? typeOf(r, r.pc) : r.type)),
     fld('state', 'State', 'choice', (r) => stateText(tab === 'people' ? r.enabled : memberState(r))), fld('on', 'Administrator of (computers)', 'number', (r) => r.on.length)]]];
 
-  D.lists.admins = ['Local admins', 'shield', 'Who is in the Administrators group on each computer.'];
+  D.lists.admins = ['Local admins', 'shield', 'Members of the Administrators group on each computer.'];
   D.more.admins = {
     // A tab beside Computers, not a list of its own down the left. Members and People are its views, where Computers' are.
     under: 'computers',
     tabs: (make) => make('#seats/admins', D.at() === 'admins', 'shield', 'Local admins', adm ? memberList().length : ''),
-    views: () => [['members', 'Members', memberList], ['people', 'People', personList]].map(([key, label, rows]) =>
+    views: () => [['members', 'Members', memberList], ['people', 'Effective members', personList]].map(([key, label, rows]) =>
       `<a href="#seats/admins" data-acc-tab="${key}"${tab === key ? ' aria-current="page"' : ''}><span class="nm">${label}</span><small>${adm ? rows().length : ''}</small></a>`).join(''),
     get table() { return tab === 'people' ? 'dv-adminp' : 'dv-admins'; },
     grid: () => (tab === 'people' ? peopleGrid() : membersGrid()),
@@ -487,9 +487,10 @@
     count: () => (adm ? memberList().length : ''),
     can: () => has('windows.view'),
     load: loadAdm,
+    every: 30000, // this server's own Administrators group is read from Windows each time
     noun: 'administrators',
     fields: () => FIELDS,
-    empty: () => (!adm ? "The list couldn't be read." : adm.computers.length ? `No computer has sent its Administrators group yet. Clients send it from ${NEEDS} on, within half an hour.` : 'No computers yet.'),
+    empty: () => (!adm ? 'Could not load the list.' : adm.computers.length ? `No computers have reported their Administrators group yet. Clients ${NEEDS} and later report it within 30 minutes.` : 'No computers yet.'),
     acts: { can: canTick, count: () => pickedRows().length, open: (button) => openActs(button) },
   };
 
@@ -536,16 +537,16 @@
     const gone = has('windows.delete') ? deletable(rows) : [];
     const left = rows.length - new Set([...out.map((t) => t.name), ...gone.map((t) => t.full)]).size;
     R.actions.open(button, {
-      items: [...(out.length ? [{ act: 'out', label: 'Take out of Administrators…', hint: String(out.length) }] : []), { act: 'export', label: 'Export these' }, { act: 'clear', label: 'Clear the ticks' },
+      items: [...(out.length ? [{ act: 'out', label: 'Remove from Administrators…', hint: String(out.length) }] : []), { act: 'export', label: 'Export selected' }, { act: 'clear', label: 'Clear selection' },
         ...(gone.length ? ['-', { act: 'delete', label: 'Delete local accounts…', hint: String(gone.length), danger: true }] : [])],
       // Built-in accounts and computers still being read can't be changed: said when some ticked are those.
-      note: (out.length || gone.length) && left > 0 ? `${left} of ${rows.length} ticked can't be changed here: built-in accounts, or computers still being read.` : '',
+      note: (out.length || gone.length) && left > 0 ? `${left} of ${rows.length} selected cannot be changed: built-in accounts or computers still loading.` : '',
       pick: actPicked,
     });
   };
   // One change on each computer, then everything read again.
   const each = async (list, work, done) => {
-    R.busy($('dv-lib'), `Asking ${list.length === 1 ? list[0].pc.computer : `${new Set(list.map((t) => t.pc.id)).size} computers`}`);
+    R.busy($('dv-lib'), `Contacting ${list.length === 1 ? list[0].pc.computer : `${new Set(list.map((t) => t.pc.id)).size} computers`}`);
     let failed = 0;
     for (const t of list) {
       try {
@@ -556,7 +557,7 @@
       delete live[t.pc.id];
     }
     R.busy($('dv-lib'), '');
-    toast(failed ? `${failed} of ${list.length} didn't work.` : done, failed ? 'The computers that didn’t answer may be offline. The rest are done.' : '', failed ? { tone: 'warn' } : {});
+    toast(failed ? `${failed} of ${list.length} changes failed.` : done, failed ? 'Computers that did not respond may be offline. The other changes were applied.' : '', failed ? { tone: 'warn' } : {});
     picked.clear();
     admAt = 0;
     await fresh();
@@ -573,11 +574,11 @@
       g.csv(g.sorted(rows), 'local-admins-ticked');
     } else if (act === 'out') {
       const list = outOf(rows);
-      sure(`Take ${list.length === 1 ? list[0].name : `${list.length} memberships`} out of Administrators?`, `${and(pairs(list).slice(0, 6))}${list.length > 6 ? ` and ${list.length - 6} more` : ''}. Domain groups still make their people administrators wherever else they're added.`, 'Take out',
-        () => each(list, (t) => send(`/api/windows/${encodeURIComponent(t.pc.id)}/admins`, { remove: [t.sid] }), `Taken out of Administrators: ${list.length === 1 ? `${list[0].name} on ${list[0].pc.computer}` : `${list.length} memberships`}.`));
+      sure(`Remove ${list.length === 1 ? list[0].name : `${list.length} memberships`} from Administrators?`, `${and(pairs(list).slice(0, 6))}${list.length > 6 ? ` and ${list.length - 6} more` : ''}. Members of domain groups stay administrators wherever those groups are added.`, 'Remove',
+        () => each(list, (t) => send(`/api/windows/${encodeURIComponent(t.pc.id)}/admins`, { remove: [t.sid] }), `Removed from Administrators: ${list.length === 1 ? `${list[0].name} on ${list[0].pc.computer}` : `${list.length} memberships`}.`));
     } else if (act === 'delete') {
       const list = deletable(rows);
-      sure(`Delete ${list.length === 1 ? list[0].full : `${list.length} local accounts`}?`, `${and(list.slice(0, 6).map((t) => t.full))}${list.length > 6 ? ` and ${list.length - 6} more` : ''}. Gone for good. Their files stay in their profile folders.`, 'Delete',
+      sure(`Delete ${list.length === 1 ? list[0].full : `${list.length} local accounts`}?`, `${and(list.slice(0, 6).map((t) => t.full))}${list.length > 6 ? ` and ${list.length - 6} more` : ''}. This cannot be undone. Profile folders and their files are kept.`, 'Delete',
         () => each(list, (t) => send(`/api/windows/${encodeURIComponent(t.pc.id)}/accounts/${encodeURIComponent(t.name)}/delete`, {}), `Deleted ${list.length === 1 ? list[0].full : `${list.length} local accounts`}.`));
     }
   }
@@ -613,7 +614,7 @@
   // A computer it's an administrator of, with a take-out button when it was added there directly.
   const pcRow = (c, second, sid = null, name = '') => `<div class="mrow acc-row" data-acc-pc="${esc(c.id)}"><span class="pic small">${svg(c.server ? 'server' : 'monitor')}</span>`
     + `<div class="two"><b>${esc(c.computer)}</b><small>${esc(second)}</small></div>`
-    + `${sid && has('windows.change') && !ready[c.id] ? x(`data-adm-out="${esc(c.id)}" data-sid="${esc(sid)}" data-name="${esc(name)}"`, `Take ${name} out of Administrators on ${c.computer}`) : svg('right', 'acc-go')}</div>`;
+    + `${sid && has('windows.change') && !ready[c.id] ? x(`data-adm-out="${esc(c.id)}" data-sid="${esc(sid)}" data-name="${esc(name)}"`, `Remove ${name} from Administrators on ${c.computer}`) : svg('right', 'acc-go')}</div>`;
   const openRow = (key) => {
     if (panel.shows('admins', key)) {
       panel.close();
@@ -635,16 +636,16 @@
       html = head(r.kind, r.name, r.type)
         + (a ? `<div class="dw-status acc-status">${a.enabled ? chip('Enabled', 'ok') : chip('Disabled', 'off', 'power')}${a.neverExpires ? chip('Password never expires', 'muted') : ''}</div>`
           + `<section class="dw-sec"><div class="dw-sec-head"><h3>Account</h3></div><div class="dw-facts">${fact('Last sign-in', a.lastSignIn ? day(a.lastSignIn) : 'Never')}${fact('Description', a.description)}</div></section>` : '')
-        + (r.kind === 'group' ? section(`People <small>${g ? g.people.length : ''}</small>`, g ? (g.people.length ? `<div class="dw-list">${g.people.map((u) => `<div class="mrow">${pic('user')}`
-          + `<div class="two"><b>${esc(u.name || u.account)}</b><small>${esc(`${prefix(r.name)}\\${u.account}`)}</small></div><span class="acc-chips">${u.enabled ? '' : chip('Disabled', 'off', 'power')}</span></div>`).join('')}</div>` : none('Nobody is in it.'))
-          : none(adm?.groups ? 'It isn’t in this domain, so who is in it isn’t known here.' : 'Active Directory can’t be read from this server, so who is in it isn’t known.')) : '')
-        + section(`Administrator of <small>${r.on.length}</small>`, `<div class="dw-list">${r.on.map((c) => pcRow(c, r.kind === 'local' ? 'Its own account' : 'In its Administrators group', r.sid, r.name)).join('')}</div>`);
+        + (r.kind === 'group' ? section(`Members <small>${g ? g.people.length : ''}</small>`, g ? (g.people.length ? `<div class="dw-list">${g.people.map((u) => `<div class="mrow">${pic('user')}`
+          + `<div class="two"><b>${esc(u.name || u.account)}</b><small>${esc(`${prefix(r.name)}\\${u.account}`)}</small></div><span class="acc-chips">${u.enabled ? '' : chip('Disabled', 'off', 'power')}</span></div>`).join('')}</div>` : none('No members.'))
+          : none(adm?.groups ? 'This group is not in this domain, so its members are not available.' : 'Active Directory cannot be read from this server, so the members are not available.')) : '')
+        + section(`Administrator of <small>${r.on.length}</small>`, `<div class="dw-list">${r.on.map((c) => pcRow(c, r.kind === 'local' ? 'Local account' : 'Member of Administrators', r.sid, r.name)).join('')}</div>`);
     } else {
       const r = personList().find((y) => y.key === key);
       if (!r) return '';
       html = head(r.kind, r.shown, r.name)
         + (r.kind === 'user' && has('ad.view') ? `<div class="dw-bar"><a class="dw-qa" href="#ad/users">${svg('users')}<span>Open Active Directory</span></a></div>` : '')
-        + section(`Administrator of <small>${r.on.length}</small>`, `<div class="dw-list">${r.on.map((o) => pcRow(o.c, r.unread ? 'Who is in it isn’t known here' : how(o), o.direct ? sidOn(o.c, r.name) : null, r.name)).join('')}</div>`);
+        + section(`Administrator of <small>${r.on.length}</small>`, `<div class="dw-list">${r.on.map((o) => pcRow(o.c, r.unread ? 'Members not available' : how(o), o.direct ? sidOn(o.c, r.name) : null, r.name)).join('')}</div>`);
     }
     return html;
   };
@@ -669,11 +670,11 @@
       const key = panel.key;
       const { admOut: pcId, sid, name } = out.dataset;
       const pc = (adm?.computers || []).find((k) => k.id === pcId);
-      sure(`Take ${name} out of Administrators?`, `${name} stops being an administrator of ${pc?.computer || 'that computer'}.`, 'Take out', async () => {
-        R.busy(panel.body, `Asking ${pc?.computer || 'the computer'}`);
+      sure(`Remove ${name} from Administrators?`, `${name} will no longer be an administrator of ${pc?.computer || 'that computer'}.`, 'Remove', async () => {
+        R.busy(panel.body, `Contacting ${pc?.computer || 'the computer'}`);
         try {
           const answer = await send(`/api/windows/${encodeURIComponent(pcId)}/admins`, { remove: [sid] });
-          toast(`${name} is out of Administrators on ${pc?.computer}.`, answer?.warning || '', answer?.warning ? { tone: 'warn' } : {});
+          toast(`${name} removed from Administrators on ${pc?.computer}.`, answer?.warning || '', answer?.warning ? { tone: 'warn' } : {});
         } catch (err) {
           oops(err);
         } finally {

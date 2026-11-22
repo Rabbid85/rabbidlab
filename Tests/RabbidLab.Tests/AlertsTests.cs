@@ -66,7 +66,7 @@ public sealed class AlertsTests : IDisposable
         var gatewayAlert = Assert.Single(app.Mail.Sent);
 
         Assert.Equal("Gateway is down", gatewayAlert.Subject);
-        Assert.Contains(gatewayAlert.Facts, f => f.Label == "Waiting on it" && f.Value == "esxi01 and esxi02");
+        Assert.Contains(gatewayAlert.Facts, f => f.Label == "Dependent sensors" && f.Value == "esxi01 and esxi02");
         Assert.Equal("wait", esxi.GetProperty("status").GetString());
         Assert.Equal("Gateway", esxi.GetProperty("waits").GetString());
 
@@ -89,7 +89,7 @@ public sealed class AlertsTests : IDisposable
         var loop = await admin.PostAsJsonAsync($"/api/sensors/{Named("Gateway").Id}", new { kind = "ping", target = "192.168.2.1", name = "Gateway", dependsOn = Named("Switch").Id });
 
         Assert.Equal(HttpStatusCode.BadRequest, loop.StatusCode);
-        Assert.Contains("depends on it", await loop.Content.ReadAsStringAsync());
+        Assert.Contains("circular dependency", await loop.Content.ReadAsStringAsync());
     }
 
     [Fact]
@@ -158,7 +158,7 @@ public sealed class AlertsTests : IDisposable
         var one = Assert.Single(app.Mail.Sent);
         Assert.Equal("3 sensors are down", one.Subject);
         Assert.Contains(one.Facts, f => f.Label == "Still up" && f.Value == "Switch");
-        Assert.Contains("in one alert with 2 others", await admin.GetStringAsync($"/api/sensors/{Named("Plex").Id}"));
+        Assert.Contains("grouped with 2 other sensors", await admin.GetStringAsync($"/api/sensors/{Named("Plex").Id}"));
     }
 
     [Fact]

@@ -98,7 +98,7 @@
     if (f.type === 'yes') {
       const no = v[0] === false || v[0] === 'false';
       const yes = v[0] === true || v[0] === 'true';
-      return `<select data-r-val="${i}" aria-label="Value">${yes || no ? '' : '<option value="" selected disabled>Pick one</option>'}`
+      return `<select data-r-val="${i}" aria-label="Value">${yes || no ? '' : '<option value="" selected disabled>Select a value</option>'}`
         + `<option value="true"${yes ? ' selected' : ''}>Yes</option><option value="false"${no ? ' selected' : ''}>No</option></select>`;
     }
     if (NO_VALUE.includes(r.op)) return '<span class="flt-none"></span>';
@@ -110,21 +110,21 @@
     if (f.type === 'text') return `<input type="text" data-r-val="${i}" value="${esc(v[0] ?? '')}" aria-label="Value" placeholder="Text" autocomplete="off" spellcheck="false">`;
     // Choices, OUs and groups: picked values as chips, and a box to add more from what the list holds.
     return `<span class="flt-tokens">${v.map((x, j) => `<span class="gchip">${esc(x)}<button type="button" class="chip-x" data-r-unpick="${i}" data-j="${j}" aria-label="Remove ${esc(x)}">${svg('x')}</button></span>`).join('')}`
-      + `<input type="text" list="flt-dl-${i}" data-r-pick="${i}" placeholder="${v.length ? 'Add another' : 'Type or pick'}" autocomplete="off" spellcheck="false" aria-label="Add a value">`
+      + `<input type="text" list="flt-dl-${i}" data-r-pick="${i}" placeholder="${v.length ? 'Add another' : 'Type or select'}" autocomplete="off" spellcheck="false" aria-label="Add a value">`
       + `<datalist id="flt-dl-${i}">${choicesFor(f).filter((c) => !v.includes(c)).map((c) => `<option value="${esc(c)}">`).join('')}</datalist></span>`;
   };
   const drawDraft = () => {
     $('flt-join').value = draft.join;
     $('flt-rules').innerHTML = draft.rules.map((r, i) => {
       const f = fieldOf(draft.fields, r.field);
-      return `<div class="flt-row"><select data-r-field="${i}" aria-label="Field">${f ? '' : '<option value="" selected disabled>Pick a field</option>'}`
+      return `<div class="flt-row"><select data-r-field="${i}" aria-label="Field">${f ? '' : '<option value="" selected disabled>Select a field</option>'}`
         + `${draft.fields.map(([group, items]) => `<optgroup label="${esc(group)}">`
           + `${items.map((x) => `<option value="${esc(x.key)}"${x.key === f?.key ? ' selected' : ''}>${esc(x.label)}</option>`).join('')}</optgroup>`).join('')}</select>`
-        + (f ? `<select data-r-op="${i}" aria-label="Test">${OPS[f.type].map(([k, label]) => `<option value="${k}"${k === r.op ? ' selected' : ''}>${esc(label)}</option>`).join('')}</select>`
-          : `<select data-r-op="${i}" aria-label="Test" disabled><option value="" selected>Test</option></select>`)
+        + (f ? `<select data-r-op="${i}" aria-label="Operator">${OPS[f.type].map(([k, label]) => `<option value="${k}"${k === r.op ? ' selected' : ''}>${esc(label)}</option>`).join('')}</select>`
+          : `<select data-r-op="${i}" aria-label="Operator" disabled><option value="" selected>Operator</option></select>`)
         + `<div class="flt-val">${f ? valueHtml(r, f, i) : '<span class="flt-none"></span>'}</div>`
         + `<button type="button" class="at-more flt-x" data-r-del="${i}" data-tip="Remove" aria-label="Remove this condition">${svg('x')}</button></div>`;
-    }).join('') || '<p class="muted flt-empty">No conditions. Add one to narrow the list.</p>';
+    }).join('') || '<p class="muted flt-empty">No conditions. Add a condition to filter the list.</p>';
     drawDraftCount();
   };
   // How many match as the conditions stand, updated as they're typed.
@@ -220,7 +220,7 @@
     const n = $('fsave-name').value.trim();
     const clash = !!n && naming?.taken(n);
     $('fsave-note').hidden = !clash;
-    $('fsave-note').textContent = clash ? `A filter called ${n} is saved already. Saving replaces it.` : '';
+    $('fsave-note').textContent = clash ? `A filter named ${n} already exists. Saving replaces it.` : '';
     $('fsave-go').disabled = !n;
   };
   const askName = (o) => {
@@ -263,7 +263,7 @@
     yes: [['yes', 'is yes'], ['no', 'is no']],
   };
   const QUICK_BARE = ['empty', 'set', 'past', 'yes', 'no'];
-  const QUICK_BOX = { number: 'A number', days: 'Days', until: 'Days' }; // what the box asks for, where it isn't words
+  const QUICK_BOX = { number: 'Number', days: 'Days', until: 'Days' }; // what the box asks for, where it isn't words
   const UNIT = { within: ' days', olderThan: ' days ago', next: ' days' };
   const opFor = (kind, op) => (QUICK[kind].some(([k]) => k === op) ? op : QUICK[kind][0][0]);
   const HIT = { contains: (t, q) => t.includes(q), notContains: (t, q) => !t.includes(q), is: (t, q) => t === q, isNot: (t, q) => t !== q,
@@ -387,11 +387,11 @@
         el.classList.add('fbar');
         el.innerHTML = `<button type="button" class="tlink" data-fb="load">Load filter${svg('chevron-down', 'chev')}</button>`
           + `<button type="button" class="gcols" data-fb="save" data-tip="Save this filter" aria-label="Save this filter">${svg('save')}</button>`
-          + '<span class="fcombo"><select data-fb="col" aria-label="Column"></select><select data-fb="op" aria-label="Test"></select>'
+          + '<span class="fcombo"><select data-fb="col" aria-label="Column"></select><select data-fb="op" aria-label="Operator"></select>'
           + '<input type="search" data-fb="text" autocomplete="off" spellcheck="false"></span>'
           + `<span class="fchips"></span><button type="button" class="fchip" data-fb="more">${svg('plus')}Add/remove filters</button><span class="grow"></span>`
           + '<button type="button" class="tlink" data-fb="clear" hidden>Clear</button>'
-          + `<button type="button" class="gcols" data-fb="wide" data-tip="Show every filter" aria-label="Show every filter" aria-expanded="false">${svg('chevron-down')}</button>`
+          + `<button type="button" class="gcols" data-fb="wide" data-tip="Show all filters" aria-label="Show all filters" aria-expanded="false">${svg('chevron-down')}</button>`
           + '<div class="fwide" hidden></div>';
         // Typing draws once it pauses: a list can be 1,000 long.
         el.addEventListener('input', (e) => {
@@ -469,7 +469,7 @@
       el.querySelector('.fchips').innerHTML = keys.map((k) => {
         const sel = [...(s.chips[k] || [])];
         return `<button type="button" class="fchip${sel.length ? ' set' : ''}" data-fb="chip" data-k="${esc(k)}"><span>${esc(colOf(k).label)}</span>`
-          + `${sel.length ? `<b class="ell">${esc(sel.length === 1 ? sel[0] : `${sel.length} picked`)}</b>` : ''}${svg('chevron-down', 'chev')}</button>`;
+          + `${sel.length ? `<b class="ell">${esc(sel.length === 1 ? sel[0] : `${sel.length} selected`)}</b>` : ''}${svg('chevron-down', 'chev')}</button>`;
       }).join('') + (advOn ? `<button type="button" class="fchip set" data-fb="adv" data-tip="${esc(words(fields(), s.adv))}">${svg('filter')}<span>Advanced</span><b>${count(fields(), s.adv)} ${count(fields(), s.adv) === 1 ? 'condition' : 'conditions'}</b></button>` : '');
       el.querySelector('[data-fb="clear"]').hidden = !b.any();
     };
@@ -512,8 +512,8 @@
         return `<div class="fw-col" data-k="${esc(k)}"><div class="fw-head">${q == null ? `<span class="ell">${esc(colOf(k).label)}</span>`
           : `<input type="search" data-fwq value="${esc(q)}" placeholder="Find in ${esc(colOf(k).label)}" aria-label="Find in ${esc(colOf(k).label)}" autocomplete="off" spellcheck="false">`}`
           + `<button type="button" class="gcols" data-fb="wfind" data-tip="${q == null ? 'Find a value' : 'Close'}" aria-label="Find a value">${svg(q == null ? 'search' : 'x')}</button></div>`
-          + `<div class="fw-rows">${rows || '<p class="xpick-none">Nothing to pick.</p>'}</div></div>`;
-      }).join('') || '<p class="xpick-none">No filters show. Add some with Add/remove filters.</p>';
+          + `<div class="fw-rows">${rows || '<p class="xpick-none">No values.</p>'}</div></div>`;
+      }).join('') || '<p class="xpick-none">No filters shown. Use Add/remove filters to add some.</p>';
       wide.scrollLeft = left;
       wide.querySelectorAll('.fw-col').forEach((c) => { c.querySelector('.fw-rows').scrollTop = tops[c.dataset.k] || 0; });
     };
@@ -547,7 +547,7 @@
       R.picker.menu(button, [{ head: 'Saved filters' },
         ...(saved.length ? saved.map((f, i) => ({ label: f.name, icon: 'filter', tip: f.what && f.what !== f.name ? f.what : '', run: () => use(f), edit: () => rename(f.name),
           remove: () => { saved.splice(i, 1); keep(`${name()}.saved`, saved.length ? saved : null); } }))
-          : [{ label: 'Nothing saved yet', off: true }]),
+          : [{ label: 'No saved filters', off: true }]),
         ...(fields() ? ['-', { label: 'Advanced filter…', icon: 'columns', on: !!st().adv, run: advanced }] : [])], { key: `load.${name()}` });
     };
     const use = (f) => {
@@ -568,12 +568,12 @@
     const save = () => {
       const s = st();
       const what = say();
-      if (!what) { R.toast('Nothing to save.', 'Pick a filter or search first.'); return; }
+      if (!what) { R.toast('No filter to save.', 'Set a filter or search first.'); return; }
       const f = { what, chips: Object.fromEntries(Object.entries(s.chips).filter(([, set]) => set.size).map(([k, set]) => [k, [...set]])), col: s.col, op: s.op, text: s.text.trim(), adv: s.adv };
       askName({ title: 'Save filter', button: 'Save filter', name: what, what, taken: (n) => savedList().some((g) => same(g.name, n)),
         done: (n) => {
           keep(`${name()}.saved`, [...savedList().filter((g) => !same(g.name, n)), { name: n, ...f }]);
-          R.toast(`${n} is saved.`, 'It is under Load filter.');
+          R.toast('Filter saved.', `${n} is available under Load filter.`);
         } });
     };
     const rename = (old) => {

@@ -3,6 +3,12 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.329', [
+    'Every page refreshes itself while it is open. Lists, counts, side panels and the sidebar update within seconds, and your ticks, filters, open panel and typing are kept.',
+    'Links shows changes made by other people without a refresh.',
+    'Text across the console, the client, Setup and the wiki uses standard admin terms, for example Approve, Pending approval, Access denied, and Passed, Warning and Failed in Domain health.',
+    'Sync uses Active Directory terms: In sync, Replicated 2 changes, 3 changes pending and Unreachable.',
+    'The floating bar on Links has a split Add a link button. Its arrow adds a group.']],
   ['1.1.328', [
     'Sync updates by itself while it is open, so a change made on any domain controller shows up within seconds without a refresh.',
     'Sync keeps the last day of changes listed, so a change that Active Directory copied by itself before you clicked Sync still shows, marked On every DC.',
@@ -1033,6 +1039,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.329': ['2026-11-22', 'feature', 'Every page refreshes itself'],
   '1.1.328': ['2026-11-22', 'fix', 'Sync updates by itself and reads plainly'],
   '1.1.327': ['2026-11-21', 'update', 'A larger News & Changelog heading'],
   '1.1.326': ['2026-11-21', 'update', 'A quiet scroll bar and a news divider'],
@@ -1479,7 +1486,7 @@ const RELEASE_INFO = {
     } else if (left > 60000) {
       if (d.open) d.close(); // used again, here or in another tab
     } else {
-      $('idle-lead').textContent = `Nothing has been clicked or typed in a while. You'll be signed out in ${Math.ceil(left / 1000)} seconds.`;
+      $('idle-lead').textContent = `No activity was detected for a while. You will be signed out in ${Math.ceil(left / 1000)} seconds.`;
       if (!d.open) d.showModal();
     }
   };
@@ -1500,7 +1507,7 @@ const RELEASE_INFO = {
   tabSay(false);
   setInterval(() => tabSay(false), 30000);
   addEventListener('pagehide', () => tabSay(true));
-  const WORDS = { current: 'Up to date', available: 'Update available', waiting: 'Waiting', downloading: 'Downloading', installing: 'Installing', failed: 'Failed' };
+  const WORDS = { current: 'Up to date', available: 'Update available', waiting: 'Pending', downloading: 'Downloading', installing: 'Installing', failed: 'Failed' };
   let last = null;
   let timer = null;
   let product = 'Rabbid Lab'; // the app's name, in the page's sentences
@@ -1767,7 +1774,7 @@ const RELEASE_INFO = {
     const may = has('appearance.brand');
     const at = Brand.swatch(brand.accent);
     $('br-swatches').innerHTML = Brand.SWATCHES.map(([nm, , m], i) => `<button type="button" class="ds-sw" data-accent="${i}" data-color="${m}" title="${nm}" aria-pressed="${at === i}"${may ? '' : ' disabled'}></button>`).join('')
-      + `<label class="ds-sw custom${may ? '' : ' off'}" title="Any colour" aria-pressed="${at === -1}"><input type="color" id="br-custom" value="${Brand.shades(brand.accent)[1] || Brand.SWATCHES[0][2]}"${may ? '' : ' disabled'}></label>`;
+      + `<label class="ds-sw custom${may ? '' : ' off'}" title="Custom colour" aria-pressed="${at === -1}"><input type="color" id="br-custom" value="${Brand.shades(brand.accent)[1] || Brand.SWATCHES[0][2]}"${may ? '' : ' disabled'}></label>`;
     paint($('br-swatches'));
     $('br-name').disabled = !may;
     $('br-tag').disabled = !may;
@@ -1829,7 +1836,7 @@ const RELEASE_INFO = {
     $('br-file').value = '';
     if (!f) return;
     if (f.size > 256 * 1024) {
-      say('br-problem', 'Keep the icon under 256 KB.');
+      say('br-problem', 'The icon must be smaller than 256 KB.');
       return;
     }
     const read = new FileReader();
@@ -1890,9 +1897,9 @@ const RELEASE_INFO = {
     $('upd-line').textContent = line;
   };
   const checked = (iso) => {
-    if (!iso) return 'not checked yet';
+    if (!iso) return 'Never checked';
     const d = new Date(iso);
-    return d.toDateString() === new Date().toDateString() ? `checked today at ${d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : `checked ${when(iso)}`;
+    return d.toDateString() === new Date().toDateString() ? `Last checked today at ${d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : `Last checked ${when(iso)}`;
   };
 
   // An update under way takes the status card's place, and shows in a dialog mid screen: download, install, restart.
@@ -1933,16 +1940,16 @@ const RELEASE_INFO = {
     // Mid screen too: the flask in a ring, the versions, and the steps as dots. Hide puts it away until the next update.
     $('updlg-flask').innerHTML ||= FLASK;
     $('update-dialog').classList.toggle('is-done', done);
-    $('updlg-title').textContent = done ? `Updated to Rabbid Lab ${version}` : `Updating to Rabbid Lab ${version}`;
+    $('updlg-title').textContent = done ? `Rabbid Lab ${version} installed` : `Updating Rabbid Lab to ${version}`;
     $('updlg-vers').hidden = !last?.version;
     $('updlg-from').textContent = last?.version || '';
     $('updlg-to').textContent = version;
-    $('updlg-now').textContent = done ? 'Done. Opening the new version.' : phase === 'install' ? "Installing the update. Rabbid Lab is stopped until it's done."
-      : 'Downloading the update. You can keep using Rabbid Lab until it installs.';
+    $('updlg-now').textContent = done ? 'Update complete. Loading the new version.' : phase === 'install' ? 'Installing the update. Rabbid Lab is unavailable until the installation completes.'
+      : 'Downloading the update. You can keep using Rabbid Lab until the installation starts.';
     const size = dl?.total ? mb(dl.total) : '';
     const notes = [phase === 'download' ? (size && `${mb(dl.got)} of ${size}`) : size,
-      done ? (since ? `took ${secs(Date.now() - since)} s` : '') : phase === 'install' ? 'under a minute' : '',
-      done ? 'opening it now' : 'this page reloads'];
+      done ? (since ? `Completed in ${secs(Date.now() - since)} s` : '') : phase === 'install' ? 'Less than a minute' : '',
+      done ? 'Loading the new version' : 'The page reloads'];
     // How far each step has got: the line into the next dot fills with it.
     const part = [phase === 'download' ? (dl?.total ? dl.got / dl.total : 0) : 1, done ? 1 : phase === 'install' ? Math.max(0, (pct - 66) / 32) : 0];
     ['download', 'install', 'back'].forEach((id, i) => {
@@ -1957,7 +1964,7 @@ const RELEASE_INFO = {
     $('updlg-hide').hidden = done;
     // Counted from when installing began, which every page was told, so they all say the same.
     $('updlg-took').hidden = !(done && since);
-    if (done && since) $('updlg-took').replaceChildren('Took ', Object.assign(document.createElement('b'), { textContent: took(secs(Date.now() - since)) }));
+    if (done && since) $('updlg-took').replaceChildren('Completed in ', Object.assign(document.createElement('b'), { textContent: took(secs(Date.now() - since)) }));
     if (!hid && !$('update-dialog').open) $('update-dialog').showModal();
     const n = Math.min(100, pct);
     const p = `${Math.round(n)}%`;
@@ -1971,8 +1978,8 @@ const RELEASE_INFO = {
       $(`step-${id}`).className = steps[i];
       $(`step-${id}`).textContent = names[i];
     });
-    $('inst-say').textContent = done ? 'Done. This page opens the new version in a moment.'
-      : 'Rabbid Lab is stopped for under a minute while the update installs. This page reloads when it is done.';
+    $('inst-say').textContent = done ? 'Update complete. The new version loads in a moment.'
+      : 'Rabbid Lab is unavailable for less than a minute while the update installs. The page reloads when the installation completes.';
   };
   // The download fills two thirds of the bar; while Rabbid Lab is stopped to install, the bar moves on from when the
   // server said installing began. It says so a few seconds before it stops, so every page open on the console counts
@@ -1987,15 +1994,15 @@ const RELEASE_INFO = {
   // Whether this page can install it: a role that allows it, on a server that installs its own updates (not Docker).
   const mayInstall = (u) => !!u.canInstall && allows('updates.install');
   // What someone who can't install it is told instead: how it gets installed.
-  const whoInstalls = (u) => (!u.canInstall ? 'Update the container to get it.'
-    : u.automatic ? `It installs by itself when nobody is using ${product}.` : 'An admin can install it.');
+  const whoInstalls = (u) => (!u.canInstall ? 'Update the container to install it.'
+    : u.automatic ? `It installs automatically when nobody is using ${product}.` : 'Ask an admin to install it.');
   // The hero says where updating stands in a few words; Settings > Updates has the rest.
   const headline = (u) => ({
-    available: mayInstall(u) ? `Version ${u.available} is ready to install.` : `Version ${u.available} is out. ${whoInstalls(u)}`,
-    waiting: `Version ${u.available} installs in a moment.`,
+    available: mayInstall(u) ? `Version ${u.available} is ready to install.` : `Version ${u.available} is available. ${whoInstalls(u)}`,
+    waiting: `Version ${u.available} will install shortly.`,
     downloading: `Downloading version ${u.available}.`,
     installing: `Installing version ${u.available}.`,
-    failed: `Version ${u.available} didn't install.`,
+    failed: `Version ${u.available} failed to install.`,
   })[u.status] || `${product} is up to date.`;
 
   // unheld: the server answered at once with nothing new, where it was asked to wait for the next step.
@@ -2018,8 +2025,8 @@ const RELEASE_INFO = {
       $(id).classList.toggle('bad', u.status === 'failed');
     }
     // Updates in the top bar: a version on its way says which, as a pill in the accent (red when it didn't install).
-    const TOP = { available: `Update to ${u.available}`, waiting: `${u.available} in a moment`, downloading: `Downloading ${u.available}`,
-      installing: `Installing ${u.available}`, failed: `${u.available} didn't install` };
+    const TOP = { available: `Update to ${u.available}`, waiting: `${u.available} pending`, downloading: `Downloading ${u.available}`,
+      installing: `Installing ${u.available}`, failed: `${u.available} failed to install` };
     $('top-updates').classList.toggle('ready', !!TOP[u.status]);
     $('top-updates').classList.toggle('bad', u.status === 'failed');
     $('top-updates-text').textContent = TOP[u.status] || 'Updates';
@@ -2040,11 +2047,11 @@ const RELEASE_INFO = {
         `From ${u.version}${u.total ? ` · ${mb(u.downloaded || 0)} of ${mb(u.total)}` : ''}`);
     } else bar(null);
     if (u.status === 'available') {
-      card('download', 'ember', `Rabbid Lab ${u.available} is ready`, !mayInstall(u) ? `You have ${u.version}. ${whoInstalls(u)}` : u.automatic
-        ? `You have ${u.version}. The update installs automatically when nobody is using ${product}, or click Install now.`
-        : `You have ${u.version}. Installing takes about a minute, and Rabbid Lab is stopped while it does.`);
-    } else if (u.status === 'waiting') card('clock', 'ember', `Version ${u.available} installs in a moment`, u.message);
-    else if (u.status === 'failed') card('alert', 'bad', `Version ${u.available} didn't install`, u.message);
+      card('download', 'ember', `Rabbid Lab ${u.available} is available`, !mayInstall(u) ? `Installed version: ${u.version}. ${whoInstalls(u)}` : u.automatic
+        ? `Installed version: ${u.version}. The update installs automatically when nobody is using ${product}. To install it now, click Install now.`
+        : `Installed version: ${u.version}. The installation takes about a minute, and Rabbid Lab is unavailable during it.`);
+    } else if (u.status === 'waiting') card('clock', 'ember', `Version ${u.available} will install shortly`, u.message);
+    else if (u.status === 'failed') card('alert', 'bad', `Version ${u.available} failed to install`, u.message);
     else card('check', 'ok', "You're up to date", `Rabbid Lab ${u.version} · ${checked(u.checkedAt)}`);
     $('upd-problem').hidden = !u.problem;
     $('upd-problem').textContent = u.problem || '';
@@ -2092,7 +2099,7 @@ const RELEASE_INFO = {
         installing(last.available);
         schedule(down < 120000 ? 1000 : 3000);
       } else {
-        card('alert', 'bad', "Can't reach the server", 'Retrying automatically.');
+        card('alert', 'bad', 'Server unreachable', 'Retrying automatically.');
         $('hero-updates').textContent = 'Unreachable';
         schedule(down < 30000 ? 1500 : down < 300000 ? 5000 : 15000);
       }
@@ -2122,7 +2129,7 @@ const RELEASE_INFO = {
       const j = await r.json();
       if (!r.ok) {
         $('upd-problem').hidden = false;
-        $('upd-problem').textContent = j.error || r.statusText || `The server answered ${r.status}.`;
+        $('upd-problem').textContent = j.error || r.statusText || `Server returned HTTP ${r.status}.`;
         $('upd-check').disabled = false;
         $('upd-install').disabled = false;
         return;
@@ -2135,7 +2142,7 @@ const RELEASE_INFO = {
       if (can.has('activity.view')) activity();
     } catch (e) {
       $('upd-problem').hidden = false;
-      $('upd-problem').textContent = `Couldn't reach ${product} (${e.message}).`;
+      $('upd-problem').textContent = `Could not connect to ${product} (${e.message}).`;
       $('upd-check').disabled = false;
       $('upd-install').disabled = false;
     }
@@ -2161,8 +2168,91 @@ const RELEASE_INFO = {
     button.disabled = !!last && ['downloading', 'installing'].includes(last.status);
     say('Check for updates');
     button.style.minWidth = '';
-    if (!$('upd-problem').hidden) toast("Couldn't check for updates", $('upd-problem').textContent, { tone: 'warn' });
-    else if (last?.status === 'current') toast('You have the newest version', `${product} ${last.version}.`);
+    if (!$('upd-problem').hidden) toast('Could not check for updates.', $('upd-problem').textContent, { tone: 'warn' });
+    else if (last?.status === 'current') toast("You're up to date.", `${product} ${last.version} is the latest version.`);
+  };
+
+  // --- Pages that keep themselves up to date ----------------------------------------------------------------------
+  // live({ page, read, now, draw, every, hold, areas, key }): reads a page again while it shows; draws only when it differs from now().
+  // It waits out dialogs, menus, drags, hold() and typing in areas() or the panel; a failed read is tried again in 30 seconds.
+  let pressed = false; // a pointer is down: a click, a drag, a selection
+  let lifted = false; // something is being dragged
+  addEventListener('pointerdown', () => { pressed = true; }, true);
+  ['pointerup', 'pointercancel'].forEach((t) => addEventListener(t, () => { pressed = false; }, true));
+  addEventListener('pointermove', (e) => { if (!e.buttons) pressed = false; }, { capture: true, passive: true }); // a let-go the page never heard, as over a drop-down's list
+  addEventListener('dragstart', () => { lifted = true; }, true);
+  ['dragend', 'drop'].forEach((t) => addEventListener(t, () => { lifted = false; }, true));
+  addEventListener('blur', () => { pressed = false; lifted = false; });
+  const TYPED = 'input:not([type="checkbox"], [type="radio"], [type="button"], [data-fb]), textarea, select, [contenteditable="true"]';
+  const showing = (el) => (el.checkVisibility ? el.checkVisibility() : !!el.offsetParent);
+  // The cursor in a field in el, or words in a note or text box there that isn't saved yet.
+  const typedIn = (el) => {
+    const f = document.activeElement;
+    return (!!f && el.contains(f) && f.matches(TYPED))
+      || [...el.querySelectorAll('textarea:not([readonly], [disabled]), [contenteditable="true"]')].some((x) => (x.value ?? x.textContent).trim());
+  };
+  const inTheWay = (areas) => pressed || lifted || !!document.querySelector('dialog[open]:modal, :popover-open')
+    || document.body.matches('.col-dragging, .col-moving, .dw-sizing')
+    || [...document.querySelectorAll('[data-drop]:not([hidden]), .busy-cover')].some(showing) || areas.some(typedIn);
+  // Tables scrolled sideways or down inside els, put back where they were once they're drawn again.
+  const keepScroll = (els, work) => {
+    const all = () => els.map((a) => [a, ...a.querySelectorAll('.table')]);
+    const was = all().map((list) => list.map((x) => [x.scrollLeft, x.scrollTop]));
+    work();
+    all().forEach((list, i) => list.forEach((x, j) => {
+      const [l, t] = was[i][j] || [0, 0];
+      if (l) x.scrollLeft = l;
+      if (t) x.scrollTop = t;
+    }));
+  };
+  const live = (o) => {
+    let timer = 0;
+    let reading = false;
+    const every = () => (typeof o.every === 'function' ? o.every() : o.every);
+    const areas = () => [...(o.areas?.() || []), panel.el.open ? panel.body : null].filter(Boolean);
+    const waits = () => !!o.hold?.() || inTheWay(areas());
+    const text = (x) => JSON.stringify(o.key ? o.key(x) : x);
+    const stop = () => {
+      clearTimeout(timer);
+      timer = 0;
+    };
+    const later = (ms) => {
+      stop();
+      if (o.page() && !document.hidden) timer = setTimeout(tick, ms);
+    };
+    const tick = async () => {
+      stop();
+      if (reading || !o.page() || document.hidden) return;
+      if (waits()) return later(2000);
+      reading = true;
+      let got;
+      try {
+        got = await o.read();
+      } catch {
+        reading = false;
+        return later(30000);
+      }
+      reading = false;
+      if (!o.page() || document.hidden) return;
+      if (waits()) return later(2000); // dropped: read again once nothing is in the way
+      if (text(got) !== text(o.now())) {
+        try {
+          keepScroll((o.areas?.() || []).filter(Boolean), () => o.draw(got));
+        } catch (err) {
+          console.error('Rabbid Lab: drawing what changed went wrong', err);
+        }
+      }
+      return later(every());
+    };
+    document.addEventListener('rabbidlab:show', () => {
+      if (!o.page()) stop();
+      else if (!timer && !reading) later(every());
+    });
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) stop();
+      else if (o.page()) tick();
+    });
+    return { now: tick };
   };
 
   // Settings, Activity log: found on the server, newest first, by day, and a run of the same change by the same person
@@ -2202,7 +2292,7 @@ const RELEASE_INFO = {
     const sub = [g.e.by, g.e.area === 'sign-in' && g.e.from ? `from ${g.e.from}` : label, g.e.detail].filter(Boolean).join(' · ');
     return `<div class="al-row${kid ? ' kid' : ''}"><span class="al-ic" data-color="${colour}">${svg(icon)}</span><span class="al-t"><b>${esc(g.e.title)}</b><span>${esc(sub)}</span></span>`
       + `<span class="al-r">${g.e.result !== 'ok' ? `<span class="al-bad">${g.e.result === 'warning' ? 'Warning' : 'Failed'}</span>` : ''}`
-      + `${n > 1 ? `<button type="button" class="al-x" data-al-open="${esc(key)}" aria-expanded="${al.open.has(key)}" title="The same ${n} times in a row">×${n}</button>` : ''}`
+      + `${n > 1 ? `<button type="button" class="al-x" data-al-open="${esc(key)}" aria-expanded="${al.open.has(key)}" title="Repeated ${n} times">×${n}</button>` : ''}`
       + `<span title="${esc(when(g.e.at))}">${new Date(g.e.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span></span></div>`
       + (n > 1 && al.open.has(key) ? g.items.map((x) => alRow({ e: x }, true)).join('') : '');
   };
@@ -2210,7 +2300,7 @@ const RELEASE_INFO = {
     const page = al.page;
     if (!page) return;
     const kind = alKind();
-    const range = { 1: 'today', 7: 'in the last 7 days', 30: 'in the last 30 days', 0: 'in all' }[al.days];
+    const range = { 1: 'today', 7: 'in the last 7 days', 30: 'in the last 30 days', 0: 'in total' }[al.days];
     $('al-count').innerHTML = `<b>${page.total}</b> ${range}${kind ? ` · ${AL_KINDS[kind][0]}` : ''}${page.problems ? ` · <b>${page.problems}</b> ${page.problems === 1 ? 'problem' : 'problems'}` : ''}`;
     const groups = page.entries.reduce((out, e) => {
       const last = out[out.length - 1];
@@ -2224,24 +2314,37 @@ const RELEASE_INFO = {
       const head = d !== day ? `<p class="al-day">${esc(d)}</p>` : '';
       day = d;
       return head + alRow(g);
-    }).join('') : '<p class="ds-empty">Nothing matches.</p>';
+    }).join('') : '<p class="ds-empty">No matching events.</p>';
     paint($('activity-list'));
     const left = page.total - page.entries.length;
     $('al-more').innerHTML = left > 0 ? `<button type="button" class="ds-btn" data-al-more>Show 50 more</button><span>${left} older</span>` : '';
     document.querySelectorAll('#al-range [data-days]').forEach((b) => b.setAttribute('aria-pressed', String(Number(b.dataset.days) === al.days)));
     document.querySelectorAll('#al-res [data-problems]').forEach((b) => b.setAttribute('aria-pressed', String(!!b.dataset.problems === al.problems)));
   };
-  const activity = async () => {
-    try {
-      al.page = await get(`/api/activity/find?${alQuery(al.count)}`);
-    } catch (err) {
-      $('activity-list').innerHTML = `<p class="ds-empty">${esc(err.message)}</p>`;
-      return;
-    }
-    $('al-who').innerHTML = `<option value="">Anyone</option>${al.page.people.map((p) => `<option${p === al.who ? ' selected' : ''}>${esc(p)}</option>`).join('')}`;
+  let alWho = ''; // the people in the drop-down, so it's only drawn again when they change
+  const alTake = (page) => {
+    al.page = page;
+    const who = `<option value="">All users</option>${page.people.map((p) => `<option${p === al.who ? ' selected' : ''}>${esc(p)}</option>`).join('')}`;
+    if (who !== alWho) $('al-who').innerHTML = alWho = who;
     $('al-export').href = `/api/activity/export?${alQuery(0)}`;
     alDraw();
   };
+  const activity = async () => {
+    try {
+      alTake(await get(`/api/activity/find?${alQuery(al.count)}`));
+    } catch (err) {
+      al.page = null; // what shows is why, so the next read draws
+      $('activity-list').innerHTML = `<p class="ds-empty">${esc(err.message)}</p>`;
+    }
+  };
+  // While the log is open: every 10 seconds, with what it's narrowed to and the rows opened kept.
+  live({
+    page: () => where()[0] === 'settings' && where()[1] === 'activity' && can.has('activity.view'),
+    every: 10000,
+    read: () => get(`/api/activity/find?${alQuery(al.count)}`),
+    now: () => al.page,
+    draw: alTake,
+  });
   const alAgain = () => {
     al.count = 50;
     activity();
@@ -2273,13 +2376,13 @@ const RELEASE_INFO = {
       await window.RabbidLab.askConfirm(j.confirm);
       return send(path, body, true);
     }
-    if (!r.ok) throw Object.assign(new Error(j.error || r.statusText || `The server answered ${r.status}.`), { answer: j });
+    if (!r.ok) throw Object.assign(new Error(j.error || r.statusText || `Server returned HTTP ${r.status}.`), { answer: j });
     return j;
   };
   const get = async (path) => {
     const r = await fetch(path, { headers: { Accept: 'application/json' } });
     const j = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(j.error || r.statusText || `The server answered ${r.status}.`);
+    if (!r.ok) throw new Error(j.error || r.statusText || `Server returned HTTP ${r.status}.`);
     // A plain list that Active Directory cut short says so in a header.
     if (Array.isArray(j)) j.more = r.headers.get('X-More') === 'true';
     return j;
@@ -2314,7 +2417,7 @@ const RELEASE_INFO = {
   // One line of a search list: a picture, a name and a detail.
   const option = (attrs, pic, name, detail) => `<button type="button" class="opt"${attrs}>${pic}<span class="t"><b>${esc(name)}</b><span>${esc(detail || '')}</span></span></button>`;
   // A search box ([data-find]) over a list ([data-drop]) in host: find(text) gets the matches, draw(item, i) a line with data-pick, pick(item) the choice.
-  const dropdown = (host, { find, draw, pick, none = 'Nothing found.' }) => {
+  const dropdown = (host, { find, draw, pick, none = 'No results found.' }) => {
     let timer = null;
     let found = [];
     let asked = 0;
@@ -2371,16 +2474,16 @@ const RELEASE_INFO = {
   // --- The opening screen: the lab's name under the flask, which fills as the console's first reads come back -------
   // Each step is a read the console makes as it opens, the words for what came back, and the permission it needs.
   const BOOT = [
-    { path: '/api/signin', doing: 'Signing you in', said: (j) => j.user?.name || j.user?.username || '' },
-    { path: '/api/links', doing: 'Reading your links', can: 'links.view', said: (j) => `${(j.links || []).length} links` },
+    { path: '/api/signin', doing: 'Signing in', said: (j) => j.user?.name || j.user?.username || '' },
+    { path: '/api/links', doing: 'Loading links', can: 'links.view', said: (j) => `${(j.links || []).length} links` },
     { path: '/api/sensors', doing: 'Checking sensors', can: 'sensors.view', said: (j) => {
       const all = j.sensors || [];
       const up = all.filter((x) => x.status === 'up').length;
       const down = all.filter((x) => x.status === 'down').length;
       return down ? `${up} up, ${down} down` : `${up} up`;
     } },
-    { path: '/api/clients', doing: 'Asking Devices', can: 'seats.view', said: (j) => `${(Array.isArray(j) ? j : []).filter((c) => c.approved && c.online).length} online` },
-    { path: '/api/update', doing: 'Checking for updates', can: 'updates.view', said: (j) => (j.status === 'available' ? `Version ${j.available} is out` : 'Up to date') },
+    { path: '/api/clients', doing: 'Loading devices', can: 'seats.view', said: (j) => `${(Array.isArray(j) ? j : []).filter((c) => c.approved && c.online).length} online` },
+    { path: '/api/update', doing: 'Checking for updates', can: 'updates.view', said: (j) => (j.status === 'available' ? `Version ${j.available} available` : 'Up to date') },
   ];
   const boot = (() => {
     const SEEN = 'rabbidlab.version.seen'; // the version this browser last opened on
@@ -2475,7 +2578,7 @@ const RELEASE_INFO = {
         if (seen && seen !== s.version) news = { version: s.version };
         if (signing || news) {
           playing = true;
-          if (el && news && !el.querySelector('.boot-new')) el.insertAdjacentHTML('beforeend', `<p class="boot-new">Updated to <b>${esc(news.version)}</b></p>`); // shown early by a slow sign-in
+          if (el && news && !el.querySelector('.boot-new')) el.insertAdjacentHTML('beforeend', `<p class="boot-new">Update installed: version <b>${esc(news.version)}</b></p>`); // shown early by a slow sign-in
           this.show();
         }
         draw();
@@ -2488,7 +2591,7 @@ const RELEASE_INFO = {
         el.setAttribute('role', 'status');
         el.innerHTML = `<div class="boot-flask">${FLASK.replace(/<path class="flask-wave"[^>]*\/>/, '<g class="boot-level"><path class="flask-wave" fill="url(#flask-ember)" d="M0 41Q8 37 16 41T32 41T48 41T64 41T80 41T96 41V96H0Z"/></g>')}</div>`
           + `<h1 class="boot-name">${esc(labName)}</h1><p class="boot-step"></p><div class="boot-dots"></div>`
-          + (news ? `<p class="boot-new">Updated to <b>${esc(news.version)}</b></p>` : '');
+          + (news ? `<p class="boot-new">Update installed: version <b>${esc(news.version)}</b></p>` : '');
         document.body.append(el);
         draw();
       },
@@ -2627,13 +2730,13 @@ const RELEASE_INFO = {
       else localStorage.removeItem('rabbidlab.toast');
     } catch { /* this visit only */ }
     toastSettings();
-    toast('Toasts look like this.', 'Pick another to try it.', { action: { label: 'Details', href: '#settings/appearance' } });
+    toast('Toast settings saved.', 'New toasts look like this one.', { action: { label: 'Details', href: '#settings/appearance' } });
   };
   $('toast-at').addEventListener('change', () => toastSet({ at: $('toast-at').value }));
   $('toast-style').addEventListener('change', () => toastSet({ style: $('toast-style').value }));
   $('toast-secs').addEventListener('change', () => toastSet({ secs: Number($('toast-secs').value) }));
   $('toast-reset').addEventListener('click', () => toastSet(null));
-  $('toast-test').addEventListener('click', () => toast('This is a test toast.', `It shows for ${toastPrefs().secs} seconds.`, { action: { label: 'Details', href: '#settings/appearance' } }));
+  $('toast-test').addEventListener('click', () => toast('This is a test toast.', `It closes after ${toastPrefs().secs} seconds.`, { action: { label: 'Details', href: '#settings/appearance' } }));
   toastSettings();
   // Are you sure: a title, what happens, the button's words, and what to do on yes. code: a command shown as it will run;
   // safe: a plain button, for something that isn't destructive; type: a name to type before the button works; info: only
@@ -2676,14 +2779,13 @@ const RELEASE_INFO = {
     }
   };
 
-  // Devices: the computers with the client and everyone signed in, asked again every 30 seconds while it's open.
+  // Devices: the computers with the client and everyone signed in, kept up to date while it's open.
   let dvAt = 'computers'; // which list of the Devices page shows: computers, sessions, or one of devices.js's
   let dvView = 'all'; // and for computers, which view of them
   let dvShown = []; // the rows of the list that shows
   let computers = [];
   let computersRead = false; // /api/clients has answered once
   let dvFailed = ''; // why the last read failed, until one works again
-  let seatTimer = null;
   const ago = (iso) => {
     const s = Math.round((Date.now() - new Date(iso)) / 1000);
     if (s < 60) return 'Now';
@@ -2694,9 +2796,9 @@ const RELEASE_INFO = {
   // An address as people read it: plain IPv4, and this computer's own by name instead of ::1.
   const addr = (a) => (a === '::1' || a === '127.0.0.1' ? 'This server' : (a || '').replace(/^::ffff:/i, ''));
   const stateOf = (c) => (!c.approved ? 'waiting' : c.online ? 'online' : 'offline');
-  const STATE = { online: 'Online', offline: 'Offline', waiting: 'Waiting' };
+  const STATE = { online: 'Online', offline: 'Offline', waiting: 'Pending' };
   // Where a client's error happened (its Problems.cs), as the panel names it.
-  const ERR_AREA = { update: 'Client update', 'windows-update': 'Windows Update', inventory: 'Inventory', connection: 'Reaching this server', orders: 'Jobs and orders', client: 'Client', 'group policy': 'Group Policy' };
+  const ERR_AREA = { update: 'Client update', 'windows-update': 'Windows Update', inventory: 'Inventory', connection: 'Server connection', orders: 'Jobs and commands', client: 'Client', 'group policy': 'Group Policy' };
   // State's pill; Waking for a few minutes after Wake (devices.js), until it comes online.
   const stateLabel = (c) => (stateOf(c) === 'offline' && dvHooks.waking?.(c) ? 'Waking' : STATE[stateOf(c)]);
   const stateCell = (c) => (stateLabel(c) === 'Waking' ? '<span class="state waiting">Waking</span>' : `<span class="state ${stateOf(c)}">${STATE[stateOf(c)]}</span>`);
@@ -2712,21 +2814,21 @@ const RELEASE_INFO = {
   // The Devices page, laid out as Active Directory is: the lists down the left (Computers has views of its own), the
   // banner with four numbers, and the list that's open. Inventory is what each computer's client sent (Inventory.cs).
   const DV_VIEWS = [['all', 'All computers', () => true], ['online', 'Online', (c) => stateOf(c) === 'online'], ['offline', 'Offline', (c) => stateOf(c) === 'offline'],
-    ['waiting', 'Waiting for approval', (c) => stateOf(c) === 'waiting', 'amber'], null,
+    ['waiting', 'Pending approval', (c) => stateOf(c) === 'waiting', 'amber'], null,
     ['updates', 'Needs updates', (c) => c.inventory?.missing > 0, 'amber'], ['restart', 'Needs restart', (c) => !!c.inventory?.restartNeeded, 'amber'],
-    ['disk', 'Low disk space', (c) => c.inventory?.disk != null && c.inventory.disk < 15, 'red'], ['errors', 'Has errors', (c) => c.problems?.length > 0, 'red'], ['behind', 'Older client', (c) => c.behind]];
+    ['disk', 'Low disk space', (c) => c.inventory?.disk != null && c.inventory.disk < 15, 'red'], ['errors', 'Has errors', (c) => c.problems?.length > 0, 'red'], ['behind', 'Client out of date', (c) => c.behind]];
   // A computer's software and Windows updates are in its side panel (Software and Updates tabs), not lists of their own.
-  const DV = { computers: ['Computers', 'monitor', 'Every computer with the client, with views for what needs looking at.'],
-    sessions: ['Signed in now', 'users', 'Everyone signed in to this console.'] };
+  const DV = { computers: ['Computers', 'monitor', 'All computers with the client installed.'],
+    sessions: ['Active sessions', 'users', 'Users signed in to this console.'] };
   const dvStat = (n, icon, label) => `<div><b>${n === null ? '<i class="sk sk-num"></i>' : n}</b><span>${svg(icon)}${esc(label)}</span></div>`;
   // Filter (filter.js) on Computers, and on a list from devices.js that gives its own fields (WMI query). Kept per list
   // until it's cleared or the page is opened again.
   const fld = (key, label, type, get, o = {}) => ({ key, label, type, get, ...o });
   const DV_FIELDS = [
-    ['Computer', [fld('computer', 'Name', 'text', (c) => c.computer), fld('state', 'State', 'choice', (c) => STATE[stateOf(c)]), fld('os', 'Windows', 'choice', (c) => c.os),
+    ['Computer', [fld('computer', 'Name', 'text', (c) => c.computer), fld('state', 'State', 'choice', (c) => STATE[stateOf(c)]), fld('os', 'Operating system', 'choice', (c) => c.os),
       fld('user', 'Signed in', 'choice', (c) => c.user), fld('version', 'Client version', 'choice', (c) => c.version), fld('address', 'Address', 'text', (c) => addr(c.address)),
       fld('lastSeen', 'Last seen', 'days', (c) => c.lastSeen)]],
-    ['Health', [fld('missing', 'Missing updates', 'number', (c) => c.inventory?.missing), fld('restart', 'Needs a restart', 'yes', (c) => !!c.inventory?.restartNeeded),
+    ['Health', [fld('missing', 'Missing updates', 'number', (c) => c.inventory?.missing), fld('restart', 'Restart required', 'yes', (c) => !!c.inventory?.restartNeeded),
       fld('disk', 'Free on C: (%)', 'number', (c) => c.inventory?.disk), fld('started', 'Running since', 'days', (c) => c.inventory?.started)]],
     ['Hardware', [fld('manufacturer', 'Manufacturer', 'choice', (c) => c.inventory?.manufacturer), fld('model', 'Model', 'choice', (c) => c.inventory?.model),
       fld('serial', 'Serial number', 'text', (c) => c.inventory?.serial), fld('processor', 'Processor', 'choice', (c) => c.inventory?.processor),
@@ -2743,10 +2845,18 @@ const RELEASE_INFO = {
     const view = DV_VIEWS.find((v) => v && v[0] === dvView) || DV_VIEWS[0];
     return dvMore[at] ? dvMore[at].rows() : { computers: dvAll().filter(view[2]), sessions: sessionsNow }[at];
   };
+  // The count of computers online and the waiting dot beside Devices in the rail.
+  const seatRail = () => {
+    $('rail-seats').textContent = dvAll().filter((c) => stateOf(c) === 'online').length || '';
+    $('seats-dot').hidden = !dvAll().some((c) => stateOf(c) === 'waiting');
+  };
+  // The open list of devices.js's, and what it was when it was last read and drawn.
+  const dvRows = () => (dvMore[dvAt] && dvMore[dvAt].every !== 0 ? JSON.stringify(dvMore[dvAt].rows()) : '');
+  let dvDrawn = '';
+  let dvLive = false; // drawn again because it was read again on its own
   const drawSeats = () => {
     const n = (f) => dvAll().filter(f).length;
-    $('rail-seats').textContent = n((c) => stateOf(c) === 'online') || '';
-    $('seats-dot').hidden = !n((c) => stateOf(c) === 'waiting');
+    seatRail();
     if (dvMore[dvAt] ? !dvMore[dvAt].can() : dvAt === 'sessions' ? !can.has('sessions.view') : !can.has('seats.view')) dvAt = can.has('seats.view') ? 'computers' : 'sessions';
     for (const id of [...dvPicked]) if (!computers.some((c) => c.id === id)) dvPicked.delete(id);
     const view = DV_VIEWS.find((v) => v && v[0] === dvView) || DV_VIEWS[0];
@@ -2774,7 +2884,7 @@ const RELEASE_INFO = {
     // Placeholders until the computers are read, and a dash if that failed.
     const num = (f) => (computersRead ? n(f) : dvFailed ? '—' : null);
     $('dv-stats').innerHTML = !can.has('seats.view') ? '' : dvStat(num((c) => stateOf(c) === 'online'), 'monitor', 'Online') + dvStat(num((c) => stateOf(c) === 'offline'), 'power', 'Offline')
-      + dvStat(num((c) => stateOf(c) === 'waiting'), 'clock', 'Waiting for approval') + dvStat(num((c) => c.inventory?.missing > 0), 'updates', 'Need updates');
+      + dvStat(num((c) => stateOf(c) === 'waiting'), 'clock', 'Pending approval') + dvStat(num((c) => c.inventory?.missing > 0), 'updates', 'Missing updates');
     // Computers and the lists under it are tabs of one page; any other list has the one tab.
     const dvTab = (href, on, icon, label, count, more = '') => `<a href="${href}"${more}${on ? ' aria-current="true"' : ''}>${svg(icon)}${esc(label)} <small>${count}</small></a>`;
     const under = group === 'computers' ? Object.values(dvMore).filter((m) => m.under === 'computers' && m.can()) : [];
@@ -2785,7 +2895,7 @@ const RELEASE_INFO = {
     for (const [k, id] of [['computers', 'seats-table'], ['sessions', 'sessions-table'],
       ...Object.entries(dvMore).map(([key, more]) => [key, more.table])]) $(id).hidden = k !== dvAt;
     seatsEmpty = dvMore[dvAt] ? dvMore[dvAt].empty()
-      : computers.length ? 'None of the computers are like that right now.' : !computersRead ? "The list couldn't be read." : `No computers yet. Add computers to give people the ${esc(product)} client.`;
+      : computers.length ? 'No computers match this view.' : !computersRead ? 'Could not load the computer list.' : `No computers yet. Click Add computers to install the ${esc(product)} client.`;
     // The filter bar, and the grid's part of the list's bar (Group by, the count, Compact or Relaxed), for the list that shows.
     if (listed) {
       dvBar().draw();
@@ -2849,15 +2959,15 @@ const RELEASE_INFO = {
         cell: (c) => (c.uninstalling ? '<span class="state waiting">Uninstalling</span>'
           : c.removalUntil ? `<span class="state waiting" data-tip="${esc(`Uninstall allowed until ${new Date(c.removalUntil).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`)}">Unlocked</span>`
           : stateCell(c)) },
-      { key: 'os', label: 'Windows', w: 135, on: true, get: (c) => c.os, cell: (c) => `<span class="ell">${esc(c.os || '')}</span>` },
-      { key: 'user', label: 'Signed in', w: 110, on: true, get: (c) => c.user, cell: (c) => (c.user ? `<span class="ell">${esc(c.user)}</span>` : '<span class="nobody">Nobody</span>') },
+      { key: 'os', label: 'Operating system', w: 135, on: true, get: (c) => c.os, cell: (c) => `<span class="ell">${esc(c.os || '')}</span>` },
+      { key: 'user', label: 'Signed in', w: 110, on: true, get: (c) => c.user, cell: (c) => (c.user ? `<span class="ell">${esc(c.user)}</span>` : '<span class="nobody">None</span>') },
       // How many errors its client sent that nobody has cleared (the panel lists them).
       { key: 'problems', label: 'Errors', w: 80, on: true, get: (c) => c.problems?.length || 0, text: (c) => c.problems?.length || '',
         cell: (c) => (c.problems?.length ? `<span class="state bad">${c.problems.length} error${c.problems.length === 1 ? '' : 's'}</span>` : '<span class="muted">-</span>') },
       { key: 'missing', label: 'Updates', w: 90, on: true, get: (c) => c.inventory?.missing ?? -1, text: (c) => c.inventory?.missing ?? '',
         cell: (c) => (c.server ? '<span class="muted">-</span>' : c.inventory?.missing == null ? '<span class="muted">Not checked</span>' : c.inventory.missing ? `<span class="state waiting">${c.inventory.missing} missing</span>` : '<span class="state online">Up to date</span>') },
-      { key: 'restart', label: 'Restart', w: 70, get: (c) => (c.inventory?.restartNeeded ? 1 : 0), text: (c) => (!c.inventory ? '' : c.inventory.restartNeeded ? 'Needed' : 'No'),
-        cell: (c) => (!c.inventory ? '<span class="muted">-</span>' : c.inventory.restartNeeded ? '<span class="state waiting">Needed</span>' : '<span class="muted">No</span>') },
+      { key: 'restart', label: 'Restart', w: 70, get: (c) => (c.inventory?.restartNeeded ? 1 : 0), text: (c) => (!c.inventory ? '' : c.inventory.restartNeeded ? 'Required' : 'No'),
+        cell: (c) => (!c.inventory ? '<span class="muted">-</span>' : c.inventory.restartNeeded ? '<span class="state waiting">Required</span>' : '<span class="muted">No</span>') },
       { key: 'disk', label: 'Free on C:', w: 75, on: true, get: (c) => c.inventory?.disk ?? -1, text: (c) => (c.inventory?.disk == null ? '' : `${c.inventory.disk}%`),
         cell: (c) => (c.inventory?.disk == null ? '<span class="muted">-</span>' : `<span class="${c.inventory.disk < 15 ? 'old' : ''}">${c.inventory.disk}%</span>`) },
       { key: 'uptime', label: 'Uptime', w: 80, get: (c) => ms(c.inventory?.started), text: (c) => (c.inventory?.started ? howLong(c.inventory.started) : ''),
@@ -2866,7 +2976,7 @@ const RELEASE_INFO = {
       // The client's version, or Not installed for this server without it.
       { key: 'version', label: 'Client', w: 95, on: true, get: (c) => (c.server ? '' : c.version), text: (c) => (c.server ? 'Not installed' : c.version || ''),
         cell: (c) => (c.server ? '<span class="muted">Not installed</span>'
-          : `<span class="${c.behind ? 'old' : ''}"${c.behind ? ' data-tip="Older than this server"' : ''}>${esc(c.version || '?')}</span>`) },
+          : `<span class="${c.behind ? 'old' : ''}"${c.behind ? ' data-tip="Out of date"' : ''}>${esc(c.version || '?')}</span>`) },
       { key: 'address', label: 'Address', w: 105, get: (c) => addr(c.address), cell: (c) => `<span class="mono muted ell">${esc(addr(c.address))}</span>` },
       { key: 'mac', label: 'MAC address', w: 135, get: (c) => c.inventory?.mac || '', cell: (c) => `<span class="mono muted ell">${esc(c.inventory?.mac || '-')}</span>` },
       { key: 'model', label: 'Model', w: 180, get: (c) => [c.inventory?.manufacturer, c.inventory?.model].filter(Boolean).join(' ') },
@@ -2891,19 +3001,19 @@ const RELEASE_INFO = {
     el: $('sessions-table'),
     key: 'sessions',
     cols: [
-      { key: 'person', label: 'Person', w: 155, fixed: true, get: (s) => s.name || s.username, cell: (s) => `<b class="ell">${esc(s.name || s.username)}</b>` },
+      { key: 'person', label: 'User', w: 155, fixed: true, get: (s) => s.name || s.username, cell: (s) => `<b class="ell">${esc(s.name || s.username)}</b>` },
       { key: 'username', label: 'Username', w: 120, get: (s) => s.username, cell: (s) => `<span class="mono ell">${esc(s.username)}</span>` },
       { key: 'roles', label: 'Roles', w: 130, on: true, get: (s) => rolesOf(s).map((r) => r.name).join(', '), cell: (s) => `<span class="chips-in">${rolesOf(s).map(chip).join('')}</span>` },
-      { key: 'using', label: 'Using', w: 155, on: true, get: (s) => s.device, cell: (s) => `<span class="ell">${esc(s.device)}</span>` },
+      { key: 'using', label: 'Device', w: 155, on: true, get: (s) => s.device, cell: (s) => `<span class="ell">${esc(s.device)}</span>` },
       { key: 'address', label: 'Address', w: 110, on: true, get: (s) => addr(s.address), cell: (s) => `<span class="mono muted ell">${esc(addr(s.address))}</span>` },
       { key: 'started', label: 'Signed in', w: 135, on: true, get: (s) => ms(s.started), text: (s) => s.started || '', cell: (s) => `<span class="muted">${esc(when(s.started))}</span>` },
       { key: 'lastSeen', label: 'Last seen', w: 75, on: true, get: (s) => ms(s.lastSeen), text: (s) => s.lastSeen || '', cell: (s) => `<span class="muted">${esc(ago(s.lastSeen))}</span>` },
     ],
     // The end of the row is an icon with a hint: a tick for the session this page is in, Sign out for the others.
-    tail: { w: 60, cell: (s) => `<span class="acts">${s.current ? `<span class="sess-here" data-tip="This session" aria-label="This session">${svg('user-check')}</span>`
+    tail: { w: 60, cell: (s) => `<span class="acts">${s.current ? `<span class="sess-here" data-tip="Current session" aria-label="Current session">${svg('user-check')}</span>`
       : s.username === me || can.has('sessions.signout') ? `<button type="button" class="icon" data-end data-tip="Sign out" aria-label="Sign out ${esc(s.name || s.username)}">${svg('logout')}</button>` : ''}</span>` },
     row: (s) => ` data-session="${esc(s.id)}"`,
-    empty: () => (sessionsRead ? 'Nobody is signed in.' : "The list couldn't be read."), loading: () => !sessionsRead && !dvFailed,
+    empty: () => (sessionsRead ? 'No active sessions.' : 'Could not load sessions.'), loading: () => !sessionsRead && !dvFailed,
     redraw: () => drawSessions(sessionsNow),
   }));
   const drawSessions = (list) => {
@@ -2912,13 +3022,12 @@ const RELEASE_INFO = {
     drawSeats();
   };
   const seats = async () => {
-    clearTimeout(seatTimer);
     let failed = '';
     try {
       const none = new Response('[]', { status: 403 });
       const [c, s] = await Promise.all([can.has('seats.view') ? fetch('/api/clients', { headers: { Accept: 'application/json' } }) : none,
         fetch('/api/sessions', { headers: { Accept: 'application/json' } })]);
-      const why = async (r) => (await r.json().catch(() => ({}))).error || `The server answered ${r.status}.`;
+      const why = async (r) => (await r.json().catch(() => ({}))).error || `Server returned HTTP ${r.status}.`;
       if (c.ok) {
         computers = await c.json();
         computersRead = true;
@@ -2936,9 +3045,47 @@ const RELEASE_INFO = {
     dvFailed = failed;
     if (failed || was) seatProblem(failed);
     if (failed || was || dvMore[dvAt]) drawSeats();
-    if (where()[0] === 'seats') seatTimer = setTimeout(seats, 30000);
+    dvDrawn = dvRows();
   };
   const seatProblem = (text) => say('seats-problem', text);
+  // While Devices is open: every 10 seconds, or a list's own every (Printers, a minute). The tick, the panel and the filters stay.
+  live({
+    page: () => where()[0] === 'seats' && pageOk('seats'),
+    every: () => dvMore[dvAt]?.every || 10000,
+    read: async () => {
+      const [c, s] = await Promise.all([can.has('seats.view') ? get('/api/clients') : null, can.has('sessions.view') ? get('/api/sessions') : null]);
+      if (dvMore[dvAt]?.every !== 0) await dvMore[dvAt]?.load();
+      return { c, s, rows: dvRows(), failed: '' };
+    },
+    now: () => ({ c: can.has('seats.view') ? computers : null, s: can.has('sessions.view') ? sessionsNow : null, rows: dvDrawn, failed: dvFailed }),
+    draw: (got) => {
+      if (got.c) [computers, computersRead] = [got.c, true];
+      if (got.s) [sessionsNow, sessionsRead] = [got.s, true];
+      if (dvFailed) {
+        dvFailed = '';
+        seatProblem('');
+      }
+      dvDrawn = got.rows;
+      dvLive = true;
+      try {
+        drawSeats();
+      } finally {
+        dvLive = false;
+      }
+    },
+    areas: () => ['seats-table', 'sessions-table', dvMore[dvAt]?.table].filter(Boolean).map($),
+  });
+  // Anywhere else, the computers every minute: the count and the waiting dot in the rail.
+  live({
+    page: () => where()[0] !== 'seats' && can.has('seats.view'),
+    every: 60000,
+    read: () => get('/api/clients'),
+    now: () => computers,
+    draw: (c) => {
+      [computers, computersRead] = [c, true];
+      seatRail();
+    },
+  });
   // Add computers: the quiet install line with this server's address and its public key fingerprint in it.
   let joining = null;
   const drawJoining = () => {
@@ -2947,8 +3094,8 @@ const RELEASE_INFO = {
     if (joining.fingerprint) parts.push(`FINGERPRINT=${joining.fingerprint}`);
     $('install-line').textContent = parts.join(' ');
     $('msi-link').hidden = !joining.msi;
-    $('get-client').textContent = joining.msi ? 'Download it and run it, or install it quietly from a command line or Intune:'
-      : 'Get the client from the Rabbid Lab release on GitHub, then install it quietly from a command line or Intune:';
+    $('get-client').textContent = joining.msi ? 'Download and run the installer, or install it silently from a command line or Intune:'
+      : 'Download the client from the Rabbid Lab release on GitHub, then install it silently from a command line or Intune:';
     $('policy-link').hidden = !joining.policy;
     $('fingerprint-row').hidden = !joining.fingerprint;
     $('fingerprint').textContent = joining.fingerprint || '';
@@ -3013,7 +3160,7 @@ const RELEASE_INFO = {
   };
   const joined = (seat) => {
     clearInterval(hereTimer);
-    $('here-text').textContent = seat.approved ? `${seat.computer} is connected.` : `${seat.computer} is waiting for approval. Approve it under Devices.`;
+    $('here-text').textContent = seat.approved ? `${seat.computer} connected.` : `${seat.computer} connected. Approve it under Devices.`;
     $('here-download').hidden = true;
     $('here-connect').hidden = true;
     setTimeout(() => { $('herebar').hidden = true; }, 12000);
@@ -3148,7 +3295,7 @@ const RELEASE_INFO = {
       $('avatar-big').textContent = letters;
       $('menu-roles').innerHTML = (top.length ? top : u.roles || []).map(chip).join('');
       paint($('menu-roles'));
-      const [howIcon, how, where2] = u.source === 'ad' ? ['globe', 'Signed in with Active Directory', dc ? `${domain} · through ${dc.split('.')[0].toUpperCase()}` : domain]
+      const [howIcon, how, where2] = u.source === 'ad' ? ['globe', 'Signed in with Active Directory', dc ? `${domain} · via ${dc.split('.')[0].toUpperCase()}` : domain]
         : u.source === 'windows' ? ['monitor', 'Signed in with a Windows account', `On ${u.domain}`] : ['server', 'Signed in with a local account', 'Stored on this server'];
       $('menu-how-icon').firstElementChild.setAttribute('href', `#i-${howIcon}`);
       $('menu-how').textContent = how;
@@ -3166,7 +3313,7 @@ const RELEASE_INFO = {
         if (!r.ok) throw new Error(r.statusText);
         s = await r.json();
       } catch {
-        $('hero-state').textContent = `Can't reach ${product}. Trying again.`;
+        $('hero-state').textContent = `Could not connect to ${product}. Retrying.`;
         started();
         setTimeout(start, 5000);
         return;
@@ -3192,7 +3339,7 @@ const RELEASE_INFO = {
       location.replace('/signin.html');
     });
     status().catch(() => {
-      $('st-facts').textContent = "Couldn't be read.";
+      $('st-facts').textContent = 'Could not load server information.';
       for (const id of ['hero-version', 'hero-uptime']) if ($(id).querySelector('.sk')) $(id).textContent = '—';
     });
     $('viewas-stop').addEventListener('click', () => viewAs(null));
@@ -3229,7 +3376,7 @@ const RELEASE_INFO = {
       if (opened) seats(); // its list is read as it opens
     });
     $('dv-export').addEventListener('click', () => dvGrid().csv(dvShown, `devices-${dvAt === 'computers' ? `computers-${dvView}` : dvAt}`));
-    $('dv-refresh').addEventListener('click', () => refresh($('dv-refresh'), $('dv-lib'), 'Reading the list again…', seats));
+    $('dv-refresh').addEventListener('click', () => refresh($('dv-refresh'), $('dv-lib'), 'Refreshing…', seats));
     // A row opens its computer in the side panel; the row's own buttons do what they say. Uninstall opens the panel too.
     const seatAct = async (c, what, body) => {
       let said = null;
@@ -3238,7 +3385,7 @@ const RELEASE_INFO = {
         seatProblem('');
       } catch (err) {
         seatProblem(err.message);
-        if (panel.is('seats')) toast("That didn't work.", err.message, { tone: 'warn' });
+        if (panel.is('seats')) toast(`Could not complete the action on ${c.computer}.`, err.message, { tone: 'warn' });
       }
       return said;
     };
@@ -3257,6 +3404,7 @@ const RELEASE_INFO = {
     // One computer in the side panel: what it is, approving or removing it, and uninstalling its client. The client is
     // locked on the computer until it's allowed here, for an hour, or its uninstall code is entered there.
     let seat = null;
+    let seatDrawn = { html: '', head: null }; // the panel as drawn last
     let seatCode = null; // its uninstall code once Show code was clicked: { code, held }
     let seatTab = 'summary'; // Summary, Software or Updates
     let seatInv = null; // its whole inventory once the server answered: { inventory }, where inventory is null when it has sent none
@@ -3266,9 +3414,9 @@ const RELEASE_INFO = {
     const drawSeat = () => {
       const st = stateOf(seat);
       // This server has no client: nothing to approve, remove or uninstall, and no inventory yet.
-      const facts = seat.server ? [['Windows', seat.os || 'Unknown'], ['Address', 'This server'], [productName, seat.version || '?']]
-        : [['Windows', seat.os || 'Unknown'], ['Signed in', seat.user || 'Nobody'], ['Client', `${seat.version || '?'}${seat.behind ? ' (older than this server)' : ''}`],
-          ['Address', addr(seat.address)], ['Last seen', ago(seat.lastSeen)], ['Joined', when(seat.joined)],
+      const facts = seat.server ? [['Operating system', seat.os || 'Unknown'], ['Address', 'This server'], [productName, seat.version || '?']]
+        : [['Operating system', seat.os || 'Unknown'], ['Signed in', seat.user || 'None'], ['Client', `${seat.version || '?'}${seat.behind ? ' (out of date)' : ''}`],
+          ['Address', addr(seat.address)], ['Last seen', ago(seat.lastSeen)], ['First connected', when(seat.joined)],
           seat.approved ? ['Approved', `${when(seat.approved)}${seat.approvedBy ? ` by ${seat.approvedBy}` : ''}`] : null].filter(Boolean);
       // Approve, then the Actions menu (devices.js), which has Remove from Devices too.
       const acts = (st === 'waiting' && can.has('seats.approve') ? `<button type="button" class="small primary" data-seat-approve>${svg('check')}Approve</button>` : '')
@@ -3276,21 +3424,21 @@ const RELEASE_INFO = {
       const open = !!seat.removalUntil;
       const lock = st === 'waiting' || seat.server || !can.has('seats.remove') ? ''
         : `<section class="dw-sec"><div class="dw-sec-head"><h3>Uninstall the client</h3><span class="seat-lock${open ? ' open' : ''}">${svg(open ? 'check' : 'lock')}${open ? `Allowed until ${esc(clock(seat.removalUntil))}` : 'Locked'}</span></div>`
-          + `<p class="dw-how">${open ? 'Someone at the computer can uninstall the client now, from Rabbid Lab Client or from Installed apps in Windows.' : "The client can't be uninstalled on the computer until you allow it here, or its uninstall code is entered there."}</p>`
+          + `<p class="dw-how">${open ? 'The client can now be uninstalled on the computer from Rabbid Lab Client or from Installed apps in Windows.' : 'The client cannot be uninstalled on the computer until you allow it here or someone enters the uninstall code on the computer.'}</p>`
           + `<div class="seat-acts"><button type="button" data-seat-allow>${open ? 'Lock again' : 'Allow for an hour'}</button>`
           + `<button type="button" class="danger" data-seat-now${seat.uninstalling ? ' disabled' : ''}>${svg('trash')}${seat.uninstalling ? 'Uninstalling' : 'Uninstall now'}</button></div></section>`
           + `<section class="dw-sec"><div class="dw-sec-head"><h3>Uninstall code</h3>${seatCode ? '' : `<button type="button" class="small" data-seat-code>${svg('eye')}Show code</button>`}</div>`
           + (seatCode ? `<div class="seat-code"><code>${esc(seatCode.code)}</code>${caCopy(seatCode.code)}</div>`
-            + `<p class="dw-how${seatCode.held ? '' : ' warn'}">${seatCode.held ? 'On the computer, open Rabbid Lab Client, click Uninstall and enter this code. It allows uninstalling for an hour.'
-              : "This computer hasn't received its code yet. It gets it the next time it checks in, with client 1.1.152 or later."}</p>`
-            : `<p class="dw-how">For when the computer can't reach this server. Entered on the computer, it allows uninstalling for an hour.</p>`) + '</section>';
+            + `<p class="dw-how${seatCode.held ? '' : ' warn'}">${seatCode.held ? 'On the computer, open Rabbid Lab Client, click Uninstall and enter this code. Uninstalling is then allowed for 1 hour.'
+              : 'This computer has not received its code yet. It receives the code at its next check-in (client 1.1.152 or later).'}</p>`
+            : `<p class="dw-how">Use this code when the computer cannot connect to this server. Entering it on the computer allows uninstalling for 1 hour.</p>`) + '</section>';
       // What its client sent: the hardware on Summary, and a tab each for its software and its Windows updates.
       const inv = seatInv?.inventory;
       const list = (rows2) => `<div class="dw-list seat-list">${rows2.map(([a, b, tone]) => `<div class="mrow"><div class="two"><b>${esc(a)}</b><small>${esc(b)}</small></div>${tone ? `<span class="state ${tone[0]}">${esc(tone[1])}</span>` : ''}</div>`).join('')}</div>`;
       const none = (text) => `<p class="muted dw-empty">${esc(text)}</p>`;
       // Placeholder rows until the server answers; then why there's nothing.
-      const waitingFor = !seatInv ? '<div data-seat-skel></div>' : none(seatInv.error ? `What this computer sent couldn't be read. ${seatInv.error}`
-        : "This computer hasn't sent its inventory yet. It does within half an hour of being approved, with client 1.1.165 or later.");
+      const waitingFor = !seatInv ? '<div data-seat-skel></div>' : none(seatInv.error ? `Could not read the inventory from this computer. ${seatInv.error}`
+        : 'No inventory received yet. Computers send their inventory within 30 minutes of approval (client 1.1.165 or later).');
       const section = (title, body, right = '') => `<section class="dw-sec"><div class="dw-sec-head"><h3>${title}</h3>${right}</div>${body}</section>`;
       const facts2 = (rows2) => `<ul class="does">${rows2.filter(Boolean).map(([k, v]) => `<li><b>${esc(k)}</b><span>${esc(v)}</span></li>`).join('')}</ul>`;
       const tabs = st === 'waiting' ? '' : `<div class="tabs2 dw-tabs" role="tablist">${[['summary', 'Summary', ''],
@@ -3298,24 +3446,24 @@ const RELEASE_INFO = {
         .map(([t, label, count]) => `<a role="tab" data-seat-tab="${t}"${seatTab === t ? ' aria-current="true"' : ''}>${label}${count === '' || count === 0 ? '' : ` <small>${count}</small>`}</a>`).join('')}</div>`;
       const hardware = seat.server ? '' : !inv ? (st === 'waiting' ? '' : section('Hardware', waitingFor)) : section('Hardware', facts2([
         ['Model', [inv.manufacturer, inv.model].filter(Boolean).join(' ') || 'Unknown'], inv.serial && ['Serial number', inv.serial], inv.processor && ['Processor', inv.processor],
-        inv.memory ? ['Memory', gb(inv.memory)] : null, inv.started && ['Uptime', howLong(inv.started)], ['Restart', inv.restartNeeded ? 'Needed, to finish installing something' : 'Not needed'],
+        inv.memory ? ['Memory', gb(inv.memory)] : null, inv.started && ['Uptime', howLong(inv.started)], ['Restart', inv.restartNeeded ? 'Required to finish an installation' : 'Not required'],
         ...inv.disks.map((d) => [`Drive ${d.name}`, d.total ? `${Math.round(100 * d.free / d.total)}% free of ${gb(d.total)}` : 'Unknown'])]));
       // Its network cards, and whether Windows lets the wired one wake it (Wake in devices.js).
       const wired = (inv?.nics || []).filter((n) => n.kind === 'wired');
-      const fix = 'Run the built-in script Turn on Wake-on-LAN on it while it is on. The BIOS has to allow waking from the network too (often Power On By PCI-E, or Wake on LAN), with ErP or deep sleep off.';
-      const wol = !wired.length ? ['Wi-Fi only', "Most Wi-Fi cards can't wake a computer. A network cable can."]
-        : wired.some((n) => n.wake === true) ? ['Allowed in Windows', '']
-        : wired.every((n) => n.wake === false) ? ['Off in Windows', fix] : ['Not known', ''];
+      const fix = 'While the computer is on, run the built-in script Enable Wake-on-LAN. Wake from network must also be enabled in the BIOS (often Power On By PCI-E or Wake on LAN), with ErP and deep sleep disabled.';
+      const wol = !wired.length ? ['Wi-Fi only', 'Most Wi-Fi adapters cannot wake a computer. Use a wired connection.']
+        : wired.some((n) => n.wake === true) ? ['Enabled in Windows', '']
+        : wired.every((n) => n.wake === false) ? ['Disabled in Windows', fix] : ['Unknown', ''];
       // From shut down (clients from 1.1.204): Fast startup, or the card's own switch, stop most computers waking.
       const card = wired.find((n) => n.wakeOff != null);
-      const off = !wired.length ? null : inv?.fastStartup ? ['Stopped by Fast startup', fix] : card ? (card.wakeOff ? ['Allowed in Windows', ''] : ['Off in the network card', fix]) : null;
+      const off = !wired.length ? null : inv?.fastStartup ? ['Blocked by Fast startup', fix] : card ? (card.wakeOff ? ['Enabled in Windows', ''] : ['Disabled on the network adapter', fix]) : null;
       const how = wol[1] || off?.[1] || '';
-      const network = seat.server || !inv ? '' : !inv.nics ? section('Network', none('Its network cards show here once its client is on 1.1.195 or later.'))
+      const network = seat.server || !inv ? '' : !inv.nics ? section('Network', none('Network adapters appear here with client 1.1.195 or later.'))
         : section('Network', facts2([...inv.nics.map((n) => [n.name || (n.kind === 'wifi' ? 'Wi-Fi' : 'Ethernet'), [n.mac, n.ip].filter(Boolean).join(' · ')]),
-          [off ? 'Wake from sleep' : 'Wake-on-LAN', wol[0]], off && ['Wake from off', off[0]]])
+          [off ? 'Wake from sleep' : 'Wake-on-LAN', wol[0]], off && ['Wake from shutdown', off[0]]])
           + (how ? `<p class="dw-how">${esc(how)}</p>` : ''));
       // This server without the client: putting it on gives it everything the other computers have.
-      const here = !seat.server ? '' : section('Manage it like the other computers', `<p class="dw-how">${hereStarted ? `The ${esc(productName)} client is being installed on this server. It shows up as a normal row within a minute or two.` : `Install the ${esc(productName)} client on this server, from Actions, to see its hardware, software and Windows updates here, and to run scripts, updates, restarts and WMI queries on it. It's approved straight away and keeps itself up to date.`}</p>`);
+      const here = !seat.server ? '' : section('Install the client on this server', `<p class="dw-how">${hereStarted ? `The ${esc(productName)} client is being installed on this server. The server appears in the list within a few minutes.` : `Install the ${esc(productName)} client on this server from Actions to view its hardware, software and Windows updates, and to run scripts, updates, restarts and WMI queries. The client is approved automatically and updates itself.`}</p>`);
       const more = st === 'waiting' ? null : dvHooks.seatPane?.(seat, seatTab);
       // Errors its client sent: what, where, when last and how often, with Clear for whoever may act on computers.
       const errs = seat.problems || [];
@@ -3326,21 +3474,25 @@ const RELEASE_INFO = {
       const pane = more != null ? more : st === 'waiting' || seatTab === 'summary' ? errors + section('Details', facts2(facts)) + hardware + network + here + lock
         : !inv ? section(seatTab === 'software' ? 'Installed software' : 'Windows updates', waitingFor)
         : seatTab === 'software' ? section(`Installed software <small>${inv.software.length}</small>`, inv.software.length
-          ? `<label class="side-find seat-find"><svg><use href="#i-search"/></svg><input type="search" id="seat-sw-find" placeholder="Find software" aria-label="Find software" autocomplete="off" spellcheck="false" value="${esc(swFind)}"></label><div class="table" id="seat-sw"></div>` : none('Nothing is listed.'))
-        : section(`Windows updates <small>${inv.missingChecked ? `${inv.missing.filter((u) => !u.definition).length} missing` : ''}</small>`, (!inv.missingChecked ? none("Windows Update hasn't answered on this computer yet. It's asked every six hours.")
-          : `<p class="dw-how">Windows Update was asked ${esc(when(inv.missingChecked))}. It's asked again every six hours, or now with Check for updates under Actions. Antivirus definitions are listed but not counted.</p>`)
-          + (!inv.history && inv.updates.length ? `<p class="dw-how">Update names show once its client is on 1.1.203 or later. Until then it's what Windows lists by number.</p>` : '')
+          ? `<label class="side-find seat-find"><svg><use href="#i-search"/></svg><input type="search" id="seat-sw-find" placeholder="Find software" aria-label="Find software" autocomplete="off" spellcheck="false" value="${esc(swFind)}"></label><div class="table" id="seat-sw"></div>` : none('No software found.'))
+        : section(`Windows updates <small>${inv.missingChecked ? `${inv.missing.filter((u) => !u.definition).length} missing` : ''}</small>`, (!inv.missingChecked ? none('Windows Update has not reported on this computer yet. Updates are checked every 6 hours.')
+          : `<p class="dw-how">Last checked ${esc(when(inv.missingChecked))}. Updates are checked every 6 hours, or on demand with Actions &gt; Check for updates. Antivirus definitions are listed but not counted.</p>`)
+          + (!inv.history && inv.updates.length ? `<p class="dw-how">Update names appear with client 1.1.203 or later. Earlier clients report KB numbers only.</p>` : '')
           + `<div class="table" id="seat-upd"></div>`);
       // Its name with what can be done to it at the end (Approve, then Actions), and under it the facts looked at first.
       const model = [inv?.manufacturer, inv?.model].filter(Boolean).join(' ');
       const missing = inv?.missingChecked ? inv.missing.filter((u) => !u.definition).length : null;
       const strip = [['State', `<span class="state ${stateLabel(seat) === 'Waking' ? 'waiting' : st}">${seat.server ? 'This server' : stateLabel(seat)}</span>`],
-        seat.server ? null : ['Signed in', seat.user ? esc(seat.user) : '<span class="muted">Nobody</span>'], ['Windows', esc(seat.os || 'Unknown')],
+        seat.server ? null : ['Signed in', seat.user ? esc(seat.user) : '<span class="muted">None</span>'], ['Operating system', esc(seat.os || 'Unknown')],
         seat.server || missing === null ? null : ['Updates', missing ? `<span class="state waiting">${missing} missing</span>` : '<span class="state">Up to date</span>'],
         seat.server ? null : ['Last seen', esc(ago(seat.lastSeen))]].filter(Boolean).map(([l, v]) => `<div><span class="l">${l}</span><span class="v">${v}</span></div>`).join('');
-      panel.body.innerHTML = `<div class="dw-head"><span class="pic dw-pic">${svg(seat.server ? 'server' : 'monitor')}</span><div class="dw-name"><h2 id="dw-title">${esc(seat.computer)}</h2>`
+      const html = `<div class="dw-head"><span class="pic dw-pic">${svg(seat.server ? 'server' : 'monitor')}</span><div class="dw-name"><h2 id="dw-title">${esc(seat.computer)}</h2>`
         + `${model ? `<p>${esc(model)}</p>` : ''}</div>${acts ? `<div class="dw-do">${acts}</div>` : ''}<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`
         + `<div class="dw-strip">${strip}</div>${tabs}${pane}`;
+      // Devices read again with nothing new for this computer: the panel stays as it is.
+      if (dvLive && html === seatDrawn.html && seatDrawn.head && panel.body.contains(seatDrawn.head)) return;
+      panel.body.innerHTML = html;
+      seatDrawn = { html, head: panel.body.querySelector('.dw-head') };
       // Placeholder rows where something is still being read (devices.js's Jobs tab uses them too).
       panel.body.querySelectorAll('[data-seat-skel]').forEach((el) => skeleton(el, 'rows', 3));
       if (more == null && inv && seatTab === 'software') drawSoftware();
@@ -3354,7 +3506,7 @@ const RELEASE_INFO = {
       const q = swFind.trim().toLowerCase();
       const rows = seatInv.inventory.software.filter((p) => !q || `${p.name} ${p.publisher || ''}`.toLowerCase().includes(q));
       window.RabbidLab.grid({
-        el, key: 'seat-software', headButton: true, sort: { key: 'name', dir: 1 }, redraw: drawSoftware, empty: 'Nothing matches.',
+        el, key: 'seat-software', headButton: true, sort: { key: 'name', dir: 1 }, redraw: drawSoftware, empty: 'No matching software.',
         cols: [
           { key: 'name', label: 'Name', w: 180, fixed: true, get: (p) => p.name },
           { key: 'version', label: 'Version', w: 95, on: true, get: (p) => p.version || '' },
@@ -3373,7 +3525,7 @@ const RELEASE_INFO = {
         : inv.updates.map((u) => ({ title: [u.kind, u.kb].filter(Boolean).join(' '), kb: u.kb, state: 'installed', date: u.installed }));
       const rows = [...(inv.missingChecked ? inv.missing.map((u) => ({ title: u.title || u.kb, kb: u.kb, state: u.definition ? 'definition' : 'missing', date: null })) : []), ...done];
       window.RabbidLab.grid({
-        el, key: 'seat-updates', headButton: true, sort: { key: 'date', dir: -1 }, redraw: drawUpdates, empty: 'Nothing is listed.',
+        el, key: 'seat-updates', headButton: true, sort: { key: 'date', dir: -1 }, redraw: drawUpdates, empty: 'No updates found.',
         cols: [
           { key: 'title', label: 'Update', w: 245, fixed: true, get: (r) => r.title },
           { key: 'state', label: 'State', w: 85, on: true, get: (r) => (UPD_STATE[r.state] || ['', r.state])[1], cell: (r) => `<span class="state ${(UPD_STATE[r.state] || ['offline'])[0]}">${esc((UPD_STATE[r.state] || ['', r.state])[1])}</span>` },
@@ -3420,11 +3572,11 @@ const RELEASE_INFO = {
       try {
         await send('/api/clients/install-here');
         hereStarted = true;
-        toast(`Installing the client on ${seat.computer}.`, 'It joins by itself and shows up as a normal row within a minute or two.');
+        toast(`Installing the client on ${seat.computer}.`, 'The computer connects automatically and appears in the list within a few minutes.');
         drawSeat();
         for (const s of [20, 45, 90, 150]) setTimeout(() => seats(), s * 1000);
       } catch (err) {
-        toast("That didn't work.", err.message, { tone: 'warn' });
+        toast('Could not install the client.', err.message, { tone: 'warn' });
       }
     };
     // It's in this server's Actions menu (devices.js).
@@ -3478,7 +3630,7 @@ const RELEASE_INFO = {
         drawSeat();
         seats();
       } else if (on('allow')) lockTo({ allow: !seat.removalUntil });
-      else if (on('now')) sure(`Uninstall the client on ${seat.computer}?`, 'The client removes itself from the computer within a minute.', 'Uninstall', () => lockTo({ allow: true, now: true }));
+      else if (on('now')) sure(`Uninstall the client on ${seat.computer}?`, 'The client is uninstalled from the computer within a minute.', 'Uninstall', () => lockTo({ allow: true, now: true }));
       else if (on('code')) {
         seatCode = (await seatAct(seat, 'code')) || seatCode;
         drawSeat();
@@ -3501,7 +3653,7 @@ const RELEASE_INFO = {
       try {
         joining = await get('/api/clients/settings');
       } catch (err) {
-        $('get-client').textContent = `The install line couldn't be read (${err.message}). Close this and try again.`;
+        $('get-client').textContent = `Could not load the install command (${err.message}). Close this window and try again.`;
         return;
       }
       drawJoining();
@@ -3577,7 +3729,7 @@ const RELEASE_INFO = {
     // A group's heading: its name and count, and for people who may change it the handle, sort, pencil and bin.
     const heading = (g, n) => {
       if (renaming?.name === g) {
-        return `<div class="lhead"><input class="lrename" maxlength="40" value="${esc(renaming.text)}" aria-label="Name of the group">`
+        return `<div class="lhead"><input class="lrename" maxlength="40" value="${esc(renaming.text)}" aria-label="Group name">`
           + '<button type="button" class="small primary" data-rename-save>Save</button><button type="button" class="link" data-rename-cancel>Cancel</button></div>';
       }
       const tools = g && o.can()
@@ -3612,7 +3764,7 @@ const RELEASE_INFO = {
       } else if (b.dataset.gdelete) {
         const name = b.dataset.gdelete;
         const n = o.count(name);
-        sure(`Delete the group ${name}?`, n ? `Its ${n === 1 ? `${o.thing} is` : `${n} ${o.thing}s are`} kept, with no group.` : `It has no ${o.thing}s.`, 'Delete group',
+        sure(`Delete group ${name}?`, n ? `${n === 1 ? `The ${o.thing} in this group is` : `The ${n} ${o.thing}s in this group are`} kept without a group.` : `This group has no ${o.thing}s.`, 'Delete group',
           () => change(`${o.api}/delete`, { name }));
       }
     });
@@ -3714,7 +3866,7 @@ const RELEASE_INFO = {
       heading,
       // Somewhere to drop a tile to take it out of its group, when the page shows nothing with no group. Seen only during a drag.
       out: (shown) => (o.move && o.can() && o.names().length && !shown
-        ? `<section class="lgroup lout" data-name=""><div class="lhead"><h2>No group</h2></div><p class="hint lnone">Drop it here to take it out of its group.</p></section>` : ''),
+        ? `<section class="lgroup lout" data-name=""><div class="lhead"><h2>No group</h2></div><p class="hint lnone">Drop here to remove it from its group.</p></section>` : ''),
       // A drag or a name being typed is under way: the page leaves the list alone until it's done.
       busy: () => !!(renaming || dragging || moving),
       // After a draw, the group under the pointer keeps its tools, and the name being typed gets the cursor back.
@@ -3762,8 +3914,10 @@ const RELEASE_INFO = {
         return null;
       }
     };
-    const [s, who, upd, dir, links, sensors, seats] = await Promise.all([ask('/api/status'), ask('/api/signin'), ask('/api/update/watch'), ask('/api/ad', has('ad.view') || has('ad.connect')),
-      ask('/api/links', has('links.view')), ask('/api/sensors', has('sensors.view')), ask('/api/clients', has('seats.view'))]);
+    // Updates, links, sensors and computers come from what the console already keeps up to date, once it has them.
+    const R = window.RabbidLab;
+    const [s, who, upd, dir, links, sensors, seats] = await Promise.all([ask('/api/status'), ask('/api/signin'), last || ask('/api/update/watch'), ask('/api/ad', has('ad.view') || has('ad.connect')),
+      R?.linksNow?.() || ask('/api/links', has('links.view')), R?.sensorsNow?.() || ask('/api/sensors', has('sensors.view')), computersRead ? computers : ask('/api/clients', has('seats.view'))]);
     const list = [];
     const add = (label, value) => { if (value != null && value !== '') list.push([label, value]); };
     const since = s ? Math.max(0, Date.now() - new Date(s.startedAt).getTime()) / 3600000 : 0;
@@ -3776,9 +3930,9 @@ const RELEASE_INFO = {
     add('Running since', s && `${when(s.startedAt)} (${since < 1 ? count(Math.round(since * 60), 'minute') : since < 48 ? count(Math.round(since), 'hour') : count(Math.round(since / 24), 'day')})`);
     add('Data folder', s?.dataFolder);
     add('Sign-in', who && (who.domain ? `Active Directory, ${who.domain}${who.server ? ` (domain controller ${who.server})` : ''}` : 'Local accounts only'));
-    add('Service account', dir && (dir.state ? `${dir.state.account} in ${dir.state.domain}, ${dir.state.made ? 'created by Rabbid Lab' : 'an existing account'}, scope ${dir.state.scopeName}` : 'Not set up'));
+    add('Service account', dir && (dir.state ? `${dir.state.account} in ${dir.state.domain}, ${dir.state.made ? 'created by Rabbid Lab' : 'an existing account'}, scope ${dir.state.scopeName}` : 'Not configured'));
     add('Updates', upd && `${{ current: 'Up to date', available: 'Update available', downloading: 'Downloading', installing: 'Installing', failed: 'Last update failed' }[upd.status] || upd.status}`
-      + `${upd.available ? ` (${upd.available})` : ''}, checked ${upd.checkedAt ? when(upd.checkedAt) : 'never'}`);
+      + `${upd.available ? ` (${upd.available})` : ''}${upd.checkedAt ? `, last checked ${when(upd.checkedAt)}` : ', never checked'}`);
     add('Devices', Array.isArray(seats) ? `${seats.length} computer${seats.length === 1 ? '' : 's'}, ${seats.filter((c) => c.online).length} online` : null);
     add('Links', links && `${count(links.links.length, 'link')} in ${count(links.groups?.length || 0, 'group')}`);
     add('Sensors', sensors && `${count(sensors.sensors.length, 'sensor')}, ${sensors.sensors.filter((x) => x.status === 'down').length} down`);
@@ -3790,19 +3944,34 @@ const RELEASE_INFO = {
     const list = [...await facts(), ['Page', location.origin], ['Browser', navigator.userAgent.replace(/^Mozilla\/5\.0 /, '')], ['Copied', new Date().toString().replace(/ \(.*\)$/, '')]];
     return `\`\`\`\n${list.map(([label, value]) => `${`${label}:`.padEnd(17)}${value}`).join('\n')}\n\`\`\``;
   };
-  // This machine, on the Overview: in two columns, filled each time the page is shown.
-  const machine = async () => {
-    const list = await facts();
-    if (!list.length) return;
+  // This machine, on the Overview: in two columns, filled each time the page is shown and kept up to date while it is.
+  let machineNow = null;
+  const drawMachine = (list) => {
+    machineNow = list;
     const half = Math.ceil(list.length / 2);
     const column = (rows) => `<dl class="facts">${rows.map(([label, value]) => `<dt>${esc(label)}</dt><dd>${esc(value)}</dd>`).join('')}</dl>`;
     $('st-facts').innerHTML = column(list.slice(0, half)) + column(list.slice(half));
   };
+  const machine = async () => {
+    const list = await facts();
+    if (list.length) drawMachine(list);
+  };
   document.addEventListener('rabbidlab:show', (e) => { if (e.detail[0] === 'overview') machine(); });
   document.addEventListener('rabbidlab:me', () => { if (where()[0] === 'overview') machine(); });
+  live({
+    page: () => where()[0] === 'overview' && pageOk('overview'),
+    every: 30000,
+    read: async () => {
+      const list = await facts();
+      if (!list.some(([label]) => label === 'Product')) throw new Error('The server didn\'t answer.'); // kept as it was
+      return list;
+    },
+    now: () => machineNow,
+    draw: drawMachine,
+  });
   $('about-open').addEventListener('click', async () => {
     $('about-copy').textContent = 'Copy';
-    $('about-text').textContent = 'Gathering…';
+    $('about-text').textContent = 'Loading…';
     $('about-dialog').showModal();
     $('about-text').textContent = await about();
   });
@@ -3844,8 +4013,8 @@ const RELEASE_INFO = {
     const off = mine ? c.hidden || [] : [];
     $('ca-list').innerHTML = list.map((a) => caRow(caIcon(a.what), esc(a.url) + (a.url.toLowerCase() === here ? '<small class="ds-scope">This page</small>' : ''), esc(a.what),
       (a.name || a.hide) && mine ? `<span class="ds-pair">${remove(a)}${caCopy(a.url)}</span>` : caCopy(a.url))).join('')
-      + (off.length ? caRow('eye', `${off.length === 1 ? '1 address' : `${off.length} addresses`} taken off the list`, esc(`${off.map((a) => new URL(a.url).hostname).join(', ')}. The console still answers there.`),
-        `<button type="button" class="ds-btn" data-addr-show>${off.length === 1 ? 'Show it' : 'Show them'}</button>`) : '');
+      + (off.length ? caRow('eye', `${off.length === 1 ? '1 address' : `${off.length} addresses`} hidden`, esc(`${off.map((a) => new URL(a.url).hostname).join(', ')}. The console is still reachable at ${off.length === 1 ? 'this address' : 'these addresses'}.`),
+        `<button type="button" class="ds-btn" data-addr-show>${off.length === 1 ? 'Show' : 'Show all'}</button>`) : '');
     $('ca-add').hidden = !c.canAdd || !has('console.address');
     // Port 80 shared with another web server (IIS): only the console's own names come here.
     const named = (c.redirectNames || []).filter((n) => n.works).map((n) => `http://${n.name}`);
@@ -3861,40 +4030,40 @@ const RELEASE_INFO = {
       ? caRow('alert', 'Not using HTTPS', "The console is served over HTTP, so traffic to it isn't encrypted. Run Setup again to add a certificate.", '', { tone: 'warn' })
       : !cert ? caRow('alert', 'Certificate not found', "The certificate in console.json isn't in the certificate store, or it has expired.", '', { tone: 'bad' })
       : caRow('shield', esc(cert.subject) + (cert.selfSigned ? '<span class="ca-tag warn">Self-signed</span>' : ''), cert.selfSigned
-        ? "Other computers show a warning until it's trusted. Deploy it to Trusted Root Certification Authorities with Group Policy."
+        ? 'Other computers show a certificate warning until the certificate is trusted. Deploy it to Trusted Root Certification Authorities with Group Policy.'
         : `Issued by ${esc(cert.issuer)}.`, `<span class="ds-v">Expires ${caDate(cert.expires)}</span>`, { tone: cert.selfSigned ? 'warn' : 'ok' })
         + caRow('key', 'SHA-256 fingerprint', fp, `<span class="ds-pair">${caGet('/api/console/certificate')}${caCopy(fp)}</span>`, { cls: 'ds-code' })
         // The added addresses have certificates of their own, so the one above never changes. In a domain, one signed by this
         // install's certificate authority, which other computers trust once. Short names and names outside the domain get a
         // self-signed one, trusted on this computer, made again with each one added or removed.
-        + (!c.authority ? '' : caRow('shield', 'Certificate authority', (c.signed ? `Signed the certificate for ${esc(c.signed.names.join(', '))}. ` : '')
-          + `It can sign only for names in ${esc(c.authority.limitedTo[0] || 'this domain')}. Trusted on this computer. Other computers open those addresses without a warning once it's in their Trusted Root Certification Authorities.`,
+        + (!c.authority ? '' : caRow('shield', 'Certificate authority', (c.signed ? `Issued the certificate for ${esc(c.signed.names.join(', '))}. ` : '')
+          + `Can issue certificates only for names in ${esc(c.authority.limitedTo[0] || 'this domain')}. Trusted on this computer. Other computers open these addresses without a warning after it is added to their Trusted Root Certification Authorities.`,
           `<span class="ds-v">Expires ${caDate(c.authority.expires)}</span>${caGet('/api/console/certificate?authority=true')}`, { tone: 'ok' })
-          + caRow('monitor', 'Every domain computer', `Download it, then run this once on a domain controller as an Enterprise Admin: ${esc(caPublish(c))}. Computers trust it after their next Group Policy refresh.`,
+          + caRow('monitor', 'All domain computers', `Download it, then run this once on a domain controller as an Enterprise Admin: ${esc(caPublish(c))}. Computers trust it after their next Group Policy refresh.`,
             caCopy(caPublish(c))))
         + (!c.local ? '' : caRow('shield', c.authority ? 'For the other added addresses' : 'For the addresses added here',
           c.authority ? `Self-signed, for ${esc(c.local.names.join(', '))}. Trusted on this computer only. From other computers, use the full name.`
-            : 'Made again when one is added or removed, and deleted with the last. Trust it on other computers too, as above.',
+            : 'Recreated when an address is added or removed, and deleted with the last one. Trust it on other computers as described above.',
           `<span class="ds-v">Expires ${caDate(c.local.expires)}</span>${caGet('/api/console/certificate?names=true')}`, { tone: 'warn' }));
     const refused = (c.redirectNames || []).find((n) => !n.works);
     const moved = !c.redirectPort ? ''
       : !c.redirectTaken ? `Requests to port ${c.redirectPort} are redirected here.`
       : named.length ? `Port ${c.redirectPort} is shared with another web server. ${goes} here.`
-      : refused ? `Port ${c.redirectPort} redirect is on, but ${refused.problem.charAt(0).toLowerCase() + refused.problem.slice(1)}`
-      : `Port ${c.redirectPort} redirect is on, but another program has port ${c.redirectPort}. Add a host name of its own to redirect just that name.`;
+      : refused ? `Port ${c.redirectPort} redirect is enabled, but ${refused.problem.charAt(0).toLowerCase() + refused.problem.slice(1)}`
+      : `Port ${c.redirectPort} redirect is enabled, but another program is using port ${c.redirectPort}. Add a dedicated host name to redirect only that name.`;
     // The same console on port 443 as well, so https://name needs no port typed (ConsoleAlso.cs).
     const also = c.also?.can ? c.also : null;
     // A full name to show it by, when there is one: that's what people type.
     const nice = new URL((list.find((a) => /^[a-z]/i.test(new URL(a.url).hostname) && new URL(a.url).hostname.includes('.')) || list[0]).url).hostname;
-    const alsoHelp = !also ? '' : also.taken ? `It's turned on, but another program on this server has port ${also.port}, so the console isn't answering there.`
-      : also.listening ? `On. The console also opens at https://${nice} with no port typed. Computers in Devices keep using port ${c.port}.`
-        : `Turn it on to open the console at https://${nice} with no port typed. Port ${c.port} keeps working.`;
-    $('ca-net').innerHTML = caRow('plug', 'Port', esc(moved) || `${c.scheme.toUpperCase()}, on every address above.`, `<span class="ds-v">${c.port}</span>`)
+    const alsoHelp = !also ? '' : also.taken ? `Enabled, but another program on this server is using port ${also.port}, so the console is not listening on it.`
+      : also.listening ? `Enabled. The console also opens at https://${nice} without a port number. Computers in Devices continue to use port ${c.port}.`
+        : `Enable this to open the console at https://${nice} without a port number. Port ${c.port} continues to work.`;
+    $('ca-net').innerHTML = caRow('plug', 'Port', esc(moved) || `${c.scheme.toUpperCase()} on all addresses above.`, `<span class="ds-v">${c.port}</span>`)
       + (also ? caRow('plug', `Port ${also.port}`, esc(alsoHelp),
-        `<input type="checkbox" class="switch" id="ca-443" role="switch" aria-label="Also answer on port ${also.port}"${also.wanted ? ' checked' : ''}${mine ? '' : ' disabled'}>`, { tone: also.taken ? 'warn' : '' }) : '')
+        `<input type="checkbox" class="switch" id="ca-443" role="switch" aria-label="Also listen on port ${also.port}"${also.wanted ? ' checked' : ''}${mine ? '' : ' disabled'}>`, { tone: also.taken ? 'warn' : '' }) : '')
       + (c.firewall == null ? '' : caRow('lock', 'Windows Firewall', c.firewall
         ? `Inbound on port ${c.port}${also?.listening ? ` and ${also.port}` : ''}, Domain and Private profiles.`
-        : `Setup didn't add a rule. Other computers connect only if a rule allows port ${c.port}${also?.listening ? ` and ${also.port}` : ''}.`,
+        : `Setup did not add a firewall rule. Other computers can connect only if a rule allows port ${c.port}${also?.listening ? ` and ${also.port}` : ''}.`,
         `<span class="ds-v">${c.firewall ? 'Allowed' : 'No rule'}</span>`, { tone: c.firewall ? 'ok' : 'warn' }));
     $('ca-setup').hidden = !c.installed;
   };
@@ -3902,19 +4071,19 @@ const RELEASE_INFO = {
   // to go and come back, then reads itself again.
   const alsoPort = (on, box) => {
     box.checked = !on; // as it is, until it's really changed
-    sure(on ? 'Answer on port 443 too?' : 'Stop answering on port 443?',
-      on ? `The console opens at https://${location.hostname} with no port typed. Port ${ca.port} keeps working, and the computers in Devices keep using it. ${productName} restarts, which takes a few seconds.`
-        : `https://${location.hostname} with no port stops working. Port ${ca.port} stays. ${productName} restarts, which takes a few seconds.`,
-      on ? 'Turn on' : 'Turn off', async () => {
+    sure(on ? 'Also listen on port 443?' : 'Stop listening on port 443?',
+      on ? `The console will open at https://${location.hostname} without a port number. Port ${ca.port} continues to work, and computers in Devices continue to use it. ${productName} restarts, which takes a few seconds.`
+        : `https://${location.hostname} without a port number will stop working. Port ${ca.port} is not affected. ${productName} restarts, which takes a few seconds.`,
+      on ? 'Enable' : 'Disable', async () => {
         const host = $('ca-net').closest('.ds-sec') || $('ca-net');
         try {
           const done = await send('/api/console/443', { on });
           if (!done.restarting) {
-            toast(on ? 'Saved. Port 443 starts with the next restart.' : 'Saved. Port 443 stops with the next restart.', `${productName} isn't running as a service here, so restart it yourself.`);
+            toast(on ? 'Saved. Port 443 is enabled after the next restart.' : 'Saved. Port 443 is disabled after the next restart.', `${productName} is not running as a service here. Restart it manually.`);
             consoleAddress();
             return;
           }
-          busy(host, `Restarting ${productName}`, 'This page comes back by itself.');
+          busy(host, `Restarting ${productName}`, 'The page reconnects when the server is back.');
           // Gone, then back: asked every second for up to a minute.
           const answers = async () => {
             try {
@@ -3934,7 +4103,7 @@ const RELEASE_INFO = {
           location.reload();
         } catch (err) {
           busy(host, '');
-          toast("That didn't work.", err.message, { tone: 'warn' });
+          toast('Could not change the port 443 setting.', err.message, { tone: 'warn' });
           consoleAddress();
         }
       });
@@ -3958,7 +4127,7 @@ const RELEASE_INFO = {
     }
     // The icon turns into a tick for a moment; if the browser wouldn't copy, a toast says how.
     b.innerHTML = svg(ok ? 'check' : 'copy');
-    if (!ok) toast("Couldn't copy.", 'Select it and press Ctrl+C.', { tone: 'warn' });
+    if (!ok) toast('Could not copy to the clipboard.', 'Select the text and press Ctrl+C.', { tone: 'warn' });
     setTimeout(() => { b.innerHTML = svg('copy'); }, 1500);
   };
   $('ca-page').addEventListener('click', copyClick);
@@ -4006,8 +4175,8 @@ const RELEASE_INFO = {
     const ours = !adding && !!gone?.dns;
     $('nm-dns').hidden = !domain || (!adding && !ours);
     $('nm-dns').innerHTML = !domain ? '' : adding
-      ? nmRow('Add it to DNS', `A CNAME for ${esc(nmFull || `name.${domain}`)} pointing to this computer, added on a domain controller. Removing the address takes it out again.`, nmDns, 'Add it to DNS')
-      : nmRow('Take it out of DNS', `Its alias (CNAME), which ${esc(product)} added ${esc(gone?.dns?.replace(/^an alias in DNS /, '') || '')}. Leave it there if something else uses the name.`, nmDns, 'Take it out of DNS');
+      ? nmRow('Add to DNS', `Creates a CNAME record for ${esc(nmFull || `name.${domain}`)} that points to this computer, on a domain controller. Removing the address deletes the record.`, nmDns, 'Add to DNS')
+      : nmRow('Remove from DNS', `The CNAME record that ${esc(product)} added ${esc(gone?.dns?.replace(/^an alias in DNS /, '') || '')}. Keep it if something else uses this name.`, nmDns, 'Remove from DNS');
     const record = adding && !domain;
     $('nm-rec').hidden = !record;
     if (record) {
@@ -4017,7 +4186,7 @@ const RELEASE_INFO = {
     }
     if (record) {
       $('nm-dns').hidden = false;
-      $('nm-dns').innerHTML = nmLine('warn', "This computer isn't in a domain. Add the record below on whatever answers DNS for your network, such as your router, Pi-hole or AdGuard Home.");
+      $('nm-dns').innerHTML = nmLine('warn', 'This computer is not joined to a domain. Add the record below to the DNS server for your network, such as your router, Pi-hole or AdGuard Home.');
     }
     const login = !!domain && nmDns && (adding || ours);
     $('nm-user-wrap').hidden = $('nm-pw-wrap').hidden = $('nm-lock').hidden = !login;
@@ -4026,15 +4195,15 @@ const RELEASE_INFO = {
     const https = ca?.scheme === 'https';
     $('nm-cert-head').hidden = $('nm-cert').hidden = !https;
     $('nm-cert').querySelector('span').textContent = adding
-      ? `Added addresses get a certificate of their own, so this computer doesn't warn about ${nmFull || 'the name'}. The console's own certificate doesn't change. Download the new one afterwards to trust it on other computers.`
-      : 'The added addresses\' certificate is made again without it.';
+      ? `Added addresses get their own certificate, so this computer does not show a warning for ${nmFull || 'the name'}. The console certificate does not change. To trust the new certificate on other computers, download it afterwards.`
+      : 'The certificate for added addresses is recreated without this name.';
     $('nm-check').hidden = !adding;
     $('nm-check').textContent = domain ? 'Check' : 'Check now';
     $('nm-download').hidden = !done || !https || !ca?.namesCertificate;
     $('nm-cancel').textContent = done ? 'Close' : 'Cancel';
     $('nm-go').hidden = false;
     $('nm-go').className = !adding && !done ? 'danger' : 'primary';
-    $('nm-go').textContent = done ? (nmName ? 'Done' : `Open ${nmFull}`) : adding ? 'Add the address' : 'Remove';
+    $('nm-go').textContent = done ? (nmName ? 'Done' : `Open ${nmFull}`) : adding ? 'Add address' : 'Remove';
   };
   // As the name is typed: its full name, and where it leads now from this computer.
   const nmLook = async () => {
@@ -4049,10 +4218,10 @@ const RELEASE_INFO = {
       if ($('nm-name').value.trim() !== name) return;
       nmFull = r.full;
       if (r.problem) nmShow('bad', r.problem);
-      else if (r.leads === 'here') nmShow('ok', 'Already leads to this computer. Adding it gives it a certificate.');
-      else if (r.leads === 'elsewhere') nmShow('bad', `Leads to ${r.where} now. Pick another name, or change that record first.`);
-      else if (ca?.domain) nmShow('ok', 'Nothing answers to it yet. Check looks it up in DNS with the account below.');
-      else nmShow('info', 'Nothing answers to it yet. Add the record below, then Check now shows when it works.');
+      else if (r.leads === 'here') nmShow('ok', 'Already resolves to this computer. Adding it creates a certificate for it.');
+      else if (r.leads === 'elsewhere') nmShow('bad', `Currently resolves to ${r.where}. Choose another name, or change that record first.`);
+      else if (ca?.domain) nmShow('ok', 'This name does not resolve yet. Click Check to look it up in DNS with the account below.');
+      else nmShow('info', 'This name does not resolve yet. Add the record below, then click Check now to test it.');
     } catch (err) {
       say('nm-problem', err.message);
       nmShow('', '');
@@ -4070,7 +4239,7 @@ const RELEASE_INFO = {
     say('nm-problem', '');
     const a = (ca?.addresses || []).find((x) => x.name === name);
     $('nm-title').textContent = name ? `Remove ${a ? new URL(a.url).hostname : name}` : 'Add an address';
-    $('nm-lead').textContent = name ? 'It stops opening the console. Its alias comes out of DNS when you say so.' : 'A name of your own to open the console by, such as lab or monitor.';
+    $('nm-lead').textContent = name ? 'The console will no longer open at this address. You can also remove its CNAME record from DNS.' : 'A custom name for opening the console, such as lab or monitor.';
     nmDraw();
     $('name-dialog').showModal();
     (name ? $('nm-user') : $('nm-name')).focus();
@@ -4082,17 +4251,17 @@ const RELEASE_INFO = {
     // This computer's own name or IP: off the list only, and back with Show them.
     const hide = e.target.closest('[data-addr-hide]');
     if (hide) {
-      sure(`Remove ${hide.dataset.addrHide} from the list?`, 'The console still answers there. Show it, at the bottom of the list, puts it back.', 'Remove', async () => {
+      sure(`Remove ${hide.dataset.addrHide} from the list?`, 'The console remains reachable at this address. To restore it, click Show at the bottom of the list.', 'Remove', async () => {
         try {
           await send('/api/console/names/hide', { name: hide.dataset.addrHide });
           await consoleAddress();
         } catch (err) {
-          toast("That didn't work.", err.message, { tone: 'warn' });
+          toast('Could not remove the address from the list.', err.message, { tone: 'warn' });
         }
       });
     }
     if (e.target.closest('[data-addr-show]')) {
-      send('/api/console/names/show', {}).then(consoleAddress).catch((err) => toast("That didn't work.", err.message, { tone: 'warn' }));
+      send('/api/console/names/show', {}).then(consoleAddress).catch((err) => toast('Could not show the hidden addresses.', err.message, { tone: 'warn' }));
     }
   });
   $('nm-name').addEventListener('input', () => {
@@ -4129,8 +4298,8 @@ const RELEASE_INFO = {
     try {
       const r = await send(nmMode === 'add' ? '/api/console/names' : '/api/console/names/remove', nmForm());
       nmFull = r.full;
-      $('nm-title').textContent = nmMode === 'add' ? `${r.full} is ready` : `${r.full} is removed`;
-      $('nm-lead').textContent = nmMode === 'add' ? `Open the console at ${ca.scheme}://${r.full}:${ca.port} once it answers.` : 'It no longer opens the console.';
+      $('nm-title').textContent = nmMode === 'add' ? `${r.full} added` : `${r.full} removed`;
+      $('nm-lead').textContent = nmMode === 'add' ? `Open the console at ${ca.scheme}://${r.full}:${ca.port} once the name resolves.` : 'The console no longer opens at this address.';
       $('nm-steps').innerHTML = r.steps.map((s) => `<div class="row still nm-step${s.ok ? '' : ' warn'}"><span class="nm-ic">${svg(s.ok ? 'check' : 'alert')}</span>`
         + `<span class="t"><b>${esc(s.title)}</b><span>${esc(s.text)}</span></span></div>`).join('');
       nmMode = 'done';
@@ -4150,7 +4319,7 @@ const RELEASE_INFO = {
   // Where you're signed in: your own sessions, in the menu as a count and in Settings, Account, each with Sign out.
   const mySessions = async () => {
     const r = await fetch('/api/sessions', { headers: { Accept: 'application/json' } });
-    if (!r.ok) throw new Error("Couldn't read where you're signed in.");
+    if (!r.ok) throw new Error('Could not load your sessions.');
     const list = (await r.json()).filter((x) => me && String(x.username).toLowerCase() === me.toLowerCase());
     $('menu-sessions').textContent = list.length || '';
     return list;
@@ -4163,7 +4332,7 @@ const RELEASE_INFO = {
       const local = (a) => (/^(::1|127\.|::ffff:127\.)/.test(a || '') ? 'This computer' : a);
       $('acc-sessions').innerHTML = [...list].sort((a, b) => b.current - a.current).map((x) => `<div class="ds-row" data-session="${esc(x.id)}"><div class="ds-l"><b>${esc(x.device)}${x.current ? '<span class="ds-scope">This browser</span>' : ''}</b>`
         + `<span>${esc([local(x.address), `Signed in ${when(x.started)}`, `last seen ${ago(x.lastSeen)}`].filter(Boolean).join(' · '))}</span></div>`
-        + `<div class="ds-r"><button type="button" class="ds-btn" ${x.current ? 'data-signout' : 'data-end'}>Sign out</button></div></div>`).join('') || '<p class="ds-empty">Nowhere.</p>';
+        + `<div class="ds-r"><button type="button" class="ds-btn" ${x.current ? 'data-signout' : 'data-end'}>Sign out</button></div></div>`).join('') || '<p class="ds-empty">No active sessions.</p>';
     } catch (err) {
       $('acc-sessions').innerHTML = '';
       say('acc-sessions-problem', err.message);
@@ -4191,7 +4360,7 @@ const RELEASE_INFO = {
     say('si-problem', '');
     try {
       const s = await send('/api/settings/signin', { lockAfter: Number($('si-lock').value) });
-      toast('Saved', `A name locks after ${s.lockAfter} wrong passwords.`);
+      toast('Saved.', `Accounts are locked out after ${s.lockAfter} failed sign-in attempts.`);
     } catch (err) {
       say('si-problem', err.message);
     }
@@ -4201,10 +4370,10 @@ const RELEASE_INFO = {
     say('si-locks-problem', '');
     try {
       const { locked, others } = await get('/api/settings/signin/locks');
-      $('si-locks').innerHTML = locked.map((l) => `<div class="ds-row"><div class="ds-l"><b>${esc(l.name)}</b><span>${esc(`Locked ${ago(l.since) === 'Now' ? 'just now' : ago(l.since)} · ${l.wrong} wrong passwords${l.from ? `, the last from ${addr(l.from)}` : ''}`)}</span></div>`
+      $('si-locks').innerHTML = locked.map((l) => `<div class="ds-row"><div class="ds-l"><b>${esc(l.name)}</b><span>${esc(`Locked ${ago(l.since) === 'Now' ? 'just now' : ago(l.since)} · ${l.wrong} failed attempts${l.from ? `, last from ${addr(l.from)}` : ''}`)}</span></div>`
         + `<div class="ds-r"><button type="button" class="ds-btn" data-unlock="${esc(l.key)}" data-name="${esc(l.name)}">Unlock</button></div></div>`).join('');
       $('si-locks-none').hidden = locked.length > 0;
-      $('si-locks-others').textContent = others ? `${others} other name${others === 1 ? ' that is not an account here is' : 's that are not accounts here are'} locked too. They unlock by themselves after a day.` : '';
+      $('si-locks-others').textContent = others ? `${others} other name${others === 1 ? ' that is not an account here is' : 's that are not accounts here are'} also locked out. They unlock automatically after 24 hours.` : '';
       $('si-locks-others').hidden = !others;
     } catch (err) {
       skeleton($('si-locks'), '');
@@ -4214,10 +4383,10 @@ const RELEASE_INFO = {
   $('si-locks').addEventListener('click', (e) => {
     const b = e.target.closest('[data-unlock]');
     if (!b) return;
-    sure(`Unlock ${b.dataset.name}?`, `${b.dataset.name} can sign in again right away, with no wrong passwords counted.`, 'Unlock', async () => {
+    sure(`Unlock ${b.dataset.name}?`, `${b.dataset.name} can sign in again immediately. The failed attempt count is reset.`, 'Unlock', async () => {
       try {
         await send('/api/settings/signin/locks/unlock', { key: b.dataset.unlock });
-        toast(b.dataset.name, 'unlocked');
+        toast('Account unlocked.', b.dataset.name);
       } catch (err) {
         say('si-locks-problem', err.message);
       }
@@ -4228,7 +4397,7 @@ const RELEASE_INFO = {
     say('si-problem', '');
     try {
       idleMin = (await send('/api/settings/signin', { idle: Number($('si-idle').value) })).idle;
-      toast('Saved', idleMin ? `Everyone is signed out after ${$('si-idle').selectedOptions[0].textContent} without activity.` : 'Nobody is signed out for being idle.');
+      toast('Saved.', idleMin ? `Users are signed out after ${$('si-idle').selectedOptions[0].textContent} of inactivity.` : 'Idle sign-out is disabled.');
     } catch (err) {
       say('si-problem', err.message);
     }
@@ -4237,7 +4406,7 @@ const RELEASE_INFO = {
     if (e.target.closest('[data-signout]')) return $('signout').click(); // this browser: the usual sign-out
     const row = e.target.closest('[data-end]') && e.target.closest('[data-session]');
     if (!row) return;
-    busy($('acc-sessions'), 'Signing it out…');
+    busy($('acc-sessions'), 'Signing out the session…');
     try {
       await send(`/api/sessions/${encodeURIComponent(row.dataset.session)}/signout`);
       say('acc-sessions-problem', '');
@@ -4254,14 +4423,14 @@ const RELEASE_INFO = {
   const drawMfa = async () => {
     try {
       mfaNow = await get('/api/mfa');
-      $('acc-mfa-text').textContent = mfaNow.since ? `On since ${when(mfaNow.since)}. Required for everyone.`
-        : 'Not set up. It is required for everyone: set it up now, or your next sign-in asks you to.';
+      $('acc-mfa-text').textContent = mfaNow.since ? `Enabled since ${when(mfaNow.since)}. Required for all users.`
+        : 'Not set up. MFA is required for all users. Set it up now, or you will be prompted at your next sign-in.';
       $('acc-mfa').textContent = mfaNow.since ? 'Move to a new phone' : 'Set up';
       $('acc-mfa').hidden = false;
       // Datto's advice: more than one administrator, so a lost phone isn't a trip to the server.
       const few = Number.isInteger(mfaNow.admins) && mfaNow.admins < 2;
       $('acc-mfa-warn').hidden = !few;
-      $('acc-mfa-warn').textContent = few ? `Only ${mfaNow.admins === 1 ? 'one administrator has' : 'no administrator has'} MFA set up. If that phone is lost, only --reset-mfa on the server gets back in. Give a second person the Administrator role.` : '';
+      $('acc-mfa-warn').textContent = few ? `${mfaNow.admins === 1 ? 'Only one administrator has' : 'No administrator has'} MFA set up. If that phone is lost, the only way back in is --reset-mfa on the server. Assign the Administrator role to a second user.` : '';
     } catch (err) {
       $('acc-mfa-text').textContent = err.message;
     }
@@ -4278,10 +4447,10 @@ const RELEASE_INFO = {
     $('mfa-dialog').dataset.moving = moving ? '1' : '';
     $('mfa-title').textContent = moving ? 'Move to a new phone' : 'Set up MFA';
     $('mfa-lead').textContent = mode === 'off'
-      ? 'First, type a code from the authenticator app on your old phone.'
-      : `${moving ? 'Now scan this with the authenticator app on your new phone' : 'Scan this with an authenticator app, such as Microsoft Authenticator or Google Authenticator'}. Then type the 6-digit code it shows.`;
+      ? 'First, enter a code from the authenticator app on your old phone.'
+      : `${moving ? 'Now scan this QR code with the authenticator app on your new phone' : 'Scan this QR code with an authenticator app, such as Microsoft Authenticator or Google Authenticator'}. Then enter the 6-digit code from the app.`;
     $('mfa-setup').hidden = mode === 'off';
-    $('mfa-save').textContent = mode === 'off' ? 'Next' : 'Turn on';
+    $('mfa-save').textContent = mode === 'off' ? 'Next' : 'Enable';
     $('mfa-save').disabled = false;
     $('mfa-code').value = '';
     say('mfa-problem', '');
@@ -4314,7 +4483,7 @@ const RELEASE_INFO = {
         return;
       }
       $('mfa-dialog').close();
-      toast(moving ? 'MFA moved to the new phone' : 'MFA is on', 'Your next sign-in asks for a code from it.');
+      toast(moving ? 'MFA moved to the new phone.' : 'MFA enabled.', 'Your next sign-in requires a code from the authenticator app.');
       drawMfa();
     } catch (err) {
       say('mfa-problem', err.message);
@@ -4640,8 +4809,8 @@ const RELEASE_INFO = {
 
   // Number boxes: no browser spinner (console.css), and − and + of the console's own beside the box. stepper(attrs)
   // gives the box with its buttons; a click steps it within its min and max, as if typed.
-  const stepper = (attrs) => `<span class="stepper"><button type="button" data-step="down" aria-label="Less">${svg('minus')}</button>`
-    + `<input type="number" ${attrs}><button type="button" data-step="up" aria-label="More">${svg('plus')}</button></span>`;
+  const stepper = (attrs) => `<span class="stepper"><button type="button" data-step="down" aria-label="Decrease">${svg('minus')}</button>`
+    + `<input type="number" ${attrs}><button type="button" data-step="up" aria-label="Increase">${svg('plus')}</button></span>`;
   document.addEventListener('click', (e) => {
     const b = e.target.closest('.stepper [data-step]');
     const box = b?.parentElement.querySelector('input[type="number"]');
@@ -4659,7 +4828,7 @@ const RELEASE_INFO = {
     : `<button type="button" class="primary dw-edit" ${attrs}>${svg('edit')}<span>Edit</span></button>`);
 
   // What the other scripts use. Hints are tips.js and data grids are grid.js.
-  window.RabbidLab = { app: () => product, $, esc, svg, say, initials, when, daysAgo, send, get, keep, forget, has, paint, where, viewAs, place, popups, option, dropdown, sure, newLabel, copy, busy, refresh, groupTools, skeleton, toast, stepper, panel, scatter, editButton,
+  window.RabbidLab = { app: () => product, $, esc, svg, say, initials, when, daysAgo, send, get, keep, forget, has, paint, where, viewAs, place, popups, option, dropdown, sure, newLabel, copy, busy, refresh, live, groupTools, skeleton, toast, stepper, panel, scatter, editButton,
     palette: window.RabbidLabColours.roles, me: () => meInfo,
     // The Devices page, for devices.js: its lists, what's ticked, and drawing or reading it again. failed() is why the
     // last read didn't work, so a list stops waiting for it; reading() is true until the computers are first read.

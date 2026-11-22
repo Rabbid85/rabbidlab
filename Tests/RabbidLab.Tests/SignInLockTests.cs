@@ -181,7 +181,7 @@ public sealed class SignInLockTests : IDisposable
 
         Assert.Equal(HttpStatusCode.Forbidden, alone.StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, badCode.StatusCode);
-        Assert.Equal("That username, password or code is wrong.", (await Said(badCode)).GetProperty("error").GetString());
+        Assert.Equal("The username, password or code is incorrect.", (await Said(badCode)).GetProperty("error").GetString());
         Assert.Equal(SignInLocks.LongestWait, await Wait(badCode)); // five minutes to the next try
         Assert.Equal(HttpStatusCode.TooManyRequests, tooSoon.StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, badPassword.StatusCode);
@@ -393,7 +393,7 @@ public sealed class SignInLockTests : IDisposable
         await Wrong(app.Page(), "made-up-name", 10);
         await watch.Round(CancellationToken.None);
 
-        Assert.Equal(["admin is locked after too many wrong passwords"], app.Mail.Sent.Select(m => m.Subject));
+        Assert.Equal(["admin is locked out after too many failed sign-ins"], app.Mail.Sent.Select(m => m.Subject));
     }
 
     [Fact]

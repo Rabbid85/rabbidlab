@@ -92,7 +92,7 @@ namespace RabbidLab.Setup
         }
 
         private static string Unlocked(string why) =>
-            $"Setup could not uninstall the Rabbid Lab client from this computer ({why}). It is unlocked: uninstall it in Settings > Apps > Installed apps.";
+            $"Setup could not uninstall the Rabbid Lab client from this computer ({why}). Its uninstall lock was removed. Uninstall the client from Settings > Apps > Installed apps.";
 
         private static string Product()
         {

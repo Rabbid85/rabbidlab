@@ -93,11 +93,11 @@ public sealed class ConsoleNames(DataFolder folder, IConsoleDns dns, INamesCerti
         {
             if (!form.Dns)
             {
-                steps.Add(new(false, "Left in DNS", $"The alias {a.Name} is still on {Short(a.Server)}. Take it out there if nothing else uses it."));
+                steps.Add(new(false, "Not removed from DNS", $"The alias {a.Name} is still on {Short(a.Server)}. Remove it there if nothing else uses it."));
             }
             else if (Login(form) is not { } login)
             {
-                return (null, null, "Type the username and password of an account that can change DNS, or leave the alias in DNS.");
+                return (null, null, "Enter the credentials of an account that can manage DNS, or keep the alias in DNS.");
             }
             else
             {
@@ -113,7 +113,7 @@ public sealed class ConsoleNames(DataFolder folder, IConsoleDns dns, INamesCerti
             }
         }
         Install.Forget();
-        steps.Add(new(true, "Taken off this console", "Setup's certificate still lists it, which does no harm."));
+        steps.Add(new(true, "Removed from this console", "The certificate from Setup still includes this name. This is harmless."));
         Changed?.Invoke();
         return (steps, full, null);
     }
@@ -163,17 +163,17 @@ public sealed class ConsoleNames(DataFolder folder, IConsoleDns dns, INamesCerti
     {
         if (!IsDnsName(name))
         {
-            return "Type a name of letters, numbers and hyphens, such as lab or monitor.";
+            return "Enter a name that uses only letters, numbers and hyphens, such as lab or monitor.";
         }
         var full = Full(name);
         var mine = new[] { Environment.MachineName, dns.Target, "localhost", install.Name() ?? "" };
         if (mine.Any(m => m.Length > 0 && (string.Equals(m, name, StringComparison.OrdinalIgnoreCase) || string.Equals(m, full, StringComparison.OrdinalIgnoreCase))))
         {
-            return "That's one of this computer's own names. It's in the list already.";
+            return "This is one of this computer's own names and is already in the list.";
         }
         lock (gate)
         {
-            return file.Read().Names.Any(n => n.Name == name || n.Full == full || n.Full == name) ? $"{name} is in the list already." : null;
+            return file.Read().Names.Any(n => n.Name == name || n.Full == full || n.Full == name) ? $"{name} is already in the list." : null;
         }
     }
 
@@ -208,11 +208,11 @@ public sealed class ConsoleNames(DataFolder folder, IConsoleDns dns, INamesCerti
         }
         if (dns.Domain is null)
         {
-            return (false, "This computer isn't in a domain, so the name has to be added on your DNS server.");
+            return (false, "This computer is not joined to a domain. Add the name on your DNS server.");
         }
         if (Login(form) is not { } login)
         {
-            return (false, "Type the username and password of an account that can change DNS.");
+            return (false, "Enter the credentials of an account that can manage DNS.");
         }
         try
         {
@@ -240,11 +240,11 @@ public sealed class ConsoleNames(DataFolder folder, IConsoleDns dns, INamesCerti
         {
             if (dns.Domain is null)
             {
-                return (null, null, "This computer isn't in a domain, so the name has to be added on your DNS server.");
+                return (null, null, "This computer is not joined to a domain. Add the name on your DNS server.");
             }
             if (Login(form) is not { } login)
             {
-                return (null, null, "Type the username and password of an account that can change DNS.");
+                return (null, null, "Enter the credentials of an account that can manage DNS.");
             }
             try
             {
@@ -283,11 +283,11 @@ public sealed class ConsoleNames(DataFolder folder, IConsoleDns dns, INamesCerti
         var (leads, where) = dns.Lookup(full);
         steps.Add(leads switch
         {
-            NameLeads.Here => new(true, $"{full} answers", "It leads to this computer, from here."),
-            NameLeads.Elsewhere => new(false, $"{full} leads somewhere else", $"From this computer it goes to {where}. Check the record on your DNS server."),
-            _ => new(false, $"{full} doesn't answer yet", form.Dns
-                ? "The other domain controllers get the alias within a few minutes, and this computer asks again after that."
-                : "Add it on your DNS server, such as your router or Pi-hole. Check now on this page shows when it works."),
+            NameLeads.Here => new(true, $"{full} resolves", "It resolves to this computer."),
+            NameLeads.Elsewhere => new(false, $"{full} resolves to another address", $"From this computer it resolves to {where}. Check the record on your DNS server."),
+            _ => new(false, $"{full} does not resolve yet", form.Dns
+                ? "The alias replicates to the other domain controllers within a few minutes. This computer checks again after that."
+                : "Add a record on your DNS server, such as your router or Pi-hole. Use Check now on this page to verify it."),
         });
         return (steps, full, null);
     }
@@ -303,18 +303,18 @@ public sealed class ConsoleNames(DataFolder folder, IConsoleDns dns, INamesCerti
         }
         if (n is null)
         {
-            return Install.Name() == name && name.Length > 0 ? RemoveSetupName(form, name) : (null, null, "That address isn't here any more.");
+            return Install.Name() == name && name.Length > 0 ? RemoveSetupName(form, name) : (null, null, "The console address no longer exists.");
         }
         var steps = new List<NameStep>();
         if (n.Zone is not null && n.Server is not null && n.Target is not null)
         {
             if (!form.Dns)
             {
-                steps.Add(new(false, "Left in DNS", $"The alias {n.Full} is still on {Short(n.Server)}. Take it out there if nothing else uses it."));
+                steps.Add(new(false, "Not removed from DNS", $"The alias {n.Full} is still on {Short(n.Server)}. Remove it there if nothing else uses it."));
             }
             else if (Login(form) is not { } login)
             {
-                return (null, null, "Type the username and password of an account that can change DNS, or leave the alias in DNS.");
+                return (null, null, "Enter the credentials of an account that can manage DNS, or keep the alias in DNS.");
             }
             else
             {
@@ -360,21 +360,21 @@ public sealed class ConsoleNames(DataFolder folder, IConsoleDns dns, INamesCerti
             var steps = new List<NameStep>();
             if (made.Signed is not null)
             {
-                steps.Add(new(true, "Certificate signed", $"For {string.Join(", ", made.SignedNames)}, by this console's certificate authority. Computers that trust the authority open it without a warning."));
+                steps.Add(new(true, "Certificate signed", $"Issued for {string.Join(", ", made.SignedNames)} by this console's certificate authority. Computers that trust this authority open the console without a certificate warning."));
             }
             if (made.Local is not null)
             {
-                steps.Add(new(true, made.Signed is null ? "Certificate made" : "Certificate for the short name", $"For {string.Join(", ", made.LocalNames)} · self-signed, trusted on this computer."));
+                steps.Add(new(true, made.Signed is null ? "Certificate created" : "Certificate for the short name", $"For {string.Join(", ", made.LocalNames)} · self-signed, trusted on this computer."));
             }
             if (steps.Count == 0)
             {
-                steps.Add(new(true, "Certificate taken away", "No added names are left, so their certificate went too."));
+                steps.Add(new(true, "Certificate removed", "No added names remain, so their certificate was removed."));
             }
             return steps;
         }
         catch (Exception e) when (e is CryptographicException or UnauthorizedAccessException or IOException)
         {
-            return [new(false, "No certificate for it", $"The certificate couldn't be made ({e.Message.Trim().TrimEnd('.')}), so browsers warn about the name.")];
+            return [new(false, "Certificate not created", $"The certificate could not be created ({e.Message.Trim().TrimEnd('.')}). Browsers show a certificate warning for this name.")];
         }
     }
 
@@ -486,7 +486,7 @@ public static class ConsoleNamesApi
                 return refused;
             }
             names.Hide(form.Name);
-            log.Record(context, "settings", "console.name.hide", $"Took {form.Name} off the console's address list");
+            log.Record(context, "settings", "console.name.hide", $"Removed {form.Name} from the console address list");
             return Results.Ok(new { });
         });
 
@@ -497,7 +497,7 @@ public static class ConsoleNamesApi
                 return refused;
             }
             names.Hide(null, show: true);
-            log.Record(context, "settings", "console.name.show", "Put this computer's addresses back on the console's address list");
+            log.Record(context, "settings", "console.name.show", "Restored this computer's addresses to the console address list");
             return Results.Ok(new { });
         });
     }

@@ -1171,5 +1171,11 @@ input::-ms-reveal { display: none; }
 .dock-btn svg { width: 17px; height: 17px; }
 .dock-main { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 16px; border-radius: 9px; }
 .dock-main svg { width: 16px; height: 16px; }
+/* A main command with others under its arrow: two halves of one button with a thin line between. */
+.dock-pair { display: inline-flex; }
+.dock-pair > .dock-main { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.dock-arrow { display: grid; place-items: center; width: 32px; height: 36px; padding: 0; border-left: 1px solid rgba(255, 255, 255, .22); border-radius: 0 9px 9px 0; }
+.dock-arrow svg { width: 15px; height: 15px; fill: none; stroke: currentColor; }
+.dock-menu { min-width: 190px; }
 @keyframes dock-in { from { opacity: 0; transform: translate(-50%, -6px); } }
 @media (prefers-reduced-motion: reduce) { .dock { animation: none; } }

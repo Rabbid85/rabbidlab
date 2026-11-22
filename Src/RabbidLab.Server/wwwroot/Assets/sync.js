@@ -69,7 +69,7 @@
     const changes = data.changes || [];
     const waiting = changes.filter(missingSomewhere).length;
     const reachable = data.dcs.filter((d) => d.s !== 'bad').length;
-    $('sync-state').textContent = data.running ? 'Syncing now.' : waiting ? `${plural(waiting, 'change')} ${waiting === 1 ? "isn't" : "aren't"} on every domain controller yet.` : 'Every domain controller is up to date.';
+    $('sync-state').textContent = data.running ? 'Sync in progress.' : waiting ? `${plural(waiting, 'change')} pending replication.` : 'All domain controllers are in sync.';
     $('sync-n-waiting').textContent = String(waiting);
     $('sync-n-dcs').textContent = `${reachable} of ${data.dcs.length}`;
     $('sync-n-m365').textContent = data.m365?.at ? at(data.m365.at) : data.m365 ? 'Not yet' : 'Not set up';
@@ -78,24 +78,24 @@
 
   const actions = () => {
     const may = has('ad.change') && data.canSync;
-    const why = !has('ad.change') ? 'Your roles can look but not sync.' : !data.canSync ? 'Set up the service account first.' : '';
-    const dcWhy = why || (!data.windows ? 'Syncing domain controllers needs Rabbid Lab on Windows.' : '');
+    const why = !has('ad.change') ? 'Your role does not include syncing.' : !data.canSync ? 'Set up the service account first.' : '';
+    const dcWhy = why || (!data.windows ? 'Syncing domain controllers requires Rabbid Lab on Windows.' : '');
     const btn = (run, cls, icon, label, off) => `<button type="button" class="${cls}" data-sy-run="${run}"${off ? ` disabled data-tip="${esc(off)}"` : ''}>${svg(icon)}${label}</button>`;
     return `<div class="sy-acts">${btn('all', 'primary sy-btn', 'refresh', 'Sync all', data.running ? 'A sync is running.' : dcWhy)}`
       + `${btn('dcs', 'sy-btn sy-btn2', 'server', 'Sync DCs', data.running ? 'A sync is running.' : dcWhy)}`
       + `${data.m365 ? btn('m365', 'sy-btn sy-btn2', 'cloud', 'Sync Microsoft 365', data.running ? 'A sync is running.' : why) : ''}<span class="grow"></span>`
       + (data.m365 ? `<span class="sy-type"><span class="sy-typel">Microsoft 365</span><span class="sy-seg" role="group" aria-label="Microsoft 365 sync type">`
-        + `<button type="button" data-sy-type="delta" aria-pressed="${type === 'delta'}" data-tip="Only what changed. Under a minute.">Delta</button>`
-        + `<button type="button" data-sy-type="full" aria-pressed="${type === 'full'}" data-tip="Rereads every object. Minutes to hours.">Full</button></span></span>` : '')
+        + `<button type="button" data-sy-type="delta" aria-pressed="${type === 'delta'}" data-tip="Syncs only what changed. Usually under a minute.">Delta</button>`
+        + `<button type="button" data-sy-type="full" aria-pressed="${type === 'full'}" data-tip="Re-imports every object. Minutes to hours.">Full</button></span></span>` : '')
       + '</div>'
-      + (type === 'full' && data.m365 ? `<p class="sy-info">${svg('alert')}<span><b>Full</b> rereads every object in AD and Entra ID and runs every sync rule. Minutes on a small domain, hours on a big one, and nothing else syncs until it's done. Use it after changing what syncs, or when something is stuck.</span></p>` : '');
+      + (type === 'full' && data.m365 ? `<p class="sy-info">${svg('alert')}<span>A <b>full sync</b> re-imports every object from AD and Entra ID and re-applies every sync rule. It can take minutes on a small domain or hours on a large one, and other syncs wait until it finishes. Use it after changing sync rules or filtering, or when sync is stuck.</span></p>` : '');
   };
 
   const statusRow = (key, title, sub) => `<div class="sy-row" data-sy-open="${esc(key)}" data-s="idle">${flask()}<span class="sy-name"><b>${esc(title)}</b></span>`
     + `<span class="sy-where">${esc(sub)}</span><span class="sy-st"><span class="sy-lab"></span></span><span class="sy-ln"><i></i></span></div>`;
 
   const feedLine = (e) => {
-    const word = e.s === 'bad' ? 'Failed' : e.s === 'notyet' ? 'Not on every DC yet' : e.m ? 'Sent' : 'Copied';
+    const word = e.s === 'bad' ? 'Failed' : e.s === 'notyet' ? 'Not replicated yet' : e.m ? 'Exported' : 'Replicated';
     return `<div class="sy-fl" data-sy-open="feed:${esc(e.id)}" data-s="${esc(e.s)}"><small>${esc(at(e.at))}</small><span class="sy-flr">${esc(e.from)} → ${esc(e.to)}</span>`
       + `<span class="sy-obj">${svg(ICON[e.kind] || 'list')}<b>${esc(e.name)}</b></span><span class="sy-what">${esc(e.what)}</span>`
       + `<span class="sy-cell" data-s="${esc(e.s)}">${svg(e.s === 'bad' ? 'x' : e.s === 'notyet' ? 'alert' : 'check')}<span>${word}</span></span></div>`;
@@ -107,9 +107,9 @@
     const names = dcNames();
     const n = names.filter((x) => has1(c.places[x])).length;
     const s = n === names.length ? 'ok' : names.some((x) => c.places[x] === 'pending') ? 'pending' : 'unknown';
-    return `<div class="sy-fl" data-sy-open="chg:${esc(c.id)}" data-s="${s}"><small>${esc(at(c.at))}</small><span class="sy-flr">Made on ${esc(c.on || 'an unknown DC')}</span>`
+    return `<div class="sy-fl" data-sy-open="chg:${esc(c.id)}" data-s="${s}"><small>${esc(at(c.at))}</small><span class="sy-flr">${esc(c.on || 'Unknown DC')}</span>`
       + `<span class="sy-obj">${svg(ICON[c.kind] || 'list')}<b>${esc(c.name)}</b></span><span class="sy-what">${esc(c.what)}</span>`
-      + `<span class="sy-cell" data-s="${s}">${svg(s === 'ok' ? 'check' : s === 'pending' ? 'history' : 'alert')}<span>${n === names.length ? 'On every DC' : `On ${n} of ${names.length} DCs`}</span></span></div>`;
+      + `<span class="sy-cell" data-s="${s}">${svg(s === 'ok' ? 'check' : s === 'pending' ? 'history' : 'alert')}<span>${n === names.length ? 'Replicated to all DCs' : `Replicated to ${n} of ${names.length} DCs`}</span></span></div>`;
   };
 
   const drawFeed = () => {
@@ -121,7 +121,7 @@
       ...(data.changes || []).filter((c) => !copied.has(c.id)).map((c) => ({ at: c.at, kind: c.kind, bad: dcNames().some((n) => c.places[n] === 'pending'), html: () => changeLine(c) }))]
       .filter((x) => filter === 'all' || (filter === 'bad' ? x.bad : x.kind === filter)).sort((a, b) => (a.at < b.at ? 1 : -1));
     box.innerHTML = lines.map((x) => x.html()).join('')
-      || `<p class="muted sy-none">${filter === 'all' ? 'Nothing has changed in the last day.' : 'Nothing here.'}</p>`;
+      || `<p class="muted sy-none">${filter === 'all' ? 'No changes in the last day.' : 'Nothing here.'}</p>`;
   };
 
   // The rows stay put while a sync runs, so the flask and line move smoothly; only a different set of DCs draws them again.
@@ -147,7 +147,7 @@
         + '<div class="gcard"><div class="gbar"><span class="sy-gtitle" id="sy-ftitle">Recent changes</span><span class="grow"></span><span class="sy-seg" id="sy-filters"></span></div>'
         + '<div class="sy-th sy-th-fl"><span>When</span><span>Where</span><span>Name</span><span>Change</span><span>Result</span></div><div class="sy-feed" id="sy-feed"></div></div>';
     }
-    $('sy-title').textContent = waiting ? `${plural(waiting, 'change')} ${waiting === 1 ? "isn't" : "aren't"} on every DC yet` : 'Every DC is up to date';
+    $('sy-title').textContent = waiting ? `${plural(waiting, 'change')} pending replication` : 'All domain controllers are in sync';
     // The list keeps a day of changes, or more when a DC has been missing some for longer.
     const span = Date.now() - new Date(data.since) < 25 * 3600000 ? 'in the last day' : `since ${at(data.since)}`;
     $('sy-sub').textContent = `${changes.length ? plural(changes.length, 'change') : 'No changes'} ${span}${data.more ? ', the newest 300 shown' : ''}.${data.last ? ` Last sync at ${at(data.last)}.` : ''}`;
@@ -163,8 +163,8 @@
   // --- The side panel -----------------------------------------------------------------------------------------------
   let openKey = '';
   const changeList = (list, place) => `<div class="dw-list">${list.map((c) => `<div class="mrow"><span class="pic small">${svg(ICON[c.kind] || 'list')}</span>`
-    + `<div class="two"><b>${esc(c.name)}</b><small>${esc(`${c.what}, made on ${c.on || 'an unknown DC'} at ${at(c.at)}`)}</small></div>`
-    + `<span class="sy-cell" data-s="${esc(c.places[place])}">${svg(c.places[place] === 'notyet' ? 'alert' : 'history')}<span>${c.places[place] === 'notyet' ? 'Not on every DC then' : 'Waiting'}</span></span></div>`).join('')}</div>`;
+    + `<div class="two"><b>${esc(c.name)}</b><small>${esc(`${c.what} on ${c.on || 'an unknown DC'} at ${at(c.at)}`)}</small></div>`
+    + `<span class="sy-cell" data-s="${esc(c.places[place])}">${svg(c.places[place] === 'notyet' ? 'alert' : 'history')}<span>${c.places[place] === 'notyet' ? 'Not replicated at sync time' : 'Pending'}</span></span></div>`).join('')}</div>`;
   const eventList = (list, word) => `<div class="dw-list">${list.map((e) => `<div class="mrow"><span class="pic small">${svg(ICON[e.kind] || 'list')}</span>`
     + `<div class="two"><b>${esc(e.name)}</b><small>${esc(`${e.what}, ${word(e)} ${at(e.at)}`)}</small></div></div>`).join('')}</div>`;
   const trouble = (error, advice) => section('What went wrong', `<div class="sy-err"><b>${esc(error)}</b>${advice ? `<p>${esc(advice)}</p>` : ''}</div>`);
@@ -181,8 +181,8 @@
       + (d.s === 'bad' && may ? `<div class="dw-bar">${qa('data-sy-run="dcs"', 'refresh', 'Retry')}</div>` : '')
       + strip([['State', d.label], ['Site', d.site || 'Unknown'], ['Missing', String(missing.length)]])
       + (d.error ? trouble(d.error, d.advice) : '')
-      + section(`Missing here <small>${missing.length}</small>`, missing.length ? changeList(missing, d.name) : none('Nothing. It is up to date.'))
-      + (copied.length ? section('Last copied here', eventList(copied, (e) => `from ${e.from},`)) : '');
+      + section(`Pending on this DC <small>${missing.length}</small>`, missing.length ? changeList(missing, d.name) : none('None. This domain controller is in sync.'))
+      + (copied.length ? section('Recently replicated to this DC', eventList(copied, (e) => `from ${e.from} at`)) : '');
   };
   const m365Panel = () => {
     const m = data.m365;
@@ -191,25 +191,25 @@
     const may = has('ad.change') && data.canSync && !data.running;
     return head('cloud', 'Microsoft 365', `Entra Connect on ${m.server}`)
       + (may && m.client && m.online ? `<div class="dw-bar">${qa('data-sy-run="m365"', 'refresh', m.s === 'bad' ? 'Retry' : 'Sync Microsoft 365')}</div>` : '')
-      + strip([['State', m365Label(m)], ['Last sync from here', m.at ? at(m.at) : 'None yet'], ['Next on its own', m.next ? at(m.next) : 'Every 30 minutes']])
+      + strip([['State', m365Label(m)], ['Last sync', m.at ? at(m.at) : 'Never'], ['Next scheduled sync', m.next ? at(m.next) : 'Every 30 minutes']])
       + (m.error ? trouble(m.error, m.advice) : '')
-      + section(`Not sent from here yet <small>${open.length}</small>`, (open.length ? changeList(open, 'M365') : none('Nothing. Every change it syncs has been sent.'))
-        + '<p class="dw-how">Entra Connect also sends changes by itself every 30 minutes, so some of these may be there already. Computers and OUs aren\'t synced to Microsoft 365.</p>')
-      + (sent.length ? section('Last sent', eventList(sent, () => 'sent')) : '');
+      + section(`Not exported yet <small>${open.length}</small>`, (open.length ? changeList(open, 'M365') : none('None. All synced changes have been exported.'))
+        + '<p class="dw-how">Entra Connect also runs a delta sync every 30 minutes, so some of these may already be in Microsoft 365. Computers and OUs are not synced to Microsoft 365.</p>')
+      + (sent.length ? section('Recently exported', eventList(sent, () => 'exported')) : '');
   };
   const feedPanel = (e) => {
-    const word = e.s === 'bad' ? 'Failed' : e.s === 'notyet' ? 'Not on every DC yet' : e.m ? 'Sent' : 'Copied';
+    const word = e.s === 'bad' ? 'Failed' : e.s === 'notyet' ? 'Not replicated yet' : e.m ? 'Exported' : 'Replicated';
     const run = e.s === 'bad' ? 'dcs' : e.s === 'notyet' ? 'all' : '';
     const may = has('ad.change') && data.canSync && !data.running && (run !== 'dcs' || data.windows);
     return head(ICON[e.kind] || 'list', `${e.from} → ${e.to}`, `${at(e.at)} · ${e.name}, ${e.what.toLowerCase()}`)
       + (run && may ? `<div class="dw-bar">${qa(`data-sy-run="${run}"`, 'refresh', run === 'dcs' ? 'Retry' : 'Sync all')}</div>` : '')
       + strip([['Result', word], ['Change', e.name], ['Kind', e.kind === 'ou' ? 'OU' : e.kind.charAt(0).toUpperCase() + e.kind.slice(1)]])
-      + (e.s !== 'ok' && e.why ? trouble(e.why, e.s === 'bad' ? (data.dcs.find((d) => d.name === e.to)?.advice || '') : 'Sync all copies it to every domain controller first, then sends it.') : '')
+      + (e.s !== 'ok' && e.why ? trouble(e.why, e.s === 'bad' ? (data.dcs.find((d) => d.name === e.to)?.advice || '') : 'Sync all replicates it to every domain controller first, then exports it to Microsoft 365.') : '')
       + section('What changed', e.details?.length ? details(e.details) : none(e.what));
   };
   // One change: where it is on each domain controller and in Microsoft 365, and what changed.
-  const PLACE = { origin: 'Made here', ok: 'Has it', pending: 'Missing', unknown: 'Couldn\'t be read' };
-  const M365_PLACE = { ok: 'Sent from here', pending: 'Not sent from here yet', notyet: 'Not on every DC when it synced', na: 'Not synced to Microsoft 365' };
+  const PLACE = { origin: 'Originating DC', ok: 'Replicated', pending: 'Pending', unknown: 'Unreachable' };
+  const M365_PLACE = { ok: 'Exported', pending: 'Not exported yet', notyet: 'Not on every DC at sync time', na: 'Not synced to Microsoft 365' };
   const changePanel = (c) => {
     const missing = dcNames().some((n) => c.places[n] === 'pending');
     const may = has('ad.change') && data.canSync && data.windows && !data.running;
@@ -219,10 +219,10 @@
         + `<span class="sy-cell" data-s="${esc(c.places.M365)}">${svg(c.places.M365 === 'ok' ? 'check' : c.places.M365 === 'na' ? 'minus' : 'history')}<span>${M365_PLACE[c.places.M365] || 'Unknown'}</span></span></div>` : '');
     return head(ICON[c.kind] || 'list', c.name, [c.what, c.sub].filter(Boolean).join(' · '))
       + (missing && may ? `<div class="dw-bar">${qa('data-sy-run="dcs"', 'refresh', 'Sync DCs')}</div>` : '')
-      + strip([['Made on', c.on || 'Unknown'], ['When', at(c.at)], ['Kind', c.kind === 'ou' ? 'OU' : c.kind.charAt(0).toUpperCase() + c.kind.slice(1)]])
-      + section('Where it is', `<div class="dw-list">${where}</div>`)
+      + strip([['Originating DC', c.on || 'Unknown'], ['When', at(c.at)], ['Kind', c.kind === 'ou' ? 'OU' : c.kind.charAt(0).toUpperCase() + c.kind.slice(1)]])
+      + section('Replication status', `<div class="dw-list">${where}</div>`)
       + section('What changed', c.details?.length ? details(c.details) : none(c.what))
-      + '<p class="dw-how">Active Directory keeps only the new values, so what it was before isn\'t shown.</p>';
+      + '<p class="dw-how">Active Directory stores only current values, so previous values are not shown.</p>';
   };
   const openPanel = (key, again = false) => {
     const d = key.startsWith('dc:') ? data.dcs.find((x) => x.name === key.slice(3)) : null;
@@ -256,7 +256,7 @@
       if (data && !fresh) { again(30000); return; }
       R.skeleton($('sync-body'), '');
       $('sync-body').innerHTML = `<div class="gcard sy-card"><p class="sy-problem">${esc(err.message)}</p></div>`;
-      $('sync-state').textContent = "Sync can't read Active Directory.";
+      $('sync-state').textContent = 'Unable to read Active Directory.';
       if (!data) for (const id of ['sync-n-waiting', 'sync-n-dcs', 'sync-n-m365']) $(id).textContent = '—';
       return;
     }
@@ -273,10 +273,10 @@
   const finished = () => {
     const bad = data.dcs.filter((d) => d.s === 'bad').map((d) => d.name);
     const m = data.m365?.s === 'bad';
-    if (data.problem) toast('The sync stopped.', data.problem, { tone: 'warn' });
-    else if (bad.length || m) toast('Sync done, with problems.', `${[...bad, ...(m ? ['Microsoft 365'] : [])].join(', ')} didn't sync. Click a row to see why.`, { tone: 'warn' });
-    else if (data.what !== 'm365' && !data.copied) toast('Already up to date.', `Every domain controller already had every change.${data.what === 'all' && data.m365?.s === 'ok' ? ' Microsoft 365 synced.' : ''}`);
-    else toast('Sync done.', 'Every domain controller is up to date.');
+    if (data.problem) toast('Sync failed.', data.problem, { tone: 'warn' });
+    else if (bad.length || m) toast('Sync completed with errors.', `${[...bad, ...(m ? ['Microsoft 365'] : [])].join(', ')} did not sync. Select a row for details.`, { tone: 'warn' });
+    else if (data.what !== 'm365' && !data.copied) toast('Sync complete.', `All domain controllers were already in sync.${data.what === 'all' && data.m365?.s === 'ok' ? ' Microsoft 365 synced.' : ''}`);
+    else toast('Sync complete.', 'All domain controllers are in sync.');
   };
   const run = async (what) => {
     try {
@@ -285,7 +285,7 @@
       draw();
       timer = setTimeout(() => load(), 800);
     } catch (err) {
-      toast("That didn't work.", err.message, { tone: 'warn' });
+      toast('Sync could not start.', err.message, { tone: 'warn' });
     }
   };
 

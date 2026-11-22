@@ -11,7 +11,7 @@ public static class Access
     /// <summary>Why a change isn't allowed (the answer to send), or null when it is.</summary>
     public static IResult? Refuse(HttpContext context) =>
         context.Request.Headers.ContainsKey(Header) ? null
-            : Results.Json(new { error = $"This change must come from {Product.Title}'s own page (the {Header} header is missing)." }, statusCode: StatusCodes.Status403Forbidden);
+            : Results.Json(new { error = $"This change must be made from the {Product.Title} console (the {Header} header is missing)." }, statusCode: StatusCodes.Status403Forbidden);
 
     /// <summary>Whether the person asking has a role that allows this.</summary>
     public static bool Can(HttpContext context, string permission) => context.RequestServices.GetRequiredService<Roles>().Can(context.User, permission);
@@ -19,5 +19,5 @@ public static class Access
     /// <summary>Like Refuse, and also refused when no role of theirs allows it.</summary>
     public static IResult? RefuseUnless(HttpContext context, string permission) => Refuse(context) ?? (Can(context, permission) ? null : NotAllowed());
 
-    public static IResult NotAllowed() => Results.Json(new { error = "Your roles don't let you do that." }, statusCode: StatusCodes.Status403Forbidden);
+    public static IResult NotAllowed() => Results.Json(new { error = "Access denied. Your roles do not allow this action." }, statusCode: StatusCodes.Status403Forbidden);
 }

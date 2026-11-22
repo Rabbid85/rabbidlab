@@ -132,40 +132,40 @@ public sealed class Workflows(DataFolder folder, TimeProvider clock, DeviceScrip
         var name = form.Name?.Trim() ?? "";
         if (name.Length is 0 or > 80)
         {
-            return (null, name.Length == 0 ? "Give the workflow a name." : "A name is 80 characters at most.");
+            return (null, name.Length == 0 ? "Workflow name is required." : "Names can be up to 80 characters.");
         }
         if (!Triggers.Contains(form.When))
         {
-            return (null, "Pick what starts it.");
+            return (null, "Select a trigger.");
         }
         var days = (form.Days ?? []).Where(d => d is >= 0 and <= 6).Distinct().Order().ToList();
         if (form.When == Schedule && (days.Count == 0 || !TimeOnly.TryParseExact(form.Time, "HH:mm", out _)))
         {
-            return (null, days.Count == 0 ? "Pick at least one day." : "Give the time as hours and minutes, like 02:00.");
+            return (null, days.Count == 0 ? "Select at least one day." : "Enter the time as HH:mm, for example 02:00.");
         }
         if (!Conditions.Contains(form.If ?? Always))
         {
-            return (null, "Pick which computers it's for.");
+            return (null, "Select which computers the workflow applies to.");
         }
         var words = form.IfText?.Trim() ?? "";
         if (form.If is (NameLike or WindowsHas or WindowsHasNot) && words.Length is 0 or > 100)
         {
-            return (null, form.If == NameLike ? "Say which computer names, like SHOP-* or *-LT." : "Say which words in the Windows name, like Server.");
+            return (null, form.If == NameLike ? "Enter a computer name pattern, for example SHOP-* or *-LT." : "Enter text to match in the Windows edition, for example Server.");
         }
         var steps = form.Steps ?? [];
         if (steps.Count is 0 or > MaxSteps)
         {
-            return (null, steps.Count == 0 ? "Add at least one step." : $"A workflow has {MaxSteps} steps at most.");
+            return (null, steps.Count == 0 ? "Add at least one step." : $"Workflows can have up to {MaxSteps} steps.");
         }
         foreach (var step in steps)
         {
             if (!StepKinds.Contains(step.Kind) || (step.Kind == RunScript && scripts.Find(step.Script) is null))
             {
-                return (null, step.Kind == RunScript ? "Pick a script for each Run a script step." : "One of the steps isn't something a workflow can do.");
+                return (null, step.Kind == RunScript ? "Select a script for each Run script step." : "One of the steps is not supported in a workflow.");
             }
             if (step.Kind == InstallApp && apps.Find(step.App) is null)
             {
-                return (null, "Pick an app for each Install an app step.");
+                return (null, "Select an app for each Install an app step.");
             }
         }
         lock (file.Gate)
@@ -173,18 +173,18 @@ public sealed class Workflows(DataFolder folder, TimeProvider clock, DeviceScrip
             var f = file.Read();
             if (f.Workflows.Any(w => w.Id != form.Id && string.Equals(w.Name, name, StringComparison.OrdinalIgnoreCase)))
             {
-                return (null, $"There's already a workflow called {name}.");
+                return (null, $"A workflow named {name} already exists.");
             }
             var w = f.Workflows.FirstOrDefault(x => x.Id == form.Id);
             if (w is null)
             {
                 if (!string.IsNullOrEmpty(form.Id))
                 {
-                    return (null, "That workflow isn't here any more.");
+                    return (null, "That workflow no longer exists.");
                 }
                 if (f.Workflows.Count >= MaxWorkflows)
                 {
-                    return (null, $"There can be {MaxWorkflows} workflows at most.");
+                    return (null, $"You can have up to {MaxWorkflows} workflows.");
                 }
                 w = new Workflow { Id = Convert.ToHexString(RandomNumberGenerator.GetBytes(8)).ToLowerInvariant() };
                 f.Workflows.Add(w);
@@ -315,7 +315,7 @@ public sealed class Workflows(DataFolder folder, TimeProvider clock, DeviceScrip
             var app = step.Kind == InstallApp ? apps.Find(step.App) : null;
             if ((step.Kind == RunScript && script is null) || (step.Kind == InstallApp && app is null))
             {
-                log.Record("Workflow", null, "clients", "workflow.failed", $"The workflow {w.Name} didn't run: one of its {(step.Kind == InstallApp ? "apps" : "scripts")} was deleted", "failed");
+                log.Record("Workflow", null, "clients", "workflow.failed", $"The workflow {w.Name} did not run because one of its {(step.Kind == InstallApp ? "apps" : "scripts")} was deleted", "failed");
                 return null;
             }
             steps.Add(step.Kind switch

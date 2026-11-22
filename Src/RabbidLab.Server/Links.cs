@@ -63,7 +63,7 @@ public sealed record LinkLook(string? Name, string? Description, string? Address
 /// <summary>Whether a link's site answered its last check, made At. Down only once it has gone unanswered, since Since, for the time set.</summary>
 public sealed record LinkState(bool Up, bool Down, int? Ms, int? Code, DateTime? Since, DateTime? At, string? Why = null);
 
-/// <summary>What the page gets: each link's state, in how many seconds to ask again, and Revision, which goes up when the links change by themselves.</summary>
+/// <summary>What the page gets: each link's state, in how many seconds to ask again, and Revision, which goes up whenever the links change.</summary>
 public sealed record LinkStates(Dictionary<string, LinkState> States, int Next, int Revision);
 
 /// <summary>
@@ -90,11 +90,18 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
     private readonly Dictionary<string, Checked> seen = []; // each link's last check, by id
     private Task? check; // the check under way, or the last one
     private Task? describing; // the links here being given descriptions of known products, or the last time they were
-    private int revision; // goes up when that changes a link, so the page reads the links again
+    private int revision; // goes up with every change to the links, so open pages read them again
 
     private sealed record Checked(string Url, bool Up, int? Ms, int? Code, DateTime At, DateTime? Since, string? Why = null);
 
     private Lock gate => file.Gate;
+
+    // Every change is saved through here, under the lock.
+    private void Store(LinksFile f)
+    {
+        file.Save(f);
+        revision++;
+    }
 
     public IReadOnlyList<Link> All()
     {
@@ -116,8 +123,7 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
         {
             return;
         }
-        file.Save(f);
-        revision++;
+        Store(f);
     }
 
     // A copy with another description: the links in the list are being read by other requests.
@@ -165,9 +171,8 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
                         f.Links[i] = WithDescription(f.Links[i], null);
                     }
                 }
-                revision++;
             }
-            file.Save(f);
+            Store(f);
         }
     }
 
@@ -276,7 +281,7 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
                 return problem;
             }
             f.Groups = known;
-            file.Save(f);
+            Store(f);
             return null;
         }
     }
@@ -294,7 +299,7 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
             }
             f.Groups = known;
             Regroup(f, old, Grouping.Clean(to));
-            file.Save(f);
+            Store(f);
             return null;
         }
     }
@@ -312,7 +317,7 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
             }
             f.Groups = known;
             var moved = Regroup(f, old, null);
-            file.Save(f);
+            Store(f);
             return moved;
         }
     }
@@ -324,7 +329,7 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
         {
             var f = file.Read();
             f.Groups = Grouping.Order(Known(f), names);
-            file.Save(f);
+            Store(f);
         }
     }
 
@@ -349,16 +354,16 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
     {
         if (Clean(form.Url) is not { } url)
         {
-            return (null, "That isn't an address. Links start with http:// or https:// (or another scheme, such as ssh://).");
+            return (null, "Enter a valid URL. Links start with http://, https:// or another scheme, such as ssh://.");
         }
         var name = Blank(form.Name) ?? new Uri(url).Host;
         if (name.Length > 60 || (form.Description?.Length ?? 0) > 200 || (form.Group?.Length ?? 0) > 40 || (form.Address?.Length ?? 0) > 100)
         {
-            return (null, "That's too long: names are 60 characters at most, groups 40, and descriptions 200.");
+            return (null, "Too long. Names can be up to 60 characters, groups 40 and descriptions 200.");
         }
         if (form.Icon is { Length: > 0 } icon && icon != NoIcon && (!icon.StartsWith("data:image/", StringComparison.Ordinal) || icon.Length > MaxIcon * 4 / 3 + 64))
         {
-            return (null, "The icon has to be a picture of 192 KB at most.");
+            return (null, "The icon must be an image of 192 KB or less.");
         }
         lock (gate)
         {
@@ -366,11 +371,11 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
             var at = id is null ? -1 : f.Links.FindIndex(l => l.Id == id);
             if (id is not null && at < 0)
             {
-                return (null, "That link isn't here any more.");
+                return (null, "Link not found. It may have been deleted.");
             }
             if (at < 0 && f.Links.Count >= 500)
             {
-                return (null, $"That's 500 links, which is as many as {Product.Title} keeps.");
+                return (null, $"{Product.Title} supports up to 500 links.");
             }
             var old = at < 0 ? null : f.Links[at];
             // A group typed for the first time is made, at the end. One that's there keeps its own spelling.
@@ -411,7 +416,7 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
             {
                 f.Links[at] = link;
             }
-            file.Save(f);
+            Store(f);
             return (link, null);
         }
     }
@@ -431,7 +436,7 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
             var link = JsonSerializer.Deserialize<Link>(JsonSerializer.Serialize(f.Links[at], Json), Json)!;
             link.Sensor = sensor;
             f.Links[at] = link;
-            file.Save(f);
+            Store(f);
             return link;
         }
     }
@@ -445,7 +450,7 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
             if (link is not null)
             {
                 f.Links.Remove(link);
-                file.Save(f);
+                Store(f);
                 seen.Remove(id);
             }
             return link;
@@ -593,8 +598,7 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
                 Icon = icon, IconFrom = from, Description = description, Address = address, Sensor = now.Sensor,
             };
             f.Links[at] = link;
-            file.Save(f);
-            revision++;
+            Store(f);
             return new LinkRefreshed(link, changed, null);
         }
     }
@@ -607,7 +611,7 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
     {
         if (Clean(address) is not { } url)
         {
-            return new LinkLook(null, null, null, null, "That isn't an address.");
+            return new LinkLook(null, null, null, null, "Enter a valid URL.");
         }
         var uri = new Uri(url);
         using var cut = CancellationTokenSource.CreateLinkedTokenSource(stop);
@@ -656,8 +660,8 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
         {
             var called = (lan ? await Machine(ip, stop) : null) ?? uri.Host;
             return new LinkLook(called, describe ? KnownSites.Describe(called, url) : null, ip, null, IsRefusal(e)
-                ? $"{uri.Host} is on this server or a link-local address, which {Product.Title} doesn't read, so fill it in yourself."
-                : $"{uri.Host} didn't answer, so fill it in yourself.");
+                ? $"{uri.Host} is on this server or a link-local address, which {Product.Title} does not read. Enter the details manually."
+                : $"{uri.Host} did not respond. Enter the details manually.");
         }
     }
 
@@ -734,7 +738,7 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
                     f.Links[at] = new Link { Id = l.Id, Name = l.Name, Url = l.Url, Description = l.Description, Address = l.Address, Group = name, Icon = l.Icon, IconFrom = l.IconFrom, Place = place++, Added = l.Added, AddedBy = l.AddedBy, Sensor = l.Sensor };
                 }
             }
-            file.Save(f);
+            Store(f);
             return null;
         }
     }
@@ -744,14 +748,14 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
     {
         if ((every is { } e && !EveryChoices.Contains(e)) || (downAfter is { } d && !DownChoices.Contains(d)) || (every is null && downAfter is null))
         {
-            return "Pick one of the times offered.";
+            return "Select one of the listed times.";
         }
         lock (gate)
         {
             var f = file.Read();
             f.CheckEvery = every ?? Every(f);
             f.DownAfter = downAfter ?? After(f);
-            file.Save(f);
+            Store(f);
             return null;
         }
     }
@@ -832,18 +836,18 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
             switch (x)
             {
                 case SocketException { SocketErrorCode: SocketError.ConnectionRefused }:
-                    return "it refused the connection";
+                    return "connection refused";
                 case SocketException { SocketErrorCode: SocketError.HostNotFound or SocketError.NoData }:
-                    return "its name isn't in DNS";
+                    return "host name not found in DNS";
                 case SocketException { SocketErrorCode: SocketError.HostUnreachable or SocketError.NetworkUnreachable }:
-                    return "it can't be reached from this server";
+                    return "host unreachable from this server";
                 case System.Security.Authentication.AuthenticationException:
-                    return "the TLS handshake failed";
+                    return "TLS handshake failed";
                 case TimeoutException:
-                    return "it didn't connect within 8 seconds";
+                    return "connection timed out after 8 seconds";
             }
         }
-        return e is OperationCanceledException ? $"no answer within {CheckFor.TotalSeconds:0} seconds" : "the connection failed";
+        return e is OperationCanceledException ? $"no response within {CheckFor.TotalSeconds:0} seconds" : "connection failed";
     }
 
     private async Task Check(List<Link> links)
@@ -1360,7 +1364,7 @@ public static class LinksApi
             {
                 return Results.BadRequest(new { error = problem });
             }
-            log.Record(context, "links", "link.group.add", $"Made the group {form.Name!.Trim()} on Links");
+            log.Record(context, "links", "link.group.add", $"Created the group {form.Name!.Trim()} on Links");
             return Results.Ok(Listed(links));
         });
 
@@ -1386,9 +1390,9 @@ public static class LinksApi
             }
             if (links.DeleteGroup(form.Name) is not { } moved)
             {
-                return Results.NotFound(new { error = "That group isn't here any more." });
+                return Results.NotFound(new { error = "Group not found. It may have been deleted." });
             }
-            log.Record(context, "links", "link.group.delete", $"Deleted the group {form.Name!.Trim()} from Links" + (moved > 0 ? $", which had {moved} link{(moved == 1 ? "" : "s")}" : ""));
+            log.Record(context, "links", "link.group.delete", $"Deleted the group {form.Name!.Trim()} from Links" + (moved > 0 ? $" ({moved} link{(moved == 1 ? "" : "s")} moved to no group)" : ""));
             return Results.Ok(Listed(links));
         });
 
@@ -1431,7 +1435,7 @@ public static class LinksApi
             if (form.Describe is { } describe)
             {
                 links.SetDescribe(describe);
-                log.Record(context, "links", "link.describe", $"Turned {(describe ? "on" : "off")} auto-filled descriptions on Links");
+                log.Record(context, "links", "link.describe", $"{(describe ? "Enabled" : "Disabled")} auto-filled descriptions on Links");
                 if (describe)
                 {
                     await links.Describing().WaitAsync(context.RequestAborted);
@@ -1446,7 +1450,7 @@ public static class LinksApi
                 return Results.BadRequest(new { error = problem });
             }
             var (every, after) = links.Checks();
-            log.Record(context, "links", "link.checks", $"Set Links to check every {Span(every)} and show a link as down {(after == 0 ? "the first time it doesn't answer" : $"after {Span(after)} with no answer")}");
+            log.Record(context, "links", "link.checks", $"Set Links to check every {Span(every)} and mark a link down {(after == 0 ? "on the first failed check" : $"after {Span(after)} with no response")}");
             return Results.Ok(Listed(links));
         });
 
@@ -1484,7 +1488,7 @@ public static class LinksApi
             }
             if (links.Import(file, ActivityLog.Who(context)) is not { } done)
             {
-                return Results.BadRequest(new { error = "That file isn't a Links export from Rabbid Lab." });
+                return Results.BadRequest(new { error = "The file is not a Rabbid Lab Links export." });
             }
             log.Record(context, "links", "link.import", $"Imported {done.Links} link{(done.Links == 1 ? "" : "s")} and {done.Groups} group{(done.Groups == 1 ? "" : "s")} to Links from a file");
             return Results.Ok(new { done.Links, done.Groups, done.Skipped, done.Refused, done.Checks, now = Listed(links) });
@@ -1511,7 +1515,7 @@ public static class LinksApi
             budget.CancelAfter(TimeSpan.FromSeconds(8)); // a slow site holds a refresh up this long at most
             if (await links.Refresh(id, budget.Token) is not { } done)
             {
-                return Results.NotFound(new { error = "That link isn't here any more." });
+                return Results.NotFound(new { error = "Link not found. It may have been deleted." });
             }
             var c = done.Changed;
             if (c.Count > 0)
@@ -1569,13 +1573,13 @@ public static class LinksApi
             }
             if (links.Delete(id) is not { } gone)
             {
-                return Results.NotFound(new { error = "That link isn't here any more." });
+                return Results.NotFound(new { error = "Link not found. It may have been deleted." });
             }
-            log.Record(context, "links", "link.delete", $"Took {gone.Name} off Links");
+            log.Record(context, "links", "link.delete", $"Deleted {gone.Name} from Links");
             // The sensor that watched it was made for it, and goes with it.
             if (gone.Sensor is { } watcher && sensors.Delete(watcher) is { } sensor)
             {
-                log.Record(context, "sensors", "sensor.delete", $"Deleted the sensor {sensor.Name}, which watched that link");
+                log.Record(context, "sensors", "sensor.delete", $"Deleted the sensor {sensor.Name}, which watched the deleted link");
             }
             return Results.Ok();
         });
@@ -1624,7 +1628,7 @@ public static class LinksApi
         {
             return Results.BadRequest(new { error = problem });
         }
-        log.Record(context, "links", id is null ? "link.add" : "link.change", id is null ? $"Put {link.Name} on Links" : $"Changed {link.Name} on Links");
+        log.Record(context, "links", id is null ? "link.add" : "link.change", id is null ? $"Added {link.Name} to Links" : $"Changed {link.Name} on Links");
         if (watch is { On: true })
         {
             var (sensor, failed) = sensors.Watch(link.Sensor, link.Name, link.Url, link.Group, watch.Type, who);
@@ -1634,7 +1638,7 @@ public static class LinksApi
             }
             if (sensor != link.Sensor)
             {
-                log.Record(context, "sensors", "sensor.add", $"Added the sensor {link.Name}, which watches that link");
+                log.Record(context, "sensors", "sensor.add", $"Added the sensor {link.Name} to watch the link");
             }
             link = links.SetSensor(link.Id, sensor) ?? link;
         }
@@ -1642,7 +1646,7 @@ public static class LinksApi
         {
             if (sensors.Delete(watcher) is { } gone)
             {
-                log.Record(context, "sensors", "sensor.delete", $"Deleted the sensor {gone.Name}: its link isn't watched any more");
+                log.Record(context, "sensors", "sensor.delete", $"Deleted the sensor {gone.Name}. The link is no longer watched");
             }
             link = links.SetSensor(link.Id, null) ?? link;
         }

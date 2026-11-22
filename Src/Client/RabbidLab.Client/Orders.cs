@@ -46,7 +46,7 @@ internal static class Orders
             }
             catch (Exception e) when (!stop.IsCancellationRequested)
             {
-                Problems.Note("orders", $"Listening for jobs and orders failed: {e.Message}");
+                Problems.Note("orders", $"Could not receive jobs and commands from the server: {e.Message}");
                 pause = TimeSpan.FromMinutes(1);
             }
             try
@@ -101,7 +101,7 @@ internal static class Orders
             }
             // Reads (sensors, WMI queries) and wake-ups go ahead whatever Group Policy says about account changes.
             var answer = SeatChecks.Is(order) ? SeatChecks.Do(order) : Wmi.Is(order) ? Wmi.Do(order) : Wake.Is(order) ? Wake.Do(order) : now.AccountChanges ? Do(order)
-                : AccountAnswer.Failed(order.Id, $"Account changes are turned off by Group Policy on {Machine.Name}.");
+                : AccountAnswer.Failed(order.Id, $"Account changes are disabled by Group Policy on {Machine.Name}.");
             answer.Id = order.Id;
             await Answer(api, answer, key, stop).ConfigureAwait(false);
         }

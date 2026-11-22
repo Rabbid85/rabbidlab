@@ -242,7 +242,7 @@ public sealed class ClientsTests : IDisposable
         Assert.False(RabbidLab.Client.UninstallCode.Matches(code[..^1], check));
         Assert.False(RabbidLab.Client.UninstallCode.Matches(code, null));
         Assert.DoesNotContain(code.Replace("-", ""), await File.ReadAllTextAsync(Path.Combine(data, "clients.json")));
-        Assert.Contains("Showed the uninstall code for AMW-LT-022", log);
+        Assert.Contains("Viewed the uninstall code for AMW-LT-022", log);
     }
 
     [Fact]
@@ -261,7 +261,7 @@ public sealed class ClientsTests : IDisposable
 
         Assert.Equal(HttpStatusCode.Forbidden, (await user.PostAsync($"/api/clients/{id}/code", null)).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await admin.PostAsync("/api/clients/nobody/code", null)).StatusCode);
-        Assert.Single(System.Text.RegularExpressions.Regex.Matches(log, "The uninstall code was used on AMW-LT-022"));
+        Assert.Single(System.Text.RegularExpressions.Regex.Matches(log, "Uninstall code used on AMW-LT-022"));
     }
 
     [Fact]
@@ -340,12 +340,12 @@ public sealed class ClientsTests : IDisposable
         JsonElement Errors(JsonElement list) => list[0].GetProperty("problems");
 
         // Waiting for approval: not kept, so a computer nobody let in can't fill the list.
-        await Send(Problem("update", "Couldn't download client 1.1.203 from the server.", 1));
+        await Send(Problem("update", "Could not download client 1.1.203 from the server.", 1));
         Assert.Equal(0, Errors(await admin.GetFromJsonAsync<JsonElement>("/api/clients")).GetArrayLength());
 
         (await admin.PostAsync($"/api/clients/{id}/approve", null)).EnsureSuccessStatusCode();
-        await Send(Problem("windows-update", "Windows Update didn't answer: busy (0x80240016)", 2), Problem("inventory", new string('x', 1000), 1));
-        await Send(Problem("windows-update", "Windows Update didn't answer: busy (0x80240016)", 3));
+        await Send(Problem("windows-update", "Windows Update scan failed: busy (0x80240016)", 2), Problem("inventory", new string('x', 1000), 1));
+        await Send(Problem("windows-update", "Windows Update scan failed: busy (0x80240016)", 3));
         var errors = Errors(await admin.GetFromJsonAsync<JsonElement>("/api/clients"));
         Assert.Equal(2, errors.GetArrayLength());
         var wu = errors.EnumerateArray().Single(e => e.GetProperty("area").GetString() == "windows-update");

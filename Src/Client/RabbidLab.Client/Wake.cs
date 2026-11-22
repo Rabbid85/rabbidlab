@@ -20,7 +20,7 @@ internal static class Wake
         var macs = (order.Macs ?? new List<string>()).Select(WakeOnLan.Mac).OfType<byte[]>().GroupBy(WakeOnLan.Text).Select(g => g.First()).Take(WakeOnLan.Most).ToList();
         if (macs.Count == 0)
         {
-            return AccountAnswer.Failed(order.Id, "There was no network card to wake.");
+            return AccountAnswer.Failed(order.Id, "No valid MAC address to wake.");
         }
         var sent = 0;
         try
@@ -32,8 +32,8 @@ internal static class Wake
         }
         catch (Exception e) when (e is SocketException or NetworkInformationException)
         {
-            return AccountAnswer.Failed(order.Id, $"{Machine.Name} couldn't send it: {e.Message.Trim().TrimEnd('.')}.");
+            return AccountAnswer.Failed(order.Id, $"{Machine.Name} could not send the wake-up packet: {e.Message.Trim().TrimEnd('.')}.");
         }
-        return sent > 0 ? new AccountAnswer { Id = order.Id, Ok = true } : AccountAnswer.Failed(order.Id, $"{Machine.Name} has no network to send it on.");
+        return sent > 0 ? new AccountAnswer { Id = order.Id, Ok = true } : AccountAnswer.Failed(order.Id, $"{Machine.Name} has no active network connection to send the wake-up packet on.");
     }
 }

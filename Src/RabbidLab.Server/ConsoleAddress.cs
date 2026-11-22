@@ -48,7 +48,7 @@ public static class ConsoleAddress
         app.MapGet("/api/console/certificate", (IConfiguration config, INamesCertificate named, bool? names, bool? authority) =>
             (authority == true ? named.Now.Authority : names == true ? named.Now.Local : ClientFiles.Certificate(config)) is { } cert
                 ? Results.File(cert.RawData, "application/pkix-cert", authority == true ? AuthorityFile : $"{Product.Name}.cer")
-                : Results.NotFound(new { error = "This console doesn't have that certificate." }));
+                : Results.NotFound(new { error = "This console does not have that certificate." }));
     }
 
     private static Report Read(IServer server, IConfiguration config, Redirect.Plan? redirect, ConsoleNames names, INamesCertificate named, ConsoleAlso.Plan? also = null)
@@ -70,10 +70,10 @@ public static class ConsoleAddress
             foreach (var n in names.All())
             {
                 var dns = n.Server is null ? null : $"an alias in DNS on {n.Server.Split('.')[0].ToUpperInvariant()}, pointing to this computer";
-                list.Add(new(Url(n.Name), dns is null ? "Added here" : $"Added here · {dns}", n.Name, dns));
+                list.Add(new(Url(n.Name), dns is null ? "Added in Settings" : $"Added in Settings · {dns}", n.Name, dns));
                 if (n.Full != n.Name)
                 {
-                    list.Add(new(Url(n.Full), n.Zone is null ? "Its full name" : $"Its full name · in the {n.Zone} zone", n.Name, dns));
+                    list.Add(new(Url(n.Full), n.Zone is null ? "Full name" : $"Full name · in the {n.Zone} zone", n.Name, dns));
                 }
             }
             var extra = names.Install.Name() ?? "";

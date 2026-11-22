@@ -115,8 +115,8 @@ public sealed class Accounts(DataFolder folder)
     public static string? Problem(string? username, string? password) =>
         string.IsNullOrWhiteSpace(username) ? "Enter a username."
         : username.Trim().Length > 64 || !username.Trim().All(c => char.IsAsciiLetterOrDigit(c) || c is '.' or '-' or '_')
-            ? "Use only letters, numbers, dots, dashes and underscores in the username."
-        : string.IsNullOrEmpty(password) || password.Length < 8 ? "Use a password of at least 8 characters."
+            ? "The username can contain only letters, numbers, periods, hyphens and underscores."
+        : string.IsNullOrEmpty(password) || password.Length < 8 ? "The password must be at least 8 characters."
         : null;
 
     /// <summary>The first account, while Rabbid Lab isn't set up. Null and the reason when it can't be made.</summary>
@@ -196,7 +196,7 @@ public sealed class Accounts(DataFolder folder)
             }
             if (Named(a, username!.Trim()) is not null)
             {
-                return $"There's already an account called {username!.Trim()}.";
+                return $"An account named {username!.Trim()} already exists.";
             }
             var account = New(username!.Trim(), password!);
             account.Role = Roles.User;
@@ -208,7 +208,7 @@ public sealed class Accounts(DataFolder folder)
 
     /// <summary>A new password for a local account; its sessions end. Why not, or null.</summary>
     public string? SetPassword(string username, string? password) =>
-        password is null || password.Length < 8 ? "Use a password of at least 8 characters." : Change(username, x =>
+        password is null || password.Length < 8 ? "The password must be at least 8 characters." : Change(username, x =>
         {
             x.Hash = Hash(password);
             x.Stamp = NewStamp();
@@ -226,7 +226,7 @@ public sealed class Accounts(DataFolder folder)
             var account = Named(a, username);
             if (account is null)
             {
-                return $"There's no account called {username}.";
+                return $"The account {username} does not exist.";
             }
             if (change is null)
             {
@@ -255,7 +255,7 @@ public sealed class Accounts(DataFolder folder)
     /// <summary>Why setup isn't open (it's done, or accounts.json can't be read), or null when it is.</summary>
     private string? Taken(AccountsFile a) =>
         IsSetUp(a) ? Product.Title + " is already set up. Sign in instead."
-        : file.Broken ? $"accounts.json can't be read, so {Product.Title} can't be set up again from here. Restore the file from a backup, or add an administrator with --add-admin."
+        : file.Broken ? $"accounts.json cannot be read, so {Product.Title} cannot be set up again here. Restore the file from a backup, or add an administrator with --add-admin."
         : null;
 
     private static LocalAccount? Named(AccountsFile a, string username) => a.Local.FirstOrDefault(x => Same(x.Username, username));

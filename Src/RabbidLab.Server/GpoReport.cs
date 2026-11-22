@@ -103,7 +103,7 @@ public static partial class GpoReports
                 rows.Add(new($"{Security} › Local Policies › Security Options", SecurityOption(e), DisplayValue(e)));
                 break;
             case "UserRightsAssignment":
-                rows.Add(new($"{Security} › Local Policies › User Rights Assignment", Right(Text(Kid(e, "Name")) ?? ""), Members(e, "Member") is { Length: > 0 } m ? m : "Nobody"));
+                rows.Add(new($"{Security} › Local Policies › User Rights Assignment", Right(Text(Kid(e, "Name")) ?? ""), Members(e, "Member") is { Length: > 0 } m ? m : "No accounts"));
                 break;
             case "Audit":
                 rows.Add(new($"{Security} › Local Policies › Audit Policy", Words(Text(Kid(e, "Name")) ?? "Audit"), Audit(Text(Kid(e, "SuccessAttempts")), Text(Kid(e, "FailureAttempts")))));
@@ -119,7 +119,7 @@ public static partial class GpoReports
                 break;
             case "RestrictedGroups":
                 rows.Add(new($"{Security} › Restricted Groups", Text(Kid(Kid(e, "GroupName"), "Name")) ?? Text(Kid(Kid(e, "GroupName"), "SID")) ?? "Group",
-                    string.Join("; ", new[] { Members(e, "Member") is { Length: > 0 } ms ? $"Members: {ms}" : null, Members(e, "Memberof") is { Length: > 0 } of ? $"Member of: {of}" : null }.OfType<string>()) is { Length: > 0 } v ? v : "Nobody"));
+                    string.Join("; ", new[] { Members(e, "Member") is { Length: > 0 } ms ? $"Members: {ms}" : null, Members(e, "Memberof") is { Length: > 0 } of ? $"Member of: {of}" : null }.OfType<string>()) is { Length: > 0 } v ? v : "No members"));
                 break;
             case "SystemServices":
                 rows.Add(new($"{Security} › System Services", Text(Kid(e, "Name")) ?? "Service", Text(Kid(e, "StartupMode")) ?? "Set"));
@@ -144,7 +144,7 @@ public static partial class GpoReports
             case "PublicProfile":
                 if (Text(Kid(Kid(e, "EnableFirewall"), "Value")) is { } on)
                 {
-                    rows.Add(new("Windows Firewall › Profiles", $"{e.Name.LocalName.Replace("Profile", "", StringComparison.Ordinal)} profile: firewall", on == "true" ? "On" : "Off"));
+                    rows.Add(new("Windows Firewall › Profiles", $"{e.Name.LocalName.Replace("Profile", "", StringComparison.Ordinal)} profile: Firewall state", on == "true" ? "On" : "Off"));
                 }
                 break;
             case "GlobalSettings":
@@ -383,7 +383,7 @@ public static partial class GpoReports
         var from = Text(Kid(e, "RA4")) is { } ra ? $" from {ra}" : "";
         var profiles = Kids(e, "Profile").Select(p => p.Value.Trim()).ToList();
         var value = $"{Text(Kid(e, "Action")) ?? "Allow"} {protocol}{port}{from}".Replace("  ", " ", StringComparison.Ordinal).Trim()
-            + (profiles.Count > 0 ? $" ({string.Join(", ", profiles)})" : "") + (Text(Kid(e, "Active")) == "false" ? ", off" : "");
+            + (profiles.Count > 0 ? $" ({string.Join(", ", profiles)})" : "") + (Text(Kid(e, "Active")) == "false" ? ", disabled" : "");
         return new($"Windows Firewall › {(e.Name.LocalName.StartsWith("In", StringComparison.Ordinal) ? "Inbound" : "Outbound")} rules", name, value);
     }
 

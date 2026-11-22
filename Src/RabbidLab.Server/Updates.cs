@@ -78,10 +78,10 @@ public sealed class GitHubUpdateSource(IHttpClientFactory http, GitHubOptions op
             Problem = e switch
             {
                 HttpRequestException { StatusCode: HttpStatusCode.NotFound } => "No release has been published on GitHub yet.",
-                TaskCanceledException => "GitHub didn't answer in time.",
-                HttpRequestException { StatusCode: { } code } => $"GitHub answered HTTP {(int)code} instead of the newest release.",
-                HttpRequestException => $"GitHub couldn't be reached ({e.Message.TrimEnd('.')}).",
-                _ => "The newest release's manifest couldn't be read.",
+                TaskCanceledException => "GitHub did not respond in time.",
+                HttpRequestException { StatusCode: { } code } => $"GitHub returned HTTP {(int)code} instead of the latest release.",
+                HttpRequestException => $"Could not connect to GitHub ({e.Message.TrimEnd('.')}).",
+                _ => "Could not read the latest release manifest.",
             };
             log.LogWarning("Could not ask GitHub for the newest version: {Problem}", Problem);
         }

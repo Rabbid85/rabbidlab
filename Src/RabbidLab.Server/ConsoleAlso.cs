@@ -86,12 +86,12 @@ public static class ConsoleAlso
             }
             if (!plan.Can)
             {
-                return Results.Json(new { error = "Port 443 is for an HTTPS console that Setup installed on Windows." }, statusCode: StatusCodes.Status409Conflict);
+                return Results.Json(new { error = "Port 443 is available only for an HTTPS console installed by Setup on Windows." }, statusCode: StatusCodes.Status409Conflict);
             }
             saved.Want(form.On);
             log.Record(context, "settings", form.On ? "console.443.on" : "console.443.off", form.On
-                ? $"Turned on port {Port} for the console, as well as its own port"
-                : $"Turned off port {Port} for the console");
+                ? $"Enabled port {Port} for the console, in addition to its own port"
+                : $"Disabled port {Port} for the console");
             var restarting = saved.Restart();
             return Results.Ok(new { on = form.On, restarting });
         });

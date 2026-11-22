@@ -202,7 +202,7 @@ public sealed class UpdateEngine(UpdateOptions options, IUpdateSource source, IU
             }
             var offer = source.Offer;
             Chosen = true;
-            State = new(current, offer?.Version ?? State.Available, UpdateStatus.Downloading, "Getting the update ready.", 0, offer?.Size);
+            State = new(current, offer?.Version ?? State.Available, UpdateStatus.Downloading, "Preparing the update.", 0, offer?.Size);
             install = Task.Run(async () =>
             {
                 UpdateState done;
@@ -213,7 +213,7 @@ public sealed class UpdateEngine(UpdateOptions options, IUpdateSource source, IU
                 catch (Exception e) when (!stopping.IsCancellationRequested)
                 {
                     log.LogError(e, "The update could not be installed");
-                    done = State = new(current, State.Available, UpdateStatus.Failed, $"The update didn't install ({e.Message.TrimEnd('.')}).");
+                    done = State = new(current, State.Available, UpdateStatus.Failed, $"Could not install the update ({e.Message.TrimEnd('.')}).");
                 }
                 finished?.Invoke(done);
             });
@@ -251,13 +251,13 @@ public sealed class UpdateEngine(UpdateOptions options, IUpdateSource source, IU
         if (offer is null || !Newer(offer.Version, current))
         {
             return Say(UpdateStatus.Current, null, current.EndsWith("-test", StringComparison.Ordinal)
-                ? "This is a test build, and no release is newer." : "Rabbid Lab is up to date.");
+                ? "This is a test build. No newer release is available." : "Rabbid Lab is up to date.");
         }
         var version = offer.Version;
         // Docker: nothing installs here, so there's nothing to check the signature of; the new download is on the website.
         if (!host.CanInstall)
         {
-            return Say(UpdateStatus.Available, version, $"Version {version} is out. In Docker, update with docker compose up -d --build. Your data is kept.");
+            return Say(UpdateStatus.Available, version, $"Version {version} is available. To update in Docker, run docker compose up -d --build. Your data is preserved.");
         }
         // Only a release signed with Rabbid Lab's offline release key is ever installed, whoever offers it.
         if (!Release.Verify(options.ReleasePublicKey, version, offer.Sha256, offer.Size, offer.Signature, host.ProductName))
@@ -266,7 +266,7 @@ public sealed class UpdateEngine(UpdateOptions options, IUpdateSource source, IU
             {
                 log.LogWarning("Rabbid Lab {Version} was offered without a valid Rabbid Lab release signature and will not be installed", version);
             }
-            return Say(UpdateStatus.Current, null, $"Rabbid Lab is up to date. Version {version} on GitHub isn't signed by Rabbid Lab, so it won't be installed.");
+            return Say(UpdateStatus.Current, null, $"Rabbid Lab is up to date. Version {version} on GitHub is not signed with the Rabbid Lab release key and will not be installed.");
         }
         // The installer is running: it restarts Rabbid Lab as the new version shortly.
         if (version == installingVersion && DateTime.UtcNow - installingAt < options.InstallWait)
@@ -279,24 +279,24 @@ public sealed class UpdateEngine(UpdateOptions options, IUpdateSource source, IU
         if (!chosen && File.Exists(tried) && File.ReadAllText(tried).Trim() == version && DateTime.UtcNow - File.GetLastWriteTimeUtc(tried) < options.RetryAfter)
         {
             var why = notStarted is { } n && n.Version == version ? n.Why : LogSaid(version);
-            var next = host.Automatic ? "Rabbid Lab tries again later." : "Click Install now to try again.";
+            var next = host.Automatic ? "Rabbid Lab will try again later." : "Click Install now to try again.";
             return Say(UpdateStatus.Failed, version, why is null
-                ? $"Version {version} didn't install. {next} The installation log is in {updates}."
-                : $"Version {version} didn't install. {why} {next}");
+                ? $"Could not install version {version}. {next} The installation log is in {updates}."
+                : $"Could not install version {version}. {why} {next}");
         }
         // Automatic installation turned off: offered, installed only when someone chooses Install now.
         if (!chosen && !host.Automatic)
         {
-            return Say(UpdateStatus.Available, version, $"Version {version} is ready to install. Installing takes about a minute, and Rabbid Lab is stopped while it does.");
+            return Say(UpdateStatus.Available, version, $"Version {version} is ready to install. Installation takes about a minute, and Rabbid Lab is unavailable during that time.");
         }
         // Someone is using the console: offered, never installed under anyone. Nobody has for a couple of minutes: installed.
         if (!chosen && InUseNow)
         {
-            return Say(UpdateStatus.Available, version, $"Version {version} is ready. It installs automatically when nobody is using Rabbid Lab, or click Install now.");
+            return Say(UpdateStatus.Available, version, $"Version {version} is ready to install. It installs automatically when Rabbid Lab is not in use, or click Install now.");
         }
         if (!chosen && DateTime.UtcNow - started < options.SettleTime)
         {
-            return Say(UpdateStatus.Waiting, version, $"Version {version} installs once Rabbid Lab has finished starting.");
+            return Say(UpdateStatus.Waiting, version, $"Version {version} will install when Rabbid Lab has finished starting.");
         }
         Directory.CreateDirectory(updates);
         File.WriteAllText(tried, version);
@@ -314,9 +314,9 @@ public sealed class UpdateEngine(UpdateOptions options, IUpdateSource source, IU
             var why = e.Message.TrimEnd('.');
             if (!chosen)
             {
-                host.Record(new UpdateAttempt(version, $"The update couldn't be downloaded ({why})."));
+                host.Record(new UpdateAttempt(version, $"Could not download the update ({why})."));
             }
-            return Say(UpdateStatus.Failed, version, $"Version {version} couldn't be downloaded ({why}). Rabbid Lab tries again later.");
+            return Say(UpdateStatus.Failed, version, $"Could not download version {version} ({why}). Rabbid Lab will try again later.");
         }
         // Held open until the installer has started, so the file that was checked is the file that runs.
         using var keep = held;
@@ -337,7 +337,7 @@ public sealed class UpdateEngine(UpdateOptions options, IUpdateSource source, IU
         {
             // Windows wouldn't run it: security software, most often (the runner says which, and how to allow it). Said in
             // the service log, and in the installation log, as Setup would have, which Setup never got to write.
-            var why = e is InstallerBlockedException ? e.Message : $"Its installer couldn't be started ({e.Message.TrimEnd('.')}).";
+            var why = e is InstallerBlockedException ? e.Message : $"The installer could not be started ({e.Message.TrimEnd('.')}).";
             log.LogError(e, "Rabbid Lab {Version} could not be installed. {Why}", version, why);
             try
             {
@@ -353,7 +353,7 @@ public sealed class UpdateEngine(UpdateOptions options, IUpdateSource source, IU
             {
                 host.Record(new UpdateAttempt(version, why));
             }
-            return Say(UpdateStatus.Failed, version, $"Version {version} didn't install. {why}");
+            return Say(UpdateStatus.Failed, version, $"Could not install version {version}. {why}");
         }
         if (!chosen)
         {
@@ -420,7 +420,7 @@ public sealed class UpdateEngine(UpdateOptions options, IUpdateSource source, IU
     }
 
     private UpdateState Installing(string version) =>
-        Say(UpdateStatus.Installing, version, $"Installing version {version}. Rabbid Lab is stopped for about a minute.");
+        Say(UpdateStatus.Installing, version, $"Installing version {version}. Rabbid Lab will be unavailable for about a minute.");
 
     /// <summary>Notes the version running now in version.txt, and says which one it replaced, if this is its first run.</summary>
     private static string? Replaced(string folder, string current)

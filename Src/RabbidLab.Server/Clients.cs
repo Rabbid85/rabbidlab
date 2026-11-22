@@ -213,11 +213,11 @@ public sealed class Clients(DataFolder folder, TimeProvider clock, IDataProtecti
             f.Clients.RemoveAll(c => c.Approved is null && string.Equals(c.Computer, computer, StringComparison.OrdinalIgnoreCase) && c.Address == address);
             if (f.Approve && f.Clients.Count(c => c.Approved is null) >= MaxWaiting)
             {
-                return (null, null, $"{MaxWaiting} computers are already waiting for approval. Approve or remove some first.");
+                return (null, null, $"{MaxWaiting} computers are already pending approval. Approve or remove some first.");
             }
             if (f.Clients.Count >= MaxClients)
             {
-                return (null, null, $"The list already has {MaxClients} computers. Remove some first.");
+                return (null, null, $"Devices is at its limit of {MaxClients} computers. Remove some first.");
             }
             var secret = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
             var now = clock.GetUtcNow().UtcDateTime;
@@ -231,7 +231,7 @@ public sealed class Clients(DataFolder folder, TimeProvider clock, IDataProtecti
                 Joined = now,
                 LastSeen = now,
                 Approved = f.Approve && !self ? null : now,
-                ApprovedBy = self ? "this server" : f.Approve ? null : "joining straight away",
+                ApprovedBy = self ? "this server" : f.Approve ? null : "automatic approval",
                 SecretHash = Hash(secret),
             };
             NewCode(client);

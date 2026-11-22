@@ -104,15 +104,15 @@ public sealed class AccountOrder
         var n = name?.Trim() ?? "";
         if (n.Length == 0)
         {
-            return "Give the account a name.";
+            return "Account name is required.";
         }
         if (n.Length > 20)
         {
-            return "Windows account names are 20 characters at most.";
+            return "Windows account names can be up to 20 characters.";
         }
         if (n.IndexOfAny(NotInNames) >= 0 || n.Trim('.', ' ').Length == 0)
         {
-            return "Windows account names can't have \" / \\ [ ] : ; | = , + * ? < > or @ in them.";
+            return "Windows account names cannot contain \" / \\ [ ] : ; | = , + * ? < > or @.";
         }
         return null;
     }
@@ -172,7 +172,7 @@ public static class WmiAsk
     public static string? BadSpace(string? space)
     {
         var s = Space(space);
-        return s.Length <= 200 && SpaceShape.IsMatch(s) ? null : @"Use a namespace on the computer itself, such as root\cimv2.";
+        return s.Length <= 200 && SpaceShape.IsMatch(s) ? null : @"Enter a local WMI namespace, such as root\cimv2.";
     }
 
     /// <summary>Why it can't be asked, or null when it can.</summary>
@@ -181,13 +181,13 @@ public static class WmiAsk
         var q = query?.Trim() ?? "";
         if (q.Length == 0)
         {
-            return "Type a query, such as SELECT * FROM Win32_BIOS.";
+            return "Enter a query, such as SELECT * FROM Win32_BIOS.";
         }
         if (q.Length > MaxQuery)
         {
-            return $"A query can be {MaxQuery} characters at most.";
+            return $"Queries can be up to {MaxQuery} characters.";
         }
-        return Reads.IsMatch(q) ? null : "Only reads: a query starts with SELECT, ASSOCIATORS OF or REFERENCES OF.";
+        return Reads.IsMatch(q) ? null : "Only read queries are allowed. Start the query with SELECT, ASSOCIATORS OF or REFERENCES OF.";
     }
 }
 
@@ -211,7 +211,7 @@ public static class SeatChecks
                 {
                     var found = all.FirstOrDefault(s => string.Equals(s.ServiceName, name, StringComparison.OrdinalIgnoreCase))
                         ?? all.FirstOrDefault(s => string.Equals(s.DisplayName, name, StringComparison.OrdinalIgnoreCase));
-                    return found is null ? AccountAnswer.Failed(order.Id, $"There's no service called {name} on {Environment.MachineName}.")
+                    return found is null ? AccountAnswer.Failed(order.Id, $"Service {name} was not found on {Environment.MachineName}.")
                         : new AccountAnswer { Id = order.Id, Ok = true, State = found.Status.ToString(), StartType = found.StartType.ToString(), Detail = $"{found.DisplayName} ({found.ServiceName})" };
                 }
                 finally
@@ -223,12 +223,12 @@ public static class SeatChecks
                 }
             }
             var drive = new System.IO.DriveInfo(name.TrimEnd('\\', ':') + ":\\");
-            return !drive.IsReady ? AccountAnswer.Failed(order.Id, $"{drive.Name.TrimEnd('\\')} isn't ready on {Environment.MachineName}.")
+            return !drive.IsReady ? AccountAnswer.Failed(order.Id, $"Drive {drive.Name.TrimEnd('\\')} is not ready on {Environment.MachineName}.")
                 : new AccountAnswer { Id = order.Id, Ok = true, Total = drive.TotalSize, Free = drive.AvailableFreeSpace, Detail = drive.VolumeLabel };
         }
         catch (Exception e) when (e is ArgumentException || e is System.IO.IOException || e is InvalidOperationException || e is UnauthorizedAccessException)
         {
-            return AccountAnswer.Failed(order.Id, $"Windows on {Environment.MachineName} said: {e.Message.Trim().TrimEnd('.')}.");
+            return AccountAnswer.Failed(order.Id, $"Windows error on {Environment.MachineName}: {e.Message.Trim().TrimEnd('.')}.");
         }
     }
 }
@@ -289,19 +289,19 @@ public static class WindowsUsers
             }
             if (name.Length == 0)
             {
-                return AccountAnswer.Failed(id, "Which account?");
+                return AccountAnswer.Failed(id, "Account name is required.");
             }
             using var user = UserPrincipal.FindByIdentity(machine, IdentityType.SamAccountName, name);
             if (user is null)
             {
-                return AccountAnswer.Failed(id, $"There's no account called {name} on {Environment.MachineName}.");
+                return AccountAnswer.Failed(id, $"Account {name} was not found on {Environment.MachineName}.");
             }
             switch (order.Action)
             {
                 case AccountOrder.Password:
                     if (string.IsNullOrEmpty(order.NewPassword))
                     {
-                        return AccountAnswer.Failed(id, "Give a password.");
+                        return AccountAnswer.Failed(id, "Password is required.");
                     }
                     user.SetPassword(order.NewPassword);
                     if (user.IsAccountLockedOut())
@@ -333,24 +333,24 @@ public static class WindowsUsers
                     user.Delete();
                     return new AccountAnswer { Id = id, Ok = true };
                 default:
-                    return AccountAnswer.Failed(id, $"This client doesn't know how to {order.Action}.");
+                    return AccountAnswer.Failed(id, $"This client version does not support the {order.Action} action.");
             }
         }
         catch (PasswordException)
         {
-            return AccountAnswer.Failed(id, $"That password doesn't meet {Environment.MachineName}'s password rules. Try a longer one, with capitals, numbers or symbols.");
+            return AccountAnswer.Failed(id, $"The password does not meet the password policy on {Environment.MachineName}. Use a longer password with uppercase letters, numbers or symbols.");
         }
         catch (PrincipalExistsException)
         {
-            return AccountAnswer.Failed(id, $"There's already an account called {order.Name?.Trim()} on {Environment.MachineName}.");
+            return AccountAnswer.Failed(id, $"An account named {order.Name?.Trim()} already exists on {Environment.MachineName}.");
         }
         catch (UnauthorizedAccessException)
         {
-            return AccountAnswer.Failed(id, $"Windows on {Environment.MachineName} said no: this needs an administrator, and it's running as {Environment.UserName}.");
+            return AccountAnswer.Failed(id, $"Access denied on {Environment.MachineName}. This requires administrator rights, and the client is running as {Environment.UserName}.");
         }
         catch (Exception e) when (e is PrincipalException or System.Runtime.InteropServices.COMException or InvalidOperationException)
         {
-            return AccountAnswer.Failed(id, $"Windows on {Environment.MachineName} said: {e.Message.Trim().TrimEnd('.')}.");
+            return AccountAnswer.Failed(id, $"Windows error on {Environment.MachineName}: {e.Message.Trim().TrimEnd('.')}.");
         }
     }
 
@@ -362,7 +362,7 @@ public static class WindowsUsers
         }
         if (string.IsNullOrEmpty(order.NewPassword))
         {
-            return AccountAnswer.Failed(order.Id, "Give a password.");
+            return AccountAnswer.Failed(order.Id, "Password is required.");
         }
         var name = order.Name!.Trim();
         using var user = new UserPrincipal(machine)
@@ -380,7 +380,7 @@ public static class WindowsUsers
             user.ExpirePasswordNow();
         }
         var warning = Join(machine, user, order.Add, true);
-        return new AccountAnswer { Id = order.Id, Ok = true, Warning = warning is null ? null : $"Made {name}, but {char.ToLowerInvariant(warning[0])}{warning.Substring(1)}" };
+        return new AccountAnswer { Id = order.Id, Ok = true, Warning = warning is null ? null : $"Created {name}, but {char.ToLowerInvariant(warning[0])}{warning.Substring(1)}" };
     }
 
     /// <summary>Puts the account in the groups (or takes it out); what went wrong, or null.</summary>
@@ -394,14 +394,14 @@ public static class WindowsUsers
                 using var group = GroupPrincipal.FindByIdentity(machine, g.Trim());
                 if (group is null)
                 {
-                    problems.Add($"there's no group called {g}");
+                    problems.Add($"group {g} was not found");
                     continue;
                 }
                 Member(group, user, add);
             }
             catch (Exception e) when (e is PrincipalException or System.Runtime.InteropServices.COMException or UnauthorizedAccessException)
             {
-                problems.Add($"{g} said: {e.Message.Trim().TrimEnd('.')}");
+                problems.Add($"{g}: {e.Message.Trim().TrimEnd('.')}");
             }
         }
         if (problems.Count == 0)
@@ -662,7 +662,7 @@ public static class WindowsUsers
             }
             catch (ArgumentException)
             {
-                problems.Add($"{text}: that isn't a SID");
+                problems.Add($"{text}: not a valid SID");
                 continue;
             }
             var bytes = new byte[sid.BinaryLength];
@@ -687,7 +687,7 @@ public static class WindowsUsers
             }
         }
         var said = problems.Count == 0 ? null : string.Join("; ", problems) + ".";
-        return done == 0 && said is not null ? AccountAnswer.Failed(order.Id, $"Windows on {Environment.MachineName} said no. {said}")
+        return done == 0 && said is not null ? AccountAnswer.Failed(order.Id, $"Could not change the Administrators group on {Environment.MachineName}. {said}")
             : new AccountAnswer { Id = order.Id, Ok = true, Warning = said, Admins = AdminsOrNone() };
     }
 
@@ -706,9 +706,9 @@ public static class WindowsUsers
     private static string Said(int status) => status switch
     {
         5 => "access denied",
-        1387 => "there's no account by that name",
-        1388 => "that kind of account can't go in a local group",
-        1371 => "Windows won't change that one", // a special account or group
+        1387 => "no account with that name exists",
+        1388 => "that type of account cannot be added to a local group",
+        1371 => "Windows does not allow changes to this special account or group", // a special account or group
         _ => new System.ComponentModel.Win32Exception(status).Message.Trim().TrimEnd('.'),
     };
 

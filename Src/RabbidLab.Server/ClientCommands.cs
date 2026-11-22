@@ -16,7 +16,7 @@ public sealed class ClientCommands
     /// <summary>How long the page waits for a client to answer.</summary>
     public static readonly TimeSpan Answer = TimeSpan.FromSeconds(40);
 
-    public const string PlainHttp = "This computer's client connects to the server over plain HTTP, so no password is sent to it. Connect the client with the server's https:// address, then try again.";
+    public const string PlainHttp = "The client on this computer connects over plain HTTP, so passwords are not sent to it. Reconnect the client using the server's https:// address and try again.";
 
     private readonly Lock gate = new();
     private readonly Dictionary<string, Lane> lanes = [];

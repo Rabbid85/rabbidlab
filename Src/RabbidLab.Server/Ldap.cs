@@ -336,13 +336,13 @@ public static class Ldap
                 ldap.Bind();
                 var root = (Protocols.SearchResponse) ldap.SendRequest(new Protocols.SearchRequest("", "(objectClass=*)", Protocols.SearchScope.Base, "defaultNamingContext"));
                 var baseDn = root.Entries.Count > 0 && root.Entries[0].Attributes.Contains("defaultNamingContext") ? root.Entries[0].Attributes["defaultNamingContext"][0] as string : null;
-                var open = new WindowsLdap(ldap, baseDn ?? throw new DirectoryProblem($"{domain} didn't say where its directory starts."));
+                var open = new WindowsLdap(ldap, baseDn ?? throw new DirectoryProblem($"{domain} did not return its default naming context."));
                 keep = true;
                 return open;
             }
             catch (Protocols.LdapException e) when (e.ErrorCode == 81)
             {
-                throw new DirectoryProblem($"{host} couldn't be reached. Check the name.");
+                throw new DirectoryProblem($"Could not reach {host}. Check the name.");
             }
             catch (Protocols.LdapException e) when (e.ErrorCode == 49 || name.Length == 0)
             {
@@ -350,11 +350,11 @@ public static class Ldap
             }
             catch (Protocols.LdapException e)
             {
-                throw new DirectoryProblem($"{domain} refused the sign-in: {e.Message.TrimEnd('.')}.");
+                throw new DirectoryProblem($"{domain} rejected the sign-in: {e.Message.TrimEnd('.')}.");
             }
             catch (Protocols.DirectoryException e)
             {
-                throw new DirectoryProblem($"{domain} couldn't be read: {e.Message.TrimEnd('.')}.");
+                throw new DirectoryProblem($"Could not read {domain}: {e.Message.TrimEnd('.')}.");
             }
             finally
             {
@@ -427,7 +427,7 @@ public static class Ldap
         {
             try
             {
-                return Ask(new Protocols.ExtendedRequest(WhoAmIOid), "asked") is Protocols.ExtendedResponse { ResponseValue: { Length: > 0 } value }
+                return Ask(new Protocols.ExtendedRequest(WhoAmIOid), "queried") is Protocols.ExtendedResponse { ResponseValue: { Length: > 0 } value }
                     ? System.Text.Encoding.UTF8.GetString(value) : null;
             }
             catch (LdapRefused)
@@ -477,7 +477,7 @@ public static class Ldap
             }
             catch (Protocols.DirectoryException e)
             {
-                throw new DirectoryProblem($"Active Directory couldn't be {doing}: {e.Message.TrimEnd('.')}.");
+                throw new DirectoryProblem($"Active Directory could not be {doing}: {e.Message.TrimEnd('.')}.");
             }
         }
 
@@ -553,7 +553,7 @@ public static class Ldap
                     }
                     var root = await connection.ReadAsync("", ["defaultNamingContext"], stop);
                     var baseDn = root.GetAttributeSet().Values.FirstOrDefault(a => a.Name.Equals("defaultNamingContext", StringComparison.OrdinalIgnoreCase))?.StringValue
-                        ?? throw new DirectoryProblem($"{domain} didn't say where its directory starts.");
+                        ?? throw new DirectoryProblem($"{domain} did not return its default naming context.");
                     var open = new ManagedLdap(connection, baseDn, transport != Transport.Plain);
                     keep = true;
                     return open;
@@ -568,11 +568,11 @@ public static class Ldap
                 {
                     if (Chain(e).OfType<SocketException>().Any(x => x.SocketErrorCode is SocketError.HostNotFound or SocketError.NoData))
                     {
-                        throw new DirectoryProblem($"{host} wasn't found. Check the name.");
+                        throw new DirectoryProblem($"{host} was not found. Check the name.");
                     }
                     problem = e is LdapException { ResultCode: LdapException.StrongAuthRequired or LdapException.ConfidentialityRequired }
-                        ? $"{host} only accepts sign-ins over an encrypted connection, and LDAPS and StartTLS didn't work. Give the domain controllers a certificate this computer trusts."
-                        : $"{host} couldn't be reached: {Said(e)}.";
+                        ? $"{host} requires an encrypted connection, and both LDAPS and StartTLS failed. Install a certificate on the domain controllers that this computer trusts."
+                        : $"Could not reach {host}: {Said(e)}.";
                 }
                 finally
                 {
@@ -582,7 +582,7 @@ public static class Ldap
                     }
                 }
             }
-            throw new DirectoryProblem(problem ?? $"{host} couldn't be reached.");
+            throw new DirectoryProblem(problem ?? $"Could not reach {host}.");
         }
 
         public Task<List<LdapRow>> Find(string root, string filter, bool subtree, string[] attributes, int limit, CancellationToken stop) =>
@@ -747,9 +747,9 @@ public static class Ldap
         /// <summary>What went wrong, as the rest of Rabbid Lab takes it: refused by the directory, or the connection gone. Null for anything else.</summary>
         private static Exception? Failed(Exception e) => e switch
         {
-            LdapException { ResultCode: LdapException.ServerDown or LdapException.ConnectError or LdapException.LdapTimeout } => new DirectoryProblem($"Active Directory couldn't be reached: {Said(e)}."),
+            LdapException { ResultCode: LdapException.ServerDown or LdapException.ConnectError or LdapException.LdapTimeout } => new DirectoryProblem($"Could not reach Active Directory: {Said(e)}."),
             LdapException x => new LdapRefused(x.ResultCode, (x.LdapErrorMessage is { Length: > 0 } said ? said : x.Message).Trim().TrimEnd('\0', '.')),
-            IOException or SocketException or ObjectDisposedException => new DirectoryProblem($"Active Directory couldn't be reached: {Said(e)}."),
+            IOException or SocketException or ObjectDisposedException => new DirectoryProblem($"Could not reach Active Directory: {Said(e)}."),
             _ => null,
         };
 

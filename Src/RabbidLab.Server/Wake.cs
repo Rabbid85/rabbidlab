@@ -63,7 +63,7 @@ public sealed class Waker(Clients clients, Inventories inventories, ClientComman
         List<byte[]> macs = [.. nics.Select(n => WakeOnLan.Mac(n.Mac)).OfType<byte[]>()];
         if (macs.Count == 0)
         {
-            return new(c.Id, c.Computer, [], $"Rabbid Lab doesn't know {c.Computer}'s network card yet. Its client sends it from {From} on, a few minutes after it starts.");
+            return new(c.Id, c.Computer, [], $"The network card of {c.Computer} is not known yet. Client {From} or later reports it a few minutes after it starts.");
         }
         // The networks it was on: its cards' addresses, and the address it last came to this server from.
         List<(IPAddress Address, int Prefix)> theirs = [.. nics.Where(n => n.Prefix > 0 && IPAddress.TryParse(n.Ip, out _)).Select(n => (IPAddress.Parse(n.Ip!), n.Prefix))];
@@ -101,7 +101,7 @@ public sealed class Waker(Clients clients, Inventories inventories, ClientComman
             return new(c.Id, c.Computer, via, null);
         }
         return new(c.Id, c.Computer, [], away.Count > 0
-            ? $"{c.Computer} was last on {WakeOnLan.Network(away[0].Address, away[0].Prefix)}. This server isn't on that network, and no computer there with client {From} or later is online to pass it on."
-            : theirs.Count == 0 && seen is null ? $"Rabbid Lab doesn't know which network {c.Computer} is on." : "This server couldn't send it on that network.");
+            ? $"{c.Computer} was last seen on {WakeOnLan.Network(away[0].Address, away[0].Prefix)}. This server is not on that network, and no online computer there has client {From} or later to relay the wake-up packet."
+            : theirs.Count == 0 && seen is null ? $"The network of {c.Computer} is unknown." : "Could not send the wake-up packet on that network.");
     }
 }

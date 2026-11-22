@@ -67,7 +67,7 @@
       <DockPanel x:Name="LicensePage" Visibility="Collapsed">
         <StackPanel DockPanel.Dock="Top">
           <TextBlock Style="{StaticResource H1}" Text="License agreement" />
-          <TextBlock Style="{StaticResource Lead}" Text="Rabbid Lab is open source under the MIT License: you may use, copy, change and share it, and it comes with no warranty." />
+          <TextBlock Style="{StaticResource Lead}" Text="Rabbid Lab is open-source software licensed under the MIT License. You may use, copy, modify and distribute it. It is provided without warranty." />
         </StackPanel>
         <CheckBox x:Name="AgreeBox" DockPanel.Dock="Bottom" Margin="0,14,0,0" Content="I accept the terms of the license agreement" Checked="Agree_Changed" Unchecked="Agree_Changed" />
         <Border CornerRadius="8" Background="{StaticResource Field}" BorderBrush="{StaticResource Line}" BorderThickness="1">
@@ -131,7 +131,7 @@
       <ScrollViewer x:Name="AddressPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
       <StackPanel Margin="0,0,4,4">
         <TextBlock Style="{StaticResource H1}" Text="Console address" />
-        <TextBlock Style="{StaticResource Lead}" Text="Rabbid Lab is opened in a browser at this computer's name or IP address and this port." />
+        <TextBlock Style="{StaticResource Lead}" Text="Admins open the Rabbid Lab console in a browser, using this computer's name or IP address and the port below." />
         <Grid Margin="0,0,0,14">
           <Grid.ColumnDefinitions><ColumnDefinition Width="120" /><ColumnDefinition Width="16" /><ColumnDefinition /></Grid.ColumnDefinitions>
           <StackPanel>
@@ -146,7 +146,7 @@
         <CheckBox x:Name="DnsBox" Margin="0,0,0,6" Visibility="Collapsed" Checked="Dns_Changed" Unchecked="Dns_Changed">
           <StackPanel>
             <TextBlock x:Name="DnsTitle" Text="Create a DNS record for this name" />
-            <TextBlock Style="{StaticResource Hint}" Margin="0,2,0,0" Text="Points the name at this computer, so it keeps working if the IP address changes." />
+            <TextBlock Style="{StaticResource Hint}" Margin="0,2,0,0" Text="Maps the name to this computer, so the address keeps working if the IP address changes." />
           </StackPanel>
         </CheckBox>
         <!-- What Setup found when it checked it can add the name: on which DNS server, or why not. -->
@@ -217,14 +217,14 @@
         <TextBlock Text="Shortcuts" FontSize="14.5" FontWeight="SemiBold" Foreground="{StaticResource Title}" Margin="0,0,0,12" />
         <CheckBox x:Name="DesktopBox" Margin="0,0,0,14">
           <StackPanel>
-            <TextBlock Text="Create desktop shortcut" />
-            <TextBlock Style="{StaticResource Hint}" Margin="0,2,0,0" Text="Open the Rabbid Lab console in your browser." />
+            <TextBlock Text="Create a desktop shortcut" />
+            <TextBlock Style="{StaticResource Hint}" Margin="0,2,0,0" Text="Opens the Rabbid Lab console in your browser." />
           </StackPanel>
         </CheckBox>
         <CheckBox x:Name="StartMenuBox" Margin="0,0,0,4">
           <StackPanel>
             <TextBlock Text="Create a Start menu shortcut" />
-            <TextBlock Style="{StaticResource Hint}" Margin="0,2,0,0" Text="Console and Windows service controls." />
+            <TextBlock Style="{StaticResource Hint}" Margin="0,2,0,0" Text="Opens the console, and starts the Rabbid Lab service if it is stopped." />
           </StackPanel>
         </CheckBox>
         <!-- Only on computers whose Defender has attack surface reduction rules, which block new programs like Rabbid Lab. -->
@@ -282,7 +282,7 @@
         <TextBlock x:Name="DoneLead" Style="{StaticResource Lead}" Text="" />
         <!-- The service would not start: how to fix it (ServiceStartException.Fix). -->
         <StackPanel x:Name="FixPanel" Visibility="Collapsed" Margin="0,0,0,14">
-          <TextBlock Text="How to fix it" FontWeight="SemiBold" FontSize="13.5" Margin="0,0,0,10" />
+          <TextBlock Text="How to fix this" FontWeight="SemiBold" FontSize="13.5" Margin="0,0,0,10" />
           <StackPanel x:Name="FixSteps" />
           <Button x:Name="AllowButton" Style="{StaticResource Primary}" Content="Allow in Microsoft Defender" HorizontalAlignment="Left" Margin="0,6,0,4" Click="Allow_Click" Visibility="Collapsed" />
           <TextBlock x:Name="AllowResult" Style="{StaticResource Hint}" Margin="0,4,0,0" Visibility="Collapsed" />
@@ -311,7 +311,7 @@
             <StackPanel Orientation="Horizontal">
               <TextBlock Style="{StaticResource Hint}" Margin="0,0,16,0" VerticalAlignment="Center" Text="Developer" />
               <Button Style="{StaticResource LinkButton}" Content="Remove the Defender exclusion" Margin="0,0,18,0" Click="DevRemoveExclusion_Click" />
-              <Button Style="{StaticResource LinkButton}" Content="Show the blocked screen" Click="DevShowBlocked_Click" />
+              <Button Style="{StaticResource LinkButton}" Content="Show the blocked page" Click="DevShowBlocked_Click" />
             </StackPanel>
             <TextBlock x:Name="DevResult" Style="{StaticResource Hint}" Margin="0,8,0,0" Visibility="Collapsed" TextWrapping="Wrap" />
           </StackPanel>

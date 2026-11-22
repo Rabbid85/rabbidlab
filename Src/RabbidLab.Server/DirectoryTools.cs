@@ -210,7 +210,7 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
     private const int PasswordNotRequired = 0x20;
     private const int NoPreauthNeeded = 0x400000;
     private const int Limit = 1000; // the most Active Directory sends without paging
-    private const string NeedsLdaps = "Active Directory only sets passwords over an encrypted connection, and this one isn't. In Docker that's LDAPS or StartTLS: give the domain controllers a certificate this computer trusts.";
+    private const string NeedsLdaps = "Active Directory sets passwords only over an encrypted connection (LDAPS or StartTLS), and this connection is not encrypted. In Docker, install a certificate on the domain controllers that this computer trusts.";
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { WriteIndented = true };
 
     private static readonly string[] UserAttributes = ["sAMAccountName", "displayName", "userPrincipalName", "mail", "title", "description",
@@ -282,7 +282,7 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
     }
 
     /// <summary>What everyone without the right to set up the service account is told while it's read-only.</summary>
-    public static string OnlyAdminsText => $"{Product.Title} isn't set up for Active Directory yet. Someone who can set up its service account has to do that first.";
+    public static string OnlyAdminsText => $"The Active Directory service account is not configured. An admin with permission to configure it must set it up first.";
 
     private DirectoryToolsState StateOf(DirectoryToolsFile f)
     {
@@ -303,12 +303,12 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
         : null;
 
     /// <summary>What a change says while Active Directory is only read.</summary>
-    public static string ReadOnlyText => $"{Product.Title} is only reading Active Directory until its service account is set up. Set it up to make changes.";
+    public static string ReadOnlyText => $"Active Directory is read-only until the service account is configured. Configure the service account to make changes.";
 
     public async Task<SetupLook> Look(string? domain, string username, string password, CancellationToken stop)
     {
-        var d = Clean(domain) ?? Domain ?? throw new ToolProblem("Which domain? Type its name, such as amw.com.");
-        using var ldap = await open(d, await Host(d, stop), username, password, stop) ?? throw new ToolProblem("That username or password is wrong.");
+        var d = Clean(domain) ?? Domain ?? throw new ToolProblem("Enter the domain name, for example amw.com.");
+        using var ldap = await open(d, await Host(d, stop), username, password, stop) ?? throw new ToolProblem("The username or password is incorrect.");
         var places = await PlacesIn(ldap, ldap.BaseDn, stop);
         var service = places.FirstOrDefault(p => p.Name.Equals("Service Accounts", StringComparison.OrdinalIgnoreCase));
         return new SetupLook(d, ldap.BaseDn, places, service?.Dn ?? $"CN=Users,{ldap.BaseDn}", "svc-rabbidlab");
@@ -316,7 +316,7 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
 
     public async Task<string?> Connect(SetupForm form, string by, CancellationToken stop)
     {
-        var domain = Clean(form.Domain) ?? Domain ?? throw new ToolProblem("Which domain? Type its name, such as amw.com.");
+        var domain = Clean(form.Domain) ?? Domain ?? throw new ToolProblem("Enter the domain name, for example amw.com.");
         var host = await Host(domain, stop);
         var username = form.Username?.Trim() ?? "";
         var password = form.Password ?? "";
@@ -325,19 +325,19 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
         {
             throw new ToolProblem(bad);
         }
-        using var ldap = await open(domain, host, username, password, stop) ?? throw new ToolProblem("That username or password is wrong.");
+        using var ldap = await open(domain, host, username, password, stop) ?? throw new ToolProblem("The username or password is incorrect.");
         var signedIn = Ldap.Account(username);
         if (form.Existing)
         {
             // Kept under the name Active Directory signed in, not the one typed.
-            var me = await Ldap.Bound(ldap, username, ["sAMAccountName"], stop) ?? throw new ToolProblem($"{signedIn} signed in, but wasn't found in {domain}.");
+            var me = await Ldap.Bound(ldap, username, ["sAMAccountName"], stop) ?? throw new ToolProblem($"{signedIn} signed in, but the account was not found in {domain}.");
             var sam = me.Text("sAMAccountName") ?? signedIn;
             var scope = await Place(ldap, form.Scope, ldap.BaseDn, stop);
             // Whether it may make users there: Active Directory works that out for whoever asks.
             var can = (await ldap.Find(scope, "(objectClass=*)", false, ["allowedChildClassesEffective"], 1, stop)).FirstOrDefault()?.Texts("allowedChildClassesEffective")
                 .Contains("user", StringComparer.OrdinalIgnoreCase) == true;
             Save(new DirectoryToolsFile { Domain = domain, Account = sam, Password = secrets.Encrypt(password), Scope = scope, Made = false, By = by, At = DateTime.UtcNow });
-            return can ? null : $"{sam} isn't allowed to make accounts in {ScopeName(scope, ldap.BaseDn, domain)}. {Product.Title} can still list them, but making them won't work until it is.";
+            return can ? null : $"{sam} does not have permission to create accounts in {ScopeName(scope, ldap.BaseDn, domain)}. Accounts can be listed, but creating them fails until that permission is delegated.";
         }
 
         if (!ldap.Encrypted)
@@ -346,7 +346,7 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
         }
         if (await Taken(ldap, name, stop))
         {
-            throw new ToolProblem($"There's already an account called {name} in {domain}. Pick another name, or choose Use an account I already have.");
+            throw new ToolProblem($"An account named {name} already exists in {domain}. Enter a different name, or use an existing account.");
         }
         var ou = await Into(ldap, form.Ou, $"CN=Users,{ldap.BaseDn}", stop);
         var where = await Place(ldap, form.Scope, ldap.BaseDn, stop);
@@ -360,21 +360,21 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
                 ["sAMAccountName"] = [name],
                 ["userPrincipalName"] = [$"{name}@{domain}"],
                 ["displayName"] = [Product.Name],
-                ["description"] = [$"{Product.Name} makes and changes accounts with this one. Made by {signedIn} on {DateTime.UtcNow:yyyy-MM-dd}."],
+                ["description"] = [$"{Product.Name} service account. Manages users, groups and computers. Created by {signedIn} on {DateTime.UtcNow:yyyy-MM-dd}."],
                 ["userAccountControl"] = [(NormalAccount | Disabled).ToString(CultureInfo.InvariantCulture)],
             }, stop);
         }
         catch (LdapRefused e)
         {
-            throw new ToolProblem(e.Code == LdapRefused.InsufficientRights ? $"{signedIn} isn't allowed to make accounts in {Ldap.Path(ou, ldap.BaseDn)}. Sign in with a domain admin." : Said(e, signedIn));
+            throw new ToolProblem(e.Code == LdapRefused.InsufficientRights ? $"Access denied. {signedIn} does not have permission to create accounts in {Ldap.Path(ou, ldap.BaseDn)}. Sign in as a domain admin." : Said(e, signedIn));
         }
         try
         {
             await ldap.Modify(dn, [new(LdapChange.Replace, "unicodePwd", Ldap.Password(secret))], stop);
             await ldap.Modify(dn, [new(LdapChange.Replace, "userAccountControl", (NormalAccount | DontExpire | NotDelegated).ToString(CultureInfo.InvariantCulture))], stop);
             var sid = (await ldap.Find(dn, "(objectClass=*)", false, ["objectSid"], 1, stop)).FirstOrDefault()?.Bytes("objectSid")
-                ?? throw new ToolProblem($"{name} was made, but Active Directory didn't say its SID.");
-            var dacl = await ldap.ReadDacl(where, stop) ?? throw new ToolProblem($"{signedIn} can't read who may change {ScopeName(where, ldap.BaseDn, domain)}. Sign in with a domain admin.");
+                ?? throw new ToolProblem($"{name} was created, but its SID could not be read.");
+            var dacl = await ldap.ReadDacl(where, stop) ?? throw new ToolProblem($"Access denied. {signedIn} cannot read the permissions on {ScopeName(where, ldap.BaseDn, domain)}. Sign in as a domain admin.");
             await ldap.WriteDacl(where, Dacl.Grant(dacl, Dacl.Delegation(sid)), stop);
             Save(new DirectoryToolsFile { Domain = domain, Account = name, Password = secrets.Encrypt(secret), Scope = where, Made = true, By = by, At = DateTime.UtcNow });
         }
@@ -384,11 +384,11 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
             await Undo(ldap, dn);
             if (e is LdapRefused r)
             {
-                throw new ToolProblem(r.Code == LdapRefused.InsufficientRights ? $"{signedIn} can't give {name} rights over {ScopeName(where, ldap.BaseDn, domain)}. Sign in with a domain admin." : Said(r, signedIn));
+                throw new ToolProblem(r.Code == LdapRefused.InsufficientRights ? $"Access denied. {signedIn} cannot delegate permissions on {ScopeName(where, ldap.BaseDn, domain)} to {name}. Sign in as a domain admin." : Said(r, signedIn));
             }
             if (e is FormatException)
             {
-                throw new ToolProblem($"The permissions on {ScopeName(where, ldap.BaseDn, domain)} couldn't be changed: {e.Message}");
+                throw new ToolProblem($"Could not change the permissions on {ScopeName(where, ldap.BaseDn, domain)}: {e.Message}");
             }
             throw;
         }
@@ -415,7 +415,7 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
         var place = await Into(ldap, dn, kind == "groups" ? NewGroupsOf(f) : kind == "computers" ? NewComputersOf(f) : NewUsersOf(f), stop);
         if (!Ldap.Under(place, f.Scope!))
         {
-            throw new ToolProblem($"{Product.Title}'s account can only make {(kind == "groups" ? "groups" : kind == "computers" ? "computers" : "people")} in {ScopeName(f.Scope!, ldap.BaseDn, f.Domain!)}.");
+            throw new ToolProblem($"The service account can only create {(kind == "groups" ? "groups" : kind == "computers" ? "computers" : "users")} in {ScopeName(f.Scope!, ldap.BaseDn, f.Domain!)}.");
         }
         lock (gate)
         {
@@ -423,7 +423,7 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
             var now = Load();
             if (now.Account != f.Account || now.Domain != f.Domain || now.Scope != f.Scope)
             {
-                throw new ToolProblem($"{Product.Title}'s service account changed while this was saving. Try again.", StatusCodes.Status409Conflict);
+                throw new ToolProblem("The service account was changed while saving. Try again.", StatusCodes.Status409Conflict);
             }
             Save(new DirectoryToolsFile
             {
@@ -504,7 +504,7 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
         using var ldap = await Open(stop);
         var dn = Inside(group, ldap.BaseDn);
         var found = (await ldap.Find(dn, "(objectClass=group)", false, ["objectSid"], 1, stop)).FirstOrDefault()
-            ?? throw new ToolProblem("That group isn't in Active Directory any more.", StatusCodes.Status404NotFound);
+            ?? throw new ToolProblem("The group no longer exists in Active Directory.", StatusCodes.Status404NotFound);
         Reached(found.Dn);
         var member = $"(memberOf={ActiveDirectory.Escape(found.Dn)})";
         var rows = await ldap.Find(ldap.BaseDn, Rid(found) is { } rid ? $"(|{member}(primaryGroupID={rid}))" : member, true, MemberAttributes, Limit, stop);
@@ -516,7 +516,7 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
         var name = form.Name?.Trim() ?? "";
         if (name.Length is 0 or > 64 || name.IndexOfAny(AccountOrder.NotInNames) >= 0 || name.EndsWith('.'))
         {
-            throw new ToolProblem("Group names are 64 characters at most, without \" / \\ [ ] : ; | = , + * ? < > or @.");
+            throw new ToolProblem("Group names can be up to 64 characters and cannot contain \" / \\ [ ] : ; | = , + * ? < > or @.");
         }
         Unclaimed(name, group: true);
         using var ldap = await Open(stop);
@@ -524,12 +524,12 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
         var ou = await Into(ldap, form.Ou, NewGroupsOf(f), stop);
         if (!Ldap.Under(ou, f.Scope!))
         {
-            throw new ToolProblem($"{Product.Title}'s account can only make groups in {ScopeName(f.Scope!, ldap.BaseDn, f.Domain!)}.");
+            throw new ToolProblem($"The service account can only create groups in {ScopeName(f.Scope!, ldap.BaseDn, f.Domain!)}.");
         }
         Reached(ou);
         if (await Taken(ldap, name, stop))
         {
-            throw new ToolProblem($"There's already something called {name} in {f.Domain}.");
+            throw new ToolProblem($"An object named {name} already exists in {f.Domain}.");
         }
         // groupType: 2 global, 4 domain local, 8 universal; the top bit makes it a security group.
         var type = (form.Scope?.ToLowerInvariant()) switch { "universal" => 8, "local" => 4, _ => 2 } | (form.Security ? unchecked((int) 0x80000000) : 0);
@@ -550,10 +550,10 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
         }
         catch (LdapRefused e)
         {
-            throw new ToolProblem(e.Code == LdapRefused.EntryExists ? $"There's already something called {name} in {Ldap.Path(ou, ldap.BaseDn)}." : Said(e, f.Account!));
+            throw new ToolProblem(e.Code == LdapRefused.EntryExists ? $"An object named {name} already exists in {Ldap.Path(ou, ldap.BaseDn)}." : Said(e, f.Account!));
         }
         var made = (await ldap.Find(dn, "(objectClass=*)", false, GroupAttributes, 1, stop)).FirstOrDefault();
-        return made is null ? throw new ToolProblem($"{name} was made, but couldn't be read back.") : Group(made, ldap.BaseDn);
+        return made is null ? throw new ToolProblem($"{name} was created, but could not be read back.") : Group(made, ldap.BaseDn);
     }
 
     public async Task<string?> ChangeMembers(string group, IReadOnlyList<string> add, IReadOnlyList<string> remove, CancellationToken stop)
@@ -568,7 +568,7 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
             {
                 if (await SetMember(ldap, dn, Inside(m, ldap.BaseDn), adding, stop) is { } refused)
                 {
-                    problems.Add(refused.Code == LdapRefused.InsufficientRights ? $"{f.Account} isn't allowed to change {Ldap.Name(dn)}" : $"{Ldap.Name(m)}: {refused.Message}");
+                    problems.Add(refused.Code == LdapRefused.InsufficientRights ? $"{f.Account} does not have permission to change {Ldap.Name(dn)}" : $"{Ldap.Name(m)}: {refused.Message}");
                     break;
                 }
             }
@@ -583,7 +583,7 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
         var found = await ChangeableGroup(ldap, f, group, stop);
         if (Group(found, ldap.BaseDn) is { Protected: true } or { System: true })
         {
-            throw new ToolProblem($"{Ldap.Name(found.Dn)} is a built-in or protected Active Directory group, so it can't be deleted here.");
+            throw new ToolProblem($"{Ldap.Name(found.Dn)} is a built-in or protected Active Directory group and cannot be deleted.");
         }
         await Remove(ldap, found.Dn, f, stop);
     }
@@ -637,7 +637,7 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
         var display = Words.Blank(form.Display) ?? Words.Blank($"{first} {last}") ?? username;
         if (display.Length > 64)
         {
-            throw new ToolProblem("The display name is 64 characters at most.");
+            throw new ToolProblem("Display names can be up to 64 characters.");
         }
         using var ldap = await Open(stop);
         if (!ldap.Encrypted)
@@ -648,12 +648,12 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
         var ou = await Into(ldap, form.Ou, NewUsersOf(f), stop);
         if (!Ldap.Under(ou, f.Scope!))
         {
-            throw new ToolProblem($"{Product.Title}'s account can only make people in {ScopeName(f.Scope!, ldap.BaseDn, f.Domain!)}.");
+            throw new ToolProblem($"The service account can only create users in {ScopeName(f.Scope!, ldap.BaseDn, f.Domain!)}.");
         }
         Reached(ou);
         if (await Taken(ldap, username, stop))
         {
-            throw new ToolProblem($"There's already an account called {username} in {f.Domain}.");
+            throw new ToolProblem($"An account named {username} already exists in {f.Domain}.");
         }
         var dn = $"CN={Ldap.Escape(display)},{ou}";
         var attributes = new Dictionary<string, object[]>
@@ -677,7 +677,7 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
         }
         catch (LdapRefused e) when (e.Code == LdapRefused.EntryExists)
         {
-            throw new ToolProblem($"There's already something called {display} in {Ldap.Path(ou, ldap.BaseDn)}. Change the display name.");
+            throw new ToolProblem($"An object named {display} already exists in {Ldap.Path(ou, ldap.BaseDn)}. Enter a different display name.");
         }
         catch (LdapRefused e)
         {
@@ -706,8 +706,8 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
         }
         var warning = await Join(ldap, f, dn, form.Groups ?? [], true, stop);
         var made = (await ldap.Find(dn, "(objectClass=*)", false, UserAttributes, 1, stop)).FirstOrDefault();
-        return (made is null ? throw new ToolProblem($"{username} was made, but couldn't be read back.") : Person(made, ldap.BaseDn, f.Account!),
-            warning is null ? null : $"Made {username}, but {char.ToLowerInvariant(warning[0])}{warning[1..]}");
+        return (made is null ? throw new ToolProblem($"{username} was created, but could not be read back.") : Person(made, ldap.BaseDn, f.Account!),
+            warning is null ? null : $"Created {username}, but {char.ToLowerInvariant(warning[0])}{warning[1..]}");
     }
 
     public async Task Password(string username, string password, bool mustChange, CancellationToken stop)
@@ -784,7 +784,7 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
             try
             {
                 var read = await AsComputer!(f.Domain!, await Host(f.Domain!, stop), stop)
-                    ?? throw new ToolProblem($"{f.Account} couldn't read {f.Domain}. Set up the service account instead.", StatusCodes.Status409Conflict);
+                    ?? throw new ToolProblem($"{f.Account} could not read {f.Domain}. Configure the service account instead.", StatusCodes.Status409Conflict);
                 return new ReadOnlyLdap(read);
             }
             catch (DirectoryProblem e)
@@ -792,11 +792,11 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
                 throw new ToolProblem(e.Message, StatusCodes.Status503ServiceUnavailable);
             }
         }
-        var password = secrets.TryDecrypt(f.Password) ?? throw new ToolProblem($"{Product.Title}'s Active Directory password can't be read here any more. Set it up again.", StatusCodes.Status409Conflict);
+        var password = secrets.TryDecrypt(f.Password) ?? throw new ToolProblem("The service account password could not be decrypted on this server. Configure the service account again.", StatusCodes.Status409Conflict);
         try
         {
             return await open(f.Domain!, await Host(f.Domain!, stop), $"{f.Account}@{f.Domain}", password, stop)
-                ?? throw new ToolProblem($"{f.Domain} turned down {f.Account}'s password. Someone may have changed it or turned the account off. Set it up again.", StatusCodes.Status409Conflict);
+                ?? throw new ToolProblem($"{f.Domain} rejected the password for {f.Account}. The password may have changed or the account may be disabled. Configure the service account again.", StatusCodes.Status409Conflict);
         }
         catch (DirectoryProblem e)
         {
@@ -812,7 +812,7 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
         {
             return f;
         }
-        var read = ReadOnlyFile() ?? throw new ToolProblem($"{Product.Title} doesn't have its Active Directory account yet. Set it up first.", StatusCodes.Status409Conflict);
+        var read = ReadOnlyFile() ?? throw new ToolProblem("The Active Directory service account is not configured. Configure it first.", StatusCodes.Status409Conflict);
         // Read-only is for people who can set up the service account, or whose role may see it: never anyone else, nor nobody.
         return Caller.Current is { } c && c.Roles.Allowed(c.Who) is var may && (may.Contains(Permissions.AdConnect) || may.Contains(Permissions.AdReadOnly)) ? read
             : throw new ToolProblem(OnlyAdminsText, StatusCodes.Status403Forbidden);
@@ -824,7 +824,7 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
 
     private static async Task<LdapRow> Find(ILdap ldap, string root, string username, CancellationToken stop) =>
         (await ldap.Find(root, $"(&(objectCategory=person)(objectClass=user)(sAMAccountName={ActiveDirectory.Escape(username.Trim())}))", true, UserAttributes, 1, stop)).FirstOrDefault()
-        ?? throw new ToolProblem($"There's no account called {username} any more.", StatusCodes.Status404NotFound);
+        ?? throw new ToolProblem($"The account {username} no longer exists.", StatusCodes.Status404NotFound);
 
     /// <summary>
     /// Found and in scope. Protected and built-in accounts go to Active Directory like any other, and it refuses what the
@@ -838,7 +838,7 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
         InScope(row.Dn, f, ldap.BaseDn);
         await Ranked(ldap, row.Dn, user.Username, null, group: false, stop);
         return signIn && user.Service
-            ? throw new ToolProblem($"That's {Product.Title}'s own account. Its password and sign-in settings stay as they are, so {Product.Title} keeps working.")
+            ? throw new ToolProblem($"This is the {Product.Title} service account. Its password and sign-in settings cannot be changed here.")
             : row;
     }
 
@@ -846,7 +846,7 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
     private static async Task<LdapRow> ChangeableGroup(ILdap ldap, DirectoryToolsFile f, string group, CancellationToken stop)
     {
         var row = (await ldap.Find(Inside(group, ldap.BaseDn), "(objectClass=group)", false, GroupAttributes, 1, stop)).FirstOrDefault()
-            ?? throw new ToolProblem("That group isn't in Active Directory any more.", StatusCodes.Status404NotFound);
+            ?? throw new ToolProblem("The group no longer exists in Active Directory.", StatusCodes.Status404NotFound);
         InScope(row.Dn, f, ldap.BaseDn);
         await Ranked(ldap, row.Dn, row.Text("sAMAccountName"), row.Text("cn") ?? Ldap.Name(row.Dn), group: true, stop);
         return row; // built-in ones too: Active Directory refuses what may not be done
@@ -856,10 +856,10 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
     private static async Task<LdapRow> ComputerRow(ILdap ldap, DirectoryToolsFile f, string name, CancellationToken stop)
     {
         var row = (await ldap.Find(ldap.BaseDn, $"(&(objectCategory=computer)(sAMAccountName={ActiveDirectory.Escape(name.Trim().TrimEnd('$'))}$))", true, ComputerAttributes, 1, stop)).FirstOrDefault()
-            ?? throw new ToolProblem($"There's no computer called {name} in Active Directory any more.", StatusCodes.Status404NotFound);
+            ?? throw new ToolProblem($"The computer {name} no longer exists in Active Directory.", StatusCodes.Status404NotFound);
         InScope(row.Dn, f, ldap.BaseDn);
         return ((row.Number("userAccountControl") ?? 0) & 0x2000) != 0
-            ? throw new ToolProblem($"{name} is a domain controller. Change those in Active Directory itself.")
+            ? throw new ToolProblem($"{name} is a domain controller. Manage domain controllers in Active Directory Users and Computers.")
             : row;
     }
 
@@ -868,7 +868,7 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
     {
         if (!Ldap.Under(dn, f.Scope!))
         {
-            throw new ToolProblem($"{Ldap.Name(dn)} is outside the service account's scope ({ScopeName(f.Scope!, baseDn, f.Domain!)}), so it can't be changed here.");
+            throw new ToolProblem($"{Ldap.Name(dn)} is outside the service account's scope ({ScopeName(f.Scope!, baseDn, f.Domain!)}) and cannot be changed.");
         }
         Reached(dn);
     }
@@ -937,8 +937,8 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
         if (role is not null)
         {
             throw new ToolProblem(group
-                ? $"{cn ?? Ldap.Name(dn)} puts people in the role {role.Name}. Only someone above {role.Name} can change it."
-                : $"{sam ?? Ldap.Name(dn)} is in the role {role.Name}. Only someone above {role.Name} can change that account.", StatusCodes.Status403Forbidden);
+                ? $"{cn ?? Ldap.Name(dn)} grants the {role.Name} role. Only admins in a role above {role.Name} can change this group."
+                : $"{sam ?? Ldap.Name(dn)} has the {role.Name} role. Only admins in a role above {role.Name} can change this account.", StatusCodes.Status403Forbidden);
         }
     }
 
@@ -970,7 +970,7 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
             && ((m.Kind == RoleMember.Group && group != false) || (m.Kind == RoleMember.Person && group != true))));
         if (role is not null)
         {
-            throw new ToolProblem($"The role {role.Name} names {name}. Only someone above {role.Name} can make or rename something to that.", StatusCodes.Status403Forbidden);
+            throw new ToolProblem($"{name} is a member of the {role.Name} role. Only admins in a role above {role.Name} can create an object with this name or rename one to it.", StatusCodes.Status403Forbidden);
         }
     }
 
@@ -1052,7 +1052,7 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
                 var group = await ChangeableGroup(ldap, f, g, stop);
                 if (await SetMember(ldap, group.Dn, userDn, add, stop) is { } refused)
                 {
-                    problems.Add(refused.Code == LdapRefused.InsufficientRights ? $"it isn't allowed to change {Ldap.Name(g)}" : $"{Ldap.Name(g)} said: {refused.Message}");
+                    problems.Add(refused.Code == LdapRefused.InsufficientRights ? $"the service account does not have permission to change {Ldap.Name(g)}" : $"{Ldap.Name(g)}: {refused.Message}");
                 }
             }
             catch (ToolProblem e)
@@ -1065,7 +1065,7 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
             return null;
         }
         var text = string.Join("; ", problems);
-        return (add ? "Couldn't add to every group: " : "Couldn't take out of every group: ") + text + ".";
+        return (add ? "Could not add to all groups: " : "Could not remove from all groups: ") + text + ".";
     }
 
     // Every OU and container Active Directory Users and Computers shows: not the advanced-only system ones, nor anything
@@ -1080,9 +1080,9 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
     }
 
     private static string? Fixed(LdapRow r, string baseDn) =>
-        r.Texts("objectClass").Contains("builtinDomain", StringComparer.OrdinalIgnoreCase) ? "Active Directory keeps its built-in groups here. New objects can't go in it."
-        : r.Dn.Equals($"CN=ForeignSecurityPrincipals,{baseDn}", StringComparison.OrdinalIgnoreCase) ? "Stand-ins for accounts from other domains. New objects can't go in it."
-        : r.Dn.Equals($"OU=Domain Controllers,{baseDn}", StringComparison.OrdinalIgnoreCase) ? "Only domain controllers go here."
+        r.Texts("objectClass").Contains("builtinDomain", StringComparer.OrdinalIgnoreCase) ? "Contains the default built-in groups. New objects cannot be created here."
+        : r.Dn.Equals($"CN=ForeignSecurityPrincipals,{baseDn}", StringComparison.OrdinalIgnoreCase) ? "Holds security principals from trusted domains. New objects cannot be created here."
+        : r.Dn.Equals($"OU=Domain Controllers,{baseDn}", StringComparison.OrdinalIgnoreCase) ? "Reserved for domain controllers."
         : null;
 
     /// <summary>The OU picked (which must be there), or the fallback when none is.</summary>
@@ -1091,10 +1091,10 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
         var wanted = Words.Blank(dn) ?? fallback;
         if (!Ldap.Under(wanted, ldap.BaseDn))
         {
-            throw new ToolProblem("That place isn't in this domain.");
+            throw new ToolProblem("That location is not in this domain.");
         }
         var found = (await ldap.Find(wanted, "(objectClass=*)", false, ["distinguishedName"], 1, stop)).FirstOrDefault();
-        return found?.Dn ?? throw new ToolProblem($"There's no {Ldap.Path(wanted, ldap.BaseDn)} in Active Directory any more.");
+        return found?.Dn ?? throw new ToolProblem($"{Ldap.Path(wanted, ldap.BaseDn)} no longer exists in Active Directory.");
     }
 
     /// <summary>Like Place, for where something new is made: never Builtin, ForeignSecurityPrincipals or Domain Controllers.</summary>
@@ -1218,26 +1218,26 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
 
     /// <summary>The DN, when it's in this domain.</summary>
     private static string Inside(string dn, string baseDn) =>
-        Ldap.Under(dn?.Trim() ?? "", baseDn) ? dn!.Trim() : throw new ToolProblem("That isn't in this domain.");
+        Ldap.Under(dn?.Trim() ?? "", baseDn) ? dn!.Trim() : throw new ToolProblem("The object is not in this domain.");
 
     private static DateTime? FileTime(long? value) => value is > 0 and < long.MaxValue ? DateTime.FromFileTimeUtc(value.Value) : null;
 
     /// <summary>What Active Directory's refusal means, in words.</summary>
     private static string Said(LdapRefused e, string account, bool password = false) => e.Code switch
     {
-        LdapRefused.InsufficientRights => $"{account} isn't allowed to do that there. Accounts of admins are protected by Active Directory itself; change those in Active Directory Users and Computers.",
-        LdapRefused.ConstraintViolation or LdapRefused.Unwilling when password => "That password doesn't meet the domain's password rules (length, complexity or history). Try a longer one.",
-        LdapRefused.NoSuchObject => "That isn't in Active Directory any more.",
-        LdapRefused.EntryExists => "There's already something with that name there.",
-        _ => $"Active Directory said: {e.Message}.",
+        LdapRefused.InsufficientRights => $"Access denied. {account} does not have permission to make this change. Admin accounts are protected by Active Directory; change them in Active Directory Users and Computers.",
+        LdapRefused.ConstraintViolation or LdapRefused.Unwilling when password => "The password does not meet the domain's password policy (length, complexity or history). Try a longer password.",
+        LdapRefused.NoSuchObject => "The object no longer exists in Active Directory.",
+        LdapRefused.EntryExists => "An object with that name already exists.",
+        _ => $"Active Directory returned an error: {e.Message}.",
     };
 
     /// <summary>Why a name can't be an account's username (sAMAccountName), or null when it can.</summary>
     public static string? BadName(string name) =>
-        name.Length == 0 ? "Give the account a username."
-        : name.Length > 20 ? "Usernames are 20 characters at most (Active Directory's sign-in name)."
+        name.Length == 0 ? "Enter a username."
+        : name.Length > 20 ? "Usernames can be up to 20 characters (the pre-Windows 2000 logon name)."
         // The Windows account rules, and Active Directory's own: no spaces, no dot at the end.
-        : AccountOrder.BadName(name) is not null || name.EndsWith('.') || name.Contains(' ') ? "Usernames can't have spaces or \" / \\ [ ] : ; | = , + * ? < > @ in them, or end with a dot."
+        : AccountOrder.BadName(name) is not null || name.EndsWith('.') || name.Contains(' ') ? "Usernames cannot contain spaces or \" / \\ [ ] : ; | = , + * ? < > @, or end with a period."
         : null;
 
     private static string? Clean(string? domain) => Words.Blank(domain)?.TrimEnd('.').ToLowerInvariant();

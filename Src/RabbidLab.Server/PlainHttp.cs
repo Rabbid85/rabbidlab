@@ -12,7 +12,7 @@ namespace RabbidLab.Server;
 /// </summary>
 public static class PlainHttp
 {
-    public const string Refused = "This console is on plain HTTP, so your password and session would cross the network unencrypted. Open it with its https:// address.";
+    public const string Refused = "This console uses plain HTTP, so your password and session would be sent unencrypted. Open the console with its https:// address.";
 
     /// <summary>X-Forwarded-Proto and X-Forwarded-For, from this computer and the proxies in Proxy:Trusted only.</summary>
     public static void AddProxies(this IServiceCollection services) =>

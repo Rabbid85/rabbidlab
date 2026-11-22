@@ -27,7 +27,7 @@ public sealed class ActivityLog(DataFolder folder, ILogger<ActivityLog> log)
     public static string? Address(HttpContext context) => context.Connection.RemoteIpAddress is { } ip ? Addresses.Normal(ip).ToString() : null;
 
     /// <summary>Who is asking: the person signed in, or else the address they're at.</summary>
-    public static string Who(HttpContext context) => context.User.Identity?.Name is { Length: > 0 } name ? name : "Someone at " + (Address(context) ?? "an unknown address");
+    public static string Who(HttpContext context) => context.User.Identity?.Name is { Length: > 0 } name ? name : "Unknown user from " + (Address(context) ?? "an unknown address");
 
     public void Record(HttpContext context, string area, string action, string title, string result = "ok", string? detail = null) =>
         Record(Who(context), Address(context), area, action, title, result, detail);
@@ -203,7 +203,7 @@ public static class ActivityApi
                 return Access.NotAllowed();
             }
             var page = activity.Find(Filter(kind, by, q, since, problems, int.MaxValue));
-            var csv = new StringBuilder("When (UTC),Who,From,Area,What,Result,Detail\r\n");
+            var csv = new StringBuilder("Time (UTC),User,From,Area,Action,Result,Details\r\n");
             foreach (var e in page.Entries)
             {
                 csv.Append(string.Join(',', new[] { e.At.ToString("yyyy-MM-dd HH:mm:ss"), e.By, e.From ?? "", e.Area, e.Title, e.Result, e.Detail ?? "" }.Select(Cell))).Append("\r\n");

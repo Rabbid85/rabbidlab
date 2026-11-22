@@ -96,7 +96,7 @@ public sealed class ActiveDirectory : IDirectory
         try
         {
             var user = await Ldap.Bound(ldap, name, ["sAMAccountName", "displayName", "pwdLastSet"], stop)
-                ?? throw new DirectoryProblem($"{Ldap.Account(name)} signed in, but wasn't found in {domain}.");
+                ?? throw new DirectoryProblem($"{Ldap.Account(name)} signed in, but the account was not found in {domain}.");
             var sam = user.Text("sAMAccountName") ?? Ldap.Account(name);
             List<string> member = [];
             if (wanted.Count > 0)
@@ -115,7 +115,7 @@ public sealed class ActiveDirectory : IDirectory
         }
         catch (LdapRefused e)
         {
-            throw new DirectoryProblem($"{domain} couldn't be searched: {e.Message}.");
+            throw new DirectoryProblem($"Could not search {domain}: {e.Message}.");
         }
     }
 

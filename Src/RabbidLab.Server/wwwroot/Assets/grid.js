@@ -25,6 +25,7 @@
     return v == null || v === '-' ? '' : String(v);
   };
   const tools = new WeakMap(); // a list bar's tools element -> the grid it's showing
+  const drawn = new WeakMap(); // a table -> the rows last drawn into it
 
   // While a heading is dragged: its label following the pointer, and a line down the table where it lands.
   const ghost = document.createElement('div');
@@ -126,7 +127,7 @@
       const head = shown.map((c, i) => `<div class="th-cell${pin[i].cls}" data-grid-col="${c.key}"${pin[i].at}>${c.nosort ? `<span class="th-sort still"><span class="lbl">${esc(c.label)}</span></span>`
         : `<button type="button" class="th-sort${s?.key === c.key ? ' on' : ''}" data-grid-sort="${c.key}" title="${esc(c.label)}"><span class="lbl">${esc(c.label)}</span>`
           + `${s?.key === c.key ? svg(s.dir > 0 ? 'arrow-up' : 'arrow-down', 'arr') : ''}</button>`}`
-        + `<button type="button" class="th-menu" data-grid-menu="${c.key}" aria-label="${esc(c.label)}: sort, pin, group, hide">${svg('dots')}</button><i class="th-grip" data-grid-grip="${c.key}" data-tip="Drag to resize"></i></div>`).join('');
+        + `<button type="button" class="th-menu" data-grid-menu="${c.key}" aria-label="${esc(c.label)} column options">${svg('dots')}</button><i class="th-grip" data-grid-grip="${c.key}" data-tip="Drag to resize"></i></div>`).join('');
       const button = o.headButton === false ? '' : `<button type="button" class="gcols" data-grid-cols data-tip="Columns" aria-label="Columns">${svg('columns')}</button>`;
       // rows: in the order shown, so a row's number is its place in what draw() gives back, grouped or not.
       const rows = [];
@@ -152,7 +153,7 @@
         }).join('');
       };
       const html = `<div class="tr th">${lead ? `<div class="lead${leadPin}">${lead.head || ''}</div>` : ''}${head}<div class="tr-tail${tailPin}">${button}</div></div>`
-        + (sorted.length ? groups(sorted, 0, '') : `<div class="empty">${of(o.empty) || 'Nothing here.'}</div>`);
+        + (sorted.length ? groups(sorted, 0, '') : `<div class="empty">${of(o.empty) || 'No items.'}</div>`);
       return { rows, html };
     };
     // Draws the table that el is, and gives back the rows in the order shown.
@@ -162,7 +163,16 @@
       t.classList.add('dgrid');
       t.classList.toggle('compact', density() === 'compact');
       t.classList.toggle('relaxed', density() === 'relaxed');
+      // The same rows again leave the table alone, with its hover, focus and selection.
+      const was = drawn.get(t);
+      const same = !!was && was.html === html && was.loading === g.loading() && was.first === t.firstElementChild;
+      if (same) {
+        shownNow = rows.length;
+        if (bar) drawTools();
+        return rows;
+      }
       t.innerHTML = html;
+      drawn.set(t, { html, loading: g.loading(), first: t.firstElementChild });
       // Still being read: placeholder rows where the empty text would be.
       const none = !rows.length && g.loading() ? t.querySelector(':scope > .empty') : null;
       if (none) {
@@ -184,8 +194,8 @@
     const count = () => {
       if (g.loading()) return '';
       const ticked = of(o.picked) || 0;
-      return ticked ? `${ticked.toLocaleString()}/${shownNow.toLocaleString()} ${shownNow === 1 ? 'Item' : 'Items'} selected`
-        : `${shownNow.toLocaleString()} ${shownNow === 1 ? 'Item' : 'Items'}`;
+      return ticked ? `${ticked.toLocaleString()} of ${shownNow.toLocaleString()} ${shownNow === 1 ? 'item' : 'items'} selected`
+        : `${shownNow.toLocaleString()} ${shownNow === 1 ? 'item' : 'items'}`;
     };
     // The count again, after the ticks changed without the rows being drawn.
     g.recount = () => {
@@ -198,7 +208,7 @@
       const by = s.keys.map((k) => cols().find((c) => c.key === k)?.label).filter(Boolean).join(', ');
       const rows = `<div class="vswitch">${[['compact', 'Compact rows', 'view-list'], ['relaxed', 'Relaxed rows', 'view-rows']].map(([d, tip, icon]) => `<button type="button" data-density="${d}" aria-pressed="${density() === d}" data-tip="${tip}" aria-label="${tip}">${svg(icon)}</button>`).join('')}</div>`;
       bar.innerHTML = `<label class="gby"><input type="checkbox" class="switch" data-grid-group-on${s.on && by ? ' checked' : ''}><span>Group by</span></label>`
-        + `<button type="button" class="gby-pick" data-grid-group-pick>${esc(by || 'Pick a column')}${svg('chevron-down', 'chev')}</button>`
+        + `<button type="button" class="gby-pick" data-grid-group-pick>${esc(by || 'Select a column')}${svg('chevron-down', 'chev')}</button>`
         + `<span class="gcount">${count()}</span>${rowsBar ? '' : `<span class="grow"></span>${rows}`}`;
       if (rowsBar) rowsBar.innerHTML = rows;
     };

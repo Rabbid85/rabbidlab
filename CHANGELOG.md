@@ -2,6 +2,14 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.329 (2026-11-22)
+
+- Every page refreshes itself while it is open. Lists, counts, side panels and the sidebar update within seconds, and your ticks, filters, open panel and typing are kept.
+- Links shows changes made by other people without a refresh.
+- Text across the console, the client, Setup and the wiki uses standard admin terms, for example Approve, Pending approval, Access denied, and Passed, Warning and Failed in Domain health.
+- Sync uses Active Directory terms: In sync, Replicated 2 changes, 3 changes pending and Unreachable.
+- The floating bar on Links has a split Add a link button. Its arrow adds a group.
+
 ## 1.1.328 (2026-11-22)
 
 - Sync updates by itself while it is open, so a change made on any domain controller shows up within seconds without a refresh.

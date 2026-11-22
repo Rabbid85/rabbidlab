@@ -93,7 +93,7 @@ public sealed class GitHubUpdateSourceTests : IDisposable
         await source.Check(CancellationToken.None);
 
         Assert.Null(source.Offer);
-        Assert.StartsWith("GitHub couldn't be reached", source.Problem);
+        Assert.StartsWith("Could not connect to GitHub", source.Problem);
         Assert.NotNull(source.CheckedAt);
     }
 

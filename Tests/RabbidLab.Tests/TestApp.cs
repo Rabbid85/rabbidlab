@@ -558,13 +558,13 @@ public sealed class FakeDirectoryTools : IDirectoryTools
 
     public Task<SetupLook> Look(string? domain, string username, string password, CancellationToken stop) =>
         password == "domain pass" ? Task.FromResult(new SetupLook("amw.com", "DC=amw,DC=com", [new("OU=Lab,DC=amw,DC=com", "Lab", "Lab")], "CN=Users,DC=amw,DC=com", "svc-rabbidlab"))
-        : throw new ToolProblem("That username or password is wrong.");
+        : throw new ToolProblem("The username or password is incorrect.");
 
     public Task<string?> Connect(SetupForm form, string by, CancellationToken stop)
     {
         if (form.Password != "domain pass")
         {
-            throw new ToolProblem("That username or password is wrong.");
+            throw new ToolProblem("The username or password is incorrect.");
         }
         state = new DirectoryToolsState("amw.com", form.Existing ? form.Username! : form.Account ?? "svc-rabbidlab", "DC=amw,DC=com", "all of amw.com",
             "CN=Users,DC=amw,DC=com", "Users", !form.Existing, by, DateTime.UtcNow);
@@ -590,7 +590,7 @@ public sealed class FakeDirectoryTools : IDirectoryTools
     {
         if (Ready().Any(u => u.Username == form.Username))
         {
-            throw new ToolProblem($"There's already an account called {form.Username} in amw.com.");
+            throw new ToolProblem($"An account named {form.Username} already exists in amw.com.");
         }
         var made = Person(form.Username!, form.Display ?? $"{form.First} {form.Last}");
         People.Add(made);
@@ -629,7 +629,7 @@ public sealed class FakeDirectoryTools : IDirectoryTools
     {
         Ready();
         return Task.FromResult(GroupMembers.TryGetValue(group, out var m) ? (m.Select(dn => new AdMember(dn, dn.Split(',')[0][3..], "user", null, "Users")).ToList(), More)
-            : throw new ToolProblem("That group isn't in Active Directory any more.", StatusCodes.Status404NotFound));
+            : throw new ToolProblem("The group no longer exists in Active Directory.", StatusCodes.Status404NotFound));
     }
 
     public Task<AdGroup> CreateGroup(NewAdGroup form, CancellationToken stop)
@@ -685,7 +685,7 @@ public sealed class FakeDirectoryTools : IDirectoryTools
     private List<AdUser> Ready() => state is null ? throw new ToolProblem("Set it up first.", StatusCodes.Status409Conflict) : People;
 
     private AdUser Get(string username) =>
-        Ready().FirstOrDefault(u => u.Username == username) ?? throw new ToolProblem($"There's no account called {username} any more.", StatusCodes.Status404NotFound);
+        Ready().FirstOrDefault(u => u.Username == username) ?? throw new ToolProblem($"The account {username} no longer exists.", StatusCodes.Status404NotFound);
 
     private static AdUser Person(string username, string name) =>
         new(username, name, $"{username}@amw.com", null, null, null, $"CN={name},CN=Users,DC=amw,DC=com", "Users", true, false, false, false, false, false, false, null, null, null, []);

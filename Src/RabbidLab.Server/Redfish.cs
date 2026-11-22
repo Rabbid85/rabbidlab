@@ -27,7 +27,7 @@ public static class Redfish
             var systems = await Get(http, root, "/redfish/v1/Systems", stop);
             if (Members(systems).FirstOrDefault() is not { } at)
             {
-                return new Probe(false, Note: "No system in Redfish", Pin: device.Offer);
+                return new Probe(false, Note: "No system found in Redfish", Pin: device.Offer);
             }
             var system = await Get(http, root, at, stop);
             var chassisAt = LinkIn(system, "Links", "Chassis") ?? Members(await Get(http, root, "/redfish/v1/Chassis", stop)).FirstOrDefault();
@@ -58,7 +58,7 @@ public static class Redfish
         }
         catch (HttpRequestException e) when (e.StatusCode == HttpStatusCode.NotFound)
         {
-            return new Probe(false, Note: "No Redfish there: is it an iDRAC, iLO or BMC address?", Pin: device.Offer);
+            return new Probe(false, Note: "Redfish not found. Check that this is an iDRAC, iLO or BMC address", Pin: device.Offer);
         }
         catch (Exception e) when (e is HttpRequestException or IOException or JsonException && device.Said(e) is not null)
         {

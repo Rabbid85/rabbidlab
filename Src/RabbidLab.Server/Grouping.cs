@@ -27,15 +27,15 @@ public static class Grouping
     {
         if (Clean(name) is not { Length: <= 40 } group)
         {
-            return "Give the group a name of 40 characters at most.";
+            return "Enter a group name of up to 40 characters.";
         }
         if (known.Contains(group, Same))
         {
-            return $"There's already a group called {group}.";
+            return $"A group named {group} already exists.";
         }
         if (known.Count >= Most)
         {
-            return $"That's {Most} groups, which is as many as {Product.Title} keeps.";
+            return $"The limit of {Most} groups has been reached.";
         }
         known.Add(group);
         return null;
@@ -47,16 +47,16 @@ public static class Grouping
         old = "";
         if (Clean(to) is not { Length: <= 40 } next)
         {
-            return "Give the group a name of 40 characters at most.";
+            return "Enter a group name of up to 40 characters.";
         }
         var at = known.FindIndex(g => Same.Equals(g, Clean(name)));
         if (at < 0)
         {
-            return "That group isn't here any more.";
+            return "The group no longer exists.";
         }
         if (known.Where((_, i) => i != at).Contains(next, Same))
         {
-            return $"There's already a group called {next}.";
+            return $"A group named {next} already exists.";
         }
         old = known[at];
         known[at] = next;

@@ -73,29 +73,29 @@ public sealed class ConsoleInstallerRunner(InstallerRunner runner) : IInstallerR
         var file = Path.GetFileName(installer);
         var updates = Path.GetDirectoryName(installer);
         var exe = Environment.ProcessPath;
-        var allow = $"{updates} (where updates are downloaded) and {exe} (the program they install)";
+        var allow = $"{updates} (the update download folder) and {exe} (the installed program)";
         if (Recorded("Microsoft-Windows-Windows Defender/Operational", "EventID=1121", file) is { } asr)
         {
             var rule = Regex.Match(asr, @"\bID:\s*([0-9A-Fa-f-]{36})").Groups[1].Value;
-            var said = $"Microsoft Defender blocked its installer ({installer}) with the attack surface reduction rule "
-                + (AsrRules.TryGetValue(rule, out var name) ? $"“{name}”" : rule) + ", which stops programs few computers run yet, such as a new release.";
+            var said = $"Microsoft Defender blocked the installer ({installer}) with the attack surface reduction rule "
+                + (AsrRules.TryGetValue(rule, out var name) ? $"“{name}”" : rule) + ". This rule blocks programs that few computers run yet, such as a new release.";
             return DefenderManagedBy() is { } by
-                ? $"{said} These rules are set with {by}: add {allow} to its attack surface reduction exclusions, then select Try again."
-                : $"{said} To let {Product.Title} update itself on this machine, run  Add-MpPreference -AttackSurfaceReductionOnlyExclusions '{updates}', '{exe}'  in PowerShell as an administrator, then select Try again.";
+                ? $"{said} These rules are managed by {by}. Add {allow} to the attack surface reduction exclusions, then select Try again."
+                : $"{said} To allow {Product.Title} to update on this computer, run  Add-MpPreference -AttackSurfaceReductionOnlyExclusions '{updates}', '{exe}'  in PowerShell as an administrator, then select Try again.";
         }
         if (Recorded("Microsoft-Windows-Windows Defender/Operational", "EventID=1116 or EventID=1117", file) is not null)
         {
-            return $"Microsoft Defender Antivirus reported its installer ({installer}) as a threat. It carries Rabbid Lab's release signature, so the detection is wrong: allow it in Windows Security > Virus & threat protection > Protection history, then select Try again.";
+            return $"Microsoft Defender Antivirus reported the installer ({installer}) as a threat. The installer has a valid Rabbid Lab release signature, so this is a false positive. Allow it in Windows Security > Virus & threat protection > Protection history, then select Try again.";
         }
         if (Recorded("Microsoft-Windows-AppLocker/EXE and DLL", "EventID=8004", file) is not null)
         {
-            return $"AppLocker on this machine doesn't allow its installer ({installer}) to run. Allow {allow} in its executable rules, then select Try again.";
+            return $"AppLocker on this computer blocked the installer ({installer}). Allow {allow} in the AppLocker executable rules, then select Try again.";
         }
         if (Recorded("Microsoft-Windows-CodeIntegrity/Operational", "EventID=3077 or EventID=3033 or EventID=3034", file) is not null)
         {
-            return $"Windows Defender Application Control on this machine doesn't allow its installer ({installer}) to run. Allow {allow} in its policy, then select Try again.";
+            return $"Windows Defender Application Control on this computer blocked the installer ({installer}). Allow {allow} in the Application Control policy, then select Try again.";
         }
-        return $"Windows didn't let its installer ({installer}) run. Microsoft Defender, AppLocker and application control recorded no block, so other security software on this machine most likely stopped it: allow {allow} there, then select Try again.";
+        return $"Windows blocked the installer ({installer}). Microsoft Defender, AppLocker and Application Control recorded no block, so other security software on this computer most likely blocked it. Allow {allow} in that software, then select Try again.";
     }
 
     /// <summary>What a Windows log recorded about the file in the last two minutes, or null.</summary>
@@ -258,7 +258,7 @@ public static class UpdateApi
             }
             if (!Here(updates.State, updates, host))
             {
-                return Results.Json(new { error = "Sign in to install it." }, statusCode: StatusCodes.Status403Forbidden);
+                return Results.Json(new { error = "Sign in to install the update." }, statusCode: StatusCodes.Status403Forbidden);
             }
             return Results.Ok(Watched(Install(context, updates, activity, "Install update from the sign-in page"), updates, source, host));
         });
@@ -271,7 +271,7 @@ public static class UpdateApi
                 return refused;
             }
             store.Change(s => s.AutomaticUpdates = form.Automatic);
-            activity.Record(context, "admin", "update.settings", form.Automatic ? "Turned Update automatically on" : "Turned Update automatically off");
+            activity.Record(context, "admin", "update.settings", form.Automatic ? "Enabled automatic updates" : "Disabled automatic updates");
             return Results.Ok(View(await updates.TryNow(cancel), updates, source, host, store, github));
         });
         app.MapPost("/api/update/check", async Task<IResult> (HttpContext context, UpdateEngine updates, IUpdateSource source, IUpdateHost host, SettingsStore store,
@@ -288,7 +288,7 @@ public static class UpdateApi
             }
             if (!host.CanInstall)
             {
-                return Results.Json(new { error = "In Docker, update with the new download from GitHub: docker compose up -d --build. Your data is kept." },
+                return Results.Json(new { error = "In Docker, update by downloading the new release from GitHub and running docker compose up -d --build. Your data is preserved." },
                     statusCode: StatusCodes.Status400BadRequest);
             }
             return Results.Ok(View(Install(context, updates, activity, "Install update"), updates, source, host, store, github));

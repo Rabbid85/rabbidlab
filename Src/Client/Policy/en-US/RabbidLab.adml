@@ -10,23 +10,23 @@
       <string id="Server">Server address</string>
       <string id="Server_Help">The address of the Rabbid Lab server this computer connects to. Example: https://rabbidlab.example.com:8420
 
-The client connects to that server, waits for an admin to approve it under Devices, then checks in every minute. This setting overrides the SERVER value given to the installer.</string>
+The client connects to this server. After an admin approves the computer under Devices, the client checks in every minute. This setting overrides the SERVER value passed to the installer.</string>
       <string id="CertificateFingerprint">Server certificate fingerprint</string>
       <string id="CertificateFingerprint_Help">The SHA-256 fingerprint of the server's public key. Copy it from Add computers on the Devices page in Rabbid Lab. The fingerprint of the server's HTTPS certificate also works.
 
-Only needed when the server uses a certificate these computers don't already trust, such as the self-signed certificate Rabbid Lab creates during setup. When set, the client only connects to a server with this key. Leave this not configured if the server's certificate comes from your own certificate authority.</string>
+Required only when the server uses a certificate these computers do not already trust, such as the self-signed certificate Rabbid Lab creates during setup. When this setting is configured, the client connects only to a server with this key. Leave this setting not configured if the server's certificate is issued by your own certificate authority.</string>
       <string id="AllowAccountChanges">Allow account changes</string>
-      <string id="AllowAccountChanges_Help">Controls whether Rabbid Lab admins can create, change and delete local Windows accounts on this computer, for example adding a local administrator.
+      <string id="AllowAccountChanges_Help">Controls whether Rabbid Lab admins can create, modify and delete local Windows accounts on this computer, for example adding a local administrator.
 
-Not configured or Enabled: allowed, if the admin's role permits it. Disabled: the client rejects every account change, and Rabbid Lab reports that Group Policy turned them off.</string>
+If you enable or do not configure this policy setting, account changes are allowed when the admin's role permits them. If you disable this policy setting, the client rejects all account changes, and Rabbid Lab reports that account changes are disabled by Group Policy.</string>
       <string id="AllowScripts">Allow scripts and actions</string>
-      <string id="AllowScripts_Help">Controls whether Rabbid Lab admins can run scripts and actions on this computer from the Devices page: PowerShell and command scripts, restarting it, installing Windows updates, and workflows. They run as SYSTEM.
+      <string id="AllowScripts_Help">Controls whether Rabbid Lab admins can run scripts and actions on this computer from the Devices page: PowerShell and command scripts, restarting the computer, installing Windows updates, and workflows. Scripts and actions run as SYSTEM.
 
-Not configured or Enabled: allowed, if the admin's role permits it. Disabled: the client refuses every script and action, and the job in Rabbid Lab says Group Policy turned them off.</string>
-      <string id="Quiet">Hide the client from people at the computer</string>
-      <string id="Quiet_Help">Controls whether people signed in to this computer see the Rabbid Lab client: its tray icon and its messages, such as when the computer is approved. The client keeps running as a service either way.
+If you enable or do not configure this policy setting, scripts and actions are allowed when the admin's role permits them. If you disable this policy setting, the client rejects all scripts and actions, and the job in Rabbid Lab reports that scripts and actions are disabled by Group Policy.</string>
+      <string id="Quiet">Hide the client from signed-in users</string>
+      <string id="Quiet_Help">Controls whether users signed in to this computer see the Rabbid Lab client: its tray icon and its notifications, such as when the computer is approved. The client service runs in either case.
 
-Enabled: nothing shows; the client still connects and waits for approval in Rabbid Lab. Disabled: the tray icon shows, even if the installer was given QUIET=1. Not configured: what the installer was given.</string>
+If you enable this policy setting, the tray icon and notifications are hidden. The client still connects to the server and appears under Devices in Rabbid Lab. If you disable this policy setting, the tray icon is shown, even if the installer was run with QUIET=1. If you do not configure this policy setting, the installer's QUIET setting applies.</string>
     </stringTable>
     <presentationTable>
       <presentation id="Server">

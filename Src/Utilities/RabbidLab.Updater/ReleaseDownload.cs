@@ -219,7 +219,7 @@ internal static class ReleaseDownload
                         }
                         else if (mine != p.Length)
                         {
-                            throw new HttpRequestException($"a piece of the download ended after {mine:N0} of {p.Length:N0} bytes");
+                            throw new HttpRequestException($"a download segment ended after {mine:N0} of {p.Length:N0} bytes");
                         }
                         else
                         {
@@ -264,7 +264,7 @@ internal static class ReleaseDownload
         if (!pieces.All(p => p.Done))
         {
             var got = pieces.Sum(p => p.Got);
-            throw new HttpRequestException($"the download didn't finish within {options.DownloadLimit.TotalMinutes:0} minutes: {got / 1048576.0:0.0} MB of {offer.Size / 1048576.0:0.0}");
+            throw new HttpRequestException($"the download did not finish within {options.DownloadLimit.TotalMinutes:0} minutes: {got / 1048576.0:0.0} MB of {offer.Size / 1048576.0:0.0}");
         }
         return true;
     }

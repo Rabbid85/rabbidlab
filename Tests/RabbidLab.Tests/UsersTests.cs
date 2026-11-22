@@ -110,7 +110,7 @@ public sealed class UsersTests : IDisposable
         var computers = (await Json(await admin.GetAsync("/api/windows/computers"))).EnumerateArray().ToList();
 
         Assert.Equal(HttpStatusCode.Conflict, notYet.StatusCode);
-        Assert.Contains("isn't listening", await Error(notYet));
+        Assert.Contains("not ready to receive changes", await Error(notYet));
         Assert.Equal("list", order.GetProperty("action").GetString());
         Assert.Equal(HttpStatusCode.OK, page.StatusCode);
         Assert.Equal("kiosk", (await Json(page)).GetProperty("accounts")[0].GetProperty("name").GetString());
@@ -141,7 +141,7 @@ public sealed class UsersTests : IDisposable
         Assert.Equal(16, password.Length);
         Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
         Assert.Equal("Windows on AMW-LT-022 said no.", await Error(refused));
-        Assert.Contains("Made the Windows account kiosk2 on AMW-LT-022", log);
+        Assert.Contains("Created the local account kiosk2 on AMW-LT-022", log);
         Assert.DoesNotContain(password, log);
     }
 
@@ -261,7 +261,7 @@ public sealed class UsersTests : IDisposable
         Assert.Equal(HttpStatusCode.BadRequest, notSid.StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, nothing.StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, badName.StatusCode);
-        Assert.Contains("added AMW\\\\hpotter; took out SERVER\\\\localadmin", log);
+        Assert.Contains("added AMW\\\\hpotter; removed SERVER\\\\localadmin", log);
     }
 
     [Fact]
@@ -363,7 +363,7 @@ public sealed class UsersTests : IDisposable
 
         Assert.Equal(JsonValueKind.Null, before.GetProperty("state").ValueKind);
         Assert.Equal(HttpStatusCode.Conflict, notSetUp.StatusCode);
-        Assert.Equal("That username or password is wrong.", await Error(wrong));
+        Assert.Equal("The username or password is incorrect.", await Error(wrong));
         Assert.Equal("svc-rabbidlab", (await Json(connected)).GetProperty("state").GetProperty("account").GetString());
         var first = made.GetProperty("password").GetString()!;
         Assert.Equal(reset.GetProperty("password").GetString(), app.Tools.Passwords["mlopez"]);
@@ -371,8 +371,8 @@ public sealed class UsersTests : IDisposable
         Assert.NotEqual(first, reset.GetProperty("password").GetString());
         Assert.Equal(HttpStatusCode.NotFound, nobody.StatusCode);
         Assert.Equal(2, listed.GetProperty("users").GetArrayLength());
-        Assert.Contains("Made svc-rabbidlab in amw.com", log);
-        Assert.Contains("Made the AD account mlopez", log);
+        Assert.Contains("Created the service account svc-rabbidlab in amw.com", log);
+        Assert.Contains("Created the AD user mlopez", log);
         Assert.DoesNotContain(first, log);
         Assert.DoesNotContain("domain pass", log);
     }
@@ -421,7 +421,7 @@ public sealed class UsersTests : IDisposable
         {
             var refused = await hr1.GetAsync(path);
             Assert.Equal(HttpStatusCode.Forbidden, refused.StatusCode);
-            Assert.Contains("needs a role that covers all of it", await Error(refused));
+            Assert.Contains("requires a role that covers the entire directory", await Error(refused));
         }
         Assert.Equal(HttpStatusCode.OK, (await hr1.GetAsync("/api/ad/users")).StatusCode);
     }
@@ -498,7 +498,7 @@ public sealed class UsersTests : IDisposable
         Assert.Equal("groups", order.GetProperty("action").GetString());
         Assert.Equal(HttpStatusCode.OK, page.StatusCode);
         Assert.Equal("There's no group called Typo.", (await Json(page)).GetProperty("warning").GetString());
-        Assert.Contains("Changed kiosk's groups on AMW-LT-022: into Administrators, Typo; out of Users", log);
+        Assert.Contains("Changed group membership for kiosk on AMW-LT-022: added to Administrators, Typo; removed from Users", log);
         Assert.Contains("There's no group called Typo.", log);
         Assert.Contains("\"warning\"", log);
     }

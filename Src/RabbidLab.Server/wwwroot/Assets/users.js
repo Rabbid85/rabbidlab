@@ -43,7 +43,7 @@
     $('dir-act').disabled = !sel.size;
     $('dir-act').querySelector('.cnt').hidden = !sel.size;
     $('dir-act').querySelector('.cnt').textContent = sel.size.toLocaleString();
-    $('dir-act').dataset.tip = sel.size ? `${count(sel.size, ...AD[adPage].noun)} selected` : `Tick ${AD[adPage].noun[1]} first`;
+    $('dir-act').dataset.tip = sel.size ? `${count(sel.size, ...AD[adPage].noun)} selected` : `Select ${AD[adPage].noun[1]} first`;
     $('dir-table').querySelectorAll('[data-tick]').forEach((box) => {
       box.checked = sel.has(box.dataset.tick);
       box.closest('.tr')?.classList.toggle('picked', box.checked);
@@ -60,7 +60,7 @@
     : u.passwordExpires && days(u.passwordExpires) < 0 ? badge('Password expired', 'red') : badge('Enabled', 'green'));
   const pcStatus = (c) => (!c.enabled ? badge('Disabled', 'grey') : stale(c.lastSignIn) ? badge('Inactive', 'amber') : badge('Enabled', 'green'));
   const server = (c) => /server/i.test(c.os || '');
-  const TONE = { good: badge('As recommended', 'green'), warn: badge('Worth a look', 'amber'), bad: badge('Not as recommended', 'red'), info: badge('For your notes', 'grey'), unknown: badge("Couldn't be read", 'grey') };
+  const TONE = { good: badge('Passed', 'green'), warn: badge('Warning', 'amber'), bad: badge('Failed', 'red'), info: badge('Info', 'grey'), unknown: badge('Unknown', 'grey') };
   // Domain health's areas, in order, each with its own icon.
   const AREA_ICON = { 'Passwords and lockout': 'lock', 'Privileged accounts': 'crown', 'Kerberos and delegation': 'ticket', 'Stale objects': 'hourglass',
     'Domain and forest': 'tree', 'Domain controllers': 'server', 'Certificates (AD CS)': 'certificate', Trusts: 'link', DNS: 'signpost' };
@@ -71,7 +71,7 @@
   const AD = {
     users: {
       title: 'Users', noun: ['user', 'users'], add: 'New user', key: (u) => u.username,
-      lead: 'Everyone in the domain, with views for what needs looking at.',
+      lead: 'All user accounts in the domain. Use the views to find accounts that need attention.',
       load: async () => {
         const j = await R.keep('/api/ad/users'); // kept for the Org chart
         more.users = j.more;
@@ -108,7 +108,7 @@
     },
     groups: {
       title: 'Groups', noun: ['group', 'groups'], add: 'New group', key: (g) => g.dn,
-      lead: 'Security and distribution groups, and who is in each.',
+      lead: 'Security and distribution groups and their members.',
       load: async () => { const l = await R.get('/api/ad/groups'); more.groups = l.more; return l; },
       find: (g) => [g.name, g.description, g.where],
       views: [
@@ -126,7 +126,7 @@
     },
     computers: {
       title: 'Computers', noun: ['computer', 'computers'], add: 'New computer', key: (c) => c.name,
-      lead: 'Every computer in the domain: servers and workstations, and the ones nobody has used in a while.',
+      lead: 'All computer accounts in the domain, including servers, workstations and inactive computers.',
       load: async () => {
         const j = await R.get('/api/ad/computers');
         more.computers = j.more;
@@ -150,25 +150,25 @@
     },
     domain: {
       title: 'Domain health', noun: ['check', 'checks'], add: null, key: (s) => s.key,
-      lead: 'Checked against what Microsoft, PingCastle and Defender for Identity recommend.',
+      lead: 'Checks against Microsoft, PingCastle and Defender for Identity recommendations.',
       load: () => R.get('/api/ad/domain'),
       find: (s) => [s.name, s.area, s.now, s.about, s.source, ...(s.found || []).map((f) => f.name)],
       views: [
         ['View', [
           { key: 'all', label: 'All checks' },
-          { key: 'off', label: 'Not as recommended', tone: 'red', where: (s) => s.tone === 'bad' },
-          { key: 'look', label: 'Worth a look', tone: 'amber', where: (s) => s.tone === 'warn' },
-          { key: 'notes', label: 'For your notes', quiet: true, where: (s) => s.tone === 'info' },
-          { key: 'unread', label: 'Couldn\'t be read', quiet: true, where: (s) => s.tone === 'unknown' },
+          { key: 'off', label: 'Failed', tone: 'red', where: (s) => s.tone === 'bad' },
+          { key: 'look', label: 'Warning', tone: 'amber', where: (s) => s.tone === 'warn' },
+          { key: 'notes', label: 'Info', quiet: true, where: (s) => s.tone === 'info' },
+          { key: 'unread', label: 'Unknown', quiet: true, where: (s) => s.tone === 'unknown' },
         ]],
         ['Area', Object.keys(AREA_ICON).map((a) => ({ key: a.toLowerCase().replace(/[^a-z]+/g, '-').replace(/-$/, ''), label: a, where: (s) => s.area === a }))],
       ],
-      csv: [['Area', (s) => s.area], ['Check', (s) => s.name], ['Now', (s) => s.now], ['Recommended', (s) => s.recommended], ['Result', (s) => s.tone], ['Why', (s) => s.about],
+      csv: [['Area', (s) => s.area], ['Check', (s) => s.name], ['Current', (s) => s.now], ['Recommended', (s) => s.recommended], ['Result', (s) => s.tone], ['Details', (s) => s.about],
         ['Found', (s) => (s.found || []).map((f) => f.name).join('; ')], ['Source', (s) => s.source]],
     },
     audit: {
       title: 'AD audit', noun: ['change', 'changes'], add: null, key: (c) => `${c.dn}|${c.at}`,
-      lead: 'What changed in Active Directory in the last 30 days, made anywhere: here, Active Directory Users and Computers, PowerShell. Sign-ins and housekeeping are left out.',
+      lead: 'Changes to Active Directory objects in the last 30 days, from any tool, including Active Directory Users and Computers and PowerShell. Sign-ins and system maintenance are not included.',
       load: async () => { const l = await R.get('/api/ad/audit?days=30'); more.audit = l.more; return l; },
       find: (c) => [c.name, c.where, c.attributes.join(' '), c.by],
       views: [
@@ -177,25 +177,25 @@
           { key: 'week', label: 'Last 7 days', where: (c) => Date.now() - new Date(c.at) < 7 * DAY },
           { key: 'day', label: 'Last 24 hours', where: (c) => Date.now() - new Date(c.at) < DAY },
         ]],
-        ['What', [
-          { key: 'made', label: 'Made', where: (c) => c.what === 'made' },
+        ['Change', [
+          { key: 'made', label: 'Created', where: (c) => c.what === 'made' },
           { key: 'changed', label: 'Changed', where: (c) => c.what === 'changed' },
           { key: 'deleted', label: 'Deleted', tone: 'red', where: (c) => c.what === 'deleted' },
           { key: 'restored', label: 'Restored', quiet: true, where: (c) => c.what === 'restored' },
         ]],
-        ['Kind', [
+        ['Type', [
           { key: 'users', label: 'Users', where: (c) => c.kind === 'user' },
           { key: 'groups', label: 'Groups', where: (c) => c.kind === 'group' },
           { key: 'computers', label: 'Computers', where: (c) => c.kind === 'computer' },
           { key: 'ous', label: 'OUs', quiet: true, where: (c) => c.kind === 'ou' },
         ]],
       ],
-      csv: [['When', (c) => c.at], ['What', (c) => c.what], ['Kind', (c) => c.kind], ['Name', (c) => c.name], ['Where', (c) => c.where], ['Changed', (c) => c.attributes.join(' ')],
-        ['By', (c) => c.by], ['Distinguished name', (c) => c.dn]],
+      csv: [['When', (c) => c.at], ['Change', (c) => c.what], ['Type', (c) => c.kind], ['Name', (c) => c.name], ['Location', (c) => c.where], ['Attributes changed', (c) => c.attributes.join(' ')],
+        ['Changed by', (c) => c.by], ['Distinguished name', (c) => c.dn]],
     },
     recycle: {
       title: 'Recycle Bin', noun: ['deleted object', 'deleted objects'], add: null, key: (d) => d.dn,
-      lead: 'Users, groups, computers and OUs that were deleted, which can come back as they were.',
+      lead: 'Deleted users, groups, computers and OUs. Restore an object to bring it back with its attributes.',
       load: async () => {
         recycle = await R.get('/api/ad/recycle');
         more.recycle = recycle.more;
@@ -204,14 +204,14 @@
       find: (d) => [d.name, d.wasIn, d.username],
       views: [
         ['View', [
-          { key: 'all', label: 'Everything' },
+          { key: 'all', label: 'All objects' },
           { key: 'users', label: 'Users', where: (d) => d.kind === 'user' },
           { key: 'groups', label: 'Groups', where: (d) => d.kind === 'group' },
           { key: 'computers', label: 'Computers', where: (d) => d.kind === 'computer' },
           { key: 'ous', label: 'OUs', quiet: true, where: (d) => d.kind === 'ou' },
         ]],
       ],
-      csv: [['Name', (d) => d.name], ['Type', (d) => d.kind], ['Was in', (d) => d.wasIn], ['Deleted', (d) => d.deleted], ['Distinguished name', (d) => d.dn]],
+      csv: [['Name', (d) => d.name], ['Type', (d) => d.kind], ['Last known location', (d) => d.wasIn], ['Deleted', (d) => d.deleted], ['Distinguished name', (d) => d.dn]],
     },
   };
   const page = () => AD[adPage];
@@ -301,7 +301,7 @@
     yesCol('neverExpires', 'Password never expires', (u) => u.neverExpires),
     yesCol('mustChange', 'Must change password', (u) => u.mustChange),
     yesCol('smartcard', 'Smart card required', (u) => u.smartcard),
-    yesCol('sensitive', 'Sensitive, cannot be delegated', (u) => u.sensitive),
+    yesCol('sensitive', 'Account is sensitive and cannot be delegated', (u) => u.sensitive),
     yesCol('delegation', 'Trusted for delegation', (u) => u.more?.delegation),
     yesCol('noPassword', 'Password not required', (u) => u.more?.noPasswordNeeded),
     yesCol('reversible', 'Reversible encryption', (u) => u.reversible),
@@ -327,7 +327,7 @@
     col('changed', 'Changed', '110px', (g) => time(g.changed), { cell: (g) => dateCell(g.changed) }),
     col('sid', 'SID', 'minmax(230px, 1.2fr)', (g) => g.sid, { cell: (g) => mono(g.sid) }),
     col('dn', 'Distinguished name', 'minmax(260px, 1.6fr)', (g) => g.dn, { cell: (g) => mono(g.dn) }),
-    yesCol('system', 'Built in', (g) => g.system),
+    yesCol('system', 'Built-in', (g) => g.system),
   ];
   AD.computers.cols = [
     col('name', 'Computer', 'minmax(200px, 1.4fr)', (c) => c.name, { fixed: true, cell: (c) => `<div class="who"><span class="pic">${svg(server(c) ? 'server' : 'laptop')}</span><b class="ell">${esc(c.name)}</b></div>` }),
@@ -348,7 +348,7 @@
     col('memberOf', 'Member of', '110px', (c) => (c.groups || []).length, { cell: (c) => groupsCell(c.groups) }),
     col('passwordSet', 'Password last set', '140px', (c) => time(c.passwordSet), { cell: (c) => dateCell(c.passwordSet) }),
     col('changed', 'Changed', '110px', (c) => time(c.changed), { cell: (c) => dateCell(c.changed) }),
-    col('lapsExpires', 'LAPS password expires', '170px', (c) => time(c.lapsExpires), { cell: (c) => (c.lapsExpires ? dateCell(c.lapsExpires) : '<span class="muted">No LAPS</span>') }),
+    col('lapsExpires', 'LAPS password expires', '170px', (c) => time(c.lapsExpires), { cell: (c) => (c.lapsExpires ? dateCell(c.lapsExpires) : '<span class="muted">No LAPS password</span>') }),
     col('spns', 'Service principal names', '180px', (c) => c.spns ?? 0),
     col('encryption', 'Kerberos encryption', 'minmax(150px, 1fr)', (c) => c.encryption || ''),
     col('sid', 'SID', 'minmax(230px, 1.2fr)', (c) => c.sid, { cell: (c) => mono(c.sid) }),
@@ -361,19 +361,19 @@
   AD.domain.cols = [
     col('name', 'Check', 300, (s) => s.name, { fixed: true, cell: (s) => `<div class="who"><span class="pic">${svg(AREA_ICON[s.area] || 'shield')}</span><b class="ell">${esc(s.name)}</b></div>` }),
     col('area', 'Area', 170, (s) => Object.keys(AREA_ICON).indexOf(s.area), { cell: (s) => esc(s.area) }),
-    col('now', 'Now', 200, (s) => s.now, { on: true }),
+    col('now', 'Current', 200, (s) => s.now, { on: true }),
     col('recommended', 'Recommended', 210, (s) => s.recommended, { on: true, cell: (s) => `<span class="muted ell">${esc(s.recommended)}</span>` }),
     col('result', 'Result', 170, (s) => ({ bad: 0, warn: 1, info: 2, unknown: 3, good: 4 })[s.tone] ?? 5, { on: true, filter: true, cell: (s) => TONE[s.tone] || '' }),
-    col('about', 'Why it matters', 320, (s) => s.about),
+    col('about', 'Details', 320, (s) => s.about),
     col('source', 'Source', 240, (s) => s.source || '', { cell: (s) => `<span class="muted ell">${esc(s.source || '')}</span>` }),
   ];
   AD.audit.cols = [
     col('when', 'When', 150, (c) => time(c.at), { on: true, cell: (c) => esc(stamp(c.at)) }),
-    col('what', 'What', 100, (c) => c.what, { on: true, cell: (c) => badge(c.what.charAt(0).toUpperCase() + c.what.slice(1), WHAT[c.what]) }),
+    col('what', 'Change', 100, (c) => c.what, { on: true, cell: (c) => badge(c.what.charAt(0).toUpperCase() + c.what.slice(1), WHAT[c.what]) }),
     col('name', 'Object', 200, (c) => c.name, { fixed: true, cell: (c) => `<div class="who"><span class="pic">${svg(KIND_ICON[c.kind] || 'folder')}</span><b class="ell">${esc(c.name)}</b></div>` }),
     col('kind', 'Type', 100, (c) => c.kind, { on: true, cell: (c) => esc(kindWord(c.kind)) }),
-    col('where', 'Where', 180, (c) => c.where || ad.state.domain, { on: true }),
-    col('changed', 'Changed', 260, (c) => c.attributes.join(', '), { on: true,
+    col('where', 'Location', 180, (c) => c.where || ad.state.domain, { on: true }),
+    col('changed', 'Attributes changed', 260, (c) => c.attributes.join(', '), { on: true,
       cell: (c) => `<span class="ell">${esc(c.attributes.slice(0, 4).join(', ') + (c.attributes.length > 4 ? ` and ${c.attributes.length - 4} more` : ''))}</span>` }),
     col('by', 'Changed by', 130, (c) => c.by || '', { on: true, cell: (c) => (c.by ? esc(c.by) : '<span class="muted">-</span>') }),
     col('dn', 'Distinguished name', 320, (c) => c.dn),
@@ -382,7 +382,7 @@
     col('name', 'Name', 240, (d) => d.name, { fixed: true, cell: (d) => `<div class="who"><span class="pic">${svg(KIND_ICON[d.kind] || 'folder')}</span><b class="ell">${esc(d.name)}</b></div>` }),
     col('username', 'Logon name', 160, (d) => d.username),
     col('kind', 'Type', 110, (d) => d.kind, { on: true, cell: (d) => esc(kindWord(d.kind)) }),
-    col('wasIn', 'Was in', 220, (d) => d.wasIn || ad.state.domain, { on: true }),
+    col('wasIn', 'Last known location', 220, (d) => d.wasIn || ad.state.domain, { on: true }),
     col('deleted', 'Deleted', 130, (d) => time(d.deleted), { on: true, cell: (d) => esc(d.deleted ? ago(d.deleted) : '-') }),
     col('dn', 'Distinguished name', 320, (d) => d.dn),
   ];
@@ -430,13 +430,13 @@
   const IN = (x) => (x.groups || []).map((g) => g.name);
   AD.users.fields = [
     ['Account', [fld('enabled', 'Enabled', 'yes', (u) => u.enabled), fld('locked', 'Locked out', 'yes', (u) => u.locked), fld('protected', 'Privileged', 'yes', (u) => u.protected),
-      fld('neverExpires', 'Password never expires', 'yes', (u) => u.neverExpires), fld('mustChange', 'Must change password at next sign-in', 'yes', (u) => u.mustChange),
+      fld('neverExpires', 'Password never expires', 'yes', (u) => u.neverExpires), fld('mustChange', 'User must change password at next sign-in', 'yes', (u) => u.mustChange),
       fld('lastSignIn', 'Last sign-in', 'days', (u) => u.lastSignIn, { never: true }), fld('passwordSet', 'Password last set', 'days', (u) => u.passwordSet),
       fld('passwordExpires', 'Password expires', 'until', (u) => (u.neverExpires ? null : u.passwordExpires)), fld('accountExpires', 'Account expires', 'until', (u) => u.accountExpires),
       fld('created', 'Created', 'days', (u) => u.created), fld('changed', 'Changed', 'days', (u) => u.more?.changed),
       fld('lastBadPassword', 'Last bad password', 'days', (u) => u.more?.lastBadPassword), fld('badPasswords', 'Bad password count', 'number', (u) => u.more?.badPasswords),
       fld('logons', 'Logon count', 'number', (u) => u.more?.logons)]],
-    ['Security', [fld('smartcard', 'Smart card required', 'yes', (u) => u.smartcard), fld('sensitive', 'Sensitive, cannot be delegated', 'yes', (u) => u.sensitive),
+    ['Security', [fld('smartcard', 'Smart card required', 'yes', (u) => u.smartcard), fld('sensitive', 'Account is sensitive and cannot be delegated', 'yes', (u) => u.sensitive),
       fld('delegation', 'Trusted for delegation', 'yes', (u) => u.more?.delegation), fld('noPassword', 'Password not required', 'yes', (u) => u.more?.noPasswordNeeded),
       fld('reversible', 'Reversible encryption', 'yes', (u) => u.reversible), fld('desOnly', 'DES encryption only', 'yes', (u) => u.desOnly),
       fld('noPreauth', 'No Kerberos preauthentication', 'yes', (u) => u.noPreauth)]],
@@ -461,7 +461,7 @@
     ['Group', [fld('name', 'Name', 'text', (g) => g.name), fld('description', 'Description', 'text', (g) => g.description), fld('type', 'Group type', 'choice', (g) => (g.security ? 'Security' : 'Distribution')),
       fld('scope', 'Group scope', 'choice', (g) => g.scope), fld('members', 'Members', 'number', (g) => g.members), fld('protected', 'Privileged', 'yes', (g) => g.protected),
       fld('email', 'Email', 'text', (g) => g.email), fld('where', 'Organizational unit', 'ou', OU), fld('username', 'Pre-Windows 2000 name', 'text', (g) => g.username),
-      fld('managedBy', 'Managed by', 'choice', (g) => g.managedBy), fld('notes', 'Notes', 'text', (g) => g.notes), fld('system', 'Built in', 'yes', (g) => g.system),
+      fld('managedBy', 'Managed by', 'choice', (g) => g.managedBy), fld('notes', 'Notes', 'text', (g) => g.notes), fld('system', 'Built-in', 'yes', (g) => g.system),
       fld('created', 'Created', 'days', (g) => g.created), fld('changed', 'Changed', 'days', (g) => g.changed), fld('sid', 'SID', 'text', (g) => g.sid),
       fld('dn', 'Distinguished name', 'text', (g) => g.dn)]],
     ['Membership', [fld('groups', 'Member of group', 'member', IN), fld('memberOf', 'Number of groups', 'number', (g) => (g.groups || []).length)]],
@@ -533,7 +533,7 @@
       $('rail-domain-dot').hidden = true;
       return;
     }
-    $('dir-acct').textContent = s.readOnly ? 'Read-only for now' : `Service account: ${s.account}`;
+    $('dir-acct').textContent = s.readOnly ? 'Read-only (no service account)' : `Service account: ${s.account}`;
     const v = viewOf(adView);
     const list = lists[adPage] || [];
     if (lists[adPage]) total[adPage] = (p.tabs ? list.filter(p.tabs[0].where) : list).length;
@@ -549,7 +549,7 @@
     adGrid.tools($('dir-tools'), $('dir-rows'));
     if (picks && lists[adPage]) [...picked[adPage]].forEach((k) => { if (!byKey(k)) picked[adPage].delete(k); });
     $('dir-table').className = `table adt ${adPage} drows${picks ? ' picks' : ''}`;
-    emptyNow = list.length ? (adBar.any() ? 'Nothing matches the filter.' : 'Nothing here right now.') : lists[adPage] || !adFailed ? 'Nothing yet.' : esc(adFailed);
+    emptyNow = list.length ? (adBar.any() ? 'No items match the filter.' : 'No items in this view.') : lists[adPage] || !adFailed ? 'No items found.' : esc(adFailed);
     rows = adGrid.draw(rows);
     $('dir-more').hidden = !more[adPage];
     drawPicked();
@@ -612,7 +612,7 @@
     // Domain health says how it stands once its checks are read: a placeholder line until then.
     if (adPage === 'domain' && !list) $('dir-state').innerHTML = adFailed ? `${esc(p.title)}.` : '<i class="sk sk-text"></i>';
     else $('dir-state').textContent = adPage !== 'domain' ? `${p.title}.` : bad || warn
-      ? `${bad ? `${bad} not as recommended` : 'Nothing is off'}${warn ? `, ${warn} worth a look` : ''}.` : 'Everything is as recommended.';
+      ? `${bad ? `Failed: ${bad}` : 'No failed checks'}${warn ? `. Warnings: ${warn}` : ''}.` : 'All checks passed.';
     $('dir-lead').textContent = p.lead;
     // Placeholder numbers while it's read (ad not known yet, or the list not read), dashes if that failed; none when there's no account.
     $('dir-stats').innerHTML = ad && !ad.state ? '' : HERO_STATS[adPage].map((key) => {
@@ -646,12 +646,12 @@
     let html = '';
     if (adPage === 'recycle' && recycle) {
       html = recycle.on
-        ? `${svg('check')}<span><b>The Recycle Bin is on.</b> Deleted users, groups and computers can come back as they were for ${recycle.lifetime} days.</span>`
-        : `${svg('alert')}<span><b>The Recycle Bin is off,</b> so anything deleted comes back without its groups and most of its details, if at all.</span>`
-          + (can('ad.connect') ? '<button type="button" class="small primary" data-banner="enable">Turn it on</button>' : '');
+        ? `${svg('check')}<span><b>The AD Recycle Bin is enabled.</b> Deleted users, groups and computers can be restored with all their attributes for ${recycle.lifetime} days.</span>`
+        : `${svg('alert')}<span><b>The AD Recycle Bin is not enabled.</b> Restored objects lose their group memberships and most attributes.</span>`
+          + (can('ad.connect') ? '<button type="button" class="small primary" data-banner="enable">Enable</button>' : '');
       if (recycle.problem) html += `<span class="warn">${esc(recycle.problem)}</span>`;
     } else if (adPage === 'audit') {
-      html = `${svg('history')}<span>Who made a change shows when it was made in ${esc(R.app())}. For changes made elsewhere, the domain controllers' security logs say who.</span>`;
+      html = `${svg('history')}<span>Changed by is shown for changes made in ${esc(R.app())}. For changes made in other tools, check the security logs on the domain controllers.</span>`;
     }
     b.innerHTML = html;
     b.hidden = !html;
@@ -674,7 +674,7 @@
       await R.send('/api/ad/recycle/enable', { username: $('rb-user').value.trim(), password: $('rb-password').value });
       $('rb-password').value = '';
       $('recycle-dialog').close();
-      say('dir-note', 'The Recycle Bin is on. Anything deleted from now on can come back as it was.');
+      say('dir-note', 'AD Recycle Bin enabled. Objects deleted from now on can be restored with all their attributes.');
       await loadAd(true);
       drawAd();
     } catch (err) {
@@ -728,7 +728,7 @@
   };
   $('dir-export').addEventListener('click', () => csvOf(rows, `${adPage}-${adView}`));
   // Refresh: the open page's list read again from Active Directory, with the flask while it reads.
-  $('dir-refresh').addEventListener('click', () => R.refresh($('dir-refresh'), $('dir-lib'), 'Reading Active Directory again…', async () => {
+  $('dir-refresh').addEventListener('click', () => R.refresh($('dir-refresh'), $('dir-lib'), 'Refreshing Active Directory…', async () => {
     const k = adPage;
     try {
       lists[k] = await AD[k].load();
@@ -740,6 +740,32 @@
     drawAd();
     if (R.panel.is('ad')) drawDrawer();
   }));
+  // The open list read again as Refresh does, without the flask; slower for the lists that cost more LDAP searches.
+  const EVERY = { users: 30000, computers: 30000, groups: 60000, audit: 60000, recycle: 60000, domain: 300000 };
+  R.live({
+    page: () => R.where()[0] === 'ad' && can('ad.view'),
+    hold: () => (!!ad && !ad.state) || (!lists[adPage] && !adFailed), // not set up, or its own first read is under way
+    every: () => EVERY[adPage] || 60000,
+    read: async () => {
+      const k = adPage;
+      if (!ad) ad = await R.adInfo(); // its first read failed before the domain was known
+      if (!ad.state) throw new Error('Not set up.');
+      return { k, list: await AD[k].load(), failed: '' };
+    },
+    now: () => ({ k: adPage, list: lists[adPage], failed: adFailed }),
+    draw: ({ k, list }) => {
+      const open = R.panel.is('ad') ? JSON.stringify(dwObj()) : '';
+      lists[k] = list;
+      if (k !== adPage) return;
+      if (adFailed) {
+        adFailed = '';
+        say('dir-problem', '');
+      }
+      drawAd();
+      if (R.panel.is('ad') && JSON.stringify(dwObj()) !== open) drawDrawer(); // only when the one it shows changed
+    },
+    areas: () => [$('dir-table')],
+  });
   // Domain health's dot from the start: its checks are read in the background once signed in, not only when it's opened.
   document.addEventListener('rabbidlab:me', () => {
     if (!can('ad.view') || lists.domain) return;
@@ -874,14 +900,14 @@
   };
   // An account option's field on the user, and what turning it on or off says afterwards.
   const FLAGS = {
-    mustchange: ['mustChange', (w) => `${w} must change the password at the next sign-in`, (w) => `Cleared the password change requirement for ${w}`],
-    noexpiry: ['neverExpires', (w) => `Set the password to never expire for ${w}`, (w) => `Set the password to expire per policy for ${w}`],
-    cannotchange: [null, (w) => `Stopped ${w} from changing the password`, (w) => `Let ${w} change the password`],
-    sensitive: ['sensitive', (w) => `Marked ${w} as sensitive and cannot be delegated`, (w) => `Allowed delegation for ${w}`],
-    smartcard: ['smartcard', (w) => `Required a smart card for ${w}`, (w) => `Stopped requiring a smart card for ${w}`],
-    reversible: ['reversible', (w) => `Turned on reversible password encryption for ${w}`, (w) => `Turned off reversible password encryption for ${w}`],
-    des: ['desOnly', (w) => `Set ${w} to use only Kerberos DES encryption types`, (w) => `Stopped ${w} using only Kerberos DES encryption types`],
-    preauth: ['noPreauth', (w) => `Turned off Kerberos preauthentication for ${w}`, (w) => `Turned on Kerberos preauthentication for ${w}`],
+    mustchange: ['mustChange', (w) => `${w} must change password at next sign-in.`, (w) => `Password change requirement cleared for ${w}.`],
+    noexpiry: ['neverExpires', (w) => `Password set to never expire for ${w}.`, (w) => `Password set to expire per policy for ${w}.`],
+    cannotchange: [null, (w) => `Prevented ${w} from changing the password.`, (w) => `Allowed ${w} to change the password.`],
+    sensitive: ['sensitive', (w) => `Marked ${w} as sensitive (cannot be delegated).`, (w) => `Allowed delegation for ${w}.`],
+    smartcard: ['smartcard', (w) => `Smart card required for ${w}.`, (w) => `Smart card no longer required for ${w}.`],
+    reversible: ['reversible', (w) => `Reversible password encryption enabled for ${w}.`, (w) => `Reversible password encryption disabled for ${w}.`],
+    des: ['desOnly', (w) => `Set ${w} to use only Kerberos DES encryption types.`, (w) => `Kerberos DES-only setting cleared for ${w}.`],
+    preauth: ['noPreauth', (w) => `Kerberos preauthentication disabled for ${w}.`, (w) => `Kerberos preauthentication enabled for ${w}.`],
   };
   const menuHtml = (k, objs) => {
     const [one, many] = AD[k].noun;
@@ -921,10 +947,10 @@
           part(mi('flag-on:cannotchange', 'lock', 'Prevent user from changing password'), mi('flag-off:cannotchange', 'unlock', 'Allow user to change password'))),
         fly('users', 'Groups', ...membership),
         fly('shield', 'Security',
-          part(toggle('sensitive', 'shield', 'Mark as sensitive and cannot be delegated', 'Allow delegation'),
-            toggle('smartcard', 'key', 'Require smart card for interactive sign-in', 'Stop requiring a smart card')),
-          part(toggle('reversible', 'lock', 'Store password using reversible encryption', 'Stop storing password using reversible encryption'),
-            toggle('des', 'lock', 'Use only Kerberos DES encryption types', 'Stop using only Kerberos DES encryption types'),
+          part(toggle('sensitive', 'shield', 'Mark as sensitive (cannot be delegated)', 'Allow delegation'),
+            toggle('smartcard', 'key', 'Require smart card for interactive sign-in', 'Do not require smart card')),
+          part(toggle('reversible', 'lock', 'Store password using reversible encryption', 'Do not store password using reversible encryption'),
+            toggle('des', 'lock', 'Use only Kerberos DES encryption types', 'Clear Kerberos DES-only setting'),
             toggle('preauth', 'alert', 'Do not require Kerberos preauthentication', 'Require Kerberos preauthentication'))),
         organization);
     } else if (change && k === 'groups') {
@@ -1063,7 +1089,7 @@
     if (R.panel.is('ad')) { dw.membersFor = ''; drawDrawer(); }
     const ok = xs.length - failed.length;
     if (!failed.length) R.toast(done, warnings[0] || '', { tone: warnings.length ? 'warn' : '' });
-    else R.toast(ok ? `Done for ${ok} of ${xs.length}` : 'That didn\'t work', failed[0], { tone: 'warn' });
+    else R.toast(ok ? `Completed for ${ok} of ${xs.length}.` : 'The operation failed.', failed[0], { tone: 'warn' });
     if (failed.length > 1) say('dir-problem', failed.join(' '));
     return answers;
   };
@@ -1088,22 +1114,22 @@
       case 'disable': {
         const on = what === 'enable';
         const to = only((x) => x.enabled !== on);
-        each(k, to, on ? 'Enabling' : 'Disabling', `${on ? 'Enabled' : 'Disabled'} ${whoOf(to, k)}`, (x) => enableOf(k, x, on));
+        each(k, to, on ? 'Enabling' : 'Disabling', `${whoOf(to, k)} ${on ? 'enabled' : 'disabled'}.`, (x) => enableOf(k, x, on));
         break;
       }
       case 'unlock': {
         const to = only((u) => u.locked);
-        each(k, to, 'Unlocking', `Unlocked ${whoOf(to, k)}`, (u) => post(u, '/unlock'));
+        each(k, to, 'Unlocking', `${whoOf(to, k)} unlocked.`, (u) => post(u, '/unlock'));
         break;
       }
       case 'expiry': openExpiry(xs); break;
       case 'expiry-clear': {
         const to = only((u) => u.accountExpires);
-        each(k, to, 'Removing the expiration', `Removed the account expiration for ${whoOf(to, k)}`, (u) => post(u, '/expiry', { date: null }));
+        each(k, to, 'Removing account expiration', `Account expiration removed for ${whoOf(to, k)}.`, (u) => post(u, '/expiry', { date: null }));
         break;
       }
       case 'password':
-        if (xs.length === 1) reset(who, `${userPath(xs[0])}/password`, 'It also unlocks the account if it\'s locked out.');
+        if (xs.length === 1) reset(who, `${userPath(xs[0])}/password`, 'This also unlocks the account if it is locked out.');
         else resetMany(xs);
         break;
       case 'flag-on':
@@ -1112,88 +1138,88 @@
         const [field, onSaid, offSaid] = FLAGS[arg];
         const to = !field ? xs : only((u) => !!u[field] !== on && !(arg === 'mustchange' && on && u.neverExpires));
         if (arg === 'mustchange' && on && !to.length && xs.some((u) => u.neverExpires)) {
-          R.toast('The password never expires', 'Set it to expire per policy first; then it can be made to change at the next sign-in.', { tone: 'warn' });
+          R.toast('Password never expires.', 'Set the password to expire per policy before requiring a change at next sign-in.', { tone: 'warn' });
         }
-        each(k, to, 'Changing the account options', (on ? onSaid : offSaid)(whoOf(to, k)), (u) => post(u, '/flag', { flag: arg, on }));
+        each(k, to, 'Updating account options', (on ? onSaid : offSaid)(whoOf(to, k)), (u) => post(u, '/flag', { flag: arg, on }));
         break;
       }
       case 'groups-add':
         // One of them: the groups it's already in are left out.
-        openPicker({ title: 'Add to groups', lead: `Tick the groups to add ${who} to.`, button: 'Add to groups', noun: ['group', 'groups'], none: `${who} ${xs.length === 1 ? 'is' : 'are'} already in every group`,
+        openPicker({ title: 'Add to groups', lead: `Select the groups to add ${who} to.`, button: 'Add to groups', noun: ['group', 'groups'], none: `${who} ${xs.length === 1 ? 'is' : 'are'} already in every group`,
           rows: rowsOf(['groups'], [...xs.map((x) => x.dn), ...(xs.length === 1 ? (xs[0].groups || []).map((g) => g.dn) : [])]),
-          go: (gs) => each(k, xs, 'Adding to groups', `Added ${who} to ${gs.length === 1 ? gs[0].name : count(gs.length, 'group', 'groups')}`,
+          go: (gs) => each(k, xs, 'Adding to groups', `Added ${who} to ${gs.length === 1 ? gs[0].name : count(gs.length, 'group', 'groups')}.`,
             (x) => memberOf(k, x, notIn(x, gs.map((g) => g.dn)), [])) });
         break;
       case 'groups-remove': {
         const to = only((x) => x.groups?.length);
         const seen = new Map();
         to.forEach((x) => x.groups.forEach((g) => seen.set(g.dn.toLowerCase(), { dn: g.dn, name: g.name, kind: 'group', n: (seen.get(g.dn.toLowerCase())?.n || 0) + 1 })));
-        openPicker({ title: 'Remove from groups', lead: `Tick the groups to take ${whoOf(to, k)} out of.`, button: 'Remove from groups', noun: ['group', 'groups'],
+        openPicker({ title: 'Remove from groups', lead: `Select the groups to remove ${whoOf(to, k)} from.`, button: 'Remove from groups', noun: ['group', 'groups'],
           none: `${whoOf(xs, k)} ${xs.length === 1 ? 'isn\'t' : 'aren\'t'} in any groups.`,
           rows: [...seen.values()].sort((a, b) => a.name.localeCompare(b.name)).map((g) => ({ ...g, sub: to.length > 1 ? `${g.n} of ${to.length}` : '' })),
-          go: (gs) => each(k, to, 'Removing from groups', `Removed ${whoOf(to, k)} from ${gs.length === 1 ? gs[0].name : count(gs.length, 'group', 'groups')}`,
+          go: (gs) => each(k, to, 'Removing from groups', `Removed ${whoOf(to, k)} from ${gs.length === 1 ? gs[0].name : count(gs.length, 'group', 'groups')}.`,
             (x) => memberOf(k, x, [], gs.filter((g) => x.groups.some((h) => same(h.dn, g.dn))).map((g) => g.dn))) });
         break;
       }
       case 'groups-remove-all': {
         const to = only((x) => x.groups?.length);
-        const stays = { users: ' The primary group, usually Domain Users, stays.', computers: ' The primary group, usually Domain Computers, stays.', groups: '' }[k];
-        sure(`Remove ${whoOf(to, k)} from all groups?`, `Every group membership is removed.${stays}`, 'Remove from all groups',
-          () => each(k, to, 'Removing from groups', `Removed ${whoOf(to, k)} from all groups`, (x) => memberOf(k, x, [], x.groups.map((g) => g.dn))));
+        const stays = { users: ' The primary group (usually Domain Users) is not removed.', computers: ' The primary group (usually Domain Computers) is not removed.', groups: '' }[k];
+        sure(`Remove ${whoOf(to, k)} from all groups?`, `All group memberships are removed.${stays}`, 'Remove from all groups',
+          () => each(k, to, 'Removing from groups', `Removed ${whoOf(to, k)} from all groups.`, (x) => memberOf(k, x, [], x.groups.map((g) => g.dn))));
         break;
       }
       case 'groups-copy':
-        openPicker({ title: 'Copy membership', lead: `Tick the ${one} whose groups ${who} ${xs.length === 1 ? 'joins' : 'join'}.`, button: 'Copy', one: true, noun: [one, many],
+        openPicker({ title: 'Copy membership', lead: `Select the ${one} whose groups ${who} ${xs.length === 1 ? 'is added to' : 'are added to'}.`, button: 'Copy', one: true, noun: [one, many],
           rows: rowsOf([k], xs.map((x) => x.dn)),
           go: ([from]) => {
             const gs = from.x.groups || [];
-            if (!gs.length) R.toast(`${from.name} isn't in any groups`, '', { tone: 'warn' });
-            else each(k, xs, 'Copying membership', `Added ${who} to the groups ${from.name} is in`, (x) => memberOf(k, x, notIn(x, gs.map((g) => g.dn)), []));
+            if (!gs.length) R.toast(`${from.name} is not a member of any groups.`, '', { tone: 'warn' });
+            else each(k, xs, 'Copying membership', `Copied group membership from ${from.name} to ${who}.`, (x) => memberOf(k, x, notIn(x, gs.map((g) => g.dn)), []));
           } });
         break;
       case 'groups-copy-to': {
         const from = xs[0];
         const gs = from.groups || [];
         if (!gs.length) {
-          R.toast(`${nameOf(from)} isn't in any groups`, '', { tone: 'warn' });
+          R.toast(`${nameOf(from)} is not a member of any groups.`, '', { tone: 'warn' });
           break;
         }
-        openPicker({ title: 'Copy membership', lead: `Tick the ${many} to add to the ${count(gs.length, 'group', 'groups')} ${nameOf(from)} is in.`, button: 'Copy', noun: [one, many],
+        openPicker({ title: 'Copy membership', lead: `Select the ${many} to add to the ${count(gs.length, 'group', 'groups')} that ${nameOf(from)} is a member of.`, button: 'Copy', noun: [one, many],
           rows: rowsOf([k], [from.dn]),
-          go: (picks) => each(k, picks.map((p) => p.x).filter((x) => mayChange(k, x)), 'Copying membership', `Added ${whoOf(picks.map((p) => p.x), k)} to the groups ${nameOf(from)} is in`,
+          go: (picks) => each(k, picks.map((p) => p.x).filter((x) => mayChange(k, x)), 'Copying membership', `Copied group membership from ${nameOf(from)} to ${whoOf(picks.map((p) => p.x), k)}.`,
             (x) => memberOf(k, x, notIn(x, gs.map((g) => g.dn)), [])) });
         break;
       }
       case 'members-add':
         // One group: who's already in it is left out.
-        openPicker({ title: 'Add members', lead: `Tick the users, groups and computers to add to ${who}.`, button: 'Add members', noun: ['member', 'members'], tags: true, none: 'Every user, group and computer is already a member',
+        openPicker({ title: 'Add members', lead: `Select the users, groups and computers to add to ${who}.`, button: 'Add members', noun: ['member', 'members'], tags: true, none: 'All users, groups and computers are already members',
           rows: (async () => rowsOf(['users', 'groups', 'computers'], [...xs.map((g) => g.dn), ...(xs.length === 1 ? (await membersNow(xs[0]).catch(() => [])).map((m) => m.dn) : [])]))(),
-          go: (ms) => each(k, xs, 'Adding members', `Added ${ms.length === 1 ? ms[0].name : count(ms.length, 'member', 'members')} to ${who}`, (g) => membersOf(g, ms.map((m) => m.dn), [])) });
+          go: (ms) => each(k, xs, 'Adding members', `Added ${ms.length === 1 ? ms[0].name : count(ms.length, 'member', 'members')} to ${who}.`, (g) => membersOf(g, ms.map((m) => m.dn), [])) });
         break;
       case 'members-remove': {
         const g = xs[0];
-        openPicker({ title: 'Remove members', lead: `Tick who to take out of ${g.name}.`, button: 'Remove members', noun: ['member', 'members'], tags: true,
+        openPicker({ title: 'Remove members', lead: `Select the members to remove from ${g.name}.`, button: 'Remove members', noun: ['member', 'members'], tags: true,
           none: `${g.name} has no members.`, rows: membersNow(g).then((ms) => ms.sort((a, b) => a.name.localeCompare(b.name))),
-          go: (out) => each(k, [g], 'Removing members', `Took ${out.length === 1 ? out[0].name : count(out.length, 'member', 'members')} out of ${g.name}`, (x) => membersOf(x, [], out.map((m) => m.dn))) });
+          go: (out) => each(k, [g], 'Removing members', `Removed ${out.length === 1 ? out[0].name : count(out.length, 'member', 'members')} from ${g.name}.`, (x) => membersOf(x, [], out.map((m) => m.dn))) });
         break;
       }
       case 'members-copy':
-        openPicker({ title: 'Copy members', lead: `Tick the group whose members go into ${who}.`, button: 'Copy', one: true, noun: ['group', 'groups'],
+        openPicker({ title: 'Copy members', lead: `Select the group whose members are added to ${who}.`, button: 'Copy', one: true, noun: ['group', 'groups'],
           rows: rowsOf(['groups'], xs.map((g) => g.dn)),
           go: async ([from]) => {
             const ms = await membersNow(from).catch(() => []);
-            if (!ms.length) R.toast(`${from.name} has no members to copy`, '', { tone: 'warn' });
-            else each(k, xs, 'Copying members', `Added the members of ${from.name} to ${who}`, (g) => membersOf(g, ms.map((m) => m.dn).filter((d) => !same(d, g.dn)), []));
+            if (!ms.length) R.toast(`${from.name} has no members to copy.`, '', { tone: 'warn' });
+            else each(k, xs, 'Copying members', `Copied the members of ${from.name} to ${who}.`, (g) => membersOf(g, ms.map((m) => m.dn).filter((d) => !same(d, g.dn)), []));
           } });
         break;
       case 'members-copy-to': {
         const from = xs[0];
-        openPicker({ title: 'Copy members', lead: `Tick the groups that get the members of ${from.name}.`, button: 'Copy', noun: ['group', 'groups'],
+        openPicker({ title: 'Copy members', lead: `Select the groups to add the members of ${from.name} to.`, button: 'Copy', noun: ['group', 'groups'],
           rows: rowsOf(['groups'], [from.dn]),
           go: async (to) => {
             const ms = await membersNow(from).catch(() => []);
-            if (!ms.length) R.toast(`${from.name} has no members to copy`, '', { tone: 'warn' });
-            else each(k, to, 'Copying members', `Added the members of ${from.name} to ${to.length === 1 ? to[0].name : count(to.length, 'group', 'groups')}`, (g) => membersOf(g, ms.map((m) => m.dn).filter((d) => !same(d, g.dn)), []));
+            if (!ms.length) R.toast(`${from.name} has no members to copy.`, '', { tone: 'warn' });
+            else each(k, to, 'Copying members', `Copied the members of ${from.name} to ${to.length === 1 ? to[0].name : count(to.length, 'group', 'groups')}.`, (g) => membersOf(g, ms.map((m) => m.dn).filter((d) => !same(d, g.dn)), []));
           } });
         break;
       }
@@ -1207,12 +1233,12 @@
         const to = xs.filter((x) => !blocked(k, x).has('delete'));
         const w = whoOf(to, k);
         const why = {
-          users: `${to.length === 1 ? `${to[0].username} is` : `${count(to.length, 'account is', 'accounts are')}`} deleted from ${ad.state.domain} for good, with anything in ${to.length === 1 ? 'it' : 'them'}. Disabling can be undone; this can't.`,
-          groups: `${to.length === 1 ? 'The group is' : 'The groups are'} deleted from ${ad.state.domain} for good. Members stay; they're just not in ${to.length === 1 ? 'it' : 'them'} any more.`,
-          computers: `${to.length === 1 ? 'Its account is' : 'Their accounts are'} deleted from ${ad.state.domain}. ${to.length === 1 ? 'It' : 'They'} can't sign anyone in with domain accounts until ${to.length === 1 ? 'it joins' : 'they join'} the domain again. Disabling can be undone; this can't.`,
+          users: `${to.length === 1 ? `${to[0].username} is` : `${count(to.length, 'account is', 'accounts are')}`} permanently deleted from ${ad.state.domain}, along with any objects in ${to.length === 1 ? 'it' : 'them'}. Disabling can be undone. Deleting cannot.`,
+          groups: `${to.length === 1 ? 'The group is' : 'The groups are'} permanently deleted from ${ad.state.domain}. The members are not deleted, only removed from ${to.length === 1 ? 'it' : 'them'}.`,
+          computers: `${to.length === 1 ? 'The computer account is' : 'The computer accounts are'} deleted from ${ad.state.domain}. Users cannot sign in to ${to.length === 1 ? 'it' : 'them'} with domain accounts until ${to.length === 1 ? 'it is' : 'they are'} joined to the domain again. Disabling can be undone. Deleting cannot.`,
         }[k];
         sure(`Delete ${w}?`, why, to.length === 1 ? `Delete ${nameOf(to[0])}` : `Delete ${count(to.length, one, many)}`,
-          () => each(k, to, 'Deleting', `Deleted ${w}`, (x) => deleteOf(k, x), { gone: true }));
+          () => each(k, to, 'Deleting', `${w} deleted.`, (x) => deleteOf(k, x), { gone: true }));
         break;
       }
     }
@@ -1222,14 +1248,14 @@
     const [, one, many, get] = COPY[k].find(([c]) => c === key);
     const values = objs.map(get).filter(Boolean);
     if (!values.length) {
-      R.toast(`No ${many} to copy`, '', { tone: 'warn' });
+      R.toast(`No ${many} to copy.`, '', { tone: 'warn' });
       return;
     }
     try {
       await navigator.clipboard.writeText(values.join('\r\n'));
-      R.toast(values.length === 1 ? `Copied the ${one}` : `Copied ${values.length} ${many}`);
+      R.toast(values.length === 1 ? `Copied the ${one}.` : `Copied ${values.length} ${many}.`);
     } catch {
-      R.toast('Couldn\'t copy', 'The browser didn\'t allow it.', { tone: 'warn' });
+      R.toast('Could not copy to the clipboard.', 'The browser blocked clipboard access.', { tone: 'warn' });
     }
   };
 
@@ -1250,11 +1276,11 @@
   $('exp-save').addEventListener('click', () => {
     const date = $('exp-date').value;
     if (!date) {
-      say('exp-problem', 'Pick the last day the account works.');
+      say('exp-problem', 'Select the last day the account can be used.');
       return;
     }
     $('exp-dialog').close();
-    each('users', expFor, 'Setting the expiration', `${whoOf(expFor, 'users')} ${expFor.length === 1 ? 'expires' : 'expire'} at the end of ${day(`${date}T12:00`)}`, (u) => post(u, '/expiry', { date }));
+    each('users', expFor, 'Setting account expiration', `${whoOf(expFor, 'users')} ${expFor.length === 1 ? 'expires' : 'expire'} at the end of ${day(`${date}T12:00`)}.`, (u) => post(u, '/expiry', { date }));
   });
 
   // Edit properties: one's details, or for several only what's typed (blank leaves each as it is). Each field is for
@@ -1270,22 +1296,22 @@
     ued.boss = undefined;
     const one = xs.length === 1 ? xs[0] : null;
     $('ued-title').textContent = one ? `Edit ${nameOf(one)}` : `Edit ${count(xs.length, ...AD[k].noun)}`;
-    $('ued-lead').textContent = one ? (k === 'users' ? `${one.username}, in ${one.where || ad.state.domain}.` : `In ${one.where || ad.state.domain}.`) : `Only what you fill in changes. Blank boxes leave each one as it is.`;
+    $('ued-lead').textContent = one ? (k === 'users' ? `${one.username}, in ${one.where || ad.state.domain}.` : `In ${one.where || ad.state.domain}.`) : `Only the fields you fill in are changed. Blank fields are left unchanged.`;
     UED.forEach(([id, field, , kinds]) => {
       const box = $(`ued-${id}`);
       box.closest('div').hidden = !kinds.split(' ').includes(k) || (!one && box.closest('[data-one]') !== null);
       box.value = one ? one[field] || '' : '';
-      box.placeholder = one ? '' : 'Leave as it is';
+      box.placeholder = one ? '' : 'Leave unchanged';
     });
     $('ued-boss-row').hidden = k !== 'users';
     $('ued-manager').value = one?.manager || '';
-    $('ued-manager').placeholder = one ? 'Find a person' : 'Leave as it is';
+    $('ued-manager').placeholder = one ? 'Search users' : 'Leave unchanged';
     say('ued-problem', '');
     $('ued-dialog').showModal();
     $('ued-fields').querySelector('div:not([hidden]) input')?.focus();
   };
   R.dropdown($('ued-boss'), {
-    none: 'Nobody matches.',
+    none: 'No matching users.',
     find: async (q) => {
       const t = q.toLowerCase();
       return (lists.users || []).filter((u) => !u.system && !ued.objs.includes(u) && [u.name, u.username].some((v) => String(v || '').toLowerCase().includes(t))).slice(0, 30);
@@ -1314,7 +1340,7 @@
     if (k === 'users' && ued.boss !== undefined) form.manager = ued.boss;
     $('ued-dialog').close();
     if (!Object.keys(form).length) return;
-    each(k, xs, 'Saving', `Saved ${whoOf(xs, k)}`, (x) => editOf(k, x, form));
+    each(k, xs, 'Saving', `Saved changes to ${whoOf(xs, k)}.`, (x) => editOf(k, x, form));
   });
 
   // Rename: a user's name in Active Directory, and its display name with it.
@@ -1331,12 +1357,12 @@
   $('ren-save').addEventListener('click', () => {
     const name = $('ren-name').value.trim();
     if (!name) {
-      say('ren-problem', 'Type the new name.');
+      say('ren-problem', 'Enter the new name.');
       return;
     }
     $('ren-dialog').close();
     const u = renaming;
-    each('users', [u], 'Renaming', `Renamed ${nameOf(u)} to ${name}`, (x) => post(x, '/rename', { name }));
+    each('users', [u], 'Renaming', `Renamed ${nameOf(u)} to ${name}.`, (x) => post(x, '/rename', { name }));
   });
   $('ren-name').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('ren-save').click(); });
 
@@ -1347,7 +1373,7 @@
     // It opens on where they are when that's one place, else where new users go.
     const at = xs.map((x) => dnParent(x.dn).toLowerCase());
     await placesInto('mv-ou', at.every((p) => p === at[0]) ? dnParent(xs[0].dn) : ad.state.newUsers, 'dir-problem');
-    PICK_LEADS['mv-ou'] = `Where ${whoOf(xs, k)} ${xs.length === 1 ? 'goes' : 'go'}.`;
+    PICK_LEADS['mv-ou'] = `Select the OU ${whoOf(xs, k)} ${xs.length === 1 ? 'moves' : 'move'} to.`;
     openPick($('mv-ou'));
   };
   $('mv-ou').addEventListener('change', () => {
@@ -1355,7 +1381,7 @@
     const { kind: k, objs } = moving;
     const to = objs.filter((x) => !same(dnParent(x.dn), ou));
     const where = (places || []).find((p) => same(p.dn, ou))?.path || ad.state.domain;
-    each(k, to, 'Moving', `Moved ${whoOf(to, k)} to ${where}`, (x) => moveOf(k, x, ou));
+    each(k, to, 'Moving', `Moved ${whoOf(to, k)} to ${where}.`, (x) => moveOf(k, x, ou));
   });
 
   // One window for picking, as NorthStack AD has it: every one there is in a list with a tick each, a box to find in
@@ -1374,7 +1400,7 @@
   };
   const pkCount = () => {
     const n = pk.chosen.size;
-    $('gp-count').textContent = n ? `${count(n, pk.noun[0], pk.noun[1])} ticked` : '';
+    $('gp-count').textContent = n ? `${count(n, pk.noun[0], pk.noun[1])} selected` : '';
     $('gp-save').disabled = !n;
   };
   const pkShown = () => {
@@ -1395,12 +1421,12 @@
   const pkEmpty = () => {
     const q = $('gp-find').value.trim();
     const n = pk.rows.length;
-    const [title, text] = n ? [`No ${pk.noun[1]} match “${q}”`, `Check the spelling, or clear the find to see all ${count(n, pk.noun[0], pk.noun[1])}.`]
-      : [pk.none || `There are no ${pk.noun[1]} to pick`, ''];
+    const [title, text] = n ? [`No ${pk.noun[1]} match “${q}”`, `Check the spelling, or clear the search to show all ${count(n, pk.noun[0], pk.noun[1])}.`]
+      : [pk.none || `No ${pk.noun[1]} available`, ''];
     const dots = Array.from({ length: 6 }, (_, i) => `<i class="pk-bit b${i}"></i>`).join('');
     return `<div class="pk-empty"><div class="pk-art"><span class="big-ic ember">${svg(n ? 'search' : 'users')}</span><span class="pk-ghosts"><i></i><i></i><i></i></span>`
       + `<span class="pk-glass">${dots}<span class="pk-lens">${svg(n ? 'search' : 'users')}</span></span></div>`
-      + `<b>${esc(title)}</b>${text ? `<small>${esc(text)}</small>` : ''}${n ? '<button type="button" class="small" data-pk-clear>Clear the find</button>' : ''}</div>`;
+      + `<b>${esc(title)}</b>${text ? `<small>${esc(text)}</small>` : ''}${n ? '<button type="button" class="small" data-pk-clear>Clear search</button>' : ''}</div>`;
   };
   $('gp-list').addEventListener('click', (e) => {
     if (!e.target.closest('[data-pk-clear]')) return;
@@ -1481,8 +1507,8 @@
   // A command as a button; look is its class in the panel's heading (small, beside Edit), or a quick action.
   const qa = (cmd, icon, label, look = 'dw-qa') => (dwNot.has(cmd) || !may(cmd) ? '' : `<button type="button" class="${look}" data-dw-cmd="${cmd}">${svg(icon)}<span>${esc(label)}</span></button>`);
   // Why a few things aren't there, for the ones that have them.
-  const dwWhy = (k, x) => (k === 'users' && x.service ? `That's ${ad.state.account}, ${R.app()}'s own account. Its password and sign-in settings stay as they are, so ${R.app()} keeps working.`
-    : k === 'computers' && x.controller ? 'A domain controller: it can\'t be disabled, moved or deleted here.' : '');
+  const dwWhy = (k, x) => (k === 'users' && x.service ? `${ad.state.account} is the ${R.app()} service account. Its password and sign-in settings cannot be changed here.`
+    : k === 'computers' && x.controller ? 'Domain controllers cannot be disabled, moved or deleted here.' : '');
 
   const dwHead = (k, x) => {
     const pic = k === 'users' ? `<span class="pic user dw-pic">${esc(initials(nameOf(x)))}</span>` : `<span class="pic dw-pic">${svg(k === 'groups' ? 'users' : server(x) ? 'server' : 'laptop')}</span>`;
@@ -1515,7 +1541,7 @@
   const dwOverview = (k, x) => {
     const where = dwFact('Organizational unit', esc(x.where || ad.state.domain), true);
     if (k === 'users') {
-      const password = x.mustChange ? 'Must change at the next sign-in' : x.neverExpires ? 'Never expires' : x.passwordExpires ? `Expires ${day(x.passwordExpires)}` : '';
+      const password = x.mustChange ? 'Must change at next sign-in' : x.neverExpires ? 'Never expires' : x.passwordExpires ? `Expires ${day(x.passwordExpires)}` : '';
       return dwFacts('Account', [dwFact('Pre-Windows 2000 logon name', `<span class="mono">${esc(x.username)}</span>`), dwFact('User principal name', e1(x.upn)),
         dwFact('Last sign-in', esc(ago(x.lastSignIn))), dwFact('Created', x.created ? esc(day(x.created)) : ''),
         dwFact('Account expires', x.accountExpires ? `End of ${esc(day(new Date(new Date(x.accountExpires) - 1)))}` : 'Never'), dwFact('Locked out', x.locked ? 'Yes' : 'No'), where],
@@ -1524,11 +1550,11 @@
         + dwFacts('Password', [dwFact('Password', esc(password)), dwFact('Last set', x.passwordSet ? esc(day(x.passwordSet)) : ''),
           dwSwitch('Must change at next sign-in', !!x.mustChange, 'flag-on:mustchange', 'flag-off:mustchange'),
           dwSwitch('Never expires', !!x.neverExpires, 'flag-on:noexpiry', 'flag-off:noexpiry')],
-          dwLink('password', 'key', 'Reset password') + dwLink('flag-on:cannotchange', 'lock', 'Stop user changing it') + dwLink('flag-off:cannotchange', 'unlock', 'Let user change it'))
+          dwLink('password', 'key', 'Reset password') + dwLink('flag-on:cannotchange', 'lock', 'Prevent password change') + dwLink('flag-off:cannotchange', 'unlock', 'Allow password change'))
         + dwFacts('Contact and organization', [dwFact('Display name', e1(x.name)), dwFact('Email', e1(x.email)), dwFact('Job title', e1(x.title)), dwFact('Department', e1(x.department)),
           dwFact('Company', e1(x.company)), dwFact('Office', e1(x.office)), dwFact('Phone', e1(x.phone)), dwFact('Manager', e1(x.manager)), dwFact('Description', e1(x.description), true)],
           dwLink('edit', 'edit', 'Edit'))
-        + dwFacts('Security', [dwSwitch('Sensitive and cannot be delegated', !!x.sensitive, 'flag-on:sensitive', 'flag-off:sensitive'),
+        + dwFacts('Security', [dwSwitch('Account is sensitive and cannot be delegated', !!x.sensitive, 'flag-on:sensitive', 'flag-off:sensitive'),
           dwSwitch('Smart card required', !!x.smartcard, 'flag-on:smartcard', 'flag-off:smartcard'),
           dwSwitch('Reversible encryption', !!x.reversible, 'flag-on:reversible', 'flag-off:reversible'),
           dwSwitch('Kerberos DES only', !!x.desOnly, 'flag-on:des', 'flag-off:des'),
@@ -1567,7 +1593,7 @@
       + `${change ? `<span class="dw-sec-do">${ticks ? dwRemove() : ''}<button type="button" class="small" data-dw-cmd="groups-add">${svg('user-plus')}Add to groups</button></span>` : ''}</div>`
       + (gs.length ? `<div class="dw-list">${ticks ? dwTickAll(gs.map((g) => g.dn)) : ''}${gs.map((g) => `<div class="mrow">${ticks ? dwTick(g.dn, g.name) : ''}<span class="pic small">${svg('users')}</span><div class="two"><b>${esc(g.name)}</b><small>${esc(pathOf(g.dn))}</small></div>`
         + `${change ? `<button type="button" class="at-more dw-x" data-dw-leave="${esc(g.dn)}" data-tip="Remove" aria-label="Remove from ${esc(g.name)}">${svg('x')}</button>` : ''}</div>`).join('')}</div>`
-        : `<p class="muted dw-empty">${k === 'users' ? 'Only Domain Users, the primary group.' : k === 'computers' ? 'Only Domain Computers, the primary group.' : 'Not in any groups.'}</p>`)
+        : `<p class="muted dw-empty">${k === 'users' ? 'Domain Users (primary group) only.' : k === 'computers' ? 'Domain Computers (primary group) only.' : 'Not a member of any groups.'}</p>`)
       + '</section>';
   };
   // Attributes: everything the account has in Active Directory, as ADSI Edit shows it (/api/ad/object), read as the
@@ -1588,8 +1614,8 @@
     if (o.problem) return `<section class="dw-sec">${head()}<p class="hint problem">${esc(o.problem)}</p></section>`;
     return `<section class="dw-sec dwa">${head(`<span class="dw-sec-do"><button type="button" class="small" data-dwa-export>${svg('download')}Export</button>`
       + `<button type="button" class="small" data-dwa-open>${svg('list')}Attribute browser</button></span>`)}`
-      + (R.attrs.locked(o) ? `<p class="dw-how">Read only here: ${esc(R.attrs.locked(o))}</p>` : '')
-      + `<div class="dwa-bar"><label class="side-find"><svg><use href="#i-search"/></svg><input type="search" id="dwa-find" placeholder="Find an attribute or value" aria-label="Find an attribute or value" autocomplete="off" spellcheck="false" value="${esc(dw.attrs.find)}"></label>`
+      + (R.attrs.locked(o) ? `<p class="dw-how">Read-only: ${esc(R.attrs.locked(o))}</p>` : '')
+      + `<div class="dwa-bar"><label class="side-find"><svg><use href="#i-search"/></svg><input type="search" id="dwa-find" placeholder="Search attributes and values" aria-label="Search attributes and values" autocomplete="off" spellcheck="false" value="${esc(dw.attrs.find)}"></label>`
       + `<label class="dwa-all"><input type="checkbox" id="dwa-all"${dw.attrs.all ? ' checked' : ''}>Show empty</label></div><div class="table attrs" id="dwa-table"></div></section>`;
   };
   const drawAttrGrid = () => {
@@ -1599,7 +1625,7 @@
     const q = dw.attrs.find.trim().toLowerCase();
     const rows = o.attributes.filter((a) => (dw.attrs.all || a.set) && (!q || a.name.toLowerCase().includes(q) || a.values.some((v) => v.toLowerCase().includes(q))));
     R.grid({
-      el, key: 'dw-attrs', headButton: true, sort: { key: 'name', dir: 1 }, redraw: drawAttrGrid, empty: q ? 'No attribute matches.' : 'No attribute has a value.',
+      el, key: 'dw-attrs', headButton: true, sort: { key: 'name', dir: 1 }, redraw: drawAttrGrid, empty: q ? 'No matching attributes.' : 'No attributes have a value.',
       cols: [
         { key: 'name', label: 'Attribute', w: 190, fixed: true, get: (a) => a.name, cell: (a) => `<span class="mono ell">${esc(a.name)}</span>` },
         { key: 'value', label: 'Value', w: 300, on: true, get: (a) => a.values.join(' '),
@@ -1644,8 +1670,8 @@
       : ms.problem ? `<p class="hint problem">${esc(ms.problem)}</p>`
         : ms.length ? `<div class="dw-list">${ticks ? dwTickAll(ms.map((m) => m.dn)) : ''}${ms.map((m) => `<div class="mrow">${ticks ? dwTick(m.dn, m.name) : ''}<span class="pic small${m.kind === 'user' ? ' user' : ''}">${m.kind === 'user' ? esc(initials(m.name)) : svg(KIND_PIC[m.kind] || 'user')}</span>`
           + `<div class="two"><b>${esc(m.name)}</b><small>${esc(m.sub || '')}</small></div>`
-          + `${change ? `<button type="button" class="at-more dw-x" data-dw-out="${esc(m.dn)}" data-tip="Remove" aria-label="Take ${esc(m.name)} out">${svg('x')}</button>` : ''}</div>`).join('')}</div>`
-          : '<p class="muted dw-empty">Nobody yet.</p>';
+          + `${change ? `<button type="button" class="at-more dw-x" data-dw-out="${esc(m.dn)}" data-tip="Remove" aria-label="Remove ${esc(m.name)}">${svg('x')}</button>` : ''}</div>`).join('')}</div>`
+          : '<p class="muted dw-empty">No members.</p>';
     return `<section class="dw-sec"><div class="dw-sec-head"><h3>Members${Array.isArray(ms) ? ` <small>${ms.length}</small>` : ''}</h3>`
       + `${change ? `<span class="dw-sec-do">${ticks ? dwRemove() : ''}<button type="button" class="small" data-dw-cmd="members-add">${svg('user-plus')}Add members</button></span>` : ''}</div>${body}</section>`;
   };
@@ -1658,22 +1684,22 @@
     : key === 'admins' ? `<button type="button" class="dw-link" data-dws-admins>${svg('users')}Open Domain Admins</button>` : '');
   const dwSetting = (s) => {
     const change = s.edit && can('ad.connect')
-      ? '<section class="dw-sec"><div class="dw-sec-head"><h3>Change it</h3></div><div class="form dws-form">'
+      ? '<section class="dw-sec"><div class="dw-sec-head"><h3>Change setting</h3></div><div class="form dws-form">'
         // On and off: two choices to pick, then Save (not a switch, which would look like it changes straight away).
-        + (s.edit === 'switch' ? `<label>New value</label><div class="seg dws-seg" id="dws-value" role="radiogroup" aria-label="New value">${[[1, 'On'], [0, 'Off']]
+        + (s.edit === 'switch' ? `<label>New value</label><div class="seg dws-seg" id="dws-value" role="radiogroup" aria-label="New value">${[[1, 'Enabled'], [0, 'Disabled']]
           .map(([v, label]) => `<button type="button" role="radio" data-dws-v="${v}" aria-pressed="${Number(s.value) === v}" aria-checked="${Number(s.value) === v}">${label}</button>`).join('')}</div>`
           : `<label for="dws-value">New value</label><span class="dws-num">${R.stepper(`id="dws-value" min="${s.min}" max="${s.max}" value="${s.value ?? ''}"`)}<span>${esc(s.unit || '')}</span></span>`
-            + `<small class="hint">From ${s.min} to ${s.max}.</small>`)
+            + `<small class="hint">Between ${s.min} and ${s.max}.</small>`)
         + `<label for="dws-user">Domain admin</label><input id="dws-user" autocomplete="off" spellcheck="false" placeholder="AMW\\admin" value="${esc(dwsUser)}">`
         + '<label for="dws-pass">Password</label><input type="password" id="dws-pass" autocomplete="new-password">'
-        + `<small class="hint">${DWS_POLICY.includes(s.key) ? 'Saved in the Default Domain Policy, as Group Policy Management does, and set on the domain straight away. ' : ''}`
-        + 'The login is used for this change only and isn\'t saved.</small></div>'
+        + `<small class="hint">${DWS_POLICY.includes(s.key) ? 'Saved in the Default Domain Policy and applied to the domain immediately. ' : ''}`
+        + 'These credentials are used once and are not stored.</small></div>'
         + '<p class="hint problem" id="dws-problem" hidden></p><div class="dws-foot"><button type="button" class="primary" data-dws-save>Save</button></div></section>'
-      : s.how ? `<section class="dw-sec"><div class="dw-sec-head"><h3>How it's changed</h3><div class="dw-links">${dwsLink(s.key)}</div></div><p class="dw-how">${esc(s.how)}</p></section>` : '';
+      : s.how ? `<section class="dw-sec"><div class="dw-sec-head"><h3>How to change it</h3><div class="dw-links">${dwsLink(s.key)}</div></div><p class="dw-how">${esc(s.how)}</p></section>` : '';
     return `<div class="dw-head"><span class="pic dw-pic">${svg(AREA_ICON[s.area] || 'shield')}</span><div class="dw-name"><h2 id="dw-title">${esc(s.name)}</h2><p>${esc(s.area)}</p></div>`
       + `<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`
       + `<div class="dw-status">${TONE[s.tone] || ''}</div>`
-      + dwFacts('Check', [dwFact('Now', esc(s.now)), dwFact('Recommended', esc(s.recommended)), dwFact('Why it matters', esc(s.about), true)])
+      + dwFacts('Check', [dwFact('Current', esc(s.now)), dwFact('Recommended', esc(s.recommended)), dwFact('Details', esc(s.about), true)])
       + dwFound(s)
       + (s.fix ? `<section class="dw-sec"><div class="dw-sec-head"><h3>How to fix it</h3></div><p class="dw-how">${esc(s.fix)}</p></section>` : '')
       + change
@@ -1684,11 +1710,11 @@
   const flagOff = (flag, on = false) => (f) => [`${userPath(f)}/flag`, { flag, on }];
   const ACTS = {
     'notreq-off': { label: 'Require a password', doing: 'Requiring a password', icon: 'lock', kinds: ['user'], run: flagOff('notreq') },
-    'noexpiry-off': { label: 'Let passwords expire', doing: 'Letting passwords expire', icon: 'calendar', kinds: ['user'], run: flagOff('noexpiry') },
-    'reversible-off': { label: 'Turn off reversible encryption', doing: 'Turning off reversible encryption', icon: 'lock', kinds: ['user'], run: flagOff('reversible') },
-    'sensitive-on': { label: 'Mark sensitive', doing: 'Marking sensitive', icon: 'shield', kinds: ['user'], run: flagOff('sensitive', true) },
+    'noexpiry-off': { label: 'Set passwords to expire', doing: 'Setting passwords to expire', icon: 'calendar', kinds: ['user'], run: flagOff('noexpiry') },
+    'reversible-off': { label: 'Disable reversible encryption', doing: 'Disabling reversible encryption', icon: 'lock', kinds: ['user'], run: flagOff('reversible') },
+    'sensitive-on': { label: 'Mark as sensitive', doing: 'Marking as sensitive', icon: 'shield', kinds: ['user'], run: flagOff('sensitive', true) },
     'preauth-on': { label: 'Require preauthentication', doing: 'Requiring preauthentication', icon: 'ticket', kinds: ['user'], run: flagOff('preauth') },
-    'des-off': { label: 'Turn off DES', doing: 'Turning off DES', icon: 'ticket', kinds: ['user'], run: flagOff('des') },
+    'des-off': { label: 'Disable DES', doing: 'Disabling DES', icon: 'ticket', kinds: ['user'], run: flagOff('des') },
     disable: { label: 'Disable', doing: 'Disabling', icon: 'user-off', kinds: ['user', 'computer'], ask: true,
       run: (f) => (f.kind === 'computer' ? [`${pcPath({ name: f.username || f.name })}/enable`, { on: false }] : [`${userPath(f)}/enable`, { on: false }]) },
   };
@@ -1699,15 +1725,15 @@
     const a = actOf(s);
     const can1 = (f) => a && a.kinds.includes(f.kind);
     const any = fs.some(can1);
-    return `<section class="dw-sec"><div class="dw-sec-head"><h3>What was found <small>${fs.length}</small></h3>`
+    return `<section class="dw-sec"><div class="dw-sec-head"><h3>Affected objects <small>${fs.length}</small></h3>`
       + (any ? `<button type="button" class="small" data-dwf-act>${svg(a.icon)}${esc(a.label)}</button>` : '') + '</div>'
       + `<div class="dw-list">${fs.map((f, i) => `<div class="mrow">`
-        + (any ? (can1(f) ? `<label class="tk"><input type="checkbox" data-dwf-tick="${i}" checked aria-label="Pick ${esc(f.name)}"></label>` : '<span class="tk"></span>') : '')
+        + (any ? (can1(f) ? `<label class="tk"><input type="checkbox" data-dwf-tick="${i}" checked aria-label="Select ${esc(f.name)}"></label>` : '<span class="tk"></span>') : '')
         + `<span class="pic small${f.kind === 'user' ? ' user' : ''}">${f.kind === 'user' ? esc(initials(f.name)) : svg(FOUND_ICON[f.kind] || 'folder')}</span>`
         + `<div class="two"><b>${esc(f.name)}</b><small>${esc(f.where || '')}</small></div>`
         + (PAGE_OF[f.kind] ? `<button type="button" class="at-more dwf-open" data-dwf-open="${i}" data-tip="Open" aria-label="Open ${esc(f.name)}">${svg('right')}</button>` : '')
         + '</div>').join('')}</div>`
-      + (fs.length >= 50 ? '<p class="hint">The first 50 are shown; the CSV has the same.</p>' : '')
+      + (fs.length >= 50 ? '<p class="hint">Showing the first 50. The CSV export contains the same 50.</p>' : '')
       + '<p class="hint problem" id="dwf-problem" hidden></p></section>';
   };
   // Runs the check's fix on each ticked one, then reads the checks again.
@@ -1734,7 +1760,7 @@
       drawAd();
       drawDrawer();
       const done = fs.length - failed.length;
-      if (done) R.toast(`${count(done, 'account', 'accounts')} fixed`, s.name);
+      if (done) R.toast(`Fixed ${count(done, 'account', 'accounts')}.`, s.name);
       if (failed.length) say($('dwf-problem') ? 'dwf-problem' : 'dir-problem', failed.join(' '));
     };
     if (a.ask) sure(`${a.label} ${count(fs.length, 'account', 'accounts')}?`, `${fs.map((f) => f.name).slice(0, 5).join(', ')}${fs.length > 5 ? ` and ${fs.length - 5} more` : ''}. They can be enabled again later.`, a.label, go);
@@ -1747,7 +1773,7 @@
     const password = $('dws-pass').value;
     say('dws-problem', '');
     if (!dwsUser || !password) {
-      say('dws-problem', 'Sign in as a domain admin to change it.');
+      say('dws-problem', 'Enter domain admin credentials to change this setting.');
       return;
     }
     R.busy($('dw-body'), `Changing ${s.name}…`);
@@ -1756,7 +1782,7 @@
       R.busy($('dw-body'), '');
       drawAd();
       drawDrawer();
-      R.toast(`Changed ${s.name}`, lists.domain.find((x) => x.key === s.key)?.now || '');
+      R.toast(`${s.name} changed.`, lists.domain.find((x) => x.key === s.key)?.now || '');
     } catch (err) {
       R.busy($('dw-body'), '');
       say('dws-problem', err.message);
@@ -1767,15 +1793,15 @@
     + `${sub ? `<p>${esc(sub)}</p>` : ''}</div><button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div><div class="dw-status">${status}</div>`;
   const PAGE_OF = { user: 'users', group: 'groups', computer: 'computers' };
   const dwChange = (c) => dwTop(KIND_ICON[c.kind] || 'folder', c.name, c.where || ad.state.domain, badge(c.what.charAt(0).toUpperCase() + c.what.slice(1), WHAT[c.what]))
-    + (PAGE_OF[c.kind] && c.what !== 'deleted' ? `<div class="dw-bar"><button type="button" class="dw-qa" data-dwa-open>${svg('right')}<span>Open it</span></button></div>` : '')
-    + dwFacts('Change', [dwFact('When', esc(new Date(c.at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }))), dwFact('Kind', esc(c.kind === 'ou' ? 'OU' : c.kind)),
-      dwFact('By', c.by ? esc(`${c.by}, in ${R.app()}`) : `<span class="muted">Not known: it was made outside ${esc(R.app())}</span>`, true),
+    + (PAGE_OF[c.kind] && c.what !== 'deleted' ? `<div class="dw-bar"><button type="button" class="dw-qa" data-dwa-open>${svg('right')}<span>Open</span></button></div>` : '')
+    + dwFacts('Change', [dwFact('When', esc(new Date(c.at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }))), dwFact('Type', esc(c.kind === 'ou' ? 'OU' : c.kind)),
+      dwFact('Changed by', c.by ? esc(`${c.by} (${R.app()})`) : `<span class="muted">Unknown. The change was made outside ${esc(R.app())}.</span>`, true),
       dwFact('Distinguished name', `<span class="mono">${esc(c.dn)}</span>`, true)])
-    + (c.attributes.length ? `<section class="dw-sec"><div class="dw-sec-head"><h3>What changed <small>${c.attributes.length}</small></h3></div>`
+    + (c.attributes.length ? `<section class="dw-sec"><div class="dw-sec-head"><h3>Attributes changed <small>${c.attributes.length}</small></h3></div>`
       + `<div class="chips-in">${c.attributes.map((a) => `<span class="gchip">${esc(a)}</span>`).join('')}</div></section>` : '');
   const dwDeleted = (d) => dwTop(KIND_ICON[d.kind] || 'folder', d.name, d.wasIn || ad.state.domain, badge('Deleted', 'red'))
-    + dwFacts('Deleted', [dwFact('Logon name', e1(d.username)), dwFact('Was in', esc(d.wasIn || ad.state.domain)), dwFact('Deleted', d.deleted ? esc(day(d.deleted)) : '')])
-    + (can('ad.change') ? '<section class="dw-sec"><div class="dw-sec-head"><h3>Bring it back</h3></div><p class="dw-how">It comes back where it was, with its groups and details.</p>'
+    + dwFacts('Deleted', [dwFact('Logon name', e1(d.username)), dwFact('Last known location', esc(d.wasIn || ad.state.domain)), dwFact('Deleted', d.deleted ? esc(day(d.deleted)) : '')])
+    + (can('ad.change') ? '<section class="dw-sec"><div class="dw-sec-head"><h3>Restore</h3></div><p class="dw-how">The object is restored to its last known location with its group memberships and attributes.</p>'
       + `<div class="dws-foot"><button type="button" class="primary" data-dwr-restore>${svg('history')}Restore</button></div></section>` : '');
   // Open it: the user, group or computer, in its own page's panel.
   const openChanged = (c) => {
@@ -1787,7 +1813,7 @@
     try {
       await R.send('/api/ad/recycle/restore', { dn: d.dn });
       R.panel.close();
-      R.toast(`Restored ${d.name}`, `It's back in ${d.wasIn || ad.state.domain}.`);
+      R.toast(`${d.name} restored.`, `Restored to ${d.wasIn || ad.state.domain}.`);
       await loadAd(true);
       drawAd();
     } catch (err) {
@@ -1944,16 +1970,16 @@
       const dns = [...dw.picks];
       const members = dw.tab === 'members';
       const names = dns.map((d) => (members ? (dw.members || []).find((m) => same(m.dn, d))?.name : (x.groups || []).find((g) => same(g.dn, d))?.name) || d);
-      const what = members ? `${count(dns.length, 'member', 'members')} out of ${x.name}` : `${nameOf(x)} from ${dns.length === 1 ? names[0] : count(dns.length, 'group', 'groups')}`;
+      const what = members ? `${count(dns.length, 'member', 'members')} from ${x.name}` : `${nameOf(x)} from ${dns.length === 1 ? names[0] : count(dns.length, 'group', 'groups')}`;
       const go = () => {
         dw.picks.clear();
         if (members) {
           dw.membersFor = ''; // read again after
-          each(k, [x], 'Removing members', `Took ${what}`, (g) => membersOf(g, [], dns));
-        } else each(k, [x], 'Removing from groups', `Removed ${what}`, (y) => memberOf(k, y, [], dns));
+          each(k, [x], 'Removing members', `Removed ${what}.`, (g) => membersOf(g, [], dns));
+        } else each(k, [x], 'Removing from groups', `Removed ${what}.`, (y) => memberOf(k, y, [], dns));
       };
       if (dns.length === 1) go();
-      else sure(members ? `Take ${what}?` : `Remove ${what}?`, names.join(', '), members ? 'Take them out' : 'Remove from groups', go);
+      else sure(members ? `Remove ${what}?` : `Remove ${what}?`, names.join(', '), members ? 'Remove members' : 'Remove from groups', go);
       return;
     }
     const cmd = e.target.closest('[data-dw-cmd]');
@@ -1967,14 +1993,14 @@
     const leave = e.target.closest('[data-dw-leave]');
     if (leave) {
       const g = (x.groups || []).find((h) => same(h.dn, leave.dataset.dwLeave));
-      each(k, [x], 'Removing from the group', `Removed ${nameOf(x)} from ${g?.name || 'the group'}`, (y) => memberOf(k, y, [], [leave.dataset.dwLeave]));
+      each(k, [x], 'Removing from group', `Removed ${nameOf(x)} from ${g?.name || 'the group'}.`, (y) => memberOf(k, y, [], [leave.dataset.dwLeave]));
       return;
     }
     const out = e.target.closest('[data-dw-out]');
     if (out) {
       const m = (dw.members || []).find((h) => same(h.dn, out.dataset.dwOut));
       dw.membersFor = ''; // read again after
-      each(k, [x], 'Removing a member', `Took ${m?.name || 'them'} out of ${x.name}`, (g) => membersOf(g, [], [out.dataset.dwOut]));
+      each(k, [x], 'Removing member', `Removed ${m?.name || 'the member'} from ${x.name}.`, (g) => membersOf(g, [], [out.dataset.dwOut]));
     }
   });
 
@@ -2003,8 +2029,8 @@
   pwMode('reset-pwmode', 'reset-password');
 
   const secret = (who, password, warning, mustChange, many = false) => {
-    $('secret-title').textContent = many ? 'The new passwords' : `${who}'s password`;
-    $('secret-lead').textContent = `${many ? 'Give each person theirs.' : `Give it to ${who}.`}${mustChange ? ' They pick their own when they first sign in.' : ''}`;
+    $('secret-title').textContent = many ? 'New passwords' : `Password for ${who}`;
+    $('secret-lead').textContent = `${many ? 'Give each user their password.' : `Give this password to ${who}.`}${mustChange ? ' A new password must be set at first sign-in.' : ''}`;
     $('secret-text').textContent = password;
     $('secret-text').classList.toggle('many', many);
     say('secret-warning', warning || '');
@@ -2024,7 +2050,7 @@
   // done: what to read again afterwards, for a Windows account on Devices; else Active Directory.
   const reset = (who, path, lead, done = null) => {
     resetting = { who, path, users: null, done };
-    $('reset-title').textContent = `A new password for ${who}`;
+    $('reset-title').textContent = `Reset password for ${who}`;
     $('reset-lead').textContent = lead;
     resetMode('reset-pwmode', 'reset-password');
     $('reset-change').checked = true;
@@ -2033,9 +2059,9 @@
   };
   // Several users: each gets one of its own, unless one is typed for all of them.
   const resetMany = (us) => {
-    reset(whoOf(us, 'users'), '', 'Each gets a password of its own, unless you type one for all of them. It also unlocks accounts that are locked out.');
+    reset(whoOf(us, 'users'), '', 'Each user gets a unique password unless you enter one for all of them. This also unlocks locked-out accounts.');
     resetting.users = us;
-    $('reset-title').textContent = `New passwords for ${us.length} users`;
+    $('reset-title').textContent = `Reset passwords for ${us.length} users`;
   };
   $('reset-cancel').addEventListener('click', () => $('reset-dialog').close());
   $('reset-go').addEventListener('click', async () => {
@@ -2043,7 +2069,7 @@
     if (resetting.users) {
       const mustChange = $('reset-change').checked;
       $('reset-dialog').close();
-      const got = await each('users', resetting.users, 'Setting passwords', `Set new passwords for ${resetting.who}`, (u) => post(u, '/password', { password, mustChange }));
+      const got = await each('users', resetting.users, 'Resetting passwords', `Passwords reset for ${resetting.who}.`, (u) => post(u, '/password', { password, mustChange }));
       const made = got.filter(([, a]) => a?.password);
       const wide = Math.max(...made.map(([u]) => u.username.length), 0);
       if (made.length) secret('', made.map(([u, a]) => `${u.username.padEnd(wide + 3)}${a.password}`).join('\n'), null, mustChange, true);
@@ -2054,7 +2080,7 @@
       const answer = await R.send(resetting.path, { password, mustChange: $('reset-change').checked });
       $('reset-dialog').close();
       if (answer.password) secret(resetting.who, answer.password, null, $('reset-change').checked);
-      else if (resetting.done) R.toast(`${resetting.who} has a new password.`);
+      else if (resetting.done) R.toast(`Password reset for ${resetting.who}.`);
       if (resetting.done) resetting.done();
       else reload();
     } catch (err) {
@@ -2070,8 +2096,8 @@
   let edited = {};
   const newKind = () => $('new-dialog').dataset.kind;
   const drawJoining = () => {
-    $('new-dir-groups').innerHTML = joining.map((g, i) => `<span class="gchip">${esc(g.name)}<button type="button" class="chip-x" data-unjoin="${i}" aria-label="Not ${esc(g.name)}">${svg('x')}</button></span>`).join('')
-      || '<span class="muted">Only Domain Users</span>';
+    $('new-dir-groups').innerHTML = joining.map((g, i) => `<span class="gchip">${esc(g.name)}<button type="button" class="chip-x" data-unjoin="${i}" aria-label="Remove ${esc(g.name)}">${svg('x')}</button></span>`).join('')
+      || '<span class="muted">Domain Users only</span>';
   };
   const placesInto = async (select, selected, problem) => {
     try {
@@ -2098,13 +2124,13 @@
     d.querySelectorAll('.pc-only').forEach((el) => { el.hidden = kind !== 'pc'; });
     if (kind === 'ad') {
       $('acct-title').textContent = 'New user';
-      $('new-lead').textContent = `In ${ad.state.domain}, made by ${ad.state.account}.`;
+      $('new-lead').textContent = `Created in ${ad.state.domain} as ${ad.state.account}.`;
       drawJoining();
       await placesInto('new-ou', ad.state.newUsers, 'new-problem');
     } else {
       const c = pcTarget;
-      $('acct-title').textContent = `New Windows account on ${c.name}`;
-      $('new-lead').textContent = c.server ? 'On this server.' : `${c.name}'s client makes it, straight away.`;
+      $('acct-title').textContent = `New local account on ${c.name}`;
+      $('new-lead').textContent = c.server ? 'Created on this server.' : `The client on ${c.name} creates the account immediately.`;
       const common = [ADMINS, 'S-1-5-32-545', 'S-1-5-32-555'];
       const groups = [...c.groups].sort((a, b) => (common.indexOf(b.sid) >= 0) - (common.indexOf(a.sid) >= 0));
       $('new-pc-groups').innerHTML = groups.map((g) => `<label class="role-pick"><input type="checkbox" value="${esc(g.name)}"${g.sid === 'S-1-5-32-545' ? ' checked' : ''}>${esc(g.name)}</label>`).join('');
@@ -2125,7 +2151,7 @@
 
   // Groups for the new user to join.
   R.dropdown($('new-group-find').closest('.adder'), {
-    none: 'No groups match.',
+    none: 'No matching groups.',
     find: async (q) => (await R.get(`/api/ad/groups?q=${encodeURIComponent(q)}`)).filter((g) => !joining.some((x) => x.dn === g.dn)).slice(0, 30),
     draw: (g, i) => R.option(` data-pick="${i}"`, `<span class="pic">${svg('users')}</span>`, g.name, g.description || g.where),
     pick: (g) => {
@@ -2151,13 +2177,13 @@
         neverExpires: $('new-never').checked, groups: [...$('new-pc-groups').querySelectorAll('input:checked')].map((c) => c.value) };
     const who = kind === 'ad' ? body.username : body.name;
     $('new-go').disabled = true;
-    say('new-problem', kind === 'pc' && !pcTarget.server ? `Asking ${pcTarget.name}…` : '');
+    say('new-problem', kind === 'pc' && !pcTarget.server ? `Contacting ${pcTarget.name}…` : '');
     try {
       const answer = await R.send(kind === 'ad' ? '/api/ad/users' : `/api/windows/${encodeURIComponent(pcTarget.id)}/accounts`, body);
       $('new-dialog').close();
       if (answer.password) secret(who, answer.password, answer.warning, body.mustChange);
-      else if (kind === 'ad') say('dir-note', answer.warning || `Made ${who}.`);
-      else R.toast(`Made ${who}.`, answer.warning || '', answer.warning ? { tone: 'warn' } : {});
+      else if (kind === 'ad') say('dir-note', answer.warning || `${who} created.`);
+      else R.toast(`${who} created.`, answer.warning || '', answer.warning ? { tone: 'warn' } : {});
       if (kind === 'ad') {
         delete lists.users; // read again when it's next open, if it was made from another list
         reload();
@@ -2186,7 +2212,7 @@
     if (k === 'computers') {
       $('pcnew-name').value = '';
       $('pcnew-about').value = '';
-      $('pcnew-lead').textContent = `In ${ad.state.domain}, made by ${ad.state.account}, ready for a computer of that name to join.`;
+      $('pcnew-lead').textContent = `Created in ${ad.state.domain} as ${ad.state.account}. A computer with this name can then join the domain.`;
       say('pcnew-problem', '');
       await placesInto('pcnew-ou', ad.state.newComputers, 'pcnew-problem');
       $('pcnew-dialog').showModal();
@@ -2197,7 +2223,7 @@
     $('grp-about').value = '';
     $('grp-scope').value = 'global';
     $('grp-type').querySelectorAll('[data-type]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.type === 'security')));
-    $('group-lead').textContent = `In ${ad.state.domain}, made by ${ad.state.account}.`;
+    $('group-lead').textContent = `Created in ${ad.state.domain} as ${ad.state.account}.`;
     say('grp-problem', '');
     await placesInto('grp-ou', ad.state.newGroups || ad.state.newUsers, 'grp-problem');
     $('group-dialog').showModal();
@@ -2219,7 +2245,7 @@
     try {
       const c = await R.send('/api/ad/computers', { name: $('pcnew-name').value, description: $('pcnew-about').value, ou: $('pcnew-ou').value });
       $('pcnew-dialog').close();
-      R.toast(`Made the computer account ${c.name}`, `A computer called ${c.name} can join the domain into it.`);
+      R.toast(`Computer account ${c.name} created.`, `A computer named ${c.name} can now join the domain using this account.`);
       delete lists.computers;
       reload();
     } catch (err) {
@@ -2234,7 +2260,7 @@
       const g = await R.send('/api/ad/groups', { name: $('grp-name').value, description: $('grp-about').value, ou: $('grp-ou').value, scope: $('grp-scope').value,
         security: $('grp-type').querySelector('[aria-pressed="true"]').dataset.type === 'security' });
       $('group-dialog').close();
-      say('dir-note', `Made ${g.name}. Open it to add members.`);
+      say('dir-note', `${g.name} created. Open the group to add members.`);
       delete lists.groups;
       reload();
     } catch (err) {
@@ -2254,9 +2280,9 @@
   const isDomain = (dn) => /^DC=/i.test(dn);
   const same = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
   const pick = { select: null, sel: '', find: '', nodes: [], domain: '' };
-  const PICK_LEADS = { 'dset-ou': 'Where the service account is created.', 'new-ou': 'Where the new user goes.', 'grp-ou': 'Where the new group goes.',
-    'adset-ou': 'Where New user puts them.', 'adset-gou': 'Where New group puts them.', 'adset-cou': 'Where New computer puts them.', 'pcnew-ou': 'Where the new computer account goes.',
-    'role-scope-add': 'An OU this role works in. Everything inside it counts too.' };
+  const PICK_LEADS = { 'dset-ou': 'Select the OU to create the service account in.', 'new-ou': 'Select the OU for the new user.', 'grp-ou': 'Select the OU for the new group.',
+    'adset-ou': 'Default OU for new users.', 'adset-gou': 'Default OU for new groups.', 'adset-cou': 'Default OU for new computers.', 'pcnew-ou': 'Select the OU for the new computer account.',
+    'role-scope-add': 'An OU in the role scope. Child OUs are included.' };
   const ouNode = (dn) => pick.nodes.find((n) => !n.domain && same(n.dn, dn));
   const kidsOf = (dn) => pick.nodes.filter((n) => !n.domain && same(n.parent, dn));
   const topOus = () => pick.nodes.filter((n) => !n.domain && !ouNode(n.parent));
@@ -2273,14 +2299,14 @@
     let html;
     if (q) {
       const hits = pick.nodes.filter((n) => !n.domain && n.path.toLowerCase().includes(q));
-      html = `<p class="rail-label">${hits.length ? `Found ${hits.length}` : 'Nothing found'}</p>`
+      html = `<p class="rail-label">${hits.length ? `${hits.length} found` : 'No OUs found'}</p>`
         + hits.map((n) => ouRow(n, svg('folder'), n.name, n.path.split(' / ').slice(0, -1).join(' / '))).join('');
     } else {
       const whole = pick.nodes.find((n) => n.domain);
-      html = `<p class="rail-label">${esc(pick.domain)}</p>` + (whole ? ouRow(whole, svg('globe'), 'The whole domain', '') : '')
+      html = `<p class="rail-label">${esc(pick.domain)}</p>` + (whole ? ouRow(whole, svg('globe'), 'Entire domain', '') : '')
         + topOus().map((n) => railRow(n, true)).join('');
     }
-    $('oupick-list').innerHTML = pick.nodes.length ? html : '<p class="ds-empty oupick-none">No OUs to pick from.</p>';
+    $('oupick-list').innerHTML = pick.nodes.length ? html : '<p class="ds-empty oupick-none">No OUs available.</p>';
   };
   // What's directly in a place (the Attribute browser's read), kept while the window is open.
   const inPlace = new Map();
@@ -2312,7 +2338,7 @@
       const n = got.items.filter((i) => i.kind === k).length;
       return n ? `${n}${got.more ? '+' : ''} ${n === 1 ? one : many}` : '';
     }).filter(Boolean);
-    const said = counts.length > 1 ? `${counts.slice(0, -1).join(', ')} and ${counts[counts.length - 1]}` : counts[0] || 'Nothing in it yet';
+    const said = counts.length > 1 ? `${counts.slice(0, -1).join(', ')} and ${counts[counts.length - 1]}` : counts[0] || 'Empty';
     return `<p class="op-count">${esc(said)}</p>`
       + (got.items.length ? `<div class="op-items">${got.items.map((i) => `<div class="op-item" title="${esc(i.dn)}">${svg(PICK_ICON[i.kind] || 'folder')}<b>${esc(i.name)}</b>`
         + `${i.description ? `<small>${esc(i.description)}</small>` : ''}</div>`).join('')}</div>` : '');
@@ -2321,12 +2347,12 @@
     const n = pick.nodes.find((x) => same(x.dn, pick.sel));
     $('oupick-use').disabled = !n || !!n.fixed;
     if (!n) {
-      $('oupick-page').innerHTML = '<header class="sub-head"><h2>Pick an OU</h2><p>Pick one on the left, or find it by name.</p></header>';
+      $('oupick-page').innerHTML = '<header class="sub-head"><h2>Select an OU</h2><p>Select an OU on the left, or search by name.</p></header>';
       return;
     }
-    $('oupick-page').innerHTML = `<header class="sub-head"><h2>${esc(n.domain ? pick.domain : n.name)}</h2><p>${esc(n.domain ? 'The whole domain' : `${pick.domain} / ${n.path}`)}</p></header>`
+    $('oupick-page').innerHTML = `<header class="sub-head"><h2>${esc(n.domain ? pick.domain : n.name)}</h2><p>${esc(n.domain ? 'Entire domain' : `${pick.domain} / ${n.path}`)}</p></header>`
       + (n.fixed ? `<p class="op-fixed">${svg('lock')}<span>${esc(n.fixed)}</span></p>` : '')
-      + `<h3 class="op-h">Inside it</h3>${insideHtml(n.dn)}`
+      + `<h3 class="op-h">Contents</h3>${insideHtml(n.dn)}`
       + `<div class="ds-row op-dn"><div class="ds-l"><b>Distinguished name</b><span class="ds-code">${esc(n.dn)}</span></div></div>`;
   };
   const drawPick = () => {
@@ -2342,7 +2368,7 @@
     const any = pick.nodes[0]?.dn || '';
     pick.domain = any.split(/(?<!\\),/).filter(isDomain).map((p) => p.slice(3)).join('.');
     $('oupick-lead').textContent = select.id === 'dset-scope'
-      ? (ds.tab === 'make' ? 'Where it gets Full Control over users, groups and computers.' : `Where ${R.app()} makes its changes. The account must already have permission there.`)
+      ? (ds.tab === 'make' ? 'The service account gets Full Control over users, groups and computers in this OU.' : `${R.app()} makes changes only in this OU. The account must already have permissions here.`)
       : PICK_LEADS[select.id] || '';
     $('oupick-find').value = '';
     drawPick();
@@ -2397,18 +2423,18 @@
   let look = null; // what the sign-in read: the domain, its OUs and where accounts go
   const ds = { tab: 'make', step: 0, reached: 0 };
   // First, which: a new one Rabbid Lab creates, or one that's already there. The steps after it follow the choice.
-  const DCHOOSE = { key: 'choose', name: 'Choose', sub: 'New, or one you have', icon: 'shield', title: 'Which service account?', text: 'Rabbid Lab makes every Active Directory change as it.' };
+  const DCHOOSE = { key: 'choose', name: 'Choose', sub: 'New or existing', icon: 'shield', title: 'Choose a service account', text: 'Rabbid Lab makes all Active Directory changes as this account.' };
   const DSTEPS = {
     make: [
       DCHOOSE,
-      { key: 'signin', name: 'Sign in', sub: 'A domain admin login', icon: 'user', title: 'Sign in as a domain admin', text: 'Used once to read your OUs and create the account. Not saved.' },
-      { key: 'account', name: 'Account', sub: 'Its name and OU', icon: 'user-plus', title: 'Name it, and pick where it goes', text: 'Pick an OU from the list, or Browse… to look through them.' },
-      { key: 'review', name: 'Review', sub: 'Check, then create', icon: 'check', title: 'Check it, then create it', text: 'Nothing changes in Active Directory until you click Create service account.' },
+      { key: 'signin', name: 'Sign in', sub: 'Domain admin credentials', icon: 'user', title: 'Sign in as a domain admin', text: 'Used once to read your OUs and create the account. These credentials are not stored.' },
+      { key: 'account', name: 'Account', sub: 'Name and OU', icon: 'user-plus', title: 'Name the account and select its OU', text: 'Select an OU from the list, or click Browse… to browse the directory.' },
+      { key: 'review', name: 'Review', sub: 'Review and create', icon: 'check', title: 'Review and create', text: 'Nothing changes in Active Directory until you click Create service account.' },
     ],
     existing: [
       DCHOOSE,
-      { key: 'signin', name: 'Sign in', sub: 'The service account', icon: 'user', title: 'Sign in as the service account', text: 'Rabbid Lab stores its password encrypted and makes every AD change as it.' },
-      { key: 'review', name: 'Review', sub: 'Check, then use it', icon: 'check', title: 'Check it, then use it', text: 'Nothing changes in Active Directory. Rabbid Lab makes its changes as this account from then on.' },
+      { key: 'signin', name: 'Sign in', sub: 'The service account', icon: 'user', title: 'Sign in as the service account', text: 'Rabbid Lab stores the password encrypted and makes all AD changes as this account.' },
+      { key: 'review', name: 'Review', sub: 'Review and confirm', icon: 'check', title: 'Review and confirm', text: 'Nothing changes in Active Directory. From now on, Rabbid Lab makes all changes as this account.' },
     ],
   };
   const dsReview = () => {
@@ -2417,20 +2443,20 @@
     const user = $('dset-user').value.trim();
     const ou = $('dset-ou').selectedOptions[0];
     const scope = $('dset-scope').selectedOptions[0];
-    const where = scope ? (isDomain(scope.value) ? `All of ${look.domain}` : scope.textContent) : '';
+    const where = scope ? (isDomain(scope.value) ? `Entire domain (${look.domain})` : scope.textContent) : '';
     const row = (icon, label, value, sub, act) => `<div class="dset-rv">${svg(icon)}<span>${label}</span><b>${esc(value)}<small>${esc(sub)}</small></b>${act}</div>`;
     const change = (i) => `<button type="button" class="dset-change" data-dstep="${i}">Change</button>`;
     const browse = '<button type="button" class="dset-change" data-browse-ou="dset-scope">Change</button>';
     $('dset-review').innerHTML = make
-      ? row('user', 'Signed in as', user, `${look.domain} · not saved`, change(1))
-        + row('user-plus', 'Service account', $('dset-account').value.trim(), `Password made by ${R.app()}, stored encrypted`, change(2))
+      ? row('user', 'Signed in as', user, `${look.domain} · not stored`, change(1))
+        + row('user-plus', 'Service account', $('dset-account').value.trim(), `Password generated by ${R.app()} and stored encrypted`, change(2))
         + row('folder', 'Created in', ou ? ou.textContent : '', ou ? ou.value : '', change(2))
-        + row('shield', 'Can manage', where, 'Users, groups and computers', browse)
+        + row('shield', 'Scope', where, 'Users, groups and computers', browse)
       : row('user', 'Service account', user, `${look.domain} · password stored encrypted`, change(1))
-        + row('shield', 'Works in', where, 'Users, groups and computers', browse);
+        + row('shield', 'Scope', where, 'Users, groups and computers', browse);
     $('dset-note2').textContent = make
-      ? 'It gets Full Control over user, group and computer objects there, the same as the Delegation of Control wizard. Admin accounts protected by AdminSDHolder aren\'t affected.'
-      : `${R.app()} only makes changes there. The account must already have permission to create and manage users, groups and computers there. ${R.app()} doesn't change its permissions.`;
+      ? 'The account gets Full Control over user, group and computer objects in this scope, like the Delegation of Control Wizard. Admin accounts protected by AdminSDHolder are not affected.'
+      : `${R.app()} makes changes only in this scope. The account must already have permissions to create and manage users, groups and computers there. ${R.app()} does not change its permissions.`;
   };
   const dsDraw = () => {
     const make = ds.tab === 'make';
@@ -2447,11 +2473,11 @@
     $('dset-step-text').textContent = st.text.replace(/Rabbid Lab/g, R.app()); // the steps are written before the lab's name is known
     $('dset-dialog').querySelectorAll('[data-pane]').forEach((p) => { p.hidden = p.dataset.pane !== st.key; });
     $('dset-user-label').textContent = make ? 'Domain admin' : 'Service account';
-    $('dset-user').placeholder = make ? '' : 'Type its name, or pick it from AD';
+    $('dset-user').placeholder = make ? '' : 'Enter the account name or browse AD';
     $('dset-browse').hidden = make;
     if (make) $('dset-drop').hidden = true;
     else if (document.activeElement === $('dset-user')) acctFind(); // switched to Use one I have while in the box
-    $('dset-note').textContent = make ? 'These credentials are only used to create the service account. They are never saved.' : 'Its password is stored encrypted on this server.';
+    $('dset-note').textContent = make ? 'These credentials are used once to create the service account and are not stored.' : 'The password is stored encrypted on this server.';
     $('dset-back').hidden = ds.step === 0;
     $('dset-go').innerHTML = st.key === 'review' ? `${svg('check')}${make ? 'Create service account' : 'Use this account'}` : `Next${svg('right')}`;
     if (st.key === 'review') dsReview();
@@ -2485,11 +2511,11 @@
       + `<span>${esc(text)}</span></div><div class="dgate-acts">${acts}</div></div>`;
     if (!info?.domain) {
       // No domain here: these pages have nothing to manage until one is connected.
-      el.innerHTML = card("This server isn't on a domain", allowed ? 'Connect one to manage it from here.' : 'There is nothing to manage here yet.',
+      el.innerHTML = card('This server is not joined to a domain', allowed ? 'Connect a domain to manage it here.' : 'No domain is connected.',
         allowed ? '<button type="button" class="primary" data-setup>Connect a domain</button>' : '');
     } else {
       // Not now: read-only as this server for the whole server, which only people who can set up the account may choose and see.
-      el.innerHTML = card('Set up the service account', allowed ? `${R.app()} makes its changes in ${info.domain} as this account.` : 'Someone who can set up the service account has to do this first.',
+      el.innerHTML = card('Set up the service account', allowed ? `${R.app()} makes all changes in ${info.domain} as this account.` : 'An admin with permission to set up the service account must do this first.',
         (allowed ? '<button type="button" class="primary" data-setup>Set up</button>' : '') + (allowed && info.canRead ? '<button type="button" data-not-now>Not now</button>' : ''));
     }
     el.hidden = false;
@@ -2508,7 +2534,7 @@
     try {
       await R.devices.confirmed(() => R.send('/api/ad/read-only', { on }));
     } catch (err) {
-      if (!err.cancelled) R.toast("That didn't work.", err.message, { tone: 'warn' });
+      if (!err.cancelled) R.toast('Could not change read-only mode.', err.message, { tone: 'warn' });
       return;
     }
     R.forget();
@@ -2574,7 +2600,7 @@
         if (n !== acctAsk) return;
         html = (q ? '' : '<p class="drop-note">Service accounts in Active Directory</p>')
           + (acctHits.map((h, i) => R.option(` data-acct="${i}"`, `<span class="pic">${svg('user')}</span>`, h.enabled ? h.username : `${h.username} (disabled)`,
-            [h.name, h.description, h.where].filter(Boolean).join(' · '))).join('') || `<p class="drop-note">${q ? 'No account like that.' : 'None that look like service accounts. Type to find one.'}</p>`);
+            [h.name, h.description, h.where].filter(Boolean).join(' · '))).join('') || `<p class="drop-note">${q ? 'No matching accounts.' : 'No service accounts found. Type a name to search.'}</p>`);
       } catch (err) {
         if (n !== acctAsk) return;
         html = `<p class="drop-note">${esc(err.message)}</p>`;
@@ -2628,19 +2654,19 @@
     if (!ap.got.has(key)) apLoad(key, q);
     const got = ap.got.get(key);
     const place = ap.places.find((p) => same(p.dn, ap.at));
-    const head = q ? `<header class="sub-head"><h2>Found</h2><p>Accounts like “${esc(q)}” anywhere in ${esc(apDomain())}</p></header>`
+    const head = q ? `<header class="sub-head"><h2>Search results</h2><p>Accounts matching “${esc(q)}” in ${esc(apDomain())}</p></header>`
       : `<header class="sub-head"><h2>${esc(place?.name || apDomain())}</h2><p>${esc(place ? `${apDomain()} / ${place.path}` : apDomain())}</p></header>`;
     const body = got.loading ? `<div class="op-items ap-items">${'<i class="sk op-sk"></i>'.repeat(6)}</div>`
       : got.problem ? `<p class="hint problem">${esc(got.problem)}</p>`
       : got.items.length ? `<p class="op-count">${got.items.length} account${got.items.length === 1 ? '' : 's'}</p><div class="op-items ap-items">${got.items.map((h) => `<button type="button" class="op-item ap-acct${same(ap.sel, h.username) ? ' on' : ''}" data-ap-acct="${esc(h.username)}"${h.enabled ? '' : ' data-off'}>`
         + `${svg('user')}<b>${esc(h.username)}${h.enabled ? '' : ' (disabled)'}</b><small>${esc([h.name, h.description, q ? h.where : ''].filter(Boolean).join(' · '))}</small></button>`).join('')}</div>`
-      : `<p class="op-count">${q ? 'No account like that.' : 'No user accounts directly in here. Pick another OU on the left, or find it by name.'}</p>`;
+      : `<p class="op-count">${q ? 'No matching accounts.' : 'No user accounts in this OU. Select another OU on the left, or search by name.'}</p>`;
     $('acctpick-page').innerHTML = head + body;
     $('acctpick-use').disabled = !ap.sel;
   };
   const apOpen = async () => {
     if (!apDomain()) {
-      say('dset-problem', 'Type the domain first.');
+      say('dset-problem', 'Enter the domain first.');
       $('dset-domain').focus();
       return;
     }
@@ -2717,7 +2743,7 @@
     }
     if (key === 'account') {
       if (!$('dset-account').value.trim()) {
-        say('dset-problem', 'Name the service account.');
+        say('dset-problem', 'Enter a name for the service account.');
         $('dset-account').focus();
         return;
       }
@@ -2733,13 +2759,13 @@
         const opt = (p, selected) => `<option value="${esc(p.dn)}"${p.dn === selected ? ' selected' : ''}>${esc(p.path || p.name)}</option>`;
         const was = $('dset-scope').value;
         $('dset-ou').innerHTML = look.places.map((p) => opt(p, look.accountOu)).join('');
-        $('dset-scope').innerHTML = `<option value="${esc(look.baseDn)}">All of ${esc(look.domain)}</option>` + look.places.filter((p) => !/^CN=/i.test(p.dn)).map((p) => opt(p, was)).join('');
+        $('dset-scope').innerHTML = `<option value="${esc(look.baseDn)}">Entire domain (${esc(look.domain)})</option>` + look.places.filter((p) => !/^CN=/i.test(p.dn)).map((p) => opt(p, was)).join('');
         dsGo(ds.step + 1);
       } else {
         const answer = await R.send('/api/ad/connect', { ...sign, existing: !make, account: $('dset-account').value.trim(), ou: $('dset-ou').value, scope: $('dset-scope').value });
         $('dset-password').value = '';
         $('dset-dialog').close();
-        say('dir-note', answer.warning || (make ? `Created the service account ${answer.state.account}. ${R.app()} makes its AD changes as it from now on.` : `${R.app()} makes its AD changes as ${answer.state.account} from now on.`));
+        say('dir-note', answer.warning || (make ? `Service account ${answer.state.account} created. ${R.app()} now makes all AD changes as this account.` : `Service account set. ${R.app()} now makes all AD changes as ${answer.state.account}.`));
         places = null;
         R.forget();
         refreshAd(true);
@@ -2780,9 +2806,9 @@
     const s = ad?.state?.readOnly ? null : ad?.state;
     $('as-account').textContent = s ? s.account : 'No service account';
     $('as-about').textContent = s
-      ? `In ${s.domain}, ${s.made ? 'with delegated permissions on' : 'managing'} ${s.scopeName}. ${s.made ? 'Created' : 'Connected'} by ${s.by}${s.at ? ` on ${R.when(s.at)}` : ''}. Its password is stored encrypted on this server.`
-      : ad?.state?.readOnly ? `Read-only: ${ad.domain} is read as this server, and only people who can set up the service account, or whose role may see it while read-only, see it. Set one up to make changes.`
-      : ad?.domain ? `${R.app()} makes its changes in ${ad.domain} as a service account. Set one up to use the Active Directory pages.` : "This server isn't on a domain. Connect one to manage it from here.";
+      ? `In ${s.domain}, ${s.made ? 'with delegated permissions on' : 'scoped to'} ${s.scopeName}. ${s.made ? 'Created' : 'Connected'} by ${s.by}${s.at ? ` on ${R.when(s.at)}` : ''}. The password is stored encrypted on this server.`
+      : ad?.state?.readOnly ? `Read-only: ${ad.domain} is read with this server's computer account. Only admins who can set up the service account, or whose role allows read-only access, can see it. Set up a service account to make changes.`
+      : ad?.domain ? `${R.app()} makes changes in ${ad.domain} as a service account. Set up a service account to use the Active Directory pages.` : 'This server is not joined to a domain. Connect a domain to manage it here.';
     $('as-setup').hidden = !!s;
     $('as-ro-off').hidden = !ad?.state?.readOnly;
     $('as-setup').textContent = ad?.domain ? 'Set up' : 'Connect a domain';
@@ -2790,7 +2816,7 @@
     $('as-danger').classList.toggle('gone', !s);
     if (!s) return;
     $('adset-stop-title').textContent = 'Disconnect service account';
-    $('adset-stop-text').textContent = `${s.account}: ${R.app()} deletes its stored password and stops using it.${s.made ? ' The account and its delegated permissions stay in AD until you delete them.' : ''}`;
+    $('adset-stop-text').textContent = `${s.account}: ${R.app()} deletes the stored password and stops using the account.${s.made ? ' The account and its delegated permissions remain in AD until you delete them.' : ''}`;
     // The OU choices wait, dimmed, while the OUs are read.
     const ous = ['adset-ou', 'adset-gou', 'adset-cou'];
     ous.forEach((id) => { $(id).disabled = true; });
@@ -2820,12 +2846,12 @@
   });
   $('adset-stop').addEventListener('click', () => {
     const s = ad.state;
-    sure(`Disconnect ${s.account}?`, `${R.app()} can't make any AD changes until a service account is set up again.${s.made ? ` ${s.account} stays in AD until you delete it.` : ''}`,
+    sure(`Disconnect ${s.account}?`, `${R.app()} cannot make AD changes until a service account is set up again.${s.made ? ` ${s.account} remains in AD until you delete it.` : ''}`,
       'Disconnect', async () => {
         try {
           await R.send('/api/ad/disconnect', {});
-          say('dir-note', s.made ? `Disconnected ${s.account}. Delete it in Active Directory Users and Computers if you won't use it again.` : `Disconnected ${s.account}.`);
-          say('as-done', s.made ? `Disconnected ${s.account}. Delete it in Active Directory Users and Computers if you won't use it again.` : `Disconnected ${s.account}.`);
+          say('dir-note', s.made ? `${s.account} disconnected. If you no longer need the account, delete it in Active Directory Users and Computers.` : `${s.account} disconnected.`);
+          say('as-done', s.made ? `${s.account} disconnected. If you no longer need the account, delete it in Active Directory Users and Computers.` : `${s.account} disconnected.`);
         } catch (err) {
           say('dir-problem', err.message);
         }

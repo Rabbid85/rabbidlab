@@ -64,7 +64,7 @@ public sealed class UpdateEngineTests : IDisposable
         var asDev = await Engine().TryNow(CancellationToken.None);
 
         Assert.Equal(UpdateStatus.Current, asRelease.Status);
-        Assert.Contains("isn't signed by Rabbid Lab", asRelease.Message);
+        Assert.Contains("is not signed with the Rabbid Lab release key", asRelease.Message);
         Assert.Equal(UpdateStatus.Installing, asDev.Status);
         Assert.Single(runner.Runs);
     }
@@ -153,7 +153,7 @@ public sealed class UpdateEngineTests : IDisposable
         back.InUse();
         var state = await back.TryNow(CancellationToken.None);
         Assert.Equal(UpdateStatus.Failed, state.Status);
-        Assert.Equal("Version 3.2.0 didn't install. The process cannot access the file 'C:\\Program Files\\Rabbid Lab\\clrjit.dll' because it is being used by another process. Click Install now to try again.", state.Message);
+        Assert.Equal("Could not install version 3.2.0. The process cannot access the file 'C:\\Program Files\\Rabbid Lab\\clrjit.dll' because it is being used by another process. Click Install now to try again.", state.Message);
         Assert.Single(runner.Runs);
 
         // Install now tries again.
@@ -266,7 +266,7 @@ public sealed class UpdateEngineTests : IDisposable
         var state = await Engine().TryNow(CancellationToken.None);
 
         Assert.Equal(UpdateStatus.Current, state.Status);
-        Assert.Contains("isn't signed by Rabbid Lab", state.Message);
+        Assert.Contains("is not signed with the Rabbid Lab release key", state.Message);
         Assert.Equal(0, source.Fetches);
         Assert.Empty(runner.Runs);
     }
@@ -328,14 +328,14 @@ public sealed class UpdateEngineTests : IDisposable
         var state = await engine.TryNow(CancellationToken.None);
 
         Assert.Equal(UpdateStatus.Failed, state.Status);
-        Assert.Equal($"Version 3.2.0 didn't install. {why}", state.Message);
+        Assert.Equal($"Could not install version 3.2.0. {why}", state.Message);
         Assert.Equal(new UpdateAttempt("3.2.0", why), Assert.Single(host.Attempts)); // not recorded as installed
         // The installation log says it, though Setup never ran to write it.
         Assert.Contains($"FAILED: {why}", File.ReadAllText(Path.Combine(folder, "Updates", "update-3.2.0.log")));
         // A minute later, by itself: not tried again yet, and still saying why; and after a restart too.
         var later = await engine.TryNow(CancellationToken.None);
         Assert.Equal(UpdateStatus.Failed, later.Status);
-        Assert.Equal($"Version 3.2.0 didn't install. {why} Rabbid Lab tries again later.", later.Message);
+        Assert.Equal($"Could not install version 3.2.0. {why} Rabbid Lab will try again later.", later.Message);
         Assert.Equal(later.Message, (await Engine().TryNow(CancellationToken.None)).Message);
         Assert.Single(host.Attempts);
     }
@@ -354,7 +354,7 @@ public sealed class UpdateEngineTests : IDisposable
         var state = await Engine().TryNow(CancellationToken.None); // started again, as the old version
 
         Assert.Equal(UpdateStatus.Failed, state.Status);
-        Assert.Equal("Version 3.2.0 didn't install. The Rabbid Lab service started but is not responding on port 8444. Rabbid Lab tries again later.", state.Message);
+        Assert.Equal("Could not install version 3.2.0. The Rabbid Lab service started but is not responding on port 8444. Rabbid Lab will try again later.", state.Message);
         Assert.Empty(runner.Runs);
     }
 

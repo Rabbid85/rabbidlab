@@ -266,7 +266,7 @@
       const title = n.user.title || '';
       // Under a manager on Reporting lines: a pill that shows or hides their team.
       const more = n.reports && org.mode === 'chart'
-        ? `<g class="org-more" data-org-toggle="${esc(n.key)}" role="button" aria-label="${n.open ? 'Hide' : 'Show'} the team of ${esc(nameOf(n.user))}">`
+        ? `<g class="org-more" data-org-toggle="${esc(n.key)}" role="button" aria-label="${n.open ? 'Hide' : 'Show'} direct reports of ${esc(nameOf(n.user))}">`
           + `<rect x="${(x - 34).toFixed(1)}" y="${(y + (title ? 38 : 24)).toFixed(1)}" width="68" height="19" rx="9.5"/>`
           + `<text x="${x.toFixed(1)}" y="${(y + (title ? 51.5 : 37.5)).toFixed(1)}" text-anchor="middle">${n.open ? 'Hide team' : `+${n.reports} ${n.reports === 1 ? 'report' : 'reports'}`}</text></g>` : '';
       out.push(`<g class="org-label${chain.has(n.key) ? ' is-chain' : ''}" data-org-node="${esc(n.key)}">`
@@ -341,11 +341,11 @@
     $('org-tabs').innerHTML = [['chart', 'org', 'Reporting lines'], ['departments', 'users', 'By department']]
       .map(([k, icon, label]) => `<a href="#org" data-org-mode="${k}"${org.mode === k ? ' aria-current="true"' : ''}>${svg(icon)}${label}</a>`).join('');
     $('org-count').textContent = focused ? `Reporting line of ${nameOf(focused)}`
-      : lines ? o.alone ? `${o.users.length - o.alone} in reporting lines · ${o.alone} on their own` : `${o.users.length} people`
-        : `${o.users.length} people`;
+      : lines ? o.alone ? `${o.users.length - o.alone} in reporting lines · ${o.alone} not in a reporting line` : `${o.users.length} users`
+        : `${o.users.length} users`;
     $('org-whole').hidden = !focused;
     document.querySelectorAll('#org-tools [data-org-all]').forEach((b) => { b.hidden = !lines || !!focused || none; });
-    say('org-note', none ? "Nobody has a Manager set in Active Directory yet, so this is everyone by department. Set each person's Manager and Reporting lines draws itself." : '');
+    say('org-note', none ? 'No users have a Manager set in Active Directory, so users are shown by department. Set the Manager attribute on each user to show reporting lines.' : '');
     org.scene = !lines ? orgDepartments(o) : focused ? orgLines(orgLine(o, org.focus), org.focusOpen) : orgLines(o);
     $('org-stage').hidden = false;
     $('org-svg').innerHTML = `<g id="org-world">${orgSvg(o, org.scene)}</g>`;
@@ -366,8 +366,8 @@
     }
   };
 
-  // The selected person in the side panel: who they are, who they report to and who reports to them.
-  const drawPerson = () => {
+  // The selected person in the side panel: who they are, who they report to and who reports to them. again: left where it is.
+  const drawPerson = (again = false) => {
     const o = org.o;
     const u = org.selected && o?.byDn.get(org.selected);
     if (!u) {
@@ -382,12 +382,12 @@
     const line = (label, value) => (value ? `<li><b>${label}</b><span>${esc(value)}</span></li>` : '');
     R.panel.body.innerHTML = `<div class="dw-head"><span class="pic dw-pic user">${esc(initials(nameOf(u)))}</span><div class="dw-name"><h2 id="dw-title">${esc(nameOf(u))}</h2><p>${esc(u.title || u.username)}</p></div>`
       + `<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`
-      + `<div class="dw-bar">${org.mode !== 'chart' || org.focus !== org.selected ? `<button type="button" class="dw-qa" data-org-focus="${esc(org.selected)}">${svg('org')}<span>Show only this line</span></button>` : ''}`
+      + `<div class="dw-bar">${org.mode !== 'chart' || org.focus !== org.selected ? `<button type="button" class="dw-qa" data-org-focus="${esc(org.selected)}">${svg('org')}<span>Show only this reporting line</span></button>` : ''}`
       + `<button type="button" class="dw-qa" data-org-open="${esc(u.username)}">${svg('user')}<span>Open in Users</span></button></div>`
       + part('Details', `<ul class="does">${line('Username', u.username)}${line('Department', u.department || 'Not set')}${line('Email', u.email)}${line('Office', u.office)}${line('Phone', u.phone)}</ul>`)
-      + part('Reports to', boss ? `<div class="dw-list">${person(boss)}</div>` : '<p class="muted dw-empty">Nobody: no Manager is set.</p>')
-      + part(`Direct reports <small>${reports.length}</small>`, reports.length ? `<div class="dw-list">${reports.map(person).join('')}</div>` : '<p class="muted dw-empty">None.</p>');
-    R.panel.open('org', org.selected);
+      + part('Reports to', boss ? `<div class="dw-list">${person(boss)}</div>` : '<p class="muted dw-empty">No manager set.</p>')
+      + part(`Direct reports <small>${reports.length}</small>`, reports.length ? `<div class="dw-list">${reports.map(person).join('')}</div>` : '<p class="muted dw-empty">No direct reports.</p>');
+    if (!again) R.panel.open('org', org.selected);
   };
   const orgSelect = (key) => {
     org.selected = key;
@@ -435,7 +435,7 @@
     matches = words.length && org.o ? org.o.users.filter((u) => words.every((w) => `${u.name || ''} ${u.username} ${u.title || ''} ${u.department || ''}`.toLowerCase().includes(w))).slice(0, 8) : [];
     $('org-matches').hidden = !words.length;
     $('org-matches').innerHTML = matches.length ? matches.map((u) => `<button type="button" class="org-match" data-org-pick="${esc(keyOf(u.dn))}"><b>${esc(nameOf(u))}</b>`
-      + `<small>${esc([u.title, u.department].filter(Boolean).join(' · ') || u.username)}</small></button>`).join('') : '<p class="org-nomatch">No one matches.</p>';
+      + `<small>${esc([u.title, u.department].filter(Boolean).join(' · ') || u.username)}</small></button>`).join('') : '<p class="org-nomatch">No matches.</p>';
   };
   const orgPick = (key) => {
     $('org-matches').hidden = true;
@@ -502,7 +502,7 @@
       ctx.drawImage(img, 0, 0, b.w, b.h);
       canvas.toBlob((blob) => { if (blob) save(blob, 'png'); }, 'image/png');
     };
-    img.onerror = () => R.toast("Couldn't make the picture.", 'The drawing (SVG) still downloads.', { tone: 'warn' });
+    img.onerror = () => R.toast('Could not create the image.', 'The SVG download is still available.', { tone: 'warn' });
     img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(xml)}`;
   };
 
@@ -645,6 +645,22 @@
       say('org-problem', err.message);
     }
   };
+  // While it's open: the people every minute, drawn again only when what the chart shows changed. Where it's moved to stays.
+  R.live({
+    page: () => R.where()[0] === 'org',
+    hold: () => !org.o || !ad?.state,
+    every: 60000,
+    read: async () => (await R.keep('/api/ad/users', 30000)).users.filter((u) => !u.system && u.enabled),
+    now: () => people,
+    key: (list) => list.map((u) => [u.dn, u.managerDn, u.name, u.username, u.title, u.department, u.email, u.office, u.phone]),
+    draw: (list) => {
+      people = list;
+      org.o = orgPeople();
+      drawOrg();
+      if (R.panel.is('org')) drawPerson(true);
+    },
+    areas: () => [$('org-stage')],
+  });
 
   // --- Attribute browser -------------------------------------------------------------------------------------------
 
@@ -694,7 +710,7 @@
     $('at-items').innerHTML = place.items.map((it) => {
       const href = it.opens ? `#attrs/${enc(it.dn)}` : `#attrs/${enc(place.dn)}/${enc(it.dn)}`;
       return `<a href="${href}" data-dn="${esc(it.dn)}">${svg(ICON[it.kind] || 'folder')}<span class="nm">${esc(it.name)}</span>${it.opens ? svg('right') : ''}</a>`;
-    }).join('') || '<p class="side-sub">Nothing in here.</p>';
+    }).join('') || '<p class="side-sub">This container is empty.</p>';
     $('at-more').hidden = !place.more;
   };
   // Marks what's picked in the list, which stays as it is and scrolled where it was.
@@ -708,12 +724,12 @@
   let findAsk = 0;
   const parentOf = (dn) => parts(dn).slice(1).join(',');
   const drawFound = (list) => {
-    $('at-crumbs').innerHTML = `<span class="at-found">${list.length ? `${list.length >= 60 ? '60 or more' : list.length} found` : 'Nothing found'}</span>`;
+    $('at-crumbs').innerHTML = `<span class="at-found">${list.length ? `${list.length >= 60 ? '60 or more' : list.length} found` : 'No results'}</span>`;
     $('at-items').innerHTML = list.map((m) => {
       const opens = m.kind === 'ou' || m.kind === 'container';
       const href = opens ? `#attrs/${enc(m.dn)}` : `#attrs/${enc(parentOf(m.dn))}/${enc(m.dn)}`;
       return `<a href="${href}" data-dn="${esc(m.dn)}">${svg(ICON[m.kind] || 'folder')}<span class="nm">${esc(m.name)}<small>${esc(m.where || '')}</small></span></a>`;
-    }).join('') || '<p class="side-sub">Nothing has that name.</p>';
+    }).join('') || '<p class="side-sub">No objects found.</p>';
     $('at-more').hidden = true;
     markPlace();
   };
@@ -746,10 +762,10 @@
     const withValue = object.attributes.filter((a) => a.set).length;
     $('at-title').textContent = object.name;
     const ro = R.attrs.locked(object);
-    $('at-line').textContent = `${object.attributes.length} attributes, ${withValue} with a value${ro ? `. Read only here: ${ro}` : ''}`;
+    $('at-line').textContent = `${object.attributes.length} attributes, ${withValue} with a value${ro ? `. Read-only: ${ro}` : ''}`;
     $('at-find-row').hidden = false;
     $('at-tools').hidden = false;
-    attrEmpty = find ? 'No attribute matches.' : 'No attribute has a value.';
+    attrEmpty = find ? 'No matching attributes.' : 'No attributes have a value.';
     attrGrid.draw(rows);
   };
   // The attributes as a data grid (grid.js), with a menu at the end of each row.
@@ -784,7 +800,7 @@
       t.select();
       const ok = document.execCommand('copy');
       t.remove();
-      R.toast(ok ? `Copied ${what}.` : "Couldn't copy.", ok ? '' : 'Select it and press Ctrl+C.', { tone: ok ? '' : 'warn' });
+      R.toast(ok ? `Copied ${what}.` : 'Could not copy to the clipboard.', ok ? '' : 'Select the text and press Ctrl+C.', { tone: ok ? '' : 'warn' });
     }
   };
   let menuFor = null;
@@ -797,7 +813,7 @@
     if (!menuFor) return;
     const m = $('at-menu');
     // Edit… and Clear always show; when they can't be used they're greyed out and say why (the server's reason).
-    const why = !R.has('ad.attributes') ? 'Your role doesn\'t have Edit attributes.' : menuFor.editable ? '' : menuFor.why || 'This one can\'t be changed here.';
+    const why = !R.has('ad.attributes') ? 'Your role does not include the Edit attributes permission.' : menuFor.editable ? '' : menuFor.why || 'This attribute is read-only.';
     const off = (b, reason) => {
       if (reason) b.setAttribute('aria-disabled', 'true');
       else b.removeAttribute('aria-disabled');
@@ -805,7 +821,7 @@
       else delete b.dataset.tip;
     };
     off(m.querySelector('[data-at="edit"]'), why);
-    off(m.querySelector('[data-at="clear"]'), why || (menuFor.set ? '' : 'It has no value to clear.'));
+    off(m.querySelector('[data-at="clear"]'), why || (menuFor.set ? '' : 'This attribute has no value.'));
     m.querySelector('[data-at="value"]').hidden = !menuFor.set || menuFor.hidden;
     m.querySelector('[data-at="line"]').hidden = !menuFor.set || menuFor.hidden;
     m.style.setProperty('left', `${Math.max(8, Math.min(x, window.innerWidth - 230))}px`);
@@ -834,26 +850,26 @@
     if (b.dataset.at === 'line') copyText(`${a.name}: ${a.values.join('; ')}`, `${a.name} and its value`);
     if (b.dataset.at === 'edit') openEdit(a);
     if (b.dataset.at === 'clear') {
-      R.sure(`Clear ${a.name}?`, `It's taken off ${on.get().name} in Active Directory.`, 'Clear', () => saveAttr(a, []));
+      R.sure(`Clear ${a.name}?`, `The value is removed from ${on.get().name} in Active Directory.`, 'Clear', () => saveAttr(a, []));
     }
   });
 
   // Edit…: one box for a single value, a line each for several, TRUE or FALSE for a Boolean. Empty clears it.
   let editing = null;
   const HELP = {
-    'Date and time': 'A time in UTC, written like 20261231170000.0Z.',
-    'Large integer': 'A whole number. Times such as accountExpires count 100-nanosecond steps since 1601; 0 or 9223372036854775807 is never.',
-    Integer: 'A whole number.',
+    'Date and time': 'A UTC time in the format 20261231170000.0Z.',
+    'Large integer': 'A 64-bit integer. Times such as accountExpires are 100-nanosecond intervals since 1601; 0 or 9223372036854775807 means never.',
+    Integer: 'An integer.',
     'Numeric string': 'Digits and spaces.',
-    'Distinguished name': 'A full DN, like CN=Name,OU=Users,DC=amw,DC=com.',
-    'Object identifier': 'An OID, like 1.2.840.113556.1.4.1.',
+    'Distinguished name': 'A full distinguished name, such as CN=Name,OU=Users,DC=amw,DC=com.',
+    'Object identifier': 'An OID, such as 1.2.840.113556.1.4.1.',
   };
   const openEdit = (a) => {
     editing = a;
     const bool = a.type === 'Boolean';
     const raw = a.raw || [];
     $('attr-title').textContent = `Edit ${a.name}`;
-    $('attr-lead').textContent = `${a.type || 'Value'}, ${a.single ? 'one value' : 'one value a line'}. On ${on.get().name}.`;
+    $('attr-lead').textContent = `${a.type || 'Value'}, ${a.single ? 'single value' : 'one value per line'}. On ${on.get().name}.`;
     $('attr-one').hidden = !a.single || bool;
     $('attr-bool').hidden = !bool;
     $('attr-many').hidden = a.single || bool;
@@ -861,8 +877,8 @@
     $('attr-bool').value = raw[0] || '';
     $('attr-many').value = raw.join('\n');
     $('attr-label').htmlFor = bool ? 'attr-bool' : a.single ? 'attr-one' : 'attr-many';
-    $('attr-label').textContent = a.single || bool ? 'Value' : 'Values, one a line';
-    $('attr-help').textContent = `${HELP[a.type] || ''}${HELP[a.type] ? ' ' : ''}Leave it empty to clear it.`;
+    $('attr-label').textContent = a.single || bool ? 'Value' : 'Values, one per line';
+    $('attr-help').textContent = `${HELP[a.type] || ''}${HELP[a.type] ? ' ' : ''}Leave empty to clear the value.`;
     say('attr-problem', '');
     $('attr-dialog').showModal();
     $(bool ? 'attr-bool' : a.single ? 'attr-one' : 'attr-many').focus();
@@ -872,10 +888,10 @@
       on.set(await R.send('/api/ad/object/attribute', { dn: on.get().dn, name: a.name, values }));
       on.draw();
       if ($('attr-dialog').open) $('attr-dialog').close();
-      R.toast(values.some((v) => v.trim()) ? `Saved ${a.name}.` : `Cleared ${a.name}.`);
+      R.toast(values.some((v) => v.trim()) ? `${a.name} saved.` : `${a.name} cleared.`);
     } catch (err) {
       if ($('attr-dialog').open) say('attr-problem', err.message);
-      else R.toast(`Couldn't change ${a.name}.`, err.message, { tone: 'warn' });
+      else R.toast(`Could not change ${a.name}.`, err.message, { tone: 'warn' });
     }
   };
   $('attr-save').addEventListener('click', async () => {
@@ -918,7 +934,7 @@
     $('at-setup').hidden = true;
     // Placeholders until it's read: the way down, the tree and the attributes the first time, then the attributes on each click.
     if (!place) {
-      $('at-title').textContent = 'Reading Active Directory…';
+      $('at-title').textContent = 'Loading…';
       $('at-crumbs').innerHTML = '<i class="sk sk-text"></i>';
       R.skeleton($('at-items'), 'rows', 6);
     }
@@ -947,7 +963,7 @@
       if (n !== asking) return;
       ad = null;
       $('at-lib').hidden = false;
-      $('at-title').textContent = 'Couldn\'t read it';
+      $('at-title').textContent = 'Could not load the object';
       for (const id of ['at-items', 'at-table']) R.skeleton($(id), '');
       if ($('at-crumbs').querySelector('.sk')) $('at-crumbs').textContent = '';
       say('at-problem', err.message);

@@ -48,12 +48,12 @@ internal sealed class Status
     public string Describe() => State switch
     {
         Connected => $"Connected to {Host}",
-        Waiting => $"Waiting for approval on {Host}",
+        Waiting => $"Pending approval on {Host}",
         NoServer => "Not connected to a server",
-        Refused => $"{Host} is busy. Retrying soon",
+        Refused => $"{Host} is busy. Retrying in a few minutes",
         Removed => $"Removed from {Host}. Reconnecting",
-        Unreachable => $"Can't reach {Host}",
-        IdentityUnreadable => "Can't read this computer's saved connection",
+        Unreachable => $"Cannot reach {Host}",
+        IdentityUnreadable => "Cannot read the stored client credentials",
         _ => "Starting",
     };
 

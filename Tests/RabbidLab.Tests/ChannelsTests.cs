@@ -54,8 +54,8 @@ public sealed class ChannelsTests : IDisposable
 
         Assert.Equal(HttpStatusCode.BadRequest, wrong.StatusCode);
         Assert.Contains("Discord webhook", await wrong.Content.ReadAsStringAsync());
-        Assert.Contains("Give it a name", await nameless.Content.ReadAsStringAsync());
-        Assert.Contains("called lab ALERTS already", await twice.Content.ReadAsStringAsync());
+        Assert.Contains("Enter a name", await nameless.Content.ReadAsStringAsync());
+        Assert.Contains("named lab ALERTS already exists", await twice.Content.ReadAsStringAsync());
         Assert.Contains("Lab alerts", listed);
         Assert.Contains("…oken", listed);
         Assert.DoesNotContain("secrettoken", listed);
@@ -81,8 +81,8 @@ public sealed class ChannelsTests : IDisposable
         var listed = await admin.GetStringAsync("/api/channels");
 
         Assert.Contains("app password", await noPassword.Content.ReadAsStringAsync());
-        Assert.Contains("at least one address", await nobody.Content.ReadAsStringAsync());
-        Assert.Contains("From has to be", await badFrom.Content.ReadAsStringAsync());
+        Assert.Contains("at least one recipient", await nobody.Content.ReadAsStringAsync());
+        Assert.Contains("From must be", await badFrom.Content.ReadAsStringAsync());
         Assert.Contains("client secret", await noSecret.Content.ReadAsStringAsync());
         Assert.Equal("ssl", app.Mail.With.Single().Security);
         Assert.Equal(465, app.Mail.With.Single().Port);

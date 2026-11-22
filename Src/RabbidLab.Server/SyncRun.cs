@@ -60,14 +60,14 @@ public static class SyncWhy
         var said = e.Message.Trim().TrimEnd('.');
         return code switch
         {
-            1722 or 1727 or 1753 => ("RPC server unavailable", "Check that it's on, and that the firewall between the sites lets through TCP 135 and 49152-65535."),
+            1722 or 1727 or 1753 => ("RPC server unavailable", "Check that it is online and that the firewall allows TCP 135 and 49152-65535 between sites."),
             8453 or 5 => ("Replication access was denied", "The service account may not start replication. Give it Replication Synchronization on the domain, Configuration and Schema partitions, or use a domain admin as the service account."),
-            1256 => ("The remote system isn't available", "Check that it's on and on the network."),
-            8524 or 1908 => ("Its name couldn't be found in DNS", "Check its DNS records (_msdcs) and that this server uses your domain's DNS."),
-            8614 => ("It has been offline longer than the tombstone lifetime", "It has to be removed from the domain and promoted again."),
-            1326 or 1311 => ("The service account's password was turned down", "Set up the service account again in Settings, Active Directory."),
-            _ when e is TimeoutException => ("It didn't answer in time", "Check that it's on and on the network."),
-            _ => (said.Length > 0 ? said : "The replication failed", "Run repadmin /showrepl on it for more."),
+            1256 => ("The remote system is not available", "Check that it is online and reachable on the network."),
+            8524 or 1908 => ("DNS name not found", "Check its DNS records (_msdcs) and that this server uses the domain's DNS servers."),
+            8614 => ("Offline longer than the tombstone lifetime", "Demote it, clean up its metadata, and promote it again."),
+            1326 or 1311 => ("The service account's password was rejected", "Enter the service account again in Settings > Active Directory."),
+            _ when e is TimeoutException => ("Timed out", "Check that it is online and reachable on the network."),
+            _ => (said.Length > 0 ? said : "Replication failed", "Run repadmin /showrepl on this domain controller for details."),
         };
     }
 
@@ -126,7 +126,7 @@ public static partial class SyncEntra
         var line = output?.Split('\n').Select(l => l.Trim()).LastOrDefault(l => l.StartsWith("RESULT ", StringComparison.Ordinal));
         if (line is null)
         {
-            return new(false, "Entra Connect's server didn't say how it went.", null, null, false, false);
+            return new(false, "The Entra Connect server returned no result.", null, null, false, false);
         }
         try
         {
@@ -152,16 +152,16 @@ public static partial class SyncEntra
         }
         catch (JsonException)
         {
-            return new(false, "Entra Connect's server's answer couldn't be read.", null, null, false, false);
+            return new(false, "The result from the Entra Connect server could not be read.", null, null, false, false);
         }
     }
 
     private static string Words(string why) => why switch
     {
-        _ when why.Contains("ADSync", StringComparison.OrdinalIgnoreCase) && why.Contains("module", StringComparison.OrdinalIgnoreCase) => "Entra Connect isn't installed on that server.",
+        _ when why.Contains("ADSync", StringComparison.OrdinalIgnoreCase) && why.Contains("module", StringComparison.OrdinalIgnoreCase) => "Entra Connect is not installed on that server.",
         _ when why.Contains("already", StringComparison.OrdinalIgnoreCase) => why,
-        _ when why.Contains("denied", StringComparison.OrdinalIgnoreCase) => "The client there wasn't allowed to start a sync.",
-        _ => why.Length > 0 ? why.TrimEnd('.') + "." : "The sync couldn't be started.",
+        _ when why.Contains("denied", StringComparison.OrdinalIgnoreCase) => "Access denied when starting the sync on the Entra Connect server.",
+        _ => why.Length > 0 ? why.TrimEnd('.') + "." : "The sync could not be started.",
     };
 
     [GeneratedRegex(@"running on computer\s+([A-Za-z0-9][A-Za-z0-9-]{0,62})", RegexOptions.IgnoreCase)]
@@ -278,14 +278,14 @@ public sealed class SyncEngine(DirectoryTools tools, IReplicator replicator, Dev
         }
         if (tools.SyncLogin() is not { } login)
         {
-            return $"{Product.Title} reads Active Directory as this computer, which can't start a sync. Set up the service account first.";
+            return "Syncing requires a service account. Set one up in Settings > Active Directory.";
         }
         Live started;
         lock (gate)
         {
             if (run is { Finished: null })
             {
-                return "A sync is already running. It's on this page.";
+                return "A sync is already running.";
             }
             started = run = new Live { What = what, Full = full, By = by, Started = DateTime.UtcNow };
             // Every row waits from the moment it starts, so the page never shows the last sync's rows in between.
@@ -384,9 +384,9 @@ public sealed class SyncEngine(DirectoryTools tools, IReplicator replicator, Dev
         }
         if (scan.Unreadable.TryGetValue(d.Name, out var why))
         {
-            return new { d.Name, d.Host, d.Site, d.ReadOnly, S = "bad", F = 0.0, Label = "Can't be read", Error = why, Advice = (string?) "Check that it's on and on the network.", Missing = missing };
+            return new { d.Name, d.Host, d.Site, d.ReadOnly, S = "bad", F = 0.0, Label = "Unreachable", Error = why, Advice = (string?) "Check that it is online and reachable on the network.", Missing = missing };
         }
-        return new { d.Name, d.Host, d.Site, d.ReadOnly, S = "idle", F = 0.0, Label = missing > 0 ? $"Missing {missing} change{(missing == 1 ? "" : "s")}" : "Up to date",
+        return new { d.Name, d.Host, d.Site, d.ReadOnly, S = "idle", F = 0.0, Label = missing > 0 ? $"{missing} change{(missing == 1 ? "" : "s")} pending" : "In sync",
             Error = (string?) null, Advice = (string?) null, Missing = missing };
     }
 
@@ -401,11 +401,11 @@ public sealed class SyncEngine(DirectoryTools tools, IReplicator replicator, Dev
         {
             return new { Server = server, Client = client is not null, Online = online, p.S, p.F, p.Label, p.Error, p.Advice, f.Entra?.At, f.Entra?.Next, f.Entra?.Sent };
         }
-        var (s, label, error, advice) = client is null ? ("bad", "The client isn't installed there", $"{Product.Title} syncs Microsoft 365 through the client on {server}.", $"Install the {Product.Title} client on {server} from Devices.")
-            : !online ? ("bad", "Its client is offline", $"The client on {server} hasn't checked in lately.", $"Check that {server} is on and its {Product.Title} client is running.")
+        var (s, label, error, advice) = client is null ? ("bad", "Client not installed", $"{Product.Title} syncs Microsoft 365 through its client on {server}.", $"Install the {Product.Title} client on {server} from Devices.")
+            : !online ? ("bad", "Client offline", $"The client on {server} has not checked in recently.", $"Check that {server} is online and the {Product.Title} client service is running.")
             : f.Entra is { Ok: false } e ? ("bad", "The last sync failed", e.Error, (string?) null)
             : f.Entra is { At: not null } ? ("idle", "Last synced at {at}", (string?) null, (string?) null)
-            : ("idle", "Not synced yet", (string?) null, (string?) null);
+            : ("idle", "Never synced", (string?) null, (string?) null);
         return new { Server = server, Client = client is not null, Online = online, S = s, F = 0.0, Label = label, Error = error, Advice = advice, f.Entra?.At, f.Entra?.Next, f.Entra?.Sent };
     }
 
@@ -481,10 +481,10 @@ public sealed class SyncEngine(DirectoryTools tools, IReplicator replicator, Dev
             }
             var what = live.What switch
             {
-                "dcs" => "Synced the domain controllers with each other",
+                "dcs" => "Replicated all domain controllers",
                 "m365" => $"Synced Microsoft 365 ({(live.Full ? "full" : "delta")})",
-                _ when live.NoEntra => "Synced the domain controllers with each other",
-                _ => $"Synced the domain controllers with each other, then Microsoft 365 ({(live.Full ? "full" : "delta")})",
+                _ when live.NoEntra => "Replicated all domain controllers",
+                _ => $"Replicated all domain controllers and synced Microsoft 365 ({(live.Full ? "full" : "delta")})",
             };
             activity.Record(live.By, from, "users", "ad.sync", what, failed.Count == 0 ? "ok" : "failed", failed.Count == 0 ? null : string.Join(" ", failed.Distinct().Take(3)));
         }
@@ -507,7 +507,7 @@ public sealed class SyncEngine(DirectoryTools tools, IReplicator replicator, Dev
                 catch (Exception e) when (e is not OutOfMemoryException)
                 {
                     var (said, advice) = SyncWhy.Explain(e);
-                    Fail(live, d.Name, $"Can't be reached ({said})", said, advice);
+                    Fail(live, d.Name, $"Unreachable: {said}", said, advice);
                     failed.Add($"{d.Name}: {said}.");
                 }
             }
@@ -524,7 +524,7 @@ public sealed class SyncEngine(DirectoryTools tools, IReplicator replicator, Dev
                     for (var i = 0; i < steps.Count; i++)
                     {
                         var (p, partner) = steps[i];
-                        Set(live, name, "run", (i + 0.5) / Math.Max(1, steps.Count), $"Copying {SyncWhy.Part(p)} from {SyncWhy.Short(partner)}{(pass > 1 ? $", pass {pass}" : "")}");
+                        Set(live, name, "run", (i + 0.5) / Math.Max(1, steps.Count), $"Replicating {SyncWhy.Part(p)} from {SyncWhy.Short(partner)}{(pass > 1 ? $" (pass {pass})" : "")}");
                         try
                         {
                             await Task.Run(() => dc.Pull(p, partner), stop);
@@ -533,7 +533,7 @@ public sealed class SyncEngine(DirectoryTools tools, IReplicator replicator, Dev
                         {
                             var (said, advice) = SyncWhy.Explain(e);
                             problem ??= said;
-                            Fail(live, name, $"Failed: {said}", $"{said} (copying {SyncWhy.Part(p)} from {SyncWhy.Short(partner)})", advice, keepGoing: true);
+                            Fail(live, name, $"Failed: {said}", $"{said} (replicating {SyncWhy.Part(p)} from {SyncWhy.Short(partner)})", advice, keepGoing: true);
                         }
                     }
                     if (problem is not null)
@@ -543,7 +543,7 @@ public sealed class SyncEngine(DirectoryTools tools, IReplicator replicator, Dev
                     }
                     else
                     {
-                        Set(live, name, "run", 1, "Checking that nothing is missing");
+                        Set(live, name, "run", 1, "Verifying");
                     }
                 }
                 after = await tools.SyncScan(dcs, since, stop);
@@ -558,15 +558,15 @@ public sealed class SyncEngine(DirectoryTools tools, IReplicator replicator, Dev
                 var missing = after.Changes.Count(c => c.Places.GetValueOrDefault(d.Name) == SyncCompare.Pending);
                 if (missing > 0)
                 {
-                    Fail(live, d.Name, $"Still missing {missing} change{(missing == 1 ? "" : "s")}", $"It's still missing {missing} change{(missing == 1 ? "" : "s")} after three passes.",
-                        "Its replication partners may not have them yet. Run repadmin /showrepl on it to see whom it copies from.");
+                    Fail(live, d.Name, $"{missing} change{(missing == 1 ? "" : "s")} still pending", $"{missing} change{(missing == 1 ? " was" : "s were")} still pending after three replication passes.",
+                        "Its replication partners may not have these changes yet. Run repadmin /showrepl on this domain controller to check its inbound partners.");
                     failed.Add($"{d.Name} is still missing {missing}.");
                 }
                 else
                 {
                     // Nothing was missing: say so, rather than that it synced.
                     var got = before.Changes.Count(c => c.Places.GetValueOrDefault(d.Name) is SyncCompare.Pending or SyncCompare.Unknown);
-                    Set(live, d.Name, "ok", 1, got == 0 ? "Already up to date" : $"Got {got} missing change{(got == 1 ? "" : "s")}");
+                    Set(live, d.Name, "ok", 1, got == 0 ? "Already in sync" : $"Replicated {got} change{(got == 1 ? "" : "s")}");
                 }
             }
             Record(live, before, after, dcs);
@@ -625,8 +625,8 @@ public sealed class SyncEngine(DirectoryTools tools, IReplicator replicator, Dev
         var client = Client(server);
         if (client is null || !clients.IsOnline(client))
         {
-            var (label, why, advice) = client is null ? ("The client isn't installed there", $"{Product.Title} syncs Microsoft 365 through the client on {server}.", $"Install the {Product.Title} client on {server} from Devices.")
-                : ("Its client is offline", $"The client on {server} hasn't checked in lately.", $"Check that {server} is on and its client is running.");
+            var (label, why, advice) = client is null ? ("Client not installed", $"{Product.Title} syncs Microsoft 365 through its client on {server}.", $"Install the {Product.Title} client on {server} from Devices.")
+                : ("Client offline", $"The client on {server} has not checked in recently.", $"Check that {server} is online and the {Product.Title} client service is running.");
             Fail(live, null, label, why, advice);
             failed.Add($"Microsoft 365: {why}");
             return null;
@@ -646,11 +646,11 @@ public sealed class SyncEngine(DirectoryTools tools, IReplicator replicator, Dev
             }
             // How long a delta usually takes: the flask creeps towards full, never quite.
             var t = (DateTime.UtcNow - started).TotalSeconds;
-            Set(live, null, "run", 0.95 * (1 - Math.Exp(-t / (live.Full ? 600 : 60))), state == DeviceJobs.Waiting ? $"Asking {server}'s client" : $"Syncing on {server}");
+            Set(live, null, "run", 0.95 * (1 - Math.Exp(-t / (live.Full ? 600 : 60))), state == DeviceJobs.Waiting ? $"Waiting for the client on {server}" : $"Running sync on {server}");
             await Task.Delay(1000, stop);
         }
         var said = state == DeviceJobs.Done || state == DeviceJobs.Failed ? SyncEntra.Read(jobs.Output(job.Id, client.Id)?.FirstOrDefault())
-            : new SyncEntra.Said(false, state == DeviceJobs.Waiting || state == DeviceJobs.Running ? $"{server} didn't finish in time." : $"{server}'s client didn't take the job ({state}).", null, null, false, false);
+            : new SyncEntra.Said(false, state == DeviceJobs.Waiting || state == DeviceJobs.Running ? $"The sync on {server} timed out." : $"The client on {server} did not run the job ({state}).", null, null, false, false);
         var f = file.Read();
         f.Entra = new SyncEntraFile { Server = server, At = started, Ok = said.Ok, Error = said.Error, Next = said.Next, Sent = said.Sent, Full = live.Full };
         if (!said.Ok)
@@ -672,7 +672,7 @@ public sealed class SyncEngine(DirectoryTools tools, IReplicator replicator, Dev
             }
             f.Sent[key] = everywhere ? SyncCompare.Ok : "notyet";
             events.Add(Event(c, "Entra Connect", "Microsoft 365", everywhere ? SyncCompare.Ok : "notyet", true,
-                everywhere ? null : "It wasn't on every domain controller yet, so Entra Connect may not have seen it."));
+                everywhere ? null : "This change had not replicated to every domain controller yet, so Entra Connect may not have exported it."));
         }
         // Forget what's long gone.
         foreach (var old in f.Sent.Keys.Where(k => DateTime.TryParse(k[(k.IndexOf('|') + 1)..], CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var at) && at < since.AddDays(-7)).ToList())
@@ -681,7 +681,7 @@ public sealed class SyncEngine(DirectoryTools tools, IReplicator replicator, Dev
         }
         file.Save(f);
         Save(events);
-        Set(live, null, "ok", 1, $"Synced at {{at}}{(said.Sent is { } n ? $", sent {n} change{(n == 1 ? "" : "s")}" : "")}");
+        Set(live, null, "ok", 1, $"Synced at {{at}}{(said.Sent is { } n ? $" ({n} change{(n == 1 ? "" : "s")} exported)" : "")}");
         return scan;
     }
 

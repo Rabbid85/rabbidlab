@@ -190,7 +190,7 @@
       <div class="am-links">
         <a href="#settings/account" class="am-link"><svg><use href="#i-user"/></svg>Your account</a>
         <button type="button" class="am-link" id="menu-password" hidden><svg><use href="#i-lock"/></svg>Change your password</button>
-        <a href="#settings/account/sessions" class="am-link"><svg><use href="#i-devices"/></svg>Where you're signed in<small id="menu-sessions"></small></a>
+        <a href="#settings/account/sessions" class="am-link"><svg><use href="#i-devices"/></svg>Active sessions<small id="menu-sessions"></small></a>
         <a href="#settings/appearance" class="am-link"><svg><use href="#i-brush"/></svg>Appearance</a>
       </div>
       <div class="am-links"><button type="button" class="am-link out" id="signout"><svg><use href="#i-logout"/></svg>Sign out</button></div>
@@ -223,10 +223,10 @@
   <!-- Back to the page you came from, when you jumped here from it rather than from the sidebar (console.js moves it into the page). -->
   <a class="backlink" id="backlink" hidden><svg><use href="#i-back"/></svg><span id="backlink-text"></span></a>
   <!-- Role preview: the console as a role sees it, until Stop. -->
-  <div class="viewas" id="viewas" hidden><svg><use href="#i-eye"/></svg><span>Previewing as <b id="viewas-name"></b>. Only the view changes: you keep your own permissions.</span><button type="button" id="viewas-stop">Stop</button></div>
+  <div class="viewas" id="viewas" hidden><svg><use href="#i-eye"/></svg><span>Previewing as <b id="viewas-name"></b>. Only the view changes. Your own permissions still apply.</span><button type="button" id="viewas-stop">Stop</button></div>
   <!-- This computer isn't in Devices yet: the client to install, then Connect, which hands the client the server's address. -->
   <div class="herebar" id="herebar" hidden><svg><use href="#i-monitor"/></svg>
-    <span id="here-text">This computer isn't connected yet.</span>
+    <span id="here-text">This computer is not connected.</span>
     <a class="button small" id="here-download" href="/api/clients/download" download><svg><use href="#i-download"/></svg>1. Download the client</a>
     <a class="button small primary" id="here-connect" href="#"><svg><use href="#i-link"/></svg>2. Connect this computer</a>
     <button type="button" class="link" id="here-later">Not now</button></div>
@@ -236,12 +236,12 @@
       <p class="eyebrow" id="hero-eyebrow">Lab console</p>
       <h1 class="hero-title" id="hero-title" data-brand-name>Rabbid Lab</h1>
       <script src="Assets/brand-paint.js"></script>
-      <p class="hero-lead"><b id="hero-state">Looking…</b> <span id="hero-where"></span></p>
+      <p class="hero-lead"><b id="hero-state">Loading…</b> <span id="hero-where"></span></p>
       <!-- The numbers, then the buttons after a thin line, so a banner with buttons is no taller than one without. -->
       <div class="hero-row">
       <div class="hero-stats">
         <div><b id="hero-version"><i class="sk sk-num"></i></b><span><svg><use href="#i-new"/></svg>Version</span></div>
-        <div><b id="hero-uptime"><i class="sk sk-num"></i></b><span><svg><use href="#i-clock"/></svg>Running</span></div>
+        <div><b id="hero-uptime"><i class="sk sk-num"></i></b><span><svg><use href="#i-clock"/></svg>Uptime</span></div>
         <div data-can="updates.view"><b id="hero-updates"><i class="sk sk-num"></i></b><span><svg><use href="#i-updates"/></svg>Updates</span></div>
       </div>
       <div class="hero-actions">
@@ -291,7 +291,7 @@
         <a href="#settings/alerts/sensors" data-sub="alerts" data-sec="sensors"><span class="nm">Sensor warnings</span></a>
         <a href="#settings/alerts/seats" data-sub="alerts" data-sec="seats"><span class="nm">Devices</span></a>
         <a href="#settings/alerts/lab" data-sub="alerts" data-sec="lab"><span class="nm" data-app>Rabbid Lab</span></a>
-        <a href="#settings/alerts/quiet" data-sub="alerts" data-sec="quiet"><span class="nm">Gathering and quiet hours</span></a>
+        <a href="#settings/alerts/quiet" data-sub="alerts" data-sec="quiet"><span class="nm">Grouping and quiet hours</span></a>
       </div>
       <a href="#settings/notifications" data-sub="notifications" data-can="sensors.alerts"><svg><use href="#i-bell"/></svg><span>Notifications</span></a>
       <a href="#settings/history" data-sub="history" data-can="sensors.alerts"><svg><use href="#i-history"/></svg><span>Alert history</span></a>
@@ -314,27 +314,27 @@
       <a href="#settings/about" data-sub="about"><svg><use href="#i-info"/></svg><span>About</span></a>
       <p class="rail-label dev-only" data-can="updates.auto">Advanced</p>
       <a href="#settings/developer" data-sub="developer" class="dev-only" data-can="updates.auto"><svg><use href="#i-code"/></svg><span>Developer</span></a>
-      <p class="hint set-none" id="set-none" hidden>No setting matches that.</p>
+      <p class="hint set-none" id="set-none" hidden>No matching settings.</p>
     </nav>
     <div class="dmain">
 
     <!-- Account: who's signed in, their roles, and signing out. -->
     <section class="sub" data-sub="account" data-title="Account" hidden>
-      <header class="sub-head"><h2>Account</h2><p>Who you're signed in as, your roles, and where you're signed in.</p></header>
+      <header class="sub-head"><h2>Account</h2><p>Your account details, roles and active sessions.</p></header>
       <section class="ds-sec" data-sec="info"><h3 class="ds-h">Account info</h3>
         <div class="ds-row"><div class="ds-l"><b>Name</b></div><div class="ds-r"><span class="ds-v" id="acc-name"></span></div></div>
-        <div class="ds-row"><div class="ds-l"><b>Name in the top bar</b><span>Beside your avatar, top right. Turn it off while someone's watching your screen. Just you, in this browser.</span></div>
+        <div class="ds-row"><div class="ds-l"><b>Name in the top bar</b><span>Shown next to your avatar, top right. Turn this off when you share your screen. Applies to this browser only.</span></div>
           <div class="ds-r"><span class="sw-label" id="acc-showname-label">On</span><input type="checkbox" class="switch" id="acc-showname" role="switch" aria-label="Show your name in the top bar"></div></div>
         <div class="ds-row"><div class="ds-l"><b>Username</b></div><div class="ds-r"><span class="ds-v" id="acc-user"></span></div></div>
         <div class="ds-row"><div class="ds-l"><b>Signed in with</b></div><div class="ds-r"><span class="ds-v" id="acc-how"></span></div></div>
         <div class="ds-row"><div class="ds-l"><b>Roles</b></div><div class="ds-r"><span class="ds-v" id="acc-roles"></span></div></div>
-        <div class="ds-row" data-can="access.view"><div class="ds-l"><b>Roles and people</b><span>What your roles let you do is set there.</span></div><div class="ds-r"><a class="ds-btn" href="#people">Open</a></div></div>
-        <div class="ds-row" id="acc-password-row" hidden><div class="ds-l"><b>Password</b><span>Changing it signs you out everywhere, here too.</span></div><div class="ds-r"><button type="button" class="ds-btn" id="acc-password">Change</button></div></div>
+        <div class="ds-row" data-can="access.view"><div class="ds-l"><b>Roles and people</b><span>Manage what each role can do.</span></div><div class="ds-r"><a class="ds-btn" href="#people">Open</a></div></div>
+        <div class="ds-row" id="acc-password-row" hidden><div class="ds-l"><b>Password</b><span>Changing your password signs you out of every session, including this one.</span></div><div class="ds-r"><button type="button" class="ds-btn" id="acc-password">Change</button></div></div>
       </section>
       <section class="ds-sec" data-sec="mfa"><h3 class="ds-h">Multi-factor authentication</h3>
         <div class="ds-row"><div class="ds-l"><b>Authenticator app</b><span id="acc-mfa-text"><i class="sk sk-text"></i></span><span class="acc-mfa-warn" id="acc-mfa-warn" hidden></span></div><div class="ds-r"><button type="button" class="ds-btn" id="acc-mfa" hidden>Set up</button></div></div>
       </section>
-      <section class="ds-sec" data-sec="sessions"><h3 class="ds-h">Where you're signed in</h3>
+      <section class="ds-sec" data-sec="sessions"><h3 class="ds-h">Active sessions</h3>
         <div id="acc-sessions" data-skel="rows:2"></div>
         <p class="hint problem" id="acc-sessions-problem" hidden></p>
       </section>
@@ -342,62 +342,62 @@
 
     <!-- Appearance: the lab's name, icon and accent for everyone; Layout and Sidebar for this person, in this browser. -->
     <section class="sub ap-rows" data-sub="appearance" data-title="Appearance" hidden>
-      <header class="sub-head"><h2>Appearance</h2><p>How <span data-app>Rabbid Lab</span> looks. Your lab is the same for everyone; Theme, Layout and Toasts are just for you, in this browser.</p></header>
+      <header class="sub-head"><h2>Appearance</h2><p>How <span data-app>Rabbid Lab</span> looks. Your lab settings apply to everyone. Theme, Layout and Toasts apply only to you, in this browser.</p></header>
       <section class="ds-sec" data-sec="lab"><h3 class="ds-h">Your lab <small class="ds-scope">Everyone</small></h3>
-        <div class="ds-row"><div class="ds-l"><b>Name</b><span>In the top bar and the browser tab. Leave it empty for Rabbid Lab.</span></div>
+        <div class="ds-row"><div class="ds-l"><b>Name</b><span>Shown in the top bar and the browser tab. Leave blank to use Rabbid Lab.</span></div>
           <div class="ds-r"><input class="ds-input" id="br-name" maxlength="40" placeholder="Rabbid Lab" autocomplete="off" spellcheck="false" aria-label="Lab name"><button type="button" class="ds-btn br-edit" id="br-name-reset">Reset</button></div></div>
-        <div class="ds-row"><div class="ds-l"><b>Tagline</b><span>Under the name in the top bar, the Overview banner and the sign-in page. Click a tag to add it; each person sees their own. Leave it empty for Lab console.</span>
+        <div class="ds-row"><div class="ds-l"><b>Tagline</b><span>Shown under the name in the top bar, the Overview banner and the sign-in page. Click a tag to insert it. Each user sees their own values. Leave blank to use Lab console.</span>
             <span class="br-tags" id="br-tags"><button type="button" class="br-tag" data-tag="name">{name}</button><button type="button" class="br-tag" data-tag="username">{username}</button><button type="button" class="br-tag" data-tag="hostname">{hostname}</button><button type="button" class="br-tag" data-tag="domain">{domain}</button><button type="button" class="br-tag" data-tag="role">{role}</button><button type="button" class="br-tag" data-tag="version">{version}</button></span></div>
           <div class="ds-r"><input class="ds-input" id="br-tag" maxlength="60" placeholder="Lab console" autocomplete="off" spellcheck="false" aria-label="Tagline"><button type="button" class="ds-btn br-edit" id="br-tag-reset">Reset</button></div></div>
-        <div class="ds-row"><div class="ds-l"><b>Icon</b><span>A square PNG or SVG, 64 pixels or more and under 256 KB. In the top bar and the browser tab.</span></div>
+        <div class="ds-row"><div class="ds-l"><b>Icon</b><span>A square PNG or SVG, at least 64 pixels and under 256 KB. Shown in the top bar and the browser tab.</span></div>
           <div class="ds-r"><span class="ap-icon"><span class="ds-icon" id="br-icon"></span><label class="ds-btn br-edit" for="br-file">Upload</label><input type="file" id="br-file" accept="image/png,image/svg+xml" hidden></span><button type="button" class="ds-btn br-edit" id="br-reset">Reset</button></div></div>
       </section>
       <section class="ds-sec" data-sec="accent"><h3 class="ds-h">Accent colour <small class="ds-scope">Everyone</small></h3>
-        <div class="ds-row"><div class="ds-l"><b>Accent</b><span>Buttons, switches, the bar on what's open, the flask, the dot in the logo and the browser tab's icon, on the sign-in page too.</span></div><div class="ds-r"><span class="ds-swatches" id="br-swatches"></span><button type="button" class="ds-btn br-edit" id="br-accent-reset">Reset</button></div></div>
-        <p class="hint" id="br-cant" hidden>Your roles don't let you change the lab's name, icon, accent colour or sign-in page.</p>
+        <div class="ds-row"><div class="ds-l"><b>Accent</b><span>Used for buttons, switches, the selected item, the loading flask, the logo dot and the browser tab icon, including on the sign-in page.</span></div><div class="ds-r"><span class="ds-swatches" id="br-swatches"></span><button type="button" class="ds-btn br-edit" id="br-accent-reset">Reset</button></div></div>
+        <p class="hint" id="br-cant" hidden>Your roles do not allow changes to the lab name, icon, accent colour or sign-in page.</p>
         <p class="hint problem" id="br-problem" hidden></p>
       </section>
       <section class="ds-sec" data-sec="signin"><h3 class="ds-h">Sign-in page <small class="ds-scope">Everyone</small></h3>
-        <div class="ds-row"><div class="ds-l"><b>Background</b><span>What moves behind the sign-in card, until someone picks another for their own browser at the foot of the sign-in page. When Windows is set to reduce animations, it holds still.</span></div>
+        <div class="ds-row"><div class="ds-l"><b>Background</b><span>The animated background behind the sign-in card. Users can choose their own at the bottom of the sign-in page. Animation stops when Windows is set to reduce animations.</span></div>
           <div class="ds-r"><select id="br-bg" aria-label="Sign-in background"></select><canvas class="br-bg-preview" id="br-bg-preview" aria-hidden="true"></canvas></div></div>
       </section>
       <section class="ds-sec" data-sec="theme"><h3 class="ds-h">Theme <small class="ds-scope">Just you</small></h3>
-        <div class="ds-row"><div class="ds-l"><b>Theme</b><span>How the console and the sign-in page look in this browser. System follows Windows: Light when Windows is light, Dark when it is dark.</span></div>
+        <div class="ds-row"><div class="ds-l"><b>Theme</b><span>The colour theme for the console and the sign-in page in this browser. System matches the Windows setting.</span></div>
           <div class="ds-r"><span class="ap-themes" id="set-theme" role="radiogroup" aria-label="Theme"></span></div></div>
       </section>
       <section class="ds-sec" data-sec="layout"><h3 class="ds-h">Layout <small class="ds-scope">Just you</small></h3>
-        <div class="ds-row"><div class="ds-l"><b>Page width</b><span>Full width uses the whole window, so lists show more at once. Centered keeps pages in a column in the middle.</span></div>
+        <div class="ds-row"><div class="ds-l"><b>Page width</b><span>Full width uses the whole window to show more of each list. Centered keeps pages in a column in the middle.</span></div>
           <div class="ds-r"><select id="set-layout" aria-label="Page width"><option value="wide">Full width</option><option value="centered">Centered</option></select></div></div>
       </section>
-      <section class="ds-sec" data-sec="toasts"><h3 class="ds-h has-reset">Toasts <small class="ds-scope">Just you</small><span class="ds-pair"><button type="button" class="ds-btn ds-ibtn" id="toast-test" data-tip="Show a test" aria-label="Show a test toast"><svg><use href="#i-eye"/></svg></button><button type="button" class="ds-btn" id="toast-reset">Reset</button></span></h3>
-        <p class="sq-lead">The message that pops up after you do something, like Refresh icons. Changing one shows a sample.</p>
-        <div class="ds-row"><div class="ds-l"><b>Where</b><span>Where on the screen it shows.</span></div><div class="ds-r"><select id="toast-at" aria-label="Where toasts show">
+      <section class="ds-sec" data-sec="toasts"><h3 class="ds-h has-reset">Toasts <small class="ds-scope">Just you</small><span class="ds-pair"><button type="button" class="ds-btn ds-ibtn" id="toast-test" data-tip="Test toast" aria-label="Show a test toast"><svg><use href="#i-eye"/></svg></button><button type="button" class="ds-btn" id="toast-reset">Reset</button></span></h3>
+        <p class="sq-lead">The notification shown after an action, such as Refresh icons. Changing a setting shows a sample.</p>
+        <div class="ds-row"><div class="ds-l"><b>Position</b><span>Where on the screen toasts appear.</span></div><div class="ds-r"><select id="toast-at" aria-label="Toast position">
           <option value="tl">Top left</option><option value="tc">Top middle</option><option value="tr">Top right</option>
           <option value="bl">Bottom left</option><option value="bc">Bottom middle</option><option value="br">Bottom right</option></select></div></div>
-        <div class="ds-row"><div class="ds-l"><b>Style</b><span>Pill is slim with the flask. Card adds a title, a close button and a bar. Glow is a bright pill. Square is a small card.</span></div>
+        <div class="ds-row"><div class="ds-l"><b>Style</b><span>Pill is slim with the flask. Card adds a title, a close button and a progress bar. Glow is a bright pill. Square is a small card.</span></div>
           <div class="ds-r"><select id="toast-style" aria-label="Toast style"><option value="pill">Pill</option><option value="card">Card</option><option value="glow">Glow</option><option value="square">Square</option></select></div></div>
-        <div class="ds-row"><div class="ds-l"><b>Show for</b><span>How long a toast stays before it goes.</span></div>
+        <div class="ds-row"><div class="ds-l"><b>Show for</b><span>How long a toast stays on screen.</span></div>
           <div class="ds-r"><select id="toast-secs" aria-label="Show for"><option value="3">3 seconds</option><option value="6">6 seconds</option><option value="10">10 seconds</option></select></div></div>
       </section>
     </section>
 
     <!-- Role preview: the console as someone in a role sees it, until Stop in the bar at the top. -->
     <section class="sub" data-sub="viewas" data-title="Role preview" hidden>
-      <header class="sub-head"><h2>Role preview</h2><p>Shows the console with only what a role allows. Only the view changes: you keep your own permissions.</p></header>
+      <header class="sub-head"><h2>Role preview</h2><p>Shows the console as members of a role see it. Only the view changes. Your own permissions still apply.</p></header>
       <section class="ds-sec" data-sec="viewas">
-        <div class="ds-row"><div class="ds-l"><b>Preview as</b><span>Stop it from the bar at the top of the page.</span></div>
+        <div class="ds-row"><div class="ds-l"><b>Preview as</b><span>To end the preview, click Stop in the bar at the top of the page.</span></div>
           <div class="ds-r"><select id="va-role" aria-label="Role" disabled></select><button type="button" class="ds-btn" id="va-start" disabled>Start</button></div></div>
       </section>
       <p class="hint problem" id="va-problem" hidden></p>
     </section>
 
     <section class="sub" data-sub="updates" data-title="Updates" hidden>
-      <header class="sub-head"><h2>Updates</h2><p>Keep <span data-app>Rabbid Lab</span> on the newest version.</p></header>
+      <header class="sub-head"><h2>Updates</h2><p>Keep <span data-app>Rabbid Lab</span> up to date.</p></header>
       <section class="ds-sec" data-sec="status"><h3 class="ds-h">Status</h3>
         <!-- Where it stands, with the button that fits. During an update, the installing card takes its place. -->
         <div class="ustatus" id="upd-status">
           <span class="big-ic" id="upd-icon"><svg><use id="upd-icon-use" href="#i-check"/></svg></span>
-          <div class="ustatus-text"><b id="upd-title">Looking…</b><span id="upd-line"></span></div>
+          <div class="ustatus-text"><b id="upd-title">Loading…</b><span id="upd-line"></span></div>
           <button type="button" id="upd-check">Check for updates</button>
           <button type="button" class="primary" id="upd-install" data-can="updates.install" hidden>Install now</button>
         </div>
@@ -409,33 +409,33 @@
           </div>
           <div class="ubar"><i id="inst-fill"></i></div>
           <div class="steps"><span id="step-download">Downloaded</span><span id="step-install">Installing</span><span id="step-back">Restarting</span></div>
-          <p class="say" id="inst-say">Rabbid Lab is stopped for under a minute while the update installs. This page reloads when it is done.</p>
+          <p class="say" id="inst-say">Rabbid Lab is unavailable for up to a minute while the update installs. This page reloads when the update is complete.</p>
         </div>
         <p class="hint problem" id="upd-problem" hidden></p>
-        <div class="ds-row"><div class="ds-l"><b id="upd-new-title">What's new</b><span id="upd-new-text"></span></div><div class="ds-r"><a class="ds-link" href="#whats-new">Read it<svg><use href="#i-right"/></svg></a></div></div>
+        <div class="ds-row"><div class="ds-l"><b id="upd-new-title">What's new</b><span id="upd-new-text"></span></div><div class="ds-r"><a class="ds-link" href="#whats-new">Read more<svg><use href="#i-right"/></svg></a></div></div>
       </section>
       <section class="ds-sec" data-sec="auto" data-can="updates.auto"><h3 class="ds-h">Automatic updates</h3>
-        <div class="ds-row"><div class="ds-l"><b>Update automatically</b><span>New versions install when nobody is using <span data-app>Rabbid Lab</span>.</span></div>
+        <div class="ds-row"><div class="ds-l"><b>Update automatically</b><span>New versions install automatically when <span data-app>Rabbid Lab</span> is not in use.</span></div>
           <div class="ds-r"><span class="sw-label" id="upd-auto-label">Off</span><input type="checkbox" class="switch" id="upd-auto" role="switch" aria-label="Update automatically"></div></div>
-        <p class="ds-note"><svg><use href="#i-lock"/></svg><span>Updates come from <a id="upd-source" href="#" rel="noopener">GitHub</a> and only install if they're signed by Rabbid Lab.</span></p>
+        <p class="ds-note"><svg><use href="#i-lock"/></svg><span>Updates come from <a id="upd-source" href="#" rel="noopener">GitHub</a> and install only if they are signed by Rabbid Lab.</span></p>
       </section>
     </section>
 
     <!-- Sign-in: how long people stay signed in (console.js, SignIn.cs). -->
     <section class="sub" data-sub="signin" data-title="Sign-in" hidden>
-      <header class="sub-head"><h2>Sign-in</h2><p>How long people stay signed in to <span data-app>Rabbid Lab</span>.</p></header>
-      <section class="ds-sec" data-sec="idle" data-can="access.roles"><h3 class="ds-h">Signing out <small class="ds-scope">Everyone</small></h3>
-        <div class="ds-row"><div class="ds-l"><b>Sign out when idle</b><span>After this long without a click, key press or scroll in any of their tabs. They get a minute's warning first.</span></div>
+      <header class="sub-head"><h2>Sign-in</h2><p>Session timeout and account lockout for <span data-app>Rabbid Lab</span>.</p></header>
+      <section class="ds-sec" data-sec="idle" data-can="access.roles"><h3 class="ds-h">Session timeout <small class="ds-scope">Everyone</small></h3>
+        <div class="ds-row"><div class="ds-l"><b>Sign out when idle</b><span>Users are signed out after this long with no clicks, key presses or scrolling in any open tab. They are warned one minute before.</span></div>
           <div class="ds-r"><select id="si-idle" aria-label="Sign out when idle" disabled><option value="0">Never</option><option value="15">15 minutes</option><option value="30">30 minutes</option><option value="60">1 hour</option><option value="120">2 hours</option><option value="240">4 hours</option><option value="480">8 hours</option></select></div></div>
         <p class="hint problem" id="si-problem" hidden></p>
       </section>
-      <section class="ds-sec" data-sec="locks"><h3 class="ds-h">Wrong passwords <small class="ds-scope">Everyone</small></h3>
-        <div class="ds-row" data-can="access.roles"><div class="ds-l"><b>Lock after</b><span>Each wrong password for a name makes its next try wait longer, up to 5 minutes. This many lock it until it is unlocked below. A locked administrator gets back in with the password and the authenticator code together, or from the server itself.</span></div>
-          <div class="ds-r"><select id="si-lock" aria-label="Lock after" disabled><option value="3">3 wrong passwords</option><option value="5">5 wrong passwords</option><option value="10">10 wrong passwords</option></select></div></div>
+      <section class="ds-sec" data-sec="locks"><h3 class="ds-h">Account lockout <small class="ds-scope">Everyone</small></h3>
+        <div class="ds-row" data-can="access.roles"><div class="ds-l"><b>Lock after</b><span>Each failed sign-in adds a longer delay before the next attempt, up to 5 minutes. After this many failed attempts, the account is locked out until it is unlocked below. A locked-out administrator can still sign in with the password and an authenticator code together, or on the server itself.</span></div>
+          <div class="ds-r"><select id="si-lock" aria-label="Lock after" disabled><option value="3">3 failed attempts</option><option value="5">5 failed attempts</option><option value="10">10 failed attempts</option></select></div></div>
         <div data-can="access.unlock">
-          <div class="ds-row"><div class="ds-l"><b>Locked out</b><span>The accounts that are locked now. Unlock one once you know the wrong passwords were its owner's.</span></div></div>
+          <div class="ds-row"><div class="ds-l"><b>Locked out</b><span>Accounts that are locked out now. Unlock an account after you confirm its owner made the failed attempts.</span></div></div>
           <div id="si-locks" data-skel="rows:2"></div>
-          <p class="hint" id="si-locks-none" hidden>Nobody is locked out.</p>
+          <p class="hint" id="si-locks-none" hidden>No accounts are locked out.</p>
           <p class="hint" id="si-locks-others" hidden></p>
           <p class="hint problem" id="si-locks-problem" hidden></p>
         </div>
@@ -444,19 +444,19 @@
 
     <!-- Alert rules: every kind of alert, when it goes and to which notifications; then gathering and quiet hours (alerts.js). -->
     <section class="sub" data-sub="alerts" data-title="Alert rules" hidden>
-      <header class="sub-head"><h2>Alert rules</h2><p>The alert types sensors and watched links pick from, then the other alerts and where they go.</p></header>
+      <header class="sub-head"><h2>Alert rules</h2><p>The alert types that sensors and watched links use, and where other alerts are sent.</p></header>
       <section class="ds-sec ar-sec" data-sec="types" id="ar-types" data-skel="rows:2"></section>
       <section class="ds-sec ar-sec" data-sec="sensors" id="ar-sensors" data-skel="rows:3"></section>
       <section class="ds-sec ar-sec" data-sec="seats" id="ar-seats" data-skel="rows:1"></section>
       <section class="ds-sec ar-sec" data-sec="lab" id="ar-lab" data-skel="rows:3"></section>
-      <section class="ds-sec" data-sec="quiet"><h3 class="ds-h">Gathering and quiet hours</h3>
-        <div class="ds-row"><div class="ds-l"><b>One alert for several</b><span>When several go down close together, one alert lists them all. Each still says on its own when it's back.</span></div>
-          <div class="ds-r"><input type="checkbox" class="switch" id="ar-gather" role="switch" aria-label="One alert for several"></div></div>
-        <div class="ds-row"><div class="ds-l"><b>Close together means within</b><span>The first alert waits this long for others to join it.</span></div>
+      <section class="ds-sec" data-sec="quiet"><h3 class="ds-h">Grouping and quiet hours</h3>
+        <div class="ds-row"><div class="ds-l"><b>Group alerts</b><span>When several sensors or links go down within a short time, one alert lists them all. Each one still sends its own alert when it is back up.</span></div>
+          <div class="ds-r"><input type="checkbox" class="switch" id="ar-gather" role="switch" aria-label="Group alerts"></div></div>
+        <div class="ds-row"><div class="ds-l"><b>Grouping window</b><span>The first alert is held this long so that others can be added to it.</span></div>
           <div class="ds-r"><div class="seg" id="ar-secs"><button type="button" data-secs="30">30 s</button><button type="button" data-secs="60">1 min</button><button type="button" data-secs="120">2 min</button><button type="button" data-secs="300">5 min</button></div></div></div>
-        <div class="ds-row"><div class="ds-l"><b>Quiet hours <small class="ds-scope" id="ar-quiet-now" hidden>Quiet now</small></b><span>Alerts wait until they're over, then whatever is still wrong goes out. This server's time.</span></div>
-          <div class="ds-r"><span class="ar-times"><select id="ar-from" aria-label="Quiet from"></select>to<select id="ar-to" aria-label="Quiet until"></select></span><input type="checkbox" class="switch" id="ar-quiet" role="switch" aria-label="Quiet hours"></div></div>
-        <div class="ds-row"><div class="ds-l"><b>Down alerts during quiet hours</b><span>A sensor or a link going down still alerts right away.</span></div>
+        <div class="ds-row"><div class="ds-l"><b>Quiet hours <small class="ds-scope" id="ar-quiet-now" hidden>Active now</small></b><span>Alerts are held until quiet hours end. Problems that remain are sent then. Uses the server's time zone.</span></div>
+          <div class="ds-r"><span class="ar-times"><select id="ar-from" aria-label="Quiet hours start"></select>to<select id="ar-to" aria-label="Quiet hours end"></select></span><input type="checkbox" class="switch" id="ar-quiet" role="switch" aria-label="Quiet hours"></div></div>
+        <div class="ds-row"><div class="ds-l"><b>Down alerts during quiet hours</b><span>Alerts for a sensor or link going down are sent immediately.</span></div>
           <div class="ds-r"><input type="checkbox" class="switch" id="ar-down" role="switch" aria-label="Down alerts during quiet hours"></div></div>
       </section>
       <p class="hint problem" id="ar-problem" hidden></p>
@@ -464,16 +464,16 @@
 
     <!-- Notifications: where alerts can go, each by its name, in groups by kind (alerts.js). -->
     <section class="sub" data-sub="notifications" data-title="Notifications" hidden>
-      <header class="sub-head"><h2>Notifications</h2><p>Where alerts can go. Each one has a name, and alert rules, sensors and links pick it by that name.</p></header>
-      <div class="nt-bar"><label class="side-find"><svg><use href="#i-search"/></svg><input type="search" id="nt-find" placeholder="Find a notification" aria-label="Find a notification" autocomplete="off" spellcheck="false"></label>
-        <span class="grow"></span><button type="button" class="primary" id="nt-add"><svg><use href="#i-plus"/></svg>Add a notification</button></div>
+      <header class="sub-head"><h2>Notifications</h2><p>Notification channels for alerts. Alert rules, sensors and links select a channel by its name.</p></header>
+      <div class="nt-bar"><label class="side-find"><svg><use href="#i-search"/></svg><input type="search" id="nt-find" placeholder="Find a channel" aria-label="Find a channel" autocomplete="off" spellcheck="false"></label>
+        <span class="grow"></span><button type="button" class="primary" id="nt-add"><svg><use href="#i-plus"/></svg>Add channel</button></div>
       <div id="nt-list" data-skel="rows:3"></div>
       <p class="hint problem" id="nt-problem" hidden></p>
     </section>
 
     <!-- Alert history: every alert, where it went, and whether it got there (alerts.js). -->
     <section class="sub" data-sub="history" data-title="Alert history" hidden>
-      <header class="sub-head"><h2>Alert history</h2><p>Every alert, where it went, and whether it got there. Kept for 90 days.</p></header>
+      <header class="sub-head"><h2>Alert history</h2><p>Every alert sent, its destination and its delivery status. Kept for 90 days.</p></header>
       <div class="nt-bar"><label class="side-find"><svg><use href="#i-search"/></svg><input type="search" id="ah-find" placeholder="Find an alert" aria-label="Find an alert" autocomplete="off" spellcheck="false"></label>
         <div class="seg sn-seg" id="ah-range"><button type="button" data-days="7">7 days</button><button type="button" data-days="30">30 days</button><button type="button">Failed</button></div></div>
       <div id="ah-list" data-skel="rows:5"></div>
@@ -482,10 +482,10 @@
 
     <!-- Activity log: found on the server; the sub-menu picks a kind, the bar narrows it further (console.js). -->
     <section class="sub" data-sub="activity" data-title="Activity log" data-filters="signins accounts lab seats admin" hidden>
-      <header class="sub-head"><h2>Activity log</h2><p>What's been done here, by whom and when.</p></header>
+      <header class="sub-head"><h2>Activity log</h2><p>Every change and event, who made it and when.</p></header>
       <div class="al-tools">
-        <label class="side-find al-find"><svg><use href="#i-search"/></svg><input type="search" id="al-q" placeholder="Find a person, computer or change" aria-label="Find in the activity log" autocomplete="off" spellcheck="false"></label>
-        <select id="al-who" aria-label="Who"><option value="">Anyone</option></select>
+        <label class="side-find al-find"><svg><use href="#i-search"/></svg><input type="search" id="al-q" placeholder="Search by user, computer or change" aria-label="Search the activity log" autocomplete="off" spellcheck="false"></label>
+        <select id="al-who" aria-label="User"><option value="">All users</option></select>
         <div class="seg" id="al-range"><button type="button" data-days="1">Today</button><button type="button" data-days="7" aria-pressed="true">7 days</button><button type="button" data-days="30">30 days</button><button type="button" data-days="0">All</button></div>
         <div class="seg" id="al-res"><button type="button" data-problems="" aria-pressed="true">All</button><button type="button" data-problems="1">Problems</button></div>
         <a class="ds-btn" id="al-export" href="/api/activity/export" download><svg><use href="#i-csv"/></svg>Export</a>
@@ -497,18 +497,18 @@
 
     <!-- Links: how often each link is checked, the descriptions, and export and import (links.js). Saved as they're changed. -->
     <section class="sub" data-sub="links" data-title="Links" hidden>
-      <header class="sub-head"><h2>Links</h2><p>The heartbeat on each link, icons and descriptions, and moving links in and out.</p></header>
+      <header class="sub-head"><h2>Links</h2><p>Link checks, icons and descriptions.</p></header>
       <div id="lc-form">
         <section class="ds-sec" data-sec="checks"><h3 class="ds-h">Heartbeat</h3>
-          <div class="ds-row"><div class="ds-l"><b>Heartbeat interval</b><span>How often <span data-app>Rabbid Lab</span> checks that each link answers, while Links is open.</span></div><div class="ds-r"><div class="seg sn-seg" id="lc-every"></div></div></div>
+          <div class="ds-row"><div class="ds-l"><b>Heartbeat interval</b><span>How often <span data-app>Rabbid Lab</span> checks that each link responds while the Links page is open.</span></div><div class="ds-r"><div class="seg sn-seg" id="lc-every"></div></div></div>
           <div class="ds-row"><div class="ds-l"><b>Show a link as down after</b><span id="lc-note"></span></div><div class="ds-r"><div class="seg sn-seg" id="lc-after"></div></div></div>
-          <div class="ds-row" data-can="sensors.edit"><div class="ds-l"><b>Watch links</b><span>Pick the links a sensor checks around the clock, with an alert when one goes down. They show on Sensors too.</span></div>
-            <div class="ds-r"><a class="ds-btn" href="#links/watch">Pick links</a></div></div>
+          <div class="ds-row" data-can="sensors.edit"><div class="ds-l"><b>Watch links</b><span>Select links for a sensor to check around the clock and alert when one goes down. Watched links also appear on Sensors.</span></div>
+            <div class="ds-r"><a class="ds-btn" href="#links/watch">Select links</a></div></div>
         </section>
         <section class="ds-sec" data-sec="descriptions"><h3 class="ds-h">Icons and descriptions</h3>
-          <div class="ds-row"><div class="ds-l"><b>Auto-fill descriptions</b><span><span data-app>Rabbid Lab</span> recognises common gear like TrueNAS, iDRAC, ESXi and UniFi and fills in what it is. Turn it off to clear the ones it filled in. Descriptions you typed always stay.</span></div>
+          <div class="ds-row"><div class="ds-l"><b>Auto-fill descriptions</b><span><span data-app>Rabbid Lab</span> recognises common devices such as TrueNAS, iDRAC, ESXi and UniFi and fills in a description. Turn this off to clear the automatic descriptions. Descriptions you entered are kept.</span></div>
             <div class="ds-r"><span class="sw-label" id="lc-known-label">On</span><input type="checkbox" class="switch" id="lc-known" role="switch" aria-label="Auto-fill descriptions"></div></div>
-          <div class="ds-row"><div class="ds-l"><b>Refresh icons and descriptions</b><span>Reads the site of every link again, four at a time from the top: an icon from the site is brought up to date, an empty description is filled in, and a link on your network gets its IP. A picture of your own, No icon and descriptions you typed stay as they are. An internet site that turns <span data-app>Rabbid Lab</span> away gets its icon from DuckDuckGo's icon service; nothing on your network is ever sent there.</span></div>
+          <div class="ds-row"><div class="ds-l"><b>Refresh icons and descriptions</b><span>Reloads the site of every link, four at a time, from the top of the list. Site icons are updated, empty descriptions are filled in, and links on your network get their IP address. Uploaded icons, No icon and descriptions you entered are not changed. If an internet site blocks <span data-app>Rabbid Lab</span>, its icon comes from DuckDuckGo's icon service. Addresses on your network are never sent there.</span></div>
             <div class="ds-r"><button type="button" class="ds-btn" id="lc-refresh">Refresh</button></div></div>
           <p class="hint note" id="lc-refresh-done" role="status" hidden></p>
         </section>
@@ -518,28 +518,28 @@
 
     <!-- Sensors: the credentials sensors sign in with. When sensors alert is in Alert rules (sensors.js). -->
     <section class="sub" data-sub="sensors" data-title="Sensors" hidden>
-      <header class="sub-head"><h2>Sensors</h2><p>The credentials sensors sign in with. When sensors alert, and where, is in Alert rules.</p></header>
+      <header class="sub-head"><h2>Sensors</h2><p>Credentials that sensors use to sign in. When and where sensors alert is set in Alert rules.</p></header>
       <section class="ds-sec" data-sec="credentials" data-can="sensors.edit"><h3 class="ds-h">Saved credentials</h3>
         <div id="sn-creds" data-skel="rows:2"></div>
-        <p class="ds-note"><svg><use href="#i-lock"/></svg><span>Stored encrypted on this server. Credentials are saved with the sensor that needs them, and go once no sensor uses them.</span></p>
+        <p class="ds-note"><svg><use href="#i-lock"/></svg><span>Stored encrypted on this server. Credentials are saved with the sensor that uses them and are deleted when no sensor uses them.</span></p>
       </section>
       <p class="hint problem" id="sn-set-problem" hidden></p>
     </section>
 
     <!-- Devices: whether new computers wait, and getting the client onto computers (console.js). -->
     <section class="sub" data-sub="seats" data-title="Devices" hidden>
-      <header class="sub-head"><h2>Devices</h2><p>Computers with the <span data-app>Rabbid Lab</span> client: approving new ones, and installing the client.</p></header>
+      <header class="sub-head"><h2>Devices</h2><p>Approval of new computers and installation of the <span data-app>Rabbid Lab</span> client.</p></header>
       <section class="ds-sec" data-sec="new" data-can="seats.settings"><h3 class="ds-h">New computers</h3>
-        <div class="ds-row"><div class="ds-l"><b>Require approval for new computers</b><span>New computers show as Waiting until an admin approves them. Turn this off and they connect right away.</span></div>
+        <div class="ds-row"><div class="ds-l"><b>Require approval for new computers</b><span>New computers show as Pending approval until an admin approves them. When this is off, they connect immediately.</span></div>
           <div class="ds-r"><span class="sw-label" id="seat-approve-label"></span><input type="checkbox" class="switch" id="seat-approve" role="switch" aria-label="Require approval for new computers" disabled></div></div>
       </section>
       <section class="ds-sec" data-sec="lock" data-can="seats.settings"><h3 class="ds-h">Uninstall lock</h3>
-        <div class="ds-row"><div class="ds-l"><b>Release the lock after 30 days offline</b><span>A computer that can't reach this server for 30 days can uninstall the client without a code. This keeps computers from being stuck if this server is gone for good.</span></div>
+        <div class="ds-row"><div class="ds-l"><b>Release the lock after 30 days offline</b><span>If a computer cannot reach this server for 30 days, the client can be uninstalled without a code. This prevents computers from staying locked if this server is permanently removed.</span></div>
           <div class="ds-r"><span class="sw-label" id="seat-unlock-label"></span><input type="checkbox" class="switch" id="seat-unlock" role="switch" aria-label="Release the uninstall lock after 30 days offline" disabled></div></div>
       </section>
       <section class="ds-sec" data-sec="client" data-can="seats.add"><h3 class="ds-h">Install the client</h3>
-        <div class="ds-row" id="seat-msi-row"><div class="ds-l"><b>The client (MSI)</b><span>Run it on a computer, or install it quietly with the line below.</span></div><div class="ds-r"><a class="ds-btn" id="seat-msi" href="/api/clients/download" download>Download</a></div></div>
-        <div class="ds-row"><div class="ds-l"><b>Install line</b><span class="ds-code" id="seat-line"><i class="sk sk-text"></i></span></div><div class="ds-r"><button type="button" class="ds-btn" id="seat-line-copy">Copy</button></div></div>
+        <div class="ds-row" id="seat-msi-row"><div class="ds-l"><b>Client installer (MSI)</b><span>Run it on a computer, or install it silently with the command below.</span></div><div class="ds-r"><a class="ds-btn" id="seat-msi" href="/api/clients/download" download>Download</a></div></div>
+        <div class="ds-row"><div class="ds-l"><b>Install command</b><span class="ds-code" id="seat-line"><i class="sk sk-text"></i></span></div><div class="ds-r"><button type="button" class="ds-btn" id="seat-line-copy">Copy</button></div></div>
         <div class="ds-row" id="seat-policy-row"><div class="ds-l"><b>Group Policy template</b><span>Sets the server address and certificate fingerprint on every computer.</span></div><div class="ds-r"><a class="ds-btn" id="seat-policy" href="/api/clients/policy" download>Download</a></div></div>
         <div class="ds-row" id="seat-fp-row"><div class="ds-l"><b>This server's public key fingerprint</b><span class="ds-code" id="seat-fp"><i class="sk sk-text"></i></span></div><div class="ds-r"><button type="button" class="ds-btn" id="seat-fp-copy">Copy</button></div></div>
       </section>
@@ -548,12 +548,12 @@
 
     <!-- Active Directory: the service account Rabbid Lab makes its changes as (users.js). -->
     <section class="sub" data-sub="ad" data-title="Active Directory" hidden>
-      <header class="sub-head"><h2>Active Directory</h2><p>The service account <span data-app>Rabbid Lab</span> makes its AD changes as.</p></header>
+      <header class="sub-head"><h2>Active Directory</h2><p>The service account that <span data-app>Rabbid Lab</span> uses to make changes in Active Directory.</p></header>
       <section class="ds-sec" data-sec="account"><h3 class="ds-h">Service account</h3>
-        <div class="ds-row"><div class="ds-l"><b id="as-account"><i class="sk sk-text"></i></b><span id="as-about"><i class="sk sk-text"></i></span></div><div class="ds-r"><button type="button" class="ds-btn" id="as-ro-off" hidden>Turn off read-only</button><button type="button" class="ds-btn" id="as-setup" hidden>Set up</button></div></div>
-        <div class="ds-row" id="as-ou-row" hidden><div class="ds-l"><b>Default OU for new users</b><span>Where New user puts them. Saved as you change it.</span></div><div class="ds-r"><select id="adset-ou" aria-label="Default OU for new users"></select><button type="button" class="ds-btn" data-browse-ou="adset-ou"><svg><use href="#i-folder"/></svg>Browse…</button></div></div>
-        <div class="ds-row" id="as-gou-row" hidden><div class="ds-l"><b>Default OU for new groups</b><span>Where New group puts them.</span></div><div class="ds-r"><select id="adset-gou" aria-label="Default OU for new groups"></select><button type="button" class="ds-btn" data-browse-ou="adset-gou"><svg><use href="#i-folder"/></svg>Browse…</button></div></div>
-        <div class="ds-row" id="as-cou-row" hidden><div class="ds-l"><b>Default OU for new computers</b><span>Where New computer puts the accounts it makes ahead of a computer joining.</span></div><div class="ds-r"><select id="adset-cou" aria-label="Default OU for new computers"></select><button type="button" class="ds-btn" data-browse-ou="adset-cou"><svg><use href="#i-folder"/></svg>Browse…</button></div></div>
+        <div class="ds-row"><div class="ds-l"><b id="as-account"><i class="sk sk-text"></i></b><span id="as-about"><i class="sk sk-text"></i></span></div><div class="ds-r"><button type="button" class="ds-btn" id="as-ro-off" hidden>Disable read-only</button><button type="button" class="ds-btn" id="as-setup" hidden>Set up</button></div></div>
+        <div class="ds-row" id="as-ou-row" hidden><div class="ds-l"><b>Default OU for new users</b><span>New user creates users in this OU. Changes are saved immediately.</span></div><div class="ds-r"><select id="adset-ou" aria-label="Default OU for new users"></select><button type="button" class="ds-btn" data-browse-ou="adset-ou"><svg><use href="#i-folder"/></svg>Browse…</button></div></div>
+        <div class="ds-row" id="as-gou-row" hidden><div class="ds-l"><b>Default OU for new groups</b><span>New group creates groups in this OU.</span></div><div class="ds-r"><select id="adset-gou" aria-label="Default OU for new groups"></select><button type="button" class="ds-btn" data-browse-ou="adset-gou"><svg><use href="#i-folder"/></svg>Browse…</button></div></div>
+        <div class="ds-row" id="as-cou-row" hidden><div class="ds-l"><b>Default OU for new computers</b><span>New computer creates pre-staged computer accounts in this OU.</span></div><div class="ds-r"><select id="adset-cou" aria-label="Default OU for new computers"></select><button type="button" class="ds-btn" data-browse-ou="adset-cou"><svg><use href="#i-folder"/></svg>Browse…</button></div></div>
         <p class="hint note" id="as-done" hidden></p>
       </section>
       <section class="ds-sec gone" data-sec="danger" id="as-danger"><h3 class="ds-h danger">Danger zone</h3>
@@ -565,11 +565,11 @@
 
     <!-- Developer: Rabbid Lab Dev only. -->
     <section class="sub" data-sub="developer" data-title="Developer" hidden>
-      <header class="sub-head"><h2>Developer</h2><p>Tools for testing this Dev build. The release doesn't have them.</p></header>
+      <header class="sub-head"><h2>Developer</h2><p>Tools for testing this Dev build. Release builds do not include them.</p></header>
       <section class="ds-sec" data-sec="tools">
-        <div class="ds-row"><div class="ds-l"><b>Developer tools</b><span>Turns on a few developer-only options.</span></div>
+        <div class="ds-row"><div class="ds-l"><b>Developer tools</b><span>Enables developer-only options.</span></div>
           <div class="ds-r"><span class="sw-label" id="dev-tools-label"></span><input type="checkbox" class="switch" id="dev-tools" role="switch" aria-label="Developer tools" disabled></div></div>
-        <div class="ds-row"><div class="ds-l"><b>Skip MFA on this computer</b><span>The sign-in page's code step shows Skip MFA this time, for a browser on this server only, so testing here doesn't need your phone. Sign-ins from other computers still need the code.</span></div>
+        <div class="ds-row"><div class="ds-l"><b>Skip MFA on this computer</b><span>Adds Skip MFA this time to the code step of the sign-in page, for browsers on this server only, so testing does not need your phone. Sign-ins from other computers still require the code.</span></div>
           <div class="ds-r"><span class="sw-label" id="dev-skip-mfa-label"></span><input type="checkbox" class="switch" id="dev-skip-mfa" role="switch" aria-label="Skip MFA on this computer" disabled></div></div>
       </section>
       <p class="hint problem" id="dev-problem" hidden></p>
@@ -577,9 +577,9 @@
 
     <!-- Console address: where to open Rabbid Lab, its HTTPS certificate, and its port and firewall (console.js). -->
     <section class="sub" data-sub="address" data-title="Console address" id="ca-page" hidden>
-      <header class="sub-head"><h2>Console address</h2><p>Where to open the console in a browser, from this computer or any other on your network.</p></header>
+      <header class="sub-head"><h2>Console address</h2><p>The addresses for opening the console in a browser, from this computer or any other computer on your network.</p></header>
       <p class="hint problem" id="ca-problem" hidden></p>
-      <section class="ds-sec" data-sec="addresses"><h3 class="ds-h has-reset">Addresses<button type="button" class="ds-btn ds-ibtn" id="ca-add" data-can="console.address" data-tip="Add an address" aria-label="Add an address" hidden><svg><use href="#i-plus"/></svg></button></h3>
+      <section class="ds-sec" data-sec="addresses"><h3 class="ds-h has-reset">Addresses<button type="button" class="ds-btn ds-ibtn" id="ca-add" data-can="console.address" data-tip="Add address" aria-label="Add address" hidden><svg><use href="#i-plus"/></svg></button></h3>
         <div id="ca-list" data-skel="rows:5"></div>
         <p class="ds-note" id="ca-redirect" hidden><svg><use href="#i-info"/></svg><span></span></p>
       </section>
@@ -594,16 +594,16 @@
 
     <!-- Support info: this Rabbid Lab as text, to paste when asking for help. -->
     <section class="sub" data-sub="support" data-title="Support info" hidden>
-      <header class="sub-head"><h2>Support info</h2><p>This <span data-app>Rabbid Lab</span> described as text, to paste into a message when asking for help.</p></header>
+      <header class="sub-head"><h2>Support info</h2><p>Details about this <span data-app>Rabbid Lab</span> installation, as text to paste into a support request.</p></header>
       <section class="ds-sec" data-sec="support">
-        <pre class="about-text" id="sup-text">Gathering…</pre>
+        <pre class="about-text" id="sup-text">Loading…</pre>
         <div class="ds-add"><button type="button" class="ds-btn" id="sup-copy"><svg><use href="#i-csv"/></svg>Copy</button></div>
       </section>
     </section>
 
     <!-- About: the version, where it runs, and the source. -->
     <section class="sub" data-sub="about" data-title="About" hidden>
-      <header class="sub-head"><h2>About</h2><p>The version, where it runs, and the source code.</p></header>
+      <header class="sub-head"><h2>About</h2><p>Version, server and source code.</p></header>
       <section class="ds-sec" data-sec="about">
         <div class="ds-row"><div class="ds-l"><b>Version</b></div><div class="ds-r"><span class="ds-v" id="ab-version">Rabbid Lab</span></div></div>
         <div class="ds-row"><div class="ds-l"><b>Server</b></div><div class="ds-r"><span class="ds-v" id="ab-server"></span></div></div>
@@ -627,7 +627,7 @@
       <!-- New adds what the open list holds; its arrow has Add computers, Add an app, New script and New workflow (devices.js). -->
       <div class="cmd-pair" id="dv-new-pair" data-can="seats.add seats.installs seats.scripts.edit seats.workflows">
         <button type="button" class="cmd" id="dv-new" data-tip="Add computers"><svg><use href="#i-plus"/></svg><span>New</span></button><i class="cmd-rule"></i>
-        <button type="button" class="cmd cmd-arrow" id="dv-new-more" aria-haspopup="menu" data-tip="Add computers or an app, new script or workflow" aria-label="Everything Devices adds"><svg class="chev"><use href="#i-chevron-down"/></svg></button>
+        <button type="button" class="cmd cmd-arrow" id="dv-new-more" aria-haspopup="menu" data-tip="More options" aria-label="More options"><svg class="chev"><use href="#i-chevron-down"/></svg></button>
       </div>
     </div>
     <div class="dir-area">
@@ -647,7 +647,7 @@
         <a href="#seats/workflows" data-dv="workflows" data-can="seats.workflows"><svg><use href="#i-org"/></svg><span>Workflows</span><small id="dv-n-workflows"></small></a>
         <a href="#seats/deploy" data-dv="deploy" data-can="seats.add"><svg><use href="#i-download"/></svg><span>Deploy the client</span><small id="dv-n-deploy"></small></a>
         <p class="rail-label" data-can="sessions.view">Console</p>
-        <a href="#seats/sessions" data-dv="sessions" data-can="sessions.view"><svg><use href="#i-users"/></svg><span>Signed in now</span><small id="dv-n-sessions"></small></a>
+        <a href="#seats/sessions" data-dv="sessions" data-can="sessions.view"><svg><use href="#i-users"/></svg><span>Sessions</span><small id="dv-n-sessions"></small></a>
       </nav>
       <div class="dmain"><div class="lib" id="dv-lib"><div class="lib-body">
         <!-- The open list's tabs, with its rows (Compact or Relaxed, grid.js), Refresh and Export at their right end. Its
@@ -666,7 +666,7 @@
           </div>
           <textarea id="wq-text" spellcheck="false" autocomplete="off" rows="3" aria-label="Query" placeholder="SELECT * FROM Win32_BIOS"></textarea>
           <div class="wq-foot"><button type="button" class="primary" id="wq-run"><svg><use href="#i-right"/></svg>Run</button>
-            <span class="wq-note">Read only. Runs as SYSTEM on each computer, up to 30 seconds. Ctrl+Enter runs it too.</span></div>
+            <span class="wq-note">Read-only. Runs as SYSTEM on each computer, with a 30-second timeout. Press Ctrl+Enter to run.</span></div>
           <ul class="wq-problems" id="wq-problems" hidden></ul>
         </div>
         <!-- The filter bar (filter.js), then whichever list is open in its card: Actions, Group by and the count (grid.js).
@@ -675,7 +675,7 @@
         <div class="dv-deploy" id="dv-deploy" hidden></div>
         <div class="gcard" id="dv-card">
           <div class="gbar">
-            <button type="button" class="small" id="dv-act" aria-haspopup="menu" disabled data-tip="Tick computers first">Actions<b class="cnt" hidden></b><svg class="chev"><use href="#i-chevron-down"/></svg></button>
+            <button type="button" class="small" id="dv-act" aria-haspopup="menu" disabled data-tip="Select computers first">Actions<b class="cnt" hidden></b><svg class="chev"><use href="#i-chevron-down"/></svg></button>
             <div id="dv-tools"></div>
           </div>
           <div class="table adt drows" id="seats-table" data-can="seats.view" data-skel="rows:4"></div>
@@ -699,10 +699,10 @@
   <!-- Roles and people: the roles in order down the left, and everyone with their roles, or one role to change (people.js). -->
   <section class="page people-page" id="page-people" data-page="people" data-title="Roles and people" hidden>
     <header class="page-head"><h1>Roles and people</h1>
-      <p>Roles decide what people can do. Put Active Directory groups, single people and local accounts in them. Anyone can have several roles, and gets everything they allow.</p></header>
+      <p>Roles control what people can do. Add Active Directory groups, individual users and local accounts to roles. A person with several roles gets the permissions of all of them.</p></header>
     <div class="lib">
       <aside class="side" aria-label="Roles and people">
-        <label class="side-find"><svg><use href="#i-search"/></svg><input type="search" id="ppl-find" placeholder="Find a person, group or role" aria-label="Find a person, group or role" autocomplete="off" spellcheck="false"></label>
+        <label class="side-find"><svg><use href="#i-search"/></svg><input type="search" id="ppl-find" placeholder="Search people, groups and roles" aria-label="Search people, groups and roles" autocomplete="off" spellcheck="false"></label>
         <p class="side-label">Browse</p>
         <a href="#people" data-browse="all"><svg><use href="#i-list"/></svg>Everyone<small id="b-all"><i class="sk sk-num"></i></small></a>
         <a href="#people/people" data-browse="people"><svg><use href="#i-user"/></svg>People<small id="b-people"><i class="sk sk-num"></i></small></a>
@@ -741,15 +741,15 @@
           <div data-pane="display">
             <div class="form">
               <label for="role-edit-name">Role name</label><input id="role-edit-name" maxlength="40" autocomplete="off">
-              <label for="role-edit-about">What it's for</label><input id="role-edit-about" maxlength="160" autocomplete="off">
+              <label for="role-edit-about">Description</label><input id="role-edit-about" maxlength="160" autocomplete="off">
               <p class="form-label">Colour</p><div class="swatches" id="role-swatches" role="radiogroup" aria-label="Colour"></div>
-              <p class="form-label">How it looks</p><div class="chips-preview" id="role-preview"></div>
+              <p class="form-label">Preview</p><div class="chips-preview" id="role-preview"></div>
             </div>
-            <p class="lib-label">Where it sits</p>
+            <p class="lib-label">Position</p>
             <p class="hint" id="role-where"></p>
             <p class="lib-label">Sign-in</p>
-            <p class="hint">Everyone signs in with their password and a code from an authenticator app: MFA is required for everyone, in every role.</p>
-            <div class="rows" id="role-delete-row"><div class="row still"><span class="t"><b id="role-delete-title">Delete this role</b><span>Everyone in it loses what it gives them. Anything their other roles allow stays.</span></span>
+            <p class="hint">MFA is required for every role. Everyone signs in with a password and a code from an authenticator app.</p>
+            <div class="rows" id="role-delete-row"><div class="row still"><span class="t"><b id="role-delete-title">Delete this role</b><span>Members lose the permissions this role grants. Permissions from their other roles still apply.</span></span>
               <button type="button" class="danger" id="role-delete"><svg><use href="#i-trash"/></svg>Delete role</button></div></div>
           </div>
 
@@ -760,10 +760,10 @@
           </div>
 
           <div data-pane="members" hidden>
-            <p class="lib-label">In this role</p>
+            <p class="lib-label">Members</p>
             <div class="rows" id="member-list"></div>
             <div id="member-add" data-can="access.members">
-              <p class="lib-label">Add to this role</p>
+              <p class="lib-label">Add members</p>
               <div class="adder"><label class="find"><svg><use href="#i-search"/></svg><input type="search" id="member-find" data-find placeholder="Search groups, people and local accounts" aria-label="Search groups, people and local accounts" autocomplete="off" spellcheck="false"></label>
                 <div class="drop" data-drop hidden></div></div>
             </div>
@@ -777,7 +777,7 @@
     <!-- The roles to give someone, from the + beside their roles. -->
     <div class="rmenu" id="rmenu" hidden></div>
     <!-- Changes to a role wait here until saved. -->
-    <div class="unsaved" id="role-unsaved" hidden><span>Careful, you have changes that aren't saved.</span>
+    <div class="unsaved" id="role-unsaved" hidden><span>You have unsaved changes.</span>
       <button type="button" class="link" id="role-reset">Reset</button><button type="button" class="go" id="role-save">Save changes</button></div>
   </section>
 
@@ -790,20 +790,20 @@
       <div class="hero-row">
       <div class="hero-stats">
         <div><b id="ln-count"><i class="sk sk-num"></i></b><span><svg><use href="#i-link"/></svg>Links</span></div>
-        <div><b id="ln-answering"><i class="sk sk-num"></i></b><span><svg><use href="#i-activity"/></svg>Answering</span></div>
+        <div><b id="ln-answering"><i class="sk sk-num"></i></b><span><svg><use href="#i-activity"/></svg>Responding</span></div>
         <div><b id="ln-every"><i class="sk sk-num"></i></b><span><svg><use href="#i-clock"/></svg>Checks</span></div>
         <div id="ln-watched-wrap" hidden><b id="ln-watched"></b><span><svg><use href="#i-eye"/></svg>Watched</span></div>
       </div>
       </div>
       <aside class="hero-new bad" id="ln-card" hidden>
-        <p class="eyebrow">Down now</p>
+        <p class="eyebrow">Down</p>
         <b id="ln-card-title"></b>
         <p id="ln-card-text"></p>
-        <a class="more" id="ln-card-more" target="_blank" rel="noopener noreferrer">Open the link →</a>
+        <a class="more" id="ln-card-more" target="_blank" rel="noopener noreferrer">Open link →</a>
       </aside>
     </header>
     <!-- The command bar along the bottom of the banner: what can be done here, then the view and the gear on the right. -->
-    <div class="cmdbar" id="ln-tools" role="toolbar" aria-label="Links" data-dock="ln-view ln-refresh ln-add">
+    <div class="cmdbar" id="ln-tools" role="toolbar" aria-label="Links" data-dock="ln-view ln-refresh ln-add+ln-newgroup">
       <button type="button" class="cmd" id="ln-add" data-can="links.edit"><svg><use href="#i-plus"/></svg><span>Add a link</span></button>
       <button type="button" class="cmd" id="ln-newgroup" data-can="links.edit"><svg><use href="#i-folder"/></svg><span>New group</span></button>
       <button type="button" class="cmd" id="ln-refresh" data-can="links.edit"><svg><use href="#i-refresh"/></svg><span>Refresh icons</span></button>
@@ -823,12 +823,12 @@
     <p class="hint note ln-done" id="ln-done" role="status" hidden></p>
     <div id="ln-list" data-skel="tiles:8"></div>
     <div class="ln-empty" id="ln-empty" hidden><span class="big-ic ember"><svg><use href="#i-link"/></svg></span>
-      <div><b>No links yet</b><span id="ln-empty-text">Add the stuff you log into every day, like your router, NAS or iDRACs. Paste an address and <span data-app>Rabbid Lab</span> grabs the name, icon and IP for you.</span></div>
+      <div><b>No links yet</b><span id="ln-empty-text">Add the sites you sign in to every day, such as your router, NAS or iDRACs. Paste an address and <span data-app>Rabbid Lab</span> fills in the name, icon and IP address.</span></div>
       <button type="button" class="primary" id="ln-add-first" data-can="links.edit"><svg><use href="#i-plus"/></svg>Add a link</button></div>
     <p class="hint problem" id="ln-problem" hidden></p>
     <!-- Watch links: the bar along the bottom while links are being ticked (links.js). -->
     <div class="lw-bar" id="lw-bar" role="toolbar" aria-label="Watch links" hidden>
-      <span class="lw-count"><b id="lw-n">0</b> ticked<small id="lw-more"></small></span><span class="lw-sep"></span>
+      <span class="lw-count"><b id="lw-n">0</b> selected<small id="lw-more"></small></span><span class="lw-sep"></span>
       <label class="lw-f"><span>Alert type</span><select id="lw-type"></select></label><span class="lw-sep"></span>
       <button type="button" class="link" id="lw-cancel">Cancel</button><button type="button" class="primary" id="lw-go"><svg><use href="#i-eye"/></svg><span id="lw-go-text">Watch</span></button>
     </div>
@@ -843,8 +843,8 @@
       <p class="hero-lead"><b id="sn-lead"></b> <span id="sn-lead-more"></span></p>
       <div class="hero-row">
       <div class="hero-stats">
-        <div><b id="sn-answering"><i class="sk sk-num"></i></b><span><svg><use href="#i-activity"/></svg>Answering</span></div>
-        <div><b id="sn-week"><i class="sk sk-num"></i></b><span><svg><use href="#i-clock"/></svg>Up, last 7 days</span></div>
+        <div><b id="sn-answering"><i class="sk sk-num"></i></b><span><svg><use href="#i-activity"/></svg>Responding</span></div>
+        <div><b id="sn-week"><i class="sk sk-num"></i></b><span><svg><use href="#i-clock"/></svg>Uptime (7 days)</span></div>
         <div><b id="sn-last"><i class="sk sk-num"></i></b><span><svg><use href="#i-updates"/></svg>Last check</span></div>
       </div>
       </div>
@@ -852,7 +852,7 @@
         <p class="eyebrow" id="sn-card-kind"></p>
         <b id="sn-card-title"></b>
         <p id="sn-card-text"></p>
-        <a class="more" href="#sensors" id="sn-card-more">Open the sensor →</a>
+        <a class="more" href="#sensors" id="sn-card-more">Open sensor →</a>
       </aside>
     </header>
     <!-- The command bar along the bottom of the banner, as on Links. With no sensors only the gear shows: the empty card has Add. -->
@@ -873,7 +873,7 @@
       <div id="sn-fbar" hidden></div>
       <div id="sn-list" data-skel="tiles:6"></div>
       <div class="ln-empty" id="sn-empty" hidden><span class="big-ic ember"><svg><use href="#i-activity"/></svg></span>
-        <div><b>No sensors yet</b><span>A sensor checks something on a timer: a machine that answers ping, an open port, a web page, a DNS name or a certificate. <span data-app>Rabbid Lab</span> emails you when one stays down.</span></div>
+        <div><b>No sensors yet</b><span>A sensor runs a check on a schedule: ping, an open port, a web page, a DNS name or a certificate. <span data-app>Rabbid Lab</span> sends an alert when a sensor stays down.</span></div>
         <button type="button" class="primary" id="sn-add-first" data-can="sensors.edit"><svg><use href="#i-plus"/></svg>Add a sensor</button></div>
       <p class="hint problem" id="sn-problem" hidden></p>
     </section>
@@ -940,7 +940,7 @@
           </div>
           <div class="table" id="dir-table"></div>
         </div>
-        <p class="hint" id="dir-more" hidden>Active Directory has more than the 1,000 listed here.</p>
+        <p class="hint" id="dir-more" hidden>Only the first 1,000 results are shown.</p>
       </div>
     </div>
     <p class="hint problem" id="dir-problem" hidden></p>
@@ -971,7 +971,7 @@
         <a href="#gpo/wmi" data-gpo="wmi"><svg><use href="#i-filter"/></svg><span>WMI filters</span><small id="gpo-n-wmi"></small></a>
         <p class="rail-label">Tools</p>
         <a href="#gpo/backups" data-gpo="backups"><svg><use href="#i-history"/></svg><span>Backups</span><small id="gpo-n-backups"></small></a>
-        <a href="#seats/gplocal" data-can="seats.view"><svg><use href="#i-monitor"/></svg><span>Results on a computer</span></a>
+        <a href="#seats/gplocal" data-can="seats.view"><svg><use href="#i-monitor"/></svg><span>Group Policy results</span></a>
       </nav>
       <div class="dmain">
         <div class="lib" id="gpo-lib"><div class="lib-body">
@@ -985,7 +985,7 @@
           <p class="hint note" id="gpo-note" hidden></p>
           <div class="gcard">
             <div class="gbar">
-              <button type="button" class="small" id="gpo-act" aria-haspopup="menu" disabled data-tip="Tick GPOs first">Actions<b class="cnt" hidden></b><svg class="chev"><use href="#i-chevron-down"/></svg></button>
+              <button type="button" class="small" id="gpo-act" aria-haspopup="menu" disabled data-tip="Select GPOs first">Actions<b class="cnt" hidden></b><svg class="chev"><use href="#i-chevron-down"/></svg></button>
               <div id="gpo-tools"></div>
             </div>
             <div class="table adt drows" id="gpo-table" data-skel="rows:6"></div>
@@ -997,7 +997,7 @@
   </section>
 
   <!-- Org chart: who reports to whom, from each person's Manager in Active Directory (directory.js). -->
-  <section class="page home dir-top org-page" id="page-org" data-page="org" data-title="Org chart" data-lead="Who reports to whom, from each person's Manager in Active Directory." hidden>
+  <section class="page home dir-top org-page" id="page-org" data-page="org" data-title="Org chart" data-lead="Reporting lines, based on the Manager attribute in Active Directory." hidden>
   <div class="dir-area">
     <div class="dgate" id="org-setup" hidden></div>
     <div class="dmain">
@@ -1007,14 +1007,14 @@
       <span class="bar-note" id="org-count"></span>
       <button type="button" class="small primary" id="org-whole" hidden><svg><use href="#i-org"/></svg>Whole organization</button>
       <button type="button" class="small" data-org-all="open">Expand all</button>
-      <button type="button" class="small" data-org-all="close">Collapse</button>
+      <button type="button" class="small" data-org-all="close">Collapse all</button>
       <button type="button" class="small" data-org-zoom="out" data-tip="Zoom out" aria-label="Zoom out"><svg><use href="#i-minus"/></svg></button>
       <button type="button" class="small" data-org-zoom="in" data-tip="Zoom in" aria-label="Zoom in"><svg><use href="#i-plus"/></svg></button>
-      <button type="button" class="small" data-org-zoom="fit" data-tip="Show it all">Fit</button>
+      <button type="button" class="small" data-org-zoom="fit" data-tip="Fit to screen">Fit</button>
       <button type="button" class="small" id="org-export" popovertarget="org-export-menu" data-tip="Download" aria-label="Download the chart"><svg><use href="#i-download"/></svg></button>
       <div class="gear-menu" id="org-export-menu" popover>
-        <div class="am-links"><button type="button" class="am-link" data-org-export="png"><svg><use href="#i-download"/></svg>Picture (PNG)</button>
-          <button type="button" class="am-link" data-org-export="svg"><svg><use href="#i-download"/></svg>Drawing (SVG)</button></div>
+        <div class="am-links"><button type="button" class="am-link" data-org-export="png"><svg><use href="#i-download"/></svg>PNG image</button>
+          <button type="button" class="am-link" data-org-export="svg"><svg><use href="#i-download"/></svg>SVG image</button></div>
       </div>
     </div>
     <p class="hint" id="org-note" hidden></p>
@@ -1027,18 +1027,18 @@
   </section>
 
   <!-- Attribute browser: the directory as a tree, and every attribute of whatever's picked (directory.js). -->
-  <section class="page home dir-top people-page attrs-page" id="page-attrs" data-page="attrs" data-title="Attribute browser" data-lead="Every OU, container and object in the domain, and every attribute each one has." hidden>
+  <section class="page home dir-top people-page attrs-page" id="page-attrs" data-page="attrs" data-title="Attribute browser" data-lead="Every OU, container and object in the domain, with all of its attributes." hidden>
   <div class="dir-area">
     <div class="dgate" id="at-setup" hidden></div>
     <div class="dmain">
     <div class="lib" id="at-lib">
       <aside class="side attrs-side" aria-label="Directory">
-        <nav class="crumbs" id="at-crumbs" aria-label="Where"></nav>
+        <nav class="crumbs" id="at-crumbs" aria-label="Path"></nav>
         <div id="at-items"></div>
-        <p class="hint" id="at-more" hidden>There's more here than Active Directory sent; it sends the first 1,000.</p>
+        <p class="hint" id="at-more" hidden>Only the first 1,000 items are shown.</p>
       </aside>
       <div class="lib-body">
-        <div class="lib-bar"><h2 id="at-title">Pick something on the left</h2><span class="bar-note" id="at-line"></span>
+        <div class="lib-bar"><h2 id="at-title">Select an object on the left</h2><span class="bar-note" id="at-line"></span>
           <span class="at-tools" id="at-tools" hidden><label class="at-hide"><input type="checkbox" class="switch" id="at-empty" role="switch" checked><span>Hide empty</span></label>
             <span class="ds-pair"><button type="button" class="ds-btn ds-ibtn" id="at-copy-dn" data-tip="Copy DN" aria-label="Copy the distinguished name"><svg><use href="#i-copy"/></svg></button><button type="button" class="ds-btn ds-ibtn" id="at-export" data-tip="Export CSV" aria-label="Export every attribute to a CSV file"><svg><use href="#i-download"/></svg></button></span></span></div>
         <label class="side-find at-find" id="at-find-row" hidden><svg><use href="#i-search"/></svg><input type="search" id="at-find" placeholder="Find an attribute or value" aria-label="Find an attribute or value" autocomplete="off" spellcheck="false"></label>
@@ -1052,7 +1052,7 @@
 
   <!-- Wiki: how to do everything, step by step, with links to the pages it talks about (wiki.js reads Assets/wiki.html). -->
   <section class="page people-page wiki-page" id="page-wiki" data-page="wiki" data-title="Wiki" hidden>
-    <header class="page-head"><h1>Wiki</h1><p>How to do everything in <span data-app>Rabbid Lab</span>, step by step.</p></header>
+    <header class="page-head"><h1>Wiki</h1><p>Step-by-step guides for <span data-app>Rabbid Lab</span>.</p></header>
     <div class="lib">
       <aside class="side" aria-label="Articles">
         <label class="side-find"><svg><use href="#i-search"/></svg><input type="search" id="wiki-find" placeholder="Search the wiki" aria-label="Search the wiki" autocomplete="off" spellcheck="false"></label>
@@ -1060,7 +1060,7 @@
       </aside>
       <div class="lib-body">
         <article class="wiki-body" id="wiki-body"></article>
-        <nav class="wiki-next" id="wiki-next" aria-label="Before and next"></nav>
+        <nav class="wiki-next" id="wiki-next" aria-label="Previous and next"></nav>
       </div>
     </div>
   </section>
@@ -1070,18 +1070,18 @@
     <header class="hero" id="sync-hero">
       <p class="eyebrow">Directory</p>
       <h1 class="hero-title">Sync</h1>
-      <p class="hero-lead"><b id="sync-state"></b> <span>Copy changes between your domain controllers now, and on to Microsoft 365.</span></p>
+      <p class="hero-lead"><b id="sync-state"></b> <span>Replicate changes between your domain controllers and sync to Microsoft 365.</span></p>
       <div class="hero-row">
       <div class="hero-stats">
-        <div><b id="sync-n-waiting"><i class="sk sk-num"></i></b><span><svg><use href="#i-history"/></svg>Changes waiting</span></div>
+        <div><b id="sync-n-waiting"><i class="sk sk-num"></i></b><span><svg><use href="#i-history"/></svg>Pending changes</span></div>
         <div><b id="sync-n-dcs"><i class="sk sk-num"></i></b><span><svg><use href="#i-server"/></svg>DCs reachable</span></div>
-        <div><b id="sync-n-m365"><i class="sk sk-num"></i></b><span><svg><use href="#i-cloud"/></svg>Microsoft 365 synced</span></div>
+        <div><b id="sync-n-m365"><i class="sk sk-num"></i></b><span><svg><use href="#i-cloud"/></svg>Last Microsoft 365 sync</span></div>
       </div>
       </div>
     </header>
     <div class="sync-body" id="sync-body" data-skel="rows:6"></div>
   </section>  <section class="page" id="page-whats-new" data-page="whats-new" data-title="What's new" hidden>
-    <header class="page-head"><h1>What's new</h1><p>What changed in each version.</p></header>
+    <header class="page-head"><h1>What's new</h1><p>Release notes for each version.</p></header>
     <!-- A timeline down the left, a card per version (console.js, notes()). -->
     <div class="nw-tl" id="notes"></div>
   </section>
@@ -1090,9 +1090,9 @@
 <!-- Add computers: the client, how to install it on one computer or many, and whether new ones wait. -->
 <dialog class="dialog wide" id="add-dialog" aria-labelledby="add-title">
   <h2 id="add-title">Add computers</h2>
-  <p class="dialog-lead">Install the <span data-app>Rabbid Lab</span> client on a computer and it shows up under Devices. Or open <span data-app>Rabbid Lab</span> in a browser on that computer and click Connect this computer.</p>
+  <p class="dialog-lead">Install the <span data-app>Rabbid Lab</span> client on a computer to add it to Devices. Or open <span data-app>Rabbid Lab</span> in a browser on that computer and click Connect this computer.</p>
   <div class="step"><span class="n">1</span><div><b>Install the client</b>
-    <p class="hint" id="get-client">Download it and run it, or install it quietly from a command line or Intune:</p>
+    <p class="hint" id="get-client">Download and run the installer, or install it silently from a command line or Intune:</p>
     <div class="key-row"><code class="cmd" id="install-line"></code><button type="button" class="small" id="line-copy">Copy</button></div>
     <a class="button small-link" id="msi-link" href="/api/clients/download" download>Download the client (MSI)</a></div></div>
   <div class="step"><span class="n">2</span><div><b>Or with Group Policy</b>
@@ -1100,7 +1100,7 @@
     <a class="button small-link" id="policy-link" href="/api/clients/policy" download>Download the Group Policy template</a></div></div>
   <div class="fingerprint" id="fingerprint-row" hidden><span>This server's public key fingerprint</span><code id="fingerprint"></code></div>
   <div class="rows">
-    <div class="row still" data-can="seats.settings"><svg><use href="#i-shield"/></svg><span class="t"><b>Require approval for new computers</b><span>New computers show as Waiting until an admin approves them. Turn this off and they connect right away.</span></span>
+    <div class="row still" data-can="seats.settings"><svg><use href="#i-shield"/></svg><span class="t"><b>Require approval for new computers</b><span>New computers show as Pending approval until an admin approves them. When this is off, they connect immediately.</span></span>
       <input type="checkbox" class="switch" id="join-approve" role="switch" aria-label="Require approval for new computers"></div>
   </div>
   <div class="dialog-foot"><button type="button" id="add-close">Done</button></div>
@@ -1109,7 +1109,7 @@
 <!-- Add people: someone from Active Directory or a local account into roles, or a new local account. -->
 <dialog class="dialog wide" id="people-dialog" aria-labelledby="people-title">
   <h2 id="people-title">Add people</h2>
-  <p class="dialog-lead">Pick who, then the roles to put them in. Everyone who signs in also has User.</p>
+  <p class="dialog-lead">Select people or groups, then the roles to add them to. Everyone who signs in also has the User role.</p>
   <nav class="tabs2" id="people-tabs"><a data-ptab="find" data-can="access.members">Groups and people</a><a data-ptab="local" data-can="access.local">New local account</a></nav>
   <div data-ppane="find">
     <div class="adder"><label class="find"><svg><use href="#i-search"/></svg><input type="search" id="pd-find" placeholder="Search groups, people and local accounts" aria-label="Search" autocomplete="off" spellcheck="false"></label></div>
@@ -1118,7 +1118,7 @@
   <div data-ppane="local" hidden>
     <div class="form">
       <label for="pd-user">Username</label><input id="pd-user" autocomplete="off" spellcheck="false">
-      <label for="pd-password">Password</label><input id="pd-password" type="password" autocomplete="new-password" placeholder="8 characters or more">
+      <label for="pd-password">Password</label><input id="pd-password" type="password" autocomplete="new-password" placeholder="At least 8 characters">
     </div>
   </div>
   <p class="form-label">Roles</p>
@@ -1134,7 +1134,7 @@
   <p class="dialog-lead" id="mfa-lead"></p>
   <div id="mfa-setup">
     <div class="mfa-qr" id="mfa-qr"></div>
-    <p class="mfa-key">Can't scan it? Type this key into the app instead:<code id="mfa-secret"></code></p>
+    <p class="mfa-key">Can't scan the code? Enter this key in the app instead:<code id="mfa-secret"></code></p>
   </div>
   <div class="form">
     <label for="mfa-code">6-digit code</label><input id="mfa-code" inputmode="numeric" maxlength="7" autocomplete="one-time-code" spellcheck="false">
@@ -1145,10 +1145,10 @@
 
 <dialog class="dialog" id="mypw-dialog" aria-labelledby="mypw-title">
   <h2 id="mypw-title">Change your password</h2>
-  <p class="dialog-lead">Every browser signed in as you is signed out, this one too. Sign in again with the new password.</p>
+  <p class="dialog-lead">All of your sessions are signed out, including this one. Sign in again with the new password.</p>
   <div class="form">
     <label for="mypw-current">Current password</label><input id="mypw-current" type="password" autocomplete="current-password">
-    <label for="mypw-new">New password</label><input id="mypw-new" type="password" autocomplete="new-password" placeholder="8 characters or more">
+    <label for="mypw-new">New password</label><input id="mypw-new" type="password" autocomplete="new-password" placeholder="At least 8 characters">
   </div>
   <p class="hint problem" id="mypw-problem" role="alert" hidden></p>
   <div class="dialog-foot"><button type="button" id="mypw-cancel">Cancel</button><button type="button" class="primary" id="mypw-save">Change password</button></div>
@@ -1158,7 +1158,7 @@
 <dialog class="dialog" id="password-dialog" aria-labelledby="password-title">
   <h2 id="password-title">New password</h2>
   <p class="dialog-lead" id="password-lead"></p>
-  <div class="form"><label for="pw-new">Password</label><input id="pw-new" type="password" autocomplete="new-password" placeholder="8 characters or more"></div>
+  <div class="form"><label for="pw-new">Password</label><input id="pw-new" type="password" autocomplete="new-password" placeholder="At least 8 characters"></div>
   <p class="hint problem" id="pw-problem" hidden></p>
   <div class="dialog-foot"><button type="button" id="pw-cancel">Cancel</button><button type="button" class="primary" id="pw-save">Save</button></div>
 </dialog>
@@ -1167,7 +1167,7 @@
 <dialog class="dialog dset" id="dset-dialog" aria-labelledby="dset-title">
   <div class="dset-side">
     <h2 id="dset-title">Service account</h2>
-    <p class="dset-lead"><span data-app>Rabbid Lab</span> makes its Active Directory changes as this account.</p>
+    <p class="dset-lead"><span data-app>Rabbid Lab</span> uses this account to make changes in Active Directory.</p>
     <ol class="dset-steps" id="dset-steps"></ol>
   </div>
   <div class="dset-main">
@@ -1175,8 +1175,8 @@
       <div class="dset-head"><span class="big-ic ember"><svg><use id="dset-icon" href="#i-user"/></svg></span><span><b id="dset-step-title"></b><small id="dset-step-text"></small></span></div>
       <div class="dset-pane" data-pane="choose">
         <div class="dset-cards" id="dset-choose">
-          <button type="button" class="dset-card" data-adtab="make" aria-pressed="true"><span class="big-ic"><svg><use href="#i-user-plus"/></svg></span><span><b>Create a new one</b><span>Sign in once as a domain admin. <span data-app>Rabbid Lab</span> creates svc-rabbidlab with a long random password and delegates permissions on the OU you pick. The admin login isn't saved.</span></span></button>
-          <button type="button" class="dset-card" data-adtab="existing" aria-pressed="false"><span class="big-ic"><svg><use href="#i-user"/></svg></span><span><b>Use one I have</b><span>Pick an account from AD, or type it, and give its password. It needs permission to create and change users, groups and computers where <span data-app>Rabbid Lab</span> works.</span></span></button>
+          <button type="button" class="dset-card" data-adtab="make" aria-pressed="true"><span class="big-ic"><svg><use href="#i-user-plus"/></svg></span><span><b>Create a new account</b><span>Sign in once as a domain admin. <span data-app>Rabbid Lab</span> creates svc-rabbidlab with a long random password and delegates permissions on the OU you select. The domain admin credentials are not stored.</span></span></button>
+          <button type="button" class="dset-card" data-adtab="existing" aria-pressed="false"><span class="big-ic"><svg><use href="#i-user"/></svg></span><span><b>Use an existing account</b><span>Select an account in AD or enter its name, then enter its password. The account needs permission to create and modify users, groups and computers in the OUs <span data-app>Rabbid Lab</span> manages.</span></span></button>
         </div>
       </div>
       <div class="dset-pane" data-pane="signin">
@@ -1185,11 +1185,11 @@
           <div class="drop dset-drop" id="dset-drop" hidden></div></div>
         <label class="dset-fld"><span>Password</span><span class="dset-in"><svg><use href="#i-lock"/></svg><input id="dset-password" type="password" autocomplete="current-password"></span></label>
         <p class="dset-note"><svg><use href="#i-lock"/></svg><span id="dset-note"></span></p>
-        <p class="hint" data-can="windows.view">No domain, or you only need local accounts? Those need no service account: open a computer in <a href="#seats" id="dset-local">Devices</a> and use its Accounts tab.</p>
+        <p class="hint" data-can="windows.view">No domain, or managing local accounts only? Local accounts do not need a service account. Open a computer in <a href="#seats" id="dset-local">Devices</a> and use its Accounts tab.</p>
       </div>
       <div class="dset-pane" data-pane="account" hidden>
         <label class="dset-fld"><span>Service account name</span><span class="dset-in"><svg><use href="#i-user"/></svg><input id="dset-account" maxlength="20" autocomplete="off" spellcheck="false"></span></label>
-        <div class="dset-fld"><label for="dset-ou">Create it in</label><div class="ou-row"><select id="dset-ou"></select><button type="button" data-browse-ou="dset-ou"><svg><use href="#i-folder"/></svg>Browse…</button></div></div>
+        <div class="dset-fld"><label for="dset-ou">Create in</label><div class="ou-row"><select id="dset-ou"></select><button type="button" data-browse-ou="dset-ou"><svg><use href="#i-folder"/></svg>Browse…</button></div></div>
       </div>
       <div class="dset-pane" data-pane="review" hidden>
         <div class="dset-review" id="dset-review"></div>
@@ -1205,7 +1205,7 @@
 <!-- Picking an OU: the OUs as a rail, the way Settings lists its pages, and the one picked beside it. Browse… beside an OU list opens it. -->
 <dialog class="dialog oupick" id="oupick-dialog" aria-labelledby="oupick-title">
   <button type="button" class="oupick-x" id="oupick-x" aria-label="Close"><svg><use href="#i-x"/></svg></button>
-  <h2 id="oupick-title">Pick an OU</h2>
+  <h2 id="oupick-title">Select an OU</h2>
   <p class="dialog-lead" id="oupick-lead"></p>
   <div class="oupick-grid">
     <nav class="dnav lists oupick-rail" aria-label="OUs">
@@ -1220,8 +1220,8 @@
 <!-- Browse… for the service account: the OUs as a rail, as Pick an OU shows them, and the accounts in the one picked. Read as this server (users.js). -->
 <dialog class="dialog oupick" id="acctpick-dialog" aria-labelledby="acctpick-title">
   <button type="button" class="oupick-x" id="acctpick-x" aria-label="Close"><svg><use href="#i-x"/></svg></button>
-  <h2 id="acctpick-title">Pick the service account</h2>
-  <p class="dialog-lead">Browse Active Directory, or find the account by name.</p>
+  <h2 id="acctpick-title">Select the service account</h2>
+  <p class="dialog-lead">Browse Active Directory or search for the account by name.</p>
   <div class="oupick-grid">
     <nav class="dnav lists oupick-rail" aria-label="OUs">
       <label class="side-find"><svg><use href="#i-search"/></svg><input type="search" id="acctpick-find" placeholder="Find an account" aria-label="Find an account" autocomplete="off" spellcheck="false"></label>
@@ -1244,16 +1244,16 @@
     <div class="pc-only"><label for="new-full">Full name</label><input id="new-full" autocomplete="off"></div>
     <div class="dir-only"><label for="new-mail">Email</label><input id="new-mail" type="email" autocomplete="off"></div>
     <div class="dir-only"><label for="new-job">Job title</label><input id="new-job" autocomplete="off"></div>
-    <div class="dir-only wide"><label for="new-ou">Put it in</label><div class="ou-row"><select id="new-ou"></select><button type="button" data-browse-ou="new-ou"><svg><use href="#i-folder"/></svg>Browse…</button></div></div>
+    <div class="dir-only wide"><label for="new-ou">OU</label><div class="ou-row"><select id="new-ou"></select><button type="button" data-browse-ou="new-ou"><svg><use href="#i-folder"/></svg>Browse…</button></div></div>
     <div class="wide"><label for="new-about">Description</label><input id="new-about" autocomplete="off"></div>
   </div>
   <p class="form-label">Password</p>
-  <div class="seg pw-mode" id="new-pwmode"><button type="button" data-pw="make" aria-pressed="true">Make one for me</button><button type="button" data-pw="type" aria-pressed="false">Type one</button></div>
-  <input class="pick pw-typed" id="new-password" type="password" autocomplete="new-password" placeholder="The password rules there apply" hidden>
+  <div class="seg pw-mode" id="new-pwmode"><button type="button" data-pw="make" aria-pressed="true">Generate password</button><button type="button" data-pw="type" aria-pressed="false">Enter password</button></div>
+  <input class="pick pw-typed" id="new-password" type="password" autocomplete="new-password" placeholder="Must meet the password policy" hidden>
   <div class="ticks">
-    <label class="tick"><input type="checkbox" id="new-change" checked>Change it at the first sign-in</label>
-    <label class="tick"><input type="checkbox" id="new-never">The password never expires</label>
-    <label class="tick dir-only"><input type="checkbox" id="new-on" checked>Turn the account on now</label>
+    <label class="tick"><input type="checkbox" id="new-change" checked>User must change password at next sign-in</label>
+    <label class="tick"><input type="checkbox" id="new-never">Password never expires</label>
+    <label class="tick dir-only"><input type="checkbox" id="new-on" checked>Enable the account now</label>
   </div>
   <p class="form-label">Groups</p>
   <div class="role-picks pc-only" id="new-pc-groups"></div>
@@ -1263,41 +1263,41 @@
       <div class="drop" data-drop hidden></div></div>
   </div>
   <p class="hint problem" id="new-problem" hidden></p>
-  <div class="dialog-foot"><button type="button" id="new-cancel">Cancel</button><button type="button" class="primary" id="new-go">Make the account</button></div>
+  <div class="dialog-foot"><button type="button" id="new-cancel">Cancel</button><button type="button" class="primary" id="new-go">Create account</button></div>
 </dialog>
 
 <!-- A new password for an AD or Windows account. -->
 <dialog class="dialog" id="reset-dialog" aria-labelledby="reset-title">
-  <h2 id="reset-title">Set a password</h2>
+  <h2 id="reset-title">Reset password</h2>
   <p class="dialog-lead" id="reset-lead"></p>
-  <div class="seg pw-mode" id="reset-pwmode"><button type="button" data-pw="make" aria-pressed="true">Make one for me</button><button type="button" data-pw="type" aria-pressed="false">Type one</button></div>
-  <input class="pick pw-typed" id="reset-password" type="password" autocomplete="new-password" placeholder="The password rules there apply" hidden>
-  <div class="ticks"><label class="tick"><input type="checkbox" id="reset-change" checked>Change it at the next sign-in</label></div>
+  <div class="seg pw-mode" id="reset-pwmode"><button type="button" data-pw="make" aria-pressed="true">Generate password</button><button type="button" data-pw="type" aria-pressed="false">Enter password</button></div>
+  <input class="pick pw-typed" id="reset-password" type="password" autocomplete="new-password" placeholder="Must meet the password policy" hidden>
+  <div class="ticks"><label class="tick"><input type="checkbox" id="reset-change" checked>User must change password at next sign-in</label></div>
   <p class="hint problem" id="reset-problem" hidden></p>
-  <div class="dialog-foot"><button type="button" id="reset-cancel">Cancel</button><button type="button" class="primary" id="reset-go">Set the password</button></div>
+  <div class="dialog-foot"><button type="button" id="reset-cancel">Cancel</button><button type="button" class="primary" id="reset-go">Reset password</button></div>
 </dialog>
 
 <!-- A password Rabbid Lab made, shown this once. -->
 <dialog class="dialog" id="secret-dialog" aria-labelledby="secret-title">
-  <h2 id="secret-title">The password</h2>
+  <h2 id="secret-title">Password</h2>
   <p class="dialog-lead" id="secret-lead"></p>
   <div class="key-row"><code id="secret-text"></code><button type="button" class="small" id="secret-copy">Copy</button></div>
-  <p class="hint">It's shown this once. <span data-app>Rabbid Lab</span> doesn't keep it.</p>
+  <p class="hint">This password is shown only once and is not stored.</p>
   <p class="hint warn" id="secret-warning" hidden></p>
   <div class="dialog-foot"><button type="button" class="primary" id="secret-done">Done</button></div>
 </dialog>
 
 <!-- Turning on the AD Recycle Bin, with an Enterprise Admin's sign-in (not kept). -->
 <dialog class="dialog" id="recycle-dialog" aria-labelledby="recycle-title">
-  <h2 id="recycle-title">Turn on the AD Recycle Bin</h2>
-  <p class="dialog-lead">Deleted users, groups and computers can then be brought back as they were. It's for the whole forest and can't be turned off again.</p>
+  <h2 id="recycle-title">Enable the AD Recycle Bin</h2>
+  <p class="dialog-lead">Deleted users, groups and computers can then be restored with all of their attributes. This applies to the whole forest and cannot be disabled.</p>
   <div class="form">
-    <label for="rb-user">An Enterprise Admin's username</label><input id="rb-user" autocomplete="username" spellcheck="false">
+    <label for="rb-user">Enterprise Admin username</label><input id="rb-user" autocomplete="username" spellcheck="false">
     <label for="rb-password">Password</label><input id="rb-password" type="password" autocomplete="current-password">
   </div>
-  <p class="hint">It's used for this once and not kept.</p>
+  <p class="hint">These credentials are used once and are not stored.</p>
   <p class="hint problem" id="rb-problem" hidden></p>
-  <div class="dialog-foot"><button type="button" id="rb-cancel">Cancel</button><button type="button" class="primary" id="rb-go">Turn it on</button></div>
+  <div class="dialog-foot"><button type="button" id="rb-cancel">Cancel</button><button type="button" class="primary" id="rb-go">Enable</button></div>
 </dialog>
 
 <!-- A new computer account, made before the computer joins the domain (pre-staged). -->
@@ -1307,11 +1307,11 @@
   <div class="form">
     <label for="pcnew-name">Computer name</label><input id="pcnew-name" maxlength="15" autocomplete="off" spellcheck="false">
     <label for="pcnew-about">Description</label><input id="pcnew-about" maxlength="200" autocomplete="off">
-    <label for="pcnew-ou">Put it in</label><div class="ou-row"><select id="pcnew-ou"></select><button type="button" data-browse-ou="pcnew-ou"><svg><use href="#i-folder"/></svg>Browse…</button></div>
+    <label for="pcnew-ou">OU</label><div class="ou-row"><select id="pcnew-ou"></select><button type="button" data-browse-ou="pcnew-ou"><svg><use href="#i-folder"/></svg>Browse…</button></div>
   </div>
-  <p class="hint">A computer with this name joins the domain into this account and OU.</p>
+  <p class="hint">A computer with this name uses this account and OU when it joins the domain.</p>
   <p class="hint problem" id="pcnew-problem" hidden></p>
-  <div class="dialog-foot"><button type="button" id="pcnew-cancel">Cancel</button><button type="button" class="primary" id="pcnew-go">Make the computer account</button></div>
+  <div class="dialog-foot"><button type="button" id="pcnew-cancel">Cancel</button><button type="button" class="primary" id="pcnew-go">Create computer account</button></div>
 </dialog>
 
 <!-- A new Active Directory group. -->
@@ -1321,25 +1321,25 @@
   <div class="form">
     <label for="grp-name">Group name</label><input id="grp-name" maxlength="64" autocomplete="off" spellcheck="false">
     <label for="grp-about">Description</label><input id="grp-about" maxlength="200" autocomplete="off">
-    <label for="grp-ou">Put it in</label><div class="ou-row"><select id="grp-ou"></select><button type="button" data-browse-ou="grp-ou"><svg><use href="#i-folder"/></svg>Browse…</button></div>
+    <label for="grp-ou">OU</label><div class="ou-row"><select id="grp-ou"></select><button type="button" data-browse-ou="grp-ou"><svg><use href="#i-folder"/></svg>Browse…</button></div>
     <label for="grp-scope">Group scope</label><select id="grp-scope"><option value="global">Global</option><option value="universal">Universal</option><option value="local">Domain local</option></select>
   </div>
   <p class="form-label">Group type</p>
   <div class="seg pw-mode" id="grp-type"><button type="button" data-type="security" aria-pressed="true">Security</button><button type="button" data-type="distribution" aria-pressed="false">Distribution</button></div>
   <p class="hint problem" id="grp-problem" hidden></p>
-  <div class="dialog-foot"><button type="button" id="grp-cancel">Cancel</button><button type="button" class="primary" id="grp-go">Make the group</button></div>
+  <div class="dialog-foot"><button type="button" id="grp-cancel">Cancel</button><button type="button" class="primary" id="grp-go">Create group</button></div>
 </dialog>
 
 <!-- A link: pasting the address fills in the rest from the site. -->
 <dialog class="dialog ld-dialog" id="link-dialog" aria-labelledby="link-title">
   <h2 id="link-title">Add a link</h2>
-  <p class="dialog-lead" id="ln-dlead">Paste the address. The name, icon and detail fill in from the site.</p>
+  <p class="dialog-lead" id="ln-dlead">Paste the address. The name, icon and description are filled in from the site.</p>
   <div class="seg sn-seg" id="ln-mode"><button type="button" data-mode="one">Single link</button><button type="button" data-mode="many">Bulk add</button></div>
   <!-- Rabbid Lab Dev, Developer tools on: test addresses to watch the whole of adding, gone 30 seconds after they're added. -->
-  <div class="devstrip ld-dev" id="ln-dev"><b>DEV</b><span class="one">Paste a test:</span><button type="button" class="small one" data-fill="up">A link</button>
-    <button type="button" class="small one" data-fill="down">One that doesn't answer</button><span class="many">Paste a test list:</span>
+  <div class="devstrip ld-dev" id="ln-dev"><b>DEV</b><span class="one">Test address:</span><button type="button" class="small one" data-fill="up">Working link</button>
+    <button type="button" class="small one" data-fill="down">Unreachable link</button><span class="many">Test list:</span>
     <button type="button" class="small many" data-fill="12">12 links</button><button type="button" class="small many" data-fill="200">200 links</button>
-    <span class="grow">Gone 30 seconds after it's added.</span></div>
+    <span class="grow">Test links are deleted 30 seconds after they are added.</span></div>
   <!-- One link: the form beside the tile as it will look, with the icon picked in a strip under the tile. -->
   <div class="ld-grid one">
     <div class="form two sd-form ld-form">
@@ -1348,10 +1348,10 @@
       <div><label for="ln-name">Name</label><input id="ln-name" maxlength="60" placeholder="Filled in from the site" autocomplete="off"></div>
       <div><label for="ln-group">Group</label><select id="ln-group"></select>
         <input id="ln-group-new" maxlength="40" placeholder="Name of the new group" aria-label="Name of the new group" autocomplete="off" hidden></div>
-      <div class="wide"><label for="ln-about">Detail</label><input id="ln-about" maxlength="200" placeholder="What it is, or what is on it" autocomplete="off"></div>
+      <div class="wide"><label for="ln-about">Description</label><input id="ln-about" maxlength="200" placeholder="What this link is for" autocomplete="off"></div>
     </div>
     <aside class="ld-side">
-      <p class="ld-cap">On the Links page</p>
+      <p class="ld-cap">Preview</p>
       <div id="ln-preview"></div>
       <input type="file" id="ln-icon-file" accept="image/*" hidden>
     </aside>
@@ -1363,10 +1363,10 @@
   </div>
   <!-- A list: the addresses and their group, then what each one turned out to be, to tick before adding. -->
   <div class="form two sd-form ld-list many">
-    <div class="wide"><label for="ln-many">Addresses, one a line</label>
+    <div class="wide"><label for="ln-many">Addresses (one per line)</label>
       <textarea id="ln-many" rows="4" spellcheck="false" autocomplete="off" placeholder="192.168.2.1&#10;https://192.168.2.19&#10;truenas.example.com, nas.example.com; proxmox.example.com"></textarea>
       <small class="ld-count" id="ln-many-count"></small></div>
-    <div><label for="ln-many-group">Add them to</label><select id="ln-many-group"></select>
+    <div><label for="ln-many-group">Group</label><select id="ln-many-group"></select>
       <input id="ln-many-group-new" maxlength="40" placeholder="Name of the new group" aria-label="Name of the new group" autocomplete="off" hidden></div>
     <div></div>
     <div class="sd-div wide" id="ln-found-head" hidden><b>Results</b><i></i></div>
@@ -1374,18 +1374,18 @@
   </div>
   <p class="hint problem" id="ln-dproblem" hidden></p>
   <div class="dialog-foot"><button type="button" class="danger" id="ln-delete" hidden><svg><use href="#i-trash"/></svg>Delete</button><span class="grow"></span>
-    <button type="button" id="ln-cancel">Cancel</button><button type="button" class="primary" id="ln-save">Add the link</button></div>
+    <button type="button" id="ln-cancel">Cancel</button><button type="button" class="primary" id="ln-save">Add link</button></div>
 </dialog>
 
 <!-- A sensor: what to check, where, how often, and which alert rule it uses. -->
 <dialog class="dialog sd-dialog" id="sensor-dialog" aria-labelledby="sd-title">
   <h2 id="sd-title">Add a sensor</h2>
-  <p class="dialog-lead">Pick what to check. Checks run from this server, or from the client on a computer in Devices.</p>
-  <div class="devstrip sd-dev" id="sd-dev"><b>DEV</b><span>Fill in a test:</span><button type="button" class="small" data-fill="up">A sensor</button>
-    <button type="button" class="small" data-fill="down">One that goes down</button><span class="grow">Checked every 5 seconds, never emails, gone 30 seconds after it's added.</span></div>
+  <p class="dialog-lead">Select a check type. Checks run on this server, or through the client on a computer in Devices.</p>
+  <div class="devstrip sd-dev" id="sd-dev"><b>DEV</b><span>Test sensor:</span><button type="button" class="small" data-fill="up">Working sensor</button>
+    <button type="button" class="small" data-fill="down">Failing sensor</button><span class="grow">Test sensors run every 5 seconds, send no alerts and are deleted 30 seconds after they are added.</span></div>
   <div class="sd-grid">
     <!-- The kinds of check, in groups, like Active Directory's pages; the open one has the bar (sensors.js fills it in). -->
-    <nav class="dnav sd-types" id="sd-types" aria-label="What to check"><label class="side-find sd-find"><svg><use href="#i-search"/></svg><input type="search" id="sd-find" placeholder="Find a check" aria-label="Find a check" autocomplete="off" spellcheck="false"></label><div id="sd-type-list"></div></nav>
+    <nav class="dnav sd-types" id="sd-types" aria-label="Check type"><label class="side-find sd-find"><svg><use href="#i-search"/></svg><input type="search" id="sd-find" placeholder="Find a check" aria-label="Find a check" autocomplete="off" spellcheck="false"></label><div id="sd-type-list"></div></nav>
     <div class="sd-pane" id="sd-pane">
       <div class="sd-head"><b id="sd-kind-name"></b><span id="sd-kind-about"></span></div>
       <div class="form two sd-form" id="sd-fields"></div>
@@ -1396,8 +1396,8 @@
         <div><label for="sd-group">Group</label><select id="sd-group"></select>
           <input id="sd-group-new" maxlength="40" placeholder="Name of the new group" aria-label="Name of the new group" autocomplete="off" hidden></div>
         <div class="wide"><label for="sd-tag-in">Tags</label><div class="sd-tags" id="sd-tags"><input id="sd-tag-in" maxlength="24" placeholder="Add a tag" aria-label="Add a tag" autocomplete="off" spellcheck="false"></div></div>
-        <div><label for="sd-every">Check every</label><select id="sd-every"><option value="30">30 seconds</option><option value="60">Minute</option><option value="300">5 minutes</option><option value="3600">Hour</option></select></div>
-        <div><label for="sd-down">Down after</label><select id="sd-down"><option value="1">1 miss</option><option value="2">2 misses in a row</option><option value="3">3 misses in a row</option><option value="5">5 misses in a row</option></select></div>
+        <div><label for="sd-every">Check every</label><select id="sd-every"><option value="30">30 seconds</option><option value="60">1 minute</option><option value="300">5 minutes</option><option value="3600">1 hour</option></select></div>
+        <div><label for="sd-down">Down after</label><select id="sd-down"><option value="1">1 failed check</option><option value="2">2 failed checks in a row</option><option value="3">3 failed checks in a row</option><option value="5">5 failed checks in a row</option></select></div>
         <div class="sd-div wide"><b>Alerts</b><i></i></div>
         <div class="wide al-rows" id="sd-alerts"></div>
         <div class="wide" id="sd-alert-sum"></div>
@@ -1407,7 +1407,7 @@
     </div>
   </div>
   <div class="dialog-foot"><button type="button" class="danger" id="sd-delete" hidden><svg><use href="#i-trash"/></svg>Delete</button><button type="button" id="sd-try">Check now</button><span class="grow"></span>
-    <button type="button" id="sd-cancel">Cancel</button><button type="button" class="primary" id="sd-save">Add the sensor</button></div>
+    <button type="button" id="sd-cancel">Cancel</button><button type="button" class="primary" id="sd-save">Add sensor</button></div>
 </dialog>
 
 <!-- A console address: added (with its alias in DNS when there's a domain), what that did, or removed (console.js, ConsoleNames.cs). -->
@@ -1423,21 +1423,21 @@
     <div class="wide nm-rec" id="nm-rec" hidden><code id="nm-rec-text"></code><button type="button" class="ds-btn ds-ibtn" id="nm-rec-copy" data-tip="Copy" aria-label="Copy the record"><svg><use href="#i-copy"/></svg></button></div>
     <div id="nm-user-wrap"><label for="nm-user">Username</label><input id="nm-user" placeholder="AMW\administrator" autocomplete="off" spellcheck="false"></div>
     <div id="nm-pw-wrap"><label for="nm-pw">Password</label><input id="nm-pw" type="password" autocomplete="new-password"></div>
-    <p class="ds-note wide" id="nm-lock"><svg><use href="#i-lock"/></svg><span>Used once for this change, never saved. The account needs DNS admin rights, such as Domain Admins or DnsAdmins.</span></p>
+    <p class="ds-note wide" id="nm-lock"><svg><use href="#i-lock"/></svg><span>These credentials are used once for this change and are not stored. The account must be a member of DnsAdmins or Domain Admins.</span></p>
     <div class="sd-div wide" id="nm-cert-head"><b>Certificate</b><i></i></div>
     <p class="sd-sum nm-warn wide" id="nm-cert"><svg><use href="#i-alert"/></svg><span></span></p>
   </div>
   <div class="rows nm-steps" id="nm-steps" hidden></div>
   <p class="hint problem" id="nm-problem" hidden></p>
-  <div class="dialog-foot"><button type="button" id="nm-check">Check</button><button type="button" class="nm-cert-dl" id="nm-download" hidden><svg><use href="#i-download"/></svg>Download the certificate</button>
-    <span class="grow"></span><button type="button" id="nm-cancel">Cancel</button><button type="button" class="primary" id="nm-go">Add the address</button></div>
+  <div class="dialog-foot"><button type="button" id="nm-check">Check</button><button type="button" class="nm-cert-dl" id="nm-download" hidden><svg><use href="#i-download"/></svg>Download certificate</button>
+    <span class="grow"></span><button type="button" id="nm-cancel">Cancel</button><button type="button" class="primary" id="nm-go">Add address</button></div>
 </dialog>
 
 
 <!-- A notification: somewhere alerts go, by its name. Email through Gmail, a mail server or Microsoft 365, or a webhook (alerts.js, Channels.cs). -->
 <dialog class="dialog wide" id="notify-dialog" aria-labelledby="nf-title">
-  <h2 id="nf-title">Add a notification</h2>
-  <p class="dialog-lead">Somewhere alerts can go. Alert rules, sensors and links pick it by its name.</p>
+  <h2 id="nf-title">Add a notification channel</h2>
+  <p class="dialog-lead">A destination for alerts. Alert rules, sensors and links select a channel by its name.</p>
   <div class="nf-body">
     <div class="form sd-form"><label for="nf-name">Name</label><input id="nf-name" maxlength="40" placeholder="Such as Anthony, Ops team or Lab alerts" autocomplete="off" spellcheck="false" data-1p-ignore data-lpignore="true" data-bwignore></div>
     <div class="chans ch-kinds nf-kinds" id="nf-kinds"></div>
@@ -1447,25 +1447,25 @@
     <div class="form two sd-form" id="nf-mail" hidden>
       <div class="wide"><label>Send through</label><div class="chans nf-provs" id="nf-provs"></div></div>
       <div data-for="gmail"><label for="nf-gmail">Gmail address</label><input id="nf-gmail" maxlength="200" placeholder="alerts@gmail.com" autocomplete="off" spellcheck="false" data-1p-ignore data-lpignore="true" data-bwignore></div>
-      <div data-for="gmail"><label for="nf-gpass" class="nf-lab">App password <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener">Make one<svg><use href="#i-out"/></svg></a></label><input id="nf-gpass" type="password" autocomplete="new-password" data-1p-ignore data-lpignore="true" data-bwignore></div>
-      <p class="nf-quiet wide" data-for="gmail"><svg><use href="#i-info"/></svg><span>Goes through smtp.gmail.com, port 587, STARTTLS: nothing else to fill in. Gmail only takes an app password here, not your usual one. It needs 2-Step Verification on.</span></p>
+      <div data-for="gmail"><label for="nf-gpass" class="nf-lab">App password <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener">Create one<svg><use href="#i-out"/></svg></a></label><input id="nf-gpass" type="password" autocomplete="new-password" data-1p-ignore data-lpignore="true" data-bwignore></div>
+      <p class="nf-quiet wide" data-for="gmail"><svg><use href="#i-info"/></svg><span>Sends through smtp.gmail.com on port 587 with STARTTLS. No other settings are needed. Gmail requires an app password here, not your account password, and 2-Step Verification must be turned on.</span></p>
       <div data-for="smtp"><label for="nf-host">Mail server</label><input id="nf-host" maxlength="200" placeholder="smtp.example.com" autocomplete="off" spellcheck="false" data-1p-ignore data-lpignore="true" data-bwignore></div>
       <div data-for="smtp"><label for="nf-port">Port</label><input id="nf-port" inputmode="numeric" maxlength="5" autocomplete="off" data-1p-ignore data-lpignore="true" data-bwignore></div>
       <div class="wide" data-for="smtp"><label>Encryption</label><div class="seg sn-seg" id="nf-sec"><button type="button" data-sec="starttls">STARTTLS<small>587</small></button><button type="button" data-sec="ssl">SSL/TLS<small>465</small></button><button type="button" data-sec="none">None<small>25</small></button></div></div>
-      <div data-for="smtp"><label for="nf-user">Username</label><input id="nf-user" maxlength="200" placeholder="If the server asks for one" autocomplete="off" spellcheck="false" data-1p-ignore data-lpignore="true" data-bwignore></div>
+      <div data-for="smtp"><label for="nf-user">Username</label><input id="nf-user" maxlength="200" placeholder="If the server requires it" autocomplete="off" spellcheck="false" data-1p-ignore data-lpignore="true" data-bwignore></div>
       <div data-for="smtp"><label for="nf-pass">Password</label><input id="nf-pass" type="password" autocomplete="new-password" data-1p-ignore data-lpignore="true" data-bwignore></div>
       <div data-for="m365"><label for="nf-tenant">Tenant</label><input id="nf-tenant" maxlength="100" placeholder="contoso.onmicrosoft.com or the tenant ID" autocomplete="off" spellcheck="false" data-1p-ignore data-lpignore="true" data-bwignore></div>
       <div data-for="m365"><label for="nf-client">Application (client) ID</label><input id="nf-client" maxlength="40" autocomplete="off" spellcheck="false" data-1p-ignore data-lpignore="true" data-bwignore></div>
       <div data-for="m365"><label for="nf-secret">Client secret</label><input id="nf-secret" type="password" autocomplete="new-password" data-1p-ignore data-lpignore="true" data-bwignore></div>
       <div class="wide" data-for="smtp m365"><label for="nf-from">From</label><input id="nf-from" maxlength="200" placeholder="alerts@example.com" autocomplete="off" spellcheck="false" data-1p-ignore data-lpignore="true" data-bwignore></div>
-      <p class="nf-quiet wide" data-for="m365"><svg><use href="#i-info"/></svg><span>In Microsoft Entra, register an app, give it the Mail.Send application permission with admin consent, and make a client secret. From has to be a mailbox in that tenant.</span></p>
+      <p class="nf-quiet wide" data-for="m365"><svg><use href="#i-info"/></svg><span>In Microsoft Entra, register an app, grant it the Mail.Send application permission with admin consent, and create a client secret. The From address must be a mailbox in that tenant.</span></p>
       <div class="wide"><label for="nf-to-in">Send alerts to</label><div class="nf-to" id="nf-to"></div></div>
     </div>
   </div>
   <p class="hint note" id="nf-done" hidden></p>
   <p class="hint problem" id="nf-problem" hidden></p>
-  <div class="dialog-foot"><button type="button" class="danger" id="nf-delete" hidden><svg><use href="#i-trash"/></svg>Delete</button><button type="button" id="nf-test">Send a test</button><span class="grow"></span>
-    <button type="button" id="nf-cancel">Cancel</button><button type="button" class="primary" id="nf-save">Add the notification</button></div>
+  <div class="dialog-foot"><button type="button" class="danger" id="nf-delete" hidden><svg><use href="#i-trash"/></svg>Delete</button><button type="button" id="nf-test">Send test</button><span class="grow"></span>
+    <button type="button" id="nf-cancel">Cancel</button><button type="button" class="primary" id="nf-save">Add channel</button></div>
 </dialog>
 
 <!-- An alert rule: its times or number, where it goes, and for the down rules what follows it (alerts.js, Alerts.cs). -->
@@ -1480,12 +1480,12 @@
 <!-- An alert type: a name sensors and links pick it by, how long down before the alert, reminders, the all-clear and where it goes (alerts.js). -->
 <dialog class="dialog wide" id="type-dialog" aria-labelledby="ty-title">
   <h2 id="ty-title">New alert type</h2>
-  <p class="dialog-lead">A way to alert that sensors and watched links pick by name.</p>
+  <p class="dialog-lead">Alert settings that sensors and watched links select by name.</p>
   <div class="form sd-form ty-name"><label for="ty-name">Name</label><input id="ty-name" maxlength="40" placeholder="Such as Critical, Normal or Office hours" autocomplete="off" spellcheck="false" data-1p-ignore data-lpignore="true" data-bwignore></div>
   <div class="al-rows rl-rows" id="ty-rows"></div>
   <p class="hint problem" id="ty-problem" hidden></p>
   <div class="dialog-foot"><button type="button" class="danger" id="ty-delete" hidden><svg><use href="#i-trash"/></svg>Delete</button><span class="grow"></span>
-    <button type="button" id="ty-cancel">Cancel</button><button type="button" class="primary" id="ty-save">Add the alert type</button></div>
+    <button type="button" id="ty-cancel">Cancel</button><button type="button" class="primary" id="ty-save">Add alert type</button></div>
 </dialog>
 
 <!-- One sensor: how it is, its last hour, and what happened to it. -->
@@ -1494,21 +1494,21 @@
   <p class="dialog-lead" id="sv-what"></p>
   <div class="sv-deps" id="sv-deps" hidden></div>
   <div class="sv-now" id="sv-now"><span class="big-ic"><svg><use href="#i-activity"/></svg></span><div><b id="sv-state"></b><span id="sv-note"></span></div></div>
-  <div class="sv-stats"><div><b id="sv-ms"></b><span>Reply now</span></div><div><b id="sv-up24"></b><span>Up, last 24 hours</span></div><div><b id="sv-up7"></b><span>Up, last 7 days</span></div></div>
-  <div class="sv-chart"><h3>Reply time, last hour</h3><div id="sv-line"></div></div>
+  <div class="sv-stats"><div><b id="sv-ms"></b><span>Response time</span></div><div><b id="sv-up24"></b><span>Uptime (24 hours)</span></div><div><b id="sv-up7"></b><span>Uptime (7 days)</span></div></div>
+  <div class="sv-chart"><h3>Response time (last hour)</h3><div id="sv-line"></div></div>
   <div class="rows sv-events" id="sv-events"></div>
   <p class="hint problem" id="sv-problem" hidden></p>
   <div class="dialog-foot"><button type="button" class="sv-test" id="sv-test" data-can="sensors.alerts"><svg><use href="#i-bell"/></svg>Send a test alert</button>
     <span class="sv-pause-at"><button type="button" class="sv-pause" id="sv-pause" data-can="sensors.edit" aria-haspopup="menu" aria-expanded="false">Pause</button>
       <span class="sv-menu" id="sv-menu" role="menu" hidden></span></span><button type="button" id="sv-check" data-can="sensors.edit">Check now</button><span class="grow"></span>
-    <button type="button" id="sv-change" data-can="sensors.edit">Change</button><button type="button" class="primary" id="sv-close">Close</button></div>
+    <button type="button" id="sv-change" data-can="sensors.edit">Edit</button><button type="button" class="primary" id="sv-close">Close</button></div>
 </dialog>
 
 
 <!-- A new group, for links or sensors, empty until something is put in it. -->
 <dialog class="dialog" id="lgroup-dialog" aria-labelledby="lgroup-title">
   <h2 id="lgroup-title">New group</h2>
-  <p class="dialog-lead">A group can be empty until you put something in it.</p>
+  <p class="dialog-lead">The group can stay empty until you add items to it.</p>
   <div class="form"><label for="lg-name">Name</label><input id="lg-name" maxlength="40" placeholder="Network, Servers, Media…" autocomplete="off"></div>
   <p class="hint problem" id="lg-problem" hidden></p>
   <div class="dialog-foot"><button type="button" id="lg-cancel">Cancel</button><button type="button" class="primary" id="lg-save">Create group</button></div>
@@ -1517,10 +1517,10 @@
 <!-- Open all, when the browser stopped some of the tabs: how to allow them, and the rest opened from here. -->
 <dialog class="dialog" id="lopen-dialog" aria-labelledby="lopen-title">
   <h2 id="lopen-title"></h2>
-  <p class="dialog-lead">A browser lets a page open one tab for each click until pop-ups are allowed for it. Allow them for this console once, and Open all opens a whole group at a time from then on.</p>
+  <p class="dialog-lead">The browser opens only one tab per click until pop-ups are allowed for this site. Allow pop-ups for this console once, and Open all then opens every link in a group at once.</p>
   <ol class="lopen-steps">
     <li>Click the <b>pop-up blocked</b> icon at the right end of the address bar.</li>
-    <li>Pick <b>Always allow pop-ups and redirects from</b> <code id="lopen-site"></code>, then <b>Done</b>.</li>
+    <li>Select <b>Always allow pop-ups and redirects from</b> <code id="lopen-site"></code>, then <b>Done</b>.</li>
     <li>Click <b id="lopen-again"></b> below.</li>
   </ol>
   <p class="hint">No icon there? In the browser's settings, search for <b>Pop-ups and redirects</b> and add <code id="lopen-site2"></code> under <b>Allowed to send pop-ups and use redirects</b>.</p>
@@ -1530,7 +1530,7 @@
 <!-- Support info: what someone helping needs to know, to copy. -->
 <dialog class="dialog wide" id="about-dialog" aria-labelledby="about-title">
   <h2 id="about-title">Support info</h2>
-  <p class="dialog-lead">Copy this into your message when you ask for help. It has no passwords in it.</p>
+  <p class="dialog-lead">Paste this into your support request. It contains no passwords.</p>
   <pre class="about-text" id="about-text"></pre>
   <div class="dialog-foot"><button type="button" id="about-close">Close</button><button type="button" class="primary" id="about-copy">Copy</button></div>
 </dialog>
@@ -1573,7 +1573,7 @@
 <!-- Filter: conditions on what the list holds (a field, how to test it, and a value), all or any of them. -->
 <dialog class="dialog wide" id="flt-dialog" aria-labelledby="flt-title">
   <h2 id="flt-title">Filter</h2>
-  <p class="dialog-lead flt-join">Show the ones that match <select id="flt-join" aria-label="All or any"><option value="all">all</option><option value="any">any</option></select> of these:</p>
+  <p class="dialog-lead flt-join">Show items that match <select id="flt-join" aria-label="All or any"><option value="all">all</option><option value="any">any</option></select> of these conditions:</p>
   <div class="flt-rules" id="flt-rules"></div>
   <button type="button" class="small flt-add" id="flt-add"><svg><use href="#i-plus"/></svg>Add a condition</button>
   <div class="dialog-foot"><button type="button" class="linkish" id="flt-clear">Clear all</button><span class="flt-count" id="flt-count"></span><button type="button" id="flt-cancel">Cancel</button><button type="button" class="primary" id="flt-apply">Apply</button></div>
@@ -1581,9 +1581,9 @@
 <!-- Save filter, and Rename on a saved one: its name, and what it filters (filter.js). -->
 <dialog class="dialog" id="fsave-dialog" aria-labelledby="fsave-title">
   <h2 id="fsave-title">Save filter</h2>
-  <p class="dialog-lead">It goes under Load filter on this list, in this browser.</p>
+  <p class="dialog-lead">Saved filters appear under Load filter for this list, in this browser only.</p>
   <div class="form"><label for="fsave-name">Name</label><input id="fsave-name" maxlength="60" autocomplete="off" spellcheck="false"></div>
-  <p class="fsave-what"><span>What it filters</span><b id="fsave-what"></b></p>
+  <p class="fsave-what"><span>Filter</span><b id="fsave-what"></b></p>
   <p class="hint" id="fsave-note" hidden></p>
   <div class="dialog-foot"><button type="button" id="fsave-cancel">Cancel</button><button type="button" class="primary" id="fsave-go">Save filter</button></div>
 </dialog>
@@ -1594,7 +1594,7 @@
   <h2 id="exp-title">Set account expiration</h2>
   <p class="dialog-lead" id="exp-lead"></p>
   <div class="form sd-form"><label for="exp-date">End of</label><input type="date" id="exp-date">
-    <small class="hint">The account stops working when this day ends.</small></div>
+    <small class="hint">The account expires at the end of this day.</small></div>
   <p class="hint problem" id="exp-problem" hidden></p>
   <div class="dialog-foot"><button type="button" id="exp-cancel">Cancel</button><button type="button" class="primary" id="exp-save">Save</button></div>
 </dialog>
@@ -1628,7 +1628,7 @@
   <h2 id="ren-title">Rename</h2>
   <p class="dialog-lead" id="ren-lead"></p>
   <div class="form sd-form"><label for="ren-name">Full name</label><input id="ren-name" maxlength="64" autocomplete="off" spellcheck="false" data-1p-ignore data-lpignore="true" data-bwignore>
-    <small class="hint">The logon name stays as it is.</small></div>
+    <small class="hint">The logon name is not changed.</small></div>
   <p class="hint problem" id="ren-problem" hidden></p>
   <div class="dialog-foot"><button type="button" id="ren-cancel">Cancel</button><button type="button" class="primary" id="ren-save">Rename</button></div>
 </dialog>
@@ -1637,7 +1637,7 @@
 <dialog class="dialog wide" id="gp-dialog" aria-labelledby="gp-title">
   <h2 id="gp-title">Add to groups</h2>
   <p class="dialog-lead" id="gp-lead"></p>
-  <div class="pk-bar"><label class="side-find pk-find"><svg><use href="#i-search"/></svg><input type="search" id="gp-find" placeholder="Find" aria-label="Find" autocomplete="off" spellcheck="false"></label><button type="button" class="linkish" id="gp-all" hidden>Tick all shown</button></div>
+  <div class="pk-bar"><label class="side-find pk-find"><svg><use href="#i-search"/></svg><input type="search" id="gp-find" placeholder="Find" aria-label="Find" autocomplete="off" spellcheck="false"></label><button type="button" class="linkish" id="gp-all" hidden>Select all shown</button></div>
   <div class="pk-list" id="gp-list"></div>
   <p class="hint problem" id="gp-problem" hidden></p>
   <div class="dialog-foot"><span class="pk-count" id="gp-count"></span><button type="button" id="gp-cancel">Cancel</button><button type="button" class="primary" id="gp-save">Add</button></div>
@@ -1650,7 +1650,7 @@
   <div class="form sd-form"><label for="attr-one" id="attr-label">Value</label>
     <input id="attr-one" autocomplete="off" spellcheck="false" data-1p-ignore data-lpignore="true" data-bwignore>
     <select id="attr-bool" aria-label="Value" hidden><option value="">Not set</option><option value="TRUE">TRUE</option><option value="FALSE">FALSE</option></select>
-    <textarea id="attr-many" rows="7" spellcheck="false" aria-label="Values, one a line" hidden></textarea>
+    <textarea id="attr-many" rows="7" spellcheck="false" aria-label="Values (one per line)" hidden></textarea>
     <small class="hint" id="attr-help"></small></div>
   <p class="hint problem" id="attr-problem" hidden></p>
   <div class="dialog-foot"><button type="button" id="attr-cancel">Cancel</button><button type="button" class="primary" id="attr-save">Save</button></div>
@@ -1660,7 +1660,7 @@
 
 <!-- Before anything runs on computers: who's asking, by a code from their authenticator app or their password (devices.js). -->
 <dialog class="dialog" id="confirm-dialog" aria-labelledby="cf-title">
-  <h2 id="cf-title">Confirm it's you</h2>
+  <h2 id="cf-title">Verify your identity</h2>
   <p class="dialog-lead" id="cf-lead"></p>
   <div class="form">
     <label for="cf-code" id="cf-code-label">6-digit code</label><input id="cf-code" inputmode="numeric" maxlength="7" autocomplete="one-time-code" spellcheck="false">
@@ -1697,12 +1697,12 @@
       <div class="seg pw-mode" id="run-lang"><button type="button" data-lang="powershell" aria-pressed="true">PowerShell</button><button type="button" data-lang="cmd" aria-pressed="false">Command</button></div>
       <label for="run-text">Script</label><textarea id="run-text" spellcheck="false" autocomplete="off" placeholder="Get-Service Spooler"></textarea>
       <div class="run-save" id="run-save-row"><button type="button" class="small" id="run-save"><svg><use href="#i-download"/></svg>Save to library…</button>
-        <span class="run-save-form" id="run-save-form" hidden><input id="run-save-name" maxlength="80" autocomplete="off" spellcheck="false" placeholder="Name it" aria-label="Name for the script"><button type="button" class="small primary" id="run-save-go">Save</button></span></div>
+        <span class="run-save-form" id="run-save-form" hidden><input id="run-save-name" maxlength="80" autocomplete="off" spellcheck="false" placeholder="Script name" aria-label="Script name"><button type="button" class="small primary" id="run-save-go">Save</button></span></div>
     </div>
     <pre class="code-box" id="run-preview" hidden></pre>
     <button type="button" class="linkish run-copy" id="run-copy" hidden>Edit a copy</button>
     <div class="run-test" id="run-test" hidden>
-      <p class="form-label">Test it first</p>
+      <p class="form-label">Test on one computer first</p>
       <div class="run-test-row"><select id="run-test-on" aria-label="Computer to test on"></select><button type="button" class="small" id="run-test-go"><svg><use href="#i-right"/></svg>Test</button></div>
       <pre class="code-box run-test-out" id="run-test-out" hidden></pre>
     </div>
@@ -1718,11 +1718,11 @@
   <h2 id="pr-title">Add a printer</h2>
   <p class="dialog-lead" id="pr-lead"></p>
   <div class="form two">
-    <div class="wide"><p class="form-label">How</p><div class="seg pw-mode" id="pr-way">
+    <div class="wide"><p class="form-label">Connection type</p><div class="seg pw-mode" id="pr-way">
       <button type="button" data-way="ipp" aria-pressed="true">IP address</button><button type="button" data-way="tcpip" aria-pressed="false">TCP/IP port</button><button type="button" data-way="lpr" aria-pressed="false">LPR</button><button type="button" data-way="share" aria-pressed="false">Shared printer</button><button type="button" data-way="url" aria-pressed="false">Device address</button></div></div>
     <div data-pr="ipp tcpip lpr url"><label for="pr-name">Name</label><input id="pr-name" maxlength="120" autocomplete="off" spellcheck="false" placeholder="Office printer"></div>
     <div data-pr="ipp tcpip lpr"><label for="pr-address">IP address or name</label><input id="pr-address" maxlength="255" autocomplete="off" spellcheck="false" placeholder="192.168.3.20"></div>
-    <div class="wide" data-pr="ipp"><label for="pr-ipp">Or its IPP address</label><input id="pr-ipp" maxlength="500" autocomplete="off" spellcheck="false" placeholder="http://192.168.3.20:631/ipp/print"></div>
+    <div class="wide" data-pr="ipp"><label for="pr-ipp">Or IPP address</label><input id="pr-ipp" maxlength="500" autocomplete="off" spellcheck="false" placeholder="http://192.168.3.20:631/ipp/print"></div>
     <div data-pr="tcpip"><label for="pr-port">Port</label><input id="pr-port" inputmode="numeric" maxlength="5" autocomplete="off" value="9100"></div>
     <div data-pr="lpr"><label for="pr-queue">Queue</label><input id="pr-queue" maxlength="100" autocomplete="off" spellcheck="false" placeholder="lp"></div>
     <div class="wide" data-pr="share"><label for="pr-share">Shared printer</label><input id="pr-share" maxlength="300" autocomplete="off" spellcheck="false" placeholder="\\printserver\Office printer"></div>
@@ -1754,16 +1754,16 @@
 <!-- An app on the Installs page: its name and its ID in the winget repository (installs.js). -->
 <dialog class="dialog wide" id="app-dialog" aria-labelledby="app-title">
   <h2 id="app-title">Add an app</h2>
-  <p class="dialog-lead">Any package in the winget repository, by its ID. It installs for everyone on the computer, as SYSTEM.</p>
+  <p class="dialog-lead">Any package in the winget repository, by package ID. Apps install for all users on the computer, as SYSTEM.</p>
   <div class="form two">
     <div><label for="app-name">Name</label><input id="app-name" maxlength="80" autocomplete="off" spellcheck="false" placeholder="OBS Studio"></div>
     <div><label for="app-winget">winget ID</label><input id="app-winget" maxlength="128" autocomplete="off" spellcheck="false" placeholder="OBSProject.OBSStudio"></div>
     <div><label for="app-publisher">Publisher (optional)</label><input id="app-publisher" maxlength="80" autocomplete="off" spellcheck="false" placeholder="OBS Project"></div>
     <div><label for="app-category">Category</label><select id="app-category"></select></div>
     <div class="wide"><label for="app-about">Description (optional)</label><input id="app-about" maxlength="200" autocomplete="off" placeholder="What it is"></div>
-    <div class="wide"><label for="app-shows">Name under Installed apps (optional)</label><input id="app-shows" maxlength="80" autocomplete="off" spellcheck="false" placeholder="How its name starts in Windows, when that isn't the name above"></div>
+    <div class="wide"><label for="app-shows">Name under Installed apps (optional)</label><input id="app-shows" maxlength="80" autocomplete="off" spellcheck="false" placeholder="The start of the app's name in Windows, if different from Name"></div>
   </div>
-  <p class="hint">Find an ID with winget search and the app's name. The name under Installed apps is how this page counts the computers that have it. A package that only installs for one person can't be installed this way.</p>
+  <p class="hint">To find an ID, run winget search with the app's name. The name under Installed apps is used to count the computers that have the app. Packages that install for a single user cannot be installed this way.</p>
   <p class="hint problem" id="app-problem" role="alert" hidden></p>
   <div class="dialog-foot"><button type="button" id="app-cancel">Cancel</button><button type="button" class="primary" id="app-save">Save</button></div>
 </dialog>
@@ -1771,7 +1771,7 @@
 <!-- A script in the library: its name, what it's written in, how long it may run, and the script. -->
 <dialog class="dialog wide script-dialog" id="script-dialog" aria-labelledby="sc-title">
   <h2 id="sc-title">New script</h2>
-  <p class="dialog-lead">Kept in the library, and run on computers as SYSTEM.</p>
+  <p class="dialog-lead">Saved in the library. Scripts run on computers as SYSTEM.</p>
   <div class="form two">
     <div><label for="sc-name">Name</label><input id="sc-name" maxlength="80" autocomplete="off" spellcheck="false" placeholder="Clear temp files"></div>
     <div><label for="sc-about">Description</label><input id="sc-about" maxlength="200" autocomplete="off" placeholder="What it does"></div>
@@ -1787,7 +1787,7 @@
 <!-- A workflow: what starts it, on which computers, and its steps in order. -->
 <dialog class="dialog wide flow-dialog" id="flow-dialog" aria-labelledby="fl-title">
   <h2 id="fl-title">New workflow</h2>
-  <p class="dialog-lead">Its steps run in order on each computer, and stop at the first one that fails.</p>
+  <p class="dialog-lead">Steps run in order on each computer. The workflow stops at the first step that fails.</p>
   <div class="form two">
     <div class="wide"><label for="fl-name">Name</label><input id="fl-name" maxlength="80" autocomplete="off" spellcheck="false" placeholder="Patch night"></div>
     <div><label for="fl-when">When</label><select id="fl-when"></select></div>
@@ -1796,7 +1796,7 @@
       <div class="form-in" id="fl-below-row"><label for="fl-below">Below</label><span class="sc-min" id="fl-below-box"></span></div>
     </div>
     <div class="wide" id="fl-days-row"><p class="form-label">On</p><div class="seg pw-mode" id="fl-days"></div></div>
-    <div><label for="fl-if">On which computers</label><select id="fl-if"></select></div>
+    <div><label for="fl-if">Computers</label><select id="fl-if"></select></div>
     <div id="fl-if-row"><label for="fl-if-text" id="fl-if-label">Name</label><input id="fl-if-text" maxlength="100" autocomplete="off" spellcheck="false"></div>
     <div class="wide"><p class="form-label">Steps</p><div class="dw-list fl-steps" id="fl-steps"></div><select id="fl-add" aria-label="Add a step"></select></div>
   </div>
@@ -1807,7 +1807,7 @@
 
 <!-- Sign out when idle (console.js): a minute's warning, then the sign-in page. -->
 <dialog class="dialog" id="idle-dialog" aria-labelledby="idle-title">
-  <h2 id="idle-title">Still there?</h2>
+  <h2 id="idle-title">Are you still there?</h2>
   <p class="dialog-lead" id="idle-lead"></p>
   <div class="dialog-foot"><button type="button" id="idle-out">Sign out</button><button type="button" class="primary" id="idle-stay" autofocus>Stay signed in</button></div>
 </dialog>
@@ -1827,7 +1827,7 @@
     <label for="gpo-l-user">Username</label><input id="gpo-l-user" autocomplete="username" spellcheck="false" placeholder="AMW\admin">
     <label for="gpo-l-password">Password</label><input id="gpo-l-password" type="password" autocomplete="current-password">
   </div>
-  <p class="hint">Used for this change and any others in the next 15 minutes, then forgotten. It's kept in this tab only, never saved.</p>
+  <p class="hint">These credentials are used for this change and any others in the next 15 minutes, then cleared. They are held in this tab only and are never stored.</p>
   <p class="hint problem" id="gpo-l-problem" role="alert" hidden></p>
   <div class="dialog-foot"><button type="button" id="gpo-l-cancel">Cancel</button><button type="button" class="primary" id="gpo-l-go">Sign in</button></div>
 </dialog>

@@ -260,7 +260,7 @@ public sealed class MfaTests : IDisposable
         var below = await lead.PostAsJsonAsync("/api/mfa/reset", Whose("desk1"));
 
         Assert.Equal(HttpStatusCode.Forbidden, above.StatusCode);
-        Assert.Contains("Only someone above Administrator can reset their MFA", (await Json(above)).GetProperty("error").GetString());
+        Assert.Contains("Only admins in a role above Administrator can reset their MFA", (await Json(above)).GetProperty("error").GetString());
         Assert.Equal(HttpStatusCode.Forbidden, notAllowed.StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, none.StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, own.StatusCode);

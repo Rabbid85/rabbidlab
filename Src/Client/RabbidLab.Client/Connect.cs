@@ -82,7 +82,7 @@ internal sealed class JoinLink
 
     /// <summary>What to say about it.</summary>
     public static string LockedNote(string server) =>
-        $"This computer is locked to {(Uri.TryCreate(server, UriKind.Absolute, out var u) ? u.Host : server)}. Unlock it before moving it: click Uninstall in the Rabbid Lab Client window and enter the uninstall code.";
+        $"This computer is locked to {(Uri.TryCreate(server, UriKind.Absolute, out var u) ? u.Host : server)}. To connect it to a different server, unlock it first: click Uninstall in the Rabbid Lab Client window and enter the uninstall code.";
 
     /// <summary>
     /// Saved where the installer keeps its settings, then the service restarted so it joins straight away. Run as an
@@ -267,14 +267,14 @@ internal sealed class ConnectWindow : Form
             await Task.Run(() => admin?.WaitForExit());
             if (admin?.ExitCode is not 0 and not null)
             {
-                Say(said, "The server address couldn't be saved. Try again.", Look.Red);
+                Say(said, "Could not save the server address. Try again.", Look.Red);
                 go.Enabled = true;
                 return;
             }
         }
         catch (Win32Exception)
         {
-            Say(said, "Connecting needs administrator permission. Click Connect again and choose Yes.", Look.Red);
+            Say(said, "Administrator permission is required. Click Connect again and select Yes.", Look.Red);
             go.Enabled = true;
             return;
         }
@@ -286,7 +286,7 @@ internal sealed class ConnectWindow : Form
             if (s?.Server == link.Server && s.State is Status.Connected or Status.Waiting)
             {
                 Say(said, s.State == Status.Connected ? $"Connected. {Machine.Name} is now listed under Devices in Rabbid Lab."
-                    : $"Almost done. An admin needs to approve {Machine.Name} under Devices in Rabbid Lab.", Look.Green);
+                    : $"Connected. {Machine.Name} is pending approval. An admin must approve it under Devices in Rabbid Lab.", Look.Green);
                 go.Text = "Done";
                 go.Image = null;
                 go.Enabled = true;
@@ -300,7 +300,7 @@ internal sealed class ConnectWindow : Form
                 return;
             }
         }
-        Say(said, "Saved. Still connecting. The tray icon will show when it's connected.", Look.Muted);
+        Say(said, "Server address saved. Still connecting. The tray icon shows the connection status.", Look.Muted);
         go.Enabled = true;
     }
 }

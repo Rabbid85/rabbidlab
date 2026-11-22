@@ -81,7 +81,7 @@ public sealed partial class DirectoryTools
     {
         if (!Uri.TryCreate(server.Trim(), UriKind.Absolute, out var address) || address.Scheme is not ("https" or "http"))
         {
-            throw new ToolProblem("Pick the address computers reach this server at.");
+            throw new ToolProblem("Select the address that computers use to connect to this server.");
         }
         var f = Ready();
         var (user, password) = SysvolLogin(f, login);
@@ -111,7 +111,7 @@ public sealed partial class DirectoryTools
         {
             var dn = $"CN={id},CN=Policies,CN=System,{ldap.BaseDn}";
             var gpo = (await ldap.Find(dn, "(objectClass=groupPolicyContainer)", false, ["versionNumber", "gPCMachineExtensionNames"], 1, stop)).FirstOrDefault()
-                ?? throw new ToolProblem("The GPO isn't in Active Directory yet. Try again in a minute.");
+                ?? throw new ToolProblem("The GPO was not found in Active Directory. Wait a minute for replication and try again.");
             byte[] ini;
             try
             {
@@ -157,7 +157,7 @@ public sealed partial class DirectoryTools
         var d = Deployed();
         if (d.Gpo is null)
         {
-            throw new ToolProblem("The client isn't deployed with Group Policy.");
+            throw new ToolProblem("The client is not deployed by Group Policy.");
         }
         using var ldap = await Open(stop);
         var top = (await ldap.Find(ldap.BaseDn, "(objectClass=*)", false, ["gPLink"], 1, stop)).FirstOrDefault();
@@ -171,7 +171,7 @@ public sealed partial class DirectoryTools
     private (string User, string Password) SysvolLogin(DirectoryToolsFile f, GpoLogin login) =>
         login.Given ? (login.Username!.Trim(), login.Password ?? "")
         : f.ReadOnly ? throw new GpoNeedsLogin(ReadOnlyNeedsAdmin)
-        : ($"{f.Account}@{f.Domain}", secrets.TryDecrypt(f.Password) ?? throw new ToolProblem($"{Product.Title}'s Active Directory password can't be read here any more. Set it up again.", StatusCodes.Status409Conflict));
+        : ($"{f.Account}@{f.Domain}", secrets.TryDecrypt(f.Password) ?? throw new ToolProblem("The service account password cannot be decrypted on this server. Set up the service account again.", StatusCodes.Status409Conflict));
 }
 
 /// <summary>Group Policy Preferences files, as Group Policy Management writes them.</summary>
@@ -193,7 +193,7 @@ public static class GpoXml
                 new XAttribute("changed", Changed(now)), new XAttribute("uid", Uid()), new XAttribute("userContext", "0"), new XAttribute("removePolicy", "0"),
                 new XElement("Properties", new XAttribute("action", "C"), new XAttribute("name", name), new XAttribute("runAs", @"NT AUTHORITY\System"), new XAttribute("logonType", "S4U"),
                     new XElement("Task", new XAttribute("version", "1.3"),
-                        new XElement("RegistrationInfo", new XElement("Author", Product.Title), new XElement("Description", "Installs the Rabbid Lab client where it isn't installed yet.")),
+                        new XElement("RegistrationInfo", new XElement("Author", Product.Title), new XElement("Description", "Installs the Rabbid Lab client on computers that do not have it.")),
                         new XElement("Principals", new XElement("Principal", new XAttribute("id", "Author"),
                             new XElement("UserId", @"NT AUTHORITY\System"), new XElement("LogonType", "S4U"), new XElement("RunLevel", "HighestAvailable"))),
                         new XElement("Settings",

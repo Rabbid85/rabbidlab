@@ -60,8 +60,8 @@
       const shown = o.items.filter((it) => it.label.toLowerCase().includes(q)).sort((a, b) => fav.has(b.key) - fav.has(a.key));
       rows.innerHTML = shown.length ? shown.map((it) => `<label class="xpick-row"><input type="checkbox" data-pick="${esc(it.key)}"${o.picked.has(it.key) ? ' checked' : ''}><span class="ell">${esc(it.label)}</span>`
         + (it.n != null ? `<small class="xpick-n${it.n ? '' : ' zero'}">${it.n.toLocaleString()}</small>`
-          : stars ? `<button type="button" class="xpick-star${fav.has(it.key) ? ' on' : ''}" data-pick-star="${esc(it.key)}" aria-label="Keep on top">★</button>` : '')
-        + '</label>').join('') : '<p class="xpick-none">Nothing matches.</p>';
+          : stars ? `<button type="button" class="xpick-star${fav.has(it.key) ? ' on' : ''}" data-pick-star="${esc(it.key)}" aria-label="Pin to top">★</button>` : '')
+        + '</label>').join('') : '<p class="xpick-none">No matches.</p>';
     };
     now = {
       key: o.key,

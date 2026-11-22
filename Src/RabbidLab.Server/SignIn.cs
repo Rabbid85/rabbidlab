@@ -114,7 +114,7 @@ public static class SignIn
                     if (id is not null && sessions.End(id))
                     {
                         http.RequestServices.GetRequiredService<ActivityLog>().Record(p.Identity?.Name ?? "", ActivityLog.Address(http), "sign-in",
-                            "signout.account", "Signed out by the account check", "ok", problem);
+                            "signout.account", "Signed out after an account check", "ok", problem);
                     }
                     await SignOut();
                     return;
@@ -174,7 +174,7 @@ public static class SignIn
         if (sessions.End(id))
         {
             context.RequestServices.GetRequiredService<ActivityLog>().Record(p.Identity?.Name ?? "", ActivityLog.Address(context), "sign-in", "signout.idle",
-                $"Signed out after {IdleWords(minutes)} without activity", "ok");
+                $"Signed out after {IdleWords(minutes)} of inactivity", "ok");
         }
         return true;
     }
@@ -198,7 +198,7 @@ public static class SignIn
                 if (justOut)
                 {
                     context.RequestServices.GetRequiredService<ActivityLog>().Record(ActivityLog.Who(context), ActivityLog.Address(context), "sign-in", "signin.flood",
-                        "Sign-in requests turned away for 15 minutes", "failed", $"More than {SignInFlood.PerMinute * 10} in a minute from this address");
+                        "Sign-in requests blocked for 15 minutes", "failed", $"More than {SignInFlood.PerMinute * 10} requests in one minute from this address");
                 }
                 context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
                 context.Response.Headers.RetryAfter = "60";
@@ -209,7 +209,7 @@ public static class SignIn
             if (open && TooBig(context, path == "/api/clients/done" || path == "/api/clients/inventory" ? 2 * 1024 * 1024 : 64 * 1024))
             {
                 context.Response.StatusCode = StatusCodes.Status413PayloadTooLarge;
-                await context.Response.WriteAsJsonAsync(new { error = "That request is too large." });
+                await context.Response.WriteAsJsonAsync(new { error = "The request is too large." });
                 return;
             }
             // Plain HTTP from another computer: no password goes in (PlainHttp.cs). Sessions are refused in OnValidatePrincipal.
@@ -227,7 +227,7 @@ public static class SignIn
             if (path.StartsWithSegments("/api"))
             {
                 context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                await context.Response.WriteAsJsonAsync(new { error = "Sign in first." });
+                await context.Response.WriteAsJsonAsync(new { error = "Sign-in required." });
                 return;
             }
             context.Response.Redirect("/signin.html"); // setting up and signing in are the same page
@@ -368,13 +368,13 @@ public static class SignIn
             }
             if (user is null)
             {
-                return Results.Json(new { error = "That username or password is wrong." }, statusCode: StatusCodes.Status401Unauthorized);
+                return Results.Json(new { error = "The username or password is incorrect." }, statusCode: StatusCodes.Status401Unauthorized);
             }
             if (accounts.SetUpDirectory(domain, server) is { } problem)
             {
                 return Results.Conflict(new { error = problem });
             }
-            log.Record(user.Username, from, "sign-in", "setup.directory", $"Set up {Product.Title} with Active Directory ({domain}, {server ?? "automatic"}, anyone in the domain)", "ok");
+            log.Record(user.Username, from, "sign-in", "setup.directory", $"Set up {Product.Title} with Active Directory ({domain}, domain controller: {server ?? "Automatic"}, all domain users have the User role)", "ok");
             // Whoever sets it up is the administrator; everyone in the domain gets User.
             roles.SetUp(new Member { Kind = Member.Person, Name = user.Username, Display = user.Name }, new Member { Kind = Member.Everyone, Name = "ad" });
             var principal = Principal(user.Username, user.Name, Directory, accounts.Directory!.Stamp, domain, setupHost, user.Groups, Stamp(user.PasswordSet));
@@ -395,7 +395,7 @@ public static class SignIn
             var name = form.Username?.Trim() ?? "";
             if (name.Length > MaxUsername)
             {
-                return Results.BadRequest(new { error = "That username is too long." });
+                return Results.BadRequest(new { error = "The username is too long." });
             }
             // .\name is one of Rabbid Lab's own accounts, the way Windows uses .\ for the computer itself.
             var dotted = name.StartsWith(@".\", StringComparison.Ordinal) || name.StartsWith("./", StringComparison.Ordinal);
@@ -441,7 +441,7 @@ public static class SignIn
                 var now = locks.Wrong(key, from, asker, known, most, heavy: unlocking && proven is not null);
                 if (now.Just)
                 {
-                    log.Record(by, from, "sign-in", "signin.locked", "Sign-in locked", "failed", "Too many wrong passwords");
+                    log.Record(by, from, "sign-in", "signin.locked", "Locked out", "failed", "Too many incorrect passwords");
                 }
                 var locked = now.State == LockState.Locked;
                 return Results.Json(new { error = unlocking ? WrongWithCode : locked ? LockedText(name) : WrongText, wait = now.Seconds, locked }, statusCode: StatusCodes.Status401Unauthorized);
@@ -457,7 +457,7 @@ public static class SignIn
                 {
                     // Typed another way than the account is named, and the account is locked or waiting: answered like a wrong
                     // password, so the other spelling can't be used to find out whether a password is right.
-                    return Failed(who.Username, true, "Right password, but the account is locked or waiting under its own name");
+                    return Failed(who.Username, true, "Correct password, but the account is locked out or delayed under its own username");
                 }
                 string[] keys = key is null || key == counted ? [counted] : [counted, key];
                 if (unlocking)
@@ -466,11 +466,11 @@ public static class SignIn
                     if (proven is null || proven.Source != who.Source || !string.Equals(proven.Username, who.Username, StringComparison.OrdinalIgnoreCase)
                         || !roles.CanSignIn(who) || !roles.Of(who).Any(r => r.Id == Roles.Admin))
                     {
-                        return Failed(who.Username, true, "Locked, and not an administrator with that code");
+                        return Failed(who.Username, true, "Locked out. The code does not belong to this administrator.");
                     }
                     locks.Unlock(key!);
                     ((ClaimsIdentity) principal.Identity!).AddClaim(new Claim("mfa", "1"));
-                    log.Record(who.Username, from, "sign-in", "signin.unlock", "Unlocked their own sign-in", "ok", "With the password and the authenticator code together");
+                    log.Record(who.Username, from, "sign-in", "signin.unlock", "Unlocked their own sign-in", "ok", "Using the password and the authenticator code");
                     return await Finish(context, roles, log, locks, principal, shown, keys);
                 }
                 if (mfa.Has(who))
@@ -489,7 +489,7 @@ public static class SignIn
                 if (unlocking && !Coded(mine is not null ? new Who(Local, mine.Username, null, [])
                     : new Who(Windows, $"{Environment.MachineName}\\{Ldap.Account(name)}", Environment.MachineName, [])))
                 {
-                    return Failed(mine is not null ? name : Unknown, mine is not null, "Locked, and the code was wrong");
+                    return Failed(mine is not null ? name : Unknown, mine is not null, "Locked out. The code is incorrect.");
                 }
                 // Rabbid Lab's own accounts, then, on Windows, an administrator of this computer with its own Windows account.
                 // A name with a domain in it (AMW\name, name@domain) is this computer's only when the domain is this computer:
@@ -527,14 +527,14 @@ public static class SignIn
             var chosen = form.Server?.Trim().ToLowerInvariant();
             if (!string.IsNullOrEmpty(chosen) && !(await finder.Controllers(domain, context.RequestAborted)).Any(c => c.Name == chosen))
             {
-                return Results.BadRequest(new { error = $"{chosen} isn't one of {domain}'s domain controllers." });
+                return Results.BadRequest(new { error = $"{chosen} is not a domain controller in {domain}." });
             }
             // The account's name for the log when it has signed in here before, otherwise Unknown user.
             var logged = KnownIn(roles, name, domain, settings.Domain);
             var sam = Ldap.Account(name);
             if (unlocking && !Coded(new Who(Directory, domain == settings.Domain ? sam : $"{sam}@{domain}", domain, [])))
             {
-                return Failed(logged, logged != Unknown, "Locked, and the code was wrong");
+                return Failed(logged, logged != Unknown, "Locked out. The code is incorrect.");
             }
             DirectoryUser? user;
             string host;
@@ -550,7 +550,7 @@ public static class SignIn
             catch (DirectoryProblem e)
             {
                 log.Record(logged, from, "sign-in", "signin.failed", "Sign-in failed", "failed", e.Message);
-                return Results.Json(new { error = $"Couldn't check your password with {domain}: {e.Message}" }, statusCode: StatusCodes.Status503ServiceUnavailable);
+                return Results.Json(new { error = $"Could not verify your password with {domain}: {e.Message}" }, statusCode: StatusCodes.Status503ServiceUnavailable);
             }
             if (user is null)
             {
@@ -565,8 +565,8 @@ public static class SignIn
             var who = new Who(Directory, username, domain, user.Groups);
             if (!roles.CanSignIn(who))
             {
-                log.Record(username, from, "sign-in", "signin.refused", "Sign-in refused", "failed", "Not in any role");
-                return Results.Json(new { error = $"Your account isn't in any of {Product.Title}'s roles yet, so it can't sign in. Ask whoever runs {Product.Title} to add you." },
+                log.Record(username, from, "sign-in", "signin.refused", "Sign-in denied", "failed", "Not assigned to any role");
+                return Results.Json(new { error = $"Your account is not assigned to a role in {Product.Title}. Ask an administrator to add you to a role." },
                     statusCode: StatusCodes.Status403Forbidden);
             }
             return await Enter(Principal(username, user.Name, Directory, settings.Stamp, domain, host, user.Groups, Stamp(user.PasswordSet)), user.Name);
@@ -582,7 +582,7 @@ public static class SignIn
             }
             if (pending.Find(form.Ticket) is not { } waiting)
             {
-                return Results.BadRequest(new { error = "That took too long. Sign in again.", again = true });
+                return Results.BadRequest(new { error = "The sign-in timed out. Sign in again.", again = true });
             }
             var from = ActivityLog.Address(context);
             var who = Who.Of(waiting.Principal);
@@ -602,7 +602,7 @@ public static class SignIn
                     return Results.Json(new { error }, statusCode: StatusCodes.Status401Unauthorized);
                 }
                 pending.Remove(form.Ticket!);
-                log.Record(username, from, "sign-in", "signin.locked", "Sign-in locked", "failed", "Too many wrong passwords and codes");
+                log.Record(username, from, "sign-in", "signin.locked", "Locked out", "failed", "Too many incorrect passwords and codes");
                 return Results.Json(new { error = LockedText(username), again = true }, statusCode: StatusCodes.Status401Unauthorized);
             }
             // Skip MFA this time: Rabbid Lab Dev, on the server itself, while Settings, Developer allows it. Nothing is set up.
@@ -610,7 +610,7 @@ public static class SignIn
             {
                 if (!MaySkipMfa(context))
                 {
-                    return Results.Json(new { error = "MFA can't be skipped here." }, statusCode: StatusCodes.Status403Forbidden);
+                    return Results.Json(new { error = "MFA cannot be skipped from this computer." }, statusCode: StatusCodes.Status403Forbidden);
                 }
                 pending.Remove(form.Ticket!);
                 if (!roles.CanSignIn(who))
@@ -618,18 +618,18 @@ public static class SignIn
                     return Results.BadRequest(new { error = "Sign in again.", again = true });
                 }
                 ((ClaimsIdentity) waiting.Principal.Identity).AddClaim(new Claim("mfa", Skipped));
-                return await Finish(context, roles, log, locks, waiting.Principal, waiting.Name, waiting.Keys, "Signed in without MFA", $"{Product.Name}, on the server itself, with Skip MFA this time");
+                return await Finish(context, roles, log, locks, waiting.Principal, waiting.Name, waiting.Keys, "Signed in without MFA", $"{Product.Name}, on the server, using Skip MFA this time");
             }
             // Set up some other way since the password was typed: this ticket's secret doesn't take that one's place.
             if (waiting.Secret is not null && mfa.Has(who))
             {
                 pending.Remove(form.Ticket!);
-                return Results.BadRequest(new { error = "MFA was set up for this account just now. Sign in again.", again = true });
+                return Results.BadRequest(new { error = "MFA was just set up for this account. Sign in again.", again = true });
             }
             if (waiting.Secret is not null && pending.Secret(waiting) is null)
             {
                 pending.Remove(form.Ticket!);
-                return Results.BadRequest(new { error = "That took too long. Sign in again.", again = true });
+                return Results.BadRequest(new { error = "The sign-in timed out. Sign in again.", again = true });
             }
             // After a reset, a new app takes the one-time code too, so a password alone can't put someone else's app on it.
             var afterReset = waiting.Secret is not null && mfa.ResetWaiting(who);
@@ -640,7 +640,7 @@ public static class SignIn
                     case MfaAnswer.Wait:
                         return Results.Json(new { error = MfaApi.TooMany }, statusCode: StatusCodes.Status429TooManyRequests);
                     case MfaAnswer.Wrong:
-                        return WrongCode("That one-time code isn't right. Ask whoever reset your MFA for it again.", "Wrong one-time code after an MFA reset");
+                        return WrongCode("The one-time code is incorrect. Ask the administrator who reset your MFA for the code.", "Incorrect one-time code after an MFA reset");
                 }
             }
             switch (waiting.Secret is null ? mfa.Check(who, form.Code) : mfa.Enable(who, pending.Secret(waiting)!, form.Code))
@@ -648,7 +648,7 @@ public static class SignIn
                 case MfaAnswer.Wait:
                     return Results.Json(new { error = MfaApi.TooMany }, statusCode: StatusCodes.Status429TooManyRequests);
                 case MfaAnswer.Wrong:
-                    return WrongCode(MfaApi.WrongCode, "Wrong MFA code");
+                    return WrongCode(MfaApi.WrongCode, "Incorrect MFA code");
             }
             pending.Remove(form.Ticket!);
             if (afterReset)
@@ -662,7 +662,7 @@ public static class SignIn
             ((ClaimsIdentity) waiting.Principal.Identity).AddClaim(new Claim("mfa", "1"));
             if (waiting.Secret is not null)
             {
-                log.Record(username, from, "access", "mfa.on", "Turned on MFA", "ok", afterReset ? "At sign-in, with the one-time code from a reset" : "At sign-in");
+                log.Record(username, from, "access", "mfa.on", "Enabled MFA", "ok", afterReset ? "At sign-in, using the one-time code from an MFA reset" : "At sign-in");
             }
             return await Finish(context, roles, log, locks, waiting.Principal, waiting.Name, waiting.Keys);
         });
@@ -677,7 +677,7 @@ public static class SignIn
             // The page signing itself out after Sign out when idle.
             if (idle == true && context.User.Identity?.IsAuthenticated == true && settings.Current.IdleMinutes > 0)
             {
-                log.Record(context, "sign-in", "signout.idle", $"Signed out after {IdleWords(settings.Current.IdleMinutes)} without activity");
+                log.Record(context, "sign-in", "signout.idle", $"Signed out after {IdleWords(settings.Current.IdleMinutes)} of inactivity");
             }
             await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
             return Results.Ok();
@@ -696,19 +696,19 @@ public static class SignIn
             {
                 if (!IdleChoices.Contains(idle))
                 {
-                    return Results.BadRequest(new { error = "Pick Never, 15 or 30 minutes, or 1, 2, 4 or 8 hours." });
+                    return Results.BadRequest(new { error = "Select Never, 15 or 30 minutes, or 1, 2, 4 or 8 hours." });
                 }
                 settings.Change(s => s.IdleMinutes = idle);
-                log.Record(context, "admin", "settings.idle", idle == 0 ? "Turned off Sign out when idle" : $"Set Sign out when idle to {IdleWords(idle)}");
+                log.Record(context, "admin", "settings.idle", idle == 0 ? "Disabled Sign out when idle" : $"Set Sign out when idle to {IdleWords(idle)}");
             }
             if (form.LockAfter is { } after)
             {
                 if (!LockChoices.Contains(after))
                 {
-                    return Results.BadRequest(new { error = "Pick 3, 5 or 10 wrong passwords." });
+                    return Results.BadRequest(new { error = "Select 3, 5 or 10 incorrect passwords." });
                 }
                 settings.Change(s => s.LockAfter = after);
-                log.Record(context, "admin", "settings.lock", $"Set sign-in to lock a name after {after} wrong passwords");
+                log.Record(context, "admin", "settings.lock", $"Set the sign-in lockout threshold to {after} incorrect passwords");
             }
             return Results.Ok(new { idle = settings.Current.IdleMinutes, lockAfter = settings.Current.LockAfter });
         });
@@ -732,7 +732,7 @@ public static class SignIn
             }
             if (locks.Locked().Accounts.FirstOrDefault(e => e.Id == form.Key) is not { } entry || !locks.Unlock(entry.Id))
             {
-                return Results.NotFound(new { error = "That name isn't locked any more." });
+                return Results.NotFound(new { error = "This username is no longer locked out." });
             }
             log.Record(context, "access", "signin.unlock", $"Unlocked sign-in for {entry.Name}");
             return Results.Ok();
@@ -748,7 +748,7 @@ public static class SignIn
             var username = context.User.Identity?.Name;
             if (context.User.FindFirstValue("source") != Local || username is null)
             {
-                return Results.BadRequest(new { error = $"Only {Product.Title} accounts change their password here. Active Directory and Windows passwords are changed there." });
+                return Results.BadRequest(new { error = $"Only {Product.Title} local accounts can change their password here. Change Active Directory and Windows passwords in Windows." });
             }
             var from = ActivityLog.Address(context);
             if (!limiter.Take(from))
@@ -757,8 +757,8 @@ public static class SignIn
             }
             if (accounts.Check(username, form.Current) is null)
             {
-                log.Record(context, "access", "account.password.failed", "Typed a wrong current password", "failed");
-                return Results.BadRequest(new { error = "Your current password is wrong." });
+                log.Record(context, "access", "account.password.failed", "Entered an incorrect current password", "failed");
+                return Results.BadRequest(new { error = "Your current password is incorrect." });
             }
             limiter.GiveBack(from);
             // Every session of the account ends, this one too, so the new password is the only way back in.
@@ -810,7 +810,7 @@ public static class SignIn
         }
         if (at + 1 >= args.Length || args[at + 1].StartsWith('-'))
         {
-            Console.Error.WriteLine("Say which name: --unlock name");
+            Console.Error.WriteLine("Specify a username: --unlock <username>");
             return 1;
         }
         var name = args[at + 1];
@@ -818,7 +818,7 @@ public static class SignIn
         // as it is (SignInLocks.UnlockInFile), and the running server sees that.
         if (SignInLocks.UnlockInFile(app.Services.GetRequiredService<DataFolder>(), [SignInLocks.Key(Local, name), SignInLocks.Key(Directory, name)]) == 0)
         {
-            Console.WriteLine($"{name} isn't locked.");
+            Console.WriteLine($"{name} is not locked out.");
             return 0;
         }
         app.Services.GetRequiredService<ActivityLog>().Record(name, null, "sign-in", "signin.unlock", "Unlocked from the command line", "ok");
@@ -997,13 +997,13 @@ public static class SignIn
     private static string? DomainProblem(string? domain)
     {
         var d = Clean(domain);
-        return d.Length == 0 || !d.Contains('.') || Uri.CheckHostName(d) != UriHostNameType.Dns ? "Enter the domain's full name, such as home.lan." : null;
+        return d.Length == 0 || !d.Contains('.') || Uri.CheckHostName(d) != UriHostNameType.Dns ? "Enter the fully qualified domain name, such as home.lan." : null;
     }
 
     /// <summary>Why a domain controller's name won't do, or null. Empty is Automatic.</summary>
     private static string? ServerProblem(string? server) =>
         string.IsNullOrWhiteSpace(server) || Uri.CheckHostName(server.Trim()) is UriHostNameType.Dns or UriHostNameType.IPv4 or UriHostNameType.IPv6
-            ? null : "That isn't a domain controller's name.";
+            ? null : "That is not a valid domain controller name.";
 
     /// <summary>The domains accounts may sign in from: the one set up, the rest of its forest and the domains it trusts. Asked every ten minutes.</summary>
     private static async Task<IReadOnlyList<string>> Allowed(IMemoryCache cache, IDirectory directory, string domain, CancellationToken stop) =>
@@ -1014,13 +1014,13 @@ public static class SignIn
         }) ?? [domain];
 
     private static string NotTrusted(string domain, string setUp) =>
-        $"{domain} isn't in {setUp}'s forest and {setUp} doesn't trust it, so its accounts can't sign in here.";
+        $"{domain} is not in the {setUp} forest and {setUp} has no trust with it. Accounts from {domain} cannot sign in.";
 
-    private const string WrongText = "That username or password is wrong.";
-    private const string WrongWithCode = "That username, password or code is wrong.";
+    private const string WrongText = "The username or password is incorrect.";
+    private const string WrongWithCode = "The username, password or code is incorrect.";
 
     /// <summary>Said for any name, an account or not. Without a number: the domain's own may be lower than Rabbid Lab's.</summary>
-    private static string LockedText(string name) => $"{name} is locked after too many wrong passwords. An administrator has to unlock it.";
+    private static string LockedText(string name) => $"{name} is locked out after too many incorrect passwords. An administrator must unlock it.";
 
     /// <summary>A locked name: nothing is checked.</summary>
     private static IResult LockedOut(string name) => Results.Json(new { error = LockedText(name), locked = true }, statusCode: StatusCodes.Status403Forbidden);
@@ -1028,7 +1028,7 @@ public static class SignIn
     /// <summary>Too soon after a wrong password: nothing is checked, and the page counts the seconds down.</summary>
     private static IResult TooSoon(int seconds, bool locked) => Results.Json(new
     {
-        error = $"Too many wrong passwords. Try again in {(seconds < 60 ? $"{seconds} second{(seconds == 1 ? "" : "s")}" : $"{(seconds + 59) / 60} minute{(seconds <= 60 ? "" : "s")}")}.",
+        error = $"Too many incorrect passwords. Try again in {(seconds < 60 ? $"{seconds} second{(seconds == 1 ? "" : "s")}" : $"{(seconds + 59) / 60} minute{(seconds <= 60 ? "" : "s")}")}.",
         wait = seconds,
         locked,
     }, statusCode: StatusCodes.Status429TooManyRequests);
@@ -1066,7 +1066,7 @@ public static class SignIn
     }
 
     private static IResult TooMany() =>
-        Results.Json(new { error = "Too many wrong passwords from this computer. Wait a few minutes, then try again." }, statusCode: StatusCodes.Status429TooManyRequests);
+        Results.Json(new { error = "Too many incorrect passwords from this computer. Wait a few minutes, then try again." }, statusCode: StatusCodes.Status429TooManyRequests);
 }
 
 public sealed record LocalSetupForm(string? Username, string? Password);

@@ -59,7 +59,7 @@ public sealed class IdleTests : IDisposable
         app.Clock.Advance(TimeSpan.FromMinutes(1));
 
         Assert.Equal(HttpStatusCode.Unauthorized, (await page.GetAsync("/api/status")).StatusCode);
-        Assert.Contains("Signed out after 30 minutes without activity", await Log());
+        Assert.Contains("Signed out after 30 minutes of inactivity", await Log());
     }
 
     [Fact]
@@ -99,9 +99,9 @@ public sealed class IdleTests : IDisposable
         Assert.Equal(HttpStatusCode.Unauthorized, (await admin.GetAsync("/api/status")).StatusCode);
 
         var log = await Log();
-        Assert.Contains("Turned off Sign out when idle", log);
+        Assert.Contains("Disabled Sign out when idle", log);
         Assert.Contains("Set Sign out when idle to 15 minutes", log);
-        Assert.Contains("Signed out after 15 minutes without activity", log);
+        Assert.Contains("Signed out after 15 minutes of inactivity", log);
 
         // Only someone who can change roles changes it.
         app.Services.GetRequiredService<Accounts>().Add("mlopez", "user password", Roles.User);
@@ -118,6 +118,6 @@ public sealed class IdleTests : IDisposable
         (await page.PostAsync("/api/signout?idle=true", null)).EnsureSuccessStatusCode();
 
         Assert.Equal(HttpStatusCode.Unauthorized, (await page.GetAsync("/api/status")).StatusCode);
-        Assert.Contains("Signed out after 30 minutes without activity", await Log());
+        Assert.Contains("Signed out after 30 minutes of inactivity", await Log());
     }
 }

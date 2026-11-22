@@ -41,7 +41,7 @@ internal static class Wmi
         catch (ManagementException e) when (e.ErrorCode == ManagementStatus.Timedout && order.Action == AccountOrder.WmiClasses)
         {
             // The first list after Windows starts can take most of a minute; the next one takes a moment.
-            return AccountAnswer.Failed(order.Id, "Windows is still putting its class list together. Try again in a minute.");
+            return AccountAnswer.Failed(order.Id, "Windows is still building the WMI class list. Try again in a minute.");
         }
         catch (ManagementException e)
         {
@@ -49,11 +49,11 @@ internal static class Wmi
         }
         catch (UnauthorizedAccessException)
         {
-            return AccountAnswer.Failed(order.Id, "Windows refused to read that, even as SYSTEM.");
+            return AccountAnswer.Failed(order.Id, "Access denied, even when running as SYSTEM.");
         }
         catch (Exception e) when (e is COMException or ArgumentException or InvalidOperationException)
         {
-            return AccountAnswer.Failed(order.Id, $"WMI said: {Clean(e.Message)}");
+            return AccountAnswer.Failed(order.Id, $"WMI error: {Clean(e.Message)}");
         }
     }
 
@@ -281,12 +281,12 @@ internal static class Wmi
     // The page puts the computer's name in front of these.
     private static string Said(ManagementException e, string space) => e.ErrorCode switch
     {
-        ManagementStatus.InvalidNamespace => $"There's no namespace {space} on it.",
-        ManagementStatus.InvalidClass or ManagementStatus.NotFound => $"There's no class like that in {space}.",
-        ManagementStatus.InvalidQuery or ManagementStatus.InvalidQueryType => $"WMI couldn't read that query: check the class and property names. ({Clean(e.Message)})",
-        ManagementStatus.AccessDenied => "WMI refused to read that, even as SYSTEM.",
-        ManagementStatus.Timedout => "It took longer than 30 seconds. Ask for less, with a WHERE.",
-        _ => $"WMI said: {Clean(e.Message)}",
+        ManagementStatus.InvalidNamespace => $"Namespace {space} was not found.",
+        ManagementStatus.InvalidClass or ManagementStatus.NotFound => $"Class not found in {space}.",
+        ManagementStatus.InvalidQuery or ManagementStatus.InvalidQueryType => $"Invalid query. Check the class and property names. ({Clean(e.Message)})",
+        ManagementStatus.AccessDenied => "WMI access denied, even when running as SYSTEM.",
+        ManagementStatus.Timedout => "The query timed out after 30 seconds. Narrow it with a WHERE clause.",
+        _ => $"WMI error: {Clean(e.Message)}",
     };
 
     private static string Clean(string message) => message.Trim().TrimEnd('.') + ".";

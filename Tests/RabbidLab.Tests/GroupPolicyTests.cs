@@ -137,7 +137,7 @@ public sealed class GroupPolicyTests : IDisposable
         Assert.Equal([Firewall], Written(Lab).Select(e => e.Gpo));
 
         Assert.Contains("already linked", (await Assert.ThrowsAsync<ToolProblem>(() => tools.Link(Drives, Lab, new GpoLinkChange(Add: true), None, Stop))).Message);
-        Assert.Contains("isn't linked", (await Assert.ThrowsAsync<ToolProblem>(() => tools.Link(Spare, Lab, new GpoLinkChange(Remove: true), None, Stop))).Message);
+        Assert.Contains("no longer linked", (await Assert.ThrowsAsync<ToolProblem>(() => tools.Link(Spare, Lab, new GpoLinkChange(Remove: true), None, Stop))).Message);
         await Assert.ThrowsAsync<ToolProblem>(() => tools.Link(Spare, "OU=Elsewhere,DC=other,DC=net", new GpoLinkChange(Add: true), None, Stop));
     }
 
@@ -157,7 +157,7 @@ public sealed class GroupPolicyTests : IDisposable
         Assert.Equal("0", Value("gPOptions"));
         Assert.Equal($"[amw.com;{Win11};0]", Value("gPCWQLFilter"));
         Assert.Contains(ad.Mods, m => m.Mod.Attribute == "gPCWQLFilter" && m.Mod.Change == LdapChange.Delete && m.Dn.Contains(Firewall));
-        Assert.Contains("already a GPO", (await Assert.ThrowsAsync<ToolProblem>(() => tools.RenameGpo(Spare, "default domain policy", None, Stop))).Message);
+        Assert.Contains("GPO named default domain policy already exists", (await Assert.ThrowsAsync<ToolProblem>(() => tools.RenameGpo(Spare, "default domain policy", None, Stop))).Message);
         await Assert.ThrowsAsync<ToolProblem>(() => tools.SetBlocked(Domain, true, None, Stop));
         await Assert.ThrowsAsync<ToolProblem>(() => tools.SetGpoWmi(Ddp, "{00000000-0000-0000-0000-00000000000F}", None, Stop));
     }
@@ -174,10 +174,10 @@ public sealed class GroupPolicyTests : IDisposable
         await tools.SaveWmiFilter(Win11, "Windows 11", null, "SELECT * FROM Win32_OperatingSystem", null, None, "awiles", Stop);
         Assert.Contains(ad.Mods, m => m.Mod.Attribute == "msWMI-Name" && (string) m.Mod.Values[0] == "Windows 11");
 
-        Assert.Contains("already a WMI filter", (await Assert.ThrowsAsync<ToolProblem>(() => tools.SaveWmiFilter(null, "laptops", null, "SELECT 1 FROM X", null, None, "awiles", Stop))).Message);
+        Assert.Contains("WMI filter named laptops already exists", (await Assert.ThrowsAsync<ToolProblem>(() => tools.SaveWmiFilter(null, "laptops", null, "SELECT 1 FROM X", null, None, "awiles", Stop))).Message);
         await Assert.ThrowsAsync<ToolProblem>(() => tools.SaveWmiFilter(null, "Bad", null, "DELETE FROM Win32_Battery", null, None, "awiles", Stop));
         await Assert.ThrowsAsync<ToolProblem>(() => tools.SaveWmiFilter(null, "Bad", null, "SELECT 1; SELECT 2", null, None, "awiles", Stop));
-        Assert.Contains("C-Firewall uses it", (await Assert.ThrowsAsync<ToolProblem>(() => tools.DeleteWmiFilter(Win11, None, Stop))).Message);
+        Assert.Contains("C-Firewall uses this filter", (await Assert.ThrowsAsync<ToolProblem>(() => tools.DeleteWmiFilter(Win11, None, Stop))).Message);
         await tools.DeleteWmiFilter(id, None, Stop);
         Assert.DoesNotContain(ad.Rows, r => r.Dn == $"CN={id},{Som}");
     }
@@ -189,12 +189,12 @@ public sealed class GroupPolicyTests : IDisposable
         ad.Fail = what => what.StartsWith("modify", StringComparison.Ordinal) ? new LdapRefused(LdapRefused.InsufficientRights, "Insufficient access") : null;
 
         var asked = await Assert.ThrowsAsync<GpoNeedsLogin>(() => tools.SetBlocked(Lab, false, None, Stop));
-        Assert.Contains("svc-existing isn't allowed", asked.Message);
+        Assert.Contains("svc-existing does not have permission", asked.Message);
         var wrong = await Assert.ThrowsAsync<GpoNeedsLogin>(() => tools.SetBlocked(Lab, false, new GpoLogin(@"AMW\awiles", "wrong"), Stop));
-        Assert.Contains("wrong", wrong.Message);
+        Assert.Contains("incorrect", wrong.Message);
         // A login that signs in but isn't allowed either is said plainly, not asked for again.
         var refused = await Assert.ThrowsAsync<ToolProblem>(() => tools.SetBlocked(Lab, false, new GpoLogin(@"AMW\awiles", "right"), Stop));
-        Assert.Contains("awiles isn't allowed", refused.Message);
+        Assert.Contains("awiles does not have permission", refused.Message);
 
         ad.Fail = null;
         gpmc.Deny = true;
@@ -216,21 +216,21 @@ public sealed class GroupPolicyTests : IDisposable
 
         await tools.NewGpo("C-Firewall 2", Firewall, null, None, "awiles", Stop);
         Assert.Equal($"copy {Firewall} as C-Firewall 2", gpmc.Calls[1]);
-        Assert.Contains("already a GPO", (await Assert.ThrowsAsync<ToolProblem>(() => tools.NewGpo("c-firewall", null, null, None, "awiles", Stop))).Message);
+        Assert.Contains("GPO named c-firewall already exists", (await Assert.ThrowsAsync<ToolProblem>(() => tools.NewGpo("c-firewall", null, null, None, "awiles", Stop))).Message);
 
         // Kept first, then its links go, then the GPO.
         gpmc.Calls.Clear();
         await tools.DeleteGpo(Drives, None, "awiles", Stop);
-        Assert.Equal([$"backup {Drives} Before it was deleted", $"delete {Drives}"], gpmc.Calls);
+        Assert.Equal([$"backup {Drives} Automatic backup before deletion", $"delete {Drives}"], gpmc.Calls);
         Assert.Equal([Firewall], Written(Lab).Select(e => e.Gpo));
         var kept = (await tools.GroupPolicy(Stop)).Backups.Single();
         Assert.Equal(("U-Drive maps", "awiles"), (kept.Name, kept.By));
-        Assert.Contains("Windows needs", (await Assert.ThrowsAsync<ToolProblem>(() => tools.DeleteGpo(Ddp, None, "awiles", Stop))).Message);
+        Assert.Contains("required by Windows", (await Assert.ThrowsAsync<ToolProblem>(() => tools.DeleteGpo(Ddp, None, "awiles", Stop))).Message);
 
         // Restoring keeps what it has now too, when it's still there.
         gpmc.Calls.Clear();
         await tools.RestoreGpo(kept.Id, None, "awiles", Stop);
-        Assert.Equal([$"backup {Drives} Before restoring the backup from {kept.At:yyyy-MM-dd HH:mm} UTC", $"restore {kept.Id}"], gpmc.Calls);
+        Assert.Equal([$"backup {Drives} Automatic backup before restoring the backup from {kept.At:yyyy-MM-dd HH:mm} UTC", $"restore {kept.Id}"], gpmc.Calls);
 
         await tools.SetGpoApply(Firewall, @"AMW\G-Workstations", false, None, Stop);
         Assert.Equal($@"apply {Firewall} AMW\G-Workstations False", gpmc.Calls[^1]);

@@ -31,12 +31,12 @@ public static partial class PrinterActions
     {
         if (p is null || p.Action is not ("add" or "remove" or "testpage"))
         {
-            return (null, "", "Say what to do with the printer.");
+            return (null, "", "Specify an action for the printer.");
         }
         var name = p.Name?.Trim() ?? "";
         if (!(p.Action == "add" && p.Way == "share") && !Plain(name, 200))
         {
-            return (null, "", "Give the printer a name.");
+            return (null, "", "Enter a printer name.");
         }
         return p.Action switch
         {
@@ -46,10 +46,10 @@ public static partial class PrinterActions
                 if ($name.StartsWith('\\')) {
                     Start-Process rundll32.exe -ArgumentList "printui.dll,PrintUIEntry /gd /n`"$name`"" -Wait
                     Restart-Service -Name Spooler -Force
-                    "Took $name off this computer. It goes for each person the next time they sign in."
+                    "Removed $name from this computer. It is removed for each user at their next sign-in."
                     exit 0
                 }
-                if (-not (Get-Printer -Name $name -ErrorAction SilentlyContinue)) { "There's no printer called $name on this computer."; exit 1 }
+                if (-not (Get-Printer -Name $name -ErrorAction SilentlyContinue)) { "No printer named $name on this computer."; exit 1 }
                 Remove-Printer -Name $name
                 "Removed $name."
                 """),
@@ -57,9 +57,9 @@ public static partial class PrinterActions
                 $ErrorActionPreference = 'Stop'
                 $name = {{Q(name)}}
                 $printer = Get-CimInstance Win32_Printer | Where-Object { $_.Name -eq $name } | Select-Object -First 1
-                if (-not $printer) { "There's no printer called $name on this computer."; exit 1 }
+                if (-not $printer) { "No printer named $name on this computer."; exit 1 }
                 $result = Invoke-CimMethod -InputObject $printer -MethodName PrintTestPage
-                if ($result.ReturnValue -ne 0) { "Windows didn't send it (error $($result.ReturnValue))."; exit 1 }
+                if ($result.ReturnValue -ne 0) { "Windows could not print the test page (error $($result.ReturnValue))."; exit 1 }
                 "Sent a test page to $name."
                 """),
             _ => Add(p, name),
@@ -68,7 +68,7 @@ public static partial class PrinterActions
 
     private static (JobStep?, string, string?) Add(PrinterForm p, string name)
     {
-        const string already = """if (Get-Printer -Name $name -ErrorAction SilentlyContinue) { "$name is already on this computer."; exit 0 }""";
+        const string already = """if (Get-Printer -Name $name -ErrorAction SilentlyContinue) { "$name is already installed on this computer."; exit 0 }""";
         switch (p.Way)
         {
             case "ipp":
@@ -81,8 +81,8 @@ public static partial class PrinterActions
                 }
                 if (url.Length > 500 || url.Any(char.IsControl) || !Uri.TryCreate(url, UriKind.Absolute, out var u) || u.Scheme is not ("http" or "https" or "ipp" or "ipps"))
                 {
-                    return (null, "", p.Way == "ipp" ? "Give the printer's IP address or name, or its IPP address, such as http://192.168.3.20:631/ipp/print."
-                        : "Give the printer's device address, such as http://192.168.3.20:80/WebServices/Device.");
+                    return (null, "", p.Way == "ipp" ? "Enter the printer's IP address, host name or IPP URL, for example http://192.168.3.20:631/ipp/print."
+                        : "Enter the printer's device URL, for example http://192.168.3.20:80/WebServices/Device.");
                 }
                 return Done($"Add the printer {name}", 5, $$"""
                     $ErrorActionPreference = 'Stop'
@@ -98,17 +98,17 @@ public static partial class PrinterActions
                 var address = p.Address?.Trim() ?? "";
                 if (!Plain(address, 255) || !HostShape().IsMatch(address))
                 {
-                    return (null, "", "Give the printer's IP address or name, such as 192.168.3.20.");
+                    return (null, "", "Enter the printer's IP address or host name, for example 192.168.3.20.");
                 }
                 var driver = p.Driver?.Trim() ?? "";
                 if (!Plain(driver, 200))
                 {
-                    return (null, "", "Pick the driver it uses.");
+                    return (null, "", "Select a driver.");
                 }
                 var inf = p.Inf?.Trim() ?? "";
                 if (inf.Length > 0 && (!Plain(inf, 260) || !inf.EndsWith(".inf", StringComparison.OrdinalIgnoreCase)))
                 {
-                    return (null, "", @"The driver file has to be an .inf, such as \\server\drivers\hp\hpcu250u.inf.");
+                    return (null, "", @"The driver file must be an .inf file, for example \\server\drivers\hp\hpcu250u.inf.");
                 }
                 string port;
                 string makePort;
@@ -123,7 +123,7 @@ public static partial class PrinterActions
                     var queue = p.Queue?.Trim() ?? "";
                     if (!Plain(queue, 100))
                     {
-                        return (null, "", "Give the LPR queue name, such as lp or PASSTHRU.");
+                        return (null, "", "Enter the LPR queue name, for example lp or PASSTHRU.");
                     }
                     port = $"LPR_{address}_{queue}";
                     makePort = $"Add-PrinterPort -Name {Q(port)} -LprHostAddress {Q(address)} -LprQueueName {Q(queue)} -LprByteCounting";
@@ -131,7 +131,7 @@ public static partial class PrinterActions
                 // The driver is on the computer already, or comes from the .inf given first.
                 var fromInf = inf.Length == 0 ? "" : $$"""
                     $said = & { $ErrorActionPreference = 'Continue'; pnputil.exe /add-driver {{Q(inf)}} /install 2>&1 | Out-String }
-                    if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne 259 -and $LASTEXITCODE -ne 3010) { $said; "pnputil couldn't add the driver file (exit $LASTEXITCODE)."; exit 1 }
+                    if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne 259 -and $LASTEXITCODE -ne 3010) { $said; "pnputil could not add the driver file (exit code $LASTEXITCODE)."; exit 1 }
                     """;
                 return Done($"Add the printer {name}", 10, $$"""
                     $ErrorActionPreference = 'Stop'
@@ -150,18 +150,18 @@ public static partial class PrinterActions
                 var share = p.Share?.Trim() ?? "";
                 if (!ShareShape().IsMatch(share))
                 {
-                    return (null, "", @"Give the shared printer as \\server\printer.");
+                    return (null, "", @"Enter the shared printer as \\server\printer.");
                 }
                 return Done($"Add the printer {share}", 10, $$"""
                     $ErrorActionPreference = 'Stop'
                     $share = {{Q(share)}}
                     Start-Process rundll32.exe -ArgumentList "printui.dll,PrintUIEntry /ga /n`"$share`"" -Wait
                     Restart-Service -Name Spooler -Force
-                    "Added $share for everyone on this computer. Each person gets it the next time they sign in."
+                    "Added $share for all users on this computer. Users get it at their next sign-in."
                     """);
             }
             default:
-                return (null, "", "Say how to add the printer.");
+                return (null, "", "Specify how to add the printer.");
         }
     }
 

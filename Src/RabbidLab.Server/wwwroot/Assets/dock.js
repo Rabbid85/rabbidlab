@@ -1,5 +1,6 @@
 // The dock: once a page's command bar scrolls out of sight, a pill at the top keeps its views, Refresh and Add in reach.
 // A bar opts in with data-dock="id id id" (a .vswitch, icon commands, then the main command last, in the accent). The
+// main command can name others after a + (ln-add+ln-newgroup): it becomes a split button whose arrow lists them. The
 // dock's buttons press the bar's own, so whatever the page does on a click happens the same way.
 (() => {
   const main = document.querySelector('.main');
@@ -11,7 +12,14 @@
     dock.setAttribute('aria-label', `${bar.getAttribute('aria-label') || 'Page'} tools`);
     dock.hidden = true;
     document.body.append(dock);
+    const menu = document.createElement('div');
+    menu.className = 'gear-menu dock-menu';
+    menu.setAttribute('role', 'menu');
+    menu.popover = 'auto';
+    document.body.append(menu);
     const ids = bar.dataset.dock.split(/\s+/);
+    const [mainId, ...more] = ids.pop().split('+');
+    ids.push(mainId);
     // Drawn each time it shows, so a role that can't use a command, or a view picked since, is as the bar has it.
     const draw = () => {
       const parts = ids.map((id) => document.getElementById(id)).filter((el) => el && !el.hidden && !el.classList.contains('cant'));
@@ -31,12 +39,32 @@
         }
         if (icons) groups.push(icons);
         icons = '';
-        groups.push(`<button type="button" class="primary dock-main" data-for="${el.id}">${icon}<span>${label}</span></button>`);
+        const button = `<button type="button" class="primary dock-main" data-for="${el.id}">${icon}<span>${label}</span></button>`;
+        const extra = more.map((id) => document.getElementById(id)).filter((x) => x && !x.hidden && !x.classList.contains('cant'));
+        menu.innerHTML = `<div class="am-links">${extra.map((x) => `<button type="button" class="am-link" role="menuitem" data-for="${x.id}">${x.querySelector('svg')?.outerHTML || ''}${x.querySelector('span')?.textContent || ''}</button>`).join('')}</div>`;
+        groups.push(extra.length ? `<div class="dock-pair">${button}<button type="button" class="primary dock-arrow" aria-haspopup="menu" aria-expanded="false" aria-label="More options" data-tip="More options"><svg class="chev"><use href="#i-chevron-down"/></svg></button></div>` : button);
       });
       if (icons) groups.push(icons);
       dock.innerHTML = groups.join('<i class="dock-sep"></i>');
     };
+    // The arrow opens the others under it, lined up with its right edge.
+    const arrow = () => dock.querySelector('.dock-arrow');
+    menu.addEventListener('toggle', (e) => arrow()?.setAttribute('aria-expanded', String(e.newState === 'open')));
+    menu.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-for]');
+      if (!b) return;
+      menu.hidePopover();
+      document.getElementById(b.dataset.for)?.click();
+    });
     dock.addEventListener('click', (e) => {
+      if (e.target.closest('.dock-arrow')) {
+        menu.togglePopover();
+        if (menu.matches(':popover-open')) {
+          const r = arrow().getBoundingClientRect();
+          Object.assign(menu.style, { position: 'fixed', margin: '0', inset: 'auto', top: `${r.bottom + 8}px`, left: `${Math.max(8, r.right - menu.offsetWidth)}px` });
+        }
+        return;
+      }
       const b = e.target.closest('[data-for]');
       if (!b) return;
       const own = document.getElementById(b.dataset.for);

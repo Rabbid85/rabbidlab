@@ -96,7 +96,7 @@
       const list = items.filter((e, i, all) => e !== '-' || (i > 0 && i < all.length - 1 && all[i - 1] !== '-'));
       now = { button, items: list, pick };
       menu.innerHTML = (note ? `<p class="xact-note">${svg('alert')}<span>${esc(note)}</span></p>` : '')
-        + (list.length ? list.map((e, i) => row(e, String(i))).join('') : '<p class="xact-none">Nothing to do with these.</p>');
+        + (list.length ? list.map((e, i) => row(e, String(i))).join('') : '<p class="xact-none">No actions available.</p>');
       // Under the button, its left edge with the button's; moved in where the window ends, and above when there's more room there.
       menu.style.cssText = 'position:fixed;inset:auto;margin:0;left:0;top:0';
       menu.showPopover();

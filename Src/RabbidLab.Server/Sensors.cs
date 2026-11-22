@@ -253,21 +253,21 @@ public sealed class NetworkProbe(TimeProvider clock, SensorLogins? logins = null
         }
         catch (OperationCanceledException) when (!stop.IsCancellationRequested)
         {
-            return new Probe(false, Note: "No reply");
+            return new Probe(false, Note: "No response");
         }
         catch (SocketException e)
         {
             return new Probe(false, Note: e.SocketErrorCode switch
             {
-                SocketError.HostNotFound or SocketError.NoData or SocketError.TryAgain => "No such name",
-                SocketError.ConnectionRefused => s.Kind == "ping" ? "Refused" : $"Port {s.Port ?? 443} is closed",
-                SocketError.NetworkUnreachable or SocketError.HostUnreachable => "No route to it",
-                _ => "No reply",
+                SocketError.HostNotFound or SocketError.NoData or SocketError.TryAgain => "Host not found",
+                SocketError.ConnectionRefused => s.Kind == "ping" ? "Connection refused" : $"Port {s.Port ?? 443} is closed",
+                SocketError.NetworkUnreachable or SocketError.HostUnreachable => "Host unreachable",
+                _ => "No response",
             });
         }
         catch (Exception e) when (e is IOException or HttpRequestException or PingException or System.Security.Authentication.AuthenticationException or DnsResponseException or InvalidOperationException)
         {
-            return new Probe(false, Note: e.InnerException is SocketException { SocketErrorCode: SocketError.HostNotFound or SocketError.NoData } ? "No such name" : "No reply");
+            return new Probe(false, Note: e.InnerException is SocketException { SocketErrorCode: SocketError.HostNotFound or SocketError.NoData } ? "Host not found" : "No response");
         }
     }
 
@@ -276,34 +276,34 @@ public sealed class NetworkProbe(TimeProvider clock, SensorLogins? logins = null
     {
         if (commands is null || clients?.Find(s.Seat ?? "") is not { } client)
         {
-            return new Probe(false, Note: "That computer isn't in Devices any more");
+            return new Probe(false, Note: "The computer is no longer in Devices");
         }
         if (!commands.Listening(client.Id))
         {
-            return new Probe(false, Note: $"The client on {client.Computer} isn't connected");
+            return new Probe(false, Note: $"The client on {client.Computer} is not connected");
         }
         var watch = Stopwatch.StartNew();
         var answer = await commands.Send(client.Id, new AccountOrder { Action = s.Kind == "svc" ? AccountOrder.Service : AccountOrder.Disk, Name = s.Kind == "svc" ? s.Service : s.Drive }, stop);
         var ms = (int) watch.ElapsedMilliseconds;
         if (answer is null)
         {
-            return new Probe(false, Note: $"The client on {client.Computer} didn't answer");
+            return new Probe(false, Note: $"The client on {client.Computer} did not respond");
         }
         if (!answer.Ok)
         {
-            return new Probe(false, Note: answer.Error ?? "The client couldn't read it");
+            return new Probe(false, Note: answer.Error ?? "The client could not read the value");
         }
         if (s.Kind == "svc")
         {
             var state = Spaced(answer.State);
             return new Probe(answer.State == "Running", ms, state, Title: $"{answer.Detail} is {state.ToLowerInvariant()} on {client.Computer}",
-                Detail: $"Startup type {Spaced(answer.StartType)} · read by the client in {ms} ms");
+                Detail: $"Startup type: {Spaced(answer.StartType)} · client responded in {ms} ms");
         }
         var percent = 100.0 * (answer.Free ?? 0) / Math.Max(1, answer.Total ?? 1);
         var limit = s.WarnFree ?? 10;
         var said = $"{s.Drive} has {percent:0} % free";
         return new Probe(true, ms, said, Warn: percent < limit, Title: $"{said} on {client.Computer}",
-            Detail: $"{(answer.Free ?? 0) / 1e9:0} GB free of {(answer.Total ?? 0) / 1e9:0} GB{(string.IsNullOrEmpty(answer.Detail) ? "" : $" · {answer.Detail}")} · warns below {limit} %");
+            Detail: $"{(answer.Free ?? 0) / 1e9:0} GB free of {(answer.Total ?? 0) / 1e9:0} GB{(string.IsNullOrEmpty(answer.Detail) ? "" : $" · {answer.Detail}")} · warning below {limit} %");
     }
 
     // StopPending as Stop pending.
@@ -311,14 +311,14 @@ public sealed class NetworkProbe(TimeProvider clock, SensorLogins? logins = null
 
     // A check that signs in: with the credentials typed for Check now, or the saved ones it picked.
     private async Task<Probe> Signed(Sensor s, Func<Login, Task<Probe>> check) =>
-        (s.Typed ?? logins?.Get(s.Login)) is { } login ? await check(login) : new Probe(false, Note: "No credentials: open the sensor and pick them again");
+        (s.Typed ?? logins?.Get(s.Login)) is { } login ? await check(login) : new Probe(false, Note: "No credentials. Edit the sensor and select credentials");
 
     private static async Task<Probe> Ping(string host, CancellationToken stop)
     {
         using var ping = new Ping();
         var reply = await ping.SendPingAsync(host, TimeSpan.FromSeconds(3), cancellationToken: stop);
         return reply.Status == IPStatus.Success ? new Probe(true, (int) reply.RoundtripTime)
-            : new Probe(false, Note: reply.Status is IPStatus.TimedOut ? "No reply" : reply.Status is IPStatus.DestinationHostUnreachable or IPStatus.DestinationNetworkUnreachable ? "No route to it" : "No reply");
+            : new Probe(false, Note: reply.Status is IPStatus.TimedOut ? "Request timed out" : reply.Status is IPStatus.DestinationHostUnreachable or IPStatus.DestinationNetworkUnreachable ? "Host unreachable" : "No response");
     }
 
     private static async Task<Probe> Port(string host, int port, CancellationToken stop)
@@ -378,7 +378,7 @@ public sealed class NetworkProbe(TimeProvider clock, SensorLogins? logins = null
         }
         if (s.Expect == "text" && !(await Body(response, stop)).Contains(s.Text ?? "", StringComparison.OrdinalIgnoreCase))
         {
-            return new Probe(false, Note: "The text isn't on the page");
+            return new Probe(false, Note: "Expected text not found on the page");
         }
         return new Probe(true, ms, said);
     }
@@ -418,12 +418,12 @@ public sealed class NetworkProbe(TimeProvider clock, SensorLogins? logins = null
         }
         if (found.Length == 0)
         {
-            return new Probe(false, Note: "No such name");
+            return new Probe(false, Note: "Name not found");
         }
         var ms = (int) watch.ElapsedMilliseconds;
         var list = string.Join(", ", found.Take(3).Select(a => a.ToString()));
         return expected is not null && IPAddress.TryParse(expected, out var want) && !found.Any(a => Addresses.Normal(a).Equals(Addresses.Normal(want)))
-            ? new Probe(false, Note: $"Resolves to {list}, not {expected}")
+            ? new Probe(false, Note: $"Resolves to {list}, expected {expected}")
             : new Probe(true, ms, $"Resolves to {list}");
     }
 
@@ -587,8 +587,8 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
 
     // A name for an alert type made from a sensor's own times: 10 minutes, every hour.
     private static string TypeName(AlertRule r) =>
-        (r.After == 0 ? "Right away" : r.After == 60 ? "After an hour" : $"After {r.After} minutes")
-        + (r.Again switch { 60 => ", every hour", 360 => ", every 6 hours", 1440 => ", every day", _ => "" }) + (r.Back ? "" : ", no all-clear");
+        (r.After == 0 ? "Immediately" : r.After == 60 ? "After 1 hour" : $"After {r.After} minutes")
+        + (r.Again switch { 60 => ", repeat hourly", 360 => ", repeat every 6 hours", 1440 => ", repeat daily", _ => "" }) + (r.Back ? "" : ", no recovery alert");
 
     public const int CertificateWarnDays = 21;
     private const int Most = 200;
@@ -647,7 +647,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
 
     // Timings as offered on the page; null when they're not.
     private static string? Timings(RuleForm form) =>
-        form.After is not (-1 or 0 or 1 or 5 or 10 or 30 or 60) || form.Again is not (0 or 60 or 360 or 1440) ? "Pick one of the times offered." : null;
+        form.After is not (-1 or 0 or 1 or 5 or 10 or 30 or 60) || form.Again is not (0 or 60 or 360 or 1440) ? "Select one of the listed times." : null;
 
     private static AlertRule Timed(AlertRule r, RuleForm form)
     {
@@ -666,7 +666,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
     {
         if (s.Rule == "none")
         {
-            return new AlertRule { Id = "none", Name = "Never alerts", Color = "#8A8FA8", After = -1, Back = false };
+            return new AlertRule { Id = "none", Name = "No alerts", Color = "#8A8FA8", After = -1, Back = false };
         }
         if (alerts.Type(s.Rule) is { } type)
         {
@@ -754,7 +754,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
     }
 
     // Names as a list for an alert: a, b and c; past a few, a count.
-    private static string Few(List<string> names, int most = 8) => names.Count == 0 ? "Nothing else"
+    private static string Few(List<string> names, int most = 8) => names.Count == 0 ? "None"
         : names.Count > most ? $"{string.Join(", ", names.Take(most))} and {names.Count - most} more"
         : names.Count == 1 ? names[0] : $"{string.Join(", ", names.Take(names.Count - 1))} and {names[^1]}";
 
@@ -850,7 +850,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
         var target = form.Target?.Trim() ?? "";
         if (target.Length is 0 or > 300)
         {
-            return (null, kind == "web" ? "Type the page's address, such as https://192.168.2.23." : "Type the address to check, such as 192.168.2.23 or nas.example.com.");
+            return (null, kind == "web" ? "Enter the page URL, for example https://192.168.2.23." : "Enter a host name or IP address, for example 192.168.2.23 or nas.example.com.");
         }
         if (kind == "web")
         {
@@ -860,40 +860,40 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
             }
             if (!Uri.TryCreate(target, UriKind.Absolute, out var page) || page.Scheme is not ("http" or "https") || page.Host.Length == 0)
             {
-                return (null, "A web page's address starts with http:// or https://.");
+                return (null, "The URL must start with http:// or https://.");
             }
             target = page.ToString();
         }
         else if (!HostName().IsMatch(target))
         {
-            return (null, "That isn't a name or an IP address. Leave off http:// and anything after the name.");
+            return (null, "Enter a host name or IP address, without http:// or a path.");
         }
         int? port = kind == "port" ? form.Port : kind == "cert" ? form.Port ?? 443 : null;
         if (kind is "port" or "cert" && port is not (>= 1 and <= 65535))
         {
-            return (null, "Type the port, from 1 to 65535. A file share is 445, LDAPS is 636, remote desktop is 3389.");
+            return (null, "Enter a port from 1 to 65535. For example, SMB is 445, LDAPS is 636 and Remote Desktop is 3389.");
         }
         var server = kind == "dns" && !string.IsNullOrWhiteSpace(form.Server) ? form.Server.Trim() : null;
         if (server is not null && !HostName().IsMatch(server))
         {
-            return (null, "The DNS server has to be a name or an IP address.");
+            return (null, "The DNS server must be a host name or IP address.");
         }
         var expect = kind == "web" && form.Expect is "ok" or "text" ? form.Expect : null;
         var text = expect == "text" ? form.Text?.Trim() : null;
         if (expect == "text" && text is not { Length: > 0 and <= 200 })
         {
-            return (null, "Type the text the page shows when it works, 200 characters at most.");
+            return (null, "Enter the text the page shows when it is working, up to 200 characters.");
         }
         var address = kind == "dns" && !string.IsNullOrWhiteSpace(form.Address) ? form.Address.Trim() : null;
         if (address is not null && !IPAddress.TryParse(address, out _))
         {
-            return (null, "Should resolve to is an IP address, such as 192.168.2.23. Leave it empty for any address.");
+            return (null, "The expected address must be an IP address, for example 192.168.2.23. Leave it blank to accept any address.");
         }
         int? warn = kind == "cert" && form.WarnDays is 14 or 30 or 60 ? form.WarnDays : null; // 21, the usual, is kept as null
         var name = string.IsNullOrWhiteSpace(form.Name) ? (kind == "web" ? new Uri(target).Host : target) : form.Name.Trim();
         if (name.Length > 60)
         {
-            return (null, "Names are 60 characters at most.");
+            return (null, "Names can be up to 60 characters.");
         }
         // A certificate doesn't change by the minute: hourly unless something else was asked for. Hardware: every 5 minutes.
         var every = Intervals.Contains(form.Every ?? 0) ? form.Every!.Value : kind switch { "cert" => 3600, "hw" or "nas" or "vmware" => 300, _ => 60 };
@@ -905,12 +905,12 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
         var oid = value == "oid" ? form.Oid?.Trim().TrimStart('.') : null;
         if (value == "oid" && !OidPattern().IsMatch(oid ?? ""))
         {
-            return (null, "An OID is numbers with dots, such as 1.3.6.1.2.1.1.3.0.");
+            return (null, "Enter the OID in dotted format, for example 1.3.6.1.2.1.1.3.0.");
         }
         var face = value == "iface" ? form.Interface?.Trim() : null;
         if (value == "iface" && face is not { Length: > 0 and <= 100 })
         {
-            return (null, "Type the interface's name as the device has it, such as Port 5 or eth0.");
+            return (null, "Enter the interface name as it appears on the device, for example Port 5 or eth0.");
         }
         return (new Sensor { Name = name, Kind = kind, Target = target, Port = port, Server = server, Expect = expect, Text = text, Address = address, WarnDays = warn, Watch = watch, Product = product, WarnFree = free, Value = value, Oid = oid, Interface = face,
             Pin = SignsIn(kind) && !string.IsNullOrWhiteSpace(form.Pin) ? form.Pin.Trim() : null, Every = every, Tags = Tagged(form.Tags), DownAfter = form.DownAfter is 1 or 2 or 3 or 5 ? form.DownAfter : null,
@@ -930,7 +930,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
     {
         if (string.IsNullOrWhiteSpace(form.Seat))
         {
-            return (null, "Pick the computer.");
+            return (null, "Select a computer.");
         }
         var computer = form.Target?.Trim() is { Length: > 0 and <= 100 } shown ? shown : form.Seat.Trim();
         string? service = null, drive = null;
@@ -939,7 +939,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
             service = form.Service?.Trim();
             if (service is not { Length: > 0 and <= 256 })
             {
-                return (null, "Type the service's name, such as Spooler or Print Spooler.");
+                return (null, "Enter the service name, for example Spooler or Print Spooler.");
             }
         }
         else
@@ -947,7 +947,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
             var letter = (form.Drive ?? "").Trim().TrimEnd(':', '\\');
             if (letter.Length != 1 || !char.IsAsciiLetter(letter[0]))
             {
-                return (null, "Type the drive letter, such as C.");
+                return (null, "Enter the drive letter, for example C.");
             }
             drive = letter.ToUpperInvariant() + ":";
         }
@@ -957,7 +957,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
             name = string.IsNullOrWhiteSpace(form.Name) ? name[..60] : "";
             if (name.Length == 0)
             {
-                return (null, "Names are 60 characters at most.");
+                return (null, "Names can be up to 60 characters.");
             }
         }
         var every = Intervals.Contains(form.Every ?? 0) ? form.Every!.Value : kind == "disk" ? 300 : 60;
@@ -1009,7 +1009,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
             }
             else
             {
-                return (null, "Pick saved credentials, or type a username and password.");
+                return (null, "Select saved credentials, or enter a username and password.");
             }
         }
         lock (gate)
@@ -1018,11 +1018,11 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
             var at = id is null ? -1 : f.Sensors.FindIndex(s => s.Id == id);
             if (id is not null && at < 0)
             {
-                return (null, "That sensor isn't here any more.");
+                return (null, "Sensor not found. It may have been deleted.");
             }
             if (at < 0 && f.Sensors.Count >= Most)
             {
-                return (null, $"That's {Most} sensors, which is as many as {Product.Title} keeps.");
+                return (null, $"{Product.Title} supports up to {Most} sensors.");
             }
             var known = Known(f);
             var (group, full) = Grouping.Join(known, form.Group);
@@ -1052,11 +1052,11 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
             }
             else if (f.Sensors.All(s => s.Id != above))
             {
-                return (null, "The sensor it depends on isn't here any more.");
+                return (null, "The parent sensor was not found. It may have been deleted.");
             }
             else if (above == next.Id || Behind(f, next.Id).Any(s => s.Id == above))
             {
-                return (null, "It can't depend on that one, because that one depends on it.");
+                return (null, "This would create a circular dependency. The selected sensor already depends on this one.");
             }
             else
             {
@@ -1167,7 +1167,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
         s.PausedUntil = until;
         s.PausedWith = with?.Id;
         held.Remove(s.Id);
-        Event(State(s.Id), Now, "pause", (with is null ? "Paused" : $"Paused with {with.Name}") + (until is { } u ? $" until {Local(u)}" : ""));
+        Event(State(s.Id), Now, "pause", (with is null ? "Paused" : $"Paused along with {with.Name}") + (until is { } u ? $" until {Local(u)}" : ""));
         dirty = true;
     }
 
@@ -1188,7 +1188,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
             st.Status = "new";
             st.Since = null;
         }
-        Event(st, Now, "resume", timed ? "Started again when its pause ended" : "Started again");
+        Event(st, Now, "resume", timed ? "Resumed when the pause ended" : "Resumed");
         dirty = true;
     }
 
@@ -1200,7 +1200,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
             var f = file.Read();
             if (f.Sensors.FirstOrDefault(s => s.Id == id) is not { } s)
             {
-                return "That sensor isn't here any more.";
+                return "Sensor not found. It may have been deleted.";
             }
             var known = Known(f);
             var (name, full) = Grouping.Join(known, group);
@@ -1220,7 +1220,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
     {
         if (secs is not (30 or 60 or 120 or 300))
         {
-            return "Pick one of the times offered.";
+            return "Select one of the listed times.";
         }
         lock (gate)
         {
@@ -1267,12 +1267,12 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
     {
         if (url is null || !url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) && !url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
         {
-            return "Only web addresses (http:// or https://) can be watched.";
+            return "Only http:// and https:// addresses can be watched.";
         }
         lock (gate)
         {
             var f = file.Read();
-            return f.Sensors.Any(s => s.Id == sensor) || f.Sensors.Count < Most ? null : $"That's {Most} sensors, which is as many as {Product.Title} keeps.";
+            return f.Sensors.Any(s => s.Id == sensor) || f.Sensors.Count < Most ? null : $"{Product.Title} supports up to {Most} sensors.";
         }
     }
 
@@ -1381,7 +1381,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
             var rules = Rules(f);
             if (rules.FirstOrDefault(r => r.Id == id) is not { } rule)
             {
-                return "Those alert settings aren't here any more.";
+                return "Alert settings not found. They may have been deleted.";
             }
             if (form.Name is not null)
             {
@@ -1414,7 +1414,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
             }
             if (rules.Count >= 20)
             {
-                return (null, $"That's 20 saved alert settings, which is as many as {Product.Title} keeps.");
+                return (null, $"{Product.Title} supports up to 20 saved alert settings.");
             }
             var rule = Timed(new AlertRule
             {
@@ -1454,12 +1454,12 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
             var rules = Rules(f);
             if (rules.All(r => r.Id != id))
             {
-                return "Those alert settings aren't here any more.";
+                return "Alert settings not found. They may have been deleted.";
             }
             var fallback = DefaultRule(f, rules);
             if (fallback == id)
             {
-                return "That's the default. Make another one the default first.";
+                return "These are the default alert settings. Set another as the default first.";
             }
             rules.RemoveAll(r => r.Id == id);
             foreach (var s in f.Sensors.Where(s => s.Rule == id))
@@ -1472,8 +1472,8 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
     }
 
     private static string? RuleName(List<AlertRule> rules, string? name, string? id) =>
-        string.IsNullOrWhiteSpace(name) || name.Trim().Length > 40 ? "Give the alert settings a name, 40 characters at most."
-        : rules.Any(r => r.Id != id && string.Equals(r.Name, name.Trim(), StringComparison.OrdinalIgnoreCase)) ? $"There are alert settings called {name.Trim()} already."
+        string.IsNullOrWhiteSpace(name) || name.Trim().Length > 40 ? "Enter a name for the alert settings, up to 40 characters."
+        : rules.Any(r => r.Id != id && string.Equals(r.Name, name.Trim(), StringComparison.OrdinalIgnoreCase)) ? $"Alert settings named {name.Trim()} already exist."
         : null;
 
     // From here on the list is kept as it is, not as changes to the four it started with.
@@ -1513,7 +1513,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
             }
             else
             {
-                return (null, "Pick saved credentials, or type a username and password.");
+                return (null, "Select saved credentials, or enter a username and password.");
             }
         }
         sensor.Trying = true;
@@ -1605,7 +1605,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
         catch (Exception e) when (e is not OperationCanceledException)
         {
             log.LogWarning(e, "Checking {Sensor} failed", s.Name);
-            result = new Probe(false, Note: "The check itself failed");
+            result = new Probe(false, Note: "The check could not run");
         }
         finally
         {
@@ -1653,7 +1653,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
                 st.FailedAt = null;
                 if (before == "down")
                 {
-                    Event(st, now, "up", $"Came back after {Span(now - (st.Since ?? now))}");
+                    Event(st, now, "up", $"Back up after {Span(now - (st.Since ?? now))} down");
                     // What depends on it and is down is checked again now: back too, or down on its own and alerting.
                     st.Back = now;
                     Behind(file.Read(), s.Id).Where(d => State(d.Id).Status == "down").ToList().ForEach(d => soon.Add(d.Id));
@@ -1662,7 +1662,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
                 {
                     if (st.Status == "warn")
                     {
-                        Event(st, now, "warn", result.Note ?? "Needs attention");
+                        Event(st, now, "warn", result.Note ?? "Warning");
                     }
                     st.Since = now;
                 }
@@ -1673,7 +1673,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
                 st.Fails++;
                 st.FailedAt ??= now;
                 st.Ms = null;
-                st.Note = result.Note ?? "No reply";
+                st.Note = result.Note ?? "No response";
                 st.Parts = null;
                 // One lost reply isn't an outage unless the sensor says so, or the next check is an hour away.
                 if (st.Status != "down" && st.Fails >= (s.DownAfter ?? (s.Every >= 3600 ? 1 : 2)))
@@ -1689,7 +1689,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
 
     // For a sensor that alerts when something answers: an answer is the problem, no answer is how it should be.
     private static Probe Flip(Sensor s, Probe p) => !s.Invert ? p
-        : p.Ok ? new Probe(false, Note: "It answers, and it shouldn't") : new Probe(true, 0, "Not answering, as it should be");
+        : p.Ok ? new Probe(false, Note: "Responding, but expected no response") : new Probe(true, 0, "Not responding, as expected");
 
     private static void Event(SensorState st, DateTime at, string what, string text)
     {
@@ -1760,7 +1760,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
                     }
                     else if (first || again)
                     {
-                        Queue(s, DownNote(s, st, now, again, down, waits, byId), again ? "Sent again: still down" : "Sent: down", key);
+                        Queue(s, DownNote(s, st, now, again, down, waits, byId), again ? "Alert resent: still down" : "Alert sent: down", key);
                         st.Alerted = now;
                         st.Told = true;
                         dirty = true;
@@ -1778,8 +1778,8 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
                         continue;
                     }
                     Queue(s, new MailNote($"{s.Name}: {st.Note}", "warn", [("Sensor", What(s)), ("Group", s.Group ?? "No group")],
-                        new AlertCard("warn", $"{s.Name}: {st.Note}", "It's still answering. This is a heads-up.", [new("🟡 Details", [What(s), Where(s)])], Product.Lab)),
-                        again ? "Sent again: still needs attention" : "Sent: warning", wkey);
+                        new AlertCard("warn", $"{s.Name}: {st.Note}", "The sensor is still responding. This is a warning only.", [new("🟡 Details", [What(s), Where(s)])], Product.Lab)),
+                        again ? "Alert resent: warning" : "Alert sent: warning", wkey);
                     st.Warned = now;
                     dirty = true;
                 }
@@ -1794,10 +1794,10 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
                         }
                         var outage = st.Events.LastOrDefault(e => e.What == "up");
                         Queue(s, new MailNote($"{s.Name} is back up", "up",
-                            [("Sensor", What(s)), ("Group", s.Group ?? "No group"), ("What happened", outage?.Text ?? "Came back"), ("Answering in", st.Ms is { } ms ? $"{ms} ms" : "time")],
-                            new AlertCard("up", $"{s.Name} is back up", "It answered again at {when}.",
-                                [new("🟢 Now", [st.Ms is { } took ? $"Answering in {took} ms" : "Answering", outage?.Text ?? "Came back"]), new("📍 Where", [What(s), Where(s)])],
-                                Product.Lab, st.Since ?? now)), "Sent: back up", key);
+                            [("Sensor", What(s)), ("Group", s.Group ?? "No group"), ("What happened", outage?.Text ?? "Back up"), ("Response time", st.Ms is { } ms ? $"{ms} ms" : "Unknown")],
+                            new AlertCard("up", $"{s.Name} is back up", "Responding again since {when}.",
+                                [new("🟢 Now", [st.Ms is { } took ? $"Response time {took} ms" : "Responding", outage?.Text ?? "Back up"]), new("📍 Where", [What(s), Where(s)])],
+                                Product.Lab, st.Since ?? now)), "Alert sent: back up", key);
                     }
                     st.Told = false;
                     st.Alerted = null;
@@ -1821,7 +1821,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
                     var st = State(s.Id);
                     st.Alerted = now;
                     st.Told = true;
-                    said[s.Id] = ready.Count == 1 ? "Sent: down" : $"Sent: down, in one alert with {ready.Count - 1} other{(ready.Count == 2 ? "" : "s")}";
+                    said[s.Id] = ready.Count == 1 ? "Alert sent: down" : $"Alert sent: down, grouped with {ready.Count - 1} other sensor{(ready.Count == 2 ? "" : "s")}";
                 }
                 dirty = true;
             }
@@ -1834,7 +1834,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
             foreach (var id in ids)
             {
                 (went.TryGetValue(id, out var w) ? w : went[id] = []).AddRange(ok);
-                (failed.TryGetValue(id, out var x) ? x : failed[id] = []).AddRange(bad.Select(b => $"Didn't go to {b}"));
+                (failed.TryGetValue(id, out var x) ? x : failed[id] = []).AddRange(bad.Select(b => $"Could not send to {b}"));
             }
         }
         if (said.Count == 0)
@@ -1863,18 +1863,18 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
         List<(string, string)> facts =
         [
             ("Sensor", What(s)), ("Group", s.Group ?? "No group"), ("Down since", $"{Local(st.Since ?? now)} ({Span(now - (st.Since ?? now))})"),
-            ("What it said", st.Note ?? "No reply"), ("Also down", Few([.. down.Where(x => x.Id != s.Id).Select(x => x.Name)])),
+            ("Last result", st.Note ?? "No response"), ("Also down", Few([.. down.Where(x => x.Id != s.Id).Select(x => x.Name)])),
         ];
         if (behind.Count > 0)
         {
-            facts.Add(("Waiting on it", Few(behind)));
+            facts.Add(("Dependent sensors", Few(behind)));
         }
         var since = st.Since ?? now;
         var others = down.Where(x => x.Id != s.Id).Select(x => x.Name).ToList();
-        List<AlertSection> sections = [new("🔴 What happened", [st.Note ?? "No reply", What(s), $"Down for {Span(now - since)}{(again ? "" : " so far")}"])];
+        List<AlertSection> sections = [new("🔴 What happened", [st.Note ?? "No response", What(s), $"Down for {Span(now - since)}{(again ? "" : " so far")}"])];
         if (behind.Count > 0)
         {
-            sections.Add(new("⏳ Waiting on it", [$"{Few(behind)} {(behind.Count == 1 ? "waits" : "wait")} instead of alerting"]));
+            sections.Add(new("⏳ Dependent sensors", [$"{Few(behind)} {(behind.Count == 1 ? "does" : "do")} not alert while this sensor is down"]));
         }
         if (others.Count > 0)
         {
@@ -1882,7 +1882,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
         }
         sections.Add(new("📍 Where", [Where(s)]));
         return new MailNote($"{s.Name} is {(again ? "still " : "")}down", "down", facts,
-            new AlertCard("down", $"{s.Name} is {(again ? "still " : "")}down", again ? "Down since {when}." : "It stopped answering at {when}.", sections, Product.Lab, since));
+            new AlertCard("down", $"{s.Name} is {(again ? "still " : "")}down", again ? "Down since {when}." : "Stopped responding at {when}.", sections, Product.Lab, since));
     }
 
     // Where a sensor sits, in a few words: Network · checked every minute.
@@ -1898,7 +1898,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
             var behind = waits.Where(w => w.Value?.Id == s.Id).Select(w => byId[w.Key].Name).ToList();
             if (behind.Count > 0)
             {
-                facts.Add(($"Waiting on {s.Name}", Few(behind)));
+                facts.Add(($"Dependent on {s.Name}", Few(behind)));
             }
         }
         var times = with.Select(s => State(s.Id).Since ?? now).ToList();
@@ -1911,22 +1911,22 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
         }
         var up = f.Sensors.Where(s => !s.Paused && State(s.Id).Status is "up" or "warn").Select(s => s.Name).ToList();
         facts.Add(("Still up", up.Count <= 8 ? Few(up) : $"{up.Count} others"));
-        List<AlertSection> sections = [new("🔴 Down", [.. with.Take(15).Select(s => $"{s.Name}: {State(s.Id).Note ?? "no reply"}")])];
+        List<AlertSection> sections = [new("🔴 Down", [.. with.Take(15).Select(s => $"{s.Name}: {State(s.Id).Note ?? "no response"}")])];
         foreach (var s in with)
         {
             var behind = waits.Where(w => w.Value?.Id == s.Id).Select(w => byId[w.Key].Name).ToList();
             if (behind.Count > 0)
             {
-                sections.Add(new($"⏳ Waiting on {s.Name}", [Few(behind)]));
+                sections.Add(new($"⏳ Dependent on {s.Name}", [Few(behind)]));
             }
         }
         if (others.Count > 0)
         {
             sections.Add(new("🔻 Also down", [Few(others)]));
         }
-        sections.Add(new("🟢 Still up", [up.Count == 0 ? "Nothing else" : up.Count <= 8 ? Few(up) : $"{up.Count} others"]));
+        sections.Add(new("🟢 Still up", [up.Count == 0 ? "None" : up.Count <= 8 ? Few(up) : $"{up.Count} others"]));
         return new MailNote($"{with.Count} sensors are down", "down", facts,
-            new AlertCard("many", $"{with.Count} sensors are down", spread.TotalSeconds < 1 ? "All at {when}." : $"All within {Span(spread)} of {{when}}.", sections, Product.Lab, times.Min()));
+            new AlertCard("many", $"{with.Count} sensors are down", spread.TotalSeconds < 1 ? "All went down at {when}." : $"All went down within {Span(spread)} of {{when}}.", sections, Product.Lab, times.Min()));
     }
 
     /// <summary>
@@ -1941,20 +1941,20 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
         {
             if (file.Read().Sensors.FirstOrDefault(x => x.Id == id) is not { } s)
             {
-                return ([], [], "That sensor isn't here any more.");
+                return ([], [], "Sensor not found. It may have been deleted.");
             }
             to = To(s, DownKey(s));
             if (to.Count == 0)
             {
-                return ([], [], s.Rule == "none" ? "It's set to never alert. Change it and pick an alert type." : "Its alert type has nowhere to send. Pick notifications for it in Settings, Alert rules.");
+                return ([], [], s.Rule == "none" ? "This sensor is set to never alert. Select an alert type first." : "Its alert type has no notifications. Add notifications to it in Settings > Alert rules.");
             }
             if (tested.TryGetValue(id, out var last) && (Now - last).TotalSeconds < 10)
             {
-                return ([], [], "A test alert just went. Try again in a few seconds.");
+                return ([], [], "A test alert was just sent. Try again in a few seconds.");
             }
             tested[id] = Now;
-            note = new MailNote($"Test: {s.Name} is down", "down", [("Sensor", What(s)), ("Group", s.Group ?? "No group"), ("This is a test", $"{by} sent it from the sensor's page. Nothing is down.")],
-                new AlertCard("test", $"Test alert for {s.Name}", "Nothing is down. Its alerts come here, looking like this.", [new("📍 The sensor", [What(s), Where(s)])], $"{Product.Lab} · sent by {by}"));
+            note = new MailNote($"Test: {s.Name} is down", "down", [("Sensor", What(s)), ("Group", s.Group ?? "No group"), ("Test alert", $"Sent by {by} from the sensor page. Nothing is down.")],
+                new AlertCard("test", $"Test alert for {s.Name}", "Nothing is down. Alerts for this sensor will look like this.", [new("📍 Sensor", [What(s), Where(s)])], $"{Product.Lab} · sent by {by}"));
         }
         var went = new List<string>();
         var failed = new List<string>();
@@ -1968,7 +1968,7 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
             }
             else
             {
-                failed.Add($"Didn't go to {name}: {problem}");
+                failed.Add($"Could not send to {name}: {problem}");
             }
         }
         lock (gate)
@@ -2052,7 +2052,7 @@ public static class SensorsApi
 
         app.MapGet("/api/sensors/{id}", (string id, HttpContext context, Sensors sensors) =>
             !Access.Can(context, Permissions.SensorsView) ? Access.NotAllowed()
-            : sensors.Detail(id) is { } detail ? Results.Ok(detail) : Results.NotFound(new { error = "That sensor isn't here any more." }));
+            : sensors.Detail(id) is { } detail ? Results.Ok(detail) : Results.NotFound(new { error = "Sensor not found. It may have been deleted." }));
 
         // Checks what the form describes once, without keeping it.
         app.MapPost("/api/sensors/try", async (SensorForm form, HttpContext context, Sensors sensors, SettingsStore settings) =>
@@ -2087,7 +2087,7 @@ public static class SensorsApi
             }
             if (sensors.Delete(id) is not { } gone)
             {
-                return Results.NotFound(new { error = "That sensor isn't here any more." });
+                return Results.NotFound(new { error = "Sensor not found. It may have been deleted." });
             }
             log.Record(context, "sensors", "sensor.delete", $"Deleted the sensor {gone.Name}");
             return Results.Ok(sensors.View());
@@ -2101,16 +2101,16 @@ public static class SensorsApi
             }
             if (form.Minutes is not (null or (>= 1 and <= 10080)))
             {
-                return Results.BadRequest(new { error = "A pause is a week at most." });
+                return Results.BadRequest(new { error = "A pause can last up to one week." });
             }
             if (sensors.Pause(id, form.Paused, form.Minutes, form.Dependents) is not var (sensor, also))
             {
-                return Results.NotFound(new { error = "That sensor isn't here any more." });
+                return Results.NotFound(new { error = "Sensor not found. It may have been deleted." });
             }
-            var others = also == 0 ? "" : $" and the {also} that depend on it";
+            var others = also == 0 ? "" : $" and {also} dependent sensor{(also == 1 ? "" : "s")}";
             log.Record(context, "sensors", form.Paused ? "sensor.pause" : "sensor.resume", form.Paused
                 ? $"Paused the sensor {sensor.Name}{others}{(form.Minutes is { } m ? $" for {(m % 60 == 0 ? $"{m / 60} hour{(m == 60 ? "" : "s")}" : $"{m} minutes")}" : "")}"
-                : $"Started the sensor {sensor.Name}{others} again");
+                : $"Resumed the sensor {sensor.Name}{others}");
             return Results.Ok(sensors.View());
         });
 
@@ -2146,22 +2146,22 @@ public static class SensorsApi
             {
                 return Results.BadRequest(new { error = problem });
             }
-            log.Record(context, "sensors", "sensor.gather", form.On ? $"Turned on Gather alerts, within {(form.Secs < 60 ? $"{form.Secs} seconds" : $"{form.Secs / 60} minute{(form.Secs == 60 ? "" : "s")}")}" : "Turned off Gather alerts");
+            log.Record(context, "sensors", "sensor.gather", form.On ? $"Enabled Gather alerts with a {(form.Secs < 60 ? $"{form.Secs}-second" : $"{form.Secs / 60}-minute")} window" : "Disabled Gather alerts");
             return Results.Ok(sensors.View());
         });
 
         app.MapPost("/api/sensors/{id}/check", async (string id, HttpContext context, Sensors sensors) =>
             Access.RefuseUnless(context, Permissions.SensorsEdit) is { } refused ? refused
-            : await sensors.CheckNow(id, context.RequestAborted) ? Results.Ok(sensors.View()) : Results.NotFound(new { error = "That sensor isn't here any more." }));
+            : await sensors.CheckNow(id, context.RequestAborted) ? Results.Ok(sensors.View()) : Results.NotFound(new { error = "Sensor not found. It may have been deleted." }));
 
         app.MapPost("/api/sensors/groups", (GroupForm form, HttpContext context, Sensors sensors, ActivityLog log) =>
-            Group(context, sensors, log, () => sensors.AddGroup(form.Name), "sensor.group.add", $"Made the sensor group {form.Name?.Trim()}"));
+            Group(context, sensors, log, () => sensors.AddGroup(form.Name), "sensor.group.add", $"Created the sensor group {form.Name?.Trim()}"));
 
         app.MapPost("/api/sensors/groups/rename", (GroupForm form, HttpContext context, Sensors sensors, ActivityLog log) =>
             Group(context, sensors, log, () => sensors.RenameGroup(form.Name, form.To), "sensor.group.rename", $"Renamed the sensor group {form.Name?.Trim()} to {form.To?.Trim()}"));
 
         app.MapPost("/api/sensors/groups/delete", (GroupForm form, HttpContext context, Sensors sensors, ActivityLog log) =>
-            Group(context, sensors, log, () => sensors.DeleteGroup(form.Name) ? null : "That group isn't here any more.", "sensor.group.delete", $"Deleted the sensor group {form.Name?.Trim()}"));
+            Group(context, sensors, log, () => sensors.DeleteGroup(form.Name) ? null : "Group not found. It may have been deleted.", "sensor.group.delete", $"Deleted the sensor group {form.Name?.Trim()}"));
 
         app.MapPost("/api/sensors/groups/order", (GroupForm form, HttpContext context, Sensors sensors, ActivityLog log) =>
         {
@@ -2212,9 +2212,9 @@ public static class SensorsApi
             }
             if (!sensors.DefaultTo(id))
             {
-                return Results.NotFound(new { error = "Those alert settings aren't here any more." });
+                return Results.NotFound(new { error = "Alert settings not found. They may have been deleted." });
             }
-            log.Record(context, "sensors", "sensor.rule.default", $"Made {id} the default alert settings");
+            log.Record(context, "sensors", "sensor.rule.default", $"Set {id} as the default alert settings");
             return Results.Ok(sensors.View());
         });
 

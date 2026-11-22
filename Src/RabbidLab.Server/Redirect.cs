@@ -202,7 +202,7 @@ public sealed class RedirectByName(Redirect.Plan plan, ConsoleNames names, ILogg
             }
             if (await Reaches(name, stop) == false)
             {
-                var why = $"Another web server on this computer takes every name on port {plan.Port} first.";
+                var why = $"Another web server on this computer handles every name on port {plan.Port} first.";
                 log.LogWarning("Port {Port} is shared with another web server, and http://{Name}/ can't be redirected to {Product}: {Problem}", plan.Port, name, Product.Name, why);
                 now.Add(new(name, false, why));
                 continue;
@@ -228,7 +228,7 @@ public sealed class RedirectByName(Redirect.Plan plan, ConsoleNames names, ILogg
         catch (HttpListenerException e)
         {
             listener.Close();
-            return e.NativeErrorCode == 183 ? $"Another web server on this computer already answers http://{name}/." : e.Message;
+            return e.NativeErrorCode == 183 ? $"Another web server on this computer already serves http://{name}/." : e.Message;
         }
         open[name] = listener;
         _ = Serve(listener);

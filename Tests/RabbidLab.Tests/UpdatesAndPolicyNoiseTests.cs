@@ -98,7 +98,7 @@ public sealed class UpdatesAndPolicyNoiseTests : IDisposable
     [InlineData("Completed MDM Policy Extension Processing in 16 milliseconds.", true)]
     [InlineData("Completed Group Policy Registry Extension Processing in 1203 milliseconds.", true)]
     [InlineData("Group Policy bandwidth estimation failed. Group Policy processing will continue. Assuming fast link.", true)]
-    [InlineData("MDM Policy didn't apply: error 0x80180002.", false)]
+    [InlineData("MDM Policy failed: error 0x80180002.", false)]
     [InlineData("The processing of Group Policy failed. Windows could not resolve the computer name.", false)]
     [InlineData(null, false)]
     public void Only_the_two_known_non_errors_are_noise(string? text, bool noise) => Assert.Equal(noise, Inventories.GpNoise(text));

@@ -75,8 +75,8 @@ public sealed class GpmcSetup(ActivityLog log)
         {
             (ok, restart, output, finished) = (ended.Ok, ended.Restart, text.Length > 4000 ? text[^4000..] : text, DateTime.UtcNow);
         }
-        var summary = !ended.Ok ? "Couldn't install Group Policy Management on this server"
-            : ended.Restart ? "Installed Group Policy Management on this server: it needs a restart to finish"
+        var summary = !ended.Ok ? "Could not install Group Policy Management on this server"
+            : ended.Restart ? "Installed Group Policy Management on this server. Restart required"
             : "Installed Group Policy Management on this server";
         log.Record(by, from, "users", "gpo.gpmc", summary, ended.Ok ? "ok" : "failed", $"{command}{(text.Length > 0 ? $": {(text.Length > 500 ? text[^500..] : text)}" : "")}");
     }
@@ -118,7 +118,7 @@ public sealed class GpmcSetup(ActivityLog log)
         var start = new ProcessStartInfo(Path.Combine(Environment.SystemDirectory, @"WindowsPowerShell\v1.0\powershell.exe"),
             $"-NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand {encoded}")
         { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true };
-        using var p = Process.Start(start) ?? throw new InvalidOperationException("PowerShell didn't start.");
+        using var p = Process.Start(start) ?? throw new InvalidOperationException("PowerShell did not start.");
         var said = new StringBuilder();
         bool? worked = null;
         var restart = false;
@@ -150,7 +150,7 @@ public sealed class GpmcSetup(ActivityLog log)
         catch (OperationCanceledException)
         {
             p.Kill(entireProcessTree: true);
-            throw new TimeoutException($"It was still running after {limit.TotalMinutes:0} minutes, so it was stopped.");
+            throw new TimeoutException($"The installation timed out after {limit.TotalMinutes:0} minutes and was stopped.");
         }
         await reading;
         var err = (await errors).Trim();

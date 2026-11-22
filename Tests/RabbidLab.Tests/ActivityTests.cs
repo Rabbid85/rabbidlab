@@ -58,7 +58,7 @@ public sealed class ActivityTests : IDisposable
 
         var csv = await client.GetStringAsync("/api/activity/export?kind=lab");
 
-        Assert.StartsWith("When (UTC),Who,From,Area,What,Result,Detail", csv.TrimStart('﻿'));
+        Assert.StartsWith("Time (UTC),User,From,Area,Action,Result,Details", csv.TrimStart('﻿'));
         Assert.Contains("'=cmd", csv);
         Assert.Contains("\"Added the link \"\"Grafana\"\", for dashboards\"", csv);
     }

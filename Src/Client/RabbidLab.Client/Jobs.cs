@@ -123,7 +123,7 @@ internal static class Jobs
             }
             catch (Exception e)
             {
-                report = new JobReport { Id = job.Id, Problem = $"The client on {Machine.Name} couldn't run it: {e.Message.Trim().TrimEnd('.')}." };
+                report = new JobReport { Id = job.Id, Problem = $"The client on {Machine.Name} could not run the job: {e.Message.Trim().TrimEnd('.')}." };
             }
             // What it changed shows on the Devices page within a minute or two, not at the next half hour.
             Inventory.Soon();
@@ -137,7 +137,7 @@ internal static class Jobs
         if (!Settings.Read().Scripts)
         {
             report.Refused = true;
-            report.Problem = $"Scripts and actions are turned off by Group Policy on {Machine.Name}.";
+            report.Problem = $"Scripts and actions are disabled by Group Policy on {Machine.Name}.";
             return report;
         }
         var n = 0;
@@ -159,7 +159,7 @@ internal static class Jobs
         var powershell = step.Language == "powershell";
         if (!powershell && step.Language != "cmd")
         {
-            return new StepReport { Output = "This client doesn't know that kind of script. It needs a newer client." };
+            return new StepReport { Output = "This client version does not support this script type. Update the client." };
         }
         // 64-bit Windows' own PowerShell and cmd, also if this process were ever 32-bit.
         var windows = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
@@ -214,13 +214,13 @@ internal static class Jobs
             process.CancelErrorRead();
             if (timedOut)
             {
-                kept.Add(stop.IsCancellationRequested ? "[Stopped: the Rabbid Lab client was stopping.]" : $"[Stopped: it ran longer than {limit.TotalMinutes:0} minutes.]");
+                kept.Add(stop.IsCancellationRequested ? "[Stopped: the Rabbid Lab Client service is stopping.]" : $"[Stopped: the script exceeded the {limit.TotalMinutes:0}-minute time limit.]");
             }
             return new StepReport { Exit = timedOut || !process.HasExited ? null : process.ExitCode, Output = kept.Text(), Seconds = Math.Round(watch.Elapsed.TotalSeconds, 1), TimedOut = timedOut };
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception or InvalidOperationException)
         {
-            kept.Add($"[It couldn't be started on {Machine.Name}: {e.Message.Trim()}]");
+            kept.Add($"[Could not start the script on {Machine.Name}: {e.Message.Trim()}]");
             return new StepReport { Output = kept.Text(), Seconds = Math.Round(watch.Elapsed.TotalSeconds, 1) };
         }
         finally
@@ -343,7 +343,7 @@ internal static class Jobs
                 var all = new StringBuilder(head.ToString());
                 if (cut)
                 {
-                    all.AppendLine().AppendLine("[... the middle was cut ...]").AppendLine();
+                    all.AppendLine().AppendLine("[... output truncated ...]").AppendLine();
                 }
                 foreach (var line in tail)
                 {

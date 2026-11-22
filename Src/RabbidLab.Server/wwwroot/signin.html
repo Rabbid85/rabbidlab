@@ -96,13 +96,13 @@
       <!-- After a right password: the code from the account's authenticator app. An account without MFA yet
            sets it up here first, from the QR code. -->
       <form id="mfa-form" novalidate hidden>
-        <div class="input" id="mfa-reset-box" hidden><input id="mfa-reset" maxlength="20" placeholder=" " autocomplete="off" spellcheck="false"><label class="fld" for="mfa-reset" id="mfa-reset-label">One-time code, like K7QX-M2PD-9FHT</label></div>
+        <div class="input" id="mfa-reset-box" hidden><input id="mfa-reset" maxlength="20" placeholder=" " autocomplete="off" spellcheck="false"><label class="fld" for="mfa-reset" id="mfa-reset-label">One-time code, such as K7QX-M2PD-9FHT</label></div>
         <div id="mfa-setup" hidden>
           <div class="mfa-qr" id="mfa-qr"></div>
-          <p class="mfa-key">Can't scan it? Type this key into the app instead:<code id="mfa-secret"></code></p>
+          <p class="mfa-key">Can't scan the code? Enter this key in the app instead:<code id="mfa-secret"></code></p>
         </div>
         <div class="input" id="mfa-code-box"><input id="mfa-code" inputmode="numeric" maxlength="7" placeholder=" " autocomplete="one-time-code" spellcheck="false"><label class="fld" for="mfa-code" id="mfa-code-label">6-digit code</label></div>
-        <label class="mfa-skip" id="mfa-skip-row" hidden><input type="checkbox" id="mfa-skip"><span>Skip MFA this time <small>Rabbid Lab Dev, on this computer</small></span></label>
+        <label class="mfa-skip" id="mfa-skip-row" hidden><input type="checkbox" id="mfa-skip"><span>Skip MFA this time <small>Dev build only, on this computer</small></span></label>
         <button class="go" type="submit" id="mfa-go">Verify</button>
       </form>
 

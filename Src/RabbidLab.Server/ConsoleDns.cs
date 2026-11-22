@@ -109,7 +109,7 @@ public sealed class WindowsConsoleDns : IConsoleDns
         }
         catch (Exception e) when (e is COMException or ManagementException or UnauthorizedAccessException or ActiveDirectoryObjectNotFoundException or ActiveDirectoryOperationException)
         {
-            throw new DnsProblem(Refused(e) ?? (e is ActiveDirectoryObjectNotFoundException ? "No domain controller answered." : $"The DNS server couldn't be reached: {e.Message.Trim().TrimEnd('.')}."));
+            throw new DnsProblem(Refused(e) ?? (e is ActiveDirectoryObjectNotFoundException ? "No domain controller responded." : $"The DNS server is unreachable: {e.Message.Trim().TrimEnd('.')}."));
         }
     }
 
@@ -133,12 +133,12 @@ public sealed class WindowsConsoleDns : IConsoleDns
             }
             catch (ManagementException e) when (e.ErrorCode == ManagementStatus.InvalidNamespace)
             {
-                skipped.Add($"{server} doesn't have the DNS Server role");
+                skipped.Add($"{server} does not have the DNS Server role");
                 continue;
             }
             catch (Exception e) when (Refused(e) is null && e is COMException or ManagementException)
             {
-                skipped.Add($"{server} didn't answer");
+                skipped.Add($"{server} is unreachable");
                 continue;
             }
             var facts = new DnsFacts
@@ -159,7 +159,7 @@ public sealed class WindowsConsoleDns : IConsoleDns
             facts.ClashingComputer = ComputerNamed(name, target, login);
             return facts;
         }
-        throw new DnsProblem(skipped.Count == 0 ? "No domain controller answered." : $"No DNS server could be asked: {string.Join(", ", skipped)}.");
+        throw new DnsProblem(skipped.Count == 0 ? "No domain controller responded." : $"No DNS server is available: {string.Join(", ", skipped)}.");
     }
 
     private void AddAlias(DnsFacts facts, string zone, DnsLogin login)
@@ -176,7 +176,7 @@ public sealed class WindowsConsoleDns : IConsoleDns
         }
         if (!Records(scope, zone, facts.Name).Any(r => r.Type == "CNAME" && DnsPlan.Clean(r.Data) == facts.Target))
         {
-            throw new DnsProblem($"{facts.Server} took the record for {facts.Name}, but it isn't in the {zone} zone. Check the zone on {facts.Server}.");
+            throw new DnsProblem($"{facts.Server} accepted the record for {facts.Name}, but it is not in the {zone} zone. Check the zone on {facts.Server}.");
         }
         Forget(facts.Name);
     }
@@ -201,20 +201,20 @@ public sealed class WindowsConsoleDns : IConsoleDns
             var mine = RecordObjects(scope, zone, name).Where(r => PointsAt(r, target)).ToList();
             if (mine.Count == 0)
             {
-                return Records(scope, zone, name).Count == 0 ? $"The DNS record for {name} was already gone." : $"The DNS record for {name} points somewhere else now, so it was left alone.";
+                return Records(scope, zone, name).Count == 0 ? $"The DNS record for {name} was already removed." : $"The DNS record for {name} now points to another target, so it was not changed.";
             }
             mine.ForEach(r => r.Delete());
             Forget(name);
-            return $"Took the alias {name} out of DNS on {dns}.";
+            return $"Removed the alias {name} from DNS on {dns}.";
         }
-        throw new DnsProblem(last is null ? "No domain controller answered." : $"The DNS server couldn't be reached: {last.Message.Trim().TrimEnd('.')}.");
+        throw new DnsProblem(last is null ? "No domain controller responded." : $"The DNS server is unreachable: {last.Message.Trim().TrimEnd('.')}.");
     }
 
     /// <summary>Why the account was refused, in plain words, or null when that isn't what went wrong.</summary>
     public static string? Refused(Exception e) =>
-        e is COMException { HResult: unchecked((int) 0x8007052E) } ? "The username or password is wrong."
+        e is COMException { HResult: unchecked((int) 0x8007052E) } ? "The username or password is incorrect."
         : e is UnauthorizedAccessException || e is ManagementException { ErrorCode: ManagementStatus.AccessDenied } || e is COMException { HResult: unchecked((int) 0x80070005) }
-            ? "That account was refused. It needs DNS admin rights, such as Domain Admins or DnsAdmins, and the password has to be right."
+            ? "Access denied. The account needs DNS admin rights, such as membership in Domain Admins or DnsAdmins."
             : null;
 
     // This domain's domain controllers, the nearest first.
@@ -288,7 +288,7 @@ public sealed class WindowsConsoleDns : IConsoleDns
     {
         if (!ConsoleNames.IsDnsName(zone) || !ConsoleNames.IsDnsName(name))
         {
-            throw new DnsProblem($"{name} isn't a DNS name.");
+            throw new DnsProblem($"{name} is not a valid DNS name.");
         }
         using var searcher = new ManagementObjectSearcher(scope, new ObjectQuery($"SELECT * FROM MicrosoftDNS_ResourceRecord WHERE ContainerName = '{zone}' AND OwnerName = '{name}'"));
         return [.. searcher.Get().Cast<ManagementObject>()];
@@ -360,9 +360,9 @@ public sealed class NoConsoleDns : IConsoleDns
         }
     }
 
-    public DnsFacts Read(string name, DnsLogin login) => throw new DnsProblem("This computer isn't in a domain.");
+    public DnsFacts Read(string name, DnsLogin login) => throw new DnsProblem("This computer is not joined to a domain.");
 
-    public void Add(DnsFacts facts, string zone, DnsLogin login) => throw new DnsProblem("This computer isn't in a domain.");
+    public void Add(DnsFacts facts, string zone, DnsLogin login) => throw new DnsProblem("This computer is not joined to a domain.");
 
-    public string Remove(string name, string zone, string server, string target, DnsLogin login) => throw new DnsProblem("This computer isn't in a domain.");
+    public string Remove(string name, string zone, string server, string target, DnsLogin login) => throw new DnsProblem("This computer is not joined to a domain.");
 }

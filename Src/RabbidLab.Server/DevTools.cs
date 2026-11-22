@@ -32,7 +32,7 @@ public static class DevTools
         var n = Number(url);
         var host = Host(url)!;
         return IsDown(url)
-            ? new LinkLook(host.Split('.')[0], null, $"192.0.2.{n % 250 + 2}", null, $"{host} didn't answer, so fill it in yourself.")
+            ? new LinkLook(host.Split('.')[0], null, $"192.0.2.{n % 250 + 2}", null, $"{host} did not respond. Enter the details manually.")
             : new LinkLook($"Test {n:00}", "Test site from Developer tools", $"192.0.2.{n % 250 + 2}", Icon(n), null, "the test site");
     }
 
@@ -43,7 +43,7 @@ public static class DevTools
         {
             await Task.Delay(700, stop);
         }
-        return IsDown(s.Target) ? new Probe(false, Note: "No answer (a test)") : new Probe(true, 3 + Random.Shared.Next(40), "Answering (a test)");
+        return IsDown(s.Target) ? new Probe(false, Note: "No response (test)") : new Probe(true, 3 + Random.Shared.Next(40), "Responding (test)");
     }
 
     // A test site's icon: a square in one of the console's colours with a T.
@@ -78,12 +78,12 @@ public static class DevTools
                     return unconfirmed;
                 }
                 settings.Change(s => s.DevSkipMfa = skip);
-                log.Record(context, "access", "devtools.skipmfa", skip ? "Let sign-ins on this server skip MFA (Rabbid Lab Dev)" : "Stopped sign-ins on this server skipping MFA");
+                log.Record(context, "access", "devtools.skipmfa", skip ? "Allowed sign-ins on this server to skip MFA (Rabbid Lab Dev)" : "Required MFA again for sign-ins on this server");
             }
             if (form.On is { } on)
             {
                 settings.Change(s => s.DevTools = on);
-                log.Record(context, "admin", "devtools", on ? "Turned Developer tools on" : "Turned Developer tools off");
+                log.Record(context, "admin", "devtools", on ? "Enabled Developer tools" : "Disabled Developer tools");
             }
             return Results.Ok(new { on = settings.Current.DevTools, skipMfa = settings.Current.DevSkipMfa });
         });

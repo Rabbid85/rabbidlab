@@ -98,8 +98,8 @@ public sealed partial class DeviceApps(DataFolder folder, TimeProvider clock)
 
     /// <summary>Why it can't be a winget package ID, or null when it can.</summary>
     public static string? BadId(string? winget) =>
-        string.IsNullOrWhiteSpace(winget) ? "Give the package's winget ID, such as Mozilla.Firefox."
-        : winget.Trim().Length > 128 || !IdShape().IsMatch(winget.Trim()) ? "A winget ID looks like Publisher.App: letters, digits, + - and _, with dots between the parts."
+        string.IsNullOrWhiteSpace(winget) ? "Enter the package's winget ID, such as Mozilla.Firefox."
+        : winget.Trim().Length > 128 || !IdShape().IsMatch(winget.Trim()) ? "Enter a winget ID in the form Publisher.App. Use letters, digits, + - and _, with dots between the parts."
         : null;
 
     /// <summary>Adds an app, or changes the one with this id.</summary>
@@ -107,12 +107,12 @@ public sealed partial class DeviceApps(DataFolder folder, TimeProvider clock)
     {
         if (BuiltInApps.Is(form.Id))
         {
-            return (null, "Built-in apps can't be changed.");
+            return (null, "Built-in apps cannot be edited.");
         }
         var name = form.Name?.Trim() ?? "";
         if (name.Length is 0 or > MaxName || name.Any(char.IsControl))
         {
-            return (null, name.Length == 0 ? "Give the app a name." : $"A name is {MaxName} characters at most.");
+            return (null, name.Length == 0 ? "App name is required." : $"Names can be up to {MaxName} characters.");
         }
         if (BadId(form.Winget) is { } bad)
         {
@@ -126,22 +126,22 @@ public sealed partial class DeviceApps(DataFolder folder, TimeProvider clock)
             var others = f.Apps.Where(a => a.Id != form.Id).Concat(BuiltInApps.All).ToList();
             if (others.FirstOrDefault(a => string.Equals(a.Name, name, StringComparison.OrdinalIgnoreCase)) is not null)
             {
-                return (null, $"There's already an app called {name}.");
+                return (null, $"An app named {name} already exists.");
             }
             if (others.FirstOrDefault(a => string.Equals(a.Winget, winget, StringComparison.OrdinalIgnoreCase)) is { } same)
             {
-                return (null, $"{same.Name} already installs {same.Winget}.");
+                return (null, $"{same.Name} already uses the winget ID {same.Winget}.");
             }
             var app = f.Apps.FirstOrDefault(a => a.Id == form.Id);
             if (app is null)
             {
                 if (!string.IsNullOrEmpty(form.Id))
                 {
-                    return (null, "That app isn't here any more.");
+                    return (null, "That app no longer exists.");
                 }
                 if (f.Apps.Count >= MaxApps)
                 {
-                    return (null, $"The page holds {MaxApps} apps of your own at most.");
+                    return (null, $"You can add up to {MaxApps} custom apps.");
                 }
                 app = new DeviceApp { Id = Convert.ToHexString(RandomNumberGenerator.GetBytes(8)).ToLowerInvariant() };
                 f.Apps.Add(app);
@@ -317,7 +317,7 @@ public static class BuiltInApps
         A("chrome", "Google Chrome", "Google", "Browsers", "Google.Chrome", "^Google Chrome$", "Web browser."),
         A("firefox", "Mozilla Firefox", "Mozilla", "Browsers", "Mozilla.Firefox", "^Mozilla Firefox", "Web browser."),
         A("vscode", "Visual Studio Code", "Microsoft", "Developer tools", "Microsoft.VisualStudioCode", "^Microsoft Visual Studio Code$",
-            "Code editor, with the Claude Code extension added for each person who uses the computer.", new VsCodeExtension("anthropic.claude-code", "Claude Code")),
+            "Code editor. Adds the Claude Code extension for each user of the computer.", new VsCodeExtension("anthropic.claude-code", "Claude Code")),
         A("git", "Git", "The Git Development Community", "Developer tools", "Git.Git", "^Git($| version )", "Version control, with Git Bash."),
         A("github-cli", "GitHub CLI", "GitHub", "Developer tools", "GitHub.cli", "^GitHub CLI", "GitHub from the command line (gh)."),
         A("nodejs", "Node.js LTS", "OpenJS Foundation", "Developer tools", "OpenJS.NodeJS.LTS", @"^Node\.js$", "JavaScript runtime, the long-term support version, with npm."),
@@ -327,14 +327,14 @@ public static class BuiltInApps
         A("winscp", "WinSCP", "Martin Prikryl", "Admin tools", "WinSCP.WinSCP", "^WinSCP", "Copies files over SFTP, SCP and FTP."),
         A("mremoteng", "mRemoteNG", "Next Generation Software", "Admin tools", "mRemoteNG.mRemoteNG", "^mRemoteNG", "Remote Desktop, SSH and VNC connections in tabs."),
         A("wireshark", "Wireshark", "Wireshark Foundation", "Admin tools", "WiresharkFoundation.Wireshark", "^Wireshark", "Captures and reads network traffic."),
-        A("7zip", "7-Zip", "Igor Pavlov", "Utilities", "7zip.7zip", "^7-Zip", "Opens and makes zip, 7z and other archives."),
-        A("everything", "Everything", "voidtools", "Utilities", "voidtools.Everything", "^Everything( |$)", "Finds files by name straight away."),
-        A("windirstat", "WinDirStat", "The WinDirStat Team", "Utilities", "WinDirStat.WinDirStat", "^WinDirStat", "Shows what fills a drive."),
+        A("7zip", "7-Zip", "Igor Pavlov", "Utilities", "7zip.7zip", "^7-Zip", "Creates and opens zip, 7z and other archives."),
+        A("everything", "Everything", "voidtools", "Utilities", "voidtools.Everything", "^Everything( |$)", "Instant file search by name."),
+        A("windirstat", "WinDirStat", "The WinDirStat Team", "Utilities", "WinDirStat.WinDirStat", "^WinDirStat", "Disk usage by folder and file type."),
         A("treesize", "TreeSize Free", "JAM Software", "Utilities", "JAMSoftware.TreeSize.Free", "^TreeSize Free", "Folder sizes on a drive."),
         A("crystaldiskinfo", "CrystalDiskInfo", "Crystal Dew World", "Utilities", "CrystalDewWorld.CrystalDiskInfo", "^CrystalDiskInfo", "Drive health from SMART."),
-        A("greenshot", "Greenshot", "Greenshot", "Utilities", "Greenshot.Greenshot", "^Greenshot", "Screenshots with notes drawn on them."),
+        A("greenshot", "Greenshot", "Greenshot", "Utilities", "Greenshot.Greenshot", "^Greenshot", "Screenshots with annotations."),
         A("sharex", "ShareX", "ShareX Team", "Utilities", "ShareX.ShareX", "^ShareX", "Screenshots and screen recording."),
-        A("keepassxc", "KeePassXC", "KeePassXC Team", "Utilities", "KeePassXCTeam.KeePassXC", "^KeePassXC", "Password manager that keeps its file on the computer."),
+        A("keepassxc", "KeePassXC", "KeePassXC Team", "Utilities", "KeePassXCTeam.KeePassXC", "^KeePassXC", "Password manager with a local database file."),
         A("acrobat-reader", "Adobe Acrobat Reader", "Adobe", "Office", "Adobe.Acrobat.Reader.64-bit", "^Adobe Acrobat", "Reads, signs and prints PDF files."),
         A("libreoffice", "LibreOffice", "The Document Foundation", "Office", "TheDocumentFoundation.LibreOffice", "^LibreOffice", "Documents, spreadsheets and slides."),
         A("thunderbird", "Mozilla Thunderbird", "Mozilla", "Office", "Mozilla.Thunderbird", "^Mozilla Thunderbird", "Mail and calendar."),

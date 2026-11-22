@@ -42,8 +42,8 @@ public static class BuiltInScripts
 
     public static readonly IReadOnlyList<DeviceScript> All =
     [
-        S("windows-update-sources", "Windows Update: what every source says", Ps,
-            "For when the missing updates here and the Windows Update page disagree: its update settings, every update service, and what each one offers with the details that decide what counts. It only reads.", """
+        S("windows-update-sources", "Windows Update: compare update sources", Ps,
+            "Use when the missing update count differs from the Windows Update page. Lists the update settings, each update service and what it offers, with the details that decide what is counted. Read-only.", """
             $ErrorActionPreference = 'Continue'
             "== $((Get-CimInstance Win32_OperatingSystem).Caption) $([Environment]::OSVersion.Version), as $([Security.Principal.WindowsIdentity]::GetCurrent().Name)"
             '== Settings'
@@ -98,22 +98,22 @@ public static class BuiltInScripts
                 Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
             'Temp folders emptied.'
             """),
-        S("restart-service", "Restart a service", Ps, "Restarts the print spooler. Duplicate it and change the name for another service.", """
+        S("restart-service", "Restart a service", Ps, "Restarts the Print Spooler service. To restart another service, duplicate the script and change the service name.", """
             $name = 'Spooler'
             Restart-Service -Name $name -Force
             Get-Service -Name $name | Format-Table Name, Status -AutoSize
             """),
-        S("clear-print-queue", "Clear a stuck print queue", Ps, "Stops the print spooler, deletes the jobs waiting in it, and starts it again.", """
+        S("clear-print-queue", "Clear a stuck print queue", Ps, "Stops the Print Spooler service, deletes the queued print jobs and starts the service again.", """
             Stop-Service -Name Spooler -Force
             $jobs = Get-ChildItem "$env:windir\System32\spool\PRINTERS" -File -ErrorAction SilentlyContinue
             $jobs | Remove-Item -Force -ErrorAction SilentlyContinue
             Start-Service -Name Spooler
             "Cleared $(@($jobs).Count) file(s) from the print queue. The spooler is $((Get-Service Spooler).Status)."
             """),
-        S("flush-dns", "Flush DNS", Cmd, "Empties the DNS cache.", "ipconfig /flushdns"),
+        S("flush-dns", "Flush DNS", Cmd, "Clears the DNS client cache.", "ipconfig /flushdns"),
         S("gpupdate", "Update Group Policy", Cmd, "Applies Group Policy now.", "gpupdate /force /wait:120", 5),
-        S("network", "Network settings", Cmd, "Every network adapter with its addresses, gateway and DNS servers.", "ipconfig /all"),
-        S("wake-on-lan", "Turn on Wake-on-LAN", Ps, "Lets the wired network card wake the computer from sleep and from shut down, and turns off Fast startup, which stops many cards waking a computer that was shut down. The BIOS has to allow it too.", """
+        S("network", "Network settings", Cmd, "Lists each network adapter with its IP addresses, gateway and DNS servers.", "ipconfig /all"),
+        S("wake-on-lan", "Enable Wake-on-LAN", Ps, "Allows the wired network adapter to wake the computer from sleep and shutdown, and disables Fast startup, which prevents many adapters from waking a shut-down computer. Wake-on-LAN must also be enabled in the BIOS.", """
             $cards = Get-NetAdapter -Physical -ErrorAction SilentlyContinue | Where-Object { $_.NdisPhysicalMedium -eq 14 }
             if (-not $cards) { 'No wired network card found.'; exit 1 }
             foreach ($c in $cards) {
@@ -138,24 +138,24 @@ public static class BuiltInScripts
             'Fast startup is off.'
             'The BIOS has to allow it too: waking from the network on (often Power On By PCI-E, or Wake on LAN), and ErP or deep sleep off.'
             """),
-        S("secure-channel", "Domain trust (secure channel)", Ps, "Whether the computer's link with the domain works, from Test-ComputerSecureChannel and nltest /sc_query. Fails the job when it's broken. It only reads.", $$"""
+        S("secure-channel", "Domain trust (secure channel)", Ps, "Tests the computer's secure channel with the domain, using Test-ComputerSecureChannel and nltest /sc_query. The job fails if the secure channel is broken. Read-only.", $$"""
             {{FindDomain}}
             {{SecureChannel}}
             if (-not $ok) { exit 1 }
             """),
-        S("find-dc", "Domain controller it uses", Ps, "The domain controller and site this computer finds, from nltest /dsgetdc. It only reads.", $$"""
+        S("find-dc", "Domain controller in use", Ps, "Shows the domain controller and site this computer uses, from nltest /dsgetdc. Read-only.", $$"""
             {{FindDomain}}
             & nltest.exe "/dsgetdc:$domain"
             ''
             & nltest.exe /dsgetsite
             """),
-        S("dc-list", "Every domain controller", Ps, "Each domain controller in the domain with its site and roles, from nltest /dclist. It only reads.", $$"""
+        S("dc-list", "List domain controllers", Ps, "Lists each domain controller in the domain with its site and roles, from nltest /dclist. Read-only.", $$"""
             {{FindDomain}}
             & nltest.exe "/dclist:$domain"
             """),
-        S("domain-trusts", "Domain trusts", Cmd, "The domain's trust relationships, from nltest /domain_trusts /all_trusts. It only reads.", "nltest /domain_trusts /all_trusts"),
-        S("whoami", "Account scripts run as", Cmd, "The account scripts run as on this computer (SYSTEM), with its groups and privileges, from whoami. It only reads.", @"%SystemRoot%\System32\whoami.exe /user /groups /priv"),
-        S("domain-report", "Domain report", Ps, "All of the domain checks in one: secure channel, domain controller and site, every domain controller, trusts, and the account scripts run as. It only reads.", $$"""
+        S("domain-trusts", "Domain trusts", Cmd, "Lists the domain's trust relationships, from nltest /domain_trusts /all_trusts. Read-only.", "nltest /domain_trusts /all_trusts"),
+        S("whoami", "Script run-as account", Cmd, "Shows the account that scripts run as on this computer (SYSTEM), with its groups and privileges, from whoami. Read-only.", @"%SystemRoot%\System32\whoami.exe /user /groups /priv"),
+        S("domain-report", "Domain report", Ps, "Runs all domain checks: secure channel, domain controller and site, domain controller list, trusts, and the script run-as account. Read-only.", $$"""
             {{FindDomain}}
             "== $env:COMPUTERNAME in $domain"
             ''
@@ -176,12 +176,12 @@ public static class BuiltInScripts
             & "$env:SystemRoot\System32\whoami.exe" /user /groups /priv
             if (-not $ok) { exit 1 }
             """, 10),
-        S("signed-in", "Who is signed in", Cmd, "Everyone signed in at the screen or over Remote Desktop.", """
+        S("signed-in", "Signed-in users", Cmd, "Lists users signed in locally or over Remote Desktop.", """
             quser 2>nul
             if errorlevel 1 echo Nobody is signed in.
             exit /b 0
             """),
-        S("uptime", "Uptime and last restart", Ps, "When Windows last started, and whether it's waiting for a restart.", """
+        S("uptime", "Uptime and last restart", Ps, "Shows when Windows last started and whether a restart is pending.", """
             $os = Get-CimInstance Win32_OperatingSystem
             $up = (Get-Date) - $os.LastBootUpTime
             "Last restart: $($os.LastBootUpTime)"
@@ -190,23 +190,23 @@ public static class BuiltInScripts
                 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending' | Where-Object { Test-Path $_ }
             if ($waiting) { 'Windows is waiting for a restart.' } else { 'No restart waiting.' }
             """),
-        S("disk-space", "Disk space", Ps, "Each drive with its size and free space.", """
+        S("disk-space", "Disk space", Ps, "Lists each drive with its size and free space.", """
             Get-CimInstance Win32_LogicalDisk -Filter 'DriveType=3' |
                 Select-Object DeviceID, @{n='SizeGB';e={[math]::Round($_.Size / 1GB)}}, @{n='FreeGB';e={[math]::Round($_.FreeSpace / 1GB)}} |
                 Format-Table -AutoSize
             """),
-        S("disk-health", "Disk health", Ps, "Each physical disk and what Windows says about its health.", """
+        S("disk-health", "Disk health", Ps, "Lists each physical disk and its health status.", """
             Get-PhysicalDisk | Select-Object FriendlyName, MediaType, HealthStatus, OperationalStatus, @{n='SizeGB';e={[math]::Round($_.Size / 1GB)}} |
                 Format-Table -AutoSize
             """),
-        S("local-admins", "Local administrators", Ps, "Who is in the Administrators group.", """
+        S("local-admins", "Local administrators", Ps, "Lists the members of the local Administrators group.", """
             Get-LocalGroupMember -SID 'S-1-5-32-544' | Format-Table Name, ObjectClass, PrincipalSource -AutoSize
             """),
-        S("recent-updates", "Updates in the last 30 days", Ps, "The Windows updates installed in the last 30 days.", """
+        S("recent-updates", "Updates in the last 30 days", Ps, "Lists Windows updates installed in the last 30 days.", """
             Get-HotFix | Where-Object { $_.InstalledOn -gt (Get-Date).AddDays(-30) } | Sort-Object InstalledOn -Descending |
                 Format-Table HotFixID, Description, InstalledOn -AutoSize
             """),
-        S("system-errors", "Errors in the System log", Ps, "The last 20 errors in the System event log from the past day.", """
+        S("system-errors", "Errors in the System log", Ps, "Shows the last 20 errors in the System event log from the past 24 hours.", """
             Get-WinEvent -FilterHashtable @{ LogName = 'System'; Level = 1, 2; StartTime = (Get-Date).AddDays(-1) } -MaxEvents 20 -ErrorAction SilentlyContinue |
                 Format-Table TimeCreated, ProviderName, Id, Message -Wrap
             """),
@@ -215,13 +215,13 @@ public static class BuiltInScripts
             Start-MpScan -ScanType QuickScan
             Get-MpComputerStatus | Format-List AntivirusSignatureLastUpdated, QuickScanEndTime
             """, 60),
-        S("winget-install", "Install an app with winget", Ps, "Installs Google Chrome for everyone. Duplicate it and change the id for another app.", $"""
+        S("winget-install", "Install an app with winget", Ps, "Installs Google Chrome for all users. To install another app, duplicate the script and change the winget ID.", $"""
             $id = 'Google.Chrome'
             {FindWinget}
             & $winget.FullName install --id $id --exact --silent --scope machine --accept-package-agreements --accept-source-agreements
             exit $LASTEXITCODE
             """, 30),
-        S("winget-uninstall", "Uninstall an app with winget", Ps, "Uninstalls an app by its winget id. Duplicate it and change the id.", $"""
+        S("winget-uninstall", "Uninstall an app with winget", Ps, "Uninstalls an app by its winget ID. Duplicate the script and change the ID.", $"""
             $id = 'Valve.Steam'
             {FindWinget}
             & $winget.FullName uninstall --id $id --exact --silent --accept-source-agreements

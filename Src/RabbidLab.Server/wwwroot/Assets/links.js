@@ -7,7 +7,7 @@
   let links = [];
   let states = {};
   let checks = { every: 60, downAfter: 30 }; // seconds: between checks, and unanswered before a link shows as down
-  let revision = 0; // goes up when the server changes links by itself; a new one means read them again
+  let revision = 0; // goes up whenever the links change on the server; a new one means read them again
   let groups = []; // their names, in the order they are shown
   const NO_GROUP = 'No group'; // what the Group chip calls links in none
   let editing = null; // the link being changed, or null for a new one
@@ -41,24 +41,24 @@
     // The grid says it in words beside the dot (data-now), and keeps the column where a link isn't checked.
     if (!/^https?:/i.test(l.url)) return view === 'grid' ? '<i class="lstate none"></i>' : '';
     if (!s) return '<i class="lstate" title="Checking…" data-now="Checking…"></i>';
-    if (s.up) return `<i class="lstate up" title="Up · answered in ${s.ms} ms" data-now="${s.ms} ms"></i>`;
+    if (s.up) return `<i class="lstate up" title="Up · Responded in ${s.ms} ms" data-now="${s.ms} ms"></i>`;
     const since = s.since ? new Date(s.since).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
     // Amber until it has been quiet for as long as the settings say.
     const why = s.why ? `: ${esc(s.why)}` : '';
-    return s.down ? `<i class="lstate down" title="Down · no answer${since ? ` since ${since}` : ''}${why}" data-now="Down"></i>`
-      : `<i class="lstate late" title="No answer just now${why} · checking again, down after ${span(checks.downAfter)}" data-now="No answer"></i>`;
+    return s.down ? `<i class="lstate down" title="Down · No response${since ? ` since ${since}` : ''}${why}" data-now="Down"></i>`
+      : `<i class="lstate late" title="Not responding${why} · Retrying. Marked down after ${span(checks.downAfter)}" data-now="Not responding"></i>`;
   };
   const span = (s) => (s < 60 ? `${s} seconds` : s === 60 ? 'a minute' : `${s / 60} minutes`);
   // While links are being ticked to watch: a tick on each, ticked or not, and none on one that isn't a web address.
   const tick = (l) => (!watching ? '' : checked(l) ? `<span class="lw-tick">${svg('check')}</span>` : '');
   const tickClass = (l) => (!watching ? '' : !checked(l) ? ' lw-off' : ticked.has(l.id) ? ` lw-on${l.sensor ? ' lw-was' : ''}` : '');
   // A watched link: a small eye beside its dot.
-  const eye = (l) => (l.sensor && !watching ? `<span class="lw-eye" title="Watched: it alerts when it's down">${svg('eye')}</span>` : '');
+  const eye = (l) => (l.sensor && !watching ? `<span class="lw-eye" title="Watched. Sends an alert when down.">${svg('eye')}</span>` : '');
   const tile = (l) => `<div class="ltile${states[l.id]?.down ? ' down' : ''}${tickClass(l)}" data-id="${esc(l.id)}"${can('links.edit') && !watching ? ` draggable="true" data-drag="${esc(l.id)}"` : ''}>${tick(l)}<a class="lgo" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer" draggable="false">`
     + (l.icon === NO_ICON ? (view === 'grid' ? '<span class="lic gap"></span>' : '') : `<span class="lic${l.icon ? '' : ' letter'}" data-color="${colour(l.name)}">${pic(l)}</span>`)
     + `<span class="lt"><b>${esc(l.name)}</b>${l.description ? `<span>${esc(l.description)}</span>` : ''}`
     + `<code>${esc(l.address && l.address !== host(l.url) ? `${l.address} · ${host(l.url)}` : host(l.url))}</code></span></a>`
-    + `${eye(l)}${dot(l)}${can('links.edit') && !watching ? `<button type="button" class="icon ledit" data-edit="${esc(l.id)}" aria-label="Change ${esc(l.name)}">${svg('edit')}</button>` : ''}</div>`;
+    + `${eye(l)}${dot(l)}${can('links.edit') && !watching ? `<button type="button" class="icon ledit" data-edit="${esc(l.id)}" aria-label="Edit ${esc(l.name)}">${svg('edit')}</button>` : ''}</div>`;
   // The Links and Icons views: a dot only when a link isn't answering.
   const off = (l) => (states[l.id] && !states[l.id].up ? (states[l.id].down ? 'down' : 'late') : '');
   const face = (l, cls) => `<span class="${cls}${l.icon && l.icon !== NO_ICON ? '' : ' letter'}" data-color="${colour(l.name)}">${l.icon === NO_ICON ? '' : pic(l)}</span>`;
@@ -83,7 +83,7 @@
   // The filter bar over the links (filter.js): a search, a chip for each column worth one (the groups too), saved
   // filters, and the conditions window. Links aren't a table, so these columns are only what the bar filters by. It
   // narrows every view.
-  const stateOf = (l) => (!checked(l) ? [4, 'Not checked'] : !states[l.id] ? [3, 'Checking'] : states[l.id].up ? [2, 'Up'] : states[l.id].down ? [0, 'Down'] : [1, 'No answer']);
+  const stateOf = (l) => (!checked(l) ? [4, 'Not checked'] : !states[l.id] ? [3, 'Checking'] : states[l.id].up ? [2, 'Up'] : states[l.id].down ? [0, 'Down'] : [1, 'Not responding']);
   const protocol = (l) => (/^([a-z][a-z0-9+.-]*):/i.exec(l.url) || ['', ''])[1].toUpperCase();
   const COLS = R.grid.columns([
     { key: 'name', label: 'Link', get: (l) => l.name },
@@ -126,16 +126,16 @@
     $('ln-list').classList.toggle('lx-cols', view === 'links'); // the Links view flows its groups down columns
     $('ln-list').innerHTML = by.map(([g, list]) => `<section class="lgroup" data-name="${esc(g)}">${groups.length ? tools.heading(g, list.length) : ''}`
       + (list.length ? body(list)
-        : `<p class="hint lnone">No links in this group yet.${can('links.edit') ? ` <button type="button" class="link" data-addto="${esc(g)}">Add one</button>` : ''}</p>`)
+        : `<p class="hint lnone">No links in this group yet.${can('links.edit') ? ` <button type="button" class="link" data-addto="${esc(g)}">Add a link</button>` : ''}</p>`)
       + '</section>').join('')
-      || (links.length ? '<p class="hint">Nothing matches.</p>' : '');
+      || (links.length ? '<p class="hint">No links match the filter.</p>' : '');
     if (!find) $('ln-list').insertAdjacentHTML('beforeend', tools.out(by.some(([g]) => !g)));
     tools.settle();
     $('ln-view').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.view === view));
     $('ln-empty').hidden = links.length > 0 || groups.length > 0;
     $('ln-empty-text').textContent = can('links.edit')
-      ? `Add the stuff you log into every day, like your router, NAS or iDRACs. Paste an address and ${R.app()} grabs the name, icon and IP for you.`
-      : 'Nobody has put any here yet.';
+      ? `Add the devices and sites you sign in to every day, such as your router, NAS or iDRACs. Paste an address and ${R.app()} fills in the name, icon and IP address.`
+      : 'No links have been added.';
     R.paint($('ln-list'));
     rail();
     drawHero();
@@ -154,12 +154,12 @@
     const late = known.filter((l) => !states[l.id].up && !states[l.id].down);
     const first = down[0];
     $('ln-hero').classList.toggle('bad', down.length > 0);
-    $('ln-lead').textContent = !links.length ? 'No links yet.' : first ? `${first.name} stopped answering${states[first.id].since ? ` at ${at(states[first.id].since)}` : ''}.`
-      : !web.length ? 'The places in your lab, one click away.' : late.length ? `${late[0].name} didn't answer just now.`
-        : known.length < web.length ? 'Checking them now.' : 'Everything is answering.';
-    $('ln-lead-more').textContent = !links.length ? (can('links.edit') ? 'Add the stuff you log into every day, like your router, NAS or iDRACs.' : 'Nobody has added any yet.')
-      : down.length > 1 ? `So did ${down.slice(1, 4).map((l) => l.name).join(', ')}${down.length > 4 ? ` and ${down.length - 4} more` : ''}.`
-        : !first && late.length ? `Trying again. It shows as down after ${span(checks.downAfter)} with no answer.` : '';
+    $('ln-lead').textContent = !links.length ? 'No links yet.' : first ? `${first.name} went down${states[first.id].since ? ` at ${at(states[first.id].since)}` : ''}.`
+      : !web.length ? 'Links to the sites and devices in your lab.' : late.length ? `${late[0].name} is not responding.`
+        : known.length < web.length ? 'Checking links…' : 'All links are up.';
+    $('ln-lead-more').textContent = !links.length ? (can('links.edit') ? 'Add the devices and sites you sign in to every day, such as your router, NAS or iDRACs.' : 'No links have been added.')
+      : down.length > 1 ? `Also down: ${down.slice(1, 4).map((l) => l.name).join(', ')}${down.length > 4 ? ` and ${down.length - 4} more` : ''}.`
+        : !first && late.length ? `Retrying. Marked down after ${span(checks.downAfter)} without a response.` : '';
     $('ln-count').textContent = links.length;
     const seen = links.filter((l) => l.sensor).length;
     $('ln-watched-wrap').hidden = !seen;
@@ -169,45 +169,71 @@
     $('ln-card').hidden = !first;
     if (first) {
       $('ln-card-title').textContent = first.name;
-      $('ln-card-text').textContent = `No answer from ${host(first.url)}${states[first.id].since ? ` since ${at(states[first.id].since)}` : ''}${states[first.id].why ? `: ${states[first.id].why}` : ''}.`;
+      $('ln-card-text').textContent = `No response from ${host(first.url)}${states[first.id].since ? ` since ${at(states[first.id].since)}` : ''}${states[first.id].why ? `: ${states[first.id].why}` : ''}.`;
       $('ln-card-more').href = first.url;
     }
   };
 
-  // Asks again when the server says to: sooner while a link that didn't answer is being tried again.
-  const check = async () => {
-    let wait = 60;
-    try {
-      const answer = await R.get('/api/links/states');
-      states = answer.states || {};
-      wait = answer.next || 60;
-      if (answer.revision !== revision && !tools.busy()) take(await R.get('/api/links'));
-      // Off the page only the rail's dot; on it, not under a drag or a name being typed: the dots catch up on the next check.
-      if (R.where()[0] !== 'links') rail();
-      else if (!tools.busy() && !refreshing) draw();
-    } catch {
-      // The dots stay as they were.
-    }
-    clearTimeout(timer);
-    timer = setTimeout(check, wait * 1000); // on every page, so the rail's dot clears once a link is back
+  // The states, and the links too when they changed; the server says how soon to ask again.
+  let wait = 60;
+  const readStates = async () => {
+    const answer = await R.get('/api/links/states');
+    wait = answer.next || 60;
+    return { states: answer.states || {}, revision: answer.revision, links: answer.revision !== revision ? await R.get('/api/links') : null };
   };
+  // Off Links only the rail's count and dot, on every page, so the dot clears once a link is back.
+  const check = async () => {
+    clearTimeout(timer);
+    if (R.where()[0] === 'links') return; // the page keeps up by itself (below)
+    try {
+      const got = await readStates();
+      states = got.states;
+      if (got.links && !tools.busy()) take(got.links);
+      rail();
+    } catch {
+      // The dot stays as it was.
+    }
+    if (R.where()[0] !== 'links') timer = setTimeout(check, wait * 1000);
+  };
+  // On Links every 10 seconds, or sooner when the server says: drawn only when a state or a link changed.
+  const liveLinks = R.live({
+    page: () => R.where()[0] === 'links' && can('links.view'),
+    hold: () => tools.busy() || refreshing,
+    every: () => Math.min(wait, 10) * 1000,
+    read: readStates,
+    now: () => ({ states, revision, links: null }),
+    draw: (got) => {
+      states = got.states;
+      if (got.links) {
+        take(got.links);
+        say('ln-problem', '');
+      }
+      draw();
+    },
+    areas: () => [$('ln-list')],
+  });
+  const statesNow = () => (R.where()[0] === 'links' ? liveLinks.now() : check());
   // What the server answers to a read or a change: the links and the groups, both in order, and the check times.
+  let taken = false;
   const take = (answer) => {
     links = answer.links;
     groups = answer.groups || [];
     checks = answer.checks || checks;
     if (answer.revision != null) revision = answer.revision;
+    taken = true;
   };
   const refresh = async () => {
     try {
       take(await R.get('/api/links'));
       say('ln-problem', '');
     } catch (err) {
+      revision = -1; // read the links again with the next states that come
       say('ln-problem', err.message);
     }
     draw();
-    check();
+    statesNow();
   };
+  R.linksNow = () => (taken ? { links, groups } : null); // for the Overview, once read
 
   // Cards or a grid, remembered in this browser.
   $('ln-view').addEventListener('click', (e) => {
@@ -288,9 +314,9 @@
       if ($('lopen-dialog').open) $('lopen-dialog').close();
       return;
     }
-    $('lopen-title').textContent = `Your browser opened ${of - waiting.length} of ${of}`;
+    $('lopen-title').textContent = `Opened ${of - waiting.length} of ${of} links`;
     $('lopen-site').textContent = $('lopen-site2').textContent = location.origin;
-    $('lopen-go').textContent = $('lopen-again').textContent = waiting.length === 1 ? 'Open the last one' : `Open the other ${waiting.length}`;
+    $('lopen-go').textContent = $('lopen-again').textContent = waiting.length === 1 ? 'Open the last link' : `Open the remaining ${waiting.length}`;
     if (!$('lopen-dialog').open) $('lopen-dialog').showModal();
   };
   $('ln-list').addEventListener('click', (e) => {
@@ -303,8 +329,8 @@
   $('lopen-close').addEventListener('click', () => $('lopen-dialog').close());
 
   // --- Checks: how often, and how long with no answer before a link shows as down. Saved as it's changed. ------------
-  const EVERY = [[15, '15 seconds'], [30, '30 seconds'], [60, 'Minute'], [300, '5 minutes']];
-  const AFTER = [[0, 'Right away'], [15, '15 seconds'], [30, '30 seconds'], [60, 'Minute'], [300, '5 minutes']];
+  const EVERY = [[15, '15 seconds'], [30, '30 seconds'], [60, '1 minute'], [300, '5 minutes']];
+  const AFTER = [[0, 'Immediately'], [15, '15 seconds'], [30, '30 seconds'], [60, '1 minute'], [300, '5 minutes']];
   // waiting: still being read, so nothing can be changed yet.
   const drawChecks = (waiting = false) => {
     const segs = (items, value) => items.map(([v, text]) => `<button type="button" data-value="${v}" aria-pressed="${v === value}"${waiting ? ' disabled' : ''}>${text}</button>`).join('');
@@ -314,8 +340,8 @@
     $('lc-known').checked = checks.describe !== false;
     $('lc-known-label').textContent = checks.describe !== false ? 'On' : 'Off';
     $('lc-note').textContent = checks.downAfter
-      ? `A link that doesn't answer turns amber and is tried again every few seconds. It turns red once it has gone ${span(checks.downAfter)} with no answer, so one slow reply doesn't show as down.`
-      : 'A link turns red the first time it doesn\'t answer, even if it was only one slow reply.';
+      ? `A link that does not respond turns amber and is retried every few seconds. It is marked down (red) after ${span(checks.downAfter)} without a response, so a single slow response does not count as down.`
+      : 'A link is marked down (red) the first time it does not respond, even for a single slow response.';
   };
   const saveChecks = async (change) => {
     try {
@@ -334,7 +360,7 @@
   $('lc-known').addEventListener('change', async () => {
     const on = $('lc-known').checked;
     const form = $('lc-form');
-    if (on) R.busy(form, 'Describing the links…');
+    if (on) R.busy(form, 'Adding link descriptions…');
     await saveChecks({ describe: on });
     R.busy(form, '');
     draw();
@@ -362,9 +388,9 @@
     let quiet = 0;
     const progress = (name) => {
       // Once nothing is left to start, it says which it's waiting on.
-      const waiting = next >= queue.length && inFlight.size ? ` waiting on ${[...inFlight].join(', ')}` : '';
+      const waiting = next >= queue.length && inFlight.size ? ` Waiting for ${[...inFlight].join(', ')}` : '';
       if (onPage) return R.toast(`Refreshing ${done} of ${todo.length}…`, waiting.trim(), { stay: true });
-      R.busy(host, `Refreshing ${done} of ${todo.length}`, name ? `${name} · ${count(filled, 'link')} filled in so far` : '');
+      R.busy(host, `Refreshing ${done} of ${todo.length}`, name ? `${name} · ${count(filled, 'link')} updated` : '');
       const cover = host.querySelector(':scope > .busy-cover');
       if (cover && !cover.querySelector('.ld-bar')) cover.insertAdjacentHTML('beforeend', '<span class="ubar ld-bar"><i></i></span>');
       if (cover) cover.querySelector('.ld-bar i').style.width = `${Math.round((done / todo.length) * 100)}%`;
@@ -416,8 +442,8 @@
     const what = [got.icon && count(got.icon, 'icon'), got.description && count(got.description, 'description'), got.IP && count(got.IP, 'IP')].filter(Boolean);
     // The result in a toast, with the activity log for what changed.
     const list = what.length > 1 ? `${what.slice(0, -1).join(', ')} and ${what[what.length - 1]}` : what[0];
-    R.toast(filled ? `Refreshed ${list} on ${count(filled, 'link')}.` : `Refreshed ${count(todo.length, 'link')}.`,
-      [filled ? '' : 'Nothing to change.', quiet ? `${count(quiet, 'link')} didn't answer.` : ''].filter(Boolean).join(' '),
+    R.toast(filled ? `Updated ${list} on ${count(filled, 'link')}.` : `Refreshed ${count(todo.length, 'link')}.`,
+      [filled ? '' : 'No changes found.', quiet ? `${count(quiet, 'link')} did not respond.` : ''].filter(Boolean).join(' '),
       { tone: quiet ? 'warn' : '', action: filled || quiet ? { label: 'Details', href: '#settings/activity/lab' } : null });
   };
   $('lc-refresh').addEventListener('click', () => refreshLinks($('lc-form'), 'lc-refresh-done'));
@@ -443,21 +469,21 @@
       try {
         data = JSON.parse(await f.text());
       } catch {
-        throw new Error("That file isn't a Links export from Rabbid Lab.");
+        throw new Error('The file is not a Rabbid Lab Links export.');
       }
       const done = await R.send('/api/links/import', data);
       take(done.now);
-      const parts = [done.links || done.groups ? `Imported ${count(done.links, 'link')} and ${count(done.groups, 'group')}.` : 'No new links or groups in that file.',
-        done.skipped ? `${count(done.skipped, 'link')} already here ${done.skipped === 1 ? 'was' : 'were'} left as ${done.skipped === 1 ? 'it is' : 'they are'}.` : '',
-        done.refused ? `${count(done.refused, 'link')} couldn't be read from the file.` : '',
-        done.checks ? 'The check times were set from the file.' : ''];
+      const parts = [done.links || done.groups ? `Imported ${count(done.links, 'link')} and ${count(done.groups, 'group')}.` : 'The file has no new links or groups.',
+        done.skipped ? `Skipped ${count(done.skipped, 'link')} that already exist.` : '',
+        done.refused ? `Could not read ${count(done.refused, 'link')} from the file.` : '',
+        done.checks ? 'Check settings were imported from the file.' : ''];
       R.toast(parts[0], parts.slice(1).filter(Boolean).join(' '));
     } catch (err) {
-      R.toast("Couldn't import the file", err.message, { tone: 'red' });
+      R.toast('Could not import the file.', err.message, { tone: 'red' });
     }
     R.busy(form, '');
     draw();
-    check();
+    statesNow();
   });
   // Links settings, from the cogwheel's menu: drawn from a fresh read each time it shows.
   document.addEventListener('rabbidlab:show', async (e) => {
@@ -486,7 +512,7 @@
   let siteFresh = false; // read from the site while this dialog is open, so the site option needn't read it again
   let uploaded = false; // the icon is a picture of the person's own
   const iconKind = () => (icon === NO_ICON ? 'none' : !icon ? 'letter' : uploaded ? 'upload' : 'site');
-  const ICON_SAID = { site: 'site', letter: 'letter', upload: 'your picture', none: 'none' };
+  const ICON_SAID = { site: 'From the site', letter: 'First letter', upload: 'Uploaded image', none: 'None' };
   // The tile as it will look on the page, and the four icons to pick from in a strip under it. None keeps an empty space, so nothing moves.
   const drawIcon = () => {
     const url = $('ln-url').value.trim();
@@ -501,9 +527,9 @@
     $('ln-preview').innerHTML = `<div class="ltiles"><div class="ltile${empty ? ' ld-ghost' : ''}"><div class="lgo">${face}`
       + `<span class="lt"><b>${esc(shown)}</b><span>${esc($('ln-about').value.trim() || (empty ? 'Detail' : ''))}</span><code>${esc(where)}</code></span></div></div></div>`
       + '<div class="ld-strip">'
-      + pick('site', siteIcon ? "The site's own icon" : "Find the site's icon", siteIcon ? `<span class="ld-face"><img src="${esc(siteIcon)}" alt=""></span>` : `<span class="ld-face up">${svg('globe')}</span>`)
-      + pick('letter', 'The first letter of the name', `<span class="ld-face letter" data-color="${colour(shown)}">${letter(shown)}</span>`)
-      + pick('upload', 'A picture of your own', uploaded && icon ? `<span class="ld-face"><img src="${esc(icon)}" alt=""></span>` : `<span class="ld-face up">${svg('upload')}</span>`)
+      + pick('site', siteIcon ? 'Site icon' : 'Get the site icon', siteIcon ? `<span class="ld-face"><img src="${esc(siteIcon)}" alt=""></span>` : `<span class="ld-face up">${svg('globe')}</span>`)
+      + pick('letter', 'First letter', `<span class="ld-face letter" data-color="${colour(shown)}">${letter(shown)}</span>`)
+      + pick('upload', 'Upload an image', uploaded && icon ? `<span class="ld-face"><img src="${esc(icon)}" alt=""></span>` : `<span class="ld-face up">${svg('upload')}</span>`)
       + pick('none', 'No icon', '<span class="ld-face none"></span>')
       + `<span>Icon: ${ICON_SAID[k]}</span></div>`;
     R.paint($('ln-preview'));
@@ -513,7 +539,7 @@
     $('ln-looking').hidden = !text && !again;
     $('ln-looking').className = `ld-found wide${ok ? '' : ' warn'}`;
     $('ln-looking').innerHTML = (text ? `${svg(ok ? 'check' : 'alert')}<span>${esc(text)}</span>` : '')
-      + ((text && $('ln-url').value.trim()) || again ? `<button type="button" class="link" data-again>${text ? 'Read it again' : 'Read the site again'}</button>` : '');
+      + ((text && $('ln-url').value.trim()) || again ? `<button type="button" class="link" data-again>${text ? 'Refresh' : 'Refresh from the site'}</button>` : '');
   };
   const groupOf = (id) => ($(id).value === NEW_GROUP ? $(`${id}-new`).value : $(id).value);
   const pickGroup = (id) => {
@@ -528,16 +554,16 @@
   let show = 'all';
   const drawSave = () => {
     const n = listed($('ln-many').value).length;
-    $('ln-save').textContent = editing ? 'Save' : !many ? 'Add the link' : rows ? `Add ${count(rows.filter((r) => r.keep).length, 'link')}` : n ? `Read ${addresses(n)}` : 'Read them';
+    $('ln-save').textContent = editing ? 'Save' : !many ? 'Add link' : rows ? `Add ${count(rows.filter((r) => r.keep).length, 'link')}` : n ? `Check ${addresses(n)}` : 'Check addresses';
     $('ln-many-count').textContent = many && n ? addresses(n) : '';
   };
   const drawMode = () => {
     $('link-dialog').classList.toggle('many', many);
     $('ln-mode').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.mode === 'many') === many));
-    $('link-title').textContent = editing ? `Change ${editing.name}` : 'Add a link';
-    $('ln-dlead').textContent = editing ? 'Change anything you like.' : many
-      ? 'Paste the addresses, one a line or separated by commas. Each site is read, then you tick the ones to add.'
-      : 'Paste the address. The name, icon and detail fill in from the site.';
+    $('link-title').textContent = editing ? `Edit ${editing.name}` : 'Add a link';
+    $('ln-dlead').textContent = editing ? 'Edit the link details.' : many
+      ? 'Paste the addresses, one per line or separated by commas. Each site is checked, then you select the ones to add.'
+      : 'Paste the address. The name, icon and detail are filled in from the site.';
     drawSave();
   };
   // The addresses in a pasted list: split at line ends, commas and semicolons, quotes dropped, each one once.
@@ -546,7 +572,7 @@
     const seen = new Set();
     return String(text).split(/[\r\n,;]+/).map((a) => a.trim().replace(/^["'<]+|["'>]+$/g, '').trim()).filter((a) => a && !seen.has(same(a)) && seen.add(same(a)));
   };
-  const READ_AS = { ok: ['Found', 'ok'], none: ['No answer', 'warn'], dup: ['On Links already', 'muted'] };
+  const READ_AS = { ok: ['Found', 'ok'], none: ['No response', 'warn'], dup: ['Already added', 'muted'] };
   // What the list turned out to be: filters by what each one said, and a tick on each to add it or leave it out.
   const drawFound = () => {
     $('ln-found-head').hidden = $('ln-found').hidden = !rows;
@@ -554,19 +580,19 @@
     const n = (h) => rows.filter((r) => r.how === h).length;
     if (show !== 'all' && !n(show)) show = 'all';
     const shown = rows.map((r, i) => [r, i]).filter(([r]) => show === 'all' || r.how === show);
-    const chips = [['all', 'All', rows.length], ['ok', 'Found', n('ok')], ['none', 'No answer', n('none')], ['dup', 'On Links already', n('dup')]].filter(([k, , c]) => k === 'all' || c);
+    const chips = [['all', 'All', rows.length], ['ok', 'Found', n('ok')], ['none', 'No response', n('none')], ['dup', 'Already added', n('dup')]].filter(([k, , c]) => k === 'all' || c);
     $('ln-found').innerHTML = `<div class="seg sn-seg ld-chips">${chips.map(([k, label, c]) => `<button type="button" data-show="${k}" aria-pressed="${show === k}">${label}<small>${c}</small></button>`).join('')}</div>`
-      + `<div class="table ld-scroll"><div class="tr ld-lr th"><span><input type="checkbox" data-all aria-label="Tick all of these"${shown.every(([r]) => r.keep) ? ' checked' : ''}></span>`
-      + '<span></span><span>Link</span><span>Address</span><span>What it said</span></div>'
+      + `<div class="table ld-scroll"><div class="tr ld-lr th"><span><input type="checkbox" data-all aria-label="Select all"${shown.every(([r]) => r.keep) ? ' checked' : ''}></span>`
+      + '<span></span><span>Link</span><span>Address</span><span>Result</span></div>'
       + shown.map(([r, i]) => {
         const name = r.f?.name || host(full(r.url));
         const pic = r.f?.icon ? `<span class="lic"><img src="${esc(r.f.icon)}" alt=""></span>` : `<span class="lic letter" data-color="${colour(name)}"><b>${letter(name)}</b></span>`;
-        const about = r.how === 'dup' ? 'Left out, so nothing is there twice' : r.how === 'none' ? 'Added with its address only' : r.f?.description || '';
+        const about = r.how === 'dup' ? 'Skipped (duplicate)' : r.how === 'none' ? 'Added with the address only' : r.f?.description || '';
         const where = r.f?.address && r.f.address !== host(full(r.url)) ? `${r.f.address} · ${host(full(r.url))}` : host(full(r.url));
         return `<div class="tr ld-lr"><span><input type="checkbox" data-row="${i}"${r.keep ? ' checked' : ''} aria-label="Add ${esc(name)}"></span>${pic}`
           + `<span><b>${esc(name)}</b><small>${esc(about)}</small></span><span><code>${esc(where)}</code></span><span class="ld-how ${READ_AS[r.how][1]}">${READ_AS[r.how][0]}</span></div>`;
       }).join('') + '</div>'
-      + `<p class="hint">${rows.filter((r) => r.keep).length} of ${rows.length} will be added. Untick any to leave them out.</p>`;
+      + `<p class="hint">${rows.filter((r) => r.keep).length} of ${rows.length} selected. Clear any you do not want to add.</p>`;
     R.paint($('ln-found'));
   };
   // The flask covers what's being worked on while it reads, with how far along it is.
@@ -589,7 +615,7 @@
     const run = ++lookRun;
     rows = all.map((url) => ({ url, f: null, how: have.has(same(url)) ? 'dup' : 'new', keep: !have.has(same(url)) }));
     const todo = rows.filter((r) => r.how === 'new');
-    const tally = () => `${rows.filter((r) => r.how === 'ok').length} found · ${rows.filter((r) => r.how === 'none').length} no answer · ${rows.filter((r) => r.how === 'dup').length} on Links already`;
+    const tally = () => `${rows.filter((r) => r.how === 'ok').length} found · ${rows.filter((r) => r.how === 'none').length} no response · ${rows.filter((r) => r.how === 'dup').length} already added`;
     let next = 0;
     let done = 0;
     const read = async () => {
@@ -602,10 +628,10 @@
         }
         r.how = r.f && !r.f.problem ? 'ok' : 'none';
         done++;
-        if (run === lookRun) reading(`Reading ${done} of ${todo.length}`, tally(), done / todo.length);
+        if (run === lookRun) reading(`Checking ${done} of ${todo.length}`, tally(), done / todo.length);
       }
     };
-    if (todo.length) reading(`Reading 0 of ${todo.length}`, tally(), 0);
+    if (todo.length) reading(`Checking 0 of ${todo.length}`, tally(), 0);
     await Promise.all(Array.from({ length: Math.min(6, todo.length) }, read));
     if (run !== lookRun) return;
     reading('');
@@ -617,7 +643,7 @@
   const addMany = async () => {
     const keep = rows.filter((r) => r.keep);
     say('ln-dproblem', '');
-    if (!keep.length) return say('ln-dproblem', 'Tick at least one link to add.');
+    if (!keep.length) return say('ln-dproblem', 'Select at least one link to add.');
     const group = groupOf('ln-many-group');
     const run = ++lookRun;
     const failed = [];
@@ -639,7 +665,7 @@
       return refresh();
     }
     const added = keep.length - failed.length;
-    say('ln-dproblem', `${added ? `Added ${added}. ` : ''}${failed.length === 1 ? `${host(full(failed[0][0].url))} wasn't added` : `${failed.length} weren't added`}: ${failed[0][1]}`);
+    say('ln-dproblem', `${added ? `Added ${added}. ` : ''}${failed.length === 1 ? `Could not add ${host(full(failed[0][0].url))}` : `Could not add ${failed.length} links`}: ${failed[0][1]}`);
     drawFound();
     drawSave();
     refresh();
@@ -737,7 +763,7 @@
     lookedUrl = url;
     const run = ++lookRun;
     say('ln-dproblem', '');
-    reading(`Reading ${host(full(url))}…`);
+    reading(`Checking ${host(full(url))}…`);
     // Long enough to see, so a fast answer isn't a flicker.
     const seen = new Promise((done) => setTimeout(done, 600));
     let answer = null;
@@ -767,7 +793,7 @@
       }
       const got = [looked.name && 'name', looked.description && 'detail', looked.icon && 'icon', looked.address && 'IP'].filter(Boolean);
       const said = got.length > 1 ? `${got.slice(0, -1).join(', ')} and ${got[got.length - 1]}` : got[0];
-      foundLine(!looked.problem, looked.problem || (said ? `Read ${host(full(url))}: ${said} filled in. Change anything you like.` : `Read ${host(full(url))}, but it says nothing about itself. Fill it in yourself.`));
+      foundLine(!looked.problem, looked.problem || (said ? `Filled in the ${said} from ${host(full(url))}.` : `${host(full(url))} did not provide a name or details. Enter them manually.`));
     } else {
       foundLine(false, problem);
     }
@@ -777,7 +803,7 @@
   const pullIcon = async () => {
     const url = $('ln-url').value.trim();
     if (!url) {
-      foundLine(false, "Paste the address first, then this finds the site's icon.");
+      foundLine(false, 'Paste the address first to get the site icon.');
       return $('ln-url').focus();
     }
     const run = ++lookRun;
@@ -797,9 +823,9 @@
       siteFresh = true;
       icon = got.icon;
       uploaded = false;
-      foundLine(true, `Got the icon from ${host(full(url))}.`);
+      foundLine(true, `Icon retrieved from ${host(full(url))}.`);
     } else {
-      foundLine(false, `${host(full(url))} has no icon ${R.app()} can read. Upload one instead.`);
+      foundLine(false, `No icon found on ${host(full(url))}. Upload an image instead.`);
     }
     drawIcon();
   };
@@ -852,7 +878,7 @@
         c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
         use(c.toDataURL('image/png'));
       };
-      img.onerror = () => say('ln-dproblem', "That picture couldn't be read.");
+      img.onerror = () => say('ln-dproblem', 'Could not read the image file.');
       img.src = reader.result;
     };
     reader.readAsDataURL(f);
@@ -899,7 +925,7 @@
   $('ln-delete').addEventListener('click', () => {
     if (!editing) return;
     const gone = editing;
-    R.sure(`Take ${gone.name} off Links?`, gone.sensor ? 'The link is removed for everyone, and so is the sensor that watches it.' : 'The link is removed for everyone.', 'Delete', async () => {
+    R.sure(`Delete ${gone.name}?`, gone.sensor ? 'The link and its sensor are deleted for all users.' : 'The link is deleted for all users.', 'Delete', async () => {
       try {
         await R.send(`/api/links/${encodeURIComponent(gone.id)}/delete`, {});
         $('link-dialog').close();
@@ -919,15 +945,15 @@
     const mine = links.filter((l) => (l.group || '') === g && checked(l));
     if (!mine.length) return '';
     const all = mine.every((l) => ticked.has(l.id));
-    return `<button type="button" class="link lw-all" data-tickall="${esc(g)}">${all ? `Untick all ${mine.length}` : `Tick all ${mine.length}`}</button>`;
+    return `<button type="button" class="link lw-all" data-tickall="${esc(g)}">${all ? `Clear all ${mine.length}` : `Select all ${mine.length}`}</button>`;
   };
   const drawBar = () => {
     const was = new Set(links.filter((l) => l.sensor).map((l) => l.id));
     const adds = [...ticked].filter((id) => !was.has(id)).length;
     const stops = [...was].filter((id) => !ticked.has(id)).length;
     $('lw-n').textContent = ticked.size;
-    $('lw-more').textContent = adds && stops ? `${adds} to watch, ${stops} to stop` : adds ? `${adds} new${was.size ? ` · ${was.size} watched already` : ''}` : stops ? `${stops} to stop watching` : 'Nothing changed yet';
-    $('lw-go-text').textContent = adds && stops ? `Watch ${adds}, stop ${stops}` : adds ? `Watch ${adds} link${adds === 1 ? '' : 's'}` : stops ? `Stop watching ${stops}` : 'Watch';
+    $('lw-more').textContent = adds && stops ? `${adds} to watch · ${stops} to stop watching` : adds ? `${adds} new${was.size ? ` · ${was.size} already watched` : ''}` : stops ? `${stops} to stop watching` : 'No changes';
+    $('lw-go-text').textContent = adds && stops ? `Watch ${adds} · Stop ${stops}` : adds ? `Watch ${adds} link${adds === 1 ? '' : 's'}` : stops ? `Stop watching ${stops}` : 'Watch';
     $('lw-go').disabled = !adds && !stops;
   };
   const setWatching = async (on) => {
@@ -940,7 +966,7 @@
       await R.watchLink.open(null);
       const start = R.watchLink.start();
       $('lw-type').innerHTML = R.watchLink.types().map((t) => `<option value="${esc(t.id)}"${t.id === start ? ' selected' : ''}>${esc(t.name)}</option>`).join('')
-        + '<option value="none">Don\'t alert</option>';
+        + '<option value="none">No alert</option>';
       drawBar();
     }
     draw();
@@ -975,13 +1001,13 @@
     $('lw-go').disabled = true;
     try {
       const r = await R.send('/api/links/watch', { watch, unwatch, type: $('lw-type').value || null });
-      const said = [r.watched ? `Watching ${r.watched} more link${r.watched === 1 ? '' : 's'}.` : '', r.stopped ? `Stopped watching ${r.stopped}.` : ''].filter(Boolean).join(' ');
-      if (r.skipped.length) R.toast(said || 'Nothing changed', `Left out: ${r.skipped.join('; ')}`, { tone: 'warn' });
-      else R.toast(said, r.watched ? "They're on Sensors too." : '', r.watched ? { action: { href: '#sensors', label: 'Open Sensors' } } : {});
+      const said = [r.watched ? `Started watching ${r.watched} link${r.watched === 1 ? '' : 's'}.` : '', r.stopped ? `Stopped watching ${r.stopped}.` : ''].filter(Boolean).join(' ');
+      if (r.skipped.length) R.toast(said || 'No changes made.', `Skipped: ${r.skipped.join('; ')}`, { tone: 'warn' });
+      else R.toast(said, r.watched ? 'Their sensors are listed under Sensors.' : '', r.watched ? { action: { href: '#sensors', label: 'Open Sensors' } } : {});
       await setWatching(false);
       refresh();
     } catch (err) {
-      R.toast("Couldn't change what's watched", err.message, { tone: 'warn' });
+      R.toast('Could not update watched links.', err.message, { tone: 'warn' });
       $('lw-go').disabled = false;
     }
   });

@@ -82,7 +82,7 @@ namespace RabbidLab.Setup
                     }
                     catch (Exception ex)
                     {
-                        return $"Unable to {action} the Rabbid Lab service: {ex.Message}\n\nFor more information, see Event Viewer > Windows Logs > Application.";
+                        return $"Could not {action} the Rabbid Lab service. {ex.Message}\n\nFor more information, see Event Viewer > Windows Logs > Application.";
                     }
                 // Started from the shortcut: once it's running the window goes by itself, with nothing to click.
                 }, closes: () => action == "start" && worked);

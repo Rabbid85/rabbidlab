@@ -260,11 +260,11 @@ public sealed class DevicesTests : IDisposable
         Assert.Single(await Take(second));
 
         (await first.PostAsJsonAsync("/api/clients/jobs/done", new { id = job, steps = new[] { new { exit = 1, output = "Failed (0x80240017)", seconds = 9 } } })).EnsureSuccessStatusCode();
-        (await second.PostAsJsonAsync("/api/clients/jobs/done", new { id = job, refused = true, problem = "Scripts and actions are turned off by Group Policy on TWO." })).EnsureSuccessStatusCode();
+        (await second.PostAsJsonAsync("/api/clients/jobs/done", new { id = job, refused = true, problem = "Scripts and actions are disabled by Group Policy on TWO." })).EnsureSuccessStatusCode();
 
         var targets = (await admin.GetFromJsonAsync<JsonElement>($"/api/devices/jobs/{job}")).GetProperty("targets").EnumerateArray().ToDictionary(t => t.GetProperty("computer").GetString()!);
         Assert.Equal("failed", targets["ONE"].GetProperty("state").GetString());
-        Assert.Equal("Install Windows updates ended with exit code 1.", targets["ONE"].GetProperty("problem").GetString());
+        Assert.Equal("Install Windows updates failed with exit code 1.", targets["ONE"].GetProperty("problem").GetString());
         Assert.Equal("refused", targets["TWO"].GetProperty("state").GetString());
         Assert.Equal("refused", (await admin.GetFromJsonAsync<JsonElement>($"/api/devices/jobs?client={two}"))[0].GetProperty("state").GetString());
     }
@@ -516,7 +516,7 @@ public sealed class DevicesTests : IDisposable
         Assert.Equal(HttpStatusCode.BadRequest, (await admin.PostAsJsonAsync("/api/devices/apps", new { name = "Bad", winget = "NoDots" })).StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, (await admin.PostAsJsonAsync("/api/devices/apps", new { name = "", winget = "Vendor.App" })).StatusCode);
         var again = await admin.PostAsJsonAsync("/api/devices/apps", new { name = "Chrome again", winget = "google.chrome" });
-        Assert.Contains("Google Chrome already installs", (await Json(again)).GetProperty("error").GetString());
+        Assert.Contains("Google Chrome already uses the winget ID", (await Json(again)).GetProperty("error").GetString());
 
         var mine = await Id(await admin.PostAsJsonAsync("/api/devices/apps", new { name = "Sam's player", winget = "OBSProject.OBSStudio", category = "Media", shows = "OBS Studio" }));
         (await client.PostAsJsonAsync("/api/clients/inventory", new { software = new[] { new { name = "OBS Studio 33.0.0" } } })).EnsureSuccessStatusCode();

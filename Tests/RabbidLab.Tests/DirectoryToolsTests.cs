@@ -347,14 +347,14 @@ public sealed class DirectoryToolsTests : IDisposable
         Assert.Null(await tools.ChangeMembers($"CN=Lab Staff,{Lab}", [$"CN=Jordan Reyes,{Lab}"], [], none));
 
         Assert.All(new[] { named, through, group, inner, stale, attribute, renamed }, p => Assert.Equal(StatusCodes.Status403Forbidden, p.Status));
-        Assert.Equal("awiles is in the role IT. Only someone above IT can change that account.", named.Message);
-        Assert.Contains("nested is in the role IT", through.Message);
-        Assert.Equal("Lab Staff puts people in the role IT. Only someone above IT can change it.", group.Message);
-        Assert.Contains("Inner puts people in the role IT", inner.Message);
-        Assert.Contains("Lab Staff puts people in the role IT", joined);
-        Assert.Contains("The role IT names ghost", stale.Message);
-        Assert.Contains("awiles is in the role IT", attribute.Message);
-        Assert.Contains("The role IT names ghost", renamed.Message);
+        Assert.Equal("awiles has the IT role. Only admins in a role above IT can change this account.", named.Message);
+        Assert.Contains("nested has the IT role", through.Message);
+        Assert.Equal("Lab Staff grants the IT role. Only admins in a role above IT can change this group.", group.Message);
+        Assert.Contains("Inner grants the IT role", inner.Message);
+        Assert.Contains("Lab Staff grants the IT role", joined);
+        Assert.Contains("ghost is a member of the IT role", stale.Message);
+        Assert.Contains("awiles has the IT role", attribute.Message);
+        Assert.Contains("ghost is a member of the IT role", renamed.Message);
         Assert.Contains($"modify CN=Jordan Reyes,{Lab} unicodePwd", ad.Log);
         Assert.Single(ad.Log, l => l == $"modify CN=Anthony Wiles,{Lab} unicodePwd");
         Assert.Single(ad.Log, l => l == $"modify CN=Lab Staff,{Lab} member");
@@ -385,7 +385,7 @@ public sealed class DirectoryToolsTests : IDisposable
             await Refused(() => tools.SetFlag("svc-existing", "smartcard", true, none)),
             await Refused(() => tools.SetExpiry("svc-existing", new DateOnly(2030, 1, 1), none)),
         };
-        Assert.All(own, p => Assert.Contains("own account", p.Message));
+        Assert.All(own, p => Assert.Contains("service account. Its password", p.Message));
 
         // Domain controllers can't be deleted or moved; built-in and protected groups can't be deleted.
         Assert.Contains("domain controller", (await Refused(() => tools.DeleteComputer("DC9", none))).Message);
@@ -445,8 +445,8 @@ public sealed class DirectoryToolsTests : IDisposable
 
         await tools.SetAttribute(casey, "employeeNumber", ["1042"], none);
         Assert.Contains($"modify {casey} employeeNumber", ad.Log);
-        Assert.Contains("single value", (await Refused(() => tools.SetAttribute(casey, "employeeNumber", ["1", "2"], none))).Message);
-        Assert.Contains("binary", (await Refused(() => tools.SetAttribute(casey, "objectSid", ["S-1-5-21-1"], none))).Message);
+        Assert.Contains("single-valued", (await Refused(() => tools.SetAttribute(casey, "employeeNumber", ["1", "2"], none))).Message);
+        Assert.Contains("Binary", (await Refused(() => tools.SetAttribute(casey, "objectSid", ["S-1-5-21-1"], none))).Message);
         Assert.Contains("outside", (await Refused(() => tools.SetAttribute($"CN=Far Away,{Other}", "description", ["x"], none))).Message);
 
         // Clearing what's already empty asks Active Directory for nothing.
@@ -483,7 +483,7 @@ public sealed class DirectoryToolsTests : IDisposable
         Assert.Contains($"rename CN=Jordan Reyes,OU=People,{Lab} -> CN=Jordan Reyes-Hall,OU=People,{Lab}", ad.Log);
         Assert.Contains("outside", (await Refused(() => tools.Move("jreyes", Other, none))).Message);
         Assert.Contains("outside", (await Refused(() => tools.SetFlag("outsider", "sensitive", true, none))).Message);
-        Assert.Contains("own account", (await Refused(() => tools.SetExpiry("svc-existing", null, none))).Message);
+        Assert.Contains("service account. Its password", (await Refused(() => tools.SetExpiry("svc-existing", null, none))).Message);
     }
 
     [Fact]
@@ -527,9 +527,9 @@ public sealed class DirectoryToolsTests : IDisposable
         var pc = await tools.CreateComputer(new NewAdComputer("ws-042", null, "Front desk"), none);
         Assert.Equal("WS-042", pc.Name);
         Assert.Contains($"add CN=WS-042,{Lab}", ad.Log);
-        Assert.Contains("already a computer called PC1", (await Refused(() => tools.CreateComputer(new NewAdComputer("PC1", null, null), none))).Message);
+        Assert.Contains("computer named PC1 already exists", (await Refused(() => tools.CreateComputer(new NewAdComputer("PC1", null, null), none))).Message);
         Assert.Contains("1 to 15", (await Refused(() => tools.CreateComputer(new NewAdComputer("a-name-far-too-long", null, null), none))).Message);
-        Assert.Contains("can only make computers", (await Refused(() => tools.CreateComputer(new NewAdComputer("WS-043", Other, null), none))).Message);
+        Assert.Contains("can only create computers", (await Refused(() => tools.CreateComputer(new NewAdComputer("WS-043", Other, null), none))).Message);
     }
 
     [Fact]
@@ -717,7 +717,7 @@ public sealed class DirectoryToolsTests : IDisposable
         };
         var raced = await Refused(() => tools.SetNewUsers($"OU=People,{Lab}", none));
 
-        Assert.Contains("can only make people in Lab", outside.Message);
+        Assert.Contains("can only create users in Lab", outside.Message);
         Assert.Equal(StatusCodes.Status409Conflict, raced.Status);
         Assert.Null(tools.State());
         Assert.False(File.Exists(Path.Combine(data, "directory-tools.json")));

@@ -107,5 +107,5 @@ internal sealed class Identity
     }
 
     private static IdentityUnreadableException Unreadable(Exception e) => new(
-        $"{Path} can't be read by this account ({e.Message.Trim().TrimEnd('.')}). The Rabbid Lab Client service reads it as SYSTEM. To connect this computer again, have an administrator delete that file.", e);
+        $"Cannot read {Path} with this account ({e.Message.Trim().TrimEnd('.')}). The Rabbid Lab Client service reads this file as SYSTEM. To reconnect this computer, an administrator must delete the file.", e);
 }

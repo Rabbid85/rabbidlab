@@ -22,7 +22,7 @@
   const older = (c) => below(c, NEEDS);
   const names = (list) => (list.length <= 4 ? list.map((c) => c.computer).join(', ') : many(list.length));
   const LANG = { powershell: 'PowerShell', cmd: 'Command' };
-  const oops = (e) => { if (!e.cancelled) toast("That didn't work.", e.message, { tone: 'warn' }); };
+  const oops = (e) => { if (!e.cancelled) toast('The operation failed.', e.message, { tone: 'warn' }); };
   const head = (icon, title, sub) => `<div class="dw-head"><span class="pic dw-pic">${svg(icon)}</span><div class="dw-name"><h2 id="dw-title">${esc(title)}</h2><p>${sub}</p></div>`
     + `<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`;
   const qa = (attr, icon, label) => `<button type="button" class="dw-qa" ${attr}>${svg(icon)}<span>${esc(label)}</span></button>`;
@@ -39,7 +39,7 @@
   const askConfirm = (how) => new Promise((ok, no) => {
     asking = { how, ok, no };
     const code = how === 'code';
-    $('cf-lead').textContent = code ? 'Type the code from your authenticator app. You are asked again after 10 minutes.' : 'Type your password. You are asked again after 10 minutes.';
+    $('cf-lead').textContent = code ? 'Enter the code from your authenticator app. You will be asked again after 10 minutes.' : 'Enter your password. You will be asked again after 10 minutes.';
     for (const [id, show] of [['cf-code', code], ['cf-code-label', code], ['cf-password', !code], ['cf-password-label', !code]]) $(id).hidden = !show;
     $('cf-code').value = '';
     $('cf-password').value = '';
@@ -89,20 +89,20 @@
   let jobs = null; // /api/devices/jobs
   let flows = null; // /api/devices/workflows
   const scriptOf = (id) => (scripts || []).find((s) => s.id === id);
-  const jobTitle = (j) => (j.kind === 'workflow' ? `Workflow: ${j.title}` : j.kind === 'script' ? (j.title === 'A script typed in' ? 'Run a script typed in' : `Run script: ${j.title}`) : j.title);
+  const jobTitle = (j) => (j.kind === 'workflow' ? `Workflow: ${j.title}` : j.kind === 'script' ? (j.title === 'A script typed in' ? 'Run an ad hoc script' : `Run script: ${j.title}`) : j.title);
   const JOB_ICON = { script: 'code', restart: 'restart', updates: 'updates', workflow: 'org', printer: 'printer', check: 'refresh', lock: 'lock', signout: 'logout', shutdown: 'power', message: 'message', client: 'download', gpupdate: 'policy', install: 'box' };
-  const STATE = { waiting: ['waiting', 'Waiting'], running: ['run', 'Running'], done: ['online', 'Done'], failed: ['bad', 'Failed'], refused: ['bad', 'Refused'],
-    noanswer: ['bad', 'No answer'], cancelled: ['offline', 'Cancelled'], expired: ['offline', 'Expired'] };
+  const STATE = { waiting: ['waiting', 'Pending'], running: ['run', 'Running'], done: ['online', 'Completed'], failed: ['bad', 'Failed'], refused: ['bad', 'Rejected'],
+    noanswer: ['bad', 'No response'], cancelled: ['offline', 'Cancelled'], expired: ['offline', 'Expired'] };
   // How a job went across its computers, in a word or two.
   const result = (j) => {
     const of = (k) => j.states[k] || 0;
     const n = j.computers;
     const bad = of('failed') + of('refused') + of('noanswer');
     const open = of('waiting') + of('running');
-    if (open) return [of('running') ? 'run' : 'waiting', open === n ? (of('running') ? 'Running' : 'Waiting') : `${n - open} of ${n} finished`];
+    if (open) return [of('running') ? 'run' : 'waiting', open === n ? (of('running') ? 'Running' : 'Pending') : `${n - open} of ${n} completed`];
     if (bad) return ['bad', n === 1 ? STATE[Object.keys(j.states)[0]][1] : `Failed on ${bad} of ${n}`];
-    if (of('done') === n) return ['online', 'Done'];
-    return of('done') ? ['waiting', `Done on ${of('done')} of ${n}`] : ['offline', of('expired') ? 'Expired' : 'Cancelled'];
+    if (of('done') === n) return ['online', 'Completed'];
+    return of('done') ? ['waiting', `Completed on ${of('done')} of ${n}`] : ['offline', of('expired') ? 'Expired' : 'Cancelled'];
   };
   const open = (j) => (j.states.waiting || 0) + (j.states.running || 0) > 0;
   const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -111,16 +111,16 @@
     return new Date(2000, 0, 1, h, m).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   };
   const WHEN = [['approved', 'A new computer is approved'], ['schedule', 'On a schedule'], ['online', 'A computer comes online'], ['updates', 'A computer is missing Windows updates'],
-    ['restart', 'A computer needs a restart'], ['disk', 'Free space on C: runs low']];
-  const IF = [['always', 'Every computer'], ['name', 'Computers named'], ['windows', 'Windows name contains'], ['notwindows', "Windows name doesn't contain"], ['nobody', 'Computers with nobody signed in']];
-  const ACTIONS = [['updates', 'Install missing Windows updates'], ['restart', 'Restart'], ['restart-if-needed', 'Restart if Windows needs it']];
+    ['restart', 'A computer has a restart pending'], ['disk', 'Low free space on C:']];
+  const IF = [['always', 'All computers'], ['name', 'Computers named'], ['windows', 'OS name contains'], ['notwindows', 'OS name does not contain'], ['nobody', 'Computers with no user signed in']];
+  const ACTIONS = [['updates', 'Install missing Windows updates'], ['restart', 'Restart'], ['restart-if-needed', 'Restart if a restart is pending']];
   const whenText = (w) => (w.when === 'schedule' ? `${w.days.length === 7 ? 'Every day' : w.days.map((d) => DAYS[d]).join(', ')} at ${clock(w.time)}`
-    : w.when === 'disk' ? `Free space on C: drops below ${w.below}%` : WHEN.find((x) => x[0] === w.when)?.[1] || w.when);
-  const ifText = (w) => (w.if === 'always' ? '' : w.if === 'nobody' ? 'Nobody is signed in' : `${IF.find((x) => x[0] === w.if)?.[1] || w.if} ${w.ifText || ''}`);
+    : w.when === 'disk' ? `Free space on C: below ${w.below}%` : WHEN.find((x) => x[0] === w.when)?.[1] || w.when);
+  const ifText = (w) => (w.if === 'always' ? '' : w.if === 'nobody' ? 'No user signed in' : `${IF.find((x) => x[0] === w.if)?.[1] || w.if} ${w.ifText || ''}`);
   // An install step is named by its app on the Installs page (installs.js keeps those).
   const appName = (id) => D.apps?.().find((a) => a.id === id)?.name;
-  const stepText = (s) => (s.kind === 'script' ? `Run script: ${scriptOf(s.script)?.name || 'a script that was deleted'}`
-    : s.kind === 'install' ? `Install ${appName(s.app) || 'an app that was deleted'}` : ACTIONS.find((a) => a[0] === s.kind)?.[1] || s.kind);
+  const stepText = (s) => (s.kind === 'script' ? `Run script: ${scriptOf(s.script)?.name || '(deleted script)'}`
+    : s.kind === 'install' ? `Install ${appName(s.app) || '(deleted app)'}` : ACTIONS.find((a) => a[0] === s.kind)?.[1] || s.kind);
   const ms = (iso) => (iso ? new Date(iso).getTime() : 0);
 
   let scriptsG = null;
@@ -130,7 +130,7 @@
       { key: 'name', label: 'Name', w: 240, fixed: true, get: (s) => s.name, cell: (s) => `<b>${esc(s.name)}</b>` },
       { key: 'language', label: 'Language', w: 100, on: true, get: (s) => LANG[s.language] },
       { key: 'about', label: 'Description', w: 280, on: true, get: (s) => s.about || '', cell: (s) => `<span class="ell muted">${esc(s.about || '')}</span>` },
-      { key: 'changed', label: 'Changed', w: 150, on: true, get: (s) => ms(s.changed), text: (s) => s.changed || '', cell: (s) => `<span class="muted">${esc(when(s.changed))}</span>` },
+      { key: 'changed', label: 'Modified', w: 150, on: true, get: (s) => ms(s.changed), text: (s) => s.changed || '', cell: (s) => `<span class="muted">${esc(when(s.changed))}</span>` },
       { key: 'by', label: 'By', w: 110, on: true, get: (s) => (s.builtIn ? 'Built-in' : s.by || '') },
       { key: 'minutes', label: 'Time limit', w: 100, get: (s) => s.minutes, text: (s) => `${s.minutes} min`, cell: (s) => `<span class="muted">${s.minutes} min</span>` },
       { key: 'workflows', label: 'Workflows', w: 180, get: (s) => s.workflows.join(', ') },
@@ -143,8 +143,8 @@
   const jobsGrid = () => (jobsG ||= R.grid({
     el: $('dv-jobs'), key: 'jobs', sort: { key: 'at', dir: -1 },
     cols: [
-      { key: 'title', label: 'What', w: 270, fixed: true, get: (j) => jobTitle(j), cell: (j) => `<b>${esc(jobTitle(j))}</b>` },
-      { key: 'at', label: 'When', w: 150, on: true, get: (j) => ms(j.at), text: (j) => j.at, cell: (j) => `<span class="muted">${esc(when(j.at))}</span>` },
+      { key: 'title', label: 'Job', w: 270, fixed: true, get: (j) => jobTitle(j), cell: (j) => `<b>${esc(jobTitle(j))}</b>` },
+      { key: 'at', label: 'Started', w: 150, on: true, get: (j) => ms(j.at), text: (j) => j.at, cell: (j) => `<span class="muted">${esc(when(j.at))}</span>` },
       { key: 'by', label: 'By', w: 110, on: true, get: (j) => j.by },
       { key: 'on', label: 'Computers', w: 180, on: true, get: (j) => (j.computers <= 3 ? j.names.join(', ') : many(j.computers)), cell: (j) => `<span class="ell">${esc(j.computers <= 3 ? j.names.join(', ') : many(j.computers))}</span>` },
       { key: 'result', label: 'Result', w: 140, on: true, get: (j) => result(j)[1], cell: (j) => pill(result(j)) },
@@ -158,29 +158,29 @@
     el: $('dv-workflows'), key: 'workflows',
     cols: [
       { key: 'name', label: 'Workflow', w: 200, fixed: true, get: (w) => w.name, cell: (w) => `<b>${esc(w.name)}</b>` },
-      { key: 'when', label: 'When', w: 230, on: true, get: (w) => whenText(w), cell: (w) => `<span class="ell">${esc(whenText(w))}</span>` },
+      { key: 'when', label: 'Trigger', w: 230, on: true, get: (w) => whenText(w), cell: (w) => `<span class="ell">${esc(whenText(w))}</span>` },
       { key: 'steps', label: 'Steps', w: 250, on: true, get: (w) => w.steps.map(stepText).join(', '), cell: (w) => `<span class="ell">${esc(w.steps.map(stepText).join(' → '))}</span>` },
       { key: 'on', label: 'State', w: 80, on: true, get: (w) => (w.on ? 0 : 1), text: (w) => (w.on ? 'Enabled' : 'Disabled'), cell: (w) => pill(w.on ? ['online', 'Enabled'] : ['offline', 'Disabled']) },
       { key: 'lastRun', label: 'Last run', w: 130, on: true, get: (w) => ms(w.lastRun), text: (w) => w.lastRun || '', cell: (w) => `<span class="muted">${w.lastRun ? esc(when(w.lastRun)) : 'Never'}</span>` },
-      { key: 'if', label: 'Computers', w: 200, get: (w) => ifText(w) || 'Every computer' },
+      { key: 'if', label: 'Computers', w: 200, get: (w) => ifText(w) || 'All computers' },
     ],
     row: (w) => ` data-row="flow:${esc(w.id)}"`,
     empty: () => D.more.workflows.empty(), loading: () => !flows && !D.failed(),
     redraw: () => D.draw(),
   }));
-  D.lists.scripts = ['Scripts', 'code', 'PowerShell and command scripts to run on computers, as SYSTEM.'];
-  D.lists.jobs = ['Jobs', 'history', 'Everything that was run on computers: by whom, what exactly, and how it went.'];
-  D.lists.workflows = ['Workflows', 'org', 'Steps that run by themselves, when something happens or on a schedule.'];
+  D.lists.scripts = ['Scripts', 'code', 'PowerShell and command scripts that run on computers as SYSTEM.'];
+  D.lists.jobs = ['Jobs', 'history', 'Every job run on computers, who started it and the result.'];
+  D.lists.workflows = ['Workflows', 'org', 'Automated steps that run on a trigger or a schedule.'];
   D.more.scripts = { table: 'dv-scripts', grid: scriptsGrid, rows: () => scripts || [], count: () => scripts?.length, can: () => canScripts() || has('seats.workflows'),
     load: async () => { scripts = await get('/api/devices/scripts'); },
-    empty: () => (!scripts ? "The list couldn't be read." : has('seats.scripts.edit') ? 'No scripts yet. New script adds the first one.' : 'No scripts yet.') };
+    empty: () => (!scripts ? 'Could not load the list.' : has('seats.scripts.edit') ? 'No scripts yet. Click New script to add one.' : 'No scripts yet.') };
   D.more.jobs = { table: 'dv-jobs', grid: jobsGrid, rows: () => jobs || [], count: () => (jobs || []).filter(open).length, can: canJobs,
     load: async () => { jobs = await get('/api/devices/jobs'); },
-    empty: () => (jobs ? 'Nothing has been run on a computer yet.' : "The list couldn't be read.") };
+    empty: () => (jobs ? 'No jobs yet.' : 'Could not load the list.') };
   D.more.workflows = { table: 'dv-workflows', grid: flowsGrid, rows: () => flows || [], count: () => flows?.length, can: () => has('seats.workflows'),
     // A workflow's steps are shown by their script's name, or their app's.
     load: async () => { [flows, scripts] = await Promise.all([get('/api/devices/workflows'), get('/api/devices/scripts'), D.loadApps?.()?.catch(() => {})]); },
-    empty: () => (flows ? 'No workflows yet. New workflow adds the first one.' : "The list couldn't be read.") };
+    empty: () => (flows ? 'No workflows yet. Click New workflow to add one.' : 'Could not load the list.') };
 
   // --- WMI query ------------------------------------------------------------------------------------------------
   // Anything Windows keeps in WMI, read on each computer picked, as SYSTEM, by its client (the client's Wmi.cs). What
@@ -188,24 +188,24 @@
   const WMI_FROM = '1.1.173'; // the first client that answers
   const WQ_EXAMPLES = [
     ['BIOS and serial number', '', 'SELECT Manufacturer, SMBIOSBIOSVersion, ReleaseDate, SerialNumber FROM Win32_BIOS'],
-    ['Make, model and memory', '', 'SELECT Manufacturer, Model, TotalPhysicalMemory, Domain, UserName FROM Win32_ComputerSystem'],
-    ['Windows version and last restart', '', 'SELECT Caption, Version, BuildNumber, InstallDate, LastBootUpTime FROM Win32_OperatingSystem'],
+    ['Manufacturer, model and memory', '', 'SELECT Manufacturer, Model, TotalPhysicalMemory, Domain, UserName FROM Win32_ComputerSystem'],
+    ['Windows version and last boot time', '', 'SELECT Caption, Version, BuildNumber, InstallDate, LastBootUpTime FROM Win32_OperatingSystem'],
     ['Processor', '', 'SELECT Name, NumberOfCores, NumberOfLogicalProcessors, MaxClockSpeed FROM Win32_Processor'],
-    ['Memory sticks', '', 'SELECT BankLabel, Capacity, Speed, Manufacturer, PartNumber FROM Win32_PhysicalMemory'],
+    ['Memory modules', '', 'SELECT BankLabel, Capacity, Speed, Manufacturer, PartNumber FROM Win32_PhysicalMemory'],
     ['Drives and free space', '', 'SELECT DeviceID, VolumeName, FileSystem, Size, FreeSpace FROM Win32_LogicalDisk WHERE DriveType = 3'],
     ['Physical disks', '', 'SELECT Model, MediaType, Size, SerialNumber, Status FROM Win32_DiskDrive'],
     ['Network adapters', '', 'SELECT Description, IPAddress, DefaultIPGateway, DNSServerSearchOrder, MACAddress, DHCPEnabled FROM Win32_NetworkAdapterConfiguration WHERE IPEnabled = TRUE'],
-    ['Automatic services that are stopped', '', "SELECT Name, DisplayName, State, StartMode FROM Win32_Service WHERE StartMode = 'Auto' AND State <> 'Running'"],
-    ['Programs that start with Windows', '', 'SELECT Name, Command, Location, User FROM Win32_StartupCommand'],
+    ['Stopped automatic services', '', "SELECT Name, DisplayName, State, StartMode FROM Win32_Service WHERE StartMode = 'Auto' AND State <> 'Running'"],
+    ['Startup programs', '', 'SELECT Name, Command, Location, User FROM Win32_StartupCommand'],
     ['Installed updates', '', 'SELECT HotFixID, Description, InstalledOn, InstalledBy FROM Win32_QuickFixEngineering'],
     ['User profiles', '', 'SELECT LocalPath, LastUseTime, Loaded FROM Win32_UserProfile WHERE Special = FALSE'],
     ['Printers', '', 'SELECT Name, PortName, DriverName, Shared, Network FROM Win32_Printer'],
     ['Shared folders', '', 'SELECT Name, Path, Description FROM Win32_Share'],
-    ['Monitors and their serial numbers', 'root\\wmi', 'SELECT ManufacturerName, UserFriendlyName, SerialNumberID, YearOfManufacture FROM WmiMonitorID'],
-    ['BitLocker on each drive', 'root\\cimv2\\Security\\MicrosoftVolumeEncryption', 'SELECT DriveLetter, ProtectionStatus, ConversionStatus, EncryptionMethod FROM Win32_EncryptableVolume'],
+    ['Monitor serial numbers', 'root\\wmi', 'SELECT ManufacturerName, UserFriendlyName, SerialNumberID, YearOfManufacture FROM WmiMonitorID'],
+    ['BitLocker status', 'root\\cimv2\\Security\\MicrosoftVolumeEncryption', 'SELECT DriveLetter, ProtectionStatus, ConversionStatus, EncryptionMethod FROM Win32_EncryptableVolume'],
     ['TPM', 'root\\cimv2\\Security\\MicrosoftTpm', 'SELECT IsActivated_InitialValue, IsEnabled_InitialValue, SpecVersion, ManufacturerVersion FROM Win32_Tpm'],
     ['Microsoft Defender', 'root\\Microsoft\\Windows\\Defender', 'SELECT AMProductVersion, AntivirusSignatureLastUpdated, RealTimeProtectionEnabled, QuickScanEndTime FROM MSFT_MpComputerStatus'],
-    ['Antivirus Windows knows about', 'root\\SecurityCenter2', 'SELECT displayName, productState, timestamp FROM AntiVirusProduct'],
+    ['Antivirus products', 'root\\SecurityCenter2', 'SELECT displayName, productState, timestamp FROM AntiVirusProduct'],
     ['Battery', '', 'SELECT Name, EstimatedChargeRemaining, BatteryStatus FROM Win32_Battery'],
     ['Running processes', '', 'SELECT Name, ProcessId, WorkingSetSize, ExecutablePath FROM Win32_Process'],
   ];
@@ -241,10 +241,10 @@
       return { key: name, label: name, type, get: (r) => (r[name] === '' ? undefined : r[name]) };
     })],
   ]);
-  D.lists.wmi = ['WMI query', 'list', 'Read anything Windows keeps in WMI, on any computer. Read only.'];
+  D.lists.wmi = ['WMI query', 'list', 'Query WMI on one or more computers. Read-only.'];
   D.more.wmi = { table: 'dv-wmi', grid: wqGrid, rows: () => wq.rows, count: () => '', can: () => has('seats.wmi'), noun: 'rows', fields: wqFields,
-    load: async () => {}, // nothing to read again: a query runs when Run is clicked
-    empty: () => (wq.asked ? 'No rows came back.' : 'Pick the computers, type a query or pick an example, then Run.') };
+    load: async () => {}, every: 0, // nothing to read again: a query runs when Run is clicked
+    empty: () => (wq.asked ? 'The query returned no results.' : 'Select computers, enter a query or choose a built-in query, then click Run.') };
 
   // Computers: the ticked ones, every online one, or one by name.
   const wqTargets = () => {
@@ -259,8 +259,8 @@
     const approved = D.computers().filter((c) => c.approved).sort((a, b) => a.computer.localeCompare(b.computer));
     const ticked = approved.filter((c) => D.picked.has(c.id)).length;
     const online = approved.filter((c) => D.stateOf(c) === 'online').length;
-    const html = (ticked ? `<option value="ticked">Ticked computers (${ticked})</option>` : '') + `<option value="online">Every online computer (${online})</option>`
-      + (approved.length ? `<optgroup label="One computer">${approved.map((c) => `<option value="c:${esc(c.id)}">${esc(c.computer)}${D.stateOf(c) === 'online' ? '' : ' (offline)'}${below(c, WMI_FROM) ? ' (older client)' : ''}</option>`).join('')}</optgroup>` : '');
+    const html = (ticked ? `<option value="ticked">Selected computers (${ticked})</option>` : '') + `<option value="online">All online computers (${online})</option>`
+      + (approved.length ? `<optgroup label="Single computer">${approved.map((c) => `<option value="c:${esc(c.id)}">${esc(c.computer)}${D.stateOf(c) === 'online' ? '' : ' (offline)'}${below(c, WMI_FROM) ? ' (client out of date)' : ''}</option>`).join('')}</optgroup>` : '');
     const was = wq.want || $('wq-on').value;
     wq.want = '';
     // Drawn again only when what it offers changes, so an open list isn't shut by the page's next look.
@@ -277,17 +277,17 @@
     const query = $('wq-text').value.trim();
     if (!query) {
       $('wq-text').focus({ preventScroll: true }); // Ctrl+Enter runs it from here
-      toast('Type a query first.', 'Or choose one under Built-in queries.', { tone: 'warn' });
+      toast('Enter a query.', 'Or select one under Built-in queries.', { tone: 'warn' });
       return;
     }
     if (!on.length) {
-      toast('No computers to ask.', 'Pick one under Computers, or tick some on the Computers list.', { tone: 'warn' });
+      toast('No computers selected.', 'Select a computer under Computers, or select computers on the Computers list.', { tone: 'warn' });
       return;
     }
     const mine = ++wqAsking;
     const space = $('wq-space').value.trim() || 'root\\cimv2';
     $('wq-run').disabled = true;
-    R.busy($('dv-lib'), `Asking ${names(on)}…`, 'Up to 40 seconds');
+    R.busy($('dv-lib'), `Querying ${names(on)}…`, 'This can take up to 40 seconds.');
     try {
       const j = await send('/api/devices/wmi', { clients: on.map((c) => c.id), space, query });
       if (mine !== wqAsking) return;
@@ -310,7 +310,7 @@
       }
       const cls = (/\bfrom\s+([A-Za-z0-9_]+)/i.exec(query) || /\bof\s*\{\s*([A-Za-z0-9_]+)/i.exec(query) || [])[1] || '';
       Object.assign(wq, { names: heads, kinds, rows, cls, space, asked: true,
-        problems: j.results.filter((r) => !r.ok || r.more).map((r) => [r.computer || 'A computer', r.ok ? `Sent the first ${r.rows.length.toLocaleString()} rows, and had more. Ask for less with a WHERE.` : r.error]) });
+        problems: j.results.filter((r) => !r.ok || r.more).map((r) => [r.computer || 'Unknown computer', r.ok ? `Showing the first ${r.rows.length.toLocaleString()} rows. Add a WHERE clause to narrow the results.` : r.error]) });
       buildCols();
       if (panel.is('devices') && String(panel.key).startsWith('wmi:')) panel.close();
     } catch (e) {
@@ -358,7 +358,7 @@
     const on = wqTargets().filter((c) => !below(c, WMI_FROM));
     const c = on.find((x) => D.stateOf(x) === 'online') || on[0];
     if (!c) {
-      toast('Pick a computer first.', `The class list is read from one of them, with client ${WMI_FROM} or later.`, { tone: 'warn' });
+      toast('Select a computer.', `The class list is read from a selected computer with client ${WMI_FROM} or later.`, { tone: 'warn' });
       return;
     }
     const mine = ++wqcAsking;
@@ -367,8 +367,8 @@
       $('wqc-dialog').showModal();
       $('wqc-find').focus();
     }
-    $('wqc-lead').textContent = `Read from ${c.computer}. Pick a class to see everything it has.`;
-    $('wqc-list').innerHTML = `<p class="muted">Reading the classes in ${esc(space)}…</p>`;
+    $('wqc-lead').textContent = `Classes on ${c.computer}. Select a class to query all of its properties.`;
+    $('wqc-list').innerHTML = `<p class="muted">Loading classes in ${esc(space)}…</p>`;
     $('wqc-count').textContent = '';
     try {
       const j = await send('/api/devices/wmi/classes', { clients: [c.id], space });
@@ -392,8 +392,8 @@
     const list = wqc.classes.filter((c) => !find || c.toLowerCase().includes(find));
     const shown = list.slice(0, 500);
     $('wqc-list').innerHTML = (shown.map((c) => `<button type="button" data-class="${esc(c)}">${esc(c)}</button>`).join('')
-      + (list.length > shown.length ? `<p class="muted">And ${(list.length - shown.length).toLocaleString()} more. Find narrows the list.</p>` : ''))
-      || `<p class="muted">${wqc.classes.length ? 'No class has that in its name.' : 'No classes in this namespace.'}</p>`;
+      + (list.length > shown.length ? `<p class="muted">${(list.length - shown.length).toLocaleString()} more not shown. Use Find to narrow the list.</p>` : ''))
+      || `<p class="muted">${wqc.classes.length ? 'No matching classes.' : 'No classes in this namespace.'}</p>`;
     $('wqc-count').textContent = `${list.length.toLocaleString()} of ${wqc.classes.length.toLocaleString()} classes`;
   };
   $('wq-classes').addEventListener('click', () => openClasses($('wq-space').value.trim() || 'root\\cimv2'));
@@ -426,7 +426,7 @@
     act.disabled = !n;
     act.querySelector('.cnt').hidden = !n;
     act.querySelector('.cnt').textContent = n.toLocaleString();
-    act.dataset.tip = own ? (n ? `${n.toLocaleString()} ticked` : 'Tick some first') : n ? `${many(n)} ticked` : 'Tick computers first';
+    act.dataset.tip = own ? (n ? `${n.toLocaleString()} selected` : 'Select items first') : n ? `${many(n)} selected` : 'Select computers first';
     // Computers and Windows updates' own row per computer share the ticks.
     for (const table of TICKED.map((id) => $(id))) {
       const boxes = [...table.querySelectorAll('[data-tick]')];
@@ -474,9 +474,9 @@
     const behind = on.filter((c) => c.approved && c.behind).length;
     return [
       ...group('Power', acts ? [E('restart', 'Restart…'), E('shutdown', 'Shut down…'), E('wake', 'Wake', off || '')] : []),
-      ...group('Sessions', acts ? [E('lock', 'Lock…'), E('signout', 'Sign everyone out…'), E('message', 'Send a message…')] : []),
-      ...group('Run', [...(canScripts() ? [E('script', 'Run a script…')] : []), ...(has('seats.wmi') ? [E('wmi', 'Query with WMI…')] : []), ...(acts ? [E('gpupdate', 'Run gpupdate…')] : [])]),
-      ...group('Install', [...(acts ? [E('updates', 'Windows updates…'), E('check', 'Check for updates…'), E('client', 'Update the client…', behind || '')] : []), ...(D.hooks.actItems?.(E) || [])]),
+      ...group('Sessions', acts ? [E('lock', 'Lock…'), E('signout', 'Sign out all users…'), E('message', 'Send a message…')] : []),
+      ...group('Run', [...(canScripts() ? [E('script', 'Run script…')] : []), ...(has('seats.wmi') ? [E('wmi', 'Run WMI query…')] : []), ...(acts ? [E('gpupdate', 'Run gpupdate…')] : [])]),
+      ...group('Install', [...(acts ? [E('updates', 'Windows updates…'), E('check', 'Check for updates…'), E('client', 'Update client…', behind || '')] : []), ...(D.hooks.actItems?.(E) || [])]),
     ];
   };
   // Said over the menu when not every computer ticked takes everything in it.
@@ -485,8 +485,8 @@
     const off = on.filter((c) => c.approved && !c.online && !c.server).length;
     const all = on.length;
     const some = (n) => (n === all ? (all === 1 ? 'It is' : 'They are') : `${n} of ${all} ${n === 1 ? 'is' : 'are'}`);
-    return [waiting ? `${some(waiting)} waiting for approval, so only Approve and Remove apply${waiting === all ? '' : ` to ${waiting === 1 ? 'it' : 'them'}`}.` : '',
-      off ? `${some(off)} offline. What you run reaches ${off === 1 ? 'it' : 'them'} once back online.` : ''].filter(Boolean).join(' ');
+    return [waiting ? `${some(waiting)} pending approval. Only Approve and Remove apply${waiting === all ? '' : ` to ${waiting === 1 ? 'it' : 'them'}`}.` : '',
+      off ? `${some(off)} offline. Jobs run on ${off === 1 ? 'it' : 'them'} when back online.` : ''].filter(Boolean).join(' ');
   };
   // One of those, on these computers: from the menu, or from one computer's panel.
   const doAct = async (act, on, fromPanel = false) => {
@@ -511,12 +511,12 @@
     // This server without the client: putting it on is all there is to do.
     if (on.length === 1 && on[0].server) {
       const started = D.hooks.hereStarted?.();
-      R.actions.open(button, { items: [{ act: 'here', label: started ? 'Installing the client' : 'Install the client here', disabled: !!started }], pick: picked });
+      R.actions.open(button, { items: [{ act: 'here', label: started ? 'Installing client…' : 'Install client on this server', disabled: !!started }], pick: picked });
       return;
     }
     const waiting = on.filter((c) => !c.approved).length;
     const items = doItems(on);
-    if (!inPanel) items.push('-', ...(has('seats.approve') && waiting ? [E('approve', 'Approve', waiting)] : []), E('export', 'Export these'), E('clear', 'Clear the ticks'));
+    if (!inPanel) items.push('-', ...(has('seats.approve') && waiting ? [E('approve', 'Approve', waiting)] : []), E('export', 'Export selected'), E('clear', 'Clear selection'));
     if (has('seats.remove')) items.push('-', E('remove', 'Remove from Devices…', '', true));
     R.actions.open(button, { items, pick: picked, note: noteFor(on) });
   };
@@ -551,14 +551,14 @@
     else if (act === 'approve') {
       const list = on.filter((c) => !c.approved);
       const failed = await each(list, 'approve');
-      toast(failed ? `${failed} of ${list.length} couldn't be approved.` : `Approved ${many(list.length)}.`, '', failed ? { tone: 'warn' } : {});
+      toast(failed ? `Could not approve ${failed} of ${list.length} computers.` : `${many(list.length)} approved.`, '', failed ? { tone: 'warn' } : {});
     } else if (act === 'remove') {
       const one = on.length === 1;
-      sure(one ? `Remove ${on[0].computer}?` : `Remove ${many(on.length)}?`, one ? 'Its client asks to join again and waits for approval.' : `${names(on)}. Each client asks to join again and waits for approval.`, 'Remove', async () => {
+      sure(one ? `Remove ${on[0].computer}?` : `Remove ${many(on.length)}?`, one ? 'The client reconnects and needs approval again.' : `${names(on)}. Each client reconnects and needs approval again.`, 'Remove', async () => {
         const failed = await each(on, 'remove');
         if (menuPanel) panel.close();
         else D.picked.clear();
-        toast(failed ? `${failed} of ${on.length} couldn't be removed.` : `Removed ${one ? on[0].computer : many(on.length)}.`, '', failed ? { tone: 'warn' } : {});
+        toast(failed ? `Could not remove ${failed} of ${on.length} computers.` : `${one ? on[0].computer : many(on.length)} removed.`, '', failed ? { tone: 'warn' } : {});
       });
     } else await doAct(act, on, menuPanel);
   }
@@ -568,16 +568,16 @@
   // Each kind's words in the run window: its title, its button, what it does, the toast once sent, and whether it's
   // for now (an offline computer gets it within 15 minutes, not a day).
   const KINDS = {
-    script: { title: () => 'Run a script', go: 'Run', sent: 'Script sent.', note: 'It runs as SYSTEM. Who ran it, the script itself and what it wrote are kept under Jobs.' },
-    updates: { title: () => 'Install Windows updates', go: 'Install', sent: 'Updates started.', note: "Every missing update is downloaded and installed. The computer isn't restarted: one that needs it shows under Needs restart." },
-    check: { title: () => 'Check for updates', go: 'Check', sent: 'Checking for updates.', note: 'Each computer asks Windows Update what it is missing. Windows updates here shows the answer within a few minutes.' },
-    restart: { title: (n) => `Restart ${many(n)}?`, go: 'Restart', sent: 'Restart sent.', note: 'Anyone signed in gets a five minute warning first.' },
-    shutdown: { title: (n) => `Shut down ${many(n)}?`, go: 'Shut down', sent: 'Shut down sent.', now: true, note: 'Anyone signed in gets a five minute warning first.' },
-    lock: { title: (n) => `Lock ${many(n)}?`, go: 'Lock', sent: 'Lock sent.', now: true, note: 'Everyone signed in goes back to the sign-in screen. Their apps keep running, and getting back in takes their password.' },
-    signout: { title: (n) => `Sign everyone out of ${many(n)}?`, go: 'Sign out', sent: 'Sign out sent.', now: true, note: 'Everyone signed in is signed out straight away. Anything they had not saved is lost.' },
-    message: { title: () => 'Send a message', go: 'Send', sent: 'Message sent.', now: true, note: 'It pops up for everyone signed in, until they close it or an hour passes.' },
-    client: { title: (n) => `Update the client on ${many(n)}?`, go: 'Update', sent: 'Client update sent.', now: true, note: 'Each client restarts and installs the version this server has, now instead of at its next try. One that is already on it just restarts.' },
-    gpupdate: { title: (n) => `Run gpupdate on ${many(n)}?`, go: 'Run gpupdate', sent: 'gpupdate sent.', now: true, note: 'Computer policy is applied again now, and user policy for whoever is signed in. Each Group Policy tab reads the results again a minute or two after.' },
+    script: { title: () => 'Run script', go: 'Run', sent: 'Script sent.', note: 'Runs as SYSTEM. The script, its output and who ran it are recorded under Jobs.' },
+    updates: { title: () => 'Install Windows updates', go: 'Install', sent: 'Update installation started.', note: 'All missing updates are downloaded and installed. Computers are not restarted. Computers that need a restart are listed under Needs restart.' },
+    check: { title: () => 'Check for updates', go: 'Check', sent: 'Update check started.', note: 'Each computer scans Windows Update for missing updates. Results appear under Windows updates within a few minutes.' },
+    restart: { title: (n) => `Restart ${many(n)}?`, go: 'Restart', sent: 'Restart requested.', note: 'Signed-in users get a five-minute warning first.' },
+    shutdown: { title: (n) => `Shut down ${many(n)}?`, go: 'Shut down', sent: 'Shutdown requested.', now: true, note: 'Signed-in users get a five-minute warning first.' },
+    lock: { title: (n) => `Lock ${many(n)}?`, go: 'Lock', sent: 'Lock requested.', now: true, note: 'Signed-in users are returned to the sign-in screen. Their apps keep running, and they need their password to unlock.' },
+    signout: { title: (n) => `Sign out all users on ${many(n)}?`, go: 'Sign out', sent: 'Sign-out requested.', now: true, note: 'All users are signed out immediately. Unsaved work is lost.' },
+    message: { title: () => 'Send a message', go: 'Send', sent: 'Message sent.', now: true, note: 'The message appears for all signed-in users until they close it, for up to an hour.' },
+    client: { title: (n) => `Update the client on ${many(n)}?`, go: 'Update', sent: 'Client update requested.', now: true, note: 'Each client installs the version on this server now instead of at its next scheduled check, then restarts. Clients already on that version only restart.' },
+    gpupdate: { title: (n) => `Run gpupdate on ${many(n)}?`, go: 'Run gpupdate', sent: 'gpupdate requested.', now: true, note: 'Computer policy is reapplied now, and user policy for signed-in users. The Group Policy tabs refresh their results a minute or two later.' },
   };
   const kindOf = (kind) => KINDS[kind] || KINDS.script;
   const runNote = () => {
@@ -586,10 +586,10 @@
     const base = kindOf(run.kind).note;
     const within = kindOf(run.kind).now ? 'within 15 minutes' : 'within a day';
     const all = run.on.length;
-    return base + (!off ? '' : off < all ? ` ${off} ${off === 1 ? 'is offline and gets' : 'are offline and get'} it once back, ${within}.`
-      : all === 1 ? ` It's offline and gets it once it's back, ${within}.` : ` They're offline and get it once back, ${within}.`)
-      + (!old ? '' : old === all && all === 1 ? ` Its client is older than ${NEEDS} and gets it after updating.`
-        : ` ${old} ${old === 1 ? 'has' : 'have'} a client older than ${NEEDS} and ${old === 1 ? 'gets' : 'get'} it after updating.`);
+    return base + (!off ? '' : off < all ? ` ${off} ${off === 1 ? 'is offline and receives' : 'are offline and receive'} the job when back online, ${within}.`
+      : all === 1 ? ` The computer is offline. The job runs when it is back online, ${within}.` : ` The computers are offline. The job runs when they are back online, ${within}.`)
+      + (!old ? '' : old === all && all === 1 ? ` The client is older than ${NEEDS}. The job runs after the client updates.`
+        : ` ${old} ${old === 1 ? 'has' : 'have'} a client older than ${NEEDS} and ${old === 1 ? 'receives' : 'receive'} the job after updating.`);
   };
   const drawRun = () => {
     const script = run.kind === 'script';
@@ -616,12 +616,12 @@
     const built = (scripts || []).filter((s) => s.builtIn);
     $('run-script').innerHTML = (has('seats.scripts.run') ? (mine.length ? `<optgroup label="Your scripts">${mine.map(opt).join('')}</optgroup>` : '')
       + (built.length ? `<optgroup label="Built-in">${built.map(opt).join('')}</optgroup>` : '') : '')
-      + (has('seats.scripts.edit') ? `<option value=""${selected === null ? ' selected' : ''}>Type one now</option>` : '') || '<option value="" disabled selected>The library has no scripts yet</option>';
+      + (has('seats.scripts.edit') ? `<option value=""${selected === null ? ' selected' : ''}>Enter a script</option>` : '') || '<option value="" disabled selected>No scripts in the library</option>';
   };
   const openRun = async (kind, on, preset = '') => {
     const list = on.filter((c) => c.approved);
     if (!list.length) {
-      toast('Nothing to run it on.', 'Pick computers that are approved.', { tone: 'warn' });
+      toast('No computers selected.', 'Select approved computers.', { tone: 'warn' });
       return;
     }
     if (kind === 'script') {
@@ -648,7 +648,7 @@
     testing = null;
     $('run-count').value = '';
     for (const id of ['run-count', 'run-count-label']) $(id).hidden = n <= BRAKE;
-    $('run-count-label').textContent = `That's ${n} computers. Type ${n} to go ahead`;
+    $('run-count-label').textContent = `This affects ${n} computers. Type ${n} to confirm`;
     $('run-go').textContent = kindOf(kind).go;
     $('run-note').textContent = runNote();
     say('run-problem', '');
@@ -697,7 +697,7 @@
       $('run-save').hidden = false;
       say('run-problem', '');
       drawRun();
-      toast('Saved to the library.', `${name} is under Scripts.`);
+      toast('Script saved.', `${name} was added to Scripts.`);
       if (D.at() === 'scripts') D.reload();
     } catch (e) {
       if (!e.cancelled) say('run-problem', e.message);
@@ -725,7 +725,7 @@
       const made = await confirmed(() => send('/api/devices/run', body));
       testing = made.id;
       say('run-problem', '');
-      showTest(`Sent to ${c.computer}. Waiting for it to pick it up…`);
+      showTest(`Sent to ${c.computer}. Waiting for the client to start the job…`);
       const id = made.id;
       const until = Date.now() + 6 * 60000;
       while (testing === id && $('run-dialog').open && Date.now() < until) {
@@ -743,7 +743,7 @@
         const out = await get(`/api/devices/jobs/${encodeURIComponent(id)}/output/${encodeURIComponent(c.id)}`).catch(() => ({ output: [] }));
         const step = t.steps[0] || {};
         const head = [`${c.computer}: ${(STATE[t.state] || ['', t.state])[1]}`, step.exit != null ? `exit ${step.exit}` : '', step.seconds != null ? secs(step.seconds) : '', t.problem || ''].filter(Boolean).join(' · ');
-        showTest(`${head}\n\n${(out.output || []).join('\n').trim() || 'It wrote nothing.'}`, t.state !== 'done' || (step.exit != null && step.exit !== 0));
+        showTest(`${head}\n\n${(out.output || []).join('\n').trim() || 'No output.'}`, t.state !== 'done' || (step.exit != null && step.exit !== 0));
         break;
       }
     } catch (e) {
@@ -764,7 +764,7 @@
     try {
       const made = await confirmed(() => send('/api/devices/run', body));
       $('run-dialog').close();
-      toast(kindOf(run.kind).sent, `On ${names(run.on)}. It's under Jobs.`);
+      toast(kindOf(run.kind).sent, `On ${names(run.on)}. View progress under Jobs.`);
       await openJob(made.id);
       if (D.at() === 'jobs') D.reload();
     } catch (e) {
@@ -781,19 +781,19 @@
   const secs = (s) => (s < 60 ? `${Math.round(s * 10) / 10} s` : `${Math.floor(s / 60)} min ${Math.round(s % 60)} s`);
   const drawJob = () => {
     const waiting = job.targets.filter((t) => t.state === 'waiting').length;
-    const bar = waiting ? `<div class="dw-bar">${qa('data-job-cancel', 'x', `Cancel for the ${waiting === job.targets.length ? '' : `${waiting} `}computer${waiting === 1 ? '' : 's'} still waiting`)}</div>` : '';
+    const bar = waiting ? `<div class="dw-bar">${qa('data-job-cancel', 'x', `Cancel for the ${waiting === job.targets.length ? '' : `${waiting} `}computer${waiting === 1 ? '' : 's'} still pending`)}</div>` : '';
     const targets = job.targets.map((t) => {
       const c = D.computers().find((x) => x.id === t.client);
-      const why = t.problem || (t.state !== 'waiting' ? '' : c && older(c) ? `Its client is older than ${NEEDS}. It gets this once it has updated.`
-        : c && D.stateOf(c) === 'offline' ? `It's offline. It gets this when it's back, until ${when(job.expires)}.` : 'Its client takes it in a few seconds.');
+      const why = t.problem || (t.state !== 'waiting' ? '' : c && older(c) ? `The client is older than ${NEEDS}. The job runs after the client updates.`
+        : c && D.stateOf(c) === 'offline' ? `Offline. The job runs when the computer is back online, until ${when(job.expires)}.` : 'The client starts the job within a few seconds.');
       const out = outputs[`${job.id}:${t.client}`];
-      const steps = t.steps.map((s, i) => `<p class="job-step"><b>${esc(job.steps[i]?.title || `Step ${i + 1}`)}</b><small>${s.timedOut ? 'stopped' : `exit code ${s.exit ?? 'unknown'}`} · ${secs(s.seconds)}</small></p>`
-        + (out ? `<pre class="code-box">${esc(out[i] || '(it wrote nothing)')}</pre>` : '')).join('');
+      const steps = t.steps.map((s, i) => `<p class="job-step"><b>${esc(job.steps[i]?.title || `Step ${i + 1}`)}</b><small>${s.timedOut ? 'timed out' : `exit code ${s.exit ?? 'unknown'}`} · ${secs(s.seconds)}</small></p>`
+        + (out ? `<pre class="code-box">${esc(out[i] || '(no output)')}</pre>` : '')).join('');
       const ask = t.steps.length && !out ? `<button type="button" class="small" data-job-out="${esc(t.client)}">${svg('eye')}Show output</button>` : '';
       return section(esc(t.computer), (why ? `<p class="dw-how">${esc(why)}</p>` : '') + steps + ask, pill(STATE[t.state] || ['offline', t.state]));
     }).join('');
     const what = job.steps.map((s) => `<details class="job-what"><summary><b>${esc(s.title)}</b><small>${LANG[s.language] || s.language} · time limit ${s.minutes} min</small></summary><pre class="code-box">${esc(s.text)}</pre></details>`).join('');
-    panel.body.innerHTML = head(JOB_ICON[job.kind] || 'code', jobTitle(job), esc(`${when(job.at)} · by ${job.by}`)) + bar + targets + section('What ran', what);
+    panel.body.innerHTML = head(JOB_ICON[job.kind] || 'code', jobTitle(job), esc(`${when(job.at)} · by ${job.by}`)) + bar + targets + section('Steps', what);
   };
   // What a computer wrote is asked for once it has answered: for a few computers by itself, for many when it's clicked.
   const loadOutputs = () => {
@@ -877,13 +877,13 @@
   const openScript = (s) => {
     shown = s;
     panel.body.innerHTML = head('code', s.name, esc(`${LANG[s.language]} · time limit ${s.minutes} minutes`))
-      + `<div class="dw-bar">${R.editButton('data-sc-edit', !has('seats.scripts.edit') ? 'Your role can\'t change scripts' : s.builtIn ? 'Built-in scripts can\'t be changed. Duplicate makes a copy you can change.' : '')}`
+      + `<div class="dw-bar">${R.editButton('data-sc-edit', !has('seats.scripts.edit') ? 'Your role cannot edit scripts' : s.builtIn ? 'Built-in scripts cannot be edited. Duplicate it to make an editable copy.' : '')}`
       + `${has('seats.scripts.run') ? qa('data-sc-run', 'right', 'Run…') : ''}${has('seats.scripts.edit') ? qa('data-sc-copy', 'copy', 'Duplicate') + (s.builtIn ? '' : qa('data-sc-del', 'trash', 'Delete')) : ''}</div>`
-      + (s.builtIn ? `<p class="dw-how">Built into ${esc(R.app())}. Duplicate it to make one of your own to change.</p>` : '')
+      + (s.builtIn ? `<p class="dw-how">Built into ${esc(R.app())}. Duplicate it to make an editable copy.</p>` : '')
       + (s.about ? section('About', `<p class="dw-how">${esc(s.about)}</p>`) : '')
       + section('Script', `<pre class="code-box">${esc(s.text)}</pre>`)
-      + (s.workflows.length ? section(`Workflows that run it <small>${s.workflows.length}</small>`, `<div class="dw-list">${s.workflows.map((w) => `<div class="mrow"><span class="pic small">${svg('org')}</span><div class="two"><b>${esc(w)}</b></div></div>`).join('')}</div>`) : '')
-      + section('Changed', facts([['When', when(s.changed)], s.by && ['By', s.by]]));
+      + (s.workflows.length ? section(`Used by workflows <small>${s.workflows.length}</small>`, `<div class="dw-list">${s.workflows.map((w) => `<div class="mrow"><span class="pic small">${svg('org')}</span><div class="two"><b>${esc(w)}</b></div></div>`).join('')}</div>`) : '')
+      + section('Modified', facts([['When', when(s.changed)], s.by && ['By', s.by]]));
     panel.open('devices', `script:${s.id}`);
     mark();
   };
@@ -907,7 +907,7 @@
     $('sc-minutes').value = s?.minutes || 10;
     $('sc-text').value = s?.text || '';
     $('sc-start-row').hidden = !!s;
-    $('sc-start').innerHTML = `<option value="">An empty script</option>${builtIns().map((x) => `<option value="${esc(x.id)}">${esc(x.name)} (${LANG[x.language]})</option>`).join('')}`;
+    $('sc-start').innerHTML = `<option value="">Blank script</option>${builtIns().map((x) => `<option value="${esc(x.id)}">${esc(x.name)} (${LANG[x.language]})</option>`).join('')}`;
     pressed($('sc-lang'), 'lang', editing.lang);
     say('sc-problem', '');
     $('script-dialog').showModal();
@@ -942,7 +942,7 @@
       $('script-dialog').close();
       scripts = await get('/api/devices/scripts');
       D.draw();
-      toast(editing.id ? 'Script saved.' : 'Script added.', form.name.trim());
+      toast(editing.id ? 'Script saved.' : 'Script created.', form.name.trim());
       if (panel.is('devices') && scriptOf(made.id)) openScript(scriptOf(made.id));
     } catch (e) {
       if (!e.cancelled) say('sc-problem', e.message);
@@ -956,9 +956,9 @@
     const row = (k, v, icon) => `<div class="mrow"><span class="pic small">${svg(icon)}</span><div class="two"><small>${esc(k)}</small><b>${esc(v)}</b></div></div>`;
     panel.body.innerHTML = head('org', w.name, pill(w.on ? ['online', 'Enabled'] : ['offline', 'Disabled']))
       + `<div class="dw-bar">${R.editButton('data-fl-edit')}${qa('data-fl-toggle', 'power', w.on ? 'Disable' : 'Enable')}${qa('data-fl-run', 'right', 'Run now')}${qa('data-fl-del', 'trash', 'Delete')}</div>`
-      + section('Steps', `<div class="dw-list seat-list fl-view">${row('When', whenText(w), 'clock')}${ifText(w) ? row('Only on', ifText(w), 'filter') : ''}${w.steps.map((s, i) => row(i ? 'Then' : 'Do', stepText(s), 'right')).join('')}</div>`)
-      + section('Last run', w.lastRun ? facts([['When', when(w.lastRun)]]) + (w.lastJob ? `<div class="seat-acts"><button type="button" class="small" data-job-open="${esc(w.lastJob)}">${svg('history')}Open its job</button></div>` : '') : none("It hasn't run yet."))
-      + section('Changed', facts([['When', when(w.changed)], w.by && ['By', w.by]]));
+      + section('Steps', `<div class="dw-list seat-list fl-view">${row('Trigger', whenText(w), 'clock')}${ifText(w) ? row('Computers', ifText(w), 'filter') : ''}${w.steps.map((s, i) => row(i ? 'Then' : 'First', stepText(s), 'right')).join('')}</div>`)
+      + section('Last run', w.lastRun ? facts([['When', when(w.lastRun)]]) + (w.lastJob ? `<div class="seat-acts"><button type="button" class="small" data-job-open="${esc(w.lastJob)}">${svg('history')}Open job</button></div>` : '') : none('Not run yet.'))
+      + section('Modified', facts([['When', when(w.changed)], w.by && ['By', w.by]]));
     panel.open('devices', `flow:${w.id}`);
     mark();
   };
@@ -974,15 +974,15 @@
     $('fl-below-row').hidden = flow.when !== 'disk';
     const words = ['name', 'windows', 'notwindows'].includes(flow.if);
     $('fl-if-row').hidden = !words;
-    $('fl-if-label').textContent = flow.if === 'name' ? 'Name, with * for anything' : 'Words';
+    $('fl-if-label').textContent = flow.if === 'name' ? 'Name (* is a wildcard)' : 'Text';
     $('fl-if-text').placeholder = flow.if === 'name' ? 'SHOP-*' : 'Server';
     $('fl-days').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(flow.days.includes(Number(b.dataset.day)))));
     const last = flow.steps.length - 1;
     $('fl-steps').innerHTML = flow.steps.map((s, i) => `<div class="mrow"><span class="pic small">${i + 1}</span><div class="two"><b>${esc(stepText(s))}</b></div>`
       + `<button type="button" class="icon" data-step-up="${i}" data-tip="Move up" aria-label="Move up"${i ? '' : ' disabled'}>${svg('chevron-up')}</button>`
       + `<button type="button" class="icon" data-step-down="${i}" data-tip="Move down" aria-label="Move down"${i < last ? '' : ' disabled'}>${svg('chevron-down')}</button>`
-      + `<button type="button" class="icon" data-step-x="${i}" data-tip="Remove" aria-label="Remove this step">${svg('x')}</button></div>`).join('') || none('No steps yet. Add the first one below.');
-    const run1 = has('seats.scripts.run') && (scripts || []).length ? `<optgroup label="Run a script">${scripts.map((s) => `<option value="script:${esc(s.id)}">${esc(s.name)}</option>`).join('')}</optgroup>` : '';
+      + `<button type="button" class="icon" data-step-x="${i}" data-tip="Remove" aria-label="Remove this step">${svg('x')}</button></div>`).join('') || none('No steps yet. Add a step below.');
+    const run1 = has('seats.scripts.run') && (scripts || []).length ? `<optgroup label="Run script">${scripts.map((s) => `<option value="script:${esc(s.id)}">${esc(s.name)}</option>`).join('')}</optgroup>` : '';
     const acts = has('seats.actions') ? `<optgroup label="Actions">${ACTIONS.map(([k, label]) => `<option value="${k}">${esc(label)}</option>`).join('')}</optgroup>` : '';
     const installs = has('seats.installs') && D.apps?.().length ? `<optgroup label="Install an app">${[...D.apps()].sort((a, b) => a.name.localeCompare(b.name))
       .map((a) => `<option value="install:${esc(a.id)}">${esc(a.name)}</option>`).join('')}</optgroup>` : '';
@@ -1049,7 +1049,7 @@
       const made = await confirmed(() => send('/api/devices/workflows', form));
       $('flow-dialog').close();
       await readFlows();
-      toast(flow.id ? 'Workflow saved.' : 'Workflow added.', form.on ? 'It runs the next time what starts it happens.' : "It's disabled, so it doesn't run yet.");
+      toast(flow.id ? 'Workflow saved.' : 'Workflow created.', form.on ? 'It runs at the next trigger.' : 'It is disabled and does not run until it is enabled.');
       const now = (flows || []).find((w) => w.id === made.id);
       if (panel.is('devices') && now) openFlow(now);
     } catch (e) {
@@ -1082,7 +1082,7 @@
   // everything this page adds. Add computers is console.js's, Add an app installs.js's.
   const ADDS = [
     ['computers', 'monitor', 'Add computers', () => has('seats.add'), () => D.hooks.addComputers?.()],
-    ['installs', 'box', 'Add an app', () => has('seats.installs'), () => D.hooks.addApp?.()],
+    ['installs', 'box', 'Add app', () => has('seats.installs'), () => D.hooks.addApp?.()],
     ['scripts', 'code', 'New script', () => has('seats.scripts.edit'), () => openScriptEdit(null)],
     ['workflows', 'org', 'New workflow', () => has('seats.workflows'), () => openFlowEdit(null)],
   ];
@@ -1118,7 +1118,7 @@
       else if (on('data-sc-copy')) openScriptEdit(shown, true);
       else if (on('data-sc-del')) {
         const s = shown;
-        sure(`Delete ${s.name}?`, 'It goes from the library. Jobs that ran it keep what they ran.', 'Delete', async () => {
+        sure(`Delete ${s.name}?`, 'The script is removed from the library. Past jobs keep a copy of what they ran.', 'Delete', async () => {
           try {
             await confirmed(() => send(`/api/devices/scripts/${s.id}/delete`));
             panel.close();
@@ -1139,10 +1139,10 @@
         toast(w.on ? 'Workflow disabled.' : 'Workflow enabled.', w.name);
       } else if (on('data-fl-run')) {
         const w = shown;
-        sure(`Run ${w.name} now?`, 'It starts on every approved computer it is for. Ones that are offline get it once back, within a day.', 'Run now', async () => {
+        sure(`Run ${w.name} now?`, 'Runs on all approved computers in scope. Offline computers run it when back online, within a day.', 'Run now', async () => {
           try {
             const made = await confirmed(() => send(`/api/devices/workflows/${w.id}/run`));
-            toast('Workflow started.', `On ${many(made.computers)}. It's under Jobs.`);
+            toast('Workflow started.', `On ${many(made.computers)}. View progress under Jobs.`);
             await readFlows();
             openJob(made.id);
           } catch (err) {
@@ -1151,7 +1151,7 @@
         });
       } else if (on('data-fl-del')) {
         const w = shown;
-        sure(`Delete ${w.name}?`, "It stops running. Jobs it started stay under Jobs.", 'Delete', async () => {
+        sure(`Delete ${w.name}?`, 'The workflow no longer runs. Jobs it started stay under Jobs.', 'Delete', async () => {
           try {
             await send(`/api/devices/workflows/${w.id}/delete`);
             panel.close();
@@ -1183,7 +1183,7 @@
           D.draw();
           D.panelAgain();
           const asleep = sent.map((r) => D.computers().find((c) => c.id === r.client)).filter((c) => c && !c.online);
-          if (asleep.length) toast(`${names(asleep)} didn't wake.`, 'Its panel says what Windows allows. The BIOS has to allow waking from the network too, with ErP or deep sleep off.', { tone: 'warn' });
+          if (asleep.length) toast(`${names(asleep)} did not wake.`, 'Check the Wake-on-LAN settings in the computer\'s panel. The BIOS must also allow wake from the network, with ErP or deep sleep disabled.', { tone: 'warn' });
         }, WAKING + 1000);
       }
       D.draw();
@@ -1191,10 +1191,10 @@
       const via = [...new Set(sent.flatMap((r) => r.via))].join(' and ');
       // One that shows Online is running: a wake-up can't turn its screen on.
       const running = on.length === 1 && on[0].online;
-      if (!failed.length) toast(`Sent a wake-up to ${names(sent)}.`, running ? `It already shows Online. Wake turns on a computer that is asleep or shut down. It can't turn on the screen of one that is running.`
-        : `From ${via}. It shows Online once Windows is up.`);
-      else if (!sent.length) toast(failed.length === 1 ? `Couldn't wake ${failed[0].computer}.` : `Couldn't wake ${many(failed.length)}.`, failed[0].problem, { tone: 'warn' });
-      else toast(`Sent a wake-up to ${names(sent)}.`, `${names(failed)}: ${failed[0].problem}`, { tone: 'warn' });
+      if (!failed.length) toast(`Wake-on-LAN packet sent to ${names(sent)}.`, running ? `The computer is already online. Wake-on-LAN starts a computer that is asleep or shut down. It cannot turn on the display of a running computer.`
+        : `Sent from ${via}. The computer shows as Online once Windows starts.`);
+      else if (!sent.length) toast(failed.length === 1 ? `Could not wake ${failed[0].computer}.` : `Could not wake ${many(failed.length)}.`, failed[0].problem, { tone: 'warn' });
+      else toast(`Wake-on-LAN packet sent to ${names(sent)}.`, `${names(failed)}: ${failed[0].problem}`, { tone: 'warn' });
     } catch (err) {
       oops(err);
     }
@@ -1208,7 +1208,7 @@
     if (tab !== 'jobs') return null;
     const list = seatJobs[c.id];
     // Placeholder rows (the panel fills data-seat-skel) until they're read.
-    return section(`Jobs <small>${list ? list.length : ''}</small>`, !list ? (seatJobsWrong[c.id] ? none(seatJobsWrong[c.id]) : '<div data-seat-skel></div>') : !list.length ? none('Nothing has been run on it.')
+    return section(`Jobs <small>${list ? list.length : ''}</small>`, !list ? (seatJobsWrong[c.id] ? none(seatJobsWrong[c.id]) : '<div data-seat-skel></div>') : !list.length ? none('No jobs.')
       : `<div class="dw-list seat-list">${list.map((j) => `<div class="mrow job-row" data-job-open="${esc(j.id)}"><div class="two"><b>${esc(jobTitle(j))}</b><small>${esc(`${when(j.at)} · ${j.by}`)}</small></div>${pill(STATE[j.state] || ['offline', j.state])}</div>`).join('')}</div>`);
   };
   D.hooks.seatOpened = (c) => {
@@ -1219,7 +1219,7 @@
       delete seatJobsWrong[c.id];
       D.panelAgain();
     }).catch((err) => {
-      seatJobsWrong[c.id] = `Its jobs couldn't be read. ${err.message}`;
+      seatJobsWrong[c.id] = `Could not load jobs. ${err.message}`;
       D.panelAgain();
     });
   };

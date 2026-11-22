@@ -21,13 +21,13 @@ public static class ClientsApi
             var from = ActivityLog.Address(context);
             if (!limiter.Take(from))
             {
-                return Results.Json(new { error = "Too many joins from this address. Wait a few minutes, then try again." }, statusCode: StatusCodes.Status429TooManyRequests);
+                return Results.Json(new { error = "Too many connection attempts from this address. Wait a few minutes and try again." }, statusCode: StatusCodes.Status429TooManyRequests);
             }
             var computer = form.Computer?.Trim() ?? "";
             if (computer.Length is 0 or > 64)
             {
                 limiter.GiveBack(from); // not a join
-                return Results.BadRequest(new { error = "Say which computer is joining." });
+                return Results.BadRequest(new { error = "Computer name is required." });
             }
             // This server's own client (Install the client here) is approved straight away: it joins from this computer, by its name.
             var self = Addresses.OnServer(context.Connection.RemoteIpAddress) && string.Equals(computer, Environment.MachineName, StringComparison.OrdinalIgnoreCase);
@@ -36,7 +36,7 @@ public static class ClientsApi
             {
                 return Results.Json(new { error = problem }, statusCode: StatusCodes.Status429TooManyRequests);
             }
-            log.Record($"The client on {computer}", from, "clients", "client.join", client.Approved is null ? $"{computer} joined and is waiting for approval" : $"{computer} joined", "ok");
+            log.Record($"The client on {computer}", from, "clients", "client.join", client.Approved is null ? $"{computer} connected and is pending approval" : $"{computer} connected", "ok");
             workflows.Happened(Workflows.Approved, client); // only when computers join without approval
             return Results.Ok(new { id = client.Id, secret, approved = client.Approved is not null, version = Product.Version });
         });
@@ -55,7 +55,7 @@ public static class ClientsApi
             }
             if (usedNow)
             {
-                log.Record($"The client on {c.Computer}", ActivityLog.Address(context), "clients", "client.code.used", $"The uninstall code was used on {c.Computer}", "ok");
+                log.Record($"The client on {c.Computer}", ActivityLog.Address(context), "clients", "client.code.used", $"Uninstall code used on {c.Computer}", "ok");
             }
             if (away)
             {
@@ -160,7 +160,7 @@ public static class ClientsApi
             }
             if (clients.ClearProblems(id) is not { } c)
             {
-                return Results.NotFound(new { error = "That computer isn't in Devices any more." });
+                return Results.NotFound(new { error = "That computer is no longer in Devices." });
             }
             log.Record(context, "clients", "client.problems.clear", $"Cleared the errors on {c.Computer}");
             return Results.Ok();
@@ -176,7 +176,7 @@ public static class ClientsApi
             }
             if (c.Approved is null)
             {
-                return Results.Json(new { error = "This computer is waiting for approval." }, statusCode: StatusCodes.Status403Forbidden);
+                return Results.Json(new { error = "This computer is pending approval." }, statusCode: StatusCodes.Status403Forbidden);
             }
             var before = inventories.Get(c.Id);
             inventories.Set(c.Id, inventory);
@@ -188,7 +188,7 @@ public static class ClientsApi
         // Its Administrators and accounts only for whoever may see Windows accounts.
         app.MapGet("/api/clients/{id}/inventory", (string id, HttpContext context, Clients clients, Inventories inventories) =>
             !Access.Can(context, Permissions.SeatsView) ? Access.NotAllowed()
-            : clients.Find(id) is null ? Results.NotFound(new { error = "That client isn't here any more." })
+            : clients.Find(id) is null ? Results.NotFound(new { error = "That computer is no longer in Devices." })
             : Results.Ok(new { inventory = Access.Can(context, Permissions.WindowsView) ? (object?) inventories.Get(id) : WithoutAccounts(inventories.Get(id)) }));
 
         // Software across the approved computers: a row for each program and publisher, with the computers that have it.
@@ -279,7 +279,7 @@ public static class ClientsApi
             }
             if (clients.Approve(id, context.User.FindFirst("name")?.Value ?? ActivityLog.Who(context)) is not { } c)
             {
-                return Results.NotFound(new { error = "That client isn't here any more." });
+                return Results.NotFound(new { error = "That computer is no longer in Devices." });
             }
             log.Record(context, "clients", "client.approve", $"Approved {c.Computer}");
             workflows.Happened(Workflows.Approved, c);
@@ -294,7 +294,7 @@ public static class ClientsApi
             }
             if (clients.Remove(id) is not { } c)
             {
-                return Results.NotFound(new { error = "That client isn't here any more." });
+                return Results.NotFound(new { error = "That computer is no longer in Devices." });
             }
             commands.Forget(c.Id);
             inventories.Forget(c.Id);
@@ -313,10 +313,10 @@ public static class ClientsApi
             }
             if (clients.AllowRemoval(id, form.Allow, form.Allow && form.Now) is not { } c)
             {
-                return Results.NotFound(new { error = "That client isn't here any more." });
+                return Results.NotFound(new { error = "That computer is no longer in Devices." });
             }
             log.Record(context, "clients", form.Allow ? form.Now ? "client.uninstall" : "client.removal.allow" : "client.removal.lock",
-                form.Allow ? form.Now ? $"Ordered the client on {c.Computer} to uninstall itself" : $"Allowed uninstalling the client on {c.Computer} for an hour" : $"Locked uninstalling the client on {c.Computer} again");
+                form.Allow ? form.Now ? $"Sent an uninstall command to the client on {c.Computer}" : $"Allowed uninstalling the client on {c.Computer} for one hour" : $"Locked uninstalling the client on {c.Computer}");
             return Results.Ok(new { removalUntil = clients.RemovalUntil(c), uninstalling = c.Uninstall });
         });
 
@@ -329,9 +329,9 @@ public static class ClientsApi
             }
             if (clients.Reveal(id) is not var (c, code))
             {
-                return Results.NotFound(new { error = "That client isn't here any more." });
+                return Results.NotFound(new { error = "That computer is no longer in Devices." });
             }
-            log.Record(context, "clients", "client.code.show", $"Showed the uninstall code for {c.Computer}");
+            log.Record(context, "clients", "client.code.show", $"Viewed the uninstall code for {c.Computer}");
             return Results.Ok(new { code, held = c.CodeHeld });
         });
 
@@ -362,28 +362,28 @@ public static class ClientsApi
             }
             if (!OperatingSystem.IsWindows() || Product.InContainer)
             {
-                return Results.BadRequest(new { error = "The client is for Windows. This server isn't running on Windows." });
+                return Results.BadRequest(new { error = "The client requires Windows. This server is not running Windows." });
             }
             if (clients.All().Any(c => string.Equals(c.Computer, Environment.MachineName, StringComparison.OrdinalIgnoreCase)))
             {
-                return Results.Conflict(new { error = $"{Environment.MachineName} already has the client. It's in the list." });
+                return Results.Conflict(new { error = $"The client is already installed on {Environment.MachineName}. It is listed under Devices." });
             }
             if (!File.Exists(ClientFiles.Msi))
             {
-                return Results.NotFound(new { error = "This server has no client to install. Get it from the Rabbid Lab release on GitHub." });
+                return Results.NotFound(new { error = "The client installer is not on this server. Download it from the Rabbid Lab release on GitHub." });
             }
             // The client talks to this server on the same port the page uses; its key fingerprint makes the name not matter.
             var server = $"https://localhost:{context.Request.Host.Port ?? 443}";
             var who = ActivityLog.Who(context);
             var from = ActivityLog.Address(context);
-            log.Record(context, "clients", "client.install-here", $"Started installing the client on {Environment.MachineName}, this server");
+            log.Record(context, "clients", "client.install-here", $"Started installing the client on this server ({Environment.MachineName})");
             _ = Task.Run(async () =>
             {
                 var code = await here.Install(server, ClientFiles.KeyFingerprint(config), CancellationToken.None);
                 // 0 is done, 3010 is done and wants a restart.
                 var ok = code is 0 or 3010;
-                log.Record(who, from, "clients", "client.install-here", ok ? $"Installed the client on {Environment.MachineName}, this server"
-                    : $"The client didn't install on {Environment.MachineName}: msiexec {(code is null ? "didn't run" : $"ended with {code}")}. Its log is in the data folder's Logs.", ok ? "ok" : "failed");
+                log.Record(who, from, "clients", "client.install-here", ok ? $"Installed the client on this server ({Environment.MachineName})"
+                    : $"Could not install the client on {Environment.MachineName}: msiexec {(code is null ? "did not start" : $"exited with code {code}")}. See the install log in the Logs folder of the data folder.", ok ? "ok" : "failed");
                 if (!ok)
                 {
                     logger.LogWarning("The client didn't install on this server: msiexec ended with {Code}", code);
@@ -395,7 +395,7 @@ public static class ClientsApi
         // The client's MSI, for anyone: computers installing it, and clients updating themselves to this server's version.
         app.MapGet("/api/clients/download", () => File.Exists(ClientFiles.Msi)
             ? Results.File(ClientFiles.Msi, "application/x-msi", $"RabbidLab-Client-{Product.Version}.msi")
-            : Results.NotFound(new { error = "This server has no client to hand out. Get it from the Rabbid Lab release on GitHub." }));
+            : Results.NotFound(new { error = "The client installer is not on this server. Download it from the Rabbid Lab release on GitHub." }));
 
         // The Group Policy template, for admins.
         app.MapGet("/api/clients/policy", (HttpContext context) =>
@@ -413,12 +413,12 @@ public static class ClientsApi
             if (form.Approve is { } approve)
             {
                 clients.SetApprove(approve);
-                log.Record(context, "clients", "client.settings", approve ? "New computers need approval" : "New computers connect without approval");
+                log.Record(context, "clients", "client.settings", approve ? "Enabled approval for new computers" : "Disabled approval for new computers");
             }
             if (form.UnlockAfterDays is { } days)
             {
                 clients.SetUnlockAfter(days);
-                log.Record(context, "clients", "client.settings", days > 0 ? $"The uninstall lock is released after {days} days offline" : "The uninstall lock is no longer released for computers that are offline");
+                log.Record(context, "clients", "client.settings", days > 0 ? $"Set the uninstall lock to release after {days} days offline" : "Set the uninstall lock to never release for offline computers");
             }
             return Results.Ok();
         });
@@ -437,7 +437,7 @@ public static class ClientsApi
         Credentials(context) is (var id, var secret) ? clients.Verify(id, secret) : null;
 
     internal static IResult Unknown() =>
-        Results.Json(new { error = $"This computer isn't one of {Product.Title}'s clients. It will rejoin automatically." }, statusCode: StatusCodes.Status401Unauthorized);
+        Results.Json(new { error = $"This computer is not registered with {Product.Title}. The client will reconnect automatically." }, statusCode: StatusCodes.Status401Unauthorized);
 
     /// <summary>The few facts about a computer the list shows; the rest is asked for when the computer is opened.</summary>
     private static System.Text.Json.Nodes.JsonNode? WithoutAccounts(DeviceInventory? i)

@@ -61,12 +61,12 @@ public static class UsersApi
             }
             if (form.On && !tools.CanReadHere)
             {
-                return Results.BadRequest(new { error = "This server can't read Active Directory as itself. Set up the service account instead." });
+                return Results.BadRequest(new { error = "This server cannot read Active Directory with its computer account. Configure the service account instead." });
             }
             tools.ReadHere(form.On, ActivityLog.Who(context));
             log.Record(context, "users", form.On ? "ad.readonly.on" : "ad.readonly.off", form.On
-                ? $"Turned on read-only Active Directory, read as {Environment.MachineName}, for people who can set up the service account"
-                : "Turned off read-only Active Directory");
+                ? $"Enabled read-only Active Directory access as {Environment.MachineName} for admins who can configure the service account"
+                : "Disabled read-only Active Directory access");
             return Results.Ok(new { });
         });
 
@@ -81,8 +81,8 @@ public static class UsersApi
         {
             var warning = await tools.Connect(form, ActivityLog.Who(context), context.RequestAborted);
             var state = tools.State()!;
-            log.Record(context, "users", "ad.connect", form.Existing ? $"Set up {Product.Title}'s AD account as {state.Account}"
-                : $"Made {state.Account} in {state.Domain} for {Product.Title}, able to change accounts in {state.ScopeName}", warning is null ? "ok" : "warning", warning);
+            log.Record(context, "users", "ad.connect", form.Existing ? $"Configured the AD service account as {state.Account}"
+                : $"Created the service account {state.Account} in {state.Domain} with delegated permissions on {state.ScopeName}", warning is null ? "ok" : "warning", warning);
             return Results.Ok(new { state, warning });
         }));
 
@@ -96,7 +96,7 @@ public static class UsersApi
             tools.Disconnect();
             if (state is not null)
             {
-                log.Record(context, "users", "ad.disconnect", $"Stopped using {state.Account} for Active Directory");
+                log.Record(context, "users", "ad.disconnect", $"Disconnected the AD service account {state.Account}");
             }
             return Results.Ok(new { account = state?.Account, made = state?.Made == true });
         });
@@ -109,8 +109,8 @@ public static class UsersApi
                 await tools.SetNewPlace(kind, dn!, context.RequestAborted);
             }
             var state = tools.State()!;
-            log.Record(context, "users", "ad.settings", form.NewGroups is not null ? $"New AD groups go in {state.NewGroupsName}"
-                : form.NewComputers is not null ? $"New AD computers go in {state.NewComputersName}" : $"New AD users go in {state.NewUsersName}");
+            log.Record(context, "users", "ad.settings", form.NewGroups is not null ? $"Set the default OU for new AD groups to {state.NewGroupsName}"
+                : form.NewComputers is not null ? $"Set the default OU for new AD computers to {state.NewComputersName}" : $"Set the default OU for new AD users to {state.NewUsersName}");
             return Results.Ok(state);
         }));
 
@@ -138,7 +138,7 @@ public static class UsersApi
         {
             var password = string.IsNullOrEmpty(form.Password) ? Passwords.Make() : form.Password;
             var (user, warning) = await tools.Create(form, password, context.RequestAborted);
-            log.Record(context, "users", "ad.create", $"Made the AD account {user.Username} in {(user.Where.Length > 0 ? user.Where : tools.State()?.Domain)}",
+            log.Record(context, "users", "ad.create", $"Created the AD user {user.Username} in {(user.Where.Length > 0 ? user.Where : tools.State()?.Domain)}",
                 warning is null ? "ok" : "warning", warning);
             return Results.Ok(new { user, warning, password = string.IsNullOrEmpty(form.Password) ? password : null });
         }, confirm: true));
@@ -148,7 +148,7 @@ public static class UsersApi
             {
                 var password = string.IsNullOrEmpty(form.Password) ? Passwords.Make() : form.Password;
                 await tools.Password(username, password, form.MustChange, context.RequestAborted);
-                log.Record(context, "users", "ad.password", $"Set a new password for {username}" + (form.MustChange ? ", to be changed at their next sign-in" : ""));
+                log.Record(context, "users", "ad.password", $"Reset the password for {username}" + (form.MustChange ? " (must change at next sign-in)" : ""));
                 return Results.Ok(new { password = string.IsNullOrEmpty(form.Password) ? password : null });
             }, confirm: true));
 
@@ -163,7 +163,7 @@ public static class UsersApi
             Try(context, Permissions.AdEnable, async () =>
             {
                 await tools.Enable(username, form.On, context.RequestAborted);
-                log.Record(context, "users", form.On ? "ad.enable" : "ad.disable", form.On ? $"Turned {username} back on" : $"Turned {username} off");
+                log.Record(context, "users", form.On ? "ad.enable" : "ad.disable", form.On ? $"Enabled {username}" : $"Disabled {username}");
                 return Results.Ok();
             }));
 
@@ -173,14 +173,14 @@ public static class UsersApi
                 var add = form.Add ?? [];
                 var remove = form.Remove ?? [];
                 var warning = await tools.ChangeGroups(username, add, remove, context.RequestAborted);
-                log.Record(context, "users", "ad.groups", $"Changed {username}'s groups" + Groups(add, remove, Ldap.Name), warning is null ? "ok" : "warning", warning);
+                log.Record(context, "users", "ad.groups", $"Changed group membership for {username}" + Groups(add, remove, Ldap.Name), warning is null ? "ok" : "warning", warning);
                 return Results.Ok(new { warning });
             }, confirm: true));
 
         app.MapPost("/api/ad/users/{username}/delete", (string username, HttpContext context, IDirectoryTools tools, ActivityLog log) => Try(context, Permissions.AdDelete, async () =>
         {
             await tools.Delete(username, context.RequestAborted);
-            log.Record(context, "users", "ad.delete", $"Deleted the AD account {username}");
+            log.Record(context, "users", "ad.delete", $"Deleted the AD user {username}");
             return Results.Ok();
         }));
 
@@ -200,7 +200,7 @@ public static class UsersApi
         app.MapPost("/api/ad/groups", (NewAdGroup form, HttpContext context, IDirectoryTools tools, ActivityLog log) => Try(context, Permissions.AdCreate, async () =>
         {
             var group = await tools.CreateGroup(form, context.RequestAborted);
-            log.Record(context, "users", "ad.group.create", $"Made the AD group {group.Name}");
+            log.Record(context, "users", "ad.group.create", $"Created the AD group {group.Name}");
             return Results.Ok(group);
         }));
 
@@ -209,7 +209,7 @@ public static class UsersApi
             var add = form.Add ?? [];
             var remove = form.Remove ?? [];
             var warning = await tools.ChangeMembers(form.Dn ?? "", add, remove, context.RequestAborted);
-            log.Record(context, "users", "ad.group.members", $"Changed who's in {Ldap.Name(form.Dn ?? "")}" + Groups(add, remove, Ldap.Name).Replace(": into ", ": added ").Replace("out of", "took out"),
+            log.Record(context, "users", "ad.group.members", $"Changed members of {Ldap.Name(form.Dn ?? "")}" + Groups(add, remove, Ldap.Name).Replace(": added to ", ": added ").Replace("removed from", "removed"),
                 warning is null ? "ok" : "warning", warning);
             return Results.Ok(new { warning });
         }, confirm: true));
@@ -231,7 +231,7 @@ public static class UsersApi
             Try(context, Permissions.AdEnable, async () =>
             {
                 await tools.EnableComputer(name, form.On, context.RequestAborted);
-                log.Record(context, "users", form.On ? "ad.computer.enable" : "ad.computer.disable", form.On ? $"Turned the computer {name} back on in AD" : $"Turned the computer {name} off in AD");
+                log.Record(context, "users", form.On ? "ad.computer.enable" : "ad.computer.disable", form.On ? $"Enabled the computer {name} in AD" : $"Disabled the computer {name} in AD");
                 return Results.Ok();
             }));
 
@@ -285,19 +285,19 @@ public static class UsersApi
             var remove = Clean(form.Remove);
             if (add.Count + remove.Count is 0 or > MaxAdminChanges)
             {
-                return Results.BadRequest(new { error = $"Add or take out between 1 and {MaxAdminChanges} at a time." });
+                return Results.BadRequest(new { error = $"Add or remove between 1 and {MaxAdminChanges} members at a time." });
             }
             if (add.FirstOrDefault(n => n.Length > 256 || n.Any(char.IsControl) || n.Count(c => c == '\\') > 1 || n.StartsWith('\\') || n.EndsWith('\\')) is { } bad)
             {
-                return Results.BadRequest(new { error = $"{bad} isn't an account name. Use DOMAIN\\name for a domain user or group, or a local account's name." });
+                return Results.BadRequest(new { error = $"{bad} is not a valid account name. Use DOMAIN\\name for a domain user or group, or the name of a local account." });
             }
             if (remove.Any(s => !SidShape.IsMatch(s)))
             {
-                return Results.BadRequest(new { error = "Say who to take out by their SID." });
+                return Results.BadRequest(new { error = "Specify the members to remove by SID." });
             }
             if (id != Server && clients.Find(id) is { } c && Version.TryParse(c.Version, out var v) && v < AdminsFrom)
             {
-                return Results.Json(new { error = $"{c.Computer}'s client is {c.Version}, which can't change Administrators. It updates itself to {Product.Version} within a few minutes." },
+                return Results.Json(new { error = $"The client on {c.Computer} is version {c.Version}, which cannot change the Administrators group. It updates to {Product.Version} automatically within a few minutes." },
                     statusCode: StatusCodes.Status409Conflict);
             }
             // Who's being taken out, by name, for the activity log.
@@ -310,8 +310,8 @@ public static class UsersApi
                     {
                         inventories.SetAdmins(id, admins, null);
                     }
-                    var said = string.Join("; ", new[] { add.Count > 0 ? $"added {string.Join(", ", add)}" : null, gone.Count > 0 ? $"took out {string.Join(", ", gone)}" : null }.Where(x => x is not null));
-                    log.Record(context, "users", "windows.admins", $"Changed who's in Administrators on {computer}: {said}", answer.Warning is null ? "ok" : "warning", answer.Warning);
+                    var said = string.Join("; ", new[] { add.Count > 0 ? $"added {string.Join(", ", add)}" : null, gone.Count > 0 ? $"removed {string.Join(", ", gone)}" : null }.Where(x => x is not null));
+                    log.Record(context, "users", "windows.admins", $"Changed Administrators group membership on {computer}: {said}", answer.Warning is null ? "ok" : "warning", answer.Warning);
                     return Results.Ok(new { warning = answer.Warning, admins = answer.Admins });
                 }, confirm: true);
         });
@@ -360,7 +360,7 @@ public static class UsersApi
             };
             return Run(context, id, Permissions.WindowsCreate, order, clients, commands, windows, (computer, answer) =>
             {
-                log.Record(context, "users", "windows.create", $"Made the Windows account {order.Name} on {computer}" + Groups(order.Add, [], g => g),
+                log.Record(context, "users", "windows.create", $"Created the local account {order.Name} on {computer}" + Groups(order.Add, [], g => g),
                     answer.Warning is null ? "ok" : "warning", answer.Warning);
                 return Results.Ok(new { warning = answer.Warning, password = string.IsNullOrEmpty(form.Password) ? password : null });
             }, confirm: true);
@@ -373,7 +373,7 @@ public static class UsersApi
             return Run(context, id, Permissions.WindowsChange, new AccountOrder { Action = AccountOrder.Password, Name = name, NewPassword = password, MustChange = form.MustChange },
                 clients, commands, windows, (computer, _) =>
                 {
-                    log.Record(context, "users", "windows.password", $"Set a new password for {name} on {computer}" + (form.MustChange ? ", to be changed at its next sign-in" : ""));
+                    log.Record(context, "users", "windows.password", $"Reset the password for {name} on {computer}" + (form.MustChange ? " (must change at next sign-in)" : ""));
                     return Results.Ok(new { password = string.IsNullOrEmpty(form.Password) ? password : null });
                 }, confirm: true);
         });
@@ -383,7 +383,7 @@ public static class UsersApi
             Run(context, id, Permissions.WindowsChange, new AccountOrder { Action = form.On ? AccountOrder.Enable : AccountOrder.Disable, Name = name },
                 clients, commands, windows, (computer, _) =>
                 {
-                    log.Record(context, "users", form.On ? "windows.enable" : "windows.disable", form.On ? $"Turned {name} back on on {computer}" : $"Turned {name} off on {computer}");
+                    log.Record(context, "users", form.On ? "windows.enable" : "windows.disable", form.On ? $"Enabled {name} on {computer}" : $"Disabled {name} on {computer}");
                     return Results.Ok();
                 }));
 
@@ -393,7 +393,7 @@ public static class UsersApi
                 clients, commands, windows, (computer, answer) =>
                 {
                     // Some groups may have changed and others not: logged either way, with what didn't work.
-                    log.Record(context, "users", "windows.groups", $"Changed {name}'s groups on {computer}" + Groups(form.Add ?? [], form.Remove ?? [], g => g),
+                    log.Record(context, "users", "windows.groups", $"Changed group membership for {name} on {computer}" + Groups(form.Add ?? [], form.Remove ?? [], g => g),
                         answer.Warning is null ? "ok" : "warning", answer.Warning);
                     return Results.Ok(new { warning = answer.Warning });
                 }, confirm: true));
@@ -402,7 +402,7 @@ public static class UsersApi
             IWindowsAccounts windows, ActivityLog log) =>
             Run(context, id, Permissions.WindowsDelete, new AccountOrder { Action = AccountOrder.Delete, Name = name }, clients, commands, windows, (computer, _) =>
             {
-                log.Record(context, "users", "windows.delete", $"Deleted the Windows account {name} on {computer}");
+                log.Record(context, "users", "windows.delete", $"Deleted the local account {name} on {computer}");
                 return Results.Ok();
             }));
     }
@@ -437,7 +437,7 @@ public static class UsersApi
         var caller = new Caller(Who.Of(context.User), permission, context.RequestServices.GetRequiredService<Roles>());
         if (whole && Permissions.Scoped.Contains(permission) && caller.Reach() is not null)
         {
-            return Results.Json(new { error = "Your roles cover part of Active Directory, and this needs a role that covers all of it." }, statusCode: StatusCodes.Status403Forbidden);
+            return Results.Json(new { error = "Access denied. Your roles cover only part of Active Directory, and this action requires a role that covers the entire directory." }, statusCode: StatusCodes.Status403Forbidden);
         }
         Caller.Set(caller);
         try
@@ -454,7 +454,7 @@ public static class UsersApi
         }
         catch (LdapRefused e)
         {
-            return Results.Json(new { error = $"Active Directory said: {e.Message}." }, statusCode: StatusCodes.Status400BadRequest);
+            return Results.Json(new { error = $"Active Directory returned an error: {e.Message}." }, statusCode: StatusCodes.Status400BadRequest);
         }
     }
 
@@ -481,7 +481,7 @@ public static class UsersApi
         {
             if (clients.Find(id) is not { Approved: not null } c)
             {
-                return Results.NotFound(new { error = "That computer isn't in Devices any more." });
+                return Results.NotFound(new { error = "The computer no longer exists in Devices." });
             }
             computer = c.Computer;
             if (Why(c, clients, commands) is { } why)
@@ -491,12 +491,12 @@ public static class UsersApi
             answer = await commands.Send(c.Id, order, context.RequestAborted);
             if (answer is null)
             {
-                return Results.Json(new { error = $"{c.Computer} didn't answer in time. It may have just gone offline; try again in a minute." }, statusCode: StatusCodes.Status504GatewayTimeout);
+                return Results.Json(new { error = $"{c.Computer} did not respond in time. It may have gone offline. Try again in a minute." }, statusCode: StatusCodes.Status504GatewayTimeout);
             }
         }
         if (!answer.Ok)
         {
-            return Results.BadRequest(new { error = answer.Error ?? $"{computer} couldn't do that." });
+            return Results.BadRequest(new { error = answer.Error ?? $"{computer} could not complete the operation." });
         }
         return done(computer, answer);
     }
@@ -506,13 +506,13 @@ public static class UsersApi
     {
         if (!clients.IsOnline(c))
         {
-            return "It's offline.";
+            return "The computer is offline.";
         }
         if (Version.TryParse(c.Version, out var v) && v < new Version(0, 4, 0))
         {
-            return $"Its client is {c.Version}, which can't change accounts. It updates itself to {Product.Version} within a few minutes.";
+            return $"The client is version {c.Version}, which cannot manage local accounts. It updates to {Product.Version} automatically within a few minutes.";
         }
-        return commands.Listening(c.Id) ? null : "Its client isn't listening for changes yet. It starts within a minute.";
+        return commands.Listening(c.Id) ? null : "The client is not ready to receive changes yet. Try again in a minute.";
     }
 
     /// <summary>The first client that reads and changes Administrators.</summary>
@@ -525,7 +525,7 @@ public static class UsersApi
         [.. (list ?? []).Select(n => n?.Trim() ?? "").Where(n => n.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase)];
 
     private static string Groups(IReadOnlyList<string> add, IReadOnlyList<string> remove, Func<string, string> name) =>
-        (add.Count > 0 ? $": into {string.Join(", ", add.Select(name))}" : "") + (remove.Count > 0 ? $"{(add.Count > 0 ? ";" : ":")} out of {string.Join(", ", remove.Select(name))}" : "");
+        (add.Count > 0 ? $": added to {string.Join(", ", add.Select(name))}" : "") + (remove.Count > 0 ? $"{(add.Count > 0 ? ";" : ":")} removed from {string.Join(", ", remove.Select(name))}" : "");
 
     private static string? Normal(string? address) => Addresses.Normal(address);
 }

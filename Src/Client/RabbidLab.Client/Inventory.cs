@@ -186,7 +186,7 @@ internal static class Inventory
             // so the answer on the server doesn't quietly go stale.
             if (asking is { IsCompleted: false })
             {
-                Problems.Note("windows-update", "Windows Update was asked what's missing six hours ago and never answered. Asking again.");
+                Problems.Note("windows-update", "The Windows Update scan for missing updates did not finish within six hours. Starting a new scan.");
             }
             asked = now;
             asking = Task.Run(AskWindowsUpdate);
@@ -203,7 +203,7 @@ internal static class Inventory
                 }
                 catch (Exception e)
                 {
-                    Problems.Note("group policy", $"Couldn't read Group Policy: {e.Message}");
+                    Problems.Note("group policy", $"Could not read Group Policy: {e.Message}");
                 }
             });
         }
@@ -232,7 +232,7 @@ internal static class Inventory
         }
         else
         {
-            Problems.Note("inventory", $"The server didn't take the inventory (HTTP {(int) code}).");
+            Problems.Note("inventory", $"Could not upload the inventory. The server returned HTTP {(int) code}.");
         }
     }
 
@@ -307,7 +307,7 @@ internal static class Inventory
         r.GroupPolicy = policy;
         if (misses.Count > 0)
         {
-            Problems.Note("inventory", $"Couldn't read {misses.Count} part(s) of the inventory. {misses[0]}");
+            Problems.Note("inventory", $"Could not read {misses.Count} part(s) of the inventory. {misses[0]}");
         }
         misses = null;
         return r;
@@ -709,7 +709,7 @@ internal static class Inventory
             }
             if (answered == 0)
             {
-                throw failed ?? new InvalidOperationException("Windows Update has no service to ask.");
+                throw failed ?? new InvalidOperationException("The Windows Update service is not available.");
             }
             missing = list.OrderBy(u => u.Definition).ThenBy(u => u.Title, StringComparer.OrdinalIgnoreCase).ToList();
             missingChecked = DateTime.UtcNow;
@@ -718,7 +718,7 @@ internal static class Inventory
         catch (Exception e)
         {
             // Windows Update is off, unreachable or busy: the server is told, and it's asked again in half an hour, not six.
-            Problems.Note("windows-update", $"Windows Update didn't answer: {e.Message.Trim()} (0x{e.HResult:X8})");
+            Problems.Note("windows-update", $"Windows Update scan failed: {e.Message.Trim()} (0x{e.HResult:X8})");
             asked = DateTime.UtcNow - Resend + TimeSpan.FromMinutes(30);
         }
     }

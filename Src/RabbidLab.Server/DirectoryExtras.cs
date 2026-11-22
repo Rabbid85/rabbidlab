@@ -201,42 +201,42 @@ public sealed partial class DirectoryTools
 
         if (head is null)
         {
-            Add("policy", "Passwords", "Password policy", "Couldn't be read", "", "unknown", $"{Product.Title}'s account couldn't read the domain's own object.");
+            Add("policy", "Passwords", "Password policy", "Could not be read", "", "unknown", "The service account could not read the domain object.");
             return list;
         }
         var minLength = (int) (head.Number("minPwdLength") ?? 0);
-        Add("length", "Passwords", "Minimum password length", $"{minLength} characters", "14 or more", minLength >= 14 ? "good" : minLength >= 8 ? "warn" : "bad",
-            "Longer passwords are the best protection against guessing. Set in the Default Domain Policy, Account Policies, Password Policy.", minLength);
+        Add("length", "Passwords", "Minimum password length", $"{minLength} characters", "14 or more characters", minLength >= 14 ? "good" : minLength >= 8 ? "warn" : "bad",
+            "Longer passwords are the best defense against password guessing. Set in Default Domain Policy > Account Policies > Password Policy.", minLength);
         var properties = head.Number("pwdProperties") ?? 0;
-        Add("complex", "Passwords", "Passwords must meet complexity rules", (properties & 1) != 0 ? "On" : "Off", "On", (properties & 1) != 0 ? "good" : "bad",
-            "Needs three of: capitals, small letters, numbers and symbols.", properties & 1);
-        Add("reversible", "Passwords", "Store passwords with reversible encryption", (properties & 16) != 0 ? "On" : "Off", "Off", (properties & 16) != 0 ? "bad" : "good",
-            "On means passwords can be read back in plain text. Only very old apps need it.", (properties & 16) != 0 ? 1 : 0);
+        Add("complex", "Passwords", "Password must meet complexity requirements", (properties & 1) != 0 ? "Enabled" : "Disabled", "Enabled", (properties & 1) != 0 ? "good" : "bad",
+            "Requires three of: uppercase letters, lowercase letters, numbers and symbols.", properties & 1);
+        Add("reversible", "Passwords", "Store passwords using reversible encryption", (properties & 16) != 0 ? "Enabled" : "Disabled", "Disabled", (properties & 16) != 0 ? "bad" : "good",
+            "When enabled, passwords can be recovered as plain text. Only legacy applications require it.", (properties & 16) != 0 ? 1 : 0);
         var history = (int) (head.Number("pwdHistoryLength") ?? 0);
-        Add("history", "Passwords", "Passwords remembered", history.ToString(CultureInfo.InvariantCulture), "24", history >= 24 ? "good" : history >= 12 ? "warn" : "bad",
-            "Stops people going straight back to an old password.", history);
+        Add("history", "Passwords", "Enforce password history", history.ToString(CultureInfo.InvariantCulture), "24", history >= 24 ? "good" : history >= 12 ? "warn" : "bad",
+            "Prevents users from reusing recent passwords.", history);
         var maxAge = Days(head.Number("maxPwdAge"));
         Add("maxage", "Passwords", "Maximum password age", maxAge is null ? "Never expires" : $"{maxAge} days", "365 days, or never with long passwords", maxAge is null or >= 60 ? "good" : "warn",
-            "Forcing changes too often makes people pick weaker passwords.", maxAge);
+            "Requiring frequent changes leads users to choose weaker passwords.", maxAge);
         var minAge = Days(head.Number("minPwdAge")) ?? 0;
         Add("minage", "Passwords", "Minimum password age", $"{minAge} days", "1 day", minAge >= 1 ? "good" : "warn",
-            "Without it, someone can change their password over and over to get back to the old one.", minAge);
+            "Without a minimum age, users can change their password repeatedly to reuse an old one.", minAge);
         var threshold = (int) (head.Number("lockoutThreshold") ?? 0);
-        Add("lockout", "Lockout", "Lock out after", threshold == 0 ? "Never locks out" : $"{threshold} wrong passwords", "5 to 10 wrong passwords",
-            threshold == 0 ? "bad" : threshold <= 10 ? "good" : "warn", "Without a lockout, anyone can keep guessing passwords.", threshold);
+        Add("lockout", "Lockout", "Account lockout threshold", threshold == 0 ? "Never locks out" : $"{threshold} invalid sign-in attempts", "5 to 10 invalid attempts",
+            threshold == 0 ? "bad" : threshold <= 10 ? "good" : "warn", "Without a lockout threshold, passwords can be guessed without limit.", threshold);
         var duration = Minutes(head.Number("lockoutDuration"));
-        Add("duration", "Lockout", "Locked out for", threshold == 0 ? "Doesn't apply" : duration is null ? "Until an admin unlocks" : $"{duration} minutes", "15 minutes or more",
+        Add("duration", "Lockout", "Account lockout duration", threshold == 0 ? "Not applicable" : duration is null ? "Until an admin unlocks it" : $"{duration} minutes", "15 minutes or more",
             threshold == 0 || duration is null or >= 15 ? "good" : "warn", "How long a locked-out account stays locked.", duration);
         var quota = (int) (head.Number("ms-DS-MachineAccountQuota") ?? 10);
-        Add("quota", "Domain", "Computers anyone can join to the domain", quota.ToString(CultureInfo.InvariantCulture), "0", quota == 0 ? "good" : "warn",
-            "By default every user can join 10 computers. Set ms-DS-MachineAccountQuota to 0 so only admins can.", quota);
+        Add("quota", "Domain", "Computers each user can join to the domain", quota.ToString(CultureInfo.InvariantCulture), "0", quota == 0 ? "good" : "warn",
+            "By default, any user can join up to 10 computers to the domain. Set ms-DS-MachineAccountQuota to 0 so only admins can join computers.", quota);
         var levels = new Dictionary<long, string> { [2] = "2003", [3] = "2008", [4] = "2008 R2", [5] = "2012", [6] = "2012 R2", [7] = "2016", [10] = "2025" };
         var domainLevel = rootDse?.Number("domainFunctionality");
         var forestLevel = rootDse?.Number("forestFunctionality");
         Add("dfl", "Domain", "Domain functional level", domainLevel is { } d ? $"Windows Server {levels.GetValueOrDefault(d, d.ToString(CultureInfo.InvariantCulture))}" : "Unknown",
-            "Windows Server 2016 or later", domainLevel >= 7 ? "good" : domainLevel is null ? "unknown" : "warn", "Newer levels turn on newer security features.");
+            "Windows Server 2016 or later", domainLevel >= 7 ? "good" : domainLevel is null ? "unknown" : "warn", "Newer functional levels enable newer security features.");
         Add("ffl", "Domain", "Forest functional level", forestLevel is { } f ? $"Windows Server {levels.GetValueOrDefault(f, f.ToString(CultureInfo.InvariantCulture))}" : "Unknown",
-            "Windows Server 2016 or later", forestLevel >= 7 ? "good" : forestLevel is null ? "unknown" : "warn", "The Recycle Bin needs 2008 R2 or later.");
+            "Windows Server 2016 or later", forestLevel >= 7 ? "good" : forestLevel is null ? "unknown" : "warn", "The AD Recycle Bin requires Windows Server 2008 R2 or later.");
 
         // Accounts: Guest, and how long since krbtgt's password changed.
         if (head.Bytes("objectSid") is { } sid)
@@ -244,51 +244,51 @@ public sealed partial class DirectoryTools
             var domainSid = Sid(sid);
             var guest = (await ldap.Find(ldap.BaseDn, $"(objectSid={domainSid}-501)", true, ["userAccountControl"], 1, stop)).FirstOrDefault();
             var guestOn = guest is not null && ((guest.Number("userAccountControl") ?? 2) & Disabled) == 0;
-            Add("guest", "Accounts", "Guest account", guest is null ? "Not found" : guestOn ? "On" : "Off", "Off", guestOn ? "bad" : "good", "Guest lets anyone in without a password.", guestOn ? 1 : 0);
+            Add("guest", "Accounts", "Guest account", guest is null ? "Not found" : guestOn ? "Enabled" : "Disabled", "Disabled", guestOn ? "bad" : "good", "The Guest account allows sign-in without a password.", guestOn ? 1 : 0);
             var krbtgt = (await ldap.Find(ldap.BaseDn, $"(objectSid={domainSid}-502)", true, ["pwdLastSet"], 1, stop)).FirstOrDefault();
             var set = FileTime(krbtgt?.Number("pwdLastSet"));
             var age = set is { } at ? (int) (DateTime.UtcNow - at).TotalDays : (int?) null;
-            Add("krbtgt", "Accounts", "krbtgt password last changed", set is { } s ? $"{age} days ago ({s:yyyy-MM-dd})" : "Couldn't be read", "Within 180 days",
-                age is null ? "unknown" : age <= 180 ? "good" : "warn", "krbtgt signs every Kerberos ticket. Change it twice, a day apart, to retire old tickets.");
+            Add("krbtgt", "Accounts", "krbtgt password last changed", set is { } s ? $"{age} days ago ({s:yyyy-MM-dd})" : "Could not be read", "Within 180 days",
+                age is null ? "unknown" : age <= 180 ? "good" : "warn", "The krbtgt account signs every Kerberos ticket. Reset its password twice, a day apart, to invalidate old tickets.");
             // Members, and anyone who has Domain Admins as primary group, which the member attribute leaves out.
             var admins = (await ldap.Find(ldap.BaseDn, $"(objectSid={domainSid}-512)", true, ["member"], 1, stop)).FirstOrDefault()?.Many("member").Count;
             admins += admins is null ? 0 : (await ldap.Find(ldap.BaseDn, "(primaryGroupID=512)", true, ["cn"], Limit, stop)).Count;
-            Add("admins", "Accounts", "People in Domain Admins", admins?.ToString(CultureInfo.InvariantCulture) ?? "Couldn't be read", "5 or fewer", admins is null ? "unknown" : admins <= 5 ? "good" : "warn",
-                "Every Domain Admin can do anything to the domain. Keep the list short.");
+            Add("admins", "Accounts", "Domain Admins members", admins?.ToString(CultureInfo.InvariantCulture) ?? "Could not be read", "5 or fewer", admins is null ? "unknown" : admins <= 5 ? "good" : "warn",
+                "Domain Admins have full control of the domain. Keep the membership small.");
         }
 
         // Fine-grained password policies, which only some accounts can read.
         try
         {
             var psos = await ldap.FindChildren($"CN=Password Settings Container,CN=System,{ldap.BaseDn}", ["name"], 100, stop);
-            Add("pso", "Passwords", "Fine-grained password policies", psos.Count == 0 ? "None" : string.Join(", ", psos.Select(p => p.Text("name") ?? Ldap.Name(p.Dn))), "As you need them", "good",
-                "Stricter password rules for some groups, such as admins.");
+            Add("pso", "Passwords", "Fine-grained password policies", psos.Count == 0 ? "None" : string.Join(", ", psos.Select(p => p.Text("name") ?? Ldap.Name(p.Dn))), "As needed", "good",
+                "Stricter password policies for specific groups, such as admins.");
         }
         catch (LdapRefused)
         {
-            Add("pso", "Passwords", "Fine-grained password policies", "Couldn't be read", "As you need them", "unknown", $"{account} isn't allowed to read them, which is normal.");
+            Add("pso", "Passwords", "Fine-grained password policies", "Could not be read", "As needed", "unknown", $"{account} does not have permission to read them. This is expected.");
         }
 
         if (config is not null)
         {
             var (on, tombstone, _) = await RecycleSettings(ldap, config, stop);
-            Add("recycle", "Domain", "AD Recycle Bin", on ? "On" : "Off", "On", on ? "good" : "warn", "Lets a deleted user, group or computer come back as it was. Turn it on under Recycle Bin.");
-            Add("tombstone", "Domain", "Tombstone lifetime", $"{tombstone} days", "180 days", tombstone >= 180 ? "good" : "warn", "How long Active Directory remembers deleted objects. Backups older than this can't be restored.", tombstone);
+            Add("recycle", "Domain", "AD Recycle Bin", on ? "Enabled" : "Disabled", "Enabled", on ? "good" : "warn", "Deleted users, groups and computers can be restored with all their attributes. Enable it under Recycle Bin.");
+            Add("tombstone", "Domain", "Tombstone lifetime", $"{tombstone} days", "180 days", tombstone >= 180 ? "good" : "warn", "How long Active Directory keeps deleted objects. Backups older than this cannot be restored.", tombstone);
             var controllers = await ldap.Find(ldap.BaseDn, "(&(objectCategory=computer)(userAccountControl:1.2.840.113556.1.4.803:=8192))", true, ["cn", "operatingSystem"], 50, stop);
             var oldest = controllers.Select(c => c.Text("operatingSystem") ?? "").OrderBy(o => o, StringComparer.OrdinalIgnoreCase).FirstOrDefault() ?? "";
             Add("dcs", "Domain controllers", "Domain controllers", $"{controllers.Count}: {string.Join(", ", controllers.Select(c => c.Text("cn")))}", "2 or more", controllers.Count >= 2 ? "good" : "warn",
-                "With one domain controller, nobody can sign in while it's down.");
+                "With only one domain controller, nobody can sign in while it is offline.");
             var old = controllers.Any(c => Regex(c.Text("operatingSystem")));
-            Add("dcos", "Domain controllers", "Oldest domain controller Windows", oldest.Length > 0 ? oldest : "Unknown", "Windows Server 2016 or later", old ? "warn" : "good",
+            Add("dcos", "Domain controllers", "Oldest domain controller OS", oldest.Length > 0 ? oldest : "Unknown", "Windows Server 2016 or later", old ? "warn" : "good",
                 "Older Windows Server versions are out of support.");
             var schema = rootDse?.Text("schemaNamingContext");
             if (schema is not null)
             {
                 var laps = await ldap.Find(schema, "(|(lDAPDisplayName=msLAPS-Password)(lDAPDisplayName=ms-Mcs-AdmPwd))", true, ["lDAPDisplayName"], 5, stop);
                 var names = laps.Select(l => l.Text("lDAPDisplayName")).ToList();
-                var lapsNow = names.Contains("msLAPS-Password") ? "Windows LAPS" : names.Contains("ms-Mcs-AdmPwd") ? "Legacy LAPS" : "Not set up";
+                var lapsNow = names.Contains("msLAPS-Password") ? "Windows LAPS" : names.Contains("ms-Mcs-AdmPwd") ? "Legacy LAPS" : "Not configured";
                 Add("laps", "Domain", "LAPS (local admin passwords)", lapsNow, "Windows LAPS", lapsNow == "Windows LAPS" ? "good" : lapsNow == "Legacy LAPS" ? "warn" : "bad",
-                    "Gives every computer its own local admin password and changes it, so one leaked password doesn't open them all.");
+                    "Gives every computer a unique local admin password and rotates it, so one leaked password does not expose every computer.");
             }
         }
         await HealthChecks(ldap, rootDse, config, head.Bytes("objectSid") is { } sidBytes ? Sid(sidBytes) : null, list, stop);
@@ -420,7 +420,7 @@ public sealed partial class DirectoryTools
     public async Task<RecycleState> RecycleBin(CancellationToken stop)
     {
         using var ldap = await Open(stop);
-        var cantLook = $"{Ready().Account} can't look in Deleted Objects. Only Domain Admins can by default.";
+        var cantLook = $"Access denied. {Ready().Account} cannot read the Deleted Objects container. By default, only Domain Admins can.";
         var config = (await ldap.Find("", "(objectClass=*)", false, ["configurationNamingContext"], 1, stop)).FirstOrDefault()?.Text("configurationNamingContext") ?? "";
         var (on, _, lifetime) = await RecycleSettings(ldap, config, stop);
         var items = new List<DeletedObject>();
@@ -442,7 +442,7 @@ public sealed partial class DirectoryTools
         }
         catch (LdapRefused e)
         {
-            problem = e.Code == LdapRefused.InsufficientRights ? cantLook : $"Active Directory said: {e.Message}.";
+            problem = e.Code == LdapRefused.InsufficientRights ? cantLook : $"Active Directory returned an error: {e.Message}.";
         }
         return new RecycleState(on, lifetime, items, problem, more);
     }
@@ -456,12 +456,12 @@ public sealed partial class DirectoryTools
         // Asked for by its own DN, so a full Recycle Bin can't hide it. The bin itself isn't something to restore.
         var row = (Ldap.Under(at, bin) && !Ldap.Under(bin, at)
                 ? (await ldap.FindDeleted(at, "(isDeleted=TRUE)", false, ["objectClass", "msDS-LastKnownRDN", "lastKnownParent"], 1, stop)).FirstOrDefault() : null)
-            ?? throw new ToolProblem("That isn't in the Recycle Bin any more.", StatusCodes.Status404NotFound);
-        var name = row.Text("msDS-LastKnownRDN") ?? throw new ToolProblem("Active Directory didn't say what it was called.");
-        var parent = row.Text("lastKnownParent") ?? throw new ToolProblem("Active Directory didn't say where it was.");
+            ?? throw new ToolProblem("The object is no longer in the Recycle Bin.", StatusCodes.Status404NotFound);
+        var name = row.Text("msDS-LastKnownRDN") ?? throw new ToolProblem("Active Directory did not return the object's original name.");
+        var parent = row.Text("lastKnownParent") ?? throw new ToolProblem("Active Directory did not return the object's original location.");
         if (parent.Contains("\\0ADEL:", StringComparison.OrdinalIgnoreCase))
         {
-            throw new ToolProblem($"Where it was ({Ldap.Name(parent)}) was deleted too. Restore that first.");
+            throw new ToolProblem($"The original location ({Ldap.Name(parent)}) is also deleted. Restore it first.");
         }
         var newDn = $"{(KindOf(row) == "ou" ? "OU" : "CN")}={Ldap.Escape(name)},{parent}";
         InScope(newDn, f, ldap.BaseDn);
@@ -473,10 +473,10 @@ public sealed partial class DirectoryTools
         {
             throw new ToolProblem(e.Code switch
             {
-                LdapRefused.InsufficientRights => $"{f.Account} isn't allowed to restore deleted objects. That takes the Reanimate Tombstones right, which Domain Admins have.",
-                LdapRefused.EntryExists => $"There's already something called {name} in {Ldap.Path(parent, ldap.BaseDn)}. Rename or move it first.",
-                LdapRefused.NoSuchObject => $"{Ldap.Path(parent, ldap.BaseDn)} isn't there any more. Restore it first.",
-                _ => $"Active Directory said: {e.Message}.",
+                LdapRefused.InsufficientRights => $"Access denied. {f.Account} does not have permission to restore deleted objects. This requires the Reanimate Tombstones right, which Domain Admins have.",
+                LdapRefused.EntryExists => $"An object named {name} already exists in {Ldap.Path(parent, ldap.BaseDn)}. Rename or move that object first.",
+                LdapRefused.NoSuchObject => $"{Ldap.Path(parent, ldap.BaseDn)} no longer exists. Restore it first.",
+                _ => $"Active Directory returned an error: {e.Message}.",
             });
         }
         return newDn;
@@ -485,17 +485,17 @@ public sealed partial class DirectoryTools
     public async Task EnableRecycleBin(string username, string password, CancellationToken stop)
     {
         var f = Ready();
-        using var ldap = await open(f.Domain!, await Host(f.Domain!, stop), username, password, stop) ?? throw new ToolProblem("That username or password is wrong.");
+        using var ldap = await open(f.Domain!, await Host(f.Domain!, stop), username, password, stop) ?? throw new ToolProblem("The username or password is incorrect.");
         var config = (await ldap.Find("", "(objectClass=*)", false, ["configurationNamingContext"], 1, stop)).FirstOrDefault()?.Text("configurationNamingContext")
-            ?? throw new ToolProblem("Active Directory didn't say where its configuration is.");
+            ?? throw new ToolProblem("Active Directory did not return its configuration partition.");
         try
         {
             await ldap.Modify("", [new(LdapChange.Add, "enableOptionalFeature", $"CN=Partitions,{config}:{RecycleFeature}")], stop);
         }
         catch (LdapRefused e)
         {
-            throw new ToolProblem(e.Code == LdapRefused.InsufficientRights ? $"{Ldap.Account(username)} isn't allowed to. It takes an Enterprise Admin." : e.Code == LdapRefused.AttributeExists
-                ? "It's already on." : $"Active Directory said: {e.Message}. The forest has to be at Windows Server 2008 R2 or later.");
+            throw new ToolProblem(e.Code == LdapRefused.InsufficientRights ? $"Access denied. {Ldap.Account(username)} does not have permission. Enabling the AD Recycle Bin requires an Enterprise Admin." : e.Code == LdapRefused.AttributeExists
+                ? "The AD Recycle Bin is already enabled." : $"Active Directory returned an error: {e.Message}. The forest functional level must be Windows Server 2008 R2 or later.");
         }
     }
 
@@ -529,8 +529,8 @@ public sealed partial class DirectoryTools
 
     public async Task<AdPlace> BrowseAs(string? domain, string username, string password, string? dn, CancellationToken stop)
     {
-        var d = Clean(domain) ?? Domain ?? throw new ToolProblem("Which domain? Type its name, such as amw.com.");
-        using var ldap = await open(d, await Host(d, stop), username, password, stop) ?? throw new ToolProblem("That username or password is wrong.");
+        var d = Clean(domain) ?? Domain ?? throw new ToolProblem("Enter the domain name, for example amw.com.");
+        using var ldap = await open(d, await Host(d, stop), username, password, stop) ?? throw new ToolProblem("The username or password is incorrect.");
         return await PlaceOf(ldap, dn, d, stop);
     }
 
@@ -539,8 +539,8 @@ public sealed partial class DirectoryTools
     // that look like service accounts. Never krbtgt, Guest and the like, nor the mailboxes Exchange makes for itself.
     public async Task<List<AdAccountHit>> LookAccounts(string? domain, string? q, string? place, CancellationToken stop)
     {
-        var d = Clean(domain) ?? Domain ?? throw new ToolProblem("Which domain? Type its name, such as amw.com.");
-        var cant = $"This server can't read {d} on its own. Type the account's name instead.";
+        var d = Clean(domain) ?? Domain ?? throw new ToolProblem("Enter the domain name, for example amw.com.");
+        var cant = $"This server cannot read {d} with its computer account. Enter the account name instead.";
         using var ldap = await Ldap.OpenAnonymous(d, await Host(d, stop), stop) ?? throw new ToolProblem(cant);
         string[] wanted = ["objectClass", "sAMAccountName", "displayName", "description", "userAccountControl", "isCriticalSystemObject"];
         try
@@ -574,8 +574,8 @@ public sealed partial class DirectoryTools
     // Browse… for the service account: every OU and container, as Pick an OU lists them, read as this server.
     public async Task<List<AdOu>> LookPlaces(string? domain, CancellationToken stop)
     {
-        var d = Clean(domain) ?? Domain ?? throw new ToolProblem("Which domain? Type its name, such as amw.com.");
-        var cant = $"This server can't read {d} on its own. Type the account's name instead.";
+        var d = Clean(domain) ?? Domain ?? throw new ToolProblem("Enter the domain name, for example amw.com.");
+        var cant = $"This server cannot read {d} with its computer account. Enter the account name instead.";
         using var ldap = await Ldap.OpenAnonymous(d, await Host(d, stop), stop) ?? throw new ToolProblem(cant);
         try
         {
@@ -611,7 +611,7 @@ public sealed partial class DirectoryTools
     // account may write (allowedAttributesEffective) and that can be typed are editable, inside the scope only.
     private async Task<AdObject> AttributesOf(ILdap ldap, string at, CancellationToken stop)
     {
-        var all = await ldap.ReadAll(at, stop) ?? throw new ToolProblem("That isn't in Active Directory any more.", StatusCodes.Status404NotFound);
+        var all = await ldap.ReadAll(at, stop) ?? throw new ToolProblem("The object no longer exists in Active Directory.", StatusCodes.Status404NotFound);
         var set = new Dictionary<string, byte[][]>(all, StringComparer.OrdinalIgnoreCase);
         var kind = KindOf(set.TryGetValue("objectClass", out var c) ? c.Select(v => Encoding.UTF8.GetString(v)).ToList() : []);
         var allowed = (await ldap.Find(at, "(objectClass=*)", false, ["allowedAttributes", "allowedAttributesEffective"], 1, stop)).FirstOrDefault();
@@ -623,12 +623,12 @@ public sealed partial class DirectoryTools
         var roleReaches = Caller.Current is not { } caller || caller.Roles.Reach(caller.Who, Permissions.AdAttributes) is not { } reach || reach.Any(r => Ldap.Under(at, r));
         // Why it can't be edited here, or null when it can: the page greys out Edit… and says this.
         string? WhyNot(string name) =>
-            Secret.Contains(name) ? "Active Directory never shows or hands out this one."
-            : !inScope ? "It's outside the service account's scope."
-            : !roleReaches ? "Your roles don't let you edit attributes here."
-            : Identity.Contains(name) ? "Rename or move it to change this."
-            : !SchemaOf.TryGetValue(name, out var s) || !Editable(name, s.Syntax) ? "This kind of value can't be typed in."
-            : !writable.Contains(name) ? (writable.Count == 0 ? "The service account can't write to this object." : "The service account can't write this attribute.")
+            Secret.Contains(name) ? "Active Directory never returns this attribute's value."
+            : !inScope ? "This object is outside the service account's scope."
+            : !roleReaches ? "Your roles do not allow editing attributes here."
+            : Identity.Contains(name) ? "Rename or move the object to change this attribute."
+            : !SchemaOf.TryGetValue(name, out var s) || !Editable(name, s.Syntax) ? "This attribute type cannot be edited as text."
+            : !writable.Contains(name) ? (writable.Count == 0 ? "The service account does not have write permission on this object." : "The service account does not have write permission on this attribute.")
             : null;
         var rows = set.Select(a =>
         {
@@ -659,7 +659,7 @@ public sealed partial class DirectoryTools
         await Ranked(ldap, at, stop);
         if (!AttributeName().IsMatch(name))
         {
-            throw new ToolProblem("That isn't an attribute name.");
+            throw new ToolProblem("That is not a valid attribute name.");
         }
         if (name.Equals("sAMAccountName", StringComparison.OrdinalIgnoreCase))
         {
@@ -671,17 +671,17 @@ public sealed partial class DirectoryTools
         await Describe(ldap, [name], stop);
         if (!SchemaOf.TryGetValue(name, out var schema))
         {
-            throw new ToolProblem($"The schema has no attribute called {name}.");
+            throw new ToolProblem($"The schema has no attribute named {name}.");
         }
         if (!Editable(name, schema.Syntax))
         {
-            throw new ToolProblem($"{name} can't be edited here: it's binary, a secret, or what makes the object what it is.");
+            throw new ToolProblem($"{name} cannot be edited here. Binary, secret and naming attributes are read-only.");
         }
         var now = (await ldap.Find(at, "(objectClass=*)", false, ["allowedAttributesEffective", name], 1, stop)).FirstOrDefault()
-            ?? throw new ToolProblem("That isn't in Active Directory any more.", StatusCodes.Status404NotFound);
+            ?? throw new ToolProblem("The object no longer exists in Active Directory.", StatusCodes.Status404NotFound);
         if (!now.Texts("allowedAttributesEffective").Contains(name, StringComparer.OrdinalIgnoreCase))
         {
-            throw new ToolProblem($"{f.Account} isn't allowed to change {name} on {Ldap.Name(at)}.");
+            throw new ToolProblem($"Access denied. {f.Account} does not have permission to change {name} on {Ldap.Name(at)}.");
         }
         var clean = Clean(name, schema, values, out var why) ?? throw new ToolProblem(why!);
         // Clearing what's already empty changes nothing; Active Directory would call it an error.
@@ -693,8 +693,8 @@ public sealed partial class DirectoryTools
             }
             catch (LdapRefused e)
             {
-                throw new ToolProblem(e.Code == LdapRefused.InsufficientRights ? $"{f.Account} isn't allowed to change {name} on {Ldap.Name(at)}."
-                    : $"Active Directory refused it: {e.Message}.");
+                throw new ToolProblem(e.Code == LdapRefused.InsufficientRights ? $"Access denied. {f.Account} does not have permission to change {name} on {Ldap.Name(at)}."
+                    : $"Active Directory rejected the change: {e.Message}.");
             }
         }
         return await AttributesOf(ldap, at, stop);
@@ -774,7 +774,7 @@ public sealed partial class DirectoryTools
             var text = schema.Syntax is "2.5.5.3" or "2.5.5.4" or "2.5.5.5" or "2.5.5.12" ? raw : raw.Trim();
             if (text.Length > 100_000)
             {
-                why = $"A value of {name} can't be over 100,000 characters.";
+                why = $"Values of {name} cannot exceed 100,000 characters.";
                 return null;
             }
             switch (schema.Syntax)
@@ -782,7 +782,7 @@ public sealed partial class DirectoryTools
                 case "2.5.5.8":
                     if (!bool.TryParse(text, out var on))
                     {
-                        why = $"{name} is TRUE or FALSE.";
+                        why = $"{name} must be TRUE or FALSE.";
                         return null;
                     }
                     text = on ? "TRUE" : "FALSE";
@@ -790,7 +790,7 @@ public sealed partial class DirectoryTools
                 case "2.5.5.9":
                     if (!int.TryParse(text, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var n))
                     {
-                        why = $"{name} is a whole number from -2147483648 to 2147483647.";
+                        why = $"{name} must be a whole number from -2147483648 to 2147483647.";
                         return null;
                     }
                     text = n.ToString(CultureInfo.InvariantCulture);
@@ -798,7 +798,7 @@ public sealed partial class DirectoryTools
                 case "2.5.5.16":
                     if (!long.TryParse(text, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var big))
                     {
-                        why = $"{name} is a whole number from -9223372036854775808 to 9223372036854775807.";
+                        why = $"{name} must be a whole number from -9223372036854775808 to 9223372036854775807.";
                         return null;
                     }
                     text = big.ToString(CultureInfo.InvariantCulture);
@@ -806,38 +806,38 @@ public sealed partial class DirectoryTools
                 case "2.5.5.6":
                     if (text.Any(ch => !char.IsAsciiDigit(ch) && ch != ' '))
                     {
-                        why = $"{name} holds digits and spaces only.";
+                        why = $"{name} can contain only digits and spaces.";
                         return null;
                     }
                     break;
                 case "2.5.5.11":
                     if (!System.Text.RegularExpressions.Regex.IsMatch(text, @"^\d{12}(\d{2})?(\.\d{1,3})?Z$"))
                     {
-                        why = $"{name} is a time in UTC, written as YYYYMMDDHHMMSS.0Z (for example 20261231170000.0Z).";
+                        why = $"{name} must be a UTC time in the format YYYYMMDDHHMMSS.0Z (for example 20261231170000.0Z).";
                         return null;
                     }
                     break;
             }
             if (text.Any(ch => char.IsControl(ch) && ch is not ('\r' or '\n' or '\t')))
             {
-                why = $"A value of {name} has characters that can't be stored.";
+                why = $"A value of {name} contains characters that cannot be stored.";
                 return null;
             }
             values.Add(text);
         }
         if (values.Count > 1000)
         {
-            why = "At most 1,000 values can be set at once.";
+            why = "Up to 1,000 values can be set at once.";
             return null;
         }
         if (schema.Single && values.Count > 1)
         {
-            why = $"{name} holds a single value.";
+            why = $"{name} is single-valued. Enter one value.";
             return null;
         }
         if (values.Distinct(StringComparer.OrdinalIgnoreCase).Count() != values.Count)
         {
-            why = "The same value is there more than once.";
+            why = "The list contains duplicate values.";
             return null;
         }
         return values;
@@ -877,9 +877,9 @@ public sealed partial class DirectoryTools
         }
         if (name.Equals("userAccountControl", StringComparison.OrdinalIgnoreCase) && int.TryParse(text, out var flags))
         {
-            var named = new (int Bit, string Name)[] { (0x2, "disabled"), (0x10, "locked out"), (0x20, "no password needed"), (0x200, "normal account"), (0x1000, "workstation"),
+            var named = new (int Bit, string Name)[] { (0x2, "disabled"), (0x10, "locked out"), (0x20, "password not required"), (0x200, "normal account"), (0x1000, "workstation"),
                 (0x2000, "domain controller"), (0x10000, "password never expires"), (0x40000, "smart card required"), (0x80000, "trusted for delegation"), (0x100000, "not delegated"),
-                (0x400000, "no Kerberos pre-authentication") }.Where(f => (flags & f.Bit) != 0).Select(f => f.Name);
+                (0x400000, "Kerberos pre-authentication not required") }.Where(f => (flags & f.Bit) != 0).Select(f => f.Name);
             return $"{text} ({string.Join(", ", named)})";
         }
         return text;
@@ -938,7 +938,7 @@ public static class DirectoryExtrasApi
         app.MapPost("/api/ad/recycle/enable", (SetupForm form, HttpContext context, IDirectoryExtras tools, ActivityLog log) => UsersApi.Try(context, Permissions.AdConnect, async () =>
         {
             await tools.EnableRecycleBin(form.Username ?? "", form.Password ?? "", context.RequestAborted);
-            log.Record(context, "users", "ad.recycle.enable", "Turned on the AD Recycle Bin for the forest");
+            log.Record(context, "users", "ad.recycle.enable", "Enabled the AD Recycle Bin for the forest");
             return Results.Ok();
         }));
 

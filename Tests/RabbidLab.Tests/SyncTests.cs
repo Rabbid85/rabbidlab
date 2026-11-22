@@ -123,7 +123,7 @@ public sealed class SyncTests
         Assert.Equal(3, ok.Sent);
         Assert.Equal(new DateTime(2026, 11, 21, 15, 30, 0, DateTimeKind.Utc), ok.Next);
         var missing = SyncEntra.Read("RESULT {\"ok\":false,\"error\":\"The specified module 'ADSync' was not loaded because no valid module file was found.\"}");
-        Assert.Equal("Entra Connect isn't installed on that server.", missing.Error);
+        Assert.Equal("Entra Connect is not installed on that server.", missing.Error);
         Assert.False(SyncEntra.Read("nothing useful").Ok);
         Assert.Contains("Start-ADSyncSyncCycle -PolicyType Initial", SyncEntra.Script(full: true));
         Assert.Contains("Start-ADSyncSyncCycle -PolicyType Delta", SyncEntra.Script(full: false));

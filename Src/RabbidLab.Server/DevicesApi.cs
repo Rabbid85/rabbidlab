@@ -43,7 +43,7 @@ public static class DevicesApi
             }
             if (await confirm.Confirm(context, form.Code, form.Password, context.RequestAborted) is { } problem)
             {
-                log.Record(context, "access", "confirm.failed", "Didn't confirm who they are", "failed", problem);
+                log.Record(context, "access", "confirm.failed", "Identity confirmation failed", "failed", problem);
                 return Results.BadRequest(new { error = problem });
             }
             return Results.Ok(new { until = confirm.Until(context) });
@@ -81,15 +81,15 @@ public static class DevicesApi
             }
             if (BuiltInScripts.Is(id))
             {
-                return Results.BadRequest(new { error = "Built-in scripts can't be deleted." });
+                return Results.BadRequest(new { error = "Built-in scripts cannot be deleted." });
             }
             if (workflows.Using(id) is { Count: > 0 } used)
             {
-                return Results.BadRequest(new { error = $"The workflow {used[0].Name} runs this script. Take it out of the workflow first." });
+                return Results.BadRequest(new { error = $"The workflow {used[0].Name} uses this script. Remove the script from the workflow first." });
             }
             if (scripts.Delete(id) is not { } gone)
             {
-                return Results.NotFound(new { error = "That script isn't here any more." });
+                return Results.NotFound(new { error = "That script no longer exists." });
             }
             log.Record(context, "clients", "script.delete", $"Deleted the script {gone.Name}");
             return Results.Ok();
@@ -119,7 +119,7 @@ public static class DevicesApi
         // What installing one runs, to the letter. Asked for when its panel opens, not with the list.
         app.MapGet("/api/devices/apps/{id}/script", (string id, HttpContext context, DeviceApps apps) =>
             !Seeing(context, Permissions.SeatsInstalls, Permissions.Workflows) ? Access.NotAllowed()
-            : apps.Find(id) is not { } a ? Results.NotFound(new { error = "That app isn't here any more." })
+            : apps.Find(id) is not { } a ? Results.NotFound(new { error = "That app no longer exists." })
             : Results.Ok(new { text = DeviceApps.Step(a).Text, minutes = DeviceApps.Minutes }));
 
         app.MapPost("/api/devices/apps", (AppForm form, HttpContext context, DeviceApps apps, Confirmations confirm, ActivityLog log) =>
@@ -145,15 +145,15 @@ public static class DevicesApi
             }
             if (BuiltInApps.Is(id))
             {
-                return Results.BadRequest(new { error = "Built-in apps can't be deleted." });
+                return Results.BadRequest(new { error = "Built-in apps cannot be deleted." });
             }
             if (workflows.Installing(id) is { Count: > 0 } used)
             {
-                return Results.BadRequest(new { error = $"The workflow {used[0].Name} installs this app. Take it out of the workflow first." });
+                return Results.BadRequest(new { error = $"The workflow {used[0].Name} installs this app. Remove the app from the workflow first." });
             }
             if (apps.Delete(id) is not { } gone)
             {
-                return Results.NotFound(new { error = "That app isn't here any more." });
+                return Results.NotFound(new { error = "That app no longer exists." });
             }
             log.Record(context, "clients", "app.delete", $"Deleted the app {gone.Name} from Installs");
             return Results.Ok();
@@ -173,7 +173,7 @@ public static class DevicesApi
             };
             if (needs is null)
             {
-                return Results.BadRequest(new { error = "Say what to run." });
+                return Results.BadRequest(new { error = "Select a script or action to run." });
             }
             if ((Access.RefuseUnless(context, needs) ?? confirm.Refuse(context)) is { } refused)
             {
@@ -182,11 +182,11 @@ public static class DevicesApi
             List<Client> on = [.. (form.Clients ?? []).Distinct().Select(clients.Find).OfType<Client>().Where(c => c.Approved is not null)];
             if (on.Count == 0)
             {
-                return Results.BadRequest(new { error = "Pick at least one approved computer." });
+                return Results.BadRequest(new { error = "Select at least one approved computer." });
             }
             if (on.Count > Brake && form.Count != on.Count)
             {
-                return Results.BadRequest(new { error = $"That's {on.Count} computers. Type {on.Count} to run it on all of them.", count = on.Count });
+                return Results.BadRequest(new { error = $"This affects {on.Count} computers. Type {on.Count} to confirm.", count = on.Count });
             }
             JobStep step;
             string title;
@@ -198,11 +198,11 @@ public static class DevicesApi
                 List<DeviceApp> picked = [.. ids.Select(apps.Find).OfType<DeviceApp>()];
                 if (picked.Count == 0 || picked.Count != ids.Count)
                 {
-                    return Results.BadRequest(new { error = picked.Count == 0 ? "Pick an app to install." : "One of those apps isn't here any more." });
+                    return Results.BadRequest(new { error = picked.Count == 0 ? "Select an app to install." : "One of the selected apps no longer exists." });
                 }
                 if (picked.Count > DeviceApps.MostAtOnce)
                 {
-                    return Results.BadRequest(new { error = $"Install {DeviceApps.MostAtOnce} apps at a time at most." });
+                    return Results.BadRequest(new { error = $"You can install up to {DeviceApps.MostAtOnce} apps at a time." });
                 }
                 steps = [.. picked.Select(DeviceApps.Step)];
                 installed = DeviceApps.Names(picked);
@@ -272,7 +272,7 @@ public static class DevicesApi
             }
             else
             {
-                return Results.NotFound(new { error = "That script isn't here any more." });
+                return Results.NotFound(new { error = "That script no longer exists." });
             }
             // Locking, signing out, shutting down and a message are for now: a computer that's offline longer doesn't get them later.
             var now = form.Kind is DeviceJobs.Lock or DeviceJobs.SignOut or DeviceJobs.Shutdown or DeviceJobs.Message or DeviceJobs.Client or DeviceJobs.GpUpdate;
@@ -286,7 +286,7 @@ public static class DevicesApi
             {
                 DeviceJobs.Printer or DeviceJobs.Check => $"{title} on {computers}",
                 DeviceJobs.Install => $"Installed {installed} on {computers}",
-                DeviceJobs.Script => $"Ran {(typed ? "a script typed in" : $"the script {title}")} on {computers}",
+                DeviceJobs.Script => $"Ran {(typed ? "an ad hoc script" : $"the script {title}")} on {computers}",
                 DeviceJobs.Restart => $"Restarted {computers}",
                 DeviceJobs.Lock => $"Locked {computers}",
                 DeviceJobs.SignOut => $"Signed everyone out of {computers}",
@@ -309,11 +309,11 @@ public static class DevicesApi
             List<Client> on = [.. (form.Clients ?? []).Distinct().Select(clients.Find).OfType<Client>().Where(c => c.Approved is not null)];
             if (on.Count == 0)
             {
-                return Results.BadRequest(new { error = "Pick at least one approved computer." });
+                return Results.BadRequest(new { error = "Select at least one approved computer." });
             }
             if (on.Count > Waker.Most)
             {
-                return Results.BadRequest(new { error = $"Wake {Waker.Most} computers at a time at most." });
+                return Results.BadRequest(new { error = $"You can wake up to {Waker.Most} computers at a time." });
             }
             var results = await waker.Wake(on, context.RequestAborted);
             log.Record(context, "clients", "devices.wake", $"Sent a wake-up to {Workflows.Computers(on)}", results.Any(r => r.Problem is null) ? "ok" : "failed",
@@ -343,7 +343,7 @@ public static class DevicesApi
                     client = t.Client, computer = t.Computer, state = t.State, sent = t.Sent, finished = t.Finished, problem = t.Problem,
                     steps = t.Steps.Select(s => new { exit = s.Exit, seconds = s.Seconds, timedOut = s.TimedOut }).ToList(),
                 }).ToList(),
-            }) is { } job ? Results.Ok(job) : Results.NotFound(new { error = "That job isn't kept any more." }));
+            }) is { } job ? Results.Ok(job) : Results.NotFound(new { error = "That job is no longer in the job history." }));
 
         app.MapGet("/api/devices/jobs/{id}/output/{client}", (string id, string client, HttpContext context, DeviceJobs jobs) =>
             !Seeing(context, Doing) ? Access.NotAllowed() : Results.Ok(new { output = jobs.Output(id, client) ?? [] }));
@@ -362,7 +362,7 @@ public static class DevicesApi
             var cancelled = jobs.Cancel(id);
             if (cancelled > 0)
             {
-                log.Record(context, "clients", "job.cancel", $"Cancelled a job for {cancelled} computer{(cancelled == 1 ? "" : "s")} that hadn't taken it", "ok", $"Job {id}");
+                log.Record(context, "clients", "job.cancel", $"Cancelled a job for {cancelled} computer{(cancelled == 1 ? "" : "s")} that had not started it", "ok", $"Job {id}");
             }
             return Results.Ok(new { cancelled });
         });
@@ -384,7 +384,7 @@ public static class DevicesApi
             if ((form.Steps ?? []).Any(s => !Access.Can(context, s.Kind == Workflows.RunScript ? Permissions.ScriptsRun
                 : s.Kind == Workflows.InstallApp ? Permissions.SeatsInstalls : Permissions.SeatsActions)))
             {
-                return Results.Json(new { error = "Your roles don't let you do one of these steps by hand, so you can't put it in a workflow." }, statusCode: StatusCodes.Status403Forbidden);
+                return Results.Json(new { error = "You do not have permission to run one of these steps, so you cannot add it to a workflow." }, statusCode: StatusCodes.Status403Forbidden);
             }
             var (w, problem) = workflows.Save(form, ActivityLog.Who(context));
             if (w is null)
@@ -404,7 +404,7 @@ public static class DevicesApi
             }
             if (workflows.Enable(id, form.On) is not { } w)
             {
-                return Results.NotFound(new { error = "That workflow isn't here any more." });
+                return Results.NotFound(new { error = "That workflow no longer exists." });
             }
             log.Record(context, "clients", "workflow.on", $"{(form.On ? "Enabled" : "Disabled")} the workflow {w.Name}");
             return Results.Ok();
@@ -418,10 +418,10 @@ public static class DevicesApi
             }
             if (workflows.Find(id) is not { } w)
             {
-                return Results.NotFound(new { error = "That workflow isn't here any more." });
+                return Results.NotFound(new { error = "That workflow no longer exists." });
             }
             return workflows.RunNow(w, ActivityLog.Who(context)) is { } job ? Results.Ok(new { id = job.Id, computers = job.Targets.Count })
-                : Results.BadRequest(new { error = "It didn't run: no approved computer fits it, or one of its scripts was deleted." });
+                : Results.BadRequest(new { error = "The workflow did not run. No approved computers match it, or one of its scripts was deleted." });
         });
 
         app.MapPost("/api/devices/workflows/{id}/delete", (string id, HttpContext context, Workflows workflows, ActivityLog log) =>
@@ -432,7 +432,7 @@ public static class DevicesApi
             }
             if (workflows.Delete(id) is not { } gone)
             {
-                return Results.NotFound(new { error = "That workflow isn't here any more." });
+                return Results.NotFound(new { error = "That workflow no longer exists." });
             }
             log.Record(context, "clients", "workflow.delete", $"Deleted the workflow {gone.Name}");
             return Results.Ok();
@@ -466,11 +466,11 @@ public static class DevicesApi
             var ids = (form.Clients ?? []).Where(id => !string.IsNullOrWhiteSpace(id)).Distinct().ToList();
             if (ids.Count == 0)
             {
-                return Results.BadRequest(new { error = "Pick the computers to ask." });
+                return Results.BadRequest(new { error = "Select the computers to query." });
             }
             if (ids.Count > WmiMost)
             {
-                return Results.BadRequest(new { error = $"Ask {WmiMost} computers at a time at most." });
+                return Results.BadRequest(new { error = $"You can query up to {WmiMost} computers at a time." });
             }
             var space = WmiAsk.Space(form.Space);
             var query = form.Query!.Trim();
@@ -509,26 +509,26 @@ public static class DevicesApi
     {
         if (c is null)
         {
-            return (null, "That computer isn't in Devices any more.");
+            return (null, "That computer is no longer in Devices.");
         }
         if (c.Approved is null)
         {
-            return (null, "It's waiting to be approved.");
+            return (null, "The computer is pending approval.");
         }
         if (!Version.TryParse(c.Version, out var v) || v < WmiFrom)
         {
-            return (null, $"Its client is {c.Version ?? "too old"}. WMI queries need {WmiFrom} or later, which it updates to by itself.");
+            return (null, $"The client version is {c.Version ?? "too old"}. WMI queries require client {WmiFrom} or later. The client updates automatically.");
         }
         if (!commands.Listening(c.Id))
         {
-            return (null, "Its client isn't connected right now.");
+            return (null, "The client isn't connected.");
         }
         var answer = await commands.Send(c.Id, order, stop);
         if (answer is null)
         {
-            return (null, $"It didn't answer within {ClientCommands.Answer.TotalSeconds:0} seconds.");
+            return (null, $"The client did not respond within {ClientCommands.Answer.TotalSeconds:0} seconds.");
         }
-        return answer.Ok ? (answer, null) : (null, answer.Error ?? "It couldn't read that.");
+        return answer.Ok ? (answer, null) : (null, answer.Error ?? "The query failed.");
     }
 
     // GARAGE-PC, GARAGE-PC and OFFICE-PC, or 5 computers.
