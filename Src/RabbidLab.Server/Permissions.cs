@@ -12,6 +12,7 @@ public static class Permissions
     public const string SeatsSettings = "seats.settings";
     public const string SeatsActions = "seats.actions";
     public const string SeatsInstalls = "seats.installs";
+    public const string SeatsPrinters = "seats.printers";
     public const string ScriptsRun = "seats.scripts.run";
     public const string ScriptsEdit = "seats.scripts.edit";
     public const string Workflows = "seats.workflows";
@@ -85,6 +86,7 @@ public static class Permissions
             new(SeatsAdd, "Add computers", "Access the client installer, the Connect link and the Group Policy template."),
             new(SeatsSettings, "Change client settings", "Whether new computers require approval."),
             new(SeatsActions, "Restart, wake and update computers", "Restart computers, wake them with Wake-on-LAN, and install missing Windows updates. Restarts and updates appear under Jobs."),
+            new(SeatsPrinters, "Manage print queues", "Pause, resume, restart and cancel print jobs on the print servers, and pause printing or cancel every job on a printer."),
             new(SeatsInstalls, "Install apps", "Install apps from the Installs page on computers for all users, as SYSTEM, and add apps by winget ID. Installs appear under Jobs."),
             new(ScriptsRun, "Run scripts", "Run library scripts on computers as SYSTEM and view the output under Jobs."),
             new(ScriptsEdit, "Manage scripts", "Add, edit and delete scripts, and run custom scripts. This permission can run any code on every computer."),

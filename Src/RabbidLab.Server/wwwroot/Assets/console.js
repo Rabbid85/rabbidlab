@@ -3,6 +3,12 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.351', [
+    'A print server printer in Devices, Printers now has Queue and History tabs. The queue updates every 5 seconds, and jobs can be paused, resumed, restarted and cancelled, one at a time or ticked together.',
+    'Print jobs, a new tab beside Printers, lists the jobs in every print queue with Printer, Owner and Status filters, and each job opens in the side panel.',
+    'Pause printing and Cancel all jobs work on a whole printer. These need the new Manage print queues permission, and they run as the service account, which needs Manage documents on the printer.',
+    'History lists finished jobs from each print server PrintService log and keeps them for 5, 15, 30, 60 or 90 days, set in Settings, Devices. If the log is off, the tab says how to turn it on.',
+    'The Run stage now button in Offboarding shows its icon again.']],
   ['1.1.350', [
     'Offboard users in three stages from Actions, Offboard: on the last day, then 7, 14 or 30 days later, then 30, 90 or 180 days later. Each step is a switch, and the last day can be now or any date and time.',
     'Stage 1 can disable the account, reset the password, sign them out of their computers, hide them from address lists, move their direct reports to someone else, clear their phone and office, add a note and email their manager.',
@@ -1102,6 +1108,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.351': ['2026-11-22', 'feature', 'Print queues, job history and Print jobs'],
   '1.1.350': ['2026-11-22', 'feature', 'Offboarding in three stages'],
   '1.1.349': ['2026-11-22', 'update', 'Loading placeholders that follow the theme'],
   '1.1.348': ['2026-11-22', 'feature', 'AD audit with old and new values, and a History tab'],

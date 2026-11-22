@@ -23,6 +23,7 @@
 <link rel="stylesheet" href="Assets/sync.css">
 <link rel="stylesheet" href="Assets/report.css">
 <link rel="stylesheet" href="Assets/offboard.css">
+<link rel="stylesheet" href="Assets/printq.css">
 <link rel="stylesheet" href="Assets/news.css">
 <link rel="stylesheet" href="Assets/edition.css">
 <link rel="stylesheet" href="Assets/themes.css">
@@ -71,7 +72,7 @@
   <symbol id="i-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 21h4"/></symbol>
   <symbol id="i-out" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M9 7h8v8"/></symbol>
   <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
-  <symbol id="i-pause" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6v12M15 6v12"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6v12M15 6v12"/></symbol><symbol id="i-play" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5.5v13l10-6.5z"/></symbol>
   <symbol id="i-rail" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></symbol>
   <symbol id="i-gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></symbol>
   <symbol id="i-filter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16l-6.2 7.6V18l-3.6 2v-7.4z"/></symbol>
@@ -638,6 +639,10 @@
         <div class="ds-row"><div class="ds-l"><b>Require approval for new computers</b><span>New computers show as Pending approval until an admin approves them. When this is off, they connect immediately.</span></div>
           <div class="ds-r"><span class="sw-label" id="seat-approve-label"></span><input type="checkbox" class="switch" id="seat-approve" role="switch" aria-label="Require approval for new computers" disabled></div></div>
       </section>
+      <section class="ds-sec" data-sec="printhist" data-can="seats.settings"><h3 class="ds-h">Print jobs</h3>
+        <div class="ds-row"><div class="ds-l"><b>Keep print job history for</b><span>Finished jobs are read from each print server's PrintService log every few minutes. Older ones are deleted.</span></div>
+          <div class="ds-r"><div class="seg" id="ph-keep" role="group" aria-label="Keep print job history for"></div></div></div>
+      </section>
       <section class="ds-sec" data-sec="lock" data-can="seats.settings"><h3 class="ds-h">Uninstall lock</h3>
         <div class="ds-row"><div class="ds-l"><b>Release the lock after 30 days offline</b><span>If a computer cannot reach this server for 30 days, the client can be uninstalled without a code. This prevents computers from staying locked if this server is permanently removed.</span></div>
           <div class="ds-r"><span class="sw-label" id="seat-unlock-label"></span><input type="checkbox" class="switch" id="seat-unlock" role="switch" aria-label="Release the uninstall lock after 30 days offline" disabled></div></div>
@@ -790,6 +795,7 @@
           <div class="table adt drows" id="dv-adminp" hidden></div>
           <div class="table adt drows" id="dv-printers" hidden></div>
           <div class="table adt drows" id="dv-pservers" hidden></div>
+          <div class="table adt drows" id="dv-pjobs" hidden></div>
           <div class="table adt drows" id="sessions-table" hidden></div>
           <div class="table adt drows" id="dv-installs" hidden></div>
           <div class="table adt drows" id="dv-scripts" hidden></div>

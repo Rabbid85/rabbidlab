@@ -330,11 +330,13 @@
   };
   D.lists.printers = ['Printers', 'printer', 'All printers on your print servers and computers.'];
   D.more.printers = {
-    get table() { return tab === 'servers' ? 'dv-pservers' : 'dv-printers'; },
-    get noun() { return tab === 'servers' ? 'print servers' : 'printers'; },
-    grid: () => (tab === 'servers' ? serversGrid() : printersGrid()),
-    rows: () => (tab === 'servers' ? servers() : shown()),
-    count: () => (all ? shown().length : ''), can: () => has('seats.view'),
+    get table() { return tab === 'servers' ? 'dv-pservers' : tab === 'jobs' ? 'dv-pjobs' : 'dv-printers'; },
+    get noun() { return tab === 'servers' ? 'print servers' : tab === 'jobs' ? 'print jobs' : 'printers'; },
+    // Print jobs has ticks of its own; the other two lists have none.
+    get acts() { return tab === 'jobs' ? jobsActs : undefined; },
+    grid: () => (tab === 'servers' ? serversGrid() : tab === 'jobs' ? jobsGrid() : printersGrid()),
+    rows: () => (tab === 'servers' ? servers() : tab === 'jobs' ? jobs || [] : shown()),
+    count: () => (tab === 'jobs' ? jobs?.length ?? '' : all ? shown().length : ''), can: () => has('seats.view'),
     every: 60000, // read again a minute apart while it's open: Active Directory and the printers are asked too
     load: async () => {
       // The computers' printers, and the servers' when this person may see Active Directory (none when it isn't set up).
@@ -342,6 +344,7 @@
       const ask = again;
       again = false;
       [all, adp] = await Promise.all([get('/api/devices/printers'), has('ad.view') ? get(`/api/ad/printers${ask ? '?again=true' : ''}`).catch(() => null) : null]);
+      if (tab === 'jobs') await loadJobs();
       merge();
       supplyTries = 0;
       supplies(ask);
@@ -358,9 +361,10 @@
     empty: () => {
       if (!all) return 'Could not load the list.';
       if (tab === 'servers') return !adp ? 'Active Directory is not configured, so print servers cannot be found.' : adp.scanning ? 'Querying print servers…' : 'No print servers found in Active Directory.';
+      if (tab === 'jobs') return jobs ? 'No documents are waiting in any print queue.' : 'Could not load the print jobs.';
       return all.computers.some((c) => c.read) ? 'No printers found on print servers or computers.' : `No printers found on print servers, and no computer has reported its printers yet. Clients ${NEEDS} and later report printers within 30 minutes.`;
     },
-    fields: () => (tab === 'servers' ? null : PRINTER_FIELDS),
+    fields: () => (tab === 'servers' ? null : tab === 'jobs' ? JOB_FIELDS : PRINTER_FIELDS),
   };
   const markRow = () => document.querySelectorAll('#dv-printers [data-pr-row]').forEach((el) => el.classList.toggle('dw-on', panel.shows('printers', el.dataset.prRow)));
   panel.el.addEventListener('close', markRow);
@@ -374,11 +378,37 @@
     }
     const p = shown().find((x) => `${x.name}\n${x.address || ''}` === key);
     if (!p) return;
+    openPrinter(p, key);
+  });
+  // A printer in the panel: Summary, and for a queue a print server shares, its Queue and History (print queues below).
+  let pv = null; // { p, key, tab } while one is open
+  const openPrinter = (p, key, tab = 'summary') => {
+    reset(p);
+    pv = { p, key, tab };
+    drawPrinter();
+    panel.open('printers', key);
+    markRow();
+    pollQueue();
+  };
+  const drawPrinter = () => {
+    const { p } = pv;
     const pcs = p.computers.map((x) => D.rows().find((c) => c.id === x.id)).filter(Boolean);
     const line = (label, value, mono = false) => (value === '' || value == null ? '' : `<li><b>${label}</b><span${mono ? ' class="mono"' : ''}>${esc(value)}</span></li>`);
-    panel.body.innerHTML = `<div class="dw-head"><span class="pic dw-pic">${svg('printer')}</span><div class="dw-name"><h2 id="dw-title">${esc(p.name)}</h2><p>${esc([KIND[p.kind] || p.kind, addr(p) || p.server].filter(Boolean).join(' · '))}</p></div>`
-      + `<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`
-      + (can() && p.kind !== 'universal' && p.computers.length ? `<div class="dw-bar"><button type="button" class="dw-qa" data-prl-remove>${svg('trash')}<span>Remove from all computers</span></button></div>` : '')
+    const queued = p.listed && p.share && p.found;
+    const tabs = queued ? `<div class="tabs2 dw-tabs" role="tablist">${[['summary', 'Summary'], ['queue', 'Queue', q.read?.share === p.share ? q.read.jobs.length : p.jobs], ['history', 'History']]
+      .map(([t, label, n]) => `<a role="tab" data-pq-tab="${t}"${pv.tab === t ? ' aria-current="true"' : ''}>${esc(label)}${n == null || n === '' ? '' : `<small>${esc(String(n))}</small>`}</a>`).join('')}</div>` : '';
+    const bar = [can() && p.kind !== 'universal' && p.computers.length ? `<button type="button" class="dw-qa" data-prl-remove>${svg('trash')}<span>Remove from all computers</span></button>` : '',
+      queued && has('seats.printers') ? `<button type="button" class="dw-qa" data-pq-printer="${p.status === 'Paused' ? 'resume' : 'pause'}">${svg(p.status === 'Paused' ? 'play' : 'pause')}<span>${p.status === 'Paused' ? 'Resume printing' : 'Pause printing'}</span></button>`
+        + `<button type="button" class="dw-qa" data-pq-printer="purge">${svg('x')}<span>Cancel all jobs</span></button>` : ''].join('');
+    const head = `<div class="dw-head"><span class="pic dw-pic">${svg('printer')}</span><div class="dw-name"><h2 id="dw-title">${esc(p.name)}</h2><p>${esc([KIND[p.kind] || p.kind, addr(p) || p.server].filter(Boolean).join(' · '))}</p></div>`
+      + `<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>${bar ? `<div class="dw-bar">${bar}</div>` : ''}${tabs}`;
+    if (queued && pv.tab !== 'summary') {
+      panel.body.innerHTML = head + (pv.tab === 'queue' ? queuePane(p) : historyPane(p));
+      afterPane(p);
+      wireRemove(p, pcs);
+      return;
+    }
+    panel.body.innerHTML = head
       + (p.problems?.length ? section(`Problems <small>${p.problems.length}</small>`, `<ul class="pr-probs">${p.problems.map((t) => `<li>${svg('alert')}<span>${esc(t)}</span></li>`).join('')}</ul>`) : '')
       // What the printer itself said over SNMP: its supplies as bars in their own colours, then who it is.
       + (!p.device ? '' : !p.device.answered ? section('Printer status (SNMP)', none(`No SNMP response from ${p.ip}. The printer may be off, on a network this server cannot reach, or have SNMP disabled.`))
@@ -390,9 +420,10 @@
         + `${line('In Active Directory', p.published ? 'Listed' : 'Not listed')}</ul>`) : '')
       + section(`Computers <small>${p.computers.length}</small>`, p.computers.length ? `<div class="dw-list">${p.computers.map((x) => `<div class="mrow acc-row" data-prl-pc="${esc(x.id)}"><span class="pic small">${svg('monitor')}</span>`
         + `<div class="two"><b>${esc(x.computer)}</b><small>${esc([x.driver, x.port].filter(Boolean).join(' · '))}</small></div>${x.offline ? chip('Offline', 'off', 'power') : ''}${svg('right', 'acc-go')}</div>`).join('')}</div>` : none('Not installed on any computer. Add it from a computer panel, or select computers and use Actions.'));
-    panel.open('printers', key);
-    markRow();
     // Each computer has it under its own name (a connection is \\server\Printer there): one job for each name.
+    wireRemove(p, pcs);
+  };
+  const wireRemove = (p, pcs) => {
     const named = new Map();
     for (const x of p.computers) {
       const pc = pcs.find((c) => c.id === x.id);
@@ -406,7 +437,7 @@
         oops(e);
       }
     }));
-  });
+  };
   // A print server in the panel: what it shares, or why it couldn't be asked.
   const markServer = () => document.querySelectorAll('#dv-pservers [data-ps-row]').forEach((el) => el.classList.toggle('dw-on', panel.shows('pservers', el.dataset.psRow)));
   panel.el.addEventListener('close', markServer);
@@ -444,18 +475,291 @@
     const b = e.target.closest('[data-prl-pc]');
     if (b && panel.is('printers')) D.open(b.dataset.prlPc, 'printers');
   });
+  // --- Print queues (PrintQueues.cs): a queue's jobs, read every 5 seconds while its panel shows them, what finished,
+  // and Print jobs, every queue at once. Changing a job takes Manage print queues and runs as the service account. ---
+  const q = { read: null, history: null, picked: new Set(), timer: 0 };
+  const manage = () => has('seats.printers');
+  const VERB = { pause: ['Pausing', 'Paused'], resume: ['Resuming', 'Resumed'], restart: ['Restarting', 'Restarted'], cancel: ['Cancelling', 'Cancelled'] };
+  const STATE = { Error: ['alert', 'bad'], Offline: ['alert', 'bad'], 'Out of paper': ['alert', 'bad'], Paused: ['pause', 'warn'], Printing: ['printer', 'on'], Printed: ['check', 'ok'], Cancelling: ['x', ''] };
+  const stateCell = (j) => { const [icon, cls] = STATE[j.state] || ['clock', '']; return `<span class="pq-state ${cls}">${svg(icon)}${esc(j.state)}</span>`; };
+  const pagesCell = (j) => `<span class="pq-pages"><progress max="${Math.max(j.pages, 1)}" value="${Math.min(j.printed, Math.max(j.pages, 1))}"></progress>${j.printed} of ${j.pages}</span>`;
+  const clockOf = (iso) => (iso ? new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '');
+  const dayOf = (iso) => (iso ? new Date(iso).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '');
+  const jobBtn = (act, j, icon, tip) => `<button type="button" class="icon" data-pq-job="${act}:${j.id}" data-pq-share="${esc(j.share)}" data-tip="${tip}" aria-label="${tip} ${esc(j.document)}">${svg(icon)}</button>`;
+  const rowActs = (j) => (manage() ? `<span class="pq-acts">${j.state === 'Paused' ? jobBtn('resume', j, 'play', 'Resume') : jobBtn('pause', j, 'pause', 'Pause')}${jobBtn('restart', j, 'restart', 'Restart')}${jobBtn('cancel', j, 'x', 'Cancel')}</span>` : '');
+  const tickBox = (attr, key, label, on) => `<label class="tk"><input type="checkbox" ${attr}="${esc(key)}" aria-label="Select ${esc(label)}"${on ? ' checked' : ''}></label>`;
+  const JOB_COLS = (withPrinter) => [
+    { key: 'document', label: 'Document', w: 200, fixed: true, get: (j) => j.document, cell: (j) => `<div class="who"><span class="pic">${svg('printer')}</span><b class="ell">${esc(j.document)}</b></div>` },
+    ...(withPrinter ? [{ key: 'printer', label: 'Printer', w: 150, on: true, get: (j) => j.printer, cell: (j) => `<span class="ell">${esc(j.printer)}</span>` }] : []),
+    { key: 'state', label: 'Status', w: 125, on: true, get: (j) => j.state, cell: stateCell },
+    { key: 'pages', label: 'Pages', w: 140, on: true, get: (j) => j.pages, text: (j) => `${j.printed} of ${j.pages}`, cell: pagesCell },
+    { key: 'owner', label: 'Owner', w: 130, on: true, get: (j) => j.owner || '' },
+    { key: 'computer', label: 'Computer', w: 120, on: true, get: (j) => j.computer || '' },
+    { key: 'submitted', label: 'Submitted', w: 110, on: true, get: (j) => (j.submitted ? new Date(j.submitted).getTime() : 0), text: (j) => clockOf(j.submitted), cell: (j) => `<span class="muted">${esc(clockOf(j.submitted))}</span>` },
+    ...(withPrinter ? [{ key: 'server', label: 'Print server', w: 120, get: (j) => j.server }] : []),
+    { key: 'position', label: 'Position', w: 80, get: (j) => j.position },
+    { key: 'id', label: 'Job ID', w: 80, get: (j) => j.id },
+  ];
+  const jobsOf = (r) => (r?.jobs || []).map((j) => ({ ...j, printer: r.printer, server: r.server, share: r.share }));
+
+  // The open printer's queue and history in its panel.
+  let qG = null;
+  const qGrid = () => (qG ||= R.grid({
+    el: () => $('pq-jobs'), key: 'pqueue', sort: { key: 'position', dir: 1 }, cols: JOB_COLS(false),
+    lead: { w: 18, head: '<label class="tk"><input type="checkbox" data-pq-tick-all aria-label="Select all"></label>', cell: (j) => tickBox('data-pq-tick', j.id, j.document, q.picked.has(j.id)) },
+    tail: { w: 100, cell: rowActs }, row: (j) => ` data-pq-row="${j.id}"`, empty: () => 'No jobs in the queue.', loading: () => !q.read, redraw: () => drawPrinter(),
+  }));
+  let hG = null;
+  const hGrid = () => (hG ||= R.grid({
+    el: () => $('pq-hist'), key: 'phistory', sort: { key: 'at', dir: -1 },
+    cols: [
+      { key: 'at', label: 'Finished', w: 140, fixed: true, get: (h) => new Date(h.at).getTime(), text: (h) => dayOf(h.at), cell: (h) => `<span class="muted">${esc(dayOf(h.at))}</span>` },
+      { key: 'document', label: 'Document', w: 200, on: true, get: (h) => h.document, cell: (h) => `<b class="ell">${esc(h.document)}</b>` },
+      { key: 'owner', label: 'Owner', w: 120, on: true, get: (h) => h.owner || '' },
+      { key: 'computer', label: 'Computer', w: 110, on: true, get: (h) => h.computer || '' },
+      { key: 'pages', label: 'Pages', w: 70, on: true, get: (h) => h.pages },
+      { key: 'result', label: 'Result', w: 160, on: true, get: (h) => h.result, cell: (h) => `<span class="pq-state ${h.result === 'Printed' ? 'ok' : ''}">${svg(h.result === 'Printed' ? 'check' : 'x')}${esc(h.result)}</span>` },
+    ],
+    empty: () => 'No finished jobs yet.', loading: () => !q.history, redraw: () => drawPrinter(),
+  }));
+  const queuePane = (p) => {
+    const r = q.read?.share === p.share ? q.read : null;
+    const acts = manage() ? `<button type="button" class="small" data-pq-acts${q.picked.size ? '' : ' disabled'}>Actions${q.picked.size ? ` <small>${q.picked.size}</small>` : ''}${svg('chevron-down')}</button>` : '';
+    return `<section class="dw-sec"><div class="dw-sec-head"><h3>Queue${r ? ` <small>${r.jobs.length}</small>` : ''}</h3>${acts}</div>${r?.problem ? `<p class="hint problem">${esc(r.problem)}</p>` : ''}`
+      + `<div class="table adt pq-table" id="pq-jobs"></div><p class="hint">Refreshed from ${esc(p.server)} every 5 seconds.</p></section>`;
+  };
+  const historyPane = (p) => {
+    const h = q.history?.share === p.share ? q.history : null;
+    const off = (h?.servers || []).filter((s) => s.problem).map((s) => `<p class="hint warn pq-why">${svg('alert')}<span>${esc(s.problem)}</span></p>`).join('');
+    return `<section class="dw-sec"><div class="dw-sec-head"><h3>History${h ? ` <small>${h.rows.length}</small>` : ''}</h3></div>${h?.error ? `<p class="hint problem">${esc(h.error)}</p>` : ''}${off}`
+      + `<div class="table adt pq-table" id="pq-hist"></div><p class="hint">Jobs that finished in the last ${h?.keep || 30} days, read from the PrintService log on ${esc(p.server)} every few minutes. How long they are kept is in Settings, Devices.</p></section>`;
+  };
+  const afterPane = (p) => {
+    if (pv.tab === 'queue') {
+      qGrid().draw(q.read?.share === p.share ? jobsOf(q.read) : []);
+      const all = panel.body.querySelector('[data-pq-tick-all]');
+      if (all && q.read) { all.checked = q.read.jobs.length > 0 && q.picked.size === q.read.jobs.length; all.indeterminate = q.picked.size > 0 && !all.checked; }
+    } else {
+      if (q.history?.share !== p.share) loadPrinted(p);
+      hGrid().draw(q.history?.share === p.share ? q.history.rows : []);
+    }
+  };
+  const loadQueue = async () => {
+    const p = pv?.p;
+    if (!p?.share) return;
+    try {
+      const r = await get(`/api/devices/printers/queue?share=${encodeURIComponent(p.share)}`);
+      const was = JSON.stringify(q.read);
+      q.read = r;
+      q.picked = new Set([...q.picked].filter((id) => r.jobs.some((j) => j.id === id)));
+      if (pv?.p === p && panel.shows('printers', pv.key) && JSON.stringify(r) !== was) drawPrinter();
+    } catch {
+      // What was read stays; the next look tries again.
+    }
+  };
+  const loadPrinted = async (p) => {
+    q.history = null;
+    try {
+      q.history = { ...(await get(`/api/devices/printers/history?share=${encodeURIComponent(p.share)}`)), share: p.share };
+    } catch (e) {
+      q.history = { rows: [], servers: [], share: p.share, error: e.message };
+    }
+    if (pv?.p === p && pv.tab === 'history' && panel.shows('printers', pv.key)) drawPrinter();
+  };
+  const pollQueue = () => {
+    clearTimeout(q.timer);
+    if (!pv || !panel.shows('printers', pv.key) || !(pv.p.listed && pv.p.share && pv.p.found)) return;
+    if (document.visibilityState === 'visible') loadQueue();
+    q.timer = setTimeout(pollQueue, 5000);
+  };
+  // A different printer starts with nothing read.
+  const reset = (p) => { if (q.read?.share !== p.share) { q.read = null; q.picked.clear(); } q.history = null; };
+
+  // Jobs changed: one share at a time, cancelling after a confirm; the queue and Print jobs read again after.
+  const changeJobs = async (list, act, host) => {
+    const go = async () => {
+      const shares = [...new Set(list.map((j) => j.share))];
+      let done = 0;
+      const problems = [];
+      if (host) R.busy(host, VERB[act][0], `${list.length} print ${list.length === 1 ? 'job' : 'jobs'}`);
+      try {
+        for (const share of shares) {
+          const a = await send('/api/devices/printers/jobs', { share, ids: list.filter((j) => j.share === share).map((j) => j.id), action: act });
+          done += a.done;
+          problems.push(...a.problems);
+        }
+        if (problems.length) toast(done ? `Done for ${done} of ${list.length}.` : 'The print jobs could not be changed.', problems[0], { tone: 'warn' });
+        else toast(`${VERB[act][1]} ${done} print ${done === 1 ? 'job' : 'jobs'}.`, list.length === 1 ? list[0].document : '');
+        q.picked.clear();
+        jp.clear();
+      } catch (e) {
+        oops(e);
+      } finally {
+        if (host) R.busy(host, '');
+      }
+      await loadQueue();
+      if (tab === 'jobs') await loadJobs(true);
+    };
+    if (act === 'cancel') sure(list.length === 1 ? 'Cancel this print job?' : `Cancel ${list.length} print jobs?`, 'The documents are removed from the queue and do not print.', 'Cancel jobs', go);
+    else await go();
+  };
+  const changePrinter = (p, act) => {
+    const go = async () => {
+      R.busy(panel.body, act === 'purge' ? 'Cancelling all jobs' : act === 'pause' ? 'Pausing printing' : 'Resuming printing', p.name);
+      try {
+        await send('/api/devices/printers/queue', { share: p.share, action: act });
+        toast(act === 'purge' ? 'All print jobs cancelled.' : act === 'pause' ? 'Printing paused.' : 'Printing resumed.', `${p.name} on ${p.server}.`);
+        if (act !== 'purge') p.status = act === 'pause' ? 'Paused' : '';
+      } catch (e) {
+        oops(e);
+      } finally {
+        R.busy(panel.body, '');
+      }
+      await loadQueue();
+      if (pv?.p === p) drawPrinter();
+    };
+    if (act === 'purge') sure(`Cancel all jobs on ${p.name}?`, 'Every document waiting in this queue is removed and does not print.', 'Cancel all jobs', go);
+    else go();
+  };
+  const jobActs = (button, list, host) => R.actions.open(button, {
+    items: [{ act: 'pause', label: 'Pause' }, { act: 'resume', label: 'Resume' }, { act: 'restart', label: 'Restart' }, '-', { act: 'cancel', label: 'Cancel…', hint: String(list().length), danger: true }],
+    pick: (act) => changeJobs(list(), act, host),
+  });
+  panel.el.addEventListener('click', (e) => {
+    if (!panel.is('printers') && !panel.is('pjobs')) return;
+    let b;
+    if ((b = e.target.closest('[data-pq-tab]')) && pv) { pv.tab = b.dataset.pqTab; drawPrinter(); return; }
+    if ((b = e.target.closest('[data-pq-printer]')) && pv) { changePrinter(pv.p, b.dataset.pqPrinter); return; }
+    if ((b = e.target.closest('[data-pq-acts]')) && q.read) { jobActs(b, () => jobsOf(q.read).filter((j) => q.picked.has(j.id)), panel.body); return; }
+    if ((b = e.target.closest('[data-pq-job]'))) {
+      const [act, id] = b.dataset.pqJob.split(':');
+      const j = [...jobsOf(q.read), ...(jobs || [])].find((x) => x.id === Number(id) && x.share === b.dataset.pqShare);
+      if (j) changeJobs([j], act, panel.body);
+    }
+  });
+  panel.el.addEventListener('change', (e) => {
+    if (!panel.is('printers') || !q.read) return;
+    const one = e.target.closest('[data-pq-tick]');
+    const all = e.target.closest('[data-pq-tick-all]');
+    if (one) { const id = Number(one.dataset.pqTick); if (one.checked) q.picked.add(id); else q.picked.delete(id); } else if (all) q.picked = new Set(all.checked ? q.read.jobs.map((j) => j.id) : []);
+    else return;
+    drawPrinter();
+  });
+
+  // Print jobs: every queue the print servers share, read every 5 seconds while it's open.
+  let jobs = null;
+  const jp = new Set(); // ticked, as share|id
+  const jkey = (j) => `${j.share}|${j.id}`;
+  let jobsTimer = 0;
+  const loadJobs = async (draw = false) => {
+    try {
+      const reads = await get('/api/devices/printers/jobs');
+      const was = JSON.stringify(jobs);
+      jobs = reads.flatMap(jobsOf);
+      [...jp].forEach((k) => { if (!jobs.some((j) => jkey(j) === k)) jp.delete(k); });
+      if ((draw || JSON.stringify(jobs) !== was) && D.at() === 'printers' && tab === 'jobs') D.draw();
+    } catch {
+      if (!jobs) jobs = [];
+    }
+  };
+  const pollJobs = () => {
+    clearTimeout(jobsTimer);
+    if (D.at() !== 'printers' || tab !== 'jobs') return;
+    if (document.visibilityState === 'visible') loadJobs();
+    jobsTimer = setTimeout(pollJobs, 5000);
+  };
+  let jobsG = null;
+  const jobsGrid = () => (jobsG ||= R.grid({
+    el: $('dv-pjobs'), key: 'pjobs', sort: { key: 'submitted', dir: 1 }, cols: JOB_COLS(true),
+    lead: { w: 18, head: '<label class="tk"><input type="checkbox" data-pj-tick-all aria-label="Select all"></label>', cell: (j) => tickBox('data-pj-tick', jkey(j), j.document, jp.has(jkey(j))) },
+    tail: { w: 100, cell: rowActs }, row: (j) => ` data-pj-row="${esc(jkey(j))}"`,
+    empty: () => D.more.printers.empty(), loading: () => !jobs && !D.failed(), redraw: () => D.draw(),
+  }));
+  const JOB_FIELDS = [['Print job', [{ key: 'printer', label: 'Printer', type: 'choice', get: (j) => j.printer }, { key: 'owner', label: 'Owner', type: 'choice', get: (j) => j.owner || '' },
+    { key: 'state', label: 'Status', type: 'choice', get: (j) => j.state }, { key: 'computer', label: 'Computer', type: 'choice', get: (j) => j.computer || '' },
+    { key: 'document', label: 'Document', type: 'text', get: (j) => j.document }, { key: 'pages', label: 'Pages', type: 'number', get: (j) => j.pages },
+    { key: 'server', label: 'Print server', type: 'choice', get: (j) => j.server }]]];
+  const pickedJobs = () => (jobs || []).filter((j) => jp.has(jkey(j)));
+  const jobsActs = { can: manage, count: () => jp.size, open: (button) => jobActs(button, pickedJobs, null) };
+  const drawJobTicks = () => {
+    const boxes = [...$('dv-pjobs').querySelectorAll('[data-pj-tick]')];
+    boxes.forEach((b) => { b.checked = jp.has(b.dataset.pjTick); b.closest('.tr')?.classList.toggle('picked', b.checked); });
+    const all = $('dv-pjobs').querySelector('[data-pj-tick-all]');
+    if (all) { const on = boxes.filter((b) => b.checked).length; all.checked = !!boxes.length && on === boxes.length; all.indeterminate = on > 0 && on < boxes.length; }
+    D.drawPicked?.();
+  };
+  $('dv-pjobs').addEventListener('click', (e) => {
+    const tk = e.target.closest('.tk');
+    if (tk) {
+      const box = tk.querySelector('input');
+      if (e.target !== box) return;
+      if (box.dataset.pjTickAll !== undefined) [...$('dv-pjobs').querySelectorAll('[data-pj-tick]')].forEach((b) => (box.checked ? jp.add(b.dataset.pjTick) : jp.delete(b.dataset.pjTick)));
+      else if (box.checked) jp.add(box.dataset.pjTick);
+      else jp.delete(box.dataset.pjTick);
+      drawJobTicks();
+      return;
+    }
+    if (e.target.closest('[data-pq-job]')) {
+      const b = e.target.closest('[data-pq-job]');
+      const [act, id] = b.dataset.pqJob.split(':');
+      const j = (jobs || []).find((x) => x.id === Number(id) && x.share === b.dataset.pqShare);
+      if (j) changeJobs([j], act, null);
+      return;
+    }
+    const row = e.target.closest('[data-pj-row]');
+    if (!row) return;
+    if (panel.shows('pjobs', row.dataset.pjRow)) { panel.close(); return; }
+    const j = (jobs || []).find((x) => jkey(x) === row.dataset.pjRow);
+    if (j) openJob(j);
+  });
+  // A job in the panel: what it is and where, and what can be done to it.
+  const openJob = (j) => {
+    const fact = (label, value) => `<div><span class="l">${label}</span><span class="v">${value}</span></div>`;
+    panel.body.innerHTML = `<div class="dw-head"><span class="pic dw-pic">${svg('printer')}</span><div class="dw-name"><h2 id="dw-title">${esc(j.document)}</h2><p>${esc(`${j.printer} · ${j.server}`)}</p></div>`
+      + `<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`
+      + (manage() ? `<div class="dw-bar">${j.state === 'Paused' ? `<button type="button" class="dw-qa" data-pq-job="resume:${j.id}" data-pq-share="${esc(j.share)}">${svg('play')}<span>Resume</span></button>`
+        : `<button type="button" class="dw-qa" data-pq-job="pause:${j.id}" data-pq-share="${esc(j.share)}">${svg('pause')}<span>Pause</span></button>`}`
+        + `<button type="button" class="dw-qa" data-pq-job="restart:${j.id}" data-pq-share="${esc(j.share)}">${svg('restart')}<span>Restart</span></button>`
+        + `<button type="button" class="dw-qa" data-pq-job="cancel:${j.id}" data-pq-share="${esc(j.share)}">${svg('x')}<span>Cancel</span></button></div>` : '')
+      + `<div class="dw-strip">${fact('Status', stateCell(j))}${fact('Pages', esc(`${j.printed} of ${j.pages}`))}${fact('Owner', esc(j.owner || 'Unknown'))}${fact('Computer', esc(j.computer || 'Unknown'))}</div>`
+      + section('Details', `<ul class="does wide"><li><b>Submitted</b><span>${esc(dayOf(j.submitted))}</span></li><li><b>Position in queue</b><span>${j.position}</span></li>`
+        + `<li><b>Job ID</b><span>${j.id}</span></li><li><b>Printer</b><span>${esc(j.printer)}</span></li><li><b>Share</b><span class="mono">${esc(j.share)}</span></li></ul>`);
+    panel.open('pjobs', jkey(j));
+  };
+
+  // Settings, Devices: how long finished jobs are kept.
+  const drawKeep = (keep, choices) => { $('ph-keep').innerHTML = choices.map((d) => `<button type="button" data-ph-keep="${d}" aria-pressed="${d === keep}">${d} days</button>`).join(''); };
+  document.addEventListener('rabbidlab:me', () => {
+    if (has('seats.settings')) get('/api/devices/printers/history?count=0').then((h) => drawKeep(h.keep, h.choices)).catch(() => {});
+  });
+  $('ph-keep').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-ph-keep]');
+    if (!b) return;
+    try {
+      const a = await send('/api/devices/printers/history/keep', { days: Number(b.dataset.phKeep) });
+      drawKeep(a.keep, [5, 15, 30, 60, 90]);
+      toast('Print job history setting saved.', `Finished print jobs are kept for ${a.keep} days.`);
+    } catch (err) {
+      oops(err);
+    }
+  });
+
   const drawn0 = H.drawn;
   H.drawn = () => {
     drawn0?.();
     const on = D.at() === 'printers';
     $('dv-printers').hidden = !(on && tab === 'printers');
     $('dv-pservers').hidden = !(on && tab === 'servers');
+    $('dv-pjobs').hidden = !(on && tab === 'jobs');
     if (!on) {
-      if (panel.is('printers') || panel.is('pservers')) panel.close();
+      if (panel.is('printers') || panel.is('pservers') || panel.is('pjobs')) panel.close();
+      clearTimeout(jobsTimer);
       return;
     }
+    if (tab === 'jobs') drawJobTicks();
     // Two lists here: the printers, and the servers that share them (shown once Active Directory could be read).
     $('dv-tabs').innerHTML = `<a href="#seats/printers" data-pr-tab="printers"${tab === 'printers' ? ' aria-current="true"' : ''}>${svg('printer')}Printers <small>${all ? rows.length : ''}</small></a>`
+      + (adp ? `<a href="#seats/printers" data-pr-tab="jobs"${tab === 'jobs' ? ' aria-current="true"' : ''}>${svg('list')}Print jobs <small>${jobs ? jobs.length : ''}</small></a>` : '')
       + (adp ? `<a href="#seats/printers" data-pr-tab="servers"${tab === 'servers' ? ' aria-current="true"' : ''}>${svg('server')}Print servers <small>${servers().filter((s) => s.printers > 0).length}</small></a>` : '');
     markRow();
     markServer();
@@ -466,8 +770,9 @@
     e.preventDefault();
     if (tab === a.dataset.prTab) return;
     tab = a.dataset.prTab;
-    if (panel.is('printers') || panel.is('pservers')) panel.close();
+    if (panel.is('printers') || panel.is('pservers') || panel.is('pjobs')) panel.close();
     D.draw();
+    if (tab === 'jobs') { if (!jobs) loadJobs(true); pollJobs(); }
   });
   // Refresh on this list also asks the servers again (the server allows that once a minute). Heard first, so the read
   // Refresh starts carries it.

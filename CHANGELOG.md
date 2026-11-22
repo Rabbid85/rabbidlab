@@ -2,6 +2,14 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.351 (2026-11-22)
+
+- A print server printer in Devices, Printers now has Queue and History tabs. The queue updates every 5 seconds, and jobs can be paused, resumed, restarted and cancelled, one at a time or ticked together.
+- Print jobs, a new tab beside Printers, lists the jobs in every print queue with Printer, Owner and Status filters, and each job opens in the side panel.
+- Pause printing and Cancel all jobs work on a whole printer. These need the new Manage print queues permission, and they run as the service account, which needs Manage documents on the printer.
+- History lists finished jobs from each print server PrintService log and keeps them for 5, 15, 30, 60 or 90 days, set in Settings, Devices. If the log is off, the tab says how to turn it on.
+- The Run stage now button in Offboarding shows its icon again.
+
 ## 1.1.350 (2026-11-22)
 
 - Offboard users in three stages from Actions, Offboard: on the last day, then 7, 14 or 30 days later, then 30, 90 or 180 days later. Each step is a switch, and the last day can be now or any date and time.

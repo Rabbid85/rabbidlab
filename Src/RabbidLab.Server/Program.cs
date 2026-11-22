@@ -139,6 +139,8 @@ builder.Services.AddHostedService<ReportWorker>();
 // Offboarding in three stages, run when each is due (Offboarding.cs).
 builder.Services.AddSingleton<Offboarding>();
 builder.Services.AddHostedService<OffboardWorker>();
+// Print queues and the print history (PrintQueues.cs).
+builder.Services.AddPrintQueues();
 
 // Console addresses added in Settings: their aliases in the domain's DNS, and a certificate of their own, which the
 // console shows only to a browser that asks for one of them (ConsoleNames.cs, ConsoleDns.cs).
@@ -258,6 +260,7 @@ app.MapGroupPolicyApi();
 app.MapNotesApi();
 app.MapDirectoryActionsApi();
 app.MapOffboardingApi();
+app.MapPrintQueuesApi();
 app.MapChangesApi();
 app.MapLinksApi();
 app.MapSensorsApi();

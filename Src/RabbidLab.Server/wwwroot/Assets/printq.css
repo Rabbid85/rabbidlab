@@ -1,0 +1,19 @@
+/* Print queues (printers.js): a job's state with its icon, how far it printed, and the row's own buttons. */
+.pq-state { display: inline-flex; align-items: center; gap: 6px; min-width: 0; color: var(--text); }
+.pq-state svg { flex: none; width: 14px; height: 14px; color: var(--muted); }
+.pq-state.bad svg { color: var(--red); }
+.pq-state.warn svg { color: var(--amber); }
+.pq-state.on svg { color: var(--accent-soft); }
+.pq-state.ok svg { color: var(--ok); }
+.pq-pages { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; white-space: nowrap; }
+.pq-pages progress { width: 52px; height: 5px; border: 0; border-radius: 3px; background: color-mix(in srgb, var(--text) 10%, transparent); overflow: hidden; appearance: none; }
+.pq-pages progress::-webkit-progress-bar { background: color-mix(in srgb, var(--text) 10%, transparent); }
+.pq-pages progress::-webkit-progress-value { background: var(--accent); }
+.pq-acts { display: inline-flex; gap: 2px; opacity: 0; transition: opacity .12s; }
+.tr:hover .pq-acts, .tr:focus-within .pq-acts { opacity: 1; }
+.pq-acts .icon { display: grid; place-items: center; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 6px; background: none; color: var(--muted); }
+.pq-acts .icon:hover { background: color-mix(in srgb, var(--text) 8%, transparent); color: var(--title); }
+.pq-acts svg { width: 14px; height: 14px; }
+.pq-table { margin: 6px 0 10px; }
+.pq-why { display: flex; align-items: flex-start; gap: 8px; }
+.pq-why svg { flex: none; width: 15px; height: 15px; margin-top: 2px; }

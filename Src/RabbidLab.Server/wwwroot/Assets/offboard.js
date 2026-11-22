@@ -72,7 +72,7 @@
         return `<li class="${r ? r.state : ''}">${r ? svg(RESULT_ICON[r.state] || 'dots') : '<i class="ob-dot"></i>'}<span><b>${esc(st.line)}</b>${r?.detail ? `<small>${esc(r.detail)}</small>` : ''}</span></li>`;
       }).join('');
       const act = p.canChange && s === next && s.state !== 'running'
-        ? `<button type="button" class="small" data-ob-run>${svg(s.state === 'failed' ? 'restart' : 'start')}${s.state === 'failed' ? `Retry stage ${s.n}` : `Run stage ${s.n} now`}</button>` : '';
+        ? `<button type="button" class="small" data-ob-run>${svg(s.state === 'failed' ? 'restart' : 'play')}${s.state === 'failed' ? `Retry stage ${s.n}` : `Run stage ${s.n} now`}</button>` : '';
       return `<li class="ob-st ${s.state}${s === next ? ' next' : ''}"><i class="ob-n">${s.state === 'done' ? svg('check') : s.n}</i><div><p><b>Stage ${s.n}: ${esc(s.name)}</b><span class="ubadge ${tone}">${word}</span></p>`
         + `<small class="muted">${esc(when)}</small><ul class="ob-steps">${steps}</ul>${act}</div></li>`;
     }).join('');

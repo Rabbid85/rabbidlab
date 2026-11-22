@@ -62,6 +62,15 @@ public sealed class PrintServers(IPrintServerProbe probe, TimeProvider? clock = 
     private DateTime? at;
     private Task? running;
 
+    /// <summary>The printers the servers shared when last asked, and the servers that share them, without asking again.</summary>
+    public (List<SharedPrinter> Printers, List<PrintServerSeen> Servers) Known()
+    {
+        lock (gate)
+        {
+            return ([.. answers.Values.SelectMany(a => a.Printers)], [.. answers.Values.Select(a => a.Seen).Where(s => s.Printers > 0)]);
+        }
+    }
+
     /// <summary>How long a read waits for a search that's under way.</summary>
     public TimeSpan Wait { get; init; } = TimeSpan.FromSeconds(8);
 
