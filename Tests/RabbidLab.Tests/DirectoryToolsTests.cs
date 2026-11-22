@@ -305,6 +305,36 @@ public sealed class DirectoryToolsTests : IDisposable
     }
 
     [Fact]
+    public async Task History_reads_one_object_s_changes_with_their_DC_and_value_now_inside_the_role_s_scope()
+    {
+        await Connect("DC=amw,DC=com");
+        var none = CancellationToken.None;
+        var people = $"OU=People,{Lab}";
+        var at = DateTime.UtcNow.AddHours(-1);
+        Hire("nhire", "New Hire", people, ("title", "Analyst"), ("whenCreated", "20200101000000.0Z"), ("objectGUID", Guid.Parse("4b7c2f6a-1d2e-4c3b-9a8f-7e6d5c4b3a21").ToByteArray()),
+            ("msDS-ReplAttributeMetaData", AuditTests.Meta("title", at, "DC02")), ("msDS-ReplAttributeMetaData", AuditTests.Meta("unicodePwd", at.AddMinutes(-5), "DC01")),
+            ("msDS-ReplAttributeMetaData", AuditTests.Meta("lastLogonTimestamp", at, "DC01")), ("msDS-ReplAttributeMetaData", AuditTests.Meta("logonHours", at, "DC01")));
+        var admin = await app.SignedIn();
+        var hr = await InRole(admin, "HR", "hr1", ["ad.view"], people);
+        var it = await InRole(admin, "IT", "it1", ["ad.view"], Other);
+
+        As(hr, Permissions.AdView);
+        var seen = await tools.ChangesOf($"CN=New Hire,{people}", 90, none);
+        As(it, Permissions.AdView);
+        var outside = await Refused(() => tools.ChangesOf($"CN=New Hire,{people}", 90, none));
+        Caller.Set(null);
+
+        Assert.NotNull(seen);
+        Assert.Equal(("changed", "4b7c2f6a-1d2e-4c3b-9a8f-7e6d5c4b3a21"), (seen.What, seen.Guid));
+        var title = Assert.Single(seen.Attributes, a => a.Name == "title");
+        Assert.Equal(("DC02", "Analyst"), (title.Dc, title.Now![0]));
+        Assert.Contains(seen.Attributes, a => a.Name == "pwdLastSet" && a.Dc == "DC01"); // a password change, as when it was last set
+        Assert.Null(Assert.Single(seen.Attributes, a => a.Name == "logonHours").Now); // not read
+        Assert.DoesNotContain(seen.Attributes, a => a.Name == "lastLogonTimestamp");
+        Assert.Equal(StatusCodes.Status403Forbidden, outside.Status);
+    }
+
+    [Fact]
     public async Task Nobody_changes_an_account_or_group_in_a_role_above_their_own()
     {
         await Connect();

@@ -189,7 +189,7 @@ public sealed partial class DirectoryTools
         });
         await Try("backup", "Last AD backup", async () =>
         {
-            var meta = (await ldap.Find(ldap.BaseDn, "(objectClass=*)", false, ["msDS-ReplAttributeMetaData"], 1, stop)).FirstOrDefault()?.Texts("msDS-ReplAttributeMetaData").Select(Meta)
+            var meta = (await ldap.Find(ldap.BaseDn, "(objectClass=*)", false, ["msDS-ReplAttributeMetaData"], 1, stop)).FirstOrDefault()?.Texts("msDS-ReplAttributeMetaData").Select(SyncCompare.Attribute)
                 .FirstOrDefault(m => m.Name.Equals("dSASignature", StringComparison.OrdinalIgnoreCase));
             var at = meta is { At.Year: > 1601 } m ? m.At : (DateTime?) null;
             var days = at is { } a ? (int) (now - a).TotalDays : (int?) null;

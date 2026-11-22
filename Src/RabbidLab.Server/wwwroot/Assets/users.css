@@ -679,3 +679,66 @@ button.primary.dw-edit[aria-disabled="true"], button.primary.dw-edit[aria-disabl
 .dw-rest .am-links > * svg { flex: none; width: 16px; height: 16px; color: #8B90A5; }
 .dw-rest .am-links > .danger { color: #FF8A97; }
 .dw-rest .am-links > .danger svg { color: var(--red); }
+
+/* AD audit: old values a shade quieter than new ones, the line over the list, and Keep changes for. */
+.table.dgrid .tr > div > .dir-old { display: block; min-width: 0; overflow: hidden; color: #9DA1B3; white-space: nowrap; text-overflow: ellipsis; }
+.dir-banner .dir-keep { display: inline-flex; flex: none; align-items: center; gap: 8px; color: #9DA1B3; font-size: 13px; white-space: nowrap; }
+.dir-banner .dir-keep select { height: 30px; padding: 0 8px; border: 1px solid var(--line-strong); border-radius: 7px; background-color: #0C0E17; color: var(--title); font: inherit; font-size: 13px; }
+/* A change that arrives while the page is open opens to its height at the top, with a tint that fades over two seconds. */
+@keyframes dir-audit-in {
+  0% { max-height: 0; opacity: 0; background: color-mix(in srgb, var(--accent) 14%, transparent); }
+  14% { max-height: 64px; opacity: 1; background: color-mix(in srgb, var(--accent) 14%, transparent); }
+  100% { max-height: 64px; background: transparent; }
+}
+.table.dgrid .tr.dir-audit-in:not(.grp) { overflow: hidden; animation: dir-audit-in 2.4s ease-out backwards; }
+/* Its operation's heading only fades in: clipping it would loosen its sticky name. */
+@keyframes dir-audit-in-grp { 0% { opacity: 0; background: color-mix(in srgb, var(--accent) 14%, transparent); } 14% { opacity: 1; } }
+.table.dgrid .tr.grp.dir-audit-in { animation: dir-audit-in-grp 2.4s ease-out backwards; }
+@media (prefers-reduced-motion: reduce) { .table.dgrid .tr.dir-audit-in { animation: none; } }
+/* Grouped by operation: who did what to what, then when and on which DC at the end. */
+.table.dgrid .tr.grp.dir-op { align-items: center; min-height: 42px; padding-right: 14px; font-weight: 500; }
+.dir-op > .grp-cell { flex: 1; min-width: 0; }
+.dir-op .dir-op-say { display: block; min-width: 0; overflow: hidden; color: #C9CCDA; font-size: 13.5px; white-space: nowrap; text-overflow: ellipsis; }
+.dir-op .dir-op-say b { display: inline; color: var(--title); font-weight: 650; }
+.dir-op .dir-op-say .dir-op-nobody { color: var(--amber); }
+.dir-op .grp-cell .pic.small { flex: none; }
+.dir-op-side { display: flex; flex: none; align-items: center; gap: 14px; margin-left: auto; padding-left: 18px; color: #9DA1B3; font-size: 12.5px; white-space: nowrap; }
+.dir-op-dc { padding: 1px 8px; border-radius: 999px; background: #1A1D2B; color: #B8BCCB; font-weight: 600; }
+/* A row's panel: the old value over the new one, in full, one value to a line. */
+.dir-bas { display: grid; gap: 8px; margin-bottom: 4px; }
+.dir-ba { display: grid; gap: 6px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: #0C0E17; }
+.dir-ba .l { color: #8B90A5; font-size: 12.5px; font-weight: 600; }
+.dir-ba .v { display: grid; gap: 3px; color: var(--title); font-size: 14px; line-height: 1.45; overflow-wrap: anywhere; white-space: pre-wrap; }
+.dir-ba.old { border-color: color-mix(in srgb, var(--red) 28%, var(--line)); }
+.dir-ba.old .v { color: #B8BCCB; }
+.dir-ba.new { border-color: color-mix(in srgb, var(--ok) 30%, var(--line)); }
+/* The operation's other changes, as a small table: a row opens in the panel. */
+.dir-mini { margin-bottom: 4px; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: #0C0E17; }
+.dir-mini-h, .dir-mini-r { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1fr) minmax(0, 1fr); gap: 12px; align-items: center; min-height: 34px; padding: 0 12px; }
+.dir-mini-h { color: #9DA1B3; font-size: 12.5px; font-weight: 600; }
+.dir-mini-r { border-top: 1px solid var(--line); font-size: 13.5px; cursor: pointer; }
+.dir-mini-r:hover { background: #141725; }
+.dir-mini-r.on { background: #171B2C; cursor: default; }
+.dir-mini-r > span { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.dir-mini-r .ell { display: inline; }
+.dir-mini-r .dir-old { color: #9DA1B3; }
+/* History: a timeline of the object's operations, by day, each with its old and new values. */
+.dir-tl-lead { margin: -4px 0 4px; }
+.dir-tl { position: relative; margin: 0 0 4px; padding-left: 22px; }
+.dir-tl::before { content: ""; position: absolute; top: 34px; bottom: 14px; left: 6px; width: 2px; border-radius: 1px; background: var(--line-strong); }
+.dir-tl-day { margin: 16px 0 6px -22px; padding-left: 22px; color: #9DA1B3; font-size: 12.5px; font-weight: 650; }
+.dir-tl-ev { position: relative; margin-bottom: 6px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: #0C0E17; }
+.dir-tl-ev::before { content: ""; position: absolute; top: 15px; left: -21px; width: 10px; height: 10px; border: 2px solid #0F111A; border-radius: 50%; background: var(--accent-soft); }
+.dir-tl-ev.unknown::before { background: var(--amber); }
+.dir-tl-head { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 13.5px; }
+.dir-tl-head b { flex: none; color: var(--title); }
+.dir-tl-head .grow { flex: 1; }
+.dir-tl-head .ubadge { flex: none; margin: 0; }
+.dir-tl-rows { display: grid; grid-template-columns: minmax(90px, 150px) minmax(0, 1fr) 14px minmax(0, 1fr); gap: 5px 10px; align-items: center; margin-top: 8px; font-size: 13.5px; }
+.dir-tl-rows > span { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.dir-tl-rows .a, .dir-tl-rows .o { color: #9DA1B3; }
+.dir-tl-rows .n { color: var(--title); }
+.dir-tl-rows .ell { display: inline; }
+.dir-tl-rows svg { width: 13px; height: 13px; color: #6D7290; }
+.dir-tl-why { margin: 8px 0 0; color: var(--amber); font-size: 12.5px; line-height: 1.45; }
+.dir-tl-do { display: flex; justify-content: flex-end; margin: 6px -6px -4px 0; }
