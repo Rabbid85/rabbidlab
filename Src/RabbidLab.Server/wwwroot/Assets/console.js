@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.318', [
+    'Refreshing the console no longer brings up the opening flask screen. It shows only after you sign in or after an update.',
+    'In Full width, pages no longer get narrower or wider going between one that scrolls and one that does not.']],
   ['1.1.317', [
     'The signed-out note on the sign-in page is now a grey box with light words and an amber clock, instead of amber words on a brown box.']],
   ['1.1.316', [
@@ -2007,8 +2010,7 @@ const RELEASE_NOTES = [
     let steps = BOOT; // narrowed to what this person's roles read, once sign-in has answered
     const got = {}; // path -> what it said
     let news = null; // { version } when this browser opens a version for the first time
-    // Played in full, one step at a time, just after signing in or an update. A refresh only shows it when loading is slow,
-    // with the steps landing as fast as their reads come back.
+    // Played in full, one step at a time, just after signing in or an update. Never on a refresh, which looked like loading twice.
     let playing = false;
     let signing = false; // came straight from the sign-in page
     let landed = 0; // steps shown as done
@@ -2100,7 +2102,7 @@ const RELEASE_NOTES = [
         draw();
       },
       show() {
-        if (el || !document.body.classList.contains('booting')) return;
+        if (el || !playing || !document.body.classList.contains('booting')) return;
         timer = setTimeout(tick, 250);
         el = document.createElement('div');
         el.className = 'boot';
@@ -2650,9 +2652,9 @@ const RELEASE_NOTES = [
     scatter($('dv-hero'), 20261125);
     setInterval(uptime, 60000);
     // Starting: the rail and the page stay hidden (body.booting) until sign-in has answered and the page's first reads are back, so a
-    // reload never shows the console half built. If that takes a moment the opening screen comes up (boot): the flask fills as each read
-    // comes back. The page shows as it is after a second and a half, or two and a half once the opening screen is up: the
-    // screen covers it until its own steps are in, so a slower read (Local admins, say) needn't hold it.
+    // reload never shows the console half built. Just after signing in or an update the opening screen comes up (boot): the flask
+    // fills as each read comes back. The page shows as it is after a second and a half, or two and a half once the opening screen
+    // is up: the screen covers it until its own steps are in, so a slower read (Local admins, say) needn't hold it.
     const bootShow = setTimeout(() => boot.show(), 400);
     const started = () => {
       clearTimeout(bootShow);

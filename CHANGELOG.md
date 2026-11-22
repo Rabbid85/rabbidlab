@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.318 (2026-11-21)
+
+- Refreshing the console no longer brings up the opening flask screen. It shows only after you sign in or after an update.
+- In Full width, pages no longer get narrower or wider going between one that scrolls and one that does not.
+
 ## 1.1.317 (2026-11-21)
 
 - The signed-out note on the sign-in page is now a grey box with light words and an amber clock, instead of amber words on a brown box.
