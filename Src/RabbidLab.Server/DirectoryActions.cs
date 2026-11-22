@@ -74,7 +74,7 @@ public sealed partial class DirectoryTools : IDirectoryActions
     public static bool KnownFlag(string flag) => Bits.ContainsKey(flag) || flag is "mustchange" or "cannotchange";
 
     private static readonly string[] ObjectAttributes = ["objectClass", "sAMAccountName", "userAccountControl", "groupType", "adminCount", "isCriticalSystemObject",
-        "objectSid", "cn", "member", "description", "mail", "info", "location"];
+        "objectSid", "cn", "member", "description", "mail", "info", "location", "memberOf", "displayName", "objectGUID"];
 
     /// <summary>A user, group or computer in scope. Users go through Changeable; Active Directory refuses what may not be done.</summary>
     private static async Task<(LdapRow Row, string Kind)> ChangeableObject(ILdap ldap, DirectoryToolsFile f, string dn, CancellationToken stop)
@@ -113,19 +113,23 @@ public sealed partial class DirectoryTools : IDirectoryActions
         InScope(into, f, ldap.BaseDn);
         if (!string.Equals(Ldap.Parent(row.Dn), into, StringComparison.OrdinalIgnoreCase))
         {
-            await Relocate(ldap, f, row.Dn, Ldap.Split(row.Dn)[0], into, stop);
+            var rdn = Ldap.Split(row.Dn)[0];
+            await Relocate(ldap, f, row.Dn, rdn, into, stop);
+            NotePlace(row, kind, "Organizational unit", $"{rdn},{into}", PathIn(Ldap.Parent(row.Dn), ldap.BaseDn, f.Domain!), PathIn(into, ldap.BaseDn, f.Domain!));
         }
-        return Ldap.Path(into, ldap.BaseDn) is { Length: > 0 } path ? path : f.Domain!;
+        return PathIn(into, ldap.BaseDn, f.Domain!);
     }
 
     public async Task<string?> ChangeMemberOf(string dn, IReadOnlyList<string> add, IReadOnlyList<string> remove, CancellationToken stop)
     {
         using var ldap = await Open(stop);
         var f = Ready();
-        var (row, _) = await ChangeableObject(ldap, f, dn, stop);
+        var (row, kind) = await ChangeableObject(ldap, f, dn, stop);
+        var (added, removed) = (new List<string>(), new List<string>());
         // A group can't be put in itself.
-        var a = await Join(ldap, f, row.Dn, add.Where(g => !string.Equals(g?.Trim(), row.Dn, StringComparison.OrdinalIgnoreCase)), true, stop);
-        var b = await Join(ldap, f, row.Dn, remove, false, stop);
+        var a = await Join(ldap, f, row.Dn, add.Where(g => !string.Equals(g?.Trim(), row.Dn, StringComparison.OrdinalIgnoreCase)), true, stop, added);
+        var b = await Join(ldap, f, row.Dn, remove, false, stop, removed);
+        NoteGroups(row, kind, added, removed);
         return a is null ? b : b is null ? a : $"{a} {b}";
     }
 
@@ -173,8 +177,10 @@ public sealed partial class DirectoryTools : IDirectoryActions
                 _ => Said(e, f.Account!),
             });
         }
-        var made = (await ldap.Find(dn, "(objectClass=*)", false, ComputerAttributes, 1, stop)).FirstOrDefault();
-        return made is null ? throw new ToolProblem($"{name} was created, but could not be read back.") : Computer(made, ldap.BaseDn);
+        var made = (await ldap.Find(dn, "(objectClass=*)", false, ComputerAttributes, 1, stop)).FirstOrDefault()
+            ?? throw new ToolProblem($"{name} was created, but could not be read back.");
+        Cannot(Noted(made, "computer"), NoUndoCreate("computer"), new ChangeStep("Computer account", ["None"], [$"{name} in {PathIn(ou, ldap.BaseDn, f.Domain!)}"]));
+        return Computer(made, ldap.BaseDn);
     }
 
     public async Task<List<string>> EditObject(ObjectEdit form, CancellationToken stop)
@@ -190,6 +196,7 @@ public sealed partial class DirectoryTools : IDirectoryActions
         };
         var changes = new List<LdapMod>();
         var changed = new List<string>();
+        var steps = new List<ChangeStep>();
         foreach (var (attribute, label, max, typed) in fields)
         {
             if (typed is null)
@@ -212,10 +219,12 @@ public sealed partial class DirectoryTools : IDirectoryActions
             }
             changes.Add(value.Length == 0 ? new(LdapChange.Delete, attribute) : new(LdapChange.Replace, attribute, value));
             changed.Add(label);
+            steps.Add(SetStep(Capital(label), attribute, Shown(was), Shown(value)));
         }
         if (changes.Count > 0)
         {
             await Change(ldap, row.Dn, changes, f, password: false, stop);
+            Note(row, kind, [.. steps]);
         }
         return changed;
     }
@@ -232,6 +241,7 @@ public sealed partial class DirectoryTools : IDirectoryActions
             if (now != flags)
             {
                 await Change(ldap, user.Dn, [new(LdapChange.Replace, "userAccountControl", now.ToString(CultureInfo.InvariantCulture))], f, password: false, stop);
+                NoteBit(user, "user", FlagNames[flag], flags, now, bit);
             }
             return;
         }
@@ -244,12 +254,14 @@ public sealed partial class DirectoryTools : IDirectoryActions
                 }
                 // 0 makes them change it; -1 counts the password as set just now.
                 await Change(ldap, user.Dn, [new(LdapChange.Replace, "pwdLastSet", on ? "0" : "-1")], f, password: false, stop);
+                NoteOption(user, flag, user.Number("pwdLastSet") == 0, on);
                 return;
             case "cannotchange":
                 var dacl = await ldap.ReadDacl(user.Dn, stop) ?? throw new ToolProblem($"Access denied. {f.Account} cannot read the permissions on {username}.");
                 try
                 {
                     await ldap.WriteDacl(user.Dn, Dacl.SetCannotChangePassword(dacl, on), stop);
+                    NoteOption(user, flag, Dacl.CannotChangePassword(dacl), on);
                 }
                 catch (LdapRefused e)
                 {
@@ -273,6 +285,11 @@ public sealed partial class DirectoryTools : IDirectoryActions
         // ADUC's End of: midnight at the start of the next day, local time.
         var value = last is { } d ? d.AddDays(1).ToDateTime(TimeOnly.MinValue, DateTimeKind.Local).ToFileTimeUtc().ToString(CultureInfo.InvariantCulture) : "0";
         await Change(ldap, user.Dn, [new(LdapChange.Replace, "accountExpires", value)], f, password: false, stop);
+        var was = user.Text("accountExpires") ?? "0";
+        if (!SameValues("accountExpires", [was], [value]))
+        {
+            Note(user, "user", SetStep("Account expires", "accountExpires", [was], [value]));
+        }
     }
 
     // The properties Edit properties shows, by the attribute each one is.
@@ -298,6 +315,7 @@ public sealed partial class DirectoryTools : IDirectoryActions
         var now = (await ldap.Find(user.Dn, "(objectClass=*)", false, [.. EditFields.Select(e => e.Attribute)], 1, stop)).FirstOrDefault() ?? user;
         var changes = new List<LdapMod>();
         var changed = new List<string>();
+        var steps = new List<ChangeStep>();
         foreach (var (field, attribute, label, max) in EditFields)
         {
             if (given[field] is not { } typed)
@@ -330,15 +348,19 @@ public sealed partial class DirectoryTools : IDirectoryActions
                 {
                     changes.Add(new(LdapChange.Delete, attribute));
                     changed.Add(label);
+                    steps.Add(SetStep(Capital(label), attribute, [was], []));
                 }
                 continue;
             }
             changes.Add(new(LdapChange.Replace, attribute, value));
             changed.Add(label);
+            steps.Add(SetStep(Capital(label), attribute, Shown(was), [value]));
         }
         if (changes.Count > 0)
         {
             await Change(ldap, user.Dn, changes, f, password: false, stop);
+            var o = Noted(user, "user");
+            Note(form.Display?.Trim() is { Length: > 0 } display && steps.Any(s => s.Undo?.Attribute == "displayName") ? o with { Name = display } : o, [.. steps]);
         }
         return changed;
     }
@@ -354,12 +376,24 @@ public sealed partial class DirectoryTools : IDirectoryActions
         var f = Ready();
         var user = await Changeable(ldap, f, username, stop);
         var parent = Ldap.Parent(user.Dn);
-        if (!string.Equals(Ldap.Name(user.Dn), to, StringComparison.Ordinal))
+        var dn = $"CN={Ldap.Escape(to)},{parent}";
+        var renamed = !string.Equals(Ldap.Name(user.Dn), to, StringComparison.Ordinal);
+        if (renamed)
         {
             await Relocate(ldap, f, user.Dn, $"CN={Ldap.Escape(to)}", parent, stop);
         }
         // ADUC's Rename sets the display name to match.
-        await Change(ldap, $"CN={Ldap.Escape(to)},{parent}", [new(LdapChange.Replace, "displayName", to)], f, password: false, stop);
+        await Change(ldap, dn, [new(LdapChange.Replace, "displayName", to)], f, password: false, stop);
+        var steps = new List<ChangeStep>();
+        if (renamed)
+        {
+            steps.Add(new("Name", [Ldap.Name(user.Dn)], [to], new StepUndo("place", Rdn: Ldap.Split(user.Dn)[0], Parent: parent, Now: [dn])));
+        }
+        if (user.Text("displayName") != to)
+        {
+            steps.Add(SetStep("Display name", "displayName", Shown(user.Text("displayName")), [to]));
+        }
+        Note(Noted(user, "user") with { Dn = dn, Name = to }, [.. steps]);
     }
 
     public async Task<string> Move(string username, string ou, CancellationToken stop)
@@ -375,9 +409,11 @@ public sealed partial class DirectoryTools : IDirectoryActions
         InScope(into, f, ldap.BaseDn);
         if (!string.Equals(Ldap.Parent(user.Dn), into, StringComparison.OrdinalIgnoreCase))
         {
-            await Relocate(ldap, f, user.Dn, Ldap.Split(user.Dn)[0], into, stop);
+            var rdn = Ldap.Split(user.Dn)[0];
+            await Relocate(ldap, f, user.Dn, rdn, into, stop);
+            NotePlace(user, "user", "Organizational unit", $"{rdn},{into}", PathIn(Ldap.Parent(user.Dn), ldap.BaseDn, f.Domain!), PathIn(into, ldap.BaseDn, f.Domain!));
         }
-        return Ldap.Path(into, ldap.BaseDn) is { Length: > 0 } path ? path : f.Domain!;
+        return PathIn(into, ldap.BaseDn, f.Domain!);
     }
 
     private static async Task Relocate(ILdap ldap, DirectoryToolsFile f, string dn, string rdn, string parent, CancellationToken stop)
