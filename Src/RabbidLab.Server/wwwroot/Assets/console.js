@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.343', [
+    'Check for updates rests for a minute after each check and says Checked just now, so clicking it again does nothing until then.',
+    'A toast with the same words as one already showing renews that one at the top instead of stacking another copy.']],
   ['1.1.342', [
     'The Use at your own risk notice opens as soon as the sign-in page loads, before you type anything. Accepting it is sent with the sign-in and saved for your account. For now it opens on every visit.',
     'Decline hides the sign-in form and says why, with Read the notice to open it again.']],
@@ -1075,6 +1078,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.343': ['2026-11-22', 'fix', 'No more pile of Up to date toasts'],
   '1.1.342': ['2026-11-22', 'fix', 'The notice opens before you sign in'],
   '1.1.341': ['2026-11-22', 'fix', 'No Up to date pill on the sign-in card'],
   '1.1.340': ['2026-11-22', 'feature', 'Use at your own risk, read to the end before the first sign-in'],
@@ -1649,6 +1653,10 @@ const RELEASE_INFO = {
   const WORDS = { current: 'Up to date', available: 'Update available', waiting: 'Pending', downloading: 'Downloading', installing: 'Installing', failed: 'Failed' };
   let last = null;
   let timer = null;
+  // Check for updates rests for a minute after each check (Updates page and Overview alike), so clicks can't pile up.
+  const CHECK_REST = 60000;
+  let checkedAt = 0;
+  const resting = () => Date.now() - checkedAt < CHECK_REST;
   let product = 'Rabbid Lab'; // the app's name, in the page's sentences
   let labName = 'Rabbid Lab'; // the lab's own name: the top bar, the hero and the browser tab
 
@@ -2204,7 +2212,7 @@ const RELEASE_INFO = {
       $('hero-state').textContent = headline(u);
       $('hero-updates').textContent = WORDS[u.status] || u.status;
     }
-    $('hero-check').disabled = busy;
+    $('hero-check').disabled = busy || resting();
     // An update ready: Install now leads, and Check for updates steps back.
     $('hero-install').hidden = !(u.status === 'available' || u.status === 'failed') || !u.canInstall;
     $('hero-check').classList.toggle('primary', $('hero-install').hidden);
@@ -2225,7 +2233,7 @@ const RELEASE_INFO = {
     $('upd-problem').textContent = u.problem || '';
     $('upd-install').hidden = !(u.status === 'available' || u.status === 'failed') || !u.canInstall;
     $('upd-install').disabled = busy;
-    $('upd-check').disabled = busy;
+    $('upd-check').disabled = busy || resting();
     $('upd-auto').checked = !!u.automatic;
     $('upd-auto-label').textContent = u.automatic ? 'On' : 'Off';
     $('upd-source').href = u.source;
@@ -2298,7 +2306,7 @@ const RELEASE_INFO = {
       if (!r.ok) {
         $('upd-problem').hidden = false;
         $('upd-problem').textContent = j.error || r.statusText || `Server returned HTTP ${r.status}.`;
-        $('upd-check').disabled = false;
+        $('upd-check').disabled = resting();
         $('upd-install').disabled = false;
         return;
       }
@@ -2311,20 +2319,22 @@ const RELEASE_INFO = {
     } catch (e) {
       $('upd-problem').hidden = false;
       $('upd-problem').textContent = `Could not connect to ${product} (${e.message}).`;
-      $('upd-check').disabled = false;
+      $('upd-check').disabled = resting();
       $('upd-install').disabled = false;
     }
   };
 
-  // Check for updates says Checking while it asks; when nothing is newer, a short line beside it says so.
+  // Check for updates says Checking while it asks, answers in a toast, then rests for a minute saying Checked just now.
+  // A check that couldn't reach anything doesn't rest, so it can be tried again straight away.
   const check = async (button) => {
+    if (resting()) return;
     // The words change and its icon turns; an icon the button has stays.
     const icon = button.querySelector('svg');
     const say = (text) => {
       button.textContent = text;
       if (icon) button.prepend(icon);
     };
-    // Same width while it says Checking.
+    // Same width while it says Checking and while it rests.
     button.style.minWidth = `${button.getBoundingClientRect().width}px`;
     button.disabled = true;
     button.classList.add('turning');
@@ -2333,10 +2343,16 @@ const RELEASE_INFO = {
     await post('/api/update/check');
     await new Promise((r) => setTimeout(r, Math.max(0, until - Date.now())));
     button.classList.remove('turning');
-    button.disabled = !!last && ['downloading', 'installing'].includes(last.status);
-    say('Check for updates');
-    button.style.minWidth = '';
-    if (!$('upd-problem').hidden) toast('Could not check for updates.', $('upd-problem').textContent, { tone: 'warn' });
+    const failed = !$('upd-problem').hidden;
+    if (!failed) checkedAt = Date.now();
+    const done = () => {
+      button.disabled = resting() || (!!last && ['downloading', 'installing'].includes(last.status));
+      say(resting() ? 'Checked just now' : 'Check for updates');
+      if (!resting()) button.style.minWidth = '';
+    };
+    done();
+    if (!failed) setTimeout(done, CHECK_REST + 50);
+    if (failed) toast('Could not check for updates.', $('upd-problem').textContent, { tone: 'warn' });
     else if (last?.status === 'current') toast("You're up to date.", `${product} ${last.version} is the latest version.`);
   };
 
@@ -3134,14 +3150,18 @@ const RELEASE_INFO = {
     el.querySelector('.tst-bar i').addEventListener('animationend', () => toastGone(el), { once: true });
   };
   // A new toast goes on top of the stack. One that follows work still under way takes its place instead, so long work
-  // turns into its result in the same toast.
+  // turns into its result in the same toast. The same words as one already up renew that one, at the top, never a copy.
   const toast = (bold, text = '', { stay = false, tone = '', action = null } = {}) => {
     const p = toastHost();
+    const key = `${tone}\n${bold}\n${text}`;
     const busy = toastBox.querySelector('.tst[data-tone="work"]:not(.out)');
-    const el = busy || document.createElement('div');
+    const same = busy ? null : [...toastBox.querySelectorAll('.tst:not(.out)')].find((t) => t.toastKey === key);
+    const el = busy || same || document.createElement('div');
     toastDraw(el, { bold, text, stay, tone, action }, p);
-    if (busy) {
+    el.toastKey = key;
+    if (busy || same) {
       el.className = `tst${el.classList.contains('timed') ? ' timed' : ''}`;
+      if (same) toastBox.prepend(el);
       if (!stay) { void el.offsetWidth; el.classList.add('flash'); }
     } else {
       el.classList.add('tst');

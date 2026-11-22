@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.343 (2026-11-22)
+
+- Check for updates rests for a minute after each check and says Checked just now, so clicking it again does nothing until then.
+- A toast with the same words as one already showing renews that one at the top instead of stacking another copy.
+
 ## 1.1.342 (2026-11-22)
 
 - The Use at your own risk notice opens as soon as the sign-in page loads, before you type anything. Accepting it is sent with the sign-in and saved for your account. For now it opens on every visit.
