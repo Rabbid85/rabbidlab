@@ -164,7 +164,7 @@ button.link:hover { background: none; color: var(--title); }
 .unsaved .go:hover { background: #35B07B; }
 
 /* Seeing Rabbid Lab as a role. */
-.viewas { position: sticky; top: 52px; z-index: 9; display: flex; align-items: center; gap: 12px; padding: 10px 36px; border-bottom: 1px solid rgba(158, 89, 207, .45);
+.viewas { position: sticky; top: 0; z-index: 9; display: flex; align-items: center; gap: 12px; padding: 10px 36px; border-bottom: 1px solid rgba(158, 89, 207, .45);
   background: #1A1530; color: #D9C6F0; font-size: 13.5px; }
 .viewas svg { flex: none; width: 17px; height: 17px; }
 .viewas span { flex: 1; }

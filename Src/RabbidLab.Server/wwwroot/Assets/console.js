@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.322', [
+    'The window no longer scrolls as a whole: the top bar and the side menu stay put and only the page scrolls, so nothing changes width when a scroll bar comes or goes, and a short page has no empty strip down its right edge.']],
   ['1.1.321', [
     'News and changelog on Overview shows the newest feature as a wide card with a picture, then the three newest versions, each with its date, kind and a short title.',
     'The list of every version is now a timeline: the date down the left, and a card for each version with its kind, title and notes.',
@@ -1011,6 +1013,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update) and a short title, for the
 // news cards on Overview and the What's new timeline. A new version gets a line here with its notes.
 const RELEASE_INFO = {
+  '1.1.322': ['2026-11-21', 'fix', 'Only the page scrolls'],
   '1.1.321': ['2026-11-21', 'update', 'News cards and a timeline'],
   '1.1.320': ['2026-11-21', 'feature', 'A Sync page under Directory'],
   '1.1.319': ['2026-11-21', 'update', 'Hints show at once'],
@@ -3469,7 +3472,7 @@ const RELEASE_INFO = {
       lastHash = location.hash;
       lastName = pageName();
       // The Attribute browser keeps its place while you click through it.
-      if (was !== 'attrs' || lastPage !== 'attrs') scrollTo(0, 0);
+      if (was !== 'attrs' || lastPage !== 'attrs') document.querySelector('.main').scrollTo(0, 0);
       if (lastPage === 'seats' && (can.has('seats.view') || can.has('sessions.view'))) seats();
       if (where()[1] === 'activity' && can.has('activity.view')) activity();
     });

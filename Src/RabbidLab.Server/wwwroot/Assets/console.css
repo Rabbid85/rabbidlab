@@ -11,9 +11,8 @@
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; min-height: 100%; }
-/* Room for the scroll bar is always kept, centred or full width, so the page doesn't get narrower or wider going between a
-   long page and a short one. A short page shows the same strip down its right edge that a long one's scroll bar sits in. */
-html:has(body.app) { scrollbar-gutter: stable; }
+/* The window itself never scrolls: the top bar and the rail stay put and only the page area (.main) scrolls, so nothing gets
+   narrower or wider when a scroll bar comes or goes, and a short page has no empty strip down its right edge. */
 body { background: var(--night); color: var(--text); font: 15px/1.5 "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif; position: relative; }
 /* A box the browser filled in (a saved name, address or password) keeps its own dark look: the browser's white or blue
    fill never comes in (the long transition holds it back) and the text stays light. Every page loads this file; the
@@ -31,7 +30,7 @@ a:hover { text-decoration: underline; }
 .is-dev .dev-tag { display: inline-block; }
 
 /* The console's frame: the top bar across, the rail down the left, the page beside it. */
-body.app { display: grid; grid-template: "top top" 52px "rail main" 1fr / 224px minmax(0, 1fr); min-height: 100vh; }
+body.app { display: grid; grid-template: "top top" 52px "rail main" 1fr / 224px minmax(0, 1fr); height: 100vh; height: 100dvh; overflow: hidden; }
 body.app.rail-small { grid-template-columns: 60px minmax(0, 1fr); }
 .top { grid-area: top; position: sticky; top: 0; z-index: 10; display: flex; align-items: center; justify-content: space-between; padding: 0 16px 0 18px;
   background: var(--night); border-bottom: 1px solid var(--line); }
@@ -70,7 +69,7 @@ body.app.rail-small { grid-template-columns: 60px minmax(0, 1fr); }
 .rail-small .rail-dot { position: absolute; top: 7px; right: 10px; }
 
 /* A page: its title and what it's for, then its cards. */
-.main { grid-area: main; display: flex; flex-direction: column; }
+.main { grid-area: main; display: flex; flex-direction: column; min-height: 0; overflow-x: hidden; overflow-y: auto; }
 .page { width: 100%; max-width: 1040px; margin-left: auto; margin-right: auto; padding: 30px 36px 24px; display: grid; gap: 18px; align-content: start; }
 .page-head h1 { display: flex; align-items: center; gap: 12px; margin: 0; font: 750 28px/1.2 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
   letter-spacing: -.01em; color: var(--title); }
@@ -825,7 +824,7 @@ section.page.home.dir-top { max-width: none; padding: 0; gap: 0; }
 .dhead h1 { font: 800 30px/1.15 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; letter-spacing: -.02em; color: #fff; }
 .dhead p { max-width: 680px; margin-top: 10px; color: #B4B8C8; font-size: 14px; line-height: 1.55; }
 .dmain { grid-column: 2; display: grid; gap: 18px; align-content: start; min-width: 0; }
-.dnav { position: sticky; top: 72px; display: flex; flex-direction: column; align-self: start; max-height: calc(100vh - 90px); padding-bottom: 8px; overflow-y: auto; scrollbar-gutter: stable; }
+.dnav { position: sticky; top: 20px; display: flex; flex-direction: column; align-self: start; max-height: calc(100vh - 90px); padding-bottom: 8px; overflow-y: auto; scrollbar-gutter: stable; }
 .dnav > .side-find { flex: none; height: 32px; margin: 0; border-radius: 7px; }
 /* On a section page Find lines up with the tab beside it: its top level with the tab text, its bottom on the tab underline. */
 :is(#dir-rail, #dv-rail) > .side-find { margin-top: 10px; }
