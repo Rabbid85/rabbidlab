@@ -742,7 +742,7 @@
   }));
   // The open list read again as Refresh does, without the flask; slower for the lists that cost more LDAP searches.
   const EVERY = { users: 30000, computers: 30000, groups: 60000, audit: 60000, recycle: 60000, domain: 300000 };
-  R.live({
+  const adLive = R.live({
     page: () => R.where()[0] === 'ad' && can('ad.view'),
     hold: () => (!!ad && !ad.state) || (!lists[adPage] && !adFailed), // not set up, or its own first read is under way
     every: () => EVERY[adPage] || 60000,
@@ -765,6 +765,13 @@
       if (R.panel.is('ad') && JSON.stringify(dwObj()) !== open) drawDrawer(); // only when the one it shows changed
     },
     areas: () => [$('dir-table')],
+  });
+  // A change undone anywhere: the open list is read again now, and the other pages, a group's members and the attributes when shown.
+  document.addEventListener('rabbidlab:undone', () => {
+    Object.keys(lists).filter((k) => k !== adPage).forEach((k) => delete lists[k]);
+    dw.membersFor = '';
+    dw.attrs.for = '';
+    adLive.now();
   });
   // Domain health's dot from the start: its checks are read in the background once signed in, not only when it's opened.
   document.addEventListener('rabbidlab:me', () => {
@@ -1088,8 +1095,11 @@
     // The side panel shows the change too (or closes, for something deleted).
     if (R.panel.is('ad')) { dw.membersFor = ''; drawDrawer(); }
     const ok = xs.length - failed.length;
-    if (!failed.length) R.toast(done, warnings[0] || '', { tone: warnings.length ? 'warn' : '' });
-    else R.toast(ok ? `Completed for ${ok} of ${xs.length}.` : 'The operation failed.', failed[0], { tone: 'warn' });
+    // What worked and can be undone gets Undo in the toast; a password reset or a create can't be.
+    const ids = answers.map(([, a]) => a?.change).filter((c) => c?.undo).map((c) => c.id);
+    const action = ids.length ? { label: 'Undo', run: () => R.undo(ids, { host: $('dir-lib') }), changes: ids } : null;
+    if (!failed.length) R.toast(done, warnings[0] || '', { tone: warnings.length ? 'warn' : '', action });
+    else R.toast(ok ? `Completed for ${ok} of ${xs.length}.` : 'The operation failed.', failed[0], { tone: 'warn', action });
     if (failed.length > 1) say('dir-problem', failed.join(' '));
     return answers;
   };
@@ -1743,10 +1753,12 @@
     if (!a || !fs.length) return;
     const go = async () => {
       const failed = [];
+      const ids = []; // the fixes that can be undone
       for (const [i, f] of fs.entries()) {
         R.busy($('dw-body'), `${a.doing}…`, fs.length > 1 ? `${i + 1} of ${fs.length}: ${f.name}` : f.name);
         try {
-          await R.send(...a.run(f));
+          const got = await R.send(...a.run(f));
+          if (got?.change?.undo) ids.push(got.change.id);
         } catch (err) {
           failed.push(`${f.name}: ${err.message}`);
         }
@@ -1760,7 +1772,7 @@
       drawAd();
       drawDrawer();
       const done = fs.length - failed.length;
-      if (done) R.toast(`Fixed ${count(done, 'account', 'accounts')}.`, s.name);
+      if (done) R.toast(`Fixed ${count(done, 'account', 'accounts')}.`, s.name, ids.length ? { action: { label: 'Undo', run: () => R.undo(ids), changes: ids } } : {});
       if (failed.length) say($('dwf-problem') ? 'dwf-problem' : 'dir-problem', failed.join(' '));
     };
     if (a.ask) sure(`${a.label} ${count(fs.length, 'account', 'accounts')}?`, `${fs.map((f) => f.name).slice(0, 5).join(', ')}${fs.length > 5 ? ` and ${fs.length - 5} more` : ''}. They can be enabled again later.`, a.label, go);

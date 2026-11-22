@@ -2423,10 +2423,14 @@ const RELEASE_INFO = {
 
   // Settings, Activity log: found on the server, newest first, by day, and a run of the same change by the same person
   // folded into one row that opens. The sub-menu picks a kind; the bar narrows by words, person, time and problems.
+  // A row opens its side panel: an Active Directory change there has its values before and after, and Undo. Ticked rows
+  // are undone together from Actions.
   const AL_KINDS = { signins: ['Sign-ins', 'user', '#6FA8FF'], accounts: ['People and accounts', 'users', '#B07CE8'], lab: ['Links and sensors', 'link', '#3CC7C7'],
     seats: ['Devices', 'monitor', '#F2BE6B'], admin: ['Updates and settings', 'updates', '#FF8A3D'] };
   const AREA_KIND = { 'sign-in': 'signins', access: 'accounts', users: 'accounts', links: 'lab', sensors: 'lab', clients: 'seats', admin: 'admin' };
-  const al = { q: '', who: '', days: 7, problems: false, count: 50, open: new Set(), page: null };
+  const al = { q: '', who: '', days: 7, problems: false, count: 50, open: new Set(), page: null, groups: [], picked: new Set(), entry: null, detail: null };
+  const alKey = (e) => e.change || `${e.at}|${e.title}|${e.by}`;
+  const alChange = (e) => (e.change ? al.page?.changes?.[e.change] || null : null);
   const alKind = () => (where()[0] === 'settings' && where()[1] === 'activity' && AL_KINDS[where()[2][0]] ? where()[2][0] : '');
   const alQuery = (count) => {
     const p = new URLSearchParams();
@@ -2450,17 +2454,24 @@ const RELEASE_INFO = {
     const ago = Math.round((today - new Date(iso).setHours(0, 0, 0, 0)) / 86400000);
     return ago === 0 ? 'Today' : ago === 1 ? 'Yesterday' : d.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric', year: d.getFullYear() === today.getFullYear() ? undefined : 'numeric' });
   };
-  const alRow = (g, kid) => {
+  // A row: its tick (a folded run's ticks all of it), what happened, and Undone once its change was put back. at is
+  // [group] or [group, item] in al.groups, for the clicks.
+  const alRow = (g, at) => {
+    const kid = at.length > 1;
     const k = AREA_KIND[g.e.area] || 'admin';
     const [label, icon, colour] = AL_KINDS[k];
     const n = g.items ? g.items.length : 1;
     const key = `${g.e.at}|${g.e.title}`;
+    const keys = (kid ? [g.e] : g.items).map(alKey);
     const sub = [g.e.by, g.e.area === 'sign-in' && g.e.from ? `from ${g.e.from}` : label, g.e.detail].filter(Boolean).join(' · ');
-    return `<div class="al-row${kid ? ' kid' : ''}"><span class="al-ic" data-color="${colour}">${svg(icon)}</span><span class="al-t"><b>${esc(g.e.title)}</b><span>${esc(sub)}</span></span>`
+    return `<div class="al-row${kid ? ' kid' : ''}${panel.shows('activity', alKey(g.e)) ? ' dw-on' : ''}" data-al-at="${at.join(':')}">`
+      + `<label class="tk"><input type="checkbox" data-al-tick${keys.every((x) => al.picked.has(x)) ? ' checked' : ''} aria-label="Select ${esc(g.e.title)}"></label>`
+      + `<span class="al-ic" data-color="${colour}">${svg(icon)}</span><span class="al-t"><b>${esc(g.e.title)}</b><span>${esc(sub)}</span></span>`
       + `<span class="al-r">${g.e.result !== 'ok' ? `<span class="al-bad">${g.e.result === 'warning' ? 'Warning' : 'Failed'}</span>` : ''}`
+      + `${alChange(g.e)?.undone ? '<span class="ubadge amber">Undone</span>' : ''}`
       + `${n > 1 ? `<button type="button" class="al-x" data-al-open="${esc(key)}" aria-expanded="${al.open.has(key)}" title="Repeated ${n} times">×${n}</button>` : ''}`
       + `<span title="${esc(when(g.e.at))}">${new Date(g.e.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span></span></div>`
-      + (n > 1 && al.open.has(key) ? g.items.map((x) => alRow({ e: x }, true)).join('') : '');
+      + (n > 1 && al.open.has(key) ? g.items.map((x, i) => alRow({ e: x }, [at[0], i])).join('') : '');
   };
   const alDraw = () => {
     const page = al.page;
@@ -2474,14 +2485,20 @@ const RELEASE_INFO = {
       else out.push({ e, items: [e] });
       return out;
     }, []);
+    al.groups = groups;
+    // Ticks stay on what's still listed.
+    const keys = new Set(page.entries.map(alKey));
+    [...al.picked].forEach((x) => { if (!keys.has(x)) al.picked.delete(x); });
     let day = '';
-    $('activity-list').innerHTML = groups.length ? groups.map((g) => {
-      const d = dayOf(g.e.at);
-      const head = d !== day ? `<p class="al-day">${esc(d)}</p>` : '';
-      day = d;
-      return head + alRow(g);
-    }).join('') : '<p class="ds-empty">No matching events.</p>';
+    $('activity-list').innerHTML = groups.length ? `<div class="al-row al-head"><label class="tk"><input type="checkbox" data-al-all${al.picked.size === keys.size ? ' checked' : ''} aria-label="Select all"></label><span>Select all</span></div>`
+      + groups.map((g, i) => {
+        const d = dayOf(g.e.at);
+        const head = d !== day ? `<p class="al-day">${esc(d)}</p>` : '';
+        day = d;
+        return head + alRow(g, [i]);
+      }).join('') : '<p class="ds-empty">No matching events.</p>';
     paint($('activity-list'));
+    alTicks();
     const left = page.total - page.entries.length;
     $('al-more').innerHTML = left > 0 ? `<button type="button" class="ds-btn" data-al-more>Show 50 more</button><span>${left} older</span>` : '';
     document.querySelectorAll('#al-range [data-days]').forEach((b) => b.setAttribute('aria-pressed', String(Number(b.dataset.days) === al.days)));
@@ -2489,11 +2506,14 @@ const RELEASE_INFO = {
   };
   let alWho = ''; // the people in the drop-down, so it's only drawn again when they change
   const alTake = (page) => {
+    const was = al.entry ? JSON.stringify(alChange(al.entry)) : '';
     al.page = page;
     const who = `<option value="">All users</option>${page.people.map((p) => `<option${p === al.who ? ' selected' : ''}>${esc(p)}</option>`).join('')}`;
     if (who !== alWho) $('al-who').innerHTML = alWho = who;
     $('al-export').href = `/api/activity/export?${alQuery(0)}`;
     alDraw();
+    // The change in the panel was undone, or can't be any more: its details are read again.
+    if (panel.is('activity') && al.entry?.change && JSON.stringify(alChange(al.entry)) !== was) alOpen(al.entry, true);
   };
   const activity = async () => {
     try {
@@ -2504,7 +2524,7 @@ const RELEASE_INFO = {
     }
   };
   // While the log is open: every 10 seconds, with what it's narrowed to and the rows opened kept.
-  live({
+  const alLive = live({
     page: () => where()[0] === 'settings' && where()[1] === 'activity' && can.has('activity.view'),
     every: 10000,
     read: () => get(`/api/activity/find?${alQuery(al.count)}`),
@@ -2524,12 +2544,150 @@ const RELEASE_INFO = {
   $('al-range').addEventListener('click', (e) => { const b = e.target.closest('[data-days]'); if (b) { al.days = Number(b.dataset.days); alAgain(); } });
   $('al-res').addEventListener('click', (e) => { const b = e.target.closest('[data-problems]'); if (b) { al.problems = !!b.dataset.problems; alAgain(); } });
   $('al-more').addEventListener('click', (e) => { if (e.target.closest('[data-al-more]')) { al.count += 50; activity(); } });
+  const alAt = (el) => {
+    const [g, i] = (el?.dataset.alAt || '').split(':').map(Number);
+    const group = al.groups[g];
+    return !group ? null : i >= 0 ? { entries: [group.items[i]], entry: group.items[i] } : { entries: group.items, entry: group.e };
+  };
   $('activity-list').addEventListener('click', (e) => {
     const b = e.target.closest('[data-al-open]');
-    if (!b) return;
-    if (al.open.has(b.dataset.alOpen)) al.open.delete(b.dataset.alOpen);
-    else al.open.add(b.dataset.alOpen);
-    alDraw();
+    if (b) {
+      if (al.open.has(b.dataset.alOpen)) al.open.delete(b.dataset.alOpen);
+      else al.open.add(b.dataset.alOpen);
+      alDraw();
+      return;
+    }
+    const tick = e.target.closest('input[data-al-tick], input[data-al-all]');
+    if (tick) {
+      const list = tick.matches('[data-al-all]') ? al.page?.entries || [] : alAt(tick.closest('.al-row'))?.entries || [];
+      list.forEach((x) => (tick.checked ? al.picked.add(alKey(x)) : al.picked.delete(alKey(x))));
+      alDraw();
+      return;
+    }
+    if (e.target.closest('label, button, a')) return;
+    const at = alAt(e.target.closest('.al-row[data-al-at]'));
+    if (at) alOpen(at.entry);
+  });
+
+  // The Actions button: how many are ticked. Its menu undoes those that can be, exports them or clears the ticks.
+  const alPicked = () => (al.page?.entries || []).filter((x) => al.picked.has(alKey(x)));
+  const alTicks = () => {
+    const n = alPicked().length;
+    const b = $('al-act');
+    b.disabled = !n;
+    b.querySelector('.cnt').hidden = !n;
+    b.querySelector('.cnt').textContent = n.toLocaleString();
+    b.dataset.tip = n ? `${n} selected` : 'Select entries first';
+  };
+  $('al-act').addEventListener('click', () => {
+    const es = alPicked();
+    const ids = es.map(alChange).filter((c) => c?.undo).map((c) => c.id);
+    const item = (act, icon, label, hint = '', off = false) => `<button type="button" role="menuitem" class="am-link" data-al-do="${act}"${off ? ' disabled' : ''}>${svg(icon)}<span>${esc(label)}</span>${hint ? `<small>${esc(hint)}</small>` : ''}</button>`;
+    const menu = $('al-menu');
+    menu.innerHTML = `<div class="am-links">${item('undo', 'history', ids.length ? `Undo (${ids.length})` : 'Undo', ids.length < es.length ? `${ids.length} of ${es.length}` : '', !ids.length)}</div>`
+      + `<div class="am-links">${item('export', 'csv', 'Export selected')}${item('clear', 'x', 'Clear selection')}</div>`;
+    // Under the button, from its right edge: it's the last thing in the bar.
+    const r = $('al-act').getBoundingClientRect();
+    menu.style.cssText = `position:fixed;inset:auto;width:250px;margin:0;left:${Math.max(8, r.right - 250)}px;top:${r.bottom + 6}px`;
+    menu.showPopover();
+  });
+  $('al-menu').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-al-do]');
+    if (!b || b.disabled) return;
+    $('al-menu').hidePopover();
+    const es = alPicked();
+    if (b.dataset.alDo === 'undo') {
+      undo(es.map(alChange).filter((c) => c?.undo).map((c) => c.id), { host: $('activity-list') }).then((a) => { if (a) { al.picked.clear(); alDraw(); } });
+    } else if (b.dataset.alDo === 'export') {
+      // The same columns as Export, for the ticked entries only.
+      const cell = (v) => {
+        const s = String(v ?? '').replace(/^[=+\-@\t\r]/, "'$&");
+        return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+      };
+      const rows = es.map((x) => [new Date(x.at).toISOString().replace('T', ' ').slice(0, 19), x.by, x.from, x.area, x.title, x.result, x.detail].map(cell).join(','));
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([`﻿Time (UTC),User,From,Area,Action,Result,Details\r\n${rows.join('\r\n')}\r\n`], { type: 'text/csv' }));
+      a.download = 'rabbidlab-activity-selected.csv';
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    } else {
+      al.picked.clear();
+      alDraw();
+    }
+  });
+
+  // An entry in the side panel: who, when, from where and how it went; for an AD change, each value before and after,
+  // and Undo when this person can, or a line saying why not. again: read its change again.
+  const AL_RESULT = { ok: ['Completed', 'green'], warning: ['Warning', 'amber'], failed: ['Failed', 'red'] };
+  const AL_OBJECT = { user: 'User', group: 'Group', computer: 'Computer', ou: 'Organizational unit', domain: 'Domain', container: 'Container' };
+  const alWhy = (e, c) => {
+    const brief = alChange(e);
+    if (!e.change) {
+      return e.area === 'sign-in' ? 'Sign-ins cannot be undone.' : e.area === 'users' && e.action.startsWith('ad.')
+        ? `This change was made before ${product} recorded the values before and after a change, so it cannot be undone.` : 'Only Active Directory changes can be undone.';
+    }
+    const done = c?.undone || brief?.undone;
+    if (done) return `Undone by ${done.by}, ${when(done.at)}.`;
+    if (c?.error) return c.error;
+    if (!c && !brief) return 'This change is more than 30 days old. Changes can be undone for 30 days.';
+    return (c || brief).undo ? '' : (c || brief).why || '';
+  };
+  const alList = (vs) => (vs.length ? esc(vs.join(', ')) : '<span class="muted">Not set</span>');
+  const alPanel = (e) => {
+    const c = al.detail?.id === e.change ? al.detail : null;
+    const brief = alChange(e);
+    const [, icon] = AL_KINDS[AREA_KIND[e.area] || 'admin'];
+    const [result, tone] = AL_RESULT[e.result] || AL_RESULT.failed;
+    const why = alWhy(e, c);
+    const can = !!e.change && !why && !!(c || brief)?.undo;
+    const state = !e.change ? '' : (c?.undone || brief?.undone) ? ['Undone', 'grey'] : can ? ['Available', 'green'] : ['Not available', 'grey'];
+    const fact = (l, v, cls = '') => (v ? `<div class="dw-fact"><span class="l">${esc(l)}</span><span class="v${cls}">${esc(v)}</span></div>` : '');
+    const steps = c?.steps;
+    return `<div class="dw-head"><span class="pic dw-pic">${svg(e.change ? 'history' : icon)}</span><div class="dw-name"><h2 id="dw-title">${esc(e.title)}</h2>`
+      + `<p>${esc([c?.object?.name, when(e.at)].filter(Boolean).join(' · '))}</p></div>`
+      + `<div class="dw-do">${can ? `<button type="button" class="primary" data-al-undo>${svg('history')}Undo</button>` : ''}</div>`
+      + `<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`
+      + `<div class="dw-strip"><div><span class="l">Result</span><span class="v"><span class="ubadge ${tone}">${result}</span></span></div>`
+      + `<div><span class="l">By</span><span class="v">${esc(e.by)}</span></div><div><span class="l">When</span><span class="v">${esc(when(e.at))}</span></div>`
+      + (e.from ? `<div><span class="l">From</span><span class="v">${esc(e.from)}</span></div>` : '')
+      + (state ? `<div><span class="l">Undo</span><span class="v"><span class="ubadge ${state[1]}">${state[0]}</span></span></div>` : '') + '</div>'
+      + (why ? `<p class="hint dw-note al-why">${svg((c?.undone || brief?.undone) ? 'check' : 'info')}<span>${esc(why)}</span></p>` : '')
+      + (e.change && !c ? `<section class="dw-sec"><div class="dw-sec-head"><h3>Before and after</h3></div><div class="sk-wrap" aria-hidden="true">${SKELETON.rows(0)}${SKELETON.rows(1)}</div></section>`
+        : steps?.length ? `<section class="dw-sec"><div class="dw-sec-head"><h3>Before and after <small>${steps.length}</small></h3></div>`
+          + `<table class="al-diff"><thead><tr><th>Attribute</th><th>Before</th><th>After</th></tr></thead><tbody>${steps.map((s) => `<tr><td>${esc(s.label)}</td>`
+            + `<td class="was">${alList(s.before)}</td><td class="now">${alList(s.after)}</td></tr>`).join('')}</tbody></table></section>` : '')
+      + `<section class="dw-sec"><div class="dw-sec-head"><h3>Details</h3></div><div class="dw-facts">${fact('Object', c?.object?.name)}${fact('Object type', AL_OBJECT[c?.object?.kind])}`
+      + `${fact('Category', AL_KINDS[AREA_KIND[e.area] || 'admin'][0])}${fact('Details', e.detail)}${fact('Permission required to undo', c?.permissionName)}`
+      + `${fact("Confirm it's you", c?.confirm ? 'Required to undo' : '')}${fact('Distinguished name', c?.object?.dn, ' mono')}</div></section>`;
+  };
+  // again: the change is read again in the background, and the panel is drawn once it's back, still tucked if it was.
+  const alOpen = async (e, again = false) => {
+    if (!again) {
+      al.entry = e;
+      if (al.detail?.id !== e.change) al.detail = null;
+      panel.body.innerHTML = alPanel(e);
+      panel.open('activity', alKey(e));
+      document.querySelectorAll('#activity-list .al-row[data-al-at]').forEach((row) => row.classList.toggle('dw-on', alAt(row)?.entry === e));
+    }
+    if (!e.change || (!again && al.detail)) return;
+    let c;
+    try {
+      c = await get(`/api/changes/${encodeURIComponent(e.change)}`);
+    } catch (err) {
+      if (again) return; // the panel stays as it was
+      c = { id: e.change, error: err.message };
+    }
+    if (al.entry !== e || !panel.is('activity')) return;
+    al.detail = c;
+    panel.body.innerHTML = alPanel(e);
+  };
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('#dw-body [data-al-undo]') && panel.is('activity') && al.entry?.change) undo(al.entry.change, { host: panel.body });
+  });
+  // Undone anywhere (a toast, this log, a History tab): the log is read again and the panel shows it.
+  document.addEventListener('rabbidlab:undone', (e) => {
+    alLive.now();
+    if (panel.is('activity') && al.entry?.change && e.detail?.ids?.includes(al.entry.change)) alOpen(al.entry, true);
   });
 
   // A change, as the page asks for it: the answer, or the error it gave.
@@ -3119,6 +3277,7 @@ const RELEASE_INFO = {
     el.dataset.tone = tone;
     el.setAttribute('role', tone === 'warn' || tone === 'bad' ? 'alert' : 'status');
     el.toastRun = t.action?.run || null;
+    el.toastChanges = t.action?.changes || null; // an Undo's changes, so it goes once they're undone somewhere else
     el.innerHTML = `<span class="tst-ic">${tone === 'work' ? TOAST_FLASK : svg(tone === 'ok' ? 'check' : tone === 'bad' ? 'x' : 'alert')}</span>`
       + `<span class="tst-tx">${t.bold ? `<b>${esc(t.bold)}</b>` : ''}${t.text ? ` <span>${esc(t.text)}</span>` : ''}</span>`
       + (t.action ? `<span class="tst-acts"><a class="tst-act" href="${esc(t.action.href || '#')}">${esc(t.action.label)}</a></span>` : '')
@@ -3145,6 +3304,37 @@ const RELEASE_INFO = {
     }
     toastLayout();
   };
+
+  // Undo (R.undo): puts Active Directory changes back by their ids, with the flask over host (else the open panel) and
+  // in the toast, then the result in it. Every page that shows them hears rabbidlab:undone and reads again.
+  const undo = async (ids, { host = null } = {}) => {
+    const list = [...new Set([].concat(ids || []).filter(Boolean))];
+    if (!list.length) return null;
+    const doing = list.length === 1 ? 'Undoing the change.' : `Undoing ${list.length} changes.`;
+    const cover = host || (panel.el.open && !panel.tucked ? panel.body : null);
+    toast(doing, '', { stay: true });
+    if (cover) busy(cover, doing);
+    let done = [];
+    try {
+      const a = list.length === 1 ? await send(`/api/changes/${encodeURIComponent(list[0])}/undo`) : await send('/api/changes/undo', { ids: list });
+      const failed = list.length === 1 ? [] : a.results.filter((r) => !r.ok);
+      done = list.length === 1 ? list : a.results.filter((r) => r.ok).map((r) => r.id);
+      if (!failed.length) toast('Undo completed.', a.said || '');
+      else toast(done.length ? `Undid ${done.length} of ${list.length} changes.` : 'Could not undo the changes.', failed[0].error, { tone: 'warn' });
+      return a;
+    } catch (err) {
+      const waiting = toastBox?.querySelector('.tst[data-tone="work"]:not(.out)');
+      if (err.cancelled) { if (waiting) toastGone(waiting); } else toast(list.length === 1 ? 'Could not undo the change.' : 'Could not undo the changes.', err.message, { tone: 'warn' });
+      return null;
+    } finally {
+      if (cover) busy(cover, '');
+      if (done.length) document.dispatchEvent(new CustomEvent('rabbidlab:undone', { detail: { ids: done } }));
+    }
+  };
+  // A toast's Undo for changes undone since, from the log or a History tab, goes.
+  document.addEventListener('rabbidlab:undone', (e) => {
+    toastBox?.querySelectorAll('.tst').forEach((el) => { if (el.toastChanges?.every((id) => e.detail.ids.includes(id))) el.querySelector('.tst-acts')?.remove(); });
+  });
   // Toasts, in Settings, Appearance: type, where, style, glass opacity, how long, and errors. Each change shows a sample.
   const toastSettings = () => {
     const p = toastPrefs();
@@ -5418,7 +5608,7 @@ const RELEASE_INFO = {
     : `<button type="button" class="primary dw-edit" ${attrs}>${svg('edit')}<span>Edit</span></button>`);
 
   // What the other scripts use. Hints are tips.js and data grids are grid.js.
-  window.RabbidLab = { app: () => product, $, esc, svg, say, initials, when, daysAgo, send, get, keep, forget, has, paint, where, viewAs, place, popups, option, dropdown, sure, newLabel, copy, busy, refresh, live, groupTools, skeleton, toast, stepper, panel, scatter, editButton,
+  window.RabbidLab = { app: () => product, $, esc, svg, say, initials, when, daysAgo, send, get, keep, forget, has, paint, where, viewAs, place, popups, option, dropdown, sure, newLabel, copy, busy, refresh, live, groupTools, skeleton, toast, undo, stepper, panel, scatter, editButton,
     palette: window.RabbidLabColours.roles, me: () => meInfo,
     // The Devices page, for devices.js: its lists, what's ticked, and drawing or reading it again. failed() is why the
     // last read didn't work, so a list stops waiting for it; reading() is true until the computers are first read.

@@ -543,6 +543,7 @@
         <div class="seg" id="al-range"><button type="button" data-days="1">Today</button><button type="button" data-days="7" aria-pressed="true">7 days</button><button type="button" data-days="30">30 days</button><button type="button" data-days="0">All</button></div>
         <div class="seg" id="al-res"><button type="button" data-problems="" aria-pressed="true">All</button><button type="button" data-problems="1">Problems</button></div>
         <a class="ds-btn" id="al-export" href="/api/activity/export" download><svg><use href="#i-csv"/></svg>Export</a>
+        <button type="button" class="small al-act" id="al-act" aria-haspopup="menu" disabled data-tip="Select entries first">Actions<b class="cnt" hidden></b><svg class="chev"><use href="#i-chevron-down"/></svg></button>
       </div>
       <p class="al-count" id="al-count"></p>
       <div id="activity-list" data-skel="rows:7"></div>
@@ -1905,6 +1906,8 @@
   <div class="dialog-foot"><button type="button" id="gpo-l-cancel">Cancel</button><button type="button" class="primary" id="gpo-l-go">Sign in</button></div>
 </dialog>
 <div class="gear-menu" id="gpo-menu" popover role="menu"></div>
+<!-- The Activity log's Actions over the ticked entries: Undo, export and clear (console.js). -->
+<div class="gear-menu" id="al-menu" popover role="menu"></div>
 
 <dialog class="dialog" id="sure-dialog" aria-labelledby="sure-title">
   <h2 id="sure-title"></h2>
