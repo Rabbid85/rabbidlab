@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.327 (2026-11-21)
+
+- The News & Changelog divider on Overview is larger, so it reads as the heading of that row.
+
 ## 1.1.326 (2026-11-21)
 
 - The page area has its own thin scroll bar drawn over its right edge, so the page never moves when it comes or goes and banners run to the edge, in Chrome too.

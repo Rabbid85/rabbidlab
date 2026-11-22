@@ -625,8 +625,8 @@ a.button:hover, label.button:hover { background: #222536; text-decoration: none;
 .hero-new p:not(.eyebrow) { margin: 6px 0 10px; color: var(--muted); font-size: 12.5px; line-height: 1.45; }
 .more { color: var(--accent-soft); font-size: 13px; font-weight: 600; white-space: nowrap; }
 .news { padding: 26px 44px 4px; }
-.news-head { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
-.news-head > span { color: var(--title); font: 650 16px/1.2 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; white-space: nowrap; }
+.news-head { display: flex; align-items: center; gap: 18px; margin-bottom: 18px; }
+.news-head > span { color: var(--title); font: 700 22px/1.2 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; letter-spacing: -.01em; white-space: nowrap; }
 .news-head i { flex: 1; height: 1px; background: var(--line); }
 .tag { display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border-radius: 5px; background: color-mix(in srgb, var(--accent-soft) 12%, transparent); color: var(--accent-soft); font-size: 11px; font-weight: 650; }
 .home .machine { margin: 22px var(--side) 0; }

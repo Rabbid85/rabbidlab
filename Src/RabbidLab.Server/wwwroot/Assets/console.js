@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.327', [
+    'The News & Changelog divider on Overview is larger, so it reads as the heading of that row.']],
   ['1.1.326', [
     'The page area has its own thin scroll bar drawn over its right edge, so the page never moves when it comes or goes and banners run to the edge, in Chrome too.',
     'Scroll bars everywhere are thin and have no arrows.',
@@ -1027,6 +1029,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.327': ['2026-11-21', 'update', 'A larger News & Changelog heading'],
   '1.1.326': ['2026-11-21', 'update', 'A quiet scroll bar and a news divider'],
   '1.1.325': ['2026-11-21', 'update', 'Nothing to sync, and real screenshots'],
   '1.1.324': ['2026-11-21', 'update', 'The sync flask fills'],
