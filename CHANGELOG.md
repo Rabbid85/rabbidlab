@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.346 (2026-11-22)
+
+- The Activity log has a summary on top: how many entries, sign-ins, changes and problems in the chosen period, then By user and By area with share bars. A row opens the side panel with its latest entries.
+- Report, next to Export, opens a print preview of the Activity report for the chosen period, ready to print or save as PDF.
+- Settings, Reports can email the Activity report daily, weekly or monthly to your email notifications, with every entry attached as a CSV. It is off until you turn it on, and Send a test report sends one now.
+
 ## 1.1.345 (2026-11-22)
 
 - Check for updates comes back 3 seconds after a check instead of a minute.

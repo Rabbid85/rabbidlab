@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.346', [
+    'The Activity log has a summary on top: how many entries, sign-ins, changes and problems in the chosen period, then By user and By area with share bars. A row opens the side panel with its latest entries.',
+    'Report, next to Export, opens a print preview of the Activity report for the chosen period, ready to print or save as PDF.',
+    'Settings, Reports can email the Activity report daily, weekly or monthly to your email notifications, with every entry attached as a CSV. It is off until you turn it on, and Send a test report sends one now.']],
   ['1.1.345', [
     'Check for updates comes back 3 seconds after a check instead of a minute.']],
   ['1.1.344', [
@@ -1082,6 +1086,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.346': ['2026-11-22', 'feature', 'Activity report: summary, print preview and email'],
   '1.1.345': ['2026-11-22', 'fix', 'Check for updates back after 3 seconds'],
   '1.1.344': ['2026-11-22', 'fix', 'Toasts leave on time, even in another tab'],
   '1.1.343': ['2026-11-22', 'fix', 'No more pile of Up to date toasts'],
