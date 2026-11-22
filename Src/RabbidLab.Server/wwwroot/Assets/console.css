@@ -579,6 +579,9 @@ input.pick:focus { outline: none; border-color: var(--accent); }
 /* A dialog over the page, such as Add computers. */
 .dialog { width: min(560px, calc(100vw - 32px)); padding: 24px 26px; border: 1px solid var(--line-strong); border-radius: 14px; background: #11131D; color: var(--text); }
 .dialog::backdrop { background: rgba(5, 6, 10, .66); }
+/* A window, the side panel or a menu takes focus itself when it opens: no browser focus ring round the whole of it (a white
+   box that showed when the keyboard was last used). The buttons and boxes in it keep theirs. */
+.dialog:focus-visible, dialog.drawer:focus-visible, .gear-menu:focus-visible, .account-menu:focus-visible { outline: none; }
 .dialog h2 { margin: 0; font: 750 22px "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; color: var(--title); }
 .dialog-lead { margin: 4px 0 6px; color: var(--muted); font-size: 13.5px; }
 .key-row { display: flex; align-items: center; gap: 8px; }

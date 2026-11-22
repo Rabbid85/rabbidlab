@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.336', [
+    'Windows, the side panel and menus no longer show a white box around them when they open after you used the keyboard.']],
   ['1.1.335', [
     'After you sign in, the sign-in card fades away and the opening window comes up in the middle of the same background, then the background fades into the console.']],
   ['1.1.334', [
@@ -1057,6 +1059,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.336': ['2026-11-22', 'fix', 'No white box around windows'],
   '1.1.335': ['2026-11-22', 'update', 'From sign-in to the console on one background'],
   '1.1.334': ['2026-11-22', 'feature', 'A glass opening screen with each read'],
   '1.1.333': ['2026-11-22', 'feature', 'A style engine, a glass sign-in card and System'],

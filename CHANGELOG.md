@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.336 (2026-11-22)
+
+- Windows, the side panel and menus no longer show a white box around them when they open after you used the keyboard.
+
 ## 1.1.335 (2026-11-22)
 
 - After you sign in, the sign-in card fades away and the opening window comes up in the middle of the same background, then the background fades into the console.
