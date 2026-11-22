@@ -90,6 +90,14 @@ body.app.rail-small { grid-template-columns: 60px minmax(0, 1fr); }
 .sub-head h2 { margin: 0; font: 800 26px/1.2 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; letter-spacing: -.01em; color: #fff; }
 .sub-head p { margin: 6px 0 0; color: #B4B8C8; font-size: 14px; }
 .ds-sec + .ds-sec { margin-top: 26px; padding-top: 26px; border-top: 1px solid var(--line); }
+/* Each section is its own panel, one under another, with a line between its settings, so a page reads as groups rather than
+   one long run of text. Help wraps at a readable width, and on Full width a section of settings stays narrow enough that
+   each control sits near its name (sections that hold a list keep the whole width). */
+.set-area .ds-sec { padding: 18px 22px 8px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); }
+.set-area .ds-sec + .ds-sec { margin-top: 16px; padding-top: 18px; border-top: 1px solid var(--line); }
+.set-area .ds-row + .ds-row { border-top: 1px solid var(--line); }
+.ds-l > span { max-width: 72ch; }
+.layout-wide .set-area .ds-sec:not(:has(.gcard, table)) { max-width: 1120px; }
 .ds-h { margin: 0 0 6px; font: 700 18px/1.25 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; color: #fff; }
 .ds-h.danger { color: var(--red); }
 .ds-h.has-reset { display: flex; align-items: center; }
@@ -984,39 +992,87 @@ body.dev-tools .devstrip:not([hidden]) { display: flex; flex-wrap: wrap; }
 .brand .mark.gone { display: none; }
 .srail.finding .dkids.open { display: none; }
 .ds-sec.gone { display: none !important; }
-.one-sec .ds-sec { margin-top: 0 !important; padding-top: 0 !important; border-top: 0 !important; }
-/* The toast: the flask and a line, gone after a few seconds (R.toast). Where, which style and how long are each person's
-   own (Settings, Appearance, Toasts). --toast-l and --toast-m line it up with the page, not the window. */
-.toast { --tx: -50%; --ty: 12px; position: fixed; left: var(--toast-m, 50%); bottom: 28px; z-index: 900; display: flex; align-items: center; gap: 12px; max-width: min(640px, calc(100vw - 32px)); padding: 10px 18px 10px 14px; border: 1px solid var(--accent); border-radius: 999px; background: #141725; box-shadow: 0 14px 40px rgba(0, 0, 0, .5); color: #D7DAE8; font-size: 14px; opacity: 0; pointer-events: none; transform: translate(var(--tx), var(--ty)); transition: opacity .2s, transform .2s; }
-.toast.show { opacity: 1; pointer-events: auto; transform: translate(var(--tx), 0); }
-.toast.at-tl, .toast.at-tc, .toast.at-tr { top: var(--toast-t, 70px); bottom: auto; --ty: -12px; }
-.toast.at-tl, .toast.at-bl { left: var(--toast-l, 24px); --tx: 0; }
-.toast.at-tr, .toast.at-br { left: auto; right: 24px; --tx: 0; }
-.toast b { color: #fff; font-weight: 650; }
-.toast .all-flask { flex: none; width: 20px; height: 20px; }
-.toast.busy .liquid { animation: sk-pulse 1.2s ease-in-out infinite; }
-.toast.warn { border-color: rgba(242, 190, 107, .55); }
-.toast a { flex: none; padding-left: 14px; border-left: 1px solid var(--line-strong); color: var(--accent-soft); font-weight: 600; }
-/* Glow: filled with the accent. */
-.toast.glow { border-color: transparent; background: linear-gradient(100deg, var(--accent), var(--accent-soft)); box-shadow: 0 12px 34px color-mix(in srgb, var(--accent) 40%, transparent); color: #fff; }
-.toast.glow .all-flask { stroke: #fff; }
-.toast.glow .liquid { fill: rgba(255, 255, 255, .55); }
-.toast.glow a { border-left-color: rgba(255, 255, 255, .35); color: #fff; text-decoration: underline; text-underline-offset: 3px; }
-/* Card and Square: the flask in a square, a title over a line. */
-.toast .tsq { display: grid; flex: none; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: color-mix(in srgb, var(--accent) 16%, transparent); }
-.toast .tx { display: grid; flex: 1; gap: 2px; min-width: 0; }
-.toast .tx > span { color: var(--muted); font-size: 13px; }
-.toast .tx a { padding: 0; border: 0; }
-.toast.card { align-items: flex-start; width: 360px; padding: 14px 10px 14px 14px; border-radius: 14px; }
-.toast.card .tbar { display: block; height: 3px; margin-top: 9px; overflow: hidden; border-radius: 3px; background: var(--line); }
-.toast.card .tbar i { display: block; width: 100%; height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--accent-soft), var(--accent)); animation: toast-bar var(--toast-s, 6s) linear forwards; }
-@keyframes toast-bar { to { width: 0; } }
-.toast .tx-x { display: grid; flex: none; place-items: center; width: 24px; height: 24px; margin: -4px 0 0; padding: 0; border: 0; border-radius: 6px; background: none; color: #6D7290; font-size: 17px; line-height: 1; cursor: pointer; }
-.toast .tx-x:hover { background: #1A1D2B; color: #fff; }
-.toast.square { padding: 8px 18px 8px 8px; border-radius: 14px; }
-.toast.square .tsq { border-radius: 24%; background: linear-gradient(135deg, var(--accent-soft), var(--accent)); transform: rotate(-8deg); }
-.toast.square .tsq .all-flask { stroke: #fff; }
-.toast.square .tsq .liquid { fill: rgba(255, 255, 255, .6); }
+.one-sec .ds-sec { margin-top: 0 !important; }
+/* Toasts (R.toast): the results of actions, stacked at one spot on the screen. The type (pills that stack, cards, a deck),
+   where, the style, how long they stay and whether errors stay are each person's own (Settings, Appearance, Toasts).
+   --toast-l, -m and -t line them up with the page, not the window, and follow it as the window resizes. */
+.toasts { --tst-a: .95; --tst-bg: rgba(12, 13, 20, var(--tst-a)); --tst-blur: blur(16px) saturate(135%); --tst-edge: rgba(255, 255, 255, .09); --dir: 1;
+  position: fixed; z-index: 900; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+/* Style: every one flat, a fill, a blur and a thin edge. --tst-a is the glass opacity. */
+.toasts.look-frost { --tst-bg: rgba(36, 39, 58, var(--tst-a)); --tst-blur: blur(28px) saturate(180%); --tst-edge: rgba(255, 255, 255, .16); }
+.toasts.look-dark { --tst-bg: rgba(12, 13, 20, .88); --tst-blur: blur(10px) saturate(115%); --tst-edge: rgba(255, 255, 255, .08); }
+.toasts.look-solid { --tst-bg: #141725; --tst-blur: none; --tst-edge: var(--line-strong); }
+/* Where: the page's left, middle or right, at its top or the bottom of the window. The newest is nearest the edge. */
+.toasts.at-tl, .toasts.at-tc, .toasts.at-tr { top: var(--toast-t, 70px); }
+.toasts.at-bl, .toasts.at-bc, .toasts.at-br { bottom: 24px; flex-direction: column-reverse; --dir: -1; }
+.toasts.at-tl, .toasts.at-bl { left: var(--toast-l, 24px); align-items: flex-start; }
+.toasts.at-tc, .toasts.at-bc { left: var(--toast-m, 50%); align-items: center; transform: translateX(-50%); }
+.toasts.at-tr, .toasts.at-br { right: 24px; align-items: flex-end; }
+/* One toast: its icon (the flask while work runs), the words, its link, a close, and a line along its foot for the time
+   left, which stops while the pointer is on it. One width from the start, so words changing never stretch it. */
+.tst { position: relative; display: flex; align-items: center; gap: 12px; width: min(620px, calc(100vw - 48px)); min-height: 48px; padding: 8px 8px 8px 10px; overflow: hidden;
+  border: 1px solid var(--tst-edge); border-radius: 16px; background: var(--tst-bg); backdrop-filter: var(--tst-blur); color: #D7DAE8; font-size: 14px; pointer-events: auto;
+  animation: tst-in .22s ease-out; transition: opacity .22s ease, transform .22s ease; }
+@keyframes tst-in { from { opacity: 0; transform: translateY(calc(-6px * var(--dir))); } }
+.tst.out { opacity: 0; transform: translateY(calc(-4px * var(--dir))); }
+.tst-hide { display: none; }
+.tst-ic { display: grid; flex: none; place-items: center; width: 28px; height: 28px; border-radius: 8px; background: rgba(255, 255, 255, .05); }
+.tst-ic svg { width: 16px; height: 16px; }
+.tst-ic .all-flask { width: 20px; height: 20px; color: var(--accent-soft); }
+.tst[data-tone="ok"] .tst-ic { background: rgba(95, 212, 160, .12); color: var(--ok); }
+.tst[data-tone="warn"] .tst-ic { background: rgba(242, 190, 107, .13); color: var(--amber); }
+.tst[data-tone="bad"] .tst-ic { background: rgba(255, 107, 125, .13); color: #FF8D9B; }
+.tst[data-tone="work"] .tst-ic { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.tst[data-tone="work"] .liquid { animation: sk-pulse 1.2s ease-in-out infinite; }
+.tst[data-tone="warn"] { border-color: rgba(242, 190, 107, .35); }
+.tst[data-tone="bad"] { border-color: rgba(255, 107, 125, .35); }
+.tst-tx { flex: 1; min-width: 0; line-height: 1.4; }
+.tst-tx b { color: #fff; font-weight: 650; }
+.tst-tx span { color: #A9ADC2; }
+/* The link is a plain word after a thin line: not a box, and not the accent colour. */
+.tst-acts { display: flex; flex: none; align-items: center; padding-left: 10px; border-left: 1px solid rgba(255, 255, 255, .1); }
+.tst-act { height: 28px; padding: 0 8px; border-radius: 7px; color: #fff; font-size: 13px; font-weight: 600; line-height: 28px; }
+.tst-act:hover { background: rgba(255, 255, 255, .07); }
+.tst-x { display: grid; flex: none; place-items: center; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 7px; background: none; color: #858AA2; cursor: pointer; }
+.tst-x:hover { background: rgba(255, 255, 255, .07); color: #fff; }
+.tst-x svg { width: 14px; height: 14px; }
+.tst-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; }
+.tst-bar i { display: none; height: 100%; background: color-mix(in srgb, var(--accent-soft) 70%, transparent); }
+.tst.timed .tst-bar i { display: block; width: 100%; animation: tst-time var(--toast-s, 8s) linear forwards; }
+.tst[data-tone="ok"] .tst-bar i { background: rgba(95, 212, 160, .6); }
+.tst:hover .tst-bar i, .toasts.t-deck:hover .tst-bar i { animation-play-state: paused; }
+@keyframes tst-time { to { width: 0; } }
+/* Long work that turns into its result glows once. */
+@keyframes tst-flash { from { box-shadow: 0 0 0 1px rgba(95, 212, 160, .55); } }
+.tst.flash { animation: tst-flash 1.2s ease-out; }
+.tst-more { height: 32px; padding: 0 12px; border: 1px solid var(--tst-edge); border-radius: 10px; background: var(--tst-bg); backdrop-filter: var(--tst-blur); color: #C3C7D6; font-size: 12.5px; font-weight: 600; pointer-events: auto; cursor: pointer; }
+/* Cards: the title over the detail, the link on its own line, the close in the corner. */
+.t-cards .tst { display: grid; grid-template-columns: 32px minmax(0, 1fr) 26px; align-items: start; gap: 4px 12px; width: min(380px, calc(100vw - 48px)); padding: 14px 10px 16px 14px; border-radius: 14px; }
+.t-cards .tst-ic { width: 32px; height: 32px; }
+.t-cards .tst-tx { display: grid; gap: 2px; }
+.t-cards .tst-tx span { font-size: 13px; }
+.t-cards .tst-acts { grid-column: 2; margin: 6px 0 0 -8px; padding: 0; border: 0; }
+.t-cards .tst-x { grid-row: 1; grid-column: 3; }
+/* A deck: the newest in front, and up to two behind it at its height, each a step further out, narrower and darker. "+2"
+   says how many. The pointer fans them out into a list. */
+.toasts.t-deck { display: block; width: min(640px, calc(100vw - 48px)); height: var(--tst-h, 48px); transition: height .25s ease; }
+.toasts.t-deck:hover { height: var(--tst-open, 200px); }
+.t-deck .tst { position: absolute; top: 0; left: 0; right: 0; width: auto; transform-origin: top center; z-index: calc(10 - var(--i, 0));
+  transform: translateY(calc(var(--i, 0) * 10px * var(--dir))) scale(calc(1 - var(--i, 0) * .04)); transition: transform .35s cubic-bezier(.2, .8, .2, 1), opacity .25s ease; animation-name: tst-fade; }
+.toasts.t-deck.up .tst { top: auto; bottom: 0; transform-origin: bottom center; }
+@keyframes tst-fade { from { opacity: 0; } }
+.toasts.t-deck:not(:hover) .tst.back { height: var(--tst-fh); }
+.toasts.t-deck:not(:hover) .tst.back > * { opacity: 0; }
+.t-deck .tst.back::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: rgba(0, 0, 0, calc(var(--i, 0) * .2)); pointer-events: none; transition: opacity .25s; }
+.toasts.t-deck:not(:hover) .tst:nth-child(n+4) { opacity: 0; }
+.toasts.t-deck:hover .tst { transform: translateY(calc(var(--y, 0px) * var(--dir))) scale(1); }
+.toasts.t-deck:hover .tst.back::after { opacity: 0; }
+.tst-n { display: inline-grid; flex: none; place-items: center; min-width: 28px; height: 22px; padding: 0 7px; border-radius: 999px; background: rgba(255, 255, 255, .09); color: #D7DAE8; font-size: 12px; font-weight: 700; transition: opacity .2s; }
+.toasts.t-deck:hover .tst-n { opacity: 0; }
+/* Glass opacity in Settings, Appearance, Toasts; its row goes when the style isn't glass. */
+.ds-row[hidden] { display: none; }
+.ds-range { width: 100%; margin: 0; accent-color: var(--accent); }
+.ds-range-v { min-width: 3.2ch; color: var(--title); font-variant-numeric: tabular-nums; }
 
 /* Console address: rows with an icon, what it is, and its buttons on the right as icons (Copy, Download, Remove). */
 .ca-row { display: flex; align-items: center; gap: 14px; min-height: 58px; padding: 9px 0; }

@@ -371,13 +371,19 @@
       </section>
       <section class="ds-sec" data-sec="toasts"><h3 class="ds-h has-reset">Toasts <small class="ds-scope">Just you</small><span class="ds-pair"><button type="button" class="ds-btn ds-ibtn" id="toast-test" data-tip="Test toast" aria-label="Show a test toast"><svg><use href="#i-eye"/></svg></button><button type="button" class="ds-btn" id="toast-reset">Reset</button></span></h3>
         <p class="sq-lead">The notification shown after an action, such as Refresh icons. Changing a setting shows a sample.</p>
+        <div class="ds-row"><div class="ds-l"><b>Type</b><span>Pills stack one under another. Cards show the title over the detail. A deck keeps the newest in front with the others behind it; point at it to see them all.</span></div>
+          <div class="ds-r"><select id="toast-type" aria-label="Toast type"><option value="stack">Pills that stack</option><option value="cards">Cards</option><option value="deck">A deck</option></select></div></div>
         <div class="ds-row"><div class="ds-l"><b>Position</b><span>Where on the screen toasts appear.</span></div><div class="ds-r"><select id="toast-at" aria-label="Toast position">
           <option value="tl">Top left</option><option value="tc">Top middle</option><option value="tr">Top right</option>
           <option value="bl">Bottom left</option><option value="bc">Bottom middle</option><option value="br">Bottom right</option></select></div></div>
-        <div class="ds-row"><div class="ds-l"><b>Style</b><span>Pill is slim with the flask. Card adds a title, a close button and a progress bar. Glow is a bright pill. Square is a small card.</span></div>
-          <div class="ds-r"><select id="toast-style" aria-label="Toast style"><option value="pill">Pill</option><option value="card">Card</option><option value="glow">Glow</option><option value="square">Square</option></select></div></div>
-        <div class="ds-row"><div class="ds-l"><b>Show for</b><span>How long a toast stays on screen.</span></div>
-          <div class="ds-r"><select id="toast-secs" aria-label="Show for"><option value="3">3 seconds</option><option value="6">6 seconds</option><option value="10">10 seconds</option></select></div></div>
+        <div class="ds-row"><div class="ds-l"><b>Style</b><span>Smoked glass and frosted glass show the page through the toast, blurred. Dark is nearly solid. Solid is the console's card colour.</span></div>
+          <div class="ds-r"><select id="toast-look" aria-label="Toast style"><option value="glass">Smoked glass</option><option value="frost">Frosted glass</option><option value="dark">Dark</option><option value="solid">Solid</option></select></div></div>
+        <div class="ds-row" id="toast-glass-row"><div class="ds-l"><b>Glass opacity</b><span>How solid the glass is. Higher is easier to read.</span></div>
+          <div class="ds-r"><input type="range" class="ds-range" id="toast-glass" min="20" max="95" step="5" aria-label="Glass opacity"><b class="ds-range-v" id="toast-glass-v"></b></div></div>
+        <div class="ds-row"><div class="ds-l"><b>Show for</b><span>How long a toast stays on screen. A line along its foot shows the time left and stops while the pointer is on it.</span></div>
+          <div class="ds-r"><select id="toast-secs" aria-label="Show for"><option value="3">3 seconds</option><option value="5">5 seconds</option><option value="8">8 seconds</option><option value="15">15 seconds</option><option value="0">Until closed</option></select></div></div>
+        <div class="ds-row"><div class="ds-l"><b>Errors stay until closed</b><span>A toast saying something failed waits until you close it.</span></div>
+          <div class="ds-r"><input type="checkbox" class="switch" role="switch" id="toast-errors" aria-label="Errors stay until closed"></div></div>
       </section>
     </section>
 

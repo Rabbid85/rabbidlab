@@ -2,6 +2,13 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.332 (2026-11-22)
+
+- Toasts stack instead of replacing each other. Each has a close button and a line along its foot for the time left, which stops while the pointer is on it. Long work turns into its result in the same toast.
+- Settings, Appearance, Toasts has Type (Pills that stack, Cards or A deck), Position, Style (Smoked glass, Frosted glass, Dark or Solid) with Glass opacity, Show for (up to Until closed) and Errors stay until closed. The default is pills that stack at the top middle in smoked glass.
+- Links in toasts are plain words instead of the accent colour.
+- Settings pages show each section as its own panel with a line between settings, so they no longer read as one long run of text. On Full width a page of settings stays narrow enough that each control sits near its name.
+
 ## 1.1.331 (2026-11-22)
 
 - Reloading the console no longer flashes the top bar and the empty sidebar. Until the page is ready only the plain background shows, then all of it appears at once.

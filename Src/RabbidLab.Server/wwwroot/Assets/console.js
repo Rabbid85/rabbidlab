@@ -3,6 +3,11 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.332', [
+    'Toasts stack instead of replacing each other. Each has a close button and a line along its foot for the time left, which stops while the pointer is on it. Long work turns into its result in the same toast.',
+    'Settings, Appearance, Toasts has Type (Pills that stack, Cards or A deck), Position, Style (Smoked glass, Frosted glass, Dark or Solid) with Glass opacity, Show for (up to Until closed) and Errors stay until closed. The default is pills that stack at the top middle in smoked glass.',
+    'Links in toasts are plain words instead of the accent colour.',
+    'Settings pages show each section as its own panel with a line between settings, so they no longer read as one long run of text. On Full width a page of settings stays narrow enough that each control sits near its name.']],
   ['1.1.331', [
     'Reloading the console no longer flashes the top bar and the empty sidebar. Until the page is ready only the plain background shows, then all of it appears at once.']],
   ['1.1.330', [
@@ -1043,6 +1048,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.332': ['2026-11-22', 'feature', 'Toasts stack, with all their options in Appearance'],
   '1.1.331': ['2026-11-22', 'fix', 'No flash of the console frame on reload'],
   '1.1.330': ['2026-11-22', 'fix', 'The sign-in update pill holds still'],
   '1.1.329': ['2026-11-22', 'feature', 'Every page refreshes itself'],
@@ -2662,73 +2668,162 @@ const RELEASE_INFO = {
     const [kind, count] = el.dataset.skel.split(':');
     skeleton(el, kind, Number(count) || 6);
   });
-  // A toast: the flask, a bold result and a line, and a link. It goes after a few seconds unless it stays (work under way).
-  // Where it shows, its style and how long it stays are each person's own (Settings, Appearance, Toasts; kept in this browser).
+  // Toasts: the results of actions, stacked at one spot on the screen. Each person picks in Settings, Appearance, Toasts:
+  // the type (pills that stack, cards, a deck), where, the style, how long they stay, and whether errors stay until closed.
+  // Kept in this browser.
   const TOAST_FLASK = '<svg class="all-flask" viewBox="0 0 24 24" aria-hidden="true"><path class="liquid" d="M6.6 15.2h10.8l2 3.2A1.7 1.7 0 0 1 17.9 21H6.1a1.7 1.7 0 0 1-1.5-2.6z"/><path d="M9 3h6M10 3v6.2L4.6 18.4A1.7 1.7 0 0 0 6.1 21h11.8a1.7 1.7 0 0 0 1.5-2.6L14 9.2V3"/></svg>';
-  const TOAST_DEFAULT = { at: 'tc', style: 'pill', secs: 6 };
+  const TOAST_DEFAULT = { type: 'stack', at: 'tc', look: 'glass', glass: 95, secs: 8, errors: true };
+  const TOAST_MOST = { stack: 3, cards: 4, deck: 6 }; // how many show at once; the rest wait behind a "more" line
   const toastPrefs = () => {
-    try {
-      return { ...TOAST_DEFAULT, ...JSON.parse(localStorage.getItem('rabbidlab.toast') || '{}') };
-    } catch {
-      return { ...TOAST_DEFAULT };
-    }
+    let p = {};
+    try { p = JSON.parse(localStorage.getItem('rabbidlab.toast') || '{}') || {}; } catch { p = {}; }
+    // Before 1.1.332 there was one toast in a style: Card became the cards type, the others pills that stack.
+    if (p.style && !p.type) p.type = p.style === 'card' ? 'cards' : 'stack';
+    const o = { ...TOAST_DEFAULT, ...p };
+    return {
+      type: o.type in TOAST_MOST ? o.type : TOAST_DEFAULT.type,
+      at: ['tl', 'tc', 'tr', 'bl', 'bc', 'br'].includes(o.at) ? o.at : TOAST_DEFAULT.at,
+      look: ['glass', 'frost', 'dark', 'solid'].includes(o.look) ? o.look : TOAST_DEFAULT.look,
+      glass: Math.min(95, Math.max(20, Number(o.glass) || TOAST_DEFAULT.glass)),
+      secs: [3, 5, 8, 15, 0].includes(Number(o.secs)) ? Number(o.secs) : TOAST_DEFAULT.secs,
+      errors: o.errors !== false,
+    };
   };
-  let toastEl = null;
-  let toastTimer = 0;
-  // Lined up with the page rather than the window, so it never sits on the rail. Worked out again whenever the page area
-  // changes size (the window resized or maximised, the rail collapsed), so a toast that's up moves with it.
+  let toastBox = null;
+  // Lined up with the page rather than the window, so they never sit on the rail. Worked out again whenever the page area
+  // changes size (the window resized or maximised, the rail collapsed), so toasts that are up move with it.
   const toastPlace = () => {
     const main = document.querySelector('.main').getBoundingClientRect();
-    toastEl.style.setProperty('--toast-l', `${main.left + 24}px`);
-    toastEl.style.setProperty('--toast-m', `${main.left + main.width / 2}px`);
-    // At the top it sits under the bar that offers the client, when that's showing.
+    toastBox.style.setProperty('--toast-l', `${main.left + 24}px`);
+    toastBox.style.setProperty('--toast-m', `${main.left + main.width / 2}px`);
+    // At the top they sit under the bar that offers the client, when that's showing.
     const bar = $('herebar');
-    toastEl.style.setProperty('--toast-t', `${(bar && !bar.hidden ? bar.getBoundingClientRect().bottom : main.top) + 16}px`);
+    toastBox.style.setProperty('--toast-t', `${(bar && !bar.hidden ? bar.getBoundingClientRect().bottom : main.top) + 16}px`);
   };
   let toastQueued = 0;
   const toastReplace = () => {
-    if (!toastEl?.classList.contains('show') || toastQueued) return;
+    if (!toastBox?.firstElementChild || toastQueued) return;
     toastQueued = requestAnimationFrame(() => {
       toastQueued = 0;
       toastPlace();
     });
   };
-  const toast = (bold, text = '', { stay = false, tone = '', action = null } = {}) => {
+  const toastGone = (el) => {
+    if (!el.isConnected || el.classList.contains('out')) return;
+    el.classList.add('out');
+    setTimeout(() => { el.remove(); toastLayout(); }, 220);
+  };
+  // The box they stack in, set up for this person's type, place and style.
+  const toastHost = () => {
     const p = toastPrefs();
-    if (!toastEl) {
-      toastEl = document.createElement('div');
-      toastEl.setAttribute('role', 'status');
-      toastEl.addEventListener('click', (e) => { if (e.target.closest('.tx-x')) toastEl.classList.remove('show'); });
-      document.body.append(toastEl);
+    if (!toastBox) {
+      toastBox = document.createElement('div');
+      toastBox.setAttribute('aria-label', 'Notifications');
+      toastBox.addEventListener('click', (e) => {
+        if (e.target.closest('.tst-more')) { toastBox.querySelectorAll('.tst-hide').forEach(toastGone); return; }
+        const el = e.target.closest('.tst');
+        if (!el) return;
+        if (e.target.closest('.tst-x')) { toastGone(el); return; }
+        const a = e.target.closest('.tst-act');
+        if (!a) return;
+        if (el.toastRun) { e.preventDefault(); el.toastRun(); }
+        toastGone(el);
+      });
+      document.body.append(toastBox);
       new ResizeObserver(toastReplace).observe(document.querySelector('.main'));
       window.addEventListener('resize', toastReplace);
     }
-    clearTimeout(toastTimer);
+    toastBox.className = `toasts t-${p.type} at-${p.at} look-${p.look}${p.at[0] === 'b' ? ' up' : ''}`;
+    toastBox.style.setProperty('--tst-a', String(p.glass / 100));
     toastPlace();
-    toastEl.style.setProperty('--toast-s', `${p.secs}s`);
-    const link = action ? `<a href="${esc(action.href)}">${esc(action.label)}</a>` : '';
-    const shown = toastEl.classList.contains('show'); // updates to one that's showing don't slide it in again
-    toastEl.className = `toast ${p.style} at-${p.at}${stay ? ' busy' : ''}${tone ? ` ${tone}` : ''}${shown ? ' show' : ''}`;
-    toastEl.innerHTML = p.style === 'card' || p.style === 'square'
-      ? `<span class="tsq">${TOAST_FLASK}</span><span class="tx"><b>${esc(bold)}</b>${text || link ? `<span>${esc(text)}${text && link ? ' ' : ''}${link}</span>` : ''}`
-        + `${p.style === 'card' && !stay ? '<i class="tbar"><i></i></i>' : ''}</span>${p.style === 'card' ? '<button type="button" class="tx-x" aria-label="Close">×</button>' : ''}`
-      : `${TOAST_FLASK}<span>${bold ? `<b>${esc(bold)}</b>` : ''}${text ? ` ${esc(text)}` : ''}</span>${link}`;
-    if (!shown) {
-      // Put it in its spot first with no animation, so only the fade-in runs and it never slides across the screen.
-      toastEl.style.setProperty('transition', 'none');
-      void toastEl.offsetWidth;
-      toastEl.style.removeProperty('transition');
-      toastEl.classList.add('show');
-    }
-    if (!stay) toastTimer = setTimeout(() => toastEl.classList.remove('show'), p.secs * 1000);
+    return p;
   };
-  // Toasts, in Settings, Appearance: where they show, their style and how long they stay. Picking one shows a sample.
+  // How many show, and for a deck how they sit: the newest in front and up to two behind it at its height, each a step
+  // further out; "+2" in the front one says how many. The pointer fans them out (console.css).
+  const toastLayout = () => {
+    if (!toastBox) return;
+    const p = toastPrefs();
+    const most = TOAST_MOST[p.type];
+    const all = [...toastBox.querySelectorAll('.tst:not(.out)')];
+    toastBox.querySelectorAll('.tst-n').forEach((n) => n.remove());
+    if (p.type === 'deck') {
+      all.slice(most).forEach(toastGone);
+      const shown = all.slice(0, most);
+      const front = shown[0]?.offsetHeight || 48;
+      let y = 0;
+      shown.forEach((el, i) => {
+        el.style.setProperty('--i', String(i));
+        el.style.setProperty('--y', `${y}px`);
+        el.classList.toggle('back', i > 0);
+        y += Math.max(el.offsetHeight, el.scrollHeight) + 8;
+      });
+      toastBox.style.setProperty('--tst-fh', `${front}px`);
+      toastBox.style.setProperty('--tst-h', `${front + Math.min(shown.length - 1, 2) * 10}px`);
+      toastBox.style.setProperty('--tst-open', `${y}px`);
+      if (shown.length > 1) {
+        shown[0].querySelector('.tst-x').insertAdjacentHTML('beforebegin',
+          `<span class="tst-n" data-tip="${shown.length - 1} more. Point at the toast to see them.">+${shown.length - 1}</span>`);
+      }
+    } else {
+      all.forEach((el, i) => { el.classList.remove('back'); el.classList.toggle('tst-hide', i >= most); });
+    }
+    let more = toastBox.querySelector('.tst-more');
+    const extra = p.type === 'deck' ? 0 : all.length - most;
+    if (extra > 0) {
+      if (!more) {
+        more = document.createElement('button');
+        more.type = 'button';
+        more.className = 'tst-more';
+        toastBox.append(more);
+      }
+      more.textContent = `${extra} more · Clear`;
+    } else more?.remove();
+  };
+  // One toast's insides: its icon (the flask while work runs), the words, its link, a close, and the line for the time
+  // left. Work under way, and errors when this person wants, stay until closed.
+  const toastDraw = (el, t, p) => {
+    const tone = t.tone === 'warn' ? 'warn' : t.tone === 'bad' ? 'bad' : t.stay ? 'work' : 'ok';
+    el.dataset.tone = tone;
+    el.setAttribute('role', tone === 'warn' || tone === 'bad' ? 'alert' : 'status');
+    el.toastRun = t.action?.run || null;
+    el.innerHTML = `<span class="tst-ic">${tone === 'work' ? TOAST_FLASK : svg(tone === 'ok' ? 'check' : tone === 'bad' ? 'x' : 'alert')}</span>`
+      + `<span class="tst-tx">${t.bold ? `<b>${esc(t.bold)}</b>` : ''}${t.text ? ` <span>${esc(t.text)}</span>` : ''}</span>`
+      + (t.action ? `<span class="tst-acts"><a class="tst-act" href="${esc(t.action.href || '#')}">${esc(t.action.label)}</a></span>` : '')
+      + `<button type="button" class="tst-x" aria-label="Close">${svg('x')}</button><span class="tst-bar"><i></i></span>`;
+    const secs = t.stay || (tone !== 'ok' && p.errors) ? 0 : p.secs;
+    el.classList.toggle('timed', secs > 0);
+    if (!secs) return;
+    el.style.setProperty('--toast-s', `${secs}s`);
+    el.querySelector('.tst-bar i').addEventListener('animationend', () => toastGone(el), { once: true });
+  };
+  // A new toast goes on top of the stack. One that follows work still under way takes its place instead, so long work
+  // turns into its result in the same toast.
+  const toast = (bold, text = '', { stay = false, tone = '', action = null } = {}) => {
+    const p = toastHost();
+    const busy = toastBox.querySelector('.tst[data-tone="work"]:not(.out)');
+    const el = busy || document.createElement('div');
+    toastDraw(el, { bold, text, stay, tone, action }, p);
+    if (busy) {
+      el.className = `tst${el.classList.contains('timed') ? ' timed' : ''}`;
+      if (!stay) { void el.offsetWidth; el.classList.add('flash'); }
+    } else {
+      el.classList.add('tst');
+      toastBox.prepend(el);
+    }
+    toastLayout();
+  };
+  // Toasts, in Settings, Appearance: type, where, style, glass opacity, how long, and errors. Each change shows a sample.
   const toastSettings = () => {
     const p = toastPrefs();
+    $('toast-type').value = p.type;
     $('toast-at').value = p.at;
-    $('toast-style').value = p.style;
+    $('toast-look').value = p.look;
+    $('toast-glass').value = String(p.glass);
+    $('toast-glass-v').textContent = `${p.glass}%`;
+    $('toast-glass-row').hidden = p.look !== 'glass' && p.look !== 'frost';
     $('toast-secs').value = String(p.secs);
-    $('toast-reset').disabled = p.at === TOAST_DEFAULT.at && p.style === TOAST_DEFAULT.style && p.secs === TOAST_DEFAULT.secs;
+    $('toast-errors').checked = p.errors;
+    $('toast-reset').disabled = Object.keys(TOAST_DEFAULT).every((k) => p[k] === TOAST_DEFAULT[k]);
   };
   const toastSet = (change) => {
     try {
@@ -2736,13 +2831,26 @@ const RELEASE_INFO = {
       else localStorage.removeItem('rabbidlab.toast');
     } catch { /* this visit only */ }
     toastSettings();
+    // Toasts already up move to the new place and look.
+    if (toastBox) { toastHost(); toastLayout(); }
     toast('Toast settings saved.', 'New toasts look like this one.', { action: { label: 'Details', href: '#settings/appearance' } });
   };
+  $('toast-type').addEventListener('change', () => toastSet({ type: $('toast-type').value }));
   $('toast-at').addEventListener('change', () => toastSet({ at: $('toast-at').value }));
-  $('toast-style').addEventListener('change', () => toastSet({ style: $('toast-style').value }));
+  $('toast-look').addEventListener('change', () => toastSet({ look: $('toast-look').value }));
+  // The glass changes as the slider moves; the sample comes when it's let go.
+  $('toast-glass').addEventListener('input', () => {
+    $('toast-glass-v').textContent = `${$('toast-glass').value}%`;
+    toastBox?.style.setProperty('--tst-a', String(Number($('toast-glass').value) / 100));
+  });
+  $('toast-glass').addEventListener('change', () => toastSet({ glass: Number($('toast-glass').value) }));
   $('toast-secs').addEventListener('change', () => toastSet({ secs: Number($('toast-secs').value) }));
+  $('toast-errors').addEventListener('change', () => toastSet({ errors: $('toast-errors').checked }));
   $('toast-reset').addEventListener('click', () => toastSet(null));
-  $('toast-test').addEventListener('click', () => toast('This is a test toast.', `It closes after ${toastPrefs().secs} seconds.`, { action: { label: 'Details', href: '#settings/appearance' } }));
+  $('toast-test').addEventListener('click', () => {
+    const p = toastPrefs();
+    toast('This is a test toast.', p.secs ? `It closes after ${p.secs} seconds.` : 'It stays until you close it.', { action: { label: 'Details', href: '#settings/appearance' } });
+  });
   toastSettings();
   // Are you sure: a title, what happens, the button's words, and what to do on yes. code: a command shown as it will run;
   // safe: a plain button, for something that isn't destructive; type: a name to type before the button works; info: only
