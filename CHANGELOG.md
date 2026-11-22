@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.326 (2026-11-21)
+
+- The page area has its own thin scroll bar drawn over its right edge, so the page never moves when it comes or goes and banners run to the edge, in Chrome too.
+- Scroll bars everywhere are thin and have no arrows.
+- The news row on Overview has a slim News and changelog divider over it, a small label on its picture, and an All versions tile at its end.
+
 ## 1.1.325 (2026-11-21)
 
 - Sync says Nothing to sync when a domain controller already had every change, and Synced 3 changes when it got some. There is no gap under the column names any more.

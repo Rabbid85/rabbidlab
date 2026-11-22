@@ -626,7 +626,7 @@ a.button:hover, label.button:hover { background: #222536; text-decoration: none;
 .more { color: var(--accent-soft); font-size: 13px; font-weight: 600; white-space: nowrap; }
 .news { padding: 26px 44px 4px; }
 .news-head { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
-.news-head h2 { margin: 0; font: 800 24px/1 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; letter-spacing: -.02em; color: var(--title); white-space: nowrap; }
+.news-head > span { color: var(--title); font: 650 16px/1.2 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; white-space: nowrap; }
 .news-head i { flex: 1; height: 1px; background: var(--line); }
 .tag { display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border-radius: 5px; background: color-mix(in srgb, var(--accent-soft) 12%, transparent); color: var(--accent-soft); font-size: 11px; font-weight: 650; }
 .home .machine { margin: 22px var(--side) 0; }
@@ -789,9 +789,23 @@ button[aria-expanded="true"] > .chev { transform: rotate(180deg); }
 button.small[aria-haspopup="menu"][aria-expanded="true"] { border-color: var(--accent-line); color: var(--title); }
 @media (max-width: 560px) { .account-name { display: none; } }
 
-/* Scroll bars, everywhere: one thin, dark kind. The standard properties, because an open drop-down list (::picker,
-   below) takes only these; nothing sets its own. */
-* { scrollbar-width: thin; scrollbar-color: #2B2F44 transparent; }
+/* Scroll bars, everywhere: one thin, dark kind with no arrows. Chrome and Edge take the ::-webkit-scrollbar rules, which
+   leave the arrows out; the standard properties would win over them there, so they're only for other browsers. An open
+   drop-down list (::picker, below) takes only the standard ones and sets them itself. */
+@supports not selector(::-webkit-scrollbar) { * { scrollbar-width: thin; scrollbar-color: #2B2F44 transparent; } }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { border-radius: 4px; background: #2B2F44; }
+::-webkit-scrollbar-thumb:hover { background: #3A3F58; }
+::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
+::-webkit-scrollbar-button { display: none; }
+/* The page area's own bar is drawn over its right edge (scroll.js), so the page never moves when it comes or goes and
+   banners run to the edge; the browser's is hidden there. */
+.main { scrollbar-width: none; }
+.main::-webkit-scrollbar { display: none; }
+.sbar { position: fixed; z-index: 30; box-sizing: border-box; width: 12px; padding: 3px 3px; }
+.sbar[hidden] { display: none; }
+.sbar > i { display: block; width: 6px; margin-left: auto; border-radius: 3px; background: #2B2F44; transition: background .15s, width .15s; }
+.sbar:hover > i, .sbar.drag > i { width: 8px; background: #3A3F58; }
 
 /* Support info: the i in the top bar, and the text it gathers to copy. */
 .top .top-info { width: 32px; height: 32px; margin: 0 8px 0 6px; border-radius: 50%; color: var(--muted); }

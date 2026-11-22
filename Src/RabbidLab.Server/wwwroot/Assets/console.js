@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.326', [
+    'The page area has its own thin scroll bar drawn over its right edge, so the page never moves when it comes or goes and banners run to the edge, in Chrome too.',
+    'Scroll bars everywhere are thin and have no arrows.',
+    'The news row on Overview has a slim News and changelog divider over it, a small label on its picture, and an All versions tile at its end.']],
   ['1.1.325', [
     'Sync says Nothing to sync when a domain controller already had every change, and Synced 3 changes when it got some. There is no gap under the column names any more.',
     'The wide news card on Overview shows a screenshot of the feature instead of the coloured squares.']],
@@ -1023,6 +1027,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.326': ['2026-11-21', 'update', 'A quiet scroll bar and a news divider'],
   '1.1.325': ['2026-11-21', 'update', 'Nothing to sync, and real screenshots'],
   '1.1.324': ['2026-11-21', 'update', 'The sync flask fills'],
   '1.1.323': ['2026-11-21', 'update', 'Change list, smaller sign-in, calmer loading'],
@@ -2965,10 +2970,12 @@ const RELEASE_INFO = {
     $('upd-new-text').textContent = first[0];
     const big = all.find((x) => x.k === 'feature') || all[0];
     const post = (x, wide) => `<a class="nw-post${wide ? ' nw-wide' : ''}" href="#whats-new" data-wn="${esc(x.v)}">`
-      + (wide && x.img ? `<span class="nw-shot" aria-hidden="true"><img src="Assets/news/${esc(x.img)}" alt=""></span>` : '')
+      + (wide && x.img ? `<span class="nw-shot" aria-hidden="true"><img src="Assets/news/${esc(x.img)}" alt=""><span class="nw-label">${svg('new')}What's new</span></span>` : '')
       + `<span class="nw-pbody"><span class="nw-meta"><span class="nw-date">${esc(relDate(x.d))}</span>${relTag(x.k)}</span>`
       + `<b class="nw-ptitle">${esc(relTitle(x))}</b><span class="nw-sum">${esc(wide ? x.items.slice(0, 2).join(' ') : x.items[0])}</span><span class="nw-foot">${relBy()}</span></span></a>`;
-    $('news').innerHTML = post(big, true) + all.filter((x) => x !== big).slice(0, 3).map((x) => post(x, false)).join('');
+    // The row ends with a slim tile for every version.
+    $('news').innerHTML = post(big, true) + all.filter((x) => x !== big).slice(0, 3).map((x) => post(x, false)).join('')
+      + `<a class="nw-all" href="#whats-new"><b>${svg('arrow')}</b>All versions</a>`;
   };
   // A news card opens What's new at its version, lit up for a moment.
   let wnAt = '';
