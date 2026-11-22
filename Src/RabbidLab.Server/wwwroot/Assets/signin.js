@@ -697,18 +697,36 @@
     let asked = 0; // counts the controller lookups, so only the last one's answer shows
     const domain = () => $('ad-domain').value.trim();
     const showServer = () => markServer(controllers, server);
+    // No domain controller answers: the server's warning over the form, with why (a VPN, DNS or the network).
+    let why = null;
+    let again = 0;
+    const showNet = () => {
+      const on = !setup && showing === 'ad' && !!why;
+      $('net-note').hidden = !on;
+      if (!on) return;
+      $('net-head').textContent = why.title;
+      $('net-text').textContent = why.text;
+    };
 
-    const loadControllers = async () => {
+    // quiet: asked again while none answer, so the box and its marker don't blank meanwhile.
+    const loadControllers = async (quiet = false) => {
       const mine = ++asked;
-      controllers = [];
-      showServer();
+      clearTimeout(again);
+      if (!quiet) {
+        controllers = [];
+        showServer();
+      }
       if (!domain()) return;
       const url = `${setup ? '/api/setup/directory/controllers' : '/api/signin/controllers'}?domain=${encodeURIComponent(domain())}`;
       const r = await getJson(url).catch(() => null);
       if (mine !== asked) return; // the domain changed meanwhile
       controllers = r?.ok ? r.body.controllers : [];
+      why = r?.ok ? r.body.why || null : null;
       showServer();
+      showNet();
       serverBox.refresh();
+      // Until one answers, asked again every 10 seconds, so the warning goes once the VPN is off.
+      if (why) again = setTimeout(() => loadControllers(true), 10000);
     };
     const domainChanged = () => {
       if (domain().toLowerCase() === lookedUp) return;
@@ -791,6 +809,7 @@
       $('other-kind').classList.toggle('to-ad', kind !== 'ad'); // its icon: what it switches to
       $('admin-unlock').hidden = !$(`${kind}-go`).classList.contains('locked');
       showError('');
+      showNet();
       if (kind === 'ad') startDirectory();
       if (!focus) return;
       if (kind === 'ad') ($('ad-domain').value || s.thisDomain || s.domain ? $('ad-user') : $('ad-domain')).focus();

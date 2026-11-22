@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.355 (2026-11-22)
+
+- When no domain controller answers, the sign-in page says why in a warning over the form: the server is connected to a VPN, it cannot look the controllers up in DNS, or it cannot reach them. The warning goes by itself once one answers.
+- A domain controller that stopped answering is checked again after 5 seconds instead of a minute.
+
 ## 1.1.354 (2026-11-22)
 
 - The news cards on Overview and What’s new show screenshots again: People workflows, Print queues, Offboarding, AD audit, Undo and the Activity report each have one.

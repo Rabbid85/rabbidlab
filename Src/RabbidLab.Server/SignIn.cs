@@ -305,9 +305,13 @@ public static class SignIn
                 return Results.NotFound();
             }
             var wanted = string.IsNullOrWhiteSpace(domain) ? d.Domain : Clean(domain);
-            return wanted != d.Domain && !(await Allowed(cache, directory, d.Domain, stop)).Contains(wanted)
-                ? Results.BadRequest(new { error = NotTrusted(wanted, d.Domain) })
-                : Results.Ok(new { controllers = await finder.Controllers(wanted, stop) });
+            if (wanted != d.Domain && !(await Allowed(cache, directory, d.Domain, stop)).Contains(wanted))
+            {
+                return Results.BadRequest(new { error = NotTrusted(wanted, d.Domain) });
+            }
+            // None answering: why, when the server can tell (a VPN, names it can't look up, or no route), for the page's warning.
+            var found = await finder.Controllers(wanted, stop);
+            return Results.Ok(new { controllers = found, why = await finder.WhyNone(wanted, found, stop) });
         });
 
         // First run, a local administrator account.

@@ -118,6 +118,10 @@ button.go.locked, button.go.locked:hover { background: rgba(255, 107, 125, .14);
   color: #E6E8F2; font-size: 13.5px; line-height: 1.45; }
 .auth-note[hidden] { display: none; }
 .auth-note svg { flex: none; width: 17px; height: 17px; color: #F2BE6B; }
+/* No domain controller answers: the same box, with an amber edge, the icon at the top and a bold title. */
+.auth-note.net-note { align-items: flex-start; border-color: rgba(242, 190, 107, .35); }
+.auth-note.net-note svg { margin-top: 1px; }
+.auth-note.net-note b { color: #fff; font-weight: 650; }
 /* Local account or Active Directory: a link under the button, close under the domain line when that shows, with an icon of
    what it switches to. */
 .other-kind { align-self: center; margin-top: 10px; padding: 4px 8px; border: 0; background: transparent; color: var(--muted); font-size: 13.5px; font-weight: 600; }

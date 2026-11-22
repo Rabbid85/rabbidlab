@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.355', [
+    'When no domain controller answers, the sign-in page says why in a warning over the form: the server is connected to a VPN, it cannot look the controllers up in DNS, or it cannot reach them. The warning goes by itself once one answers.',
+    'A domain controller that stopped answering is checked again after 5 seconds instead of a minute.']],
   ['1.1.354', [
     'The news cards on Overview and What’s new show screenshots again: People workflows, Print queues, Offboarding, AD audit, Undo and the Activity report each have one.']],
   ['1.1.353', [
@@ -1117,6 +1120,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.355': ['2026-11-22', 'update', 'Sign-in warns when a VPN or DNS blocks the domain'],
   '1.1.354': ['2026-11-22', 'fix', 'Screenshots on the news cards again'],
   '1.1.353': ['2026-11-22', 'update', 'Inactivity goes to the sign-in page'],
   '1.1.352': ['2026-11-22', 'feature', 'People workflows', 'workflows.jpg'],
