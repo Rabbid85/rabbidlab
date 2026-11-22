@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.366', [
+    'Pinned columns stay put again when a list scrolls sideways, on every list. The console’s security policy was stopping them, so they scrolled away with the rest.']],
   ['1.1.365', [
     'Search from any page: press Ctrl+K or /, or select Search in the top bar. It finds pages, Active Directory users, groups and computers, devices, network devices, links, sensors, settings and actions such as Scan the network or Add a link.',
     'Arrows move, Enter opens, and Esc closes. What you opened last shows first next time.',
@@ -1166,6 +1168,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.366': ['2026-11-22', 'fix', 'Pinned columns stay put'],
   '1.1.365': ['2026-11-22', 'feature', 'Ctrl+K search, and keyboard shortcuts of your own', 'search.jpg'],
   '1.1.364': ['2026-11-22', 'fix', 'A calmer Network scan'],
   '1.1.363': ['2026-11-22', 'fix', 'Network colours, and what a scan is working on'],

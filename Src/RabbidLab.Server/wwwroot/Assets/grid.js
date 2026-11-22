@@ -122,10 +122,12 @@
       const p = pins();
       const lefts = shown.filter((c) => p[c.key] === 'left').length;
       const rights = shown.filter((c) => p[c.key] === 'right').length;
-      const pin = shown.map((c, i) => (i < lefts ? { cls: ` pin pin-l${i === lefts - 1 ? ' last' : ''}${i === 0 && !lead ? ' edge-l' : ''}`, at: ` style="left:var(--gpin${i})"` }
-        : i >= shown.length - rights ? { cls: ` pin pin-r${i === shown.length - rights ? ' first' : ''}`, at: ` style="right:var(--gpin${i})"` } : { cls: '', at: '' }));
-      const leadPin = lefts ? ' pin pin-l edge-l" style="left:0' : '';
-      const tailPin = rights ? ' pin pin-r edge-r" style="right:0' : '';
+      // Where each pinned cell stays comes from grid.css by data-gpl / data-gpr (its column's --gpinN): the console's CSP
+      // refuses style attributes.
+      const pin = shown.map((c, i) => (i < lefts ? { cls: ` pin pin-l${i === lefts - 1 ? ' last' : ''}${i === 0 && !lead ? ' edge-l' : ''}`, at: ` data-gpl="${i}"` }
+        : i >= shown.length - rights ? { cls: ` pin pin-r${i === shown.length - rights ? ' first' : ''}`, at: ` data-gpr="${i}"` } : { cls: '', at: '' }));
+      const leadPin = lefts ? ' pin pin-l edge-l' : '';
+      const tailPin = rights ? ' pin pin-r edge-r' : '';
       const head = shown.map((c, i) => `<div class="th-cell${pin[i].cls}" data-grid-col="${c.key}"${pin[i].at}>${c.nosort ? `<span class="th-sort still"><span class="lbl">${esc(c.label)}</span></span>`
         : `<button type="button" class="th-sort${s?.key === c.key ? ' on' : ''}" data-grid-sort="${c.key}" title="${esc(c.label)}"><span class="lbl">${esc(c.label)}</span>`
           + `${s?.key === c.key ? svg(s.dir > 0 ? 'arrow-up' : 'arrow-down', 'arr') : ''}</button>`}`

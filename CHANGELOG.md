@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.366 (2026-11-22)
+
+- Pinned columns stay put again when a list scrolls sideways, on every list. The console’s security policy was stopping them, so they scrolled away with the rest.
+
 ## 1.1.365 (2026-11-22)
 
 - Search from any page: press Ctrl+K or /, or select Search in the top bar. It finds pages, Active Directory users, groups and computers, devices, network devices, links, sensors, settings and actions such as Scan the network or Add a link.
