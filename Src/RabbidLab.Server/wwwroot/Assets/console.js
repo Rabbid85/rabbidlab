@@ -1657,9 +1657,9 @@ const RELEASE_INFO = {
   const allows = (list) => !!shown && list.split(/\s+/).some((p) => shown.has(p));
   const has = (p) => can.has(p);
   const PAGES = { overview: 'overview.view', links: 'links.view', sensors: 'sensors.view', seats: 'seats.view sessions.view', people: 'access.view', ad: 'ad.view ad.connect',
-    org: 'ad.view', attrs: 'ad.view', sync: 'ad.view' };
+    org: 'ad.view', attrs: 'ad.view', sync: 'ad.view', report: 'activity.view' };
   // Settings' pages and what each needs; About is for everyone, Developer for Rabbid Lab Dev only.
-  const SUBS = { account: '', appearance: '', viewas: 'access.view', address: '', updates: 'updates.view', signin: 'access.roles access.unlock', activity: 'activity.view', alerts: 'sensors.alerts', notifications: 'sensors.alerts', history: 'sensors.alerts',
+  const SUBS = { account: '', appearance: '', viewas: 'access.view', address: '', updates: 'updates.view', signin: 'access.roles access.unlock', activity: 'activity.view', reports: 'activity.view', alerts: 'sensors.alerts', notifications: 'sensors.alerts', history: 'sensors.alerts',
     links: 'links.edit', sensors: 'sensors.edit', seats: 'seats.settings seats.add', ad: 'ad.connect', developer: 'updates.auto', support: '', about: '' };
   const subOk = (s) => s in SUBS && (!SUBS[s] || !shown || allows(SUBS[s])) && (s !== 'developer' || document.body.classList.contains('is-dev'));
   const pageOk = (key) => !shown || !PAGES[key] || allows(PAGES[key]);
@@ -2494,6 +2494,8 @@ const RELEASE_INFO = {
     if (who !== alWho) $('al-who').innerHTML = alWho = who;
     $('al-export').href = `/api/activity/export?${alQuery(0)}`;
     alDraw();
+    // The Summary and Report (report.js) follow what the bar picks.
+    document.dispatchEvent(new CustomEvent('rabbidlab:activity', { detail: { kind: alKind(), by: al.who, q: al.q, days: al.days, problems: al.problems, query: alQuery(0), page } }));
   };
   const activity = async () => {
     try {
@@ -5420,6 +5422,7 @@ const RELEASE_INFO = {
   // What the other scripts use. Hints are tips.js and data grids are grid.js.
   window.RabbidLab = { app: () => product, $, esc, svg, say, initials, when, daysAgo, send, get, keep, forget, has, paint, where, viewAs, place, popups, option, dropdown, sure, newLabel, copy, busy, refresh, live, groupTools, skeleton, toast, stepper, panel, scatter, editButton,
     palette: window.RabbidLabColours.roles, me: () => meInfo,
+    activityKinds: AL_KINDS, activityKind: (area) => AREA_KIND[area] || 'admin', // the Activity log's kinds, for report.js
     // The Devices page, for devices.js: its lists, what's ticked, and drawing or reading it again. failed() is why the
     // last read didn't work, so a list stops waiting for it; reading() is true until the computers are first read.
     devices: { lists: DV, more: dvMore, hooks: dvHooks, picked: dvPicked, computers: () => computers, rows: () => dvAll(), at: () => dvAt, shown: () => dvShown, grid: () => dvGrid(),

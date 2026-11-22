@@ -88,37 +88,98 @@ public sealed class ActivityLog(DataFolder folder, ILogger<ActivityLog> log)
         ["admin"] = ["admin"],
     };
 
+    /// <summary>What each kind is called on the page and in reports.</summary>
+    public static readonly IReadOnlyDictionary<string, string> KindNames = new Dictionary<string, string>
+    {
+        ["signins"] = "Sign-ins", ["accounts"] = "People and accounts", ["lab"] = "Links and sensors", ["seats"] = "Devices", ["admin"] = "Updates and settings",
+    };
+
     /// <summary>The kind an entry's area belongs to, for its icon and its filter.</summary>
     public static string KindOf(string area) => Kinds.FirstOrDefault(k => k.Value.Contains(area)).Key ?? "admin";
 
     /// <summary>
-    /// The entries that match, newest first: of one kind, by one person, with some words in them, since a time, only the
+    /// The entries that match, newest first: of some kinds, by one person, with some words in them, between two times, only the
     /// ones that didn't go well. Count says how many to hand back; Total is how many matched, Problems how many of those failed.
     /// </summary>
     public ActivityPage Find(ActivityFilter filter)
     {
-        List<ActivityEntry> all;
+        var inRange = All().Where(e => InRange(filter, e)).ToList();
+        var matched = inRange.Where(Matches(filter)).ToList();
+        return new ActivityPage([.. matched.Take(filter.Count)], matched.Count, matched.Count(e => e.Result != "ok"),
+            [.. inRange.Select(e => e.By).Distinct().Order(StringComparer.OrdinalIgnoreCase)]);
+    }
+
+    /// <summary>The counts for what matches, by user and by area, in one pass over the log.</summary>
+    public ActivitySummary Summarize(ActivityFilter filter)
+    {
+        var matches = Matches(filter);
+        return Summary(All().Where(e => InRange(filter, e) && matches(e)));
+    }
+
+    /// <summary>Every entry that matches, newest first, with its summary: for a report.</summary>
+    public (ActivitySummary Summary, IReadOnlyList<ActivityEntry> Entries) Report(ActivityFilter filter)
+    {
+        var matches = Matches(filter);
+        var list = All().Where(e => InRange(filter, e) && matches(e)).ToList();
+        return (Summary(list), list);
+    }
+
+    /// <summary>Entries counted: sign-ins (the sign-in area), changes (the rest) and problems, by user and by kind.</summary>
+    public static ActivitySummary Summary(IEnumerable<ActivityEntry> entries)
+    {
+        var users = new Dictionary<string, int[]>(); // entries, sign-ins, problems; by name as the log's User filter matches it
+        var kinds = new Dictionary<string, int[]>(); // entries, problems
+        int total = 0, signIns = 0, problems = 0;
+        foreach (var e in entries)
+        {
+            var signIn = e.Area == "sign-in";
+            var bad = e.Result != "ok";
+            total++;
+            signIns += signIn ? 1 : 0;
+            problems += bad ? 1 : 0;
+            var u = users.TryGetValue(e.By, out var had) ? had : users[e.By] = new int[3];
+            u[0]++;
+            u[1] += signIn ? 1 : 0;
+            u[2] += bad ? 1 : 0;
+            var kind = KindOf(e.Area);
+            var k = kinds.TryGetValue(kind, out var was) ? was : kinds[kind] = new int[2];
+            k[0]++;
+            k[1] += bad ? 1 : 0;
+        }
+        return new ActivitySummary(total, signIns, total - signIns, problems,
+            [.. users.Select(u => new ActivityUserCount(u.Key, u.Value[0], u.Value[1], u.Value[0] - u.Value[1], u.Value[2])).OrderByDescending(u => u.Entries).ThenBy(u => u.Name, StringComparer.OrdinalIgnoreCase)],
+            [.. Kinds.Keys.Where(kinds.ContainsKey).Select(k => new ActivityKindCount(k, KindNames[k], kinds[k][0], kinds[k][1])).OrderByDescending(k => k.Entries)]);
+    }
+
+    // Both files, newest first.
+    private List<ActivityEntry> All()
+    {
         try
         {
             lock (gate)
             {
-                all = [.. Read(file), .. Read(older)];
+                return [.. Read(file), .. Read(older)];
             }
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
             log.LogWarning(e, "The activity log could not be read");
-            all = [];
+            return [];
         }
-        var areas = filter.Kind is { } k && Kinds.TryGetValue(k, out var a) ? a : null;
+    }
+
+    private static bool InRange(ActivityFilter f, ActivityEntry e) => (f.Since is null || e.At >= f.Since) && (f.Until is null || e.At < f.Until);
+
+    // The kinds (one, or several with commas), the person, problems only and the words.
+    private static Func<ActivityEntry, bool> Matches(ActivityFilter filter)
+    {
+        var picked = (filter.Kind ?? "").Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).Where(Kinds.ContainsKey).ToList();
+        var areas = picked.Count == 0 ? null : picked.SelectMany(k => Kinds[k]).ToHashSet();
+        var others = picked.Contains("admin"); // admin also has every area no other kind has
         var words = filter.Find?.Trim() is { Length: > 0 } q ? q : null;
-        var inRange = all.Where(e => filter.Since is null || e.At >= filter.Since).ToList();
-        var matched = inRange.Where(e => (areas is null || areas.Contains(e.Area)) && (filter.By is null || e.By == filter.By)
-                && (!filter.Problems || e.Result != "ok")
-                && (words is null || $"{e.Title} {e.By} {e.From} {e.Detail}".Contains(words, StringComparison.OrdinalIgnoreCase)))
-            .ToList();
-        return new ActivityPage([.. matched.Take(filter.Count)], matched.Count, matched.Count(e => e.Result != "ok"),
-            [.. inRange.Select(e => e.By).Distinct().Order(StringComparer.OrdinalIgnoreCase)]);
+        return e => (areas is null || areas.Contains(e.Area) || others && KindOf(e.Area) == "admin") && (filter.By is null || e.By == filter.By)
+            && (!filter.Problems || e.Result != "ok")
+            && (words is null || $"{e.Title} {e.By} {e.From} {e.Detail}".Contains(words, StringComparison.OrdinalIgnoreCase));
     }
 
     // Every entry in a file, newest first.
@@ -177,11 +238,18 @@ public sealed class ActivityLog(DataFolder folder, ILogger<ActivityLog> log)
     }
 }
 
-/// <summary>What Settings, Activity log asks for. Since: how far back (none: all of it).</summary>
-public sealed record ActivityFilter(string? Kind, string? By, string? Find, DateTime? Since, bool Problems, int Count);
+/// <summary>What Settings, Activity log asks for. Since: how far back (none: all of it). Until: up to, not including.</summary>
+public sealed record ActivityFilter(string? Kind, string? By, string? Find, DateTime? Since, bool Problems, int Count, DateTime? Until = null);
 
 /// <summary>One page of the activity log, with how many matched in all and who appears in the time asked about.</summary>
 public sealed record ActivityPage(IReadOnlyList<ActivityEntry> Entries, int Total, int Problems, IReadOnlyList<string> People);
+
+/// <summary>How many entries matched, and of them sign-ins, changes (the rest) and problems; then by user and by kind, most first.</summary>
+public sealed record ActivitySummary(int Total, int SignIns, int Changes, int Problems, IReadOnlyList<ActivityUserCount> Users, IReadOnlyList<ActivityKindCount> Areas);
+
+public sealed record ActivityUserCount(string Name, int Entries, int SignIns, int Changes, int Problems);
+
+public sealed record ActivityKindCount(string Kind, string Name, int Entries, int Problems);
 
 public static class ActivityApi
 {
@@ -190,30 +258,35 @@ public static class ActivityApi
         app.MapGet("/api/activity", (int? count, HttpContext context, ActivityLog activity) =>
             Access.Can(context, Permissions.ActivityView) ? Results.Ok(activity.Recent(Math.Clamp(count ?? 100, 1, 1000))) : Access.NotAllowed());
 
-        app.MapGet("/api/activity/find", (string? kind, string? by, string? q, DateTime? since, bool? problems, int? count, HttpContext context, ActivityLog activity) =>
+        app.MapGet("/api/activity/find", (string? kind, string? by, string? q, DateTime? since, DateTime? until, bool? problems, int? count, HttpContext context, ActivityLog activity) =>
             Access.Can(context, Permissions.ActivityView)
-                ? Results.Ok(activity.Find(Filter(kind, by, q, since, problems, Math.Clamp(count ?? 50, 1, 5000))))
+                ? Results.Ok(activity.Find(Filter(kind, by, q, since, until, problems, Math.Clamp(count ?? 50, 1, 5000))))
                 : Access.NotAllowed());
 
+        // The Summary over the log: the same filters, counted by user and by area.
+        app.MapGet("/api/activity/summary", (string? kind, string? by, string? q, DateTime? since, DateTime? until, bool? problems, HttpContext context, ActivityLog activity) =>
+            Access.Can(context, Permissions.ActivityView) ? Results.Ok(activity.Summarize(Filter(kind, by, q, since, until, problems, 0))) : Access.NotAllowed());
+
         // The same, as a CSV file to open in Excel.
-        app.MapGet("/api/activity/export", (string? kind, string? by, string? q, DateTime? since, bool? problems, HttpContext context, ActivityLog activity) =>
-        {
-            if (!Access.Can(context, Permissions.ActivityView))
-            {
-                return Access.NotAllowed();
-            }
-            var page = activity.Find(Filter(kind, by, q, since, problems, int.MaxValue));
-            var csv = new StringBuilder("Time (UTC),User,From,Area,Action,Result,Details\r\n");
-            foreach (var e in page.Entries)
-            {
-                csv.Append(string.Join(',', new[] { e.At.ToString("yyyy-MM-dd HH:mm:ss"), e.By, e.From ?? "", e.Area, e.Title, e.Result, e.Detail ?? "" }.Select(Cell))).Append("\r\n");
-            }
-            return Results.File(Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(csv.ToString())).ToArray(), "text/csv", "rabbidlab-activity.csv");
-        });
+        app.MapGet("/api/activity/export", (string? kind, string? by, string? q, DateTime? since, DateTime? until, bool? problems, HttpContext context, ActivityLog activity) =>
+            Access.Can(context, Permissions.ActivityView)
+                ? Results.File(Csv(activity.Find(Filter(kind, by, q, since, until, problems, int.MaxValue)).Entries), "text/csv", "rabbidlab-activity.csv")
+                : Access.NotAllowed());
     }
 
-    private static ActivityFilter Filter(string? kind, string? by, string? q, DateTime? since, bool? problems, int count) =>
-        new(kind is { Length: > 0 } ? kind : null, by is { Length: > 0 } ? by : null, q, since?.ToUniversalTime(), problems == true, count);
+    /// <summary>Entries as a CSV file for Excel, with its byte order mark.</summary>
+    public static byte[] Csv(IEnumerable<ActivityEntry> entries)
+    {
+        var csv = new StringBuilder("Time (UTC),User,From,Area,Action,Result,Details\r\n");
+        foreach (var e in entries)
+        {
+            csv.Append(string.Join(',', new[] { e.At.ToString("yyyy-MM-dd HH:mm:ss"), e.By, e.From ?? "", e.Area, e.Title, e.Result, e.Detail ?? "" }.Select(Cell))).Append("\r\n");
+        }
+        return [.. Encoding.UTF8.GetPreamble(), .. Encoding.UTF8.GetBytes(csv.ToString())];
+    }
+
+    private static ActivityFilter Filter(string? kind, string? by, string? q, DateTime? since, DateTime? until, bool? problems, int count) =>
+        new(kind is { Length: > 0 } ? kind : null, by is { Length: > 0 } ? by : null, q, since?.ToUniversalTime(), problems == true, count, until?.ToUniversalTime());
 
     // A CSV cell: quoted when it has a comma, quote or line in it, and never starting a formula in Excel.
     private static string Cell(string value)

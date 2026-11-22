@@ -32,9 +32,14 @@ public sealed class MailSettings
 
 /// <summary>
 /// An alert to send: its subject, a tone for its colour (down, up, warn or note), and its facts as label and value. Card, when
-/// there is one, is the same alert laid out for Discord, Slack, Teams and ntfy (ChannelSender).
+/// there is one, is the same alert laid out for Discord, Slack, Teams and ntfy (ChannelSender). Html replaces the email's
+/// own layout of the facts, and Files go with it as attachments (a report).
 /// </summary>
-public sealed record MailNote(string Subject, string Tone, IReadOnlyList<(string Label, string Value)> Facts, AlertCard? Card = null);
+public sealed record MailNote(string Subject, string Tone, IReadOnlyList<(string Label, string Value)> Facts, AlertCard? Card = null, string? Html = null,
+    IReadOnlyList<MailFile>? Files = null);
+
+/// <summary>A file attached to an email.</summary>
+public sealed record MailFile(string Name, string Type, byte[] Bytes);
 
 /// <summary>
 /// An alert laid out like release notes: a banner for its state (down, up, warn, test or many), a title, one line, short
@@ -159,7 +164,12 @@ public sealed partial class Mail(SettingsStore secrets, ILogger<Mail> log) : IMa
         var message = new MimeMessage { Subject = note.Subject };
         message.From.Add(new MailboxAddress(Product.Lab, s.From));
         message.To.AddRange(s.To.Select(a => MailboxAddress.Parse(a)));
-        message.Body = new BodyBuilder { TextBody = Text(note), HtmlBody = Html(note) }.ToMessageBody();
+        var body = new BodyBuilder { TextBody = Text(note), HtmlBody = note.Html ?? Html(note) };
+        foreach (var f in note.Files ?? [])
+        {
+            body.Attachments.Add(f.Name, f.Bytes, ContentType.Parse(f.Type));
+        }
+        message.Body = body.ToMessageBody();
         using var limit = CancellationTokenSource.CreateLinkedTokenSource(stop);
         limit.CancelAfter(TimeSpan.FromSeconds(30));
         using var client = new MailKit.Net.Smtp.SmtpClient { Timeout = 20000 };
@@ -197,8 +207,12 @@ public sealed partial class Mail(SettingsStore secrets, ILogger<Mail> log) : IMa
                 message = new
                 {
                     subject = note.Subject,
-                    body = new { contentType = "HTML", content = Html(note) },
+                    body = new { contentType = "HTML", content = note.Html ?? Html(note) },
                     toRecipients = s.To.Select(a => new { emailAddress = new { address = a } }),
+                    attachments = (note.Files ?? []).Select(f => new Dictionary<string, string>
+                    {
+                        ["@odata.type"] = "#microsoft.graph.fileAttachment", ["name"] = f.Name, ["contentType"] = f.Type, ["contentBytes"] = Convert.ToBase64String(f.Bytes),
+                    }),
                 },
                 saveToSentItems = false,
             }),

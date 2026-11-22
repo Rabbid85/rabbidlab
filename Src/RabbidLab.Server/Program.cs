@@ -133,6 +133,9 @@ builder.Services.AddSingleton<Alerts>();
 builder.Services.AddHostedService<AlertWatch>();
 builder.Services.AddSingleton<Sensors>();
 builder.Services.AddHostedService<SensorWorker>();
+// The Activity report by email on a schedule, when it's turned on (Reports.cs).
+builder.Services.AddSingleton<Reports>();
+builder.Services.AddHostedService<ReportWorker>();
 
 // Console addresses added in Settings: their aliases in the domain's DNS, and a certificate of their own, which the
 // console shows only to a browser that asks for one of them (ConsoleNames.cs, ConsoleDns.cs).
@@ -239,6 +242,7 @@ app.MapConsoleAddressApi(redirect, also);
 app.MapConsoleAlsoApi(also);
 app.MapConsoleNamesApi();
 app.MapActivityApi();
+app.MapReportsApi();
 app.MapSessionsApi();
 app.MapRolesApi();
 app.MapMfaApi();

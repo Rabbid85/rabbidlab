@@ -38,19 +38,19 @@
   };
 
   // Send to: the picked notifications as chips on a button, and a menu of them all by kind to tick, with a line to add one.
-  // picked is changed in place; then() runs after every change.
+  // picked is changed in place; then() runs after every change. only: one kind, such as email, for what goes only that way.
   let pickers = 0;
-  const pick = (host, picked, then = () => {}) => {
+  const pick = (host, picked, then = () => {}, only = '') => {
     const n = ++pickers;
     const draw = () => {
-      const list = notes?.channels || [];
+      const list = (notes?.channels || []).filter((x) => !only || x.kind === only);
       const on = list.filter((x) => picked.includes(x.id));
       host.innerHTML = `<button type="button" class="np-btn" popovertarget="np-menu-${n}" aria-haspopup="true">${on.length ? on.map(chip).join('') : '<span class="np-none">None selected</span>'}<svg class="np-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>`
         + `<div class="np-menu" id="np-menu-${n}" popover>`
         + KINDS.filter((k) => list.some((x) => x.kind === k)).map((k) => `<p class="np-h">${KIND[k]}</p>`
           + list.filter((x) => x.kind === k).map((x) => `<button type="button" class="np-opt${picked.includes(x.id) ? ' on' : ''}" data-np="${esc(x.id)}" aria-pressed="${picked.includes(x.id)}">`
             + `<span class="chan-ic ${x.kind}">${mark(x.kind)}</span><span class="np-t">${esc(x.name)}<small>${esc(how(x))}${x.ready ? '' : ' · not configured'}</small></span><i class="np-box">${svg('check')}</i></button>`).join('')).join('')
-        + (list.length ? '' : '<p class="np-empty">No notification channels yet.</p>')
+        + (list.length ? '' : `<p class="np-empty">No ${only ? `${KIND[only].toLowerCase()} ` : ''}notification channels yet.</p>`)
         + `<button type="button" class="np-add" data-np-add>${svg('plus')}Add a notification channel</button></div>`;
       const btn = host.querySelector('.np-btn');
       const menu = host.querySelector('.np-menu');

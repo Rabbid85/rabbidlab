@@ -49,6 +49,9 @@ public sealed class ChannelsFile
 /// <summary>A notification as the page sends it. An empty Url, password or secret keeps the stored one.</summary>
 public sealed record ChannelForm(string? Kind, string? Name, string? Url, bool? OnForNew = null, MailForm? Mail = null);
 
+/// <summary>An email notification by name, with the addresses it sends to.</summary>
+public sealed record EmailNote(string Id, string Name, bool Ready, IReadOnlyList<string> To);
+
 /// <summary>A test of a notification: a saved one by id, a new one as typed, or a saved one with what's typed over it.</summary>
 public sealed record ChannelTestForm(string? Id, ChannelForm? Form);
 
@@ -151,6 +154,15 @@ public sealed class Channels(DataFolder folder, SettingsStore secrets, IMailSend
         lock (file.Gate)
         {
             return Read().Channels.FirstOrDefault(c => c.Id == id) is { } c ? Label(c) : "Deleted notification";
+        }
+    }
+
+    /// <summary>The email notifications, for what goes only by email (Settings, Reports): who each sends to, and whether it can.</summary>
+    public List<EmailNote> Emails()
+    {
+        lock (file.Gate)
+        {
+            return [.. Read().Channels.Where(c => c.Kind == "email").Select(c => new EmailNote(c.Id, Label(c), Ready(c), [.. c.Mail?.To ?? []]))];
         }
     }
 
