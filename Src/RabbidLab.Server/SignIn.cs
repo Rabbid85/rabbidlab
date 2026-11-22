@@ -36,6 +36,7 @@ public static class SignIn
         services.AddSingleton<SignInFlood>();
         services.AddSingleton<Mfa>();
         services.AddSingleton<PendingSignIns>();
+        services.AddSingleton<RiskNotice>();
         services.AddSingleton<AccountChecks>();
         services.AddSingleton<IDirectory, ActiveDirectory>();
         services.AddSingleton<IWindowsAccounts, WindowsAccounts>();
@@ -102,7 +103,9 @@ public static class SignIn
                 var noCode = mfa is null && roles.NeedsMfa(who) || mfa == Skipped && !MaySkipMfa(http);
                 // Its last console tab closed a few seconds ago (Sessions.Tab): whoever opens it again signs in.
                 var closed = id is not null && sessions.Closed(id);
-                if (stamp is null || stamp != current || old || noCode || !roles.CanSignIn(who) || PlainHttp.Exposed(http) || closed || IdleOut(http, p, sessions, id))
+                // The Use at your own risk notice changed, or this session is from before there was one: signing in again asks.
+                var notice = !http.RequestServices.GetRequiredService<RiskNotice>().Accepted(who);
+                if (stamp is null || stamp != current || old || noCode || notice || !roles.CanSignIn(who) || PlainHttp.Exposed(http) || closed || IdleOut(http, p, sessions, id))
                 {
                     await SignOut();
                     return;
@@ -580,7 +583,8 @@ public static class SignIn
             {
                 return refused;
             }
-            if (pending.Find(form.Ticket) is not { } waiting)
+            // A notice's ticket is past the code already: it's only good at /api/signin/notice.
+            if (pending.Find(form.Ticket) is not { Notice: null } waiting)
             {
                 return Results.BadRequest(new { error = "The sign-in timed out. Sign in again.", again = true });
             }
@@ -667,7 +671,38 @@ public static class SignIn
             return await Finish(context, roles, log, locks, waiting.Principal, waiting.Name, waiting.Keys);
         });
 
-        app.MapPost("/api/signout", async (HttpContext context, bool? idle, SettingsStore settings, ActivityLog log) =>
+        // The last step for an account that hasn't accepted the Use at your own risk notice: accept, and the session starts;
+        // decline, and none does, so the console never opens. Only a ticket from Finish, which comes after the password and code.
+        app.MapPost("/api/signin/notice", async (HttpContext context, Roles roles, ActivityLog log, PendingSignIns pending, SignInLocks locks, RiskNotice notice, NoticeForm form) =>
+        {
+            if (Access.Refuse(context) is { } refused)
+            {
+                return refused;
+            }
+            if (pending.Find(form.Ticket) is not { Notice: { } step } waiting)
+            {
+                return Results.BadRequest(new { error = "The sign-in timed out. Sign in again.", again = true });
+            }
+            pending.Remove(form.Ticket!);
+            var who = Who.Of(waiting.Principal);
+            var username = waiting.Principal.Identity!.Name!;
+            var from = ActivityLog.Address(context);
+            // Locked, or out of every role, since the password was typed: back to the password step, which says why.
+            if (waiting.Keys.Any(k => locks.Check(k, Asking(context, locks, k)).State == LockState.Locked) || !roles.CanSignIn(who))
+            {
+                return Results.BadRequest(new { error = "Sign in again.", again = true });
+            }
+            if (!form.Accept)
+            {
+                log.Record(username, from, "sign-in", "notice.declined", "Declined the Use at your own risk notice", "ok", $"Notice version {RiskNotice.Version}. The console was not opened.");
+                return Results.Ok(new { declined = true });
+            }
+            notice.Accept(who);
+            log.Record(username, from, "sign-in", "notice.accepted", "Accepted the Use at your own risk notice", "ok", $"Notice version {RiskNotice.Version}");
+            return await Finish(context, roles, log, locks, waiting.Principal, waiting.Name, waiting.Keys, step.Title, step.Detail);
+        });
+
+        app.MapPost("/api/signout",async (HttpContext context, bool? idle, SettingsStore settings, ActivityLog log) =>
         {
             // From the console's own page only, so another site can't sign anyone out.
             if (Access.Refuse(context) is { } refused)
@@ -935,6 +970,12 @@ public static class SignIn
     private static async Task<IResult> Finish(HttpContext context, Roles roles, ActivityLog log, SignInLocks locks, ClaimsPrincipal principal, string shown,
         IReadOnlyList<string> keys, string title = "Signed in", string? detail = null)
     {
+        // Not accepted the Use at your own risk notice yet: no session, only a ticket to accept it with (/api/signin/notice).
+        if (!context.RequestServices.GetRequiredService<RiskNotice>().Accepted(Who.Of(principal)))
+        {
+            var ticket = context.RequestServices.GetRequiredService<PendingSignIns>().Add(principal, shown, null, keys, new NoticeStep(title, detail));
+            return Results.Ok(new { notice = RiskNotice.Shape(), ticket });
+        }
         await Start(context, principal);
         foreach (var key in keys)
         {

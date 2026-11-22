@@ -53,6 +53,15 @@ public sealed class MfaTests : IDisposable
 
     private static async Task<bool> SignedIn(HttpClient page) => (await Json(await page.GetAsync("/api/signin"))).GetProperty("user").ValueKind == JsonValueKind.Object;
 
+    /// <summary>A right code at an account's first sign-in: the Use at your own risk notice comes next, with no session yet, and is accepted.</summary>
+    private static async Task Noticed(HttpClient page, HttpResponseMessage coded)
+    {
+        Assert.Equal(HttpStatusCode.OK, coded.StatusCode);
+        var said = await Json(coded);
+        Assert.False(await SignedIn(page));
+        (await page.PostAsJsonAsync("/api/signin/notice", new { ticket = said.GetProperty("ticket").GetString(), accept = true })).EnsureSuccessStatusCode();
+    }
+
     /// <summary>A role with these permissions and a local account in it that has signed in (and so set MFA up). Roles made later rank lower.</summary>
     private async Task<(string Role, HttpClient Page)> InRole(HttpClient admin, string role, string account, params string[] permissions)
     {
@@ -120,7 +129,7 @@ public sealed class MfaTests : IDisposable
         Assert.False(first.GetProperty("reset").GetBoolean());
         Assert.False(first.TryGetProperty("user", out _));
         Assert.False(await SignedIn(page));
-        Assert.Equal(HttpStatusCode.OK, (await page.PostAsJsonAsync("/api/signin/mfa", new { ticket = first.GetProperty("ticket").GetString(), code = Code(secret) })).StatusCode);
+        await Noticed(page, await page.PostAsJsonAsync("/api/signin/mfa", new { ticket = first.GetProperty("ticket").GetString(), code = Code(secret) }));
         Assert.True(await SignedIn(page));
         Assert.Equal(1, (await Json(await page.GetAsync("/api/mfa"))).GetProperty("admins").GetInt32());
     }
@@ -180,7 +189,7 @@ public sealed class MfaTests : IDisposable
         Assert.StartsWith("<svg", first.GetProperty("setup").GetProperty("qr").GetString());
         Assert.False(await SignedIn(mlopez));
         Assert.Equal(HttpStatusCode.Unauthorized, (await mlopez.PostAsJsonAsync("/api/signin/mfa", new { ticket, code = Wrong(secret) })).StatusCode);
-        Assert.Equal(HttpStatusCode.OK, (await mlopez.PostAsJsonAsync("/api/signin/mfa", new { ticket, code = Code(secret) })).StatusCode);
+        await Noticed(mlopez, await mlopez.PostAsJsonAsync("/api/signin/mfa", new { ticket, code = Code(secret) }));
         Assert.True(await SignedIn(mlopez));
         Assert.Equal(JsonValueKind.Null, (await Json(await mlopez.GetAsync("/api/mfa"))).GetProperty("admins").ValueKind); // not theirs to see
 

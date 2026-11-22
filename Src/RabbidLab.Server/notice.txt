@@ -1,0 +1,23 @@
+Use at your own risk
+November 2026
+
+What Rabbid Lab is
+Rabbid Lab is a free console for running a home lab or a small Active Directory domain. It is made by one person in their spare time and shared as is.
+
+No warranty
+Rabbid Lab is provided as is, without warranty of any kind, express or implied, including that it is fit for any particular purpose. It may have bugs. It may stop working after a Windows update, a change on a domain controller, or an update of its own.
+
+It makes real changes
+Rabbid Lab changes real things: users, groups and organizational units in Active Directory, Group Policy objects, DNS records, and the computers that run its client. It runs scripts and installs software on those computers when you tell it to. Not every change can be undone, and some, such as deleting from the AD Recycle Bin, cannot be reversed at all.
+
+You are responsible for your environment
+Test a change before you make it on computers people rely on. Keep backups of your domain controllers and of the data on your computers, and check that you can restore them. Read what a change will do before you confirm it, and give the service account only the permissions it needs.
+
+What it keeps
+Rabbid Lab keeps its settings, the Activity log and the service account password on this server. The password is encrypted with Windows Data Protection, so only this server can read it. It sends nothing anywhere else except the check for updates on GitHub and the alerts you set up yourself, such as email or Discord.
+
+Limitation of liability
+As far as the law allows, the authors are not liable for any damage, data loss, downtime, lost time or other harm that comes from using Rabbid Lab or from not being able to use it.
+
+Accepting this notice
+Every account accepts this notice once, before its first sign-in. When you accept, your name, the time and this notice version are saved to the Activity log. You are asked again only if the wording of this notice changes.

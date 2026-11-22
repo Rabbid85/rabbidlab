@@ -256,8 +256,9 @@ public sealed class Mfa(DataFolder folder, SettingsStore secrets, TimeProvider c
 /// <summary>
 /// A sign-in whose password was right, waiting for its code (or for the app to be set up, with the secret to set up,
 /// encrypted). Keys: what the name's wrong passwords and codes are counted under (SignInLocks), the account's own first.
+/// Notice: past the code and waiting for the Use at your own risk notice (RiskNotice.cs); such a ticket takes no code.
 /// </summary>
-public sealed record PendingSignIn(ClaimsPrincipal Principal, string Name, string? Secret, DateTimeOffset Until, IReadOnlyList<string> Keys);
+public sealed record PendingSignIn(ClaimsPrincipal Principal, string Name, string? Secret, DateTimeOffset Until, IReadOnlyList<string> Keys, NoticeStep? Notice = null);
 
 /// <summary>Sign-ins between the password and the code, by a ticket only the page that typed the password has. Ten minutes each.</summary>
 public sealed class PendingSignIns(TimeProvider clock, SettingsStore secrets)
@@ -270,7 +271,7 @@ public sealed class PendingSignIns(TimeProvider clock, SettingsStore secrets)
     private readonly Lock gate = new();
     private readonly Dictionary<string, PendingSignIn> waiting = [];
 
-    public string Add(ClaimsPrincipal principal, string name, string? secret, IReadOnlyList<string> keys)
+    public string Add(ClaimsPrincipal principal, string name, string? secret, IReadOnlyList<string> keys, NoticeStep? notice = null)
     {
         var ticket = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
         lock (gate)
@@ -285,7 +286,7 @@ public sealed class PendingSignIns(TimeProvider clock, SettingsStore secrets)
             {
                 waiting.Remove(old);
             }
-            waiting[ticket] = new PendingSignIn(principal, name, secret is null ? null : secrets.Encrypt(secret), now + Life, keys);
+            waiting[ticket] = new PendingSignIn(principal, name, secret is null ? null : secrets.Encrypt(secret), now + Life, keys, notice);
         }
         return ticket;
     }

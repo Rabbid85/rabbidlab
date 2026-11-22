@@ -237,12 +237,79 @@
     const skip = $('mfa-skip').checked && !$('mfa-skip-row').hidden;
     const r = await send('/api/signin/mfa', { ticket, code: skip ? null : $('mfa-code').value, reset: skip ? null : $('mfa-reset').value || null, skip }, $('mfa-go'));
     if (!r) return;
+    if (r.ok && r.said?.notice) return notice(r.said);
     if (r.ok) return enter();
     if (r.said?.again) return location.reload(); // the ticket ran out: the password again
     showError(r.problem);
     $('mfa-go').disabled = false;
     $('mfa-code').select();
   });
+
+  // The Use at your own risk notice (RiskNotice.cs): past the password and code, an account that hasn't accepted it reads
+  // it here, with no session yet. The tick wakes up once it's read to the end; Continue starts the session, and Decline
+  // starts none, so the console never opens.
+  let noticeTicket = '';
+  const reading = () => {
+    const doc = $('rn-doc');
+    const most = doc.scrollHeight - doc.clientHeight;
+    const share = most > 2 ? Math.min(1, doc.scrollTop / most) : 1;
+    $('rn-read').style.width = `${Math.round(share * 100)}%`;
+    if (share > 0.98 && $('rn-accept').disabled) {
+      $('rn-accept').disabled = false;
+      $('rn-tick').classList.remove('off');
+      $('rn-tick-text').textContent = 'I understand and accept the risk';
+    }
+  };
+  const notice = (said) => {
+    noticeTicket = said.ticket;
+    const n = said.notice;
+    $('rn-title').textContent = n.title;
+    $('rn-meta').textContent = `Notice version ${n.version} · About a ${n.minutes} minute read`;
+    const doc = $('rn-doc');
+    doc.replaceChildren(...n.sections.map((s, i) => {
+      const sec = document.createElement('section');
+      sec.className = 'rn-sec';
+      const h = document.createElement('h3');
+      h.textContent = `${i + 1}. ${s.heading}`;
+      const p = document.createElement('p');
+      p.textContent = s.text;
+      sec.append(h, p);
+      return sec;
+    }));
+    doc.insertAdjacentHTML('beforeend', '<p class="rn-end"><svg aria-hidden="true"><use href="#i-check"/></svg>You reached the end.</p>');
+    $('rn-error').hidden = true;
+    $('rn-go').disabled = true;
+    $('rn-decline').disabled = false;
+    $('rn').showModal();
+    doc.scrollTop = 0;
+    reading();
+    doc.focus();
+  };
+  $('rn-doc').addEventListener('scroll', reading, { passive: true });
+  addEventListener('resize', () => { if ($('rn').open) reading(); });
+  $('rn').addEventListener('cancel', (e) => e.preventDefault()); // Esc doesn't close it: accept or decline
+  $('rn-accept').addEventListener('change', () => { $('rn-go').disabled = !$('rn-accept').checked; });
+  $('rn-go').addEventListener('click', async () => {
+    $('rn-error').hidden = true;
+    $('rn-decline').disabled = true;
+    const r = await send('/api/signin/notice', { ticket: noticeTicket, accept: true }, $('rn-go'));
+    if (r?.ok) return enter();
+    if (r?.said?.again) return location.reload(); // the ticket ran out: the password again
+    $('rn-error').textContent = r ? r.problem : unreachable('select Continue again');
+    $('rn-error').hidden = false;
+    $('rn-go').disabled = false;
+    $('rn-decline').disabled = false;
+  });
+  // Declined: said on the sign-in page, which starts again with nobody signed in.
+  $('rn-decline').addEventListener('click', async () => {
+    $('rn-go').disabled = true;
+    await send('/api/signin/notice', { ticket: noticeTicket, accept: false }, $('rn-decline'));
+    location.replace('signin.html?declined=1');
+  });
+  if (new URLSearchParams(location.search).has('declined')) {
+    $('declined-note').hidden = false;
+    history.replaceState(null, '', 'signin.html');
+  }
 
   // The eye in a password box shows or hides what's typed.
   const reveal = (button, show) => {
@@ -331,9 +398,9 @@
     const r = await send(url, body, button);
     if (!r) return;
     forget();
-    if (r.ok && !r.said?.mfa) return enter();
+    if (r.ok && !r.said?.mfa && !r.said?.notice) return enter();
     button.disabled = false;
-    if (r.ok) return askCode(r.said);
+    if (r.ok) return r.said.notice ? notice(r.said) : askCode(r.said);
     showError(r.problem);
     hold(button, r.said);
   };

@@ -67,6 +67,7 @@ namespace RabbidLab.Setup
                     // New install: the license, one page per choice, then the summary. Update: straight to the summary,
                     // after the license only when it changed.
                     new Page { Key = "license", Step = "License", Next = "Next", Element = LicensePage, Skip = () => licenseAccepted },
+                    new Page { Key = "notice", Step = "Use at your own risk", Next = "Next", Element = NoticePage, Skip = () => noticeAccepted },
                     new Page { Key = "options", Step = "Installation options", Next = "Next", Element = OptionsPage, Skip = () => Updating },
                     new Page { Key = "address", Step = "Console address", Next = "Next", Element = AddressPage, Skip = () => Updating },
                     new Page { Key = "security", Step = "Certificate", Next = "Next", Element = SecurityPage, Skip = () => Updating },
@@ -122,6 +123,12 @@ namespace RabbidLab.Setup
                 .Select(p => string.Join(" ", p.Split('\n').Select(l => l.Trim()))));
             licenseAccepted = upgrade && File.Exists(System.IO.Path.Combine(choices.InstallDir, "LICENSE.txt"))
                 && File.ReadAllText(System.IO.Path.Combine(choices.InstallDir, "LICENSE.txt")).Trim() == license;
+
+            // Use at your own risk: the console's own notice. An installed copy with the same words already accepted it.
+            var notice = RiskNotice();
+            ShowNotice(notice);
+            var installedNotice = System.IO.Path.Combine(choices.InstallDir, Engine.NoticeFile);
+            noticeAccepted = upgrade && File.Exists(installedNotice) && File.ReadAllText(installedNotice).Replace("\r\n", "\n").Trim() == notice;
 
             // Address and security
             PortBox.Text = choices.Port.ToString();
@@ -226,6 +233,53 @@ namespace RabbidLab.Setup
             }
         }
 
+        /// <summary>The installed copy's notice is word for word this one: an update doesn't ask again.</summary>
+        private bool noticeAccepted;
+
+        /// <summary>The Use at your own risk notice built into Setup (the console's notice.txt), with Windows line ends made plain.</summary>
+        public static string RiskNotice()
+        {
+            using (var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("notice.txt"))
+            using (var reader = new StreamReader(stream))
+            {
+                return reader.ReadToEnd().Replace("\r\n", "\n").Trim();
+            }
+        }
+
+        /// <summary>
+        /// The notice on its page: the title and version from its first two lines, then each paragraph as a numbered heading
+        /// and its text, the way the console's sign-in shows it.
+        /// </summary>
+        private void ShowNotice(string notice)
+        {
+            var blocks = System.Text.RegularExpressions.Regex.Split(notice, @"\n[ \t]*\n").Select(b => b.Split('\n').Select(l => l.Trim()).ToArray()).ToArray();
+            NoticeTitle.Text = blocks[0][0];
+            NoticeLead.Text = (blocks[0].Length > 1 ? "Notice version " + blocks[0][1] + ". " : "") + "Read the notice to the end, then accept it to continue.";
+            var n = 0;
+            foreach (var block in blocks.Skip(1).Where(b => b.Length > 1))
+            {
+                n++;
+                NoticeText.Children.Add(new TextBlock
+                {
+                    Text = n + ". " + block[0],
+                    FontSize = 13,
+                    FontWeight = FontWeights.SemiBold,
+                    Margin = new Thickness(0, 10, 0, 2),
+                    TextWrapping = TextWrapping.Wrap,
+                    Foreground = (Brush) FindResource("Text"),
+                });
+                NoticeText.Children.Add(new TextBlock
+                {
+                    Text = string.Join(" ", block.Skip(1)),
+                    FontSize = 12.5,
+                    LineHeight = 19,
+                    TextWrapping = TextWrapping.Wrap,
+                    Foreground = (Brush) FindResource("Text"),
+                    Opacity = 0.85,
+                });
+            }
+        }
+
         /// <summary>Updating with the settings it already has: nothing was changed with Change.</summary>
         private bool KeepSettings => mode == Mode.Install && choices.InstalledVersion != null && !edited;
 
@@ -283,7 +337,7 @@ namespace RabbidLab.Setup
         {
             at = index;
             var page = pages[at];
-            foreach (var element in new FrameworkElement[] { LicensePage, WelcomePage, SettingsPage, AddressPage, SecurityPage, OptionsPage, WorkPage, DonePage, RemovePage })
+            foreach (var element in new FrameworkElement[] { LicensePage, NoticePage, WelcomePage, SettingsPage, AddressPage, SecurityPage, OptionsPage, WorkPage, DonePage, RemovePage })
             {
                 element.Visibility = element == page.Element ? Visibility.Visible : Visibility.Collapsed;
             }
@@ -300,7 +354,7 @@ namespace RabbidLab.Setup
             CloseButton.IsEnabled = page.Key != "work";
             LogButton.Visibility = page.Key == "done" && failed ? Visibility.Visible : Visibility.Collapsed;
             Problem.Text = "";
-            NextButton.IsEnabled = page.Key != "license" || AgreeBox.IsChecked == true; // the agreement has to be accepted first
+            NextButton.IsEnabled = Agreed(page.Key); // the agreement and the notice have to be accepted first
             if (page.Key == "address")
             {
                 RefreshUrls();
@@ -1280,11 +1334,20 @@ namespace RabbidLab.Setup
 
         // --- Events --------------------------------------------------------------------------------------------
 
+        private bool Agreed(string key) => key == "license" ? AgreeBox.IsChecked == true : key != "notice" || NoticeBox.IsChecked == true;
+
         private void Agree_Changed(object sender, RoutedEventArgs e)
         {
-            if (pages[at].Key == "license")
+            NextButton.IsEnabled = Agreed(pages[at].Key);
+        }
+
+        // Read to the end (or short enough to show whole): the notice's box wakes up.
+        private void Notice_Scrolled(object sender, ScrollChangedEventArgs e)
+        {
+            if (!NoticeBox.IsEnabled && NoticeScroll.ActualHeight > 0 && NoticeScroll.VerticalOffset >= NoticeScroll.ScrollableHeight - 2)
             {
-                NextButton.IsEnabled = AgreeBox.IsChecked == true;
+                NoticeBox.IsEnabled = true;
+                NoticeBox.Content = "I understand and accept the risk";
             }
         }
 

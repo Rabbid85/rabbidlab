@@ -6,7 +6,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <Version>1.1.339</Version>
+    <Version>1.1.340</Version>
     <Product>Rabbid Lab</Product>
     <Company>Rabbid</Company>
     <Authors>Anthony Wiles</Authors>
@@ -56,6 +56,12 @@
     <Compile Include="..\..\Installer\Setup\DnsPlan.cs" Link="Setup\DnsPlan.cs" />
     <!-- The client's uninstall code: made here, checked on the computer, by the same code. -->
     <Compile Include="..\Client\RabbidLab.Client\UninstallCode.cs" Link="Client\UninstallCode.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The Use at your own risk notice (RiskNotice.cs). Setup shows and installs the same file. -->
+    <None Remove="notice.txt" />
+    <EmbeddedResource Include="notice.txt" LogicalName="notice.txt" />
   </ItemGroup>
 
   <ItemGroup>

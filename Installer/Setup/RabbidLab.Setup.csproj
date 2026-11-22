@@ -62,6 +62,8 @@
     <EmbeddedResource Include="$(PayloadZip)" LogicalName="payload.zip" Condition="'$(PayloadZip)' != ''" />
     <!-- The license agreement Setup shows and installs: the repository's own LICENSE (MIT). -->
     <EmbeddedResource Include="..\..\LICENSE" LogicalName="LICENSE.txt" />
+    <!-- The Use at your own risk notice, read to the end and accepted after the license: the console's own (RiskNotice.cs). -->
+    <EmbeddedResource Include="..\..\Src\RabbidLab.Server\notice.txt" LogicalName="notice.txt" />
   </ItemGroup>
 
 </Project>

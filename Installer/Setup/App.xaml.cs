@@ -22,7 +22,8 @@ namespace RabbidLab.Setup
     ///   --snapshot folder                                 pictures of every page, for checking how they look
     /// RabbidLab-Uninstall.exe (the same program built with -p:Uninstaller=true) only removes.
     /// Quiet exit codes: 0 done, 1 something failed (see the log), 2 the license was not accepted.
-    /// A quiet install needs /acceptlicense or AcceptLicense="yes" in the answer file; the updater passes it.
+    /// A quiet install needs /acceptlicense or AcceptLicense="yes" in the answer file; the updater passes it. It accepts the
+    /// Use at your own risk notice (RISK-NOTICE.txt) too, and each account still accepts it at its first sign-in.
     /// </summary>
     public partial class App : Application
     {
@@ -157,7 +158,7 @@ namespace RabbidLab.Setup
                 // Quiet installs can't show the license, so it has to be accepted on the command line or in the answer file.
                 if (!Has("acceptlicense") && !choices.AcceptLicense)
                 {
-                    Write(log, "Installation did not start. A quiet installation requires acceptance of the license agreement. Specify /acceptlicense, or set AcceptLicense=\"yes\" in the answer file. The license agreement is in LICENSE.txt.");
+                    Write(log, "Installation did not start. A quiet installation requires acceptance of the license agreement and the Use at your own risk notice. Specify /acceptlicense, or set AcceptLicense=\"yes\" in the answer file. The license agreement is in LICENSE.txt, and the notice is in RISK-NOTICE.txt.");
                     Shutdown(2);
                     return;
                 }

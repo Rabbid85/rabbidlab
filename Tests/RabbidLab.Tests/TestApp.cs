@@ -880,21 +880,21 @@ public sealed class AutoMfa(TestApp app) : DelegatingHandler
         var sent = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
         var answer = await base.SendAsync(request, cancellationToken);
         var path = request.RequestUri!.AbsolutePath;
-        if (request.Method != HttpMethod.Post || !answer.IsSuccessStatusCode || !(path == "/api/signin" || path.StartsWith("/api/setup/", StringComparison.Ordinal)))
+        if (request.Method != HttpMethod.Post || !answer.IsSuccessStatusCode
+            || !(path == "/api/signin" || path == "/api/signin/mfa" || path.StartsWith("/api/setup/", StringComparison.Ordinal)))
         {
             return answer;
         }
         var body = await answer.Content.ReadAsStringAsync(cancellationToken);
-        System.Text.Json.JsonElement said;
-        try
-        {
-            said = System.Text.Json.JsonDocument.Parse(body).RootElement;
-        }
-        catch (System.Text.Json.JsonException)
+        if (Said(body) is not { } said)
         {
             return Again(answer, body);
         }
-        if (said.ValueKind != System.Text.Json.JsonValueKind.Object || !said.TryGetProperty("mfa", out var kind))
+        if (said.TryGetProperty("notice", out _))
+        {
+            return await Accept(request, said, cancellationToken);
+        }
+        if (!said.TryGetProperty("mfa", out var kind))
         {
             return Again(answer, body);
         }
@@ -913,6 +913,39 @@ public sealed class AutoMfa(TestApp app) : DelegatingHandler
         var next = new HttpRequestMessage(HttpMethod.Post, new Uri(request.RequestUri, "/api/signin/mfa"))
         {
             Content = JsonContent.Create(new { ticket = said.GetProperty("ticket").GetString(), code = app.MfaCode(username) }),
+        };
+        foreach (var header in request.Headers)
+        {
+            next.Headers.TryAddWithoutValidation(header.Key, header.Value);
+        }
+        var coded = await base.SendAsync(next, cancellationToken);
+        if (!coded.IsSuccessStatusCode)
+        {
+            return coded;
+        }
+        var codedBody = await coded.Content.ReadAsStringAsync(cancellationToken);
+        return Said(codedBody) is { } after && after.TryGetProperty("notice", out _) ? await Accept(request, after, cancellationToken) : Again(coded, codedBody);
+    }
+
+    private static System.Text.Json.JsonElement? Said(string body)
+    {
+        try
+        {
+            var said = System.Text.Json.JsonDocument.Parse(body).RootElement;
+            return said.ValueKind == System.Text.Json.JsonValueKind.Object ? said : null;
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return null;
+        }
+    }
+
+    // The Use at your own risk notice, an account's first time: accepted, as a person would.
+    private async Task<HttpResponseMessage> Accept(HttpRequestMessage request, System.Text.Json.JsonElement said, CancellationToken cancellationToken)
+    {
+        var next = new HttpRequestMessage(HttpMethod.Post, new Uri(request.RequestUri!, "/api/signin/notice"))
+        {
+            Content = JsonContent.Create(new { ticket = said.GetProperty("ticket").GetString(), accept = true }),
         };
         foreach (var header in request.Headers)
         {

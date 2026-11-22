@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.340', [
+    'Every account accepts a Use at your own risk notice before its first sign-in. It opens over the sign-in page after the password and code, and the tick wakes up once you have read it to the end. Decline signs nobody in, so the console never opens.',
+    'Accepting and declining go to the Activity log with the notice version. The notice is asked again only if its wording changes, and everyone signed in now signs in once more to accept it.',
+    'Setup shows the same notice after the license agreement, and Next waits until it is read to the end and accepted.']],
   ['1.1.339', [
     'Signed out for inactivity now locks the page in place: the sign-in background covers it with a short card for your password. Unlock and you are back on the same page with the same panel open. Sign in as someone else goes to the sign-in page.',
     'Connection lost brings up the opening window over the blurred page. It tries the server every 5 seconds and shows each attempt, then reads everything again when it answers. After 2 minutes it goes to the sign-in page as soon as the server is back.']],
@@ -1066,6 +1070,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.340': ['2026-11-22', 'feature', 'Use at your own risk, read to the end before the first sign-in'],
   '1.1.339': ['2026-11-22', 'feature', 'Lock in place, and reconnect when the server drops'],
   '1.1.338': ['2026-11-22', 'fix', 'The background holds still while you resize'],
   '1.1.337': ['2026-11-22', 'update', 'A steady update window in glass'],
@@ -1610,8 +1615,8 @@ const RELEASE_INFO = {
     go.disabled = false;
     go.textContent = 'Unlock';
     if (!r) return;
-    if (r.ok && !said?.mfa) { unlock(); return; }
-    // A code from the authenticator app next; setting up MFA, or a reset one, needs the sign-in page.
+    if (r.ok && !said?.mfa && !said?.notice) { unlock(); return; }
+    // A code from the authenticator app next; setting up MFA, a reset one, or a changed notice to accept needs the sign-in page.
     if (r.ok && said.mfa === 'code') {
       lockTicket = said.ticket;
       lockPw().hidden = true;

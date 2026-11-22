@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.340 (2026-11-22)
+
+- Every account accepts a Use at your own risk notice before its first sign-in. It opens over the sign-in page after the password and code, and the tick wakes up once you have read it to the end. Decline signs nobody in, so the console never opens.
+- Accepting and declining go to the Activity log with the notice version. The notice is asked again only if its wording changes, and everyone signed in now signs in once more to accept it.
+- Setup shows the same notice after the license agreement, and Next waits until it is read to the end and accepted.
+
 ## 1.1.339 (2026-11-22)
 
 - Signed out for inactivity now locks the page in place: the sign-in background covers it with a short card for your password. Unlock and you are back on the same page with the same panel open. Sign in as someone else goes to the sign-in page.

@@ -77,6 +77,21 @@
         </Border>
       </DockPanel>
 
+      <!-- Use at your own risk: after the license on a new install, and on an update whose notice changed. Read to the end,
+           then the box wakes up; Next waits for it. -->
+      <DockPanel x:Name="NoticePage" Visibility="Collapsed">
+        <StackPanel DockPanel.Dock="Top">
+          <TextBlock x:Name="NoticeTitle" Style="{StaticResource H1}" Text="Use at your own risk" />
+          <TextBlock x:Name="NoticeLead" Style="{StaticResource Lead}" />
+        </StackPanel>
+        <CheckBox x:Name="NoticeBox" DockPanel.Dock="Bottom" Margin="0,14,0,0" Content="Scroll to the end to accept" IsEnabled="False" Checked="Agree_Changed" Unchecked="Agree_Changed" />
+        <Border CornerRadius="8" Background="{StaticResource Field}" BorderBrush="{StaticResource Line}" BorderThickness="1">
+          <ScrollViewer x:Name="NoticeScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="16,4,8,12" ScrollChanged="Notice_Scrolled">
+            <StackPanel x:Name="NoticeText" />
+          </ScrollViewer>
+        </Border>
+      </DockPanel>
+
       <!-- Summary of actions: last page of a new install, first page of an update. -->
       <ScrollViewer x:Name="WelcomePage" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
       <StackPanel Margin="0,0,4,4">

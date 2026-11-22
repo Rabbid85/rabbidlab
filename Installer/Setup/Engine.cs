@@ -56,6 +56,9 @@ namespace RabbidLab.Setup
     public sealed class Engine
     {
         public const string RuleName = Edition.Name;
+
+        /// <summary>The accepted Use at your own risk notice, next to the program, so an update with the same words doesn't ask again.</summary>
+        public const string NoticeFile = "RISK-NOTICE.txt";
         /// <summary>The rule for port 80 when the Windows HTTP service has it: its traffic comes in as System, not Rabbid Lab.</summary>
         public const string Port80RuleName = Edition.Name + " (port 80)";
         /// <summary>The rule the console makes when port 443 is turned on in Settings, Console address. Setup only takes it away.</summary>
@@ -266,6 +269,18 @@ namespace RabbidLab.Setup
                     {
                         license.Position = 0;
                         using (var file = File.Create(Path.Combine(c.InstallDir, "LICENSE.txt"))) license.CopyTo(file);
+                    });
+                }
+            }
+            // And the accepted Use at your own risk notice, for the same reason.
+            using (var notice = Assembly.GetExecutingAssembly().GetManifestResourceStream("notice.txt"))
+            {
+                if (notice != null)
+                {
+                    Retry(() =>
+                    {
+                        notice.Position = 0;
+                        using (var file = File.Create(Path.Combine(c.InstallDir, NoticeFile))) notice.CopyTo(file);
                     });
                 }
             }
