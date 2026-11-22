@@ -921,6 +921,8 @@
     if (hist.for) loadHistory({ dn: hist.for });
     adLive.now();
   });
+  // Alerts added or changed (alerts-page.js): the open user's Alerts tab shows it.
+  document.addEventListener('rabbidlab:alerts', () => { if (R.panel.is('ad')) drawDrawer(); });
   // A change undone anywhere: the open list is read again now, and the other pages, a group's members and the attributes when shown.
   document.addEventListener('rabbidlab:undone', () => {
     Object.keys(lists).filter((k) => k !== adPage).forEach((k) => delete lists[k]);
@@ -1142,7 +1144,9 @@
       part(mi('export', 'csv', all === 1 ? 'Export to CSV' : `Export ${count(all, one, many)} to CSV`))));
     const deletable = xs.filter((x) => !blocked(k, x).has('delete')).length;
     const gone = can('ad.delete') && deletable ? part(mi('delete', 'trash', deletable === 1 ? 'Delete…' : `Delete ${count(deletable, one, many)}…`, { danger: true })) : '';
-    return top + changes + more + gone;
+    // Alerts about one user (alerts-page.js), for whoever manages alerts.
+    const watch = k === 'users' && all === 1 && R.alerts?.can() ? part(mi('alertme', 'bell', 'Alert me about this user…')) : '';
+    return top + changes + watch + more + gone;
   };
 
   let menuFor = { kind: 'users', objs: [] };
@@ -1288,6 +1292,7 @@
       case 'open': openDrawer(k, objs[0]); break;
       case 'offboard': R.offboard?.open(xs.map((u) => u.username)); break;
       case 'runflow': R.flows?.run(xs[0]); break;
+      case 'alertme': R.alerts?.me(xs[0]); break;
       case 'openobj': openChanged(objs[0]); break;
       case 'enable':
       case 'disable': {
@@ -2125,7 +2130,11 @@
     const leaving = k === 'users' && R.offboard?.has(x.username);
     if (leaving) tabsFor.splice(1, 0, ['offboarding', 'Offboarding']);
     if (dw.tab === 'offboarding' && !leaving) dw.tab = 'overview';
-    const body = dw.tab === 'offboarding' ? R.offboard.pane(x) : dw.tab === 'notes' ? R.notesTab.pane(notesOn, x.name) : dw.tab === 'attrs' ? dwAttrs(x) : dw.tab === 'history' ? dwHistory(x) : dw.tab === 'members' ? dwMembers(x)
+    // Alerts about this user (alerts-page.js), for whoever manages alerts.
+    const watched = k === 'users' && R.alerts?.can();
+    if (watched) tabsFor.push(['alerts', 'Alerts', R.alerts.about(x).length || null]);
+    if (dw.tab === 'alerts' && !watched) dw.tab = 'overview';
+    const body = dw.tab === 'alerts' ? R.alerts.pane(x) : dw.tab === 'offboarding' ? R.offboard.pane(x) : dw.tab === 'notes' ? R.notesTab.pane(notesOn, x.name) : dw.tab === 'attrs' ? dwAttrs(x) : dw.tab === 'history' ? dwHistory(x) : dw.tab === 'members' ? dwMembers(x)
       : dw.tab === 'memberof' ? dwMemberOf(k, x) : dwOverview(k, x);
     const scroll = $('dw-body').scrollTop;
     // Typing in Find keeps its place when the panel is drawn again.

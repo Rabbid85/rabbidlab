@@ -25,6 +25,7 @@
 <link rel="stylesheet" href="Assets/offboard.css">
 <link rel="stylesheet" href="Assets/printq.css">
 <link rel="stylesheet" href="Assets/people-flows.css">
+<link rel="stylesheet" href="Assets/alerts-page.css">
 <link rel="stylesheet" href="Assets/news.css">
 <link rel="stylesheet" href="Assets/edition.css">
 <link rel="stylesheet" href="Assets/themes.css">
@@ -44,6 +45,7 @@
 <script src="Assets/offboard.js" defer></script>
 <script src="Assets/users.js" defer></script>
 <script src="Assets/people-flows.js" defer></script>
+<script src="Assets/alerts-page.js" defer></script>
 <script src="Assets/alerts.js" defer></script>
 <script src="Assets/report.js" defer></script>
 <script src="Assets/links.js" defer></script>
@@ -221,6 +223,8 @@
   <a href="#gpo" data-page="gpo" id="rail-gpo" title="Group Policy" data-can="gpo.view"><svg><use href="#i-policy"/></svg><span>Group Policy</span></a>
   <a href="#ad/domain" data-page="domain" id="rail-domain" title="Domain health" data-can="ad.view ad.connect" data-whole><svg><use href="#i-shield"/></svg><span>Domain health</span><i class="rail-dot bad" id="rail-domain-dot" hidden></i></a>
   <a href="#sync" data-page="sync" id="rail-sync" title="Sync" data-can="ad.view" data-whole><svg><use href="#i-refresh"/></svg><span>Sync</span><i class="rail-dot bad" id="rail-sync-dot" hidden></i></a>
+  <p class="rail-label" data-can="sensors.alerts">Alerts</p>
+  <a href="#alerts" data-page="alerts" id="rail-alerts" title="Alerts" data-can="sensors.alerts"><svg><use href="#i-bell"/></svg><span>Alerts</span><small id="rail-alerts-n"></small></a>
   <p class="rail-label" data-can="access.view windows.view">Config</p>
   <a href="#people" data-page="people" title="Roles and people" data-can="access.view"><svg><use href="#i-shield"/></svg><span>Roles and people</span><small id="rail-roles"></small></a>
   <p class="rail-label">Help</p>
@@ -1192,6 +1196,34 @@
   </section>
 
   <!-- Sync: every domain controller with every other, and on to Microsoft 365, with what changed and where each change has got to (sync.js). -->
+  <!-- Alerts: an alert for anything that can happen, what went off, and where alerts go (alerts-page.js, EventAlerts.cs). -->
+  <section class="page home" id="page-alerts" data-page="alerts" data-title="Alerts" hidden>
+    <header class="hero" id="ea-hero">
+      <p class="eyebrow">Alerts</p>
+      <h1 class="hero-title">Alerts</h1>
+      <p class="hero-lead"><b id="ea-state"></b> <span>Add an alert for anything that can happen, and choose where it goes.</span></p>
+      <div class="hero-row">
+      <div class="hero-stats">
+        <div><b id="ea-n-on"><i class="sk sk-num"></i></b><span><svg><use href="#i-bell"/></svg>Alerts on</span></div>
+        <div><b id="ea-n-fired"><i class="sk sk-num"></i></b><span><svg><use href="#i-history"/></svg>Fired (7 days)</span></div>
+        <div><b id="ea-n-new"><i class="sk sk-num"></i></b><span><svg><use href="#i-alert"/></svg>Not acknowledged</span></div>
+        <div><b id="ea-n-can"><i class="sk sk-num"></i></b><span><svg><use href="#i-list"/></svg>Things that can happen</span></div>
+      </div>
+      </div>
+    </header>
+    <div class="ea-body">
+      <div class="dbar ea-tabsbar"><div class="tabs2" id="ea-tabs" role="tablist"></div></div>
+      <div class="dbar"><button type="button" class="small primary" id="ea-new"><svg><use href="#i-plus"/></svg>New alert</button>
+        <button type="button" class="small" id="ea-acts" disabled>Actions<span class="cnt" hidden></span><svg><use href="#i-chevron-down"/></svg></button>
+        <button type="button" class="small" id="ea-ackall" hidden><svg><use href="#i-check"/></svg>Acknowledge all</button>
+        <span class="grow"></span><span class="bar-note" id="ea-count"></span></div>
+      <p class="ea-lead" id="ea-lead"></p>
+      <div class="table adt drows" id="ea-list"></div>
+      <p class="hint problem" id="ea-problem" hidden></p>
+    </div>
+    <datalist id="ea-groups"><option>Domain Admins</option><option>Enterprise Admins</option><option>Schema Admins</option><option>Administrators</option><option>Account Operators</option><option>Backup Operators</option><option>Group Policy Creator Owners</option></datalist>
+  </section>
+
   <section class="page home" id="page-sync" data-page="sync" data-title="Sync" hidden>
     <header class="hero" id="sync-hero">
       <p class="eyebrow">Directory</p>
@@ -1431,6 +1463,25 @@
   <div class="dialog-foot"><button type="button" id="ob-cancel">Cancel</button><span class="grow"></span><button type="button" id="ob-back">Back</button><button type="button" class="primary" id="ob-next">Next</button></div>
 </dialog>
 
+<!-- New alert: what happens, only when, then; and Alert me about one user (alerts-page.js). -->
+<dialog class="dialog ea-dialog ea-build" id="ea-build" aria-labelledby="ea-build-title">
+  <h2 id="ea-build-title">New alert</h2>
+  <p class="dialog-lead">Pick what happens, narrow it down if you like, and choose where it goes.</p>
+  <p class="ea-say ea-wsay" id="ea-build-say"></p>
+  <div class="ea-grid">
+    <div class="ea-left"><p class="ea-step"><i>1</i>What happens</p><input class="ds-input ea-find" id="ea-build-find" placeholder="Find, for example group, disk or locked" autocomplete="off" spellcheck="false"><div class="ea-events" id="ea-build-events"></div></div>
+    <div class="ea-right"><p class="ea-step"><i>2</i>Only when</p><div id="ea-build-conds"></div><p class="ea-step"><i>3</i>Then</p><div id="ea-build-then"></div></div>
+  </div>
+  <p class="hint problem" id="ea-build-problem" hidden></p>
+  <div class="dialog-foot"><button type="button" id="ea-build-cancel">Cancel</button><button type="button" class="primary" id="ea-build-save" disabled>Save alert</button></div>
+</dialog>
+<dialog class="dialog ea-dialog ea-me" id="ea-me" aria-labelledby="ea-me-title">
+  <h2 id="ea-me-title">Alert me</h2>
+  <p class="dialog-lead" id="ea-me-lead"></p>
+  <div id="ea-me-body"></div>
+  <p class="hint problem" id="ea-me-problem" hidden></p>
+  <div class="dialog-foot"><button type="button" id="ea-me-cancel">Cancel</button><button type="button" class="primary" id="ea-me-save" disabled>Add alert</button></div>
+</dialog>
 <!-- A people workflow's fields and steps, and running one (people-flows.js). -->
 <dialog class="dialog pf-dialog" id="pf-edit" aria-labelledby="pf-edit-title">
   <h2 id="pf-edit-title">Edit workflow</h2>

@@ -3,6 +3,12 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.356', [
+    'Alerts has its own place in the sidebar: add an alert for anything that can happen, with Everything that can happen, Rules, Fired and Where alerts go.',
+    'New alert asks what happens, only when (such as the group, how often, or which computers) and then: the severity, the alert types it goes through, and whether it sends in quiet hours.',
+    'Everything that can happen lists 31 things with a switch on each. Sign-ins, Active Directory changes from the AD audit, devices, and Rabbid Lab itself can be alerted on now; the rest say what they still need.',
+    'A user in Active Directory has Actions, Alert me about this user, and an Alerts tab with the alerts about them.',
+    'Fired alerts stay New until someone acknowledges them. An alert about a user can run a people workflow on them once someone approves it on the fired alert.']],
   ['1.1.355', [
     'When no domain controller answers, the sign-in page says why in a warning over the form: the server is connected to a VPN, it cannot look the controllers up in DNS, or it cannot reach them. The warning goes by itself once one answers.',
     'A domain controller that stopped answering is checked again after 5 seconds instead of a minute.']],
@@ -1120,6 +1126,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.356': ['2026-11-22', 'feature', 'Alerts for anything that can happen', 'alerts.jpg'],
   '1.1.355': ['2026-11-22', 'update', 'Sign-in warns when a VPN or DNS blocks the domain'],
   '1.1.354': ['2026-11-22', 'fix', 'Screenshots on the news cards again'],
   '1.1.353': ['2026-11-22', 'update', 'Inactivity goes to the sign-in page'],
@@ -1639,7 +1646,7 @@ const RELEASE_INFO = {
   const allows = (list) => !!shown && list.split(/\s+/).some((p) => shown.has(p));
   const has = (p) => can.has(p);
   const PAGES = { overview: 'overview.view', links: 'links.view', sensors: 'sensors.view', seats: 'seats.view sessions.view', people: 'access.view', ad: 'ad.view ad.connect',
-    org: 'ad.view', attrs: 'ad.view', sync: 'ad.view', report: 'activity.view' };
+    org: 'ad.view', attrs: 'ad.view', sync: 'ad.view', report: 'activity.view', alerts: 'sensors.alerts' };
   // Settings' pages and what each needs; About is for everyone, Developer for Rabbid Lab Dev only.
   const SUBS = { account: '', appearance: '', viewas: 'access.view', address: '', updates: 'updates.view', signin: 'access.roles access.unlock', activity: 'activity.view', reports: 'activity.view', alerts: 'sensors.alerts', notifications: 'sensors.alerts', history: 'sensors.alerts',
     links: 'links.edit', sensors: 'sensors.edit', seats: 'seats.settings seats.add', ad: 'ad.connect', developer: 'updates.auto', support: '', about: '' };

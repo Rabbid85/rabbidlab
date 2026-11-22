@@ -141,6 +141,7 @@ builder.Services.AddSingleton<Offboarding>();
 builder.Services.AddHostedService<OffboardWorker>();
 // Print queues and the print history (PrintQueues.cs).
 builder.Services.AddPrintQueues();
+builder.Services.AddEventAlerts();
 // People workflows: steps for AD users, run by hand (PeopleWorkflows.cs).
 builder.Services.AddSingleton<PeopleWorkflows>();
 builder.Services.AddSingleton<FlowRunner>();
@@ -264,6 +265,7 @@ app.MapNotesApi();
 app.MapDirectoryActionsApi();
 app.MapOffboardingApi();
 app.MapPrintQueuesApi();
+app.MapEventAlertsApi();
 app.MapPeopleWorkflowsApi();
 app.MapChangesApi();
 app.MapLinksApi();

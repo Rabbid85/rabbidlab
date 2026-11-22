@@ -2,6 +2,14 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.356 (2026-11-22)
+
+- Alerts has its own place in the sidebar: add an alert for anything that can happen, with Everything that can happen, Rules, Fired and Where alerts go.
+- New alert asks what happens, only when (such as the group, how often, or which computers) and then: the severity, the alert types it goes through, and whether it sends in quiet hours.
+- Everything that can happen lists 31 things with a switch on each. Sign-ins, Active Directory changes from the AD audit, devices, and Rabbid Lab itself can be alerted on now; the rest say what they still need.
+- A user in Active Directory has Actions, Alert me about this user, and an Alerts tab with the alerts about them.
+- Fired alerts stay New until someone acknowledges them. An alert about a user can run a people workflow on them once someone approves it on the fired alert.
+
 ## 1.1.355 (2026-11-22)
 
 - When no domain controller answers, the sign-in page says why in a warning over the form: the server is connected to a VPN, it cannot look the controllers up in DNS, or it cannot reach them. The warning goes by itself once one answers.
