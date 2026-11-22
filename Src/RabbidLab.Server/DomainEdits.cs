@@ -1,10 +1,7 @@
 using System.Globalization;
-using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
-using System.Security.Principal;
 using System.Text;
 using System.Text.RegularExpressions;
-using Microsoft.Win32.SafeHandles;
 
 namespace RabbidLab.Server;
 
@@ -43,36 +40,19 @@ public sealed class WindowsSysvol : ISysvol
     [SupportedOSPlatform("windows")]
     private static T Windows<T>(string username, string password, Func<T> work)
     {
-        // DOMAIN\user or user@domain as typed; a bare name is in the domain the login checked.
-        var at = username.IndexOf('\\');
-        var (user, domain) = at > 0 ? (username[(at + 1)..], username[..at]) : (username, null);
-        if (!LogonUser(user, domain, password, NewCredentials, WinNt50, out var token))
+        try
         {
-            throw new ToolProblem("Windows could not use those credentials to access SYSVOL.");
+            return NetworkLogon.Run(username, password, work, "Windows could not use those credentials to access SYSVOL.");
         }
-        using (token)
+        catch (UnauthorizedAccessException)
         {
-            try
-            {
-                return WindowsIdentity.RunImpersonated(token, work);
-            }
-            catch (UnauthorizedAccessException)
-            {
-                throw new ToolProblem($"Access denied. {Ldap.Account(username)} does not have permission to change this GPO's files in SYSVOL. This requires a Domain Admin, or permissions delegated in Group Policy Management.");
-            }
-            catch (IOException e)
-            {
-                throw new ToolProblem($"Could not reach SYSVOL: {e.Message}");
-            }
+            throw new ToolProblem($"Access denied. {Ldap.Account(username)} does not have permission to change this GPO's files in SYSVOL. This requires a Domain Admin, or permissions delegated in Group Policy Management.");
+        }
+        catch (IOException e)
+        {
+            throw new ToolProblem($"Could not reach SYSVOL: {e.Message}");
         }
     }
-
-    private const int NewCredentials = 9; // LOGON32_LOGON_NEW_CREDENTIALS: the login is used for connections out, not here
-    private const int WinNt50 = 3;
-
-    [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode, EntryPoint = "LogonUserW")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool LogonUser(string user, string? domain, string password, int type, int provider, out SafeAccessTokenHandle token);
 }
 
 /// <summary>The text of Group Policy's files: the security template's sections, and GPT.INI's version.</summary>

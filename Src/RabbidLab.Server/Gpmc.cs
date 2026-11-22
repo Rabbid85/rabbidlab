@@ -1,9 +1,7 @@
 using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
-using System.Security.Principal;
 using System.Xml.Linq;
-using Microsoft.Win32.SafeHandles;
 using RabbidLab.Shared;
 
 namespace RabbidLab.Server;
@@ -214,16 +212,7 @@ public sealed class WindowsGpmc : IGpmc
                     done.SetResult(Go());
                     return;
                 }
-                var at = t.Username.IndexOf('\\');
-                var (user, domain) = at > 0 ? (t.Username[(at + 1)..], t.Username[..at]) : (t.Username, (string?) null);
-                if (!LogonUser(user, domain, t.Password, NewCredentials, WinNt50, out var token))
-                {
-                    throw new ToolProblem("Windows could not sign in with those credentials.");
-                }
-                using (token)
-                {
-                    done.SetResult(WindowsIdentity.RunImpersonated(token, Go));
-                }
+                done.SetResult(NetworkLogon.Run(t.Username, t.Password, Go, "Windows could not sign in with those credentials."));
             }
             catch (COMException e) when (e.HResult is AccessDenied or LdapRights)
             {
@@ -250,11 +239,4 @@ public sealed class WindowsGpmc : IGpmc
         thread.Start();
         return done.Task;
     }
-
-    private const int NewCredentials = 9; // LOGON32_LOGON_NEW_CREDENTIALS: the login is used for connections out, not here
-    private const int WinNt50 = 3;
-
-    [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode, EntryPoint = "LogonUserW")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool LogonUser(string user, string? domain, string password, int type, int provider, out SafeAccessTokenHandle token);
 }
