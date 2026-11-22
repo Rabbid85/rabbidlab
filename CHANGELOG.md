@@ -2,6 +2,13 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.359 (2026-11-22)
+
+- On each DC is now On each computer: member servers and PCs are read too, with views for All computers, Domain controllers, Servers and PCs. The numbers, the list and the side panel count the kind of computer whose view is open.
+- Each setting is read only where it applies: LDAP signing, channel binding, the Print Spooler and LAPS for DSRM on domain controllers, and a new Windows LAPS setting on servers and PCs.
+- A Current column shows what each setting is set to now: its value, or each value and on how many computers.
+- Servers and PCs are read when they are enabled and signed in within 90 days. The line over the list says which ones could not be read and why, such as port 445 closed or the Remote Registry service stopped.
+
 ## 1.1.358 (2026-11-22)
 
 - Domain health has a second tab, On each DC: ten security settings read from every domain controller, such as SMB signing, SMBv1, LDAP signing and channel binding, the NTLM level, the Print Spooler, TLS 1.0 and 1.1, Kerberos encryption types, LAPS for DSRM and LLMNR.

@@ -10,16 +10,24 @@ using Microsoft.Win32;
 
 namespace RabbidLab.Server;
 
-/// <summary>A security setting read from each domain controller: what's recommended, where it's read from, and the Group Policy setting that fixes it.</summary>
-public sealed record DcSetting(string Key, string Name, string Severity, string Recommended, string ReadFrom, string Path, string Policy, string SetTo, string About);
+/// <summary>
+/// A security setting read from each computer: what's recommended, where it's read from, the Group Policy setting that fixes
+/// it, and the kinds of computer it's for (dc, server, pc).
+/// </summary>
+public sealed record DcSetting(string Key, string Name, string Severity, string Recommended, string ReadFrom, string Gpo, string Path, string Policy, string SetTo, string About,
+    IReadOnlyList<string> Kinds);
 
-/// <summary>A setting's value on one DC: its words, whether it's as recommended (null when it couldn't be read), and why it couldn't be.</summary>
-public sealed record DcValue(string Value, bool? Ok, string? Problem = null);
+/// <summary>
+/// A setting's value on one computer: its words, whether it's as recommended (null when it couldn't be read), why it couldn't
+/// be, and what kind of reason that is (denied, unreachable, registry or error), so the page can say it once for many.
+/// </summary>
+public sealed record DcValue(string Value, bool? Ok, string? Problem = null, string? Why = null);
 
-/// <summary>What was last read from one DC.</summary>
+/// <summary>What was last read from one computer, and what kind it is: dc, server or pc.</summary>
 public sealed class DcReading
 {
     public string Name { get; set; } = "";
+    public string Kind { get; set; } = "dc";
     public string? Site { get; set; }
     public DateTime At { get; set; }
     public Dictionary<string, DcValue> Values { get; set; } = [];
@@ -30,48 +38,65 @@ public sealed class DcReadingsFile
     public List<DcReading> Dcs { get; set; } = [];
 }
 
-/// <summary>Reads the settings from one DC. Tests stand in for it.</summary>
+/// <summary>Reads the settings from one computer. Tests stand in for it.</summary>
 public interface IDcProbe
 {
-    Task<Dictionary<string, DcValue>> Read(SyncDc dc, AuditLogin login, CancellationToken stop);
+    Task<Dictionary<string, DcValue>> Read(SyncDc computer, AuditLogin login, CancellationToken stop);
+}
+
+/// <summary>The domain's computers, for reading member servers and PCs as well as the DCs. Tests stand in for it.</summary>
+public interface IHardeningComputers
+{
+    Task<IReadOnlyList<AdComputer>> List(CancellationToken stop);
+}
+
+public sealed class DirectoryHardeningComputers(IDirectoryTools tools) : IHardeningComputers
+{
+    public async Task<IReadOnlyList<AdComputer>> List(CancellationToken stop) => (await tools.Computers(stop)).Computers;
 }
 
 /// <summary>
-/// Hardening on each DC, for Domain health's On each DC tab. Each DC is read over the network as the service account and
-/// kept in dc-settings.json: read when nothing has been yet, again on Re-check, and in the background once the last read
-/// is 6 hours old. DCs are read 15 at a time.
+/// Hardening on each computer, for Domain health's On each computer tab: the DCs, and the member servers and PCs that signed in
+/// within 90 days. Each is read over the network as the service account and kept in dc-settings.json: read when nothing has
+/// been yet, again on Re-check, and in the background once the last read is 6 hours old. 15 are read at a time.
 /// </summary>
-public sealed class DcSettings(DataFolder folder, IAuditDirectory directory, IDcProbe probe, TimeProvider clock, ILogger<DcSettings> log)
+public sealed class DcSettings(DataFolder folder, IAuditDirectory directory, IHardeningComputers computers, IDcProbe probe, TimeProvider clock, ILogger<DcSettings> log)
 {
-    public const string Gpo = "Default Domain Controllers Policy";
+    public const string DcPolicy = "Default Domain Controllers Policy";
+    public const string MemberPolicy = "A GPO linked to the servers' and PCs' OUs";
     private const string SecurityOptions = "Computer Configuration › Policies › Windows Settings › Security Settings › Local Policies › Security Options";
+    private static readonly string[] Everywhere = ["dc", "server", "pc"];
+    private static readonly string[] DcsOnly = ["dc"];
+    private static readonly string[] Members = ["server", "pc"];
 
     public static readonly IReadOnlyList<DcSetting> All =
     [
-        new("smb", "SMB signing", "High", "Required", "SMB negotiate response", SecurityOptions, "Microsoft network server: Digitally sign communications (always)", "Enabled",
-            "Without SMB signing, SMB traffic to a domain controller can be relayed or changed, including Group Policy files from SYSVOL."),
-        new("smb1", "SMBv1 server", "High", "Disabled", "SMB1 negotiate request", "Computer Configuration › Policies › Administrative Templates › MS Security Guide", "Configure SMB v1 server", "Disabled",
-            "SMBv1 has no pre-authentication integrity and was used by WannaCry and NotPetya."),
-        new("ldapsign", "LDAP server signing", "High", "Require signing", @"Registry: NTDS\Parameters\LDAPServerIntegrity", SecurityOptions, "Domain controller: LDAP server signing requirements",
-            "Require signing", "Unsigned LDAP binds can be relayed to the domain controller."),
-        new("cbt", "LDAP channel binding", "High", "Always", @"Registry: NTDS\Parameters\LdapEnforceChannelBinding", SecurityOptions, "Domain controller: LDAP server channel binding token requirements",
-            "Always", "Channel binding ties LDAPS sign-ins to their TLS session, which blocks relay over LDAPS."),
-        new("ntlm", "LAN Manager authentication level", "High", "Level 5", @"Registry: Lsa\LmCompatibilityLevel", SecurityOptions, "Network security: LAN Manager authentication level",
-            "Send NTLMv2 response only. Refuse LM & NTLM", "Levels below 5 accept LM and NTLMv1 responses, which can be cracked offline."),
-        new("spool", "Print Spooler service", "High", "Disabled", @"Registry: Services\Spooler\Start, and the spoolss pipe", "Computer Configuration › Policies › Windows Settings › Security Settings › System Services",
-            "Print Spooler", "Disabled", "A running Print Spooler on a domain controller allows forced authentication (PrinterBug) and was the target of PrintNightmare."),
-        new("tls", "TLS 1.0 and TLS 1.1", "Medium", "Disabled", @"Registry: SCHANNEL\Protocols", "Computer Configuration › Preferences › Windows Settings › Registry",
-            @"SCHANNEL\Protocols\TLS 1.0\Server and TLS 1.1\Server: Enabled", "0", "TLS 1.0 and TLS 1.1 are deprecated. Supported Windows versions use TLS 1.2 or later."),
-        new("kerb", "Kerberos encryption types", "Medium", "AES128, AES256", @"Registry: Kerberos\Parameters\SupportedEncryptionTypes", SecurityOptions,
+        new("smb", "SMB signing", "High", "Required", "SMB negotiate response", "", SecurityOptions, "Microsoft network server: Digitally sign communications (always)", "Enabled",
+            "Without SMB signing, SMB traffic to the computer can be relayed or changed, including Group Policy files from SYSVOL on a domain controller.", Everywhere),
+        new("smb1", "SMBv1 server", "High", "Disabled", "SMB1 negotiate request", "", "Computer Configuration › Policies › Administrative Templates › MS Security Guide", "Configure SMB v1 server", "Disabled",
+            "SMBv1 has no pre-authentication integrity and was used by WannaCry and NotPetya.", Everywhere),
+        new("ldapsign", "LDAP server signing", "High", "Require signing", @"Registry: NTDS\Parameters\LDAPServerIntegrity", DcPolicy, SecurityOptions, "Domain controller: LDAP server signing requirements",
+            "Require signing", "Unsigned LDAP binds can be relayed to the domain controller.", DcsOnly),
+        new("cbt", "LDAP channel binding", "High", "Always", @"Registry: NTDS\Parameters\LdapEnforceChannelBinding", DcPolicy, SecurityOptions, "Domain controller: LDAP server channel binding token requirements",
+            "Always", "Channel binding ties LDAPS sign-ins to their TLS session, which blocks relay over LDAPS.", DcsOnly),
+        new("ntlm", "LAN Manager authentication level", "High", "Level 5", @"Registry: Lsa\LmCompatibilityLevel", "", SecurityOptions, "Network security: LAN Manager authentication level",
+            "Send NTLMv2 response only. Refuse LM & NTLM", "Levels below 5 accept LM and NTLMv1 responses, which can be cracked offline.", Everywhere),
+        new("spool", "Print Spooler service", "High", "Disabled", @"Registry: Services\Spooler\Start, and the spoolss pipe", DcPolicy, "Computer Configuration › Policies › Windows Settings › Security Settings › System Services",
+            "Print Spooler", "Disabled", "A running Print Spooler on a domain controller allows forced authentication (PrinterBug) and was the target of PrintNightmare.", DcsOnly),
+        new("tls", "TLS 1.0 and TLS 1.1", "Medium", "Disabled", @"Registry: SCHANNEL\Protocols", "", "Computer Configuration › Preferences › Windows Settings › Registry",
+            @"SCHANNEL\Protocols\TLS 1.0\Server and TLS 1.1\Server: Enabled", "0", "TLS 1.0 and TLS 1.1 are deprecated. Supported Windows versions use TLS 1.2 or later.", Everywhere),
+        new("kerb", "Kerberos encryption types", "Medium", "AES128, AES256", @"Registry: Kerberos\Parameters\SupportedEncryptionTypes", "", SecurityOptions,
             "Network security: Configure encryption types allowed for Kerberos", "AES128_HMAC_SHA1, AES256_HMAC_SHA1, Future encryption types",
-            "RC4 service tickets can be cracked offline (Kerberoasting), and DES is not secure."),
-        new("laps", "Windows LAPS for DSRM", "Medium", "Configured", @"Registry: Policies\LAPS", "Computer Configuration › Policies › Administrative Templates › System › LAPS",
-            "Enable password backup for DSRM accounts", "Enabled", "Windows LAPS changes the Directory Services Restore Mode password on each DC and keeps it in Active Directory."),
-        new("llmnr", "LLMNR", "Low", "Disabled", @"Registry: DNSClient\EnableMulticast", "Computer Configuration › Policies › Administrative Templates › Network › DNS Client",
-            "Turn off multicast name resolution", "Enabled", "LLMNR answers can be spoofed on the local network to capture NTLM hashes."),
+            "RC4 service tickets can be cracked offline (Kerberoasting), and DES is not secure.", Everywhere),
+        new("laps", "Windows LAPS for DSRM", "Medium", "Configured", @"Registry: Policies\LAPS", DcPolicy, "Computer Configuration › Policies › Administrative Templates › System › LAPS",
+            "Enable password backup for DSRM accounts", "Enabled", "Windows LAPS changes the Directory Services Restore Mode password on each DC and keeps it in Active Directory.", DcsOnly),
+        new("lapsm", "Windows LAPS", "Medium", "Backs up to Active Directory", @"Registry: Policies\LAPS", MemberPolicy, "Computer Configuration › Policies › Administrative Templates › System › LAPS",
+            "Configure password backup directory", "Active Directory", "Without LAPS, the local Administrator password is often the same on every computer, so one stolen password opens them all.", Members),
+        new("llmnr", "LLMNR", "Low", "Disabled", @"Registry: DNSClient\EnableMulticast", "", "Computer Configuration › Policies › Administrative Templates › Network › DNS Client",
+            "Turn off multicast name resolution", "Enabled", "LLMNR answers can be spoofed on the local network to capture NTLM hashes.", Everywhere),
     ];
 
-    /// <summary>The registry keys read, for Network access: Remotely accessible registry paths and subpaths when the service account isn't an admin on the DCs.</summary>
+    /// <summary>The registry keys read, for Network access: Remotely accessible registry paths and subpaths when the service account isn't an admin on a computer.</summary>
     public static readonly IReadOnlyList<string> RegistryPaths = [.. NetworkDcProbe.Keys.Select(k => k.Path).Distinct()];
 
     public static readonly TimeSpan Stale = TimeSpan.FromHours(6);
@@ -80,12 +105,49 @@ public sealed class DcSettings(DataFolder folder, IAuditDirectory directory, IDc
     private readonly JsonFile<DcReadingsFile> file = folder.Json<DcReadingsFile>("dc-settings.json", Json);
     private readonly SemaphoreSlim one = new(1, 1);
     private volatile bool reading;
+    private (DateTime At, List<Target> List)? known; // the computers to read, looked up at most every 5 minutes
+
+    private sealed record Target(SyncDc Computer, string Kind);
 
     public bool Reading => reading;
 
     public IReadOnlyList<DcReading> Readings => file.Read().Dcs;
 
-    /// <summary>Reads the DCs named (every DC when none are), 15 at a time, and keeps what each said. False without a service account.</summary>
+    /// <summary>A computer's kind from its operating system: server, or pc.</summary>
+    public static string KindOf(string? os) => os?.Contains("Server", StringComparison.OrdinalIgnoreCase) == true ? "server" : "pc";
+
+    /// <summary>Whether a setting is read on that kind of computer.</summary>
+    public static bool Applies(string key, string kind) => All.FirstOrDefault(s => s.Key == key)?.Kinds.Contains(kind) == true;
+
+    // The DCs, then the enabled Windows servers and PCs that signed in within 90 days.
+    private async Task<List<Target>> Targets(AuditLogin login, CancellationToken stop)
+    {
+        var now = clock.GetUtcNow().UtcDateTime;
+        if (known is { } k && now - k.At < TimeSpan.FromMinutes(5) && k.List.Count(t => t.Kind == "dc") == login.Dcs.Count)
+        {
+            return k.List;
+        }
+        var list = login.Dcs.Select(d => new Target(d, "dc")).ToList();
+        try
+        {
+            foreach (var c in (await computers.List(stop)).Where(c => c.Enabled && !c.Controller && !string.IsNullOrWhiteSpace(c.Host)
+                && c.Os?.Contains("Windows", StringComparison.OrdinalIgnoreCase) == true && c.LastSignIn is { } l && now - l < TimeSpan.FromDays(90)))
+            {
+                if (!list.Any(t => Same(t.Computer.Name, c.Name)))
+                {
+                    list.Add(new Target(new SyncDc(c.Name, c.Host!, null, false), KindOf(c.Os)));
+                }
+            }
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            log.LogWarning(e, "Could not list the computers to read security settings from; reading the DCs only");
+        }
+        known = (now, list);
+        return list;
+    }
+
+    /// <summary>Reads the computers named (every one when none are), 15 at a time, and keeps what each said. False without a service account.</summary>
     public async Task<bool> Read(IReadOnlyCollection<string>? only, CancellationToken stop)
     {
         var login = await directory.AuditLogin(stop);
@@ -97,27 +159,32 @@ public sealed class DcSettings(DataFolder folder, IAuditDirectory directory, IDc
         reading = true;
         try
         {
-            var dcs = login.Dcs.Where(d => only is not { Count: > 0 } || only.Contains(d.Name, StringComparer.OrdinalIgnoreCase)).ToList();
+            var targets = await Targets(login, stop);
+            var picked = targets.Where(t => only is not { Count: > 0 } || only.Contains(t.Computer.Name, StringComparer.OrdinalIgnoreCase)).ToList();
             var got = new ConcurrentBag<DcReading>();
-            await Parallel.ForEachAsync(dcs, new ParallelOptions { MaxDegreeOfParallelism = AtOnce, CancellationToken = stop }, async (dc, token) =>
+            await Parallel.ForEachAsync(picked, new ParallelOptions { MaxDegreeOfParallelism = AtOnce, CancellationToken = stop }, async (t, token) =>
             {
                 Dictionary<string, DcValue> values;
                 try
                 {
-                    values = await probe.Read(dc, login, token);
+                    values = await probe.Read(t.Computer, login, token);
                 }
                 catch (Exception e) when (e is not OperationCanceledException)
                 {
-                    log.LogWarning(e, "Could not read the security settings on {Dc}", dc.Name);
-                    values = Each(new DcValue("Could not be read", null, $"{dc.Name} could not be read: {e.Message.Trim().TrimEnd('.')}."));
+                    log.LogWarning(e, "Could not read the security settings on {Computer}", t.Computer.Name);
+                    values = Each(new DcValue("Could not be read", null, $"{t.Computer.Name} could not be read: {e.Message.Trim().TrimEnd('.')}.", "error"));
                 }
-                got.Add(new DcReading { Name = dc.Name, Site = dc.Site, At = clock.GetUtcNow().UtcDateTime, Values = values });
+                got.Add(new DcReading
+                {
+                    Name = t.Computer.Name, Kind = t.Kind, Site = t.Computer.Site, At = clock.GetUtcNow().UtcDateTime,
+                    Values = values.Where(v => Applies(v.Key, t.Kind)).ToDictionary(v => v.Key, v => v.Value),
+                });
             });
             lock (file.Gate)
             {
-                // What was read replaces what was; DCs no longer in the domain go.
-                var kept = file.Read().Dcs.Where(d => !got.Any(g => Same(g.Name, d.Name)) && login.Dcs.Any(x => Same(x.Name, d.Name)));
-                file.Save(new DcReadingsFile { Dcs = [.. kept.Concat(got).OrderBy(d => d.Name, StringComparer.OrdinalIgnoreCase)] });
+                // What was read replaces what was; computers no longer read (gone, disabled or inactive) go.
+                var kept = file.Read().Dcs.Where(d => !got.Any(g => Same(g.Name, d.Name)) && targets.Any(x => Same(x.Computer.Name, d.Name)));
+                file.Save(new DcReadingsFile { Dcs = [.. kept.Concat(got).OrderBy(d => d.Kind == "dc" ? 0 : d.Kind == "server" ? 1 : 2).ThenBy(d => d.Name, StringComparer.OrdinalIgnoreCase)] });
             }
             return true;
         }
@@ -129,8 +196,9 @@ public sealed class DcSettings(DataFolder folder, IAuditDirectory directory, IDc
     }
 
     /// <summary>
-    /// What the page shows: each setting with its value on each DC, and when each DC was read. again reads them first (only
-    /// the DCs in only, when given). With nothing read yet, or the last read 6 hours old, it reads in the background.
+    /// What the page shows: each setting with its value on each computer it's for, and each computer's kind and when it was
+    /// read. again reads them first (only those in only, when given). With some not read yet, or 6 hours old, it reads in the
+    /// background.
     /// </summary>
     public async Task<object> View(bool again, IReadOnlyCollection<string>? only, CancellationToken stop)
     {
@@ -139,9 +207,10 @@ public sealed class DcSettings(DataFolder folder, IAuditDirectory directory, IDc
         {
             await Read(only, stop);
         }
-        var dcs = file.Read().Dcs.Where(d => login is null || login.Dcs.Any(x => Same(x.Name, d.Name))).ToList();
+        var targets = login is null ? null : await Targets(login, stop);
+        var read = file.Read().Dcs.Where(d => targets is null || targets.Any(x => Same(x.Computer.Name, d.Name))).ToList();
         var now = clock.GetUtcNow().UtcDateTime;
-        if (login is not null && !reading && (dcs.Count < login.Dcs.Count || dcs.Any(d => now - d.At > Stale)))
+        if (targets is not null && !reading && (read.Count < targets.Count || read.Any(d => now - d.At > Stale)))
         {
             reading = true; // said straight away, so the page knows to look again
             _ = Task.Run(async () =>
@@ -153,19 +222,18 @@ public sealed class DcSettings(DataFolder folder, IAuditDirectory directory, IDc
                 catch (Exception e)
                 {
                     reading = false;
-                    log.LogWarning(e, "Could not read the domain controllers' security settings");
+                    log.LogWarning(e, "Could not read the computers' security settings");
                 }
             }, CancellationToken.None);
         }
-        var unread = new DcValue("Not read yet", null);
         return new
         {
             settings = All.Select(s => new
             {
-                s.Key, s.Name, s.Severity, s.Recommended, s.ReadFrom, gpo = Gpo, s.Path, s.Policy, s.SetTo, s.About,
-                values = dcs.ToDictionary(d => d.Name, d => d.Values.GetValueOrDefault(s.Key) ?? unread, StringComparer.OrdinalIgnoreCase),
+                s.Key, s.Name, s.Severity, s.Recommended, s.ReadFrom, s.Gpo, s.Path, s.Policy, s.SetTo, s.About, s.Kinds,
+                values = read.Where(d => s.Kinds.Contains(d.Kind)).ToDictionary(d => d.Name, d => d.Values.GetValueOrDefault(s.Key) ?? new DcValue("Not read yet", null), StringComparer.OrdinalIgnoreCase),
             }),
-            dcs = dcs.Select(d => new { d.Name, d.Site, d.At }),
+            computers = read.Select(d => new { d.Name, d.Kind, d.Site, d.At }),
             reading,
             account = login is not null,
             user = login?.User,
@@ -174,7 +242,7 @@ public sealed class DcSettings(DataFolder folder, IAuditDirectory directory, IDc
         };
     }
 
-    /// <summary>The same value for every setting, for a DC that couldn't be read at all.</summary>
+    /// <summary>The same value for every setting, for a computer that couldn't be read at all.</summary>
     public static Dictionary<string, DcValue> Each(DcValue value) => All.ToDictionary(s => s.Key, _ => value);
 
     private static bool Same(string a, string b) => string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
@@ -266,6 +334,14 @@ public static class DcRules
 
     public static DcValue Laps(object? backupDirectory, object? dsrm) => Number(backupDirectory) == 2 && Number(dsrm) == 1 ? new("Configured", true)
         : Number(backupDirectory) == 2 ? new("Backs up to AD, not for DSRM", false) : new("Not configured", false);
+
+    /// <summary>Windows LAPS backing up to Active Directory (2) or Microsoft Entra ID (1), or the legacy Microsoft LAPS turned on.</summary>
+    public static DcValue MemberLaps(object? backupDirectory, object? legacy) => Number(backupDirectory) switch
+    {
+        2 => new("Backs up to Active Directory", true),
+        1 => new("Backs up to Microsoft Entra ID", true),
+        _ => Number(legacy) == 1 ? new("Legacy Microsoft LAPS", true) : new("Not configured", false),
+    };
 
     public static DcValue Llmnr(object? v) => Number(v) == 0 ? new("Disabled", true) : new(v is null ? "Enabled (not set)" : "Enabled", false);
 }
@@ -384,8 +460,8 @@ public static class SmbProbe
 }
 
 /// <summary>
-/// Reads a DC over the network: SMB signing and SMBv1 from how it answers on port 445 (no sign-in needed), then, signed in
-/// as the service account, whether its spoolss pipe answers and the registry values the rest come from.
+/// Reads a computer over the network: SMB signing and SMBv1 from how it answers on port 445 (no sign-in needed), then, signed
+/// in as the service account, whether its spoolss pipe answers and the registry values the rest come from.
 /// </summary>
 public sealed class NetworkDcProbe : IDcProbe
 {
@@ -400,36 +476,37 @@ public sealed class NetworkDcProbe : IDcProbe
     private static readonly Key Etypes = new(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\Kerberos\Parameters", "SupportedEncryptionTypes");
     private static readonly Key LapsDirectory = new(@"SOFTWARE\Microsoft\Policies\LAPS", "BackupDirectory");
     private static readonly Key LapsDsrm = new(@"SOFTWARE\Microsoft\Policies\LAPS", "ADBackupDSRMPassword");
+    private static readonly Key LapsLegacy = new(@"SOFTWARE\Policies\Microsoft Services\AdmPwd", "AdmPwdEnabled");
     private static readonly Key Multicast = new(@"SOFTWARE\Policies\Microsoft\Windows NT\DNSClient", "EnableMulticast");
 
-    public static readonly IReadOnlyList<Key> Keys = [LdapIntegrity, ChannelBinding, LmLevel, SpoolerStart, Tls10, Tls11, Etypes, LapsDirectory, LapsDsrm, Multicast];
+    public static readonly IReadOnlyList<Key> Keys = [LdapIntegrity, ChannelBinding, LmLevel, SpoolerStart, Tls10, Tls11, Etypes, LapsDirectory, LapsDsrm, LapsLegacy, Multicast];
 
-    public async Task<Dictionary<string, DcValue>> Read(SyncDc dc, AuditLogin login, CancellationToken stop)
+    public async Task<Dictionary<string, DcValue>> Read(SyncDc computer, AuditLogin login, CancellationToken stop)
     {
         byte[] smb2;
         try
         {
-            smb2 = await SmbProbe.Ask(dc.Host, SmbProbe.Negotiate2(), stop);
+            smb2 = await SmbProbe.Ask(computer.Host, SmbProbe.Negotiate2(), stop);
         }
         catch (Exception e) when (e is SocketException || (e is OperationCanceledException && !stop.IsCancellationRequested))
         {
-            return DcSettings.Each(new DcValue("Could not be read", null, $"{dc.Name} could not be reached on port 445."));
+            return DcSettings.Each(new DcValue("Could not be read", null, $"{computer.Name} could not be reached on port 445.", "unreachable"));
         }
         var values = new Dictionary<string, DcValue>
         {
-            ["smb"] = SmbProbe.SigningRequired(smb2) is { } required ? DcRules.SmbSigning(required) : new DcValue("Could not be read", null, $"{dc.Name} did not answer an SMB2 negotiate."),
-            ["smb1"] = DcRules.Smb1(SmbProbe.Smb1Answered(await SmbProbe.Ask(dc.Host, SmbProbe.Negotiate1(), stop))),
+            ["smb"] = SmbProbe.SigningRequired(smb2) is { } required ? DcRules.SmbSigning(required) : new DcValue("Could not be read", null, $"{computer.Name} did not answer an SMB2 negotiate.", "error"),
+            ["smb1"] = DcRules.Smb1(SmbProbe.Smb1Answered(await SmbProbe.Ask(computer.Host, SmbProbe.Negotiate1(), stop))),
         };
         if (!OperatingSystem.IsWindows())
         {
-            var why = new DcValue("Could not be read", null, $"The rest is read only when {Product.Title} runs on Windows.");
+            var why = new DcValue("Could not be read", null, $"The rest is read only when {Product.Title} runs on Windows.", "error");
             foreach (var s in DcSettings.All.Where(s => !values.ContainsKey(s.Key)))
             {
                 values[s.Key] = why;
             }
             return values;
         }
-        var rest = await Task.Run(() => OperatingSystem.IsWindows() ? FromWindows(dc, login) : [], stop);
+        var rest = await Task.Run(() => OperatingSystem.IsWindows() ? FromWindows(computer, login) : [], stop);
         foreach (var (key, value) in rest)
         {
             values[key] = value;
@@ -438,14 +515,15 @@ public sealed class NetworkDcProbe : IDcProbe
     }
 
     [SupportedOSPlatform("windows")]
-    private static Dictionary<string, DcValue> FromWindows(SyncDc dc, AuditLogin login) => NetworkLogon.Run($@"{login.Domain}\{login.User}", login.Password, () =>
+    private static Dictionary<string, DcValue> FromWindows(SyncDc computer, AuditLogin login) => NetworkLogon.Run($@"{login.Domain}\{login.User}", login.Password, () =>
     {
-        var running = SpoolerAnswers(dc.Host);
+        var running = SpoolerAnswers(computer.Host);
         var raw = new Dictionary<Key, object?>();
-        string? problem = null;
+        (string Text, string Why)? problem = null;
+        var denied = ($"Access denied. {login.User} cannot read the registry on {computer.Name}.", "denied");
         try
         {
-            using var hklm = RegistryKey.OpenRemoteBaseKey(RegistryHive.LocalMachine, dc.Host);
+            using var hklm = RegistryKey.OpenRemoteBaseKey(RegistryHive.LocalMachine, computer.Host);
             foreach (var k in Keys)
             {
                 try
@@ -455,19 +533,19 @@ public sealed class NetworkDcProbe : IDcProbe
                 }
                 catch (Exception e) when (e is SecurityException or UnauthorizedAccessException)
                 {
-                    problem ??= $"Access denied. {login.User} cannot read the registry on {dc.Name}.";
+                    problem ??= denied;
                 }
             }
         }
         catch (Exception e) when (e is SecurityException or UnauthorizedAccessException)
         {
-            problem = $"Access denied. {login.User} cannot read the registry on {dc.Name}.";
+            problem = denied;
         }
         catch (IOException)
         {
-            problem = $"The registry on {dc.Name} could not be read. Check that the Remote Registry service is running.";
+            problem = ($"The registry on {computer.Name} could not be read. Check that the Remote Registry service is running.", "registry");
         }
-        DcValue From(Func<DcValue> rule, params Key[] keys) => keys.All(raw.ContainsKey) ? rule() : new DcValue("Could not be read", null, problem);
+        DcValue From(Func<DcValue> rule, params Key[] keys) => keys.All(raw.ContainsKey) ? rule() : new DcValue("Could not be read", null, problem?.Text, problem?.Why);
         object? V(Key k) => raw.GetValueOrDefault(k);
         return new Dictionary<string, DcValue>
         {
@@ -479,11 +557,12 @@ public sealed class NetworkDcProbe : IDcProbe
             ["tls"] = From(() => DcRules.Tls(V(Tls10), V(Tls11)), Tls10, Tls11),
             ["kerb"] = From(() => DcRules.Kerberos(V(Etypes)), Etypes),
             ["laps"] = From(() => DcRules.Laps(V(LapsDirectory), V(LapsDsrm)), LapsDirectory, LapsDsrm),
+            ["lapsm"] = From(() => DcRules.MemberLaps(V(LapsDirectory), V(LapsLegacy)), LapsDirectory, LapsLegacy),
             ["llmnr"] = From(() => DcRules.Llmnr(V(Multicast)), Multicast),
         };
     }, $"Windows did not accept the sign-in for {login.User}.");
 
-    /// <summary>Whether the DC's spoolss pipe answers, which it does while the Print Spooler runs. Access denied still means it's there.</summary>
+    /// <summary>Whether the computer's spoolss pipe answers, which it does while the Print Spooler runs. Access denied still means it's there.</summary>
     [SupportedOSPlatform("windows")]
     private static bool SpoolerAnswers(string host)
     {
@@ -509,13 +588,14 @@ public static class DcSettingsApi
     public static void AddDcSettings(this IServiceCollection services)
     {
         services.AddSingleton<IDcProbe, NetworkDcProbe>();
+        services.AddSingleton<IHardeningComputers, DirectoryHardeningComputers>();
         services.AddSingleton<DcSettings>();
     }
 
     public static void MapDcSettingsApi(this WebApplication app)
     {
-        // Domain health › On each DC: every setting's value on each DC. again=true reads them again first (Re-check), only
-        // the DCs in dc (comma-separated) when it's given.
+        // Domain health › On each computer: every setting's value on each DC, server and PC it's for. again=true reads them
+        // again first (Re-check), only the computers in dc (comma-separated) when it's given.
         app.MapGet("/api/ad/dcs", (bool? again, string? dc, HttpContext context, DcSettings settings) => UsersApi.Try(context, Permissions.AdView, async () =>
             Results.Ok(await settings.View(again == true, dc?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries), context.RequestAborted)),
             change: false, whole: true));

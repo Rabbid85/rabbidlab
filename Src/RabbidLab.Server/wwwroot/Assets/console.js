@@ -3,6 +3,11 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.359', [
+    'On each DC is now On each computer: member servers and PCs are read too, with views for All computers, Domain controllers, Servers and PCs. The numbers, the list and the side panel count the kind of computer whose view is open.',
+    'Each setting is read only where it applies: LDAP signing, channel binding, the Print Spooler and LAPS for DSRM on domain controllers, and a new Windows LAPS setting on servers and PCs.',
+    'A Current column shows what each setting is set to now: its value, or each value and on how many computers.',
+    'Servers and PCs are read when they are enabled and signed in within 90 days. The line over the list says which ones could not be read and why, such as port 445 closed or the Remote Registry service stopped.']],
   ['1.1.358', [
     'Domain health has a second tab, On each DC: ten security settings read from every domain controller, such as SMB signing, SMBv1, LDAP signing and channel binding, the NTLM level, the Print Spooler, TLS 1.0 and 1.1, Kerberos encryption types, LAPS for DSRM and LLMNR.',
     'Each setting is one row with how many DCs are compliant and which are not, so the list is as wide with 90 DCs as with 2. A row opens every DC’s value, not compliant first, with Find, Group by site, and the GPO setting that fixes it.',
@@ -1137,6 +1142,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.359': ['2026-11-22', 'feature', 'Security settings on every computer, with a Current column', 'computers.jpg'],
   '1.1.358': ['2026-11-22', 'feature', 'Security settings on each DC', 'hardening.jpg'],
   '1.1.357': ['2026-11-22', 'feature', 'AD security alerts, with conditions of your own', 'adalerts.jpg'],
   '1.1.356': ['2026-11-22', 'feature', 'Alerts for anything that can happen', 'alerts.jpg'],

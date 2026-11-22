@@ -88,7 +88,7 @@ public sealed class DcSettingsTests : IDisposable
         probe.Said["DC01"] = new() { ["spool"] = DcRules.Spooler(true, 2), ["smb"] = DcRules.SmbSigning(true) };
         probe.Said["DC02"] = new() { ["spool"] = DcRules.Spooler(false, 4), ["smb"] = DcRules.SmbSigning(true) };
         var clock = new FakeClock();
-        var settings = new DcSettings(Folder(), ad, probe, clock, NullLogger<DcSettings>.Instance);
+        var settings = new DcSettings(Folder(), ad, new FakeComputers(), probe, clock, NullLogger<DcSettings>.Instance);
 
         var first = Json(await settings.View(again: true, null, CancellationToken.None));
         probe.Said["DC01"]["spool"] = DcRules.Spooler(false, 4);
@@ -119,7 +119,7 @@ public sealed class DcSettingsTests : IDisposable
         var probe = new FakeDcProbe();
         probe.Said["DC01"] = new() { ["smb"] = DcRules.SmbSigning(false) };
         probe.Fails.Add("DC02");
-        var settings = new DcSettings(Folder(), ad, probe, new FakeClock(), NullLogger<DcSettings>.Instance);
+        var settings = new DcSettings(Folder(), ad, new FakeComputers(), probe, new FakeClock(), NullLogger<DcSettings>.Instance);
 
         var read = Json(await settings.View(again: true, null, CancellationToken.None));
         ad.Login = ad.Login with { Dcs = [dc1] };
@@ -130,9 +130,42 @@ public sealed class DcSettingsTests : IDisposable
         var smb = Setting(read, "smb").GetProperty("values");
         Assert.Equal("Not required", smb.GetProperty("DC01").GetProperty("value").GetString());
         Assert.Contains("DC02 could not be read", smb.GetProperty("DC02").GetProperty("problem").GetString());
-        Assert.Equal("Branch", read.GetProperty("dcs").EnumerateArray().Single(d => d.GetProperty("name").GetString() == "DC02").GetProperty("site").GetString());
-        Assert.Equal(["DC01"], after.GetProperty("dcs").EnumerateArray().Select(d => d.GetProperty("name").GetString()));
+        Assert.Equal("Branch", read.GetProperty("computers").EnumerateArray().Single(d => d.GetProperty("name").GetString() == "DC02").GetProperty("site").GetString());
+        Assert.Equal(["DC01"], after.GetProperty("computers").EnumerateArray().Select(d => d.GetProperty("name").GetString()));
         Assert.False(none.GetProperty("account").GetBoolean());
+    }
+
+    [Fact]
+    public async Task Servers_and_pcs_are_read_too_with_the_settings_meant_for_them()
+    {
+        var dc1 = new SyncDc("DC01", "dc01.amw.com", "HQ", false);
+        var ad = new FakeAuditDirectory { Login = new AuditLogin("amw.com", "svc-rabbidlab", "pass", [dc1]) };
+        var clock = new FakeClock();
+        var now = clock.GetUtcNow().UtcDateTime;
+        AdComputer Pc(string name, string os, bool enabled = true, bool dc = false, int days = 1) =>
+            new(name, $"CN={name},CN=Computers,DC=amw,DC=com", "Computers", $"{name.ToLowerInvariant()}.amw.com", os, null, null, enabled, dc, now.AddDays(-days), null);
+        var computers = new FakeComputers();
+        computers.Machines.AddRange([Pc("DC01", "Windows Server 2022 Standard", dc: true), Pc("FS01", "Windows Server 2019 Standard"), Pc("TOM-LT", "Windows 11 Pro"),
+            Pc("OLD-PC", "Windows 10 Pro", days: 200), Pc("GONE-PC", "Windows 11 Pro", enabled: false), Pc("NAS", "Linux")]);
+        var probe = new FakeDcProbe();
+        foreach (var name in new[] { "DC01", "FS01", "TOM-LT" })
+        {
+            probe.Said[name] = new() { ["ldapsign"] = DcRules.LdapSigning(2), ["lapsm"] = DcRules.MemberLaps(2, null), ["llmnr"] = DcRules.Llmnr(0), ["spool"] = DcRules.Spooler(true, 2) };
+        }
+        var settings = new DcSettings(Folder(), ad, computers, probe, clock, NullLogger<DcSettings>.Instance);
+
+        var view = Json(await settings.View(again: true, null, CancellationToken.None));
+
+        var kinds = view.GetProperty("computers").EnumerateArray().ToDictionary(c => c.GetProperty("name").GetString()!, c => c.GetProperty("kind").GetString());
+        Assert.Equal(new Dictionary<string, string?> { ["DC01"] = "dc", ["FS01"] = "server", ["TOM-LT"] = "pc" }, kinds); // inactive, disabled and non-Windows left out
+        Assert.Equal(["DC01"], Setting(view, "ldapsign").GetProperty("values").EnumerateObject().Select(p => p.Name));
+        Assert.Equal(["DC01"], Setting(view, "spool").GetProperty("values").EnumerateObject().Select(p => p.Name));
+        Assert.Equal(["FS01", "TOM-LT"], Setting(view, "lapsm").GetProperty("values").EnumerateObject().Select(p => p.Name).Order());
+        Assert.Equal(3, Setting(view, "llmnr").GetProperty("values").EnumerateObject().Count());
+        Assert.Equal(["server", "pc"], Setting(view, "lapsm").GetProperty("kinds").EnumerateArray().Select(k => k.GetString()));
+        Assert.Equal("server", DcSettings.KindOf("Windows Server 2025 Datacenter"));
+        Assert.Equal("pc", DcSettings.KindOf("Windows 11 Enterprise"));
+        Assert.Equal(new DcValue("Legacy Microsoft LAPS", true), DcRules.MemberLaps(null, 1));
     }
 
     private static JsonElement Json(object view) => JsonSerializer.SerializeToElement(view, new JsonSerializerOptions(JsonSerializerDefaults.Web));
@@ -140,6 +173,14 @@ public sealed class DcSettingsTests : IDisposable
     private static JsonElement Setting(JsonElement view, string key) => view.GetProperty("settings").EnumerateArray().Single(s => s.GetProperty("key").GetString() == key);
 
     private DataFolder Folder() => DataFolder.Resolve(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { ["DataPath"] = Path.Combine(data, Guid.NewGuid().ToString("N")) }).Build());
+}
+
+/// <summary>The domain's computers, as Active Directory lists them.</summary>
+public sealed class FakeComputers : IHardeningComputers
+{
+    public List<AdComputer> Machines { get; } = [];
+
+    public Task<IReadOnlyList<AdComputer>> List(CancellationToken stop) => Task.FromResult<IReadOnlyList<AdComputer>>(Machines);
 }
 
 /// <summary>What each DC says when read, and the ones whose read fails.</summary>

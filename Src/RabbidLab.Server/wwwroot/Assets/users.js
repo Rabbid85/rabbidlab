@@ -216,24 +216,21 @@
       csv: [['Area', (s) => s.area], ['Check', (s) => s.name], ['Current', (s) => s.now], ['Recommended', (s) => s.recommended], ['Result', (s) => s.tone], ['Details', (s) => s.about],
         ['Found', (s) => (s.found || []).map((f) => f.name).join('; ')], ['Source', (s) => s.source]],
     },
-    // Domain health's second tab, On each DC: security settings read from each domain controller (dc-settings.js).
+    // Domain health's second tab, On each computer: security settings read from each DC, server and PC (dc-settings.js).
+    // Its views are the kinds of computer; each counts its computers, and the list counts only those.
     dcs: {
       title: 'Domain health', noun: ['setting', 'settings'], add: null, key: (s) => s.key,
-      lead: 'Security settings read from each domain controller, against what Microsoft recommends.',
+      lead: 'Security settings read from each domain controller, server and PC, against what Microsoft recommends.',
       load: (fresh, only) => R.dcSettings.load(fresh, only),
-      find: (s) => [s.name, s.recommended, ...s.off, ...s.unread, ...Object.values(s.values || {}).map((v) => v.value)],
+      find: (s) => [s.name, s.recommended, ...R.dcSettings.of(s, hk()).off, ...Object.values(s.values || {}).map((v) => v.value)],
       views: [
-        ['View', [
-          { key: 'all', label: 'All settings' },
-          { key: 'off', label: 'Not compliant', tone: 'red', where: (s) => s.off.length > 0 },
-          { key: 'ok', label: 'Compliant', where: (s) => s.total > 0 && !s.off.length && !s.unread.length },
-          { key: 'unread', label: 'Could not be read', tone: 'amber', quiet: true, where: (s) => s.unread.length > 0 },
-        ]],
-        ['Severity', ['High', 'Medium', 'Low'].map((v) => ({ key: v.toLowerCase(), label: v, where: (s) => s.severity === v }))],
+        ['Computers', [['all', 'All computers'], ['dc', 'Domain controllers'], ['server', 'Servers'], ['pc', 'PCs']].map(([key, label]) => ({
+          key, label, where: key === 'all' ? undefined : (s) => s.kinds.includes(key), n: () => R.dcSettings.computersOf(lists.dcs, key).length,
+        }))],
       ],
-      csv: [['Setting', (s) => s.name], ['Severity', (s) => s.severity], ['Recommended', (s) => s.recommended], ['Compliant on', (s) => `${s.good.length} of ${s.total}`],
-        ['Not compliant on', (s) => s.off.join('; ')], ['Could not be read on', (s) => s.unread.join('; ')], ['Read from', (s) => s.readFrom],
-        ['GPO', (s) => s.gpo], ['Policy setting', (s) => s.policy], ['Value', (s) => s.setTo]],
+      csv: [['Setting', (s) => s.name], ['Severity', (s) => s.severity], ['Current', (s) => R.dcSettings.current(s, hk())], ['Recommended', (s) => s.recommended],
+        ['Compliant on', (s) => `${R.dcSettings.of(s, hk()).good.length} of ${R.dcSettings.of(s, hk()).total}`], ['Not compliant on', (s) => R.dcSettings.of(s, hk()).off.join('; ')],
+        ['Could not be read on', (s) => R.dcSettings.of(s, hk()).unread.join('; ')], ['Read from', (s) => s.readFrom], ['Policy setting', (s) => s.policy], ['Value', (s) => s.setTo]],
     },
     // One row per attribute change (AdAudit.cs), grouped by the operation it was part of. The DCs' state and how long
     // changes are kept come with the rows, as rows.info. Refresh reads the Security logs first (fresh).
@@ -452,14 +449,18 @@
     col('about', 'Details', 320, (s) => s.about),
     col('source', 'Source', 240, (s) => s.source || '', { cell: (s) => `<span class="muted ell">${esc(s.source || '')}</span>` }),
   ];
-  // One row per setting, as wide with 90 DCs as with 2: how many are compliant and the first of those that are not.
+  // One row per setting, as wide with 900 computers as with 2: how many are compliant and the first of those that are not,
+  // counting the kind of computer whose view is open.
+  const dcsOf = (s) => R.dcSettings.of(s, hk());
   AD.dcs.cols = [
-    col('name', 'Setting', 248, (s) => s.name, { fixed: true, cell: (s) => `<div class="who"><span class="pic">${svg('shield')}</span><b class="ell">${esc(s.name)}</b></div>` }),
-    col('severity', 'Severity', 92, (s) => R.dcSettings.sevRank(s) * 1000 - s.off.length, { on: true, filter: true, cell: (s) => R.dcSettings.sevCell(s), text: (s) => s.severity }),
-    col('good', 'Compliant on', 122, (s) => (s.total ? s.good.length / s.total : 2), { on: true, cell: (s) => R.dcSettings.countCell(s), text: (s) => `${s.good.length} of ${s.total}` }),
-    col('off', 'Not compliant on', 196, (s) => -s.off.length, { on: true, cell: (s) => R.dcSettings.few(s.off), text: (s) => s.off.join(', ') }),
-    col('recommended', 'Recommended', 130, (s) => s.recommended, { on: true, cell: (s) => `<span class="muted ell">${esc(s.recommended)}</span>` }),
-    col('unread', 'Could not be read on', 220, (s) => -s.unread.length, { cell: (s) => R.dcSettings.few(s.unread), text: (s) => s.unread.join(', ') }),
+    col('name', 'Setting', 240, (s) => s.name, { fixed: true, cell: (s) => `<div class="who"><span class="pic">${svg('shield')}</span><b class="ell">${esc(s.name)}</b></div>` }),
+    col('severity', 'Severity', 90, (s) => R.dcSettings.sevRank(s) * 1000 - dcsOf(s).off.length, { on: true, filter: true, cell: (s) => R.dcSettings.sevCell(s), text: (s) => s.severity }),
+    col('current', 'Current', 172, (s) => R.dcSettings.current(s, hk()), { on: true, cell: (s) => R.dcSettings.currentCell(s, hk()) }),
+    col('recommended', 'Recommended', 124, (s) => s.recommended, { on: true, cell: (s) => `<span class="muted ell">${esc(s.recommended)}</span>` }),
+    col('good', 'Compliant on', 116, (s) => (dcsOf(s).total ? dcsOf(s).good.length / dcsOf(s).total : 2), { on: true, cell: (s) => R.dcSettings.countCell(s, hk()),
+      text: (s) => `${dcsOf(s).good.length} of ${dcsOf(s).total}` }),
+    col('off', 'Not compliant on', 190, (s) => -dcsOf(s).off.length, { on: true, cell: (s) => R.dcSettings.few(dcsOf(s).off), text: (s) => dcsOf(s).off.join(', ') }),
+    col('unread', 'Could not be read on', 220, (s) => -dcsOf(s).unread.length, { cell: (s) => R.dcSettings.few(dcsOf(s).unread), text: (s) => dcsOf(s).unread.join(', ') }),
     col('readFrom', 'Read from', 260, (s) => s.readFrom, { cell: (s) => `<span class="muted ell">${esc(s.readFrom)}</span>` }),
     col('policy', 'Policy setting', 320, (s) => s.policy),
   ];
@@ -513,7 +514,7 @@
   // Role (Users, Computers) and Privileged (Groups) show by default since 1.1.205, out of Status and Group type:
   // put once into a column list someone already chose, keeping the rest of it.
   try {
-    for (const [list, key] of [['users', 'role'], ['computers', 'role'], ['groups', 'privileged']]) {
+    for (const [list, key] of [['users', 'role'], ['computers', 'role'], ['groups', 'privileged'], ['dcs', 'current']]) {
       const k = `rabbidlab.ad.cols.${list}`;
       const chosen = JSON.parse(localStorage.getItem(k) || 'null');
       if (Array.isArray(chosen) && !chosen.includes(key) && !localStorage.getItem(`${k}.${key}`)) localStorage.setItem(k, JSON.stringify([...chosen, key]));
@@ -541,6 +542,9 @@
   // Domain health's two tabs are two pages: its checks, and its settings on each DC. Both sit under its entry down the left.
   const HEALTH = ['domain', 'dcs'];
   const healthAsked = {};
+  let dwKind = 'all'; // the kind an open On each computer setting was drawn for
+  // On each computer: the kind of computer whose view is open (all, dc, server or pc).
+  function hk() { return adPage === 'dcs' && ['dc', 'server', 'pc'].includes(adView) ? adView : 'all'; }
   const railOf = (k) => (k === 'dcs' ? 'domain' : k);
   const total = {}; // how many each page had when it was last read, for the list down the left
 
@@ -620,7 +624,7 @@
   const drawViews = () => {
     const count = counts();
     $('dir-views').innerHTML = page().views.map(([, items]) => items.map((v) => {
-      const n = count[v.key];
+      const n = v.n && lists[adPage] ? v.n() : count[v.key]; // a view can count something other than its rows (On each computer: its computers)
       if (v.quiet && !n && v.key !== adView) return '';
       return `<a href="#ad/${adPage}/${v.key}"${v.key === adView ? ' aria-current="page"' : ''}><span class="nm">${esc(v.label)}</span>`
         + `<small class="${n && v.tone ? `tone ${v.tone}` : ''}">${lists[adPage] ? n.toLocaleString() : ''}</small></a>`;
@@ -640,7 +644,7 @@
         healthAsked[other] = Date.now(); // at most once a minute, so a read that fails isn't asked for on every draw
         AD[other].load().then((l) => { lists[other] ??= l; if (HEALTH.includes(adPage)) drawTabs(); }).catch(() => {});
       }
-      $('dir-tabs').innerHTML = [['domain', 'shield', 'Checks'], ['dcs', 'server', 'On each DC']].map(([k, icon, label]) => `<a href="#ad/${k}" data-tab="${k}"${k === adPage ? ' aria-current="true"' : ''}>`
+      $('dir-tabs').innerHTML = [['domain', 'shield', 'Checks'], ['dcs', 'server', 'On each computer']].map(([k, icon, label]) => `<a href="#ad/${k}" data-tab="${k}"${k === adPage ? ' aria-current="true"' : ''}>`
         + `${svg(icon)}${esc(label)} <small>${lists[k] ? lists[k].length.toLocaleString() : ''}</small></a>`).join('');
       return;
     }
@@ -698,6 +702,11 @@
       if (x) openDrawer(adPage, x);
     }
     markOpenRow();
+    // On each computer: an open setting counts the kind of computer whose view is open now.
+    if (adPage === 'dcs' && R.panel.is('ad') && dw.kind === 'dcs' && dwKind !== hk()) {
+      dwKind = hk();
+      drawDrawer();
+    }
     // The dots in the rail keep what the last read said, while another page is open.
     if (lists.users) $('dir-locked-dot').hidden = !lists.users.some((u) => u.locked && !u.system);
     if (lists.domain) $('dir-domain-dot').hidden = !lists.domain.some((s) => s.tone === 'bad');
@@ -746,10 +755,15 @@
     const warn = list && adPage === 'domain' ? list.filter((s) => s.tone === 'warn').length : 0;
     // Domain health says how it stands once its checks are read: a placeholder line until then.
     if (HEALTH.includes(adPage) && !list) $('dir-state').innerHTML = adFailed ? `${esc(p.title)}.` : '<i class="sk sk-text"></i>';
-    else if (adPage === 'dcs') $('dir-state').textContent = R.dcSettings.state(list);
+    else if (adPage === 'dcs') $('dir-state').textContent = R.dcSettings.state(list, hk());
     else $('dir-state').textContent = adPage !== 'domain' ? `${p.title}.` : bad || warn
       ? `${bad ? `Failed: ${bad}` : 'No failed checks'}${warn ? `. Warnings: ${warn}` : ''}.` : 'All checks passed.';
     $('dir-lead').textContent = p.lead;
+    // On each computer counts the kind of computer whose view is open.
+    if (adPage === 'dcs') {
+      $('dir-stats').innerHTML = ad && !ad.state ? '' : R.dcSettings.stats(list, hk()).map(([v, icon, label]) => stat(v ?? (adFailed ? '—' : null), icon, label)).join('');
+      return;
+    }
     // Placeholder numbers while it's read (ad not known yet, or the list not read), dashes if that failed; none when there's no account.
     $('dir-stats').innerHTML = ad && !ad.state ? '' : HERO_STATS[adPage].map((key) => {
       const v = allViews().find((x) => x.key === key);
@@ -789,7 +803,7 @@
     } else if (adPage === 'audit' && lists.audit?.info) {
       html = auditBanner(lists.audit.info);
     } else if (adPage === 'dcs' && lists.dcs?.info) {
-      html = R.dcSettings.banner(lists.dcs);
+      html = R.dcSettings.banner(lists.dcs, hk());
     }
     b.innerHTML = html;
     b.hidden = !html;
@@ -2177,7 +2191,8 @@
     if (k === 'dcs') {
       const top = $('dw-body').scrollTop;
       const typing = document.activeElement?.id === 'dcs-find' ? [document.activeElement.selectionStart, document.activeElement.selectionEnd] : null;
-      $('dw-body').innerHTML = R.dcSettings.panel(x, lists.dcs);
+      dwKind = hk();
+      $('dw-body').innerHTML = R.dcSettings.panel(x, lists.dcs, dwKind);
       $('dw-body').scrollTop = top;
       const find = typing && $('dcs-find');
       if (find) {
@@ -2259,7 +2274,7 @@
   // On each DC: Find and Group by site redraw only the list of DCs, so the box keeps its focus.
   R.panel.el.addEventListener('input', (e) => {
     const x = R.panel.is('ad') && dw.kind === 'dcs' && dwObj();
-    if (x) R.dcSettings.input(e, x, lists.dcs);
+    if (x) R.dcSettings.input(e, x, lists.dcs, hk());
   });
   R.panel.el.addEventListener('input', (e) => {
     if (e.target.id !== 'dwa-find' || !R.panel.is('ad')) return;
@@ -2320,7 +2335,7 @@
       return;
     }
     if (k === 'dcs') {
-      R.dcSettings.click(e, x, lists.dcs, recheckDcs);
+      R.dcSettings.click(e, x, lists.dcs, recheckDcs, hk());
       return;
     }
     if (k === 'domain') {
