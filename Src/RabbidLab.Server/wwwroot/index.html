@@ -414,7 +414,7 @@
           <div class="ds-r"><span class="ap-look" data-part="panel"></span></div></div>
         <div class="ds-row"><div class="ds-l"><b>Menus</b><span>Actions menus, the account menu and other menus that open from a button.</span></div>
           <div class="ds-r"><span class="ap-look" data-part="menus"></span></div></div>
-        <div class="ds-row"><div class="ds-l"><b>Opening screen</b><span>The window the flask screen plays in. Full screen is always solid.</span></div>
+        <div class="ds-row"><div class="ds-l"><b>Opening screen</b><span>The window the flask screen plays in, and the update window. Full screen is always solid.</span></div>
           <div class="ds-r"><span class="ap-look" data-part="boot"></span></div></div>
       </section>
       <section class="ds-sec" data-sec="toasts"><h3 class="ds-h has-reset">Toasts <small class="ds-scope">Just you</small><span class="ds-pair"><button type="button" class="ds-btn ds-ibtn" id="toast-test" data-tip="Test toast" aria-label="Show a test toast"><svg><use href="#i-eye"/></svg></button><button type="button" class="ds-btn" id="toast-reset">Reset</button></span></h3>
@@ -1598,15 +1598,16 @@
     <span id="updlg-flask"></span>
     <span class="updlg-pct" id="updlg-pct">0%</span>
   </div>
-  <h2 id="updlg-title"></h2>
+  <!-- Each word that changes as it ends holds both its forms in one spot (.upd-two), so nothing in the window moves. -->
+  <h2 id="updlg-title"><span class="upd-two end" id="updlg-verb"><span class="on">Updating</span><span>Updated</span></span> to <span id="updlg-name"></span></h2>
   <span class="updlg-vers" id="updlg-vers" hidden><span id="updlg-from"></span><svg><use href="#i-arrow"/></svg><b id="updlg-to"></b></span>
   <p class="updlg-now" id="updlg-now" role="status"></p>
   <ol class="updlg-steps">
-    <li id="updlg-download"><span class="node"><svg><use href="#i-download"/></svg></span><span class="nm">Downloading</span><small></small></li>
-    <li id="updlg-install"><span class="cn"><i></i></span><span class="node"><svg><use href="#i-box"/></svg></span><span class="nm">Installing</span><small></small></li>
-    <li id="updlg-back"><span class="cn"><i></i></span><span class="node"><svg><use href="#i-refresh"/></svg></span><span class="nm">Restarting</span><small></small></li>
+    <li id="updlg-download"><span class="node"><svg><use href="#i-download"/></svg></span><span class="nm"><span class="upd-two"><span class="on">Downloading</span><span>Downloaded</span></span></span><small></small></li>
+    <li id="updlg-install"><span class="cn"><i></i></span><span class="node"><svg><use href="#i-box"/></svg></span><span class="nm"><span class="upd-two"><span class="on">Installing</span><span>Installed</span></span></span><small></small></li>
+    <li id="updlg-back"><span class="cn"><i></i></span><span class="node"><svg><use href="#i-refresh"/></svg></span><span class="nm"><span class="upd-two"><span class="on">Restarting</span><span>Restarted</span></span></span><small></small></li>
   </ol>
-  <div class="dialog-foot"><button type="button" class="updlg-hide" id="updlg-hide">Hide</button><span class="updlg-took" id="updlg-took" hidden></span></div>
+  <div class="dialog-foot"><span class="updlg-took" id="updlg-took" hidden></span></div>
 </dialog>
 
 <!-- The Attribute browser's menu for one attribute: on its … button or a right-click (directory.js). -->

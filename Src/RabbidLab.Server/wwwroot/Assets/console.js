@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.337', [
+    'The update window is in the same style as the opening screen and stays up until the update is over. It has no Hide button, and nothing in it moves when it turns green at the end.']],
   ['1.1.336', [
     'Windows, the side panel and menus no longer show a white box around them when they open after you used the keyboard.']],
   ['1.1.335', [
@@ -1059,6 +1061,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.337': ['2026-11-22', 'update', 'A steady update window in glass'],
   '1.1.336': ['2026-11-22', 'fix', 'No white box around windows'],
   '1.1.335': ['2026-11-22', 'update', 'From sign-in to the console on one background'],
   '1.1.334': ['2026-11-22', 'feature', 'A glass opening screen with each read'],
@@ -1964,7 +1967,6 @@ const RELEASE_INFO = {
   let began = 0; // when this page first saw the update under way
   let dl = null; // the download so far, { got, total } in bytes
   let tick = null;
-  let hid = false; // the update dialog was put away with Hide
   // Every open page shows the update window, with the same numbers: they all count from what the server said.
   try { sessionStorage.removeItem('rabbidlab.updating'); } catch { /* none */ } // from when only one page did
   const secs = (ms) => Math.max(1, Math.round(ms / 1000));
@@ -1984,7 +1986,6 @@ const RELEASE_INFO = {
       since = 0;
       began = 0;
       dl = null;
-      hid = false;
       if ($('update-dialog').open) $('update-dialog').close();
       return;
     }
@@ -1992,10 +1993,14 @@ const RELEASE_INFO = {
     began ||= Date.now();
     const steps = { download: ['now', '', ''], install: ['done', 'now', ''], done: ['done', 'done', 'done'] }[phase];
     const names = [phase === 'download' ? 'Downloading' : 'Downloaded', done ? 'Installed' : 'Installing', done ? 'Restarted' : 'Restarting'];
-    // Mid screen too: the flask in a ring, the versions, and the steps as dots. Hide puts it away until the next update.
+    // Mid screen too: the flask in a ring, the versions, and the steps as dots. It stays up until the update is over.
+    // Each word that changes shows its other form in the same spot (.upd-two), so nothing in the window moves as it ends.
+    const form = (two, second) => two.querySelectorAll(':scope > span').forEach((s, i) => s.classList.toggle('on', i === (second ? 1 : 0)));
+    const title = `${done ? 'Updated' : 'Updating'} to Rabbid Lab ${version}`;
     $('updlg-flask').innerHTML ||= FLASK;
     $('update-dialog').classList.toggle('is-done', done);
-    $('updlg-title').textContent = done ? `Rabbid Lab ${version} installed` : `Updating Rabbid Lab to ${version}`;
+    form($('updlg-verb'), done);
+    $('updlg-name').textContent = `Rabbid Lab ${version}`;
     $('updlg-vers').hidden = !last?.version;
     $('updlg-from').textContent = last?.version || '';
     $('updlg-to').textContent = version;
@@ -2010,24 +2015,23 @@ const RELEASE_INFO = {
     ['download', 'install', 'back'].forEach((id, i) => {
       const li = $(`updlg-${id}`);
       li.className = steps[i];
-      li.querySelector('.nm').textContent = names[i];
+      form(li.querySelector('.upd-two'), steps[i] === 'done');
       li.querySelector('small').textContent = notes[i];
       li.querySelector('.node use').setAttribute('href', `#${steps[i] === 'done' ? 'i-check' : STEP_ICONS[i]}`);
       li.querySelector('.cn i')?.style.setProperty('width', `${Math.min(100, 100 * part[i - 1])}%`);
     });
-    // Done: Hide gives its place to how long it took, so the window keeps its size.
-    $('updlg-hide').hidden = done;
+    // Done: how long it took comes up in the foot, which keeps one height, so the window keeps its size.
     // Counted from when installing began, which every page was told, so they all say the same.
     $('updlg-took').hidden = !(done && since);
     if (done && since) $('updlg-took').replaceChildren('Completed in ', Object.assign(document.createElement('b'), { textContent: took(secs(Date.now() - since)) }));
-    if (!hid && !$('update-dialog').open) $('update-dialog').showModal();
+    if (!$('update-dialog').open) $('update-dialog').showModal();
     const n = Math.min(100, pct);
     const p = `${Math.round(n)}%`;
     $('inst-fill').style.width = p;
     $('updlg-fill').setAttribute('stroke-dashoffset', String(452.4 * (1 - n / 100)));
     $('inst-pct').textContent = p;
     $('updlg-pct').textContent = p;
-    $('inst-title').textContent = $('updlg-title').textContent;
+    $('inst-title').textContent = title;
     $('inst-line').textContent = line;
     ['download', 'install', 'back'].forEach((id, i) => {
       $(`step-${id}`).className = steps[i];
@@ -2087,7 +2091,7 @@ const RELEASE_INFO = {
     $('top-updates-text').textContent = TOP[u.status] || 'Updates';
     const busy = u.status === 'downloading' || u.status === 'installing';
     // While the update dialog is up it does the talking: the words behind it stay as they were.
-    if (!busy || hid) {
+    if (!busy) {
       $('hero-state').textContent = headline(u);
       $('hero-updates').textContent = WORDS[u.status] || u.status;
     }
@@ -3751,9 +3755,8 @@ const RELEASE_INFO = {
       localStorage.setItem(LATER, String(Date.now() + 30 * 86400000));
       $('herebar').hidden = true;
     });
-    // The update dialog goes away with Hide or Escape, and stays away until the update is over.
-    $('updlg-hide').addEventListener('click', () => $('update-dialog').close());
-    $('update-dialog').addEventListener('close', () => { if (!$('upd-installing').hidden) hid = true; });
+    // The update window stays up until the update is over: no Hide, and Escape doesn't put it away.
+    $('update-dialog').addEventListener('cancel', (e) => e.preventDefault());
     $('upd-check').addEventListener('click', (e) => check(e.currentTarget));
     $('hero-check').addEventListener('click', (e) => check(e.currentTarget));
     $('hero-install').addEventListener('click', () => post('/api/update/install'));

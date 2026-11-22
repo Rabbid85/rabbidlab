@@ -387,7 +387,7 @@ dialog.busy-host { position: fixed; } /* a dialog stays where it is under its co
 .updlg-steps .done { color: var(--text); }
 .updlg-steps .done .node { border-color: transparent; background: var(--ember); }
 .updlg-steps .done .node svg { color: #fff; stroke-width: 2.6; }
-.updlg-steps .now { color: #fff; font-weight: 600; }
+.updlg-steps .now { color: #fff; } /* white, not bold: a bolder word would be wider and nudge the rest */
 .updlg-steps .now small { color: var(--accent-soft); font-weight: 400; }
 .updlg-steps .now .node { border-color: color-mix(in srgb, var(--accent-soft) 25%, transparent); background: color-mix(in srgb, var(--accent) 20%, #0C0E17); }
 .updlg-steps .now .node svg { color: var(--accent-soft); }
@@ -395,9 +395,14 @@ dialog.busy-host { position: fixed; } /* a dialog stays where it is under its co
 .update-dialog.is-done .prog { stroke: var(--ok); filter: drop-shadow(0 0 6px rgba(95, 212, 160, .5)); }
 .update-dialog.is-done .updlg-pct { border-color: rgba(95, 212, 160, .45); color: var(--ok); }
 .update-dialog.is-done .updlg-steps .done .node, .update-dialog.is-done .updlg-steps .cn i { background: var(--ok); }
-.update-dialog .dialog-foot { justify-content: center; align-items: center; height: 32px; margin-top: 14px; } /* one height for Hide and Took, so it never moves when it's done */
-.updlg-hide { height: 32px; padding: 0 10px; border: 0; background: none; color: #9DA1B3; font-size: 13.5px; font-weight: 600; }
-.updlg-hide:hover { background: #1A1C28; color: #fff; }
+.update-dialog .dialog-foot { justify-content: center; align-items: center; height: 32px; margin-top: 14px; } /* one height, empty or with how long it took, so nothing moves when it is done */
+/* A word that changes as the update ends holds both forms in one spot: the wider sets the width, only which shows changes.
+   The verb in the title sits against the words after it. The percent keeps one width too. */
+.upd-two { display: inline-grid; }
+.upd-two > span { grid-area: 1 / 1; visibility: hidden; text-align: center; }
+.upd-two > span.on { visibility: visible; }
+.upd-two.end > span { text-align: right; }
+.updlg-pct { min-width: 64px; text-align: center; }
 .updlg-took { color: #5E6380; font-size: 13px; }
 .updlg-took b { color: var(--ok); font-weight: 600; }
 
@@ -1115,6 +1120,10 @@ html[data-sty-win] .dialog { border-color: var(--sty-win-edge); background: var(
 html[data-sty-win] .dialog::backdrop { background: rgba(5, 6, 10, .45); backdrop-filter: blur(4px); }
 html[data-sty-panel] dialog.drawer { border-left-color: var(--sty-panel-edge); background: var(--sty-panel-bg); backdrop-filter: var(--sty-panel-blur); }
 html[data-sty-menus] :is(.gear-menu, .account-menu) { border-color: var(--sty-menus-edge); background: var(--sty-menus-bg); backdrop-filter: var(--sty-menus-blur); }
+/* The update window takes the opening screen's style (Style, Opening screen), so the update and the opening screen after
+   the reload look like one thing; the page behind is dimmed less and blurred, as behind the loading window. */
+html[data-sty-boot] .update-dialog { border-color: var(--sty-boot-edge); background: var(--sty-boot-bg); backdrop-filter: var(--sty-boot-blur); }
+html[data-sty-boot] .update-dialog::backdrop { background: rgba(8, 9, 14, .55); backdrop-filter: blur(4px); }
 
 /* Console address: rows with an icon, what it is, and its buttons on the right as icons (Copy, Download, Remove). */
 .ca-row { display: flex; align-items: center; gap: 14px; min-height: 58px; padding: 9px 0; }

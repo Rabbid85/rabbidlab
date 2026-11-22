@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.337 (2026-11-22)
+
+- The update window is in the same style as the opening screen and stays up until the update is over. It has no Hide button, and nothing in it moves when it turns green at the end.
+
 ## 1.1.336 (2026-11-22)
 
 - Windows, the side panel and menus no longer show a white box around them when they open after you used the keyboard.
