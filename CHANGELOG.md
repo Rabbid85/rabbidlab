@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.353 (2026-11-22)
+
+- Signed out for inactivity now goes to the sign-in page instead of the password card over the page. The page says why, and signing in again returns to the page you were on.
+
 ## 1.1.352 (2026-11-22)
 
 - Active Directory, Tools, Workflows: build workflows for users with fields asked for each time they run, such as First name, Department and Manager, and steps that use them.

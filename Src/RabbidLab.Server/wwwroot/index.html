@@ -1984,23 +1984,6 @@
   <div class="dialog-foot"><button type="button" id="idle-out">Sign out</button><button type="button" class="primary" id="idle-stay" autofocus>Stay signed in</button></div>
 </dialog>
 
-<!-- Signed out when idle, in place (console.js lock): the sign-in background over the page, which stays as it was under it,
-     and a short card for the password only. Unlock and the page is back with its panel open; Sign in as someone else goes
-     to the sign-in page. -->
-<dialog class="lock" id="lock-dialog" aria-labelledby="lock-title">
-  <canvas class="lock-bg" aria-hidden="true"></canvas>
-  <form class="lock-card" id="lock-form" novalidate>
-    <span class="lock-av" aria-hidden="true"><svg><use href="#i-user"/></svg></span>
-    <h2 id="lock-title">Signed out</h2>
-    <p class="lock-lead" id="lock-lead"></p>
-    <p class="lock-who"><b id="lock-name"></b><span id="lock-user"></span></p>
-    <input class="ds-input lock-box" id="lock-pw" type="password" autocomplete="current-password" placeholder="Password" aria-label="Password">
-    <input class="ds-input lock-box" id="lock-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="6-digit code" aria-label="Code from your authenticator app" hidden>
-    <p class="lock-error" id="lock-error" role="alert" hidden></p>
-    <button type="submit" class="primary lock-go" id="lock-go">Unlock</button>
-    <button type="button" class="lock-other" id="lock-other">Sign in as someone else</button>
-  </form>
-</dialog>
 <!-- Group Policy: the one window its changes ask in (gpo.js fills the form), the domain admin login for a change the
      service account isn't allowed to make (never saved), and the Actions menu. -->
 <dialog class="dialog" id="gpo-dialog" aria-labelledby="gpo-d-title">
