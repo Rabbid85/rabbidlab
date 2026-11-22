@@ -438,11 +438,16 @@
     let running = ''; // the version that answered first: another one means it updated
     let since = 0; // when installing began
     let tick = null;
-    const say = (text, tone = '', offerCheck = false, offerInstall = false) => {
+    // While it checks, the refresh button stays where it is, spinning, and the words keep one width, so the pill never
+    // changes size however often it's clicked.
+    const say = (text, tone = '', offerCheck = false, offerInstall = false, spin = false) => {
       $('update-text').textContent = text;
-      $('update').className = `update ${tone}`;
+      $('update').className = `update ${tone}${offerCheck ? ' steady' : ''}`;
       $('update').hidden = false;
-      $('update-check').hidden = !offerCheck;
+      const c = $('update-check');
+      c.hidden = !offerCheck;
+      c.disabled = spin;
+      c.classList.toggle('spin', spin);
       $('update-install').hidden = !offerInstall;
     };
     // Every open page shows the bar while it updates, with the same numbers.
@@ -474,7 +479,7 @@
       } else if (u.status === 'waiting') say(`Version ${u.available} will install shortly.`, 'busy');
       else if (u.status === 'downloading') say(`Downloading version ${u.available}…`, 'busy');
       else if (u.status === 'failed') say(`Version ${u.available} failed to install. Sign in for details.`, 'bad');
-      else if (u.checking) say('Checking for updates…');
+      else if (u.checking) say('Checking for updates…', '', true, false, true);
       else say('Up to date', 'ok', true);
     };
     const ask = async (opened = false, wait = false) => {
@@ -501,7 +506,8 @@
       timer = setTimeout(ask, busy ? 1000 : 30000);
     };
     const check = () => {
-      say('Checking for updates…');
+      if ($('update-check').disabled) return; // one check at a time
+      say('Checking for updates…', '', true, false, true);
       ask(true, true);
     };
     $('update-check').addEventListener('click', check);

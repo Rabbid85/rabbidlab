@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.330', [
+    'The update pill on the sign-in page keeps its size while it checks. The refresh button spins in place, and clicking it again during a check does nothing, so the card no longer jumps around.']],
   ['1.1.329', [
     'Every page refreshes itself while it is open. Lists, counts, side panels and the sidebar update within seconds, and your ticks, filters, open panel and typing are kept.',
     'Links shows changes made by other people without a refresh.',
@@ -1039,6 +1041,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.330': ['2026-11-22', 'fix', 'The sign-in update pill holds still'],
   '1.1.329': ['2026-11-22', 'feature', 'Every page refreshes itself'],
   '1.1.328': ['2026-11-22', 'fix', 'Sync updates by itself and reads plainly'],
   '1.1.327': ['2026-11-21', 'update', 'A larger News & Changelog heading'],

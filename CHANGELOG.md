@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.330 (2026-11-22)
+
+- The update pill on the sign-in page keeps its size while it checks. The refresh button spins in place, and clicking it again during a check does nothing, so the card no longer jumps around.
+
 ## 1.1.329 (2026-11-22)
 
 - Every page refreshes itself while it is open. Lists, counts, side panels and the sidebar update within seconds, and your ticks, filters, open panel and typing are kept.
