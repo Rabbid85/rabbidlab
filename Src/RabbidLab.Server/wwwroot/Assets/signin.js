@@ -536,17 +536,16 @@
     let running = ''; // the version that answered first: another one means it updated
     let since = 0; // when installing began
     let tick = null;
-    // While it checks, the refresh button stays where it is, spinning, and the words keep one width, so the pill never
-    // changes size however often it's clicked.
-    const say = (text, tone = '', offerCheck = false, offerInstall = false, spin = false) => {
+    // Said only while something is happening: an update available, waiting, downloading, installing or failed. Up to date
+    // and checking say nothing, so the pill isn't there.
+    const say = (text, tone = '', offerInstall = false) => {
       $('update-text').textContent = text;
-      $('update').className = `update ${tone}${offerCheck ? ' steady' : ''}`;
+      $('update').className = `update ${tone}`;
       $('update').hidden = false;
-      const c = $('update-check');
-      c.hidden = !offerCheck;
-      c.disabled = spin;
-      c.classList.toggle('spin', spin);
       $('update-install').hidden = !offerInstall;
+    };
+    const quiet = () => {
+      $('update').hidden = true;
     };
     // Every open page shows the bar while it updates, with the same numbers.
     const bar = (pct) => {
@@ -573,12 +572,11 @@
       bar(u.status === 'downloading' ? 4 + 62 * (u.total ? (u.downloaded || 0) / u.total : 0) : null);
       if (u.status === 'available') {
         const how = u.installHere ? '' : u.canInstall ? ' Sign in to install it.' : '';
-        say(`Version ${u.available} is available.${how}`, 'busy', false, !!u.installHere);
+        say(`Version ${u.available} is available.${how}`, 'busy', !!u.installHere);
       } else if (u.status === 'waiting') say(`Version ${u.available} will install shortly.`, 'busy');
       else if (u.status === 'downloading') say(`Downloading version ${u.available}…`, 'busy');
       else if (u.status === 'failed') say(`Version ${u.available} failed to install. Sign in for details.`, 'bad');
-      else if (u.checking) say('Checking for updates…', '', true, false, true);
-      else say('Up to date', 'ok', true);
+      else quiet();
     };
     const ask = async (opened = false, wait = false) => {
       clearTimeout(timer);
@@ -603,12 +601,6 @@
       }
       timer = setTimeout(ask, busy ? 1000 : 30000);
     };
-    const check = () => {
-      if ($('update-check').disabled) return; // one check at a time
-      say('Checking for updates…', '', true, false, true);
-      ask(true, true);
-    };
-    $('update-check').addEventListener('click', check);
     $('update-install').addEventListener('click', async () => {
       say(`Starting the update to version ${target}…`, 'busy');
       bar(4);
@@ -625,7 +617,7 @@
       }
       ask();
     });
-    check();
+    ask(true, true); // opening the page has the server look on GitHub when its last look is a minute old
   };
 
   const start = async () => {

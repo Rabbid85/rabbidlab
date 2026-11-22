@@ -131,27 +131,17 @@ form:not([hidden]):has(.context:not([hidden])) ~ .other-kind { margin-top: 2px; 
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='8' r='4'/%3E%3Cpath d='M4 20c1.5-3.5 4.5-5 8-5s6.5 1.5 8 5'/%3E%3C/svg%3E") center / contain no-repeat; }
 #other-kind.to-ad::before { mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='9' y='3' width='6' height='5' rx='1'/%3E%3Crect x='3' y='16' width='6' height='5' rx='1'/%3E%3Crect x='15' y='16' width='6' height='5' rx='1'/%3E%3Cpath d='M12 8v4M6 16v-2h12v2'/%3E%3C/svg%3E"); }
 
-/* The foot, centred: where updating stands in a small pill with a refresh icon to check now, this computer and the version
-   faint under it. */
+/* The foot, centred: this computer and the version, faint. Over them, only while an update is available, downloading,
+   installing or failed, a small pill that says so. */
 .card-foot { position: relative; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 12px 36px 14px; border-top: 1px solid var(--line); }
-.foot-pill { display: inline-flex; align-items: center; gap: 2px; max-width: 100%; padding: 3px 3px 3px 12px; border: 1px solid var(--line-strong); border-radius: 999px; background: #0C0E17; }
+.foot-pill { display: inline-flex; align-items: center; gap: 2px; max-width: 100%; padding: 3px 12px; border: 1px solid var(--line-strong); border-radius: 999px; background: #0C0E17; }
 .foot-pill:not(:has(.update:not([hidden]))) { display: none; }
-.foot-pill:has(.foot-check[hidden]) { padding-right: 12px; }
 .card-foot .where { margin: 0; color: #5E6380; font-size: 12px; white-space: nowrap; }
-.foot-check { display: inline-grid; place-items: center; flex: none; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: #8E92A8; }
-.foot-check[hidden] { display: none; }
-.foot-check:hover { background: #1A1D2B; color: var(--title); }
-.foot-check svg { width: 14px; height: 14px; }
-.foot-check.spin svg { animation: spin .9s linear infinite; }
-.foot-check:disabled { cursor: default; }
-.foot-check:disabled:hover { background: transparent; color: #8E92A8; }
 .update { --tone: #5E6380; display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; margin: 0; padding: 3px 4px 3px 0; color: var(--muted); font-size: 13px; }
 .update::before { content: ""; flex: none; width: 7px; height: 7px; margin-right: 1px; border-radius: 50%; background: var(--tone); }
 .update.ok { --tone: var(--ok); }
 .update.busy { --tone: var(--accent-soft); color: var(--text); }
 .update.bad { --tone: var(--red); }
-/* Up to date and Checking for updates take the same room, so the pill keeps its size while it checks. */
-.update.steady #update-text { display: inline-block; min-width: 11em; }
 .update button { padding: 0; border: 0; background: transparent; color: var(--accent-soft); font-size: 13.5px; font-weight: 600; }
 .update button:hover { background: transparent; text-decoration: underline; text-underline-offset: 3px; }
 /* While an update downloads or installs, its bar is the foot's top edge. */

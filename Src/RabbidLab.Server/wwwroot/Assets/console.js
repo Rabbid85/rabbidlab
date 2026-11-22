@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.341', [
+    'The sign-in page no longer shows an Up to date pill at the foot of the card. The pill shows only while an update is available, downloading, installing or failed.']],
   ['1.1.340', [
     'Every account accepts a Use at your own risk notice before its first sign-in. It opens over the sign-in page after the password and code, and the tick wakes up once you have read it to the end. Decline signs nobody in, so the console never opens.',
     'Accepting and declining go to the Activity log with the notice version. The notice is asked again only if its wording changes, and everyone signed in now signs in once more to accept it.',
@@ -1070,7 +1072,8 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
-  '1.1.340': ['2026-11-22', 'feature', 'Use at your own risk, read to the end before the first sign-in'],
+  '1.1.341': ['2026-11-22', 'fix', 'No Up to date pill on the sign-in card'],
+  '1.1.340':['2026-11-22', 'feature', 'Use at your own risk, read to the end before the first sign-in'],
   '1.1.339': ['2026-11-22', 'feature', 'Lock in place, and reconnect when the server drops'],
   '1.1.338': ['2026-11-22', 'fix', 'The background holds still while you resize'],
   '1.1.337': ['2026-11-22', 'update', 'A steady update window in glass'],

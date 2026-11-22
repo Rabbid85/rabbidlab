@@ -121,12 +121,11 @@
       <button type="button" class="other-kind" id="mfa-back" hidden>Back to sign-in</button>
     </div>
 
-    <!-- Centred: where updating stands (signin.js asks /api/update/watch) in a small pill with a refresh icon to check now,
-         and this computer and the version faint under it. While an update downloads, its bar is the foot's top edge. -->
+    <!-- Centred: this computer and the version, faint. Over them, only while an update is available, downloading, installing
+         or failed (signin.js asks /api/update/watch), a small pill says so. While it downloads, its bar is the foot's top edge. -->
     <footer class="card-foot">
       <div class="foot-pill">
         <p class="update" id="update" hidden><span id="update-text"></span><button type="button" id="update-install" hidden>Install now</button></p>
-        <button type="button" class="foot-check" id="update-check" data-tip="Check for updates" aria-label="Check for updates" hidden><svg><use href="#i-refresh"/></svg></button>
       </div>
       <p class="where" data-version></p>
       <div class="update-bar" id="update-bar" hidden><i id="update-fill"></i></div>
