@@ -213,7 +213,7 @@ body.app.rail-small { grid-template-columns: 60px minmax(0, 1fr); }
 .al-count { margin: 0 0 4px; color: var(--muted); font-size: 13px; }
 .al-count b { color: #D7DAE8; }
 .al-day { margin: 18px 0 4px; color: #9DA1B3; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
-.al-row { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: 12px; min-height: 52px; padding: 6px 4px; border-bottom: 1px solid var(--line); }
+.al-row { display: grid; grid-template-columns: 18px 28px minmax(0, 1fr) auto; align-items: center; gap: 12px; min-height: 52px; padding: 6px 4px; border-bottom: 1px solid var(--line); cursor: pointer; }
 .al-row.kid { min-height: 40px; padding-left: 40px; background: #0E1019; }
 .al-ic { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; background: color-mix(in srgb, var(--c) 14%, transparent); color: var(--c); }
 .al-ic svg { width: 15px; height: 15px; }
@@ -226,6 +226,28 @@ body.app.rail-small { grid-template-columns: 60px minmax(0, 1fr); }
 .al-bad { padding: 1px 7px; border-radius: 5px; background: rgba(255, 107, 125, .12); color: var(--red); font-size: 11.5px; font-weight: 700; }
 .al-more { display: flex; align-items: center; gap: 12px; margin-top: 14px; color: var(--muted); font-size: 13px; }
 .al-more:empty { display: none; }
+/* Its ticks, Actions over them, rows that open the side panel, and a change's values before and after there. */
+.al-tools .al-act { display: inline-flex; align-items: center; gap: 7px; height: 36px; white-space: nowrap; }
+.al-tools .al-act .chev { width: 12px; height: 12px; color: #8B90A5; }
+.al-tools .al-act:disabled { opacity: .45; cursor: default; }
+.al-act .cnt { display: inline-grid; min-width: 19px; height: 19px; place-items: center; padding: 0 6px; border-radius: 999px; background: var(--accent); color: #fff; font-size: 11px; font-weight: 700; }
+.al-act .cnt[hidden] { display: none; }
+.al-row:hover { background: #121523; }
+.al-row.dw-on { background: #171B2C; }
+.al-row .tk { display: grid; place-items: center; align-self: stretch; cursor: pointer; }
+.al-row .tk input { margin: 0; accent-color: var(--accent); }
+.al-row.al-head { grid-template-columns: 18px minmax(0, 1fr); min-height: 34px; color: var(--muted); font-size: 12.5px; cursor: default; }
+.al-row.al-head:hover { background: none; }
+.al-r .ubadge { margin: 0; }
+.al-why { display: flex; align-items: flex-start; gap: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: #0F111A; line-height: 1.45; }
+.al-why svg { flex: none; width: 15px; height: 15px; margin-top: 1px; color: #8B90A5; }
+.al-diff { width: 100%; border-collapse: collapse; font-size: 14px; }
+.al-diff th { padding: 0 12px 8px 0; border-bottom: 1px solid var(--line); color: #9DA1B3; font-size: 12.5px; font-weight: 600; text-align: left; }
+.al-diff td { padding: 10px 12px 10px 0; border-bottom: 1px solid #171A27; color: var(--title); vertical-align: top; overflow-wrap: anywhere; }
+.al-diff tr:last-child td { border-bottom: 0; }
+.al-diff td:first-child { width: 30%; color: #9DA1B3; }
+.al-diff td.was { color: #FF9DA9; }
+.al-diff td.now { color: #7FE0B3; }
 /* A page with a sub-menu: the flask, its contents in the accent colour. Its sub-menu shows while it's open. */
 .all-flask { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .all-flask .liquid { fill: var(--accent-line); stroke: none; }

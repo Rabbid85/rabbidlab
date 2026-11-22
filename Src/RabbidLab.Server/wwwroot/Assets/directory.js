@@ -885,10 +885,21 @@
   };
   const saveAttr = async (a, values) => {
     try {
-      on.set(await R.send('/api/ad/object/attribute', { dn: on.get().dn, name: a.name, values }));
-      on.draw();
+      const at = on;
+      const got = await R.send('/api/ad/object/attribute', { dn: at.get().dn, name: a.name, values });
+      at.set(got);
+      at.draw();
       if ($('attr-dialog').open) $('attr-dialog').close();
-      R.toast(values.some((v) => v.trim()) ? `${a.name} saved.` : `${a.name} cleared.`);
+      // Undo, then the object as it is again, if it's still the one shown.
+      const back = async () => {
+        if (await R.undo(got.change.id) && at.get()?.dn === got.dn) {
+          try {
+            at.set(await R.get(`/api/ad/object?dn=${encodeURIComponent(got.dn)}`));
+            at.draw();
+          } catch { /* it stays as it was shown */ }
+        }
+      };
+      R.toast(values.some((v) => v.trim()) ? `${a.name} saved.` : `${a.name} cleared.`, '', got.change?.undo ? { action: { label: 'Undo', run: back, changes: [got.change.id] } } : {});
     } catch (err) {
       if ($('attr-dialog').open) say('attr-problem', err.message);
       else R.toast(`Could not change ${a.name}.`, err.message, { tone: 'warn' });

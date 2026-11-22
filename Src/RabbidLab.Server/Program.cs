@@ -254,6 +254,7 @@ app.MapSyncApi();
 app.MapGroupPolicyApi();
 app.MapNotesApi();
 app.MapDirectoryActionsApi();
+app.MapChangesApi();
 app.MapLinksApi();
 app.MapSensorsApi();
 app.MapDevToolsApi();

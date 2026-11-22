@@ -219,15 +219,15 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
         // The rest of the user's tabs in Active Directory Users and Computers, for the other columns.
         "initials", "mobile", "ipPhone", "facsimileTelephoneNumber", "streetAddress", "l", "st", "postalCode", "co", "employeeID", "employeeNumber", "employeeType",
         "homeDirectory", "homeDrive", "profilePath", "scriptPath", "wWWHomePage", "info", "whenChanged", "badPwdCount", "badPasswordTime", "logonCount", "objectSid",
-        "proxyAddresses", .. Enumerable.Range(1, 15).Select(i => $"extensionAttribute{i}")];
+        "proxyAddresses", "objectGUID", .. Enumerable.Range(1, 15).Select(i => $"extensionAttribute{i}")];
 
     private static readonly string[] GroupAttributes = ["cn", "sAMAccountName", "description", "groupType", "member", "adminCount", "isCriticalSystemObject", "objectSid", "memberOf", "mail", "info",
-        "managedBy", "whenCreated", "whenChanged"];
+        "managedBy", "whenCreated", "whenChanged", "objectGUID"];
 
     private static readonly string[] ComputerAttributes = ["cn", "dNSHostName", "operatingSystem", "operatingSystemVersion", "description", "userAccountControl",
         "lastLogonTimestamp", "whenCreated", "memberOf", "location",
         "sAMAccountName", "operatingSystemServicePack", "whenChanged", "pwdLastSet", "managedBy", "servicePrincipalName", "objectSid",
-        "ms-Mcs-AdmPwdExpirationTime", "msLAPS-PasswordExpirationTime", "msDS-SupportedEncryptionTypes"];
+        "ms-Mcs-AdmPwdExpirationTime", "msLAPS-PasswordExpirationTime", "msDS-SupportedEncryptionTypes", "objectGUID"];
 
     private static readonly string[] MemberAttributes = ["objectClass", "sAMAccountName", "displayName", "cn"];
 
@@ -552,27 +552,38 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
         {
             throw new ToolProblem(e.Code == LdapRefused.EntryExists ? $"An object named {name} already exists in {Ldap.Path(ou, ldap.BaseDn)}." : Said(e, f.Account!));
         }
-        var made = (await ldap.Find(dn, "(objectClass=*)", false, GroupAttributes, 1, stop)).FirstOrDefault();
-        return made is null ? throw new ToolProblem($"{name} was created, but could not be read back.") : Group(made, ldap.BaseDn);
+        var made = (await ldap.Find(dn, "(objectClass=*)", false, GroupAttributes, 1, stop)).FirstOrDefault()
+            ?? throw new ToolProblem($"{name} was created, but could not be read back.");
+        Cannot(Noted(made, "group"), NoUndoCreate("group"), new ChangeStep("Group", ["None"], [$"{name} in {PathIn(ou, ldap.BaseDn, f.Domain!)}"]));
+        return Group(made, ldap.BaseDn);
     }
 
     public async Task<string?> ChangeMembers(string group, IReadOnlyList<string> add, IReadOnlyList<string> remove, CancellationToken stop)
     {
         using var ldap = await Open(stop);
         var f = Ready();
-        var dn = (await ChangeableGroup(ldap, f, group, stop)).Dn;
+        var row = await ChangeableGroup(ldap, f, group, stop);
+        var dn = row.Dn;
         var problems = new List<string>();
+        var (added, removed) = (new List<string>(), new List<string>());
         foreach (var (members, adding) in new[] { (add, true), (remove, false) })
         {
             foreach (var m in Listed(members))
             {
-                if (await SetMember(ldap, dn, Inside(m, ldap.BaseDn), adding, stop) is { } refused)
+                var member = Inside(m, ldap.BaseDn);
+                var (changed, refused) = await SetMember(ldap, dn, member, adding, stop);
+                if (refused is not null)
                 {
                     problems.Add(refused.Code == LdapRefused.InsufficientRights ? $"{f.Account} does not have permission to change {Ldap.Name(dn)}" : $"{Ldap.Name(m)}: {refused.Message}");
                     break;
                 }
+                if (changed)
+                {
+                    (adding ? added : removed).Add(member);
+                }
             }
         }
+        NoteMembers(row, added, removed);
         return problems.Count == 0 ? null : string.Join("; ", problems.Distinct()) + ".";
     }
 
@@ -585,6 +596,7 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
         {
             throw new ToolProblem($"{Ldap.Name(found.Dn)} is a built-in or protected Active Directory group and cannot be deleted.");
         }
+        await NoteDelete(ldap, f, found, "group", stop);
         await Remove(ldap, found.Dn, f, stop);
     }
 
@@ -600,16 +612,19 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
         using var ldap = await Open(stop);
         var f = Ready();
         var row = await ComputerRow(ldap, f, name, stop);
-        var flags = (int) (row.Number("userAccountControl") ?? 0x1000);
-        flags = on ? flags & ~Disabled : flags | Disabled;
+        var was = (int) (row.Number("userAccountControl") ?? 0x1000);
+        var flags = on ? was & ~Disabled : was | Disabled;
         await Change(ldap, row.Dn, [new(LdapChange.Replace, "userAccountControl", flags.ToString(CultureInfo.InvariantCulture))], f, password: false, stop);
+        NoteBit(row, "computer", "Account", was, flags, Disabled);
     }
 
     public async Task DeleteComputer(string name, CancellationToken stop)
     {
         using var ldap = await Open(stop);
         var f = Ready();
-        await Remove(ldap, (await ComputerRow(ldap, f, name, stop)).Dn, f, stop);
+        var row = await ComputerRow(ldap, f, name, stop);
+        await NoteDelete(ldap, f, row, "computer", stop);
+        await Remove(ldap, row.Dn, f, stop);
     }
 
     public async Task<List<AdMember>> Find(string? search, CancellationToken stop)
@@ -705,9 +720,10 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
             throw;
         }
         var warning = await Join(ldap, f, dn, form.Groups ?? [], true, stop);
-        var made = (await ldap.Find(dn, "(objectClass=*)", false, UserAttributes, 1, stop)).FirstOrDefault();
-        return (made is null ? throw new ToolProblem($"{username} was created, but could not be read back.") : Person(made, ldap.BaseDn, f.Account!),
-            warning is null ? null : $"Created {username}, but {char.ToLowerInvariant(warning[0])}{warning[1..]}");
+        var made = (await ldap.Find(dn, "(objectClass=*)", false, UserAttributes, 1, stop)).FirstOrDefault()
+            ?? throw new ToolProblem($"{username} was created, but could not be read back.");
+        Cannot(Noted(made, "user"), NoUndoCreate("user"), new ChangeStep("Account", ["None"], [$"{username} in {PathIn(ou, ldap.BaseDn, f.Domain!)}"]));
+        return (Person(made, ldap.BaseDn, f.Account!), warning is null ? null : $"Created {username}, but {char.ToLowerInvariant(warning[0])}{warning[1..]}");
     }
 
     public async Task Password(string username, string password, bool mustChange, CancellationToken stop)
@@ -725,6 +741,12 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
             changes.Add(new(LdapChange.Replace, "pwdLastSet", "0"));
         }
         await Change(ldap, user.Dn, changes, f, password: true, stop);
+        List<ChangeStep> steps = [new("Password", ["Not shown"], ["Not shown"])];
+        if (mustChange && user.Number("pwdLastSet") != 0)
+        {
+            steps.Add(new(FlagNames["mustchange"], ["No"], ["Yes"]));
+        }
+        Cannot(Noted(user, "user"), NoUndoPassword, [.. steps]);
     }
 
     public async Task Unlock(string username, CancellationToken stop)
@@ -733,6 +755,7 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
         var f = Ready();
         var user = await Changeable(ldap, f, username, stop);
         await Change(ldap, user.Dn, [new(LdapChange.Replace, "lockoutTime", "0")], f, password: false, stop);
+        Cannot(Noted(user, "user"), NoUndoUnlock, new ChangeStep("Locked out", [Person(user, ldap.BaseDn, f.Account!).Locked ? "Yes" : "No"], ["No"]));
     }
 
     public async Task Enable(string username, bool on, CancellationToken stop)
@@ -740,9 +763,10 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
         using var ldap = await Open(stop);
         var f = Ready();
         var user = await Changeable(ldap, f, username, stop, signIn: true);
-        var flags = (int) (user.Number("userAccountControl") ?? NormalAccount);
-        flags = on ? flags & ~Disabled : flags | Disabled;
+        var was = (int) (user.Number("userAccountControl") ?? NormalAccount);
+        var flags = on ? was & ~Disabled : was | Disabled;
         await Change(ldap, user.Dn, [new(LdapChange.Replace, "userAccountControl", flags.ToString(CultureInfo.InvariantCulture))], f, password: false, stop);
+        NoteBit(user, "user", "Account", was, flags, Disabled);
     }
 
     public async Task<string?> ChangeGroups(string username, IReadOnlyList<string> add, IReadOnlyList<string> remove, CancellationToken stop)
@@ -750,8 +774,10 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
         using var ldap = await Open(stop);
         var f = Ready();
         var user = await Changeable(ldap, f, username, stop);
-        var a = await Join(ldap, f, user.Dn, add, true, stop);
-        var b = await Join(ldap, f, user.Dn, remove, false, stop);
+        var (added, removed) = (new List<string>(), new List<string>());
+        var a = await Join(ldap, f, user.Dn, add, true, stop, added);
+        var b = await Join(ldap, f, user.Dn, remove, false, stop, removed);
+        NoteGroups(user, "user", added, removed);
         return a is null ? b : b is null ? a : $"{a} {b}";
     }
 
@@ -759,7 +785,9 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
     {
         using var ldap = await Open(stop);
         var f = Ready();
-        await Remove(ldap, (await Changeable(ldap, f, username, stop, signIn: true)).Dn, f, stop);
+        var user = await Changeable(ldap, f, username, stop, signIn: true);
+        await NoteDelete(ldap, f, user, "user", stop);
+        await Remove(ldap, user.Dn, f, stop);
     }
 
     public void Dispose() => pool?.Dispose();
@@ -1023,26 +1051,26 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
         }
     }
 
-    /// <summary>One member into a group or out of it. Null when done or already so, else Active Directory's refusal.</summary>
-    private static async Task<LdapRefused?> SetMember(ILdap ldap, string group, string member, bool add, CancellationToken stop)
+    /// <summary>One member into a group or out of it: whether that changed it (not when it was already so), or Active Directory's refusal.</summary>
+    private static async Task<(bool Changed, LdapRefused? Refused)> SetMember(ILdap ldap, string group, string member, bool add, CancellationToken stop)
     {
         try
         {
             await ldap.Modify(group, [new(add ? LdapChange.Add : LdapChange.Delete, "member", member)], stop);
-            return null;
+            return (true, null);
         }
         catch (LdapRefused e) when (add ? e.Code is LdapRefused.AttributeExists or LdapRefused.EntryExists : e.Code is LdapRefused.NoSuchAttribute or LdapRefused.Unwilling)
         {
-            return null; // already in it, or already out
+            return (false, null); // already in it, or already out
         }
         catch (LdapRefused e)
         {
-            return e;
+            return (false, e);
         }
     }
 
-    /// <summary>Into the groups (or out of them); what didn't work, or null. Each group must be in scope and not built-in.</summary>
-    private static async Task<string?> Join(ILdap ldap, DirectoryToolsFile f, string userDn, IEnumerable<string> groups, bool add, CancellationToken stop)
+    /// <summary>Into the groups (or out of them); what didn't work, or null. Each group must be in scope and not built-in. Done gets the groups it changed.</summary>
+    private static async Task<string?> Join(ILdap ldap, DirectoryToolsFile f, string userDn, IEnumerable<string> groups, bool add, CancellationToken stop, List<string>? done = null)
     {
         var problems = new List<string>();
         foreach (var g in Listed(groups))
@@ -1050,9 +1078,14 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
             try
             {
                 var group = await ChangeableGroup(ldap, f, g, stop);
-                if (await SetMember(ldap, group.Dn, userDn, add, stop) is { } refused)
+                var (changed, refused) = await SetMember(ldap, group.Dn, userDn, add, stop);
+                if (refused is not null)
                 {
                     problems.Add(refused.Code == LdapRefused.InsufficientRights ? $"the service account does not have permission to change {Ldap.Name(g)}" : $"{Ldap.Name(g)}: {refused.Message}");
+                }
+                else if (changed)
+                {
+                    done?.Add(group.Dn);
                 }
             }
             catch (ToolProblem e)

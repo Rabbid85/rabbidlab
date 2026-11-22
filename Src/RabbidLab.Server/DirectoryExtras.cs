@@ -447,6 +447,8 @@ public sealed partial class DirectoryTools
         return new RecycleState(on, lifetime, items, problem, more);
     }
 
+    private static readonly string[] RestoreAttributes = ["objectClass", "msDS-LastKnownRDN", "lastKnownParent", "objectGUID"];
+
     public async Task<string> Restore(string dn, CancellationToken stop)
     {
         using var ldap = await Open(stop);
@@ -455,8 +457,18 @@ public sealed partial class DirectoryTools
         var at = dn?.Trim() ?? "";
         // Asked for by its own DN, so a full Recycle Bin can't hide it. The bin itself isn't something to restore.
         var row = (Ldap.Under(at, bin) && !Ldap.Under(bin, at)
-                ? (await ldap.FindDeleted(at, "(isDeleted=TRUE)", false, ["objectClass", "msDS-LastKnownRDN", "lastKnownParent"], 1, stop)).FirstOrDefault() : null)
+                ? (await ldap.FindDeleted(at, "(isDeleted=TRUE)", false, RestoreAttributes, 1, stop)).FirstOrDefault() : null)
             ?? throw new ToolProblem("The object is no longer in the Recycle Bin.", StatusCodes.Status404NotFound);
+        var back = await RestoreRow(ldap, f, row, stop);
+        var kind = KindOf(row);
+        Cannot(Noted(row, kind) with { Dn = back, Name = Ldap.Name(back) }, NoUndoRestore(kind == "ou" ? "OU" : kind),
+            new ChangeStep("Location", ["Recycle Bin"], [PathIn(Ldap.Parent(back), ldap.BaseDn, f.Domain!)]));
+        return back;
+    }
+
+    /// <summary>A deleted object back where it was, by its last known name and parent; its DN now.</summary>
+    private static async Task<string> RestoreRow(ILdap ldap, DirectoryToolsFile f, LdapRow row, CancellationToken stop)
+    {
         var name = row.Text("msDS-LastKnownRDN") ?? throw new ToolProblem("Active Directory did not return the object's original name.");
         var parent = row.Text("lastKnownParent") ?? throw new ToolProblem("Active Directory did not return the object's original location.");
         if (parent.Contains("\\0ADEL:", StringComparison.OrdinalIgnoreCase))
@@ -497,6 +509,7 @@ public sealed partial class DirectoryTools
             throw new ToolProblem(e.Code == LdapRefused.InsufficientRights ? $"Access denied. {Ldap.Account(username)} does not have permission. Enabling the AD Recycle Bin requires an Enterprise Admin." : e.Code == LdapRefused.AttributeExists
                 ? "The AD Recycle Bin is already enabled." : $"Active Directory returned an error: {e.Message}. The forest functional level must be Windows Server 2008 R2 or later.");
         }
+        Cannot(new ChangedObject(ldap.BaseDn, null, f.Domain!, "domain"), "The AD Recycle Bin cannot be disabled after it is enabled.", new ChangeStep("AD Recycle Bin", ["Disabled"], ["Enabled"]));
     }
 
     // --- The attribute browser ---------------------------------------------------------------------------------------
@@ -677,7 +690,8 @@ public sealed partial class DirectoryTools
         {
             throw new ToolProblem($"{name} cannot be edited here. Binary, secret and naming attributes are read-only.");
         }
-        var now = (await ldap.Find(at, "(objectClass=*)", false, ["allowedAttributesEffective", name], 1, stop)).FirstOrDefault()
+        string[] read = ["allowedAttributesEffective", "objectClass", "objectGUID", "displayName", "cn", name];
+        var now = (await ldap.Find(at, "(objectClass=*)", false, [.. read.Distinct(StringComparer.OrdinalIgnoreCase)], 1, stop)).FirstOrDefault()
             ?? throw new ToolProblem("The object no longer exists in Active Directory.", StatusCodes.Status404NotFound);
         if (!now.Texts("allowedAttributesEffective").Contains(name, StringComparer.OrdinalIgnoreCase))
         {
@@ -695,6 +709,11 @@ public sealed partial class DirectoryTools
             {
                 throw new ToolProblem(e.Code == LdapRefused.InsufficientRights ? $"Access denied. {f.Account} does not have permission to change {name} on {Ldap.Name(at)}."
                     : $"Active Directory rejected the change: {e.Message}.");
+            }
+            var was = now.Texts(name).ToList();
+            if (!SameValues(name, was, clean))
+            {
+                Note(now, KindOf(now), SetStep(name, name, was, [.. clean]));
             }
         }
         return await AttributesOf(ldap, at, stop);

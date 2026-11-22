@@ -3,8 +3,8 @@ using System.Text.Json;
 
 namespace RabbidLab.Server;
 
-/// <summary>One thing that happened: when, who did it and from where, what area and action, how it went, and any detail.</summary>
-public sealed record ActivityEntry(DateTime At, string By, string? From, string Area, string Action, string Title, string Result, string? Detail);
+/// <summary>One thing that happened: when, who did it and from where, what area and action, how it went, any detail, and the AD change it made (Changes.cs).</summary>
+public sealed record ActivityEntry(DateTime At, string By, string? From, string Area, string Action, string Title, string Result, string? Detail, string? Change = null);
 
 /// <summary>
 /// The activity log: every change made through Rabbid Lab and everything it did by itself (an update it installed, say),
@@ -34,7 +34,9 @@ public sealed class ActivityLog(DataFolder folder, ILogger<ActivityLog> log)
 
     public void Record(string by, string? from, string area, string action, string title, string result, string? detail = null)
     {
-        var entry = new ActivityEntry(DateTime.UtcNow, by, from, area, action, title, result, detail);
+        // An Active Directory change this request made goes in the change journal under this title.
+        var change = ChangeNote.Current?.Keep(by, from, title)?.Id;
+        var entry = new ActivityEntry(DateTime.UtcNow, by, from, area, action, title, result, detail, change);
         log.LogInformation("{Title} ({Action}) by {By}: {Result}{Detail}", title, action, by, result, detail is null ? "" : " - " + detail);
         try
         {
@@ -241,8 +243,9 @@ public sealed class ActivityLog(DataFolder folder, ILogger<ActivityLog> log)
 /// <summary>What Settings, Activity log asks for. Since: how far back (none: all of it). Until: up to, not including.</summary>
 public sealed record ActivityFilter(string? Kind, string? By, string? Find, DateTime? Since, bool Problems, int Count, DateTime? Until = null);
 
-/// <summary>One page of the activity log, with how many matched in all and who appears in the time asked about.</summary>
-public sealed record ActivityPage(IReadOnlyList<ActivityEntry> Entries, int Total, int Problems, IReadOnlyList<string> People);
+/// <summary>One page of the activity log, with how many matched in all, who appears in the time asked about, and the changes its entries point at.</summary>
+public sealed record ActivityPage(IReadOnlyList<ActivityEntry> Entries, int Total, int Problems, IReadOnlyList<string> People,
+    IReadOnlyDictionary<string, ChangeBrief>? Changes = null);
 
 /// <summary>How many entries matched, and of them sign-ins, changes (the rest) and problems; then by user and by kind, most first.</summary>
 public sealed record ActivitySummary(int Total, int SignIns, int Changes, int Problems, IReadOnlyList<ActivityUserCount> Users, IReadOnlyList<ActivityKindCount> Areas);
@@ -258,9 +261,9 @@ public static class ActivityApi
         app.MapGet("/api/activity", (int? count, HttpContext context, ActivityLog activity) =>
             Access.Can(context, Permissions.ActivityView) ? Results.Ok(activity.Recent(Math.Clamp(count ?? 100, 1, 1000))) : Access.NotAllowed());
 
-        app.MapGet("/api/activity/find", (string? kind, string? by, string? q, DateTime? since, DateTime? until, bool? problems, int? count, HttpContext context, ActivityLog activity) =>
+        app.MapGet("/api/activity/find", (string? kind, string? by, string? q, DateTime? since, DateTime? until, bool? problems, int? count, HttpContext context, ActivityLog activity, ChangeJournal changes) =>
             Access.Can(context, Permissions.ActivityView)
-                ? Results.Ok(activity.Find(Filter(kind, by, q, since, until, problems, Math.Clamp(count ?? 50, 1, 5000))))
+                ? Results.Ok(activity.Find(Filter(kind, by, q, since, until, problems, Math.Clamp(count ?? 50, 1, 5000))) is var page ? page with { Changes = changes.Briefs(context, page.Entries) } : null)
                 : Access.NotAllowed());
 
         // The Summary over the log: the same filters, counted by user and by area.

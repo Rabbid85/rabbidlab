@@ -547,6 +547,7 @@
         <div class="seg" id="al-res"><button type="button" data-problems="" aria-pressed="true">All</button><button type="button" data-problems="1">Problems</button></div>
         <button type="button" class="ds-btn" id="al-report"><svg><use href="#i-printer"/></svg>Report</button>
         <a class="ds-btn" id="al-export" href="/api/activity/export" download><svg><use href="#i-csv"/></svg>Export</a>
+        <button type="button" class="small al-act" id="al-act" aria-haspopup="menu" disabled data-tip="Select entries first">Actions<b class="cnt" hidden></b><svg class="chev"><use href="#i-chevron-down"/></svg></button>
       </div>
       <!-- Summary: what the bar picks, counted by user and by area; rows open the side panel (report.js). -->
       <section class="ds-sec al-sum" id="al-sum">
@@ -1969,6 +1970,8 @@
   <div class="dialog-foot"><button type="button" id="gpo-l-cancel">Cancel</button><button type="button" class="primary" id="gpo-l-go">Sign in</button></div>
 </dialog>
 <div class="gear-menu" id="gpo-menu" popover role="menu"></div>
+<!-- The Activity log's Actions over the ticked entries: Undo, export and clear (console.js). -->
+<div class="gear-menu" id="al-menu" popover role="menu"></div>
 
 <dialog class="dialog" id="sure-dialog" aria-labelledby="sure-title">
   <h2 id="sure-title"></h2>

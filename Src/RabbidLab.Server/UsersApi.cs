@@ -18,6 +18,8 @@ public static class UsersApi
         services.AddSingleton<IDirectoryTools>(s => s.GetRequiredService<DirectoryTools>());
         services.AddSingleton<IDirectoryExtras>(s => s.GetRequiredService<DirectoryTools>());
         services.AddSingleton<IDirectoryActions>(s => s.GetRequiredService<DirectoryTools>());
+        services.AddSingleton<IDirectoryUndo>(s => s.GetRequiredService<DirectoryTools>());
+        services.AddSingleton<ChangeJournal>();
         services.AddSingleton<IGroupPolicy>(s => s.GetRequiredService<DirectoryTools>());
         services.AddSingleton<GpmcSetup>();
         services.AddSingleton<IPrintServerProbe>(_ => OperatingSystem.IsWindows() ? new WindowsPrintServerProbe() : new NoPrintServerProbe());
@@ -421,7 +423,8 @@ public static class UsersApi
     /// <summary>
     /// Allowed, then done, with what went wrong said for the page. A change must also come from Rabbid Lab's own page.
     /// The tools are told who's asking (Caller), so they stay inside the scope of that person's roles; a page about the
-    /// whole domain (whole) is only for roles that cover all of it.
+    /// whole domain (whole) is only for roles that cover all of it. What a change does is noted (ChangeNote) for the
+    /// change journal, and its answer says which change it made.
     /// </summary>
     internal static async Task<IResult> Try(HttpContext context, string permission, Func<Task<IResult>> work, bool change = true, bool whole = false, bool confirm = false)
     {
@@ -440,9 +443,13 @@ public static class UsersApi
             return Results.Json(new { error = "Access denied. Your roles cover only part of Active Directory, and this action requires a role that covers the entire directory." }, statusCode: StatusCodes.Status403Forbidden);
         }
         Caller.Set(caller);
+        var journal = change ? context.RequestServices.GetRequiredService<ChangeJournal>() : null;
+        var note = journal is null ? null : new ChangeNote(journal, permission, confirm);
+        ChangeNote.Set(note);
         try
         {
-            return await work();
+            var answer = await work();
+            return note?.Kept is { } kept ? ChangesApi.With(context, answer, journal!.Brief(context, kept)) : answer;
         }
         catch (ToolProblem e)
         {
