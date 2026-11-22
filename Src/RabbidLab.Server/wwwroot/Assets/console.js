@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.320', [
+    'Sync is a new page under Directory. Sync DCs copies every change between all your domain controllers, Sync Microsoft 365 runs Entra Connect (Delta or Full) through the client on its server, and Sync all does both.',
+    'The Sync page lists each change since the last sync, which domain controllers have it, and every copy made, newest first. Click a row to see what went wrong and retry.']],
   ['1.1.319', [
     'Hints on buttons show the moment the pointer is on them, with no wait.']],
   ['1.1.318', [
@@ -1142,7 +1145,7 @@ const RELEASE_NOTES = [
   const allows = (list) => !!shown && list.split(/\s+/).some((p) => shown.has(p));
   const has = (p) => can.has(p);
   const PAGES = { overview: 'overview.view', links: 'links.view', sensors: 'sensors.view', seats: 'seats.view sessions.view', people: 'access.view', ad: 'ad.view ad.connect',
-    org: 'ad.view', attrs: 'ad.view' };
+    org: 'ad.view', attrs: 'ad.view', sync: 'ad.view' };
   // Settings' pages and what each needs; About is for everyone, Developer for Rabbid Lab Dev only.
   const SUBS = { account: '', appearance: '', viewas: 'access.view', address: '', updates: 'updates.view', signin: 'access.roles access.unlock', activity: 'activity.view', alerts: 'sensors.alerts', notifications: 'sensors.alerts', history: 'sensors.alerts',
     links: 'links.edit', sensors: 'sensors.edit', seats: 'seats.settings seats.add', ad: 'ad.connect', developer: 'updates.auto', support: '', about: '' };
@@ -2652,6 +2655,7 @@ const RELEASE_NOTES = [
     scatter($('ln-hero'), 20261117);
     scatter($('sn-hero'), 20261121);
     scatter($('dv-hero'), 20261125);
+    scatter($('sync-hero'), 20261129);
     setInterval(uptime, 60000);
     // Starting: the rail and the page stay hidden (body.booting) until sign-in has answered and the page's first reads are back, so a
     // reload never shows the console half built. Just after signing in or an update the opening screen comes up (boot): the flask

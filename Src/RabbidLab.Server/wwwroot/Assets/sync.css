@@ -1,0 +1,100 @@
+/* Sync (sync.js): one card with the three syncs and a row for each domain controller and Microsoft 365, then the feed of
+   every copy. One column. Each row has the flask, which fills and then gives way to a tick or a cross, and a line along its foot. */
+.sync-body { display: grid; gap: 14px; padding: 24px var(--side, 44px) 48px; }
+.sync-body > .gcard { margin-top: 0; }
+#page-sync .grow { flex: 1; }
+.sy-card { display: grid; gap: 12px; padding-top: 16px; }
+.sy-head { padding: 0 16px; }
+.sy-head h2 { margin: 0; color: var(--title); font-size: 20px; }
+.sy-head p { margin: 2px 0 0; font-size: 13px; }
+.sy-problem { margin: 0 16px 16px; color: #C9CCDA; }
+.sy-gtitle { color: var(--title); font-size: 14px; font-weight: 650; }
+
+/* The three syncs, and Delta or Full for Microsoft 365. */
+#sy-acts { display: grid; gap: 10px; padding: 0 16px; }
+.sy-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.sy-btn { display: inline-flex; align-items: center; gap: 7px; height: 38px; padding: 0 16px; font-size: 13.5px; font-weight: 600; }
+.sy-btn svg { width: 15px; height: 15px; }
+.sy-btn2 { border: 1px solid var(--line-strong); background: #1A1C28; color: var(--title); }
+.sy-btn2:hover { background: #222536; }
+.sy-btn2 svg { color: var(--accent-soft); }
+.sy-btn:disabled { opacity: .45; cursor: default; }
+.sy-type { display: inline-flex; align-items: center; gap: 8px; }
+.sy-typel { color: var(--muted); font-size: 13px; font-weight: 600; }
+.sy-seg { display: inline-flex; flex-wrap: wrap; padding: 2px; border: 1px solid var(--line-strong); border-radius: 9px; background: #0C0E17; }
+.sy-seg button { height: 28px; padding: 0 11px; border: 0; border-radius: 7px; background: transparent; color: var(--muted); font-size: 12.5px; font-weight: 600; }
+.sy-seg button:hover { color: var(--title); }
+.sy-seg button[aria-pressed="true"] { background: #23263A; color: #fff; }
+/* A plain note: a grey box, the colour only on its icon. */
+.sy-info { display: flex; gap: 10px; margin: 0; padding: 10px 13px; border: 1px solid var(--line-strong); border-radius: 10px; background: #12141F; color: #C9CCDA; font-size: 13px; line-height: 1.5; }
+.sy-info svg { flex: none; width: 16px; height: 16px; margin-top: 2px; color: #F2BE6B; }
+.sy-info b { color: #fff; }
+
+/* A row for each domain controller and Microsoft 365. */
+.sy-rows { display: grid; border-top: 1px solid var(--line); }
+.sy-row { position: relative; display: grid; grid-template-columns: 30px minmax(0, .9fr) minmax(0, 2fr); align-items: center; gap: 12px; min-height: 52px; padding: 6px 16px;
+  border-top: 1px solid var(--line); cursor: pointer; }
+.sy-row:first-child { border-top: 0; }
+.sy-row:hover, .sy-fl:hover { background: #151826; }
+.sy-row.on, .sy-fl.on { background: #1A1D2B; }
+.sy-row > span { position: relative; z-index: 1; min-width: 0; }
+.sy-name b { display: block; color: #fff; font-size: 13.5px; font-weight: 600; }
+.sy-name small { display: block; overflow: hidden; color: var(--muted); font-size: 12px; white-space: nowrap; text-overflow: ellipsis; }
+.sy-st { display: flex; align-items: center; min-width: 0; }
+.sy-lab { overflow: hidden; color: #8A8FA8; font-size: 13px; white-space: nowrap; text-overflow: ellipsis; transition: color .25s; }
+[data-s="run"] .sy-lab { color: #E6E8F2; }
+[data-s="ok"] .sy-lab { color: var(--ok); }
+[data-s="bad"] .sy-lab { color: #FF8D9B; }
+
+/* The flask: the liquid rises with the part's progress, bubbles while it runs, then a tick or a cross takes its place. */
+.sy-ind { position: relative; display: grid; flex: none; place-items: center; width: 24px; height: 24px; }
+.sy-ind > svg { position: absolute; transition: opacity .25s, transform .3s cubic-bezier(.3, 1.4, .5, 1); }
+.sy-ok, .sy-bad { width: 17px; height: 17px; opacity: 0; transform: scale(.4); }
+.sy-ok { color: var(--ok); }
+.sy-bad { color: var(--red); }
+[data-s="ok"] .sy-ok, [data-s="bad"] .sy-bad { opacity: 1; transform: none; }
+.fk-svg { width: 22px; height: 22px; }
+.fk-glass { fill: none; stroke: #4A4F68; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; transition: stroke .25s; }
+.fk-liq { fill: var(--accent); transform-box: view-box; transform-origin: 12px 21px; transform: scaleY(0); transition: transform 1s linear; }
+.fk-b { fill: #fff; opacity: 0; }
+[data-s="run"] .fk-glass { stroke: var(--accent-soft); }
+[data-s="run"] .fk-b { animation: sy-rise 1.1s ease-in infinite; }
+[data-s="run"] .fk-b.b2 { animation-delay: .5s; }
+@keyframes sy-rise { 0% { opacity: 0; transform: translateY(0); } 30% { opacity: .8; } 100% { opacity: 0; transform: translateY(-7px); } }
+[data-s="ok"] .fk-svg, [data-s="bad"] .fk-svg { opacity: 0; transform: scale(.5); }
+[data-s="idle"] .fk-glass, [data-s="wait"] .fk-glass { stroke: #3A3E55; }
+[data-s="idle"] .sy-ind .fk-svg { opacity: .55; }
+/* The line along the row's foot: it grows with the flask, turns green and fades, or stops red. */
+.sy-row > .sy-ln { position: absolute; left: 0; right: 0; bottom: 0; z-index: 0; height: 2px; }
+.sy-ln i { display: block; width: 0; height: 100%; background: var(--accent-soft); transition: width 1s linear; }
+[data-s="ok"] .sy-ln i { background: var(--ok); opacity: 0; transition: opacity .8s .5s, background .2s, width .3s; }
+[data-s="bad"] .sy-ln i { background: var(--red); }
+
+/* The feed: every copy, newest first. */
+.sy-feed { max-height: 640px; overflow-y: auto; }
+.sy-fl { display: grid; grid-template-columns: 70px 210px minmax(0, 1fr) 170px; align-items: center; gap: 12px; min-height: 48px; padding: 5px 16px; border-top: 1px solid var(--line); cursor: pointer; }
+.sy-fl > small { color: var(--muted); font-size: 12px; }
+.sy-flr { overflow: hidden; color: #C9CCDA; font-size: 13px; white-space: nowrap; text-overflow: ellipsis; }
+.sy-obj { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.sy-obj > svg { flex: none; width: 17px; height: 17px; color: #8B90A5; }
+.sy-obj > span { min-width: 0; }
+.sy-obj b { display: block; overflow: hidden; color: #fff; font-size: 13.5px; font-weight: 600; white-space: nowrap; text-overflow: ellipsis; }
+.sy-obj small { display: block; overflow: hidden; color: var(--muted); font-size: 12px; white-space: nowrap; text-overflow: ellipsis; }
+.sy-cell { display: inline-flex; align-items: center; gap: 6px; min-width: 0; color: #A9ADC2; font-size: 12.5px; white-space: nowrap; }
+.sy-cell > svg { flex: none; width: 15px; height: 15px; }
+.sy-cell[data-s="ok"] { color: var(--ok); }
+.sy-cell[data-s="bad"] { color: #FF8D9B; }
+.sy-cell[data-s="notyet"] > svg { color: #F2BE6B; }
+.sy-none { margin: 0; padding: 16px; }
+
+/* The side panel: what went wrong, in the console's red box. */
+.sy-err { display: grid; gap: 6px; padding: 10px 12px; border: 1px solid rgba(255, 107, 125, .35); border-radius: 10px; background: rgba(255, 107, 125, .07); color: #FF8D9B; font-size: 13px; }
+.sy-err p { margin: 0; color: #C9CCDA; font-size: 12.5px; line-height: 1.5; }
+
+@media (max-width: 860px) {
+  .sy-row { grid-template-columns: 30px minmax(0, 1fr); }
+  .sy-row .sy-st { grid-column: 2; }
+  .sy-fl { grid-template-columns: 60px minmax(0, 1fr); }
+  .sy-flr { grid-column: 2; }
+  .sy-fl .sy-obj, .sy-fl .sy-cell { grid-column: 2; }
+}

@@ -119,6 +119,7 @@ builder.Services.AddSingleton<Notes>();
 
 // The user tools: Active Directory and Windows accounts (UsersApi.cs).
 builder.Services.AddUserTools();
+builder.Services.AddSync();
 builder.Services.AddSingleton<Links>();
 
 // Sensors: checks on a timer, and email when one stays down (Sensors.cs, Mail.cs).
@@ -245,6 +246,7 @@ app.MapClientsApi();
 app.MapDevicesApi();
 app.MapUsersApi();
 app.MapDirectoryExtrasApi();
+app.MapSyncApi();
 app.MapGroupPolicyApi();
 app.MapNotesApi();
 app.MapDirectoryActionsApi();

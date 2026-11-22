@@ -15,6 +15,10 @@ public sealed class LdapRow(string dn, Dictionary<string, object[]> values)
 
     public IEnumerable<string> Texts(string attribute) => values.TryGetValue(attribute, out var v) ? v.OfType<string>() : [];
 
+    /// <summary>Every value, including those Active Directory sent as a range (attribute;range=0-999).</summary>
+    public IEnumerable<string> TextsInRanges(string attribute) => values.Where(v => v.Key.Equals(attribute, StringComparison.OrdinalIgnoreCase)
+        || v.Key.StartsWith(attribute + ";range=", StringComparison.OrdinalIgnoreCase)).SelectMany(v => v.Value.OfType<string>());
+
     public byte[]? Bytes(string attribute) => values.TryGetValue(attribute, out var v) && v.Length > 0 ? v[0] as byte[] : null;
 
     public IEnumerable<byte[]> AllBytes(string attribute) => values.TryGetValue(attribute, out var v) ? v.OfType<byte[]>() : [];

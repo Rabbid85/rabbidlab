@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.320 (2026-11-21)
+
+- Sync is a new page under Directory. Sync DCs copies every change between all your domain controllers, Sync Microsoft 365 runs Entra Connect (Delta or Full) through the client on its server, and Sync all does both.
+- The Sync page lists each change since the last sync, which domain controllers have it, and every copy made, newest first. Click a row to see what went wrong and retry.
+
 ## 1.1.319 (2026-11-21)
 
 - Hints on buttons show the moment the pointer is on them, with no wait.
