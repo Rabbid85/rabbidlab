@@ -141,6 +141,9 @@ builder.Services.AddSingleton<Offboarding>();
 builder.Services.AddHostedService<OffboardWorker>();
 // Print queues and the print history (PrintQueues.cs).
 builder.Services.AddPrintQueues();
+// People workflows: steps for AD users, run by hand (PeopleWorkflows.cs).
+builder.Services.AddSingleton<PeopleWorkflows>();
+builder.Services.AddSingleton<FlowRunner>();
 
 // Console addresses added in Settings: their aliases in the domain's DNS, and a certificate of their own, which the
 // console shows only to a browser that asks for one of them (ConsoleNames.cs, ConsoleDns.cs).
@@ -261,6 +264,7 @@ app.MapNotesApi();
 app.MapDirectoryActionsApi();
 app.MapOffboardingApi();
 app.MapPrintQueuesApi();
+app.MapPeopleWorkflowsApi();
 app.MapChangesApi();
 app.MapLinksApi();
 app.MapSensorsApi();

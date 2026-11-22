@@ -1,0 +1,54 @@
+/* People workflows (people-flows.js): the Edit and Run windows, a step's tokens, and the panel's runs. */
+.pf-dialog { width: min(760px, calc(100vw - 32px)); }
+.pf-body { max-height: min(60vh, 600px); margin-top: 12px; padding-right: 6px; overflow-y: auto; }
+.pf-body h3 { margin: 18px 0 8px; color: var(--title); font-size: 14px; font-weight: 650; }
+.pf-v { display: grid; grid-template-columns: 140px minmax(0, 1fr); align-items: center; gap: 12px; margin: 0 0 10px; font-size: 13px; }
+.pf-v > span { color: var(--muted); }
+.pf-v small { color: #6D7290; }
+.pf-v input, .pf-v select, .pf-v textarea, .pf-field input, .pf-field select, .pf-add { width: 100%; min-height: 34px; padding: 6px 10px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--panel); color: var(--text); font: inherit; font-size: 13px; }
+.pf-v.wide { grid-template-columns: 140px minmax(0, 1fr); }
+.pf-two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 4px 0 6px; font-size: 13px; }
+.pf-two > div { display: grid; gap: 2px; }
+.pf-l { color: var(--muted); font-size: 12px; }
+.pf-fields { display: grid; gap: 8px; margin-bottom: 10px; }
+.pf-field { display: grid; grid-template-columns: minmax(0, 1fr) 130px auto 30px; align-items: center; gap: 10px; }
+.pf-field .pf-choices { grid-column: 1 / -1; }
+.pf-field .tick { font-size: 12.5px; white-space: nowrap; }
+.pf-field .icon, .pf-sh .icon, .pf-groups .icon { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 7px; background: none; color: var(--muted); }
+.pf-field .icon svg, .pf-sh .icon svg, .pf-groups .icon svg { width: 14px; height: 14px; }
+.pf-steplist { display: grid; gap: 6px; margin: 0 0 10px; padding: 0; list-style: none; }
+.pf-steplist > li { border: 1px solid var(--line); border-radius: 10px; }
+.pf-steplist > li.open { border-color: var(--accent-line); }
+.pf-sh { display: grid; grid-template-columns: 26px minmax(0, 1fr) repeat(4, 28px); align-items: center; gap: 8px; padding: 8px 10px; }
+.pf-sh i { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: color-mix(in srgb, var(--text) 9%, transparent); font-size: 11.5px; font-style: normal; font-weight: 700; }
+.pf-sh > span { display: grid; gap: 2px; min-width: 0; }
+.pf-sh b { color: var(--title); font-size: 13px; }
+.pf-sh small { color: var(--muted); font-size: 12.5px; }
+.pf-sv { padding: 4px 12px 10px 44px; }
+.pf-hint { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
+.pf-chips { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-left: 4px; }
+.pf-tok { display: inline-block; padding: 0 6px; border: 0; border-radius: 5px; background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--title); font: inherit; font-weight: 600; line-height: 1.6; }
+button.pf-tok { cursor: pointer; font-size: 11.5px; }
+.pf-groups { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+.pf-groups .uchip { display: inline-flex; align-items: center; gap: 4px; }
+.pf-on { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; }
+.pf-steps { display: grid; gap: 8px; margin: 0; padding-left: 20px; font-size: 13px; }
+.pf-steps li > span { display: block; color: var(--muted); font-size: 12.5px; }
+.pf-run { padding: 10px 0; border-bottom: 1px solid var(--line); }
+.pf-run:last-child { border-bottom: 0; }
+.pf-run p { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; font-size: 13px; }
+.pf-run .grow { flex: 1; }
+.pf-results { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.pf-results li { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 8px; font-size: 12.5px; }
+.pf-results li > svg { width: 14px; height: 14px; margin-top: 2px; color: var(--muted); }
+.pf-results li.done > svg { color: var(--ok); }
+.pf-results li.failed > svg { color: var(--red); }
+.pf-results li span { display: grid; gap: 1px; }
+.pf-results li small { color: var(--muted); }
+#pf-acts .cnt { margin-left: 6px; }
+@media (max-width: 720px) {
+  .pf-v, .pf-v.wide { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .pf-field { grid-template-columns: minmax(0, 1fr) 110px; }
+}
+.pf-body button.small { display: inline-flex; align-items: center; gap: 6px; }
+.pf-body button.small svg { width: 14px; height: 14px; }

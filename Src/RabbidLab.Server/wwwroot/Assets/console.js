@@ -3,6 +3,11 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.352', [
+    'Active Directory, Tools, Workflows: build workflows for users with fields asked for each time they run, such as First name, Department and Manager, and steps that use them.',
+    'Steps can create a user (copying the groups of a template user), add or remove groups, set the manager and properties, move, enable, disable, reset the password, set expiration, create a home folder and email someone.',
+    'Run a workflow from its panel, or from a user with Actions, Run workflow. Steps run in order within your roles and stop at the first failure, and each run lists how every step went.',
+    'Undo run puts back everything a run changed at once. A run that created a user is undone by deleting that user. Managing workflows takes the new Manage people workflows permission.']],
   ['1.1.351', [
     'A print server printer in Devices, Printers now has Queue and History tabs. The queue updates every 5 seconds, and jobs can be paused, resumed, restarted and cancelled, one at a time or ticked together.',
     'Print jobs, a new tab beside Printers, lists the jobs in every print queue with Printer, Owner and Status filters, and each job opens in the side panel.',
@@ -1108,6 +1113,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.352': ['2026-11-22', 'feature', 'People workflows'],
   '1.1.351': ['2026-11-22', 'feature', 'Print queues, job history and Print jobs'],
   '1.1.350': ['2026-11-22', 'feature', 'Offboarding in three stages'],
   '1.1.349': ['2026-11-22', 'update', 'Loading placeholders that follow the theme'],

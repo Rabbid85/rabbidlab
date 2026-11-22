@@ -2,6 +2,13 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.352 (2026-11-22)
+
+- Active Directory, Tools, Workflows: build workflows for users with fields asked for each time they run, such as First name, Department and Manager, and steps that use them.
+- Steps can create a user (copying the groups of a template user), add or remove groups, set the manager and properties, move, enable, disable, reset the password, set expiration, create a home folder and email someone.
+- Run a workflow from its panel, or from a user with Actions, Run workflow. Steps run in order within your roles and stop at the first failure, and each run lists how every step went.
+- Undo run puts back everything a run changed at once. A run that created a user is undone by deleting that user. Managing workflows takes the new Manage people workflows permission.
+
 ## 1.1.351 (2026-11-22)
 
 - A print server printer in Devices, Printers now has Queue and History tabs. The queue updates every 5 seconds, and jobs can be paused, resumed, restarted and cancelled, one at a time or ticked together.

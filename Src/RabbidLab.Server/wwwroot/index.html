@@ -24,6 +24,7 @@
 <link rel="stylesheet" href="Assets/report.css">
 <link rel="stylesheet" href="Assets/offboard.css">
 <link rel="stylesheet" href="Assets/printq.css">
+<link rel="stylesheet" href="Assets/people-flows.css">
 <link rel="stylesheet" href="Assets/news.css">
 <link rel="stylesheet" href="Assets/edition.css">
 <link rel="stylesheet" href="Assets/themes.css">
@@ -42,6 +43,7 @@
 <script src="Assets/people.js" defer></script>
 <script src="Assets/offboard.js" defer></script>
 <script src="Assets/users.js" defer></script>
+<script src="Assets/people-flows.js" defer></script>
 <script src="Assets/alerts.js" defer></script>
 <script src="Assets/report.js" defer></script>
 <script src="Assets/links.js" defer></script>
@@ -1028,6 +1030,7 @@
       <a href="#attrs" data-adpage="attrs" data-can="ad.view" data-whole><svg><use href="#i-list"/></svg><span>Attribute browser</span></a>
       <a href="#ad/audit" data-adpage="audit" data-can="ad.view ad.connect" data-whole><svg><use href="#i-history"/></svg><span>AD audit</span></a>
       <a href="#ad/recycle" data-adpage="recycle" data-can="ad.view ad.connect" data-whole><svg><use href="#i-trash"/></svg><span>Recycle Bin</span></a>
+      <a href="#workflows" data-adpage="workflows" data-can="ad.view"><svg><use href="#i-org"/></svg><span>Workflows</span></a>
       <!-- The open page's views (users.js puts them under its entry), and what narrows them. -->
       <div class="dkids" id="dir-views"></div>
       <div class="dir-acct" id="dir-acct-row" hidden><svg><use href="#i-key"/></svg><span id="dir-acct"></span>
@@ -1133,6 +1136,18 @@
     <div id="org-wait"></div>
     <div class="org-stage" id="org-stage" hidden><svg class="org-svg" id="org-svg" role="img" aria-label="Org chart"></svg></div>
     <p class="hint problem" id="org-problem" hidden></p>
+    </div>
+  </div>
+  </section>
+
+  <!-- People workflows: steps for Active Directory users, with fields asked for each run (people-flows.js). -->
+  <section class="page home dir-top flows-page" id="page-workflows" data-page="workflows" data-title="Workflows" data-lead="Steps for Active Directory users that run in order, with fields asked for each time." hidden>
+  <div class="dir-area">
+    <div class="dmain">
+    <div class="dbar"><button type="button" class="small primary" id="pf-new"><svg><use href="#i-plus"/></svg>New workflow</button>
+      <button type="button" class="small" id="pf-acts" disabled>Actions<span class="cnt" hidden></span><svg><use href="#i-chevron-down"/></svg></button><span class="grow"></span><span class="bar-note" id="pf-count"></span></div>
+    <div class="table adt drows" id="pf-list"></div>
+    <p class="hint problem" id="pf-problem" hidden></p>
     </div>
   </div>
   </section>
@@ -1414,6 +1429,23 @@
   <div class="ob-body" id="ob-body"></div>
   <p class="hint problem" id="ob-problem" hidden></p>
   <div class="dialog-foot"><button type="button" id="ob-cancel">Cancel</button><span class="grow"></span><button type="button" id="ob-back">Back</button><button type="button" class="primary" id="ob-next">Next</button></div>
+</dialog>
+
+<!-- A people workflow's fields and steps, and running one (people-flows.js). -->
+<dialog class="dialog pf-dialog" id="pf-edit" aria-labelledby="pf-edit-title">
+  <h2 id="pf-edit-title">Edit workflow</h2>
+  <p class="dialog-lead">Steps run in order as the service account, within your roles, and stop at the first failure. Fields are asked for each time the workflow runs.</p>
+  <div class="pf-body" id="pf-edit-body"></div>
+  <p class="hint problem" id="pf-edit-problem" hidden></p>
+  <div class="dialog-foot"><label class="pf-on"><input type="checkbox" class="switch" role="switch" id="pf-on" checked>Enabled</label><span class="grow"></span>
+    <button type="button" id="pf-edit-cancel">Cancel</button><button type="button" class="primary" id="pf-edit-save">Save</button></div>
+</dialog>
+<dialog class="dialog pf-dialog" id="pf-run" aria-labelledby="pf-run-title">
+  <h2 id="pf-run-title">Run workflow</h2>
+  <p class="dialog-lead" id="pf-run-lead"></p>
+  <div class="pf-body" id="pf-run-body"></div>
+  <p class="hint problem" id="pf-run-problem" hidden></p>
+  <div class="dialog-foot"><button type="button" id="pf-run-cancel">Cancel</button><button type="button" class="primary" id="pf-run-go">Run</button></div>
 </dialog>
 
 <!-- A password Rabbid Lab made, shown this once. -->

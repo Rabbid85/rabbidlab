@@ -39,6 +39,7 @@ public static class Permissions
     public const string AdDelete = "ad.delete";
     public const string AdConnect = "ad.connect";
     public const string AdAttributes = "ad.attributes";
+    public const string AdWorkflows = "ad.workflows";
     public const string AdReadOnly = "ad.readonly";
     public const string GpoView = "gpo.view";
     public const string GpoLink = "gpo.link";
@@ -128,6 +129,7 @@ public static class Permissions
             new(AdConnect, "Set up the service account", "Create or remove the service account Rabbid Lab uses to make Active Directory changes."),
             new(AdReadOnly, "View in read-only mode", "Before the service account is set up, view Active Directory and Group Policy as read by this server, when read-only mode is enabled. Users who can set up the service account always can."),
             new(AdAttributes, "Edit attributes", "Change any attribute in the Attribute browser, as ADSI Edit does, within the service account's scope."),
+            new(AdWorkflows, "Manage people workflows", "Create, edit and delete the workflows in Active Directory, Workflows. Running one takes the permission for each of its steps."),
         ]),
         new("gpo", "Group Policy", "policy",
         [

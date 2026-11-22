@@ -1106,7 +1106,8 @@
     let changes = '';
     if (change && k === 'users') {
       // Offboarding first: what most often happens to a person here, in stages (offboard.js).
-      const leaving = R.offboard && can('ad.enable') ? part(mi('offboard', 'user-minus', n === 1 ? 'Offboard…' : `Offboard ${n} users…`)) : '';
+      const leaving = R.offboard && can('ad.enable') ? part(mi('offboard', 'user-minus', n === 1 ? 'Offboard…' : `Offboard ${n} users…`),
+        ...(R.flows && n === 1 ? [mi('runflow', 'org', 'Run workflow…')] : [])) : '';
       changes = leaving + part(
         fly('user', 'Account', onOff(true),
           part(mi('expiry', 'calendar', n === 1 && xs[0].accountExpires ? 'Change account expiration…' : 'Set account expiration…'),
@@ -1286,6 +1287,7 @@
         break;
       case 'open': openDrawer(k, objs[0]); break;
       case 'offboard': R.offboard?.open(xs.map((u) => u.username)); break;
+      case 'runflow': R.flows?.run(xs[0]); break;
       case 'openobj': openChanged(objs[0]); break;
       case 'enable':
       case 'disable': {
