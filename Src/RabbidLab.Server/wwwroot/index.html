@@ -28,6 +28,7 @@
 <link rel="stylesheet" href="Assets/people-flows.css">
 <link rel="stylesheet" href="Assets/alerts-page.css">
 <link rel="stylesheet" href="Assets/network.css">
+<link rel="stylesheet" href="Assets/search.css">
 <link rel="stylesheet" href="Assets/news.css">
 <link rel="stylesheet" href="Assets/edition.css">
 <link rel="stylesheet" href="Assets/themes.css">
@@ -62,6 +63,7 @@
 <script src="Assets/installs.js" defer></script>
 <script src="Assets/gpo.js" defer></script>
 <script src="Assets/network.js" defer></script>
+<script src="Assets/search.js" defer></script>
 <script src="Assets/notes.js" defer></script>
 <script src="Assets/deploy.js" defer></script>
 <script src="Assets/dock.js" defer></script>
@@ -190,6 +192,8 @@
   </a>
   <!-- Shortcuts on every page: updates, the activity log, what's new, and the source on GitHub. -->
   <nav class="top-links" aria-label="Shortcuts">
+    <!-- Search: the Ctrl+K window (search.js). -->
+    <button type="button" class="top-search" id="top-search" aria-keyshortcuts="Control+K"><svg><use href="#i-search"/></svg><span>Search</span><span class="srch-keys"><kbd class="kbd">Ctrl</kbd><kbd class="kbd">K</kbd></span></button>
     <span class="top-version" data-tip="Installed version"><svg><use href="#i-tag"/></svg><span id="top-version"></span></span>
     <!-- Updates: with a version to install, it says which, in the accent (console.js). -->
     <a class="top-updates" id="top-updates" href="#settings/updates" data-can="updates.view"><svg><use href="#i-updates"/></svg><span id="top-updates-text">Updates</span></a>
@@ -299,6 +303,7 @@
       <p class="rail-label">You</p>
       <a href="#settings/account" data-sub="account"><svg><use href="#i-user"/></svg><span>Account</span></a>
       <a href="#settings/appearance" data-sub="appearance"><svg><use href="#i-brush"/></svg><span>Appearance</span></a>
+      <a href="#settings/keys" data-sub="keys"><svg><use href="#i-grip"/></svg><span>Keyboard shortcuts</span></a>
       <a href="#settings/viewas" data-sub="viewas" data-can="access.view"><svg><use href="#i-eye"/></svg><span>Role preview</span></a>
       <p class="rail-label">Server</p>
       <a href="#settings/address" data-sub="address"><svg><use href="#i-browser"/></svg><span>Console address</span></a>
@@ -680,6 +685,20 @@
         <div class="ds-row" id="seat-fp-row"><div class="ds-l"><b>This server's public key fingerprint</b><span class="ds-code" id="seat-fp"><i class="sk sk-text"></i></span></div><div class="ds-r"><button type="button" class="ds-btn" id="seat-fp-copy">Copy</button></div></div>
       </section>
       <p class="hint problem" id="seat-set-problem" hidden></p>
+    </section>
+
+    <!-- Keyboard shortcuts: your own letter after G for each page, kept for your account (search.js, UserKeys.cs). -->
+    <section class="sub" data-sub="keys" data-title="Keyboard shortcuts" hidden>
+      <header class="sub-head"><h2>Keyboard shortcuts</h2><p>Your own keys. They are saved for your account, so they work on any computer you sign in from. Changes are saved immediately.</p></header>
+      <section class="ds-sec" data-sec="search"><h3 class="ds-h">Search</h3>
+        <div class="ds-row"><div class="ds-l"><b>Open search</b><span>Find pages, people, computers, devices, links and actions from any page.</span></div>
+          <div class="ds-r keys-r"><kbd class="kbd">Ctrl</kbd><kbd class="kbd">K</kbd><span class="keys-then">or</span><kbd class="kbd">/</kbd></div></div>
+      </section>
+      <section class="ds-sec" data-sec="pages"><h3 class="ds-h">Go to a page</h3>
+        <div id="keys-list"></div>
+        <div class="ds-row"><div class="ds-l"><b>Reset to the defaults</b><span>Puts back the letter each page starts with.</span></div><div class="ds-r"><button type="button" class="ds-btn" id="keys-reset">Reset</button></div></div>
+      </section>
+      <p class="hint problem" id="keys-problem" hidden></p>
     </section>
 
     <!-- Network: the ranges the scan pings, how often it scans on its own, and the SNMP community (network.js). -->
@@ -2078,6 +2097,19 @@
   <p class="hint problem" id="app-problem" role="alert" hidden></p>
   <div class="dialog-foot"><button type="button" id="app-cancel">Cancel</button><button type="button" class="primary" id="app-save">Save</button></div>
 </dialog>
+
+<!-- Ctrl+K search: one window in the middle that finds pages, people, computers, devices and actions (search.js). -->
+<div class="search-layer" id="search" hidden>
+  <div class="search-dim" data-search-shut></div>
+  <div class="search-win" role="dialog" aria-modal="true" aria-label="Search">
+    <label class="search-find"><svg><use href="#i-search"/></svg><input id="search-q" placeholder="Search pages, people, computers and actions" autocomplete="off" spellcheck="false" aria-label="Search" role="combobox" aria-controls="search-list" aria-expanded="true"><kbd class="kbd">Esc</kbd></label>
+    <div class="search-list" id="search-list" role="listbox"></div>
+    <div class="search-foot"><span><span class="srch-keys"><kbd class="kbd">↑</kbd><kbd class="kbd">↓</kbd></span>Move</span><span><kbd class="kbd">Enter</kbd>Open</span><span><kbd class="kbd">Esc</kbd>Close</span>
+      <span class="grow"></span><span>Press <kbd class="kbd">G</kbd> then a letter to go to a page</span></div>
+  </div>
+</div>
+<!-- After G: the letters it waits for. -->
+<div class="search-chord" id="search-chord" role="status" hidden></div>
 
 <!-- A device on Network: a name and type of our own over what the scan detected (network.js). -->
 <dialog class="dialog" id="net-edit" aria-labelledby="net-edit-title">

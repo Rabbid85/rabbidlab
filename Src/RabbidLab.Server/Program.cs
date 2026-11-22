@@ -146,6 +146,7 @@ builder.Services.AddEventAlerts();
 builder.Services.AddDcSettings();
 // Network: every device on the network ranges, found by a ping sweep and identified (NetworkScan.cs).
 builder.Services.AddNetworkScan();
+builder.Services.AddSingleton<UserKeys>();
 // People workflows: steps for AD users, run by hand (PeopleWorkflows.cs).
 builder.Services.AddSingleton<PeopleWorkflows>();
 builder.Services.AddSingleton<FlowRunner>();
@@ -272,6 +273,7 @@ app.MapPrintQueuesApi();
 app.MapEventAlertsApi();
 app.MapDcSettingsApi();
 app.MapNetworkApi();
+app.MapUserKeys();
 app.MapPeopleWorkflowsApi();
 app.MapChangesApi();
 app.MapLinksApi();

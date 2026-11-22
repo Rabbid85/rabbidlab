@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.365 (2026-11-22)
+
+- Search from any page: press Ctrl+K or /, or select Search in the top bar. It finds pages, Active Directory users, groups and computers, devices, network devices, links, sensors, settings and actions such as Scan the network or Add a link.
+- Arrows move, Enter opens, and Esc closes. What you opened last shows first next time.
+- G then a letter goes straight to a page, such as G then U for Users. Change the letters in Settings, Keyboard shortcuts. They are kept for your account, so they work on any computer, and Reset puts the defaults back.
+
 ## 1.1.364 (2026-11-22)
 
 - Network scans no longer flash. While a range is pinged, what the ping hasn’t reached yet is dimmed, and a line moves along its strip to where it has got to.

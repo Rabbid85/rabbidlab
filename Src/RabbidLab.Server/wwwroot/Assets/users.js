@@ -2919,12 +2919,21 @@
     el.querySelector('[data-not-now]')?.addEventListener('click', () => readOnly(true));
   };
   R.adSetupCard = setupCard;
-  // Another page asks for a person in Users: over there, with them open.
+  // Another page asks for a user, group or computer (the org chart, Ctrl+K search): its list, with it open. page is users,
+  // groups or computers; key is what that list keys rows by (username, DN or name).
   let wanted = null;
-  R.adOpenUser = (username) => {
-    wanted = username;
-    location.hash = '#ad/users';
+  const openWantedAd = () => {
+    if (!wanted || adPage !== wanted.page || !lists[adPage]) return;
+    const x = lists[adPage].find((v) => same(AD[adPage].key(v), wanted.key));
+    wanted = null;
+    if (x) openDrawer(adPage, x);
   };
+  R.adOpen = (page, key) => {
+    wanted = { page, key };
+    if (R.where()[0] === 'ad' && adPage === page && lists[page]) openWantedAd(); // already there: the address doesn't change
+    else location.hash = `#ad/${page}`;
+  };
+  R.adOpenUser = (username) => R.adOpen('users', username);
   // Turns read-only on (confirming it's you first) or off, then every Active Directory page reads again.
   const readOnly = async (on) => {
     try {
@@ -3290,12 +3299,8 @@
       say('dir-problem', err.message);
     }
     drawAd();
-    // Asked for from another page (the org chart): that person, open in the panel, once the list is in.
-    if (wanted && adPage === 'users') {
-      const u = (lists.users || []).find((x) => x.username === wanted);
-      wanted = null;
-      if (u) openDrawer('users', u);
-    }
+    // Asked for from another page (the org chart, search): that one, open in the panel, once the list is in.
+    openWantedAd();
   };
   let lastAdPage = null;
   document.addEventListener('rabbidlab:show', (e) => {

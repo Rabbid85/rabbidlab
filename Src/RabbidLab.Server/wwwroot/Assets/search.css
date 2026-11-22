@@ -1,0 +1,56 @@
+/* Ctrl+K search (search.js): a window in the middle of the screen, results grouped by kind with each page's keys, and
+   the Search button in the top bar. It wears the windows' style from Appearance (style.js). */
+.kbd { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 5px; border: 1px solid #34384F; border-bottom-width: 2px; border-radius: 5px;
+  background: #171A27; color: #B8BCCB; font: 600 11px/1 "Segoe UI", system-ui, sans-serif; }
+.srch-keys { display: inline-flex; flex: none; align-items: center; gap: 3px; }
+
+/* The Search button in the top bar. */
+.top-search { display: inline-flex; align-items: center; gap: 8px; height: 32px; margin-right: 6px; padding: 0 6px 0 10px; border: 1px solid var(--line-strong); border-radius: 8px;
+  background: #11131D; color: var(--muted); font-size: 13px; font-weight: 600; cursor: pointer; }
+.top-search:hover { background: #1A1D2B; color: var(--title); }
+.top-search > svg { width: 15px; height: 15px; }
+.top-search > span:first-of-type { margin-right: 18px; }
+
+/* The window, over a dim page. */
+.search-layer { position: fixed; inset: 0; z-index: 900; }
+.search-layer[hidden] { display: none; }
+.search-dim { position: absolute; inset: 0; background: rgba(5, 6, 10, .58); animation: srch-fade .15s ease-out; }
+@keyframes srch-fade { from { opacity: 0; } }
+.search-win { position: absolute; top: 10vh; left: 50%; display: flex; flex-direction: column; width: min(660px, calc(100vw - 32px)); max-height: 80vh; overflow: hidden;
+  transform: translateX(-50%); border: 1px solid var(--line-strong); border-radius: 14px; background: #11131D; animation: srch-pop .16s ease-out; }
+html[data-sty-win] .search-win { border-color: var(--sty-win-edge); background: var(--sty-win-bg); backdrop-filter: var(--sty-win-blur); }
+@keyframes srch-pop { from { opacity: 0; transform: translate(-50%, -6px) scale(.985); } }
+.search-find { display: flex; flex: none; align-items: center; gap: 12px; height: 56px; padding: 0 14px 0 18px; border-bottom: 1px solid var(--line); cursor: text; }
+.search-find > svg { flex: none; width: 19px; height: 19px; color: var(--muted); }
+.search-find input { flex: 1; min-width: 0; height: auto; padding: 0; border: 0; outline: 0; background: none; color: var(--title); font: inherit; font-size: 16px; }
+.search-find input::placeholder { color: #6D7290; }
+.search-list { flex: 1; min-height: 120px; max-height: min(430px, calc(80vh - 120px)); overflow-y: auto; padding: 6px; }
+.srch-g { margin: 10px 10px 4px; color: #8B90A5; font-size: 12px; font-weight: 650; }
+.srch-g:first-child { margin-top: 4px; }
+.srch-it { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto auto; align-items: center; gap: 12px; min-height: 40px; padding: 0 10px; border-radius: 9px; cursor: pointer; }
+.srch-it.on { background: #1D2133; }
+.srch-it .pic.small { width: 26px; height: 26px; }
+.srch-it .pic.small svg { width: 14px; height: 14px; }
+.srch-l { min-width: 0; overflow: hidden; color: var(--title); font-size: 14px; white-space: nowrap; text-overflow: ellipsis; }
+.srch-l mark { background: none; color: var(--accent-soft); font-weight: 700; }
+.srch-h { max-width: 220px; overflow: hidden; color: var(--muted); font-size: 12.5px; white-space: nowrap; text-overflow: ellipsis; }
+.srch-it .srch-keys { min-width: 46px; justify-content: flex-end; }
+.srch-none, .srch-wait { margin: 0; padding: 26px 16px; color: var(--muted); font-size: 13.5px; text-align: center; }
+.srch-wait { padding: 10px 16px 14px; font-size: 12.5px; }
+.srch-none b { color: var(--title); }
+.search-foot { display: flex; flex: none; flex-wrap: wrap; align-items: center; gap: 8px 18px; padding: 10px 16px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+.search-foot > span { display: inline-flex; align-items: center; gap: 6px; }
+.search-foot > .grow { flex: 1; }
+
+/* After G: the letters it waits for, under the top bar. */
+.search-chord { position: fixed; top: 64px; left: 50%; z-index: 905; display: flex; align-items: center; gap: 10px; max-width: calc(100vw - 32px); padding: 8px 16px 8px 10px;
+  transform: translateX(-50%); border: 1px solid var(--line-strong); border-radius: 999px; background: #141725; color: var(--muted); font-size: 13px; }
+.search-chord[hidden] { display: none; }
+.search-chord b { color: var(--title); font-weight: 600; }
+
+/* Settings › Keyboard shortcuts: G, then a box for the letter. */
+.keys-r { gap: 8px; }
+.keys-then { color: var(--muted); font-size: 13px; }
+.keys-in { width: 48px; text-align: center; text-transform: uppercase; font-weight: 700; }
+@media (prefers-reduced-motion: reduce) { .search-dim, .search-win { animation: none; } }
+@media (max-width: 760px) { .top-search > span:first-of-type, .top-search .srch-keys { display: none; } .top-search { padding: 0 8px; } }

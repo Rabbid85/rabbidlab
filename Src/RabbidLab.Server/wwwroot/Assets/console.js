@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.365', [
+    'Search from any page: press Ctrl+K or /, or select Search in the top bar. It finds pages, Active Directory users, groups and computers, devices, network devices, links, sensors, settings and actions such as Scan the network or Add a link.',
+    'Arrows move, Enter opens, and Esc closes. What you opened last shows first next time.',
+    'G then a letter goes straight to a page, such as G then U for Users. Change the letters in Settings, Keyboard shortcuts. They are kept for your account, so they work on any computer, and Reset puts the defaults back.']],
   ['1.1.364', [
     'Network scans no longer flash. While a range is pinged, what the ping hasn’t reached yet is dimmed, and a line moves along its strip to where it has got to.',
     'While devices are identified, those not done yet stay dimmed, the ones being asked breathe slowly, and each brightens once as it is done.']],
@@ -1162,6 +1166,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.365': ['2026-11-22', 'feature', 'Ctrl+K search, and keyboard shortcuts of your own', 'search.jpg'],
   '1.1.364': ['2026-11-22', 'fix', 'A calmer Network scan'],
   '1.1.363': ['2026-11-22', 'fix', 'Network colours, and what a scan is working on'],
   '1.1.362': ['2026-11-22', 'feature', 'Network: address strips above the list', 'strips.jpg'],
@@ -1692,7 +1697,7 @@ const RELEASE_INFO = {
   const PAGES = { overview: 'overview.view', links: 'links.view', sensors: 'sensors.view', seats: 'seats.view sessions.view', people: 'access.view', ad: 'ad.view ad.connect',
     org: 'ad.view', attrs: 'ad.view', sync: 'ad.view', report: 'activity.view', alerts: 'sensors.alerts', network: 'network.view' };
   // Settings' pages and what each needs; About is for everyone, Developer for Rabbid Lab Dev only.
-  const SUBS = { account: '', appearance: '', viewas: 'access.view', address: '', updates: 'updates.view', signin: 'access.roles access.unlock', activity: 'activity.view', reports: 'activity.view', alerts: 'sensors.alerts', notifications: 'sensors.alerts', history: 'sensors.alerts',
+  const SUBS = { account: '', appearance: '', keys: '', viewas: 'access.view', address: '', updates: 'updates.view', signin: 'access.roles access.unlock', activity: 'activity.view', reports: 'activity.view', alerts: 'sensors.alerts', notifications: 'sensors.alerts', history: 'sensors.alerts',
     links: 'links.edit', sensors: 'sensors.edit', seats: 'seats.settings seats.add', network: 'network.settings', ad: 'ad.connect', developer: 'updates.auto', support: '', about: '' };
   const subOk = (s) => s in SUBS && (!SUBS[s] || !shown || allows(SUBS[s])) && (s !== 'developer' || document.body.classList.contains('is-dev'));
   const pageOk = (key) => !shown || !PAGES[key] || allows(PAGES[key]);
