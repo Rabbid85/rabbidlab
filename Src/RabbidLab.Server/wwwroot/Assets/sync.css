@@ -33,21 +33,22 @@
 
 /* Column names over each list, as on the console's grids, so the words line up under something. */
 .sy-th { display: grid; align-items: center; gap: 12px; min-height: 34px; padding: 0 16px; border-top: 1px solid var(--line); background: #0E1019; color: var(--muted); font-size: 12px; font-weight: 650; }
-.sy-th-rows { grid-template-columns: 30px 250px minmax(0, 1fr); }
-.sy-th-fl { grid-template-columns: 70px 210px minmax(0, 1fr) 170px; }
+.sy-th-rows { grid-template-columns: 30px 200px 210px minmax(0, 1fr); }
+.sy-th-fl { grid-template-columns: 70px 160px 210px minmax(0, 1fr) 170px; }
 .sy-th + .sy-rows { border-top: 1px solid var(--line); }
 .sy-th + .sy-feed > .sy-fl:first-child { border-top-color: var(--line); }
 
 /* A row for each domain controller and Microsoft 365. */
 .sy-rows { display: grid; border-top: 1px solid var(--line); }
-.sy-row { position: relative; display: grid; grid-template-columns: 30px 250px minmax(0, 1fr); align-items: center; gap: 12px; min-height: 52px; padding: 6px 16px;
+.sy-row { position: relative; display: grid; grid-template-columns: 30px 200px 210px minmax(0, 1fr); align-items: center; gap: 12px; min-height: 52px; padding: 6px 16px;
   border-top: 1px solid var(--line); cursor: pointer; }
 .sy-row:first-child { border-top: 0; }
 .sy-row:hover, .sy-fl:hover { background: #151826; }
 .sy-row.on, .sy-fl.on { background: #1A1D2B; }
 .sy-row > span { position: relative; z-index: 1; min-width: 0; }
 .sy-name b { display: block; color: #fff; font-size: 13.5px; font-weight: 600; }
-.sy-name small { display: block; overflow: hidden; color: var(--muted); font-size: 12px; white-space: nowrap; text-overflow: ellipsis; }
+.sy-name b, .sy-where, .sy-what { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.sy-where, .sy-what { color: #A9ADC2; font-size: 13px; }
 .sy-st { display: flex; align-items: center; min-width: 0; }
 .sy-lab { overflow: hidden; color: #8A8FA8; font-size: 13px; white-space: nowrap; text-overflow: ellipsis; transition: color .25s; }
 [data-s="run"] .sy-lab { color: #E6E8F2; }
@@ -82,15 +83,13 @@
 
 /* The feed: every copy, newest first. */
 .sy-feed { max-height: 640px; overflow-y: auto; }
-/* The feed's columns: its object column starts where the rows' words above do (16 + 70 + 12 + 210 + 12 = 16 + 30 + 12 + 250 + 12). */
-.sy-fl { display: grid; grid-template-columns: 70px 210px minmax(0, 1fr) 170px; align-items: center; gap: 12px; min-height: 48px; padding: 5px 16px; border-top: 1px solid var(--line); cursor: pointer; }
+/* The feed's columns line up with the rows' above: its name under their Where, its change under their state. */
+.sy-fl { display: grid; grid-template-columns: 70px 160px 210px minmax(0, 1fr) 170px; align-items: center; gap: 12px; min-height: 48px; padding: 5px 16px; border-top: 1px solid var(--line); cursor: pointer; }
 .sy-fl > small { color: var(--muted); font-size: 12px; }
 .sy-flr { overflow: hidden; color: #C9CCDA; font-size: 13px; white-space: nowrap; text-overflow: ellipsis; }
 .sy-obj { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .sy-obj > svg { flex: none; width: 17px; height: 17px; color: #8B90A5; }
-.sy-obj > span { min-width: 0; }
-.sy-obj b { display: block; overflow: hidden; color: #fff; font-size: 13.5px; font-weight: 600; white-space: nowrap; text-overflow: ellipsis; }
-.sy-obj small { display: block; overflow: hidden; color: var(--muted); font-size: 12px; white-space: nowrap; text-overflow: ellipsis; }
+.sy-obj b { display: block; min-width: 0; overflow: hidden; color: #fff; font-size: 13.5px; font-weight: 600; white-space: nowrap; text-overflow: ellipsis; }
 .sy-cell { display: inline-flex; align-items: center; gap: 6px; min-width: 0; color: #A9ADC2; font-size: 12.5px; white-space: nowrap; }
 .sy-cell > svg { flex: none; width: 15px; height: 15px; }
 .sy-cell[data-s="ok"] { color: var(--ok); }
@@ -111,5 +110,5 @@
   .sy-row .sy-st { grid-column: 2; }
   .sy-fl { grid-template-columns: 60px minmax(0, 1fr); }
   .sy-flr { grid-column: 2; }
-  .sy-fl .sy-obj, .sy-fl .sy-cell { grid-column: 2; }
+  .sy-fl .sy-obj, .sy-fl .sy-what, .sy-fl .sy-cell { grid-column: 2; }
 }

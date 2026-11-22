@@ -219,7 +219,7 @@ public sealed class SyncEngine(DirectoryTools tools, IReplicator replicator, Dev
     ILogger<SyncEngine> log)
 {
     private const int KeepFeed = 500;
-    private static readonly TimeSpan Fresh = TimeSpan.FromSeconds(20);
+    private static readonly TimeSpan Fresh = TimeSpan.FromSeconds(5);
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
     private readonly JsonFile<SyncFile> file = folder.Json<SyncFile>("sync.json", Json);
     private readonly Lock gate = new();
@@ -344,11 +344,13 @@ public sealed class SyncEngine(DirectoryTools tools, IReplicator replicator, Dev
         }
     }
 
-    // The window of changes: since every DC last had every change, a day when that's never been seen, and a week at most.
+    // The window of changes: the last day, so a change stays listed after it has reached every DC, or from when every DC
+    // last had every change when that's longer ago, a week at most.
     private static DateTime Since(SyncFile f)
     {
+        var day = DateTime.UtcNow.AddDays(-1);
         var week = DateTime.UtcNow.AddDays(-7);
-        return f.Clean is { } clean ? (clean < week ? week : clean) : DateTime.UtcNow.AddDays(-1);
+        return f.Clean is { } clean && clean < day ? (clean < week ? week : clean) : day;
     }
 
     private async Task Rescan(CancellationToken stop)
@@ -384,7 +386,7 @@ public sealed class SyncEngine(DirectoryTools tools, IReplicator replicator, Dev
         {
             return new { d.Name, d.Host, d.Site, d.ReadOnly, S = "bad", F = 0.0, Label = "Can't be read", Error = why, Advice = (string?) "Check that it's on and on the network.", Missing = missing };
         }
-        return new { d.Name, d.Host, d.Site, d.ReadOnly, S = "idle", F = 0.0, Label = missing > 0 ? $"Missing {missing} change{(missing == 1 ? "" : "s")}" : "Has every change",
+        return new { d.Name, d.Host, d.Site, d.ReadOnly, S = "idle", F = 0.0, Label = missing > 0 ? $"Missing {missing} change{(missing == 1 ? "" : "s")}" : "Up to date",
             Error = (string?) null, Advice = (string?) null, Missing = missing };
     }
 
@@ -399,11 +401,11 @@ public sealed class SyncEngine(DirectoryTools tools, IReplicator replicator, Dev
         {
             return new { Server = server, Client = client is not null, Online = online, p.S, p.F, p.Label, p.Error, p.Advice, f.Entra?.At, f.Entra?.Next, f.Entra?.Sent };
         }
-        var (s, label, error, advice) = client is null ? ("bad", "No client on it", $"{Product.Title} syncs Microsoft 365 through the client on {server}.", $"Install the {Product.Title} client on {server} from Devices.")
-            : !online ? ("bad", "Its client isn't online", $"The client on {server} hasn't checked in lately.", $"Check that {server} is on and its {Product.Title} client is running.")
-            : f.Entra is { Ok: false } e ? ("bad", "The last sync from here failed", e.Error, (string?) null)
-            : f.Entra is { At: not null } ? ("idle", "Last synced from here at {at}", (string?) null, (string?) null)
-            : ("idle", "Not synced from here yet", (string?) null, (string?) null);
+        var (s, label, error, advice) = client is null ? ("bad", "The client isn't installed there", $"{Product.Title} syncs Microsoft 365 through the client on {server}.", $"Install the {Product.Title} client on {server} from Devices.")
+            : !online ? ("bad", "Its client is offline", $"The client on {server} hasn't checked in lately.", $"Check that {server} is on and its {Product.Title} client is running.")
+            : f.Entra is { Ok: false } e ? ("bad", "The last sync failed", e.Error, (string?) null)
+            : f.Entra is { At: not null } ? ("idle", "Last synced at {at}", (string?) null, (string?) null)
+            : ("idle", "Not synced yet", (string?) null, (string?) null);
         return new { Server = server, Client = client is not null, Online = online, S = s, F = 0.0, Label = label, Error = error, Advice = advice, f.Entra?.At, f.Entra?.Next, f.Entra?.Sent };
     }
 
@@ -541,7 +543,7 @@ public sealed class SyncEngine(DirectoryTools tools, IReplicator replicator, Dev
                     }
                     else
                     {
-                        Set(live, name, "run", 1, "Checking it has everything");
+                        Set(live, name, "run", 1, "Checking that nothing is missing");
                     }
                 }
                 after = await tools.SyncScan(dcs, since, stop);
@@ -564,7 +566,7 @@ public sealed class SyncEngine(DirectoryTools tools, IReplicator replicator, Dev
                 {
                     // Nothing was missing: say so, rather than that it synced.
                     var got = before.Changes.Count(c => c.Places.GetValueOrDefault(d.Name) is SyncCompare.Pending or SyncCompare.Unknown);
-                    Set(live, d.Name, "ok", 1, got == 0 ? "Nothing to sync, it had every change" : $"Synced {got} change{(got == 1 ? "" : "s")}, has every change");
+                    Set(live, d.Name, "ok", 1, got == 0 ? "Already up to date" : $"Got {got} missing change{(got == 1 ? "" : "s")}");
                 }
             }
             Record(live, before, after, dcs);
@@ -623,8 +625,8 @@ public sealed class SyncEngine(DirectoryTools tools, IReplicator replicator, Dev
         var client = Client(server);
         if (client is null || !clients.IsOnline(client))
         {
-            var (label, why, advice) = client is null ? ("No client on it", $"{Product.Title} syncs Microsoft 365 through the client on {server}.", $"Install the {Product.Title} client on {server} from Devices.")
-                : ("Its client isn't online", $"The client on {server} hasn't checked in lately.", $"Check that {server} is on and its client is running.");
+            var (label, why, advice) = client is null ? ("The client isn't installed there", $"{Product.Title} syncs Microsoft 365 through the client on {server}.", $"Install the {Product.Title} client on {server} from Devices.")
+                : ("Its client is offline", $"The client on {server} hasn't checked in lately.", $"Check that {server} is on and its client is running.");
             Fail(live, null, label, why, advice);
             failed.Add($"Microsoft 365: {why}");
             return null;
@@ -679,7 +681,7 @@ public sealed class SyncEngine(DirectoryTools tools, IReplicator replicator, Dev
         }
         file.Save(f);
         Save(events);
-        Set(live, null, "ok", 1, $"Synced at {{at}}{(said.Sent is { } n ? $", {n} sent" : "")}");
+        Set(live, null, "ok", 1, $"Synced at {{at}}{(said.Sent is { } n ? $", sent {n} change{(n == 1 ? "" : "s")}" : "")}");
         return scan;
     }
 

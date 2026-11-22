@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.328 (2026-11-22)
+
+- Sync updates by itself while it is open, so a change made on any domain controller shows up within seconds without a refresh.
+- Sync keeps the last day of changes listed, so a change that Active Directory copied by itself before you clicked Sync still shows, marked On every DC.
+- The Sync lists have one thing per column (name, where, change and result each get their own) and plain wording such as Already up to date and Got 2 missing changes.
+
 ## 1.1.327 (2026-11-21)
 
 - The News & Changelog divider on Overview is larger, so it reads as the heading of that row.

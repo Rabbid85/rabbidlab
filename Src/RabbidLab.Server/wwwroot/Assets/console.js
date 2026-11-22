@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.328', [
+    'Sync updates by itself while it is open, so a change made on any domain controller shows up within seconds without a refresh.',
+    'Sync keeps the last day of changes listed, so a change that Active Directory copied by itself before you clicked Sync still shows, marked On every DC.',
+    'The Sync lists have one thing per column (name, where, change and result each get their own) and plain wording such as Already up to date and Got 2 missing changes.']],
   ['1.1.327', [
     'The News & Changelog divider on Overview is larger, so it reads as the heading of that row.']],
   ['1.1.326', [
@@ -1029,6 +1033,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.328': ['2026-11-22', 'fix', 'Sync updates by itself and reads plainly'],
   '1.1.327': ['2026-11-21', 'update', 'A larger News & Changelog heading'],
   '1.1.326': ['2026-11-21', 'update', 'A quiet scroll bar and a news divider'],
   '1.1.325': ['2026-11-21', 'update', 'Nothing to sync, and real screenshots'],
