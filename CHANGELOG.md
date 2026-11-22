@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.334 (2026-11-22)
+
+- The opening screen is a smoked glass window over the sign-in background, with a row for each read that turns from Loading links to Loaded links and shows what came back. It never changes size.
+- Settings, Appearance, Opening screen picks the window (With each read, Small window or Full screen), when it plays and what it says after an update, and Show it plays it. Its style is under Style, Opening screen.
+
 ## 1.1.333 (2026-11-22)
 
 - The sign-in card is larger and in smoked glass by default, with a motivational quote on its left side. Settings, Appearance, Sign-in page sets the card (whole card, open left side or styled left side), its style and glass opacity, its size, the quote, the kind of quote and your own quotes.

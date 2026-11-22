@@ -318,9 +318,35 @@ body.booting .top, body.booting .rail, body.booting .main > :not(.busy-cover) { 
 .boot-dots { display: flex; gap: 6px; margin-top: 12px; }
 .boot-dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--line-strong); transition: background .3s ease, box-shadow .3s ease; }
 .boot-dots i.on { background: var(--accent-line); box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 70%, transparent); }
-.boot-new { margin: 16px 0 0; padding: 5px 12px; border: 1px solid color-mix(in srgb, var(--accent-line) 55%, transparent); border-radius: 999px;
-  background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--muted); font-size: 12.5px; }
-.boot-new b { color: var(--title); font-weight: 650; }
+/* In a window (Settings, Appearance, Opening screen: With each read or Small window): the window in the style engine's
+   boot part (Style, Opening screen), over the sign-in background (a backdrop canvas) or the plain page. It never changes
+   size and only fades in and out where it sits. */
+.boot.win { background: var(--night); }
+.boot.win::before { display: none; }
+.boot-bg { position: absolute !important; inset: 0; width: 100%; height: 100%; }
+.boot-box { display: grid; justify-items: center; width: min(380px, calc(100vw - 32px)); padding: 30px 36px 26px; border: 1px solid var(--sty-boot-edge, var(--line-strong)); border-radius: 20px;
+  background: var(--sty-boot-bg, #11131D); backdrop-filter: var(--sty-boot-blur, none); }
+/* With each read: the flask in the middle of the left side, the name and one line on the right, then a row for each read
+   that says what it's doing and then what it did, in the same place, with what came back on its right. */
+.boot.reads .boot-box { grid-template-columns: 120px minmax(0, 1fr); justify-items: stretch; align-items: start; gap: 22px; width: min(540px, calc(100vw - 32px)); padding: 28px 30px 24px; text-align: left; }
+.boot.reads .boot-flask { align-self: center; }
+.boot.reads .boot-name { margin: 0; }
+.boot.reads .boot-step { margin: 6px 0 0; white-space: nowrap; }
+.boot-rows { display: grid; margin-top: 12px; border-top: 1px solid rgba(255, 255, 255, .07); }
+.boot-row { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; align-items: center; gap: 10px; height: 32px; border-bottom: 1px solid rgba(255, 255, 255, .05); color: #8B90A5; font-size: 13px; transition: color .3s; }
+.boot-row small { color: #858AA2; font-size: 12.5px; opacity: 0; transition: opacity .3s; }
+.boot-row[data-s="run"] { color: #fff; }
+.boot-row[data-s="ok"] { color: #D7DAE8; }
+.boot-row[data-s="ok"] small { opacity: 1; }
+.boot-ic { position: relative; display: grid; place-items: center; width: 18px; height: 18px; }
+.boot-ic i { width: 7px; height: 7px; border-radius: 50%; background: #3A3F58; transition: opacity .2s; }
+.boot-row[data-s="run"] .boot-ic i { background: var(--accent-line); animation: sk-pulse 1s ease-in-out infinite; }
+.boot-ic svg { position: absolute; width: 15px; height: 15px; color: var(--ok); opacity: 0; transform: scale(.4); transition: opacity .25s, transform .3s cubic-bezier(.3, 1.4, .5, 1); }
+.boot-row[data-s="ok"] .boot-ic i { opacity: 0; }
+.boot-row[data-s="ok"] .boot-ic svg { opacity: 1; transform: none; }
+.boot-note { margin: 14px 0 0; color: #9DA2B8; font-size: 12.5px; line-height: 1.5; }
+.boot-note b { color: #fff; font-weight: 650; }
+.boot:not(.reads) .boot-note { max-width: 420px; text-align: center; }
 .boot-drop { position: fixed; top: -30px; z-index: 1; width: 11px; height: 11px; border-radius: 24%; animation: boot-drop .75s cubic-bezier(.55, 0, .75, .4) forwards; }
 @keyframes boot-drop { to { transform: translate(var(--dx), var(--dy)) rotate(200deg) scale(.4); opacity: .2; } }
 @media (max-width: 700px) { .boot .flask { width: 100px; height: 100px; } .boot-name { font-size: 26px; } }

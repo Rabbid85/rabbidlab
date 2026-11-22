@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.334', [
+    'The opening screen is a smoked glass window over the sign-in background, with a row for each read that turns from Loading links to Loaded links and shows what came back. It never changes size.',
+    'Settings, Appearance, Opening screen picks the window (With each read, Small window or Full screen), when it plays and what it says after an update, and Show it plays it. Its style is under Style, Opening screen.']],
   ['1.1.333', [
     'The sign-in card is larger and in smoked glass by default, with a motivational quote on its left side. Settings, Appearance, Sign-in page sets the card (whole card, open left side or styled left side), its style and glass opacity, its size, the quote, the kind of quote and your own quotes.',
     'Settings, Appearance has Style: one style for the whole app (Solid, Smoked glass, Frosted glass or Dark) with its glass opacity. Windows, Side panel, Menus and Toasts can each follow it or have their own, and Use everywhere sets them all to follow it.',
@@ -1052,6 +1055,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.334': ['2026-11-22', 'feature', 'A glass opening screen with each read'],
   '1.1.333': ['2026-11-22', 'feature', 'A style engine, a glass sign-in card and System'],
   '1.1.332': ['2026-11-22', 'feature', 'Toasts stack, with all their options in Appearance'],
   '1.1.331': ['2026-11-22', 'fix', 'No flash of the console frame on reload'],
@@ -2517,23 +2521,36 @@ const RELEASE_INFO = {
     + '<g class="flask-pop" fill="#F2BE6B"><circle cx="46" cy="9.5" r="2.2"/><circle cx="21.5" cy="10" r="1.7"/></g></svg>';
 
   // --- The opening screen: the lab's name under the flask, which fills as the console's first reads come back -------
-  // Each step is a read the console makes as it opens, the words for what came back, and the permission it needs.
+  // Each step is a read the console makes as it opens, what it says while it runs and once it's done, the words for what
+  // came back, and the permission it needs.
   const BOOT = [
-    { path: '/api/signin', doing: 'Signing in', said: (j) => j.user?.name || j.user?.username || '' },
-    { path: '/api/links', doing: 'Loading links', can: 'links.view', said: (j) => `${(j.links || []).length} links` },
-    { path: '/api/sensors', doing: 'Checking sensors', can: 'sensors.view', said: (j) => {
+    { path: '/api/signin', doing: 'Signing in', done: 'Signed in', said: (j) => j.user?.name || j.user?.username || '' },
+    { path: '/api/links', doing: 'Loading links', done: 'Loaded links', can: 'links.view', said: (j) => `${(j.links || []).length} links` },
+    { path: '/api/sensors', doing: 'Checking sensors', done: 'Checked sensors', can: 'sensors.view', said: (j) => {
       const all = j.sensors || [];
       const up = all.filter((x) => x.status === 'up').length;
       const down = all.filter((x) => x.status === 'down').length;
       return down ? `${up} up, ${down} down` : `${up} up`;
     } },
-    { path: '/api/clients', doing: 'Loading devices', can: 'seats.view', said: (j) => `${(Array.isArray(j) ? j : []).filter((c) => c.approved && c.online).length} online` },
-    { path: '/api/update', doing: 'Checking for updates', can: 'updates.view', said: (j) => (j.status === 'available' ? `Version ${j.available} available` : 'Up to date') },
+    { path: '/api/clients', doing: 'Loading devices', done: 'Loaded devices', can: 'seats.view', said: (j) => `${(Array.isArray(j) ? j : []).filter((c) => c.approved && c.online).length} online` },
+    { path: '/api/update', doing: 'Checking for updates', done: 'Checked for updates', can: 'updates.view', said: (j) => (j.status === 'available' ? `Version ${j.available} available` : 'Up to date') },
   ];
+  // The opening screen's settings (Settings, Appearance, Opening screen), just for this browser; someone on System gets the
+  // lab's. kind: a window with a row for each read, a small window, or the whole window as it was; when: after sign-in and
+  // updates, or after updates only; note: after an update, the new version's first note or only the version.
+  const OPENING_DEFAULT = { kind: 'reads', when: 'both', note: 'note' };
+  const openingMine = () => {
+    try { return JSON.parse(localStorage.getItem('rabbidlab.opening') || 'null'); } catch { return null; }
+  };
+  const openingPrefs = () => {
+    const o = { ...OPENING_DEFAULT, ...(window.RabbidLabBrand.now.look?.opening || {}), ...(openingMine() || {}) };
+    return { kind: ['reads', 'small', 'full'].includes(o.kind) ? o.kind : 'reads', when: o.when === 'updates' ? 'updates' : 'both', note: o.note === 'version' ? 'version' : 'note' };
+  };
   const boot = (() => {
     const SEEN = 'rabbidlab.version.seen'; // the version this browser last opened on
     const LEVEL = (share) => 14 - 24 * share; // the liquid's offset in the flask: 14 is empty, -10 is up the neck
     let el = null;
+    let kind = 'reads'; // the window it plays in, from the settings when it comes up
     let steps = BOOT; // narrowed to what this person's roles read, once sign-in has answered
     const got = {}; // path -> what it said
     let news = null; // { version } when this browser opens a version for the first time
@@ -2543,13 +2560,25 @@ const RELEASE_INFO = {
     let landed = 0; // steps shown as done
     let ready = false; // the console is ready underneath
     let timer = null;
+    let stopBg = null; // the sign-in background behind the window
     const pace = () => (!playing ? 80 : 480); // between steps
     const doing = (s) => (s.path === '/api/signin' && !signing ? 'Checking your session' : s.doing);
+    const done = (s) => (s.path === '/api/signin' && !signing ? 'Checked your session' : s.done);
     const draw = () => {
       if (!el) return;
       const next = steps[landed];
       const last = steps[landed - 1];
       el.querySelector('.boot-level').style.transform = `translateY(${LEVEL(landed / steps.length)}px)`;
+      // With each read: each row says what it's doing, then what it did, in the same place.
+      if (kind === 'reads') {
+        el.querySelectorAll('.boot-row').forEach((r, k) => {
+          const s = steps[k];
+          r.dataset.s = k < landed ? 'ok' : k === landed ? 'run' : 'wait';
+          r.querySelector('.boot-lbl').textContent = k < landed ? done(s) : doing(s);
+          r.querySelector('small').textContent = k < landed ? got[s.path] || '' : '';
+        });
+        return;
+      }
       el.querySelector('.boot-dots').innerHTML = steps.map((_, k) => `<i${k < landed ? ' class="on"' : ''}></i>`).join('');
       // All in and the page not quite ready: the last one stays, with what it found, so the line is never blank.
       el.querySelector('.boot-step').innerHTML = next ? `<b>${esc(doing(next))}…</b>${last && got[last.path] ? `<span> · ${esc(got[last.path])}</span>` : ''}`
@@ -2574,13 +2603,14 @@ const RELEASE_INFO = {
       if (!el) return;
       const first = (meInfo?.name || meInfo?.username || '').split(' ')[0];
       const last = [...steps].reverse().find((s) => got[s.path]);
-      if (playing) el.querySelector('.boot-step').innerHTML = first ? `<b>${signing ? 'Welcome' : 'Welcome back'}, ${esc(first)}.</b>${last ? `<span> · ${esc(got[last.path])}</span>` : ''}` : '';
+      const hello = first ? `<b>${signing ? 'Welcome' : 'Welcome back'}, ${esc(first)}.</b>` : '';
+      if (playing) el.querySelector('.boot-step').innerHTML = kind === 'reads' ? hello : `${hello}${hello && last ? `<span> · ${esc(got[last.path])}</span>` : ''}`;
       const gone = el;
       el = null;
       setTimeout(() => {
         gone.classList.add('out');
-        setTimeout(() => gone.remove(), 500);
-      }, playing ? 700 : 0);
+        setTimeout(() => { gone.remove(); stopBg?.(); stopBg = null; }, 500);
+      }, playing ? 900 : 0);
     };
     // A square of the banner's colours drops into the flask for each read that comes back.
     const drop = () => {
@@ -2596,6 +2626,38 @@ const RELEASE_INFO = {
       el.append(d);
       setTimeout(() => d.remove(), 800);
     };
+    // After an update: the new version's first note, or only the version (Settings, Appearance, Opening screen). Never
+    // "Updated to".
+    const note = (v, cls) => {
+      const first = RELEASE_NOTES.find(([x]) => x === v)?.[1]?.[0];
+      return openingPrefs().note === 'note' && first ? `<p class="${cls}"><b>New in ${esc(v)}:</b> ${esc(first)}</p>` : `<p class="${cls}"><b>Version ${esc(v)}</b> is installed.</p>`;
+    };
+    // Draws the screen in the window this person picked. A window shows the sign-in background behind it after signing in
+    // or an update, as the sign-in page had it.
+    const build = () => {
+      kind = openingPrefs().kind;
+      el = document.createElement('div');
+      el.className = `boot${kind === 'full' ? '' : ` win ${kind}`}`;
+      el.setAttribute('role', 'status');
+      const flask = `<div class="boot-flask">${FLASK.replace(/<path class="flask-wave"[^>]*\/>/, '<g class="boot-level"><path class="flask-wave" fill="url(#flask-ember)" d="M0 41Q8 37 16 41T32 41T48 41T64 41T80 41T96 41V96H0Z"/></g>')}</div>`;
+      const name = `<h1 class="boot-name">${esc(labName)}</h1>`;
+      if (kind === 'reads') {
+        const rows = steps.map((s) => `<div class="boot-row" data-s="wait"><span class="boot-ic"><i></i>${svg('check')}</span><span class="boot-lbl">${esc(doing(s))}</span><small></small></div>`).join('');
+        el.innerHTML = `<div class="boot-box">${flask}<div class="boot-side">${name}<p class="boot-step"><b>Loading…</b></p><div class="boot-rows">${rows}</div>`
+          + `${news ? note(news.version, 'boot-note') : ''}</div></div>`;
+      } else {
+        const inner = `${flask}${name}<p class="boot-step"></p><div class="boot-dots"></div>${news ? note(news.version, 'boot-note') : ''}`;
+        el.innerHTML = kind === 'small' ? `<div class="boot-box">${inner}</div>` : inner;
+      }
+      if (kind !== 'full' && window.RabbidLabBackdrop) {
+        el.insertAdjacentHTML('afterbegin', '<canvas class="boot-bg" aria-hidden="true"></canvas>');
+        let mine = '';
+        try { mine = localStorage.getItem('rabbidlab.backdrop') || ''; } catch { /* the lab's */ }
+        stopBg = window.RabbidLabBackdrop.run(el.querySelector('.boot-bg'), mine || brand.background || 'squares', { fit: true });
+      }
+      document.body.append(el);
+      draw();
+    };
     return {
       // A read came back while the console was starting.
       heard(path, j) {
@@ -2608,7 +2670,8 @@ const RELEASE_INFO = {
         }
       },
       // Sign-in answered: only the steps this person's roles read, and what's new when this browser hasn't seen this version.
-      // Just signed in (the sign-in page says so) or just updated: it comes up now and plays in full.
+      // Just signed in (the sign-in page says so) or just updated: it comes up now and plays in full, unless this person
+      // has it play after updates only.
       signedIn(s) {
         steps = BOOT.filter((x) => !x.can || can.has(x.can));
         let seen = null;
@@ -2621,9 +2684,8 @@ const RELEASE_INFO = {
           // Not kept: no note, and a refresh is all it can be.
         }
         if (seen && seen !== s.version) news = { version: s.version };
-        if (signing || news) {
+        if ((signing && openingPrefs().when === 'both') || news) {
           playing = true;
-          if (el && news && !el.querySelector('.boot-new')) el.insertAdjacentHTML('beforeend', `<p class="boot-new">Update installed: version <b>${esc(news.version)}</b></p>`); // shown early by a slow sign-in
           this.show();
         }
         draw();
@@ -2631,14 +2693,20 @@ const RELEASE_INFO = {
       show() {
         if (el || !playing || !document.body.classList.contains('booting')) return;
         timer = setTimeout(tick, 250);
-        el = document.createElement('div');
-        el.className = 'boot';
-        el.setAttribute('role', 'status');
-        el.innerHTML = `<div class="boot-flask">${FLASK.replace(/<path class="flask-wave"[^>]*\/>/, '<g class="boot-level"><path class="flask-wave" fill="url(#flask-ember)" d="M0 41Q8 37 16 41T32 41T48 41T64 41T80 41T96 41V96H0Z"/></g>')}</div>`
-          + `<h1 class="boot-name">${esc(labName)}</h1><p class="boot-step"></p><div class="boot-dots"></div>`
-          + (news ? `<p class="boot-new">Update installed: version <b>${esc(news.version)}</b></p>` : '');
-        document.body.append(el);
-        draw();
+        build();
+      },
+      // Show it (Settings, Appearance, Opening screen): plays it now over the console with what the reads said at the
+      // start, and this version's note.
+      preview() {
+        if (el) return;
+        clearTimeout(timer);
+        playing = true;
+        ready = true;
+        landed = 0;
+        news = { version: RELEASE_NOTES[0][0] };
+        for (const st of steps) if (!(st.path in got)) got[st.path] = '';
+        timer = setTimeout(tick, 400);
+        build();
       },
       get shown() { return !!el; },
       // The console is ready underneath: the steps still to land do, then the welcome, then the screen fades away.
@@ -2895,8 +2963,9 @@ const RELEASE_INFO = {
   // the same as the app or their own; toasts choose theirs in Toasts. Someone on System gets the lab's. The style engine
   // (style.js) puts each part's look on the page.
   const STYLE_LOOKS = window.RabbidLabStyle.LOOKS;
-  const STYLE_PARTS = ['win', 'panel', 'menus'];
-  const STYLE_DEFAULT = { look: 'solid', glass: 65, win: 'app', winGlass: 65, panel: 'app', panelGlass: 65, menus: 'app', menusGlass: 65 };
+  const STYLE_PARTS = ['win', 'panel', 'menus', 'boot'];
+  // The opening screen's window starts in smoked glass at 65% (the user's pick); the rest follow the app, which is Solid.
+  const STYLE_DEFAULT = { look: 'solid', glass: 65, win: 'app', winGlass: 65, panel: 'app', panelGlass: 65, menus: 'app', menusGlass: 65, boot: 'glass', bootGlass: 65 };
   const styleMine = () => {
     try { return JSON.parse(localStorage.getItem('rabbidlab.style') || 'null'); } catch { return null; }
   };
@@ -2968,21 +3037,46 @@ const RELEASE_INFO = {
   styleApply();
   drawStyle();
 
-  // System (Settings, Appearance): the lab's theme, layout, style and toasts, saved on the server and followed as they
-  // change. Changing any of them makes it this person's own again. Someone allowed to change the lab's look can save
-  // theirs as the lab's.
-  const lookMine = () => Theme.mine || !!layoutMine() || !!styleMine() || !!toastMine();
+  // Opening screen (Settings, Appearance): which window it plays in, when, and what it says after an update. Show it
+  // plays it now.
+  const openingSettings = () => {
+    const p = openingPrefs();
+    $('open-kind').value = p.kind;
+    $('open-when').value = p.when;
+    $('open-note').value = p.note;
+    $('open-reset').disabled = !openingMine();
+  };
+  const openingSet = (change) => {
+    try {
+      if (change) localStorage.setItem('rabbidlab.opening', JSON.stringify({ ...openingPrefs(), ...change }));
+      else localStorage.removeItem('rabbidlab.opening');
+    } catch { /* this visit only */ }
+    openingSettings();
+    lookDraw();
+  };
+  $('open-kind').addEventListener('change', () => { openingSet({ kind: $('open-kind').value }); boot.preview(); });
+  $('open-when').addEventListener('change', () => openingSet({ when: $('open-when').value }));
+  $('open-note').addEventListener('change', () => openingSet({ note: $('open-note').value }));
+  $('open-reset').addEventListener('click', () => openingSet(null));
+  $('open-test').addEventListener('click', () => boot.preview());
+  openingSettings();
+
+  // System (Settings, Appearance): the lab's theme, layout, opening screen, style and toasts, saved on the server and
+  // followed as they change. Changing any of them makes it this person's own again. Someone allowed to change the lab's
+  // look can save theirs as the lab's.
+  const lookMine = () => Theme.mine || !!layoutMine() || !!openingMine() || !!styleMine() || !!toastMine();
   const lookDraw = () => {
     const mine = lookMine();
     $('look-system').disabled = !mine;
     $('look-system-help').textContent = mine
-      ? "Uses the lab's theme, layout, style and toasts, saved on the server, and follows them when they change."
-      : "In use. Your theme, layout, style and toasts are the lab's, and follow them when they change.";
+      ? "Uses the lab's theme, layout, opening screen, style and toasts, saved on the server, and follows them when they change."
+      : "In use. Your theme, layout, opening screen, style and toasts are the lab's, and follow them when they change.";
     $('look-save-row').hidden = !has('appearance.brand');
   };
   const lookAll = () => {
     layout();
     drawThemes();
+    openingSettings();
     styleApply();
     drawStyle();
     toastSettings();
@@ -2991,13 +3085,13 @@ const RELEASE_INFO = {
   };
   $('look-system').addEventListener('click', () => {
     Theme.follow();
-    try { ['rabbidlab.layout', 'rabbidlab.style', 'rabbidlab.toast'].forEach((k) => localStorage.removeItem(k)); } catch { /* this visit only */ }
+    try { ['rabbidlab.layout', 'rabbidlab.opening', 'rabbidlab.style', 'rabbidlab.toast'].forEach((k) => localStorage.removeItem(k)); } catch { /* this visit only */ }
     lookAll();
-    toast('Now using System.', "Your theme, layout, style and toasts are the lab's.");
+    toast('Now using System.', "Your theme, layout, opening screen, style and toasts are the lab's.");
   });
   $('look-save').addEventListener('click', async () => {
     try {
-      brand = Brand.apply(await send('/api/brand', { look: { theme: Theme.picked, layout: layoutNow(), style: stylePrefs(), toast: toastPrefs() } }));
+      brand = Brand.apply(await send('/api/brand', { look: { theme: Theme.picked, layout: layoutNow(), opening: openingPrefs(), style: stylePrefs(), toast: toastPrefs() } }));
       toast("Saved as the lab's look.", 'Everyone on System gets it.');
     } catch (err) {
       toast("Could not save the lab's look.", err.message, { tone: 'warn' });
