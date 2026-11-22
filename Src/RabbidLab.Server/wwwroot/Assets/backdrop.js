@@ -410,9 +410,19 @@
       ctx.clearRect(0, 0, w, h);
       if (ready) k.frame(t, dt, ms);
     };
+    // Set up from the same random numbers every time, so when the window is resized the picture is laid out again the
+    // same way at the new size rather than as a new one: dragging the window's edge no longer makes everything jump (and
+    // a glass card over it look like it was changing). Math.random is swapped only for the length of setup.
+    const seed = Math.floor(Math.random() * 2147483646) + 1;
+    const setup = () => {
+      let s = seed;
+      const real = Math.random;
+      Math.random = () => (s = (s * 16807) % 2147483647) / 2147483647;
+      try { k.setup(); } finally { Math.random = real; }
+    };
     size();
     if (k && w && h) {
-      k.setup();
+      setup();
       ready = true;
     }
     draw(8, 0, 16);
@@ -443,7 +453,7 @@
       if (k.resize && ready && ow && oh) k.resize(ow, oh);
       else {
         state = { zoom: state.zoom };
-        k.setup();
+        setup();
         ready = true;
       }
       draw(8, 0, 16);

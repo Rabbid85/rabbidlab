@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.338 (2026-11-22)
+
+- Resizing the window no longer makes the sign-in background jump to a new picture, so the glass card over it no longer seems to change. The background stretches to the new size instead.
+
 ## 1.1.337 (2026-11-22)
 
 - The update window is in the same style as the opening screen and stays up until the update is over. It has no Hide button, and nothing in it moves when it turns green at the end.

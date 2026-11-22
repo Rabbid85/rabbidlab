@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.338', [
+    'Resizing the window no longer makes the sign-in background jump to a new picture, so the glass card over it no longer seems to change. The background stretches to the new size instead.']],
   ['1.1.337', [
     'The update window is in the same style as the opening screen and stays up until the update is over. It has no Hide button, and nothing in it moves when it turns green at the end.']],
   ['1.1.336', [
@@ -1061,6 +1063,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.338': ['2026-11-22', 'fix', 'The background holds still while you resize'],
   '1.1.337': ['2026-11-22', 'update', 'A steady update window in glass'],
   '1.1.336': ['2026-11-22', 'fix', 'No white box around windows'],
   '1.1.335': ['2026-11-22', 'update', 'From sign-in to the console on one background'],
