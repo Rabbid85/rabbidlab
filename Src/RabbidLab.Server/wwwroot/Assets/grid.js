@@ -503,5 +503,32 @@
   // A list that isn't a table (Links' tiles) still has columns to filter by: the cols() and text() a grid gives.
   grid.columns = (cols) => ({ cols: () => of(cols) || [], text });
 
+  // A row that came in while the list was open, for every list: its space opens so the rows under it glide down, its
+  // cells slide in one after another, the glow behind it fades and its chip pops (.tr.arrive, grid.css). since: when it
+  // came in, so a list drawn again meanwhile carries the glow on from there without opening the space again.
+  const EASE = 'cubic-bezier(.22, 1, .36, 1)';
+  const GLOW = 2800;
+  R.arrive = (row, since = Date.now()) => {
+    const gone = Date.now() - since;
+    if (!row || gone >= GLOW) return;
+    row.style.setProperty('--arrive-at', `${-gone}ms`);
+    row.classList.add('arrive');
+    setTimeout(() => row.classList.remove('arrive'), GLOW - gone);
+    if (gone > 150 || matchMedia('(prefers-reduced-motion: reduce)').matches || !row.animate) return;
+    const h = row.offsetHeight;
+    row.style.overflow = 'hidden';
+    row.animate([{ height: '0px', minHeight: '0px', opacity: 0 }, { height: `${h}px`, minHeight: '0px', opacity: 1 }], { duration: 420, easing: EASE })
+      .finished.then(() => { row.style.overflow = ''; }, () => {});
+    [...row.children].forEach((c, k) => c.animate([{ opacity: 0, transform: 'translateX(-14px)' }, { opacity: 1, transform: 'none' }],
+      { duration: 460, delay: 140 + k * 28, easing: EASE, fill: 'backwards' }));
+  };
+  // A number that went up bumps once, in the accent colour.
+  R.bump = (el) => {
+    if (!el) return;
+    el.classList.remove('bump');
+    void el.offsetWidth;
+    el.classList.add('bump');
+  };
+
   R.grid = grid;
 })();

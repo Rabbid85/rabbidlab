@@ -1,0 +1,86 @@
+/* Network (network.js): the banner, the filter bar, then the list's card. Scan now, List or Map and the gear are on the
+   card's own bar; Map draws every range's addresses in place of the list. */
+.net-body { display: grid; gap: 14px; padding: 16px var(--side) 40px; }
+.net-body > .gcard { margin-top: 0; }
+.net-page .tk { display: grid; place-items: center; align-self: stretch; cursor: pointer; }
+.net-page .tk input { margin: 0; accent-color: var(--accent); }
+#net-table .tr:not(.th):not(.grp) { cursor: pointer; }
+#net-table .tr:not(.th):not(.grp):hover { background: #151827; }
+#net-table .tr.picked { background: #141827; }
+#net-table .tr.dw-on { background: #171B2C; }
+#net-table .tr:hover .at-more, #net-table .at-more:focus-visible { opacity: 1; }
+.pic.net-pic { background: color-mix(in srgb, var(--t) 15%, transparent); color: var(--t); }
+.ubadge.net-new { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent-soft); }
+.table.dgrid .tr > div > .ubadge.net-new { color: var(--title); }
+.table.dgrid .tr > div > .ubadge.net-new::before, .dw-strip .ubadge.net-new::before { content: "+"; background: var(--accent-soft); }
+.dw-strip .ubadge.net-new { color: var(--title); }
+
+/* The card's bar: Scan now turns while a scan runs, when it last scanned, List or Map, the gear. */
+.gbar > .net-scan.turning svg { animation: spin 1.1s linear infinite; }
+.gbar > .net-scan.turning:disabled { opacity: 1; color: var(--title); }
+.net-when { color: #8B90A5; font-size: 12.5px; white-space: nowrap; }
+.seg.net-vseg { margin: 0; }
+.net-vseg button { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 11px; font-size: 12.5px; }
+.net-vseg svg { width: 14px; height: 14px; }
+.net-card.map #net-tools .gby, .net-card.map #net-tools .gby-pick, .net-card.map #net-rows { display: none; }
+
+/* The map: a key with a chip per type, then each range's addresses, numbered. */
+.net-maps { display: grid; gap: 16px; padding: 12px 16px 18px; border-top: 1px solid var(--line); }
+.net-none { margin: 8px 0; color: var(--muted); }
+.net-key { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.net-key .grow { flex: 1; }
+.net-k { display: inline-flex; align-items: center; gap: 7px; height: 28px; padding: 0 10px; border: 1px solid #232838; border-radius: 999px; background: transparent; color: var(--text); font-size: 12.5px; cursor: pointer; }
+.net-k i { width: 9px; height: 9px; border-radius: 3px; background: var(--t); }
+.net-k small { color: #8B90A5; font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.net-k:hover { border-color: #353B50; }
+.net-k.on { border-color: var(--t); background: color-mix(in srgb, var(--t) 14%, transparent); color: var(--title); }
+.net-k.dim { opacity: .5; }
+.net-k2 { display: inline-flex; align-items: center; gap: 6px; margin-left: 8px; color: #8B90A5; font-size: 12px; }
+.net-k2 i { width: 14px; height: 10px; border-radius: 3px; }
+.net-k2 i.off { box-shadow: inset 0 0 0 1.5px #8B90A5; }
+.net-k2 i.new { width: 7px; height: 7px; border-radius: 50%; background: #FF8A3D; }
+.net-range { display: grid; gap: 8px; }
+.net-rhead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.net-rhead b { color: var(--title); font-size: 13.5px; font-weight: 650; }
+.net-rhead .mono { color: var(--muted); font-size: 12px; }
+.net-rhead small { color: #8B90A5; font-size: 12px; }
+.net-rprog { color: var(--accent-soft); font: 600 12px Consolas, "Cascadia Mono", monospace; }
+.net-block { margin: 2px 0 -2px; color: var(--muted); font-size: 11.5px; }
+.net-grid { display: grid; grid-template-columns: repeat(32, minmax(0, 1fr)); gap: 3px; }
+.net-n { position: relative; display: grid; place-items: center; min-width: 0; height: 20px; padding: 0; border: 0; border-radius: 4px; background: color-mix(in srgb, var(--t) 88%, #000);
+  color: #0B0D14; font: 700 10.5px Consolas, "Cascadia Mono", monospace; font-variant-numeric: tabular-nums; cursor: pointer; transition: opacity .2s; }
+.net-n.free { background: transparent; color: #2E3346; font-weight: 500; cursor: default; }
+.net-n.off { background: transparent; color: var(--t); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--t) 75%, transparent); }
+.net-n.new::after { content: ""; position: absolute; top: -2px; right: -2px; width: 7px; height: 7px; border-radius: 50%; background: #FF8A3D; box-shadow: 0 0 0 2px var(--panel); }
+.net-n.dim { opacity: .18; }
+.net-n:not(.free):hover { filter: brightness(1.25); }
+.net-n.on { z-index: 1; box-shadow: 0 0 0 2px #fff; }
+/* The ping reaching an address lights it a moment; a device found lights up white over its neighbours, glows in its
+   type's colour, then cools into it. */
+.net-n.swept { animation: net-swept .9s ease-out; }
+@keyframes net-swept { 0% { background: var(--accent-soft); filter: brightness(1.3); } 100% { filter: none; } }
+.net-n.free.swept { animation-name: net-swept-free; }
+@keyframes net-swept-free { 0% { color: #fff; background: color-mix(in srgb, var(--accent-soft) 45%, transparent); } 100% { background: transparent; } }
+.net-n.arrive { z-index: 2; animation: net-found 1.9s cubic-bezier(.2, .7, .3, 1) var(--arrive-at, 0ms) both; }
+@keyframes net-found {
+  0% { opacity: 0; transform: scale(.6); background: #fff; box-shadow: 0 0 0 0 transparent; }
+  12% { opacity: 1; transform: scale(1.12); background: #fff; box-shadow: 0 0 16px 4px color-mix(in srgb, var(--t) 90%, transparent); }
+  40% { transform: none; background: color-mix(in srgb, var(--t) 60%, #fff); box-shadow: 0 0 12px 2px color-mix(in srgb, var(--t) 60%, transparent); }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+@media (prefers-reduced-motion: reduce) { .net-n.swept, .net-n.arrive, .gbar > .net-scan.turning svg { animation: none; } }
+
+/* The side panel: open ports, a line each. */
+.net-prow { gap: 14px; }
+.net-pnum { flex: none; width: 52px; color: var(--title); }
+.net-pname { flex: 1; min-width: 0; color: var(--text); font-size: 13.5px; }
+
+/* Settings › Network: a name box on each range, and the new range's boxes. */
+#ns-ranges .ds-r { gap: 10px; }
+.ns-name { width: 160px; }
+.ns-add { gap: 8px; }
+.ns-add input { width: 150px; }
+.ns-add input.mono { width: 170px; font-family: Consolas, "Cascadia Mono", monospace; }
+.ns-add .ds-btn svg { width: 14px; height: 14px; }
+.ns-none { margin: 10px 0; }
+#ns-community { width: 200px; }

@@ -276,7 +276,7 @@ public sealed class RolesTests : IDisposable
         app.Dispose();
         // As a version before the split wrote it: no version, and Change alone.
         var path = Path.Combine(data, "roles.json");
-        File.WriteAllText(path, File.ReadAllText(path).Replace("\"version\": 4,", "").Replace(",\n      \"seats.installs\"", "").Replace(",\r\n      \"seats.installs\"", ""));
+        File.WriteAllText(path, File.ReadAllText(path).Replace("\"version\": 5,", "").Replace(",\n      \"seats.installs\"", "").Replace(",\r\n      \"seats.installs\"", ""));
         File.Delete(path + ".bak");
 
         using var again = new TestApp(data);
@@ -289,12 +289,13 @@ public sealed class RolesTests : IDisposable
         Assert.Equal(["ad.change", "ad.enable", "ad.groups", "ad.password", "ad.view", "gpo.view"], roles[old]);
         Assert.Equal(["ad.view", "gpo.view"], roles[viewer]);
         Assert.Equal(["ad.connect", "ad.view", "gpo.change", "gpo.delete", "gpo.link", "gpo.view"], roles[setup]);
-        // Install apps came after that: roles that run scripts get it.
-        Assert.Equal(["seats.installs", "seats.scripts.run", "seats.view"], roles[scripts]);
+        // Install apps came after that: roles that run scripts get it. Network came after that: roles that see computers see it.
+        Assert.Equal(["network.view", "seats.installs", "seats.scripts.run", "seats.view"], roles[scripts]);
         Assert.DoesNotContain("seats.installs", roles[viewer]);
+        Assert.DoesNotContain("network.view", roles[viewer]);
         // Once upgraded it stays as it's set: taking one away isn't undone at the next start.
         (await page.PostAsJsonAsync($"/api/roles/{old}", new { name = "Old desk", color = "#5FD4A0", permissions = new[] { "ad.view", "ad.change" } })).EnsureSuccessStatusCode();
-        Assert.Contains("\"version\": 4", File.ReadAllText(path));
+        Assert.Contains("\"version\": 5", File.ReadAllText(path));
     }
 
     [Fact]

@@ -73,6 +73,8 @@ public sealed class TestApp(string data) : WebApplicationFactory<Program>
     /// <summary>Stands in for the domain controllers' Security logs, so no test reads a real one.</summary>
     public FakeSecurityLog SecurityLog { get; } = new();
 
+    public FakeNetProbe Net { get; } = new();
+
     /// <summary>When set, the real tools behind the domain pages (DirectoryTools) read this stand-in for Active Directory.</summary>
     public FakeLdap? Ldap { get; init; }
 
@@ -126,6 +128,13 @@ public sealed class TestApp(string data) : WebApplicationFactory<Program>
             // Nor this computer's registry, firewall or services for port 443.
             services.RemoveAll<IAlsoPort>();
             services.AddSingleton<IAlsoPort>(AlsoPort);
+            // Nor the real network: Network scans a pretend one, and only when a test asks.
+            services.RemoveAll<INetProbe>();
+            services.AddSingleton<INetProbe>(Net);
+            foreach (var worker in services.Where(d => d.ImplementationType == typeof(NetworkWorker)).ToList())
+            {
+                services.Remove(worker);
+            }
             // The tests run each round of checks, and each look at the report schedule, themselves.
             foreach (var worker in services.Where(d => d.ImplementationType == typeof(SensorWorker) || d.ImplementationType == typeof(ReportWorker)).ToList())
             {

@@ -49,6 +49,7 @@ public static class AlertEvents
         new("dev.admins", "Devices", "Local administrators change on a computer", [], Device, "warning", NotYet: $"Needs the last list kept to compare with. {Later}"),
         new("dev.new", "Devices", "A new computer connects", [], Device, "info", Per: "computer"),
         new("dev.uninstall", "Devices", "The client is uninstalled or removed", [], ["by", "hour", "day"], "warning", Per: "all"),
+        new("net.new", "Network", "A new device joins the network", [], ["computer", "address", "hour", "day"], "info", Note: "From the network scan, after its first scan.", Per: "all"),
         new("lab.down", "Sensors and links", "A sensor or link goes down", [], [], "warning", NotYet: "Set on each sensor and link, with its alert type."),
         new("lab.cert", "Sensors and links", "A certificate is about to expire", [], [], "info", NotYet: "Set in Settings, Alert rules."),
         new("print.stuck", "Printers", "A print queue is stuck", [], [], "warning", NotYet: Later),
@@ -752,6 +753,7 @@ public sealed class EventAlerts(DataFolder folder, Alerts alerts, TimeProvider c
                 Fact("rl.flow", $"{e.Title} stopped at a failed step", e.Detail ?? by, After(@" for (\S+)$"), After(@" for (.+)$")),
             "client.join" => Fact("dev.new", e.Title, e.From is { } ip ? $"From {ip}." : "", computer: After(@"^(\S+) connected")),
             "client.uninstall" or "client.remove" => Fact("dev.uninstall", e.Title, by),
+            "network.new" => Fact("net.new", e.Title, e.Detail ?? "", computer: After(@"^(.+?) \(")),
             "gpo.change" or "gpo.new" or "gpo.delete" or "gpo.link" or "gpo.rename" or "gpo.restore" or "gpo.block" or "gpo.apply" or "gpo.wmifilter" when e.Result != "failed" => Fact("ad.gpo", e.Title, by),
             _ => null,
         };

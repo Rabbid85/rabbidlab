@@ -27,6 +27,7 @@
 <link rel="stylesheet" href="Assets/printq.css">
 <link rel="stylesheet" href="Assets/people-flows.css">
 <link rel="stylesheet" href="Assets/alerts-page.css">
+<link rel="stylesheet" href="Assets/network.css">
 <link rel="stylesheet" href="Assets/news.css">
 <link rel="stylesheet" href="Assets/edition.css">
 <link rel="stylesheet" href="Assets/themes.css">
@@ -60,6 +61,7 @@
 <script src="Assets/printers.js" defer></script>
 <script src="Assets/installs.js" defer></script>
 <script src="Assets/gpo.js" defer></script>
+<script src="Assets/network.js" defer></script>
 <script src="Assets/notes.js" defer></script>
 <script src="Assets/deploy.js" defer></script>
 <script src="Assets/dock.js" defer></script>
@@ -168,6 +170,15 @@
   <symbol id="i-quote" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H11l-4 3.5V16H4z"/><path d="M9 9.2v2.6M13 9.2v2.6"/></symbol>
   <symbol id="i-list-ul" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r=".9" fill="currentColor"/><circle cx="4.5" cy="12" r=".9" fill="currentColor"/><circle cx="4.5" cy="18" r=".9" fill="currentColor"/></symbol>
   <symbol id="i-list-ol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 6h10M10 12h10M10 18h10M4 4.5l1.5-.8V9M3.6 9h3.4M3.6 14.2c.3-.7 1-1.1 1.8-1.1.9 0 1.6.6 1.6 1.4 0 1.4-3.4 2.2-3.4 4h3.4"/></symbol>
+  <!-- Network: the page, and what a device on it can be (network.js). -->
+  <symbol id="i-radar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><path d="M12 12l5.5-5.5"/><circle cx="12" cy="12" r=".8" fill="currentColor"/></symbol>
+  <symbol id="i-router" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="13" width="18" height="7" rx="2"/><path d="M7 16.5h.01M10.5 16.5h.01M17 13V9M8.5 9.2a5 5 0 0 1 7 0M6 6.6a8.6 8.6 0 0 1 12 0"/></symbol>
+  <symbol id="i-switch" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="7" width="19" height="10" rx="2"/><path d="M6 11.2v1.6M9 11.2v1.6M12 11.2v1.6M15 11.2v1.6M18 11.2v1.6"/></symbol>
+  <symbol id="i-wifi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 9.2a14 14 0 0 1 19 0M5.6 12.6a9.4 9.4 0 0 1 12.8 0M8.7 16a4.8 4.8 0 0 1 6.6 0"/><path d="M12 19.6h.01"/></symbol>
+  <symbol id="i-camera" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 6.8 16.2 3.2l2.1 6.5L5.6 13.3z"/><path d="M18.7 8.3 21 7.6M8.6 12.4 10 17H4.5M4.5 14.6v5"/></symbol>
+  <symbol id="i-phone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2.5" width="10" height="19" rx="2.2"/><path d="M11 18.2h2"/></symbol>
+  <symbol id="i-chip" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9.5 2.5v3.5M14.5 2.5v3.5M9.5 18v3.5M14.5 18v3.5M2.5 9.5H6M2.5 14.5H6M18 9.5h3.5M18 14.5h3.5"/></symbol>
+  <symbol id="i-unknown" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.4 2.4c-.7.3-1 .8-1 1.6v.4M12 16.8h.01"/></symbol>
 </svg>
 <div class="sky" aria-hidden="true"></div>
 <header class="top">
@@ -220,6 +231,7 @@
   <a href="#links" data-page="links" title="Links" data-can="links.view"><svg><use href="#i-link"/></svg><span>Links</span><small id="rail-links"></small><i class="rail-dot bad" id="links-dot" hidden></i></a>
   <a href="#sensors" data-page="sensors" title="Sensors" data-can="sensors.view"><svg><use href="#i-activity"/></svg><span>Sensors</span><i class="rail-dot bad" id="sensors-dot" hidden></i></a>
   <a href="#seats" data-page="seats" title="Devices" data-can="seats.view sessions.view"><svg><use href="#i-monitor"/></svg><span>Devices</span><small id="rail-seats"></small><i class="rail-dot" id="seats-dot" hidden></i></a>
+  <a href="#network" data-page="network" title="Network" data-can="network.view"><svg><use href="#i-radar"/></svg><span>Network</span><small id="rail-network"></small><i class="rail-dot" id="network-dot" hidden></i></a>
   <p class="rail-label" data-can="ad.view ad.connect">Directory</p>
   <a href="#ad/users" data-page="ad" id="rail-dir" title="Active Directory" data-can="ad.view ad.connect"><svg><use href="#i-users"/></svg><span>Active Directory</span><i class="rail-dot bad" id="rail-dir-dot" hidden></i></a>
   <a href="#gpo" data-page="gpo" id="rail-gpo" title="Group Policy" data-can="gpo.view"><svg><use href="#i-policy"/></svg><span>Group Policy</span></a>
@@ -312,7 +324,7 @@
       </div>
       <a href="#settings/notifications" data-sub="notifications" data-can="sensors.alerts"><svg><use href="#i-bell"/></svg><span>Notifications</span></a>
       <a href="#settings/history" data-sub="history" data-can="sensors.alerts"><svg><use href="#i-history"/></svg><span>Alert history</span></a>
-      <p class="rail-label" data-can="links.edit sensors.alerts sensors.edit seats.settings seats.add ad.connect">Lab</p>
+      <p class="rail-label" data-can="links.edit sensors.alerts sensors.edit seats.settings seats.add network.settings ad.connect">Lab</p>
       <a href="#settings/links" data-sub="links" data-can="links.edit"><svg class="all-flask" viewBox="0 0 24 24" aria-hidden="true"><path class="liquid" d="M6.6 15.2h10.8l2 3.2A1.7 1.7 0 0 1 17.9 21H6.1a1.7 1.7 0 0 1-1.5-2.6z"/><path d="M9 3h6M10 3v6.2L4.6 18.4A1.7 1.7 0 0 0 6.1 21h11.8a1.7 1.7 0 0 0 1.5-2.6L14 9.2V3"/></svg><span>Links</span></a>
       <div class="dkids" data-kids="links">
         <a href="#settings/links/checks" data-sub="links" data-sec="checks"><span class="nm">Heartbeat</span></a>
@@ -324,6 +336,12 @@
         <a href="#settings/seats/new" data-sub="seats" data-sec="new" data-can="seats.settings"><span class="nm">New computers</span></a>
         <a href="#settings/seats/lock" data-sub="seats" data-sec="lock" data-can="seats.settings"><span class="nm">Uninstall lock</span></a>
         <a href="#settings/seats/client" data-sub="seats" data-sec="client" data-can="seats.add"><span class="nm">Install the client</span></a>
+      </div>
+      <a href="#settings/network" data-sub="network" data-can="network.settings"><svg><use href="#i-radar"/></svg><span>Network</span></a>
+      <div class="dkids" data-kids="network">
+        <a href="#settings/network/ranges" data-sub="network" data-sec="ranges"><span class="nm">Ranges</span></a>
+        <a href="#settings/network/schedule" data-sub="network" data-sec="schedule"><span class="nm">Schedule</span></a>
+        <a href="#settings/network/identify" data-sub="network" data-sec="identify"><span class="nm">Identifying devices</span></a>
       </div>
       <a href="#settings/ad" data-sub="ad" data-can="ad.connect"><svg><use href="#i-users"/></svg><span>Active Directory</span></a>
       <p class="rail-label">Help</p>
@@ -664,6 +682,30 @@
       <p class="hint problem" id="seat-set-problem" hidden></p>
     </section>
 
+    <!-- Network: the ranges the scan pings, how often it scans on its own, and the SNMP community (network.js). -->
+    <section class="sub" data-sub="network" data-title="Network" hidden>
+      <header class="sub-head"><h2>Network</h2><p>The ranges the network scan pings, how often it scans on its own, and how it identifies devices. Changes are saved immediately.</p></header>
+      <section class="ds-sec" data-sec="ranges"><h3 class="ds-h">Ranges</h3>
+        <div id="ns-ranges" data-skel="rows:2"></div>
+        <div class="ds-row"><div class="ds-l"><b>Add a range</b><span>IPv4 in CIDR form, from /20 (4,094 addresses) to /30, such as 10.10.40.0/24. Up to 16 ranges.</span></div>
+          <div class="ds-r ns-add"><input id="ns-new-name" class="ds-input" maxlength="40" placeholder="Name" autocomplete="off" spellcheck="false" aria-label="Range name">
+            <input id="ns-new-cidr" class="ds-input mono" maxlength="18" placeholder="10.10.40.0/24" autocomplete="off" spellcheck="false" aria-label="Range in CIDR form">
+            <button type="button" class="ds-btn" id="ns-add"><svg><use href="#i-plus"/></svg>Add</button></div></div>
+      </section>
+      <section class="ds-sec" data-sec="schedule"><h3 class="ds-h">Schedule</h3>
+        <div class="ds-row"><div class="ds-l"><b>Scan on its own</b><span id="ns-next">How often every range that is on is scanned without anyone selecting Scan now.</span></div>
+          <div class="ds-r"><select id="ns-schedule" aria-label="Scan on its own"></select></div></div>
+        <div class="ds-row" data-can="sensors.alerts"><div class="ds-l"><b>Alert when a new device joins</b><span>Set up in Alerts, under Network. Devices found by the first scan are not new.</span></div>
+          <div class="ds-r"><a class="ds-btn" href="#alerts">Open Alerts</a></div></div>
+      </section>
+      <section class="ds-sec" data-sec="identify"><h3 class="ds-h">Identifying devices</h3>
+        <div class="ds-row"><div class="ds-l"><b>SNMP community</b><span>Read-only community string used to ask switches, access points and printers what they are. Windows computers are not asked. The default is public.</span></div>
+          <div class="ds-r"><input id="ns-community" class="ds-input" maxlength="64" autocomplete="off" spellcheck="false" aria-label="SNMP community"></div></div>
+        <p class="ds-note"><svg><use href="#i-info"/></svg><span>Each scan pings every address. Addresses that do not answer ping are tried on ports 445, 3389, 135, 22, 80 and 443, and this server's ARP table adds devices that block both. Devices that answer are checked for common open ports, their DNS and NetBIOS names, their MAC address vendor and SNMP. Nothing on a device is changed.</span></p>
+      </section>
+      <p class="hint problem" id="ns-problem" hidden></p>
+    </section>
+
     <!-- Active Directory: the service account Rabbid Lab makes its changes as (users.js). -->
     <section class="sub" data-sub="ad" data-title="Active Directory" hidden>
       <header class="sub-head"><h2>Active Directory</h2><p>The service account that <span data-app>Rabbid Lab</span> uses to make changes in Active Directory.</p></header>
@@ -812,6 +854,41 @@
         </div>
         <p class="hint problem" id="seats-problem" hidden></p>
       </div></div></div>
+    </div>
+  </section>
+
+  <!-- Network: everything that answers on the network ranges, pinged and identified like a network scanner (network.js,
+       NetworkScan.cs). Scan now, Actions, List or Map and the gear are on the list's own bar. -->
+  <section class="page home net-page" id="page-network" data-page="network" data-title="Network" hidden>
+    <header class="hero" id="net-hero">
+      <p class="eyebrow">Lab</p>
+      <h1 class="hero-title">Network</h1>
+      <p class="hero-lead"><b id="net-state"></b> <span>Every address is pinged, and whatever answers is identified by its ports, name and vendor.</span></p>
+      <div class="hero-row">
+      <div class="hero-stats">
+        <div><b id="net-n-all"><i class="sk sk-num"></i></b><span><svg><use href="#i-radar"/></svg>Discovered</span></div>
+        <div><b id="net-n-new"><i class="sk sk-num"></i></b><span><svg><use href="#i-new"/></svg>New</span></div>
+        <div><b id="net-n-unmanaged"><i class="sk sk-num"></i></b><span><svg><use href="#i-eye-off"/></svg>Unmanaged</span></div>
+        <div><b id="net-n-noclient"><i class="sk sk-num"></i></b><span><svg><use href="#i-alert"/></svg>Windows without the client</span></div>
+      </div>
+      </div>
+    </header>
+    <div class="net-body">
+      <div id="net-fbar"></div>
+      <div class="gcard net-card" id="net-card">
+        <div class="gbar">
+          <button type="button" class="small primary net-scan" id="net-scan" data-can="network.scan"><svg><use href="#i-radar"/></svg><span>Scan now</span></button>
+          <button type="button" class="small" id="net-act" aria-haspopup="menu" disabled data-tip="Select devices first">Actions<b class="cnt" hidden></b><svg class="chev"><use href="#i-chevron-down"/></svg></button>
+          <div id="net-tools"></div>
+          <span class="net-when" id="net-when"></span>
+          <div class="seg net-vseg" role="group" aria-label="View"><button type="button" data-net-view="list" aria-pressed="true"><svg><use href="#i-view-list"/></svg>List</button><button type="button" data-net-view="map" aria-pressed="false"><svg><use href="#i-view-icons"/></svg>Map</button></div>
+          <span id="net-rows"></span>
+          <a class="gcols" href="#settings/network" id="net-gear" data-can="network.settings" data-tip="Ranges and schedule" aria-label="Network settings"><svg><use href="#i-gear"/></svg></a>
+        </div>
+        <div class="net-maps" id="net-maps" hidden></div>
+        <div class="table adt drows" id="net-table" data-skel="rows:6"></div>
+      </div>
+      <p class="hint problem" id="net-problem" hidden></p>
     </div>
   </section>
 
@@ -1992,6 +2069,18 @@
   <p class="hint">To find an ID, run winget search with the app's name. The name under Installed apps is used to count the computers that have the app. Packages that install for a single user cannot be installed this way.</p>
   <p class="hint problem" id="app-problem" role="alert" hidden></p>
   <div class="dialog-foot"><button type="button" id="app-cancel">Cancel</button><button type="button" class="primary" id="app-save">Save</button></div>
+</dialog>
+
+<!-- A device on Network: a name and type of our own over what the scan detected (network.js). -->
+<dialog class="dialog" id="net-edit" aria-labelledby="net-edit-title">
+  <h2 id="net-edit-title">Edit device</h2>
+  <p class="dialog-lead" id="net-edit-lead">A name and type of your own. Later scans keep them. Clear the name to show the detected name again.</p>
+  <div class="form two">
+    <div><label for="net-edit-name">Name</label><input id="net-edit-name" maxlength="64" autocomplete="off" spellcheck="false"></div>
+    <div><label for="net-edit-kind">Type</label><select id="net-edit-kind"></select></div>
+  </div>
+  <p class="hint problem" id="net-edit-problem" role="alert" hidden></p>
+  <div class="dialog-foot"><button type="button" id="net-edit-cancel">Cancel</button><button type="button" class="primary" id="net-edit-save">Save</button></div>
 </dialog>
 
 <!-- A script in the library: its name, what it's written in, how long it may run, and the script. -->

@@ -6,7 +6,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <Version>1.1.360</Version>
+    <Version>1.1.361</Version>
     <Product>Rabbid Lab</Product>
     <Company>Rabbid</Company>
     <Authors>Anthony Wiles</Authors>
@@ -62,6 +62,9 @@
     <!-- The Use at your own risk notice (RiskNotice.cs). Setup shows and installs the same file. -->
     <None Remove="notice.txt" />
     <EmbeddedResource Include="notice.txt" LogicalName="notice.txt" />
+    <!-- The IEEE's list of MAC address prefixes and who they belong to, for Network's Vendor column (NetworkScan.Vendor). -->
+    <None Remove="oui.tsv.gz" />
+    <EmbeddedResource Include="oui.tsv.gz" LogicalName="oui.tsv.gz" />
   </ItemGroup>
 
   <ItemGroup>

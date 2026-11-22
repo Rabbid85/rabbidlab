@@ -101,6 +101,20 @@ body.col-moving, body.col-moving * { cursor: grabbing !important; user-select: n
 .table.dgrid .tr.off:hover > div:not(.lead):not(.tr-tail):not(.pin):not(:has(> .state.waiting)),
 .table.dgrid .tr.off:hover > .pin:not(.lead):not(.tr-tail):not(:has(> .state.waiting)) > * { opacity: .7; }
 
+/* A row that came in while the list was open (R.arrive): a glow that holds a moment, then fades, and its chip pops in
+   once the row has landed. --arrive-at carries it on when the list is drawn again meanwhile. A number that went up bumps. */
+.table.dgrid .tr.arrive { animation: tr-arrive 2.8s cubic-bezier(.4, 0, .2, 1) var(--arrive-at, 0ms); }
+@keyframes tr-arrive {
+  0% { background: color-mix(in srgb, var(--accent) 28%, transparent); }
+  30% { background: color-mix(in srgb, var(--accent) 16%, transparent); }
+  100% { background: transparent; }
+}
+.table.dgrid .tr.arrive .ubadge { animation: chip-pop .5s cubic-bezier(.34, 1.56, .64, 1) calc(450ms + var(--arrive-at, 0ms)) backwards; }
+@keyframes chip-pop { from { opacity: 0; transform: scale(.4); } to { opacity: 1; transform: none; } }
+.bump { display: inline-block; animation: num-bump .6s cubic-bezier(.34, 1.56, .64, 1); }
+@keyframes num-bump { 0% { color: var(--accent-soft); transform: scale(1.35); } 100% { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .table.dgrid .tr.arrive .ubadge, .bump { animation: none; } }
+
 /* --- The list's card and its bar: Actions, Group by, how many, Compact or Relaxed, Refresh, Export ----------------- */
 .gcard { margin-top: 12px; overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
 .gcard[hidden], .gbar > [hidden] { display: none; }

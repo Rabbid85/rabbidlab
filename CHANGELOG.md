@@ -2,6 +2,13 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.361 (2026-11-22)
+
+- Network is a new page under Lab. Scan now pings every address on your ranges, as a network scanner does, and lists everything that answers with its name, IP and MAC address, vendor, ping and what kind of device it is, such as a router, printer, camera, phone or PC.
+- Devices that block ping are still found through common ports and this server’s ARP table. What each one is comes from its open ports, DNS and NetBIOS names, MAC vendor, SNMP and the TTL of its reply.
+- Map, beside List, shows every address of every range by its number, coloured by type. While a scan runs the ping sweeps across it, and each device comes in on the list and the map as it is found.
+- Settings, Network has the ranges, how often to scan on its own and the SNMP community. To be told when a new device joins the network, turn on that alert in Alerts.
+
 ## 1.1.360 (2026-11-22)
 
 - Servers and PCs on On each computer now come from the Rabbid Lab client: it reads its own security settings and sends them with its inventory. Only computers with the client show, and they need no Remote Registry or open port 445.

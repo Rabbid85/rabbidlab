@@ -3,6 +3,11 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.361', [
+    'Network is a new page under Lab. Scan now pings every address on your ranges, as a network scanner does, and lists everything that answers with its name, IP and MAC address, vendor, ping and what kind of device it is, such as a router, printer, camera, phone or PC.',
+    'Devices that block ping are still found through common ports and this server’s ARP table. What each one is comes from its open ports, DNS and NetBIOS names, MAC vendor, SNMP and the TTL of its reply.',
+    'Map, beside List, shows every address of every range by its number, coloured by type. While a scan runs the ping sweeps across it, and each device comes in on the list and the map as it is found.',
+    'Settings, Network has the ranges, how often to scan on its own and the SNMP community. To be told when a new device joins the network, turn on that alert in Alerts.']],
   ['1.1.360', [
     'Servers and PCs on On each computer now come from the Rabbid Lab client: it reads its own security settings and sends them with its inventory. Only computers with the client show, and they need no Remote Registry or open port 445.',
     'Domain controllers are still read over the network. A DC that also has the client is listed once, as a domain controller.',
@@ -1146,6 +1151,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.361': ['2026-11-22', 'feature', 'Network: everything on your network, found and identified', 'network.jpg'],
   '1.1.360': ['2026-11-22', 'update', 'Servers and PCs read through the client'],
   '1.1.359': ['2026-11-22', 'feature', 'Security settings on every computer, with a Current column', 'computers.jpg'],
   '1.1.358': ['2026-11-22', 'feature', 'Security settings on each DC', 'hardening.jpg'],
@@ -1670,10 +1676,10 @@ const RELEASE_INFO = {
   const allows = (list) => !!shown && list.split(/\s+/).some((p) => shown.has(p));
   const has = (p) => can.has(p);
   const PAGES = { overview: 'overview.view', links: 'links.view', sensors: 'sensors.view', seats: 'seats.view sessions.view', people: 'access.view', ad: 'ad.view ad.connect',
-    org: 'ad.view', attrs: 'ad.view', sync: 'ad.view', report: 'activity.view', alerts: 'sensors.alerts' };
+    org: 'ad.view', attrs: 'ad.view', sync: 'ad.view', report: 'activity.view', alerts: 'sensors.alerts', network: 'network.view' };
   // Settings' pages and what each needs; About is for everyone, Developer for Rabbid Lab Dev only.
   const SUBS = { account: '', appearance: '', viewas: 'access.view', address: '', updates: 'updates.view', signin: 'access.roles access.unlock', activity: 'activity.view', reports: 'activity.view', alerts: 'sensors.alerts', notifications: 'sensors.alerts', history: 'sensors.alerts',
-    links: 'links.edit', sensors: 'sensors.edit', seats: 'seats.settings seats.add', ad: 'ad.connect', developer: 'updates.auto', support: '', about: '' };
+    links: 'links.edit', sensors: 'sensors.edit', seats: 'seats.settings seats.add', network: 'network.settings', ad: 'ad.connect', developer: 'updates.auto', support: '', about: '' };
   const subOk = (s) => s in SUBS && (!SUBS[s] || !shown || allows(SUBS[s])) && (s !== 'developer' || document.body.classList.contains('is-dev'));
   const pageOk = (key) => !shown || !PAGES[key] || allows(PAGES[key]);
   const home = () => ['overview', 'links', 'sensors', 'ad', 'seats', 'people', 'local'].find(pageOk) || 'wiki';

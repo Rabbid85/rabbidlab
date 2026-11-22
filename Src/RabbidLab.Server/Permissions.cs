@@ -55,6 +55,9 @@ public static class Permissions
     public const string SensorsEdit = "sensors.edit";
     public const string SensorsAlerts = "sensors.alerts";
     public const string ConsoleAddresses = "console.address";
+    public const string NetworkView = "network.view";
+    public const string NetworkScan = "network.scan";
+    public const string NetworkSettings = "network.settings";
 
     public sealed record Action(string Key, string Name, string About);
 
@@ -92,6 +95,12 @@ public static class Permissions
             new(ScriptsRun, "Run scripts", "Run library scripts on computers as SYSTEM and view the output under Jobs."),
             new(ScriptsEdit, "Manage scripts", "Add, edit and delete scripts, and run custom scripts. This permission can run any code on every computer."),
             new(Workflows, "Manage workflows", "Automated steps that run on computers when an event occurs or on a schedule."),
+        ]),
+        new("network", "Network", "globe",
+        [
+            new(NetworkView, "View the network", "The Network page: every device that answers on the network ranges, what it is and whether Rabbid Lab manages it."),
+            new(NetworkScan, "Scan the network and edit devices", "Scan now, scan devices again, mark them as known, rename them, change their type and remove them from the list."),
+            new(NetworkSettings, "Change network scan settings", "The ranges to scan, how often, and the SNMP community."),
         ]),
         new("sessions", "Sessions", "signout",
         [

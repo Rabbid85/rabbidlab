@@ -144,6 +144,8 @@ builder.Services.AddPrintQueues();
 builder.Services.AddEventAlerts();
 // Domain health › On each DC: security settings read from each domain controller (DcSettings.cs).
 builder.Services.AddDcSettings();
+// Network: every device on the network ranges, found by a ping sweep and identified (NetworkScan.cs).
+builder.Services.AddNetworkScan();
 // People workflows: steps for AD users, run by hand (PeopleWorkflows.cs).
 builder.Services.AddSingleton<PeopleWorkflows>();
 builder.Services.AddSingleton<FlowRunner>();
@@ -269,6 +271,7 @@ app.MapOffboardingApi();
 app.MapPrintQueuesApi();
 app.MapEventAlertsApi();
 app.MapDcSettingsApi();
+app.MapNetworkApi();
 app.MapPeopleWorkflowsApi();
 app.MapChangesApi();
 app.MapLinksApi();
