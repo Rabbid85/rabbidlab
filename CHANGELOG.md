@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.349 (2026-11-22)
+
+- Loading placeholders follow the theme, so light themes show light grey blocks instead of dark ones.
+- A list that is still loading shows its placeholders under its own column headings.
+
 ## 1.1.348 (2026-11-22)
 
 - AD audit shows the old value and new value of each change, who made it and the domain controller it was made on, read from the Security log of each domain controller. It is grouped by operation, such as Priya Nair modified 4 attributes on Greg Sutton, and Group by can turn that off.

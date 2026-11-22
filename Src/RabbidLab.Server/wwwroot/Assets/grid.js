@@ -178,12 +178,13 @@
       }
       t.innerHTML = html;
       drawn.set(t, { html, loading: g.loading(), first: t.firstElementChild });
-      // Still being read: placeholder rows where the empty text would be.
+      // Still being read: placeholder rows where the empty text would be, each block under its column's heading.
       const none = !rows.length && g.loading() ? t.querySelector(':scope > .empty') : null;
       if (none) {
         none.className = 'grid-loading';
         if (t.clientWidth) none.style.width = `${t.clientWidth}px`; // as wide as what shows, however wide the columns are
-        R.skeleton(none, 'rows', 8);
+        const th = [...t.querySelectorAll(':scope > .th > div')];
+        R.skeleton(none, 'grid', 8, { widths: th.length > 1 ? th.map((d) => d.offsetWidth) : null, lead: !!th[0]?.classList.contains('lead'), tail: true, cols: g.shown().length });
       }
       shownNow = rows.length;
       if (bar) drawTools();

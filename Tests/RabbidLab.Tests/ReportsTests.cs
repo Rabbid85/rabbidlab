@@ -167,7 +167,8 @@ public sealed class ReportsTests : IDisposable
     {
         var admin = await app.SignedIn();
         var it = await TestApp.Notification(admin, "IT team");
-        var hour = Local(app.Clock.GetUtcNow().UtcDateTime).AddHours(1).Hour;
+        // Two hours on, so the next day's run is still over an hour away after the three tries, whatever the time now.
+        var hour = Local(app.Clock.GetUtcNow().UtcDateTime).AddHours(2).Hour;
         (await admin.PostAsJsonAsync("/api/reports/activity", new { on = true, every = "daily", hour, covers = 1, to = new[] { it } })).EnsureSuccessStatusCode();
         app.Mail.Fails = "Could not connect to smtp.amw.com: Connection refused";
         app.Clock.Advance(TimeSpan.FromDays(1));

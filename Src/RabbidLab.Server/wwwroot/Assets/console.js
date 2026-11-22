@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.349', [
+    'Loading placeholders follow the theme, so light themes show light grey blocks instead of dark ones.',
+    'A list that is still loading shows its placeholders under its own column headings.']],
   ['1.1.348', [
     'AD audit shows the old value and new value of each change, who made it and the domain controller it was made on, read from the Security log of each domain controller. It is grouped by operation, such as Priya Nair modified 4 attributes on Greg Sutton, and Group by can turn that off.',
     'Users, groups and computers have a History tab in their side panel: every change to them, old to new, with Undo on the ones made in Rabbid Lab.',
@@ -1094,6 +1097,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.349': ['2026-11-22', 'update', 'Loading placeholders that follow the theme'],
   '1.1.348': ['2026-11-22', 'feature', 'AD audit with old and new values, and a History tab'],
   '1.1.347': ['2026-11-22', 'feature', 'Undo for Active Directory changes'],
   '1.1.346': ['2026-11-22', 'feature', 'Activity report: summary, print preview and email'],
@@ -2695,7 +2699,7 @@ const RELEASE_INFO = {
       + (e.from ? `<div><span class="l">From</span><span class="v">${esc(e.from)}</span></div>` : '')
       + (state ? `<div><span class="l">Undo</span><span class="v"><span class="ubadge ${state[1]}">${state[0]}</span></span></div>` : '') + '</div>'
       + (why ? `<p class="hint dw-note al-why">${svg((c?.undone || brief?.undone) ? 'check' : 'info')}<span>${esc(why)}</span></p>` : '')
-      + (e.change && !c ? `<section class="dw-sec"><div class="dw-sec-head"><h3>Before and after</h3></div><div class="sk-wrap" aria-hidden="true">${SKELETON.rows(0)}${SKELETON.rows(1)}</div></section>`
+      + (e.change && !c ? `<section class="dw-sec"><div class="dw-sec-head"><h3>Before and after</h3></div>${skeleton.html('rows', 2)}</section>`
         : steps?.length ? `<section class="dw-sec"><div class="dw-sec-head"><h3>Before and after <small>${steps.length}</small></h3></div>`
           + `<table class="al-diff"><thead><tr><th>Attribute</th><th>Before</th><th>After</th></tr></thead><tbody>${steps.map((s) => `<tr><td>${esc(s.label)}</td>`
             + `<td class="was">${alList(s.before)}</td><td class="now">${alList(s.after)}</td></tr>`).join('')}</tbody></table></section>` : '')
@@ -3178,25 +3182,9 @@ const RELEASE_INFO = {
       button.classList.remove('turning');
     }
   };
-  // Grey placeholders the shape of what's loading, pulsing, until a page's first read is back: tiles for Links and Sensors,
-  // rows for lists. What's loaded takes their place when it's drawn; no kind takes them away if they're still there.
-  const SKELETON = {
-    tiles: (i) => `<div class="sk-tile"><i class="sk sq"></i><span class="sk-lines"><i class="sk w${[45, 60, 30, 75][i % 4]}"></i><i class="sk w${[75, 45, 60, 45][i % 4]}"></i><i class="sk w30"></i></span></div>`,
-    rows: (i) => `<div class="sk-row"><i class="sk sq"></i><span class="sk-lines"><i class="sk w${[45, 60, 30, 75][i % 4]}"></i><i class="sk w${[75, 45, 60, 45][i % 4]}"></i></span><i class="sk end"></i></div>`,
-  };
-  const skeleton = (el, kind = 'rows', count = 6) => {
-    if (!kind) {
-      if (el.firstElementChild?.classList.contains('sk-wrap')) el.replaceChildren();
-      return;
-    }
-    const items = Array.from({ length: count }, (_, i) => SKELETON[kind](i)).join('');
-    el.innerHTML = `<div class="sk-wrap" aria-hidden="true">${kind === 'tiles' ? `<i class="sk sk-head"></i><div class="sk-tiles">${items}</div>` : items}</div>`;
-  };
-  // A page's lists start as placeholders: data-skel="rows:6" on the list says what and how many.
-  document.querySelectorAll('[data-skel]').forEach((el) => {
-    const [kind, count] = el.dataset.skel.split(':');
-    skeleton(el, kind, Number(count) || 6);
-  });
+  // First loads show the skeleton engine's placeholders (skeleton.js); a page's lists start as them: data-skel="rows:6".
+  const skeleton = window.RabbidSkeleton;
+  skeleton.scan(document);
   // Toasts: the results of actions, stacked at one spot on the screen. Each person picks in Settings, Appearance, Toasts:
   // the type (pills that stack, cards, a deck), where, the style, how long they stay, and whether errors stay until closed.
   // Kept in this browser.

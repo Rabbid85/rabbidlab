@@ -1,0 +1,44 @@
+/* The skeleton engine (skeleton.js): grey blocks the shape of what's coming, pulsing, in the theme's own text colour. */
+.sk { display: block; border-radius: 6px; background: color-mix(in srgb, var(--text) 9%, transparent); animation: sk-pulse 1.2s ease-in-out infinite; }
+@keyframes sk-pulse { 50% { opacity: .45; } }
+@media (prefers-reduced-motion: reduce) { .sk { animation: none; } }
+.sk.w30 { width: 30%; } .sk.w45 { width: 45%; } .sk.w60 { width: 60%; } .sk.w75 { width: 75%; }
+.sk-lines { display: grid; gap: 8px; flex: 1; min-width: 0; }
+.sk-lines .sk, .sk-row .end, .sk-grow .sk, .sk-facts .sk, .sk-field > .sk, .sk-para .sk { height: 11px; }
+
+/* rows and tiles */
+.sk-head { width: 90px; height: 11px; margin: 4px 0 14px; }
+.sk-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; }
+.sk-tile { display: flex; align-items: center; gap: 14px; height: 82px; padding: 0 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+.sk-tile .sq { flex: none; width: 42px; height: 42px; border-radius: 11px; }
+.sk-row { display: grid; grid-template-columns: 28px minmax(0, 1fr) 70px; align-items: center; gap: 12px; min-height: 52px; padding: 6px 4px; border-bottom: 1px solid var(--line); }
+.sk-row .sq { width: 28px; height: 28px; border-radius: 8px; }
+
+/* grid: one placeholder under each column heading */
+.sk-grow { display: grid; grid-template-columns: var(--sk-cols, 36px repeat(5, minmax(0, 1fr))); align-items: center; min-height: 46px; border-bottom: 1px solid var(--line); }
+.sk-grow > span { min-width: 0; padding: 0 12px; }
+.sk-grow .tick { width: 16px; height: 16px; border-radius: 5px; margin: 0 auto; }
+
+/* panel: the header, its buttons, the facts, the tabs, then rows */
+.sk-phead { display: flex; align-items: center; gap: 14px; margin: 4px 0 18px; }
+.sk-phead .sq { flex: none; width: 40px; height: 40px; border-radius: 11px; }
+.sk-chips { display: flex; gap: 10px; margin-bottom: 18px; }
+.sk-chips .sk { width: 92px; height: 26px; border-radius: 8px; }
+.sk-chips.tabs .sk { width: 64px; height: 14px; }
+.sk-facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 14px 18px; margin-bottom: 20px; }
+.sk-facts > span { display: grid; gap: 8px; }
+
+/* timeline: numbered steps down a line */
+.sk-steps { display: grid; gap: 18px; position: relative; }
+.sk-step { display: flex; gap: 14px; align-items: flex-start; }
+.sk-step .dot { flex: none; width: 26px; height: 26px; border-radius: 50%; }
+
+/* form: a label over each box */
+.sk-field { display: grid; gap: 8px; margin-bottom: 16px; }
+.sk-field > .sk { width: 22%; }
+.sk-field .box { width: 100%; height: 40px; border-radius: 10px; }
+
+/* lines of text, and one placeholder inside a line */
+.sk-para { display: grid; gap: 10px; }
+.sk-num { display: inline-block; width: 70px; height: 30px; border-radius: 8px; vertical-align: middle; }
+.sk-text { display: inline-block; width: 150px; height: 12px; vertical-align: middle; }
