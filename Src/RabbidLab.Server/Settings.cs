@@ -26,6 +26,20 @@ public sealed class ConsoleSettings
     /// <summary>What shows behind the sign-in card (Brand.Backgrounds). Null: squares.</summary>
     public string? SignInBackground { get; set; }
 
+    /// <summary>The sign-in card's look (Brand.Cards, Brand.Styles, Brand.Sizes) and its glass opacity (20 to 95). Null: whole card, smoked glass, 65, a little larger.</summary>
+    public string? SignInCard { get; set; }
+    public string? SignInStyle { get; set; }
+    public int? SignInGlass { get; set; }
+    public string? SignInSize { get; set; }
+
+    /// <summary>The quote on the sign-in card: when it changes (Brand.QuoteModes), which kind (Brand.QuoteKinds), and the lab's own. Null: a random motivational one each visit.</summary>
+    public string? SignInQuote { get; set; }
+    public string? SignInQuoteKind { get; set; }
+    public List<SignInQuote>? SignInQuotes { get; set; }
+
+    /// <summary>The lab's look for people who pick System in Settings, Appearance (theme, layout, style, toasts), as the console sends it. Null: Rabbid Lab's own.</summary>
+    public string? LabLook { get; set; }
+
     /// <summary>Sign out when idle: minutes without a click, key press or scroll before a session ends (SignIn.IdleOut). 0 is never.</summary>
     public int IdleMinutes { get; set; } = 30;
 

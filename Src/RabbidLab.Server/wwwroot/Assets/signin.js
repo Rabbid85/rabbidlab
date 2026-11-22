@@ -49,9 +49,38 @@
     showBackdrop(bgNow());
     $('look-name').textContent = Backdrop.KINDS.find(([k]) => k === bgNow())?.[1] || 'Squares';
   };
+  // The quote on the left side: when it changes and which kind, as the lab set it; the button beside it shows another.
+  const Quotes = window.RabbidLabQuotes;
+  let quotes = [];
+  let quoteAt = -1;
+  const showQuote = (i, fade = false) => {
+    const fig = $('side-quote');
+    const put = () => {
+      quoteAt = i;
+      fig.hidden = i < 0;
+      if (i < 0) return;
+      $('quote-text').textContent = quotes[i][0];
+      $('quote-by').textContent = quotes[i][1] || '';
+      fig.classList.remove('swap');
+    };
+    if (!fade || fig.hidden) { put(); return; }
+    fig.classList.add('swap');
+    setTimeout(put, 200);
+  };
+  // Picked again only when the lab's quote settings change, so the server's answer never swaps the one that's showing.
+  let quoteKey = '';
+  const quote = (brand) => {
+    const key = JSON.stringify([brand.quote, brand.quoteKind, brand.quotes]);
+    if (key === quoteKey) return;
+    quoteKey = key;
+    quotes = brand.quote === 'off' ? [] : Quotes.list(brand.quoteKind, brand.quotes);
+    showQuote(Quotes.pick(quotes, brand.quote));
+  };
+  $('quote-next').addEventListener('click', () => showQuote(Quotes.pick(quotes, 'visit', quoteAt), true));
   const look = (brand) => {
     labBg = brand.background || 'squares';
     showBg();
+    quote(brand);
   };
   look(window.RabbidLabBrand.now);
 

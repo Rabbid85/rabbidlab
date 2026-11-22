@@ -996,12 +996,7 @@ body.dev-tools .devstrip:not([hidden]) { display: flex; flex-wrap: wrap; }
 /* Toasts (R.toast): the results of actions, stacked at one spot on the screen. The type (pills that stack, cards, a deck),
    where, the style, how long they stay and whether errors stay are each person's own (Settings, Appearance, Toasts).
    --toast-l, -m and -t line them up with the page, not the window, and follow it as the window resizes. */
-.toasts { --tst-a: .95; --tst-bg: rgba(12, 13, 20, var(--tst-a)); --tst-blur: blur(16px) saturate(135%); --tst-edge: rgba(255, 255, 255, .09); --dir: 1;
-  position: fixed; z-index: 900; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
-/* Style: every one flat, a fill, a blur and a thin edge. --tst-a is the glass opacity. */
-.toasts.look-frost { --tst-bg: rgba(36, 39, 58, var(--tst-a)); --tst-blur: blur(28px) saturate(180%); --tst-edge: rgba(255, 255, 255, .16); }
-.toasts.look-dark { --tst-bg: rgba(12, 13, 20, .88); --tst-blur: blur(10px) saturate(115%); --tst-edge: rgba(255, 255, 255, .08); }
-.toasts.look-solid { --tst-bg: #141725; --tst-blur: none; --tst-edge: var(--line-strong); }
+.toasts { --dir: 1; position: fixed; z-index: 900; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
 /* Where: the page's left, middle or right, at its top or the bottom of the window. The newest is nearest the edge. */
 .toasts.at-tl, .toasts.at-tc, .toasts.at-tr { top: var(--toast-t, 70px); }
 .toasts.at-bl, .toasts.at-bc, .toasts.at-br { bottom: 24px; flex-direction: column-reverse; --dir: -1; }
@@ -1011,7 +1006,7 @@ body.dev-tools .devstrip:not([hidden]) { display: flex; flex-wrap: wrap; }
 /* One toast: its icon (the flask while work runs), the words, its link, a close, and a line along its foot for the time
    left, which stops while the pointer is on it. One width from the start, so words changing never stretch it. */
 .tst { position: relative; display: flex; align-items: center; gap: 12px; width: min(620px, calc(100vw - 48px)); min-height: 48px; padding: 8px 8px 8px 10px; overflow: hidden;
-  border: 1px solid var(--tst-edge); border-radius: 16px; background: var(--tst-bg); backdrop-filter: var(--tst-blur); color: #D7DAE8; font-size: 14px; pointer-events: auto;
+  border: 1px solid var(--sty-toasts-edge, var(--line-strong)); border-radius: 16px; background: var(--sty-toasts-bg, #141725); backdrop-filter: var(--sty-toasts-blur, none); color: #D7DAE8; font-size: 14px; pointer-events: auto;
   animation: tst-in .22s ease-out; transition: opacity .22s ease, transform .22s ease; }
 @keyframes tst-in { from { opacity: 0; transform: translateY(calc(-6px * var(--dir))); } }
 .tst.out { opacity: 0; transform: translateY(calc(-4px * var(--dir))); }
@@ -1045,7 +1040,7 @@ body.dev-tools .devstrip:not([hidden]) { display: flex; flex-wrap: wrap; }
 /* Long work that turns into its result glows once. */
 @keyframes tst-flash { from { box-shadow: 0 0 0 1px rgba(95, 212, 160, .55); } }
 .tst.flash { animation: tst-flash 1.2s ease-out; }
-.tst-more { height: 32px; padding: 0 12px; border: 1px solid var(--tst-edge); border-radius: 10px; background: var(--tst-bg); backdrop-filter: var(--tst-blur); color: #C3C7D6; font-size: 12.5px; font-weight: 600; pointer-events: auto; cursor: pointer; }
+.tst-more { height: 32px; padding: 0 12px; border: 1px solid var(--sty-toasts-edge, var(--line-strong)); border-radius: 10px; background: var(--sty-toasts-bg, #141725); backdrop-filter: var(--sty-toasts-blur, none); color: #C3C7D6; font-size: 12.5px; font-weight: 600; pointer-events: auto; cursor: pointer; }
 /* Cards: the title over the detail, the link on its own line, the close in the corner. */
 .t-cards .tst { display: grid; grid-template-columns: 32px minmax(0, 1fr) 26px; align-items: start; gap: 4px 12px; width: min(380px, calc(100vw - 48px)); padding: 14px 10px 16px 14px; border-radius: 14px; }
 .t-cards .tst-ic { width: 32px; height: 32px; }
@@ -1073,6 +1068,21 @@ body.dev-tools .devstrip:not([hidden]) { display: flex; flex-wrap: wrap; }
 .ds-row[hidden] { display: none; }
 .ds-range { width: 100%; margin: 0; accent-color: var(--accent); }
 .ds-range-v { min-width: 3.2ch; color: var(--title); font-variant-numeric: tabular-nums; }
+/* Style, Windows, Side panel and Menus: a style and, when it's glass, its own opacity under it. */
+.ap-look { display: grid; gap: 10px; }
+.ap-glass { display: flex; align-items: center; gap: 12px; }
+.ap-glass[hidden] { display: none; }
+/* Your own quotes, one a line. */
+.ds-area { height: auto; min-height: 120px; padding: 9px 12px; line-height: 1.45; resize: vertical; }
+.ds-row:has(.ds-area), .ds-row:has(.ap-glass:not([hidden])) { align-items: flex-start; }
+
+/* The style engine's parts (style.js puts each part's look on <html>): one rule each, reading --sty-<part>-bg, -blur and
+   -edge. A part on Solid has none, so it keeps its usual look. Windows over the page dim it less and blur it, as the
+   loading window does. */
+html[data-sty-win] .dialog { border-color: var(--sty-win-edge); background: var(--sty-win-bg); backdrop-filter: var(--sty-win-blur); }
+html[data-sty-win] .dialog::backdrop { background: rgba(5, 6, 10, .45); backdrop-filter: blur(4px); }
+html[data-sty-panel] dialog.drawer { border-left-color: var(--sty-panel-edge); background: var(--sty-panel-bg); backdrop-filter: var(--sty-panel-blur); }
+html[data-sty-menus] :is(.gear-menu, .account-menu) { border-color: var(--sty-menus-edge); background: var(--sty-menus-bg); backdrop-filter: var(--sty-menus-blur); }
 
 /* Console address: rows with an icon, what it is, and its buttons on the right as icons (Copy, Download, Remove). */
 .ca-row { display: flex; align-items: center; gap: 14px; min-height: 58px; padding: 9px 0; }

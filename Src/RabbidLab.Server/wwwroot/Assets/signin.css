@@ -215,3 +215,43 @@ body.loading .look { visibility: hidden; }
 .mfa-skip { display: flex; align-items: center; gap: 10px; margin: 2px 0 14px; color: var(--text); font-size: 14px; cursor: pointer; }
 .mfa-skip[hidden] { display: none; }
 .mfa-skip small { display: block; color: var(--muted); font-size: 12px; }
+
+/* The card's look, as the lab set it in Settings, Appearance, Sign-in page. brand.js puts it on <html> before the page draws:
+   data-si-card (whole, open or split) and data-si-size; its style comes from the style engine (style.js, the signin part:
+   data-sty-signin and --sty-signin-bg, -blur and -edge; none for Solid, the card as it always was). */
+/* Whole card: all of it in the style; the left side, the boxes and the foot a shade darker so they still read. */
+html[data-si-card="whole"][data-sty-signin] .signin-card { border-color: var(--sty-signin-edge); background: var(--sty-signin-bg); backdrop-filter: var(--sty-signin-blur); }
+html[data-si-card="whole"][data-sty-signin] .side { border-right-color: rgba(255, 255, 255, .08); background: rgba(6, 7, 12, .22); }
+html[data-si-card="whole"][data-sty-signin] .card-foot { border-top-color: rgba(255, 255, 255, .08); background: rgba(6, 7, 12, .14); }
+html[data-sty-signin] .input input, html[data-sty-signin] .foot-pill { border-color: rgba(255, 255, 255, .12); background: rgba(6, 7, 12, .5); }
+/* Open left side: the clock, the quote and the name straight on the background; only the form is a card. */
+html[data-si-card="open"] .signin-card { overflow: visible; border-color: transparent; background: none; }
+html[data-si-card="open"] .side { border: 0; background: none; text-shadow: 0 1px 12px rgba(0, 0, 0, .5); }
+html[data-si-card="open"] .card-body, html[data-si-card="open"] .card-foot { background: var(--sty-signin-bg, #11131D); backdrop-filter: var(--sty-signin-blur, none); }
+html[data-si-card="open"] .card-body { border: 1px solid var(--sty-signin-edge, #1F2232); border-bottom: 0; border-radius: 16px 16px 0 0; }
+html[data-si-card="open"] .card-foot { border: 1px solid var(--sty-signin-edge, #1F2232); border-top-color: rgba(255, 255, 255, .06); border-radius: 0 0 16px 16px; }
+/* Styled left side, solid form: the left side in the style, the form in the card's own colour. */
+html[data-si-card="split"][data-sty-signin] .signin-card { border-color: var(--sty-signin-edge); background: none; }
+html[data-si-card="split"][data-sty-signin] .side { background: var(--sty-signin-bg); backdrop-filter: var(--sty-signin-blur); }
+html[data-si-card="split"][data-sty-signin] .card-body, html[data-si-card="split"][data-sty-signin] .card-foot { background: #11131D; }
+/* Size: the left side grows most; the words and boxes stay the same size. The card's top moves up by half of what it grew. */
+@media (min-width: 901px) {
+  html[data-si-size="larger"] .signin-card { grid-template-columns: minmax(0, 560fr) minmax(0, 440fr); max-width: 1000px; min-height: 540px; }
+  html[data-si-size="larger"] .auth-shell { padding-top: max(28px, calc(50vh - 270px)); }
+  html[data-si-size="largest"] .signin-card { grid-template-columns: minmax(0, 640fr) minmax(0, 480fr); max-width: 1120px; min-height: 600px; }
+  html[data-si-size="largest"] .auth-shell { padding-top: max(28px, calc(50vh - 300px)); }
+}
+
+/* The quote, in the middle of the left side between the time and the name. Another quote shows on the button beside it. */
+.side-quote { position: absolute; left: 34px; right: 34px; top: 54%; z-index: 1; margin: 0; transform: translateY(-50%); transition: opacity .2s ease; }
+.side-quote[hidden] { display: none; }
+.side-quote.swap { opacity: 0; }
+.side-quote blockquote { margin: 0; color: #E6E8F2; font: 600 19px/1.4 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; letter-spacing: -.01em; }
+.side-quote blockquote::before { content: "\201C"; display: block; height: 22px; margin-bottom: 2px; color: var(--accent-soft); font: 800 44px/1 Georgia, serif; }
+.side-quote figcaption { margin-top: 10px; color: #8E92A8; font-size: 13px; }
+.side-quote figcaption:not(:empty)::before { content: "\2014  "; }
+.quote-next { position: absolute; right: -10px; bottom: -6px; display: grid; place-items: center; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 8px; background: none; color: #6D7290; opacity: 0; transition: opacity .2s; cursor: pointer; }
+.side-quote:hover .quote-next, .quote-next:focus-visible { opacity: 1; }
+.quote-next:hover { background: rgba(255, 255, 255, .07); color: #fff; }
+.quote-next svg { width: 15px; height: 15px; }
+@media (max-width: 900px) { .side-quote { display: none; } }

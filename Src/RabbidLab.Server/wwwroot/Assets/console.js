@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.333', [
+    'The sign-in card is larger and in smoked glass by default, with a motivational quote on its left side. Settings, Appearance, Sign-in page sets the card (whole card, open left side or styled left side), its style and glass opacity, its size, the quote, the kind of quote and your own quotes.',
+    'Settings, Appearance has Style: one style for the whole app (Solid, Smoked glass, Frosted glass or Dark) with its glass opacity. Windows, Side panel, Menus and Toasts can each follow it or have their own, and Use everywhere sets them all to follow it.',
+    'System in Settings, Appearance uses the theme, layout, style and toasts saved on the server for the lab, and follows them when they change. People allowed to change the lab look can save theirs for everyone.']],
   ['1.1.332', [
     'Toasts stack instead of replacing each other. Each has a close button and a line along its foot for the time left, which stops while the pointer is on it. Long work turns into its result in the same toast.',
     'Settings, Appearance, Toasts has Type (Pills that stack, Cards or A deck), Position, Style (Smoked glass, Frosted glass, Dark or Solid) with Glass opacity, Show for (up to Until closed) and Errors stay until closed. The default is pills that stack at the top middle in smoked glass.',
@@ -1048,6 +1052,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.333': ['2026-11-22', 'feature', 'A style engine, a glass sign-in card and System'],
   '1.1.332': ['2026-11-22', 'feature', 'Toasts stack, with all their options in Appearance'],
   '1.1.331': ['2026-11-22', 'fix', 'No flash of the console frame on reload'],
   '1.1.330': ['2026-11-22', 'fix', 'The sign-in update pill holds still'],
@@ -1645,19 +1650,20 @@ const RELEASE_INFO = {
     $('rail-collapse-text').textContent = small ? 'Expand' : 'Collapse';
     $('rail-collapse').title = small ? 'Expand' : 'Collapse';
   };
-  // Layout, in the Settings list: the whole window unless Centered was picked.
+  // Layout, in the Settings list: the whole window unless Centered was picked. Someone on System gets the lab's.
+  const layoutMine = () => {
+    try { return localStorage.getItem('rabbidlab.layout'); } catch { return null; }
+  };
+  const layoutNow = () => layoutMine() || window.RabbidLabBrand.now.look?.layout || 'wide';
   const layout = () => {
-    let wide = true;
-    try { wide = localStorage.getItem('rabbidlab.layout') !== 'centered'; } catch { /* full width */ }
+    const wide = layoutNow() !== 'centered';
     document.body.classList.toggle('layout-wide', wide);
     $('set-layout').value = wide ? 'wide' : 'centered';
   };
   $('set-layout').addEventListener('change', () => {
-    try {
-      if ($('set-layout').value === 'centered') localStorage.setItem('rabbidlab.layout', 'centered');
-      else localStorage.removeItem('rabbidlab.layout');
-    } catch { /* this visit only */ }
+    try { localStorage.setItem('rabbidlab.layout', $('set-layout').value); } catch { /* this visit only */ }
     layout();
+    lookDraw();
   });
   layout();
   // The theme (Settings, Appearance), just for this browser: a tile per theme drawn in its own colours (set here, so no theme
@@ -1690,6 +1696,7 @@ const RELEASE_INFO = {
     if (!b) return;
     Theme.set(b.dataset.pick);
     drawThemes();
+    lookDraw();
   });
   drawThemes();
   // Your name beside the avatar, top right (Settings, Account): off in this browser while someone's watching.
@@ -1802,11 +1809,37 @@ const RELEASE_INFO = {
     $('br-bg').value = brand.background || 'squares';
     $('br-bg').disabled = !may;
     bgPreview(brand.background || 'squares');
+    // The sign-in card: which, its style and glass opacity, its size, and the quote.
+    const glass = brand.glass || 65;
+    $('br-card').value = brand.card || 'whole';
+    $('br-style').value = brand.style || 'glass';
+    $('br-glass').value = String(glass);
+    $('br-glass-v').textContent = `${glass}%`;
+    $('br-glass-row').hidden = !['glass', 'frost'].includes(brand.style || 'glass');
+    $('br-size').value = brand.size || 'larger';
+    $('br-quote').value = brand.quote || 'visit';
+    $('br-qkind').value = brand.quoteKind || 'motivational';
+    if (document.activeElement !== $('br-quotes')) $('br-quotes').value = (brand.quotes || []).map((q) => (q.by ? `${q.text} - ${q.by}` : q.text)).join('\n');
+    ['br-card', 'br-style', 'br-glass', 'br-size', 'br-quote', 'br-qkind', 'br-quotes'].forEach((id) => { $(id).disabled = !may; });
   };
   $('br-bg').innerHTML = window.RabbidLabBackdrop.KINDS.map(([k, label]) => `<option value="${k}">${label}</option>`).join('');
   const bgPreview = window.RabbidLabBackdrop.on($('br-bg-preview'), { width: 760 });
   window.addEventListener('rabbidlab:theme', () => bgPreview(brand.background || 'squares'));
   $('br-bg').addEventListener('change', () => saveBrand({ background: $('br-bg').value }));
+  $('br-card').addEventListener('change', () => saveBrand({ card: $('br-card').value }));
+  $('br-style').addEventListener('change', () => saveBrand({ style: $('br-style').value }));
+  $('br-glass').addEventListener('input', () => { $('br-glass-v').textContent = `${$('br-glass').value}%`; });
+  $('br-glass').addEventListener('change', () => saveBrand({ glass: Number($('br-glass').value) }));
+  $('br-size').addEventListener('change', () => saveBrand({ size: $('br-size').value }));
+  $('br-quote').addEventListener('change', () => saveBrand({ quote: $('br-quote').value }));
+  $('br-qkind').addEventListener('change', () => saveBrand({ quoteKind: $('br-qkind').value }));
+  // The lab's own quotes: one a line, who said it after the last dash.
+  $('br-quotes').addEventListener('change', () => saveBrand({
+    quotes: $('br-quotes').value.split('\n').map((l) => l.trim()).filter(Boolean).map((l) => {
+      const m = l.match(/^(.*\S)\s+[-–—]\s+(\S.*)$/);
+      return m ? { text: m[1], by: m[2] } : { text: l, by: null };
+    }),
+  }));
   const saveBrand = async (change) => {
     try {
       brand = Brand.apply(await send('/api/brand', change));
@@ -2674,16 +2707,19 @@ const RELEASE_INFO = {
   const TOAST_FLASK = '<svg class="all-flask" viewBox="0 0 24 24" aria-hidden="true"><path class="liquid" d="M6.6 15.2h10.8l2 3.2A1.7 1.7 0 0 1 17.9 21H6.1a1.7 1.7 0 0 1-1.5-2.6z"/><path d="M9 3h6M10 3v6.2L4.6 18.4A1.7 1.7 0 0 0 6.1 21h11.8a1.7 1.7 0 0 0 1.5-2.6L14 9.2V3"/></svg>';
   const TOAST_DEFAULT = { type: 'stack', at: 'tc', look: 'glass', glass: 95, secs: 8, errors: true };
   const TOAST_MOST = { stack: 3, cards: 4, deck: 6 }; // how many show at once; the rest wait behind a "more" line
+  // This person's own toast settings, or null when they follow the lab's (System).
+  const toastMine = () => {
+    try { return JSON.parse(localStorage.getItem('rabbidlab.toast') || 'null'); } catch { return null; }
+  };
   const toastPrefs = () => {
-    let p = {};
-    try { p = JSON.parse(localStorage.getItem('rabbidlab.toast') || '{}') || {}; } catch { p = {}; }
+    const p = toastMine() || {};
     // Before 1.1.332 there was one toast in a style: Card became the cards type, the others pills that stack.
     if (p.style && !p.type) p.type = p.style === 'card' ? 'cards' : 'stack';
-    const o = { ...TOAST_DEFAULT, ...p };
+    const o = { ...TOAST_DEFAULT, ...(window.RabbidLabBrand.now.look?.toast || {}), ...p };
     return {
       type: o.type in TOAST_MOST ? o.type : TOAST_DEFAULT.type,
       at: ['tl', 'tc', 'tr', 'bl', 'bc', 'br'].includes(o.at) ? o.at : TOAST_DEFAULT.at,
-      look: ['glass', 'frost', 'dark', 'solid'].includes(o.look) ? o.look : TOAST_DEFAULT.look,
+      look: ['app', 'glass', 'frost', 'dark', 'solid'].includes(o.look) ? o.look : TOAST_DEFAULT.look,
       glass: Math.min(95, Math.max(20, Number(o.glass) || TOAST_DEFAULT.glass)),
       secs: [3, 5, 8, 15, 0].includes(Number(o.secs)) ? Number(o.secs) : TOAST_DEFAULT.secs,
       errors: o.errors !== false,
@@ -2733,8 +2769,10 @@ const RELEASE_INFO = {
       new ResizeObserver(toastReplace).observe(document.querySelector('.main'));
       window.addEventListener('resize', toastReplace);
     }
-    toastBox.className = `toasts t-${p.type} at-${p.at} look-${p.look}${p.at[0] === 'b' ? ' up' : ''}`;
-    toastBox.style.setProperty('--tst-a', String(p.glass / 100));
+    // Same as the app takes the style for the whole app (Settings, Appearance, Style).
+    const [look, glass] = p.look === 'app' ? [stylePrefs().look, stylePrefs().glass] : [p.look, p.glass];
+    toastBox.className = `toasts t-${p.type} at-${p.at}${p.at[0] === 'b' ? ' up' : ''}`;
+    window.RabbidLabStyle.set('toasts', look, glass);
     toastPlace();
     return p;
   };
@@ -2823,7 +2861,7 @@ const RELEASE_INFO = {
     $('toast-glass-row').hidden = p.look !== 'glass' && p.look !== 'frost';
     $('toast-secs').value = String(p.secs);
     $('toast-errors').checked = p.errors;
-    $('toast-reset').disabled = Object.keys(TOAST_DEFAULT).every((k) => p[k] === TOAST_DEFAULT[k]);
+    $('toast-reset').disabled = !toastMine();
   };
   const toastSet = (change) => {
     try {
@@ -2831,6 +2869,7 @@ const RELEASE_INFO = {
       else localStorage.removeItem('rabbidlab.toast');
     } catch { /* this visit only */ }
     toastSettings();
+    lookDraw();
     // Toasts already up move to the new place and look.
     if (toastBox) { toastHost(); toastLayout(); }
     toast('Toast settings saved.', 'New toasts look like this one.', { action: { label: 'Details', href: '#settings/appearance' } });
@@ -2841,7 +2880,7 @@ const RELEASE_INFO = {
   // The glass changes as the slider moves; the sample comes when it's let go.
   $('toast-glass').addEventListener('input', () => {
     $('toast-glass-v').textContent = `${$('toast-glass').value}%`;
-    toastBox?.style.setProperty('--tst-a', String(Number($('toast-glass').value) / 100));
+    window.RabbidLabStyle.set('toasts', toastPrefs().look, Number($('toast-glass').value)); // only shown for a toast style of its own
   });
   $('toast-glass').addEventListener('change', () => toastSet({ glass: Number($('toast-glass').value) }));
   $('toast-secs').addEventListener('change', () => toastSet({ secs: Number($('toast-secs').value) }));
@@ -2852,6 +2891,123 @@ const RELEASE_INFO = {
     toast('This is a test toast.', p.secs ? `It closes after ${p.secs} seconds.` : 'It stays until you close it.', { action: { label: 'Details', href: '#settings/appearance' } });
   });
   toastSettings();
+  // Style (Settings, Appearance), just for this browser: one for the whole app, and windows, the side panel and menus each
+  // the same as the app or their own; toasts choose theirs in Toasts. Someone on System gets the lab's. The style engine
+  // (style.js) puts each part's look on the page.
+  const STYLE_LOOKS = window.RabbidLabStyle.LOOKS;
+  const STYLE_PARTS = ['win', 'panel', 'menus'];
+  const STYLE_DEFAULT = { look: 'solid', glass: 65, win: 'app', winGlass: 65, panel: 'app', panelGlass: 65, menus: 'app', menusGlass: 65 };
+  const styleMine = () => {
+    try { return JSON.parse(localStorage.getItem('rabbidlab.style') || 'null'); } catch { return null; }
+  };
+  const stylePrefs = () => {
+    const o = { ...STYLE_DEFAULT, ...(window.RabbidLabBrand.now.look?.style || {}), ...(styleMine() || {}) };
+    const glass = (v) => Math.min(95, Math.max(20, Number(v) || 65));
+    const part = (v) => (v === 'app' || STYLE_LOOKS.includes(v) ? v : 'app');
+    const p = { look: STYLE_LOOKS.includes(o.look) ? o.look : 'solid', glass: glass(o.glass) };
+    STYLE_PARTS.forEach((k) => { p[k] = part(o[k]); p[`${k}Glass`] = glass(o[`${k}Glass`]); });
+    return p;
+  };
+  const styleApply = () => {
+    const p = stylePrefs();
+    STYLE_PARTS.forEach((k) => window.RabbidLabStyle.set(k, ...(p[k] === 'app' ? [p.look, p.glass] : [p[k], p[`${k}Glass`]])));
+  };
+  // Each part's control: Same as the app or a style of its own, and its own glass opacity when that's glass.
+  const PART_LOOKS = [['app', 'Same as the app'], ['solid', 'Solid'], ['glass', 'Smoked glass'], ['frost', 'Frosted glass'], ['dark', 'Dark']];
+  document.querySelectorAll('.ap-look').forEach((box) => {
+    const k = box.dataset.part;
+    const name = box.closest('.ds-row').querySelector('.ds-l b').textContent;
+    box.innerHTML = `<select data-style-part="${k}" aria-label="${esc(name)} style">${PART_LOOKS.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>`
+      + `<span class="ap-glass" hidden><input type="range" class="ds-range" min="20" max="95" step="5" data-style-glass="${k}" aria-label="${esc(name)} glass opacity"><b class="ds-range-v"></b></span>`;
+  });
+  const { seeThrough } = window.RabbidLabStyle;
+  const drawStyle = () => {
+    const p = stylePrefs();
+    $('style-look').value = p.look;
+    $('style-glass').value = String(p.glass);
+    $('style-glass-v').textContent = `${p.glass}%`;
+    $('style-glass-row').hidden = !seeThrough(p.look);
+    document.querySelectorAll('.ap-look').forEach((box) => {
+      const k = box.dataset.part;
+      box.querySelector('select').value = p[k];
+      const g = box.querySelector('.ap-glass');
+      g.hidden = !seeThrough(p[k]);
+      g.querySelector('input').value = String(p[`${k}Glass`]);
+      g.querySelector('b').textContent = `${p[`${k}Glass`]}%`;
+    });
+    $('style-all').disabled = STYLE_PARTS.every((k) => p[k] === 'app') && toastPrefs().look === 'app';
+    $('style-reset').disabled = !styleMine();
+  };
+  const styleSet = (change) => {
+    try {
+      if (change) localStorage.setItem('rabbidlab.style', JSON.stringify({ ...stylePrefs(), ...change }));
+      else localStorage.removeItem('rabbidlab.style');
+    } catch { /* this visit only */ }
+    styleApply();
+    drawStyle();
+    lookDraw();
+    // Toasts that follow the app change with it.
+    if (toastBox) { toastHost(); toastLayout(); }
+  };
+  $('style-look').addEventListener('change', () => styleSet({ look: $('style-look').value }));
+  $('style-glass').addEventListener('input', () => styleSet({ glass: Number($('style-glass').value) }));
+  document.addEventListener('change', (e) => {
+    const s = e.target.closest('[data-style-part]');
+    if (s) styleSet({ [s.dataset.stylePart]: s.value });
+  });
+  document.addEventListener('input', (e) => {
+    const r = e.target.closest('[data-style-glass]');
+    if (r) styleSet({ [`${r.dataset.styleGlass}Glass`]: Number(r.value) });
+  });
+  // Use everywhere: every part, and toasts, the same as the app.
+  $('style-all').addEventListener('click', () => {
+    styleSet(Object.fromEntries(STYLE_PARTS.map((k) => [k, 'app'])));
+    toastSet({ look: 'app' });
+  });
+  $('style-reset').addEventListener('click', () => styleSet(null));
+  styleApply();
+  drawStyle();
+
+  // System (Settings, Appearance): the lab's theme, layout, style and toasts, saved on the server and followed as they
+  // change. Changing any of them makes it this person's own again. Someone allowed to change the lab's look can save
+  // theirs as the lab's.
+  const lookMine = () => Theme.mine || !!layoutMine() || !!styleMine() || !!toastMine();
+  const lookDraw = () => {
+    const mine = lookMine();
+    $('look-system').disabled = !mine;
+    $('look-system-help').textContent = mine
+      ? "Uses the lab's theme, layout, style and toasts, saved on the server, and follows them when they change."
+      : "In use. Your theme, layout, style and toasts are the lab's, and follow them when they change.";
+    $('look-save-row').hidden = !has('appearance.brand');
+  };
+  const lookAll = () => {
+    layout();
+    drawThemes();
+    styleApply();
+    drawStyle();
+    toastSettings();
+    if (toastBox) { toastHost(); toastLayout(); }
+    lookDraw();
+  };
+  $('look-system').addEventListener('click', () => {
+    Theme.follow();
+    try { ['rabbidlab.layout', 'rabbidlab.style', 'rabbidlab.toast'].forEach((k) => localStorage.removeItem(k)); } catch { /* this visit only */ }
+    lookAll();
+    toast('Now using System.', "Your theme, layout, style and toasts are the lab's.");
+  });
+  $('look-save').addEventListener('click', async () => {
+    try {
+      brand = Brand.apply(await send('/api/brand', { look: { theme: Theme.picked, layout: layoutNow(), style: stylePrefs(), toast: toastPrefs() } }));
+      toast("Saved as the lab's look.", 'Everyone on System gets it.');
+    } catch (err) {
+      toast("Could not save the lab's look.", err.message, { tone: 'warn' });
+    }
+    lookDraw();
+  });
+  // The lab's look came from the server: anyone following it gets it.
+  window.addEventListener('rabbidlab:brand', lookAll);
+  document.addEventListener('rabbidlab:me', lookDraw);
+  lookDraw();
   // Are you sure: a title, what happens, the button's words, and what to do on yes. code: a command shown as it will run;
   // safe: a plain button, for something that isn't destructive; type: a name to type before the button works; info: only
   // the one button, for something to read (a one-time code).

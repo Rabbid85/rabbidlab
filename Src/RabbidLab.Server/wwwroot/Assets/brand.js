@@ -20,7 +20,9 @@
     const i = swatch(accent);
     return i >= 0 ? [SWATCHES[i][1], SWATCHES[i][2]] : [lighter(accent, 0.15), accent];
   };
-  let now = { name: null, icon: null, accent: null, tagline: null, background: null };
+  // The sign-in card as the lab set it (Settings, Appearance, Sign-in page), and the lab's look for people on System.
+  const SIGNIN = { card: 'whole', style: 'glass', glass: 65, size: 'larger', quote: 'visit', quoteKind: 'motivational', quotes: [] };
+  let now = { name: null, icon: null, accent: null, tagline: null, background: null, ...SIGNIN, look: null };
   try {
     now = { ...now, ...JSON.parse(localStorage.getItem(KEY) || '{}') };
   } catch {
@@ -53,9 +55,19 @@
     }
     if (mine === asked) link.href = href;
   };
+  // The sign-in card's look on <html>, so it's right before the page draws: which card and its size (signin.css), and its
+  // style and glass opacity through the style engine (style.js, the signin part).
+  const card = () => {
+    const d = document.documentElement;
+    d.dataset.siCard = now.card || SIGNIN.card;
+    d.dataset.siSize = now.size || SIGNIN.size;
+    window.RabbidLabStyle?.set('signin', now.style || SIGNIN.style, now.glass || SIGNIN.glass);
+  };
   const apply = (brand) => {
     now = { name: brand?.name || null, icon: brand?.icon || null, accent: brand?.accent || null, tagline: brand?.tagline || null,
-      background: brand?.background || null };
+      background: brand?.background || null, card: brand?.card || SIGNIN.card, style: brand?.style || SIGNIN.style, glass: brand?.glass || SIGNIN.glass,
+      size: brand?.size || SIGNIN.size, quote: brand?.quote || SIGNIN.quote, quoteKind: brand?.quoteKind || SIGNIN.quoteKind,
+      quotes: Array.isArray(brand?.quotes) ? brand.quotes : [], look: brand?.look || null };
     try {
       localStorage.setItem(KEY, JSON.stringify(now));
     } catch {
@@ -63,10 +75,13 @@
     }
     colours();
     tabIcon();
+    card();
+    window.dispatchEvent(new Event('rabbidlab:brand'));
     return now;
   };
   colours();
   tabIcon();
+  card();
   // The tagline with its tags filled in from what the page knows; null when a tag has nothing here (the sign-in page
   // knows no username), so the page shows Lab console rather than half a line.
   const TAG = 'Lab console';

@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.333 (2026-11-22)
+
+- The sign-in card is larger and in smoked glass by default, with a motivational quote on its left side. Settings, Appearance, Sign-in page sets the card (whole card, open left side or styled left side), its style and glass opacity, its size, the quote, the kind of quote and your own quotes.
+- Settings, Appearance has Style: one style for the whole app (Solid, Smoked glass, Frosted glass or Dark) with its glass opacity. Windows, Side panel, Menus and Toasts can each follow it or have their own, and Use everywhere sets them all to follow it.
+- System in Settings, Appearance uses the theme, layout, style and toasts saved on the server for the lab, and follows them when they change. People allowed to change the lab look can save theirs for everyone.
+
 ## 1.1.332 (2026-11-22)
 
 - Toasts stack instead of replacing each other. Each has a close button and a line along its foot for the time left, which stops while the pointer is on it. Long work turns into its result in the same toast.

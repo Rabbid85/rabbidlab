@@ -7,6 +7,7 @@
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#0B0C14">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
+<script src="Assets/style.js"></script>
 <script src="Assets/brand.js"></script>
 <script src="Assets/theme.js"></script>
 <link rel="stylesheet" href="Assets/console.css">
@@ -16,6 +17,7 @@
 <link rel="stylesheet" href="Assets/theme-fixes.css">
 <script src="Assets/palette.js" defer></script>
 <script src="Assets/backdrop.js" defer></script>
+<script src="Assets/quotes.js" defer></script>
 <script src="Assets/signin.js" defer></script>
 <script src="Assets/tips.js" defer></script>
 </head>
@@ -42,6 +44,9 @@
         <div class="side-day"><i id="side-day-fill"></i></div>
         <span class="side-day-text" id="side-day-text"></span>
       </div>
+      <!-- The quote, as the lab set it in Settings, Appearance (signin.js, quotes.js). -->
+      <figure class="side-quote" id="side-quote" hidden><blockquote id="quote-text"></blockquote><figcaption id="quote-by"></figcaption>
+        <button type="button" class="quote-next" id="quote-next" data-tip="Another quote" aria-label="Another quote"><svg><use href="#i-refresh"/></svg></button></figure>
       <div class="side-name">
         <p class="side-tag" id="side-tag" hidden></p>
         <h1 class="side-title"><span data-product data-brand-name>Rabbid Lab</span> <span class="dev-tag" aria-label="Dev build">DEV</span></h1>

@@ -133,4 +133,55 @@ public sealed class BrandTests
 
         Assert.NotNull(Brand.Problem(new BrandForm(null, big, null)));
     }
+
+    [Fact]
+    public void The_sign_in_card_starts_as_the_owner_picked_it_and_its_settings_are_saved()
+    {
+        var s = new ConsoleSettings();
+        var start = JsonSerializer.SerializeToElement(Brand.Read(s));
+        var quotes = new[] { new SignInQuote("  Ship it.  ", "  Anthony  "), new SignInQuote("Change one thing at a time.", " ") };
+        var form = new BrandForm(null, null, null, Card: "split", Style: "frost", Glass: 40, Size: "largest", Quote: "day", QuoteKind: "own", Quotes: quotes);
+
+        Assert.Null(Brand.Problem(form));
+        Brand.Apply(s, form);
+        var after = JsonSerializer.SerializeToElement(Brand.Read(s));
+
+        Assert.Equal(("whole", "glass", 65, "larger", "visit", "motivational"), (start.GetProperty("card").GetString(), start.GetProperty("style").GetString(),
+            start.GetProperty("glass").GetInt32(), start.GetProperty("size").GetString(), start.GetProperty("quote").GetString(), start.GetProperty("quoteKind").GetString()));
+        Assert.Equal(("split", "frost", 40, "largest", "day", "own"), (after.GetProperty("card").GetString(), after.GetProperty("style").GetString(),
+            after.GetProperty("glass").GetInt32(), after.GetProperty("size").GetString(), after.GetProperty("quote").GetString(), after.GetProperty("quoteKind").GetString()));
+        Assert.Equal([new SignInQuote("Ship it.", "Anthony"), new SignInQuote("Change one thing at a time.", null)], s.SignInQuotes);
+    }
+
+    [Fact]
+    public void Sign_in_settings_outside_the_lists_are_refused()
+    {
+        Assert.NotNull(Brand.Problem(new BrandForm(null, null, null, Card: "round")));
+        Assert.NotNull(Brand.Problem(new BrandForm(null, null, null, Style: "neon")));
+        Assert.NotNull(Brand.Problem(new BrandForm(null, null, null, Glass: 10)));
+        Assert.NotNull(Brand.Problem(new BrandForm(null, null, null, Glass: 100)));
+        Assert.NotNull(Brand.Problem(new BrandForm(null, null, null, Size: "huge")));
+        Assert.NotNull(Brand.Problem(new BrandForm(null, null, null, Quote: "hourly")));
+        Assert.NotNull(Brand.Problem(new BrandForm(null, null, null, QuoteKind: "sad")));
+        Assert.NotNull(Brand.Problem(new BrandForm(null, null, null, Quotes: [new SignInQuote("Two\nlines", null)])));
+        Assert.NotNull(Brand.Problem(new BrandForm(null, null, null, Quotes: [new SignInQuote(new string('a', Brand.QuoteLength + 1), null)])));
+        Assert.NotNull(Brand.Problem(new BrandForm(null, null, null, Quotes: Enumerable.Repeat(new SignInQuote("Hi.", null), Brand.QuoteCount + 1).ToList())));
+    }
+
+    [Fact]
+    public void The_labs_look_is_kept_as_sent_and_an_empty_one_clears_it()
+    {
+        var s = new ConsoleSettings();
+        var look = JsonSerializer.SerializeToElement(new { theme = "slate", toast = new { type = "deck" } });
+
+        Assert.Null(Brand.Problem(new BrandForm(null, null, null, Look: look)));
+        Brand.Apply(s, new BrandForm(null, null, null, Look: look));
+        var kept = JsonSerializer.SerializeToElement(Brand.Read(s)).GetProperty("look");
+        Brand.Apply(s, new BrandForm(null, null, null, Look: JsonSerializer.SerializeToElement(new { })));
+
+        Assert.Equal("slate", kept.GetProperty("theme").GetString());
+        Assert.Equal("deck", kept.GetProperty("toast").GetProperty("type").GetString());
+        Assert.Null(s.LabLook);
+        Assert.NotNull(Brand.Problem(new BrandForm(null, null, null, Look: JsonSerializer.SerializeToElement("not an object"))));
+    }
 }
