@@ -28,6 +28,8 @@ public static class UsersApi
         services.AddSingleton<PrinterDevices>();
         services.AddSingleton<ClientCommands>();
         services.AddSingleton<IAdminGroups, AdminGroups>();
+        services.AddSingleton<IHomeFolders, NoHomeFolders>();
+        services.AddSingleton<IPersonMail, NoPersonMail>();
         services.AddAudit();
     }
 
