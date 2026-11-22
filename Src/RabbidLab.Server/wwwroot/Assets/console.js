@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.354', [
+    'The news cards on Overview and What’s new show screenshots again: People workflows, Print queues, Offboarding, AD audit, Undo and the Activity report each have one.']],
   ['1.1.353', [
     'Signed out for inactivity now goes to the sign-in page instead of the password card over the page. The page says why, and signing in again returns to the page you were on.']],
   ['1.1.352', [
@@ -1115,14 +1117,15 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.354': ['2026-11-22', 'fix', 'Screenshots on the news cards again'],
   '1.1.353': ['2026-11-22', 'update', 'Inactivity goes to the sign-in page'],
-  '1.1.352': ['2026-11-22', 'feature', 'People workflows'],
-  '1.1.351': ['2026-11-22', 'feature', 'Print queues, job history and Print jobs'],
-  '1.1.350': ['2026-11-22', 'feature', 'Offboarding in three stages'],
+  '1.1.352': ['2026-11-22', 'feature', 'People workflows', 'workflows.jpg'],
+  '1.1.351': ['2026-11-22', 'feature', 'Print queues, job history and Print jobs', 'printq.jpg'],
+  '1.1.350': ['2026-11-22', 'feature', 'Offboarding in three stages', 'offboard.jpg'],
   '1.1.349': ['2026-11-22', 'update', 'Loading placeholders that follow the theme'],
-  '1.1.348': ['2026-11-22', 'feature', 'AD audit with old and new values, and a History tab'],
-  '1.1.347': ['2026-11-22', 'feature', 'Undo for Active Directory changes'],
-  '1.1.346': ['2026-11-22', 'feature', 'Activity report: summary, print preview and email'],
+  '1.1.348': ['2026-11-22', 'feature', 'AD audit with old and new values, and a History tab', 'audit.jpg'],
+  '1.1.347': ['2026-11-22', 'feature', 'Undo for Active Directory changes', 'undo.jpg'],
+  '1.1.346': ['2026-11-22', 'feature', 'Activity report: summary, print preview and email', 'report.jpg'],
   '1.1.345': ['2026-11-22', 'fix', 'Check for updates back after 3 seconds'],
   '1.1.344': ['2026-11-22', 'fix', 'Toasts leave on time, even in another tab'],
   '1.1.343': ['2026-11-22', 'fix', 'No more pile of Up to date toasts'],

@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.354 (2026-11-22)
+
+- The news cards on Overview and What’s new show screenshots again: People workflows, Print queues, Offboarding, AD audit, Undo and the Activity report each have one.
+
 ## 1.1.353 (2026-11-22)
 
 - Signed out for inactivity now goes to the sign-in page instead of the password card over the page. The page says why, and signing in again returns to the page you were on.
