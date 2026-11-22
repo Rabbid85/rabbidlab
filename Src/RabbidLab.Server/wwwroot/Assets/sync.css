@@ -32,7 +32,7 @@
 
 /* A row for each domain controller and Microsoft 365. */
 .sy-rows { display: grid; border-top: 1px solid var(--line); }
-.sy-row { position: relative; display: grid; grid-template-columns: 30px minmax(0, .9fr) minmax(0, 2fr); align-items: center; gap: 12px; min-height: 52px; padding: 6px 16px;
+.sy-row { position: relative; display: grid; grid-template-columns: 30px 250px minmax(0, 1fr); align-items: center; gap: 12px; min-height: 52px; padding: 6px 16px;
   border-top: 1px solid var(--line); cursor: pointer; }
 .sy-row:first-child { border-top: 0; }
 .sy-row:hover, .sy-fl:hover { background: #151826; }
@@ -43,7 +43,7 @@
 .sy-st { display: flex; align-items: center; min-width: 0; }
 .sy-lab { overflow: hidden; color: #8A8FA8; font-size: 13px; white-space: nowrap; text-overflow: ellipsis; transition: color .25s; }
 [data-s="run"] .sy-lab { color: #E6E8F2; }
-[data-s="ok"] .sy-lab { color: var(--ok); }
+[data-s="ok"] .sy-lab { color: #C9CCDA; }
 [data-s="bad"] .sy-lab { color: #FF8D9B; }
 
 /* The flask: the liquid rises with the part's progress, bubbles while it runs, then a tick or a cross takes its place. */
@@ -64,6 +64,8 @@
 [data-s="ok"] .fk-svg, [data-s="bad"] .fk-svg { opacity: 0; transform: scale(.5); }
 [data-s="idle"] .fk-glass, [data-s="wait"] .fk-glass { stroke: #3A3E55; }
 [data-s="idle"] .sy-ind .fk-svg { opacity: .55; }
+/* Going back to empty, or starting again, jumps there: the flask and the line never run backwards. */
+.sy-row.snap .fk-liq, .sy-row.snap .sy-ln i { transition: none; }
 /* The line along the row's foot: it grows with the flask, turns green and fades, or stops red. */
 .sy-row > .sy-ln { position: absolute; left: 0; right: 0; bottom: 0; z-index: 0; height: 2px; }
 .sy-ln i { display: block; width: 0; height: 100%; background: var(--accent-soft); transition: width 1s linear; }
@@ -72,6 +74,7 @@
 
 /* The feed: every copy, newest first. */
 .sy-feed { max-height: 640px; overflow-y: auto; }
+/* The feed's columns: its object column starts where the rows' words above do (16 + 70 + 12 + 210 + 12 = 16 + 30 + 12 + 250 + 12). */
 .sy-fl { display: grid; grid-template-columns: 70px 210px minmax(0, 1fr) 170px; align-items: center; gap: 12px; min-height: 48px; padding: 5px 16px; border-top: 1px solid var(--line); cursor: pointer; }
 .sy-fl > small { color: var(--muted); font-size: 12px; }
 .sy-flr { overflow: hidden; color: #C9CCDA; font-size: 13px; white-space: nowrap; text-overflow: ellipsis; }

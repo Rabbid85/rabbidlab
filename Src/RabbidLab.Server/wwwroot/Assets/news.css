@@ -1,0 +1,74 @@
+/* News: Overview's News and changelog row (the newest feature wide with a picture, then the three newest) and What's new
+   as a timeline, a card per version (console.js, notes()). */
+.news:has(#news) { container-type: inline-size; padding-bottom: 6px; }
+.news .more { color: color-mix(in srgb, var(--accent-soft) 55%, #fff); }
+.news .more:hover { color: #fff; text-decoration: none; }
+
+/* What every card has: the date and kind, the author, the notes. */
+.nw-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; color: var(--muted); font-size: 12.5px; }
+.nw-date { color: var(--muted); font-size: 12.5px; white-space: nowrap; }
+.nw-tag { display: inline-flex; flex: none; align-items: center; gap: 5px; height: 22px; padding: 0 9px 0 7px; border-radius: 999px; font-size: 11.5px; font-weight: 650; line-height: 1; white-space: nowrap; }
+.nw-tag svg { flex: none; width: 12px; height: 12px; }
+.nw-tag[data-k="feature"] { background: color-mix(in srgb, var(--accent-soft) 20%, transparent); color: color-mix(in srgb, var(--accent-soft) 40%, #fff); }
+.nw-tag[data-k="fix"] { background: rgba(95, 212, 160, .12); color: #7FE0B3; }
+.nw-tag[data-k="update"] { background: rgba(111, 168, 255, .13); color: #A3C6FF; }
+.nw-by { display: inline-flex; align-items: center; gap: 8px; color: #A9ADC2; font-size: 12.5px; font-weight: 600; }
+.nw-av { display: grid; flex: none; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--ember); color: #fff; font-size: 10.5px; font-weight: 700; }
+.nw-foot { display: flex; align-items: center; }
+.nw-ul { margin: 0; padding-left: 18px; color: #C9CCDA; font-size: 14px; line-height: 1.55; }
+.nw-ul li + li { margin-top: 5px; }
+.nw-ul li::marker { color: #5E6380; }
+
+/* The picture: the banner's gradient with its squares (scatter), and the version over it. */
+.nw-art { position: relative; display: block; overflow: hidden; isolation: isolate;
+  background: radial-gradient(85% 95% at 88% 0%, color-mix(in srgb, var(--accent) 34%, transparent), transparent 72%),
+    radial-gradient(60% 85% at 18% 105%, color-mix(in srgb, var(--tile-d) 20%, transparent), transparent 72%), #0C0D16; }
+.nw-art .tile { position: absolute; z-index: 0; border-radius: 24%; pointer-events: none; }
+.nw-art .tile.dot { border-radius: 50%; }
+.nw-artv { position: absolute; left: 18px; bottom: 16px; z-index: 1; display: grid; gap: 2px; }
+.nw-artv small { color: #C9CCDA; font-size: 12px; font-weight: 600; }
+.nw-artv b { color: #fff; font: 800 34px/1 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; letter-spacing: -.03em; }
+
+/* Overview: one wide card with the picture, then three narrower. */
+.nw-r1 { display: grid; grid-template-columns: minmax(0, 2.3fr) repeat(3, minmax(0, 1fr)); gap: 14px; }
+.nw-post { display: flex; min-width: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--text); }
+.nw-post:hover { border-color: var(--line-strong); background: #141724; text-decoration: none; }
+.nw-pbody { display: flex; flex: 1; flex-direction: column; gap: 8px; min-width: 0; padding: 16px 18px 15px; }
+.nw-ptitle { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; margin-top: 2px; color: var(--title);
+  font: 700 15.5px/1.3 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; }
+.nw-sum { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.nw-post .nw-foot { margin-top: auto; padding-top: 6px; }
+.nw-wide .nw-art { flex: 0 0 42%; min-height: 200px; border-right: 1px solid var(--line); }
+.nw-wide .nw-pbody { padding: 18px 20px 16px; }
+.nw-wide .nw-ptitle { font-size: 21px; line-height: 1.22; letter-spacing: -.01em; }
+@container (max-width: 1060px) {
+  .nw-r1 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .nw-r1 > .nw-wide { grid-column: 1 / -1; }
+  .nw-wide .nw-art { flex-basis: 38%; min-height: 180px; }
+}
+@container (max-width: 640px) {
+  .nw-r1 { grid-template-columns: minmax(0, 1fr); }
+  .nw-wide { flex-direction: column; }
+  .nw-wide .nw-art { flex: none; height: 150px; min-height: 0; border-right: 0; border-bottom: 1px solid var(--line); }
+}
+
+/* What's new: a line down the left with a dot, the date and how many changes; the card beside it. */
+.nw-tl { position: relative; display: grid; gap: 12px; container-type: inline-size; }
+.nw-tl::before { content: ""; position: absolute; left: 6px; top: 22px; bottom: 22px; width: 2px; border-radius: 2px; background: #262A3C; }
+.nw-tli { display: grid; grid-template-columns: 132px minmax(0, 1fr); gap: 14px; align-items: start; }
+.nw-tlw { position: relative; display: grid; gap: 2px; padding: 14px 0 0 28px; }
+.nw-dot { position: absolute; left: 0; top: 17px; width: 14px; height: 14px; border: 2px solid #4A4F68; border-radius: 50%; background: var(--night); }
+.nw-dot.now { border-color: var(--accent-soft); background: var(--accent); }
+.nw-tlw b { color: var(--title); font-size: 13.5px; font-weight: 650; white-space: nowrap; }
+.nw-tlw small { color: var(--muted); font-size: 12px; }
+.nw-card { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); scroll-margin-top: 70px; }
+.nw-tlc { display: grid; gap: 9px; padding: 14px 20px; }
+.nw-tlh { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.nw-tlh h2 { min-width: 0; margin: 0; color: var(--title); font: 700 16.5px/1.3 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; }
+.nw-tlc .nw-ul { font-size: 13.5px; }
+@keyframes nw-flash { 0%, 35% { background: #1D2033; border-color: #3A3F58; } 100% { background: var(--panel); border-color: var(--line); } }
+.nw-card.nw-flash { animation: nw-flash 2.2s ease-out; }
+@container (max-width: 760px) {
+  .nw-tli { grid-template-columns: 104px minmax(0, 1fr); gap: 10px; }
+  .nw-tlh { flex-wrap: wrap; }
+}

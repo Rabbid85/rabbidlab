@@ -720,6 +720,15 @@
     drawAd();
     if (R.panel.is('ad')) drawDrawer();
   }));
+  // Domain health's dot from the start: its checks are read in the background once signed in, not only when it's opened.
+  document.addEventListener('rabbidlab:me', () => {
+    if (!can('ad.view') || lists.domain) return;
+    R.get('/api/ad/domain').then((list) => {
+      lists.domain ??= list;
+      $('dir-domain-dot').hidden = !lists.domain.some((s) => s.tone === 'bad');
+      $('rail-domain-dot').hidden = $('dir-domain-dot').hidden;
+    }).catch(() => {}); // not set up, or a role that covers part of the domain: no dot
+  });
 
   // --- The side panel's helpers ---------------------------------------------------------------------------------------
 

@@ -246,6 +246,9 @@ public sealed class SyncEngine(DirectoryTools tools, IReplicator replicator, Dev
         public Dictionary<string, Part> Dcs { get; } = new(StringComparer.OrdinalIgnoreCase);
         public Part? M365 { get; set; }
         public string? Problem { get; set; }
+
+        /// <summary>No Entra Connect in the domain: Sync all synced the domain controllers only.</summary>
+        public bool NoEntra { get; set; }
     }
 
     public bool Running
@@ -282,6 +285,18 @@ public sealed class SyncEngine(DirectoryTools tools, IReplicator replicator, Dev
                 return "A sync is already running. It's on this page.";
             }
             started = run = new Live { What = what, Full = full, By = by, Started = DateTime.UtcNow };
+            // Every row waits from the moment it starts, so the page never shows the last sync's rows in between.
+            if (what != "m365" && seen is { } known)
+            {
+                foreach (var d in known.Dcs)
+                {
+                    started.Dcs[d.Name] = new Part();
+                }
+            }
+            if (what != "dcs")
+            {
+                started.M365 = new Part();
+            }
         }
         var caller = Caller.Current;
         _ = Task.Run(async () =>
@@ -415,12 +430,12 @@ public sealed class SyncEngine(DirectoryTools tools, IReplicator replicator, Dev
                 {
                     foreach (var d in dcs)
                     {
-                        live.Dcs[d.Name] = new Part();
+                        live.Dcs.TryAdd(d.Name, new Part());
                     }
                 }
                 if (live.What != "dcs")
                 {
-                    live.M365 = new Part();
+                    live.M365 ??= new Part();
                 }
             }
             var before = await tools.SyncScan(dcs, since, stop);
@@ -462,6 +477,7 @@ public sealed class SyncEngine(DirectoryTools tools, IReplicator replicator, Dev
             {
                 "dcs" => "Synced the domain controllers with each other",
                 "m365" => $"Synced Microsoft 365 ({(live.Full ? "full" : "delta")})",
+                _ when live.NoEntra => "Synced the domain controllers with each other",
                 _ => $"Synced the domain controllers with each other, then Microsoft 365 ({(live.Full ? "full" : "delta")})",
             };
             activity.Record(live.By, from, "users", "ad.sync", what, failed.Count == 0 ? "ok" : "failed", failed.Count == 0 ? null : string.Join(" ", failed.Distinct().Take(3)));
@@ -586,8 +602,12 @@ public sealed class SyncEngine(DirectoryTools tools, IReplicator replicator, Dev
         var server = await tools.EntraServer(stop);
         if (server is null)
         {
-            Fail(live, null, "Entra Connect isn't set up", "No Entra Connect account (MSOL_) was found in Active Directory.", "Microsoft 365 syncs from here once Entra Connect is installed.");
-            failed.Add("Entra Connect isn't set up.");
+            // Nothing to sync with: Sync all is then Sync DCs, and that isn't a failure.
+            lock (gate)
+            {
+                live.NoEntra = true;
+                live.M365 = null;
+            }
             return null;
         }
         var client = Client(server);

@@ -3,6 +3,11 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.321', [
+    'News and changelog on Overview shows the newest feature as a wide card with a picture, then the three newest versions, each with its date, kind and a short title.',
+    'The list of every version is now a timeline: the date down the left, and a card for each version with its kind, title and notes.',
+    'Sync: every row shows Waiting the moment a sync starts, the flask and line never run backwards, the words line up with the list under them, and finished rows keep plain words with a green tick. Sync all without Entra Connect syncs the domain controllers only.',
+    'The red dot on Domain health shows from the start, without opening it first.']],
   ['1.1.320', [
     'Sync is a new page under Directory. Sync DCs copies every change between all your domain controllers, Sync Microsoft 365 runs Entra Connect (Delta or Full) through the client on its server, and Sync all does both.',
     'The Sync page lists each change since the last sync, which domain controllers have it, and every copy made, newest first. Click a row to see what went wrong and retry.']],
@@ -1003,6 +1008,342 @@ const RELEASE_NOTES = [
     'Roles and people: sign in with a local account or Active Directory, with roles that allow exactly the parts you pick and an activity log of every change.',
     'Updates come from GitHub, are checked against a release signature, and install from the console or by themselves.']],
 ];
+// Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update) and a short title, for the
+// news cards on Overview and the What's new timeline. A new version gets a line here with its notes.
+const RELEASE_INFO = {
+  '1.1.321': ['2026-11-21', 'update', 'News cards and a timeline'],
+  '1.1.320': ['2026-11-21', 'feature', 'A Sync page under Directory'],
+  '1.1.319': ['2026-11-21', 'update', 'Hints show at once'],
+  '1.1.318': ['2026-11-21', 'fix', 'Refresh skips the flask screen'],
+  '1.1.317': ['2026-11-21', 'update', 'Calmer signed-out note'],
+  '1.1.316': ['2026-11-21', 'fix', 'Sign-in page stops jumping'],
+  '1.1.315': ['2026-11-21', 'update', 'Two-part Background button'],
+  '1.1.314': ['2026-11-21', 'feature', 'Sign-in lock for wrong passwords'],
+  '1.1.313': ['2026-11-21', 'fix', 'Sign-in fixes and safer sign-out'],
+  '1.1.312': ['2026-11-21', 'feature', 'Pick a background at sign-in'],
+  '1.1.311': ['2026-11-21', 'update', 'Updates pill in the top bar'],
+  '1.1.310': ['2026-11-21', 'fix', 'No empty strip on short pages'],
+  '1.1.309': ['2026-11-21', 'update', 'Lighter time on sign-in'],
+  '1.1.308': ['2026-11-21', 'update', 'Smaller sign-in boxes'],
+  '1.1.307': ['2026-11-21', 'feature', 'A new sign-in form'],
+  '1.1.306': ['2026-11-21', 'fix', 'Backgrounds match on every screen'],
+  '1.1.305': ['2026-11-21', 'update', 'Day bar always on the left'],
+  '1.1.304': ['2026-11-20', 'feature', 'Six themes to pick from'],
+  '1.1.303': ['2026-11-20', 'update', 'Fizz returns, Ink goes'],
+  '1.1.302': ['2026-11-20', 'feature', 'Starfield, Embers and Ink backgrounds'],
+  '1.1.301': ['2026-11-20'],
+  '1.1.300': ['2026-11-20'],
+  '1.1.299': ['2026-11-20'],
+  '1.1.298': ['2026-11-20'],
+  '1.1.297': ['2026-11-20'],
+  '1.1.296': ['2026-11-20'],
+  '1.1.295': ['2026-11-20'],
+  '1.1.294': ['2026-11-20'],
+  '1.1.293': ['2026-11-20'],
+  '1.1.292': ['2026-11-20'],
+  '1.1.291': ['2026-11-20'],
+  '1.1.290': ['2026-11-19'],
+  '1.1.289': ['2026-11-19'],
+  '1.1.288': ['2026-11-19'],
+  '1.1.287': ['2026-11-19'],
+  '1.1.286': ['2026-11-19'],
+  '1.1.285': ['2026-11-19'],
+  '1.1.284': ['2026-11-19'],
+  '1.1.283': ['2026-11-19'],
+  '1.1.282': ['2026-11-19'],
+  '1.1.281': ['2026-11-19'],
+  '1.1.280': ['2026-11-19'],
+  '1.1.279': ['2026-11-19'],
+  '1.1.278': ['2026-11-19'],
+  '1.1.277': ['2026-11-19'],
+  '1.1.276': ['2026-11-19'],
+  '1.1.275': ['2026-11-19'],
+  '1.1.274': ['2026-11-19'],
+  '1.1.273': ['2026-11-19'],
+  '1.1.272': ['2026-11-19'],
+  '1.1.271': ['2026-11-19'],
+  '1.1.270': ['2026-11-19'],
+  '1.1.269': ['2026-11-19'],
+  '1.1.268': ['2026-11-19'],
+  '1.1.267': ['2026-11-19'],
+  '1.1.266': ['2026-11-19'],
+  '1.1.265': ['2026-11-19'],
+  '1.1.264': ['2026-11-19'],
+  '1.1.263': ['2026-11-19'],
+  '1.1.262': ['2026-11-19'],
+  '1.1.261': ['2026-11-19'],
+  '1.1.260': ['2026-11-19'],
+  '1.1.259': ['2026-11-19'],
+  '1.1.258': ['2026-11-19'],
+  '1.1.257': ['2026-11-19'],
+  '1.1.256': ['2026-11-19'],
+  '1.1.255': ['2026-11-19'],
+  '1.1.254': ['2026-11-19'],
+  '1.1.253': ['2026-11-19'],
+  '1.1.252': ['2026-11-18'],
+  '1.1.251': ['2026-11-18'],
+  '1.1.250': ['2026-11-18'],
+  '1.1.249': ['2026-11-18'],
+  '1.1.248': ['2026-11-18'],
+  '1.1.247': ['2026-11-18'],
+  '1.1.246': ['2026-11-18'],
+  '1.1.245': ['2026-11-18'],
+  '1.1.244': ['2026-11-17'],
+  '1.1.243': ['2026-11-17'],
+  '1.1.242': ['2026-11-16'],
+  '1.1.241': ['2026-11-16'],
+  '1.1.240': ['2026-11-16'],
+  '1.1.239': ['2026-11-16'],
+  '1.1.238': ['2026-11-16'],
+  '1.1.237': ['2026-11-16'],
+  '1.1.236': ['2026-11-16'],
+  '1.1.235': ['2026-11-16'],
+  '1.1.234': ['2026-11-16'],
+  '1.1.233': ['2026-11-16'],
+  '1.1.232': ['2026-11-16'],
+  '1.1.231': ['2026-11-16'],
+  '1.1.230': ['2026-11-16'],
+  '1.1.229': ['2026-11-16'],
+  '1.1.228': ['2026-11-16'],
+  '1.1.227': ['2026-11-16'],
+  '1.1.226': ['2026-11-16'],
+  '1.1.225': ['2026-11-16'],
+  '1.1.224': ['2026-11-16'],
+  '1.1.223': ['2026-11-16'],
+  '1.1.222': ['2026-11-16'],
+  '1.1.221': ['2026-11-16'],
+  '1.1.220': ['2026-11-16'],
+  '1.1.219': ['2026-11-16'],
+  '1.1.218': ['2026-11-16'],
+  '1.1.217': ['2026-11-16'],
+  '1.1.216': ['2026-11-16'],
+  '1.1.215': ['2026-11-16'],
+  '1.1.214': ['2026-11-16'],
+  '1.1.213': ['2026-11-16'],
+  '1.1.212': ['2026-11-16'],
+  '1.1.211': ['2026-11-16'],
+  '1.1.210': ['2026-11-15'],
+  '1.1.209': ['2026-11-15'],
+  '1.1.208': ['2026-11-15'],
+  '1.1.207': ['2026-11-15'],
+  '1.1.206': ['2026-11-15'],
+  '1.1.205': ['2026-11-15'],
+  '1.1.204': ['2026-11-15'],
+  '1.1.203': ['2026-11-15'],
+  '1.1.202': ['2026-11-15'],
+  '1.1.201': ['2026-11-15'],
+  '1.1.200': ['2026-11-15'],
+  '1.1.199': ['2026-11-15'],
+  '1.1.198': ['2026-11-15'],
+  '1.1.197': ['2026-11-15'],
+  '1.1.196': ['2026-11-15'],
+  '1.1.195': ['2026-11-15'],
+  '1.1.194': ['2026-11-15'],
+  '1.1.193': ['2026-11-15'],
+  '1.1.192': ['2026-11-15'],
+  '1.1.191': ['2026-11-15'],
+  '1.1.190': ['2026-11-15'],
+  '1.1.189': ['2026-11-15'],
+  '1.1.188': ['2026-11-15'],
+  '1.1.187': ['2026-11-15'],
+  '1.1.186': ['2026-11-15'],
+  '1.1.185': ['2026-11-15'],
+  '1.1.184': ['2026-11-15'],
+  '1.1.183': ['2026-11-15'],
+  '1.1.182': ['2026-11-15'],
+  '1.1.181': ['2026-11-15'],
+  '1.1.180': ['2026-11-15'],
+  '1.1.179': ['2026-11-15'],
+  '1.1.178': ['2026-11-15'],
+  '1.1.177': ['2026-11-15'],
+  '1.1.176': ['2026-11-15'],
+  '1.1.175': ['2026-11-15'],
+  '1.1.174': ['2026-11-15'],
+  '1.1.173': ['2026-11-14'],
+  '1.1.172': ['2026-11-14'],
+  '1.1.171': ['2026-11-14'],
+  '1.1.170': ['2026-11-14'],
+  '1.1.169': ['2026-11-14'],
+  '1.1.168': ['2026-11-14'],
+  '1.1.167': ['2026-11-14'],
+  '1.1.166': ['2026-11-14'],
+  '1.1.165': ['2026-11-14'],
+  '1.1.164': ['2026-11-14'],
+  '1.1.163': ['2026-11-14'],
+  '1.1.162': ['2026-11-14'],
+  '1.1.161': ['2026-11-14'],
+  '1.1.160': ['2026-11-14'],
+  '1.1.159': ['2026-11-14'],
+  '1.1.158': ['2026-11-14'],
+  '1.1.157': ['2026-11-14'],
+  '1.1.156': ['2026-11-14'],
+  '1.1.155': ['2026-11-14'],
+  '1.1.154': ['2026-11-14'],
+  '1.1.153': ['2026-11-14'],
+  '1.1.152': ['2026-11-14'],
+  '1.1.151': ['2026-11-14'],
+  '1.1.150': ['2026-11-14'],
+  '1.1.149': ['2026-11-14'],
+  '1.1.148': ['2026-11-14'],
+  '1.1.147': ['2026-11-14'],
+  '1.1.146': ['2026-11-14'],
+  '1.1.145': ['2026-11-13'],
+  '1.1.144': ['2026-11-13'],
+  '1.1.143': ['2026-11-13'],
+  '1.1.142': ['2026-11-13'],
+  '1.1.141': ['2026-11-13'],
+  '1.1.140': ['2026-11-13'],
+  '1.1.139': ['2026-11-13'],
+  '1.1.138': ['2026-11-13'],
+  '1.1.137': ['2026-11-13'],
+  '1.1.136': ['2026-11-13'],
+  '1.1.135': ['2026-11-13'],
+  '1.1.134': ['2026-11-13'],
+  '1.1.133': ['2026-11-13'],
+  '1.1.132': ['2026-11-13'],
+  '1.1.131': ['2026-11-13'],
+  '1.1.130': ['2026-11-13'],
+  '1.1.129': ['2026-11-13'],
+  '1.1.128': ['2026-11-13'],
+  '1.1.127': ['2026-11-13'],
+  '1.1.126': ['2026-11-13'],
+  '1.1.125': ['2026-11-13'],
+  '1.1.124': ['2026-11-13'],
+  '1.1.123': ['2026-11-13'],
+  '1.1.122': ['2026-11-13'],
+  '1.1.121': ['2026-11-13'],
+  '1.1.120': ['2026-11-13'],
+  '1.1.119': ['2026-11-13'],
+  '1.1.118': ['2026-11-13'],
+  '1.1.117': ['2026-11-13'],
+  '1.1.116': ['2026-11-13'],
+  '1.1.115': ['2026-11-13'],
+  '1.1.114': ['2026-11-13'],
+  '1.1.113': ['2026-11-12'],
+  '1.1.112': ['2026-11-12'],
+  '1.1.111': ['2026-11-12'],
+  '1.1.110': ['2026-11-12'],
+  '1.1.109': ['2026-11-12'],
+  '1.1.108': ['2026-11-12'],
+  '1.1.107': ['2026-11-12'],
+  '1.1.106': ['2026-11-12'],
+  '1.1.105': ['2026-11-12'],
+  '1.1.104': ['2026-11-12'],
+  '1.1.103': ['2026-11-12'],
+  '1.1.102': ['2026-11-12'],
+  '1.1.101': ['2026-11-12'],
+  '1.1.100': ['2026-11-12'],
+  '1.1.99': ['2026-11-12'],
+  '1.1.98': ['2026-11-12'],
+  '1.1.97': ['2026-11-12'],
+  '1.1.96': ['2026-11-12'],
+  '1.1.95': ['2026-11-12'],
+  '1.1.94': ['2026-11-12'],
+  '1.1.93': ['2026-11-12'],
+  '1.1.92': ['2026-11-12'],
+  '1.1.91': ['2026-11-12'],
+  '1.1.90': ['2026-11-12'],
+  '1.1.89': ['2026-11-12'],
+  '1.1.88': ['2026-11-12'],
+  '1.1.87': ['2026-11-12'],
+  '1.1.86': ['2026-11-12'],
+  '1.1.85': ['2026-11-12'],
+  '1.1.84': ['2026-11-12'],
+  '1.1.83': ['2026-11-12'],
+  '1.1.82': ['2026-11-12'],
+  '1.1.81': ['2026-11-12'],
+  '1.1.80': ['2026-11-12'],
+  '1.1.79': ['2026-11-12'],
+  '1.1.78': ['2026-11-12'],
+  '1.1.77': ['2026-11-12'],
+  '1.1.76': ['2026-11-12'],
+  '1.1.75': ['2026-11-12'],
+  '1.1.74': ['2026-11-12'],
+  '1.1.73': ['2026-11-12'],
+  '1.1.72': ['2026-11-12'],
+  '1.1.71': ['2026-11-12'],
+  '1.1.70': ['2026-11-12'],
+  '1.1.69': ['2026-11-12'],
+  '1.1.68': ['2026-11-12'],
+  '1.1.67': ['2026-11-12'],
+  '1.1.66': ['2026-11-12'],
+  '1.1.65': ['2026-11-12'],
+  '1.1.64': ['2026-11-12'],
+  '1.1.63': ['2026-11-12'],
+  '1.1.62': ['2026-11-12'],
+  '1.1.61': ['2026-11-12'],
+  '1.1.60': ['2026-11-12'],
+  '1.1.59': ['2026-11-12'],
+  '1.1.58': ['2026-11-12'],
+  '1.1.57': ['2026-11-12'],
+  '1.1.56': ['2026-11-11'],
+  '1.1.55': ['2026-11-11'],
+  '1.1.54': ['2026-11-11'],
+  '1.1.53': ['2026-11-11'],
+  '1.1.52': ['2026-11-11'],
+  '1.1.51': ['2026-11-11'],
+  '1.1.50': ['2026-11-11'],
+  '1.1.49': ['2026-11-11'],
+  '1.1.48': ['2026-11-11'],
+  '1.1.47': ['2026-11-11'],
+  '1.1.46': ['2026-11-11'],
+  '1.1.45': ['2026-11-11'],
+  '1.1.44': ['2026-11-11'],
+  '1.1.43': ['2026-11-11'],
+  '1.1.42': ['2026-11-11'],
+  '1.1.41': ['2026-11-11'],
+  '1.1.40': ['2026-11-11'],
+  '1.1.39': ['2026-11-11'],
+  '1.1.38': ['2026-11-11'],
+  '1.1.37': ['2026-11-11'],
+  '1.1.36': ['2026-11-11'],
+  '1.1.35': ['2026-11-11'],
+  '1.1.34': ['2026-11-11'],
+  '1.1.33': ['2026-11-11'],
+  '1.1.32': ['2026-11-11'],
+  '1.1.31': ['2026-11-11'],
+  '1.1.30': ['2026-11-11'],
+  '1.1.29': ['2026-11-11'],
+  '1.1.28': ['2026-11-11'],
+  '1.1.27': ['2026-11-11'],
+  '1.1.26': ['2026-11-11'],
+  '1.1.25': ['2026-11-11'],
+  '1.1.24': ['2026-11-11'],
+  '1.1.23': ['2026-11-11'],
+  '1.1.22': ['2026-11-11'],
+  '1.1.21': ['2026-11-11'],
+  '1.1.20': ['2026-11-11'],
+  '1.1.19': ['2026-11-11'],
+  '1.1.18': ['2026-11-11'],
+  '1.1.17': ['2026-11-11'],
+  '1.1.16': ['2026-11-11'],
+  '1.1.15': ['2026-11-11'],
+  '1.1.14': ['2026-11-11'],
+  '1.1.13': ['2026-11-11'],
+  '1.1.12': ['2026-11-11'],
+  '1.1.11': ['2026-11-11'],
+  '1.1.10': ['2026-11-11'],
+  '1.1.9': ['2026-11-11'],
+  '1.1.8': ['2026-11-11'],
+  '1.1.7': ['2026-11-11'],
+  '1.1.6': ['2026-11-11'],
+  '1.1.5': ['2026-11-11'],
+  '1.1.4': ['2026-11-11'],
+  '1.1.3': ['2026-11-11'],
+  '1.1.2': ['2026-11-11'],
+  '1.1.1': ['2026-11-11'],
+  '1.1.0': ['2026-11-11'],
+  '1.0.9': ['2026-11-11'],
+  '1.0.8': ['2026-11-11'],
+  '1.0.7': ['2026-11-11'],
+  '1.0.6': ['2026-11-11'],
+  '1.0.5': ['2026-11-11'],
+  '1.0.4': ['2026-11-11'],
+  '1.0.3': ['2026-11-11'],
+  '1.0.2': ['2026-11-11'],
+  '1.0.1': ['2026-11-11'],
+  '1.0.0': ['2026-11-11'],
+};
 
 (() => {
   const $ = (id) => document.getElementById(id);
@@ -2567,15 +2908,49 @@ const RELEASE_NOTES = [
     $('gpo-fingerprint').hidden = !joining.fingerprint;
   };
 
+  // What's new as a timeline, a card per version, and Overview's news: the newest feature wide with a picture, then the
+  // three newest. Each version's date, kind and title come from RELEASE_INFO; older ones have a date only.
+  const KINDS = { feature: ['Feature', 'new'], fix: ['Fix', 'wrench'], update: ['Update', 'refresh'] };
+  const release = ([v, items]) => {
+    const [d, k, t] = RELEASE_INFO[v] || [];
+    return { v, items, d, k, t };
+  };
+  const relDate = (iso) => (iso ? new Date(`${iso}T12:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : '');
+  const relTag = (k) => (KINDS[k] ? `<span class="nw-tag" data-k="${k}">${svg(KINDS[k][1])}${KINDS[k][0]}</span>` : '');
+  const relTitle = (x) => (x.t ? `${x.v}: ${x.t}` : `${product} ${x.v}`);
+  const relBy = () => `<span class="nw-by"><span class="nw-av" aria-hidden="true">${esc(product.charAt(0))}</span>${esc(product)}</span>`;
+  const changes = (n) => `${n} change${n === 1 ? '' : 's'}`;
   const notes = () => {
-    $('notes').innerHTML = RELEASE_NOTES.map(([v, items]) => `<li><b>${esc(v)}</b><ul>${items.map((n) => `<li>${esc(n)}</li>`).join('')}</ul></li>`).join('');
-    // Settings, Updates, and the news cards: the newest versions, each with its first note.
+    const all = RELEASE_NOTES.map(release);
+    $('notes').innerHTML = all.map((x, i) => `<div class="nw-tli"><div class="nw-tlw"><i class="nw-dot${i === 0 ? ' now' : ''}"></i><b>${esc(relDate(x.d))}</b>`
+      + `<small>${changes(x.items.length)}</small></div><article class="nw-card nw-tlc" id="wn-${esc(x.v)}"><div class="nw-tlh">${relTag(x.k)}<h2>${esc(relTitle(x))}</h2></div>`
+      + `<ul class="nw-ul">${x.items.map((n) => `<li>${esc(n)}</li>`).join('')}</ul><div class="nw-foot">${relBy()}</div></article></div>`).join('');
+    // Settings, Updates: the newest version's first note.
     const [newest, first] = RELEASE_NOTES[0];
     $('upd-new-title').textContent = `What's new in ${newest}`;
     $('upd-new-text').textContent = first[0];
-    $('news').innerHTML = RELEASE_NOTES.slice(0, 4).map(([v, items]) => `<a class="post" href="#whats-new"><span class="meta"><span class="tag">Update</span>`
-      + `${items.length} change${items.length === 1 ? '' : 's'}</span><b>Rabbid Lab ${esc(v)}</b><span class="text">${esc(items[0])}</span></a>`).join('');
+    const big = all.find((x) => x.k === 'feature') || all[0];
+    const post = (x, wide) => `<a class="nw-post${wide ? ' nw-wide' : ''}" href="#whats-new" data-wn="${esc(x.v)}">`
+      + (wide ? `<span class="nw-art" aria-hidden="true"><span class="nw-artv"><small>${esc(product)}</small><b>${esc(x.v)}</b></span></span>` : '')
+      + `<span class="nw-pbody"><span class="nw-meta"><span class="nw-date">${esc(relDate(x.d))}</span>${relTag(x.k)}</span>`
+      + `<b class="nw-ptitle">${esc(relTitle(x))}</b><span class="nw-sum">${esc(wide ? x.items.slice(0, 2).join(' ') : x.items[0])}</span><span class="nw-foot">${relBy()}</span></span></a>`;
+    $('news').innerHTML = post(big, true) + all.filter((x) => x !== big).slice(0, 3).map((x) => post(x, false)).join('');
+    scatter($('news').querySelector('.nw-art'), 20261121, { n: 16, x0: 30, x1: 92, y0: 6, y1: 58, min: 8, max: 22 });
   };
+  // A news card opens What's new at its version, lit up for a moment.
+  let wnAt = '';
+  $('news').addEventListener('click', (e) => { wnAt = e.target.closest('[data-wn]')?.dataset.wn || ''; });
+  document.addEventListener('rabbidlab:show', (e) => {
+    const card = e.detail[0] === 'whats-new' && wnAt ? document.getElementById(`wn-${wnAt}`) : null;
+    wnAt = '';
+    if (!card) return;
+    requestAnimationFrame(() => {
+      card.scrollIntoView({ block: 'center' });
+      card.classList.remove('nw-flash');
+      void card.offsetWidth;
+      card.classList.add('nw-flash');
+    });
+  });
 
   // This computer, when it isn't in Devices yet: the client to download, then a rabbidlab://join link that hands the client
   // this server's address. Windows only, and not for a month after Not now.
@@ -2628,18 +3003,20 @@ const RELEASE_NOTES = [
   };
 
   // Still tiles over the right of every banner, placed the same way every time.
-  const scatter = (hero, start) => {
+  // area: how many squares, and where (percent) and how big (px); a banner's right side unless said.
+  const scatter = (hero, start, area = {}) => {
+    const { n = 22, x0 = 58, x1 = 96, y0 = 4, y1 = 90, min = 10, max = 26 } = area;
     const COLOURS = window.RabbidLabColours.tiles;
     let seed = start;
     const r = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-    for (let i = 0; i < 22; i++) {
+    for (let i = 0; i < n; i++) {
       const t = document.createElement('i');
       const roll = r();
       const kind = roll < 0.18 ? 'dot' : roll < 0.42 ? 'outline' : 'fill';
-      const size = `${kind === 'dot' ? 4 + r() * 5 : 10 + r() * 26}px`;
+      const size = `${kind === 'dot' ? 4 + r() * 5 : min + r() * max}px`;
       const colour = COLOURS[Math.floor(r() * COLOURS.length)];
       t.className = `tile deco ${kind}`;
-      Object.assign(t.style, { left: `${58 + r() * 38}%`, top: `${4 + r() * 86}%`, width: size, height: size,
+      Object.assign(t.style, { left: `${x0 + r() * (x1 - x0)}%`, top: `${y0 + r() * (y1 - y0)}%`, width: size, height: size,
         transform: `rotate(${r() * 90}deg)`, opacity: String(0.35 + r() * 0.5) });
       if (kind === 'outline') t.style.border = `1.5px solid ${colour}`;
       else t.style.background = colour;

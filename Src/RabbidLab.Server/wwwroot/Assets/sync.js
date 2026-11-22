@@ -38,11 +38,16 @@
       + `${svg('check', 'sy-ok')}${svg('x', 'sy-bad')}</span>`;
   };
   const paint = (el, part, label) => {
-    el.dataset.s = part.s;
-    el.querySelector('.sy-lab').textContent = label;
     const f = ['run', 'ok', 'bad'].includes(part.s) ? part.f : 0;
+    // Only forward is animated: back to empty, or a new pass starting lower, jumps there.
+    const snap = f < Number(el.dataset.f || 0) - 0.001 || (el.dataset.s === 'ok' && part.s !== 'ok');
+    el.classList.toggle('snap', snap);
+    el.dataset.s = part.s;
+    el.dataset.f = String(f);
+    el.querySelector('.sy-lab').textContent = label;
     el.querySelector('.fk-liq').style.transform = `scaleY(${f})`;
     el.querySelector('.sy-ln i').style.width = `${part.s === 'ok' ? 100 : part.s === 'idle' || part.s === 'wait' ? 0 : f * 100}%`;
+    if (snap) requestAnimationFrame(() => requestAnimationFrame(() => el.classList.remove('snap')));
   };
 
   // --- Drawing ------------------------------------------------------------------------------------------------------

@@ -48,6 +48,28 @@ public sealed partial class ChangelogTests
         for (var i = 0; i < log.Count; i++) Assert.Equal(news[i].Notes, log[i].Notes);
     }
 
+    [GeneratedRegex(@"^## (\d+\.\d+\.\d+) \((\d{4}-\d{2}-\d{2})\)\s*$", RegexOptions.Multiline)]
+    private static partial Regex Heading();
+
+    [GeneratedRegex(@"^\s*'(\d+\.\d+\.\d+)': \['(\d{4}-\d{2}-\d{2})'(?:, '(feature|fix|update)', '([^']+)')?\],\s*$", RegexOptions.Multiline)]
+    private static partial Regex Info();
+
+    [Fact]
+    public void Every_version_has_its_date_and_the_newest_a_kind_and_title()
+    {
+        var dates = Heading().Matches(File.ReadAllText(Path.Combine(Root(), "CHANGELOG.md"))).ToDictionary(m => m.Groups[1].Value, m => m.Groups[2].Value);
+        var script = File.ReadAllText(Path.Combine(Root(), "Src", "RabbidLab.Server", "wwwroot", "Assets", "console.js"));
+        var info = Info().Matches(script).ToDictionary(m => m.Groups[1].Value, m => m);
+        Assert.Equal(Changelog().Count, dates.Count);
+        foreach (var (version, date) in dates)
+        {
+            Assert.True(info.ContainsKey(version), $"{version} has no line in RELEASE_INFO");
+            Assert.Equal(date, info[version].Groups[2].Value);
+        }
+        var newest = info[Changelog()[0].Version];
+        Assert.True(newest.Groups[3].Success && newest.Groups[4].Success, "The newest version needs a kind and a title in RELEASE_INFO");
+    }
+
     [Fact]
     public void The_newest_notes_are_for_this_version()
     {

@@ -2,6 +2,13 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.321 (2026-11-21)
+
+- News and changelog on Overview shows the newest feature as a wide card with a picture, then the three newest versions, each with its date, kind and a short title.
+- The list of every version is now a timeline: the date down the left, and a card for each version with its kind, title and notes.
+- Sync: every row shows Waiting the moment a sync starts, the flask and line never run backwards, the words line up with the list under them, and finished rows keep plain words with a green tick. Sync all without Entra Connect syncs the domain controllers only.
+- The red dot on Domain health shows from the start, without opening it first.
+
 ## 1.1.320 (2026-11-21)
 
 - Sync is a new page under Directory. Sync DCs copies every change between all your domain controllers, Sync Microsoft 365 runs Entra Connect (Delta or Full) through the client on its server, and Sync all does both.
