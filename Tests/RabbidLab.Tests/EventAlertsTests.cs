@@ -72,7 +72,7 @@ public sealed class EventAlertsTests : IDisposable
     [Fact]
     public void A_rule_matches_its_event_its_person_and_its_conditions()
     {
-        var group = new EventRule { Event = "ad.group.add", Group = "Domain Admins" };
+        var group = new EventRule { Event = "ad.group.add", Conditions = [new() { Field = "group", Op = "is", Value = "Domain Admins" }] };
         Assert.True(EventAlerts.Matches(group, new("ad.group.add", "t", "x", Group: "domain admins")));
         Assert.False(EventAlerts.Matches(group, new("ad.group.add", "t", "x", Group: "VPN users")));
         var about = new EventRule { Event = "signin.lock", About = "gsutton", AboutName = "Greg Sutton" };
@@ -89,11 +89,13 @@ public sealed class EventAlertsTests : IDisposable
     public async Task Rules_are_added_in_the_page_and_fire_after_their_count()
     {
         var page = await SignedIn();
-        var r = await page.PostAsJsonAsync("/api/event-alerts/rules", new { @event = "signin.fail", count = 1, severity = "critical" });
+        var r = await page.PostAsJsonAsync("/api/event-alerts/rules", new { @event = "signin.fail", times = 3, minutes = 10, severity = "critical" });
         Assert.Equal(HttpStatusCode.OK, r.StatusCode);
         var id = (await r.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetString()!;
-        var notYet = await page.PostAsJsonAsync("/api/event-alerts/rules", new { @event = "signin.new" });
+        var notYet = await page.PostAsJsonAsync("/api/event-alerts/rules", new { @event = "dev.admins" });
         Assert.Equal(HttpStatusCode.BadRequest, notYet.StatusCode);
+        var badField = await page.PostAsJsonAsync("/api/event-alerts/rules", new { @event = "signin.fail", conditions = new[] { new { field = "group", op = "is", value = "Sales" } } });
+        Assert.Equal(HttpStatusCode.BadRequest, badField.StatusCode);
 
         var alerts = app.Services.GetRequiredService<EventAlerts>();
         var fact = new AlertFact("signin.fail", "jsmith failed to sign in", "From 10.0.0.5.", "jsmith");
@@ -109,7 +111,81 @@ public sealed class EventAlertsTests : IDisposable
         Assert.Equal("ack", alerts.Fired()[0].State);
 
         Assert.Equal(HttpStatusCode.OK, (await page.PostAsync($"/api/event-alerts/rules/{id}/delete", null)).StatusCode);
-        Assert.Empty(alerts.Rules());
+        Assert.DoesNotContain(alerts.Rules(), x => x.Id == id);
+        Assert.Equal(9, alerts.Rules().Count); // the AD security alerts there to start with
+    }
+
+    [Fact]
+    public async Task The_ad_security_alerts_are_there_to_start_with_and_change_like_any_other()
+    {
+        var alerts = app.Services.GetRequiredService<EventAlerts>();
+        var admins = Assert.Single(alerts.Rules(), r => r.Id == "p-admins");
+        Assert.Equal(("Added to a privileged group", "critical", "builtin"), (admins.Name, admins.Severity, admins.From));
+        var added = new AlertFact("ad.group.add", "Owen Park was added to Domain Admins", "By Priya Nair.", SubjectName: "Owen Park", Group: "Domain Admins", What: "group", By: "Priya Nair", At: DateTime.UtcNow);
+        Assert.Equal(1, await alerts.Handle(added, CancellationToken.None));
+        Assert.Equal(0, await alerts.Handle(added with { Group = "VPN users" }, CancellationToken.None));
+        // Our own condition on a starting alert: not when Priya Nair makes the change.
+        var (saved, problem) = alerts.Save("p-admins", new EventRuleForm(Conditions: [.. admins.Conditions, new RuleCondition { Field = "by", Op = "isnot", Value = "Priya Nair" }]), "admin", [], []);
+        Assert.Null(problem);
+        Assert.Equal(2, saved!.Conditions.Count);
+        Assert.Equal(0, await alerts.Handle(added, CancellationToken.None));
+        Assert.Equal(1, await alerts.Handle(added with { By = "Tom Becker" }, CancellationToken.None));
+        // Anything that happened more than 15 minutes ago, as a first read of a Security log brings, teaches but never alerts.
+        Assert.Equal(0, await alerts.Handle(added with { By = "Tom Becker", At = DateTime.UtcNow.AddHours(-3) }, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Password_spraying_counts_different_accounts_from_one_address()
+    {
+        var alerts = app.Services.GetRequiredService<EventAlerts>();
+        alerts.Save("p-spray", new EventRuleForm(Times: 3), "admin", [], []);
+        AlertFact Fail(string user, string ip) => new("ad.signin.fail", $"{user} failed to sign in", "Wrong password.", user, Address: ip, Reason: "Wrong password", At: DateTime.UtcNow);
+        foreach (var f in new[] { Fail("amy", "10.0.0.9"), Fail("amy", "10.0.0.9"), Fail("ben", "10.0.0.9"), Fail("cal", "10.0.0.7"), Fail("dee", "10.0.0.9") })
+        {
+            await alerts.Handle(f, CancellationToken.None);
+        }
+        var spray = Assert.Single(alerts.Fired(), x => x.Rule == "p-spray");
+        Assert.StartsWith("3 different accounts in 10 minutes.", spray.Text, StringComparison.Ordinal);
+        Assert.Equal("dee", spray.Subject);
+    }
+
+    [Fact]
+    public void Conditions_compare_text_lists_and_hours()
+    {
+        var f = new AlertFact("ad.signin.fail", "t", "x", "svc-backup", Address: "10.0.0.5", Computer: "FS01", At: new DateTime(2026, 11, 22, 3, 0, 0, DateTimeKind.Utc));
+        Assert.True(EventAlerts.Test(new() { Field = "account", Op = "starts", Value = "svc-" }, f));
+        Assert.False(EventAlerts.Test(new() { Field = "account", Op = "noneof", Value = "jsmith, svc-backup" }, f));
+        Assert.True(EventAlerts.Test(new() { Field = "computer", Op = "oneof", Value = "fs01, DC01" }, f));
+        var hour = int.Parse(EventAlerts.Value("hour", f)!, System.Globalization.CultureInfo.InvariantCulture);
+        Assert.True(EventAlerts.Test(new() { Field = "hour", Op = "between", Value = $"{hour}-{(hour + 1) % 24}" }, f));
+        Assert.False(EventAlerts.Test(new() { Field = "hour", Op = "between", Value = $"{(hour + 1) % 24}-{(hour + 2) % 24}" }, f));
+        Assert.Equal((22, 6), EventAlerts.Hours("22-6"));
+        Assert.Null(EventAlerts.Hours("late"));
+    }
+
+    [Fact]
+    public void Domain_sign_ins_come_from_the_security_log_and_teach_what_is_usual()
+    {
+        SecurityEvent Ev(int id, string user, string status, string ip, DateTime at) => new(id, 1, at, "DC01", new Dictionary<string, string> { ["TargetUserName"] = user, ["Status"] = status, ["IpAddress"] = $"::ffff:{ip}" });
+        var now = DateTime.UtcNow;
+        var facts = EventAlerts.FromSignIns(
+        [
+            Ev(4771, "jsmith", "0x18", "10.0.0.5", now), Ev(4768, "jsmith", "0x12", "10.0.0.5", now), Ev(4768, "GS-LT$", "0x0", "10.0.0.8", now),
+            Ev(4768, "jsmith", "0x0", "10.0.0.5", now), new(4740, 2, now, "DC01", new Dictionary<string, string> { ["TargetUserName"] = "jsmith", ["CallerComputerName"] = "JS-LT" }),
+        ], ip => ip == "10.0.0.5" ? "JS-LT" : null);
+        Assert.Equal(["ad.signin.fail", "ad.signin.disabled", "ad.signin", "ad.lockout"], facts.Select(f => f.Event));
+        Assert.Equal(("Wrong password", "JS-LT", "10.0.0.5"), (facts[0].Reason, facts[0].Computer, facts[0].Address));
+
+        var learning = app.Services.GetRequiredService<SignInLearning>();
+        var start = now.AddDays(-20);
+        for (var d = 0; d < 20; d++)
+        {
+            Assert.Null(learning.See("jsmith", "JS-LT", start.AddDays(d).Date.AddHours(14)));
+        }
+        Assert.Null(learning.See("jsmith", "JS-LT", now.Date.AddHours(14)));
+        Assert.Equal("new", learning.See("jsmith", "FS01", now.Date.AddHours(14)));
+        Assert.Contains("hours", learning.See("jsmith", "JS-LT", now.Date.AddHours(14).AddHours(12)) ?? "");
+        Assert.Null(learning.See("newbie", "PC9", now)); // not learned yet: nothing is unusual
     }
 
     [Fact]
@@ -134,7 +210,7 @@ public sealed class EventAlertsTests : IDisposable
     public async Task A_computer_that_stops_checking_in_alerts_once_and_not_after_a_restart()
     {
         var alerts = app.Services.GetRequiredService<EventAlerts>();
-        var (rule, _) = alerts.Save(null, new EventRuleForm("dev.offline", null, null, null, null, 15, null, null, null, null, null, null, null, null, "list"), "admin", [], []);
+        var (rule, _) = alerts.Save(null, new EventRuleForm(Event: "dev.offline", After: 15, From: "list"), "admin", [], []);
         Assert.NotNull(rule);
         var quiet = new RabbidLab.Server.Client { Id = "c1", Computer = "FS01", Os = "Windows Server 2022", Approved = DateTime.UtcNow.AddDays(-9), LastSeen = DateTime.UtcNow.AddHours(-2) };
         await alerts.Poll([quiet], _ => null, CancellationToken.None); // already so when the server started: noted, not alerted

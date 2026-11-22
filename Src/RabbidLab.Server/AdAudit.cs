@@ -22,8 +22,16 @@ public sealed record SecurityEvent(int Id, long Record, DateTime At, string Dc, 
 /// <summary>Which Security log events are read, how they're asked for, and reading one from its XML.</summary>
 public static class SecurityEvents
 {
-    // Directory service changes. Sign-ins and lockouts (4624, 4625, 4740) join this list when alerts need them.
+    // Directory service changes.
     public static readonly IReadOnlyList<int> Watched = [5136, 5137, 5138, 5139, 5141];
+
+    /// <summary>Sign-ins, for alerts (EventAlerts.FromSignIns): lockouts, Kerberos tickets and pre-authentication failures; NTLM only when it failed.</summary>
+    public static readonly IReadOnlyList<int> SignIns = [4740, 4768, 4771];
+
+    /// <summary>Directory changes and sign-ins after the last one read; the first time (after is 0), the ones since then.</summary>
+    public static string Everything(long after, DateTime since) =>
+        $"*[System[{(after > 0 ? $"EventRecordID>{after}" : $"TimeCreated[@SystemTime>='{Iso(since)}']")}] and (System[{string.Join(" or ", Watched.Concat(SignIns).Select(i => $"EventID={i}"))}]"
+        + " or (System[EventID=4776] and EventData[Data[@Name='Status']!='0x0']))]";
 
     /// <summary>The events after the last one read; the first time (after is 0), the ones since then.</summary>
     public static string Query(IEnumerable<int> ids, long after, DateTime since) =>
@@ -835,7 +843,7 @@ public sealed class AuditCollector(IAuditDirectory ad, ISecurityLog logs, AuditS
         for (var i = 0; i < Batches; i++)
         {
             var since = s.LastAt ?? Now.AddDays(-keep);
-            var xml = await Ask(dc, login, SecurityEvents.Query(SecurityEvents.Watched, s.Last, since), Batch, stop);
+            var xml = await Ask(dc, login, SecurityEvents.Everything(s.Last, since), Batch, stop);
             var events = xml.Select(x => SecurityEvents.Parse(x, dc.Name)).OfType<SecurityEvent>().OrderBy(e => e.Record).ToList();
             var take = Settled(events, xml.Count >= Batch);
             if (take.Count == 0)

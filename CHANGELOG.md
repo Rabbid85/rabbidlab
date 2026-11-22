@@ -2,6 +2,14 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.357 (2026-11-22)
+
+- AD security alerts, read from the domain controllers’ Security logs: too many failed sign-ins, an account locked out, password spraying, a disabled or expired account signing in, sign-ins to many computers, a computer or hour an account doesn’t usually use, objects deleted, and someone added to a privileged group.
+- They are in Alerts, Rules to start with, and change like any other alert. Every alert can have its own name, how often (so many times, or so many different accounts, addresses or computers, in so many minutes, for each of something) and conditions of your own, such as Changed by is not, or Hour is between 9-17.
+- Edit is first on an alert’s panel and on a fired alert’s, and every row in Rules and Fired has a menu with Edit.
+- Unusual sign-ins learn the computers and hours each account uses, for 7, 14 or 30 days before they alert.
+- Only what happened in the last 15 minutes sets an alert off. Older events, as the first read of a Security log brings, only teach.
+
 ## 1.1.356 (2026-11-22)
 
 - Alerts has its own place in the sidebar: add an alert for anything that can happen, with Everything that can happen, Rules, Fired and Where alerts go.

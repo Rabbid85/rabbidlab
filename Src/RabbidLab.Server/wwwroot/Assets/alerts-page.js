@@ -1,7 +1,8 @@
 // Alerts (EventAlerts.cs): an alert for anything that can happen. Its own page in the sidebar: Everything that can happen
-// (a switch on each), Rules, Fired and Where alerts go. New alert asks what happens, only when, and then; a rule or a fired
-// alert opens in the side panel and changes in place; a user's Actions › Alert me about this user, and their Alerts tab
-// (users.js), add and list alerts about one person.
+// (a switch on each), Rules (the AD security alerts to start with, and every one added), Fired and Where alerts go. New
+// alert and a rule's side panel take its name, how often (so many times, or so many different accounts, addresses or
+// computers, in so many minutes, for each of something), conditions of our own, and then; unusual sign-ins have the
+// learning period. A user's Actions › Alert me about this user, and their Alerts tab (users.js), are about one person.
 (() => {
   const R = window.RabbidLab;
   const { $, esc, svg, has, panel, toast, sure, get, send } = R;
@@ -13,11 +14,14 @@
   const oops = (e) => { if (!e.cancelled) toast('The operation failed.', e.message, { tone: 'warn' }); };
   const same = (a, b) => !!a && !!b && a.toLowerCase() === b.toLowerCase();
   const SEV = { critical: ['Critical', 'red'], warning: ['Warning', 'amber'], info: ['Info', 'grey'] };
-  const AREA_ICON = { 'Sign-ins': 'lock', 'Active Directory': 'users', Devices: 'monitor', 'Sensors and links': 'activity', Printers: 'printer', 'Connected apps': 'plug', 'Rabbid Lab': 'shield' };
+  const AREA_ICON = { 'Domain sign-ins': 'lock', 'Active Directory': 'users', Devices: 'monitor', 'Sensors and links': 'activity', Printers: 'printer', 'Connected apps': 'plug', 'Rabbid Lab': 'shield' };
   const SENT = { sent: 'Sent', partial: 'Partly sent', failed: 'Not sent', held: 'Held for quiet hours', nobody: 'No notifications' };
-  const WHAT = { '': 'Anything', user: 'Users', group: 'Groups', computer: 'Computers', ou: 'OUs' };
   const COMPUTERS = { '': 'Any computer', servers: 'Servers', workstations: 'Workstations' };
-  const GROUPS = ['Domain Admins', 'Enterprise Admins', 'Schema Admins', 'Administrators', 'Account Operators', 'Backup Operators', 'Group Policy Creator Owners'];
+  const FIELD = { account: 'Account', address: 'Address', computer: 'Computer', reason: 'Reason', group: 'Group', object: 'Object', kind: 'Kind of object', by: 'Changed by', hour: 'Hour', day: 'Day' };
+  const OPS = { is: 'is', isnot: 'is not', oneof: 'is one of', noneof: 'is none of', contains: 'contains', starts: 'starts with', between: 'is between' };
+  const PER = { account: 'account', address: 'address', computer: 'computer', group: 'group', all: 'of them together' };
+  const DISTINCT = { '': 'times', account: 'different accounts', address: 'different addresses', computer: 'different computers' };
+  const HINT = { oneof: 'Values, separated by commas', noneof: 'Values, separated by commas', between: 'Hours, such as 9-17' };
 
   let data = null; // /api/event-alerts
   let tab = 'rules';
@@ -28,21 +32,26 @@
   const typeName = (id) => data?.types.find((t) => t.id === id)?.name || 'a deleted alert type';
   const fresh = () => (data?.fired || []).filter((f) => f.state === 'new').length;
   const week = (r) => (data?.fired || []).filter((f) => f.rule === r.id && Date.now() - new Date(f.at) < 7 * 86400000).length;
-  const listRule = (e) => data?.rules.find((r) => r.event === e.id && !r.about);
+  const listRule = (e) => data?.rules.find((r) => r.event === e.id && !r.about && r.from !== 'builtin') || data?.rules.find((r) => r.event === e.id && !r.about);
+  const nameOf = (r) => r.name || ev(r.event)?.name || r.event;
   const sevBadge = (sev) => { const [w, tone] = SEV[sev] || SEV.warning; return `<span class="ubadge ${tone}">${w}</span>`; };
   const sevPic = (sev, cls = 'pic') => `<span class="${cls} ea-sev ${SEV[sev]?.[1] || 'amber'}">${svg(sev === 'info' ? 'info' : 'alert')}</span>`;
   const areaPic = (e) => `<span class="pic">${svg(AREA_ICON[e?.area] || 'bell')}</span>`;
+  const learns = (r) => ['ad.signin.new', 'ad.signin.hours'].includes(r.event);
+  const audited = (e) => !!e && (e.area === 'Domain sign-ins' || /AD audit/.test(e.note || ''));
 
-  // What a rule waits for, in words (only its conditions that aren't "always"), and the whole rule as a sentence.
+  // A rule in words: how often, its conditions, its fixed settings; and the whole of it as a sentence.
+  const often = (r) => (r.times > 1 ? `${r.times} ${DISTINCT[r.distinct || '']} in ${r.minutes} minutes${r.per === 'all' ? '' : `, for each ${PER[r.per]}`}` : '');
+  const condWords = (c) => `${FIELD[c.field] || c.field} ${OPS[c.op] || c.op} ${c.value}`;
   const conds = (r) => {
-    const f = ev(r.event)?.fields || [];
-    return [f.includes('count') && r.count ? data.counts[r.count] : '', f.includes('group') && r.group ? r.group : '', f.includes('what') && r.what ? WHAT[r.what] : '',
-      f.includes('computers') && r.computers ? COMPUTERS[r.computers] : '', f.includes('after') ? `${r.after} minutes` : '', f.includes('percent') ? `${r.percent}% full` : ''].filter(Boolean);
+    const fixed = ev(r.event)?.fixed || [];
+    return [often(r), ...r.conditions.map(condWords), fixed.includes('computers') && r.computers ? COMPUTERS[r.computers] : '',
+      fixed.includes('after') ? `after ${r.after} minutes` : '', fixed.includes('percent') ? `${r.percent}% full` : ''].filter(Boolean);
   };
   const sendTo = (r) => list(r.types.map(typeName)) || 'nobody yet';
   const say = (r) => {
     const bits = [r.aboutName || r.about, ...conds(r)].filter(Boolean);
-    return `When: ${ev(r.event)?.name || r.event}${bits.length ? ` (${bits.join(', ')})` : ''}. Then: ${r.severity === 'info' ? 'an' : 'a'} ${SEV[r.severity]?.[0] || ''} alert to ${sendTo(r)}${r.quiet ? ', even in quiet hours' : ''}.`;
+    return `When: ${ev(r.event)?.name || r.event}${bits.length ? ` (${bits.join('; ')})` : ''}. Then: ${r.severity === 'info' ? 'an' : 'a'} ${SEV[r.severity]?.[0] || ''} alert to ${sendTo(r)}${r.quiet ? ', even in quiet hours' : ''}.`;
   };
 
   const load = async () => {
@@ -71,6 +80,8 @@
   // --- The page --------------------------------------------------------------------------------------------------
   const TABS = [['catalog', 'Everything that can happen', 'list'], ['rules', 'Rules', 'bell'], ['fired', 'Fired', 'history'], ['types', 'Where alerts go', 'message']];
   const rowsOf = (t) => (t === 'catalog' ? data?.events || [] : t === 'rules' ? data?.rules || [] : t === 'fired' ? data?.fired || [] : data?.types || []);
+  const areaOrder = (e) => [...new Set((data?.events || []).map((x) => x.area))].indexOf(e?.area);
+  const more = (id, label) => `<button type="button" class="at-more" data-ea-more="${esc(id)}" data-tip="Actions" aria-label="${esc(`Actions for ${label}`)}">${svg('dots')}</button>`;
   const tick = (id, label) => `<label class="tk"><input type="checkbox" data-ea-tick="${esc(id)}" aria-label="Select ${esc(label)}"${picked.has(id) ? ' checked' : ''}></label>`;
   const lead = { w: 18, head: '<label class="tk"><input type="checkbox" data-ea-tick-all aria-label="Select all"></label>' };
   const G = {};
@@ -78,7 +89,7 @@
     catalog: () => R.grid({
       el: $('ea-list'), key: 'ealist', sort: { key: 'area', dir: 1 },
       cols: [
-        { key: 'name', label: 'What can happen', w: 330, fixed: true, get: (e) => e.name, cell: (e) => `<div class="who">${areaPic(e)}<b class="ell">${esc(e.name)}</b></div>` },
+        { key: 'name', label: 'What can happen', w: 340, fixed: true, get: (e) => e.name, cell: (e) => `<div class="who">${areaPic(e)}<b class="ell">${esc(e.name)}</b></div>` },
         { key: 'area', label: 'Area', w: 150, on: true, get: (e) => data.events.indexOf(e), text: (e) => e.area, cell: (e) => `<span class="ell">${esc(e.area)}</span>` },
         { key: 'sev', label: 'Severity', w: 100, on: true, get: (e) => (listRule(e) || e).severity, cell: (e) => (listRule(e) ? sevBadge(listRule(e).severity) : `<span class="muted">${SEV[e.severity][0]}</span>`) },
         { key: 'to', label: 'Send to', w: 160, on: true, get: (e) => (listRule(e) ? sendTo(listRule(e)) : ''), cell: (e) => (listRule(e) ? `<span class="ell">${esc(sendTo(listRule(e)))}</span>` : '<span class="muted">-</span>') },
@@ -89,18 +100,19 @@
       row: (e) => ` data-ea-row="${esc(e.id)}"${e.notYet ? ' data-ea-notyet' : ''}`, empty: () => 'Nothing to list.', loading: () => !data, redraw: () => draw(),
     }),
     rules: () => R.grid({
-      el: $('ea-list'), key: 'earules', sort: { key: 'name', dir: 1 },
-      lead: { ...lead, cell: (r) => tick(r.id, ev(r.event)?.name || r.event) },
+      el: $('ea-list'), key: 'earules2', sort: { key: 'area', dir: 1 },
+      lead: { ...lead, cell: (r) => tick(r.id, nameOf(r)) },
       cols: [
-        { key: 'name', label: 'Alert', w: 260, fixed: true, get: (r) => ev(r.event)?.name || r.event, cell: (r) => `<div class="who">${areaPic(ev(r.event))}<b class="ell">${esc(ev(r.event)?.name || r.event)}</b></div>` },
-        { key: 'about', label: 'Watches', w: 130, on: true, get: (r) => r.aboutName || r.about || 'Everything' },
-        { key: 'when', label: 'Only when', w: 190, on: true, get: (r) => conds(r).join(', ') || 'Always' },
+        { key: 'name', label: 'Alert', w: 250, fixed: true, get: nameOf, cell: (r) => `<div class="who">${areaPic(ev(r.event))}<b class="ell">${esc(nameOf(r))}</b></div>` },
+        { key: 'area', label: 'Area', w: 140, on: true, get: (r) => areaOrder(ev(r.event)) * 1000 + data.rules.indexOf(r), text: (r) => ev(r.event)?.area || '', cell: (r) => `<span class="ell">${esc(ev(r.event)?.area || '')}</span>` },
+        { key: 'when', label: 'Only when', w: 240, on: true, get: (r) => conds(r).join('; ') || 'Each time', cell: (r) => `<span class="ell">${esc([r.aboutName || r.about, ...conds(r)].filter(Boolean).join('; ') || 'Each time')}</span>` },
         { key: 'sev', label: 'Severity', w: 100, on: true, get: (r) => Object.keys(SEV).indexOf(r.severity), text: (r) => SEV[r.severity][0], cell: (r) => sevBadge(r.severity) },
-        { key: 'to', label: 'Send to', w: 170, on: true, get: (r) => sendTo(r), cell: (r) => `<span class="ell${r.types.length ? '' : ' muted'}">${esc(r.types.length ? sendTo(r) : 'Nobody yet')}</span>` },
-        { key: 'fired', label: 'Fired (7 days)', w: 110, on: true, get: week, cell: (r) => (week(r) ? `<span class="num">${week(r)}</span>` : '<span class="muted">0</span>') },
+        { key: 'to', label: 'Send to', w: 150, on: true, get: (r) => sendTo(r), cell: (r) => `<span class="ell${r.types.length ? '' : ' muted'}">${esc(r.types.length ? sendTo(r) : 'Nobody yet')}</span>` },
+        { key: 'fired', label: 'Last 7 days', w: 100, on: true, get: week, cell: (r) => (week(r) ? `<span class="num">${week(r)}</span>` : '<span class="muted">0</span>') },
         { key: 'on', label: 'On', w: 60, on: true, get: (r) => (r.on ? 0 : 1), text: (r) => (r.on ? 'On' : 'Off'), cell: (r) => `<input type="checkbox" class="switch" data-ea-ron="${esc(r.id)}"${r.on ? ' checked' : ''} aria-label="On">` },
         { key: 'by', label: 'Added by', w: 120, get: (r) => r.by },
       ],
+      tail: { w: 30, cell: (r) => more(r.id, nameOf(r)) },
       row: (r) => ` data-ea-row="${esc(r.id)}"`, empty: () => 'No alerts yet. Select New alert, or turn one on in Everything that can happen.', loading: () => !data, redraw: () => draw(),
     }),
     fired: () => R.grid({
@@ -109,12 +121,13 @@
       cols: [
         { key: 'at', label: 'When', w: 140, fixed: true, get: (f) => new Date(f.at).getTime(), text: (f) => R.when(f.at), cell: (f) => `<span class="ell">${esc(R.when(f.at))}</span>` },
         { key: 'what', label: 'What happened', w: 360, on: true, get: (f) => f.title, cell: (f) => `<div class="who">${sevPic(f.severity)}<b class="ell">${esc(f.title)}</b></div>` },
-        { key: 'alert', label: 'Alert', w: 220, on: true, get: (f) => ev(f.event)?.name || f.event },
+        { key: 'alert', label: 'Alert', w: 220, on: true, get: (f) => (ruleOf(f.rule) ? nameOf(ruleOf(f.rule)) : ev(f.event)?.name || f.event) },
         { key: 'sent', label: 'Sent', w: 150, on: true, get: (f) => SENT[f.sent] || f.sent, cell: (f) => `<span class="ell${f.sent === 'sent' ? '' : ' muted'}">${esc(SENT[f.sent] || f.sent)}</span>` },
         { key: 'state', label: 'State', w: 160, on: true, get: (f) => (f.approval === 'waiting' ? 0 : f.state === 'new' ? 1 : 2),
           text: (f) => (f.approval === 'waiting' ? 'Workflow waiting' : f.state === 'new' ? 'New' : 'Acknowledged'),
           cell: (f) => (f.approval === 'waiting' ? '<span class="ubadge amber">Workflow waiting</span>' : f.state === 'new' ? '<span class="ubadge amber">New</span>' : '<span class="ubadge grey">Acknowledged</span>') },
       ],
+      tail: { w: 30, cell: (f) => more(f.id, f.title) },
       row: (f) => ` data-ea-row="${esc(f.id)}"`, empty: () => 'Nothing has fired yet.', loading: () => !data, redraw: () => draw(),
     }),
     types: () => R.grid({
@@ -129,9 +142,24 @@
   };
   const LEAD = {
     catalog: 'Everything Rabbid Lab can alert on. Turn one on and it alerts with the usual settings; select it to change them.',
-    rules: 'Sensors, links, certificates, disk space, updates and failing sign-ins also alert through Settings, Alert rules.',
+    rules: 'The AD security alerts are here to start with. Change any of them, add conditions of your own, or select New alert. Sensors, links and certificates alert through Settings, Alert rules.',
     fired: 'Each alert that went off stays New until someone acknowledges it.',
     types: 'Alerts go through alert types. Their notifications, times and quiet hours are set in Settings, Alert rules and Notifications.',
+  };
+  // Whether the domain controllers' Security logs are being read: what the sign-in and directory alerts need.
+  const drawStatus = () => {
+    const dcs = data?.dcs || [];
+    const el = $('ea-status');
+    const wants = (data?.rules || []).some((r) => r.on && audited(ev(r.event)));
+    el.hidden = !data || !wants;
+    if (el.hidden) return;
+    const read = dcs.filter((d) => d.state === 'read');
+    const bad = dcs.filter((d) => d.state !== 'read');
+    const last = read.map((d) => d.last).filter(Boolean).sort().pop();
+    el.classList.toggle('bad', !read.length || bad.length > 0);
+    el.innerHTML = !dcs.length ? `${svg('alert')}<span><b>The domain controllers' Security logs aren't read yet.</b> Sign-in and directory alerts need the AD audit: connect Active Directory with a service account that is in Event Log Readers.</span>`
+      : `${svg(bad.length ? 'alert' : 'activity')}<span><b>${esc(read.length ? `Reading the Security logs on ${list(read.map((d) => d.name.split('.')[0].toUpperCase()))}.` : 'No domain controller\'s Security log can be read.')}</b> `
+        + `${esc([last ? `The last event arrived ${R.when(last)}.` : '', ...bad.map((d) => d.problem || `${d.name} can't be read.`)].filter(Boolean).join(' '))}</span>`;
   };
   const draw = () => {
     if (R.where()[0] !== 'alerts') return;
@@ -145,13 +173,14 @@
     }
     $('ea-tabs').innerHTML = TABS.map(([k, l, i]) => `<a role="tab" data-ea-tab="${k}"${tab === k ? ' aria-current="true"' : ''}>${svg(i)}${esc(l)} <small${k === 'fired' && fresh() ? ' class="tone amber"' : ''}>${data ? (k === 'fired' && fresh() ? fresh() : rowsOf(k).length) : ''}</small></a>`).join('');
     $('ea-lead').textContent = LEAD[tab];
+    drawStatus();
     $('ea-new').hidden = !may();
     $('ea-acts').hidden = tab === 'catalog' || tab === 'types';
     $('ea-ackall').hidden = !fresh();
     const rows = rowsOf(tab);
     [...picked].forEach((id) => { if (!rows.some((x) => x.id === id)) picked.delete(id); });
     (G[tab] ||= grids[tab]()).draw(rows);
-    $('ea-count').textContent = data ? count(rows.length, tab === 'catalog' ? 'thing' : tab === 'rules' ? 'alert' : tab === 'fired' ? 'alert' : 'alert type', tab === 'catalog' ? 'things' : undefined) : '';
+    $('ea-count').textContent = data ? count(rows.length, tab === 'catalog' ? 'thing' : tab === 'types' ? 'alert type' : 'alert') : '';
     drawTicks();
     if (panel.is('earule')) { if (ruleOf(panel.key)) openRule(ruleOf(panel.key), true); else panel.close(); }
     if (panel.is('eafired')) { if (firedOf(panel.key)) openFired(firedOf(panel.key), true); else panel.close(); }
@@ -182,6 +211,8 @@
       drawTicks();
       return;
     }
+    const m = e.target.closest('[data-ea-more]');
+    if (m) { rowMenu(m, m.dataset.eaMore); return; }
     if (e.target.closest('input, button, a')) return;
     const row = e.target.closest('[data-ea-row]');
     if (!row) return;
@@ -207,7 +238,7 @@
       if (r) await saveRule(r, { on: t.checked }, t.checked ? 'Alert on.' : 'Alert off.');
     }
   });
-  // On from the list: the usual settings (its own severity, the alert type new things start with), and its panel to change them.
+  // On from the list: the usual settings (its own severity and counting, the alert type new things start with), and its panel to change them.
   const turnOn = async (e) => {
     try {
       const r = took(await send('/api/event-alerts/rules', { event: e.id, types: data.start ? [data.start] : [], from: 'list' }));
@@ -222,9 +253,46 @@
     try {
       took(await send(`/api/event-alerts/rules/${r.id}`, change));
       toast(said, say(ruleOf(r.id) || r));
+      return true;
     } catch (err) {
       oops(err);
       draw();
+      return false;
+    }
+  };
+  // A row's ⋯: an alert's Edit, test, on or off and delete; a fired alert's panel, its alert's Edit, acknowledge, and the workflow waiting.
+  const rowMenu = (anchor, id) => {
+    if (tab === 'rules') {
+      const r = ruleOf(id);
+      if (!r) return;
+      R.actions.open(anchor, {
+        items: [{ act: 'edit', label: 'Edit…' }, { act: 'open', label: 'Open in the side panel' }, '-', { act: 'test', label: 'Send test' }, { act: 'turn', label: r.on ? 'Turn off' : 'Turn on' }, '-', { act: 'delete', label: 'Delete…', danger: true }],
+        pick: (act) => (act === 'edit' ? openBuild(r) : act === 'open' ? openRule(r) : act === 'test' ? test(r) : act === 'turn' ? saveRule(r, { on: !r.on }, r.on ? 'Alert off.' : 'Alert on.') : remove([r])),
+      });
+      return;
+    }
+    const f = firedOf(id);
+    if (!f) return;
+    const r = ruleOf(f.rule);
+    R.actions.open(anchor, {
+      items: [{ act: 'open', label: 'Open in the side panel' }, ...(r ? [{ act: 'edit', label: 'Edit the alert…' }] : []), '-', ...(f.state === 'new' ? [{ act: 'ack', label: 'Acknowledge' }] : []),
+        ...(f.approval === 'waiting' ? [{ act: 'approve', label: 'Approve and run the workflow' }, { act: 'dismiss', label: 'Dismiss the workflow' }] : [])],
+      pick: async (act) => {
+        if (act === 'open') openFired(f);
+        else if (act === 'edit') openBuild(r);
+        else if (act === 'ack') ack([f.id]);
+        else if (act === 'approve') { openFired(f); approve(f); } else if (act === 'dismiss') {
+          try { took(await send(`/api/event-alerts/fired/${f.id}/approval`, { state: 'dismissed' })); toast('Workflow dismissed.', f.title); } catch (err) { oops(err); }
+        }
+      },
+    });
+  };
+  const test = async (r) => {
+    try {
+      await send(`/api/event-alerts/rules/${r.id}/test`);
+      toast('Test sent.', `To ${sendTo(r)}.`);
+    } catch (err) {
+      oops(err);
     }
   };
   $('ea-acts').addEventListener('click', () => {
@@ -249,10 +317,10 @@
       },
     });
   });
-  const remove = (rs) => sure(rs.length === 1 ? 'Delete this alert?' : `Delete ${rs.length} alerts?`, 'Nothing more is sent for them. What they already sent stays in Fired.', 'Delete', async () => {
+  const remove = (rs) => sure(rs.length === 1 ? `Delete ${nameOf(rs[0])}?` : `Delete ${rs.length} alerts?`, 'Nothing more is sent for them. What they already sent stays in Fired.', 'Delete', async () => {
     try {
       for (const r of rs) took(await send(`/api/event-alerts/rules/${r.id}/delete`));
-      toast(rs.length === 1 ? 'Alert deleted.' : `${rs.length} alerts deleted.`, rs.map((r) => ev(r.event)?.name || r.event).join(', '));
+      toast(rs.length === 1 ? 'Alert deleted.' : `${rs.length} alerts deleted.`, rs.map(nameOf).join(', '));
       picked.clear();
       if (panel.is('earule')) panel.close();
     } catch (err) {
@@ -282,87 +350,146 @@
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') load(); });
   document.addEventListener('rabbidlab:me', () => load());
 
-  // --- A rule in the side panel: what happens, only when and then, changed in place -----------------------------
-  const condInputs = (r, e, attr) => e.fields.map((f) => {
-    const sel = (opts, v) => opts.map(([k, l]) => `<option value="${esc(k)}"${String(k) === String(v) ? ' selected' : ''}>${esc(l)}</option>`).join('');
-    if (f === 'count') return `<label><span>How often</span><select ${attr}="count">${sel(data.counts.map((w, i) => [i, w]), r.count)}</select></label>`;
-    if (f === 'group') return `<label><span>Group</span><input class="ds-input" ${attr}="group" value="${esc(r.group)}" placeholder="Any group" list="ea-groups" autocomplete="off" spellcheck="false"></label>`;
-    if (f === 'what') return `<label><span>Objects</span><select ${attr}="what">${sel(Object.entries(WHAT), r.what)}</select></label>`;
-    if (f === 'computers') return `<label><span>Computers</span><select ${attr}="computers">${sel(Object.entries(COMPUTERS), r.computers)}</select></label>`;
-    if (f === 'after') return `<label><span>For more than</span><select ${attr}="after">${sel([5, 15, 30, 60].map((m) => [m, `${m} minutes`]), r.after)}</select></label>`;
-    if (f === 'percent') return `<label><span>When it is</span><select ${attr}="percent">${sel([80, 90, 95].map((p) => [p, `${p}% full`]), r.percent)}</select></label>`;
-    return '';
-  }).join('');
-  const thenRows = (r, e, pre) => `<div class="ea-then"><span>Severity</span><div class="seg" role="group" aria-label="Severity">${Object.entries(SEV).map(([k, [w]]) => `<button type="button" data-${pre}-sev="${k}" aria-pressed="${r.severity === k}">${w}</button>`).join('')}</div>`
+  // --- What a rule waits for: its name, how often, its conditions and fixed settings; then where it goes ------------
+  // pre names the data attributes: ea-r in a rule's panel, ea-b in New alert. d is the rule or the draft.
+  const often$ = (d, e, pre) => {
+    const per = Object.entries(PER).filter(([k]) => k === 'all' || e.fields.includes(k) || (k === 'computer' && e.fields.includes('address')));
+    const distinct = Object.entries(DISTINCT).filter(([k]) => !k || e.fields.includes(k) || (k === 'computer' && e.fields.includes('address')));
+    const sel = (attr, opts, v) => `<select data-${pre}-${attr}>${opts.map(([k, l]) => `<option value="${esc(k)}"${k === v ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
+    return `<div class="seg ea-oftenseg" role="group" aria-label="How often"><button type="button" data-${pre}-often="1" aria-pressed="${d.times <= 1}">Each time</button><button type="button" data-${pre}-often="n" aria-pressed="${d.times > 1}">More than once</button></div>`
+      + (d.times > 1 ? `<p class="ea-often">At least <input class="ds-input" type="number" min="2" max="1000" value="${d.times}" data-${pre}-times aria-label="How many"> ${sel('distinct', distinct, d.distinct || '')}`
+        + ` in <input class="ds-input" type="number" min="1" max="1440" value="${d.minutes}" data-${pre}-minutes aria-label="Minutes"> minutes, for each ${sel('per', per, d.per)}</p>` : '');
+  };
+  const fixed$ = (d, e, pre) => {
+    const sel = (attr, opts, v) => `<label><span>${attr === 'computers' ? 'Computers' : attr === 'after' ? 'For more than' : 'When it is'}</span><select data-${pre}-${attr}>${opts.map(([k, l]) => `<option value="${esc(k)}"${String(k) === String(v) ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select></label>`;
+    const out = [];
+    if (e.fixed.includes('computers')) out.push(sel('computers', Object.entries(COMPUTERS), d.computers));
+    if (e.fixed.includes('after')) out.push(sel('after', [5, 15, 30, 60].map((m) => [m, `${m} minutes`]), d.after));
+    if (e.fixed.includes('percent')) out.push(sel('percent', [80, 90, 95].map((p) => [p, `${p}% full`]), d.percent));
+    return out.length ? `<div class="ea-conds">${out.join('')}</div>` : '';
+  };
+  const conds$ = (list2, e, pre) => {
+    const fields = e.fields;
+    return `<div class="ea-clist">${list2.map((c, i) => `<div class="ea-cond"><select data-${pre}-cf="${i}" aria-label="Field">${fields.map((f) => `<option value="${f}"${f === c.field ? ' selected' : ''}>${esc(FIELD[f] || f)}</option>`).join('')}</select>`
+      + `<select data-${pre}-co="${i}" aria-label="How to compare">${Object.entries(OPS).filter(([k]) => k !== 'between' || c.field === 'hour').map(([k, l]) => `<option value="${k}"${k === c.op ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>`
+      + `<input class="ds-input" data-${pre}-cv="${i}" value="${esc(c.value)}" placeholder="${esc(HINT[c.op] || (c.field === 'hour' ? '0 to 23' : c.field === 'day' ? 'Monday' : 'Value'))}"${c.field === 'group' ? ' list="ea-groups"' : ''} autocomplete="off" spellcheck="false" aria-label="Value">`
+      + `<button type="button" class="icon" data-${pre}-cx="${i}" data-tip="Remove" aria-label="Remove condition">${svg('x')}</button></div>`).join('')}</div>`
+      + (fields.length ? `<button type="button" class="small ea-cadd" data-${pre}-cadd>${svg('plus')}Add a condition</button>` : '');
+  };
+  const then$ = (r, e, pre) => `<div class="ea-then"><span>Severity</span><div class="seg" role="group" aria-label="Severity">${Object.entries(SEV).map(([k, [w]]) => `<button type="button" data-${pre}-sev="${k}" aria-pressed="${r.severity === k}">${w}</button>`).join('')}</div>`
     + `<span>Send to</span><div class="ea-chips">${data.types.map((t) => `<button type="button" class="ea-chip" data-${pre}-to="${esc(t.id)}" aria-pressed="${r.types.includes(t.id)}">${svg(r.types.includes(t.id) ? 'check' : 'plus')}${esc(t.name)}</button>`).join('') || '<span class="muted">No alert types yet.</span>'}</div>`
-    + `<span>Quiet hours</span><label class="ea-sw"><input type="checkbox" class="switch" data-${pre}-quiet${r.quiet ? ' checked' : ''}><span>${r.quiet ? 'Sends even in quiet hours' : 'Waits until quiet hours end'}</span></label>`
-    + (e?.user ? `<span>Also</span><select data-${pre}-flow aria-label="Also run a workflow"><option value="">Do nothing else</option>${data.workflows.map((w) => `<option value="${esc(w.id)}"${w.id === r.workflow ? ' selected' : ''}>${esc(`Run ${w.name} on the user, after someone approves`)}</option>`).join('')}</select>` : '')
+    + (pre === 'ea-m' ? '' : `<span>Quiet hours</span><label class="ea-sw"><input type="checkbox" class="switch" data-${pre}-quiet${r.quiet ? ' checked' : ''}><span>${r.quiet ? 'Sends even in quiet hours' : 'Waits until quiet hours end'}</span></label>`)
+    + (e?.user && pre !== 'ea-m' ? `<span>Also</span><select data-${pre}-flow aria-label="Also run a workflow"><option value="">Do nothing else</option>${data.workflows.map((w) => `<option value="${esc(w.id)}"${w.id === r.workflow ? ' selected' : ''}>${esc(`Run ${w.name} on the user, after someone approves`)}</option>`).join('')}</select>` : '')
     + '</div>';
+  const learning$ = () => {
+    const l = data.learning;
+    return `<div class="ea-then"><span>Learning period</span><div class="seg" role="group" aria-label="Learning period">${[7, 14, 30].map((d) => `<button type="button" data-ea-learn="${d}" aria-pressed="${l.days === d}">${d} days</button>`).join('')}</div></div>`
+      + `<p class="ea-text muted">${esc(!l.accounts ? 'Nothing learned yet. Sign-ins are learned as the Security logs are read.'
+        : `${count(l.accounts, 'account')} known${l.since ? ` since ${new Date(l.since).toLocaleDateString([], { dateStyle: 'medium' })}` : ''}, ${l.learned} learned for ${l.days} days. An account alerts once it has been learned for the whole period.`)}</p>`;
+  };
+  // The conditions being changed, kept here until each has a value (an empty one isn't saved).
+  let pc = { id: '', list: [] };
+  const conditionsOf = (r) => { if (pc.id !== r.id) pc = { id: r.id, list: r.conditions.map((c) => ({ ...c })) }; return pc.list; };
+  const complete = (cs) => cs.every((c) => c.value.trim());
   const openRule = (r, again = false) => {
     if (!r) return;
     const e = ev(r.event);
+    const cs = conditionsOf(r);
     const fired = data.fired.filter((f) => f.rule === r.id).slice(0, 10);
-    panel.body.innerHTML = `<div class="dw-head">${areaPic(e).replace('class="pic"', 'class="pic dw-pic"')}<div class="dw-name"><h2 id="dw-title">${esc(e?.name || r.event)}</h2><p>${esc(say(r))}</p></div>`
+    const box = panel.body.querySelector('.dw-scroll, .dw-panel');
+    const top = panel.body.scrollTop;
+    panel.body.innerHTML = `<div class="dw-head">${areaPic(e).replace('class="pic"', 'class="pic dw-pic"')}<div class="dw-name"><h2 id="dw-title">${esc(nameOf(r))}</h2><p>${esc(say(r))}</p></div>`
       + `<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`
-      + `<div class="dw-bar"><button type="button" class="dw-qa" data-ea-test>${svg('bell')}<span>Send test</span></button><button type="button" class="dw-qa" data-ea-turn>${svg(r.on ? 'pause' : 'play')}<span>${r.on ? 'Turn off' : 'Turn on'}</span></button>`
+      + `<div class="dw-bar">${R.editButton('data-ea-edit', '')}<button type="button" class="dw-qa" data-ea-test>${svg('bell')}<span>Send test</span></button><button type="button" class="dw-qa" data-ea-turn>${svg(r.on ? 'pause' : 'play')}<span>${r.on ? 'Turn off' : 'Turn on'}</span></button>`
       + `<button type="button" class="dw-qa" data-ea-del>${svg('trash')}<span>Delete</span></button></div>`
       + `<div class="dw-strip"><div><span class="l">State</span><span class="v">${r.on ? '<span class="ubadge green">On</span>' : '<span class="ubadge grey">Off</span>'}</span></div><div><span class="l">Severity</span><span class="v">${sevBadge(r.severity)}</span></div>`
-      + `<div><span class="l">Send to</span><span class="v">${esc(sendTo(r))}</span></div><div><span class="l">Fired (7 days)</span><span class="v">${week(r)}</span></div><div><span class="l">Added by</span><span class="v">${esc(r.by)}</span></div></div>`
+      + `<div><span class="l">Send to</span><span class="v">${esc(sendTo(r))}</span></div><div><span class="l">Last 7 days</span><span class="v">${week(r)}</span></div><div><span class="l">Added by</span><span class="v">${esc(r.from === 'builtin' ? 'There to start with' : r.by)}</span></div></div>`
       + section('What happens', `<div class="mrow ea-what">${areaPic(e)}<div class="two"><b>${esc(e?.name || r.event)}</b><small>${esc([e?.area, r.aboutName || r.about ? `Only for ${r.aboutName || r.about}` : '', e?.note].filter(Boolean).join(' · '))}</small></div></div>`
-        + (e?.fields.length ? `<div class="ea-conds">${condInputs(r, e, 'data-ea-rc')}</div>` : none('It alerts each time this happens.')))
-      + section('Then', thenRows(r, e, 'ea-r'))
+        + `<label class="ea-name"><span>Name</span><input class="ds-input" data-ea-r-name value="${esc(r.name)}" placeholder="${esc(e?.name || '')}" maxlength="60" autocomplete="off"></label>`)
+      + section('How often', often$(r, e, 'ea-r'))
+      + section(`Only when <small>${cs.length || ''}</small>`, (fixed$(r, e, 'ea-r') + conds$(cs, e, 'ea-r')) || none('It alerts each time this happens.'))
+      + (learns(r) ? section('Learning', learning$()) : '')
+      + section('Then', then$(r, e, 'ea-r'))
       + section(`Fired <small>${fired.length}</small>`, fired.length ? `<div class="dw-list">${fired.map((f) => `<div class="mrow">${sevPic(f.severity)}<div class="two"><b>${esc(f.title)}</b><small>${esc(`${R.when(f.at)} · ${SENT[f.sent] || f.sent}${f.state === 'new' ? ' · New' : ''}`)}</small></div></div>`).join('')}</div>` : none('It has not fired yet.'));
     if (!again) panel.open('earule', r.id);
+    else if (box) panel.body.scrollTop = top;
   };
   const openFired = (f, again = false) => {
     if (!f) return;
     const r = ruleOf(f.rule);
     const flow = r?.workflow && data.workflows.find((w) => w.id === r.workflow);
     const who = f.subjectName || f.subject;
-    const approval = f.approval === 'waiting' ? section('Workflow waiting', `<p class="ea-ask">${esc(flow ? `Run ${flow.name} on ${who}?` : `The workflow for this alert was deleted or turned off.`)}</p>`
+    const approval = f.approval === 'waiting' ? section('Workflow waiting', `<p class="ea-ask">${esc(flow ? `Run ${flow.name} on ${who}?` : 'The workflow for this alert was deleted or turned off.')}</p>`
       + `<div class="ea-ask-do">${flow ? `<button type="button" class="primary small" data-ea-approve>${svg('play')}Approve and run</button>` : ''}<button type="button" class="small" data-ea-dismiss>Dismiss</button></div>`)
       : f.approval ? section('Workflow', `<p class="ea-ask">${esc(f.approval === 'approved' ? `Approved and run by ${f.approvalBy}.` : `Dismissed by ${f.approvalBy}.`)}</p>`) : '';
-    panel.body.innerHTML = `<div class="dw-head">${sevPic(f.severity, 'pic dw-pic')}<div class="dw-name"><h2 id="dw-title">${esc(f.title)}</h2><p>${esc(`${R.when(f.at)} · ${ev(f.event)?.name || f.event}`)}</p></div>`
+    panel.body.innerHTML = `<div class="dw-head">${sevPic(f.severity, 'pic dw-pic')}<div class="dw-name"><h2 id="dw-title">${esc(f.title)}</h2><p>${esc(`${R.when(f.at)} · ${r ? nameOf(r) : ev(f.event)?.name || f.event}`)}</p></div>`
       + `<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`
-      + `<div class="dw-bar">${f.state === 'new' ? `<button type="button" class="dw-qa" data-ea-ack>${svg('check')}<span>Acknowledge</span></button>` : ''}${r ? `<button type="button" class="dw-qa" data-ea-torule>${svg('bell')}<span>Open the alert</span></button>` : ''}</div>`
+      + `<div class="dw-bar">${r ? R.editButton('data-ea-editrule', '') : ''}${f.state === 'new' ? `<button type="button" class="dw-qa" data-ea-ack>${svg('check')}<span>Acknowledge</span></button>` : ''}${r ? `<button type="button" class="dw-qa" data-ea-torule>${svg('bell')}<span>Open the alert</span></button>` : ''}</div>`
       + `<div class="dw-strip"><div><span class="l">State</span><span class="v">${f.state === 'new' ? '<span class="ubadge amber">New</span>' : '<span class="ubadge grey">Acknowledged</span>'}</span></div><div><span class="l">Severity</span><span class="v">${sevBadge(f.severity)}</span></div>`
       + `<div><span class="l">Sent</span><span class="v">${esc(SENT[f.sent] || f.sent)}</span></div><div><span class="l">When</span><span class="v">${esc(R.when(f.at))}</span></div>${f.ackBy ? `<div><span class="l">Acknowledged by</span><span class="v">${esc(f.ackBy)}</span></div>` : ''}</div>`
       + approval
       + section('What happened', `<p class="ea-text">${esc(f.text || f.title)}</p>${f.why ? `<p class="ea-text muted">${esc(f.why)}</p>` : ''}${r ? `<p class="ea-say">${esc(say(r))}</p>` : ''}`);
     if (!again) panel.open('eafired', f.id);
   };
+  // A condition row changed (field, how, value), added or removed, in the panel or in New alert.
+  const condChange = (cs, t, pre) => {
+    const k = (s) => t.getAttribute(`data-${pre}-${s}`);
+    if (k('cf') !== null) { const c = cs[k('cf')]; c.field = t.value; if (c.op === 'between' && c.field !== 'hour') c.op = 'is'; return 'draw'; }
+    if (k('co') !== null) { cs[k('co')].op = t.value; return 'draw'; }
+    if (k('cv') !== null) { cs[k('cv')].value = t.value; return 'value'; }
+    return '';
+  };
   panel.el.addEventListener('click', async (e) => {
     if (panel.is('earule')) {
       const r = ruleOf(panel.key);
       if (!r) return;
       let b;
-      if (e.target.closest('[data-ea-test]')) {
-        try {
-          await send(`/api/event-alerts/rules/${r.id}/test`);
-          toast('Test sent.', `To ${sendTo(r)}.`);
-        } catch (err) {
-          oops(err);
-        }
-      } else if (e.target.closest('[data-ea-turn]')) saveRule(r, { on: !r.on }, r.on ? 'Alert off.' : 'Alert on.');
+      if (e.target.closest('[data-ea-edit]')) openBuild(r);
+      else if (e.target.closest('[data-ea-test]')) test(r);
+      else if (e.target.closest('[data-ea-turn]')) saveRule(r, { on: !r.on }, r.on ? 'Alert off.' : 'Alert on.');
       else if (e.target.closest('[data-ea-del]')) remove([r]);
       else if ((b = e.target.closest('[data-ea-r-sev]'))) { if (b.dataset.eaRSev !== r.severity) saveRule(r, { severity: b.dataset.eaRSev }); }
       else if ((b = e.target.closest('[data-ea-r-to]'))) { const id = b.dataset.eaRTo; saveRule(r, { types: r.types.includes(id) ? r.types.filter((x) => x !== id) : [...r.types, id] }); }
+      else if ((b = e.target.closest('[data-ea-r-often]'))) {
+        const ev2 = ev(r.event);
+        if (b.dataset.eaROften === '1' && r.times > 1) saveRule(r, { times: 1 });
+        else if (b.dataset.eaROften === 'n' && r.times <= 1) saveRule(r, { times: Math.max(2, ev2.times), minutes: ev2.minutes || 10, per: ev2.per, distinct: ev2.distinct });
+      } else if (e.target.closest('[data-ea-r-cadd]')) { conditionsOf(r).push({ field: ev(r.event).fields[0], op: 'is', value: '' }); openRule(r, true); panel.body.querySelector('.ea-cond:last-child input')?.focus(); }
+      else if ((b = e.target.closest('[data-ea-r-cx]'))) {
+        const cs = conditionsOf(r);
+        cs.splice(Number(b.dataset.eaRCx), 1);
+        if (complete(cs)) saveRule(r, { conditions: cs }); else openRule(r, true);
+      } else if ((b = e.target.closest('[data-ea-learn]'))) {
+        try { took(await send('/api/event-alerts/learning', { days: Number(b.dataset.eaLearn) })); toast('Saved.', `Unusual sign-ins alert after ${b.dataset.eaLearn} days of learning.`); } catch (err) { oops(err); }
+      }
     } else if (panel.is('eafired')) {
       const f = firedOf(panel.key);
       if (!f) return;
-      if (e.target.closest('[data-ea-ack]')) ack([f.id]);
+      if (e.target.closest('[data-ea-editrule]')) openBuild(ruleOf(f.rule));
+      else if (e.target.closest('[data-ea-ack]')) ack([f.id]);
       else if (e.target.closest('[data-ea-torule]')) { tab = 'rules'; draw(); openRule(ruleOf(f.rule)); }
       else if (e.target.closest('[data-ea-dismiss]')) {
         try { took(await send(`/api/event-alerts/fired/${f.id}/approval`, { state: 'dismissed' })); toast('Workflow dismissed.', f.title); } catch (err) { oops(err); }
       } else if (e.target.closest('[data-ea-approve]')) approve(f);
     }
   });
-  panel.el.addEventListener('change', (e) => {
+  panel.el.addEventListener('change', async (e) => {
     if (!panel.is('earule')) return;
     const r = ruleOf(panel.key);
     const t = e.target;
     if (!r) return;
-    if (t.dataset.eaRc) saveRule(r, { [t.dataset.eaRc]: ['count', 'after', 'percent'].includes(t.dataset.eaRc) ? Number(t.value) : t.value.trim() });
+    const cs = conditionsOf(r);
+    const did = condChange(cs, t, 'ea-r');
+    if (did) {
+      if (complete(cs)) { if (!(await saveRule(r, { conditions: cs }))) pc.id = ''; } else if (did === 'draw') openRule(r, true);
+      return;
+    }
+    if (t.matches('[data-ea-r-name]')) saveRule(r, { name: t.value });
+    else if (t.matches('[data-ea-r-times], [data-ea-r-minutes]')) saveRule(r, { [t.matches('[data-ea-r-times]') ? 'times' : 'minutes']: Number(t.value) });
+    else if (t.matches('[data-ea-r-per]')) saveRule(r, { per: t.value });
+    else if (t.matches('[data-ea-r-distinct]')) saveRule(r, { distinct: t.value });
+    else if (t.matches('[data-ea-r-computers]')) saveRule(r, { computers: t.value });
+    else if (t.matches('[data-ea-r-after], [data-ea-r-percent]')) saveRule(r, { [t.matches('[data-ea-r-after]') ? 'after' : 'percent']: Number(t.value) });
     else if (t.matches('[data-ea-r-quiet]')) saveRule(r, { quiet: t.checked });
     else if (t.matches('[data-ea-r-flow]')) saveRule(r, { workflow: t.value });
   });
@@ -389,7 +516,8 @@
   // --- New alert: what happens (everything, found by a word), only when, then --------------------------------------
   let draft = null;
   let find = '';
-  const blank = () => ({ event: '', count: 0, group: '', what: '', computers: '', after: 15, percent: 90, severity: 'warning', types: data?.start ? [data.start] : [], quiet: false, workflow: '' });
+  const blank = () => ({ event: '', name: '', times: 1, minutes: 10, per: 'account', distinct: '', conditions: [], computers: '', after: 15, percent: 90, severity: 'warning',
+    types: data?.start ? [data.start] : [], quiet: false, workflow: '' });
   const drawBuild = (part = 'all') => {
     const d = draft;
     const e = ev(d.event);
@@ -402,30 +530,57 @@
           + `<span>${esc(x.name)}${x.notYet ? `<small>${esc(x.notYet)}</small>` : ''}</span></label>`).join('')}` : '';
       }).join('') || '<p class="muted ea-none">Nothing matches. Try another word.</p>';
     }
-    $('ea-build-conds').innerHTML = !e ? '<p class="muted ea-none">Pick what happens first.</p>' : e.fields.length ? `<div class="ea-conds">${condInputs(d, e, 'data-ea-bc')}</div>` : '<p class="muted ea-none">There is nothing to narrow down. It alerts each time.</p>';
-    $('ea-build-then').innerHTML = thenRows(d, e, 'ea-b');
+    $('ea-build-conds').innerHTML = !e ? '<p class="muted ea-none">Pick what happens first.</p>'
+      : `<label class="ea-name"><span>Name</span><input class="ds-input" data-ea-b-name value="${esc(d.name)}" placeholder="${esc(e.name)}" maxlength="60" autocomplete="off"></label>`
+        + `<p class="ea-sub">How often</p>${often$(d, e, 'ea-b')}${(fixed$(d, e, 'ea-b') + conds$(d.conditions, e, 'ea-b')) ? `<p class="ea-sub">Only when</p>${fixed$(d, e, 'ea-b')}${conds$(d.conditions, e, 'ea-b')}` : ''}`;
+    $('ea-build-then').innerHTML = then$(d, e, 'ea-b');
     $('ea-build-say').textContent = e ? say(d) : 'When: pick what happens. Then: choose who hears about it.';
-    $('ea-build-save').disabled = !e;
+    $('ea-build-save').disabled = !e || !complete(d.conditions);
   };
-  const openBuild = async () => {
+  // New alert, or an alert opened to edit (r): the same window, filled in from it, saved back to it.
+  let editing = '';
+  const openBuild = async (r = null) => {
     if (!data) await load();
     if (!data) return;
-    draft = blank();
+    editing = r?.id || '';
+    draft = r ? { ...blank(), ...JSON.parse(JSON.stringify(r)), workflow: r.workflow || '' } : blank();
     find = '';
     $('ea-build-find').value = '';
+    $('ea-build-title').textContent = r ? `Edit ${nameOf(r)}` : 'New alert';
+    $('ea-build-save').textContent = r ? 'Save' : 'Save alert';
     R.say('ea-build-problem', '');
     drawBuild();
     $('ea-build').showModal();
     $('ea-build-find').focus();
   };
   $('ea-build-find').addEventListener('input', (e) => { find = e.target.value; drawBuild('events'); });
+  $('ea-build').addEventListener('input', (e) => {
+    if (!draft) return;
+    if (e.target.matches('[data-ea-b-cv]')) { condChange(draft.conditions, e.target, 'ea-b'); $('ea-build-save').disabled = !complete(draft.conditions); $('ea-build-say').textContent = say(draft); }
+    else if (e.target.matches('[data-ea-b-name]')) draft.name = e.target.value;
+  });
   $('ea-build').addEventListener('change', (e) => {
     const t = e.target;
     if (!draft) return;
-    if (t.name === 'ea-ev') { const x = ev(t.value); Object.assign(draft, { event: t.value, severity: x.severity, count: 0, group: '', what: '', computers: '' }); if (!x.user) draft.workflow = ''; drawBuild(); return; }
-    if (t.dataset.eaBc) draft[t.dataset.eaBc] = ['count', 'after', 'percent'].includes(t.dataset.eaBc) ? Number(t.value) : t.value.trim();
-    else if (t.matches('[data-ea-b-quiet]')) draft.quiet = t.checked;
-    else if (t.matches('[data-ea-b-flow]')) draft.workflow = t.value;
+    if (t.name === 'ea-ev') {
+      const x = ev(t.value);
+      Object.assign(draft, { event: t.value, severity: x.severity, times: x.times, minutes: x.minutes, per: x.per, distinct: x.distinct, conditions: [], computers: '' });
+      if (!x.user) draft.workflow = '';
+      drawBuild();
+      return;
+    }
+    const did = condChange(draft.conditions, t, 'ea-b');
+    if (did === 'value') return;
+    if (!did) {
+      if (t.matches('[data-ea-b-times], [data-ea-b-minutes]')) draft[t.matches('[data-ea-b-times]') ? 'times' : 'minutes'] = Math.max(1, Number(t.value) || 1);
+      else if (t.matches('[data-ea-b-per]')) draft.per = t.value;
+      else if (t.matches('[data-ea-b-distinct]')) draft.distinct = t.value;
+      else if (t.matches('[data-ea-b-computers]')) draft.computers = t.value;
+      else if (t.matches('[data-ea-b-after], [data-ea-b-percent]')) draft[t.matches('[data-ea-b-after]') ? 'after' : 'percent'] = Number(t.value);
+      else if (t.matches('[data-ea-b-quiet]')) draft.quiet = t.checked;
+      else if (t.matches('[data-ea-b-flow]')) draft.workflow = t.value;
+      else return;
+    }
     drawBuild('rest');
   });
   $('ea-build').addEventListener('click', async (e) => {
@@ -433,12 +588,24 @@
     if (!draft) return;
     if ((b = e.target.closest('[data-ea-b-sev]'))) { draft.severity = b.dataset.eaBSev; drawBuild('rest'); return; }
     if ((b = e.target.closest('[data-ea-b-to]'))) { const id = b.dataset.eaBTo; draft.types = draft.types.includes(id) ? draft.types.filter((x) => x !== id) : [...draft.types, id]; drawBuild('rest'); return; }
+    if ((b = e.target.closest('[data-ea-b-often]'))) {
+      const x = ev(draft.event);
+      if (b.dataset.eaBOften === '1') draft.times = 1;
+      else if (draft.times <= 1) Object.assign(draft, { times: Math.max(2, x.times), minutes: x.minutes || 10, per: x.per, distinct: x.distinct });
+      drawBuild('rest');
+      return;
+    }
+    if (e.target.closest('[data-ea-b-cadd]')) { draft.conditions.push({ field: ev(draft.event).fields[0], op: 'is', value: '' }); drawBuild('rest'); $('ea-build-conds').querySelector('.ea-cond:last-child input')?.focus(); return; }
+    if ((b = e.target.closest('[data-ea-b-cx]'))) { draft.conditions.splice(Number(b.dataset.eaBCx), 1); drawBuild('rest'); return; }
     if (e.target.closest('#ea-build-cancel')) { $('ea-build').close(); return; }
     if (!e.target.closest('#ea-build-save') || !draft.event) return;
-    R.busy($('ea-build'), 'Saving the alert', ev(draft.event).name);
+    R.busy($('ea-build'), 'Saving the alert', draft.name || ev(draft.event).name);
     try {
-      const r = took(await send('/api/event-alerts/rules', { ...draft, from: 'new' }));
+      const { event, name, times, minutes, per, distinct, conditions, computers, after, percent, severity, types, quiet, workflow } = draft;
+      const body = { event, name, times, minutes, per, distinct, conditions, computers, after, percent, severity, types, quiet, workflow };
+      const r = took(await send(editing ? `/api/event-alerts/rules/${editing}` : '/api/event-alerts/rules', editing ? body : { ...body, from: 'new' }));
       $('ea-build').close();
+      pc.id = ''; // the panel reads its conditions afresh
       toast('Alert saved.', say(ruleOf(r.id)));
       if (R.where()[0] !== 'alerts') location.hash = '#alerts';
       tab = 'rules';
@@ -459,7 +626,7 @@
     const evs = data.events.filter((e) => e.user && !e.notYet);
     $('ea-me-body').innerHTML = `<div class="pk-list ea-me-list">${evs.map((e) => `<label class="pk-row${have.has(e.id) ? ' ea-have' : ''}"><input type="checkbox" value="${esc(e.id)}"${have.has(e.id) || me.picks.has(e.id) ? ' checked' : ''}${have.has(e.id) ? ' disabled' : ''}>`
       + `${areaPic(e)}<span class="pk-text"><b>${esc(e.user)}</b><small>${esc(have.has(e.id) ? 'Already on' : e.area)}</small></span></label>`).join('')}</div>`
-      + `<div class="ea-me-then">${thenRows({ severity: me.severity, types: me.types, quiet: false }, null, 'ea-m').replace(/<span>Quiet hours<\/span>[\s\S]*?<\/label>/, '')}</div>`;
+      + `<div class="ea-me-then">${then$({ severity: me.severity, types: me.types, quiet: false }, null, 'ea-m')}</div>`;
     $('ea-me-save').disabled = !me.picks.size;
     $('ea-me-save').textContent = me.picks.size > 1 ? `Add ${me.picks.size} alerts` : 'Add alert';
   };
@@ -497,11 +664,10 @@
       R.busy($('ea-me'), '');
     }
   });
-  $('ea-me-cancel').addEventListener('click', () => $('ea-me').close());
   // The Alerts tab on a user's panel (users.js).
   const pane = (x) => {
     const rs = about(x);
-    return section(`Alerts about ${esc(x.name || x.username)} <small>${rs.length}</small>`, rs.length ? `<div class="dw-list">${rs.map((r) => `<div class="mrow">${areaPic(ev(r.event))}<div class="two"><b>${esc(ev(r.event)?.user || ev(r.event)?.name || r.event)}</b>`
+    return section(`Alerts about ${esc(x.name || x.username)} <small>${rs.length}</small>`, rs.length ? `<div class="dw-list">${rs.map((r) => `<div class="mrow">${areaPic(ev(r.event))}<div class="two"><b>${esc(ev(r.event)?.user || nameOf(r))}</b>`
       + `<small>${esc(`${SEV[r.severity][0]} · ${sendTo(r)}`)}</small></div>${r.on ? '<span class="ubadge green">On</span>' : '<span class="ubadge grey">Off</span>'}</div>`).join('')}</div>` : none(`Nobody is alerted about ${x.name || x.username} yet.`),
     `<span class="dw-sec-do"><button type="button" class="small" data-ea-me="${esc(x.username)}" data-ea-me-name="${esc(x.name || '')}">${svg('bell')}Alert me…</button></span>`);
   };

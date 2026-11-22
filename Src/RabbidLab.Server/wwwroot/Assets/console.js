@@ -3,6 +3,12 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.357', [
+    'AD security alerts, read from the domain controllers’ Security logs: too many failed sign-ins, an account locked out, password spraying, a disabled or expired account signing in, sign-ins to many computers, a computer or hour an account doesn’t usually use, objects deleted, and someone added to a privileged group.',
+    'They are in Alerts, Rules to start with, and change like any other alert. Every alert can have its own name, how often (so many times, or so many different accounts, addresses or computers, in so many minutes, for each of something) and conditions of your own, such as Changed by is not, or Hour is between 9-17.',
+    'Edit is first on an alert’s panel and on a fired alert’s, and every row in Rules and Fired has a menu with Edit.',
+    'Unusual sign-ins learn the computers and hours each account uses, for 7, 14 or 30 days before they alert.',
+    'Only what happened in the last 15 minutes sets an alert off. Older events, as the first read of a Security log brings, only teach.']],
   ['1.1.356', [
     'Alerts has its own place in the sidebar: add an alert for anything that can happen, with Everything that can happen, Rules, Fired and Where alerts go.',
     'New alert asks what happens, only when (such as the group, how often, or which computers) and then: the severity, the alert types it goes through, and whether it sends in quiet hours.',
@@ -1126,6 +1132,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.357': ['2026-11-22', 'feature', 'AD security alerts, with conditions of your own', 'adalerts.jpg'],
   '1.1.356': ['2026-11-22', 'feature', 'Alerts for anything that can happen', 'alerts.jpg'],
   '1.1.355': ['2026-11-22', 'update', 'Sign-in warns when a VPN or DNS blocks the domain'],
   '1.1.354': ['2026-11-22', 'fix', 'Screenshots on the news cards again'],

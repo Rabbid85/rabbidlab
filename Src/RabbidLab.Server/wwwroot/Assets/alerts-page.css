@@ -63,6 +63,31 @@
 .ea-me-list .pk-row.ea-have { opacity: .6; }
 .ea-me-then .ea-then { margin-top: 16px; grid-template-columns: 90px minmax(0, 1fr); }
 
+/* Whether the domain controllers' Security logs are read, over the list. */
+.ea-status { display: flex; align-items: center; gap: 10px; margin: 4px 0 12px; padding: 11px 14px; border: 1px solid var(--line); border-radius: 10px; color: var(--muted); font-size: 13px; line-height: 1.45; }
+.ea-status[hidden] { display: none; }
+.ea-status svg { flex: none; width: 16px; height: 16px; color: var(--ok); }
+.ea-status b { color: var(--title); font-weight: 650; }
+.ea-status.bad { border-color: color-mix(in srgb, var(--amber) 40%, var(--line)); }
+.ea-status.bad svg { color: var(--amber); }
+
+/* A rule's name, how often, and its conditions as rows of field, how and value. */
+.ea-name { display: grid; gap: 5px; margin: 12px 0 0; color: #9DA1B3; font-size: 12.5px; font-weight: 600; }
+.ea-name input { height: 34px; }
+.ea-sub { margin: 16px 0 8px; color: var(--title); font-size: 13px; font-weight: 650; }
+.seg.ea-oftenseg { margin: 0; }
+.seg.ea-oftenseg button { height: 30px; padding: 0 12px; font-size: 12.5px; }
+.ea-often { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 12px 0 0; color: var(--text); font-size: 13px; }
+.ea-often input { width: 76px; height: 32px; }
+.ea-often select { height: 32px; }
+.ea-clist { display: grid; gap: 8px; margin-top: 10px; }
+.ea-clist:empty { display: none; }
+.ea-cond { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.4fr) 30px; align-items: center; gap: 8px; }
+.ea-cond select, .ea-cond input { width: 100%; height: 32px; }
+.ea-cadd { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; }
+.ea-cadd svg { width: 14px; height: 14px; }
+.ea-conds + .ea-clist { margin-top: 12px; }
+
 @media (max-width: 900px) {
   .ea-grid { grid-template-columns: 1fr; }
 }
