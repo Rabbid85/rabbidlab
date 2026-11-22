@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.325', [
+    'Sync says Nothing to sync when a domain controller already had every change, and Synced 3 changes when it got some. There is no gap under the column names any more.',
+    'The wide news card on Overview shows a screenshot of the feature instead of the coloured squares.']],
   ['1.1.324', [
     'Sync: the flask fills while a domain controller waits and syncs, and fills to the top before the tick shows, even when a sync is over in a moment.']],
   ['1.1.323', [
@@ -1017,14 +1020,15 @@ const RELEASE_NOTES = [
     'Roles and people: sign in with a local account or Active Directory, with roles that allow exactly the parts you pick and an activity log of every change.',
     'Updates come from GitHub, are checked against a release signature, and install from the console or by themselves.']],
 ];
-// Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update) and a short title, for the
-// news cards on Overview and the What's new timeline. A new version gets a line here with its notes.
+// Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
+// feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.325': ['2026-11-21', 'update', 'Nothing to sync, and real screenshots'],
   '1.1.324': ['2026-11-21', 'update', 'The sync flask fills'],
   '1.1.323': ['2026-11-21', 'update', 'Change list, smaller sign-in, calmer loading'],
   '1.1.322': ['2026-11-21', 'fix', 'Only the page scrolls'],
   '1.1.321': ['2026-11-21', 'update', 'News cards and a timeline'],
-  '1.1.320': ['2026-11-21', 'feature', 'A Sync page under Directory'],
+  '1.1.320': ['2026-11-21', 'feature', 'A Sync page under Directory', 'sync.jpg'],
   '1.1.319': ['2026-11-21', 'update', 'Hints show at once'],
   '1.1.318': ['2026-11-21', 'fix', 'Refresh skips the flask screen'],
   '1.1.317': ['2026-11-21', 'update', 'Calmer signed-out note'],
@@ -2764,7 +2768,7 @@ const RELEASE_INFO = {
     $('dv-tabs').innerHTML = under.length
       ? (can.has('seats.view') ? dvTab(`#seats${dvView === 'all' ? '' : `/computers/${dvView}`}`, dvAt === 'computers', DV.computers[1], DV.computers[0], !computersRead ? '' : dvAt === 'computers' ? dvShown.length : dvBase('computers').length) : '')
         + under.map((m) => m.tabs(dvTab)).join('')
-      : `<a aria-current="true">${svg(DV[dvAt][1])}${esc(DV[dvAt][0])} <small>${dvGrid().loading?.() ? '' : dvShown.length}</small></a>`;
+      : `<a aria-current="true">${svg(DV[dvAt][1])}${esc(DV[dvAt][0])} <small>${dvGrid().loading?.() || dvFailed ? '' : dvShown.length}</small></a>`;
     for (const [k, id] of [['computers', 'seats-table'], ['sessions', 'sessions-table'],
       ...Object.entries(dvMore).map(([key, more]) => [key, more.table])]) $(id).hidden = k !== dvAt;
     seatsEmpty = dvMore[dvAt] ? dvMore[dvAt].empty()
@@ -2939,11 +2943,11 @@ const RELEASE_INFO = {
   };
 
   // What's new as a timeline, a card per version, and Overview's news: the newest feature wide with a picture, then the
-  // three newest. Each version's date, kind and title come from RELEASE_INFO; older ones have a date only.
+  // three newest. Each version's date, kind, title and screenshot come from RELEASE_INFO; older ones have a date only.
   const KINDS = { feature: ['Feature', 'new'], fix: ['Fix', 'wrench'], update: ['Update', 'refresh'] };
   const release = ([v, items]) => {
-    const [d, k, t] = RELEASE_INFO[v] || [];
-    return { v, items, d, k, t };
+    const [d, k, t, img] = RELEASE_INFO[v] || [];
+    return { v, items, d, k, t, img };
   };
   const relDate = (iso) => (iso ? new Date(`${iso}T12:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : '');
   const relTag = (k) => (KINDS[k] ? `<span class="nw-tag" data-k="${k}">${svg(KINDS[k][1])}${KINDS[k][0]}</span>` : '');
@@ -2961,11 +2965,10 @@ const RELEASE_INFO = {
     $('upd-new-text').textContent = first[0];
     const big = all.find((x) => x.k === 'feature') || all[0];
     const post = (x, wide) => `<a class="nw-post${wide ? ' nw-wide' : ''}" href="#whats-new" data-wn="${esc(x.v)}">`
-      + (wide ? `<span class="nw-art" aria-hidden="true"><span class="nw-artv"><small>${esc(product)}</small><b>${esc(x.v)}</b></span></span>` : '')
+      + (wide && x.img ? `<span class="nw-shot" aria-hidden="true"><img src="Assets/news/${esc(x.img)}" alt=""></span>` : '')
       + `<span class="nw-pbody"><span class="nw-meta"><span class="nw-date">${esc(relDate(x.d))}</span>${relTag(x.k)}</span>`
       + `<b class="nw-ptitle">${esc(relTitle(x))}</b><span class="nw-sum">${esc(wide ? x.items.slice(0, 2).join(' ') : x.items[0])}</span><span class="nw-foot">${relBy()}</span></span></a>`;
     $('news').innerHTML = post(big, true) + all.filter((x) => x !== big).slice(0, 3).map((x) => post(x, false)).join('');
-    scatter($('news').querySelector('.nw-art'), 20261121, { n: 16, x0: 30, x1: 92, y0: 6, y1: 58, min: 8, max: 22 });
   };
   // A news card opens What's new at its version, lit up for a moment.
   let wnAt = '';
@@ -3033,20 +3036,18 @@ const RELEASE_INFO = {
   };
 
   // Still tiles over the right of every banner, placed the same way every time.
-  // area: how many squares, and where (percent) and how big (px); a banner's right side unless said.
-  const scatter = (hero, start, area = {}) => {
-    const { n = 22, x0 = 58, x1 = 96, y0 = 4, y1 = 90, min = 10, max = 26 } = area;
+  const scatter = (hero, start) => {
     const COLOURS = window.RabbidLabColours.tiles;
     let seed = start;
     const r = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-    for (let i = 0; i < n; i++) {
+    for (let i = 0; i < 22; i++) {
       const t = document.createElement('i');
       const roll = r();
       const kind = roll < 0.18 ? 'dot' : roll < 0.42 ? 'outline' : 'fill';
-      const size = `${kind === 'dot' ? 4 + r() * 5 : min + r() * max}px`;
+      const size = `${kind === 'dot' ? 4 + r() * 5 : 10 + r() * 26}px`;
       const colour = COLOURS[Math.floor(r() * COLOURS.length)];
       t.className = `tile deco ${kind}`;
-      Object.assign(t.style, { left: `${x0 + r() * (x1 - x0)}%`, top: `${y0 + r() * (y1 - y0)}%`, width: size, height: size,
+      Object.assign(t.style, { left: `${58 + r() * 38}%`, top: `${4 + r() * 86}%`, width: size, height: size,
         transform: `rotate(${r() * 90}deg)`, opacity: String(0.35 + r() * 0.5) });
       if (kind === 'outline') t.style.border = `1.5px solid ${colour}`;
       else t.style.background = colour;

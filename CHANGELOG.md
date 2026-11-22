@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.325 (2026-11-21)
+
+- Sync says Nothing to sync when a domain controller already had every change, and Synced 3 changes when it got some. There is no gap under the column names any more.
+- The wide news card on Overview shows a screenshot of the feature instead of the coloured squares.
+
 ## 1.1.324 (2026-11-21)
 
 - Sync: the flask fills while a domain controller waits and syncs, and fills to the top before the tick shows, even when a sync is over in a moment.

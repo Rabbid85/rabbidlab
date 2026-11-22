@@ -255,7 +255,7 @@
     el: $('gpo-table'), store: 'rabbidlab.gpo', key: () => list, cols: () => L().cols, sort: () => L().sort,
     lead: () => (canTick() ? { w: 18, head: '<label class="tk"><input type="checkbox" data-gpo-tick-all aria-label="Select all"></label>',
       cell: (x) => `<label class="tk"><input type="checkbox" data-gpo-tick="${esc(L().key(x))}" aria-label="Select"></label>` } : null),
-    row: (x) => ` data-gpo-row="${esc(L().key(x))}"`, empty: () => (problem ? "Group Policy couldn't be read." : 'Nothing here.'), redraw: () => draw(),
+    row: (x) => ` data-gpo-row="${esc(L().key(x))}"`, empty: () => (problem ? "Group Policy couldn't be read." : 'Nothing here.'), loading: () => !gp && !problem, redraw: () => draw(),
   });
   // The filter bar over the list (filter.js): a search, a chip for each column worth filtering by, and saved filters.
   const gpoBar = R.filter.bar({ el: $('gpo-fbar'), store: 'rabbidlab.gpo', key: () => list, grid: () => g0, noun: () => L().noun, rows: () => L().rows(), redraw: () => draw() });

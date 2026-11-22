@@ -628,7 +628,10 @@
     drawHero(at);
     if (ad && (at !== 'org' || total.users !== undefined)) return;
     try {
-      if (!ad) ad = await R.adInfo(); // the domain's name for the banner, when the page was opened first
+      if (!ad) {
+        ad = await R.adInfo(); // the domain's name for the banner, when the page was opened first
+        if (R.where()[0] === at) drawHero(at);
+      }
       // The Org chart's read of the people (directory.js) is the Users list's too: counted the same way for the banner.
       if (at === 'org' && ad.state && total.users === undefined) total.users = (await R.keep('/api/ad/users', 60000)).users.filter((u) => !u.system).length;
     } catch {

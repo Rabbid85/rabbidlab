@@ -247,6 +247,9 @@ public sealed class SyncEngine(DirectoryTools tools, IReplicator replicator, Dev
         public Part? M365 { get; set; }
         public string? Problem { get; set; }
 
+        /// <summary>How many changes were copied to a domain controller; none means there was nothing to sync.</summary>
+        public int Copied { get; set; }
+
         /// <summary>No Entra Connect in the domain: Sync all synced the domain controllers only.</summary>
         public bool NoEntra { get; set; }
     }
@@ -327,6 +330,7 @@ public sealed class SyncEngine(DirectoryTools tools, IReplicator replicator, Dev
                 Full = run?.Full,
                 Started = run?.Started,
                 Problem = recent?.Problem,
+                Copied = recent?.Copied,
                 CanSync = tools.SyncLogin() is not null,
                 Windows = OperatingSystem.IsWindows(),
                 Since = Since(f),
@@ -558,7 +562,9 @@ public sealed class SyncEngine(DirectoryTools tools, IReplicator replicator, Dev
                 }
                 else
                 {
-                    Set(live, d.Name, "ok", 1, "Has every change, just now");
+                    // Nothing was missing: say so, rather than that it synced.
+                    var got = before.Changes.Count(c => c.Places.GetValueOrDefault(d.Name) is SyncCompare.Pending or SyncCompare.Unknown);
+                    Set(live, d.Name, "ok", 1, got == 0 ? "Nothing to sync, it had every change" : $"Synced {got} change{(got == 1 ? "" : "s")}, has every change");
                 }
             }
             Record(live, before, after, dcs);
@@ -593,6 +599,10 @@ public sealed class SyncEngine(DirectoryTools tools, IReplicator replicator, Dev
                     events.Add(Event(c, c.On ?? "?", d.Name, "bad", false, p.Error));
                 }
             }
+        }
+        lock (gate)
+        {
+            live.Copied += events.Count(e => e.S == SyncCompare.Ok);
         }
         Save(events);
     }

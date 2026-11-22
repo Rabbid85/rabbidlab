@@ -51,7 +51,7 @@ public sealed partial class ChangelogTests
     [GeneratedRegex(@"^## (\d+\.\d+\.\d+) \((\d{4}-\d{2}-\d{2})\)\s*$", RegexOptions.Multiline)]
     private static partial Regex Heading();
 
-    [GeneratedRegex(@"^\s*'(\d+\.\d+\.\d+)': \['(\d{4}-\d{2}-\d{2})'(?:, '(feature|fix|update)', '([^']+)')?\],\s*$", RegexOptions.Multiline)]
+    [GeneratedRegex(@"^\s*'(\d+\.\d+\.\d+)': \['(\d{4}-\d{2}-\d{2})'(?:, '(feature|fix|update)', '([^']+)'(?:, '([\w.-]+\.(?:jpg|png|webp))')?)?\],\s*$", RegexOptions.Multiline)]
     private static partial Regex Info();
 
     [Fact]

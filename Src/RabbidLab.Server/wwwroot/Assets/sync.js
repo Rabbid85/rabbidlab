@@ -143,7 +143,7 @@
     const changes = data.changes || [];
     const waiting = changes.filter(missingSomewhere).length;
     if (!body.querySelector('#sy-rows')) {
-      body.innerHTML = '<div class="gcard sy-card"><div class="sy-head"><h2 id="sy-title"></h2><p class="muted" id="sy-sub"></p></div><div id="sy-acts"></div><div class="sy-th sy-th-rows"><span></span><span>Domain controller</span><span>State</span></div><div class="sy-rows" id="sy-rows"></div></div>'
+      body.innerHTML = '<div class="gcard sy-card"><div class="sy-head"><h2 id="sy-title"></h2><p class="muted" id="sy-sub"></p></div><div id="sy-acts"></div><div class="sy-table"><div class="sy-th sy-th-rows"><span></span><span>Domain controller</span><span>State</span></div><div class="sy-rows" id="sy-rows"></div></div></div>'
         + '<div class="gcard"><div class="gbar"><span class="sy-gtitle" id="sy-ftitle">Every change, newest first</span><span class="grow"></span><span class="sy-seg" id="sy-filters"></span></div>'
         + '<div class="sy-th sy-th-fl"><span>When</span><span>Where</span><span>Change</span><span>Result</span></div><div class="sy-feed" id="sy-feed"></div></div>';
     }
@@ -262,6 +262,7 @@
     const m = data.m365?.s === 'bad';
     if (data.problem) toast('The sync stopped.', data.problem, { tone: 'warn' });
     else if (bad.length || m) toast('Sync done, with problems.', `${[...bad, ...(m ? ['Microsoft 365'] : [])].join(', ')} didn't sync. Click a row to see why.`, { tone: 'warn' });
+    else if (data.what !== 'm365' && !data.copied) toast('Nothing to sync.', `Every domain controller already had every change.${data.what === 'all' && data.m365?.s === 'ok' ? ' Microsoft 365 synced.' : ''}`);
     else toast('Sync done.', 'Every domain controller has every change.');
   };
   const run = async (what) => {
