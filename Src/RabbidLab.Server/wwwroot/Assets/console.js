@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.339', [
+    'Signed out for inactivity now locks the page in place: the sign-in background covers it with a short card for your password. Unlock and you are back on the same page with the same panel open. Sign in as someone else goes to the sign-in page.',
+    'Connection lost brings up the opening window over the blurred page. It tries the server every 5 seconds and shows each attempt, then reads everything again when it answers. After 2 minutes it goes to the sign-in page as soon as the server is back.']],
   ['1.1.338', [
     'Resizing the window no longer makes the sign-in background jump to a new picture, so the glass card over it no longer seems to change. The background stretches to the new size instead.']],
   ['1.1.337', [
@@ -1063,6 +1066,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.339': ['2026-11-22', 'feature', 'Lock in place, and reconnect when the server drops'],
   '1.1.338': ['2026-11-22', 'fix', 'The background holds still while you resize'],
   '1.1.337': ['2026-11-22', 'update', 'A steady update window in glass'],
   '1.1.336': ['2026-11-22', 'fix', 'No white box around windows'],
@@ -1442,17 +1446,23 @@ const RELEASE_INFO = {
   let pending = 0; // requests still out, so starting can wait for the page's first reads
   // { held: true } is a request the server holds open until something changes (the update watch): it isn't a read the
   // page is waiting for, so starting doesn't wait for it.
+  let locked = false; // signed out when idle, the lock card up: a 401 waits for Unlock instead of leaving the page
+  let lostFail = () => {}; // a read that couldn't reach the server: Connection lost checks and takes over (set further down)
   const fetch = async (...args) => {
     const held = !!args[1]?.held;
     if (!held) pending++;
     let r;
     try {
       r = await plainFetch(...args);
+    } catch (err) {
+      if (err?.name !== 'AbortError') lostFail();
+      throw err;
     } finally {
       if (!held) pending--;
     }
     if (r.status === 401) {
-      toSignIn(idleMin > 0 && idleLeft() <= 0);
+      // Out because time ran out: the lock card, as when the page noticed first. Otherwise the sign-in page.
+      if (!locked) { if (idleMin > 0 && idleLeft() <= 0) { idleGone = true; lockShow(); } else toSignIn(false); }
       throw new Error('Signed out');
     }
     // While starting, the opening screen hears each of the first reads come back.
@@ -1515,7 +1525,7 @@ const RELEASE_INFO = {
     const left = idleMin > 0 ? idleLeft() : Infinity;
     if (left <= 0) {
       idleGone = true;
-      plainFetch('/api/signout?idle=true', { method: 'POST', headers }).catch(() => {}).finally(() => toSignIn(true));
+      plainFetch('/api/signout?idle=true', { method: 'POST', headers }).catch(() => {}).finally(lockShow);
     } else if (left > 60000) {
       if (d.open) d.close(); // used again, here or in another tab
     } else {
@@ -1530,6 +1540,90 @@ const RELEASE_INFO = {
     idleGone = true;
     await plainFetch('/api/signout', { method: 'POST', headers }).catch(() => {});
     location.replace('/signin.html');
+  });
+  // Signed out when idle, in place: the session has ended, and the sign-in background covers the page with a card for the
+  // password only. Unlock signs in again and the page is as it was, panel and all; other tabs unlock with it. An account
+  // that has to set up MFA, or Sign in as someone else, goes to the sign-in page.
+  let lockStop = null;
+  let lockTicket = '';
+  const idleWords = (m) => (m >= 60 && m % 60 === 0 ? `${m / 60} ${m === 60 ? 'hour' : 'hours'}` : `${m} minutes`);
+  const lockSay = (text) => { $('lock-error').textContent = text; $('lock-error').hidden = !text; };
+  const lockPw = () => $('lock-pw').closest('.pw-wrap') || $('lock-pw'); // with the eye that shows it (reveal.js)
+  const lockShow = () => {
+    locked = true;
+    if ($('idle-dialog').open) $('idle-dialog').close();
+    const d = $('lock-dialog');
+    const name = meInfo?.name || meInfo?.username || '';
+    $('lock-lead').textContent = `You were signed out after ${idleWords(idleMin)} with no activity. Enter your password to continue where you left off.`;
+    $('lock-name').textContent = name;
+    $('lock-user').textContent = meInfo?.username && meInfo.username !== name ? meInfo.username : '';
+    $('lock-pw').value = '';
+    lockPw().hidden = false;
+    $('lock-code').value = '';
+    $('lock-code').hidden = true;
+    lockTicket = '';
+    lockSay('');
+    $('lock-go').disabled = false;
+    $('lock-go').textContent = 'Unlock';
+    d.classList.remove('out');
+    if (!d.open) d.showModal();
+    let mine = '';
+    try { mine = localStorage.getItem('rabbidlab.backdrop') || ''; } catch { /* the lab's */ }
+    lockStop?.();
+    lockStop = window.RabbidLabBackdrop?.run(d.querySelector('.lock-bg'), mine || brand.background || 'squares', { fit: true }) || null;
+    $('lock-pw').focus();
+  };
+  // Signed in again: the card and the background fade away, and the page carries on.
+  const unlock = (here = true) => {
+    if (!locked) return;
+    locked = false;
+    idleGone = false;
+    idleHere = Date.now();
+    try {
+      localStorage.setItem(ACTIVE, String(idleHere));
+      if (here) localStorage.setItem('rabbidlab.unlocked', String(idleHere)); // the other tabs unlock too
+    } catch { /* this tab only */ }
+    idleTell();
+    const d = $('lock-dialog');
+    d.classList.add('out');
+    setTimeout(() => { d.close(); d.classList.remove('out'); lockStop?.(); lockStop = null; document.dispatchEvent(new Event('rabbidlab:online')); }, 450);
+  };
+  addEventListener('storage', (e) => { if (e.key === 'rabbidlab.unlocked' && locked) unlock(false); });
+  $('lock-dialog').addEventListener('cancel', (e) => e.preventDefault());
+  $('lock-other').addEventListener('click', () => toSignIn(true));
+  $('lock-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const go = $('lock-go');
+    lockSay('');
+    go.disabled = true;
+    go.textContent = 'Signing in…';
+    let r = null;
+    let said = null;
+    try {
+      const body = lockTicket ? { ticket: lockTicket, code: $('lock-code').value }
+        : { username: meInfo?.username || '', password: $('lock-pw').value, local: meInfo?.source === 'local' };
+      r = await plainFetch(lockTicket ? '/api/signin/mfa' : '/api/signin', { method: 'POST', headers, body: JSON.stringify(body) });
+      said = await r.json().catch(() => null);
+    } catch {
+      lockSay(`Could not connect to ${product}. Try again.`);
+    }
+    go.disabled = false;
+    go.textContent = 'Unlock';
+    if (!r) return;
+    if (r.ok && !said?.mfa) { unlock(); return; }
+    // A code from the authenticator app next; setting up MFA, or a reset one, needs the sign-in page.
+    if (r.ok && said.mfa === 'code') {
+      lockTicket = said.ticket;
+      lockPw().hidden = true;
+      $('lock-code').hidden = false;
+      $('lock-lead').textContent = 'Enter the 6-digit code from your authenticator app.';
+      $('lock-code').focus();
+      return;
+    }
+    if (r.ok) { toSignIn(true); return; }
+    if (said?.again) { lockShow(); lockSay('That took too long. Enter your password again.'); return; } // the code's ticket ran out
+    lockSay(said?.error || `The server returned HTTP ${r.status}. Try again.`);
+    (lockTicket ? $('lock-code') : $('lock-pw')).select();
   });
   idleTell(); // opening the page counts
   setInterval(idleCheck, 1000);
@@ -2314,6 +2408,8 @@ const RELEASE_INFO = {
       if (document.hidden) stop();
       else if (o.page()) tick();
     });
+    // Back from a lost connection or a lock: read again now rather than at the next turn.
+    document.addEventListener('rabbidlab:online', () => { if (o.page()) tick(); });
     return { now: tick };
   };
 
@@ -2763,6 +2859,83 @@ const RELEASE_INFO = {
     };
   })();
   boot.early();
+
+  // Connection lost: a read can't reach the server while the console is open. One read of its own makes sure, then the
+  // opening screen's window comes up over the page, which stays there blurred. Its first row tries the server every 5
+  // seconds with the attempt beside it; when it answers, the reads land again, the window goes and the page reads again.
+  // After 2 minutes it stops waiting to carry on: the sign-in page opens as soon as the server answers (not before, or
+  // the browser would only show that it can't reach the site).
+  const LOST_TRY = 5000;
+  const LOST_GIVE_UP = 120000;
+  let lostEl = null;
+  let lostAsking = false;
+  const lostHost = () => location.hostname.toUpperCase() || product;
+  const lostSet = (k, s, label, small) => {
+    const r = lostEl?.querySelectorAll('.boot-row')[k];
+    if (!r) return;
+    r.dataset.s = s;
+    r.querySelector('.boot-lbl').textContent = label;
+    r.querySelector('small').textContent = small;
+  };
+  const lostShow = () => {
+    const steps = BOOT.filter((x) => x.path !== '/api/signin' && (!x.can || can.has(x.can)));
+    lostEl = document.createElement('div');
+    lostEl.className = 'boot win reads lost';
+    lostEl.setAttribute('role', 'status');
+    const rows = [`Connecting to ${lostHost()}`, ...steps.map((s) => s.doing)]
+      .map((t) => `<div class="boot-row" data-s="wait"><span class="boot-ic"><i></i>${svg('check')}</span><span class="boot-lbl">${esc(t)}</span><small></small></div>`).join('');
+    lostEl.innerHTML = `<div class="boot-box"><div class="boot-flask">${FLASK}</div><div class="boot-side"><h1 class="boot-name">${esc(labName)}</h1>`
+      + `<p class="boot-step"><b>Connection lost. Reconnecting…</b></p><div class="boot-rows">${rows}</div></div></div>`;
+    document.body.append(lostEl);
+    const since = Date.now();
+    let tries = 0;
+    const attempt = async () => {
+      if (!lostEl) return;
+      tries++;
+      const late = Date.now() - since >= LOST_GIVE_UP;
+      lostSet(0, 'run', `Connecting to ${lostHost()}`, `Attempt ${tries}`);
+      let r = null;
+      try { r = await plainFetch('/api/signin', { headers: { Accept: 'application/json' } }); } catch { /* still away */ }
+      if (!lostEl) return;
+      if (!r) {
+        if (late) lostEl.querySelector('.boot-step').innerHTML = `<b>Still can't reach ${esc(lostHost())}.</b> <span>The sign-in page opens when it answers.</span>`;
+        lostSet(0, 'bad', `Could not reach ${lostHost()}`, `Attempt ${tries}`);
+        setTimeout(attempt, late ? 2 * LOST_TRY : LOST_TRY);
+        return;
+      }
+      // It answered: after a long wait, or with the session gone meanwhile, the sign-in page.
+      if (late || r.status === 401) { toSignIn(false); return; }
+      lostSet(0, 'ok', `Connected to ${lostHost()}`, '');
+      // The reads land again, one at a time, each with what came back.
+      for (let k = 0; k < steps.length; k++) {
+        lostSet(k + 1, 'run', steps[k].doing, '');
+        let said = '';
+        try {
+          const a = await plainFetch(steps[k].path, { headers: { Accept: 'application/json' } });
+          said = a.ok ? steps[k].said(await a.json()) : '';
+        } catch { /* shown without what came back */ }
+        await new Promise((res) => { setTimeout(res, 250); });
+        lostSet(k + 1, 'ok', steps[k].done, said);
+      }
+      lostEl.querySelector('.boot-step').innerHTML = '<b>Back online.</b>';
+      const gone = lostEl;
+      lostEl = null;
+      setTimeout(() => {
+        gone.classList.add('out');
+        setTimeout(() => gone.remove(), 500);
+        document.dispatchEvent(new Event('rabbidlab:online'));
+      }, 700);
+    };
+    attempt();
+  };
+  lostFail = () => {
+    if (lostEl || lostAsking || locked || document.body.classList.contains('booting') || !$('upd-installing').hidden) return;
+    lostAsking = true;
+    plainFetch('/api/status', { headers: { Accept: 'application/json' } }).then(() => { lostAsking = false; }, () => {
+      lostAsking = false;
+      if (!lostEl && !locked && $('upd-installing').hidden) lostShow();
+    });
+  };
   // Covers a part of the page with the flask, a line of text and smaller lines under it; no text takes the cover away.
   const busy = (host, text, detail) => {
     let cover = host.querySelector(':scope > .busy-cover');

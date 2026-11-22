@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.339 (2026-11-22)
+
+- Signed out for inactivity now locks the page in place: the sign-in background covers it with a short card for your password. Unlock and you are back on the same page with the same panel open. Sign in as someone else goes to the sign-in page.
+- Connection lost brings up the opening window over the blurred page. It tries the server every 5 seconds and shows each attempt, then reads everything again when it answers. After 2 minutes it goes to the sign-in page as soon as the server is back.
+
 ## 1.1.338 (2026-11-22)
 
 - Resizing the window no longer makes the sign-in background jump to a new picture, so the glass card over it no longer seems to change. The background stretches to the new size instead.
