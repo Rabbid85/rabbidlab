@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.324 (2026-11-21)
+
+- Sync: the flask fills while a domain controller waits and syncs, and fills to the top before the tick shows, even when a sync is over in a moment.
+
 ## 1.1.323 (2026-11-21)
 
 - Sync lists every change since the last sync in one list with the copies, each with where it was made and how many domain controllers have it. Click one to see where it is and what changed. The lists have column names.

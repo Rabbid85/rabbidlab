@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.324', [
+    'Sync: the flask fills while a domain controller waits and syncs, and fills to the top before the tick shows, even when a sync is over in a moment.']],
   ['1.1.323', [
     'Sync lists every change since the last sync in one list with the copies, each with where it was made and how many domain controllers have it. Click one to see where it is and what changed. The lists have column names.',
     'The sign-in page is about a fifth smaller.',
@@ -1018,6 +1020,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update) and a short title, for the
 // news cards on Overview and the What's new timeline. A new version gets a line here with its notes.
 const RELEASE_INFO = {
+  '1.1.324': ['2026-11-21', 'update', 'The sync flask fills'],
   '1.1.323': ['2026-11-21', 'update', 'Change list, smaller sign-in, calmer loading'],
   '1.1.322': ['2026-11-21', 'fix', 'Only the page scrolls'],
   '1.1.321': ['2026-11-21', 'update', 'News cards and a timeline'],

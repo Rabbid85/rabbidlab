@@ -37,17 +37,31 @@
       + `<rect class="fk-liq" x="0" y="0" width="24" height="24"/><circle class="fk-b" cx="10.6" cy="19" r="1"/><circle class="fk-b b2" cx="13.6" cy="19.4" r=".8"/></g><path class="fk-glass" d="${FLASK}"/></svg>`
       + `${svg('check', 'sy-ok')}${svg('x', 'sy-bad')}</span>`;
   };
+  // A sync can finish between two answers, so the flask creeps up on its own while a row waits or runs, and a row that
+  // has just finished fills to the top before the tick takes its place.
   const paint = (el, part, label) => {
-    const f = ['run', 'ok', 'bad'].includes(part.s) ? part.f : 0;
+    clearTimeout(Number(el.dataset.done || 0));
+    const was = el.dataset.s;
+    const going = part.s === 'wait' || part.s === 'run';
+    const creep = going ? Math.min(part.s === 'run' ? 0.85 : 0.3, Number(el.dataset.creep || 0) + 0.12) : 0;
+    el.dataset.creep = String(creep);
     // Only forward is animated: back to empty, or a new pass starting lower, jumps there.
-    const snap = f < Number(el.dataset.f || 0) - 0.001 || (el.dataset.s === 'ok' && part.s !== 'ok');
-    el.classList.toggle('snap', snap);
-    el.dataset.s = part.s;
-    el.dataset.f = String(f);
+    const show = (s, f) => {
+      const snap = f < Number(el.dataset.f || 0) - 0.001 || (el.dataset.s === 'ok' && s !== 'ok');
+      el.classList.toggle('snap', snap);
+      el.dataset.s = s;
+      el.dataset.f = String(f);
+      el.querySelector('.fk-liq').style.transform = `scaleY(${f})`;
+      el.querySelector('.sy-ln i').style.width = `${s === 'ok' ? 100 : s === 'idle' ? 0 : f * 100}%`;
+      if (snap) requestAnimationFrame(() => requestAnimationFrame(() => el.classList.remove('snap')));
+    };
     el.querySelector('.sy-lab').textContent = label;
-    el.querySelector('.fk-liq').style.transform = `scaleY(${f})`;
-    el.querySelector('.sy-ln i').style.width = `${part.s === 'ok' ? 100 : part.s === 'idle' || part.s === 'wait' ? 0 : f * 100}%`;
-    if (snap) requestAnimationFrame(() => requestAnimationFrame(() => el.classList.remove('snap')));
+    if (part.s === 'ok' && (was === 'wait' || was === 'run')) {
+      show('run', 1);
+      el.dataset.done = String(setTimeout(() => show('ok', 1), 1000));
+      return;
+    }
+    show(part.s, going ? Math.max(part.s === 'run' ? part.f : 0, creep) : ['ok', 'bad'].includes(part.s) ? part.f : 0);
   };
 
   // --- Drawing ------------------------------------------------------------------------------------------------------
