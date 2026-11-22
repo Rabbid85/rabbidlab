@@ -7,6 +7,12 @@ body.loading .card-body > *, body.loading .card-foot > *, body.loading .side-sub
 /* The card's top stays put whichever form shows: only its foot moves. */
 .auth-shell { position: relative; z-index: 1; min-height: 100vh; display: flex; justify-content: center; align-items: flex-start;
   padding: max(28px, calc(50vh - 300px)) 16px 72px; }
+/* Where the card has room either side, the left padding also takes the scroll bar's width (100vw - 100%) when there is
+   one, so the card and the Background pill don't jump sideways when the page starts to scroll. */
+@media (min-width: 1110px) {
+  .auth-shell { padding-left: calc(16px + 100vw - 100%); }
+  .auth-shell > .look { left: calc(50% + (100vw - 100%) / 2); }
+}
 .signin-card { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); grid-template-rows: 1fr auto; width: 100%; max-width: 1040px;
   min-height: 600px; background: #11131D; border: 1px solid var(--line); border-radius: 18px; overflow: hidden; }
 
