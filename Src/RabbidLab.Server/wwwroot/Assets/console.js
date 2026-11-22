@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.319', [
+    'Hints on buttons show the moment the pointer is on them, with no wait.']],
   ['1.1.318', [
     'Refreshing the console no longer brings up the opening flask screen. It shows only after you sign in or after an update.',
     'In Full width, pages no longer get narrower or wider going between one that scrolls and one that does not.']],

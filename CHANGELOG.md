@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.319 (2026-11-21)
+
+- Hints on buttons show the moment the pointer is on them, with no wait.
+
 ## 1.1.318 (2026-11-21)
 
 - Refreshing the console no longer brings up the opening flask screen. It shows only after you sign in or after an update.

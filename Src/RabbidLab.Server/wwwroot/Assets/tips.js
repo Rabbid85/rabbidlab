@@ -1,6 +1,5 @@
 // Hints, for every page: the one place a hint comes from. Give an element data-tip="A few words" and this shows it in the
-// console's own box (.tipbox in console.css) a quarter of a second after the pointer stops on it, or at once on keyboard
-// focus. A title anywhere is turned into a data-tip the first time the pointer meets it, so the browser's grey box never
+// console's own box (.tipbox in console.css) the moment the pointer is on it, or on keyboard focus. A title anywhere is turned into a data-tip the first time the pointer meets it, so the browser's grey box never
 // shows. Nothing else in the console draws hints.
 (() => {
   const box = document.createElement('div');
@@ -61,7 +60,7 @@
     const t = tipOf(e.target);
     if (e.buttons || (t && t === pressed)) { hide(); return; }
     pressed = null;
-    later(t, 250);
+    later(t, 0);
   });
   document.addEventListener('pointerdown', (e) => { pressed = tipOf(e.target); }, true);
   document.addEventListener('focusin', (e) => later(e.target.matches?.(':focus-visible') ? tipOf(e.target) : null, 0));

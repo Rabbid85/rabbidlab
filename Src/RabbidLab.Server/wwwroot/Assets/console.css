@@ -705,7 +705,7 @@ button:disabled { opacity: .5; cursor: default; }
 /* Hints (data-tip, and any title): one box in the console's look, drawn by console.js at the element: quick to show, gone at once. */
 .tipbox { position: fixed; z-index: 2147483000; max-width: min(340px, calc(100vw - 16px)); padding: 6px 10px; border: 1px solid var(--line-strong); border-radius: 8px;
   background: #141725; box-shadow: 0 12px 30px rgba(0, 0, 0, .55); color: var(--title); font: 600 12.5px/1.45 "Segoe UI", system-ui, sans-serif; overflow-wrap: anywhere;
-  pointer-events: none; opacity: 0; translate: 0 -3px; transition: opacity .1s, translate .1s; }
+  pointer-events: none; opacity: 0; translate: 0 -3px; transition: opacity .05s, translate .05s; }
 .tipbox.show { opacity: 1; translate: 0 0; }
 .tipbox.up { translate: 0 3px; }
 .tipbox.up.show { translate: 0 0; }
