@@ -701,7 +701,8 @@
       problem('');
     } catch (err) {
       problem(err.message);
-      R.skeleton($('ppl-rows'), '');
+      for (const id of ['ppl-rows', 'ppl-cards', 'ppl-roles']) R.skeleton($(id), '');
+      for (const k of Object.keys(BROWSE)) if ($(`b-${k}`).querySelector('.sk')) $(`b-${k}`).textContent = '';
       return;
     }
     if (draft && !role(draft.id)) draft = null;

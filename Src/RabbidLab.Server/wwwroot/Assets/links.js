@@ -305,10 +305,12 @@
   // --- Checks: how often, and how long with no answer before a link shows as down. Saved as it's changed. ------------
   const EVERY = [[15, '15 seconds'], [30, '30 seconds'], [60, 'Minute'], [300, '5 minutes']];
   const AFTER = [[0, 'Right away'], [15, '15 seconds'], [30, '30 seconds'], [60, 'Minute'], [300, '5 minutes']];
-  const drawChecks = () => {
-    const segs = (items, value) => items.map(([v, text]) => `<button type="button" data-value="${v}" aria-pressed="${v === value}">${text}</button>`).join('');
+  // waiting: still being read, so nothing can be changed yet.
+  const drawChecks = (waiting = false) => {
+    const segs = (items, value) => items.map(([v, text]) => `<button type="button" data-value="${v}" aria-pressed="${v === value}"${waiting ? ' disabled' : ''}>${text}</button>`).join('');
     $('lc-every').innerHTML = segs(EVERY, checks.every);
     $('lc-after').innerHTML = segs(AFTER, checks.downAfter);
+    $('lc-known').disabled = waiting;
     $('lc-known').checked = checks.describe !== false;
     $('lc-known-label').textContent = checks.describe !== false ? 'On' : 'Off';
     $('lc-note').textContent = checks.downAfter
@@ -461,12 +463,13 @@
   document.addEventListener('rabbidlab:show', async (e) => {
     if (e.detail[0] !== 'settings' || e.detail[1] !== 'links' || !can('links.edit')) return;
     say('lc-problem', '');
+    drawChecks(true);
     try {
       take(await R.get('/api/links'));
+      drawChecks();
     } catch (err) {
       say('lc-problem', err.message);
     }
-    drawChecks();
   });
   $('ln-list').addEventListener('click', (e) => {
     const b = e.target.closest('[data-addto]');

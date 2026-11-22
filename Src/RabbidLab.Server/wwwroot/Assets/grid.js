@@ -164,7 +164,7 @@
       t.classList.toggle('relaxed', density() === 'relaxed');
       t.innerHTML = html;
       // Still being read: placeholder rows where the empty text would be.
-      const none = !rows.length && of(o.loading) ? t.querySelector(':scope > .empty') : null;
+      const none = !rows.length && g.loading() ? t.querySelector(':scope > .empty') : null;
       if (none) {
         none.className = 'grid-loading';
         if (t.clientWidth) none.style.width = `${t.clientWidth}px`; // as wide as what shows, however wide the columns are
@@ -179,8 +179,10 @@
     let bar = null;
     let rowsBar = null; // where Compact or Relaxed goes, when not at the end of the bar
     let shownNow = 0;
-    // How many rows show; with some ticked (o.picked), how many of them: 3/7 Items selected.
+    g.loading = () => !!of(o.loading);
+    // How many rows show; with some ticked (o.picked), how many of them: 3/7 Items selected. None while still being read.
     const count = () => {
+      if (g.loading()) return '';
       const ticked = of(o.picked) || 0;
       return ticked ? `${ticked.toLocaleString()}/${shownNow.toLocaleString()} ${shownNow === 1 ? 'Item' : 'Items'} selected`
         : `${shownNow.toLocaleString()} ${shownNow === 1 ? 'Item' : 'Items'}`;
@@ -213,6 +215,7 @@
       tools.set(el, g);
       if (rows) tools.set(rows, g);
       el.classList.add('gtools');
+      drawTools(); // before the first draw too, so a list still being read has its bar
       for (const node of [el, rows].filter(Boolean)) {
         if (node.dataset.gridTools) continue;
         node.dataset.gridTools = '1';

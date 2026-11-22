@@ -916,7 +916,13 @@
     const n = ++asking;
     say('at-problem', '');
     $('at-setup').hidden = true;
-    if (!place) $('at-title').textContent = 'Reading Active Directory…';
+    // Placeholders until it's read: the way down, the tree and the attributes the first time, then the attributes on each click.
+    if (!place) {
+      $('at-title').textContent = 'Reading Active Directory…';
+      $('at-crumbs').innerHTML = '<i class="sk sk-text"></i>';
+      R.skeleton($('at-items'), 'rows', 6);
+    }
+    R.skeleton($('at-table'), 'rows', 8);
     try {
       const info = await ready();
       if (n !== asking) return;
@@ -942,6 +948,8 @@
       ad = null;
       $('at-lib').hidden = false;
       $('at-title').textContent = 'Couldn\'t read it';
+      for (const id of ['at-items', 'at-table']) R.skeleton($(id), '');
+      if ($('at-crumbs').querySelector('.sk')) $('at-crumbs').textContent = '';
       say('at-problem', err.message);
     }
   };

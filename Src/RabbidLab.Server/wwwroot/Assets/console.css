@@ -118,6 +118,8 @@ body.app.rail-small { grid-template-columns: 60px minmax(0, 1fr); }
 .ds-btn svg { width: 15px; height: 15px; }
 .ds-r select { width: 260px; max-width: 100%; height: 38px; padding-left: 12px; border: 1px solid var(--line-strong); border-radius: 8px; background-color: #0C0E17; color: var(--title); font: inherit; font-size: 13.5px; }
 .ds-r .seg { margin: 0; }
+/* A setting waiting for its first read, or one that can't be changed. */
+.ds-r select:disabled, .ds-r input.switch:disabled { opacity: .45; cursor: default; }
 .ds-link { display: inline-flex; align-items: center; gap: 6px; color: #D7DAE8; font-size: 14.5px; }
 .ds-link svg { width: 16px; height: 16px; color: #8B90A5; }
 .ds-dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--c, #8A8FA8); }
@@ -230,6 +232,9 @@ body.app.rail-small { grid-template-columns: 60px minmax(0, 1fr); }
 .big-ic svg { width: 26px; height: 26px; }
 .big-ic.ember { background: color-mix(in srgb, var(--accent-soft) 12%, transparent); color: var(--accent-soft); }
 .big-ic.bad { background: rgba(255, 107, 125, .1); color: var(--red); }
+/* Updates: the icon alone, bigger, in the state's colour, with no square behind it. */
+#upd-icon, .uinstall-top > .big-ic { width: 40px; background: none; }
+#upd-icon svg, .uinstall-top > .big-ic svg { width: 36px; height: 36px; }
 .ustatus-text { flex: 1; min-width: 220px; }
 .ustatus-text b { display: block; font: 700 18px/1.3 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; color: var(--title); }
 .ustatus-text span { font-size: 13px; color: var(--muted); }

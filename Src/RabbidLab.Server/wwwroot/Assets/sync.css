@@ -9,6 +9,7 @@
 .sy-head p { margin: 2px 0 0; font-size: 13px; }
 .sy-problem { margin: 0 16px 16px; color: #C9CCDA; }
 .sy-gtitle { color: var(--title); font-size: 14px; font-weight: 650; }
+.sy-gtitle small { margin-left: 6px; color: var(--muted); font-size: 12.5px; font-weight: 600; }
 
 /* The three syncs, and Delta or Full for Microsoft 365. */
 #sy-acts { display: grid; gap: 10px; padding: 0 16px; }
@@ -29,6 +30,13 @@
 .sy-info { display: flex; gap: 10px; margin: 0; padding: 10px 13px; border: 1px solid var(--line-strong); border-radius: 10px; background: #12141F; color: #C9CCDA; font-size: 13px; line-height: 1.5; }
 .sy-info svg { flex: none; width: 16px; height: 16px; margin-top: 2px; color: #F2BE6B; }
 .sy-info b { color: #fff; }
+
+/* Column names over each list, as on the console's grids, so the words line up under something. */
+.sy-th { display: grid; align-items: center; gap: 12px; min-height: 34px; padding: 0 16px; border-top: 1px solid var(--line); background: #0E1019; color: var(--muted); font-size: 12px; font-weight: 650; }
+.sy-th-rows { grid-template-columns: 30px 250px minmax(0, 1fr); }
+.sy-th-fl { grid-template-columns: 70px 210px minmax(0, 1fr) 170px; }
+.sy-th + .sy-rows { border-top: 1px solid var(--line); }
+.sy-th + .sy-feed > .sy-fl:first-child { border-top-color: var(--line); }
 
 /* A row for each domain controller and Microsoft 365. */
 .sy-rows { display: grid; border-top: 1px solid var(--line); }
@@ -88,6 +96,9 @@
 .sy-cell[data-s="ok"] { color: var(--ok); }
 .sy-cell[data-s="bad"] { color: #FF8D9B; }
 .sy-cell[data-s="notyet"] > svg { color: #F2BE6B; }
+.sy-cell[data-s="pending"] > svg { color: #F2BE6B; }
+.sy-cell[data-s="unknown"] > svg { color: var(--muted); }
+.sy-cell[data-s="origin"] { color: var(--accent-soft); }
 .sy-none { margin: 0; padding: 16px; }
 
 /* The side panel: what went wrong, in the console's red box. */
@@ -95,6 +106,7 @@
 .sy-err p { margin: 0; color: #C9CCDA; font-size: 12.5px; line-height: 1.5; }
 
 @media (max-width: 860px) {
+  .sy-th { display: none; }
   .sy-row { grid-template-columns: 30px minmax(0, 1fr); }
   .sy-row .sy-st { grid-column: 2; }
   .sy-fl { grid-template-columns: 60px minmax(0, 1fr); }

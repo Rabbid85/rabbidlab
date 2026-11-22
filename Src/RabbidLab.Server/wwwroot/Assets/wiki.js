@@ -37,9 +37,15 @@
 
   const show = async () => {
     const [, , rest] = R.where();
+    // Placeholder rows in the column and the article until the articles are read.
+    if (!articles) {
+      R.skeleton($('wiki-toc'), 'rows', 8);
+      R.skeleton($('wiki-body'), 'rows', 6);
+    }
     try {
       await load();
     } catch {
+      $('wiki-toc').innerHTML = '<p class="side-sub">The articles couldn\'t be read.</p>';
       $('wiki-body').innerHTML = '<p class="hint problem">The wiki couldn\'t be read. Open it again to retry.</p>';
       return;
     }

@@ -331,7 +331,7 @@
         <div class="ds-row" id="acc-password-row" hidden><div class="ds-l"><b>Password</b><span>Changing it signs you out everywhere, here too.</span></div><div class="ds-r"><button type="button" class="ds-btn" id="acc-password">Change</button></div></div>
       </section>
       <section class="ds-sec" data-sec="mfa"><h3 class="ds-h">Multi-factor authentication</h3>
-        <div class="ds-row"><div class="ds-l"><b>Authenticator app</b><span id="acc-mfa-text"></span><span class="acc-mfa-warn" id="acc-mfa-warn" hidden></span></div><div class="ds-r"><button type="button" class="ds-btn" id="acc-mfa" hidden>Set up</button></div></div>
+        <div class="ds-row"><div class="ds-l"><b>Authenticator app</b><span id="acc-mfa-text"><i class="sk sk-text"></i></span><span class="acc-mfa-warn" id="acc-mfa-warn" hidden></span></div><div class="ds-r"><button type="button" class="ds-btn" id="acc-mfa" hidden>Set up</button></div></div>
       </section>
       <section class="ds-sec" data-sec="sessions"><h3 class="ds-h">Where you're signed in</h3>
         <div id="acc-sessions" data-skel="rows:2"></div>
@@ -385,7 +385,7 @@
       <header class="sub-head"><h2>Role preview</h2><p>Shows the console with only what a role allows. Only the view changes: you keep your own permissions.</p></header>
       <section class="ds-sec" data-sec="viewas">
         <div class="ds-row"><div class="ds-l"><b>Preview as</b><span>Stop it from the bar at the top of the page.</span></div>
-          <div class="ds-r"><select id="va-role" aria-label="Role"></select><button type="button" class="ds-btn" id="va-start">Start</button></div></div>
+          <div class="ds-r"><select id="va-role" aria-label="Role" disabled></select><button type="button" class="ds-btn" id="va-start" disabled>Start</button></div></div>
       </section>
       <p class="hint problem" id="va-problem" hidden></p>
     </section>
@@ -425,15 +425,15 @@
       <header class="sub-head"><h2>Sign-in</h2><p>How long people stay signed in to <span data-app>Rabbid Lab</span>.</p></header>
       <section class="ds-sec" data-sec="idle" data-can="access.roles"><h3 class="ds-h">Signing out <small class="ds-scope">Everyone</small></h3>
         <div class="ds-row"><div class="ds-l"><b>Sign out when idle</b><span>After this long without a click, key press or scroll in any of their tabs. They get a minute's warning first.</span></div>
-          <div class="ds-r"><select id="si-idle" aria-label="Sign out when idle"><option value="0">Never</option><option value="15">15 minutes</option><option value="30">30 minutes</option><option value="60">1 hour</option><option value="120">2 hours</option><option value="240">4 hours</option><option value="480">8 hours</option></select></div></div>
+          <div class="ds-r"><select id="si-idle" aria-label="Sign out when idle" disabled><option value="0">Never</option><option value="15">15 minutes</option><option value="30">30 minutes</option><option value="60">1 hour</option><option value="120">2 hours</option><option value="240">4 hours</option><option value="480">8 hours</option></select></div></div>
         <p class="hint problem" id="si-problem" hidden></p>
       </section>
       <section class="ds-sec" data-sec="locks"><h3 class="ds-h">Wrong passwords <small class="ds-scope">Everyone</small></h3>
         <div class="ds-row" data-can="access.roles"><div class="ds-l"><b>Lock after</b><span>Each wrong password for a name makes its next try wait longer, up to 5 minutes. This many lock it until it is unlocked below. A locked administrator gets back in with the password and the authenticator code together, or from the server itself.</span></div>
-          <div class="ds-r"><select id="si-lock" aria-label="Lock after"><option value="3">3 wrong passwords</option><option value="5">5 wrong passwords</option><option value="10">10 wrong passwords</option></select></div></div>
+          <div class="ds-r"><select id="si-lock" aria-label="Lock after" disabled><option value="3">3 wrong passwords</option><option value="5">5 wrong passwords</option><option value="10">10 wrong passwords</option></select></div></div>
         <div data-can="access.unlock">
           <div class="ds-row"><div class="ds-l"><b>Locked out</b><span>The accounts that are locked now. Unlock one once you know the wrong passwords were its owner's.</span></div></div>
-          <div id="si-locks"></div>
+          <div id="si-locks" data-skel="rows:2"></div>
           <p class="hint" id="si-locks-none" hidden>Nobody is locked out.</p>
           <p class="hint" id="si-locks-others" hidden></p>
           <p class="hint problem" id="si-locks-problem" hidden></p>
@@ -445,9 +445,9 @@
     <section class="sub" data-sub="alerts" data-title="Alert rules" hidden>
       <header class="sub-head"><h2>Alert rules</h2><p>The alert types sensors and watched links pick from, then the other alerts and where they go.</p></header>
       <section class="ds-sec ar-sec" data-sec="types" id="ar-types" data-skel="rows:2"></section>
-      <section class="ds-sec ar-sec" data-sec="sensors" id="ar-sensors"></section>
-      <section class="ds-sec ar-sec" data-sec="seats" id="ar-seats"></section>
-      <section class="ds-sec ar-sec" data-sec="lab" id="ar-lab"></section>
+      <section class="ds-sec ar-sec" data-sec="sensors" id="ar-sensors" data-skel="rows:3"></section>
+      <section class="ds-sec ar-sec" data-sec="seats" id="ar-seats" data-skel="rows:1"></section>
+      <section class="ds-sec ar-sec" data-sec="lab" id="ar-lab" data-skel="rows:3"></section>
       <section class="ds-sec" data-sec="quiet"><h3 class="ds-h">Gathering and quiet hours</h3>
         <div class="ds-row"><div class="ds-l"><b>One alert for several</b><span>When several go down close together, one alert lists them all. Each still says on its own when it's back.</span></div>
           <div class="ds-r"><input type="checkbox" class="switch" id="ar-gather" role="switch" aria-label="One alert for several"></div></div>
@@ -530,17 +530,17 @@
       <header class="sub-head"><h2>Devices</h2><p>Computers with the <span data-app>Rabbid Lab</span> client: approving new ones, and installing the client.</p></header>
       <section class="ds-sec" data-sec="new" data-can="seats.settings"><h3 class="ds-h">New computers</h3>
         <div class="ds-row"><div class="ds-l"><b>Require approval for new computers</b><span>New computers show as Waiting until an admin approves them. Turn this off and they connect right away.</span></div>
-          <div class="ds-r"><span class="sw-label" id="seat-approve-label">On</span><input type="checkbox" class="switch" id="seat-approve" role="switch" aria-label="Require approval for new computers"></div></div>
+          <div class="ds-r"><span class="sw-label" id="seat-approve-label"></span><input type="checkbox" class="switch" id="seat-approve" role="switch" aria-label="Require approval for new computers" disabled></div></div>
       </section>
       <section class="ds-sec" data-sec="lock" data-can="seats.settings"><h3 class="ds-h">Uninstall lock</h3>
         <div class="ds-row"><div class="ds-l"><b>Release the lock after 30 days offline</b><span>A computer that can't reach this server for 30 days can uninstall the client without a code. This keeps computers from being stuck if this server is gone for good.</span></div>
-          <div class="ds-r"><span class="sw-label" id="seat-unlock-label">On</span><input type="checkbox" class="switch" id="seat-unlock" role="switch" aria-label="Release the uninstall lock after 30 days offline"></div></div>
+          <div class="ds-r"><span class="sw-label" id="seat-unlock-label"></span><input type="checkbox" class="switch" id="seat-unlock" role="switch" aria-label="Release the uninstall lock after 30 days offline" disabled></div></div>
       </section>
       <section class="ds-sec" data-sec="client" data-can="seats.add"><h3 class="ds-h">Install the client</h3>
         <div class="ds-row" id="seat-msi-row"><div class="ds-l"><b>The client (MSI)</b><span>Run it on a computer, or install it quietly with the line below.</span></div><div class="ds-r"><a class="ds-btn" id="seat-msi" href="/api/clients/download" download>Download</a></div></div>
-        <div class="ds-row"><div class="ds-l"><b>Install line</b><span class="ds-code" id="seat-line"></span></div><div class="ds-r"><button type="button" class="ds-btn" id="seat-line-copy">Copy</button></div></div>
+        <div class="ds-row"><div class="ds-l"><b>Install line</b><span class="ds-code" id="seat-line"><i class="sk sk-text"></i></span></div><div class="ds-r"><button type="button" class="ds-btn" id="seat-line-copy">Copy</button></div></div>
         <div class="ds-row" id="seat-policy-row"><div class="ds-l"><b>Group Policy template</b><span>Sets the server address and certificate fingerprint on every computer.</span></div><div class="ds-r"><a class="ds-btn" id="seat-policy" href="/api/clients/policy" download>Download</a></div></div>
-        <div class="ds-row" id="seat-fp-row"><div class="ds-l"><b>This server's public key fingerprint</b><span class="ds-code" id="seat-fp"></span></div><div class="ds-r"><button type="button" class="ds-btn" id="seat-fp-copy">Copy</button></div></div>
+        <div class="ds-row" id="seat-fp-row"><div class="ds-l"><b>This server's public key fingerprint</b><span class="ds-code" id="seat-fp"><i class="sk sk-text"></i></span></div><div class="ds-r"><button type="button" class="ds-btn" id="seat-fp-copy">Copy</button></div></div>
       </section>
       <p class="hint problem" id="seat-set-problem" hidden></p>
     </section>
@@ -549,7 +549,7 @@
     <section class="sub" data-sub="ad" data-title="Active Directory" hidden>
       <header class="sub-head"><h2>Active Directory</h2><p>The service account <span data-app>Rabbid Lab</span> makes its AD changes as.</p></header>
       <section class="ds-sec" data-sec="account"><h3 class="ds-h">Service account</h3>
-        <div class="ds-row"><div class="ds-l"><b id="as-account">…</b><span id="as-about"></span></div><div class="ds-r"><button type="button" class="ds-btn" id="as-ro-off" hidden>Turn off read-only</button><button type="button" class="ds-btn" id="as-setup" hidden>Set up</button></div></div>
+        <div class="ds-row"><div class="ds-l"><b id="as-account"><i class="sk sk-text"></i></b><span id="as-about"><i class="sk sk-text"></i></span></div><div class="ds-r"><button type="button" class="ds-btn" id="as-ro-off" hidden>Turn off read-only</button><button type="button" class="ds-btn" id="as-setup" hidden>Set up</button></div></div>
         <div class="ds-row" id="as-ou-row" hidden><div class="ds-l"><b>Default OU for new users</b><span>Where New user puts them. Saved as you change it.</span></div><div class="ds-r"><select id="adset-ou" aria-label="Default OU for new users"></select><button type="button" class="ds-btn" data-browse-ou="adset-ou"><svg><use href="#i-folder"/></svg>Browse…</button></div></div>
         <div class="ds-row" id="as-gou-row" hidden><div class="ds-l"><b>Default OU for new groups</b><span>Where New group puts them.</span></div><div class="ds-r"><select id="adset-gou" aria-label="Default OU for new groups"></select><button type="button" class="ds-btn" data-browse-ou="adset-gou"><svg><use href="#i-folder"/></svg>Browse…</button></div></div>
         <div class="ds-row" id="as-cou-row" hidden><div class="ds-l"><b>Default OU for new computers</b><span>Where New computer puts the accounts it makes ahead of a computer joining.</span></div><div class="ds-r"><select id="adset-cou" aria-label="Default OU for new computers"></select><button type="button" class="ds-btn" data-browse-ou="adset-cou"><svg><use href="#i-folder"/></svg>Browse…</button></div></div>
@@ -567,9 +567,9 @@
       <header class="sub-head"><h2>Developer</h2><p>Tools for testing this Dev build. The release doesn't have them.</p></header>
       <section class="ds-sec" data-sec="tools">
         <div class="ds-row"><div class="ds-l"><b>Developer tools</b><span>Turns on a few developer-only options.</span></div>
-          <div class="ds-r"><span class="sw-label" id="dev-tools-label">Off</span><input type="checkbox" class="switch" id="dev-tools" role="switch" aria-label="Developer tools"></div></div>
+          <div class="ds-r"><span class="sw-label" id="dev-tools-label"></span><input type="checkbox" class="switch" id="dev-tools" role="switch" aria-label="Developer tools" disabled></div></div>
         <div class="ds-row"><div class="ds-l"><b>Skip MFA on this computer</b><span>The sign-in page's code step shows Skip MFA this time, for a browser on this server only, so testing here doesn't need your phone. Sign-ins from other computers still need the code.</span></div>
-          <div class="ds-r"><span class="sw-label" id="dev-skip-mfa-label">On</span><input type="checkbox" class="switch" id="dev-skip-mfa" role="switch" aria-label="Skip MFA on this computer"></div></div>
+          <div class="ds-r"><span class="sw-label" id="dev-skip-mfa-label"></span><input type="checkbox" class="switch" id="dev-skip-mfa" role="switch" aria-label="Skip MFA on this computer" disabled></div></div>
       </section>
       <p class="hint problem" id="dev-problem" hidden></p>
     </section>
@@ -703,12 +703,12 @@
       <aside class="side" aria-label="Roles and people">
         <label class="side-find"><svg><use href="#i-search"/></svg><input type="search" id="ppl-find" placeholder="Find a person, group or role" aria-label="Find a person, group or role" autocomplete="off" spellcheck="false"></label>
         <p class="side-label">Browse</p>
-        <a href="#people" data-browse="all"><svg><use href="#i-list"/></svg>Everyone<small id="b-all"></small></a>
-        <a href="#people/people" data-browse="people"><svg><use href="#i-user"/></svg>People<small id="b-people"></small></a>
-        <a href="#people/groups" data-browse="groups"><svg><use href="#i-users"/></svg>Groups<small id="b-groups"></small></a>
-        <a href="#people/local" data-browse="local"><svg><use href="#i-key"/></svg>Local accounts<small id="b-local"></small></a>
+        <a href="#people" data-browse="all"><svg><use href="#i-list"/></svg>Everyone<small id="b-all"><i class="sk sk-num"></i></small></a>
+        <a href="#people/people" data-browse="people"><svg><use href="#i-user"/></svg>People<small id="b-people"><i class="sk sk-num"></i></small></a>
+        <a href="#people/groups" data-browse="groups"><svg><use href="#i-users"/></svg>Groups<small id="b-groups"><i class="sk sk-num"></i></small></a>
+        <a href="#people/local" data-browse="local"><svg><use href="#i-key"/></svg>Local accounts<small id="b-local"><i class="sk sk-num"></i></small></a>
         <p class="side-label">Roles<span>Highest first</span></p>
-        <div class="side-roles" id="ppl-roles"></div>
+        <div class="side-roles" id="ppl-roles" data-skel="rows:4"></div>
         <button type="button" class="side-new" id="role-new" data-can="access.roles"><svg><use href="#i-plus"/></svg>New role</button>
         <p class="side-label">Filters</p>
         <p class="side-sub">Signed in with</p>
@@ -725,7 +725,7 @@
             <select id="ppl-sort" aria-label="Sort"><option value="role">Highest role</option><option value="name">Name</option><option value="seen">Last signed in</option></select>
             <button type="button" class="primary" id="ppl-add" data-can="access.members access.local"><svg><use href="#i-plus"/></svg>Add people</button></div>
           <p class="lib-label" id="ppl-cards-label"><svg><use href="#i-shield"/></svg>Roles</p>
-          <div class="rcards" id="ppl-cards"></div>
+          <div class="rcards" id="ppl-cards" data-skel="tiles:4"></div>
           <div class="prows" id="ppl-rows" data-skel="rows:6"></div>
         </div>
 

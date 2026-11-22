@@ -255,12 +255,12 @@
     el: $('gpo-table'), store: 'rabbidlab.gpo', key: () => list, cols: () => L().cols, sort: () => L().sort,
     lead: () => (canTick() ? { w: 18, head: '<label class="tk"><input type="checkbox" data-gpo-tick-all aria-label="Select all"></label>',
       cell: (x) => `<label class="tk"><input type="checkbox" data-gpo-tick="${esc(L().key(x))}" aria-label="Select"></label>` } : null),
-    row: (x) => ` data-gpo-row="${esc(L().key(x))}"`, empty: () => (problem ? '' : gp ? 'Nothing here.' : 'Reading Group Policy.'), redraw: () => draw(),
+    row: (x) => ` data-gpo-row="${esc(L().key(x))}"`, empty: () => (problem ? "Group Policy couldn't be read." : 'Nothing here.'), redraw: () => draw(),
   });
   // The filter bar over the list (filter.js): a search, a chip for each column worth filtering by, and saved filters.
   const gpoBar = R.filter.bar({ el: $('gpo-fbar'), store: 'rabbidlab.gpo', key: () => list, grid: () => g0, noun: () => L().noun, rows: () => L().rows(), redraw: () => draw() });
   const shown = () => L().rows().filter(gpoBar.test());
-  const stat = (num, icon, label) => `<div><b>${num}</b><span>${svg(icon)}${esc(label)}</span></div>`;
+  const stat = (num, icon, label) => `<div><b>${num === null ? '<i class="sk sk-num"></i>' : num}</b><span>${svg(icon)}${esc(label)}</span></div>`;
   let tiled = false;
   let drawnCmds = null; // what the bar under the banner has, so a redraw keeps its buttons
   const draw = () => {
@@ -276,8 +276,10 @@
     $('gpo-state').textContent = `${l.name}.`;
     $('gpo-lead').textContent = l.lead;
     const all = gp?.gpos || [];
-    $('gpo-stats').innerHTML = stat(all.length, 'policy', 'GPOs') + stat(all.filter((g) => linksOf(g.id).length).length, 'link', 'Linked')
-      + stat(all.filter((g) => !linksOf(g.id).length).length, 'alert', 'Not linked') + stat(all.filter(VIEWS[4][2]).length, 'clock', 'Changed this week');
+    // Placeholders while Group Policy is read, and a dash when it couldn't be.
+    const n = (f) => (gp ? all.filter(f).length : problem || setup ? '—' : null);
+    $('gpo-stats').innerHTML = stat(n(() => true), 'policy', 'GPOs') + stat(n((g) => linksOf(g.id).length), 'link', 'Linked')
+      + stat(n((g) => !linksOf(g.id).length), 'alert', 'Not linked') + stat(n(VIEWS[4][2]), 'clock', 'Changed this week');
     document.querySelectorAll('#gpo-rail a[data-gpo]').forEach((a) => (a.dataset.gpo === list ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current')));
     $('gpo-views').innerHTML = list !== 'gpos' ? '' : VIEWS.map((v) => {
       const count = all.filter(v[2]).length;
@@ -1111,7 +1113,7 @@
       { key: 'took', label: 'Took', w: 80, get: (c) => G(c)?.took ?? '', cell: (c) => (G(c)?.took == null ? dash : esc(`${G(c).took} s`)) },
       { key: 'som', label: 'In', w: 240, get: (c) => G(c)?.som || '' },
     ],
-    row: (c) => ` data-gpl-pc="${esc(c.id)}"`, empty: () => 'No computers yet.', redraw: () => D.draw(),
+    row: (c) => ` data-gpl-pc="${esc(c.id)}"`, empty: () => (D.failed() ? "The list couldn't be read." : 'No computers yet.'), loading: D.reading, redraw: () => D.draw(),
   }));
   const drawLocalTicks = () => {
     const boxes = [...$('dv-gplocal').querySelectorAll('[data-gpl-tick]')];

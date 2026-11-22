@@ -394,6 +394,8 @@
   // Every AD list is a data grid (grid.js): columns, widths and sort kept per page in this browser. Users, Groups and
   // Computers add a tick on the left and ⋯ on the right.
   let emptyNow = '';
+  let adFailed = ''; // why the open page couldn't be read, until it's read again
+  let orgFailed = false; // the Org chart's people couldn't be counted, for the banner
   // Role (Users, Computers) and Privileged (Groups) show by default since 1.1.205, out of Status and Group type:
   // put once into a column list someone already chose, keeping the rest of it.
   try {
@@ -416,7 +418,7 @@
       cell: (x) => `<label class="tk"><input type="checkbox" data-tick="${esc(keyOf(x))}" aria-label="Select ${esc(x.name || x.username)}"></label>` } : null),
     tail: () => (picked[adPage] ? { w: 28, cell: (x, i) => `<div class="tr-more"><button type="button" class="at-more" data-row-menu="${i}" data-tip="Actions" aria-label="Actions for ${esc(x.name || x.username)}">${svg('dots')}</button></div>` } : null),
     row: (x, i) => ` tabindex="0" data-i="${i}"`,
-    empty: () => emptyNow,
+    empty: () => emptyNow, loading: () => !lists[adPage] && !adFailed && can('ad.view'),
     redraw: () => drawAd(),
   });
   const PAGE_ICON = { users: 'user', groups: 'users', computers: 'laptop', domain: 'shield', audit: 'history', recycle: 'trash' };
@@ -494,17 +496,25 @@
     }
     return counted.n;
   };
-  // The open page's views, tucked under its entry in the list down the left.
+  // The open page's views, tucked under its entry in the list down the left. No counts until its list is read.
   const drawViews = () => {
     const count = counts();
     $('dir-views').innerHTML = page().views.map(([, items]) => items.map((v) => {
       const n = count[v.key];
       if (v.quiet && !n && v.key !== adView) return '';
       return `<a href="#ad/${adPage}/${v.key}"${v.key === adView ? ' aria-current="page"' : ''}><span class="nm">${esc(v.label)}</span>`
-        + `<small class="${n && v.tone ? `tone ${v.tone}` : ''}">${n.toLocaleString()}</small></a>`;
+        + `<small class="${n && v.tone ? `tone ${v.tone}` : ''}">${lists[adPage] ? n.toLocaleString() : ''}</small></a>`;
     }).join('')).filter(Boolean).join('<i></i>');
     document.querySelector(`#dir-rail a[data-adpage="${adPage}"]`)?.after($('dir-views'));
     document.querySelectorAll('#dir-rail [data-n]').forEach((el) => { el.textContent = total[el.dataset.n] === undefined ? '' : total[el.dataset.n].toLocaleString(); });
+  };
+  // The tabs, or the page's own name where it has none; their counts once the list is read.
+  const drawTabs = () => {
+    const p = page();
+    const list = lists[adPage];
+    const openTab = tab();
+    $('dir-tabs').innerHTML = (p.tabs || [{ key: '', label: p.title, icon: PAGE_ICON[adPage], where: () => true }])
+      .map((t) => `<a data-tab="${t.key}"${!openTab || t.key === openTab.key ? ' aria-current="true"' : ''}>${svg(t.icon)}${esc(t.label)} <small>${list ? list.filter(t.where).length.toLocaleString() : ''}</small></a>`).join('');
   };
   const drawAd = () => {
     const p = page();
@@ -530,10 +540,7 @@
     // The open view, then what the filter bar narrows it to.
     const test = adBar.test();
     rows = list.filter((x) => inView(v, x) && test(x));
-    // The tabs, or the page's own name where it has none.
-    const openTab = tab();
-    $('dir-tabs').innerHTML = (p.tabs || [{ key: '', label: p.title, icon: PAGE_ICON[adPage], where: () => true }])
-      .map((t) => `<a data-tab="${t.key}"${!openTab || t.key === openTab.key ? ' aria-current="true"' : ''}>${svg(t.icon)}${esc(t.label)} <small>${list.filter(t.where).length.toLocaleString()}</small></a>`).join('');
+    drawTabs();
     // Actions is for the pages that list users, groups and computers. The filter bar and the grid's part of the list's
     // bar (Group by, the count, Compact or Relaxed) draw themselves.
     const picks = !!picked[adPage];
@@ -542,7 +549,7 @@
     adGrid.tools($('dir-tools'), $('dir-rows'));
     if (picks && lists[adPage]) [...picked[adPage]].forEach((k) => { if (!byKey(k)) picked[adPage].delete(k); });
     $('dir-table').className = `table adt ${adPage} drows${picks ? ' picks' : ''}`;
-    emptyNow = list.length ? (adBar.any() ? 'Nothing matches the filter.' : 'Nothing here right now.') : 'Nothing yet.';
+    emptyNow = list.length ? (adBar.any() ? 'Nothing matches the filter.' : 'Nothing here right now.') : lists[adPage] || !adFailed ? 'Nothing yet.' : esc(adFailed);
     rows = adGrid.draw(rows);
     $('dir-more').hidden = !more[adPage];
     drawPicked();
@@ -591,7 +598,10 @@
       const pg = $(`page-${other}`);
       $('dir-state').textContent = `${pg.dataset.title}.`;
       $('dir-lead').textContent = pg.dataset.lead || '';
-      $('dir-stats').innerHTML = ['users', 'groups', 'computers'].filter((k) => total[k] !== undefined).map((k) => stat(total[k], PAGE_ICON[k], AD[k].title)).join('');
+      // The counts read so far. The Org chart counts its own people, so Users waits for that (a dash if it failed).
+      const own = other === 'org' && !(ad && !ad.state);
+      $('dir-stats').innerHTML = ['users', 'groups', 'computers'].filter((k) => total[k] !== undefined || (k === 'users' && own))
+        .map((k) => stat(total[k] ?? (orgFailed ? '—' : null), PAGE_ICON[k], AD[k].title)).join('');
       return;
     }
     const p = page();
@@ -599,24 +609,31 @@
     const n = list ? counts() : {};
     const bad = list && adPage === 'domain' ? list.filter((s) => s.tone === 'bad').length : 0;
     const warn = list && adPage === 'domain' ? list.filter((s) => s.tone === 'warn').length : 0;
-    $('dir-state').textContent = adPage !== 'domain' ? `${p.title}.` : !list ? '' : bad || warn
+    // Domain health says how it stands once its checks are read: a placeholder line until then.
+    if (adPage === 'domain' && !list) $('dir-state').innerHTML = adFailed ? `${esc(p.title)}.` : '<i class="sk sk-text"></i>';
+    else $('dir-state').textContent = adPage !== 'domain' ? `${p.title}.` : bad || warn
       ? `${bad ? `${bad} not as recommended` : 'Nothing is off'}${warn ? `, ${warn} worth a look` : ''}.` : 'Everything is as recommended.';
     $('dir-lead').textContent = p.lead;
-    // Placeholder numbers while it's read (ad not known yet, or the list not read); none when there's no account.
+    // Placeholder numbers while it's read (ad not known yet, or the list not read), dashes if that failed; none when there's no account.
     $('dir-stats').innerHTML = ad && !ad.state ? '' : HERO_STATS[adPage].map((key) => {
       const v = allViews().find((x) => x.key === key);
       const label = key === 'all' ? p.noun[1].charAt(0).toUpperCase() + p.noun[1].slice(1) : v?.label || key;
-      return stat(list ? n[key] ?? 0 : null, key === 'all' ? PAGE_ICON[adPage] : STAT_ICON[key] || PAGE_ICON[adPage], label);
+      return stat(list ? n[key] ?? 0 : adFailed ? '—' : null, key === 'all' ? PAGE_ICON[adPage] : STAT_ICON[key] || PAGE_ICON[adPage], label);
     }).join('');
   };
   document.addEventListener('rabbidlab:show', async (e) => {
     const at = e.detail[0];
     if (at !== 'org' && at !== 'attrs') return;
+    orgFailed = false;
     drawHero(at);
-    if (ad) return;
+    if (ad && (at !== 'org' || total.users !== undefined)) return;
     try {
-      ad = await R.adInfo(); // the domain's name for the banner, when the page was opened first
-    } catch { return; }
+      if (!ad) ad = await R.adInfo(); // the domain's name for the banner, when the page was opened first
+      // The Org chart's read of the people (directory.js) is the Users list's too: counted the same way for the banner.
+      if (at === 'org' && ad.state && total.users === undefined) total.users = (await R.keep('/api/ad/users', 60000)).users.filter((u) => !u.system).length;
+    } catch {
+      orgFailed = true;
+    }
     if (R.where()[0] === at) drawHero(at);
   });
 
@@ -2751,6 +2768,9 @@
       if (fresh || !ad) ad = await R.adInfo();
     } catch (err) {
       say('adset-problem', err.message);
+      // The placeholders give way to a plain heading when nothing was read before.
+      if ($('as-account').querySelector('.sk')) $('as-account').textContent = 'Service account';
+      if ($('as-about').querySelector('.sk')) $('as-about').textContent = '';
       return;
     }
     // Read-only (Not now) is no account at all here.
@@ -2768,11 +2788,15 @@
     if (!s) return;
     $('adset-stop-title').textContent = 'Disconnect service account';
     $('adset-stop-text').textContent = `${s.account}: ${R.app()} deletes its stored password and stops using it.${s.made ? ' The account and its delegated permissions stay in AD until you delete them.' : ''}`;
+    // The OU choices wait, dimmed, while the OUs are read.
+    const ous = ['adset-ou', 'adset-gou', 'adset-cou'];
+    ous.forEach((id) => { $(id).disabled = true; });
     await placesInto('adset-ou', s.newUsers, 'adset-problem');
     $('adset-gou').innerHTML = $('adset-ou').innerHTML;
     $('adset-cou').innerHTML = $('adset-ou').innerHTML;
     $('adset-gou').value = s.newGroups || s.newUsers;
     $('adset-cou').value = s.newComputers || '';
+    ous.forEach((id) => { $(id).disabled = false; });
   };
   $('as-setup').addEventListener('click', () => openSetup(ad?.domain));
   $('as-ro-off').addEventListener('click', () => readOnly(false));
@@ -2816,12 +2840,19 @@
     const [, , rest] = R.where();
     adPage = AD[rest[0]] ? rest[0] : 'users';
     adView = viewOf(rest[1]).key;
+    adFailed = '';
+    if (fresh) delete lists[adPage]; // read again below, so it's loading until then
     // The placeholder rows straight away, every time a list has to be read, while the domain is looked at too. The
-    // setup card takes their place when there's no account.
+    // setup card takes their place when there's no account. This page's tabs, views and bars, with no counts yet,
+    // not the last page's.
     if (fresh || !ad || !lists[adPage]) {
       $('dir-lib').hidden = false;
       R.skeleton($('dir-table'), 'rows', 8);
       drawHero();
+      drawTabs();
+      drawViews();
+      adBar.draw();
+      adGrid.tools($('dir-tools'), $('dir-rows'));
     }
     try {
       if (fresh || !ad) {
@@ -2830,6 +2861,7 @@
       }
       await loadAd(false);
     } catch (err) {
+      adFailed = err.message;
       say('dir-problem', err.message);
     }
     drawAd();

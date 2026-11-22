@@ -136,7 +136,7 @@
       { key: 'workflows', label: 'Workflows', w: 180, get: (s) => s.workflows.join(', ') },
     ],
     row: (s) => ` data-row="script:${esc(s.id)}"`,
-    empty: () => D.more.scripts.empty(), loading: () => !scripts,
+    empty: () => D.more.scripts.empty(), loading: () => !scripts && !D.failed(),
     redraw: () => D.draw(),
   }));
   let jobsG = null;
@@ -150,7 +150,7 @@
       { key: 'result', label: 'Result', w: 140, on: true, get: (j) => result(j)[1], cell: (j) => pill(result(j)) },
     ],
     row: (j) => ` data-row="job:${esc(j.id)}"`,
-    empty: () => D.more.jobs.empty(), loading: () => !jobs,
+    empty: () => D.more.jobs.empty(), loading: () => !jobs && !D.failed(),
     redraw: () => D.draw(),
   }));
   let flowsG = null;
@@ -165,7 +165,7 @@
       { key: 'if', label: 'Computers', w: 200, get: (w) => ifText(w) || 'Every computer' },
     ],
     row: (w) => ` data-row="flow:${esc(w.id)}"`,
-    empty: () => D.more.workflows.empty(), loading: () => !flows,
+    empty: () => D.more.workflows.empty(), loading: () => !flows && !D.failed(),
     redraw: () => D.draw(),
   }));
   D.lists.scripts = ['Scripts', 'code', 'PowerShell and command scripts to run on computers, as SYSTEM.'];
@@ -173,14 +173,14 @@
   D.lists.workflows = ['Workflows', 'org', 'Steps that run by themselves, when something happens or on a schedule.'];
   D.more.scripts = { table: 'dv-scripts', grid: scriptsGrid, rows: () => scripts || [], count: () => scripts?.length, can: () => canScripts() || has('seats.workflows'),
     load: async () => { scripts = await get('/api/devices/scripts'); },
-    empty: () => (!scripts ? 'Reading the list.' : has('seats.scripts.edit') ? 'No scripts yet. New script adds the first one.' : 'No scripts yet.') };
+    empty: () => (!scripts ? "The list couldn't be read." : has('seats.scripts.edit') ? 'No scripts yet. New script adds the first one.' : 'No scripts yet.') };
   D.more.jobs = { table: 'dv-jobs', grid: jobsGrid, rows: () => jobs || [], count: () => (jobs || []).filter(open).length, can: canJobs,
     load: async () => { jobs = await get('/api/devices/jobs'); },
-    empty: () => (jobs ? 'Nothing has been run on a computer yet.' : 'Reading the list.') };
+    empty: () => (jobs ? 'Nothing has been run on a computer yet.' : "The list couldn't be read.") };
   D.more.workflows = { table: 'dv-workflows', grid: flowsGrid, rows: () => flows || [], count: () => flows?.length, can: () => has('seats.workflows'),
     // A workflow's steps are shown by their script's name, or their app's.
     load: async () => { [flows, scripts] = await Promise.all([get('/api/devices/workflows'), get('/api/devices/scripts'), D.loadApps?.()?.catch(() => {})]); },
-    empty: () => (flows ? 'No workflows yet. New workflow adds the first one.' : 'Reading the list.') };
+    empty: () => (flows ? 'No workflows yet. New workflow adds the first one.' : "The list couldn't be read.") };
 
   // --- WMI query ------------------------------------------------------------------------------------------------
   // Anything Windows keeps in WMI, read on each computer picked, as SYSTEM, by its client (the client's Wmi.cs). What
@@ -847,17 +847,27 @@
       }
     }, 3000);
   };
+  // The panel opens straight away with placeholder rows, and fills in once the job is read.
   const openJob = async (id) => {
+    const here = () => panel.shows('devices', `job:${id}`);
+    if (!here()) {
+      const j = (jobs || []).find((x) => x.id === id);
+      panel.body.innerHTML = head(JOB_ICON[j?.kind] || 'code', j ? jobTitle(j) : 'Job', j ? esc(`${when(j.at)} · by ${j.by}`) : '') + '<div data-job-skel></div>';
+      R.skeleton(panel.body.querySelector('[data-job-skel]'), 'rows', 4);
+      panel.open('devices', `job:${id}`);
+      mark();
+    }
     try {
       jobSeen = '';
       await readJob(id);
     } catch (e) {
-      oops(e);
+      const sk = here() && panel.body.querySelector('[data-job-skel]');
+      if (sk) sk.outerHTML = `<p class="hint problem">${esc(e.message)}</p>`;
+      else oops(e);
       return;
     }
+    if (!here()) return;
     drawJob();
-    panel.open('devices', `job:${id}`);
-    mark();
     loadOutputs();
     watch();
   };
@@ -1192,19 +1202,26 @@
 
   // --- A computer's side panel: what can be run on it, and its jobs ---------------------------------------------
   const seatJobs = {}; // computer id -> its jobs, once asked for
+  const seatJobsWrong = {}; // computer id -> why its jobs couldn't be read
   D.hooks.seatTabs = (c) => (canJobs() && !c.server ? [['jobs', 'Jobs', seatJobs[c.id] ? seatJobs[c.id].length : '']] : []);
   D.hooks.seatPane = (c, tab) => {
     if (tab !== 'jobs') return null;
     const list = seatJobs[c.id];
-    return section(`Jobs <small>${list ? list.length : ''}</small>`, !list ? none('Reading the list.') : !list.length ? none('Nothing has been run on it.')
+    // Placeholder rows (the panel fills data-seat-skel) until they're read.
+    return section(`Jobs <small>${list ? list.length : ''}</small>`, !list ? (seatJobsWrong[c.id] ? none(seatJobsWrong[c.id]) : '<div data-seat-skel></div>') : !list.length ? none('Nothing has been run on it.')
       : `<div class="dw-list seat-list">${list.map((j) => `<div class="mrow job-row" data-job-open="${esc(j.id)}"><div class="two"><b>${esc(jobTitle(j))}</b><small>${esc(`${when(j.at)} · ${j.by}`)}</small></div>${pill(STATE[j.state] || ['offline', j.state])}</div>`).join('')}</div>`);
   };
   D.hooks.seatOpened = (c) => {
     if (!canJobs() || c.server) return;
+    delete seatJobsWrong[c.id];
     get(`/api/devices/jobs?client=${encodeURIComponent(c.id)}`).then((list) => {
       seatJobs[c.id] = list;
+      delete seatJobsWrong[c.id];
       D.panelAgain();
-    }).catch(() => {});
+    }).catch((err) => {
+      seatJobsWrong[c.id] = `Its jobs couldn't be read. ${err.message}`;
+      D.panelAgain();
+    });
   };
 
   // After the page drew: the ticks, what New adds here, the open row, and watching what's still running.

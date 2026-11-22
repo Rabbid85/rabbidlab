@@ -452,7 +452,7 @@
       { key: 'sid', label: 'SID', w: 300, get: (r) => r.sid || '', cell: (r) => `<span class="mono muted ell">${esc(r.sid || '')}</span>` },
     ],
     row: (r) => ` data-acc-row="${esc(r.key)}"`,
-    empty: () => D.more.admins.empty(), loading: () => !adm,
+    empty: () => D.more.admins.empty(), loading: () => !adm && !D.failed(),
     redraw: () => D.draw(),
   }));
   let peopleG = null;
@@ -467,7 +467,7 @@
       { key: 'state', label: 'State', w: 90, on: true, get: (r) => stateText(r.enabled), cell: (r) => stateCell(r.enabled) },
     ],
     row: (r) => ` data-acc-row="${esc(r.key)}"`,
-    empty: () => D.more.admins.empty(), loading: () => !adm,
+    empty: () => D.more.admins.empty(), loading: () => !adm && !D.failed(),
     redraw: () => D.draw(),
   }));
   const fld = (key, label, type, get1) => ({ key, label, type, get: get1 });
@@ -489,7 +489,7 @@
     load: loadAdm,
     noun: 'administrators',
     fields: () => FIELDS,
-    empty: () => (!adm ? 'Reading the list.' : adm.computers.length ? `No computer has sent its Administrators group yet. Clients send it from ${NEEDS} on, within half an hour.` : 'No computers yet.'),
+    empty: () => (!adm ? "The list couldn't be read." : adm.computers.length ? `No computer has sent its Administrators group yet. Clients send it from ${NEEDS} on, within half an hour.` : 'No computers yet.'),
     acts: { can: canTick, count: () => pickedRows().length, open: (button) => openActs(button) },
   };
 

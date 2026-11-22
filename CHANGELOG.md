@@ -2,6 +2,13 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.323 (2026-11-21)
+
+- Sync lists every change since the last sync in one list with the copies, each with where it was made and how many domain controllers have it. Click one to see where it is and what changed. The lists have column names.
+- The sign-in page is about a fifth smaller.
+- The icon on Settings, Updates is the icon alone, in the colour of where things stand, without the square behind it.
+- More pages show placeholders while they load instead of zeros or Nothing yet, and a read that fails no longer leaves a placeholder pulsing.
+
 ## 1.1.322 (2026-11-21)
 
 - The window no longer scrolls as a whole: the top bar and the side menu stay put and only the page scrolls, so nothing changes width when a scroll bar comes or goes, and a short page has no empty strip down its right edge.

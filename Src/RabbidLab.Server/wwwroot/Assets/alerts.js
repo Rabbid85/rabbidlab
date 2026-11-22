@@ -25,12 +25,14 @@
   const and = (names) => (names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`);
   const words = (ids) => and((ids || []).map((id) => named(id)?.name).filter(Boolean));
   const chip = (n) => `<span class="np-chip"><span class="chan-ic ${n.kind}">${mark(n.kind)}</span>${esc(n.name)}</span>`;
+  let notesWrong = ''; // why the last read of them failed; what was read before stays
   const load = async () => {
     if (!can('sensors.alerts')) return null;
     try {
       notes = await R.get('/api/channels');
-    } catch {
-      notes = notes || null;
+      notesWrong = '';
+    } catch (err) {
+      notesWrong = err.message;
     }
     return notes;
   };
@@ -291,7 +293,13 @@
     return `${day(d)} ${d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
   };
   const drawNotes = () => {
-    if (!notes || R.where()[0] !== 'settings') return;
+    if (R.where()[0] !== 'settings') return;
+    // A read that failed says why, and takes the placeholders away if nothing was read before.
+    say('nt-problem', notesWrong);
+    if (!notes) {
+      if (notesWrong) R.skeleton($('nt-list'), '');
+      return;
+    }
     const q = $('nt-find').value.trim().toLowerCase();
     const list = notes.channels.filter((n) => !q || [n.name, KIND[n.kind], how(n), n.where].some((v) => String(v || '').toLowerCase().includes(q)));
     const card = (n) => {
@@ -418,6 +426,7 @@
       say('ar-problem', '');
     } catch (err) {
       say('ar-problem', err.message);
+      if (!rules) for (const id of ['ar-types', 'ar-sensors', 'ar-seats', 'ar-lab']) R.skeleton($(id), '');
     }
     drawRules();
   };

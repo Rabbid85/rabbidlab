@@ -3,6 +3,11 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.323', [
+    'Sync lists every change since the last sync in one list with the copies, each with where it was made and how many domain controllers have it. Click one to see where it is and what changed. The lists have column names.',
+    'The sign-in page is about a fifth smaller.',
+    'The icon on Settings, Updates is the icon alone, in the colour of where things stand, without the square behind it.',
+    'More pages show placeholders while they load instead of zeros or Nothing yet, and a read that fails no longer leaves a placeholder pulsing.']],
   ['1.1.322', [
     'The window no longer scrolls as a whole: the top bar and the side menu stay put and only the page scrolls, so nothing changes width when a scroll bar comes or goes, and a short page has no empty strip down its right edge.']],
   ['1.1.321', [
@@ -1013,6 +1018,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update) and a short title, for the
 // news cards on Overview and the What's new timeline. A new version gets a line here with its notes.
 const RELEASE_INFO = {
+  '1.1.323': ['2026-11-21', 'update', 'Change list, smaller sign-in, calmer loading'],
   '1.1.322': ['2026-11-21', 'fix', 'Only the page scrolls'],
   '1.1.321': ['2026-11-21', 'update', 'News cards and a timeline'],
   '1.1.320': ['2026-11-21', 'feature', 'A Sync page under Directory'],
@@ -1700,10 +1706,14 @@ const RELEASE_INFO = {
       $('dev-tools-label').textContent = d.on ? 'On' : 'Off';
       $('dev-skip-mfa').checked = !!d.skipMfa;
       $('dev-skip-mfa-label').textContent = d.skipMfa ? 'On' : 'Off';
+      // Both switches wait, dimmed, until they're read.
+      $('dev-tools').disabled = false;
+      $('dev-skip-mfa').disabled = false;
       say('dev-problem', '');
     } catch (err) {
+      // A change that failed reads back how it is; a read that failed isn't asked again.
+      if (change !== undefined) await devTools();
       say('dev-problem', err.message);
-      devTools();
     }
   };
   $('dev-tools').addEventListener('change', (e) => devTools(e.target.checked));
@@ -2651,6 +2661,8 @@ const RELEASE_INFO = {
   let dvView = 'all'; // and for computers, which view of them
   let dvShown = []; // the rows of the list that shows
   let computers = [];
+  let computersRead = false; // /api/clients has answered once
+  let dvFailed = ''; // why the last read failed, until one works again
   let seatTimer = null;
   const ago = (iso) => {
     const s = Math.round((Date.now() - new Date(iso)) / 1000);
@@ -2686,7 +2698,7 @@ const RELEASE_INFO = {
   // A computer's software and Windows updates are in its side panel (Software and Updates tabs), not lists of their own.
   const DV = { computers: ['Computers', 'monitor', 'Every computer with the client, with views for what needs looking at.'],
     sessions: ['Signed in now', 'users', 'Everyone signed in to this console.'] };
-  const dvStat = (n, icon, label) => `<div><b>${n}</b><span>${svg(icon)}${esc(label)}</span></div>`;
+  const dvStat = (n, icon, label) => `<div><b>${n === null ? '<i class="sk sk-num"></i>' : n}</b><span>${svg(icon)}${esc(label)}</span></div>`;
   // Filter (filter.js) on Computers, and on a list from devices.js that gives its own fields (WMI query). Kept per list
   // until it's cleared or the page is opened again.
   const fld = (key, label, type, get, o = {}) => ({ key, label, type, get, ...o });
@@ -2729,7 +2741,7 @@ const RELEASE_INFO = {
     // Under Computers down the left: the views of the tab that shows (a tab under Computers can give its own).
     $('dv-views').innerHTML = group !== 'computers' ? '' : dvAt !== 'computers' ? dvMore[dvAt].views?.() || '' : DV_VIEWS.map((v) => {
       if (!v) return '<i></i>';
-      const count = n(v[2]);
+      const count = computersRead ? n(v[2]) : '';
       return `<a href="#seats/computers/${v[0]}"${v[0] === view[0] ? ' aria-current="page"' : ''}><span class="nm">${esc(v[1])}</span><small class="${count && v[3] ? `tone ${v[3]}` : ''}">${count}</small></a>`;
     }).join('');
     $('dv-dot').hidden = !n((c) => stateOf(c) === 'waiting');
@@ -2739,19 +2751,21 @@ const RELEASE_INFO = {
     $('page-seats').dataset.at = dvAt;
     $('dv-state').textContent = `${DV[dvAt][0]}.`;
     $('dv-lead').textContent = DV[dvAt][2];
-    $('dv-stats').innerHTML = !can.has('seats.view') ? '' : dvStat(n((c) => stateOf(c) === 'online'), 'monitor', 'Online') + dvStat(n((c) => stateOf(c) === 'offline'), 'power', 'Offline')
-      + dvStat(n((c) => stateOf(c) === 'waiting'), 'clock', 'Waiting for approval') + dvStat(n((c) => c.inventory?.missing > 0), 'updates', 'Need updates');
+    // Placeholders until the computers are read, and a dash if that failed.
+    const num = (f) => (computersRead ? n(f) : dvFailed ? '—' : null);
+    $('dv-stats').innerHTML = !can.has('seats.view') ? '' : dvStat(num((c) => stateOf(c) === 'online'), 'monitor', 'Online') + dvStat(num((c) => stateOf(c) === 'offline'), 'power', 'Offline')
+      + dvStat(num((c) => stateOf(c) === 'waiting'), 'clock', 'Waiting for approval') + dvStat(num((c) => c.inventory?.missing > 0), 'updates', 'Need updates');
     // Computers and the lists under it are tabs of one page; any other list has the one tab.
     const dvTab = (href, on, icon, label, count, more = '') => `<a href="${href}"${more}${on ? ' aria-current="true"' : ''}>${svg(icon)}${esc(label)} <small>${count}</small></a>`;
     const under = group === 'computers' ? Object.values(dvMore).filter((m) => m.under === 'computers' && m.can()) : [];
     $('dv-tabs').innerHTML = under.length
-      ? (can.has('seats.view') ? dvTab(`#seats${dvView === 'all' ? '' : `/computers/${dvView}`}`, dvAt === 'computers', DV.computers[1], DV.computers[0], dvAt === 'computers' ? dvShown.length : dvBase('computers').length) : '')
+      ? (can.has('seats.view') ? dvTab(`#seats${dvView === 'all' ? '' : `/computers/${dvView}`}`, dvAt === 'computers', DV.computers[1], DV.computers[0], !computersRead ? '' : dvAt === 'computers' ? dvShown.length : dvBase('computers').length) : '')
         + under.map((m) => m.tabs(dvTab)).join('')
-      : `<a aria-current="true">${svg(DV[dvAt][1])}${esc(DV[dvAt][0])} <small>${dvShown.length}</small></a>`;
+      : `<a aria-current="true">${svg(DV[dvAt][1])}${esc(DV[dvAt][0])} <small>${dvGrid().loading?.() ? '' : dvShown.length}</small></a>`;
     for (const [k, id] of [['computers', 'seats-table'], ['sessions', 'sessions-table'],
       ...Object.entries(dvMore).map(([key, more]) => [key, more.table])]) $(id).hidden = k !== dvAt;
     seatsEmpty = dvMore[dvAt] ? dvMore[dvAt].empty()
-      : computers.length ? 'None of the computers are like that right now.' : `No computers yet. Add computers to give people the ${esc(product)} client.`;
+      : computers.length ? 'None of the computers are like that right now.' : !computersRead ? "The list couldn't be read." : `No computers yet. Add computers to give people the ${esc(product)} client.`;
     // The filter bar, and the grid's part of the list's bar (Group by, the count, Compact or Relaxed), for the list that shows.
     if (listed) {
       dvBar().draw();
@@ -2845,10 +2859,11 @@ const RELEASE_INFO = {
     tail: () => (can.has('seats.approve') && computers.some((c) => stateOf(c) === 'waiting')
       ? { w: 84, cell: (c) => `<span class="acts">${stateOf(c) === 'waiting' ? '<button type="button" class="small primary" data-approve>Approve</button>' : ''}</span>` } : null),
     row: (c) => ` data-client="${esc(c.id)}"`,
-    empty: () => seatsEmpty,
+    empty: () => seatsEmpty, loading: () => !computersRead && !dvFailed,
     redraw: () => drawSeats(),
   }));
   let sessionsNow = [];
+  let sessionsRead = false;
   let sessionsG = null;
   // Each person's roles, highest first, without User when there's more: everyone has that.
   const rolesOf = (s) => (s.roles.length > 1 ? s.roles.filter((r) => r.id !== 'user') : s.roles);
@@ -2868,30 +2883,39 @@ const RELEASE_INFO = {
     tail: { w: 60, cell: (s) => `<span class="acts">${s.current ? `<span class="sess-here" data-tip="This session" aria-label="This session">${svg('user-check')}</span>`
       : s.username === me || can.has('sessions.signout') ? `<button type="button" class="icon" data-end data-tip="Sign out" aria-label="Sign out ${esc(s.name || s.username)}">${svg('logout')}</button>` : ''}</span>` },
     row: (s) => ` data-session="${esc(s.id)}"`,
-    empty: () => 'Nobody is signed in.',
+    empty: () => (sessionsRead ? 'Nobody is signed in.' : "The list couldn't be read."), loading: () => !sessionsRead && !dvFailed,
     redraw: () => drawSessions(sessionsNow),
   }));
   const drawSessions = (list) => {
     sessionsNow = list;
+    sessionsRead = true;
     drawSeats();
   };
   const seats = async () => {
     clearTimeout(seatTimer);
+    let failed = '';
     try {
       const none = new Response('[]', { status: 403 });
       const [c, s] = await Promise.all([can.has('seats.view') ? fetch('/api/clients', { headers: { Accept: 'application/json' } }) : none,
         fetch('/api/sessions', { headers: { Accept: 'application/json' } })]);
+      const why = async (r) => (await r.json().catch(() => ({}))).error || `The server answered ${r.status}.`;
       if (c.ok) {
         computers = await c.json();
+        computersRead = true;
         drawSeats();
-      }
+      } else if (can.has('seats.view')) failed = await why(c);
       if (s.ok) drawSessions(await s.json());
+      else if (can.has('sessions.view')) failed ||= await why(s);
       // A list of devices.js's that's open, read again with the rest.
       if (dvMore[dvAt]) await dvMore[dvAt].load();
-      if (dvMore[dvAt]) drawSeats();
-    } catch {
-      // Asked again shortly.
+    } catch (err) {
+      failed = err.message; // asked again shortly
     }
+    // A failed read says why under the list, and the list stops waiting for it.
+    const was = dvFailed;
+    dvFailed = failed;
+    if (failed || was) seatProblem(failed);
+    if (failed || was || dvMore[dvAt]) drawSeats();
     if (where()[0] === 'seats') seatTimer = setTimeout(seats, 30000);
   };
   const seatProblem = (text) => say('seats-problem', text);
@@ -3148,7 +3172,10 @@ const RELEASE_INFO = {
       await plainFetch('/api/signout', { method: 'POST', headers }).catch(() => {});
       location.replace('/signin.html');
     });
-    status().catch(() => { $('st-facts').textContent = "Couldn't be read."; });
+    status().catch(() => {
+      $('st-facts').textContent = "Couldn't be read.";
+      for (const id of ['hero-version', 'hero-uptime']) if ($(id).querySelector('.sk')) $(id).textContent = '—';
+    });
     $('viewas-stop').addEventListener('click', () => viewAs(null));
     $('here-connect').addEventListener('click', watchHere);
     $('here-later').addEventListener('click', () => {
@@ -3171,6 +3198,11 @@ const RELEASE_INFO = {
       const [list, view] = e.detail[2] || [];
       const at = DV[list] ? list : 'computers';
       if (at !== dvAt && (panel.is('seats') || panel.is('devices'))) panel.close();
+      // Another list waits for its own read, not the last one's error.
+      if (at !== dvAt && dvFailed) {
+        dvFailed = '';
+        seatProblem('');
+      }
       const opened = at !== dvAt && !!dvMore[at];
       dvAt = at;
       dvView = dvAt === 'computers' && DV_VIEWS.some((v) => v && v[0] === view) ? view : 'all';
@@ -3237,13 +3269,15 @@ const RELEASE_INFO = {
       const inv = seatInv?.inventory;
       const list = (rows2) => `<div class="dw-list seat-list">${rows2.map(([a, b, tone]) => `<div class="mrow"><div class="two"><b>${esc(a)}</b><small>${esc(b)}</small></div>${tone ? `<span class="state ${tone[0]}">${esc(tone[1])}</span>` : ''}</div>`).join('')}</div>`;
       const none = (text) => `<p class="muted dw-empty">${esc(text)}</p>`;
-      const waitingFor = !seatInv ? 'Reading what this computer sent.' : "This computer hasn't sent its inventory yet. It does within half an hour of being approved, with client 1.1.165 or later.";
+      // Placeholder rows until the server answers; then why there's nothing.
+      const waitingFor = !seatInv ? '<div data-seat-skel></div>' : none(seatInv.error ? `What this computer sent couldn't be read. ${seatInv.error}`
+        : "This computer hasn't sent its inventory yet. It does within half an hour of being approved, with client 1.1.165 or later.");
       const section = (title, body, right = '') => `<section class="dw-sec"><div class="dw-sec-head"><h3>${title}</h3>${right}</div>${body}</section>`;
       const facts2 = (rows2) => `<ul class="does">${rows2.filter(Boolean).map(([k, v]) => `<li><b>${esc(k)}</b><span>${esc(v)}</span></li>`).join('')}</ul>`;
       const tabs = st === 'waiting' ? '' : `<div class="tabs2 dw-tabs" role="tablist">${[['summary', 'Summary', ''],
         ...(seat.server ? [] : [['software', 'Software', inv ? inv.software.length : ''], ['updates', 'Updates', inv?.missingChecked ? inv.missing.filter((u) => !u.definition).length : '']]), ...(dvHooks.seatTabs?.(seat) || [])]
         .map(([t, label, count]) => `<a role="tab" data-seat-tab="${t}"${seatTab === t ? ' aria-current="true"' : ''}>${label}${count === '' || count === 0 ? '' : ` <small>${count}</small>`}</a>`).join('')}</div>`;
-      const hardware = seat.server ? '' : !inv ? (st === 'waiting' ? '' : section('Hardware', none(waitingFor))) : section('Hardware', facts2([
+      const hardware = seat.server ? '' : !inv ? (st === 'waiting' ? '' : section('Hardware', waitingFor)) : section('Hardware', facts2([
         ['Model', [inv.manufacturer, inv.model].filter(Boolean).join(' ') || 'Unknown'], inv.serial && ['Serial number', inv.serial], inv.processor && ['Processor', inv.processor],
         inv.memory ? ['Memory', gb(inv.memory)] : null, inv.started && ['Uptime', howLong(inv.started)], ['Restart', inv.restartNeeded ? 'Needed, to finish installing something' : 'Not needed'],
         ...inv.disks.map((d) => [`Drive ${d.name}`, d.total ? `${Math.round(100 * d.free / d.total)}% free of ${gb(d.total)}` : 'Unknown'])]));
@@ -3271,7 +3305,7 @@ const RELEASE_INFO = {
           + `<span class="err-when">${esc(ago(p.at))}${p.count > 1 ? `<br>${p.count.toLocaleString()} times` : ''}</span></div>`).join('')}</div>`,
         can.has('seats.actions') ? `<button type="button" class="small" data-seat-clear>${svg('x')}Clear</button>` : '');
       const pane = more != null ? more : st === 'waiting' || seatTab === 'summary' ? errors + section('Details', facts2(facts)) + hardware + network + here + lock
-        : !inv ? section(seatTab === 'software' ? 'Installed software' : 'Windows updates', none(waitingFor))
+        : !inv ? section(seatTab === 'software' ? 'Installed software' : 'Windows updates', waitingFor)
         : seatTab === 'software' ? section(`Installed software <small>${inv.software.length}</small>`, inv.software.length
           ? `<label class="side-find seat-find"><svg><use href="#i-search"/></svg><input type="search" id="seat-sw-find" placeholder="Find software" aria-label="Find software" autocomplete="off" spellcheck="false" value="${esc(swFind)}"></label><div class="table" id="seat-sw"></div>` : none('Nothing is listed.'))
         : section(`Windows updates <small>${inv.missingChecked ? `${inv.missing.filter((u) => !u.definition).length} missing` : ''}</small>`, (!inv.missingChecked ? none("Windows Update hasn't answered on this computer yet. It's asked every six hours.")
@@ -3288,6 +3322,8 @@ const RELEASE_INFO = {
       panel.body.innerHTML = `<div class="dw-head"><span class="pic dw-pic">${svg(seat.server ? 'server' : 'monitor')}</span><div class="dw-name"><h2 id="dw-title">${esc(seat.computer)}</h2>`
         + `${model ? `<p>${esc(model)}</p>` : ''}</div>${acts ? `<div class="dw-do">${acts}</div>` : ''}<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`
         + `<div class="dw-strip">${strip}</div>${tabs}${pane}`;
+      // Placeholder rows where something is still being read (devices.js's Jobs tab uses them too).
+      panel.body.querySelectorAll('[data-seat-skel]').forEach((el) => skeleton(el, 'rows', 3));
       if (more == null && inv && seatTab === 'software') drawSoftware();
       if (more == null && inv && seatTab === 'updates') drawUpdates();
     };
@@ -3352,7 +3388,11 @@ const RELEASE_INFO = {
         seatInv = got;
         dvHooks.seatInventory?.(c, got);
         if (panel.shows('seats', c.id)) drawSeat();
-      }).catch(() => {});
+      }).catch((err) => {
+        if (seat?.id !== c.id) return;
+        seatInv = { inventory: null, error: err.message };
+        if (panel.shows('seats', c.id)) drawSeat();
+      });
     };
     // The list was read again: the computer that's open shows what it is now, or closes when it's gone.
     // Install the client here: the server installs it on itself; its row turns into the client's within a minute or two.
@@ -3771,6 +3811,7 @@ const RELEASE_INFO = {
       say('ca-problem', '');
     } catch (err) {
       say('ca-problem', err.message);
+      for (const id of ['ca-list', 'ca-cert', 'ca-net']) skeleton($(id), '');
       return;
     }
     const here = location.origin.toLowerCase();
@@ -4110,7 +4151,8 @@ const RELEASE_INFO = {
     }
   };
   document.addEventListener('rabbidlab:show', (e) => { if (e.detail[0] === 'settings' && (!e.detail[1] || e.detail[1] === 'account')) drawMySessions(); });
-  // Settings, Sign-in: Sign out when idle, saved as it changes.
+  // Settings, Sign-in: Sign out when idle, saved as it changes. Both choices wait, empty, until they're read.
+  for (const id of ['si-idle', 'si-lock']) $(id).selectedIndex = -1;
   document.addEventListener('rabbidlab:show', async (e) => {
     if (e.detail[0] !== 'settings' || e.detail[1] !== 'signin' || !allows('access.roles access.unlock')) return;
     say('si-problem', '');
@@ -4120,6 +4162,8 @@ const RELEASE_INFO = {
       const s = await get('/api/settings/signin');
       $('si-idle').value = String(s.idle);
       $('si-lock').value = String(s.lockAfter);
+      $('si-idle').disabled = false;
+      $('si-lock').disabled = false;
     } catch (err) {
       say('si-problem', err.message);
     }
@@ -4144,6 +4188,7 @@ const RELEASE_INFO = {
       $('si-locks-others').textContent = others ? `${others} other name${others === 1 ? ' that is not an account here is' : 's that are not accounts here are'} locked too. They unlock by themselves after a day.` : '';
       $('si-locks-others').hidden = !others;
     } catch (err) {
+      skeleton($('si-locks'), '');
       say('si-locks-problem', err.message);
     }
   };
@@ -4326,6 +4371,9 @@ const RELEASE_INFO = {
       try {
         viewRoles = (await get('/api/roles')).roles || [];
         $('va-role').innerHTML = viewRoles.filter((r) => r.id !== 'user').map((r) => `<option value="${esc(r.id)}">${esc(r.name)}</option>`).join('');
+        // Both wait, empty and dimmed, until the roles are read.
+        $('va-role').disabled = false;
+        $('va-start').disabled = !$('va-role').options.length;
         say('va-problem', '');
       } catch (err) {
         say('va-problem', err.message);
@@ -4337,12 +4385,16 @@ const RELEASE_INFO = {
         say('seat-set-problem', '');
       } catch (err) {
         say('seat-set-problem', err.message);
+        for (const id of ['seat-line', 'seat-fp']) if ($(id).querySelector('.sk')) $(id).textContent = '';
         return;
       }
+      // The switches wait, off and dimmed, and the lines as placeholders, until this is read.
       $('seat-approve').checked = !!joining.approve;
       $('seat-approve-label').textContent = joining.approve ? 'On' : 'Off';
       $('seat-unlock').checked = joining.unlockAfterDays > 0;
       $('seat-unlock-label').textContent = joining.unlockAfterDays > 0 ? 'On' : 'Off';
+      $('seat-approve').disabled = false;
+      $('seat-unlock').disabled = false;
       const line = [`msiexec /i RabbidLab-Client-${joining.version}.msi /qn SERVER=${location.origin}`];
       if (joining.fingerprint) line.push(`FINGERPRINT=${joining.fingerprint}`);
       $('seat-line').textContent = line.join(' ');
@@ -4590,7 +4642,9 @@ const RELEASE_INFO = {
   // What the other scripts use. Hints are tips.js and data grids are grid.js.
   window.RabbidLab = { app: () => product, $, esc, svg, say, initials, when, daysAgo, send, get, keep, forget, has, paint, where, viewAs, place, popups, option, dropdown, sure, newLabel, copy, busy, refresh, groupTools, skeleton, toast, stepper, panel, scatter, editButton,
     palette: window.RabbidLabColours.roles, me: () => meInfo,
-    // The Devices page, for devices.js: its lists, what's ticked, and drawing or reading it again.
+    // The Devices page, for devices.js: its lists, what's ticked, and drawing or reading it again. failed() is why the
+    // last read didn't work, so a list stops waiting for it; reading() is true until the computers are first read.
     devices: { lists: DV, more: dvMore, hooks: dvHooks, picked: dvPicked, computers: () => computers, rows: () => dvAll(), at: () => dvAt, shown: () => dvShown, grid: () => dvGrid(),
+      failed: () => dvFailed, reading: () => !computersRead && !dvFailed,
       draw: () => drawSeats(), reload: () => seats(), panelAgain: () => seatPanel?.(), open: (id, tab = 'summary') => seatOn?.(id, tab), stateOf } };
 })();

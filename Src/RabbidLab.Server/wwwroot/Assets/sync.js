@@ -87,12 +87,27 @@
       + `<span class="sy-cell" data-s="${esc(e.s)}">${svg(e.s === 'bad' ? 'x' : e.s === 'notyet' ? 'alert' : 'check')}<span>${word}</span></span></div>`;
   };
 
+  // Every change since the last sync, whether or not anything had to be copied: what it is, where it was made, how many DCs have it.
+  const has1 = (p) => p === 'origin' || p === 'ok';
+  const changeLine = (c) => {
+    const names = dcNames();
+    const n = names.filter((x) => has1(c.places[x])).length;
+    const s = n === names.length ? 'ok' : names.some((x) => c.places[x] === 'pending') ? 'pending' : 'unknown';
+    return `<div class="sy-fl" data-sy-open="chg:${esc(c.id)}" data-s="${s}"><small>${esc(at(c.at))}</small><span class="sy-flr">Made on ${esc(c.on || 'an unknown DC')}</span>`
+      + `<span class="sy-obj">${svg(ICON[c.kind] || 'list')}<span><b>${esc(c.name)}</b><small>${esc([c.what, ...(c.details || [])].join(' · '))}</small></span></span>`
+      + `<span class="sy-cell" data-s="${s}">${svg(s === 'ok' ? 'check' : s === 'pending' ? 'history' : 'alert')}<span>${n === names.length ? `On all ${names.length} DCs` : `On ${n} of ${names.length} DCs`}</span></span></div>`;
+  };
+
   const drawFeed = () => {
     const box = $('sy-feed');
     if (!box) return;
-    const lines = (data.feed || []).filter((e) => filter === 'all' || (filter === 'bad' ? e.s !== 'ok' : e.kind === filter));
-    box.innerHTML = lines.map(feedLine).join('')
-      || `<p class="muted sy-none">${filter === 'all' ? 'Nothing copied from here yet. Sync all copies whatever a domain controller is missing, and each copy shows here.' : 'Nothing here.'}</p>`;
+    // The copies made from here, and each change that reached every DC without one, newest first.
+    const copied = new Set((data.feed || []).map((e) => e.change));
+    const lines = [...(data.feed || []).map((e) => ({ at: e.at, kind: e.kind, bad: e.s !== 'ok', html: () => feedLine(e) })),
+      ...(data.changes || []).filter((c) => !copied.has(c.id)).map((c) => ({ at: c.at, kind: c.kind, bad: dcNames().some((n) => c.places[n] === 'pending'), html: () => changeLine(c) }))]
+      .filter((x) => filter === 'all' || (filter === 'bad' ? x.bad : x.kind === filter)).sort((a, b) => (a.at < b.at ? 1 : -1));
+    box.innerHTML = lines.map((x) => x.html()).join('')
+      || `<p class="muted sy-none">${filter === 'all' ? `Nothing has changed since ${esc(at(data.since))}.` : 'Nothing here.'}</p>`;
   };
 
   // The rows stay put while a sync runs, so the flask and line move smoothly; only a different set of DCs draws them again.
@@ -114,8 +129,9 @@
     const changes = data.changes || [];
     const waiting = changes.filter(missingSomewhere).length;
     if (!body.querySelector('#sy-rows')) {
-      body.innerHTML = '<div class="gcard sy-card"><div class="sy-head"><h2 id="sy-title"></h2><p class="muted" id="sy-sub"></p></div><div id="sy-acts"></div><div class="sy-rows" id="sy-rows"></div></div>'
-        + '<div class="gcard"><div class="gbar"><span class="sy-gtitle">Every copy, newest first</span><span class="grow"></span><span class="sy-seg" id="sy-filters"></span></div><div class="sy-feed" id="sy-feed"></div></div>';
+      body.innerHTML = '<div class="gcard sy-card"><div class="sy-head"><h2 id="sy-title"></h2><p class="muted" id="sy-sub"></p></div><div id="sy-acts"></div><div class="sy-th sy-th-rows"><span></span><span>Domain controller</span><span>State</span></div><div class="sy-rows" id="sy-rows"></div></div>'
+        + '<div class="gcard"><div class="gbar"><span class="sy-gtitle" id="sy-ftitle">Every change, newest first</span><span class="grow"></span><span class="sy-seg" id="sy-filters"></span></div>'
+        + '<div class="sy-th sy-th-fl"><span>When</span><span>Where</span><span>Change</span><span>Result</span></div><div class="sy-feed" id="sy-feed"></div></div>';
     }
     $('sy-title').textContent = waiting ? `${plural(waiting, 'change')} not everywhere yet` : 'Every change is everywhere';
     $('sy-sub').textContent = `${plural(changes.length, 'change')} since ${at(data.since)}${data.more ? ', the newest 300 shown' : ''}. The newest is first.`;
@@ -175,10 +191,28 @@
       + (e.s !== 'ok' && e.why ? trouble(e.why, e.s === 'bad' ? (data.dcs.find((d) => d.name === e.to)?.advice || '') : 'Sync all copies it to every domain controller first, then sends it.') : '')
       + section('What changed', e.details?.length ? details(e.details) : none(e.what));
   };
+  // One change: where it is on each domain controller and in Microsoft 365, and what changed.
+  const PLACE = { origin: 'Made here', ok: 'Has it', pending: 'Missing', unknown: 'Couldn\'t be read' };
+  const M365_PLACE = { ok: 'Sent from here', pending: 'Not sent from here yet', notyet: 'Not on every DC when it synced', na: 'Not synced to Microsoft 365' };
+  const changePanel = (c) => {
+    const missing = dcNames().some((n) => c.places[n] === 'pending');
+    const may = has('ad.change') && data.canSync && data.windows && !data.running;
+    const where = data.dcs.map((d) => `<div class="mrow"><span class="pic small">${svg('server')}</span><div class="two"><b>${esc(d.name)}</b><small>${esc(d.site || d.host)}</small></div>`
+      + `<span class="sy-cell" data-s="${esc(c.places[d.name])}">${svg(has1(c.places[d.name]) ? 'check' : c.places[d.name] === 'pending' ? 'history' : 'alert')}<span>${PLACE[c.places[d.name]] || 'Unknown'}</span></span></div>`).join('')
+      + (data.m365 ? `<div class="mrow"><span class="pic small">${svg('cloud')}</span><div class="two"><b>Microsoft 365</b><small>Entra Connect on ${esc(data.m365.server)}</small></div>`
+        + `<span class="sy-cell" data-s="${esc(c.places.M365)}">${svg(c.places.M365 === 'ok' ? 'check' : c.places.M365 === 'na' ? 'minus' : 'history')}<span>${M365_PLACE[c.places.M365] || 'Unknown'}</span></span></div>` : '');
+    return head(ICON[c.kind] || 'list', c.name, [c.what, c.sub].filter(Boolean).join(' · '))
+      + (missing && may ? `<div class="dw-bar">${qa('data-sy-run="dcs"', 'refresh', 'Sync DCs')}</div>` : '')
+      + strip([['Made on', c.on || 'Unknown'], ['When', at(c.at)], ['Kind', c.kind === 'ou' ? 'OU' : c.kind.charAt(0).toUpperCase() + c.kind.slice(1)]])
+      + section('Where it is', `<div class="dw-list">${where}</div>`)
+      + section('What changed', c.details?.length ? details(c.details) : none(c.what))
+      + '<p class="dw-how">Active Directory keeps only the new values, so what it was before isn\'t shown.</p>';
+  };
   const openPanel = (key, again = false) => {
     const d = key.startsWith('dc:') ? data.dcs.find((x) => x.name === key.slice(3)) : null;
     const e = key.startsWith('feed:') ? (data.feed || []).find((x) => x.id === key.slice(5)) : null;
-    const html = d ? dcPanel(d) : key === 'm365' && data.m365 ? m365Panel() : e ? feedPanel(e) : '';
+    const c = key.startsWith('chg:') ? (data.changes || []).find((x) => x.id === key.slice(4)) : null;
+    const html = d ? dcPanel(d) : key === 'm365' && data.m365 ? m365Panel() : e ? feedPanel(e) : c ? changePanel(c) : '';
     if (!html) {
       if (again) panel.close();
       return;
@@ -200,6 +234,7 @@
       R.skeleton($('sync-body'), '');
       $('sync-body').innerHTML = `<div class="gcard sy-card"><p class="sy-problem">${esc(err.message)}</p></div>`;
       $('sync-state').textContent = "Sync can't read Active Directory.";
+      if (!data) for (const id of ['sync-n-waiting', 'sync-n-dcs', 'sync-n-m365']) $(id).textContent = '—';
       return;
     }
     draw();

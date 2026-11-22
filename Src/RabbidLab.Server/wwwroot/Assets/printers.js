@@ -286,7 +286,7 @@
       { key: 'published', label: 'In AD', w: 80, get: (p) => (p.published ? 'Yes' : 'No') },
     ],
     row: (p) => ` data-pr-row="${esc(`${p.name}\n${p.address || ''}`)}"`,
-    empty: () => D.more.printers.empty(), loading: () => !all,
+    empty: () => D.more.printers.empty(), loading: () => !all && !D.failed(),
     redraw: () => D.draw(),
   }));
   // The servers that share printers, and the ones that couldn't be asked.
@@ -301,7 +301,7 @@
       { key: 'at', label: 'Asked', w: 170, on: true, get: (s) => new Date(s.at).getTime(), text: (s) => s.at, cell: (s) => `<span class="muted">${esc(R.when(s.at))}</span>` },
     ],
     row: (s) => ` data-ps-row="${esc(s.server)}"`,
-    empty: () => D.more.printers.empty(), loading: () => !all,
+    empty: () => D.more.printers.empty(), loading: () => !all && !D.failed(),
     redraw: () => D.draw(),
   }));
   const shown = () => rows;
@@ -354,7 +354,7 @@
       }
     },
     empty: () => {
-      if (!all) return 'Reading the list.';
+      if (!all) return "The list couldn't be read.";
       if (tab === 'servers') return !adp ? "Active Directory isn't set up, so there's nowhere to look for print servers." : adp.scanning ? 'Still asking the servers.' : 'No server in Active Directory shares a printer.';
       return all.computers.some((c) => c.read) ? 'No printers on the servers or the computers yet.' : `No printers on the servers, and no computer has sent its printers yet. Clients send them from ${NEEDS} on, within half an hour.`;
     },

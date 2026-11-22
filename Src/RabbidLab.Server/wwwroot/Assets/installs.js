@@ -46,7 +46,7 @@
       { key: 'changed', label: 'Changed', w: 150, nofilter: true, get: (a) => ms(a.changed), text: (a) => a.changed || '', cell: (a) => `<span class="muted">${esc(when(a.changed))}</span>` },
     ],
     row: (a) => ` data-row="app:${esc(a.id)}"`,
-    empty: () => D.more.installs.empty(), loading: () => !apps,
+    empty: () => D.more.installs.empty(), loading: () => !apps && !D.failed(),
     redraw: () => D.draw(),
   }));
   const fld = (key, label, type, value) => ({ key, label, type, get: value });
@@ -56,7 +56,7 @@
 
   D.lists.installs = ['Installs', 'box', 'Apps to install on computers with winget, for everyone on them.'];
   D.more.installs = { table: 'dv-installs', grid, rows: () => apps || [], count: () => apps?.length, can, noun: 'apps', fields: () => FIELDS, load,
-    empty: () => 'No apps like that.',
+    empty: () => (apps ? 'No apps like that.' : "The list couldn't be read."),
     acts: { can, count: () => pickedRows().length, open: (button) => openActs(button) } };
   D.hooks.addApp = () => openEdit(null); // Add an app, from New in the bar under the banner (devices.js)
 
@@ -152,7 +152,10 @@
     get(`/api/devices/apps/${encodeURIComponent(a.id)}/script`).then((got) => {
       scripts[a.id] = got;
       if (shown?.id === a.id && panel.shows('devices', `app:${a.id}`)) openApp(appOf(a.id) || a);
-    }).catch(() => {});
+    }).catch((err) => {
+      const sk = shown?.id === a.id && panel.shows('devices', `app:${a.id}`) && panel.body.querySelector('[data-app-skel]');
+      if (sk) sk.outerHTML = none(`What runs couldn't be read. ${err.message}`);
+    });
   };
   const remove = (list) => {
     if (!list.length) return;
