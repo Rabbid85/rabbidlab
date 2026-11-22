@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.345', [
+    'Check for updates comes back 3 seconds after a check instead of a minute.']],
   ['1.1.344', [
     'Toasts go away on time even while you are on another tab. Before, their timer stopped in the background, so coming back found old toasts still up.']],
   ['1.1.343', [
@@ -1080,6 +1082,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.345': ['2026-11-22', 'fix', 'Check for updates back after 3 seconds'],
   '1.1.344': ['2026-11-22', 'fix', 'Toasts leave on time, even in another tab'],
   '1.1.343': ['2026-11-22', 'fix', 'No more pile of Up to date toasts'],
   '1.1.342': ['2026-11-22', 'fix', 'The notice opens before you sign in'],
@@ -1656,8 +1659,8 @@ const RELEASE_INFO = {
   const WORDS = { current: 'Up to date', available: 'Update available', waiting: 'Pending', downloading: 'Downloading', installing: 'Installing', failed: 'Failed' };
   let last = null;
   let timer = null;
-  // Check for updates rests for a minute after each check (Updates page and Overview alike), so clicks can't pile up.
-  const CHECK_REST = 60000;
+  // Check for updates rests for 3 seconds after each check (Updates page and Overview alike), so clicks can't pile up.
+  const CHECK_REST = 3000;
   let checkedAt = 0;
   const resting = () => Date.now() - checkedAt < CHECK_REST;
   let product = 'Rabbid Lab'; // the app's name, in the page's sentences
@@ -2327,7 +2330,7 @@ const RELEASE_INFO = {
     }
   };
 
-  // Check for updates says Checking while it asks, answers in a toast, then rests for a minute saying Checked just now.
+  // Check for updates says Checking while it asks, answers in a toast, then rests a moment saying Checked just now.
   // A check that couldn't reach anything doesn't rest, so it can be tried again straight away.
   const check = async (button) => {
     if (resting()) return;
