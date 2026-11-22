@@ -69,6 +69,8 @@ public sealed partial class RiskNotice(DataFolder folder, TimeProvider clock)
     {
         title = Title,
         version = Version,
+        wording = Wording, // sent back with the sign-in once this browser accepts
+
         minutes = Math.Max(1, (int) Math.Round(Sections.Sum(s => s.Text.Split(' ').Length) / 200.0)),
         sections = Sections.Select(s => new { heading = s.Heading, text = s.Text }),
     };

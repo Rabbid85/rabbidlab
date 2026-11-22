@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.342 (2026-11-22)
+
+- The Use at your own risk notice opens as soon as the sign-in page loads, before you type anything. Accepting it is sent with the sign-in and saved for your account. For now it opens on every visit.
+- Decline hides the sign-in form and says why, with Read the notice to open it again.
+
 ## 1.1.341 (2026-11-22)
 
 - The sign-in page no longer shows an Up to date pill at the foot of the card. The pill shows only while an update is available, downloading, installing or failed.

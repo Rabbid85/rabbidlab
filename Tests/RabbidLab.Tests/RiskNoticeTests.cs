@@ -92,6 +92,33 @@ public sealed class RiskNoticeTests : IDisposable
     }
 
     [Fact]
+    public async Task Accepted_on_the_sign_in_page_before_the_password_signs_straight_in()
+    {
+        var admin = await app.SignedIn();
+        var shown = (await Json(await app.RawPage().GetAsync("/api/signin"))).GetProperty("notice");
+        Assert.Equal(RiskNotice.Wording, shown.GetProperty("wording").GetString());
+        (await admin.PostAsJsonAsync("/api/accounts", new { username = "owenp", password = "user password", roles = Array.Empty<string>() })).EnsureSuccessStatusCode();
+
+        var page = app.RawPage();
+        var first = await Json(await page.PostAsJsonAsync("/api/signin", new { username = "owenp", password = "user password", notice = RiskNotice.Wording }));
+        app.MfaSecrets["owenp"] = first.GetProperty("setup").GetProperty("secret").GetString()!;
+        var after = await Json(await page.PostAsJsonAsync("/api/signin/mfa", new { ticket = first.GetProperty("ticket").GetString(), code = app.MfaCode("owenp"), notice = RiskNotice.Wording }));
+
+        Assert.False(after.TryGetProperty("notice", out _));
+        Assert.True(await SignedIn(page));
+        Assert.Contains("on the sign-in page", await (await admin.GetAsync("/api/activity")).Content.ReadAsStringAsync());
+
+        // Older words than the notice's own don't count: the notice comes after the password.
+        var other = app.RawPage();
+        (await admin.PostAsJsonAsync("/api/accounts", new { username = "samh", password = "user password", roles = Array.Empty<string>() })).EnsureSuccessStatusCode();
+        var pw = await Json(await other.PostAsJsonAsync("/api/signin", new { username = "samh", password = "user password", notice = "0000000000000000" }));
+        app.MfaSecrets["samh"] = pw.GetProperty("setup").GetProperty("secret").GetString()!;
+        var stale = await Json(await other.PostAsJsonAsync("/api/signin/mfa", new { ticket = pw.GetProperty("ticket").GetString(), code = app.MfaCode("samh"), notice = "0000000000000000" }));
+        Assert.True(stale.TryGetProperty("notice", out _));
+        Assert.False(await SignedIn(other));
+    }
+
+    [Fact]
     public async Task Declining_opens_nothing_and_is_logged()
     {
         var admin = await app.SignedIn();

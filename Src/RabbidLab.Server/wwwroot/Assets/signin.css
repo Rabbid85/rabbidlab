@@ -287,3 +287,7 @@ dialog.rn:focus-visible { outline: none; }
 .rn-go:disabled, .rn-go:disabled:hover { opacity: 1; background: color-mix(in srgb, var(--text) 8%, transparent); color: var(--muted); }
 @media (max-width: 560px) { .rn-foot { flex-wrap: wrap; } .rn-tick { flex-basis: 100%; margin-bottom: 6px; } }
 body.leaving dialog.rn { opacity: 0; transition: opacity .3s ease; }
+/* Declined: the forms step aside, and the line says why, with the notice a click away. */
+body.declined #lead, body.declined #local-form, body.declined #ad-form, body.declined #other-kind, body.declined #admin-unlock { display: none; }
+.auth-note .note-link { display: inline; padding: 0; border: 0; background: none; color: var(--accent-soft); font: inherit; font-weight: 600; }
+.auth-note .note-link:hover { background: none; text-decoration: underline; text-underline-offset: 3px; }

@@ -176,12 +176,13 @@
   };
 
   const unreachable = (then) => `Could not connect to the server. Check that the Rabbid Lab service is running, then ${then}.`;
-  // Sends a form with its button off meanwhile. Null when the server can't be reached, which the page then says.
+  // Sends a form with its button off meanwhile. Null when the server can't be reached, which the page then says. Each
+  // carries the notice wording this browser accepted, if it did (see the notice below).
   const send = async (url, body, button) => {
     showError('');
     button.disabled = true;
     try {
-      const r = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
+      const r = await fetch(url, { method: 'POST', headers, body: JSON.stringify({ ...body, notice: noticeTaken() || undefined }) });
       const said = await r.json().catch(() => null);
       return { ok: r.ok, said, problem: said?.error || `The server returned HTTP ${r.status}. Try again.` };
     } catch {
@@ -237,7 +238,7 @@
     const skip = $('mfa-skip').checked && !$('mfa-skip-row').hidden;
     const r = await send('/api/signin/mfa', { ticket, code: skip ? null : $('mfa-code').value, reset: skip ? null : $('mfa-reset').value || null, skip }, $('mfa-go'));
     if (!r) return;
-    if (r.ok && r.said?.notice) return notice(r.said);
+    if (r.ok && r.said?.notice) return notice(r.said.notice, r.said.ticket);
     if (r.ok) return enter();
     if (r.said?.again) return location.reload(); // the ticket ran out: the password again
     showError(r.problem);
@@ -245,10 +246,16 @@
     $('mfa-code').select();
   });
 
-  // The Use at your own risk notice (RiskNotice.cs): past the password and code, an account that hasn't accepted it reads
-  // it here, with no session yet. The tick wakes up once it's read to the end; Continue starts the session, and Decline
-  // starts none, so the console never opens.
-  let noticeTicket = '';
+  // The Use at your own risk notice (RiskNotice.cs). It opens with the page, before anything is typed, until this browser
+  // has accepted its wording; the acceptance goes with the sign-in and is kept for the account. An account signing in
+  // without it (storage cleared, or the wording changed meanwhile) gets it after the password instead, with no session
+  // yet. Either way the tick wakes up once it's read to the end, and Decline opens nothing.
+  const NOTICE = 'rabbidlab.notice';
+  // On while the notice is being tried out: it opens on every visit, accepted or not. Off when the owner says so.
+  const NOTICE_EVERY_LOAD = true;
+  const noticeTaken = () => { try { return localStorage.getItem(NOTICE) || ''; } catch { return ''; } };
+  let noticeShown = null; // the notice as the server sent it
+  let noticeTicket = ''; // set when it came after the password
   const reading = () => {
     const doc = $('rn-doc');
     const most = doc.scrollHeight - doc.clientHeight;
@@ -260,9 +267,9 @@
       $('rn-tick-text').textContent = 'I understand and accept the risk';
     }
   };
-  const notice = (said) => {
-    noticeTicket = said.ticket;
-    const n = said.notice;
+  const notice = (n, ticket = '') => {
+    noticeShown = n;
+    noticeTicket = ticket;
     $('rn-title').textContent = n.title;
     $('rn-meta').textContent = `Notice version ${n.version} · About a ${n.minutes} minute read`;
     const doc = $('rn-doc');
@@ -289,27 +296,48 @@
   addEventListener('resize', () => { if ($('rn').open) reading(); });
   $('rn').addEventListener('cancel', (e) => e.preventDefault()); // Esc doesn't close it: accept or decline
   $('rn-accept').addEventListener('change', () => { $('rn-go').disabled = !$('rn-accept').checked; });
+  const keepNotice = () => { try { localStorage.setItem(NOTICE, noticeShown.wording); } catch { /* asked again next visit */ } };
+  // Declined: the forms step aside for a line that says so, with the notice a click away.
+  const declined = (on) => {
+    document.body.classList.toggle('declined', on);
+    $('declined-note').hidden = !on;
+  };
   $('rn-go').addEventListener('click', async () => {
+    // Before signing in: kept in this browser and sent with the password.
+    if (!noticeTicket) {
+      keepNotice();
+      $('rn').close();
+      declined(false);
+      document.querySelector('form:not([hidden]) input:not([readonly])')?.focus();
+      return;
+    }
     $('rn-error').hidden = true;
     $('rn-decline').disabled = true;
     const r = await send('/api/signin/notice', { ticket: noticeTicket, accept: true }, $('rn-go'));
-    if (r?.ok) return enter();
+    if (r?.ok) {
+      keepNotice();
+      return enter();
+    }
     if (r?.said?.again) return location.reload(); // the ticket ran out: the password again
     $('rn-error').textContent = r ? r.problem : unreachable('select Continue again');
     $('rn-error').hidden = false;
     $('rn-go').disabled = false;
     $('rn-decline').disabled = false;
   });
-  // Declined: said on the sign-in page, which starts again with nobody signed in.
   $('rn-decline').addEventListener('click', async () => {
+    if (!noticeTicket) {
+      $('rn').close();
+      declined(true);
+      return;
+    }
+    // After the password: the half-made sign-in is dropped, and the page starts again with nobody signed in.
     $('rn-go').disabled = true;
     await send('/api/signin/notice', { ticket: noticeTicket, accept: false }, $('rn-decline'));
     location.replace('signin.html?declined=1');
   });
-  if (new URLSearchParams(location.search).has('declined')) {
-    $('declined-note').hidden = false;
-    history.replaceState(null, '', 'signin.html');
-  }
+  $('declined-read').addEventListener('click', () => notice(noticeShown));
+  const declinedNow = new URLSearchParams(location.search).has('declined');
+  if (declinedNow) history.replaceState(null, '', 'signin.html');
 
   // The eye in a password box shows or hides what's typed.
   const reveal = (button, show) => {
@@ -400,7 +428,7 @@
     forget();
     if (r.ok && !r.said?.mfa && !r.said?.notice) return enter();
     button.disabled = false;
-    if (r.ok) return r.said.notice ? notice(r.said) : askCode(r.said);
+    if (r.ok) return r.said.notice ? notice(r.said.notice, r.said.ticket) : askCode(r.said);
     showError(r.problem);
     hold(button, r.said);
   };
@@ -829,6 +857,13 @@
     }
     document.body.classList.remove('loading'); // drawn once, already in its final layout
     watchUpdates();
+    // The notice, as the page opens: until this browser accepts it, or every time while NOTICE_EVERY_LOAD is on. Just
+    // declined after the password: the line saying so instead.
+    if (s.notice && s.plain !== 'refused') {
+      noticeShown = s.notice;
+      if (declinedNow) declined(true);
+      else if (NOTICE_EVERY_LOAD || noticeTaken() !== s.notice.wording) notice(s.notice);
+    }
   };
 
   start().catch(() => {

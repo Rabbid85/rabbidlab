@@ -292,6 +292,7 @@ public static class SignIn
             brand = Brand.Read(settings.Current), // the lab's own name, icon and accent, so the sign-in page wears them too
             idle = settings.Current.IdleMinutes, // Sign out when idle, so the page can warn before it happens
             plain = PlainHttp.Said(context), // plain HTTP from another computer: refused, or allowed by AllowPlainHttp
+            notice = RiskNotice.Shape(), // the Use at your own risk notice, shown as the page opens until this browser accepts it
         }));
 
         // The sign-in page's Change: the domains accounts may sign in from, and a domain's controllers and which ones answer now.
@@ -474,7 +475,7 @@ public static class SignIn
                     locks.Unlock(key!);
                     ((ClaimsIdentity) principal.Identity!).AddClaim(new Claim("mfa", "1"));
                     log.Record(who.Username, from, "sign-in", "signin.unlock", "Unlocked their own sign-in", "ok", "Using the password and the authenticator code");
-                    return await Finish(context, roles, log, locks, principal, shown, keys);
+                    return await Finish(context, roles, log, locks, principal, shown, keys, notice: form.Notice);
                 }
                 if (mfa.Has(who))
                 {
@@ -484,7 +485,7 @@ public static class SignIn
                 {
                     return SetUpMfa(principal, shown, mfa, pending, MaySkipMfa(context), keys);
                 }
-                return await Finish(context, roles, log, locks, principal, shown, keys);
+                return await Finish(context, roles, log, locks, principal, shown, keys, notice: form.Notice);
             }
             if (own)
             {
@@ -622,7 +623,7 @@ public static class SignIn
                     return Results.BadRequest(new { error = "Sign in again.", again = true });
                 }
                 ((ClaimsIdentity) waiting.Principal.Identity).AddClaim(new Claim("mfa", Skipped));
-                return await Finish(context, roles, log, locks, waiting.Principal, waiting.Name, waiting.Keys, "Signed in without MFA", $"{Product.Name}, on the server, using Skip MFA this time");
+                return await Finish(context, roles, log, locks, waiting.Principal, waiting.Name, waiting.Keys, "Signed in without MFA", $"{Product.Name}, on the server, using Skip MFA this time", form.Notice);
             }
             // Set up some other way since the password was typed: this ticket's secret doesn't take that one's place.
             if (waiting.Secret is not null && mfa.Has(who))
@@ -668,7 +669,7 @@ public static class SignIn
             {
                 log.Record(username, from, "access", "mfa.on", "Enabled MFA", "ok", afterReset ? "At sign-in, using the one-time code from an MFA reset" : "At sign-in");
             }
-            return await Finish(context, roles, log, locks, waiting.Principal, waiting.Name, waiting.Keys);
+            return await Finish(context, roles, log, locks, waiting.Principal, waiting.Name, waiting.Keys, notice: form.Notice);
         });
 
         // The last step for an account that hasn't accepted the Use at your own risk notice: accept, and the session starts;
@@ -968,13 +969,25 @@ public static class SignIn
     /// counted under), the person is noted as seen, and it's logged.
     /// </summary>
     private static async Task<IResult> Finish(HttpContext context, Roles roles, ActivityLog log, SignInLocks locks, ClaimsPrincipal principal, string shown,
-        IReadOnlyList<string> keys, string title = "Signed in", string? detail = null)
+        IReadOnlyList<string> keys, string title = "Signed in", string? detail = null, string? notice = null)
     {
-        // Not accepted the Use at your own risk notice yet: no session, only a ticket to accept it with (/api/signin/notice).
-        if (!context.RequestServices.GetRequiredService<RiskNotice>().Accepted(Who.Of(principal)))
+        var notices = context.RequestServices.GetRequiredService<RiskNotice>();
+        var who = Who.Of(principal);
+        if (!notices.Accepted(who))
         {
-            var ticket = context.RequestServices.GetRequiredService<PendingSignIns>().Add(principal, shown, null, keys, new NoticeStep(title, detail));
-            return Results.Ok(new { notice = RiskNotice.Shape(), ticket });
+            // Accepted on the sign-in page as it opened, before the password: kept for this account now.
+            if (notice == RiskNotice.Wording)
+            {
+                notices.Accept(who);
+                log.Record(principal.Identity!.Name!, ActivityLog.Address(context), "sign-in", "notice.accepted", "Accepted the Use at your own risk notice", "ok",
+                    $"Notice version {RiskNotice.Version}, on the sign-in page");
+            }
+            // Not accepted at all: no session, only a ticket to accept it with (/api/signin/notice).
+            else
+            {
+                var ticket = context.RequestServices.GetRequiredService<PendingSignIns>().Add(principal, shown, null, keys, new NoticeStep(title, detail));
+                return Results.Ok(new { notice = RiskNotice.Shape(), ticket });
+            }
         }
         await Start(context, principal);
         foreach (var key in keys)
@@ -1117,11 +1130,12 @@ public sealed record MyPasswordForm(string? Current, string? Password);
 public sealed record DirectorySetupForm(string? Domain, string? Username, string? Password, string? Server = null);
 
 /// <summary>Code: the authenticator code, sent with the password only to unlock a locked administrator.</summary>
-public sealed record SignInForm(string? Username, string? Password, string? Server = null, bool Local = false, string? Domain = null, string? Code = null);
+// Notice: the wording of the Use at your own risk notice this browser accepted on the sign-in page, if it did.
+public sealed record SignInForm(string? Username, string? Password, string? Server = null, bool Local = false, string? Domain = null, string? Code = null, string? Notice = null);
 
 public sealed record UnlockForm(string? Key);
 
-public sealed record MfaSignInForm(string? Ticket, string? Code, string? Reset = null, bool Skip = false);
+public sealed record MfaSignInForm(string? Ticket, string? Code, string? Reset = null, bool Skip = false, string? Notice = null);
 
 public sealed record SignInSettingsForm(int? Idle = null, int? LockAfter = null);
 
