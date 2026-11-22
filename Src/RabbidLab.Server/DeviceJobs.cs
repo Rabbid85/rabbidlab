@@ -564,6 +564,29 @@ public static class DeviceActions
             """),
     };
 
+    /// <summary>
+    /// One person signed out of every session they have here, at the screen, over Remote Desktop or disconnected (quser
+    /// lists them; a disconnected one has no session name, so its ID moves one column left). Nobody else is touched.
+    /// </summary>
+    public static JobStep SignOutUser(string username) => new()
+    {
+        Title = $"Sign out {username}", Language = DeviceScripts.PowerShell, Minutes = 2,
+        Text = DeviceScripts.Clean($$"""
+            function Tool($name) { @("$env:windir\Sysnative\$name", "$env:windir\System32\$name") | Where-Object { Test-Path $_ } | Select-Object -First 1 }
+            $name = '{{username.Replace("'", "''")}}'
+            $quser = Tool 'quser.exe'
+            $logoff = Tool 'logoff.exe'
+            if (-not $quser -or -not $logoff) { 'This edition of Windows has no quser.exe or logoff.exe.'; exit 1 }
+            $ids = @(& $quser 2>$null | Select-Object -Skip 1 | ForEach-Object {
+                $c = $_.Trim().TrimStart('>') -split '\s+'
+                if ($c[0] -ieq $name) { if ($c[1] -match '^\d+$') { $c[1] } elseif ($c[2] -match '^\d+$') { $c[2] } }
+            })
+            if ($ids.Count -eq 0) { "$name is not signed in here."; exit 0 }
+            foreach ($id in $ids) { & $logoff $id 2>&1 | ForEach-Object { "Session ${id}: $_" } }
+            "Signed out $name from $($ids.Count) session(s)."
+            """),
+    };
+
     public static JobStep Shutdown() => new()
     {
         Title = "Shut down", Language = DeviceScripts.Command, Minutes = 2,

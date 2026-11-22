@@ -2,6 +2,13 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.350 (2026-11-22)
+
+- Offboard users in three stages from Actions, Offboard: on the last day, then 7, 14 or 30 days later, then 30, 90 or 180 days later. Each step is a switch, and the last day can be now or any date and time.
+- Stage 1 can disable the account, reset the password, sign them out of their computers, hide them from address lists, move their direct reports to someone else, clear their phone and office, add a note and email their manager.
+- Later stages can remove groups except the ones kept, move the account to another OU, disable the computers they manage, move the home folder to an archive share, then delete the folder and the account.
+- Users get an Offboarding column and an Offboarding tab with each stage, what it did, Run now, Retry, Edit and Cancel the rest. Whoever scheduled it gets an email the day before a stage runs, and each change can be undone like one made by hand.
+
 ## 1.1.349 (2026-11-22)
 
 - Loading placeholders follow the theme, so light themes show light grey blocks instead of dark ones.

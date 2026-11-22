@@ -1,3 +1,5 @@
+using RabbidLab.Shared;
+
 namespace RabbidLab.Server;
 
 /// <summary>
@@ -6,8 +8,8 @@ namespace RabbidLab.Server;
 /// </summary>
 public interface IHomeFolders
 {
-    /// <summary>Makes the folder and gives the person Full control of it, as ADUC's Home folder box does. The answer is the folder made.</summary>
-    Task<string> Create(string path, string username, CancellationToken stop);
+    /// <summary>Makes the folder and gives the person (by SID) Full control of it, as ADUC's Home folder box does. The answer is the folder made.</summary>
+    Task<string> Create(string path, string sid, CancellationToken stop);
 
     /// <summary>Moves the folder into another folder (an archive share). The answer is where it is now.</summary>
     Task<string> Move(string path, string intoFolder, CancellationToken stop);
@@ -20,22 +22,12 @@ public interface IHomeFolders
 public interface IPersonMail
 {
     /// <summary>Why it couldn't be sent, or null when it went.</summary>
-    Task<string?> Send(string to, string subject, string text, CancellationToken stop);
+    Task<string?> Send(string to, MailNote note, CancellationToken stop);
 }
 
-// Until the real ones are built: each says so, plainly.
-internal sealed class NoHomeFolders : IHomeFolders
+/// <summary>Through the first email notification in Settings > Notifications that can send (Channels.SendTo).</summary>
+public sealed class PersonMail(Channels channels) : IPersonMail
 {
-    private const string Not = "Home folders cannot be changed by Rabbid Lab yet.";
-
-    public Task<string> Create(string path, string username, CancellationToken stop) => throw new ToolProblem(Not);
-
-    public Task<string> Move(string path, string intoFolder, CancellationToken stop) => throw new ToolProblem(Not);
-
-    public Task Delete(string path, CancellationToken stop) => throw new ToolProblem(Not);
-}
-
-internal sealed class NoPersonMail : IPersonMail
-{
-    public Task<string?> Send(string to, string subject, string text, CancellationToken stop) => Task.FromResult<string?>("Email to one person is not available yet.");
+    public Task<string?> Send(string to, MailNote note, CancellationToken stop) =>
+        Words.Blank(to) is { } address && address.Contains('@') ? channels.SendTo(address, note, stop) : Task.FromResult<string?>("There is no email address to send to.");
 }

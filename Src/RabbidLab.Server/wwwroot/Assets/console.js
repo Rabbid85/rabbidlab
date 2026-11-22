@@ -3,6 +3,11 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.350', [
+    'Offboard users in three stages from Actions, Offboard: on the last day, then 7, 14 or 30 days later, then 30, 90 or 180 days later. Each step is a switch, and the last day can be now or any date and time.',
+    'Stage 1 can disable the account, reset the password, sign them out of their computers, hide them from address lists, move their direct reports to someone else, clear their phone and office, add a note and email their manager.',
+    'Later stages can remove groups except the ones kept, move the account to another OU, disable the computers they manage, move the home folder to an archive share, then delete the folder and the account.',
+    'Users get an Offboarding column and an Offboarding tab with each stage, what it did, Run now, Retry, Edit and Cancel the rest. Whoever scheduled it gets an email the day before a stage runs, and each change can be undone like one made by hand.']],
   ['1.1.349', [
     'Loading placeholders follow the theme, so light themes show light grey blocks instead of dark ones.',
     'A list that is still loading shows its placeholders under its own column headings.']],
@@ -1097,6 +1102,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.350': ['2026-11-22', 'feature', 'Offboarding in three stages'],
   '1.1.349': ['2026-11-22', 'update', 'Loading placeholders that follow the theme'],
   '1.1.348': ['2026-11-22', 'feature', 'AD audit with old and new values, and a History tab'],
   '1.1.347': ['2026-11-22', 'feature', 'Undo for Active Directory changes'],

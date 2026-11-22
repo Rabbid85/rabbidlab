@@ -330,6 +330,9 @@
     // One thing per column: what kind of account it is, apart from its status.
     col('role', 'Role', '150px', (u) => (u.service ? 0 : u.protected ? 1 : 2), { on: true,
       cell: (u) => (u.service ? chip('Service account', 'ember') : u.protected ? badge('Privileged', 'amber') : '<span class="muted">-</span>') }),
+    // Where each person's offboarding is (offboard.js): the next stage and its day, failed, or complete.
+    col('offboarding', 'Offboarding', '160px', (u) => R.offboard?.sortOf(u.username) ?? 0, { on: true,
+      cell: (u) => R.offboard?.cell(u.username) || '<span class="muted">-</span>', text: (u) => R.offboard?.status(u.username) || '' }),
     // The rest of the account, as Active Directory Users and Computers has it: hidden until picked under Columns.
     col('first', 'First name', 'minmax(110px, 1fr)', (u) => u.first),
     col('last', 'Last name', 'minmax(110px, 1fr)', (u) => u.last),
@@ -827,6 +830,7 @@
     if (fresh || !lists[adPage]) {
       R.skeleton($('dir-table'), 'rows', 8); // until the list is read
       try {
+        if (adPage === 'users') R.offboard?.load();
         lists[adPage] = await page().load();
         say('dir-problem', '');
       } finally {
@@ -888,6 +892,7 @@
       const k = adPage;
       if (!ad) ad = await R.adInfo(); // its first read failed before the domain was known
       if (!ad.state) throw new Error('Not set up.');
+      if (k === 'users') R.offboard?.load(); // the Offboarding column, which draws again itself when it changed
       const list = await AD[k].load();
       return { k, list, failed: '', info: list.info || null }; // info: the audit's DCs and how long it keeps changes
     },
@@ -904,6 +909,17 @@
       if (R.panel.is('ad') && JSON.stringify(dwObj()) !== open) drawDrawer(); // only when the one it shows changed
     },
     areas: () => [$('dir-table')],
+  });
+  // Offboarding: the column and the open panel draw again when someone's stages change, and a stage that ran reads the list again.
+  R.offboard?.onChange(() => {
+    if (adPage === 'users' && lists.users) drawAd();
+    if (R.panel.is('ad') && dw.kind === 'users') drawDrawer();
+  });
+  document.addEventListener('rabbidlab:offboarded', () => {
+    Object.keys(lists).filter((k) => k !== adPage).forEach((k) => delete lists[k]);
+    dw.membersFor = '';
+    if (hist.for) loadHistory({ dn: hist.for });
+    adLive.now();
   });
   // A change undone anywhere: the open list is read again now, and the other pages, a group's members and the attributes when shown.
   document.addEventListener('rabbidlab:undone', () => {
@@ -1089,7 +1105,9 @@
         ...(k === 'users' ? [mi('rename', 'edit', 'Rename…', { off: n !== 1 })] : []), mi('move', 'move', 'Move…')));
     let changes = '';
     if (change && k === 'users') {
-      changes = part(
+      // Offboarding first: what most often happens to a person here, in stages (offboard.js).
+      const leaving = R.offboard && can('ad.enable') ? part(mi('offboard', 'user-minus', n === 1 ? 'Offboard…' : `Offboard ${n} users…`)) : '';
+      changes = leaving + part(
         fly('user', 'Account', onOff(true),
           part(mi('expiry', 'calendar', n === 1 && xs[0].accountExpires ? 'Change account expiration…' : 'Set account expiration…'),
             some(has((u) => u.accountExpires), n, 'expiry-clear', 'calendar', 'Remove account expiration'))),
@@ -1267,6 +1285,7 @@
         drawPicked();
         break;
       case 'open': openDrawer(k, objs[0]); break;
+      case 'offboard': R.offboard?.open(xs.map((u) => u.username)); break;
       case 'openobj': openChanged(objs[0]); break;
       case 'enable':
       case 'disable': {
@@ -2100,7 +2119,11 @@
     const notesOn = sid && R.notesTab ? `ad:${sid}` : '';
     if (notesOn) tabsFor.push(['notes', 'Notes', R.notesTab.count(notesOn, () => { if (R.panel.is('ad')) drawDrawer(); }) || null]);
     if (dw.tab === 'notes' && !notesOn) dw.tab = 'overview';
-    const body = dw.tab === 'notes' ? R.notesTab.pane(notesOn, x.name) : dw.tab === 'attrs' ? dwAttrs(x) : dw.tab === 'history' ? dwHistory(x) : dw.tab === 'members' ? dwMembers(x)
+    // Offboarding (offboard.js), once someone has one.
+    const leaving = k === 'users' && R.offboard?.has(x.username);
+    if (leaving) tabsFor.splice(1, 0, ['offboarding', 'Offboarding']);
+    if (dw.tab === 'offboarding' && !leaving) dw.tab = 'overview';
+    const body = dw.tab === 'offboarding' ? R.offboard.pane(x) : dw.tab === 'notes' ? R.notesTab.pane(notesOn, x.name) : dw.tab === 'attrs' ? dwAttrs(x) : dw.tab === 'history' ? dwHistory(x) : dw.tab === 'members' ? dwMembers(x)
       : dw.tab === 'memberof' ? dwMemberOf(k, x) : dwOverview(k, x);
     const scroll = $('dw-body').scrollTop;
     // Typing in Find keeps its place when the panel is drawn again.
@@ -2109,6 +2132,7 @@
       + `<div class="tabs2 dw-tabs" role="tablist">${tabsFor.map(([t, label, n]) => `<a role="tab" data-dw-tab="${t}"${dw.tab === t ? ' aria-current="true"' : ''}>${esc(label)}${n == null ? '' : `<small>${esc(n.toLocaleString())}</small>`}</a>`).join('')}</div>`
       + `<div class="dw-panel">${body}</div>`;
     $('dw-body').querySelectorAll('[data-mixed]').forEach((b) => { b.indeterminate = true; });
+    R.skeleton.scan($('dw-body'));
     const histSkel = dw.tab === 'history' && $('dw-body').querySelector('[data-dwh-skel]');
     if (histSkel) R.skeleton(histSkel, 'rows', 4);
     if (dw.tab === 'attrs') {
@@ -2125,7 +2149,8 @@
   };
   const openDrawer = (k, x) => {
     const key = String(AD[k].key(x));
-    if (dw.kind !== k || dw.key !== key) Object.assign(dw, { tab: 'overview', members: null, membersFor: '', picks: new Set() });
+    // Someone being offboarded opens on where that is.
+    if (dw.kind !== k || dw.key !== key) Object.assign(dw, { tab: k === 'users' && R.offboard?.active(x.username) ? 'offboarding' : 'overview', members: null, membersFor: '', picks: new Set() });
     dw.kind = k;
     dw.key = key;
     drawDrawer();

@@ -136,6 +136,9 @@ builder.Services.AddHostedService<SensorWorker>();
 // The Activity report by email on a schedule, when it's turned on (Reports.cs).
 builder.Services.AddSingleton<Reports>();
 builder.Services.AddHostedService<ReportWorker>();
+// Offboarding in three stages, run when each is due (Offboarding.cs).
+builder.Services.AddSingleton<Offboarding>();
+builder.Services.AddHostedService<OffboardWorker>();
 
 // Console addresses added in Settings: their aliases in the domain's DNS, and a certificate of their own, which the
 // console shows only to a browser that asks for one of them (ConsoleNames.cs, ConsoleDns.cs).
@@ -254,6 +257,7 @@ app.MapSyncApi();
 app.MapGroupPolicyApi();
 app.MapNotesApi();
 app.MapDirectoryActionsApi();
+app.MapOffboardingApi();
 app.MapChangesApi();
 app.MapLinksApi();
 app.MapSensorsApi();

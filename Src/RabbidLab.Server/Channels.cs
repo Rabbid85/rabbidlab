@@ -310,6 +310,29 @@ public sealed class Channels(DataFolder folder, SettingsStore secrets, IMailSend
         return problem;
     }
 
+    /// <summary>
+    /// An email to one person, through the first email notification that can send, with its server and sender. The answer
+    /// is why it didn't go, or null when it went.
+    /// </summary>
+    public Task<string?> SendTo(string address, MailNote note, CancellationToken stop)
+    {
+        MailSettings? m;
+        lock (file.Gate)
+        {
+            m = Read().Channels.Where(c => c.Kind == "email" && c.Mail is not null).Select(c => c.Mail!).FirstOrDefault(Mail.Ready);
+        }
+        if (m is null)
+        {
+            return Task.FromResult<string?>("No email notification is set up. Add one in Settings > Notifications.");
+        }
+        var one = new MailSettings
+        {
+            Provider = m.Provider, Host = m.Host, Port = m.Port, Security = m.Security, Username = m.Username, Password = m.Password, From = m.From,
+            Tenant = m.Tenant, ClientId = m.ClientId, ClientSecret = m.ClientSecret, To = [address],
+        };
+        return mail.Send(one, note, stop);
+    }
+
     private Task<string?> Post(Channel c, MailNote note, CancellationToken stop) =>
         c.Kind == "email" ? mail.Send(c.Mail ?? new MailSettings(), note, stop)
         : secrets.TryDecrypt(c.Url) is { } url ? sender.Send(c.Kind, url, note, stop)

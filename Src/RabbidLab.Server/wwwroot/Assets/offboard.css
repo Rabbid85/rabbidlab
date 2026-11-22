@@ -1,0 +1,106 @@
+/* Offboarding (offboard.js): the window with its ruler of stages, the Offboarding tab's timeline, and the column. */
+.dialog.ob { width: min(760px, calc(100vw - 32px)); }
+.ob-body { max-height: min(56vh, 560px); margin-top: 14px; padding-right: 6px; overflow-y: auto; }
+.ob-body h3 { margin: 0 0 6px; color: var(--title); font-size: 15px; font-weight: 650; }
+.ob-lead { margin: 0 0 14px; color: var(--muted); font-size: 13px; }
+
+/* The ruler: When, the three stages, Review. */
+.ob-ruler { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; margin-top: 14px; }
+.ob-ruler:empty { display: none; }
+.ob-ruler button { display: grid; justify-items: start; gap: 2px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: none; text-align: left; }
+.ob-ruler button i { display: grid; place-items: center; width: 22px; height: 22px; margin-bottom: 4px; border-radius: 50%; background: color-mix(in srgb, var(--text) 9%, transparent);
+  color: var(--muted); font-size: 11.5px; font-style: normal; font-weight: 700; }
+.ob-ruler button i svg { width: 13px; height: 13px; }
+.ob-ruler button b { color: var(--title); font-size: 12.5px; font-weight: 650; }
+.ob-ruler button small { overflow: hidden; max-width: 100%; color: var(--muted); font-size: 11.5px; white-space: nowrap; text-overflow: ellipsis; }
+.ob-ruler button.on { border-color: var(--accent-line); background: color-mix(in srgb, var(--accent-line) 10%, transparent); }
+.ob-ruler button.on i { background: var(--ember); color: #fff; }
+.ob-ruler button.locked i { background: rgba(95, 212, 160, .16); color: var(--ok); }
+.ob-ruler button.empty small { color: #6D7290; }
+
+/* A step: what it does and its switch, with anything it needs under it. */
+.ob-row { padding: 10px 0; border-bottom: 1px solid var(--line); }
+.ob-row:last-child { border-bottom: 0; }
+.ob-sw { display: flex; align-items: center; justify-content: space-between; gap: 16px; cursor: pointer; }
+.ob-sw span, .ob-seg > span { display: grid; gap: 2px; min-width: 0; }
+.ob-sw b, .ob-seg b { color: var(--title); font-size: 13.5px; font-weight: 600; }
+.ob-sw small, .ob-seg small { color: var(--muted); font-size: 12.5px; line-height: 1.4; }
+.ob-sub { display: grid; grid-template-columns: 150px minmax(0, 1fr); align-items: center; gap: 12px; margin: 10px 0 0; font-size: 12.5px; }
+.ob-sub > span { color: var(--muted); }
+.ob-sub input, .ob-sub select { width: 100%; height: 34px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--panel); color: var(--text); font: inherit; }
+.ob-seg { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 4px 0 12px; border-bottom: 1px solid var(--line); }
+.ob-dim { opacity: .45; }
+.ob-groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 4px 12px; margin-top: 10px; }
+.ob-g { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 4px 0; font-size: 13px; cursor: pointer; }
+.ob-g small { margin-left: auto; color: var(--muted); font-size: 11.5px; }
+.ob-stagehead { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.ob-stagehead span { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12.5px; }
+.ob-stagehead svg { width: 14px; height: 14px; }
+
+/* When: the quick picks, a month to pick a day in, and the time. */
+.ob-quick { margin: 0 0 14px; }
+.ob-when { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 20px; align-items: start; }
+.ob-cal.idle { opacity: .45; pointer-events: none; }
+.ob-cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; color: var(--title); font-size: 13px; }
+.ob-mon { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border-radius: 7px; background: none; }
+.ob-mon svg { width: 14px; height: 14px; }
+.ob-mon svg.flip { transform: scaleX(-1); }
+.ob-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.ob-days i { padding-bottom: 4px; color: #6D7290; font-size: 11px; font-style: normal; text-align: center; }
+.ob-days button { height: 32px; padding: 0; border: 0; border-radius: 7px; background: none; color: var(--text); font-size: 12.5px; }
+.ob-days button:hover:not(:disabled) { background: color-mix(in srgb, var(--text) 8%, transparent); }
+.ob-days button.wknd { color: var(--muted); }
+.ob-days button.today { font-weight: 750; }
+.ob-days button.on { background: var(--ember); color: #fff; }
+.ob-days button:disabled { opacity: .3; cursor: default; }
+.ob-time { display: grid; grid-template-columns: 50px minmax(0, 1fr); align-items: center; gap: 10px; margin-top: 10px; color: var(--muted); font-size: 12.5px; }
+.ob-time select { height: 32px; padding: 0 8px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--panel); color: var(--text); font: inherit; }
+.ob-mini { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.ob-mini li { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; }
+.ob-mini li.off { opacity: .55; }
+.ob-mini i { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: color-mix(in srgb, var(--text) 9%, transparent); font-size: 11.5px; font-style: normal; font-weight: 700; }
+.ob-mini span { display: grid; min-width: 0; }
+.ob-mini b { color: var(--title); font-size: 13px; }
+.ob-mini small, .ob-mini em { color: var(--muted); font-size: 12px; font-style: normal; }
+.ob-whenline { display: flex; align-items: flex-start; gap: 8px; margin: 12px 0 0; color: var(--text); font-size: 13px; }
+.ob-whenline svg { flex: none; width: 15px; height: 15px; margin-top: 2px; color: var(--muted); }
+.ob-whenline.bad, .ob-whenline.bad svg { color: var(--red); }
+
+/* The stages as a timeline: the review, and the Offboarding tab. */
+.ob-tl { display: grid; gap: 4px; margin: 4px 0 0; padding: 0; list-style: none; }
+.ob-st { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 12px; padding: 10px 0; }
+.ob-st.off { opacity: .5; }
+.ob-n { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: color-mix(in srgb, var(--text) 9%, transparent); color: var(--muted);
+  font-size: 12px; font-style: normal; font-weight: 700; }
+.ob-n svg { width: 14px; height: 14px; }
+.ob-st.next .ob-n { background: var(--ember); color: #fff; }
+.ob-st.done .ob-n { background: rgba(95, 212, 160, .16); color: var(--ok); }
+.ob-st.failed .ob-n { background: rgba(255, 107, 125, .16); color: var(--red); }
+.ob-st p { display: flex; align-items: center; gap: 8px; margin: 2px 0 2px; color: var(--title); font-size: 13.5px; }
+.ob-st > div > small { display: block; margin-bottom: 6px; font-size: 12.5px; }
+.ob-st .small { margin-top: 8px; }
+.ob-steps { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.ob-steps li { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 8px; align-items: start; font-size: 13px; }
+.ob-steps li > svg { width: 15px; height: 15px; margin-top: 1px; color: var(--muted); }
+.ob-steps li.done > svg { color: var(--ok); }
+.ob-steps li.failed > svg { color: var(--red); }
+.ob-steps li span { display: grid; gap: 2px; min-width: 0; }
+.ob-steps li b { font-weight: 500; }
+.ob-steps li small { color: var(--muted); font-size: 12px; line-height: 1.4; }
+.ob-steps li.failed small { color: var(--red); }
+.ob-dot { width: 6px; height: 6px; margin: 7px 0 0 5px; border-radius: 50%; background: color-mix(in srgb, var(--text) 30%, transparent); }
+
+/* The window's last button when it changes things at once. */
+#ob-next.danger.solid { border: 0; background: var(--red); color: #fff; font-weight: 600; }
+
+/* The Users column. */
+.ob-due { display: inline-flex; align-items: center; gap: 6px; min-width: 0; color: var(--text); font-size: 12.5px; }
+.ob-due svg { flex: none; width: 14px; height: 14px; color: var(--amber); }
+.ob-due.failed svg { color: var(--red); }
+.ob-due.done svg, .ob-due.cancelled svg { color: var(--muted); }
+
+@media (max-width: 720px) {
+  .ob-ruler { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .ob-when { grid-template-columns: minmax(0, 1fr); }
+  .ob-sub { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+}

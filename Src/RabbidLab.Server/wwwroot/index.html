@@ -22,6 +22,7 @@
 <link rel="stylesheet" href="Assets/notes.css">
 <link rel="stylesheet" href="Assets/sync.css">
 <link rel="stylesheet" href="Assets/report.css">
+<link rel="stylesheet" href="Assets/offboard.css">
 <link rel="stylesheet" href="Assets/news.css">
 <link rel="stylesheet" href="Assets/edition.css">
 <link rel="stylesheet" href="Assets/themes.css">
@@ -38,6 +39,7 @@
 <script src="Assets/grid.js" defer></script>
 <script src="Assets/filter.js" defer></script>
 <script src="Assets/people.js" defer></script>
+<script src="Assets/offboard.js" defer></script>
 <script src="Assets/users.js" defer></script>
 <script src="Assets/alerts.js" defer></script>
 <script src="Assets/report.js" defer></script>
@@ -1396,6 +1398,16 @@
   <div class="ticks"><label class="tick"><input type="checkbox" id="reset-change" checked>User must change password at next sign-in</label></div>
   <p class="hint problem" id="reset-problem" hidden></p>
   <div class="dialog-foot"><button type="button" id="reset-cancel">Cancel</button><button type="button" class="primary" id="reset-go">Reset password</button></div>
+</dialog>
+
+<!-- Offboarding in three stages counted from the last day (offboard.js). -->
+<dialog class="dialog ob" id="ob-dialog" aria-labelledby="ob-title">
+  <h2 id="ob-title">Offboard</h2>
+  <p class="dialog-lead" id="ob-lead"></p>
+  <div class="ob-ruler" id="ob-ruler"></div>
+  <div class="ob-body" id="ob-body"></div>
+  <p class="hint problem" id="ob-problem" hidden></p>
+  <div class="dialog-foot"><button type="button" id="ob-cancel">Cancel</button><span class="grow"></span><button type="button" id="ob-back">Back</button><button type="button" class="primary" id="ob-next">Next</button></div>
 </dialog>
 
 <!-- A password Rabbid Lab made, shown this once. -->
