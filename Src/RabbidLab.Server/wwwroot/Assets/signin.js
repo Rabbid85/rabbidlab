@@ -127,7 +127,7 @@
   // Signed out for being idle (console.js): said here, and signing in goes back to the page they were on.
   const idleFor = Number(new URLSearchParams(location.search).get('idle'));
   if (idleFor > 0) {
-    $('idle-note').textContent = `You were signed out after ${idleFor % 60 ? `${idleFor} minutes` : idleFor === 60 ? '1 hour' : `${idleFor / 60} hours`} without activity.`;
+    $('idle-text').textContent = `You were signed out after ${idleFor % 60 ? `${idleFor} minutes` : idleFor === 60 ? '1 hour' : `${idleFor / 60} hours`} without activity.`;
     $('idle-note').hidden = false;
   }
   const home = () => {

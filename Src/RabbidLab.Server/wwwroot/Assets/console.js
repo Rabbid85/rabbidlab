@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.317', [
+    'The signed-out note on the sign-in page is now a grey box with light words and an amber clock, instead of amber words on a brown box.']],
   ['1.1.316', [
     'The sign-in page no longer jumps sideways when a scroll bar appears, for example when the signed-out note shows on a short window.']],
   ['1.1.315', [

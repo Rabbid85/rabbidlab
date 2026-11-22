@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.317 (2026-11-21)
+
+- The signed-out note on the sign-in page is now a grey box with light words and an amber clock, instead of amber words on a brown box.
+
 ## 1.1.316 (2026-11-21)
 
 - The sign-in page no longer jumps sideways when a scroll bar appears, for example when the signed-out note shows on a short window.

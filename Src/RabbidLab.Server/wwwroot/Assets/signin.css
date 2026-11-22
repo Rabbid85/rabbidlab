@@ -113,7 +113,11 @@ button.go.locked, button.go.locked:hover { background: rgba(255, 107, 125, .14);
 /* Plain HTTP from another computer: red when sign-in is refused, amber when AllowPlainHttp lets it through. */
 .plain-note { margin: 0 0 16px; }
 .plain-note.warn { background: rgba(242, 190, 107, .07); border-color: rgba(242, 190, 107, .3); color: #F2CE8F; }
-.auth-note { margin: 0 0 16px; padding: 10px 13px; border-radius: 9px; background: rgba(242, 190, 107, .07); border: 1px solid rgba(242, 190, 107, .3); color: #F2CE8F; font-size: 13.5px; line-height: 1.45; }
+/* Signed out for being idle: a grey box and light words, the amber only on its clock. */
+.auth-note { display: flex; align-items: center; gap: 10px; margin: 0 0 16px; padding: 10px 13px; border-radius: 9px; background: #161926; border: 1px solid var(--line-strong);
+  color: #E6E8F2; font-size: 13.5px; line-height: 1.45; }
+.auth-note[hidden] { display: none; }
+.auth-note svg { flex: none; width: 17px; height: 17px; color: #F2BE6B; }
 /* Local account or Active Directory: a link under the button, close under the domain line when that shows, with an icon of
    what it switches to. */
 .other-kind { align-self: center; margin-top: 12px; padding: 4px 8px; border: 0; background: transparent; color: var(--muted); font-size: 14px; font-weight: 600; }
