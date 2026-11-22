@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.364', [
+    'Network scans no longer flash. While a range is pinged, what the ping hasn’t reached yet is dimmed, and a line moves along its strip to where it has got to.',
+    'While devices are identified, those not done yet stay dimmed, the ones being asked breathe slowly, and each brightens once as it is done.']],
   ['1.1.363', [
     'Network shows each device in its type’s colour again, on the strips and the map. The console’s security policy was blocking the colours, so devices looked like free addresses.',
     'Free addresses are lighter on the strips and the map.',
@@ -1159,6 +1162,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.364': ['2026-11-22', 'fix', 'A calmer Network scan'],
   '1.1.363': ['2026-11-22', 'fix', 'Network colours, and what a scan is working on'],
   '1.1.362': ['2026-11-22', 'feature', 'Network: address strips above the list', 'strips.jpg'],
   '1.1.361': ['2026-11-22', 'feature', 'Network: everything on your network, found and identified', 'network.jpg'],

@@ -70,17 +70,21 @@
 .net-u.dim { opacity: .15; }
 .net-u:not(.free):hover { filter: brightness(1.35); }
 .net-u.on { z-index: 1; box-shadow: 0 0 0 2px #fff; }
-/* What the scan is working on just now pulses until it's done: an address being pinged, a device being identified. The
-   ping reaching an address lights its tick a moment; a device found grows in white over its neighbours, glows in its
-   type's colour, then cools into it. */
-.net-u.busy { z-index: 1; animation: net-ubusy 1.1s ease-in-out infinite; }
-@keyframes net-ubusy { 0%, 100% { filter: none; box-shadow: none; } 50% { filter: brightness(1.6); box-shadow: 0 0 6px 1px color-mix(in srgb, var(--accent-soft) 70%, transparent); } }
-.net-u.free.busy { animation-name: net-ubusy-free; }
-@keyframes net-ubusy-free { 0%, 100% { background: #2A2F42; } 50% { background: color-mix(in srgb, var(--accent-soft) 65%, #2A2F42); } }
-.net-u.swept { animation: net-swept .9s ease-out; }
-@keyframes net-swept { 0% { background: var(--accent-soft); filter: brightness(1.3); } 100% { filter: none; } }
-.net-u.free.swept { animation-name: net-swept-free; }
-@keyframes net-swept-free { 0% { background: color-mix(in srgb, var(--accent-soft) 70%, transparent); } 100% { background: #2A2F42; } }
+/* A scan, calmly (network.js stage): what the ping hasn't reached yet is dimmed and a line glides to where it has got
+   to; then devices not identified yet stay dimmed, the ones being asked just now breathe slowly and out of step, and
+   each brightens once as it's done. A new device grows in white, glows in its type's colour, then cools into it. */
+.net-strip { position: relative; overflow-x: clip; } /* the line's trail stays inside the strip */
+.net-u { transition: opacity .6s ease; }
+.net-u.ahead { opacity: .28; }
+.net-u.waiting { opacity: .4; }
+.net-u.asking { animation: net-asking 2.4s ease-in-out var(--d, 0s) infinite; }
+@keyframes net-asking { 0%, 100% { opacity: .4; } 50% { opacity: .9; } }
+.net-u.settle { animation: net-settle .9s ease-out; }
+@keyframes net-settle { 0% { filter: brightness(1.9); } 100% { filter: none; } }
+.net-head { position: absolute; top: -4px; bottom: -4px; left: var(--p, 0%); z-index: 3; width: 2px; margin-left: -1px; border-radius: 2px; background: var(--accent-soft);
+  box-shadow: 0 0 10px 2px color-mix(in srgb, var(--accent-soft) 55%, transparent); transition: left 1.1s linear; pointer-events: none; }
+.net-head::before { content: ""; position: absolute; top: 4px; bottom: 4px; right: 2px; width: 90px; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent-soft) 28%, transparent)); }
+.net-head[hidden] { display: none; }
 .net-u.arrive { z-index: 2; animation: net-found 1.9s cubic-bezier(.2, .7, .3, 1) var(--arrive-at, 0ms) both; }
 @keyframes net-found {
   0% { opacity: 0; transform: scaleY(0); background: #fff; box-shadow: 0 0 0 0 transparent; }
@@ -89,8 +93,9 @@
   100% { box-shadow: 0 0 0 0 transparent; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .net-u.swept, .net-u.arrive, .net-u.busy, .net-scan.turning svg { animation: none; }
-  .net-u.busy { box-shadow: 0 0 0 1px var(--accent-soft); }
+  .net-u.asking, .net-u.settle, .net-u.arrive, .net-scan.turning svg { animation: none; }
+  .net-u.asking { opacity: .75; }
+  .net-u, .net-head { transition: none; }
 }
 
 /* The list's bar: List or Map; Group by and Compact or Relaxed are only for the list. */
@@ -129,13 +134,11 @@
 .net-n.dim { opacity: .18; }
 .net-n:not(.free):hover { filter: brightness(1.25); }
 .net-n.on { z-index: 1; box-shadow: 0 0 0 2px #fff; }
-.net-n.busy { z-index: 1; animation: net-nbusy 1.1s ease-in-out infinite; }
-@keyframes net-nbusy { 0%, 100% { box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--accent-soft) 60%, transparent); } 50% { box-shadow: 0 0 0 2px var(--accent-soft), 0 0 10px 1px color-mix(in srgb, var(--accent-soft) 55%, transparent); } }
-.net-n.free.busy { animation-name: net-nbusy-free; }
-@keyframes net-nbusy-free { 0%, 100% { color: #5C6380; background: transparent; } 50% { color: #fff; background: color-mix(in srgb, var(--accent-soft) 35%, transparent); } }
-.net-n.swept { animation: net-swept .9s ease-out; }
-.net-n.free.swept { animation-name: net-nswept-free; }
-@keyframes net-nswept-free { 0% { color: #fff; background: color-mix(in srgb, var(--accent-soft) 45%, transparent); } 100% { background: transparent; } }
+.net-n { transition: opacity .6s ease; }
+.net-n.ahead { opacity: .28; }
+.net-n.waiting { opacity: .4; }
+.net-n.asking { animation: net-asking 2.4s ease-in-out var(--d, 0s) infinite; }
+.net-n.settle { animation: net-settle .9s ease-out; }
 .net-n.arrive { z-index: 2; animation: net-nfound 1.9s cubic-bezier(.2, .7, .3, 1) var(--arrive-at, 0ms) both; }
 @keyframes net-nfound {
   0% { opacity: 0; transform: scale(.6); background: #fff; box-shadow: 0 0 0 0 transparent; }
@@ -144,8 +147,9 @@
   100% { box-shadow: 0 0 0 0 transparent; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .net-n.swept, .net-n.arrive, .net-n.busy { animation: none; }
-  .net-n.busy { box-shadow: 0 0 0 2px var(--accent-soft); }
+  .net-n.asking, .net-n.settle, .net-n.arrive { animation: none; }
+  .net-n.asking { opacity: .75; }
+  .net-n { transition: none; }
 }
 
 /* The side panel: open ports, a line each. */

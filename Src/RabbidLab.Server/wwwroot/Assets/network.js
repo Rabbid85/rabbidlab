@@ -161,7 +161,6 @@
   };
   let stripsDrawn = '';
   let keyDrawn = '';
-  const swept = {}; // range id -> how many of its ticks the sweep has lit
   const drawStrips = (rows) => {
     const box = $('net-strips');
     if (!data) {
@@ -179,7 +178,7 @@
       const on = data.devices.filter((d) => d.range === r.id);
       const ticks = Math.ceil(s.n / s.per);
       return `<div class="net-srow" data-net-range="${esc(r.id)}"><div class="net-slabel"><b>${esc(r.name)}</b><span class="mono">${esc(r.cidr)}</span></div>`
-        + `<div class="net-strip${ticks > 254 ? ' fine' : ''}" data-ticks="${ticks}">${Array.from({ length: ticks }, (_, i) => tick(s, i, byIp, inList)).join('')}</div>`
+        + `<div class="net-strip${ticks > 254 ? ' fine' : ''}" data-ticks="${ticks}">${Array.from({ length: ticks }, (_, i) => tick(s, i, byIp, inList)).join('')}<i class="net-head" hidden></i></div>`
         + `<div class="net-sside"><small>${on.filter((d) => d.online).length.toLocaleString()} answering · ${Math.max(0, r.size - on.length).toLocaleString()} free</small><span class="net-sprog"></span></div>`
         + (may() ? `<button type="button" class="gcols" data-net-scanone="${esc(r.id)}" data-tip="Scan ${esc(r.name)}" aria-label="Scan ${esc(r.name)}">${svg('refresh')}</button>` : '<span></span>')
         + '</div>';
@@ -196,15 +195,43 @@
     }
     sweep(ranges);
   };
-  // What the scan is working on right now (scan.busy): the addresses being pinged, then the devices being identified.
-  // Each pulses until it's done, so a slow address or a device that takes a while shows the scan is still going.
+  // How a scan shows on the strips and the map, calmly. While a range is pinged, what the ping hasn't reached yet is
+  // dimmed, and on a strip a line glides to where it has got to. While devices are identified, those not done yet stay
+  // dimmed, the ones being asked just now (scan.busy) breathe slowly, out of step, and each brightens once as it's done.
   const busyNow = () => new Set((data?.scan?.busy || []).map(ipNum));
-  const markBusy = (row, per, busy) => row.querySelectorAll('[data-n]').forEach((c) => {
-    const a = Number(c.dataset.n);
-    let on = false;
-    for (let x = a; x < a + per && !on; x += 1) on = busy.has(x);
-    c.classList.toggle('busy', on);
-  });
+  const waitingStrips = new Set();
+  const waitingMap = new Set();
+  // was: the devices still waiting at the last look, so one done since brightens even when its tick was drawn again.
+  const stage = (sec, r, s, per, busy, was) => {
+    const sc = data.scan;
+    const mine = !!sc && sc.ranges.includes(r.id);
+    const pinging = mine && !sc.identifying;
+    const naming = mine && sc.identifying;
+    const done = Math.min(r.done || 0, s.n);
+    const since = sc ? ms(sc.started) : 0;
+    sec.querySelectorAll('[data-n]').forEach((c, i) => {
+      const a = Number(c.dataset.n);
+      c.classList.toggle('ahead', pinging && a - s.first >= Math.ceil(done / per) * per);
+      const d = c.dataset.netCell ? devOf(c.dataset.netCell) : null;
+      const waits = naming && !!d && d.online && ms(d.last) < since;
+      if (d && !waits && was.has(d.id)) {
+        c.classList.remove('settle');
+        void c.offsetWidth;
+        c.classList.add('settle');
+      }
+      if (d) { if (waits) was.add(d.id); else was.delete(d.id); }
+      c.classList.toggle('waiting', waits);
+      let asked = false;
+      for (let x = a; x < a + per && naming && !asked; x += 1) asked = busy.has(x);
+      c.classList.toggle('asking', asked);
+      if (asked) c.style.setProperty('--d', `${-((i * 0.37) % 2.4).toFixed(2)}s`);
+    });
+    const head = sec.querySelector('.net-head');
+    if (head) {
+      head.hidden = !pinging || !done || done >= s.n; // only on the range being pinged now
+      head.style.setProperty('--p', `${((done / s.n) * 100).toFixed(2)}%`);
+    }
+  };
   // Where a range has got to: the last address pinged, or how many devices have been identified.
   const progress = (r, s) => {
     const sc = data.scan;
@@ -212,32 +239,16 @@
     const done = Math.min(r.done || 0, s.n);
     return sc.identifying ? `Identifying ${sc.asked} of ${sc.found}` : !done ? 'Queued' : done >= s.n ? 'Pinged' : ipOf(s.first + done - 1);
   };
-  // While a range is pinged, the ticks reached since the last look light up one after another.
   const sweep = (ranges) => {
-    const sc = data.scan;
     const busy = busyNow();
     for (const r of ranges) {
       const row = $('net-strips').querySelector(`[data-net-range="${CSS.escape(r.id)}"]`);
       if (!row) continue;
       const s = spanOf(r);
-      const mine = !!sc && sc.ranges.includes(r.id);
-      const done = Math.min(r.done || 0, s.n);
       row.querySelector('.net-sprog').textContent = progress(r, s);
-      markBusy(row, s.per, busy);
-      if (!mine || sc.identifying) { swept[r.id] = 0; continue; }
-      const to = Math.ceil(done / s.per);
-      const from = Math.min(swept[r.id] || 0, to);
-      const ticks = row.querySelectorAll('.net-u');
-      for (let i = from; i < to; i += 1) {
-        const c = ticks[i];
-        c.classList.remove('swept');
-        void c.offsetWidth;
-        c.style.animationDelay = `${Math.round(((i - from) / Math.max(1, to - from)) * 900)}ms`;
-        c.classList.add('swept');
-      }
-      swept[r.id] = to;
+      stage(row, r, s, s.per, busy, waitingStrips);
     }
-    document.querySelectorAll('[data-net-scanone]').forEach((b) => { b.disabled = !!sc || acting > 0; });
+    document.querySelectorAll('[data-net-scanone]').forEach((b) => { b.disabled = !!data.scan || acting > 0; });
   };
 
   // Map, in the list's place: every address of every range that's on, numbered by its last part. A device is filled in
@@ -264,7 +275,6 @@
       + ` data-tip="${esc(`${d.ip} · ${nameOf(d)} · ${kindOf(d)[0]} · ${pingText(d)}`)}" aria-label="${esc(`${d.ip}, ${nameOf(d)}`)}">${o}</button>`;
   };
   let mapDrawn = '';
-  const mapSwept = {}; // range id -> how many of its addresses the sweep has lit
   const drawMap = (rows) => {
     const box = $('net-maps');
     if (!data) return;
@@ -291,27 +301,13 @@
         if (t && Date.now() - t < 1900) { c.style.setProperty('--arrive-at', `${t - Date.now()}ms`); c.classList.add('arrive'); }
       });
     }
-    // While a range is pinged, the addresses reached since the last look light up one after another.
-    const sc = data.scan;
     const busy = busyNow();
     for (const r of ranges) {
       const sec = box.querySelector(`[data-net-range="${CSS.escape(r.id)}"]`);
       if (!sec) continue;
       const s = spanOf(r);
-      const mine = !!sc && sc.ranges.includes(r.id);
-      const done = Math.min(r.done || 0, s.n);
       sec.querySelector('.net-rprog').textContent = progress(r, s);
-      markBusy(sec, 1, busy);
-      if (!mine || sc.identifying) { mapSwept[r.id] = 0; continue; }
-      const from = Math.min(mapSwept[r.id] || 0, done);
-      const lit = [...sec.querySelectorAll('.net-n')].filter((c) => { const k = Number(c.dataset.n) - s.first; return k >= from && k < done; });
-      lit.forEach((c, k) => {
-        c.classList.remove('swept');
-        void c.offsetWidth;
-        c.style.animationDelay = `${Math.round((k / Math.max(1, lit.length)) * 900)}ms`;
-        c.classList.add('swept');
-      });
-      mapSwept[r.id] = done;
+      stage(sec, r, s, 1, busy, waitingMap);
     }
   };
 
@@ -398,7 +394,16 @@
     draw();
     drawSettings();
     if (data?.scan) soon();
+    if (wanted && devOf(wanted)) openDevice(devOf(wanted));
+    wanted = '';
   };
+  // Another page asks for a device (Ctrl+K search): this page, with it open.
+  let wanted = '';
+  R.openNetwork = (id) => {
+    if (R.where()[0] === 'network' && devOf(id)) openDevice(devOf(id));
+    else { wanted = id; location.hash = '#network'; }
+  };
+  R.networkNow = () => data;
   // Every second while a scan runs, so the sweep and each device show as they happen; every 15 seconds otherwise.
   // soon(): a scan has just started (here or found running), so the next look is in a second, not at the slow pace.
   const soon = () => setTimeout(() => live.now(), 900);

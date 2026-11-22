@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.364 (2026-11-22)
+
+- Network scans no longer flash. While a range is pinged, what the ping hasn’t reached yet is dimmed, and a line moves along its strip to where it has got to.
+- While devices are identified, those not done yet stay dimmed, the ones being asked breathe slowly, and each brightens once as it is done.
+
 ## 1.1.363 (2026-11-22)
 
 - Network shows each device in its type’s colour again, on the strips and the map. The console’s security policy was blocking the colours, so devices looked like free addresses.
