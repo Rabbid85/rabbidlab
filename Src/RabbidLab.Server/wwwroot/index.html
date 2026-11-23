@@ -27,6 +27,7 @@
 <link rel="stylesheet" href="Assets/printq.css">
 <link rel="stylesheet" href="Assets/people-flows.css">
 <link rel="stylesheet" href="Assets/lifecycle.css">
+<link rel="stylesheet" href="Assets/apps.css">
 <link rel="stylesheet" href="Assets/alerts-page.css">
 <link rel="stylesheet" href="Assets/network.css">
 <link rel="stylesheet" href="Assets/cloud.css">
@@ -53,6 +54,7 @@
 <script src="Assets/users.js" defer></script>
 <script src="Assets/people-flows.js" defer></script>
 <script src="Assets/lifecycle.js" defer></script>
+<script src="Assets/apps.js" defer></script>
 <script src="Assets/alerts-page.js" defer></script>
 <script src="Assets/alerts.js" defer></script>
 <script src="Assets/report.js" defer></script>
@@ -257,6 +259,8 @@
   <a href="#exchange" data-page="exchange" title="Exchange" data-can="cloud.view cloud.connect"><svg><use href="#i-mail"/></svg><span>Exchange</span></a>
   <a href="#m365" data-page="m365" title="Microsoft 365" data-can="cloud.view cloud.connect"><svg><use href="#i-license"/></svg><span>Microsoft 365</span></a>
   <a href="#azure" data-page="azure" title="Azure" data-can="cloud.view cloud.connect"><svg><use href="#i-cloud"/></svg><span>Azure</span></a>
+  <p class="rail-label" data-can="apps.view">Apps</p>
+  <a href="#apps" data-page="apps" title="Connected apps" data-can="apps.view"><svg><use href="#i-plug"/></svg><span>Connected apps</span><small id="rail-apps"></small></a>
   <p class="rail-label" data-can="sensors.alerts">Alerts</p>
   <a href="#alerts" data-page="alerts" id="rail-alerts" title="Alerts" data-can="sensors.alerts"><svg><use href="#i-bell"/></svg><span>Alerts</span><small id="rail-alerts-n"></small></a>
   <p class="rail-label" data-can="ad.view">Automation</p>
@@ -1314,6 +1318,32 @@
     </div>
   </section>
 
+  <!-- Connected apps: the apps, and the access rules that give their groups and roles to the members of Active Directory groups (apps.js). -->
+  <section class="page home apps-page" id="page-apps" data-page="apps" data-title="Connected apps" hidden>
+    <header class="hero" id="ap-hero">
+      <p class="eyebrow">Apps</p>
+      <h1 class="hero-title">Connected apps</h1>
+      <p class="hero-lead"><b id="ap-state"></b> <span>Members of Active Directory groups get accounts, groups and roles in these apps. Every change is shown before it is made.</span></p>
+      <div class="hero-row">
+      <div class="hero-stats">
+        <div><b id="ap-n-apps"><i class="sk sk-num"></i></b><span><svg><use href="#i-plug"/></svg>Connected apps</span></div>
+        <div><b id="ap-n-people"><i class="sk sk-num"></i></b><span><svg><use href="#i-user"/></svg>People with an account</span></div>
+        <div><b id="ap-n-diff"><i class="sk sk-num"></i></b><span><svg><use href="#i-refresh"/></svg>Differences from the rules</span></div>
+        <div><b id="ap-n-bad"><i class="sk sk-num"></i></b><span><svg><use href="#i-alert"/></svg>Need attention</span></div>
+      </div>
+      </div>
+    </header>
+    <div class="pf-page-body">
+      <div class="dbar"><div class="tabs2" id="ap-tabs" role="tablist"><a role="tab" data-ap-tab="apps" aria-current="true"><svg><use href="#i-plug"/></svg>Apps <small id="ap-t-apps"></small></a><a role="tab" data-ap-tab="rules"><svg><use href="#i-link"/></svg>Access rules <small id="ap-t-rules"></small></a></div></div>
+      <div class="dbar"><button type="button" class="small primary" id="ap-new" hidden><svg><use href="#i-plus"/></svg>Connect an app</button><button type="button" class="small primary" id="ap-rule" hidden><svg><use href="#i-plus"/></svg>Add a rule</button>
+        <button type="button" class="small" id="ap-acts" disabled hidden>Actions<span class="cnt" hidden></span><svg><use href="#i-chevron-down"/></svg></button>
+        <button type="button" class="small" id="ap-review" hidden><svg><use href="#i-list"/></svg>Review changes<span class="cnt" hidden></span></button><span class="grow"></span><span class="bar-note" id="ap-count"></span></div>
+      <div class="table adt drows" id="ap-list"></div>
+      <div class="table adt drows" id="ap-rules" hidden></div>
+      <p class="hint problem" id="ap-problem" hidden></p>
+    </div>
+  </section>
+
   <!-- Attribute browser: the directory as a tree, and every attribute of whatever's picked (directory.js). -->
   <section class="page home dir-top people-page attrs-page" id="page-attrs" data-page="attrs" data-title="Attribute browser" data-lead="Every OU, container and object in the domain, with all of its attributes." hidden>
   <div class="dir-area">
@@ -1673,6 +1703,28 @@
   <div class="pf-body" id="pf-run-body"></div>
   <p class="hint problem" id="pf-run-problem" hidden></p>
   <div class="dialog-foot"><button type="button" id="pf-run-cancel">Cancel</button><button type="button" class="primary" id="pf-run-go">Run</button></div>
+</dialog>
+<!-- Connected apps: connect an app or change its connection, give access with a rule, and review the changes waiting (apps.js). -->
+<dialog class="dialog ap-dialog" id="ap-connect" aria-labelledby="ap-connect-title">
+  <h2 id="ap-connect-title">Connect an app</h2>
+  <p class="dialog-lead" id="ap-connect-lead"></p>
+  <div class="ap-body" id="ap-connect-body"></div>
+  <p class="hint problem" id="ap-connect-problem" hidden></p>
+  <div class="dialog-foot"><button type="button" id="ap-connect-cancel">Cancel</button><button type="button" class="primary" id="ap-connect-go">Connect</button></div>
+</dialog>
+<dialog class="dialog ap-dialog" id="ap-give" aria-labelledby="ap-give-title">
+  <h2 id="ap-give-title">Give access</h2>
+  <p class="dialog-lead">Members of the Active Directory group get the groups and roles you pick, one or several in each app, with an account made for anyone who has none. What it will do shows before anything changes.</p>
+  <div class="ap-body" id="ap-give-body"></div>
+  <p class="hint problem" id="ap-give-problem" hidden></p>
+  <div class="dialog-foot"><button type="button" id="ap-give-cancel">Cancel</button><button type="button" class="primary" id="ap-give-go">Give access</button></div>
+</dialog>
+<dialog class="dialog ap-dialog" id="ap-review-d" aria-labelledby="ap-review-title">
+  <h2 id="ap-review-title">Changes waiting</h2>
+  <p class="dialog-lead">What the access rules would change in each app. Nothing is changed until you select Apply. Clear the check box on anything to leave it as it is.</p>
+  <div class="ap-body" id="ap-review-body"></div>
+  <p class="hint problem" id="ap-review-problem" hidden></p>
+  <div class="dialog-foot"><span class="bar-note" id="ap-review-sum"></span><button type="button" id="ap-review-cancel">Cancel</button><button type="button" class="primary" id="ap-review-go">Apply</button></div>
 </dialog>
 <!-- Lifecycle, Offboard…: who, before the Offboard window opens for them (lifecycle.js). -->
 <dialog class="dialog" id="lc-pick" aria-labelledby="lc-pick-title">

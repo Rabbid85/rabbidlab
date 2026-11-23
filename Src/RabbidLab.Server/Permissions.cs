@@ -61,6 +61,8 @@ public static class Permissions
     public const string NetworkSettings = "network.settings";
     public const string CloudView = "cloud.view";
     public const string CloudConnect = "cloud.connect";
+    public const string AppsView = "apps.view";
+    public const string AppsManage = "apps.manage";
 
     public sealed record Action(string Key, string Name, string About);
 
@@ -155,6 +157,11 @@ public static class Permissions
         [
             new(CloudView, "View Microsoft cloud", "Entra ID, Exchange, Microsoft 365 and Azure: users, groups, devices, mailboxes, licences and virtual machines. Read-only."),
             new(CloudConnect, "Connect Microsoft cloud", "Connect a Microsoft 365 tenant with a Global Administrator sign-in, and disconnect it, which deletes Rabbid Lab's app registration there."),
+        ]),
+        new("apps", "Connected apps", "link",
+        [
+            new(AppsView, "View connected apps", "The apps Rabbid Lab is connected to, their accounts, groups and roles, and the access rules."),
+            new(AppsManage, "Manage connected apps", "Connect and remove apps, match accounts, change access rules and apply their changes. This permission can give anyone a group or role in a connected app."),
         ]),
         new("windows", "Windows accounts", "key",
         [

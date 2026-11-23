@@ -307,6 +307,47 @@
   <p>The run happens at that time with your permissions as they are then. If the workflow was deleted or disabled, or you no longer have a permission one of its steps requires, the run fails and says why. Run it again or cancel it from the Lifecycle page.</p>
 </article>
 
+<article data-key="apps" data-group="Connected apps" data-title="Connect an app and give access">
+  <p><a href="#apps">Connected apps</a> reads the accounts, groups and roles in other apps, matches each account to an Active Directory user, and gives groups and roles there to the members of Active Directory groups. Nothing changes in an app until an access rule gives something, and every change is listed first.</p>
+  <h3>Connect an app</h3>
+  <ol>
+    <li>Select <b>Connect an app</b> and select the kind.</li>
+    <li>Enter a name and the settings for that kind.</li>
+    <li>Select <b>Connect</b>. The app is read once. If that fails, nothing is saved and the reason is shown.</li>
+  </ol>
+  <ul>
+    <li><b>SCIM 2.0:</b> the base URL (https) and a bearer token. For any app with a SCIM endpoint.</li>
+    <li><b>Google Workspace:</b> the domain, an admin to act as, and the JSON key of a Google Cloud service account with domain-wide delegation for the scopes <code>admin.directory.user</code> and <code>admin.directory.group</code>.</li>
+    <li><b>PowerShell scripts:</b> for any other app, such as an ERP or a database. See below.</li>
+  </ul>
+  <p>Secrets are stored encrypted on the server and are never sent back to a browser.</p>
+  <h3>Match accounts</h3>
+  <p>An account is matched to the Active Directory user with the same email address or username, as set under <b>Provisioning</b>. The <b>Accounts</b> tab shows each account: Matched, Not matched, Two accounts (two accounts match one user, so neither is used until you select <b>Use this one</b>) or Not a person. <b>Match to…</b> matches an account by hand.</p>
+  <h3>Give access with a rule</h3>
+  <ol>
+    <li>Select <b>Give access</b> on an app, or <b>Add a rule</b> on the Access rules tab.</li>
+    <li>Select the Active Directory group.</li>
+    <li>For each app, select the groups and roles its members get. You can select several.</li>
+    <li>Select whether members get them automatically or after you approve each one.</li>
+    <li><b>What happens</b> lists each change. Select <b>Give access</b>.</li>
+  </ol>
+  <p>A member with no account gets one, unless that is turned off under Provisioning. Only direct members of the Active Directory group count.</p>
+  <h3>Review changes</h3>
+  <p><b>Review changes</b> lists every difference between the rules and the apps: accounts to make, groups and roles to give, ones given by hand in the app, and what is blocked. Select what to apply. Taking a group or role away is never automatic. An account left in no group is disabled in the app.</p>
+  <p>Apps are read every 15 minutes. Two alerts are available under Alerts: a connected app stops syncing, and someone gets a role by hand in an app.</p>
+  <h3>PowerShell scripts</h3>
+  <p>An administrator of the server creates a folder under <code>Connectors</code> in the data folder and puts the scripts in it. The console selects the folder by name; it cannot upload or change a script. The scripts run as the <span data-app>Rabbid Lab</span> service, so only place scripts you trust there.</p>
+  <ul>
+    <li><code>Read.ps1</code> prints JSON: <code>{ "accounts": [{ "id", "name", "email", "login", "active" }], "groups": [{ "id", "name", "type", "members": ["account id"] }] }</code></li>
+    <li><code>New-Account.ps1 -Username -Name -Email -First -Last</code> prints the new account's id.</li>
+    <li><code>Add-Member.ps1</code> and <code>Remove-Member.ps1</code> take <code>-Group</code> and <code>-Account</code>.</li>
+    <li><code>Disable-Account.ps1 -Account</code></li>
+  </ul>
+  <p>The optional secret is in <code>$env:RABBIDLAB_SECRET</code>. A script that fails must exit with a code other than 0. Each script has two minutes.</p>
+  <h3>Permissions</h3>
+  <p><b>View connected apps</b> shows the page. <b>Manage connected apps</b> connects apps, matches accounts, changes rules and applies changes.</p>
+</article>
+
 <article data-key="dir-groups" data-group="Active Directory" data-title="Create groups and manage members">
   <h3>Create a group</h3>
   <ol>

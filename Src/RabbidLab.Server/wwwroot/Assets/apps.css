@@ -1,0 +1,43 @@
+/* Connected apps (apps.js): the page uses the console's grid, side panel and windows; these are the few pieces of its own. */
+/* The side panel: a line saying how far an app is from the rules, account filters, settings rows, and text that wraps. */
+.ap-diff { display: flex; align-items: center; gap: 12px; }
+.ap-diff .dw-link { flex: none; margin-left: auto; }
+.ap-show { margin: 0 0 12px; flex-wrap: wrap; }
+.ap-show button small { margin-left: 6px; color: var(--muted); }
+.mrow.ap-off .two b { color: #8B90A5; }
+.ap-wrap { white-space: normal; overflow-wrap: anywhere; }
+.ap-set { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 0 0 8px; color: var(--text); font-size: 13.5px; }
+.dw-list .mrow > .small, .dw-list .mrow > .dw-link { flex: none; }
+.dw-list .mrow > .small { display: inline-flex; align-items: center; gap: 6px; }
+.dw-list .mrow > .small svg { width: 14px; height: 14px; }
+/* A change in the plan: + to give, − to take away, ! blocked. */
+.ap-mark { display: grid; flex: none; place-items: center; width: 20px; height: 20px; border-radius: 6px; background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); font-size: 13px; font-weight: 800; }
+.ap-mark.drift { background: color-mix(in srgb, var(--amber) 18%, transparent); color: var(--amber); }
+.ap-mark.blocked { background: color-mix(in srgb, var(--red) 18%, transparent); color: var(--red); }
+/* Connect an app: the kinds as cards, then its settings. */
+.dialog.ap-dialog { width: min(720px, calc(100vw - 32px)); }
+.ap-body { max-height: min(62vh, 620px); margin-top: 14px; padding-right: 6px; overflow-y: auto; }
+.ap-body h3 { display: flex; align-items: baseline; gap: 10px; margin: 16px 0 8px; color: var(--title); font-size: 14px; font-weight: 650; }
+.ap-body h3 small { color: var(--muted); font-size: 12.5px; font-weight: 500; }
+.ap-kinds { display: grid; gap: 10px; margin-bottom: 14px; }
+.ap-kinds .dset-card { padding: 12px 16px; }
+.ap-body .pf-v textarea { min-height: 88px; font-family: Consolas, "Cascadia Mono", monospace; font-size: 12.5px; resize: vertical; }
+/* Give access: what's picked in each app, in a box that opens the tick list. */
+.ap-pickb { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 34px; padding: 6px 10px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--panel); color: var(--title); font: inherit; font-size: 13px; text-align: left; }
+.ap-pickb:hover { border-color: #3A3E55; background: var(--panel); }
+.ap-pickb.none { color: var(--muted); }
+.ap-pickb .ell { flex: 1; min-width: 0; }
+.ap-pickb small { flex: none; padding: 1px 7px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--title); font-size: 11.5px; font-weight: 700; }
+.ap-pickb svg { flex: none; width: 15px; height: 15px; color: #8A8FA8; }
+.ap-plan { padding: 4px 14px; border: 1px solid var(--line); border-radius: 12px; }
+.ap-plan > p { margin: 10px 0; font-size: 13px; }
+.ap-plan .mrow { padding: 8px 0; }
+/* Review changes: each app's differences, a tick on each one that can be made. */
+.ap-rapp + .ap-rapp { margin-top: 6px; }
+.ap-ritem { display: grid; grid-template-columns: 18px 20px minmax(0, 1fr); align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); cursor: pointer; }
+.ap-rapp h3 + .ap-ritem { border-top: 0; }
+.ap-ritem .two { display: grid; gap: 2px; min-width: 0; }
+.ap-ritem .two b { color: var(--text); font-size: 13px; font-weight: 600; }
+.ap-ritem .two small { color: var(--muted); font-size: 12px; }
+.ap-dialog .dialog-foot { align-items: center; }
+.ap-dialog .dialog-foot .bar-note { margin-right: auto; }

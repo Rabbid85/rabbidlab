@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.382 (2026-11-23)
+
+- New Connected apps page, in its own part of the sidebar. Connect an app (SCIM 2.0, Google Workspace, or any other app through your own PowerShell scripts) and Rabbid Lab reads its accounts, groups and roles and matches each account to an Active Directory user.
+- Access rules give the members of an Active Directory group one or several groups and roles in each app, and make an account for anyone who has none. Review changes lists every difference first. Nothing is taken away unless you apply it.
+- Two new permissions, View connected apps and Manage connected apps, and two alerts: a connected app stops syncing, and someone gets a role by hand in an app.
+
 ## 1.1.381 (2026-11-23)
 
 - Users have a Given by Rabbid Lab tab: the account Rabbid Lab created and each group it added, with who and when. Groups with no record are listed under Found, and what was removed again under Taken back.
