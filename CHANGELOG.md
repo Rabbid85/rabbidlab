@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.377 (2026-11-23)
+
+- Computers reconnect by themselves when the server’s certificate changes. The server now has an identity key of its own, each check-in hands the client its public half, and a new certificate key is taken only when that identity signs it.
+- The opening screen matches the sign-in card’s style and glass opacity. Appearance, Opening screen has Same as the sign-in card, which is the default.
+
 ## 1.1.376 (2026-11-23)
 
 - Roles and people has four tabs: Roles, Assignments, People and Local accounts. Roles lists every role by tier, with what it can and can’t do and how many people it reaches.

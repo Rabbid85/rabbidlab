@@ -28,12 +28,24 @@ internal sealed class ServerApi : IDisposable
     /// <summary>The key fingerprint of the certificate the server showed and this computer accepted.</summary>
     public string? Key { get; private set; }
 
-    public ServerApi(string server, string? fingerprint, TimeSpan? timeout = null)
+    /// <summary>The key fingerprint of the certificate the server showed, accepted or not (for Vouch, which checks it itself).</summary>
+    public string? Shown { get; private set; }
+
+    /// <summary>
+    /// With looking set, any certificate is let through and only noted (Shown): for asking the server to vouch for a
+    /// changed key, where the answer is trusted only when its signature checks out. Nothing else is sent that way.
+    /// </summary>
+    public ServerApi(string server, string? fingerprint, TimeSpan? timeout = null, bool looking = false)
     {
         var handler = new HttpClientHandler
         {
             ServerCertificateCustomValidationCallback = (_, certificate, _, errors) =>
             {
+                Shown = certificate is not null ? Pin.OfKey(certificate.RawData) : null;
+                if (looking)
+                {
+                    return certificate is not null;
+                }
                 var ok = fingerprint is null ? errors == SslPolicyErrors.None : certificate is not null && Pin.Matches(certificate.RawData, fingerprint);
                 Untrusted = !ok;
                 Key = ok && certificate is not null ? Pin.OfKey(certificate.RawData) : null;
@@ -139,4 +151,29 @@ internal sealed class CheckInAnswer
 
     /// <summary>After how many days without the server the uninstall lock lets go; 0 for never.</summary>
     [DataMember(Name = "unlockAfterDays")] public int? UnlockAfterDays { get; set; }
+
+    /// <summary>The public half of the server's identity key, kept while this computer trusts the server (Vouch.cs).</summary>
+    [DataMember(Name = "identity")] public IdentityKey? Identity { get; set; }
+}
+
+[DataContract]
+internal sealed class IdentityKey
+{
+    [DataMember(Name = "modulus")] public string Modulus { get; set; } = "";
+    [DataMember(Name = "exponent")] public string Exponent { get; set; } = "";
+}
+
+[DataContract]
+internal sealed class VouchRequest
+{
+    [DataMember(Name = "nonce")] public string Nonce { get; set; } = "";
+}
+
+[DataContract]
+internal sealed class VouchAnswer
+{
+    [DataMember(Name = "modulus")] public string Modulus { get; set; } = "";
+    [DataMember(Name = "exponent")] public string Exponent { get; set; } = "";
+    [DataMember(Name = "tls")] public string Tls { get; set; } = "";
+    [DataMember(Name = "sig")] public string Sig { get; set; } = "";
 }

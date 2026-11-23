@@ -67,6 +67,9 @@
     <li>Check the address, select <b>Connect</b>, and select Yes at the User Account Control prompt.</li>
     <li><a href="#wiki/let-in">Approve the computer</a> under Devices.</li>
   </ol>
+  <h3>When the server's certificate changes</h3>
+  <p>The client checks the server by its certificate's key. The server also has an identity key of its own, kept with the rest of its data, and each check-in gives the client its public half. If the certificate is replaced with a new key, the client asks the server to sign a random number together with the key it shows now, checks that signature against the identity it keeps, and then takes the new key and reconnects by itself. Nobody posing as the server can make that signature. A client that last checked in before 1.1.377 has no identity yet, so after a key change it still needs <b>Connect this computer</b> once.</p>
+  <p>A fingerprint set by Group Policy is never replaced: update the policy instead.</p>
   <h3>Silent install, from a command line or Intune</h3>
   <ol>
     <li>Open <a href="#seats">Devices</a> and select <b>New</b> in the bar under the banner, or select <b>Add computers</b> from its arrow.</li>

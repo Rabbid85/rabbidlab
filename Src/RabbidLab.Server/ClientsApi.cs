@@ -43,7 +43,21 @@ public static class ClientsApi
 
         // The answer carries the check for the computer's uninstall code and the days without this server after which the
         // lock lets go, so both work there when this server can't be reached (the client's Removal.cs).
-        app.MapPost("/api/clients/checkin", (CheckInForm form, HttpContext context, Clients clients, ActivityLog log, Workflows workflows) =>
+        // The server vouching for the HTTPS key it serves now, signed with its identity key, so a client whose stored
+        // fingerprint no longer matches can take the new one without anyone visiting it. The client's own random number
+        // goes into the signature, so an old answer can't be played back; the key in it must be the one the client saw.
+        app.MapPost("/api/clients/vouch", (VouchForm form, IConfiguration config, ServerIdentity identity) =>
+        {
+            var nonce = form.Nonce?.Trim() ?? "";
+            if (nonce.Length is < 32 or > 128 || ClientFiles.KeyFingerprint(config) is not { } tls)
+            {
+                return Results.BadRequest(new { error = "No vouch for this request." });
+            }
+            var (modulus, exponent) = identity.Public();
+            return Results.Ok(new { modulus, exponent, tls, sig = identity.Sign(nonce, tls) });
+        });
+
+        app.MapPost("/api/clients/checkin", (CheckInForm form, HttpContext context, Clients clients, ActivityLog log, Workflows workflows, ServerIdentity identity) =>
         {
             // Away until now: its client had stopped, or it hadn't checked in for a while.
             var away = Credentials(context) is (var asking, _) && clients.Find(asking) is { Approved: not null } known && !clients.IsOnline(known);
@@ -66,6 +80,8 @@ public static class ClientsApi
             {
                 clients.AddProblems(c.Id, problems);
             }
+            // The identity's public half, which the client keeps while it trusts this server (ServerIdentity).
+            var (modulus, exponent) = identity.Public();
             return Results.Ok(new
             {
                 approved = c.Approved is not null,
@@ -74,6 +90,7 @@ public static class ClientsApi
                 uninstall = clients.TakeUninstall(c.Id),
                 code = c.CodeCheck,
                 unlockAfterDays = clients.UnlockAfterDays,
+                identity = new { modulus, exponent },
             });
         });
 
@@ -497,6 +514,9 @@ public static class ClientsApi
 }
 
 public sealed record JoinForm(string? Computer, string? Os, string? Version);
+
+/// <summary>A client asking the server to vouch for its HTTPS key: its own random number, base64 or hex, 32 to 128 characters.</summary>
+public sealed record VouchForm(string? Nonce);
 
 public sealed record CheckInForm(string? Computer, string? Os, string? Version, string? User, string? Code = null, string? CodeUsed = null, List<ProblemForm>? Problems = null);
 

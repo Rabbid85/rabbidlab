@@ -14,7 +14,10 @@ internal sealed class Agent
 {
     public static string Version { get; } = typeof(Agent).Assembly.GetName().Version is { } v ? $"{v.Major}.{v.Minor}.{v.Build}" : "0.0.0";
 
-    public async Task<Status> Round(CancellationToken stop)
+    public Task<Status> Round(CancellationToken stop) => Round(stop, vouched: false);
+
+    // vouched: this round follows the server vouching for a new key, so a second refusal isn't asked about again.
+    private async Task<Status> Round(CancellationToken stop, bool vouched)
     {
         var settings = Settings.Read();
         var status = new Status { Server = settings.Server, ServerVersion = Status.Read()?.ServerVersion, User = Machine.Users() };
@@ -77,6 +80,7 @@ internal sealed class Agent
                 return Unreachable(status, held, $"The server returned an error (HTTP {(int) answered}).");
             }
             settings.KeepKey(api.Key);
+            Vouch.Keep(answer.Identity); // trusted now, so its identity is too: it vouches for a changed key later
             status.State = answer.Approved ? Status.Connected : Status.Waiting;
             status.ServerVersion = answer.Version;
             status.CheckedIn = DateTime.UtcNow;
@@ -100,6 +104,11 @@ internal sealed class Agent
         }
         catch (HttpRequestException e)
         {
+            // Another certificate key: the server vouches for it with the identity kept here, and it's taken without a visit.
+            if (api.Untrusted && !vouched && await Vouch.Ask(settings.Server, stop).ConfigureAwait(false) is { } key && settings.Repin(key))
+            {
+                return await Round(stop, vouched: true).ConfigureAwait(false);
+            }
             // It answered, but not with the certificate this computer accepts: said plainly, not as Windows words it.
             var why = !api.Untrusted ? (e.InnerException ?? e).Message
                 : settings.Fingerprint is null ? "Windows doesn't trust the server's certificate."

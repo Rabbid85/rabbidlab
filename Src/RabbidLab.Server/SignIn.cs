@@ -246,7 +246,7 @@ public static class SignIn
     // The Rabbid Lab client's own endpoints: open (they carry the client's id and secret), and never someone working.
     private static readonly HashSet<string> ClientPaths = new(StringComparer.OrdinalIgnoreCase)
     {
-        "/api/clients/join", "/api/clients/checkin", "/api/clients/next", "/api/clients/done", "/api/clients/bye", "/api/clients/inventory", "/api/clients/download",
+        "/api/clients/join", "/api/clients/checkin", "/api/clients/vouch", "/api/clients/next", "/api/clients/done", "/api/clients/bye", "/api/clients/inventory", "/api/clients/download",
         "/api/clients/jobs/take", "/api/clients/jobs/done",
     };
 

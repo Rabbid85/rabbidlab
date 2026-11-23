@@ -71,7 +71,38 @@ internal sealed class Settings
         var sameServer = s.PolicyServer is null || string.Equals(s.PolicyServer, installedServer, StringComparison.OrdinalIgnoreCase);
         s.Fingerprint = policyFingerprint ?? (sameServer ? installedFingerprint : null);
         s.ours = policyFingerprint is null && s.Fingerprint is not null;
+        s.policyPinned = policyFingerprint is not null;
         return s;
+    }
+
+    // Group Policy sets the fingerprint: only Group Policy changes it.
+    private bool policyPinned;
+
+    /// <summary>
+    /// Keeps a new key the server vouched for with its identity (Vouch), in place of the one stored, or of none when
+    /// Windows was trusted to check the certificate. Not over a fingerprint from Group Policy. Whether it was kept.
+    /// </summary>
+    public bool Repin(string key)
+    {
+        if (policyPinned)
+        {
+            return false;
+        }
+        try
+        {
+            using var machine = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64);
+            using var installed = machine.OpenSubKey(InstalledKey, writable: true);
+            if (installed is null)
+            {
+                return false;
+            }
+            installed.SetValue("CertificateFingerprint", key);
+            return true;
+        }
+        catch (Exception e) when (e is UnauthorizedAccessException or System.Security.SecurityException or IOException)
+        {
+            return false; // not the service
+        }
     }
 
     // The fingerprint is the installer's or Connect's, so the client may replace it (not Group Policy's).

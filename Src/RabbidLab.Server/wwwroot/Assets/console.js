@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.377', [
+    'Computers reconnect by themselves when the server’s certificate changes. The server now has an identity key of its own, each check-in hands the client its public half, and a new certificate key is taken only when that identity signs it.',
+    'The opening screen matches the sign-in card’s style and glass opacity. Appearance, Opening screen has Same as the sign-in card, which is the default.']],
   ['1.1.376', [
     'Roles and people has four tabs: Roles, Assignments, People and Local accounts. Roles lists every role by tier, with what it can and can’t do and how many people it reaches.',
     'A role opens in the side panel with Can and Can’t. Edit turns its permissions on or off in place, then Save changes. Its assignments, and its name, tier and colour, are on their own tabs there.',
@@ -1205,6 +1208,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.377': ['2026-11-23', 'fix', 'Computers reconnect by themselves after a certificate change'],
   '1.1.376': ['2026-11-23', 'feature', 'Roles and people in tabs, with roles by tier', 'roles-a.jpg'],
   '1.1.375': ['2026-11-23', 'feature', 'Admin portals, and links for a role or only you', 'links-d.jpg'],
   '1.1.374': ['2026-11-23', 'fix', 'Sign-in no longer jumps with Caps Lock on'],
@@ -3494,29 +3498,36 @@ const RELEASE_INFO = {
   // (style.js) puts each part's look on the page.
   const STYLE_LOOKS = window.RabbidLabStyle.LOOKS;
   const STYLE_PARTS = ['win', 'panel', 'menus', 'boot'];
-  // The opening screen's window starts in smoked glass at 65% (the user's pick); the rest follow the app, which is Solid.
-  const STYLE_DEFAULT = { look: 'solid', glass: 65, win: 'app', winGlass: 65, panel: 'app', panelGlass: 65, menus: 'app', menusGlass: 65, boot: 'glass', bootGlass: 65 };
+  // The opening screen plays straight after sign-in, so it wears the sign-in card's look and opacity (1.1.377); the rest
+  // follow the app, which is Solid. A style for it saved before then gives way: only one picked since (bootOwn) stays.
+  const STYLE_DEFAULT = { look: 'solid', glass: 65, win: 'app', winGlass: 65, panel: 'app', panelGlass: 65, menus: 'app', menusGlass: 65, boot: 'signin', bootGlass: 65 };
   const styleMine = () => {
     try { return JSON.parse(localStorage.getItem('rabbidlab.style') || 'null'); } catch { return null; }
   };
   const stylePrefs = () => {
-    const o = { ...STYLE_DEFAULT, ...(window.RabbidLabBrand.now.look?.style || {}), ...(styleMine() || {}) };
+    const lab = { ...(window.RabbidLabBrand.now.look?.style || {}) };
+    const mine = { ...(styleMine() || {}) };
+    [lab, mine].forEach((o) => { if (!o.bootOwn) { delete o.boot; delete o.bootGlass; } });
+    const o = { ...STYLE_DEFAULT, ...lab, ...mine };
     const glass = (v) => Math.min(95, Math.max(20, Number(v) || 65));
-    const part = (v) => (v === 'app' || STYLE_LOOKS.includes(v) ? v : 'app');
-    const p = { look: STYLE_LOOKS.includes(o.look) ? o.look : 'solid', glass: glass(o.glass) };
-    STYLE_PARTS.forEach((k) => { p[k] = part(o[k]); p[`${k}Glass`] = glass(o[`${k}Glass`]); });
+    const part = (v, k) => (v === 'app' || STYLE_LOOKS.includes(v) || (k === 'boot' && v === 'signin') ? v : 'app');
+    const p = { look: STYLE_LOOKS.includes(o.look) ? o.look : 'solid', glass: glass(o.glass), bootOwn: !!o.bootOwn };
+    STYLE_PARTS.forEach((k) => { p[k] = part(o[k], k); p[`${k}Glass`] = glass(o[`${k}Glass`]); });
     return p;
   };
   const styleApply = () => {
     const p = stylePrefs();
-    STYLE_PARTS.forEach((k) => window.RabbidLabStyle.set(k, ...(p[k] === 'app' ? [p.look, p.glass] : [p[k], p[`${k}Glass`]])));
+    const card = window.RabbidLabBrand.now; // the sign-in card's style and glass opacity (brand.js)
+    STYLE_PARTS.forEach((k) => window.RabbidLabStyle.set(k, ...(p[k] === 'signin' ? [card.style, card.glass] : p[k] === 'app' ? [p.look, p.glass] : [p[k], p[`${k}Glass`]])));
   };
+  window.addEventListener('rabbidlab:brand', styleApply); // the sign-in card changed: the opening screen follows
   // Each part's control: Same as the app or a style of its own, and its own glass opacity when that's glass.
   const PART_LOOKS = [['app', 'Same as the app'], ['solid', 'Solid'], ['glass', 'Smoked glass'], ['frost', 'Frosted glass'], ['dark', 'Dark']];
   document.querySelectorAll('.ap-look').forEach((box) => {
     const k = box.dataset.part;
     const name = box.closest('.ds-row').querySelector('.ds-l b').textContent;
-    box.innerHTML = `<select data-style-part="${k}" aria-label="${esc(name)} style">${PART_LOOKS.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>`
+    const looks = k === 'boot' ? [['signin', 'Same as the sign-in card'], ...PART_LOOKS] : PART_LOOKS;
+    box.innerHTML = `<select data-style-part="${k}" aria-label="${esc(name)} style">${looks.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>`
       + `<span class="ap-glass" hidden><input type="range" class="ds-range" min="20" max="95" step="5" data-style-glass="${k}" aria-label="${esc(name)} glass opacity"><b class="ds-range-v"></b></span>`;
   });
   const { seeThrough } = window.RabbidLabStyle;
@@ -3552,7 +3563,7 @@ const RELEASE_INFO = {
   $('style-glass').addEventListener('input', () => styleSet({ glass: Number($('style-glass').value) }));
   document.addEventListener('change', (e) => {
     const s = e.target.closest('[data-style-part]');
-    if (s) styleSet({ [s.dataset.stylePart]: s.value });
+    if (s) styleSet({ [s.dataset.stylePart]: s.value, ...(s.dataset.stylePart === 'boot' ? { bootOwn: s.value !== 'signin' } : {}) });
   });
   document.addEventListener('input', (e) => {
     const r = e.target.closest('[data-style-glass]');
@@ -3560,7 +3571,7 @@ const RELEASE_INFO = {
   });
   // Use everywhere: every part, and toasts, the same as the app.
   $('style-all').addEventListener('click', () => {
-    styleSet(Object.fromEntries(STYLE_PARTS.map((k) => [k, 'app'])));
+    styleSet({ ...Object.fromEntries(STYLE_PARTS.map((k) => [k, 'app'])), bootOwn: true });
     toastSet({ look: 'app' });
   });
   $('style-reset').addEventListener('click', () => styleSet(null));

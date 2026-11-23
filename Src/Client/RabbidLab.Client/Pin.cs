@@ -20,6 +20,24 @@ internal static class Pin
         string.Equals(OfCertificate(certificate), fingerprint, StringComparison.OrdinalIgnoreCase)
         || string.Equals(OfKey(certificate), fingerprint, StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// Whether the server's identity (modulus and exponent, base64) signed this number together with this key: what the
+    /// server's ServerIdentity signs, SHA-256 with PKCS#1 v1.5. A bad or broken signature is false.
+    /// </summary>
+    public static bool Vouched(string modulus, string exponent, string nonce, string tls, string sig)
+    {
+        try
+        {
+            using var rsa = new RSACng();
+            rsa.ImportParameters(new RSAParameters { Modulus = Convert.FromBase64String(modulus), Exponent = Convert.FromBase64String(exponent) });
+            return rsa.VerifyData(System.Text.Encoding.UTF8.GetBytes($"rabbidlab-vouch|{nonce}|{tls.ToUpperInvariant()}"), Convert.FromBase64String(sig), HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+        }
+        catch (Exception e) when (e is FormatException or CryptographicException or ArgumentException)
+        {
+            return false;
+        }
+    }
+
     private static string Hash(byte[] bytes)
     {
         using var sha = SHA256.Create();

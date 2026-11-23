@@ -103,6 +103,7 @@ builder.Services.AddSignIn();
 
 // The Rabbid Lab client on computers and what it's asked to do there (ClientsApi.cs): inventory, waking, scripts, installs, jobs, workflows.
 builder.Services.AddSingleton<Clients>();
+builder.Services.AddSingleton<ServerIdentity>();
 builder.Services.AddSingleton<IHereClient, HereClient>();
 builder.Services.AddSingleton<Inventories>();
 builder.Services.AddSingleton<IWakeSender, WakeSender>();
