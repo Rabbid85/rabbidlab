@@ -1,6 +1,6 @@
-// People workflows (PeopleWorkflows.cs), Active Directory › Tools › Workflows: the list, a workflow in the side panel with
-// its recent runs and Undo run, the Edit workflow window (fields asked for each run, then the steps), and Run. A user's
-// Actions › Run workflow… opens Run for that user (users.js).
+// Workflows (PeopleWorkflows.cs), their own page under Automation: the list, a workflow in the side panel with its recent
+// runs and Undo run, the Edit workflow window (fields asked for each run, then the steps), and Run. A user's Actions ›
+// Run workflow… opens Run for that user (users.js).
 (() => {
   const R = window.RabbidLab;
   const { $, esc, svg, has, panel, toast, sure, get, send } = R;
@@ -55,7 +55,20 @@
     ],
     row: (f) => ` data-pf-row="${esc(f.id)}"`, empty: () => 'No workflows yet. Select New workflow to make one.', loading: () => !data, redraw: () => draw(),
   }));
+  // The banner: how many workflows, how many are on, and how many runs this week.
+  R.scatter?.($('pf-hero'), 20261127);
+  const drawHero = () => {
+    if (!data) return;
+    const flows = data.flows;
+    const week = flows.reduce((n, f) => n + f.runs.filter((r) => Date.now() - new Date(r.at) < 7 * 86400000).length, 0);
+    $('pf-state').textContent = flows.length ? `${count(flows.filter((f) => f.on).length, 'workflow is', 'workflows are')} enabled.` : 'No workflows yet.';
+    $('pf-n-all').textContent = flows.length;
+    $('pf-n-on').textContent = flows.filter((f) => f.on).length;
+    $('pf-n-week').textContent = week;
+    $('rail-workflows').textContent = flows.length || '';
+  };
   const draw = () => {
+    drawHero();
     if (R.where()[0] !== 'workflows') return;
     $('pf-new').hidden = !may();
     $('pf-acts').hidden = !may();
@@ -101,6 +114,8 @@
     load();
   });
   setInterval(() => { if (R.where()[0] === 'workflows' && document.visibilityState === 'visible') load(); }, 30000);
+  // The count in the sidebar from the start, when the page itself hasn't asked already.
+  document.addEventListener('rabbidlab:me', () => { if (has('ad.view') && !data) load(); });
 
   const save = (f, over = {}) => send('/api/ad/workflows', { id: f.id, name: f.name, on: f.on, fields: f.fields, steps: f.steps.map((s) => ({ kind: s.kind, values: s.values })), ...over });
   const turn = async (list, on) => {

@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.369', [
+    'Workflows has its own page, under Automation in the sidebar, with its own banner: how many workflows there are, how many are enabled, and how many ran this week. It is no longer part of Active Directory.',
+    'Ctrl+K finds it, and G then F goes to it.']],
   ['1.1.368', [
     'Devices that block ping and every port are found from this server’s ARP table as the sweep reaches them, so a scan no longer waits for them at the end.',
     'A device that is slow to answer gets 6 seconds, then is kept with what is known. A device seen before keeps its type, name and ports.',
@@ -1175,6 +1178,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.369': ['2026-11-22', 'update', 'Workflows gets its own page'],
   '1.1.368': ['2026-11-22', 'fix', 'Network scans never wait on one device'],
   '1.1.367': ['2026-11-22', 'fix', 'Network identifies devices as it finds them'],
   '1.1.366': ['2026-11-22', 'fix', 'Pinned columns stay put'],
@@ -1707,7 +1711,7 @@ const RELEASE_INFO = {
   const allows = (list) => !!shown && list.split(/\s+/).some((p) => shown.has(p));
   const has = (p) => can.has(p);
   const PAGES = { overview: 'overview.view', links: 'links.view', sensors: 'sensors.view', seats: 'seats.view sessions.view', people: 'access.view', ad: 'ad.view ad.connect',
-    org: 'ad.view', attrs: 'ad.view', sync: 'ad.view', report: 'activity.view', alerts: 'sensors.alerts', network: 'network.view' };
+    org: 'ad.view', attrs: 'ad.view', sync: 'ad.view', report: 'activity.view', alerts: 'sensors.alerts', network: 'network.view', workflows: 'ad.view' };
   // Settings' pages and what each needs; About is for everyone, Developer for Rabbid Lab Dev only.
   const SUBS = { account: '', appearance: '', keys: '', viewas: 'access.view', address: '', updates: 'updates.view', signin: 'access.roles access.unlock', activity: 'activity.view', reports: 'activity.view', alerts: 'sensors.alerts', notifications: 'sensors.alerts', history: 'sensors.alerts',
     links: 'links.edit', sensors: 'sensors.edit', seats: 'seats.settings seats.add', network: 'network.settings', ad: 'ad.connect', developer: 'updates.auto', support: '', about: '' };

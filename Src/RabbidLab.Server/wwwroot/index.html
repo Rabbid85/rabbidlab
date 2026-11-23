@@ -243,6 +243,8 @@
   <a href="#sync" data-page="sync" id="rail-sync" title="Sync" data-can="ad.view" data-whole><svg><use href="#i-refresh"/></svg><span>Sync</span><i class="rail-dot bad" id="rail-sync-dot" hidden></i></a>
   <p class="rail-label" data-can="sensors.alerts">Alerts</p>
   <a href="#alerts" data-page="alerts" id="rail-alerts" title="Alerts" data-can="sensors.alerts"><svg><use href="#i-bell"/></svg><span>Alerts</span><small id="rail-alerts-n"></small></a>
+  <p class="rail-label" data-can="ad.view">Automation</p>
+  <a href="#workflows" data-page="workflows" title="Workflows" data-can="ad.view"><svg><use href="#i-org"/></svg><span>Workflows</span><small id="rail-workflows"></small></a>
   <p class="rail-label" data-can="access.view windows.view">Config</p>
   <a href="#people" data-page="people" title="Roles and people" data-can="access.view"><svg><use href="#i-shield"/></svg><span>Roles and people</span><small id="rail-roles"></small></a>
   <p class="rail-label">Help</p>
@@ -1140,7 +1142,6 @@
       <a href="#attrs" data-adpage="attrs" data-can="ad.view" data-whole><svg><use href="#i-list"/></svg><span>Attribute browser</span></a>
       <a href="#ad/audit" data-adpage="audit" data-can="ad.view ad.connect" data-whole><svg><use href="#i-history"/></svg><span>AD audit</span></a>
       <a href="#ad/recycle" data-adpage="recycle" data-can="ad.view ad.connect" data-whole><svg><use href="#i-trash"/></svg><span>Recycle Bin</span></a>
-      <a href="#workflows" data-adpage="workflows" data-can="ad.view"><svg><use href="#i-org"/></svg><span>Workflows</span></a>
       <!-- The open page's views (users.js puts them under its entry), and what narrows them. -->
       <div class="dkids" id="dir-views"></div>
       <div class="dir-acct" id="dir-acct-row" hidden><svg><use href="#i-key"/></svg><span id="dir-acct"></span>
@@ -1250,16 +1251,26 @@
   </div>
   </section>
 
-  <!-- People workflows: steps for Active Directory users, with fields asked for each run (people-flows.js). -->
-  <section class="page home dir-top flows-page" id="page-workflows" data-page="workflows" data-title="Workflows" data-lead="Steps for Active Directory users that run in order, with fields asked for each time." hidden>
-  <div class="dir-area">
-    <div class="dmain">
-    <div class="dbar"><button type="button" class="small primary" id="pf-new"><svg><use href="#i-plus"/></svg>New workflow</button>
-      <button type="button" class="small" id="pf-acts" disabled>Actions<span class="cnt" hidden></span><svg><use href="#i-chevron-down"/></svg></button><span class="grow"></span><span class="bar-note" id="pf-count"></span></div>
-    <div class="table adt drows" id="pf-list"></div>
-    <p class="hint problem" id="pf-problem" hidden></p>
+  <!-- Workflows: steps that run in order, with fields asked for each run, on its own page under Automation (people-flows.js). -->
+  <section class="page home flows-page" id="page-workflows" data-page="workflows" data-title="Workflows" hidden>
+    <header class="hero" id="pf-hero">
+      <p class="eyebrow">Automation</p>
+      <h1 class="hero-title">Workflows</h1>
+      <p class="hero-lead"><b id="pf-state"></b> <span>Steps that run in order, with fields asked for each time, such as setting up a new user.</span></p>
+      <div class="hero-row">
+      <div class="hero-stats">
+        <div><b id="pf-n-all"><i class="sk sk-num"></i></b><span><svg><use href="#i-org"/></svg>Workflows</span></div>
+        <div><b id="pf-n-on"><i class="sk sk-num"></i></b><span><svg><use href="#i-check"/></svg>Enabled</span></div>
+        <div><b id="pf-n-week"><i class="sk sk-num"></i></b><span><svg><use href="#i-history"/></svg>Runs (7 days)</span></div>
+      </div>
+      </div>
+    </header>
+    <div class="pf-page-body">
+      <div class="dbar"><button type="button" class="small primary" id="pf-new"><svg><use href="#i-plus"/></svg>New workflow</button>
+        <button type="button" class="small" id="pf-acts" disabled>Actions<span class="cnt" hidden></span><svg><use href="#i-chevron-down"/></svg></button><span class="grow"></span><span class="bar-note" id="pf-count"></span></div>
+      <div class="table adt drows" id="pf-list"></div>
+      <p class="hint problem" id="pf-problem" hidden></p>
     </div>
-  </div>
   </section>
 
   <!-- Attribute browser: the directory as a tree, and every attribute of whatever's picked (directory.js). -->

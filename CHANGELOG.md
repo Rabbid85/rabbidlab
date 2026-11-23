@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.369 (2026-11-22)
+
+- Workflows has its own page, under Automation in the sidebar, with its own banner: how many workflows there are, how many are enabled, and how many ran this week. It is no longer part of Active Directory.
+- Ctrl+K finds it, and G then F goes to it.
+
 ## 1.1.368 (2026-11-22)
 
 - Devices that block ping and every port are found from this server’s ARP table as the sweep reaches them, so a scan no longer waits for them at the end.
