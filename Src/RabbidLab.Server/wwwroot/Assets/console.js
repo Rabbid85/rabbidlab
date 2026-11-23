@@ -3,6 +3,11 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.371', [
+    'Settings, Alert rules lists every alert in one grid, grouped by area: the alert rules, the alerts from the Alerts page, and everything else that can happen. Each row has an alert type, or Don’t alert.',
+    'Picking an alert type turns that alert on and sends it to that type’s notifications. Don’t alert turns it off. Ticked rows can be set together from Actions.',
+    'Show narrows the list to what alerts, what is only logged, and what can’t be detected yet. Selecting a row opens its trigger, its alert type and a preview of the alert.',
+    'The alert types sit above the list, each with how many alerts use it and where it sends. Alert rules that had their own notifications now use the alert type that sends to the same place.']],
   ['1.1.370', [
     'Roles and people is in Settings, under Server, next to Sign-in. It is no longer in the sidebar, and old links to it open it there.',
     'Hints no longer push a window sideways with a glass style on. Before, one hint in the Edit workflow window stretched it and left it scrolled off to one side.']],
@@ -1181,6 +1186,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.371': ['2026-11-22', 'feature', 'Every alert in one list', 'alertlist.jpg'],
   '1.1.370': ['2026-11-22', 'update', 'Roles and people moves into Settings'],
   '1.1.369': ['2026-11-22', 'update', 'Workflows gets its own page'],
   '1.1.368': ['2026-11-22', 'fix', 'Network scans never wait on one device'],

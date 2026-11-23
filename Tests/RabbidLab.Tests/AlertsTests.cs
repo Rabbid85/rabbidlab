@@ -233,4 +233,64 @@ public sealed class AlertsTests : IDisposable
         Assert.Equal(["network"], moved.Tags);
         Assert.Equal(slow, moved.Rule);
     }
+
+    [Fact]
+    public async Task A_rule_with_an_alert_type_sends_where_that_type_sends_and_follows_it_when_it_changes()
+    {
+        var admin = await app.SignedIn();
+        var me = await TestApp.Notification(admin);
+        var team = await TestApp.Notification(admin, "Team", "ntfy", "https://ntfy.sh/rabbidlab-test");
+        var critical = await TestApp.AlertType(admin, "Critical", 0, to: me);
+        var alerts = app.Services.GetRequiredService<Alerts>();
+
+        (await admin.PostAsJsonAsync("/api/alerts/rules/update.failed", new { on = true, type = critical })).EnsureSuccessStatusCode();
+        var before = alerts.Rule("update.failed");
+        (await admin.PostAsJsonAsync($"/api/alerts/types/{critical}", new { name = "Critical", after = 0, again = 0, back = true, to = new[] { me, team } })).EnsureSuccessStatusCode();
+
+        Assert.Equal(critical, before.Type);
+        Assert.Equal([me], before.To);
+        Assert.Equal([me, team], alerts.Rule("update.failed").To);
+        Assert.Equal(HttpStatusCode.BadRequest, (await admin.PostAsJsonAsync("/api/alerts/rules/update.failed", new { type = "gone" })).StatusCode);
+    }
+
+    [Fact]
+    public async Task Deleting_an_alert_type_moves_its_rules_to_the_one_new_sensors_start_with()
+    {
+        var admin = await app.SignedIn();
+        var odd = await TestApp.AlertType(admin, "Odd hours", 5);
+        var alerts = app.Services.GetRequiredService<Alerts>();
+        (await admin.PostAsJsonAsync("/api/alerts/rules/seat.offline", new { on = true, type = odd })).EnsureSuccessStatusCode();
+
+        (await admin.PostAsJsonAsync($"/api/alerts/types/{odd}/delete", new { })).EnsureSuccessStatusCode();
+
+        Assert.Equal(alerts.StartType().Id, alerts.Rule("seat.offline").Type);
+    }
+
+    [Fact]
+    public void A_rule_that_already_sent_somewhere_gets_the_alert_type_sending_there_or_a_new_one()
+    {
+        var folder = Path.Combine(Path.GetTempPath(), "rabbidlab-alerts-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(folder);
+        File.WriteAllText(Path.Combine(folder, "alerts.json"), """
+            { "seeded": true, "startType": "t1", "types": [ { "id": "t1", "name": "Default", "after": 5, "to": ["a"] } ],
+              "rules": { "update.failed": { "on": true, "to": ["a"] }, "seat.offline": { "on": true, "to": ["b"] }, "update.ready": { "on": false } } }
+            """);
+        using (var other = new TestApp(folder))
+        {
+            var alerts = other.Services.GetRequiredService<Alerts>();
+
+            var made = alerts.Types().Single(t => t.Id != "t1");
+            Assert.Equal("t1", alerts.Rule("update.failed").Type);
+            Assert.Equal(("Other alerts", made.Id), (made.Name, alerts.Rule("seat.offline").Type));
+            Assert.Null(alerts.Rule("update.ready").Type);
+        }
+        try
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+        catch (IOException)
+        {
+            // Left for the temp folder's own cleanup.
+        }
+    }
 }

@@ -50,23 +50,16 @@
 .ric.upd { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent-soft); }
 .ric.lock { background: rgba(255, 107, 125, .12); color: #FF8A97; }
 
-/* Alert rules: in groups with a small heading, each a card with what it does, where it goes, a switch and Edit. */
+/* Alert rules: a small heading for each section. */
 .ar-sec + .ar-sec { margin-top: 22px; padding-top: 0; border-top: 0; }
 .ar-h { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
 .ar-h small, .ngroup h4 small { color: #5E6380; font-size: 11px; letter-spacing: 0; }
-.rrows, .nrows { display: grid; gap: 8px; }
-.rrow { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto auto; align-items: center; gap: 16px; padding: 13px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
-.rrow.off { opacity: .62; }
-.rnm, .nnm { display: grid; gap: 4px; min-width: 0; }
-.rnm b, .nnm b { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: #fff; font: 700 15px "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; }
-.rnm > span, .nnm > span { overflow: hidden; color: var(--muted); font-size: 12.5px; white-space: nowrap; text-overflow: ellipsis; }
-.rnm .to { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 3px; }
-.rnm .to .np-chip { height: 24px; font-size: 12px; }
-.rnm .to .np-chip .chan-ic { width: 18px; height: 18px; }
-.rmeta { color: #6D7290; font-size: 12px; text-align: right; white-space: nowrap; }
-.rmeta b { display: block; color: #C9CCDA; font-size: 12.5px; font-weight: 650; }
-.racts, .nacts { display: flex; align-items: center; gap: 12px; }
-.racts .ds-btn, .nacts .ds-btn { height: 34px; padding: 0 14px; }
+.nrows { display: grid; gap: 8px; }
+.nnm { display: grid; gap: 4px; min-width: 0; }
+.nnm b { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: #fff; font: 700 15px "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; }
+.nnm > span { overflow: hidden; color: var(--muted); font-size: 12.5px; white-space: nowrap; text-overflow: ellipsis; }
+.nacts { display: flex; align-items: center; gap: 12px; }
+.nacts .ds-btn { height: 34px; padding: 0 14px; }
 .ar-times { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }
 .ds-r .ar-times select { width: 120px; }
 .ds-l b .ds-scope { margin-left: 2px; }
@@ -102,8 +95,6 @@
 @media (max-width: 900px) {
   .nrow { grid-template-columns: 40px minmax(0, 1fr) auto; }
   .nrow .nst { display: none; }
-  .rrow { grid-template-columns: 40px minmax(0, 1fr) auto; }
-  .rrow .rmeta { display: none; }
 }
 
 /* Add a notification: the name first, the kinds, then where it sends. */
@@ -149,6 +140,58 @@
 /* Alert types: the heading's New alert type, a line about them, and the one new sensors start with. */
 .ar-h .ar-add { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; color: var(--accent-soft); font-size: 12.5px; font-weight: 650; letter-spacing: 0; text-transform: none; }
 .ar-h .ar-add svg { width: 14px; height: 14px; }
-.ar-lead { margin: -2px 0 12px; color: var(--muted); font-size: 13px; }
-.ar-tag { padding: 2px 7px; border-radius: 5px; background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent-soft); font: 650 11px "Segoe UI", system-ui, sans-serif; font-style: normal; }
+
+/* Alert rules as one list (1.1.371): the alert types as chips, then every alert with its alert type. The page takes the
+   whole width, so the list's columns fit. */
+.set-area .sub[data-sub="alerts"] { max-width: none; }
+.set-area .ds-sec.ar-sec[data-sec="types"] { max-width: none; }
+.ar-types { display: flex; flex-wrap: wrap; gap: 8px; }
+.ar-type { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 8px 0 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); color: var(--text); font: inherit; }
+.ar-type:hover, .ar-type.on { border-color: var(--line-strong); background: #171A28; }
+.ar-type b { color: #fff; font-size: 13.5px; }
+.ar-type small { color: #8B90A5; font-size: 12.5px; font-weight: 700; }
+.ar-type .np-chip, .ar-to .np-chip { height: 24px; font-size: 12px; }
+.ar-type .np-chip .chan-ic, .ar-to .np-chip .chan-ic { width: 18px; height: 18px; }
+.ar-all { min-width: 0; }
+.ar-fbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 12px; }
+.ar-fbar .side-find { width: min(280px, 100%); margin: 0; }
+.ar-fbar .seg { margin: 0; }
+#ar-table .tr[data-ar-row] { cursor: pointer; }
+.ar-ric { width: 26px; height: 26px; border-radius: 7px; }
+.ar-ric svg { width: 14px; height: 14px; }
+.ric.ev { background: #1E2132; color: #B8BCCB; }
+.ar-sel { width: 100%; height: 28px; padding: 0 8px; border: 1px solid var(--line-strong); border-radius: 7px; background-color: #0C0E17; color: var(--title); font: inherit; font-size: 13px; }
+.ar-st { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+.ar-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: #3A3E55; }
+.ar-dot.on { background: var(--ok); }
+.ar-dot.off { background: var(--accent-soft); }
+.ar-dot.none { border: 2px solid var(--amber); background: transparent; }
+
+/* An alert's side panel: its trigger, its alert type beside where it sends, and a preview of it arriving. */
+.ar-p { margin: 0; color: var(--text); font-size: 13.5px; line-height: 1.5; }
+.ar-note { margin: 8px 0 0; }
+.ar-prow { display: grid; grid-template-columns: 200px minmax(0, 1fr); align-items: center; gap: 12px; }
+.ar-prow .ar-sel { height: 34px; }
+.ar-to { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.ar-pitem { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; align-items: center; gap: 10px; width: 100%; min-height: 40px; padding: 0; border: 0; border-top: 1px solid var(--line); border-radius: 0; background: none; color: var(--text); font: inherit; text-align: left; }
+.ar-pitem:first-child { border-top: 0; }
+.ar-pitem:hover b { color: #fff; }
+.ar-pitem b { color: var(--title); font-weight: 600; }
+.ar-msg { display: flex; gap: 12px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: #0C0E17; }
+.ar-av { flex: none; display: grid; place-items: center; width: 38px; height: 38px; border-radius: 50%; background: var(--ember); color: #fff; font-size: 12px; font-weight: 800; }
+.ar-mbody { display: grid; flex: 1; gap: 8px; min-width: 0; }
+.ar-mbody p { margin: 0; }
+.ar-mwho { display: flex; align-items: center; gap: 8px; font-size: 13.5px; }
+.ar-mwho b { color: var(--title); }
+.ar-mwho i { padding: 1px 6px; border-radius: 4px; background: #23263A; color: #C9CCDA; font-size: 11px; font-style: normal; font-weight: 700; }
+.ar-mwho time { color: #6D7290; font-size: 12px; }
+.ar-mcard { display: grid; gap: 6px; padding: 12px 14px; border-left: 3px solid #5E6380; border-radius: 6px; background: #151826; }
+.ar-mcard.critical { border-left-color: var(--red); }
+.ar-mcard.warning { border-left-color: var(--amber); }
+.ar-mtag { justify-self: start; padding: 2px 9px; border-radius: 6px; background: #1E2132; color: #C9CCDA; font-size: 12px; font-weight: 700; }
+.ar-mcard.critical .ar-mtag { background: rgba(255, 107, 125, .16); color: #FF8A97; }
+.ar-mcard.warning .ar-mtag { background: rgba(242, 190, 107, .16); color: #F2BE6B; }
+.ar-mtitle { color: #fff; font: 700 15px/1.35 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; }
+.ar-mline { color: var(--text); font-size: 13.5px; }
+.ar-mfoot { color: #6D7290; font-size: 11.5px; }
 .ty-name { display: grid; gap: 6px; margin-top: 8px; }

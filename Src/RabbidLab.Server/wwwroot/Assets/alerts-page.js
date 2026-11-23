@@ -676,5 +676,6 @@
     if (b) openMe({ username: b.dataset.eaMe, name: b.dataset.eaMeName });
   });
 
-  R.alerts = { can: may, me: openMe, about, pane };
+  // edit: an alert's Edit window from anywhere, such as Settings, Alert rules; a save there says rabbidlab:alerts.
+  R.alerts = { can: may, me: openMe, about, pane, edit: async (id) => { if (!data) await load(); if (ruleOf(id)) openBuild(ruleOf(id)); } };
 })();

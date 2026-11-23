@@ -20,8 +20,11 @@ public sealed class AlertSetting
     /// <summary>The rule's number: days before a certificate expires, % free, minutes quiet or failed sign-ins.</summary>
     public int Limit { get; set; }
 
-    /// <summary>The notifications it goes to, by id.</summary>
+    /// <summary>The notifications it goes to, by id. Its alert type's, when it has one.</summary>
     public List<string> To { get; set; } = [];
+
+    /// <summary>The alert type it goes through, by id; null for its own notifications (from before 1.1.371).</summary>
+    public string? Type { get; set; }
 }
 
 public sealed class AlertsFile
@@ -38,6 +41,9 @@ public sealed class AlertsFile
 
     /// <summary>The rules were started from what new sensors used to start with.</summary>
     public bool Seeded { get; set; }
+
+    /// <summary>Each rule was given the alert type that sends where it sent, once.</summary>
+    public bool Typed { get; set; }
 
     /// <summary>The update already told about as ready, and the failure already told about, so neither is said twice.</summary>
     public Dictionary<string, string> Told { get; set; } = [];
@@ -73,7 +79,7 @@ public sealed class AlertHistoryFile
 }
 
 /// <summary>A rule as the page sends it.</summary>
-public sealed record AlertSettingForm(bool? On, int? After, int? Again, bool? Back, int? Limit, List<string>? To);
+public sealed record AlertSettingForm(bool? On, int? After, int? Again, bool? Back, int? Limit, List<string>? To, string? Type = null);
 
 public sealed record QuietForm(bool? On, string? From, string? To, bool? DownStillGoes);
 
@@ -108,13 +114,16 @@ public sealed class Alerts(DataFolder folder, Channels channels, TimeProvider cl
         _ => new() { Back = false },
     };
 
-    /// <summary>A rule as it's set, or as it starts.</summary>
+    /// <summary>A rule as it's set, or as it starts; To is its alert type's notifications when it has one.</summary>
     public AlertSetting Rule(string key)
     {
         lock (file.Gate)
         {
-            var r = file.Read().Rules.GetValueOrDefault(key) ?? Start(key);
-            return new AlertSetting { On = r.On, After = r.After, Again = r.Again, Back = r.Back, Limit = r.Limit, To = [.. r.To.Where(channels.Known)] };
+            var f = file.Read();
+            EnsureTypes(f);
+            var r = f.Rules.GetValueOrDefault(key) ?? Start(key);
+            var type = r.Type is null ? null : f.Types.FirstOrDefault(t => t.Id == r.Type);
+            return new AlertSetting { On = r.On, After = r.After, Again = r.Again, Back = r.Back, Limit = r.Limit, Type = type?.Id, To = [.. (type?.To ?? r.To).Where(channels.Known)] };
         }
     }
 
@@ -127,13 +136,46 @@ public sealed class Alerts(DataFolder folder, Channels channels, TimeProvider cl
 
     // --- Alert types: named ways to alert that sensors and watched links pick ----------------------------------------------
 
-    // The first time: Default from how sensors went down, and Watched links too when links went down another way.
+    // The first time: Default from how sensors went down, and Watched links too when links went down another way. Then,
+    // once, each rule that sends somewhere goes through the alert type sending to the same place (one is made if none does).
     private void EnsureTypes(AlertsFile f)
     {
-        if (f.Types.Count > 0)
+        if (f.Types.Count == 0)
+        {
+            MakeTypes(f);
+        }
+        if (f.Typed)
         {
             return;
         }
+        foreach (var key in Keys.Where(k => k is not (SensorDown or LinkDown)))
+        {
+            var r = f.Rules.GetValueOrDefault(key) ?? Start(key);
+            if (r.Type is not null || r.To.Count == 0)
+            {
+                continue;
+            }
+            var want = r.To.ToHashSet();
+            var same = f.Types.FirstOrDefault(t => t.To.ToHashSet().SetEquals(want));
+            if (same is null)
+            {
+                var name = "Other alerts";
+                for (var n = 2; f.Types.Any(t => string.Equals(t.Name, name, StringComparison.OrdinalIgnoreCase)); n++)
+                {
+                    name = $"Other alerts {n}";
+                }
+                same = new AlertType { Id = NewId(), Name = name, To = [.. want] };
+                f.Types.Add(same);
+            }
+            r.Type = same.Id;
+            f.Rules[key] = r;
+        }
+        f.Typed = true;
+        file.Save(f);
+    }
+
+    private void MakeTypes(AlertsFile f)
+    {
         AlertType From(string key, string name)
         {
             var r = f.Rules.GetValueOrDefault(key) ?? Start(key);
@@ -258,6 +300,10 @@ public sealed class Alerts(DataFolder folder, Channels channels, TimeProvider cl
             {
                 f.StartType = f.Types[0].Id;
             }
+            foreach (var r in f.Rules.Values.Where(r => r.Type == id))
+            {
+                r.Type = f.StartType;
+            }
             file.Save(f);
             return (f.StartType, null);
         }
@@ -314,6 +360,7 @@ public sealed class Alerts(DataFolder folder, Channels channels, TimeProvider cl
                 f.Rules[key] = r;
             }
             f.Seeded = true;
+            f.Typed = false; // the notifications just given get their alert type
             file.Save(f);
         }
     }
@@ -327,6 +374,14 @@ public sealed class Alerts(DataFolder folder, Channels channels, TimeProvider cl
         }
         var r = Rule(key);
         r.On = form.On ?? r.On;
+        if (form.Type is { } type)
+        {
+            if (Type(type) is null)
+            {
+                return "Alert type not found. It may have been deleted.";
+            }
+            r.Type = type;
+        }
         if (key is SensorDown or LinkDown)
         {
             if (form.After is not (null or 0 or 1 or 5 or 10 or 30 or 60) || form.Again is not (null or 0 or 60 or 360 or 1440))
@@ -368,6 +423,7 @@ public sealed class Alerts(DataFolder folder, Channels channels, TimeProvider cl
         if (form.To is { } to)
         {
             r.To = [.. to.Where(channels.Known).Distinct()];
+            r.Type = form.Type; // its own notifications, unless an alert type comes with them
         }
         lock (file.Gate)
         {

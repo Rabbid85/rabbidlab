@@ -2,6 +2,13 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.371 (2026-11-22)
+
+- Settings, Alert rules lists every alert in one grid, grouped by area: the alert rules, the alerts from the Alerts page, and everything else that can happen. Each row has an alert type, or Don’t alert.
+- Picking an alert type turns that alert on and sends it to that type’s notifications. Don’t alert turns it off. Ticked rows can be set together from Actions.
+- Show narrows the list to what alerts, what is only logged, and what can’t be detected yet. Selecting a row opens its trigger, its alert type and a preview of the alert.
+- The alert types sit above the list, each with how many alerts use it and where it sends. Alert rules that had their own notifications now use the alert type that sends to the same place.
+
 ## 1.1.370 (2026-11-22)
 
 - Roles and people is in Settings, under Server, next to Sign-in. It is no longer in the sidebar, and old links to it open it there.
