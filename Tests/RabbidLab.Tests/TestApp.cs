@@ -75,6 +75,9 @@ public sealed class TestApp(string data) : WebApplicationFactory<Program>
 
     public FakeNetProbe Net { get; } = new();
 
+    /// <summary>Stands in for Microsoft's sign-in, Graph, Exchange Online and Azure, so no test reaches a real tenant.</summary>
+    public FakeMicrosoft Microsoft { get; } = new();
+
     /// <summary>When set, the real tools behind the domain pages (DirectoryTools) read this stand-in for Active Directory.</summary>
     public FakeLdap? Ldap { get; init; }
 
@@ -131,6 +134,9 @@ public sealed class TestApp(string data) : WebApplicationFactory<Program>
             // Nor the real network: Network scans a pretend one, and only when a test asks.
             services.RemoveAll<INetProbe>();
             services.AddSingleton<INetProbe>(Net);
+            // Nor Microsoft: the cloud pages talk to a pretend tenant.
+            services.RemoveAll<CloudHttp>();
+            services.AddSingleton(new CloudHttp(Microsoft));
             foreach (var worker in services.Where(d => d.ImplementationType == typeof(NetworkWorker)).ToList())
             {
                 services.Remove(worker);

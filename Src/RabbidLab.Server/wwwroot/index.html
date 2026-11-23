@@ -28,6 +28,7 @@
 <link rel="stylesheet" href="Assets/people-flows.css">
 <link rel="stylesheet" href="Assets/alerts-page.css">
 <link rel="stylesheet" href="Assets/network.css">
+<link rel="stylesheet" href="Assets/cloud.css">
 <link rel="stylesheet" href="Assets/search.css">
 <link rel="stylesheet" href="Assets/news.css">
 <link rel="stylesheet" href="Assets/edition.css">
@@ -55,6 +56,7 @@
 <script src="Assets/links.js" defer></script>
 <script src="Assets/portal-catalog.js" defer></script>
 <script src="Assets/portals.js" defer></script>
+<script src="Assets/cloud.js" defer></script>
 <script src="Assets/sensors.js" defer></script>
 <script src="Assets/wiki.js" defer></script>
 <script src="Assets/directory.js" defer></script>
@@ -147,6 +149,9 @@
   <symbol id="i-user-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 20c1.2-3.3 4-5 7-5s5.8 1.7 7 5"/><path d="M19 8v6M16 11h6"/></symbol>
   <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 0 0-14.3-4.9L4 8"/><path d="M4 3v5h5"/><path d="M4 13a8 8 0 0 0 14.3 4.9L20 16"/><path d="M20 21v-5h-5"/></symbol>
   <symbol id="i-cloud" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18a4 4 0 0 1-.6-8A6 6 0 0 1 18 9a4.5 4.5 0 0 1-.5 9z"/></symbol>
+  <symbol id="i-mail" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3.5 7 8.5 6 8.5-6"/></symbol>
+  <symbol id="i-license" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10.5" r="2.3"/><path d="M5.8 16.5c.6-1.6 1.8-2.4 3.2-2.4s2.6.8 3.2 2.4M14.5 9h3.5M14.5 12.5h3.5"/></symbol>
+  <symbol id="i-ms" viewBox="0 0 24 24"><path fill="#F25022" d="M2 2h9.5v9.5H2z"/><path fill="#7FBA00" d="M12.5 2H22v9.5h-9.5z"/><path fill="#00A4EF" d="M2 12.5h9.5V22H2z"/><path fill="#FFB900" d="M12.5 12.5H22V22h-9.5z"/></symbol>
   <symbol id="i-wrench" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-7.9 7.9l-6.9 6.9a2.1 2.1 0 0 1-3-3l6.9-6.9a6 6 0 0 1 7.9-7.9z"/></symbol>
   <symbol id="i-box" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5 9 5z"/><path d="M3 8v8l9 5 9-5V8M12 13v8"/></symbol>
   <symbol id="i-printer" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 8V3h10v5"/><rect x="3" y="8" width="18" height="9" rx="2"/><path d="M7 14h10v7H7z"/><path d="M17.5 11h.01"/></symbol>
@@ -244,6 +249,11 @@
   <a href="#gpo" data-page="gpo" id="rail-gpo" title="Group Policy" data-can="gpo.view"><svg><use href="#i-policy"/></svg><span>Group Policy</span></a>
   <a href="#ad/domain" data-page="domain" id="rail-domain" title="Domain health" data-can="ad.view ad.connect" data-whole><svg><use href="#i-shield"/></svg><span>Domain health</span><i class="rail-dot bad" id="rail-domain-dot" hidden></i></a>
   <a href="#sync" data-page="sync" id="rail-sync" title="Sync" data-can="ad.view" data-whole><svg><use href="#i-refresh"/></svg><span>Sync</span><i class="rail-dot bad" id="rail-sync-dot" hidden></i></a>
+  <p class="rail-label" data-can="cloud.view cloud.connect">Microsoft cloud</p>
+  <a href="#entra" data-page="entra" title="Entra ID" data-can="cloud.view cloud.connect"><svg><use href="#i-user-check"/></svg><span>Entra ID</span></a>
+  <a href="#exchange" data-page="exchange" title="Exchange" data-can="cloud.view cloud.connect"><svg><use href="#i-mail"/></svg><span>Exchange</span></a>
+  <a href="#m365" data-page="m365" title="Microsoft 365" data-can="cloud.view cloud.connect"><svg><use href="#i-license"/></svg><span>Microsoft 365</span></a>
+  <a href="#azure" data-page="azure" title="Azure" data-can="cloud.view cloud.connect"><svg><use href="#i-cloud"/></svg><span>Azure</span></a>
   <p class="rail-label" data-can="sensors.alerts">Alerts</p>
   <a href="#alerts" data-page="alerts" id="rail-alerts" title="Alerts" data-can="sensors.alerts"><svg><use href="#i-bell"/></svg><span>Alerts</span><small id="rail-alerts-n"></small></a>
   <p class="rail-label" data-can="ad.view">Automation</p>
@@ -1340,6 +1350,12 @@
     </div>
     <datalist id="ea-groups"><option>Domain Admins</option><option>Enterprise Admins</option><option>Schema Admins</option><option>Administrators</option><option>Account Operators</option><option>Backup Operators</option><option>Group Policy Creator Owners</option></datalist>
   </section>
+
+  <!-- Microsoft cloud: Entra ID, Exchange, Microsoft 365 and Azure, each laid out like Active Directory. cloud.js builds each page. -->
+  <section class="page home dir-top people-page dir-page cloud-page" id="page-entra" data-page="entra" data-title="Entra ID" hidden></section>
+  <section class="page home dir-top people-page dir-page cloud-page" id="page-exchange" data-page="exchange" data-title="Exchange" hidden></section>
+  <section class="page home dir-top people-page dir-page cloud-page" id="page-m365" data-page="m365" data-title="Microsoft 365" hidden></section>
+  <section class="page home dir-top people-page dir-page cloud-page" id="page-azure" data-page="azure" data-title="Azure" hidden></section>
 
   <section class="page home" id="page-sync" data-page="sync" data-title="Sync" hidden>
     <header class="hero" id="sync-hero">

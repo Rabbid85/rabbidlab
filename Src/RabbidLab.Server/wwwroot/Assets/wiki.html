@@ -415,6 +415,28 @@
   </ul>
   <p class="tip">Requires client 1.1.211 or later.</p>
 </article>
+<article data-key="cloud-connect" data-group="Microsoft cloud" data-title="Connect Microsoft cloud">
+  <p>Entra ID, Exchange, Microsoft 365 and Azure all use one connection to your Microsoft 365 tenant. Someone with the <b>Connect Microsoft cloud</b> permission connects it once, for everyone.</p>
+  <ol>
+    <li>Open <a href="#entra">Entra ID</a> (or any of the four pages) and select <b>Connect</b>. Confirm it's you when asked.</li>
+    <li>Select <b>Open Microsoft sign-in</b>, enter the code shown, and sign in with a <b>Global Administrator</b> account.</li>
+    <li>Rabbid Lab then sets itself up in your tenant, one step at a time on the card: it creates its own app registration with a certificate, grants that app its Microsoft Graph permissions, gives it the Exchange Administrator role, and gives it Reader on the Azure subscriptions your account can manage.</li>
+  </ol>
+  <p>Your sign-in is used only for those steps and is never stored. From then on Rabbid Lab signs in as its own app, with the certificate, whose private key is encrypted on the server. The gear at the foot of each page's list shows the connection: the tenant, the app registration, the permissions it has and anything that could not be set up.</p>
+  <p class="tip"><b>Disconnect…</b> on the connection deletes Rabbid Lab's app registration in the tenant, which removes its permissions and its roles there. The app is the owner of its own registration, so it can delete itself and nothing else. What each person can do on these pages is set by their role, under <a href="#settings/people">Settings › Roles and people</a>: View Microsoft cloud, and Connect Microsoft cloud.</p>
+</article>
+
+<article data-key="cloud-pages" data-group="Microsoft cloud" data-title="Entra ID, Exchange, Microsoft 365 and Azure">
+  <p>Each page works like Active Directory: its lists down the left with their views, the open list with filters, Group by and export, and a row's details in the side panel.</p>
+  <ul>
+    <li><a href="#entra">Entra ID</a>: users, with views for disabled users, guests, users synced from AD and users without a licence; groups by type; devices, with join type, compliance and last sign-in; and admin roles with who holds each.</li>
+    <li><a href="#exchange">Exchange</a>: user, shared, room and equipment mailboxes, with a view of mailboxes that forward mail; distribution lists and whether outside senders can mail them; contacts; mail flow rules; and quarantine.</li>
+    <li><a href="#m365">Microsoft 365</a>: each licence with how many are assigned and available, and every user with their licences.</li>
+    <li><a href="#azure">Azure</a>: virtual machines in every subscription Rabbid Lab can read, with whether each is running, stopped, or stopped but still billed; and the subscriptions.</li>
+  </ul>
+  <p class="tip">This version reads only. A row's <b>Actions</b> opens it in Microsoft's own admin center. Making changes from Rabbid Lab, such as new mailboxes and licences, comes in later versions, each as its own permission in Roles and people.</p>
+</article>
+
 <article data-key="local-new" data-group="Local accounts" data-title="Create a local account on a computer">
   <p>Local accounts are the Windows accounts on one computer: this server, or any computer in Devices. They are on each computer's Accounts tab. Everything is done in the browser and no service account is needed: this server makes its own changes, and on other computers the <span data-app>Rabbid Lab</span> client makes them as SYSTEM.</p>
   <ol>

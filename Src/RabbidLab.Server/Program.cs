@@ -105,6 +105,10 @@ builder.Services.AddSignIn();
 builder.Services.AddSingleton<Clients>();
 builder.Services.AddSingleton<ServerIdentity>();
 builder.Services.AddSingleton<IHereClient, HereClient>();
+
+// Microsoft 365, Entra ID, Exchange and Azure through Rabbid Lab's own app registration (MicrosoftCloud.cs, CloudApi.cs).
+builder.Services.AddSingleton(_ => new CloudHttp());
+builder.Services.AddSingleton<MicrosoftCloud>();
 builder.Services.AddSingleton<Inventories>();
 builder.Services.AddSingleton<IWakeSender, WakeSender>();
 builder.Services.AddSingleton<Waker>();
@@ -278,6 +282,7 @@ app.MapUserKeys();
 app.MapPeopleWorkflowsApi();
 app.MapChangesApi();
 app.MapLinksApi();
+app.MapCloudApi();
 app.MapSensorsApi();
 app.MapDevToolsApi();
 app.MapBrandApi();

@@ -59,6 +59,8 @@ public static class Permissions
     public const string NetworkView = "network.view";
     public const string NetworkScan = "network.scan";
     public const string NetworkSettings = "network.settings";
+    public const string CloudView = "cloud.view";
+    public const string CloudConnect = "cloud.connect";
 
     public sealed record Action(string Key, string Name, string About);
 
@@ -148,6 +150,11 @@ public static class Permissions
             new(GpoLink, "Link GPOs", "Link and unlink GPOs, disable and enforce links, change link order, and block inheritance on an OU."),
             new(GpoChange, "Create and edit GPOs", "Create and copy GPOs, rename them, disable their settings, manage WMI filters and security filtering, back up and restore."),
             new(GpoDelete, "Delete GPOs", "Delete GPOs and their links from the domain. Each GPO is backed up first."),
+        ]),
+        new("cloud", "Microsoft cloud", "cloud",
+        [
+            new(CloudView, "View Microsoft cloud", "Entra ID, Exchange, Microsoft 365 and Azure: users, groups, devices, mailboxes, licences and virtual machines. Read-only."),
+            new(CloudConnect, "Connect Microsoft cloud", "Connect a Microsoft 365 tenant with a Global Administrator sign-in, and disconnect it, which deletes Rabbid Lab's app registration there."),
         ]),
         new("windows", "Windows accounts", "key",
         [

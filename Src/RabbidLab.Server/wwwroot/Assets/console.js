@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.378', [
+    'Microsoft cloud: Entra ID, Exchange, Microsoft 365 and Azure each have a page laid out like Active Directory. Connect signs in once with a Global Administrator account at Microsoft; Rabbid Lab then makes its own app registration with a certificate and signs in as that app. The admin’s sign-in is never kept.',
+    'Lists in this version: users, groups, devices and admin roles; mailboxes, distribution lists, contacts, mail flow rules and quarantine; licences; Azure virtual machines and subscriptions. Two new permissions, View Microsoft cloud and Connect Microsoft cloud.']],
   ['1.1.377', [
     'Computers reconnect by themselves when the server’s certificate changes. The server now has an identity key of its own, each check-in hands the client its public half, and a new certificate key is taken only when that identity signs it.',
     'The opening screen matches the sign-in card’s style and glass opacity. Appearance, Opening screen has Same as the sign-in card, which is the default.']],
@@ -1208,6 +1211,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.378': ['2026-11-23', 'feature', 'Microsoft cloud: Entra ID, Exchange, Microsoft 365 and Azure', 'cloud.jpg'],
   '1.1.377': ['2026-11-23', 'fix', 'Computers reconnect by themselves after a certificate change'],
   '1.1.376': ['2026-11-23', 'feature', 'Roles and people in tabs, with roles by tier', 'roles-a.jpg'],
   '1.1.375': ['2026-11-23', 'feature', 'Admin portals, and links for a role or only you', 'links-d.jpg'],
@@ -1749,7 +1753,8 @@ const RELEASE_INFO = {
   const allows = (list) => !!shown && list.split(/\s+/).some((p) => shown.has(p));
   const has = (p) => can.has(p);
   const PAGES = { overview: 'overview.view', links: 'links.view', sensors: 'sensors.view', seats: 'seats.view sessions.view', ad: 'ad.view ad.connect',
-    org: 'ad.view', attrs: 'ad.view', sync: 'ad.view', report: 'activity.view', alerts: 'sensors.alerts', network: 'network.view', workflows: 'ad.view' };
+    org: 'ad.view', attrs: 'ad.view', sync: 'ad.view', report: 'activity.view', alerts: 'sensors.alerts', network: 'network.view', workflows: 'ad.view',
+    entra: 'cloud.view cloud.connect', exchange: 'cloud.view cloud.connect', m365: 'cloud.view cloud.connect', azure: 'cloud.view cloud.connect' };
   // Settings' pages and what each needs; About is for everyone, Developer for Rabbid Lab Dev only.
   const SUBS = { account: '', appearance: '', keys: '', viewas: 'access.view', address: '', updates: 'updates.view', people: 'access.view', signin: 'access.roles access.unlock', activity: 'activity.view', reports: 'activity.view', alerts: 'sensors.alerts', notifications: 'sensors.alerts', history: 'sensors.alerts',
     links: 'links.edit', sensors: 'sensors.edit', seats: 'seats.settings seats.add', network: 'network.settings', ad: 'ad.connect', developer: 'updates.auto', support: '', about: '' };
@@ -1803,7 +1808,8 @@ const RELEASE_INFO = {
     sub.classList.toggle('one-sec', !!one);
     // Active Directory's pages are listed down the left of whichever of them is open, with that page's views (users.js).
     // Domain health is its own area: its own entry in the sidebar, and only its views down the left.
-    const dir = now.classList.contains('dir-top') && now.id !== 'page-seats' && now.id !== 'page-gpo'; // Devices and Group Policy are laid out the same way, with a banner and a list of their own
+    // Devices, Group Policy and the Microsoft cloud pages are laid out the same way, with a banner and a list of their own.
+    const dir = now.classList.contains('dir-top') && now.id !== 'page-seats' && now.id !== 'page-gpo' && !now.classList.contains('cloud-page');
     const domain = now.dataset.page === 'ad' && (rest[0] === 'domain' || rest[0] === 'dcs'); // its checks, and its settings on each DC
     if (now.dataset.page !== 'ad') $('dir-rail').classList.remove('lists'); // Find, views and filters are for the pages that list things
     $('dir-rail').classList.toggle('domain-only', domain);

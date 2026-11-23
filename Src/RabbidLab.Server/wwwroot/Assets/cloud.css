@@ -1,0 +1,31 @@
+/* Microsoft cloud (cloud.js): the Connect cover's card, the sign-in code and its steps, and the connection's panel. */
+.cl-gate .big-ic.cl-ms { background: none; }
+.cl-gate .big-ic.cl-ms svg { width: 34px; height: 34px; }
+
+/* What connecting gives, as ticks under the words. */
+.cl-gets { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; text-align: left; }
+.cl-gets li { display: flex; align-items: center; gap: 9px; color: var(--text); font-size: 13.5px; }
+.cl-gets svg { flex: none; width: 15px; height: 15px; color: var(--ok); }
+
+/* The code to enter at Microsoft, big enough to read across the room, with Copy beside it. */
+.cl-code { display: flex; align-items: center; gap: 10px; padding: 10px 14px 10px 20px; border: 1px solid var(--line-strong); border-radius: 12px; background: var(--night); }
+.cl-code b { color: var(--title); font: 700 28px/1.1 "Cascadia Mono", Consolas, monospace; letter-spacing: .12em; }
+.cl-how { max-width: 460px; margin: 0; color: var(--muted); font-size: 12.5px; line-height: 1.5; }
+
+/* Each step as the server does it: ticked when done, a spinner on the one under way. */
+.cl-steps { display: grid; gap: 6px; width: min(420px, 100%); margin: 0; padding: 0; list-style: none; text-align: left; }
+.cl-steps li { display: flex; align-items: center; gap: 9px; min-width: 0; font-size: 13px; }
+.cl-steps li span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cl-steps li.done { color: var(--muted); }
+.cl-steps li.done svg { flex: none; width: 15px; height: 15px; color: var(--ok); }
+.cl-steps li.now { color: var(--title); font-weight: 600; }
+.cl-spin { flex: none; width: 13px; height: 13px; margin: 0 1px; border: 2px solid var(--line-strong); border-top-color: var(--accent-soft); border-radius: 50%; animation: cl-turn .8s linear infinite; }
+@keyframes cl-turn { to { rotate: 1turn; } }
+@media (prefers-reduced-motion: reduce) { .cl-spin { animation-duration: 2.4s; } }
+
+/* The connection's panel: what needs a look, and the app's permissions. */
+.cl-notes { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.cl-notes li { display: flex; gap: 9px; color: var(--text); font-size: 13px; line-height: 1.5; }
+.cl-notes svg { flex: none; width: 15px; height: 15px; margin-top: 2px; color: var(--amber); }
+.cl-perms { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 0; padding: 0; list-style: none; }
+.cl-perms li { padding: 3px 8px; border: 1px solid var(--line); border-radius: 6px; color: var(--muted); font-size: 12px; }

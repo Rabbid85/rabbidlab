@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.378 (2026-11-23)
+
+- Microsoft cloud: Entra ID, Exchange, Microsoft 365 and Azure each have a page laid out like Active Directory. Connect signs in once with a Global Administrator account at Microsoft; Rabbid Lab then makes its own app registration with a certificate and signs in as that app. The admin’s sign-in is never kept.
+- Lists in this version: users, groups, devices and admin roles; mailboxes, distribution lists, contacts, mail flow rules and quarantine; licences; Azure virtual machines and subscriptions. Two new permissions, View Microsoft cloud and Connect Microsoft cloud.
+
 ## 1.1.377 (2026-11-23)
 
 - Computers reconnect by themselves when the server’s certificate changes. The server now has an identity key of its own, each check-in hands the client its public half, and a new certificate key is taken only when that identity signs it.
