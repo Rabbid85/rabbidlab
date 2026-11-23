@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.370', [
+    'Roles and people is in Settings, under Server, next to Sign-in. It is no longer in the sidebar, and old links to it open it there.',
+    'Hints no longer push a window sideways with a glass style on. Before, one hint in the Edit workflow window stretched it and left it scrolled off to one side.']],
   ['1.1.369', [
     'Workflows has its own page, under Automation in the sidebar, with its own banner: how many workflows there are, how many are enabled, and how many ran this week. It is no longer part of Active Directory.',
     'Ctrl+K finds it, and G then F goes to it.']],
@@ -1178,6 +1181,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.370': ['2026-11-22', 'update', 'Roles and people moves into Settings'],
   '1.1.369': ['2026-11-22', 'update', 'Workflows gets its own page'],
   '1.1.368': ['2026-11-22', 'fix', 'Network scans never wait on one device'],
   '1.1.367': ['2026-11-22', 'fix', 'Network identifies devices as it finds them'],
@@ -1710,23 +1714,25 @@ const RELEASE_INFO = {
   let me = '';
   const allows = (list) => !!shown && list.split(/\s+/).some((p) => shown.has(p));
   const has = (p) => can.has(p);
-  const PAGES = { overview: 'overview.view', links: 'links.view', sensors: 'sensors.view', seats: 'seats.view sessions.view', people: 'access.view', ad: 'ad.view ad.connect',
+  const PAGES = { overview: 'overview.view', links: 'links.view', sensors: 'sensors.view', seats: 'seats.view sessions.view', ad: 'ad.view ad.connect',
     org: 'ad.view', attrs: 'ad.view', sync: 'ad.view', report: 'activity.view', alerts: 'sensors.alerts', network: 'network.view', workflows: 'ad.view' };
   // Settings' pages and what each needs; About is for everyone, Developer for Rabbid Lab Dev only.
-  const SUBS = { account: '', appearance: '', keys: '', viewas: 'access.view', address: '', updates: 'updates.view', signin: 'access.roles access.unlock', activity: 'activity.view', reports: 'activity.view', alerts: 'sensors.alerts', notifications: 'sensors.alerts', history: 'sensors.alerts',
+  const SUBS = { account: '', appearance: '', keys: '', viewas: 'access.view', address: '', updates: 'updates.view', people: 'access.view', signin: 'access.roles access.unlock', activity: 'activity.view', reports: 'activity.view', alerts: 'sensors.alerts', notifications: 'sensors.alerts', history: 'sensors.alerts',
     links: 'links.edit', sensors: 'sensors.edit', seats: 'seats.settings seats.add', network: 'network.settings', ad: 'ad.connect', developer: 'updates.auto', support: '', about: '' };
   const subOk = (s) => s in SUBS && (!SUBS[s] || !shown || allows(SUBS[s])) && (s !== 'developer' || document.body.classList.contains('is-dev'));
   const pageOk = (key) => !shown || !PAGES[key] || allows(PAGES[key]);
-  const home = () => ['overview', 'links', 'sensors', 'ad', 'seats', 'people', 'local'].find(pageOk) || 'wiki';
+  const home = () => ['overview', 'links', 'sensors', 'ad', 'seats', 'local'].find(pageOk) || 'wiki';
   const firstSetting = () => Object.keys(SUBS).find(subOk) || 'account';
 
   // Which page shows comes from the address: #settings/<page> is a page of Settings (#updates, #activity and #developer
-  // still work), and #people and #role/<id> are Roles and people (people.js). The rails mark them.
+  // still work). Roles and people is #settings/people, with /role/<id>/<tab> for one role (people.js); the old #people
+  // and #role/<id> open it there. The rails mark them.
   const where = () => {
     const [h, ...rest] = location.hash.slice(1).split('/');
     if (['updates', 'activity', 'developer'].includes(h)) return ['settings', h, rest];
     if (h === 'settings') return ['settings', rest[0] in SUBS ? rest[0] : firstSetting(), rest.slice(1)];
-    if (h === 'role') return ['people', 'role', rest];
+    if (h === 'people') return ['settings', 'people', rest];
+    if (h === 'role') return ['settings', 'people', ['role', ...rest]];
     if (h === 'local') return ['seats', 'seats', ['admins']]; // Local accounts moved to Devices in 1.1.183
     return [h || home(), h, rest];
   };
@@ -2417,7 +2423,7 @@ const RELEASE_INFO = {
     return (!!f && el.contains(f) && f.matches(TYPED))
       || [...el.querySelectorAll('textarea:not([readonly], [disabled]), [contenteditable="true"]')].some((x) => (x.value ?? x.textContent).trim());
   };
-  const inTheWay = (areas) => pressed || lifted || !!document.querySelector('dialog[open]:modal, :popover-open')
+  const inTheWay = (areas) => pressed || lifted || !!document.querySelector('dialog[open]:modal, :popover-open:not(.tipbox)')
     || document.body.matches('.col-dragging, .col-moving, .dw-sizing')
     || [...document.querySelectorAll('[data-drop]:not([hidden]), .busy-cover')].some(showing) || areas.some(typedIn);
   // Tables scrolled sideways or down inside els, put back where they were once they're drawn again.
@@ -5660,7 +5666,7 @@ const RELEASE_INFO = {
     if (folded.size) panel.body.querySelectorAll('.dw-sec').forEach((sec) => sec.classList.toggle('shut', folded.has(foldKey(sec))));
   }).observe(panel.body, { childList: true, subtree: true });
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && panel.el.open && !document.querySelector('dialog[open]:modal, :popover-open')) panel.close();
+    if (e.key === 'Escape' && panel.el.open && !document.querySelector('dialog[open]:modal, :popover-open:not(.tipbox)')) panel.close();
   });
   document.addEventListener('rabbidlab:show', () => { if (panel.el.open && where()[0] !== panel.page) panel.close(); });
 

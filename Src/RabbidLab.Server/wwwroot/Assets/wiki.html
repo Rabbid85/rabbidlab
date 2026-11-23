@@ -38,11 +38,11 @@
 <article data-key="around" data-group="Getting started" data-title="Navigate the console">
   <p>All pages are in the navigation pane on the left. You see only the pages your roles allow.</p>
   <ul>
-    <li><b>Lab:</b> <a href="#overview">Overview</a>, <a href="#links">Links</a> (the sites in your lab), Sensors, and <a href="#seats">Devices</a> (computers with the client, their local accounts and their local administrators).</li>
+    <li><b>Lab:</b> <a href="#overview">Overview</a>, <a href="#links">Links</a> (the sites in your lab), Sensors, <a href="#seats">Devices</a> (computers with the client, their local accounts and their local administrators) and <a href="#network">Network</a>.</li>
     <li><b>Directory:</b> Active Directory (<a href="#ad/users">Users</a>, <a href="#ad/groups">Groups</a> and <a href="#ad/computers">Computers</a> in your domain), Group Policy, Domain health and Sync.</li>
-    <li><b>Config:</b> <a href="#people">Roles and people</a>.</li>
+    <li><b>Alerts</b> and <b>Automation:</b> <a href="#alerts">Alerts</a> and <a href="#workflows">Workflows</a>.</li>
     <li><b>Help:</b> this wiki. What's new and GitHub are in the top bar.</li>
-    <li><b>Settings</b>, at the bottom: your account, updates, alerts, the activity log and server settings.</li>
+    <li><b>Settings</b>, at the bottom: your account, updates, <a href="#settings/people">Roles and people</a>, sign-in, alerts, the activity log and server settings.</li>
   </ul>
   <p>The top bar also has shortcuts to Updates and Activity. Your name in the top right shows how you signed in and has <b>Sign out</b>. <b>Collapse</b>, at the bottom of the navigation pane, reduces it to icons.</p>
 </article>
@@ -120,7 +120,7 @@
     <li><b>Wake</b> uses Wake-on-LAN to turn on a computer that is shut down or asleep. This server sends the packet to computers on its own network. For a computer on another network, an online computer on that network relays it. Wake-on-LAN must be enabled in the BIOS and in Windows: the computer panel shows which settings are missing, and the built-in script <b>Enable Wake-on-LAN</b> configures the Windows settings.</li>
   </ul>
   <p><b>Verify your identity.</b> Before a job runs, or a script or workflow is saved, you are asked for a code from your authenticator app, or for your password if MFA is not set up. You are asked again after 10 minutes. To run a job on more than 10 computers, you also enter the number of computers.</p>
-  <p><b>Permissions.</b> Four permissions under Devices in <a href="#people">Roles and people</a> control this: Restart, wake and update computers; Run scripts; Manage scripts; and Manage workflows. Manage scripts allows running any code on every computer, so assign it to as few people as possible. Every run is recorded in the activity log with who ran it and the script's SHA-256 hash.</p>
+  <p><b>Permissions.</b> Four permissions under Devices in <a href="#settings/people">Roles and people</a> control this: Restart, wake and update computers; Run scripts; Manage scripts; and Manage workflows. Manage scripts allows running any code on every computer, so assign it to as few people as possible. Every run is recorded in the activity log with who ran it and the script's SHA-256 hash.</p>
   <p class="tip">To block scripts and actions on specific computers, set <b>Allow scripts and actions</b> to Disabled in the Group Policy template. Their jobs then show as Rejected. Computers need client 1.1.168 or later to run jobs.</p>
 </article>
 
@@ -463,7 +463,7 @@
   </ul>
   <h3>Create a role</h3>
   <ol>
-    <li>Open <a href="#people">Roles and people</a> and select <b>New role</b>.</li>
+    <li>Open <a href="#settings/people">Roles and people</a> and select <b>New role</b>.</li>
     <li>On <b>Display</b>, enter a name and select a colour.</li>
     <li>On <b>Permissions</b>, select the permissions the role grants, area by area.</li>
     <li>Under <b>Active Directory</b>, <b>Scope</b> limits the role to the OUs you add and everything in them. With no OUs, the role applies everywhere the service account does.</li>
@@ -495,7 +495,7 @@
 
 <article data-key="people" data-group="Access" data-title="Assign roles">
   <ol>
-    <li>Open <a href="#people">Roles and people</a> and select <b>Add people</b>.</li>
+    <li>Open <a href="#settings/people">Roles and people</a> and select <b>Add people</b>.</li>
     <li>Search for an Active Directory group, a user or a local account, and select it.</li>
     <li>Select the roles, then select <b>Add</b>.</li>
   </ol>
@@ -506,7 +506,7 @@
 <article data-key="local-signin" data-group="Access" data-title="Local accounts">
   <p>Local accounts in <span data-app>Rabbid Lab</span> are sign-in accounts that belong to <span data-app>Rabbid Lab</span>, separate from Windows and AD. Use them when there is no domain, or as a fallback if AD is unavailable.</p>
   <ol>
-    <li>In <a href="#people">Roles and people</a>, select <b>Add people</b>, then <b>New local account</b>.</li>
+    <li>In <a href="#settings/people">Roles and people</a>, select <b>Add people</b>, then <b>New local account</b>.</li>
     <li>Enter a username and a password of at least 8 characters, and select its roles.</li>
   </ol>
   <p>To sign in with a local account when AD is set up, select <b>Use a local account instead</b> on the sign-in page, or type <code>.\</code> before the username.</p>

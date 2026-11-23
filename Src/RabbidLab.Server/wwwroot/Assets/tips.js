@@ -2,8 +2,11 @@
 // console's own box (.tipbox in console.css) the moment the pointer is on it, or on keyboard focus. A title anywhere is turned into a data-tip the first time the pointer meets it, so the browser's grey box never
 // shows. Nothing else in the console draws hints.
 (() => {
+  // A popover, so it sits in the top layer over any window, placed against the screen: inside a glass window the
+  // backdrop filter would make the window its frame, and the box would land off to the side and stretch it.
   const box = document.createElement('div');
   box.className = 'tipbox';
+  box.popover = 'manual';
   box.setAttribute('role', 'tooltip');
   let tipFor = null;
   let timer = null;
@@ -25,15 +28,16 @@
     clearTimeout(timer);
     tipFor = null;
     box.classList.remove('show');
+    if (box.matches(':popover-open')) box.hidePopover();
   };
   // A hint that only says what's already on screen stays hidden, unless that text is cut off.
   const clipped = (t) => [t, ...t.querySelectorAll('*')].some((e) => e.scrollWidth > e.clientWidth + 1);
   const repeats = (t) => (t.innerText ?? t.textContent ?? '').includes(t.dataset.tip.trim());
   const show = (t) => {
     if (repeats(t) && !clipped(t)) return;
-    // Inside an open dialog or popover it has to be in there too, or the top layer covers it.
-    const host = t.closest('dialog[open], :popover-open') || document.body;
-    if (box.parentElement !== host) host.append(box);
+    // Shown again each time, so it goes above a window or menu opened since.
+    if (box.matches(':popover-open')) box.hidePopover();
+    box.showPopover();
     box.textContent = t.dataset.tip;
     const r = t.getBoundingClientRect();
     const w = box.offsetWidth;

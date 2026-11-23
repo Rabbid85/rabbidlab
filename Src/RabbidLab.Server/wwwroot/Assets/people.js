@@ -1,5 +1,5 @@
-// Roles and people: #people (everyone, or #people/people, /groups, /local) and #role/<id>/<tab> (one role's display,
-// permissions and members). It asks /api/roles when the page opens and after each change. console.js shares its
+// Roles and people, in Settings: #settings/people (everyone, or /people, /groups, /local) and #settings/people/role/<id>/<tab>
+// (one role's display, permissions and members). It asks /api/roles when the page opens and after each change. console.js shares its
 // helpers as window.RabbidLab.
 (() => {
   const R = window.RabbidLab;
@@ -108,7 +108,7 @@
   const cards = () => data.roles.map((r) => {
     const p = parts(r);
     const who = r.members.map(memberLabel);
-    return `<a class="rcard" href="#role/${encodeURIComponent(r.id)}" data-color="${esc(r.color)}"><b><i class="dot"></i>${esc(r.name)}${r.id === 'admin' ? svg('lock', 'lk') : ''}</b>`
+    return `<a class="rcard" href="#settings/people/role/${encodeURIComponent(r.id)}" data-color="${esc(r.color)}"><b><i class="dot"></i>${esc(r.name)}${r.id === 'admin' ? svg('lock', 'lk') : ''}</b>`
       + `<p>${esc(r.about || '')}</p><div class="parts">${p.slice(0, 3).map((x) => `<span>${esc(x)}</span>`).join('')}${p.length > 3 ? `<span>+${p.length - 3}</span>` : ''}</div>`
       + `<div class="n">${svg('users')}${esc(who.length ? who.join(', ') : 'No members')}</div></a>`;
   }).join('');
@@ -153,7 +153,7 @@
   const drawSide = (current) => {
     $('ppl-roles').innerHTML = data.roles.map((r) => {
       const movable = r.manage && !r.builtIn && mine('access.roles');
-      return `<a class="role" href="#role/${encodeURIComponent(r.id)}" data-role="${esc(r.id)}" data-color="${esc(r.color)}"${movable ? ' draggable="true"' : ''}${r.id === current ? ' aria-current="page"' : ''}>`
+      return `<a class="role" href="#settings/people/role/${encodeURIComponent(r.id)}" data-role="${esc(r.id)}" data-color="${esc(r.color)}"${movable ? ' draggable="true"' : ''}${r.id === current ? ' aria-current="page"' : ''}>`
         + `${movable ? svg('grip', 'grip') : '<span class="grip"></span>'}<i class="dot"></i><span class="nm">${esc(r.name)}</span>${r.id === 'admin' ? svg('lock', 'lk') : ''}<small>${r.members.length}</small></a>`;
     }).join('');
     const pick = $('ppl-role-filter');
@@ -201,7 +201,7 @@
   // --- One person, group or account in the side panel, and giving or taking away roles -------------------------------
 
   const closeCard = () => { $('rmenu').hidden = true; }; // the role menu; the side panel stays and is drawn again
-  const place = (box, near, dx = 0) => R.place(box, near, $('page-people'), dx);
+  const place = (box, near, dx = 0) => R.place(box, near, $('set-people'), dx);
   const rowKey = (row) => `${row.kind}:${row.name}`;
   const markRow = () => document.querySelectorAll('#ppl-rows [data-row]').forEach((el) => el.classList.toggle('dw-on', R.panel.shows('people', rowKey(list[Number(el.dataset.row)] || {}))));
   R.panel.el.addEventListener('close', markRow);
@@ -409,7 +409,7 @@
     $('role-viewas-text').textContent = `Preview as ${r.name}`;
     $('role-count').textContent = r.members.length;
     $('role-tabs').querySelectorAll('[data-tab]').forEach((a) => {
-      a.href = `#role/${encodeURIComponent(r.id)}/${a.dataset.tab}`;
+      a.href = `#settings/people/role/${encodeURIComponent(r.id)}/${a.dataset.tab}`;
       current(a, a.dataset.tab === tab);
     });
     document.querySelectorAll('#role-view [data-pane]').forEach((p) => { p.hidden = p.dataset.pane !== tab; });
@@ -524,7 +524,7 @@
         await R.send(`/api/roles/${encodeURIComponent(r.id)}/delete`);
         draft = null;
         await refresh(); // the list is drawn from what's loaded, so it's read before going back
-        location.hash = '#people';
+        location.hash = '#settings/people';
       } catch (err) {
         problem(err.message);
       }
@@ -591,7 +591,7 @@
       const made = await R.send('/api/roles', { name: n === 1 ? 'New role' : `New role ${n}`, color: SWATCHES[(data.roles.length * 3) % SWATCHES.length] });
       draft = null;
       await refresh(); // so the new role is there to open
-      location.hash = `#role/${encodeURIComponent(made.id)}/display`;
+      location.hash = `#settings/people/role/${encodeURIComponent(made.id)}/display`;
     } catch (err) {
       problem(err.message);
     }
@@ -685,15 +685,15 @@
 
   // Draws what the address asks for, from what's loaded.
   const route = () => {
-    const [pageName, kind, rest] = R.where();
-    if (pageName !== 'people' || !data) return;
+    const [pageName, sub, rest] = R.where();
+    if (pageName !== 'settings' || sub !== 'people' || !data) return;
     closeCard();
-    const r = kind === 'role' ? role(decodeURIComponent(rest[0] || '')) : null;
+    const r = rest[0] === 'role' ? role(decodeURIComponent(rest[1] || '')) : null;
     $('ppl-list').hidden = !!r;
     $('role-view').hidden = !r;
     if (!r) $('role-unsaved').hidden = true;
     drawSide(r?.id);
-    if (r) drawRole(r, ['display', 'permissions', 'members'].includes(rest[1]) ? rest[1] : 'permissions');
+    if (r) drawRole(r, ['display', 'permissions', 'members'].includes(rest[2]) ? rest[2] : 'permissions');
     else drawList(BROWSE[rest[0]] ? rest[0] : 'all');
   };
   // Loads again, then draws.
@@ -718,7 +718,7 @@
   let here = false;
   document.addEventListener('rabbidlab:show', (e) => {
     const was = here;
-    here = e.detail[0] === 'people' && R.has('access.view');
+    here = e.detail[0] === 'settings' && e.detail[1] === 'people' && R.has('access.view');
     if (!here) $('role-unsaved').hidden = true;
     else if (was && data) route();
     else refresh();

@@ -22,7 +22,7 @@
     { id: 'sync', label: 'Sync', icon: 'refresh', where: 'Directory', key: 'y', hash: '#sync', can: 'ad.view' },
     { id: 'alerts', label: 'Alerts', icon: 'bell', where: 'Alerts', key: 'a', hash: '#alerts', can: 'sensors.alerts' },
     { id: 'workflows', label: 'Workflows', icon: 'org', where: 'Automation', key: 'f', hash: '#workflows', can: 'ad.view' },
-    { id: 'people', label: 'Roles and people', icon: 'shield', where: 'Config', key: 'r', hash: '#people', can: 'access.view' },
+    { id: 'people', label: 'Roles and people', icon: 'shield', where: 'Settings', key: 'r', hash: '#settings/people', can: 'access.view' },
     { id: 'wiki', label: 'Wiki', icon: 'book', where: 'Help', key: 'w', hash: '#wiki' },
     { id: 'settings', label: 'Settings', icon: 'gear', where: 'Help', key: 't', hash: '#settings' },
     { id: 'whats-new', label: 'What’s new', icon: 'new', where: 'Help', key: '', hash: '#whats-new' },
@@ -77,12 +77,14 @@
     if (can('sensors.view')) get('/api/sensors').then((r) => { sensors = r.sensors || []; if (open) draw(); }).catch(() => {});
     if (can('network.view') && !R.networkNow?.()) get('/api/network').then((r) => { net = r; if (open) draw(); }).catch(() => {});
   };
-  // Settings' pages and their parts, as the Settings sidebar lists them for you.
+  // Settings' pages and their parts, as the Settings sidebar lists them for you; one that's also under Pages shows there only.
+  const nameOf = (a) => (a?.querySelector('span') || a)?.textContent.trim() || ''; // without a count beside it
   const settingsItems = () => [...document.querySelectorAll('#page-settings nav a[data-sub]')].filter((a) => !a.hidden && !a.classList.contains('dev-only')
-    && can(a.dataset.can) && can(document.querySelector(`#page-settings nav a[data-sub="${a.dataset.sub}"]:not([data-sec])`)?.dataset.can)).map((a) => {
+    && can(a.dataset.can) && can(document.querySelector(`#page-settings nav a[data-sub="${a.dataset.sub}"]:not([data-sec])`)?.dataset.can)
+    && !PAGES.some((p) => p.hash === a.getAttribute('href'))).map((a) => {
     const sec = a.dataset.sec;
-    const main = a.textContent.trim();
-    const parent = sec ? document.querySelector(`#page-settings nav a[data-sub="${a.dataset.sub}"]:not([data-sec])`)?.textContent.trim() : '';
+    const main = nameOf(a);
+    const parent = sec ? nameOf(document.querySelector(`#page-settings nav a[data-sub="${a.dataset.sub}"]:not([data-sec])`)) : '';
     return { ref: `set:${a.dataset.sub}:${sec || ''}`, group: 'Settings', icon: 'gear', label: sec ? `${parent} › ${main}` : main, hint: 'Settings', go: { t: 'hash', h: a.getAttribute('href') } };
   });
   const everything = () => {

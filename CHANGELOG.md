@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.370 (2026-11-22)
+
+- Roles and people is in Settings, under Server, next to Sign-in. It is no longer in the sidebar, and old links to it open it there.
+- Hints no longer push a window sideways with a glass style on. Before, one hint in the Edit workflow window stretched it and left it scrolled off to one side.
+
 ## 1.1.369 (2026-11-22)
 
 - Workflows has its own page, under Automation in the sidebar, with its own banner: how many workflows there are, how many are enabled, and how many ran this week. It is no longer part of Active Directory.

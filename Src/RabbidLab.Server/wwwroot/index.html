@@ -245,8 +245,6 @@
   <a href="#alerts" data-page="alerts" id="rail-alerts" title="Alerts" data-can="sensors.alerts"><svg><use href="#i-bell"/></svg><span>Alerts</span><small id="rail-alerts-n"></small></a>
   <p class="rail-label" data-can="ad.view">Automation</p>
   <a href="#workflows" data-page="workflows" title="Workflows" data-can="ad.view"><svg><use href="#i-org"/></svg><span>Workflows</span><small id="rail-workflows"></small></a>
-  <p class="rail-label" data-can="access.view windows.view">Config</p>
-  <a href="#people" data-page="people" title="Roles and people" data-can="access.view"><svg><use href="#i-shield"/></svg><span>Roles and people</span><small id="rail-roles"></small></a>
   <p class="rail-label">Help</p>
   <a href="#wiki" data-page="wiki" title="Wiki"><svg><use href="#i-book"/></svg><span>Wiki</span></a>
   <a href="#settings" data-page="settings" class="rail-settings" id="rail-settings" title="Settings"><svg><use href="#i-gear"/></svg><span>Settings</span><i class="rail-dot" id="rail-dot" hidden></i></a>
@@ -310,6 +308,7 @@
       <p class="rail-label">Server</p>
       <a href="#settings/address" data-sub="address"><svg><use href="#i-browser"/></svg><span>Console address</span></a>
       <a href="#settings/updates" data-sub="updates" data-can="updates.view"><svg><use href="#i-updates"/></svg><span>Updates</span><i class="rail-dot" id="srail-dot" hidden></i></a>
+      <a href="#settings/people" data-sub="people" data-can="access.view"><svg><use href="#i-shield"/></svg><span>Roles and people</span><small id="rail-roles"></small></a>
       <a href="#settings/signin" data-sub="signin" data-can="access.roles access.unlock"><svg><use href="#i-lock"/></svg><span>Sign-in</span></a>
       <a href="#settings/activity" data-sub="activity" data-can="activity.view"><svg class="all-flask" viewBox="0 0 24 24" aria-hidden="true"><path class="liquid" d="M6.6 15.2h10.8l2 3.2A1.7 1.7 0 0 1 17.9 21H6.1a1.7 1.7 0 0 1-1.5-2.6z"/><path d="M9 3h6M10 3v6.2L4.6 18.4A1.7 1.7 0 0 0 6.1 21h11.8a1.7 1.7 0 0 0 1.5-2.6L14 9.2V3"/></svg><span>Activity log</span></a>
       <div class="dkids" data-kids="activity">
@@ -370,7 +369,7 @@
         <div class="ds-row"><div class="ds-l"><b>Username</b></div><div class="ds-r"><span class="ds-v" id="acc-user"></span></div></div>
         <div class="ds-row"><div class="ds-l"><b>Signed in with</b></div><div class="ds-r"><span class="ds-v" id="acc-how"></span></div></div>
         <div class="ds-row"><div class="ds-l"><b>Roles</b></div><div class="ds-r"><span class="ds-v" id="acc-roles"></span></div></div>
-        <div class="ds-row" data-can="access.view"><div class="ds-l"><b>Roles and people</b><span>Manage what each role can do.</span></div><div class="ds-r"><a class="ds-btn" href="#people">Open</a></div></div>
+        <div class="ds-row" data-can="access.view"><div class="ds-l"><b>Roles and people</b><span>Manage what each role can do.</span></div><div class="ds-r"><a class="ds-btn" href="#settings/people">Open</a></div></div>
         <div class="ds-row" id="acc-password-row" hidden><div class="ds-l"><b>Password</b><span>Changing your password signs you out of every session, including this one.</span></div><div class="ds-r"><button type="button" class="ds-btn" id="acc-password">Change</button></div></div>
       </section>
       <section class="ds-sec" data-sec="mfa"><h3 class="ds-h">Multi-factor authentication</h3>
@@ -517,6 +516,91 @@
     </section>
 
     <!-- Sign-in: how long people stay signed in (console.js, SignIn.cs). -->
+    <!-- Roles and people: the roles in order down the left, and everyone with their roles, or one role to change (people.js). In Settings since 1.1.370. -->
+    <section class="sub people-sub" data-sub="people" data-title="Roles and people" id="set-people" hidden>
+      <header class="sub-head"><h2>Roles and people</h2>
+        <p>Roles control what people can do. Add Active Directory groups, individual users and local accounts to roles. A person with several roles gets the permissions of all of them.</p></header>
+      <div class="lib">
+        <aside class="side" aria-label="Roles and people">
+          <label class="side-find"><svg><use href="#i-search"/></svg><input type="search" id="ppl-find" placeholder="Search people, groups and roles" aria-label="Search people, groups and roles" autocomplete="off" spellcheck="false"></label>
+          <p class="side-label">Browse</p>
+          <a href="#settings/people" data-browse="all"><svg><use href="#i-list"/></svg>Everyone<small id="b-all"><i class="sk sk-num"></i></small></a>
+          <a href="#settings/people/people" data-browse="people"><svg><use href="#i-user"/></svg>People<small id="b-people"><i class="sk sk-num"></i></small></a>
+          <a href="#settings/people/groups" data-browse="groups"><svg><use href="#i-users"/></svg>Groups<small id="b-groups"><i class="sk sk-num"></i></small></a>
+          <a href="#settings/people/local" data-browse="local"><svg><use href="#i-key"/></svg>Local accounts<small id="b-local"><i class="sk sk-num"></i></small></a>
+          <p class="side-label">Roles<span>Highest first</span></p>
+          <div class="side-roles" id="ppl-roles" data-skel="rows:4"></div>
+          <button type="button" class="side-new" id="role-new" data-can="access.roles"><svg><use href="#i-plus"/></svg>New role</button>
+          <p class="side-label">Filters</p>
+          <p class="side-sub">Signed in with</p>
+          <div class="seg" id="ppl-source"><button type="button" data-source="any" aria-pressed="true">Any</button><button type="button" data-source="ad">Active Directory</button><button type="button" data-source="local">Local</button></div>
+          <p class="side-sub">Role</p>
+          <select class="side-pick" id="ppl-role-filter" aria-label="Role"><option value="">Any role</option></select>
+          <label class="tick"><input type="checkbox" id="ppl-week">Signed in this week</label>
+        </aside>
+
+        <div class="lib-body">
+          <!-- Everyone: the roles as cards, then each person, group and account with their roles. -->
+          <div id="ppl-list">
+            <div class="lib-bar"><h2 id="ppl-title">Everyone</h2>
+              <select id="ppl-sort" aria-label="Sort"><option value="role">Highest role</option><option value="name">Name</option><option value="seen">Last signed in</option></select>
+              <button type="button" class="primary" id="ppl-add" data-can="access.members access.local"><svg><use href="#i-plus"/></svg>Add people</button></div>
+            <p class="lib-label" id="ppl-cards-label"><svg><use href="#i-shield"/></svg>Roles</p>
+            <div class="rcards" id="ppl-cards" data-skel="tiles:4"></div>
+            <div class="prows" id="ppl-rows" data-skel="rows:6"></div>
+          </div>
+
+          <!-- One role: its look, what it allows, and who's in it. -->
+          <div id="role-view" hidden>
+            <div class="rhead"><span class="big"><svg><use href="#i-shield"/></svg></span>
+              <div class="rhead-text"><b id="role-name"></b><span id="role-line"></span></div>
+              <button type="button" id="role-viewas"><svg><use href="#i-eye"/></svg><span id="role-viewas-text">Preview this role</span></button></div>
+            <nav class="tabs2" id="role-tabs"><a data-tab="display">Display</a><a data-tab="permissions">Permissions</a><a data-tab="members">Members <small id="role-count"></small></a></nav>
+            <p class="hint role-note" id="role-note" hidden></p>
+
+            <div data-pane="display">
+              <div class="form">
+                <label for="role-edit-name">Role name</label><input id="role-edit-name" maxlength="40" autocomplete="off">
+                <label for="role-edit-about">Description</label><input id="role-edit-about" maxlength="160" autocomplete="off">
+                <p class="form-label">Colour</p><div class="swatches" id="role-swatches" role="radiogroup" aria-label="Colour"></div>
+                <p class="form-label">Preview</p><div class="chips-preview" id="role-preview"></div>
+              </div>
+              <p class="lib-label">Position</p>
+              <p class="hint" id="role-where"></p>
+              <p class="lib-label">Sign-in</p>
+              <p class="hint">MFA is required for every role. Everyone signs in with a password and a code from an authenticator app.</p>
+              <div class="rows" id="role-delete-row"><div class="row still"><span class="t"><b id="role-delete-title">Delete this role</b><span>Members lose the permissions this role grants. Permissions from their other roles still apply.</span></span>
+                <button type="button" class="danger" id="role-delete"><svg><use href="#i-trash"/></svg>Delete role</button></div></div>
+            </div>
+
+            <div data-pane="permissions" hidden>
+              <div class="tools"><label class="find"><svg><use href="#i-search"/></svg><input type="search" id="perm-find" placeholder="Find a permission" aria-label="Find a permission" autocomplete="off"></label>
+                <button type="button" class="link" id="perm-clear">Clear all</button></div>
+              <div id="perm-list"></div>
+            </div>
+
+            <div data-pane="members" hidden>
+              <p class="lib-label">Members</p>
+              <div class="rows" id="member-list"></div>
+              <div id="member-add" data-can="access.members">
+                <p class="lib-label">Add members</p>
+                <div class="adder"><label class="find"><svg><use href="#i-search"/></svg><input type="search" id="member-find" data-find placeholder="Search groups, people and local accounts" aria-label="Search groups, people and local accounts" autocomplete="off" spellcheck="false"></label>
+                  <div class="drop" data-drop hidden></div></div>
+              </div>
+            </div>
+          </div>
+          <p class="hint problem" id="ppl-problem" hidden></p>
+        </div>
+      </div>
+
+      <!-- A person, group or account: their roles, where each comes from, and what they can do. -->
+      <!-- The roles to give someone, from the + beside their roles. -->
+      <div class="rmenu" id="rmenu" hidden></div>
+      <!-- Changes to a role wait here until saved. -->
+      <div class="unsaved" id="role-unsaved" hidden><span>You have unsaved changes.</span>
+        <button type="button" class="link" id="role-reset">Reset</button><button type="button" class="go" id="role-save">Save changes</button></div>
+    </section>
+
     <section class="sub" data-sub="signin" data-title="Sign-in" hidden>
       <header class="sub-head"><h2>Sign-in</h2><p>Session timeout and account lockout for <span data-app>Rabbid Lab</span>.</p></header>
       <section class="ds-sec" data-sec="idle" data-can="access.roles"><h3 class="ds-h">Session timeout <small class="ds-scope">Everyone</small></h3>
@@ -919,91 +1003,6 @@
       </div>
       <p class="hint problem" id="net-problem" hidden></p>
     </div>
-  </section>
-
-  <!-- Roles and people: the roles in order down the left, and everyone with their roles, or one role to change (people.js). -->
-  <section class="page people-page" id="page-people" data-page="people" data-title="Roles and people" hidden>
-    <header class="page-head"><h1>Roles and people</h1>
-      <p>Roles control what people can do. Add Active Directory groups, individual users and local accounts to roles. A person with several roles gets the permissions of all of them.</p></header>
-    <div class="lib">
-      <aside class="side" aria-label="Roles and people">
-        <label class="side-find"><svg><use href="#i-search"/></svg><input type="search" id="ppl-find" placeholder="Search people, groups and roles" aria-label="Search people, groups and roles" autocomplete="off" spellcheck="false"></label>
-        <p class="side-label">Browse</p>
-        <a href="#people" data-browse="all"><svg><use href="#i-list"/></svg>Everyone<small id="b-all"><i class="sk sk-num"></i></small></a>
-        <a href="#people/people" data-browse="people"><svg><use href="#i-user"/></svg>People<small id="b-people"><i class="sk sk-num"></i></small></a>
-        <a href="#people/groups" data-browse="groups"><svg><use href="#i-users"/></svg>Groups<small id="b-groups"><i class="sk sk-num"></i></small></a>
-        <a href="#people/local" data-browse="local"><svg><use href="#i-key"/></svg>Local accounts<small id="b-local"><i class="sk sk-num"></i></small></a>
-        <p class="side-label">Roles<span>Highest first</span></p>
-        <div class="side-roles" id="ppl-roles" data-skel="rows:4"></div>
-        <button type="button" class="side-new" id="role-new" data-can="access.roles"><svg><use href="#i-plus"/></svg>New role</button>
-        <p class="side-label">Filters</p>
-        <p class="side-sub">Signed in with</p>
-        <div class="seg" id="ppl-source"><button type="button" data-source="any" aria-pressed="true">Any</button><button type="button" data-source="ad">Active Directory</button><button type="button" data-source="local">Local</button></div>
-        <p class="side-sub">Role</p>
-        <select class="side-pick" id="ppl-role-filter" aria-label="Role"><option value="">Any role</option></select>
-        <label class="tick"><input type="checkbox" id="ppl-week">Signed in this week</label>
-      </aside>
-
-      <div class="lib-body">
-        <!-- Everyone: the roles as cards, then each person, group and account with their roles. -->
-        <div id="ppl-list">
-          <div class="lib-bar"><h2 id="ppl-title">Everyone</h2>
-            <select id="ppl-sort" aria-label="Sort"><option value="role">Highest role</option><option value="name">Name</option><option value="seen">Last signed in</option></select>
-            <button type="button" class="primary" id="ppl-add" data-can="access.members access.local"><svg><use href="#i-plus"/></svg>Add people</button></div>
-          <p class="lib-label" id="ppl-cards-label"><svg><use href="#i-shield"/></svg>Roles</p>
-          <div class="rcards" id="ppl-cards" data-skel="tiles:4"></div>
-          <div class="prows" id="ppl-rows" data-skel="rows:6"></div>
-        </div>
-
-        <!-- One role: its look, what it allows, and who's in it. -->
-        <div id="role-view" hidden>
-          <div class="rhead"><span class="big"><svg><use href="#i-shield"/></svg></span>
-            <div class="rhead-text"><b id="role-name"></b><span id="role-line"></span></div>
-            <button type="button" id="role-viewas"><svg><use href="#i-eye"/></svg><span id="role-viewas-text">Preview this role</span></button></div>
-          <nav class="tabs2" id="role-tabs"><a data-tab="display">Display</a><a data-tab="permissions">Permissions</a><a data-tab="members">Members <small id="role-count"></small></a></nav>
-          <p class="hint role-note" id="role-note" hidden></p>
-
-          <div data-pane="display">
-            <div class="form">
-              <label for="role-edit-name">Role name</label><input id="role-edit-name" maxlength="40" autocomplete="off">
-              <label for="role-edit-about">Description</label><input id="role-edit-about" maxlength="160" autocomplete="off">
-              <p class="form-label">Colour</p><div class="swatches" id="role-swatches" role="radiogroup" aria-label="Colour"></div>
-              <p class="form-label">Preview</p><div class="chips-preview" id="role-preview"></div>
-            </div>
-            <p class="lib-label">Position</p>
-            <p class="hint" id="role-where"></p>
-            <p class="lib-label">Sign-in</p>
-            <p class="hint">MFA is required for every role. Everyone signs in with a password and a code from an authenticator app.</p>
-            <div class="rows" id="role-delete-row"><div class="row still"><span class="t"><b id="role-delete-title">Delete this role</b><span>Members lose the permissions this role grants. Permissions from their other roles still apply.</span></span>
-              <button type="button" class="danger" id="role-delete"><svg><use href="#i-trash"/></svg>Delete role</button></div></div>
-          </div>
-
-          <div data-pane="permissions" hidden>
-            <div class="tools"><label class="find"><svg><use href="#i-search"/></svg><input type="search" id="perm-find" placeholder="Find a permission" aria-label="Find a permission" autocomplete="off"></label>
-              <button type="button" class="link" id="perm-clear">Clear all</button></div>
-            <div id="perm-list"></div>
-          </div>
-
-          <div data-pane="members" hidden>
-            <p class="lib-label">Members</p>
-            <div class="rows" id="member-list"></div>
-            <div id="member-add" data-can="access.members">
-              <p class="lib-label">Add members</p>
-              <div class="adder"><label class="find"><svg><use href="#i-search"/></svg><input type="search" id="member-find" data-find placeholder="Search groups, people and local accounts" aria-label="Search groups, people and local accounts" autocomplete="off" spellcheck="false"></label>
-                <div class="drop" data-drop hidden></div></div>
-            </div>
-          </div>
-        </div>
-        <p class="hint problem" id="ppl-problem" hidden></p>
-      </div>
-    </div>
-
-    <!-- A person, group or account: their roles, where each comes from, and what they can do. -->
-    <!-- The roles to give someone, from the + beside their roles. -->
-    <div class="rmenu" id="rmenu" hidden></div>
-    <!-- Changes to a role wait here until saved. -->
-    <div class="unsaved" id="role-unsaved" hidden><span>You have unsaved changes.</span>
-      <button type="button" class="link" id="role-reset">Reset</button><button type="button" class="go" id="role-save">Save changes</button></div>
   </section>
 
   <!-- Links: the places in the lab, in groups, with their icons and whether they're up (links.js). -->
