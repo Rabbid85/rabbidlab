@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.380 (2026-11-23)
+
+- Service account: the set-up window is new. Pick Delegated (svc-rabbidlab, with permissions only in the OUs you select) or Domain admin (svc-rabbidlab-admin, or a domain admin you already have). It answers the usual questions about the account, and Test sign-in checks the sign-in before anything is created.
+- The server tests the service account every 15 minutes. If sign-in fails, Active Directory pages go read-only, the alert Service account stopped working is sent, and Settings, Active Directory has the fix: Repair, Unlock and test, Enable and test, or Update password.
+- Settings, Active Directory also has Test, Change to switch between the two types, and Change now for the svc-rabbidlab-admin password, which Rabbid Lab changes every 30 days.
+
 ## 1.1.379 (2026-11-23)
 
 - Rabbid Lab Dev only: Skip MFA this time works on every computer, not just the server, while Settings, Developer, Skip MFA is on. The release always requires the code.

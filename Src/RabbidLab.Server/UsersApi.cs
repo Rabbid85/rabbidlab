@@ -30,6 +30,8 @@ public static class UsersApi
         services.AddSingleton<IAdminGroups, AdminGroups>();
         services.AddSingleton<IServiceLogin>(s => s.GetRequiredService<DirectoryTools>());
         services.AddSingleton<IOffboardDirectory>(s => s.GetRequiredService<DirectoryTools>());
+        services.AddSingleton<IServiceAccount>(s => s.GetRequiredService<DirectoryTools>());
+        services.AddHostedService<ServiceAccountWatch>();
         services.AddSingleton<IHomeFolders, HomeFolders>();
         services.AddSingleton<IPersonMail, PersonMail>();
         services.AddAudit();
@@ -88,7 +90,8 @@ public static class UsersApi
         {
             var warning = await tools.Connect(form, ActivityLog.Who(context), context.RequestAborted);
             var state = tools.State()!;
-            log.Record(context, "users", "ad.connect", form.Existing ? $"Configured the AD service account as {state.Account}"
+            log.Record(context, "users", "ad.connect", form.Existing ? $"Configured the AD service account as {state.Account}{(state.Kind == "admin" ? ", a domain admin" : "")}"
+                : state.Kind == "admin" ? $"Created the domain admin service account {state.Account} in {state.Domain}"
                 : $"Created the service account {state.Account} in {state.Domain} with delegated permissions on {state.ScopeName}", warning is null ? "ok" : "warning", warning);
             return Results.Ok(new { state, warning });
         }));

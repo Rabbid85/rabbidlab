@@ -207,31 +207,18 @@ button.danger.solid:hover { background: #DB4860; }
 .table.attrs .tr .mono { color: var(--muted); }
 .table.attrs .vals { display: grid; gap: 2px; min-width: 0; font-size: 13px; overflow-wrap: anywhere; }
 
-/* Setting up the service account: its steps down the side, the step on the right, a flat foot */
-.dialog.dset { width: min(900px, calc(100vw - 32px)); padding: 0; overflow: hidden; }
-.dialog.dset[open] { display: grid; grid-template-columns: 230px minmax(0, 1fr); }
-.dset-side { padding: 24px 18px; border-right: 1px solid var(--line); background: #0E1019; }
-.dset .dset-side h2 { font-size: 18px; }
-.dset-lead { margin: 4px 0 0; color: var(--muted); font-size: 12.5px; line-height: 1.45; }
-.dset-steps { display: grid; gap: 4px; margin: 22px 0 0; padding: 0; list-style: none; }
-.dset-steps li { position: relative; display: grid; grid-template-columns: 30px 1fr; gap: 0 10px; align-items: start; padding: 8px 6px; border-radius: 10px; color: var(--muted); }
-.dset-steps i { display: grid; place-items: center; width: 30px; height: 30px; border: 2px solid var(--line-strong); border-radius: 50%; background: #0C0E17; font-style: normal; font-size: 12.5px; font-weight: 800; }
-.dset-steps i svg { width: 14px; height: 14px; }
-.dset-steps b { color: #C9CCDA; font-size: 13.5px; }
-.dset-steps small { grid-column: 2; align-self: start; font-size: 12px; line-height: 1.35; }
-.dset-steps i { grid-row: span 2; } /* the number beside both lines, so the line under the name sits right under it */
-.dset-steps b { align-self: end; }
-.dset-steps li:not(:last-child)::after { content: ""; position: absolute; left: 20px; top: 42px; bottom: -10px; width: 2px; border-radius: 2px; background: var(--line-strong); }
-.dset-steps li.done::after { background: var(--accent); }
-.dset-steps li.done i { border-color: var(--accent); background: var(--accent); color: #fff; }
-.dset-steps li.now { background: #1A1D2B; }
-.dset-steps li.now i { border-color: var(--accent-line); color: #fff; }
-.dset-steps li.now b { color: #fff; }
-.dset-steps li.go { cursor: pointer; }
-.dset-steps li.go:hover b { color: #fff; }
-.dset-main { display: grid; grid-template-rows: 1fr auto; min-width: 0; min-height: 500px; }
-/* Choose: two cards, the one picked outlined in the accent. */
-.dset-cards { display: grid; gap: 12px; }
+/* Setting up the service account: the two kinds, the questions about the one picked, the warning for a domain admin, the sign-in and its test, a flat foot */
+.dialog.dset { width: min(940px, calc(100vw - 32px)); max-height: calc(100vh - 48px); padding: 0; overflow: auto; }
+.dset > :not(.dset-head):not(.dset-foot) { margin-left: 24px; margin-right: 24px; }
+.dset-head { display: flex; align-items: center; gap: 12px; padding: 20px 24px 16px; }
+.dset-head .big-ic { width: 42px; height: 42px; border-radius: 12px; }
+.dset-head .big-ic svg { width: 21px; height: 21px; }
+.dset-head > span:nth-child(2) { flex: 1; min-width: 0; }
+.dset-head b { display: block; color: #fff; font-size: 17px; }
+.dset-head small { display: block; color: var(--muted); font-size: 13px; line-height: 1.45; }
+.dset-x { flex: none; }
+/* The two kinds: two cards, the one picked outlined in the accent. */
+.dset-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .dset-card { display: flex; align-items: flex-start; gap: 14px; width: 100%; padding: 16px 18px; border: 1px solid var(--line); border-radius: 14px; background: #0E1019; color: var(--text); font: inherit; text-align: left; }
 .dset-card:hover { border-color: #3A3E55; background: #0E1019; }
 .dset-card[aria-pressed="true"] { border-color: var(--accent-line); }
@@ -239,22 +226,51 @@ button.danger.solid:hover { background: #DB4860; }
 .dset-card[aria-pressed="true"] .big-ic { background: color-mix(in srgb, var(--accent-soft) 12%, transparent); color: var(--accent-soft); }
 .dset-card .big-ic svg { width: 22px; height: 22px; }
 .dset-card b { display: block; color: #fff; font-size: 15px; }
+.dset-card b small { margin-left: 6px; color: var(--muted); font-size: 12.5px; font-weight: 500; }
 .dset-card b + span { display: block; margin-top: 4px; color: var(--muted); font-size: 13px; line-height: 1.5; }
-.dset-body { padding: 18px 24px 20px; }
-.dset-head { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
-.dset-head .big-ic { width: 42px; height: 42px; border-radius: 12px; }
-.dset-head .big-ic svg { width: 21px; height: 21px; }
-.dset-head b { display: block; color: #fff; font-size: 16px; }
-.dset-head small { display: block; color: var(--muted); font-size: 13px; line-height: 1.45; }
-.dset-fld { display: grid; gap: 6px; margin-bottom: 12px; }
+/* The questions: rows that open, one under the other. */
+.dset-qa { margin-top: 14px; overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: #0E1019; }
+.dset-q + .dset-q { border-top: 1px solid var(--line); }
+.dset-q > button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 14px; border: 0; border-radius: 0; background: transparent; color: #C9CCDA; font: inherit; font-size: 14px; text-align: left; }
+.dset-q > button:hover { background: #151826; }
+.dset-q > button b { flex: 1; font-weight: 600; }
+.dset-q > button svg { flex: none; width: 16px; height: 16px; color: #6D7290; }
+.dset-q > button svg:first-child { color: var(--accent-soft); }
+.dset-q.open > button { color: #fff; }
+.dset-q.open > button svg:last-child { transform: rotate(180deg); }
+.dset-q ul { margin: 0; padding: 0 16px 14px 58px; color: var(--muted); font-size: 13px; line-height: 1.55; }
+/* A domain admin: what that means for this server, make one or use one, and the tick. */
+.dset-risk { display: flex; gap: 12px; margin-top: 16px; padding: 14px 16px; border: 1px solid color-mix(in srgb, var(--amber) 40%, transparent); border-radius: 12px; background: color-mix(in srgb, var(--amber) 6%, transparent); }
+.dset-risk[hidden] { display: none; }
+.dset-risk > svg { flex: none; width: 20px; height: 20px; margin-top: 1px; color: var(--amber); }
+.dset-risk b { display: block; color: var(--amber); font-size: 14.5px; }
+.dset-risk > div > span { display: block; margin-top: 4px; color: #C9CCDA; font-size: 13px; line-height: 1.5; }
+.dset-risk .seg { margin-top: 12px; }
+.dset-risk label { display: flex; align-items: center; gap: 10px; margin-top: 12px; color: var(--title); font-size: 13.5px; font-weight: 600; cursor: pointer; }
+/* The sign-in: three boxes across, the OUs above them, Test sign-in and what it found below. */
+.dset-login { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 12px; margin-top: 16px; margin-bottom: 12px; }
+.dset-fld { display: grid; align-content: start; gap: 6px; margin-bottom: 10px; }
+.dset-fld[hidden] { display: none; }
 .dset-fld > span:first-child, .dset-fld > label { color: #C9CCDA; font-size: 12.5px; font-weight: 600; }
+.dset-wide { grid-column: 1 / -1; }
+.dset-login .ou-row select { flex: 1; min-width: 0; height: 42px; padding-left: 12px; border: 1px solid var(--line-strong); border-radius: 10px; background-color: #0C0E17; color: var(--title); font: inherit; font-size: 14px; }
+.dset-login .ou-row button, .dset-test button { display: inline-flex; flex: none; align-items: center; gap: 7px; height: 42px; padding: 0 14px; border-radius: 10px; }
+.dset-login button svg { width: 15px; height: 15px; }
 .dset-in { position: relative; display: flex; align-items: center; }
 .dset-in svg { position: absolute; left: 12px; width: 16px; height: 16px; color: #6D7290; pointer-events: none; }
 .dset-in input { width: 100%; height: 42px; padding: 0 12px 0 38px; border: 1px solid var(--line-strong); border-radius: 10px; background: #0C0E17; color: var(--title); font: inherit; font-size: 14px; }
 .dset-in input:focus { outline: none; border-color: var(--accent-line); }
 .dset-in:focus-within svg { color: var(--accent-soft); }
 .dset-in input.bad { border-color: var(--red); }
-/* Use one I have: the accounts in AD to pick from, under the box, as you type. */
+.dset-in .pw-wrap { flex: 1; min-width: 0; } /* the password box with its eye fills its column like the others */
+.dset-test { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; }
+.dset-result { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: 13px; line-height: 1.4; }
+.dset-result svg { flex: none; width: 15px; height: 15px; }
+.dset-result.ok { color: var(--ok); }
+.dset-result.warn { color: var(--amber); }
+.dset-result.bad { color: var(--red); }
+.dset > .hint.problem { margin-bottom: 12px; }
+/* Use an existing account: the accounts in AD to pick from, under the box, as you type. */
 .dset-acct { position: relative; }
 .dset-drop { top: 72px; max-height: 214px; } /* fits above the dialog's foot */
 .dset-drop .opt .pic { display: grid; place-items: center; border-radius: 50%; background: #1C1F2D; color: #9DA1B3; }
@@ -270,28 +286,24 @@ button.danger.solid:hover { background: #DB4860; }
 .ap-acct:hover { background: #151826; }
 .ap-acct.on { border-color: var(--accent-line); background: #151826; }
 .ap-acct[data-off] b { color: #8A8FA8; }
-.dset-note { display: flex; align-items: flex-start; gap: 8px; margin: 4px 0 0; padding: 10px 12px; border-radius: 10px; background: #0E1019; color: var(--muted); font-size: 12.5px; line-height: 1.45; }
-.dset-note svg { flex: none; width: 15px; height: 15px; margin-top: 1px; color: var(--ok); }
-.dset-review { margin-bottom: 10px; border: 1px solid var(--line); border-radius: 12px; background: #0E1019; }
-.dset-rv { display: grid; grid-template-columns: 22px 110px minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 52px; padding: 8px 14px; border-top: 1px solid var(--line); }
-.dset-rv:first-child { border-top: 0; }
-.dset-rv > svg { width: 18px; height: 18px; color: var(--accent-soft); }
-.dset-rv > span { color: var(--muted); font-size: 13px; }
-.dset-rv b { min-width: 0; color: #fff; font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
-.dset-rv b small { display: block; color: var(--muted); font-size: 12px; font-weight: 400; }
-.dset-change { height: 28px; padding: 0 10px; border: 0; background: none; color: var(--accent-soft); font-size: 12.5px; font-weight: 600; }
-.dset-change:hover { background: #1A1D2B; }
-.dset-foot { display: flex; align-items: center; gap: 8px; padding: 14px 24px; border-top: 1px solid var(--line); background: #0E1019; }
+.dset-foot { position: sticky; bottom: 0; display: flex; align-items: center; gap: 8px; padding: 14px 24px; border-top: 1px solid var(--line); background: #0E1019; } /* stays in view while the window scrolls */
 .dset-foot .grow { flex: 1; }
+.dset-foot-note { color: var(--muted); font-size: 12.5px; }
 .dset-foot .primary { display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 18px; }
 .dset-foot .primary svg { width: 15px; height: 15px; }
 @media (max-width: 760px) {
-  .dialog.dset[open] { grid-template-columns: minmax(0, 1fr); }
-  .dset-side { border-right: 0; border-bottom: 1px solid var(--line); }
-  .dset-lead, .dset-steps small, .dset-steps li::after { display: none; }
-  .dset-steps { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); margin-top: 12px; }
-  .dset-main { min-height: 0; }
+  .dset-cards, .dset-login { grid-template-columns: minmax(0, 1fr); }
 }
+/* Settings, Active Directory: how the account is doing beside its name, and a link that looks like the row's buttons. */
+#as-state { margin-left: 8px; }
+a.ds-btn { text-decoration: none; }
+.ds-btn.primary { background: var(--accent); }
+.ds-btn.primary:hover { background: var(--accent-hover); }
+#svcfix-dialog .dset-fld { margin-top: 12px; }
+/* Active Directory while the service account can't sign in: why it's read-only, and where to fix it. */
+.dir-broken { display: flex; align-items: center; gap: 12px; }
+.dir-broken[hidden] { display: none; }
+.dir-broken a { flex: none; margin-left: auto; color: var(--accent-soft); font-weight: 600; white-space: nowrap; }
 
 /* An OU list with Browse… beside it */
 .ou-row { display: flex; gap: 8px; }

@@ -667,9 +667,13 @@
       $('dir-domain-dot').hidden = true;
       $('rail-dir-dot').hidden = true;
       $('rail-domain-dot').hidden = true;
+      $('dir-broken').hidden = true;
       return;
     }
-    $('dir-acct').textContent = s.readOnly ? 'Read-only (no service account)' : `Service account: ${s.account}`;
+    $('dir-acct').textContent = s.problem ? `Read-only (${s.account} sign-in failed)` : s.readOnly ? 'Read-only (no service account)' : `Service account: ${s.account}`;
+    // Its sign-in is failing: lists are read as this server, and nothing can be changed until it's fixed.
+    $('dir-broken').hidden = !s.problem;
+    $('dir-broken-text').textContent = s.problem ? `Read-only: ${s.problemText} Lists and searches still work, read with this server's computer account. Changes are unavailable until this is fixed.` : '';
     const v = viewOf(adView);
     const list = lists[adPage] || [];
     if (lists[adPage]) total[adPage] = (p.tabs ? list.filter(p.tabs[0].where) : list).length;
@@ -2676,7 +2680,7 @@
   const isDomain = (dn) => /^DC=/i.test(dn);
   const same = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
   const pick = { select: null, sel: '', find: '', nodes: [], domain: '' };
-  const PICK_LEADS = { 'dset-ou': 'Select the OU to create the service account in.', 'new-ou': 'Select the OU for the new user.', 'grp-ou': 'Select the OU for the new group.',
+  const PICK_LEADS = { 'dset-scope': 'The service account gets Full Control over users, groups and computers in this OU.', 'new-ou': 'Select the OU for the new user.', 'grp-ou': 'Select the OU for the new group.',
     'adset-ou': 'Default OU for new users.', 'adset-gou': 'Default OU for new groups.', 'adset-cou': 'Default OU for new computers.', 'pcnew-ou': 'Select the OU for the new computer account.',
     'role-scope-add': 'An OU in the role scope. Child OUs are included.' };
   const ouNode = (dn) => pick.nodes.find((n) => !n.domain && same(n.dn, dn));
@@ -2763,9 +2767,7 @@
     inPlace.clear(); // read afresh each time it opens
     const any = pick.nodes[0]?.dn || '';
     pick.domain = any.split(/(?<!\\),/).filter(isDomain).map((p) => p.slice(3)).join('.');
-    $('oupick-lead').textContent = select.id === 'dset-scope'
-      ? (ds.tab === 'make' ? 'The service account gets Full Control over users, groups and computers in this OU.' : `${R.app()} makes changes only in this OU. The account must already have permissions here.`)
-      : PICK_LEADS[select.id] || '';
+    $('oupick-lead').textContent = PICK_LEADS[select.id] || '';
     $('oupick-find').value = '';
     drawPick();
     $('oupick-dialog').showModal();
@@ -2812,92 +2814,135 @@
   $('oupick-use').addEventListener('click', usePick);
   ['oupick-cancel', 'oupick-x'].forEach((id) => $(id).addEventListener('click', () => $('oupick-dialog').close()));
 
-  // --- Setting up Rabbid Lab's AD account: its steps down the side ----------------------------------------------------
-  // Create a new one: sign in as a domain admin (not saved), name it and pick its OU, then check and create it. Use one
-  // I have: sign in as it, then check and use it. What it may manage starts as the whole domain; Review can change it.
+  // --- Setting up Rabbid Lab's AD account: one window, two kinds ------------------------------------------------------
+  // Delegated: svc-rabbidlab, with rights only in the OUs picked. Domain admin: svc-rabbidlab-admin, which Rabbid Lab
+  // makes and whose password it changes itself, or a domain admin that's there already. The questions under the kinds
+  // answer for the one picked. A domain admin's sign-in makes the account and isn't kept. Change… opens it on the kind
+  // in use, to switch to the other.
 
-  let look = null; // what the sign-in read: the domain, its OUs and where accounts go
-  const ds = { tab: 'make', step: 0, reached: 0 };
-  // First, which: a new one Rabbid Lab creates, or one that's already there. The steps after it follow the choice.
-  const DCHOOSE = { key: 'choose', name: 'Choose', sub: 'New or existing', icon: 'shield', title: 'Choose a service account', text: 'Rabbid Lab makes all Active Directory changes as this account.' };
-  const DSTEPS = {
-    make: [
-      DCHOOSE,
-      { key: 'signin', name: 'Sign in', sub: 'Domain admin credentials', icon: 'user', title: 'Sign in as a domain admin', text: 'Used once to read your OUs and create the account. These credentials are not stored.' },
-      { key: 'account', name: 'Account', sub: 'Name and OU', icon: 'user-plus', title: 'Name the account and select its OU', text: 'Select an OU from the list, or click Browse… to browse the directory.' },
-      { key: 'review', name: 'Review', sub: 'Review and create', icon: 'check', title: 'Review and create', text: 'Nothing changes in Active Directory until you click Create service account.' },
-    ],
-    existing: [
-      DCHOOSE,
-      { key: 'signin', name: 'Sign in', sub: 'The service account', icon: 'user', title: 'Sign in as the service account', text: 'Rabbid Lab stores the password encrypted and makes all AD changes as this account.' },
-      { key: 'review', name: 'Review', sub: 'Review and confirm', icon: 'check', title: 'Review and confirm', text: 'Nothing changes in Active Directory. From now on, Rabbid Lab makes all changes as this account.' },
-    ],
+  let look = null; // what the sign-in read: the domain, its base DN and where accounts go
+  const sa = { mode: 'setup', kind: 'delegated', how: 'make', open: new Set(['what']), test: null };
+  const SA_KINDS = { delegated: 'Delegated', admin: 'Domain admin' };
+  const SA_NAMES = { delegated: 'svc-rabbidlab', admin: 'svc-rabbidlab-admin' };
+  const saHave = () => sa.kind === 'admin' && sa.how === 'have';
+  const saName = () => (saHave() ? '' : $('dset-account').value.trim());
+  const saDomain = () => $('dset-domain').value.trim() || ad?.domain || 'the domain';
+  const saSign = () => ({ domain: $('dset-domain').value.trim(), username: $('dset-user').value.trim(), password: $('dset-password').value });
+  // The account that's set up, even while its sign-in fails; not the read-only stand-in (Not now).
+  const saState = () => (ad?.state && !(ad.state.readOnly && !ad.state.problem) ? ad.state : null);
+  // The questions people ask before handing over an account. The answers follow the kind picked.
+  const saFacts = () => {
+    const d = saDomain();
+    const app = R.app();
+    const admin = sa.kind === 'admin';
+    return [
+      ['what', 'info', `What is a service account, and why does ${app} need one?`, ['An Active Directory account used by a program, not a person.',
+        `${app} signs in to ${d} with this account to make the changes requested in the console.`,
+        'Until one is set up, Active Directory can only be read, with this server\'s computer account, and nothing can be changed.']],
+      ['does', 'check', `What does ${app} do with the account?`, ['Reads users, groups, computers, OUs and GPOs.',
+        'Makes the changes requested by users with the right role: create, edit, move, disable, delete, reset passwords and change group membership.',
+        'Checks every change against the allowed OUs before sending it, and records the change in the activity log with the requesting user.']],
+      ['never', 'x', `What does ${app} never do with the account?`, ['The account is never used to sign in to Windows or the console, and its password is never shown.',
+        'The domain admin credentials used for setup are used once and not saved.',
+        `${app} does not change the account's own permissions, and the console cannot edit, disable or delete the account.`]],
+      ['rights', 'shield', 'What permissions does the account need?', admin
+        ? [`All Domain Admins permissions in ${d}.`, 'Group Policy changes and push installs work without another sign-in.',
+          `If this server is compromised, the attacker gains control of all of ${d}. This is the trade-off.`]
+        : ['Full Control over user, group and computer objects in the OUs you select, the same permissions the Delegation of Control Wizard grants.',
+          'Group Policy changes and push installs need more permissions, so they ask for domain admin credentials each time. Those credentials are not saved.',
+          'If this server is compromised, the attacker gains control of the selected OUs only.']],
+      ['password', 'lock', 'Where is the password stored?', [
+        saHave() ? `You manage the password. ${app} stores it and does not change it.`
+          : admin ? `64 random characters generated by ${app} and never shown. ${app} changes the password every 30 days.`
+            : `64 random characters generated by ${app} and never shown. Set to never expire.`,
+        'Stored encrypted in the data folder on this server. On Windows the key is protected by DPAPI for the account the service runs as, so a copy of the folder cannot be used on another computer.',
+        'The password is never sent to a browser or written to a log.']],
+      ['broken', 'alert', 'What happens if the password is rejected, or the account is locked out, disabled or expired?', [
+        'Active Directory pages show that the service account sign-in failed and switch to read-only. No data is lost.',
+        'An alert is sent, and Settings > Active Directory shows the problem.',
+        'Fix the problem there: Repair, Unlock and test, or Enable and test. Each one asks for domain admin credentials once and does not save them.']],
+      ['later', 'refresh', 'How do I change or disconnect the account later?', [
+        'Settings > Active Directory: change where new users, groups and computers go, switch between Delegated and Domain admin, or disconnect the account.',
+        'Disconnect deletes the stored password and stops using the account. Type the account name to confirm.',
+        'The account and its permissions stay in Active Directory until you delete them there.']],
+    ];
   };
-  const dsReview = () => {
-    if (!look) return;
-    const make = ds.tab === 'make';
-    const user = $('dset-user').value.trim();
-    const ou = $('dset-ou').selectedOptions[0];
-    const scope = $('dset-scope').selectedOptions[0];
-    const where = scope ? (isDomain(scope.value) ? `Entire domain (${look.domain})` : scope.textContent) : '';
-    const row = (icon, label, value, sub, act) => `<div class="dset-rv">${svg(icon)}<span>${label}</span><b>${esc(value)}<small>${esc(sub)}</small></b>${act}</div>`;
-    const change = (i) => `<button type="button" class="dset-change" data-dstep="${i}">Change</button>`;
-    const browse = '<button type="button" class="dset-change" data-browse-ou="dset-scope">Change</button>';
-    $('dset-review').innerHTML = make
-      ? row('user', 'Signed in as', user, `${look.domain} · not stored`, change(1))
-        + row('user-plus', 'Service account', $('dset-account').value.trim(), `Password generated by ${R.app()} and stored encrypted`, change(2))
-        + row('folder', 'Created in', ou ? ou.textContent : '', ou ? ou.value : '', change(2))
-        + row('shield', 'Scope', where, 'Users, groups and computers', browse)
-      : row('user', 'Service account', user, `${look.domain} · password stored encrypted`, change(1))
-        + row('shield', 'Scope', where, 'Users, groups and computers', browse);
-    $('dset-note2').textContent = make
-      ? 'The account gets Full Control over user, group and computer objects in this scope, like the Delegation of Control Wizard. Admin accounts protected by AdminSDHolder are not affected.'
-      : `${R.app()} makes changes only in this scope. The account must already have permissions to create and manage users, groups and computers there. ${R.app()} does not change its permissions.`;
+  // What Test sign-in found, or what the sign-in is for until it's run.
+  const saResult = () => {
+    const t = sa.test;
+    const el = $('dset-result');
+    el.className = `dset-result${t?.error ? ' bad' : t?.account ? (t.domainAdmin ? ' ok' : ' warn') : ''}`;
+    el.innerHTML = t === 'busy' ? `${FLASK}<span>${esc(`Testing sign-in to ${saDomain()}…`)}</span>`
+      : t?.error ? `${svg('x')}<span>${esc(`Sign-in failed: ${t.error}`)}</span>`
+        : t?.account ? `${svg(t.domainAdmin ? 'check' : 'alert')}<span>${esc(`Signed in to ${saDomain()} as ${t.account}, ${t.domainAdmin ? 'a member of Domain Admins' : 'which is not a member of Domain Admins'}. ${t.ous} ${t.ous === 1 ? 'OU' : 'OUs'} read. No changes made.`)}</span>`
+          : `<span>${esc(saHave() ? `${R.app()} uses this account. The password is stored encrypted on this server.` : 'Used once to create the account. Not saved.')}</span>`;
+    $('dset-try').disabled = t === 'busy';
   };
-  const dsDraw = () => {
-    const make = ds.tab === 'make';
-    const steps = DSTEPS[ds.tab];
-    const st = steps[ds.step];
-    $('dset-choose').querySelectorAll('[data-adtab]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.adtab === ds.tab)));
-    $('dset-steps').innerHTML = steps.map((s, i) => {
-      const done = i !== ds.step && i < Math.max(ds.step, ds.reached);
-      return `<li class="${done ? 'done' : i === ds.step ? 'now' : ''}${i !== ds.step && i <= ds.reached ? ' go' : ''}" data-dstep="${i}">`
-        + `<i>${done ? svg('check') : i + 1}</i><b>${s.name}</b><small>${s.sub}</small></li>`;
-    }).join('');
-    $('dset-icon').setAttribute('href', `#i-${st.icon}`);
-    $('dset-step-title').textContent = st.title;
-    $('dset-step-text').textContent = st.text.replace(/Rabbid Lab/g, R.app()); // the steps are written before the lab's name is known
-    $('dset-dialog').querySelectorAll('[data-pane]').forEach((p) => { p.hidden = p.dataset.pane !== st.key; });
-    $('dset-user-label').textContent = make ? 'Domain admin' : 'Service account';
-    $('dset-user').placeholder = make ? '' : 'Enter the account name or browse AD';
-    $('dset-browse').hidden = make;
-    if (make) $('dset-drop').hidden = true;
-    else if (document.activeElement === $('dset-user')) acctFind(); // switched to Use one I have while in the box
-    $('dset-note').textContent = make ? 'These credentials are used once to create the service account and are not stored.' : 'The password is stored encrypted on this server.';
-    $('dset-back').hidden = ds.step === 0;
-    $('dset-go').innerHTML = st.key === 'review' ? `${svg('check')}${make ? 'Create service account' : 'Use this account'}` : `Next${svg('right')}`;
-    if (st.key === 'review') dsReview();
+  const saDraw = () => {
+    const have = saHave();
+    const admin = sa.kind === 'admin';
+    const cur = sa.mode === 'change' ? saState() : null;
+    $('dset-title').textContent = cur ? 'Change the service account' : 'Set up the service account';
+    $('dset-sub').textContent = cur ? `In use: ${cur.account}, ${SA_KINDS[cur.kind] || 'an existing account'}. Select a type, then open any question.`
+      : 'Select a type, then open any question. The answers match the selected type.';
+    $('dset-kinds').querySelectorAll('[data-kind]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.kind === sa.kind)));
+    $('dset-qa').innerHTML = saFacts().map(([id, icon, q, a]) => `<div class="dset-q${sa.open.has(id) ? ' open' : ''}"><button type="button" data-q="${id}" aria-expanded="${sa.open.has(id)}">${svg(icon)}<b>${esc(q)}</b>${svg('chevron-down')}</button>`
+      + `${sa.open.has(id) ? `<ul>${a.map((l) => `<li>${esc(l)}</li>`).join('')}</ul>` : ''}</div>`).join('');
+    $('dset-risk').hidden = !admin;
+    $('dset-risk-text').textContent = `Anyone who compromises this server, or signs in to the console as an administrator, can change anything in ${saDomain()}.`;
+    $('dset-how').querySelectorAll('[data-how]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.how === sa.how)));
+    $('dset-risk-password').textContent = have ? 'An existing member of Domain Admins. The password is stored encrypted on this server. You manage password changes.'
+      : `64 random characters generated by ${R.app()} and never shown. ${R.app()} changes the password every 30 days.`;
+    $('dset-scope-row').hidden = admin;
+    $('dset-account-row').hidden = have;
+    $('dset-user-label').textContent = have ? 'Domain admin account to use' : 'Domain admin';
+    $('dset-browse').hidden = !have;
+    if (!have) $('dset-drop').hidden = true;
+    saResult();
+    // Change… has nothing to do until another kind is picked.
+    const inUse = !!cur && cur.kind === sa.kind && (!admin || (cur.made ? 'make' : 'have') === sa.how);
+    const unticked = admin && !$('dset-tick').checked;
+    $('dset-foot-note').textContent = inUse ? 'This type is in use. Select the other type to switch.' : unticked ? 'Select the check box above to continue.' : 'No changes are made in Active Directory until you continue.';
+    $('dset-go').disabled = inUse || unticked;
+    $('dset-go').innerHTML = `${svg('check')}${esc(cur && !inUse && cur.kind !== sa.kind ? `Switch to ${SA_KINDS[sa.kind]}` : have ? 'Use this domain admin account' : `Create ${saName() || 'the account'}`)}`;
   };
-  const dsGo = (i) => {
-    ds.step = i;
-    ds.reached = Math.max(ds.reached, i);
-    say('dset-problem', '');
-    dsDraw();
+  // The OUs a delegated account can be given. This server reads them before anyone signs in, where it can; the sign-in reads them otherwise.
+  const saScopes = (list, baseDn, domain) => {
+    const was = $('dset-scope').value;
+    $('dset-scope').innerHTML = `<option value="${esc(baseDn)}">Entire domain (${esc(domain)})</option>`
+      + list.filter((p) => !/^CN=/i.test(p.dn)).map((p) => `<option value="${esc(p.dn)}"${p.dn === was ? ' selected' : ''}>${esc(p.path || p.name)}</option>`).join('');
   };
-  // Set it up, from any page that needs Rabbid Lab's AD account.
-  const openSetup = (domain) => {
+  let scopeAsk = 0;
+  const saReadScopes = async () => {
+    const n = ++scopeAsk;
+    const domain = $('dset-domain').value.trim();
+    if (!domain) return;
+    let list = [];
+    try {
+      list = await R.get(`/api/ad/look/places?domain=${encodeURIComponent(domain)}`);
+    } catch {
+      // Not readable as this server (Docker, or outside the domain): the sign-in reads them.
+    }
+    if (n === scopeAsk && !look) saScopes(list, domain.split('.').map((p) => `DC=${p}`).join(','), domain);
+  };
+  // Set it up, from any page that needs Rabbid Lab's AD account; or change it (Settings), which opens on the kind in use.
+  const openSetup = (domain, mode = 'setup') => {
+    const cur = mode === 'change' ? saState() : null;
+    Object.assign(sa, { mode: cur ? 'change' : 'setup', kind: cur?.kind === 'admin' ? 'admin' : 'delegated', how: cur?.kind === 'admin' && !cur.made ? 'have' : 'make', open: new Set(['what']), test: null });
     $('dset-domain').value = domain || ad?.domain || '';
     const me = R.me();
-    $('dset-user').value = me?.source === 'ad' ? me.username : '';
+    $('dset-user').value = me?.source === 'ad' && !saHave() ? me.username : '';
     $('dset-password').value = '';
-    $('dset-account').value = 'svc-rabbidlab';
+    $('dset-account').value = SA_NAMES[sa.kind];
+    $('dset-tick').checked = false;
+    $('dset-scope').innerHTML = '';
     ['dset-user', 'dset-password'].forEach((id) => $(id).classList.remove('bad'));
     look = null;
-    Object.assign(ds, { tab: 'make', step: 0, reached: 0 });
     say('dset-problem', '');
-    dsDraw();
+    saDraw();
     $('dset-dialog').showModal();
-    $('dset-choose').querySelector('[aria-pressed="true"]').focus();
+    $('dset-dialog').scrollTop = 0;
+    saReadScopes();
   };
   // The card each Active Directory page shows until the service account is set up (directory.js draws it too).
   // No service account yet: Active Directory's pages wait under a cover, with what to do in the middle of it.
@@ -2959,42 +3004,64 @@
     const info = await R.get('/api/ad');
     return !info.state && info.reading ? { ...info, state: info.reading } : info;
   };
-  $('dset-local').addEventListener('click', () => $('dset-dialog').close());
-  // Picking a card picks the way; a double-click goes straight on to signing in.
-  $('dset-choose').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-adtab]');
-    if (!b || b.dataset.adtab === ds.tab) return;
-    Object.assign(ds, { tab: b.dataset.adtab, step: 0, reached: 0 });
-    // Your own name fills the domain admin box; the service account is someone else.
-    const mine = R.me()?.source === 'ad' ? R.me().username : '';
-    if (ds.tab === 'existing' && $('dset-user').value === mine) $('dset-user').value = '';
-    if (ds.tab === 'make' && !$('dset-user').value) $('dset-user').value = mine;
+  // Picking a kind: its questions, its fields and its default name.
+  $('dset-kinds').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-kind]');
+    if (!b || b.dataset.kind === sa.kind) return;
+    // The name follows the kind unless someone typed their own.
+    if (Object.values(SA_NAMES).includes($('dset-account').value.trim()) || !$('dset-account').value.trim()) $('dset-account').value = SA_NAMES[b.dataset.kind];
+    Object.assign(sa, { kind: b.dataset.kind, test: null });
+    $('dset-tick').checked = false;
     say('dset-problem', '');
-    dsDraw();
+    saDraw();
   });
-  $('dset-choose').addEventListener('dblclick', (e) => { if (e.target.closest('[data-adtab]')) $('dset-go').click(); });
-  // A step that's been reached opens again from the side, or from Change on Review.
-  $('dset-dialog').addEventListener('click', (e) => {
-    const s = e.target.closest('[data-dstep]');
-    if (s && Number(s.dataset.dstep) <= ds.reached && Number(s.dataset.dstep) !== ds.step) dsGo(Number(s.dataset.dstep));
+  // A domain admin: one Rabbid Lab makes, or one that's there already.
+  $('dset-how').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-how]');
+    if (!b || b.dataset.how === sa.how) return;
+    Object.assign(sa, { how: b.dataset.how, test: null });
+    // Your own name fills the domain admin box; the account to use is someone else.
+    const mine = R.me()?.source === 'ad' ? R.me().username : '';
+    if (saHave() && $('dset-user').value === mine) $('dset-user').value = '';
+    if (!saHave() && !$('dset-user').value) $('dset-user').value = mine;
+    say('dset-problem', '');
+    saDraw();
   });
-  $('dset-scope').addEventListener('change', dsReview);
-  $('dset-back').addEventListener('click', () => dsGo(ds.step - 1));
-  // A changed sign-in has to be read again before the steps after it (Choose stays done).
+  $('dset-qa').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-q]');
+    if (!b) return;
+    if (!sa.open.delete(b.dataset.q)) sa.open.add(b.dataset.q);
+    saDraw();
+  });
+  $('dset-tick').addEventListener('change', saDraw);
+  $('dset-account').addEventListener('input', saDraw);
+  // A changed sign-in is read and tested again.
   ['dset-domain', 'dset-user', 'dset-password'].forEach((id) => $(id).addEventListener('input', () => {
     ['dset-user', 'dset-password'].forEach((x) => $(x).classList.remove('bad'));
-    if (ds.reached > 1) {
-      ds.reached = 1;
-      dsDraw();
+    look = null;
+    if (sa.test) {
+      sa.test = null;
+      saResult();
     }
   }));
-  // Use one I have: type the account, or pick it from AD as you type. AD is read as this server's own computer account,
+  $('dset-domain').addEventListener('change', saReadScopes);
+  $('dset-try').addEventListener('click', async () => {
+    sa.test = 'busy';
+    saResult();
+    try {
+      sa.test = await R.send('/api/ad/test', saSign());
+    } catch (err) {
+      sa.test = { error: err.message };
+    }
+    saResult();
+  });
+  // Use an existing account: type it, or pick it from AD as you type. AD is read as this server's own computer account,
   // so no login is needed for the list; with nothing typed it shows the ones that look like service accounts.
   let acctTimer = 0;
   let acctAsk = 0;
   let acctHits = [];
   const acctFind = () => {
-    if (ds.tab !== 'existing') return;
+    if (!saHave()) return;
     clearTimeout(acctTimer);
     const n = ++acctAsk;
     const q = $('dset-user').value.trim();
@@ -3131,58 +3198,49 @@
   $('acctpick-use').addEventListener('click', apUse);
   ['acctpick-cancel', 'acctpick-x'].forEach((id) => $(id).addEventListener('click', () => $('acctpick-dialog').close()));
   $('dset-dialog').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && e.target.matches('.dset-in input')) $('dset-go').click();
+    if (e.key === 'Enter' && e.target.matches('.dset-in input')) $('dset-try').click();
   });
-  $('dset-cancel').addEventListener('click', () => {
+  ['dset-cancel', 'dset-x'].forEach((id) => $(id).addEventListener('click', () => {
     $('dset-password').value = '';
     $('dset-dialog').close();
-  });
+  }));
   $('dset-go').addEventListener('click', async () => {
-    const make = ds.tab === 'make';
-    const key = DSTEPS[ds.tab][ds.step].key;
+    const have = saHave();
+    const sign = saSign();
+    const was = sa.mode === 'change' ? saState() : null;
     say('dset-problem', '');
-    if (key === 'choose') {
-      dsGo(1);
-      $(make && R.me()?.source === 'ad' && $('dset-user').value ? 'dset-password' : 'dset-user').focus();
+    if (!have && !saName()) {
+      say('dset-problem', 'Enter a name for the service account.');
+      $('dset-account').focus();
       return;
     }
-    if (key === 'account') {
-      if (!$('dset-account').value.trim()) {
-        say('dset-problem', 'Enter a name for the service account.');
-        $('dset-account').focus();
-        return;
-      }
-      dsGo(ds.step + 1);
-      return;
-    }
-    const sign = { domain: $('dset-domain').value.trim(), username: $('dset-user').value.trim(), password: $('dset-password').value };
     $('dset-go').disabled = true;
-    R.busy($('dset-dialog'), key === 'signin' ? `Signing in to ${sign.domain || 'the domain'}…` : make ? 'Creating the service account…' : 'Checking the service account…');
+    R.busy($('dset-dialog'), have ? 'Checking the account…' : `Creating ${saName()}…`);
     try {
-      if (key === 'signin') {
+      if (!have && !look) {
+        // The sign-in reads where accounts go, and the OUs when this server couldn't read them itself.
+        const listed = $('dset-scope').options.length > 1;
         look = await R.send('/api/ad/look', sign);
-        const opt = (p, selected) => `<option value="${esc(p.dn)}"${p.dn === selected ? ' selected' : ''}>${esc(p.path || p.name)}</option>`;
-        const was = $('dset-scope').value;
-        $('dset-ou').innerHTML = look.places.map((p) => opt(p, look.accountOu)).join('');
-        $('dset-scope').innerHTML = `<option value="${esc(look.baseDn)}">Entire domain (${esc(look.domain)})</option>` + look.places.filter((p) => !/^CN=/i.test(p.dn)).map((p) => opt(p, was)).join('');
-        dsGo(ds.step + 1);
-      } else {
-        const answer = await R.send('/api/ad/connect', { ...sign, existing: !make, account: $('dset-account').value.trim(), ou: $('dset-ou').value, scope: $('dset-scope').value });
-        $('dset-password').value = '';
-        $('dset-dialog').close();
-        say('dir-note', answer.warning || (make ? `Service account ${answer.state.account} created. ${R.app()} now makes all AD changes as this account.` : `Service account set. ${R.app()} now makes all AD changes as ${answer.state.account}.`));
-        places = null;
-        R.forget();
-        refreshAd(true);
-        document.dispatchEvent(new CustomEvent('rabbidlab:ad')); // the Org chart and Attribute browser read again
+        saScopes(look.places, look.baseDn, look.domain);
+        if (sa.kind === 'delegated' && !listed && $('dset-scope').options.length > 1) {
+          say('dset-problem', 'Select the OUs to manage, then continue.');
+          return;
+        }
       }
+      const answer = await R.send('/api/ad/connect', { ...sign, kind: sa.kind, existing: have, account: saName(), ou: look?.accountOu, scope: sa.kind === 'admin' ? '' : $('dset-scope').value });
+      const s = answer.state;
+      $('dset-password').value = '';
+      $('dset-dialog').close();
+      const left = was && was.account !== s.account ? ` ${was.account} stays in Active Directory until you delete it.` : '';
+      if (answer.warning) R.toast('Service account set up.', answer.warning, { tone: 'warn' });
+      else R.toast(was ? `Switched to ${SA_KINDS[s.kind] || s.account}.` : have ? 'Service account set up.' : 'Service account created.', `${R.app()} now makes Active Directory changes with ${s.account}.${left}`);
+      places = null;
+      R.forget();
+      refreshAd(true);
+      document.dispatchEvent(new CustomEvent('rabbidlab:ad')); // the Org chart and Attribute browser read again
     } catch (err) {
-      // A wrong sign-in: back on the sign-in step, its two fields outlined, and the password ready to type again.
+      // A wrong sign-in: its two fields outlined, and the password ready to type again.
       const wrong = /username or password/i.test(err.message);
-      if (wrong) {
-        ds.reached = 1;
-        dsGo(1);
-      }
       say('dset-problem', err.message);
       if (wrong) {
         ['dset-user', 'dset-password'].forEach((id) => $(id).classList.add('bad'));
@@ -3190,12 +3248,20 @@
       }
     } finally {
       R.busy($('dset-dialog'), '');
-      $('dset-go').disabled = false;
+      saDraw();
     }
   });
 
-  // Settings, Active Directory: the service account, where new accounts go, and disconnecting it. The gear opens it.
+  // Settings, Active Directory: the service account, how it's doing, where new accounts go, and disconnecting it. The gear opens it.
   $('dir-settings').addEventListener('click', () => { location.hash = '#settings/ad'; });
+  // How its sign-in can fail, and the button that fixes each.
+  const BROKEN = {
+    rejected: { badge: 'Sign-in failed', fix: 'Repair', how: 'Resets the password to a new random value and tests sign-in.', done: 'Service account repaired.' },
+    locked: { badge: 'Locked out', fix: 'Unlock and test', how: 'Unlocks the account and tests sign-in.', done: 'Service account unlocked.' },
+    disabled: { badge: 'Disabled', fix: 'Enable and test', how: 'Enables the account, clears its expiration date and tests sign-in.', done: 'Service account enabled.' },
+  };
+  // An account Rabbid Lab was given has a password its owner changes: the new one fixes a rejected sign-in.
+  const saOwn = (s) => s.problem === 'rejected' && !s.made;
   const drawAdSettings = async (fresh) => {
     say('adset-problem', '');
     try {
@@ -3207,24 +3273,44 @@
       if ($('as-about').querySelector('.sk')) $('as-about').textContent = '';
       return;
     }
+    const s = saState();
     // Read-only (Not now) is no account at all here.
-    const s = ad?.state?.readOnly ? null : ad?.state;
+    const reading = !s && !!ad?.state?.readOnly;
+    const B = s?.problem ? BROKEN[s.problem] : null;
     $('as-account').textContent = s ? s.account : 'No service account';
+    $('as-state').hidden = !s;
+    $('as-state').className = `ubadge ${B ? 'red' : 'green'}`;
+    $('as-state').textContent = B ? B.badge : 'Connected';
     $('as-about').textContent = s
-      ? `In ${s.domain}, ${s.made ? 'with delegated permissions on' : 'scoped to'} ${s.scopeName}. ${s.made ? 'Created' : 'Connected'} by ${s.by}${s.at ? ` on ${R.when(s.at)}` : ''}. The password is stored encrypted on this server.`
-      : ad?.state?.readOnly ? `Read-only: ${ad.domain} is read with this server's computer account. Only admins who can set up the service account, or whose role allows read-only access, can see it. Set up a service account to make changes.`
+      ? `${s.kind === 'admin' ? `Domain admin in ${s.domain}.` : `In ${s.domain}, ${s.made ? 'with delegated permissions on' : 'scoped to'} ${s.scopeName}.`} ${s.made ? 'Created' : 'Connected'} by ${s.by}${s.at ? ` on ${R.when(s.at)}` : ''}. The password is stored encrypted on this server.`
+      : reading ? `Read-only: ${ad.domain} is read with this server's computer account. Only admins who can set up the service account, or whose role allows read-only access, can see it. Set up a service account to make changes.`
       : ad?.domain ? `${R.app()} makes changes in ${ad.domain} as a service account. Set up a service account to use the Active Directory pages.` : 'This server is not joined to a domain. Connect a domain to manage it here.';
     $('as-setup').hidden = !!s;
-    $('as-ro-off').hidden = !ad?.state?.readOnly;
+    $('as-ro-off').hidden = !reading;
     $('as-setup').textContent = ad?.domain ? 'Set up' : 'Connect a domain';
-    ['as-ou-row', 'as-gou-row', 'as-cou-row'].forEach((id) => { $(id).hidden = !s; });
+    $('as-test').hidden = !s;
+    $('as-change').hidden = !s;
+    say('as-broken', B ? `${s.problemText} Active Directory pages are read-only until this is fixed.` : '');
+    $('as-fix-row').hidden = !B;
+    if (B) {
+      const own = saOwn(s);
+      $('as-fix-title').textContent = own ? 'Update password' : B.fix;
+      $('as-fix-text').textContent = own ? `Enter the new password for ${s.account}. ${R.app()} tests it and stores it encrypted.` : `${B.how} Requires domain admin credentials, which are not saved.`;
+      $('as-fix').textContent = own ? 'Update password' : B.fix;
+    }
+    ['as-password-row', 'as-alert-row', 'as-ou-row', 'as-gou-row', 'as-cou-row'].forEach((id) => { $(id).hidden = !s; });
     $('as-danger').classList.toggle('gone', !s);
     if (!s) return;
+    $('as-password-text').textContent = s.rotates ? `Changed by ${R.app()} every 30 days. Last changed ${R.when(s.passwordSet || s.at)}. Next change ${R.when(s.passwordNext)}.`
+      : s.made ? 'A long random password. Set to never expire.' : `Managed by you. ${R.app()} stores the password encrypted and does not change it.`;
+    $('as-password-value').textContent = s.rotates ? '' : s.made ? 'Never expires' : 'Managed by you';
+    $('as-rotate').hidden = !s.rotates;
     $('adset-stop-title').textContent = 'Disconnect service account';
-    $('adset-stop-text').textContent = `${s.account}: ${R.app()} deletes the stored password and stops using the account.${s.made ? ' The account and its delegated permissions remain in AD until you delete them.' : ''}`;
-    // The OU choices wait, dimmed, while the OUs are read.
+    $('adset-stop-text').textContent = `${s.account}: ${R.app()} deletes the stored password and stops using the account.${s.made ? ' The account and its permissions remain in AD until you delete them.' : ''}`;
+    // Where new things go can't be read or saved while its sign-in fails.
     const ous = ['adset-ou', 'adset-gou', 'adset-cou'];
     ous.forEach((id) => { $(id).disabled = true; });
+    if (B) return;
     await placesInto('adset-ou', s.newUsers, 'adset-problem');
     $('adset-gou').innerHTML = $('adset-ou').innerHTML;
     $('adset-cou').innerHTML = $('adset-ou').innerHTML;
@@ -3232,8 +3318,90 @@
     $('adset-cou').value = s.newComputers || '';
     ous.forEach((id) => { $(id).disabled = false; });
   };
+  // After the account changes hands or state: every Active Directory page reads again.
+  const saChanged = (info) => {
+    if (info?.state !== undefined && ad) ad = { ...ad, state: info.state };
+    places = null;
+    R.forget();
+    Object.keys(lists).forEach((k) => delete lists[k]);
+    drawAdSettings(true);
+    document.dispatchEvent(new CustomEvent('rabbidlab:ad'));
+  };
   $('as-setup').addEventListener('click', () => openSetup(ad?.domain));
+  $('as-change').addEventListener('click', () => openSetup(ad?.domain, 'change'));
   $('as-ro-off').addEventListener('click', () => readOnly(false));
+  $('as-test').addEventListener('click', async () => {
+    const s = saState();
+    $('as-test').disabled = true;
+    R.toast('Testing sign-in', `${s.domain}…`, { stay: true });
+    try {
+      const answer = await R.send('/api/ad/service/test', {});
+      const now = answer.state;
+      if (now?.problem) R.toast('Sign-in test failed.', now.problemText, { tone: 'warn' });
+      else R.toast('Sign-in test passed.', `${s.account} signed in to ${s.domain}.`);
+      if ((now?.problem || '') !== (s.problem || '')) saChanged(answer);
+    } catch (err) {
+      R.toast('Could not test sign-in.', err.message, { tone: 'warn' });
+    } finally {
+      $('as-test').disabled = false;
+    }
+  });
+  $('as-rotate').addEventListener('click', async () => {
+    $('as-rotate').disabled = true;
+    try {
+      const answer = await R.devices.confirmed(() => R.send('/api/ad/service/password', {}));
+      R.toast('Password changed.', `Next change on ${R.when(answer.next)}.`);
+      saChanged(answer);
+    } catch (err) {
+      if (!err.cancelled) R.toast('Could not change the password.', err.message, { tone: 'warn' });
+    } finally {
+      $('as-rotate').disabled = false;
+    }
+  });
+  // The fix: a domain admin's sign-in, used once, or the account's own new password.
+  $('as-fix').addEventListener('click', () => {
+    const s = saState();
+    if (!s?.problem) return;
+    const own = saOwn(s);
+    const B = BROKEN[s.problem];
+    $('svcfix-title').textContent = own ? 'Update password' : B.fix;
+    $('svcfix-lead').textContent = own ? `Enter the new password for ${s.account}. It is tested, then stored encrypted on this server.` : `${B.how} Enter domain admin credentials. They are used once and not saved.`;
+    $('svcfix-admin').hidden = own;
+    $('svcfix-own').hidden = !own;
+    $('svcfix-own-label').textContent = `New password for ${s.account}`;
+    $('svcfix-user').value = R.me()?.source === 'ad' ? R.me().username : '';
+    $('svcfix-password').value = '';
+    $('svcfix-account-password').value = '';
+    $('svcfix-go').textContent = own ? 'Update password' : B.fix;
+    say('svcfix-problem', '');
+    $('svcfix-dialog').showModal();
+    $(own ? 'svcfix-account-password' : $('svcfix-user').value ? 'svcfix-password' : 'svcfix-user').focus();
+  });
+  const fixClose = () => {
+    ['svcfix-password', 'svcfix-account-password'].forEach((id) => { $(id).value = ''; });
+    $('svcfix-dialog').close();
+  };
+  $('svcfix-cancel').addEventListener('click', fixClose);
+  $('svcfix-dialog').addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.matches('input')) $('svcfix-go').click(); });
+  $('svcfix-go').addEventListener('click', async () => {
+    const was = saState();
+    say('svcfix-problem', '');
+    $('svcfix-go').disabled = true;
+    R.busy($('svcfix-dialog'), `${$('svcfix-go').textContent}…`);
+    try {
+      const answer = await R.devices.confirmed(() => R.send('/api/ad/service/repair', { username: $('svcfix-user').value.trim(), password: $('svcfix-password').value, accountPassword: $('svcfix-account-password').value }));
+      fixClose();
+      const now = answer.state;
+      if (now?.problem) R.toast(`${was.account} still cannot sign in.`, now.problemText, { tone: 'warn' });
+      else R.toast(saOwn(was) ? 'Password updated.' : BROKEN[was.problem]?.done || 'Service account repaired.', 'Sign-in test passed. Active Directory pages are available again.');
+      saChanged(answer);
+    } catch (err) {
+      if (!err.cancelled) say('svcfix-problem', err.message);
+    } finally {
+      R.busy($('svcfix-dialog'), '');
+      $('svcfix-go').disabled = false;
+    }
+  });
   $('dset-dialog').addEventListener('close', () => { if (R.where()[0] === 'settings' && R.where()[1] === 'ad') drawAdSettings(true); });
   // Each default OU saves as it changes: users, groups and computers.
   [['adset-ou', 'newUsers'], ['adset-gou', 'newGroups'], ['adset-cou', 'newComputers']].forEach(([id, field]) => $(id).addEventListener('change', async () => {

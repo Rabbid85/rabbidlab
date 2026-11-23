@@ -801,7 +801,11 @@
     <section class="sub" data-sub="ad" data-title="Active Directory" hidden>
       <header class="sub-head"><h2>Active Directory</h2><p>The service account that <span data-app>Rabbid Lab</span> uses to make changes in Active Directory.</p></header>
       <section class="ds-sec" data-sec="account"><h3 class="ds-h">Service account</h3>
-        <div class="ds-row"><div class="ds-l"><b id="as-account"><i class="sk sk-text"></i></b><span id="as-about"><i class="sk sk-text"></i></span></div><div class="ds-r"><button type="button" class="ds-btn" id="as-ro-off" hidden>Disable read-only</button><button type="button" class="ds-btn" id="as-setup" hidden>Set up</button></div></div>
+        <div class="ds-row"><div class="ds-l"><b><span id="as-account"><i class="sk sk-text"></i></span><span class="ubadge" id="as-state" hidden></span></b><span id="as-about"><i class="sk sk-text"></i></span></div><div class="ds-r"><button type="button" class="ds-btn" id="as-ro-off" hidden>Disable read-only</button><button type="button" class="ds-btn" id="as-setup" hidden>Set up</button><button type="button" class="ds-btn" id="as-test" hidden>Test</button><button type="button" class="ds-btn" id="as-change" hidden>Change…</button></div></div>
+        <p class="hint problem" id="as-broken" role="alert" hidden></p>
+        <div class="ds-row" id="as-fix-row" hidden><div class="ds-l"><b id="as-fix-title"></b><span id="as-fix-text"></span></div><div class="ds-r"><button type="button" class="ds-btn primary" id="as-fix"></button></div></div>
+        <div class="ds-row" id="as-password-row" hidden><div class="ds-l"><b>Password</b><span id="as-password-text"></span></div><div class="ds-r"><span class="ds-v" id="as-password-value"></span><button type="button" class="ds-btn" id="as-rotate" hidden>Change now</button></div></div>
+        <div class="ds-row" id="as-alert-row" hidden><div class="ds-l"><b>Alert when sign-in fails</b><span>The server tests the service account every 15 minutes. The alert Service account stopped working is sent when sign-in fails.</span></div><div class="ds-r"><a class="ds-btn" href="#alerts" data-can="sensors.alerts">Open Alerts</a></div></div>
         <div class="ds-row" id="as-ou-row" hidden><div class="ds-l"><b>Default OU for new users</b><span>New user creates users in this OU. Changes are saved immediately.</span></div><div class="ds-r"><select id="adset-ou" aria-label="Default OU for new users"></select><button type="button" class="ds-btn" data-browse-ou="adset-ou"><svg><use href="#i-folder"/></svg>Browse…</button></div></div>
         <div class="ds-row" id="as-gou-row" hidden><div class="ds-l"><b>Default OU for new groups</b><span>New group creates groups in this OU.</span></div><div class="ds-r"><select id="adset-gou" aria-label="Default OU for new groups"></select><button type="button" class="ds-btn" data-browse-ou="adset-gou"><svg><use href="#i-folder"/></svg>Browse…</button></div></div>
         <div class="ds-row" id="as-cou-row" hidden><div class="ds-l"><b>Default OU for new computers</b><span>New computer creates pre-staged computer accounts in this OU.</span></div><div class="ds-r"><select id="adset-cou" aria-label="Default OU for new computers"></select><button type="button" class="ds-btn" data-browse-ou="adset-cou"><svg><use href="#i-folder"/></svg>Browse…</button></div></div>
@@ -1157,6 +1161,7 @@
         <button type="button" class="icon" id="dir-settings" data-can="ad.connect" title="Service account" aria-label="Service account"><svg><use href="#i-gear"/></svg></button></div>
     </nav>
     <div class="dmain">
+    <p class="hint problem dir-broken" id="dir-broken" role="alert" hidden><span id="dir-broken-text"></span><a href="#settings/ad" data-can="ad.connect">Fix in Settings</a></p>
     <div class="lib" id="dir-lib" hidden>
       <div class="lib-body">
         <!-- The list's tabs with its rows (Compact or Relaxed, grid.js), Refresh and Export at their right end, the filter
@@ -1482,43 +1487,44 @@
   <div class="dialog-foot"><button type="button" id="pw-cancel">Cancel</button><button type="button" class="primary" id="pw-save">Save</button></div>
 </dialog>
 
-<!-- Rabbid Lab's own Active Directory account, its steps down the side: made with an admin's sign-in (not saved), or one it's given. -->
+<!-- Rabbid Lab's own Active Directory account: delegated or a domain admin, the questions people ask about it, and the sign-in that makes it (users.js). -->
 <dialog class="dialog dset" id="dset-dialog" aria-labelledby="dset-title">
-  <div class="dset-side">
-    <h2 id="dset-title">Service account</h2>
-    <p class="dset-lead"><span data-app>Rabbid Lab</span> uses this account to make changes in Active Directory.</p>
-    <ol class="dset-steps" id="dset-steps"></ol>
+  <div class="dset-head"><span class="big-ic ember"><svg><use href="#i-shield"/></svg></span><span><b id="dset-title">Set up the service account</b><small id="dset-sub"></small></span>
+    <button type="button" class="icon dset-x" id="dset-x" aria-label="Close"><svg><use href="#i-x"/></svg></button></div>
+  <div class="dset-cards dset-kinds" id="dset-kinds">
+    <button type="button" class="dset-card" data-kind="delegated" aria-pressed="true"><span class="big-ic"><svg><use href="#i-user"/></svg></span><span><b>Delegated <small>svc-rabbidlab</small></b><span>A standard account with permissions only in the OUs you select.</span></span></button>
+    <button type="button" class="dset-card" data-kind="admin" aria-pressed="false"><span class="big-ic"><svg><use href="#i-shield"/></svg></span><span><b>Domain admin <small>svc-rabbidlab-admin</small></b><span>A member of Domain Admins. The console never asks for another sign-in.</span></span></button>
   </div>
-  <div class="dset-main">
-    <div class="dset-body">
-      <div class="dset-head"><span class="big-ic ember"><svg><use id="dset-icon" href="#i-user"/></svg></span><span><b id="dset-step-title"></b><small id="dset-step-text"></small></span></div>
-      <div class="dset-pane" data-pane="choose">
-        <div class="dset-cards" id="dset-choose">
-          <button type="button" class="dset-card" data-adtab="make" aria-pressed="true"><span class="big-ic"><svg><use href="#i-user-plus"/></svg></span><span><b>Create a new account</b><span>Sign in once as a domain admin. <span data-app>Rabbid Lab</span> creates svc-rabbidlab with a long random password and delegates permissions on the OU you select. The domain admin credentials are not stored.</span></span></button>
-          <button type="button" class="dset-card" data-adtab="existing" aria-pressed="false"><span class="big-ic"><svg><use href="#i-user"/></svg></span><span><b>Use an existing account</b><span>Select an account in AD or enter its name, then enter its password. The account needs permission to create and modify users, groups and computers in the OUs <span data-app>Rabbid Lab</span> manages.</span></span></button>
-        </div>
-      </div>
-      <div class="dset-pane" data-pane="signin">
-        <label class="dset-fld"><span>Domain</span><span class="dset-in"><svg><use href="#i-globe"/></svg><input id="dset-domain" autocomplete="off" spellcheck="false"></span></label>
-        <div class="dset-fld dset-acct"><label for="dset-user" id="dset-user-label">Domain admin</label><div class="dset-row"><span class="dset-in"><svg><use href="#i-user"/></svg><input id="dset-user" autocomplete="username" spellcheck="false"></span><button type="button" class="dset-browse" id="dset-browse" hidden><svg><use href="#i-folder"/></svg>Browse…</button></div>
-          <div class="drop dset-drop" id="dset-drop" hidden></div></div>
-        <label class="dset-fld"><span>Password</span><span class="dset-in"><svg><use href="#i-lock"/></svg><input id="dset-password" type="password" autocomplete="current-password"></span></label>
-        <p class="dset-note"><svg><use href="#i-lock"/></svg><span id="dset-note"></span></p>
-        <p class="hint" data-can="windows.view">No domain, or managing local accounts only? Local accounts do not need a service account. Open a computer in <a href="#seats" id="dset-local">Devices</a> and use its Accounts tab.</p>
-      </div>
-      <div class="dset-pane" data-pane="account" hidden>
-        <label class="dset-fld"><span>Service account name</span><span class="dset-in"><svg><use href="#i-user"/></svg><input id="dset-account" maxlength="20" autocomplete="off" spellcheck="false"></span></label>
-        <div class="dset-fld"><label for="dset-ou">Create in</label><div class="ou-row"><select id="dset-ou"></select><button type="button" data-browse-ou="dset-ou"><svg><use href="#i-folder"/></svg>Browse…</button></div></div>
-      </div>
-      <div class="dset-pane" data-pane="review" hidden>
-        <div class="dset-review" id="dset-review"></div>
-        <select id="dset-scope" hidden></select>
-        <p class="dset-note"><svg><use href="#i-shield"/></svg><span id="dset-note2"></span></p>
-      </div>
-      <p class="hint problem" id="dset-problem" role="alert" hidden></p>
-    </div>
-    <div class="dset-foot"><button type="button" id="dset-back" hidden>Back</button><span class="grow"></span><button type="button" id="dset-cancel">Cancel</button><button type="button" class="primary" id="dset-go">Next</button></div>
+  <div class="dset-qa" id="dset-qa"></div>
+  <div class="dset-risk" id="dset-risk" hidden><svg><use href="#i-alert"/></svg><div><b>This server will hold domain admin permissions.</b>
+    <span id="dset-risk-text"></span>
+    <div class="seg" role="group" aria-label="Domain admin account" id="dset-how"><button type="button" data-how="make" aria-pressed="true">Create svc-rabbidlab-admin</button><button type="button" data-how="have" aria-pressed="false">Use an existing account</button></div>
+    <span id="dset-risk-password"></span>
+    <label><input type="checkbox" id="dset-tick"><span>I understand the risk. Use a domain admin account.</span></label></div></div>
+  <div class="dset-login">
+    <div class="dset-fld dset-wide" id="dset-scope-row"><label for="dset-scope">OUs to manage</label><div class="ou-row"><select id="dset-scope"></select><button type="button" data-browse-ou="dset-scope"><svg><use href="#i-folder"/></svg>Browse…</button></div></div>
+    <label class="dset-fld"><span>Domain</span><span class="dset-in"><svg><use href="#i-globe"/></svg><input id="dset-domain" autocomplete="off" spellcheck="false"></span></label>
+    <div class="dset-fld dset-acct"><label for="dset-user" id="dset-user-label">Domain admin</label><div class="dset-row"><span class="dset-in"><svg><use href="#i-user"/></svg><input id="dset-user" autocomplete="username" spellcheck="false"></span><button type="button" class="dset-browse" id="dset-browse" hidden><svg><use href="#i-folder"/></svg>Browse…</button></div>
+      <div class="drop dset-drop" id="dset-drop" hidden></div></div>
+    <label class="dset-fld"><span>Password</span><span class="dset-in"><svg><use href="#i-lock"/></svg><input id="dset-password" type="password" autocomplete="current-password"></span></label>
+    <label class="dset-fld" id="dset-account-row"><span>Service account name</span><span class="dset-in"><svg><use href="#i-user-plus"/></svg><input id="dset-account" maxlength="20" autocomplete="off" spellcheck="false"></span></label>
+    <div class="dset-test"><button type="button" id="dset-try"><svg><use href="#i-refresh"/></svg>Test sign-in</button><span class="dset-result" id="dset-result"></span></div>
   </div>
+  <p class="hint problem" id="dset-problem" role="alert" hidden></p>
+  <div class="dset-foot"><span class="dset-foot-note" id="dset-foot-note"></span><span class="grow"></span><button type="button" id="dset-cancel">Cancel</button><button type="button" class="primary" id="dset-go"></button></div>
+</dialog>
+
+<!-- Fixing a service account that can't sign in: a domain admin's sign-in, used once, or the account's own new password (users.js). -->
+<dialog class="dialog" id="svcfix-dialog" aria-labelledby="svcfix-title">
+  <h2 id="svcfix-title"></h2>
+  <p class="dialog-lead" id="svcfix-lead"></p>
+  <div id="svcfix-admin">
+    <label class="dset-fld"><span>Domain admin</span><span class="dset-in"><svg><use href="#i-user"/></svg><input id="svcfix-user" autocomplete="username" spellcheck="false"></span></label>
+    <label class="dset-fld"><span>Password</span><span class="dset-in"><svg><use href="#i-lock"/></svg><input id="svcfix-password" type="password" autocomplete="current-password"></span></label>
+  </div>
+  <label class="dset-fld" id="svcfix-own" hidden><span id="svcfix-own-label">New password</span><span class="dset-in"><svg><use href="#i-lock"/></svg><input id="svcfix-account-password" type="password" autocomplete="off"></span></label>
+  <p class="hint problem" id="svcfix-problem" role="alert" hidden></p>
+  <div class="dialog-foot"><button type="button" id="svcfix-cancel">Cancel</button><button type="button" class="primary" id="svcfix-go"></button></div>
 </dialog>
 
 <!-- Picking an OU: the OUs as a rail, the way Settings lists its pages, and the one picked beside it. Browse… beside an OU list opens it. -->

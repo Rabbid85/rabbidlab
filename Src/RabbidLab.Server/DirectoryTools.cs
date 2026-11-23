@@ -31,9 +31,26 @@ public sealed class DirectoryToolsFile
     public string? By { get; set; }
     public DateTime? At { get; set; }
 
-    /// <summary>Not set up: Active Directory read as this computer until it is (never saved).</summary>
+    /// <summary>delegated (rights on the scope only) or admin (a member of Domain Admins); not set on accounts from before there were two.</summary>
+    public string? Kind { get; set; }
+
+    /// <summary>Rabbid Lab made this domain admin and changes its password itself every 30 days.</summary>
+    public bool Rotates { get; set; }
+
+    /// <summary>When Rabbid Lab last set the password; never for a password someone else manages.</summary>
+    public DateTime? PasswordSet { get; set; }
+
+    /// <summary>Read as this computer, and nothing changed: not set up yet, or its sign-in is failing (never saved).</summary>
     [System.Text.Json.Serialization.JsonIgnore]
     public bool ReadOnly { get; set; }
+
+    /// <summary>A copy with something changed: what's loaded is never changed in place.</summary>
+    public DirectoryToolsFile With(Action<DirectoryToolsFile> change)
+    {
+        var copy = (DirectoryToolsFile) MemberwiseClone();
+        change(copy);
+        return copy;
+    }
 }
 
 /// <summary>Read-only Active Directory as this computer, until the service account is set up: who turned it on, and when.</summary>
@@ -44,9 +61,13 @@ public sealed class DirectoryReadOnlyFile
     public DateTime? At { get; set; }
 }
 
-/// <summary>What the tools are working with, for the page.</summary>
+/// <summary>
+/// What the tools are working with, for the page. Kind is delegated, admin or existing (one it was given before there
+/// were two kinds). Problem is why its sign-in fails (rejected, locked, disabled) or null, and ReadOnly is on while it does.
+/// </summary>
 public sealed record DirectoryToolsState(string Domain, string Account, string Scope, string ScopeName, string NewUsers, string NewUsersName, bool Made, string? By, DateTime? At,
-    string NewGroups = "", string NewGroupsName = "", string NewComputers = "", string NewComputersName = "", bool ReadOnly = false);
+    string NewGroups = "", string NewGroupsName = "", string NewComputers = "", string NewComputersName = "", bool ReadOnly = false,
+    string Kind = "delegated", bool Rotates = false, DateTime? PasswordSet = null, DateTime? PasswordNext = null, string? Problem = null, string? ProblemText = null, DateTime? Tested = null);
 
 /// <summary>An OU or container. Fixed says why nothing new can go in it (Builtin, Domain Controllers), or is null.</summary>
 public sealed record AdOu(string Dn, string Name, string Path, string? Fixed = null);
@@ -85,7 +106,8 @@ public sealed record AdUserMore(string? Initials, string? Mobile, string? IpPhon
 /// <summary>The OUs to pick from while setting up, read with the admin sign-in given.</summary>
 public sealed record SetupLook(string Domain, string BaseDn, List<AdOu> Places, string AccountOu, string Account);
 
-public sealed record SetupForm(string? Domain, string? Username, string? Password, bool Existing, string? Account, string? Ou, string? Scope);
+/// <summary>Kind is delegated (the default) or admin. Existing: the account signs in itself, and isn't made.</summary>
+public sealed record SetupForm(string? Domain, string? Username, string? Password, bool Existing, string? Account, string? Ou, string? Scope, string? Kind = null);
 
 /// <summary>Read-only Active Directory as this computer, on or off.</summary>
 public sealed record ReadOnlyForm(bool On);
@@ -290,8 +312,12 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
         var newUsers = NewUsersOf(f);
         var newGroups = NewGroupsOf(f);
         var newComputers = NewComputersOf(f);
+        // Its own account failing to sign in reads as this computer too, but it is still set up.
+        var bad = !f.ReadOnly && Broken ? health : null;
         return new DirectoryToolsState(f.Domain!, f.Account!, f.Scope!, ScopeName(f.Scope!, baseDn, f.Domain!), newUsers, ScopeName(newUsers, baseDn, f.Domain!), f.Made, f.By, f.At,
-            newGroups, ScopeName(newGroups, baseDn, f.Domain!), newComputers, ScopeName(newComputers, baseDn, f.Domain!), f.ReadOnly);
+            newGroups, ScopeName(newGroups, baseDn, f.Domain!), newComputers, ScopeName(newComputers, baseDn, f.Domain!), f.ReadOnly || bad is not null,
+            f.Kind ?? (f.Made ? "delegated" : "existing"), f.Rotates, f.PasswordSet, f.Rotates ? (f.PasswordSet ?? f.At) + PasswordLife : null, bad?.State, bad?.Text,
+            f.ReadOnly ? null : health?.At);
     }
 
     /// <summary>The domain this computer is in (tests give one).</summary>
@@ -327,16 +353,27 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
         }
         using var ldap = await open(domain, host, username, password, stop) ?? throw new ToolProblem("The username or password is incorrect.");
         var signedIn = Ldap.Account(username);
+        var admin = form.Kind == "admin";
         if (form.Existing)
         {
             // Kept under the name Active Directory signed in, not the one typed.
             var me = await Ldap.Bound(ldap, username, ["sAMAccountName"], stop) ?? throw new ToolProblem($"{signedIn} signed in, but the account was not found in {domain}.");
             var sam = me.Text("sAMAccountName") ?? signedIn;
+            if (admin)
+            {
+                if (!await IsDomainAdmin(ldap, me.Dn, stop))
+                {
+                    throw new ToolProblem($"{sam} is not a member of Domain Admins in {domain}. Enter a domain admin account, or select Delegated.");
+                }
+                // Its owner manages the password: Rabbid Lab keeps it and never changes it.
+                Connected(new DirectoryToolsFile { Domain = domain, Account = sam, Password = secrets.Encrypt(password), Scope = ldap.BaseDn, Kind = "admin", By = by, At = DateTime.UtcNow });
+                return null;
+            }
             var scope = await Place(ldap, form.Scope, ldap.BaseDn, stop);
             // Whether it may make users there: Active Directory works that out for whoever asks.
             var can = (await ldap.Find(scope, "(objectClass=*)", false, ["allowedChildClassesEffective"], 1, stop)).FirstOrDefault()?.Texts("allowedChildClassesEffective")
                 .Contains("user", StringComparer.OrdinalIgnoreCase) == true;
-            Save(new DirectoryToolsFile { Domain = domain, Account = sam, Password = secrets.Encrypt(password), Scope = scope, Made = false, By = by, At = DateTime.UtcNow });
+            Connected(new DirectoryToolsFile { Domain = domain, Account = sam, Password = secrets.Encrypt(password), Scope = scope, Made = false, By = by, At = DateTime.UtcNow });
             return can ? null : $"{sam} does not have permission to create accounts in {ScopeName(scope, ldap.BaseDn, domain)}. Accounts can be listed, but creating them fails until that permission is delegated.";
         }
 
@@ -349,7 +386,9 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
             throw new ToolProblem($"An account named {name} already exists in {domain}. Enter a different name, or use an existing account.");
         }
         var ou = await Into(ldap, form.Ou, $"CN=Users,{ldap.BaseDn}", stop);
-        var where = await Place(ldap, form.Scope, ldap.BaseDn, stop);
+        // A domain admin has the whole domain; a delegated account only what it's given.
+        var where = admin ? ldap.BaseDn : await Place(ldap, form.Scope, ldap.BaseDn, stop);
+        var admins = admin ? await DomainAdmins(ldap, stop) : null;
         var dn = $"CN={Ldap.Escape(name)},{ou}";
         var secret = Passwords.Make(64);
         try
@@ -360,7 +399,7 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
                 ["sAMAccountName"] = [name],
                 ["userPrincipalName"] = [$"{name}@{domain}"],
                 ["displayName"] = [Product.Name],
-                ["description"] = [$"{Product.Name} service account. Manages users, groups and computers. Created by {signedIn} on {DateTime.UtcNow:yyyy-MM-dd}."],
+                ["description"] = [$"{Product.Name} service account. {(admin ? "A domain admin: its password is changed by the server every 30 days." : "Manages users, groups and computers.")} Created by {signedIn} on {DateTime.UtcNow:yyyy-MM-dd}."],
                 ["userAccountControl"] = [(NormalAccount | Disabled).ToString(CultureInfo.InvariantCulture)],
             }, stop);
         }
@@ -372,11 +411,20 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
         {
             await ldap.Modify(dn, [new(LdapChange.Replace, "unicodePwd", Ldap.Password(secret))], stop);
             await ldap.Modify(dn, [new(LdapChange.Replace, "userAccountControl", (NormalAccount | DontExpire | NotDelegated).ToString(CultureInfo.InvariantCulture))], stop);
-            var sid = (await ldap.Find(dn, "(objectClass=*)", false, ["objectSid"], 1, stop)).FirstOrDefault()?.Bytes("objectSid")
-                ?? throw new ToolProblem($"{name} was created, but its SID could not be read.");
-            var dacl = await ldap.ReadDacl(where, stop) ?? throw new ToolProblem($"Access denied. {signedIn} cannot read the permissions on {ScopeName(where, ldap.BaseDn, domain)}. Sign in as a domain admin.");
-            await ldap.WriteDacl(where, Dacl.Grant(dacl, Dacl.Delegation(sid)), stop);
-            Save(new DirectoryToolsFile { Domain = domain, Account = name, Password = secrets.Encrypt(secret), Scope = where, Made = true, By = by, At = DateTime.UtcNow });
+            if (admins is not null)
+            {
+                await ldap.Modify(admins.Dn, [new(LdapChange.Add, "member", dn)], stop);
+            }
+            else
+            {
+                var sid = (await ldap.Find(dn, "(objectClass=*)", false, ["objectSid"], 1, stop)).FirstOrDefault()?.Bytes("objectSid")
+                    ?? throw new ToolProblem($"{name} was created, but its SID could not be read.");
+                var dacl = await ldap.ReadDacl(where, stop) ?? throw new ToolProblem($"Access denied. {signedIn} cannot read the permissions on {ScopeName(where, ldap.BaseDn, domain)}. Sign in as a domain admin.");
+                await ldap.WriteDacl(where, Dacl.Grant(dacl, Dacl.Delegation(sid)), stop);
+            }
+            var now = DateTime.UtcNow;
+            Connected(new DirectoryToolsFile { Domain = domain, Account = name, Password = secrets.Encrypt(secret), Scope = where, Made = true, By = by, At = now,
+                Kind = admin ? "admin" : "delegated", Rotates = admin, PasswordSet = now });
         }
         catch (Exception e)
         {
@@ -384,7 +432,9 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
             await Undo(ldap, dn);
             if (e is LdapRefused r)
             {
-                throw new ToolProblem(r.Code == LdapRefused.InsufficientRights ? $"Access denied. {signedIn} cannot delegate permissions on {ScopeName(where, ldap.BaseDn, domain)} to {name}. Sign in as a domain admin." : Said(r, signedIn));
+                throw new ToolProblem(r.Code != LdapRefused.InsufficientRights ? Said(r, signedIn)
+                    : admin ? $"Access denied. {signedIn} cannot add {name} to Domain Admins. Sign in as a domain admin."
+                    : $"Access denied. {signedIn} cannot delegate permissions on {ScopeName(where, ldap.BaseDn, domain)} to {name}. Sign in as a domain admin.");
             }
             if (e is FormatException)
             {
@@ -401,6 +451,7 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
         {
             File.Delete(file);
             loaded = new();
+            health = null;
         }
         pool?.Flush();
     }
@@ -425,11 +476,12 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
             {
                 throw new ToolProblem("The service account was changed while saving. Try again.", StatusCodes.Status409Conflict);
             }
-            Save(new DirectoryToolsFile
+            Save(now.With(x =>
             {
-                Domain = now.Domain, Account = now.Account, Password = now.Password, Scope = now.Scope, Made = now.Made, By = now.By, At = now.At,
-                NewUsers = kind is "users" ? place : now.NewUsers, NewGroups = kind is "groups" ? place : now.NewGroups, NewComputers = kind is "computers" ? place : now.NewComputers,
-            }, keepConnections: true);
+                x.NewUsers = kind is "users" ? place : now.NewUsers;
+                x.NewGroups = kind is "groups" ? place : now.NewGroups;
+                x.NewComputers = kind is "computers" ? place : now.NewComputers;
+            }), keepConnections: true);
         }
     }
 
@@ -812,8 +864,8 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
             try
             {
                 var read = await AsComputer!(f.Domain!, await Host(f.Domain!, stop), stop)
-                    ?? throw new ToolProblem($"{f.Account} could not read {f.Domain}. Configure the service account instead.", StatusCodes.Status409Conflict);
-                return new ReadOnlyLdap(read);
+                    ?? throw new ToolProblem($"{Environment.MachineName} could not read {f.Domain} with its computer account.", StatusCodes.Status409Conflict);
+                return new ReadOnlyLdap(read, Broken ? SignInFailedText : ReadOnlyText);
             }
             catch (DirectoryProblem e)
             {
@@ -838,7 +890,8 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
         var f = Load();
         if (f.Account is not null && f.Domain is not null && f.Scope is not null)
         {
-            return f;
+            // While its sign-in fails, lists are read as this computer and every change is refused.
+            return Broken && AsComputer is not null ? f.With(x => x.ReadOnly = true) : f;
         }
         var read = ReadOnlyFile() ?? throw new ToolProblem("The Active Directory service account is not configured. Configure it first.", StatusCodes.Status409Conflict);
         // Read-only is for people who can set up the service account, or whose role may see it: never anyone else, nor nobody.
@@ -1518,7 +1571,7 @@ public sealed class LdapPool : IDisposable
 }
 
 /// <summary>Active Directory read as this computer until the service account is set up: reads go through, every change is refused.</summary>
-public sealed class ReadOnlyLdap(ILdap inner) : ILdap
+public sealed class ReadOnlyLdap(ILdap inner, string why) : ILdap
 {
     public string BaseDn => inner.BaseDn;
     public bool Encrypted => inner.Encrypted;
@@ -1538,5 +1591,5 @@ public sealed class ReadOnlyLdap(ILdap inner) : ILdap
 
     public void Dispose() => inner.Dispose();
 
-    private static Task Refuse() => throw new ToolProblem(DirectoryTools.ReadOnlyText, StatusCodes.Status409Conflict);
+    private Task Refuse() => throw new ToolProblem(why, StatusCodes.Status409Conflict);
 }

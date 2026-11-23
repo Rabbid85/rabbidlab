@@ -268,6 +268,7 @@ app.MapMfaApi();
 app.MapClientsApi();
 app.MapDevicesApi();
 app.MapUsersApi();
+app.MapServiceAccountApi();
 app.MapDirectoryExtrasApi();
 app.MapSyncApi();
 app.MapGroupPolicyApi();

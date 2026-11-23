@@ -61,7 +61,7 @@ public static class AlertEvents
         new("rl.role", "Rabbid Lab", "A Rabbid Lab role or its members change", [], ["by", "hour", "day"], "critical", Per: "all"),
         new("rl.settings", "Rabbid Lab", "Rabbid Lab settings are changed", [], ["by", "hour", "day"], "info", Per: "all"),
         new("rl.update", "Rabbid Lab", "An update fails to install", [], [], "warning", Per: "all"),
-        new("rl.svc", "Rabbid Lab", "The service account stops working", [], [], "critical", NotYet: Later),
+        new("rl.svc", "Rabbid Lab", "The service account stops working", [], [], "critical", Note: "The server tests the Active Directory service account every 15 minutes.", Per: "all"),
         new("rl.flow", "Rabbid Lab", "A workflow or offboarding stage fails", [], ["object", "hour", "day"], "warning", "Has a workflow or offboarding stage fail", Per: "all"),
     ];
 
@@ -76,6 +76,9 @@ public static class AlertEvents
     public static readonly string[] Ops = ["is", "isnot", "oneof", "noneof", "contains", "starts", "between"];
 
     public static readonly string[] Privileged = ["Domain Admins", "Enterprise Admins", "Schema Admins", "Administrators", "Account Operators", "Backup Operators"];
+
+    /// <summary>The alert for a service account that stops working, which Settings, Active Directory opens.</summary>
+    public const string ServiceAccountRule = "p-svc";
 
     /// <summary>The alerts there are to start with (the AD security alerts), each one changed or deleted like any other.</summary>
     public static List<EventRule> Presets(string? type, DateTime now)
@@ -99,6 +102,7 @@ public static class AlertEvents
             P("p-hours", "Sign-in outside usual hours", "ad.signin.hours"),
             P("p-delete", "Objects deleted", "ad.delete"),
             P("p-admins", "Added to a privileged group", "ad.group.add", r => { r.Severity = "critical"; r.Conditions = [new() { Field = "group", Op = "oneof", Value = string.Join(", ", Privileged) }]; }),
+            P(ServiceAccountRule, "Service account stopped working", "rl.svc"),
         ];
     }
 }
@@ -169,6 +173,9 @@ public sealed class EventRulesFile
 
     /// <summary>The alerts there are to start with were added, once.</summary>
     public bool Seeded { get; set; }
+
+    /// <summary>The service account alert was added, once, for servers seeded before there was one.</summary>
+    public bool ServiceAccount { get; set; }
 }
 
 /// <summary>An alert that went off: what happened, where it went, whether someone has looked, and a workflow waiting for approval.</summary>
@@ -253,7 +260,16 @@ public sealed class EventAlerts(DataFolder folder, Alerts alerts, TimeProvider c
             if (!file.Seeded)
             {
                 file.Rules.InsertRange(0, AlertEvents.Presets(alerts.StartType().Id, Now));
-                file.Seeded = true;
+                file.Seeded = file.ServiceAccount = true;
+                rules.Save(file);
+            }
+            else if (!file.ServiceAccount)
+            {
+                if (!file.Rules.Any(r => r.Event == "rl.svc"))
+                {
+                    file.Rules.Add(AlertEvents.Presets(alerts.StartType().Id, Now).Single(r => r.Id == AlertEvents.ServiceAccountRule));
+                }
+                file.ServiceAccount = true;
                 rules.Save(file);
             }
             return file.Rules;
@@ -749,6 +765,7 @@ public sealed class EventAlerts(DataFolder folder, Alerts alerts, TimeProvider c
             "role.add" or "role.change" or "role.delete" or "role.member.add" or "role.member.remove" => Fact("rl.role", e.Title, by),
             "settings.idle" or "settings.lock" or "update.settings" or "ad.settings" or "client.settings" or "ad.domain.set" or "account.add-admin" or "ad.readonly.off" => Fact("rl.settings", e.Title, by),
             "workflow.failed" => Fact("rl.flow", e.Title, e.Detail ?? ""),
+            "ad.service.failed" => Fact("rl.svc", e.Title, e.Detail ?? ""),
             "ad.workflow.run" or "ad.offboard.stage" when e.Result is "failed" or "warning" =>
                 Fact("rl.flow", $"{e.Title} stopped at a failed step", e.Detail ?? by, After(@" for (\S+)$"), After(@" for (.+)$")),
             "client.join" => Fact("dev.new", e.Title, e.From is { } ip ? $"From {ip}." : "", computer: After(@"^(\S+) connected")),

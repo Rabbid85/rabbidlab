@@ -914,10 +914,19 @@ public sealed class FakeLdap : ILdap
         Computer("DC9", Lab, 0x2000);
     }
 
+    /// <summary>Given the name and password signing in: whether Active Directory turns it away anyway, or null for nobody.</summary>
+    public Func<string, string, bool>? Refuse { get; set; }
+
+    /// <summary>Any password signs in, for accounts whose password the tools made up.</summary>
+    public bool AnyPassword { get; set; }
+
+    /// <summary>Tests member of through groups in groups as plain member of, instead of passing every row.</summary>
+    public bool ChainIsMemberOf { get; set; }
+
     /// <summary>Signs in when the password is "right".</summary>
     public Task<ILdap?> Open(string domain, string host, string username, string password, CancellationToken stop)
     {
-        if (password != "right")
+        if ((password != "right" && !(AnyPassword && password.Length > 0)) || Refuse?.Invoke(username, password) == true)
         {
             return Task.FromResult<ILdap?>(null);
         }
@@ -1002,17 +1011,19 @@ public sealed class FakeLdap : ILdap
 
     private static bool Same(string a, string b) => string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
 
-    private static List<LdapRow> Search(List<Item> rows, string root, string filter, bool subtree, int limit) =>
+    private static string SidText(byte[] b) => $"S-{b[0]}-{b[7]}" + string.Concat(Enumerable.Range(0, b[1]).Select(i => "-" + BitConverter.ToUInt32(b, 8 + 4 * i)));
+
+    private List<LdapRow> Search(List<Item> rows, string root, string filter, bool subtree, int limit) =>
         [.. rows.Where(r => (subtree ? r.Dn.Length > 0 && Ldap.Under(r.Dn, root) : Same(r.Dn, root)) && Matches(filter, r)).Take(limit).Select(r => new LdapRow(r.Dn, r.Values))];
 
-    private static bool Matches(string filter, Item item)
+    private bool Matches(string filter, Item item)
     {
         var at = 0;
         return Part(filter, ref at, item);
     }
 
     // One (…) of an LDAP filter: and, or, not, or a single test.
-    private static bool Part(string f, ref int i, Item item)
+    private bool Part(string f, ref int i, Item item)
     {
         i++; // (
         bool result;
@@ -1041,15 +1052,20 @@ public sealed class FakeLdap : ILdap
         return result;
     }
 
-    private static bool Test(string test, Item item)
+    private bool Test(string test, Item item)
     {
         var eq = test.IndexOf('=');
         var name = test[..eq];
-        if (name.EndsWith('>') || name.EndsWith('<') || name.Contains(':'))
+        if (ChainIsMemberOf && name.StartsWith("memberOf:", StringComparison.OrdinalIgnoreCase))
+        {
+            name = "memberOf";
+        }
+        else if (name.EndsWith('>') || name.EndsWith('<') || name.Contains(':'))
         {
             return true; // ranges and bit tests: every row passes
         }
-        var values = item.Values.TryGetValue(name, out var v) ? v.OfType<string>().ToList() : [];
+        // A SID is matched by its text (S-1-5-21-…), as Active Directory takes it in a filter.
+        var values = item.Values.TryGetValue(name, out var v) ? v.Select(x => x is byte[] sid && name.Equals("objectSid", StringComparison.OrdinalIgnoreCase) ? SidText(sid) : x as string).OfType<string>().ToList() : [];
         var wanted = test[(eq + 1)..];
         if (name.Equals("objectClass", StringComparison.OrdinalIgnoreCase) && wanted == "*")
         {

@@ -112,7 +112,8 @@ public sealed class EventAlertsTests : IDisposable
 
         Assert.Equal(HttpStatusCode.OK, (await page.PostAsync($"/api/event-alerts/rules/{id}/delete", null)).StatusCode);
         Assert.DoesNotContain(alerts.Rules(), x => x.Id == id);
-        Assert.Equal(9, alerts.Rules().Count); // the AD security alerts there to start with
+        Assert.Equal(10, alerts.Rules().Count); // the alerts there to start with: AD security, and the service account
+        Assert.Contains(alerts.Rules(), x => x.Id == AlertEvents.ServiceAccountRule && x.Event == "rl.svc" && x.Severity == "critical");
     }
 
     [Fact]

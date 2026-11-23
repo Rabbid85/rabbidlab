@@ -177,25 +177,41 @@
 </article>
 
 <article data-key="dir-setup" data-group="Active Directory" data-title="Set up the AD service account">
-  <p><span data-app>Rabbid Lab</span> makes all Active Directory changes as a dedicated service account, <code>svc-rabbidlab</code>. Its password is long, random and stored encrypted on the server. You set it up once.</p>
-  <h3>Create a new account</h3>
+  <p><span data-app>Rabbid Lab</span> makes all Active Directory changes as a dedicated service account. Its password is stored encrypted on the server. You set it up once.</p>
+  <h3>Select a type</h3>
+  <ul>
+    <li><b>Delegated</b> (<code>svc-rabbidlab</code>): a standard account with Full Control over user, group and computer objects in the OUs you select, like the Delegation of Control Wizard. Group Policy changes and push installs ask for domain admin credentials each time.</li>
+    <li><b>Domain admin</b> (<code>svc-rabbidlab-admin</code>): a member of Domain Admins, so nothing asks for another sign-in. This server then holds domain admin permissions. Select the check box to confirm that you understand the risk.</li>
+  </ul>
+  <p>The questions under the two types explain what the account is used for, what it is never used for, and where the password is stored. The answers match the selected type.</p>
+  <h3>Create the account</h3>
   <ol>
-    <li>Open <a href="#ad/users">Users</a> and select <b>Set up</b>. The steps are listed on the left: Choose, Sign in, Account, Review.</li>
-    <li><b>Choose</b>: select <b>Create a new account</b>.</li>
-    <li><b>Sign in</b>: enter a domain admin username and password. These credentials are used once to create the service account and are not stored.</li>
-    <li><b>Account</b>: enter a name and select the OU to create the account in, from the list or with <b>Browse…</b>.</li>
-    <li><b>Review</b>: check the settings, then select <b>Create service account</b>. <b>Scope</b> is the entire domain by default; select <b>Change</b> to limit it to one OU.</li>
+    <li>Open <a href="#ad/users">Users</a> and select <b>Set up</b>.</li>
+    <li>Select <b>Delegated</b> or <b>Domain admin</b>.</li>
+    <li>For Delegated, select the <b>OUs to manage</b>: the entire domain, or one OU, from the list or with <b>Browse…</b>.</li>
+    <li>Enter a domain admin username and password. These credentials are used once to create the account and are not stored.</li>
+    <li>Select <b>Test sign-in</b> to check the credentials. Nothing is changed.</li>
+    <li>Select <b>Create</b>.</li>
   </ol>
-  <p>The service account gets Full Control over user, group and computer objects in its scope, like the Delegation of Control Wizard.</p>
-  <h3>Use an existing account</h3>
-  <p>Select <b>Use an existing account</b>, sign in as the service account, then confirm on Review. The account needs permission to create and manage users, groups and computers in its scope: the entire domain, or the OU you select with <b>Change</b>.</p>
+  <p>The password is 64 random characters and is never shown. For <code>svc-rabbidlab-admin</code>, <span data-app>Rabbid Lab</span> changes the password every 30 days.</p>
+  <h3>Use an existing domain admin account</h3>
+  <p>Select <b>Domain admin</b>, then <b>Use an existing account</b>. Enter the account and its password. The account must be a member of Domain Admins. You manage its password: <span data-app>Rabbid Lab</span> stores it and does not change it.</p>
   <h3>Not now</h3>
   <p><b>Not now</b> on the setup card enables read-only mode for the whole server, after you verify your identity. Only admins whose role can set up the service account can enable it. Those admins, and users whose role has <b>View in read-only mode</b>, can view the Active Directory pages within their role's scope. Other users cannot until the service account is set up. In read-only mode, the pages read the domain as this server's computer account, which can read most of the directory, and no changes can be made until the service account is set up. Group Policy changes still work with domain admin credentials. Enabling or disabling read-only mode is recorded in the Activity log. To exit read-only mode, select <b>Disable read-only</b> in <a href="#settings/ad">Settings &gt; Active Directory</a>.</p>
   <h3>Select an OU</h3>
   <p><b>Browse…</b> beside any OU list opens <b>Select an OU</b>, with the OUs listed on the left. An OU that contains other OUs expands when you select it. Type in <b>Find an OU</b> to search, then select <b>Use this OU</b>, or double-click the OU.</p>
+  <h3>When sign-in fails</h3>
+  <p>The server tests the service account every 15 minutes. If the password is rejected, or the account is locked out, disabled or expired, the Active Directory pages switch to read-only: lists and searches still work, read with this server's computer account, and changes are refused. The alert <b>Service account stopped working</b> is sent, and <a href="#settings/ad">Settings &gt; Active Directory</a> shows the problem with the button that fixes it:</p>
+  <ul>
+    <li><b>Repair</b>: resets the password to a new random value.</li>
+    <li><b>Unlock and test</b>: unlocks the account.</li>
+    <li><b>Enable and test</b>: enables the account and clears its expiration date.</li>
+    <li><b>Update password</b>: for an account you manage, enter its new password.</li>
+  </ul>
+  <p>Repair, Unlock and Enable ask for domain admin credentials once and do not store them. Each one tests sign-in afterwards.</p>
   <h3>Change the settings later</h3>
-  <p><a href="#settings/ad">Settings &gt; Active Directory</a> (the gear at the bottom of the views on any Active Directory page opens it) sets the default OUs for new users, groups and computers, and has <b>Disconnect</b>. Disconnecting deletes the stored password. The account and its permissions remain in AD until you delete them in Active Directory Users and Computers.</p>
-  <p class="tip">Admin accounts protected by AdminSDHolder (members of Domain Admins and similar groups) can be viewed but not changed by the service account.</p>
+  <p><a href="#settings/ad">Settings &gt; Active Directory</a> (the gear at the bottom of the views on any Active Directory page opens it) has <b>Test</b>, <b>Change…</b> to switch between Delegated and Domain admin, <b>Change now</b> for the password of <code>svc-rabbidlab-admin</code>, the default OUs for new users, groups and computers, and <b>Disconnect</b>. Disconnecting deletes the stored password. The account and its permissions remain in AD until you delete them in Active Directory Users and Computers, and so does the previous account after you switch types.</p>
+  <p class="tip">A delegated account can view admin accounts protected by AdminSDHolder (members of Domain Admins and similar groups) but cannot change them.</p>
 </article>
 
 <article data-key="dir-new-user" data-group="Active Directory" data-title="Create a user">

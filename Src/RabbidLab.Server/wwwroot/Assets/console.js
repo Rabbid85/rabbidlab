@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.380', [
+    'Service account: the set-up window is new. Pick Delegated (svc-rabbidlab, with permissions only in the OUs you select) or Domain admin (svc-rabbidlab-admin, or a domain admin you already have). It answers the usual questions about the account, and Test sign-in checks the sign-in before anything is created.',
+    'The server tests the service account every 15 minutes. If sign-in fails, Active Directory pages go read-only, the alert Service account stopped working is sent, and Settings, Active Directory has the fix: Repair, Unlock and test, Enable and test, or Update password.',
+    'Settings, Active Directory also has Test, Change to switch between the two types, and Change now for the svc-rabbidlab-admin password, which Rabbid Lab changes every 30 days.']],
   ['1.1.379', [
     'Rabbid Lab Dev only: Skip MFA this time works on every computer, not just the server, while Settings, Developer, Skip MFA is on. The release always requires the code.']],
   ['1.1.378', [
@@ -1213,6 +1217,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.380': ['2026-11-23', 'feature', 'Service account: Delegated or Domain admin, sign-in test, fixes and an alert'],
   '1.1.379': ['2026-11-23', 'fix', 'Dev: Skip MFA works from any computer'],
   '1.1.378': ['2026-11-23', 'feature', 'Microsoft cloud: Entra ID, Exchange, Microsoft 365 and Azure', 'cloud.jpg'],
   '1.1.377': ['2026-11-23', 'fix', 'Computers reconnect by themselves after a certificate change'],
