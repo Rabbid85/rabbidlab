@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.373 (2026-11-22)
+
+- Updating no longer cuts computers off. Setup made the console a new certificate key whenever the address of a Hyper-V, WSL or VPN adapter changed, and every computer running the client then refused to connect.
+- Setup now leaves out virtual and VPN adapters, and when the certificate has to be made again it keeps the same key. Computers already cut off reconnect once Connect this computer is clicked on each one.
+
 ## 1.1.372 (2026-11-22)
 
 - Roles and people lists every assignment: who has which role, where in Active Directory it works, when it ends and who added it. People from groups shows everyone a group reaches.

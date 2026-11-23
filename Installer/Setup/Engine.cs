@@ -330,35 +330,78 @@ namespace RabbidLab.Setup
                     Log($"Keeping the existing certificate created by Setup ({keep.Thumbprint}).");
                     return;
                 }
-                foreach (var old in mine)
+
+                // Computers running the client trust this console by its key, so a certificate made again for a new name or
+                // address keeps the key it had: a new key would cut every computer off until each one is connected again.
+                var had = mine.Where(x => x.HasPrivateKey).OrderByDescending(x => x.NotAfter).FirstOrDefault();
+                if (had != null)
                 {
-                    DeletePrivateKey(old);
-                    my.Remove(old);
-                    foreach (var t in trusted.Certificates.Find(X509FindType.FindByThumbprint, old.Thumbprint, false))
+                    try
                     {
-                        trusted.Remove(t);
+                        var key = had.GetRSAPrivateKey(); // the stored key, never disposed here: it stays for the new certificate
+                        using (var made = Request(key, names, ips).CreateSelfSigned(DateTimeOffset.Now.AddDays(-1), DateTimeOffset.Now.AddYears(5)))
+                        {
+                            made.FriendlyName = CertFriendlyName;
+                            my.Add(made);
+                            trusted.Add(new X509Certificate2(made.RawData));
+                            Drop(my, trusted, mine.Where(x => x != had), deleteKey: true);
+                            Drop(my, trusted, new[] { had }, deleteKey: false);
+                            Log($"Made the certificate again for {string.Join(", ", names.Concat(ips))} with the same key ({made.Thumbprint}), so computers running the client stay connected.");
+                            return;
+                        }
+                    }
+                    catch (Exception e) when (e is CryptographicException || e is InvalidOperationException || e is NotSupportedException)
+                    {
+                        // Better a certificate that misses a new address than one that cuts every client off.
+                        if (had.NotAfter > DateTime.Now.AddDays(30))
+                        {
+                            Log($"Keeping the existing certificate ({had.Thumbprint}). It could not be made again with the same key: {e.Message}");
+                            return;
+                        }
                     }
                 }
+                Drop(my, trusted, mine, deleteKey: true);
 
                 using (var rsa = RSA.Create(2048))
+                using (var made = Request(rsa, names, ips).CreateSelfSigned(DateTimeOffset.Now.AddDays(-1), DateTimeOffset.Now.AddYears(5)))
                 {
-                    var request = new CertificateRequest(CertSubject, rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
-                    var san = new SubjectAlternativeNameBuilder();
-                    names.ForEach(san.AddDnsName);
-                    ips.ForEach(ip => san.AddIpAddress(System.Net.IPAddress.Parse(ip)));
-                    request.CertificateExtensions.Add(san.Build());
-                    request.CertificateExtensions.Add(new X509EnhancedKeyUsageExtension(new OidCollection { new Oid("1.3.6.1.5.5.7.3.1") }, false));
-                    request.CertificateExtensions.Add(new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.KeyEncipherment, true));
-                    request.CertificateExtensions.Add(new X509BasicConstraintsExtension(false, false, 0, true));
-                    using (var made = request.CreateSelfSigned(DateTimeOffset.Now.AddDays(-1), DateTimeOffset.Now.AddYears(5)))
-                    {
-                        // Into the computer's store with its private key, which only administrators and SYSTEM can read.
-                        var stored = new X509Certificate2(made.Export(X509ContentType.Pfx, ""), "",
-                            X509KeyStorageFlags.MachineKeySet | X509KeyStorageFlags.PersistKeySet) { FriendlyName = CertFriendlyName };
-                        my.Add(stored);
-                        trusted.Add(new X509Certificate2(made.RawData));
-                        Log($"Created a certificate for {string.Join(", ", names.Concat(ips))} ({stored.Thumbprint}) and trusted it on this computer.");
-                    }
+                    // Into the computer's store with its private key, which only administrators and SYSTEM can read.
+                    var stored = new X509Certificate2(made.Export(X509ContentType.Pfx, ""), "",
+                        X509KeyStorageFlags.MachineKeySet | X509KeyStorageFlags.PersistKeySet) { FriendlyName = CertFriendlyName };
+                    my.Add(stored);
+                    trusted.Add(new X509Certificate2(made.RawData));
+                    Log($"Created a certificate for {string.Join(", ", names.Concat(ips))} ({stored.Thumbprint}) and trusted it on this computer.");
+                }
+            }
+        }
+
+        // The console's certificate: its names and addresses, for serving web pages only.
+        private static CertificateRequest Request(RSA key, List<string> names, List<string> ips)
+        {
+            var request = new CertificateRequest(CertSubject, key, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+            var san = new SubjectAlternativeNameBuilder();
+            names.ForEach(san.AddDnsName);
+            ips.ForEach(ip => san.AddIpAddress(System.Net.IPAddress.Parse(ip)));
+            request.CertificateExtensions.Add(san.Build());
+            request.CertificateExtensions.Add(new X509EnhancedKeyUsageExtension(new OidCollection { new Oid("1.3.6.1.5.5.7.3.1") }, false));
+            request.CertificateExtensions.Add(new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.KeyEncipherment, true));
+            request.CertificateExtensions.Add(new X509BasicConstraintsExtension(false, false, 0, true));
+            return request;
+        }
+
+        // Out of the computer's stores; with deleteKey, its private key goes too.
+        private static void Drop(X509Store my, X509Store trusted, IEnumerable<X509Certificate2> certs, bool deleteKey)
+        {
+            foreach (var old in certs.ToList())
+            {
+                if (deleteKey)
+                {
+                    DeletePrivateKey(old);
+                }
+                my.Remove(old);
+                foreach (var t in trusted.Certificates.Find(X509FindType.FindByThumbprint, old.Thumbprint, false))
+                {
+                    trusted.Remove(t);
                 }
             }
         }

@@ -245,7 +245,7 @@ namespace RabbidLab.Setup
             }
             domain = IPGlobalProperties.GetIPGlobalProperties().DomainName ?? "";
             addresses = NetworkInterface.GetAllNetworkInterfaces()
-                .Where(n => n.OperationalStatus == OperationalStatus.Up && n.NetworkInterfaceType != NetworkInterfaceType.Loopback)
+                .Where(n => n.OperationalStatus == OperationalStatus.Up && n.NetworkInterfaceType != NetworkInterfaceType.Loopback && !Virtual(n))
                 .SelectMany(n => n.GetIPProperties().UnicastAddresses)
                 .Select(a => a.Address)
                 .Where(a => a.AddressFamily == AddressFamily.InterNetwork && !a.ToString().StartsWith("169.254."))
@@ -254,6 +254,13 @@ namespace RabbidLab.Setup
                 .ToList();
             askedAt = DateTime.UtcNow;
         }
+
+        // Hyper-V and WSL switches, VPNs and other virtual machines' adapters: nobody reaches the console on them, and their
+        // addresses change at every restart, so a certificate listing one would be made again (with a new key) each time.
+        private static readonly string[] VirtualWords = { "hyper-v", "vethernet", "wsl", "virtualbox", "vmware", "tap-", "wireguard", "wintun", "vpn", "docker", "loopback" };
+        private static bool Virtual(NetworkInterface n) =>
+            n.NetworkInterfaceType == NetworkInterfaceType.Ppp || n.NetworkInterfaceType == NetworkInterfaceType.Tunnel
+            || VirtualWords.Any(w => (n.Name + " " + n.Description).IndexOf(w, StringComparison.OrdinalIgnoreCase) >= 0);
 
         /// <summary>The addresses that will work, each with what it is: [url, what].</summary>
         public List<(string Url, string What)> Urls()

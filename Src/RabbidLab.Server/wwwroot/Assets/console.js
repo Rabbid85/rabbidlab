@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.373', [
+    'Updating no longer cuts computers off. Setup made the console a new certificate key whenever the address of a Hyper-V, WSL or VPN adapter changed, and every computer running the client then refused to connect.',
+    'Setup now leaves out virtual and VPN adapters, and when the certificate has to be made again it keeps the same key. Computers already cut off reconnect once Connect this computer is clicked on each one.']],
   ['1.1.372', [
     'Roles and people lists every assignment: who has which role, where in Active Directory it works, when it ends and who added it. People from groups shows everyone a group reaches.',
     'Roles sit in three tiers. A role can be changed or given only by someone in a higher tier, and the same goes for resetting the passwords and MFA of the people who have it.',
@@ -1191,6 +1194,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.373': ['2026-11-22', 'fix', 'Updates no longer cut computers off'],
   '1.1.372': ['2026-11-22', 'feature', 'Roles in tiers, with every assignment in one list', 'roles.jpg'],
   '1.1.371': ['2026-11-22', 'feature', 'Every alert in one list', 'alertlist.jpg'],
   '1.1.370': ['2026-11-22', 'update', 'Roles and people moves into Settings'],
