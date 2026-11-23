@@ -26,6 +26,7 @@
 <link rel="stylesheet" href="Assets/dc-settings.css">
 <link rel="stylesheet" href="Assets/printq.css">
 <link rel="stylesheet" href="Assets/people-flows.css">
+<link rel="stylesheet" href="Assets/lifecycle.css">
 <link rel="stylesheet" href="Assets/alerts-page.css">
 <link rel="stylesheet" href="Assets/network.css">
 <link rel="stylesheet" href="Assets/cloud.css">
@@ -47,9 +48,11 @@
 <script src="Assets/filter.js" defer></script>
 <script src="Assets/people.js" defer></script>
 <script src="Assets/offboard.js" defer></script>
+<script src="Assets/given.js" defer></script>
 <script src="Assets/dc-settings.js" defer></script>
 <script src="Assets/users.js" defer></script>
 <script src="Assets/people-flows.js" defer></script>
+<script src="Assets/lifecycle.js" defer></script>
 <script src="Assets/alerts-page.js" defer></script>
 <script src="Assets/alerts.js" defer></script>
 <script src="Assets/report.js" defer></script>
@@ -258,6 +261,7 @@
   <a href="#alerts" data-page="alerts" id="rail-alerts" title="Alerts" data-can="sensors.alerts"><svg><use href="#i-bell"/></svg><span>Alerts</span><small id="rail-alerts-n"></small></a>
   <p class="rail-label" data-can="ad.view">Automation</p>
   <a href="#workflows" data-page="workflows" title="Workflows" data-can="ad.view"><svg><use href="#i-org"/></svg><span>Workflows</span><small id="rail-workflows"></small></a>
+<a href="#lifecycle" data-page="lifecycle" title="Lifecycle" data-can="ad.view"><svg><use href="#i-calendar"/></svg><span>Lifecycle</span><small id="rail-lifecycle"></small></a>
   <p class="rail-label">Help</p>
   <a href="#wiki" data-page="wiki" title="Wiki"><svg><use href="#i-book"/></svg><span>Wiki</span></a>
   <a href="#settings" data-page="settings" class="rail-settings" id="rail-settings" title="Settings"><svg><use href="#i-gear"/></svg><span>Settings</span><i class="rail-dot" id="rail-dot" hidden></i></a>
@@ -1287,6 +1291,29 @@
     </div>
   </section>
 
+  <!-- Lifecycle: what is dated. Workflow runs saved for a day, offboardings with their stages, and accounts about to expire (lifecycle.js). -->
+  <section class="page home lc-page" id="page-lifecycle" data-page="lifecycle" data-title="Lifecycle" hidden>
+    <header class="hero" id="lc-hero">
+      <p class="eyebrow">Automation</p>
+      <h1 class="hero-title">Lifecycle</h1>
+      <p class="hero-lead"><b id="lc-state"></b> <span>New users set up for their start date, offboardings and their stages, and accounts about to expire.</span></p>
+      <div class="hero-row">
+      <div class="hero-stats">
+        <div><b id="lc-n-new"><i class="sk sk-num"></i></b><span><svg><use href="#i-user-plus"/></svg>New users</span></div>
+        <div><b id="lc-n-off"><i class="sk sk-num"></i></b><span><svg><use href="#i-user-off"/></svg>Offboarding</span></div>
+        <div><b id="lc-n-exp"><i class="sk sk-num"></i></b><span><svg><use href="#i-hourglass"/></svg>Accounts expiring</span></div>
+        <div><b id="lc-n-tasks"><i class="sk sk-num"></i></b><span><svg><use href="#i-calendar"/></svg>Tasks scheduled</span></div>
+      </div>
+      </div>
+    </header>
+    <div class="pf-page-body">
+      <div class="dbar"><button type="button" class="small primary" id="lc-new"><svg><use href="#i-user-plus"/></svg>New user</button>
+        <button type="button" class="small" id="lc-off" data-can="ad.enable"><svg><use href="#i-user-off"/></svg>Offboard…</button><span class="grow"></span><span class="bar-note" id="lc-count"></span></div>
+      <div class="lc-list" id="lc-list"></div>
+      <p class="hint problem" id="lc-problem" hidden></p>
+    </div>
+  </section>
+
   <!-- Attribute browser: the directory as a tree, and every attribute of whatever's picked (directory.js). -->
   <section class="page home dir-top people-page attrs-page" id="page-attrs" data-page="attrs" data-title="Attribute browser" data-lead="Every OU, container and object in the domain, with all of its attributes." hidden>
   <div class="dir-area">
@@ -1646,6 +1673,13 @@
   <div class="pf-body" id="pf-run-body"></div>
   <p class="hint problem" id="pf-run-problem" hidden></p>
   <div class="dialog-foot"><button type="button" id="pf-run-cancel">Cancel</button><button type="button" class="primary" id="pf-run-go">Run</button></div>
+</dialog>
+<!-- Lifecycle, Offboard…: who, before the Offboard window opens for them (lifecycle.js). -->
+<dialog class="dialog" id="lc-pick" aria-labelledby="lc-pick-title">
+  <h2 id="lc-pick-title">Offboard a user</h2>
+  <p class="dialog-lead">Select the user to offboard. The next window sets what happens and when.</p>
+  <label class="pf-v"><span>User</span><select id="lc-pick-user"></select></label>
+  <div class="dialog-foot"><button type="button" id="lc-pick-cancel">Cancel</button><button type="button" class="primary" id="lc-pick-go">Next</button></div>
 </dialog>
 
 <!-- A password Rabbid Lab made, shown this once. -->

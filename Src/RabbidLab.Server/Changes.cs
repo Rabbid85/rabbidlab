@@ -136,6 +136,9 @@ public sealed class ChangeJournal(DataFolder folder, TimeProvider clock, ILogger
 
     public DateTime Now => clock.GetUtcNow().UtcDateTime;
 
+    /// <summary>A change was kept. The record of what each person was given listens (Given.cs).</summary>
+    public event Action<Change>? Added;
+
     public Change Add(Change c)
     {
         lock (gate)
@@ -148,8 +151,17 @@ public sealed class ChangeJournal(DataFolder folder, TimeProvider clock, ILogger
             {
                 Append(c);
             }
-            return c;
         }
+        try
+        {
+            Added?.Invoke(c);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException)
+        {
+            // The change itself is made and kept; only the record of it elsewhere didn't save.
+            log.LogWarning("A listener to the change journal failed: {Message}", e.Message);
+        }
+        return c;
     }
 
     public Change? Find(string id)

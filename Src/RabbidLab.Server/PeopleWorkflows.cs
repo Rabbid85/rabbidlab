@@ -57,14 +57,37 @@ public sealed class PeopleFlow
     public List<FlowRun> Runs { get; set; } = [];
 }
 
+/// <summary>
+/// A run saved for a date: the workflow, who it's for, its values, when, and who saved it (it runs as them, with their roles
+/// as they are then). State is scheduled, running, done, failed or cancelled; Run is how it went.
+/// </summary>
+public sealed class PlannedRun
+{
+    public string Id { get; set; } = "";
+    public string Flow { get; set; } = "";
+    public string FlowName { get; set; } = "";
+    public string? User { get; set; }
+
+    /// <summary>Who it's for, as a list shows it: the user it runs on, or the name of the one it makes.</summary>
+    public string Name { get; set; } = "";
+    public Dictionary<string, string> Values { get; set; } = [];
+    public DateTime When { get; set; }
+    public OffboardWho By { get; set; } = new();
+    public DateTime Made { get; set; }
+    public string State { get; set; } = "scheduled";
+    public FlowRun? Run { get; set; }
+}
+
 public sealed class PeopleFlowsFile
 {
     public List<PeopleFlow> Flows { get; set; } = [];
+    public List<PlannedRun> Planned { get; set; } = [];
 }
 
 public sealed record FlowForm(string? Id, string? Name, bool On, List<FlowField>? Fields, List<FlowStep>? Steps);
 
-public sealed record FlowRunForm(string? User, Dictionary<string, string>? Values);
+/// <summary>When: run then instead of now (UTC).</summary>
+public sealed record FlowRunForm(string? User, Dictionary<string, string>? Values, DateTime? When = null);
 
 /// <summary>
 /// People workflows (people-workflows.json): steps for Active Directory people that run in order through the same
@@ -216,6 +239,139 @@ public sealed partial class PeopleWorkflows(DataFolder folder, TimeProvider cloc
         }
     }
 
+    // --- Runs saved for a date -------------------------------------------------------------------------------------
+
+    /// <summary>The most runs that can wait at once.</summary>
+    public const int MostPlanned = 200;
+
+    /// <summary>How long a run that finished or was cancelled stays on the Lifecycle page.</summary>
+    public static readonly TimeSpan KeepPlanned = TimeSpan.FromDays(30);
+
+    private static T Copy<T>(T value) => JsonSerializer.Deserialize<T>(JsonSerializer.SerializeToUtf8Bytes(value, Json), Json)!;
+
+    public List<PlannedRun> Planned()
+    {
+        lock (file.Gate)
+        {
+            return Copy(file.Read().Planned);
+        }
+    }
+
+    public PlannedRun Plan(PeopleFlow flow, string? user, string name, IReadOnlyDictionary<string, string> values, DateTime when, OffboardWho by)
+    {
+        lock (file.Gate)
+        {
+            var f = file.Read();
+            var now = clock.GetUtcNow().UtcDateTime;
+            f.Planned.RemoveAll(p => p.State is "done" or "cancelled" && now - (p.Run?.At ?? p.When) > KeepPlanned);
+            if (f.Planned.Count(p => p.State == "scheduled") >= MostPlanned)
+            {
+                throw new ToolProblem($"{MostPlanned} runs are already scheduled. Cancel one, or wait until one has run.");
+            }
+            var p = new PlannedRun
+            {
+                Id = Convert.ToHexString(RandomNumberGenerator.GetBytes(6)).ToLowerInvariant(), Flow = flow.Id, FlowName = flow.Name, User = user, Name = name,
+                Values = new Dictionary<string, string>(values), When = when, By = by, Made = now,
+            };
+            f.Planned.Add(p);
+            file.Save(f);
+            return Copy(p);
+        }
+    }
+
+    /// <summary>The runs whose time has come, each marked running so it's taken once.</summary>
+    public List<PlannedRun> Due()
+    {
+        lock (file.Gate)
+        {
+            var f = file.Read();
+            var now = clock.GetUtcNow().UtcDateTime;
+            var due = f.Planned.Where(p => p.State == "scheduled" && p.When <= now).ToList();
+            if (due.Count == 0)
+            {
+                return [];
+            }
+            due.ForEach(p => p.State = "running");
+            file.Save(f);
+            return Copy(due);
+        }
+    }
+
+    /// <summary>One run taken to run now, when it's still waiting or it failed; null when it isn't there to take.</summary>
+    public PlannedRun? Claim(string id)
+    {
+        lock (file.Gate)
+        {
+            var f = file.Read();
+            if (f.Planned.FirstOrDefault(p => p.Id == id && p.State is "scheduled" or "failed") is not { } p)
+            {
+                return null;
+            }
+            p.State = "running";
+            file.Save(f);
+            return Copy(p);
+        }
+    }
+
+    public PlannedRun? Cancel(string id)
+    {
+        lock (file.Gate)
+        {
+            var f = file.Read();
+            if (f.Planned.FirstOrDefault(p => p.Id == id && p.State is "scheduled" or "failed") is not { } p)
+            {
+                return null;
+            }
+            p.State = "cancelled";
+            file.Save(f);
+            return Copy(p);
+        }
+    }
+
+    public void Finish(string id, FlowRun run)
+    {
+        lock (file.Gate)
+        {
+            var f = file.Read();
+            if (f.Planned.FirstOrDefault(p => p.Id == id) is { } p)
+            {
+                (p.State, p.Run) = (run.State == "done" ? "done" : "failed", run);
+                if (run.User is { } user)
+                {
+                    (p.User, p.Name) = (user, run.UserName ?? p.Name);
+                }
+                file.Save(f);
+            }
+        }
+    }
+
+    /// <summary>After a restart: a run that was under way didn't finish, and says so instead of running for ever.</summary>
+    public void Recover()
+    {
+        lock (file.Gate)
+        {
+            var f = file.Read();
+            var stuck = f.Planned.Where(p => p.State == "running").ToList();
+            foreach (var p in stuck)
+            {
+                p.State = "failed";
+                p.Run = new FlowRun
+                {
+                    Id = p.Id, At = clock.GetUtcNow().UtcDateTime, By = p.By.Name, User = p.User, UserName = p.Name, State = "failed",
+                    Steps = [new FlowStepResult { Label = "Interrupted", State = "failed", Detail = "The server restarted while this was running. Check the user, then run it again or cancel it." }],
+                };
+            }
+            if (stuck.Count > 0)
+            {
+                file.Save(f);
+            }
+        }
+    }
+
+    /// <summary>Who a run is for before it has run: the user it's on, or the name its first step gives the one it makes.</summary>
+    public static string NameFor(PeopleFlow flow, string? user, IReadOnlyDictionary<string, string> values) =>
+        user ?? (flow.Steps[0].Kind == "create" && Fill(flow.Steps[0].Values.GetValueOrDefault("name"), values) is { Length: > 0 } name ? name : "A new user");
+
     /// <summary>A step's value with each {Field} filled in from the run.</summary>
     public static string Fill(string? text, IReadOnlyDictionary<string, string> values) =>
         Token().Replace(text ?? "", m => values.TryGetValue(m.Groups[1].Value, out var v) ? v : "").Trim();
@@ -249,10 +405,42 @@ public sealed partial class PeopleWorkflows(DataFolder folder, TimeProvider cloc
 public sealed class FlowRunner(IDirectoryTools tools, IDirectoryActions actions, IOffboardDirectory directory, IHomeFolders homes, IPersonMail mail, ChangeJournal journal,
     ActivityLog log, Roles roles, TimeProvider clock)
 {
-    public async Task<FlowRun> Run(HttpContext context, PeopleFlow flow, string? target, IReadOnlyDictionary<string, string> given, CancellationToken stop)
+    public Task<FlowRun> Run(HttpContext context, PeopleFlow flow, string? target, IReadOnlyDictionary<string, string> given, CancellationToken stop) =>
+        Run(Who.Of(context.User), ActivityLog.Who(context), ActivityLog.Address(context), flow, target, given, stop);
+
+    /// <summary>
+    /// A run saved for a date, as whoever saved it, with their roles as they are now. It fails without running when the
+    /// workflow is gone or disabled, or they no longer hold a permission one of its steps takes.
+    /// </summary>
+    public async Task<FlowRun> Run(PlannedRun p, PeopleWorkflows flows, CancellationToken stop)
     {
-        var who = Who.Of(context.User);
-        var by = ActivityLog.Who(context);
+        var who = p.By.Who();
+        FlowRun Refused(string why) => new()
+        {
+            Id = p.Id, At = clock.GetUtcNow().UtcDateTime, By = p.By.Name, User = p.User, UserName = p.Name, State = "failed",
+            Steps = [new FlowStepResult { Label = "Before the first step", State = "failed", Detail = why }],
+        };
+        if (flows.Find(p.Flow) is not { On: true } flow)
+        {
+            return Refused($"The workflow {p.FlowName} was deleted or disabled.");
+        }
+        var allowed = roles.Allowed(who);
+        if (flow.Steps.Select(s => PeopleWorkflows.KindOf(s.Kind).Permission).Distinct().FirstOrDefault(x => !allowed.Contains(x)) is { } missing)
+        {
+            return Refused($"{p.By.Name} no longer has the {Offboarding.PermissionName(missing)} permission.");
+        }
+        try
+        {
+            return await Run(who, p.By.Name, null, flow, p.User, p.Values, stop);
+        }
+        catch (Exception e) when (e is ToolProblem or DirectoryProblem or LdapRefused)
+        {
+            return Refused(e.Message);
+        }
+    }
+
+    private async Task<FlowRun> Run(Who who, string by, string? from, PeopleFlow flow, string? target, IReadOnlyDictionary<string, string> given, CancellationToken stop)
+    {
         var values = new Dictionary<string, string>(given, StringComparer.OrdinalIgnoreCase);
         var run = new FlowRun { Id = Convert.ToHexString(RandomNumberGenerator.GetBytes(6)).ToLowerInvariant(), At = clock.GetUtcNow().UtcDateTime, By = by };
         string? user = null;
@@ -269,7 +457,7 @@ public sealed class FlowRunner(IDirectoryTools tools, IDirectoryActions actions,
             var result = new FlowStepResult { Kind = step.Kind, Label = kind.Label };
             try
             {
-                result.Detail = await Do(context, step, kind, values, who, by, run, user, stop);
+                result.Detail = await Do(step, kind, values, who, by, from, run, user, stop);
                 user = run.User ?? user;
                 result.State = "done";
             }
@@ -290,7 +478,7 @@ public sealed class FlowRunner(IDirectoryTools tools, IDirectoryActions actions,
             run.Steps.Add(new FlowStepResult { Kind = step.Kind, Label = PeopleWorkflows.KindOf(step.Kind).Label, State = "skipped", Detail = "Not run, because an earlier step failed." });
         }
         run.State = run.Steps.Any(s => s.State == "failed") ? "failed" : "done";
-        log.Record(context, "users", "ad.workflow.run", $"Ran the workflow {flow.Name}{(run.UserName is { } n ? $" for {n}" : "")}", run.State == "done" ? "ok" : "failed",
+        log.Record(by, from, "users", "ad.workflow.run", $"Ran the workflow {flow.Name}{(run.UserName is { } n ? $" for {n}" : "")}", run.State == "done" ? "ok" : "failed",
             run.State == "done" ? $"{run.Steps.Count} steps" : string.Join(" ", run.Steps.Where(s => s.State == "failed").Select(s => $"{s.Label}: {s.Detail}")));
         return run;
     }
@@ -303,7 +491,7 @@ public sealed class FlowRunner(IDirectoryTools tools, IDirectoryActions actions,
         return work();
     }
 
-    private async Task<string> Do(HttpContext context, FlowStep step, PeopleWorkflows.Kind kind, Dictionary<string, string> values, Who who, string by, FlowRun run, string? user, CancellationToken stop)
+    private async Task<string> Do(FlowStep step, PeopleWorkflows.Kind kind, Dictionary<string, string> values, Who who, string by, string? from, FlowRun run, string? user, CancellationToken stop)
     {
         string V(string key) => PeopleWorkflows.Fill(step.Values.GetValueOrDefault(key), values);
         var u = user ?? (step.Kind == "create" ? "" : throw new ToolProblem("There is no user to run this step on."));
@@ -311,7 +499,7 @@ public sealed class FlowRunner(IDirectoryTools tools, IDirectoryActions actions,
         async Task Changed(string action, string title, Func<Task> work, string? detail = null)
         {
             await As(who, kind.Permission, async () => { await work(); return true; }, note: true, confirm: kind.Confirm);
-            log.Record(context, "users", action, title, detail: detail);
+            log.Record(by, from, "users", action, title, "ok", detail);
             if (ChangeNote.Current?.Kept is { } c)
             {
                 run.Changes.Add(c.Id);
@@ -413,7 +601,7 @@ public sealed class FlowRunner(IDirectoryTools tools, IDirectoryActions actions,
                     throw new ToolProblem("The user's SID could not be read, so the folder cannot be given to them.");
                 }
                 var made = await homes.Create(path, sid, stop);
-                log.Record(context, "users", "ad.home.create", $"Created the home folder of {u}", detail: made);
+                log.Record(by, from, "users", "ad.home.create", $"Created the home folder of {u}", "ok", made);
                 return $"Created {made}. Set it as the home folder{(V("drive").Length > 0 ? $" on {V("drive")}" : "")} in the user's Profile tab.";
             }
             case "email":
@@ -476,8 +664,10 @@ public static class PeopleWorkflowsApi
             return Results.Ok(new { });
         });
 
-        // A run: each step's permission first, Confirm it's you when a step needs it, then the steps in order.
-        app.MapPost("/api/ad/workflows/{id}/run", async (string id, FlowRunForm form, HttpContext context, PeopleWorkflows flows, FlowRunner runner) =>
+        // A run: each step's permission first, Confirm it's you when a step needs it, then the steps in order. With a
+        // time that's still to come it is saved for then instead (the Lifecycle page lists it), and runs as whoever saved it.
+        app.MapPost("/api/ad/workflows/{id}/run", async (string id, FlowRunForm form, HttpContext context, PeopleWorkflows flows, FlowRunner runner, IDirectoryTools tools,
+            ActivityLog log, TimeProvider clock) =>
         {
             if (flows.Find(id) is not { } flow)
             {
@@ -501,6 +691,20 @@ public static class PeopleWorkflowsApi
             {
                 return Results.BadRequest(new { error = $"Pick one of the choices for {odd.Label}." });
             }
+            if (form.When?.ToUniversalTime() is { } when && when > clock.GetUtcNow().UtcDateTime.AddMinutes(1))
+            {
+                return await UsersApi.Try(context, Permissions.AdView, async () =>
+                {
+                    // The user it runs on is read now, so a name that isn't there is said today and not on the day.
+                    var user = flow.Steps[0].Kind == "create" ? null
+                        : (await tools.User(form.User?.Trim() is { Length: > 0 } u ? u : throw new ToolProblem("Select the user to run the workflow on."), context.RequestAborted));
+                    var who = Who.Of(context.User);
+                    var p = flows.Plan(flow, user?.Username, user is null ? PeopleWorkflows.NameFor(flow, null, values) : user.Name ?? user.Username, values, when,
+                        new OffboardWho { Source = who.Source, Username = who.Username, Domain = who.Domain, Groups = [.. who.Groups], Name = ActivityLog.Who(context) });
+                    log.Record(context, "users", "ad.workflow.plan", $"Scheduled the workflow {flow.Name} for {p.Name}", detail: $"Runs {when:yyyy-MM-dd HH:mm} UTC as {p.By.Name}.");
+                    return Results.Ok(new { planned = p.Id, when = p.When, name = p.Name });
+                }, change: false, confirm: kinds.Any(k => k.Confirm));
+            }
             return await UsersApi.Try(context, Permissions.AdView, async () =>
             {
                 var run = await runner.Run(context, flow, form.User?.Trim(), values, CancellationToken.None);
@@ -508,5 +712,42 @@ public static class PeopleWorkflowsApi
                 return Results.Ok(run);
             }, confirm: kinds.Any(k => k.Confirm));
         });
+    }
+}
+
+/// <summary>Runs the workflow runs saved for a date once they're due, looking every 30 seconds.</summary>
+public sealed class PlannedRunWorker(PeopleWorkflows flows, FlowRunner runner, TimeProvider clock, ILogger<PlannedRunWorker> log) : BackgroundService
+{
+    protected override async Task ExecuteAsync(CancellationToken stop)
+    {
+        flows.Recover();
+        while (!stop.IsCancellationRequested)
+        {
+            await Task.Delay(TimeSpan.FromSeconds(30), clock, stop);
+            try
+            {
+                await Tick(stop);
+            }
+            catch (Exception e) when (e is not OperationCanceledException)
+            {
+                log.LogWarning(e, "The scheduled workflow runs that are due could not be run");
+            }
+        }
+    }
+
+    public async Task<int> Tick(CancellationToken stop)
+    {
+        var due = flows.Due();
+        foreach (var p in due)
+        {
+            var run = await runner.Run(p, flows, stop);
+            flows.Finish(p.Id, run);
+            // One that ran its steps is among the workflow's recent runs, where it can be undone as one.
+            if (run.Steps.Any(s => s.Kind.Length > 0))
+            {
+                flows.Ran(p.Flow, run);
+            }
+        }
+        return due.Count;
     }
 }

@@ -155,6 +155,8 @@ builder.Services.AddSingleton<UserKeys>();
 // People workflows: steps for AD users, run by hand (PeopleWorkflows.cs).
 builder.Services.AddSingleton<PeopleWorkflows>();
 builder.Services.AddSingleton<FlowRunner>();
+// Workflow runs saved for a date, run when they're due (the Lifecycle page lists them).
+builder.Services.AddHostedService<PlannedRunWorker>();
 
 // Console addresses added in Settings: their aliases in the domain's DNS, and a certificate of their own, which the
 // console shows only to a browser that asks for one of them (ConsoleNames.cs, ConsoleDns.cs).
@@ -269,6 +271,7 @@ app.MapClientsApi();
 app.MapDevicesApi();
 app.MapUsersApi();
 app.MapServiceAccountApi();
+app.MapGivenApi();
 app.MapDirectoryExtrasApi();
 app.MapSyncApi();
 app.MapGroupPolicyApi();
@@ -281,6 +284,7 @@ app.MapDcSettingsApi();
 app.MapNetworkApi();
 app.MapUserKeys();
 app.MapPeopleWorkflowsApi();
+app.MapLifecycleApi();
 app.MapChangesApi();
 app.MapLinksApi();
 app.MapCloudApi();

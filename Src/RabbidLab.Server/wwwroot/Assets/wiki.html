@@ -280,6 +280,33 @@
   </ol>
 </article>
 
+<article data-key="dir-given" data-group="Active Directory" data-title="What Rabbid Lab gave a user">
+  <p>A user's panel has a <b>Given by <span data-app>Rabbid Lab</span></b> tab. It lists what <span data-app>Rabbid Lab</span> gave that user, by hand or in a workflow: the account it created and each group it added. Each entry shows who made the change and when.</p>
+  <ul>
+    <li><b>Given by <span data-app>Rabbid Lab</span>:</b> what the user still has.</li>
+    <li><b>Found, not given by <span data-app>Rabbid Lab</span>:</b> groups the user is in with no record here. They were added in another tool, or before this was recorded. Offboarding removes these too.</li>
+    <li><b>Taken back:</b> what was removed again, with who removed it and when.</li>
+  </ul>
+  <p>The record starts with this version. Changes made earlier are listed under Found.</p>
+</article>
+
+<article data-key="lifecycle" data-group="Active Directory" data-title="Lifecycle: run on a date">
+  <p><a href="#lifecycle">Lifecycle</a>, under Automation, lists what is dated, soonest first:</p>
+  <ul>
+    <li><b>New users and other workflow runs</b> saved for a date, with each step. <b>Run now</b> runs one early and <b>Cancel</b> removes it.</li>
+    <li><b>Offboardings</b> with their stages. Select one to open the user's Offboarding tab.</li>
+    <li><b>Accounts that expire</b> in the next 14 days with no offboarding scheduled. <b>Offboard…</b> schedules one.</li>
+  </ul>
+  <h3>Run a workflow on a date</h3>
+  <ol>
+    <li>Select <b>New user</b> on the Lifecycle page, or <b>Run</b> on a workflow under <a href="#workflows">Workflows</a>.</li>
+    <li>Fill in the fields.</li>
+    <li>Under <b>When</b>, select <b>On a date</b> and set the date and time.</li>
+    <li>Select <b>Schedule</b>.</li>
+  </ol>
+  <p>The run happens at that time with your permissions as they are then. If the workflow was deleted or disabled, or you no longer have a permission one of its steps requires, the run fails and says why. Run it again or cancel it from the Lifecycle page.</p>
+</article>
+
 <article data-key="dir-groups" data-group="Active Directory" data-title="Create groups and manage members">
   <h3>Create a group</h3>
   <ol>

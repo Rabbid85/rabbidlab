@@ -754,3 +754,6 @@ button.primary.dw-edit[aria-disabled="true"], button.primary.dw-edit[aria-disabl
 .dir-tl-rows svg { width: 13px; height: 13px; color: #6D7290; }
 .dir-tl-why { margin: 8px 0 0; color: var(--amber); font-size: 12.5px; line-height: 1.45; }
 .dir-tl-do { display: flex; justify-content: flex-end; margin: 6px -6px -4px 0; }
+/* The Given tab on a user (given.js): what was taken back is dimmed, and a line over what was found. */
+.mrow.given-gone { opacity: .6; }
+.given-lead { margin: 0 0 8px; }

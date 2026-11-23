@@ -20,6 +20,7 @@ public static class UsersApi
         services.AddSingleton<IDirectoryActions>(s => s.GetRequiredService<DirectoryTools>());
         services.AddSingleton<IDirectoryUndo>(s => s.GetRequiredService<DirectoryTools>());
         services.AddSingleton<ChangeJournal>();
+        services.AddSingleton<GivenStore>();
         services.AddSingleton<IGroupPolicy>(s => s.GetRequiredService<DirectoryTools>());
         services.AddSingleton<GpmcSetup>();
         services.AddSingleton<IPrintServerProbe>(_ => OperatingSystem.IsWindows() ? new WindowsPrintServerProbe() : new NoPrintServerProbe());

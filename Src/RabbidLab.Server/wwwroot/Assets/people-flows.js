@@ -358,8 +358,13 @@
   };
 
   // --- Run -------------------------------------------------------------------------------------------------------
-  let running = null; // { flow, user }
+  let running = null; // { flow, user, make (a workflow that makes a user is picked), when (now or date), at }
   let people = [];
+  // Tomorrow at 7:00 AM, as a date and time box takes it: where On a date starts.
+  const tomorrow = () => {
+    const d = new Date(Date.now() + 86400000);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T07:00`;
+  };
   const fieldInput = (x) => {
     const id = `data-pf-in="${esc(x.label)}"`;
     const label = `<span>${esc(x.label)}${x.required ? '' : ' <small>(optional)</small>'}</span>`;
@@ -369,18 +374,24 @@
     return `<label class="pf-v">${label}<input ${id} type="${x.kind === 'date' ? 'date' : 'text'}" autocomplete="off"></label>`;
   };
   const drawRun = () => {
-    const { flow, user } = running;
+    const { flow, user, make } = running;
     const choose = !flow;
-    const list = (data?.flows || []).filter((f) => f.on && !makes(f));
-    $('pf-run-title').textContent = flow ? `Run ${flow.name}` : 'Run a workflow';
-    $('pf-run-lead').textContent = flow ? (makes(flow) ? 'Fill in the fields, then Run makes the user.' : 'Pick the user, fill in the fields, then Run.') : `Pick the workflow to run${user ? ` on ${user.name || user.username}` : ''}.`;
-    $('pf-run-body').innerHTML = (choose || user ? `<label class="pf-v"><span>Workflow</span><select data-pf-pick><option value="">Select a workflow</option>${list.map((f) => `<option value="${esc(f.id)}"${f.id === flow?.id ? ' selected' : ''}>${esc(f.name)}</option>`).join('')}</select></label>` : '')
+    const list = (data?.flows || []).filter((f) => f.on && makes(f) === make);
+    const later = running.when === 'date';
+    $('pf-run-title').textContent = flow ? `Run ${flow.name}` : make ? 'New user' : 'Run a workflow';
+    $('pf-run-lead').textContent = flow ? (makes(flow) ? 'Fill in the fields, then Run makes the user. On a date, it runs then with your permissions at that time.' : 'Pick the user, fill in the fields, then Run.')
+      : make ? 'Pick the workflow that sets up the new user.' : `Pick the workflow to run${user ? ` on ${user.name || user.username}` : ''}.`;
+    $('pf-run-body').innerHTML = (choose || user || (make && list.length > 1) ? `<label class="pf-v"><span>Workflow</span><select data-pf-pick><option value="">Select a workflow</option>${list.map((f) => `<option value="${esc(f.id)}"${f.id === flow?.id ? ' selected' : ''}>${esc(f.name)}</option>`).join('')}</select></label>` : '')
       + (flow && !makes(flow) ? `<label class="pf-v"><span>User</span><select data-pf-user><option value=""></option>${people.map((u) => `<option value="${esc(u.username)}"${u.username === user?.username ? ' selected' : ''}>${esc(u.name || u.username)}</option>`).join('')}</select></label>` : '')
-      + (flow ? flow.fields.map(fieldInput).join('') + `<h3>Steps</h3><ol class="pf-steps">${flow.steps.map((s) => `<li><b>${esc(s.label)}</b><span>${tokens(s.sentence)}</span></li>`).join('')}</ol>` : '');
+      + (flow ? flow.fields.map(fieldInput).join('')
+        + `<div class="pf-when"><span>When</span><div class="seg" role="group" aria-label="When"><button type="button" data-pf-when="now" aria-pressed="${!later}">Now</button><button type="button" data-pf-when="date" aria-pressed="${later}">On a date</button></div>`
+        + `<input type="datetime-local" data-pf-at aria-label="Date and time" value="${esc(running.at)}"${later ? '' : ' hidden'}></div>`
+        + `<h3>Steps</h3><ol class="pf-steps">${flow.steps.map((s) => `<li><b>${esc(s.label)}</b><span>${tokens(s.sentence)}</span></li>`).join('')}</ol>` : '');
     $('pf-run-go').disabled = !flow;
+    $('pf-run-go').textContent = later ? 'Schedule' : 'Run';
   };
-  const openRun = async (flow, user = null) => {
-    running = { flow, user };
+  const openRun = async (flow, user = null, make = !!flow && makes(flow)) => {
+    running = { flow, user, make, when: 'now', at: tomorrow() };
     R.say('pf-run-problem', '');
     R.skeleton($('pf-run-body'), 'form', 3);
     $('pf-run').showModal();
@@ -396,6 +407,17 @@
   };
   $('pf-run').addEventListener('change', (e) => {
     if (e.target.matches('[data-pf-pick]')) { running.flow = flowOf(e.target.value) || null; drawRun(); }
+    if (e.target.matches('[data-pf-at]')) running.at = e.target.value;
+  });
+  // Now or on a date: only the date box and the button change, so what's typed in the fields stays.
+  $('pf-run').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-pf-when]');
+    if (!b) return;
+    running.when = b.dataset.pfWhen;
+    const later = running.when === 'date';
+    $('pf-run-body').querySelectorAll('[data-pf-when]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    $('pf-run-body').querySelector('[data-pf-at]').hidden = !later;
+    $('pf-run-go').textContent = later ? 'Schedule' : 'Run';
   });
   $('pf-run-cancel').addEventListener('click', () => $('pf-run').close());
   $('pf-run-go').addEventListener('click', async () => {
@@ -404,10 +426,20 @@
     const values = {};
     $('pf-run-body').querySelectorAll('[data-pf-in]').forEach((el) => { values[el.dataset.pfIn] = el.value; });
     const user = $('pf-run-body').querySelector('[data-pf-user]')?.value || null;
-    R.busy($('pf-run'), `Running ${flow.name}`, user || '');
+    const at = running.when === 'date' ? new Date($('pf-run-body').querySelector('[data-pf-at]').value) : null;
+    if (at && !(at > Date.now() + 60000)) {
+      R.say('pf-run-problem', 'Select a date and time that is still to come.');
+      return;
+    }
+    R.busy($('pf-run'), at ? `Scheduling ${flow.name}` : `Running ${flow.name}`, user || '');
     try {
-      const run = await send(`/api/ad/workflows/${flow.id}/run`, { user, values });
+      const run = await send(`/api/ad/workflows/${flow.id}/run`, { user, values, when: at ? at.toISOString() : null });
       $('pf-run').close();
+      if (run.planned) {
+        toast(`${flow.name} scheduled.`, `For ${run.name}, ${R.when(run.when)}.`, R.where()[0] === 'lifecycle' ? {} : { action: { label: 'Lifecycle', run: () => { location.hash = '#lifecycle'; } } });
+        document.dispatchEvent(new CustomEvent('rabbidlab:lifecycle'));
+        return;
+      }
       const bad = run.steps.find((s) => s.state === 'failed');
       if (bad) toast(`${flow.name} stopped at ${bad.label}.`, bad.detail, { tone: 'warn' });
       else toast(`${flow.name} completed.`, `${count(run.steps.length, 'step', 'steps')}${run.userName ? ` for ${run.userName}` : ''}.`, { action: run.changes.length && !run.created ? { label: 'Undo', run: () => R.undo([...run.changes].reverse()), changes: run.changes } : null });
@@ -420,6 +452,19 @@
     }
   });
 
-  // users.js: a user's Actions › Run workflow…
-  R.flows = { run: (user) => openRun(null, user), any: () => has('ad.view') };
+  // Lifecycle, New user: the workflow that makes a user, or a choice of them. With none yet, it says where to make one.
+  const openCreate = async () => {
+    try {
+      if (!data) data = await get('/api/ad/workflows');
+    } catch (e) {
+      oops(e);
+      return;
+    }
+    const list = data.flows.filter((f) => f.on && makes(f));
+    if (list.length) openRun(list.length === 1 ? list[0] : null, null, true);
+    else toast('No workflow creates a user yet.', 'Make one under Workflows. Its first step is Create user.', { tone: 'warn', action: { label: 'Workflows', run: () => { location.hash = '#workflows'; } } });
+  };
+
+  // users.js: a user's Actions › Run workflow…; lifecycle.js: New user.
+  R.flows = { run: (user) => openRun(null, user), create: openCreate, any: () => has('ad.view') };
 })();

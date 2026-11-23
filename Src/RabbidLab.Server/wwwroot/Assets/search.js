@@ -22,6 +22,7 @@
     { id: 'sync', label: 'Sync', icon: 'refresh', where: 'Directory', key: 'y', hash: '#sync', can: 'ad.view' },
     { id: 'alerts', label: 'Alerts', icon: 'bell', where: 'Alerts', key: 'a', hash: '#alerts', can: 'sensors.alerts' },
     { id: 'workflows', label: 'Workflows', icon: 'org', where: 'Automation', key: 'f', hash: '#workflows', can: 'ad.view' },
+    { id: 'lifecycle', label: 'Lifecycle', icon: 'calendar', where: 'Automation', key: '', hash: '#lifecycle', can: 'ad.view' },
     { id: 'people', label: 'Roles and people', icon: 'shield', where: 'Settings', key: 'r', hash: '#settings/people', can: 'access.view' },
     { id: 'wiki', label: 'Wiki', icon: 'book', where: 'Help', key: 'w', hash: '#wiki' },
     { id: 'settings', label: 'Settings', icon: 'gear', where: 'Help', key: 't', hash: '#settings' },

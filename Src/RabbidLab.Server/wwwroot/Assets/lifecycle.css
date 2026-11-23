@@ -1,0 +1,37 @@
+/* Lifecycle (lifecycle.js): a card for each person with something dated, and under its head a line for each step or stage. */
+.lc-list { display: grid; gap: 12px; }
+.lc-none { margin: 24px 0; text-align: center; }
+.lc-card { overflow: hidden; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); }
+.lc-card > header { display: flex; align-items: center; gap: 12px; padding: 14px 18px; }
+.lc-card > header:not(:last-child) { border-bottom: 1px solid var(--line); }
+.lc-card > header[data-lc-open] { cursor: pointer; }
+.lc-card > header[data-lc-open]:hover .two b { color: var(--accent-soft); }
+.lc-card > header .two { display: grid; flex: 1; gap: 2px; min-width: 0; }
+.lc-card > header .two b { color: var(--title); font-size: 15px; }
+.lc-card > header .two small { color: var(--muted); font-size: 12.5px; }
+.lc-card > header .two .lc-from { display: flex; align-items: center; gap: 6px; color: #8B90A5; font-size: 12px; }
+.lc-from svg { flex: none; width: 13px; height: 13px; }
+.lc-acts { display: inline-flex; flex: none; gap: 8px; }
+.lc-acts .small { display: inline-flex; align-items: center; gap: 6px; }
+.lc-acts .small svg { width: 14px; height: 14px; }
+.lc-tl { display: grid; margin: 0; padding: 6px 18px 10px; list-style: none; }
+.lc-tl li { display: grid; grid-template-columns: 14px 230px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 8px 0; border-top: 1px solid var(--line); color: var(--text); font-size: 13px; }
+.lc-tl li:first-child { border-top: 0; }
+.lc-tl li > i { width: 10px; height: 10px; border: 2px solid var(--line-strong); border-radius: 50%; }
+.lc-tl li.done > i { border-color: var(--ok); background: var(--ok); }
+.lc-tl li.failed > i { border-color: var(--red); background: var(--red); }
+.lc-tl time { color: #8B90A5; font-size: 12.5px; }
+.lc-tl .two { display: grid; gap: 2px; min-width: 0; }
+.lc-tl .two b { overflow: hidden; color: var(--text); font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.lc-tl .two small { overflow: hidden; color: var(--muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.lc-tl li.done .two b { color: #A9AEC4; }
+@media (max-width: 900px) {
+  .lc-tl li { grid-template-columns: 14px minmax(0, 1fr) auto; }
+  .lc-tl time { grid-column: 2; }
+  .lc-tl .two { grid-column: 2; }
+}
+/* Run workflow: now, or on a date (people-flows.js). */
+.pf-when { display: grid; grid-template-columns: 140px auto minmax(0, 1fr); align-items: center; gap: 12px; margin: 0 0 10px; font-size: 13px; }
+.pf-when > span { color: var(--muted); }
+.pf-when input { min-height: 34px; padding: 6px 10px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--panel); color: var(--title); font: inherit; color-scheme: dark; }
+.pf-when input[hidden] { display: none; }

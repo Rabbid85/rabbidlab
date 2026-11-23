@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.381', [
+    'Users have a Given by Rabbid Lab tab: the account Rabbid Lab created and each group it added, with who and when. Groups with no record are listed under Found, and what was removed again under Taken back.',
+    'New Lifecycle page under Automation. It lists workflow runs saved for a date, offboardings with their stages, and accounts that expire in the next 14 days.',
+    'A workflow can run on a date: in Run, select On a date. New user on the Lifecycle page does this for a workflow that creates a user. A saved run can be run now or cancelled.']],
   ['1.1.380', [
     'Service account: the set-up window is new. Pick Delegated (svc-rabbidlab, with permissions only in the OUs you select) or Domain admin (svc-rabbidlab-admin, or a domain admin you already have). It answers the usual questions about the account, and Test sign-in checks the sign-in before anything is created.',
     'The server tests the service account every 15 minutes. If sign-in fails, Active Directory pages go read-only, the alert Service account stopped working is sent, and Settings, Active Directory has the fix: Repair, Unlock and test, Enable and test, or Update password.',
@@ -1217,6 +1221,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.381': ['2026-11-23', 'feature', 'Lifecycle page, workflows on a date, and what Rabbid Lab gave each user'],
   '1.1.380': ['2026-11-23', 'feature', 'Service account: Delegated or Domain admin, sign-in test, fixes and an alert'],
   '1.1.379': ['2026-11-23', 'fix', 'Dev: Skip MFA works from any computer'],
   '1.1.378': ['2026-11-23', 'feature', 'Microsoft cloud: Entra ID, Exchange, Microsoft 365 and Azure', 'cloud.jpg'],
@@ -1761,7 +1766,7 @@ const RELEASE_INFO = {
   const allows = (list) => !!shown && list.split(/\s+/).some((p) => shown.has(p));
   const has = (p) => can.has(p);
   const PAGES = { overview: 'overview.view', links: 'links.view', sensors: 'sensors.view', seats: 'seats.view sessions.view', ad: 'ad.view ad.connect',
-    org: 'ad.view', attrs: 'ad.view', sync: 'ad.view', report: 'activity.view', alerts: 'sensors.alerts', network: 'network.view', workflows: 'ad.view',
+    org: 'ad.view', attrs: 'ad.view', sync: 'ad.view', report: 'activity.view', alerts: 'sensors.alerts', network: 'network.view', workflows: 'ad.view', lifecycle: 'ad.view',
     entra: 'cloud.view cloud.connect', exchange: 'cloud.view cloud.connect', m365: 'cloud.view cloud.connect', azure: 'cloud.view cloud.connect' };
   // Settings' pages and what each needs; About is for everyone, Developer for Rabbid Lab Dev only.
   const SUBS = { account: '', appearance: '', keys: '', viewas: 'access.view', address: '', updates: 'updates.view', people: 'access.view', signin: 'access.roles access.unlock', activity: 'activity.view', reports: 'activity.view', alerts: 'sensors.alerts', notifications: 'sensors.alerts', history: 'sensors.alerts',

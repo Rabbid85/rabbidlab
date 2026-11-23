@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc.Testing.Handlers;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using RabbidLab.Server;
 
 namespace RabbidLab.Tests;
@@ -137,6 +138,67 @@ public sealed class PeopleWorkflowsTests : IDisposable
         Assert.Equal("Enter Reason.", (await missing.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("error").GetString());
         Assert.Equal(HttpStatusCode.OK, unconfirmed.StatusCode); // disable doesn't take Confirm it's you
         Assert.Contains(Permissions.AdWorkflows, Permissions.All);
+    }
+
+    private PlannedRunWorker Worker() => host.Services.GetServices<IHostedService>().OfType<PlannedRunWorker>().Single();
+
+    [Fact]
+    public async Task A_run_saved_for_a_date_waits_on_the_Lifecycle_page_and_runs_when_it_is_due_and_what_it_gave_is_on_record()
+    {
+        await Connect();
+        var admin = await SignedIn();
+        var id = await Save(admin, "New user", [new { label = "First name", kind = "text", required = true }, new { label = "Last name", kind = "text", required = true }],
+            [Step("create", ("name", "{First name} {Last name}"), ("logon", "{First name}.{Last name}"), ("ou", Lab)), Step("groups", ("groups", Staff))]);
+        var when = app.Clock.GetUtcNow().UtcDateTime.AddDays(7);
+
+        var saved = await Run(admin, id, new { values = new Dictionary<string, string> { ["First name"] = "Alex", ["Last name"] = "Kim" }, when });
+        var early = await Worker().Tick(CancellationToken.None);
+        var waiting = (await admin.GetFromJsonAsync<JsonElement>("/api/lifecycle")).GetProperty("planned")[0];
+        var notYet = Row("alex.kim");
+        app.Clock.Advance(TimeSpan.FromDays(7) + TimeSpan.FromMinutes(1));
+        var ran = await Worker().Tick(CancellationToken.None);
+        admin = await SignedIn(); // a week on, the first session has ended
+        var done = (await admin.GetFromJsonAsync<JsonElement>("/api/lifecycle")).GetProperty("planned")[0];
+
+        Assert.Equal("Alex Kim", saved.GetProperty("name").GetString());
+        Assert.Equal(0, early);
+        Assert.Null(notYet);
+        Assert.Equal("scheduled", waiting.GetProperty("state").GetString());
+        Assert.True(waiting.GetProperty("creates").GetBoolean());
+        Assert.Equal("Create Alex Kim (Alex.Kim) in Lab", waiting.GetProperty("steps")[0].GetProperty("text").GetString());
+        Assert.Equal(1, ran);
+        Assert.Contains(Row("alex.kim")!.Dn, Row("Lab Staff")!.Values["member"].OfType<string>());
+        Assert.Equal("done", done.GetProperty("state").GetString());
+        Assert.Equal("alex.kim", done.GetProperty("user").GetString());
+        // It is among the workflow's runs, and the person's record says what Rabbid Lab gave them.
+        var flow = (await admin.GetFromJsonAsync<JsonElement>("/api/ad/workflows")).GetProperty("flows")[0];
+        Assert.Equal("Alex Kim", flow.GetProperty("runs")[0].GetProperty("userName").GetString());
+        var given = (await admin.GetFromJsonAsync<JsonElement>("/api/ad/users/alex.kim/given")).GetProperty("entries").EnumerateArray().ToList();
+        Assert.Contains(given, e => e.GetProperty("kind").GetString() == "account");
+        Assert.Contains(given, e => e.GetProperty("key").GetString() == Staff && e.GetProperty("what").GetString() == "Group Lab Staff");
+    }
+
+    [Fact]
+    public async Task A_saved_run_can_be_cancelled_or_run_now_and_then_does_not_run_again_on_its_date()
+    {
+        await Connect();
+        var admin = await SignedIn();
+        var id = await Save(admin, "Close account", [], [Step("disable")]);
+        var when = app.Clock.GetUtcNow().UtcDateTime.AddDays(2);
+        var first = (await Run(admin, id, new { user = "jreyes", when })).GetProperty("planned").GetString();
+        var second = (await Run(admin, id, new { user = "awiles", when })).GetProperty("planned").GetString();
+
+        (await admin.PostAsync($"/api/lifecycle/planned/{first}/cancel", null)).EnsureSuccessStatusCode();
+        var now = await admin.PostAsync($"/api/lifecycle/planned/{second}/run", null);
+        var again = await admin.PostAsync($"/api/lifecycle/planned/{second}/run", null);
+        app.Clock.Advance(TimeSpan.FromDays(3));
+        var due = await Worker().Tick(CancellationToken.None);
+
+        Assert.Equal(HttpStatusCode.OK, now.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, again.StatusCode);
+        Assert.Equal(0, due);
+        Assert.Equal("512", (string) Row("jreyes")!.Values["userAccountControl"][0]); // cancelled: never disabled
+        Assert.Equal("514", (string) Row("awiles")!.Values["userAccountControl"][0]);
     }
 
     private async Task<HttpClient> SignedIn(bool confirmed = true)

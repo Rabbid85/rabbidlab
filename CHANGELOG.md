@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.381 (2026-11-23)
+
+- Users have a Given by Rabbid Lab tab: the account Rabbid Lab created and each group it added, with who and when. Groups with no record are listed under Found, and what was removed again under Taken back.
+- New Lifecycle page under Automation. It lists workflow runs saved for a date, offboardings with their stages, and accounts that expire in the next 14 days.
+- A workflow can run on a date: in Run, select On a date. New user on the Lifecycle page does this for a workflow that creates a user. A saved run can be run now or cancelled.
+
 ## 1.1.380 (2026-11-23)
 
 - Service account: the set-up window is new. Pick Delegated (svc-rabbidlab, with permissions only in the OUs you select) or Domain admin (svc-rabbidlab-admin, or a domain admin you already have). It answers the usual questions about the account, and Test sign-in checks the sign-in before anything is created.

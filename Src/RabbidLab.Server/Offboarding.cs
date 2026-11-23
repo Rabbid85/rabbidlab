@@ -837,7 +837,7 @@ public static class OffboardingApi
         return names.Count is > 0 and <= MostAtOnce ? names : throw new ToolProblem($"Select between 1 and {MostAtOnce} users.");
     }
 
-    private static bool Covers(IReadOnlyList<string>? reach, string dn) => reach is null || reach.Any(ou => Ldap.Under(dn, ou));
+    internal static bool Covers(IReadOnlyList<string>? reach, string dn) => reach is null || reach.Any(ou => Ldap.Under(dn, ou));
 }
 
 /// <summary>Runs the offboarding stages that are due, looking every 30 seconds.</summary>

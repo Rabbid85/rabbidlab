@@ -2224,6 +2224,10 @@
     const notesOn = sid && R.notesTab ? `ad:${sid}` : '';
     if (notesOn) tabsFor.push(['notes', 'Notes', R.notesTab.count(notesOn, () => { if (R.panel.is('ad')) drawDrawer(); }) || null]);
     if (dw.tab === 'notes' && !notesOn) dw.tab = 'overview';
+    // What Rabbid Lab gave them, and what they have that it didn't give (given.js).
+    const given = k === 'users' && !!R.given;
+    if (given) tabsFor.splice(2, 0, ['given', `Given by ${R.app()}`, R.given.count(x, () => { if (R.panel.is('ad')) drawDrawer(); })]);
+    if (dw.tab === 'given' && !given) dw.tab = 'overview';
     // Offboarding (offboard.js), once someone has one.
     const leaving = k === 'users' && R.offboard?.has(x.username);
     if (leaving) tabsFor.splice(1, 0, ['offboarding', 'Offboarding']);
@@ -2232,7 +2236,7 @@
     const watched = k === 'users' && R.alerts?.can();
     if (watched) tabsFor.push(['alerts', 'Alerts', R.alerts.about(x).length || null]);
     if (dw.tab === 'alerts' && !watched) dw.tab = 'overview';
-    const body = dw.tab === 'alerts' ? R.alerts.pane(x) : dw.tab === 'offboarding' ? R.offboard.pane(x) : dw.tab === 'notes' ? R.notesTab.pane(notesOn, x.name) : dw.tab === 'attrs' ? dwAttrs(x) : dw.tab === 'history' ? dwHistory(x) : dw.tab === 'members' ? dwMembers(x)
+    const body = dw.tab === 'alerts' ? R.alerts.pane(x) : dw.tab === 'given' ? R.given.pane(x) : dw.tab === 'offboarding' ? R.offboard.pane(x) : dw.tab === 'notes' ? R.notesTab.pane(notesOn, x.name) : dw.tab === 'attrs' ? dwAttrs(x) : dw.tab === 'history' ? dwHistory(x) : dw.tab === 'members' ? dwMembers(x)
       : dw.tab === 'memberof' ? dwMemberOf(k, x) : dwOverview(k, x);
     const scroll = $('dw-body').scrollTop;
     // Typing in Find keeps its place when the panel is drawn again.
