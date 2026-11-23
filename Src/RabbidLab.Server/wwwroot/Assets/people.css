@@ -1,4 +1,4 @@
-/* Roles and people: a column on the left (browse, the roles in order, filters) and the list or one role beside it. */
+/* Roles and people: a column on the left (the assignment views, the roles by tier) and the assignments or one role beside it. */
 .page.people-page { position: relative; max-width: 1240px; }
 /* In Settings it takes the whole width: its own column on the left would leave the list too narrow at 860px. */
 .set-area .sub.people-sub { position: relative; max-width: none; }
@@ -21,46 +21,26 @@
 .side a[aria-current]::before { content: ""; position: absolute; left: -2px; top: 6px; bottom: 6px; width: 3px; border-radius: 3px; background: var(--accent-line); }
 .side a.role[aria-current]::before { background: var(--c); }
 .side a.role .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.side a.role .grip { flex: none; width: 12px; height: 12px; margin: 0 -6px 0 -4px; color: #3A3E55; }
-.side a.role[draggable="true"] { cursor: grab; }
 .side a.role .lk { width: 12px; height: 12px; color: #5E6380; }
-.side a.drop-above { box-shadow: inset 0 2px 0 var(--accent-line); }
-.side a.drop-below { box-shadow: inset 0 -2px 0 var(--accent-line); }
-.side-new { width: 100%; color: #5E6380; }
+.side-new { width: 100%; margin-top: 6px; color: #5E6380; }
 .side-sub { margin: 8px 0 6px 10px; color: #5E6380; font-size: 11.5px; font-weight: 600; }
 .seg { display: flex; flex-wrap: wrap; gap: 4px; margin-left: 8px; }
 .seg button { height: 26px; padding: 0 9px; border-radius: 6px; background: none; color: var(--muted); font-size: 12px; font-weight: 600; }
 .seg button[aria-pressed="true"] { border-color: var(--accent-line); background: color-mix(in srgb, var(--accent-line) 10%, transparent); color: var(--title); }
-.side-pick, .lib-bar select { height: 32px; padding: 0 8px; border: 1px solid var(--line-strong); border-radius: 7px; background: #0C0E17; color: var(--text); font: inherit; font-size: 13px; }
-.side-pick { margin-left: 8px; }
 .tick { display: flex; align-items: center; gap: 9px; height: 34px; margin: 10px 0 0 8px; padding: 0 10px; border: 1px solid var(--line); border-radius: 7px; color: var(--text); font-size: 13px; cursor: pointer; }
 .tick input { margin: 0; accent-color: var(--accent); }
 .dot { display: inline-block; flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--c, #8A8FA8); }
 
 .lib-body { min-width: 0; }
 .lib-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.lib-bar[hidden] { display: none; }
 .lib-bar h2 { margin: 0 auto 0 0; font-size: 17px; font-weight: 650; color: var(--title); }
-.people-page .primary, .people-sub .primary, #people-dialog .primary { display: inline-flex; align-items: center; gap: 7px; }
-.lib-bar .primary svg { width: 15px; height: 15px; }
+.lib-bar button { display: inline-flex; align-items: center; gap: 7px; }
+.people-page .primary, .people-sub .primary { display: inline-flex; align-items: center; gap: 7px; }
+.lib-bar button svg { width: 15px; height: 15px; }
 .lib-label { display: flex; align-items: center; gap: 7px; margin: 18px 0 8px; color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
 .lib-bar + .lib-label, [data-pane] > .lib-label:first-child { margin-top: 0; }
 .lib-label svg { width: 13px; height: 13px; }
-.rcards { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-bottom: 18px; }
-.rcards > .sk-wrap { grid-column: 1 / -1; } /* the placeholders take the whole row */
-.rcard { position: relative; display: block; padding: 13px 13px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); color: var(--text); overflow: hidden; }
-.rcard:hover { border-color: var(--line-strong); text-decoration: none; }
-.rcard::before { content: ""; position: absolute; inset: 0 0 auto; height: 3px; background: var(--c); }
-.rcard b { display: flex; align-items: center; gap: 8px; color: var(--title); font-size: 13.5px; }
-.rcard b .lk { width: 12px; height: 12px; margin-left: auto; color: #5E6380; }
-.rcard p { min-height: 34px; margin: 4px 0 9px; color: var(--muted); font-size: 12px; line-height: 1.4; }
-.rcard .parts { display: flex; flex-wrap: wrap; gap: 4px; }
-.rcard .parts span { padding: 1px 6px; border-radius: 4px; background: #1A1D2B; color: var(--muted); font-size: 10.5px; font-weight: 650; }
-.rcard .n { display: flex; align-items: center; gap: 5px; margin-top: 10px; overflow: hidden; color: #5E6380; font-size: 11.5px; white-space: nowrap; text-overflow: ellipsis; }
-.rcard .n svg { flex: none; width: 12px; height: 12px; }
-.prows { display: grid; gap: 6px; }
-.prow { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.7fr) 150px; gap: 14px; align-items: center; min-height: 56px; padding: 8px 14px;
-  border: 1px solid var(--line); border-radius: 10px; background: var(--panel); cursor: pointer; }
-.prow:hover, .prow:focus-visible { border-color: var(--line-strong); outline: none; }
 .who { display: flex; align-items: center; gap: 11px; min-width: 0; }
 .who > div { min-width: 0; }
 .who > div > b, .who > div > span { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
@@ -81,13 +61,8 @@
 .chip-x svg { width: 11px; height: 11px; }
 .rchip:hover .chip-x, .chip-x:focus-visible { display: grid; }
 .chip-x:hover { background: rgba(255, 107, 125, .15); color: var(--red); }
-.addrole { display: grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 1px dashed var(--line-strong); border-radius: 6px; background: none; color: #5E6380; }
-.addrole:hover { border-color: var(--accent-line); background: none; color: var(--title); }
-.addrole svg { width: 13px; height: 13px; }
-.seen { color: #5E6380; font-size: 12px; text-align: right; }
 
-/* Someone's card, and the menu of roles to give. */
-.rmenu { position: absolute; z-index: 15; border: 1px solid var(--line-strong); border-radius: 12px; background: #131522; box-shadow: 0 20px 50px rgba(0, 0, 0, .55); }
+/* The side panel's lists of what something does. */
 .does { display: grid; gap: 5px; margin: 0; padding: 0; list-style: none; font-size: 12.5px; }
 .does li { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 8px; }
 .does b { color: var(--muted); font-weight: 600; }
@@ -104,12 +79,8 @@ button.danger svg { width: 15px; height: 15px; }
 button.danger:hover { background: rgba(255, 107, 125, .08); }
 button.link { padding: 6px 8px; border: 0; background: none; color: var(--muted); font-size: 13px; font-weight: 600; }
 button.link:hover { background: none; color: var(--title); }
-.rmenu { width: 220px; padding: 6px; }
-.rmenu p { margin: 4px 8px 6px; color: #5E6380; font-size: 11.5px; font-weight: 600; }
-.rmenu button { display: flex; align-items: center; gap: 9px; width: 100%; padding: 7px 9px; border: 0; border-radius: 7px; background: none; color: var(--text); font-size: 13px; text-align: left; }
-.rmenu button:hover { background: #1B1E2E; }
 
-/* One role: its header and tabs, then Display, Permissions or Members. */
+/* One role: its header and tabs, then its assignments, Permissions, or Name and tier. */
 .rhead { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
 .rhead .big { display: grid; place-items: center; flex: none; width: 50px; height: 50px; border-radius: 14px; background: color-mix(in srgb, var(--c) 15%, transparent); color: var(--c); }
 .rhead .big svg { width: 25px; height: 25px; }
@@ -147,7 +118,6 @@ button.link:hover { background: none; color: var(--title); }
 .row.perm.locked { cursor: default; }
 .row.perm input.switch:checked { background: var(--c, var(--accent)); }
 .row.perm input.switch:disabled { opacity: .45; cursor: default; }
-#member-list .row { min-height: 56px; }
 .adder { position: relative; }
 .drop { position: absolute; z-index: 12; left: 0; right: 0; top: 40px; max-height: 340px; overflow-y: auto; padding: 6px; border: 1px solid var(--line-strong); border-radius: 12px;
   background: #131522; box-shadow: 0 20px 50px rgba(0, 0, 0, .55); }
@@ -175,30 +145,73 @@ button.link:hover { background: none; color: var(--title); }
 .viewas b { color: #fff; }
 .viewas button { padding: 5px 14px; font-size: 13px; }
 
-/* Add people. */
 .dialog .tabs2 { margin-top: 14px; }
-.pick-list { display: grid; gap: 2px; max-height: 260px; margin-top: 8px; overflow-y: auto; }
 .role-picks { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 .role-pick { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: 8px; font-size: 13px; cursor: pointer; }
 .role-pick input { margin: 0; accent-color: var(--accent); }
-#people-dialog .form { margin-top: 4px; }
 .dialog-foot { gap: 8px; }
 .tr .chips-in { flex-wrap: nowrap; overflow: hidden; }
 @media (max-width: 980px) {
   .lib { grid-template-columns: minmax(0, 1fr); }
-  .prow { grid-template-columns: minmax(0, 1fr); }
-  .seen { text-align: left; }
 }
 
-/* In the side panel: the row it's for is marked, and roles to give are buttons with their colour. */
-.prow.dw-on { background: #171B2C; }
-.dw-give button { display: inline-flex; align-items: center; gap: 7px; }
-.dw-give .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c, var(--muted)); }
+/* The tier rule over the page. */
+.pp-rule { display: flex; align-items: flex-start; gap: 9px; margin: -6px 0 18px; color: var(--muted); font-size: 13px; line-height: 1.45; }
+.pp-rule svg { flex: none; width: 15px; height: 15px; margin-top: 2px; color: #6D7290; }
+/* The assignments: a role's dot and name in its cell, people from a group under it, and the switch that shows them. */
+.pp-role { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+.pp-role .dot { width: 8px; height: 8px; }
+.table.dgrid .tr.pp-via > div:not(.lead) { color: var(--muted); }
+.table.dgrid .tr.pp-via .who { padding-left: 22px; }
+.table.dgrid .tr.pp-via .pic { width: 26px; height: 26px; font-size: 10.5px; }
+.table.dgrid .tr.off .who b, .table.dgrid .tr.off .pp-role { opacity: .55; }
+.pp-expand { display: inline-flex; align-items: center; gap: 8px; margin-left: 4px; color: var(--muted); font-size: 12.5px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.pp-expand .switch { margin: 0; }
+/* In the side panel: a role, how it's had, where and until when. */
+.pp-mrow { cursor: pointer; }
+.pp-mrow:not([tabindex]) { cursor: default; }
+.pp-two { display: grid; gap: 2px; flex: 1; min-width: 0; }
+.pp-two b { overflow: hidden; color: var(--title); font-size: 13.5px; font-weight: 600; white-space: nowrap; text-overflow: ellipsis; }
+.pp-two small { overflow: hidden; color: #5E6380; font-size: 12px; white-space: nowrap; text-overflow: ellipsis; }
+.pp-two.pp-end { flex: 0 1 45%; text-align: right; }
+.pp-two.pp-end .ell { color: var(--text); font-size: 12.5px; }
+.pp-where { display: flex; align-items: center; gap: 8px; margin: -2px 0 8px; }
+.pp-where svg { flex: none; width: 14px; height: 14px; color: #6D7290; }
+.pp-tier { margin-left: 0; }
+.pp-tier button { height: 30px; padding: 0 14px; font-size: 13px; }
+.pp-tier-about { margin: 2px 0 4px; }
 
-/* A role's scope in Active Directory: its OUs as chips under the text, and the OU list with Browse… to add one. */
-.row.scope { align-items: flex-start; gap: 14px; padding: 12px 18px; }
-.row.scope .scope-ous { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-.row.scope .gchip svg { width: 13px; height: 13px; color: var(--muted); }
-.row.scope .gchip .chip-x { display: grid; }
-.row.scope .ou-row { flex: none; width: 340px; max-width: 46%; }
-.row.scope .ou-row select { height: 38px; }
+/* Give a role: a label down the left of each part, then Who, the roles by tier, Where, Ends and Reason. */
+.pp-form { display: grid; gap: 16px; margin-top: 6px; }
+.pp-fl { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 14px; align-items: start; }
+.pp-fl[hidden] { display: none; }
+.pp-fn { padding-top: 8px; color: var(--muted); font-size: 12.5px; font-weight: 650; }
+.pp-fn label { font: inherit; color: inherit; }
+.pp-fv { display: grid; gap: 8px; min-width: 0; }
+.pp-fh { margin: 0; color: #5E6380; font-size: 12.5px; line-height: 1.45; }
+.pp-seg { margin-left: 0; }
+.pp-seg button { height: 32px; padding: 0 14px; font-size: 13px; }
+.pp-input { height: 36px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: 8px; background: #0C0E17; color: var(--title); font: inherit; font-size: 13.5px; }
+.pp-input:focus { outline: none; border-color: var(--accent-line); }
+.pp-date { width: 190px; color-scheme: dark; }
+.pp-ourow select { height: 36px; }
+.pp-ourow button { height: 36px; }
+.pp-ous { display: flex; flex-wrap: wrap; gap: 6px; }
+.pp-ous .gchip svg { width: 13px; height: 13px; color: var(--muted); }
+.pp-ous .gchip .chip-x { display: grid; }
+.pp-rpick { display: grid; gap: 4px; max-height: 248px; overflow-y: auto; }
+.pp-ropt { display: grid; grid-template-columns: 18px 10px minmax(0, 1fr) auto 110px; align-items: center; gap: 10px; min-height: 36px; padding: 0 12px;
+  border: 1px solid var(--line); border-radius: 8px; color: var(--text); font-size: 13px; cursor: pointer; }
+.pp-ropt:hover { border-color: var(--line-strong); }
+.pp-ropt:has(input:checked) { border-color: var(--accent-line); background: color-mix(in srgb, var(--accent-line) 8%, transparent); }
+.pp-ropt.off { opacity: .5; cursor: default; }
+.pp-ropt input { margin: 0; accent-color: var(--accent); }
+.pp-ropt b { overflow: hidden; color: var(--title); font-weight: 600; white-space: nowrap; text-overflow: ellipsis; }
+.pp-rtier, .pp-rn { color: #5E6380; font-size: 12px; white-space: nowrap; }
+.pp-rn { text-align: right; }
+.pp-picked { display: flex; align-items: center; gap: 11px; min-height: 44px; padding: 5px 6px 5px 10px; border: 1px solid var(--line-strong); border-radius: 8px; }
+.pp-sum { display: flex; align-items: flex-start; gap: 9px; margin: 16px 0 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; color: var(--text); font-size: 13px; line-height: 1.45; }
+.pp-sum[hidden] { display: none; }
+.pp-sum svg { flex: none; width: 15px; height: 15px; margin-top: 2px; color: var(--accent-soft); }
+.pp-sum b { color: var(--title); }
+#give-dialog { width: min(720px, calc(100vw - 32px)); }

@@ -965,8 +965,8 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
         if (role is not null)
         {
             throw new ToolProblem(group
-                ? $"{cn ?? Ldap.Name(dn)} grants the {role.Name} role. Only admins in a role above {role.Name} can change this group."
-                : $"{sam ?? Ldap.Name(dn)} has the {role.Name} role. Only admins in a role above {role.Name} can change this account.", StatusCodes.Status403Forbidden);
+                ? $"{cn ?? Ldap.Name(dn)} grants the {role.Name} role. Only someone in a higher tier than {role.Name} can change this group."
+                : $"{sam ?? Ldap.Name(dn)} has the {role.Name} role. Only someone in a higher tier than {role.Name} can change this account.", StatusCodes.Status403Forbidden);
         }
     }
 
@@ -985,7 +985,7 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
     }
 
     /// <summary>
-    /// Refused when a role above the caller names this account or group: making one by that name (after the old one was
+    /// Refused when a role in the caller's tier or above names this account or group: making one by that name (after the old one was
     /// deleted, say) would put its maker in the role. Null checks both kinds.
     /// </summary>
     private static void Unclaimed(string name, bool? group)
@@ -998,7 +998,7 @@ public sealed partial class DirectoryTools(DataFolder folder, SettingsStore secr
             && ((m.Kind == RoleMember.Group && group != false) || (m.Kind == RoleMember.Person && group != true))));
         if (role is not null)
         {
-            throw new ToolProblem($"{name} is a member of the {role.Name} role. Only admins in a role above {role.Name} can create an object with this name or rename one to it.", StatusCodes.Status403Forbidden);
+            throw new ToolProblem($"{name} is a member of the {role.Name} role. Only someone in a higher tier than {role.Name} can create an object with this name or rename one to it.", StatusCodes.Status403Forbidden);
         }
     }
 

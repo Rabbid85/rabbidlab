@@ -258,7 +258,8 @@ public sealed class MfaTests : IDisposable
     {
         var admin = await app.SignedIn();
         var (_, lead) = await InRole(admin, "Lead", "lead1", "access.view", "access.mfa");
-        var (_, desk) = await InRole(admin, "Help desk", "desk1", "seats.view");
+        var (deskRole, desk) = await InRole(admin, "Help desk", "desk1", "seats.view");
+        (await admin.PostAsJsonAsync($"/api/roles/{deskRole}", new { name = "Help desk", color = "#5FD4A0", tier = 2 })).EnsureSuccessStatusCode(); // below Lead's tier
         (await admin.PostAsJsonAsync("/api/accounts", new { username = "fresh1", password = "user password", roles = Array.Empty<string>() })).EnsureSuccessStatusCode();
         object Whose(string username) => new { source = "local", username };
 
@@ -269,7 +270,7 @@ public sealed class MfaTests : IDisposable
         var below = await lead.PostAsJsonAsync("/api/mfa/reset", Whose("desk1"));
 
         Assert.Equal(HttpStatusCode.Forbidden, above.StatusCode);
-        Assert.Contains("Only admins in a role above Administrator can reset their MFA", (await Json(above)).GetProperty("error").GetString());
+        Assert.Contains("Only someone in a higher tier than Administrator can reset their MFA", (await Json(above)).GetProperty("error").GetString());
         Assert.Equal(HttpStatusCode.Forbidden, notAllowed.StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, none.StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, own.StatusCode);

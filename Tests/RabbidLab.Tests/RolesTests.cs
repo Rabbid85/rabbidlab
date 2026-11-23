@@ -87,24 +87,61 @@ public sealed class RolesTests : IDisposable
     }
 
     [Fact]
-    public async Task Nobody_changes_a_role_at_or_above_their_own_or_gives_what_they_cannot_do()
+    public async Task Nobody_changes_or_gives_a_role_in_their_own_tier_or_above_or_gives_what_they_cannot_do()
     {
         var admin = await app.SignedIn();
         var help = await Make(admin, "Help desk", "access.view", "access.roles", "access.members", "seats.view");
+        var peer = await Make(admin, "Desk two", "seats.view");
         (await admin.PostAsJsonAsync("/api/accounts", new { username = "mlopez", password = "user password", roles = new[] { help } })).EnsureSuccessStatusCode();
+        (await admin.PostAsJsonAsync("/api/accounts", new { username = "intern", password = "intern password" })).EnsureSuccessStatusCode();
         var mlopez = await SignIn("mlopez", "user password");
 
         var ownRole = await mlopez.PostAsJsonAsync($"/api/roles/{help}", new { name = "Help desk", color = "#5FD4A0", permissions = new[] { "seats.view", "updates.install" } });
         var intoAdmin = await mlopez.PostAsJsonAsync("/api/roles/admin/members", new { kind = "local", name = "mlopez" });
+        var samePeer = await mlopez.PostAsJsonAsync($"/api/roles/{peer}/members", new { kind = "local", name = "intern" });
         var lower = await Make(mlopez, "Interns", "seats.view");
         var beyond = await mlopez.PostAsJsonAsync($"/api/roles/{lower}", new { name = "Interns", color = "#5FD4A0", permissions = new[] { "seats.view", "updates.install" } });
-        var above = await mlopez.PostAsJsonAsync("/api/roles/order", new { ids = new[] { lower, help } });
+        var up = await mlopez.PostAsJsonAsync($"/api/roles/{lower}", new { name = "Interns", color = "#5FD4A0", tier = 1 });
+        var gives = await mlopez.PostAsJsonAsync($"/api/roles/{lower}/members", new { kind = "local", name = "intern" });
+        var tiers = (await Json(admin, "/api/roles")).GetProperty("roles").EnumerateArray().ToDictionary(r => r.GetProperty("id").GetString()!, r => r.GetProperty("tier").GetInt32());
 
         Assert.Equal(HttpStatusCode.BadRequest, ownRole.StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, intoAdmin.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, samePeer.StatusCode); // a tier 1 role, beside theirs
         Assert.Equal(HttpStatusCode.BadRequest, beyond.StatusCode);
-        Assert.Equal(HttpStatusCode.BadRequest, above.StatusCode);
-        Assert.Equal(HttpStatusCode.OK, (await admin.PostAsJsonAsync("/api/roles/order", new { ids = new[] { lower, help } })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, up.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, gives.StatusCode);
+        Assert.Equal((0, 1, 1, 2, 2), (tiers["admin"], tiers[help], tiers[peer], tiers[lower], tiers["user"]));
+        Assert.Equal(HttpStatusCode.OK, (await admin.PostAsJsonAsync($"/api/roles/{lower}", new { name = "Interns", color = "#5FD4A0", tier = 1 })).StatusCode);
+    }
+
+    [Fact]
+    public async Task An_assignment_works_only_in_its_OUs_and_stops_on_its_end_date()
+    {
+        const string lab = "OU=Lab,DC=amw,DC=com";
+        var admin = await app.SignedIn();
+        var desk = await Make(admin, "Desk", "ad.view", "ad.password");
+        (await admin.PostAsJsonAsync("/api/accounts", new { username = "temp", password = "temp password" })).EnsureSuccessStatusCode();
+        var roles = app.Services.GetRequiredService<Roles>();
+        var who = new Who(RabbidLab.Server.SignIn.Local, "temp", null, []);
+        var ends = app.Clock.GetUtcNow().UtcDateTime.AddDays(3);
+
+        var past = await admin.PostAsJsonAsync($"/api/roles/{desk}/members", new { kind = "local", name = "temp", ends = app.Clock.GetUtcNow().UtcDateTime.AddDays(-1) });
+        (await admin.PostAsJsonAsync($"/api/roles/{desk}/members", new { kind = "local", name = "temp", scope = new[] { lab }, ends, reason = "Covering for Sam" })).EnsureSuccessStatusCode();
+        var reach = roles.Reach(who, "ad.password");
+        var member = (await Json(admin, "/api/roles")).GetProperty("roles").EnumerateArray().First(r => r.GetProperty("id").GetString() == desk).GetProperty("members")[0];
+        (await admin.PostAsJsonAsync($"/api/roles/{desk}/members/edit", new { kind = "local", name = "temp", ends })).EnsureSuccessStatusCode(); // everywhere now
+        var wider = roles.Reach(who, "ad.password");
+        var during = roles.Allowed(who).Contains("ad.password");
+        app.Clock.Advance(TimeSpan.FromDays(4));
+
+        Assert.Equal(HttpStatusCode.BadRequest, past.StatusCode);
+        Assert.Equal([lab], reach);
+        Assert.Equal("Covering for Sam", member.GetProperty("reason").GetString());
+        Assert.Equal("Lab", member.GetProperty("scope")[0].GetProperty("path").GetString());
+        Assert.Null(wider);
+        Assert.True(during);
+        Assert.DoesNotContain("ad.password", roles.Allowed(who)); // its end came
     }
 
     [Fact]
@@ -276,7 +313,7 @@ public sealed class RolesTests : IDisposable
         app.Dispose();
         // As a version before the split wrote it: no version, and Change alone.
         var path = Path.Combine(data, "roles.json");
-        File.WriteAllText(path, File.ReadAllText(path).Replace("\"version\": 5,", "").Replace(",\n      \"seats.installs\"", "").Replace(",\r\n      \"seats.installs\"", ""));
+        File.WriteAllText(path, File.ReadAllText(path).Replace("\"version\": 6,", "").Replace(",\n      \"seats.installs\"", "").Replace(",\r\n      \"seats.installs\"", ""));
         File.Delete(path + ".bak");
 
         using var again = new TestApp(data);
@@ -295,7 +332,7 @@ public sealed class RolesTests : IDisposable
         Assert.DoesNotContain("network.view", roles[viewer]);
         // Once upgraded it stays as it's set: taking one away isn't undone at the next start.
         (await page.PostAsJsonAsync($"/api/roles/{old}", new { name = "Old desk", color = "#5FD4A0", permissions = new[] { "ad.view", "ad.change" } })).EnsureSuccessStatusCode();
-        Assert.Contains("\"version\": 5", File.ReadAllText(path));
+        Assert.Contains("\"version\": 6", File.ReadAllText(path));
     }
 
     [Fact]
@@ -305,6 +342,7 @@ public sealed class RolesTests : IDisposable
         var admin = await app.SignedIn();
         var lead = await Make(admin, "Lead", "access.view", "access.roles", "ad.view", "ad.password");
         var desk = await Make(admin, "Desk", "ad.view", "ad.password");
+        (await admin.PostAsJsonAsync($"/api/roles/{desk}", new { name = "Desk", color = "#5FD4A0", tier = 2 })).EnsureSuccessStatusCode(); // below Lead, so Lead can change it
         object Form(string name, string[] permissions, params string[] scope) => new { name, color = "#5FD4A0", permissions, scope };
         string[] leads = ["access.view", "access.roles", "ad.view", "ad.password"];
         string[] desks = ["ad.view", "ad.password"];

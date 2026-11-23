@@ -1,9 +1,9 @@
 namespace RabbidLab.Server;
 
 /// <summary>
-/// Roles and people: the roles with what they allow and who's in them, everyone who has signed in, and Rabbid Lab's own
-/// accounts. Seeing it takes See roles; each change takes the permission for it, and a role can only be changed by someone
-/// above it (Roles.cs).
+/// Roles and people: the roles with their tiers, what they allow and who has them (each assignment with where it works,
+/// until when and why), everyone who has signed in, and Rabbid Lab's own accounts. Seeing it takes See roles; each change
+/// takes the permission for it, and a role can only be changed or given by someone in a higher tier (Roles.cs).
 /// </summary>
 public static class RolesApi
 {
@@ -29,10 +29,12 @@ public static class RolesApi
                     name = r.Name,
                     about = r.About,
                     color = r.Color,
+                    tier = r.Tier,
                     permissions = r.Id == Roles.Admin ? [.. Permissions.All] : r.Permissions,
                     scope = r.Scope.Select(d => new { dn = d, path = Place(d) }),
                     mfa = r.Mfa,
-                    members = r.Members.Select(m => new { kind = m.Kind, name = m.Name, display = m.Display, added = m.Added, addedBy = m.AddedBy }),
+                    members = r.Members.Select(m => new { kind = m.Kind, name = m.Name, display = m.Display, added = m.Added, addedBy = m.AddedBy,
+                        scope = m.Scope.Select(d => new { dn = d, path = Place(d) }), ends = m.Ends, reason = m.Reason }),
                     builtIn = r.Id is Roles.Admin or Roles.User,
                     manage = managed.Contains(r.Id),
                 }),
@@ -50,7 +52,7 @@ public static class RolesApi
                 domain = accounts.Directory?.Domain,
                 machine = Environment.MachineName,
                 windowsAdmins = OperatingSystem.IsWindows(),
-                me = new { username = me.Username, source = me.Source, roles = mine.Select(r => r.Id), can = roles.Allowed(me).Order() },
+                me = new { username = me.Username, source = me.Source, roles = mine.Select(r => r.Id), tier = mine.Select(r => r.Tier).DefaultIfEmpty(2).Min(), can = roles.Allowed(me).Order() },
             });
         });
 
@@ -60,28 +62,13 @@ public static class RolesApi
             {
                 return refused;
             }
-            var (role, problem) = roles.Create(form.Name, form.About, form.Color, form.Copy, Who.Of(context.User));
+            var (role, problem) = roles.Create(form.Name, form.About, form.Color, form.Copy, Who.Of(context.User), form.Tier);
             if (role is null)
             {
                 return Results.BadRequest(new { error = problem });
             }
-            log.Record(context, "access", "role.add", $"Created the role {role.Name}");
+            log.Record(context, "access", "role.add", $"Created the role {role.Name} in tier {role.Tier}");
             return Results.Ok(new { id = role.Id });
-        });
-
-        // The order of the roles between Administrator and User, highest first.
-        app.MapPost("/api/roles/order", (OrderForm form, HttpContext context, Roles roles, ActivityLog log) =>
-        {
-            if (Access.RefuseUnless(context, Permissions.AccessRoles) is { } refused)
-            {
-                return refused;
-            }
-            if (roles.Order(form.Ids ?? [], Who.Of(context.User)) is { } problem)
-            {
-                return Results.BadRequest(new { error = problem });
-            }
-            log.Record(context, "access", "role.order", "Changed the order of the roles");
-            return Results.Ok();
         });
 
         app.MapPost("/api/roles/{id}", (string id, RoleForm form, HttpContext context, Roles roles, Confirmations confirm, ActivityLog log) =>
@@ -91,12 +78,12 @@ public static class RolesApi
                 return refused;
             }
             var before = roles.Find(id);
-            // Giving a role more takes Confirm it's you; a name, a colour or taking something away doesn't.
-            if (before is not null && (form.Permissions ?? []).Except(before.Permissions).Any() && confirm.Refuse(context) is { } unconfirmed)
+            // Giving a role more takes Confirm it's you, a higher tier included; a name, a colour or taking something away doesn't.
+            if (before is not null && ((form.Permissions ?? []).Except(before.Permissions).Any() || form.Tier < before.Tier) && confirm.Refuse(context) is { } unconfirmed)
             {
                 return unconfirmed;
             }
-            if (roles.Change(id, form.Name, form.About, form.Color, form.Permissions, Who.Of(context.User), form.Scope) is { } problem)
+            if (roles.Change(id, form.Name, form.About, form.Color, form.Permissions, Who.Of(context.User), form.Scope, form.Tier) is { } problem)
             {
                 return Results.BadRequest(new { error = problem });
             }
@@ -158,11 +145,26 @@ public static class RolesApi
             {
                 return Results.BadRequest(new { error = "Active Directory is not configured." });
             }
-            if (roles.AddMember(id, form.Kind, name, form.Display, Who.Of(context.User)) is { } problem)
+            if (roles.AddMember(id, form.Kind, name, form.Display, Who.Of(context.User), form.Scope, form.Ends, form.Reason) is { } problem)
             {
                 return Results.BadRequest(new { error = problem });
             }
-            log.Record(context, "access", "role.member.add", $"Added {Said(form)} to {RoleName(roles, id)}");
+            log.Record(context, "access", "role.member.add", $"Gave {RoleName(roles, id)} to {Said(form)}", detail: Terms(form));
+            return Results.Ok();
+        });
+
+        // Where an assignment works, when it ends and why. Widening it takes Confirm it's you, as giving it did.
+        app.MapPost("/api/roles/{id}/members/edit", (string id, MemberForm form, HttpContext context, Roles roles, Confirmations confirm, ActivityLog log) =>
+        {
+            if ((Access.RefuseUnless(context, Permissions.AccessMembers) ?? (id == Roles.User ? null : confirm.Refuse(context))) is { } refused)
+            {
+                return refused;
+            }
+            if (roles.EditMember(id, form.Kind, form.Name, Who.Of(context.User), form.Scope, form.Ends, form.Reason) is { } problem)
+            {
+                return Results.BadRequest(new { error = problem });
+            }
+            log.Record(context, "access", "role.member.change", $"Changed {Said(form)}'s {RoleName(roles, id)} assignment", detail: Terms(form));
             return Results.Ok();
         });
 
@@ -292,6 +294,14 @@ public static class RolesApi
 
     private static string Said(MemberForm form) => Roles.Words(form.Kind, form.Name?.Trim(), form.Display?.Trim());
 
+    /// <summary>An assignment's terms in words, for the activity log: where, until when, and why.</summary>
+    private static string Terms(MemberForm form) => string.Join(" ", new[]
+    {
+        form.Scope is { Count: > 0 } s ? $"Where: {string.Join(", ", s.Select(Place))}." : "Where: everywhere its role reaches.",
+        form.Ends is { } e ? $"Ends: {e:yyyy-MM-dd}." : "Ends: never.",
+        form.Reason is { Length: > 0 } r ? $"Reason: {r.Trim()}" : "",
+    }.Where(x => x.Length > 0));
+
     private static string RoleName(Roles roles, string id) => roles.Find(id)?.Name ?? "a role";
 
     /// <summary>Whether the local account named is the one this request is signed in with.</summary>
@@ -313,6 +323,10 @@ public static class RolesApi
         if (before.Name != after.Name)
         {
             said.Add($"Renamed from {before.Name}.");
+        }
+        if (before.Tier != after.Tier)
+        {
+            said.Add($"Moved from tier {before.Tier} to tier {after.Tier}.");
         }
         static string Names(IEnumerable<string> keys) => string.Join(", ", keys.Select(Roles.PermissionName));
         var added = after.Permissions.Except(before.Permissions).ToList();
@@ -337,11 +351,10 @@ public static class RolesApi
     }
 }
 
-public sealed record RoleForm(string? Name, string? About, string? Color, string? Copy = null, List<string>? Permissions = null, List<string>? Scope = null);
+public sealed record RoleForm(string? Name, string? About, string? Color, string? Copy = null, List<string>? Permissions = null, List<string>? Scope = null, int? Tier = null);
 
-public sealed record OrderForm(List<string>? Ids);
-
-public sealed record MemberForm(string? Kind, string? Name, string? Display = null);
+/// <summary>An assignment: who, and for giving or changing it, where (OUs, none for everywhere), until when, and why.</summary>
+public sealed record MemberForm(string? Kind, string? Name, string? Display = null, List<string>? Scope = null, DateTime? Ends = null, string? Reason = null);
 
 public sealed record AccountForm(string? Username, string? Password, List<string>? Roles);
 

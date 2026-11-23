@@ -1,435 +1,663 @@
-// Roles and people, in Settings: #settings/people (everyone, or /people, /groups, /local) and #settings/people/role/<id>/<tab>
-// (one role's display, permissions and members). It asks /api/roles when the page opens and after each change. console.js shares its
-// helpers as window.RabbidLab.
+// Roles and people, in Settings: #settings/people (every assignment, or /soon, /groups, /local) and
+// #settings/people/role/<id>/<tab> (one role's assignments, permissions, and name and tier). Each assignment says where in
+// Active Directory it works, when it ends and why; a role is changed or given only by someone in a higher tier (Roles.cs).
+// It asks /api/roles when the page opens and after each change. console.js shares its helpers as window.RabbidLab.
 (() => {
   const R = window.RabbidLab;
   const { $, esc, svg, say, initials, sure } = R;
   const SWATCHES = R.palette;
-  const KIND = { group: 'Group', user: 'User', local: 'Local account', everyone: 'Everyone', windows: 'Built-in' };
-  const ICON = { group: 'users', user: 'user', local: 'key', everyone: 'users', windows: 'monitor' };
-  const BROWSE = { all: 'Everyone', people: 'People', groups: 'Groups', local: 'Local accounts' };
+  const KIND = { group: 'Group', user: 'User', local: 'Local account', everyone: 'Everyone', windows: 'Built-in', all: 'Built-in' };
+  const ICON = { group: 'users', user: 'user', local: 'key', everyone: 'users', windows: 'monitor', all: 'users' };
+  const VIEWS = { all: 'All assignments', soon: 'Ending in 30 days', groups: 'Given to groups', local: 'Local accounts' };
+  const TABS = ['assignments', 'permissions', 'display'];
+  const TIER_ABOUT = [
+    'Only Administrator. It has every permission and can change and give every other role.',
+    'People with a tier 1 role can change and give tier 2 roles, when their permissions allow it. They can reset passwords and MFA only for people whose other roles are all in tier 2.',
+    'People whose roles are all in tier 2 cannot change or give roles. User, which everyone has, is in tier 2.',
+  ];
+  const DAY = 86400000;
+  const EXPAND = 'rabbidlab.people.expand';
   let data = null; // what /api/roles said
-  let list = []; // the rows drawn now
   let draft = null; // the role being changed, until Save
-  let source = 'any';
+  let expand = (() => { try { return localStorage.getItem(EXPAND) === '1'; } catch { return false; } })();
+  const picked = new Set(); // ticked assignments
+  const came = new Map(); // assignment id -> when it was given here, for the row's arrival
+  const done = new WeakSet();
 
   const problem = (text) => say('ppl-problem', text);
   const role = (id) => data.roles.find((r) => r.id === id);
   const mine = (key) => data.me.can.includes(key);
   const allParts = () => data.catalog.flatMap((p) => p.actions.map((a) => a.key));
   const same = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
+  const lower = (s) => s.charAt(0).toLowerCase() + s.slice(1);
+  const tierName = (t) => `Tier ${t}`;
+  const day = (iso) => new Date(iso).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' });
+  const daysLeft = (iso) => (new Date(iso) - Date.now()) / DAY;
+  const ended = (m) => !!m?.ends && new Date(m.ends) <= Date.now();
   const since = (iso) => {
-    if (!iso) return '';
+    if (!iso) return 'Never';
     const m = Math.floor((Date.now() - new Date(iso)) / 60000);
     const days = Math.floor(m / 1440);
-    return m < 2 ? 'Signed in just now' : m < 60 ? `Signed in ${m} min ago` : m < 120 ? 'Signed in an hour ago' : m < 1440 ? `Signed in ${Math.floor(m / 60)} hours ago`
-      : days === 1 ? 'Signed in yesterday' : `Signed in ${days} days ago`;
+    return m < 2 ? 'Just now' : m < 60 ? `${m} min ago` : m < 120 ? 'An hour ago' : m < 1440 ? `${Math.floor(m / 60)} hours ago` : days === 1 ? 'Yesterday' : `${days} days ago`;
   };
   const current = (el, on) => (on ? el.setAttribute('aria-current', 'page') : el.removeAttribute('aria-current'));
-  const memberLabel = (m) => (m.kind === 'everyone' ? 'Everyone in Active Directory' : m.display || m.name);
+  const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+  const sec = (title, body) => `<section class="dw-sec"><div class="dw-sec-head"><h3>${title}</h3></div>${body}</section>`;
+  const qa = (attr, icon, label) => `<button type="button" class="dw-qa" ${attr}>${svg(icon)}<span>${esc(label)}</span></button>`;
+  const strip = (pairs) => `<div class="dw-strip">${pairs.map(([l, v]) => `<div><span class="l">${esc(l)}</span><span class="v">${v}</span></div>`).join('')}</div>`;
+  const badge = (text, tone) => `<span class="ubadge ${tone}">${esc(text)}</span>`;
+  const muted = (text) => `<span class="muted">${esc(text)}</span>`;
+  const dot = (r) => `<span class="pp-role" data-color="${esc(r.color)}"><i class="dot"></i><span class="ell">${esc(r.name)}</span></span>`;
 
-  // --- Everyone, with the roles they get ---------------------------------------------------------------------------
+  // --- Every assignment ----------------------------------------------------------------------------------------------
 
-  // Every group, person, local account and built-in member as a row, with each role they get: directly (removable),
-  // from a group (via), or because everyone who signs in has User.
-  const build = () => {
-    const rows = new Map();
-    const add = (kind, name) => {
-      const k = `${kind}:${String(name).toLowerCase()}`;
-      if (!rows.has(k)) rows.set(k, { kind, name, display: null, sub: '', roles: [], seen: null, source: kind === 'local' ? 'local' : 'ad' });
-      return rows.get(k);
-    };
-    const give = (row, r, via, direct) => {
-      const had = row.roles.find((x) => x.role.id === r.id);
-      if (!had) row.roles.push({ role: r, via, direct });
-      else if (direct) Object.assign(had, { via: null, direct: true });
-    };
-    const user = role('user');
-    data.roles.forEach((r) => r.members.forEach((m) => {
-      const row = add(m.kind, m.name);
-      if (m.display) row.display = m.display;
-      give(row, r, null, true);
-    }));
-    data.local.forEach((a) => add('local', a.username));
-    if (data.windowsAdmins) {
-      const row = add('windows', 'Windows administrators');
-      row.sub = `Built-in · ${data.machine}`;
-      give(row, role('admin'), null, false);
-    }
-    data.people.forEach((p) => {
-      if (p.source === 'local') {
-        Object.assign(add('local', p.username), { seen: p.lastSignIn, mfa: p.mfa });
-        return;
-      }
-      const row = add('user', p.username);
-      Object.assign(row, { display: p.name, seen: p.lastSignIn, domain: p.domain, source: p.source, mfa: p.mfa });
-      data.roles.forEach((r) => r.members.forEach((m) => {
-        if (p.source === 'ad' && m.kind === 'group' && p.groups.some((g) => same(g, m.name))) give(row, r, m.name, false);
-        if (p.source === 'ad' && m.kind === 'everyone') give(row, r, 'Everyone', false);
-      }));
-      if (p.source === 'windows') give(row, role('admin'), 'Windows administrators', false);
+  // A role does something in Active Directory, so where it works matters.
+  const scoped = (r) => r.id !== 'admin' && r.permissions.some((p) => data.scoped.includes(p));
+  const aid = (r, m) => `${r.id}|${m.kind}|${String(m.name).toLowerCase()}`;
+  // Every assignment as a row: each role's members, then the ones nobody gives or takes away (Windows administrators,
+  // everyone's User, a local account's User).
+  const assignments = () => {
+    const out = [];
+    data.roles.forEach((r) => r.members.forEach((m) => out.push({ id: aid(r, m), r, m, kind: m.kind, name: m.name, display: m.display })));
+    if (data.windowsAdmins) out.push({ id: 'admin|windows', r: role('admin'), m: null, kind: 'windows', name: 'Windows administrators', built: `Members of the Administrators group on ${data.machine}. They sign in with a local account, or with .\\ before the username` });
+    out.push({ id: 'user|all', r: role('user'), m: null, kind: 'all', name: 'All signed-in users', built: 'Everyone who signs in has User' });
+    data.local.filter((a) => !out.some((x) => x.kind === 'local' && same(x.name, a.username)))
+      .forEach((a) => out.push({ id: `user|local|${a.username.toLowerCase()}`, r: role('user'), m: null, kind: 'local', name: a.username, built: 'Local accounts always have User' }));
+    return out;
+  };
+  // With People from groups on: under each group, everyone in it who has signed in (nested groups included).
+  const reachOf = (x) => {
+    if (x.kind === 'group') return data.people.filter((p) => p.source === 'ad' && p.groups.some((g) => same(g, x.name)));
+    if (x.kind === 'everyone') return data.people.filter((p) => p.source === 'ad');
+    if (x.kind === 'windows') return data.people.filter((p) => p.source === 'windows');
+    return null;
+  };
+  const withPeople = (list) => list.flatMap((x) => [x, ...(expand ? (reachOf(x) || []).map((p) => ({ id: `${x.id}>${p.username.toLowerCase()}`, r: x.r, m: x.m, via: x, p, kind: 'user', name: p.username, display: p.name })) : [])]);
+  const whoOf = (x) => (x.kind === 'everyone' ? 'Everyone in Active Directory' : x.display || x.name);
+  const typeOf = (x) => (x.via ? 'User' : x.kind === 'user' && x.p?.source === 'windows' ? 'Built-in' : KIND[x.kind]);
+  const pic = (x, cls = '') => `<span class="pic ${x.kind}${cls}">${x.kind === 'user' ? esc(initials(x.display || x.name)) : svg(ICON[x.kind])}</span>`;
+  const whereText = (x) => {
+    if (x.r.id === 'admin') return 'Everything';
+    if (!scoped(x.r)) return '';
+    const s = x.m?.scope?.length ? x.m.scope : x.r.scope;
+    return s?.length ? s.map((o) => o.path).join(', ') : 'Entire domain';
+  };
+  const endsCell = (m) => (!m?.ends ? muted('Never') : ended(m) ? badge(`Ended ${day(m.ends)}`, 'grey') : daysLeft(m.ends) <= 14 ? badge(day(m.ends), 'amber') : `<span class="ell">${esc(day(m.ends))}</span>`);
+  // Why an assignment can't be changed or removed here, or ''.
+  const whyNot = (x) => {
+    if (x.via) return `Comes from ${whoOf(x.via)}. Remove the group's assignment instead.`;
+    if (x.built) return `${x.built}.`;
+    if (!mine('access.members')) return 'Your roles do not include giving roles.';
+    if (!x.r.manage) return `Only someone in a higher tier than ${x.r.name} can change who has it.`;
+    return '';
+  };
+  const lastAdmin = (x) => x.r.id === 'admin' && x.r.members.filter((m) => !ended(m)).length <= 1 && !ended(x.m);
+
+  // What the left and the address pick: a view, or one role.
+  let view = 'all';
+  let viewRole = null;
+  const shown = () => {
+    const q = $('ppl-find').value.trim().toLowerCase();
+    const base = assignments().filter((x) => (viewRole ? x.r === viewRole
+      : view === 'soon' ? x.m?.ends && !ended(x.m) && daysLeft(x.m.ends) <= 30
+        : view === 'groups' ? x.kind === 'group'
+          : view === 'local' ? x.kind === 'local' : true));
+    return withPeople(base).filter((x) => !q || [whoOf(x), x.name, x.r.name, whereText(x), x.m?.addedBy, x.m?.reason, x.via ? whoOf(x.via) : ''].some((t) => String(t || '').toLowerCase().includes(q)));
+  };
+  const grid = R.grid({
+    el: $('ppl-table'), key: 'assignments', sort: { key: 'role', dir: 1 },
+    lead: { w: 18, head: '<label class="tk"><input type="checkbox" data-pp-tick-all aria-label="Select all"></label>',
+      cell: (x) => (whyNot(x) ? '' : `<label class="tk"><input type="checkbox" data-pp-tick="${esc(x.id)}" aria-label="${esc(`Select ${whoOf(x)}`)}"${picked.has(x.id) ? ' checked' : ''}></label>`) },
+    cols: [
+      { key: 'who', label: 'Person or group', w: 240, fixed: true, get: whoOf, cell: (x) => `<div class="who">${pic(x)}<b class="ell">${esc(whoOf(x))}</b></div>` },
+      { key: 'type', label: 'Type', w: 110, on: true, get: typeOf },
+      { key: 'role', label: 'Role', w: 170, on: true, get: (x) => data.roles.indexOf(x.r), text: (x) => x.r.name, cell: (x) => dot(x.r) },
+      { key: 'tier', label: 'Tier', w: 70, on: true, get: (x) => x.r.tier, text: (x) => tierName(x.r.tier), cell: (x) => `<span class="ell">${esc(tierName(x.r.tier))}</span>` },
+      { key: 'where', label: 'Where', w: 210, on: true, get: whereText, cell: (x) => (whereText(x) ? `<span class="ell">${esc(whereText(x))}</span>` : muted('-')) },
+      { key: 'ends', label: 'Ends', w: 130, on: true, get: (x) => (x.m?.ends ? +new Date(x.m.ends) : 9e15), text: (x) => (x.m?.ends ? day(x.m.ends) : 'Never'), cell: (x) => endsCell(x.m) },
+      { key: 'from', label: 'From group', w: 170, on: true, get: (x) => (x.via ? whoOf(x.via) : ''), cell: (x) => (x.via ? `<span class="ell">${esc(whoOf(x.via))}</span>` : muted('-')) },
+      { key: 'by', label: 'Added by', w: 140, on: true, get: (x) => (x.via ? '' : x.m?.addedBy || ''), cell: (x) => (x.via || !x.m?.addedBy ? muted('-') : `<span class="ell">${esc(x.m.addedBy)}</span>`) },
+      { key: 'added', label: 'Added', w: 120, get: (x) => (x.m?.added && !x.via ? +new Date(x.m.added) : ''), text: (x) => (x.m?.added && !x.via ? day(x.m.added) : ''), cell: (x) => (x.m?.added && !x.via ? `<span class="ell">${esc(day(x.m.added))}</span>` : muted('-')) },
+      { key: 'reason', label: 'Reason', w: 260, get: (x) => (x.via ? '' : x.m?.reason || '') },
+      { key: 'seen', label: 'Last sign-in', w: 130, get: (x) => (x.p?.lastSignIn ? +new Date(x.p.lastSignIn) : ''), text: (x) => (x.p ? since(x.p.lastSignIn) : ''), cell: (x) => (x.p ? `<span class="ell">${esc(since(x.p.lastSignIn))}</span>` : muted('-')) },
+    ],
+    row: (x) => ` data-pp-row="${esc(x.id)}" tabindex="0"`, rowClass: (x) => `${x.via ? 'pp-via' : ''}${ended(x.m) ? ' off' : ''}${picked.has(x.id) ? ' picked' : ''}`,
+    empty: () => ($('ppl-find').value.trim() ? 'No assignments match.' : viewRole ? `Nobody has ${viewRole.name} yet.` : 'No assignments.'), loading: () => !data, redraw: () => drawList(), picked: () => picked.size,
+  });
+  let drawnRows = new Map(); // row id -> the row, as last drawn
+  const drawTicks = () => {
+    $('ppl-table').querySelectorAll('[data-pp-tick]').forEach((b) => { b.checked = picked.has(b.dataset.ppTick); b.closest('.tr')?.classList.toggle('picked', b.checked); });
+    const all = $('ppl-table').querySelector('[data-pp-tick-all]');
+    const can = [...drawnRows.values()].filter((x) => !whyNot(x));
+    if (all) { all.checked = !!can.length && can.every((x) => picked.has(x.id)); all.indeterminate = !all.checked && can.some((x) => picked.has(x.id)); }
+    const n = picked.size;
+    const act = $('ppl-act');
+    act.disabled = !n;
+    act.querySelector('.cnt').hidden = !n;
+    act.querySelector('.cnt').textContent = n;
+    if (n) delete act.dataset.tip;
+    else act.dataset.tip = 'Select assignments first';
+  };
+  const markRow = () => $('ppl-table').querySelectorAll('[data-pp-row]').forEach((el) => {
+    const x = drawnRows.get(el.dataset.ppRow);
+    el.classList.toggle('dw-on', !!x && R.panel.is('people') && R.panel.key === keyOf(x));
+  });
+  R.panel.el.addEventListener('close', markRow);
+  const drawList = () => {
+    const list = shown();
+    [...picked].forEach((id) => { if (!list.some((x) => x.id === id && !whyNot(x))) picked.delete(id); });
+    const rows = grid.draw(list);
+    drawnRows = new Map(rows.map((x) => [x.id, x]));
+    grid.tools($('ppl-tools'), $('ppl-rows'));
+    R.paint($('ppl-table'));
+    came.forEach((t, id) => {
+      if (Date.now() - t > 2800) { came.delete(id); return; }
+      const row = $('ppl-table').querySelector(`[data-pp-row="${CSS.escape(id)}"]`);
+      if (row && !done.has(row)) { done.add(row); R.arrive(row, t); }
     });
-    // Everyone signed in has User, whatever else they have.
-    rows.forEach((row) => {
-      if (['user', 'local'].includes(row.kind)) give(row, user, null, false);
-      row.roles.sort((a, b) => data.roles.indexOf(a.role) - data.roles.indexOf(b.role));
-      if (row.sub) return;
-      row.sub = row.kind === 'group' ? `AD group${data.domain ? ` in ${data.domain}` : ''}`
-        : row.kind === 'everyone' ? `Anyone who can sign in to ${data.domain || 'Active Directory'}`
-          : row.kind === 'local' ? 'Local account'
-            : row.source === 'windows' ? `Windows administrator · ${row.name.split('\\')[0]}`
-              : `${row.name}${row.domain ? ` · ${row.domain}` : ''}${row.seen ? '' : ' · Never signed in'}`;
-    });
-    return [...rows.values()];
-  };
-  const shelf = (row) => (row.kind === 'user' ? 'people' : row.kind === 'local' ? 'local' : 'groups');
-  const rank = (row) => (row.roles.length ? data.roles.indexOf(row.roles[0].role) : 999);
-  const nameOf = (row) => (row.kind === 'everyone' ? 'Everyone in Active Directory' : row.display || row.name);
-  // A row's own kind as a member, when it can be put in roles.
-  const asMember = (row) => (['group', 'local', 'everyone'].includes(row.kind) || (row.kind === 'user' && row.source === 'ad') ? row.kind : null);
-  // The roles someone could be given here: below the asker's own (manage), and not had directly already.
-  const giveable = (row) => (mine('access.members') && asMember(row) ? data.roles.filter((r) => r.manage && !row.roles.some((x) => x.role.id === r.id && x.direct)) : []);
-
-  const chip = (row, x) => {
-    const removable = x.direct && x.role.manage && mine('access.members') && !(x.role.id === 'admin' && x.role.members.length === 1);
-    const title = x.direct ? 'Assigned directly' : x.via ? `Through ${x.via}` : x.role.id === 'user' ? 'Assigned to everyone' : 'Built-in';
-    return `<span class="rchip${x.via ? ' via' : ''}" data-color="${esc(x.role.color)}" data-tip="${esc(title)}"><i class="dot"></i>${esc(x.role.name)}`
-      + (x.via ? `<small>${svg('users')}${esc(x.via)}</small>` : '')
-      + (removable ? `<button type="button" class="chip-x" data-take="${esc(x.role.id)}" aria-label="Remove from ${esc(x.role.name)}">${svg('x')}</button>` : '')
-      + '</span>';
-  };
-  const pic = (row) => `<span class="pic ${row.kind}${row.source === 'windows' ? ' windows' : ''}">${row.kind === 'user' ? esc(initials(row.display || row.name)) : svg(ICON[row.kind])}</span>`;
-
-  const parts = (r) => {
-    if (r.id === 'admin') return ['Everything'];
-    const found = data.catalog.filter((p) => p.actions.some((a) => r.permissions.includes(a.key))).map((p) => p.name);
-    return found.length ? found : ['No permissions'];
-  };
-  const cards = () => data.roles.map((r) => {
-    const p = parts(r);
-    const who = r.members.map(memberLabel);
-    return `<a class="rcard" href="#settings/people/role/${encodeURIComponent(r.id)}" data-color="${esc(r.color)}"><b><i class="dot"></i>${esc(r.name)}${r.id === 'admin' ? svg('lock', 'lk') : ''}</b>`
-      + `<p>${esc(r.about || '')}</p><div class="parts">${p.slice(0, 3).map((x) => `<span>${esc(x)}</span>`).join('')}${p.length > 3 ? `<span>+${p.length - 3}</span>` : ''}</div>`
-      + `<div class="n">${svg('users')}${esc(who.length ? who.join(', ') : 'No members')}</div></a>`;
-  }).join('');
-
-  const drawList = (browse) => {
-    const all = build();
-    for (const k of Object.keys(BROWSE)) $(`b-${k}`).textContent = k === 'all' ? all.length : all.filter((row) => shelf(row) === k).length;
-    const find = $('ppl-find').value.trim().toLowerCase();
-    const only = $('ppl-role-filter').value;
-    const week = $('ppl-week').checked;
-    list = all.filter((row) => (browse === 'all' || shelf(row) === browse)
-      && (source === 'any' || (source === 'local' ? row.kind === 'local' || row.kind === 'windows' || row.source === 'windows' : !['local', 'windows'].includes(row.kind) && row.source === 'ad'))
-      && (!only || row.roles.some((x) => x.role.id === only))
-      && (!week || (row.seen && Date.now() - new Date(row.seen) < 7 * 86400000))
-      && (!find || [nameOf(row), row.name, row.sub, ...row.roles.map((x) => x.role.name)].some((t) => String(t).toLowerCase().includes(find))));
-    const sort = $('ppl-sort').value;
-    list.sort((a, b) => (sort === 'name' ? 0 : sort === 'seen' ? new Date(b.seen || 0) - new Date(a.seen || 0) : rank(a) - rank(b))
-      || nameOf(a).localeCompare(nameOf(b)));
-    $('ppl-title').textContent = BROWSE[browse];
-    $('ppl-cards').hidden = browse !== 'all';
-    $('ppl-cards-label').hidden = browse !== 'all';
-    $('ppl-cards').innerHTML = cards();
-    $('ppl-rows').innerHTML = list.length ? list.map((row, i) => `<div class="prow" data-row="${i}" tabindex="0"><div class="who">${pic(row)}<div><b>${esc(nameOf(row))}</b><span>${esc(row.sub)}</span></div></div>`
-      + `<div class="chips-in">${row.roles.map((x) => chip(row, x)).join('')}${giveable(row).length ? `<button type="button" class="addrole" data-give aria-label="Assign a role to ${esc(nameOf(row))}">${svg('plus')}</button>` : ''}</div>`
-      + `<div class="seen">${esc(row.seen ? since(row.seen) : '')}</div></div>`).join('')
-      : '<div class="empty">No matches.</div>';
-    document.querySelectorAll('.side a[data-browse]').forEach((a) => current(a, a.dataset.browse === browse));
-    R.paint($('ppl-list'));
-    // The side panel follows the list: drawn again as it is now, or closed when its row has gone.
-    if (R.panel.is('people')) {
-      const row = list.find((r) => rowKey(r) === R.panel.key);
-      if (row) drawCard(row);
-      else R.panel.close();
-    }
+    drawTicks();
     markRow();
   };
 
-  // --- The column on the left: browse, the roles in order (drag to move), and filters ------------------------------
+  // --- The left: the views, then the roles under their tiers -------------------------------------------------------
 
-  let dragging = null;
-  let roleOptions = ''; // what the Role filter lists
-  const drawSide = (current) => {
-    $('ppl-roles').innerHTML = data.roles.map((r) => {
-      const movable = r.manage && !r.builtIn && mine('access.roles');
-      return `<a class="role" href="#settings/people/role/${encodeURIComponent(r.id)}" data-role="${esc(r.id)}" data-color="${esc(r.color)}"${movable ? ' draggable="true"' : ''}${r.id === current ? ' aria-current="page"' : ''}>`
-        + `${movable ? svg('grip', 'grip') : '<span class="grip"></span>'}<i class="dot"></i><span class="nm">${esc(r.name)}</span>${r.id === 'admin' ? svg('lock', 'lk') : ''}<small>${r.members.length}</small></a>`;
+  const drawSide = () => {
+    const all = assignments();
+    const n = { all: all.length, soon: all.filter((x) => x.m?.ends && !ended(x.m) && daysLeft(x.m.ends) <= 30).length, groups: all.filter((x) => x.kind === 'group').length, local: all.filter((x) => x.kind === 'local').length };
+    Object.keys(VIEWS).forEach((k) => { $(`b-${k}`).textContent = n[k]; });
+    document.querySelectorAll('#set-people .side a[data-view]').forEach((a) => current(a, !viewRole && a.dataset.view === view));
+    $('ppl-roles').innerHTML = [0, 1, 2].map((t) => {
+      const rs = data.roles.filter((r) => r.tier === t);
+      return rs.length ? `<p class="side-label">${esc(tierName(t))}${t === data.me.tier ? '<span>Yours</span>' : ''}</p>` + rs.map((r) => `<a class="role" href="#settings/people/role/${encodeURIComponent(r.id)}" data-role="${esc(r.id)}" data-color="${esc(r.color)}"${r === viewRole ? ' aria-current="page"' : ''}>`
+        + `<i class="dot"></i><span class="nm">${esc(r.name)}</span>${r.manage ? '' : svg('lock', 'lk')}<small>${all.filter((x) => x.r === r).length}</small></a>`).join('') : '';
     }).join('');
-    const pick = $('ppl-role-filter');
-    const was = pick.value;
-    const options = '<option value="">Any role</option>' + data.roles.map((r) => `<option value="${esc(r.id)}">${esc(r.name)}</option>`).join('');
-    if (options !== roleOptions) pick.innerHTML = roleOptions = options; // the same roles leave it alone, open or not
-    pick.value = data.roles.some((r) => r.id === was) ? was : '';
     $('rail-roles').textContent = data.roles.length;
+    $('pp-rule').textContent = `You are in tier ${data.me.tier}. A role can be changed only by someone in a higher tier. The same goes for giving the role to someone, and for resetting the passwords and MFA of the people who have it.`;
     R.paint($('ppl-roles'));
   };
-  $('ppl-roles').addEventListener('dragstart', (e) => {
-    dragging = e.target.closest('[draggable="true"]')?.dataset.role || null;
-    if (dragging) e.dataTransfer.effectAllowed = 'move';
-    else e.preventDefault();
-  });
-  $('ppl-roles').addEventListener('dragover', (e) => {
-    const over = e.target.closest('[draggable="true"]');
-    if (!dragging || !over || over.dataset.role === dragging) return;
-    e.preventDefault();
-    const below = e.clientY > over.getBoundingClientRect().top + over.offsetHeight / 2;
-    document.querySelectorAll('#ppl-roles .drop-above, #ppl-roles .drop-below').forEach((a) => a.classList.remove('drop-above', 'drop-below'));
-    over.classList.add(below ? 'drop-below' : 'drop-above');
-  });
-  $('ppl-roles').addEventListener('dragend', () => {
-    dragging = null;
-    document.querySelectorAll('#ppl-roles .drop-above, #ppl-roles .drop-below').forEach((a) => a.classList.remove('drop-above', 'drop-below'));
-  });
-  $('ppl-roles').addEventListener('drop', async (e) => {
-    const over = e.target.closest('[draggable="true"]');
-    if (!dragging || !over) return;
-    e.preventDefault();
-    const below = over.classList.contains('drop-below');
-    const ids = data.roles.filter((r) => !r.builtIn).map((r) => r.id).filter((id) => id !== dragging);
-    ids.splice(ids.indexOf(over.dataset.role) + (below ? 1 : 0), 0, dragging);
-    dragging = null;
-    try {
-      await R.send('/api/roles/order', { ids });
-      problem('');
-    } catch (err) {
-      problem(err.message);
-    }
-    refresh();
-  });
 
-  // --- One person, group or account in the side panel, and giving or taking away roles -------------------------------
+  // --- An assignment, or a person, in the side panel ---------------------------------------------------------------
 
-  const closeCard = () => { $('rmenu').hidden = true; }; // the role menu; the side panel stays and is drawn again
-  const place = (box, near, dx = 0) => R.place(box, near, $('set-people'), dx);
-  const rowKey = (row) => `${row.kind}:${row.name}`;
-  const markRow = () => document.querySelectorAll('#ppl-rows [data-row]').forEach((el) => el.classList.toggle('dw-on', R.panel.shows('people', rowKey(list[Number(el.dataset.row)] || {}))));
-  R.panel.el.addEventListener('close', markRow);
-  const allowedOf = (row) => {
-    if (row.roles.some((x) => x.role.id === 'admin')) return null; // everything
-    return new Set(row.roles.flatMap((x) => x.role.permissions));
+  const keyOf = (x) => (x.via || (x.kind === 'local' && x.built) ? `p:${x.kind}:${x.name}` : `a:${x.id}`);
+  const head = (picHtml, title, sub) => `<div class="dw-head">${picHtml}<div class="dw-name"><h2 id="dw-title">${esc(title)}</h2><p>${esc(sub)}</p></div>`
+    + `<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`;
+  const gives = (r, where) => {
+    if (r.id === 'admin') return '<ul class="does"><li><b>Everything</b><span>The Administrator role has every permission.</span></li></ul>';
+    return `<ul class="does">${data.catalog.map((p) => {
+      const on = p.actions.filter((a) => r.permissions.includes(a.key));
+      return on.length ? `<li><b>${esc(p.name)}</b><span>${esc(on.map((a) => lower(a.name)).join(', '))}${p.key === 'ad' && where ? `. Where: ${esc(where)}` : ''}</span></li>` : '';
+    }).join('') || '<li><span>No permissions.</span></li>'}</ul>`;
   };
-  // Its roles (each with a way out), roles to give, what they can do, and for a local account its password and removal.
-  let panelRow = null;
-  const drawCard = (row) => {
-    panelRow = row;
-    const can = allowedOf(row);
-    const does = can === null ? '<li><b>Everything</b><span>The Administrator role has every permission.</span></li>'
-      : data.catalog.map((p) => {
-        const on = p.actions.filter((a) => can.has(a.key));
-        return on.length ? `<li><b>${esc(p.name)}</b><span>${esc(on.map((a) => a.name.charAt(0).toLowerCase() + a.name.slice(1)).join(', '))}</span></li>` : '';
-      }).join('') || '<li><span>No permissions.</span></li>';
-    const give = giveable(row);
-    const acts = row.kind === 'local' && mine('access.local')
-      ? `<div class="dw-bar"><button type="button" class="dw-qa" data-password>${svg('key')}<span>New password</span></button><button type="button" class="dw-qa" data-remove-account>${svg('trash')}<span>Delete account</span></button></div>` : '';
-    // MFA, for someone who signs in: whether their authenticator app is set up, and Reset for a lost phone.
-    const needs = row.roles.filter((x) => x.role.mfa).map((x) => x.role.name);
-    const mfa = !['user', 'local'].includes(row.kind) ? ''
-      : `<section class="dw-sec"><div class="dw-sec-head"><h3>MFA</h3>${row.mfa && mine('access.mfa') ? `<button type="button" class="small" data-reset-mfa>${svg('refresh')}Reset MFA</button>` : ''}</div>`
-        + `<p class="dw-how">${esc(row.mfa ? `Enabled since ${R.when(row.mfa)}.` : needs.length ? 'Not set up. Setup is required at the next sign-in.' : 'Not set up.')}${needs.length ? ` Required by ${esc(needs.join(', '))}.` : ''}</p></section>`;
-    R.panel.body.innerHTML = `<div class="dw-head">${pic(row).replace('class="pic', 'class="pic dw-pic')}<div class="dw-name"><h2 id="dw-title">${esc(nameOf(row))}</h2>`
-      + `<p>${esc(row.sub)}${row.seen ? ` · ${esc(since(row.seen).toLowerCase())}` : ''}</p></div><button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>${acts}`
-      + `<section class="dw-sec"><div class="dw-sec-head"><h3>Roles <small>${row.roles.length}</small></h3></div><div class="chips-in">${row.roles.map((x) => chip(row, x)).join('') || '<span class="muted">None</span>'}</div>`
-      + (row.kind === 'group' ? `<p class="dw-how">Members of ${esc(nameOf(row))}, including members of nested groups, get these roles when they sign in. Each user's role shows the group it comes from.</p>` : '') + `</section>${mfa}`
-      + (give.length ? `<section class="dw-sec"><div class="dw-sec-head"><h3>Assign a role</h3></div><div class="chips-in dw-give">${give.map((r) => `<button type="button" class="small" data-give-role="${esc(r.id)}" data-color="${esc(r.color)}"><i class="dot"></i>${esc(r.name)}</button>`).join('')}</div></section>` : '')
-      + `<section class="dw-sec"><div class="dw-sec-head"><h3>${row.kind === 'group' || row.kind === 'everyone' ? 'Permissions granted' : 'Effective permissions'}</h3></div><ul class="does">${does}</ul></section>`;
+  let panelOn = null; // what the side panel shows: { a } or { p }
+  const openAssign = (x, again = false) => {
+    const r = x.r;
+    const m = x.m;
+    const why = whyNot(x);
+    const reach = reachOf(x);
+    const person = ['user', 'local'].includes(x.kind);
+    panelOn = { a: x.id };
+    R.panel.body.innerHTML = head(pic(x, ' dw-pic'), whoOf(x), `${r.name} · ${tierName(r.tier)}`)
+      + `<div class="dw-bar">${R.editButton('data-pp-edit', why)}${qa('data-pp-open-role', 'shield', `Open ${r.name}`)}`
+      + (person ? qa('data-pp-open-person', 'user', `Open ${whoOf(x)}`) : '')
+      + (why || lastAdmin(x) ? '' : qa('data-pp-remove', 'user-minus', 'Remove assignment')) + '</div>'
+      + strip([['Type', esc(typeOf(x))], ['Role', esc(r.name)], ['Tier', esc(tierName(r.tier))], ['Where', esc(whereText(x) || 'Not used')], ['Ends', m?.ends ? (ended(m) ? badge(`Ended ${day(m.ends)}`, 'grey') : esc(day(m.ends))) : 'Never'],
+        ['Added by', esc(m?.addedBy || 'Built-in')], ...(m?.added ? [['Added', esc(day(m.added))]] : [])])
+      + (m?.reason ? sec('Reason', `<p class="dw-how">${esc(m.reason)}</p>`) : '')
+      + (x.built ? sec('Built-in', `<p class="dw-how">${esc(x.built)}. It cannot be removed.</p>`) : '')
+      + (ended(m) ? sec('Ended', `<p class="dw-how">This assignment ended on ${esc(day(m.ends))} and no longer gives ${esc(r.name)}. Edit it to set a new end date, or remove it.</p>`) : '')
+      + (scoped(r) ? sec('Where', `<p class="dw-how">${esc(m?.scope?.length ? `Its Active Directory tasks work only on what is in ${m.scope.map((o) => o.path).join(', ')}, child OUs included.` : 'Its Active Directory tasks work on every user, group and computer the service account can reach.')}</p>`) : '')
+      + sec(`What it gives <small>${r.id === 'admin' ? 'All' : r.permissions.length}</small>`, gives(r, whereText(x)))
+      + (reach ? sec(`Who it reaches <small>${reach.length}</small>`, reach.length ? `<div class="dw-list">${reach.map((p) => `<div class="mrow pp-mrow" data-pp-person="user:${esc(p.username)}" tabindex="0">${pic({ kind: 'user', name: p.username, display: p.name })}`
+        + `<span class="pp-two"><b>${esc(p.name || p.username)}</b><small>${esc(p.username)}</small></span><span class="muted">${esc(since(p.lastSignIn))}</span></div>`).join('')}</div>`
+        + `<p class="dw-how">${esc(x.kind === 'group' ? `Members of ${whoOf(x)}, including members of nested groups, get ${r.name} when they sign in. People who have not signed in yet are not listed.` : 'People who have signed in.')}</p>`
+        : `<p class="muted dw-empty">Nobody it reaches has signed in yet.</p>`) : '');
     R.paint(R.panel.body);
-  };
-  // Clicking the row that's open closes it; another row opens in its place.
-  const openCard = (i) => {
-    const row = list[i];
-    if (R.panel.shows('people', rowKey(row))) {
-      R.panel.close();
-      return;
-    }
-    closeCard();
-    drawCard(row);
-    R.panel.open('people', rowKey(row));
+    if (!again) R.panel.open('people', keyOf(x));
     markRow();
   };
-  const openMenu = (i, el) => {
-    const row = list[i];
-    $('rmenu').innerHTML = `<p>Assign a role to ${esc(nameOf(row))}</p>` + giveable(row).map((r) => `<button type="button" data-give-role="${esc(r.id)}" data-color="${esc(r.color)}"><i class="dot"></i>${esc(r.name)}</button>`).join('');
-    $('rmenu').dataset.row = i;
-    R.paint($('rmenu'));
-    place($('rmenu'), el);
+  // A person or local account: every role they get, how (directly, from a group, or everyone), and the assignment behind it.
+  const personOf = (kind, name) => {
+    const p = data.people.find((q) => (kind === 'local' ? q.source === 'local' : q.source !== 'local') && same(q.username, name));
+    const got = [];
+    const add = (r, how, m, via) => { if (!got.some((g) => g.r === r && g.m === m)) got.push({ r, how, m, via }); };
+    data.roles.forEach((r) => r.members.forEach((m) => {
+      if (ended(m)) return;
+      if (m.kind === kind && same(m.name, name)) add(r, 'Given directly', m, null);
+      else if (kind === 'user' && p?.source === 'ad' && m.kind === 'group' && p.groups.some((g) => same(g, m.name))) add(r, `From ${m.name}`, m, m.name);
+      else if (kind === 'user' && p?.source === 'ad' && m.kind === 'everyone') add(r, 'Everyone in Active Directory', m, 'everyone');
+    }));
+    if (p?.source === 'windows') add(role('admin'), 'Windows administrators', null, 'windows');
+    if (!got.some((g) => g.r.id === 'user')) add(role('user'), kind === 'local' ? 'Local accounts always have User' : 'Everyone has User', null, 'all');
+    got.sort((a, b) => data.roles.indexOf(a.r) - data.roles.indexOf(b.r));
+    const display = p?.name || data.roles.flatMap((r) => r.members).find((m) => m.kind === kind && same(m.name, name))?.display || null;
+    return { kind, name, display, p, got, source: kind === 'local' ? 'local' : p?.source || 'ad' };
   };
-  const giveRole = async (row, id) => {
-    try {
-      await R.send(`/api/roles/${encodeURIComponent(id)}/members`, { kind: asMember(row), name: row.name, display: row.display });
-      problem('');
-    } catch (err) {
-      problem(err.message);
+  const openPerson = (kind, name, again = false) => {
+    const x = personOf(kind, name);
+    panelOn = { p: `${kind}:${name}` };
+    const all = x.got.some((g) => g.r.id === 'admin');
+    const can = new Set(x.got.flatMap((g) => g.r.permissions));
+    const top = Math.min(...x.got.map((g) => g.r.tier));
+    const local = kind === 'local';
+    const does = all ? '<li><b>Everything</b><span>The Administrator role has every permission.</span></li>'
+      : data.catalog.map((p) => {
+        const on = p.actions.filter((a) => can.has(a.key));
+        return on.length ? `<li><b>${esc(p.name)}</b><span>${esc(on.map((a) => lower(a.name)).join(', '))}</span></li>` : '';
+      }).join('') || '<li><span>No permissions.</span></li>';
+    const giveable = mine('access.members') && (local || x.source === 'ad');
+    R.panel.body.innerHTML = head(pic({ kind: local ? 'local' : 'user', name, display: x.display }, ' dw-pic'), x.display || name,
+      local ? 'Local account' : x.source === 'windows' ? `Windows administrator · ${name.split('\\')[0]}` : `${name}${x.p?.domain ? ` · ${x.p.domain}` : ''}`)
+      + '<div class="dw-bar">'
+      + (giveable ? qa('data-pp-give-to', 'user-plus', 'Give a role') : '')
+      + (local && mine('access.local') ? qa('data-password', 'key', 'New password') + qa('data-remove-account', 'trash', 'Delete account') : '')
+      + (x.p?.mfa && mine('access.mfa') ? qa('data-reset-mfa', 'refresh', 'Reset MFA') : '') + '</div>'
+      + strip([['Signed in with', local ? 'Local account' : x.source === 'windows' ? 'Windows' : 'Active Directory'], ['Highest tier', esc(tierName(top))], ['Roles', String(x.got.length)],
+        ['MFA', x.p?.mfa ? badge('Set up', 'green') : badge('Not set up', 'amber')], ['Last sign-in', esc(since(x.p?.lastSignIn))]])
+      + sec(`Roles <small>${x.got.length}</small>`, `<div class="dw-list">${x.got.map((g) => `<div class="mrow pp-mrow"${g.m ? ` data-pp-assign="${esc(aid(g.r, g.m))}" tabindex="0"` : ''}>`
+        + `<span class="pp-two">${dot(g.r)}<small>${esc(`${tierName(g.r.tier)} · ${g.how}`)}</small></span>`
+        + `<span class="pp-two pp-end">${scoped(g.r) ? `<span class="ell">${esc(whereText({ r: g.r, m: g.m }))}</span>` : ''}<small>${g.m?.ends ? `Until ${esc(day(g.m.ends))}` : 'No end date'}</small></span></div>`).join('')}</div>`)
+      + sec('MFA', `<p class="dw-how">${esc(x.p?.mfa ? `Set up since ${R.when(x.p.mfa)}.` : 'Not set up. Setup is required at the next sign-in.')}</p>`)
+      + sec('Effective permissions', `<ul class="does">${does}</ul>`);
+    R.paint(R.panel.body);
+    if (!again) R.panel.open('people', `p:${kind}:${name}`);
+    markRow();
+  };
+  const openRow = (x) => {
+    if (R.panel.is('people') && R.panel.key === keyOf(x)) { R.panel.close(); return; }
+    if (x.via) openPerson('user', x.name);
+    else if (x.kind === 'local' && x.built) openPerson('local', x.name);
+    else openAssign(x);
+  };
+  const assignOf = (id) => assignments().find((x) => x.id === id);
+  // The side panel follows the list: drawn again as it is now, or closed when what it shows has gone.
+  const panelAgain = () => {
+    if (!R.panel.is('people') || !panelOn) return;
+    if (panelOn.a) {
+      const x = assignOf(panelOn.a);
+      if (x) openAssign(x, true);
+      else R.panel.close();
+    } else {
+      const [kind, ...rest] = panelOn.p.split(':');
+      openPerson(kind, rest.join(':'), true);
     }
-    closeCard();
-    refresh();
   };
-  const TAKE_OUT = 'Permissions granted only by this role are removed. Other role assignments are not affected.';
-  const takeRole = (row, id) => {
-    const r = role(id);
-    sure(`Remove ${nameOf(row)} from ${r.name}?`, TAKE_OUT, 'Remove', async () => {
+
+  // --- Removing assignments --------------------------------------------------------------------------------------
+
+  const TAKE_OUT = 'Permissions given only by these assignments are removed. Other roles are not affected.';
+  const remove = (xs) => {
+    const list = xs.filter((x) => !whyNot(x));
+    if (!list.length) return;
+    const one = list.length === 1 ? list[0] : null;
+    sure(one ? `Remove ${whoOf(one)} from ${one.r.name}?` : `Remove ${list.length} assignments?`, TAKE_OUT, 'Remove', async () => {
+      let n = 0;
       try {
-        await R.send(`/api/roles/${encodeURIComponent(id)}/members/remove`, { kind: asMember(row), name: row.name });
-        problem('');
+        for (const x of list) {
+          await R.send(`/api/roles/${encodeURIComponent(x.r.id)}/members/remove`, { kind: x.kind, name: x.name });
+          n += 1;
+          picked.delete(x.id);
+        }
+        R.toast('Removed.', one ? `${whoOf(one)} no longer has ${one.r.name}.` : `${n} assignments removed.`);
       } catch (err) {
-        problem(err.message);
+        R.toast(n ? `Removed ${n} of ${list.length}.` : 'Could not remove the assignment.', err.message, { tone: 'warn' });
       }
-      closeCard();
       refresh();
     });
   };
-  const onRowClick = (e, box) => {
-    const host = e.target.closest('[data-row]');
-    if (!host) return;
-    const i = Number(host.dataset.row);
-    const row = list[i];
-    const take = e.target.closest('[data-take]');
-    if (take) return takeRole(row, take.dataset.take);
-    if (e.target.closest('[data-give]')) return openMenu(i, e.target.closest('[data-give]'));
-    if (box === 'rows') openCard(i);
-  };
-  $('ppl-rows').addEventListener('click', (e) => onRowClick(e, 'rows'));
-  $('ppl-rows').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && e.target.matches('[data-row]')) openCard(Number(e.target.dataset.row));
+  $('ppl-act').addEventListener('click', () => {
+    const xs = [...picked].map(assignOf).filter(Boolean);
+    R.actions.open($('ppl-act'), {
+      items: [{ act: 'edit', label: 'Change where and when it ends…', disabled: xs.length !== 1 }, { act: 'clear', label: 'Clear selection' }, '-',
+        { act: 'remove', label: 'Remove assignments…', hint: String(xs.length), danger: true }],
+      pick: (act) => {
+        if (act === 'edit' && xs.length === 1) openGive({ edit: xs[0] });
+        else if (act === 'clear') { picked.clear(); drawList(); }
+        else if (act === 'remove') remove(xs);
+      },
+    });
   });
+  $('ppl-table').addEventListener('change', (e) => {
+    const t = e.target.closest('[data-pp-tick]');
+    if (t) {
+      if (t.checked) picked.add(t.dataset.ppTick);
+      else picked.delete(t.dataset.ppTick);
+      drawTicks();
+      return;
+    }
+    if (e.target.closest('[data-pp-tick-all]')) {
+      const can = [...drawnRows.values()].filter((x) => !whyNot(x));
+      if (e.target.checked) can.forEach((x) => picked.add(x.id));
+      else can.forEach((x) => picked.delete(x.id));
+      drawTicks();
+    }
+  });
+  $('ppl-table').addEventListener('click', (e) => {
+    if (e.target.closest('.tk, button, a, input')) return;
+    const row = e.target.closest('[data-pp-row]');
+    const x = row && drawnRows.get(row.dataset.ppRow);
+    if (x) openRow(x);
+  });
+  $('ppl-table').addEventListener('keydown', (e) => {
+    const row = e.key === 'Enter' && e.target.matches('[data-pp-row]') ? drawnRows.get(e.target.dataset.ppRow) : null;
+    if (row) openRow(row);
+  });
+  $('ppl-expand').checked = expand;
+  $('ppl-expand').addEventListener('change', (e) => {
+    expand = e.target.checked;
+    try { localStorage.setItem(EXPAND, expand ? '1' : '0'); } catch { /* not kept, then */ }
+    drawList();
+  });
+
+  // Clicks in the side panel.
   R.panel.el.addEventListener('click', (e) => {
-    if (!R.panel.is('people') || !panelRow) return;
-    const row = panelRow;
-    const take = e.target.closest('[data-take]');
-    if (take) return takeRole(row, take.dataset.take);
-    const give = e.target.closest('[data-give-role]');
-    if (give) return giveRole(row, give.dataset.giveRole);
-    if (e.target.closest('[data-reset-mfa]')) {
-      sure(`Reset MFA for ${nameOf(row)}?`, 'Their current authenticator app stops working. You receive a one-time code to give them, which they enter with their password to set up MFA on a new device.', 'Reset MFA', async () => {
+    if (!R.panel.is('people') || !panelOn) return;
+    const on = (attr) => e.target.closest(`[${attr}]`);
+    const x = panelOn.a ? assignOf(panelOn.a) : null;
+    const [pk, ...pn] = panelOn.p ? panelOn.p.split(':') : [];
+    const pname = pn.join(':');
+    if (on('data-pp-edit') && x && !whyNot(x)) openGive({ edit: x });
+    else if (on('data-pp-remove') && x) remove([x]);
+    else if (on('data-pp-open-role') && x) location.hash = `#settings/people/role/${encodeURIComponent(x.r.id)}`;
+    else if (on('data-pp-open-person') && x) openPerson(x.kind, x.name);
+    else if (on('data-pp-person')) { const [k, ...n] = on('data-pp-person').dataset.ppPerson.split(':'); openPerson(k, n.join(':')); }
+    else if (on('data-pp-assign')) { const a = assignOf(on('data-pp-assign').dataset.ppAssign); if (a) openAssign(a); }
+    else if (on('data-pp-give-to') && pk) {
+      const who = personOf(pk, pname);
+      openGive({ who: { kind: pk, name: pname, display: who.display } });
+    } else if (on('data-reset-mfa') && pk) {
+      const who = personOf(pk, pname);
+      sure(`Reset MFA for ${who.display || pname}?`, 'Their current authenticator app stops working. You receive a one-time code to give them, which they enter with their password to set up MFA on a new device.', 'Reset MFA', async () => {
         try {
-          const given = await R.send('/api/mfa/reset', { source: row.source, username: row.name });
+          const given = await R.send('/api/mfa/reset', { source: who.source, username: pname });
           problem('');
-          closeCard();
           refresh();
           // Shown once: the server keeps only its hash.
-          sure(`One-time code for ${nameOf(row)}`, `They enter this code after their password at the next sign-in to set up MFA again. The code works once, expires in ${given.hours} hours and is not shown again.`,
+          sure(`One-time code for ${who.display || pname}`, `They enter this code after their password at the next sign-in to set up MFA again. The code works once, expires in ${given.hours} hours and is not shown again.`,
             'Done', null, { code: given.code, safe: true, info: true });
         } catch (err) {
-          problem(err.message);
-          closeCard();
+          R.toast('Could not reset MFA.', err.message, { tone: 'warn' });
           refresh();
         }
       });
-      return;
-    }
-    if (e.target.closest('[data-password]')) {
-      $('password-lead').textContent = `For the local account ${row.name}. All of its sessions are signed out.`;
+    } else if (on('data-password') && pk === 'local') {
+      $('password-lead').textContent = `For the local account ${pname}. All of its sessions are signed out.`;
       $('pw-new').value = '';
       $('pw-problem').hidden = true;
-      $('password-dialog').dataset.user = row.name;
+      $('password-dialog').dataset.user = pname;
       $('password-dialog').showModal();
-    } else if (e.target.closest('[data-remove-account]')) {
-      sure(`Delete the local account ${row.name}?`, 'All of its sessions are signed out immediately.', 'Delete account', async () => {
+    } else if (on('data-remove-account') && pk === 'local') {
+      sure(`Delete the local account ${pname}?`, 'All of its sessions are signed out immediately, and its assignments are removed.', 'Delete account', async () => {
         try {
-          await R.send(`/api/accounts/${encodeURIComponent(row.name)}/remove`);
-          problem('');
+          await R.send(`/api/accounts/${encodeURIComponent(pname)}/remove`);
+          R.panel.close();
+          R.toast('Account deleted.', `${pname} can no longer sign in.`);
         } catch (err) {
-          problem(err.message);
+          R.toast('Could not delete the account.', err.message, { tone: 'warn' });
         }
-        closeCard();
         refresh();
       });
     }
   });
-  $('rmenu').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-give-role]');
-    if (b) giveRole(list[Number($('rmenu').dataset.row)], b.dataset.giveRole);
+  R.panel.el.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' || !R.panel.is('people')) return;
+    if (e.target.matches('[data-pp-person], [data-pp-assign]')) e.target.click();
   });
-  R.popups('#rmenu, [data-give]', closeCard);
   $('pw-cancel').addEventListener('click', () => $('password-dialog').close());
   $('pw-save').addEventListener('click', async () => {
     try {
       await R.send(`/api/accounts/${encodeURIComponent($('password-dialog').dataset.user)}/password`, { password: $('pw-new').value });
       $('password-dialog').close();
+      R.toast('Password changed.', 'All of its sessions are signed out.');
     } catch (err) {
       say('pw-problem', err.message);
     }
   });
 
-  // --- One role: Display, Permissions and Members ------------------------------------------------------------------
+  // --- Give a role, or change an assignment ------------------------------------------------------------------------
 
-  const editable = (r) => r.manage && mine('access.roles') && r.id !== 'admin';
-  const dirty = (r) => draft && draft.id === r.id && (draft.name !== r.name || draft.about !== (r.about || '') || draft.color !== r.color
-    || draft.permissions.size !== r.permissions.length || r.permissions.some((p) => !draft.permissions.has(p))
-    || draft.scope.length !== r.scope.length || r.scope.some((s) => !draft.scope.includes(s.dn)));
-  const fresh = (r) => ({ id: r.id, name: r.name, about: r.about || '', color: r.color, permissions: new Set(r.permissions), scope: r.scope.map((s) => s.dn) });
-
-  // A role's scope: the OUs its Active Directory permissions work in. None is everywhere the service account reaches.
-  let ous = null; // the OUs to pick from, once asked for, with the problem when they can't be listed
-  let roleTab = 'permissions';
+  // The OUs to pick from, once asked for, with the problem when they can't be listed.
+  let ous = null;
   const askOus = async () => {
     if (ous) return;
-    ous = { loading: true };
+    ous = { list: [], loading: true };
     try {
       ous = { list: mine('ad.view') ? await R.get('/api/ad/places') : [] };
     } catch (err) {
       ous = { list: [], problem: err.message };
     }
-    if (draft && role(draft.id) && !$('role-view').hidden) drawRole(role(draft.id), roleTab);
+    if ($('give-dialog').open) drawGive();
   };
-  const ouPath = (dn) => data.roles.flatMap((r) => r.scope).find((s) => s.dn === dn)?.path || ous?.list?.find((p) => p.dn === dn)?.path
+  const pathOf = (dn) => data.roles.flatMap((r) => [...r.scope, ...r.members.flatMap((m) => m.scope || [])]).find((s) => same(s.dn, dn))?.path
+    || ous?.list?.find((p) => same(p.dn, dn))?.path
     || dn.split(/(?<!\\),/).filter((p) => !/^DC=/i.test(p)).map((p) => p.slice(p.indexOf('=') + 1)).reverse().join(' / ') || dn;
-  const scopeRow = (r, can) => {
-    if (r.id === 'admin') return '';
-    if (!ous) askOus();
-    const left = (ous?.list || []).filter((p) => !draft.scope.includes(p.dn));
-    const chips = draft.scope.map((dn) => `<span class="gchip" title="${esc(dn)}">${svg('folder')}${esc(ouPath(dn))}`
-      + (can ? `<button type="button" class="chip-x" data-scope-x="${esc(dn)}" aria-label="Remove ${esc(ouPath(dn))}">${svg('x')}</button>` : '') + '</span>').join('');
-    const say = draft.scope.length ? 'This role\'s Active Directory permissions apply only to these OUs and the objects in them.'
-      : 'Everything the service account has access to. Add an OU to limit this role\'s Active Directory permissions to that OU.';
-    const why = ous?.problem ? ` Could not list OUs: ${ous.problem}` : '';
-    return `<div class="row still scope"><span class="t"><b>Scope</b><span>${esc(say + why)}</span>${chips ? `<span class="scope-ous">${chips}</span>` : ''}</span>`
-      + (can && left.length ? `<span class="ou-row"><select id="role-scope-add" aria-label="Add an OU"><option value="">Add an OU…</option>`
-        + left.map((p) => `<option value="${esc(p.dn)}">${esc(p.path || p.name)}</option>`).join('')
-        + `</select><button type="button" data-browse-ou="role-scope-add">${svg('folder')}Browse…</button></span>` : '') + '</div>';
+  const under = (dn, top) => same(dn, top) || dn.toLowerCase().endsWith(`,${top.toLowerCase()}`);
+  const tidy = (dns) => dns.filter((dn, i) => !dns.some((o, k) => k !== i && under(dn, o) && !same(dn, o)) && dns.findIndex((o) => same(o, dn)) === i);
+  const isoDay = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+  let gv = null; // { edit, who, role, w, ous, e, date }
+  const openGive = ({ who = null, role: rid = '', edit = null } = {}) => {
+    if (!mine('access.members')) return;
+    const m = edit?.m;
+    gv = edit
+      ? { edit, who: { kind: edit.kind, name: edit.name, display: edit.display }, role: edit.r.id, w: m.scope?.length ? 'ous' : 'all', ous: (m.scope || []).map((s) => s.dn),
+        e: m.ends ? 'date' : 'never', date: isoDay(m.ends && !ended(m) ? new Date(m.ends) : new Date(Date.now() + 30 * DAY)) }
+      : { edit: null, who, role: rid, w: 'all', ous: [], e: 'never', date: isoDay(new Date(Date.now() + 30 * DAY)) };
+    $('give-title').textContent = edit ? 'Change the assignment' : 'Give a role';
+    $('give-lead').textContent = edit ? `${whoOf(edit)} has ${edit.r.name}. Change where it works, when it ends and why.`
+      : 'Choose who gets the role, which role, where in Active Directory it works, and when it ends.';
+    $('gv-go').textContent = edit ? 'Save' : 'Give role';
+    $('gv-who-row').hidden = !!edit;
+    $('gv-role-row').hidden = !!edit;
+    $('gv-reason').value = m?.reason || '';
+    $('gv-find').value = '';
+    $('gv-drop').hidden = true;
+    $('gv-problem').hidden = true;
+    drawGive();
+    $('give-dialog').showModal();
+    if (!edit && !who) $('gv-find').focus();
+    if (mine('ad.view')) askOus();
   };
+  const hasDirect = (r, who) => r.members.some((m) => m.kind === who.kind && same(m.name, who.name));
+  const whyRole = (r) => {
+    const who = gv.who;
+    if (!r.manage) return `Only someone in a higher tier than ${r.name} can give it.`;
+    if (who && hasDirect(r, who)) return `${whoOf(who)} already has ${r.name}.`;
+    if (who?.kind === 'local' && r.id === 'user') return 'Local accounts always have User.';
+    return '';
+  };
+  const drawGive = () => {
+    const who = gv.who;
+    $('gv-who').innerHTML = who ? `<div class="pp-picked">${pic(who)}<span class="pp-two"><b>${esc(whoOf(who))}</b><small>${esc(KIND[who.kind])}${who.kind === 'user' && who.display ? ` · ${esc(who.name)}` : ''}</small></span>`
+      + `<button type="button" class="icon" data-gv-clear data-tip="Clear" aria-label="Clear">${svg('x')}</button></div>` : '';
+    $('gv-adder').hidden = !!who;
+    $('gv-roles').innerHTML = [0, 1, 2].map((t) => data.roles.filter((r) => r.tier === t).map((r) => {
+      const off = whyRole(r);
+      if (off && gv.role === r.id && !gv.edit) gv.role = '';
+      return `<label class="pp-ropt${off ? ' off' : ''}"${off ? ` data-tip="${esc(off)}"` : ''} data-color="${esc(r.color)}"><input type="radio" name="gv-role" value="${esc(r.id)}"${gv.role === r.id ? ' checked' : ''}${off ? ' disabled' : ''}>`
+        + `<i class="dot"></i><b>${esc(r.name)}</b><span class="pp-rtier">${esc(tierName(r.tier))}</span><span class="pp-rn">${r.id === 'admin' ? 'Every permission' : plural(r.permissions.length, 'permission', 'permissions')}</span></label>`;
+    }).join('')).join('');
+    const r = gv.role ? role(gv.role) : null;
+    const left = (ous?.list || []).filter((p) => !gv.ous.some((dn) => same(dn, p.dn)));
+    const root = (ous?.list || [])[0]?.dn.split(/(?<!\\),/).filter((p) => /^DC=/i.test(p)).join(',');
+    $('gv-where').innerHTML = !r ? '<p class="pp-fh">Select a role first.</p>'
+      : r.id === 'admin' ? '<p class="pp-fh">Administrator works on everything, so Where does not apply.</p>'
+        : !scoped(r) ? `<p class="pp-fh">${esc(r.name)} has no Active Directory tasks, so Where does not apply.</p>`
+          : `<div class="seg pp-seg"><button type="button" data-gv-w="all" aria-pressed="${gv.w === 'all'}">Entire domain</button><button type="button" data-gv-w="ous" aria-pressed="${gv.w === 'ous'}">Only these OUs</button></div>`
+            + (gv.w === 'ous' ? `<div class="ou-row pp-ourow"><select id="gv-ou" aria-label="Add an OU"><option value="">${ous?.loading ? 'Reading OUs…' : 'Add an OU…'}</option>`
+              + (root ? `<option value="${esc(root)}" data-fixed="Select an OU. For everything, select Entire domain.">${esc(root.split(',').map((p) => p.slice(3)).join('.'))}</option>` : '')
+              + left.map((p) => `<option value="${esc(p.dn)}">${esc(p.path || p.name)}</option>`).join('')
+              + `</select><button type="button" data-browse-ou="gv-ou"${left.length ? '' : ' disabled'}>${svg('folder')}Browse…</button></div>`
+              + `<div class="scope-ous pp-ous">${gv.ous.map((dn) => `<span class="gchip" data-tip="${esc(dn)}">${svg('folder')}${esc(pathOf(dn))}<button type="button" class="chip-x" data-gv-oux="${esc(dn)}" aria-label="${esc(`Remove ${pathOf(dn)}`)}">${svg('x')}</button></span>`).join('')
+                || '<span class="pp-fh">Add at least one OU. Child OUs are included.</span>'}</div>` : '')
+            + (ous?.problem ? `<p class="pp-fh">Could not list OUs: ${esc(ous.problem)}</p>` : '')
+            + `<p class="pp-fh">${gv.w === 'all' ? 'Its Active Directory tasks work on every user, group and computer the service account can reach.' : 'Its Active Directory tasks work only on what is in these OUs.'}</p>`;
+    $('gv-ends').innerHTML = `<div class="seg pp-seg"><button type="button" data-gv-e="never" aria-pressed="${gv.e === 'never'}">Never</button><button type="button" data-gv-e="date" aria-pressed="${gv.e === 'date'}">On a date</button></div>`
+      + (gv.e === 'date' ? `<input type="date" class="pp-input pp-date" id="gv-date" value="${gv.date}" min="${isoDay(new Date())}" max="${isoDay(new Date(Date.now() + 5 * 365 * DAY))}" aria-label="Ends on">` : '')
+      + `<p class="pp-fh">${gv.e === 'date' ? 'The assignment stops working at the end of that day. The activity log records it.' : 'The assignment stays until someone removes it.'}</p>`;
+    R.paint($('give-dialog'));
+    sumGive();
+  };
+  const placesOf = (r) => (r && scoped(r) && gv.w === 'ous' ? [...gv.ous] : []);
+  const endsOf = () => (gv.e === 'date' && gv.date ? new Date(`${gv.date}T23:59:59`).toISOString() : null);
+  const sumGive = () => {
+    const r = gv.role ? role(gv.role) : null;
+    const okWhere = !r || !scoped(r) || gv.w === 'all' || gv.ous.length;
+    $('gv-go').disabled = !(gv.who && r && okWhere && (gv.e === 'never' || gv.date));
+    const box = $('gv-sum');
+    box.hidden = !(gv.who && r);
+    if (box.hidden) return;
+    const where = scoped(r) ? ` in ${gv.w === 'all' ? 'the entire domain' : gv.ous.length ? gv.ous.map(pathOf).join(', ') : '…'}` : '';
+    box.innerHTML = `${svg('info')}<span><b>${esc(whoOf(gv.who))}</b> ${gv.edit ? 'keeps' : 'gets'} <b>${esc(r.name)}</b>${esc(where)}${gv.e === 'date' && gv.date ? ` until ${esc(day(`${gv.date}T12:00`))}` : ''}.`
+      + `${gv.who.kind === 'group' ? ` Everyone in ${esc(whoOf(gv.who))}, including nested groups, gets it when they sign in.` : ''}</span>`;
+  };
+  R.dropdown($('gv-adder'), {
+    find: async (text) => {
+      const found = await search(text);
+      return { items: found.entries, note: found.problem };
+    },
+    draw: (e, i) => entry(e, ` data-pick="${i}"`),
+    pick: (x) => {
+      gv.who = { kind: x.kind, name: x.name, display: x.display };
+      drawGive();
+    },
+  });
+  $('give-dialog').addEventListener('click', (e) => {
+    const on = (attr) => e.target.closest(`[${attr}]`);
+    if (on('data-gv-clear')) { gv.who = null; drawGive(); $('gv-find').focus(); return; }
+    if (on('data-gv-w')) { gv.w = on('data-gv-w').dataset.gvW; drawGive(); return; }
+    if (on('data-gv-e')) { gv.e = on('data-gv-e').dataset.gvE; drawGive(); return; }
+    if (on('data-gv-oux')) { gv.ous = gv.ous.filter((dn) => !same(dn, on('data-gv-oux').dataset.gvOux)); drawGive(); }
+  });
+  $('give-dialog').addEventListener('change', (e) => {
+    if (e.target.name === 'gv-role') { gv.role = e.target.value; drawGive(); return; }
+    if (e.target.id === 'gv-ou' && e.target.value) {
+      const o = e.target.selectedOptions[0];
+      if (!o?.dataset.fixed) gv.ous = tidy([...gv.ous, e.target.value]);
+      drawGive();
+      return;
+    }
+    if (e.target.id === 'gv-date') { gv.date = e.target.value; sumGive(); }
+  });
+  $('give-dialog').addEventListener('input', (e) => {
+    if (e.target.id === 'gv-date') { gv.date = e.target.value; sumGive(); }
+  });
+  $('gv-cancel').addEventListener('click', () => $('give-dialog').close());
+  $('gv-go').addEventListener('click', async () => {
+    const r = role(gv.role);
+    if (!r || !gv.who) return;
+    const body = { kind: gv.who.kind, name: gv.who.name, display: gv.who.display, scope: placesOf(r), ends: endsOf(), reason: $('gv-reason').value.trim() || null };
+    $('gv-go').disabled = true;
+    try {
+      await R.send(`/api/roles/${encodeURIComponent(r.id)}/members${gv.edit ? '/edit' : ''}`, body);
+      $('give-dialog').close();
+      const where = scoped(r) && body.scope.length ? ` in ${body.scope.map(pathOf).join(', ')}` : '';
+      const until = body.ends ? ` until ${day(body.ends)}` : '';
+      R.toast(gv.edit ? 'Assignment saved.' : 'Role given.', `${whoOf(gv.who)} has ${r.name}${where}${until}.`);
+      const id = aid(r, { kind: gv.who.kind, name: gv.who.kind === 'everyone' ? 'ad' : gv.who.name });
+      if (!gv.edit) came.set(id, Date.now());
+      await refresh();
+      const x = assignOf(id);
+      if (x && (gv.edit || !R.panel.is('people'))) openAssign(x, R.panel.is('people') && R.panel.key === keyOf(x));
+    } catch (err) {
+      say('gv-problem', err.message);
+      sumGive();
+    }
+  });
+  $('ppl-give').addEventListener('click', () => openGive());
+  $('role-give').addEventListener('click', () => { if (viewRole) openGive({ role: viewRole.id }); });
+
+  // Searching groups, people and local accounts, for Give a role.
+  const search = async (text) => {
+    const found = await R.get(`/api/roles/search?q=${encodeURIComponent(text)}`);
+    // When the domain can't be searched, what's typed can still be given as a group or a person.
+    if (found.problem && text) {
+      found.entries.push({ kind: 'group', name: text, display: null, description: `Add group ${text} as entered` },
+        { kind: 'user', name: text, display: null, description: `Add user ${text} as entered` });
+    }
+    return found;
+  };
+  const entry = (e, attrs) => R.option(attrs, `<span class="pic ${e.kind}">${e.kind === 'user' && e.display ? esc(initials(e.display)) : svg(ICON[e.kind])}</span>`,
+    e.display || e.name, e.kind === 'user' && e.display ? `${e.name}${e.description ? ` · ${e.description}` : ''}` : e.description || KIND[e.kind]);
+
+  // --- A new local account -----------------------------------------------------------------------------------------
+
+  $('ppl-local').addEventListener('click', () => {
+    $('pd-user').value = '';
+    $('pd-password').value = '';
+    $('pd-problem').hidden = true;
+    $('local-dialog').showModal();
+    $('pd-user').focus();
+  });
+  $('pd-cancel').addEventListener('click', () => $('local-dialog').close());
+  $('pd-go').addEventListener('click', async () => {
+    const name = $('pd-user').value.trim();
+    try {
+      await R.send('/api/accounts', { username: name, password: $('pd-password').value, roles: [] });
+      $('local-dialog').close();
+      R.toast('Account created.', `${name} can sign in with the User role. Give it more roles here.`);
+      came.set(`user|local|${name.toLowerCase()}`, Date.now());
+      await refresh();
+      openPerson('local', name);
+    } catch (err) {
+      say('pd-problem', err.message);
+    }
+  });
+
+  // --- One role: Assignments, Permissions, and Name and tier ---------------------------------------------------------
+
+  const editable = (r) => r.manage && mine('access.roles') && r.id !== 'admin';
+  const dirty = (r) => draft && draft.id === r.id && (draft.name !== r.name || draft.about !== (r.about || '') || draft.color !== r.color || draft.tier !== r.tier
+    || draft.permissions.size !== r.permissions.length || r.permissions.some((p) => !draft.permissions.has(p)));
+  const fresh = (r) => ({ id: r.id, name: r.name, about: r.about || '', color: r.color, tier: r.tier, permissions: new Set(r.permissions) });
   const unsaved = (r) => { $('role-unsaved').hidden = !dirty(r); };
-  const placeText = (r) => {
-    const i = data.roles.indexOf(r);
-    if (r.id === 'admin') return 'Administrator is always at the top and has every permission.';
-    if (r.id === 'user') return 'User is always at the bottom. Every signed-in user has this role.';
-    return `Below ${data.roles[i - 1].name} and above ${data.roles[i + 1].name}. Drag roles in the list on the left to reorder them. You can change only roles below your highest role.`;
+  const tierWhy = (r, t) => {
+    if (r.id === 'admin') return 'Administrator is always tier 0.';
+    if (r.id === 'user') return 'User is always tier 2.';
+    if (t === 0) return 'Administrator is the only role in tier 0.';
+    if (t <= data.me.tier) return `You can put a role only in a lower tier than your own (tier ${data.me.tier}).`;
+    return '';
   };
 
   const drawRole = (r, tab) => {
-    roleTab = tab;
     if (!draft || draft.id !== r.id) draft = fresh(r);
-    const i = data.roles.indexOf(r);
     const total = allParts().length;
     const count = r.id === 'admin' ? total : draft.permissions.size;
-    const where = r.id === 'admin' ? 'always at the top' : r.id === 'user' ? 'always at the bottom' : `below ${data.roles[i - 1].name}, above ${data.roles[i + 1].name}`;
+    const n = assignments().filter((x) => x.r === r).length;
+    $('role-head').style.setProperty('--c', draft.color);
     $('role-view').style.setProperty('--c', draft.color);
     $('role-name').textContent = draft.name || 'Untitled role';
-    $('role-line').textContent = `${r.members.length} ${r.members.length === 1 ? 'member' : 'members'} · ${count} of ${total} permissions · ${where}`;
+    $('role-line').textContent = `${tierName(r.tier)} · ${plural(n, 'assignment', 'assignments')} · ${count} of ${total} permissions`;
     $('role-viewas-text').textContent = `Preview as ${r.name}`;
-    $('role-count').textContent = r.members.length;
+    $('role-count').textContent = n;
+    $('role-give').disabled = !r.manage;
+    if (r.manage) delete $('role-give').dataset.tip;
+    else $('role-give').dataset.tip = `Only someone in a higher tier than ${r.name} can give it.`;
     $('role-tabs').querySelectorAll('[data-tab]').forEach((a) => {
       a.href = `#settings/people/role/${encodeURIComponent(r.id)}/${a.dataset.tab}`;
       current(a, a.dataset.tab === tab);
     });
     document.querySelectorAll('#role-view [data-pane]').forEach((p) => { p.hidden = p.dataset.pane !== tab; });
-    const note = r.id === 'admin' ? 'Administrator always has every permission. Only its members can be changed.'
-      : !r.manage ? `Only users with a role above ${r.name} can change this role.` : !mine('access.roles') ? 'You do not have permission to change roles.' : '';
-    $('role-note').hidden = !note || tab === 'members';
+    const note = r.id === 'admin' ? 'Administrator always has every permission. Only someone with Administrator can give it.'
+      : !r.manage ? `Only someone in a higher tier than ${r.name} can change this role or give it.` : !mine('access.roles') ? 'Your roles do not include changing roles.' : '';
+    $('role-note').hidden = !note || tab === 'assignments';
     $('role-note').textContent = note;
     const can = editable(r);
 
-    // Display: name, what it's for, colour, how its chip looks, where it sits.
+    // Name and tier: name, what it's for, tier, colour, how its chip looks.
     $('role-edit-name').value = draft.name;
     $('role-edit-name').disabled = !can || r.id === 'user';
     $('role-edit-about').value = draft.about;
     $('role-edit-about').disabled = !can;
+    $('role-tier').innerHTML = [0, 1, 2].map((t) => {
+      const no = can ? tierWhy(r, t) : 'You cannot change this role.';
+      return `<button type="button" role="radio" data-tier="${t}" aria-checked="${draft.tier === t}" aria-pressed="${draft.tier === t}"${no && draft.tier !== t ? ` disabled data-tip="${esc(no)}"` : no ? ' disabled' : ''}>${esc(tierName(t))}</button>`;
+    }).join('');
+    $('role-tier-about').textContent = TIER_ABOUT[draft.tier];
     $('role-swatches').innerHTML = SWATCHES.map((c) => `<button type="button" role="radio" data-swatch="${c}" data-color="${c}" aria-label="${c}" aria-checked="${same(c, draft.color)}"${can ? '' : ' disabled'}></button>`).join('');
     const group = r.members.find((m) => m.kind === 'group')?.name || 'a group';
     $('role-preview').innerHTML = `<span class="rchip" data-color="${esc(draft.color)}"><i class="dot"></i>${esc(draft.name || 'Untitled role')}</span>`
       + `<span class="rchip via" data-color="${esc(draft.color)}"><i class="dot"></i>${esc(draft.name || 'Untitled role')}<small>${svg('users')}${esc(group)}</small></span>`
-      + '<span class="hint">Dashed: assigned through a group.</span>';
-    $('role-where').textContent = placeText(r);
+      + '<span class="hint">Dashed: given through a group.</span>';
     $('role-delete-row').hidden = r.builtIn || !can;
     $('role-delete-title').textContent = `Delete ${r.name}`;
 
@@ -439,9 +667,9 @@
       const acts = p.actions.filter((a) => !find || `${p.name} ${a.name} ${a.about}`.toLowerCase().includes(find));
       if (!acts.length) return '';
       const on = p.actions.filter((a) => r.id === 'admin' || draft.permissions.has(a.key)).length;
-      return `<div class="sec">${svg(p.icon)}<b>${esc(p.name)}</b><span>${on} of ${p.actions.length}</span></div><div class="rows">`
-        + (p.key === 'ad' ? scopeRow(r, can) : '')
-        + acts.map((a) => {
+      return `<div class="sec">${svg(p.icon)}<b>${esc(p.name)}</b><span>${on} of ${p.actions.length}</span></div>`
+        + (p.key === 'ad' && r.id !== 'admin' ? `<p class="hint pp-where">${svg('tree')}<span>Where these work is set on each assignment, in Give a role.</span></p>` : '')
+        + '<div class="rows">' + acts.map((a) => {
           const locked = !can || !mine(a.key);
           return `<label class="row still perm${locked ? ' locked' : ''}"><span class="t"><b>${esc(a.name)}</b><span>${esc(a.about)}${can && !mine(a.key) ? ' You cannot grant a permission your roles do not include.' : ''}</span></span>`
             + `<input type="checkbox" class="switch" role="switch" data-perm="${esc(a.key)}" aria-label="${esc(a.name)}"${r.id === 'admin' || draft.permissions.has(a.key) ? ' checked' : ''}${locked ? ' disabled' : ''}></label>`;
@@ -449,17 +677,7 @@
     }).join('') || '<div class="empty">No matching permissions.</div>';
     $('perm-clear').hidden = !can;
 
-    // Members: who's in it, and adding more.
-    const takeable = r.manage && mine('access.members');
-    const built = r.id === 'admin' && data.windowsAdmins
-      ? `<div class="row still"><span class="pic windows">${svg('monitor')}</span><span class="t"><b>Windows administrators</b><span>Members of the Administrators group on ${esc(data.machine)}. They sign in with a local account, or with .\\ before the username. Built-in.</span></span></div>` : '';
-    const everyone = r.id === 'user' ? `<div class="row still"><span class="pic">${svg('users')}</span><span class="t"><b>All signed-in users</b><span>Every signed-in user has this role. Groups and users listed below can sign in with only this role.</span></span></div>` : '';
-    $('member-list').innerHTML = everyone + built + (r.members.map((m) => `<div class="row still"><span class="pic ${m.kind}">${m.kind === 'user' ? esc(initials(m.display || m.name)) : svg(ICON[m.kind])}</span>`
-      + `<span class="t"><b>${esc(memberLabel(m))}</b><span>${m.kind === 'group' ? 'AD group · members, including nested groups, get this role at sign-in' : esc(KIND[m.kind])}${m.kind === 'user' && m.display ? ` · ${esc(m.name)}` : ''}${m.addedBy ? ` · added by ${esc(m.addedBy)}, ${esc(R.when(m.added))}` : ''}</span></span>`
-      + (takeable && !(r.id === 'admin' && r.members.length === 1) ? `<button type="button" class="icon" data-take-member="${esc(m.kind)}" data-name="${esc(m.name)}" aria-label="Remove ${esc(memberLabel(m))}">${svg('x')}</button>` : '')
-      + '</div>').join('') || (built || everyone ? '' : '<div class="empty">No members.</div>'));
-    $('member-add').hidden = !takeable;
-
+    R.paint($('role-head'));
     R.paint($('role-view'));
     unsaved(r);
   };
@@ -474,6 +692,12 @@
     draft.about = e.target.value;
     unsaved(role(draft.id));
   });
+  $('role-tier').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-tier]');
+    if (!b || b.disabled) return;
+    draft.tier = Number(b.dataset.tier);
+    drawRole(role(draft.id), 'display');
+  });
   $('role-swatches').addEventListener('click', (e) => {
     const b = e.target.closest('[data-swatch]');
     if (!b || b.disabled) return;
@@ -481,20 +705,9 @@
     drawRole(role(draft.id), 'display');
   });
   $('perm-list').addEventListener('change', (e) => {
-    if (e.target.id === 'role-scope-add' && e.target.value) {
-      draft.scope.push(e.target.value);
-      drawRole(role(draft.id), 'permissions');
-      return;
-    }
     if (!e.target.matches('[data-perm]')) return;
     if (e.target.checked) draft.permissions.add(e.target.dataset.perm);
     else draft.permissions.delete(e.target.dataset.perm);
-    drawRole(role(draft.id), 'permissions');
-  });
-  $('perm-list').addEventListener('click', (e) => {
-    const x = e.target.closest('[data-scope-x]');
-    if (!x) return;
-    draft.scope = draft.scope.filter((dn) => dn !== x.dataset.scopeX);
     drawRole(role(draft.id), 'permissions');
   });
   $('perm-find').addEventListener('input', () => drawRole(role(draft.id), 'permissions'));
@@ -507,10 +720,12 @@
     route();
   });
   $('role-save').addEventListener('click', async () => {
+    const r = role(draft.id);
     try {
-      await R.send(`/api/roles/${encodeURIComponent(draft.id)}`, { name: draft.name, about: draft.about, color: draft.color, permissions: [...draft.permissions], scope: draft.scope });
+      await R.send(`/api/roles/${encodeURIComponent(draft.id)}`, { name: draft.name, about: draft.about, color: draft.color, permissions: [...draft.permissions], ...(draft.tier !== r.tier ? { tier: draft.tier } : {}) });
       draft = null;
       problem('');
+      R.toast('Saved.', `${r.name} is saved.`);
     } catch (err) {
       problem(err.message);
       return;
@@ -519,7 +734,7 @@
   });
   $('role-delete').addEventListener('click', () => {
     const r = role(draft.id);
-    sure(`Delete ${r.name}?`, 'Its members lose the permissions this role grants.', 'Delete role', async () => {
+    sure(`Delete ${r.name}?`, 'Its assignments are removed, and the people who had it lose what only this role gives.', 'Delete role', async () => {
       try {
         await R.send(`/api/roles/${encodeURIComponent(r.id)}/delete`);
         draft = null;
@@ -536,54 +751,8 @@
     R.viewAs({ name: r.name }, perms);
     location.hash = '#overview';
   });
-  $('member-list').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-take-member]');
-    if (!b) return;
-    const r = role(draft.id);
-    const member = { kind: b.dataset.takeMember, name: b.dataset.name };
-    sure(`Remove ${b.closest('.row').querySelector('b').textContent} from ${r.name}?`, TAKE_OUT, 'Remove', async () => {
-      try {
-        await R.send(`/api/roles/${encodeURIComponent(r.id)}/members/remove`, member);
-        problem('');
-      } catch (err) {
-        problem(err.message);
-      }
-      refresh();
-    });
-  });
 
-  // Searching groups, people and local accounts, for a role's Members and for Add people.
-  const search = async (text) => {
-    const found = await R.get(`/api/roles/search?q=${encodeURIComponent(text)}`);
-    // When the domain can't be searched, what's typed can still be added as a group or a person.
-    if (found.problem && text) {
-      found.entries.push({ kind: 'group', name: text, display: null, description: `Add group ${text} as entered` },
-        { kind: 'user', name: text, display: null, description: `Add user ${text} as entered` });
-    }
-    return found;
-  };
-  const entry = (e, attrs) => R.option(attrs, `<span class="pic ${e.kind}">${e.kind === 'user' && e.display ? esc(initials(e.display)) : svg(ICON[e.kind])}</span>`,
-    e.display || e.name, e.kind === 'user' && e.display ? `${e.name}${e.description ? ` · ${e.description}` : ''}` : e.description || KIND[e.kind]);
-  // A role's Members: who to add, leaving out who's in it already.
-  R.dropdown($('member-find').closest('.adder'), {
-    find: async (text) => {
-      const found = await search(text);
-      const r = role(draft.id);
-      return { items: found.entries.filter((e) => !r.members.some((m) => m.kind === e.kind && same(m.name, e.name))), note: found.problem };
-    },
-    draw: (e, i) => entry(e, ` data-pick="${i}"`),
-    pick: async (x) => {
-      try {
-        await R.send(`/api/roles/${encodeURIComponent(draft.id)}/members`, { kind: x.kind, name: x.name, display: x.display });
-        problem('');
-      } catch (err) {
-        problem(err.message);
-      }
-      refresh();
-    },
-  });
-
-  // New role: made just above User, then opened on Display to name it.
+  // New role: made in the tier under the maker's own, then opened on Name and tier.
   $('role-new').addEventListener('click', async () => {
     let n = 1;
     while (data.roles.some((r) => same(r.name, n === 1 ? 'New role' : `New role ${n}`))) n++;
@@ -597,104 +766,32 @@
     }
   });
 
-  // --- Add people: someone found, or a new local account, into roles ----------------------------------------------
-
-  let picked = null;
-  let pdFound = [];
-  let pdTimer = null;
-  const pdTab = (tab) => {
-    $('people-tabs').querySelectorAll('[data-ptab]').forEach((a) => current(a, a.dataset.ptab === tab));
-    document.querySelectorAll('#people-dialog [data-ppane]').forEach((p) => { p.hidden = p.dataset.ppane !== tab; });
-    $('pd-go').textContent = tab === 'local' ? 'Create account' : 'Add';
-    $('people-dialog').dataset.tab = tab;
-  };
-  const pdList = async () => {
-    try {
-      const found = await search($('pd-find').value.trim());
-      pdFound = found.entries;
-      $('pd-results').innerHTML = (found.problem ? `<p class="drop-note">${esc(found.problem)}</p>` : '')
-        + (pdFound.map((e, i) => entry(e, ` data-entry="${i}" aria-pressed="${!!picked && picked.kind === e.kind && same(picked.name, e.name)}"`)).join('')
-          || '<p class="drop-note">No results.</p>');
-    } catch (err) {
-      say('pd-problem', err.message);
-    }
-  };
-  $('ppl-add').addEventListener('click', () => {
-    picked = null;
-    $('pd-find').value = '';
-    $('pd-user').value = '';
-    $('pd-password').value = '';
-    $('pd-problem').hidden = true;
-    $('pd-roles').innerHTML = data.roles.filter((r) => r.manage).map((r) => `<label class="role-pick" data-color="${esc(r.color)}"><input type="checkbox" value="${esc(r.id)}"${r.id === 'user' ? ' checked' : ''}><i class="dot"></i>${esc(r.name)}</label>`).join('');
-    R.paint($('pd-roles'));
-    const tabs = $('people-tabs').querySelectorAll('[data-ptab]');
-    tabs.forEach((a) => a.classList.toggle('cant', !mine(a.dataset.ptab === 'local' ? 'access.local' : 'access.members')));
-    pdTab(mine('access.members') ? 'find' : 'local');
-    $('pd-roles').hidden = !mine('access.members');
-    $('pd-roles').previousElementSibling.hidden = !mine('access.members');
-    $('people-dialog').showModal();
-    if (mine('access.members')) pdList();
-  });
-  $('people-tabs').addEventListener('click', (e) => {
-    const a = e.target.closest('[data-ptab]');
-    if (a) pdTab(a.dataset.ptab);
-  });
-  $('pd-find').addEventListener('input', () => {
-    clearTimeout(pdTimer);
-    pdTimer = setTimeout(pdList, 250);
-  });
-  $('pd-results').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-entry]');
-    if (!b) return;
-    picked = pdFound[Number(b.dataset.entry)];
-    $('pd-results').querySelectorAll('[data-entry]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
-  });
-  $('pd-cancel').addEventListener('click', () => $('people-dialog').close());
-  $('pd-go').addEventListener('click', async () => {
-    const roles = [...$('pd-roles').querySelectorAll('input:checked')].map((c) => c.value);
-    const tell = (text) => say('pd-problem', text);
-    try {
-      if ($('people-dialog').dataset.tab === 'local') {
-        await R.send('/api/accounts', { username: $('pd-user').value, password: $('pd-password').value, roles: mine('access.members') ? roles : [] });
-      } else {
-        if (!picked) return tell('Select a group, user or local account first.');
-        if (!roles.length) return tell('Select at least one role.');
-        for (const id of roles) {
-          // Local accounts have User already.
-          if (!(picked.kind === 'local' && id === 'user')) await R.send(`/api/roles/${encodeURIComponent(id)}/members`, { kind: picked.kind, name: picked.name, display: picked.display });
-        }
-      }
-      $('people-dialog').close();
-      refresh();
-    } catch (err) {
-      tell(err.message);
-      refresh();
-    }
-  });
-
   // --- Showing the page --------------------------------------------------------------------------------------------
 
-  ['ppl-find', 'ppl-role-filter', 'ppl-week', 'ppl-sort'].forEach((id) => $(id).addEventListener(id === 'ppl-find' ? 'input' : 'change', () => route()));
-  $('ppl-source').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-source]');
-    if (!b) return;
-    source = b.dataset.source;
-    $('ppl-source').querySelectorAll('[data-source]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
-    route();
-  });
+  $('ppl-find').addEventListener('input', () => drawList());
 
-  // Draws what the address asks for, from what's loaded.
+  // Draws what the address asks for, from what's loaded. Going to another view or role closes the side panel, which would cover it.
+  let lastAt = '';
   const route = () => {
     const [pageName, sub, rest] = R.where();
     if (pageName !== 'settings' || sub !== 'people' || !data) return;
-    closeCard();
     const r = rest[0] === 'role' ? role(decodeURIComponent(rest[1] || '')) : null;
-    $('ppl-list').hidden = !!r;
-    $('role-view').hidden = !r;
-    if (!r) $('role-unsaved').hidden = true;
-    drawSide(r?.id);
-    if (r) drawRole(r, ['display', 'permissions', 'members'].includes(rest[2]) ? rest[2] : 'permissions');
-    else drawList(BROWSE[rest[0]] ? rest[0] : 'all');
+    const tab = rest[2] === 'members' ? 'assignments' : TABS.includes(rest[2]) ? rest[2] : 'assignments';
+    viewRole = r;
+    view = !r && VIEWS[rest[0]] ? rest[0] : 'all';
+    const at = `${r?.id || ''}|${view}|${r ? tab : ''}`;
+    if (lastAt && at !== lastAt && R.panel.is('people')) R.panel.close();
+    lastAt = at;
+    $('role-head').hidden = !r;
+    $('ppl-list').hidden = !!r && tab !== 'assignments';
+    $('role-view').hidden = !r || tab === 'assignments';
+    $('ppl-list').querySelector('.lib-bar').hidden = !!r;
+    $('ppl-title').textContent = VIEWS[view];
+    if (!r) { $('role-unsaved').hidden = true; draft = null; }
+    drawSide();
+    if (r) drawRole(r, tab);
+    if (!r || tab === 'assignments') drawList();
+    panelAgain();
   };
   // Loads again, then draws.
   let failed = false; // the last read didn't work, so the next one that does draws
@@ -706,8 +803,8 @@
     } catch (err) {
       failed = true;
       problem(err.message);
-      for (const id of ['ppl-rows', 'ppl-cards', 'ppl-roles']) R.skeleton($(id), '');
-      for (const k of Object.keys(BROWSE)) if ($(`b-${k}`).querySelector('.sk')) $(`b-${k}`).textContent = '';
+      for (const id of ['ppl-table', 'ppl-roles']) R.skeleton($(id), '');
+      for (const k of Object.keys(VIEWS)) if ($(`b-${k}`).querySelector('.sk')) $(`b-${k}`).textContent = '';
       return;
     }
     if (draft && !role(draft.id)) draft = null;
@@ -727,11 +824,11 @@
   document.addEventListener('rabbidlab:me', () => {
     if (R.has('access.view') && !here) refresh();
   });
-  // While it's open: every 10 seconds, but not over a role with changes that aren't saved, or the menu of roles to give.
+  // While it's open: every 10 seconds, but not over a role with changes that aren't saved, or a window being filled in.
   const unsavedRole = () => !!draft && !!role(draft.id) && dirty(role(draft.id));
   R.live({
     page: () => here,
-    hold: () => unsavedRole() || !$('rmenu').hidden,
+    hold: () => unsavedRole() || $('give-dialog').open || $('local-dialog').open,
     every: 10000,
     read: () => R.get('/api/roles'),
     now: () => (failed ? null : data),
@@ -743,6 +840,6 @@
       $('rail-roles').textContent = data.roles.length;
       route();
     },
-    areas: () => [$('ppl-rows'), $('role-view')],
+    areas: () => [$('ppl-table'), $('role-view')],
   });
 })();

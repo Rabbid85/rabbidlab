@@ -3,7 +3,7 @@ namespace RabbidLab.Server;
 /// <summary>
 /// Who an Active Directory request is for and the permission it took, for as long as that request runs. The directory
 /// tools read it to keep the request inside the person's roles: the OUs their roles cover (Roles.Reach) and nobody in a
-/// role above them (Roles.Outranking). None means Rabbid Lab itself is asking, and only the service account's scope counts.
+/// role in their tier or above (Roles.Outranking). None means Rabbid Lab itself is asking, and only the service account's scope counts.
 /// </summary>
 public sealed record Caller(Who Who, string Permission, Roles Roles)
 {

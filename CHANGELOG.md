@@ -2,6 +2,13 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.372 (2026-11-22)
+
+- Roles and people lists every assignment: who has which role, where in Active Directory it works, when it ends and who added it. People from groups shows everyone a group reaches.
+- Roles sit in three tiers. A role can be changed or given only by someone in a higher tier, and the same goes for resetting the passwords and MFA of the people who have it.
+- Give a role picks who, the role, the OUs it works in, an end date and a reason. Where a role works is now set on each assignment, not on the role.
+- Roles are no longer dragged into order. Each role has its tier on its Name and tier tab.
+
 ## 1.1.371 (2026-11-22)
 
 - Settings, Alert rules lists every alert in one grid, grouped by area: the alert rules, the alerts from the Alerts page, and everything else that can happen. Each row has an alert type, or Don’t alert.

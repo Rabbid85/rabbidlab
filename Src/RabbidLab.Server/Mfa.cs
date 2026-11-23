@@ -412,7 +412,7 @@ public static class MfaApi
             var above = roles.Outranking(Who.Of(context.User)).Select(r => r.Id).ToHashSet();
             if (roles.Of(new Who(person.Source, person.Username, person.Domain, person.Groups)).FirstOrDefault(r => above.Contains(r.Id)) is { } role)
             {
-                return Results.Json(new { error = $"{person.Username} has the {role.Name} role. Only admins in a role above {role.Name} can reset their MFA." }, statusCode: StatusCodes.Status403Forbidden);
+                return Results.Json(new { error = $"{person.Username} has the {role.Name} role. Only someone in a higher tier than {role.Name} can reset their MFA." }, statusCode: StatusCodes.Status403Forbidden);
             }
             var code = mfa.Reset(person.Source, person.Username);
             log.Record(context, "access", "mfa.reset", $"Reset MFA for {person.Username}", "ok", "Issued a one-time code to set up MFA again");

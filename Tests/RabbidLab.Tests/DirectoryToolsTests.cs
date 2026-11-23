@@ -370,16 +370,19 @@ public sealed class DirectoryToolsTests : IDisposable
         var attribute = await Refused(() => tools.SetAttribute($"CN=Anthony Wiles,{Lab}", "description", ["x"], none));
         var renamed = await Refused(() => tools.SetAttribute($"CN=Jordan Reyes,{Lab}", "sAMAccountName", ["ghost"], none));
 
-        // Someone in the role itself, and anyone above it, can.
+        // Someone in the role itself can't (tiers are strict, 1.1.372); someone in a higher tier can.
         As(it, Permissions.AdPassword);
+        var peer = await Refused(() => tools.Password("awiles", "New pass 1", false, none));
+        Assert.Contains("awiles has the IT role", peer.Message);
+        As(boss, Permissions.AdPassword);
         await tools.Password("awiles", "New pass 1", false, none);
         As(boss, Permissions.AdGroups);
         Assert.Null(await tools.ChangeMembers($"CN=Lab Staff,{Lab}", [$"CN=Jordan Reyes,{Lab}"], [], none));
 
         Assert.All(new[] { named, through, group, inner, stale, attribute, renamed }, p => Assert.Equal(StatusCodes.Status403Forbidden, p.Status));
-        Assert.Equal("awiles has the IT role. Only admins in a role above IT can change this account.", named.Message);
+        Assert.Equal("awiles has the IT role. Only someone in a higher tier than IT can change this account.", named.Message);
         Assert.Contains("nested has the IT role", through.Message);
-        Assert.Equal("Lab Staff grants the IT role. Only admins in a role above IT can change this group.", group.Message);
+        Assert.Equal("Lab Staff grants the IT role. Only someone in a higher tier than IT can change this group.", group.Message);
         Assert.Contains("Inner grants the IT role", inner.Message);
         Assert.Contains("Lab Staff grants the IT role", joined);
         Assert.Contains("ghost is a member of the IT role", stale.Message);

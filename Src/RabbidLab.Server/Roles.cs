@@ -22,18 +22,34 @@ public sealed class Member
     public string? Display { get; set; }
     public DateTime Added { get; set; }
     public string? AddedBy { get; set; }
+
+    /// <summary>The OUs this assignment's Active Directory tasks cover, by DN. None means the role's own, or everywhere.</summary>
+    public List<string> Scope { get; set; } = [];
+
+    /// <summary>When the assignment stops counting; null for never.</summary>
+    public DateTime? Ends { get; set; }
+
+    /// <summary>Why it was given, as the giver wrote it.</summary>
+    public string? Reason { get; set; }
 }
 
-/// <summary>A role: its name, colour and what it allows. Its place in the list is its rank, highest first.</summary>
+/// <summary>
+/// A role: its name, colour and what it allows, and its tier: 0 is Administrator alone, 1 changes the roles below it and
+/// the people who have them, 2 uses the lab. Only someone in a higher tier changes a role or gives it.
+/// </summary>
 public sealed class Role
 {
     public string Id { get; set; } = "";
     public string Name { get; set; } = "";
     public string About { get; set; } = "";
     public string Color { get; set; } = "";
+    public int Tier { get; set; } = 1;
     public List<string> Permissions { get; set; } = [];
 
-    /// <summary>The OUs its Active Directory permissions cover, by DN. None means everywhere the service account reaches.</summary>
+    /// <summary>
+    /// The OUs its Active Directory permissions cover by default, by DN, for assignments without their own. None means
+    /// everywhere the service account reaches. Since 1.1.372 the scope is set on each assignment.
+    /// </summary>
     public List<string> Scope { get; set; } = [];
 
     /// <summary>Everyone in it signs in with a code from an authenticator app as well as their password (Mfa.cs).</summary>
@@ -70,18 +86,21 @@ public sealed record Who(string Source, string Username, string? Domain, IReadOn
 }
 
 /// <summary>
-/// The roles, kept in roles.json in the data folder, highest first. Administrator is always at the top and allows everything;
-/// User is always at the bottom and everyone signed in has it. Someone can be in any number of roles and gets everything
-/// they allow. A role can only be changed by someone whose own highest role is above it, or by an administrator.
+/// The roles, kept in roles.json in the data folder, by tier. Administrator is the one tier 0 role and allows everything;
+/// User is tier 2 and everyone signed in has it. Someone can be in any number of roles and gets everything they allow,
+/// through each assignment until it ends, in the OUs it covers. A role can only be changed or given by someone in a higher
+/// tier, and the same goes for the passwords and MFA of the people who have it.
 /// </summary>
-public sealed partial class Roles(DataFolder folder, Accounts accounts)
+public sealed partial class Roles(DataFolder folder, Accounts accounts, TimeProvider clock)
 {
     public const string Admin = "admin";
     public const string User = "user";
     private const int MostRoles = 50;
     private const int MostPeople = 2000;
     private const int MostPlaces = 20;
-    private const int Current = 5; // 2: Change users, groups and computers became four permissions; 3: Group Policy; 4: Install apps; 5: Network
+    // 2: Change users, groups and computers became four permissions; 3: Group Policy; 4: Install apps; 5: Network;
+    // 6: tiers in place of the order, and the scope on each assignment.
+    private const int Current = 6;
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { WriteIndented = true };
     // Watched: --add-admin writes it while the service runs.
     private readonly JsonFile<RolesFile> file = folder.Json<RolesFile>("roles.json", Json, watch: true);
@@ -127,7 +146,7 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
         lock (gate)
         {
             return Fresh().Roles.FirstOrDefault(x => x.Id == id) is { } r
-                ? new Role { Id = r.Id, Name = r.Name, About = r.About, Color = r.Color, Permissions = [.. r.Permissions], Scope = [.. r.Scope], Mfa = r.Mfa, Members = [.. r.Members] } : null;
+                ? new Role { Id = r.Id, Name = r.Name, About = r.About, Color = r.Color, Tier = r.Tier, Permissions = [.. r.Permissions], Scope = [.. r.Scope], Mfa = r.Mfa, Members = [.. r.Members] } : null;
         }
     }
 
@@ -144,8 +163,9 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
     }
 
     /// <summary>
-    /// The roles whose people and groups someone may not change in Active Directory: the ones they aren't in and aren't
-    /// above. Resetting such a password, or joining such a group, would hand them the role. User never counts.
+    /// The roles whose people and groups someone may not change in Active Directory: every role in their tier or above,
+    /// their own included. Resetting such a password, or joining such a group, would hand them the role. User never counts.
+    /// Only assignments that haven't ended are listed.
     /// </summary>
     public IReadOnlyList<Role> Outranking(Who by)
     {
@@ -157,7 +177,8 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
             {
                 return [];
             }
-            return [.. f.Roles.Where((r, i) => r.Id != User && !mine.Contains(r) && !Manages(f, by, i)).Select(r => new Role { Id = r.Id, Name = r.Name, Members = [.. r.Members] })];
+            var tier = TierOf(mine);
+            return [.. f.Roles.Where(r => r.Id != User && r.Tier <= tier).Select(r => new Role { Id = r.Id, Name = r.Name, Tier = r.Tier, Members = [.. r.Members.Where(Active)] })];
         }
     }
 
@@ -189,7 +210,7 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
             }
             if (!Manages(f, by, index))
             {
-                return $"Only admins in a role above {f.Roles[index].Name} can change this role.";
+                return $"Only someone in a higher tier than {f.Roles[index].Name} can change this role.";
             }
             if (f.Roles[index].Mfa != on)
             {
@@ -215,7 +236,7 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
         }
         lock (gate)
         {
-            return Fresh().Roles.Any(r => r.Members.Any(m => Matches(m, who)));
+            return Fresh().Roles.Any(r => r.Members.Any(m => Active(m) && Matches(m, who)));
         }
     }
 
@@ -224,11 +245,11 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
     {
         lock (gate)
         {
-            return [.. Fresh().Roles.SelectMany(r => r.Members).Where(m => m.Kind == Member.Group).Select(m => m.Name).Distinct(StringComparer.OrdinalIgnoreCase)];
+            return [.. Fresh().Roles.SelectMany(r => r.Members).Where(m => m.Kind == Member.Group && Active(m)).Select(m => m.Name).Distinct(StringComparer.OrdinalIgnoreCase)];
         }
     }
 
-    /// <summary>The roles someone may change: every role for an administrator, otherwise those below their own highest.</summary>
+    /// <summary>The roles someone may change: every role for an administrator, otherwise those in a lower tier than their own.</summary>
     public IReadOnlySet<string> Managed(Who by)
     {
         lock (gate)
@@ -243,7 +264,7 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
     {
         lock (gate)
         {
-            return Above(Fresh(), username, by) is { } role ? $"{username} has the {role.Name} role. Only admins in a role above {role.Name} can change this account." : null;
+            return Above(Fresh(), username, by) is { } role ? $"{username} has the {role.Name} role. Only someone in a higher tier than {role.Name} can change this account." : null;
         }
     }
 
@@ -307,8 +328,11 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
         }
     }
 
-    /// <summary>A new role just above User, starting with what another role allows (only what its maker may allow) or nothing.</summary>
-    public (Role? Role, string? Problem) Create(string? name, string? about, string? color, string? copy, Who by)
+    /// <summary>
+    /// A new role in a tier below its maker's (tier 1 by default for an administrator), starting with what another role
+    /// allows (only what its maker may allow) or nothing.
+    /// </summary>
+    public (Role? Role, string? Problem) Create(string? name, string? about, string? color, string? copy, Who by, int? tier = null)
     {
         lock (gate)
         {
@@ -317,31 +341,41 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
             {
                 return (null, $"The limit of {MostRoles} roles has been reached. Delete a role first.");
             }
-            if (!Manages(f, by, f.Roles.Count - 1))
+            var mine = TierOf(Mine(f, by));
+            var t = tier ?? Math.Min(2, mine + 1);
+            if (mine >= 2)
             {
                 return (null, "Your roles do not allow you to create roles.");
             }
-            var role = new Role { Id = Convert.ToHexString(RandomNumberGenerator.GetBytes(5)).ToLowerInvariant(), Color = "#6FA8FF" };
+            if (t is not (1 or 2) || t <= mine)
+            {
+                return (null, mine == 0 ? "A new role goes in tier 1 or tier 2. Administrator is the only tier 0 role." : "You can create roles only in a lower tier than your own.");
+            }
+            var role = new Role { Id = Convert.ToHexString(RandomNumberGenerator.GetBytes(5)).ToLowerInvariant(), Color = "#6FA8FF", Tier = t };
             if (Describe(f, role, name, about, color) is { } problem)
             {
                 return (null, problem);
             }
             if (copy is not null && f.Roles.FirstOrDefault(r => r.Id == copy) is { } from)
             {
-                var mine = Allowed(f, by);
+                var can = Allowed(f, by);
                 // Its scope comes along, and what the maker's own roles don't cover there is left out.
                 role.Scope = from.Id == Admin ? [] : [.. from.Scope];
-                role.Permissions = [.. (from.Id == Admin ? Permissions.All : (IEnumerable<string>) from.Permissions).Where(mine.Contains)
+                role.Permissions = [.. (from.Id == Admin ? Permissions.All : (IEnumerable<string>) from.Permissions).Where(can.Contains)
                     .Where(p => !Permissions.Scoped.Contains(p) || Covers(Reach(f, by, p), role.Scope)).Order()];
             }
-            f.Roles.Insert(f.Roles.Count - 1, role);
+            f.Roles.Add(role);
+            Arrange(f);
             Save(f);
             return (role, null);
         }
     }
 
-    /// <summary>A role's name, what it's for, its colour, what it allows and its scope in Active Directory. Administrator can't be changed, nor User's name.</summary>
-    public string? Change(string id, string? name, string? about, string? color, IReadOnlyCollection<string>? permissions, Who by, IReadOnlyCollection<string>? scope = null)
+    /// <summary>
+    /// A role's name, what it's for, its colour, what it allows, its default scope in Active Directory and its tier.
+    /// Administrator can't be changed, nor User's name or tier; a tier only goes to one below the changer's own.
+    /// </summary>
+    public string? Change(string id, string? name, string? about, string? color, IReadOnlyCollection<string>? permissions, Who by, IReadOnlyCollection<string>? scope = null, int? tier = null)
     {
         lock (gate)
         {
@@ -358,11 +392,26 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
             }
             if (!Manages(f, by, index))
             {
-                return $"Only admins in a role above {role.Name} can change this role.";
+                return $"Only someone in a higher tier than {role.Name} can change this role.";
             }
             if (role.Id == User && name is not null && name.Trim() != role.Name)
             {
                 return "The User role cannot be renamed. It applies to everyone who signs in.";
+            }
+            if (tier is { } t && t != role.Tier)
+            {
+                if (role.Id == User)
+                {
+                    return "The User role is always tier 2.";
+                }
+                if (t is not (1 or 2))
+                {
+                    return "A role goes in tier 1 or tier 2. Administrator is the only tier 0 role.";
+                }
+                if (t <= TierOf(Mine(f, by)))
+                {
+                    return "You can put a role only in a lower tier than your own.";
+                }
             }
             var copy = new Role { Id = role.Id, Name = role.Name, About = role.About, Color = role.Color };
             if (Describe(f, copy, name ?? role.Name, about ?? role.About, color ?? role.Color) is { } problem)
@@ -409,6 +458,8 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
             role.Name = copy.Name;
             role.About = copy.About;
             role.Color = copy.Color;
+            role.Tier = tier ?? role.Tier;
+            Arrange(f);
             Save(f);
             return null;
         }
@@ -430,7 +481,7 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
             }
             if (!Manages(f, by, index))
             {
-                return $"Only admins in a role above {f.Roles[index].Name} can delete this role.";
+                return $"Only someone in a higher tier than {f.Roles[index].Name} can delete this role.";
             }
             f.Roles.RemoveAt(index);
             Save(f);
@@ -438,33 +489,12 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
         }
     }
 
-    /// <summary>A new order for the roles between Administrator and User. Roles someone can't change keep their places.</summary>
-    public string? Order(IReadOnlyList<string> ids, Who by)
-    {
-        lock (gate)
-        {
-            var f = Fresh();
-            var middle = f.Roles.Skip(1).Take(f.Roles.Count - 2).ToList();
-            if (ids.Count != middle.Count || !ids.Order().SequenceEqual(middle.Select(r => r.Id).Order()))
-            {
-                return "The roles have changed since this page loaded. Try again.";
-            }
-            List<Role> order = [f.Roles[0], .. ids.Select(id => middle.First(r => r.Id == id)), f.Roles[^1]];
-            // Roles at or above someone's own highest one stay where they are, and nothing moves above them.
-            for (var i = 0; i < f.Roles.Count; i++)
-            {
-                if (!Manages(f, by, i) && order.IndexOf(f.Roles[i]) != i)
-                {
-                    return $"Only admins in a role above {f.Roles[i].Name} can move this role or move a role above it.";
-                }
-            }
-            f.Roles = order;
-            Save(f);
-            return null;
-        }
-    }
-
-    public string? AddMember(string id, string? kind, string? name, string? display, Who by)
+    /// <summary>
+    /// Gives a role: to an AD group or person, a local account, or everyone in AD; where in Active Directory its tasks
+    /// work (OUs, or none for everywhere), until when (null for never), and why. The scope can't reach beyond the giver's
+    /// own for the role's Active Directory permissions.
+    /// </summary>
+    public string? AddMember(string id, string? kind, string? name, string? display, Who by, IReadOnlyCollection<string>? scope = null, DateTime? ends = null, string? reason = null)
     {
         lock (gate)
         {
@@ -477,7 +507,7 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
             var role = f.Roles[index];
             if (!Manages(f, by, index))
             {
-                return $"Only admins in a role above {role.Name} can add members to this role.";
+                return $"Only someone in a higher tier than {role.Name} can give this role.";
             }
             var n = kind == Member.Everyone ? "ad" : name?.Trim() ?? "";
             if (kind is not (Member.Group or Member.Person or Member.Local or Member.Everyone) || n.Length is 0 or > 256)
@@ -493,10 +523,87 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
                 var words = Words(kind, n);
                 return $"{(kind == Member.Person ? words : char.ToUpperInvariant(words[0]) + words[1..])} is already a member of {role.Name}.";
             }
-            role.Members.Add(new Member { Kind = kind, Name = n, Display = display?.Trim() is { Length: > 0 } d ? d : null, Added = DateTime.UtcNow, AddedBy = by.Username });
+            var m = new Member { Kind = kind, Name = n, Display = display?.Trim() is { Length: > 0 } d ? d : null, Added = Now, AddedBy = by.Username };
+            if (Assign(f, role, m, by, scope ?? [], ends, reason) is { } problem)
+            {
+                return problem;
+            }
+            role.Members.Add(m);
             Save(f);
             return null;
         }
+    }
+
+    /// <summary>Changes where an assignment works, when it ends and why; the same checks as giving it.</summary>
+    public string? EditMember(string id, string? kind, string? name, Who by, IReadOnlyCollection<string>? scope, DateTime? ends, string? reason)
+    {
+        lock (gate)
+        {
+            var f = Fresh();
+            var index = f.Roles.FindIndex(r => r.Id == id);
+            if (index < 0)
+            {
+                return "The role no longer exists.";
+            }
+            var role = f.Roles[index];
+            if (!Manages(f, by, index))
+            {
+                return $"Only someone in a higher tier than {role.Name} can change who has this role.";
+            }
+            if (role.Members.FirstOrDefault(x => x.Kind == kind && Same(x.Name, name)) is not { } m)
+            {
+                return "This assignment no longer exists.";
+            }
+            var copy = new Member { Kind = m.Kind, Name = m.Name };
+            if (Assign(f, role, copy, by, scope ?? [], ends, reason) is { } problem)
+            {
+                return problem;
+            }
+            if (role.Id == Admin && copy.Ends is not null && role.Members.Count(x => x != m && Active(x) && x.Ends is null) == 0)
+            {
+                return "The Administrator role must keep someone without an end date.";
+            }
+            (m.Scope, m.Ends, m.Reason) = (copy.Scope, copy.Ends, copy.Reason);
+            Save(f);
+            return null;
+        }
+    }
+
+    // Checks and sets an assignment's scope, end and reason: OUs only, inside the giver's own reach for the role's
+    // Active Directory permissions (none is everywhere, so a giver limited to some OUs must name them), an end in the
+    // next five years. Why not, or null.
+    private string? Assign(RolesFile f, Role role, Member m, Who by, IReadOnlyCollection<string> scope, DateTime? ends, string? reason)
+    {
+        var places = Tidy(scope);
+        if (places.FirstOrDefault(d => !IsDn(d)) is { } not)
+        {
+            return $"{not} is not an OU in Active Directory.";
+        }
+        if (places.Count > MostPlaces)
+        {
+            return $"An assignment can cover up to {MostPlaces} OUs.";
+        }
+        var effective = places.Count > 0 ? places : role.Scope;
+        if (role.Id != Admin && role.Permissions.Where(Permissions.Scoped.Contains).Any(p => !Covers(Reach(f, by, p), effective)))
+        {
+            return "This assignment can't reach further in Active Directory than your own roles do. Select OUs inside your own.";
+        }
+        if (ends is { } e)
+        {
+            var when = DateTime.SpecifyKind(e, DateTimeKind.Utc);
+            if (when <= Now || when > Now.AddYears(5))
+            {
+                return "Select an end date in the next five years.";
+            }
+            ends = when;
+        }
+        var why = reason?.Trim() ?? "";
+        if (why.Length > 300)
+        {
+            return "The reason can be up to 300 characters.";
+        }
+        (m.Scope, m.Ends, m.Reason) = (places, ends, why.Length > 0 ? why : null);
+        return null;
     }
 
     public string? RemoveMember(string id, string? kind, string? name, Who by)
@@ -512,7 +619,7 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
             var role = f.Roles[index];
             if (!Manages(f, by, index))
             {
-                return $"Only admins in a role above {role.Name} can remove members from this role.";
+                return $"Only someone in a higher tier than {role.Name} can take this role away.";
             }
             var member = role.Members.FirstOrDefault(m => m.Kind == kind && Same(m.Name, name));
             if (member is null)
@@ -537,7 +644,7 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
             var f = Fresh();
             if (Above(f, username, by) is { } above)
             {
-                return $"{username} has the {above.Name} role. Only admins in a role above {above.Name} can remove this account.";
+                return $"{username} has the {above.Name} role. Only someone in a higher tier than {above.Name} can remove this account.";
             }
             var admins = f.Roles[0].Members;
             if (admins.Count == 1 && admins[0].Kind == Member.Local && Same(admins[0].Name, username))
@@ -571,33 +678,44 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
     public static string PermissionName(string key) => Permissions.Shown().SelectMany(p => p.Actions).FirstOrDefault(a => a.Key == key)?.Name ?? key;
 
     /// <summary>The first role this local account is in that someone doesn't manage, or null.</summary>
-    private static Role? Above(RolesFile f, string username, Who by) =>
-        f.Roles.Where((r, i) => r.Members.Any(m => m.Kind == Member.Local && Same(m.Name, username)) && !Manages(f, by, i)).FirstOrDefault();
+    private Role? Above(RolesFile f, string username, Who by) =>
+        f.Roles.Where((r, i) => r.Members.Any(m => m.Kind == Member.Local && Same(m.Name, username) && Active(m)) && !Manages(f, by, i)).FirstOrDefault();
 
-    private static List<Role> Mine(RolesFile f, Who who)
+    private DateTime Now => clock.GetUtcNow().UtcDateTime;
+
+    /// <summary>Whether an assignment still counts: it has no end, or its end hasn't come.</summary>
+    private bool Active(Member m) => m.Ends is not { } e || e > Now;
+
+    /// <summary>The highest tier among roles (the lowest number); 2 with none but User.</summary>
+    private static int TierOf(IEnumerable<Role> roles) => roles.Select(r => r.Tier).DefaultIfEmpty(2).Min();
+
+    private List<Role> Mine(RolesFile f, Who who)
     {
         if (who.Source.Length == 0)
         {
             return [];
         }
-        return [.. f.Roles.Where(r => r.Id == User || (r.Id == Admin && who.Source == SignIn.Windows) || r.Members.Any(m => Matches(m, who)))];
+        return [.. f.Roles.Where(r => r.Id == User || (r.Id == Admin && who.Source == SignIn.Windows) || r.Members.Any(m => Active(m) && Matches(m, who)))];
     }
 
-    private static IReadOnlySet<string> Allowed(RolesFile f, Who who)
+    private IReadOnlySet<string> Allowed(RolesFile f, Who who)
     {
         var mine = Mine(f, who);
         return mine.Any(r => r.Id == Admin) ? Permissions.All : mine.SelectMany(r => r.Permissions).ToHashSet();
     }
 
-    private static IReadOnlyList<string>? Reach(RolesFile f, Who who, string permission)
+    // Each assignment of a role that allows it reaches its own OUs (or its role's when it has none); one that reaches
+    // everywhere makes it everywhere. User reaches what its role says.
+    private IReadOnlyList<string>? Reach(RolesFile f, Who who, string permission)
     {
         var mine = Mine(f, who);
         if (mine.Any(r => r.Id == Admin))
         {
             return null;
         }
-        var giving = mine.Where(r => r.Permissions.Contains(permission)).ToList();
-        return giving.Any(r => r.Scope.Count == 0) ? null : Tidy(giving.SelectMany(r => r.Scope));
+        var scopes = mine.Where(r => r.Permissions.Contains(permission))
+            .SelectMany(r => r.Id == User ? [r.Scope] : r.Members.Where(m => Active(m) && Matches(m, who)).Select(m => m.Scope.Count > 0 ? m.Scope : r.Scope)).ToList();
+        return scopes.Any(s => s.Count == 0) ? null : Tidy(scopes.SelectMany(s => s));
     }
 
     /// <summary>Whether a reach (null is everywhere) takes in every OU of a scope (none is everywhere).</summary>
@@ -614,10 +732,19 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
     private static bool IsDn(string dn) =>
         dn.Length <= 1024 && Ldap.Split(dn) is { Count: > 0 } parts && parts.All(p => p.IndexOf('=') > 0) && parts[^1].StartsWith("DC=", StringComparison.OrdinalIgnoreCase);
 
-    private static bool Manages(RolesFile f, Who by, int index)
+    // An administrator manages every role; anyone else only roles in a lower tier than their own highest.
+    private bool Manages(RolesFile f, Who by, int index)
     {
         var mine = Mine(f, by);
-        return mine.Any(r => r.Id == Admin) || mine.Any(r => f.Roles.IndexOf(r) < index);
+        return mine.Any(r => r.Id == Admin) || TierOf(mine) < f.Roles[index].Tier;
+    }
+
+    // Administrator first, then the roles by tier and name, User last.
+    private static void Arrange(RolesFile f)
+    {
+        var admin = f.Roles.First(r => r.Id == Admin);
+        var user = f.Roles.First(r => r.Id == User);
+        f.Roles = [admin, .. f.Roles.Where(r => r.Id is not (Admin or User)).OrderBy(r => r.Tier).ThenBy(r => r.Name, StringComparer.OrdinalIgnoreCase), user];
     }
 
     private static bool Matches(Member m, Who who) => m.Kind switch
@@ -664,8 +791,8 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
         Version = Current,
         Roles =
         [
-            new Role { Id = Admin, Name = "Administrator", About = "All permissions, including access management. Always the highest role.", Color = "#FF6A45" },
-            new Role { Id = User, Name = "User", About = "Assigned to everyone who signs in. Always the lowest role.", Color = "#8A8FA8", Permissions = [.. Permissions.Basic] },
+            new Role { Id = Admin, Name = "Administrator", About = "All permissions, including access management. The only tier 0 role.", Color = "#FF6A45", Tier = 0 },
+            new Role { Id = User, Name = "User", About = "Assigned to everyone who signs in. Always tier 2.", Color = "#8A8FA8", Tier = 2, Permissions = [.. Permissions.Basic] },
         ],
     };
 
@@ -744,13 +871,19 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
         return f;
     }
 
-    /// <summary>Administrator first and User last, whatever the file says.</summary>
+    /// <summary>Administrator first in tier 0, User last in tier 2, and every other role in tier 1 or 2, whatever the file says.</summary>
     private static void Repair(RolesFile f)
     {
         var defaults = Defaults();
         var admin = f.Roles.FirstOrDefault(r => r.Id == Admin) ?? defaults.Roles[0];
         var user = f.Roles.FirstOrDefault(r => r.Id == User) ?? defaults.Roles[1];
+        (admin.Tier, user.Tier) = (0, 2);
         f.Roles = [admin, .. f.Roles.Where(r => r.Id is not (Admin or User)), user];
+        foreach (var r in f.Roles.Where(r => r.Id is not (Admin or User) && r.Tier is not (1 or 2)))
+        {
+            r.Tier = 1;
+        }
+        Arrange(f);
     }
 
     /// <summary>A file from before a permission was split gets its parts, so nobody loses what they could do. Whether anything changed.</summary>
@@ -789,6 +922,16 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts)
                 add.AddRange([Permissions.NetworkView, Permissions.NetworkScan, Permissions.NetworkSettings]);
             }
             r.Permissions = [.. r.Permissions.Union(add).Order()];
+        }
+        // Tiers came after: every role between Administrator and User is tier 1 (Repair), and a role's scope moves onto
+        // each of its assignments, where it's set from now on.
+        foreach (var r in f.Roles.Where(r => f.Version < 6 && r.Id is not (Admin or User) && r.Scope.Count > 0))
+        {
+            foreach (var m in r.Members.Where(m => m.Scope.Count == 0))
+            {
+                m.Scope = [.. r.Scope];
+            }
+            r.Scope = [];
         }
         f.Version = Current;
         return true;
