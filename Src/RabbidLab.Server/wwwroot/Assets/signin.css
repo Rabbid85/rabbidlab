@@ -207,7 +207,7 @@ body.loading .look { visibility: hidden; }
   .side-name { padding: 16px 20px 14px; }
   .card-body, .card-foot { padding-left: 20px; padding-right: 20px; }
 }
-/* Skip MFA this time: Rabbid Lab Dev, in a browser on the server itself. */
+/* Skip MFA this time: Rabbid Lab Dev, while Settings, Developer allows it. */
 .mfa-skip { display: flex; align-items: center; gap: 10px; margin: 2px 0 14px; color: var(--text); font-size: 14px; cursor: pointer; }
 .mfa-skip[hidden] { display: none; }
 .mfa-skip small { display: block; color: var(--muted); font-size: 12px; }

@@ -64,7 +64,7 @@ public static class DevTools
         // A read: anyone signed in, with no header asked for (Access.Refuse is for changes).
         app.MapGet("/api/devtools", (SettingsStore settings) => Results.Ok(new { on = settings.Current.DevTools, skipMfa = settings.Current.DevSkipMfa }));
 
-        // Developer tools, and Skip MFA this time on the server itself. Turning the skip back on asks who it is first.
+        // Developer tools, and Skip MFA this time on any computer. Turning the skip back on asks who it is first.
         app.MapPost("/api/devtools", (DevToolsForm form, HttpContext context, SettingsStore settings, Confirmations confirm, ActivityLog log) =>
         {
             if (Access.RefuseUnless(context, Permissions.UpdatesAuto) is { } refused)
@@ -78,7 +78,7 @@ public static class DevTools
                     return unconfirmed;
                 }
                 settings.Change(s => s.DevSkipMfa = skip);
-                log.Record(context, "access", "devtools.skipmfa", skip ? "Allowed sign-ins on this server to skip MFA (Rabbid Lab Dev)" : "Required MFA again for sign-ins on this server");
+                log.Record(context, "access", "devtools.skipmfa", skip ? "Allowed sign-ins to skip MFA (Rabbid Lab Dev)" : "Required MFA again for every sign-in");
             }
             if (form.On is { } on)
             {

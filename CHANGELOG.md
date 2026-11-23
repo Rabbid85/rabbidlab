@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.379 (2026-11-23)
+
+- Rabbid Lab Dev only: Skip MFA this time works on every computer, not just the server, while Settings, Developer, Skip MFA is on. The release always requires the code.
+
 ## 1.1.378 (2026-11-23)
 
 - Microsoft cloud: Entra ID, Exchange, Microsoft 365 and Azure each have a page laid out like Active Directory. Connect signs in once with a Global Administrator account at Microsoft; Rabbid Lab then makes its own app registration with a certificate and signs in as that app. The admin’s sign-in is never kept.

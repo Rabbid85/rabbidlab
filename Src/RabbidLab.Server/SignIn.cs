@@ -614,12 +614,12 @@ public static class SignIn
                 log.Record(username, from, "sign-in", "signin.locked", "Locked out", "failed", "Too many incorrect passwords and codes");
                 return Results.Json(new { error = LockedText(username), again = true }, statusCode: StatusCodes.Status401Unauthorized);
             }
-            // Skip MFA this time: Rabbid Lab Dev, on the server itself, while Settings, Developer allows it. Nothing is set up.
+            // Skip MFA this time: Rabbid Lab Dev, while Settings, Developer allows it. Nothing is set up.
             if (form.Skip)
             {
                 if (!MaySkipMfa(context))
                 {
-                    return Results.Json(new { error = "MFA cannot be skipped from this computer." }, statusCode: StatusCodes.Status403Forbidden);
+                    return Results.Json(new { error = "MFA cannot be skipped." }, statusCode: StatusCodes.Status403Forbidden);
                 }
                 pending.Remove(form.Ticket!);
                 if (!roles.CanSignIn(who))
@@ -627,7 +627,7 @@ public static class SignIn
                     return Results.BadRequest(new { error = "Sign in again.", again = true });
                 }
                 ((ClaimsIdentity) waiting.Principal.Identity).AddClaim(new Claim("mfa", Skipped));
-                return await Finish(context, roles, log, locks, waiting.Principal, waiting.Name, waiting.Keys, "Signed in without MFA", $"{Product.Name}, on the server, using Skip MFA this time", form.Notice);
+                return await Finish(context, roles, log, locks, waiting.Principal, waiting.Name, waiting.Keys, "Signed in without MFA", $"{Product.Name}, using Skip MFA this time", form.Notice);
             }
             // Set up some other way since the password was typed: this ticket's secret doesn't take that one's place.
             if (waiting.Secret is not null && mfa.Has(who))
@@ -881,26 +881,14 @@ public static class SignIn
     public const string Skipped = "skipped";
 
     /// <summary>
-    /// Whether the MFA step may be skipped: only in Rabbid Lab Dev, only while Settings, Developer allows it, and only for a
-    /// browser on the server itself, so testing there doesn't need a phone and nobody elsewhere gets past the code.
+    /// Whether the MFA step may be skipped: only in Rabbid Lab Dev, and only while Settings, Developer allows it. From any
+    /// computer since 1.1.379, at the user's word, so testing from other PCs doesn't need a phone. The release never skips.
     /// </summary>
     public static bool MaySkipMfa(HttpContext context) =>
-        SkipsMfa(Product.Dev, context.RequestServices.GetRequiredService<SettingsStore>().Current.DevSkipMfa, context.Connection.RemoteIpAddress, context.Connection.LocalIpAddress);
+        SkipsMfa(Product.Dev, context.RequestServices.GetRequiredService<SettingsStore>().Current.DevSkipMfa);
 
-    /// <summary>
-    /// The rule behind MaySkipMfa. On the server itself means loopback, or a browser there that used one of the server's own
-    /// addresses (by its name), where the connection comes from the address it arrives at.
-    /// </summary>
-    public static bool SkipsMfa(bool dev, bool allowed, System.Net.IPAddress? from, System.Net.IPAddress? to)
-    {
-        if (!dev || !allowed || from is null)
-        {
-            return false;
-        }
-        var remote = from.IsIPv4MappedToIPv6 ? from.MapToIPv4() : from;
-        var local = to is null ? null : to.IsIPv4MappedToIPv6 ? to.MapToIPv4() : to;
-        return System.Net.IPAddress.IsLoopback(remote) || remote.Equals(local);
-    }
+    /// <summary>The rule behind MaySkipMfa.</summary>
+    public static bool SkipsMfa(bool dev, bool allowed) => dev && allowed;
 
     /// <summary>
     /// Who signed in and with what: the domain (or this computer), the domain controller that checked the password, and the

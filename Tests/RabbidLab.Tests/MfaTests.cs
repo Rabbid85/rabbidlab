@@ -97,14 +97,11 @@ public sealed class MfaTests : IDisposable
     }
 
     [Theory]
-    [InlineData(true, true, "127.0.0.1", "127.0.0.1", true)]
-    [InlineData(true, true, "::1", "::1", true)]
-    [InlineData(true, true, "::ffff:192.168.2.50", "192.168.2.50", true)] // a browser on the server, by the server's own name
-    [InlineData(true, true, "192.168.2.40", "192.168.2.50", false)] // another computer
-    [InlineData(true, false, "127.0.0.1", "127.0.0.1", false)] // switched off in Settings, Developer
-    [InlineData(false, true, "127.0.0.1", "127.0.0.1", false)] // the release never skips
-    public void Skipping_MFA_is_Rabbid_Lab_Dev_only_switched_on_and_on_the_server_itself(bool dev, bool allowed, string from, string to, bool skips) =>
-        Assert.Equal(skips, RabbidLab.Server.SignIn.SkipsMfa(dev, allowed, System.Net.IPAddress.Parse(from), System.Net.IPAddress.Parse(to)));
+    [InlineData(true, true, true)] // Rabbid Lab Dev with it on, from any computer
+    [InlineData(true, false, false)] // switched off in Settings, Developer
+    [InlineData(false, true, false)] // the release never skips
+    public void Skipping_MFA_is_Rabbid_Lab_Dev_only_and_switched_on(bool dev, bool allowed, bool skips) =>
+        Assert.Equal(skips, RabbidLab.Server.SignIn.SkipsMfa(dev, allowed));
 
     [Fact]
     public async Task The_release_never_offers_or_takes_a_skip()

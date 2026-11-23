@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.379', [
+    'Rabbid Lab Dev only: Skip MFA this time works on every computer, not just the server, while Settings, Developer, Skip MFA is on. The release always requires the code.']],
   ['1.1.378', [
     'Microsoft cloud: Entra ID, Exchange, Microsoft 365 and Azure each have a page laid out like Active Directory. Connect signs in once with a Global Administrator account at Microsoft; Rabbid Lab then makes its own app registration with a certificate and signs in as that app. The admin’s sign-in is never kept.',
     'Lists in this version: users, groups, devices and admin roles; mailboxes, distribution lists, contacts, mail flow rules and quarantine; licences; Azure virtual machines and subscriptions. Two new permissions, View Microsoft cloud and Connect Microsoft cloud.']],
@@ -1211,6 +1213,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.379': ['2026-11-23', 'fix', 'Dev: Skip MFA works from any computer'],
   '1.1.378': ['2026-11-23', 'feature', 'Microsoft cloud: Entra ID, Exchange, Microsoft 365 and Azure', 'cloud.jpg'],
   '1.1.377': ['2026-11-23', 'fix', 'Computers reconnect by themselves after a certificate change'],
   '1.1.376': ['2026-11-23', 'feature', 'Roles and people in tabs, with roles by tier', 'roles-a.jpg'],
@@ -1961,7 +1964,7 @@ const RELEASE_INFO = {
   apply();
 
   // Rabbid Lab Dev's Developer tools: the switch in Settings, Developer, and the DEV buttons it shows in Add a link and Add a sensor.
-  // And Skip MFA this time: the checkbox the sign-in page shows on this server itself (Rabbid Lab Dev only).
+  // And Skip MFA this time: the checkbox the sign-in page shows on any computer (Rabbid Lab Dev only).
   const devTools = async (change) => {
     try {
       const d = change === undefined ? await get('/api/devtools') : await send('/api/devtools', typeof change === 'boolean' ? { on: change } : change);

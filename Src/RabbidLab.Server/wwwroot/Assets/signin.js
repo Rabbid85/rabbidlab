@@ -211,7 +211,7 @@
       $('mfa-secret').textContent = said.setup.secret.replace(/(.{4})/g, '$1 ').trim();
     }
     $('mfa-code').value = '';
-    // Rabbid Lab Dev, in a browser on the server itself: a checkbox to sign in without the code while testing.
+    // Rabbid Lab Dev, while Settings, Developer allows it: a checkbox to sign in without the code while testing.
     $('mfa-skip-row').hidden = !said.skip;
     $('mfa-skip').checked = false;
     resetShown = !!said.reset;
