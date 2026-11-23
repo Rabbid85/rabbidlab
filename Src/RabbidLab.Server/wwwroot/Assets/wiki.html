@@ -467,12 +467,12 @@
   <p>Tiers also apply in Active Directory. No one can reset the password of, or otherwise change, an account that has a role in their own tier or higher, or change a group that gives such a role. This prevents a help desk role from taking over an admin account.</p>
   <h3>Create a role</h3>
   <ol>
-    <li>Open <a href="#settings/people">Roles and people</a> and select <b>New role</b>. It is created in the tier below your own.</li>
-    <li>On <b>Name and tier</b>, enter a name, select its tier and select a colour.</li>
-    <li>On <b>Permissions</b>, select the permissions the role grants, area by area.</li>
-    <li>Select <b>Save changes</b>, then <b>Give this role</b> to give it to people.</li>
+    <li>Open <a href="#settings/people">Roles and people</a> and select <b>New role</b>. It is created in the tier below your own and opens in the side panel.</li>
+    <li>On <b>Name and tier</b>, enter a name, select its tier and select a colour, then select <b>Save changes</b>.</li>
+    <li>On <b>Can and Can't</b>, select <b>Edit</b>, turn the permissions on or off, and select <b>Save changes</b>.</li>
+    <li>Select <b>Give this role</b> to give it to people.</li>
   </ol>
-  <p><b>Preview as</b> shows the console as that role sees it.</p>
+  <p>The <b>Roles</b> tab lists every role by tier, with how many permissions each has and how many people it reaches. <b>Preview as</b> shows the console as a role sees it.</p>
 </article>
 
 <article data-key="mfa" data-group="Access" data-title="Multi-factor authentication (MFA)">
@@ -503,7 +503,7 @@
     <li>Under <b>Ends</b>, select <b>Never</b>, or <b>On a date</b> for an assignment that stops working at the end of that day.</li>
     <li>Enter a reason if you want one, then select <b>Give role</b>.</li>
   </ol>
-  <p>Every assignment is a row in the list, with where it works, when it ends and who added it. <b>Ending in 30 days</b> on the left lists the ones about to end. Select a row to open it, then <b>Edit</b> to change where it works, when it ends or why, or <b>Remove assignment</b>.</p>
+  <p>The <b>Assignments</b> tab lists every assignment, with where it works, when it ends and who added it. Sort by <b>Ends</b> to see the ones about to end. Select a row to open it, then <b>Edit</b> to change where it works, when it ends or why, or <b>Remove assignment</b>. <b>People</b> and <b>Local accounts</b> list everyone who can sign in, with their roles and MFA.</p>
   <p>A group with a role gives it to all its members, including members of nested groups, at their next sign-in. Turn on <b>People from groups</b> to list each person a group reaches under it. Select a person to see every role they have, how they got it, and what they can do.</p>
   <p class="tip">An Active Directory account with no role cannot sign in. All AD users have the User role by default.</p>
 </article>

@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.376 (2026-11-23)
+
+- Roles and people has four tabs: Roles, Assignments, People and Local accounts. Roles lists every role by tier, with what it can and can’t do and how many people it reaches.
+- A role opens in the side panel with Can and Can’t. Edit turns its permissions on or off in place, then Save changes. Its assignments, and its name, tier and colour, are on their own tabs there.
+- People and Local accounts list everyone who can sign in, with their roles, highest tier and MFA.
+
 ## 1.1.375 (2026-11-23)
 
 - Links has a second tab, Admin portals: 116 admin sites for Microsoft 365, Azure, Apple and Google, laid out like Active Directory. The star adds one to your links.

@@ -1,7 +1,7 @@
 /* Roles and people: a column on the left (the assignment views, the roles by tier) and the assignments or one role beside it. */
 .page.people-page { position: relative; max-width: 1240px; }
 /* In Settings it takes the whole width: its own column on the left would leave the list too narrow at 860px. */
-.set-area .sub.people-sub { position: relative; max-width: none; }
+.set-area .sub.people-sub { position: relative; max-width: none; min-width: 0; } /* the wide lists scroll inside their cards, not the page */
 .lib { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 26px; align-items: start; }
 .side { display: flex; flex-direction: column; gap: 2px; }
 .side-find, .tools .find, .adder .find { display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 8px; background: #0C0E17; color: #5E6380; }
@@ -215,3 +215,48 @@ button.link:hover { background: none; color: var(--title); }
 .pp-sum svg { flex: none; width: 15px; height: 15px; margin-top: 2px; color: var(--accent-soft); }
 .pp-sum b { color: var(--title); }
 #give-dialog { width: min(720px, calc(100vw - 32px)); }
+
+/* Take A: the buttons along the top, the four tabs with a search at their end, and the role panel's Can and Can't. */
+.pp-cmds { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 16px; }
+.pp-cmds button { display: inline-flex; align-items: center; gap: 7px; }
+.pp-cmds button svg { width: 15px; height: 15px; }
+.pp-cmds button .chev { width: 12px; height: 12px; }
+.pp-tabs { align-items: flex-end; margin-bottom: 14px; }
+.pp-tabs a { display: inline-flex; align-items: center; gap: 8px; }
+.pp-tabs a svg { width: 15px; height: 15px; }
+.pp-tabs .grow { flex: 1; }
+.pp-find { width: 260px; height: 32px; margin: 0 0 6px; }
+.set-area .sub.people-sub .gcard + .gcard { margin-top: 0; }
+.pic.pp-rpic { background: color-mix(in srgb, var(--c, #8A8FA8) 16%, transparent); color: var(--c, #8A8FA8); }
+.pp-lock { display: inline-grid; flex: none; place-items: center; color: #5E6380; }
+.pp-lock svg { width: 12px; height: 12px; }
+.pp-editbar { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 10px; margin: 0 0 12px; padding: 10px 12px; border: 1px solid var(--accent-line); border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 10%, var(--sty-panel-bg, #11131D)); color: var(--title); font-size: 13px; font-weight: 600; }
+.pp-editbar > svg { flex: none; width: 15px; height: 15px; color: var(--accent-soft); }
+.pp-editbar > span { flex: 1; }
+.pp-lede { margin: 2px 0 10px; }
+.pp-area { margin: 0 0 14px; }
+.pp-area ul { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.pp-ah { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; color: var(--title); font-size: 13.5px; }
+.pp-ah svg { width: 15px; height: 15px; color: #6D7290; }
+.pp-ah span { margin-left: auto; color: #5E6380; font-size: 12px; }
+.pp-li { display: flex; align-items: center; gap: 10px; padding: 6px 4px; border-radius: 8px; }
+.pp-li.editing:hover { background: #151827; }
+.pp-li .ubadge { flex: none; }
+.pp-li .switch { flex: none; margin-left: auto; }
+.pp-mk { display: grid; flex: none; place-items: center; width: 20px; height: 20px; border-radius: 50%; }
+.pp-mk svg { width: 12px; height: 12px; }
+.pp-mk.yes { background: color-mix(in srgb, var(--ok) 16%, transparent); color: var(--ok); }
+.pp-mk.no { background: #1A1D2B; color: #5E6380; }
+.pp-ptools { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; }
+.pp-ptools .grow { flex: 1; }
+.pp-ptools button { display: inline-flex; align-items: center; gap: 7px; }
+.pp-ptools button svg { width: 14px; height: 14px; }
+.pp-rform { margin-bottom: 12px; }
+.pp-rsave { display: flex; justify-content: flex-end; gap: 8px; margin: 0 0 14px; }
+.dw-sec .danger { margin-top: 6px; }
+.dw-sec-head h3 > svg { width: 15px; height: 15px; margin-right: 6px; vertical-align: -2px; }
+.pp-th { display: inline-flex; align-items: baseline; gap: 8px; min-width: 0; white-space: nowrap; }
+.pp-tn { color: var(--title); font-weight: 700; }
+.pp-tdesc { color: var(--muted); font-weight: 500; }
+.pp-area .pp-where { margin: -2px 0 8px; color: var(--muted); font-size: 12.5px; }
