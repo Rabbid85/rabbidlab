@@ -53,6 +53,8 @@
 <script src="Assets/alerts.js" defer></script>
 <script src="Assets/report.js" defer></script>
 <script src="Assets/links.js" defer></script>
+<script src="Assets/portal-catalog.js" defer></script>
+<script src="Assets/portals.js" defer></script>
 <script src="Assets/sensors.js" defer></script>
 <script src="Assets/wiki.js" defer></script>
 <script src="Assets/directory.js" defer></script>
@@ -149,7 +151,8 @@
   <symbol id="i-box" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5 9 5z"/><path d="M3 8v8l9 5 9-5V8M12 13v8"/></symbol>
   <symbol id="i-printer" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 8V3h10v5"/><rect x="3" y="8" width="18" height="9" rx="2"/><path d="M7 14h10v7H7z"/><path d="M17.5 11h.01"/></symbol>
   <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
-  <symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.8z"/></symbol>
+<symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></symbol>
   <symbol id="i-logout" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17l-5-5 5-5M5 12h11"/></symbol>
   <symbol id="i-devices" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="14" height="10" rx="1.5"/><path d="M5 18h8"/><rect x="17" y="8" width="5" height="11" rx="1"/></symbol>
   <symbol id="i-user-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="8" r="4"/><path d="M3 21a7 7 0 0 1 11.5-5.4M16 19l2 2 4-4"/></symbol>
@@ -1025,9 +1028,13 @@
     </header>
     <!-- The command bar along the bottom of the banner: what can be done here, then the view and the gear on the right. -->
     <div class="cmdbar" id="ln-tools" role="toolbar" aria-label="Links" data-dock="ln-view ln-refresh ln-add+ln-newgroup">
-      <button type="button" class="cmd" id="ln-add" data-can="links.edit"><svg><use href="#i-plus"/></svg><span>Add a link</span></button>
+      <div class="cmd-pair" id="ln-add-pair" data-can="links.edit links.own">
+        <button type="button" class="cmd" id="ln-add" data-can="links.edit links.own"><svg><use href="#i-plus"/></svg><span>Add a link</span></button><i class="cmd-rule"></i>
+        <button type="button" class="cmd cmd-arrow" id="ln-add-more" aria-haspopup="menu" data-tip="More ways to add" aria-label="More ways to add"><svg class="chev"><use href="#i-chevron-down"/></svg></button></div>
       <button type="button" class="cmd" id="ln-newgroup" data-can="links.edit"><svg><use href="#i-folder"/></svg><span>New group</span></button>
       <button type="button" class="cmd" id="ln-refresh" data-can="links.edit"><svg><use href="#i-refresh"/></svg><span>Refresh icons</span></button>
+      <!-- The links someone hid from their own page: pressed, they show faint, each with its eye to bring it back. -->
+      <button type="button" class="cmd" id="ln-hidden" aria-pressed="false" data-tip="Show the links you hid" hidden><svg><use href="#i-eye-off"/></svg><span>Hidden</span><small id="ln-hidden-n"></small></button>
       <span class="grow"></span>
       <span class="cmd-l">View</span>
       <div class="vswitch" id="ln-view"><button type="button" data-view="grid" title="Rows" aria-label="Rows"><svg><use href="#i-view-rows"/></svg></button><button type="button" data-view="cards" title="Tiles" aria-label="Tiles"><svg><use href="#i-view-tiles"/></svg></button><button type="button" data-view="links" title="Links" aria-label="Links"><svg><use href="#i-view-list"/></svg></button><button type="button" data-view="icons" title="Icons" aria-label="Icons"><svg><use href="#i-view-icons"/></svg></button></div>
@@ -1039,13 +1046,33 @@
       </div><input type="file" id="ln-import-file" accept=".json,application/json" hidden>
     </div>
     <section class="news sn-body">
+    <!-- Two tabs: the links, and the admin portals catalogue browsed like Active Directory (portals.js). -->
+    <nav class="tabs2 ln-tabs" id="ln-tabs" aria-label="Links"><a href="#links" data-ltab="yours"><svg><use href="#i-link"/></svg>Your links <small id="ln-tab-yours"></small></a>
+      <a href="#links/portals" data-ltab="portals"><svg><use href="#i-globe"/></svg>Admin portals <small id="ln-tab-portals"></small></a></nav>
+    <div id="ln-yours">
     <!-- The filter bar every list has (filter.js): it narrows whichever view shows. -->
     <div id="ln-fbar" hidden></div>
     <p class="hint note ln-done" id="ln-done" role="status" hidden></p>
     <div id="ln-list" data-skel="tiles:8"></div>
     <div class="ln-empty" id="ln-empty" hidden><span class="big-ic ember"><svg><use href="#i-link"/></svg></span>
       <div><b>No links yet</b><span id="ln-empty-text">Add the sites you sign in to every day, such as your router, NAS or iDRACs. Paste an address and <span data-app>Rabbid Lab</span> fills in the name, icon and IP address.</span></div>
-      <button type="button" class="primary" id="ln-add-first" data-can="links.edit"><svg><use href="#i-plus"/></svg>Add a link</button></div>
+      <button type="button" class="primary" id="ln-add-first" data-can="links.edit links.own"><svg><use href="#i-plus"/></svg>Add a link</button></div>
+    </div>
+    <!-- Admin portals: the catalogue's groups down the left and its portals in a list; the star adds one for you (portals.js). -->
+    <div class="lp-dir" id="ln-portals" hidden>
+      <nav class="dnav lists lp-nav" id="lp-nav" aria-label="Admin portals"></nav>
+      <div class="lp-main">
+        <div class="lp-bar"><label class="side-find lp-find"><svg><use href="#i-search"/></svg><input type="search" id="lp-find" placeholder="Search admin portals" aria-label="Search admin portals" autocomplete="off" spellcheck="false"></label>
+          <button type="button" class="fchip" id="lp-maker" aria-haspopup="menu"><span>Publisher</span><b id="lp-maker-v" hidden></b><svg class="chev"><use href="#i-chevron-down"/></svg></button></div>
+        <div class="gcard" id="lp-card">
+          <div class="gbar">
+            <button type="button" class="small" id="lp-act" aria-haspopup="menu" disabled data-tip="Select portals first">Actions<b class="cnt" hidden></b><svg class="chev"><use href="#i-chevron-down"/></svg></button>
+            <div id="lp-tools"></div><span id="lp-rows"></span>
+          </div>
+          <div class="table adt drows" id="lp-table"></div>
+        </div>
+      </div>
+    </div>
     <p class="hint problem" id="ln-problem" hidden></p>
     <!-- Watch links: the bar along the bottom while links are being ticked (links.js). -->
     <div class="lw-bar" id="lw-bar" role="toolbar" aria-label="Watch links" hidden>
@@ -1702,6 +1729,13 @@
       <input type="file" id="ln-icon-file" accept="image/*" hidden>
     </aside>
   </div>
+  <!-- Who sees it: everyone, people with some roles, or only the person adding it (links.js). -->
+  <div class="form two sd-form ld-who" id="ln-who-row">
+    <div class="wide"><label>Who sees it</label>
+      <div class="seg ld-seg" id="ln-who" role="radiogroup" aria-label="Who sees it"><button type="button" data-who="all">Everyone</button><button type="button" data-who="roles">People with a role</button><button type="button" data-who="me">Only you</button></div>
+      <div class="role-picks" id="ln-roles" hidden></div>
+      <p class="hint ld-who-hint" id="ln-who-hint"></p></div>
+  </div>
   <!-- Alert when it is down: a sensor checks the link and alerts, with the same alert rows as a sensor (sensors.js fills it, links.js sends it). -->
   <div class="form two sd-form ld-alerts one" id="ln-alerts" hidden>
     <div class="sd-div wide"><b>Alerts</b><i></i></div>
@@ -1721,6 +1755,19 @@
   <p class="hint problem" id="ln-dproblem" hidden></p>
   <div class="dialog-foot"><button type="button" class="danger" id="ln-delete" hidden><svg><use href="#i-trash"/></svg>Delete</button><span class="grow"></span>
     <button type="button" id="ln-cancel">Cancel</button><button type="button" class="primary" id="ln-save">Add link</button></div>
+</dialog>
+
+<!-- Add from the catalogue: its groups down the left, search and ticks on the right, then where they go and who sees them (portals.js). -->
+<dialog class="dialog lp-catdlg" id="cat-dialog" aria-labelledby="cat-title">
+  <h2 id="cat-title">Add from the catalogue</h2>
+  <p class="dialog-lead">Admin portals for Microsoft 365, Azure, Apple and Google, plus the tools around them. Select the portals to add.</p>
+  <div class="lp-cat"><nav class="lp-groups" id="cat-groups" aria-label="Catalogue groups"></nav>
+    <div class="lp-right"><div class="pk-bar"><label class="side-find pk-find"><svg><use href="#i-search"/></svg><input type="search" id="cat-find" placeholder="Search the catalogue" aria-label="Search the catalogue" autocomplete="off" spellcheck="false"></label>
+      <button type="button" class="link" id="cat-all">Select all shown</button></div>
+      <div class="pk-list lp-list" id="cat-rows"></div></div></div>
+  <p class="hint problem" id="cat-problem" hidden></p>
+  <div class="dialog-foot lp-foot"><label class="lp-to"><span>Add to</span><select id="cat-to"></select></label><label class="lp-to"><span>Who sees them</span><select id="cat-who"></select></label>
+    <span class="pk-count" id="cat-n">None selected</span><button type="button" id="cat-cancel">Cancel</button><button type="button" class="primary" id="cat-go" disabled>Add links</button></div>
 </dialog>
 
 <!-- A sensor: what to check, where, how often, and which alert rule it uses. -->

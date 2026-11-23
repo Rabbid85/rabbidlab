@@ -2,6 +2,13 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.375 (2026-11-23)
+
+- Links has a second tab, Admin portals: 116 admin sites for Microsoft 365, Azure, Apple and Google, laid out like Active Directory. The star adds one to your links.
+- The arrow beside Add a link has Add from the catalogue, to add several portals at once to a group, for everyone, for a role or only for you.
+- Each link is for everyone, for people with a role, or only for you. Links only you see stay with your account, and adding them takes the new Add links only you see permission.
+- The eye on a link hides it from your own page, and Hidden brings hidden links back. Everyone else still sees them.
+
 ## 1.1.374 (2026-11-23)
 
 - The sign-in page no longer jumps while you type with Caps Lock on. Caps Lock is on now shows inside the password box, beside the eye.

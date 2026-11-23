@@ -3,6 +3,11 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.375', [
+    'Links has a second tab, Admin portals: 116 admin sites for Microsoft 365, Azure, Apple and Google, laid out like Active Directory. The star adds one to your links.',
+    'The arrow beside Add a link has Add from the catalogue, to add several portals at once to a group, for everyone, for a role or only for you.',
+    'Each link is for everyone, for people with a role, or only for you. Links only you see stay with your account, and adding them takes the new Add links only you see permission.',
+    'The eye on a link hides it from your own page, and Hidden brings hidden links back. Everyone else still sees them.']],
   ['1.1.374', [
     'The sign-in page no longer jumps while you type with Caps Lock on. Caps Lock is on now shows inside the password box, beside the eye.']],
   ['1.1.373', [
@@ -1196,6 +1201,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.375': ['2026-11-23', 'feature', 'Admin portals, and links for a role or only you', 'links-d.jpg'],
   '1.1.374': ['2026-11-23', 'fix', 'Sign-in no longer jumps with Caps Lock on'],
   '1.1.373': ['2026-11-22', 'fix', 'Updates no longer cut computers off'],
   '1.1.372': ['2026-11-22', 'feature', 'Roles in tiers, with every assignment in one list', 'roles.jpg'],

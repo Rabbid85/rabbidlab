@@ -228,6 +228,79 @@ public sealed class LinksTests : IDisposable
     }
 
     [Fact]
+    public async Task Links_for_a_role_or_for_one_person_are_seen_only_by_them()
+    {
+        var admin = await app.SignedIn();
+        var role = await Json(await admin.PostAsJsonAsync("/api/roles", new { name = "Help desk" }));
+        var roleId = role.GetProperty("id").GetString();
+        (await admin.PostAsJsonAsync("/api/links", new { url = "https://router", name = "Router" })).EnsureSuccessStatusCode();
+        var forRole = await Json(await admin.PostAsJsonAsync("/api/links", new { url = "https://tickets", name = "Tickets", who = "roles", roles = new[] { roleId } }));
+        var mine = await Json(await admin.PostAsJsonAsync("/api/links", new { url = "https://home-nas", name = "Home NAS", who = "me" }));
+        var noRole = await admin.PostAsJsonAsync("/api/links", new { url = "https://x", who = "roles", roles = Array.Empty<string>() });
+        var noSensor = await admin.PostAsJsonAsync("/api/links", new { url = "https://y", who = "me", watch = new { on = true } });
+        (await admin.PostAsJsonAsync("/api/accounts", new { username = "viewer", password = "viewer password" })).EnsureSuccessStatusCode();
+        var viewer = app.Page();
+        (await viewer.PostAsJsonAsync("/api/signin", new { username = "viewer", password = "viewer password" })).EnsureSuccessStatusCode();
+
+        var adminSees = await Json(await admin.GetAsync("/api/links"));
+        var viewerSees = await Json(await viewer.GetAsync("/api/links"));
+        var viewerStates = await Json(await viewer.GetAsync("/api/links/states"));
+        var viewerOwn = await viewer.PostAsJsonAsync("/api/links", new { url = "https://mine", who = "me" });
+        var viewerDelete = await viewer.PostAsJsonAsync($"/api/links/{mine.GetProperty("id").GetString()}/delete", new { });
+        var export = await Json(await admin.GetAsync("/api/links/export"));
+
+        string[] Names(JsonElement j) => [.. j.GetProperty("links").EnumerateArray().Select(l => l.GetProperty("name").GetString()!).Order()];
+        Assert.Equal(["Home NAS", "Router", "Tickets"], Names(adminSees)); // an admin manages links, so sees the role's too
+        Assert.Equal(["Router"], Names(viewerSees));
+        Assert.False(viewerStates.GetProperty("states").TryGetProperty(mine.GetProperty("id").GetString()!, out _));
+        Assert.False(viewerStates.GetProperty("states").TryGetProperty(forRole.GetProperty("id").GetString()!, out _));
+        Assert.Equal(HttpStatusCode.Forbidden, viewerOwn.StatusCode); // User can't add links only they see
+        Assert.Equal(HttpStatusCode.NotFound, viewerDelete.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, noRole.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, noSensor.StatusCode);
+        Assert.DoesNotContain(export.GetProperty("links").EnumerateArray(), l => l.GetProperty("name").GetString() == "Home NAS");
+        Assert.Contains(export.GetProperty("links").EnumerateArray(), l => l.GetProperty("name").GetString() == "Tickets");
+    }
+
+    [Fact]
+    public async Task A_hidden_link_is_hidden_for_one_person_and_their_own_is_not_checked_while_hidden()
+    {
+        var links = app.Services.GetRequiredService<Links>();
+        // Port 9 on this computer refuses at once, so a check of it is quick and leaves a state behind.
+        var (own, _) = links.Save(null, new LinkForm("Home NAS", "http://127.0.0.1:9", null, null, null, null, Who: "me"), "test", owner: "local:tom");
+
+        Assert.True(links.Hide("local:tom", own!.Id, true));
+        var hiddenForTom = links.HiddenOf("local:tom");
+        var hiddenForAnn = links.HiddenOf("local:ann");
+        var whileHidden = await links.States(CancellationToken.None);
+        links.Hide("local:tom", own.Id, false);
+        var shown = await links.States(CancellationToken.None);
+
+        Assert.Equal([own.Id], hiddenForTom);
+        Assert.Empty(hiddenForAnn);
+        Assert.False(whileHidden.States.ContainsKey(own.Id));
+        Assert.True(shown.States.ContainsKey(own.Id));
+        Assert.False(links.Hide("local:tom", "gone", true));
+    }
+
+    [Fact]
+    public void A_link_is_seen_by_its_owner_by_the_roles_it_is_for_and_by_people_who_manage_links()
+    {
+        var everyone = new Link { Id = "a" };
+        var forHelp = new Link { Id = "b", Roles = ["helpdesk"] };
+        var toms = new Link { Id = "c", Owner = "local:tom" };
+        var none = new HashSet<string>();
+        var help = new HashSet<string> { "helpdesk" };
+
+        Assert.True(Links.Sees(everyone, "local:ann", none, manages: false));
+        Assert.False(Links.Sees(forHelp, "local:ann", none, manages: false));
+        Assert.True(Links.Sees(forHelp, "local:ann", help, manages: false));
+        Assert.True(Links.Sees(forHelp, "local:ann", none, manages: true));
+        Assert.True(Links.Sees(toms, "local:tom", none, manages: false));
+        Assert.False(Links.Sees(toms, "local:ann", help, manages: true)); // nobody else, not even someone who manages links
+    }
+
+    [Fact]
     public void Every_change_to_the_links_moves_the_revision_on_so_open_pages_read_them_again()
     {
         var links = app.Services.GetRequiredService<Links>();

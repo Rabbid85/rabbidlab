@@ -51,6 +51,7 @@ public static class Permissions
     public const string WindowsDelete = "windows.delete";
     public const string LinksView = "links.view";
     public const string LinksEdit = "links.edit";
+    public const string LinksOwn = "links.own";
     public const string SensorsView = "sensors.view";
     public const string SensorsEdit = "sensors.edit";
     public const string SensorsAlerts = "sensors.alerts";
@@ -73,7 +74,8 @@ public static class Permissions
         new("links", "Links", "link",
         [
             new(LinksView, "View links", "The Links page and the status of each site."),
-            new(LinksEdit, "Manage links", "Add, edit and remove links."),
+            new(LinksEdit, "Manage links", "Add, edit and remove links, including links only some roles see."),
+            new(LinksOwn, "Add links only you see", "Add links of your own. The server checks them too, so an address inside the network shows whether it answers."),
         ]),
         new("sensors", "Sensors", "activity",
         [

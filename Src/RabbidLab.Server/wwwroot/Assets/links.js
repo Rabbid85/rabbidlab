@@ -9,6 +9,9 @@
   let checks = { every: 60, downAfter: 30 }; // seconds: between checks, and unanswered before a link shows as down
   let revision = 0; // goes up whenever the links change on the server; a new one means read them again
   let groups = []; // their names, in the order they are shown
+  let hidden = new Set(); // the links this person hid from their own page
+  let showHidden = false; // Hidden pressed: they show, faint, to bring back
+  let roleList = []; // the roles a link can be for, by id and name
   const NO_GROUP = 'No group'; // what the Group chip calls links in none
   let editing = null; // the link being changed, or null for a new one
   let icon = null; // the dialog's icon: a data: URL, or null for a letter
@@ -34,6 +37,16 @@
     }
   };
 
+  // Who sees a link: everyone, the people with some roles, or only the person who added it. Its owner (with Add links
+  // only you see) or someone who manages links may change it.
+  const whoOf = (l) => (l.owner ? 'me' : l.roles?.length ? 'roles' : 'all');
+  const roleName = (id) => roleList.find((r) => r.id === id)?.name || id;
+  const whoWords = (l) => (l.owner ? 'Only you' : l.roles?.length ? l.roles.map(roleName).join(', ') : 'Everyone');
+  const changes = (l) => (l.owner ? can('links.own') : can('links.edit'));
+  const whoChip = (l) => (whoOf(l) === 'all' ? '' : `<i class="lwho${l.owner ? ' me' : ''}" data-tip="${esc(l.owner ? 'Only you see this link' : `Only people with ${whoWords(l)} see this link`)}">`
+    + `${svg(l.owner ? 'user' : 'shield')}${esc(whoWords(l))}</i>`);
+  const shownNow = () => links.filter((l) => !hidden.has(l.id)); // what this person has on their page: hidden ones don't count
+
   // --- The tiles, by group ------------------------------------------------------------------------------------------
 
   const dot = (l) => {
@@ -54,11 +67,13 @@
   const tickClass = (l) => (!watching ? '' : !checked(l) ? ' lw-off' : ticked.has(l.id) ? ` lw-on${l.sensor ? ' lw-was' : ''}` : '');
   // A watched link: a small eye beside its dot.
   const eye = (l) => (l.sensor && !watching ? `<span class="lw-eye" title="Watched. Sends an alert when down.">${svg('eye')}</span>` : '');
-  const tile = (l) => `<div class="ltile${states[l.id]?.down ? ' down' : ''}${tickClass(l)}" data-id="${esc(l.id)}"${can('links.edit') && !watching ? ` draggable="true" data-drag="${esc(l.id)}"` : ''}>${tick(l)}<a class="lgo" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer" draggable="false">`
+  // The eye beside the pencil hides a link from this person's page, or shows a hidden one again.
+  const hideBtn = (l) => (watching ? '' : `<button type="button" class="icon ledit lhide" data-hide="${esc(l.id)}" data-tip="${hidden.has(l.id) ? 'Show it again' : 'Hide from your links'}" aria-label="${hidden.has(l.id) ? 'Show' : 'Hide'} ${esc(l.name)}">${svg(hidden.has(l.id) ? 'eye' : 'eye-off')}</button>`);
+  const tile = (l) => `<div class="ltile${states[l.id]?.down ? ' down' : ''}${hidden.has(l.id) ? ' lhidden' : ''}${tickClass(l)}" data-id="${esc(l.id)}"${can('links.edit') && !watching ? ` draggable="true" data-drag="${esc(l.id)}"` : ''}>${tick(l)}<a class="lgo" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer" draggable="false">`
     + (l.icon === NO_ICON ? (view === 'grid' ? '<span class="lic gap"></span>' : '') : `<span class="lic${l.icon ? '' : ' letter'}" data-color="${colour(l.name)}">${pic(l)}</span>`)
-    + `<span class="lt"><b>${esc(l.name)}</b>${l.description ? `<span>${esc(l.description)}</span>` : ''}`
+    + `<span class="lt"><b>${whoChip(l) ? `<span class="lnm">${esc(l.name)}</span>${whoChip(l)}` : esc(l.name)}</b>${l.description ? `<span>${esc(l.description)}</span>` : ''}`
     + `<code>${esc(l.address && l.address !== host(l.url) ? `${l.address} · ${host(l.url)}` : host(l.url))}</code></span></a>`
-    + `${eye(l)}${dot(l)}${can('links.edit') && !watching ? `<button type="button" class="icon ledit" data-edit="${esc(l.id)}" aria-label="Edit ${esc(l.name)}">${svg('edit')}</button>` : ''}</div>`;
+    + `${eye(l)}${dot(l)}${hideBtn(l)}${changes(l) && !watching ? `<button type="button" class="icon ledit" data-edit="${esc(l.id)}" aria-label="Edit ${esc(l.name)}">${svg('edit')}</button>` : ''}</div>`;
   // The Links and Icons views: a dot only when a link isn't answering.
   const off = (l) => (states[l.id] && !states[l.id].up ? (states[l.id].down ? 'down' : 'late') : '');
   const face = (l, cls) => `<span class="${cls}${l.icon && l.icon !== NO_ICON ? '' : ' letter'}" data-color="${colour(l.name)}">${l.icon === NO_ICON ? '' : pic(l)}</span>`;
@@ -77,8 +92,8 @@
 
   // The count and the down dot beside Links in the rail.
   const rail = () => {
-    $('rail-links').textContent = links.length || '';
-    $('links-dot').hidden = !links.some((l) => states[l.id] && states[l.id].down);
+    $('rail-links').textContent = shownNow().length || '';
+    $('links-dot').hidden = !shownNow().some((l) => states[l.id] && states[l.id].down);
   };
   // The filter bar over the links (filter.js): a search, a chip for each column worth one (the groups too), saved
   // filters, and the conditions window. Links aren't a table, so these columns are only what the bar filters by. It
@@ -95,6 +110,7 @@
     { key: 'ip', label: 'IP', get: (l) => l.address || '' },
     { key: 'watched', label: 'Watched', get: (l) => (l.sensor ? 'Yes' : 'No') },
     { key: 'protocol', label: 'Protocol', get: (l) => protocol(l) },
+    { key: 'who', label: 'Who sees it', filter: true, get: (l) => whoWords(l) },
   ]);
   const FIELDS = [['Link', [
     { key: 'name', label: 'Name', type: 'text', get: (l) => l.name },
@@ -106,6 +122,7 @@
     { key: 'watched', label: 'Watched', type: 'yes', get: (l) => !!l.sensor },
     { key: 'protocol', label: 'Protocol', type: 'choice', get: (l) => protocol(l) },
     { key: 'icon', label: 'Has an icon', type: 'yes', get: (l) => own(l) },
+    { key: 'who', label: 'Who sees it', type: 'choice', get: (l) => whoWords(l) },
   ]]];
   let barOn = null;
   const bar = () => (barOn ||= R.filter.bar({ el: $('ln-fbar'), key: 'links', grid: () => COLS, rows: () => links, noun: 'links', fields: () => FIELDS,
@@ -118,7 +135,12 @@
   const draw = () => {
     $('ln-fbar').hidden = !links.length;
     const find = bar().any(); // the filter bar narrows the page
-    const shown = links.filter(bar().test());
+    const shown = links.filter(bar().test()).filter((l) => showHidden || !hidden.has(l.id));
+    $('ln-hidden').hidden = !hidden.size;
+    $('ln-hidden').setAttribute('aria-pressed', String(showHidden));
+    $('ln-hidden').dataset.tip = showHidden ? 'Leave hidden links out' : 'Show the links you hid';
+    $('ln-hidden-n').textContent = hidden.size;
+    $('ln-tab-yours').textContent = shownNow().length;
     bar().draw();
     // Every group in its order, the empty ones too unless something is being looked for; links with no group go last.
     const by = [...groups, ''].map((g) => [g, shown.filter((l) => (l.group || '') === g)])
@@ -147,7 +169,7 @@
   const checked = (l) => /^https?:/i.test(l.url);
   const EVERY_SHORT = { 15: 'Every 15 sec', 30: 'Every 30 sec', 60: 'Every minute', 300: 'Every 5 min' };
   const drawHero = () => {
-    const web = links.filter(checked);
+    const web = shownNow().filter(checked);
     const known = web.filter((l) => states[l.id]);
     const up = known.filter((l) => states[l.id].up);
     const down = known.filter((l) => states[l.id].down);
@@ -160,8 +182,8 @@
     $('ln-lead-more').textContent = !links.length ? (can('links.edit') ? 'Add the devices and sites you sign in to every day, such as your router, NAS or iDRACs.' : 'No links have been added.')
       : down.length > 1 ? `Also down: ${down.slice(1, 4).map((l) => l.name).join(', ')}${down.length > 4 ? ` and ${down.length - 4} more` : ''}.`
         : !first && late.length ? `Retrying. Marked down after ${span(checks.downAfter)} without a response.` : '';
-    $('ln-count').textContent = links.length;
-    const seen = links.filter((l) => l.sensor).length;
+    $('ln-count').textContent = shownNow().length;
+    const seen = shownNow().filter((l) => l.sensor).length;
     $('ln-watched-wrap').hidden = !seen;
     $('ln-watched').textContent = seen;
     $('ln-answering').textContent = !web.length ? '0' : known.length ? `${up.length} of ${web.length}` : '…';
@@ -219,6 +241,10 @@
     links = answer.links;
     groups = answer.groups || [];
     checks = answer.checks || checks;
+    hidden = new Set(answer.hidden || []);
+    roleList = answer.roles || roleList;
+    if (!hidden.size) showHidden = false;
+    document.dispatchEvent(new Event('rabbidlab:links')); // Admin portals shows which are in Links (portals.js)
     if (answer.revision != null) revision = answer.revision;
     taken = true;
   };
@@ -233,7 +259,29 @@
     draw();
     statesNow();
   };
-  R.linksNow = () => (taken ? { links, groups } : null); // for the Overview, once read
+  R.linksNow = () => (taken ? { links: shownNow(), groups } : null); // for the Overview, once read, without the ones hidden
+
+  // Hiding one from your own page, or showing it again: it stays for everyone else.
+  const hide = async (id, on) => {
+    const l = links.find((x) => x.id === id);
+    if (!l) return;
+    try {
+      take(await R.send('/api/links/hide', { id, hidden: on }));
+      draw();
+      R.toast(on ? `${l.name} hidden.` : `${l.name} is back in your links.`, on ? 'Only from your links. Everyone else still sees it.' : '',
+        on ? { action: { label: 'Undo', run: () => hide(id, false) } } : {});
+    } catch (err) {
+      R.toast('Could not change the link.', err.message, { tone: 'warn' });
+    }
+  };
+  $('ln-list').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-hide]');
+    if (b) hide(b.dataset.hide, !hidden.has(b.dataset.hide));
+  });
+  $('ln-hidden').addEventListener('click', () => {
+    showHidden = !showHidden;
+    draw();
+  });
 
   // Cards or a grid, remembered in this browser.
   $('ln-view').addEventListener('click', (e) => {
@@ -548,6 +596,42 @@
     if (fresh) $(`${id}-new`).focus();
   };
 
+  // Who sees it: Everyone and a role's take Manage links; Only you takes Add links only you see.
+  let who = 'all';
+  let whoRoles = new Set();
+  const WHO_HINT = {
+    all: 'Everyone who can open Links sees it.',
+    roles: 'Only people with these roles see it, and people who manage links.',
+    me: 'Only you see it, wherever you sign in. The server checks it like any other link, so it shows whether the server can reach it.',
+  };
+  const whoAllowed = (k) => (k === 'me' ? can('links.own') : can('links.edit') && (k !== 'roles' || roleList.length > 0));
+  const whyNotWho = (k) => (k === 'me' ? 'Your roles do not include adding links only you see.' : !can('links.edit') ? 'Your roles do not include managing links.' : 'There are no roles besides Administrator and User.');
+  const drawWho = () => {
+    $('ln-who').querySelectorAll('[data-who]').forEach((b) => {
+      const ok = whoAllowed(b.dataset.who);
+      b.setAttribute('aria-pressed', String(b.dataset.who === who));
+      b.disabled = !ok;
+      if (ok) delete b.dataset.tip;
+      else b.dataset.tip = whyNotWho(b.dataset.who);
+    });
+    $('ln-roles').hidden = who !== 'roles';
+    $('ln-roles').innerHTML = roleList.map((r) => `<label class="role-pick" data-color="${esc(r.color)}"><input type="checkbox" value="${esc(r.id)}"${whoRoles.has(r.id) ? ' checked' : ''}><i class="dot"></i>${esc(r.name)}</label>`).join('');
+    $('ln-who-hint').textContent = WHO_HINT[who];
+    $('link-dialog').classList.toggle('ld-mine', who === 'me'); // a link only you see has no sensor, so no alerts
+    R.paint($('ln-roles'));
+  };
+  $('ln-who').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-who]');
+    if (!b || b.disabled) return;
+    who = b.dataset.who;
+    drawWho();
+  });
+  $('ln-roles').addEventListener('change', (e) => {
+    if (e.target.checked) whoRoles.add(e.target.value);
+    else whoRoles.delete(e.target.value);
+  });
+  const whoBody = () => ({ who, roles: who === 'roles' ? [...whoRoles] : null });
+
   // A new link is one address with its details, or a list: every address is read first, then the ones ticked are added.
   let many = false;
   let rows = null; // the list as read: { url, f, how, keep } for each address, or null before it's read
@@ -652,7 +736,7 @@
       const f = r.f || {};
       reading(`Adding ${i + 1} of ${keep.length}`, '', (i + 1) / keep.length);
       try {
-        await R.send('/api/links', { url: r.url, name: (f.name || '').slice(0, 60), group, description: (f.description || '').slice(0, 200), address: (f.address || '').slice(0, 100), icon: f.icon || null, iconFrom: f.iconFrom || null });
+        await R.send('/api/links', { url: r.url, name: (f.name || '').slice(0, 60), group, description: (f.description || '').slice(0, 200), address: (f.address || '').slice(0, 100), icon: f.icon || null, iconFrom: f.iconFrom || null, ...whoBody() });
         Object.assign(r, { keep: false, how: 'dup' });
       } catch (err) {
         failed.push([r, err.message]);
@@ -736,7 +820,8 @@
     $('ln-url').value = l?.url || '';
     $('ln-name').value = l?.name || '';
     $('ln-about').value = l?.description || '';
-    const options = '<option value="">No group</option>' + groups.map((g) => `<option value="${esc(g)}">${esc(g)}</option>`).join('') + `<option value="${NEW_GROUP}">New group…</option>`;
+    // Groups are everyone's: only someone who manages links makes a new one.
+    const options = '<option value="">No group</option>' + groups.map((g) => `<option value="${esc(g)}">${esc(g)}</option>`).join('') + (can('links.edit') ? `<option value="${NEW_GROUP}">New group…</option>` : '');
     const start = l ? l.group || '' : into ?? oneGroup();
     for (const id of ['ln-group', 'ln-many-group']) {
       $(id).innerHTML = options;
@@ -745,7 +830,10 @@
       pickGroup(id);
     }
     ip = l?.address || '';
-    $('ln-delete').hidden = !l;
+    $('ln-delete').hidden = !l || !(changes(l) || l.owner);
+    who = l ? whoOf(l) : can('links.edit') ? 'all' : 'me';
+    whoRoles = new Set(l?.roles || []);
+    drawWho();
     say('ln-dproblem', '');
     foundLine(true, '', !!l);
     drawMode();
@@ -831,6 +919,27 @@
   };
   $('ln-add').addEventListener('click', () => open(null));
   $('ln-add-first').addEventListener('click', () => open(null));
+  // The arrow beside Add a link: one link, a list, or portals from the catalogue (portals.js).
+  $('ln-add-more').addEventListener('click', () => R.actions.open($('ln-add-pair'), {
+    items: [{ act: 'one', label: 'Add a link' }, { act: 'many', label: 'Bulk add' }, '-', { act: 'cat', label: 'Add from the catalogue' }],
+    pick: (act) => {
+      if (act === 'cat') return R.portals?.add();
+      open(null);
+      if (act === 'many') {
+        many = true;
+        drawMode();
+        drawFound();
+        $('ln-many').focus();
+      }
+    },
+  }));
+  // For portals.js: the links and groups as read, whether this person may add, and reading them again after a change.
+  R.links = {
+    now: () => ({ links, groups, roles: roleList }),
+    take: (answer) => { take(answer); draw(); },
+    refresh: () => refresh(),
+    open: (l) => open(l),
+  };
   $('ln-group').addEventListener('change', () => pickGroup('ln-group'));
   $('ln-many-group').addEventListener('change', () => pickGroup('ln-many-group'));
   $('ln-list').addEventListener('click', (e) => {
@@ -910,7 +1019,7 @@
   $('ln-save').addEventListener('click', async () => {
     if (many && !editing) return rows ? addMany() : readMany();
     const body = { url: $('ln-url').value, name: $('ln-name').value, group: groupOf('ln-group'), description: $('ln-about').value, address: ip, icon,
-      iconFrom: uploaded ? 'own' : icon && icon !== NO_ICON && icon === siteIcon ? siteFrom : null, watch: R.watchLink?.form() ?? undefined };
+      iconFrom: uploaded ? 'own' : icon && icon !== NO_ICON && icon === siteIcon ? siteFrom : null, watch: who === 'me' ? undefined : R.watchLink?.form() ?? undefined, ...whoBody() };
     $('ln-save').disabled = true;
     try {
       await R.send(editing ? `/api/links/${encodeURIComponent(editing.id)}` : '/api/links', body);
@@ -925,7 +1034,7 @@
   $('ln-delete').addEventListener('click', () => {
     if (!editing) return;
     const gone = editing;
-    R.sure(`Delete ${gone.name}?`, gone.sensor ? 'The link and its sensor are deleted for all users.' : 'The link is deleted for all users.', 'Delete', async () => {
+    R.sure(`Delete ${gone.name}?`, gone.owner ? 'Only you see this link, so nobody else loses it.' : gone.sensor ? 'The link and its sensor are deleted for all users.' : 'The link is deleted for all users.', 'Delete', async () => {
       try {
         await R.send(`/api/links/${encodeURIComponent(gone.id)}/delete`, {});
         $('link-dialog').close();

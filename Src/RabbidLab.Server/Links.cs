@@ -35,6 +35,23 @@ public sealed class Link
     /// <summary>A link to a Developer tools test address: up or down, played rather than checked, and gone at Expires.</summary>
     public string? Test { get; set; }
     public DateTime? Expires { get; set; }
+
+    /// <summary>The roles whose people see it, by id; null for everyone. People who manage links see them all.</summary>
+    public List<string>? Roles { get; set; }
+
+    /// <summary>The person it belongs to (UserKeys.PersonOf): only they see it. Null for a link for everyone or for roles.</summary>
+    public string? Owner { get; set; }
+
+    /// <summary>The admin portal it came from in the catalogue (Links tab Admin portals), by key; null for one typed in.</summary>
+    public string? Catalog { get; set; }
+
+    /// <summary>A copy to change: the links in the list are being read by other requests.</summary>
+    public Link Copy()
+    {
+        var c = (Link)MemberwiseClone();
+        c.Roles = Roles is null ? null : [.. Roles];
+        return c;
+    }
 }
 
 public sealed class LinksFile
@@ -55,6 +72,9 @@ public sealed class LinksFile
 
     /// <summary>Whether the links already here have been given those descriptions since Describe was last turned on.</summary>
     public bool Described { get; set; }
+
+    /// <summary>The links each person hid from their own Links page, by person (UserKeys.PersonOf), then link id.</summary>
+    public Dictionary<string, List<string>> Hidden { get; set; } = [];
 }
 
 /// <summary>What a site says about itself, for filling in a new link.</summary>
@@ -80,6 +100,7 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
     private const string NoIcon = "none"; // a link shown with no icon at all; with none saved it shows its first letter
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { WriteIndented = true };
     private const int ChecksAtOnce = 16;
+    public const int MostOwn = 100; // links only one person sees, each
     private static readonly TimeSpan LookFor = TimeSpan.FromSeconds(12); // a lookup in all: the page, its icon, every byte
     private static readonly TimeSpan CheckFor = TimeSpan.FromSeconds(10); // one check of one link: an iDRAC can take 4 seconds to answer (set before the clients below)
     private static readonly HttpClient Http = MakeHttp(guarded: false); // whether the links answer
@@ -127,8 +148,51 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
     }
 
     // A copy with another description: the links in the list are being read by other requests.
-    private static Link WithDescription(Link l, string? description) =>
-        new() { Id = l.Id, Name = l.Name, Url = l.Url, Description = description, Address = l.Address, Group = l.Group, Icon = l.Icon, IconFrom = l.IconFrom, Place = l.Place, Added = l.Added, AddedBy = l.AddedBy, Sensor = l.Sensor };
+    private static Link WithDescription(Link l, string? description)
+    {
+        var c = l.Copy();
+        c.Description = description;
+        return c;
+    }
+
+    /// <summary>Whether this person sees the link: their own, one for everyone, one for a role they have, or any for someone who manages links.</summary>
+    public static bool Sees(Link l, string person, IReadOnlySet<string> roles, bool manages) =>
+        l.Owner is { } owner ? owner == person : l.Roles is not { Count: > 0 } || manages || l.Roles.Any(roles.Contains);
+
+    /// <summary>The links this person hid from their own page.</summary>
+    public IReadOnlyList<string> HiddenOf(string person)
+    {
+        lock (gate)
+        {
+            return file.Read().Hidden.TryGetValue(person, out var ids) ? [.. ids] : [];
+        }
+    }
+
+    /// <summary>Hides a link from this person's page, or shows it again. False when the link isn't there.</summary>
+    public bool Hide(string person, string id, bool hidden)
+    {
+        lock (gate)
+        {
+            var f = file.Read();
+            if (!f.Links.Any(l => l.Id == id))
+            {
+                return false;
+            }
+            var ids = f.Hidden.TryGetValue(person, out var had) ? [.. had] : new List<string>();
+            ids.Remove(id);
+            if (hidden)
+            {
+                ids.Add(id);
+            }
+            f.Hidden = new(f.Hidden) { [person] = ids };
+            if (ids.Count == 0)
+            {
+                f.Hidden.Remove(person);
+            }
+            Store(f);
+            return true;
+        }
+    }
 
     public int Revision
     {
@@ -342,16 +406,31 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
             var l = f.Links[i];
             if (Grouping.Same.Equals(l.Group, from))
             {
-                f.Links[i] = new Link { Id = l.Id, Name = l.Name, Url = l.Url, Description = l.Description, Address = l.Address, Group = to, Icon = l.Icon, IconFrom = l.IconFrom, Place = l.Place, Added = l.Added, AddedBy = l.AddedBy, Sensor = l.Sensor };
+                var c = l.Copy();
+                c.Group = to;
+                f.Links[i] = c;
                 moved++;
             }
         }
         return moved;
     }
 
-    /// <summary>The link saved (new when id is null), or why it can't be. Testing: Developer tools are on, so a test address makes a test link.</summary>
-    public (Link? Link, string? Problem) Save(string? id, LinkForm form, string by, bool testing = false)
+    /// <summary>
+    /// The link saved (new when id is null), or why it can't be. Testing: Developer tools are on, so a test address makes
+    /// a test link. Owner: the person it belongs to, for a link only they see (form.Who "me"); roles come from form.Roles
+    /// when form.Who is "roles", already checked against Roles and people by the caller.
+    /// </summary>
+    public (Link? Link, string? Problem) Save(string? id, LinkForm form, string by, bool testing = false, string? owner = null)
     {
+        var roles = form.Who == "roles" ? (form.Roles ?? []).Where(r => !string.IsNullOrWhiteSpace(r)).Select(r => r.Trim()).Distinct().ToList() : null;
+        if (roles is { Count: 0 })
+        {
+            return (null, "Select at least one role that sees the link.");
+        }
+        if ((form.Catalog?.Length ?? 0) > 120)
+        {
+            return (null, "That is not a portal in the catalogue.");
+        }
         if (Clean(form.Url) is not { } url)
         {
             return (null, "Enter a valid URL. Links start with http://, https:// or another scheme, such as ssh://.");
@@ -378,6 +457,10 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
                 return (null, $"{Product.Title} supports up to 500 links.");
             }
             var old = at < 0 ? null : f.Links[at];
+            if (owner is not null && old?.Owner != owner && f.Links.Count(l => l.Owner == owner) >= MostOwn)
+            {
+                return (null, $"You can have up to {MostOwn} links only you see.");
+            }
             // A group typed for the first time is made, at the end. One that's there keeps its own spelling.
             var known = Known(f);
             var (group, full) = Grouping.Join(known, form.Group);
@@ -401,7 +484,10 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
                 // The same icon keeps where it came from; a new one says, or is someone's own when it doesn't.
                 IconFrom = Blank(form.Icon) is not { } kept ? null : kept == old?.Icon ? old.IconFrom : Blank(form.IconFrom) ?? "own",
                 Place = form.Place ?? old?.Place,
-                Sensor = old?.Sensor,
+                Sensor = owner is null ? old?.Sensor : null,
+                Roles = owner is null ? roles : null,
+                Owner = owner,
+                Catalog = Blank(form.Catalog) ?? (old?.Url == url ? old.Catalog : null),
             };
             if (testing && DevTools.IsTest(url))
             {
@@ -450,6 +536,7 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
             if (link is not null)
             {
                 f.Links.Remove(link);
+                f.Hidden = f.Hidden.Select(p => (p.Key, Ids: p.Value.Where(x => x != id).ToList())).Where(p => p.Ids.Count > 0).ToDictionary(p => p.Key, p => p.Ids);
                 Store(f);
                 seen.Remove(id);
             }
@@ -457,14 +544,15 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
         }
     }
 
-    /// <summary>Everything Links keeps, as one file to save: the links and groups in their order, and the check times.</summary>
+    /// <summary>Everything Links keeps, as one file to save: the links and groups in their order, and the check times. Links only one person sees stay out.</summary>
     public LinksExport Export()
     {
         lock (gate)
         {
             var f = file.Read();
             return new LinksExport(LinksExport.Is, 1, clock.GetUtcNow().UtcDateTime, new LinkChecksForm(Every(f), After(f)), Known(f),
-                [.. f.Links.Select(l => new LinkForm(l.Name, l.Url, l.Description, l.Address, l.Group, l.Icon, l.Place))]);
+                [.. f.Links.Where(l => l.Owner is null).Select(l => new LinkForm(l.Name, l.Url, l.Description, l.Address, l.Group, l.Icon, l.Place,
+                    Who: l.Roles is { Count: > 0 } ? "roles" : null, Roles: l.Roles, Catalog: l.Catalog))]);
         }
     }
 
@@ -592,11 +680,8 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
             {
                 return new LinkRefreshed(now, [], changed.Count == 0 ? look.Problem : null);
             }
-            var link = new Link
-            {
-                Id = now.Id, Added = now.Added, AddedBy = now.AddedBy, Name = now.Name, Url = now.Url, Group = now.Group, Place = now.Place,
-                Icon = icon, IconFrom = from, Description = description, Address = address, Sensor = now.Sensor,
-            };
+            var link = now.Copy();
+            (link.Icon, link.IconFrom, link.Description, link.Address) = (icon, from, description, address);
             f.Links[at] = link;
             Store(f);
             return new LinkRefreshed(link, changed, null);
@@ -734,8 +819,10 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
                 var at = f.Links.FindIndex(l => l.Id == id);
                 if (at >= 0)
                 {
-                    var l = f.Links[at];
-                    f.Links[at] = new Link { Id = l.Id, Name = l.Name, Url = l.Url, Description = l.Description, Address = l.Address, Group = name, Icon = l.Icon, IconFrom = l.IconFrom, Place = place++, Added = l.Added, AddedBy = l.AddedBy, Sensor = l.Sensor };
+                    var c = f.Links[at].Copy();
+                    c.Group = name;
+                    c.Place = place++;
+                    f.Links[at] = c;
                 }
             }
             Store(f);
@@ -807,7 +894,7 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
     // Down is a check that failed that long after the first one did: never the clock alone, so one missed check is never red.
     private static bool Confirmed(Checked c, TimeSpan after) => !c.Up && c.At - (c.Since ?? c.At) >= after;
 
-    // The links due a check. One a sensor watches is left to the sensor.
+    // The links due a check. One a sensor watches is left to the sensor, and one only its owner sees isn't checked while they hide it.
     private List<Link> Due(LinksFile f, DateTime now, Func<string, bool>? watched = null)
     {
         var every = TimeSpan.FromSeconds(Every(f));
@@ -815,7 +902,8 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
         var after = TimeSpan.FromSeconds(After(f));
         return [.. f.Links.Where(l =>
         {
-            if (!l.Url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) && !l.Url.StartsWith("https://", StringComparison.OrdinalIgnoreCase) || l.Test is not null || (l.Sensor is { } sensor && watched?.Invoke(sensor) == true))
+            if (!l.Url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) && !l.Url.StartsWith("https://", StringComparison.OrdinalIgnoreCase) || l.Test is not null || (l.Sensor is { } sensor && watched?.Invoke(sensor) == true)
+                || (l.Owner is { } owner && f.Hidden.TryGetValue(owner, out var hid) && hid.Contains(l.Id)))
             {
                 return false;
             }
@@ -1319,10 +1407,14 @@ public sealed class Links(DataFolder folder, TimeProvider clock)
         return Uri.TryCreate(a, UriKind.Absolute, out var u) && u.Host.Length > 0 && u.Scheme is not ("javascript" or "data" or "file" or "vbscript") ? u.ToString() : null;
     }
 
-    private static string? Blank(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
+    internal static string? Blank(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
 }
 
-public sealed record LinkForm(string? Name, string? Url, string? Description, string? Address, string? Group, string? Icon, int? Place = null, string? IconFrom = null, LinkWatch? Watch = null);
+/// <summary>A link to save. Who: "all" (or null), "roles" with Roles, or "me" for a link only the person saving it sees. Catalog: the admin portal it came from.</summary>
+public sealed record LinkForm(string? Name, string? Url, string? Description, string? Address, string? Group, string? Icon, int? Place = null, string? IconFrom = null, LinkWatch? Watch = null,
+    string? Who = null, List<string>? Roles = null, string? Catalog = null);
+
+public sealed record LinkHideForm(string? Id, bool Hidden);
 
 /// <summary>Watch it: a sensor checks the link and alerts by the alert type picked (null keeps its own, or the usual one). Off takes the sensor away.</summary>
 public sealed record LinkWatch(bool On, string? Type = null);
@@ -1352,7 +1444,7 @@ public static class LinksApi
     {
         app.MapGet("/api/links", (HttpContext context, Links links) =>
             !Access.Can(context, Permissions.LinksView) ? Access.NotAllowed()
-            : Results.Ok(Listed(links)));
+            : Results.Ok(Listed(links, context)));
 
         app.MapPost("/api/links/groups", (GroupForm form, HttpContext context, Links links, ActivityLog log) =>
         {
@@ -1365,7 +1457,7 @@ public static class LinksApi
                 return Results.BadRequest(new { error = problem });
             }
             log.Record(context, "links", "link.group.add", $"Created the group {form.Name!.Trim()} on Links");
-            return Results.Ok(Listed(links));
+            return Results.Ok(Listed(links, context));
         });
 
         app.MapPost("/api/links/groups/rename", (GroupForm form, HttpContext context, Links links, ActivityLog log) =>
@@ -1379,7 +1471,7 @@ public static class LinksApi
                 return Results.BadRequest(new { error = problem });
             }
             log.Record(context, "links", "link.group.rename", $"Renamed the group {form.Name!.Trim()} to {form.To!.Trim()} on Links");
-            return Results.Ok(Listed(links));
+            return Results.Ok(Listed(links, context));
         });
 
         app.MapPost("/api/links/groups/delete", (GroupForm form, HttpContext context, Links links, ActivityLog log) =>
@@ -1393,7 +1485,7 @@ public static class LinksApi
                 return Results.NotFound(new { error = "Group not found. It may have been deleted." });
             }
             log.Record(context, "links", "link.group.delete", $"Deleted the group {form.Name!.Trim()} from Links" + (moved > 0 ? $" ({moved} link{(moved == 1 ? "" : "s")} moved to no group)" : ""));
-            return Results.Ok(Listed(links));
+            return Results.Ok(Listed(links, context));
         });
 
         app.MapPost("/api/links/groups/order", (GroupForm form, HttpContext context, Links links, ActivityLog log) =>
@@ -1404,7 +1496,7 @@ public static class LinksApi
             }
             links.OrderGroups(form.Names);
             log.Record(context, "links", "link.group.order", "Reordered the groups on Links");
-            return Results.Ok(Listed(links));
+            return Results.Ok(Listed(links, context));
         });
 
         // A link a sensor watches takes its dot from the sensor, and isn't checked twice.
@@ -1415,9 +1507,14 @@ public static class LinksApi
                 return Access.NotAllowed();
             }
             var now = await links.States(context.RequestAborted, sensors.Has);
+            var v = ViewerOf(context);
             foreach (var l in links.All())
             {
-                if (l.Sensor is { } id && sensors.AsLink(id) is { } state)
+                if (!v.Sees(l))
+                {
+                    now.States.Remove(l.Id); // someone else's own link, or a role's they don't have
+                }
+                else if (l.Sensor is { } id && sensors.AsLink(id) is { } state)
                 {
                     now.States[l.Id] = state;
                 }
@@ -1442,7 +1539,7 @@ public static class LinksApi
                 }
                 if (form.Every is null && form.DownAfter is null)
                 {
-                    return Results.Ok(Listed(links));
+                    return Results.Ok(Listed(links, context));
                 }
             }
             if (links.SetChecks(form.Every, form.DownAfter) is { } problem)
@@ -1451,7 +1548,7 @@ public static class LinksApi
             }
             var (every, after) = links.Checks();
             log.Record(context, "links", "link.checks", $"Set Links to check every {Span(every)} and mark a link down {(after == 0 ? "on the first failed check" : $"after {Span(after)} with no response")}");
-            return Results.Ok(Listed(links));
+            return Results.Ok(Listed(links, context));
         });
 
         // A link dragged to another place: the group it lands in, and that group's links in their new order.
@@ -1466,7 +1563,7 @@ public static class LinksApi
                 return Results.BadRequest(new { error = problem });
             }
             log.Record(context, "links", "link.arrange", string.IsNullOrWhiteSpace(form.Group) ? "Arranged the links with no group on Links" : $"Arranged the links in {form.Group.Trim()} on Links");
-            return Results.Ok(Listed(links));
+            return Results.Ok(Listed(links, context));
         });
 
         // Everything on Links as a file to keep, and a file like it brought in beside what's here.
@@ -1491,14 +1588,29 @@ public static class LinksApi
                 return Results.BadRequest(new { error = "The file is not a Rabbid Lab Links export." });
             }
             log.Record(context, "links", "link.import", $"Imported {done.Links} link{(done.Links == 1 ? "" : "s")} and {done.Groups} group{(done.Groups == 1 ? "" : "s")} to Links from a file");
-            return Results.Ok(new { done.Links, done.Groups, done.Skipped, done.Refused, done.Checks, now = Listed(links) });
+            return Results.Ok(new { done.Links, done.Groups, done.Skipped, done.Refused, done.Checks, now = Listed(links, context) });
         });
 
         // A new link's name, description, address and icon, read from the site.
         app.MapPost("/api/links/look", async (LinkForm form, HttpContext context, Links links, SettingsStore settings) =>
-            Access.RefuseUnless(context, Permissions.LinksEdit) is { } refused ? refused
+            Access.RefuseUnless(context, Access.Can(context, Permissions.LinksEdit) ? Permissions.LinksEdit : Permissions.LinksOwn) is { } refused ? refused
             : Results.Ok(DevTools.On(settings) && DevTools.IsTest(form.Url) ? await DevTools.Look(form.Url!, context.RequestAborted)
                 : await Links.Look(form.Url, context.RequestAborted, describe: links.Describes())));
+
+        // Hiding a link from your own page, or showing it again: it stays for everyone else, and isn't logged.
+        app.MapPost("/api/links/hide", (LinkHideForm form, HttpContext context, Links links) =>
+        {
+            if (Access.RefuseUnless(context, Permissions.LinksView) is { } refused)
+            {
+                return refused;
+            }
+            var v = ViewerOf(context);
+            if (links.All().FirstOrDefault(l => l.Id == form.Id) is not { } link || !v.Sees(link) || !links.Hide(v.Person, link.Id, form.Hidden))
+            {
+                return Results.NotFound(new { error = "Link not found. It may have been deleted." });
+            }
+            return Results.Ok(Listed(links, context));
+        });
 
         app.MapPost("/api/links", (LinkForm form, HttpContext context, Links links, Sensors sensors, ActivityLog log, SettingsStore settings) => Save(null, form, context, links, sensors, log, settings));
 
@@ -1507,7 +1619,12 @@ public static class LinksApi
         // Fills in what a link is missing from its site: one link a call, so the page can show how far along it is.
         app.MapPost("/api/links/{id}/refresh", async (string id, HttpContext context, Links links, ActivityLog log) =>
         {
-            if (Access.RefuseUnless(context, Permissions.LinksEdit) is { } refused)
+            var v = ViewerOf(context);
+            if (links.All().FirstOrDefault(l => l.Id == id) is not { } was || !v.Sees(was))
+            {
+                return Results.NotFound(new { error = "Link not found. It may have been deleted." });
+            }
+            if (RefuseChange(context, was, v) is { } refused)
             {
                 return refused;
             }
@@ -1520,7 +1637,7 @@ public static class LinksApi
             var c = done.Changed;
             if (c.Count > 0)
             {
-                log.Record(context, "links", "link.refresh", $"Refreshed the {string.Join(", ", c.SkipLast(1))}{(c.Count > 1 ? " and " : "")}{c[^1]} of {done.Link.Name}");
+                log.Record(context, "links", "link.refresh", $"Refreshed the {string.Join(", ", c.SkipLast(1))}{(c.Count > 1 ? " and " : "")}{c[^1]} of {(done.Link.Owner is null ? done.Link.Name : "a link of their own")}");
             }
             return Results.Ok(new { link = done.Link, changed = c, problem = done.Problem });
         });
@@ -1534,7 +1651,7 @@ public static class LinksApi
                 return refused;
             }
             var who = ActivityLog.Who(context);
-            var all = links.All().ToDictionary(l => l.Id);
+            var all = links.All().Where(l => l.Owner is null).ToDictionary(l => l.Id); // a sensor is everyone's, so never for a link only one person sees
             var (watched, stopped, skipped) = (0, 0, new List<string>());
             foreach (var l in (form.Watch ?? []).Distinct().Select(all.GetValueOrDefault).OfType<Link>().Where(l => l.Sensor is null || !sensors.Has(l.Sensor)))
             {
@@ -1565,9 +1682,15 @@ public static class LinksApi
             return Results.Ok(new { watched, stopped, skipped });
         });
 
+        // Someone's own link is theirs to delete, even once their roles no longer let them add one.
         app.MapPost("/api/links/{id}/delete", (string id, HttpContext context, Links links, Sensors sensors, ActivityLog log) =>
         {
-            if (Access.RefuseUnless(context, Permissions.LinksEdit) is { } refused)
+            var v = ViewerOf(context);
+            if (links.All().FirstOrDefault(l => l.Id == id) is not { } link || !v.Sees(link))
+            {
+                return Results.NotFound(new { error = "Link not found. It may have been deleted." });
+            }
+            if (Access.RefuseUnless(context, link.Owner is null ? Permissions.LinksEdit : Permissions.LinksView) is { } refused)
             {
                 return refused;
             }
@@ -1575,7 +1698,7 @@ public static class LinksApi
             {
                 return Results.NotFound(new { error = "Link not found. It may have been deleted." });
             }
-            log.Record(context, "links", "link.delete", $"Deleted {gone.Name} from Links");
+            log.Record(context, "links", "link.delete", gone.Owner is null ? $"Deleted {gone.Name} from Links" : "Deleted a link of their own from Links");
             // The sensor that watched it was made for it, and goes with it.
             if (gone.Sensor is { } watcher && sensors.Delete(watcher) is { } sensor)
             {
@@ -1585,31 +1708,80 @@ public static class LinksApi
         });
     }
 
-    // The groups in their order, and the links in it too: by group, then by name, the ones with no group last.
-    internal static object Listed(Links links)
+    // Who is asking: the person, the roles they have now, and whether they manage links (and so see every role's links).
+    private sealed record Viewer(string Person, IReadOnlySet<string> Roles, bool Manages)
     {
+        public bool Sees(Link l) => Links.Sees(l, Person, Roles, Manages);
+    }
+
+    private static Viewer ViewerOf(HttpContext context)
+    {
+        var who = Who.Of(context.User);
+        var roles = context.RequestServices.GetRequiredService<Roles>().Of(who).Select(r => r.Id).ToHashSet();
+        return new(UserKeys.PersonOf(who), roles, Access.Can(context, Permissions.LinksEdit));
+    }
+
+    // The groups in their order, and the links this person sees: by group, then by name, the ones with no group last. With
+    // them, the ones they hid, and the roles a link can be for (their names show on the links for a role).
+    internal static object Listed(Links links, HttpContext context)
+    {
+        var v = ViewerOf(context);
         var groups = links.Groups();
         var (every, downAfter) = links.Checks();
         var place = groups.Select((g, i) => (g, i)).ToDictionary(p => p.g, p => p.i, StringComparer.OrdinalIgnoreCase);
         return new
         {
-            links = links.All().OrderBy(l => l.Group is { } g && place.TryGetValue(g, out var at) ? at : int.MaxValue).ThenBy(l => l.Place ?? int.MaxValue).ThenBy(l => l.Name, StringComparer.OrdinalIgnoreCase),
+            links = links.All().Where(v.Sees).OrderBy(l => l.Group is { } g && place.TryGetValue(g, out var at) ? at : int.MaxValue).ThenBy(l => l.Place ?? int.MaxValue).ThenBy(l => l.Name, StringComparer.OrdinalIgnoreCase),
             groups,
             checks = new { every, downAfter, describe = links.Describes() },
             revision = links.Revision,
+            hidden = links.HiddenOf(v.Person),
+            me = v.Person,
+            roles = context.RequestServices.GetRequiredService<Roles>().Snapshot().Roles.Where(r => r.Id is not (Roles.Admin or Roles.User)).Select(r => new { id = r.Id, name = r.Name, color = r.Color }),
         };
     }
+
+    // Changing a link: one only its owner sees takes Add links only you see (and being its owner), any other Manage links.
+    private static IResult? RefuseChange(HttpContext context, Link link, Viewer v) =>
+        link.Owner is null ? Access.RefuseUnless(context, Permissions.LinksEdit)
+        : link.Owner == v.Person ? Access.RefuseUnless(context, Permissions.LinksOwn) : Results.NotFound(new { error = "Link not found. It may have been deleted." });
 
     private static string Span(int seconds) => seconds < 60 ? $"{seconds} seconds" : seconds == 60 ? "minute" : $"{seconds / 60} minutes";
 
     private static IResult Save(string? id, LinkForm form, HttpContext context, Links links, Sensors sensors, ActivityLog log, SettingsStore settings)
     {
-        if (Access.RefuseUnless(context, Permissions.LinksEdit) is { } refused)
+        var v = ViewerOf(context);
+        var old = id is null ? null : links.All().FirstOrDefault(l => l.Id == id);
+        if (id is not null && (old is null || !v.Sees(old)))
+        {
+            return Results.NotFound(new { error = "Link not found. It may have been deleted." });
+        }
+        // A link only you see takes Add links only you see. One for everyone or for roles takes Manage links, and so does
+        // taking a link away from everyone to make it your own.
+        var mine = form.Who == "me";
+        if (mine && old is { Owner: { } owner } && owner != v.Person)
+        {
+            return Results.NotFound(new { error = "Link not found. It may have been deleted." });
+        }
+        if (((mine ? Access.RefuseUnless(context, Permissions.LinksOwn) : null) ?? (!mine || old is { Owner: null } ? Access.RefuseUnless(context, Permissions.LinksEdit) : null)) is { } refused)
         {
             return refused;
         }
+        // Groups are everyone's: someone who doesn't manage links puts theirs in one that's there.
+        if (!v.Manages && Links.Blank(form.Group) is { } group && !links.Groups().Contains(group, StringComparer.OrdinalIgnoreCase))
+        {
+            return Results.BadRequest(new { error = "Select one of the groups on Links. Only people who manage links can create groups." });
+        }
+        if (form.Who == "roles" && (form.Roles ?? []).FirstOrDefault(r => context.RequestServices.GetRequiredService<Roles>().Find(r) is null) is { } missing)
+        {
+            return Results.BadRequest(new { error = $"The role {missing} no longer exists. Select another role." });
+        }
         // Watching makes or changes a sensor, so it's for people who may change sensors; checked before anything is saved.
-        var watch = form.Watch;
+        var watch = mine ? null : form.Watch;
+        if (mine && form.Watch is { On: true })
+        {
+            return Results.BadRequest(new { error = "A link only you see can't have a sensor. Sensors and their alerts are shared." });
+        }
         if (watch is not null)
         {
             if (Access.RefuseUnless(context, Permissions.SensorsEdit) is { } cannot)
@@ -1623,12 +1795,19 @@ public static class LinksApi
             }
         }
         var who = ActivityLog.Who(context);
-        var (link, problem) = links.Save(id, form, who, DevTools.On(settings));
+        var (link, problem) = links.Save(id, form, who, DevTools.On(settings), mine ? v.Person : null);
         if (link is null)
         {
             return Results.BadRequest(new { error = problem });
         }
-        log.Record(context, "links", id is null ? "link.add" : "link.change", id is null ? $"Added {link.Name} to Links" : $"Changed {link.Name} on Links");
+        // A link only its owner sees has no name or address in the log, which everyone with the log can read.
+        log.Record(context, "links", id is null ? "link.add" : "link.change", mine ? (id is null ? "Added a link of their own to Links" : "Changed a link of their own on Links")
+            : (id is null ? $"Added {link.Name} to Links" : $"Changed {link.Name} on Links") + (link.Roles is { Count: > 0 } r ? $", for {string.Join(", ", r.Select(x => context.RequestServices.GetRequiredService<Roles>().Find(x)?.Name ?? x))}" : ""));
+        // A watched link made into your own loses its sensor, which was shared.
+        if (mine && old?.Sensor is { } shared && sensors.Delete(shared) is { } dropped)
+        {
+            log.Record(context, "sensors", "sensor.delete", $"Deleted the sensor {dropped.Name}. Its link is now only one person's");
+        }
         if (watch is { On: true })
         {
             var (sensor, failed) = sensors.Watch(link.Sensor, link.Name, link.Url, link.Group, watch.Type, who);
