@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.374 (2026-11-23)
+
+- The sign-in page no longer jumps while you type with Caps Lock on. Caps Lock is on now shows inside the password box, beside the eye.
+
 ## 1.1.373 (2026-11-22)
 
 - Updating no longer cuts computers off. Setup made the console a new certificate key whenever the address of a Hyper-V, WSL or VPN adapter changed, and every computer running the client then refused to connect.

@@ -73,10 +73,8 @@
            The 6-digit code box shows only for an administrator unlocking a locked name. -->
       <form id="local-form" novalidate>
         <div class="input"><input id="local-user" placeholder=" " autocomplete="username" spellcheck="false"><label class="fld" for="local-user">Username</label></div>
-        <div class="input"><input id="local-password" type="password" placeholder=" " autocomplete="current-password"><label class="fld" for="local-password" id="local-password-label">Password</label><button type="button" class="end" data-reveal="local-password" aria-label="Show password"><svg class="eye-open"><use href="#i-eye"/></svg><svg class="eye-shut"><use href="#i-eye-off"/></svg></button></div>
-        <p class="caps" id="local-password-caps" hidden>Caps Lock is on</p>
-        <div class="input" id="confirm-row" hidden><input id="local-confirm" type="password" placeholder=" " autocomplete="new-password"><label class="fld" for="local-confirm" id="confirm-label">Confirm password</label><button type="button" class="end" data-reveal="local-confirm" aria-label="Show password"><svg class="eye-open"><use href="#i-eye"/></svg><svg class="eye-shut"><use href="#i-eye-off"/></svg></button></div>
-        <p class="caps" id="local-confirm-caps" hidden>Caps Lock is on</p>
+        <div class="input"><input id="local-password" type="password" placeholder=" " autocomplete="current-password"><label class="fld" for="local-password" id="local-password-label">Password</label><span class="caps" id="local-password-caps" hidden>Caps Lock is on</span><button type="button" class="end" data-reveal="local-password" aria-label="Show password"><svg class="eye-open"><use href="#i-eye"/></svg><svg class="eye-shut"><use href="#i-eye-off"/></svg></button></div>
+        <div class="input" id="confirm-row" hidden><input id="local-confirm" type="password" placeholder=" " autocomplete="new-password"><label class="fld" for="local-confirm" id="confirm-label">Confirm password</label><span class="caps" id="local-confirm-caps" hidden>Caps Lock is on</span><button type="button" class="end" data-reveal="local-confirm" aria-label="Show password"><svg class="eye-open"><use href="#i-eye"/></svg><svg class="eye-shut"><use href="#i-eye-off"/></svg></button></div>
         <div class="input" id="local-code-box" hidden><input id="local-code" inputmode="numeric" maxlength="7" placeholder=" " autocomplete="one-time-code" spellcheck="false"><label class="fld" for="local-code">6-digit code</label></div>
         <button class="go" type="submit" id="local-go">Sign in</button>
         <!-- Signing in with a local account where a domain is set up too: said under the button, where the domain line sits. -->
@@ -96,8 +94,7 @@
           </div>
         </div>
         <div class="input"><input id="ad-user" placeholder=" " autocomplete="username" spellcheck="false"><label class="fld" for="ad-user">Username</label></div>
-        <div class="input"><input id="ad-password" type="password" placeholder=" " autocomplete="current-password"><label class="fld" for="ad-password">Password</label><button type="button" class="end" data-reveal="ad-password" aria-label="Show password"><svg class="eye-open"><use href="#i-eye"/></svg><svg class="eye-shut"><use href="#i-eye-off"/></svg></button></div>
-        <p class="caps" id="ad-password-caps" hidden>Caps Lock is on</p>
+        <div class="input"><input id="ad-password" type="password" placeholder=" " autocomplete="current-password"><label class="fld" for="ad-password">Password</label><span class="caps" id="ad-password-caps" hidden>Caps Lock is on</span><button type="button" class="end" data-reveal="ad-password" aria-label="Show password"><svg class="eye-open"><use href="#i-eye"/></svg><svg class="eye-shut"><use href="#i-eye-off"/></svg></button></div>
         <div class="input" id="ad-code-box" hidden><input id="ad-code" inputmode="numeric" maxlength="7" placeholder=" " autocomplete="one-time-code" spellcheck="false"><label class="fld" for="ad-code">6-digit code</label></div>
         <button class="go" type="submit" id="ad-go">Sign in</button>
         <!-- Signing in: where it signs in, under the button; Change opens the domains and controllers above. -->

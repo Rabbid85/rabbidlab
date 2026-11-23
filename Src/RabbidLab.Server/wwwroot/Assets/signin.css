@@ -72,7 +72,9 @@ body.loading .card-body > *, body.loading .card-foot > *, body.loading .side-sub
 .input .end svg { width: 16px; height: 16px; }
 .input .end.on .eye-open, .input .end:not(.on) .eye-shut { display: none; }
 /* Caps Lock on while typing a password. */
-.caps { margin: -6px 0 10px 2px; font-size: 12px; color: var(--amber); }
+/* Caps Lock, inside the password box beside the eye: showing or hiding it never moves the page. */
+.input .caps { position: absolute; right: 44px; margin: 0; color: var(--amber); font-size: 12px; font-weight: 650; pointer-events: none; }
+.input:has(.caps:not([hidden])) input { padding-right: 150px; }
 
 /* The domain controller box: picked from the list only, with which one Automatic uses now on the right. */
 .input.server input { padding-right: 140px; cursor: pointer; caret-color: transparent; }

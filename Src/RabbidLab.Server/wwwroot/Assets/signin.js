@@ -433,7 +433,7 @@
     hold(button, r.said);
   };
 
-  // Caps Lock on while typing a password: a line under the box says so.
+  // Caps Lock on while typing a password: the box says so, beside its eye (signin.css), so nothing moves.
   PASSWORDS.forEach((id) => {
     const warn = $(`${id}-caps`);
     const check = (e) => { warn.hidden = !e.getModifierState?.('CapsLock'); };
