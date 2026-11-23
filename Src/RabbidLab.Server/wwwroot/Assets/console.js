@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.368', [
+    'Devices that block ping and every port are found from this server’s ARP table as the sweep reaches them, so a scan no longer waits for them at the end.',
+    'A device that is slow to answer gets 6 seconds, then is kept with what is known. A device seen before keeps its type, name and ports.',
+    'If the scan is still asking a device anything, it says which one, such as Identifying 192.168.2.57.']],
   ['1.1.367', [
     'Network identifies each device as soon as the ping finds it, while the scan goes on, not in a second pass after the whole range is pinged. Only devices found in the ARP table are left to the end.',
     'The bar says how many devices are identified so far, such as 12 of 30 devices identified.']],
@@ -1171,6 +1175,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.368': ['2026-11-22', 'fix', 'Network scans never wait on one device'],
   '1.1.367': ['2026-11-22', 'fix', 'Network identifies devices as it finds them'],
   '1.1.366': ['2026-11-22', 'fix', 'Pinned columns stay put'],
   '1.1.365': ['2026-11-22', 'feature', 'Ctrl+K search, and keyboard shortcuts of your own', 'search.jpg'],

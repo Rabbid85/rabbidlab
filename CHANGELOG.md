@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.368 (2026-11-22)
+
+- Devices that block ping and every port are found from this server’s ARP table as the sweep reaches them, so a scan no longer waits for them at the end.
+- A device that is slow to answer gets 6 seconds, then is kept with what is known. A device seen before keeps its type, name and ports.
+- If the scan is still asking a device anything, it says which one, such as Identifying 192.168.2.57.
+
 ## 1.1.367 (2026-11-22)
 
 - Network identifies each device as soon as the ping finds it, while the scan goes on, not in a second pass after the whole range is pinged. Only devices found in the ARP table are left to the end.

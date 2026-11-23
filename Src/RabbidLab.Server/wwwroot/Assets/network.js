@@ -122,7 +122,7 @@
       const on = data.ranges.filter((r) => sc.ranges.includes(r.id));
       const total = on.reduce((t, r) => t + r.size, 0);
       const done = on.reduce((t, r) => t + (r.done || 0), 0);
-      return sc.identifying ? `Identifying the last ${count(Math.max(0, sc.found - sc.asked), 'device')}`
+      return sc.identifying ? `${stillAsking()} · ${sc.asked} of ${count(sc.found, 'device')} identified`
         : `Scanning: ${done.toLocaleString()} of ${total.toLocaleString()} addresses${sc.found ? ` · ${sc.asked} of ${count(sc.found, 'device')} identified` : ''}`;
     }
     const t = data.scheduleText || '';
@@ -237,12 +237,19 @@
       head.style.setProperty('--p', `${((done / s.n) * 100).toFixed(2)}%`);
     }
   };
-  // Where a range has got to: the last address pinged, or how many devices have been identified.
+  // Once the ping is done, what's still being asked, by name: one or two of them, or how many (s: a range, or all).
+  const stillAsking = (s = null) => {
+    const ips = (data.scan?.busy || []).filter((ip) => !s || (ipNum(ip) >= s.first && ipNum(ip) < s.first + s.n));
+    const named = ips.map((ip) => { const d = data.devices.find((x) => x.ip === ip); return d?.name ? `${d.name} (${ip})` : ip; });
+    if (!named.length) return s ? '' : 'Finishing up'; // a range with nothing left says nothing
+    return named.length <= 2 ? `Identifying ${named.join(' and ')}` : `Identifying ${named.length} devices`;
+  };
+  // Where a range has got to: the last address pinged, or what's still being identified.
   const progress = (r, s) => {
     const sc = data.scan;
     if (!sc || !sc.ranges.includes(r.id)) return '';
     const done = Math.min(r.done || 0, s.n);
-    return sc.identifying ? `Identifying the last ${Math.max(0, sc.found - sc.asked)}` : !done ? 'Queued' : done >= s.n ? 'Pinged' : ipOf(s.first + done - 1);
+    return sc.identifying ? stillAsking(s) : !done ? 'Queued' : done >= s.n ? 'Pinged' : ipOf(s.first + done - 1);
   };
   const sweep = (ranges) => {
     const busy = busyNow();

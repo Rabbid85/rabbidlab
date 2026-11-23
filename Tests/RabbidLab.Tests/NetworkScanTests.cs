@@ -130,6 +130,29 @@ public sealed class NetworkScanTests : IDisposable
     }
 
     [Fact]
+    public async Task A_device_that_never_answers_its_questions_cannot_hold_the_scan_up()
+    {
+        using var app = new TestApp(data);
+        var net = app.Net;
+        net.Local = [("10.10.1.0/24", "This network")];
+        net.Hosts["10.10.1.20"] = new(true, 2, 128, [135, 445], "A4:BB:6D:21:9C:41", "pc20.amw.com", null, null);
+        var scan = app.Services.GetRequiredService<NetworkScan>();
+        await scan.Run("admin");
+
+        net.Stuck.Add("10.10.1.20");
+        var timer = System.Diagnostics.Stopwatch.StartNew();
+        await scan.Run("admin");
+        timer.Stop();
+        var view = JsonSerializer.SerializeToElement(scan.View(), new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var d = view.GetProperty("devices").EnumerateArray().Single();
+
+        Assert.True(timer.Elapsed < TimeSpan.FromSeconds(15), $"the scan took {timer.Elapsed}");
+        Assert.True(d.GetProperty("online").GetBoolean()); // it answered, so it's online
+        Assert.Equal("pc", d.GetProperty("kind").GetString()); // and keeps what the last scan learned
+        Assert.Equal("pc20", d.GetProperty("name").GetString());
+    }
+
+    [Fact]
     public async Task Scanning_and_settings_take_their_own_permissions()
     {
         using var app = new TestApp(data);
@@ -174,7 +197,10 @@ public sealed class FakeNetProbe : INetProbe
 
     public Dictionary<string, string> Arp() => Hosts.Where(h => h.Value.Mac is not null).ToDictionary(h => h.Key, h => h.Value.Mac!);
 
-    public Task<string?> Dns(IPAddress ip, CancellationToken stop) => Task.FromResult(Of(ip)?.Dns);
+    // Addresses whose DNS question never comes back, and doesn't stop when asked to: a device that's slow at everything.
+    public HashSet<string> Stuck { get; } = [];
+
+    public Task<string?> Dns(IPAddress ip, CancellationToken stop) => Stuck.Contains(ip.ToString()) ? new TaskCompletionSource<string?>().Task : Task.FromResult(Of(ip)?.Dns);
 
     public Task<(string? Name, string? Mac)> NetBios(IPAddress ip, CancellationToken stop) => Task.FromResult((Of(ip)?.NetBios, Of(ip)?.NetBios is null ? null : Of(ip)?.Mac));
 

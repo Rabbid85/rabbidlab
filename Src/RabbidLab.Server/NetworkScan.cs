@@ -104,6 +104,7 @@ public sealed class NetworkScan(DataFolder folder, INetProbe probe, Clients clie
     public const int MostRanges = 16;
     public const int MostAddresses = 4094; // a /20
     private const int AtOnce = 96, Identify = 24;
+    private static readonly TimeSpan IdentifyFor = TimeSpan.FromSeconds(6); // the longest one device's questions may take
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { WriteIndented = true };
     private readonly JsonFile<NetworkFile> file = folder.Json<NetworkFile>("network.json", Json);
     private readonly object gate = new();
@@ -244,16 +245,40 @@ public sealed class NetworkScan(DataFolder folder, INetProbe probe, Clients clie
         var seen = new ConcurrentDictionary<string, byte>();
         var asking = new ConcurrentBag<Task>();
         using var gate = new SemaphoreSlim(Identify);
+        // This server's ARP table, read again at most once a second: a device that blocks ping and every port still
+        // answers ARP, so it's found right where the sweep is, not after it.
+        var arpGate = new object();
+        var arpNow = probe.Arp();
+        var arpAt = Environment.TickCount64;
+        Dictionary<string, string> Arp()
+        {
+            lock (arpGate)
+            {
+                if (Environment.TickCount64 - arpAt > 1000)
+                {
+                    arpNow = probe.Arp();
+                    arpAt = Environment.TickCount64;
+                }
+                return arpNow;
+            }
+        }
         // What one is, as soon as it has answered, a few at a time while the ping goes on: so each device is identified,
-        // and shows on the page, right where the sweep finds it, not in a second pass after it.
+        // and shows on the page, right where the sweep finds it. One that's slow at everything gets IdentifyFor at most,
+        // then is kept with what's known: it never holds the scan up.
         async Task Identify1(NetRange r, IPAddress ip, int? ms, int? ttl)
         {
             await gate.WaitAsync(stop);
             var key = ip.ToString();
             run.Busy[key] = 0;
+            using var limit = CancellationTokenSource.CreateLinkedTokenSource(stop);
+            limit.CancelAfter(IdentifyFor);
             try
             {
-                Keep(r, await Ask(ip, ms, ttl, probe.Arp(), gateways, community, oses, stop), first);
+                Keep(r, await Ask(ip, ms, ttl, Arp(), gateways, community, oses, limit.Token).WaitAsync(IdentifyFor, stop), first);
+            }
+            catch (Exception e) when (!stop.IsCancellationRequested && e is System.TimeoutException or OperationCanceledException)
+            {
+                Keep(r, new NetFacts(key, true, ms, ttl, Arp().GetValueOrDefault(key), null, null, [], null, null, gateways.Contains(key), null), first, partial: true);
             }
             catch (Exception e) when (e is not OperationCanceledException)
             {
@@ -297,15 +322,14 @@ public sealed class NetworkScan(DataFolder folder, INetProbe probe, Clients clie
                     run.Done.AddOrUpdate(r.Id, 1, (_, n) => n + 1);
                 }
                 // Started after its ping is done with Busy, so the two never take each other's mark away.
-                if ((reply.Up || tcp is not null) && seen.TryAdd(key, 0))
+                if ((reply.Up || tcp is not null || Arp().ContainsKey(key)) && seen.TryAdd(key, 0))
                 {
                     Interlocked.Increment(ref run.Found);
                     asking.Add(Identify1(r, ip, reply.Ms, reply.Ttl));
                 }
             });
         }
-        // The ARP table now has the MAC of everything on this server's own networks that answered ARP, ping or not:
-        // those are the last few to identify.
+        // Anything that answered ARP only after its own turn (rare): found now.
         var arp = probe.Arp();
         foreach (var r in run.Ranges)
         {
@@ -369,8 +393,9 @@ public sealed class NetworkScan(DataFolder folder, INetProbe probe, Clients clie
     private static string? Short(string? name) => string.IsNullOrWhiteSpace(name) || IPAddress.TryParse(name, out _) ? null : name.Split('.')[0];
 
     // What was found joins the list: a device already known by its MAC (or address) is updated; a new one is New, unless
-    // this is the very first scan, and says so in the activity log, which alerts can watch.
-    private void Keep(NetRange r, NetFacts facts, bool first)
+    // this is the very first scan, and says so in the activity log, which alerts can watch. partial: only that it
+    // answered (its questions ran out of time), so a known device keeps its ports, type and names from before.
+    private void Keep(NetRange r, NetFacts facts, bool first, bool partial = false)
     {
         var at = clock.GetUtcNow().UtcDateTime;
         var (kind, why) = Classify(facts, Vendor(facts.Mac));
@@ -389,6 +414,15 @@ public sealed class NetworkScan(DataFolder folder, INetProbe probe, Clients clie
             d.Ip = facts.Ip;
             d.Mac = facts.Mac ?? d.Mac;
             d.Range = r.Id;
+            if (partial && added is null)
+            {
+                d.Ping = facts.Ping;
+                d.Ttl = facts.Ttl ?? d.Ttl;
+                d.Last = at;
+                d.Online = true;
+                file.Save(f);
+                return;
+            }
             var name = Short(facts.Dns) ?? facts.NetBios ?? Short(facts.SnmpName);
             if (name is not null)
             {
