@@ -1,0 +1,92 @@
+/* Overview's banner: a rounded panel with the night scene (scene.js) behind it, the headline at the foot on the left with the
+   sky open above it, and a glass strip along the bottom with the numbers and, at its end, the buttons. It has a fixed height
+   and nothing on it changes size when an update comes in, so it never moves. */
+.ovb { position: relative; isolation: isolate; height: 580px; margin: 20px 24px 0; overflow: hidden;
+  border: 1px solid rgb(255 255 255 / .08); border-radius: 18px; background: #07071a; }
+.ovb-art { position: absolute; inset: 0; z-index: -1; }
+/* A faint grain over the scene, so its fades show no steps; kept out of the drawing so its moving parts never redraw it. */
+.ovb-art::before { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none; opacity: .05; mix-blend-mode: overlay;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+/* Shade behind the words at the bottom left, and solid under the strip, so no moonlight glows up through its glass. */
+.ovb-art::after { content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  background: linear-gradient(0deg, rgb(7 7 22 / .94) 0 84px, transparent 92px),
+    radial-gradient(ellipse 72% 82% at 0% 100%, rgb(7 7 22 / .8), rgb(7 7 22 / .42) 55%, transparent 86%); }
+
+/* The words. */
+.ovb-main { position: absolute; left: 48px; bottom: 120px; max-width: 820px; }
+.ovb-eye { display: flex; align-items: center; gap: 9px; margin: 0 0 14px; color: var(--accent-soft); font-size: 13.5px; font-weight: 600; }
+.ovb-eye i { width: 6px; height: 6px; border-radius: 50%; background: var(--accent-soft); }
+.ovb-title { margin: 0; color: #fff; font: 800 clamp(40px, 3.4vw, 54px)/1.04 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+  letter-spacing: -.04em; text-wrap: balance; }
+.ovb-lead { max-width: 580px; margin: 18px 0 0; color: #C9CCDA; font-size: 16px; line-height: 1.6; }
+
+/* The strip: three numbers with a thin line between each, each a fixed width so a changing number moves nothing, and the
+   buttons at its end. */
+.ovb-strip { position: absolute; inset: auto 0 0; z-index: 1; isolation: isolate; display: flex; align-items: center; gap: 24px; height: 84px; padding: 0 48px;
+  border-top: 1px solid rgb(255 255 255 / .06); }
+.ovb-strip::before { content: ""; position: absolute; inset: 0; z-index: -1; background: rgb(0 0 0 / .52); backdrop-filter: blur(22px); }
+.ovb-nums { display: flex; }
+.ovb-nums > div { display: grid; gap: 6px; flex: none; width: 150px; padding: 0 28px; border-left: 1px solid rgb(255 255 255 / .14); }
+.ovb-nums > div:first-child { width: 122px; padding-left: 0; border-left: 0; }
+.ovb-nums b { min-height: 22px; color: #fff; font: 800 21px/1 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; letter-spacing: -.02em;
+  white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ovb-nums b .sk-num { width: 64px; height: 20px; vertical-align: top; }
+.ovb-nums span { color: #A9ADC2; font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+.ovb-btns { display: flex; flex-wrap: nowrap; gap: 10px; margin-left: auto; }
+/* The console's own button size. The main one keeps one width through Check, Checking and Install, so nothing beside it moves. */
+.ovb-btns :is(button, .button) { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 0 16px;
+  border-radius: 8px; font-size: 14px; font-weight: 600; white-space: nowrap; }
+.ovb-btns svg { width: 15px; height: 15px; }
+.ovb-btns .primary { min-width: 178px; }
+.ovb-btns .primary:hover { background: var(--ember); filter: brightness(1.08); }
+.ovb-btns .button { border: 1px solid rgb(255 255 255 / .14); background: rgb(10 11 19 / .5); color: #fff; }
+.ovb-btns .button:hover { border-color: rgb(255 255 255 / .3); background: rgb(10 11 19 / .7); }
+
+/* A narrow window: the banner grows to fit, the words above the strip, the strip's buttons under its numbers. */
+@media (max-width: 1100px) {
+  .ovb { display: flex; flex-direction: column; justify-content: flex-end; height: auto; min-height: 520px; }
+  .ovb-main { position: relative; left: auto; bottom: auto; padding: 140px 32px 32px; }
+  .ovb-strip { position: relative; flex-wrap: wrap; height: auto; padding: 18px 32px; }
+  .ovb-btns { margin-left: 0; }
+}
+@media (max-width: 700px) {
+  .ovb { margin: 14px 12px 0; }
+  .ovb-nums > div, .ovb-nums > div:first-child { width: auto; padding: 0 16px; }
+  .ovb-nums > div:first-child { padding-left: 0; }
+  .ovb-btns { flex-wrap: wrap; }
+}
+
+/* The scene. Deep, low colours mixed from the accent, each layer of land darker the nearer it is. */
+.ovs { position: absolute; inset: 0; width: 100%; height: 100%; display: block;
+  --l1: color-mix(in srgb, var(--accent) 13%, #15142f); --l2: color-mix(in srgb, var(--accent) 10%, #100f26);
+  --l3: color-mix(in srgb, var(--accent) 7%, #0c0b1f); --l4: color-mix(in srgb, var(--accent) 5%, #090818); --l5: #050511; }
+.ovs-l1 { fill: var(--l1); } .ovs-l2 { fill: var(--l2); } .ovs-l3 { fill: var(--l3); } .ovs-l4 { fill: var(--l4); } .ovs-l5 { fill: var(--l5); }
+.ovs-rim { fill: none; stroke: color-mix(in srgb, var(--accent) 30%, #cfc8ff); stroke-width: 1.2; }
+.ovs-rays { fill: color-mix(in srgb, var(--accent) 25%, #d8d0ff); opacity: .07; }
+.ovs-sky0 { stop-color: #03030c; }
+.ovs-sky1 { stop-color: color-mix(in srgb, var(--accent) 10%, #08081c); }
+.ovs-sky2 { stop-color: color-mix(in srgb, var(--accent) 24%, #161236); }
+.ovs-water0 { stop-color: color-mix(in srgb, var(--accent) 20%, #121030); }
+.ovs-water1 { stop-color: #04040e; }
+.ovs-fogc { stop-color: color-mix(in srgb, var(--accent) 30%, #6f66c8); }
+.ovs-fog { fill: url(#ovs-fogg); }
+.ovs-glowc { stop-color: color-mix(in srgb, var(--accent) 30%, #ddd5ff); }
+.ovs-moonrim { fill: none; stroke: #fff; stroke-width: .6; opacity: .35; }
+.ovs-wisp { fill: color-mix(in srgb, var(--accent) 22%, #cdc6f2); opacity: .2; }
+.ovs-mist { fill: color-mix(in srgb, var(--accent) 30%, #b8b0ff); opacity: .22; }
+.ovs-star { fill: #fff; }
+.ovs-sheen { fill: color-mix(in srgb, var(--accent) 25%, #e4deff); opacity: .22; }
+.ovs-ripple { fill: none; stroke: color-mix(in srgb, var(--accent) 30%, #d8d2ff); stroke-width: .7; opacity: .07; }
+.ovs-glint { fill: #EEEAFF; }
+/* What moves: a few stars twinkle, a shooting star crosses now and then, the clouds drift, the moonlight on the water shimmers. */
+.ovs-tw { animation: ovs-tw 3.6s ease-in-out infinite; }
+.ovs-meteor { opacity: 0; animation: ovs-meteor 11s linear 2s infinite; }
+.ovs-drift { animation: ovs-drift 30s ease-in-out infinite alternate; }
+.ovs-shim rect { transform-box: fill-box; transform-origin: center; animation: ovs-shim 2.8s ease-in-out infinite alternate; }
+.ovs-d1 { animation-delay: -.8s; } .ovs-d2 { animation-delay: -1.9s; } .ovs-d3 { animation-delay: -2.7s; } .ovs-d4 { animation-delay: -3.3s; }
+@keyframes ovs-tw { 50% { opacity: .2; } }
+/* It crosses 420 units in 1.3 s, fading in and out as it goes, then waits; it never stops in view. */
+@keyframes ovs-meteor { 0% { transform: translateX(0); opacity: 0; } 2% { opacity: 1; } 9% { opacity: .9; } 12% { transform: translateX(420px); opacity: 0; } 100% { transform: translateX(420px); opacity: 0; } }
+@keyframes ovs-drift { to { transform: translateX(160px); } }
+@keyframes ovs-shim { from { transform: scaleX(.7); } to { transform: scaleX(1.15); } }
+@media (prefers-reduced-motion: reduce) { .ovs * { animation: none !important; } }

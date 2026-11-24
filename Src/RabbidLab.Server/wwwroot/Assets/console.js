@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.393', [
+    'Overview has a new banner: hills and a lake under the moon, drawn in the accent colour, with the headline at the bottom left and a strip along the foot with the version, uptime and sensors up.',
+    'Check for updates turns into Install in the same place, and Install opens the update window. Nothing on the banner moves when an update comes in.']],
   ['1.1.392', [
     'The Use at your own risk notice says Rabbid Lab is for Active Directory domains of any size, from small to large. Its wording changed, so each account is asked to accept it once more.']],
   ['1.1.391', [
@@ -1258,6 +1261,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.393': ['2026-11-24', 'feature', 'A new banner on Overview', 'banner.jpg'],
   '1.1.392': ['2026-11-23', 'update', 'The notice says Rabbid Lab is for domains of any size'],
   '1.1.391': ['2026-11-23', 'update', 'Sign-in page: signing in pops instead of dropping'],
   '1.1.390': ['2026-11-23', 'update', 'Sign-in page: the domain lists a touch darker'],
@@ -1795,7 +1799,6 @@ const RELEASE_INFO = {
   tabSay(false);
   setInterval(() => tabSay(false), 30000);
   addEventListener('pagehide', () => tabSay(true));
-  const WORDS = { current: 'Up to date', available: 'Update available', waiting: 'Pending', downloading: 'Downloading', installing: 'Installing', failed: 'Failed' };
   let last = null;
   let timer = null;
   // Check for updates rests for 3 seconds after each check (Updates page and Overview alike), so clicks can't pile up.
@@ -2054,7 +2057,6 @@ const RELEASE_INFO = {
     labName = brand.name || productName;
     product = productName;
     $('brand-name').textContent = labName;
-    $('hero-title').textContent = labName;
     // The tagline with its tags filled in for whoever is looking; Lab console until they're known, or with none set.
     const tag = Brand.fill(brand.tagline, tagKnown) || Brand.TAG;
     $('brand-tag').textContent = tag;
@@ -2193,7 +2195,6 @@ const RELEASE_INFO = {
     if (s.dev) devTools();
     loadBrand();
     $('hero-version').textContent = s.version;
-    $('hero-where').textContent = `Running on ${s.server} since ${when(s.startedAt)}.`;
     $('ab-version').textContent = `${productName} ${s.version}`;
     $('ab-server').textContent = s.server;
     $('ab-since').textContent = when(s.startedAt);
@@ -2204,13 +2205,13 @@ const RELEASE_INFO = {
     uptime();
   };
 
-  // How long Rabbid Lab has been running, in the hero.
+  // How long Rabbid Lab has been running, in the banner, short enough to fit its fixed width.
   let started = null;
   const uptime = () => {
     if (!started) return;
     const m = Math.floor((Date.now() - new Date(started)) / 60000);
     const say = (n, unit) => `${n} ${unit}${n === 1 ? '' : 's'}`;
-    $('hero-uptime').textContent = m < 1 ? 'Just started' : m < 60 ? say(m, 'minute') : m < 2880 ? say(Math.floor(m / 60), 'hour') : say(Math.floor(m / 1440), 'day');
+    $('hero-uptime').textContent = m < 1 ? 'Just now' : m < 60 ? `${m} min` : m < 2880 ? say(Math.floor(m / 60), 'hour') : say(Math.floor(m / 1440), 'day');
   };
 
   // The Updates status card: an icon, where it stands, and a line about it.
@@ -2321,15 +2322,6 @@ const RELEASE_INFO = {
   // What someone who can't install it is told instead: how it gets installed.
   const whoInstalls = (u) => (!u.canInstall ? 'Update the container to install it.'
     : u.automatic ? `It installs automatically when nobody is using ${product}.` : 'Ask an admin to install it.');
-  // The hero says where updating stands in a few words; Settings > Updates has the rest.
-  const headline = (u) => ({
-    available: mayInstall(u) ? `Version ${u.available} is ready to install.` : `Version ${u.available} is available. ${whoInstalls(u)}`,
-    waiting: `Version ${u.available} will install shortly.`,
-    downloading: `Downloading version ${u.available}.`,
-    installing: `Installing version ${u.available}.`,
-    failed: `Version ${u.available} failed to install.`,
-  })[u.status] || `${product} is up to date.`;
-
   // unheld: the server answered at once with nothing new, where it was asked to wait for the next step.
   const draw = (u, unheld = false) => {
     // Back as a new version: a full bar and the version for a moment, then the new page.
@@ -2356,15 +2348,12 @@ const RELEASE_INFO = {
     $('top-updates').classList.toggle('bad', u.status === 'failed');
     $('top-updates-text').textContent = TOP[u.status] || 'Updates';
     const busy = u.status === 'downloading' || u.status === 'installing';
-    // While the update dialog is up it does the talking: the words behind it stay as they were.
-    if (!busy) {
-      $('hero-state').textContent = headline(u);
-      $('hero-updates').textContent = WORDS[u.status] || u.status;
-    }
     $('hero-check').disabled = busy || resting();
-    // An update ready: Install now leads, and Check for updates steps back.
-    $('hero-install').hidden = !(u.status === 'available' || u.status === 'failed') || !u.canInstall;
-    $('hero-check').classList.toggle('primary', $('hero-install').hidden);
+    // An update ready that this page may install: the banner's Check for updates turns into Install <version> in the same
+    // place, and Install opens the update window.
+    $('hero-install').hidden = !(u.status === 'available' || u.status === 'failed') || !mayInstall(u);
+    if (u.available) $('hero-install-text').textContent = `Install ${u.available}`;
+    $('hero-check').hidden = !$('hero-install').hidden;
     if (u.status === 'installing') installing(u.available, u.installingFor);
     else if (u.status === 'downloading') {
       dl = { got: u.downloaded || 0, total: u.total || 0 };
@@ -2425,7 +2414,6 @@ const RELEASE_INFO = {
         schedule(down < 120000 ? 1000 : 3000);
       } else {
         card('alert', 'bad', 'Server unreachable', 'Retrying automatically.');
-        $('hero-updates').textContent = 'Unreachable';
         schedule(down < 30000 ? 1500 : down < 300000 ? 5000 : 15000);
       }
     }
@@ -4189,10 +4177,22 @@ const RELEASE_INFO = {
     }
   };
 
+  // Sensors up on the Overview banner: how many of the sensors not paused are answering. Read when Overview shows, then
+  // each minute while it's open.
+  let sensorsRead = null;
+  const sensorsUp = (answer) => {
+    sensorsRead = answer;
+    const on = (answer.sensors || []).filter((x) => x.status !== 'paused');
+    $('hero-sensors').textContent = on.length ? `${on.filter((x) => x.status === 'up' || x.status === 'warn').length} of ${on.length}` : 'None';
+  };
+  live({ page: () => where()[0] === 'overview' && has('sensors.view'), every: 60000, read: () => get('/api/sensors'), now: () => sensorsRead, draw: sensorsUp });
+  document.addEventListener('rabbidlab:show', (e) => {
+    if (e.detail[0] === 'overview' && has('sensors.view')) get('/api/sensors').then(sensorsUp, () => { $('hero-sensors').textContent = '—'; });
+  });
+
   document.addEventListener('DOMContentLoaded', () => {
     notes();
     drawBrand(); // the lab's name and icon as this browser last saw them, before the server answers
-    scatter($('hero'), 20261109);
     scatter($('dir-hero'), 20261113);
     scatter($('ln-hero'), 20261117);
     scatter($('sn-hero'), 20261121);
@@ -4249,9 +4249,10 @@ const RELEASE_INFO = {
       const top = (u.roles || []).filter((r) => r.id !== 'user');
       tagKnown = { name, username: u.username, hostname: s.machine, domain: domain || '', version: s.version, role: (top[0] || (u.roles || [])[0])?.name || '' };
       eyebrow = u.source === 'ad' && domain ? `${domain} · Lab console` : 'Lab console';
+      const watched = s.domain || (u.source === 'ad' ? domain : '');
+      $('hero-lead').textContent = `${product} watches the domain controllers, devices, links and sensors ${watched ? `in ${watched}` : 'on your network'}, and tells you when something needs you.`;
       apply();
       if (can.has('updates.view')) update();
-      else $('hero-state').textContent = `Welcome, ${name}.`;
       if (can.has('activity.view')) activity();
       if (can.has('seats.view') || can.has('sessions.view')) seats(); // the count and the waiting dot in the rail, and the page itself when it's open
       document.dispatchEvent(new CustomEvent('rabbidlab:me', { detail: u }));
@@ -4285,7 +4286,6 @@ const RELEASE_INFO = {
         if (!r.ok) throw new Error(r.statusText);
         s = await r.json();
       } catch {
-        $('hero-state').textContent = `Could not connect to ${product}. Retrying.`;
         started();
         setTimeout(start, 5000);
         return;

@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.393 (2026-11-24)
+
+- Overview has a new banner: hills and a lake under the moon, drawn in the accent colour, with the headline at the bottom left and a strip along the foot with the version, uptime and sensors up.
+- Check for updates turns into Install in the same place, and Install opens the update window. Nothing on the banner moves when an update comes in.
+
 ## 1.1.392 (2026-11-23)
 
 - The Use at your own risk notice says Rabbid Lab is for Active Directory domains of any size, from small to large. Its wording changed, so each account is asked to accept it once more.

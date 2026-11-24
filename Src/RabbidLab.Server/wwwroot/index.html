@@ -32,6 +32,7 @@
 <link rel="stylesheet" href="Assets/network.css">
 <link rel="stylesheet" href="Assets/cloud.css">
 <link rel="stylesheet" href="Assets/search.css">
+<link rel="stylesheet" href="Assets/overview.css">
 <link rel="stylesheet" href="Assets/news.css">
 <link rel="stylesheet" href="Assets/edition.css">
 <link rel="stylesheet" href="Assets/themes.css">
@@ -39,6 +40,7 @@
 <script src="Assets/palette.js" defer></script>
 <script src="Assets/backdrop.js" defer></script>
 <script src="Assets/skeleton.js" defer></script>
+<script src="Assets/scene.js" defer></script>
 <script src="Assets/console.js" defer></script>
 <script src="Assets/scroll.js" defer></script>
 <script src="Assets/tips.js" defer></script>
@@ -284,23 +286,27 @@
     <a class="button small primary" id="here-connect" href="#"><svg><use href="#i-link"/></svg>2. Connect this computer</a>
     <button type="button" class="link" id="here-later">Not now</button></div>
   <section class="page home" id="page-overview" data-page="overview" data-title="Overview" hidden>
-    <!-- The hero: the name big, how Rabbid Lab is doing, and the way to each page. -->
-    <header class="hero" id="hero">
-      <p class="eyebrow" id="hero-eyebrow">Lab console</p>
-      <h1 class="hero-title" id="hero-title" data-brand-name>Rabbid Lab</h1>
-      <script src="Assets/brand-paint.js"></script>
-      <p class="hero-lead"><b id="hero-state">Loading…</b> <span id="hero-where"></span></p>
-      <!-- The numbers, then the buttons after a thin line, so a banner with buttons is no taller than one without. -->
-      <div class="hero-row">
-      <div class="hero-stats">
-        <div><b id="hero-version"><i class="sk sk-num"></i></b><span><svg><use href="#i-new"/></svg>Version</span></div>
-        <div><b id="hero-uptime"><i class="sk sk-num"></i></b><span><svg><use href="#i-clock"/></svg>Uptime</span></div>
-        <div data-can="updates.view"><b id="hero-updates"><i class="sk sk-num"></i></b><span><svg><use href="#i-updates"/></svg>Updates</span></div>
+    <!-- The banner: a night scene drawn from the accent (scene.js), the headline at the foot on the left, and a glass strip
+         along the bottom with the numbers and the buttons. Nothing on it changes size, so it never moves. -->
+    <header class="ovb" id="hero">
+      <div class="ovb-art" data-scene aria-hidden="true"></div>
+      <div class="ovb-main">
+        <p class="ovb-eye"><i></i><span id="hero-eyebrow">Lab console</span></p>
+        <h1 class="ovb-title">Your domain, your devices and every sensor, in one console.</h1>
+        <p class="ovb-lead" id="hero-lead">Rabbid Lab watches the domain controllers, devices, links and sensors on your network, and tells you when something needs you.</p>
       </div>
-      <div class="hero-actions">
-        <button type="button" class="primary" id="hero-install" data-can="updates.install" hidden>Install now</button>
-        <button type="button" class="primary" id="hero-check" data-can="updates.check"><svg><use href="#i-refresh"/></svg>Check for updates</button>
-      </div>
+      <div class="ovb-strip">
+        <div class="ovb-nums">
+          <div><b id="hero-version"><i class="sk sk-num"></i></b><span>Version</span></div>
+          <div><b id="hero-uptime"><i class="sk sk-num"></i></b><span>Up for</span></div>
+          <div data-can="sensors.view"><b id="hero-sensors"><i class="sk sk-num"></i></b><span>Sensors up</span></div>
+        </div>
+        <!-- Check for updates turns into Install in the same place; Install opens the update window. -->
+        <div class="ovb-btns">
+          <button type="button" class="primary" id="hero-install" data-can="updates.install" hidden><svg><use href="#i-download"/></svg><span id="hero-install-text">Install now</span></button>
+          <button type="button" class="primary" id="hero-check" data-can="updates.check"><svg><use href="#i-refresh"/></svg>Check for updates</button>
+          <a class="button" href="#whats-new">See what's new<svg><use href="#i-right"/></svg></a>
+        </div>
       </div>
     </header>
 
