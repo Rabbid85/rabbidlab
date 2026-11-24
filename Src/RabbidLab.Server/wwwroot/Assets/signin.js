@@ -892,9 +892,9 @@
       else (setup ? $('local-password') : $('local-user')).focus();
     };
     $('other-kind').addEventListener('click', () => choose(showing === 'ad' ? 'local' : 'ad'));
-    // Change, signing in with Active Directory: the Where you sign in window slides in over the form (signin.css) with the
-    // Domain and Domain controller boxes, and Back to sign in, its X or Esc slides it away. The form under it can't be
-    // reached meanwhile. The first time, it asks for the domains accounts may sign in from.
+    // Change, signing in with Active Directory: the Where you sign in window pops in over the form (signin.css) with the
+    // Domain and Domain controller boxes, and Back to sign in, its X or Esc closes it. The form under it fades out and
+    // can't be reached meanwhile. The first time, it asks for the domains accounts may sign in from.
     let listed = false;
     let gone = 0;
     const where = (open) => {
@@ -905,13 +905,13 @@
       if (open) {
         whereError('');
         slot.hidden = false;
-        void slot.offsetWidth; // drawn out of sight first, so it slides in
+        void slot.offsetWidth; // drawn closed first, so it pops in
         slot.classList.add('open');
         $('where-win').focus({ preventScroll: true });
         return;
       }
       slot.classList.remove('open');
-      gone = setTimeout(() => { slot.hidden = true; }, 220);
+      gone = setTimeout(() => { slot.hidden = true; }, 140);
       ($('ad-user').value ? $('ad-password') : $('ad-user')).focus();
     };
     $('ad-change').addEventListener('click', async () => {

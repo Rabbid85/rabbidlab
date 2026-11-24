@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.387 (2026-11-23)
+
+- The Where you sign in window on the sign-in page pops in where it is instead of sliding in.
+- It keeps the look of the card, with the same opacity, darkness and blur, instead of turning solid.
+- The sign-in form sits a few pixels lower, so the room over the ring round the icon and the room under the last link are the same.
+
 ## 1.1.386 (2026-11-23)
 
 - On the sign-in page, Change now slides a Where you sign in window in over the form, with the Domain and Domain controller boxes in it. What you pick is used at once, and Back to sign in closes it.

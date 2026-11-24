@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.387', [
+    'The Where you sign in window on the sign-in page pops in where it is instead of sliding in.',
+    'It keeps the look of the card, with the same opacity, darkness and blur, instead of turning solid.',
+    'The sign-in form sits a few pixels lower, so the room over the ring round the icon and the room under the last link are the same.']],
   ['1.1.386', [
     'On the sign-in page, Change now slides a Where you sign in window in over the form, with the Domain and Domain controller boxes in it. What you pick is used at once, and Back to sign in closes it.',
     'A domain can be typed there as well as picked. Sign-in still takes only the domain that is set up, the rest of its forest and the domains it trusts, and says why when a domain is refused.',
@@ -1242,6 +1246,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.387': ['2026-11-23', 'update', 'Sign-in page: the Where you sign in window pops in and keeps the look of the card'],
   '1.1.386': ['2026-11-23', 'update', 'Sign-in page: Change opens a Where you sign in window, and the form sits in the middle'],
   '1.1.385': ['2026-11-23', 'update', 'Sign-in page: the card turns into the Use at your own risk notice'],
   '1.1.384': ['2026-11-23', 'update', 'Sign-in page: the name of each box sits on its top line'],

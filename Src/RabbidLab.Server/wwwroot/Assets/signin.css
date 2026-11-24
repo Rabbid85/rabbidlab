@@ -37,8 +37,10 @@ body.loading .card-body > *, body.loading .card-foot > *, body.loading .side-sub
 .side-sub { margin: 9px 0 0; color: #C9CCDA; font-size: 13.5px; }
 
 /* The form: a ringed avatar over the heading, both centred, then the boxes, each with its name in it, and Sign in with an
-   arrow. All of it sits in the middle of its side of the card, with as much room over it as under it. */
-.card-body { padding: 28px 36px; display: flex; flex-direction: column; justify-content: center; }
+   arrow. All of it sits in the middle of its side of the card, with as much room over it as under it. That is measured
+   from what shows: the ring round the avatar reaches 7px over its box and the last link's words end 8px over the foot of
+   theirs, so the padding is 16px more on top. */
+.card-body { padding: 36px 36px 20px; display: flex; flex-direction: column; justify-content: center; }
 .hello-av { display: grid; place-items: center; align-self: center; width: 60px; height: 60px; margin: 0 0 16px; border-radius: 50%;
   background: linear-gradient(135deg, var(--accent-line), var(--accent)); color: #fff; outline: 2px solid var(--accent-line); outline-offset: 5px; }
 .hello-av svg { width: 27px; height: 27px; }
@@ -229,7 +231,7 @@ body.loading .look { visibility: hidden; }
   .side-name { position: relative; left: auto; right: auto; bottom: auto; padding: 24px 34px 22px; }
   .side-title { font-size: 28px; }
   .side-sub { margin-top: 6px; font-size: 14px; }
-  .card-body { padding: 26px 34px; }
+  .card-body { padding: 34px 34px 18px; }
   .card-foot { padding: 15px 34px; }
 }
 @media (max-width: 480px) {
@@ -283,21 +285,26 @@ html[data-sty-signin]:not([data-si-card="split"]) .input .end:hover { background
   html[data-si-size="largest"] .signin-card { grid-template-columns: minmax(0, 640fr) minmax(0, 480fr); max-width: 1120px; min-height: 600px; }
 }
 
-/* Where you sign in (signin.js): Change slides it in over the sign-in side of the card, from the card's right edge, and
-   Back to sign in slides it away. Signing in, it holds the Domain and Domain controller boxes; setting up, they are in
-   the form. It is laid out as the form is, all of it in the middle of its side, with one wide button. Its slot is the
-   sign-in side of the card, placed by the card's own grid lines, and clips it, so only transform moves. It is solid, in
-   the card's colour, so the form under it does not show through. */
+/* Where you sign in (signin.js): Change opens it over the sign-in side of the card, and Back to sign in closes it. It
+   pops in where it is, growing a little as it comes, and does not slide. The form under it fades out of sight
+   meanwhile, so the window has no fill of its own: it sits on the card's own glass and keeps the card's look, its
+   opacity, its darkness and its blur. Signing in, it holds the Domain and Domain controller boxes; setting up, they are
+   in the form. It is laid out as the form is, all of it in the middle of its side, with one wide button. Its slot is
+   the sign-in side of the card, placed by the card's own grid lines. Only opacity and transform move. */
 .signin-card { position: relative; }
 .where-slot { position: absolute; inset: 0; grid-column: 2; grid-row: 1 / 3; z-index: 4; overflow: hidden; }
 .where-slot[hidden] { display: none; }
-.where-win { position: relative; display: flex; flex-direction: column; justify-content: center; height: 100%; padding: 28px 36px; background: #11131D;
-  transform: translateX(101%); transition: transform .2s cubic-bezier(.4, 0, 1, 1); }
+.where-win { position: relative; display: flex; flex-direction: column; justify-content: center; height: 100%; padding: 28px 36px; opacity: 0; transform: scale(.96);
+  transition: transform .12s cubic-bezier(.4, 0, 1, 1), opacity .1s ease; }
 .where-win:focus { outline: none; }
-.where-slot.open .where-win { transform: none; transition: transform .3s cubic-bezier(.16, 1, .3, 1); }
-html[data-sty-signin]:not([data-si-card="split"]) .where-win { background: color-mix(in srgb, rgb(from var(--sty-signin-bg) r g b / 1), white 3%); }
+.where-slot.open .where-win { opacity: 1; transform: none; transition: transform .22s cubic-bezier(.16, 1, .3, 1), opacity .16s ease; }
+.card-body, .card-foot { transition: opacity .12s ease; }
+.signin-card:has(.where-slot.open) > .card-body, .signin-card:has(.where-slot.open) > .card-foot { opacity: 0; }
+/* Where the sign-in side has a fill of its own instead of the card's (the styled left side with a solid form, and the
+   open left side), that fill goes out of sight with the form, so the window wears the same one. */
+html[data-si-card="split"][data-sty-signin] .where-win { background: #11131D; }
 html[data-si-card="open"] .where-slot { border-radius: 16px; }
-html[data-si-card="open"] .where-win { border: 1px solid var(--sty-signin-edge, #1F2232); border-radius: 16px; }
+html[data-si-card="open"] .where-win { border: 1px solid var(--sty-signin-edge, #1F2232); border-radius: 16px; background: var(--sty-signin-bg, #11131D); backdrop-filter: var(--sty-signin-blur, none); }
 .where-win h2 { margin: 0 0 6px; text-align: center; color: var(--title); font: 700 19px/1.25 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; }
 .where-lead { margin: 0 0 22px; text-align: center; color: #8E92A8; font-size: 13.5px; line-height: 1.45; }
 .where-win .auth-error { margin: 0 0 10px; }
@@ -308,7 +315,7 @@ html[data-si-card="open"] .where-win { border: 1px solid var(--sty-signin-edge, 
 /* Its lists stay inside it: four rows at a time, one fewer than in the form. */
 .where-win .combo-list { max-height: 170px; }
 @media (max-width: 900px) { .where-slot { grid-column: 1; grid-row: 2 / 4; } }
-@media (prefers-reduced-motion: reduce) { .where-win, .where-slot.open .where-win { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .where-win, .where-slot.open .where-win, .card-body, .card-foot { transition: none; } }
 
 /* The quote, in the middle of the left side between the time and the name. Another quote shows on the button beside it. */
 .side-quote { position: absolute; left: 34px; right: 34px; top: 54%; z-index: 1; margin: 0; transform: translateY(-50%); transition: opacity .2s ease; }
