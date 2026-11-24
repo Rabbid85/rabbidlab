@@ -9,7 +9,7 @@
     solid: null,
     glass: (a) => ({ bg: `color-mix(in srgb, var(--panel) ${a}%, transparent)`, blur: 'blur(16px) saturate(135%)', edge: 'color-mix(in srgb, var(--text) 10%, transparent)' }),
     frost: (a) => ({ bg: `color-mix(in srgb, color-mix(in srgb, var(--panel), #fff 12%) ${a}%, transparent)`, blur: 'blur(28px) saturate(180%)', edge: 'color-mix(in srgb, var(--text) 16%, transparent)' }),
-    black: (a) => ({ bg: `color-mix(in srgb, #000 ${a}%, transparent)`, blur: 'blur(10px) saturate(110%)', edge: 'color-mix(in srgb, var(--text) 4%, transparent)' }),
+    black: (a) => ({ bg: `color-mix(in srgb, #000 ${a}%, transparent)`, blur: 'blur(22px) saturate(148%)', edge: 'color-mix(in srgb, var(--text) 5%, transparent)' }),
     dark: () => ({ bg: 'color-mix(in srgb, var(--night) 88%, transparent)', blur: 'blur(10px) saturate(115%)', edge: 'color-mix(in srgb, var(--text) 8%, transparent)' }),
   };
   // Puts a look on a part: its name (win, panel, menus, toasts, signin), the look, and the glass opacity (20 to 95).

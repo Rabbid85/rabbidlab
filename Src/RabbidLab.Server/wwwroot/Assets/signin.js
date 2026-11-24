@@ -10,6 +10,19 @@
   };
   const remember = (kind) => { try { localStorage.setItem(KIND, kind); } catch { /* private browsing */ } };
   const remembered = () => { try { return localStorage.getItem(KIND); } catch { return null; } };
+  // Each box's line: a fieldset over the box whose legend opens a gap as wide as the box's name, for the name to move up
+  // into (signin.css). The legend holds the name's words, kept the same as the label's whenever the page changes them.
+  document.querySelectorAll('.input').forEach((box) => {
+    const label = box.querySelector('.fld');
+    const line = document.createElement('fieldset');
+    line.className = 'in-line';
+    line.setAttribute('aria-hidden', 'true');
+    const words = line.appendChild(document.createElement('legend')).appendChild(document.createElement('span'));
+    const same = () => { words.textContent = label.textContent; };
+    same();
+    new MutationObserver(same).observe(label, { childList: true, characterData: true, subtree: true });
+    label.after(line);
+  });
 
   const showError = (text) => {
     $('error').textContent = text;

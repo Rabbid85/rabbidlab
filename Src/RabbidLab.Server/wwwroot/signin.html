@@ -69,7 +69,8 @@
       <p class="auth-note" id="declined-note" role="status" hidden><svg aria-hidden="true"><use href="#i-info"/></svg><span>You declined the Use at your own risk notice, so Rabbid Lab can't be used. <button type="button" class="note-link" id="declined-read">Read the notice</button></span></p>
       <p class="auth-error plain-note" id="plain-note" role="alert" hidden></p>
 
-      <!-- Each box's name sits in it and moves up small once it has focus or something in it (placeholder " " tells which).
+      <!-- Each box's name starts in it and moves up onto the box's top line once it has focus or something in it (an empty
+           box shows its placeholder, which tells which). signin.js gives each box the line the name sits on.
            The 6-digit code box shows only for an administrator unlocking a locked name. -->
       <form id="local-form" novalidate>
         <div class="input"><input id="local-user" placeholder=" " autocomplete="username" spellcheck="false"><label class="fld" for="local-user">Username</label></div>
@@ -85,7 +86,7 @@
         <!-- Setting up, or signing in after Change: the domains it may sign in from, and their controllers. -->
         <div id="ad-where">
           <div class="combo">
-            <div class="input"><input id="ad-domain" role="combobox" aria-expanded="false" aria-controls="domain-list" aria-autocomplete="list" placeholder=" " autocomplete="off" spellcheck="false" data-1p-ignore data-lpignore="true" data-bwignore><label class="fld" for="ad-domain">Domain, such as home.lan</label><button type="button" class="end" id="domain-open" tabindex="-1" aria-label="Show domains"><svg><use href="#i-down"/></svg></button></div>
+            <div class="input"><input id="ad-domain" role="combobox" aria-expanded="false" aria-controls="domain-list" aria-autocomplete="list" placeholder="home.lan" autocomplete="off" spellcheck="false" data-1p-ignore data-lpignore="true" data-bwignore><label class="fld" for="ad-domain">Domain</label><button type="button" class="end" id="domain-open" tabindex="-1" aria-label="Show domains"><svg><use href="#i-down"/></svg></button></div>
             <ul class="combo-list" id="domain-list" role="listbox" hidden></ul>
           </div>
           <div class="combo">

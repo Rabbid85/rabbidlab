@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.384 (2026-11-23)
+
+- On the sign-in page the name of each box now moves up onto the top line of the box when you click in it or type, so it no longer sits crammed against what you type. The boxes stay the same height.
+- Black glass, the style of the sign-in card, has more blur and a slightly brighter edge.
+
 ## 1.1.383 (2026-11-23)
 
 - New card style for the sign-in page, Black glass: black glass that shows the background through, lightly blurred. It is the card style now, at 52% opacity. A lab that already picked a card style in Settings, Appearance keeps its own.
