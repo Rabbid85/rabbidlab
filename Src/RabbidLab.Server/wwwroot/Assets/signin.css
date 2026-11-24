@@ -96,21 +96,18 @@ body.loading .card-body > *, body.loading .card-foot > *, body.loading .side-sub
 .input .now::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 .input .now.off { color: var(--red); }
 
-/* The lists under Domain and Domain controller, joined to the box. While a list is open its box loses its bottom corners
-   and its bottom line, and the list hangs from it in the same fill and the same accent line, with a thin line between
-   them. One line a row: a dot for whether a domain controller answers, the name, how it answers, and a tick on the one
-   in use. The rows come in one after another as it opens (signin.js marks a list just opened as fresh); only opacity and
-   transform move. --list-fill, --list-line and --list-band (the row pointed at) are the list's colours, which a card in a
-   style changes (below). */
-.signin-card { --list-fill: #0C0E17; --list-line: var(--line-strong); --list-band: #1D2133; }
+/* The lists under Domain and Domain controller: a dark panel of its own a little under the box, with all its corners and
+   the accent line all round it. The box keeps its own shape. One line a row: a dot for whether a domain controller
+   answers, the name, how it answers, and a tick on the one in use. It drops in from the box, and its rows come in one
+   after another (signin.js marks a list just opened as fresh); only opacity and transform move. --list-fill and
+   --list-band (the row pointed at) are the list's colours, which a card in a style changes (below). */
+.signin-card { --list-fill: #151827; --list-band: #1D2133; }
 .combo { position: relative; }
-.combo-list { position: absolute; z-index: 5; left: 0; right: 0; top: 43px; max-height: 210px; overflow-y: auto; margin: 0; padding: 4px; list-style: none;
-  background: var(--list-fill); border: 1px solid var(--accent); border-top-color: var(--list-line); border-radius: 0 0 10px 10px; animation: list-in .1s ease-out; }
-.combo:has(.combo-list:not([hidden])) .in-line { border-color: var(--accent); border-bottom-color: transparent; border-radius: 10px 10px 0 0; }
-.combo:has(.combo-list:not([hidden])) .input input { border-radius: 10px 10px 0 0; background: var(--list-fill); }
+.combo-list { position: absolute; z-index: 5; left: 0; right: 0; top: 50px; max-height: 210px; overflow-y: auto; margin: 0; padding: 4px; list-style: none;
+  background: var(--list-fill); border: 1px solid var(--accent); border-radius: 10px; transform-origin: 50% 0; animation: list-in .12s ease-out; }
 .combo-list li { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 10px; border-radius: 6px; cursor: pointer; }
 .combo-list.fresh li { animation: list-row .11s ease-out backwards; animation-delay: calc(var(--i, 0) * 14ms); }
-@keyframes list-in { from { opacity: 0; } }
+@keyframes list-in { from { opacity: 0; transform: scale(.98) translateY(-3px); } }
 @keyframes list-row { from { opacity: 0; transform: translateY(-3px); } }
 .combo-list li i { flex: none; width: 8px; height: 8px; border-radius: 50%; background: #5E6380; }
 .combo-list li i.ok { background: var(--ok); }
@@ -271,8 +268,8 @@ html[data-sty-signin="black"] .in-line, html[data-sty-signin="black"] .foot-pill
 /* The lists under Domain and Domain controller, where the form is in a style: the card's own colour, solid and a shade
    darker, so nothing behind shows through and no second blur is redrawn as the background moves. The rows light up with
    a faint band, and the arrow and the eye brighten with no box behind them. */
-html[data-sty-signin]:not([data-si-card="split"]) .signin-card { --list-fill: color-mix(in srgb, rgb(from var(--sty-signin-bg) r g b / 1), var(--night) 24%); --list-line: color-mix(in srgb, var(--sty-signin-edge), rgb(255 255 255 / .18));
-  --list-band: rgb(255 255 255 / .07); }
+/* The list's fill is the card's colour, solid, lifted halfway to the console's raised dark, a shade lighter than the card. */
+html[data-sty-signin]:not([data-si-card="split"]) .signin-card { --list-fill: color-mix(in srgb, rgb(from var(--sty-signin-bg) r g b / 1), #1A1D2B 50%); --list-band: rgb(255 255 255 / .07); }
 html[data-sty-signin]:not([data-si-card="split"]) .input .end:hover { background: none; color: var(--title); }
 /* The arrow turns over while its list is open. */
 .combo .end svg { transition: transform .15s; }

@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.389 (2026-11-23)
+
+- The lists under Domain and Domain controller on the sign-in page open as a panel of their own a little under the box instead of joined to it, and are a shade lighter.
+
 ## 1.1.388 (2026-11-23)
 
 - The icon above Welcome back on the sign-in page is a flat disc in the accent colour, a little bigger, without the second ring round it.
