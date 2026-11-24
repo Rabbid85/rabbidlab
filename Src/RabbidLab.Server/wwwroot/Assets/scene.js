@@ -88,9 +88,13 @@
     // A layer of land, and on far layers a thin moonlit line along its ridge.
     const land = (pts, cls, rim = 0) => `<path class="${cls}" d="M0 ${H}L${pts.map(([x, y]) => `${f1(x)} ${f1(y)}`).join('L')}L${W} ${H}Z"/>`
       + (rim ? `<polyline class="ovs-rim" opacity="${rim}" points="${pts.map(([x, y]) => `${f1(x)},${f1(y)}`).join(' ')}"/>` : '');
-    const forest = (r, pts, from, to, hMin, hMax, gap, s) => {
+    // About one pine in seven on the far hills and the far shore stands about twice as tall ("Some of these trees, on ALL
+    // banners, should be taller"). Those take their own numbers, so every tree stays where it was.
+    const tall = rnd(31);
+    const lift = () => (tall() < 0.15 ? 1.8 + tall() * 0.8 : 1);
+    const forest = (r, pts, from, to, hMin, hMax, gap, s, some = false) => {
       let d = '';
-      for (let x = from; x < to; x += gap * (0.5 + r())) d += pine(x, yAt(pts, x) + 4 * s, (hMin + r() * (hMax - hMin)) * s);
+      for (let x = from; x < to; x += gap * (0.5 + r())) d += pine(x, yAt(pts, x) + 4 * s, (hMin + r() * (hMax - hMin)) * s * (some ? lift() : 1));
       return d;
     };
     const stars = (r, n, maxY) => {
@@ -110,14 +114,14 @@
     const L3 = ridge(r, 440, 50, 0.5, [[280, 36, 200], [1230, 44, 220]]);
     const sky = stars(r, 190, 320);
     const beams = rays(mx, my, 7, r, k.rayLen);
-    const trees = forest(r, L3, 0, W, 9, 20, 15, k.tree);
+    const trees = forest(r, L3, 0, W, 9, 20, 15, k.tree, true);
     // The lake: the far shore with its pines (rising where it meets the hills at 1240), the water, the shore upside down in it,
     // and the moon's light breaking across it in rows of short strokes with gaps, wider toward the viewer ("the light on the
     // river here looks a bit too much": two thirds as bright).
     const q = rnd(19);
     const SH = m(436);
     const shore = ridge(q, 436 - 9, 10, 0.5, [[1240, 16, 170]]);
-    const band = `M0 ${f1(SH)}L${shore.map(([a, b]) => `${f1(a)} ${f1(Math.min(b, SH))}`).join('L')}L${W} ${f1(SH)}Z${forest(q, shore, 0, W, 10, 28, 13, k.tree * 0.7 + k.near * 0.3)}`;
+    const band = `M0 ${f1(SH)}L${shore.map(([a, b]) => `${f1(a)} ${f1(Math.min(b, SH))}`).join('L')}L${W} ${f1(SH)}Z${forest(q, shore, 0, W, 10, 28, 13, k.tree * 0.7 + k.near * 0.3, true)}`;
     // Every other row is drawn, a little blurred and gently shimmering, with no sharp copy on top ("This needs to be softened,
     // the light looks... odd", then "this is sexy" of the fewer strokes).
     let glints = '';

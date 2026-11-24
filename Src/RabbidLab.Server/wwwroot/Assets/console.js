@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.403', [
+    'On every banner, about one pine in seven on the far hills and along the far shore stands about twice as tall, so the treeline is no longer one even row.']],
   ['1.1.402', [
     'Every window, such as Add a link, has the same look as the sign-in card: the same darkness, glass and opacity, and it changes when the sign-in card does.',
     'Settings, Appearance has Same as the sign-in card for windows, which is now what windows start with.']],
@@ -1290,6 +1292,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.403': ['2026-11-24', 'update', 'Taller pines here and there on every banner'],
   '1.1.402': ['2026-11-24', 'update', 'Windows look like the sign-in card'],
   '1.1.401': ['2026-11-24', 'update', 'Softer moonlight on the water, and a purple DEV tag'],
   '1.1.400': ['2026-11-24', 'update', 'One night scene on every banner, and purple for new installs'],
