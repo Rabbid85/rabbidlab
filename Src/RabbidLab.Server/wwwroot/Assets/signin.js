@@ -231,6 +231,11 @@
     skipping(setup);
     $('mfa-form').hidden = false;
     $('mfa-back').hidden = false;
+    // It pops in where the form was (signin.css step-in).
+    const body = document.querySelector('.card-body');
+    body.classList.remove('step-in');
+    void body.offsetWidth;
+    body.classList.add('step-in');
     (said.reset ? $('mfa-reset') : $('mfa-code')).focus();
   };
   // With Skip ticked, the code boxes and the QR code step aside and the button says what it does.

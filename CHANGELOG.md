@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.391 (2026-11-23)
+
+- Signing in no longer drops the card. It shrinks a little as it fades, as the Where you sign in window does, and the opening window pops in the same way.
+- The step for the code from your authenticator app pops in where the form was.
+- The lists under Domain and Domain controller on the sign-in page are a little darker.
+
 ## 1.1.390 (2026-11-23)
 
 - The lists under Domain and Domain controller on the sign-in page are a touch darker.

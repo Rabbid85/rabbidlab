@@ -327,14 +327,16 @@ body.booting .top, body.booting .rail, body.booting .main > :not(.busy-cover) { 
 .boot-dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--line-strong); transition: background .3s ease, box-shadow .3s ease; }
 .boot-dots i.on { background: var(--accent-line); box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 70%, transparent); }
 /* In a window (Settings, Appearance, Opening screen: With each read or Small window): the window in the style engine's
-   boot part (Style, Opening screen), over the sign-in background (a backdrop canvas) or the plain page. It never changes
-   size and only fades in and out where it sits. */
+   boot part (Style, Opening screen), over the sign-in background (a backdrop canvas) or the plain page. It pops in where
+   it sits, growing a little as it comes, as the sign-in page's windows do, and fades out. */
 .boot.win { background: var(--night); }
 .boot.win::before { display: none; }
 .boot-bg { position: absolute !important; inset: 0; width: 100%; height: 100%; }
-/* The window fades in where it sits, over the background that was already there. */
-.boot.win .boot-box { animation: boot-in .4s ease both; }
-@keyframes boot-in { from { opacity: 0; } }
+/* The window pops in where it sits, over the background that was already there. */
+.boot.win .boot-box { animation: boot-in .26s cubic-bezier(.16, 1, .3, 1) both; }
+@keyframes boot-in { from { opacity: 0; transform: scale(.96); } }
+@keyframes boot-fade { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .boot.win .boot-box { animation-name: boot-fade; } }
 .boot-box { display: grid; justify-items: center; width: min(380px, calc(100vw - 32px)); padding: 30px 36px 26px; border: 1px solid var(--sty-boot-edge, var(--line-strong)); border-radius: 20px;
   background: var(--sty-boot-bg, #11131D); backdrop-filter: var(--sty-boot-blur, none); }
 /* With each read: the flask in the middle of the left side, the name and one line on the right, then a row for each read

@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.391', [
+    'Signing in no longer drops the card. It shrinks a little as it fades, as the Where you sign in window does, and the opening window pops in the same way.',
+    'The step for the code from your authenticator app pops in where the form was.',
+    'The lists under Domain and Domain controller on the sign-in page are a little darker.']],
   ['1.1.390', [
     'The lists under Domain and Domain controller on the sign-in page are a touch darker.']],
   ['1.1.389', [
@@ -1252,6 +1256,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.391': ['2026-11-23', 'update', 'Sign-in page: signing in pops instead of dropping'],
   '1.1.390': ['2026-11-23', 'update', 'Sign-in page: the domain lists a touch darker'],
   '1.1.389': ['2026-11-23', 'update', 'Sign-in page: the domain lists open under their box, a shade lighter'],
   '1.1.388': ['2026-11-23', 'update', 'Sign-in page: a flat icon above Welcome back'],
