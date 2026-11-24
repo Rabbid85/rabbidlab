@@ -47,7 +47,7 @@
 
   const SERVICES = {
     entra: {
-      name: 'Entra ID', icon: 'user-check', seed: 20261123,
+      name: 'Entra ID', icon: 'user-check',
       lists: {
         users: {
           name: 'Users', one: 'User', icon: 'user', path: '/api/cloud/entra/users', lead: 'Every user in the tenant, synced from Active Directory or made in the cloud.', noun: 'users',
@@ -109,7 +109,7 @@
       },
     },
     exchange: {
-      name: 'Exchange', icon: 'mail', seed: 20261124,
+      name: 'Exchange', icon: 'mail',
       note: () => (cloud && !cloud.exchange ? 'Rabbid Lab’s app does not have the Exchange Administrator role, so Exchange Online refuses it. Give the role to the app in the Microsoft Entra admin center, under Roles and administrators, or disconnect and connect again.' : ''),
       lists: {
         mailboxes: {
@@ -188,7 +188,7 @@
       },
     },
     m365: {
-      name: 'Microsoft 365', icon: 'license', seed: 20261125,
+      name: 'Microsoft 365', icon: 'license',
       lists: {
         licences: {
           name: 'Licences', one: 'Licence', icon: 'license', path: '/api/cloud/m365/licenses', lead: 'The subscriptions the tenant has, and how many of each are assigned.', noun: 'licences',
@@ -216,7 +216,7 @@
       },
     },
     azure: {
-      name: 'Azure', icon: 'cloud', seed: 20261126,
+      name: 'Azure', icon: 'cloud',
       note: () => (cloud && !cloud.subscriptions ? 'Rabbid Lab’s app has Reader on no Azure subscription, so these lists are empty. Give the app Reader on a subscription in the Azure portal, under Access control (IAM).' : ''),
       lists: {
         machines: {
@@ -282,8 +282,8 @@
 
   // --- The pages, built once from SERVICES ---------------------------------------------------------------------------
   const SKEL = '<div class="dnav-sk" aria-hidden="true"><i class="sk sk-head"></i>' + '<span><i class="sk sq"></i><i class="sk"></i></span>'.repeat(4) + '</div>';
-  const shell = (k, s) => `<header class="hero" id="cl-${k}-hero"><p class="eyebrow" id="cl-${k}-eyebrow">Microsoft cloud</p><h1 class="hero-title">${esc(s.name)}</h1>`
-    + `<p class="hero-lead"><b id="cl-${k}-state"></b> <span id="cl-${k}-lead"></span></p><div class="hero-stats" id="cl-${k}-stats"></div></header>`
+  const shell = (k, s) => `<header class="hero" id="cl-${k}-hero"><h1 class="hero-title">${esc(s.name)}</h1>`
+    + `<p class="hero-lead"><b id="cl-${k}-state"></b> <span id="cl-${k}-lead"></span></p><div class="hero-row"><div class="hero-stats" id="cl-${k}-stats"></div></div></header>`
     + `<div class="dir-area"><div class="dgate" id="cl-${k}-gate" hidden></div>`
     + `<nav class="dnav lists" id="cl-${k}-rail" aria-label="${esc(s.name)}">${SKEL}<p class="rail-label">Browse</p>`
     + Object.entries(s.lists).map(([l, x]) => `<a href="#${k}/${l}" data-cl-list="${l}">${svg(x.icon)}<span>${esc(x.name)}</span><small data-cl-n="${l}"></small></a><div class="dkids" data-cl-views="${l}"></div>`).join('')
@@ -317,25 +317,20 @@
     wire(k, page);
   });
 
-  const stat = (num, icon, label) => `<div><b>${num === null ? '<i class="sk sk-num"></i>' : num}</b><span>${svg(icon)}${esc(label)}</span></div>`;
+  const stat = (num, label) => `<div><b>${num === null ? '<i class="sk sk-num"></i>' : num}</b><span>${esc(label)}</span></div>`;
   const shown = (k) => rowsOf(k).filter(SERVICES[k].bar.test());
   const draw = (k) => {
     const s = SERVICES[k];
     const t = st[k];
     const l = L(k);
     if (!s.grid) return;
-    if (!s.tiled) {
-      R.scatter?.($(`cl-${k}-hero`), s.seed);
-      s.tiled = true;
-    }
     drawGate(k);
     const up = !!cloud?.connected;
-    $(`cl-${k}-eyebrow`).textContent = cloud?.tenant ? `${cloud.tenant} · Microsoft cloud` : 'Microsoft cloud';
     $(`cl-${k}-state`).textContent = `${l.name}.`;
     $(`cl-${k}-lead`).textContent = l.lead;
     // A count for each list: placeholders while it's read, a dash when it couldn't be.
     const count = (x) => (data[x.path]?.rows ? data[x.path].rows.length.toLocaleString() : data[x.path]?.error || !up ? '—' : null);
-    $(`cl-${k}-stats`).innerHTML = Object.values(s.lists).map((x) => stat(count(x), x.icon, x.name)).join('');
+    $(`cl-${k}-stats`).innerHTML = Object.values(s.lists).map((x) => stat(count(x), x.name)).join('');
     const page = $(`page-${k}`);
     page.querySelectorAll('a[data-cl-list]').forEach((a) => (a.dataset.clList === t.list ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current')));
     page.querySelectorAll('[data-cl-n]').forEach((n) => { n.textContent = data[s.lists[n.dataset.clN].path]?.rows?.length.toLocaleString() || ''; });

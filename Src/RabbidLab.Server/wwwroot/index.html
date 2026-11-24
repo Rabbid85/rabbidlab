@@ -886,19 +886,20 @@
   <!-- Devices: the computers with the Rabbid Lab client, and everyone signed in. -->
   <section class="page home dir-top people-page dir-page seats-page" id="page-seats" data-page="seats" data-title="Devices" hidden>
     <header class="hero" id="dv-hero">
-      <p class="eyebrow">Devices</p>
       <h1 class="hero-title">Devices</h1>
       <p class="hero-lead"><b id="dv-state"></b> <span id="dv-lead"></span></p>
+      <!-- The strip along the foot: the numbers, then what can be added here, whichever list is open, as on Links. -->
+      <div class="hero-row">
       <div class="hero-stats" id="dv-stats"></div>
-    </header>
-    <!-- The command bar under the banner, as on Links: what can be added here, whichever list is open. -->
-    <div class="cmdbar" id="dv-cmd" role="toolbar" aria-label="Devices">
-      <!-- New adds what the open list holds; its arrow has Add computers, Add an app, New script and New workflow (devices.js). -->
-      <div class="cmd-pair" id="dv-new-pair" data-can="seats.add seats.installs seats.scripts.edit seats.workflows">
-        <button type="button" class="cmd" id="dv-new" data-tip="Add computers"><svg><use href="#i-plus"/></svg><span>New</span></button><i class="cmd-rule"></i>
-        <button type="button" class="cmd cmd-arrow" id="dv-new-more" aria-haspopup="menu" data-tip="More options" aria-label="More options"><svg class="chev"><use href="#i-chevron-down"/></svg></button>
+      <div class="cmdbar" id="dv-cmd" role="toolbar" aria-label="Devices">
+        <!-- New adds what the open list holds; its arrow has Add computers, Add an app, New script and New workflow (devices.js). -->
+        <div class="cmd-pair" id="dv-new-pair" data-can="seats.add seats.installs seats.scripts.edit seats.workflows">
+          <button type="button" class="cmd" id="dv-new" data-tip="Add computers"><svg><use href="#i-plus"/></svg><span>New</span></button><i class="cmd-rule"></i>
+          <button type="button" class="cmd cmd-arrow" id="dv-new-more" aria-haspopup="menu" data-tip="More options" aria-label="More options"><svg class="chev"><use href="#i-chevron-down"/></svg></button>
+        </div>
       </div>
-    </div>
+      </div>
+    </header>
     <div class="dir-area">
       <!-- The lists of the Devices page down the left; Computers has views of its own under it (console.js), and
            Local admins as a tab beside it (accounts.js). -->
@@ -970,15 +971,14 @@
        NetworkScan.cs). A small card of address strips with Scan now on its bar, then the list or the map. -->
   <section class="page home net-page" id="page-network" data-page="network" data-title="Network" hidden>
     <header class="hero" id="net-hero">
-      <p class="eyebrow">Lab</p>
       <h1 class="hero-title">Network</h1>
       <p class="hero-lead"><b id="net-state"></b> <span>Every address is pinged, and whatever answers is identified by its ports, name and vendor.</span></p>
       <div class="hero-row">
       <div class="hero-stats">
-        <div><b id="net-n-all"><i class="sk sk-num"></i></b><span><svg><use href="#i-radar"/></svg>Discovered</span></div>
-        <div><b id="net-n-new"><i class="sk sk-num"></i></b><span><svg><use href="#i-new"/></svg>New</span></div>
-        <div><b id="net-n-unmanaged"><i class="sk sk-num"></i></b><span><svg><use href="#i-eye-off"/></svg>Unmanaged</span></div>
-        <div><b id="net-n-noclient"><i class="sk sk-num"></i></b><span><svg><use href="#i-alert"/></svg>Windows without the client</span></div>
+        <div><b id="net-n-all"><i class="sk sk-num"></i></b><span>Discovered</span></div>
+        <div><b id="net-n-new"><i class="sk sk-num"></i></b><span>New</span></div>
+        <div><b id="net-n-unmanaged"><i class="sk sk-num"></i></b><span>Unmanaged</span></div>
+        <div><b id="net-n-noclient"><i class="sk sk-num"></i></b><span>Windows without the client</span></div>
       </div>
       </div>
     </header>
@@ -1012,25 +1012,16 @@
   <!-- Links: the places in the lab, in groups, with their icons and whether they're up (links.js). -->
   <section class="page home" id="page-links" data-page="links" data-title="Links" hidden>
     <header class="hero" id="ln-hero">
-      <p class="eyebrow">Links</p>
       <h1 class="hero-title">Links</h1>
       <p class="hero-lead"><b id="ln-lead"></b> <span id="ln-lead-more"></span></p>
       <div class="hero-row">
       <div class="hero-stats">
-        <div><b id="ln-count"><i class="sk sk-num"></i></b><span><svg><use href="#i-link"/></svg>Links</span></div>
-        <div><b id="ln-answering"><i class="sk sk-num"></i></b><span><svg><use href="#i-activity"/></svg>Responding</span></div>
-        <div><b id="ln-every"><i class="sk sk-num"></i></b><span><svg><use href="#i-clock"/></svg>Checks</span></div>
-        <div id="ln-watched-wrap" hidden><b id="ln-watched"></b><span><svg><use href="#i-eye"/></svg>Watched</span></div>
+        <div><b id="ln-count"><i class="sk sk-num"></i></b><span>Links</span></div>
+        <div><b id="ln-answering"><i class="sk sk-num"></i></b><span>Responding</span></div>
+        <div><b id="ln-every"><i class="sk sk-num"></i></b><span>Checks</span></div>
+        <div id="ln-watched-wrap" hidden><b id="ln-watched"></b><span>Watched</span></div>
       </div>
-      </div>
-      <aside class="hero-new bad" id="ln-card" hidden>
-        <p class="eyebrow">Down</p>
-        <b id="ln-card-title"></b>
-        <p id="ln-card-text"></p>
-        <a class="more" id="ln-card-more" target="_blank" rel="noopener noreferrer">Open link →</a>
-      </aside>
-    </header>
-    <!-- The command bar along the bottom of the banner: what can be done here, then the view and the gear on the right. -->
+    <!-- The commands at the end of the banner's strip: what can be done here, then the view and the gear. -->
     <div class="cmdbar" id="ln-tools" role="toolbar" aria-label="Links" data-dock="ln-view ln-refresh ln-add+ln-newgroup">
       <div class="cmd-pair" id="ln-add-pair" data-can="links.edit links.own">
         <button type="button" class="cmd" id="ln-add" data-can="links.edit links.own"><svg><use href="#i-plus"/></svg><span>Add a link</span></button><i class="cmd-rule"></i>
@@ -1049,6 +1040,8 @@
           <button type="button" class="am-link" id="ln-import"><svg><use href="#i-upload"/></svg>Import links</button></div>
       </div><input type="file" id="ln-import-file" accept=".json,application/json" hidden>
     </div>
+      </div>
+    </header>
     <section class="news sn-body">
     <!-- Two tabs: the links, and the admin portals catalogue browsed like Active Directory (portals.js). -->
     <nav class="tabs2 ln-tabs" id="ln-tabs" aria-label="Links"><a href="#links" data-ltab="yours"><svg><use href="#i-link"/></svg>Your links <small id="ln-tab-yours"></small></a>
@@ -1090,24 +1083,15 @@
   <!-- Sensors: checks on a timer. The hero says how the lab is doing, and its squares are the sensors (sensors.js). -->
   <section class="page home" id="page-sensors" data-page="sensors" data-title="Sensors" hidden>
     <header class="hero" id="sn-hero">
-      <p class="eyebrow">Sensors</p>
       <h1 class="hero-title" id="sn-title">Sensors</h1>
       <p class="hero-lead"><b id="sn-lead"></b> <span id="sn-lead-more"></span></p>
       <div class="hero-row">
       <div class="hero-stats">
-        <div><b id="sn-answering"><i class="sk sk-num"></i></b><span><svg><use href="#i-activity"/></svg>Responding</span></div>
-        <div><b id="sn-week"><i class="sk sk-num"></i></b><span><svg><use href="#i-clock"/></svg>Uptime (7 days)</span></div>
-        <div><b id="sn-last"><i class="sk sk-num"></i></b><span><svg><use href="#i-updates"/></svg>Last check</span></div>
+        <div><b id="sn-answering"><i class="sk sk-num"></i></b><span>Responding</span></div>
+        <div><b id="sn-week"><i class="sk sk-num"></i></b><span>Uptime (7 days)</span></div>
+        <div><b id="sn-last"><i class="sk sk-num"></i></b><span>Last check</span></div>
       </div>
-      </div>
-      <aside class="hero-new" id="sn-card" hidden>
-        <p class="eyebrow" id="sn-card-kind"></p>
-        <b id="sn-card-title"></b>
-        <p id="sn-card-text"></p>
-        <a class="more" href="#sensors" id="sn-card-more">Open sensor →</a>
-      </aside>
-    </header>
-    <!-- The command bar along the bottom of the banner, as on Links. With no sensors only the gear shows: the empty card has Add. -->
+    <!-- The commands at the end of the banner's strip, as on Links. With no sensors only the gear shows: the empty card has Add. -->
     <div class="cmdbar" id="sn-tools" role="toolbar" aria-label="Sensors" data-dock="sn-view sn-add">
       <button type="button" class="cmd" id="sn-add" data-can="sensors.edit"><svg><use href="#i-plus"/></svg><span>Add a sensor</span></button>
       <button type="button" class="cmd" id="sn-newgroup" data-can="sensors.edit"><svg><use href="#i-folder"/></svg><span>New group</span></button>
@@ -1121,6 +1105,8 @@
         <div class="am-links"><a class="am-link" href="#settings/sensors" data-can="sensors.edit"><svg><use href="#i-key"/></svg>Saved credentials</a></div>
       </div>
     </div>
+      </div>
+    </header>
     <section class="news sn-body">
       <div id="sn-fbar" hidden></div>
       <div id="sn-list" data-skel="tiles:6"></div>
@@ -1135,19 +1121,20 @@
   <section class="page home dir-top people-page dir-page" id="page-ad" data-page="ad" data-title="Active Directory" hidden>
     <!-- The banner over every directory page (Active Directory, Domain health, Org chart, Attribute browser): console.js moves it to the open one, users.js fills it. -->
     <header class="hero" id="dir-hero">
-      <p class="eyebrow" id="dir-eyebrow">Directory</p>
       <h1 class="hero-title" id="dir-title">Active Directory</h1>
       <p class="hero-lead"><b id="dir-state"></b> <span id="dir-lead"></span></p>
+      <div class="hero-row">
       <div class="hero-stats" id="dir-stats"></div>
-    </header>
-    <!-- The command bar under the banner, as on Links (users.js). It moves with the banner. New makes what the open list
-         holds; its arrow has New user, New group and New computer. -->
-    <div class="cmdbar" id="dir-cmd" role="toolbar" aria-label="Active Directory">
-      <div class="cmd-pair" id="dir-new-split" data-can="ad.create">
-        <button type="button" class="cmd" id="dir-new" data-tip="New user"><svg><use href="#i-plus"/></svg><span>New</span></button><i class="cmd-rule"></i>
-        <button type="button" class="cmd cmd-arrow" id="dir-new-more" aria-haspopup="menu" data-tip="New user, group or computer" aria-label="New user, group or computer"><svg class="chev"><use href="#i-chevron-down"/></svg></button>
+      <!-- The commands at the end of the strip, as on Links (users.js). New makes what the open list holds; its arrow has
+           New user, New group and New computer. -->
+      <div class="cmdbar" id="dir-cmd" role="toolbar" aria-label="Active Directory">
+        <div class="cmd-pair" id="dir-new-split" data-can="ad.create">
+          <button type="button" class="cmd" id="dir-new" data-tip="New user"><svg><use href="#i-plus"/></svg><span>New</span></button><i class="cmd-rule"></i>
+          <button type="button" class="cmd cmd-arrow" id="dir-new-more" aria-haspopup="menu" data-tip="New user, group or computer" aria-label="New user, group or computer"><svg class="chev"><use href="#i-chevron-down"/></svg></button>
+        </div>
       </div>
-    </div>
+      </div>
+    </header>
   <div class="dir-area">
     <div class="dgate" id="dir-setup" hidden></div>
     <!-- Active Directory's pages, down the left of whichever of them is open (console.js moves this there), then the open page's views (users.js). -->
@@ -1206,13 +1193,14 @@
   <!-- Group Policy: GPOs, where they're linked, WMI filters and backups, laid out like Active Directory with a banner and list of its own (gpo.js). -->
   <section class="page home dir-top people-page dir-page gpo-page" id="page-gpo" data-page="gpo" data-title="Group Policy" hidden>
     <header class="hero" id="gpo-hero">
-      <p class="eyebrow" id="gpo-eyebrow">Directory</p>
       <h1 class="hero-title">Group Policy</h1>
       <p class="hero-lead"><b id="gpo-state"></b> <span id="gpo-lead"></span></p>
+      <div class="hero-row">
       <div class="hero-stats" id="gpo-stats"></div>
+      <!-- The commands at the end of the strip, as on Links: what each list makes (gpo.js draws them). -->
+      <div class="cmdbar" id="gpo-cmdbar" role="toolbar" aria-label="Group Policy"><span class="cmd-set" id="gpo-cmd"></span></div>
+      </div>
     </header>
-    <!-- The command bar under the banner, as on Links: what each list makes (gpo.js draws it). -->
-    <div class="cmdbar" id="gpo-cmdbar" role="toolbar" aria-label="Group Policy"><span class="cmd-set" id="gpo-cmd"></span></div>
     <div class="dir-area">
       <div class="dgate" id="gpo-setup" hidden></div>
       <nav class="dnav lists" id="gpo-rail" aria-label="Group Policy">
@@ -1282,14 +1270,13 @@
   <!-- Workflows: steps that run in order, with fields asked for each run, on its own page under Automation (people-flows.js). -->
   <section class="page home flows-page" id="page-workflows" data-page="workflows" data-title="Workflows" hidden>
     <header class="hero" id="pf-hero">
-      <p class="eyebrow">Automation</p>
       <h1 class="hero-title">Workflows</h1>
       <p class="hero-lead"><b id="pf-state"></b> <span>Steps that run in order, with fields asked for each time, such as setting up a new user.</span></p>
       <div class="hero-row">
       <div class="hero-stats">
-        <div><b id="pf-n-all"><i class="sk sk-num"></i></b><span><svg><use href="#i-org"/></svg>Workflows</span></div>
-        <div><b id="pf-n-on"><i class="sk sk-num"></i></b><span><svg><use href="#i-check"/></svg>Enabled</span></div>
-        <div><b id="pf-n-week"><i class="sk sk-num"></i></b><span><svg><use href="#i-history"/></svg>Runs (7 days)</span></div>
+        <div><b id="pf-n-all"><i class="sk sk-num"></i></b><span>Workflows</span></div>
+        <div><b id="pf-n-on"><i class="sk sk-num"></i></b><span>Enabled</span></div>
+        <div><b id="pf-n-week"><i class="sk sk-num"></i></b><span>Runs (7 days)</span></div>
       </div>
       </div>
     </header>
@@ -1304,15 +1291,14 @@
   <!-- Lifecycle: what is dated. Workflow runs saved for a day, offboardings with their stages, and accounts about to expire (lifecycle.js). -->
   <section class="page home lc-page" id="page-lifecycle" data-page="lifecycle" data-title="Lifecycle" hidden>
     <header class="hero" id="lc-hero">
-      <p class="eyebrow">Automation</p>
       <h1 class="hero-title">Lifecycle</h1>
       <p class="hero-lead"><b id="lc-state"></b> <span>New users set up for their start date, offboardings and their stages, and accounts about to expire.</span></p>
       <div class="hero-row">
       <div class="hero-stats">
-        <div><b id="lc-n-new"><i class="sk sk-num"></i></b><span><svg><use href="#i-user-plus"/></svg>New users</span></div>
-        <div><b id="lc-n-off"><i class="sk sk-num"></i></b><span><svg><use href="#i-user-off"/></svg>Offboarding</span></div>
-        <div><b id="lc-n-exp"><i class="sk sk-num"></i></b><span><svg><use href="#i-hourglass"/></svg>Accounts expiring</span></div>
-        <div><b id="lc-n-tasks"><i class="sk sk-num"></i></b><span><svg><use href="#i-calendar"/></svg>Tasks scheduled</span></div>
+        <div><b id="lc-n-new"><i class="sk sk-num"></i></b><span>New users</span></div>
+        <div><b id="lc-n-off"><i class="sk sk-num"></i></b><span>Offboarding</span></div>
+        <div><b id="lc-n-exp"><i class="sk sk-num"></i></b><span>Accounts expiring</span></div>
+        <div><b id="lc-n-tasks"><i class="sk sk-num"></i></b><span>Tasks scheduled</span></div>
       </div>
       </div>
     </header>
@@ -1327,15 +1313,14 @@
   <!-- Connected apps: the apps, and the access rules that give their groups and roles to the members of Active Directory groups (apps.js). -->
   <section class="page home apps-page" id="page-apps" data-page="apps" data-title="Connected apps" hidden>
     <header class="hero" id="ap-hero">
-      <p class="eyebrow">Apps</p>
       <h1 class="hero-title">Connected apps</h1>
       <p class="hero-lead"><b id="ap-state"></b> <span>Members of Active Directory groups get accounts, groups and roles in these apps. Every change is shown before it is made.</span></p>
       <div class="hero-row">
       <div class="hero-stats">
-        <div><b id="ap-n-apps"><i class="sk sk-num"></i></b><span><svg><use href="#i-plug"/></svg>Connected apps</span></div>
-        <div><b id="ap-n-people"><i class="sk sk-num"></i></b><span><svg><use href="#i-user"/></svg>People with an account</span></div>
-        <div><b id="ap-n-diff"><i class="sk sk-num"></i></b><span><svg><use href="#i-refresh"/></svg>Differences from the rules</span></div>
-        <div><b id="ap-n-bad"><i class="sk sk-num"></i></b><span><svg><use href="#i-alert"/></svg>Need attention</span></div>
+        <div><b id="ap-n-apps"><i class="sk sk-num"></i></b><span>Connected apps</span></div>
+        <div><b id="ap-n-people"><i class="sk sk-num"></i></b><span>People with an account</span></div>
+        <div><b id="ap-n-diff"><i class="sk sk-num"></i></b><span>Differences from the rules</span></div>
+        <div><b id="ap-n-bad"><i class="sk sk-num"></i></b><span>Need attention</span></div>
       </div>
       </div>
     </header>
@@ -1393,15 +1378,14 @@
   <!-- Alerts: an alert for anything that can happen, what went off, and where alerts go (alerts-page.js, EventAlerts.cs). -->
   <section class="page home" id="page-alerts" data-page="alerts" data-title="Alerts" hidden>
     <header class="hero" id="ea-hero">
-      <p class="eyebrow">Alerts</p>
       <h1 class="hero-title">Alerts</h1>
       <p class="hero-lead"><b id="ea-state"></b> <span>Add an alert for anything that can happen, and choose where it goes.</span></p>
       <div class="hero-row">
       <div class="hero-stats">
-        <div><b id="ea-n-on"><i class="sk sk-num"></i></b><span><svg><use href="#i-bell"/></svg>Alerts on</span></div>
-        <div><b id="ea-n-fired"><i class="sk sk-num"></i></b><span><svg><use href="#i-history"/></svg>Fired (7 days)</span></div>
-        <div><b id="ea-n-new"><i class="sk sk-num"></i></b><span><svg><use href="#i-alert"/></svg>Not acknowledged</span></div>
-        <div><b id="ea-n-can"><i class="sk sk-num"></i></b><span><svg><use href="#i-list"/></svg>Things that can happen</span></div>
+        <div><b id="ea-n-on"><i class="sk sk-num"></i></b><span>Alerts on</span></div>
+        <div><b id="ea-n-fired"><i class="sk sk-num"></i></b><span>Fired (7 days)</span></div>
+        <div><b id="ea-n-new"><i class="sk sk-num"></i></b><span>Not acknowledged</span></div>
+        <div><b id="ea-n-can"><i class="sk sk-num"></i></b><span>Things that can happen</span></div>
       </div>
       </div>
     </header>
@@ -1427,14 +1411,13 @@
 
   <section class="page home" id="page-sync" data-page="sync" data-title="Sync" hidden>
     <header class="hero" id="sync-hero">
-      <p class="eyebrow">Directory</p>
       <h1 class="hero-title">Sync</h1>
       <p class="hero-lead"><b id="sync-state"></b> <span>Replicate changes between your domain controllers and sync to Microsoft 365.</span></p>
       <div class="hero-row">
       <div class="hero-stats">
-        <div><b id="sync-n-waiting"><i class="sk sk-num"></i></b><span><svg><use href="#i-history"/></svg>Pending changes</span></div>
-        <div><b id="sync-n-dcs"><i class="sk sk-num"></i></b><span><svg><use href="#i-server"/></svg>DCs reachable</span></div>
-        <div><b id="sync-n-m365"><i class="sk sk-num"></i></b><span><svg><use href="#i-cloud"/></svg>Last Microsoft 365 sync</span></div>
+        <div><b id="sync-n-waiting"><i class="sk sk-num"></i></b><span>Pending changes</span></div>
+        <div><b id="sync-n-dcs"><i class="sk sk-num"></i></b><span>DCs reachable</span></div>
+        <div><b id="sync-n-m365"><i class="sk sk-num"></i></b><span>Last Microsoft 365 sync</span></div>
       </div>
       </div>
     </header>

@@ -82,12 +82,12 @@
   const offCount = (rs, kind) => shown(rs, kind).filter((s) => of(s, kind).off.length).length;
   const state = (rs, kind) => (!computersOf(rs, kind).length ? 'On each computer.' : offCount(rs, kind)
     ? `Not compliant: ${offCount(rs, kind)} of ${shown(rs, kind).length} settings.` : `Compliant on every ${WORDS[kind][0]}.`);
-  // [number, icon, label] for the banner; null numbers while it's read.
+  // [number, label] for the banner; null numbers while it's read.
   const stats = (rs, kind) => {
     const unread = rs ? computersOf(rs, kind).filter((c) => rs.some((s) => s.values?.[c.name] && s.values[c.name].ok == null)).length : null;
     const plural = WORDS[kind][1];
-    return [[rs ? shown(rs, kind).length : null, 'shield', 'Settings'], [rs ? offCount(rs, kind) : null, 'alert', 'Not compliant'],
-      [rs ? computersOf(rs, kind).length : null, kind === 'pc' ? 'laptop' : 'server', plural.charAt(0).toUpperCase() + plural.slice(1)], [unread, 'eye-off', 'Could not be read']];
+    return [[rs ? shown(rs, kind).length : null, 'Settings'], [rs ? offCount(rs, kind) : null, 'Not compliant'],
+      [rs ? computersOf(rs, kind).length : null, plural.charAt(0).toUpperCase() + plural.slice(1)], [unread, 'Could not be read']];
   };
   // Why values couldn't be read, by kind of reason, with the computers each was about.
   const problems = (rs, kind) => {

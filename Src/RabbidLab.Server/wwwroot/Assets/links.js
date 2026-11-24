@@ -175,25 +175,20 @@
     const down = known.filter((l) => states[l.id].down);
     const late = known.filter((l) => !states[l.id].up && !states[l.id].down);
     const first = down[0];
-    $('ln-hero').classList.toggle('bad', down.length > 0);
     $('ln-lead').textContent = !links.length ? 'No links yet.' : first ? `${first.name} went down${states[first.id].since ? ` at ${at(states[first.id].since)}` : ''}.`
       : !web.length ? 'Links to the sites and devices in your lab.' : late.length ? `${late[0].name} is not responding.`
         : known.length < web.length ? 'Checking links…' : 'All links are up.';
+    // One down: why, after it. More than one: the others.
     $('ln-lead-more').textContent = !links.length ? (can('links.edit') ? 'Add the devices and sites you sign in to every day, such as your router, NAS or iDRACs.' : 'No links have been added.')
       : down.length > 1 ? `Also down: ${down.slice(1, 4).map((l) => l.name).join(', ')}${down.length > 4 ? ` and ${down.length - 4} more` : ''}.`
-        : !first && late.length ? `Retrying. Marked down after ${span(checks.downAfter)} without a response.` : '';
+        : first ? `No response from ${host(first.url)}${states[first.id].why ? `: ${states[first.id].why}` : ''}.`
+          : late.length ? `Retrying. Marked down after ${span(checks.downAfter)} without a response.` : '';
     $('ln-count').textContent = shownNow().length;
     const seen = shownNow().filter((l) => l.sensor).length;
     $('ln-watched-wrap').hidden = !seen;
     $('ln-watched').textContent = seen;
     $('ln-answering').textContent = !web.length ? '0' : known.length ? `${up.length} of ${web.length}` : '…';
     $('ln-every').textContent = EVERY_SHORT[checks.every] || `Every ${checks.every} sec`;
-    $('ln-card').hidden = !first;
-    if (first) {
-      $('ln-card-title').textContent = first.name;
-      $('ln-card-text').textContent = `No response from ${host(first.url)}${states[first.id].since ? ` since ${at(states[first.id].since)}` : ''}${states[first.id].why ? `: ${states[first.id].why}` : ''}.`;
-      $('ln-card-more').href = first.url;
-    }
   };
 
   // The states, and the links too when they changed; the server says how soon to ask again.

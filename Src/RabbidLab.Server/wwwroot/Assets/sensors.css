@@ -1,12 +1,7 @@
-/* Sensors: the Overview's hero, then Links' groups of tiles, or the same as a table. */
+/* Sensors: the banner, then Links' groups of tiles, or the same as a table. */
 #page-sensors > * { min-width: 0; }
 .sn-body { padding-bottom: 26px; }
 .sn-body .table { max-width: 100%; }
-.hero.bad { --glow: rgba(255, 107, 125, .26); }
-.hero-new.bad { border-color: rgba(255, 107, 125, .5); }
-.hero-new.bad .eyebrow { color: var(--red); }
-.hero-new.warn { border-color: rgba(242, 190, 107, .5); }
-.hero-new.warn .eyebrow { color: var(--amber); }
 
 /* Cards, like the alert banners: the icon with a badge on its corner for how it is, a tag when it isn't fine, one line,
    and under it the last hour, its parts or what's left, behind a bar in its colour. */

@@ -261,26 +261,20 @@
   // The filter bar over the list (filter.js): a search, a chip for each column worth filtering by, and saved filters.
   const gpoBar = R.filter.bar({ el: $('gpo-fbar'), store: 'rabbidlab.gpo', key: () => list, grid: () => g0, noun: () => L().noun, rows: () => L().rows(), redraw: () => draw() });
   const shown = () => L().rows().filter(gpoBar.test());
-  const stat = (num, icon, label) => `<div><b>${num === null ? '<i class="sk sk-num"></i>' : num}</b><span>${svg(icon)}${esc(label)}</span></div>`;
-  let tiled = false;
-  let drawnCmds = null; // what the bar under the banner has, so a redraw keeps its buttons
+  const stat = (num, label) => `<div><b>${num === null ? '<i class="sk sk-num"></i>' : num}</b><span>${esc(label)}</span></div>`;
+  let drawnCmds = null; // what the banner's commands are, so a redraw keeps its buttons
   const draw = () => {
-    if (!tiled) {
-      R.scatter?.($('gpo-hero'), 20261116);
-      tiled = true;
-    }
     const setup = ad && !ad.state;
     $('gpo-setup').hidden = !setup;
     if (setup) R.adSetupCard?.($('gpo-setup'), ad);
     const l = L();
-    $('gpo-eyebrow').textContent = gp?.domain ? `${gp.domain} · Directory` : 'Directory';
     $('gpo-state').textContent = `${l.name}.`;
     $('gpo-lead').textContent = l.lead;
     const all = gp?.gpos || [];
     // Placeholders while Group Policy is read, and a dash when it couldn't be.
     const n = (f) => (gp ? all.filter(f).length : problem || setup ? '—' : null);
-    $('gpo-stats').innerHTML = stat(n(() => true), 'policy', 'GPOs') + stat(n((g) => linksOf(g.id).length), 'link', 'Linked')
-      + stat(n((g) => !linksOf(g.id).length), 'alert', 'Not linked') + stat(n(VIEWS[4][2]), 'clock', 'Modified this week');
+    $('gpo-stats').innerHTML = stat(n(() => true), 'GPOs') + stat(n((g) => linksOf(g.id).length), 'Linked')
+      + stat(n((g) => !linksOf(g.id).length), 'Not linked') + stat(n(VIEWS[4][2]), 'Modified this week');
     document.querySelectorAll('#gpo-rail a[data-gpo]').forEach((a) => (a.dataset.gpo === list ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current')));
     $('gpo-views').innerHTML = list !== 'gpos' ? '' : VIEWS.map((v) => {
       const count = all.filter(v[2]).length;
@@ -292,7 +286,7 @@
     $('gpo-n-backups').textContent = gp ? gp.backups.length : '';
     const rows = shown();
     $('gpo-tabs').innerHTML = `<a aria-current="true">${svg(l.icon)}${esc(l.name)} <small>${gp ? rows.length : ''}</small></a>`;
-    // The bar under the banner: New makes what the open list holds, its arrow has what every list makes; both wait until
+    // The banner's commands: New makes what the open list holds, its arrow has what every list makes; both wait until
     // Group Policy has been read.
     const makes = Object.entries(LISTS).filter(([, x]) => x.make());
     const here = makes.find(([k]) => k === list) || makes[0];

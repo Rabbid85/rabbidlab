@@ -79,7 +79,6 @@
     row: (r) => ` data-ap-row="${esc(r.id)}"`, empty: () => 'No access rules yet. Select Add a rule, or Give access on an app.', loading: () => !data, redraw: () => draw(),
   }));
 
-  R.scatter?.($('ap-hero'), 20261123);
   const drawHero = () => {
     if (!data) return;
     const bad = data.apps.filter((a) => stateOf(a)[1] === 'red' || stateOf(a)[1] === 'amber').length;

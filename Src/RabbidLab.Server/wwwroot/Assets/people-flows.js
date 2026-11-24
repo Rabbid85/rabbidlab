@@ -56,7 +56,6 @@
     row: (f) => ` data-pf-row="${esc(f.id)}"`, empty: () => 'No workflows yet. Select New workflow to make one.', loading: () => !data, redraw: () => draw(),
   }));
   // The banner: how many workflows, how many are on, and how many runs this week.
-  R.scatter?.($('pf-hero'), 20261127);
   const drawHero = () => {
     if (!data) return;
     const flows = data.flows;

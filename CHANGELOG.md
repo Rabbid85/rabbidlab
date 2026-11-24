@@ -2,6 +2,13 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.398 (2026-11-24)
+
+- Links, Sensors, Devices, Network, Active Directory, Group Policy and the other pages have a smaller version of the Overview banner: the same night scene with the moon, hills, trees and lake, the title at the bottom left, and the same strip along the foot with the numbers.
+- The buttons that were in the bar under the banner, such as Add a link, New and View, are at the right end of that strip now.
+- When a link or a sensor is down, the line under the title says why, in place of the card on the right.
+- The haze around the moon and the clouds are fainter on every banner.
+
 ## 1.1.397 (2026-11-24)
 
 - The glow around the moon on the Overview banner is much fainter.

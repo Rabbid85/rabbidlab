@@ -236,7 +236,7 @@ body.col-moving, body.col-moving * { cursor: grabbing !important; user-select: n
 .gby-pick .chev { width: 13px; height: 13px; }
 .gcount { color: var(--muted); font-size: 12px; white-space: nowrap; }
 /* The list bar's controls as filter-bar chips: Actions, + Group by, the rows switch, Refresh and Export in one icon box.
-   What the page makes is in the command bar under the banner (.cmdbar, console.css). */
+   What the page makes is in the banner's bar (.cmdbar, console.css). */
 .gbar { gap: 8px; }
 .gbar .gtools { gap: 8px; }
 .gbar > .small { height: 32px; padding: 0 11px; gap: 6px; border: 1px solid transparent; border-radius: 8px; background: #1A1D2B; color: var(--text); font-size: 13px; font-weight: 600; }

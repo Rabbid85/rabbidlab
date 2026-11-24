@@ -3,6 +3,11 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.398', [
+    'Links, Sensors, Devices, Network, Active Directory, Group Policy and the other pages have a smaller version of the Overview banner: the same night scene with the moon, hills, trees and lake, the title at the bottom left, and the same strip along the foot with the numbers.',
+    'The buttons that were in the bar under the banner, such as Add a link, New and View, are at the right end of that strip now.',
+    'When a link or a sensor is down, the line under the title says why, in place of the card on the right.',
+    'The haze around the moon and the clouds are fainter on every banner.']],
   ['1.1.397', [
     'The glow around the moon on the Overview banner is much fainter.']],
   ['1.1.396', [
@@ -1269,6 +1274,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.398': ['2026-11-24', 'feature', 'The Overview banner on every page', 'banners.jpg'],
   '1.1.397': ['2026-11-24', 'update', 'A fainter glow around the moon on Overview'],
   '1.1.396': ['2026-11-24', 'fix', 'Toasts: the time line no longer jumps when you point at one'],
   '1.1.395': ['2026-11-24', 'update', 'A smaller flask in the update window and the opening screen'],
@@ -1896,7 +1902,6 @@ const RELEASE_INFO = {
     if (dir) {
       // One banner and one list down the left for all of them, moved to the open one.
       now.prepend($('dir-hero'));
-      $('dir-hero').after($('dir-cmd'));
       now.querySelector('.dir-area').prepend($('dir-rail'));
       if (now.id !== 'page-ad') $('dir-title').textContent = 'Active Directory';
       $(domain ? 'rail-domain' : 'rail-dir').setAttribute('aria-current', 'page');
@@ -1909,7 +1914,7 @@ const RELEASE_INFO = {
     if (back) {
       backlink.href = back.hash;
       $('backlink-text').textContent = `Back to ${back.name}`;
-      (now.querySelector(':scope > .hero, :scope > .page-head') || now).prepend(backlink);
+      (now.querySelector(':scope > .hero, :scope > .ovb, :scope > .page-head') || now).prepend(backlink);
     }
     title();
     document.dispatchEvent(new CustomEvent('rabbidlab:show', { detail: where() }));
@@ -3797,7 +3802,7 @@ const RELEASE_INFO = {
   // A computer's software and Windows updates are in its side panel (Software and Updates tabs), not lists of their own.
   const DV = { computers: ['Computers', 'monitor', 'All computers with the client installed.'],
     sessions: ['Active sessions', 'users', 'Users signed in to this console.'] };
-  const dvStat = (n, icon, label) => `<div><b>${n === null ? '<i class="sk sk-num"></i>' : n}</b><span>${svg(icon)}${esc(label)}</span></div>`;
+  const dvStat = (n, label) => `<div><b>${n === null ? '<i class="sk sk-num"></i>' : n}</b><span>${esc(label)}</span></div>`;
   // Filter (filter.js) on Computers, and on a list from devices.js that gives its own fields (WMI query). Kept per list
   // until it's cleared or the page is opened again.
   const fld = (key, label, type, get, o = {}) => ({ key, label, type, get, ...o });
@@ -3860,8 +3865,8 @@ const RELEASE_INFO = {
     $('dv-lead').textContent = DV[dvAt][2];
     // Placeholders until the computers are read, and a dash if that failed.
     const num = (f) => (computersRead ? n(f) : dvFailed ? '—' : null);
-    $('dv-stats').innerHTML = !can.has('seats.view') ? '' : dvStat(num((c) => stateOf(c) === 'online'), 'monitor', 'Online') + dvStat(num((c) => stateOf(c) === 'offline'), 'power', 'Offline')
-      + dvStat(num((c) => stateOf(c) === 'waiting'), 'clock', 'Pending approval') + dvStat(num((c) => c.inventory?.missing > 0), 'updates', 'Missing updates');
+    $('dv-stats').innerHTML = !can.has('seats.view') ? '' : dvStat(num((c) => stateOf(c) === 'online'), 'Online') + dvStat(num((c) => stateOf(c) === 'offline'), 'Offline')
+      + dvStat(num((c) => stateOf(c) === 'waiting'), 'Pending approval') + dvStat(num((c) => c.inventory?.missing > 0), 'Missing updates');
     // Computers and the lists under it are tabs of one page; any other list has the one tab.
     const dvTab = (href, on, icon, label, count, more = '') => `<a href="${href}"${more}${on ? ' aria-current="true"' : ''}>${svg(icon)}${esc(label)} <small>${count}</small></a>`;
     const under = group === 'computers' ? Object.values(dvMore).filter((m) => m.under === 'computers' && m.can()) : [];
@@ -4174,26 +4179,6 @@ const RELEASE_INFO = {
     }, 5000);
   };
 
-  // Still tiles over the right of every banner, placed the same way every time.
-  const scatter = (hero, start) => {
-    const COLOURS = window.RabbidLabColours.tiles;
-    let seed = start;
-    const r = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-    for (let i = 0; i < 22; i++) {
-      const t = document.createElement('i');
-      const roll = r();
-      const kind = roll < 0.18 ? 'dot' : roll < 0.42 ? 'outline' : 'fill';
-      const size = `${kind === 'dot' ? 4 + r() * 5 : 10 + r() * 26}px`;
-      const colour = COLOURS[Math.floor(r() * COLOURS.length)];
-      t.className = `tile deco ${kind}`;
-      Object.assign(t.style, { left: `${58 + r() * 38}%`, top: `${4 + r() * 86}%`, width: size, height: size,
-        transform: `rotate(${r() * 90}deg)`, opacity: String(0.35 + r() * 0.5) });
-      if (kind === 'outline') t.style.border = `1.5px solid ${colour}`;
-      else t.style.background = colour;
-      hero.prepend(t);
-    }
-  };
-
   // Sensors up on the Overview banner: how many of the sensors not paused are answering. Read when Overview shows, then
   // each minute while it's open.
   let sensorsRead = null;
@@ -4210,11 +4195,6 @@ const RELEASE_INFO = {
   document.addEventListener('DOMContentLoaded', () => {
     notes();
     drawBrand(); // the lab's name and icon as this browser last saw them, before the server answers
-    scatter($('dir-hero'), 20261113);
-    scatter($('ln-hero'), 20261117);
-    scatter($('sn-hero'), 20261121);
-    scatter($('dv-hero'), 20261125);
-    scatter($('sync-hero'), 20261129);
     setInterval(uptime, 60000);
     // Starting: the rail and the page stay hidden (body.booting) until sign-in has answered and the page's first reads are back, so a
     // reload never shows the console half built. Just after signing in or an update the opening screen comes up (boot): the flask
@@ -4635,7 +4615,7 @@ const RELEASE_INFO = {
       }
       seats();
     });
-    // Add computers, from New in the bar under the banner (devices.js).
+    // Add computers, from New in the banner's bar (devices.js).
     dvHooks.addComputers = async () => {
       $('add-dialog').showModal();
       try {
@@ -5816,7 +5796,7 @@ const RELEASE_INFO = {
     : `<button type="button" class="primary dw-edit" ${attrs}>${svg('edit')}<span>Edit</span></button>`);
 
   // What the other scripts use. Hints are tips.js and data grids are grid.js.
-  window.RabbidLab = { app: () => product, $, esc, svg, say, initials, when, daysAgo, send, get, keep, forget, has, paint, where, viewAs, place, popups, option, dropdown, sure, newLabel, copy, busy, refresh, live, groupTools, skeleton, toast, undo, stepper, panel, scatter, editButton,
+  window.RabbidLab = { app: () => product, $, esc, svg, say, initials, when, daysAgo, send, get, keep, forget, has, paint, where, viewAs, place, popups, option, dropdown, sure, newLabel, copy, busy, refresh, live, groupTools, skeleton, toast, undo, stepper, panel, editButton,
     palette: window.RabbidLabColours.roles, me: () => meInfo,
     activityKinds: AL_KINDS, activityKind: (area) => AREA_KIND[area] || 'admin', // the Activity log's kinds, for report.js
     // The Devices page, for devices.js: its lists, what's ticked, and drawing or reading it again. failed() is why the

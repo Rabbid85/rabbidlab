@@ -720,13 +720,11 @@
     drawBanner();
   };
 
-  // The banner over the directory pages (index.html, #dir-hero): what's open, its numbers, and on Domain health a square
-  // for each check. Org chart and the Attribute browser get their name, what they show, and the counts read so far.
+  // The banner over the directory pages (index.html, #dir-hero): what's open and its numbers. Org chart and the Attribute
+  // browser get their name, what they show, and the counts read so far.
   const HERO_STATS = { users: ['all', 'locked', 'expired', 'inactive'], groups: ['all', 'security', 'privileged', 'empty'], computers: ['all', 'servers', 'workstations', 'stale'],
     domain: ['all', 'off', 'look', 'notes'], dcs: ['all', 'off', 'ok', 'unread'], audit: ['all', 'week', 'day', 'deleted'], recycle: ['all', 'users', 'groups', 'computers'] };
-  const STAT_ICON = { ok: 'check', unread: 'eye-off', locked: 'lock', expired: 'key', inactive: 'hourglass', stale: 'hourglass', security: 'shield', privileged: 'crown', empty: 'users', servers: 'server',
-    workstations: 'laptop', off: 'alert', look: 'eye', notes: 'list', week: 'calendar', day: 'clock', deleted: 'trash', users: 'user', groups: 'users', computers: 'laptop' };
-  const stat = (n, icon, label) => `<div><b>${n === null ? '<i class="sk sk-num"></i>' : esc(n.toLocaleString())}</b><span>${svg(icon)}${esc(label)}</span></div>`;
+  const stat = (n, label) => `<div><b>${n === null ? '<i class="sk sk-num"></i>' : esc(n.toLocaleString())}</b><span>${esc(label)}</span></div>`;
   // What New makes: the open list's kind, and a user on the pages that list none of these.
   const MAKES = [['users', 'user-plus', 'New user'], ['groups', 'users', 'New group'], ['computers', 'laptop', 'New computer']];
   const makeKind = () => (R.where()[0] === 'ad' && MAKES.some(([k]) => k === adPage) ? adPage : 'users');
@@ -740,8 +738,6 @@
     $('dir-new-split').querySelectorAll('button').forEach((b) => { b.disabled = !ad?.state; });
     const [, makeIcon, makeText] = MAKES.find(([k]) => k === makeKind());
     R.newLabel($('dir-new'), makeIcon, makeText);
-    const hero = $('dir-hero');
-    $('dir-eyebrow').textContent = ad?.state ? `${ad.state.domain} · Directory` : 'Directory';
     if (other) {
       const pg = $(`page-${other}`);
       $('dir-state').textContent = `${pg.dataset.title}.`;
@@ -749,7 +745,7 @@
       // The counts read so far. The Org chart counts its own people, so Users waits for that (a dash if it failed).
       const own = other === 'org' && !(ad && !ad.state);
       $('dir-stats').innerHTML = ['users', 'groups', 'computers'].filter((k) => total[k] !== undefined || (k === 'users' && own))
-        .map((k) => stat(total[k] ?? (orgFailed ? '—' : null), PAGE_ICON[k], AD[k].title)).join('');
+        .map((k) => stat(total[k] ?? (orgFailed ? '—' : null), AD[k].title)).join('');
       return;
     }
     const p = page();
@@ -765,14 +761,14 @@
     $('dir-lead').textContent = p.lead;
     // On each computer counts the kind of computer whose view is open.
     if (adPage === 'dcs') {
-      $('dir-stats').innerHTML = ad && !ad.state ? '' : R.dcSettings.stats(list, hk()).map(([v, icon, label]) => stat(v ?? (adFailed ? '—' : null), icon, label)).join('');
+      $('dir-stats').innerHTML = ad && !ad.state ? '' : R.dcSettings.stats(list, hk()).map(([v, label]) => stat(v ?? (adFailed ? '—' : null), label)).join('');
       return;
     }
     // Placeholder numbers while it's read (ad not known yet, or the list not read), dashes if that failed; none when there's no account.
     $('dir-stats').innerHTML = ad && !ad.state ? '' : HERO_STATS[adPage].map((key) => {
       const v = allViews().find((x) => x.key === key);
       const label = key === 'all' ? p.noun[1].charAt(0).toUpperCase() + p.noun[1].slice(1) : v?.label || key;
-      return stat(list ? n[key] ?? 0 : adFailed ? '—' : null, key === 'all' ? PAGE_ICON[adPage] : STAT_ICON[key] || PAGE_ICON[adPage], label);
+      return stat(list ? n[key] ?? 0 : adFailed ? '—' : null, label);
     }).join('');
   };
   document.addEventListener('rabbidlab:show', async (e) => {
@@ -2607,7 +2603,7 @@
     password: (who, path, lead, done) => reset(who, path, lead, done),
   };
 
-  // A new user, group or computer account, from the bar under the banner.
+  // A new user, group or computer account, from the banner's bar.
   const makeNew = async (k) => {
     if (k === 'users') {
       openNew('ad');

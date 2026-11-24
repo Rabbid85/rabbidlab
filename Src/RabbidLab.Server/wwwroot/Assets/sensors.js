@@ -104,7 +104,6 @@
     const down = live.filter((s) => s.status === 'down');
     const warn = live.filter((s) => s.status === 'warn');
     const fresh = live.length > 0 && live.every((s) => s.status === 'new');
-    $('sn-hero').classList.toggle('bad', down.length > 0);
     // The title says Sensors, as Links says Links; how they're doing is the line under it.
     const first = down[0] || warn[0];
     $('sn-lead').textContent = !sensors.length ? 'No sensors yet.' : down.length ? `${first.name} went down ${first.since ? `${long(first.since)} ago` : 'just now'}.`
@@ -112,21 +111,14 @@
     // What waits on the ones that are down says nothing until they're back.
     const waiting = live.filter((s) => s.status === 'wait').length;
     const behind = !down.length || !waiting ? '' : ` ${waiting} dependent sensor${waiting === 1 ? '' : 's'} ${waiting === 1 ? 'is' : 'are'} unreachable and not alerting.`;
+    // One down: its check and what it got, after it. More than one: the others.
     $('sn-lead-more').textContent = !sensors.length ? 'Add a sensor to monitor a server, service or certificate.'
-      : (down.length > 1 ? `Also down: ${down.slice(1, 4).map((s) => s.name).join(', ')}${down.length > 4 ? ` and ${down.length - 4} more` : ''}.` : '') + behind;
+      : (down.length > 1 ? `Also down: ${down.slice(1, 4).map((s) => s.name).join(', ')}${down.length > 4 ? ` and ${down.length - 4} more` : ''}.`
+        : down.length ? `${check(first)} to ${where(first)}: ${(first.note || 'no response').toLowerCase()}.` : '') + behind;
     $('sn-answering').textContent = sensors.length ? `${live.filter((s) => s.status === 'up' || s.status === 'warn').length} of ${live.length}` : '0';
     const week = sensors.map((s) => s.up7).filter((p) => p != null);
     $('sn-week').textContent = week.length ? percent(Math.round(week.reduce((a, b) => a + b, 0) / week.length * 100) / 100) : '…';
     $('sn-last').textContent = lastCheck ? `${short(lastCheck)} ago` : '…';
-    $('sn-card').hidden = !first;
-    if (first) {
-      $('sn-card').className = `hero-new ${down.length ? 'bad' : 'warn'}`;
-      $('sn-card-kind').textContent = down.length ? 'Down' : 'Needs attention';
-      $('sn-card-title').textContent = first.name;
-      $('sn-card-text').textContent = down.length ? `${check(first)} to ${where(first)}: ${(first.note || 'no response').toLowerCase()}${first.since ? ` since ${R.when(first.since)}` : ''}.`
-        : `${check(first)} for ${where(first)}: ${first.note || ''}.`;
-      $('sn-card-more').dataset.open = first.id;
-    }
     $('sensors-dot').hidden = !down.length;
   };
 

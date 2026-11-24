@@ -1078,7 +1078,7 @@
       if (row) openRow(row.dataset.row);
     });
   }
-  // New in the bar under the banner: it adds what the open list holds (Add computers anywhere else), and its arrow has
+  // New in the banner's bar: it adds what the open list holds (Add computers anywhere else), and its arrow has
   // everything this page adds. Add computers is console.js's, Add an app installs.js's.
   const ADDS = [
     ['computers', 'monitor', 'Add computers', () => has('seats.add'), () => D.hooks.addComputers?.()],

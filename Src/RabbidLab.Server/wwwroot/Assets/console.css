@@ -623,37 +623,9 @@ a.small-link { margin-top: 8px; padding: 6px 12px; font-size: 12.5px; }
 @media (max-width: 760px) {
 }
 
-/* Overview: the hero across the top, the news under it, then this machine. */
+/* Overview and the pages with a banner (overview.css) run edge to edge. */
 .page.home { max-width: none; padding: 0; gap: 0; }
-.hero { position: relative; overflow: hidden; padding: 32px 44px 26px; border-bottom: 1px solid var(--line);
-  --glow: color-mix(in srgb, var(--accent) 22%, transparent); --glow-2: color-mix(in srgb, var(--tile-d) 14%, transparent);
-  /* Eased fades sized to the banner, so the glow has no edge to it at any width. */
-  background: radial-gradient(48% 125% at 88% 4%, var(--glow) 0%, color-mix(in srgb, var(--glow) 95%, transparent) 15%, color-mix(in srgb, var(--glow) 82%, transparent) 29%, color-mix(in srgb, var(--glow) 65%, transparent) 41%, color-mix(in srgb, var(--glow) 45%, transparent) 53%, color-mix(in srgb, var(--glow) 26%, transparent) 65%, color-mix(in srgb, var(--glow) 11%, transparent) 77%, color-mix(in srgb, var(--glow) 3%, transparent) 88%, transparent 100%),
-    radial-gradient(34% 95% at 70% 100%, var(--glow-2) 0%, color-mix(in srgb, var(--glow-2) 95%, transparent) 15%, color-mix(in srgb, var(--glow-2) 82%, transparent) 29%, color-mix(in srgb, var(--glow-2) 65%, transparent) 41%, color-mix(in srgb, var(--glow-2) 45%, transparent) 53%, color-mix(in srgb, var(--glow-2) 26%, transparent) 65%, color-mix(in srgb, var(--glow-2) 11%, transparent) 77%, color-mix(in srgb, var(--glow-2) 3%, transparent) 88%, transparent 100%), #0C0D16; }
-/* A faint grain over it, so the dark fade doesn't show steps. */
-.hero::before { content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none; opacity: .045;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
-.hero > :not(.tile) { position: relative; z-index: 1; }
-/* Its text, buttons and stats are only as wide as they are, so the squares beside them can still be clicked. */
-.hero > :not(.tile):not(.hero-new) { width: fit-content; }
-.hero .tile { position: absolute; z-index: 0; border-radius: 24%; pointer-events: none; }
-.hero .tile.dot { border-radius: 50%; }
-.eyebrow { margin: 0; font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
-.hero-title { margin: 8px 0 0; font: 800 64px/.95 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; letter-spacing: -.04em; color: #fff; }
-/* The line under a banner's title: always one line, so a longer one never makes the banner taller and moves the page;
-   cut short with … only where the window is too narrow. It stops short of the card some banners have on the right. */
-.hero-lead { max-width: min(1000px, 100%); margin: 10px 0 0; overflow: hidden; font-size: 15px; line-height: 1.5; color: #C9CCDA; white-space: nowrap; text-overflow: ellipsis; }
-.hero:has(> .hero-new:not([hidden])) .hero-lead { max-width: calc(100% - 300px); }
-@media (max-width: 1180px) { .hero:has(> .hero-new:not([hidden])) .hero-lead { max-width: min(1000px, 100%); } } /* the card isn't shown there */
-@media (max-width: 700px) { .hero-lead { white-space: normal; } } /* a phone: the banner grows anyway, so the whole line shows */
-.hero-lead b { color: #fff; font-weight: 650; }
-.hero-actions { display: flex; flex-wrap: wrap; gap: 10px; }
-/* Buttons sit at the end of the numbers, after a thin line, so a banner with buttons is the height of one without. */
-.hero-row { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 22px; margin-top: 18px; }
-.hero > .hero-row { z-index: 2; } /* above the tiles, so a button's hint isn't covered */
-.hero-row > .hero-stats { margin-top: 0; }
-.hero-row > .hero-actions { align-items: center; } /* straight after the numbers, no line between */
-/* A cogwheel's menu at the top of Links and Sensors. A popover, so the banner doesn't clip it; under its cogwheel where the browser can anchor it. */
+/* A cogwheel's menu on the banners of Links and Sensors. A popover, so the banner doesn't clip it; under its cogwheel where the browser can anchor it. */
 .gear-menu { width: 210px; margin: auto; padding: 0; overflow: hidden; border: 1px solid var(--line-strong); border-radius: 12px; background: #131522; color: var(--text); box-shadow: 0 20px 50px rgba(0, 0, 0, .55); }
 .gear-menu .am-links:first-child { border-top: 0; }
 .gear-menu .am-link:disabled, .gear-menu .am-link[aria-disabled="true"] { opacity: .45; cursor: default; }
@@ -666,25 +638,8 @@ a.small-link { margin-top: 8px; padding: 6px 12px; font-size: 12.5px; }
   .gear-menu { inset: auto; top: anchor(bottom); left: anchor(left); margin: 8px 0 0; position-try-fallbacks: flip-block; }
   #ln-gear-menu, #sn-gear-menu { left: auto; right: anchor(right); } /* their gear is at the right end of the bar */
 }
-.hero-actions .primary:hover { background: var(--ember); filter: brightness(1.08); }
 a.button, label.button { display: inline-flex; cursor: pointer; align-items: center; padding: 8px 16px; border-radius: 8px; border: 1px solid var(--line-strong); background: #1A1C28; color: var(--text); font-size: 14px; }
 a.button:hover, label.button:hover { background: #222536; text-decoration: none; }
-/* The banner's numbers as tiles: an outlined icon, a thin line, then the number over a spaced label. Loading or empty, the
-   same height, so every banner is too. */
-.hero-stats { display: flex; flex-wrap: wrap; gap: 10px; min-height: 56px; margin-top: 18px; }
-.hero-stats > div { display: grid; grid-template-columns: auto auto; align-items: center; column-gap: 14px; min-height: 56px; padding: 9px 18px 9px 14px;
-  border: 1px solid rgba(255, 255, 255, .09); border-radius: 10px; background: rgba(9, 10, 18, .55);
-  color: #8A8FA8; font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
-.hero-stats > div[hidden] { display: none; }
-.hero-stats > div > span { display: contents; } /* its icon and label take their own places in the tile */
-.hero-stats > div > span > svg { grid-column: 1; grid-row: 1 / 3; width: 24px; height: 24px; padding-right: 14px; box-sizing: content-box;
-  border-right: 1px solid rgba(255, 255, 255, .14); color: var(--accent-soft); }
-.hero-stats b { grid-column: 2; grid-row: 1; display: block; min-height: 20px; color: #fff; font: 700 17px/1.15 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
-  letter-spacing: normal; text-transform: none; }
-.hero-stats b .sk-num { width: 60px; height: 18px; vertical-align: top; }
-.hero .hero-new { position: absolute; right: 36px; top: 40px; z-index: 4; width: 250px; padding: 14px 16px; border: 1px solid var(--line-strong); border-radius: 12px; background: #0F111A; }
-.hero-new b { display: block; margin-top: 4px; color: var(--title); font-size: 14px; }
-.hero-new p:not(.eyebrow) { margin: 6px 0 10px; color: var(--muted); font-size: 12.5px; line-height: 1.45; }
 .more { color: var(--accent-soft); font-size: 13px; font-weight: 600; white-space: nowrap; }
 .news { padding: 26px 44px 4px; }
 .news-head { display: flex; align-items: center; gap: 18px; margin-bottom: 18px; }
@@ -692,16 +647,12 @@ a.button:hover, label.button:hover { background: #222536; text-decoration: none;
 .news-head i { flex: 1; height: 1px; background: var(--line); }
 .tag { display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border-radius: 5px; background: color-mix(in srgb, var(--accent-soft) 12%, transparent); color: var(--accent-soft); font-size: 11px; font-weight: 650; }
 .home .machine { margin: 22px var(--side) 0; }
-@media (max-width: 1180px) { .hero .hero-new { display: none; } }
-/* No room beside it for the squares: the card steps aside, and the line under the title still says what's down. */
-/* Every hero is the same height, so the page under it stays put whatever the description: the numbers follow the
-   description straight away, and a one-line description leaves its spare room at the foot, not between them. */
-@media (min-width: 701px) { .hero { display: flex; flex-direction: column; min-height: 270px; } }
-/* A command bar along the bottom of a banner (Links, Sensors, Active Directory, Devices, Group Policy): plain
-   icon-and-word commands, the view on the right. With nothing it may do here, it isn't there. */
-.cmdbar { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; min-height: 52px; padding: 0 32px; border-bottom: 1px solid var(--line); background: #0F111A; }
+/* The page's commands at the end of its banner's strip (Links, Sensors, Active Directory, Devices, Group Policy): plain
+   icon-and-word commands, then a thin line and the view. With nothing it may do here, it isn't there. */
+.cmdbar { display: flex; flex-wrap: nowrap; align-items: center; gap: 2px; }
 .cmdbar[hidden], .cmdbar:not(:has(> :not(.cant, [hidden], .grow, .cmd-set:empty))) { display: none; }
-.cmdbar .grow { flex: 1; }
+.cmdbar .grow { flex: none; width: 1px; height: 24px; margin: 0 10px; background: rgb(255 255 255 / .14); }
+.cmdbar:not(:has(> :not(.cant, [hidden], .grow, .gear-menu) ~ .grow)) > .grow { display: none; } /* no line with nothing before it */
 .cmdbar .cmd-set { display: contents; } /* commands a page draws itself (Group Policy) */
 /* The open list's own tools at the right end of its tabs (Active Directory, Devices, Group Policy): View with Compact
    or Relaxed, then Refresh and Export in one box. */
@@ -718,14 +669,11 @@ a.button:hover, label.button:hover { background: #222536; text-decoration: none;
 .cmdbar .cmd-pair > .cmd-arrow { justify-content: center; width: 30px; padding: 0; border-radius: 0 7px 7px 0; }
 .cmdbar .cmd-pair > .cmd-arrow svg { width: 14px; height: 14px; color: #8B90A5; stroke: currentColor; }
 .cmdbar .cmd-pair > .cmd-arrow:hover:not(:disabled) svg { color: var(--title); }
-/* The lists' bar (Active Directory, Devices, Group Policy) is slim, with New in line with the list under it. */
-#dir-cmd, #dv-cmd, #gpo-cmdbar { min-height: 42px; padding-left: calc(var(--side, 44px) - 12px); }
 /* The page's settings menu, at the very end of the bar (Links, Sensors). */
 .cmdbar .cmd-gear { display: grid; flex: none; place-items: center; width: 36px; height: 36px; margin-left: 8px; padding: 0; border: 0; border-radius: 7px; background: none; color: #B8BCCB; }
 .cmdbar .cmd-gear:hover, .cmdbar .cmd-gear:has(+ .gear-menu:popover-open) { background: #1A1D2B; color: var(--title); }
 .cmdbar .cmd-gear svg { width: 18px; height: 18px; }
-.cmdbar.bare > :not(.cmd-gear, .gear-menu, .grow) { display: none; }
-.cmdbar.bare > .grow { display: block; }
+.cmdbar.bare > :not(.cmd-gear, .gear-menu) { display: none; }
 /* Only in the bar: code.cmd is the install line in Add computers, which wraps. */
 .cmdbar .cmd { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; border: 0; border-radius: 7px; background: none; color: var(--text); font-size: 14px; font-weight: 600; white-space: nowrap; }
 .cmdbar .cmd[hidden] { display: none; }
@@ -734,11 +682,8 @@ a.button:hover, label.button:hover { background: #222536; text-decoration: none;
 .cmdbar .cmd svg { flex: none; width: 16px; height: 16px; color: var(--accent-soft); }
 .cmdbar .cmd.turning svg { animation: spin .8s linear infinite; } /* Refresh icons while it works */
 .cmd-l { margin-right: 10px; color: var(--muted); font-size: 13px; font-weight: 600; }
-@media (max-width: 700px) { .cmdbar { padding: 6px 6px; } .cmd-l { display: none; } }
 @media (max-width: 700px) {
-  .hero { padding: 30px 18px 26px; }
-  .hero-title { font-size: 46px; }
-  .hero-row > .hero-actions { padding-left: 0; border-left: 0; } /* on its own line here: no line before it */
+  .cmd-l { display: none; }
   .news { padding: 22px 18px 4px; }
   .home .machine { margin: 18px 18px 0; }
 }
@@ -896,12 +841,11 @@ section.page.dir-area, section.page.set-area { max-width: 1264px; padding: 52px 
 .dir-area > .page-head, .set-area > .page-head { grid-column: 1 / -1; grid-row: 1; }
 .dir-area > .dnav, .set-area > .dnav { grid-column: 1; grid-row: 2; }
 .dir-area > .dmain, .set-area > .dmain { grid-row: 2; }
-/* The directory pages (Active Directory, Domain health, Org chart, Attribute browser): the same banner as Overview, Links
-   and Sensors across the top, then the pages down the left and the open one beside them, lined up with the banner's text. */
+/* The directory pages (Active Directory, Domain health, Org chart, Attribute browser): the same banner as Links and Sensors
+   across the top, then the pages down the left and the open one beside them. */
 section.page.home.dir-top { max-width: none; padding: 0; gap: 0; }
 .dir-top > .dir-area { display: grid; grid-template-columns: 224px minmax(0, 1fr); gap: 22px 16px; align-content: start; padding: 28px var(--side) 40px; }
 .dir-top > .dir-area > .dnav, .dir-top > .dir-area > .dmain { grid-row: 1; }
-#dir-hero, #dv-hero, #gpo-hero { display: flex; flex-direction: column; }
 .dhead h1 { font: 800 30px/1.15 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; letter-spacing: -.02em; color: #fff; }
 .dhead p { max-width: 680px; margin-top: 10px; color: #B4B8C8; font-size: 14px; line-height: 1.55; }
 .dmain { grid-column: 2; display: grid; gap: 18px; align-content: start; min-width: 0; }
@@ -981,7 +925,7 @@ section.page.home.dir-top { max-width: none; padding: 0; gap: 0; }
 /* Under the cover the list down the left is placeholders too, so nothing real shows through. */
 .dnav-sk { display: none; }
 .page:has(.dgate:not([hidden])) .dnav > :not(.dnav-sk) { display: none !important; }
-.page:has(.dgate:not([hidden])) :is(.dbar, .hero-row, .hero-stats) { visibility: hidden; }
+.page:has(.dgate:not([hidden])) :is(.dbar, .hero-stats) { visibility: hidden; }
 .page:has(.dgate:not([hidden])) .dnav-sk { display: grid; gap: 12px; padding: 4px 12px; }
 .dnav-sk > span { display: flex; align-items: center; gap: 10px; }
 .dnav-sk .sq { flex: none; width: 16px; height: 16px; border-radius: 5px; }
@@ -1278,13 +1222,6 @@ input::-ms-reveal { display: none; }
 .sure-code { margin: 0 0 18px; padding: 12px 14px; border: 1px solid var(--line-strong); border-radius: 10px; background: #0C0E17; color: var(--title);
   font: 13px/1.5 "Cascadia Mono", Consolas, monospace; white-space: pre-wrap; word-break: break-all; }
 
-/* The Overview banner's buttons: Check for updates with its icon, then how the lab is doing. */
-.hero-actions > button, .hero-actions > a.button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 18px;
-  border: 1px solid transparent; border-radius: 9px; }
-.hero-actions > button svg, .hero-actions > a.button svg { flex: none; width: 16px; height: 16px; }
-/* A banner button that is not the main one (Check for updates while Install now is): plain, dark, the same size. */
-.hero-actions > button:not(.primary) { border: 1px solid rgba(255, 255, 255, .12); background: rgba(9, 10, 18, .55); color: var(--title); font: inherit; font-size: 14px; font-weight: 600; }
-.hero-actions > button:not(.primary):hover { background: #1A1C28; }
 /* The dock (dock.js): once a page's command bar has scrolled away, its views, Refresh and Add in a pill at the top. */
 .dock { position: fixed; top: 64px; z-index: 60; display: flex; align-items: center; gap: 10px; padding: 8px 10px; transform: translateX(-50%); border: 1px solid var(--line-strong); border-radius: 14px; background: #161927; box-shadow: 0 18px 44px rgba(0, 0, 0, .6); animation: dock-in .16s ease-out; }
 .dock[hidden] { display: none; }

@@ -226,7 +226,7 @@
         change: (picked) => { keep(name('group'), { on: picked.size > 0, keys: [...picked] }); o.redraw(); } });
     };
     // el: the list bar's part for this grid (Group by, the count). rows: where Compact or Relaxed goes instead of the
-    // end of el, such as the command bar under the banner.
+    // end of el, such as the banner's bar.
     g.tools = (el, rows = null) => {
       bar = el;
       rowsBar = rows;

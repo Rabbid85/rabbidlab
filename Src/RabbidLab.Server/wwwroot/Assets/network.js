@@ -92,7 +92,6 @@
   const shown = () => (data?.devices || []).filter(bar.test());
 
   // --- The banner, the bar and the map --------------------------------------------------------------------------------
-  R.scatter?.($('net-hero'), 20261123);
   const nums = () => {
     const list = data?.devices || [];
     return { all: list.length, new: list.filter((d) => d.isNew).length, unmanaged: list.filter((d) => !d.managed).length, noclient: list.filter(noClient).length };

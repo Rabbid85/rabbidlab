@@ -60,7 +60,6 @@
   const expires = (u) => `<div class="lc-card" data-lc-card="exp:${esc(u.username)}">${head(u.name || u.username, `Account expires ${dayOf(u.accountExpires)} · ${u.where || u.username}`, 'Account expires in Active Directory. No offboarding is scheduled.',
     ['Expires', 'amber'], R.offboard && has('ad.enable') ? `<button type="button" class="small" data-lc-offboard="${esc(u.username)}">${svg('user-off')}Offboard…</button>` : '', u.username)}</div>`;
 
-  R.scatter?.($('lc-hero'), 20261125);
   const drawHero = () => {
     if (!data) return;
     const runs = data.planned.filter((p) => going(p.state));

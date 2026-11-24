@@ -1,11 +1,15 @@
-/* Overview's banner: a rounded panel with the night scene (scene.js) behind it, the headline at the foot on the left with the
-   sky open above it, and a glass strip along the bottom with the numbers and, at its end, the buttons. It has a fixed height
-   and nothing on it changes size when an update comes in, so it never moves. */
-.ovb { position: relative; isolation: isolate; height: 580px; margin: 20px 24px 0; overflow: hidden;
+/* The banners. Overview's (.ovb): a rounded panel with the night scene (scene.js) behind it, the headline at the foot on the
+   left with the sky open above it, and a glass strip along the bottom with the numbers and, at its end, the buttons. It has
+   a fixed height and nothing on it changes size when an update comes in, so it never moves. Every other page's (.hero) is
+   a smaller one of the same, further down. */
+.ovb, .hero { position: relative; isolation: isolate; margin: 20px 24px 0; overflow: hidden;
   border: 1px solid rgb(255 255 255 / .08); border-radius: 18px; background: #07071a; }
-.ovb-art { position: absolute; inset: 0; z-index: -1; }
+.ovb { height: 580px; }
+.ovb-art, .hero-art { position: absolute; inset: 0; z-index: -1; }
+/* The gradients and blurs the scenes share (scene.js), in a drawing that takes no room. */
+.ovs-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
 /* A faint grain over the scene, so its fades show no steps; kept out of the drawing so its moving parts never redraw it. */
-.ovb-art::before { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none; opacity: .05; mix-blend-mode: overlay;
+.ovb-art::before, .hero-art::before { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none; opacity: .05; mix-blend-mode: overlay;
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
 /* Shade behind the words at the bottom left, and solid under the strip, so no moonlight glows up through its glass. */
 .ovb-art::after { content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none;
@@ -20,18 +24,18 @@
   letter-spacing: -.04em; text-wrap: balance; }
 .ovb-lead { max-width: 580px; margin: 18px 0 0; color: #C9CCDA; font-size: 16px; line-height: 1.6; }
 
-/* The strip: three numbers with a thin line between each, each a fixed width so a changing number moves nothing, and the
-   buttons at its end. */
-.ovb-strip { position: absolute; inset: auto 0 0; z-index: 1; isolation: isolate; display: flex; align-items: center; gap: 24px; height: 84px; padding: 0 48px;
-  border-top: 1px solid rgb(255 255 255 / .06); }
-.ovb-strip::before { content: ""; position: absolute; inset: 0; z-index: -1; background: rgb(0 0 0 / .52); backdrop-filter: blur(22px); }
-.ovb-nums { display: flex; }
-.ovb-nums > div { display: grid; gap: 6px; flex: none; width: 150px; padding: 0 28px; border-left: 1px solid rgb(255 255 255 / .14); }
-.ovb-nums > div:first-child { width: 122px; padding-left: 0; border-left: 0; }
-.ovb-nums b { min-height: 22px; color: #fff; font: 800 21px/1 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; letter-spacing: -.02em;
+/* The strip: the numbers with a thin line between each, each a fixed width so a changing number moves nothing, and the
+   buttons at its end. Every banner has the same one. */
+.ovb-strip, .hero-row { isolation: isolate; display: flex; align-items: center; gap: 24px; padding: 0 48px; border-top: 1px solid rgb(255 255 255 / .06); }
+.ovb-strip { position: absolute; inset: auto 0 0; z-index: 1; height: 84px; }
+.ovb-strip::before, .hero-row::before { content: ""; position: absolute; inset: 0; z-index: -1; background: rgb(0 0 0 / .52); backdrop-filter: blur(22px); }
+.ovb-nums, .hero-stats { display: flex; }
+.ovb-nums > div, .hero-stats > div { display: grid; align-content: center; gap: 6px; flex: none; width: 150px; padding: 0 28px; border-left: 1px solid rgb(255 255 255 / .14); }
+.ovb-nums > div:first-child, .hero-stats > div:first-child { width: 122px; padding-left: 0; border-left: 0; }
+.ovb-nums b, .hero-stats b { min-height: 22px; color: #fff; font: 800 21px/1 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; letter-spacing: -.02em;
   white-space: nowrap; font-variant-numeric: tabular-nums; }
-.ovb-nums b .sk-num { width: 64px; height: 20px; vertical-align: top; }
-.ovb-nums span { color: #A9ADC2; font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+.ovb-nums b .sk-num, .hero-stats b .sk-num { width: 64px; height: 20px; vertical-align: top; }
+.ovb-nums span, .hero-stats span { color: #A9ADC2; font-size: 12.5px; font-weight: 600; white-space: nowrap; }
 .ovb-btns { display: flex; flex-wrap: nowrap; gap: 10px; margin-left: auto; }
 /* The console's own button size. The main one keeps one width through Check, Checking and Install, so nothing beside it moves. */
 .ovb-btns :is(button, .button) { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 0 16px;
@@ -56,6 +60,43 @@
   .ovb-btns { flex-wrap: wrap; }
 }
 
+/* Every other page's banner: Overview's at the height the banners have always had. The title and its line at the foot on the
+   left, then the same strip with the page's numbers and, at its end, the page's own buttons (the .cmdbar, console.css).
+   Always this height, unless the window is too narrow for the strip on one line: then the buttons go under the numbers. */
+.hero { display: flex; flex-direction: column; justify-content: flex-end; min-height: 270px; }
+.hero-art::after { content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  background: radial-gradient(ellipse 60% 110% at 0% 100%, rgb(7 7 22 / .75), rgb(7 7 22 / .35) 55%, transparent 85%); }
+/* The room over the title keeps the sky open, so a strip on two lines makes the banner taller, not the scene shorter. */
+.hero-title { margin: 86px 48px 0; color: #fff; font: 800 44px/1.04 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; letter-spacing: -.04em; }
+/* The line under the title: always one line, so a longer one never makes the banner taller; cut short with … only where the
+   window is too narrow. */
+.hero-lead { max-width: 1000px; margin: 6px 48px 22px; overflow: hidden; color: #C9CCDA; font-size: 15px; line-height: 1.5; white-space: nowrap; text-overflow: ellipsis; }
+.hero-lead b { color: #fff; font-weight: 650; }
+/* Back to the page you came from, at the top left over the sky, on Overview's banner too. */
+:is(.ovb, .hero) > .backlink { position: absolute; top: 20px; left: 48px; margin: 0; }
+/* Solid under the strip's glass, as on Overview, so no moonlight shows up through it. A long label widens its number. */
+.hero-row { position: relative; flex-wrap: wrap; row-gap: 12px; min-height: 84px; padding-block: 14px; background: rgb(7 7 22 / .94); }
+.hero-stats > div { width: auto; min-width: 150px; }
+.hero-stats > div:first-child { width: auto; min-width: 122px; }
+.hero-row > .cmdbar { margin-left: auto; }
+/* Less room: the numbers only as wide as they are, and View without its word, so the buttons still fit beside them. */
+@media (max-width: 1500px) {
+  .hero-stats > div { min-width: 0; padding: 0 22px; }
+  .hero-stats > div:first-child { min-width: 0; padding-left: 0; }
+  .hero-row .cmd-l { display: none; }
+}
+@media (max-width: 700px) {
+  .hero { margin: 14px 12px 0; }
+  .hero-title { margin: 96px 18px 0; font-size: 34px; }
+  .hero-lead { margin: 6px 18px 18px; white-space: normal; }
+  :is(.ovb, .hero) > .backlink { left: 18px; }
+  .hero-row { padding-inline: 18px; }
+  .hero-stats { flex-wrap: wrap; row-gap: 12px; }
+  .hero-stats > div { padding: 0 16px; }
+  .hero-row > .cmdbar { flex-wrap: wrap; margin-left: 0; }
+  .hero-row > .cmdbar > .grow { display: none; }
+}
+
 /* The scene. Deep, low colours mixed from the accent, each layer of land darker the nearer it is. */
 .ovs { position: absolute; inset: 0; width: 100%; height: 100%; display: block;
   --l1: color-mix(in srgb, var(--accent) 13%, #15142f); --l2: color-mix(in srgb, var(--accent) 10%, #100f26);
@@ -71,7 +112,7 @@
 .ovs-fogc { stop-color: color-mix(in srgb, var(--accent) 30%, #6f66c8); }
 .ovs-fog { fill: url(#ovs-fogg); }
 .ovs-glowc { stop-color: color-mix(in srgb, var(--accent) 30%, #ddd5ff); }
-.ovs-wisp { fill: color-mix(in srgb, var(--accent) 22%, #cdc6f2); opacity: .2; }
+.ovs-wisp { fill: color-mix(in srgb, var(--accent) 22%, #cdc6f2); opacity: .1; }
 .ovs-mist { fill: color-mix(in srgb, var(--accent) 30%, #b8b0ff); opacity: .22; }
 .ovs-star { fill: #fff; }
 .ovs-sheen { fill: color-mix(in srgb, var(--accent) 25%, #e4deff); opacity: .22; }
