@@ -269,11 +269,28 @@
   const noticeTaken = () => { try { return localStorage.getItem(NOTICE) || ''; } catch { return ''; } };
   let noticeShown = null; // the notice as the server sent it
   let noticeTicket = ''; // set when it came after the password
+  // The notice takes the sign-in card's place and size, and keeps them as the window resizes.
+  const place = () => {
+    const card = document.querySelector('.signin-card').getBoundingClientRect();
+    const high = Math.max(card.height, Math.min(440, innerHeight - 24));
+    const box = { x: card.left, y: Math.max(12, Math.min(card.top, innerHeight - high - 12)), w: card.width, h: high };
+    Object.entries(box).forEach(([k, v]) => $('rn').style.setProperty(`--rn-${k}`, `${Math.round(v)}px`));
+  };
+  // How far it has been read. The section being read is the one under a reading line that goes down the notice as it is
+  // scrolled: at its top when the notice opens, at its foot when the end is reached. The sections before it are read, and
+  // at the end all of them are; then the tick wakes up.
   const reading = () => {
     const doc = $('rn-doc');
     const most = doc.scrollHeight - doc.clientHeight;
     const share = most > 2 ? Math.min(1, doc.scrollTop / most) : 1;
-    $('rn-read').style.width = `${Math.round(share * 100)}%`;
+    const box = doc.getBoundingClientRect();
+    const line = box.top + share * box.height;
+    const sections = [...doc.querySelectorAll('.rn-sec')];
+    let at = 0;
+    sections.forEach((s, i) => { if (s.getBoundingClientRect().top <= line) at = i; });
+    const read = share > 0.98 ? sections.length : at;
+    [...$('rn-list').children].forEach((li, i) => { li.classList.toggle('read', i < read); li.classList.toggle('at', i === at); });
+    $('rn-count').textContent = `${read} of ${sections.length} read`;
     if (share > 0.98 && $('rn-accept').disabled) {
       $('rn-accept').disabled = false;
       $('rn-tick').classList.remove('off');
@@ -297,16 +314,39 @@
       return sec;
     }));
     doc.insertAdjacentHTML('beforeend', '<p class="rn-end"><svg aria-hidden="true"><use href="#i-check"/></svg>You reached the end.</p>');
+    // Its sections, listed beside it: each goes to its section when clicked.
+    $('rn-list').replaceChildren(...n.sections.map((s, i) => {
+      const li = document.createElement('li');
+      const go = document.createElement('button');
+      go.type = 'button';
+      go.dataset.section = String(i);
+      go.insertAdjacentHTML('beforeend', '<i><svg aria-hidden="true"><use href="#i-check"/></svg></i>');
+      go.append(Object.assign(document.createElement('span'), { textContent: s.heading }));
+      li.append(go);
+      return li;
+    }));
+    place();
     $('rn-error').hidden = true;
     $('rn-go').disabled = true;
     $('rn-decline').disabled = false;
+    // Unticked each time it opens, so the tick and Continue always agree; reading() wakes the tick at the end.
+    $('rn-accept').checked = false;
+    $('rn-accept').disabled = true;
+    $('rn-tick').classList.add('off');
+    $('rn-tick-text').textContent = 'Scroll to the end to accept';
     $('rn').showModal();
     doc.scrollTop = 0;
     reading();
     doc.focus();
   };
   $('rn-doc').addEventListener('scroll', reading, { passive: true });
-  addEventListener('resize', () => { if ($('rn').open) reading(); });
+  addEventListener('resize', () => { if ($('rn').open) { place(); reading(); } });
+  $('rn-list').addEventListener('click', (e) => {
+    const go = e.target.closest('button');
+    if (!go) return;
+    const doc = $('rn-doc');
+    doc.scrollTo({ top: doc.querySelectorAll('.rn-sec')[Number(go.dataset.section)].offsetTop - doc.offsetTop - 6, behavior: 'smooth' });
+  });
   $('rn').addEventListener('cancel', (e) => e.preventDefault()); // Esc doesn't close it: accept or decline
   $('rn-accept').addEventListener('change', () => { $('rn-go').disabled = !$('rn-accept').checked; });
   const keepNotice = () => { try { localStorage.setItem(NOTICE, noticeShown.wording); } catch { /* asked again next visit */ } };

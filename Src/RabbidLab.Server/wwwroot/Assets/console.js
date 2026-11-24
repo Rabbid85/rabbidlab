@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.385', [
+    'The Use at your own risk notice no longer opens as a second window over a dimmed page. The sign-in card turns into it, in the same place and the same size.',
+    'The sections of the notice are listed beside it and tick off as you read them, with the one you are reading in white. Select a section to go to it.',
+    'Opening the notice again after Decline starts it unticked, so the tick and Continue always agree.']],
   ['1.1.384', [
     'On the sign-in page the name of each box now moves up onto the top line of the box when you click in it or type, so it no longer sits crammed against what you type. The boxes stay the same height.',
     'Black glass, the style of the sign-in card, has more blur and a slightly brighter edge.']],
@@ -1233,6 +1237,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.385': ['2026-11-23', 'update', 'Sign-in page: the card turns into the Use at your own risk notice'],
   '1.1.384': ['2026-11-23', 'update', 'Sign-in page: the name of each box sits on its top line'],
   '1.1.383': ['2026-11-23', 'update', 'Sign-in page: Black glass is the card style now'],
   '1.1.382': ['2026-11-23', 'feature', 'Connected apps: connect an app and give access from Active Directory groups'],

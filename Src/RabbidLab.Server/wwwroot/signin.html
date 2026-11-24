@@ -147,18 +147,21 @@
 </main>
 
 <!-- The Use at your own risk notice (RiskNotice.cs): after the password and code, at an account's first sign-in. It's read
-     to the end, then accepted; until then there's no session. Decline starts none, so the console never opens. -->
+     to the end, then accepted; until then there's no session. Decline starts none, so the console never opens. The sign-in
+     card turns into it: it takes the card's place and size, its sections listed at the left and ticked as they are read
+     (signin.js fills the list), the notice itself at the right over the tick and the buttons. -->
 <dialog class="rn" id="rn" aria-labelledby="rn-title">
-  <header class="rn-head"><h2 id="rn-title">Use at your own risk</h2><p id="rn-meta"></p></header>
-  <div class="rn-read" aria-hidden="true"><i id="rn-read"></i></div>
-  <div class="rn-doc" id="rn-doc" tabindex="0"></div>
-  <p class="rn-error" id="rn-error" role="alert" hidden></p>
-  <footer class="rn-foot">
-    <label class="rn-tick off" id="rn-tick"><input type="checkbox" id="rn-accept" disabled><span id="rn-tick-text">Scroll to the end to accept</span></label>
-    <span class="grow"></span>
-    <button type="button" class="rn-quiet" id="rn-decline">Decline</button>
-    <button type="button" class="primary rn-go" id="rn-go" disabled>Continue</button>
-  </footer>
+  <aside class="rn-side"><h2 id="rn-title">Use at your own risk</h2><p id="rn-meta"></p><ol class="rn-list" id="rn-list"></ol><p class="rn-count" id="rn-count"></p></aside>
+  <div class="rn-main">
+    <div class="rn-doc" id="rn-doc" tabindex="0"></div>
+    <p class="rn-error" id="rn-error" role="alert" hidden></p>
+    <footer class="rn-foot">
+      <label class="rn-tick off" id="rn-tick"><input type="checkbox" id="rn-accept" disabled><span id="rn-tick-text">Scroll to the end to accept</span></label>
+      <span class="grow"></span>
+      <button type="button" class="rn-quiet" id="rn-decline">Decline</button>
+      <button type="button" class="primary rn-go" id="rn-go" disabled>Continue</button>
+    </footer>
+  </div>
 </dialog>
 </body>
 </html>
