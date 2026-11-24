@@ -3,6 +3,11 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.400', [
+    'Every banner has the same night scene: the other pages show the Overview drawing redrawn for their height, with the same hills, moon and lake in the same places.',
+    'The light from the moon on the water is softer, and the strip along the foot of each banner is solid, so no light shows through it.',
+    'Overview has one cloud, right under the moon.',
+    'New installs start with a purple accent. Purple is one of the accent colours to pick from, and Amber is gone from the list.']],
   ['1.1.399', [
     'Every page lines up with the edges of its banner: the tabs, filters and lists start and end where the banner does. With Layout set to Centered, the banner is the width of the page column.',
     'The buttons on the banner strip are smaller and quieter. The main one, such as Add a link, is its words with an accent icon, and the rest are icons with a hint, with a thin line between each group.',
@@ -1279,6 +1284,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.400': ['2026-11-24', 'update', 'One night scene on every banner, and purple for new installs'],
   '1.1.399': ['2026-11-24', 'update', 'Pages line up with their banner, and smaller buttons on it'],
   '1.1.398': ['2026-11-24', 'feature', 'The Overview banner on every page', 'banners.jpg'],
   '1.1.397': ['2026-11-24', 'update', 'A fainter glow around the moon on Overview'],

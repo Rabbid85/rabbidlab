@@ -2,8 +2,10 @@
 // the logo's dot, the browser tab's icon), and the lab's icon in the tab. The look last seen is kept in this browser and put
 // on before the page draws, so a reload or an update never starts in Rabbid Lab's orange; the page then gives the server's.
 (() => {
-  // Each accent: its name, a light shade for lines and a main one for buttons.
-  const SWATCHES = [['Ember', '#FF8A3D', '#E8542F'], ['Amber', '#F7CF7E', '#E0A33A'], ['Green', '#7FE3B5', '#2FB37A'], ['Teal', '#6FDCDC', '#1FA3A8'],
+  // Each accent: its name, a light shade for lines and a main one for buttons. Purple is what a new install starts with
+  // (Settings.cs); its light shade is the one a custom #5900FF got, so a lab that picked it looks the same. Amber was taken
+  // out ("remove the fucking yellow"): a lab that had it keeps it as a colour of its own.
+  const SWATCHES = [['Ember', '#FF8A3D', '#E8542F'], ['Purple', '#7226FF', '#5900FF'], ['Green', '#7FE3B5', '#2FB37A'], ['Teal', '#6FDCDC', '#1FA3A8'],
     ['Blue', '#8DBBFF', '#3D7FE6'], ['Indigo', '#9EA3FF', '#5B62E8'], ['Violet', '#C79BF0', '#8E52D6'], ['Pink', '#F68CC6', '#D6448E'], ['Red', '#FF4D4D', '#E02424']];
   const KEY = 'rabbidlab.brand';
   const lighter = (hex, by) => `#${[1, 3, 5].map((i) => { const c = parseInt(hex.slice(i, i + 2), 16); return Math.round(c + (255 - c) * by).toString(16).padStart(2, '0'); }).join('')}`;

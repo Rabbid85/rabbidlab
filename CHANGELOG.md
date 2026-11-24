@@ -2,6 +2,13 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.400 (2026-11-24)
+
+- Every banner has the same night scene: the other pages show the Overview drawing redrawn for their height, with the same hills, moon and lake in the same places.
+- The light from the moon on the water is softer, and the strip along the foot of each banner is solid, so no light shows through it.
+- Overview has one cloud, right under the moon.
+- New installs start with a purple accent. Purple is one of the accent colours to pick from, and Amber is gone from the list.
+
 ## 1.1.399 (2026-11-24)
 
 - Every page lines up with the edges of its banner: the tabs, filters and lists start and end where the banner does. With Layout set to Centered, the banner is the width of the page column.

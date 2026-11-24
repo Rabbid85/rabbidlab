@@ -15,10 +15,11 @@ public sealed class ConsoleSettings
     /// <summary>Rabbid Lab Dev only: the MFA step shows Skip MFA this time, on any computer (SignIn.MaySkipMfa).</summary>
     public bool DevSkipMfa { get; set; } = true;
 
-    /// <summary>The lab's own name, icon (a PNG or SVG data URL) and accent colour, for everyone. Null: Rabbid Lab's own.</summary>
+    /// <summary>The lab's own name, icon (a PNG or SVG data URL) and accent colour, for everyone. Null: Rabbid Lab's own. A new
+    /// install starts in purple; a settings file from before keeps what it has, null included, as its null is written out.</summary>
     public string? LabName { get; set; }
     public string? LabIcon { get; set; }
-    public string? Accent { get; set; }
+    public string? Accent { get; set; } = "#5900FF";
 
     /// <summary>The line under the name, with tags such as {username} filled in by the page. Null: "Lab console".</summary>
     public string? LabTagline { get; set; }
