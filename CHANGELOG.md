@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.397 (2026-11-24)
+
+- The glow around the moon on the Overview banner is much fainter.
+
 ## 1.1.396 (2026-11-24)
 
 - Pointing at a toast and away again no longer makes its time line jump back or forward. The line holds while you point at it and carries on from there.

@@ -62,7 +62,7 @@
   --l3: color-mix(in srgb, var(--accent) 7%, #0c0b1f); --l4: color-mix(in srgb, var(--accent) 5%, #090818); --l5: #050511; }
 .ovs-l1 { fill: var(--l1); } .ovs-l2 { fill: var(--l2); } .ovs-l3 { fill: var(--l3); } .ovs-l4 { fill: var(--l4); } .ovs-l5 { fill: var(--l5); }
 .ovs-rim { fill: none; stroke: color-mix(in srgb, var(--accent) 30%, #cfc8ff); stroke-width: 1.2; }
-.ovs-rays { fill: color-mix(in srgb, var(--accent) 25%, #d8d0ff); opacity: .07; }
+.ovs-rays { fill: color-mix(in srgb, var(--accent) 25%, #d8d0ff); opacity: .04; }
 .ovs-sky0 { stop-color: #03030c; }
 .ovs-sky1 { stop-color: color-mix(in srgb, var(--accent) 10%, #08081c); }
 .ovs-sky2 { stop-color: color-mix(in srgb, var(--accent) 24%, #161236); }

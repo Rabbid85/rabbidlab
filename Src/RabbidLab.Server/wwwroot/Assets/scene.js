@@ -67,9 +67,9 @@
   // where the real moon's seas are, blurred so they never read as spots ("The moon looks odd", of crisp ones and an outline).
   // [x, y, rx, ry, turn] as parts of the radius.
   const SEAS = [[-0.42, -0.1, 0.36, 0.5, 15], [-0.2, -0.42, 0.24, 0.18, -10], [0.3, -0.25, 0.24, 0.17, 25], [0.45, 0.08, 0.2, 0.2, 0], [-0.1, 0.38, 0.16, 0.1, -15]];
-  const moon = (x, y, rad) => `<circle cx="${x}" cy="${y}" r="${rad * 2.6}" fill="url(#ovs-glow)" opacity=".9"/>`
+  const moon = (x, y, rad) => `<circle cx="${x}" cy="${y}" r="${rad * 2.4}" fill="url(#ovs-glow)" opacity=".4"/>`
     + `<g transform="translate(${x} ${y})"><clipPath id="ovs-moonclip"><circle r="${rad}"/></clipPath>`
-    + `<circle r="${rad + 1.2}" fill="#efeaff" opacity=".55" filter="url(#ovs-b05)"/><circle r="${rad}" fill="url(#ovs-moonfill)"/>`
+    + `<circle r="${rad + 1.2}" fill="#efeaff" opacity=".35" filter="url(#ovs-b05)"/><circle r="${rad}" fill="url(#ovs-moonfill)"/>`
     + `<g clip-path="url(#ovs-moonclip)" fill="#9C94C6" opacity=".16"><g filter="url(#ovs-b2)">${SEAS.map(([a, b, rx, ry, t]) => `<ellipse transform="rotate(${t} ${f1(a * rad)} ${f1(b * rad)})" cx="${f1(a * rad)}" cy="${f1(b * rad)}" rx="${f1(rx * rad)}" ry="${f1(ry * rad)}"/>`).join('')}</g></g></g>`;
   // A thin cloud lit by the moon: a few soft overlapping puffs.
   const cloud = (x, y, w) => [[-0.4, 0.3, 0.28, 0.45], [-0.12, -0.15, 0.34, 0.7], [0.18, 0.08, 0.3, 0.55], [0.42, 0.3, 0.2, 0.35]]
@@ -115,7 +115,7 @@
     + '<linearGradient id="ovs-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="ovs-sky0"/><stop offset=".62" class="ovs-sky1"/><stop offset="1" class="ovs-sky2"/></linearGradient>'
     + '<linearGradient id="ovs-fogg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="ovs-fogc" stop-opacity="0"/><stop offset="1" class="ovs-fogc" stop-opacity="1"/></linearGradient>'
     + '<linearGradient id="ovs-water" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="ovs-water0"/><stop offset="1" class="ovs-water1"/></linearGradient>'
-    + '<radialGradient id="ovs-glow"><stop offset="0" class="ovs-glowc" stop-opacity=".6"/><stop offset=".3" class="ovs-glowc" stop-opacity=".2"/><stop offset="1" class="ovs-glowc" stop-opacity="0"/></radialGradient>'
+    + '<radialGradient id="ovs-glow"><stop offset="0" class="ovs-glowc" stop-opacity=".55"/><stop offset=".35" class="ovs-glowc" stop-opacity=".15"/><stop offset=".7" class="ovs-glowc" stop-opacity=".03"/><stop offset="1" class="ovs-glowc" stop-opacity="0"/></radialGradient>'
     + '<radialGradient id="ovs-moonfill"><stop offset="0" stop-color="#fbfaff"/><stop offset=".75" stop-color="#f0ecff"/><stop offset="1" stop-color="#d9d2f4"/></radialGradient>'
     + '<linearGradient id="ovs-tail" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity=".85"/></linearGradient>'
     + blur('ovs-b05', 0.8) + blur('ovs-b1', 1.2) + blur('ovs-b2', 2) + blur('ovs-b3', 3) + blur('ovs-b6', 6) + blur('ovs-b24', 24)
@@ -129,7 +129,7 @@
     const L3 = ridge(r, 440, 50, 0.5, [[280, 36, 200], [1230, 44, 220]]);
     return `<svg class="ovs" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMaxYMid slice" aria-hidden="true">${DEFS}`
       + `<rect width="${W}" height="${H}" fill="url(#ovs-sky)"/><g>${stars(r, 190, 320)}</g>${meteor(300, 90, 14)}`
-      + `<circle cx="${mx}" cy="${my}" r="240" fill="url(#ovs-glow)"/>${rays(mx, my, 7, r)}${moon(mx, my, 28)}`
+      + `<circle cx="${mx}" cy="${my}" r="240" fill="url(#ovs-glow)" opacity=".4"/>${rays(mx, my, 7, r)}${moon(mx, my, 28)}`
       + `<g class="ovs-drift" filter="url(#ovs-b6)">${cloud(mx - 70, my + 30, 250)}${cloud(mx + 150, my - 34, 150)}</g>`
       + land(L1, 'ovs-l1', 0.5) + fog(250, 170, 0.55)
       + land(L2, 'ovs-l2', 0.4) + fog(320, 150, 0.5)

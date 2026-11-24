@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.397', [
+    'The glow around the moon on the Overview banner is much fainter.']],
   ['1.1.396', [
     'Pointing at a toast and away again no longer makes its time line jump back or forward. The line holds while you point at it and carries on from there.']],
   ['1.1.395', [
@@ -1267,6 +1269,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.397': ['2026-11-24', 'update', 'A fainter glow around the moon on Overview'],
   '1.1.396': ['2026-11-24', 'fix', 'Toasts: the time line no longer jumps when you point at one'],
   '1.1.395': ['2026-11-24', 'update', 'A smaller flask in the update window and the opening screen'],
   '1.1.394': ['2026-11-24', 'update', 'A softer moon on the Overview banner'],
