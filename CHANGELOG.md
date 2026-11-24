@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.390 (2026-11-23)
+
+- The lists under Domain and Domain controller on the sign-in page are a touch darker.
+
 ## 1.1.389 (2026-11-23)
 
 - The lists under Domain and Domain controller on the sign-in page open as a panel of their own a little under the box instead of joined to it, and are a shade lighter.

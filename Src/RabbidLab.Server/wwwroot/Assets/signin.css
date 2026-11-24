@@ -268,8 +268,8 @@ html[data-sty-signin="black"] .in-line, html[data-sty-signin="black"] .foot-pill
 /* The lists under Domain and Domain controller, where the form is in a style: the card's own colour, solid and a shade
    darker, so nothing behind shows through and no second blur is redrawn as the background moves. The rows light up with
    a faint band, and the arrow and the eye brighten with no box behind them. */
-/* The list's fill is the card's colour, solid, lifted halfway to the console's raised dark, a shade lighter than the card. */
-html[data-sty-signin]:not([data-si-card="split"]) .signin-card { --list-fill: color-mix(in srgb, rgb(from var(--sty-signin-bg) r g b / 1), #1A1D2B 50%); --list-band: rgb(255 255 255 / .07); }
+/* The list's fill is the card's colour, solid, lifted 42% of the way to the console's raised dark, a shade lighter than the card. */
+html[data-sty-signin]:not([data-si-card="split"]) .signin-card { --list-fill: color-mix(in srgb, rgb(from var(--sty-signin-bg) r g b / 1), #1A1D2B 42%); --list-band: rgb(255 255 255 / .07); }
 html[data-sty-signin]:not([data-si-card="split"]) .input .end:hover { background: none; color: var(--title); }
 /* The arrow turns over while its list is open. */
 .combo .end svg { transition: transform .15s; }
