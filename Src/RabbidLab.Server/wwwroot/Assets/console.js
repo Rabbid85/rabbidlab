@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.396', [
+    'Pointing at a toast and away again no longer makes its time line jump back or forward. The line holds while you point at it and carries on from there.']],
   ['1.1.395', [
     'The flask in the update window and on the opening screen is a little smaller.']],
   ['1.1.394', [
@@ -1265,6 +1267,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.396': ['2026-11-24', 'fix', 'Toasts: the time line no longer jumps when you point at one'],
   '1.1.395': ['2026-11-24', 'update', 'A smaller flask in the update window and the opening screen'],
   '1.1.394': ['2026-11-24', 'update', 'A softer moon on the Overview banner'],
   '1.1.393': ['2026-11-24', 'feature', 'A new banner on Overview', 'banner.jpg'],
@@ -3368,7 +3371,7 @@ const RELEASE_INFO = {
         toastGone(el);
       });
       document.body.append(toastBox);
-      document.addEventListener('visibilitychange', () => { if (!document.hidden) toastTick(); });
+      document.addEventListener('visibilitychange', () => { if (document.hidden) toastAway = true; else toastTick(); });
       new ResizeObserver(toastReplace).observe(document.querySelector('.main'));
       window.addEventListener('resize', toastReplace);
     }
@@ -3420,21 +3423,26 @@ const RELEASE_INFO = {
       more.textContent = `${extra} more · Clear`;
     } else more?.remove();
   };
-  // Timed toasts count down on the clock, not on their line's animation, which a tab in the background stops: back on
-  // the tab, the ones whose time ran out are gone. The pointer resting on one holds it, as its line shows.
+  // A timed toast's line is its clock while the tab is in view: it holds the moment the pointer rests on the toast and
+  // runs on the moment it leaves. A tab in the background stops the line, so time spent there counts on the wall clock,
+  // and back on the tab the line catches up and the ones whose time ran out are gone. (Counting hover on a half-second
+  // tick made the line jump back or forward each time the pointer went in or out.)
   let toastClock = 0;
+  let toastAway = false; // the tab was in the background since the last tick
   const toastTick = () => {
     const now = Date.now();
     const timed = toastBox ? [...toastBox.querySelectorAll('.tst.timed:not(.out)')] : [];
     const deck = !!toastBox?.classList.contains('t-deck') && toastBox.matches(':hover');
+    const away = document.hidden || toastAway;
     timed.forEach((el) => {
-      if (document.hidden || !(deck || el.matches(':hover'))) el.toastLeft -= now - el.toastAt;
+      const line = el.querySelector('.tst-bar i')?.getAnimations?.()[0];
+      if (line && !away) el.toastLeft = el.toastSecs * 1000 - (line.currentTime || 0);
+      else if (away || !(deck || el.matches(':hover'))) el.toastLeft -= now - el.toastAt;
       el.toastAt = now;
       if (el.toastLeft <= 0) { toastGone(el); return; }
-      const line = el.querySelector('.tst-bar i')?.getAnimations?.()[0];
-      const want = el.toastSecs * 1000 - el.toastLeft;
-      if (line && Math.abs((line.currentTime || 0) - want) > 300) line.currentTime = want;
+      if (line && away) line.currentTime = el.toastSecs * 1000 - el.toastLeft;
     });
+    toastAway = document.hidden;
     if (!timed.length) {
       clearInterval(toastClock);
       toastClock = 0;
