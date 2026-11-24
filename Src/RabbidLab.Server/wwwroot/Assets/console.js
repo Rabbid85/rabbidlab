@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.402', [
+    'Every window, such as Add a link, has the same look as the sign-in card: the same darkness, glass and opacity, and it changes when the sign-in card does.',
+    'Settings, Appearance has Same as the sign-in card for windows, which is now what windows start with.']],
   ['1.1.401', [
     'The moonlight on the water is softer: half as many strokes, a little blurred, with no sharp copy on top.',
     'The DEV tag is in the accent colour, purple by default, in place of yellow.']],
@@ -1287,6 +1290,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.402': ['2026-11-24', 'update', 'Windows look like the sign-in card'],
   '1.1.401': ['2026-11-24', 'update', 'Softer moonlight on the water, and a purple DEV tag'],
   '1.1.400': ['2026-11-24', 'update', 'One night scene on every banner, and purple for new installs'],
   '1.1.399': ['2026-11-24', 'update', 'Pages line up with their banner, and smaller buttons on it'],
@@ -3591,20 +3595,22 @@ const RELEASE_INFO = {
   // (style.js) puts each part's look on the page.
   const STYLE_LOOKS = window.RabbidLabStyle.LOOKS;
   const STYLE_PARTS = ['win', 'panel', 'menus', 'boot'];
-  // The opening screen plays straight after sign-in, so it wears the sign-in card's look and opacity (1.1.377); the rest
-  // follow the app, which is Solid. A style for it saved before then gives way: only one picked since (bootOwn) stays.
-  const STYLE_DEFAULT = { look: 'solid', glass: 65, win: 'app', winGlass: 65, panel: 'app', panelGlass: 65, menus: 'app', menusGlass: 65, boot: 'signin', bootGlass: 65 };
+  // The opening screen plays straight after sign-in, so it wears the sign-in card's look and opacity (1.1.377), and so does
+  // every window ("All modals like this, need to be exact settings as login style", 1.1.402); the rest follow the app, which
+  // is Solid. A style for one of them saved before then gives way: only one picked since (bootOwn, winOwn) stays.
+  const CARD_PARTS = ['win', 'boot'];
+  const STYLE_DEFAULT = { look: 'solid', glass: 65, win: 'signin', winGlass: 65, panel: 'app', panelGlass: 65, menus: 'app', menusGlass: 65, boot: 'signin', bootGlass: 65 };
   const styleMine = () => {
     try { return JSON.parse(localStorage.getItem('rabbidlab.style') || 'null'); } catch { return null; }
   };
   const stylePrefs = () => {
     const lab = { ...(window.RabbidLabBrand.now.look?.style || {}) };
     const mine = { ...(styleMine() || {}) };
-    [lab, mine].forEach((o) => { if (!o.bootOwn) { delete o.boot; delete o.bootGlass; } });
+    [lab, mine].forEach((o) => CARD_PARTS.forEach((k) => { if (!o[`${k}Own`]) { delete o[k]; delete o[`${k}Glass`]; } }));
     const o = { ...STYLE_DEFAULT, ...lab, ...mine };
     const glass = (v) => Math.min(95, Math.max(20, Number(v) || 65));
-    const part = (v, k) => (v === 'app' || STYLE_LOOKS.includes(v) || (k === 'boot' && v === 'signin') ? v : 'app');
-    const p = { look: STYLE_LOOKS.includes(o.look) ? o.look : 'solid', glass: glass(o.glass), bootOwn: !!o.bootOwn };
+    const part = (v, k) => (v === 'app' || STYLE_LOOKS.includes(v) || (CARD_PARTS.includes(k) && v === 'signin') ? v : 'app');
+    const p = { look: STYLE_LOOKS.includes(o.look) ? o.look : 'solid', glass: glass(o.glass), ...Object.fromEntries(CARD_PARTS.map((k) => [`${k}Own`, !!o[`${k}Own`]])) };
     STYLE_PARTS.forEach((k) => { p[k] = part(o[k], k); p[`${k}Glass`] = glass(o[`${k}Glass`]); });
     return p;
   };
@@ -3619,7 +3625,7 @@ const RELEASE_INFO = {
   document.querySelectorAll('.ap-look').forEach((box) => {
     const k = box.dataset.part;
     const name = box.closest('.ds-row').querySelector('.ds-l b').textContent;
-    const looks = k === 'boot' ? [['signin', 'Same as the sign-in card'], ...PART_LOOKS] : PART_LOOKS;
+    const looks = CARD_PARTS.includes(k) ? [['signin', 'Same as the sign-in card'], ...PART_LOOKS] : PART_LOOKS;
     box.innerHTML = `<select data-style-part="${k}" aria-label="${esc(name)} style">${looks.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>`
       + `<span class="ap-glass" hidden><input type="range" class="ds-range" min="20" max="95" step="5" data-style-glass="${k}" aria-label="${esc(name)} glass opacity"><b class="ds-range-v"></b></span>`;
   });
@@ -3656,7 +3662,7 @@ const RELEASE_INFO = {
   $('style-glass').addEventListener('input', () => styleSet({ glass: Number($('style-glass').value) }));
   document.addEventListener('change', (e) => {
     const s = e.target.closest('[data-style-part]');
-    if (s) styleSet({ [s.dataset.stylePart]: s.value, ...(s.dataset.stylePart === 'boot' ? { bootOwn: s.value !== 'signin' } : {}) });
+    if (s) styleSet({ [s.dataset.stylePart]: s.value, ...(CARD_PARTS.includes(s.dataset.stylePart) ? { [`${s.dataset.stylePart}Own`]: s.value !== 'signin' } : {}) });
   });
   document.addEventListener('input', (e) => {
     const r = e.target.closest('[data-style-glass]');
@@ -3664,7 +3670,7 @@ const RELEASE_INFO = {
   });
   // Use everywhere: every part, and toasts, the same as the app.
   $('style-all').addEventListener('click', () => {
-    styleSet({ ...Object.fromEntries(STYLE_PARTS.map((k) => [k, 'app'])), bootOwn: true });
+    styleSet({ ...Object.fromEntries(STYLE_PARTS.map((k) => [k, 'app'])), ...Object.fromEntries(CARD_PARTS.map((k) => [`${k}Own`, true])) });
     toastSet({ look: 'app' });
   });
   $('style-reset').addEventListener('click', () => styleSet(null));

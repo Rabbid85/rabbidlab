@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.402 (2026-11-24)
+
+- Every window, such as Add a link, has the same look as the sign-in card: the same darkness, glass and opacity, and it changes when the sign-in card does.
+- Settings, Appearance has Same as the sign-in card for windows, which is now what windows start with.
+
 ## 1.1.401 (2026-11-24)
 
 - The moonlight on the water is softer: half as many strokes, a little blurred, with no sharp copy on top.

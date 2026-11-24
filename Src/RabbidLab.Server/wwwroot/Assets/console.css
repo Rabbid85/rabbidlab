@@ -1094,7 +1094,7 @@ body.dev-tools .devstrip:not([hidden]) { display: flex; flex-wrap: wrap; }
 /* The style engine's parts (style.js puts each part's look on <html>): one rule each, reading --sty-<part>-bg, -blur and
    -edge. A part on Solid has none, so it keeps its usual look. Windows over the page dim it less and blur it, as the
    loading window does. */
-html[data-sty-win] .dialog { border-color: var(--sty-win-edge); background: var(--sty-win-bg); backdrop-filter: var(--sty-win-blur); }
+html[data-sty-win] :is(.dialog, .dgate-card) { border-color: var(--sty-win-edge); background: var(--sty-win-bg); backdrop-filter: var(--sty-win-blur); }
 html[data-sty-win] .dialog::backdrop { background: rgba(5, 6, 10, .45); backdrop-filter: blur(4px); }
 html[data-sty-panel] dialog.drawer { border-left-color: var(--sty-panel-edge); background: var(--sty-panel-bg); backdrop-filter: var(--sty-panel-blur); }
 html[data-sty-menus] :is(.gear-menu, .account-menu) { border-color: var(--sty-menus-edge); background: var(--sty-menus-bg); backdrop-filter: var(--sty-menus-blur); }
