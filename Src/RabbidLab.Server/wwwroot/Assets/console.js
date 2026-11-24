@@ -3,6 +3,11 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.383', [
+    'New card style for the sign-in page, Black glass: black glass that shows the background through, lightly blurred. It is the card style now, at 52% opacity. A lab that already picked a card style in Settings, Appearance keeps its own.',
+    'The lists under Domain and Domain controller on the sign-in page take the colour of the card, and their arrow turns over while the list is open.',
+    'Black glass is also in Settings, Appearance for the whole app, windows, the side panel, menus and toasts.',
+    'The Use at your own risk notice says more plainly that Rabbid Lab works on your live environment. Its wording changed, so each account is asked to accept it once more.']],
   ['1.1.382', [
     'New Connected apps page, in its own part of the sidebar. Connect an app (SCIM 2.0, Google Workspace, or any other app through your own PowerShell scripts) and Rabbid Lab reads its accounts, groups and roles and matches each account to an Active Directory user.',
     'Access rules give the members of an Active Directory group one or several groups and roles in each app, and make an account for anyone who has none. Review changes lists every difference first. Nothing is taken away unless you apply it.',
@@ -1225,6 +1230,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.383': ['2026-11-23', 'update', 'Sign-in page: Black glass is the card style now'],
   '1.1.382': ['2026-11-23', 'feature', 'Connected apps: connect an app and give access from Active Directory groups'],
   '1.1.381': ['2026-11-23', 'feature', 'Lifecycle page, workflows on a date, and what Rabbid Lab gave each user'],
   '1.1.380': ['2026-11-23', 'feature', 'Service account: Delegated or Domain admin, sign-in test, fixes and an alert'],
@@ -2046,12 +2052,12 @@ const RELEASE_INFO = {
     $('br-bg').disabled = !may;
     bgPreview(brand.background || 'squares');
     // The sign-in card: which, its style and glass opacity, its size, and the quote.
-    const glass = brand.glass || 65;
+    const glass = brand.glass || 52;
     $('br-card').value = brand.card || 'whole';
-    $('br-style').value = brand.style || 'glass';
+    $('br-style').value = brand.style || 'black';
     $('br-glass').value = String(glass);
     $('br-glass-v').textContent = `${glass}%`;
-    $('br-glass-row').hidden = !['glass', 'frost'].includes(brand.style || 'glass');
+    $('br-glass-row').hidden = !window.RabbidLabStyle.seeThrough(brand.style || 'black');
     $('br-size').value = brand.size || 'larger';
     $('br-quote').value = brand.quote || 'visit';
     $('br-qkind').value = brand.quoteKind || 'motivational';
@@ -3284,7 +3290,7 @@ const RELEASE_INFO = {
     return {
       type: o.type in TOAST_MOST ? o.type : TOAST_DEFAULT.type,
       at: ['tl', 'tc', 'tr', 'bl', 'bc', 'br'].includes(o.at) ? o.at : TOAST_DEFAULT.at,
-      look: ['app', 'glass', 'frost', 'dark', 'solid'].includes(o.look) ? o.look : TOAST_DEFAULT.look,
+      look: ['app', 'glass', 'frost', 'black', 'dark', 'solid'].includes(o.look) ? o.look : TOAST_DEFAULT.look,
       glass: Math.min(95, Math.max(20, Number(o.glass) || TOAST_DEFAULT.glass)),
       secs: [3, 5, 8, 15, 0].includes(Number(o.secs)) ? Number(o.secs) : TOAST_DEFAULT.secs,
       errors: o.errors !== false,
@@ -3484,7 +3490,7 @@ const RELEASE_INFO = {
     $('toast-look').value = p.look;
     $('toast-glass').value = String(p.glass);
     $('toast-glass-v').textContent = `${p.glass}%`;
-    $('toast-glass-row').hidden = p.look !== 'glass' && p.look !== 'frost';
+    $('toast-glass-row').hidden = !window.RabbidLabStyle.seeThrough(p.look);
     $('toast-secs').value = String(p.secs);
     $('toast-errors').checked = p.errors;
     $('toast-reset').disabled = !toastMine();
@@ -3546,7 +3552,7 @@ const RELEASE_INFO = {
   };
   window.addEventListener('rabbidlab:brand', styleApply); // the sign-in card changed: the opening screen follows
   // Each part's control: Same as the app or a style of its own, and its own glass opacity when that's glass.
-  const PART_LOOKS = [['app', 'Same as the app'], ['solid', 'Solid'], ['glass', 'Smoked glass'], ['frost', 'Frosted glass'], ['dark', 'Dark']];
+  const PART_LOOKS = [['app', 'Same as the app'], ['solid', 'Solid'], ['glass', 'Smoked glass'], ['frost', 'Frosted glass'], ['black', 'Black glass'], ['dark', 'Dark']];
   document.querySelectorAll('.ap-look').forEach((box) => {
     const k = box.dataset.part;
     const name = box.closest('.ds-row').querySelector('.ds-l b').textContent;

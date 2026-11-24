@@ -7,8 +7,8 @@ Rabbid Lab is a free console for running a home lab or a small Active Directory 
 No warranty
 Rabbid Lab is provided as is, without warranty of any kind, express or implied, including that it is fit for any particular purpose. It may have bugs. It may stop working after a Windows update, a change on a domain controller, or an update of its own.
 
-It makes real changes
-Rabbid Lab changes real things: users, groups and organizational units in Active Directory, Group Policy objects, DNS records, and the computers that run its client. It runs scripts and installs software on those computers when you tell it to. Not every change can be undone, and some, such as deleting from the AD Recycle Bin, cannot be reversed at all.
+Changes take effect immediately
+Rabbid Lab works on your live environment, not on a copy of it. It changes users, groups and organizational units in Active Directory, Group Policy objects, DNS records, and the computers that run its client. It runs scripts and installs software on those computers when you tell it to. Not every change can be undone, and some, such as deleting from the AD Recycle Bin, cannot be reversed at all.
 
 You are responsible for your environment
 Test a change before you make it on computers people rely on. Keep backups of your domain controllers and of the data on your computers, and check that you can restore them. Read what a change will do before you confirm it, and give the service account only the permissions it needs.

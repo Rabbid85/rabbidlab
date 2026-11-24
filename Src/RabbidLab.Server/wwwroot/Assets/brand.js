@@ -21,7 +21,7 @@
     return i >= 0 ? [SWATCHES[i][1], SWATCHES[i][2]] : [lighter(accent, 0.15), accent];
   };
   // The sign-in card as the lab set it (Settings, Appearance, Sign-in page), and the lab's look for people on System.
-  const SIGNIN = { card: 'whole', style: 'glass', glass: 65, size: 'larger', quote: 'visit', quoteKind: 'motivational', quotes: [] };
+  const SIGNIN = { card: 'whole', style: 'black', glass: 52, size: 'larger', quote: 'visit', quoteKind: 'motivational', quotes: [] };
   let now = { name: null, icon: null, accent: null, tagline: null, background: null, ...SIGNIN, look: null };
   try {
     now = { ...now, ...JSON.parse(localStorage.getItem(KEY) || '{}') };

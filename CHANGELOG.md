@@ -2,6 +2,13 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.383 (2026-11-23)
+
+- New card style for the sign-in page, Black glass: black glass that shows the background through, lightly blurred. It is the card style now, at 52% opacity. A lab that already picked a card style in Settings, Appearance keeps its own.
+- The lists under Domain and Domain controller on the sign-in page take the colour of the card, and their arrow turns over while the list is open.
+- Black glass is also in Settings, Appearance for the whole app, windows, the side panel, menus and toasts.
+- The Use at your own risk notice says more plainly that Rabbid Lab works on your live environment. Its wording changed, so each account is asked to accept it once more.
+
 ## 1.1.382 (2026-11-23)
 
 - New Connected apps page, in its own part of the sidebar. Connect an app (SCIM 2.0, Google Workspace, or any other app through your own PowerShell scripts) and Rabbid Lab reads its accounts, groups and roles and matches each account to an Active Directory user.

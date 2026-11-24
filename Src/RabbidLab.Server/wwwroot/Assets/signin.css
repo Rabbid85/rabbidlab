@@ -230,6 +230,22 @@ html[data-si-card="open"] .card-foot { border: 1px solid var(--sty-signin-edge, 
 html[data-si-card="split"][data-sty-signin] .signin-card { border-color: var(--sty-signin-edge); background: none; }
 html[data-si-card="split"][data-sty-signin] .side { background: var(--sty-signin-bg); backdrop-filter: var(--sty-signin-blur); }
 html[data-si-card="split"][data-sty-signin] .card-body, html[data-si-card="split"][data-sty-signin] .card-foot { background: #11131D; }
+/* Black glass, the card's style unless the lab picks another: one even sheet of glass. The left side and the foot get no
+   shade of their own, and the boxes are a shade darker than the card with a line a little brighter than its edge. */
+html[data-si-card="whole"][data-sty-signin="black"] .side { border-right-color: var(--sty-signin-edge); background: none; }
+html[data-si-card="whole"][data-sty-signin="black"] .card-foot { border-top-color: var(--sty-signin-edge); background: none; }
+html[data-sty-signin="black"] .input input, html[data-sty-signin="black"] .foot-pill { border-color: color-mix(in srgb, var(--sty-signin-edge), rgb(255 255 255 / .18)); background: rgb(0 0 0 / .28); }
+html[data-sty-signin="black"] .input input:focus { border-color: var(--accent); }
+/* The lists under Domain and Domain controller, where the form is in a style: the card's own colour, solid and a touch
+   lighter, so nothing behind shows through and no second blur is redrawn as the background moves. The rows light up with
+   a faint band, and the arrow and the eye brighten with no box behind them. */
+html[data-sty-signin]:not([data-si-card="split"]) .combo-list { border-color: color-mix(in srgb, var(--sty-signin-edge), rgb(255 255 255 / .18)); background: color-mix(in srgb, rgb(from var(--sty-signin-bg) r g b / 1), white 4%); }
+html[data-sty-signin]:not([data-si-card="split"]) .combo-list li.active, html[data-sty-signin]:not([data-si-card="split"]) .combo-list li:not(.empty):hover { background: rgb(255 255 255 / .07); }
+html[data-sty-signin]:not([data-si-card="split"]) .input .end:hover { background: none; color: var(--title); }
+/* The arrow turns over while its list is open. */
+.combo .end svg { transition: transform .15s; }
+.combo:has(.combo-list:not([hidden])) .end { color: var(--title); }
+.combo:has(.combo-list:not([hidden])) .end svg { transform: rotate(180deg); }
 /* Size: the left side grows most; the words and boxes stay the same size. The card's top moves up by half of what it grew. */
 @media (min-width: 901px) {
   html[data-si-size="larger"] .signin-card { grid-template-columns: minmax(0, 560fr) minmax(0, 440fr); max-width: 1000px; min-height: 540px; }

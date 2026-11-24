@@ -422,8 +422,8 @@
           <div class="ds-r"><select id="br-bg" aria-label="Sign-in background"></select><canvas class="br-bg-preview" id="br-bg-preview" aria-hidden="true"></canvas></div></div>
         <div class="ds-row"><div class="ds-l"><b>Card</b><span>Whole card puts all of the sign-in card in its style. Open left side puts the time, the quote and the name straight on the background. Styled left side keeps the form solid.</span></div>
           <div class="ds-r"><select id="br-card" aria-label="Sign-in card"><option value="whole">Whole card</option><option value="open">Open left side</option><option value="split">Styled left side, solid form</option></select></div></div>
-        <div class="ds-row"><div class="ds-l"><b>Card style</b><span>Smoked glass and frosted glass show the background through the card, blurred. Dark is nearly solid. Solid is the card as it always was.</span></div>
-          <div class="ds-r"><select id="br-style" aria-label="Sign-in card style"><option value="glass">Smoked glass</option><option value="frost">Frosted glass</option><option value="dark">Dark</option><option value="solid">Solid</option></select></div></div>
+        <div class="ds-row"><div class="ds-l"><b>Card style</b><span>Smoked glass, frosted glass and black glass show the background through the card, blurred. Dark is nearly solid. Solid is the card as it always was.</span></div>
+          <div class="ds-r"><select id="br-style" aria-label="Sign-in card style"><option value="black">Black glass</option><option value="glass">Smoked glass</option><option value="frost">Frosted glass</option><option value="dark">Dark</option><option value="solid">Solid</option></select></div></div>
         <div class="ds-row" id="br-glass-row"><div class="ds-l"><b>Glass opacity</b><span>How solid the card's glass is. Higher is easier to read.</span></div>
           <div class="ds-r"><input type="range" class="ds-range" id="br-glass" min="20" max="95" step="5" aria-label="Sign-in glass opacity"><b class="ds-range-v" id="br-glass-v"></b></div></div>
         <div class="ds-row"><div class="ds-l"><b>Card size</b><span>The left side grows the most. The text and boxes stay the same size.</span></div>
@@ -461,8 +461,8 @@
       </section>
       <section class="ds-sec" data-sec="style"><h3 class="ds-h has-reset">Style <small class="ds-scope">Just you</small><span class="ds-pair"><button type="button" class="ds-btn" id="style-reset">Reset</button></span></h3>
         <p class="sq-lead">How windows, the side panel, menus, the opening screen and toasts look. Each can follow the style for the whole app or have its own.</p>
-        <div class="ds-row"><div class="ds-l"><b>Style for the whole app</b><span>Solid is the console as it always was. Smoked glass and frosted glass show the page through, blurred. Dark is nearly solid.</span></div>
-          <div class="ds-r"><select id="style-look" aria-label="Style for the whole app"><option value="solid">Solid</option><option value="glass">Smoked glass</option><option value="frost">Frosted glass</option><option value="dark">Dark</option></select></div></div>
+        <div class="ds-row"><div class="ds-l"><b>Style for the whole app</b><span>Solid is the console as it always was. Smoked glass, frosted glass and black glass show the page through, blurred. Dark is nearly solid.</span></div>
+          <div class="ds-r"><select id="style-look" aria-label="Style for the whole app"><option value="solid">Solid</option><option value="glass">Smoked glass</option><option value="frost">Frosted glass</option><option value="black">Black glass</option><option value="dark">Dark</option></select></div></div>
         <div class="ds-row" id="style-glass-row"><div class="ds-l"><b>Glass opacity</b><span>How solid the glass is. Higher is easier to read.</span></div>
           <div class="ds-r"><input type="range" class="ds-range" id="style-glass" min="20" max="95" step="5" aria-label="Glass opacity"><b class="ds-range-v" id="style-glass-v"></b></div></div>
         <div class="ds-row"><div class="ds-l"><b>Use everywhere</b><span>Sets windows, the side panel, menus, the opening screen and toasts to Same as the app.</span></div>
@@ -483,8 +483,8 @@
         <div class="ds-row"><div class="ds-l"><b>Position</b><span>Where on the screen toasts appear.</span></div><div class="ds-r"><select id="toast-at" aria-label="Toast position">
           <option value="tl">Top left</option><option value="tc">Top middle</option><option value="tr">Top right</option>
           <option value="bl">Bottom left</option><option value="bc">Bottom middle</option><option value="br">Bottom right</option></select></div></div>
-        <div class="ds-row"><div class="ds-l"><b>Style</b><span>Same as the app uses Style for the whole app above. Smoked glass and frosted glass show the page through the toast, blurred. Dark is nearly solid. Solid is the console's card colour.</span></div>
-          <div class="ds-r"><select id="toast-look" aria-label="Toast style"><option value="app">Same as the app</option><option value="glass">Smoked glass</option><option value="frost">Frosted glass</option><option value="dark">Dark</option><option value="solid">Solid</option></select></div></div>
+        <div class="ds-row"><div class="ds-l"><b>Style</b><span>Same as the app uses Style for the whole app above. Smoked glass, frosted glass and black glass show the page through the toast, blurred. Dark is nearly solid. Solid is the console's card colour.</span></div>
+          <div class="ds-r"><select id="toast-look" aria-label="Toast style"><option value="app">Same as the app</option><option value="glass">Smoked glass</option><option value="frost">Frosted glass</option><option value="black">Black glass</option><option value="dark">Dark</option><option value="solid">Solid</option></select></div></div>
         <div class="ds-row" id="toast-glass-row"><div class="ds-l"><b>Glass opacity</b><span>How solid the glass is. Higher is easier to read.</span></div>
           <div class="ds-r"><input type="range" class="ds-range" id="toast-glass" min="20" max="95" step="5" aria-label="Glass opacity"><b class="ds-range-v" id="toast-glass-v"></b></div></div>
         <div class="ds-row"><div class="ds-l"><b>Show for</b><span>How long a toast stays on screen. A line along its foot shows the time left and stops while the pointer is on it.</span></div>

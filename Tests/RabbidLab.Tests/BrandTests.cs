@@ -146,7 +146,7 @@ public sealed class BrandTests
         Brand.Apply(s, form);
         var after = JsonSerializer.SerializeToElement(Brand.Read(s));
 
-        Assert.Equal(("whole", "glass", 65, "larger", "visit", "motivational"), (start.GetProperty("card").GetString(), start.GetProperty("style").GetString(),
+        Assert.Equal(("whole", "black", 52, "larger", "visit", "motivational"), (start.GetProperty("card").GetString(), start.GetProperty("style").GetString(),
             start.GetProperty("glass").GetInt32(), start.GetProperty("size").GetString(), start.GetProperty("quote").GetString(), start.GetProperty("quoteKind").GetString()));
         Assert.Equal(("split", "frost", 40, "largest", "day", "own"), (after.GetProperty("card").GetString(), after.GetProperty("style").GetString(),
             after.GetProperty("glass").GetInt32(), after.GetProperty("size").GetString(), after.GetProperty("quote").GetString(), after.GetProperty("quoteKind").GetString()));

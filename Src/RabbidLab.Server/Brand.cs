@@ -34,8 +34,8 @@ public static partial class Brand
     /// <summary>The sign-in card: the whole card in the style, the left side open on the background, or the left side in the style and the form solid.</summary>
     public static readonly string[] Cards = ["whole", "open", "split"];
 
-    /// <summary>The style of the sign-in card: see-through glass (with an opacity), nearly solid, or the console's card colour.</summary>
-    public static readonly string[] Styles = ["glass", "frost", "dark", "solid"];
+    /// <summary>The style of the sign-in card: see-through glass (with an opacity; black is the one it starts with), nearly solid, or the console's card colour.</summary>
+    public static readonly string[] Styles = ["glass", "frost", "black", "dark", "solid"];
 
     /// <summary>The size of the sign-in card: as it was, a little larger, or larger (the left side grows most).</summary>
     public static readonly string[] Sizes = ["now", "larger", "largest"];
@@ -65,8 +65,8 @@ public static partial class Brand
         // One picked before it left the list (such as Data rain or Ink) shows as Squares.
         background = Backgrounds.Contains(s.SignInBackground, StringComparer.Ordinal) ? s.SignInBackground : "squares",
         card = Pick(Cards, s.SignInCard, "whole"),
-        style = Pick(Styles, s.SignInStyle, "glass"),
-        glass = Math.Clamp(s.SignInGlass ?? 65, GlassLeast, GlassMost),
+        style = Pick(Styles, s.SignInStyle, "black"),
+        glass = Math.Clamp(s.SignInGlass ?? 52, GlassLeast, GlassMost),
         size = Pick(Sizes, s.SignInSize, "larger"),
         quote = Pick(QuoteModes, s.SignInQuote, "visit"),
         quoteKind = Pick(QuoteKinds, s.SignInQuoteKind, "motivational"),
