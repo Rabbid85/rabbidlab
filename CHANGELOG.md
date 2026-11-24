@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.395 (2026-11-24)
+
+- The flask in the update window and on the opening screen is a little smaller.
+
 ## 1.1.394 (2026-11-24)
 
 - The moon on the Overview banner is softer: no outline, and faint patches instead of dark spots.
