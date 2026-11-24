@@ -26,7 +26,8 @@ a { color: #9E59CF; text-decoration: none; }
 a:hover { text-decoration: underline; }
 .sky { position: fixed; inset: 0; z-index: -1; background: var(--night); }
 .sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
-.dev-tag { display: none; font-size: 11px; font-weight: 700; letter-spacing: .08em; color: var(--night); background: var(--amber); border-radius: 4px; padding: 1px 6px; }
+/* In the lab's accent, purple by default ("Needs to be purple, like default color now"), no longer amber. */
+.dev-tag { display: none; font-size: 11px; font-weight: 700; letter-spacing: .08em; color: #fff; background: var(--accent); border-radius: 4px; padding: 1px 6px; }
 .is-dev .dev-tag { display: inline-block; }
 
 /* The console's frame: the top bar across, the rail down the left, the page beside it. */

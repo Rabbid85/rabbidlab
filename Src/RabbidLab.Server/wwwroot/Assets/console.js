@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.401', [
+    'The moonlight on the water is softer: half as many strokes, a little blurred, with no sharp copy on top.',
+    'The DEV tag is in the accent colour, purple by default, in place of yellow.']],
   ['1.1.400', [
     'Every banner has the same night scene: the other pages show the Overview drawing redrawn for their height, with the same hills, moon and lake in the same places.',
     'The light from the moon on the water is softer, and the strip along the foot of each banner is solid, so no light shows through it.',
@@ -1284,6 +1287,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.401': ['2026-11-24', 'update', 'Softer moonlight on the water, and a purple DEV tag'],
   '1.1.400': ['2026-11-24', 'update', 'One night scene on every banner, and purple for new installs'],
   '1.1.399': ['2026-11-24', 'update', 'Pages line up with their banner, and smaller buttons on it'],
   '1.1.398': ['2026-11-24', 'feature', 'The Overview banner on every page', 'banners.jpg'],

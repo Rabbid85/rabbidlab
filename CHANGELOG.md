@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.401 (2026-11-24)
+
+- The moonlight on the water is softer: half as many strokes, a little blurred, with no sharp copy on top.
+- The DEV tag is in the accent colour, purple by default, in place of yellow.
+
 ## 1.1.400 (2026-11-24)
 
 - Every banner has the same night scene: the other pages show the Overview drawing redrawn for their height, with the same hills, moon and lake in the same places.

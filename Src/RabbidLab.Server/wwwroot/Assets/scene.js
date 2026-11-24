@@ -112,14 +112,17 @@
     const beams = rays(mx, my, 7, r, k.rayLen);
     const trees = forest(r, L3, 0, W, 9, 20, 15, k.tree);
     // The lake: the far shore with its pines (rising where it meets the hills at 1240), the water, the shore upside down in it,
-    // and the moon's light breaking across it in rows of short strokes with gaps, wider toward the viewer, once soft and still
-    // and once sharp and shimmering ("the light on the river here looks a bit too much": two thirds as bright).
+    // and the moon's light breaking across it in rows of short strokes with gaps, wider toward the viewer ("the light on the
+    // river here looks a bit too much": two thirds as bright).
     const q = rnd(19);
     const SH = m(436);
     const shore = ridge(q, 436 - 9, 10, 0.5, [[1240, 16, 170]]);
     const band = `M0 ${f1(SH)}L${shore.map(([a, b]) => `${f1(a)} ${f1(Math.min(b, SH))}`).join('L')}L${W} ${f1(SH)}Z${forest(q, shore, 0, W, 10, 28, 13, k.tree * 0.7 + k.near * 0.3)}`;
+    // Every other row is drawn, a little blurred and gently shimmering, with no sharp copy on top ("This needs to be softened,
+    // the light looks... odd", then "this is sexy" of the fewer strokes).
     let glints = '';
     for (let i = 0; i < 40; i++) {
+      const row = i % 2 === 0;
       const t = (i + q() * 0.8) / 40;
       const y = SH + 3 + t * (H - SH - 6);
       const span = (10 + t * 96) * k.glint;
@@ -127,7 +130,8 @@
       const end = gx + span;
       while (gx < end) {
         const w = Math.min(end - gx, 2 + q() * span * 0.4);
-        glints += `<rect class="ovs-d${1 + Math.floor(q() * 4)}" x="${f1(gx)}" y="${f1(y)}" width="${f1(w)}" height="${f1((0.6 + t * 1.2) * k.glint)}" rx=".6" opacity="${((0.14 + q() * 0.46 * (1 - t * 0.45)) * 0.65).toFixed(2)}"/>`;
+        const stroke = `<rect class="ovs-d${1 + Math.floor(q() * 4)}" x="${f1(gx)}" y="${f1(y)}" width="${f1(w)}" height="${f1((0.6 + t * 1.2) * k.glint)}" rx=".6" opacity="${((0.14 + q() * 0.46 * (1 - t * 0.45)) * 0.65).toFixed(2)}"/>`;
+        if (row) glints += stroke;
         gx += w + 2 + q() * span * 0.2;
       }
     }
@@ -152,7 +156,7 @@
       ['soft', `<g transform="translate(0 ${f1(2 * SH)}) scale(1 -1)" opacity=".55" filter="url(#ovs-b1)"><path class="ovs-l4" d="${band}"/></g>`],
       ['right', `<ellipse class="ovs-sheen" cx="${mx}" cy="${f1(SH + sy)}" rx="${srx}" ry="${sry}" filter="url(#ovs-b24)"/>`],
       ['all', `<path class="ovs-ripple" d="${ripples}"/>`],
-      ['right', `<g class="ovs-glint" filter="url(#ovs-b1)">${glints}</g><g class="ovs-glint ovs-shim" opacity=".5">${glints}</g>`],
+      ['right', `<g class="ovs-glint ovs-shim" filter="url(#ovs-b1)" opacity=".7">${glints}</g>`],
       ['both', `<path class="ovs-l4" d="${band}"/>`],
       ['both', land(near, 'ovs-l5') + `<path class="ovs-l5" d="${forest(q, near, 0, 380, 60, 125, 26, k.near)}${forest(q, near, 1240, W, 60, 125, 26, k.near)}"/>`],
     ]) + '</svg>';
