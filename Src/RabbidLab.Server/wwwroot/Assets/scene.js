@@ -51,7 +51,6 @@
       }
       return s;
     };
-    const fog = (y, h, op) => `<rect class="ovs-fog" x="0" y="${y}" width="${W}" height="${h}" opacity="${op}"/>`;
     // The moon's light on the water below it: rows of short strokes with gaps, wider toward the viewer, once soft and still
     // and once sharp and shimmering.
     const glints = (r, mx, top, pad, rows, wide, thick) => {
@@ -70,8 +69,15 @@
       }
       return `<g class="ovs-glint" filter="url(#ovs-b1)">${s}</g><g class="ovs-glint ovs-shim" opacity=".7">${s}</g>`;
     };
-    return { ridge, yAt, land, forest, stars, fog, glints };
+    return { ridge, yAt, land, forest, stars, glints };
   };
+  // A scene twice as wide as it is drawn: the drawing on the right, and on its left its mirror image without the moon and its
+  // light, so a wide banner shows more land and sky instead of zooming in and lifting the moon out of sight ("When dev is
+  // full screen the moon goes way up"). Each layer is [where, svg]: 'all' drawn once across the whole width, 'right' on the
+  // drawing only, 'both' on both sides overlapping by one unit so solid land shows no seam, 'soft' on both without the
+  // overlap, for what can be seen through.
+  const twice = (W, layers) => layers.map(([where, s]) => (where === 'all' ? s
+    : `<g transform="translate(${W} 0)">${s}</g>${where === 'right' ? '' : `<g transform="translate(${where === 'both' ? W + 1 : W} 0) scale(-1 1)">${s}</g>`}`)).join('');
 
   // Soft shafts of light falling from the moon.
   const rays = (x, y, n, r, len) => {
@@ -103,7 +109,7 @@
   const tall = () => {
     const W = 1600;
     const H = 600;
-    const { ridge, land, forest, stars, fog, glints } = kit(W, H);
+    const { ridge, land, forest, stars, glints } = kit(W, H);
     const r = rnd(7);
     const [mx, my] = [1080, 130];
     const L1 = ridge(r, 350, 80, 0.55, [[700, 90, 150], [1400, 120, 160]]);
@@ -119,31 +125,36 @@
     const band = `M0 ${SH}L${shore.map(([a, b]) => `${f1(a)} ${f1(Math.min(b, SH))}`).join('L')}L${W} ${SH}Z${forest(q, shore, 0, W, 10, 28, 13)}`;
     const light = glints(q, mx, SH + 3, 3, 40, [10, 96, 6, 26], 1.2);
     let ripples = '';
-    for (let i = 0; i < 11; i++) ripples += `M0 ${f1(SH + 6 + (i ** 1.5) * 4.6)}H${W}`;
+    for (let i = 0; i < 11; i++) ripples += `M0 ${f1(SH + 6 + (i ** 1.5) * 4.6)}H${2 * W}`;
     const near = ridge(q, 660, 20, 0.5, [[0, 175, 170], [W, 185, 200]]);
-    return `<svg class="ovs" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMaxYMid slice" aria-hidden="true">`
-      + `<rect width="${W}" height="${H}" fill="url(#ovs-sky)"/><g>${sky}</g>${meteor(300, 90, 14)}`
-      + `<circle cx="${mx}" cy="${my}" r="240" fill="url(#ovs-glow)" opacity="${HAZE}"/>${beams}${moon(mx, my, 28)}`
-      + `<g class="ovs-drift" filter="url(#ovs-b6)">${cloud(mx - 70, my + 30, 250)}${cloud(mx + 150, my - 34, 150)}</g>`
-      + land(L1, 'ovs-l1', 0.5) + fog(250, 170, 0.55)
-      + land(L2, 'ovs-l2', 0.4) + fog(320, 150, 0.5)
-      + land(L3, 'ovs-l3', 0.3) + `<path class="ovs-l3" d="${trees}"/>` + fog(395, 130, 0.42)
-      + '<ellipse class="ovs-mist" cx="700" cy="455" rx="420" ry="26" filter="url(#ovs-b24)"/>'
-      + `<rect x="0" y="${SH}" width="${W}" height="${H - SH}" fill="url(#ovs-water)"/>`
-      + `<g transform="translate(0 ${2 * SH}) scale(1 -1)" opacity=".55" filter="url(#ovs-b1)"><path class="ovs-l4" d="${band}"/></g>`
-      + `<ellipse class="ovs-sheen" cx="${mx}" cy="${SH + 80}" rx="56" ry="110" filter="url(#ovs-b24)"/>`
-      + `<path class="ovs-ripple" d="${ripples}"/>${light}`
-      + `<path class="ovs-l4" d="${band}"/>`
-      + land(near, 'ovs-l5') + `<path class="ovs-l5" d="${forest(q, near, 0, 380, 60, 125, 26)}${forest(q, near, 1240, W, 60, 125, 26)}"/>`
-      + '</svg>';
+    const fog = (y, h, op) => `<rect class="ovs-fog" x="0" y="${y}" width="${2 * W}" height="${h}" opacity="${op}"/>`;
+    return `<svg class="ovs" viewBox="0 0 ${2 * W} ${H}" preserveAspectRatio="xMaxYMid slice" aria-hidden="true">` + twice(W, [
+      ['all', `<rect width="${2 * W}" height="${H}" fill="url(#ovs-sky)"/>`],
+      ['soft', `<g>${sky}</g>`],
+      ['right', `${meteor(300, 90, 14)}<circle cx="${mx}" cy="${my}" r="240" fill="url(#ovs-glow)" opacity="${HAZE}"/>${beams}${moon(mx, my, 28)}`
+        + `<g class="ovs-drift" filter="url(#ovs-b6)">${cloud(mx - 70, my + 30, 250)}${cloud(mx + 150, my - 34, 150)}</g>`],
+      ['both', land(L1, 'ovs-l1', 0.5)], ['all', fog(250, 170, 0.55)],
+      ['both', land(L2, 'ovs-l2', 0.4)], ['all', fog(320, 150, 0.5)],
+      ['both', land(L3, 'ovs-l3', 0.3) + `<path class="ovs-l3" d="${trees}"/>`], ['all', fog(395, 130, 0.42)],
+      ['soft', '<ellipse class="ovs-mist" cx="700" cy="455" rx="420" ry="26" filter="url(#ovs-b24)"/>'],
+      ['all', `<rect x="0" y="${SH}" width="${2 * W}" height="${H - SH}" fill="url(#ovs-water)"/>`],
+      ['soft', `<g transform="translate(0 ${2 * SH}) scale(1 -1)" opacity=".55" filter="url(#ovs-b1)"><path class="ovs-l4" d="${band}"/></g>`],
+      ['right', `<ellipse class="ovs-sheen" cx="${mx}" cy="${SH + 80}" rx="56" ry="110" filter="url(#ovs-b24)"/>`],
+      ['all', `<path class="ovs-ripple" d="${ripples}"/>`],
+      ['right', light],
+      ['both', `<path class="ovs-l4" d="${band}"/>`],
+      ['both', land(near, 'ovs-l5') + `<path class="ovs-l5" d="${forest(q, near, 0, 380, 60, 125, 26)}${forest(q, near, 1240, W, 60, 125, 26)}"/>`],
+    ]) + '</svg>';
   };
 
   // Every other page's: low and wide, anchored right, so the moon, the misty ridges, the treeline and the lake stay in view
-  // at any width, all above the strip along the foot. Overview's own scene cut this thin lost the trees and the lake.
+  // at any width, all above the strip along the foot. Overview's own scene cut this thin lost the trees and the lake. One
+  // cloud, right under the moon and in front of the far hill so it doesn't hide it, swaying a little either side of the moon
+  // ("Remove the top right cloud", "The one under the moon can move right under it").
   const low = () => {
     const W = 2400;
     const H = 300;
-    const { ridge, land, forest, stars, fog, glints } = kit(W, H);
+    const { ridge, land, forest, stars, glints } = kit(W, H);
     const r = rnd(29);
     const sky = stars(r, 240, 150, 1.3);
     const [mx, my] = [2000, 52];
@@ -156,20 +167,23 @@
     const light = glints(r, mx, SH + 2, 2, 26, [8, 70, 4, 20], 1);
     const beams = rays(mx, my, 6, r, 200);
     const near = ridge(r, 330, 10, 0.5, [[0, 160, 220], [W, 175, 260]]);
-    return `<svg class="ovs" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMaxYMid slice" aria-hidden="true">`
-      + `<rect width="${W}" height="${H}" fill="url(#ovs-sky)"/><g>${sky}</g>${meteor(1450, 26, 10)}`
-      + `<circle cx="${mx}" cy="${my}" r="170" fill="url(#ovs-glow)" opacity="${HAZE}"/>${beams}${moon(mx, my, 22)}`
-      + `<g class="ovs-drift" filter="url(#ovs-b6)">${cloud(mx - 60, my + 24, 200)}${cloud(mx + 150, my - 22, 120)}</g>`
-      + land(L1, 'ovs-l1', 0.5) + fog(74, 60, 0.5)
-      + land(L2, 'ovs-l2', 0.4) + fog(104, 50, 0.45)
-      + land(L3, 'ovs-l3', 0.3) + `<path class="ovs-l3" d="${forest(r, L3, 0, W, 8, 18, 12, 3)}"/>` + fog(130, 38, 0.35)
-      + '<ellipse class="ovs-mist" cx="1300" cy="162" rx="700" ry="10" filter="url(#ovs-b24)"/>'
-      + `<rect x="0" y="${SH}" width="${W}" height="${H - SH}" fill="url(#ovs-water)"/>`
-      + `<g transform="translate(0 ${2 * SH}) scale(1 -1)" opacity=".55" filter="url(#ovs-b1)"><path class="ovs-l4" d="${band}"/></g>`
-      + `<ellipse class="ovs-sheen" cx="${mx}" cy="${SH + 50}" rx="44" ry="70" filter="url(#ovs-b24)"/>${light}`
-      + `<path class="ovs-l4" d="${band}"/>`
-      + land(near, 'ovs-l5') + `<path class="ovs-l5" d="${forest(r, near, 0, 520, 40, 80, 22, 3)}${forest(r, near, 1900, W, 40, 80, 22, 3)}"/>`
-      + '</svg>';
+    const fog = (y, h, op) => `<rect class="ovs-fog" x="0" y="${y}" width="${2 * W}" height="${h}" opacity="${op}"/>`;
+    return `<svg class="ovs" viewBox="0 0 ${2 * W} ${H}" preserveAspectRatio="xMaxYMid slice" aria-hidden="true">` + twice(W, [
+      ['all', `<rect width="${2 * W}" height="${H}" fill="url(#ovs-sky)"/>`],
+      ['soft', `<g>${sky}</g>`],
+      ['right', `${meteor(1450, 26, 10)}<circle cx="${mx}" cy="${my}" r="170" fill="url(#ovs-glow)" opacity="${HAZE}"/>${beams}${moon(mx, my, 22)}`],
+      ['both', land(L1, 'ovs-l1', 0.5)],
+      ['right', `<g class="ovs-sway" filter="url(#ovs-b6)">${cloud(mx - 25, my + 28, 170)}</g>`],
+      ['all', fog(74, 60, 0.5)],
+      ['both', land(L2, 'ovs-l2', 0.4)], ['all', fog(104, 50, 0.45)],
+      ['both', land(L3, 'ovs-l3', 0.3) + `<path class="ovs-l3" d="${forest(r, L3, 0, W, 8, 18, 12, 3)}"/>`], ['all', fog(130, 38, 0.35)],
+      ['soft', '<ellipse class="ovs-mist" cx="1300" cy="162" rx="700" ry="10" filter="url(#ovs-b24)"/>'],
+      ['all', `<rect x="0" y="${SH}" width="${2 * W}" height="${H - SH}" fill="url(#ovs-water)"/>`],
+      ['soft', `<g transform="translate(0 ${2 * SH}) scale(1 -1)" opacity=".55" filter="url(#ovs-b1)"><path class="ovs-l4" d="${band}"/></g>`],
+      ['right', `<ellipse class="ovs-sheen" cx="${mx}" cy="${SH + 50}" rx="44" ry="70" filter="url(#ovs-b24)"/>${light}`],
+      ['both', `<path class="ovs-l4" d="${band}"/>`],
+      ['both', land(near, 'ovs-l5') + `<path class="ovs-l5" d="${forest(r, near, 0, 520, 40, 80, 22, 3)}${forest(r, near, 1900, W, 40, 80, 22, 3)}"/>`],
+    ]) + '</svg>';
   };
 
   // The gradients, blurs and the moon's outlines, once for every scene, in a drawing that is always laid out: a scene on a

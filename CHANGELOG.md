@@ -2,6 +2,13 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.399 (2026-11-24)
+
+- Every page lines up with the edges of its banner: the tabs, filters and lists start and end where the banner does. With Layout set to Centered, the banner is the width of the page column.
+- The buttons on the banner strip are smaller and quieter. The main one, such as Add a link, is its words with an accent icon, and the rest are icons with a hint, with a thin line between each group.
+- On a very wide window the banners show more hills instead of zooming in, so the moon stays where it is.
+- The smaller banners have one cloud, right under the moon.
+
 ## 1.1.398 (2026-11-24)
 
 - Links, Sensors, Devices, Network, Active Directory, Group Policy and the other pages have a smaller version of the Overview banner: the same night scene with the moon, hills, trees and lake, the title at the bottom left, and the same strip along the foot with the numbers.

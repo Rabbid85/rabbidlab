@@ -1,8 +1,9 @@
 /* The banners. Overview's (.ovb): a rounded panel with the night scene (scene.js) behind it, the headline at the foot on the
    left with the sky open above it, and a glass strip along the bottom with the numbers and, at its end, the buttons. It has
    a fixed height and nothing on it changes size when an update comes in, so it never moves. Every other page's (.hero) is
-   a smaller one of the same, further down. */
-.ovb, .hero { position: relative; isolation: isolate; margin: 20px 24px 0; overflow: hidden;
+   a smaller one of the same, further down. Their edges are the page's edges (--side, console.css), so every page's tabs
+   and lists line up with them ("Align all pages with borders"). */
+.ovb, .hero { position: relative; isolation: isolate; margin: 20px var(--side) 0; overflow: hidden;
   border: 1px solid rgb(255 255 255 / .08); border-radius: 18px; background: #07071a; }
 .ovb { height: 580px; }
 .ovb-art, .hero-art { position: absolute; inset: 0; z-index: -1; }
@@ -54,7 +55,7 @@
   .ovb-btns { margin-left: 0; }
 }
 @media (max-width: 700px) {
-  .ovb { margin: 14px 12px 0; }
+  .ovb { margin-top: 14px; }
   .ovb-nums > div, .ovb-nums > div:first-child { width: auto; padding: 0 16px; }
   .ovb-nums > div:first-child { padding-left: 0; }
   .ovb-btns { flex-wrap: wrap; }
@@ -83,10 +84,9 @@
 @media (max-width: 1500px) {
   .hero-stats > div { min-width: 0; padding: 0 22px; }
   .hero-stats > div:first-child { min-width: 0; padding-left: 0; }
-  .hero-row .cmd-l { display: none; }
 }
 @media (max-width: 700px) {
-  .hero { margin: 14px 12px 0; }
+  .hero { margin-top: 14px; }
   .hero-title { margin: 96px 18px 0; font-size: 34px; }
   .hero-lead { margin: 6px 18px 18px; white-space: normal; }
   :is(.ovb, .hero) > .backlink { left: 18px; }
@@ -94,7 +94,6 @@
   .hero-stats { flex-wrap: wrap; row-gap: 12px; }
   .hero-stats > div { padding: 0 16px; }
   .hero-row > .cmdbar { flex-wrap: wrap; margin-left: 0; }
-  .hero-row > .cmdbar > .grow { display: none; }
 }
 
 /* The scene. Deep, low colours mixed from the accent, each layer of land darker the nearer it is. */
@@ -122,11 +121,14 @@
 .ovs-tw { animation: ovs-tw 3.6s ease-in-out infinite; }
 .ovs-meteor { opacity: 0; animation: ovs-meteor 11s linear 2s infinite; }
 .ovs-drift { animation: ovs-drift 30s ease-in-out infinite alternate; }
+/* The one cloud on the smaller banners sways a little either side of the moon, so it stays right under it. */
+.ovs-sway { animation: ovs-sway 30s ease-in-out infinite alternate; }
 .ovs-shim rect { transform-box: fill-box; transform-origin: center; animation: ovs-shim 2.8s ease-in-out infinite alternate; }
 .ovs-d1 { animation-delay: -.8s; } .ovs-d2 { animation-delay: -1.9s; } .ovs-d3 { animation-delay: -2.7s; } .ovs-d4 { animation-delay: -3.3s; }
 @keyframes ovs-tw { 50% { opacity: .2; } }
 /* It crosses 420 units in 1.3 s, fading in and out as it goes, then waits; it never stops in view. */
 @keyframes ovs-meteor { 0% { transform: translateX(0); opacity: 0; } 2% { opacity: 1; } 9% { opacity: .9; } 12% { transform: translateX(420px); opacity: 0; } 100% { transform: translateX(420px); opacity: 0; } }
 @keyframes ovs-drift { to { transform: translateX(160px); } }
+@keyframes ovs-sway { to { transform: translateX(50px); } }
 @keyframes ovs-shim { from { transform: scaleX(.7); } to { transform: scaleX(1.15); } }
 @media (prefers-reduced-motion: reduce) { .ovs * { animation: none !important; } }

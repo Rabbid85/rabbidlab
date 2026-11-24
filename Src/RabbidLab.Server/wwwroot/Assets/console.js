@@ -3,6 +3,11 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.399', [
+    'Every page lines up with the edges of its banner: the tabs, filters and lists start and end where the banner does. With Layout set to Centered, the banner is the width of the page column.',
+    'The buttons on the banner strip are smaller and quieter. The main one, such as Add a link, is its words with an accent icon, and the rest are icons with a hint, with a thin line between each group.',
+    'On a very wide window the banners show more hills instead of zooming in, so the moon stays where it is.',
+    'The smaller banners have one cloud, right under the moon.']],
   ['1.1.398', [
     'Links, Sensors, Devices, Network, Active Directory, Group Policy and the other pages have a smaller version of the Overview banner: the same night scene with the moon, hills, trees and lake, the title at the bottom left, and the same strip along the foot with the numbers.',
     'The buttons that were in the bar under the banner, such as Add a link, New and View, are at the right end of that strip now.',
@@ -1274,6 +1279,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.399': ['2026-11-24', 'update', 'Pages line up with their banner, and smaller buttons on it'],
   '1.1.398': ['2026-11-24', 'feature', 'The Overview banner on every page', 'banners.jpg'],
   '1.1.397': ['2026-11-24', 'update', 'A fainter glow around the moon on Overview'],
   '1.1.396': ['2026-11-24', 'fix', 'Toasts: the time line no longer jumps when you point at one'],

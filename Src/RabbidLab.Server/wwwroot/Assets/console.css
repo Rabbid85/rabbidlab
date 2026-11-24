@@ -647,45 +647,63 @@ a.button:hover, label.button:hover { background: #222536; text-decoration: none;
 .news-head i { flex: 1; height: 1px; background: var(--line); }
 .tag { display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border-radius: 5px; background: color-mix(in srgb, var(--accent-soft) 12%, transparent); color: var(--accent-soft); font-size: 11px; font-weight: 650; }
 .home .machine { margin: 22px var(--side) 0; }
-/* The page's commands at the end of its banner's strip (Links, Sensors, Active Directory, Devices, Group Policy): plain
-   icon-and-word commands, then a thin line and the view. With nothing it may do here, it isn't there. */
-.cmdbar { display: flex; flex-wrap: nowrap; align-items: center; gap: 2px; }
-.cmdbar[hidden], .cmdbar:not(:has(> :not(.cant, [hidden], .grow, .cmd-set:empty))) { display: none; }
-.cmdbar .grow { flex: none; width: 1px; height: 24px; margin: 0 10px; background: rgb(255 255 255 / .14); }
-.cmdbar:not(:has(> :not(.cant, [hidden], .grow, .gear-menu) ~ .grow)) > .grow { display: none; } /* no line with nothing before it */
+/* The page's commands at the end of its banner's strip (Links, Sensors, Active Directory, Devices, Group Policy), small and
+   quiet: the main one is its words with an accent icon and no box, the rest bare grey icons with a hint, in groups
+   (.cmd-grp) with a thin line before each, the same line as between the numbers. With nothing it may do here, it isn't there. */
+.cmdbar { display: flex; flex-wrap: nowrap; align-items: center; gap: 8px; }
+.cmdbar[hidden], .cmdbar:not(:has(> :not(.cant, [hidden], .cmd-set:empty, .cmd-grp), > .cmd-grp > :not(.cant, [hidden], .gear-menu, input))) { display: none; }
 .cmdbar .cmd-set { display: contents; } /* commands a page draws itself (Group Policy) */
+.cmd-grp { display: inline-flex; flex: none; align-items: center; gap: 2px; }
+.cmd-grp::before { content: ""; flex: none; width: 1px; height: 20px; margin-right: 6px; background: rgb(255 255 255 / .14); }
+/* A group with nothing it may show isn't there; nor is a line with nothing before it. */
+.cmd-grp:not(:has(> :not(.cant, [hidden], .gear-menu, input))) { display: none; }
+.cmdbar > .cmd-grp:first-child::before, .cmdbar > .cant:first-child + .cmd-grp::before { display: none; }
 /* The open list's own tools at the right end of its tabs (Active Directory, Devices, Group Policy): View with Compact
    or Relaxed, then Refresh and Export in one box. */
 .cmd-side { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
 .cmd-side[hidden] { display: none; }
 .cmd-side .cmd-l { margin-right: 2px; }
 #dir-rows, #dv-rows, #gpo-rows { display: contents; } /* the switch lines up with the box beside it, not on the text */
-/* New, with a thin grey edge round both halves: the left half says what it makes for the open list (New user), the
-   arrow has everything the page makes (Active Directory, Devices, Group Policy). */
-.cmdbar .cmd-pair { display: inline-flex; flex: none; align-items: stretch; gap: 0; border: 1px solid #383C52; border-radius: 8px; }
-.cmdbar .cmd-pair[hidden] { display: none; }
-.cmd-pair > .cmd-rule { width: 1px; background: #383C52; }
-.cmdbar .cmd-pair > .cmd { height: 32px; border-radius: 7px 0 0 7px; color: var(--title); font-weight: 650; }
-.cmdbar .cmd-pair > .cmd-arrow { justify-content: center; width: 30px; padding: 0; border-radius: 0 7px 7px 0; }
-.cmdbar .cmd-pair > .cmd-arrow svg { width: 14px; height: 14px; color: #8B90A5; stroke: currentColor; }
-.cmdbar .cmd-pair > .cmd-arrow:hover:not(:disabled) svg { color: var(--title); }
-/* The page's settings menu, at the very end of the bar (Links, Sensors). */
-.cmdbar .cmd-gear { display: grid; flex: none; place-items: center; width: 36px; height: 36px; margin-left: 8px; padding: 0; border: 0; border-radius: 7px; background: none; color: #B8BCCB; }
-.cmdbar .cmd-gear:hover, .cmdbar .cmd-gear:has(+ .gear-menu:popover-open) { background: #1A1D2B; color: var(--title); }
-.cmdbar .cmd-gear svg { width: 18px; height: 18px; }
-.cmdbar.bare > :not(.cmd-gear, .gear-menu) { display: none; }
-/* Only in the bar: code.cmd is the install line in Add computers, which wraps. */
-.cmdbar .cmd { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; border: 0; border-radius: 7px; background: none; color: var(--text); font-size: 14px; font-weight: 600; white-space: nowrap; }
+/* Only in the bar: code.cmd is the install line in Add computers, which wraps. 30 px, words 13 px. */
+.cmdbar .cmd { display: inline-flex; flex: none; align-items: center; justify-content: center; gap: 7px; height: 30px; padding: 0 10px 0 8px; border: 0; border-radius: 7px;
+  background: none; color: #fff; font-size: 13px; font-weight: 600; white-space: nowrap; }
 .cmdbar .cmd[hidden] { display: none; }
 .cmdbar .cmd:disabled { opacity: .45; }
-.cmdbar .cmd:hover:not(:disabled) { background: #1A1D2B; color: var(--title); }
-.cmdbar .cmd svg { flex: none; width: 16px; height: 16px; color: var(--accent-soft); }
+.cmdbar .cmd:hover:not(:disabled) { background: rgb(255 255 255 / .07); }
+.cmdbar .cmd svg { flex: none; width: 14px; height: 14px; color: var(--accent-soft); }
 .cmdbar .cmd.turning svg { animation: spin .8s linear infinite; } /* Refresh icons while it works */
+/* New (Active Directory, Devices, Group Policy) and Add a link: the words say what it makes for the open list (New user),
+   the arrow behind a thin line has everything the page makes. */
+.cmdbar .cmd-pair { display: inline-flex; flex: none; align-items: center; }
+.cmdbar .cmd-pair[hidden] { display: none; }
+.cmd-pair > .cmd-rule { flex: none; width: 1px; height: 16px; background: rgb(255 255 255 / .14); }
+.cmdbar .cmd-pair > .cmd-arrow { width: 28px; padding: 0; }
+.cmdbar .cmd-pair > .cmd-arrow svg { width: 12px; height: 12px; color: #9EA3B8; stroke: currentColor; }
+.cmdbar .cmd-pair > .cmd-arrow:hover:not(:disabled) svg { color: #fff; }
+/* The rest: bare grey icons, white when pointed at, with a hint. Their words stay for the dock (dock.js). */
+.cmd-grp .cmd { width: 30px; padding: 0; color: #9EA3B8; }
+.cmd-grp .cmd > span { display: none; }
+.cmd-grp .cmd svg { width: 15px; height: 15px; color: currentColor; }
+.cmd-grp .cmd:hover:not(:disabled), .cmd-grp .cmd[aria-pressed="true"] { color: #fff; }
+.cmd-grp .cmd[aria-pressed="true"] { background: rgb(255 255 255 / .1); }
+.cmd-grp .cmd:has(> small:not(:empty)) { width: auto; gap: 5px; padding: 0 8px; } /* Hidden, with how many */
+.hero-row .cmdbar .vswitch { gap: 2px; padding: 0; background: none; }
+.hero-row .cmdbar .vswitch button { width: 30px; height: 30px; border-radius: 7px; color: #9EA3B8; }
+.hero-row .cmdbar .vswitch button:hover { background: rgb(255 255 255 / .07); color: #fff; }
+.hero-row .cmdbar .vswitch button[aria-pressed="true"] { background: rgb(255 255 255 / .1); color: #fff; }
+.hero-row .cmdbar .vswitch svg { width: 15px; height: 15px; }
+/* The page's settings menu, at the very end (Links, Sensors). */
+.cmdbar .cmd-gear { display: grid; flex: none; place-items: center; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 7px; background: none; color: #9EA3B8; }
+.cmdbar .cmd-gear:hover, .cmdbar .cmd-gear:has(+ .gear-menu:popover-open) { background: rgb(255 255 255 / .07); color: #fff; }
+.cmdbar .cmd-gear svg { width: 15px; height: 15px; }
+/* Sensors with none yet: only the gear, as the empty card has Add. */
+.cmdbar.bare > :not(.cmd-grp:has(> .cmd-gear)) { display: none; }
+.cmdbar.bare > .cmd-grp::before { display: none; }
 .cmd-l { margin-right: 10px; color: var(--muted); font-size: 13px; font-weight: 600; }
 @media (max-width: 700px) {
   .cmd-l { display: none; }
   .news { padding: 22px 18px 4px; }
-  .home .machine { margin: 18px 18px 0; }
+  .home .machine { margin-top: 18px; }
 }
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px 22px; }
 .card h2 { margin: 0 0 12px; font-size: 16px; color: var(--title); font-weight: 600; }
@@ -940,12 +958,12 @@ section.page.home.dir-top { max-width: none; padding: 0; gap: 0; }
   .dir-top > .dir-area > .dmain { grid-row: 2; }
   .dnav { position: static; max-height: none; }
 }
-/* Appearance, Layout: Centered puts every page in a column in the middle, the banners on Overview, Links and Sensors still
-   running edge to edge behind theirs; Full width (body.layout-wide) lets pages fill the window. */
+/* Appearance, Layout: Centered puts every page in a column in the middle, its banner the column's width; Full width
+   (body.layout-wide) lets pages fill the window. Either way a page's tabs and lists start and end where its banner does. */
 body.layout-wide .page { max-width: none; margin-left: 0; margin-right: 0; }
-.home { --side: max(44px, calc((100% - 1216px) / 2)); }
-.layout-wide .home { --side: 44px; }
-@media (max-width: 700px) { .home, .layout-wide .home { --side: 18px; } }
+.home { --side: max(24px, calc((100% - 1216px) / 2)); }
+.layout-wide .home { --side: 24px; }
+@media (max-width: 700px) { .home, .layout-wide .home { --side: 12px; } }
 .home .news { padding-left: var(--side); padding-right: var(--side); }
 /* Every dropdown: the console's own arrow, set in from the edge, in place of the browser's, and a dark list when it opens. */
 select:not([multiple]):not([size]) { appearance: none; -webkit-appearance: none; padding-right: 38px; color-scheme: dark; cursor: pointer;

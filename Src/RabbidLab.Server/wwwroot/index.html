@@ -1021,25 +1021,29 @@
         <div><b id="ln-every"><i class="sk sk-num"></i></b><span>Checks</span></div>
         <div id="ln-watched-wrap" hidden><b id="ln-watched"></b><span>Watched</span></div>
       </div>
-    <!-- The commands at the end of the banner's strip: what can be done here, then the view and the gear. -->
-    <div class="cmdbar" id="ln-tools" role="toolbar" aria-label="Links" data-dock="ln-view ln-refresh ln-add+ln-newgroup">
-      <div class="cmd-pair" id="ln-add-pair" data-can="links.edit links.own">
-        <button type="button" class="cmd" id="ln-add" data-can="links.edit links.own"><svg><use href="#i-plus"/></svg><span>Add a link</span></button><i class="cmd-rule"></i>
-        <button type="button" class="cmd cmd-arrow" id="ln-add-more" aria-haspopup="menu" data-tip="More ways to add" aria-label="More ways to add"><svg class="chev"><use href="#i-chevron-down"/></svg></button></div>
-      <button type="button" class="cmd" id="ln-newgroup" data-can="links.edit"><svg><use href="#i-folder"/></svg><span>New group</span></button>
-      <button type="button" class="cmd" id="ln-refresh" data-can="links.edit"><svg><use href="#i-refresh"/></svg><span>Refresh icons</span></button>
-      <!-- The links someone hid from their own page: pressed, they show faint, each with its eye to bring it back. -->
-      <button type="button" class="cmd" id="ln-hidden" aria-pressed="false" data-tip="Show the links you hid" hidden><svg><use href="#i-eye-off"/></svg><span>Hidden</span><small id="ln-hidden-n"></small></button>
-      <span class="grow"></span>
-      <span class="cmd-l">View</span>
-      <div class="vswitch" id="ln-view"><button type="button" data-view="grid" title="Rows" aria-label="Rows"><svg><use href="#i-view-rows"/></svg></button><button type="button" data-view="cards" title="Tiles" aria-label="Tiles"><svg><use href="#i-view-tiles"/></svg></button><button type="button" data-view="links" title="Links" aria-label="Links"><svg><use href="#i-view-list"/></svg></button><button type="button" data-view="icons" title="Icons" aria-label="Icons"><svg><use href="#i-view-icons"/></svg></button></div>
-      <button type="button" class="cmd-gear" id="ln-checks" data-can="links.edit" data-tip="Settings, export, import" aria-label="Links settings, export and import" popovertarget="ln-gear-menu"><svg><use href="#i-gear"/></svg></button>
-      <div class="gear-menu" id="ln-gear-menu" popover>
-        <div class="am-links"><a class="am-link" href="#settings/links"><svg><use href="#i-gear"/></svg>Links settings</a></div>
-        <div class="am-links"><button type="button" class="am-link" id="ln-export"><svg><use href="#i-download"/></svg>Export links</button>
-          <button type="button" class="am-link" id="ln-import"><svg><use href="#i-upload"/></svg>Import links</button></div>
-      </div><input type="file" id="ln-import-file" accept=".json,application/json" hidden>
-    </div>
+      <!-- The commands at the end of the strip: Add a link in words, then icons in groups (the rest, the view, the gear). -->
+      <div class="cmdbar" id="ln-tools" role="toolbar" aria-label="Links" data-dock="ln-view ln-refresh ln-add+ln-newgroup">
+        <div class="cmd-pair" id="ln-add-pair" data-can="links.edit links.own">
+          <button type="button" class="cmd" id="ln-add" data-can="links.edit links.own"><svg><use href="#i-plus"/></svg><span>Add a link</span></button><i class="cmd-rule"></i>
+          <button type="button" class="cmd cmd-arrow" id="ln-add-more" aria-haspopup="menu" data-tip="More ways to add" aria-label="More ways to add"><svg class="chev"><use href="#i-chevron-down"/></svg></button></div>
+        <div class="cmd-grp">
+          <button type="button" class="cmd" id="ln-newgroup" data-can="links.edit" data-tip="New group" aria-label="New group"><svg><use href="#i-folder"/></svg><span>New group</span></button>
+          <button type="button" class="cmd" id="ln-refresh" data-can="links.edit" data-tip="Refresh icons" aria-label="Refresh icons"><svg><use href="#i-refresh"/></svg><span>Refresh icons</span></button>
+          <!-- The links someone hid from their own page: pressed, they show faint, each with its eye to bring it back. -->
+          <button type="button" class="cmd" id="ln-hidden" aria-pressed="false" data-tip="Show the links you hid" aria-label="Show the links you hid" hidden><svg><use href="#i-eye-off"/></svg><span>Hidden</span><small id="ln-hidden-n"></small></button>
+        </div>
+        <div class="cmd-grp">
+          <div class="vswitch" id="ln-view" role="group" aria-label="View"><button type="button" data-view="grid" data-tip="Rows" aria-label="Rows"><svg><use href="#i-view-rows"/></svg></button><button type="button" data-view="cards" data-tip="Tiles" aria-label="Tiles"><svg><use href="#i-view-tiles"/></svg></button><button type="button" data-view="links" data-tip="Links" aria-label="Links"><svg><use href="#i-view-list"/></svg></button><button type="button" data-view="icons" data-tip="Icons" aria-label="Icons"><svg><use href="#i-view-icons"/></svg></button></div>
+        </div>
+        <div class="cmd-grp">
+          <button type="button" class="cmd-gear" id="ln-checks" data-can="links.edit" data-tip="Settings, export, import" aria-label="Links settings, export and import" popovertarget="ln-gear-menu"><svg><use href="#i-gear"/></svg></button>
+          <div class="gear-menu" id="ln-gear-menu" popover>
+            <div class="am-links"><a class="am-link" href="#settings/links"><svg><use href="#i-gear"/></svg>Links settings</a></div>
+            <div class="am-links"><button type="button" class="am-link" id="ln-export"><svg><use href="#i-download"/></svg>Export links</button>
+              <button type="button" class="am-link" id="ln-import"><svg><use href="#i-upload"/></svg>Import links</button></div>
+          </div><input type="file" id="ln-import-file" accept=".json,application/json" hidden>
+        </div>
+      </div>
       </div>
     </header>
     <section class="news sn-body">
@@ -1091,20 +1095,24 @@
         <div><b id="sn-week"><i class="sk sk-num"></i></b><span>Uptime (7 days)</span></div>
         <div><b id="sn-last"><i class="sk sk-num"></i></b><span>Last check</span></div>
       </div>
-    <!-- The commands at the end of the banner's strip, as on Links. With no sensors only the gear shows: the empty card has Add. -->
-    <div class="cmdbar" id="sn-tools" role="toolbar" aria-label="Sensors" data-dock="sn-view sn-add">
-      <button type="button" class="cmd" id="sn-add" data-can="sensors.edit"><svg><use href="#i-plus"/></svg><span>Add a sensor</span></button>
-      <button type="button" class="cmd" id="sn-newgroup" data-can="sensors.edit"><svg><use href="#i-folder"/></svg><span>New group</span></button>
-      <span class="grow"></span>
-      <span class="cmd-l">View</span>
-      <div class="vswitch" id="sn-view"><button type="button" data-view="grid" title="Rows" aria-label="Rows"><svg><use href="#i-view-rows"/></svg></button><button type="button" data-view="cards" title="Tiles" aria-label="Tiles"><svg><use href="#i-view-tiles"/></svg></button></div>
-      <button type="button" class="cmd-gear" id="sn-gear" data-can="sensors.alerts sensors.edit" data-tip="Alerts and settings" aria-label="Alert rules, notifications and sensor settings" popovertarget="sn-gear-menu"><svg><use href="#i-gear"/></svg></button>
-      <div class="gear-menu" id="sn-gear-menu" popover>
-        <div class="am-links"><a class="am-link" href="#settings/alerts" data-can="sensors.alerts"><svg><use href="#i-alert"/></svg>Alert rules</a>
-          <a class="am-link" href="#settings/notifications" data-can="sensors.alerts"><svg><use href="#i-bell"/></svg>Notifications</a></div>
-        <div class="am-links"><a class="am-link" href="#settings/sensors" data-can="sensors.edit"><svg><use href="#i-key"/></svg>Saved credentials</a></div>
+      <!-- The commands at the end of the strip, as on Links. With no sensors only the gear shows: the empty card has Add. -->
+      <div class="cmdbar" id="sn-tools" role="toolbar" aria-label="Sensors" data-dock="sn-view sn-add">
+        <button type="button" class="cmd" id="sn-add" data-can="sensors.edit"><svg><use href="#i-plus"/></svg><span>Add a sensor</span></button>
+        <div class="cmd-grp">
+          <button type="button" class="cmd" id="sn-newgroup" data-can="sensors.edit" data-tip="New group" aria-label="New group"><svg><use href="#i-folder"/></svg><span>New group</span></button>
+        </div>
+        <div class="cmd-grp">
+          <div class="vswitch" id="sn-view" role="group" aria-label="View"><button type="button" data-view="grid" data-tip="Rows" aria-label="Rows"><svg><use href="#i-view-rows"/></svg></button><button type="button" data-view="cards" data-tip="Tiles" aria-label="Tiles"><svg><use href="#i-view-tiles"/></svg></button></div>
+        </div>
+        <div class="cmd-grp">
+          <button type="button" class="cmd-gear" id="sn-gear" data-can="sensors.alerts sensors.edit" data-tip="Alerts and settings" aria-label="Alert rules, notifications and sensor settings" popovertarget="sn-gear-menu"><svg><use href="#i-gear"/></svg></button>
+          <div class="gear-menu" id="sn-gear-menu" popover>
+            <div class="am-links"><a class="am-link" href="#settings/alerts" data-can="sensors.alerts"><svg><use href="#i-alert"/></svg>Alert rules</a>
+              <a class="am-link" href="#settings/notifications" data-can="sensors.alerts"><svg><use href="#i-bell"/></svg>Notifications</a></div>
+            <div class="am-links"><a class="am-link" href="#settings/sensors" data-can="sensors.edit"><svg><use href="#i-key"/></svg>Saved credentials</a></div>
+          </div>
+        </div>
       </div>
-    </div>
       </div>
     </header>
     <section class="news sn-body">
