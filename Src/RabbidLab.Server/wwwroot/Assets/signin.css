@@ -4,16 +4,19 @@ body.auth { overflow-x: hidden; }
 .backdrop { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 0; pointer-events: none; }
 /* Until the page knows whether it's setting up or signing in, the form stays blank, so it's drawn once in its final layout. */
 body.loading .card-body > *, body.loading .card-foot > *, body.loading .side-sub { visibility: hidden; }
-/* The card's top stays put whichever form shows: only its foot moves. */
-.auth-shell { position: relative; z-index: 1; min-height: 100vh; display: flex; justify-content: center; align-items: flex-start;
-  padding: max(28px, calc(50vh - 240px)) 16px 72px; }
+/* The card sits in the middle of the window, whatever its height: the room over it and the room under it (the two
+   pseudo-elements) grow by the same amount. Where the window is too short for that, the room under it stays 72px (the
+   Background pill's) and the room over it gives way, down to 28px; then the page scrolls. */
+.auth-shell { position: relative; z-index: 1; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 0 16px; }
+.auth-shell::before, .auth-shell::after { content: ""; flex: 1 1 0; min-height: 28px; }
+.auth-shell::after { min-height: 72px; }
 /* Where the card has room either side, the left padding also takes the scroll bar's width (100vw - 100%) when there is
    one, so the card and the Background pill don't jump sideways when the page starts to scroll. */
 @media (min-width: 901px) {
   .auth-shell { padding-left: calc(16px + 100vw - 100%); }
   .auth-shell > .look { left: calc(50% + (100vw - 100%) / 2); }
 }
-.signin-card { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); grid-template-rows: 1fr auto; width: 100%; max-width: 840px;
+.signin-card { flex: none; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); grid-template-rows: 1fr auto; width: 100%; max-width: 840px;
   min-height: 480px; background: #11131D; border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
 
 /* The left side: a plain panel, this computer's time at the top with a bar for the day, the lab's name at the foot. */
@@ -34,15 +37,15 @@ body.loading .card-body > *, body.loading .card-foot > *, body.loading .side-sub
 .side-sub { margin: 9px 0 0; color: #C9CCDA; font-size: 13.5px; }
 
 /* The form: a ringed avatar over the heading, both centred, then the boxes, each with its name in it, and Sign in with an
-   arrow. It starts at the same place whichever form shows. */
-.card-body { padding: 38px 36px 18px; display: flex; flex-direction: column; }
+   arrow. All of it sits in the middle of its side of the card, with as much room over it as under it. */
+.card-body { padding: 28px 36px; display: flex; flex-direction: column; justify-content: center; }
 .hello-av { display: grid; place-items: center; align-self: center; width: 60px; height: 60px; margin: 0 0 16px; border-radius: 50%;
   background: linear-gradient(135deg, var(--accent-line), var(--accent)); color: #fff; outline: 2px solid var(--accent-line); outline-offset: 5px; }
 .hello-av svg { width: 27px; height: 27px; }
 .card-body h2 { margin: 0 0 22px; text-align: center; font: 800 30px/1.1 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; letter-spacing: -.02em; color: var(--title); }
 .card-lead { margin: -18px 0 24px; text-align: center; color: var(--muted); font-size: 14.5px; line-height: 1.5; }
 
-/* Signing in with Active Directory: where it signs in, as a line under the button; Change opens the domains and controllers. */
+/* Signing in with Active Directory: where it signs in, as a line under the button; Change opens the Where you sign in window. */
 .context { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 6px; margin: 18px 0 0; color: #8E92A8; font-size: 13px; }
 .context[hidden] { display: none; }
 .context-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }
@@ -91,20 +94,37 @@ body.loading .card-body > *, body.loading .card-foot > *, body.loading .side-sub
 .input .now { position: absolute; right: 44px; display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 650; color: var(--ok); pointer-events: none; }
 .input .now::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 .input .now.off { color: var(--red); }
-/* A box picked from its list only, such as the domain once it's set up. */
-.input.pick input { cursor: pointer; caret-color: transparent; }
 
-/* The drop-down lists: domains and domain controllers. */
+/* The lists under Domain and Domain controller, joined to the box. While a list is open its box loses its bottom corners
+   and its bottom line, and the list hangs from it in the same fill and the same accent line, with a thin line between
+   them. One line a row: a dot for whether a domain controller answers, the name, how it answers, and a tick on the one
+   in use. The rows come in one after another as it opens (signin.js marks a list just opened as fresh); only opacity and
+   transform move. --list-fill, --list-line and --list-band (the row pointed at) are the list's colours, which a card in a
+   style changes (below). */
+.signin-card { --list-fill: #0C0E17; --list-line: var(--line-strong); --list-band: #1D2133; }
 .combo { position: relative; }
-.combo-list { position: absolute; z-index: 5; left: 0; right: 0; top: 48px; max-height: 210px; overflow-y: auto; margin: 0; padding: 5px; list-style: none;
-  background: #151827; border: 1px solid #2A2D3E; border-radius: 10px; }
-.combo-list li { padding: 6px 9px; border-radius: 6px; cursor: pointer; }
-.combo-list li b { display: block; color: var(--title); font-weight: 600; font-size: 13px; }
-.combo-list li small { display: block; color: var(--muted); font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.combo-list { position: absolute; z-index: 5; left: 0; right: 0; top: 43px; max-height: 210px; overflow-y: auto; margin: 0; padding: 4px; list-style: none;
+  background: var(--list-fill); border: 1px solid var(--accent); border-top-color: var(--list-line); border-radius: 0 0 10px 10px; animation: list-in .1s ease-out; }
+.combo:has(.combo-list:not([hidden])) .in-line { border-color: var(--accent); border-bottom-color: transparent; border-radius: 10px 10px 0 0; }
+.combo:has(.combo-list:not([hidden])) .input input { border-radius: 10px 10px 0 0; background: var(--list-fill); }
+.combo-list li { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 10px; border-radius: 6px; cursor: pointer; }
+.combo-list.fresh li { animation: list-row .11s ease-out backwards; animation-delay: calc(var(--i, 0) * 14ms); }
+@keyframes list-in { from { opacity: 0; } }
+@keyframes list-row { from { opacity: 0; transform: translateY(-3px); } }
+.combo-list li i { flex: none; width: 8px; height: 8px; border-radius: 50%; background: #5E6380; }
+.combo-list li i.ok { background: var(--ok); }
+.combo-list li i.bad { background: var(--red); }
+.combo-list li b { flex: 1; min-width: 0; overflow: hidden; color: var(--title); font-weight: 600; font-size: 13px; white-space: nowrap; text-overflow: ellipsis; }
+.combo-list li small { flex: none; color: #8E92A8; font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .combo-list li small.ok { color: var(--ok); }
 .combo-list li small.bad { color: var(--red); }
-.combo-list li.active, .combo-list li:hover { background: #1D2133; }
-.combo-list li.empty { cursor: default; color: var(--muted); font-size: 12.5px; }
+.combo-list li svg { flex: none; width: 15px; height: 15px; color: var(--accent-soft); visibility: hidden; }
+.combo-list li[aria-selected="true"] svg { visibility: visible; }
+.combo-list li.active, .combo-list li:not(.empty):hover { background: var(--list-band); }
+/* One row lit at a time: the one the keys are on steps aside for the one pointed at. */
+.combo-list:hover li.active:not(:hover) { background: none; }
+.combo-list li.empty { height: auto; padding: 8px 10px; cursor: default; color: var(--muted); font-size: 12.5px; line-height: 1.45; }
+@media (prefers-reduced-motion: reduce) { .combo-list, .combo-list.fresh li { animation: none; } }
 
 /* Sign in (and Create account, Verify): the width of the form, with an arrow after the words. */
 button.go { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; height: 44px; margin-top: 4px; border: 0; border-radius: 10px;
@@ -209,11 +229,11 @@ body.loading .look { visibility: hidden; }
   .side-name { position: relative; left: auto; right: auto; bottom: auto; padding: 24px 34px 22px; }
   .side-title { font-size: 28px; }
   .side-sub { margin-top: 6px; font-size: 14px; }
-  .card-body { padding: 30px 34px 22px; }
+  .card-body { padding: 26px 34px; }
   .card-foot { padding: 15px 34px; }
 }
 @media (max-width: 480px) {
-  .auth-shell { padding-top: 16px; }
+  .auth-shell::before { min-height: 16px; }
   .side-name { padding: 16px 20px 14px; }
   .card-body, .card-foot { padding-left: 20px; padding-right: 20px; }
 }
@@ -247,23 +267,48 @@ html[data-si-card="whole"][data-sty-signin="black"] .side { border-right-color: 
 html[data-si-card="whole"][data-sty-signin="black"] .card-foot { border-top-color: var(--sty-signin-edge); background: none; }
 html[data-sty-signin="black"] .input input, html[data-sty-signin="black"] .foot-pill { background: rgb(0 0 0 / .28); }
 html[data-sty-signin="black"] .in-line, html[data-sty-signin="black"] .foot-pill { border-color: color-mix(in srgb, var(--sty-signin-edge), rgb(255 255 255 / .18)); }
-/* The lists under Domain and Domain controller, where the form is in a style: the card's own colour, solid and a touch
-   lighter, so nothing behind shows through and no second blur is redrawn as the background moves. The rows light up with
+/* The lists under Domain and Domain controller, where the form is in a style: the card's own colour, solid and a shade
+   darker, so nothing behind shows through and no second blur is redrawn as the background moves. The rows light up with
    a faint band, and the arrow and the eye brighten with no box behind them. */
-html[data-sty-signin]:not([data-si-card="split"]) .combo-list { border-color: color-mix(in srgb, var(--sty-signin-edge), rgb(255 255 255 / .18)); background: color-mix(in srgb, rgb(from var(--sty-signin-bg) r g b / 1), white 4%); }
-html[data-sty-signin]:not([data-si-card="split"]) .combo-list li.active, html[data-sty-signin]:not([data-si-card="split"]) .combo-list li:not(.empty):hover { background: rgb(255 255 255 / .07); }
+html[data-sty-signin]:not([data-si-card="split"]) .signin-card { --list-fill: color-mix(in srgb, rgb(from var(--sty-signin-bg) r g b / 1), var(--night) 24%); --list-line: color-mix(in srgb, var(--sty-signin-edge), rgb(255 255 255 / .18));
+  --list-band: rgb(255 255 255 / .07); }
 html[data-sty-signin]:not([data-si-card="split"]) .input .end:hover { background: none; color: var(--title); }
 /* The arrow turns over while its list is open. */
 .combo .end svg { transition: transform .15s; }
 .combo:has(.combo-list:not([hidden])) .end { color: var(--title); }
 .combo:has(.combo-list:not([hidden])) .end svg { transform: rotate(180deg); }
-/* Size: the left side grows most; the words and boxes stay the same size. The card's top moves up by half of what it grew. */
+/* Size: the left side grows most; the words and boxes stay the same size. */
 @media (min-width: 901px) {
   html[data-si-size="larger"] .signin-card { grid-template-columns: minmax(0, 560fr) minmax(0, 440fr); max-width: 1000px; min-height: 540px; }
-  html[data-si-size="larger"] .auth-shell { padding-top: max(28px, calc(50vh - 270px)); }
   html[data-si-size="largest"] .signin-card { grid-template-columns: minmax(0, 640fr) minmax(0, 480fr); max-width: 1120px; min-height: 600px; }
-  html[data-si-size="largest"] .auth-shell { padding-top: max(28px, calc(50vh - 300px)); }
 }
+
+/* Where you sign in (signin.js): Change slides it in over the sign-in side of the card, from the card's right edge, and
+   Back to sign in slides it away. Signing in, it holds the Domain and Domain controller boxes; setting up, they are in
+   the form. It is laid out as the form is, all of it in the middle of its side, with one wide button. Its slot is the
+   sign-in side of the card, placed by the card's own grid lines, and clips it, so only transform moves. It is solid, in
+   the card's colour, so the form under it does not show through. */
+.signin-card { position: relative; }
+.where-slot { position: absolute; inset: 0; grid-column: 2; grid-row: 1 / 3; z-index: 4; overflow: hidden; }
+.where-slot[hidden] { display: none; }
+.where-win { position: relative; display: flex; flex-direction: column; justify-content: center; height: 100%; padding: 28px 36px; background: #11131D;
+  transform: translateX(101%); transition: transform .2s cubic-bezier(.4, 0, 1, 1); }
+.where-win:focus { outline: none; }
+.where-slot.open .where-win { transform: none; transition: transform .3s cubic-bezier(.16, 1, .3, 1); }
+html[data-sty-signin]:not([data-si-card="split"]) .where-win { background: color-mix(in srgb, rgb(from var(--sty-signin-bg) r g b / 1), white 3%); }
+html[data-si-card="open"] .where-slot { border-radius: 16px; }
+html[data-si-card="open"] .where-win { border: 1px solid var(--sty-signin-edge, #1F2232); border-radius: 16px; }
+.where-win h2 { margin: 0 0 6px; text-align: center; color: var(--title); font: 700 19px/1.25 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; }
+.where-lead { margin: 0 0 22px; text-align: center; color: #8E92A8; font-size: 13.5px; line-height: 1.45; }
+.where-win .auth-error { margin: 0 0 10px; }
+.where-hint { margin: 4px 0 16px; text-align: center; color: #8E92A8; font-size: 13px; line-height: 1.5; }
+.where-x { position: absolute; right: 12px; top: 12px; display: grid; place-items: center; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 8px; background: none; color: #8E92A8; }
+.where-x:hover { background: none; color: var(--title); }
+.where-x svg { width: 16px; height: 16px; }
+/* Its lists stay inside it: four rows at a time, one fewer than in the form. */
+.where-win .combo-list { max-height: 170px; }
+@media (max-width: 900px) { .where-slot { grid-column: 1; grid-row: 2 / 4; } }
+@media (prefers-reduced-motion: reduce) { .where-win, .where-slot.open .where-win { transition: none; } }
 
 /* The quote, in the middle of the left side between the time and the name. Another quote shows on the button beside it. */
 .side-quote { position: absolute; left: 34px; right: 34px; top: 54%; z-index: 1; margin: 0; transform: translateY(-50%); transition: opacity .2s ease; }

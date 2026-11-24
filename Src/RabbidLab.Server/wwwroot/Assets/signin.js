@@ -495,12 +495,14 @@
   });
 
   // A box with a list under it: typing filters the list (when it can be typed in), the arrow keys move, Enter picks.
-  const combo = ({ input, list, toggle, items, label, detail = () => '', tone = () => '', empty, typing = true, pick }) => {
+  // A row is one line: a dot in its tone (dots), its name, a word or two about it (brief), and a tick on the one in use.
+  const combo = ({ input, list, toggle, items, label, brief = () => '', tone = () => '', dots = false, empty, typing = true, pick }) => {
     let shown = [];
     let active = -1;
     let closing = 0; // the close that waits a moment after the box loses focus
 
     const render = (opening) => {
+      if (!opening) list.classList.remove('fresh'); // the arrow keys redraw it: its rows don't come in again
       list.replaceChildren();
       if (!shown.length) {
         const li = document.createElement('li');
@@ -509,22 +511,19 @@
         list.append(li);
         return;
       }
+      const inUse = input.value.trim().toLowerCase();
       shown.forEach((x, i) => {
         const li = document.createElement('li');
         li.id = `${list.id}-${i}`;
         li.setAttribute('role', 'option');
-        li.setAttribute('aria-selected', String(i === active));
+        li.setAttribute('aria-selected', String(label(x).toLowerCase() === inUse));
         li.classList.toggle('active', i === active);
-        const name = document.createElement('b');
-        name.textContent = label(x);
-        li.append(name);
-        const about = detail(x);
-        if (about) {
-          const small = document.createElement('small');
-          small.textContent = about;
-          small.className = tone(x);
-          li.append(small);
-        }
+        li.style.setProperty('--i', String(Math.min(i, 9))); // its turn to come in
+        if (dots) li.append(Object.assign(document.createElement('i'), { className: tone(x) }));
+        li.append(Object.assign(document.createElement('b'), { textContent: label(x) }));
+        const about = brief(x);
+        if (about) li.append(Object.assign(document.createElement('small'), { textContent: about, className: tone(x) }));
+        li.insertAdjacentHTML('beforeend', '<svg aria-hidden="true"><use href="#i-check"/></svg>');
         li.addEventListener('mousedown', (e) => {
           e.preventDefault();
           choose(x);
@@ -534,7 +533,7 @@
       // Scroll the list only, never the page. On opening, the item before the chosen one sits whole at the top.
       const item = active >= 0 ? $(`${list.id}-${active}`) : null;
       if (item && opening) {
-        list.scrollTop = item.previousElementSibling ? item.previousElementSibling.offsetTop - 5 : 0;
+        list.scrollTop = item.previousElementSibling ? item.previousElementSibling.offsetTop - 4 : 0;
       } else if (item && item.offsetTop < list.scrollTop) {
         list.scrollTop = item.offsetTop;
       } else if (item && item.offsetTop + item.offsetHeight > list.scrollTop + list.clientHeight) {
@@ -547,8 +546,9 @@
       const all = items();
       const text = input.value.trim().toLowerCase();
       const exact = all.some((x) => label(x).toLowerCase() === text);
-      shown = (!typing || exact || !text ? all : all.filter((x) => `${label(x)} ${detail(x) || ''}`.toLowerCase().includes(text))).slice(0, 200);
+      shown = (!typing || exact || !text ? all : all.filter((x) => `${label(x)} ${brief(x) || ''}`.toLowerCase().includes(text))).slice(0, 200);
       active = shown.findIndex((x) => label(x).toLowerCase() === text);
+      list.classList.toggle('fresh', list.hidden); // just opened: its rows come in one after another
       list.hidden = false; // shown before drawing, so the chosen item can be scrolled to
       input.setAttribute('aria-expanded', 'true');
       render(true);
@@ -587,7 +587,7 @@
       else if (document.activeElement === input) open();
       else input.focus();
     });
-    return { refresh: () => { if (!list.hidden) open(); } };
+    return { refresh: () => { if (!list.hidden) open(); }, close };
   };
 
   // The marker in the domain controller box: which one Automatic would use now, or whether the chosen one answers.
@@ -727,9 +727,10 @@
     $('heading').textContent = setup ? 'Set up' : 'Welcome back';
     $('other-kind').hidden = !setup && !s.domain;
     $('confirm-row').hidden = !setup;
-    // Signing in with Active Directory, the domain and its controller show on one line, and Change opens the list.
+    // Signing in with Active Directory, the domain and its controller show on one line under the button. Their boxes are
+    // in the form only while setting up; signing in, they are in the Where you sign in window, which Change opens.
     $('ad-context').hidden = setup;
-    $('ad-where').hidden = !setup;
+    if (!setup) $('where-boxes').append($('ad-where'));
     // The same line for a local account, where there is a domain to tell it from.
     $('local-context').hidden = setup || !s.domain;
     $('local-context-name').textContent = s.machine;
@@ -741,11 +742,17 @@
       $('local-password').autocomplete = 'new-password';
     }
 
-    // The Domain and Domain controller boxes. Setting up, any domain can be typed or picked; signing in, it's the one set up.
+    // The Domain and Domain controller boxes. A domain can be typed or picked: setting up, any domain; signing in, one that
+    // accounts may sign in from (the one set up, the rest of its forest and the domains it trusts), which the server decides.
     let domains = setup ? [] : [s.domain];
     let controllers = [];
     let server = setup ? '' : s.server || ''; // empty is Automatic
     let lookedUp = '';
+    let good = setup ? '' : s.domain; // signing in: the last domain the server took
+    const whereError = (text) => {
+      $('where-error').textContent = text;
+      $('where-error').hidden = !text;
+    };
     let started = false;
     let asked = 0; // counts the controller lookups, so only the last one's answer shows
     const domain = () => $('ad-domain').value.trim();
@@ -773,6 +780,14 @@
       const url = `${setup ? '/api/setup/directory/controllers' : '/api/signin/controllers'}?domain=${encodeURIComponent(domain())}`;
       const r = await getJson(url).catch(() => null);
       if (mine !== asked) return; // the domain changed meanwhile
+      // Signing in, a typed domain that accounts can't sign in from: the server says why, and the box goes back to the last one it took.
+      if (!setup && r && !r.ok && r.body.error && domain().toLowerCase() !== good) {
+        whereError(r.body.error);
+        $('ad-domain').value = good;
+        domainChanged();
+        return;
+      }
+      if (!setup && r?.ok) good = domain().toLowerCase();
       controllers = r?.ok ? r.body.controllers : [];
       why = r?.ok ? r.body.why || null : null;
       showServer();
@@ -792,39 +807,47 @@
     };
 
     const domainBox = combo({
-      input: $('ad-domain'), list: $('domain-list'), toggle: $('domain-open'), typing: setup,
+      input: $('ad-domain'), list: $('domain-list'), toggle: $('domain-open'),
       items: () => domains, label: (d) => d,
-      empty: () => 'No domains found from this computer. Enter the domain name.',
-      pick: domainChanged,
+      empty: () => (setup ? 'No domains found from this computer. Enter the domain name.' : 'No domain in the list matches. Press Enter to use the one you typed.'),
+      pick: () => {
+        whereError('');
+        domainChanged();
+      },
     });
-    if (setup) {
-      $('ad-domain').addEventListener('change', domainChanged);
-    } else {
-      $('ad-domain').readOnly = true;
-      $('ad-domain').closest('.input').classList.add('pick');
+    // A typed domain is used when the box is left, or on Enter. Signing in, an empty box goes back to the last domain.
+    const typedDomain = () => {
+      whereError('');
+      if (!setup) $('ad-domain').value = domain().toLowerCase() || good;
+      domainChanged();
+    };
+    $('ad-domain').addEventListener('change', typedDomain);
+    if (!setup) {
+      $('ad-domain').addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter' || e.defaultPrevented) return; // Enter on a row of the list picked that row
+        domainBox.close();
+        typedDomain();
+      });
     }
 
     const serverBox = combo({
       input: $('ad-server'), list: $('server-list'), toggle: $('server-open'), typing: false,
       items: () => [{ auto: true }, ...controllers],
       label: (c) => (c.auto ? 'Automatic' : c.name),
-      detail: (c) => {
+      // Automatic is the fastest domain controller that answers at each sign-in: its row says which one that is now.
+      brief: (c) => {
         if (c.auto) {
           const nearest = controllers.find((x) => x.online);
-          return nearest ? `The fastest available domain controller at each sign-in. Currently ${nearest.name}.` : 'The fastest available domain controller at each sign-in.';
+          return nearest ? `Currently ${short(nearest.name)}` : '';
         }
-        return c.online ? `Responded in ${c.ms} ms` : 'Unreachable';
+        return c.online ? `${c.ms} ms` : 'Unreachable';
       },
       tone: (c) => (c.auto ? '' : c.online ? 'ok' : 'bad'),
+      dots: true,
       empty: () => 'Enter the domain first.',
       pick: (c) => {
         server = c.auto ? '' : c.name;
         showServer();
-        if (!setup) {
-          $('ad-where').hidden = true;
-          $('ad-change').setAttribute('aria-expanded', 'false');
-          $('ad-user').focus();
-        }
       },
     });
     $('ad-server').value = server || 'Automatic';
@@ -869,18 +892,42 @@
       else (setup ? $('local-password') : $('local-user')).focus();
     };
     $('other-kind').addEventListener('click', () => choose(showing === 'ad' ? 'local' : 'ad'));
-    // Change, signing in with Active Directory: the domain and controller boxes, with the domains it may sign in from.
+    // Change, signing in with Active Directory: the Where you sign in window slides in over the form (signin.css) with the
+    // Domain and Domain controller boxes, and Back to sign in, its X or Esc slides it away. The form under it can't be
+    // reached meanwhile. The first time, it asks for the domains accounts may sign in from.
     let listed = false;
-    $('ad-change').addEventListener('click', async () => {
-      const open = $('ad-where').hidden;
-      $('ad-where').hidden = !open;
+    let gone = 0;
+    const where = (open) => {
+      const slot = $('where-slot');
+      clearTimeout(gone);
       $('ad-change').setAttribute('aria-expanded', String(open));
-      if (!open || listed) return;
+      document.querySelectorAll('.card-body, .card-foot').forEach((part) => { part.inert = open; });
+      if (open) {
+        whereError('');
+        slot.hidden = false;
+        void slot.offsetWidth; // drawn out of sight first, so it slides in
+        slot.classList.add('open');
+        $('where-win').focus({ preventScroll: true });
+        return;
+      }
+      slot.classList.remove('open');
+      gone = setTimeout(() => { slot.hidden = true; }, 220);
+      ($('ad-user').value ? $('ad-password') : $('ad-user')).focus();
+    };
+    $('ad-change').addEventListener('click', async () => {
+      where(true);
+      if (listed) return;
       listed = true;
       const r = await getJson('/api/signin/domains').catch(() => null);
       if (r?.ok) domains = r.body.domains;
       domainBox.refresh();
     });
+    $('where-back').addEventListener('click', () => where(false));
+    $('where-x').addEventListener('click', () => where(false));
+    // Esc closes an open list first (the box's own key); with no list open, it closes the window.
+    $('where-win').addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !$('where-win').querySelector('.combo-list:not([hidden])')) where(false);
+    }, true);
 
     // .\name in the domain account box means a local account, as in Windows: over to Local account, name and all.
     $('ad-user').addEventListener('input', () => {

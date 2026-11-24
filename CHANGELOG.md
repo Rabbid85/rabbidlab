@@ -2,6 +2,13 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.386 (2026-11-23)
+
+- On the sign-in page, Change now slides a Where you sign in window in over the form, with the Domain and Domain controller boxes in it. What you pick is used at once, and Back to sign in closes it.
+- A domain can be typed there as well as picked. Sign-in still takes only the domain that is set up, the rest of its forest and the domains it trusts, and says why when a domain is refused.
+- The sign-in card sits in the middle of the window whatever its height, and the form sits in the middle of its side of the card.
+- The lists under Domain and Domain controller are joined to their box, with one line a row and a tick on the one in use.
+
 ## 1.1.385 (2026-11-23)
 
 - The Use at your own risk notice no longer opens as a second window over a dimmed page. The sign-in card turns into it, in the same place and the same size.
