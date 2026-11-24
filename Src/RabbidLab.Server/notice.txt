@@ -2,7 +2,7 @@ Use at your own risk
 November 2026
 
 What Rabbid Lab is
-Rabbid Lab is a free console for running a home lab or a small Active Directory domain. It is made by one person in their spare time and shared as is.
+Rabbid Lab is a free console for running a home lab or an Active Directory domain of any size, from small to large. It is made by one person in their spare time and shared as is.
 
 No warranty
 Rabbid Lab is provided as is, without warranty of any kind, express or implied, including that it is fit for any particular purpose. It may have bugs. It may stop working after a Windows update, a change on a domain controller, or an update of its own.

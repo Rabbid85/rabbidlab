@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.392 (2026-11-23)
+
+- The Use at your own risk notice says Rabbid Lab is for Active Directory domains of any size, from small to large. Its wording changed, so each account is asked to accept it once more.
+
 ## 1.1.391 (2026-11-23)
 
 - Signing in no longer drops the card. It shrinks a little as it fades, as the Where you sign in window does, and the opening window pops in the same way.
