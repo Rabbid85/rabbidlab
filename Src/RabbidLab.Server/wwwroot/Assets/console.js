@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.394', [
+    'The moon on the Overview banner is softer: no outline, and faint patches instead of dark spots.']],
   ['1.1.393', [
     'Overview has a new banner: hills and a lake under the moon, drawn in the accent colour, with the headline at the bottom left and a strip along the foot with the version, uptime and sensors up.',
     'Check for updates turns into Install in the same place, and Install opens the update window. Nothing on the banner moves when an update comes in.']],
@@ -1261,6 +1263,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.394': ['2026-11-24', 'update', 'A softer moon on the Overview banner'],
   '1.1.393': ['2026-11-24', 'feature', 'A new banner on Overview', 'banner.jpg'],
   '1.1.392': ['2026-11-23', 'update', 'The notice says Rabbid Lab is for domains of any size'],
   '1.1.391': ['2026-11-23', 'update', 'Sign-in page: signing in pops instead of dropping'],

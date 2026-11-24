@@ -71,7 +71,6 @@
 .ovs-fogc { stop-color: color-mix(in srgb, var(--accent) 30%, #6f66c8); }
 .ovs-fog { fill: url(#ovs-fogg); }
 .ovs-glowc { stop-color: color-mix(in srgb, var(--accent) 30%, #ddd5ff); }
-.ovs-moonrim { fill: none; stroke: #fff; stroke-width: .6; opacity: .35; }
 .ovs-wisp { fill: color-mix(in srgb, var(--accent) 22%, #cdc6f2); opacity: .2; }
 .ovs-mist { fill: color-mix(in srgb, var(--accent) 30%, #b8b0ff); opacity: .22; }
 .ovs-star { fill: #fff; }

@@ -63,15 +63,14 @@
     }
     return `<path class="ovs-rays" d="${s}" filter="url(#ovs-b24)"/>`;
   };
-  // The moon: evenly lit with its edge a touch darker, faint grey patches where the real moon's seas are, a close glow.
+  // The moon: evenly lit with its edge a touch darker and softened by a little light, a close glow, and broad faint patches
+  // where the real moon's seas are, blurred so they never read as spots ("The moon looks odd", of crisp ones and an outline).
   // [x, y, rx, ry, turn] as parts of the radius.
-  const SEAS = [[-0.5, 0.02, 0.26, 0.42, 10], [-0.22, -0.4, 0.22, 0.19, -10], [0.2, -0.36, 0.14, 0.13, 0], [0.36, -0.08, 0.17, 0.14, 20],
-    [0.68, -0.28, 0.09, 0.07, 0], [0.55, 0.16, 0.11, 0.13, 0], [0.32, 0.27, 0.07, 0.06, 0], [-0.14, 0.34, 0.15, 0.11, -15], [-0.45, 0.4, 0.08, 0.07, 0]];
+  const SEAS = [[-0.42, -0.1, 0.36, 0.5, 15], [-0.2, -0.42, 0.24, 0.18, -10], [0.3, -0.25, 0.24, 0.17, 25], [0.45, 0.08, 0.2, 0.2, 0], [-0.1, 0.38, 0.16, 0.1, -15]];
   const moon = (x, y, rad) => `<circle cx="${x}" cy="${y}" r="${rad * 2.6}" fill="url(#ovs-glow)" opacity=".9"/>`
-    + `<g transform="translate(${x} ${y})"><clipPath id="ovs-moonclip"><circle r="${rad}"/></clipPath><circle r="${rad}" fill="url(#ovs-moonfill)"/>`
-    + `<g clip-path="url(#ovs-moonclip)" fill="#9C94C6" opacity=".2"><g filter="url(#ovs-b05)">${SEAS.map(([a, b, rx, ry, t]) => `<ellipse transform="rotate(${t} ${f1(a * rad)} ${f1(b * rad)})" cx="${f1(a * rad)}" cy="${f1(b * rad)}" rx="${f1(rx * rad)}" ry="${f1(ry * rad)}"/>`).join('')}</g></g>`
-    + `<circle cx="${f1(-0.1 * rad)}" cy="${f1(0.7 * rad)}" r="${f1(0.05 * rad)}" fill="#fff" opacity=".7"/>`
-    + `<circle r="${rad}" class="ovs-moonrim"/></g>`;
+    + `<g transform="translate(${x} ${y})"><clipPath id="ovs-moonclip"><circle r="${rad}"/></clipPath>`
+    + `<circle r="${rad + 1.2}" fill="#efeaff" opacity=".55" filter="url(#ovs-b05)"/><circle r="${rad}" fill="url(#ovs-moonfill)"/>`
+    + `<g clip-path="url(#ovs-moonclip)" fill="#9C94C6" opacity=".16"><g filter="url(#ovs-b2)">${SEAS.map(([a, b, rx, ry, t]) => `<ellipse transform="rotate(${t} ${f1(a * rad)} ${f1(b * rad)})" cx="${f1(a * rad)}" cy="${f1(b * rad)}" rx="${f1(rx * rad)}" ry="${f1(ry * rad)}"/>`).join('')}</g></g></g>`;
   // A thin cloud lit by the moon: a few soft overlapping puffs.
   const cloud = (x, y, w) => [[-0.4, 0.3, 0.28, 0.45], [-0.12, -0.15, 0.34, 0.7], [0.18, 0.08, 0.3, 0.55], [0.42, 0.3, 0.2, 0.35]]
     .map(([a, b, rx, ry]) => `<ellipse class="ovs-wisp" cx="${f1(x + a * w)}" cy="${f1(y + b * 12)}" rx="${f1(rx * w)}" ry="${f1(ry * 14)}"/>`).join('');
@@ -119,7 +118,7 @@
     + '<radialGradient id="ovs-glow"><stop offset="0" class="ovs-glowc" stop-opacity=".6"/><stop offset=".3" class="ovs-glowc" stop-opacity=".2"/><stop offset="1" class="ovs-glowc" stop-opacity="0"/></radialGradient>'
     + '<radialGradient id="ovs-moonfill"><stop offset="0" stop-color="#fbfaff"/><stop offset=".75" stop-color="#f0ecff"/><stop offset="1" stop-color="#d9d2f4"/></radialGradient>'
     + '<linearGradient id="ovs-tail" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity=".85"/></linearGradient>'
-    + blur('ovs-b05', 0.8) + blur('ovs-b1', 1.2) + blur('ovs-b3', 3) + blur('ovs-b6', 6) + blur('ovs-b24', 24)
+    + blur('ovs-b05', 0.8) + blur('ovs-b1', 1.2) + blur('ovs-b2', 2) + blur('ovs-b3', 3) + blur('ovs-b6', 6) + blur('ovs-b24', 24)
     + '</defs>';
 
   const scene = () => {
