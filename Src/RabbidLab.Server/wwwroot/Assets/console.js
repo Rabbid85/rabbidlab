@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.388', [
+    'The icon above Welcome back on the sign-in page is a flat disc in the accent colour, a little bigger, without the second ring round it.']],
   ['1.1.387', [
     'The Where you sign in window on the sign-in page pops in where it is instead of sliding in.',
     'It keeps the look of the card, with the same opacity, darkness and blur, instead of turning solid.',
@@ -1246,6 +1248,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.388': ['2026-11-23', 'update', 'Sign-in page: a flat icon above Welcome back'],
   '1.1.387': ['2026-11-23', 'update', 'Sign-in page: the Where you sign in window pops in and keeps the look of the card'],
   '1.1.386': ['2026-11-23', 'update', 'Sign-in page: Change opens a Where you sign in window, and the form sits in the middle'],
   '1.1.385': ['2026-11-23', 'update', 'Sign-in page: the card turns into the Use at your own risk notice'],

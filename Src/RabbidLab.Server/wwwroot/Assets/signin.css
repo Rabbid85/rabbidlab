@@ -36,14 +36,13 @@ body.loading .card-body > *, body.loading .card-foot > *, body.loading .side-sub
 .side-title .dev-tag { margin-top: 4px; vertical-align: top; font-family: "Segoe UI", system-ui, sans-serif; font-size: 12px; letter-spacing: .08em; }
 .side-sub { margin: 9px 0 0; color: #C9CCDA; font-size: 13.5px; }
 
-/* The form: a ringed avatar over the heading, both centred, then the boxes, each with its name in it, and Sign in with an
-   arrow. All of it sits in the middle of its side of the card, with as much room over it as under it. That is measured
-   from what shows: the ring round the avatar reaches 7px over its box and the last link's words end 8px over the foot of
-   theirs, so the padding is 16px more on top. */
-.card-body { padding: 36px 36px 20px; display: flex; flex-direction: column; justify-content: center; }
-.hello-av { display: grid; place-items: center; align-self: center; width: 60px; height: 60px; margin: 0 0 16px; border-radius: 50%;
-  background: linear-gradient(135deg, var(--accent-line), var(--accent)); color: #fff; outline: 2px solid var(--accent-line); outline-offset: 5px; }
-.hello-av svg { width: 27px; height: 27px; }
+/* The form: the person icon on a flat disc in the accent over the heading, both centred, then the boxes, each with its
+   name in it, and Sign in with an arrow. All of it sits in the middle of its side of the card, with as much room over it
+   as under it. That is measured from what shows: the last link's words end 8px over the foot of their box, so the
+   padding is 8px more on top. */
+.card-body { padding: 28px 36px 20px; display: flex; flex-direction: column; justify-content: center; }
+.hello-av { display: grid; place-items: center; align-self: center; width: 66px; height: 66px; margin: 0 0 16px; border-radius: 50%; background: var(--accent); color: #fff; }
+.hello-av svg { width: 30px; height: 30px; }
 .card-body h2 { margin: 0 0 22px; text-align: center; font: 800 30px/1.1 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; letter-spacing: -.02em; color: var(--title); }
 .card-lead { margin: -18px 0 24px; text-align: center; color: var(--muted); font-size: 14.5px; line-height: 1.5; }
 
@@ -226,12 +225,12 @@ body.loading .look { visibility: hidden; }
   .side { grid-row: auto; border-right: 0; border-bottom: 1px solid var(--line); }
   .side-clock { display: none; }
   .card-body h2 { font-size: 32px; }
-  .hello-av { width: 64px; height: 64px; margin-bottom: 20px; }
-  .hello-av svg { width: 30px; height: 30px; }
+  .hello-av { width: 70px; height: 70px; margin-bottom: 20px; }
+  .hello-av svg { width: 32px; height: 32px; }
   .side-name { position: relative; left: auto; right: auto; bottom: auto; padding: 24px 34px 22px; }
   .side-title { font-size: 28px; }
   .side-sub { margin-top: 6px; font-size: 14px; }
-  .card-body { padding: 34px 34px 18px; }
+  .card-body { padding: 26px 34px 18px; }
   .card-foot { padding: 15px 34px; }
 }
 @media (max-width: 480px) {

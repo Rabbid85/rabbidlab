@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.388 (2026-11-23)
+
+- The icon above Welcome back on the sign-in page is a flat disc in the accent colour, a little bigger, without the second ring round it.
+
 ## 1.1.387 (2026-11-23)
 
 - The Where you sign in window on the sign-in page pops in where it is instead of sliding in.
