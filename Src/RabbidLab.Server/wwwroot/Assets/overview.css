@@ -113,7 +113,6 @@
 .ovs-glowc { stop-color: color-mix(in srgb, var(--accent) 30%, #ddd5ff); }
 .ovs-mist { fill: color-mix(in srgb, var(--accent) 30%, #b8b0ff); opacity: .22; }
 .ovs-star { fill: #fff; }
-.ovs-sheen { fill: color-mix(in srgb, var(--accent) 25%, #e4deff); opacity: .09; }
 .ovs-glint { fill: #EEEAFF; }
 /* What moves: a few stars twinkle, a shooting star crosses now and then, the moonlight on the water shimmers. */
 .ovs-tw { animation: ovs-tw 3.6s ease-in-out infinite; }

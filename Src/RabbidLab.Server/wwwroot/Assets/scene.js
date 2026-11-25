@@ -46,8 +46,8 @@
   // to this one's, squeezing the sky most and the hills least so they keep their shape; the sizes of the trees, the moon and
   // its light, so nothing is squashed.
   const SIZES = {
-    tall: { h: 600, map: [[0, 0], [600, 600]], tree: 1, near: 1, moonR: 28, glowR: 240, rayLen: 520, glint: 1, sheen: [80, 56, 110] },
-    low: { h: 300, map: [[0, 0], [130, 44], [230, 60], [350, 116], [436, 166], [600, 300]], tree: 0.8, near: 0.55, moonR: 22, glowR: 170, rayLen: 200, glint: 0.75, sheen: [46, 44, 60] },
+    tall: { h: 600, map: [[0, 0], [600, 600]], tree: 1, near: 1, moonR: 28, glowR: 240, rayLen: 520, glint: 1, calm: 40 },
+    low: { h: 300, map: [[0, 0], [130, 44], [230, 60], [350, 116], [436, 166], [600, 300]], tree: 0.8, near: 0.55, moonR: 22, glowR: 170, rayLen: 200, glint: 0.75, calm: 24 },
   };
   const draw = (size) => {
     const W = 1600;
@@ -111,7 +111,8 @@
     const L2 = ridge(r, 395, 70, 0.55, [[540, 50, 160], [980, 60, 180], [1400, 90, 160]]);
     const L3 = ridge(r, 440, 50, 0.5, [[280, 36, 200], [1230, 44, 220]]);
     const sky = stars(r, 190, 320);
-    const beams = rays(mx, my, 7, r, k.rayLen);
+    // The shafts of light end at the far shore; none falls across the water to the strip ("Remove w.e haze that is").
+    const beams = rays(mx, my, 7, r, Math.min(k.rayLen, m(436) - my));
     const trees = forest(r, L3, 0, W, 9, 20, 15, k.tree, true);
     // The lake: the far shore with its pines (rising where it meets the hills at 1240), the water, the shore upside down in it,
     // and the moon's light breaking across it in rows of short strokes with gaps, wider toward the viewer ("the light on the
@@ -121,15 +122,16 @@
     const shore = ridge(q, 436 - 9, 10, 0.5, [[1240, 16, 170]]);
     const band = `M0 ${f1(SH)}L${shore.map(([a, b]) => `${f1(a)} ${f1(Math.min(b, SH))}`).join('L')}L${W} ${f1(SH)}Z${forest(q, shore, 0, W, 10, 28, 13, k.tree * 0.7 + k.near * 0.3, true)}`;
     // Every other row is drawn, a little blurred and gently shimmering, with no sharp copy on top ("This needs to be softened,
-    // the light looks... odd", then "this is sexy" of the fewer strokes). They fade to nothing halfway down the water, so no
-    // light glows above the strip ("what is this glow above the bar, get rid of this").
+    // the light looks... odd", then "this is sexy" of the fewer strokes). They lie in a thin band just under the far shore and
+    // are gone well before the strip, which on a wide Overview starts about 75 units under the shore ("what is this glow above
+    // the bar, get rid of this", then "What is this haze above the bar going into the panel").
     let glints = '';
     for (let i = 0; i < 40; i++) {
       const row = i % 2 === 0;
       const t = (i + q() * 0.8) / 40;
       const y = SH + 3 + t * (H - SH - 6);
       const span = (10 + t * 96) * k.glint;
-      const fade = Math.max(0, 1 - t * 2.1) ** 1.3;
+      const fade = Math.max(0, 1 - (y - SH) / k.calm) ** 1.3;
       let gx = mx - span / 2 + (q() - 0.5) * (6 + t * 26) * k.glint;
       const end = gx + span;
       while (gx < end) {
@@ -140,7 +142,6 @@
       }
     }
     const near = ridge(q, 660, 20, 0.5, [[0, 175, 170], [W, 185, 200]]);
-    const [sy, srx, sry] = k.sheen;
     return `<svg class="ovs" viewBox="0 0 ${2 * W} ${H}" preserveAspectRatio="xMaxYMid slice" aria-hidden="true">` + twice(W, [
       ['all', `<rect width="${2 * W}" height="${H}" fill="url(#ovs-sky)"/>`],
       ['soft', `<g>${sky}</g>`],
@@ -152,10 +153,9 @@
       ['both', land(L3, 'ovs-l3', 0.3) + `<path class="ovs-l3" d="${trees}"/>`], ['all', fog(395, 130, 0.42)],
       ['soft', `<ellipse class="ovs-mist" cx="700" cy="${f1(m(455))}" rx="420" ry="${f1(m(481) - m(455))}" filter="url(#ovs-b24)"/>`],
       ['all', `<rect x="0" y="${f1(SH)}" width="${2 * W}" height="${f1(H - SH)}" fill="url(#ovs-water)"/>`],
-      // The far shore upside down in the water, faint ("TOO bright"), and the moon's sheen kept up by the far shore. No lines
-      // across the water ("What are these lines in the water. no.").
+      // The far shore upside down in the water, faint ("TOO bright"). No glowing sheen on the water and no lines across it
+      // ("What are these lines in the water. no.").
       ['soft', `<g transform="translate(0 ${f1(2 * SH)}) scale(1 -1)" opacity=".26" filter="url(#ovs-b1)"><path class="ovs-l4" d="${band}"/></g>`],
-      ['right', `<ellipse class="ovs-sheen" cx="${mx}" cy="${f1(SH + sy * 0.35)}" rx="${srx}" ry="${f1(sry * 0.45)}" filter="url(#ovs-b24)"/>`],
       ['right', `<g class="ovs-glint ovs-shim" filter="url(#ovs-b1)" opacity=".7">${glints}</g>`],
       ['both', `<path class="ovs-l4" d="${band}"/>`],
       ['both', land(near, 'ovs-l5') + `<path class="ovs-l5" d="${forest(q, near, 0, 380, 60, 125, 26, k.near)}${forest(q, near, 1240, W, 60, 125, 26, k.near)}"/>`],

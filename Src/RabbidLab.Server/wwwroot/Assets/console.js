@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.408', [
+    'Nothing glows on the water under the moon any more: the moon’s shafts of light stop at the far shore, the sheen on the water is gone, and its light on the lake is a thin shimmer just under the far shore, well clear of the strip.']],
   ['1.1.407', [
     'On every banner the lake is darker and calmer: no lines across the water, a fainter reflection of the far shore, and the moon’s light fades out well before the strip under it.',
     'The cloud under the moon is gone.']],
@@ -1307,6 +1309,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.408': ['2026-11-24', 'fix', 'No haze over the lake under the moon'],
   '1.1.407': ['2026-11-24', 'update', 'A darker, calmer lake and no cloud under the moon'],
   '1.1.406': ['2026-11-24', 'fix', 'Check in now works, and the client window fits every screen'],
   '1.1.405': ['2026-11-24', 'feature', 'A new client window, and Ask IT for help'],
