@@ -106,28 +106,23 @@
 .ovs-sky0 { stop-color: #03030c; }
 .ovs-sky1 { stop-color: color-mix(in srgb, var(--accent) 10%, #08081c); }
 .ovs-sky2 { stop-color: color-mix(in srgb, var(--accent) 24%, #161236); }
-.ovs-water0 { stop-color: color-mix(in srgb, var(--accent) 20%, #121030); }
+.ovs-water0 { stop-color: color-mix(in srgb, var(--accent) 12%, #0e0c26); } /* "TOO bright" */
 .ovs-water1 { stop-color: #04040e; }
 .ovs-fogc { stop-color: color-mix(in srgb, var(--accent) 30%, #6f66c8); }
 .ovs-fog { fill: url(#ovs-fogg); }
 .ovs-glowc { stop-color: color-mix(in srgb, var(--accent) 30%, #ddd5ff); }
-.ovs-wisp { fill: color-mix(in srgb, var(--accent) 22%, #cdc6f2); opacity: .1; }
 .ovs-mist { fill: color-mix(in srgb, var(--accent) 30%, #b8b0ff); opacity: .22; }
 .ovs-star { fill: #fff; }
-.ovs-sheen { fill: color-mix(in srgb, var(--accent) 25%, #e4deff); opacity: .14; }
-.ovs-ripple { fill: none; stroke: color-mix(in srgb, var(--accent) 30%, #d8d2ff); stroke-width: .7; opacity: .07; }
+.ovs-sheen { fill: color-mix(in srgb, var(--accent) 25%, #e4deff); opacity: .09; }
 .ovs-glint { fill: #EEEAFF; }
-/* What moves: a few stars twinkle, a shooting star crosses now and then, the clouds drift, the moonlight on the water shimmers. */
+/* What moves: a few stars twinkle, a shooting star crosses now and then, the moonlight on the water shimmers. */
 .ovs-tw { animation: ovs-tw 3.6s ease-in-out infinite; }
 .ovs-meteor { opacity: 0; animation: ovs-meteor 11s linear 2s infinite; }
-/* The one cloud on the smaller banners sways a little either side of the moon, so it stays right under it. */
-.ovs-sway { animation: ovs-sway 30s ease-in-out infinite alternate; }
 .ovs-shim rect { transform-box: fill-box; transform-origin: center; animation: ovs-shim 2.8s ease-in-out infinite alternate; }
 .ovs-d1 { animation-delay: -.8s; } .ovs-d2 { animation-delay: -1.9s; } .ovs-d3 { animation-delay: -2.7s; } .ovs-d4 { animation-delay: -3.3s; }
 @keyframes ovs-tw { 50% { opacity: .2; } }
 /* It crosses 420 units in two thirds of a second, fading in and out as it goes, then waits; it never stops in view, and
    scene.js moves it somewhere new before it comes again. */
 @keyframes ovs-meteor { 0% { transform: translateX(0); opacity: 0; } 1% { opacity: 1; } 4.5% { opacity: .9; } 6% { transform: translateX(420px); opacity: 0; } 100% { transform: translateX(420px); opacity: 0; } }
-@keyframes ovs-sway { to { transform: translateX(50px); } }
 @keyframes ovs-shim { from { transform: scaleX(.7); } to { transform: scaleX(1.15); } }
 @media (prefers-reduced-motion: reduce) { .ovs * { animation: none !important; } }

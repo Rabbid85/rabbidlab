@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.407 (2026-11-24)
+
+- On every banner the lake is darker and calmer: no lines across the water, a fainter reflection of the far shore, and the moon’s light fades out well before the strip under it.
+- The cloud under the moon is gone.
+
 ## 1.1.406 (2026-11-24)
 
 - Check in now and Ask IT for help in the client reach the client’s service; in 1.1.405 both said the service wasn’t answering.

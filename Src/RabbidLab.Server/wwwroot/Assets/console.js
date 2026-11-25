@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.407', [
+    'On every banner the lake is darker and calmer: no lines across the water, a fainter reflection of the far shore, and the moon’s light fades out well before the strip under it.',
+    'The cloud under the moon is gone.']],
   ['1.1.406', [
     'Check in now and Ask IT for help in the client reach the client’s service; in 1.1.405 both said the service wasn’t answering.',
     'The client’s window and Ask IT for help redraw at the right size when dragged to a screen with another scale, such as from a 1440p screen to a 4K one, and never open bigger than the screen.',
@@ -1304,6 +1307,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.407': ['2026-11-24', 'update', 'A darker, calmer lake and no cloud under the moon'],
   '1.1.406': ['2026-11-24', 'fix', 'Check in now works, and the client window fits every screen'],
   '1.1.405': ['2026-11-24', 'feature', 'A new client window, and Ask IT for help'],
   '1.1.404': ['2026-11-24', 'update', 'A faster shooting star, never in the same place'],
