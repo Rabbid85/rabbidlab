@@ -208,8 +208,11 @@ public static class SignIn
                 await context.Response.WriteAsJsonAsync(new { error = "Too many sign-in requests from this computer. Wait a minute, then try again.", wait = 60 });
                 return;
             }
-            // What anyone can send is kept small: a client's answer may list a computer's accounts, the rest is a form.
-            if (open && TooBig(context, path == "/api/clients/done" || path == "/api/clients/inventory" ? 2 * 1024 * 1024 : 64 * 1024))
+            // What anyone can send is kept small: a client's answer may list a computer's accounts, Ask IT for help carries the
+            // pictures of the screens (HelpRequests' own limits, as base64), the rest is a form.
+            var most = path == "/api/clients/help" ? HelpRequests.MostPictures * (long) HelpRequests.PictureBytes * 4 / 3 + 1024 * 1024
+                : path == "/api/clients/done" || path == "/api/clients/inventory" ? 2 * 1024 * 1024 : 64 * 1024;
+            if (open && TooBig(context, most))
             {
                 context.Response.StatusCode = StatusCodes.Status413PayloadTooLarge;
                 await context.Response.WriteAsJsonAsync(new { error = "The request is too large." });
@@ -247,7 +250,7 @@ public static class SignIn
     private static readonly HashSet<string> ClientPaths = new(StringComparer.OrdinalIgnoreCase)
     {
         "/api/clients/join", "/api/clients/checkin", "/api/clients/vouch", "/api/clients/next", "/api/clients/done", "/api/clients/bye", "/api/clients/inventory", "/api/clients/download",
-        "/api/clients/jobs/take", "/api/clients/jobs/done",
+        "/api/clients/jobs/take", "/api/clients/jobs/done", "/api/clients/help", "/api/clients/lab-icon",
     };
 
     // What an open page asks by itself on a timer.

@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.409 (2026-11-24)
+
+- Ask IT for help in the client reaches the server: since 1.1.405 the server turned the request away, and a lab’s own icon never reached the client either.
+- The moonlight on the lake is back as it was in 1.1.407.
+
 ## 1.1.408 (2026-11-24)
 
 - Nothing glows on the water under the moon any more: the moon’s shafts of light stop at the far shore, the sheen on the water is gone, and its light on the lake is a thin shimmer just under the far shore, well clear of the strip.
