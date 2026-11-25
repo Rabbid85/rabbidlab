@@ -40,7 +40,7 @@ internal sealed class ClientWindow : Form
     private AskWindow? asked; // Ask IT for help, while it's open
     private DateTime? doneAt; // the ring's finish when a check-in just came
     private RectangleF ring;
-    private Font? fBrand, fTitle, fSub, fBtn, fNum, fSmall, fName, fMeta, fTab, fH3, fRow, fRing, fAxis;
+    private Font? fBrand, fTitle, fSub, fBtn, fSmall, fName, fMeta, fTab, fH3, fRow, fRing, fAxis;
     private string? ip;
     private (string? Maker, string? Model, string? Serial)? read; // read from Windows when the inventory hasn't said yet
 
@@ -92,11 +92,11 @@ internal sealed class ClientWindow : Form
         }
         Font F(string face, float px) => new(face, px * k, FontStyle.Regular, GraphicsUnit.Pixel);
         const string semi = "Segoe UI Semibold", plain = "Segoe UI";
-        foreach (var f in new[] { fBrand, fTitle, fSub, fBtn, fNum, fSmall, fName, fMeta, fTab, fH3, fRow, fRing, fAxis })
+        foreach (var f in new[] { fBrand, fTitle, fSub, fBtn, fSmall, fName, fMeta, fTab, fH3, fRow, fRing, fAxis })
         {
             f?.Dispose();
         }
-        (fBrand, fTitle, fSub, fBtn, fNum, fSmall) = (F(semi, 15), F(semi, 21), F(plain, 13), F(semi, 13), F(semi, 19), F(plain, 12));
+        (fBrand, fTitle, fSub, fBtn, fSmall) = (F(semi, 15), F(semi, 21), F(plain, 13), F(semi, 13), F(plain, 12));
         (fName, fMeta, fTab, fH3, fRow, fRing, fAxis) = (F(semi, 18), F(plain, 12.5f), F(semi, 14), F(semi, 13), F(plain, 13), F(semi, 29), F(plain, 11.5f));
         Invalidate();
     }
@@ -299,16 +299,8 @@ internal sealed class ClientWindow : Form
         var nameH = Math.Min(Measure(g, Lab, fBrand, 214, wrap: true), 40);
         Say(g, Lab, fBrand, ink.Head, R(62, 36 - nameH / 2, 214, nameH + 2), TextFormatFlags.WordBreak | TextFormatFlags.EndEllipsis);
 
-        // Today's jobs and problems over the foot: Jobs run at the left over Uninstall, Problems at the right over the version.
-        using (var line = new Pen(ink.Line, Math.Max(1, k)))
-        {
-            g.DrawLine(line, 24 * k, 470 * k, 276 * k, 470 * k);
-        }
-        Say(g, "Today", fSmall, ink.Muted, R(24, 484, 120, 16));
-        Say(g, s.JobsToday.ToString("N0", CultureInfo.CurrentCulture), fNum, ink.Head, R(24, 502, 120, 26));
-        Say(g, "Jobs run", fSmall, ink.Muted, R(24, 528, 120, 16));
-        Say(g, s.ProblemsToday.ToString("N0", CultureInfo.CurrentCulture), fNum, ink.Head, R(156, 502, 120, 26), TextFormatFlags.Right);
-        Say(g, "Problems", fSmall, ink.Muted, R(156, 528, 120, 16), TextFormatFlags.Right);
+        // At the foot, Uninstall and the version; no Today numbers ("No today, looks good. I can look at the activity for
+        // failutes and success.").
         var un = R(18, 556, 104, 30);
         if (hover == "uninstall")
         {
@@ -321,12 +313,12 @@ internal sealed class ClientWindow : Form
         Hit(un, "uninstall", Uninstall);
         Say(g, $"{(s.Lab?.Name is { Length: > 0 } ? "Rabbid Lab" : "Version")} {Agent.Version}", fSmall, ink.Muted, R(126, 556, 150, 30), TextFormatFlags.Right | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine);
 
-        // The ring, the state and what to do, in the middle of the room between the lab and today.
+        // The ring, the state and what to do, in the middle of the room between the lab and the foot.
         var lead = Lead();
         var leadH = lead.Sum(l => Measure(g, l, fSub, 240, wrap: true));
         var buttons = Buttons();
         var total = 112 + 18 + 28 + 6 + leadH + (buttons.Count > 0 ? 22 + buttons.Count * 38 + (buttons.Count - 1) * 8 : 0);
-        var top = 62 + (470 - 62 - total) / 2;
+        var top = 62 + (540 - 62 - total) / 2;
         ring = R(94, top, 112, 112);
         PaintRing(g, ring);
         var y = top + 112 + 18;

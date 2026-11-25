@@ -2,47 +2,52 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              ShutdownMode="OnMainWindowClose">
-  <!-- Setup's look: a dark window in Windows' own font, small controls, Rabbid Lab's ember for the button that goes
-       on, and amber, blue and green for the actions Setup lists. Rabbid Lab Dev uses them too, with a DEV tag (DevLook). -->
+  <!-- Setup's look, the client's Ink: near black, hairlines, the lab's purple for the button that goes on ("I like this type."),
+       and amber, blue and green for the actions Setup lists. Rabbid Lab Dev uses them too, with a DEV tag (DevLook). -->
   <Application.Resources>
     <FontFamily x:Key="Font">Segoe UI Variable Text, Segoe UI</FontFamily>
     <FontFamily x:Key="DisplayFont">Segoe UI Variable Display, Segoe UI</FontFamily>
-    <SolidColorBrush x:Key="PanelSolid" Color="#0A0B12" />
-    <SolidColorBrush x:Key="Field" Color="#11131D" />
-    <SolidColorBrush x:Key="Line" Color="#1F2232" />
-    <SolidColorBrush x:Key="LineStrong" Color="#2A2D3E" />
+    <SolidColorBrush x:Key="PanelSolid" Color="#0A0A0C" />
+    <SolidColorBrush x:Key="Field" Color="#121215" />
+    <SolidColorBrush x:Key="Line" Color="#1D1D21" />
+    <SolidColorBrush x:Key="LineStrong" Color="#27272A" />
     <!-- The window's own edge: faint, so it shows where the window ends over other dark windows. -->
-    <SolidColorBrush x:Key="WindowEdge" Color="#3C4157" />
-    <SolidColorBrush x:Key="RowSep" Color="#161824" />
-    <SolidColorBrush x:Key="Text" Color="#E6E8F2" />
-    <SolidColorBrush x:Key="Title" Color="#F2F3FA" />
-    <SolidColorBrush x:Key="Muted" Color="#8A8FA8" />
-    <SolidColorBrush x:Key="Soft" Color="#FFB59E" />
+    <SolidColorBrush x:Key="WindowEdge" Color="#2E2E34" />
+    <SolidColorBrush x:Key="RowSep" Color="#18181B" />
+    <SolidColorBrush x:Key="Text" Color="#ECECEF" />
+    <SolidColorBrush x:Key="Title" Color="#FAFAFA" />
+    <SolidColorBrush x:Key="Muted" Color="#8B8B94" />
+    <SolidColorBrush x:Key="Soft" Color="#B99CFF" />
     <!-- Links (Change installation settings and the like): neon purple. -->
-    <SolidColorBrush x:Key="Link" Color="#9E59CF" />
+    <SolidColorBrush x:Key="Link" Color="#A58BFF" />
     <SolidColorBrush x:Key="Blue" Color="#8FB1FF" />
     <SolidColorBrush x:Key="Green" Color="#5FD4A0" />
     <SolidColorBrush x:Key="Red" Color="#FF6B7D" />
     <SolidColorBrush x:Key="Amber" Color="#F2BE6B" />
-    <SolidColorBrush x:Key="Accent" Color="#E8542F" />
-    <SolidColorBrush x:Key="AccentLine" Color="#FF6A45" />
-    <SolidColorBrush x:Key="AccentHover" Color="#FF7452" />
+    <SolidColorBrush x:Key="Accent" Color="#5900FF" />
+    <SolidColorBrush x:Key="AccentLine" Color="#7A33FF" />
+    <SolidColorBrush x:Key="AccentHover" Color="#7024FF" />
     <!-- The chosen option card, a field being typed in, and selected text. -->
-    <SolidColorBrush x:Key="Picked" Color="#1AE8542F" />
-    <SolidColorBrush x:Key="PickedLine" Color="#80FF6A45" />
+    <SolidColorBrush x:Key="Picked" Color="#1A5900FF" />
+    <SolidColorBrush x:Key="PickedLine" Color="#807A33FF" />
     <!-- Selected card and certificate row: border only. -->
-    <SolidColorBrush x:Key="ChosenLine" Color="#E8542F" />
-    <SolidColorBrush x:Key="FocusLine" Color="#FF6A45" />
-    <SolidColorBrush x:Key="Selection" Color="#E8542F" />
-    <SolidColorBrush x:Key="GhostBack" Color="#1A1C28" />
-    <SolidColorBrush x:Key="GhostHover" Color="#222536" />
-    <SolidColorBrush x:Key="GhostLine" Color="#2A2D3E" />
-    <SolidColorBrush x:Key="GhostText" Color="#E6E8F2" />
-    <SolidColorBrush x:Key="TickLine" Color="#4A4E66" />
-    <SolidColorBrush x:Key="Placeholder" Color="#5E6380" />
-    <SolidColorBrush x:Key="CardBack" Color="#11131D" />
-    <SolidColorBrush x:Key="CardHover" Color="#151827" />
-    <SolidColorBrush x:Key="Track" Color="#1F2232" />
+    <SolidColorBrush x:Key="ChosenLine" Color="#5900FF" />
+    <SolidColorBrush x:Key="FocusLine" Color="#7A33FF" />
+    <SolidColorBrush x:Key="Selection" Color="#5900FF" />
+    <SolidColorBrush x:Key="GhostBack" Color="#161619" />
+    <SolidColorBrush x:Key="GhostHover" Color="#1E1E22" />
+    <SolidColorBrush x:Key="GhostLine" Color="#27272A" />
+    <SolidColorBrush x:Key="GhostText" Color="#ECECEF" />
+    <SolidColorBrush x:Key="TickLine" Color="#3F3F46" />
+    <SolidColorBrush x:Key="Placeholder" Color="#5A5A63" />
+    <SolidColorBrush x:Key="CardBack" Color="#121215" />
+    <SolidColorBrush x:Key="CardHover" Color="#18181B" />
+    <SolidColorBrush x:Key="Track" Color="#1D1D21" />
+    <!-- The steps panel down the left, as the client's state panel. -->
+    <SolidColorBrush x:Key="Aside" Color="#0F0F12" />
+    <SolidColorBrush x:Key="Ring" Color="#222226" />
+    <SolidColorBrush x:Key="StepDone" Color="#A1A1AA" />
+    <SolidColorBrush x:Key="StepTodo" Color="#71717A" />
 
     <Style TargetType="TextBlock">
       <Setter Property="FontFamily" Value="{StaticResource Font}" />

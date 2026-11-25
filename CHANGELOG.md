@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.412 (2026-11-25)
+
+- The client’s panel ends with Uninstall and the version: no Today numbers, since Activity shows every success and failure.
+- Setup has the client’s look: near black with the purple accent, the steps down a panel at the left ticking off as you go, and the client’s ring filling while it installs.
+
 ## 1.1.411 (2026-11-25)
 
 - The client’s Activity reads like a log: Check-in successful, Inventory updated, Client updated, Task completed and Task failed, each with one plain line and no counts, versions or timings.

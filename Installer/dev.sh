@@ -22,7 +22,9 @@ docker="artifacts/RabbidLab-Dev-Docker-$version.zip"
 if [ "${1:-}" != "--no-build" ]; then
   # Every dev build has a version of its own: <Version> is raised with each change, and a version already built isn't
   # built again (--no-build uploads it again).
-  built=$(gh release view dev-latest --json name --jq .name 2>/dev/null | sed -n 's/^Rabbid Lab Dev \([0-9.]*\) .*/\1/p' || true)
+  # By the release.json it serves, which goes up last: a publish GitHub stopped half way (the name changed, the files not)
+  # is tried again, not taken as built.
+  built=$(curl -sfL "$repo/releases/download/dev-latest/release.json" 2>/dev/null | sed -n 's/.*"version": *"\([0-9.]*\)".*/\1/p' | head -1 || true)
   [ "$built" != "$version" ] || { echo "Rabbid Lab Dev $version is already built: raise <Version> in Src/RabbidLab.Server/RabbidLab.Server.csproj first."; exit 1; }
   powershell.exe -NoProfile -ExecutionPolicy Bypass -File Installer/build.ps1 -Dev -Release
   git archive --format=zip --prefix=RabbidLab-Dev/ -o "$docker" HEAD Dockerfile docker-compose.dev.yml .dockerignore README.md Src/RabbidLab.Server Src/Utilities

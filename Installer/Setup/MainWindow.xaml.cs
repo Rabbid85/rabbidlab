@@ -66,21 +66,21 @@ namespace RabbidLab.Setup
                 {
                     // New install: the license, one page per choice, then the summary. Update: straight to the summary,
                     // after the license only when it changed.
-                    new Page { Key = "license", Step = "License", Next = "Next", Element = LicensePage, Skip = () => licenseAccepted },
+                    new Page { Key = "license", Step = "License agreement", Next = "Next", Element = LicensePage, Skip = () => licenseAccepted },
                     new Page { Key = "notice", Step = "Use at your own risk", Next = "Next", Element = NoticePage, Skip = () => noticeAccepted },
                     new Page { Key = "options", Step = "Installation options", Next = "Next", Element = OptionsPage, Skip = () => Updating },
                     new Page { Key = "address", Step = "Console address", Next = "Next", Element = AddressPage, Skip = () => Updating },
-                    new Page { Key = "security", Step = "Certificate", Next = "Next", Element = SecurityPage, Skip = () => Updating },
-                    new Page { Key = "welcome", Step = "Ready", Next = "Next", Element = WelcomePage },
+                    new Page { Key = "security", Step = "HTTPS certificate", Next = "Next", Element = SecurityPage, Skip = () => Updating },
+                    new Page { Key = "welcome", Step = "Ready to install", Next = "Next", Element = WelcomePage },
                     new Page { Key = "settings", Step = "Settings", Next = "Done", Element = SettingsPage, Skip = () => true },
-                    new Page { Key = "work", Step = "Install", Next = "", Element = WorkPage },
-                    new Page { Key = "done", Step = "", Next = "Finish", Element = DonePage },
+                    new Page { Key = "work", Step = "Installing", Next = "", Element = WorkPage },
+                    new Page { Key = "done", Step = "Done", Next = "Finish", Element = DonePage },
                 }
                 : new List<Page>
                 {
-                    new Page { Key = "remove", Step = "Confirm", Next = "Remove", Element = RemovePage },
-                    new Page { Key = "work", Step = "Remove", Next = "", Element = WorkPage },
-                    new Page { Key = "done", Step = "", Next = "Close", Element = DonePage },
+                    new Page { Key = "remove", Step = "What to remove", Next = "Remove", Element = RemovePage },
+                    new Page { Key = "work", Step = "Removing", Next = "", Element = WorkPage },
+                    new Page { Key = "done", Step = "Done", Next = "Close", Element = DonePage },
                 };
 
             var upgrade = choices.InstalledVersion != null;
@@ -93,6 +93,7 @@ namespace RabbidLab.Setup
                 ShowClients();
             }
             TitleText.Text = Title;
+            SideVersion.Text = $"Version {Engine.Version}";
             // Tall enough for the most it shows: a new installation lists every action.
             Height = mode == Mode.Uninstall ? 520 : 560;
 
@@ -294,31 +295,81 @@ namespace RabbidLab.Setup
             return first;
         }
 
-        /// <summary>Step dots for a new install. Current page in the accent colour, done ones grey.</summary>
+        /// <summary>The steps down the panel at the left, ticked off as they're done; the ring in place of the mark while it works.</summary>
         private void ShowSteps()
         {
-            StepDots.Children.Clear();
-            var steps = pages.Where(p => !p.Skip() && p.Key != "work" && p.Key != "done").ToList();
+            var steps = pages.Where(p => !p.Skip() && p.Key != "settings").ToList();
             var current = steps.IndexOf(pages[at]);
-            if (mode != Mode.Install || Updating || editing != null || current < 0)
+            if (current >= 0)
             {
-                StepDots.Visibility = Visibility.Collapsed;
-                return;
-            }
-            for (var i = 0; i < steps.Count; i++)
-            {
-                StepDots.Children.Add(new Ellipse
+                StepList.Children.Clear();
+                for (var i = 0; i < steps.Count; i++)
                 {
-                    Width = i == current ? 10 : 8,
-                    Height = i == current ? 10 : 8,
-                    Margin = new Thickness(4, 0, 4, 0),
-                    VerticalAlignment = VerticalAlignment.Center,
-                    Fill = (Brush) FindResource(i == current ? "Accent" : i < current ? "Muted" : "LineStrong"),
-                    ToolTip = steps[i].Step,
+                    StepList.Children.Add(StepRow(steps[i].Step, i < current ? 0 : i == current ? 1 : 2));
+                }
+                AutomationProperties.SetName(StepList, $"Step {current + 1} of {steps.Count}: {steps[current].Step}");
+            }
+            InstallRing.Visibility = pages[at].Key == "work" ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        // One step: 0 done (ticked), 1 the one on screen, 2 still to come.
+        private UIElement StepRow(string name, int state)
+        {
+            var mark = new Grid { Width = 18, Height = 18, VerticalAlignment = VerticalAlignment.Center };
+            if (state == 0)
+            {
+                mark.Children.Add(new Ellipse { Fill = (Brush) FindResource("Accent") });
+                mark.Children.Add(new System.Windows.Shapes.Path
+                {
+                    Data = Geometry.Parse("M5.2,9.4 L7.9,12 L12.8,6.6"),
+                    Stroke = Brushes.White,
+                    StrokeThickness = 1.8,
+                    StrokeStartLineCap = PenLineCap.Round,
+                    StrokeEndLineCap = PenLineCap.Round,
+                    StrokeLineJoin = PenLineJoin.Round,
                 });
             }
-            AutomationProperties.SetName(StepDots, $"Step {current + 1} of {steps.Count}: {steps[current].Step}");
-            StepDots.Visibility = Visibility.Visible;
+            else
+            {
+                mark.Children.Add(new Ellipse { Stroke = (Brush) FindResource(state == 1 ? "Accent" : "LineStrong"), StrokeThickness = 1.5 });
+                if (state == 1)
+                {
+                    mark.Children.Add(new Ellipse { Width = 8, Height = 8, Fill = (Brush) FindResource("Accent") });
+                }
+            }
+            var text = new TextBlock
+            {
+                Text = name,
+                FontSize = 13,
+                Margin = new Thickness(11, 0, 0, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+                FontWeight = state == 1 ? FontWeights.SemiBold : FontWeights.Normal,
+                Foreground = (Brush) FindResource(state == 1 ? "Title" : state == 0 ? "StepDone" : "StepTodo"),
+            };
+            var row = new StackPanel { Orientation = Orientation.Horizontal };
+            row.Children.Add(mark);
+            row.Children.Add(text);
+            return new Border
+            {
+                Child = row,
+                Padding = new Thickness(8, 6, 8, 6),
+                Margin = new Thickness(0, 0, 0, 2),
+                CornerRadius = new CornerRadius(7),
+                Background = state == 1 ? (Brush) FindResource("GhostHover") : Brushes.Transparent,
+            };
+        }
+
+        // The ring in the panel: how far the work has got, drawn clockwise from the top.
+        private void ShowProgress(double progress)
+        {
+            var p = Math.Max(0, Math.Min(0.9999, progress));
+            RingPercent.Text = $"{Math.Round(progress * 100)}%";
+            const double c = 56, r = 50.5;
+            var angle = p * 2 * Math.PI;
+            var end = new Point(c + r * Math.Sin(angle), c - r * Math.Cos(angle));
+            var figure = new PathFigure { StartPoint = new Point(c, c - r), IsClosed = false };
+            figure.Segments.Add(new ArcSegment(end, new Size(r, r), 0, p > 0.5, SweepDirection.Clockwise, true));
+            RingArc.Data = p <= 0 ? Geometry.Empty : new PathGeometry(new[] { figure });
         }
 
 
@@ -979,10 +1030,6 @@ namespace RabbidLab.Setup
                     break;
             }
             Problem.Text = problem ?? "";
-            if (problem != null)
-            {
-                StepDots.Visibility = Visibility.Collapsed; // the message takes the foot
-            }
             return problem == null;
         }
 
@@ -1038,6 +1085,7 @@ namespace RabbidLab.Setup
                 WorkTask(what);
                 WorkBar.Value = progress;
                 WorkPercent.Text = $"{Math.Round(progress * 100)}%";
+                ShowProgress(progress);
             }));
             var deleteData = EverythingChoice.IsChecked == true;
             Exception error = null;
@@ -1643,6 +1691,7 @@ namespace RabbidLab.Setup
                     }
                     WorkBar.Value = 0.46;
                     WorkPercent.Text = "46%";
+                    ShowProgress(0.46);
                 }
                 else if (pages[i].Key == "done")
                 {

@@ -59,8 +59,6 @@ internal sealed class Status
     [DataMember(Name = "okDay")] public int OkDay { get; set; }
     [DataMember(Name = "failedDay")] public int FailedDay { get; set; }
     [DataMember(Name = "lastOk")] public DateTime? LastOk { get; set; }
-    [DataMember(Name = "jobsToday")] public int JobsToday { get; set; }
-    [DataMember(Name = "problemsToday")] public int ProblemsToday { get; set; }
     [DataMember(Name = "waitingSince")] public DateTime? WaitingSince { get; set; }
     [DataMember(Name = "lab")] public LabLook? Lab { get; set; }
     [DataMember(Name = "help")] public HelpLook? Help { get; set; }

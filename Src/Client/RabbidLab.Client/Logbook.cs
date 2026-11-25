@@ -65,9 +65,6 @@ internal sealed class Logbook
     [DataMember(Name = "version")] public string? Version { get; set; }
     [DataMember(Name = "waitingSince")] public DateTime? WaitingSince { get; set; }
     [DataMember(Name = "lostSince")] public DateTime? LostSince { get; set; }
-    [DataMember(Name = "day")] public string? Day { get; set; }
-    [DataMember(Name = "jobs")] public int Jobs { get; set; }
-    [DataMember(Name = "problems")] public int Problems { get; set; }
     [DataMember(Name = "lab")] public LabLook? Lab { get; set; }
     [DataMember(Name = "help")] public HelpLook? Help { get; set; }
     [DataMember(Name = "maker")] public string? Maker { get; set; }
@@ -149,16 +146,6 @@ internal sealed class Logbook
         }
     }
 
-    // Today's counts start again each day, by this computer's own date.
-    private void Today()
-    {
-        var day = DateTime.Now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
-        if (Day != day)
-        {
-            (Day, Jobs, Problems) = (day, 0, 0);
-        }
-    }
-
     /// <summary>Something it did, newest first.</summary>
     public static void Add(string icon, string tone, string title, string detail) =>
         Change(j => j.Acts.Insert(0, new Act { Icon = icon, Tone = tone, Title = title, Detail = detail, At = DateTime.UtcNow }));
@@ -187,22 +174,13 @@ internal sealed class Logbook
         }
     });
 
-    /// <summary>A job from Rabbid Lab ran here: counted for today, and said without what it was.</summary>
+    /// <summary>A job from Rabbid Lab ran here: said without what it was.</summary>
     public static void Job(bool ok, double seconds) => Change(j =>
     {
-        j.Today();
-        j.Jobs++;
         var took = seconds < 1.5 ? "in a second" : seconds < 90 ? $"in {Math.Round(seconds):0} seconds" : $"in {Math.Round(seconds / 60):0} minutes";
         j.Acts.Insert(0, ok
             ? new Act { Icon = "code", Tone = "ok", Title = "Ran a job", Detail = $"Sent from Rabbid Lab. Finished {took}.", At = DateTime.UtcNow }
             : new Act { Icon = "code", Tone = "warn", Title = "A job didn't finish", Detail = "Sent from Rabbid Lab. It stopped with an error.", At = DateTime.UtcNow });
-    });
-
-    /// <summary>A problem the server will be told about (Problems.Note), counted for today.</summary>
-    public static void Problem() => Change(j =>
-    {
-        j.Today();
-        j.Problems++;
     });
 
     /// <summary>The lab's look and Ask IT for help, as the server said at the last check-in.</summary>
@@ -260,14 +238,11 @@ internal sealed class Logbook
                 }
                 j.State = now;
             }
-            j.Today();
             s.Acts = j.Acts.Take(12).ToList();
             s.Day = j.HalfHours();
             s.OkDay = j.Ok.Count;
             s.FailedDay = j.Failed.Count;
             s.LastOk = j.Ok.Count > 0 ? Epoch.AddMinutes(j.Ok[j.Ok.Count - 1]) : null;
-            s.JobsToday = j.Jobs;
-            s.ProblemsToday = j.Problems;
             s.WaitingSince = now == Status.Waiting ? j.WaitingSince : null;
             s.Lab = j.Lab;
             s.Help = j.Help;

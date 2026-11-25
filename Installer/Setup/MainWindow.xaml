@@ -8,28 +8,25 @@
     <WindowChrome CaptionHeight="34" GlassFrameThickness="0" ResizeBorderThickness="0" CornerRadius="0" UseAeroCaptionButtons="False" />
   </WindowChrome.WindowChrome>
 
-  <!-- One dark window: the title bar; the page (a heading, what it does in plain words, and the actions Setup will take);
-       and the bar along the foot, with a link on the left and the buttons on the right. -->
+  <!-- One dark window in the client's look ("I like this type."): the steps down a panel at the left, ticking off as they're
+       done, with the client's ring while it installs; at the right the page (a heading, what it does in plain words, and the
+       actions Setup will take) and the bar along its foot, with a link on the left and the buttons on the right. -->
   <Grid x:Name="Root" Background="{StaticResource PanelSolid}">
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="230" />
+      <ColumnDefinition Width="*" />
+    </Grid.ColumnDefinitions>
     <Grid.RowDefinitions>
       <RowDefinition Height="34" />
       <RowDefinition Height="*" />
       <RowDefinition Height="Auto" />
     </Grid.RowDefinitions>
 
-    <!-- The title bar -->
-    <Border BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1">
-      <DockPanel>
-        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-          <Button Style="{StaticResource Chrome}" WindowChrome.IsHitTestVisibleInChrome="True" Click="Minimise_Click" ToolTip="Minimize">
-            <Path Data="M0,0 L10,0" Stroke="{StaticResource Muted}" StrokeThickness="1.1" />
-          </Button>
-          <Button x:Name="CloseButton" Style="{StaticResource Chrome}" WindowChrome.IsHitTestVisibleInChrome="True" Click="Close_Click" ToolTip="Close">
-            <Path Data="M0,0 L10,10 M10,0 L0,10" Stroke="{StaticResource Muted}" StrokeThickness="1.1" />
-          </Button>
-        </StackPanel>
-        <StackPanel Orientation="Horizontal" Margin="12,0,0,0" VerticalAlignment="Center">
-          <Viewbox Width="14" Height="16" Margin="0,0,9,0">
+    <!-- The steps panel: the mark and Setup's name, the ring while it installs, the steps (ShowSteps), the version. -->
+    <Border Grid.RowSpan="3" Background="{StaticResource Aside}" BorderBrush="{StaticResource Line}" BorderThickness="0,0,1,0">
+      <DockPanel Margin="20,18,16,16">
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal">
+          <Viewbox Width="21" Height="24" Margin="0,0,10,0" VerticalAlignment="Center">
             <Canvas Width="50" Height="57">
               <Canvas.Clip><RectangleGeometry Rect="0,0,50,57" RadiusX="11" RadiusY="11" /></Canvas.Clip>
               <Rectangle Width="50" Height="57" Fill="#0B0C14" />
@@ -39,30 +36,46 @@
                 <Path Fill="#F2F3FA" Data="F0 M0,0 H18 A13,13 0 0 1 18,26 H0 Z M11,9 V17 H18 A4,4 0 0 0 18,9 Z" />
                 <Path Fill="#F2F3FA" Data="M13,22 H24 L33,40 H22 Z" />
               </Canvas>
-              <Rectangle Canvas.Left="37.8" Canvas.Top="30.7" Width="12.2" Height="17.8" RadiusX="1.1" RadiusY="1.1" Fill="#FF6A45" />
+              <Rectangle Canvas.Left="37.8" Canvas.Top="30.7" Width="12.2" Height="17.8" RadiusX="1.1" RadiusY="1.1" Fill="{StaticResource AccentLine}" />
             </Canvas>
           </Viewbox>
-          <TextBlock x:Name="TitleText" FontSize="12" Foreground="{StaticResource Muted}" VerticalAlignment="Center" Text="Rabbid Lab Setup" />
+          <TextBlock x:Name="TitleText" FontSize="13.5" FontWeight="SemiBold" Foreground="{StaticResource Title}" VerticalAlignment="Center" Text="Rabbid Lab Setup" />
           <!-- Rabbid Lab Dev only (DevLook). -->
           <Border x:Name="DevTag" Visibility="Collapsed" VerticalAlignment="Center" Margin="8,0,0,0" Padding="6,1,6,1" CornerRadius="4" Background="#F2BE6B">
             <TextBlock Text="DEV" FontSize="11" FontWeight="ExtraBold" Foreground="#0B0C14" />
           </Border>
         </StackPanel>
+        <TextBlock x:Name="SideVersion" DockPanel.Dock="Bottom" FontSize="12" Foreground="{StaticResource Muted}" />
+        <!-- While it installs: the client's ring, filling with the percentage (ShowProgress). -->
+        <Grid x:Name="InstallRing" DockPanel.Dock="Top" Width="112" Height="112" Margin="0,26,0,0" HorizontalAlignment="Center" Visibility="Collapsed">
+          <Ellipse Stroke="{StaticResource Ring}" StrokeThickness="3" Margin="5.5" />
+          <Path x:Name="RingArc" Stroke="{StaticResource Title}" StrokeThickness="3" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+          <TextBlock x:Name="RingPercent" FontFamily="{StaticResource DisplayFont}" FontSize="26" FontWeight="SemiBold" Foreground="{StaticResource Title}" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="NoWrap" Text="0%" />
+        </Grid>
+        <StackPanel x:Name="StepList" Margin="0,22,0,0" />
       </DockPanel>
     </Border>
 
+    <!-- The window's own buttons, top right; the strip across the top drags the window. -->
+    <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
+      <Button Style="{StaticResource Chrome}" WindowChrome.IsHitTestVisibleInChrome="True" Click="Minimise_Click" ToolTip="Minimize">
+        <Path Data="M0,0 L10,0" Stroke="{StaticResource Muted}" StrokeThickness="1.1" />
+      </Button>
+      <Button x:Name="CloseButton" Style="{StaticResource Chrome}" WindowChrome.IsHitTestVisibleInChrome="True" Click="Close_Click" ToolTip="Close">
+        <Path Data="M0,0 L10,10 M10,0 L0,10" Stroke="{StaticResource Muted}" StrokeThickness="1.1" />
+      </Button>
+    </StackPanel>
+
     <!-- The bar along the foot: a link on the left, the buttons on the right. -->
-    <DockPanel Grid.Row="2" Margin="28,12,28,20" LastChildFill="False">
+    <DockPanel Grid.Row="2" Grid.Column="1" Margin="32,12,28,20" LastChildFill="False">
       <Button x:Name="NextButton" DockPanel.Dock="Right" Style="{StaticResource Primary}" Content="Next" Click="Next_Click" IsDefault="True" />
       <Button x:Name="BackButton" DockPanel.Dock="Right" Style="{StaticResource Ghost}" Content="Cancel" Click="Back_Click" Margin="0,0,8,0" />
       <Button x:Name="SettingsButton" DockPanel.Dock="Left" Style="{StaticResource LinkButton}" Content="Change installation settings" VerticalAlignment="Center" Click="ChangeSettings_Click" Visibility="Collapsed" />
       <Button x:Name="LogButton" DockPanel.Dock="Left" Style="{StaticResource LinkButton}" Content="View the setup log" VerticalAlignment="Center" Click="OpenLog_Click" Visibility="Collapsed" />
-      <TextBlock x:Name="Problem" DockPanel.Dock="Left" Foreground="{StaticResource Red}" FontSize="12.5" VerticalAlignment="Center" Margin="0,0,16,0" MaxWidth="460" TextWrapping="Wrap" />
+      <TextBlock x:Name="Problem" DockPanel.Dock="Left" Foreground="{StaticResource Red}" FontSize="12.5" VerticalAlignment="Center" Margin="0,0,16,0" MaxWidth="360" TextWrapping="Wrap" />
     </DockPanel>
-    <!-- Step dots (ShowSteps), centred along the foot -->
-    <StackPanel x:Name="StepDots" Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,12,0,20" Visibility="Collapsed" />
 
-    <Grid Grid.Row="1" Margin="28,20,28,0">
+    <Grid Grid.Row="1" Grid.Column="1" Margin="32,8,28,0">
       <!-- License agreement: the first page of a new install, and of an update whose agreement changed. Next waits for the box. -->
       <DockPanel x:Name="LicensePage" Visibility="Collapsed">
         <StackPanel DockPanel.Dock="Top">
@@ -96,19 +109,6 @@
       <ScrollViewer x:Name="WelcomePage" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
       <StackPanel Margin="0,0,4,4">
         <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
-          <Viewbox Width="22" Height="25" Margin="0,0,10,0" VerticalAlignment="Center">
-            <Canvas Width="50" Height="57">
-              <Canvas.Clip><RectangleGeometry Rect="0,0,50,57" RadiusX="11" RadiusY="11" /></Canvas.Clip>
-              <Rectangle Width="50" Height="57" Fill="#0B0C14" />
-              <Canvas>
-                <Canvas.RenderTransform><TransformGroup><ScaleTransform ScaleX="1" ScaleY="1" /><TranslateTransform X="0" Y="8.5" /></TransformGroup></Canvas.RenderTransform>
-                <Rectangle Width="11" Height="40" Fill="#F2F3FA" />
-                <Path Fill="#F2F3FA" Data="F0 M0,0 H18 A13,13 0 0 1 18,26 H0 Z M11,9 V17 H18 A4,4 0 0 0 18,9 Z" />
-                <Path Fill="#F2F3FA" Data="M13,22 H24 L33,40 H22 Z" />
-              </Canvas>
-              <Rectangle Canvas.Left="37.8" Canvas.Top="30.7" Width="12.2" Height="17.8" RadiusX="1.1" RadiusY="1.1" Fill="#FF6A45" />
-            </Canvas>
-          </Viewbox>
           <TextBlock x:Name="WelcomeTitle" Style="{StaticResource H1}" Margin="0" VerticalAlignment="Center" Text="Install Rabbid Lab" />
           <!-- Rabbid Lab Dev only (DevLook): DEV beside the heading, so it can't be taken for the release. -->
           <Border x:Name="HeadDevTag" Visibility="Collapsed" VerticalAlignment="Center" Margin="12,2,0,0" Padding="9,2,9,3" CornerRadius="6" Background="#F2BE6B">
