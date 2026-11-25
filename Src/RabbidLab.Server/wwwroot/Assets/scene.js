@@ -75,7 +75,7 @@
       glow: '#ffd4aa', water0: '#c98b9b', water1: '#2b2447', rim: '#ffcdb5', mist: '#f6c4b4', star: '.25', glint: '#fff0e0', ...SUN, moon1: '#fff0dc', moon2: '#ffcf9e', halo: '.55' },
     day: { sky0: '#5f9fe9', sky1: '#a7ccf3', sky2: '#e4effb', l1: '#94b8d0', l2: '#77a18d', l3: '#5b8568', l4: '#446b53', l5: '#2f4d3c', pines3: '#3f6a4e', pines5: '#23402f',
       fog: '#dcebf8', fogK: '.5', glow: '#fff3c4', water0: '#86b6e2', water1: '#2c5d8e', rim: '#ffffff', mist: '#ffffff', mistK: '.6', star: '0', glint: '#ffffff',
-      text: '#10213f', lead: '#26364f', eye: '#2c5d8e', shade: '#ecf2fa', ...SUN },
+      text: '#10213f', lead: '#26364f', eye: '#2c5d8e', shade: 'transparent', ...SUN }, // no shade behind the words by day ("No shade", the haze mock)
     dusk: { sky0: '#1d1a4a', sky1: '#a5487b', sky2: '#f69c5c', l1: '#4b305f', l2: '#3c2651', l3: '#2f1e43', l4: '#231735', l5: '#160f23', fog: '#f08c6c', fogK: '.7',
       glow: '#ffc58c', water0: '#a1517b', water1: '#1b1231', rim: '#ffb28c', mist: '#f3a080', star: '.5', glint: '#ffe0c4', ...SUN, moon1: '#ffe2c0', moon2: '#ffa868', halo: '.6' },
   };
