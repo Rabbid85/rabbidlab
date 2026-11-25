@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.417 (2026-11-25)
+
+- The banner follows the clock: dawn, the day with the sun, dusk, then night, the same in dark and light mode, with dark words by day. Overview’s banner shows the time of day at the top right.
+
 ## 1.1.416 (2026-11-25)
 
 - Each monster moves its own way: Sasquatch lopes, Santa runs in a jolly jog with his arms pumping, and the yeti walks, heel to toe, from one clump of pines to the next.

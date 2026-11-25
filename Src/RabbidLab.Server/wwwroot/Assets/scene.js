@@ -27,9 +27,9 @@
   // where the real moon's seas are, blurred so they never read as spots ("The moon looks odd", of crisp ones and an outline).
   // [x, y, rx, ry, turn] as parts of the radius. Its outline for the seas is in the shared defs, one for each size.
   const SEAS = [[-0.42, -0.1, 0.36, 0.5, 15], [-0.2, -0.42, 0.24, 0.18, -10], [0.3, -0.25, 0.24, 0.17, 25], [0.45, 0.08, 0.2, 0.2, 0], [-0.1, 0.38, 0.16, 0.1, -15]];
-  const moon = (x, y, rad) => `<circle cx="${x}" cy="${f1(y)}" r="${rad * 2.4}" fill="url(#ovs-glow)" opacity="${HAZE}"/>`
-    + `<g transform="translate(${x} ${f1(y)})"><circle r="${rad + 1.2}" fill="#efeaff" opacity=".35" filter="url(#ovs-b05)"/><circle r="${rad}" fill="url(#ovs-moonfill)"/>`
-    + `<g clip-path="url(#ovs-mc${rad})" fill="#9C94C6" opacity=".16"><g filter="url(#ovs-b2)">${SEAS.map(([a, b, rx, ry, t]) => `<ellipse transform="rotate(${t} ${f1(a * rad)} ${f1(b * rad)})" cx="${f1(a * rad)}" cy="${f1(b * rad)}" rx="${f1(rx * rad)}" ry="${f1(ry * rad)}"/>`).join('')}</g></g></g>`;
+  const moon = (x, y, rad) => `<circle cx="${x}" cy="${f1(y)}" r="${rad * 2.4}" class="ovs-halo" fill="url(#ovs-glow)" opacity="${HAZE}"/>`
+    + `<g transform="translate(${x} ${f1(y)})"><circle class="ovs-rimglow" r="${rad + 1.2}" fill="#efeaff" opacity=".35" filter="url(#ovs-b05)"/><circle r="${rad}" fill="url(#ovs-moonfill)"/>`
+    + `<g class="ovs-seas" clip-path="url(#ovs-mc${rad})" fill="#9C94C6" opacity=".16"><g filter="url(#ovs-b2)">${SEAS.map(([a, b, rx, ry, t]) => `<ellipse transform="rotate(${t} ${f1(a * rad)} ${f1(b * rad)})" cx="${f1(a * rad)}" cy="${f1(b * rad)}" rx="${f1(rx * rad)}" ry="${f1(ry * rad)}"/>`).join('')}</g></g></g>`;
   // A shooting star: a streak that crosses its path and fades as it goes, so it never stops on screen. It carries the band of
   // sky it may cross and where the moon is, for wander() to put it somewhere new each time.
   const meteor = (x, y, deg, [y0, y1], [mx, my, mr]) => `<g class="ovs-mpos" data-sky="${f1(y0)} ${f1(y1)}" data-moon="${mx} ${f1(my)} ${mr}" transform="translate(${x} ${f1(y)}) rotate(${deg})"><g class="ovs-meteor">`
@@ -59,6 +59,74 @@
     return month === 9 && day >= 15 ? 'halloween' : (month === 10 && day > thanksgiving) || (month === 11 && day <= 26) ? 'christmas' : '';
   })();
   if (holiday) document.documentElement.classList.add(`ovs-${holiday}`);
+
+  // The time of day, from the clock: dawn, the day with the sun, dusk, night ("Day and night, dawn, dusk look amazing", then
+  // "Write this to dev" of take B in the day-and-night mock): the same bright dawn, day and dusk in dark and light mode, with
+  // dark words by day, and the night drawn from the accent. The colours go on <html> as --sk-* (overview.css falls back to the
+  // night): at night a holiday's own, at other times its tint on the time's. ?time=dawn, day, dusk or night shows one.
+  const rgb = (c) => [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16));
+  const mix = (a, b, t) => { const [x, y] = [rgb(a), rgb(b)]; return `#${x.map((v, i) => Math.round(v + (y[i] - v) * t).toString(16).padStart(2, '0')).join('')}`; };
+  const toward = (pal, keys, c, t) => Object.fromEntries(keys.filter((k) => /^#[0-9a-f]{6}$/i.test(pal[k] || '')).map((k) => [k, mix(pal[k], c, t)]));
+  // A sun in place of the moon: white, a warm edge, no seas, a wide soft halo, warm rays, no shooting star.
+  const SUN = { moon0: '#ffffff', moon1: '#fffbe8', moon2: '#ffefb8', seas: '0', halo: '.6', rimglow: '#fff6d8', rimglowOp: '.9', raysOp: '.09', meteor: 'hidden' };
+  const TIMES = {
+    night: {},
+    dawn: { sky0: '#2b2f6b', sky1: '#d8889b', sky2: '#f7c89e', l1: '#5c4b7c', l2: '#4a3d69', l3: '#3a3058', l4: '#2c2547', l5: '#1d1830', fog: '#f3b8a8', fogK: '.7',
+      glow: '#ffd4aa', water0: '#c98b9b', water1: '#2b2447', rim: '#ffcdb5', mist: '#f6c4b4', star: '.25', glint: '#fff0e0', ...SUN, moon1: '#fff0dc', moon2: '#ffcf9e', halo: '.55' },
+    day: { sky0: '#5f9fe9', sky1: '#a7ccf3', sky2: '#e4effb', l1: '#94b8d0', l2: '#77a18d', l3: '#5b8568', l4: '#446b53', l5: '#2f4d3c', pines3: '#3f6a4e', pines5: '#23402f',
+      fog: '#dcebf8', fogK: '.5', glow: '#fff3c4', water0: '#86b6e2', water1: '#2c5d8e', rim: '#ffffff', mist: '#ffffff', mistK: '.6', star: '0', glint: '#ffffff',
+      text: '#10213f', lead: '#26364f', eye: '#2c5d8e', shade: '#ecf2fa', ...SUN },
+    dusk: { sky0: '#1d1a4a', sky1: '#a5487b', sky2: '#f69c5c', l1: '#4b305f', l2: '#3c2651', l3: '#2f1e43', l4: '#231735', l5: '#160f23', fog: '#f08c6c', fogK: '.7',
+      glow: '#ffc58c', water0: '#a1517b', water1: '#1b1231', rim: '#ffb28c', mist: '#f3a080', star: '.5', glint: '#ffe0c4', ...SUN, moon1: '#ffe2c0', moon2: '#ffa868', halo: '.6' },
+  };
+  // A holiday's night, and how it leans the other times its way.
+  const HILLS = ['l1', 'l2', 'l3', 'l4'];
+  const HOLIDAYS = {
+    halloween: {
+      name: 'Halloween',
+      night: { sky0: '#070208', sky1: '#1f0a25', sky2: '#47183c', l1: '#3d1a3a', l2: '#2d1331', l3: '#220e28', l4: '#180a1e', l5: '#0c0611', fog: '#ff8a3d', glow: '#ffae5c', rim: '#ffb35c',
+        water0: '#4a2039', water1: '#0b0510', mist: '#ff9a4a', mistK: '.8', moon0: '#ffe4b5', moon1: '#ffb866', moon2: '#e2832b', glint: '#ffcf8a', seas: '.12', halo: '.35' },
+      tint: (p) => ({ ...toward(p, ['sky1', 'sky2'], '#7a2a6a', 0.3), ...toward(p, ['fog', 'mist'], '#ff8a3d', 0.45), ...toward(p, HILLS, '#3d1a3a', 0.25) }),
+    },
+    christmas: {
+      name: 'Christmas',
+      night: { sky0: '#02040d', sky1: '#0b1532', sky2: '#1f3058', l1: '#34497a', l2: '#1d2d52', l3: '#162343', l4: '#8fa2c4', l5: '#d3deef', pines3: '#0b1424', pines4: '#0c1828',
+        pines5: '#07101c', fog: '#aec2ea', glow: '#e6eeff', rim: '#eef3ff', water0: '#4a5f8c', water1: '#111b33', mist: '#d2e0fa', glint: '#eef4ff' },
+      // Snow on the far hills, the shore and the ground in front, the pines on them still dark.
+      tint: (p) => ({ ...toward(p, ['l1'], '#ffffff', 0.35), ...toward(p, ['l4'], '#ffffff', 0.7), ...toward(p, ['l5'], '#ffffff', 0.82),
+        ...toward(p, ['water0'], '#d6e4f4', 0.3), rim: '#ffffff', pines4: p.pines4 || p.l4 || '#0c1828', pines5: p.pines5 || p.l5 || '#07101c' }),
+    },
+  };
+  const NAMES = { dawn: 'Dawn', day: 'Day', dusk: 'Dusk', night: 'Night' };
+  const asked = new URLSearchParams(location.search).get('time');
+  const timeNow = () => {
+    if (NAMES[asked]) return asked;
+    const m = new Date().getHours() * 60 + new Date().getMinutes();
+    return m >= 360 && m < 480 ? 'dawn' : m >= 480 && m < 1020 ? 'day' : m >= 1020 && m < 1170 ? 'dusk' : 'night';
+  };
+  let painted = '';
+  const paint = () => {
+    const root = document.documentElement;
+    const time = timeNow();
+    const pal = { ...TIMES[time] };
+    const hol = HOLIDAYS[holiday];
+    if (hol) Object.assign(pal, time === 'night' ? hol.night : hol.tint(pal));
+    const key = `${time} ${JSON.stringify(pal)}`;
+    if (key !== painted) {
+      [...root.style].filter((p) => p.startsWith('--sk-')).forEach((p) => root.style.removeProperty(p));
+      Object.entries(pal).forEach(([k, v]) => root.style.setProperty(`--sk-${k}`, v));
+      root.dataset.sky = time;
+      painted = key;
+    }
+    // The chip at the top right of Overview's banner: the holiday, the time of day and the clock.
+    const chip = document.getElementById('hero-sky');
+    if (chip) {
+      chip.textContent = `${hol ? `${hol.name} · ` : ''}${NAMES[time]}, ${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+      chip.hidden = false;
+    }
+  };
+  paint();
+  setInterval(paint, 30000);
 
   // Christmas lights: along the lower edge of each of a pine's three tiers, from one branch tip to the other, 3, 4 and 5
   // plain coloured bulbs, the same colours in the same order on every pine ("Each tree needs the same light setup").
@@ -241,7 +309,7 @@
     return `<svg class="ovs" data-size="${size}" viewBox="0 0 ${2 * W} ${H}" preserveAspectRatio="xMaxYMid slice" aria-hidden="true">` + twice(W, [
       ['all', `<rect width="${2 * W}" height="${H}" fill="url(#ovs-sky)"/>`],
       ['soft', `<g>${sky}</g>`],
-      ['right', `${meteor(300, m(90), 14, [m(30), m(220)], [mx, my, k.moonR * 5])}<circle cx="${mx}" cy="${f1(my)}" r="${k.glowR}" fill="url(#ovs-glow)" opacity="${HAZE}"/>${beams}${moon(mx, my, k.moonR)}`
+      ['right', `${meteor(300, m(90), 14, [m(30), m(220)], [mx, my, k.moonR * 5])}<circle cx="${mx}" cy="${f1(my)}" r="${k.glowR}" class="ovs-halo" fill="url(#ovs-glow)" opacity="${HAZE}"/>${beams}${moon(mx, my, k.moonR)}`
         + (holiday === 'halloween' ? bats(mx, m, k.moonR / 28) : '')],
       ['both', land(L1, 'ovs-l1', 0.5)],
       // No cloud under the moon ("Just remove this fucking cloud.").
