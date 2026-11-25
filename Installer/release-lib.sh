@@ -56,6 +56,10 @@ put_release() {
     fi
     gh release upload "$tag" "${@:1:$#-1}" --clobber
     gh release upload "$tag" "${@: -1}" --clobber
+    # A prod release an earlier try left as a draft (GitHub failed half way) is published now, as the latest.
+    if [ "$prerelease" = no ] && [ "$(gh release view "$tag" --json isDraft --jq .isDraft)" = true ]; then
+      gh release edit "$tag" --draft=false --latest --notes-file "$said" >/dev/null
+    fi
   elif [ "$prerelease" = yes ]; then
     gh release create "$tag" "$@" --verify-tag --prerelease --title "$title" --notes-file "$said" >/dev/null
   else
