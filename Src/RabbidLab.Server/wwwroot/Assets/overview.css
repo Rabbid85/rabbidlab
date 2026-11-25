@@ -125,4 +125,37 @@
    scene.js moves it somewhere new before it comes again. */
 @keyframes ovs-meteor { 0% { transform: translateX(0); opacity: 0; } 1% { opacity: 1; } 4.5% { opacity: .9; } 6% { transform: translateX(420px); opacity: 0; } 100% { transform: translateX(420px); opacity: 0; } }
 @keyframes ovs-shim { from { transform: scaleX(.7); } to { transform: scaleX(1.15); } }
+/* Halloween, October 15 to 31 (scene.js): a purple night, an orange moon with a warmer halo, orange mist in the valleys,
+   orange light along the ridges and on the water. */
+.ovs-halloween .ovs { --l1: #3d1a3a; --l2: #2d1331; --l3: #220e28; --l4: #180a1e; --l5: #0c0611; }
+.ovs-halloween .ovs-sky0 { stop-color: #070208; }
+.ovs-halloween .ovs-sky1 { stop-color: #1f0a25; }
+.ovs-halloween .ovs-sky2 { stop-color: #47183c; }
+.ovs-halloween .ovs-water0 { stop-color: #4a2039; }
+.ovs-halloween .ovs-water1 { stop-color: #0b0510; }
+.ovs-halloween .ovs-fogc { stop-color: #ff8a3d; }
+.ovs-halloween .ovs-glowc { stop-color: #ffae5c; }
+.ovs-halloween .ovs-rim { stroke: #ffb35c; }
+.ovs-halloween .ovs-mist { fill: #ff9a4a; fill-opacity: .8; }
+.ovs-halloween :is(.ovs-glint, .ovs-sheen) { fill: #ffcf8a; }
+.ovs-halloween #ovs-moonfill stop:nth-child(1) { stop-color: #ffe4b5; }
+.ovs-halloween #ovs-moonfill stop:nth-child(2) { stop-color: #ffb866; }
+.ovs-halloween #ovs-moonfill stop:nth-child(3) { stop-color: #e2832b; }
+.ovs-halloween .ovs circle[fill="url(#ovs-glow)"] { opacity: .35; }
+.ovs-halloween .ovs g[clip-path] { opacity: .12; }
+/* The bats: each on its own path past the moon (scene.js sets it), fading in and out at the ends, wings flapping from the
+   shoulders, bobbing as they fly. */
+.ovs-bat { fill: #07030b; opacity: 0; animation: ovs-bat var(--t) ease-in-out infinite; animation-delay: var(--d); }
+@keyframes ovs-bat {
+  0% { transform: translate(var(--x0), var(--y0)) scale(var(--s)); opacity: 0; }
+  10% { opacity: 1; }
+  25% { transform: translate(var(--x1), var(--y1)) scale(var(--s)); }
+  50% { transform: translate(var(--x2), var(--y2)) scale(var(--s)); }
+  75% { transform: translate(var(--x3), var(--y3)) scale(var(--s)); }
+  90% { opacity: 1; }
+  100% { transform: translate(var(--x4), var(--y4)) scale(var(--s)); opacity: 0; } }
+.ovs-wing { transform-box: fill-box; transform-origin: 0% 60%; animation: ovs-flap .14s ease-in-out infinite alternate; }
+@keyframes ovs-flap { from { transform: rotate(-32deg) scaleY(.9); } to { transform: rotate(26deg) scaleY(.75); } }
+.ovs-bob { animation: ovs-bob var(--b, .4s) ease-in-out infinite alternate; }
+@keyframes ovs-bob { from { transform: translateY(-2px); } to { transform: translateY(2px); } }
 @media (prefers-reduced-motion: reduce) { .ovs * { animation: none !important; } }

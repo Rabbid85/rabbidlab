@@ -42,6 +42,31 @@
   const twice = (W, layers) => layers.map(([where, s]) => (where === 'all' ? s
     : `<g transform="translate(${W} 0)">${s}</g>${where === 'right' ? '' : `<g transform="translate(${where === 'both' ? W + 1 : W} 0) scale(-1 1)">${s}</g>`}`)).join('');
 
+  // Halloween, October 15 to 31: a purple night with an orange moon and orange mist (overview.css .ovs-halloween), and three
+  // tiny bats flitting past the moon ("Holloween is the bats."). ?banner=halloween shows it on any day.
+  const holiday = new URLSearchParams(location.search).get('banner') === 'halloween' || (new Date().getMonth() === 9 && new Date().getDate() >= 15) ? 'halloween' : '';
+  if (holiday) document.documentElement.classList.add(`ovs-${holiday}`);
+  // A bat: a body, a head with ears, and two scalloped wings that flap from the shoulders, bobbing as it flies.
+  const WING = 'M2 -1C9 -8 18 -11 30 -6C27 -3 26 0 25 3C22 0 19 0 16 3C14 0 11 0 8 4C6 2 4 2 2 3Z';
+  const BAT = `<g class="ovs-bob"><g class="ovs-wing"><path d="${WING}"/></g><g transform="scale(-1 1)"><g class="ovs-wing"><path d="${WING}"/></g></g>`
+    + '<ellipse cy="2" rx="3.2" ry="6.2"/><circle cy="-5" r="3.1"/><path d="M-2.8 -6.4L-2.2 -11.2L-0.6 -7.2ZM2.8 -6.4L2.2 -11.2L0.6 -7.2Z"/></g>';
+  // Three, each on its own wandering path past the moon at (mx, my): in from one side, three turns near the moon, out the
+  // other, at its own size, speed and bob. The path goes in data-v; fill() sets it as the bat's own properties, since the
+  // page allows no style attributes.
+  const bats = (mx, m, sc) => {
+    const r = rnd(53);
+    let s = '';
+    for (let i = 0; i < 3; i++) {
+      const back = r() < 0.5;
+      const xs = [back ? mx - 300 : mx + 300, mx + (r() - 0.5) * 520, mx + (r() - 0.5) * 520, mx + (r() - 0.5) * 520, back ? mx + 310 : mx - 310];
+      const ys = xs.map(() => m(70 + r() * 170));
+      const v = [...xs.map((x, k) => `x${k}:${f1(x)}px;y${k}:${f1(ys[k])}px`), `s:${((0.3 + r() * 0.22) * sc).toFixed(2)}`, `t:${(6 + r() * 6).toFixed(1)}s`,
+        `d:${(-i * 4 - r() * 1.5).toFixed(1)}s`, `b:${(0.3 + r() * 0.3).toFixed(2)}s`].join(';');
+      s += `<g class="ovs-bat" data-v="${v}">${BAT}</g>`;
+    }
+    return s;
+  };
+
   // How the drawing is fitted to a banner. h: its height in its own units (a 270 px banner shows 300); map: Overview's heights
   // to this one's, squeezing the sky most and the hills least so they keep their shape; the sizes of the trees, the moon and
   // its light, so nothing is squashed.
@@ -144,7 +169,8 @@
     return `<svg class="ovs" viewBox="0 0 ${2 * W} ${H}" preserveAspectRatio="xMaxYMid slice" aria-hidden="true">` + twice(W, [
       ['all', `<rect width="${2 * W}" height="${H}" fill="url(#ovs-sky)"/>`],
       ['soft', `<g>${sky}</g>`],
-      ['right', `${meteor(300, m(90), 14, [m(30), m(220)], [mx, my, k.moonR * 5])}<circle cx="${mx}" cy="${f1(my)}" r="${k.glowR}" fill="url(#ovs-glow)" opacity="${HAZE}"/>${beams}${moon(mx, my, k.moonR)}`],
+      ['right', `${meteor(300, m(90), 14, [m(30), m(220)], [mx, my, k.moonR * 5])}<circle cx="${mx}" cy="${f1(my)}" r="${k.glowR}" fill="url(#ovs-glow)" opacity="${HAZE}"/>${beams}${moon(mx, my, k.moonR)}`
+        + (holiday === 'halloween' ? bats(mx, m, k.moonR / 28) : '')],
       ['both', land(L1, 'ovs-l1', 0.5)],
       // No cloud under the moon ("Just remove this fucking cloud.").
       ['all', fog(250, 170, 0.55)],
@@ -205,6 +231,10 @@
       hero.insertAdjacentHTML('afterbegin', `<div class="hero-art">${lowScene}</div>`);
     });
     document.querySelectorAll('.ovs-mpos:not([data-last])').forEach(wander);
+    document.querySelectorAll('.ovs-bat[data-v]').forEach((b) => {
+      b.dataset.v.split(';').forEach((p) => { const [k, v] = p.split(':'); b.style.setProperty(`--${k}`, v); });
+      b.removeAttribute('data-v');
+    });
   };
   fill();
   document.addEventListener('rabbidlab:show', fill);

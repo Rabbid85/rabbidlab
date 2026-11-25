@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.413', [
+    'From October 15 to 31 the banner turns to Halloween: a purple night, an orange moon and mist, and three tiny bats flitting past the moon. Add ?banner=halloween to the address to see it on any day.']],
   ['1.1.412', [
     'The client’s panel ends with Uninstall and the version: no Today numbers, since Activity shows every success and failure.',
     'Setup has the client’s look: near black with the purple accent, the steps down a panel at the left ticking off as you go, and the client’s ring filling while it installs.']],
@@ -1322,6 +1324,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.413': ['2026-11-25', 'update', 'Halloween on the banner'],
   '1.1.412': ['2026-11-25', 'update', 'Setup looks like the client'],
   '1.1.411': ['2026-11-25', 'update', 'The client Activity reads like a log'],
   '1.1.410': ['2026-11-24', 'update', 'A check-in every 5 minutes, and Ask IT for help opens at once'],

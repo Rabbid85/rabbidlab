@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.413 (2026-11-25)
+
+- From October 15 to 31 the banner turns to Halloween: a purple night, an orange moon and mist, and three tiny bats flitting past the moon. Add ?banner=halloween to the address to see it on any day.
+
 ## 1.1.412 (2026-11-25)
 
 - The client’s panel ends with Uninstall and the version: no Today numbers, since Activity shows every success and failure.
