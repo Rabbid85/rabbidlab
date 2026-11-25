@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.418', [
+    'Nessie has a new look: a thick neck arching over, a pronounced horned head and spines down her back, eyes that catch the light, and she’s smaller. She glides, turns her head to look at us and back over her shoulder, dips her head into the water, and dives head first.']],
   ['1.1.417', [
     'The banner follows the clock: dawn, the day with the sun, dusk, then night, the same in dark and light mode, with dark words by day. Overview’s banner shows the time of day at the top right.']],
   ['1.1.416', [
@@ -1334,6 +1336,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.418': ['2026-11-25', 'update', 'A new Nessie'],
   '1.1.417': ['2026-11-25', 'update', 'Day and night on the banner'],
   '1.1.416': ['2026-11-25', 'update', 'Each monster moves its own way'],
   '1.1.415': ['2026-11-25', 'update', 'A shaggy monster that lopes'],

@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.418 (2026-11-25)
+
+- Nessie has a new look: a thick neck arching over, a pronounced horned head and spines down her back, eyes that catch the light, and she’s smaller. She glides, turns her head to look at us and back over her shoulder, dips her head into the water, and dives head first.
+
 ## 1.1.417 (2026-11-25)
 
 - The banner follows the clock: dawn, the day with the sun, dusk, then night, the same in dark and light mode, with dark words by day. Overview’s banner shows the time of day at the top right.

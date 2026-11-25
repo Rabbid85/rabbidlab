@@ -176,7 +176,8 @@
 /* Nessie: black whatever the banner, her eye catching the light; under the water a deeper shade of the lake's own colour,
    faint, as if seen through it. She rises, glides 80 units in 24 s, and dives. */
 .ovm-dark { fill: #07070d; }
-.ovm-eye { fill: color-mix(in srgb, var(--accent) 30%, #cfc8ff); opacity: .75; }
+.ovm-eye { fill: #fff1d0; } /* a warm pinpoint catching the light, with a soft glow round it */
+.ovm-glow { opacity: .5; }
 .ovm-under { fill: color-mix(in srgb, var(--sk-water0, color-mix(in srgb, var(--accent) 12%, #0e0c26)) 45%, #000); opacity: .34; }
 .ovm-nessie.ovm-go { animation: ovm-on 24s linear both; }
 .ovm-nessie.ovm-go .ovm-swim { animation: ovm-swim 24s linear both; }

@@ -17,25 +17,46 @@
   // through the water under it.
   const BODY = '<path d="M6 0C6 -2.2 3 -3.4 -2 -3.6C-10 -4 -18 -3.2 -23 -1C-30 1.5 -38 3.5 -46 5.5C-38 6.2 -30 6.4 -23 6C-18 9 -8 10.5 0 9.2C4.5 8.2 6.5 4 6 0Z"/>'
     + '<g class="ovm-paddle"><path d="M1 5C-1 9 -4 13 -9 15.5C-6 12 -3 8.5 -2 5.5Z"/></g><g class="ovm-paddle ovm-b"><path d="M-17 6C-20 9 -24 12 -29 13.5C-26 10.5 -22 8 -20 5.5Z"/></g>';
+  // Her size on the lake: 1.75 was "rather fucking large".
+  const NS = 1.1;
   // Her neck, drawn each frame along a spine of SEG pieces from its foot, each turned from straight up toward where she
-  // swims: thick at the foot, thin up the neck, the head a little fuller, then the snout.
+  // swims. Her shape is the user's cartoon ("Nesse look"): a thick neck rising a little back, then arching right over, her
+  // head hanging at the front, spines down her back. The head stands out from the neck ("Head needs to be more pronounced",
+  // with a dragon's head): a pinch at the throat, a skull wider than the neck, a long snout to a round nose, swept-back horns.
   const SEG = 30;
-  const LONG = 45;
-  const REST = (s) => (s < 0.6 ? 3 + 9 * (s / 0.6) : s < 0.8 ? 12 + 92 * sm((s - 0.6) / 0.2) : 104 + 4 * ((s - 0.8) / 0.2)); // up, the head bent forward
+  const LONG = 50;
+  const REST = (s) => (s < 0.42 ? -10 + 8 * (s / 0.42) : s < 0.8 ? -2 + 140 * ((s - 0.42) / 0.38) : 138 + 8 * ((s - 0.8) / 0.2));
+  const THICK = (s) => (s < 0.74 ? 3.5 - 1.6 * (s / 0.74) : s < 0.84 ? 1.9 + 1 * sm((s - 0.74) / 0.1) : s < 0.95 ? 2.9 - 1.4 * ((s - 0.84) / 0.11) : 1.5 + 0.25 * Math.sin(((s - 0.95) / 0.05) * Math.PI));
   const UP = (s) => 2 + 6 * s; // coming up: straight, the head first
   const DOWN = (s) => 22 + 160 * s ** 1.25; // going down: curled over, the head into the water ahead of her
   const SWAY = (s, t) => 9 * s ** 1.3 * Math.sin((2 * Math.PI * t) / 4600 - 2.4 * s) + 6 * sm((s - 0.7) / 0.15) * Math.sin((2 * Math.PI * t) / 6600 + 0.8);
-  const THICK = (s) => (s < 0.66 ? 3.4 - 1.9 * (s / 0.66) : s < 0.8 ? 1.5 + 0.45 * Math.sin(((s - 0.66) / 0.14) * (Math.PI / 2)) : 0.3 + 1.65 * (1 - ((s - 0.8) / 0.2) ** 2));
-  // u: how far she has come up; d: how far into her dive, the head turning down first and the bend running down the neck
-  // after it; t: the time, for the sway.
-  const neck = (u, d, t) => {
+  // Where the arch starts: the top of her turns from here when she looks round.
+  const TURN = 0.42;
+  // Looking round, her head turns as an owl's does ("just turn the fucking head like an owl"): the neck stays, the arch and
+  // head turn about their own upright. turn: 1 forward, 0 at us (three-quarter on), -1 back over her shoulder.
+  const thetaOf = (h) => (h >= 0 ? (1 - h) * 1.08 : 1.08 + -h * (Math.PI - 1.08));
+  const area = (q) => q.reduce((s, p, i) => { const n = q[(i + 1) % q.length]; return s + p[0] * n[1] - n[0] * p[1]; }, 0);
+  const wound = (q) => `M${(area(q) < 0 ? q.reverse() : q).map(f2).join('L')}Z`;
+  const ring = ([cx, cy], w) => `M${(cx - w).toFixed(2)} ${cy.toFixed(2)}A${w.toFixed(2)} ${w.toFixed(2)} 0 1 1 ${(cx + w).toFixed(2)} ${cy.toFixed(2)}A${w.toFixed(2)} ${w.toFixed(2)} 0 1 1 ${(cx - w).toFixed(2)} ${cy.toFixed(2)}Z`;
+  const join = ([x1, y1], r1, [x2, y2], r2) => {
+    const dd = Math.hypot(x2 - x1, y2 - y1);
+    if (dd <= Math.abs(r1 - r2) + 0.001) return '';
+    const [phi, al] = [Math.atan2(y2 - y1, x2 - x1), Math.acos((r1 - r2) / dd)];
+    const at = (x, y, w, an) => [x + w * Math.cos(an), y + w * Math.sin(an)];
+    return wound([at(x1, y1, r1, phi + al), at(x2, y2, r2, phi + al), at(x2, y2, r2, phi - al), at(x1, y1, r1, phi - al)]);
+  };
+  // u: how far she has come up; d: how far into her dive; t: the time, for the sway. o.turn: which way her head faces;
+  // o.dip: how far her head is down in the water. Going down, she dips her head first and her neck follows it in ("she
+  // should dip her head to go down too").
+  const neck = (u, d, t, o = {}) => {
     const P = [];
     let [x, y, prev] = [1.8, 0.6, null];
     for (let i = 0; i <= SEG; i++) {
       const s = i / SEG;
       const sway = SWAY(s, t);
       let a = lerp(UP(s) + sway * 0.4, REST(s) + sway, sm(u * 1.5 - s * 0.5));
-      a = lerp(a, DOWN(s), sm(d * 1.6 - (1 - s) * 0.6));
+      if (o.dip) a = lerp(a, DOWN(s), sm(o.dip * 1.8 - (1 - s) * 1.6));
+      a = lerp(a, DOWN(s), sm(d * 2.6 - (1 - s) * 1.6));
       const r = (a * Math.PI) / 180;
       if (prev !== null) {
         const m = (prev + r) / 2;
@@ -45,18 +66,51 @@
       prev = r;
       P.push([x, y, r, THICK(s)]);
     }
-    const pts = [...P.map(([px, py, r, w]) => [px - Math.cos(r) * w, py - Math.sin(r) * w]), ...P.map(([px, py, r, w]) => [px + Math.cos(r) * w, py + Math.sin(r) * w]).reverse()];
-    let path = `M${f2(pts[0])}`;
-    for (let i = 1; i < pts.length - 1; i++) path += `Q${f2(pts[i])} ${f2([(pts[i][0] + pts[i + 1][0]) / 2, (pts[i][1] + pts[i + 1][1]) / 2])}`;
-    const [ex, ey, er] = P[Math.round(SEG * 0.87)];
-    return { d: `${path}L${f2(pts[pts.length - 1])}Z`, eye: [ex - Math.cos(er) * 0.6, ey - Math.sin(er) * 0.6] };
+    const th = thetaOf(o.turn ?? 1);
+    const [c, sn] = [Math.cos(th), Math.sin(th)];
+    const x0 = P[Math.round(SEG * TURN)][0];
+    const k = (i) => sm((i / SEG - TURN + 0.04) / 0.1);
+    const turned = ([px, py], kk) => [x0 + (px - x0) * (1 - kk + kk * c), py];
+    // The neck up to the arch as an outline; the arch and head as round slices along it, each joined to the next, so the
+    // head keeps its shape however far it has turned ("her shape goes away when looking"). All wound the same way.
+    const CUT = Math.round(SEG * TURN);
+    const low = P.slice(0, CUT + 1);
+    const pts = [...low.map(([px, py, r, w]) => [px - Math.cos(r) * w, py - Math.sin(r) * w]), ...low.map(([px, py, r, w]) => [px + Math.cos(r) * w, py + Math.sin(r) * w]).reverse()];
+    const side = area(pts) < 0 ? pts.reverse() : pts;
+    let path = `M${f2(side[0])}`;
+    for (let i = 1; i < side.length - 1; i++) path += `Q${f2(side[i])} ${f2([(side[i][0] + side[i + 1][0]) / 2, (side[i][1] + side[i + 1][1]) / 2])}`;
+    path += `L${f2(side[side.length - 1])}Z`;
+    const Q = P.map((p, i) => turned(p, k(i)));
+    for (let i = CUT - 2; i <= SEG; i++) {
+      path += ring(Q[i], P[i][3]);
+      if (i < SEG) path += join(Q[i], P[i][3], Q[i + 1], P[i + 1][3]);
+    }
+    // Spines down her back, on the outside of the arch, each leaning a little toward her head; then the horns at the back of
+    // her head, swept back along her neck.
+    const spike = (i, a, b) => {
+      const [px, py, r, w] = P[i];
+      const at = (o1, o2) => turned([px - Math.cos(r) * o1 + Math.sin(r) * o2, py - Math.sin(r) * o1 - Math.cos(r) * o2], k(i));
+      return wound([at(w - 0.35, -0.55), at(w - 0.35, 0.55), at(w + a, b)]);
+    };
+    for (let i = Math.round(SEG * 0.22); i <= Math.round(SEG * 0.72); i += 2) path += spike(i, 1.05, 0.3);
+    [0.8, 0.84, 0.88].forEach((s) => { path += spike(Math.round(SEG * s), 1.7, -1.7); });
+    // Her eyes, one each side of her skull, above its line: each shows while it faces us, so side on the near one, turned to
+    // us both, looking back the other.
+    const [ex, ey, er] = P[Math.round(SEG * 0.88)];
+    const up = -Math.sin(er) <= 0 ? [-Math.cos(er), -Math.sin(er)] : [Math.cos(er), Math.sin(er)];
+    const [X, Y] = [ex + up[0] * 0.9 - x0, ey + up[1] * 0.9];
+    const eye = (z) => [x0 + X * c - z * sn, Y, sm((0.7 * sn + 0.71 * Math.sign(z) * c) / 0.3)];
+    return { d: path, eyes: [eye(0.9), eye(-0.9)] };
   };
   const REST_NECK = neck(1, 0, 0);
-  const NECK = (eye) => `<path class="ovm-neck" d="${REST_NECK.d}"/>${eye ? `<circle class="ovm-eye" cx="${REST_NECK.eye[0].toFixed(2)}" cy="${REST_NECK.eye[1].toFixed(2)}" r=".55"/>` : ''}`;
+  // Her eyes catch the light ("Catching the light", the eyes mock): a warm pinpoint with a soft glow round it.
+  const EYE = (op) => `<g class="ovm-eye" opacity="${op}"><circle class="ovm-glow" r=".95" filter="url(#ovs-b1)"/><circle r=".2"/></g>`;
+  const NECK = (eyes) => `<path class="ovm-neck" d="${REST_NECK.d}"/>${eyes ? EYE(1) + EYE(0) : ''}`;
   const NESSIE = '<g class="ovm ovm-nessie"><defs><clipPath id="ovm-above"><rect x="-120" y="-80" width="240" height="80.4"/></clipPath>'
     + '<clipPath id="ovm-below"><rect x="-120" y=".4" width="240" height="80"/></clipPath></defs><g class="ovm-swim">'
     + `<g clip-path="url(#ovm-below)"><g class="ovm-rise"><g class="ovm-under" filter="url(#ovs-b1)">${BODY}${NECK(false)}</g></g></g>`
     + `<g clip-path="url(#ovm-above)"><g class="ovm-rise"><g class="ovm-dark">${BODY}${NECK(true)}</g></g></g></g></g>`;
+
 
   // The runner: one body on joints, facing left with his feet on y 0, and the outfits it wears ("Basically the yet monster
   // just changes outfits/styles lol. Engine would be amazing."). A body gives each limb's pieces drawn from their joint at
@@ -154,7 +208,7 @@
     svg.dataset.monsters = '';
     const later = (fn, ms) => setTimeout(() => { if (svg.isConnected) fn(); }, ms);
     svg.insertAdjacentHTML('beforeend', `<g class="ovm-layer">${HIDE()}<g mask="url(#ovm-hide)"><g>${RUNNER(outfit())}</g></g>${CLUMP}`
-      + `<g transform="translate(2480 470) scale(1.75)">${NESSIE}</g></g>`);
+      + `<g transform="translate(2480 470) scale(${NS})">${NESSIE}</g></g>`);
     const q = (sel) => svg.querySelector(sel);
     if (still()) return;
 
@@ -201,25 +255,40 @@
     };
     wait();
 
-    // Nessie, now and then: somewhere new on the lake in the moon's part of it each time, going one way or the other. Her
-    // neck is drawn each frame while she's out, from where her round is.
+    // Nessie, now and then: somewhere new on the lake in the moon's part of it each time, going one way or the other. She
+    // glides ("She also just needs to glide, not row"), and on the way looks at us and back over her shoulder, and dips her
+    // head into the water twice ("Rowing, looking, dipping", less the rowing). Her neck is drawn each frame while she's out,
+    // from where her round is.
     const ness = q('.ovm-nessie');
     const rise = ness.querySelector('.ovm-rise');
     const necks = ness.querySelectorAll('.ovm-neck');
-    const eye = ness.querySelector('.ovm-eye');
+    const eyes = ness.querySelectorAll('.ovm-eye');
+    const span = (p, a, b, c, e) => (p < a || p > e ? 0 : p < b ? sm((p - a) / (b - a)) : p <= c ? 1 : 1 - sm((p - c) / (e - c)));
+    // Which way her head faces through her round: [part of her round, 1 forward / 0 at us / -1 back], eased between.
+    const LOOK = [[0, 1], [0.3, 1], [0.35, 0], [0.4, 0], [0.46, -1], [0.52, -1], [0.57, 0], [0.62, 1], [1, 1]];
+    const turnAt = (p) => {
+      const i = Math.max(0, LOOK.findIndex(([v]) => v > p) - 1);
+      const [[a, ha], [b, hb]] = [LOOK[i], LOOK[i + 1] || LOOK[i]];
+      return b === a ? ha : lerp(ha, hb, sm((p - a) / (b - a)));
+    };
     const frame = (now) => {
       if (!svg.isConnected || !ness.classList.contains('ovm-go')) return;
       const ms = Number(rise.getAnimations()[0]?.currentTime ?? 0);
       if (ms >= LEN) return;
       requestAnimationFrame(frame);
-      const n = neck(Math.max(0, Math.min(1, ms / LEN / 0.12)), Math.max(0, Math.min(1, (ms / LEN - 0.8) / 0.13)), now);
-      necks.forEach((p) => p.setAttribute('d', n.d));
-      eye.setAttribute('cx', n.eye[0].toFixed(2));
-      eye.setAttribute('cy', n.eye[1].toFixed(2));
+      const p = ms / LEN;
+      const n = neck(Math.max(0, Math.min(1, p / 0.12)), Math.max(0, Math.min(1, (p - 0.8) / 0.13)), now,
+        { turn: turnAt(p), dip: span(p, 0.14, 0.165, 0.185, 0.21) + span(p, 0.68, 0.705, 0.725, 0.75) });
+      necks.forEach((g) => g.setAttribute('d', n.d));
+      eyes.forEach((g, i) => {
+        const [ex, ey, op] = n.eyes[i];
+        g.setAttribute('transform', `translate(${ex.toFixed(2)} ${ey.toFixed(2)})`);
+        g.setAttribute('opacity', op.toFixed(2));
+      });
     };
     const swim = () => {
       const left = Math.random() < 0.5;
-      ness.parentNode.setAttribute('transform', `translate(${(2300 + Math.random() * 600).toFixed(0)} 470) scale(${left ? -1.75 : 1.75} 1.75)`);
+      ness.parentNode.setAttribute('transform', `translate(${(2300 + Math.random() * 600).toFixed(0)} 470) scale(${left ? -NS : NS} ${NS})`);
       ness.classList.remove('ovm-go');
       void ness.getBoundingClientRect();
       ness.classList.add('ovm-go');
