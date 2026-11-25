@@ -46,15 +46,20 @@ EOF
 put_release() {
   local tag="$1" title="$2" notes="$3" prerelease="$4"
   shift 4
+  # The notes go through a file: a prod release lists every version since the last one, too long for a Windows command line.
+  local said
+  said=$(mktemp)
+  printf '%s\n' "$notes" > "$said"
   if gh release view "$tag" >/dev/null 2>&1; then
     if [ "$prerelease" = yes ]; then
-      gh release edit "$tag" --prerelease --title "$title" --notes "$notes" >/dev/null
+      gh release edit "$tag" --prerelease --title "$title" --notes-file "$said" >/dev/null
     fi
     gh release upload "$tag" "${@:1:$#-1}" --clobber
     gh release upload "$tag" "${@: -1}" --clobber
   elif [ "$prerelease" = yes ]; then
-    gh release create "$tag" "$@" --verify-tag --prerelease --title "$title" --notes "$notes" >/dev/null
+    gh release create "$tag" "$@" --verify-tag --prerelease --title "$title" --notes-file "$said" >/dev/null
   else
-    gh release create "$tag" "$@" --verify-tag --title "$title" --notes "$notes"
+    gh release create "$tag" "$@" --verify-tag --title "$title" --notes-file "$said"
   fi
+  rm -f "$said"
 }
