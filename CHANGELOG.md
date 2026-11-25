@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.416 (2026-11-25)
+
+- Each monster moves its own way: Sasquatch lopes, Santa runs in a jolly jog with his arms pumping, and the yeti walks, heel to toe, from one clump of pines to the next.
+
 ## 1.1.415 (2026-11-25)
 
 - The monster on Overview’s banner is shaggy now, in long fur that trails behind him, and moves in a long lope with knees and elbows, his body level; Santa lopes the same way in his suit. He stands still while he hides.

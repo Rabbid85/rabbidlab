@@ -200,25 +200,45 @@
 .ovm-paddle { transform-box: fill-box; transform-origin: 100% 0%; animation: ovm-paddle 1.4s ease-in-out infinite alternate; }
 .ovm-paddle.ovm-b { animation-direction: alternate-reverse; }
 @keyframes ovm-paddle { from { transform: rotate(-12deg); } to { transform: rotate(14deg); } }
-/* The runner, always there, out of sight behind the pines unless he's running between them, in a long lope whatever he
-   wears ("A long lope, put in dev. for monsters.", "lope for santa"): each thigh swings far from the hip and the shin folds
-   high behind it, the arms swing against the legs with the elbows straightening as they come forward, so a hand never
-   reaches the face ("Arm in his mouth lol"), and the body stays level and nearly upright ("He just fucking bvounces when
-   running?"). Each joint turns about its own point, (0 0) of its group. A stride is .72 s; the far leg and the near arm run
-   half a stride behind. Waiting behind the pines he stands still. */
+/* The runner, always there, out of sight behind the pines unless he's crossing between them, each outfit moving its own way
+   (monsters.js OUTFITS): Sasquatch in a long lope ("Lopes looks great"), the yeti walking, Santa in a jolly jog. The body
+   stays level ("He just fucking bvounces when running?") and the elbows straighten as the arms come forward, so a hand never
+   reaches the face ("Arm in his mouth lol"). Each joint turns about its own point, (0 0) of its group. A stride is --ovm-t
+   long; the far leg and the near arm run half a stride behind. Waiting behind the pines he stands still. */
 .ovm-runner.ovm-here { opacity: 1; }
-:is(.ovm-thigh, .ovm-shin, .ovm-upper, .ovm-fore) { transform-box: view-box; transform-origin: 0 0; animation: .72s ease-in-out infinite; }
-:is(.ovm-leg.ovm-b, .ovm-arm:not(.ovm-b)) :is(.ovm-thigh, .ovm-shin, .ovm-upper, .ovm-fore) { animation-delay: -.36s; }
-.ovm-thigh { animation-name: ovm-thigh; }
-.ovm-shin { animation-name: ovm-shin; }
-.ovm-upper { animation-name: ovm-upper; }
-.ovm-fore { animation-name: ovm-fore; }
-.ovm-bob { transform-box: fill-box; transform-origin: 50% 100%; animation: ovm-bob .36s ease-in-out infinite alternate; }
+.ovm-g-lope { --ovm-t: .72s; } .ovm-g-walk { --ovm-t: 1s; } .ovm-g-jog { --ovm-t: .46s; }
+:is(.ovm-thigh, .ovm-shin, .ovm-upper, .ovm-fore) { transform-box: view-box; transform-origin: 0 0; animation: var(--ovm-t) ease-in-out infinite; }
+:is(.ovm-leg.ovm-b, .ovm-arm:not(.ovm-b)) :is(.ovm-thigh, .ovm-shin, .ovm-upper, .ovm-fore) { animation-delay: calc(var(--ovm-t) / -2); }
+.ovm-bob { transform-box: fill-box; transform-origin: 50% 100%; }
+/* The lope: each thigh swings far from the hip and the shin folds high behind it, the body nearly upright. */
+.ovm-g-lope .ovm-thigh { animation-name: ovm-thigh; } .ovm-g-lope .ovm-shin { animation-name: ovm-shin; }
+.ovm-g-lope .ovm-upper { animation-name: ovm-upper; } .ovm-g-lope .ovm-fore { animation-name: ovm-fore; }
+.ovm-g-lope .ovm-bob { animation: ovm-bob calc(var(--ovm-t) / 2) ease-in-out infinite alternate; }
 @keyframes ovm-thigh { 0%, 100% { transform: rotate(48deg); } 50% { transform: rotate(-40deg); } }
 @keyframes ovm-shin { 0%, 100% { transform: rotate(-4deg); } 25% { transform: rotate(-12deg); } 50% { transform: rotate(-40deg); } 64% { transform: rotate(-118deg); } 84% { transform: rotate(-62deg); } }
 @keyframes ovm-upper { 0%, 100% { transform: rotate(-44deg); } 50% { transform: rotate(34deg); } }
 @keyframes ovm-fore { 0%, 100% { transform: rotate(50deg); } 50% { transform: rotate(30deg); } }
 @keyframes ovm-bob { from { transform: rotate(-6deg); } to { transform: rotate(-6deg) translateY(-.6px); } }
+/* The walk, upright and easy: the heel lands, the knee softens, he rolls over the foot and pushes off, the foot clears the
+   ground as it swings through; the arms swing gently against the legs. */
+.ovm-g-walk .ovm-thigh { animation-name: ovm-thigh-walk; } .ovm-g-walk .ovm-shin { animation-name: ovm-shin-walk; }
+.ovm-g-walk .ovm-upper { animation-name: ovm-upper-walk; } .ovm-g-walk .ovm-fore { animation-name: ovm-fore-walk; }
+.ovm-g-walk .ovm-bob { animation: ovm-bob-walk calc(var(--ovm-t) / 2) ease-in-out infinite alternate; }
+@keyframes ovm-thigh-walk { 0% { transform: rotate(24deg); } 12% { transform: rotate(16deg); } 25% { transform: rotate(2deg); } 40% { transform: rotate(-14deg); } 50% { transform: rotate(-20deg); } 62% { transform: rotate(-4deg); } 80% { transform: rotate(20deg); } 100% { transform: rotate(24deg); } }
+@keyframes ovm-shin-walk { 0% { transform: rotate(-4deg); } 12% { transform: rotate(-14deg); } 25% { transform: rotate(-6deg); } 40% { transform: rotate(-10deg); } 50% { transform: rotate(-32deg); } 62% { transform: rotate(-62deg); } 80% { transform: rotate(-22deg); } 100% { transform: rotate(-4deg); } }
+@keyframes ovm-upper-walk { 0%, 100% { transform: rotate(20deg); } 50% { transform: rotate(-20deg); } }
+@keyframes ovm-fore-walk { 0%, 100% { transform: rotate(24deg); } 50% { transform: rotate(12deg); } }
+@keyframes ovm-bob-walk { from { transform: rotate(-2deg); } to { transform: rotate(-2deg) translateY(-.2px); } }
+/* The jolly jog: short quick steps, each foot landing under him and springing off, the knee folding as it swings through;
+   the arms bent and pumping against the legs. */
+.ovm-g-jog .ovm-thigh { animation-name: ovm-thigh-jog; } .ovm-g-jog .ovm-shin { animation-name: ovm-shin-jog; }
+.ovm-g-jog .ovm-upper { animation-name: ovm-upper-jog; } .ovm-g-jog .ovm-fore { animation-name: ovm-fore-jog; }
+.ovm-g-jog .ovm-bob { animation: ovm-bob-jog calc(var(--ovm-t) / 2) ease-in-out infinite alternate; }
+@keyframes ovm-thigh-jog { 0% { transform: rotate(30deg); } 20% { transform: rotate(14deg); } 45% { transform: rotate(-24deg); } 55% { transform: rotate(-20deg); } 70% { transform: rotate(4deg); } 85% { transform: rotate(26deg); } 100% { transform: rotate(30deg); } }
+@keyframes ovm-shin-jog { 0% { transform: rotate(-10deg); } 20% { transform: rotate(-24deg); } 45% { transform: rotate(-20deg); } 55% { transform: rotate(-50deg); } 70% { transform: rotate(-95deg); } 85% { transform: rotate(-40deg); } 100% { transform: rotate(-10deg); } }
+@keyframes ovm-upper-jog { 0%, 100% { transform: rotate(26deg); } 50% { transform: rotate(-30deg); } }
+@keyframes ovm-fore-jog { 0%, 100% { transform: rotate(60deg); } 50% { transform: rotate(92deg); } }
+@keyframes ovm-bob-jog { from { transform: rotate(-4deg); } to { transform: rotate(-4deg) translateY(-.3px); } }
 .ovm-hiding :is(.ovm-bob, .ovm-thigh, .ovm-shin, .ovm-upper, .ovm-fore) { animation: none; }
 .ovm-fur { fill: color-mix(in srgb, var(--l4) 62%, #000); }
 .ovm-snowfur { fill: #eef3fa; stroke: #9fb0c8; stroke-width: .4; }

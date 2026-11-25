@@ -93,10 +93,12 @@
       + `<path d="M-6.4 -27.2C-5.6 -31.4 -1 -32.4 2.4 -30.2L6.6 -26.6L4.7 -25.9L1 -27.8Z" fill="${RED}"/>`
       + '<path d="M-6.9 -27.4Q-3 -28.8 1.4 -27.3" fill="none" stroke="#f8f6f2" stroke-width="1.7" stroke-linecap="round"/><circle cx="6.4" cy="-26.3" r="1.35" fill="#f8f6f2"/></g>',
   };
+  // Each outfit's own way of moving (overview.css .ovm-g-*), and how fast it covers ground against 260 units in 8 seconds:
+  // Sasquatch lopes, the yeti walks, Santa jogs (the walk items in the mock, "send to dev").
   const OUTFITS = {
-    sasquatch: { body: SHAGGY, cls: 'ovm-fur' }, // dark, the colour of the shore's pines a shade darker
-    yeti: { body: SHAGGY, cls: 'ovm-snowfur' }, // the same in white, for when the banner shows the weather
-    santa: { body: SANTA, cls: '' },
+    sasquatch: { body: SHAGGY, cls: 'ovm-fur', gait: 'lope', pace: 1.1 }, // dark, the colour of the shore's pines a shade darker
+    yeti: { body: SHAGGY, cls: 'ovm-snowfur', gait: 'walk', pace: 0.5 }, // the same in white, for when the banner shows the weather
+    santa: { body: SANTA, cls: '', gait: 'jog', pace: 0.8 },
   };
   // Which outfit: Santa at Christmas; Sasquatch otherwise.
   const outfit = () => (S.holiday === 'christmas' ? 'santa' : 'sasquatch');
@@ -110,8 +112,7 @@
       + `<g transform="translate(0 ${m.elbow})"><g class="ovm-fore">${part(m.fore)}</g></g></g></g>`;
     return `<g class="${cls}">${arm(1)}${leg(1)}${leg(0)}${m.body}${arm(0)}</g>`;
   };
-  const RUNNER = (name) => `<g class="ovm ovm-runner ovm-hiding"><g class="ovm-walk"><g class="ovm-bob">${build(OUTFITS[name].body, OUTFITS[name].cls)}</g></g></g>`;
-  const PACE = 1.1; // the lope covers ground a little faster than 260 units in 8 seconds
+  const RUNNER = (name) => `<g class="ovm ovm-runner ovm-g-${OUTFITS[name].gait} ovm-hiding"><g class="ovm-walk"><g class="ovm-bob">${build(OUTFITS[name].body, OUTFITS[name].cls)}</g></g></g>`;
 
   // Where he hides: four clumps of three to five pines of different heights on the far shore (base 436), the tallest near
   // the middle so he is hidden at its foot. Each pine sways from its foot when its clump rustles; each clump is mirrored in
@@ -159,6 +160,7 @@
 
     // The runner: always behind one clump or running to another.
     const runner = q('.ovm-runner');
+    const { pace } = OUTFITS[outfit()];
     const walk = runner.querySelector('.ovm-walk');
     let spot = Math.floor(Math.random() * CLUMPS.length);
     const place = (x, left) => runner.parentNode.setAttribute('transform', `translate(${x} 434) scale(${left ? 0.75 : -0.75} .75)`);
@@ -174,11 +176,13 @@
     const run = () => {
       let to = spot;
       while (to === spot) to = Math.floor(Math.random() * CLUMPS.length);
+      // Walking, he only goes to the next clump along; a lope or a jog can cross several.
+      if (pace < 0.7) to = spot === 0 ? 1 : spot === CLUMPS.length - 1 ? spot - 1 : spot + (Math.random() < 0.5 ? -1 : 1);
       shake(spot, true); // he pushes out through the branches
       later(() => {
         place(CLUMPS[spot], CLUMPS[to] < CLUMPS[spot]);
         const dist = Math.abs(CLUMPS[to] - CLUMPS[spot]) / 0.75;
-        const ms = ((dist / 260) * 8000) / PACE; // "Why is sasquatch running 900 miels an hour": about 260 units in 8 s
+        const ms = ((dist / 260) * 8000) / pace; // "Why is sasquatch running 900 miels an hour": about 260 units in 8 s, at his outfit's pace
         walk.getAnimations().forEach((a) => a.cancel());
         runner.classList.remove('ovm-hiding');
         walk.animate([{ transform: 'translateX(0)' }, { transform: `translateX(${-dist}px)` }], { duration: ms, easing: 'linear', fill: 'forwards' });
