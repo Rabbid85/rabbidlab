@@ -119,6 +119,29 @@ public sealed class RiskNoticeTests : IDisposable
     }
 
     [Fact]
+    public async Task A_new_wording_says_which_sections_changed_since_the_one_accepted()
+    {
+        // pkhan accepted an older wording in which sections 2 and 5 read differently.
+        var older = RiskNotice.Prints.Select((p, i) => i is 1 or 4 ? "000000000000" : p).ToList();
+        File.WriteAllText(Path.Combine(data, "risk-notice.json"), JsonSerializer.Serialize(new
+        {
+            people = new[] { new { source = "local", username = "pkhan", wording = "0000000000000000", version = "October 2026", at = DateTime.UtcNow.AddDays(-30), sections = older } },
+        }));
+        var admin = await app.SignedIn();
+
+        var (_, said) = await PastTheCode(admin, "pkhan");
+        var notice = said.GetProperty("notice");
+        Assert.True(notice.GetProperty("before").GetBoolean());
+        Assert.Equal([1, 4], notice.GetProperty("changed").EnumerateArray().Select(c => c.GetInt32()));
+        Assert.Equal(RiskNotice.Prints[0], notice.GetProperty("sections")[0].GetProperty("print").GetString());
+
+        // An account that never accepted any: nothing before, nothing marked.
+        var (_, fresh) = await PastTheCode(admin, "lbrown");
+        Assert.False(fresh.GetProperty("notice").GetProperty("before").GetBoolean());
+        Assert.Equal(0, fresh.GetProperty("notice").GetProperty("changed").GetArrayLength());
+    }
+
+    [Fact]
     public async Task Declining_opens_nothing_and_is_logged()
     {
         var admin = await app.SignedIn();

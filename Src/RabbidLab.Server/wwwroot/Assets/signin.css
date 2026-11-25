@@ -377,6 +377,13 @@ body:has(dialog.rn[open]) .signin-card { opacity: 0; pointer-events: none; }
 .rn-sec { max-width: 62ch; padding-top: 14px; }
 .rn-sec h3 { margin: 0 0 4px; color: var(--title); font-size: 14.5px; font-weight: 650; }
 .rn-sec p { margin: 0; color: color-mix(in srgb, var(--text) 84%, transparent); font-size: 14px; line-height: 1.6; }
+/* Why it opened (signin.js whyNotice): a new wording, or an account that hasn't accepted it; the sections a new wording changed. */
+.rn-note { display: flex; gap: 10px; align-items: flex-start; max-width: 62ch; margin: 2px 0 2px; padding: 11px 14px; border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  border-radius: 10px; background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--text); font-size: 13.5px; line-height: 1.5; }
+.rn-note svg { flex: none; width: 16px; height: 16px; margin-top: 2px; color: var(--accent-soft); }
+.rn-sec.changed { margin-left: -12px; padding-left: 12px; border-left: 2px solid var(--accent); }
+.rn-tag { margin-left: 8px; padding: 1px 7px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--accent-soft);
+  font-size: 11.5px; font-style: normal; font-weight: 650; vertical-align: 1px; }
 .rn-end { display: flex; align-items: center; gap: 8px; margin: 20px 0 0; color: var(--ok); font-size: 13px; }
 .rn-end svg { width: 15px; height: 15px; }
 .rn-error { margin: 0; padding: 10px 30px; border-top: 1px solid var(--sty-signin-edge, var(--line)); color: var(--red); font-size: 13px; }

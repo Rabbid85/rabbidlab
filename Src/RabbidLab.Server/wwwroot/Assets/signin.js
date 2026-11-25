@@ -190,12 +190,12 @@
 
   const unreachable = (then) => `Could not connect to the server. Check that the Rabbid Lab service is running, then ${then}.`;
   // Sends a form with its button off meanwhile. Null when the server can't be reached, which the page then says. Each
-  // carries the notice wording this browser accepted, if it did (see the notice below).
+  // carries the notice wording accepted in this tab, if it was (see the notice below).
   const send = async (url, body, button) => {
     showError('');
     button.disabled = true;
     try {
-      const r = await fetch(url, { method: 'POST', headers, body: JSON.stringify({ ...body, notice: noticeTaken() || undefined }) });
+      const r = await fetch(url, { method: 'POST', headers, body: JSON.stringify({ ...body, notice: noticeHere() || undefined }) });
       const said = await r.json().catch(() => null);
       return { ok: r.ok, said, problem: said?.error || `The server returned HTTP ${r.status}. Try again.` };
     } catch {
@@ -264,16 +264,26 @@
     $('mfa-code').select();
   });
 
-  // The Use at your own risk notice (RiskNotice.cs). It opens with the page, before anything is typed, until this browser
-  // has accepted its wording; the acceptance goes with the sign-in and is kept for the account. An account signing in
-  // without it (storage cleared, or the wording changed meanwhile) gets it after the password instead, with no session
-  // yet. Either way the tick wakes up once it's read to the end, and Decline opens nothing.
-  const NOTICE = 'rabbidlab.notice';
-  // On while the notice is being tried out: it opens on every visit, accepted or not. Off when the owner says so.
-  const NOTICE_EVERY_LOAD = true;
-  const noticeTaken = () => { try { return localStorage.getItem(NOTICE) || ''; } catch { return ''; } };
+  // The Use at your own risk notice (RiskNotice.cs), once for each account and again for everyone when its wording changes
+  // (the notice-when mock, take B). It opens with the page, before anything is typed, while this browser hasn't accepted
+  // this wording; accepted there, it goes with this tab's sign-in and is kept for that account. An account that hasn't
+  // accepted it signs in without it and gets it after the password instead, with no session yet, even on a computer where
+  // someone else did. A new wording marks the sections that changed since the one accepted. The tick wakes up once it's
+  // read to the end, and Decline opens nothing.
+  const NOTICE = 'rabbidlab.notice'; // this browser's: { wording, prints } (older pages kept the wording alone)
+  const NOTICE_HERE = 'rabbidlab.notice.here'; // this tab's: the wording accepted here, sent with the sign-in
+  const noticeTaken = () => {
+    try {
+      const v = localStorage.getItem(NOTICE) || '';
+      if (!v.startsWith('{')) return { wording: v, prints: [] };
+      const o = JSON.parse(v);
+      return { wording: String(o.wording || ''), prints: Array.isArray(o.prints) ? o.prints : [] };
+    } catch { return { wording: '', prints: [] }; }
+  };
+  const noticeHere = () => { try { return sessionStorage.getItem(NOTICE_HERE) || ''; } catch { return ''; } };
   let noticeShown = null; // the notice as the server sent it
   let noticeTicket = ''; // set when it came after the password
+  let noticeWhy = { note: '', changed: [] }; // the line at its top and the sections marked as changed
   // The notice takes the sign-in card's place and size, and keeps them as the window resizes.
   const place = () => {
     const card = document.querySelector('.signin-card').getBoundingClientRect();
@@ -302,22 +312,43 @@
       $('rn-tick-text').textContent = 'I understand and accept the risk';
     }
   };
-  const notice = (n, ticket = '') => {
+  // Why it opens, from what was accepted before: here, the wording this browser accepted (as the page opens); after the
+  // password, what the server says of the account. Nothing accepted before says nothing on the page and, after the
+  // password, that the account hasn't accepted it.
+  const whyNotice = (n, ticket) => {
+    const was = noticeTaken();
+    const before = ticket ? !!n.before : !!was.wording;
+    const changed = ticket ? (n.changed || []) : was.prints.length ? n.sections.map((s, i) => (was.prints.includes(s.print) ? -1 : i)).filter((i) => i >= 0) : [];
+    const note = before
+      ? `This notice has changed. ${changed.length ? 'The changed sections are marked. ' : ''}Read it to the end and accept it again to keep using Rabbid Lab.`
+      : ticket ? 'This account hasn\'t accepted this notice yet. Every account accepts it once, before its first sign-in.' : '';
+    return { note, changed, before };
+  };
+  const notice = (n, ticket = '', why = whyNotice(n, ticket)) => {
     noticeShown = n;
     noticeTicket = ticket;
+    noticeWhy = why;
     $('rn-title').textContent = n.title;
-    $('rn-meta').textContent = `Notice version ${n.version} · About a ${n.minutes} minute read`;
+    $('rn-meta').textContent = `Notice version ${n.version}${why.before ? ' · Updated' : ''} · About a ${n.minutes} minute read`;
     const doc = $('rn-doc');
     doc.replaceChildren(...n.sections.map((s, i) => {
       const sec = document.createElement('section');
-      sec.className = 'rn-sec';
+      sec.className = why.changed.includes(i) ? 'rn-sec changed' : 'rn-sec';
       const h = document.createElement('h3');
       h.textContent = `${i + 1}. ${s.heading}`;
+      if (why.changed.includes(i)) h.append(Object.assign(document.createElement('em'), { className: 'rn-tag', textContent: 'Changed' }));
       const p = document.createElement('p');
       p.textContent = s.text;
       sec.append(h, p);
       return sec;
     }));
+    if (why.note) {
+      const line = document.createElement('p');
+      line.className = 'rn-note';
+      line.insertAdjacentHTML('beforeend', '<svg aria-hidden="true"><use href="#i-info"/></svg>');
+      line.append(Object.assign(document.createElement('span'), { textContent: why.note }));
+      doc.prepend(line);
+    }
     doc.insertAdjacentHTML('beforeend', '<p class="rn-end"><svg aria-hidden="true"><use href="#i-check"/></svg>You reached the end.</p>');
     // Its sections, listed beside it: each goes to its section when clicked.
     $('rn-list').replaceChildren(...n.sections.map((s, i) => {
@@ -354,7 +385,10 @@
   });
   $('rn').addEventListener('cancel', (e) => e.preventDefault()); // Esc doesn't close it: accept or decline
   $('rn-accept').addEventListener('change', () => { $('rn-go').disabled = !$('rn-accept').checked; });
-  const keepNotice = () => { try { localStorage.setItem(NOTICE, noticeShown.wording); } catch { /* asked again next visit */ } };
+  const keepNotice = () => {
+    try { localStorage.setItem(NOTICE, JSON.stringify({ wording: noticeShown.wording, prints: noticeShown.sections.map((s) => s.print) })); } catch { /* asked again next visit */ }
+    try { sessionStorage.setItem(NOTICE_HERE, noticeShown.wording); } catch { /* asked after the password instead */ }
+  };
   // Declined: the forms step aside for a line that says so, with the notice a click away.
   const declined = (on) => {
     document.body.classList.toggle('declined', on);
@@ -393,7 +427,7 @@
     await send('/api/signin/notice', { ticket: noticeTicket, accept: false }, $('rn-decline'));
     location.replace('signin.html?declined=1');
   });
-  $('declined-read').addEventListener('click', () => notice(noticeShown));
+  $('declined-read').addEventListener('click', () => notice(noticeShown, noticeTicket, noticeWhy));
   const declinedNow = new URLSearchParams(location.search).has('declined');
   if (declinedNow) history.replaceState(null, '', 'signin.html');
 
@@ -981,12 +1015,12 @@
     }
     document.body.classList.remove('loading'); // drawn once, already in its final layout
     watchUpdates();
-    // The notice, as the page opens: until this browser accepts it, or every time while NOTICE_EVERY_LOAD is on. Just
-    // declined after the password: the line saying so instead.
+    // The notice, as the page opens, while this browser hasn't accepted this wording. Just declined after the password:
+    // the line saying so instead.
     if (s.notice && s.plain !== 'refused') {
       noticeShown = s.notice;
       if (declinedNow) declined(true);
-      else if (NOTICE_EVERY_LOAD || noticeTaken() !== s.notice.wording) notice(s.notice);
+      else if (noticeTaken().wording !== s.notice.wording) notice(s.notice);
     }
   };
 

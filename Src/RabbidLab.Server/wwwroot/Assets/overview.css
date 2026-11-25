@@ -143,6 +143,30 @@
 .ovs-halloween #ovs-moonfill stop:nth-child(3) { stop-color: #e2832b; }
 .ovs-halloween .ovs circle[fill="url(#ovs-glow)"] { opacity: .35; }
 .ovs-halloween .ovs g[clip-path] { opacity: .12; }
+/* Christmas, the day after Thanksgiving to December 26 (scene.js): a cold blue night, snow on the shore and the ground, the
+   pines dark on it ("not white ass trees"), their lights twinkling, snow falling. */
+.ovs-christmas .ovs { --l1: #34497a; --l2: #1d2d52; --l3: #162343; --l4: #8fa2c4; --l5: #d3deef; }
+.ovs-christmas .ovs-sky0 { stop-color: #02040d; }
+.ovs-christmas .ovs-sky1 { stop-color: #0b1532; }
+.ovs-christmas .ovs-sky2 { stop-color: #1f3058; }
+.ovs-christmas .ovs-water0 { stop-color: #4a5f8c; }
+.ovs-christmas .ovs-water1 { stop-color: #111b33; }
+.ovs-christmas .ovs-fogc { stop-color: #aec2ea; }
+.ovs-christmas .ovs-glowc { stop-color: #e6eeff; }
+.ovs-christmas .ovs-rim { stroke: #eef3ff; }
+.ovs-christmas .ovs-mist { fill: #d2e0fa; }
+.ovs-christmas :is(.ovs-glint, .ovs-sheen) { fill: #eef4ff; }
+.ovs-christmas .ovs-l3.ovs-pines { fill: #0b1424; }
+.ovs-christmas .ovs-l4.ovs-pines { fill: #0c1828; }
+.ovs-christmas .ovs-l5.ovs-pines { fill: #07101c; }
+.ovs-twinkle { animation: ovs-twinkle 1.8s ease-in-out infinite alternate; }
+@keyframes ovs-twinkle { 0%, 40% { opacity: 1; } 100% { opacity: .35; } }
+.ovs-snow { fill: #fff; }
+.ovs-fall { animation: ovs-fall 16s linear infinite; }
+.ovs-f2 { animation-duration: 11s; } .ovs-f3 { animation-duration: 7.5s; }
+.ovs-h300 .ovs-fall { animation-name: ovs-fall-low; }
+@keyframes ovs-fall { from { transform: translateY(0); } to { transform: translateY(600px); } }
+@keyframes ovs-fall-low { from { transform: translateY(0); } to { transform: translateY(300px); } }
 /* The bats: each on its own path past the moon (scene.js sets it), fading in and out at the ends, wings flapping from the
    shoulders, bobbing as they fly. */
 .ovs-bat { fill: #07030b; opacity: 0; animation: ovs-bat var(--t) ease-in-out infinite; animation-delay: var(--d); }
@@ -158,4 +182,52 @@
 @keyframes ovs-flap { from { transform: rotate(-32deg) scaleY(.9); } to { transform: rotate(26deg) scaleY(.75); } }
 .ovs-bob { animation: ovs-bob var(--b, .4s) ease-in-out infinite alternate; }
 @keyframes ovs-bob { from { transform: translateY(-2px); } to { transform: translateY(2px); } }
+/* The monsters on Overview's banner (monsters.js). Hidden until each plays. */
+.ovm { opacity: 0; }
+/* Nessie: black whatever the banner, her eye catching the light; under the water a deeper shade of the lake's own colour,
+   faint, as if seen through it. She rises, glides 80 units in 24 s, and dives. */
+.ovm-dark { fill: #07070d; }
+.ovm-eye { fill: color-mix(in srgb, var(--accent) 30%, #cfc8ff); opacity: .75; }
+.ovm-under { fill: color-mix(in srgb, color-mix(in srgb, var(--accent) 12%, #0e0c26) 45%, #000); opacity: .34; }
+.ovs-halloween .ovm-under { fill: color-mix(in srgb, #4a2039 45%, #000); }
+.ovs-christmas .ovm-under { fill: color-mix(in srgb, #4a5f8c 45%, #000); }
+.ovm-nessie.ovm-go { animation: ovm-on 24s linear both; }
+.ovm-nessie.ovm-go .ovm-swim { animation: ovm-swim 24s linear both; }
+.ovm-nessie.ovm-go .ovm-rise { animation: ovm-rise 24s ease-in-out both; }
+@keyframes ovm-on { 0% { opacity: 0; } 6% { opacity: 1; } 94% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes ovm-swim { from { transform: translateX(0); } to { transform: translateX(80px); } }
+@keyframes ovm-rise { 0% { transform: translateY(40px); } 10% { transform: translateY(0); } 30% { transform: translateY(-.7px); } 55% { transform: translateY(.5px); } 89% { transform: translateY(0); } 100% { transform: translateY(40px); } }
+.ovm-paddle { transform-box: fill-box; transform-origin: 100% 0%; animation: ovm-paddle 1.4s ease-in-out infinite alternate; }
+.ovm-paddle.ovm-b { animation-direction: alternate-reverse; }
+@keyframes ovm-paddle { from { transform: rotate(-12deg); } to { transform: rotate(14deg); } }
+/* The runner, always there, out of sight behind the pines unless he's running between them. run: leaning into it, arms and
+   legs pumping; jog (Santa): upright, bouncing, arms swinging. */
+.ovm-runner.ovm-here { opacity: 1; }
+.ovm-bob { transform-box: fill-box; transform-origin: 50% 100%; animation: ovm-stride .42s ease-in-out infinite alternate; }
+@keyframes ovm-stride { from { transform: rotate(-14deg); } to { transform: rotate(-14deg) translateY(-1.6px); } }
+.ovm-leg, .ovm-arm { transform-box: fill-box; transform-origin: 50% 0; animation: ovm-run .42s ease-in-out infinite alternate; }
+.ovm-leg.ovm-b, .ovm-arm.ovm-b { animation-direction: alternate-reverse; }
+@keyframes ovm-run { from { transform: rotate(-32deg); } to { transform: rotate(32deg); } }
+.ovm-jog .ovm-bob { animation: ovm-jog .34s ease-in-out infinite alternate; }
+@keyframes ovm-jog { from { transform: rotate(-3deg) translateY(0); } to { transform: rotate(-5deg) translateY(-2.8px); } }
+.ovm-jog :is(.ovm-leg, .ovm-arm) { animation-duration: .34s; }
+.ovm-jog .ovm-arm { animation-name: ovm-swing; }
+@keyframes ovm-swing { from { transform: rotate(-42deg); } to { transform: rotate(42deg); } }
+.ovm-fur { fill: color-mix(in srgb, var(--l4) 62%, #000); }
+.ovm-snowfur { fill: #eef3fa; stroke: #9fb0c8; stroke-width: .4; }
+/* The pines he hides behind: a shade darker than the shore's, dark on the snow at Christmas and lit then, mirrored in the
+   lake. They rustle while he's in there and shake hard when he bursts out or dives in, each pine from its foot, one a
+   moment after another. */
+.ovm-clump { fill: color-mix(in srgb, var(--l4) 72%, #000); }
+.ovs-christmas .ovm-clump { fill: color-mix(in srgb, #0c1828 82%, #000); }
+.ovm-lit { display: none; }
+.ovs-christmas .ovm-lit { display: inline; }
+.ovm-refl { opacity: .26; filter: url(#ovs-b1); }
+.ovm-sway { transform-box: fill-box; transform-origin: 50% 100%; }
+.ovm-shake .ovm-sway { animation: ovm-rustle .8s ease-in-out both; }
+.ovm-shake.ovm-hard .ovm-sway { animation-name: ovm-shake; animation-duration: 1s; }
+.ovm-shake .ovm-sway:nth-child(2) { animation-delay: 70ms; } .ovm-shake .ovm-sway:nth-child(3) { animation-delay: 140ms; }
+.ovm-shake .ovm-sway:nth-child(4) { animation-delay: 210ms; } .ovm-shake .ovm-sway:nth-child(5) { animation-delay: 280ms; }
+@keyframes ovm-rustle { 0%, 100% { transform: rotate(0); } 20% { transform: rotate(2.2deg); } 45% { transform: rotate(-1.8deg); } 70% { transform: rotate(1deg); } 86% { transform: rotate(-.4deg); } }
+@keyframes ovm-shake { 0%, 100% { transform: rotate(0); } 10% { transform: rotate(4.5deg) skewX(-2deg); } 24% { transform: rotate(-4deg) skewX(2deg); } 38% { transform: rotate(3.4deg); } 52% { transform: rotate(-2.6deg); } 66% { transform: rotate(1.6deg); } 80% { transform: rotate(-.8deg); } 92% { transform: rotate(.3deg); } }
 @media (prefers-reduced-motion: reduce) { .ovs * { animation: none !important; } }

@@ -981,7 +981,7 @@ public static class SignIn
             else
             {
                 var ticket = context.RequestServices.GetRequiredService<PendingSignIns>().Add(principal, shown, null, keys, new NoticeStep(title, detail));
-                return Results.Ok(new { notice = RiskNotice.Shape(), ticket });
+                return Results.Ok(new { notice = notices.ShapeFor(who), ticket });
             }
         }
         await Start(context, principal);

@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.414 (2026-11-25)
+
+- Overview’s banner has its monsters: Sasquatch is always on the far shore hiding in the pines, which rustle and shake as he bursts out and runs to another clump, and now and then Nessie rises out of the lake, swims across and dives with her neck bending like a snake’s.
+- From the day after Thanksgiving to December 26 the banner turns to Christmas: snow on the shore and the ground and falling, dark pines with coloured lights on the big ones and on the pines he hides behind, and Santa running between them. Add ?banner=christmas to the address to see it on any day.
+- The Use at your own risk notice no longer opens on every visit: each account accepts it once, and everyone again only when its wording changes, with the changed sections marked. Another account signing in on the same computer gets it after its password.
+
 ## 1.1.413 (2026-11-25)
 
 - From October 15 to 31 the banner turns to Halloween: a purple night, an orange moon and mist, and three tiny bats flitting past the moon. Add ?banner=halloween to the address to see it on any day.

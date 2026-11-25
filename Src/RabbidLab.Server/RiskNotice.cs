@@ -13,6 +13,9 @@ public sealed class RiskNoticeEntry
     public string Wording { get; set; } = "";
     public string Version { get; set; } = "";
     public DateTime At { get; set; }
+
+    /// <summary>The fingerprint of each section accepted, so a new wording can say which sections changed (none kept before 1.1.414).</summary>
+    public List<string> Sections { get; set; } = [];
 }
 
 public sealed class RiskNoticeFile
@@ -44,16 +47,21 @@ public sealed partial class RiskNotice(DataFolder folder, TimeProvider clock)
     /// <summary>A fingerprint of the words: any change to them asks everyone again.</summary>
     public static string Wording { get; }
 
+    /// <summary>A fingerprint of each section's words, in order: those that differ from an older acceptance are marked as changed.</summary>
+    public static IReadOnlyList<string> Prints { get; }
+
     [GeneratedRegex(@"\n[ \t]*\n")]
     private static partial Regex Blank();
+
+    private static string Print(string words, int length) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(words)))[..length].ToLowerInvariant();
 
     static RiskNotice()
     {
         using var stream = typeof(RiskNotice).Assembly.GetManifestResourceStream("notice.txt") ?? throw new InvalidOperationException("notice.txt is missing from the build.");
         using var reader = new StreamReader(stream);
         (Title, Version, Sections) = Parse(reader.ReadToEnd());
-        var words = string.Join("\n", new[] { Title, Version }.Concat(Sections.Select(s => s.Heading + "\n" + s.Text)));
-        Wording = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(words)))[..16].ToLowerInvariant();
+        Wording = Print(string.Join("\n", new[] { Title, Version }.Concat(Sections.Select(s => s.Heading + "\n" + s.Text))), 16);
+        Prints = Sections.Select(s => Print(s.Heading + "\n" + s.Text, 12)).ToList();
     }
 
     /// <summary>The title and version on the first two lines, then a section per paragraph: its heading line, then its text.</summary>
@@ -64,16 +72,33 @@ public sealed partial class RiskNotice(DataFolder folder, TimeProvider clock)
         return (blocks[0][0], blocks[0].Length > 1 ? blocks[0][1] : "", sections);
     }
 
-    /// <summary>What the sign-in page shows: the title, the version, the sections, and about how long it takes to read.</summary>
-    public static object Shape() => new
+    /// <summary>
+    /// What the sign-in page shows: the title, the version, the sections with their fingerprints (the page keeps them once
+    /// accepted, to mark what a new wording changed), and about how long it takes to read. For an account after its password:
+    /// before, whether it accepted an older wording; changed, which sections differ from that one.
+    /// </summary>
+    public static object Shape(bool before = false, IReadOnlyList<int>? changed = null) => new
     {
         title = Title,
         version = Version,
-        wording = Wording, // sent back with the sign-in once this browser accepts
-
+        wording = Wording, // sent back with the sign-in once accepted on the page
         minutes = Math.Max(1, (int) Math.Round(Sections.Sum(s => s.Text.Split(' ').Length) / 200.0)),
-        sections = Sections.Select(s => new { heading = s.Heading, text = s.Text }),
+        sections = Sections.Select((s, i) => new { heading = s.Heading, text = s.Text, print = Prints[i] }),
+        before,
+        changed = changed ?? [],
     };
+
+    /// <summary>The notice for an account that hasn't accepted these words, with what changed since the words it did accept.</summary>
+    public object ShapeFor(Who who)
+    {
+        RiskNoticeEntry? was;
+        lock (file.Gate)
+        {
+            was = file.Read().People.FirstOrDefault(p => Same(p, who));
+        }
+        var changed = was is null || was.Sections.Count == 0 ? [] : Enumerable.Range(0, Prints.Count).Where(i => !was.Sections.Contains(Prints[i])).ToList();
+        return Shape(was is not null, changed);
+    }
 
     public bool Accepted(Who who)
     {
@@ -89,7 +114,7 @@ public sealed partial class RiskNotice(DataFolder folder, TimeProvider clock)
         {
             var f = file.Read();
             f.People.RemoveAll(p => Same(p, who));
-            f.People.Add(new RiskNoticeEntry { Source = who.Source, Username = who.Username, Wording = Wording, Version = Version, At = clock.GetUtcNow().UtcDateTime });
+            f.People.Add(new RiskNoticeEntry { Source = who.Source, Username = who.Username, Wording = Wording, Version = Version, At = clock.GetUtcNow().UtcDateTime, Sections = [.. Prints] });
             file.Save(f);
         }
     }

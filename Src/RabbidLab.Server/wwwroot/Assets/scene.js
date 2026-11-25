@@ -39,13 +39,65 @@
   // full screen the moon goes way up"). Each layer is [where, svg]: 'all' drawn once across the whole width, 'right' on the
   // drawing only, 'both' on both sides overlapping by one unit so solid land shows no seam, 'soft' on both without the
   // overlap, for what can be seen through.
+  // 'pair': the drawing's own and the mirror's own, for where they differ.
   const twice = (W, layers) => layers.map(([where, s]) => (where === 'all' ? s
-    : `<g transform="translate(${W} 0)">${s}</g>${where === 'right' ? '' : `<g transform="translate(${where === 'both' ? W + 1 : W} 0) scale(-1 1)">${s}</g>`}`)).join('');
+    : where === 'pair' ? `<g transform="translate(${W} 0)">${s[0]}</g><g transform="translate(${W + 1} 0) scale(-1 1)">${s[1]}</g>`
+      : `<g transform="translate(${W} 0)">${s}</g>${where === 'right' ? '' : `<g transform="translate(${where === 'both' ? W + 1 : W} 0) scale(-1 1)">${s}</g>`}`)).join('');
 
-  // Halloween, October 15 to 31: a purple night with an orange moon and orange mist (overview.css .ovs-halloween), and three
-  // tiny bats flitting past the moon ("Holloween is the bats."). ?banner=halloween shows it on any day.
-  const holiday = new URLSearchParams(location.search).get('banner') === 'halloween' || (new Date().getMonth() === 9 && new Date().getDate() >= 15) ? 'halloween' : '';
+  // The holiday the banner wears (overview.css .ovs-halloween, .ovs-christmas). Halloween, October 15 to 31: a purple night
+  // with an orange moon and mist, and three tiny bats flitting past the moon ("Holloween is the bats."). Christmas, from the
+  // day after Thanksgiving (the fourth Thursday in November) to December 26: a cold blue night, snow on the shore and the
+  // ground and falling, the pines dark, coloured lights on the big pines in the corners ("Christmas is done"); the
+  // monsters' pines are lit too, and Santa runs between them (monsters.js). ?banner=halloween or ?banner=christmas shows
+  // one on any day.
+  const holiday = (() => {
+    const asked = new URLSearchParams(location.search).get('banner');
+    if (asked === 'halloween' || asked === 'christmas') return asked;
+    const d = new Date();
+    const [month, day] = [d.getMonth(), d.getDate()];
+    const thanksgiving = 1 + ((4 - new Date(d.getFullYear(), 10, 1).getDay() + 7) % 7) + 21;
+    return month === 9 && day >= 15 ? 'halloween' : (month === 10 && day > thanksgiving) || (month === 11 && day <= 26) ? 'christmas' : '';
+  })();
   if (holiday) document.documentElement.classList.add(`ovs-${holiday}`);
+
+  // Christmas lights: along the lower edge of each of a pine's three tiers, from one branch tip to the other, 3, 4 and 5
+  // plain coloured bulbs, the same colours in the same order on every pine ("Each tree needs the same light setup").
+  const BULBS = ['#ff4b4b', '#ffd34d', '#46d46e', '#4fa8ff', '#ff8f3a'];
+  const TIERS = [[-1, -0.58, 0, 0.5], [-0.58, -0.24, 0.26, 0.78], [-0.24, 0, 0.42, 1]]; // top, bottom, half widths (pine)
+  const ROW = [3, 4, 5];
+  // A pine's bulbs, standing at (cx, y), h tall. big: a soft glow round each, and some twinkle (r says which).
+  const lights = (cx, y, h, big, r) => {
+    const w = h * 0.34;
+    const rad = big ? Math.min(1.8, h * 0.016) : Math.max(0.6, h * 0.022);
+    const at = [];
+    TIERS.forEach(([top, bot, w0, w1], t) => {
+      for (let j = 0; j < ROW[t]; j++) {
+        const u = j / (ROW[t] - 1);
+        const f = 0.86 + 0.08 * Math.sin(Math.PI * u); // along the tier's lower edge, drooping a little in the middle
+        at.push([cx + (2 * u - 1) * (w0 + (w1 - w0) * f) * w * 0.84, y + (top + (bot - top) * f) * h, BULBS[(t * 2 + j) % BULBS.length]]);
+      }
+    });
+    const glow = big ? `<g opacity=".4" filter="url(#ovs-b3)">${at.map(([x, yy, c]) => `<circle cx="${f1(x)}" cy="${f1(yy)}" r="${f1(rad * 2.6)}" fill="${c}"/>`).join('')}</g>` : '';
+    return glow + at.map(([x, yy, c]) => `<g${big && r() < 0.4 ? ` class="ovs-twinkle ovs-d${1 + Math.floor(r() * 4)}"` : ''}><circle cx="${f1(x)}" cy="${f1(yy)}" r="${f1(rad)}" fill="${c}"/>`
+      + `${big ? `<circle cx="${f1(x)}" cy="${f1(yy)}" r="${f1(rad * 0.38)}" fill="#fff" opacity=".7"/>` : ''}</g>`).join('');
+  };
+  // Snow falling: flakes in three sizes, each layer twice, one above the other, sliding down the banner's height.
+  const snowfall = (H) => {
+    const r = rnd(5);
+    const flakes = (n, size, cls) => {
+      let s = '';
+      for (let i = 0; i < n; i++) {
+        const [x, y, rr, o] = [f1(r() * 3200), r() * H, f1(size * (0.6 + r() * 0.8)), (0.35 + r() * 0.55).toFixed(2)];
+        s += `<circle cx="${x}" cy="${f1(y)}" r="${rr}" opacity="${o}"/><circle cx="${x}" cy="${f1(y - H)}" r="${rr}" opacity="${o}"/>`;
+      }
+      return `<g class="ovs-fall ${cls}">${s}</g>`;
+    };
+    return `<g class="ovs-snow ovs-h${H}">${flakes(42, 1.4, 'ovs-f1')}${flakes(24, 2.2, 'ovs-f2')}${flakes(12, 3.2, 'ovs-f3')}</g>`;
+  };
+  // What the monsters on Overview's banner (monsters.js) need from the drawing: the holiday, the seeded randoms, a pine, a
+  // pine's lights, and where the big pines stand in each size, [x, base, height] across the whole banner in drawing order.
+  const Scene = { holiday, rnd, pine, lights: (cx, y, h) => lights(cx, y, h, false, () => 1), near: {} };
+  window.RabbidLabScene = Scene;
   // A bat: a body, a head with ears, and two scalloped wings that flap from the shoulders, bobbing as it flies.
   const WING = 'M2 -1C9 -8 18 -11 30 -6C27 -3 26 0 25 3C22 0 19 0 16 3C14 0 11 0 8 4C6 2 4 2 2 3Z';
   const BAT = `<g class="ovs-bob"><g class="ovs-wing"><path d="${WING}"/></g><g transform="scale(-1 1)"><g class="ovs-wing"><path d="${WING}"/></g></g>`
@@ -115,9 +167,14 @@
     // banners, should be taller"). Those take their own numbers, so every tree stays where it was.
     const tall = rnd(31);
     const lift = () => (tall() < 0.15 ? 1.8 + tall() * 0.8 : 1);
-    const forest = (r, pts, from, to, hMin, hMax, gap, s, some = false) => {
+    // keep: an array to note each pine in [x, base, height], for what stands on them (the Christmas lights, the monsters).
+    const forest = (r, pts, from, to, hMin, hMax, gap, s, some = false, keep = null) => {
       let d = '';
-      for (let x = from; x < to; x += gap * (0.5 + r())) d += pine(x, yAt(pts, x) + 4 * s, (hMin + r() * (hMax - hMin)) * s * (some ? lift() : 1));
+      for (let x = from; x < to; x += gap * (0.5 + r())) {
+        const [y, h] = [yAt(pts, x) + 4 * s, (hMin + r() * (hMax - hMin)) * s * (some ? lift() : 1)];
+        keep?.push([x, y, h]);
+        d += pine(x, y, h);
+      }
       return d;
     };
     const stars = (r, n, maxY) => {
@@ -144,7 +201,9 @@
     const q = rnd(19);
     const SH = m(436);
     const shore = ridge(q, 436 - 9, 10, 0.5, [[1240, 16, 170]]);
-    const band = `M0 ${f1(SH)}L${shore.map(([a, b]) => `${f1(a)} ${f1(Math.min(b, SH))}`).join('L')}L${W} ${f1(SH)}Z${forest(q, shore, 0, W, 10, 28, 13, k.tree * 0.7 + k.near * 0.3, true)}`;
+    // The shore and its pines apart, so in snow the ground can be white and the pines dark.
+    const shoreLand = `M0 ${f1(SH)}L${shore.map(([a, b]) => `${f1(a)} ${f1(Math.min(b, SH))}`).join('L')}L${W} ${f1(SH)}Z`;
+    const band = `<path class="ovs-l4" d="${shoreLand}"/><path class="ovs-l4 ovs-pines" d="${forest(q, shore, 0, W, 10, 28, 13, k.tree * 0.7 + k.near * 0.3, true)}"/>`;
     // Every other row is drawn, a little blurred and gently shimmering, with no sharp copy on top ("This needs to be softened,
     // the light looks... odd", then "this is sexy" of the fewer strokes). They fade to nothing halfway down the water, so no
     // light glows above the strip ("what is this glow above the bar, get rid of this").
@@ -165,8 +224,21 @@
       }
     }
     const near = ridge(q, 660, 20, 0.5, [[0, 175, 170], [W, 185, 200]]);
+    // The big pines in the corners. By the middle the mirror half has pines of its own on the same hill, so a wide banner
+    // never shows the same pines twice side by side ("This spot looks mirrored...."). Where each stands across the whole
+    // banner, in the order each half draws them, is kept for the lights and the monsters (Scene.near).
+    const [keepA, keepB, keepM] = [[], [], []];
+    const pinesA = forest(q, near, 0, 380, 60, 125, 26, k.near, false, keepA);
+    const pinesB = forest(q, near, 1240, W, 60, 125, 26, k.near, false, keepB);
+    const pinesM = forest(rnd(23), near, 14, 380, 55, 115, 28, k.near, false, keepM);
+    const standing = [...keepA, ...keepB].map(([x, y, h]) => [W + x, y, h]).concat([...keepM, ...keepB].map(([x, y, h]) => [W + 1 - x, y, h]));
+    Scene.near[size] = standing;
     const [sy, srx, sry] = k.sheen;
-    return `<svg class="ovs" viewBox="0 0 ${2 * W} ${H}" preserveAspectRatio="xMaxYMid slice" aria-hidden="true">` + twice(W, [
+    // Christmas: each big pine drawn again over its own with its lights, one at a time in drawing order, so a pine in front
+    // hides the lights of the one behind; snow falling over everything.
+    const lit = rnd(83);
+    const christmas = holiday !== 'christmas' ? '' : `<g>${standing.map(([x, y, h]) => `<path class="ovs-l5 ovs-pines" d="${pine(x, y, h)}"/>${lights(x, y, h, true, lit)}`).join('')}</g>${snowfall(H)}`;
+    return `<svg class="ovs" data-size="${size}" viewBox="0 0 ${2 * W} ${H}" preserveAspectRatio="xMaxYMid slice" aria-hidden="true">` + twice(W, [
       ['all', `<rect width="${2 * W}" height="${H}" fill="url(#ovs-sky)"/>`],
       ['soft', `<g>${sky}</g>`],
       ['right', `${meteor(300, m(90), 14, [m(30), m(220)], [mx, my, k.moonR * 5])}<circle cx="${mx}" cy="${f1(my)}" r="${k.glowR}" fill="url(#ovs-glow)" opacity="${HAZE}"/>${beams}${moon(mx, my, k.moonR)}`
@@ -175,16 +247,17 @@
       // No cloud under the moon ("Just remove this fucking cloud.").
       ['all', fog(250, 170, 0.55)],
       ['both', land(L2, 'ovs-l2', 0.4)], ['all', fog(320, 150, 0.5)],
-      ['both', land(L3, 'ovs-l3', 0.3) + `<path class="ovs-l3" d="${trees}"/>`], ['all', fog(395, 130, 0.42)],
+      ['both', land(L3, 'ovs-l3', 0.3) + `<path class="ovs-l3 ovs-pines" d="${trees}"/>`], ['all', fog(395, 130, 0.42)],
       ['soft', `<ellipse class="ovs-mist" cx="700" cy="${f1(m(455))}" rx="420" ry="${f1(m(481) - m(455))}" filter="url(#ovs-b24)"/>`],
       ['all', `<rect x="0" y="${f1(SH)}" width="${2 * W}" height="${f1(H - SH)}" fill="url(#ovs-water)"/>`],
       // The far shore upside down in the water, faint ("TOO bright"), and the moon's sheen kept up by the far shore. No lines
       // across the water ("What are these lines in the water. no.").
-      ['soft', `<g transform="translate(0 ${f1(2 * SH)}) scale(1 -1)" opacity=".26" filter="url(#ovs-b1)"><path class="ovs-l4" d="${band}"/></g>`],
+      ['soft', `<g transform="translate(0 ${f1(2 * SH)}) scale(1 -1)" opacity=".26" filter="url(#ovs-b1)">${band}</g>`],
       ['right', `<ellipse class="ovs-sheen" cx="${mx}" cy="${f1(SH + sy * 0.35)}" rx="${srx}" ry="${f1(sry * 0.45)}" filter="url(#ovs-b24)"/>`],
       ['right', `<g class="ovs-glint ovs-shim" filter="url(#ovs-b1)" opacity=".7">${glints}</g>`],
-      ['both', `<path class="ovs-l4" d="${band}"/>`],
-      ['both', land(near, 'ovs-l5') + `<path class="ovs-l5" d="${forest(q, near, 0, 380, 60, 125, 26, k.near)}${forest(q, near, 1240, W, 60, 125, 26, k.near)}"/>`],
+      ['both', band],
+      ['pair', [land(near, 'ovs-l5') + `<path class="ovs-l5 ovs-pines" d="${pinesA}${pinesB}"/>`, land(near, 'ovs-l5') + `<path class="ovs-l5 ovs-pines" d="${pinesM}${pinesB}"/>`]],
+      ['all', christmas],
     ]) + '</svg>';
   };
 
