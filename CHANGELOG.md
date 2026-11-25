@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.411 (2026-11-25)
+
+- The client’s Activity reads like a log: Check-in successful, Inventory updated, Client updated, Task completed and Task failed, each with one plain line and no counts, versions or timings.
+
 ## 1.1.410 (2026-11-24)
 
 - Each computer checks in every 5 minutes instead of every minute, and keeps a connection open in between, so it still shows online and jobs still start at once.

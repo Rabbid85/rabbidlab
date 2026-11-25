@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.411', [
+    'The client’s Activity reads like a log: Check-in successful, Inventory updated, Client updated, Task completed and Task failed, each with one plain line and no counts, versions or timings.']],
   ['1.1.410', [
     'Each computer checks in every 5 minutes instead of every minute, and keeps a connection open in between, so it still shows online and jobs still start at once.',
     'The inventory goes once a day and after a job runs, as Datto does, and whole only when something changed; disk space comes with every check-in, so disk alerts never wait. Windows Update and Group Policy are read once a day.',
@@ -1317,6 +1319,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.411': ['2026-11-25', 'update', 'The client Activity reads like a log'],
   '1.1.410': ['2026-11-24', 'update', 'A check-in every 5 minutes, and Ask IT for help opens at once'],
   '1.1.409': ['2026-11-24', 'fix', 'Ask IT for help reaches the server'],
   '1.1.408': ['2026-11-24', 'fix', 'No haze over the lake under the moon'],

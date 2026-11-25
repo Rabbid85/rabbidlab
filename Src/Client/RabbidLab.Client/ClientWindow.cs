@@ -677,10 +677,28 @@ internal sealed class ClientWindow : Form
         var list = new List<Act>();
         if (s.State == Status.Connected && s.CheckedIn is { } at)
         {
-            list.Add(new Act { Icon = "check", Tone = "ok", Title = "Checked in", Detail = $"It checks in every {(Status.Every(s.State).TotalMinutes is 1 ? "minute" : $"{Status.Every(s.State).TotalMinutes:0} minutes")}.", At = at });
+            list.Add(new Act { Icon = "check", Tone = "ok", Title = "Check-in successful", Detail = "This computer is connected.", At = at });
         }
-        list.AddRange(s.Acts ?? new List<Act>());
+        list.AddRange((s.Acts ?? new List<Act>()).Select(Worded));
         return list;
+    }
+
+    // How an entry reads to whoever sits at the computer ("Please professionalize this."): a short status and one plain line,
+    // with no counts, versions or timings ("Like... 76 apps, don't know if I want that.", "Stop saying once a day etc"). The
+    // logbook keeps the details for diagnosing; entries an older client wrote read the same way.
+    private static Act Worded(Act a)
+    {
+        (string Title, string Detail)? said = a.Title switch
+        {
+            "Sent the inventory" => ("Inventory updated", "Hardware and software updated."),
+            "Installed the client" => ("Client installed", "Installation completed successfully."),
+            "Ran a job" => ("Task completed", "Remote task ran successfully."),
+            "A job didn't finish" => ("Task failed", "Remote task did not complete."),
+            "Back in touch" => ("Connection restored", "This computer is connected."),
+            _ when a.Title.StartsWith("Updated the client", StringComparison.Ordinal) => ("Client updated", "The latest version was installed automatically."),
+            _ => null,
+        };
+        return said is { } w ? new Act { Icon = a.Icon, Tone = a.Tone, Title = w.Title, Detail = w.Detail, At = a.At } : a;
     }
 
     private void PaintActivity(Graphics g, List<Act> rows)
