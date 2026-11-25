@@ -200,19 +200,26 @@
 .ovm-paddle { transform-box: fill-box; transform-origin: 100% 0%; animation: ovm-paddle 1.4s ease-in-out infinite alternate; }
 .ovm-paddle.ovm-b { animation-direction: alternate-reverse; }
 @keyframes ovm-paddle { from { transform: rotate(-12deg); } to { transform: rotate(14deg); } }
-/* The runner, always there, out of sight behind the pines unless he's running between them. run: leaning into it, arms and
-   legs pumping; jog (Santa): upright, bouncing, arms swinging. */
+/* The runner, always there, out of sight behind the pines unless he's running between them, in a long lope whatever he
+   wears ("A long lope, put in dev. for monsters.", "lope for santa"): each thigh swings far from the hip and the shin folds
+   high behind it, the arms swing against the legs with the elbows straightening as they come forward, so a hand never
+   reaches the face ("Arm in his mouth lol"), and the body stays level and nearly upright ("He just fucking bvounces when
+   running?"). Each joint turns about its own point, (0 0) of its group. A stride is .72 s; the far leg and the near arm run
+   half a stride behind. Waiting behind the pines he stands still. */
 .ovm-runner.ovm-here { opacity: 1; }
-.ovm-bob { transform-box: fill-box; transform-origin: 50% 100%; animation: ovm-stride .42s ease-in-out infinite alternate; }
-@keyframes ovm-stride { from { transform: rotate(-14deg); } to { transform: rotate(-14deg) translateY(-1.6px); } }
-.ovm-leg, .ovm-arm { transform-box: fill-box; transform-origin: 50% 0; animation: ovm-run .42s ease-in-out infinite alternate; }
-.ovm-leg.ovm-b, .ovm-arm.ovm-b { animation-direction: alternate-reverse; }
-@keyframes ovm-run { from { transform: rotate(-32deg); } to { transform: rotate(32deg); } }
-.ovm-jog .ovm-bob { animation: ovm-jog .34s ease-in-out infinite alternate; }
-@keyframes ovm-jog { from { transform: rotate(-3deg) translateY(0); } to { transform: rotate(-5deg) translateY(-2.8px); } }
-.ovm-jog :is(.ovm-leg, .ovm-arm) { animation-duration: .34s; }
-.ovm-jog .ovm-arm { animation-name: ovm-swing; }
-@keyframes ovm-swing { from { transform: rotate(-42deg); } to { transform: rotate(42deg); } }
+:is(.ovm-thigh, .ovm-shin, .ovm-upper, .ovm-fore) { transform-box: view-box; transform-origin: 0 0; animation: .72s ease-in-out infinite; }
+:is(.ovm-leg.ovm-b, .ovm-arm:not(.ovm-b)) :is(.ovm-thigh, .ovm-shin, .ovm-upper, .ovm-fore) { animation-delay: -.36s; }
+.ovm-thigh { animation-name: ovm-thigh; }
+.ovm-shin { animation-name: ovm-shin; }
+.ovm-upper { animation-name: ovm-upper; }
+.ovm-fore { animation-name: ovm-fore; }
+.ovm-bob { transform-box: fill-box; transform-origin: 50% 100%; animation: ovm-bob .36s ease-in-out infinite alternate; }
+@keyframes ovm-thigh { 0%, 100% { transform: rotate(48deg); } 50% { transform: rotate(-40deg); } }
+@keyframes ovm-shin { 0%, 100% { transform: rotate(-4deg); } 25% { transform: rotate(-12deg); } 50% { transform: rotate(-40deg); } 64% { transform: rotate(-118deg); } 84% { transform: rotate(-62deg); } }
+@keyframes ovm-upper { 0%, 100% { transform: rotate(-44deg); } 50% { transform: rotate(34deg); } }
+@keyframes ovm-fore { 0%, 100% { transform: rotate(50deg); } 50% { transform: rotate(30deg); } }
+@keyframes ovm-bob { from { transform: rotate(-6deg); } to { transform: rotate(-6deg) translateY(-.6px); } }
+.ovm-hiding :is(.ovm-bob, .ovm-thigh, .ovm-shin, .ovm-upper, .ovm-fore) { animation: none; }
 .ovm-fur { fill: color-mix(in srgb, var(--l4) 62%, #000); }
 .ovm-snowfur { fill: #eef3fa; stroke: #9fb0c8; stroke-width: .4; }
 /* The pines he hides behind: a shade darker than the shore's, dark on the snow at Christmas and lit then, mirrored in the

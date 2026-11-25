@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.415 (2026-11-25)
+
+- The monster on Overview’s banner is shaggy now, in long fur that trails behind him, and moves in a long lope with knees and elbows, his body level; Santa lopes the same way in his suit. He stands still while he hides.
+
 ## 1.1.414 (2026-11-25)
 
 - Overview’s banner has its monsters: Sasquatch is always on the far shore hiding in the pines, which rustle and shake as he bursts out and runs to another clump, and now and then Nessie rises out of the lake, swims across and dives with her neck bending like a snake’s.
