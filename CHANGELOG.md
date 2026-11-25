@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.419 (2026-11-25)
+
+- Nessie stops to watch when the monster bolts along the far shore, her head following him and her neck swaying slowly until he’s in the pines again. Her eyes are small and pale now, up near her snout.
+
 ## 1.1.418 (2026-11-25)
 
 - Nessie has a new look: a thick neck arching over, a pronounced horned head and spines down her back, eyes that catch the light, and she’s smaller. She glides, turns her head to look at us and back over her shoulder, dips her head into the water, and dives head first.

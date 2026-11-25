@@ -46,7 +46,8 @@
     return wound([at(x1, y1, r1, phi + al), at(x2, y2, r2, phi + al), at(x2, y2, r2, phi - al), at(x1, y1, r1, phi - al)]);
   };
   // u: how far she has come up; d: how far into her dive; t: the time, for the sway. o.turn: which way her head faces;
-  // o.dip: how far her head is down in the water. Going down, she dips her head first and her neck follows it in ("she
+  // o.dip: how far her head is down in the water; o.theta: a turn given as the angle itself, below 0 turned away from us
+  // toward the far shore. Going down, she dips her head first and her neck follows it in ("she
   // should dip her head to go down too").
   const neck = (u, d, t, o = {}) => {
     const P = [];
@@ -66,7 +67,7 @@
       prev = r;
       P.push([x, y, r, THICK(s)]);
     }
-    const th = thetaOf(o.turn ?? 1);
+    const th = o.theta ?? thetaOf(o.turn ?? 1);
     const [c, sn] = [Math.cos(th), Math.sin(th)];
     const x0 = P[Math.round(SEG * TURN)][0];
     const k = (i) => sm((i / SEG - TURN + 0.04) / 0.1);
@@ -94,17 +95,17 @@
     };
     for (let i = Math.round(SEG * 0.22); i <= Math.round(SEG * 0.72); i += 2) path += spike(i, 1.05, 0.3);
     [0.8, 0.84, 0.88].forEach((s) => { path += spike(Math.round(SEG * s), 1.7, -1.7); });
-    // Her eyes, one each side of her skull, above its line: each shows while it faces us, so side on the near one, turned to
-    // us both, looking back the other.
-    const [ex, ey, er] = P[Math.round(SEG * 0.88)];
+    // Her eyes, one each side of her head up near the snout, a little above its line: each shows while it faces us, so side
+    // on the near one, turned to us both, looking back the other, turned away to the far shore neither.
+    const [ex, ey, er] = P[Math.round(SEG * 0.93)];
     const up = -Math.sin(er) <= 0 ? [-Math.cos(er), -Math.sin(er)] : [Math.cos(er), Math.sin(er)];
-    const [X, Y] = [ex + up[0] * 0.9 - x0, ey + up[1] * 0.9];
+    const [X, Y] = [ex + up[0] * 0.42 - x0, ey + up[1] * 0.42];
     const eye = (z) => [x0 + X * c - z * sn, Y, sm((0.7 * sn + 0.71 * Math.sign(z) * c) / 0.3)];
-    return { d: path, eyes: [eye(0.9), eye(-0.9)] };
+    return { d: path, eyes: [eye(0.62), eye(-0.62)] };
   };
   const REST_NECK = neck(1, 0, 0);
-  // Her eyes catch the light ("Catching the light", the eyes mock): a warm pinpoint with a soft glow round it.
-  const EYE = (op) => `<g class="ovm-eye" opacity="${op}"><circle class="ovm-glow" r=".95" filter="url(#ovs-b1)"/><circle r=".2"/></g>`;
+  // Her eyes are small and pale, up by the snout where a reptile's are ("Small, by the snout", the eyes mock).
+  const EYE = (op) => `<g class="ovm-eye" opacity="${op}"><circle r=".3"/></g>`;
   const NECK = (eyes) => `<path class="ovm-neck" d="${REST_NECK.d}"/>${eyes ? EYE(1) + EYE(0) : ''}`;
   const NESSIE = '<g class="ovm ovm-nessie"><defs><clipPath id="ovm-above"><rect x="-120" y="-80" width="240" height="80.4"/></clipPath>'
     + '<clipPath id="ovm-below"><rect x="-120" y=".4" width="240" height="80"/></clipPath></defs><g class="ovm-swim">'
@@ -217,6 +218,7 @@
     const { pace } = OUTFITS[outfit()];
     const walk = runner.querySelector('.ovm-walk');
     let spot = Math.floor(Math.random() * CLUMPS.length);
+    let dash = null; // while he runs: from where to where, since when, for how long
     const place = (x, left) => runner.parentNode.setAttribute('transform', `translate(${x} 434) scale(${left ? 0.75 : -0.75} .75)`);
     const shake = (i, hard) => {
       const c = q(`[data-clump="${i}"]`);
@@ -241,7 +243,8 @@
         runner.classList.remove('ovm-hiding');
         walk.animate([{ transform: 'translateX(0)' }, { transform: `translateX(${-dist}px)` }], { duration: ms, easing: 'linear', fill: 'forwards' });
         later(() => shake(to, true), ms - 700); // and into the next one
-        later(() => { spot = to; wait(); }, ms);
+        dash = { from: CLUMPS[spot], to: CLUMPS[to], at: performance.now(), ms };
+        later(() => { spot = to; dash = null; wait(); }, ms);
       }, 520);
     };
     // Waiting behind the pines, standing still and upright so nothing of him leans out, the pines rustling once or twice
@@ -271,14 +274,30 @@
       const [[a, ha], [b, hb]] = [LOOK[i], LOOK[i + 1] || LOOK[i]];
       return b === a ? ha : lerp(ha, hb, sm((p - a) / (b - a)));
     };
+    // When the runner bolts while she is up, she stops swimming and watches him until he is in the pines again ("She stops
+    // to watch", the Nessie sees the monster mock): her head turns away from us toward him on the far shore and follows
+    // him, forward when he is ahead of her, back over her shoulder when he is behind. While she is stopped her neck sways
+    // slower ("floating around is a little too fast when stopped"). seen eases her in and out of watching.
+    let [nessAt, nessDir, seen, aim, stopped, swayT, last] = [2480, 1, 0, 0, false, 0, null];
     const frame = (now) => {
       if (!svg.isConnected || !ness.classList.contains('ovm-go')) return;
       const ms = Number(rise.getAnimations()[0]?.currentTime ?? 0);
-      if (ms >= LEN) return;
+      if (ms >= LEN) { later(swim, 6000 + Math.random() * 14000); return; }
       requestAnimationFrame(frame);
       const p = ms / LEN;
-      const n = neck(Math.max(0, Math.min(1, p / 0.12)), Math.max(0, Math.min(1, (p - 0.8) / 0.13)), now,
-        { turn: turnAt(p), dip: span(p, 0.14, 0.165, 0.185, 0.21) + span(p, 0.68, 0.705, 0.725, 0.75) });
+      const [u, d] = [Math.max(0, Math.min(1, p / 0.12)), Math.max(0, Math.min(1, (p - 0.8) / 0.13))];
+      const head = nessAt + nessDir * NS * (80 * p + 8);
+      const rx = dash ? lerp(dash.from, dash.to, Math.min(1, Math.max(0, (now - dash.at) / dash.ms))) : null;
+      if (rx !== null) aim = -Math.atan2(260, (rx - head) * nessDir);
+      seen = lerp(seen, rx !== null && u > 0.9 && d === 0 ? 1 : 0, 0.07);
+      if ((seen > 0.5) !== stopped) {
+        stopped = seen > 0.5;
+        ness.getAnimations({ subtree: true }).forEach((a) => (stopped ? a.pause() : a.play()));
+      }
+      swayT += (now - (last ?? now)) * lerp(1, 0.35, seen);
+      last = now;
+      const turn = turnAt(p);
+      const n = neck(u, d, swayT, { turn, theta: lerp(thetaOf(turn), aim, seen), dip: span(p, 0.14, 0.165, 0.185, 0.21) + span(p, 0.68, 0.705, 0.725, 0.75) });
       necks.forEach((g) => g.setAttribute('d', n.d));
       eyes.forEach((g, i) => {
         const [ex, ey, op] = n.eyes[i];
@@ -286,14 +305,15 @@
         g.setAttribute('opacity', op.toFixed(2));
       });
     };
+    // A round, and the next some time after it ends (a stop to watch makes it longer).
     const swim = () => {
       const left = Math.random() < 0.5;
-      ness.parentNode.setAttribute('transform', `translate(${(2300 + Math.random() * 600).toFixed(0)} 470) scale(${left ? -NS : NS} ${NS})`);
+      [nessAt, nessDir, seen, stopped, last] = [2300 + Math.random() * 600, left ? -1 : 1, 0, false, null];
+      ness.parentNode.setAttribute('transform', `translate(${nessAt.toFixed(0)} 470) scale(${left ? -NS : NS} ${NS})`);
       ness.classList.remove('ovm-go');
       void ness.getBoundingClientRect();
       ness.classList.add('ovm-go');
       requestAnimationFrame(frame);
-      later(swim, LEN + 6000 + Math.random() * 14000);
     };
     later(swim, 3000 + Math.random() * 6000);
   };
