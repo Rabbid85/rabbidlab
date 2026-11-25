@@ -2,6 +2,17 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.405 (2026-11-24)
+
+- The client’s window is new: the state at the left with a ring that counts down to the next check-in and Check in now, and at the right Details and Activity, dark or light as Windows is.
+- The client wears the lab’s own name, icon and accent from Settings, Appearance, and shows nothing about the server: no address, no version, no admin’s or script’s name.
+- Ask IT for help in the client sends IT a title, what’s wrong and a picture of every screen, through the notifications picked under Settings, Help requests.
+- The client’s notifications and tray menu are in its own look, and the tray menu no longer opens Rabbid Lab in the browser.
+
+## 1.1.404 (2026-11-24)
+
+- The shooting star on every banner is twice as fast, and each time it comes it starts somewhere new in the sky, at its own angle, never where it last was.
+
 ## 1.1.403 (2026-11-24)
 
 - On every banner, about one pine in seven on the far hills and along the far shore stands about twice as tall, so the treeline is no longer one even row.

@@ -137,6 +137,8 @@ builder.Services.AddSingleton<IMailSender>(services => services.GetRequiredServi
 builder.Services.AddSingleton<IChannelSender, ChannelSender>();
 builder.Services.AddSingleton<Channels>();
 builder.Services.AddSingleton<Alerts>();
+// Ask IT for help from the client (HelpRequests.cs): its settings, and requests sent on through the notifications picked.
+builder.Services.AddSingleton<HelpRequests>();
 builder.Services.AddHostedService<AlertWatch>();
 builder.Services.AddSingleton<Sensors>();
 builder.Services.AddHostedService<SensorWorker>();

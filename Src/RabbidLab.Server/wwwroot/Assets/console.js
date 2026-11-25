@@ -3,6 +3,13 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.405', [
+    'The client’s window is new: the state at the left with a ring that counts down to the next check-in and Check in now, and at the right Details and Activity, dark or light as Windows is.',
+    'The client wears the lab’s own name, icon and accent from Settings, Appearance, and shows nothing about the server: no address, no version, no admin’s or script’s name.',
+    'Ask IT for help in the client sends IT a title, what’s wrong and a picture of every screen, through the notifications picked under Settings, Help requests.',
+    'The client’s notifications and tray menu are in its own look, and the tray menu no longer opens Rabbid Lab in the browser.']],
+  ['1.1.404', [
+    'The shooting star on every banner is twice as fast, and each time it comes it starts somewhere new in the sky, at its own angle, never where it last was.']],
   ['1.1.403', [
     'On every banner, about one pine in seven on the far hills and along the far shore stands about twice as tall, so the treeline is no longer one even row.']],
   ['1.1.402', [
@@ -1292,6 +1299,8 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.405': ['2026-11-24', 'feature', 'A new client window, and Ask IT for help'],
+  '1.1.404': ['2026-11-24', 'update', 'A faster shooting star, never in the same place'],
   '1.1.403': ['2026-11-24', 'update', 'Taller pines here and there on every banner'],
   '1.1.402': ['2026-11-24', 'update', 'Windows look like the sign-in card'],
   '1.1.401': ['2026-11-24', 'update', 'Softer moonlight on the water, and a purple DEV tag'],
@@ -1862,7 +1871,7 @@ const RELEASE_INFO = {
     entra: 'cloud.view cloud.connect', exchange: 'cloud.view cloud.connect', m365: 'cloud.view cloud.connect', azure: 'cloud.view cloud.connect' };
   // Settings' pages and what each needs; About is for everyone, Developer for Rabbid Lab Dev only.
   const SUBS = { account: '', appearance: '', keys: '', viewas: 'access.view', address: '', updates: 'updates.view', people: 'access.view', signin: 'access.roles access.unlock', activity: 'activity.view', reports: 'activity.view', alerts: 'sensors.alerts', notifications: 'sensors.alerts', history: 'sensors.alerts',
-    links: 'links.edit', sensors: 'sensors.edit', seats: 'seats.settings seats.add', network: 'network.settings', ad: 'ad.connect', developer: 'updates.auto', support: '', about: '' };
+    links: 'links.edit', sensors: 'sensors.edit', seats: 'seats.settings seats.add', help: 'seats.settings', network: 'network.settings', ad: 'ad.connect', developer: 'updates.auto', support: '', about: '' };
   const subOk = (s) => s in SUBS && (!SUBS[s] || !shown || allows(SUBS[s])) && (s !== 'developer' || document.body.classList.contains('is-dev'));
   const pageOk = (key) => !shown || !PAGES[key] || allows(PAGES[key]);
   const home = () => ['overview', 'links', 'sensors', 'ad', 'seats', 'local'].find(pageOk) || 'wiki';

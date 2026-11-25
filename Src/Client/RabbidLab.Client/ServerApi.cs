@@ -83,6 +83,58 @@ internal sealed class ServerApi : IDisposable
         }
     }
 
+    /// <summary>Reads an answer to a GET, or null when there isn't one.</summary>
+    public async Task<(HttpStatusCode Code, T? Answer)> Get<T>(string path, string? authorization, CancellationToken stop) where T : class
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, path);
+        if (authorization is not null)
+        {
+            request.Headers.TryAddWithoutValidation("Authorization", authorization);
+        }
+        using var response = await http.SendAsync(request, stop).ConfigureAwait(false);
+        if (!response.IsSuccessStatusCode)
+        {
+            return (response.StatusCode, null);
+        }
+        try
+        {
+            using var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
+            return (response.StatusCode, (T?) new DataContractJsonSerializer(typeof(T)).ReadObject(stream));
+        }
+        catch (SerializationException)
+        {
+            return (response.StatusCode, null);
+        }
+    }
+
+    /// <summary>Sends the body as JSON; when the server says no, what it said ({ error }), for the person who asked.</summary>
+    public async Task<(HttpStatusCode Code, string? Error)> PostSaying(string path, object body, string? authorization, CancellationToken stop)
+    {
+        using var json = new MemoryStream();
+        new DataContractJsonSerializer(body.GetType()).WriteObject(json, body);
+        using var request = new HttpRequestMessage(HttpMethod.Post, path) { Content = new ByteArrayContent(json.ToArray()) };
+        request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+        if (authorization is not null)
+        {
+            request.Headers.TryAddWithoutValidation("Authorization", authorization);
+        }
+        using var response = await http.SendAsync(request, stop).ConfigureAwait(false);
+        if (response.IsSuccessStatusCode)
+        {
+            return (response.StatusCode, null);
+        }
+        try
+        {
+            using var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
+            var said = (Said?) new DataContractJsonSerializer(typeof(Said)).ReadObject(stream);
+            return (response.StatusCode, said?.Error ?? $"The server returned HTTP {(int) response.StatusCode}.");
+        }
+        catch (SerializationException)
+        {
+            return (response.StatusCode, $"The server returned HTTP {(int) response.StatusCode}.");
+        }
+    }
+
     /// <summary>Downloads a file to the path given.</summary>
     public async Task<bool> Download(string path, string to, CancellationToken stop)
     {
@@ -154,6 +206,52 @@ internal sealed class CheckInAnswer
 
     /// <summary>The public half of the server's identity key, kept while this computer trusts the server (Vouch.cs).</summary>
     [DataMember(Name = "identity")] public IdentityKey? Identity { get; set; }
+
+    /// <summary>The lab's name, accent and icon (by hash), which the client's window wears; absent from servers before 1.1.405.</summary>
+    [DataMember(Name = "lab")] public LabLook? Lab { get; set; }
+
+    /// <summary>Ask IT for help, as Settings, Help requests has it.</summary>
+    [DataMember(Name = "help")] public HelpLook? Help { get; set; }
+}
+
+[DataContract]
+internal sealed class Said
+{
+    [DataMember(Name = "error")] public string? Error { get; set; }
+}
+
+[DataContract]
+internal sealed class LabIcon
+{
+    /// <summary>A PNG or SVG data URI, or null when the lab has none of its own.</summary>
+    [DataMember(Name = "icon")] public string? Icon { get; set; }
+}
+
+/// <summary>Ask IT for help, as the client sends it on to the server (HelpRequests on the server).</summary>
+[DataContract]
+internal sealed class HelpRequest
+{
+    [DataMember(Name = "title")] public string Title { get; set; } = "";
+    [DataMember(Name = "detail")] public string? Detail { get; set; }
+    [DataMember(Name = "user")] public string? User { get; set; }
+    [DataMember(Name = "pictures")] public System.Collections.Generic.List<HelpPictureData> Pictures { get; set; } = new();
+    [DataMember(Name = "facts")] public System.Collections.Generic.List<HelpFactData> Facts { get; set; } = new();
+}
+
+[DataContract]
+internal sealed class HelpPictureData
+{
+    [DataMember(Name = "name")] public string Name { get; set; } = "";
+
+    /// <summary>The PNG or JPEG as base64.</summary>
+    [DataMember(Name = "data")] public string Data { get; set; } = "";
+}
+
+[DataContract]
+internal sealed class HelpFactData
+{
+    [DataMember(Name = "label")] public string Label { get; set; } = "";
+    [DataMember(Name = "value")] public string Value { get; set; } = "";
 }
 
 [DataContract]

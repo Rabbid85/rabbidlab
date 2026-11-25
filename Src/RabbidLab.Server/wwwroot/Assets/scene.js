@@ -33,8 +33,9 @@
   // A thin cloud lit by the moon: a few soft overlapping puffs.
   const cloud = (x, y, w) => [[-0.4, 0.3, 0.28, 0.45], [-0.12, -0.15, 0.34, 0.7], [0.18, 0.08, 0.3, 0.55], [0.42, 0.3, 0.2, 0.35]]
     .map(([a, b, rx, ry]) => `<ellipse class="ovs-wisp" cx="${f1(x + a * w)}" cy="${f1(y + b * 12)}" rx="${f1(rx * w)}" ry="${f1(ry * 14)}"/>`).join('');
-  // A shooting star: a streak that crosses its path and fades as it goes, so it never stops on screen.
-  const meteor = (x, y, deg) => `<g transform="translate(${x} ${f1(y)}) rotate(${deg})"><g class="ovs-meteor">`
+  // A shooting star: a streak that crosses its path and fades as it goes, so it never stops on screen. It carries the band of
+  // sky it may cross and where the moon is, for wander() to put it somewhere new each time.
+  const meteor = (x, y, deg, [y0, y1], [mx, my, mr]) => `<g class="ovs-mpos" data-sky="${f1(y0)} ${f1(y1)}" data-moon="${mx} ${f1(my)} ${mr}" transform="translate(${x} ${f1(y)}) rotate(${deg})"><g class="ovs-meteor">`
     + '<rect x="-110" y="-.9" width="110" height="1.8" rx=".9" fill="url(#ovs-tail)"/><circle r="1.7" fill="#fff"/><circle r="5" fill="#fff" opacity=".35" filter="url(#ovs-b3)"/></g></g>';
   // A scene twice as wide as it is drawn: the drawing on the right, and on its left its mirror image without the moon and its
   // light, so a wide banner shows more land and sky instead of zooming in and lifting the moon out of sight ("When dev is
@@ -147,7 +148,7 @@
     return `<svg class="ovs" viewBox="0 0 ${2 * W} ${H}" preserveAspectRatio="xMaxYMid slice" aria-hidden="true">` + twice(W, [
       ['all', `<rect width="${2 * W}" height="${H}" fill="url(#ovs-sky)"/>`],
       ['soft', `<g>${sky}</g>`],
-      ['right', `${meteor(300, m(90), 14)}<circle cx="${mx}" cy="${f1(my)}" r="${k.glowR}" fill="url(#ovs-glow)" opacity="${HAZE}"/>${beams}${moon(mx, my, k.moonR)}`],
+      ['right', `${meteor(300, m(90), 14, [m(30), m(220)], [mx, my, k.moonR * 5])}<circle cx="${mx}" cy="${f1(my)}" r="${k.glowR}" fill="url(#ovs-glow)" opacity="${HAZE}"/>${beams}${moon(mx, my, k.moonR)}`],
       ['both', land(L1, 'ovs-l1', 0.5)],
       // One cloud, right under the moon and in front of the far hill, swaying a little either side of it ("Remove the top
       // right cloud", "The one under the moon can move right under it").
@@ -180,8 +181,26 @@
     + blur('ovs-b05', 0.8) + blur('ovs-b1', 1.2) + blur('ovs-b2', 2) + blur('ovs-b3', 3) + blur('ovs-b6', 6) + blur('ovs-b24', 24)
     + '</defs></svg>');
 
+  // The shooting star starts somewhere new in the sky every time it comes, well away from where it last was and from the
+  // moon, mostly falling to the right, now and then to the left ("Never in the same place").
+  const wander = (g) => {
+    const [y0, y1] = g.dataset.sky.split(' ').map(Number);
+    const [mx, my, mr] = g.dataset.moon.split(' ').map(Number);
+    const lx = Number(g.dataset.last ?? -9999);
+    for (let i = 0; i < 40; i++) {
+      const x = 150 + Math.random() * 1350;
+      const y = y0 + Math.random() * (y1 - y0);
+      if (Math.abs(x - lx) < 420 || Math.hypot(x - mx, y - my) < mr) continue;
+      const deg = Math.random() < 0.3 ? 180 - (10 + Math.random() * 22) : 8 + Math.random() * 26;
+      g.setAttribute('transform', `translate(${x.toFixed(0)} ${y.toFixed(0)}) rotate(${deg.toFixed(0)})`);
+      g.dataset.last = x.toFixed(0);
+      return;
+    }
+  };
+  document.addEventListener('animationiteration', (e) => { if (e.target.classList?.contains('ovs-meteor')) wander(e.target.parentNode); });
+
   // Overview's now; another page's banner the first time its page opens, so pages never opened never draw one. Every
-  // banner shares the one low drawing, made once.
+  // banner shares the one low drawing, made once; each starts its shooting star somewhere of its own.
   let lowScene = '';
   const fill = () => {
     document.querySelectorAll('[data-scene]:empty').forEach((el) => { el.innerHTML = draw('tall'); });
@@ -190,6 +209,7 @@
       lowScene ||= draw('low');
       hero.insertAdjacentHTML('afterbegin', `<div class="hero-art">${lowScene}</div>`);
     });
+    document.querySelectorAll('.ovs-mpos:not([data-last])').forEach(wander);
   };
   fill();
   document.addEventListener('rabbidlab:show', fill);

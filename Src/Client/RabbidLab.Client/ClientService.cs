@@ -36,7 +36,10 @@ internal sealed class ClientService : ServiceBase
         });
         stop = new CancellationTokenSource();
         var token = stop.Token;
-        loop = Task.WhenAll(Task.Run(() => Run(token)), Task.Run(() => Orders.Listen(token)));
+        // A new version since it last ran: written in what it did (Updated the client, or Installed).
+        Logbook.Started(Agent.Version);
+        // The tray icon asks it things through a pipe: Check in now, Ask IT for help (Pipe.cs).
+        loop = Task.WhenAll(Task.Run(() => Run(token)), Task.Run(() => Orders.Listen(token)), Task.Run(() => Pipe.Listen(token)));
     }
 
     protected override void OnStop() => Halt();
@@ -100,14 +103,18 @@ internal sealed class ClientService : ServiceBase
                     // Said next round.
                 }
             }
+            // The window's ring counts down to the next round; Check in now (Pipe) starts it at once.
+            var wait = TimeSpan.FromMinutes(status.State == Status.Refused ? 5 : 1);
             try
             {
-                await Task.Delay(TimeSpan.FromMinutes(status.State == Status.Refused ? 5 : 1), stop).ConfigureAwait(false);
+                status.Next = DateTime.UtcNow + wait;
+                status.Save();
             }
-            catch (TaskCanceledException)
+            catch (IOException)
             {
-                // Stopping.
+                // The ring guesses a minute.
             }
+            await Pipe.Wait(wait, stop).ConfigureAwait(false);
         }
     }
 }

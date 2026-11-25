@@ -117,6 +117,7 @@ internal static class Jobs
                 job = queue.Dequeue();
             }
             JobReport report;
+            var took = System.Diagnostics.Stopwatch.StartNew();
             try
             {
                 report = Run(job, stop);
@@ -125,6 +126,8 @@ internal static class Jobs
             {
                 report = new JobReport { Id = job.Id, Problem = $"The client on {Machine.Name} could not run the job: {e.Message.Trim().TrimEnd('.')}." };
             }
+            // The window's Activity and today's count: that a job ran and how it went, never what it was.
+            Logbook.Job(report.Problem is null && !report.Refused && report.Steps.TrueForAll(s => s.Exit is null or 0), took.Elapsed.TotalSeconds);
             // What it changed shows on the Devices page within a minute or two, not at the next half hour.
             Inventory.Soon();
             await Report(report, stop).ConfigureAwait(false);

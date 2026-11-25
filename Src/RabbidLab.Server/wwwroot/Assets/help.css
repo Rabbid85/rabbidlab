@@ -1,0 +1,39 @@
+/* Settings, Help requests (help.js): where requests go as chips, Add's menu, and the email IT gets. */
+.hr-text { width: 420px; height: auto; min-height: 70px; padding: 9px 12px; resize: vertical; line-height: 1.45; }
+.hr-subject { width: 320px; }
+.hr-to { position: relative; flex-wrap: wrap; justify-content: flex-end; gap: 6px; max-width: 460px; }
+.hr-chips { display: contents; }
+.hr-chip { display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 4px 0 10px; border: 1px solid var(--line-strong); border-radius: 8px; color: var(--title); font-size: 13px; }
+.hr-chip > svg { width: 14px; height: 14px; color: var(--muted); }
+.hr-chip b { font-weight: 600; }
+.hr-chip small { color: var(--muted); font-size: 12px; }
+.hr-chip button { display: grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 6px; background: none; color: var(--muted); }
+.hr-chip button:hover { background: rgb(255 255 255 / .08); color: var(--title); }
+.hr-chip button svg { width: 12px; height: 12px; }
+.hr-none { color: var(--muted); font-size: 13px; }
+.hr-menu { position: absolute; top: calc(100% + 6px); right: 0; z-index: 20; display: grid; min-width: 290px; padding: 4px; border: 1px solid var(--line-strong); border-radius: 12px; background: #131522; }
+.hr-menu[hidden] { display: none; }
+.hr-mitem { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 0; border-radius: 8px; background: none; color: var(--title); text-align: left; text-decoration: none; cursor: pointer; }
+.hr-mitem:hover { background: rgb(255 255 255 / .06); text-decoration: none; }
+.hr-mitem > svg { flex: none; width: 15px; height: 15px; color: var(--muted); }
+.hr-mi { display: grid; }
+.hr-mi b { font-size: 13px; font-weight: 600; }
+.hr-mi small { color: var(--muted); font-size: 12px; }
+.hr-menu hr { width: 100%; margin: 4px 0; border: 0; border-top: 1px solid var(--line); }
+/* The email as it arrives. */
+.hr-mail { margin-top: 12px; overflow: hidden; border: 1px solid var(--line); border-radius: 10px; }
+.hr-mhead, .hr-facts { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 6px 0; margin: 0; padding: 12px 16px; font-size: 13px; }
+.hr-mhead { border-bottom: 1px solid var(--line); }
+.hr-mhead dt, .hr-facts dt { color: var(--muted); }
+.hr-mhead dd, .hr-facts dd { margin: 0; color: var(--title); overflow-wrap: anywhere; }
+.hr-atts { display: flex; flex-wrap: wrap; gap: 14px; padding: 12px 16px; border-top: 1px solid var(--line); }
+.hr-att { display: flex; align-items: center; gap: 10px; font-size: 12.5px; }
+.hr-att > span { display: grid; }
+.hr-att b { color: var(--title); font-weight: 600; }
+.hr-att small { color: var(--muted); }
+.hr-thumb { position: relative; display: block; width: 96px; height: 56px; overflow: hidden; border: 1px solid var(--line); border-radius: 6px; background: linear-gradient(135deg, #0a1240, #2a3f9e 60%, #5140ff); }
+.hr-thumb b { position: absolute; left: 22px; top: 9px; width: 52px; height: 32px; border-radius: 2px; background: #0f0f12; }
+.hr-thumb.s2 { background: linear-gradient(160deg, #1b2440, #3a4a7a); }
+.hr-thumb.s2 b { left: 8px; top: 6px; width: auto; right: 8px; height: 38px; background: repeating-linear-gradient(180deg, #f4f5f8 0 5px, #dfe2ea 5px 6px); }
+[data-theme="light"] .hr-menu { background: #fff; }
+[data-theme="light"] .hr-chip button:hover, [data-theme="light"] .hr-mitem:hover { background: rgb(0 0 0 / .05); }

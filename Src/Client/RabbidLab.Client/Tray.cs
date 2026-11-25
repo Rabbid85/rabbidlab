@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
@@ -12,8 +11,9 @@ using Microsoft.Win32;
 namespace RabbidLab.Client;
 
 /// <summary>
-/// The tray icon for whoever is signed in. A click opens the client's window: whether this computer is connected, to
-/// which server, and the details. It starts at sign-in, and Windows starts it again after the client updates.
+/// The tray icon for whoever is signed in: the lab's mark with a dot for the state. A click opens the client's window
+/// (ClientWindow); its menu says how it is and opens it. It starts at sign-in, and Windows starts it again after the
+/// client updates. Never Open Rabbid Lab in the browser: people need to know the console's address themselves.
 /// </summary>
 internal sealed class Tray : ApplicationContext
 {
@@ -21,28 +21,30 @@ internal sealed class Tray : ApplicationContext
     public const string ShowSignal = @"Local\RabbidLab.Client.Show";
 
     private readonly NotifyIcon icon;
+    private readonly ContextMenuStrip menu = new();
     private readonly ToolStripMenuItem heading = new() { Enabled = false };
     private readonly System.Windows.Forms.Timer timer = new() { Interval = 5000 };
     private readonly Control pump = new(); // a handle on this thread, for the signal to come back to
     private readonly EventWaitHandle signal = new(false, EventResetMode.AutoReset, ShowSignal);
-    private StatusWindow? window;
+    private ClientWindow? window;
     private Status? last;
+    private Ink ink = Ink.Now(null);
+    private string? drawn; // what the tray icon was last made for
     private int shownTries; // how often the taskbar switch was looked for; -1 once it's settled
     private readonly DateTime written = Written(); // this program's file as it was when the icon started
 
     public Tray(bool open)
     {
         RegisterApplicationRestart("--tray", 0);
-        var menu = new ContextMenuStrip();
         menu.Items.Add(heading);
         menu.Items.Add(new ToolStripSeparator());
         var show = new ToolStripMenuItem("Open", null, (_, _) => Show());
         show.Font = new Font(show.Font, FontStyle.Bold);
         menu.Items.Add(show);
-        menu.Items.Add(new ToolStripMenuItem("Open Rabbid Lab in browser", null, (_, _) => Browse()));
+        menu.Renderer = new MenuLook(ink);
         icon = new NotifyIcon
         {
-            Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath),
+            Icon = TrayMark.Make(ink, "off"),
             ContextMenuStrip = menu,
             Visible = true,
         };
@@ -61,6 +63,7 @@ internal sealed class Tray : ApplicationContext
         // went when the mouse passed over it.
         SystemEvents.SessionEnding += Leaving;
         SystemEvents.SessionEnded += Left;
+        SystemEvents.UserPreferenceChanged += Themed;
         Application.ApplicationExit += (_, _) => icon.Visible = false;
         pump.CreateControl();
         ThreadPool.RegisterWaitForSingleObject(signal, (_, _) =>
@@ -102,13 +105,17 @@ internal sealed class Tray : ApplicationContext
         }
         LeaveToWindows();
         var now = Status.Read() ?? new Status();
-        heading.Text = now.Describe();
-        var tip = $"Rabbid Lab: {now.Describe()}";
+        var lab = now.Lab?.Name is { Length: > 0 } n ? n : "Rabbid Lab";
+        ink = Ink.Now(now.Lab?.Accent);
+        Look.Accent = ink.Accent;
+        heading.Text = ClientWindow.Words(now);
+        var tip = $"{lab}: {ClientWindow.Words(now)}";
         icon.Text = tip.Length > 63 ? tip.Substring(0, 60) + "…" : tip;
+        Mark(now);
         // Approved: said once, when it happens.
         if (last?.State == Status.Waiting && now.State == Status.Connected)
         {
-            icon.ShowBalloonTip(5000, "Rabbid Lab", $"This computer was approved and is now connected to {now.Host}.", ToolTipIcon.Info);
+            Toast.Show(ink, lab, "This computer was approved and is now connected.");
         }
         last = now;
         if (window is { IsDisposed: false, Visible: true })
@@ -116,6 +123,44 @@ internal sealed class Tray : ApplicationContext
             window.Draw(now);
         }
     }
+
+    // The tray icon (and the window's) made again when the state, the accent, the light or the lab's icon changed.
+    private void Mark(Status now)
+    {
+        var tone = now.State switch
+        {
+            Status.Connected => "ok",
+            Status.Waiting or Status.Starting or Status.Refused => "warn",
+            Status.Unreachable or Status.IdentityUnreadable => "bad",
+            _ => "off",
+        };
+        var own = File.Exists(Logbook.IconFile) ? File.GetLastWriteTimeUtc(Logbook.IconFile).Ticks : 0;
+        var key = $"{tone}|{ink.Accent.ToArgb()}|{ink.Light}|{own}";
+        if (key == drawn)
+        {
+            return;
+        }
+        drawn = key;
+        menu.Renderer = new MenuLook(ink);
+        var made = TrayMark.Make(ink, tone);
+        icon.Icon = made;
+        if (window is { IsDisposed: false })
+        {
+            window.Icon = made;
+        }
+        TrayMark.Release();
+    }
+
+    private void Themed(object? sender, UserPreferenceChangedEventArgs e)
+    {
+        if (e.Category is UserPreferenceCategory.General or UserPreferenceCategory.Color)
+        {
+            drawn = null;
+            pump.BeginInvoke((Action) Refresh);
+        }
+    }
+
+    private void Say(string title, string text) => Toast.Show(ink, title, text);
 
     // Versions 1.1.155 to 1.1.161 turned on this icon's switch under Settings, Personalization, Taskbar, Other system
     // tray icons, which put it on the taskbar itself. Where it sits is Windows' and the person's choice: the switch is
@@ -187,22 +232,11 @@ internal sealed class Tray : ApplicationContext
         }
     }
 
-    private void Browse()
-    {
-        var server = Settings.Read().Server;
-        if (server is null)
-        {
-            Show();
-            return;
-        }
-        Process.Start(new ProcessStartInfo(server) { UseShellExecute = true });
-    }
-
     private void Show()
     {
         if (window is null || window.IsDisposed)
         {
-            window = new StatusWindow(Browse);
+            window = new ClientWindow(Say) { Icon = icon.Icon };
         }
         window.Draw(Status.Read() ?? last ?? new Status());
         window.Show();
@@ -218,6 +252,7 @@ internal sealed class Tray : ApplicationContext
         timer.Stop();
         SystemEvents.SessionEnding -= Leaving;
         SystemEvents.SessionEnded -= Left;
+        SystemEvents.UserPreferenceChanged -= Themed;
         icon.Visible = false;
         ExitThread();
     }
@@ -230,204 +265,21 @@ internal sealed class Tray : ApplicationContext
     private static extern int RegisterApplicationRestart(string commandLine, int flags);
 }
 
-/// <summary>
-/// The client's window: connected or not, what to do about it, the details as a list, and the buttons. Dark, like
-/// Rabbid Lab. Sizes are given at 96 DPI and Windows scales them, so nothing is cut off on a scaled screen.
-/// </summary>
-internal sealed class StatusWindow : Form
-{
-    private readonly Label state = new() { AutoSize = true, Font = new Font("Segoe UI Semibold", 11.5f), Margin = new Padding(0, 14, 0, 0) };
-    private readonly Label hint = new() { AutoSize = true, ForeColor = Look.Muted, Margin = new Padding(0, 4, 0, 0), MaximumSize = new Size(416, 0) };
-    private readonly TableLayoutPanel facts = new()
-    {
-        ColumnCount = 2, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Dock = DockStyle.Top,
-        BackColor = Look.Field, Padding = new Padding(14, 10, 14, 10), Margin = new Padding(0, 16, 0, 0),
-    };
-    private readonly List<Label> said = new(); // each fact's value, made once (Draw)
-    private float madeFor; // the screen scale those were made for
-    private readonly Button connect = Look.Button("Connect to a server", primary: false);
-    private readonly Button remove = Look.Button("Uninstall", primary: false);
-    private Status shown = new();
-    private float fit = 1f; // how much the window was scaled for its screen
-
-    public StatusWindow(Action browse)
-    {
-        SuspendLayout();
-        // Sizes are written for 96 DPI. Look.Fit makes them the screen's when the window first shows.
-        AutoScaleMode = AutoScaleMode.None;
-        Text = "Rabbid Lab Client";
-        Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
-        FormBorderStyle = FormBorderStyle.FixedSingle;
-        MaximizeBox = false;
-        StartPosition = FormStartPosition.CenterScreen;
-        BackColor = Look.Night;
-        ForeColor = Look.Ink;
-        Font = new Font("Segoe UI", 10f);
-        ClientSize = new Size(460, 412);
-        Padding = new Padding(22, 20, 22, 20);
-
-        var title = new Label { Text = "Rabbid Lab Client", AutoSize = true, Font = new Font("Segoe UI", 16f, FontStyle.Bold), ForeColor = Color.White, Margin = new Padding(0) };
-        facts.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 132));
-        facts.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-
-        var open = Look.Button("Open Rabbid Lab", primary: true);
-        open.Click += (_, _) => browse();
-        connect.Click += (_, _) => new ConnectWindow(new JoinLink { Server = Settings.Read().Server ?? "" }).Show();
-        remove.Click += (_, _) => Uninstall();
-        var right = new FlowLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, FlowDirection = FlowDirection.RightToLeft, WrapContents = false, Margin = new Padding(0), Anchor = AnchorStyles.Right };
-        right.Controls.Add(open);
-        right.Controls.Add(connect);
-        var buttons = new TableLayoutPanel { ColumnCount = 2, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Dock = DockStyle.Fill, Margin = new Padding(0) };
-        buttons.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        buttons.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        remove.Anchor = AnchorStyles.Left;
-        buttons.Controls.Add(remove, 0, 0);
-        buttons.Controls.Add(right, 1, 0);
-
-        // Top to bottom: the title, how it is, what to do, the details, then the buttons kept at the foot.
-        var page = new TableLayoutPanel { ColumnCount = 1, Dock = DockStyle.Fill, Margin = new Padding(0) };
-        page.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        foreach (var row in new Control[] { title, state, hint, facts })
-        {
-            page.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            page.Controls.Add(row);
-        }
-        page.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        page.Controls.Add(new Panel { Height = 1, Margin = new Padding(0) });
-        page.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        page.Controls.Add(buttons);
-        Controls.Add(page);
-        ResumeLayout(false);
-        PerformLayout();
-    }
-
-    public void Draw(Status s)
-    {
-        shown = s;
-        var tone = s.State switch
-        {
-            Status.Connected => Look.Green,
-            Status.Waiting or Status.Starting => Look.Amber,
-            _ => Look.Red,
-        };
-        state.Text = $"●  {s.Describe()}";
-        state.ForeColor = tone;
-        hint.Text = s.Hint();
-        connect.Visible = s.State is Status.NoServer or Status.Unreachable;
-        var joined = s.State is Status.Connected or Status.Waiting or Status.Unreachable or Status.Refused;
-        var rows = new (string Label, string Value)[]
-        {
-            ("Server", s.Server ?? "Not configured"),
-            ("Computer name", s.Computer),
-            ("Signed-in user", string.IsNullOrEmpty(s.User) ? Environment.UserName : s.User!),
-            ("Last check-in", s.CheckedIn is { } at ? at.ToLocalTime().ToString("g") : "Never"),
-            ("Client version", s.Version),
-            ("Server version", s.ServerVersion ?? "Unknown"),
-            ("Uninstall", !joined ? "Allowed (not connected to a server)"
-                : s.Locked ? $"Locked by {s.Host}"
-                : s.Unlocked == Status.ByOffline ? $"Allowed (server unreachable for {Removal.OfflineDays} days)"
-                : s.RemovalUntil is { } until ? $"Allowed until {until.ToLocalTime():t}{(s.Unlocked == Status.ByCode ? " (uninstall code)" : "")}" : "Allowed"),
-        };
-        // The rows are made once, and again only when the window learns its screen's scale (OnLoad). After that only a
-        // value that changed is set: clearing and making them all again every five seconds flashed the whole box, and
-        // left the old labels behind.
-        if (said.Count != rows.Length || madeFor != fit)
-        {
-            facts.SuspendLayout();
-            while (facts.Controls.Count > 0)
-            {
-                facts.Controls[0].Dispose(); // which takes it out of the table too
-            }
-            facts.RowStyles.Clear();
-            facts.RowCount = 0;
-            said.Clear();
-            madeFor = fit;
-            var gap = (int) Math.Round(4 * fit);
-            foreach (var (label, value) in rows)
-            {
-                facts.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-                facts.Controls.Add(new Label { Text = label, AutoSize = true, ForeColor = Look.Muted, Margin = new Padding(0, gap, 0, gap) });
-                var text = new Label { Text = value, AutoSize = true, ForeColor = Look.Ink, Margin = new Padding(0, gap, 0, gap), MaximumSize = new Size((int) Math.Round(250 * fit), 0) };
-                facts.Controls.Add(text);
-                said.Add(text);
-            }
-            facts.ResumeLayout();
-            return;
-        }
-        for (var i = 0; i < rows.Length; i++)
-        {
-            if (said[i].Text != rows[i].Value)
-            {
-                said[i].Text = rows[i].Value;
-            }
-        }
-    }
-
-    // Uninstalling goes through Windows Installer, which refuses unless the server has allowed it (Removal).
-    private void Uninstall()
-    {
-        if (!Removal.Allowed)
-        {
-            // Locked: the uninstall code, asked for by this program run as an administrator, which can then unlock it (Unlock.cs).
-            try
-            {
-                Process.Start(new ProcessStartInfo(Application.ExecutablePath, "--unlock") { Verb = "runas", UseShellExecute = true })?.Dispose();
-            }
-            catch (Win32Exception)
-            {
-                // No administrator said yes: it stays locked.
-            }
-            return;
-        }
-        if (MessageBox.Show(this, "Uninstall the Rabbid Lab client from this computer?", "Rabbid Lab Client", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) != DialogResult.Yes)
-        {
-            return;
-        }
-        if (!Removal.Uninstall(quiet: false))
-        {
-            MessageBox.Show(this, "Could not start the uninstall. Use Settings > Apps > Installed apps instead.", "Rabbid Lab Client", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-        }
-    }
-
-    protected override void OnLoad(EventArgs e)
-    {
-        base.OnLoad(e);
-        fit = Look.Fit(this);
-        Draw(shown);
-    }
-
-    protected override void OnHandleCreated(EventArgs e)
-    {
-        base.OnHandleCreated(e);
-        Look.DarkTitle(Handle);
-    }
-
-    protected override void OnFormClosing(FormClosingEventArgs e)
-    {
-        // Closing only hides it; the icon stays.
-        if (e.CloseReason == CloseReason.UserClosing)
-        {
-            e.Cancel = true;
-            Hide();
-        }
-        base.OnFormClosing(e);
-    }
-}
-
-/// <summary>Rabbid Lab's colours and buttons, for the client's two windows.</summary>
+/// <summary>The colours and buttons of the Connect and Unlock windows (the main window draws its own, ClientWindow).</summary>
 internal static class Look
 {
-    public static readonly Color Night = Color.FromArgb(0x11, 0x13, 0x1D);
-    public static readonly Color Field = Color.FromArgb(0x1B, 0x1E, 0x2B);
-    public static readonly Color Line = Color.FromArgb(0x2A, 0x2D, 0x3E);
-    public static readonly Color Ink = Color.FromArgb(0xE6, 0xE8, 0xF2);
-    public static readonly Color Muted = Color.FromArgb(0x8A, 0x8F, 0xA8);
-    public static readonly Color Amber = Color.FromArgb(0xFF, 0x8A, 0x3D);
+    // Ink, as the client's window (Ink.cs): the Connect and Unlock windows wear it too, with the lab's accent on the main button.
+    public static readonly Color Night = Color.FromArgb(0x0F, 0x0F, 0x12);
+    public static readonly Color Field = Color.FromArgb(0x16, 0x16, 0x19);
+    public static readonly Color Line = Color.FromArgb(0x27, 0x27, 0x2A);
+    public static readonly Color Ink = Color.FromArgb(0xEC, 0xEC, 0xEF);
+    public static readonly Color Muted = Color.FromArgb(0xA1, 0xA1, 0xAA);
+    public static readonly Color Amber = Color.FromArgb(0xF2, 0xBE, 0x6B);
     public static readonly Color Red = Color.FromArgb(0xFF, 0x6B, 0x7D);
     public static readonly Color Green = Color.FromArgb(0x5F, 0xD4, 0xA0);
-    public static readonly Color Accent = Color.FromArgb(0xE8, 0x54, 0x2F);
+    public static Color Accent { get; set; } = Color.FromArgb(0x59, 0x00, 0xFF);
 
-    /// <summary>A flat button as wide as its words: ember for the main one, a quiet outline for the rest.</summary>
+    /// <summary>A flat button as wide as its words: the lab's accent for the main one, a quiet outline for the rest.</summary>
     public static Button Button(string text, bool primary)
     {
         var b = new Button
@@ -455,7 +307,7 @@ internal static class Look
         return b;
     }
 
-    /// <summary>A text box in the window's colours, in a thin frame that turns ember while it has the cursor.</summary>
+    /// <summary>A text box in the window's colours, in a thin frame that turns the accent while it has the cursor.</summary>
     public static Panel Box(TextBox box)
     {
         box.BorderStyle = BorderStyle.None;

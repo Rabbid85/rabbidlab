@@ -85,6 +85,11 @@ internal sealed class Agent
             status.ServerVersion = answer.Version;
             status.CheckedIn = DateTime.UtcNow;
             Reached(answer);
+            // What the window shows: a check-in this minute, the lab's look and Ask IT for help, and the lab's own icon
+            // when it changed (lab-icon.png, which the tray icon reads).
+            Logbook.Round(reached: true);
+            Logbook.From(answer.Lab, answer.Help);
+            await KeepIcon(api, me, answer.Lab, stop).ConfigureAwait(false);
             Lock(status, joined, Removal.Parse(answer.RemovalUntil));
             if (answer.Uninstall)
             {
@@ -161,6 +166,48 @@ internal sealed class Agent
         }
     }
 
+
+    // The lab's own icon, fetched when its hash changes: a PNG is kept as lab-icon.png; an SVG, which a Windows window
+    // can't draw, or none means the window draws its own mark.
+    private static async Task KeepIcon(ServerApi api, Identity me, LabLook? lab, CancellationToken stop)
+    {
+        try
+        {
+            if (Logbook.HasIcon(lab?.Icon))
+            {
+                return;
+            }
+            if (lab?.Icon is null)
+            {
+                System.IO.File.Delete(Logbook.IconFile); // no error when it isn't there
+                Logbook.IconSaved(null);
+                return;
+            }
+            var (code, got) = await api.Get<LabIcon>("api/clients/lab-icon", $"RabbidLab-Client {me.Id}:{me.Secret}", stop).ConfigureAwait(false);
+            if (code != System.Net.HttpStatusCode.OK)
+            {
+                return;
+            }
+            const string png = "data:image/png;base64,";
+            if (got?.Icon is { } icon && icon.StartsWith(png, StringComparison.Ordinal))
+            {
+                var bytes = Convert.FromBase64String(icon.Substring(png.Length));
+                if (bytes.Length <= 256 * 1024)
+                {
+                    System.IO.File.WriteAllBytes(Logbook.IconFile, bytes);
+                }
+            }
+            else
+            {
+                System.IO.File.Delete(Logbook.IconFile);
+            }
+            Logbook.IconSaved(lab.Icon);
+        }
+        catch (Exception e) when (e is System.Net.Http.HttpRequestException or System.IO.IOException or UnauthorizedAccessException or FormatException or TaskCanceledException)
+        {
+            // Tried again at the next check-in.
+        }
+    }
     // The check-in was answered: when, and what the server says about the uninstall code and the days without it.
     private static void Reached(CheckInAnswer answer)
     {
@@ -190,6 +237,7 @@ internal sealed class Agent
     private static Status Unreachable(Status status, bool held, string why)
     {
         status.State = Status.Unreachable;
+        Logbook.Round(reached: false);
         status.Problem = why;
         // Told to the server once it's reached again, so it knows why the computer was away.
         Problems.Note("connection", $"Could not reach the server: {why}");

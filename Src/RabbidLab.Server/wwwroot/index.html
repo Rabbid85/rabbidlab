@@ -34,6 +34,7 @@
 <link rel="stylesheet" href="Assets/search.css">
 <link rel="stylesheet" href="Assets/overview.css">
 <link rel="stylesheet" href="Assets/news.css">
+<link rel="stylesheet" href="Assets/help.css">
 <link rel="stylesheet" href="Assets/edition.css">
 <link rel="stylesheet" href="Assets/themes.css">
 <link rel="stylesheet" href="Assets/theme-fixes.css">
@@ -69,6 +70,7 @@
 <script src="Assets/directory.js" defer></script>
 <script src="Assets/sync.js" defer></script>
 <script src="Assets/devices.js" defer></script>
+<script src="Assets/help.js" defer></script>
 <script src="Assets/accounts.js" defer></script>
 <script src="Assets/printers.js" defer></script>
 <script src="Assets/installs.js" defer></script>
@@ -368,6 +370,7 @@
         <a href="#settings/seats/lock" data-sub="seats" data-sec="lock" data-can="seats.settings"><span class="nm">Uninstall lock</span></a>
         <a href="#settings/seats/client" data-sub="seats" data-sec="client" data-can="seats.add"><span class="nm">Install the client</span></a>
       </div>
+      <a href="#settings/help" data-sub="help" data-can="seats.settings"><svg><use href="#i-message"/></svg><span>Help requests</span></a>
       <a href="#settings/network" data-sub="network" data-can="network.settings"><svg><use href="#i-radar"/></svg><span>Network</span></a>
       <div class="dkids" data-kids="network">
         <a href="#settings/network/ranges" data-sub="network" data-sec="ranges"><span class="nm">Ranges</span></a>
@@ -648,6 +651,37 @@
         <span class="grow"></span><button type="button" class="primary" id="nt-add"><svg><use href="#i-plus"/></svg>Add channel</button></div>
       <div id="nt-list" data-skel="rows:3"></div>
       <p class="hint problem" id="nt-problem" hidden></p>
+    </section>
+
+    <!-- Help requests: Ask IT for help in the client on computers (help.js, HelpRequests.cs): who it goes to, what's sent. -->
+    <section class="sub" data-sub="help" data-title="Help requests" hidden>
+      <header class="sub-head"><h2>Help requests</h2><p>When someone clicks Ask IT for help in the <span data-app>Rabbid Lab</span> client on their computer.</p></header>
+      <div id="hr-page">
+      <section class="ds-sec"><h3 class="ds-h">On computers</h3>
+        <div class="ds-row"><div class="ds-l"><b>Ask IT for help</b><span>The button, and the box with how to reach IT, under Details in the client.</span></div>
+          <div class="ds-r"><span class="sw-label" id="hr-on-label">On</span><input type="checkbox" class="switch" id="hr-on" role="switch" aria-label="Ask IT for help"></div></div>
+        <div class="ds-row"><div class="ds-l"><b>How to reach IT</b><span>Shown to everyone above Ask IT for help: a phone number, an email address, the hours.</span></div>
+          <div class="ds-r"><textarea class="ds-input hr-text" id="hr-text" rows="3" maxlength="400" spellcheck="true" aria-label="How to reach IT" placeholder="Call the IT help desk on … or email …"></textarea></div></div>
+      </section>
+      <section class="ds-sec"><h3 class="ds-h">Where requests go</h3>
+        <div class="ds-row"><div class="ds-l"><b>Send to</b><span>Through the notifications under Alerts, Notifications. An email gets the title, what they wrote, the computer's details and the pictures of its screens.</span></div>
+          <div class="ds-r hr-to"><span class="hr-chips" id="hr-chips"></span><button type="button" class="ds-btn" id="hr-add" aria-haspopup="menu" aria-expanded="false"><svg><use href="#i-plus"/></svg>Add</button>
+            <div class="hr-menu" id="hr-menu" role="menu" hidden></div></div></div>
+        <div class="ds-row"><div class="ds-l"><b>Also an alert in <span data-app>Rabbid Lab</span></b><span>Written in Alert history, with the computer and who asked, so a request isn't lost if nobody reads the email.</span></div>
+          <div class="ds-r"><span class="sw-label" id="hr-alert-label">On</span><input type="checkbox" class="switch" id="hr-alert" role="switch" aria-label="Also an alert"></div></div>
+        <div class="ds-row"><div class="ds-l"><b>Subject</b><span>{title} is what they wrote as the title; {computer} and {user} work too.</span></div>
+          <div class="ds-r"><input class="ds-input hr-subject" id="hr-subject" maxlength="160" autocomplete="off" spellcheck="false" aria-label="Subject"></div></div>
+      </section>
+      <section class="ds-sec"><h3 class="ds-h">What's sent</h3>
+        <div class="ds-row"><div class="ds-l"><b>Pictures of the screens</b><span>Taken when they click Ask IT for help, before its window opens.</span></div>
+          <div class="ds-r"><select id="hr-pictures" aria-label="Pictures of the screens"><option value="all">Every screen</option><option value="ask">Only if they tick it</option><option value="never">Never</option></select></div></div>
+        <div class="ds-row"><div class="ds-l"><b>This computer's details</b><span>Its name, who is signed in, its IP address, make and model, serial number, Windows and the client's version.</span></div>
+          <div class="ds-r"><span class="sw-label" id="hr-details-label">On</span><input type="checkbox" class="switch" id="hr-details" role="switch" aria-label="This computer's details"></div></div>
+        <div class="ds-row"><div class="ds-l"><b>What IT gets</b><span>The email as it arrives. Send a test to check it reaches the help desk.</span></div>
+          <div class="ds-r"><button type="button" class="ds-btn" id="hr-preview"><svg><use href="#i-eye"/></svg>Preview the email</button><button type="button" class="ds-btn" id="hr-test">Send a test</button></div></div>
+      </section>
+      </div>
+      <p class="hint problem" id="hr-problem" hidden></p>
     </section>
 
     <!-- Alert history: every alert, where it went, and whether it got there (alerts.js). -->
@@ -1494,6 +1528,13 @@
 </dialog>
 
 <!-- A new local account, for signing in without Active Directory. It has User; Give a role adds more. -->
+<!-- What IT gets from Ask IT for help (help.js): the email as it arrives, with the pictures of the screens attached. -->
+<dialog class="dialog wide" id="hr-dialog" aria-labelledby="hr-dialog-title">
+  <h2 id="hr-dialog-title">What IT gets</h2>
+  <div class="hr-mail" id="hr-mail"></div>
+  <div class="dialog-foot"><button type="button" id="hr-dialog-close">Close</button></div>
+</dialog>
+
 <dialog class="dialog" id="local-dialog" aria-labelledby="local-title">
   <h2 id="local-title">New local account</h2>
   <p class="dialog-lead">A local account signs in to <span data-app>Rabbid Lab</span> without Active Directory. It has the User role. Give it more roles after it is created.</p>

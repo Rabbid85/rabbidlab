@@ -232,6 +232,10 @@ internal static class Inventory
         if (code == HttpStatusCode.OK)
         {
             (sentAs, sentTo, sent, sentMissing, sentPolicy) = (print, settings.Server, now, report.MissingChecked, report.GroupPolicy?.Checked);
+            // The window's Activity, and the make, model and serial number its Details show.
+            var printers = report.Printers?.Count ?? 0;
+            Logbook.Add("monitor", "ok", "Sent the inventory", $"{report.Software.Count} apps, {printers} {(printers == 1 ? "printer" : "printers")} and {report.Disks.Count} {(report.Disks.Count == 1 ? "disk" : "disks")}.");
+            Logbook.Hardware(report.Manufacturer, report.Model, report.Serial);
         }
         else
         {

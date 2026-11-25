@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
@@ -42,6 +43,27 @@ internal sealed class Status
     [DataMember(Name = "removalUntil")] public DateTime? RemovalUntil { get; set; }
     [DataMember(Name = "unlocked")] public string? Unlocked { get; set; }
 
+    // What the window shows, from the journal (Logbook.Fill): what it did lately, the last day's check-ins, today's
+    // numbers, when it asked to join, the lab's look, Ask IT for help, this computer's hardware, and the next round.
+    [DataMember(Name = "acts")] public List<Act>? Acts { get; set; }
+
+    /// <summary>The last day in 48 half hours, oldest first: 2 all came, 1 some missed, 0 none while trying, -1 not on.</summary>
+    [DataMember(Name = "day")] public List<int>? Day { get; set; }
+    [DataMember(Name = "okDay")] public int OkDay { get; set; }
+    [DataMember(Name = "failedDay")] public int FailedDay { get; set; }
+    [DataMember(Name = "lastOk")] public DateTime? LastOk { get; set; }
+    [DataMember(Name = "jobsToday")] public int JobsToday { get; set; }
+    [DataMember(Name = "problemsToday")] public int ProblemsToday { get; set; }
+    [DataMember(Name = "waitingSince")] public DateTime? WaitingSince { get; set; }
+    [DataMember(Name = "lab")] public LabLook? Lab { get; set; }
+    [DataMember(Name = "help")] public HelpLook? Help { get; set; }
+    [DataMember(Name = "maker")] public string? Maker { get; set; }
+    [DataMember(Name = "model")] public string? Model { get; set; }
+    [DataMember(Name = "serial")] public string? Serial { get; set; }
+
+    /// <summary>When the service checks in next, so the window's ring counts down to it.</summary>
+    [DataMember(Name = "next")] public DateTime? Next { get; set; }
+
     private static string Path => Folder.File("status.json");
 
     /// <summary>A few words for the tray icon and the console.</summary>
@@ -71,6 +93,7 @@ internal sealed class Status
 
     public Status Save()
     {
+        Logbook.Fill(this);
         var temp = Path + ".tmp";
         using (var file = File.Create(temp))
         {

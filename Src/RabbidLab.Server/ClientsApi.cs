@@ -57,7 +57,7 @@ public static class ClientsApi
             return Results.Ok(new { modulus, exponent, tls, sig = identity.Sign(nonce, tls) });
         });
 
-        app.MapPost("/api/clients/checkin", (CheckInForm form, HttpContext context, Clients clients, ActivityLog log, Workflows workflows, ServerIdentity identity) =>
+        app.MapPost("/api/clients/checkin", (CheckInForm form, HttpContext context, Clients clients, ActivityLog log, Workflows workflows, ServerIdentity identity, SettingsStore settings, HelpRequests help) =>
         {
             // Away until now: its client had stopped, or it hadn't checked in for a while.
             var away = Credentials(context) is (var asking, _) && clients.Find(asking) is { Approved: not null } known && !clients.IsOnline(known);
@@ -91,7 +91,58 @@ public static class ClientsApi
                 code = c.CodeCheck,
                 unlockAfterDays = clients.UnlockAfterDays,
                 identity = new { modulus, exponent },
+                // The lab's own name, accent and icon (Settings, Appearance), which the client's window wears too; the icon
+                // by its hash, fetched from lab-icon when it changes.
+                lab = Lab(settings.Current),
+                // Ask IT for help: on or off, how to reach IT, pictures of the screens (HelpRequests).
+                help = help.ForClient(),
             });
+        });
+
+        // The lab's icon for the client's window and tray icon, as Settings, Appearance has it (a PNG or SVG data URI).
+        app.MapGet("/api/clients/lab-icon", (HttpContext context, Clients clients, SettingsStore settings) =>
+            Caller(context, clients) is null ? Unknown() : Results.Ok(new { icon = settings.Current.LabIcon }));
+
+        // Ask IT for help, from the client on a computer that's been let in (HelpRequests): sent on to the notifications picked.
+        app.MapPost("/api/clients/help", async (HelpForm form, HttpContext context, Clients clients, HelpRequests help, ActivityLog log, CancellationToken stop) =>
+        {
+            if (Caller(context, clients) is not { Approved: not null } c)
+            {
+                return Unknown();
+            }
+            var problem = await help.Send(c, form, stop);
+            var title = (form.Title ?? "").Trim();
+            log.Record($"The client on {c.Computer}", ActivityLog.Address(context), "clients", "client.help",
+                $"Help request from {c.Computer}: {(title.Length > 60 ? title[..60] + "…" : title)}", problem is null ? "ok" : "failed", problem);
+            return problem is null ? Results.Ok() : Results.Json(new { error = problem }, statusCode: StatusCodes.Status400BadRequest);
+        });
+
+        // Settings, Help requests.
+        app.MapGet("/api/help-requests", (HttpContext context, HelpRequests help) =>
+            Access.Can(context, Permissions.SeatsSettings) ? Results.Ok(help.View()) : Access.NotAllowed());
+
+        app.MapPost("/api/help-requests", (HelpSettingsForm form, HttpContext context, HelpRequests help, ActivityLog log) =>
+        {
+            if (Access.RefuseUnless(context, Permissions.SeatsSettings) is { } refused)
+            {
+                return refused;
+            }
+            if (help.Save(form) is { } problem)
+            {
+                return Results.BadRequest(new { error = problem });
+            }
+            log.Record(context, "clients", "client.help.settings", "Changed the help request settings");
+            return Results.Ok(help.View());
+        });
+
+        app.MapPost("/api/help-requests/test", async (HttpContext context, HelpRequests help, CancellationToken stop) =>
+        {
+            if (Access.RefuseUnless(context, Permissions.SeatsSettings) is { } refused)
+            {
+                return refused;
+            }
+            var problem = await help.Test(context.User.Identity?.Name ?? "Someone", stop);
+            return problem is null ? Results.Ok() : Results.BadRequest(new { error = problem });
         });
 
         // The client's service stopping: the computer shows as Offline at once, so the page open on it offers the client again.
@@ -440,6 +491,14 @@ public static class ClientsApi
             return Results.Ok();
         });
     }
+
+    /// <summary>The lab's look for the client: its name (null for Rabbid Lab's own), accent, and its icon's hash (null for Rabbid Lab's own).</summary>
+    private static object Lab(ConsoleSettings s) => new
+    {
+        name = string.IsNullOrWhiteSpace(s.LabName) ? null : s.LabName,
+        accent = s.Accent,
+        icon = string.IsNullOrEmpty(s.LabIcon) ? null : Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(s.LabIcon)))[..16],
+    };
 
     /// <summary>The id and secret the request carries, as Authorization: RabbidLab-Client id:secret.</summary>
     private static (string Id, string Secret)? Credentials(HttpContext context)

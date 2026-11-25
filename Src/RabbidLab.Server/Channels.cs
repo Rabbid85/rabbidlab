@@ -166,6 +166,15 @@ public sealed class Channels(DataFolder folder, SettingsStore secrets, IMailSend
         }
     }
 
+    /// <summary>Every notification for a picker (Help requests): its id, kind, name, and where it goes (an email's addresses, or the kind).</summary>
+    public List<(string Id, string Kind, string Name, string Where)> Picks()
+    {
+        lock (file.Gate)
+        {
+            return [.. Read().Channels.Select(c => (c.Id, c.Kind, Label(c), c.Kind == "email" ? string.Join(", ", c.Mail?.To ?? []) : KindNames.GetValueOrDefault(c.Kind, c.Kind)))];
+        }
+    }
+
     /// <summary>Its kind, or null when it's gone.</summary>
     public string? KindOf(string id)
     {

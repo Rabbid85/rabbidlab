@@ -51,6 +51,7 @@ internal static class Problems
                 else
                 {
                     list.Add(new ProblemReport { Area = area, Message = text, At = now });
+                    Logbook.Problem(); // today's count in the window: a new one, not each time it happens again
                     if (list.Count > Most)
                     {
                         list.RemoveAt(0);
