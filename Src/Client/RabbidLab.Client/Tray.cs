@@ -387,6 +387,38 @@ internal static class Look
         }
     }
 
+    /// <summary>
+    /// WM_DPICHANGED: a window moved to a screen with another scale. Forms on .NET Framework never pass it on without an
+    /// App.config switch, so the drawn windows (ClientWindow, AskWindow) read it themselves.
+    /// </summary>
+    public const int DpiChanged = 0x02E0;
+
+    /// <summary>The scale of the screen a window is on, in DPI; 0 where Windows can't say.</summary>
+    public static int Dpi(IntPtr window)
+    {
+        try
+        {
+            return (int) GetDpiForWindow(window);
+        }
+        catch (Exception e) when (e is DllNotFoundException or EntryPointNotFoundException)
+        {
+            return 0;
+        }
+    }
+
+    /// <summary>What WM_DPICHANGED says: the new DPI, and where Windows puts the window's corner.</summary>
+    public static (int Dpi, Point At) Moved(Message m)
+    {
+        var to = Marshal.PtrToStructure<Rect>(m.LParam);
+        return ((int) ((long) m.WParam & 0xFFFF), new Point(to.Left, to.Top));
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct Rect
+    {
+        public int Left, Top, Right, Bottom;
+    }
+
     [DllImport("user32.dll")]
     private static extern uint GetDpiForWindow(IntPtr window);
 

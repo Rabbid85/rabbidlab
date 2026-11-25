@@ -2,6 +2,13 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.406 (2026-11-24)
+
+- Check in now and Ask IT for help in the client reach the client’s service; in 1.1.405 both said the service wasn’t answering.
+- The client’s window and Ask IT for help redraw at the right size when dragged to a screen with another scale, such as from a 1440p screen to a 4K one, and never open bigger than the screen.
+- Ask IT for help opens once, in the middle of the client’s window with the cursor in Title, and the client’s window no longer disappears while the pictures of the screens are taken.
+- More detail in Ask IT for help shows a dark scroll bar only once there’s more than fits.
+
 ## 1.1.405 (2026-11-24)
 
 - The client’s window is new: the state at the left with a ring that counts down to the next check-in and Check in now, and at the right Details and Activity, dark or light as Windows is.

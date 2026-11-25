@@ -77,7 +77,7 @@ internal sealed class AskWindow : Form
     private readonly List<(string Label, string Value)> facts;
     private readonly Action<string, string> toast;
     private readonly TextBox title = new() { BorderStyle = BorderStyle.None, MaxLength = 80 };
-    private readonly TextBox detail = new() { BorderStyle = BorderStyle.None, Multiline = true, MaxLength = 2000, ScrollBars = ScrollBars.Vertical, AcceptsReturn = true };
+    private readonly TextBox detail = new() { BorderStyle = BorderStyle.None, Multiline = true, MaxLength = 2000, AcceptsReturn = true };
     private readonly List<(RectangleF R, string Id, Action Click)> hits = new();
     private float k = 1f;
     private string? hover, problem;
@@ -106,19 +106,46 @@ internal sealed class AskWindow : Form
             Controls.Add(box);
         }
         title.TextChanged += (_, _) => { if (problem is not null) { problem = null; Invalidate(); } };
+        // More detail's scroll bar only once there's more than fits, and dark in the dark look.
+        detail.TextChanged += (_, _) => Overflow();
+        detail.HandleCreated += (_, _) => SetWindowTheme(detail.Handle, ink.Light ? "Explorer" : "DarkMode_Explorer", null);
+        ActiveControl = title;
         Scale(DeviceDpi);
     }
 
     private RectangleF R(float x, float y, float w, float h) => new(x * k, y * k, w * k, h * k);
 
-    private void Scale(int dpi)
+    // At the scale of the screen it's on, never bigger than that screen; where Windows says when it was dragged to another.
+    private void Scale(int dpi, Point? at = null)
     {
-        k = dpi <= 0 ? 1f : dpi / 96f;
+        var area = Screen.FromRectangle(at is { } p ? new Rectangle(p, Size) : Bounds).WorkingArea;
+        k = Math.Min(dpi <= 0 ? 1f : dpi / 96f, Math.Min(area.Width * 0.94f / W, area.Height * 0.94f / Tall()));
+        var old = new[] { fHead, fH2, fText, fBtn, fSmall };
         Font F(string face, float px) => new(face, px * k, FontStyle.Regular, GraphicsUnit.Pixel);
         (fHead, fH2, fText, fBtn, fSmall) = (F("Segoe UI", 12.5f), F("Segoe UI Semibold", 21), F("Segoe UI", 13), F("Segoe UI Semibold", 13), F("Segoe UI", 12));
         title.Font = fText;
         detail.Font = fText;
+        foreach (var f in old)
+        {
+            f?.Dispose();
+        }
         Layout();
+        if (at is { } corner)
+        {
+            Location = corner;
+        }
+        Invalidate();
+    }
+
+    // How tall the window is at 96 DPI: the fields, the pictures in rows of two, then Cancel and Send.
+    private float Tall()
+    {
+        var y = 360f;
+        if (mode != "never")
+        {
+            y += 24 + (shots.Count == 0 ? 20 : (float) Math.Ceiling(shots.Count / 2.0) * (ThumbH + 30)) + (mode == "ask" ? 30 : 0);
+        }
+        return y + 8 + 38 + 26;
     }
 
     // The fields where the drawing leaves room for them; the window as tall as what's in it.
@@ -126,22 +153,38 @@ internal sealed class AskWindow : Form
     {
         title.Bounds = Rectangle.Round(R(40, 157, W - 80, 20));
         detail.Bounds = Rectangle.Round(R(40, 240, W - 80, 96));
-        var y = 360f;
-        if (mode != "never")
+        bottom = Tall() - 38 - 26;
+        ClientSize = new Size((int) (W * k), (int) (Tall() * k));
+        Overflow();
+    }
+
+    private void Overflow()
+    {
+        if (!detail.IsHandleCreated)
         {
-            y += 24 + (shots.Count == 0 ? 20 : (float) Math.Ceiling(shots.Count / 2.0) * (ThumbH + 30)) + (mode == "ask" ? 30 : 0);
+            return; // empty until it's on screen
         }
-        bottom = y + 8;
-        ClientSize = new Size((int) (W * k), (int) ((bottom + 38 + 26) * k));
+        var lines = detail.GetLineFromCharIndex(detail.TextLength) + 1;
+        var want = lines * detail.Font.Height > detail.ClientSize.Height ? ScrollBars.Vertical : ScrollBars.None;
+        if (detail.ScrollBars != want)
+        {
+            detail.ScrollBars = want;
+        }
     }
 
     private const float ThumbW = (W - 56 - 14) / 2;
     private static float ThumbH => ThumbW * 9 / 16;
 
-    protected override void OnDpiChanged(DpiChangedEventArgs e)
+    protected override void WndProc(ref Message m)
     {
-        base.OnDpiChanged(e);
-        Scale(e.DeviceDpiNew);
+        if (m.Msg == Look.DpiChanged)
+        {
+            var (dpi, at) = Look.Moved(m);
+            Scale(dpi, at);
+            m.Result = IntPtr.Zero;
+            return;
+        }
+        base.WndProc(ref m);
     }
 
     protected override void OnHandleCreated(EventArgs e)
@@ -156,6 +199,16 @@ internal sealed class AskWindow : Form
         {
         }
         SendMessage(title.Handle, 0x1501, (IntPtr) 1, "A few words, like: The printer won't print"); // the hint in the empty box
+        // At the scale of the client window's screen, in the middle of it (a window that isn't a dialog isn't put there).
+        if (Look.Dpi(Handle) is var dpi and > 0 && dpi != DeviceDpi)
+        {
+            Scale(dpi);
+        }
+        var over = Owner is { } o ? o.Bounds : Screen.FromHandle(Handle).WorkingArea;
+        var area = Screen.FromRectangle(over).WorkingArea;
+        Location = new Point(
+            Math.Max(area.Left, Math.Min(over.X + (over.Width - Width) / 2, area.Right - Width)),
+            Math.Max(area.Top, Math.Min(over.Y + (over.Height - Height) / 2, area.Bottom - Height)));
     }
 
     protected override void OnShown(EventArgs e)
@@ -416,6 +469,9 @@ internal sealed class AskWindow : Form
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     private static extern IntPtr SendMessage(IntPtr window, int message, IntPtr w, string l);
+
+    [DllImport("uxtheme.dll", CharSet = CharSet.Unicode)]
+    private static extern int SetWindowTheme(IntPtr window, string app, string? idList);
 }
 
 /// <summary>The client's own notification at the foot of the screen by the tray, in its colours, not Windows' grey.</summary>

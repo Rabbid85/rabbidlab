@@ -3,6 +3,11 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.406', [
+    'Check in now and Ask IT for help in the client reach the client’s service; in 1.1.405 both said the service wasn’t answering.',
+    'The client’s window and Ask IT for help redraw at the right size when dragged to a screen with another scale, such as from a 1440p screen to a 4K one, and never open bigger than the screen.',
+    'Ask IT for help opens once, in the middle of the client’s window with the cursor in Title, and the client’s window no longer disappears while the pictures of the screens are taken.',
+    'More detail in Ask IT for help shows a dark scroll bar only once there’s more than fits.']],
   ['1.1.405', [
     'The client’s window is new: the state at the left with a ring that counts down to the next check-in and Check in now, and at the right Details and Activity, dark or light as Windows is.',
     'The client wears the lab’s own name, icon and accent from Settings, Appearance, and shows nothing about the server: no address, no version, no admin’s or script’s name.',
@@ -1299,6 +1304,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.406': ['2026-11-24', 'fix', 'Check in now works, and the client window fits every screen'],
   '1.1.405': ['2026-11-24', 'feature', 'A new client window, and Ask IT for help'],
   '1.1.404': ['2026-11-24', 'update', 'A faster shooting star, never in the same place'],
   '1.1.403': ['2026-11-24', 'update', 'Taller pines here and there on every banner'],

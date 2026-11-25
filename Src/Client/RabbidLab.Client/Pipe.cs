@@ -198,17 +198,30 @@ internal static class Pipe
     /// <summary>Asks the service and waits for its answer; an answer with an error when the service isn't there.</summary>
     public static PipeAnswer Ask(PipeAsk ask, TimeSpan wait)
     {
+        var none = new PipeAnswer { Error = "The Rabbid Lab Client service isn't answering. Restart the computer, or contact your IT team." };
         try
         {
-            using var pipe = new NamedPipeClientStream(".", Name, PipeDirection.InOut, PipeOptions.None, TokenImpersonationLevel.Identification);
+            using var pipe = new NamedPipeClientStream(".", Name, PipeDirection.InOut, PipeOptions.Asynchronous, TokenImpersonationLevel.Identification);
             pipe.Connect(3000);
-            pipe.ReadTimeout = (int) wait.TotalMilliseconds;
-            Write(pipe, ask);
-            return Read<PipeAnswer>(pipe) ?? new PipeAnswer { Error = "No answer from the Rabbid Lab Client service." };
+            // A pipe can't time out a read (setting ReadTimeout throws): the talk runs on its own, and closing the pipe ends it.
+            var talk = Task.Run(() =>
+            {
+                Write(pipe, ask);
+                return Read<PipeAnswer>(pipe);
+            });
+            if (!talk.Wait(wait))
+            {
+                return none;
+            }
+            return talk.Result ?? none;
         }
-        catch (Exception e) when (e is IOException or TimeoutException or UnauthorizedAccessException or SerializationException or InvalidDataException or InvalidOperationException)
+        catch (AggregateException e) when (e.InnerException is IOException or SerializationException or InvalidDataException or ObjectDisposedException)
         {
-            return new PipeAnswer { Error = "The Rabbid Lab Client service isn't answering. Restart the computer, or contact your IT team." };
+            return none;
+        }
+        catch (Exception e) when (e is IOException or TimeoutException or UnauthorizedAccessException)
+        {
+            return none;
         }
     }
 

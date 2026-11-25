@@ -35,6 +35,7 @@ internal sealed class ClientWindow : Form
     private string page = "details";
     private string? hover, press, tipFor;
     private bool asking;
+    private AskWindow? asked; // Ask IT for help, while it's open
     private DateTime? doneAt; // the ring's finish when a check-in just came
     private RectangleF ring;
     private Font? fBrand, fTitle, fSub, fBtn, fNum, fSmall, fName, fMeta, fTab, fH3, fRow, fRing, fWait, fAxis;
@@ -58,10 +59,28 @@ internal sealed class ClientWindow : Form
 
     // --- Size and look ---------------------------------------------------------------------------------------------------
 
-    private void Scale(int dpi)
+    // At the scale of the screen it's on, never bigger than that screen (a small screen at a large scale draws it smaller).
+    // A new scale keeps the window's middle where it was, or puts its corner where Windows says when it was dragged.
+    private void Scale(int dpi, Point? at = null)
     {
-        k = dpi <= 0 ? 1f : dpi / 96f;
-        ClientSize = new Size((int) Math.Round(W * k), (int) Math.Round(H * k));
+        var was = Bounds;
+        var area = Screen.FromRectangle(at is { } p ? new Rectangle(p, was.Size) : was).WorkingArea;
+        k = Math.Min(dpi <= 0 ? 1f : dpi / 96f, Math.Min(area.Width * 0.94f / W, area.Height * 0.94f / H));
+        var size = new Size((int) Math.Round(W * k), (int) Math.Round(H * k));
+        if (!IsHandleCreated)
+        {
+            ClientSize = size;
+        }
+        else if (at is { } corner)
+        {
+            Bounds = new Rectangle(corner, size);
+        }
+        else
+        {
+            var x = Math.Max(area.Left, Math.Min(was.X + (was.Width - size.Width) / 2, area.Right - size.Width));
+            var y = Math.Max(area.Top, Math.Min(was.Y + (was.Height - size.Height) / 2, area.Bottom - size.Height));
+            Bounds = new Rectangle(x, y, size.Width, size.Height);
+        }
         Font F(string face, float px) => new(face, px * k, FontStyle.Regular, GraphicsUnit.Pixel);
         const string semi = "Segoe UI Semibold", plain = "Segoe UI";
         foreach (var f in new[] { fBrand, fTitle, fSub, fBtn, fNum, fSmall, fName, fMeta, fTab, fH3, fRow, fRing, fWait, fAxis })
@@ -73,10 +92,16 @@ internal sealed class ClientWindow : Form
         Invalidate();
     }
 
-    protected override void OnDpiChanged(DpiChangedEventArgs e)
+    protected override void WndProc(ref Message m)
     {
-        base.OnDpiChanged(e);
-        Scale(e.DeviceDpiNew);
+        if (m.Msg == Look.DpiChanged)
+        {
+            var (dpi, at) = Look.Moved(m);
+            Scale(dpi, at);
+            m.Result = IntPtr.Zero;
+            return;
+        }
+        base.WndProc(ref m);
     }
 
     protected override void OnHandleCreated(EventArgs e)
@@ -90,6 +115,11 @@ internal sealed class ClientWindow : Form
         catch (Exception x) when (x is DllNotFoundException or EntryPointNotFoundException)
         {
             // Square corners before Windows 11.
+        }
+        // Made at the main screen's scale; opened on another one (where the mouse was), it's drawn at that one's.
+        if (Look.Dpi(Handle) is var dpi and > 0 && dpi != DeviceDpi)
+        {
+            Scale(dpi);
         }
     }
 
@@ -891,21 +921,50 @@ internal sealed class ClientWindow : Form
     }
 
     // Ask IT for help: a picture of every screen first, taken before its window opens (this one is hidden for it).
+    // Ask IT for help: one at a time (another click brings it forward). The pictures leave this window out without hiding it:
+    // Windows keeps it out of captures (10 2004 and later); before that it's hidden for the moment they take.
     private void Ask()
     {
+        if (asked is { IsDisposed: false })
+        {
+            asked.Activate();
+            return;
+        }
         var mode = s.Help?.Pictures ?? "all";
         var shots = new List<Shot>();
         if (mode != "never")
         {
-            Opacity = 0;
-            Update();
-            Application.DoEvents();
-            System.Threading.Thread.Sleep(120);
+            var left = SetWindowDisplayAffinity(Handle, 0x11); // WDA_EXCLUDEFROMCAPTURE
+            if (left)
+            {
+                DwmFlush();
+            }
+            else
+            {
+                Opacity = 0;
+                Update();
+                System.Threading.Thread.Sleep(120);
+            }
             shots = Shot.TakeAll();
-            Opacity = 1;
+            if (left)
+            {
+                SetWindowDisplayAffinity(Handle, 0);
+            }
+            else
+            {
+                Opacity = 1;
+            }
         }
-        new AskWindow(ink, Lab, mode, shots, Facts().Select(f => (f.Label, f.Value)).ToList(), toast) { Owner = this }.Show(this);
+        asked = new AskWindow(ink, Lab, mode, shots, Facts().Select(f => (f.Label, f.Value)).ToList(), toast) { Owner = this };
+        asked.FormClosed += (_, _) => asked = null;
+        asked.Show(this);
     }
+
+    [DllImport("user32.dll")]
+    private static extern bool SetWindowDisplayAffinity(IntPtr window, uint affinity);
+
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmFlush();
 
     [DllImport("dwmapi.dll")]
     private static extern int DwmSetWindowAttribute(IntPtr window, int attribute, ref int value, int size);
