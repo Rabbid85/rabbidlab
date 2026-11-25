@@ -3,6 +3,11 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.410', [
+    'Each computer checks in every 5 minutes instead of every minute, and keeps a connection open in between, so it still shows online and jobs still start at once.',
+    'The inventory goes once a day and after a job runs, as Datto does, and whole only when something changed; disk space comes with every check-in, so disk alerts never wait. Windows Update and Group Policy are read once a day.',
+    'The client’s ring counts down the 5 minutes as 4:59, and Check in now shows three pulsing dots while it checks in, then a tick.',
+    'Ask IT for help opens at once: each screen’s place says Taking the picture… until its picture comes in, the screens are named by where they are, and a picture left out leaves a + for that screen again or a picture from the computer.']],
   ['1.1.409', [
     'Ask IT for help in the client reaches the server: since 1.1.405 the server turned the request away, and a lab’s own icon never reached the client either.',
     'The moonlight on the lake is back as it was in 1.1.407.']],
@@ -1312,6 +1317,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.410': ['2026-11-24', 'update', 'A check-in every 5 minutes, and Ask IT for help opens at once'],
   '1.1.409': ['2026-11-24', 'fix', 'Ask IT for help reaches the server'],
   '1.1.408': ['2026-11-24', 'fix', 'No haze over the lake under the moon'],
   '1.1.407': ['2026-11-24', 'update', 'A darker, calmer lake and no cloud under the moon'],
@@ -4494,8 +4500,8 @@ const RELEASE_INFO = {
         : !inv ? section(seatTab === 'software' ? 'Installed software' : 'Windows updates', waitingFor)
         : seatTab === 'software' ? section(`Installed software <small>${inv.software.length}</small>`, inv.software.length
           ? `<label class="side-find seat-find"><svg><use href="#i-search"/></svg><input type="search" id="seat-sw-find" placeholder="Find software" aria-label="Find software" autocomplete="off" spellcheck="false" value="${esc(swFind)}"></label><div class="table" id="seat-sw"></div>` : none('No software found.'))
-        : section(`Windows updates <small>${inv.missingChecked ? `${inv.missing.filter((u) => !u.definition).length} missing` : ''}</small>`, (!inv.missingChecked ? none('Windows Update has not reported on this computer yet. Updates are checked every 6 hours.')
-          : `<p class="dw-how">Last checked ${esc(when(inv.missingChecked))}. Updates are checked every 6 hours, or on demand with Actions &gt; Check for updates. Antivirus definitions are listed but not counted.</p>`)
+        : section(`Windows updates <small>${inv.missingChecked ? `${inv.missing.filter((u) => !u.definition).length} missing` : ''}</small>`, (!inv.missingChecked ? none('Windows Update has not reported on this computer yet. Updates are checked once a day.')
+          : `<p class="dw-how">Last checked ${esc(when(inv.missingChecked))}. Updates are checked once a day, or on demand with Actions &gt; Check for updates. Antivirus definitions are listed but not counted.</p>`)
           + (!inv.history && inv.updates.length ? `<p class="dw-how">Update names appear with client 1.1.203 or later. Earlier clients report KB numbers only.</p>` : '')
           + `<div class="table" id="seat-upd"></div>`);
       // Its name with what can be done to it at the end (Approve, then Actions), and under it the facts looked at first.

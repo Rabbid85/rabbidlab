@@ -250,7 +250,7 @@ public static class SignIn
     private static readonly HashSet<string> ClientPaths = new(StringComparer.OrdinalIgnoreCase)
     {
         "/api/clients/join", "/api/clients/checkin", "/api/clients/vouch", "/api/clients/next", "/api/clients/done", "/api/clients/bye", "/api/clients/inventory", "/api/clients/download",
-        "/api/clients/jobs/take", "/api/clients/jobs/done", "/api/clients/help", "/api/clients/lab-icon",
+        "/api/clients/jobs/take", "/api/clients/jobs/done", "/api/clients/help", "/api/clients/lab-icon", "/api/clients/inventory/same",
     };
 
     // What an open page asks by itself on a timer.

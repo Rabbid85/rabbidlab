@@ -61,6 +61,7 @@ internal sealed class Agent
                 {
                     Computer = Machine.Name, Os = Machine.Os, Version = Version, User = Machine.Users(),
                     Code = check?.Substring(check.IndexOf(':') + 1), CodeUsed = Removal.CodeUsed, Problems = problems,
+                    Disks = Inventory.Drives(),
                 },
                 $"RabbidLab-Client {me.Id}:{me.Secret}", stop).ConfigureAwait(false);
             if (answered == HttpStatusCode.OK && problems is not null)

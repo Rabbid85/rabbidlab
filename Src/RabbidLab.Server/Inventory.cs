@@ -260,7 +260,7 @@ public sealed partial class Inventories(DataFolder folder, TimeProvider clock)
         {
             inventory.History = did.History;
         }
-        // Group Policy is read every two hours on its own: a report from before then keeps the last results.
+        // Group Policy is read once a day on its own: a report from before then keeps the last results.
         if (inventory.GroupPolicy is null && Get(id) is { GroupPolicy: not null } gp)
         {
             inventory.GroupPolicy = gp.GroupPolicy;
@@ -287,6 +287,39 @@ public sealed partial class Inventories(DataFolder folder, TimeProvider clock)
         }
         inventory.AdminsChecked = clock.GetUtcNow().UtcDateTime;
         Save(id, inventory);
+    }
+
+    /// <summary>
+    /// The drives as the computer said at its check-in (every 5 minutes), so the console and the disk alerts don't wait for
+    /// the daily inventory. Written only when a drive came or went or its use moved by a whole percent.
+    /// </summary>
+    public void SetDisks(string id, List<DeviceDisk> disks)
+    {
+        if (Get(id) is not { } inventory)
+        {
+            return;
+        }
+        var now = disks.Where(d => !string.IsNullOrWhiteSpace(d.Name) && d.Total > 0).Take(32)
+            .Select(d => new DeviceDisk { Name = Cut(d.Name) ?? "", Total = d.Total, Free = Math.Clamp(d.Free, 0, d.Total) }).ToList();
+        static string Use(IEnumerable<DeviceDisk> list) => string.Join('|', list.Select(d => $"{d.Name}:{d.Total}:{(d.Total - d.Free) * 100 / d.Total}"));
+        var moved = Use(now) != Use(inventory.Disks.Where(d => d.Total > 0));
+        inventory.Disks = now;
+        if (moved)
+        {
+            Save(id, inventory);
+        }
+    }
+
+    /// <summary>The client looked again and nothing had changed since what it last sent: that inventory is current as of now.</summary>
+    public bool Same(string id)
+    {
+        if (Get(id) is not { } inventory)
+        {
+            return false;
+        }
+        inventory.Received = clock.GetUtcNow().UtcDateTime;
+        Save(id, inventory);
+        return true;
     }
 
     private void Save(string id, DeviceInventory inventory)

@@ -941,7 +941,7 @@
     const on = D.computers().filter((c) => c.approved && !c.server && c.inventory?.gp && ((c.inventory.gp.gpos || []).some((id) => ids.has(id))
       || paths.some((p) => `${String(c.inventory.gp.som || '').toLowerCase()}/`.startsWith(`${p}/`))));
     if (!on.length) {
-      toast('No computers in Devices have this GPO applied.', 'Computers report Group Policy results every two hours (client 1.1.211 or later).', { tone: 'warn' });
+      toast('No computers in Devices have this GPO applied.', 'Computers report Group Policy results once a day (client 1.1.211 or later).', { tone: 'warn' });
       return;
     }
     D.run('gpupdate', on);

@@ -23,6 +23,13 @@ internal sealed class Status
     public const string Removed = "removed";
     public const string IdentityUnreadable = "identity-unreadable";
 
+    /// <summary>
+    /// How long the service waits for its next check-in in this state: 5 minutes once approved, as Datto's agents do (its
+    /// open request for orders keeps it online in between, Orders.cs); a minute while it waits for approval or can't reach
+    /// the server, so either is over quickly. The window's ring counts down the same.
+    /// </summary>
+    public static TimeSpan Every(string state) => state is Connected or Refused ? TimeSpan.FromMinutes(5) : TimeSpan.FromMinutes(1);
+
     /// <summary>Why uninstalling is allowed when the server didn't allow it: the uninstall code, or too long without the server.</summary>
     public const string ByCode = "code";
     public const string ByOffline = "offline";

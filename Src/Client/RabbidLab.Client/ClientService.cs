@@ -104,17 +104,32 @@ internal sealed class ClientService : ServiceBase
                 }
             }
             // The window's ring counts down to the next round; Check in now (Pipe) starts it at once.
-            var wait = TimeSpan.FromMinutes(status.State == Status.Refused ? 5 : 1);
+            var next = DateTime.UtcNow + Status.Every(status.State);
             try
             {
-                status.Next = DateTime.UtcNow + wait;
+                status.Next = next;
                 status.Save();
             }
             catch (IOException)
             {
-                // The ring guesses a minute.
+                // The ring guesses.
             }
-            await Pipe.Wait(wait, stop).ConfigureAwait(false);
+            // Between rounds the tray icon is still looked for every minute, for anyone who signed in meanwhile.
+            while (!stop.IsCancellationRequested && next - DateTime.UtcNow is var left && left > TimeSpan.Zero)
+            {
+                if (await Pipe.Wait(left < TimeSpan.FromMinutes(1) ? left : TimeSpan.FromMinutes(1), stop).ConfigureAwait(false))
+                {
+                    break; // Check in now
+                }
+                try
+                {
+                    TrayStarter.Ensure();
+                }
+                catch (Exception)
+                {
+                    // Tried again in a minute.
+                }
+            }
         }
     }
 }

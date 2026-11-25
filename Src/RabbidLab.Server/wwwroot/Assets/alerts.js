@@ -749,7 +749,7 @@
       space: () => row('Warn below', 'Default for new drive sensors. Each sensor can override it.', select('limit', [[5, '5% free'], [10, '10% free'], [20, '20% free']], v.limit))
         + row('Reminders', 'Repeat until free space recovers.', select('again', AGAIN, v.again)),
       hw: () => row('Reminders', 'Repeat until the fault is cleared.', select('again', AGAIN, v.again)),
-      seat: () => row('Alert after no check-in for', 'The client checks in about once a minute.', select('limit', [[5, '5 minutes'], [15, '15 minutes'], [30, '30 minutes'], [60, '1 hour']], v.limit))
+      seat: () => row('Alert after no check-in for', 'The client is in touch about once a minute.', select('limit', [[5, '5 minutes'], [15, '15 minutes'], [30, '30 minutes'], [60, '1 hour']], v.limit))
         + switchRow('back', 'Recovery alert', 'Sent when the computer checks in again, only after an alert was sent.', v.back),
       signin: () => row('Alert after', 'Failed sign-ins for one account within 10 minutes.', select('limit', [[3, '3 failed'], [5, '5 failed'], [10, '10 failed']], v.limit)),
       plain: () => '',

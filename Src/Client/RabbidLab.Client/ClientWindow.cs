@@ -35,10 +35,12 @@ internal sealed class ClientWindow : Form
     private string page = "details";
     private string? hover, press, tipFor;
     private bool asking;
+    private DateTime? tickAt; // a check-in Check in now asked for just came: the button says so for a moment
+    private RectangleF busy; // the button while it works or ticks, drawn again on the tick
     private AskWindow? asked; // Ask IT for help, while it's open
     private DateTime? doneAt; // the ring's finish when a check-in just came
     private RectangleF ring;
-    private Font? fBrand, fTitle, fSub, fBtn, fNum, fSmall, fName, fMeta, fTab, fH3, fRow, fRing, fWait, fAxis;
+    private Font? fBrand, fTitle, fSub, fBtn, fNum, fSmall, fName, fMeta, fTab, fH3, fRow, fRing, fAxis;
     private string? ip;
     private (string? Maker, string? Model, string? Serial)? read; // read from Windows when the inventory hasn't said yet
 
@@ -53,7 +55,14 @@ internal sealed class ClientWindow : Form
         ShowInTaskbar = true;
         KeyPreview = true;
         Scale(DeviceDpi);
-        tick.Tick += (_, _) => Invalidate(Rectangle.Inflate(Rectangle.Round(ring), 4, 4));
+        tick.Tick += (_, _) =>
+        {
+            Invalidate(Rectangle.Inflate(Rectangle.Round(ring), 4, 4));
+            if (!busy.IsEmpty)
+            {
+                Invalidate(Rectangle.Inflate(Rectangle.Round(busy), 2, 2));
+            }
+        };
         Microsoft.Win32.SystemEvents.UserPreferenceChanged += Themed;
     }
 
@@ -83,12 +92,12 @@ internal sealed class ClientWindow : Form
         }
         Font F(string face, float px) => new(face, px * k, FontStyle.Regular, GraphicsUnit.Pixel);
         const string semi = "Segoe UI Semibold", plain = "Segoe UI";
-        foreach (var f in new[] { fBrand, fTitle, fSub, fBtn, fNum, fSmall, fName, fMeta, fTab, fH3, fRow, fRing, fWait, fAxis })
+        foreach (var f in new[] { fBrand, fTitle, fSub, fBtn, fNum, fSmall, fName, fMeta, fTab, fH3, fRow, fRing, fAxis })
         {
             f?.Dispose();
         }
         (fBrand, fTitle, fSub, fBtn, fNum, fSmall) = (F(semi, 15), F(semi, 21), F(plain, 13), F(semi, 13), F(semi, 19), F(plain, 12));
-        (fName, fMeta, fTab, fH3, fRow, fRing, fWait, fAxis) = (F(semi, 18), F(plain, 12.5f), F(semi, 14), F(semi, 13), F(plain, 13), F(semi, 34), F(semi, 30), F(plain, 11.5f));
+        (fName, fMeta, fTab, fH3, fRow, fRing, fAxis) = (F(semi, 18), F(plain, 12.5f), F(semi, 14), F(semi, 13), F(plain, 13), F(semi, 29), F(plain, 11.5f));
         Invalidate();
     }
 
@@ -231,7 +240,24 @@ internal sealed class ClientWindow : Form
             }
         }
         var fore = primary ? Color.White : ink.Head;
-        if (glyph is null)
+        if (glyph == "dots")
+        {
+            // While it works ("When clicked add animation to let user know something is fucking happening."): the words, then
+            // three dots pulsing one after another, as in the ring while it waits for approval.
+            var tw = TextWidth(g, label, fBtn) * k;
+            var w = tw + 6 * k + 20 * k;
+            var x = r.X + (r.Width - w) / 2;
+            Say(g, label, fBtn, fore, new RectangleF(x, r.Y, tw + 4 * k, r.Height), TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine);
+            var ms = DateTime.UtcNow.TimeOfDay.TotalMilliseconds;
+            for (var i = 0; i < 3; i++)
+            {
+                var t = ((ms - i * 200) % 1400 + 1400) % 1400 / 1400;
+                var o = t < 0.4 ? 0.22 + 0.78 * (t / 0.4) : t < 0.8 ? 1 - 0.78 * ((t - 0.4) / 0.4) : 0.22;
+                using var dot = new SolidBrush(Color.FromArgb((int) (o * 255), fore));
+                g.FillEllipse(dot, x + tw + 6 * k + i * 8 * k, r.Y + r.Height / 2 + 1 * k, 4 * k, 4 * k);
+            }
+        }
+        else if (glyph is null)
         {
             Say(g, label, fBtn, fore, r, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine);
         }
@@ -250,6 +276,7 @@ internal sealed class ClientWindow : Form
         var g = e.Graphics;
         Ink.Smooth(g);
         hits.Clear();
+        busy = RectangleF.Empty;
         g.Clear(ink.Bg);
         using (var aside = new SolidBrush(ink.Aside))
         {
@@ -314,7 +341,22 @@ internal sealed class ClientWindow : Form
         y += 22;
         foreach (var (label, id, click, primary) in buttons)
         {
-            Button(g, R(24, y, 252, 38), asking && id is "checkin" or "retry" ? (id == "retry" ? "Trying…" : "Checking in…") : label, id, click, primary);
+            var at = R(24, y, 252, 38);
+            if (asking && id is "checkin" or "retry")
+            {
+                busy = at;
+                Button(g, at, id == "retry" ? "Trying" : "Checking in", id, click, primary, "dots");
+            }
+            else if (id == "checkin" && tickAt is { } t && DateTime.UtcNow - t < TimeSpan.FromMilliseconds(1600))
+            {
+                // Checked in: a tick for a moment, then Check in now again.
+                busy = at;
+                Button(g, at, "Checked in", id, click, primary, "check");
+            }
+            else
+            {
+                Button(g, at, label, id, click, primary);
+            }
             y += 46;
         }
     }
@@ -355,12 +397,15 @@ internal sealed class ClientWindow : Form
         }
         if (counting)
         {
-            var next = s.Next ?? (s.CheckedIn ?? now).AddMinutes(1);
-            var left = Math.Max(0, Math.Min(60, (next - now).TotalSeconds));
+            // What's left to the next check-in as 4:59 (5 minutes connected, a minute offline), the arc filling over it.
+            var every = Status.Every(s.State).TotalSeconds;
+            var next = s.Next ?? (s.CheckedIn ?? now).AddSeconds(every);
+            var left = Math.Max(0, Math.Min(every, (next - now).TotalSeconds));
             var colour = s.State == Status.Connected ? ink.Head : ink.Bad;
-            var number = ((int) Math.Ceiling(left)).ToString(CultureInfo.InvariantCulture);
+            var secs = (int) Math.Ceiling(left);
+            var number = $"{secs / 60}:{secs % 60:00}";
             var alpha = 255;
-            var sweep = (float) ((60 - left) / 60 * 360);
+            var sweep = (float) ((every - left) / every * 360);
             // A check-in just came: the arc finishes its sweep and fades, then starts again; the new number fades in.
             if (doneAt is { } d && (now - d).TotalMilliseconds < 700)
             {
@@ -632,7 +677,7 @@ internal sealed class ClientWindow : Form
         var list = new List<Act>();
         if (s.State == Status.Connected && s.CheckedIn is { } at)
         {
-            list.Add(new Act { Icon = "check", Tone = "ok", Title = "Checked in", Detail = "It checks in every minute.", At = at });
+            list.Add(new Act { Icon = "check", Tone = "ok", Title = "Checked in", Detail = $"It checks in every {(Status.Every(s.State).TotalMinutes is 1 ? "minute" : $"{Status.Every(s.State).TotalMinutes:0} minutes")}.", At = at });
         }
         list.AddRange(s.Acts ?? new List<Act>());
         return list;
@@ -862,6 +907,7 @@ internal sealed class ClientWindow : Form
                     }
                     else if (after?.State == Status.Connected && after.CheckedIn != before)
                     {
+                        tickAt = DateTime.UtcNow;
                         toast(lab, $"Checked in at {after.CheckedIn!.Value.ToLocalTime():h:mm tt}.");
                     }
                     else if (after?.State == Status.Unreachable)
@@ -920,9 +966,8 @@ internal sealed class ClientWindow : Form
         }
     }
 
-    // Ask IT for help: a picture of every screen first, taken before its window opens (this one is hidden for it).
-    // Ask IT for help: one at a time (another click brings it forward). The pictures leave this window out without hiding it:
-    // Windows keeps it out of captures (10 2004 and later); before that it's hidden for the moment they take.
+    // Ask IT for help: one at a time (another click brings it forward). It opens at once with a place for each screen, and
+    // takes their pictures itself (AskWindow.Take), so this window never freezes for them.
     private void Ask()
     {
         if (asked is { IsDisposed: false })
@@ -931,40 +976,11 @@ internal sealed class ClientWindow : Form
             return;
         }
         var mode = s.Help?.Pictures ?? "all";
-        var shots = new List<Shot>();
-        if (mode != "never")
-        {
-            var left = SetWindowDisplayAffinity(Handle, 0x11); // WDA_EXCLUDEFROMCAPTURE
-            if (left)
-            {
-                DwmFlush();
-            }
-            else
-            {
-                Opacity = 0;
-                Update();
-                System.Threading.Thread.Sleep(120);
-            }
-            shots = Shot.TakeAll();
-            if (left)
-            {
-                SetWindowDisplayAffinity(Handle, 0);
-            }
-            else
-            {
-                Opacity = 1;
-            }
-        }
+        var shots = mode == "never" ? new List<Shot>() : Shot.Screens();
         asked = new AskWindow(ink, Lab, mode, shots, Facts().Select(f => (f.Label, f.Value)).ToList(), toast) { Owner = this };
         asked.FormClosed += (_, _) => asked = null;
         asked.Show(this);
     }
-
-    [DllImport("user32.dll")]
-    private static extern bool SetWindowDisplayAffinity(IntPtr window, uint affinity);
-
-    [DllImport("dwmapi.dll")]
-    private static extern int DwmFlush();
 
     [DllImport("dwmapi.dll")]
     private static extern int DwmSetWindowAttribute(IntPtr window, int attribute, ref int value, int size);

@@ -106,7 +106,7 @@
     <li><b>Select a computer</b> to view its hardware, with tabs for its installed software and its Windows updates. To list software across all computers, run a WMI query.</li>
     <li><b>Export</b> saves the current list as a CSV file.</li>
   </ul>
-  <p>The client collects inventory every 30 minutes and sends it when something changes. It checks Windows Update for missing updates every six hours; antivirus definition updates are excluded. Requires client 1.1.165 or later.</p>
+  <p>The client collects inventory once a day and after a job runs, as Datto does. It sends it all only when something changed, otherwise a short note that it is the same. Disk space goes with every check-in, so disk alerts never wait. It checks Windows Update for missing updates once a day; antivirus definition updates are excluded. Requires client 1.1.165 or later.</p>
 </article>
 
 <article data-key="scripts" data-group="Computers" data-title="Scripts, restarts and updates on computers">
@@ -139,7 +139,7 @@
 </article>
 
 <article data-key="client" data-group="Computers" data-title="The Rabbid Lab client">
-  <p>The client is a Windows service with a tray icon. It checks in every minute, reports the signed-in user, updates itself to the server's version, and makes the local account changes you request on a computer's Accounts tab in <a href="#seats">Devices</a>.</p>
+  <p>The client is a Windows service with a tray icon. It checks in every 5 minutes, and keeps a connection open in between so it shows online and jobs start at once. It reports the signed-in user, updates itself to the server's version, and makes the local account changes you request on a computer's Accounts tab in <a href="#seats">Devices</a>.</p>
   <ul>
     <li><b>Client window:</b> select the tray icon, or open <b>Rabbid Lab Client</b> from the Start menu. It shows the connection status, the server, the signed-in Windows user, both versions and the last check-in.</li>
     <li><b>Tray icon:</b> shown as soon as the client is installed manually. After a silent install (Intune, Group Policy), it appears at the next sign-in.</li>
@@ -491,7 +491,7 @@
 </article>
 
 <article data-key="gpo-results" data-group="Group Policy" data-title="Group Policy results on a computer">
-  <p>Each computer's client reads its Group Policy results every two hours, and immediately after gpupdate, and sends them with its inventory.</p>
+  <p>Each computer's client reads its Group Policy results once a day, and immediately after gpupdate, and sends them with its inventory.</p>
   <ul>
     <li>Open a computer in <a href="#seats">Devices</a> and select its <b>Group Policy</b> tab: the last refresh and the domain controller used, any errors, the GPOs applied to the computer and to the signed-in user, the GPOs not applied and why, and the resulting local policy.</li>
     <li><a href="#seats/gplocal">Devices &gt; Group Policy</a> shows the same for every computer in one list. It is also under <b>Group Policy results</b> on the Group Policy page.</li>

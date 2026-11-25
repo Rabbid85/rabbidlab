@@ -89,7 +89,7 @@ public sealed class Clients(DataFolder folder, TimeProvider clock, IDataProtecti
 
     private readonly IDataProtector protector = protection.CreateProtector("RabbidLab.Clients.UninstallCode");
 
-    /// <summary>How long after its last check-in a client still counts as online. Clients check in every minute.</summary>
+    /// <summary>How long after it was last seen a client still counts as online: it checks in every 5 minutes, and its open request for orders keeps it seen in between (Seen).</summary>
     public static readonly TimeSpan Online = TimeSpan.FromMinutes(3);
 
     /// <summary>How many computers may wait to be let in at once, so a flood of joins can't fill the list.</summary>
@@ -471,6 +471,23 @@ public sealed class Clients(DataFolder folder, TimeProvider clock, IDataProtecti
     }
 
     public bool IsOnline(Client c) => c.Stopped is null && clock.GetUtcNow().UtcDateTime - c.LastSeen < Online;
+
+    /// <summary>
+    /// Its client's request for orders is open (api/clients/next, asked again within a minute): it counts as seen, so it
+    /// shows online between its check-ins every 5 minutes, as Datto's agents do over the connection they keep open. Kept in
+    /// memory and written with the next save. Only a client that's online stays so: coming back is its check-in's to say,
+    /// which starts what waits for it coming online (Workflows.CameOnline).
+    /// </summary>
+    public void Seen(string id)
+    {
+        lock (file.Gate)
+        {
+            if (file.Read().Clients.FirstOrDefault(x => x.Id == id) is { } c && IsOnline(c))
+            {
+                c.LastSeen = clock.GetUtcNow().UtcDateTime;
+            }
+        }
+    }
 
     /// <summary>The client with this id, when the secret is its own.</summary>
     private static Client? Known(ClientsFile f, string id, string secret) =>

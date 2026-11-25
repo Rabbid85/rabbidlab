@@ -184,6 +184,9 @@ internal sealed class CheckInRequest
 
     /// <summary>Errors waiting to be told (Problems.cs); left out when there are none.</summary>
     [DataMember(Name = "problems", EmitDefaultValue = false)] public System.Collections.Generic.List<ProblemReport>? Problems { get; set; }
+
+    /// <summary>The fixed drives as they are now (Inventory.Drives), so disk alerts never wait for the daily inventory.</summary>
+    [DataMember(Name = "disks", EmitDefaultValue = false)] public System.Collections.Generic.List<DiskReport>? Disks { get; set; }
 }
 
 [DataContract]

@@ -146,18 +146,22 @@ internal sealed class UpdateReport
 }
 
 /// <summary>
-/// The computer's inventory, for the server's Devices page. Every half hour the quick things are read (hardware, drives,
-/// installed software and updates, whether a restart is waiting) and sent when something changed, or six hours passed.
-/// What's missing from Windows Update takes Windows a while to answer, so it's asked every six hours, on a thread of
-/// its own. Reading only: nothing on the computer is changed.
+/// The computer's inventory, for the server's Devices page, as Datto audits: once a day, after a job ran here, and when
+/// the client first joins; sent whole only when something changed, otherwise a short note that it's still the same. What
+/// Windows Update says is missing and what Group Policy applies take Windows a while to answer, so they're asked once a
+/// day on threads of their own and sent when they're in. When it last sent is kept on disk, so a restart or an update
+/// sends nothing new. The drives go with every check-in instead (Drives), for the disk alerts. Reading only: nothing on the
+/// computer is changed.
 /// </summary>
 internal static class Inventory
 {
-    private static readonly TimeSpan Look = TimeSpan.FromMinutes(30);
-    private static readonly TimeSpan Resend = TimeSpan.FromHours(6);
+    private static readonly TimeSpan Daily = TimeSpan.FromHours(24);
+    private static readonly TimeSpan Retry = TimeSpan.FromMinutes(30); // a look that couldn't be sent, tried again this soon
+    private static bool loaded;
+    private static bool soon; // a job ran: looked at again at the next round
     private static DateTime looked = DateTime.MinValue;
-    private static DateTime sent = DateTime.MinValue;
-    private static string? sentAs; // the fingerprint of what was last sent
+    private static DateTime sent = DateTime.MinValue; // when the server last had it current (sent, or said the same)
+    private static string? sentAs; // the hash of what was last sent
     private static string? sentTo; // and to which server
     private static List<UpdateReport>? missing;
     private static DateTime? missingChecked;
@@ -165,16 +169,16 @@ internal static class Inventory
     private static List<string>? misses; // what WMI wouldn't read during this Gather, with why
     private static DateTime asked = DateTime.MinValue;
     private static Task? asking;
-    private static readonly TimeSpan PolicyEvery = TimeSpan.FromHours(2);
     private static GroupPolicyReport? policy;
     private static DateTime policyAsked = DateTime.MinValue;
     private static Task? policyAsking;
     private static string? sentPolicy; // the Group Policy read that was last sent, by its time
+    private static string? sentMissing; // the Windows Update answer that was last sent, by its time
 
-    /// <summary>Something here just changed (a job ran): it's read and Windows Update is asked again at the next round, not when their time comes.</summary>
+    /// <summary>Something here just changed (a job ran): it's looked at, and Windows Update and Group Policy asked again, at the next round.</summary>
     public static void Soon()
     {
-        looked = DateTime.MinValue;
+        soon = true;
         asked = DateTime.MinValue;
         policyAsked = DateTime.MinValue;
     }
@@ -182,22 +186,25 @@ internal static class Inventory
     /// <summary>Run by the service after each check-in that found this computer approved.</summary>
     public static async Task Follow(CancellationToken stop)
     {
+        Load();
         var now = DateTime.UtcNow;
-        if (now - asked > Resend)
+        if (now - asked > Daily)
         {
-            // Windows Update can hang on a question for good. One still unanswered after six hours is given up on and said,
-            // so the answer on the server doesn't quietly go stale.
+            // Windows Update can hang on a question for good. One still unanswered after a day is given up on and said, so
+            // the answer on the server doesn't quietly go stale.
             if (asking is { IsCompleted: false })
             {
-                Problems.Note("windows-update", "The Windows Update scan for missing updates did not finish within six hours. Starting a new scan.");
+                Problems.Note("windows-update", "The Windows Update scan for missing updates did not finish within a day. Starting a new scan.");
             }
             asked = now;
             asking = Task.Run(AskWindowsUpdate);
+            Keep();
         }
         // gpresult takes a few seconds, so Group Policy is read on a thread of its own and sent once it's in.
-        if ((policyAsking is null || policyAsking.IsCompleted) && now - policyAsked > PolicyEvery)
+        if ((policyAsking is null || policyAsking.IsCompleted) && now - policyAsked > Daily)
         {
             policyAsked = now;
+            Keep();
             policyAsking = Task.Run(() =>
             {
                 try
@@ -211,27 +218,39 @@ internal static class Inventory
             });
         }
         var settings = Settings.Read();
-        if (settings.Server is null || (now - looked < Look && sentTo == settings.Server && missingChecked?.ToString("o") == sentMissing && policy?.Checked == sentPolicy))
+        var news = (missingChecked is not null && missingChecked?.ToString("o") != sentMissing) || (policy is not null && policy.Checked != sentPolicy);
+        var due = sentTo != settings.Server || now - sent >= Daily || soon || news;
+        if (settings.Server is null || !due || now - looked < Retry && !soon && !news)
         {
             return;
         }
         looked = now;
+        soon = false;
         var me = Identity.Load();
         if (me is null || me.Server != settings.Server)
         {
             return;
         }
         var report = Gather();
-        var print = Print(report);
-        if (print == sentAs && sentTo == settings.Server && now - sent < Resend)
-        {
-            return;
-        }
+        var print = Hash(Print(report));
+        var key = $"RabbidLab-Client {me.Id}:{me.Secret}";
         using var api = new ServerApi(settings.Server, settings.Fingerprint, TimeSpan.FromSeconds(60));
-        var (code, _) = await api.Post<CheckInAnswer>("api/clients/inventory", report, $"RabbidLab-Client {me.Id}:{me.Secret}", stop).ConfigureAwait(false);
+        // Nothing changed since the last one the server has: it's told so, in a few bytes.
+        if (print == sentAs && sentTo == settings.Server && !news)
+        {
+            var (same, _) = await api.Post<CheckInAnswer>("api/clients/inventory/same", new Nothing(), key, stop).ConfigureAwait(false);
+            if (same == HttpStatusCode.OK)
+            {
+                sent = now;
+                Keep();
+                return;
+            }
+        }
+        var (code, _) = await api.Post<CheckInAnswer>("api/clients/inventory", report, key, stop).ConfigureAwait(false);
         if (code == HttpStatusCode.OK)
         {
             (sentAs, sentTo, sent, sentMissing, sentPolicy) = (print, settings.Server, now, report.MissingChecked, report.GroupPolicy?.Checked);
+            Keep();
             // The window's Activity, and the make, model and serial number its Details show.
             var printers = report.Printers?.Count ?? 0;
             Logbook.Add("monitor", "ok", "Sent the inventory", $"{report.Software.Count} apps, {printers} {(printers == 1 ? "printer" : "printers")} and {report.Disks.Count} {(report.Disks.Count == 1 ? "disk" : "disks")}.");
@@ -243,7 +262,76 @@ internal static class Inventory
         }
     }
 
-    private static string? sentMissing; // the Windows Update answer that was last sent, by its time
+    // When it last sent, what and where, and when it last asked Windows Update and Group Policy: kept across restarts.
+    private static string StateFile => Folder.File("inventory-state.txt");
+
+    private static void Load()
+    {
+        if (loaded)
+        {
+            return;
+        }
+        loaded = true;
+        try
+        {
+            if (!File.Exists(StateFile))
+            {
+                return;
+            }
+            var kept = File.ReadAllLines(StateFile).Select(l => l.Split(new[] { '=' }, 2)).Where(p => p.Length == 2).ToDictionary(p => p[0], p => p[1]);
+            DateTime When(string k) => kept.TryGetValue(k, out var v) && DateTime.TryParse(v, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var t) ? t.ToUniversalTime() : DateTime.MinValue;
+            string? Text(string k) => kept.TryGetValue(k, out var v) && v.Length > 0 ? v : null;
+            (sent, asked, policyAsked) = (When("sent"), When("asked"), When("policyAsked"));
+            (sentAs, sentTo, sentMissing, sentPolicy) = (Text("as"), Text("to"), Text("missing"), Text("policy"));
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            // Sent again, as when the client is new.
+        }
+    }
+
+    private static void Keep()
+    {
+        try
+        {
+            string At(DateTime t) => t == DateTime.MinValue ? "" : t.ToString("o", CultureInfo.InvariantCulture);
+            File.WriteAllLines(StateFile, new[]
+            {
+                $"sent={At(sent)}", $"as={sentAs}", $"to={sentTo}", $"missing={sentMissing}", $"policy={sentPolicy}", $"asked={At(asked)}", $"policyAsked={At(policyAsked)}",
+            });
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            // Kept in memory until the next try.
+        }
+    }
+
+    private static string Hash(string text)
+    {
+        using var sha = System.Security.Cryptography.SHA256.Create();
+        return BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(text))).Replace("-", "");
+    }
+
+    /// <summary>The fixed drives and their free space: in the inventory, and with every check-in (Agent) for the disk alerts.</summary>
+    public static List<DiskReport> Drives()
+    {
+        var list = new List<DiskReport>();
+        try
+        {
+            foreach (var d in DriveInfo.GetDrives())
+            {
+                if (d.DriveType == DriveType.Fixed && d.IsReady)
+                {
+                    list.Add(new DiskReport { Name = d.Name.TrimEnd('\\'), Total = d.TotalSize, Free = d.TotalFreeSpace });
+                }
+            }
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            // The drives read so far.
+        }
+        return list;
+    }
 
     /// <summary>Everything quick to read, with what Windows Update last said is missing.</summary>
     public static InventoryReport Gather()
@@ -274,20 +362,7 @@ internal static class Inventory
                 r.Updates.Add(new UpdateReport { Kb = kb, Kind = Text(o["Description"]), Installed = Day(Text(o["InstalledOn"])) });
             }
         });
-        try
-        {
-            foreach (var d in DriveInfo.GetDrives())
-            {
-                if (d.DriveType == DriveType.Fixed && d.IsReady)
-                {
-                    r.Disks.Add(new DiskReport { Name = d.Name.TrimEnd('\\'), Total = d.TotalSize, Free = d.TotalFreeSpace });
-                }
-            }
-        }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
-        {
-            // The drives read so far are sent.
-        }
+        r.Disks = Drives();
         r.Software = Programs();
         try
         {
@@ -732,9 +807,10 @@ internal static class Inventory
         }
         catch (Exception e)
         {
-            // Windows Update is off, unreachable or busy: the server is told, and it's asked again in half an hour, not six.
+            // Windows Update is off, unreachable or busy: the server is told, and it's asked again in half an hour, not a day.
             Problems.Note("windows-update", $"Windows Update scan failed: {e.Message.Trim()} (0x{e.HResult:X8})");
-            asked = DateTime.UtcNow - Resend + TimeSpan.FromMinutes(30);
+            asked = DateTime.UtcNow - Daily + TimeSpan.FromMinutes(30);
+            Keep();
         }
     }
 
@@ -782,7 +858,7 @@ internal static class Inventory
             .Append('|').Append(r.Started).Append('|').Append(r.RestartNeeded).Append('|').Append(r.MissingChecked);
         foreach (var d in r.Disks)
         {
-            all.Append('|').Append(d.Name).Append(':').Append(d.Total).Append(':').Append(d.Total > 0 ? d.Free * 100 / d.Total : 0);
+            all.Append('|').Append(d.Name).Append(':').Append(d.Total); // not the free space: it changes all day, and the check-ins carry it
         }
         foreach (var p in r.Software)
         {

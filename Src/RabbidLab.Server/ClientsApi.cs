@@ -57,7 +57,7 @@ public static class ClientsApi
             return Results.Ok(new { modulus, exponent, tls, sig = identity.Sign(nonce, tls) });
         });
 
-        app.MapPost("/api/clients/checkin", (CheckInForm form, HttpContext context, Clients clients, ActivityLog log, Workflows workflows, ServerIdentity identity, SettingsStore settings, HelpRequests help) =>
+        app.MapPost("/api/clients/checkin", (CheckInForm form, HttpContext context, Clients clients, ActivityLog log, Workflows workflows, ServerIdentity identity, SettingsStore settings, HelpRequests help, Inventories inventories) =>
         {
             // Away until now: its client had stopped, or it hadn't checked in for a while.
             var away = Credentials(context) is (var asking, _) && clients.Find(asking) is { Approved: not null } known && !clients.IsOnline(known);
@@ -79,6 +79,11 @@ public static class ClientsApi
             if (form.Problems is { Count: > 0 } problems && c.Approved is not null)
             {
                 clients.AddProblems(c.Id, problems);
+            }
+            // Its drives as they are now, into its inventory, for the console and the disk alerts.
+            if (form.Disks is { Count: > 0 } disks && c.Approved is not null)
+            {
+                inventories.SetDisks(c.Id, disks);
             }
             // The identity's public half, which the client keeps while it trusts this server (ServerIdentity).
             var (modulus, exponent) = identity.Public();
@@ -156,6 +161,8 @@ public static class ClientsApi
             {
                 return Unknown();
             }
+            // Asking is being there: online between check-ins.
+            clients.Seen(c.Id);
             // Let go when this server stops: a held request would keep it from stopping, for up to half a minute.
             using var stop = CancellationTokenSource.CreateLinkedTokenSource(context.RequestAborted, life.ApplicationStopping);
             if (c.Approved is null)
@@ -250,6 +257,21 @@ public static class ClientsApi
             inventories.Set(c.Id, inventory);
             workflows.InventoryChanged(c, before, inventory);
             return Results.Ok();
+        });
+
+        // The client's daily look found nothing changed since the inventory it last sent: that one is current as of now. Not
+        // Found when there isn't one here, and the client sends it all.
+        app.MapPost("/api/clients/inventory/same", (HttpContext context, Clients clients, Inventories inventories) =>
+        {
+            if (Caller(context, clients) is not { } c)
+            {
+                return Unknown();
+            }
+            if (c.Approved is null)
+            {
+                return Results.Json(new { error = "This computer is pending approval." }, statusCode: StatusCodes.Status403Forbidden);
+            }
+            return inventories.Same(c.Id) ? Results.Ok() : Results.NotFound();
         });
 
         // One computer's whole inventory, for its side panel; null when its client hasn't sent one yet.
@@ -577,7 +599,8 @@ public sealed record JoinForm(string? Computer, string? Os, string? Version);
 /// <summary>A client asking the server to vouch for its HTTPS key: its own random number, base64 or hex, 32 to 128 characters.</summary>
 public sealed record VouchForm(string? Nonce);
 
-public sealed record CheckInForm(string? Computer, string? Os, string? Version, string? User, string? Code = null, string? CodeUsed = null, List<ProblemForm>? Problems = null);
+/// <summary>A check-in: who and what the computer is, and its drives as they are now (every 5 minutes, so disk alerts never wait for the daily inventory).</summary>
+public sealed record CheckInForm(string? Computer, string? Os, string? Version, string? User, string? Code = null, string? CodeUsed = null, List<ProblemForm>? Problems = null, List<DeviceDisk>? Disks = null);
 
 public sealed record ClientSettingsForm(bool? Approve = null, int? UnlockAfterDays = null);
 

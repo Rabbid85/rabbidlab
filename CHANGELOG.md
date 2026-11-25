@@ -2,6 +2,13 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.410 (2026-11-24)
+
+- Each computer checks in every 5 minutes instead of every minute, and keeps a connection open in between, so it still shows online and jobs still start at once.
+- The inventory goes once a day and after a job runs, as Datto does, and whole only when something changed; disk space comes with every check-in, so disk alerts never wait. Windows Update and Group Policy are read once a day.
+- The client’s ring counts down the 5 minutes as 4:59, and Check in now shows three pulsing dots while it checks in, then a tick.
+- Ask IT for help opens at once: each screen’s place says Taking the picture… until its picture comes in, the screens are named by where they are, and a picture left out leaves a + for that screen again or a picture from the computer.
+
 ## 1.1.409 (2026-11-24)
 
 - Ask IT for help in the client reaches the server: since 1.1.405 the server turned the request away, and a lab’s own icon never reached the client either.

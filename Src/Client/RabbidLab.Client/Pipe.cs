@@ -40,18 +40,19 @@ internal static class Pipe
     // The service's wait for the next round, which Check in now cuts short.
     private static CancellationTokenSource? waiting;
 
-    /// <summary>The service waits this long for its next round, or less when someone clicks Check in now.</summary>
-    public static async Task Wait(TimeSpan wait, CancellationToken stop)
+    /// <summary>The service waits this long, or less when someone clicks Check in now; true when that cut it short.</summary>
+    public static async Task<bool> Wait(TimeSpan wait, CancellationToken stop)
     {
         using var now = CancellationTokenSource.CreateLinkedTokenSource(stop);
         Interlocked.Exchange(ref waiting, now);
         try
         {
             await Task.Delay(wait, now.Token).ConfigureAwait(false);
+            return false;
         }
         catch (TaskCanceledException)
         {
-            // Check in now, or stopping.
+            return !stop.IsCancellationRequested; // Check in now, or stopping
         }
         finally
         {

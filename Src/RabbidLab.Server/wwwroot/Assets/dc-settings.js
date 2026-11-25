@@ -215,7 +215,7 @@
       const all = computersOf(rs, kind).filter((c) => c.kind === 'dc' && s.values[c.name]).map((c) => c.name);
       if (kind !== 'server' && kind !== 'pc' && all.length) again(names.length ? names : all);
       if (kind !== 'dc' && computersOf(rs, kind).some((c) => c.kind !== 'dc')) {
-        R.toast('Servers and PCs send their settings through the client.', 'With their inventory: within 30 minutes of a change, and at least every 6 hours.');
+        R.toast('Servers and PCs send their settings through the client.', 'With their inventory: once a day, and after a job runs on them.');
       }
     } else if (e.target.closest('[data-dcs-gpo]')) {
       if (dcGpo(s, kind)) R.openGpo?.(DC_GPO_ID);
