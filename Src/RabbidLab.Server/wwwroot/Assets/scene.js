@@ -55,16 +55,10 @@
   // with an orange moon and mist, and three tiny bats flitting past the moon ("Holloween is the bats."). Christmas, from the
   // day after Thanksgiving (the fourth Thursday in November) to December 26: a cold blue night, snow on the shore and the
   // ground and falling, the pines dark, coloured lights on the big pines in the corners ("Christmas is done"); the
-  // monsters' pines are lit too, and Santa runs between them (monsters.js). ?banner=halloween or ?banner=christmas shows
-  // one on any day.
-  const holiday = (() => {
-    const asked = new URLSearchParams(location.search).get('banner');
-    if (asked === 'halloween' || asked === 'christmas') return asked;
-    const d = new Date();
-    const [month, day] = [d.getMonth(), d.getDate()];
-    const thanksgiving = 1 + ((4 - new Date(d.getFullYear(), 10, 1).getDay() + 7) % 7) + 21;
-    return month === 9 && day >= 15 ? 'halloween' : (month === 10 && day > thanksgiving) || (month === 11 && day <= 26) ? 'christmas' : '';
-  })();
+  // monsters' pines are lit too, and Santa runs between them (monsters.js). Which one is on today, and whether this person
+  // shows holidays at all, is the sky's to say (sky.js); when that changes, every banner is drawn again (again, below).
+  const Sky = window.RabbidLabSky;
+  let holiday = Sky?.holiday() ?? '';
   if (holiday) document.documentElement.classList.add(`ovs-${holiday}`);
 
   // The time of day, from the clock: dawn, the day with the sun, dusk, night ("Day and night, dawn, dusk look amazing", then
@@ -114,26 +108,29 @@
   let painted = '';
   const paint = () => {
     const root = document.documentElement;
-    const time = timeNow();
-    const pal = { ...TIMES[time] };
-    const hol = HOLIDAYS[holiday];
+    // What this person picked for the mode the console is in (sky.js): the clock's time of day, one time for good, or a
+    // plain colour in place of the scene (overview.css .ovs-flat), with the night's own words over it and no holiday.
+    const sky = Sky?.now() ?? { time: 'clock', colour: null };
+    const time = NAMES[asked] ? asked : NAMES[sky.time] ? sky.time : timeNow();
+    const pal = sky.colour ? { flat: sky.colour } : { ...TIMES[time] };
+    const hol = sky.colour ? null : HOLIDAYS[holiday];
     if (hol) Object.assign(pal, time === 'night' ? hol.night : hol.tint(pal));
     const key = `${time} ${JSON.stringify(pal)}`;
     if (key !== painted) {
       [...root.style].filter((p) => p.startsWith('--sk-')).forEach((p) => root.style.removeProperty(p));
       Object.entries(pal).forEach(([k, v]) => root.style.setProperty(`--sk-${k}`, v));
       root.dataset.sky = time;
+      root.classList.toggle('ovs-flat', !!sky.colour);
       painted = key;
     }
-    // The chip at the top right of Overview's banner: the holiday, the time of day and the clock.
+    // The chip at the top right of Overview's banner: the time of day and the clock, then the holiday. It opens the sky's window.
     const chip = document.getElementById('hero-sky');
     if (chip) {
-      chip.textContent = `${hol ? `${hol.name} · ` : ''}${NAMES[time]}, ${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+      chip.textContent = `${sky.colour ? 'Colour' : `${NAMES[time]}, ${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`}${hol ? ` · ${hol.name}` : ''}`;
       chip.hidden = false;
     }
   };
   paint();
-  setInterval(paint, 30000);
 
   // Christmas lights: along the lower edge of each of a pine's three tiers, from one branch tip to the other, 3, 4 and 5
   // plain coloured bulbs, the same colours in the same order on every pine ("Each tree needs the same light setup").
@@ -462,12 +459,13 @@
   const scenes = {};
   const lay = (box, size) => {
     const fit = fitOf(box, SIZES[size].h);
-    if (fit === undefined || box.dataset.fit === String(fit)) return;
+    if (fit === undefined || (box.dataset.fit === String(fit) && box.dataset.hol === holiday)) return;
     box.querySelectorAll(':scope > .ovs, :scope > .ovs-lives').forEach((e) => e.remove());
-    const made = scenes[`${size} ${fit}`] ||= { html: draw(size, fit), near: Scene.near[size] };
+    const made = scenes[`${size} ${fit} ${holiday}`] ||= { html: draw(size, fit), near: Scene.near[size] };
     Scene.near[size] = made.near; // where this width's big pines stand, for the lights and the monsters
     box.insertAdjacentHTML('afterbegin', made.html);
     box.dataset.fit = String(fit);
+    box.dataset.hol = holiday;
     box.dispatchEvent(new CustomEvent('rabbidlab:scene', { bubbles: true }));
   };
   // Overview's now; another page's banner the first time its page opens, so pages never opened never draw one. Every
@@ -489,4 +487,21 @@
   // A window made wider or narrower shows more or less of the drawing: fitted again a moment after the resizing stops.
   let resized = 0;
   window.addEventListener('resize', () => { clearTimeout(resized); resized = setTimeout(fill, 200); });
+  // The sky changed (sky.js: a pick in its window, a holiday starting or ending at midnight): painted again, and with
+  // another holiday every banner is drawn again and the monsters laid on the new drawing (Santa at Christmas).
+  const again = () => {
+    const h = Sky?.holiday() ?? '';
+    if (h !== holiday) {
+      const root = document.documentElement;
+      if (holiday) root.classList.remove(`ovs-${holiday}`);
+      if (h) root.classList.add(`ovs-${h}`);
+      [holiday, Scene.holiday] = [h, h];
+      document.querySelectorAll('[data-monsters]').forEach((box) => { box.querySelector(':scope > .ovm-layer')?.remove(); delete box.dataset.monsters; });
+    }
+    paint();
+    fill();
+  };
+  window.addEventListener('rabbidlab:sky', again);
+  window.addEventListener('rabbidlab:theme', paint);
+  setInterval(again, 30000);
 })();

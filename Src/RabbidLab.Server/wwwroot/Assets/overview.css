@@ -27,9 +27,9 @@
   letter-spacing: -.04em; text-wrap: balance; }
 .ovb-lead { max-width: 580px; margin: 18px 0 0; color: var(--sk-lead, #C9CCDA); font-size: 16px; line-height: 1.6; }
 /* The time of day at the top right of Overview's banner (scene.js): the holiday, the time of day and the clock. */
-.ovb-sky { position: absolute; top: 18px; right: 24px; z-index: 3; margin: 0; padding: 8px 16px; border-radius: 999px; background: rgb(0 0 0 / .4);
-  color: #fff; font: 600 14px/1.4 "Segoe UI", system-ui, sans-serif; pointer-events: none; }
-.ovb-sky[hidden] { display: none; }
+.ovb-sky { position: absolute; top: 18px; right: 24px; z-index: 3; height: auto; margin: 0; padding: 8px 16px; border: 0; border-radius: 999px; background: rgb(0 0 0 / .4);
+  color: #fff; font: 600 14px/1.4 "Segoe UI", system-ui, sans-serif; cursor: pointer; }
+.ovb-sky:hover { background: rgb(0 0 0 / .55); }.ovb-sky[hidden] { display: none; }
 /* The words fade to their new colour with the sky. */
 :is(.ovb-title, .ovb-lead, .ovb-eye, .hero-title, .hero-lead) { transition: color 2.4s ease; }
 
@@ -272,3 +272,21 @@
 @keyframes ovm-rustle { 0%, 100% { transform: rotate(0); } 20% { transform: rotate(2.2deg); } 45% { transform: rotate(-1.8deg); } 70% { transform: rotate(1deg); } 86% { transform: rotate(-.4deg); } }
 @keyframes ovm-shake { 0%, 100% { transform: rotate(0); } 10% { transform: rotate(4.5deg) skewX(-2deg); } 24% { transform: rotate(-4deg) skewX(2deg); } 38% { transform: rotate(3.4deg); } 52% { transform: rotate(-2.6deg); } 66% { transform: rotate(1.6deg); } 80% { transform: rotate(-.8deg); } 92% { transform: rotate(.3deg); } }
 @media (prefers-reduced-motion: reduce) { .ovs *, .ovs-live, .ovm-layer * { animation: none !important; } }
+/* A plain colour in place of the scene (the sky's window, Colour): nothing of the drawing shows, only the colour, lighter
+   toward the top right and darker toward the foot. The grain and the shade behind the words stay. */
+.ovs-flat :is(.ovb-art, .hero-art) > * { visibility: hidden; }
+.ovs-flat :is(.ovb-art, .hero-art) { background: radial-gradient(120% 140% at 85% 0%, color-mix(in srgb, var(--sk-flat) 75%, #fff 8%), var(--sk-flat) 45%, color-mix(in srgb, var(--sk-flat) 40%, #05050f)); }
+/* The sky's window (sky.js): what each row is on the left, its choices in a line on the right. */
+.sky-dialog { width: min(980px, calc(100vw - 32px)); }
+.sky-dialog::backdrop { background: rgba(5, 6, 10, .3); } /* the banner changes behind it, so it stays in view */
+.sky-form { display: grid; gap: 22px; margin-top: 22px; }
+.sky-row { display: grid; grid-template-columns: 150px minmax(0, 1fr); align-items: start; gap: 12px; }
+.sky-row > span { padding-top: 9px; color: var(--muted); font-size: 14px; font-weight: 600; }
+.sky-row .seg { margin: 0; gap: 6px; }
+.sky-row .seg button { height: 38px; padding: 0 14px; font-size: 14px; }
+.sky-sw { display: flex; gap: 10px; margin-top: 12px; }
+.sky-sw button { width: 30px; height: 30px; padding: 0; border: 2px solid transparent; border-radius: 50%; background: var(--c); cursor: pointer; }
+.sky-sw button[aria-pressed="true"] { border-color: #fff; }
+.sky-switch { display: inline-flex; align-items: center; gap: 12px; padding-top: 8px; color: var(--text); font-size: 14.5px; cursor: pointer; }
+.sky-note { margin: 12px 0 0; color: var(--muted); font-size: 13.5px; }
+@media (max-width: 700px) { .sky-row { grid-template-columns: 1fr; gap: 6px; } .sky-row > span { padding-top: 0; } }

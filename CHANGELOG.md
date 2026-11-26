@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.421 (2026-11-25)
+
+- The banner has its own settings. Click the chip at the top right of the Overview banner, or Settings, Appearance, Banner sky: for dark mode and for light mode pick the time of day by the clock, one time of day for good, or a plain colour, and turn the holidays on or off. It is kept for you in this browser, as the theme is.
+
 ## 1.1.420 (2026-11-25)
 
 - The banners move smoothly on fast screens and use far less of the processor: the stars, the moonlight on the water, the shooting star, the Christmas lights and snow, the monster and Nessie are each moved by the graphics card, no longer redrawn many times a second.

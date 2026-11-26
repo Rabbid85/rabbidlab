@@ -235,7 +235,7 @@
     const q = (sel) => layer.querySelector(sel);
     layer.querySelectorAll('[data-at]').forEach((j) => { const [x, y] = j.dataset.at.split(' '); j.style.setProperty('--x', x); j.style.setProperty('--y', y); });
     // The big pines move with the window's width (scene.js draws the banner again), so what hides him is made again then.
-    const hide = () => { const m = hideMask(); ['mask-image', '-webkit-mask-image'].forEach((k) => q('.ovm-band').style.setProperty(k, m)); };
+    const hide = () => { if (!layer.isConnected) return; const m = hideMask(); ['mask-image', '-webkit-mask-image'].forEach((k) => q('.ovm-band').style.setProperty(k, m)); };
     hide();
     box.addEventListener('rabbidlab:scene', hide);
     if (still()) return;
