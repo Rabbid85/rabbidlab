@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.420', [
+    'The banners move smoothly on fast screens and use far less of the processor: the stars, the moonlight on the water, the shooting star, the Christmas lights and snow, the monster and Nessie are each moved by the graphics card, no longer redrawn many times a second.',
+    'On a wide window the left of the banner is land of its own, no longer the right half flipped over: the hills, far trees and shore carry on, with big pines at both edges of the window and in the middle on a wooded hill.']],
   ['1.1.419', [
     'Nessie stops to watch when the monster bolts along the far shore, her head following him and her neck swaying slowly until he’s in the pines again. Her eyes are small and pale now, up near her snout.']],
   ['1.1.418', [
@@ -1338,6 +1341,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.420': ['2026-11-25', 'update', 'A smoother, wider banner'],
   '1.1.419': ['2026-11-25', 'update', 'Nessie watches the monster'],
   '1.1.418': ['2026-11-25', 'update', 'A new Nessie'],
   '1.1.417': ['2026-11-25', 'update', 'Day and night on the banner'],

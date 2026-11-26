@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.420 (2026-11-25)
+
+- The banners move smoothly on fast screens and use far less of the processor: the stars, the moonlight on the water, the shooting star, the Christmas lights and snow, the monster and Nessie are each moved by the graphics card, no longer redrawn many times a second.
+- On a wide window the left of the banner is land of its own, no longer the right half flipped over: the hills, far trees and shore carry on, with big pines at both edges of the window and in the middle on a wooded hill.
+
 ## 1.1.419 (2026-11-25)
 
 - Nessie stops to watch when the monster bolts along the far shore, her head following him and her neck swaying slowly until he’s in the pines again. Her eyes are small and pale now, up near her snout.

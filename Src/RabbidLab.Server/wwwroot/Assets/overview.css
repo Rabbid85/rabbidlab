@@ -6,7 +6,9 @@
 .ovb, .hero { position: relative; isolation: isolate; margin: 20px var(--side) 0; overflow: hidden;
   border: 1px solid rgb(255 255 255 / .08); border-radius: 18px; background: #07071a; }
 .ovb { height: 580px; }
-.ovb-art, .hero-art { position: absolute; inset: 0; z-index: -1; }
+/* Its box is a size container, so what the graphics card moves by a distance can say it in the drawing's units: --u is
+   one unit in pixels (the drawing is 3200 wide and 600 tall, 300 on the lower banners, and fills the box). */
+.ovb-art, .hero-art { position: absolute; inset: 0; z-index: -1; container-type: size; }
 /* The gradients and blurs the scenes share (scene.js), in a drawing that takes no room. */
 .ovs-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
 /* A faint grain over the scene, so its fades show no steps; kept out of the drawing so its moving parts never redraw it. */
@@ -105,7 +107,9 @@
 /* The scene. Every colour comes from a --sk-* variable on the page, which scene.js sets from the time of day (dawn, the day
    with the sun, dusk, night) and the holiday. Without one, it falls back to the night drawn from the accent: deep, low
    colours, each layer of land darker the nearer it is. */
-.ovs { position: absolute; inset: 0; width: 100%; height: 100%; display: block;
+.ovs { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+/* The monsters' stage takes its colours from the same ones (monsters.js). */
+.ovs, .ovm-layer {
   --l1: var(--sk-l1, color-mix(in srgb, var(--accent) 13%, #15142f)); --l2: var(--sk-l2, color-mix(in srgb, var(--accent) 10%, #100f26));
   --l3: var(--sk-l3, color-mix(in srgb, var(--accent) 7%, #0c0b1f)); --l4: var(--sk-l4, color-mix(in srgb, var(--accent) 5%, #090818)); --l5: var(--sk-l5, #050511); }
 .ovs-l1 { fill: var(--l1); } .ovs-l2 { fill: var(--l2); } .ovs-l3 { fill: var(--l3); } .ovs-l4 { fill: var(--l4); } .ovs-l5 { fill: var(--l5); }
@@ -137,25 +141,35 @@
 .ovs :is(stop, path, rect, circle, ellipse, polyline) { transition: fill 2.4s ease, stop-color 2.4s ease, stroke 2.4s ease, fill-opacity 2.4s ease; }
 .ovs :is(.ovs-seas, .ovs-halo, .ovs-rimglow) { transition: fill 2.4s ease, opacity 2.4s ease; }
 /* What moves: a few stars twinkle, a shooting star crosses now and then, the moonlight on the water shimmers. */
+/* Each is a drawing of its own on top of the scene (.ovs-live, scene.js) that the graphics card fades, stretches or moves
+   whole. Nothing changes inside a drawing, so the page does no work per frame and the motion is as smooth as the screen;
+   moving inside the scene, every twinkle painted all of it again at the screen's rate. */
+.ovs-lives { position: absolute; inset: 0; pointer-events: none; }
+.ovs-live { pointer-events: none; will-change: transform, opacity; --u: max(100cqw / 3200, 100cqh / 600); }
+.ovs-live[data-size="low"] { --u: max(100cqw / 3200, 100cqh / 300); }
+/* One beat's stars fade together; one beat's strokes of moonlight stretch together about the moon's column, 520 units in
+   from the right; the shooting star's drawing flies the way its streak points (--fx, --fy from scene.js). */
 .ovs-tw { animation: ovs-tw 3.6s ease-in-out infinite; }
-.ovs-meteor { opacity: 0; animation: ovs-meteor 11s linear 2s infinite; }
-.ovs-shim rect { transform-box: fill-box; transform-origin: center; animation: ovs-shim 2.8s ease-in-out infinite alternate; }
+.ovs-met { opacity: 0; animation: ovs-fly 11s linear 2s infinite; }
+.ovs-shim { transform-origin: calc(100% - 520 * var(--u)) 50%; animation: ovs-shim 2.8s ease-in-out infinite alternate; }
 .ovs-d1 { animation-delay: -.8s; } .ovs-d2 { animation-delay: -1.9s; } .ovs-d3 { animation-delay: -2.7s; } .ovs-d4 { animation-delay: -3.3s; }
-@keyframes ovs-tw { 50% { opacity: .2; } }
+@keyframes ovs-tw { 50% { opacity: .3; } }
 /* It crosses 420 units in two thirds of a second, fading in and out as it goes, then waits; it never stops in view, and
    scene.js moves it somewhere new before it comes again. */
-@keyframes ovs-meteor { 0% { transform: translateX(0); opacity: 0; } 1% { opacity: 1; } 4.5% { opacity: .9; } 6% { transform: translateX(420px); opacity: 0; } 100% { transform: translateX(420px); opacity: 0; } }
+@keyframes ovs-fly { 0% { transform: translate(0, 0); opacity: 0; } 1% { opacity: 1; } 4.5% { opacity: .9; }
+  6%, 100% { transform: translate(calc(var(--fx, 407.5) * var(--u)), calc(var(--fy, 101.6) * var(--u))); opacity: 0; } }
 @keyframes ovs-shim { from { transform: scaleX(.7); } to { transform: scaleX(1.15); } }
 /* Halloween (October 15 to 31) and Christmas (the day after Thanksgiving to December 26) colour the scene through scene.js:
    at night their own, at other times leaning the time of day their way. */
 .ovs-twinkle { animation: ovs-twinkle 1.8s ease-in-out infinite alternate; }
 @keyframes ovs-twinkle { 0%, 40% { opacity: 1; } 100% { opacity: .35; } }
-.ovs-snow { fill: #fff; }
-.ovs-fall { animation: ovs-fall 16s linear infinite; }
-.ovs-f2 { animation-duration: 11s; } .ovs-f3 { animation-duration: 7.5s; }
-.ovs-h300 .ovs-fall { animation-name: ovs-fall-low; }
-@keyframes ovs-fall { from { transform: translateY(0); } to { transform: translateY(600px); } }
-@keyframes ovs-fall-low { from { transform: translateY(0); } to { transform: translateY(300px); } }
+/* Snow: each size of flake is a drawing of its own, its flakes drawn twice one banner's height apart, which slides down
+   one height and starts again. */
+.ovs-snows { overflow: visible; fill: #fff; animation: ovs-fall 16s linear infinite; }
+.ovs-snows.ovs-f2 { animation-duration: 11s; } .ovs-snows.ovs-f3 { animation-duration: 7.5s; }
+.ovs-snows[data-size="low"] { animation-name: ovs-fall-low; }
+@keyframes ovs-fall { from { transform: translateY(0); } to { transform: translateY(calc(600 * var(--u))); } }
+@keyframes ovs-fall-low { from { transform: translateY(0); } to { transform: translateY(calc(300 * var(--u))); } }
 /* The bats: each on its own path past the moon (scene.js sets it), fading in and out at the ends, wings flapping from the
    shoulders, bobbing as they fly. */
 .ovs-bat { fill: #07030b; opacity: 0; animation: ovs-bat var(--t) ease-in-out infinite; animation-delay: var(--d); }
@@ -179,21 +193,33 @@
 .ovm-eye { fill: var(--sk-rim, color-mix(in srgb, var(--accent) 30%, #cfc8ff)); } /* small and pale, by the snout */
 .ovm-eye circle { opacity: .9; }
 .ovm-under { fill: color-mix(in srgb, var(--sk-water0, color-mix(in srgb, var(--accent) 12%, #0e0c26)) 45%, #000); opacity: .34; }
-.ovm-nessie.ovm-go { animation: ovm-on 24s linear both; }
-.ovm-nessie.ovm-go .ovm-swim { animation: ovm-swim 24s linear both; }
-.ovm-nessie.ovm-go .ovm-rise { animation: ovm-rise 24s ease-in-out both; }
+/* The stage the monsters are on: laid exactly as the drawing is, 3200 by 600 of its units, so they are placed in those. */
+.ovm-layer { position: absolute; inset: 0; overflow: hidden; pointer-events: none; --u: max(100cqw / 3200, 100cqh / 600); }
+.ovm-stage { position: absolute; right: 0; top: 50%; width: calc(3200 * var(--u)); height: calc(600 * var(--u)); margin-top: calc(-300 * var(--u)); }
+.ovm-clumps { position: absolute; inset: 0; width: 100%; height: 100%; will-change: transform; }
+/* Her own small drawing, 264 by 176 units, where she comes up (--x). The graphics card glides it 88 units the way she faces
+   (--dir) and fades it in and out; her neck, her rise and her flippers are drawn inside it (monsters.js). */
+.ovm-nessie { position: absolute; left: calc((var(--x, 2480) - 132) * var(--u)); top: calc(382 * var(--u)); width: calc(264 * var(--u)); height: calc(176 * var(--u));
+  will-change: transform, opacity; }
+.ovm-nessie.ovm-go { animation: ovm-on 24s linear both, ovm-glide 24s linear both; }
 @keyframes ovm-on { 0% { opacity: 0; } 6% { opacity: 1; } 94% { opacity: 1; } 100% { opacity: 0; } }
-@keyframes ovm-swim { from { transform: translateX(0); } to { transform: translateX(80px); } }
-@keyframes ovm-rise { 0% { transform: translateY(40px); } 10% { transform: translateY(0); } 30% { transform: translateY(-.7px); } 55% { transform: translateY(.5px); } 89% { transform: translateY(0); } 100% { transform: translateY(40px); } }
-.ovm-paddle { transform-box: fill-box; transform-origin: 100% 0%; animation: ovm-paddle 1.4s ease-in-out infinite alternate; }
-.ovm-paddle.ovm-b { animation-direction: alternate-reverse; }
-@keyframes ovm-paddle { from { transform: rotate(-12deg); } to { transform: rotate(14deg); } }
+@keyframes ovm-glide { from { transform: translateX(0); } to { transform: translateX(calc(var(--dir, 1) * 88 * var(--u))); } }
 /* The runner, always there, out of sight behind the pines unless he's crossing between them, each outfit moving its own way
    (monsters.js OUTFITS): Sasquatch in a long lope ("Lopes looks great"), the yeti walking, Santa in a jolly jog. The body
    stays level ("He just fucking bvounces when running?") and the elbows straighten as the arms come forward, so a hand never
    reaches the face ("Arm in his mouth lol"). Each joint turns about its own point, (0 0) of its group. A stride is --ovm-t
    long; the far leg and the near arm run half a stride behind. Waiting behind the pines he stands still. */
 .ovm-runner.ovm-here { opacity: 1; }
+/* Every piece of him is a layer the graphics card moves: the strip of far shore he crosses, with a still mask that hides
+   him behind the pines (monsters.js hideMask); where he stands (--x) and which way he faces (--f); each joint's box at its
+   place (--x, --y) and the piece in it, its joint at its middle. */
+.ovm-band { position: absolute; left: calc(2400 * var(--u)); top: calc(392 * var(--u)); width: calc(670 * var(--u)); height: calc(50 * var(--u));
+  -webkit-mask-size: 100% 100%; mask-size: 100% 100%; }
+.ovm-at { position: absolute; left: calc((var(--x, 2440) - 2400) * var(--u)); top: calc(42 * var(--u)); width: 0; height: 0; transform: scale(var(--f, .75), .75); }
+.ovm-at :is(.ovm-runner, .ovm-walk, .ovm-bob, .ovm-turn) { position: absolute; left: 0; top: 0; width: 0; height: 0; }
+.ovm-joint { position: absolute; left: calc(var(--x, 0) * var(--u)); top: calc(var(--y, 0) * var(--u)); width: 0; height: 0; }
+.ovm-piece { position: absolute; left: calc(-12 * var(--u)); top: calc(-12 * var(--u)); width: calc(24 * var(--u)); height: calc(24 * var(--u)); overflow: visible; }
+.ovm-piece.ovm-torso { left: calc(-20 * var(--u)); top: calc(-44 * var(--u)); width: calc(40 * var(--u)); height: calc(48 * var(--u)); }
 .ovm-g-lope { --ovm-t: .72s; } .ovm-g-walk { --ovm-t: 1s; } .ovm-g-jog { --ovm-t: .46s; }
 :is(.ovm-thigh, .ovm-shin, .ovm-upper, .ovm-fore) { transform-box: view-box; transform-origin: 0 0; animation: var(--ovm-t) ease-in-out infinite; }
 :is(.ovm-leg.ovm-b, .ovm-arm:not(.ovm-b)) :is(.ovm-thigh, .ovm-shin, .ovm-upper, .ovm-fore) { animation-delay: calc(var(--ovm-t) / -2); }
@@ -245,4 +271,4 @@
 .ovm-shake .ovm-sway:nth-child(4) { animation-delay: 210ms; } .ovm-shake .ovm-sway:nth-child(5) { animation-delay: 280ms; }
 @keyframes ovm-rustle { 0%, 100% { transform: rotate(0); } 20% { transform: rotate(2.2deg); } 45% { transform: rotate(-1.8deg); } 70% { transform: rotate(1deg); } 86% { transform: rotate(-.4deg); } }
 @keyframes ovm-shake { 0%, 100% { transform: rotate(0); } 10% { transform: rotate(4.5deg) skewX(-2deg); } 24% { transform: rotate(-4deg) skewX(2deg); } 38% { transform: rotate(3.4deg); } 52% { transform: rotate(-2.6deg); } 66% { transform: rotate(1.6deg); } 80% { transform: rotate(-.8deg); } 92% { transform: rotate(.3deg); } }
-@media (prefers-reduced-motion: reduce) { .ovs * { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { .ovs *, .ovs-live, .ovm-layer * { animation: none !important; } }

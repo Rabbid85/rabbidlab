@@ -3,8 +3,10 @@
 // the same tree he hides behind"). The pines he is behind rustle, shake when he bursts out, and he runs to another clump and
 // hides again ("Move the tree, the monster hides behind. Like shake it like he's hiding."); nothing of him shows through
 // them. Now and then Nessie's neck rises out of the lake in the moon's path, she swims across, and her head turns down into
-// the water with her neck following it like a snake's ("The head needs to bend in the water like a snake turns"). Drawn
-// into the banner's own drawing (scene.js, RabbidLabScene), in its 3200 by 600 units.
+// the water with her neck following it like a snake's ("The head needs to bend in the water like a snake turns"). Laid on a
+// stage over the banner's drawing (scene.js, RabbidLabScene), in its 3200 by 600 units. Everything that crosses the banner
+// is a layer the graphics card moves, so it is as smooth as the screen and costs the page nothing: the runner's every limb,
+// and Nessie's own small drawing; only her neck's shape is drawn by the page, 30 times a second while she is up.
 (() => {
   const S = window.RabbidLabScene;
   if (!S) return;
@@ -107,11 +109,17 @@
   // Her eyes are small and pale, up by the snout where a reptile's are ("Small, by the snout", the eyes mock).
   const EYE = (op) => `<g class="ovm-eye" opacity="${op}"><circle r=".3"/></g>`;
   const NECK = (eyes) => `<path class="ovm-neck" d="${REST_NECK.d}"/>${eyes ? EYE(1) + EYE(0) : ''}`;
-  const NESSIE = '<g class="ovm ovm-nessie"><defs><clipPath id="ovm-above"><rect x="-120" y="-80" width="240" height="80.4"/></clipPath>'
-    + '<clipPath id="ovm-below"><rect x="-120" y=".4" width="240" height="80"/></clipPath></defs><g class="ovm-swim">'
-    + `<g clip-path="url(#ovm-below)"><g class="ovm-rise"><g class="ovm-under" filter="url(#ovs-b1)">${BODY}${NECK(false)}</g></g></g>`
-    + `<g clip-path="url(#ovm-above)"><g class="ovm-rise"><g class="ovm-dark">${BODY}${NECK(true)}</g></g></g></g></g>`;
-
+  // A drawing of her own, the size of what can be seen of her (240 by 160 of her units, the water line across its middle).
+  // The graphics card glides it across and fades it in and out (overview.css), so only this small drawing is painted as her
+  // neck moves, not the whole banner. ovm-face turns her to face the way she goes.
+  const NESSIE = '<svg class="ovm ovm-nessie" viewBox="-120 -80 240 160" aria-hidden="true"><defs><clipPath id="ovm-above"><rect x="-120" y="-80" width="240" height="80.4"/></clipPath>'
+    + '<clipPath id="ovm-below"><rect x="-120" y=".4" width="240" height="80"/></clipPath></defs><g class="ovm-face">'
+    + `<g clip-path="url(#ovm-below)"><g class="ovm-rise" transform="translate(0 40)"><g class="ovm-under" filter="url(#ovs-b1)">${BODY}${NECK(false)}</g></g></g>`
+    + `<g clip-path="url(#ovm-above)"><g class="ovm-rise" transform="translate(0 40)"><g class="ovm-dark">${BODY}${NECK(true)}</g></g></g></g></svg>`;
+  // Her flippers turn about their top right corners, and how far under the water she is through her round: up in the first
+  // tenth, bobbing, down in the last. Both are drawn with her neck.
+  const PADDLE = [[1, 5], [-17, 5.5]];
+  const RISE = [[0, 40], [0.1, 0], [0.3, -0.7], [0.55, 0.5], [0.89, 0], [1, 40]];
 
   // The runner: one body on joints, facing left with his feet on y 0, and the outfits it wears ("Basically the yet monster
   // just changes outfits/styles lol. Engine would be amazing."). A body gives each limb's pieces drawn from their joint at
@@ -157,17 +165,20 @@
   };
   // Which outfit: Santa at Christmas; Sasquatch otherwise.
   const outfit = () => (S.holiday === 'christmas' ? 'santa' : 'sasquatch');
-  // The far arm and leg behind, the near leg, the torso and head, the near arm in front; each joint turns about its own
-  // point (overview.css), so these transforms only put the joints in place.
+  // The far arm and leg behind, the near leg, the torso and head, the near arm in front. Every piece is a small drawing of
+  // its own with its joint at its middle, in a box placed at the joint (data-at, set as --x and --y once laid, since the
+  // page allows no style attributes), so the graphics card turns each about its joint (overview.css): his limbs swing, he
+  // bobs and he crosses the shore without the page doing any work.
   const part = (p) => (p.startsWith('<') ? p : `<path d="${p}"/>`);
+  const piece = (p, cls) => `<svg class="ovm-piece ${cls}" viewBox="-12 -12 24 24" aria-hidden="true">${part(p)}</svg>`;
   const build = (m, cls) => {
-    const leg = (i) => `<g class="ovm-leg${i ? ' ovm-b' : ''}" transform="translate(${m.hip[i][0]} ${m.hip[i][1]})"><g class="ovm-thigh">${part(m.thigh)}`
-      + `<g transform="translate(0 ${m.knee})"><g class="ovm-shin">${part(m.shin)}</g></g></g></g>`;
-    const arm = (i) => `<g class="ovm-arm${i ? ' ovm-b' : ''}" transform="translate(${m.shoulder[i][0]} ${m.shoulder[i][1]})"><g class="ovm-upper">${part(m.upper)}`
-      + `<g transform="translate(0 ${m.elbow})"><g class="ovm-fore">${part(m.fore)}</g></g></g></g>`;
-    return `<g class="${cls}">${arm(1)}${leg(1)}${leg(0)}${m.body}${arm(0)}</g>`;
+    const limb = (name, at, upper, upperCls, down, lower, lowerCls) => `<div class="ovm-joint ${name}" data-at="${at.join(' ')}"><div class="ovm-turn ${upperCls}">${piece(upper, cls)}`
+      + `<div class="ovm-joint" data-at="0 ${down}"><div class="ovm-turn ${lowerCls}">${piece(lower, cls)}</div></div></div></div>`;
+    const leg = (i) => limb(`ovm-leg${i ? ' ovm-b' : ''}`, m.hip[i], m.thigh, 'ovm-thigh', m.knee, m.shin, 'ovm-shin');
+    const arm = (i) => limb(`ovm-arm${i ? ' ovm-b' : ''}`, m.shoulder[i], m.upper, 'ovm-upper', m.elbow, m.fore, 'ovm-fore');
+    return `${arm(1)}${leg(1)}${leg(0)}<svg class="ovm-piece ovm-torso ${cls}" viewBox="-20 -44 40 48" aria-hidden="true">${m.body}</svg>${arm(0)}`;
   };
-  const RUNNER = (name) => `<g class="ovm ovm-runner ovm-g-${OUTFITS[name].gait} ovm-hiding"><g class="ovm-walk"><g class="ovm-bob">${build(OUTFITS[name].body, OUTFITS[name].cls)}</g></g></g>`;
+  const RUNNER = (name) => `<div class="ovm-at"><div class="ovm ovm-runner ovm-g-${OUTFITS[name].gait} ovm-hiding"><div class="ovm-walk"><div class="ovm-bob">${build(OUTFITS[name].body, OUTFITS[name].cls)}</div></div></div></div>`;
 
   // Where he hides: four clumps of three to five pines of different heights on the far shore (base 436), the tallest near
   // the middle so he is hidden at its foot. Each pine sways from its foot when its clump rustles; each clump is mirrored in
@@ -201,16 +212,32 @@
     const cy = pts.reduce((s, [, b]) => s + b, 0) / pts.length;
     return `M${pts.map(([a, b]) => { const d = Math.hypot(a - cx, b - cy) || 1; return `${(a + ((a - cx) / d) * 1.5).toFixed(1)} ${(b + ((b - cy) / d) * 1.5).toFixed(1)}`; }).join('L')}Z`;
   };
-  const HIDE = () => '<defs><mask id="ovm-hide" maskUnits="userSpaceOnUse" x="0" y="0" width="3200" height="600"><rect width="3200" height="600" fill="#fff"/>'
-    + `<path fill="#000" d="${GROVES.map(hull).join('')}${(S.near.tall || []).map(([x, y, h]) => S.pine(x, y, h)).join('')}"/></mask></defs>`;
+  // The strip of far shore he crosses, [x, y, width, height] in the drawing's units. His pieces are layers, so what hides
+  // him is a still picture laid over the strip as its mask: clear where the clumps and the big front pines are.
+  const BAND = [2400, 392, 670, 50];
+  const hideMask = () => {
+    const [x, y, w, h] = BAND;
+    const box = `x="${x}" y="${y}" width="${w}" height="${h}"`;
+    const near = (S.near.tall || []).filter(([px]) => px > x - 70 && px < x + w + 70).map(([px, py, ph]) => S.pine(px, py, ph)).join('');
+    return `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${x} ${y} ${w} ${h}" preserveAspectRatio="none">`
+      + `<mask id="m" maskUnits="userSpaceOnUse" ${box}><rect ${box} fill="#fff"/><path d="${GROVES.map(hull).join('')}${near}"/></mask><rect ${box} mask="url(#m)"/></svg>`)}")`;
+  };
   const LEN = 24000; // Nessie's round (overview.css)
 
-  const lay = (svg) => {
-    svg.dataset.monsters = '';
-    const later = (fn, ms) => setTimeout(() => { if (svg.isConnected) fn(); }, ms);
-    svg.insertAdjacentHTML('beforeend', `<g class="ovm-layer">${HIDE()}<g mask="url(#ovm-hide)"><g>${RUNNER(outfit())}</g></g>${CLUMP}`
-      + `<g transform="translate(2480 470) scale(${NS})">${NESSIE}</g></g>`);
-    const q = (sel) => svg.querySelector(sel);
+  const lay = (box) => {
+    box.dataset.monsters = '';
+    // A stage laid exactly as the drawing is, and on it: the strip the runner crosses, the clumps as one still drawing, and
+    // Nessie's own small drawing.
+    box.insertAdjacentHTML('beforeend', `<div class="ovm-layer"><div class="ovm-stage"><div class="ovm-band">${RUNNER(outfit())}</div>`
+      + `<svg class="ovm-clumps" viewBox="0 0 3200 600" aria-hidden="true">${CLUMP}</svg>${NESSIE}</div></div>`);
+    const layer = box.querySelector(':scope > .ovm-layer');
+    const later = (fn, ms) => setTimeout(() => { if (layer.isConnected) fn(); }, ms);
+    const q = (sel) => layer.querySelector(sel);
+    layer.querySelectorAll('[data-at]').forEach((j) => { const [x, y] = j.dataset.at.split(' '); j.style.setProperty('--x', x); j.style.setProperty('--y', y); });
+    // The big pines move with the window's width (scene.js draws the banner again), so what hides him is made again then.
+    const hide = () => { const m = hideMask(); ['mask-image', '-webkit-mask-image'].forEach((k) => q('.ovm-band').style.setProperty(k, m)); };
+    hide();
+    box.addEventListener('rabbidlab:scene', hide);
     if (still()) return;
 
     // The runner: always behind one clump or running to another.
@@ -219,7 +246,8 @@
     const walk = runner.querySelector('.ovm-walk');
     let spot = Math.floor(Math.random() * CLUMPS.length);
     let dash = null; // while he runs: from where to where, since when, for how long
-    const place = (x, left) => runner.parentNode.setAttribute('transform', `translate(${x} 434) scale(${left ? 0.75 : -0.75} .75)`);
+    // Where his feet are across the drawing, and three quarters size, turned to face the way he goes.
+    const place = (x, left) => { runner.parentNode.style.setProperty('--x', x); runner.parentNode.style.setProperty('--f', left ? 0.75 : -0.75); };
     const shake = (i, hard) => {
       const c = q(`[data-clump="${i}"]`);
       c.classList.remove('ovm-shake', 'ovm-hard');
@@ -241,7 +269,7 @@
         const ms = ((dist / 260) * 8000) / pace; // "Why is sasquatch running 900 miels an hour": about 260 units in 8 s, at his outfit's pace
         walk.getAnimations().forEach((a) => a.cancel());
         runner.classList.remove('ovm-hiding');
-        walk.animate([{ transform: 'translateX(0)' }, { transform: `translateX(${-dist}px)` }], { duration: ms, easing: 'linear', fill: 'forwards' });
+        walk.animate([{ transform: 'translateX(0)' }, { transform: `translateX(calc(${-dist} * var(--u)))` }], { duration: ms, easing: 'linear', fill: 'forwards' });
         later(() => shake(to, true), ms - 700); // and into the next one
         dash = { from: CLUMPS[spot], to: CLUMPS[to], at: performance.now(), ms };
         later(() => { spot = to; dash = null; wait(); }, ms);
@@ -260,43 +288,52 @@
 
     // Nessie, now and then: somewhere new on the lake in the moon's part of it each time, going one way or the other. She
     // glides ("She also just needs to glide, not row"), and on the way looks at us and back over her shoulder, and dips her
-    // head into the water twice ("Rowing, looking, dipping", less the rowing). Her neck is drawn each frame while she's out,
-    // from where her round is.
+    // head into the water twice ("Rowing, looking, dipping", less the rowing). Her neck, her rise out of the water and her
+    // flippers are drawn 30 times a second on a timer while she's out, from where her round is (her drawing's own fade,
+    // which the graphics card runs with her glide). Drawn once for every frame of the screen, a fast screen kept the page
+    // busy a tenth of the time for her alone; each step is under a pixel.
     const ness = q('.ovm-nessie');
-    const rise = ness.querySelector('.ovm-rise');
+    const face = ness.querySelector('.ovm-face');
+    const rises = ness.querySelectorAll('.ovm-rise');
+    const paddles = [...ness.querySelectorAll('.ovm-paddle')];
     const necks = ness.querySelectorAll('.ovm-neck');
     const eyes = ness.querySelectorAll('.ovm-eye');
     const span = (p, a, b, c, e) => (p < a || p > e ? 0 : p < b ? sm((p - a) / (b - a)) : p <= c ? 1 : 1 - sm((p - c) / (e - c)));
     // Which way her head faces through her round: [part of her round, 1 forward / 0 at us / -1 back], eased between.
     const LOOK = [[0, 1], [0.3, 1], [0.35, 0], [0.4, 0], [0.46, -1], [0.52, -1], [0.57, 0], [0.62, 1], [1, 1]];
-    const turnAt = (p) => {
-      const i = Math.max(0, LOOK.findIndex(([v]) => v > p) - 1);
-      const [[a, ha], [b, hb]] = [LOOK[i], LOOK[i + 1] || LOOK[i]];
+    const along = (keys, p) => {
+      const i = Math.max(0, keys.findIndex(([v]) => v > p) - 1);
+      const [[a, ha], [b, hb]] = [keys[i], keys[i + 1] || keys[i]];
       return b === a ? ha : lerp(ha, hb, sm((p - a) / (b - a)));
     };
     // When the runner bolts while she is up, she stops swimming and watches him until he is in the pines again ("She stops
     // to watch", the Nessie sees the monster mock): her head turns away from us toward him on the far shore and follows
     // him, forward when he is ahead of her, back over her shoulder when he is behind. While she is stopped her neck sways
     // slower ("floating around is a little too fast when stopped"). seen eases her in and out of watching.
-    let [nessAt, nessDir, seen, aim, stopped, swayT, last] = [2480, 1, 0, 0, false, 0, null];
-    const frame = (now) => {
-      if (!svg.isConnected || !ness.classList.contains('ovm-go')) return;
-      const ms = Number(rise.getAnimations()[0]?.currentTime ?? 0);
-      if (ms >= LEN) { later(swim, 6000 + Math.random() * 14000); return; }
-      requestAnimationFrame(frame);
+    let [nessAt, nessDir, seen, aim, stopped, swayT, paddleT, last, round] = [2480, 1, 0, 0, false, 0, 0, null, null];
+    const frame = () => {
+      if (!layer.isConnected || !ness.classList.contains('ovm-go')) return;
+      const now = performance.now();
+      round = round || ness.getAnimations().find((a) => a.animationName === 'ovm-on');
+      const ms = Number(round?.currentTime ?? 0);
+      // Down again: nothing of hers is drawn and no timer runs until she next comes up.
+      if (ms >= LEN) { ness.classList.remove('ovm-go'); later(swim, 6000 + Math.random() * 14000); return; }
+      setTimeout(frame, 33);
       const p = ms / LEN;
       const [u, d] = [Math.max(0, Math.min(1, p / 0.12)), Math.max(0, Math.min(1, (p - 0.8) / 0.13))];
       const head = nessAt + nessDir * NS * (80 * p + 8);
       const rx = dash ? lerp(dash.from, dash.to, Math.min(1, Math.max(0, (now - dash.at) / dash.ms))) : null;
       if (rx !== null) aim = -Math.atan2(260, (rx - head) * nessDir);
-      seen = lerp(seen, rx !== null && u > 0.9 && d === 0 ? 1 : 0, 0.07);
+      const dt = Math.min(100, now - (last ?? now));
+      last = now;
+      seen = lerp(seen, rx !== null && u > 0.9 && d === 0 ? 1 : 0, 1 - 0.93 ** (dt / 16.7));
       if ((seen > 0.5) !== stopped) {
         stopped = seen > 0.5;
-        ness.getAnimations({ subtree: true }).forEach((a) => (stopped ? a.pause() : a.play()));
+        ness.getAnimations().forEach((a) => (stopped ? a.pause() : a.play()));
       }
-      swayT += (now - (last ?? now)) * lerp(1, 0.35, seen);
-      last = now;
-      const turn = turnAt(p);
+      swayT += dt * lerp(1, 0.35, seen);
+      if (!stopped) paddleT += dt;
+      const turn = along(LOOK, p);
       const n = neck(u, d, swayT, { turn, theta: lerp(thetaOf(turn), aim, seen), dip: span(p, 0.14, 0.165, 0.185, 0.21) + span(p, 0.68, 0.705, 0.725, 0.75) });
       necks.forEach((g) => g.setAttribute('d', n.d));
       eyes.forEach((g, i) => {
@@ -304,20 +341,29 @@
         g.setAttribute('transform', `translate(${ex.toFixed(2)} ${ey.toFixed(2)})`);
         g.setAttribute('opacity', op.toFixed(2));
       });
+      const up = along(RISE, p).toFixed(2);
+      rises.forEach((g) => g.setAttribute('transform', `translate(0 ${up})`));
+      paddles.forEach((g) => {
+        const b = g.classList.contains('ovm-b');
+        g.setAttribute('transform', `rotate(${(1 + (b ? 13 : -13) * Math.cos((Math.PI * paddleT) / 1400)).toFixed(1)} ${PADDLE[b ? 1 : 0].join(' ')})`);
+      });
     };
     // A round, and the next some time after it ends (a stop to watch makes it longer).
     const swim = () => {
       const left = Math.random() < 0.5;
-      [nessAt, nessDir, seen, stopped, last] = [2300 + Math.random() * 600, left ? -1 : 1, 0, false, null];
-      ness.parentNode.setAttribute('transform', `translate(${nessAt.toFixed(0)} 470) scale(${left ? -NS : NS} ${NS})`);
+      [nessAt, nessDir, seen, stopped, last, round] = [2300 + Math.random() * 600, left ? -1 : 1, 0, false, null, null];
+      ness.style.setProperty('--x', nessAt.toFixed(0)); // where she comes up across the drawing
+      ness.style.setProperty('--dir', nessDir); // which way the graphics card glides her
+      face.setAttribute('transform', left ? 'scale(-1 1)' : '');
       ness.classList.remove('ovm-go');
       void ness.getBoundingClientRect();
       ness.classList.add('ovm-go');
-      requestAnimationFrame(frame);
+      frame();
     };
     later(swim, 3000 + Math.random() * 6000);
   };
-  const fill = () => document.querySelectorAll('.ovs[data-size="tall"]:not([data-monsters])').forEach(lay);
+  const fill = () => document.querySelectorAll('[data-scene][data-fit]:not([data-monsters])').forEach(lay);
   fill();
   document.addEventListener('rabbidlab:show', fill);
+  document.addEventListener('rabbidlab:scene', fill);
 })();
