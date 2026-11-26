@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.425 (2026-11-25)
+
+- The client window comes back exactly where it was after an update, also on a second screen set to another scale.
+
 ## 1.1.424 (2026-11-25)
 
 - The sun and the moon set and rise. When night turns to day, or day to night, the one in the sky sinks behind the far hills, the sky turns, and the other comes up. The sun stands low over the hills at dawn and dusk and high by day.

@@ -43,6 +43,7 @@ internal sealed class ClientWindow : Form
     private Font? fBrand, fTitle, fSub, fBtn, fSmall, fName, fMeta, fTab, fH3, fRow, fRing, fAxis;
     private string? ip;
     private (string? Maker, string? Model, string? Serial)? read; // read from Windows when the inventory hasn't said yet
+    private Point? corner; // where to open, once it has its size for that screen (Restore)
 
     public ClientWindow(Action<string, string> toast)
     {
@@ -92,6 +93,7 @@ internal sealed class ClientWindow : Form
         {
             StartPosition = FormStartPosition.Manual;
             Location = new Point(x, y);
+            corner = Location;
         }
     }
 
@@ -158,6 +160,12 @@ internal sealed class ClientWindow : Form
         if (Look.Dpi(Handle) is var dpi and > 0 && dpi != DeviceDpi)
         {
             Scale(dpi);
+        }
+        // Opened where it was before an update: its corner there, now that it has that screen's size.
+        if (corner is { } at)
+        {
+            Location = at;
+            corner = null;
         }
     }
 

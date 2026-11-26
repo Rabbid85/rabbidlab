@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.425', [
+    'The client window comes back exactly where it was after an update, also on a second screen set to another scale.']],
   ['1.1.424', [
     'The sun and the moon set and rise. When night turns to day, or day to night, the one in the sky sinks behind the far hills, the sky turns, and the other comes up. The sun stands low over the hills at dawn and dusk and high by day.',
     'The banner sky window has two colour choices in eight colours: Colour draws the banner in shades of one colour, and Solid shows one solid colour in place of the drawing, with nothing moving.',
@@ -1358,6 +1360,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.425': ['2026-11-25', 'fix', 'The client window keeps its place'],
   '1.1.424': ['2026-11-25', 'feature', 'Sunrise, colours and wind', 'sunrise.jpg'],
   '1.1.423': ['2026-11-25', 'feature', 'Weather on the banner', 'weather.jpg'],
   '1.1.422': ['2026-11-25', 'fix', 'The banner sky window closes'],
