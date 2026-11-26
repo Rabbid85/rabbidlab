@@ -278,7 +278,8 @@
 .ovs-flat :is(.ovb-art, .hero-art) { background: radial-gradient(120% 140% at 85% 0%, color-mix(in srgb, var(--sk-flat) 75%, #fff 8%), var(--sk-flat) 45%, color-mix(in srgb, var(--sk-flat) 40%, #05050f)); }
 /* The sky's window (sky.js): what each row is on the left, its choices in a line on the right. */
 .sky-dialog { width: min(980px, calc(100vw - 32px)); }
-.sky-dialog::backdrop { background: rgba(5, 6, 10, .3); } /* the banner changes behind it, so it stays in view */
+/* The banner changes behind it as you pick, so the page behind is neither blurred nor much dimmed, whatever the windows' style. */
+#sky-dialog::backdrop { background: rgba(5, 6, 10, .3); backdrop-filter: none; }
 .sky-form { display: grid; gap: 22px; margin-top: 22px; }
 .sky-row { display: grid; grid-template-columns: 150px minmax(0, 1fr); align-items: start; gap: 12px; }
 .sky-row > span { padding-top: 9px; color: var(--muted); font-size: 14px; font-weight: 600; }

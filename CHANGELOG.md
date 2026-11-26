@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.422 (2026-11-25)
+
+- Fixed the banner sky window: the colour swatches and Done did nothing. The page behind the window is no longer blurred, so the banner can be seen changing as you pick.
+
 ## 1.1.421 (2026-11-25)
 
 - The banner has its own settings. Click the chip at the top right of the Overview banner, or Settings, Appearance, Banner sky: for dark mode and for light mode pick the time of day by the clock, one time of day for good, or a plain colour, and turn the holidays on or off. It is kept for you in this browser, as the theme is.

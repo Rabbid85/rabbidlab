@@ -50,7 +50,8 @@
   const asked = new URLSearchParams(location.search).get('banner');
 
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
-  const seg = (k, choices, on) => `<div class="seg" data-sky="${k}">${choices.map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${v === on}">${esc(l)}</button>`).join('')}</div>`;
+  // data-sky-pick, not data-sky: the page itself carries data-sky (the time of day, scene.js), so a rule on that would match every button.
+  const seg = (k, choices, on) => `<div class="seg" data-sky-pick="${k}">${choices.map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${v === on}">${esc(l)}</button>`).join('')}</div>`;
   const swatches = (m) => (st[m] !== 'colour' ? '' : `<div class="sky-sw">${COLOURS.map((c) => `<button type="button" data-sky-colour="${m}" data-c="${c}" aria-label="${c}" aria-pressed="${st[`${m}Colour`] === c}"></button>`).join('')}</div>`);
   const note = () => {
     if (!st.holidays) return 'The banner stays the same all year.';
@@ -85,10 +86,10 @@
         + '<div class="dialog-foot"><button type="button" class="primary" data-sky-done>Done</button></div></dialog>');
       dialog = document.getElementById('sky-dialog');
       dialog.addEventListener('click', (e) => {
-        const pick = e.target.closest('[data-sky] button');
+        const pick = e.target.closest('[data-sky-pick] > button');
         const colour = e.target.closest('[data-sky-colour]');
         if (pick) {
-          const k = pick.parentElement.dataset.sky;
+          const k = pick.parentElement.dataset.skyPick;
           if (k === 'showing') show(pick.dataset.v); else { st[k] = pick.dataset.v; keep(); }
         } else if (colour) {
           st[`${colour.dataset.skyColour}Colour`] = colour.dataset.c;

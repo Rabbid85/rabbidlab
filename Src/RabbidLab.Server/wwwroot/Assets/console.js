@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.422', [
+    'Fixed the banner sky window: the colour swatches and Done did nothing. The page behind the window is no longer blurred, so the banner can be seen changing as you pick.']],
   ['1.1.421', [
     'The banner has its own settings. Click the chip at the top right of the Overview banner, or Settings, Appearance, Banner sky: for dark mode and for light mode pick the time of day by the clock, one time of day for good, or a plain colour, and turn the holidays on or off. It is kept for you in this browser, as the theme is.']],
   ['1.1.420', [
@@ -1343,6 +1345,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.422': ['2026-11-25', 'fix', 'The banner sky window closes'],
   '1.1.421': ['2026-11-25', 'feature', 'Set the banner sky', 'sky.jpg'],
   '1.1.420': ['2026-11-25', 'update', 'A smoother, wider banner'],
   '1.1.419': ['2026-11-25', 'update', 'Nessie watches the monster'],
