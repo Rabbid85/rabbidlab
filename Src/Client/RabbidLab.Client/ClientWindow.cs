@@ -66,6 +66,35 @@ internal sealed class ClientWindow : Form
         Microsoft.Win32.SystemEvents.UserPreferenceChanged += Themed;
     }
 
+    /// <summary>Where the window is and the tab it shows, for the icon to open it the same way after an update (Tray.Keep).</summary>
+    public string Place
+    {
+        get
+        {
+            var at = WindowState == FormWindowState.Normal ? Location : RestoreBounds.Location;
+            return $"{at.X} {at.Y} {page}";
+        }
+    }
+
+    /// <summary>Before it first shows: on the tab and at the place a window had, when its top is still on a screen to drag it by.</summary>
+    public void Restore(string place)
+    {
+        var parts = place.Split(' ');
+        if (parts.Length != 3 || !int.TryParse(parts[0], out var x) || !int.TryParse(parts[1], out var y))
+        {
+            return;
+        }
+        if (parts[2] is "details" or "activity")
+        {
+            page = parts[2];
+        }
+        if (Screen.AllScreens.Any(screen => screen.WorkingArea.Contains(x + Width / 2, y + 12)))
+        {
+            StartPosition = FormStartPosition.Manual;
+            Location = new Point(x, y);
+        }
+    }
+
     // --- Size and look ---------------------------------------------------------------------------------------------------
 
     // At the scale of the screen it's on, never bigger than that screen (a small screen at a large scale draws it smaller).

@@ -125,20 +125,20 @@
   // just changes outfits/styles lol. Engine would be amazing."). A body gives each limb's pieces drawn from their joint at
   // (0 0) down, where the joints are (hip and shoulder: [near, far]; knee and elbow: how far down the thigh and upper arm),
   // and the torso and head. A piece is a path's d, or its own markup when it has colours of its own (Santa's suit). Every
-  // outfit moves the same way, a long lope (overview.css), and which he wears follows the banner (outfit below).
-  // Shaggy ("This one."): tall, broad and hunched, a peaked head low on his shoulders with a heavy brow, in long fur that
-  // hangs and trails behind him as he moves, a mane down his back, a fringe at his hips, locks off his arms and legs.
-  const SHAGGY = {
-    hip: [[-1.6, -13], [1.6, -13]], knee: 6.4, shoulder: [[-3.4, -28.4], [2.4, -29.2]], elbow: 7.4,
-    thigh: 'M-2.2 -1L2.2 -1Q3.4 .8 3 2.8Q2.4 2.3 1.9 2.4Q3 4 2.5 5.6Q2 5.2 1.6 5.2L1.6 6.6L-1.6 6.6Z',
-    shin: 'M-1.6 0L1.6 0Q2.8 1.6 2.4 3.6Q1.9 3.2 1.5 3.3Q2.6 4.6 2 5.6L1.3 5.6L-3.8 6.5L-3.6 5.2L-1.3 4.9Q-2.2 4.4 -2.4 3.6Q-1.8 3.8 -1.5 3.5Z',
-    upper: 'M-1.8 -.8L1.8 -.8Q3.2 .6 2.9 2.6Q2.3 2.2 1.7 2.2Q3 3.6 2.6 5.4Q2 5 1.5 5L1.3 7.6L-1.3 7.6Z',
-    fore: 'M-1.3 0L1.3 0Q2.8 1.2 2.6 3Q2 2.6 1.6 2.6Q3 3.8 2.6 5.6Q2 5 1.4 5Q2.2 6.4 1.1 6.8L-.2 8.4L-1.6 7.2Z',
-    body: '<path d="M-4.2 -12.5C-6 -17 -7.6 -23 -6.4 -27.6C-5 -31 0 -32.4 4.4 -30.8Q6.2 -30.2 7.6 -28.2Q6.6 -29 6.2 -29.2Q8 -28.6 8.4 -25.5Q7.4 -26.2 7 -26.5'
-      + 'Q8.8 -25.6 8.7 -22Q7.8 -22.6 7.3 -23Q9 -21.8 8.5 -18.5Q7.6 -19.1 7.1 -19.5Q8.6 -18 7.8 -15Q6.9 -15.6 6.4 -16Q7.6 -14.4 6.2 -11.4Q5.5 -12 5 -12.5'
-      + 'Q4 -10.6 3 -11.6Q2 -10.4 1 -11.6Q0 -10.4 -1 -11.6Q-2 -10.6 -3 -11.8Q-3.8 -11 -4.2 -12.5Z"/>'
-      + '<path d="M-7.2 -28.6C-8.6 -31.6 -7 -36 -3.8 -37.2C-1.8 -37.8 .2 -35.8 -.2 -33C-.6 -30.6 -3.2 -29 -7.2 -28.6Z"/><path d="M-8.6 -31.4L-6.2 -32.6L-6.6 -30.6Z"/>'
-      + '<path d="M-3.8 -37.2Q-.6 -38.2 1.4 -35.4Q.6 -35.6 .2 -35.2Q2 -33.6 2.2 -31Q1.2 -31.8 .4 -31.6Q1.4 -30.4 1 -28.4Q-.2 -29.6 -1.2 -30.2Z"/>',
+  // outfit moves in its own gait (overview.css), and which he wears follows the banner (outfit below).
+  // Upright and broad ("Looks like a hunchback lol." of the one before, then a Bigfoot in silhouette, "More like this lol";
+  // the shaggier of the two, "All these are my choices."): his head up on his shoulders with a crest, a brow, a nose and a
+  // beard in profile, a deep chest and a straight back with long locks down it, long thick arms that reach his knees and end
+  // in big hands with fingers, thick thighs with fur at the back, and big feet.
+  const WOODS = {
+    hip: [[-1.4, -13.5], [1.6, -13.5]], knee: 7, shoulder: [[-1.2, -28.2], [2.6, -28.8]], elbow: 8.6,
+    thigh: 'M-2.6 -1.2L2.6 -1.2L3 1.4L4.2 2.6L2.8 3L2.6 4.8L3.8 6L2.2 6.4L1.9 7.2L-1.9 7.2L-2.3 3Z',
+    shin: 'M-1.9 0L1.9 0L2.2 1.8L3.4 3L2 3.4L1.8 5L2.6 6.5L-4.6 6.5Q-5.3 5.6 -4.2 5.2L-1.7 4.6Z',
+    upper: 'M-2.3 -1.4Q0 -2.6 2.3 -1.4L2.7 1.4L4 2.8L2.5 3.2L2.6 5.2L3.8 6.8L2.1 7.2L1.6 8.7L-1.6 8.7L-2.1 4Z',
+    fore: 'M-1.6 0L1.6 0L2 2.2L3.4 3.6L1.9 4L1.6 6.6L2.2 8.4L1.7 10.6L1 10.8L.9 9.2L.5 11.2L-.2 11.3L-.3 9.4L-.8 11L-1.5 10.9L-1.4 9L-2 9.8L-2.5 9.4L-1.9 7.4L-1.8 3.6Z',
+    body: '<path d="M-3.6 -12.6C-4.8 -16 -5.6 -20 -5.4 -24C-5.3 -26 -5 -27.6 -4.2 -29L-3.6 -30.4C-4.8 -30.6 -5.4 -31.8 -4.6 -32.6L-5.3 -33.6L-4.5 -34.6L-4.9 -35.6'
+      + 'C-4.6 -37.6 -2.6 -39.2 -.8 -39.4L-.2 -40.6L.6 -39.6L1.6 -40.4L2 -39C2.8 -37.6 3 -36 2.8 -34.6L4.2 -34L3.2 -32.6C5 -32.2 6.6 -30.8 7 -28.8L8.8 -28.4L7.5 -26.6L9 -25.4L7.6 -24.2'
+      + 'C7.7 -22.6 7.4 -21 7 -19.6L8.6 -18.6L6.8 -17.6L7.8 -16L6 -15.4C5.6 -14.2 5 -13.2 4.4 -12.4L3.6 -10.6L2.4 -12L1.4 -10.4L0 -12L-1.2 -10.6L-2.4 -12.2Z"/>',
   };
   // Santa on the same joints: red trousers and black boots, red sleeves with white cuffs and black mittens; his round suit
   // with its white hem, black belt and gold buckle, his beard, his hat flying back, his sack high on his back.
@@ -157,10 +157,10 @@
       + '<path d="M-6.9 -27.4Q-3 -28.8 1.4 -27.3" fill="none" stroke="#f8f6f2" stroke-width="1.7" stroke-linecap="round"/><circle cx="6.4" cy="-26.3" r="1.35" fill="#f8f6f2"/></g>',
   };
   // Each outfit's own way of moving (overview.css .ovm-g-*), and how fast it covers ground against 260 units in 8 seconds:
-  // Sasquatch lopes, the yeti walks, Santa jogs (the walk items in the mock, "send to dev").
+  // Sasquatch and the yeti stride ("All these are picked now."), Santa jogs (the walk items in the mock).
   const OUTFITS = {
-    sasquatch: { body: SHAGGY, cls: 'ovm-fur', gait: 'lope', pace: 1.1 }, // dark, the colour of the shore's pines a shade darker
-    yeti: { body: SHAGGY, cls: 'ovm-snowfur', gait: 'walk', pace: 0.5 }, // the same in white, for when the banner shows the weather
+    sasquatch: { body: WOODS, cls: 'ovm-fur', gait: 'stride', pace: 1 }, // dark, the colour of the shore's pines a shade darker
+    yeti: { body: WOODS, cls: 'ovm-snowfur', gait: 'stride', pace: 1 }, // the same in white, while it snows where the lab is
     santa: { body: SANTA, cls: '', gait: 'jog', pace: 0.8 },
   };
   // Which outfit: Santa at Christmas; the yeti while it snows where the lab is; Sasquatch otherwise.
@@ -214,11 +214,12 @@
   };
   // The strip of far shore he crosses, [x, y, width, height] in the drawing's units. His pieces are layers, so what hides
   // him is a still picture laid over the strip as its mask: clear where the clumps and the big front pines are.
+  // In wind the big pines lean, in a drawing in front of him (weather.js, data-gale), so they hide him themselves.
   const BAND = [2400, 392, 670, 50];
-  const hideMask = () => {
+  const hideMask = (windy) => {
     const [x, y, w, h] = BAND;
     const box = `x="${x}" y="${y}" width="${w}" height="${h}"`;
-    const near = (S.near.tall || []).filter(([px]) => px > x - 70 && px < x + w + 70).map(([px, py, ph]) => S.pine(px, py, ph)).join('');
+    const near = windy ? '' : (S.near.tall || []).filter(([px]) => px > x - 70 && px < x + w + 70).map(([px, py, ph]) => S.pine(px, py, ph)).join('');
     return `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${x} ${y} ${w} ${h}" preserveAspectRatio="none">`
       + `<mask id="m" maskUnits="userSpaceOnUse" ${box}><rect ${box} fill="#fff"/><path d="${GROVES.map(hull).join('')}${near}"/></mask><rect ${box} mask="url(#m)"/></svg>`)}")`;
   };
@@ -234,10 +235,12 @@
     const later = (fn, ms) => setTimeout(() => { if (layer.isConnected) fn(); }, ms);
     const q = (sel) => layer.querySelector(sel);
     layer.querySelectorAll('[data-at]').forEach((j) => { const [x, y] = j.dataset.at.split(' '); j.style.setProperty('--x', x); j.style.setProperty('--y', y); });
-    // The big pines move with the window's width (scene.js draws the banner again), so what hides him is made again then.
-    const hide = () => { if (!layer.isConnected) return; const m = hideMask(); ['mask-image', '-webkit-mask-image'].forEach((k) => q('.ovm-band').style.setProperty(k, m)); };
+    // The big pines move with the window's width (scene.js draws the banner again), so what hides him is made again then,
+    // and when the wind starts or stops.
+    const hide = () => { if (!layer.isConnected) return; const m = hideMask(box.hasAttribute('data-gale')); ['mask-image', '-webkit-mask-image'].forEach((k) => q('.ovm-band').style.setProperty(k, m)); };
     hide();
     box.addEventListener('rabbidlab:scene', hide);
+    box.addEventListener('rabbidlab:weather', hide);
     if (still()) return;
 
     // The runner: always behind one clump or running to another.
@@ -260,7 +263,7 @@
     const run = () => {
       let to = spot;
       while (to === spot) to = Math.floor(Math.random() * CLUMPS.length);
-      // Walking, he only goes to the next clump along; a lope or a jog can cross several.
+      // A slow gait only goes to the next clump along; a stride or a jog can cross several.
       if (pace < 0.7) to = spot === 0 ? 1 : spot === CLUMPS.length - 1 ? spot - 1 : spot + (Math.random() < 0.5 ? -1 : 1);
       shake(spot, true); // he pushes out through the branches
       later(() => {
@@ -362,7 +365,8 @@
     };
     later(swim, 3000 + Math.random() * 6000);
   };
-  const fill = () => document.querySelectorAll('[data-scene][data-fit]:not([data-monsters])').forEach(lay);
+  // None under a solid colour: nothing moves there (scene.js takes them away).
+  const fill = () => { if (!S.solid) document.querySelectorAll('[data-scene][data-fit]:not([data-monsters])').forEach(lay); };
   fill();
   document.addEventListener('rabbidlab:show', fill);
   document.addEventListener('rabbidlab:scene', fill);

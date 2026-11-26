@@ -18,8 +18,9 @@ internal static class Program
     {
         if (args.Length == 0 || (args.Length == 1 && args[0] == "--tray"))
         {
-            // Quiet (the deploy GPO, or Group Policy): no icon at sign-in. Opened from the Start menu, it still shows.
-            if (args.Length == 1 && Settings.Read().Quiet)
+            // Quiet (the deploy GPO, or Group Policy): no icon at sign-in. Opened from the Start menu, it still shows, and so
+            // does a window an update just closed (Tray.Kept).
+            if (args.Length == 1 && Tray.Kept(take: false) is null && Settings.Read().Quiet)
             {
                 return 0;
             }

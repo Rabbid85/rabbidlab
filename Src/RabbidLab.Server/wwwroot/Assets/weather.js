@@ -3,7 +3,8 @@
 // its own that the graphics card moves whole, as the scene's own moving parts are (scene.js): each cloud, each sheet of
 // rain or snow, the fog. Clouds are flat-bottomed banks, tall heaps and big domes mixed ("Ok this is my choice for
 // clouds."), and none ever sits or blows across the moon ("NEVER put/keep one in front of the moon"). Rain is light, mid or
-// heavy. The fog lies over the monsters and their pines too. There is no heat wave ("Heat wave remove").
+// heavy. The fog lies over the monsters and their pines too. In wind the pines lean and bend in gusts ("make the trees
+// move"). There is no heat wave ("Heat wave remove").
 (() => {
   const S = window.RabbidLabScene;
   const Sky = window.RabbidLabSky;
@@ -86,26 +87,33 @@
     if (tall > 0.95) { const c = chord(0.66); bump(end + c * 0.6, 0.66); end += c * 1.6; }
     return base(end + hb * 0.45) + bumps;
   };
-  // A cloud that its sway, or in wind its run across the sky, could bring over the moon (or the sun) goes just above it or
-  // just below it. y is the cloud's flat bottom; my and pad the moon's height and the room kept round it.
-  const clearOfMoon = (x, y, w, tall, windy, my, pad) => {
-    if (y <= my - pad || y - tall >= my + pad) return y;
+  // A cloud that its sway, or in wind its run across the sky, could bring over the moon (or the sun) goes just above it,
+  // or just below it while that is still sky (floor: the lowest a cloud's flat bottom may be), or to one side of it. Only
+  // a cloud the wind carries right across, with no room above, goes below it over the hills. y is the cloud's flat bottom;
+  // my and pad the moon's height and the room kept round it. Gives where the cloud goes, [x, y].
+  const clearOfMoon = (x, y, w, tall, windy, my, pad, floor) => {
+    if (y <= my - pad || y - tall >= my + pad) return [x, y];
     const [lo, hi] = windy ? [x - 500, x + 1900] : [x - 125, x + 125];
-    if (hi + w / 2 < 2680 - pad || lo - w / 2 > 2680 + pad) return y;
-    return y - tall / 2 < my && my - pad - tall >= 34 * (pad / 42) ? my - pad : my + pad + tall;
+    if (hi + w / 2 < 2680 - pad || lo - w / 2 > 2680 + pad) return [x, y];
+    const above = my - pad - tall >= -0.4 * tall; // at most two fifths of it over the banner's top
+    if (above && y - tall / 2 < my) return [x, my - pad];
+    if (my + pad + tall <= floor) return [x, my + pad + tall];
+    if (above) return [x, my - pad];
+    return windy ? [x, my + pad + tall] : [2680 + (x < 2680 ? -1 : 1) * (pad + w / 2 + 130), y];
   };
   // n clouds across the drawing's right, and three fifths as many across its left for a wide window, each a drawing of its
   // own that sways slowly, or in wind is carried across (overview.css wx-cloud).
   const clouds = (n, windy, size) => {
     const F = S.fit(size);
     const s = F.moonR / 28; // on the lower banners everything in the sky is this much smaller
-    const [my, pad] = [F.m(130), F.moonR + 14 * s];
+    const [my, pad] = [F.m(130 + S.disc), F.moonR + 14 * s]; // where the moon or the sun stands now (scene.js)
+    document.getElementById(`wx-cmoon-${size}`)?.setAttribute('cy', f1(my));
     const set = (r, count, x0, span) => Array.from({ length: count }, (_, i) => {
       const depth = i % 3;
       const B = BANKS[Math.floor(r() * BANKS.length)];
       const w = [190, 260, 340][depth] * B.wide * (0.55 + r() * 0.75) * s; const hb = w * B.thick * (0.9 + r() * 0.2);
-      const x = x0 + ((i + 0.5) / count) * span + (r() - 0.5) * 160; const tall = hb * B.tall;
-      const y = clearOfMoon(x, F.m([95, 150, 200][depth] + (r() - 0.5) * 50) + tall * 0.35, w, tall, windy, my, pad);
+      const tall = hb * B.tall;
+      const [x, y] = clearOfMoon(x0 + ((i + 0.5) / count) * span + (r() - 0.5) * 160, F.m([95, 150, 200][depth] + (r() - 0.5) * 50) + tall * 0.35, w, tall, windy, my, pad, F.m(265));
       const body = `<g class="wx-cg" fill="url(#wx-cmoon-${size})">${bank(r, x, y, w, hb, B)}</g>`;
       return layer(size, F.H, `ovs-live wx-cloud wx-d${depth}${windy ? ' wx-windy' : ''}`, body, `${(-(i / count) * 70 - r() * 8).toFixed(1)}s`);
     }).join('');
@@ -153,8 +161,9 @@
     return layer(size, H, 'ovs-live wx-fog', `<g class="wx-fogbank" filter="url(#wx-fg)">${FOG.map(([cx, cy, rx, ry]) => `<ellipse cx="${cx}" cy="${f1(m(cy))}" rx="${rx}" ry="${f1(m(cy + ry) - m(cy))}"/>`).join('')}</g>`);
   };
 
-  // Lightning in a thunderstorm: a forked bolt from the clouds to the hills, somewhere new every 3 to 8 seconds, mostly
-  // where a normal window shows. It flickers (on, nearly off, on again), lights the sky round it, and fades.
+  // Lightning in a thunderstorm (the Thunderstorm item, C, "Push all of it, it's great."): a forked bolt from the clouds to
+  // the hills that races down in steps and then flashes bright back up its length, somewhere new every 3 to 8 seconds, mostly
+  // where a normal window shows. The strike lights the sky round it, flickers once and fades.
   const lightning = (size) => { const { H } = S.fit(size); return layer(size, H, 'wx-lt', `<rect class="wx-lt-wash" width="3200" height="${H}"/><g class="wx-lt-g"></g>`); };
   const rand = (a, b) => a + Math.random() * (b - a);
   const channel = (x, y0, y1, step, wob, drift) => {
@@ -176,12 +185,17 @@
       return channel(at[0], at[1], at[1] + rand(40, 130), 12, 18, (Math.random() < 0.5 ? -1 : 1) * rand(6, 14));
     });
     g.insertAdjacentHTML('beforeend', `<g><ellipse class="wx-lt-sky" cx="${f1(main[0][0])}" cy="${f1(m(main[0][1] + 60))}" rx="820" ry="${f1(m(440) - m(60))}" fill="url(#wx-ltsky)"/>`
-      + `<g class="wx-lt-bolt"><path class="wx-lt-glow" d="${d(main)}${twigs.map(d).join('')}"/><path class="wx-lt-core" d="${d(main)}"/>${twigs.map((t) => `<path class="wx-lt-twig" d="${d(t)}"/>`).join('')}</g></g>`);
+      + `<g class="wx-lt-bolt"><path class="wx-lt-glow" d="${d(main)}${twigs.map(d).join('')}"/><path class="wx-lt-core" pathLength="1" d="${d(main)}"/>${twigs.map((t) => `<path class="wx-lt-twig" pathLength="1" d="${d(t)}"/>`).join('')}</g></g>`);
     const box = g.lastElementChild;
-    box.querySelector('.wx-lt-bolt').animate([{ opacity: 0 }, { opacity: 1, offset: 0.04 }, { opacity: 0.12, offset: 0.12 }, { opacity: 1, offset: 0.2 }, { opacity: 0.85, offset: 0.36 }, { opacity: 0 }], { duration: 950, fill: 'forwards' });
-    box.querySelector('.wx-lt-sky').animate([{ opacity: 0 }, { opacity: 0.6, offset: 0.04 }, { opacity: 0.1, offset: 0.12 }, { opacity: 0.5, offset: 0.2 }, { opacity: 0 }], { duration: 1200, fill: 'forwards' });
-    g.ownerSVGElement.querySelector('.wx-lt-wash')?.animate([{ opacity: 0 }, { opacity: 0.1, offset: 0.05 }, { opacity: 0, offset: 0.14 }, { opacity: 0.08, offset: 0.22 }, { opacity: 0 }], { duration: 1000 });
-    setTimeout(() => box.remove(), 1300);
+    // It races down its own length, branches a moment behind; then the strike: bright, nearly gone, bright again, and out.
+    const down = [{ strokeDashoffset: 1 }, { strokeDashoffset: 0 }];
+    box.querySelector('.wx-lt-core').animate(down, { duration: 190, easing: 'steps(8, end)', fill: 'forwards' });
+    box.querySelectorAll('.wx-lt-twig').forEach((t, i) => t.animate(down, { duration: 150, delay: 50 + i * 25, easing: 'steps(6, end)', fill: 'forwards' }));
+    box.querySelector('.wx-lt-bolt').animate([{ opacity: 0.6 }, { opacity: 0.6, offset: 0.18 }, { opacity: 1, offset: 0.2 }, { opacity: 0.25, offset: 0.3 }, { opacity: 1, offset: 0.38 }, { opacity: 0 }], { duration: 1050, fill: 'forwards' });
+    box.querySelector('.wx-lt-glow').animate([{ opacity: 0 }, { opacity: 0, offset: 0.18 }, { opacity: 0.9, offset: 0.2 }, { opacity: 0.2, offset: 0.3 }, { opacity: 0.8, offset: 0.38 }, { opacity: 0 }], { duration: 1050, fill: 'forwards' });
+    box.querySelector('.wx-lt-sky').animate([{ opacity: 0 }, { opacity: 0, offset: 0.18 }, { opacity: 0.65, offset: 0.2 }, { opacity: 0.1, offset: 0.3 }, { opacity: 0.5, offset: 0.38 }, { opacity: 0 }], { duration: 1250, fill: 'forwards' });
+    g.ownerSVGElement.querySelector('.wx-lt-wash')?.animate([{ opacity: 0 }, { opacity: 0, offset: 0.18 }, { opacity: 0.12, offset: 0.21 }, { opacity: 0, offset: 0.3 }, { opacity: 0.08, offset: 0.38 }, { opacity: 0 }], { duration: 1050 });
+    setTimeout(() => box.remove(), 1400);
   };
   const storm = (g, size) => {
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -189,24 +203,53 @@
     next(1100);
   };
 
-  // The weather's layers on one banner: in a box over the scene's own moving layers and under the monsters, and the fog in a
-  // box over the monsters too (overview.css wx-front). Laid again only when the weather or the banner's size changes.
+  // Wind: the far shore's pines, and the big pines in front, each in a drawing of their own that the graphics card leans
+  // in gusts (overview.css wx-gust, wx-gale); the still ones in the scene are hidden while it blows (data-gale on the box).
+  const gust = (size) => {
+    const [right, left] = S.shore[size] || ['', ''];
+    return layer(size, S.fit(size).H, 'ovs-live wx-gust', `<g transform="translate(1600 0)"><path class="ovs-l4 ovs-pines" d="${right}"/></g><g transform="translate(1 0)"><path class="ovs-l4 ovs-pines" d="${left}"/></g>`);
+  };
+  const gale = (size) => layer(size, S.fit(size).H, 'ovs-live wx-gale', `<path class="ovs-l5 ovs-pines" d="${(S.near[size] || []).map(([x, y, h]) => S.pine(x, y, h)).join('')}"/>`);
+
+  // The weather's layers on one banner, in boxes over the scene's own moving layers and under the monsters: the overcast,
+  // the clouds, then what falls; and in a box over the monsters too (overview.css wx-front) the fog, or in wind the big
+  // pines. Each is laid again only when what it shows changes. The clouds are laid again when the sun or the moon moves
+  // too, so none is in front of it: the new ones fade in over the old.
   const lay = (box, size) => {
     const lives = box.querySelector(':scope > .ovs-lives');
     if (!lives) return;
     const wx = Sky.now().weather;
     const cover = wx ? coverOf(wx) : 'none';
-    const key = wx ? `${wx.kind} ${wx.amount} ${cover} ${size}` : '';
-    if ((box.dataset.wx || '') === key && (!key || box.querySelector(':scope > .wx-overs'))) return;
-    box.querySelectorAll(':scope > .wx-overs').forEach((e) => e.remove());
-    box.dataset.wx = key;
-    if (!wx) return;
-    const [n, oc] = COVER[cover];
-    const back = (oc ? overcast(size) : '') + (n ? clouds(n, wx.kind === 'wind', size) : '')
-      + (wx.kind === 'rain' ? rain(wx.amount, size) : wx.kind === 'storm' ? rain('heavy', size) + lightning(size) : wx.kind === 'snow' ? snow(wx.amount, size) : '');
-    lives.insertAdjacentHTML('afterend', `<div class="wx-overs">${back}</div>${wx.kind === 'fog' ? `<div class="wx-overs wx-front">${fog(size)}</div>` : ''}`);
-    box.querySelectorAll(':scope > .wx-overs [data-d]').forEach((e) => { e.style.setProperty('--d', e.dataset.d); e.removeAttribute('data-d'); });
-    box.querySelectorAll(':scope > .wx-overs .wx-lt-g').forEach((g) => storm(g, size));
+    const [n, oc] = wx ? COVER[cover] : [0, 0];
+    const windy = wx?.kind === 'wind';
+    // At Christmas the big pines carry their lights and hold still; so do all of them for people who asked for less motion.
+    const bend = windy && S.holiday !== 'christmas' && !matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const key = wx ? `${wx.kind} ${wx.amount} ${oc ? 1 : 0} ${size}${bend ? ` ${box.dataset.fit}` : ''}` : '';
+    const ckey = n ? `${n} ${windy} ${size} ${S.disc}` : '';
+    const have = (cls) => box.querySelector(`:scope > .${cls}:not(.wx-out)`);
+    if ((box.dataset.wx || '') !== key) {
+      box.querySelectorAll(':scope > .wx-overs:not(.wx-clouds)').forEach((e) => e.remove());
+      box.dataset.wx = key;
+      box.toggleAttribute('data-gale', bend);
+      if (wx) {
+        if (oc) lives.insertAdjacentHTML('afterend', `<div class="wx-overs wx-under">${overcast(size)}</div>`);
+        const falls = (wx.kind === 'rain' ? rain(wx.amount, size) : wx.kind === 'storm' ? rain('heavy', size) + lightning(size) : wx.kind === 'snow' ? snow(wx.amount, size) : '') + (bend ? gust(size) : '');
+        const front = wx.kind === 'fog' ? fog(size) : bend ? gale(size) : '';
+        const after = [...box.querySelectorAll(':scope > .wx-clouds')].pop() || have('wx-under') || lives;
+        after.insertAdjacentHTML('afterend', (falls ? `<div class="wx-overs wx-falls">${falls}</div>` : '') + (front ? `<div class="wx-overs wx-front">${front}</div>` : ''));
+        box.querySelectorAll(':scope > .wx-overs .wx-lt-g').forEach((g) => storm(g, size));
+      }
+      // For what stands behind the big pines (monsters.js): in wind they are in front of it.
+      box.dispatchEvent(new CustomEvent('rabbidlab:weather'));
+    }
+    if ((box.dataset.wxc || '') !== ckey) {
+      const old = [...box.querySelectorAll(':scope > .wx-clouds')];
+      old.forEach((e) => { e.classList.add('wx-out'); setTimeout(() => e.remove(), 1300); });
+      box.dataset.wxc = ckey;
+      if (!ckey) return;
+      (have('wx-under') || lives).insertAdjacentHTML('afterend', `<div class="wx-overs wx-clouds${old.length ? ' wx-in' : ''}">${clouds(n, windy, size)}</div>`);
+      box.querySelectorAll(':scope > .wx-clouds [data-d]').forEach((e) => { e.style.setProperty('--d', e.dataset.d); e.removeAttribute('data-d'); });
+    }
   };
   const fill = () => {
     document.querySelectorAll('[data-scene][data-fit]').forEach((box) => lay(box, 'tall'));

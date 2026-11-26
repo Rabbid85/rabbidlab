@@ -1,20 +1,22 @@
 // The banner's sky ("Push this to dev", the sky window in the mock). For dark mode and for light mode, each person picks
-// what every banner shows: the clock's time of day, one time of day for good, or a plain colour; whether the holidays show
-// on their dates; and whether the weather where the lab is shows. Kept in this browser, as the theme is. The lab's place,
+// what every banner shows: the clock's time of day, one time of day for good, the drawing in one colour, or a solid colour
+// with nothing moving ("Can change color here, like the actual background color, or to solid color which turns off the
+// animations."); whether the holidays show on their dates; and whether the weather where the lab is shows. A colour shows
+// neither. Kept in this browser, as the theme is. The lab's place,
 // a US ZIP code, is the lab's own (Weather.cs), set here by whoever may change the lab's look. scene.js paints and draws
 // what this says, weather.js the weather. The window opens from the chip at the top right of Overview's banner, and from
 // Settings, Appearance; the banner changes behind it as you pick.
 (() => {
   const KEY = 'rabbidlab.sky';
-  const TIMES = [['clock', 'Follow the clock'], ['dawn', 'Dawn'], ['day', 'Day'], ['dusk', 'Dusk'], ['night', 'Night'], ['colour', 'Colour']];
-  const COLOURS = ['#5900FF', '#3D7FE6', '#1FA3A8', '#2FB37A', '#E8542F', '#D6448E', '#1b1b2b'];
-  const START = { dark: 'clock', light: 'clock', darkColour: COLOURS[0], lightColour: COLOURS[1], holidays: true, weather: true };
+  const TIMES = [['clock', 'Follow the clock'], ['dawn', 'Dawn'], ['day', 'Day'], ['dusk', 'Dusk'], ['night', 'Night'], ['colour', 'Colour'], ['solid', 'Solid']];
+  const COLOURS = { '#5900FF': 'Purple', '#2563EB': 'Blue', '#0D9488': 'Teal', '#16A34A': 'Green', '#DC2626': 'Red', '#EA580C': 'Orange', '#DB2777': 'Pink', '#475569': 'Slate' };
+  const START = { dark: 'clock', light: 'clock', darkColour: '#5900FF', lightColour: '#2563EB', holidays: true, weather: true };
   // Only what this file can show is taken from what was kept.
   const clean = (o) => ({
     dark: TIMES.some(([k]) => k === o?.dark) ? o.dark : START.dark,
     light: TIMES.some(([k]) => k === o?.light) ? o.light : START.light,
-    darkColour: COLOURS.includes(o?.darkColour) ? o.darkColour : START.darkColour,
-    lightColour: COLOURS.includes(o?.lightColour) ? o.lightColour : START.lightColour,
+    darkColour: Object.hasOwn(COLOURS, o?.darkColour ?? '') ? o.darkColour : START.darkColour,
+    lightColour: Object.hasOwn(COLOURS, o?.lightColour ?? '') ? o.lightColour : START.lightColour,
     holidays: o?.holidays !== false,
     weather: o?.weather !== false,
   });
@@ -35,6 +37,8 @@
   };
   // Light mode is the Light theme; every other theme is dark. Read from the page, so a mode shown from the window counts.
   const mode = () => (document.documentElement.dataset.theme === 'light' ? 'light' : 'dark');
+  // A colour in place of the times of day, for the mode the console is in: the drawing in it, or a solid one.
+  const plain = () => ['colour', 'solid'].includes(st[mode()]);
 
   // The holidays and their dates, each year. Christmas starts the day after Thanksgiving, the fourth Thursday in November.
   const thanksgiving = (y) => 1 + ((4 - new Date(y, 10, 1).getDay() + 7) % 7) + 21;
@@ -98,7 +102,9 @@
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
   // data-sky-pick, not data-sky: the page itself carries data-sky (the time of day, scene.js), so a rule on that would match every button.
   const seg = (k, choices, on) => `<div class="seg" data-sky-pick="${k}">${choices.map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${v === on}">${esc(l)}</button>`).join('')}</div>`;
-  const swatches = (m) => (st[m] !== 'colour' ? '' : `<div class="sky-sw">${COLOURS.map((c) => `<button type="button" data-sky-colour="${m}" data-c="${c}" aria-label="${c}" aria-pressed="${st[`${m}Colour`] === c}"></button>`).join('')}</div>`);
+  // Colour and Solid share the mode's colour. Under the swatches, what each one shows.
+  const swatches = (m) => (!['colour', 'solid'].includes(st[m]) ? '' : `<div class="sky-sw">${Object.entries(COLOURS).map(([c, name]) => `<button type="button" data-sky-colour="${m}" data-c="${c}" data-tip="${name}" aria-label="${name}" aria-pressed="${st[`${m}Colour`] === c}"></button>`).join('')}</div>`
+    + `<p class="sky-note">${st[m] === 'colour' ? 'The drawing in shades of this colour.' : 'One solid colour in place of the drawing. Nothing moves.'} Holidays and the weather are not shown.</p>`);
   const note = () => {
     if (!st.holidays) return 'The banner stays the same all year.';
     const [on, then] = [onNow(), next()];
@@ -212,15 +218,18 @@
   window.RabbidLabSky = {
     open,
     says,
-    // What the banners show now: the time of day picked for this mode ('clock' to follow it) or a plain colour, and the
-    // weather where the lab is when this person shows it and there is a reading.
+    // What the banners show now: the time of day picked for this mode ('clock' to follow it), and the weather where the
+    // lab is when this person shows it and there is a reading; or the colour the drawing is in (colour) or the solid
+    // colour in its place (solid), with the colour's name.
     now() {
       const m = mode();
-      const colour = st[m] === 'colour' ? st[`${m}Colour`] : null;
-      return { time: colour ? 'clock' : st[m], colour, weather: colour ? null : tried || (st.weather ? reading() : null) };
+      const c = st[`${m}Colour`];
+      if (plain()) return { time: 'night', colour: st[m] === 'colour' ? c : null, solid: st[m] === 'solid' ? c : null, name: COLOURS[c], weather: null };
+      return { time: st[m], colour: null, solid: null, weather: tried || (st.weather ? reading() : null) };
     },
-    // The holiday the banners wear today: its key, or '' when none is on or this person turned holidays off.
+    // The holiday the banners wear today: its key, or '' when none is on, this person turned holidays off, or a colour shows.
     holiday() {
+      if (plain()) return '';
       if (HOLIDAYS.some((h) => h.key === asked)) return asked;
       return (st.holidays && onNow()?.key) || '';
     },

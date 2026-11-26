@@ -140,6 +140,16 @@
 /* As the time of day changes, the colours fade into the next over a couple of seconds. */
 .ovs :is(stop, path, rect, circle, ellipse, polyline) { transition: fill 2.4s ease, stop-color 2.4s ease, stroke 2.4s ease, fill-opacity 2.4s ease; }
 .ovs :is(.ovs-seas, .ovs-halo, .ovs-rimglow) { transition: fill 2.4s ease, opacity 2.4s ease; }
+/* The moon, or the sun, with its halo and rays: a drawing of its own between the sky and the hills, which the graphics
+   card moves, so it sets behind the hills and rises (scene.js paint). --disc: how far below the moon's place it is, in
+   Overview's units (--disc-low on the lower banners), and how long and how it gets there. It becomes the other while it
+   is out of sight, so its own colours change at once; its light on the water goes out while it is down (.ovs-set). */
+.ovs-disc { overflow: visible; transform: translateY(calc(var(--disc, 0) * var(--u))); transition: transform var(--disc-t, 0ms) var(--disc-e, ease); }
+.ovs-disc[data-size="low"] { transform: translateY(calc(var(--disc-low, 0) * var(--u))); }
+.ovs.ovs-disc * { transition: none; }
+.ovs-glint { transition: opacity 1.4s ease; }
+.ovs .ovs-sheen { transition: opacity 1.4s ease, fill 2.4s ease; }
+.ovs-set .ovs-glint, .ovs-set .ovs .ovs-sheen { opacity: 0; transition-delay: .9s; }
 /* What moves: a few stars twinkle, a shooting star crosses now and then, the moonlight on the water shimmers. */
 /* Each is a drawing of its own on top of the scene (.ovs-live, scene.js) that the graphics card fades, stretches or moves
    whole. Nothing changes inside a drawing, so the page does no work per frame and the motion is as smooth as the screen;
@@ -205,7 +215,7 @@
 @keyframes ovm-on { 0% { opacity: 0; } 6% { opacity: 1; } 94% { opacity: 1; } 100% { opacity: 0; } }
 @keyframes ovm-glide { from { transform: translateX(0); } to { transform: translateX(calc(var(--dir, 1) * 88 * var(--u))); } }
 /* The runner, always there, out of sight behind the pines unless he's crossing between them, each outfit moving its own way
-   (monsters.js OUTFITS): Sasquatch in a long lope ("Lopes looks great"), the yeti walking, Santa in a jolly jog. The body
+   (monsters.js OUTFITS): Sasquatch and the yeti in a real stride, Santa in a jolly jog. The body
    stays level ("He just fucking bvounces when running?") and the elbows straighten as the arms come forward, so a hand never
    reaches the face ("Arm in his mouth lol"). Each joint turns about its own point, (0 0) of its group. A stride is --ovm-t
    long; the far leg and the near arm run half a stride behind. Waiting behind the pines he stands still. */
@@ -220,29 +230,21 @@
 .ovm-joint { position: absolute; left: calc(var(--x, 0) * var(--u)); top: calc(var(--y, 0) * var(--u)); width: 0; height: 0; }
 .ovm-piece { position: absolute; left: calc(-12 * var(--u)); top: calc(-12 * var(--u)); width: calc(24 * var(--u)); height: calc(24 * var(--u)); overflow: visible; }
 .ovm-piece.ovm-torso { left: calc(-20 * var(--u)); top: calc(-44 * var(--u)); width: calc(40 * var(--u)); height: calc(48 * var(--u)); }
-.ovm-g-lope { --ovm-t: .72s; } .ovm-g-walk { --ovm-t: 1s; } .ovm-g-jog { --ovm-t: .46s; }
+.ovm-g-stride { --ovm-t: .5s; } .ovm-g-jog { --ovm-t: .46s; }
 :is(.ovm-thigh, .ovm-shin, .ovm-upper, .ovm-fore) { transform-box: view-box; transform-origin: 0 0; animation: var(--ovm-t) ease-in-out infinite; }
 :is(.ovm-leg.ovm-b, .ovm-arm:not(.ovm-b)) :is(.ovm-thigh, .ovm-shin, .ovm-upper, .ovm-fore) { animation-delay: calc(var(--ovm-t) / -2); }
 .ovm-bob { transform-box: fill-box; transform-origin: 50% 100%; }
-/* The lope: each thigh swings far from the hip and the shin folds high behind it, the body nearly upright. */
-.ovm-g-lope .ovm-thigh { animation-name: ovm-thigh; } .ovm-g-lope .ovm-shin { animation-name: ovm-shin; }
-.ovm-g-lope .ovm-upper { animation-name: ovm-upper; } .ovm-g-lope .ovm-fore { animation-name: ovm-fore; }
-.ovm-g-lope .ovm-bob { animation: ovm-bob calc(var(--ovm-t) / 2) ease-in-out infinite alternate; }
-@keyframes ovm-thigh { 0%, 100% { transform: rotate(48deg); } 50% { transform: rotate(-40deg); } }
-@keyframes ovm-shin { 0%, 100% { transform: rotate(-4deg); } 25% { transform: rotate(-12deg); } 50% { transform: rotate(-40deg); } 64% { transform: rotate(-118deg); } 84% { transform: rotate(-62deg); } }
-@keyframes ovm-upper { 0%, 100% { transform: rotate(-44deg); } 50% { transform: rotate(34deg); } }
-@keyframes ovm-fore { 0%, 100% { transform: rotate(50deg); } 50% { transform: rotate(30deg); } }
-@keyframes ovm-bob { from { transform: rotate(-6deg); } to { transform: rotate(-6deg) translateY(-.6px); } }
-/* The walk, upright and easy: the heel lands, the knee softens, he rolls over the foot and pushes off, the foot clears the
-   ground as it swings through; the arms swing gently against the legs. */
-.ovm-g-walk .ovm-thigh { animation-name: ovm-thigh-walk; } .ovm-g-walk .ovm-shin { animation-name: ovm-shin-walk; }
-.ovm-g-walk .ovm-upper { animation-name: ovm-upper-walk; } .ovm-g-walk .ovm-fore { animation-name: ovm-fore-walk; }
-.ovm-g-walk .ovm-bob { animation: ovm-bob-walk calc(var(--ovm-t) / 2) ease-in-out infinite alternate; }
-@keyframes ovm-thigh-walk { 0% { transform: rotate(24deg); } 12% { transform: rotate(16deg); } 25% { transform: rotate(2deg); } 40% { transform: rotate(-14deg); } 50% { transform: rotate(-20deg); } 62% { transform: rotate(-4deg); } 80% { transform: rotate(20deg); } 100% { transform: rotate(24deg); } }
-@keyframes ovm-shin-walk { 0% { transform: rotate(-4deg); } 12% { transform: rotate(-14deg); } 25% { transform: rotate(-6deg); } 40% { transform: rotate(-10deg); } 50% { transform: rotate(-32deg); } 62% { transform: rotate(-62deg); } 80% { transform: rotate(-22deg); } 100% { transform: rotate(-4deg); } }
-@keyframes ovm-upper-walk { 0%, 100% { transform: rotate(20deg); } 50% { transform: rotate(-20deg); } }
-@keyframes ovm-fore-walk { 0%, 100% { transform: rotate(24deg); } 50% { transform: rotate(12deg); } }
-@keyframes ovm-bob-walk { from { transform: rotate(-2deg); } to { transform: rotate(-2deg) translateY(-.2px); } }
+/* A real stride ("All these are picked now.", Sasquatch and the yeti): the heel lands with the leg out in front, the knee
+   takes the weight, the leg passes under him and pushes off, the shin folds up as it swings through; the arms pump against
+   the legs, bent at the elbow; the body leans in a little and stays level. */
+.ovm-g-stride .ovm-thigh { animation-name: ovm-thigh-stride; } .ovm-g-stride .ovm-shin { animation-name: ovm-shin-stride; }
+.ovm-g-stride .ovm-upper { animation-name: ovm-upper-stride; } .ovm-g-stride .ovm-fore { animation-name: ovm-fore-stride; }
+.ovm-g-stride .ovm-bob { animation: ovm-bob-stride calc(var(--ovm-t) / 2) ease-in-out infinite alternate; }
+@keyframes ovm-thigh-stride { 0% { transform: rotate(36deg); } 18% { transform: rotate(20deg); } 40% { transform: rotate(-22deg); } 52% { transform: rotate(-34deg); } 66% { transform: rotate(-12deg); } 84% { transform: rotate(30deg); } 100% { transform: rotate(36deg); } }
+@keyframes ovm-shin-stride { 0% { transform: rotate(-6deg); } 18% { transform: rotate(-22deg); } 40% { transform: rotate(-14deg); } 52% { transform: rotate(-38deg); } 66% { transform: rotate(-110deg); } 84% { transform: rotate(-44deg); } 100% { transform: rotate(-6deg); } }
+@keyframes ovm-upper-stride { 0%, 100% { transform: rotate(34deg); } 50% { transform: rotate(-40deg); } }
+@keyframes ovm-fore-stride { 0%, 100% { transform: rotate(44deg); } 50% { transform: rotate(72deg); } }
+@keyframes ovm-bob-stride { from { transform: rotate(-10deg); } to { transform: rotate(-10deg) translateY(-.3px); } }
 /* The jolly jog: short quick steps, each foot landing under him and springing off, the knee folding as it swings through;
    the arms bent and pumping against the legs. */
 .ovm-g-jog .ovm-thigh { animation-name: ovm-thigh-jog; } .ovm-g-jog .ovm-shin { animation-name: ovm-shin-jog; }
@@ -272,10 +274,11 @@
 @keyframes ovm-rustle { 0%, 100% { transform: rotate(0); } 20% { transform: rotate(2.2deg); } 45% { transform: rotate(-1.8deg); } 70% { transform: rotate(1deg); } 86% { transform: rotate(-.4deg); } }
 @keyframes ovm-shake { 0%, 100% { transform: rotate(0); } 10% { transform: rotate(4.5deg) skewX(-2deg); } 24% { transform: rotate(-4deg) skewX(2deg); } 38% { transform: rotate(3.4deg); } 52% { transform: rotate(-2.6deg); } 66% { transform: rotate(1.6deg); } 80% { transform: rotate(-.8deg); } 92% { transform: rotate(.3deg); } }
 @media (prefers-reduced-motion: reduce) { .ovs *, .ovs-live, .ovm-layer * { animation: none !important; } }
-/* A plain colour in place of the scene (the sky's window, Colour): nothing of the drawing shows, only the colour, lighter
-   toward the top right and darker toward the foot. The grain and the shade behind the words stay. */
-.ovs-flat :is(.ovb-art, .hero-art) > * { visibility: hidden; }
-.ovs-flat :is(.ovb-art, .hero-art) { background: radial-gradient(120% 140% at 85% 0%, color-mix(in srgb, var(--sk-flat) 75%, #fff 8%), var(--sk-flat) 45%, color-mix(in srgb, var(--sk-flat) 40%, #05050f)); }
+/* A solid colour in place of the scene (the sky's window, Solid): only the colour. Nothing of the drawing is laid out, so
+   nothing moves ("solid color which turns off the animations"); no grain, and no shade behind the words (scene.js). */
+.ovs-flat :is(.ovb-art, .hero-art) > * { display: none; }
+.ovs-flat :is(.ovb-art, .hero-art) { background: var(--sk-flat); }
+.ovs-flat :is(.ovb-art, .hero-art)::before { display: none; }
 /* The sky's window (sky.js): what each row is on the left, its choices in a line on the right. */
 .sky-dialog { width: min(980px, calc(100vw - 32px)); }
 /* The banner changes behind it as you pick, so the page behind is neither blurred nor much dimmed, whatever the windows' style. */
@@ -294,7 +297,11 @@
    graphics card moves whole. The fog's box lies over the monsters too, and under the shade behind the words and the strip. */
 .wx-overs { position: absolute; inset: 0; pointer-events: none; }
 .wx-front { z-index: 1; }
-.ovs-flat .wx-overs { display: none; }
+/* The clouds' box fades in over the one before it when the clouds are laid again (the sun or moon moved, or the cover changed). */
+.wx-clouds { transition: opacity 1.2s ease; }
+.wx-clouds.wx-in { animation: wx-in 1.2s ease both; }
+.wx-clouds.wx-out { opacity: 0; }
+@keyframes wx-in { from { opacity: 0; } }
 /* The overcast: a dim wash down from the top of the sky, as dark as the cover says (--sk-oc). */
 .wx-oc0 { stop-color: var(--sk-occ, #14142a); }
 .wx-oc { opacity: var(--sk-oc, 0); transition: opacity 2s; }
@@ -327,9 +334,21 @@
    the whole banner (weather.js strikes it). */
 .wx-lt-wash { fill: #fff; opacity: 0; }
 .wx-lt-sky { opacity: 0; }
-.wx-lt-glow { fill: none; stroke: #cdbfff; stroke-width: 7; stroke-linejoin: round; stroke-linecap: round; filter: url(#wx-ltb); opacity: .7; }
+.wx-lt-glow { fill: none; stroke: #cdbfff; stroke-width: 7; stroke-linejoin: round; stroke-linecap: round; filter: url(#wx-ltb); opacity: 0; }
 .wx-lt-core { fill: none; stroke: #fff; stroke-width: 2.2; stroke-linejoin: round; stroke-linecap: round; }
 .wx-lt-twig { fill: none; stroke: #f2eeff; stroke-width: 1.1; stroke-linejoin: round; stroke-linecap: round; }
+/* The bolt starts hidden and is drawn down its length (pathLength 1); its glow comes with the strike. */
+.wx-lt-core, .wx-lt-twig { stroke-dasharray: 1 1; stroke-dashoffset: 1; }
+/* Wind ("make the trees move"): the pines lean and bend in gusts, the big ones in front most. The far shore's pines and
+   the big pines are each a drawing of their own while it blows (weather.js), which the graphics card leans about the
+   shore line and about the banner's foot; the still ones under them are hidden. The pines the monsters hide in lean too. */
+.wx-gust { overflow: visible; transform-origin: 50% calc(50% + 136 * var(--u)); animation: wx-gust 3.4s ease-in-out infinite; }
+.wx-gust[data-size="low"] { transform-origin: 50% calc(50% + 16 * var(--u)); }
+.wx-gale { overflow: visible; transform-origin: 50% 100%; animation: wx-gale 2.9s ease-in-out infinite; }
+[data-gale] :is(.ovs-big, .ovs-shorep) { visibility: hidden; }
+[data-gale] > .ovm-layer .ovm-clumps { transform-origin: 50% 72.67%; animation: wx-gust 3.4s ease-in-out infinite; }
+@keyframes wx-gust { 0%, 100% { transform: skewX(-1deg); } 18% { transform: skewX(-5deg); } 30% { transform: skewX(-2.5deg); } 52% { transform: skewX(-6deg); } 66% { transform: skewX(-1.5deg); } 84% { transform: skewX(-4deg); } }
+@keyframes wx-gale { 0%, 100% { transform: skewX(-2deg) scaleY(1); } 16% { transform: skewX(-9deg) scaleY(.985); } 30% { transform: skewX(-4deg) scaleY(1); } 50% { transform: skewX(-11deg) scaleY(.98); } 64% { transform: skewX(-3deg) scaleY(1); } 82% { transform: skewX(-7deg) scaleY(.99); } }
 @media (prefers-reduced-motion: reduce) { .wx-overs .ovs { animation: none !important; } }
 /* The sky window's Weather row: the lab's ZIP code and what was last read. */
 .sky-place { display: grid; gap: 6px; margin-top: 14px; color: var(--muted); font-size: 13px; font-weight: 600; }

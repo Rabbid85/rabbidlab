@@ -77,9 +77,10 @@ internal sealed class Tray : ApplicationContext
                 // Closing.
             }
         }, null, Timeout.Infinite, executeOnlyOnce: false);
-        if (open)
+        var kept = Kept(take: true);
+        if (open || kept is not null)
         {
-            Show();
+            Show(kept);
         }
     }
 
@@ -173,7 +174,7 @@ internal sealed class Tray : ApplicationContext
         }
         try
         {
-            using var mine = Registry.CurrentUser.CreateSubKey(@"Software\Rabbid Lab\Client");
+            using var mine = Registry.CurrentUser.CreateSubKey(Mine);
             using var all = Registry.CurrentUser.OpenSubKey(@"Control Panel\NotifyIconSettings");
             if (all is null || mine.GetValue("TaskbarIcon") is string)
             {
@@ -232,11 +233,18 @@ internal sealed class Tray : ApplicationContext
         }
     }
 
-    private void Show()
+    private void Show() => Show(null);
+
+    // place: where a window was, and its tab, when an update closed it (Kept).
+    private void Show(string? place)
     {
         if (window is null || window.IsDisposed)
         {
             window = new ClientWindow(Say) { Icon = icon.Icon };
+            if (place is not null)
+            {
+                window.Restore(place);
+            }
         }
         window.Draw(Status.Read() ?? last ?? new Status());
         window.Show();
@@ -247,8 +255,54 @@ internal sealed class Tray : ApplicationContext
         window.Activate();
     }
 
+    // An update closes this program to replace its file, and what Windows starts in its place is the icon alone, so a
+    // window that was open went away and stayed away ("I click the client and it dissapears sometimes"). On the way out
+    // an open window's place and tab are kept for this person, and the icon that starts within a minute opens it there.
+    private const string Mine = @"Software\Rabbid Lab\Client";
+
+    private void Keep()
+    {
+        if (window is not { IsDisposed: false, Visible: true })
+        {
+            return;
+        }
+        try
+        {
+            using var mine = Registry.CurrentUser.CreateSubKey(Mine);
+            mine.SetValue("Reopen", $"{DateTime.UtcNow.Ticks} {window.Place}", RegistryValueKind.String);
+        }
+        catch (Exception e) when (e is System.Security.SecurityException or UnauthorizedAccessException or IOException)
+        {
+            // It opens from the icon.
+        }
+    }
+
+    /// <summary>The place and tab of a window an update closed in the last minute, or null. take: it is used now, and forgotten.</summary>
+    public static string? Kept(bool take)
+    {
+        try
+        {
+            using var mine = Registry.CurrentUser.OpenSubKey(Mine, writable: take);
+            if (mine?.GetValue("Reopen") is not string kept)
+            {
+                return null;
+            }
+            if (take)
+            {
+                mine.DeleteValue("Reopen", throwOnMissingValue: false);
+            }
+            var parts = kept.Split(new[] { ' ' }, 2);
+            return parts.Length == 2 && long.TryParse(parts[0], out var ticks) && Math.Abs(DateTime.UtcNow.Ticks - ticks) <= TimeSpan.TicksPerMinute ? parts[1] : null;
+        }
+        catch (Exception e) when (e is System.Security.SecurityException or UnauthorizedAccessException or IOException)
+        {
+            return null;
+        }
+    }
+
     private void Quit()
     {
+        Keep();
         timer.Stop();
         SystemEvents.SessionEnding -= Leaving;
         SystemEvents.SessionEnded -= Left;

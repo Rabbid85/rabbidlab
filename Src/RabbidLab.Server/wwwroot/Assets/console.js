@@ -3,6 +3,14 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.424', [
+    'The sun and the moon set and rise. When night turns to day, or day to night, the one in the sky sinks behind the far hills, the sky turns, and the other comes up. The sun stands low over the hills at dawn and dusk and high by day.',
+    'The banner sky window has two colour choices in eight colours: Colour draws the banner in shades of one colour, and Solid shows one solid colour in place of the drawing, with nothing moving.',
+    'In wind the pines lean and bend in gusts.',
+    'Lightning races down from the clouds before the strike flashes.',
+    'The monster has a new build, upright and broad with shaggy fur, and he and the yeti stride along the shore.',
+    'Clouds keep clear of the sun wherever it stands, and fade to their new places when it moves.',
+    'The client window comes back by itself after the client updates, in the same place and on the same tab. An update used to close it and leave only the tray icon.']],
   ['1.1.423', [
     'The banner can show the weather where the lab is. In the banner sky window, under Weather, choose Current weather and enter the ZIP code of the lab (United States only). It draws clouds from none to overcast, rain from light to heavy, thunderstorms with lightning, snow, ice, wind and fog, and the chip shows the reading. The server reads it from the US National Weather Service every 15 minutes, and only the middle of the ZIP code area is sent. Each person can turn it off for themselves.',
     'The yeti comes out in place of Sasquatch while it snows.',
@@ -1350,6 +1358,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.424': ['2026-11-25', 'feature', 'Sunrise, colours and wind', 'sunrise.jpg'],
   '1.1.423': ['2026-11-25', 'feature', 'Weather on the banner', 'weather.jpg'],
   '1.1.422': ['2026-11-25', 'fix', 'The banner sky window closes'],
   '1.1.421': ['2026-11-25', 'feature', 'Set the banner sky', 'sky.jpg'],

@@ -105,37 +105,6 @@
     const m = new Date().getHours() * 60 + new Date().getMinutes();
     return m >= 360 && m < 480 ? 'dawn' : m >= 480 && m < 1020 ? 'day' : m >= 1020 && m < 1170 ? 'dusk' : 'night';
   };
-  let painted = '';
-  const paint = () => {
-    const root = document.documentElement;
-    // What this person picked for the mode the console is in (sky.js): the clock's time of day, one time for good, or a
-    // plain colour in place of the scene (overview.css .ovs-flat), with the night's own words over it and no holiday.
-    const sky = Sky?.now() ?? { time: 'clock', colour: null };
-    const time = NAMES[asked] ? asked : NAMES[sky.time] ? sky.time : timeNow();
-    const pal = sky.colour ? { flat: sky.colour } : { ...TIMES[time] };
-    const hol = sky.colour ? null : HOLIDAYS[holiday];
-    if (hol) Object.assign(pal, time === 'night' ? hol.night : hol.tint(pal));
-    // The weather where the lab is, when this person shows it (sky.js): its colours over the time's and the holiday's
-    // (weather.js), which also lays what falls and drifts.
-    const wx = sky.colour ? null : sky.weather;
-    if (wx) Object.assign(pal, window.RabbidLabWeather?.tint(wx, time, root.dataset.theme === 'light') ?? {});
-    const key = `${time} ${JSON.stringify(pal)}`;
-    if (key !== painted) {
-      [...root.style].filter((p) => p.startsWith('--sk-')).forEach((p) => root.style.removeProperty(p));
-      Object.entries(pal).forEach(([k, v]) => root.style.setProperty(`--sk-${k}`, v));
-      root.dataset.sky = time;
-      root.classList.toggle('ovs-flat', !!sky.colour);
-      painted = key;
-    }
-    // The chip at the top right of Overview's banner: the time of day and the clock, the weather, then the holiday. It opens
-    // the sky's window.
-    const chip = document.getElementById('hero-sky');
-    if (chip) {
-      chip.textContent = `${sky.colour ? 'Colour' : `${NAMES[time]}, ${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`}${wx ? ` · ${Sky.says(wx)}` : ''}${hol ? ` · ${hol.name}` : ''}`;
-      chip.hidden = false;
-    }
-  };
-  paint();
 
   // Christmas lights: along the lower edge of each of a pine's three tiers, from one branch tip to the other, 3, 4 and 5
   // plain coloured bulbs, the same colours in the same order on every pine ("Each tree needs the same light setup").
@@ -177,7 +146,9 @@
   };
   // What the monsters on Overview's banner (monsters.js) need from the drawing: the holiday, the seeded randoms, a pine, a
   // pine's lights, and where the big pines stand in each size, [x, base, height] across the whole banner in drawing order.
-  const Scene = { holiday, snowing: false, rnd, pine, lights: (cx, y, h) => lights(cx, y, h, false, () => 1), near: {} };
+  // For the weather (weather.js): the far shore's pines in each size, [the drawing's, its left half's], and how far below
+  // the moon's place the sun or moon stands now (disc). solid: a solid colour is shown in place of the drawing.
+  const Scene = { holiday, snowing: false, solid: false, disc: 0, rnd, pine, lights: (cx, y, h) => lights(cx, y, h, false, () => 1), near: {}, shore: {} };
   window.RabbidLabScene = Scene;
   // A bat: a body, a head with ears, and two scalloped wings that flap from the shoulders, bobbing as it flies.
   const WING = 'M2 -1C9 -8 18 -11 30 -6C27 -3 26 0 25 3C22 0 19 0 16 3C14 0 11 0 8 4C6 2 4 2 2 3Z';
@@ -218,6 +189,107 @@
   };
   // For what is laid over a drawing (weather.js): its height in its own units, its heights, and how big its near things are.
   Scene.fit = (size) => ({ H: SIZES[size].h, m: mapOf(SIZES[size]), near: SIZES[size].near, moonR: SIZES[size].moonR });
+  // A colour in place of the times of day (the sky's window, Colour): the same drawing with every part a shade of the one
+  // colour, deep in dark mode and pale in light mode with dark words ("Can change color here, like the actual background
+  // color"). It is the night's drawing, with the moon.
+  const mono = (c, light) => {
+    const d = (t) => mix(c, '#05040c', t);
+    const l = (t) => mix(c, '#ffffff', t);
+    return light
+      ? { sky0: l(0.35), sky1: l(0.55), sky2: l(0.78), l1: l(0.45), l2: l(0.3), l3: l(0.15), l4: d(0.15), l5: d(0.35), pines3: d(0.05), pines5: d(0.45), water0: l(0.5), water1: d(0.2),
+        fog: l(0.8), glow: l(0.92), rim: '#ffffff', mist: l(0.85), glint: '#ffffff', star: '0', moon0: '#ffffff', moon1: l(0.95), moon2: l(0.8), seas: '0', halo: '.5',
+        text: d(0.75), lead: d(0.6), eye: d(0.4), shade: l(0.85) }
+      : { sky0: d(0.92), sky1: d(0.8), sky2: d(0.55), l1: d(0.62), l2: d(0.7), l3: d(0.78), l4: d(0.84), l5: d(0.92), pines3: d(0.82), pines5: d(0.95), water0: d(0.6), water1: d(0.95),
+        fog: l(0.25), glow: l(0.7), rim: l(0.5), mist: l(0.4), glint: l(0.8), moon0: '#ffffff', moon1: l(0.9), moon2: l(0.7) };
+  };
+  const root = document.documentElement;
+  // What this person picked for the mode the console is in (sky.js): the clock's time of day or one time for good, with the
+  // holiday's colours and the weather's over it (weather.js, which also lays what falls and drifts); the drawing in one
+  // colour; or one solid colour in place of the drawing, with nothing moving (overview.css .ovs-flat).
+  const look = () => {
+    const sky = Sky?.now() ?? { time: 'clock' };
+    if (sky.solid) return { time: 'night', pal: { flat: sky.solid, shade: 'transparent' }, sky };
+    if (sky.colour) return { time: 'night', pal: mono(sky.colour, root.dataset.theme === 'light'), sky };
+    const time = NAMES[asked] ? asked : NAMES[sky.time] ? sky.time : timeNow();
+    const pal = { ...TIMES[time] };
+    const hol = HOLIDAYS[holiday];
+    if (hol) Object.assign(pal, time === 'night' ? hol.night : hol.tint(pal));
+    const wx = sky.weather;
+    if (wx) Object.assign(pal, window.RabbidLabWeather?.tint(wx, time) ?? {});
+    return { time, pal, sky, hol, wx };
+  };
+  let painted = '';
+  const apply = ({ time, pal, sky, hol, wx }) => {
+    const key = `${time} ${JSON.stringify(pal)}`;
+    if (key !== painted) {
+      [...root.style].filter((p) => p.startsWith('--sk-')).forEach((p) => root.style.removeProperty(p));
+      Object.entries(pal).forEach(([k, v]) => root.style.setProperty(`--sk-${k}`, v));
+      root.dataset.sky = time;
+      root.classList.toggle('ovs-flat', !!sky.solid);
+      painted = key;
+    }
+    Scene.disc = DISC[time];
+    // The chip at the top right of Overview's banner: the time of day and the clock, the weather, then the holiday; or the
+    // colour's name. It opens the sky's window.
+    const chip = document.getElementById('hero-sky');
+    if (chip) {
+      const what = sky.solid ? `${sky.name}, solid` : sky.colour ? sky.name : `${NAMES[time]}, ${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+      chip.textContent = `${what}${wx ? ` · ${Sky.says(wx)}` : ''}${hol ? ` · ${hol.name}` : ''}`;
+      chip.hidden = false;
+    }
+  };
+  // The sun and the moon ("Sun drops, mooon rises, visa versa when time changes.", then "This one." of the take where the
+  // sun also climbs). The disc, with its halo and rays, is a drawing of its own between the sky and the hills, which the
+  // graphics card moves (overview.css .ovs-disc). When night gives way to a time with the sun, or the sun to the night, it
+  // sets behind the far hills, its light on the water going out; out of sight it becomes the other and the sky turns; the
+  // other rises. Through the day it is the same sun: low over the hills at dawn, high by day, low again at dusk.
+  // DISC: how far below the moon's place it stands at each time, in Overview's units; DOWN: out of sight.
+  const DISC = { night: 0, dawn: 150, day: -34, dusk: 150 };
+  const DOWN = 270;
+  const place = (y, ms = 0, ease = 'ease') => {
+    const low = mapOf(SIZES.low);
+    Object.entries({ '--disc': String(y), '--disc-low': f1(low(130 + y) - low(130)), '--disc-t': `${ms}ms`, '--disc-e': ease }).forEach(([k, v]) => root.style.setProperty(k, v));
+  };
+  let shown = null; // the time of day the colours are painted for
+  let goal = null; // the time being turned to, while the disc sets and rises
+  let sankAt = 0; // when the disc began to set, while it is down
+  let turn = []; // what is still to come of a turn
+  const paint = () => {
+    const v = look();
+    const later = (fn, ms) => turn.push(setTimeout(fn, ms));
+    // At once: the first time, in a tab that is not showing, for people who asked for less motion, and a solid colour.
+    if (shown === null || document.hidden || v.sky.solid || root.classList.contains('ovs-flat') || matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      turn.forEach(clearTimeout);
+      [turn, goal, sankAt, shown] = [[], null, 0, v.time];
+      root.classList.remove('ovs-set');
+      apply(v);
+      place(DISC[v.time]);
+      return;
+    }
+    if (v.time === shown && goal === null) { apply(v); return; }
+    if (v.time === goal) return;
+    turn.forEach(clearTimeout);
+    [turn, goal] = [[], v.time];
+    // The colours as they are when it lands, and what is laid on the drawings told (the clouds keep clear of the disc).
+    const land = (told) => { const now = look(); apply(now); shown = now.time; if (told) document.dispatchEvent(new CustomEvent('rabbidlab:scene')); };
+    if (sankAt || (shown === 'night') !== (v.time === 'night')) {
+      if (!sankAt) {
+        sankAt = performance.now();
+        place(DOWN, 2400, 'cubic-bezier(.5, 0, .9, .6)');
+        root.classList.add('ovs-set');
+      }
+      later(() => {
+        land(true);
+        later(() => { place(DISC[shown], 2800, 'cubic-bezier(.1, .5, .4, 1)'); root.classList.remove('ovs-set'); [sankAt, goal] = [0, null]; }, 600);
+      }, Math.max(0, 2400 - (performance.now() - sankAt)));
+    } else {
+      land(false);
+      place(DISC[shown], 3200, 'ease-in-out');
+      goal = null;
+    }
+  };
+  paint();
+  Scene.solid = !!Sky?.now().solid;
   // fit: on a window wide enough to show the middle of the drawing well in from its left edge, how far in that edge is
   // across the drawing (0 when all of it shows); null on a narrower one.
   const draw = (size, fit = null) => {
@@ -300,7 +372,8 @@
     const shore = ridge(q, 436 - 9, 10, 0.5, [[1240, 16, 170]]);
     // The shore and its pines apart, so in snow the ground can be white and the pines dark.
     const shoreLand = `M0 ${f1(SH)}L${shore.map(([a, b]) => `${f1(a)} ${f1(Math.min(b, SH))}`).join('L')}L${W} ${f1(SH)}Z`;
-    const band = `<path class="ovs-l4" d="${shoreLand}"/><path class="ovs-l4 ovs-pines" d="${forest(q, shore, 0, W, 10, 28, 13, k.tree * 0.7 + k.near * 0.3, true)}"/>`;
+    const shorePines = forest(q, shore, 0, W, 10, 28, 13, k.tree * 0.7 + k.near * 0.3, true);
+    const band = `<path class="ovs-l4" d="${shoreLand}"/><path class="ovs-l4 ovs-pines ovs-shorep" d="${shorePines}"/>`;
     // Every other row is drawn, a little blurred and gently shimmering, with no sharp copy on top ("This needs to be softened,
     // the light looks... odd", then "this is sexy" of the fewer strokes). They fade to nothing halfway down the water, so no
     // light glows above the strip ("what is this glow above the bar, get rid of this").
@@ -340,7 +413,8 @@
     const q2 = rnd(43);
     const shoreL = join(q2, shore.y0, 436 - 9, 10, 0.5, [[480, 14, 160]]);
     const bandL = `<path class="ovs-l4" d="M0 ${f1(SH)}L${shoreL.map(([a, b]) => `${f1(a)} ${f1(Math.min(b, SH))}`).join('L')}L${W} ${f1(SH)}Z"/>`
-      + `<path class="ovs-l4 ovs-pines" d="${forest(q2, shoreL, 2, W - 6, 10, 28, 13, k.tree * 0.7 + k.near * 0.3, true)}"/>`;
+      + `<path class="ovs-l4 ovs-pines ovs-shorep" d="${forest(q2, shoreL, 2, W - 6, 10, 28, 13, k.tree * 0.7 + k.near * 0.3, true)}"/>`;
+    Scene.shore[size] = [shorePines, bandL.match(/ovs-shorep" d="([^"]*)"/)[1]];
     const n2 = rnd(47);
     const nearL = join(n2, near.y0, 660, 20, 0.5, [[W, 175, 170], [0, 185, 200]]);
     const [mid, edge] = [[], []];
@@ -353,7 +427,7 @@
       l1: land(A1, 'ovs-l1', 0.5), l2: land(A2, 'ovs-l2', 0.4), l3: land(A3, 'ovs-l3', 0.3) + `<path class="ovs-l3 ovs-pines" d="${treesL}"/>`,
       reflect: `<g transform="translate(0 ${f1(2 * SH)}) scale(1 -1)" opacity=".26" filter="url(#ovs-b1)">${bandL}</g>`,
       band: bandL,
-      near: `<path class="ovs-l5" d="${cut(600, W)}"/><path class="ovs-l5 ovs-pines" d="${pinesMid}"/><g transform="translate(${dx} 0)"><path class="ovs-l5" d="${cut(0, 600)}"/><path class="ovs-l5 ovs-pines" d="${pinesEdge}"/></g>`,
+      near: `<path class="ovs-l5" d="${cut(600, W)}"/><path class="ovs-l5 ovs-pines ovs-big" d="${pinesMid}"/><g transform="translate(${dx} 0)"><path class="ovs-l5" d="${cut(0, 600)}"/><path class="ovs-l5 ovs-pines ovs-big" d="${pinesEdge}"/></g>`,
     };
     // The trees in the middle ("My pick.", On a wooded hill): where a window shows the middle, the big pines there stand on a
     // broad dark hill that rises behind them and slopes to the banner's foot on both sides, so no water shows under them.
@@ -367,7 +441,7 @@
       const hr = rnd(71);
       let crest = '';
       for (let x = -372; x <= 372; x += 9 + hr() * 9) crest += pine(x * k.near, m(476 + 0.00038 * x * x), (20 + hr() * 26) * k.near);
-      own.nearRight = `${land(near, 'ovs-l5')}<path class="ovs-l5 ovs-pines" d="M${f1(-380 * k.near)} ${H}L${top.join('L')}L${f1(380 * k.near)} ${H}Z${crest}"/><path class="ovs-l5 ovs-pines" d="${ps(keepA)}${ps(keepB)}"/>`;
+      own.nearRight = `${land(near, 'ovs-l5')}<path class="ovs-l5 ovs-pines" d="M${f1(-380 * k.near)} ${H}L${top.join('L')}L${f1(380 * k.near)} ${H}Z${crest}"/><path class="ovs-l5 ovs-pines ovs-big" d="${ps(keepA)}${ps(keepB)}"/>`;
       own.near = own.near.replace('<path class="ovs-l5" d="', '<path class="ovs-l5 ovs-pines" d="');
     }
     // Where each big pine stands across the whole banner, in the order they are drawn, for the lights and the monsters.
@@ -406,11 +480,14 @@
       + (twinkle[d - 1] ? `${open(`ovs-twinkle ovs-d${d}`)}${twinkle[d - 1]}</svg>` : '')).join('')
       + `${open('ovs-met')}<g transform="translate(${W} 0)">${meteor(300, m(90), 14, [m(30), m(220)], [mx, my, k.moonR * 5])}</g></svg>`
       + (holiday === 'christmas' ? snowfall(H, open) : '');
-    return `<svg class="ovs" data-size="${size}" viewBox="0 0 ${2 * W} ${H}" preserveAspectRatio="xMaxYMid slice" aria-hidden="true">` + twice(W, [
-      ['all', `<rect width="${2 * W}" height="${H}" fill="url(#ovs-sky)"/>`],
-      ['soft', `<g>${skyStill}</g>`, 'stars'],
-      ['right', `<circle cx="${mx}" cy="${f1(my)}" r="${k.glowR}" class="ovs-halo" fill="url(#ovs-glow)" opacity="${HAZE}"/>${beams}${moon(mx, my, k.moonR)}`
-        + (holiday === 'halloween' ? bats(mx, m, k.moonR / 28) : '')],
+    // Three drawings, one over the other: the sky and its still stars; the moon or the sun with its halo and rays, a drawing
+    // of its own that the graphics card moves, so it can set behind the hills and rise (paint, above); and the land and the
+    // lake. At Halloween the bats, between the moon and the hills, in theirs.
+    const svg = `<svg class="ovs" data-size="${size}" viewBox="0 0 ${2 * W} ${H}" preserveAspectRatio="xMaxYMid slice" aria-hidden="true">`;
+    return svg + twice(W, [['all', `<rect width="${2 * W}" height="${H}" fill="url(#ovs-sky)"/>`], ['soft', `<g>${skyStill}</g>`, 'stars']], own) + '</svg>'
+      + `${open('ovs-disc')}<g transform="translate(${W} 0)"><circle cx="${mx}" cy="${f1(my)}" r="${k.glowR}" class="ovs-halo" fill="url(#ovs-glow)" opacity="${HAZE}"/>${beams}${moon(mx, my, k.moonR)}</g></svg>`
+      + (holiday === 'halloween' ? `${open('ovs-bats')}<g transform="translate(${W} 0)">${bats(mx, m, k.moonR / 28)}</g></svg>` : '')
+      + svg + twice(W, [
       ['both', land(L1, 'ovs-l1', 0.5), 'l1'],
       // No cloud under the moon ("Just remove this fucking cloud.").
       ['all', fog(250, 170, 0.55)],
@@ -423,7 +500,7 @@
       ['soft', `<g transform="translate(0 ${f1(2 * SH)}) scale(1 -1)" opacity=".26" filter="url(#ovs-b1)">${band}</g>`, 'reflect'],
       ['right', `<ellipse class="ovs-sheen" cx="${mx}" cy="${f1(SH + sy * 0.35)}" rx="${srx}" ry="${f1(sry * 0.45)}" filter="url(#ovs-b24)"/>`],
       ['both', band, 'band'],
-      ['pair', [land(near, 'ovs-l5') + `<path class="ovs-l5 ovs-pines" d="${pinesA}${pinesB}"/>`, ''], 'near'],
+      ['pair', [land(near, 'ovs-l5') + `<path class="ovs-l5 ovs-pines ovs-big" d="${pinesA}${pinesB}"/>`, ''], 'near'],
       ['all', christmas],
     ], own) + `</svg><div class="ovs-lives">${lives}</div>`;
   };
@@ -477,8 +554,8 @@
     const fit = fitOf(box, SIZES[size].h);
     if (fit === undefined || (box.dataset.fit === String(fit) && box.dataset.hol === holiday)) return;
     box.querySelectorAll(':scope > .ovs, :scope > .ovs-lives').forEach((e) => e.remove());
-    const made = scenes[`${size} ${fit} ${holiday}`] ||= { html: draw(size, fit), near: Scene.near[size] };
-    Scene.near[size] = made.near; // where this width's big pines stand, for the lights and the monsters
+    const made = scenes[`${size} ${fit} ${holiday}`] ||= { html: draw(size, fit), near: Scene.near[size], shore: Scene.shore[size] };
+    [Scene.near[size], Scene.shore[size]] = [made.near, made.shore]; // where this width's pines stand, for the lights, the monsters and the wind
     box.insertAdjacentHTML('afterbegin', made.html);
     box.dataset.fit = String(fit);
     box.dataset.hol = holiday;
@@ -505,15 +582,16 @@
   window.addEventListener('resize', () => { clearTimeout(resized); resized = setTimeout(fill, 200); });
   // The sky changed (sky.js: a pick in its window, a holiday starting or ending at midnight): painted again, and with
   // another holiday every banner is drawn again and the monsters laid on the new drawing (Santa at Christmas).
-  // Snow where the lab is brings the yeti out in Sasquatch's place (monsters.js), so the monsters are laid again then too.
+  // Snow where the lab is brings the yeti out in Sasquatch's place (monsters.js), so the monsters are laid again then too;
+  // under a solid colour there are none, so they are taken away, and laid again when the drawing is back.
   const again = () => {
     const h = Sky?.holiday() ?? '';
-    const snowing = Sky?.now().weather?.kind === 'snow';
-    if (h !== holiday || snowing !== Scene.snowing) {
-      const root = document.documentElement;
+    const now = Sky?.now();
+    const [snowing, solid] = [now?.weather?.kind === 'snow', !!now?.solid];
+    if (h !== holiday || snowing !== Scene.snowing || solid !== Scene.solid) {
       if (holiday) root.classList.remove(`ovs-${holiday}`);
       if (h) root.classList.add(`ovs-${h}`);
-      [holiday, Scene.holiday, Scene.snowing] = [h, h, snowing];
+      [holiday, Scene.holiday, Scene.snowing, Scene.solid] = [h, h, snowing, solid];
       document.querySelectorAll('[data-monsters]').forEach((box) => { box.querySelector(':scope > .ovm-layer')?.remove(); delete box.dataset.monsters; });
     }
     paint();
@@ -522,6 +600,6 @@
     document.dispatchEvent(new CustomEvent('rabbidlab:scene'));
   };
   window.addEventListener('rabbidlab:sky', again);
-  window.addEventListener('rabbidlab:theme', paint);
+  window.addEventListener('rabbidlab:theme', again); // dark mode and light mode each have a sky of their own
   setInterval(again, 30000);
 })();
