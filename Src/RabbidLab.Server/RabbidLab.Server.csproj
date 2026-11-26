@@ -6,7 +6,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <Version>1.1.422</Version>
+    <Version>1.1.423</Version>
     <Product>Rabbid Lab</Product>
     <Company>Rabbid</Company>
     <Authors>Anthony Wiles</Authors>
@@ -65,6 +65,9 @@
     <!-- The IEEE's list of MAC address prefixes and who they belong to, for Network's Vendor column (NetworkScan.Vendor). -->
     <None Remove="oui.tsv.gz" />
     <EmbeddedResource Include="oui.tsv.gz" LogicalName="oui.tsv.gz" />
+    <!-- The middle of every US ZIP code area, from the Census Bureau's gazetteer, for the banner weather (Weather.cs). -->
+    <None Remove="zips.tsv.gz" />
+    <EmbeddedResource Include="zips.tsv.gz" LogicalName="zips.tsv.gz" />
   </ItemGroup>
 
   <ItemGroup>

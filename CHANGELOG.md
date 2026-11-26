@@ -2,6 +2,13 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.423 (2026-11-25)
+
+- The banner can show the weather where the lab is. In the banner sky window, under Weather, choose Current weather and enter the ZIP code of the lab (United States only). It draws clouds from none to overcast, rain from light to heavy, thunderstorms with lightning, snow, ice, wind and fog, and the chip shows the reading. The server reads it from the US National Weather Service every 15 minutes, and only the middle of the ZIP code area is sent. Each person can turn it off for themselves.
+- The yeti comes out in place of Sasquatch while it snows.
+- The pines in the middle of a wide banner stand on a hill that is wooded all over, so no bare ground shows under them in snow.
+- Add ?weather=rain,heavy,most to the address to see any weather on any day: the kind (clear, rain, storm, snow, ice, wind or fog), how hard (light, mid or heavy) and how much cloud (none, few, half, most or over).
+
 ## 1.1.422 (2026-11-25)
 
 - Fixed the banner sky window: the colour swatches and Done did nothing. The page behind the window is no longer blurred, so the banner can be seen changing as you pick.

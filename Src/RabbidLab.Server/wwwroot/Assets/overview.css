@@ -290,4 +290,49 @@
 .sky-sw button[aria-pressed="true"] { border-color: #fff; }
 .sky-switch { display: inline-flex; align-items: center; gap: 12px; padding-top: 8px; color: var(--text); font-size: 14.5px; cursor: pointer; }
 .sky-note { margin: 12px 0 0; color: var(--muted); font-size: 13.5px; }
-@media (max-width: 700px) { .sky-row { grid-template-columns: 1fr; gap: 6px; } .sky-row > span { padding-top: 0; } }
+@media (max-width: 700px) { .sky-row { grid-template-columns: 1fr; gap: 6px; } .sky-row > span { padding-top: 0; } }/* The weather on the banners (weather.js): boxes of layers over the scene, each layer a drawing of its own that the
+   graphics card moves whole. The fog's box lies over the monsters too, and under the shade behind the words and the strip. */
+.wx-overs { position: absolute; inset: 0; pointer-events: none; }
+.wx-front { z-index: 1; }
+.ovs-flat .wx-overs { display: none; }
+/* The overcast: a dim wash down from the top of the sky, as dark as the cover says (--sk-oc). */
+.wx-oc0 { stop-color: var(--sk-occ, #14142a); }
+.wx-oc { opacity: var(--sk-oc, 0); transition: opacity 2s; }
+/* Clouds: one flat colour, a little see-through, lit toward the moon or the sun near it. The far ones are fainter. Each
+   sways slowly in place, or in wind is carried across the sky, fading in and out at the ends of its run. */
+.wx-cmA { stop-color: color-mix(in srgb, var(--sk-glow, #ddd5ff) 85%, color-mix(in srgb, var(--sk-cloudy, #3e3e66) 85%, var(--sk-occ, #10101f))); }
+.wx-cmB { stop-color: color-mix(in srgb, var(--sk-glow, #ddd5ff) 35%, color-mix(in srgb, var(--sk-cloudy, #3e3e66) 85%, var(--sk-occ, #10101f))); }
+.wx-cmC { stop-color: color-mix(in srgb, var(--sk-cloudy, #3e3e66) 85%, var(--sk-occ, #10101f)); }
+.wx-cloud { overflow: visible; animation: wx-sway 46s ease-in-out infinite alternate; animation-delay: var(--d, 0s); }
+.wx-cloud.wx-d0 { animation-duration: 70s; } .wx-cloud.wx-d1 { animation-duration: 58s; }
+.wx-d0 .wx-cg { opacity: .3; } .wx-d1 .wx-cg { opacity: .38; } .wx-d2 .wx-cg { opacity: .46; }
+@keyframes wx-sway { from { transform: translateX(calc(-110 * var(--u))); } to { transform: translateX(calc(110 * var(--u))); } }
+.wx-cloud.wx-windy { animation: wx-drift 16s linear infinite; animation-delay: var(--d, 0s); }
+.wx-windy .wx-cg { opacity: 1; }
+@keyframes wx-drift { 0% { transform: translateX(calc(-500 * var(--u))); opacity: 0; } 12%, 88% { opacity: 1; } 100% { transform: translateX(calc(1900 * var(--u))); opacity: 0; } }
+/* Rain: each sheet slides down one banner's height along the slant of its streaks and starts again. Light falls slower and
+   fainter, heavy faster. */
+.wx-rain { overflow: visible; fill: none; stroke: #c4cde8; stroke-width: 1.2; stroke-linecap: round; animation: wx-rain .9s linear infinite; }
+.wx-rain.wx-r2 { stroke-width: 1.5; animation-duration: .7s; } .wx-rain.wx-r3 { stroke-width: 1.9; animation-duration: .55s; }
+.wx-rain.wx-light { opacity: .7; animation-duration: 1.25s; } .wx-rain.wx-light.wx-r2 { animation-duration: .98s; } .wx-rain.wx-light.wx-r3 { animation-duration: .78s; }
+.wx-rain.wx-heavy { animation-duration: .76s; } .wx-rain.wx-heavy.wx-r2 { animation-duration: .6s; } .wx-rain.wx-heavy.wx-r3 { animation-duration: .47s; }
+.wx-rain[data-size="low"] { animation-name: wx-rain-low; }
+@keyframes wx-rain { from { transform: translate(0, 0); } to { transform: translate(calc(-168 * var(--u)), calc(600 * var(--u))); } }
+@keyframes wx-rain-low { from { transform: translate(0, 0); } to { transform: translate(calc(-84 * var(--u)), calc(300 * var(--u))); } }
+/* Fog: soft banks that drift slowly as one. */
+.wx-fog { overflow: visible; animation: wx-fog 30s ease-in-out infinite alternate; }
+.wx-fogbank { fill: var(--sk-fog, #b9b4d6); opacity: .42; }
+@keyframes wx-fog { to { transform: translateX(calc(-160 * var(--u))); } }
+/* Lightning: a white core, a soft violet glow round it, thinner branches; the sky lit round the strike; a faint wash over
+   the whole banner (weather.js strikes it). */
+.wx-lt-wash { fill: #fff; opacity: 0; }
+.wx-lt-sky { opacity: 0; }
+.wx-lt-glow { fill: none; stroke: #cdbfff; stroke-width: 7; stroke-linejoin: round; stroke-linecap: round; filter: url(#wx-ltb); opacity: .7; }
+.wx-lt-core { fill: none; stroke: #fff; stroke-width: 2.2; stroke-linejoin: round; stroke-linecap: round; }
+.wx-lt-twig { fill: none; stroke: #f2eeff; stroke-width: 1.1; stroke-linejoin: round; stroke-linecap: round; }
+@media (prefers-reduced-motion: reduce) { .wx-overs .ovs { animation: none !important; } }
+/* The sky window's Weather row: the lab's ZIP code and what was last read. */
+.sky-place { display: grid; gap: 6px; margin-top: 14px; color: var(--muted); font-size: 13px; font-weight: 600; }
+.sky-zip { display: flex; gap: 8px; }
+.sky-zip .ds-input { width: 120px; }
+.sky-note.problem { color: #F85149; }

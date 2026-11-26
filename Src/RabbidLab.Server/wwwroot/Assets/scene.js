@@ -115,6 +115,10 @@
     const pal = sky.colour ? { flat: sky.colour } : { ...TIMES[time] };
     const hol = sky.colour ? null : HOLIDAYS[holiday];
     if (hol) Object.assign(pal, time === 'night' ? hol.night : hol.tint(pal));
+    // The weather where the lab is, when this person shows it (sky.js): its colours over the time's and the holiday's
+    // (weather.js), which also lays what falls and drifts.
+    const wx = sky.colour ? null : sky.weather;
+    if (wx) Object.assign(pal, window.RabbidLabWeather?.tint(wx, time, root.dataset.theme === 'light') ?? {});
     const key = `${time} ${JSON.stringify(pal)}`;
     if (key !== painted) {
       [...root.style].filter((p) => p.startsWith('--sk-')).forEach((p) => root.style.removeProperty(p));
@@ -123,10 +127,11 @@
       root.classList.toggle('ovs-flat', !!sky.colour);
       painted = key;
     }
-    // The chip at the top right of Overview's banner: the time of day and the clock, then the holiday. It opens the sky's window.
+    // The chip at the top right of Overview's banner: the time of day and the clock, the weather, then the holiday. It opens
+    // the sky's window.
     const chip = document.getElementById('hero-sky');
     if (chip) {
-      chip.textContent = `${sky.colour ? 'Colour' : `${NAMES[time]}, ${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`}${hol ? ` · ${hol.name}` : ''}`;
+      chip.textContent = `${sky.colour ? 'Colour' : `${NAMES[time]}, ${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`}${wx ? ` · ${Sky.says(wx)}` : ''}${hol ? ` · ${hol.name}` : ''}`;
       chip.hidden = false;
     }
   };
@@ -172,7 +177,7 @@
   };
   // What the monsters on Overview's banner (monsters.js) need from the drawing: the holiday, the seeded randoms, a pine, a
   // pine's lights, and where the big pines stand in each size, [x, base, height] across the whole banner in drawing order.
-  const Scene = { holiday, rnd, pine, lights: (cx, y, h) => lights(cx, y, h, false, () => 1), near: {} };
+  const Scene = { holiday, snowing: false, rnd, pine, lights: (cx, y, h) => lights(cx, y, h, false, () => 1), near: {} };
   window.RabbidLabScene = Scene;
   // A bat: a body, a head with ears, and two scalloped wings that flap from the shoulders, bobbing as it flies.
   const WING = 'M2 -1C9 -8 18 -11 30 -6C27 -3 26 0 25 3C22 0 19 0 16 3C14 0 11 0 8 4C6 2 4 2 2 3Z';
@@ -202,20 +207,24 @@
     tall: { h: 600, map: [[0, 0], [600, 600]], tree: 1, near: 1, moonR: 28, glowR: 240, rayLen: 520, glint: 1, sheen: [80, 56, 110] },
     low: { h: 300, map: [[0, 0], [130, 44], [230, 60], [350, 116], [436, 166], [600, 300]], tree: 0.8, near: 0.55, moonR: 22, glowR: 170, rayLen: 200, glint: 0.75, sheen: [46, 44, 60] },
   };
+  // A height on Overview's drawing as it lies on a size's.
+  const mapOf = (k) => (y) => {
+    for (let i = 1; i < k.map.length; i++) {
+      const [a, A] = k.map[i - 1];
+      const [b, B] = k.map[i];
+      if (y <= b || i === k.map.length - 1) return A + ((y - a) * (B - A)) / (b - a);
+    }
+    return y;
+  };
+  // For what is laid over a drawing (weather.js): its height in its own units, its heights, and how big its near things are.
+  Scene.fit = (size) => ({ H: SIZES[size].h, m: mapOf(SIZES[size]), near: SIZES[size].near, moonR: SIZES[size].moonR });
   // fit: on a window wide enough to show the middle of the drawing well in from its left edge, how far in that edge is
   // across the drawing (0 when all of it shows); null on a narrower one.
   const draw = (size, fit = null) => {
     const W = 1600;
     const k = SIZES[size];
     const H = k.h;
-    const m = (y) => {
-      for (let i = 1; i < k.map.length; i++) {
-        const [a, A] = k.map[i - 1];
-        const [b, B] = k.map[i];
-        if (y <= b || i === k.map.length - 1) return A + ((y - a) * (B - A)) / (b - a);
-      }
-      return y;
-    };
+    const m = mapOf(k);
     // A ridge line: midpoint displacement for the rough edge, with bell-shaped peaks on top.
     const ridge = (r, base, amp, rough, peaks = []) => {
       const N = 256;
@@ -348,11 +357,18 @@
     };
     // The trees in the middle ("My pick.", On a wooded hill): where a window shows the middle, the big pines there stand on a
     // broad dark hill that rises behind them and slopes to the banner's foot on both sides, so no water shows under them.
+    // The hill is wooded all over ("This needs to be filled out with trees. The white in the middle is stupid.", of its
+    // bare ground showing white under the pines in snow): it is the pines' own colour with a line of pines along its crest,
+    // it lies over the front land's own hump there, and this half's ground where the halves meet is wooded too.
     if (fit !== null) {
       const top = [];
       for (let x = -380; x <= 380; x += 20) top.push(`${f1(x * k.near)} ${f1(m(470 + 0.00038 * x * x))}`); // as wide as the pines are big
       const ps = (list) => list.map(([x, y, h]) => pine(x, y, h)).join('');
-      own.nearRight = `<path class="ovs-l5" d="M${f1(-380 * k.near)} ${H}L${top.join('L')}L${f1(380 * k.near)} ${H}Z"/>${land(near, 'ovs-l5')}<path class="ovs-l5 ovs-pines" d="${ps(keepA)}${ps(keepB)}"/>`;
+      const hr = rnd(71);
+      let crest = '';
+      for (let x = -372; x <= 372; x += 9 + hr() * 9) crest += pine(x * k.near, m(476 + 0.00038 * x * x), (20 + hr() * 26) * k.near);
+      own.nearRight = `${land(near, 'ovs-l5')}<path class="ovs-l5 ovs-pines" d="M${f1(-380 * k.near)} ${H}L${top.join('L')}L${f1(380 * k.near)} ${H}Z${crest}"/><path class="ovs-l5 ovs-pines" d="${ps(keepA)}${ps(keepB)}"/>`;
+      own.near = own.near.replace('<path class="ovs-l5" d="', '<path class="ovs-l5 ovs-pines" d="');
     }
     // Where each big pine stands across the whole banner, in the order they are drawn, for the lights and the monsters.
     const standing = [...keepA, ...keepB].map(([x, y, h]) => [W + x, y, h]).concat(mid.map(([x, y, h]) => [x + 1, y, h]), edge.map(([x, y, h]) => [x + dx + 1, y, h]));
@@ -489,17 +505,21 @@
   window.addEventListener('resize', () => { clearTimeout(resized); resized = setTimeout(fill, 200); });
   // The sky changed (sky.js: a pick in its window, a holiday starting or ending at midnight): painted again, and with
   // another holiday every banner is drawn again and the monsters laid on the new drawing (Santa at Christmas).
+  // Snow where the lab is brings the yeti out in Sasquatch's place (monsters.js), so the monsters are laid again then too.
   const again = () => {
     const h = Sky?.holiday() ?? '';
-    if (h !== holiday) {
+    const snowing = Sky?.now().weather?.kind === 'snow';
+    if (h !== holiday || snowing !== Scene.snowing) {
       const root = document.documentElement;
       if (holiday) root.classList.remove(`ovs-${holiday}`);
       if (h) root.classList.add(`ovs-${h}`);
-      [holiday, Scene.holiday] = [h, h];
+      [holiday, Scene.holiday, Scene.snowing] = [h, h, snowing];
       document.querySelectorAll('[data-monsters]').forEach((box) => { box.querySelector(':scope > .ovm-layer')?.remove(); delete box.dataset.monsters; });
     }
     paint();
     fill();
+    // For what is laid on the drawings and follows the sky (the monsters, the weather), also when no drawing changed.
+    document.dispatchEvent(new CustomEvent('rabbidlab:scene'));
   };
   window.addEventListener('rabbidlab:sky', again);
   window.addEventListener('rabbidlab:theme', paint);

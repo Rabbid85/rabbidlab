@@ -163,8 +163,8 @@
     yeti: { body: SHAGGY, cls: 'ovm-snowfur', gait: 'walk', pace: 0.5 }, // the same in white, for when the banner shows the weather
     santa: { body: SANTA, cls: '', gait: 'jog', pace: 0.8 },
   };
-  // Which outfit: Santa at Christmas; Sasquatch otherwise.
-  const outfit = () => (S.holiday === 'christmas' ? 'santa' : 'sasquatch');
+  // Which outfit: Santa at Christmas; the yeti while it snows where the lab is; Sasquatch otherwise.
+  const outfit = () => (S.holiday === 'christmas' ? 'santa' : S.snowing ? 'yeti' : 'sasquatch');
   // The far arm and leg behind, the near leg, the torso and head, the near arm in front. Every piece is a small drawing of
   // its own with its joint at its middle, in a box placed at the joint (data-at, set as --x and --y once laid, since the
   // page allows no style attributes), so the graphics card turns each about its joint (overview.css): his limbs swing, he
