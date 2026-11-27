@@ -666,12 +666,17 @@
   // stay, and are told. The last drawing made for each size is kept, for the other banners of that size; a window dragged
   // through many widths makes many drawings, and none of the old ones is kept.
   const drawn = {};
+  // A banner made wider or narrower is drawn for its new width at once, before the browser shows it at that width. Drawn a
+  // moment later, the hill at the window's left edge showed where the old width had it, and then jumped.
+  const sized = new ResizeObserver((list) => list.forEach((e) => lay(e.target, e.target.dataset.live)));
   const lay = (box, size) => {
     const fit = fitOf(box, SIZES[size].h);
     if (fit === undefined || (box.dataset.fit === String(fit) && box.dataset.hol === holiday)) return;
-    // The first time: it is watched for being in the window, its slow layers step on the beat, its shooting star flies.
+    // The first time: it is watched for its size and for being in the window, its slow layers step on the beat, its
+    // shooting star flies.
     if (!('live' in box.dataset)) {
-      box.dataset.live = '';
+      box.dataset.live = size;
+      sized.observe(box);
       inView.observe(box);
       if (!still()) { beat(box, (now, at) => sway(box, now, at)); shoot(box); }
     }
@@ -697,9 +702,6 @@
   };
   fill();
   document.addEventListener('rabbidlab:show', fill);
-  // A window made wider or narrower shows more or less of the drawing: fitted again a moment after the resizing stops.
-  let resized = 0;
-  window.addEventListener('resize', () => { clearTimeout(resized); resized = setTimeout(fill, 200); });
   // The sky changed (sky.js: a pick in its window, a holiday starting or ending at midnight): painted again, and with
   // another holiday every banner is drawn again and the monsters laid on the new drawing (Santa at Christmas).
   // Snow where the lab is brings the yeti out in Sasquatch's place (monsters.js), so the monsters are laid again then too;

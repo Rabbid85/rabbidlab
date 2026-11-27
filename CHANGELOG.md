@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.431 (2026-11-27)
+
+- When the window is resized, the banner is drawn for the new width at once. The trees at its left edge no longer show in the wrong place for a moment and then jump.
+
 ## 1.1.430 (2026-11-27)
 
 - The chip on the Overview banner shows the time without Night, Dawn, Day or Dusk before it.

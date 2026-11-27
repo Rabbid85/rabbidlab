@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.431', [
+    'When the window is resized, the banner is drawn for the new width at once. The trees at its left edge no longer show in the wrong place for a moment and then jump.']],
   ['1.1.430', [
     'The chip on the Overview banner shows the time without Night, Dawn, Day or Dusk before it.']],
   ['1.1.429', [
@@ -1380,6 +1382,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.431': ['2026-11-27', 'fix', 'No jumping trees on resize'],
   '1.1.430': ['2026-11-27', 'fix', 'The banner chip is the time alone'],
   '1.1.429': ['2026-11-27', 'fix', 'A much lighter banner'],
   '1.1.428': ['2026-11-27', 'fix', 'Real sign-ins only'],
