@@ -58,7 +58,7 @@
   const asked = query.get('banner');
 
   // The weather where the lab is, as the server last read it (/api/weather): { zip, reading, problem, checkedAt, every,
-  // canSet }. Asked for when the page opens and every five minutes; the server itself checks every fifteen.
+  // canSet }. Asked for when the page opens and every five minutes (due, at the foot); the server itself checks every fifteen.
   // ?weather=rain,heavy,most (the kind, how hard, how much cloud) shows one on any day, wherever the lab is.
   const KINDS = ['clear', 'rain', 'storm', 'snow', 'ice', 'wind', 'fog'];
   const [tryKind, tryAmount, tryCover] = (query.get('weather') || '').split(',');
@@ -66,10 +66,12 @@
     cover: ['none', 'few', 'half', 'most', 'over'].includes(tryCover) ? tryCover : tryKind === 'clear' ? 'none' : 'most', tempC: null, windKph: null, says: '', place: '', at: new Date().toISOString() } : null;
   let wx = null;
   let asking = false;
+  let askedAt = 0;
   const headers = { 'X-Rabbid-Lab': '1', 'Content-Type': 'application/json', Accept: 'application/json' };
   const ask = async () => {
     if (asking) return;
     asking = true;
+    askedAt = Date.now();
     try {
       const r = await fetch('/api/weather', { headers: { Accept: 'application/json' } });
       if (r.ok) {
@@ -234,6 +236,11 @@
       return (st.holidays && onNow()?.key) || '';
     },
   };
-  ask();
-  setInterval(ask, 300000);
+  // The server is asked only while this person shows the weather (or has the window open, which shows the reading) and
+  // the tab is in front; a tab that comes back in front asks at once if its reading is five minutes old.
+  const EVERY = 300000;
+  const due = () => { if (!document.hidden && (st.weather || dialog?.open) && Date.now() - askedAt >= EVERY - 5000) ask(); };
+  due();
+  setInterval(due, EVERY);
+  document.addEventListener('visibilitychange', due);
 })();

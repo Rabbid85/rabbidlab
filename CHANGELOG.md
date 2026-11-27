@@ -2,6 +2,13 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.426 (2026-11-26)
+
+- The banner uses less of the processor, about a third less in rain and thunderstorms. Rain and snow are drawn as a few shapes each, not one for every streak and flake.
+- Fixed: leaving Overview while Nessie was up left her drawing running in the background for good, and she never came back.
+- Nothing on a banner runs while it cannot be seen. With another page open or the tab behind another, the monsters wait, storms hold their lightning, and the weather is not asked for.
+- Fixed memory that grew each time a wide window was resized, and each time the monsters were laid again.
+
 ## 1.1.425 (2026-11-25)
 
 - The client window comes back exactly where it was after an update, also on a second screen set to another scale.

@@ -9,8 +9,7 @@
   const S = window.RabbidLabScene;
   const Sky = window.RabbidLabSky;
   if (!S || !Sky) return;
-  const f1 = (n) => n.toFixed(1);
-  const { rnd } = S;
+  const { rnd, f1, blur, layer } = S;
 
   // How much cloud: how many clouds on the drawing's right (the left gets three fifths as many), and how dim the overcast.
   const COVER = { none: [0, 0], few: [3, 0], half: [5, 0.25], most: [8, 0.5], over: [7, 0.85] };
@@ -43,17 +42,12 @@
   };
 
   // What the layers are filled from, once for every banner, in a drawing that is always laid out (as the scene's own are).
-  const blur = (id, sd) => `<filter id="${id}" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="${sd}"/></filter>`;
   const moonlit = (size) => { const F = S.fit(size); return `<radialGradient id="wx-cmoon-${size}" gradientUnits="userSpaceOnUse" cx="2680" cy="${f1(F.m(130))}" r="${f1(460 * (F.moonR / 28))}">`
     + '<stop offset="0" class="wx-cmA"/><stop offset=".35" class="wx-cmB"/><stop offset="1" class="wx-cmC"/></radialGradient>'; };
   document.body.insertAdjacentHTML('beforeend', `<svg class="ovs-defs" aria-hidden="true" focusable="false"><defs>${moonlit('tall')}${moonlit('low')}`
     + '<linearGradient id="wx-ocg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="wx-oc0"/><stop offset=".55" class="wx-oc0" stop-opacity=".6"/><stop offset=".85" class="wx-oc0" stop-opacity="0"/></linearGradient>'
     + '<radialGradient id="wx-ltsky"><stop offset="0" stop-color="#f1ecff" stop-opacity=".9"/><stop offset=".45" stop-color="#cfc4ff" stop-opacity=".35"/><stop offset="1" stop-color="#cfc4ff" stop-opacity="0"/></radialGradient>'
     + `${blur('wx-fg', 34)}${blur('wx-ltb', 4)}</defs></svg>`);
-
-  // One layer: a drawing laid exactly as the scene is. data-d: a delay for its motion, set as --d once laid (the page
-  // allows no style attributes).
-  const layer = (size, H, cls, body, d) => `<svg class="ovs ${cls}" data-size="${size}"${d ? ` data-d="${d}"` : ''} viewBox="0 0 3200 ${H}" preserveAspectRatio="xMaxYMid slice" aria-hidden="true">${body}</svg>`;
 
   // A cloud: a flat base with round ends, and round bumps standing on its bottom line, so the bottom stays flat. heap: a
   // few big bumps, the tallest about the middle. dome: one big dome with a smaller one each side, short. wide: its length
@@ -115,15 +109,16 @@
       const tall = hb * B.tall;
       const [x, y] = clearOfMoon(x0 + ((i + 0.5) / count) * span + (r() - 0.5) * 160, F.m([95, 150, 200][depth] + (r() - 0.5) * 50) + tall * 0.35, w, tall, windy, my, pad, F.m(265));
       const body = `<g class="wx-cg" fill="url(#wx-cmoon-${size})">${bank(r, x, y, w, hb, B)}</g>`;
-      return layer(size, F.H, `ovs-live wx-cloud wx-d${depth}${windy ? ' wx-windy' : ''}`, body, `${(-(i / count) * 70 - r() * 8).toFixed(1)}s`);
+      return layer(size, `ovs-live wx-cloud wx-d${depth}${windy ? ' wx-windy' : ''}`, body, `${(-(i / count) * 70 - r() * 8).toFixed(1)}s`);
     }).join('');
     return set(rnd(13), n, 1380, 1720) + set(rnd(29), Math.round(n * 0.6), 20, 1000);
   };
-  const overcast = (size) => { const { H } = S.fit(size); return layer(size, H, 'wx-oc', `<rect width="3200" height="${H}" fill="url(#wx-ocg)"/>`); };
+  const overcast = (size) => { const { H } = S.fit(size); return layer(size, 'wx-oc', `<rect width="3200" height="${H}" fill="url(#wx-ocg)"/>`); };
 
   // Rain: three sheets of slanted streaks, the near ones longer, each sheet's streaks drawn twice one banner's height
   // apart, so the graphics card slides it down one height and starts again. n: how many streaks against mid's; len: how long.
   const RAIN = { light: { n: 0.4, len: 0.6 }, mid: { n: 1, len: 1 }, heavy: { n: 1.8, len: 1.2 } };
+  const FAINT = [0.31, 0.44, 0.56, 0.69]; // how strong a streak is: one of these four
   const rain = (amount, size) => {
     const { H } = S.fit(size);
     const A = RAIN[amount] ? amount : 'mid';
@@ -131,40 +126,30 @@
     const r = rnd(9);
     return [[160, 16], [110, 24], [50, 34]].map(([n, len], i) => {
       const L = len * RAIN[A].len * (0.5 + 0.5 * k);
-      let s = '';
+      // A sheet's streaks are four shapes, one for each of four strengths (FAINT), not a shape to every streak.
+      const d = FAINT.map(() => '');
       for (let j = 0; j < n * RAIN[A].n; j++) {
-        const x = r() * 3400; const y = r() * H; const o = (0.25 + r() * 0.5).toFixed(2);
-        const line = (yy, xx) => `<line x1="${f1(xx)}" y1="${f1(yy)}" x2="${f1(xx - L * 0.28)}" y2="${f1(yy + L)}" opacity="${o}"/>`;
-        s += line(y, x) + line(y - H, x + 0.28 * H);
+        const x = r() * 3400; const y = r() * H; const b = Math.min(FAINT.length - 1, Math.floor(r() * FAINT.length));
+        const line = (yy, xx) => `M${f1(xx)} ${f1(yy)}l${f1(-L * 0.28)} ${f1(L)}`;
+        d[b] += line(y, x) + line(y - H, x + 0.28 * H);
       }
-      return layer(size, H, `ovs-live wx-rain wx-${A} wx-r${i + 1}`, s);
+      return layer(size, `ovs-live wx-rain wx-${A} wx-r${i + 1}`, d.map((p, b) => (p ? `<path d="${p}" opacity="${FAINT[b]}"/>` : '')).join(''));
     }).join('');
   };
-  // Snow: three sizes of flake, as the Christmas snow falls (overview.css ovs-snows).
+  // Snow: the engine's own, which falls at Christmas too (scene.js snow), as many flakes of each size as it is snowing hard.
   const SNOW = { light: 0.3, mid: 0.5, heavy: 0.85 };
-  const snow = (amount, size) => {
-    const { H } = S.fit(size);
-    const r = rnd(5);
-    return [[120, 1.4], [70, 2.2], [34, 3.2]].map(([n, big], i) => {
-      let s = '';
-      for (let j = 0; j < n * (SNOW[amount] || SNOW.mid); j++) {
-        const [x, y, rr, o] = [f1(r() * 3200), r() * H, f1(big * (0.6 + r() * 0.8)), (0.35 + r() * 0.55).toFixed(2)];
-        s += `<circle cx="${x}" cy="${f1(y)}" r="${rr}" opacity="${o}"/><circle cx="${x}" cy="${f1(y - H)}" r="${rr}" opacity="${o}"/>`;
-      }
-      return layer(size, H, `ovs-live ovs-snows ovs-f${i + 1}`, s);
-    }).join('');
-  };
+  const snow = (amount, size) => S.snow(size, [120, 70, 34].map((n) => n * (SNOW[amount] || SNOW.mid)));
   // Fog: soft banks lying in the valleys and over the water, across the whole drawing, drifting slowly as one.
   const FOG = [[2200, 330, 900, 70], [2700, 420, 800, 80], [1700, 470, 900, 70], [2400, 230, 700, 50], [600, 340, 800, 65], [900, 450, 750, 75], [300, 240, 600, 50]];
   const fog = (size) => {
-    const { H, m } = S.fit(size);
-    return layer(size, H, 'ovs-live wx-fog', `<g class="wx-fogbank" filter="url(#wx-fg)">${FOG.map(([cx, cy, rx, ry]) => `<ellipse cx="${cx}" cy="${f1(m(cy))}" rx="${rx}" ry="${f1(m(cy + ry) - m(cy))}"/>`).join('')}</g>`);
+    const { m } = S.fit(size);
+    return layer(size, 'ovs-live wx-fog', `<g class="wx-fogbank" filter="url(#wx-fg)">${FOG.map(([cx, cy, rx, ry]) => `<ellipse cx="${cx}" cy="${f1(m(cy))}" rx="${rx}" ry="${f1(m(cy + ry) - m(cy))}"/>`).join('')}</g>`);
   };
 
   // Lightning in a thunderstorm (the Thunderstorm item, C, "Push all of it, it's great."): a forked bolt from the clouds to
   // the hills that races down in steps and then flashes bright back up its length, somewhere new every 3 to 8 seconds, mostly
   // where a normal window shows. The strike lights the sky round it, flickers once and fades.
-  const lightning = (size) => { const { H } = S.fit(size); return layer(size, H, 'wx-lt', `<rect class="wx-lt-wash" width="3200" height="${H}"/><g class="wx-lt-g"></g>`); };
+  const lightning = (size) => { const { H } = S.fit(size); return layer(size, 'wx-lt', `<rect class="wx-lt-wash" width="3200" height="${H}"/><g class="wx-lt-g"></g>`); };
   const rand = (a, b) => a + Math.random() * (b - a);
   const channel = (x, y0, y1, step, wob, drift) => {
     const pts = [[x, y0]];
@@ -197,9 +182,11 @@
     g.ownerSVGElement.querySelector('.wx-lt-wash')?.animate([{ opacity: 0 }, { opacity: 0, offset: 0.18 }, { opacity: 0.12, offset: 0.21 }, { opacity: 0, offset: 0.3 }, { opacity: 0.08, offset: 0.38 }, { opacity: 0 }], { duration: 1050 });
     setTimeout(() => box.remove(), 1400);
   };
+  // It ends with its layer, and no bolt is made for a banner nobody can see: it strikes again once the banner is back.
   const storm = (g, size) => {
-    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    const next = (ms) => setTimeout(() => { if (!g.isConnected) return; strike(g, size); next(rand(3000, 8000)); }, ms);
+    if (S.still()) return;
+    const { later, showing, rest } = S.life(g);
+    const next = (ms) => later(() => { if (!showing()) { rest(() => next(rand(800, 3000))); return; } strike(g, size); next(rand(3000, 8000)); }, ms);
     next(1100);
   };
 
@@ -207,9 +194,9 @@
   // in gusts (overview.css wx-gust, wx-gale); the still ones in the scene are hidden while it blows (data-gale on the box).
   const gust = (size) => {
     const [right, left] = S.shore[size] || ['', ''];
-    return layer(size, S.fit(size).H, 'ovs-live wx-gust', `<g transform="translate(1600 0)"><path class="ovs-l4 ovs-pines" d="${right}"/></g><g transform="translate(1 0)"><path class="ovs-l4 ovs-pines" d="${left}"/></g>`);
+    return layer(size, 'ovs-live wx-gust', `<g transform="translate(1600 0)"><path class="ovs-l4 ovs-pines" d="${right}"/></g><g transform="translate(1 0)"><path class="ovs-l4 ovs-pines" d="${left}"/></g>`);
   };
-  const gale = (size) => layer(size, S.fit(size).H, 'ovs-live wx-gale', `<path class="ovs-l5 ovs-pines" d="${(S.near[size] || []).map(([x, y, h]) => S.pine(x, y, h)).join('')}"/>`);
+  const gale = (size) => layer(size, 'ovs-live wx-gale', `<path class="ovs-l5 ovs-pines" d="${(S.near[size] || []).map(([x, y, h]) => S.pine(x, y, h)).join('')}"/>`);
 
   // The weather's layers on one banner, in boxes over the scene's own moving layers and under the monsters: the overcast,
   // the clouds, then what falls; and in a box over the monsters too (overview.css wx-front) the fog, or in wind the big
@@ -223,7 +210,7 @@
     const [n, oc] = wx ? COVER[cover] : [0, 0];
     const windy = wx?.kind === 'wind';
     // At Christmas the big pines carry their lights and hold still; so do all of them for people who asked for less motion.
-    const bend = windy && S.holiday !== 'christmas' && !matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const bend = windy && S.holiday !== 'christmas' && !S.still();
     const key = wx ? `${wx.kind} ${wx.amount} ${oc ? 1 : 0} ${size}${bend ? ` ${box.dataset.fit}` : ''}` : '';
     const ckey = n ? `${n} ${windy} ${size} ${S.disc}` : '';
     const have = (cls) => box.querySelector(`:scope > .${cls}:not(.wx-out)`);

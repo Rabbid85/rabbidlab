@@ -7,7 +7,9 @@
   const rnd = (seed) => { let s = seed; return () => (s = (s * 16807) % 2147483647) / 2147483647; };
   const f1 = (n) => n.toFixed(1);
   const PINE = [[0, -1], [0.5, -0.58], [0.26, -0.58], [0.78, -0.24], [0.42, -0.24], [1, 0], [-1, 0], [-0.42, -0.24], [-0.78, -0.24], [-0.26, -0.58], [-0.5, -0.58]];
-  const pine = (x, y, h) => `M${PINE.map(([a, b]) => `${f1(x + a * h * 0.34)} ${f1(y + b * h)}`).join('L')}Z`;
+  // A pine standing at (x, y), h tall: its corners, and its outline.
+  const corners = (x, y, h) => PINE.map(([a, b]) => [x + a * h * 0.34, y + b * h]);
+  const pine = (x, y, h) => `M${corners(x, y, h).map(([a, b]) => `${f1(a)} ${f1(b)}`).join('L')}Z`;
   // Whether a point is inside the pine standing at (x, y), h tall.
   const inPine = ([x, y, h], px, py) => {
     const [a, b] = [(px - x) / (h * 0.34), (py - y) / h];
@@ -49,7 +51,32 @@
     : where === 'all' ? s
       : where === 'pair' ? `<g transform="translate(${W} 0)">${s[0]}</g><g transform="translate(${W + 1} 0) scale(-1 1)">${s[1]}</g>`
         : `<g transform="translate(${W} 0)">${s}</g>${where === 'right' ? '' : `<g transform="translate(${where === 'both' ? W + 1 : W} 0) scale(-1 1)">${s}</g>`}`)).join('');
-  const sm = (t) => { const u = Math.max(0, Math.min(1, t)); return u * u * (3 - 2 * u); };
+
+  // The engine: what every picture behind a banner, and everything laid on one (the weather, the monsters), shares.
+  // Whether people asked for less motion.
+  const still = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // The life of something laid on a banner, on its element el: it does nothing once it has left the page, and rests while
+  // it can't be seen (its page is not the one open, or the tab is behind another), so nothing runs for a banner nobody
+  // sees. later: a timer that only fires while el is on the page. on: a listener that goes when el does. showing: whether
+  // it can be seen now. rest(fn): fn waits, and runs when the banner is next seen.
+  const lives = new Set();
+  const life = (el) => {
+    const end = new AbortController();
+    const resting = [];
+    const showing = () => !document.hidden && el.getClientRects().length > 0;
+    const me = { gone: () => { if (el.isConnected) return false; end.abort(); resting.length = 0; lives.delete(me); return true; } };
+    const wake = () => { if (!me.gone() && showing()) resting.splice(0).forEach((fn) => fn()); };
+    ['rabbidlab:show', 'visibilitychange'].forEach((type) => document.addEventListener(type, wake, { signal: end.signal }));
+    lives.add(me);
+    return {
+      later: (fn, ms) => setTimeout(() => { if (!me.gone()) fn(); }, ms),
+      on: (target, type, fn) => target.addEventListener(type, (e) => { if (!me.gone()) fn(e); }, { signal: end.signal }),
+      showing,
+      rest: (fn) => { resting.push(fn); },
+    };
+  };
+  // What has left the page lets go of its listeners now, not when one of them next fires.
+  const sweep = () => lives.forEach((l) => l.gone());
 
   // The holiday the banner wears (overview.css .ovs-halloween, .ovs-christmas). Halloween, October 15 to 31: a purple night
   // with an orange moon and mist, and three tiny bats flitting past the moon ("Holloween is the bats."). Christmas, from the
@@ -131,24 +158,14 @@
       return beat && lift?.(x, yy, rad, beat, bulb) ? '' : bulb;
     }).join('');
   };
-  // Snow falling: flakes in three sizes, each size a drawing of its own with its flakes twice, one banner's height above the
-  // other, which the graphics card slides down one height and starts again (overview.css ovs-snows).
-  const snowfall = (H, open) => {
-    const r = rnd(5);
-    return [[42, 1.4, 'ovs-f1'], [24, 2.2, 'ovs-f2'], [12, 3.2, 'ovs-f3']].map(([n, size, cls]) => {
-      let s = '';
-      for (let i = 0; i < n; i++) {
-        const [x, y, rr, o] = [f1(r() * 3200), r() * H, f1(size * (0.6 + r() * 0.8)), (0.35 + r() * 0.55).toFixed(2)];
-        s += `<circle cx="${x}" cy="${f1(y)}" r="${rr}" opacity="${o}"/><circle cx="${x}" cy="${f1(y - H)}" r="${rr}" opacity="${o}"/>`;
-      }
-      return `${open(`ovs-snows ${cls}`)}${s}</svg>`;
-    }).join('');
-  };
-  // What the monsters on Overview's banner (monsters.js) need from the drawing: the holiday, the seeded randoms, a pine, a
-  // pine's lights, and where the big pines stand in each size, [x, base, height] across the whole banner in drawing order.
-  // For the weather (weather.js): the far shore's pines in each size, [the drawing's, its left half's], and how far below
-  // the moon's place the sun or moon stands now (disc). solid: a solid colour is shown in place of the drawing.
-  const Scene = { holiday, snowing: false, solid: false, disc: 0, rnd, pine, lights: (cx, y, h) => lights(cx, y, h, false, () => 1), near: {}, shore: {} };
+  // What is laid on a banner needs from the engine: the seeded randoms, a number to one decimal, a blur, less motion or
+  // not, and a life (above); a layer and the snow (below, Scene.layer and Scene.snow), and how a size is fitted (Scene.fit).
+  // And from the picture: the holiday, a pine with its corners and its lights, where the big pines stand in each size
+  // ([x, base, height] across the whole banner in drawing order, for the monsters and the wind), the far shore's pines in
+  // each size ([the drawing's, its left half's], for the wind), and how far below the moon's place the sun or moon stands
+  // now (disc). solid: a solid colour is shown in place of the picture.
+  const blur = (id, sd) => `<filter id="${id}" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="${sd}"/></filter>`;
+  const Scene = { holiday, snowing: false, solid: false, disc: 0, rnd, f1, blur, still, life, pine, corners, lights: (cx, y, h) => lights(cx, y, h, false, () => 1), near: {}, shore: {} };
   window.RabbidLabScene = Scene;
   // A bat: a body, a head with ears, and two scalloped wings that flap from the shoulders, bobbing as it flies.
   const WING = 'M2 -1C9 -8 18 -11 30 -6C27 -3 26 0 25 3C22 0 19 0 16 3C14 0 11 0 8 4C6 2 4 2 2 3Z';
@@ -189,6 +206,29 @@
   };
   // For what is laid over a drawing (weather.js): its height in its own units, its heights, and how big its near things are.
   Scene.fit = (size) => ({ H: SIZES[size].h, m: mapOf(SIZES[size]), near: SIZES[size].near, moonR: SIZES[size].moonR });
+  // One layer: a drawing laid exactly as the picture is, 3200 wide and its size's height, fitted the same way. d: a delay
+  // for its motion, which whoever lays it sets as --d (the page allows no style attributes).
+  const layer = (size, cls, body, d) => `<svg class="ovs${cls ? ` ${cls}` : ''}" data-size="${size}"${d ? ` data-d="${d}"` : ''} viewBox="0 0 3200 ${SIZES[size].h}" preserveAspectRatio="xMaxYMid slice" aria-hidden="true">${body}</svg>`;
+  // Snow falling, at Christmas and when it snows where the lab is (weather.js): flakes in three sizes, each size a layer of
+  // its own with its flakes twice, one banner's height above the other, which the graphics card slides down one height
+  // and starts again (overview.css ovs-snows). counts: how many flakes of each size. A layer's flakes are four shapes, one
+  // for each of four brightnesses (SOFT), not a shape to every flake: the page goes over every shape on a banner each
+  // time anything on it changes, and with a shape to every flake or streak of rain that was half its work in a storm.
+  const SOFT = [0.42, 0.56, 0.69, 0.83];
+  const snow = (size, counts) => {
+    const H = SIZES[size].h;
+    const r = rnd(5);
+    return [1.4, 2.2, 3.2].map((big, i) => {
+      const d = SOFT.map(() => '');
+      for (let j = 0; j < counts[i]; j++) {
+        const [x, y, rr, b] = [r() * 3200, r() * H, f1(big * (0.6 + r() * 0.8)), Math.min(SOFT.length - 1, Math.floor(r() * SOFT.length))];
+        const flake = (yy) => `M${f1(x - rr)} ${f1(yy)}a${rr} ${rr} 0 1 0 ${f1(2 * rr)} 0a${rr} ${rr} 0 1 0 ${f1(-2 * rr)} 0`;
+        d[b] += flake(y) + flake(y - H);
+      }
+      return layer(size, `ovs-live ovs-snows ovs-f${i + 1}`, d.map((p, b) => (p ? `<path d="${p}" opacity="${SOFT[b]}"/>` : '')).join(''));
+    }).join('');
+  };
+  Object.assign(Scene, { layer, snow });
   // A colour in place of the times of day (the sky's window, Colour): the same drawing with every part a shade of the one
   // colour, deep in dark mode and pale in light mode with dark words ("Can change color here, like the actual background
   // color"). It is the night's drawing, with the moon.
@@ -258,7 +298,7 @@
     const v = look();
     const later = (fn, ms) => turn.push(setTimeout(fn, ms));
     // At once: the first time, in a tab that is not showing, for people who asked for less motion, and a solid colour.
-    if (shown === null || document.hidden || v.sky.solid || root.classList.contains('ovs-flat') || matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    if (shown === null || document.hidden || v.sky.solid || root.classList.contains('ovs-flat') || still()) {
       turn.forEach(clearTimeout);
       [turn, goal, sankAt, shown] = [[], null, 0, v.time];
       root.classList.remove('ovs-set');
@@ -290,9 +330,9 @@
   };
   paint();
   Scene.solid = !!Sky?.now().solid;
-  // fit: on a window wide enough to show the middle of the drawing well in from its left edge, how far in that edge is
-  // across the drawing (0 when all of it shows); null on a narrower one.
-  const draw = (size, fit = null) => {
+  // The lake: the picture behind every banner. fit: on a window wide enough to show the middle of the drawing well in from
+  // its left edge, how far in that edge is across the drawing (0 when all of it shows); null on a narrower one.
+  const lake = (size, fit = null) => {
     const W = 1600;
     const k = SIZES[size];
     const H = k.h;
@@ -452,7 +492,7 @@
     // twinkle painted all of it again, blurs and all, at the screen's rate. The stars that twinkle, clear of the hills: one
     // drawing for each of their four beats (the ones lower down hold still). The moon's light on the water the same. The
     // shooting star. At Christmas the bulbs that twinkle and the snow.
-    const open = (cls) => `<svg class="ovs ovs-live ${cls}" data-size="${size}" viewBox="0 0 ${2 * W} ${H}" preserveAspectRatio="xMaxYMid slice" aria-hidden="true">`;
+    const live = (cls, body) => layer(size, `ovs-live ${cls}`, body);
     const liveY = m(185);
     const split = (s) => {
       const live = BEATS.map(() => '');
@@ -475,19 +515,18 @@
     const hidden = (i, x, y, rad) => standing.slice(i + 1).some((t) => [[0, 0], [rad, 0], [-rad, 0], [0, rad], [0, -rad]].some(([a, b]) => inPine(t, x + a, y + b)));
     const christmas = holiday !== 'christmas' ? '' : `<g>${standing.map(([x, y, h], i) => `<path class="ovs-l5 ovs-pines" d="${pine(x, y, h)}"/>`
       + lights(x, y, h, true, lit, (bx, by, rad, beat, bulb) => { if (hidden(i, bx, by, rad)) return false; twinkle[beat - 1] += bulb; return true; })).join('')}</g>`;
-    const lives = BEATS.map((d) => `${open(`ovs-tw ovs-d${d}`)}<g transform="translate(${W} 0)">${skyLive[d - 1]}</g><g transform="translate(1 0)">${skyLiveL[d - 1]}</g></svg>`
-      + `${open(`ovs-glint ovs-shim ovs-d${d}`)}<g transform="translate(${W} 0)" filter="url(#ovs-b1)" opacity=".7">${glints[d - 1]}</g></svg>`
-      + (twinkle[d - 1] ? `${open(`ovs-twinkle ovs-d${d}`)}${twinkle[d - 1]}</svg>` : '')).join('')
-      + `${open('ovs-met')}<g transform="translate(${W} 0)">${meteor(300, m(90), 14, [m(30), m(220)], [mx, my, k.moonR * 5])}</g></svg>`
-      + (holiday === 'christmas' ? snowfall(H, open) : '');
+    const lives = BEATS.map((d) => live(`ovs-tw ovs-d${d}`, `<g transform="translate(${W} 0)">${skyLive[d - 1]}</g><g transform="translate(1 0)">${skyLiveL[d - 1]}</g>`)
+      + live(`ovs-glint ovs-shim ovs-d${d}`, `<g transform="translate(${W} 0)" filter="url(#ovs-b1)" opacity=".7">${glints[d - 1]}</g>`)
+      + (twinkle[d - 1] ? live(`ovs-twinkle ovs-d${d}`, twinkle[d - 1]) : '')).join('')
+      + live('ovs-met', `<g transform="translate(${W} 0)">${meteor(300, m(90), 14, [m(30), m(220)], [mx, my, k.moonR * 5])}</g>`)
+      + (holiday === 'christmas' ? snow(size, [42, 24, 12]) : '');
     // Three drawings, one over the other: the sky and its still stars; the moon or the sun with its halo and rays, a drawing
     // of its own that the graphics card moves, so it can set behind the hills and rise (paint, above); and the land and the
     // lake. At Halloween the bats, between the moon and the hills, in theirs.
-    const svg = `<svg class="ovs" data-size="${size}" viewBox="0 0 ${2 * W} ${H}" preserveAspectRatio="xMaxYMid slice" aria-hidden="true">`;
-    return svg + twice(W, [['all', `<rect width="${2 * W}" height="${H}" fill="url(#ovs-sky)"/>`], ['soft', `<g>${skyStill}</g>`, 'stars']], own) + '</svg>'
-      + `${open('ovs-disc')}<g transform="translate(${W} 0)"><circle cx="${mx}" cy="${f1(my)}" r="${k.glowR}" class="ovs-halo" fill="url(#ovs-glow)" opacity="${HAZE}"/>${beams}${moon(mx, my, k.moonR)}</g></svg>`
-      + (holiday === 'halloween' ? `${open('ovs-bats')}<g transform="translate(${W} 0)">${bats(mx, m, k.moonR / 28)}</g></svg>` : '')
-      + svg + twice(W, [
+    return layer(size, '', twice(W, [['all', `<rect width="${2 * W}" height="${H}" fill="url(#ovs-sky)"/>`], ['soft', `<g>${skyStill}</g>`, 'stars']], own))
+      + live('ovs-disc', `<g transform="translate(${W} 0)"><circle cx="${mx}" cy="${f1(my)}" r="${k.glowR}" class="ovs-halo" fill="url(#ovs-glow)" opacity="${HAZE}"/>${beams}${moon(mx, my, k.moonR)}</g>`)
+      + (holiday === 'halloween' ? live('ovs-bats', `<g transform="translate(${W} 0)">${bats(mx, m, k.moonR / 28)}</g>`) : '')
+      + layer(size, '', twice(W, [
       ['both', land(L1, 'ovs-l1', 0.5), 'l1'],
       // No cloud under the moon ("Just remove this fucking cloud.").
       ['all', fog(250, 170, 0.55)],
@@ -502,11 +541,14 @@
       ['both', band, 'band'],
       ['pair', [land(near, 'ovs-l5') + `<path class="ovs-l5 ovs-pines ovs-big" d="${pinesA}${pinesB}"/>`, ''], 'near'],
       ['all', christmas],
-    ], own) + `</svg><div class="ovs-lives">${lives}</div>`;
+    ], own)) + `<div class="ovs-lives">${lives}</div>`;
   };
+  // The pictures a banner can show. One so far, the lake; another is one more entry here, drawn to the same sizes with the
+  // same fit, and the engine, the sky, the weather and the holidays' colours work on it as they are.
+  const PICTURES = { lake };
+  const picture = 'lake';
   // The gradients, blurs and the moon's outlines, once for every scene, in a drawing that is always laid out: a scene on a
   // hidden page can't lend its own to the one on the page that's open.
-  const blur = (id, sd) => `<filter id="${id}" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="${sd}"/></filter>`;
   document.body.insertAdjacentHTML('beforeend', '<svg class="ovs-defs" aria-hidden="true" focusable="false"><defs>'
     + '<linearGradient id="ovs-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="ovs-sky0"/><stop offset=".62" class="ovs-sky1"/><stop offset="1" class="ovs-sky2"/></linearGradient>'
     + '<linearGradient id="ovs-fogg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="ovs-fogc" stop-opacity="0"/><stop offset="1" class="ovs-fogc" stop-opacity="1"/></linearGradient>'
@@ -548,13 +590,16 @@
     return 1600 - left > 500 ? Math.round(left) : null;
   };
   // The drawing in a box for how wide it is now, drawn again only when that changes; the monsters laid on it (monsters.js)
-  // stay, and are told.
-  const scenes = {};
+  // stay, and are told. The last drawing made for each size is kept, for the other banners of that size; a window dragged
+  // through many widths makes many drawings, and none of the old ones is kept.
+  const drawn = {};
   const lay = (box, size) => {
     const fit = fitOf(box, SIZES[size].h);
     if (fit === undefined || (box.dataset.fit === String(fit) && box.dataset.hol === holiday)) return;
     box.querySelectorAll(':scope > .ovs, :scope > .ovs-lives').forEach((e) => e.remove());
-    const made = scenes[`${size} ${fit} ${holiday}`] ||= { html: draw(size, fit), near: Scene.near[size], shore: Scene.shore[size] };
+    const key = `${picture} ${fit} ${holiday}`;
+    if (drawn[size]?.key !== key) drawn[size] = { key, html: PICTURES[picture](size, fit), near: Scene.near[size], shore: Scene.shore[size] };
+    const made = drawn[size];
     [Scene.near[size], Scene.shore[size]] = [made.near, made.shore]; // where this width's pines stand, for the lights, the monsters and the wind
     box.insertAdjacentHTML('afterbegin', made.html);
     box.dataset.fit = String(fit);
@@ -593,6 +638,7 @@
       if (h) root.classList.add(`ovs-${h}`);
       [holiday, Scene.holiday, Scene.snowing, Scene.solid] = [h, h, snowing, solid];
       document.querySelectorAll('[data-monsters]').forEach((box) => { box.querySelector(':scope > .ovm-layer')?.remove(); delete box.dataset.monsters; });
+      sweep();
     }
     paint();
     fill();
@@ -601,5 +647,8 @@
   };
   window.addEventListener('rabbidlab:sky', again);
   window.addEventListener('rabbidlab:theme', again); // dark mode and light mode each have a sky of their own
-  setInterval(again, 30000);
+  // The clock is looked at twice a minute, for the time of day and the chip; not while the tab is behind another, and at
+  // once when it comes back in front.
+  setInterval(() => { if (!document.hidden) again(); }, 30000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) again(); });
 })();

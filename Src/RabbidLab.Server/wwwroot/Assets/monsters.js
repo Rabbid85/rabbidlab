@@ -13,7 +13,6 @@
   const f2 = (p) => `${p[0].toFixed(2)} ${p[1].toFixed(2)}`;
   const sm = (v) => { const c = Math.max(0, Math.min(1, v)); return c * c * (3 - 2 * c); };
   const lerp = (a, b, t) => a + (b - a) * t;
-  const still = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   // Nessie: a plesiosaur low in the water, a sliver of her back above the water line (y 0), her body and flippers faint
   // through the water under it.
@@ -184,8 +183,7 @@
   // the middle so he is hidden at its foot. Each pine sways from its foot when its clump rustles; each clump is mirrored in
   // the lake under it; at Christmas they wear the same lights as the big pines. [x, height] for each pine.
   const CLUMPS = [2440, 2635, 2830, 3025];
-  const SHAPE = [[0, -1], [0.5, -0.58], [0.26, -0.58], [0.78, -0.24], [0.42, -0.24], [1, 0], [-1, 0], [-0.42, -0.24], [-0.78, -0.24], [-0.26, -0.58], [-0.5, -0.58]];
-  const corners = (x, h) => SHAPE.map(([a, b]) => [x + a * h * 0.34, 436 + b * h]);
+  const corners = (x, h) => S.corners(x, 436, h);
   const GROVES = (() => {
     const r = S.rnd(29);
     return CLUMPS.map((x) => {
@@ -232,16 +230,17 @@
     box.insertAdjacentHTML('beforeend', `<div class="ovm-layer"><div class="ovm-stage"><div class="ovm-band">${RUNNER(outfit())}</div>`
       + `<svg class="ovm-clumps" viewBox="0 0 3200 600" aria-hidden="true">${CLUMP}</svg>${NESSIE}</div></div>`);
     const layer = box.querySelector(':scope > .ovm-layer');
-    const later = (fn, ms) => setTimeout(() => { if (layer.isConnected) fn(); }, ms);
+    // Their timers and listeners end with the layer, and they rest while the banner can't be seen (scene.js, life).
+    const { later, on, showing, rest } = S.life(layer);
     const q = (sel) => layer.querySelector(sel);
     layer.querySelectorAll('[data-at]').forEach((j) => { const [x, y] = j.dataset.at.split(' '); j.style.setProperty('--x', x); j.style.setProperty('--y', y); });
     // The big pines move with the window's width (scene.js draws the banner again), so what hides him is made again then,
     // and when the wind starts or stops.
-    const hide = () => { if (!layer.isConnected) return; const m = hideMask(box.hasAttribute('data-gale')); ['mask-image', '-webkit-mask-image'].forEach((k) => q('.ovm-band').style.setProperty(k, m)); };
+    const hide = () => { const m = hideMask(box.hasAttribute('data-gale')); ['mask-image', '-webkit-mask-image'].forEach((k) => q('.ovm-band').style.setProperty(k, m)); };
     hide();
-    box.addEventListener('rabbidlab:scene', hide);
-    box.addEventListener('rabbidlab:weather', hide);
-    if (still()) return;
+    on(box, 'rabbidlab:scene', hide);
+    on(box, 'rabbidlab:weather', hide);
+    if (S.still()) return;
 
     // The runner: always behind one clump or running to another.
     const runner = q('.ovm-runner');
@@ -272,20 +271,22 @@
         const ms = ((dist / 260) * 8000) / pace; // "Why is sasquatch running 900 miels an hour": about 260 units in 8 s, at his outfit's pace
         walk.getAnimations().forEach((a) => a.cancel());
         runner.classList.remove('ovm-hiding');
-        walk.animate([{ transform: 'translateX(0)' }, { transform: `translateX(calc(${-dist} * var(--u)))` }], { duration: ms, easing: 'linear', fill: 'forwards' });
+        // How far in pixels, worked out once: given in the drawing's units, the page had to work it out again every frame.
+        const far = (-dist * q('.ovm-stage').getBoundingClientRect().width) / 3200;
+        walk.animate([{ transform: 'translateX(0)' }, { transform: `translateX(${far.toFixed(1)}px)` }], { duration: ms, easing: 'linear', fill: 'forwards' });
         later(() => shake(to, true), ms - 700); // and into the next one
         dash = { from: CLUMPS[spot], to: CLUMPS[to], at: performance.now(), ms };
         later(() => { spot = to; dash = null; wait(); }, ms);
       }, 520);
     };
     // Waiting behind the pines, standing still and upright so nothing of him leans out, the pines rustling once or twice
-    // while he's there.
+    // while he's there. With nobody to see him he stays put, and waits again when the banner is back.
     const wait = () => {
       runner.classList.add('ovm-hiding');
       const long = 4000 + Math.random() * 7000;
-      later(() => shake(spot, false), long * (0.25 + Math.random() * 0.2));
-      if (Math.random() < 0.5) later(() => shake(spot, false), long * 0.7);
-      later(run, long);
+      later(() => { if (showing()) shake(spot, false); }, long * (0.25 + Math.random() * 0.2));
+      if (Math.random() < 0.5) later(() => { if (showing()) shake(spot, false); }, long * 0.7);
+      later(() => (showing() ? run() : rest(wait)), long);
     };
     wait();
 
@@ -314,14 +315,19 @@
     // him, forward when he is ahead of her, back over her shoulder when he is behind. While she is stopped her neck sways
     // slower ("floating around is a little too fast when stopped"). seen eases her in and out of watching.
     let [nessAt, nessDir, seen, aim, stopped, swayT, paddleT, last, round] = [2480, 1, 0, 0, false, 0, 0, null, null];
+    const soon = () => later(swim, 3000 + Math.random() * 6000);
     const frame = () => {
-      if (!layer.isConnected || !ness.classList.contains('ovm-go')) return;
+      if (!ness.classList.contains('ovm-go')) return;
       const now = performance.now();
       round = round || ness.getAnimations().find((a) => a.animationName === 'ovm-on');
-      const ms = Number(round?.currentTime ?? 0);
+      const ms = round?.currentTime ?? null;
+      // Her round has no time when the banner stopped being shown part way through it (another page was opened): she is
+      // gone, nothing of hers runs, and she comes up afresh a little after the banner is back. Without this her neck was
+      // drawn 30 times a second for good, and she never dived or came again.
+      if (ms === null) { ness.classList.remove('ovm-go'); rest(soon); return; }
       // Down again: nothing of hers is drawn and no timer runs until she next comes up.
       if (ms >= LEN) { ness.classList.remove('ovm-go'); later(swim, 6000 + Math.random() * 14000); return; }
-      setTimeout(frame, 33);
+      later(frame, 33);
       const p = ms / LEN;
       const [u, d] = [Math.max(0, Math.min(1, p / 0.12)), Math.max(0, Math.min(1, (p - 0.8) / 0.13))];
       const head = nessAt + nessDir * NS * (80 * p + 8);
@@ -351,8 +357,9 @@
         g.setAttribute('transform', `rotate(${(1 + (b ? 13 : -13) * Math.cos((Math.PI * paddleT) / 1400)).toFixed(1)} ${PADDLE[b ? 1 : 0].join(' ')})`);
       });
     };
-    // A round, and the next some time after it ends (a stop to watch makes it longer).
+    // A round, and the next some time after it ends (a stop to watch makes it longer). None while the banner can't be seen.
     const swim = () => {
+      if (!showing()) { rest(soon); return; }
       const left = Math.random() < 0.5;
       [nessAt, nessDir, seen, stopped, last, round] = [2300 + Math.random() * 600, left ? -1 : 1, 0, false, null, null];
       ness.style.setProperty('--x', nessAt.toFixed(0)); // where she comes up across the drawing
@@ -363,7 +370,7 @@
       ness.classList.add('ovm-go');
       frame();
     };
-    later(swim, 3000 + Math.random() * 6000);
+    soon();
   };
   // None under a solid colour: nothing moves there (scene.js takes them away).
   const fill = () => { if (!S.solid) document.querySelectorAll('[data-scene][data-fit]:not([data-monsters])').forEach(lay); };

@@ -3,6 +3,11 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.426', [
+    'The banner uses less of the processor, about a third less in rain and thunderstorms. Rain and snow are drawn as a few shapes each, not one for every streak and flake.',
+    'Fixed: leaving Overview while Nessie was up left her drawing running in the background for good, and she never came back.',
+    'Nothing on a banner runs while it cannot be seen. With another page open or the tab behind another, the monsters wait, storms hold their lightning, and the weather is not asked for.',
+    'Fixed memory that grew each time a wide window was resized, and each time the monsters were laid again.']],
   ['1.1.425', [
     'The client window comes back exactly where it was after an update, also on a second screen set to another scale.']],
   ['1.1.424', [
@@ -1360,6 +1365,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.426': ['2026-11-26', 'fix', 'A lighter banner'],
   '1.1.425': ['2026-11-25', 'fix', 'The client window keeps its place'],
   '1.1.424': ['2026-11-25', 'feature', 'Sunrise, colours and wind', 'sunrise.jpg'],
   '1.1.423': ['2026-11-25', 'feature', 'Weather on the banner', 'weather.jpg'],
