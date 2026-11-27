@@ -182,44 +182,8 @@ public sealed partial class Roles(DataFolder folder, Accounts accounts, TimeProv
         }
     }
 
-    /// <summary>The roles of theirs that require MFA, highest first. One is enough.</summary>
-    public IReadOnlyList<Role> MfaRoles(Who who)
-    {
-        lock (gate)
-        {
-            return [.. Mine(Fresh(), who).Where(r => r.Mfa).Select(r => new Role { Id = r.Id, Name = r.Name })];
-        }
-    }
-
     /// <summary>MFA is required for everyone (since 1.1.296, like Datto RMM and NinjaOne): every sign-in takes a code.</summary>
     public bool NeedsMfa(Who who) => true;
-
-    /// <summary>
-    /// Whether a role requires MFA. Administrator's can be set too, by an administrator: it's the one thing about that role
-    /// that changes. People in it who signed in without a code are signed out, and set it up when they sign in again.
-    /// </summary>
-    public string? RequireMfa(string id, bool on, Who by)
-    {
-        lock (gate)
-        {
-            var f = Fresh();
-            var index = f.Roles.FindIndex(r => r.Id == id);
-            if (index < 0)
-            {
-                return "The role no longer exists.";
-            }
-            if (!Manages(f, by, index))
-            {
-                return $"Only someone in a higher tier than {f.Roles[index].Name} can change this role.";
-            }
-            if (f.Roles[index].Mfa != on)
-            {
-                f.Roles[index].Mfa = on;
-                Save(f);
-            }
-            return null;
-        }
-    }
 
     /// <summary>Roles as the page lists them beside a person: id, name and colour.</summary>
     public static IEnumerable<object> Brief(IEnumerable<Role> roles) => roles.Select(r => new { id = r.Id, name = r.Name, color = r.Color });

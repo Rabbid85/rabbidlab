@@ -15,6 +15,100 @@
   const sm = (v) => { const c = Math.max(0, Math.min(1, v)); return c * c * (3 - 2 * c); };
   const lerp = (a, b, t) => a + (b - a) * t;
 
+  // Each monster's options, kept in this browser as the sky's are, and set in Settings, Banner ("Nessie should be rare.",
+  // "All monsters need frequency options.", then "there needs to be an options page for the banner. There we can show
+  // monster times etc."): how often it comes, and at which times of day. A visit is Overview opening. odds: the chance of
+  // coming on a visit, and first: how soon then. open: how long until it comes when the visit goes on without it. gap:
+  // how long from one time to the next. idle: the pines rustle while he waits.
+  const KEY = 'rabbidlab.monsters';
+  const MIN = 60000;
+  const TIMES = [['dawn', 'Dawn'], ['day', 'Day'], ['dusk', 'Dusk'], ['night', 'Night']];
+  const OFTEN = [['never', 'Never'], ['rarely', 'Rarely'], ['sometimes', 'Sometimes'], ['often', 'Often']];
+  const RULES = {
+    rarely: { odds: 0.1, first: [3000, 15000], open: [20 * MIN, 40 * MIN], gap: [20 * MIN, 40 * MIN] },
+    sometimes: { odds: 0, open: [MIN, 3 * MIN], gap: [3 * MIN, 8 * MIN] },
+    // As they were until 1.1.438: Nessie on the lake about two thirds of the time, the runner bolting every few seconds.
+    often: { nessie: { odds: 1, first: [3000, 9000], gap: [6000, 20000] }, runner: { odds: 1, first: [4000, 11000], gap: [4000, 11000], idle: true } },
+  };
+  // Each one's name, where it is, and how often it comes until someone says otherwise: Nessie rarely, the runners as before.
+  const WHO = {
+    nessie: ['Nessie', 'In the lake.', 'rarely'],
+    sasquatch: ['Sasquatch', 'On the far shore.', 'often'],
+    yeti: ['The yeti', 'In Sasquatch’s place while it snows.', 'often'],
+    santa: ['Santa', 'In Sasquatch’s place at Christmas.', 'often'],
+  };
+  // Only what this file knows is taken from what was kept.
+  const clean = (o) => Object.fromEntries(Object.entries(WHO).map(([k, [, , usual]]) => [k, {
+    often: OFTEN.some(([v]) => v === o?.[k]?.often) ? o[k].often : usual,
+    times: Array.isArray(o?.[k]?.times) ? TIMES.map(([v]) => v).filter((v) => o[k].times.includes(v)) : TIMES.map(([v]) => v),
+  }]));
+  let opts = clean(null);
+  try {
+    opts = clean(JSON.parse(localStorage.getItem(KEY) || 'null'));
+  } catch {
+    // As they usually are, this visit.
+  }
+  const keep = () => {
+    try {
+      localStorage.setItem(KEY, JSON.stringify(opts));
+    } catch {
+      // This visit only.
+    }
+    window.dispatchEvent(new Event('rabbidlab:monsters'));
+  };
+  const between = ([a, b]) => a + Math.random() * (b - a);
+  // The rule a monster comes by, or null when it never does.
+  const rule = (k) => {
+    const o = opts[k];
+    return o.often === 'never' || !o.times.length ? null : o.often === 'often' ? RULES.often[k === 'nessie' ? k : 'runner'] : RULES[o.often];
+  };
+  // How long into a visit it first comes: within the first seconds when the visit is one it comes on, or after its wait.
+  const first = (r) => (Math.random() < r.odds ? between(r.first) : between(r.open));
+  // Whether it comes at the time of day the banner shows now (scene.js keeps that on the page).
+  const allowed = (k) => opts[k].times.includes(document.documentElement.dataset.sky || 'night');
+
+  // The options as Settings, Banner shows them: a row a monster, with how often, the times of day, and what that means.
+  const words = (xs) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
+  const says = (k) => {
+    const o = opts[k];
+    const runner = k !== 'nessie';
+    if (!o.times.length) return `No time of day is selected, so ${runner ? 'he never bolts from the pines' : 'she never comes up'}.`;
+    const how = {
+      never: runner ? 'He never bolts from the pines.' : 'She never comes up.',
+      rarely: `On one visit to Overview in ten, within the first fifteen seconds. Left open, ${runner ? 'he bolts' : 'she comes up'} every 20 to 40 minutes.`,
+      sometimes: `${runner ? 'He first bolts' : 'She first comes up'} one to three minutes after Overview opens, then every three to eight minutes.`,
+      often: runner ? 'He is always behind the pines, which rustle, and bolts to another clump every 4 to 11 seconds.' : 'She comes up within nine seconds of every visit, and again 6 to 20 seconds after each dive.',
+    }[o.often];
+    return o.often === 'never' || o.times.length === TIMES.length ? how : `${how} Only ${words(o.times.map((t) => (t === 'day' ? 'by day' : `at ${t}`)))}.`;
+  };
+  const form = () => Object.entries(WHO).map(([k, [name, where]]) => `<div class="sky-row mon-row"><span>${name}<small>${where}</small></span><div>`
+    + `<div class="mon-opt"><small>How often</small><div class="seg" data-mon-often="${k}" role="group" aria-label="How often ${name} comes">${OFTEN.map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${opts[k].often === v}">${l}</button>`).join('')}</div></div>`
+    + `<div class="mon-opt"><small>Times of day</small><div class="seg" data-mon-times="${k}" role="group" aria-label="Times of day ${name} comes at">${TIMES.map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${opts[k].times.includes(v)}"${opts[k].often === 'never' ? ' disabled' : ''}>${l}</button>`).join('')}</div></div>`
+    + `<p class="sky-note">${says(k)}</p></div></div>`).join('');
+  // Drawn into Settings, Banner; a change is kept at once and the banner goes by it from then. reset: its Reset button.
+  const mount = (el, reset) => {
+    const draw = () => {
+      // The button that was clicked keeps the keyboard's place when the rows are drawn again.
+      const at = el.contains(document.activeElement) ? document.activeElement : null;
+      const [group, v] = [at?.parentElement.dataset, at?.dataset.v];
+      el.innerHTML = form();
+      if (at) el.querySelector(`[data-mon-${group.monOften ? `often="${group.monOften}"` : `times="${group.monTimes}"`}] > [data-v="${v}"]`)?.focus();
+    };
+    el.addEventListener('click', (e) => {
+      const b = e.target.closest('.seg > button[data-v]');
+      if (!b) return;
+      const { monOften, monTimes } = b.parentElement.dataset;
+      if (monOften) opts[monOften].often = b.dataset.v;
+      else { const had = opts[monTimes].times; opts[monTimes].times = TIMES.map(([v]) => v).filter((v) => (v === b.dataset.v) !== had.includes(v)); }
+      keep();
+      draw();
+    });
+    reset?.addEventListener('click', () => { opts = clean(null); keep(); draw(); });
+    draw();
+  };
+  const page = document.getElementById('set-monsters');
+  if (page) mount(page, document.getElementById('mon-reset'));
+
   // Nessie: a plesiosaur low in the water, a sliver of her back above the water line (y 0), her body and flippers faint
   // through the water under it.
   const BODY = '<path d="M6 0C6 -2.2 3 -3.4 -2 -3.6C-10 -4 -18 -3.2 -23 -1C-30 1.5 -38 3.5 -46 5.5C-38 6.2 -30 6.4 -23 6C-18 9 -8 10.5 0 9.2C4.5 8.2 6.5 4 6 0Z"/>'
@@ -315,18 +409,29 @@
         bob.style.transform = `rotate(${gait.lean}deg)`;
         later(() => shake(to, true), ms - 700); // and into the next one
         dash = { from: CLUMPS[spot], to: CLUMPS[to], far: (-dist * q('.ovm-stage').getBoundingClientRect().width) / 3200, at: performance.now(), ms };
-        later(() => { spot = to; stand(); wait(); }, ms);
+        later(() => { spot = to; stand(); wait(false); }, ms);
       }, 520);
     };
-    // Waiting behind the pines, the pines rustling once or twice while he's there. With nobody to see him he stays put,
-    // and waits again when the banner is back.
-    const wait = () => {
-      const long = 4000 + Math.random() * 7000;
-      later(() => { if (showing()) shake(spot, false); }, long * (0.25 + Math.random() * 0.2));
-      if (Math.random() < 0.5) later(() => { if (showing()) shake(spot, false); }, long * 0.7);
-      later(() => (showing() ? run() : rest(wait)), long);
+    // One wait at a time for each thing waited for: a new visit, or a change of the options, starts it over.
+    const waits = {};
+    const hold = (k, fn, ms) => { clearTimeout(waits[k]); waits[k] = fn && later(fn, ms); };
+    // Waiting behind the pines until he next bolts, by his options (monsters' options, above); opening: Overview has just
+    // opened. Often, the pines rustle once or twice while he waits; otherwise they hold still until just before he goes.
+    // With nobody to see him he stays put, and the banner coming back is a new visit.
+    const who = outfit();
+    const wait = (opening) => {
+      const r = rule(who);
+      ['runner', 'rustle', 'rustle2'].forEach((k) => hold(k));
+      if (!r) return;
+      const long = opening ? first(r) : between(r.gap);
+      const rustle = () => { if (showing() && allowed(who)) shake(spot, false); };
+      if (r.idle) {
+        hold('rustle', rustle, long * (0.25 + Math.random() * 0.2));
+        if (Math.random() < 0.5) hold('rustle2', rustle, long * 0.7);
+      } else hold('rustle', rustle, Math.max(0, long - 1800));
+      hold('runner', () => (!showing() ? rest(() => wait(true)) : allowed(who) ? run() : wait(false)), long);
     };
-    wait();
+    wait(true);
 
     // Nessie, now and then: somewhere new on the lake in the moon's part of it each time, going one way or the other. She
     // glides ("She also just needs to glide, not row"), and on the way looks at us and back over her shoulder, and dips her
@@ -348,7 +453,8 @@
     // slower ("floating around is a little too fast when stopped"). seen eases her in and out of watching.
     // at: how far into her round she is, in ms; out: whether she is up at all.
     let [nessAt, nessDir, seen, aim, stopped, swayT, paddleT, last, faced, at, out] = [2480, 1, 0, 0, false, 0, 0, null, 1, 0, false];
-    const soon = () => later(swim, 3000 + Math.random() * 6000);
+    // When she next comes up, by her options; opening: Overview has just opened.
+    const due = (opening) => { const r = rule('nessie'); hold('nessie', r && swim, r ? (opening ? first(r) : between(r.gap)) : 0); };
     const frame = (now, box, n) => {
       if (!out) return;
       const p = at / LEN;
@@ -370,7 +476,7 @@
       swayT += dt * lerp(1, 0.35, seen);
       if (!stopped) { paddleT += dt; at += dt; }
       // Down again: nothing of hers shows or is drawn until she next comes up.
-      if (at >= LEN) { out = false; ness.style.opacity = '0'; later(swim, 6000 + Math.random() * 14000); return; }
+      if (at >= LEN) { out = false; ness.style.opacity = '0'; due(false); return; }
       // Her drawing fades in over the first 6% of her round and out over the last, and glides 88 units the way she faces.
       ness.style.opacity = Math.min(1, p / 0.06, (1 - p) / 0.06).toFixed(3);
       ness.style.transform = `translateX(${(nessDir * 88 * p * Math.max(box.width / 3200, box.height / 600)).toFixed(2)}px)`;
@@ -389,16 +495,23 @@
       });
     };
     // A round, and the next some time after it ends (a stop to watch makes it longer). None begins while the banner can't
-    // be seen, and one under way waits where it is until the banner is back.
+    // be seen (its coming back is a new visit) or at a time of day she doesn't come at, and one under way waits where it
+    // is until the banner is back.
     const swim = () => {
-      if (!showing()) { rest(soon); return; }
+      if (!showing()) { rest(() => due(true)); return; }
+      if (!allowed('nessie')) { due(false); return; }
       const left = Math.random() < 0.5;
       [nessAt, nessDir, seen, stopped, last, at, out] = [2300 + Math.random() * 600, left ? -1 : 1, 0, false, null, 0, true];
       ness.style.setProperty('--x', nessAt.toFixed(0)); // where she comes up across the drawing
       face.setAttribute('transform', left ? 'scale(-1 1)' : '');
     };
     S.beat(layer, (now, box, n) => { stride(now); frame(now, box, n); }, 1);
-    soon();
+    due(true);
+    // Overview opened again, or the options changed: a new visit for whoever isn't out.
+    const visit = () => { if (!dash) wait(true); if (!out) due(true); };
+    let was = showing();
+    on(document, 'rabbidlab:show', () => { const now = showing(); if (now && !was) visit(); was = now; });
+    on(window, 'rabbidlab:monsters', visit);
   };
   // None under a solid colour: nothing moves there (scene.js takes them away).
   const fill = () => { if (!S.solid) document.querySelectorAll('[data-scene][data-fit]:not([data-monsters])').forEach(lay); };

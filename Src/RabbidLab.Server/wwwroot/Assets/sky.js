@@ -4,8 +4,8 @@
 // animations."); whether the holidays show on their dates; and whether the weather where the lab is shows. A colour shows
 // neither. Kept in this browser, as the theme is. The lab's place,
 // a US ZIP code, is the lab's own (Weather.cs), set here by whoever may change the lab's look. scene.js paints and draws
-// what this says, weather.js the weather. The window opens from the chip at the top right of Overview's banner, and from
-// Settings, Appearance; the banner changes behind it as you pick.
+// what this says, weather.js the weather. The options are on a page, Settings, Banner (with the monsters', monsters.js),
+// and in a window that opens from the time and the weather on Overview's banner; the banner changes behind it as you pick.
 (() => {
   const KEY = 'rabbidlab.sky';
   const TIMES = [['clock', 'Follow the clock'], ['dawn', 'Dawn'], ['day', 'Day'], ['dusk', 'Dusk'], ['night', 'Night'], ['colour', 'Colour'], ['solid', 'Solid']];
@@ -77,7 +77,7 @@
       if (r.ok) {
         wx = await r.json();
         changed();
-        if (dialog?.open) draw();
+        draw();
       }
     } catch {
       // No weather until the server answers.
@@ -133,7 +133,8 @@
           : wx.problem || 'Waiting for the first reading.';
     return `${box}<p class="sky-note${zipProblem ? ' problem' : ''}">${esc(line)}</p><p class="sky-note">Weather from the US National Weather Service.</p>`;
   };
-  const form = () => `<div class="sky-row"><span>Showing</span>${seg('showing', [['dark', 'Dark mode'], ['light', 'Light mode']], mode())}</div>`
+  // inPage: in Settings, Banner, which has no Showing row (the window's look at the other mode ends when it closes).
+  const form = (inPage) => (inPage ? '' : `<div class="sky-row"><span>Showing</span>${seg('showing', [['dark', 'Dark mode'], ['light', 'Light mode']], mode())}</div>`)
     + `<div class="sky-row"><span>Dark mode</span><div>${seg('dark', TIMES, st.dark)}${swatches('dark')}</div></div>`
     + `<div class="sky-row"><span>Light mode</span><div>${seg('light', TIMES, st.light)}${swatches('light')}</div></div>`
     + `<div class="sky-row"><span>Holidays</span><div><label class="sky-switch"><input type="checkbox" class="switch" data-sky-holidays ${st.holidays ? 'checked' : ''}><span>On their dates</span></label>`
@@ -141,14 +142,16 @@
     + `<div class="sky-row"><span>Weather</span><div>${seg('weather', [['off', 'Off'], ['on', 'Current weather']], st.weather ? 'on' : 'off')}${place()}</div></div>`;
 
   let dialog = null;
-  const draw = () => {
-    // The ZIP box keeps its place in the typing when the window is drawn again.
-    const typing = dialog.contains(document.activeElement) && document.activeElement.matches('[data-sky-zip]') ? document.activeElement.selectionStart : null;
-    dialog.querySelector('.sky-form').innerHTML = form();
+  // Where the options are drawn: Settings, Banner (inPage), and the window once it has been opened.
+  const places = [];
+  const draw = () => places.forEach(({ el, inPage }) => {
+    // The ZIP box keeps its place in the typing when the options are drawn again.
+    const typing = el.contains(document.activeElement) && document.activeElement.matches('[data-sky-zip]') ? document.activeElement.selectionStart : null;
+    el.innerHTML = form(inPage);
     // The page allows no style attributes, so each swatch's colour is set here.
-    dialog.querySelectorAll('[data-c]').forEach((b) => b.style.setProperty('--c', b.dataset.c));
-    if (typing !== null) { const z = dialog.querySelector('[data-sky-zip]'); z?.focus(); z?.setSelectionRange(typing, typing); }
-  };
+    el.querySelectorAll('[data-c]').forEach((b) => b.style.setProperty('--c', b.dataset.c));
+    if (typing !== null) { const z = el.querySelector('[data-sky-zip]'); z?.focus(); z?.setSelectionRange(typing, typing); }
+  });
   // Showing looks at the other mode while the window is open; closing it puts the person's own theme back.
   const show = (m) => {
     const T = window.RabbidLabTheme;
@@ -175,39 +178,42 @@
     changed();
     draw();
   };
+  // The options' own controls, wherever they are drawn. A pick is kept at once and every banner changes.
+  const wire = (root) => {
+    root.addEventListener('click', (e) => {
+      const pick = e.target.closest('[data-sky-pick] > button');
+      const colour = e.target.closest('[data-sky-colour]');
+      if (pick) {
+        const k = pick.parentElement.dataset.skyPick;
+        if (k === 'showing') show(pick.dataset.v);
+        else { st[k] = k === 'weather' ? pick.dataset.v === 'on' : pick.dataset.v; keep(); due(); }
+      } else if (colour) {
+        st[`${colour.dataset.skyColour}Colour`] = colour.dataset.c;
+        keep();
+      } else if (e.target.closest('[data-sky-zip-save]')) {
+        saveZip();
+        return;
+      } else return;
+      draw();
+    });
+    root.addEventListener('change', (e) => {
+      if (!e.target.matches('[data-sky-holidays]')) return;
+      st.holidays = e.target.checked;
+      keep();
+      draw();
+    });
+    root.addEventListener('input', (e) => { if (e.target.matches('[data-sky-zip]')) [zipDraft, zipProblem] = [e.target.value, '']; });
+    root.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.matches('[data-sky-zip]')) { e.preventDefault(); saveZip(); } });
+  };
   const open = () => {
     if (!dialog) {
       document.body.insertAdjacentHTML('beforeend', '<dialog class="dialog sky-dialog" id="sky-dialog" aria-labelledby="sky-title"><h2 id="sky-title">The banner\'s sky</h2>'
-        + '<p class="dialog-lead">For every page\'s banner, in this browser. It changes behind this window as you pick.</p><div class="sky-form"></div>'
+        + '<p class="dialog-lead">For every page\'s banner, in this browser. It changes behind this window as you pick. These options and the monsters are also in Settings, Banner.</p><div class="sky-form"></div>'
         + '<div class="dialog-foot"><button type="button" class="primary" data-sky-done>Done</button></div></dialog>');
       dialog = document.getElementById('sky-dialog');
-      dialog.addEventListener('click', (e) => {
-        const pick = e.target.closest('[data-sky-pick] > button');
-        const colour = e.target.closest('[data-sky-colour]');
-        if (pick) {
-          const k = pick.parentElement.dataset.skyPick;
-          if (k === 'showing') show(pick.dataset.v);
-          else { st[k] = k === 'weather' ? pick.dataset.v === 'on' : pick.dataset.v; keep(); }
-        } else if (colour) {
-          st[`${colour.dataset.skyColour}Colour`] = colour.dataset.c;
-          keep();
-        } else if (e.target.closest('[data-sky-zip-save]')) {
-          saveZip();
-          return;
-        } else if (e.target.closest('[data-sky-done]')) {
-          dialog.close();
-          return;
-        } else return;
-        draw();
-      });
-      dialog.addEventListener('change', (e) => {
-        if (!e.target.matches('[data-sky-holidays]')) return;
-        st.holidays = e.target.checked;
-        keep();
-        draw();
-      });
-      dialog.addEventListener('input', (e) => { if (e.target.matches('[data-sky-zip]')) [zipDraft, zipProblem] = [e.target.value, '']; });
-      dialog.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.matches('[data-sky-zip]')) { e.preventDefault(); saveZip(); } });
+      places.push({ el: dialog.querySelector('.sky-form'), inPage: false });
+      wire(dialog);
+      dialog.addEventListener('click', (e) => { if (e.target.closest('[data-sky-done]')) dialog.close(); });
       dialog.addEventListener('close', restore);
     }
     [zipDraft, zipProblem] = [null, ''];
@@ -216,6 +222,13 @@
     ask();
   };
   document.addEventListener('click', (e) => { if (e.target.closest('[data-sky-open]')) open(); });
+  // Settings, Banner: the same options on a page.
+  const inSettings = document.getElementById('set-sky');
+  if (inSettings) {
+    places.push({ el: inSettings, inPage: true });
+    wire(inSettings);
+    draw();
+  }
 
   window.RabbidLabSky = {
     open,

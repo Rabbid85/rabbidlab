@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.438', [
+    'Settings has a Banner page: the sky for dark mode and light mode, holidays and the weather, which were only in the window that opens from the banner.',
+    'The monsters have options there: how often Nessie, Sasquatch, the yeti and Santa each come (Never, Rarely, Sometimes or Often) and at which times of day. Nessie now comes rarely unless you change it.']],
   ['1.1.437', [
     'The Windows client now connects only over https. A computer set to an http address stops talking to it and says so, Connect refuses http addresses, and Deploy the client needs the https address of the server.',
     'A Connect this computer link now only connects a computer that has no server yet. A link can no longer move a connected computer to another server or give it another fingerprint.',
@@ -1403,6 +1406,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.438': ['2026-11-27', 'feature', 'A Banner page in Settings'],
   '1.1.437': ['2026-11-27', 'fix', 'The client connects only over https'],
   '1.1.436': ['2026-11-27', 'fix', 'A quiet hang-up in the client'],
   '1.1.435': ['2026-11-27', 'fix', 'A safer Windows client'],
@@ -2006,7 +2010,7 @@ const RELEASE_INFO = {
     org: 'ad.view', attrs: 'ad.view', sync: 'ad.view', report: 'activity.view', alerts: 'sensors.alerts', network: 'network.view', workflows: 'ad.view', lifecycle: 'ad.view', apps: 'apps.view',
     entra: 'cloud.view cloud.connect', exchange: 'cloud.view cloud.connect', m365: 'cloud.view cloud.connect', azure: 'cloud.view cloud.connect' };
   // Settings' pages and what each needs; About is for everyone, Developer for Rabbid Lab Dev only.
-  const SUBS = { account: '', appearance: '', keys: '', viewas: 'access.view', address: '', updates: 'updates.view', people: 'access.view', signin: 'access.roles access.unlock', activity: 'activity.view', reports: 'activity.view', alerts: 'sensors.alerts', notifications: 'sensors.alerts', history: 'sensors.alerts',
+  const SUBS = { account: '', appearance: '', banner: '', keys: '', viewas: 'access.view', address: '', updates: 'updates.view', people: 'access.view', signin: 'access.roles access.unlock', activity: 'activity.view', reports: 'activity.view', alerts: 'sensors.alerts', notifications: 'sensors.alerts', history: 'sensors.alerts',
     links: 'links.edit', sensors: 'sensors.edit', seats: 'seats.settings seats.add', help: 'seats.settings', network: 'network.settings', ad: 'ad.connect', developer: 'updates.auto', support: '', about: '' };
   const subOk = (s) => s in SUBS && (!SUBS[s] || !shown || allows(SUBS[s])) && (s !== 'developer' || document.body.classList.contains('is-dev'));
   const pageOk = (key) => !shown || !PAGES[key] || allows(PAGES[key]);

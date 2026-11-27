@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.438 (2026-11-27)
+
+- Settings has a Banner page: the sky for dark mode and light mode, holidays and the weather, which were only in the window that opens from the banner.
+- The monsters have options there: how often Nessie, Sasquatch, the yeti and Santa each come (Never, Rarely, Sometimes or Often) and at which times of day. Nessie now comes rarely unless you change it.
+
 ## 1.1.437 (2026-11-27)
 
 - The Windows client now connects only over https. A computer set to an http address stops talking to it and says so, Connect refuses http addresses, and Deploy the client needs the https address of the server.

@@ -297,7 +297,18 @@
 .sky-sw button[aria-pressed="true"] { border-color: #fff; }
 .sky-switch { display: inline-flex; align-items: center; gap: 12px; padding-top: 8px; color: var(--text); font-size: 14.5px; cursor: pointer; }
 .sky-note { margin: 12px 0 0; color: var(--muted); font-size: 13.5px; }
-@media (max-width: 700px) { .sky-row { grid-template-columns: 1fr; gap: 6px; } .sky-row > span { padding-top: 0; } }/* The weather on the banners (weather.js): boxes of layers over the scene, each layer a drawing of its own that the
+/* Settings, Banner: the same rows on a page, a line between them as between the page's other rows; and a monster's row
+   (monsters.js): where it is under its name, how often over its times of day. */
+.set-area .sky-form { gap: 0; margin: 4px 0 10px; }
+.set-area .sky-row { grid-template-columns: 190px minmax(0, 1fr); padding: 18px 0; }
+.set-area .sky-row + .sky-row { border-top: 1px solid var(--line); }
+.set-area .sky-row > span { color: #fff; font-size: 15px; }
+.mon-row > span > small { display: block; margin-top: 3px; color: var(--muted); font-size: 13px; font-weight: 400; }
+.mon-opt { display: flex; align-items: center; gap: 12px; }
+.mon-opt + .mon-opt { margin-top: 10px; }
+.mon-opt > small { flex: none; width: 92px; color: var(--muted); font-size: 13px; }
+.mon-row .seg button:disabled { opacity: .4; cursor: default; }
+@media (max-width: 700px) { .sky-row, .set-area .sky-row { grid-template-columns: 1fr; gap: 6px; } .sky-row > span { padding-top: 0; } }/* The weather on the banners (weather.js): boxes of layers over the scene, each layer a drawing of its own that the
    graphics card moves whole. The fog's box lies over the monsters too, and under the shade behind the words and the strip. */
 .wx-overs { position: absolute; inset: 0; pointer-events: none; }
 .wx-front { z-index: 1; }
