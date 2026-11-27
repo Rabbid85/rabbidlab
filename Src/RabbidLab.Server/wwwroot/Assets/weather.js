@@ -13,10 +13,9 @@
 
   // How much cloud: how many clouds on the drawing's right (the left gets three fifths as many), and how dim the overcast.
   const COVER = { none: [0, 0], few: [3, 0], half: [5, 0.25], most: [8, 0.5], over: [7, 0.85] };
-  const ORDER = ['none', 'few', 'half', 'most', 'over'];
-  // Rain, a storm and snow come from cloud: at least this much shows with them, whatever the station's cloud reading said.
-  const LEAST = { rain: 'half', snow: 'half', storm: 'most' };
-  const coverOf = (wx) => ORDER[Math.max(ORDER.indexOf(wx.cover), ORDER.indexOf(LEAST[wx.kind] || 'none'), 0)];
+  // Only as much cloud as the station read, whatever is falling ("Light rain doesn't mean overcast/cloudy."; rain, snow
+  // and storms used to bring at least half a sky of cloud with them).
+  const coverOf = (wx) => (COVER[wx.cover] ? wx.cover : 'none');
   // The clouds' and the overcast's colours at each time of day, and how faint the stars are under each kind of weather.
   const CLOUDY = { night: ['#3e3e66', '#10101f'], dawn: ['#c8a0b0', '#4a3a52'], day: ['#f2f5f9', '#8e9cb0'], dusk: ['#b07a80', '#3a2440'] };
   const STARS = { rain: '.2', storm: '0', snow: '.3', fog: '.15', ice: '.8' };

@@ -3,6 +3,11 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.428', [
+    'Sign-in alerts count real sign-ins only. A ticket Windows renews by itself for someone already signed in was shown as a sign-in, and set off alerts such as Sign-in outside usual hours.',
+    'One sign-in shows once, not once for each ticket it asked for.',
+    'The banner shows only as much cloud as the weather station reports. Rain, snow and storms no longer bring clouds of their own.',
+    'On Alerts and Connected apps the buttons no longer sit right against the tabs.']],
   ['1.1.427', [
     'The Christmas banner starts on December 1, not the day after Thanksgiving.']],
   ['1.1.426', [
@@ -1367,6 +1372,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.428': ['2026-11-27', 'fix', 'Real sign-ins only'],
   '1.1.427': ['2026-11-27', 'fix', 'Christmas waits for December'],
   '1.1.426': ['2026-11-26', 'fix', 'A lighter banner'],
   '1.1.425': ['2026-11-25', 'fix', 'The client window keeps its place'],

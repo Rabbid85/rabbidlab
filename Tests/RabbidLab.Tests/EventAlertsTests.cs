@@ -172,7 +172,8 @@ public sealed class EventAlertsTests : IDisposable
         var facts = EventAlerts.FromSignIns(
         [
             Ev(4771, "jsmith", "0x18", "10.0.0.5", now), Ev(4768, "jsmith", "0x12", "10.0.0.5", now), Ev(4768, "GS-LT$", "0x0", "10.0.0.8", now),
-            Ev(4768, "jsmith", "0x0", "10.0.0.5", now), new(4740, 2, now, "DC01", new Dictionary<string, string> { ["TargetUserName"] = "jsmith", ["CallerComputerName"] = "JS-LT" }),
+            Ev(4768, "jsmith", "0x0", "10.0.0.5", now), Ticket("jsmith", "JS-LT$", "10.0.0.5", now), Ticket("JS-LT$", "DC01$", "10.0.0.5", now),
+            new(4740, 2, now, "DC01", new Dictionary<string, string> { ["TargetUserName"] = "jsmith", ["CallerComputerName"] = "JS-LT" }),
         ], ip => ip == "10.0.0.5" ? "JS-LT" : null);
         Assert.Equal(["ad.signin.fail", "ad.signin.disabled", "ad.signin", "ad.lockout"], facts.Select(f => f.Event));
         Assert.Equal(("Wrong password", "JS-LT", "10.0.0.5"), (facts[0].Reason, facts[0].Computer, facts[0].Address));
@@ -187,6 +188,39 @@ public sealed class EventAlertsTests : IDisposable
         Assert.Equal("new", learning.See("jsmith", "FS01", now.Date.AddHours(14)));
         Assert.Contains("hours", learning.See("jsmith", "JS-LT", now.Date.AddHours(14).AddHours(12)) ?? "");
         Assert.Null(learning.See("newbie", "PC9", now)); // not learned yet: nothing is unusual
+    }
+
+    // A service ticket (4769) as a DC logs it: who it was given to, for which service, at which address.
+    private static SecurityEvent Ticket(string user, string service, string ip, DateTime at, string dc = "DC02") => new(4769, 2, at, dc,
+        new Dictionary<string, string> { ["TargetUserName"] = $"{user}@AMW.COM", ["ServiceName"] = service, ["Status"] = "0x0", ["IpAddress"] = $"::ffff:{ip}" });
+
+    [Fact]
+    public void A_ticket_Windows_asks_for_by_itself_is_not_a_sign_in()
+    {
+        SecurityEvent First(string user, string ip, DateTime at) => new(4768, 1, at, "DC02", new Dictionary<string, string> { ["TargetUserName"] = user, ["Status"] = "0x0", ["IpAddress"] = $"::ffff:{ip}" });
+        var at = new DateTime(2026, 11, 27, 14, 34, 45, DateTimeKind.Utc);
+        const string pc = "192.168.2.186";
+        // As DC02 logged it on 2026-11-27: a sign-in at 9:34 (three first tickets, and a ticket for the PC itself), and at
+        // 10:51 a first ticket Windows asked for by itself, with tickets only for the domain controllers.
+        var facts = EventAlerts.FromSignIns(
+        [
+            First("mwiles", pc, at), First("mwiles", pc, at), First("mwiles", pc, at.AddSeconds(1)),
+            Ticket("mwiles", "MEGAN-PC$", pc, at.AddSeconds(1)), Ticket("mwiles", "DC02$", pc, at.AddSeconds(2)), Ticket("MEGAN-PC$", "DC02$", pc, at.AddSeconds(3)),
+            First("mwiles", pc, at.AddMinutes(77)), Ticket("mwiles", "DC01$", pc, at.AddMinutes(77), "DC01"), Ticket("mwiles", "DC02$", pc, at.AddMinutes(77)), Ticket("mwiles", "krbtgt", pc, at.AddMinutes(77)),
+        ], _ => null);
+        var one = Assert.Single(facts);
+        Assert.Equal(("ad.signin", "mwiles signed in from MEGAN-PC", "MEGAN-PC", pc, (DateTime?) at), (one.Event, one.Title, one.Computer, one.Address, one.At));
+
+        // A ticket for a file server is not one for the computer signed in on, whether the address is known from the
+        // computer's own tickets or its name has to be looked up.
+        Assert.Empty(EventAlerts.FromSignIns([First("mwiles", pc, at), Ticket("mwiles", "FS01$", pc, at), Ticket("MEGAN-PC$", "DC02$", pc, at)], _ => null));
+        Assert.Empty(EventAlerts.FromSignIns([First("mwiles", pc, at), Ticket("mwiles", "FS01$", pc, at)], _ => null, (name, ip) => name == "MEGAN-PC" && ip == pc));
+        Assert.Single(EventAlerts.FromSignIns([First("mwiles", pc, at), Ticket("mwiles", "MEGAN-PC$", pc, at)], _ => null, (name, ip) => name == "MEGAN-PC" && ip == pc));
+        // With nothing to say which computer the address is, it is not told as a sign-in.
+        Assert.Empty(EventAlerts.FromSignIns([First("mwiles", pc, at), Ticket("mwiles", "MEGAN-PC$", pc, at)], _ => null));
+        // Another sign-in a while later is another.
+        Assert.Equal(2, EventAlerts.FromSignIns([First("mwiles", pc, at), Ticket("mwiles", "MEGAN-PC$", pc, at), First("mwiles", pc, at.AddMinutes(30)), Ticket("mwiles", "MEGAN-PC$", pc, at.AddMinutes(30)),
+            Ticket("MEGAN-PC$", "DC02$", pc, at)], _ => null).Count);
     }
 
     [Fact]

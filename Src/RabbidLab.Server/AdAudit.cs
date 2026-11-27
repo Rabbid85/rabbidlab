@@ -20,12 +20,15 @@ public sealed record SecurityEvent(int Id, long Record, DateTime At, string Dc, 
 }
 
 /// <summary>Which Security log events are read, how they're asked for, and reading one from its XML.</summary>
-public static class SecurityEvents
+public static partial class SecurityEvents
 {
     // Directory service changes.
     public static readonly IReadOnlyList<int> Watched = [5136, 5137, 5138, 5139, 5141];
 
-    /// <summary>Sign-ins, for alerts (EventAlerts.FromSignIns): lockouts, Kerberos tickets and pre-authentication failures; NTLM only when it failed.</summary>
+    /// <summary>
+    /// Sign-ins, for alerts (EventAlerts.FromSignIns): lockouts, Kerberos tickets and pre-authentication failures; NTLM only
+    /// when it failed. The service tickets round a first ticket are asked for apart (Tickets).
+    /// </summary>
     public static readonly IReadOnlyList<int> SignIns = [4740, 4768, 4771];
 
     /// <summary>Directory changes and sign-ins after the last one read; the first time (after is 0), the ones since then.</summary>
@@ -36,6 +39,19 @@ public static class SecurityEvents
     /// <summary>The events after the last one read; the first time (after is 0), the ones since then.</summary>
     public static string Query(IEnumerable<int> ids, long after, DateTime since) =>
         $"*[System[({string.Join(" or ", ids.Select(i => $"EventID={i}"))}) and {(after > 0 ? $"EventRecordID>{after}" : $"TimeCreated[@SystemTime>='{Iso(since)}']")}]]";
+
+    /// <summary>How close in time the tickets of one sign-in are: the first ticket, and the one for the computer signed in on.</summary>
+    public static readonly TimeSpan Near = TimeSpan.FromSeconds(60);
+
+    /// <summary>
+    /// The service tickets (4769) given to anything at one address between two times; null when the address, as the log
+    /// wrote it, is not one. For telling a sign-in from a ticket Windows asks for by itself (EventAlerts.FromSignIns).
+    /// </summary>
+    public static string? Tickets(string address, DateTime from, DateTime to) => !Address().IsMatch(address) ? null
+        : $"*[System[EventID=4769 and TimeCreated[@SystemTime>='{Iso(from)}' and @SystemTime<='{Iso(to)}']] and EventData[Data[@Name='IpAddress']='{address}' and Data[@Name='Status']='0x0']]";
+
+    [System.Text.RegularExpressions.GeneratedRegex("^[0-9A-Fa-f:.]{3,45}$")]
+    private static partial System.Text.RegularExpressions.Regex Address();
 
     /// <summary>Any event numbered up to the last one read but newer than it: the log was cleared and numbers started again.</summary>
     public static string Cleared(long after, DateTime lastAt) => $"*[System[EventRecordID<={after} and TimeCreated[@SystemTime>'{Iso(lastAt)}']]]";
@@ -797,7 +813,7 @@ public sealed class AuditCollector(IAuditDirectory ad, ISecurityLog logs, AuditS
                 }
                 try
                 {
-                    await ReadDc(dc, login, s, keep, stop);
+                    await ReadDc(dc, dcs, login, s, keep, stop);
                     s.State = AuditDcState.Read;
                     s.Problem = null;
                     s.Fails = 0;
@@ -838,7 +854,7 @@ public sealed class AuditCollector(IAuditDirectory ad, ISecurityLog logs, AuditS
         s.NextTry = Now + (state == "unsupported" ? TimeSpan.FromHours(1) : TimeSpan.FromMinutes(Math.Min(60, 3 * Math.Pow(2, Math.Min(s.Fails - 1, 5)))));
     }
 
-    private async Task ReadDc(SyncDc dc, AuditLogin login, AuditDcState s, int keep, CancellationToken stop)
+    private async Task ReadDc(SyncDc dc, IReadOnlyList<SyncDc> dcs, AuditLogin login, AuditDcState s, int keep, CancellationToken stop)
     {
         for (var i = 0; i < Batches; i++)
         {
@@ -860,7 +876,7 @@ public sealed class AuditCollector(IAuditDirectory ad, ISecurityLog logs, AuditS
                 return;
             }
             store.Add(await Named(AuditEntries.From(take), stop));
-            Tell(take);
+            Tell([.. take, .. await Tickets(take, dcs, login, stop)]);
             s.Last = take[^1].Record;
             s.LastAt = take.Max(e => e.At);
             if (xml.Count < Batch || take.Count < events.Count)
@@ -872,6 +888,52 @@ public sealed class AuditCollector(IAuditDirectory ad, ISecurityLog logs, AuditS
 
     private async Task<IReadOnlyList<string>> Ask(SyncDc dc, AuditLogin login, string query, int most, CancellationToken stop) =>
         await logs.Read(dc.Host, login, query, most, stop).WaitAsync(Longest, stop);
+
+    // For telling a sign-in from a ticket Windows asked for by itself (EventAlerts.FromSignIns): the service tickets
+    // given at the same address within a minute of each first ticket a person's account was given, from every DC (the
+    // one that gave the first ticket need not be the one asked for the next). One small question for each sign-in and
+    // DC, the tickets of one burst asked for together; reading every service ticket would be thousands a minute on a
+    // busy DC. A DC that can't answer is left out: its sign-ins are then not told, which is better than telling every
+    // ticket as one.
+    private const int MostAsked = 200;
+
+    private async Task<List<SecurityEvent>> Tickets(IReadOnlyList<SecurityEvent> take, IReadOnlyList<SyncDc> dcs, AuditLogin login, CancellationToken stop)
+    {
+        var found = new List<SecurityEvent>();
+        var spans = new List<(string Address, DateTime From, DateTime To)>();
+        foreach (var e in take.Where(e => e.Id == 4768 && (e.Get("Status") ?? "0x0") == "0x0" && e.Get("TargetUserName") is { } user && !user.EndsWith('$') && e.Get("IpAddress") is not null)
+            .OrderBy(e => e.Get("IpAddress"), StringComparer.Ordinal).ThenBy(e => e.At))
+        {
+            var address = e.Get("IpAddress")!;
+            if (spans.Count > 0 && spans[^1].Address == address && e.At - spans[^1].To <= SecurityEvents.Near)
+            {
+                spans[^1] = spans[^1] with { To = e.At };
+            }
+            else
+            {
+                spans.Add((address, e.At, e.At));
+            }
+        }
+        foreach (var (address, from, to) in spans.Take(MostAsked))
+        {
+            if (SecurityEvents.Tickets(address, from - SecurityEvents.Near, to + SecurityEvents.Near) is not { } query)
+            {
+                continue;
+            }
+            foreach (var d in dcs)
+            {
+                try
+                {
+                    found.AddRange((await Ask(d, login, query, MostAsked, stop)).Select(x => SecurityEvents.Parse(x, d.Name)).OfType<SecurityEvent>());
+                }
+                catch (Exception e) when (e is SecurityLogProblem or TimeoutException)
+                {
+                    // That DC's tickets are not known this time.
+                }
+            }
+        }
+        return found;
+    }
 
     // An operation's last events may still be being written, or cut off by the end of a full batch: the last operation
     // waits for the next read, unless it's the whole of a full batch.

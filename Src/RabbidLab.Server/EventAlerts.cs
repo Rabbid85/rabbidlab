@@ -837,14 +837,38 @@ public sealed class EventAlerts(DataFolder folder, Alerts alerts, TimeProvider c
     /// Sign-ins from the domain controllers' Security logs: lockouts (4740), Kerberos tickets that were or weren't given
     /// (4768), pre-authentication that failed (4771) and NTLM that failed (4776). Computer accounts are left out. A
     /// sign-in that worked is ad.signin, where name says which computer the address is.
+    /// A first ticket (4768) alone is not a sign-in: Windows asks for a new one by itself, for someone who has been
+    /// signed in all along ("my son is literally just playing his game on that computers... make sure it's actual sign
+    /// ins, not rechecks"). Someone signing in, at the keyboard, by Remote Desktop or unlocking, is also given a ticket
+    /// for the computer they are on (4769, which the collector asks for round each first ticket). Which computer an
+    /// address is, the tickets it asks for as itself say; failing that isAt does (the name looked up). A sign-in's several
+    /// first tickets are one sign-in.
     /// </summary>
-    public static List<AlertFact> FromSignIns(IReadOnlyList<SecurityEvent> events, Func<string, string?> name)
+    public static List<AlertFact> FromSignIns(IReadOnlyList<SecurityEvent> events, Func<string, string?> name, Func<string, string, bool>? isAt = null)
     {
         var list = new List<AlertFact>();
+        var tickets = new List<(string User, string Ip, string Computer, DateTime At)>();
+        var here = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var e in events.Where(e => e.Id == 4769 && (e.Get("Status") ?? "0x0") == "0x0"))
+        {
+            if (e.Get("TargetUserName")?.Split('@')[0] is not { Length: > 0 } who || Ip(e.Get("IpAddress")) is not { } at)
+            {
+                continue;
+            }
+            if (who.EndsWith('$'))
+            {
+                here[at] = who[..^1];
+            }
+            else if (e.Get("ServiceName") is { } service && service.EndsWith('$'))
+            {
+                tickets.Add((who, at, service[..^1], e.At));
+            }
+        }
+        var told = new List<(string User, string Ip, DateTime At)>();
         foreach (var e in events)
         {
             var user = e.Get("TargetUserName");
-            if (user is null || user.EndsWith('$'))
+            if (e.Id == 4769 || user is null || user.EndsWith('$'))
             {
                 continue;
             }
@@ -861,7 +885,20 @@ public sealed class EventAlerts(DataFolder folder, Alerts alerts, TimeProvider c
             var status = e.Get("Status") ?? "0x0";
             if (e.Id == 4768 && status == "0x0")
             {
-                list.Add(new("ad.signin", $"{user} signed in{where}", $"On {e.Dc}.", user, Computer: computer, Address: ip, At: e.At));
+                if (ip is not { } address)
+                {
+                    continue;
+                }
+                bool Close(string who, string at, DateTime when) => at == address && who.Equals(user, StringComparison.OrdinalIgnoreCase) && (when - e.At).Duration() <= SecurityEvents.Near;
+                var on = tickets.Where(t => Close(t.User, t.Ip, t.At)).Select(t => t.Computer)
+                    .FirstOrDefault(c => here.TryGetValue(address, out var pc) ? pc.Equals(c, StringComparison.OrdinalIgnoreCase) : isAt?.Invoke(c, address) == true);
+                if (on is null || told.Any(t => Close(t.User, t.Ip, t.At)))
+                {
+                    continue;
+                }
+                told.Add((user, address, e.At));
+                var pcName = computer is null || computer == address ? on : computer;
+                list.Add(new("ad.signin", $"{user} signed in from {pcName}", $"On {e.Dc}.", user, Computer: pcName, Address: address, At: e.At));
                 continue;
             }
             if (e.Id is 4768 or 4771 or 4776 && Failures.TryGetValue(status, out var f))
@@ -996,6 +1033,31 @@ public sealed class EventAlertWorker(EventAlerts alerts, SignInLearning learning
     // A computer's name for an address: the client there, else the address itself.
     private string? Place(string ip) => clients.All().FirstOrDefault(c => c.Address == ip)?.Computer;
 
+    // Whether a computer is the one at an address, by looking its name up; each name is looked up once in ten minutes.
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, (DateTime At, System.Net.IPAddress[] Ips)> looked = new(StringComparer.OrdinalIgnoreCase);
+
+    private bool IsAt(string computer, string ip)
+    {
+        if (!System.Net.IPAddress.TryParse(ip, out var address))
+        {
+            return false;
+        }
+        if (!looked.TryGetValue(computer, out var known) || DateTime.UtcNow - known.At > TimeSpan.FromMinutes(10))
+        {
+            System.Net.IPAddress[] ips = [];
+            try
+            {
+                ips = System.Net.Dns.GetHostAddresses(computer);
+            }
+            catch (Exception e) when (e is System.Net.Sockets.SocketException or ArgumentException)
+            {
+                // No such name: it is at no address.
+            }
+            looked[computer] = known = (DateTime.UtcNow, ips);
+        }
+        return known.Ips.Any(i => i.Equals(address) || (i.IsIPv4MappedToIPv6 && i.MapToIPv4().Equals(address)));
+    }
+
     protected override async Task ExecuteAsync(CancellationToken stop)
     {
         activity.Recorded += e =>
@@ -1012,7 +1074,7 @@ public sealed class EventAlertWorker(EventAlerts alerts, SignInLearning learning
                 queue.Writer.TryWrite(f);
             }
             // A sign-in that worked is learned first; what was unusual about it rides along as its flags.
-            foreach (var f in EventAlerts.FromSignIns(events, Place))
+            foreach (var f in EventAlerts.FromSignIns(events, Place, IsAt))
             {
                 queue.Writer.TryWrite(f.Event == "ad.signin" && f.Subject is { } who && f.At is { } at ? f with { Flags = learning.See(who, f.Computer ?? f.Address ?? "", at) } : f);
             }

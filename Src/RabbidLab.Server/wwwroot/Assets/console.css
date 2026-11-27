@@ -904,6 +904,8 @@ section.page.home.dir-top { max-width: none; padding: 0; gap: 0; }
 .dir-page .lib { grid-template-columns: minmax(0, 1fr); }
 /* Across the top of the list: tabs, then the sort, rows or tiles, Export and New. */
 .dbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; border-bottom: 1px solid var(--line); }
+/* A bar under another (the buttons under a page's tabs, on Alerts and Connected apps) keeps clear of the tabs' line. */
+.dbar + .dbar { margin-top: 14px; }
 .dbar .tabs2 { gap: 6px; margin: 0; border: 0; }
 .dbar .tabs2 a { display: flex; align-items: center; gap: 8px; padding: 9px 12px 10px; color: #9DA1B3; font-size: 14px; font-weight: 600; }
 .dbar .tabs2 a[aria-current] { color: #fff; }

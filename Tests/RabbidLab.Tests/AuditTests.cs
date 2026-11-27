@@ -397,6 +397,39 @@ public sealed class AuditTests : IDisposable
         Assert.Equal([1001L, 1002, 1010], heard.Select(e => e.Record)); // the hook hears every event read, a batch at a time
     }
 
+    // A Kerberos event as a DC's log gives it.
+    private static string Kerberos(int id, long record, DateTime at, params (string Name, string Value)[] data) =>
+        $"<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><EventID>{id}</EventID><EventRecordID>{record}</EventRecordID><TimeCreated SystemTime='{at:O}'/></System><EventData>"
+        + string.Concat(data.Select(d => $"<Data Name='{d.Name}'>{d.Value}</Data>")) + "</EventData></Event>";
+
+    [Fact]
+    public async Task Every_DC_is_asked_for_the_tickets_round_a_first_ticket()
+    {
+        var folder = Folder();
+        var clock = new FakeClock();
+        var at = clock.GetUtcNow().UtcDateTime.AddMinutes(-5);
+        var logs = new FakeSecurityLog();
+        // The first ticket was given by DC01; the ticket for the computer signed in on by DC02.
+        logs.Logs["dc01.amw.com"] = [Kerberos(4768, 1, at, ("TargetUserName", "mwiles"), ("Status", "0x0"), ("IpAddress", "::ffff:192.168.2.186")),
+            Kerberos(4768, 2, at, ("TargetUserName", "MEGAN-PC$"), ("Status", "0x0"), ("IpAddress", "::ffff:192.168.2.186"))];
+        logs.Logs["dc02.amw.com"] = [Kerberos(4769, 7, at.AddSeconds(1), ("TargetUserName", "mwiles@AMW.COM"), ("ServiceName", "MEGAN-PC$"), ("Status", "0x0"), ("IpAddress", "::ffff:192.168.2.186")),
+            Kerberos(4769, 8, at.AddSeconds(2), ("TargetUserName", "MEGAN-PC$@AMW.COM"), ("ServiceName", "DC02$"), ("Status", "0x0"), ("IpAddress", "::ffff:192.168.2.186"))];
+        var collector = new AuditCollector(new FakeAuditDirectory { Login = new AuditLogin("amw.com", "svc", "pass", [new SyncDc("DC01", "dc01.amw.com", null, false), new SyncDc("DC02", "dc02.amw.com", null, false)]) },
+            logs, new AuditStore(folder, clock, NullLogger<AuditStore>.Instance), new SettingsStore(folder, new EphemeralDataProtectionProvider()), folder, clock, NullLogger<AuditCollector>.Instance);
+        var batches = new List<IReadOnlyList<SecurityEvent>>();
+        collector.Seen += batches.Add;
+
+        await collector.Round(None);
+
+        // One question for the person's first ticket (none for the computer's own), to each DC, for that address and minute.
+        var asked = logs.Asked.Where(a => a.Query.Contains("EventID=4769", StringComparison.Ordinal)).ToList();
+        Assert.Equal(["dc01.amw.com", "dc02.amw.com"], asked.Select(a => a.Host));
+        Assert.All(asked, a => Assert.Contains("Data[@Name='IpAddress']='::ffff:192.168.2.186'", a.Query));
+        var fact = Assert.Single(batches.SelectMany(b => EventAlerts.FromSignIns(b, _ => null)));
+        Assert.Equal("mwiles signed in from MEGAN-PC", fact.Title);
+        Assert.Null(SecurityEvents.Tickets("' or '1'='1", at, at)); // only an address goes into the question
+    }
+
     [Fact]
     public async Task An_operation_still_being_written_waits_for_the_next_read()
     {

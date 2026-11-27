@@ -2,6 +2,13 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.428 (2026-11-27)
+
+- Sign-in alerts count real sign-ins only. A ticket Windows renews by itself for someone already signed in was shown as a sign-in, and set off alerts such as Sign-in outside usual hours.
+- One sign-in shows once, not once for each ticket it asked for.
+- The banner shows only as much cloud as the weather station reports. Rain, snow and storms no longer bring clouds of their own.
+- On Alerts and Connected apps the buttons no longer sit right against the tabs.
+
 ## 1.1.427 (2026-11-27)
 
 - The Christmas banner starts on December 1, not the day after Thanksgiving.
