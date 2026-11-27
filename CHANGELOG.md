@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.436 (2026-11-27)
+
+- After the Windows client hangs up on a program that said nothing, its service no longer leaves an error behind.
+
 ## 1.1.435 (2026-11-27)
 
 - The Windows client never follows a link, and never uses a folder, that another account put where its own data folder goes. It moves that aside and makes its own, and the installer no longer sets permissions there.

@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.436', [
+    'After the Windows client hangs up on a program that said nothing, its service no longer leaves an error behind.']],
   ['1.1.435', [
     'The Windows client never follows a link, and never uses a folder, that another account put where its own data folder goes. It moves that aside and makes its own, and the installer no longer sets permissions there.',
     'A program that connected to the client and then said nothing could block Check in now and Ask IT for help for everyone on that computer. The client now hangs up on it after 20 seconds, and its window sends requests only to the real service.',
@@ -1397,6 +1399,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.436': ['2026-11-27', 'fix', 'A quiet hang-up in the client'],
   '1.1.435': ['2026-11-27', 'fix', 'A safer Windows client'],
   '1.1.434': ['2026-11-27', 'feature', 'The time and the weather on the banner'],
   '1.1.433': ['2026-11-27', 'feature', 'A dashboard of your own on Overview'],

@@ -134,17 +134,18 @@ internal static class Pipe
                     _ => new PipeAnswer { Error = "Not understood." },
                 };
             }
-            catch (Exception e) when (e is IOException or SerializationException or InvalidDataException)
+            catch (Exception e) when (e is IOException or SerializationException or InvalidDataException or InvalidOperationException)
             {
+                // Not a message, or nothing came and it was hung up on (a pipe that was disconnected says so as an invalid operation).
                 answer = new PipeAnswer { Error = "The request didn't come through. Try again." };
             }
             try
             {
                 Write(pipe, answer);
             }
-            catch (IOException)
+            catch (Exception e) when (e is IOException or InvalidOperationException)
             {
-                // The window closed before the answer.
+                // The window closed before the answer, or it was hung up on.
             }
         }
     }
