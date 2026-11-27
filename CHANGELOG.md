@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.430 (2026-11-27)
+
+- The chip on the Overview banner shows the time without Night, Dawn, Day or Dusk before it.
+
 ## 1.1.429 (2026-11-27)
 
 - The banner uses about half as much of the processor on a clear night, and under a third as much by day, under cloud and in fog. Stars, the moonlight on the water, clouds, fog and the monsters are stepped on one slow timer. Each used to make the whole banner redraw for every frame of the screen.

@@ -331,11 +331,11 @@
       painted = key;
     }
     Scene.disc = DISC[time];
-    // The chip at the top right of Overview's banner: the time of day and the clock, the weather, then the holiday; or the
-    // colour's name. It opens the sky's window.
+    // The chip at the top right of Overview's banner: the clock (never Night or Day in words: the picture says it), the
+    // weather, then the holiday; or the colour's name. It opens the sky's window.
     const chip = document.getElementById('hero-sky');
     if (chip) {
-      const what = sky.solid ? `${sky.name}, solid` : sky.colour ? sky.name : `${NAMES[time]}, ${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+      const what = sky.solid ? `${sky.name}, solid` : sky.colour ? sky.name : new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
       chip.textContent = `${what}${wx ? ` · ${Sky.says(wx)}` : ''}${hol ? ` · ${hol.name}` : ''}`;
       chip.hidden = false;
     }
