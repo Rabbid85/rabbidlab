@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.427 (2026-11-27)
+
+- The Christmas banner starts on December 1, not the day after Thanksgiving.
+
 ## 1.1.426 (2026-11-26)
 
 - The banner uses less of the processor, about a third less in rain and thunderstorms. Rain and snow are drawn as a few shapes each, not one for every streak and flake.

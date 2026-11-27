@@ -40,11 +40,11 @@
   // A colour in place of the times of day, for the mode the console is in: the drawing in it, or a solid one.
   const plain = () => ['colour', 'solid'].includes(st[mode()]);
 
-  // The holidays and their dates, each year. Christmas starts the day after Thanksgiving, the fourth Thursday in November.
-  const thanksgiving = (y) => 1 + ((4 - new Date(y, 10, 1).getDay() + 7) % 7) + 21;
+  // The holidays and their dates, each year. Christmas is December 1 to 26 ("It's not even december1st, the fuck is this.",
+  // of one that began the day after Thanksgiving).
   const HOLIDAYS = [
     { key: 'halloween', name: 'Halloween', from: (y) => new Date(y, 9, 15), to: (y) => new Date(y, 9, 31) },
-    { key: 'christmas', name: 'Christmas', from: (y) => new Date(y, 10, thanksgiving(y) + 1), to: (y) => new Date(y, 11, 26) },
+    { key: 'christmas', name: 'Christmas', from: (y) => new Date(y, 11, 1), to: (y) => new Date(y, 11, 26) },
   ];
   const today = () => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), d.getDate()); };
   const onNow = () => { const d = today(); return HOLIDAYS.find((h) => d >= h.from(d.getFullYear()) && d <= h.to(d.getFullYear())) || null; };

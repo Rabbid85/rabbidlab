@@ -79,8 +79,8 @@
   const sweep = () => lives.forEach((l) => l.gone());
 
   // The holiday the banner wears (overview.css .ovs-halloween, .ovs-christmas). Halloween, October 15 to 31: a purple night
-  // with an orange moon and mist, and three tiny bats flitting past the moon ("Holloween is the bats."). Christmas, from the
-  // day after Thanksgiving (the fourth Thursday in November) to December 26: a cold blue night, snow on the shore and the
+  // with an orange moon and mist, and three tiny bats flitting past the moon ("Holloween is the bats."). Christmas, December 1
+  // to 26 (sky.js has the dates): a cold blue night, snow on the shore and the
   // ground and falling, the pines dark, coloured lights on the big pines in the corners ("Christmas is done"); the
   // monsters' pines are lit too, and Santa runs between them (monsters.js). Which one is on today, and whether this person
   // shows holidays at all, is the sky's to say (sky.js); when that changes, every banner is drawn again (again, below).

@@ -173,7 +173,7 @@
 @keyframes ovs-fly { 0% { transform: translate(0, 0); opacity: 0; } 1% { opacity: 1; } 4.5% { opacity: .9; }
   6%, 100% { transform: translate(calc(var(--fx, 407.5) * var(--u)), calc(var(--fy, 101.6) * var(--u))); opacity: 0; } }
 @keyframes ovs-shim { from { transform: scaleX(.7); } to { transform: scaleX(1.15); } }
-/* Halloween (October 15 to 31) and Christmas (the day after Thanksgiving to December 26) colour the scene through scene.js:
+/* Halloween (October 15 to 31) and Christmas (December 1 to 26) colour the scene through scene.js:
    at night their own, at other times leaning the time of day their way. */
 .ovs-twinkle { animation: ovs-twinkle 1.8s ease-in-out infinite alternate; }
 @keyframes ovs-twinkle { 0%, 40% { opacity: 1; } 100% { opacity: .35; } }
