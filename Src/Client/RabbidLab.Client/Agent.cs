@@ -20,8 +20,13 @@ internal sealed class Agent
     private async Task<Status> Round(CancellationToken stop, bool vouched)
     {
         var settings = Settings.Read();
-        var status = new Status { Server = settings.Server, ServerVersion = Status.Read()?.ServerVersion, User = Machine.Users() };
+        var status = new Status { Server = settings.Server ?? settings.Plain, ServerVersion = Status.Read()?.ServerVersion, User = Machine.Users() };
         var joined = false; // this computer has an identity on this server
+        if (settings.Plain is not null)
+        {
+            // An http:// address: nothing is sent to it, and a computer that was locked stays locked.
+            return Unreachable(status, Removal.Enrolled, Settings.PlainNote);
+        }
         if (settings.Server is null)
         {
             status.State = Status.NoServer;
@@ -118,7 +123,7 @@ internal sealed class Agent
             // It answered, but not with the certificate this computer accepts: said plainly, not as Windows words it.
             var why = !api.Untrusted ? (e.InnerException ?? e).Message
                 : settings.Fingerprint is null ? "Windows doesn't trust the server's certificate."
-                : "The server's certificate does not match the fingerprint stored on this computer. To reconnect, open Rabbid Lab in a browser on this computer and click Connect this computer.";
+                : "The server's certificate does not match the fingerprint stored on this computer. If the certificate was replaced on purpose, an administrator can connect this computer again: RabbidLab-Client.exe --join <address> <fingerprint>.";
             return Unreachable(status, held, why);
         }
         catch (TaskCanceledException) when (!stop.IsCancellationRequested)

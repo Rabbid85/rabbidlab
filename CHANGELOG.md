@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.437 (2026-11-27)
+
+- The Windows client now connects only over https. A computer set to an http address stops talking to it and says so, Connect refuses http addresses, and Deploy the client needs the https address of the server.
+- A Connect this computer link now only connects a computer that has no server yet. A link can no longer move a connected computer to another server or give it another fingerprint.
+- Scripts left in the client folder by a crash or a power cut are deleted when its service starts, and the client that ships no longer reads its server or its folder from environment variables.
+
 ## 1.1.436 (2026-11-27)
 
 - After the Windows client hangs up on a program that said nothing, its service no longer leaves an error behind.

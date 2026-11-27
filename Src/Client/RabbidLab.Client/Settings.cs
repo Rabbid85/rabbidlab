@@ -17,8 +17,16 @@ internal sealed class Settings
     public const string PolicyKey = @"SOFTWARE\Policies\Rabbid Lab\Client";
     public const string InstalledKey = @"SOFTWARE\Rabbid Lab\Client";
 
-    /// <summary>The server's address, such as https://rabbidlab.amw.com:8420, without a slash at the end.</summary>
+    /// <summary>The server's address, such as https://rabbidlab.amw.com:8420, without a slash at the end. Always https://.</summary>
     public string? Server { get; private set; }
+
+    /// <summary>The address this computer is set to when it isn't https://. Nothing is sent to it, and Server is null.</summary>
+    public string? Plain { get; private set; }
+
+    public const string PlainNote = "This computer is set to a server address that starts with http://. The client connects only over https://. Connect it again with the server's https:// address.";
+
+    /// <summary>https only: over http the server's scripts, the client's updates and its secret would cross the network in the clear.</summary>
+    public static bool Https(string server) => server.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>The SHA-256 fingerprint of the server's HTTPS certificate: when set, the only certificate the client accepts.</summary>
     public string? Fingerprint { get; private set; }
@@ -65,15 +73,21 @@ internal sealed class Settings
                 s.Quiet = policyQuiet is int q && q != 0;
             }
         }
-        // Trying it out without installing: the same from environment variables.
+#if DEBUG
+        // Trying it out without installing, in a debug build only: the same from environment variables.
         installedServer ??= Environment.GetEnvironmentVariable("RABBIDLAB_SERVER")?.TrimEnd('/');
         installedFingerprint ??= CleanFingerprint(Environment.GetEnvironmentVariable("RABBIDLAB_FINGERPRINT"));
+#endif
         s.Server = s.PolicyServer ?? installedServer;
         // The installer's fingerprint belongs to the installer's server, not to another one Group Policy picks.
         var sameServer = s.PolicyServer is null || string.Equals(s.PolicyServer, installedServer, StringComparison.OrdinalIgnoreCase);
         s.Fingerprint = policyFingerprint ?? (sameServer ? installedFingerprint : null);
         s.ours = policyFingerprint is null && s.Fingerprint is not null;
         s.policyPinned = policyFingerprint is not null;
+        if (s.Server is not null && !Https(s.Server))
+        {
+            (s.Plain, s.Server) = (s.Server, null);
+        }
         return s;
     }
 
@@ -156,14 +170,19 @@ internal sealed class NotOursException : IOException
 }
 
 /// <summary>
-/// Where the client keeps its files: %ProgramData%\Rabbid Lab Client, or RABBIDLAB_CLIENT_DATA when trying it out.
+/// Where the client keeps its files: %ProgramData%\Rabbid Lab Client, or RABBIDLAB_CLIENT_DATA in a debug build.
 /// Only SYSTEM and administrators can change it; everyone can read it (the tray icon reads status.json).
 /// </summary>
 internal static class Folder
 {
+#if DEBUG
     private static readonly string? Override = Environment.GetEnvironmentVariable("RABBIDLAB_CLIENT_DATA");
+#else
+    // The client that ships never takes its folder from the environment.
+    private static readonly string? Override = null;
+#endif
 
-    /// <summary>Run from a folder of your own, without installing: its permissions are left alone.</summary>
+    /// <summary>Run from a folder of your own, without installing (a debug build): its permissions are left alone.</summary>
     public static bool TryingOut => Override is not null;
 
     public static string Data { get; } = Override

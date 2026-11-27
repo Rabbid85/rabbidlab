@@ -83,6 +83,10 @@ public sealed partial class DirectoryTools
         {
             throw new ToolProblem("Select the address that computers use to connect to this server.");
         }
+        if (address.Scheme != "https")
+        {
+            throw new ToolProblem("The client connects only over https://. Select this server's https:// address.");
+        }
         var f = Ready();
         var (user, password) = SysvolLogin(f, login);
         var d = Deployed();

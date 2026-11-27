@@ -8,13 +8,15 @@ namespace RabbidLab.Tests;
 /// </summary>
 public sealed partial class ClientGuardsTests
 {
-    private static string Client(params string[] parts)
+    private static string ClientPath(params string[] parts)
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
         while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "RabbidLab.slnx"))) dir = dir.Parent;
         var root = dir?.FullName ?? throw new InvalidOperationException("Can't find the repository.");
-        return File.ReadAllText(Path.Combine(new[] { root, "Src", "Client" }.Concat(parts).ToArray()));
+        return Path.Combine(new[] { root, "Src", "Client" }.Concat(parts).ToArray());
     }
+
+    private static string Client(params string[] parts) => File.ReadAllText(ClientPath(parts));
 
     [Fact]
     public void The_installer_sets_no_permissions_on_the_data_folder()
@@ -52,6 +54,50 @@ public sealed partial class ClientGuardsTests
         var pipe = Client("RabbidLab.Client", "Pipe.cs");
         Assert.Contains("new Timer(_ => HangUp(pipe)", pipe); // four silent programs held every place on it
         Assert.Contains("if (!Services(pipe))", pipe);         // a pipe another program made first is told nothing
+    }
+
+    [Fact]
+    public void The_client_connects_only_over_https()
+    {
+        // Over http there is no certificate to tell the server by, and its scripts run here as SYSTEM.
+        var connect = Client("RabbidLab.Client", "Connect.cs");
+        Assert.DoesNotContain("u.Scheme != \"http\"", connect);
+        Assert.Contains("u.Scheme != \"https\"", connect);
+        Assert.Contains("if (s.Server is not null && !Https(s.Server))", Client("RabbidLab.Client", "Settings.cs"));
+        Assert.Contains("if (settings.Plain is not null)", Client("RabbidLab.Client", "Agent.cs"));
+    }
+
+    [Fact]
+    public void A_link_never_changes_a_connected_computer()
+    {
+        // A web page can't move a computer to another server, or hand it another fingerprint for the one it has.
+        var connect = Client("RabbidLab.Client", "Connect.cs");
+        Assert.Contains("var notUsed = link.Server.Length > 0 && (now.Server ?? now.Plain) is not null;", connect);
+        Assert.DoesNotContain("Connecting will move it", connect);
+        Assert.DoesNotContain("click Connect this computer", Client("RabbidLab.Client", "Agent.cs"));
+    }
+
+    [Fact]
+    public void The_client_that_ships_reads_nothing_from_the_environment()
+    {
+        // Its folder and its server come from the installer and Group Policy only: the try-out variables are for debug builds.
+        foreach (var file in Directory.GetFiles(Path.GetDirectoryName(ClientPath("RabbidLab.Client", "Settings.cs"))!, "*.cs"))
+        {
+            var debug = false;
+            foreach (var line in File.ReadLines(file))
+            {
+                var code = line.Trim();
+                if (code.StartsWith("#if DEBUG")) debug = true;
+                else if (code.StartsWith("#else") || code.StartsWith("#endif")) debug = false;
+                else if (code.Contains("GetEnvironmentVariable(")) Assert.True(debug, $"{Path.GetFileName(file)} reads the environment in a release build: {code}");
+            }
+        }
+    }
+
+    [Fact]
+    public void Scripts_left_behind_are_deleted_when_the_service_starts()
+    {
+        Assert.Contains("Jobs.Sweep();", Client("RabbidLab.Client", "ClientService.cs"));
     }
 
     [GeneratedRegex(@"\{(now|s|status)\.(Server|PolicyServer|Host|ServerVersion)\}|\{held\}|LockedNote\(")]

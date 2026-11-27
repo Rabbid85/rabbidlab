@@ -71,6 +71,7 @@ internal sealed class ClientService : ServiceBase
             }
             await Task.Delay(TimeSpan.FromMinutes(1), stop).ConfigureAwait(false);
         }
+        Jobs.Sweep();
         // A new version since it last ran: written in what it did (Updated the client, or Installed).
         Logbook.Started(Agent.Version);
         // The tray icon asks it things through a pipe: Check in now, Ask IT for help (Pipe.cs).

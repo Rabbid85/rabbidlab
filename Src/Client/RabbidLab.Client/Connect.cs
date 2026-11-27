@@ -59,9 +59,13 @@ internal sealed class JoinLink
         {
             return "The server address can't contain spaces, quotes or backslashes.";
         }
-        if (!Uri.TryCreate(Server, UriKind.Absolute, out var u) || (u.Scheme != "https" && u.Scheme != "http") || u.Host.Length == 0)
+        if (Server.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
         {
-            return "Enter the full server address, starting with https:// (or http://). Example: https://rabbidlab.example.com:8420";
+            return HttpsOnly;
+        }
+        if (!Uri.TryCreate(Server, UriKind.Absolute, out var u) || u.Scheme != "https" || u.Host.Length == 0)
+        {
+            return "Enter the full server address, starting with https://. Example: https://rabbidlab.example.com:8420";
         }
         if (Fingerprint.Length > 0 && !Regex.IsMatch(Fingerprint, "^[0-9A-F]{64}$"))
         {
@@ -77,11 +81,18 @@ internal sealed class JoinLink
     public static string? LockedTo(string server)
     {
         var now = Settings.Read();
-        return now.Server is not null && !string.Equals(now.Server, server, StringComparison.OrdinalIgnoreCase) && !Removal.Allowed ? now.Server : null;
+        var at = now.Server ?? now.Plain;
+        return at is not null && !string.Equals(at, server, StringComparison.OrdinalIgnoreCase) && !Removal.Allowed ? at : null;
     }
 
     /// <summary>What to say about it: never which server, to whoever sits at the computer.</summary>
     public const string LockedNote = "This computer is locked to its current server. To connect it to a different server, unlock it first: click Uninstall in the Rabbid Lab Client window and enter the uninstall code.";
+
+    /// <summary>No http://: there is no certificate to tell the server by, and everything would cross the network in the clear.</summary>
+    public const string HttpsOnly = "The client connects only over https://. Enter the server's https:// address.";
+
+    /// <summary>A link only connects a computer that has no server yet: a web page can't move one, or give it another fingerprint.</summary>
+    public const string LinkNotUsed = "This computer is already connected to a server, so the link was not used. A link can only connect a computer that has no server yet.";
 
     /// <summary>
     /// Saved where the installer keeps its settings, then the service restarted so it joins straight away. Run as an
@@ -139,6 +150,13 @@ internal sealed class ConnectWindow : Form
 
     public ConnectWindow(JoinLink link)
     {
+        var now = Settings.Read();
+        // Opened by a link on a computer that has a server: nothing of the link is used.
+        var notUsed = link.Server.Length > 0 && (now.Server ?? now.Plain) is not null;
+        if (notUsed)
+        {
+            link = new JoinLink();
+        }
         fingerprint = link.Fingerprint;
         Text = "Rabbid Lab";
         Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
@@ -182,7 +200,6 @@ internal sealed class ConnectWindow : Form
         ClientSize = new Size(ClientSize.Width, Padding.Vertical + Controls.Cast<Control>().Sum(c => c.Height));
         Look.Shield(go);
 
-        var now = Settings.Read();
         if (now.PolicyServer is not null)
         {
             Say(note, "The server is set by Group Policy and can't be changed here.", Look.Amber);
@@ -190,13 +207,9 @@ internal sealed class ConnectWindow : Form
             server.ForeColor = Look.Muted;
             go.Enabled = false;
         }
-        else if (link.Server.Length > 0 && JoinLink.LockedTo(link.Server) is not null)
+        else if (notUsed)
         {
-            Say(note, JoinLink.LockedNote, Look.Amber);
-        }
-        else if (now.Server is not null && !string.Equals(now.Server, link.Server, StringComparison.OrdinalIgnoreCase) && link.Server.Length > 0)
-        {
-            Say(note, $"This computer is already connected to another server. Connecting will move it to {link.Server}.", Look.Amber);
+            Say(note, JoinLink.LinkNotUsed, Look.Amber);
         }
         else if (link.Server.Length > 0)
         {
@@ -224,11 +237,11 @@ internal sealed class ConnectWindow : Form
         Look.DarkTitle(Handle);
     }
 
-    /// <summary>http:// works (Rabbid Lab in Docker serves it), but it isn't encrypted: said before connecting.</summary>
+    /// <summary>https only: said as soon as an http:// address is in the box.</summary>
     private void WarnPlain()
     {
         var plain = server.Text.TrimStart().StartsWith("http://", StringComparison.OrdinalIgnoreCase);
-        Say(said, plain ? "This address uses http://, so the connection won't be encrypted. Use https:// if the server supports it." : "", Look.Amber);
+        Say(said, plain ? JoinLink.HttpsOnly : "", Look.Red);
     }
 
     private static Label Caption(string text) => new() { Text = text, AutoSize = false, Height = 26, Dock = DockStyle.Top, ForeColor = Look.Muted, Padding = new Padding(0, 6, 0, 0) };

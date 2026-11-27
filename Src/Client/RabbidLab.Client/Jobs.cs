@@ -66,6 +66,29 @@ internal static class Jobs
     private static readonly Queue<TakenJob> queue = new();
     private static bool working;
 
+    /// <summary>Scripts left by a crash or a power cut, deleted when the service starts: no job is running then.</summary>
+    public static void Sweep()
+    {
+        try
+        {
+            foreach (var left in Directory.GetFiles(Folder.Jobs))
+            {
+                try
+                {
+                    File.Delete(left);
+                }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+                {
+                    // Still held: deleted at the next start.
+                }
+            }
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            // No folder to look in.
+        }
+    }
+
     /// <summary>A job is running or waiting its turn, so the client doesn't update itself underneath it.</summary>
     public static bool Busy
     {

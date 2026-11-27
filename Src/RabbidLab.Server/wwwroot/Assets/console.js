@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.437', [
+    'The Windows client now connects only over https. A computer set to an http address stops talking to it and says so, Connect refuses http addresses, and Deploy the client needs the https address of the server.',
+    'A Connect this computer link now only connects a computer that has no server yet. A link can no longer move a connected computer to another server or give it another fingerprint.',
+    'Scripts left in the client folder by a crash or a power cut are deleted when its service starts, and the client that ships no longer reads its server or its folder from environment variables.']],
   ['1.1.436', [
     'After the Windows client hangs up on a program that said nothing, its service no longer leaves an error behind.']],
   ['1.1.435', [
@@ -1399,6 +1403,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.437': ['2026-11-27', 'fix', 'The client connects only over https'],
   '1.1.436': ['2026-11-27', 'fix', 'A quiet hang-up in the client'],
   '1.1.435': ['2026-11-27', 'fix', 'A safer Windows client'],
   '1.1.434': ['2026-11-27', 'feature', 'The time and the weather on the banner'],
@@ -4314,7 +4319,8 @@ const RELEASE_INFO = {
       return;
     }
     // Listed in Devices but not checking in, such as after its client was uninstalled, isn't connected: the bar offers the client.
-    if (hereInfo.seat?.online || hereInfo.thisServer) return;
+    // Not over http either: the client connects only over https (1.1.437).
+    if (hereInfo.seat?.online || hereInfo.thisServer || !hereInfo.server.startsWith('https://')) return;
     $('here-connect').href = joinLink();
     if (!hereInfo.msi) {
       $('here-download').href = 'https://github.com/Rabbid85/rabbidlab/releases/latest';
