@@ -2,6 +2,13 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.433 (2026-11-27)
+
+- Overview has a dashboard under its banner: cards for the newest versions, this machine, sensors, links, devices, alerts, activity and the network. Each shows only what your roles show, and keeps up to date while the page is open.
+- Edit dashboard lets you arrange it. Drag a card and the others move out of its way, set its size with the four pictures in its head, give it a name of your own, or hide it. Add a card brings back the ones that are not showing.
+- Your arrangement is kept on the server, so it follows you to any browser.
+- News and Changelog and This machine are cards on the dashboard now.
+
 ## 1.1.432 (2026-11-27)
 
 - The banner had a gap one pixel wide down its left edge on a wide window, where the sky and the lake showed through. The hills and the trees reach the edge now.

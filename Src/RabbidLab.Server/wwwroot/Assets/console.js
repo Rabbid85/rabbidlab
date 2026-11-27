@@ -3,6 +3,11 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.433', [
+    'Overview has a dashboard under its banner: cards for the newest versions, this machine, sensors, links, devices, alerts, activity and the network. Each shows only what your roles show, and keeps up to date while the page is open.',
+    'Edit dashboard lets you arrange it. Drag a card and the others move out of its way, set its size with the four pictures in its head, give it a name of your own, or hide it. Add a card brings back the ones that are not showing.',
+    'Your arrangement is kept on the server, so it follows you to any browser.',
+    'News and Changelog and This machine are cards on the dashboard now.']],
   ['1.1.432', [
     'The banner had a gap one pixel wide down its left edge on a wide window, where the sky and the lake showed through. The hills and the trees reach the edge now.']],
   ['1.1.431', [
@@ -1384,6 +1389,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.433': ['2026-11-27', 'feature', 'A dashboard of your own on Overview'],
   '1.1.432': ['2026-11-27', 'fix', 'No gap at the banner edge'],
   '1.1.431': ['2026-11-27', 'fix', 'No jumping trees on resize'],
   '1.1.430': ['2026-11-27', 'fix', 'The banner chip is the time alone'],
@@ -4230,8 +4236,8 @@ const RELEASE_INFO = {
     $('gpo-fingerprint').hidden = !joining.fingerprint;
   };
 
-  // What's new as a timeline, a card per version, and Overview's news: the newest feature wide with a picture, then the
-  // three newest. Each version's date, kind, title and screenshot come from RELEASE_INFO; older ones have a date only.
+  // What's new as a timeline, a card per version; the dashboard's What's new card lists the newest (dashboard.js). Each
+  // version's date, kind, title and screenshot come from RELEASE_INFO; older ones have a date only.
   const KINDS = { feature: ['Feature', 'new'], fix: ['Fix', 'wrench'], update: ['Update', 'refresh'] };
   const release = ([v, items]) => {
     const [d, k, t, img] = RELEASE_INFO[v] || [];
@@ -4251,18 +4257,10 @@ const RELEASE_INFO = {
     const [newest, first] = RELEASE_NOTES[0];
     $('upd-new-title').textContent = `What's new in ${newest}`;
     $('upd-new-text').textContent = first[0];
-    const big = all.find((x) => x.k === 'feature') || all[0];
-    const post = (x, wide) => `<a class="nw-post${wide ? ' nw-wide' : ''}" href="#whats-new" data-wn="${esc(x.v)}">`
-      + (wide && x.img ? `<span class="nw-shot" aria-hidden="true"><img src="Assets/news/${esc(x.img)}" alt=""><span class="nw-label">${svg('new')}What's new</span></span>` : '')
-      + `<span class="nw-pbody"><span class="nw-meta"><span class="nw-date">${esc(relDate(x.d))}</span>${relTag(x.k)}</span>`
-      + `<b class="nw-ptitle">${esc(relTitle(x))}</b><span class="nw-sum">${esc(wide ? x.items.slice(0, 2).join(' ') : x.items[0])}</span><span class="nw-foot">${relBy()}</span></span></a>`;
-    // The row ends with a slim tile for every version.
-    $('news').innerHTML = post(big, true) + all.filter((x) => x !== big).slice(0, 3).map((x) => post(x, false)).join('')
-      + `<a class="nw-all" href="#whats-new"><b>${svg('arrow')}</b>All versions</a>`;
   };
-  // A news card opens What's new at its version, lit up for a moment.
+  // A version on the dashboard's What's new card opens What's new at it, lit up for a moment.
   let wnAt = '';
-  $('news').addEventListener('click', (e) => { wnAt = e.target.closest('[data-wn]')?.dataset.wn || ''; });
+  document.addEventListener('click', (e) => { const a = e.target.closest?.('[data-wn]'); if (a) wnAt = a.dataset.wn; });
   document.addEventListener('rabbidlab:show', (e) => {
     const card = e.detail[0] === 'whats-new' && wnAt ? document.getElementById(`wn-${wnAt}`) : null;
     wnAt = '';
@@ -4454,7 +4452,6 @@ const RELEASE_INFO = {
       location.replace('/signin.html');
     });
     status().catch(() => {
-      $('st-facts').textContent = 'Could not load server information.';
       for (const id of ['hero-version', 'hero-uptime']) if ($(id).querySelector('.sk')) $(id).textContent = '—';
     });
     $('viewas-stop').addEventListener('click', () => viewAs(null));
@@ -5058,15 +5055,17 @@ const RELEASE_INFO = {
     const list = [...await facts(), ['Page', location.origin], ['Browser', navigator.userAgent.replace(/^Mozilla\/5\.0 /, '')], ['Copied', new Date().toString().replace(/ \(.*\)$/, '')]];
     return `\`\`\`\n${list.map(([label, value]) => `${`${label}:`.padEnd(17)}${value}`).join('\n')}\n\`\`\``;
   };
-  // This machine, on the Overview: in two columns, filled each time the page is shown and kept up to date while it is.
+  // This machine, a card on Overview's dashboard (dashboard.js, which makes its box, st-facts, when the card shows): in two
+  // columns, filled each time the page is shown and kept up to date while it is.
   let machineNow = null;
   const drawMachine = (list) => {
     machineNow = list;
     const half = Math.ceil(list.length / 2);
     const column = (rows) => `<dl class="facts">${rows.map(([label, value]) => `<dt>${esc(label)}</dt><dd>${esc(value)}</dd>`).join('')}</dl>`;
-    $('st-facts').innerHTML = column(list.slice(0, half)) + column(list.slice(half));
+    if ($('st-facts')) $('st-facts').innerHTML = column(list.slice(0, half)) + column(list.slice(half));
   };
   const machine = async () => {
+    if (machineNow) drawMachine(machineNow); // at once, as last read, into a card just drawn
     const list = await facts();
     if (list.length) drawMachine(list);
   };
@@ -5944,6 +5943,8 @@ const RELEASE_INFO = {
   // What the other scripts use. Hints are tips.js and data grids are grid.js.
   window.RabbidLab = { app: () => product, $, esc, svg, say, initials, when, daysAgo, send, get, keep, forget, has, paint, where, viewAs, place, popups, option, dropdown, sure, newLabel, copy, busy, refresh, live, groupTools, skeleton, toast, undo, stepper, panel, editButton,
     palette: window.RabbidLabColours.roles, me: () => meInfo,
+    // For the dashboard (dashboard.js): every version with its date, kind and title, the tag of a kind, and This machine.
+    releases: () => RELEASE_NOTES.map(release), relTag, machine,
     activityKinds: AL_KINDS, activityKind: (area) => AREA_KIND[area] || 'admin', // the Activity log's kinds, for report.js
     // The Devices page, for devices.js: its lists, what's ticked, and drawing or reading it again. failed() is why the
     // last read didn't work, so a list stops waiting for it; reading() is true until the computers are first read.

@@ -642,12 +642,7 @@ a.small-link { margin-top: 8px; padding: 6px 12px; font-size: 12.5px; }
 a.button, label.button { display: inline-flex; cursor: pointer; align-items: center; padding: 8px 16px; border-radius: 8px; border: 1px solid var(--line-strong); background: #1A1C28; color: var(--text); font-size: 14px; }
 a.button:hover, label.button:hover { background: #222536; text-decoration: none; }
 .more { color: var(--accent-soft); font-size: 13px; font-weight: 600; white-space: nowrap; }
-.news { padding: 26px 44px 4px; }
-.news-head { display: flex; align-items: center; gap: 18px; margin-bottom: 18px; }
-.news-head > span { color: var(--title); font: 700 22px/1.2 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; letter-spacing: -.01em; white-space: nowrap; }
-.news-head i { flex: 1; height: 1px; background: var(--line); }
 .tag { display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border-radius: 5px; background: color-mix(in srgb, var(--accent-soft) 12%, transparent); color: var(--accent-soft); font-size: 11px; font-weight: 650; }
-.home .machine { margin: 22px var(--side) 0; }
 /* The page's commands at the end of its banner's strip (Links, Sensors, Active Directory, Devices, Group Policy), small and
    quiet: the main one is its words with an accent icon and no box, the rest bare grey icons with a hint, in groups
    (.cmd-grp) with a thin line before each, the same line as between the numbers. With nothing it may do here, it isn't there. */
@@ -703,8 +698,6 @@ a.button:hover, label.button:hover { background: #222536; text-decoration: none;
 .cmd-l { margin-right: 10px; color: var(--muted); font-size: 13px; font-weight: 600; }
 @media (max-width: 700px) {
   .cmd-l { display: none; }
-  .news { padding: 22px 18px 4px; }
-  .home .machine { margin-top: 18px; }
 }
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px 22px; }
 .card h2 { margin: 0 0 12px; font-size: 16px; color: var(--title); font-weight: 600; }
@@ -967,7 +960,6 @@ body.layout-wide .page { max-width: none; margin-left: 0; margin-right: 0; }
 .home { --side: max(24px, calc((100% - 1216px) / 2)); }
 .layout-wide .home { --side: 24px; }
 @media (max-width: 700px) { .home, .layout-wide .home { --side: 12px; } }
-.home .news { padding-left: var(--side); padding-right: var(--side); }
 /* Every dropdown: the console's own arrow, set in from the edge, in place of the browser's, and a dark list when it opens. */
 select:not([multiple]):not([size]) { appearance: none; -webkit-appearance: none; padding-right: 38px; color-scheme: dark; cursor: pointer;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238A8FA8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");

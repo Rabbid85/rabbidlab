@@ -1,0 +1,93 @@
+/* Overview's dashboard (dashboard.js): cards under the banner, their edges on the banner's edges. */
+.dash { container-type: inline-size; padding: 26px var(--side) 40px; }
+.dash-top { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.dash-top > span { color: var(--title); font: 700 22px/1.2 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; letter-spacing: -.01em; white-space: nowrap; }
+.dash-top > i { flex: 1; height: 1px; margin: 0 6px; background: var(--line); }
+.dash-top button { display: inline-flex; align-items: center; gap: 7px; }
+.dash-top button svg { width: 15px; height: 15px; }
+/* Four columns (two where the dashboard is narrow) of rows all one height. A card is one to four columns wide and one or
+   two rows tall; dashboard.js works out where each goes and says so on the card (grid-column, grid-row). */
+.dash-grid { --dash-cols: 4; position: relative; display: grid; grid-template-columns: repeat(var(--dash-cols), minmax(0, 1fr)); grid-auto-rows: 196px; gap: 12px; }
+@container (max-width: 900px) { .dash-grid { --dash-cols: 2; } }
+.dash-card { position: relative; display: flex; flex-direction: column; min-width: 0; overflow: hidden; padding: 14px 16px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+.dash-head { display: flex; align-items: center; gap: 9px; min-height: 28px; margin-bottom: 10px; }
+.dash-name { display: inline-flex; flex: 1; align-items: center; gap: 9px; min-width: 0; color: inherit; }
+a.dash-name:hover { text-decoration: none; }
+a.dash-name:hover b { color: #fff; }
+.dash-name svg { flex: none; width: 16px; height: 16px; color: var(--accent-soft); }
+.dash-name b { overflow: hidden; color: var(--title); font-size: 14px; white-space: nowrap; text-overflow: ellipsis; }
+.dash-body { display: flex; flex: 1; flex-direction: column; min-height: 0; overflow: hidden; }
+
+/* What a card shows: one big number like the banner's strip, then short rows. */
+.dash-big { display: grid; gap: 5px; margin-bottom: 12px; }
+.dash-big b { color: #fff; font: 800 26px/1 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; letter-spacing: -.02em; }
+.dash-big span { color: #A9ADC2; font-size: 12.5px; font-weight: 600; }
+.dash-rows { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; }
+.dash-rows li { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto; align-items: center; gap: 9px; font-size: 13px; }
+.dash-rows li > span { overflow: hidden; color: var(--text); white-space: nowrap; text-overflow: ellipsis; }
+.dash-rows small { color: var(--muted); font-size: 12px; white-space: nowrap; }
+.dash-dot { width: 7px; height: 7px; border-radius: 50%; background: #3FB950; }
+.dash-dot[data-tone="down"] { background: #F85149; }
+.dash-dot[data-tone="warn"] { background: #F2BE6B; }
+.dash-dot[data-tone="off"] { background: #5B6078; }
+.dash-none { margin: 0; color: var(--muted); font-size: 13px; }
+.dash-card .facts-two { gap: 6px 28px; font-size: 13px; }
+.dash-card[data-w="1"] .facts-two { grid-template-columns: 1fr; }
+/* What's new: newest first, a row a version; a version with a picture has it when the card is large. */
+.dash-news { display: grid; gap: 4px; }
+.dash-news a { display: grid; grid-template-columns: auto auto auto minmax(0, 1fr); align-items: center; gap: 10px; padding: 6px 8px; border-radius: 8px; color: var(--text); font-size: 13px; }
+.dash-news a:has(img) { grid-template-columns: 56px auto auto auto minmax(0, 1fr); }
+.dash-news a:hover { background: rgb(255 255 255 / .04); text-decoration: none; }
+.dash-news img { width: 56px; height: 33px; border-radius: 5px; object-fit: cover; }
+.dash-news b { color: var(--title); }
+.dash-card[data-w="1"] .dash-news .nw-tag, .dash-card[data-w="1"] .dash-when { display: none; }
+.dash-card[data-w="1"] .dash-news a { grid-template-columns: auto minmax(0, 1fr); }
+.dash-line { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.dash-when { color: var(--muted); font-size: 12px; white-space: nowrap; }
+.dash-more { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; margin-top: auto; padding: 8px 8px 0; color: var(--accent-soft); font-size: 13px; font-weight: 600; }
+.dash-more svg { width: 13px; height: 13px; }
+
+/* Editing. A card's tools (its sizes, its name, hide) are there only then; it is taken hold of anywhere on it and nothing
+   on it opens. Its edge is thin dashes in the accent colour, drawn over its own so they can march on the one pointed at. */
+.dash-tools { display: none; gap: 2px; }
+.dash.editing .dash-tools, .dash-float .dash-tools { display: inline-flex; }
+.dash-tools button { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 7px; background: none; color: #9EA3B8; }
+.dash-tools button:hover { background: rgb(255 255 255 / .07); color: #fff; }
+.dash-tools svg { width: 15px; height: 15px; }
+.dash-sizes { display: inline-flex; gap: 1px; margin-right: 5px; padding-right: 5px; border-right: 1px solid var(--line); }
+.dash-sizes svg { width: 16px; height: 16px; }
+.dash-sizes rect { fill: currentColor; opacity: .24; transition: opacity .12s; }
+.dash-sizes rect.on { opacity: 1; }
+.dash-sizes button[aria-pressed="true"] { background: color-mix(in srgb, var(--accent) 22%, transparent); color: color-mix(in srgb, var(--accent-soft) 70%, #fff); }
+.dash.editing .dash-card { border-color: transparent; cursor: grab; touch-action: none; user-select: none; }
+.dash.editing .dash-body :is(a, img, li) { pointer-events: none; }
+.dash-ants { display: none; }
+.dash.editing .dash-ants { position: absolute; inset: 0; display: block; width: 100%; height: 100%; overflow: visible; pointer-events: none; fill: none; stroke: color-mix(in srgb, var(--accent-soft) 60%, transparent); stroke-width: 1; stroke-dasharray: 5 4; }
+.dash-ants rect { x: .5px; y: .5px; width: calc(100% - 1px); height: calc(100% - 1px); rx: 11.5px; }
+.dash.editing .dash-card:hover .dash-ants { stroke: var(--accent-soft); animation: dash-march .7s linear infinite; }
+@keyframes dash-march { to { stroke-dashoffset: -9; } }
+.dash-add { display: grid; place-items: center; align-content: center; gap: 8px; border: 1px solid var(--line); border-radius: 12px; background: none; color: var(--muted); font-size: 14px; font-weight: 600; }
+.dash-add:hover { border-color: var(--accent-soft); color: var(--title); }
+.dash-add svg { width: 20px; height: 20px; color: var(--accent-soft); }
+/* Carried: the card stays in the grid as the slot it will land in, a tinted block, and its copy follows the pointer,
+   wearing the look of the app's windows on a layer behind it. */
+.dash.editing .dash-card.dash-slot { border: 1px solid color-mix(in srgb, var(--accent-soft) 55%, transparent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.dash-card.dash-slot > * { visibility: hidden; }
+.dash-float { position: fixed; z-index: 60; margin: 0; isolation: isolate; border-color: var(--accent-soft); background: none; pointer-events: none; }
+.dash-float::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--sty-win-bg, rgb(8 9 16 / .72)); backdrop-filter: var(--sty-win-blur, blur(22px) saturate(148%)); }
+html.dash-carrying, html.dash-carrying * { cursor: grabbing !important; user-select: none; }
+/* A card just added: a short glow, as a new row has. */
+.dash-arrive { animation: dash-arrive 1.6s ease-out; }
+@keyframes dash-arrive { 0% { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-soft) 70%, transparent); transform: scale(.97); } 30% { transform: scale(1); } 100% { box-shadow: 0 0 0 2px transparent; } }
+@media (prefers-reduced-motion: reduce) { .dash.editing .dash-card:hover .dash-ants, .dash-arrive { animation: none; } }
+
+/* Add a card: the cards that are not showing. */
+.dash-pick-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 14px; }
+.dash-pick-list button { display: grid; grid-template-columns: 18px minmax(0, 1fr); column-gap: 10px; row-gap: 3px; align-items: center; height: auto; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: rgb(255 255 255 / .03); color: var(--text); text-align: left; }
+.dash-pick-list button:hover { border-color: var(--accent-soft); }
+.dash-pick-list svg { grid-row: 1 / 3; width: 17px; height: 17px; color: var(--accent-soft); }
+.dash-pick-list b { color: var(--title); font-size: 14px; }
+.dash-pick-list span { color: var(--muted); font-size: 12.5px; line-height: 1.4; white-space: normal; }
+.dash-pick-list .dash-none { grid-column: 1 / -1; }
+#dash-usual { margin-right: auto; }
+@media (max-width: 700px) { .dash { padding-top: 22px; } .dash-pick-list { grid-template-columns: 1fr; } }

@@ -33,6 +33,7 @@
 <link rel="stylesheet" href="Assets/cloud.css">
 <link rel="stylesheet" href="Assets/search.css">
 <link rel="stylesheet" href="Assets/overview.css">
+<link rel="stylesheet" href="Assets/dashboard.css">
 <link rel="stylesheet" href="Assets/news.css">
 <link rel="stylesheet" href="Assets/help.css">
 <link rel="stylesheet" href="Assets/edition.css">
@@ -83,6 +84,7 @@
 <script src="Assets/notes.js" defer></script>
 <script src="Assets/deploy.js" defer></script>
 <script src="Assets/dock.js" defer></script>
+<script src="Assets/dashboard.js" defer></script>
 </head>
 <!-- The console: the top bar, the rail down the left, and one page at a time (console.js picks it from the address). -->
 <body class="app booting">
@@ -316,14 +318,13 @@
       </div>
     </header>
 
-    <section class="news" aria-labelledby="news-title">
-      <div class="news-head"><span id="news-title">News &amp; Changelog</span><i aria-hidden="true"></i></div>
-      <div class="nw-r1" id="news"></div>
-    </section>
-
-    <section class="card machine" aria-labelledby="server-title">
-      <h2 id="server-title">This machine</h2>
-      <div class="facts-two" id="st-facts"><dl class="facts"><dt>Machine</dt><dd>…</dd></dl></div>
+    <!-- The dashboard (dashboard.js): cards of what the lab knows, each person's own arrangement. Edit dashboard turns
+         editing on; Add a card, here and as the last tile, is there only then. -->
+    <section class="dash" id="dash" aria-labelledby="dash-title">
+      <div class="dash-top"><span id="dash-title">Dashboard</span><i aria-hidden="true"></i>
+        <button type="button" class="small" id="dash-add" hidden><svg><use href="#i-plus"/></svg><span>Add a card</span></button>
+        <button type="button" class="small" id="dash-edit"><svg><use href="#i-gear"/></svg><span>Edit dashboard</span></button></div>
+      <div class="dash-grid" id="dash-grid"></div>
     </section>
   </section>
 
@@ -1539,6 +1540,22 @@
   <h2 id="hr-dialog-title">What IT gets</h2>
   <div class="hr-mail" id="hr-mail"></div>
   <div class="dialog-foot"><button type="button" id="hr-dialog-close">Close</button></div>
+</dialog>
+
+<!-- The dashboard (dashboard.js): Add a card lists the cards that are not showing; a card's own name. -->
+<dialog class="dialog wide" id="dash-pick" aria-labelledby="dash-pick-title">
+  <h2 id="dash-pick-title">Add a card</h2>
+  <p class="dialog-lead">It goes at the end. Drag it to where you want it.</p>
+  <div class="dash-pick-list" id="dash-pick-list"></div>
+  <div class="dialog-foot"><button type="button" id="dash-usual">The usual cards</button><button type="button" data-dash-close>Close</button></div>
+</dialog>
+<dialog class="dialog" id="dash-name" aria-labelledby="dash-name-title">
+  <h2 id="dash-name-title">Card</h2>
+  <p class="dialog-lead">A name of your own for this card. Leave it as it is to keep its usual name.</p>
+  <form id="dash-name-form">
+    <div class="form"><label for="dash-name-box">Name</label><input id="dash-name-box" maxlength="40" autocomplete="off"></div>
+    <div class="dialog-foot"><button type="button" data-dash-close>Cancel</button><button type="submit" class="primary">Save</button></div>
+  </form>
 </dialog>
 
 <dialog class="dialog" id="local-dialog" aria-labelledby="local-title">

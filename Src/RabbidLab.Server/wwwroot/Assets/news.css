@@ -1,10 +1,7 @@
-/* News: Overview's News and changelog row (the newest feature wide with a picture, then the three newest) and What's new
-   as a timeline, a card per version (console.js, notes()). */
-.news:has(#news) { container-type: inline-size; padding-bottom: 6px; }
+/* What's new as a timeline, a card per version (console.js, notes()). The tag of a kind is on the dashboard's What's new
+   card too (dashboard.js). */
 
 /* What every card has: the date and kind, the author, the notes. */
-.nw-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; color: var(--muted); font-size: 12.5px; }
-.nw-date { color: var(--muted); font-size: 12.5px; white-space: nowrap; }
 .nw-tag { display: inline-flex; flex: none; align-items: center; gap: 5px; height: 22px; padding: 0 9px 0 7px; border-radius: 999px; font-size: 11.5px; font-weight: 650; line-height: 1; white-space: nowrap; }
 .nw-tag svg { flex: none; width: 12px; height: 12px; }
 .nw-tag[data-k="feature"] { background: color-mix(in srgb, var(--accent-soft) 20%, transparent); color: color-mix(in srgb, var(--accent-soft) 40%, #fff); }
@@ -16,43 +13,6 @@
 .nw-ul { margin: 0; padding-left: 18px; color: #C9CCDA; font-size: 14px; line-height: 1.55; }
 .nw-ul li + li { margin-top: 5px; }
 .nw-ul li::marker { color: #5E6380; }
-
-/* A feature's screenshot on the wide card (RELEASE_INFO names it, Assets/news). */
-.nw-shot { display: block; flex: 0 0 46%; min-height: 200px; overflow: hidden; padding: 48px 0 0 18px; border-right: 1px solid var(--line);
-  background: radial-gradient(90% 90% at 100% 0%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 70%), #0C0D16; }
-.nw-shot img { display: block; width: 100%; height: 100%; border: 1px solid var(--line-strong); border-right: 0; border-bottom: 0; border-radius: 10px 0 0 0; object-fit: cover; object-position: left top; }
-
-/* Overview: one wide card with the picture, then three narrower. */
-.nw-r1 { display: grid; grid-template-columns: minmax(0, 2.3fr) repeat(3, minmax(0, 1fr)) 92px; gap: 14px; }
-/* A small What's new label on the screenshot, and the slim tile that ends the row. */
-.nw-shot { position: relative; }
-.nw-label { position: absolute; left: 16px; top: 12px; z-index: 1; display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px 0 8px; border-radius: 999px; background: rgba(11, 12, 20, .88); color: #fff; font-size: 12.5px; font-weight: 650; }
-.nw-label svg { width: 14px; height: 14px; color: color-mix(in srgb, var(--accent-soft) 55%, #fff); }
-.nw-all { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 12px 8px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: #D7DAE8; font-size: 13px; font-weight: 600; line-height: 1.3; text-align: center; }
-.nw-all:hover { border-color: var(--line-strong); background: #141724; color: #fff; text-decoration: none; }
-.nw-all b { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 50%; background: color-mix(in srgb, var(--accent-soft) 16%, transparent); color: color-mix(in srgb, var(--accent-soft) 55%, #fff); }
-.nw-all svg { width: 17px; height: 17px; }
-.nw-post { display: flex; min-width: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--text); }
-.nw-post:hover { border-color: var(--line-strong); background: #141724; text-decoration: none; }
-.nw-pbody { display: flex; flex: 1; flex-direction: column; gap: 8px; min-width: 0; padding: 16px 18px 15px; }
-.nw-ptitle { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; margin-top: 2px; color: var(--title);
-  font: 700 15.5px/1.3 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; }
-.nw-sum { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; color: var(--muted); font-size: 13px; line-height: 1.5; }
-.nw-post .nw-foot { margin-top: auto; padding-top: 6px; }
-.nw-wide .nw-pbody { padding: 18px 20px 16px; }
-.nw-wide .nw-ptitle { font-size: 21px; line-height: 1.22; letter-spacing: -.01em; }
-@container (max-width: 1060px) {
-  .nw-r1 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .nw-r1 > .nw-wide, .nw-all { grid-column: 1 / -1; }
-  .nw-all { flex-direction: row; min-height: 48px; padding: 6px 12px; }
-  .nw-all b { width: 30px; height: 30px; }
-  .nw-wide .nw-shot { flex-basis: 40%; min-height: 180px; }
-}
-@container (max-width: 640px) {
-  .nw-r1 { grid-template-columns: minmax(0, 1fr); }
-  .nw-wide { flex-direction: column; }
-  .nw-wide .nw-shot { flex: none; height: 170px; min-height: 0; border-right: 0; border-bottom: 1px solid var(--line); }
-}
 
 /* What's new: a line down the left with a dot, the date and how many changes; the card beside it. */
 .nw-tl { position: relative; display: grid; gap: 12px; container-type: inline-size; }

@@ -594,6 +594,19 @@ public sealed class NetworkScan(DataFolder folder, INetProbe probe, Clients clie
     // --- What the page sees and changes ----------------------------------------------------------------------------------
 
     /// <summary>What the page shows. The SNMP community is a read password of sorts: only someone who can change the settings gets it.</summary>
+    /// <summary>For Overview's dashboard: how many devices are known, online and new, and the newest five of the new.</summary>
+    public object Brief()
+    {
+        var devices = Seeded().Devices;
+        return new
+        {
+            all = devices.Count,
+            online = devices.Count(d => d.Online),
+            fresh = devices.Count(d => d.New),
+            latest = devices.Where(d => d.New).OrderByDescending(d => d.First).Take(5).Select(d => new { name = d.Custom ?? d.Name ?? d.Ip, d.Ip, d.First }),
+        };
+    }
+
     public object View(bool settings = true)
     {
         var f = Seeded();

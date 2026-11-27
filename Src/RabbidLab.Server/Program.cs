@@ -156,6 +156,7 @@ builder.Services.AddDcSettings();
 // Network: every device on the network ranges, found by a ping sweep and identified (NetworkScan.cs).
 builder.Services.AddNetworkScan();
 builder.Services.AddSingleton<UserKeys>();
+builder.Services.AddSingleton<UserDashboards>();
 // The weather on the banners, from the US National Weather Service (Weather.cs).
 builder.Services.AddSingleton(new WeatherHttp());
 builder.Services.AddSingleton<Weather>();
@@ -291,6 +292,7 @@ app.MapEventAlertsApi();
 app.MapDcSettingsApi();
 app.MapNetworkApi();
 app.MapUserKeys();
+app.MapDashboard();
 app.MapWeather();
 app.MapPeopleWorkflowsApi();
 app.MapLifecycleApi();

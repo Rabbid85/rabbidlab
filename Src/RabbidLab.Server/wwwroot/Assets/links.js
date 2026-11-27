@@ -259,6 +259,7 @@
     statesNow();
   };
   R.linksNow = () => (taken ? { links: shownNow(), groups } : null); // for the Overview, once read, without the ones hidden
+  R.linkStatesNow = () => (taken ? states : null); // and whether each answers, as last checked
 
   // Hiding one from your own page, or showing it again: it stays for everyone else.
   const hide = async (id, on) => {
