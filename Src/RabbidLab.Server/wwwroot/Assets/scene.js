@@ -55,18 +55,30 @@
   // The engine: what every picture behind a banner, and everything laid on one (the weather, the monsters), shares.
   // Whether people asked for less motion.
   const still = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // How everything on a banner moves, one of two ways:
+  // - What moves slowly and all the time (stars twinkling, the moon's light on the water, clouds swaying, fog, Nessie) is
+  //   stepped on the beat below, 15 or 30 times a second. Left running as an animation, the graphics card drew the whole
+  //   banner again for every frame of the screen, 171 a second on a fast one, however slowly the thing moved: a clear
+  //   night's twinkling alone took a seventh of a processor core, and takes a fiftieth stepped.
+  // - What moves fast (rain, snow, a bolt, the shooting star, the runner, a pine shaking) is a drawing of its own that the
+  //   graphics card moves, fades or uncovers whole, and only while it plays. Nothing ever changes inside a drawing.
+  // Nothing runs for a banner nobody can see.
+
+  // Whether el's banner can be seen: its tab in front, its page the one open, some of it in the window, and a picture on
+  // it, not a solid colour.
+  const seen = (el) => !document.hidden && el.getClientRects().length > 0 && !el.closest('[data-away]') && !document.documentElement.classList.contains('ovs-flat');
   // The life of something laid on a banner, on its element el: it does nothing once it has left the page, and rests while
-  // it can't be seen (its page is not the one open, or the tab is behind another), so nothing runs for a banner nobody
-  // sees. later: a timer that only fires while el is on the page. on: a listener that goes when el does. showing: whether
-  // it can be seen now. rest(fn): fn waits, and runs when the banner is next seen.
+  // its banner can't be seen. later: a timer that only fires while el is on the page. on: a listener that goes when el
+  // does. showing: whether it can be seen now. rest(fn): fn waits, and runs when the banner is next seen.
   const lives = new Set();
   const life = (el) => {
     const end = new AbortController();
     const resting = [];
-    const showing = () => !document.hidden && el.getClientRects().length > 0;
-    const me = { gone: () => { if (el.isConnected) return false; end.abort(); resting.length = 0; lives.delete(me); return true; } };
-    const wake = () => { if (!me.gone() && showing()) resting.splice(0).forEach((fn) => fn()); };
-    ['rabbidlab:show', 'visibilitychange'].forEach((type) => document.addEventListener(type, wake, { signal: end.signal }));
+    const showing = () => seen(el);
+    const me = {
+      gone: () => { if (el.isConnected) return false; end.abort(); resting.length = 0; lives.delete(me); return true; },
+      wake: () => { if (!me.gone() && showing()) resting.splice(0).forEach((fn) => fn()); },
+    };
     lives.add(me);
     return {
       later: (fn, ms) => setTimeout(() => { if (!me.gone()) fn(); }, ms),
@@ -77,6 +89,34 @@
   };
   // What has left the page lets go of its listeners now, not when one of them next fires.
   const sweep = () => lives.forEach((l) => l.gone());
+  // The beat: one timer for every banner. beat(el, fn, every): fn(now, box, n) runs every `every` steps of 33 ms while el
+  // is on the page and can be seen; box is where el is in the window, n the step's number. All of a step's drawing is
+  // done together, so the page works once for it. With nothing to be seen the timer stops; stir starts it again.
+  const beats = new Set();
+  let [beating, step] = [0, 0];
+  const tick = () => {
+    step += 1;
+    const now = performance.now();
+    // Every place is read before anything is drawn, so nothing is laid out again part way through.
+    const up = [...beats].filter((b) => b.el.isConnected || !beats.delete(b)).filter((b) => seen(b.el)).map((b) => [b, b.el.getBoundingClientRect()]);
+    if (!up.length) { clearInterval(beating); beating = 0; return; }
+    up.forEach(([b, box]) => { if (step % b.every === 0) b.fn(now, box, step); });
+  };
+  // A banner may be in sight again (a page opened, the tab came in front, it scrolled back in): the beat starts and what
+  // rested wakes.
+  const stir = () => {
+    if (!beating && beats.size && !document.hidden) beating = setInterval(tick, 33);
+    lives.forEach((l) => l.wake());
+  };
+  const beat = (el, fn, every = 2) => { beats.add({ el, fn, every }); stir(); };
+  ['rabbidlab:show', 'visibilitychange'].forEach((type) => document.addEventListener(type, stir));
+  // A banner scrolled out of the window is marked data-away: its animations pause (overview.css) and what steps it rests.
+  const inView = new IntersectionObserver((list) => { list.forEach((e) => e.target.toggleAttribute('data-away', !e.isIntersecting)); stir(); });
+  // The page allows no style attributes, so what is laid carries its own properties as data-vars="name:value;…", set here.
+  const vars = (root) => root.querySelectorAll('[data-vars]').forEach((e) => {
+    e.dataset.vars.split(';').forEach((p) => { const [k, v] = p.split(':'); e.style.setProperty(`--${k}`, v); });
+    e.removeAttribute('data-vars');
+  });
 
   // The holiday the banner wears (overview.css .ovs-halloween, .ovs-christmas). Halloween, October 15 to 31: a purple night
   // with an orange moon and mist, and three tiny bats flitting past the moon ("Holloween is the bats."). Christmas, December 1
@@ -159,21 +199,22 @@
     }).join('');
   };
   // What is laid on a banner needs from the engine: the seeded randoms, a number to one decimal, a blur, less motion or
-  // not, and a life (above); a layer and the snow (below, Scene.layer and Scene.snow), and how a size is fitted (Scene.fit).
+  // not, a life, the beat and its own properties set (above); a layer, a stage, a sprite and the snow (below), and how a
+  // size is fitted (Scene.fit).
   // And from the picture: the holiday, a pine with its corners and its lights, where the big pines stand in each size
   // ([x, base, height] across the whole banner in drawing order, for the monsters and the wind), the far shore's pines in
   // each size ([the drawing's, its left half's], for the wind), and how far below the moon's place the sun or moon stands
   // now (disc). solid: a solid colour is shown in place of the picture.
   const blur = (id, sd) => `<filter id="${id}" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="${sd}"/></filter>`;
-  const Scene = { holiday, snowing: false, solid: false, disc: 0, rnd, f1, blur, still, life, pine, corners, lights: (cx, y, h) => lights(cx, y, h, false, () => 1), near: {}, shore: {} };
+  const Scene = { holiday, snowing: false, solid: false, disc: 0, rnd, f1, blur, still, life, beat, vars, pine, corners, lights: (cx, y, h) => lights(cx, y, h, false, () => 1), near: {}, shore: {} };
   window.RabbidLabScene = Scene;
-  // A bat: a body, a head with ears, and two scalloped wings that flap from the shoulders, bobbing as it flies.
-  const WING = 'M2 -1C9 -8 18 -11 30 -6C27 -3 26 0 25 3C22 0 19 0 16 3C14 0 11 0 8 4C6 2 4 2 2 3Z';
-  const BAT = `<g class="ovs-bob"><g class="ovs-wing"><path d="${WING}"/></g><g transform="scale(-1 1)"><g class="ovs-wing"><path d="${WING}"/></g></g>`
-    + '<ellipse cy="2" rx="3.2" ry="6.2"/><circle cy="-5" r="3.1"/><path d="M-2.8 -6.4L-2.2 -11.2L-0.6 -7.2ZM2.8 -6.4L2.2 -11.2L0.6 -7.2Z"/></g>';
-  // Three, each on its own wandering path past the moon at (mx, my): in from one side, three turns near the moon, out the
-  // other, at its own size, speed and bob. The path goes in data-v; fill() sets it as the bat's own properties, since the
-  // page allows no style attributes.
+  // A bat: a body, a head with ears, and two scalloped wings that flap from the shoulders, bobbing as it flies. The body
+  // and each wing are drawings of their own, so the graphics card flaps, bobs and flies it (overview.css).
+  const WING = '<svg class="ovs-wing" viewBox="0 -14 32 20" aria-hidden="true"><path d="M2 -1C9 -8 18 -11 30 -6C27 -3 26 0 25 3C22 0 19 0 16 3C14 0 11 0 8 4C6 2 4 2 2 3Z"/></svg>';
+  const BAT = `<div class="ovs-bob">${WING}<div class="ovs-flip">${WING}</div><svg class="ovs-batbody" viewBox="-6 -12 12 22" aria-hidden="true">`
+    + '<ellipse cy="2" rx="3.2" ry="6.2"/><circle cy="-5" r="3.1"/><path d="M-2.8 -6.4L-2.2 -11.2L-0.6 -7.2ZM2.8 -6.4L2.2 -11.2L0.6 -7.2Z"/></svg></div>';
+  // Three, each on its own wandering path past the moon at (mx, my) across the whole drawing: in from one side, three
+  // turns near the moon, out the other, at its own size, speed and bob.
   const bats = (mx, m, sc) => {
     const r = rnd(53);
     let s = '';
@@ -181,9 +222,9 @@
       const back = r() < 0.5;
       const xs = [back ? mx - 300 : mx + 300, mx + (r() - 0.5) * 520, mx + (r() - 0.5) * 520, mx + (r() - 0.5) * 520, back ? mx + 310 : mx - 310];
       const ys = xs.map(() => m(70 + r() * 170));
-      const v = [...xs.map((x, k) => `x${k}:${f1(x)}px;y${k}:${f1(ys[k])}px`), `s:${((0.3 + r() * 0.22) * sc).toFixed(2)}`, `t:${(6 + r() * 6).toFixed(1)}s`,
+      const v = [...xs.map((x, k) => `x${k}:${f1(x)};y${k}:${f1(ys[k])}`), `s:${((0.3 + r() * 0.22) * sc).toFixed(2)}`, `t:${(6 + r() * 6).toFixed(1)}s`,
         `d:${(-i * 4 - r() * 1.5).toFixed(1)}s`, `b:${(0.3 + r() * 0.3).toFixed(2)}s`].join(';');
-      s += `<g class="ovs-bat" data-v="${v}">${BAT}</g>`;
+      s += `<div class="ovs-bat" data-vars="${v}">${BAT}</div>`;
     }
     return s;
   };
@@ -206,15 +247,36 @@
   };
   // For what is laid over a drawing (weather.js): its height in its own units, its heights, and how big its near things are.
   Scene.fit = (size) => ({ H: SIZES[size].h, m: mapOf(SIZES[size]), near: SIZES[size].near, moonR: SIZES[size].moonR });
-  // One layer: a drawing laid exactly as the picture is, 3200 wide and its size's height, fitted the same way. d: a delay
-  // for its motion, which whoever lays it sets as --d (the page allows no style attributes).
-  const layer = (size, cls, body, d) => `<svg class="ovs${cls ? ` ${cls}` : ''}" data-size="${size}"${d ? ` data-d="${d}"` : ''} viewBox="0 0 3200 ${SIZES[size].h}" preserveAspectRatio="xMaxYMid slice" aria-hidden="true">${body}</svg>`;
+  // One layer: a drawing laid exactly as the picture is, 3200 wide and its size's height, fitted the same way. wave: how
+  // the beat moves it (sway, below); own: its own properties (vars, above).
+  const layer = (size, cls, body, { wave, own } = {}) => `<svg class="ovs${cls ? ` ${cls}` : ''}" data-size="${size}"${wave ? ` data-wave="${wave}"` : ''}${own ? ` data-vars="${own}"` : ''}`
+    + ` viewBox="0 0 3200 ${SIZES[size].h}" preserveAspectRatio="xMaxYMid slice" aria-hidden="true">${body}</svg>`;
+  // A stage: a box laid exactly as the drawing is, for small things placed on it in the drawing's units. A sprite: a small
+  // drawing on a stage showing only its own part of the picture, [x, y, width, height], so the graphics card moves that
+  // and nothing else.
+  const stage = (size, cls, body) => `<div class="ovs-stage ${cls}" data-size="${size}">${body}</div>`;
+  const sprite = (cls, [x, y, w, h], body) => `<svg class="ovs-sprite ${cls}" data-vars="x:${f1(x)};y:${f1(y)};w:${f1(w)};h:${f1(h)}" viewBox="${f1(x)} ${f1(y)} ${f1(w)} ${f1(h)}" aria-hidden="true">${body}</svg>`;
+  // A wave: a layer going slowly to and fro, stepped on the beat. data-wave="what from to seconds start hold": what is o
+  // (how see-through), sx (how wide) or x (where across, in the drawing's units); seconds is one way; start is how far
+  // into it it begins; hold is the part of each way it waits at "from".
+  const sway = (box, now, at) => box.querySelectorAll('[data-wave]').forEach((el) => {
+    const [what, ...n] = el.dataset.wave.split(' ');
+    const [a, b, secs, start = 0, hold = 0] = n.map(Number);
+    const p = ((now / 1000 + start) / secs) % 2;
+    const k = Math.max(0, ((p > 1 ? 2 - p : p) - hold) / (1 - hold));
+    const v = a + (b - a) * k * k * (3 - 2 * k);
+    if (what === 'o') el.style.opacity = v.toFixed(3);
+    else el.style.transform = what === 'sx' ? `scaleX(${v.toFixed(4)})` : `translateX(${(v * Math.max(at.width / 3200, at.height / SIZES[el.dataset.size].h)).toFixed(2)}px)`;
+  });
   // Snow falling, at Christmas and when it snows where the lab is (weather.js): flakes in three sizes, each size a layer of
   // its own with its flakes twice, one banner's height above the other, which the graphics card slides down one height
   // and starts again (overview.css ovs-snows). counts: how many flakes of each size. A layer's flakes are four shapes, one
   // for each of four brightnesses (SOFT), not a shape to every flake: the page goes over every shape on a banner each
   // time anything on it changes, and with a shape to every flake or streak of rain that was half its work in a storm.
   const SOFT = [0.42, 0.56, 0.69, 0.83];
+  // The same for the stars, in six brightnesses, and for the strokes of moonlight on the water, in four strengths.
+  const DIM = [0.31, 0.44, 0.56, 0.69, 0.81, 0.94];
+  const LIT = [0.05, 0.15, 0.25, 0.35];
   const snow = (size, counts) => {
     const H = SIZES[size].h;
     const r = rnd(5);
@@ -228,7 +290,7 @@
       return layer(size, `ovs-live ovs-snows ovs-f${i + 1}`, d.map((p, b) => (p ? `<path d="${p}" opacity="${SOFT[b]}"/>` : '')).join(''));
     }).join('');
   };
-  Object.assign(Scene, { layer, snow });
+  Object.assign(Scene, { layer, stage, sprite, snow });
   // A colour in place of the times of day (the sky's window, Colour): the same drawing with every part a shade of the one
   // colour, deep in dark mode and pale in light mode with dark words ("Can change color here, like the actual background
   // color"). It is the night's drawing, with the moon.
@@ -386,13 +448,16 @@
       }
       return d;
     };
-    const stars = (r, n, maxY) => {
-      let s = '';
-      for (let i = 0; i < n; i++) {
-        const tw = r() < 0.25 ? ` ovs-tw ovs-d${1 + Math.floor(r() * 4)}` : '';
-        s += `<circle class="ovs-star${tw}" cx="${f1(r() * W)}" cy="${f1(m(r() * maxY))}" r="${f1(0.5 + r() * r() * 1.5)}" opacity="${(0.25 + r() * 0.75).toFixed(2)}"/>`;
-      }
-      return s;
+    // The stars, each [x, y, radius, brightness, the beat it twinkles on or 0].
+    const stars = (r, n, maxY) => Array.from({ length: n }, () => {
+      const beat = r() < 0.25 ? 1 + Math.floor(r() * 4) : 0;
+      return [Number(f1(r() * W)), Number(f1(m(r() * maxY))), Number(f1(0.5 + r() * r() * 1.5)), 0.25 + r() * 0.75, beat];
+    });
+    // Drawn as a few shapes, one for each of six brightnesses (DIM), not a shape to every star (snow, above, says why).
+    const dots = (list) => {
+      const d = DIM.map(() => '');
+      list.forEach(([x, y, rad, o]) => { d[Math.min(DIM.length - 1, Math.floor(((o - 0.25) / 0.75) * DIM.length))] += `M${f1(x - rad)} ${y}a${rad} ${rad} 0 1 0 ${f1(2 * rad)} 0a${rad} ${rad} 0 1 0 ${f1(-2 * rad)} 0`; });
+      return d.map((p, b) => (p ? `<path class="ovs-star" d="${p}" opacity="${DIM[b]}"/>` : '')).join('');
     };
     const fog = (y, h, op) => `<rect class="ovs-fog" x="0" y="${f1(m(y))}" width="${2 * W}" height="${f1(m(y + h) - m(y))}" opacity="${op}"/>`;
 
@@ -417,8 +482,9 @@
     // Every other row is drawn, a little blurred and gently shimmering, with no sharp copy on top ("This needs to be softened,
     // the light looks... odd", then "this is sexy" of the fewer strokes). They fade to nothing halfway down the water, so no
     // light glows above the strip ("what is this glow above the bar, get rid of this").
-    const BEATS = [1, 2, 3, 4]; // the four beats the stars twinkle and the water's light shimmers on (overview.css ovs-d1 to 4)
-    const glints = BEATS.map(() => '');
+    const BEATS = [1, 2, 3, 4]; // the four beats the stars twinkle and the water's light shimmers on, each starting START seconds in
+    const START = [0.8, 1.9, 2.7, 3.3];
+    const glints = BEATS.map(() => LIT.map(() => '')); // each beat's strokes, a shape for each of four strengths (LIT)
     for (let i = 0; i < 40; i++) {
       const row = i % 2 === 0;
       const t = (i + q() * 0.8) / 40;
@@ -430,8 +496,8 @@
       while (gx < end) {
         const w = Math.min(end - gx, 2 + q() * span * 0.4);
         const beat = 1 + Math.floor(q() * 4);
-        const stroke = `<rect x="${f1(gx)}" y="${f1(y)}" width="${f1(w)}" height="${f1((0.6 + t * 1.2) * k.glint)}" rx=".6" opacity="${((0.14 + q() * 0.46 * (1 - t * 0.45)) * 0.65 * fade).toFixed(2)}"/>`;
-        if (row && fade > 0) glints[beat - 1] += stroke;
+        const strength = (0.14 + q() * 0.46 * (1 - t * 0.45)) * 0.65 * fade;
+        if (row && fade > 0) glints[beat - 1][Math.min(LIT.length - 1, Math.floor(strength * 10))] += `M${f1(gx)} ${f1(y)}h${f1(w)}v${f1((0.6 + t * 1.2) * k.glint)}h${f1(-w)}Z`;
         gx += w + 2 + q() * span * 0.2;
       }
     }
@@ -487,23 +553,15 @@
     // Where each big pine stands across the whole banner, in the order they are drawn, for the lights and the monsters.
     const standing = [...keepA, ...keepB].map(([x, y, h]) => [W + x, y, h]).concat(mid.map(([x, y, h]) => [x + 1, y, h]), edge.map(([x, y, h]) => [x + dx + 1, y, h]));
     Scene.near[size] = standing;
-    // What moves is in drawings of its own on top (ovs-live), each one faded, stretched or moved whole by the graphics card,
-    // so the page does no work per frame and the motion is as smooth as the screen. Moving inside the big drawing, every
-    // twinkle painted all of it again, blurs and all, at the screen's rate. The stars that twinkle, clear of the hills: one
-    // drawing for each of their four beats (the ones lower down hold still). The moon's light on the water the same. The
-    // shooting star. At Christmas the bulbs that twinkle and the snow.
-    const live = (cls, body) => layer(size, `ovs-live ${cls}`, body);
+    // What moves is in drawings of its own on top (ovs-live), each one faded, stretched or moved whole, never changed
+    // inside: moving inside the big drawing, every twinkle painted all of it again, blurs and all. The stars that twinkle,
+    // clear of the hills: one drawing for each of their four beats (the ones lower down hold still), each fading to .3 and
+    // back in 3.6 s. The moon's light on the water the same, stretching about the moon's column. The shooting star. At
+    // Christmas the bulbs that twinkle, and the snow.
+    const live = (cls, body, wave) => layer(size, `ovs-live ${cls}`, body, { wave });
     const liveY = m(185);
-    const split = (s) => {
-      const live = BEATS.map(() => '');
-      const still = s.replace(/<circle class="ovs-star ovs-tw ovs-d(\d)"[^>]*\/>/g, (c, d) => {
-        const plain = c.replace(/ ovs-tw ovs-d\d/, '');
-        if (Number(c.match(/cy="([\d.]+)"/)[1]) >= liveY) return plain;
-        live[d - 1] += plain;
-        return '';
-      });
-      return [still, live];
-    };
+    // The stars that hold still, and each beat's that twinkle (those clear of the hills).
+    const split = (list) => [dots(list.filter(([, y, , , beat]) => !beat || y >= liveY)), BEATS.map((d) => dots(list.filter(([, y, , , beat]) => beat === d && y < liveY)))];
     const [skyStill, skyLive] = split(sky);
     const [skyStillL, skyLiveL] = split(stars(rnd(53), 190, 320));
     own.stars = `<g>${skyStillL}</g>`;
@@ -515,17 +573,17 @@
     const hidden = (i, x, y, rad) => standing.slice(i + 1).some((t) => [[0, 0], [rad, 0], [-rad, 0], [0, rad], [0, -rad]].some(([a, b]) => inPine(t, x + a, y + b)));
     const christmas = holiday !== 'christmas' ? '' : `<g>${standing.map(([x, y, h], i) => `<path class="ovs-l5 ovs-pines" d="${pine(x, y, h)}"/>`
       + lights(x, y, h, true, lit, (bx, by, rad, beat, bulb) => { if (hidden(i, bx, by, rad)) return false; twinkle[beat - 1] += bulb; return true; })).join('')}</g>`;
-    const lives = BEATS.map((d) => live(`ovs-tw ovs-d${d}`, `<g transform="translate(${W} 0)">${skyLive[d - 1]}</g><g transform="translate(1 0)">${skyLiveL[d - 1]}</g>`)
-      + live(`ovs-glint ovs-shim ovs-d${d}`, `<g transform="translate(${W} 0)" filter="url(#ovs-b1)" opacity=".7">${glints[d - 1]}</g>`)
-      + (twinkle[d - 1] ? live(`ovs-twinkle ovs-d${d}`, twinkle[d - 1]) : '')).join('')
+    const lives = BEATS.map((d) => live('ovs-tw', `<g transform="translate(${W} 0)">${skyLive[d - 1]}</g><g transform="translate(1 0)">${skyLiveL[d - 1]}</g>`, `o 1 .3 1.8 ${START[d - 1]}`)
+      + live('ovs-glint ovs-shim', `<g transform="translate(${W} 0)" filter="url(#ovs-b1)" opacity=".7">${glints[d - 1].map((p, b) => (p ? `<path d="${p}" opacity="${LIT[b]}"/>` : '')).join('')}</g>`, `sx .7 1.15 2.8 ${START[d - 1]}`)
+      + (twinkle[d - 1] ? live('ovs-twinkle', twinkle[d - 1], `o 1 .35 1.8 ${START[d - 1]} .4`) : '')).join('')
       + live('ovs-met', `<g transform="translate(${W} 0)">${meteor(300, m(90), 14, [m(30), m(220)], [mx, my, k.moonR * 5])}</g>`)
       + (holiday === 'christmas' ? snow(size, [42, 24, 12]) : '');
     // Three drawings, one over the other: the sky and its still stars; the moon or the sun with its halo and rays, a drawing
     // of its own that the graphics card moves, so it can set behind the hills and rise (paint, above); and the land and the
-    // lake. At Halloween the bats, between the moon and the hills, in theirs.
+    // lake. At Halloween the bats, between the moon and the hills, on a stage.
     return layer(size, '', twice(W, [['all', `<rect width="${2 * W}" height="${H}" fill="url(#ovs-sky)"/>`], ['soft', `<g>${skyStill}</g>`, 'stars']], own))
       + live('ovs-disc', `<g transform="translate(${W} 0)"><circle cx="${mx}" cy="${f1(my)}" r="${k.glowR}" class="ovs-halo" fill="url(#ovs-glow)" opacity="${HAZE}"/>${beams}${moon(mx, my, k.moonR)}</g>`)
-      + (holiday === 'halloween' ? live('ovs-bats', `<g transform="translate(${W} 0)">${bats(mx, m, k.moonR / 28)}</g>`) : '')
+      + (holiday === 'halloween' ? stage(size, 'ovs-bats', bats(W + mx, m, k.moonR / 28)) : '')
       + layer(size, '', twice(W, [
       ['both', land(L1, 'ovs-l1', 0.5), 'l1'],
       // No cloud under the moon ("Just remove this fucking cloud.").
@@ -578,7 +636,22 @@
       return;
     }
   };
-  document.addEventListener('animationiteration', (e) => { if (e.target.classList?.contains('ovs-met')) wander(e.target.querySelector('.ovs-mpos')); });
+  // It crosses every 11 seconds while its banner can be seen and the moon is up, and nothing of it runs between.
+  const shoot = (box) => {
+    const { later, showing, rest } = life(box);
+    const fly = () => {
+      if (!showing()) { rest(() => later(fly, 2000)); return; }
+      const met = box.querySelector(':scope > .ovs-lives > .ovs-met');
+      if (met && root.style.getPropertyValue('--sk-meteor') !== 'hidden') {
+        wander(met.querySelector('.ovs-mpos'));
+        met.classList.remove('ovs-go');
+        void met.getBoundingClientRect();
+        met.classList.add('ovs-go');
+      }
+      later(fly, 11000);
+    };
+    later(fly, 2000);
+  };
 
   // How a banner's box shows the drawing (laid xMaxYMid slice, 3200 wide and H tall): on a window wide enough to show the
   // middle well in from its left edge, how far in that edge is across the drawing; null on a narrower one, and null when
@@ -596,28 +669,30 @@
   const lay = (box, size) => {
     const fit = fitOf(box, SIZES[size].h);
     if (fit === undefined || (box.dataset.fit === String(fit) && box.dataset.hol === holiday)) return;
-    box.querySelectorAll(':scope > .ovs, :scope > .ovs-lives').forEach((e) => e.remove());
+    // The first time: it is watched for being in the window, its slow layers step on the beat, its shooting star flies.
+    if (!('live' in box.dataset)) {
+      box.dataset.live = '';
+      inView.observe(box);
+      if (!still()) { beat(box, (now, at) => sway(box, now, at)); shoot(box); }
+    }
+    box.querySelectorAll(':scope > .ovs, :scope > .ovs-lives, :scope > .ovs-stage').forEach((e) => e.remove());
     const key = `${picture} ${fit} ${holiday}`;
     if (drawn[size]?.key !== key) drawn[size] = { key, html: PICTURES[picture](size, fit), near: Scene.near[size], shore: Scene.shore[size] };
     const made = drawn[size];
     [Scene.near[size], Scene.shore[size]] = [made.near, made.shore]; // where this width's pines stand, for the lights, the monsters and the wind
     box.insertAdjacentHTML('afterbegin', made.html);
+    vars(box);
     box.dataset.fit = String(fit);
     box.dataset.hol = holiday;
     box.dispatchEvent(new CustomEvent('rabbidlab:scene', { bubbles: true }));
   };
   // Overview's now; another page's banner the first time its page opens, so pages never opened never draw one. Every
-  // banner of a size shares one drawing for a width; each starts its shooting star somewhere of its own.
+  // banner of a size shares one drawing for a width.
   const fill = () => {
     document.querySelectorAll('[data-scene]').forEach((el) => lay(el, 'tall'));
     document.querySelectorAll('.page:not([hidden]) .hero').forEach((hero) => {
       if (!hero.querySelector(':scope > .hero-art')) hero.insertAdjacentHTML('afterbegin', '<div class="hero-art"></div>');
       lay(hero.querySelector(':scope > .hero-art'), 'low');
-    });
-    document.querySelectorAll('.ovs-mpos:not([data-last])').forEach(wander);
-    document.querySelectorAll('.ovs-bat[data-v]').forEach((b) => {
-      b.dataset.v.split(';').forEach((p) => { const [k, v] = p.split(':'); b.style.setProperty(`--${k}`, v); });
-      b.removeAttribute('data-v');
     });
   };
   fill();
@@ -644,6 +719,7 @@
     fill();
     // For what is laid on the drawings and follows the sky (the monsters, the weather), also when no drawing changed.
     document.dispatchEvent(new CustomEvent('rabbidlab:scene'));
+    stir(); // a picture may be back in place of a solid colour
   };
   window.addEventListener('rabbidlab:sky', again);
   window.addEventListener('rabbidlab:theme', again); // dark mode and light mode each have a sky of their own

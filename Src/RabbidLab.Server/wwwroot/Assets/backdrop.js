@@ -428,21 +428,19 @@
     draw(8, 0, 16);
     let last = performance.now();
     // 30 frames a second at the most (fewer for the slow soft ones), not one per screen refresh: 144 Hz screens drew 144.
+    // The time to the next one is waited out on a timer, so a fast screen doesn't wake the page for each of its own frames.
     const gap = 1000 / (k?.fps || 30) - 4;
+    let wait = 0;
     const loop = (now) => {
       raf = 0;
       if (!alive || !seen) return;
       const ms = now - last;
-      if (ms < gap) {
-        raf = requestAnimationFrame(loop);
-        return;
-      }
       last = now;
       draw(now / 1000, Math.min(.05, ms / 1000), ms);
-      raf = requestAnimationFrame(loop);
+      wait = setTimeout(() => { wait = 0; if (alive && seen) raf = requestAnimationFrame(loop); }, gap);
     };
     const go = () => {
-      if (!k || still || raf) return;
+      if (!k || still || raf || wait) return;
       last = performance.now();
       raf = requestAnimationFrame(loop);
     };
@@ -468,6 +466,7 @@
     return () => {
       alive = false;
       cancelAnimationFrame(raf);
+      clearTimeout(wait);
       resized.disconnect();
       watch.disconnect();
       ctx.setTransform(1, 0, 0, 1, 0, 0);

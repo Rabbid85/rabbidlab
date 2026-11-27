@@ -4,9 +4,10 @@
 // hides again ("Move the tree, the monster hides behind. Like shake it like he's hiding."); nothing of him shows through
 // them. Now and then Nessie's neck rises out of the lake in the moon's path, she swims across, and her head turns down into
 // the water with her neck following it like a snake's ("The head needs to bend in the water like a snake turns"). Laid on a
-// stage over the banner's drawing (scene.js, RabbidLabScene), in its 3200 by 600 units. Everything that crosses the banner
-// is a layer the graphics card moves, so it is as smooth as the screen and costs the page nothing: the runner's every limb,
-// and Nessie's own small drawing; only her neck's shape is drawn by the page, 30 times a second while she is up.
+// stage over the banner's drawing (scene.js, RabbidLabScene, which says how everything on a banner moves), in its 3200 by
+// 600 units. Both are stepped on the engine's beat, 30 times a second while they move: the runner's every limb is a small
+// drawing turned about its joint, and Nessie's own small drawing glides and fades with her neck drawn inside it, the one
+// shape on the banner the page draws. Each pine that shakes is a small drawing the graphics card turns for that second.
 (() => {
   const S = window.RabbidLabScene;
   if (!S) return;
@@ -124,7 +125,7 @@
   // just changes outfits/styles lol. Engine would be amazing."). A body gives each limb's pieces drawn from their joint at
   // (0 0) down, where the joints are (hip and shoulder: [near, far]; knee and elbow: how far down the thigh and upper arm),
   // and the torso and head. A piece is a path's d, or its own markup when it has colours of its own (Santa's suit). Every
-  // outfit moves in its own gait (overview.css), and which he wears follows the banner (outfit below).
+  // outfit moves in its own gait (GAITS below), and which he wears follows the banner (outfit below).
   // Upright and broad ("Looks like a hunchback lol." of the one before, then a Bigfoot in silhouette, "More like this lol";
   // the shaggier of the two, "All these are my choices."): his head up on his shoulders with a crest, a brow, a nose and a
   // beard in profile, a deep chest and a straight back with long locks down it, long thick arms that reach his knees and end
@@ -155,8 +156,28 @@
       + `<path d="M-6.4 -27.2C-5.6 -31.4 -1 -32.4 2.4 -30.2L6.6 -26.6L4.7 -25.9L1 -27.8Z" fill="${RED}"/>`
       + '<path d="M-6.9 -27.4Q-3 -28.8 1.4 -27.3" fill="none" stroke="#f8f6f2" stroke-width="1.7" stroke-linecap="round"/><circle cx="6.4" cy="-26.3" r="1.35" fill="#f8f6f2"/></g>',
   };
-  // Each outfit's own way of moving (overview.css .ovm-g-*), and how fast it covers ground against 260 units in 8 seconds:
-  // Sasquatch and the yeti stride ("All these are picked now."), Santa jogs (the walk items in the mock).
+  // The gaits. t: how long a stride is, in seconds; lean: how far he leans in, in degrees; and for each joint how far it
+  // is turned through a stride, [part of the stride, degrees], eased from each to the next. The body stays level ("He just
+  // fucking bvounces when running?") and the elbows straighten as the arms come forward, so a hand never reaches the face
+  // ("Arm in his mouth lol").
+  // A real stride ("All these are picked now.", Sasquatch and the yeti): the heel lands with the leg out in front, the knee
+  // takes the weight, the leg passes under him and pushes off, the shin folds up as it swings through; the arms pump
+  // against the legs, bent at the elbow.
+  // The jolly jog: short quick steps, each foot landing under him and springing off, the knee folding as it swings through.
+  const GAITS = {
+    stride: { t: 0.5, lean: -10, thigh: [[0, 36], [0.18, 20], [0.4, -22], [0.52, -34], [0.66, -12], [0.84, 30], [1, 36]],
+      shin: [[0, -6], [0.18, -22], [0.4, -14], [0.52, -38], [0.66, -110], [0.84, -44], [1, -6]], upper: [[0, 34], [0.5, -40], [1, 34]], fore: [[0, 44], [0.5, 72], [1, 44]] },
+    jog: { t: 0.46, lean: -4, thigh: [[0, 30], [0.2, 14], [0.45, -24], [0.55, -20], [0.7, 4], [0.85, 26], [1, 30]],
+      shin: [[0, -10], [0.2, -24], [0.45, -20], [0.55, -50], [0.7, -95], [0.85, -40], [1, -10]], upper: [[0, 26], [0.5, -30], [1, 26]], fore: [[0, 60], [0.5, 92], [1, 60]] },
+  };
+  // A value through a list of [part, value], eased from each to the next.
+  const along = (keys, p) => {
+    const i = Math.max(0, keys.findIndex(([v]) => v > p) - 1);
+    const [[a, ha], [b, hb]] = [keys[i], keys[i + 1] || keys[i]];
+    return b === a ? ha : lerp(ha, hb, sm((p - a) / (b - a)));
+  };
+  // Each outfit's own gait, and how fast it covers ground against 260 units in 8 seconds: Sasquatch and the yeti stride,
+  // Santa jogs (the walk items in the mock).
   const OUTFITS = {
     sasquatch: { body: WOODS, cls: 'ovm-fur', gait: 'stride', pace: 1 }, // dark, the colour of the shore's pines a shade darker
     yeti: { body: WOODS, cls: 'ovm-snowfur', gait: 'stride', pace: 1 }, // the same in white, while it snows where the lab is
@@ -165,23 +186,24 @@
   // Which outfit: Santa at Christmas; the yeti while it snows where the lab is; Sasquatch otherwise.
   const outfit = () => (S.holiday === 'christmas' ? 'santa' : S.snowing ? 'yeti' : 'sasquatch');
   // The far arm and leg behind, the near leg, the torso and head, the near arm in front. Every piece is a small drawing of
-  // its own with its joint at its middle, in a box placed at the joint (data-at, set as --x and --y once laid, since the
-  // page allows no style attributes), so the graphics card turns each about its joint (overview.css): his limbs swing, he
-  // bobs and he crosses the shore without the page doing any work.
+  // its own with its joint at its middle, in a box placed at the joint (its --x and --y) that turns about it, so a step
+  // of his run turns boxes and draws nothing again.
   const part = (p) => (p.startsWith('<') ? p : `<path d="${p}"/>`);
   const piece = (p, cls) => `<svg class="ovm-piece ${cls}" viewBox="-12 -12 24 24" aria-hidden="true">${part(p)}</svg>`;
   const build = (m, cls) => {
-    const limb = (name, at, upper, upperCls, down, lower, lowerCls) => `<div class="ovm-joint ${name}" data-at="${at.join(' ')}"><div class="ovm-turn ${upperCls}">${piece(upper, cls)}`
-      + `<div class="ovm-joint" data-at="0 ${down}"><div class="ovm-turn ${lowerCls}">${piece(lower, cls)}</div></div></div></div>`;
+    const limb = (name, at, upper, upperCls, down, lower, lowerCls) => `<div class="ovm-joint ${name}" data-vars="x:${at[0]};y:${at[1]}"><div class="ovm-turn ${upperCls}">${piece(upper, cls)}`
+      + `<div class="ovm-joint" data-vars="x:0;y:${down}"><div class="ovm-turn ${lowerCls}">${piece(lower, cls)}</div></div></div></div>`;
     const leg = (i) => limb(`ovm-leg${i ? ' ovm-b' : ''}`, m.hip[i], m.thigh, 'ovm-thigh', m.knee, m.shin, 'ovm-shin');
     const arm = (i) => limb(`ovm-arm${i ? ' ovm-b' : ''}`, m.shoulder[i], m.upper, 'ovm-upper', m.elbow, m.fore, 'ovm-fore');
     return `${arm(1)}${leg(1)}${leg(0)}<svg class="ovm-piece ovm-torso ${cls}" viewBox="-20 -44 40 48" aria-hidden="true">${m.body}</svg>${arm(0)}`;
   };
-  const RUNNER = (name) => `<div class="ovm-at"><div class="ovm ovm-runner ovm-g-${OUTFITS[name].gait} ovm-hiding"><div class="ovm-walk"><div class="ovm-bob">${build(OUTFITS[name].body, OUTFITS[name].cls)}</div></div></div></div>`;
+  const RUNNER = (name) => `<div class="ovm-at"><div class="ovm ovm-runner"><div class="ovm-walk"><div class="ovm-bob">${build(OUTFITS[name].body, OUTFITS[name].cls)}</div></div></div></div>`;
 
   // Where he hides: four clumps of three to five pines of different heights on the far shore (base 436), the tallest near
   // the middle so he is hidden at its foot. Each pine sways from its foot when its clump rustles; each clump is mirrored in
-  // the lake under it; at Christmas they wear the same lights as the big pines. [x, height] for each pine.
+  // the lake under it; at Christmas they wear the same lights as the big pines. [x, height] for each pine. A pine is a
+  // sprite with its foot at the bottom middle, and a clump is there twice: its pines, and the same again blurred for
+  // their mirror image (overview.css turns that one over about the water line).
   const CLUMPS = [2440, 2635, 2830, 3025];
   const corners = (x, h) => S.corners(x, 436, h);
   const GROVES = (() => {
@@ -193,8 +215,9 @@
       return list.sort((a, b) => a[0] - b[0]);
     });
   })();
-  const CLUMP = GROVES.map((g, i) => `<g class="ovm-clump" id="ovm-cl-${i}" data-clump="${i}">${g.map(([px, h]) => `<g class="ovm-sway"><path d="${S.pine(px, 436, h)}"/>`
-    + `<g class="ovm-lit">${S.lights(px, 436, h)}</g></g>`).join('')}</g><use href="#ovm-cl-${i}" class="ovm-refl" transform="translate(0 872) scale(1 -1)"/>`).join('');
+  const pines = (g, soft) => g.map(([px, h]) => S.sprite('ovm-sway', [px - h * 0.34 - 2, 434 - h, h * 0.68 + 4, h + 2],
+    `<g${soft ? ' filter="url(#ovs-b1)"' : ''}><path d="${S.pine(px, 436, h)}"/><g class="ovm-lit">${S.lights(px, 436, h)}</g></g>`)).join('');
+  const CLUMP = GROVES.map((g, i) => `<div class="ovm-clump" data-clump="${i}">${pines(g, false)}</div><div class="ovm-clump ovm-refl" data-clump="${i}">${pines(g, true)}</div>`).join('');
   // What hides him: the outline round each clump's pines, gaps and all, a little wider, and the big pines in the corners.
   const around = (pts) => {
     const p = pts.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]);
@@ -225,15 +248,15 @@
 
   const lay = (box) => {
     box.dataset.monsters = '';
-    // A stage laid exactly as the drawing is, and on it: the strip the runner crosses, the clumps as one still drawing, and
-    // Nessie's own small drawing.
+    // A stage laid exactly as the drawing is, and on it: the strip the runner crosses, the clumps' pines, and Nessie's own
+    // small drawing.
     box.insertAdjacentHTML('beforeend', `<div class="ovm-layer"><div class="ovm-stage"><div class="ovm-band">${RUNNER(outfit())}</div>`
-      + `<svg class="ovm-clumps" viewBox="0 0 3200 600" aria-hidden="true">${CLUMP}</svg>${NESSIE}</div></div>`);
+      + `<div class="ovm-clumps">${CLUMP}</div>${NESSIE}</div></div>`);
     const layer = box.querySelector(':scope > .ovm-layer');
     // Their timers and listeners end with the layer, and they rest while the banner can't be seen (scene.js, life).
     const { later, on, showing, rest } = S.life(layer);
     const q = (sel) => layer.querySelector(sel);
-    layer.querySelectorAll('[data-at]').forEach((j) => { const [x, y] = j.dataset.at.split(' '); j.style.setProperty('--x', x); j.style.setProperty('--y', y); });
+    S.vars(layer);
     // The big pines move with the window's width (scene.js draws the banner again), so what hides him is made again then,
     // and when the wind starts or stops.
     const hide = () => { const m = hideMask(box.hasAttribute('data-gale')); ['mask-image', '-webkit-mask-image'].forEach((k) => q('.ovm-band').style.setProperty(k, m)); };
@@ -244,19 +267,38 @@
 
     // The runner: always behind one clump or running to another.
     const runner = q('.ovm-runner');
-    const { pace } = OUTFITS[outfit()];
+    const { pace, gait: way } = OUTFITS[outfit()];
+    const gait = GAITS[way];
     const walk = runner.querySelector('.ovm-walk');
+    const bob = runner.querySelector('.ovm-bob');
+    // Each joint with how it turns through a stride; the far leg and the near arm run half a stride behind.
+    const joints = ['thigh', 'shin', 'upper', 'fore'].flatMap((part) => [...runner.querySelectorAll(`.ovm-${part}`)]
+      .map((el) => [el, gait[part], el.closest('.ovm-leg.ovm-b, .ovm-arm:not(.ovm-b)') ? 0.5 : 0]));
     let spot = Math.floor(Math.random() * CLUMPS.length);
-    let dash = null; // while he runs: from where to where, since when, for how long
+    let dash = null; // while he runs: from where to where across the drawing, how far in pixels, since when, for how long
+    // A step of his run, on the beat: how far he has come, and where in a stride each joint is.
+    const stride = (now) => {
+      if (!dash) return;
+      const ms = now - dash.at;
+      walk.style.transform = `translateX(${(dash.far * Math.min(1, ms / dash.ms)).toFixed(1)}px)`;
+      joints.forEach(([el, keys, behind]) => { el.style.transform = `rotate(${along(keys, (ms / (gait.t * 1000) + behind) % 1).toFixed(1)}deg)`; });
+    };
+    // Standing still and upright where his run ended, so nothing of him leans out of the pines.
+    const stand = () => {
+      if (dash) walk.style.transform = `translateX(${dash.far.toFixed(1)}px)`;
+      dash = null;
+      bob.style.transform = '';
+      joints.forEach(([el]) => { el.style.transform = ''; });
+    };
     // Where his feet are across the drawing, and three quarters size, turned to face the way he goes.
     const place = (x, left) => { runner.parentNode.style.setProperty('--x', x); runner.parentNode.style.setProperty('--f', left ? 0.75 : -0.75); };
-    const shake = (i, hard) => {
-      const c = q(`[data-clump="${i}"]`);
+    // A clump's pines and their mirror image shake together.
+    const shake = (i, hard) => layer.querySelectorAll(`[data-clump="${i}"]`).forEach((c) => {
       c.classList.remove('ovm-shake', 'ovm-hard');
       void c.getBoundingClientRect();
       c.classList.add('ovm-shake');
       c.classList.toggle('ovm-hard', hard);
-    };
+    });
     place(CLUMPS[spot], true);
     runner.classList.add('ovm-here');
     const run = () => {
@@ -269,20 +311,16 @@
         place(CLUMPS[spot], CLUMPS[to] < CLUMPS[spot]);
         const dist = Math.abs(CLUMPS[to] - CLUMPS[spot]) / 0.75;
         const ms = ((dist / 260) * 8000) / pace; // "Why is sasquatch running 900 miels an hour": about 260 units in 8 s, at his outfit's pace
-        walk.getAnimations().forEach((a) => a.cancel());
-        runner.classList.remove('ovm-hiding');
-        // How far in pixels, worked out once: given in the drawing's units, the page had to work it out again every frame.
-        const far = (-dist * q('.ovm-stage').getBoundingClientRect().width) / 3200;
-        walk.animate([{ transform: 'translateX(0)' }, { transform: `translateX(${far.toFixed(1)}px)` }], { duration: ms, easing: 'linear', fill: 'forwards' });
+        walk.style.transform = '';
+        bob.style.transform = `rotate(${gait.lean}deg)`;
         later(() => shake(to, true), ms - 700); // and into the next one
-        dash = { from: CLUMPS[spot], to: CLUMPS[to], at: performance.now(), ms };
-        later(() => { spot = to; dash = null; wait(); }, ms);
+        dash = { from: CLUMPS[spot], to: CLUMPS[to], far: (-dist * q('.ovm-stage').getBoundingClientRect().width) / 3200, at: performance.now(), ms };
+        later(() => { spot = to; stand(); wait(); }, ms);
       }, 520);
     };
-    // Waiting behind the pines, standing still and upright so nothing of him leans out, the pines rustling once or twice
-    // while he's there. With nobody to see him he stays put, and waits again when the banner is back.
+    // Waiting behind the pines, the pines rustling once or twice while he's there. With nobody to see him he stays put,
+    // and waits again when the banner is back.
     const wait = () => {
-      runner.classList.add('ovm-hiding');
       const long = 4000 + Math.random() * 7000;
       later(() => { if (showing()) shake(spot, false); }, long * (0.25 + Math.random() * 0.2));
       if (Math.random() < 0.5) later(() => { if (showing()) shake(spot, false); }, long * 0.7);
@@ -292,10 +330,9 @@
 
     // Nessie, now and then: somewhere new on the lake in the moon's part of it each time, going one way or the other. She
     // glides ("She also just needs to glide, not row"), and on the way looks at us and back over her shoulder, and dips her
-    // head into the water twice ("Rowing, looking, dipping", less the rowing). Her neck, her rise out of the water and her
-    // flippers are drawn 30 times a second on a timer while she's out, from where her round is (her drawing's own fade,
-    // which the graphics card runs with her glide). Drawn once for every frame of the screen, a fast screen kept the page
-    // busy a tenth of the time for her alone; each step is under a pixel.
+    // head into the water twice ("Rowing, looking, dipping", less the rowing). Her round is 24 seconds, stepped on the
+    // engine's beat while she's out: where her drawing is and how much of it shows, and inside it her neck, her rise out
+    // of the water and her flippers. Each step is under a pixel.
     const ness = q('.ovm-nessie');
     const face = ness.querySelector('.ovm-face');
     const rises = ness.querySelectorAll('.ovm-rise');
@@ -305,48 +342,42 @@
     const span = (p, a, b, c, e) => (p < a || p > e ? 0 : p < b ? sm((p - a) / (b - a)) : p <= c ? 1 : 1 - sm((p - c) / (e - c)));
     // Which way her head faces through her round: [part of her round, 1 forward / 0 at us / -1 back], eased between.
     const LOOK = [[0, 1], [0.3, 1], [0.35, 0], [0.4, 0], [0.46, -1], [0.52, -1], [0.57, 0], [0.62, 1], [1, 1]];
-    const along = (keys, p) => {
-      const i = Math.max(0, keys.findIndex(([v]) => v > p) - 1);
-      const [[a, ha], [b, hb]] = [keys[i], keys[i + 1] || keys[i]];
-      return b === a ? ha : lerp(ha, hb, sm((p - a) / (b - a)));
-    };
     // When the runner bolts while she is up, she stops swimming and watches him until he is in the pines again ("She stops
     // to watch", the Nessie sees the monster mock): her head turns away from us toward him on the far shore and follows
     // him, forward when he is ahead of her, back over her shoulder when he is behind. While she is stopped her neck sways
     // slower ("floating around is a little too fast when stopped"). seen eases her in and out of watching.
-    let [nessAt, nessDir, seen, aim, stopped, swayT, paddleT, last, round] = [2480, 1, 0, 0, false, 0, 0, null, null];
+    // at: how far into her round she is, in ms; out: whether she is up at all.
+    let [nessAt, nessDir, seen, aim, stopped, swayT, paddleT, last, faced, at, out] = [2480, 1, 0, 0, false, 0, 0, null, 1, 0, false];
     const soon = () => later(swim, 3000 + Math.random() * 6000);
-    const frame = () => {
-      if (!ness.classList.contains('ovm-go')) return;
-      const now = performance.now();
-      round = round || ness.getAnimations().find((a) => a.animationName === 'ovm-on');
-      const ms = round?.currentTime ?? null;
-      // Her round has no time when the banner stopped being shown part way through it (another page was opened): she is
-      // gone, nothing of hers runs, and she comes up afresh a little after the banner is back. Without this her neck was
-      // drawn 30 times a second for good, and she never dived or came again.
-      if (ms === null) { ness.classList.remove('ovm-go'); rest(soon); return; }
-      // Down again: nothing of hers is drawn and no timer runs until she next comes up.
-      if (ms >= LEN) { ness.classList.remove('ovm-go'); later(swim, 6000 + Math.random() * 14000); return; }
-      later(frame, 33);
-      const p = ms / LEN;
+    const frame = (now, box, n) => {
+      if (!out) return;
+      const p = at / LEN;
       const [u, d] = [Math.max(0, Math.min(1, p / 0.12)), Math.max(0, Math.min(1, (p - 0.8) / 0.13))];
+      const turn = along(LOOK, p);
+      const dip = span(p, 0.14, 0.165, 0.185, 0.21) + span(p, 0.68, 0.705, 0.725, 0.75);
+      // Drawn 30 times a second while she comes up, goes down, turns her head, dips it or watches the runner; 15 while she
+      // only glides and sways, when a step moves no part of her a pixel.
+      if (n % 2 && u === 1 && d === 0 && dip === 0 && turn === faced && seen <= 0.01) return;
+      faced = turn;
+      const dt = Math.min(100, now - (last ?? now));
+      last = now;
       const head = nessAt + nessDir * NS * (80 * p + 8);
       const rx = dash ? lerp(dash.from, dash.to, Math.min(1, Math.max(0, (now - dash.at) / dash.ms))) : null;
       if (rx !== null) aim = -Math.atan2(260, (rx - head) * nessDir);
-      const dt = Math.min(100, now - (last ?? now));
-      last = now;
       seen = lerp(seen, rx !== null && u > 0.9 && d === 0 ? 1 : 0, 1 - 0.93 ** (dt / 16.7));
-      if ((seen > 0.5) !== stopped) {
-        stopped = seen > 0.5;
-        ness.getAnimations().forEach((a) => (stopped ? a.pause() : a.play()));
-      }
+      // While she watches she stays where she is: her round waits and her flippers hold still.
+      stopped = seen > 0.5;
       swayT += dt * lerp(1, 0.35, seen);
-      if (!stopped) paddleT += dt;
-      const turn = along(LOOK, p);
-      const n = neck(u, d, swayT, { turn, theta: lerp(thetaOf(turn), aim, seen), dip: span(p, 0.14, 0.165, 0.185, 0.21) + span(p, 0.68, 0.705, 0.725, 0.75) });
-      necks.forEach((g) => g.setAttribute('d', n.d));
+      if (!stopped) { paddleT += dt; at += dt; }
+      // Down again: nothing of hers shows or is drawn until she next comes up.
+      if (at >= LEN) { out = false; ness.style.opacity = '0'; later(swim, 6000 + Math.random() * 14000); return; }
+      // Her drawing fades in over the first 6% of her round and out over the last, and glides 88 units the way she faces.
+      ness.style.opacity = Math.min(1, p / 0.06, (1 - p) / 0.06).toFixed(3);
+      ness.style.transform = `translateX(${(nessDir * 88 * p * Math.max(box.width / 3200, box.height / 600)).toFixed(2)}px)`;
+      const drawn = neck(u, d, swayT, { turn, theta: lerp(thetaOf(turn), aim, seen), dip });
+      necks.forEach((g) => g.setAttribute('d', drawn.d));
       eyes.forEach((g, i) => {
-        const [ex, ey, op] = n.eyes[i];
+        const [ex, ey, op] = drawn.eyes[i];
         g.setAttribute('transform', `translate(${ex.toFixed(2)} ${ey.toFixed(2)})`);
         g.setAttribute('opacity', op.toFixed(2));
       });
@@ -357,19 +388,16 @@
         g.setAttribute('transform', `rotate(${(1 + (b ? 13 : -13) * Math.cos((Math.PI * paddleT) / 1400)).toFixed(1)} ${PADDLE[b ? 1 : 0].join(' ')})`);
       });
     };
-    // A round, and the next some time after it ends (a stop to watch makes it longer). None while the banner can't be seen.
+    // A round, and the next some time after it ends (a stop to watch makes it longer). None begins while the banner can't
+    // be seen, and one under way waits where it is until the banner is back.
     const swim = () => {
       if (!showing()) { rest(soon); return; }
       const left = Math.random() < 0.5;
-      [nessAt, nessDir, seen, stopped, last, round] = [2300 + Math.random() * 600, left ? -1 : 1, 0, false, null, null];
+      [nessAt, nessDir, seen, stopped, last, at, out] = [2300 + Math.random() * 600, left ? -1 : 1, 0, false, null, 0, true];
       ness.style.setProperty('--x', nessAt.toFixed(0)); // where she comes up across the drawing
-      ness.style.setProperty('--dir', nessDir); // which way the graphics card glides her
       face.setAttribute('transform', left ? 'scale(-1 1)' : '');
-      ness.classList.remove('ovm-go');
-      void ness.getBoundingClientRect();
-      ness.classList.add('ovm-go');
-      frame();
     };
+    S.beat(layer, (now, box, n) => { stride(now); frame(now, box, n); }, 1);
     soon();
   };
   // None under a solid colour: nothing moves there (scene.js takes them away).

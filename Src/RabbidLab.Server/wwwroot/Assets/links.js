@@ -198,20 +198,24 @@
     wait = answer.next || 60;
     return { states: answer.states || {}, revision: answer.revision, links: answer.revision !== revision ? await R.get('/api/links') : null };
   };
-  // Off Links only the rail's count and dot, on every page, so the dot clears once a link is back.
+  // Off Links only the rail's count and dot, on every page, so the dot clears once a link is back. Not asked for while
+  // the tab is behind another; it catches up when the tab is back in front.
   const check = async () => {
     clearTimeout(timer);
     if (R.where()[0] === 'links') return; // the page keeps up by itself (below)
-    try {
-      const got = await readStates();
-      states = got.states;
-      if (got.links && !tools.busy()) take(got.links);
-      rail();
-    } catch {
-      // The dot stays as it was.
+    if (!document.hidden) {
+      try {
+        const got = await readStates();
+        states = got.states;
+        if (got.links && !tools.busy()) take(got.links);
+        rail();
+      } catch {
+        // The dot stays as it was.
+      }
     }
     if (R.where()[0] !== 'links') timer = setTimeout(check, wait * 1000);
   };
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && can('links.view')) check(); });
   // On Links every 10 seconds, or sooner when the server says: drawn only when a state or a link changed.
   const liveLinks = R.live({
     page: () => R.where()[0] === 'links' && can('links.view'),

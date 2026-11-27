@@ -2,6 +2,14 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.429 (2026-11-27)
+
+- The banner uses about half as much of the processor on a clear night, and under a third as much by day, under cloud and in fog. Stars, the moonlight on the water, clouds, fog and the monsters are stepped on one slow timer. Each used to make the whole banner redraw for every frame of the screen.
+- Lightning, the Halloween bats and the pines Sasquatch shakes are small pieces of their own now. The page no longer draws the banner again for them.
+- Nothing on a banner runs while it is scrolled out of the window, or while a solid colour is shown.
+- The moving background on the sign-in page no longer wakes the page for every frame of a fast screen.
+- The Links and Sensors dots in the sidebar are not asked for while the tab is behind another.
+
 ## 1.1.428 (2026-11-27)
 
 - Sign-in alerts count real sign-ins only. A ticket Windows renews by itself for someone already signed in was shown as a sign-in, and set off alerts such as Sign-in outside usual hours.

@@ -955,8 +955,10 @@
     clearInterval(timer);
     if (!can('sensors.view')) return;
     if (e.detail[0] === 'sensors') refresh();
-    else timer = setInterval(quietly, 60000); // elsewhere it only needs the rail's dot
+    else timer = setInterval(() => { if (!document.hidden) quietly(); }, 60000); // elsewhere it only needs the rail's dot
   });
+  // The dot isn't asked for while the tab is behind another; it catches up when the tab is back in front.
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && R.where()[0] !== 'sensors' && can('sensors.view')) quietly(); });
   // On the page it keeps up with the checks every 10 seconds, drawn only when something changed.
   R.live({
     page: () => R.where()[0] === 'sensors' && can('sensors.view'),

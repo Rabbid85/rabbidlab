@@ -160,7 +160,15 @@ public sealed class RedirectByName(Redirect.Plan plan, ConsoleNames names, ILogg
         {
             while (!stop.IsCancellationRequested)
             {
-                await Sync(stop);
+                // A look that goes wrong is tried again at the next change, not the end of all of them.
+                try
+                {
+                    await Sync(stop);
+                }
+                catch (Exception e) when (e is not OperationCanceledException)
+                {
+                    log.LogWarning(e, "The names on port {Port} could not be looked at", plan.Port);
+                }
                 await wake.WaitAsync(stop);
             }
         }

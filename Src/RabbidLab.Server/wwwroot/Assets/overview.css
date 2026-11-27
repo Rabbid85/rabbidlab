@@ -155,28 +155,30 @@
 .ovs .ovs-sheen { transition: opacity 1.4s ease, fill 2.4s ease; }
 .ovs-set .ovs-glint, .ovs-set .ovs .ovs-sheen { opacity: 0; transition-delay: .9s; }
 /* What moves: a few stars twinkle, a shooting star crosses now and then, the moonlight on the water shimmers. */
-/* Each is a drawing of its own on top of the scene (.ovs-live, scene.js) that the graphics card fades, stretches or moves
-   whole. Nothing changes inside a drawing, so the page does no work per frame and the motion is as smooth as the screen;
-   moving inside the scene, every twinkle painted all of it again at the screen's rate. */
+/* Each is a drawing of its own on top of the scene (.ovs-live, scene.js) that is faded, stretched or moved whole; nothing
+   changes inside a drawing. What moves slowly is stepped by scene.js's beat (the stars, the moonlight, at Christmas the
+   bulbs); what moves fast is an animation here that runs only while it plays. --u is one of the drawing's units. */
 .ovs-lives { position: absolute; inset: 0; pointer-events: none; }
-.ovs-live { pointer-events: none; will-change: transform, opacity; --u: max(100cqw / 3200, 100cqh / 600); }
-.ovs-live[data-size="low"] { --u: max(100cqw / 3200, 100cqh / 300); }
-/* One beat's stars fade together; one beat's strokes of moonlight stretch together about the moon's column, 520 units in
-   from the right; the shooting star's drawing flies the way its streak points (--fx, --fy from scene.js). */
-.ovs-tw { animation: ovs-tw 3.6s ease-in-out infinite; }
-.ovs-met { opacity: 0; animation: ovs-fly 11s linear 2s infinite; }
-.ovs-shim { transform-origin: calc(100% - 520 * var(--u)) 50%; animation: ovs-shim 2.8s ease-in-out infinite alternate; }
-.ovs-d1 { animation-delay: -.8s; } .ovs-d2 { animation-delay: -1.9s; } .ovs-d3 { animation-delay: -2.7s; } .ovs-d4 { animation-delay: -3.3s; }
-@keyframes ovs-tw { 50% { opacity: .3; } }
-/* It crosses 420 units in two thirds of a second, fading in and out as it goes, then waits; it never stops in view, and
-   scene.js moves it somewhere new before it comes again. */
-@keyframes ovs-fly { 0% { transform: translate(0, 0); opacity: 0; } 1% { opacity: 1; } 4.5% { opacity: .9; }
-  6%, 100% { transform: translate(calc(var(--fx, 407.5) * var(--u)), calc(var(--fy, 101.6) * var(--u))); opacity: 0; } }
-@keyframes ovs-shim { from { transform: scaleX(.7); } to { transform: scaleX(1.15); } }
+.ovs-live, .ovs-stage, .ovm-layer { --u: max(100cqw / 3200, 100cqh / 600); }
+:is(.ovs-live, .ovs-stage)[data-size="low"] { --u: max(100cqw / 3200, 100cqh / 300); }
+.ovs-live { pointer-events: none; will-change: transform, opacity; }
+/* A stage (scene.js): a box laid exactly as the drawing is, 3200 units by 600 (300 on the lower banners), and a sprite on
+   it, a small drawing of its own part of the picture (--x, --y, --w, --h in units). */
+.ovs-stage, .ovm-stage { position: absolute; right: 0; top: 50%; width: calc(3200 * var(--u)); height: calc(600 * var(--u)); margin-top: calc(-300 * var(--u)); pointer-events: none; }
+.ovs-stage[data-size="low"] { height: calc(300 * var(--u)); margin-top: calc(-150 * var(--u)); }
+.ovs-sprite { position: absolute; left: calc(var(--x) * var(--u)); top: calc(var(--y) * var(--u)); width: calc(var(--w) * var(--u)); height: calc(var(--h) * var(--u)); overflow: visible; }
+/* While a banner is scrolled out of the window nothing on it runs. */
+[data-away] * { animation-play-state: paused !important; }
+/* One beat's strokes of moonlight stretch together about the moon's column, 520 units in from the right. */
+.ovs-shim { transform-origin: calc(100% - 520 * var(--u)) 50%; }
+/* The shooting star's drawing flies the way its streak points (--fx, --fy from scene.js, which starts it): 420 units in
+   two thirds of a second, fading in and out as it goes, so it never stops in view. */
+.ovs-met { opacity: 0; }
+.ovs-met.ovs-go { animation: ovs-fly .66s linear both; }
+@keyframes ovs-fly { 0% { transform: translate(0, 0); opacity: 0; } 17% { opacity: 1; } 75% { opacity: .9; }
+  100% { transform: translate(calc(var(--fx, 407.5) * var(--u)), calc(var(--fy, 101.6) * var(--u))); opacity: 0; } }
 /* Halloween (October 15 to 31) and Christmas (December 1 to 26) colour the scene through scene.js:
    at night their own, at other times leaning the time of day their way. */
-.ovs-twinkle { animation: ovs-twinkle 1.8s ease-in-out infinite alternate; }
-@keyframes ovs-twinkle { 0%, 40% { opacity: 1; } 100% { opacity: .35; } }
 /* Snow: each size of flake is a drawing of its own, its flakes drawn twice one banner's height apart, which slides down
    one height and starts again. */
 .ovs-snows { overflow: visible; fill: #fff; animation: ovs-fall 16s linear infinite; }
@@ -184,21 +186,26 @@
 .ovs-snows[data-size="low"] { animation-name: ovs-fall-low; }
 @keyframes ovs-fall { from { transform: translateY(0); } to { transform: translateY(calc(600 * var(--u))); } }
 @keyframes ovs-fall-low { from { transform: translateY(0); } to { transform: translateY(calc(300 * var(--u))); } }
-/* The bats: each on its own path past the moon (scene.js sets it), fading in and out at the ends, wings flapping from the
-   shoulders, bobbing as they fly. */
-.ovs-bat { fill: #07030b; opacity: 0; animation: ovs-bat var(--t) ease-in-out infinite; animation-delay: var(--d); }
+/* The bats, on a stage: each on its own path past the moon (scene.js sets it), fading in and out at the ends, wings
+   flapping from the shoulders, bobbing as they fly. A bat is a point (its middle) that the graphics card flies, with its
+   body and wings drawn round it. */
+.ovs-bat { position: absolute; left: 0; top: 0; fill: #07030b; opacity: 0; animation: ovs-bat var(--t) ease-in-out infinite; animation-delay: var(--d); }
 @keyframes ovs-bat {
-  0% { transform: translate(var(--x0), var(--y0)) scale(var(--s)); opacity: 0; }
+  0% { transform: translate(calc(var(--x0) * var(--u)), calc(var(--y0) * var(--u))) scale(var(--s)); opacity: 0; }
   10% { opacity: 1; }
-  25% { transform: translate(var(--x1), var(--y1)) scale(var(--s)); }
-  50% { transform: translate(var(--x2), var(--y2)) scale(var(--s)); }
-  75% { transform: translate(var(--x3), var(--y3)) scale(var(--s)); }
+  25% { transform: translate(calc(var(--x1) * var(--u)), calc(var(--y1) * var(--u))) scale(var(--s)); }
+  50% { transform: translate(calc(var(--x2) * var(--u)), calc(var(--y2) * var(--u))) scale(var(--s)); }
+  75% { transform: translate(calc(var(--x3) * var(--u)), calc(var(--y3) * var(--u))) scale(var(--s)); }
   90% { opacity: 1; }
-  100% { transform: translate(var(--x4), var(--y4)) scale(var(--s)); opacity: 0; } }
-.ovs-wing { transform-box: fill-box; transform-origin: 0% 60%; animation: ovs-flap .14s ease-in-out infinite alternate; }
+  100% { transform: translate(calc(var(--x4) * var(--u)), calc(var(--y4) * var(--u))) scale(var(--s)); opacity: 0; } }
+.ovs-bat :is(.ovs-bob, .ovs-flip, svg) { position: absolute; left: 0; top: 0; }
+.ovs-flip { transform: scaleX(-1); }
+.ovs-bat .ovs-wing { top: calc(-14 * var(--u)); width: calc(32 * var(--u)); height: calc(20 * var(--u)); transform-origin: calc(2 * var(--u)) calc(13 * var(--u));
+  animation: ovs-flap .14s ease-in-out infinite alternate; }
+.ovs-bat .ovs-batbody { left: calc(-6 * var(--u)); top: calc(-12 * var(--u)); width: calc(12 * var(--u)); height: calc(22 * var(--u)); }
 @keyframes ovs-flap { from { transform: rotate(-32deg) scaleY(.9); } to { transform: rotate(26deg) scaleY(.75); } }
 .ovs-bob { animation: ovs-bob var(--b, .4s) ease-in-out infinite alternate; }
-@keyframes ovs-bob { from { transform: translateY(-2px); } to { transform: translateY(2px); } }
+@keyframes ovs-bob { from { transform: translateY(calc(-2 * var(--u))); } to { transform: translateY(calc(2 * var(--u))); } }
 /* The monsters on Overview's banner (monsters.js). Hidden until each plays. */
 .ovm { opacity: 0; }
 /* Nessie: black whatever the banner, her eye catching the light; under the water a deeper shade of the lake's own colour,
@@ -207,26 +214,19 @@
 .ovm-eye { fill: var(--sk-rim, color-mix(in srgb, var(--accent) 30%, #cfc8ff)); } /* small and pale, by the snout */
 .ovm-eye circle { opacity: .9; }
 .ovm-under { fill: color-mix(in srgb, var(--sk-water0, color-mix(in srgb, var(--accent) 12%, #0e0c26)) 45%, #000); opacity: .34; }
-/* The stage the monsters are on: laid exactly as the drawing is, 3200 by 600 of its units, so they are placed in those. */
-.ovm-layer { position: absolute; inset: 0; overflow: hidden; pointer-events: none; --u: max(100cqw / 3200, 100cqh / 600); }
-.ovm-stage { position: absolute; right: 0; top: 50%; width: calc(3200 * var(--u)); height: calc(600 * var(--u)); margin-top: calc(-300 * var(--u)); }
-.ovm-clumps { position: absolute; inset: 0; width: 100%; height: 100%; will-change: transform; }
-/* Her own small drawing, 264 by 176 units, where she comes up (--x). The graphics card glides it 88 units the way she faces
-   (--dir) and fades it in and out; her neck, her rise and her flippers are drawn inside it (monsters.js). */
+/* The monsters' stage (the engine's, above), in a box over the banner. */
+.ovm-layer { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.ovm-clumps { position: absolute; inset: 0; will-change: transform; }
+/* Her own small drawing, 264 by 176 units, where she comes up (--x). It glides 88 units the way she faces and fades in and
+   out, and her neck, her rise and her flippers are drawn inside it, all stepped on the beat (monsters.js). */
 .ovm-nessie { position: absolute; left: calc((var(--x, 2480) - 132) * var(--u)); top: calc(382 * var(--u)); width: calc(264 * var(--u)); height: calc(176 * var(--u));
   will-change: transform, opacity; }
-.ovm-nessie.ovm-go { animation: ovm-on 24s linear both, ovm-glide 24s linear both; }
-@keyframes ovm-on { 0% { opacity: 0; } 6% { opacity: 1; } 94% { opacity: 1; } 100% { opacity: 0; } }
-@keyframes ovm-glide { from { transform: translateX(0); } to { transform: translateX(calc(var(--dir, 1) * 88 * var(--u))); } }
 /* The runner, always there, out of sight behind the pines unless he's crossing between them, each outfit moving its own way
-   (monsters.js OUTFITS): Sasquatch and the yeti in a real stride, Santa in a jolly jog. The body
-   stays level ("He just fucking bvounces when running?") and the elbows straighten as the arms come forward, so a hand never
-   reaches the face ("Arm in his mouth lol"). Each joint turns about its own point, (0 0) of its group. A stride is --ovm-t
-   long; the far leg and the near arm run half a stride behind. Waiting behind the pines he stands still. */
+   (monsters.js GAITS, which steps him on the beat). Each joint turns about its own point. */
 .ovm-runner.ovm-here { opacity: 1; }
-/* Every piece of him is a layer the graphics card moves: the strip of far shore he crosses, with a still mask that hides
-   him behind the pines (monsters.js hideMask); where he stands (--x) and which way he faces (--f); each joint's box at its
-   place (--x, --y) and the piece in it, its joint at its middle. */
+/* The strip of far shore he crosses, with a still mask that hides him behind the pines (monsters.js hideMask); where he
+   stands (--x) and which way he faces (--f); each joint's box at its place (--x, --y) and the piece in it, its joint at
+   its middle. */
 .ovm-band { position: absolute; left: calc(2400 * var(--u)); top: calc(392 * var(--u)); width: calc(670 * var(--u)); height: calc(50 * var(--u));
   -webkit-mask-size: 100% 100%; mask-size: 100% 100%; }
 .ovm-at { position: absolute; left: calc((var(--x, 2440) - 2400) * var(--u)); top: calc(42 * var(--u)); width: 0; height: 0; transform: scale(var(--f, .75), .75); }
@@ -234,50 +234,25 @@
 .ovm-joint { position: absolute; left: calc(var(--x, 0) * var(--u)); top: calc(var(--y, 0) * var(--u)); width: 0; height: 0; }
 .ovm-piece { position: absolute; left: calc(-12 * var(--u)); top: calc(-12 * var(--u)); width: calc(24 * var(--u)); height: calc(24 * var(--u)); overflow: visible; }
 .ovm-piece.ovm-torso { left: calc(-20 * var(--u)); top: calc(-44 * var(--u)); width: calc(40 * var(--u)); height: calc(48 * var(--u)); }
-.ovm-g-stride { --ovm-t: .5s; } .ovm-g-jog { --ovm-t: .46s; }
-:is(.ovm-thigh, .ovm-shin, .ovm-upper, .ovm-fore) { transform-box: view-box; transform-origin: 0 0; animation: var(--ovm-t) ease-in-out infinite; }
-:is(.ovm-leg.ovm-b, .ovm-arm:not(.ovm-b)) :is(.ovm-thigh, .ovm-shin, .ovm-upper, .ovm-fore) { animation-delay: calc(var(--ovm-t) / -2); }
-.ovm-bob { transform-box: fill-box; transform-origin: 50% 100%; }
-/* A real stride ("All these are picked now.", Sasquatch and the yeti): the heel lands with the leg out in front, the knee
-   takes the weight, the leg passes under him and pushes off, the shin folds up as it swings through; the arms pump against
-   the legs, bent at the elbow; the body leans in a little and stays level. */
-.ovm-g-stride .ovm-thigh { animation-name: ovm-thigh-stride; } .ovm-g-stride .ovm-shin { animation-name: ovm-shin-stride; }
-.ovm-g-stride .ovm-upper { animation-name: ovm-upper-stride; } .ovm-g-stride .ovm-fore { animation-name: ovm-fore-stride; }
-.ovm-g-stride .ovm-bob { animation: ovm-bob-stride calc(var(--ovm-t) / 2) ease-in-out infinite alternate; }
-@keyframes ovm-thigh-stride { 0% { transform: rotate(36deg); } 18% { transform: rotate(20deg); } 40% { transform: rotate(-22deg); } 52% { transform: rotate(-34deg); } 66% { transform: rotate(-12deg); } 84% { transform: rotate(30deg); } 100% { transform: rotate(36deg); } }
-@keyframes ovm-shin-stride { 0% { transform: rotate(-6deg); } 18% { transform: rotate(-22deg); } 40% { transform: rotate(-14deg); } 52% { transform: rotate(-38deg); } 66% { transform: rotate(-110deg); } 84% { transform: rotate(-44deg); } 100% { transform: rotate(-6deg); } }
-@keyframes ovm-upper-stride { 0%, 100% { transform: rotate(34deg); } 50% { transform: rotate(-40deg); } }
-@keyframes ovm-fore-stride { 0%, 100% { transform: rotate(44deg); } 50% { transform: rotate(72deg); } }
-@keyframes ovm-bob-stride { from { transform: rotate(-10deg); } to { transform: rotate(-10deg) translateY(-.3px); } }
-/* The jolly jog: short quick steps, each foot landing under him and springing off, the knee folding as it swings through;
-   the arms bent and pumping against the legs. */
-.ovm-g-jog .ovm-thigh { animation-name: ovm-thigh-jog; } .ovm-g-jog .ovm-shin { animation-name: ovm-shin-jog; }
-.ovm-g-jog .ovm-upper { animation-name: ovm-upper-jog; } .ovm-g-jog .ovm-fore { animation-name: ovm-fore-jog; }
-.ovm-g-jog .ovm-bob { animation: ovm-bob-jog calc(var(--ovm-t) / 2) ease-in-out infinite alternate; }
-@keyframes ovm-thigh-jog { 0% { transform: rotate(30deg); } 20% { transform: rotate(14deg); } 45% { transform: rotate(-24deg); } 55% { transform: rotate(-20deg); } 70% { transform: rotate(4deg); } 85% { transform: rotate(26deg); } 100% { transform: rotate(30deg); } }
-@keyframes ovm-shin-jog { 0% { transform: rotate(-10deg); } 20% { transform: rotate(-24deg); } 45% { transform: rotate(-20deg); } 55% { transform: rotate(-50deg); } 70% { transform: rotate(-95deg); } 85% { transform: rotate(-40deg); } 100% { transform: rotate(-10deg); } }
-@keyframes ovm-upper-jog { 0%, 100% { transform: rotate(26deg); } 50% { transform: rotate(-30deg); } }
-@keyframes ovm-fore-jog { 0%, 100% { transform: rotate(60deg); } 50% { transform: rotate(92deg); } }
-@keyframes ovm-bob-jog { from { transform: rotate(-4deg); } to { transform: rotate(-4deg) translateY(-.3px); } }
-.ovm-hiding :is(.ovm-bob, .ovm-thigh, .ovm-shin, .ovm-upper, .ovm-fore) { animation: none; }
 .ovm-fur { fill: color-mix(in srgb, var(--l4) 62%, #000); }
 .ovm-snowfur { fill: #eef3fa; stroke: #9fb0c8; stroke-width: .4; }
 /* The pines he hides behind: a shade darker than the shore's, dark on the snow at Christmas and lit then, mirrored in the
    lake. They rustle while he's in there and shake hard when he bursts out or dives in, each pine from its foot, one a
-   moment after another. */
-.ovm-clump { fill: color-mix(in srgb, var(--l4) 72%, #000); }
+   moment after another. Each pine is a sprite, so a shake turns it without drawing anything again; a clump's mirror
+   image is the same pines, blurred, turned over about the water line. */
+.ovm-clump { position: absolute; inset: 0; fill: color-mix(in srgb, var(--l4) 72%, #000); }
 .ovs-christmas .ovm-clump { fill: color-mix(in srgb, var(--sk-pines4, #0c1828) 82%, #000); }
 .ovm-lit { display: none; }
 .ovs-christmas .ovm-lit { display: inline; }
-.ovm-refl { opacity: .26; filter: url(#ovs-b1); }
-.ovm-sway { transform-box: fill-box; transform-origin: 50% 100%; }
+.ovm-refl { opacity: .26; transform-origin: 0 calc(436 * var(--u)); transform: scaleY(-1); }
+.ovm-sway { transform-origin: 50% 100%; }
 .ovm-shake .ovm-sway { animation: ovm-rustle .8s ease-in-out both; }
 .ovm-shake.ovm-hard .ovm-sway { animation-name: ovm-shake; animation-duration: 1s; }
 .ovm-shake .ovm-sway:nth-child(2) { animation-delay: 70ms; } .ovm-shake .ovm-sway:nth-child(3) { animation-delay: 140ms; }
 .ovm-shake .ovm-sway:nth-child(4) { animation-delay: 210ms; } .ovm-shake .ovm-sway:nth-child(5) { animation-delay: 280ms; }
 @keyframes ovm-rustle { 0%, 100% { transform: rotate(0); } 20% { transform: rotate(2.2deg); } 45% { transform: rotate(-1.8deg); } 70% { transform: rotate(1deg); } 86% { transform: rotate(-.4deg); } }
 @keyframes ovm-shake { 0%, 100% { transform: rotate(0); } 10% { transform: rotate(4.5deg) skewX(-2deg); } 24% { transform: rotate(-4deg) skewX(2deg); } 38% { transform: rotate(3.4deg); } 52% { transform: rotate(-2.6deg); } 66% { transform: rotate(1.6deg); } 80% { transform: rotate(-.8deg); } 92% { transform: rotate(.3deg); } }
-@media (prefers-reduced-motion: reduce) { .ovs *, .ovs-live, .ovm-layer * { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { .ovs *, .ovs-live, .ovs-stage *, .ovm-layer * { animation: none !important; } }
 /* A solid colour in place of the scene (the sky's window, Solid): only the colour. Nothing of the drawing is laid out, so
    nothing moves ("solid color which turns off the animations"); no grain, and no shade behind the words (scene.js). */
 .ovs-flat :is(.ovb-art, .hero-art) > * { display: none; }
@@ -314,10 +289,8 @@
 .wx-cmA { stop-color: color-mix(in srgb, var(--sk-glow, #ddd5ff) 85%, color-mix(in srgb, var(--sk-cloudy, #3e3e66) 85%, var(--sk-occ, #10101f))); }
 .wx-cmB { stop-color: color-mix(in srgb, var(--sk-glow, #ddd5ff) 35%, color-mix(in srgb, var(--sk-cloudy, #3e3e66) 85%, var(--sk-occ, #10101f))); }
 .wx-cmC { stop-color: color-mix(in srgb, var(--sk-cloudy, #3e3e66) 85%, var(--sk-occ, #10101f)); }
-.wx-cloud { overflow: visible; animation: wx-sway 46s ease-in-out infinite alternate; animation-delay: var(--d, 0s); }
-.wx-cloud.wx-d0 { animation-duration: 70s; } .wx-cloud.wx-d1 { animation-duration: 58s; }
+.wx-cloud { overflow: visible; }
 .wx-d0 .wx-cg { opacity: .3; } .wx-d1 .wx-cg { opacity: .38; } .wx-d2 .wx-cg { opacity: .46; }
-@keyframes wx-sway { from { transform: translateX(calc(-110 * var(--u))); } to { transform: translateX(calc(110 * var(--u))); } }
 .wx-cloud.wx-windy { animation: wx-drift 16s linear infinite; animation-delay: var(--d, 0s); }
 .wx-windy .wx-cg { opacity: 1; }
 @keyframes wx-drift { 0% { transform: translateX(calc(-500 * var(--u))); opacity: 0; } 12%, 88% { opacity: 1; } 100% { transform: translateX(calc(1900 * var(--u))); opacity: 0; } }
@@ -330,19 +303,25 @@
 .wx-rain[data-size="low"] { animation-name: wx-rain-low; }
 @keyframes wx-rain { from { transform: translate(0, 0); } to { transform: translate(calc(-168 * var(--u)), calc(600 * var(--u))); } }
 @keyframes wx-rain-low { from { transform: translate(0, 0); } to { transform: translate(calc(-84 * var(--u)), calc(300 * var(--u))); } }
-/* Fog: soft banks that drift slowly as one. */
-.wx-fog { overflow: visible; animation: wx-fog 30s ease-in-out infinite alternate; }
+/* Fog: soft banks that drift slowly as one (stepped on the beat, as the clouds' sway is). */
+.wx-fog { overflow: visible; }
 .wx-fogbank { fill: var(--sk-fog, #b9b4d6); opacity: .42; }
-@keyframes wx-fog { to { transform: translateX(calc(-160 * var(--u))); } }
-/* Lightning: a white core, a soft violet glow round it, thinner branches; the sky lit round the strike; a faint wash over
-   the whole banner (weather.js strikes it). */
-.wx-lt-wash { fill: #fff; opacity: 0; }
-.wx-lt-sky { opacity: 0; }
-.wx-lt-glow { fill: none; stroke: #cdbfff; stroke-width: 7; stroke-linejoin: round; stroke-linecap: round; filter: url(#wx-ltb); opacity: 0; }
+/* Lightning, on a stage (weather.js strikes it): a white core, a soft violet glow round it, thinner branches; the sky lit
+   round the strike; a faint wash over the whole banner. Every piece is a sprite the graphics card fades. The core and
+   each branch start hidden and are uncovered from the top: a box that hides what is outside it slides down into place
+   while the piece in it slides up as far, so the piece stays where it is. */
+.wx-lt-wash, .wx-lt-strike, .wx-lt-bolt { position: absolute; inset: 0; }
+.wx-lt-wash { background: #fff; opacity: 0; }
+.wx-lt-sky { position: absolute; left: calc(var(--x) * var(--u)); top: calc(var(--y) * var(--u)); width: calc(var(--w) * var(--u)); height: calc(var(--h) * var(--u)); opacity: 0;
+  background: radial-gradient(closest-side, rgb(241 236 255 / .9), rgb(207 196 255 / .35) 45%, rgb(207 196 255 / 0)); }
+.wx-lt-glow { fill: none; stroke: #cdbfff; stroke-width: 7; stroke-linejoin: round; stroke-linecap: round; opacity: 0; }
 .wx-lt-core { fill: none; stroke: #fff; stroke-width: 2.2; stroke-linejoin: round; stroke-linecap: round; }
 .wx-lt-twig { fill: none; stroke: #f2eeff; stroke-width: 1.1; stroke-linejoin: round; stroke-linecap: round; }
-/* The bolt starts hidden and is drawn down its length (pathLength 1); its glow comes with the strike. */
-.wx-lt-core, .wx-lt-twig { stroke-dasharray: 1 1; stroke-dashoffset: 1; }
+.wx-lt-wipe { position: absolute; left: calc(var(--x) * var(--u)); top: calc(var(--y) * var(--u)); width: calc(var(--w) * var(--u)); height: calc(var(--h) * var(--u)); overflow: hidden;
+  animation: wx-lt-box var(--t) steps(var(--n), end) var(--d, 0ms) both; }
+.wx-lt-wipe > svg { position: absolute; inset: 0; width: 100%; height: 100%; animation: wx-lt-in var(--t) steps(var(--n), end) var(--d, 0ms) both; }
+@keyframes wx-lt-box { from { transform: translateY(-100%); } }
+@keyframes wx-lt-in { from { transform: translateY(100%); } }
 /* Wind ("make the trees move"): the pines lean and bend in gusts, the big ones in front most. The far shore's pines and
    the big pines are each a drawing of their own while it blows (weather.js), which the graphics card leans about the
    shore line and about the banner's foot; the still ones under them are hidden. The pines the monsters hide in lean too. */

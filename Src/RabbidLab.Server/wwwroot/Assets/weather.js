@@ -1,7 +1,7 @@
 // The weather on the banners (the sky window's Current weather, sky.js): what the US National Weather Service last read
 // where the lab is (Weather.cs), drawn over every banner's scene and coloured into it. Each thing that moves is a drawing of
-// its own that the graphics card moves whole, as the scene's own moving parts are (scene.js): each cloud, each sheet of
-// rain or snow, the fog. Clouds are flat-bottomed banks, tall heaps and big domes mixed ("Ok this is my choice for
+// its own moved whole, as the scene's own moving parts are (scene.js says how): each cloud and the fog stepped on the beat,
+// each sheet of rain or snow and each piece of a bolt by the graphics card. Clouds are flat-bottomed banks, tall heaps and big domes mixed ("Ok this is my choice for
 // clouds."), and none ever sits or blows across the moon ("NEVER put/keep one in front of the moon"). Rain is light, mid or
 // heavy. The fog lies over the monsters and their pines too. In wind the pines lean and bend in gusts ("make the trees
 // move"). There is no heat wave ("Heat wave remove").
@@ -45,7 +45,6 @@
     + '<stop offset="0" class="wx-cmA"/><stop offset=".35" class="wx-cmB"/><stop offset="1" class="wx-cmC"/></radialGradient>'; };
   document.body.insertAdjacentHTML('beforeend', `<svg class="ovs-defs" aria-hidden="true" focusable="false"><defs>${moonlit('tall')}${moonlit('low')}`
     + '<linearGradient id="wx-ocg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="wx-oc0"/><stop offset=".55" class="wx-oc0" stop-opacity=".6"/><stop offset=".85" class="wx-oc0" stop-opacity="0"/></linearGradient>'
-    + '<radialGradient id="wx-ltsky"><stop offset="0" stop-color="#f1ecff" stop-opacity=".9"/><stop offset=".45" stop-color="#cfc4ff" stop-opacity=".35"/><stop offset="1" stop-color="#cfc4ff" stop-opacity="0"/></radialGradient>'
     + `${blur('wx-fg', 34)}${blur('wx-ltb', 4)}</defs></svg>`);
 
   // A cloud: a flat base with round ends, and round bumps standing on its bottom line, so the bottom stays flat. heap: a
@@ -108,7 +107,10 @@
       const tall = hb * B.tall;
       const [x, y] = clearOfMoon(x0 + ((i + 0.5) / count) * span + (r() - 0.5) * 160, F.m([95, 150, 200][depth] + (r() - 0.5) * 50) + tall * 0.35, w, tall, windy, my, pad, F.m(265));
       const body = `<g class="wx-cg" fill="url(#wx-cmoon-${size})">${bank(r, x, y, w, hb, B)}</g>`;
-      return layer(size, `ovs-live wx-cloud wx-d${depth}${windy ? ' wx-windy' : ''}`, body, `${(-(i / count) * 70 - r() * 8).toFixed(1)}s`);
+      // Each starts some way into its motion. Swaying, 110 units each side, the far ones slower, stepped on the beat; in
+      // wind an animation carries it across (overview.css wx-drift).
+      const into = ((i / count) * 70 + r() * 8).toFixed(1);
+      return layer(size, `ovs-live wx-cloud wx-d${depth}${windy ? ' wx-windy' : ''}`, body, windy ? { own: `d:-${into}s` } : { wave: `x -110 110 ${[70, 58, 46][depth]} ${into}` });
     }).join('');
     return set(rnd(13), n, 1380, 1720) + set(rnd(29), Math.round(n * 0.6), 20, 1000);
   };
@@ -142,13 +144,14 @@
   const FOG = [[2200, 330, 900, 70], [2700, 420, 800, 80], [1700, 470, 900, 70], [2400, 230, 700, 50], [600, 340, 800, 65], [900, 450, 750, 75], [300, 240, 600, 50]];
   const fog = (size) => {
     const { m } = S.fit(size);
-    return layer(size, 'ovs-live wx-fog', `<g class="wx-fogbank" filter="url(#wx-fg)">${FOG.map(([cx, cy, rx, ry]) => `<ellipse cx="${cx}" cy="${f1(m(cy))}" rx="${rx}" ry="${f1(m(cy + ry) - m(cy))}"/>`).join('')}</g>`);
+    return layer(size, 'ovs-live wx-fog', `<g class="wx-fogbank" filter="url(#wx-fg)">${FOG.map(([cx, cy, rx, ry]) => `<ellipse cx="${cx}" cy="${f1(m(cy))}" rx="${rx}" ry="${f1(m(cy + ry) - m(cy))}"/>`).join('')}</g>`, { wave: 'x 0 -160 30' });
   };
 
   // Lightning in a thunderstorm (the Thunderstorm item, C, "Push all of it, it's great."): a forked bolt from the clouds to
   // the hills that races down in steps and then flashes bright back up its length, somewhere new every 3 to 8 seconds, mostly
-  // where a normal window shows. The strike lights the sky round it, flickers once and fades.
-  const lightning = (size) => { const { H } = S.fit(size); return layer(size, 'wx-lt', `<rect class="wx-lt-wash" width="3200" height="${H}"/><g class="wx-lt-g"></g>`); };
+  // where a normal window shows. The strike lights the sky round it, flickers once and fades. On a stage, every piece of
+  // a strike a small drawing of its own that the graphics card uncovers and fades (overview.css).
+  const lightning = (size) => S.stage(size, 'wx-lt', '<div class="wx-lt-wash"></div>');
   const rand = (a, b) => a + Math.random() * (b - a);
   const channel = (x, y0, y1, step, wob, drift) => {
     const pts = [[x, y0]];
@@ -160,32 +163,47 @@
     }
     return pts;
   };
-  const strike = (g, size) => {
-    const { m } = S.fit(size);
-    const d = (pts) => `M${pts.map(([a, b]) => `${f1(a)} ${f1(m(b))}`).join('L')}`;
-    const main = channel(Math.random() < 0.72 ? rand(1550, 3120) : rand(250, 1500), rand(35, 80), rand(300, 370), 18, 26, (Math.random() - 0.5) * 6);
-    const twigs = Array.from({ length: 2 + Math.floor(Math.random() * 3) }, () => {
-      const at = main[1 + Math.floor(Math.random() * main.length * 0.6)];
-      return channel(at[0], at[1], at[1] + rand(40, 130), 12, 18, (Math.random() < 0.5 ? -1 : 1) * rand(6, 14));
-    });
-    g.insertAdjacentHTML('beforeend', `<g><ellipse class="wx-lt-sky" cx="${f1(main[0][0])}" cy="${f1(m(main[0][1] + 60))}" rx="820" ry="${f1(m(440) - m(60))}" fill="url(#wx-ltsky)"/>`
-      + `<g class="wx-lt-bolt"><path class="wx-lt-glow" d="${d(main)}${twigs.map(d).join('')}"/><path class="wx-lt-core" pathLength="1" d="${d(main)}"/>${twigs.map((t) => `<path class="wx-lt-twig" pathLength="1" d="${d(t)}"/>`).join('')}</g></g>`);
-    const box = g.lastElementChild;
-    // It races down its own length, branches a moment behind; then the strike: bright, nearly gone, bright again, and out.
-    const down = [{ strokeDashoffset: 1 }, { strokeDashoffset: 0 }];
-    box.querySelector('.wx-lt-core').animate(down, { duration: 190, easing: 'steps(8, end)', fill: 'forwards' });
-    box.querySelectorAll('.wx-lt-twig').forEach((t, i) => t.animate(down, { duration: 150, delay: 50 + i * 25, easing: 'steps(6, end)', fill: 'forwards' }));
-    box.querySelector('.wx-lt-bolt').animate([{ opacity: 0.6 }, { opacity: 0.6, offset: 0.18 }, { opacity: 1, offset: 0.2 }, { opacity: 0.25, offset: 0.3 }, { opacity: 1, offset: 0.38 }, { opacity: 0 }], { duration: 1050, fill: 'forwards' });
-    box.querySelector('.wx-lt-glow').animate([{ opacity: 0 }, { opacity: 0, offset: 0.18 }, { opacity: 0.9, offset: 0.2 }, { opacity: 0.2, offset: 0.3 }, { opacity: 0.8, offset: 0.38 }, { opacity: 0 }], { duration: 1050, fill: 'forwards' });
-    box.querySelector('.wx-lt-sky').animate([{ opacity: 0 }, { opacity: 0, offset: 0.18 }, { opacity: 0.65, offset: 0.2 }, { opacity: 0.1, offset: 0.3 }, { opacity: 0.5, offset: 0.38 }, { opacity: 0 }], { duration: 1250, fill: 'forwards' });
-    g.ownerSVGElement.querySelector('.wx-lt-wash')?.animate([{ opacity: 0 }, { opacity: 0, offset: 0.18 }, { opacity: 0.12, offset: 0.21 }, { opacity: 0, offset: 0.3 }, { opacity: 0.08, offset: 0.38 }, { opacity: 0 }], { duration: 1050 });
-    setTimeout(() => box.remove(), 1400);
+  // Where some points lie, with room round them: [x, y, width, height].
+  const around = (pts, pad) => {
+    const [xs, ys] = [pts.map(([a]) => a), pts.map(([, b]) => b)];
+    const [x, y] = [Math.min(...xs) - pad, Math.min(...ys) - pad];
+    return [x, y, Math.max(...xs) + pad - x, Math.max(...ys) + pad - y];
   };
-  // It ends with its layer, and no bolt is made for a banner nobody can see: it strikes again once the banner is back.
-  const storm = (g, size) => {
+  const strike = (stage, size, later) => {
+    const { m } = S.fit(size);
+    const fit = (pts) => pts.map(([a, b]) => [a, m(b)]);
+    const d = (pts) => `M${pts.map(([a, b]) => `${f1(a)} ${f1(b)}`).join('L')}`;
+    const raw = channel(Math.random() < 0.72 ? rand(1550, 3120) : rand(250, 1500), rand(35, 80), rand(300, 370), 18, 26, (Math.random() - 0.5) * 6);
+    const main = fit(raw);
+    const twigs = Array.from({ length: 2 + Math.floor(Math.random() * 3) }, () => {
+      const at = raw[1 + Math.floor(Math.random() * raw.length * 0.6)];
+      return fit(channel(at[0], at[1], at[1] + rand(40, 130), 12, 18, (Math.random() < 0.5 ? -1 : 1) * rand(6, 14)));
+    });
+    // A piece uncovered from its top in n steps over ms, after a wait.
+    const wipe = (cls, pts, ms, n, wait) => {
+      const at = around(pts, 3).map(f1);
+      return `<div class="wx-lt-wipe" data-vars="x:${at[0]};y:${at[1]};w:${at[2]};h:${at[3]};t:${ms}ms;n:${n};d:${wait}ms"><svg class="${cls}" viewBox="${at.join(' ')}" aria-hidden="true"><path d="${d(pts)}"/></svg></div>`;
+    };
+    const [sy, ry] = [m(raw[0][1] + 60), m(440) - m(60)];
+    stage.insertAdjacentHTML('beforeend', `<div class="wx-lt-strike"><div class="wx-lt-sky" data-vars="x:${f1(main[0][0] - 820)};y:${f1(sy - ry)};w:1640;h:${f1(2 * ry)}"></div>`
+      + S.sprite('wx-lt-glow', around([main, ...twigs].flat(), 16), `<path filter="url(#wx-ltb)" d="${d(main)}${twigs.map(d).join('')}"/>`)
+      + `<div class="wx-lt-bolt">${wipe('wx-lt-core', main, 190, 8, 0)}${twigs.map((t, i) => wipe('wx-lt-twig', t, 150, 6, 50 + i * 25)).join('')}</div></div>`);
+    const box = stage.lastElementChild;
+    S.vars(box);
+    // It races down its own length, branches a moment behind (the wipes); then the strike: bright, nearly gone, bright
+    // again, and out.
+    const flash = (el, ms, at) => el.animate([0, 0.18, 0.2, 0.3, 0.38, 1].map((offset, i) => ({ opacity: at[i] ?? 0, offset })), { duration: ms, fill: 'forwards' });
+    flash(box.querySelector('.wx-lt-bolt'), 1050, [0.6, 0.6, 1, 0.25, 1]);
+    flash(box.querySelector('.wx-lt-glow'), 1050, [0, 0, 0.9, 0.2, 0.8]);
+    flash(box.querySelector('.wx-lt-sky'), 1250, [0, 0, 0.65, 0.1, 0.5]);
+    flash(stage.querySelector('.wx-lt-wash'), 1050, [0, 0, 0.12, 0, 0.08]);
+    later(() => box.remove(), 1400);
+  };
+  // It ends with its stage, and no bolt is made for a banner nobody can see: it strikes again once the banner is back.
+  const storm = (stage, size) => {
     if (S.still()) return;
-    const { later, showing, rest } = S.life(g);
-    const next = (ms) => later(() => { if (!showing()) { rest(() => next(rand(800, 3000))); return; } strike(g, size); next(rand(3000, 8000)); }, ms);
+    const { later, showing, rest } = S.life(stage);
+    const next = (ms) => later(() => { if (!showing()) { rest(() => next(rand(800, 3000))); return; } strike(stage, size, later); next(rand(3000, 8000)); }, ms);
     next(1100);
   };
 
@@ -223,7 +241,7 @@
         const front = wx.kind === 'fog' ? fog(size) : bend ? gale(size) : '';
         const after = [...box.querySelectorAll(':scope > .wx-clouds')].pop() || have('wx-under') || lives;
         after.insertAdjacentHTML('afterend', (falls ? `<div class="wx-overs wx-falls">${falls}</div>` : '') + (front ? `<div class="wx-overs wx-front">${front}</div>` : ''));
-        box.querySelectorAll(':scope > .wx-overs .wx-lt-g').forEach((g) => storm(g, size));
+        box.querySelectorAll(':scope > .wx-overs > .wx-lt').forEach((stage) => storm(stage, size));
       }
       // For what stands behind the big pines (monsters.js): in wind they are in front of it.
       box.dispatchEvent(new CustomEvent('rabbidlab:weather'));
@@ -234,7 +252,7 @@
       box.dataset.wxc = ckey;
       if (!ckey) return;
       (have('wx-under') || lives).insertAdjacentHTML('afterend', `<div class="wx-overs wx-clouds${old.length ? ' wx-in' : ''}">${clouds(n, windy, size)}</div>`);
-      box.querySelectorAll(':scope > .wx-clouds [data-d]').forEach((e) => { e.style.setProperty('--d', e.dataset.d); e.removeAttribute('data-d'); });
+      S.vars(box);
     }
   };
   const fill = () => {

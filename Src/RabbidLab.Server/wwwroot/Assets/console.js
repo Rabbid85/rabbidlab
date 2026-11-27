@@ -3,6 +3,12 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.429', [
+    'The banner uses about half as much of the processor on a clear night, and under a third as much by day, under cloud and in fog. Stars, the moonlight on the water, clouds, fog and the monsters are stepped on one slow timer. Each used to make the whole banner redraw for every frame of the screen.',
+    'Lightning, the Halloween bats and the pines Sasquatch shakes are small pieces of their own now. The page no longer draws the banner again for them.',
+    'Nothing on a banner runs while it is scrolled out of the window, or while a solid colour is shown.',
+    'The moving background on the sign-in page no longer wakes the page for every frame of a fast screen.',
+    'The Links and Sensors dots in the sidebar are not asked for while the tab is behind another.']],
   ['1.1.428', [
     'Sign-in alerts count real sign-ins only. A ticket Windows renews by itself for someone already signed in was shown as a sign-in, and set off alerts such as Sign-in outside usual hours.',
     'One sign-in shows once, not once for each ticket it asked for.',
@@ -1372,6 +1378,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.429': ['2026-11-27', 'fix', 'A much lighter banner'],
   '1.1.428': ['2026-11-27', 'fix', 'Real sign-ins only'],
   '1.1.427': ['2026-11-27', 'fix', 'Christmas waits for December'],
   '1.1.426': ['2026-11-26', 'fix', 'A lighter banner'],
