@@ -432,7 +432,9 @@
       return y1 + ((y2 - y1) * (x - x1)) / (x2 - x1);
     };
     // A layer of land, and on far layers a thin moonlit line along its ridge.
-    const land = (pts, cls, rim = 0) => `<path class="${cls}" d="M0 ${H}L${pts.map(([x, y]) => `${f1(x)} ${f1(y)}`).join('L')}L${W} ${H}Z"/>`
+    // It starts a unit before its first point: the left half lies a unit in (twice, above), and so its land still reaches
+    // the left edge of the widest window.
+    const land = (pts, cls, rim = 0) => `<path class="${cls}" d="M-1 ${H}L-1 ${f1(pts[0][1])}L${pts.map(([x, y]) => `${f1(x)} ${f1(y)}`).join('L')}L${W} ${H}Z"/>`
       + (rim ? `<polyline class="ovs-rim" opacity="${rim}" points="${pts.map(([x, y]) => `${f1(x)},${f1(y)}`).join(' ')}"/>` : '');
     // About one pine in seven on the far hills and the far shore stands about twice as tall ("Some of these trees, on ALL
     // banners, should be taller"). Those take their own numbers, so every tree stays where it was.
@@ -518,7 +520,7 @@
     const treesL = forest(g, A3, 2, W - 6, 9, 20, 15, k.tree, true);
     const q2 = rnd(43);
     const shoreL = join(q2, shore.y0, 436 - 9, 10, 0.5, [[480, 14, 160]]);
-    const bandL = `<path class="ovs-l4" d="M0 ${f1(SH)}L${shoreL.map(([a, b]) => `${f1(a)} ${f1(Math.min(b, SH))}`).join('L')}L${W} ${f1(SH)}Z"/>`
+    const bandL = `<path class="ovs-l4" d="M-1 ${f1(SH)}L-1 ${f1(Math.min(shoreL[0][1], SH))}L${shoreL.map(([a, b]) => `${f1(a)} ${f1(Math.min(b, SH))}`).join('L')}L${W} ${f1(SH)}Z"/>`
       + `<path class="ovs-l4 ovs-pines ovs-shorep" d="${forest(q2, shoreL, 2, W - 6, 10, 28, 13, k.tree * 0.7 + k.near * 0.3, true)}"/>`;
     Scene.shore[size] = [shorePines, bandL.match(/ovs-shorep" d="([^"]*)"/)[1]];
     const n2 = rnd(47);
@@ -527,13 +529,15 @@
     const pinesMid = forest(n2, nearL, W - 380, W - 12, 55, 115, 28, k.near, false, mid);
     const pinesEdge = forest(n2, nearL, 0, 380, 60, 125, 26, k.near, false, edge);
     const dx = fit ?? 0;
-    // The front land cut where it lies below the banner's foot, so the far-left piece can move on its own.
+    // The front land cut where it lies below the banner's foot, so the far-left piece can move on its own. That piece
+    // starts exactly at the window's left edge (the half it is in lies a unit in, so it goes a unit back), and runs a
+    // little way under the rest, so no line shows between them.
     const cut = (a, b) => { const pts = nearL.filter(([x]) => x >= a && x <= b); return `M${f1(pts[0][0])} ${H}L${pts.map(([x, y]) => `${f1(x)} ${f1(y)}`).join('L')}L${f1(pts[pts.length - 1][0])} ${H}Z`; };
     const own = {
       l1: land(A1, 'ovs-l1', 0.5), l2: land(A2, 'ovs-l2', 0.4), l3: land(A3, 'ovs-l3', 0.3) + `<path class="ovs-l3 ovs-pines" d="${treesL}"/>`,
       reflect: `<g transform="translate(0 ${f1(2 * SH)}) scale(1 -1)" opacity=".26" filter="url(#ovs-b1)">${bandL}</g>`,
       band: bandL,
-      near: `<path class="ovs-l5" d="${cut(600, W)}"/><path class="ovs-l5 ovs-pines ovs-big" d="${pinesMid}"/><g transform="translate(${dx} 0)"><path class="ovs-l5" d="${cut(0, 600)}"/><path class="ovs-l5 ovs-pines ovs-big" d="${pinesEdge}"/></g>`,
+      near: `<path class="ovs-l5" d="${cut(600, W)}"/><path class="ovs-l5 ovs-pines ovs-big" d="${pinesMid}"/><g transform="translate(${dx - 1} 0)"><path class="ovs-l5" d="${cut(0, 610)}"/><path class="ovs-l5 ovs-pines ovs-big" d="${pinesEdge}"/></g>`,
     };
     // The trees in the middle ("My pick.", On a wooded hill): where a window shows the middle, the big pines there stand on a
     // broad dark hill that rises behind them and slopes to the banner's foot on both sides, so no water shows under them.
@@ -551,7 +555,7 @@
       own.near = own.near.replace('<path class="ovs-l5" d="', '<path class="ovs-l5 ovs-pines" d="');
     }
     // Where each big pine stands across the whole banner, in the order they are drawn, for the lights and the monsters.
-    const standing = [...keepA, ...keepB].map(([x, y, h]) => [W + x, y, h]).concat(mid.map(([x, y, h]) => [x + 1, y, h]), edge.map(([x, y, h]) => [x + dx + 1, y, h]));
+    const standing = [...keepA, ...keepB].map(([x, y, h]) => [W + x, y, h]).concat(mid.map(([x, y, h]) => [x + 1, y, h]), edge.map(([x, y, h]) => [x + dx, y, h]));
     Scene.near[size] = standing;
     // What moves is in drawings of its own on top (ovs-live), each one faded, stretched or moved whole, never changed
     // inside: moving inside the big drawing, every twinkle painted all of it again, blurs and all. The stars that twinkle,
@@ -660,7 +664,7 @@
     const { width: w, height: h } = box.getBoundingClientRect();
     if (!w || !h) return undefined;
     const left = Math.max(0, 3200 - w / Math.max(w / 3200, h / H));
-    return 1600 - left > 500 ? Math.round(left) : null;
+    return 1600 - left > 500 ? Math.floor(left) : null; // never past the edge, so the hill that stands at it leaves no gap
   };
   // The drawing in a box for how wide it is now, drawn again only when that changes; the monsters laid on it (monsters.js)
   // stay, and are told. The last drawing made for each size is kept, for the other banners of that size; a window dragged
