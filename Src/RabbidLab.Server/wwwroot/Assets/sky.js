@@ -220,6 +220,10 @@
   window.RabbidLabSky = {
     open,
     says,
+    // For Overview's words (ovinfo.js): a temperature as a figure, the wind, and the hours to come while the weather shows.
+    deg: (c) => (c === null || c === undefined ? '' : `${Math.round(imperial ? (c * 9) / 5 + 32 : c)}°`),
+    wind,
+    ahead: () => (!plain() && st.weather && !tried && wx?.reading ? wx.ahead || [] : []),
     // What the banners show now: the time of day picked for this mode ('clock' to follow it), and the weather where the
     // lab is when this person shows it and there is a reading; or the colour the drawing is in (colour) or the solid
     // colour in its place (solid), with the colour's name.

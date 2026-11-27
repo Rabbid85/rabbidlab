@@ -151,13 +151,11 @@
   const HILLS = ['l1', 'l2', 'l3', 'l4'];
   const HOLIDAYS = {
     halloween: {
-      name: 'Halloween',
       night: { sky0: '#070208', sky1: '#1f0a25', sky2: '#47183c', l1: '#3d1a3a', l2: '#2d1331', l3: '#220e28', l4: '#180a1e', l5: '#0c0611', fog: '#ff8a3d', glow: '#ffae5c', rim: '#ffb35c',
         water0: '#4a2039', water1: '#0b0510', mist: '#ff9a4a', mistK: '.8', moon0: '#ffe4b5', moon1: '#ffb866', moon2: '#e2832b', glint: '#ffcf8a', seas: '.12', halo: '.35' },
       tint: (p) => ({ ...toward(p, ['sky1', 'sky2'], '#7a2a6a', 0.3), ...toward(p, ['fog', 'mist'], '#ff8a3d', 0.45), ...toward(p, HILLS, '#3d1a3a', 0.25) }),
     },
     christmas: {
-      name: 'Christmas',
       night: { sky0: '#02040d', sky1: '#0b1532', sky2: '#1f3058', l1: '#34497a', l2: '#1d2d52', l3: '#162343', l4: '#8fa2c4', l5: '#d3deef', pines3: '#0b1424', pines4: '#0c1828',
         pines5: '#07101c', fog: '#aec2ea', glow: '#e6eeff', rim: '#eef3ff', water0: '#4a5f8c', water1: '#111b33', mist: '#d2e0fa', glint: '#eef4ff' },
       // Snow on the far hills, the shore and the ground in front, the pines on them still dark.
@@ -318,10 +316,10 @@
     if (hol) Object.assign(pal, time === 'night' ? hol.night : hol.tint(pal));
     const wx = sky.weather;
     if (wx) Object.assign(pal, window.RabbidLabWeather?.tint(wx, time) ?? {});
-    return { time, pal, sky, hol, wx };
+    return { time, pal, sky };
   };
   let painted = '';
-  const apply = ({ time, pal, sky, hol, wx }) => {
+  const apply = ({ time, pal, sky }) => {
     const key = `${time} ${JSON.stringify(pal)}`;
     if (key !== painted) {
       [...root.style].filter((p) => p.startsWith('--sk-')).forEach((p) => root.style.removeProperty(p));
@@ -331,14 +329,6 @@
       painted = key;
     }
     Scene.disc = DISC[time];
-    // The chip at the top right of Overview's banner: the clock (never Night or Day in words: the picture says it), the
-    // weather, then the holiday; or the colour's name. It opens the sky's window.
-    const chip = document.getElementById('hero-sky');
-    if (chip) {
-      const what = sky.solid ? `${sky.name}, solid` : sky.colour ? sky.name : new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-      chip.textContent = `${what}${wx ? ` · ${Sky.says(wx)}` : ''}${hol ? ` · ${hol.name}` : ''}`;
-      chip.hidden = false;
-    }
   };
   // The sun and the moon ("Sun drops, mooon rises, visa versa when time changes.", then "This one." of the take where the
   // sun also climbs). The disc, with its halo and rays, is a drawing of its own between the sky and the hills, which the

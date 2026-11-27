@@ -21,6 +21,9 @@ public sealed record WeatherPlaceForm(string? Zip);
 /// </summary>
 public sealed record WeatherReading(string Kind, string Amount, string Cover, double? TempC, double? WindKph, string Says, string Place, DateTime At);
 
+/// <summary>An hour to come, from the forecast: when it starts, how warm, what the sky does (clear, cloud, rain, storm, snow, ice, wind or fog) and whether it is day.</summary>
+public sealed record WeatherHour(DateTime At, double? TempC, string Kind, bool Day);
+
 /// <summary>The one HTTP client the weather is asked with, so a test can stand in for the weather service.</summary>
 public sealed class WeatherHttp(HttpMessageHandler? handler = null)
 {
@@ -37,18 +40,23 @@ public sealed class WeatherHttp(HttpMessageHandler? handler = null)
 /// The weather for the banners (the banner's sky window, Current weather), from the US National Weather Service: free, no
 /// account or key, and it reports what a station near the lab last read. An admin sets the lab's ZIP code; the ZIP's
 /// middle (zips.tsv.gz, from the US Census Bureau's ZIP code areas) is where the service is asked about. Asked every 15
-/// minutes while a ZIP is set; nothing about the lab is sent but those coordinates.
+/// minutes while a ZIP is set; nothing about the lab is sent but those coordinates. The hours to come are the same service's
+/// hourly forecast for the same grid square, asked for once an hour.
 /// </summary>
 public sealed partial class Weather(DataFolder folder, WeatherHttp http, ILogger<Weather> log)
 {
     public static readonly TimeSpan Every = TimeSpan.FromMinutes(15);
     private static readonly TimeSpan Stale = TimeSpan.FromHours(3); // a reading older than this is not shown
+    private static readonly TimeSpan AheadEvery = TimeSpan.FromHours(1);
+    private const int HoursAhead = 5;
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { WriteIndented = true };
     private static readonly Lazy<Dictionary<string, (double Lat, double Lon)>> Zips = new(LoadZips);
     private readonly JsonFile<WeatherFile> file = folder.Json<WeatherFile>("weather.json", Json);
     private readonly Lock gate = new();
     private WeatherReading? reading;
-    private (string Zip, string Station, string Place)? spot; // the station nearest the ZIP, found once
+    private (string Zip, string Station, string Place, string Grid)? spot; // the station nearest the ZIP and its grid square, found once
+    private IReadOnlyList<WeatherHour> ahead = [];
+    private DateTime? aheadAt;
     private string? problem;
     private DateTime? checkedAt;
 
@@ -71,6 +79,19 @@ public sealed partial class Weather(DataFolder folder, WeatherHttp http, ILogger
             lock (gate)
             {
                 return reading is not null && DateTime.UtcNow - reading.At < Stale ? reading : null;
+            }
+        }
+    }
+
+    /// <summary>The next few hours, from the forecast as last read: only while there is a reading to show beside them.</summary>
+    public IReadOnlyList<WeatherHour> Ahead
+    {
+        get
+        {
+            lock (gate)
+            {
+                var now = DateTime.UtcNow;
+                return reading is null || now - reading.At >= Stale ? [] : [.. ahead.Where(h => h.At > now).Take(HoursAhead)];
             }
         }
     }
@@ -98,7 +119,7 @@ public sealed partial class Weather(DataFolder folder, WeatherHttp http, ILogger
         }
         lock (gate)
         {
-            (reading, spot, problem, checkedAt) = (null, null, null, null);
+            (reading, spot, problem, checkedAt, ahead, aheadAt) = (null, null, null, null, [], null);
         }
     }
 
@@ -112,7 +133,7 @@ public sealed partial class Weather(DataFolder folder, WeatherHttp http, ILogger
         }
         try
         {
-            (string Zip, string Station, string Place)? known;
+            (string Zip, string Station, string Place, string Grid)? known;
             lock (gate)
             {
                 known = spot is { } s && s.Zip == zip ? s : null;
@@ -128,6 +149,7 @@ public sealed partial class Weather(DataFolder folder, WeatherHttp http, ILogger
                     (spot, reading, problem, checkedAt) = (known, read, null, DateTime.UtcNow);
                 }
             }
+            await Forecast(zip, known.Value.Grid, stop);
         }
         // Whatever goes wrong with an answer from outside, the banner only goes without weather; the server carries on.
         catch (Exception e) when (e is not OperationCanceledException || !stop.IsCancellationRequested)
@@ -144,8 +166,39 @@ public sealed partial class Weather(DataFolder folder, WeatherHttp http, ILogger
         }
     }
 
+    // The hours to come for the grid square, once an hour. Without them the banner has its reading all the same.
+    private async Task Forecast(string zip, string grid, CancellationToken stop)
+    {
+        lock (gate)
+        {
+            if (aheadAt is { } last && DateTime.UtcNow - last < AheadEvery)
+            {
+                return;
+            }
+        }
+        try
+        {
+            using var doc = await Get($"gridpoints/{grid}/forecast/hourly", stop);
+            var hours = Hours(doc.RootElement);
+            lock (gate)
+            {
+                if (Zip == zip)
+                {
+                    (ahead, aheadAt) = (hours, DateTime.UtcNow);
+                }
+            }
+        }
+        catch (Exception e) when (e is not OperationCanceledException || !stop.IsCancellationRequested)
+        {
+            if (!stop.IsCancellationRequested)
+            {
+                log.LogWarning("The hourly forecast for {Zip} could not be read: {Why}", zip, e.Message);
+            }
+        }
+    }
+
     // The forecast office and grid square for the coordinates, then the stations for that square, nearest first.
-    private async Task<(string Zip, string Station, string Place)> Find(string zip, double lat, double lon, CancellationToken stop)
+    private async Task<(string Zip, string Station, string Place, string Grid)> Find(string zip, double lat, double lon, CancellationToken stop)
     {
         string office;
         int x;
@@ -172,7 +225,7 @@ public sealed partial class Weather(DataFolder folder, WeatherHttp http, ILogger
             var id = f.GetProperty("properties").GetProperty("stationIdentifier").GetString() ?? "";
             if (StationId().IsMatch(id))
             {
-                return (zip, id, place);
+                return (zip, id, place, $"{office}/{x},{y}");
             }
         }
         throw new KeyNotFoundException("No weather station is near that ZIP code.");
@@ -220,6 +273,32 @@ public sealed partial class Weather(DataFolder folder, WeatherHttp http, ILogger
             : "mid";
         var at = p.TryGetProperty("timestamp", out var ts) && ts.TryGetDateTimeOffset(out var when) ? when.UtcDateTime : DateTime.UtcNow;
         return new WeatherReading(kind, amount, Cover(p, words), Number(p, "temperature"), wind, says, place, at);
+    }
+
+    /// <summary>The hours of an hourly forecast, soonest first, as the banner draws them. An answer without any gives none.</summary>
+    public static IReadOnlyList<WeatherHour> Hours(JsonElement forecast)
+    {
+        var hours = new List<WeatherHour>();
+        if (!forecast.TryGetProperty("properties", out var p) || !p.TryGetProperty("periods", out var periods) || periods.ValueKind != JsonValueKind.Array)
+        {
+            return hours;
+        }
+        foreach (var period in periods.EnumerateArray().Take(48))
+        {
+            if (!period.TryGetProperty("startTime", out var start) || !start.TryGetDateTimeOffset(out var at))
+            {
+                continue;
+            }
+            double? temp = period.TryGetProperty("temperature", out var t) && t.ValueKind == JsonValueKind.Number && t.TryGetDouble(out var d) && double.IsFinite(d) ? d : null;
+            var fahrenheit = !period.TryGetProperty("temperatureUnit", out var unit) || unit.GetString() != "C";
+            var words = Plain(period.TryGetProperty("shortForecast", out var s) ? s.GetString() : null, 60).ToLowerInvariant();
+            bool Has(params string[] any) => any.Any(a => words.Contains(a, StringComparison.Ordinal));
+            var kind = Has("thunder") ? "storm" : Has("freezing", "ice pellets", "sleet") ? "ice" : Has("snow", "flurr", "blizzard") ? "snow" : Has("rain", "drizzle", "shower") ? "rain"
+                : Has("fog", "mist", "haze") ? "fog" : Has("windy", "breezy") ? "wind" : Has("cloud", "overcast") ? "cloud" : "clear";
+            var day = !period.TryGetProperty("isDaytime", out var light) || light.ValueKind != JsonValueKind.False;
+            hours.Add(new WeatherHour(at.UtcDateTime, temp is { } v ? Math.Round(fahrenheit ? (v - 32) * 5 / 9 : v, 1) : null, kind, day));
+        }
+        return hours;
     }
 
     // How much cloud: the fullest layer the station saw, or its words when it lists none.
@@ -296,6 +375,7 @@ public static class WeatherApi
     {
         zip = weather.Zip,
         reading = weather.Reading,
+        ahead = weather.Ahead,
         problem = canSet ? weather.Problem : null,
         checkedAt = weather.CheckedAt,
         every = (int)Weather.Every.TotalMinutes,

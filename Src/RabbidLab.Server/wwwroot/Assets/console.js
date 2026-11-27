@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.434', [
+    'The Overview banner shows the time and the date in large figures, with the weather where the lab is beside them: the temperature, what the sky is doing, the place and the wind. Under them are the next five hours, and then the name of the lab.',
+    'The time and the weather open the banner sky window. The chip at the top right is gone, and so are the headline and the paragraph under it.',
+    'The next five hours come from the hourly forecast of the US National Weather Service, read once an hour for the same place as the reading. With no ZIP code set, or the weather turned off, the banner shows the time and the name of the lab.']],
   ['1.1.433', [
     'Overview has a dashboard under its banner: cards for the newest versions, this machine, sensors, links, devices, alerts, activity and the network. Each shows only what your roles show, and keeps up to date while the page is open.',
     'Edit dashboard lets you arrange it. Drag a card and the others move out of its way, set its size with the four pictures in its head, give it a name of your own, or hide it. Add a card brings back the ones that are not showing.',
@@ -1389,6 +1393,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.434': ['2026-11-27', 'feature', 'The time and the weather on the banner'],
   '1.1.433': ['2026-11-27', 'feature', 'A dashboard of your own on Overview'],
   '1.1.432': ['2026-11-27', 'fix', 'No gap at the banner edge'],
   '1.1.431': ['2026-11-27', 'fix', 'No jumping trees on resize'],
@@ -2219,7 +2224,7 @@ const RELEASE_INFO = {
   let brand = Brand.now; // the look last seen in this browser, until the server's is read
   let productName = 'Rabbid Lab';
   let tagKnown = {}; // what the tagline's tags fill in with, once someone is signed in
-  let eyebrow = 'Lab console'; // the Overview banner's line with no tagline set: the domain first for AD accounts
+  let eyebrow = 'Lab console'; // the line under the lab's name on the Overview banner with no tagline set: with the domain when there is one
   const drawBrand = () => {
     labName = brand.name || productName;
     product = productName;
@@ -2227,6 +2232,7 @@ const RELEASE_INFO = {
     // The tagline with its tags filled in for whoever is looking; Lab console until they're known, or with none set.
     const tag = Brand.fill(brand.tagline, tagKnown) || Brand.TAG;
     $('brand-tag').textContent = tag;
+    $('hero-name').textContent = labName; // the Overview banner: the lab's name, with its tagline or Lab console under it
     $('hero-eyebrow').textContent = brand.tagline ? tag : eyebrow;
     document.querySelectorAll('[data-app]').forEach((e) => { e.textContent = product; }); // the app's name in the page's words, never the lab's
     title();
@@ -2362,6 +2368,7 @@ const RELEASE_INFO = {
     if (s.dev) devTools();
     loadBrand();
     $('hero-version').textContent = s.version;
+    $('hero-dev').hidden = !s.dev;
     $('ab-version').textContent = `${productName} ${s.version}`;
     $('ab-server').textContent = s.server;
     $('ab-since').textContent = when(s.startedAt);
@@ -4389,9 +4396,8 @@ const RELEASE_INFO = {
     const account = (s, u, name, letters, domain, dc) => {
       const top = (u.roles || []).filter((r) => r.id !== 'user');
       tagKnown = { name, username: u.username, hostname: s.machine, domain: domain || '', version: s.version, role: (top[0] || (u.roles || [])[0])?.name || '' };
-      eyebrow = u.source === 'ad' && domain ? `${domain} · Lab console` : 'Lab console';
       const watched = s.domain || (u.source === 'ad' ? domain : '');
-      $('hero-lead').textContent = `${product} watches the domain controllers, devices, links and sensors ${watched ? `in ${watched}` : 'on your network'}, and tells you when something needs you.`;
+      eyebrow = watched ? `Lab console for ${watched}` : 'Lab console';
       apply();
       if (can.has('updates.view')) update();
       if (can.has('activity.view')) activity();

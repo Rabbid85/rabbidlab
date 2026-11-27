@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.434 (2026-11-27)
+
+- The Overview banner shows the time and the date in large figures, with the weather where the lab is beside them: the temperature, what the sky is doing, the place and the wind. Under them are the next five hours, and then the name of the lab.
+- The time and the weather open the banner sky window. The chip at the top right is gone, and so are the headline and the paragraph under it.
+- The next five hours come from the hourly forecast of the US National Weather Service, read once an hour for the same place as the reading. With no ZIP code set, or the weather turned off, the banner shows the time and the name of the lab.
+
 ## 1.1.433 (2026-11-27)
 
 - Overview has a dashboard under its banner: cards for the newest versions, this machine, sensors, links, devices, alerts, activity and the network. Each shows only what your roles show, and keeps up to date while the page is open.

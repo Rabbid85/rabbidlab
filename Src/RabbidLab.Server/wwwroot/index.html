@@ -85,6 +85,7 @@
 <script src="Assets/deploy.js" defer></script>
 <script src="Assets/dock.js" defer></script>
 <script src="Assets/dashboard.js" defer></script>
+<script src="Assets/ovinfo.js" defer></script>
 </head>
 <!-- The console: the top bar, the rail down the left, and one page at a time (console.js picks it from the address). -->
 <body class="app booting">
@@ -293,15 +294,19 @@
     <a class="button small primary" id="here-connect" href="#"><svg><use href="#i-link"/></svg>2. Connect this computer</a>
     <button type="button" class="link" id="here-later">Not now</button></div>
   <section class="page home" id="page-overview" data-page="overview" data-title="Overview" hidden>
-    <!-- The banner: a night scene drawn from the accent (scene.js), the headline at the foot on the left, and a glass strip
+    <!-- The banner: a scene drawn from the accent (scene.js), the time, the weather and the lab's name at the foot on the left, and a glass strip
          along the bottom with the numbers and the buttons. Nothing on it changes size, so it never moves. -->
     <header class="ovb" id="hero">
       <div class="ovb-art" data-scene aria-hidden="true"></div>
-      <button type="button" class="ovb-sky" id="hero-sky" data-sky-open data-tip="Change the sky" hidden></button>
+      <!-- The words (ovinfo.js): the time and the weather where the lab is, the hours to come, the lab's name. The time and
+           the weather open the sky's window. -->
       <div class="ovb-main">
-        <p class="ovb-eye"><i></i><span id="hero-eyebrow">Lab console</span></p>
-        <h1 class="ovb-title">Your domain, your devices and every sensor, in one console.</h1>
-        <p class="ovb-lead" id="hero-lead">Rabbid Lab watches the domain controllers, devices, links and sensors on your network, and tells you when something needs you.</p>
+        <div class="ovw-pair">
+          <button type="button" class="ovw-half" data-sky-open data-tip="Change the sky"><b class="ovw-fig"><span id="ovw-time"></span><small id="ovw-ap"></small></b><span class="ovw-strong" id="ovw-date"></span></button>
+          <button type="button" class="ovw-half" id="ovw-wx" data-sky-open data-tip="Change the sky" hidden><b class="ovw-fig" id="ovw-temp"></b><span class="ovw-strong" id="ovw-says"></span><small class="ovw-soft" id="ovw-more"></small></button>
+        </div>
+        <div class="ovw-hours" id="ovw-hours" hidden></div>
+        <div class="ovw-lab"><h1><span id="hero-name">Rabbid Lab</span><em id="hero-dev" hidden>DEV</em></h1><p id="hero-eyebrow">Lab console</p></div>
       </div>
       <div class="ovb-strip">
         <div class="ovb-nums">

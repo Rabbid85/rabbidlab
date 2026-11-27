@@ -96,10 +96,28 @@ public sealed class WeatherTests : IDisposable
         await weather.Check(CancellationToken.None);
         await weather.Check(CancellationToken.None);
 
-        Assert.Equal(["/points/41.885,-87.622", "/gridpoints/LOT/76,73/stations", "/stations/KMDW/observations/latest", "/stations/KMDW/observations/latest"], service.Asked);
+        // The hours to come are asked for with the first reading, and not again within the hour.
+        Assert.Equal(["/points/41.885,-87.622", "/gridpoints/LOT/76,73/stations", "/stations/KMDW/observations/latest", "/gridpoints/LOT/76,73/forecast/hourly", "/stations/KMDW/observations/latest"], service.Asked);
         Assert.All(service.Agents, a => Assert.StartsWith("RabbidLab/", a));
         Assert.Equal(("clear", "most", "Chicago, IL"), (weather.Reading!.Kind, weather.Reading.Cover, weather.Reading.Place));
         Assert.Null(weather.Problem);
+    }
+
+    [Fact]
+    public void The_hours_to_come_are_read_from_the_hourly_forecast()
+    {
+        using var doc = JsonDocument.Parse("""{"properties":{"periods":[{"startTime":"2026-11-27T15:00:00-05:00","temperature":50,"temperatureUnit":"F","shortForecast":"Chance Rain Showers","isDaytime":true},{"startTime":"2026-11-27T16:00:00-05:00","temperature":48,"temperatureUnit":"F","shortForecast":"Mostly Cloudy","isDaytime":true},{"startTime":"2026-11-27T22:00:00-05:00","temperature":41,"temperatureUnit":"F","shortForecast":"Clear","isDaytime":false},{"startTime":"never","temperature":1}]}}""");
+        var hours = Weather.Hours(doc.RootElement);
+
+        // An hour with no time of its own is left out; Fahrenheit is kept as Celsius, as the reading is.
+        Assert.Equal(3, hours.Count);
+        Assert.Equal(("rain", 10.0, true), (hours[0].Kind, hours[0].TempC, hours[0].Day));
+        Assert.Equal(new DateTime(2026, 11, 27, 20, 0, 0, DateTimeKind.Utc), hours[0].At);
+        Assert.Equal("cloud", hours[1].Kind);
+        Assert.Equal(("clear", 5.0, false), (hours[2].Kind, hours[2].TempC, hours[2].Day));
+
+        using var none = JsonDocument.Parse("""{"properties":{}}""");
+        Assert.Empty(Weather.Hours(none.RootElement));
     }
 
     [Fact]
