@@ -49,17 +49,9 @@
       </Directory>
     </StandardDirectory>
 
-    <!-- The client's own files (status.json, its identity, downloaded updates): only SYSTEM and Administrators can change
-         them, Users can read. The service sets the same when it starts (Settings.cs). -->
-    <StandardDirectory Id="CommonAppDataFolder">
-      <Directory Id="DATAFOLDER" Name="Rabbid Lab Client">
-        <Component Id="Data" Guid="C50F5271-42B9-4A88-AB3A-004265B6621B" Bitness="always64">
-          <CreateFolder>
-            <PermissionEx Id="DataFolderAccess" Sddl="D:PAI(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;0x1200a9;;;BU)" />
-          </CreateFolder>
-        </Component>
-      </Directory>
-    </StandardDirectory>
+    <!-- The client's own files (status.json, its identity, downloaded updates) are in %ProgramData%Rabbid Lab Client. The
+         service makes that folder when it first starts and sets its permissions (Folder.Secure in Settings.cs): the
+         installer doesn't, because permissions set on a path are set on wherever a link planted at that path leads. -->
 
     <!-- What the installer was given, or was given before (SAVEDSERVER). Kept through updates and uninstalls (Permanent),
          and not written when there has never been a SERVER. -->
@@ -108,7 +100,6 @@
       <ComponentRef Id="Program" />
       <ComponentRef Id="Settings" />
       <ComponentRef Id="QuietSetting" />
-      <ComponentRef Id="Data" />
     </Feature>
   </Package>
 </Wix>

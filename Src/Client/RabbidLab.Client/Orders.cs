@@ -64,7 +64,7 @@ internal static class Orders
     private static async Task<TimeSpan> Serve(Settings settings, Identity me, CancellationToken stop)
     {
         using var api = new ServerApi(settings.Server!, settings.Fingerprint, TimeSpan.FromSeconds(80));
-        var key = $"RabbidLab-Client {me.Id}:{me.Secret}";
+        var key = me.Key;
         while (!stop.IsCancellationRequested)
         {
             // The server or its fingerprint changed (Group Policy, say): start again with the new one.

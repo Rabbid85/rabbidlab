@@ -268,10 +268,4 @@ internal sealed class Logbook
     }
 
     private static string Gone(TimeSpan t) => t.TotalMinutes < 90 ? $"{Math.Max(1, (int) t.TotalMinutes)} minutes" : t.TotalHours < 48 ? $"{(int) t.TotalHours} hours" : $"{(int) t.TotalDays} days";
-
-    private static string Short(string text)
-    {
-        var line = text.Trim().Replace("\r", " ").Replace("\n", " ");
-        return line.Length > 140 ? line.Substring(0, 137) + "…" : line;
-    }
 }

@@ -283,7 +283,7 @@ internal static class Jobs
                     return;
                 }
                 using var api = new ServerApi(settings.Server, settings.Fingerprint, TimeSpan.FromSeconds(60));
-                var (code, _) = await api.Post<Nothing>("api/clients/jobs/done", report, $"RabbidLab-Client {me.Id}:{me.Secret}", stop).ConfigureAwait(false);
+                var (code, _) = await api.Post<Nothing>("api/clients/jobs/done", report, me.Key, stop).ConfigureAwait(false);
                 if ((int) code < 500)
                 {
                     return;

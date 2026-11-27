@@ -59,79 +59,57 @@ internal sealed class ServerApi : IDisposable
     /// <summary>Sends the body as JSON and reads the answer, or null when it isn't one.</summary>
     public async Task<(HttpStatusCode Code, T? Answer)> Post<T>(string path, object body, string? authorization, CancellationToken stop) where T : class
     {
-        using var json = new MemoryStream();
-        new DataContractJsonSerializer(body.GetType()).WriteObject(json, body);
-        using var request = new HttpRequestMessage(HttpMethod.Post, path) { Content = new ByteArrayContent(json.ToArray()) };
-        request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
-        if (authorization is not null)
-        {
-            request.Headers.TryAddWithoutValidation("Authorization", authorization);
-        }
-        using var response = await http.SendAsync(request, stop).ConfigureAwait(false);
-        if (!response.IsSuccessStatusCode)
-        {
-            return (response.StatusCode, null);
-        }
-        try
-        {
-            using var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
-            return (response.StatusCode, (T?) new DataContractJsonSerializer(typeof(T)).ReadObject(stream));
-        }
-        catch (SerializationException)
-        {
-            return (response.StatusCode, null);
-        }
+        using var response = await Send(HttpMethod.Post, path, body, authorization, stop).ConfigureAwait(false);
+        return (response.StatusCode, response.IsSuccessStatusCode ? await Read<T>(response).ConfigureAwait(false) : null);
     }
 
     /// <summary>Reads an answer to a GET, or null when there isn't one.</summary>
     public async Task<(HttpStatusCode Code, T? Answer)> Get<T>(string path, string? authorization, CancellationToken stop) where T : class
     {
-        using var request = new HttpRequestMessage(HttpMethod.Get, path);
-        if (authorization is not null)
-        {
-            request.Headers.TryAddWithoutValidation("Authorization", authorization);
-        }
-        using var response = await http.SendAsync(request, stop).ConfigureAwait(false);
-        if (!response.IsSuccessStatusCode)
-        {
-            return (response.StatusCode, null);
-        }
-        try
-        {
-            using var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
-            return (response.StatusCode, (T?) new DataContractJsonSerializer(typeof(T)).ReadObject(stream));
-        }
-        catch (SerializationException)
-        {
-            return (response.StatusCode, null);
-        }
+        using var response = await Send(HttpMethod.Get, path, null, authorization, stop).ConfigureAwait(false);
+        return (response.StatusCode, response.IsSuccessStatusCode ? await Read<T>(response).ConfigureAwait(false) : null);
     }
 
     /// <summary>Sends the body as JSON; when the server says no, what it said ({ error }), for the person who asked.</summary>
     public async Task<(HttpStatusCode Code, string? Error)> PostSaying(string path, object body, string? authorization, CancellationToken stop)
     {
-        using var json = new MemoryStream();
-        new DataContractJsonSerializer(body.GetType()).WriteObject(json, body);
-        using var request = new HttpRequestMessage(HttpMethod.Post, path) { Content = new ByteArrayContent(json.ToArray()) };
-        request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
-        if (authorization is not null)
-        {
-            request.Headers.TryAddWithoutValidation("Authorization", authorization);
-        }
-        using var response = await http.SendAsync(request, stop).ConfigureAwait(false);
+        using var response = await Send(HttpMethod.Post, path, body, authorization, stop).ConfigureAwait(false);
         if (response.IsSuccessStatusCode)
         {
             return (response.StatusCode, null);
         }
+        return (response.StatusCode, (await Read<Said>(response).ConfigureAwait(false))?.Error ?? $"The server returned HTTP {(int) response.StatusCode}.");
+    }
+
+    // One request: its body as JSON when it has one, and signed when this computer has its identity.
+    private async Task<HttpResponseMessage> Send(HttpMethod method, string path, object? body, string? authorization, CancellationToken stop)
+    {
+        using var request = new HttpRequestMessage(method, path);
+        if (body is not null)
+        {
+            using var json = new MemoryStream();
+            new DataContractJsonSerializer(body.GetType()).WriteObject(json, body);
+            request.Content = new ByteArrayContent(json.ToArray());
+            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+        }
+        if (authorization is not null)
+        {
+            request.Headers.TryAddWithoutValidation("Authorization", authorization);
+        }
+        return await http.SendAsync(request, stop).ConfigureAwait(false);
+    }
+
+    // The answer as JSON, or null when it isn't that.
+    private static async Task<T?> Read<T>(HttpResponseMessage response) where T : class
+    {
         try
         {
             using var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
-            var said = (Said?) new DataContractJsonSerializer(typeof(Said)).ReadObject(stream);
-            return (response.StatusCode, said?.Error ?? $"The server returned HTTP {(int) response.StatusCode}.");
+            return (T?) new DataContractJsonSerializer(typeof(T)).ReadObject(stream);
         }
         catch (SerializationException)
         {
-            return (response.StatusCode, $"The server returned HTTP {(int) response.StatusCode}.");
+            return null;
         }
     }
 

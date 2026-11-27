@@ -84,16 +84,6 @@ internal sealed class Status
         _ => "Starting",
     };
 
-    /// <summary>What to do about it, or what it means, in a sentence for the window.</summary>
-    public string Hint() => State switch
-    {
-        Connected => "This computer is listed under Devices in Rabbid Lab.",
-        Waiting => "An admin needs to approve this computer under Devices in Rabbid Lab.",
-        NoServer => "To connect, open Rabbid Lab in a browser on this computer and click Connect this computer. Or click Connect to a server below.",
-        Starting => "Waiting for the Rabbid Lab Client service to start.",
-        _ => Problem ?? "",
-    };
-
     public string Host => Uri.TryCreate(Server, UriKind.Absolute, out var u) ? u.Host : Server ?? "the server";
 
     public Status Save()

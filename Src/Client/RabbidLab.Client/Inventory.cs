@@ -233,7 +233,7 @@ internal static class Inventory
         }
         var report = Gather();
         var print = Hash(Print(report));
-        var key = $"RabbidLab-Client {me.Id}:{me.Secret}";
+        var key = me.Key;
         using var api = new ServerApi(settings.Server, settings.Fingerprint, TimeSpan.FromSeconds(60));
         // Nothing changed since the last one the server has: it's told so, in a few bytes.
         if (print == sentAs && sentTo == settings.Server && !news)
@@ -395,7 +395,7 @@ internal static class Inventory
         {
             misses?.Add($"Security settings: {e.Message}");
         }
-        if (misses.Count > 0)
+        if (misses is { Count: > 0 })
         {
             Problems.Note("inventory", $"Could not read {misses.Count} part(s) of the inventory. {misses[0]}");
         }

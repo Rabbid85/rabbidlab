@@ -30,7 +30,7 @@ internal static class Problems
     private const int Most = 20;
     private const int MostText = 300;
     private static readonly object Gate = new();
-    private static string FilePath => Folder.File("problems.json");
+    private static string FilePath => Folder.Kept("problems.json");
 
     public static void Note(string area, string message)
     {

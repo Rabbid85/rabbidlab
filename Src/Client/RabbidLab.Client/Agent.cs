@@ -63,7 +63,7 @@ internal sealed class Agent
                     Code = check?.Substring(check.IndexOf(':') + 1), CodeUsed = Removal.CodeUsed, Problems = problems,
                     Disks = Inventory.Drives(),
                 },
-                $"RabbidLab-Client {me.Id}:{me.Secret}", stop).ConfigureAwait(false);
+                me.Key, stop).ConfigureAwait(false);
             if (answered == HttpStatusCode.OK && problems is not null)
             {
                 Problems.Sent(problems);
@@ -142,7 +142,7 @@ internal sealed class Agent
                 return;
             }
             using var api = new ServerApi(settings.Server, settings.Fingerprint, TimeSpan.FromSeconds(3));
-            api.Post<CheckInAnswer>("api/clients/bye", new JoinRequest { Computer = Machine.Name }, $"RabbidLab-Client {me.Id}:{me.Secret}", CancellationToken.None)
+            api.Post<CheckInAnswer>("api/clients/bye", new JoinRequest { Computer = Machine.Name }, me.Key, CancellationToken.None)
                 .GetAwaiter().GetResult();
         }
         catch (Exception)
@@ -184,7 +184,7 @@ internal sealed class Agent
                 Logbook.IconSaved(null);
                 return;
             }
-            var (code, got) = await api.Get<LabIcon>("api/clients/lab-icon", $"RabbidLab-Client {me.Id}:{me.Secret}", stop).ConfigureAwait(false);
+            var (code, got) = await api.Get<LabIcon>("api/clients/lab-icon", me.Key, stop).ConfigureAwait(false);
             if (code != System.Net.HttpStatusCode.OK)
             {
                 return;

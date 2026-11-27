@@ -37,6 +37,9 @@ internal static class Pipe
     public const string Name = "RabbidLab.Client";
     private const int MostBytes = 48 * 1024 * 1024;
 
+    // How long the service waits for what a program that connected has to say.
+    private static readonly TimeSpan AskWithin = TimeSpan.FromSeconds(20);
+
     // The service's wait for the next round, which Check in now cuts short.
     private static CancellationTokenSource? waiting;
 
@@ -108,7 +111,13 @@ internal static class Pipe
             PipeAnswer answer;
             try
             {
-                var ask = Read<PipeAsk>(pipe);
+                // A program that connects and then says nothing is hung up on. Four of them held every place on the pipe,
+                // and nobody signed in could check in now or ask for help for as long as they stayed.
+                PipeAsk? ask;
+                using (new Timer(_ => HangUp(pipe), null, AskWithin, Timeout.InfiniteTimeSpan))
+                {
+                    ask = Read<PipeAsk>(pipe);
+                }
                 // Who asked, as Windows says, not as the message says.
                 string? who = null;
                 try
@@ -137,6 +146,19 @@ internal static class Pipe
             {
                 // The window closed before the answer.
             }
+        }
+    }
+
+    // Ends a read that waits on a silent program: its end of the pipe is closed, and the read returns.
+    private static void HangUp(NamedPipeServerStream pipe)
+    {
+        try
+        {
+            pipe.Disconnect();
+        }
+        catch (Exception e) when (e is InvalidOperationException or IOException)
+        {
+            // Gone already.
         }
     }
 
@@ -170,7 +192,7 @@ internal static class Pipe
         try
         {
             using var api = new ServerApi(settings.Server, settings.Fingerprint, TimeSpan.FromSeconds(90));
-            var (code, error) = await api.PostSaying("api/clients/help", help, $"RabbidLab-Client {me.Id}:{me.Secret}", stop).ConfigureAwait(false);
+            var (code, error) = await api.PostSaying("api/clients/help", help, me.Key, stop).ConfigureAwait(false);
             if (error is not null)
             {
                 return new PipeAnswer { Error = code == System.Net.HttpStatusCode.Unauthorized ? "This computer isn't let into Rabbid Lab yet, so the request can't be sent." : error };
@@ -204,6 +226,12 @@ internal static class Pipe
         {
             using var pipe = new NamedPipeClientStream(".", Name, PipeDirection.InOut, PipeOptions.Asynchronous, TokenImpersonationLevel.Identification);
             pipe.Connect(3000);
+            // Only the service's own pipe is told anything. One another program made first, while the service was away for
+            // an update say, would be handed the request and the pictures of the screen with it.
+            if (!Services(pipe))
+            {
+                return none;
+            }
             // A pipe can't time out a read (setting ReadTimeout throws): the talk runs on its own, and closing the pipe ends it.
             var talk = Task.Run(() =>
             {
@@ -223,6 +251,21 @@ internal static class Pipe
         catch (Exception e) when (e is IOException or TimeoutException or UnauthorizedAccessException)
         {
             return none;
+        }
+    }
+
+    // Whether SYSTEM or the Administrators group owns the pipe, as the service's does: a program run by whoever is
+    // signed in can't make one that either owns.
+    private static bool Services(PipeStream pipe)
+    {
+        try
+        {
+            return pipe.GetAccessControl().GetOwner(typeof(SecurityIdentifier)) is SecurityIdentifier owner
+                && (owner.IsWellKnown(WellKnownSidType.LocalSystemSid) || owner.IsWellKnown(WellKnownSidType.BuiltinAdministratorsSid));
+        }
+        catch (Exception e) when (e is UnauthorizedAccessException or InvalidOperationException or IOException)
+        {
+            return false; // it won't say whose it is
         }
     }
 

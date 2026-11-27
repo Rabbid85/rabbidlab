@@ -17,25 +17,35 @@ internal static class Machine
     public static string? Users()
     {
         var found = new List<string>();
+        foreach (var session in Sessions())
+        {
+            var user = Ask(session, UserName);
+            if (!string.IsNullOrEmpty(user))
+            {
+                var domain = Ask(session, DomainName);
+                found.Add(string.IsNullOrEmpty(domain) ? user! : $"{domain}\\{user}");
+            }
+        }
+        return found.Count == 0 ? null : string.Join(", ", found.Distinct(StringComparer.OrdinalIgnoreCase));
+    }
+
+    /// <summary>The sessions someone is signed in to and using now, at the screen or over Remote Desktop; not the services' own.</summary>
+    public static List<int> Sessions()
+    {
+        var sessions = new List<int>();
         if (!WTSEnumerateSessions(IntPtr.Zero, 0, 1, out var list, out var count))
         {
-            return null;
+            return sessions;
         }
         try
         {
             var size = Marshal.SizeOf(typeof(SessionInfo));
             for (var i = 0; i < count; i++)
             {
-                var session = (SessionInfo) Marshal.PtrToStructure(new IntPtr(list.ToInt64() + (i * size)), typeof(SessionInfo));
-                if (session.State != Active)
+                var session = (SessionInfo) Marshal.PtrToStructure(IntPtr.Add(list, i * size), typeof(SessionInfo));
+                if (session.State == Active && session.Id != 0)
                 {
-                    continue;
-                }
-                var user = Ask(session.Id, UserName);
-                if (!string.IsNullOrEmpty(user))
-                {
-                    var domain = Ask(session.Id, DomainName);
-                    found.Add(string.IsNullOrEmpty(domain) ? user! : $"{domain}\\{user}");
+                    sessions.Add(session.Id);
                 }
             }
         }
@@ -43,7 +53,7 @@ internal static class Machine
         {
             WTSFreeMemory(list);
         }
-        return found.Count == 0 ? null : string.Join(", ", found.Distinct(StringComparer.OrdinalIgnoreCase));
+        return sessions;
     }
 
     private static string? Ask(int session, int what)

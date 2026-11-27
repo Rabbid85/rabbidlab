@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.435', [
+    'The Windows client never follows a link, and never uses a folder, that another account put where its own data folder goes. It moves that aside and makes its own, and the installer no longer sets permissions there.',
+    'A program that connected to the client and then said nothing could block Check in now and Ask IT for help for everyone on that computer. The client now hangs up on it after 20 seconds, and its window sends requests only to the real service.',
+    'The Connect and uninstall code windows no longer name the server. The log of a client update, the errors the client has still to report and the Group Policy results it reads are now open to administrators only.']],
   ['1.1.434', [
     'The Overview banner shows the time and the date in large figures, with the weather where the lab is beside them: the temperature, what the sky is doing, the place and the wind. Under them are the next five hours, and then the name of the lab.',
     'The time and the weather open the banner sky window. The chip at the top right is gone, and so are the headline and the paragraph under it.',
@@ -1393,6 +1397,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.435': ['2026-11-27', 'fix', 'A safer Windows client'],
   '1.1.434': ['2026-11-27', 'feature', 'The time and the weather on the banner'],
   '1.1.433': ['2026-11-27', 'feature', 'A dashboard of your own on Overview'],
   '1.1.432': ['2026-11-27', 'fix', 'No gap at the banner edge'],

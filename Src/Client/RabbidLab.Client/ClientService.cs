@@ -28,7 +28,6 @@ internal sealed class ClientService : ServiceBase
 
     protected override void OnStart(string[] args)
     {
-        Folder.Secure();
         Task.Run(() =>
         {
             Guard.UsualPermissions();
@@ -36,10 +35,7 @@ internal sealed class ClientService : ServiceBase
         });
         stop = new CancellationTokenSource();
         var token = stop.Token;
-        // A new version since it last ran: written in what it did (Updated the client, or Installed).
-        Logbook.Started(Agent.Version);
-        // The tray icon asks it things through a pipe: Check in now, Ask IT for help (Pipe.cs).
-        loop = Task.WhenAll(Task.Run(() => Run(token)), Task.Run(() => Orders.Listen(token)), Task.Run(() => Pipe.Listen(token)));
+        loop = Task.Run(() => Start(token));
     }
 
     protected override void OnStop() => Halt();
@@ -59,6 +55,26 @@ internal sealed class ClientService : ServiceBase
         }
         // The server hears the client has stopped (a restart, an update, an uninstall), so it shows Offline at once.
         Agent.Bye();
+    }
+
+    // Nothing is read from or written to the client's folder until it is the client's own (Folder.Secure): something
+    // another account put there first is moved aside, and while it won't move the client does nothing but try again.
+    private static async Task Start(CancellationToken stop)
+    {
+        var said = false;
+        while (!Folder.Secure())
+        {
+            if (!said)
+            {
+                said = true;
+                Journal.Write($"The Rabbid Lab Client is not running: {Folder.Data} was made by another account and cannot be moved aside. Delete or rename that folder; the client tries again every minute.");
+            }
+            await Task.Delay(TimeSpan.FromMinutes(1), stop).ConfigureAwait(false);
+        }
+        // A new version since it last ran: written in what it did (Updated the client, or Installed).
+        Logbook.Started(Agent.Version);
+        // The tray icon asks it things through a pipe: Check in now, Ask IT for help (Pipe.cs).
+        await Task.WhenAll(Task.Run(() => Run(stop)), Task.Run(() => Orders.Listen(stop)), Task.Run(() => Pipe.Listen(stop))).ConfigureAwait(false);
     }
 
     private static async Task Run(CancellationToken stop)
@@ -137,7 +153,7 @@ internal sealed class ClientService : ServiceBase
 /// <summary>
 /// Keeps the client on the server's version: when the server is newer, downloads the client's MSI from it and installs
 /// it quietly. Once a day at most for the same version, so a broken MSI doesn't install over and over. The MSI goes
-/// in the Updates folder, which only SYSTEM and administrators can write to.
+/// in the Updates folder and its log in the Service folder, which only SYSTEM and administrators can open.
 /// </summary>
 internal static class Updater
 {
@@ -152,7 +168,7 @@ internal static class Updater
     {
         try
         {
-            var log = File.ReadAllText(Folder.File("update.log")); // Unicode, which the byte order mark says
+            var log = File.ReadAllText(Folder.Kept("update.log")); // Unicode, which the byte order mark says
             var ended = System.Text.RegularExpressions.Regex.Matches(log, @"Installation success or error status: (\d+)");
             return ended.Count > 0 && ended[ended.Count - 1].Groups[1].Value is var code && code != "0" ? $": Windows Installer error {code}" : "";
         }
@@ -175,7 +191,7 @@ internal static class Updater
             if (told != status.ServerVersion && DateTime.UtcNow - File.GetLastWriteTimeUtc(tried) > TimeSpan.FromMinutes(10))
             {
                 told = status.ServerVersion;
-                Problems.Note("update", $"Client {status.ServerVersion} failed to install{InstallerSaid()}. The install is retried in 24 hours. See update.log on the computer for details.");
+                Problems.Note("update", $"Client {status.ServerVersion} failed to install{InstallerSaid()}. The install is retried in 24 hours. See update.log in the client's Service folder on the computer for details.");
             }
             return;
         }
@@ -208,7 +224,7 @@ internal static class Updater
         }
         // msiexec carries on after this service stops for the upgrade, and starts the new one.
         var system = Environment.GetFolderPath(Environment.SpecialFolder.System);
-        using var installer = Process.Start(new ProcessStartInfo(Path.Combine(system, "msiexec.exe"), $"/i \"{msi}\" /qn /norestart /l*v \"{Folder.File("update.log")}\"") { UseShellExecute = false, CreateNoWindow = true });
+        using var installer = Process.Start(new ProcessStartInfo(Path.Combine(system, "msiexec.exe"), $"/i \"{msi}\" /qn /norestart /l*v \"{Folder.Kept("update.log")}\"") { UseShellExecute = false, CreateNoWindow = true });
         // Marked once it's started, so a download that failed is tried again and a broken MSI isn't run all day.
         File.WriteAllText(tried, status.ServerVersion);
     }

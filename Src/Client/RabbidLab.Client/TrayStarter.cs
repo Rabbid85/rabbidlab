@@ -36,7 +36,7 @@ internal static class TrayStarter
         }
         var name = Path.GetFileNameWithoutExtension(exe);
         var seen = new HashSet<int>();
-        foreach (var session in SignedIn())
+        foreach (var session in Machine.Sessions())
         {
             var there = false;
             foreach (var p in Process.GetProcessesByName(name))
@@ -112,33 +112,6 @@ internal static class TrayStarter
         }
     }
 
-    // The sessions someone is signed in to and using now.
-    private static List<int> SignedIn()
-    {
-        var sessions = new List<int>();
-        if (!WTSEnumerateSessions(IntPtr.Zero, 0, 1, out var list, out var count))
-        {
-            return sessions;
-        }
-        try
-        {
-            var size = Marshal.SizeOf(typeof(SessionInfo));
-            for (var i = 0; i < count; i++)
-            {
-                var info = (SessionInfo) Marshal.PtrToStructure(IntPtr.Add(list, i * size), typeof(SessionInfo));
-                if (info.State == 0 && info.Id != 0) // active, and not the services' own
-                {
-                    sessions.Add(info.Id);
-                }
-            }
-        }
-        finally
-        {
-            WTSFreeMemory(list);
-        }
-        return sessions;
-    }
-
     // The icon, as whoever is signed in to that session, with their own environment, on their desktop.
     private static void Start(int session, string exe)
     {
@@ -173,14 +146,6 @@ internal static class TrayStarter
         }
     }
 
-    [StructLayout(LayoutKind.Sequential)]
-    private struct SessionInfo
-    {
-        public int Id;
-        public IntPtr Name;
-        public int State;
-    }
-
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     private struct StartupInfo
     {
@@ -199,12 +164,6 @@ internal static class TrayStarter
         public IntPtr Process, Thread;
         public int ProcessId, ThreadId;
     }
-
-    [DllImport("wtsapi32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-    private static extern bool WTSEnumerateSessions(IntPtr server, int reserved, int version, out IntPtr list, out int count);
-
-    [DllImport("wtsapi32.dll")]
-    private static extern void WTSFreeMemory(IntPtr memory);
 
     [DllImport("wtsapi32.dll", SetLastError = true)]
     private static extern bool WTSQueryUserToken(int session, out IntPtr token);

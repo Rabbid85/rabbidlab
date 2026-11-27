@@ -122,7 +122,7 @@ internal static class GroupPolicy
     // One side's results from gpresult's XML.
     private static GpSideReport? Side(string scope, string? user)
     {
-        var file = Path.Combine(Folder.Data, $"gp-{scope}.xml");
+        var file = Folder.Kept($"gp-{scope}.xml"); // the computer's results aren't for everyone signed in to read
         try
         {
             var args = user is null ? $"/scope computer /x \"{file}\" /f" : $"/user \"{user}\" /scope user /x \"{file}\" /f";

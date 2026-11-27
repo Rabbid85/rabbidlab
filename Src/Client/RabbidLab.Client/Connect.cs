@@ -80,9 +80,8 @@ internal sealed class JoinLink
         return now.Server is not null && !string.Equals(now.Server, server, StringComparison.OrdinalIgnoreCase) && !Removal.Allowed ? now.Server : null;
     }
 
-    /// <summary>What to say about it.</summary>
-    public static string LockedNote(string server) =>
-        $"This computer is locked to {(Uri.TryCreate(server, UriKind.Absolute, out var u) ? u.Host : server)}. To connect it to a different server, unlock it first: click Uninstall in the Rabbid Lab Client window and enter the uninstall code.";
+    /// <summary>What to say about it: never which server, to whoever sits at the computer.</summary>
+    public const string LockedNote = "This computer is locked to its current server. To connect it to a different server, unlock it first: click Uninstall in the Rabbid Lab Client window and enter the uninstall code.";
 
     /// <summary>
     /// Saved where the installer keeps its settings, then the service restarted so it joins straight away. Run as an
@@ -95,9 +94,9 @@ internal sealed class JoinLink
             Console.Error.WriteLine(problem);
             return 2;
         }
-        if (LockedTo(Server) is { } held)
+        if (LockedTo(Server) is not null)
         {
-            Console.Error.WriteLine(LockedNote(held));
+            Console.Error.WriteLine(LockedNote);
             return 3;
         }
         using (var machine = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64))
@@ -156,8 +155,8 @@ internal sealed class ConnectWindow : Form
         var title = new Label { Text = "Connect this computer", AutoSize = false, Height = 36, Dock = DockStyle.Top, Font = new Font("Segoe UI", 15f, FontStyle.Bold) };
         var lead = new Label
         {
-            Text = $"This adds {Machine.Name} to Devices in Rabbid Lab. Admins can then manage this computer's local Windows accounts.",
-            AutoSize = false, Height = 58, Dock = DockStyle.Top, ForeColor = Look.Muted,
+            Text = $"This adds {Machine.Name} to Devices in Rabbid Lab.",
+            AutoSize = false, Height = 34, Dock = DockStyle.Top, ForeColor = Look.Muted,
         };
         server.Text = link.Server;
         var field = Look.Box(server);
@@ -186,18 +185,18 @@ internal sealed class ConnectWindow : Form
         var now = Settings.Read();
         if (now.PolicyServer is not null)
         {
-            Say(note, $"The server is set by Group Policy ({now.PolicyServer}) and can't be changed here.", Look.Amber);
+            Say(note, "The server is set by Group Policy and can't be changed here.", Look.Amber);
             server.ReadOnly = true;
             server.ForeColor = Look.Muted;
             go.Enabled = false;
         }
-        else if (link.Server.Length > 0 && JoinLink.LockedTo(link.Server) is { } held)
+        else if (link.Server.Length > 0 && JoinLink.LockedTo(link.Server) is not null)
         {
-            Say(note, JoinLink.LockedNote(held), Look.Amber);
+            Say(note, JoinLink.LockedNote, Look.Amber);
         }
         else if (now.Server is not null && !string.Equals(now.Server, link.Server, StringComparison.OrdinalIgnoreCase) && link.Server.Length > 0)
         {
-            Say(note, $"This computer is already connected to {now.Server}. Connecting will move it to {link.Server}.", Look.Amber);
+            Say(note, $"This computer is already connected to another server. Connecting will move it to {link.Server}.", Look.Amber);
         }
         else if (link.Server.Length > 0)
         {
@@ -253,9 +252,9 @@ internal sealed class ConnectWindow : Form
             Say(said, problem, Look.Red);
             return;
         }
-        if (JoinLink.LockedTo(link.Server) is { } held)
+        if (JoinLink.LockedTo(link.Server) is not null)
         {
-            Say(said, JoinLink.LockedNote(held), Look.Red);
+            Say(said, JoinLink.LockedNote, Look.Red);
             return;
         }
         go.Enabled = false;

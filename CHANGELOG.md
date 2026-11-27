@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.435 (2026-11-27)
+
+- The Windows client never follows a link, and never uses a folder, that another account put where its own data folder goes. It moves that aside and makes its own, and the installer no longer sets permissions there.
+- A program that connected to the client and then said nothing could block Check in now and Ask IT for help for everyone on that computer. The client now hangs up on it after 20 seconds, and its window sends requests only to the real service.
+- The Connect and uninstall code windows no longer name the server. The log of a client update, the errors the client has still to report and the Group Policy results it reads are now open to administrators only.
+
 ## 1.1.434 (2026-11-27)
 
 - The Overview banner shows the time and the date in large figures, with the weather where the lab is beside them: the temperature, what the sky is doing, the place and the wind. Under them are the next five hours, and then the name of the lab.

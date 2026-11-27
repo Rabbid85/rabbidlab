@@ -85,7 +85,11 @@ internal static class Program
         {
             try
             {
-                Folder.Secure();
+                if (!Folder.Secure())
+                {
+                    Console.Error.WriteLine($"{Folder.Data} was made by another account and cannot be moved aside. Delete or rename it, then try again.");
+                    return 1;
+                }
                 var status = new Agent().Round(CancellationToken.None).GetAwaiter().GetResult();
                 Console.WriteLine(status.Describe());
                 return status.State is Status.Connected or Status.Waiting ? 0 : 1;

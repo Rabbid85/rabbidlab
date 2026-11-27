@@ -26,6 +26,9 @@ internal sealed class Identity
     public string Secret { get; private set; } = "";
     public string Server { get; private set; } = "";
 
+    /// <summary>What every request to the server is signed with: Authorization: RabbidLab-Client id:secret.</summary>
+    public string Key => $"RabbidLab-Client {Id}:{Secret}";
+
     private static string Path => Folder.File("identity.dat");
 
     // Files written since the computer-wide encryption start with this.

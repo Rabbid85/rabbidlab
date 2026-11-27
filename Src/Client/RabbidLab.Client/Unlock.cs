@@ -25,7 +25,6 @@ internal sealed class UnlockWindow : Form
 
     public UnlockWindow()
     {
-        var now = Status.Read() ?? new Status();
         Text = "Rabbid Lab Client";
         Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
         FormBorderStyle = FormBorderStyle.FixedSingle;
@@ -42,9 +41,9 @@ internal sealed class UnlockWindow : Form
         var title = new Label { Text = "Enter the uninstall code", AutoSize = false, Height = 36, Dock = DockStyle.Top, Font = new Font("Segoe UI", 15f, FontStyle.Bold) };
         var lead = new Label
         {
-            Text = has ? $"Uninstalling is locked by {now.Host}. An admin can find this computer's uninstall code in Rabbid Lab: go to Devices, click Uninstall next to {Machine.Name}, then click Show."
+            Text = has ? "Uninstalling is locked by your administrator. Ask them for this computer's uninstall code."
                 : "This computer does not have an uninstall code yet. The server assigns one at the next check-in. Until then, an admin must allow the uninstall in Rabbid Lab.",
-            AutoSize = false, Height = 78, Dock = DockStyle.Top, ForeColor = Look.Muted,
+            AutoSize = false, Height = has ? 54 : 78, Dock = DockStyle.Top, ForeColor = Look.Muted,
         };
         code.Font = new Font("Consolas", 11f);
         var field = Look.Box(code);

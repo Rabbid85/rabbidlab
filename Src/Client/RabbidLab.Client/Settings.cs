@@ -1,8 +1,10 @@
 using System;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Security.AccessControl;
 using System.Security.Principal;
 using Microsoft.Win32;
+using Microsoft.Win32.SafeHandles;
 
 namespace RabbidLab.Client;
 
@@ -145,6 +147,14 @@ internal sealed class Settings
     private static string? Text(RegistryKey key, string name) => key.GetValue(name) is string v && v.Trim().Length > 0 ? v.Trim() : null;
 }
 
+/// <summary>Something another account put where one of the client's folders goes couldn't be moved aside.</summary>
+internal sealed class NotOursException : IOException
+{
+    public NotOursException(string path, Exception? inner) : base($"{path} was made by another account and can't be moved aside.", inner)
+    {
+    }
+}
+
 /// <summary>
 /// Where the client keeps its files: %ProgramData%\Rabbid Lab Client, or RABBIDLAB_CLIENT_DATA when trying it out.
 /// Only SYSTEM and administrators can change it; everyone can read it (the tray icon reads status.json).
@@ -165,54 +175,58 @@ internal static class Folder
     /// <summary>The scripts of jobs while they run, which only SYSTEM and administrators can open.</summary>
     public static string Jobs => Path.Combine(Data, "Jobs");
 
+    /// <summary>What only the service reads: the errors it has to tell, Group Policy's results, the installer's log.</summary>
+    public static string Service => Path.Combine(Data, "Service");
+
     public static string File(string name) => Path.Combine(Data, name);
 
+    /// <summary>A file of the service's own, which only SYSTEM and administrators can open.</summary>
+    public static string Kept(string name) => Path.Combine(Service, name);
+
     /// <summary>
-    /// Makes the folders and sets their permissions: SYSTEM and Administrators full control, Users read, and Updates
-    /// and Jobs without Users. Run by the service (and --check-in), never by the tray icon.
+    /// Makes the folders and sets their permissions: SYSTEM and Administrators full control, Users read, and Updates,
+    /// Jobs and Service without Users. Run by the service (and --check-in), never by the tray icon. False when something
+    /// another account put there is in the way and won't move: nothing may be read from or written to the folder then.
     /// </summary>
-    public static void Secure()
+    public static bool Secure()
     {
         try
         {
             if (Override is not null)
             {
-                Directory.CreateDirectory(Updates);
-                return;
+                foreach (var folder in new[] { Updates, Jobs, Service })
+                {
+                    Directory.CreateDirectory(folder);
+                }
+                return true;
             }
             // Already locked: only SYSTEM and administrators could have written here, so everything in it stays.
-            var locked = Directory.Exists(Data) && Locked(Data);
-            Lock(Data, usersRead: true);
-            if (!locked)
+            if (!Make(Data, usersRead: true))
             {
-                // The folder was open until now: files a standard user put there aren't the client's.
+                // The folder was open until now: files and links a standard user put there aren't the client's.
                 foreach (var file in Directory.GetFiles(Data))
                 {
-                    if (!Ours(System.IO.File.GetAccessControl(file, AccessControlSections.Owner)))
+                    if (Linked(System.IO.File.GetAttributes(file)) || !Ours(System.IO.File.GetAccessControl(file, AccessControlSections.Owner)))
                     {
                         System.IO.File.Delete(file);
                     }
                 }
-                foreach (var folder in new[] { Updates, Jobs })
-                {
-                    if (Directory.Exists(folder) && !Ours(Directory.GetAccessControl(folder, AccessControlSections.Owner)))
-                    {
-                        Directory.Delete(folder, recursive: true);
-                    }
-                }
             }
-            Lock(Updates, usersRead: false);
-            // A folder of Jobs someone else made is never run from: it's made again as ours, empty.
-            if (Directory.Exists(Jobs) && !Ours(Directory.GetAccessControl(Jobs, AccessControlSections.Owner)))
+            foreach (var folder in new[] { Updates, Jobs, Service })
             {
-                Directory.Delete(Jobs, recursive: true);
+                Make(folder, usersRead: false);
             }
-            Lock(Jobs, usersRead: false);
             // A script left by a job that was cut short (the computer restarted, say).
             foreach (var left in Directory.GetFiles(Jobs))
             {
                 System.IO.File.Delete(left);
             }
+            Gather();
+            return true;
+        }
+        catch (NotOursException)
+        {
+            return false;
         }
         catch (Exception)
         {
@@ -225,10 +239,18 @@ internal static class Folder
             {
                 // Whatever writes there next says why it can't.
             }
+            return true;
         }
     }
 
-    private static void Lock(string path, bool usersRead)
+    /// <summary>
+    /// Ends with a real folder of SYSTEM's or the administrators' at this path, with the client's permissions on it;
+    /// whether it was that already. Anything else there (a link to somewhere else, a file, a folder another account
+    /// made) is moved aside by renaming it, so nothing it leads to or holds is touched: setting permissions through a
+    /// link would set them on wherever it leads. The folder is held open meanwhile, so it can't be swapped for a link
+    /// between being looked at and being changed.
+    /// </summary>
+    private static bool Make(string path, bool usersRead)
     {
         var security = new DirectorySecurity();
         security.SetAccessRuleProtection(isProtected: true, preserveInheritance: false);
@@ -241,27 +263,100 @@ internal static class Folder
         {
             security.AddAccessRule(new FileSystemAccessRule(new SecurityIdentifier(WellKnownSidType.BuiltinUsersSid, null), FileSystemRights.ReadAndExecute, all, PropagationFlags.None, AccessControlType.Allow));
         }
-        if (!Directory.Exists(path))
+        var made = false;
+        for (var tries = 0; tries < 4; tries++)
         {
-            Directory.CreateDirectory(path, security);
+            using (var held = Hold(path, out var attributes, out var there))
+            {
+                if (held is not null && !Linked(attributes) && (attributes & FileAttributes.Directory) != 0)
+                {
+                    var now = Directory.GetAccessControl(path, AccessControlSections.Owner | AccessControlSections.Access);
+                    if (Ours(now))
+                    {
+                        Directory.SetAccessControl(path, security);
+                        return !made && now.AreAccessRulesProtected;
+                    }
+                }
+                else if (!there)
+                {
+                    // Made with its permissions already on it; looked at again, in case something got there first.
+                    Directory.CreateDirectory(path, security);
+                    made = true;
+                    continue;
+                }
+            }
+            try
+            {
+                Directory.Move(path, $"{path}.not-ours-{Guid.NewGuid():N}"); // a file or a folder, and a link itself, not where it leads
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                throw new NotOursException(path, e);
+            }
         }
-        // A folder someone else made first keeps them as its owner, who could change the permissions back.
-        if (!Ours(Directory.GetAccessControl(path, AccessControlSections.Owner)))
-        {
-            security.SetOwner(new SecurityIdentifier(WellKnownSidType.BuiltinAdministratorsSid, null));
-        }
-        Directory.SetAccessControl(path, security);
+        throw new NotOursException(path, null);
     }
 
-    /// <summary>Whether the folder is ours and takes no permissions from the folder above it.</summary>
-    private static bool Locked(string path)
+    // Opens whatever is at the path, a link itself and not where it leads, so that it can't be renamed or deleted while
+    // it's held. Null when it can't be opened: there says whether that's because nothing is there.
+    private static SafeFileHandle? Hold(string path, out FileAttributes attributes, out bool there)
     {
-        var security = Directory.GetAccessControl(path, AccessControlSections.Owner | AccessControlSections.Access);
-        return Ours(security) && security.AreAccessRulesProtected;
+        const uint readAttributes = 0x80, backupSemantics = 0x02000000, openLink = 0x00200000;
+        attributes = 0;
+        var handle = CreateFile(path, readAttributes, FileShare.ReadWrite, IntPtr.Zero, FileMode.Open, backupSemantics | openLink, IntPtr.Zero);
+        var error = Marshal.GetLastWin32Error();
+        there = !handle.IsInvalid || error is not (2 or 3); // not "file not found" or "path not found"
+        if (!handle.IsInvalid && GetFileInformationByHandle(handle, out var facts))
+        {
+            attributes = (FileAttributes) facts.Attributes;
+            return handle;
+        }
+        handle.Dispose();
+        return null;
     }
+
+    // Files everyone signed in could read until 1.1.435 are the service's own now (Kept): the errors still to tell go
+    // with it, and the rest are written again there.
+    private static void Gather()
+    {
+        foreach (var name in new[] { "problems.json", "update.log", "gp-computer.xml", "gp-user.xml" })
+        {
+            var old = File(name);
+            if (!System.IO.File.Exists(old))
+            {
+                continue;
+            }
+            try
+            {
+                if (name == "problems.json" && !System.IO.File.Exists(Kept(name)))
+                {
+                    System.IO.File.Copy(old, Kept(name)); // a copy takes the Service folder's permissions; a moved file keeps its own
+                }
+                System.IO.File.Delete(old);
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                // Still open: the installer writes its log while it starts this service. It goes the next time.
+            }
+        }
+    }
+
+    private static bool Linked(FileAttributes attributes) => (attributes & FileAttributes.ReparsePoint) != 0;
 
     /// <summary>Whether SYSTEM or the Administrators group owns it.</summary>
     private static bool Ours(FileSystemSecurity security) =>
         security.GetOwner(typeof(SecurityIdentifier)) is SecurityIdentifier owner
         && (owner.IsWellKnown(WellKnownSidType.LocalSystemSid) || owner.IsWellKnown(WellKnownSidType.BuiltinAdministratorsSid));
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct FileFacts
+    {
+        public uint Attributes, Created1, Created2, Read1, Read2, Written1, Written2, Volume, SizeHigh, SizeLow, Links, IndexHigh, IndexLow;
+    }
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern SafeFileHandle CreateFile(string name, uint access, FileShare share, IntPtr security, FileMode mode, uint flags, IntPtr template);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool GetFileInformationByHandle(SafeFileHandle file, out FileFacts facts);
 }

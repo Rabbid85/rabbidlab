@@ -42,9 +42,6 @@ internal static class Removal
     /// <summary>When the code was last typed here, for the server to be told.</summary>
     public static string? CodeUsed => Text("CodeUsed");
 
-    /// <summary>After how many days without the server the lock lets go; 0 when it never does.</summary>
-    public static int OfflineDays => Read(key => key?.GetValue("UnlockAfterDays") is int days && days > 0 ? days : 0);
-
     /// <summary>This computer has checked in with a server, so it stays locked whatever becomes of its identity file.</summary>
     public static bool Enrolled => Text("LastContact") is not null;
 
