@@ -287,11 +287,11 @@
   <a class="backlink" id="backlink" hidden><svg><use href="#i-back"/></svg><span id="backlink-text"></span></a>
   <!-- Role preview: the console as a role sees it, until Stop. -->
   <div class="viewas" id="viewas" hidden><svg><use href="#i-eye"/></svg><span>Previewing as <b id="viewas-name"></b>. Only the view changes. Your own permissions still apply.</span><button type="button" id="viewas-stop">Stop</button></div>
-  <!-- This computer isn't in Devices yet: the client to install, then Connect, which hands the client the server's address. -->
+  <!-- This computer isn't in Devices yet: the client to download and run. The download already knows this server (its file
+       name says which, ClientFiles.DownloadName), so there is nothing to click after it. -->
   <div class="herebar" id="herebar" hidden><svg><use href="#i-monitor"/></svg>
-    <span id="here-text">This computer is not connected.</span>
-    <a class="button small" id="here-download" href="/api/clients/download" download><svg><use href="#i-download"/></svg>1. Download the client</a>
-    <a class="button small primary" id="here-connect" href="#"><svg><use href="#i-link"/></svg>2. Connect this computer</a>
+    <span id="here-text">This computer is not connected. Download the client and run it. It already knows this server.</span>
+    <a class="button small primary" id="here-download" href="/api/clients/download" download><svg><use href="#i-download"/></svg><span>Download the client</span></a>
     <button type="button" class="link" id="here-later">Not now</button></div>
   <section class="page home" id="page-overview" data-page="overview" data-title="Overview" hidden>
     <!-- The banner: a scene drawn from the accent (scene.js), the time, the weather and the lab's name at the foot on the left, and a glass strip
@@ -826,7 +826,7 @@
           <div class="ds-r"><span class="sw-label" id="seat-unlock-label"></span><input type="checkbox" class="switch" id="seat-unlock" role="switch" aria-label="Release the uninstall lock after 30 days offline" disabled></div></div>
       </section>
       <section class="ds-sec" data-sec="client" data-can="seats.add"><h3 class="ds-h">Install the client</h3>
-        <div class="ds-row" id="seat-msi-row"><div class="ds-l"><b>Client installer (MSI)</b><span>Run it on a computer, or install it silently with the command below.</span></div><div class="ds-r"><a class="ds-btn" id="seat-msi" href="/api/clients/download" download>Download</a></div></div>
+        <div class="ds-row" id="seat-msi-row"><div class="ds-l"><b>Client installer (MSI)</b><span>Run it on a computer and the computer connects: the download already knows this server, by the address in its file name. Or install it silently with the command below.</span></div><div class="ds-r"><a class="ds-btn" id="seat-msi" href="/api/clients/download" download>Download</a></div></div>
         <div class="ds-row"><div class="ds-l"><b>Install command</b><span class="ds-code" id="seat-line"><i class="sk sk-text"></i></span></div><div class="ds-r"><button type="button" class="ds-btn" id="seat-line-copy">Copy</button></div></div>
         <div class="ds-row" id="seat-policy-row"><div class="ds-l"><b>Group Policy template</b><span>Sets the server address and certificate fingerprint on every computer.</span></div><div class="ds-r"><a class="ds-btn" id="seat-policy" href="/api/clients/policy" download>Download</a></div></div>
         <div class="ds-row" id="seat-fp-row"><div class="ds-l"><b>This server's public key fingerprint</b><span class="ds-code" id="seat-fp"><i class="sk sk-text"></i></span></div><div class="ds-r"><button type="button" class="ds-btn" id="seat-fp-copy">Copy</button></div></div>
@@ -1519,7 +1519,7 @@
 <!-- Add computers: the client, how to install it on one computer or many, and whether new ones wait. -->
 <dialog class="dialog wide" id="add-dialog" aria-labelledby="add-title">
   <h2 id="add-title">Add computers</h2>
-  <p class="dialog-lead">Install the <span data-app>Rabbid Lab</span> client on a computer to add it to Devices. Or open <span data-app>Rabbid Lab</span> in a browser on that computer and click Connect this computer.</p>
+  <p class="dialog-lead">Install the <span data-app>Rabbid Lab</span> client on a computer to add it to Devices. The installer downloaded here already knows this server: run it and the computer connects. Keep the file's name as it is, because the server's address is in it.</p>
   <div class="step"><span class="n">1</span><div><b>Install the client</b>
     <p class="hint" id="get-client">Download and run the installer, or install it silently from a command line or Intune:</p>
     <div class="key-row"><code class="cmd" id="install-line"></code><button type="button" class="small" id="line-copy">Copy</button></div>

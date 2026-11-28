@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.439 (2026-11-27)
+
+- The client downloaded from the console already knows its server: run it and the computer shows up in Devices. Keep the name of the file as it is, because the address of the server is in it.
+- Connect this computer links are gone. No link or web page can start the client, connect a computer or move it to another server.
+
 ## 1.1.438 (2026-11-27)
 
 - Settings has a Banner page: the sky for dark mode and light mode, holidays and the weather, which were only in the window that opens from the banner.

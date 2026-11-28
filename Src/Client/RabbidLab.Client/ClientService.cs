@@ -72,6 +72,11 @@ internal sealed class ClientService : ServiceBase
             await Task.Delay(TimeSpan.FromMinutes(1), stop).ConfigureAwait(false);
         }
         Jobs.Sweep();
+        // Installed from a server's console and not connected yet: that server becomes this computer's.
+        if (Settings.Adopt())
+        {
+            Journal.Write("The Rabbid Lab Client was installed from its server's console and is connecting to that server.");
+        }
         // A new version since it last ran: written in what it did (Updated the client, or Installed).
         Logbook.Started(Agent.Version);
         // The tray icon asks it things through a pipe: Check in now, Ask IT for help (Pipe.cs).

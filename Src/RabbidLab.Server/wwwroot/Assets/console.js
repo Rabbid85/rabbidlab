@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.439', [
+    'The client downloaded from the console already knows its server: run it and the computer shows up in Devices. Keep the name of the file as it is, because the address of the server is in it.',
+    'Connect this computer links are gone. No link or web page can start the client, connect a computer or move it to another server.']],
   ['1.1.438', [
     'Settings has a Banner page: the sky for dark mode and light mode, holidays and the weather, which were only in the window that opens from the banner.',
     'The monsters have options there: how often Nessie, Sasquatch, the yeti and Santa each come (Never, Rarely, Sometimes or Often) and at which times of day. Nessie now comes rarely unless you change it.']],
@@ -1406,6 +1409,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.439': ['2026-11-27', 'update', 'The client download knows its server'],
   '1.1.438': ['2026-11-27', 'feature', 'A Banner page in Settings'],
   '1.1.437': ['2026-11-27', 'fix', 'The client connects only over https'],
   '1.1.436': ['2026-11-27', 'fix', 'A quiet hang-up in the client'],
@@ -4297,22 +4301,16 @@ const RELEASE_INFO = {
     });
   });
 
-  // This computer, when it isn't in Devices yet: the client to download, then a rabbidlab://join link that hands the client
-  // this server's address. Windows only, and not for a month after Not now.
+  // This computer, when it isn't in Devices yet: the client to download and run. The download already knows this server
+  // (the server puts its address in the file's name), as Datto's installer knows its site, so nothing is clicked after
+  // it and no link hands a client a server. Windows only, and not for a month after Not now.
   const LATER = 'rabbidlab.here.later';
   let hereTimer = null;
   let hereInfo = null;
-  const joinLink = () => {
-    const q = new URLSearchParams({ server: hereInfo.server });
-    if (hereInfo.fingerprint) q.set('fingerprint', hereInfo.fingerprint);
-    if (hereInfo.key) q.set('key', hereInfo.key);
-    return `rabbidlab://join?${q}`;
-  };
   const joined = (seat) => {
     clearInterval(hereTimer);
     $('here-text').textContent = seat.approved ? `${seat.computer} connected.` : `${seat.computer} connected. Approve it under Devices.`;
     $('here-download').hidden = true;
-    $('here-connect').hidden = true;
     setTimeout(() => { $('herebar').hidden = true; }, 12000);
   };
   const here = async () => {
@@ -4325,15 +4323,16 @@ const RELEASE_INFO = {
     // Listed in Devices but not checking in, such as after its client was uninstalled, isn't connected: the bar offers the client.
     // Not over http either: the client connects only over https (1.1.437).
     if (hereInfo.seat?.online || hereInfo.thisServer || !hereInfo.server.startsWith('https://')) return;
-    $('here-connect').href = joinLink();
     if (!hereInfo.msi) {
-      $('here-download').href = 'https://github.com/Rabbid85/rabbidlab/releases/latest';
+      // No installer on this server to hand out: the one from GitHub doesn't know this server, so Settings has the command.
+      $('here-text').textContent = 'This computer is not connected. The client installer is not on this server.';
+      $('here-download').href = '#settings/seats/client';
       $('here-download').removeAttribute('download');
-      $('here-download').target = '_blank';
+      $('here-download').querySelector('span').textContent = 'How to install it';
     }
     $('herebar').hidden = false;
   };
-  // After Connect, watch for this computer to show up.
+  // After the download, watch for this computer to show up.
   const watchHere = () => {
     clearInterval(hereTimer);
     let tries = 0;
@@ -4479,7 +4478,7 @@ const RELEASE_INFO = {
       for (const id of ['hero-version', 'hero-uptime']) if ($(id).querySelector('.sk')) $(id).textContent = '—';
     });
     $('viewas-stop').addEventListener('click', () => viewAs(null));
-    $('here-connect').addEventListener('click', watchHere);
+    $('here-download').addEventListener('click', () => { if (hereInfo?.msi) watchHere(); });
     $('here-later').addEventListener('click', () => {
       localStorage.setItem(LATER, String(Date.now() + 30 * 86400000));
       $('herebar').hidden = true;

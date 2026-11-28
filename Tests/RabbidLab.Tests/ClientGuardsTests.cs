@@ -68,14 +68,43 @@ public sealed partial class ClientGuardsTests
     }
 
     [Fact]
-    public void A_link_never_changes_a_connected_computer()
+    public void No_link_or_web_page_can_start_the_client()
     {
-        // A web page can't move a computer to another server, or hand it another fingerprint for the one it has.
-        var connect = Client("RabbidLab.Client", "Connect.cs");
-        Assert.Contains("var notUsed = link.Server.Length > 0 && (now.Server ?? now.Plain) is not null;", connect);
-        Assert.DoesNotContain("Connecting will move it", connect);
+        // As Datto's agent: the installer knows its server, and nothing a web page can open hands the client one.
+        Assert.DoesNotContain("URL Protocol", Client("Installer", "Package.wxs"));
+        Assert.DoesNotContain("rabbidlab:", Client("RabbidLab.Client", "Program.cs"));
+        Assert.DoesNotContain("Parse(", Client("RabbidLab.Client", "Connect.cs"));
         Assert.DoesNotContain("click Connect this computer", Client("RabbidLab.Client", "Agent.cs"));
     }
+
+    [Fact]
+    public void The_installer_from_the_console_knows_its_server_and_never_moves_a_connected_computer()
+    {
+        // The installer leaves its own file name; the service takes a server from it only where there is none.
+        Assert.Contains("Name=\"Package\" Type=\"string\" Value=\"[OriginalDatabase]\"", Client("Installer", "Package.wxs"));
+        Assert.Contains("if (Settings.Adopt())", Client("RabbidLab.Client", "ClientService.cs"));
+        var settings = Client("RabbidLab.Client", "Settings.cs");
+        Assert.Contains("if (Text(installed, \"Server\") is not null || (policy is not null && Text(policy, \"Server\") is not null) || FromName(package) is not { } named)", settings);
+
+        // The name the server gives its download is one the client reads back: the same pattern, taken from the client's source.
+        var pattern = new Regex(NamedIn().Match(settings).Groups[1].Value);
+        var key = new string('A', 62) + "1F";
+        var m = pattern.Match(RabbidLab.Server.ClientFiles.DownloadName("1.1.439", "https", new Microsoft.AspNetCore.Http.HostString("RabbidLab.amw.com", 8421), key).Replace(".msi", " (1).msi")); // as a browser names a second download
+        Assert.True(m.Success);
+        Assert.Equal(("rabbidlab.amw.com", "8421", key), (m.Groups[1].Value, m.Groups[2].Value, m.Groups[3].Value));
+        // The usual port is written too, and a server with no key of its own (behind a proxy) gives none.
+        m = pattern.Match(RabbidLab.Server.ClientFiles.DownloadName("1.1.439", "https", new Microsoft.AspNetCore.Http.HostString("lab.example.com"), null));
+        Assert.Equal(("lab.example.com", "443", false), (m.Groups[1].Value, m.Groups[2].Value, m.Groups[3].Success));
+        // Never over http, and never an address that can't be a file name: those get the plain name, which names no server.
+        Assert.Equal("RabbidLab-Client-1.1.439.msi", RabbidLab.Server.ClientFiles.DownloadName("1.1.439", "http", new Microsoft.AspNetCore.Http.HostString("lab.example.com", 8420), key));
+        Assert.Equal("RabbidLab-Client-1.1.439.msi", RabbidLab.Server.ClientFiles.DownloadName("1.1.439", "https", new Microsoft.AspNetCore.Http.HostString("[::1]", 8421), key));
+        Assert.False(pattern.IsMatch("RabbidLab-Client-1.1.439.msi"));
+        // A fingerprint that is not whole names no server at all.
+        Assert.False(pattern.IsMatch("RabbidLab-Client-1.1.439@lab.example.com@8421@ABCDEF.msi"));
+    }
+
+    [GeneratedRegex("public const string Named = @\"([^\"]+)\";")]
+    private static partial Regex NamedIn();
 
     [Fact]
     public void The_client_that_ships_reads_nothing_from_the_environment()

@@ -151,6 +151,57 @@ internal sealed class Settings
         }
     }
 
+    /// <summary>
+    /// What the console's download has in its name after the version: @address@port, and @fingerprint of the server's key
+    /// when it has one, as in RabbidLab-Client-1.1.439@rabbidlab.amw.com@8420@AB12....msi (the server's
+    /// ClientFiles.DownloadName writes it). Always https.
+    /// </summary>
+    public const string Named = @"@([A-Za-z0-9.-]{1,253})@(\d{1,5})(?:@([0-9A-Fa-f]{64}))?(?=[ .(\[]|$)";
+
+    /// <summary>The server and fingerprint in an installer's file name, or null when it names none.</summary>
+    public static (string Server, string? Fingerprint)? FromName(string? package)
+    {
+        var name = package is null ? "" : package.Substring(package.LastIndexOfAny(new[] { '\\', '/' }) + 1);
+        var m = System.Text.RegularExpressions.Regex.Match(name, Named);
+        if (!m.Success || !int.TryParse(m.Groups[2].Value, out var port) || port is < 1 or > 65535 || Uri.CheckHostName(m.Groups[1].Value) == UriHostNameType.Unknown)
+        {
+            return null;
+        }
+        var host = m.Groups[1].Value.ToLowerInvariant();
+        return ($"https://{host}{(port == 443 ? "" : $":{port}")}", m.Groups[3].Success ? m.Groups[3].Value.ToUpperInvariant() : null);
+    }
+
+    /// <summary>
+    /// Run by the service when it starts: on a computer with no server, the one named by the installer it was installed
+    /// from (the installer leaves its own file name in Package) becomes its server. A computer that has a server, from
+    /// the installer, Connect or Group Policy, is never moved by a file name. Whether it took one.
+    /// </summary>
+    public static bool Adopt()
+    {
+        try
+        {
+            using var machine = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64);
+            using var installed = machine.OpenSubKey(InstalledKey, writable: true);
+            if (installed?.GetValue("Package") is not string package)
+            {
+                return false;
+            }
+            installed.DeleteValue("Package", throwOnMissingValue: false); // read once
+            using var policy = machine.OpenSubKey(PolicyKey);
+            if (Text(installed, "Server") is not null || (policy is not null && Text(policy, "Server") is not null) || FromName(package) is not { } named)
+            {
+                return false;
+            }
+            installed.SetValue("Server", named.Server);
+            installed.SetValue("CertificateFingerprint", named.Fingerprint ?? "");
+            return true;
+        }
+        catch (Exception e) when (e is UnauthorizedAccessException or System.Security.SecurityException or IOException)
+        {
+            return false; // not the service
+        }
+    }
+
     /// <summary>A fingerprint as 64 capitals and digits, however it was typed; null when there's none.</summary>
     public static string? CleanFingerprint(string? value)
     {

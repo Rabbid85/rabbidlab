@@ -238,7 +238,7 @@ internal sealed class ClientWindow : Form
             Status.Connected => new[] { $"Checked in at {At(s.CheckedIn)}.", "The ring counts down to the next." },
             Status.Waiting => new[] { $"{Lab} has this computer's request.", "An admin needs to approve it." },
             Status.Unreachable => new[] { s.LastOk is { } l ? $"No answer since {At(l)}." : "No answer from the server.", "The ring counts down to the next try." },
-            Status.NoServer => new[] { $"Connect to a server here, or open {Lab} on this computer and click Connect this computer." },
+            Status.NoServer => new[] { "Connect to a server here. Or uninstall this client and install the one from the server's console, which already knows its server." },
             Status.Refused => new[] { "It tries again in a few minutes." },
             Status.Removed => new[] { "It was taken out of Devices. It reconnects by itself." },
             Status.IdentityUnreadable => new[] { "Reinstall the client, or contact your IT team." },
@@ -972,7 +972,7 @@ internal sealed class ClientWindow : Form
     }
 
     // Another server: the address isn't filled in (people need to know it, and it isn't shown here).
-    private void Connect() => new ConnectWindow(new JoinLink { Server = "" }).Show();
+    private void Connect() => new ConnectWindow().Show();
 
     // Uninstalling goes through Windows Installer, which refuses unless the server has allowed it (Removal).
     private void Uninstall()

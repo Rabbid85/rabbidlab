@@ -15,6 +15,16 @@ public static class ClientFiles
 
     public static string Policy => Path.Combine(Folder, "RabbidLab-Client-Policy.zip");
 
+    /// <summary>
+    /// The installer's file name as this server hands it out. Over HTTPS it has this server in it: its address, its port
+    /// and the fingerprint of its key when it has one. The client installed from it reads them back (Settings.FromName
+    /// there) and connects here by itself, with nothing more to click. Plain when the address can't go in a file name.
+    /// </summary>
+    public static string DownloadName(string version, string scheme, HostString host, string? key) =>
+        scheme == "https" && host.HasValue && System.Text.RegularExpressions.Regex.IsMatch(host.Host, "^[A-Za-z0-9.-]{1,253}$")
+            ? $"RabbidLab-Client-{version}@{host.Host.ToLowerInvariant()}@{host.Port ?? 443}{(key is null ? "" : $"@{key}")}.msi"
+            : $"RabbidLab-Client-{version}.msi";
+
     /// <summary>The SHA-256 fingerprint of the certificate Rabbid Lab serves HTTPS with; null over plain HTTP or when it can't be found.</summary>
     public static string? Fingerprint(IConfiguration config) => Certificate(config) is { } cert ? Fingerprint(cert) : null;
 

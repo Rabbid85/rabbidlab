@@ -7,9 +7,9 @@ namespace RabbidLab.Client;
 
 /// <summary>
 /// One program, run several ways: --service is the RabbidLabClient service, which joins the server and checks in every
-/// minute; --check-in does one round in a console and says how it went, for trying it out (as an administrator); a
-/// rabbidlab://join link (from the server's page) opens Connect this computer, which saves with --join as an
-/// administrator; with nothing it's the tray icon for whoever is signed in to Windows. Anything else is an error.
+/// minute; --check-in does one round in a console and says how it went, for trying it out (as an administrator);
+/// --join saves a server's address as an administrator (the Connect window runs it); with nothing it's the tray icon
+/// for whoever is signed in to Windows. Anything else is an error: no link or web page starts it.
 /// </summary>
 internal static class Program
 {
@@ -66,13 +66,6 @@ internal static class Program
         {
             return new JoinLink { Server = args[1], Fingerprint = args[2] }.Save();
         }
-        if (args.Length == 1 && args[0].StartsWith("rabbidlab:", StringComparison.OrdinalIgnoreCase))
-        {
-            Application.EnableVisualStyles();
-            Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new ConnectWindow(JoinLink.Parse(args[0])));
-            return 0;
-        }
         if (args.Length == 1 && args[0] == "--unlock")
         {
             // Uninstall, while it's locked: the uninstall code. The client's window starts this as an administrator.
@@ -101,7 +94,7 @@ internal static class Program
             }
         }
         // Not one of the ways it runs: nothing is started.
-        Console.Error.WriteLine("Usage: RabbidLab-Client [--tray | --service | --check-in | --unlock | --join <server> <fingerprint> | rabbidlab://join?server=...]");
+        Console.Error.WriteLine("Usage: RabbidLab-Client [--tray | --service | --check-in | --unlock | --join <server> <fingerprint>]");
         return 2;
     }
 }

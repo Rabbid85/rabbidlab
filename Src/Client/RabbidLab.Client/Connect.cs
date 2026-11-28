@@ -11,45 +11,14 @@ using Microsoft.Win32;
 
 namespace RabbidLab.Client;
 
-/// <summary>Where to connect: from a rabbidlab://join link the server's page opens, or typed in.</summary>
+/// <summary>
+/// Where to connect: typed in the Connect window, or given to --join. There are no links that connect a computer: the
+/// installer from a server's console already knows its server (Settings.Adopt).
+/// </summary>
 internal sealed class JoinLink
 {
     public string Server { get; set; } = "";
     public string Fingerprint { get; set; } = "";
-
-    /// <summary>
-    /// rabbidlab://join?server=...&amp;fingerprint=...&amp;key=...; anything else gives empty fields. key is the fingerprint
-    /// of the server's key, which this client takes first; fingerprint is its certificate's, for clients before 1.1.150.
-    /// </summary>
-    public static JoinLink Parse(string? link)
-    {
-        var j = new JoinLink();
-        if (link is null || !Uri.TryCreate(link, UriKind.Absolute, out var uri) || uri.Scheme != "rabbidlab")
-        {
-            return j;
-        }
-        var key = "";
-        foreach (var pair in uri.Query.TrimStart('?').Split('&'))
-        {
-            var eq = pair.IndexOf('=');
-            if (eq < 0)
-            {
-                continue;
-            }
-            var value = Uri.UnescapeDataString(pair.Substring(eq + 1).Replace('+', ' ')).Trim();
-            switch (pair.Substring(0, eq))
-            {
-                case "server": j.Server = value.TrimEnd('/'); break;
-                case "fingerprint": j.Fingerprint = Settings.CleanFingerprint(value) ?? ""; break;
-                case "key": key = Settings.CleanFingerprint(value) ?? ""; break;
-            }
-        }
-        if (key.Length > 0)
-        {
-            j.Fingerprint = key;
-        }
-        return j;
-    }
 
     /// <summary>What's wrong with it, or null when it's good to save.</summary>
     public string? Problem()
@@ -91,8 +60,8 @@ internal sealed class JoinLink
     /// <summary>No http://: there is no certificate to tell the server by, and everything would cross the network in the clear.</summary>
     public const string HttpsOnly = "The client connects only over https://. Enter the server's https:// address.";
 
-    /// <summary>A link only connects a computer that has no server yet: a web page can't move one, or give it another fingerprint.</summary>
-    public const string LinkNotUsed = "This computer is already connected to a server, so the link was not used. A link can only connect a computer that has no server yet.";
+    /// <summary>A typed address has no fingerprint with it, so the certificate has to be one Windows trusts.</summary>
+    public const string Typed = "Enter the server's https:// address. If Windows doesn't trust the server's certificate, install the client from the server's console instead: that download already knows its server.";
 
     /// <summary>
     /// Saved where the installer keeps its settings, then the service restarted so it joins straight away. Run as an
@@ -136,28 +105,20 @@ internal sealed class JoinLink
 }
 
 /// <summary>
-/// Connect this computer: the server (filled in from the link the server's page opened), and Connect,
-/// which asks Windows for an administrator because it changes the whole computer. Then how joining goes.
+/// Connect this computer: the server's address, typed in, and Connect, which asks Windows for an administrator
+/// because it changes the whole computer. Then how joining goes.
 /// </summary>
 internal sealed class ConnectWindow : Form
 {
     private readonly TextBox server = new();
-    private readonly Label note = new() { AutoSize = false, Height = 54 };
+    private readonly Label note = new() { AutoSize = false, Height = 70 };
     private readonly Label said = new() { AutoSize = false, Height = 62 };
     private readonly Button go = Look.Button("Connect", primary: true);
-    private readonly string fingerprint;
     private bool done;
 
-    public ConnectWindow(JoinLink link)
+    public ConnectWindow()
     {
         var now = Settings.Read();
-        // Opened by a link on a computer that has a server: nothing of the link is used.
-        var notUsed = link.Server.Length > 0 && (now.Server ?? now.Plain) is not null;
-        if (notUsed)
-        {
-            link = new JoinLink();
-        }
-        fingerprint = link.Fingerprint;
         Text = "Rabbid Lab";
         Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
         FormBorderStyle = FormBorderStyle.FixedSingle;
@@ -176,7 +137,6 @@ internal sealed class ConnectWindow : Form
             Text = $"This adds {Machine.Name} to Devices in Rabbid Lab.",
             AutoSize = false, Height = 34, Dock = DockStyle.Top, ForeColor = Look.Muted,
         };
-        server.Text = link.Server;
         var field = Look.Box(server);
         note.Dock = DockStyle.Top;
         note.Padding = new Padding(0, 6, 0, 0);
@@ -207,13 +167,9 @@ internal sealed class ConnectWindow : Form
             server.ForeColor = Look.Muted;
             go.Enabled = false;
         }
-        else if (notUsed)
+        else
         {
-            Say(note, JoinLink.LinkNotUsed, Look.Amber);
-        }
-        else if (link.Server.Length > 0)
-        {
-            Say(note, "Make sure this is your Rabbid Lab server, then click Connect.", Look.Muted);
+            Say(note, JoinLink.Typed, Look.Muted);
         }
         server.TextChanged += (_, _) =>
         {
@@ -259,7 +215,7 @@ internal sealed class ConnectWindow : Form
             Close();
             return;
         }
-        var link = new JoinLink { Server = server.Text.Trim().TrimEnd('/'), Fingerprint = fingerprint };
+        var link = new JoinLink { Server = server.Text.Trim().TrimEnd('/') };
         if (link.Problem() is { } problem)
         {
             Say(said, problem, Look.Red);

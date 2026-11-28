@@ -62,13 +62,13 @@
   <h3>From the computer (recommended)</h3>
   <ol>
     <li>On that computer, open <span data-app>Rabbid Lab</span> in a browser and sign in.</li>
-    <li>The bar at the top says <b>This computer is not connected.</b> Select <b>Download the client</b> and run the MSI.</li>
-    <li>Select <b>Connect this computer</b>. The client opens with this server's address filled in.</li>
-    <li>Check the address, select <b>Connect</b>, and select Yes at the User Account Control prompt.</li>
+    <li>The bar at the top says <b>This computer is not connected.</b> Select <b>Download the client</b>.</li>
+    <li>Run the MSI as it was downloaded, and select Yes at the User Account Control prompt. The download already knows this server: its address is in the file's name, so don't rename it.</li>
     <li><a href="#wiki/let-in">Approve the computer</a> under Devices.</li>
   </ol>
+  <p>The client connects only over https, and no link or web page can connect a computer or move it to another server. A computer that already has a server keeps it, whichever installer is run on it.</p>
   <h3>When the server's certificate changes</h3>
-  <p>The client checks the server by its certificate's key. The server also has an identity key of its own, kept with the rest of its data, and each check-in gives the client its public half. If the certificate is replaced with a new key, the client asks the server to sign a random number together with the key it shows now, checks that signature against the identity it keeps, and then takes the new key and reconnects by itself. Nobody posing as the server can make that signature. A client that last checked in before 1.1.377 has no identity yet, so after a key change it still needs <b>Connect this computer</b> once.</p>
+  <p>The client checks the server by its certificate's key. The server also has an identity key of its own, kept with the rest of its data, and each check-in gives the client its public half. If the certificate is replaced with a new key, the client asks the server to sign a random number together with the key it shows now, checks that signature against the identity it keeps, and then takes the new key and reconnects by itself. Nobody posing as the server can make that signature. A client that last checked in before 1.1.377 has no identity yet, so after a key change an administrator connects it again on the computer: <code>RabbidLab-Client.exe --join</code> with the server's address and its new fingerprint.</p>
   <p>A fingerprint set by Group Policy is never replaced: update the policy instead.</p>
   <h3>Silent install, from a command line or Intune</h3>
   <ol>

@@ -2,7 +2,8 @@
   The Rabbid Lab client for one computer: RabbidLab-Client.exe in Program Files\Rabbid Lab Client, the RabbidLabClient
   service that joins the server and checks in, and the tray icon at every sign-in. Quiet with Group Policy and Intune:
     msiexec /i RabbidLab-Client.msi /qn SERVER=https://rabbidlab.amw.com:8420 FINGERPRINT=AB12...
-  Group Policy settings (the Rabbid Lab template) win over SERVER and FINGERPRINT.
+  Group Policy settings (the Rabbid Lab template) win over SERVER and FINGERPRINT. Run by hand with neither, the
+  installer a server's console hands out connects to that server: its file name says which.
 -->
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
   <Package Name="Rabbid Lab Client" Manufacturer="Rabbid" Version="$(Version)" UpgradeCode="C344F3AC-01E7-4D01-AB7E-C0BB0DF38689" Scope="perMachine" Compressed="yes">
@@ -38,13 +39,10 @@
           <ServiceControl Id="ClientService" Name="RabbidLabClient" Start="install" Stop="both" Remove="uninstall" Wait="yes" />
           <!-- The tray icon for everyone who signs in. -->
           <RegistryValue Root="HKLM" Key="SOFTWARE\Microsoft\Windows\CurrentVersion\Run" Name="Rabbid Lab Client" Type="string" Value="&quot;[#ClientExe]&quot; --tray" />
-          <!-- rabbidlab://join links: Connect this computer, from the server's page. -->
-          <RegistryKey Root="HKLM" Key="SOFTWARE\Classes\rabbidlab">
-            <RegistryValue Type="string" Value="URL:Rabbid Lab Client" />
-            <RegistryValue Name="URL Protocol" Type="string" Value="" />
-            <RegistryValue Key="DefaultIcon" Type="string" Value="&quot;[#ClientExe]&quot;,0" />
-            <RegistryValue Key="shell\open\command" Type="string" Value="&quot;[#ClientExe]&quot; &quot;%1&quot;" />
-          </RegistryKey>
+          <!-- This installer's own file name, as it was run. The one a server's console hands out has that server in its
+               name; the service reads it once when it starts and, on a computer with no server, connects there
+               (Settings.Adopt in the client). No link or web page can start the client: it registers no URL scheme. -->
+          <RegistryValue Root="HKLM" Key="SOFTWARE\Rabbid Lab\Client" Name="Package" Type="string" Value="[OriginalDatabase]" />
         </Component>
       </Directory>
     </StandardDirectory>

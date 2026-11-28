@@ -483,8 +483,9 @@ public static class ClientsApi
         });
 
         // The client's MSI, for anyone: computers installing it, and clients updating themselves to this server's version.
-        app.MapGet("/api/clients/download", () => File.Exists(ClientFiles.Msi)
-            ? Results.File(ClientFiles.Msi, "application/x-msi", $"RabbidLab-Client-{Product.Version}.msi")
+        // Its name says which server it came from, so a computer it is run on connects here (ClientFiles.DownloadName).
+        app.MapGet("/api/clients/download", (HttpContext context, IConfiguration config) => File.Exists(ClientFiles.Msi)
+            ? Results.File(ClientFiles.Msi, "application/x-msi", ClientFiles.DownloadName(Product.Version, context.Request.Scheme, context.Request.Host, ClientFiles.KeyFingerprint(config)))
             : Results.NotFound(new { error = "The client installer is not on this server. Download it from the Rabbid Lab release on GitHub." }));
 
         // The Group Policy template, for admins.
