@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.441 (2026-11-27)
+
+- Fixed: on Links and Sensors the list under the banner ran to the very edge of the sidebar. It starts and ends where the banner does again, as it did before 1.1.433.
+
 ## 1.1.440 (2026-11-27)
 
 - With Follow the clock, the banner now goes by the real sunrise and sunset for the date where the lab is, from its ZIP code, or by the time zone of the computer when no ZIP code is set. Dusk was 5:00 to 7:30 PM all year, so in winter the banner stayed light long after dark.

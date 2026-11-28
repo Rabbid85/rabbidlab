@@ -1,6 +1,10 @@
 /* Sensors: the banner, then Links' groups of tiles, or the same as a table. */
 #page-sensors > * { min-width: 0; }
-.sn-body { padding-bottom: 26px; }
+/* The list under the banner starts and ends where the banner does (--side, console.css). Until 1.1.433 this came from
+   the styles of Overview's News block, which went when the dashboard took its place; the lists on Links and Sensors
+   then ran to the very edge of the sidebar ("Dev is all fucked, look at the cards on the left."). */
+.sn-body { padding: 26px var(--side) 26px; }
+@media (max-width: 700px) { .sn-body { padding-top: 22px; } }
 .sn-body .table { max-width: 100%; }
 
 /* Cards, like the alert banners: the icon with a badge on its corner for how it is, a tag when it isn't fine, one line,
