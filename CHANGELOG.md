@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.445 (2026-11-28)
+
+- Fixed: the 1.1.444 client update removed the client from computers that already had it. Its installer held a program file marked version 0.0.0, so Windows Installer removed the old client and did not install the new one. This version installs correctly, including on a computer that 1.1.444 left without the client.
+- To put the client back: update this server to 1.1.445, then click Deploy again under Devices, Deploy the client. Each computer installs it at its next Group Policy refresh and keeps its entry under Computers. Or run the installer from Settings, Devices, Install the client on the computer.
+- The release build now reads the client installer back and stops if the client inside has the wrong version, before anything is published.
+
 ## 1.1.444 (2026-11-27)
 
 - Fixed: the client now installs on Windows Server 2016. It needed .NET Framework 4.7.2 and Server 2016 ships with 4.6.2, so the service did not start and the install failed with error 1920. The client now runs on .NET Framework 4.6.2 or later.

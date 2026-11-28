@@ -62,8 +62,30 @@ if ($Stage -ne 'Setup') {
     } elseif (-not (Test-Path (Join-Path $clientOut 'RabbidLab-Client.exe'))) {
         throw "No client to put in the MSI: build.ps1 -Stage Client first ($clientOut is missing)."
     }
-    dotnet build (Join-Path $client 'Installer\RabbidLab.Client.Installer.wixproj') -c Release -p:Version=$version "-p:ClientDir=$clientOut" -o (Join-Path $clientOut 'msi')
+    # The client's file version must be this release's. 1.1.444 shipped an MSI left over from a build by hand, whose
+    # RabbidLab-Client.exe said 0.0.0.0: on a computer with 1.1.443, Windows Installer took the old version off and would
+    # not put a lower one in its place, so the update removed the client. So the MSI is never one built before (its bin
+    # and obj go first, and nothing is reused), and what is in it is read back before anything is published.
+    $made = [Diagnostics.FileVersionInfo]::GetVersionInfo((Join-Path $clientOut 'RabbidLab-Client.exe')).FileVersion
+    if ($made -ne "$version.0") { throw "The client's file version is $made, not $version.0: it would not replace an older client. Nothing was published." }
+    foreach ($old in 'bin', 'obj') { $p = Join-Path $client "Installer\$old"; if (Test-Path $p) { Remove-Item $p -Recurse -Force } }
+    dotnet build (Join-Path $client 'Installer\RabbidLab.Client.Installer.wixproj') --no-incremental -c Release -p:Version=$version "-p:ClientDir=$clientOut" -o (Join-Path $clientOut 'msi')
     if ($LASTEXITCODE) { throw 'Building the client MSI failed.' }
+    $msiDb = (New-Object -ComObject WindowsInstaller.Installer).GetType().InvokeMember('OpenDatabase', 'InvokeMethod', $null, (New-Object -ComObject WindowsInstaller.Installer), @([string](Join-Path $clientOut 'msi\RabbidLab-Client.msi'), 0))
+    $inMsi = @{}
+    foreach ($ask in @{ exe = "SELECT ``Version`` FROM ``File`` WHERE ``File`` = 'ClientExe'"; product = "SELECT ``Value`` FROM ``Property`` WHERE ``Property`` = 'ProductVersion'" }.GetEnumerator()) {
+        $view = $msiDb.GetType().InvokeMember('OpenView', 'InvokeMethod', $null, $msiDb, @($ask.Value))
+        [void]$view.GetType().InvokeMember('Execute', 'InvokeMethod', $null, $view, $null)
+        $row = $view.GetType().InvokeMember('Fetch', 'InvokeMethod', $null, $view, $null)
+        $inMsi[$ask.Key] = if ($row) { $row.GetType().InvokeMember('StringData', 'GetProperty', $null, $row, 1) } else { '' }
+        [void]$view.GetType().InvokeMember('Close', 'InvokeMethod', $null, $view, $null)
+    }
+    [void][Runtime.InteropServices.Marshal]::ReleaseComObject($msiDb)
+    [GC]::Collect(); [GC]::WaitForPendingFinalizers() # lets go of the MSI, which is copied and signed next
+    if ($inMsi.exe -ne "$version.0" -or $inMsi.product -ne $version) {
+        throw "The client MSI holds RabbidLab-Client.exe $($inMsi.exe) as product $($inMsi.product), not $version: it would not replace an older client. Nothing was published."
+    }
+    "Client MSI: RabbidLab-Client.exe $($inMsi.exe), product $($inMsi.product)"
     $handout = Join-Path $publish 'Client'
     New-Item -ItemType Directory -Force $handout | Out-Null
     Copy-Item (Join-Path $clientOut 'msi\RabbidLab-Client.msi') (Join-Path $handout 'RabbidLab-Client.msi') -Force

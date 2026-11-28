@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.445', [
+    'Fixed: the 1.1.444 client update removed the client from computers that already had it. Its installer held a program file marked version 0.0.0, so Windows Installer removed the old client and did not install the new one. This version installs correctly, including on a computer that 1.1.444 left without the client.',
+    'To put the client back: update this server to 1.1.445, then click Deploy again under Devices, Deploy the client. Each computer installs it at its next Group Policy refresh and keeps its entry under Computers. Or run the installer from Settings, Devices, Install the client on the computer.',
+    'The release build now reads the client installer back and stops if the client inside has the wrong version, before anything is published.']],
   ['1.1.444', [
     'Fixed: the client now installs on Windows Server 2016. It needed .NET Framework 4.7.2 and Server 2016 ships with 4.6.2, so the service did not start and the install failed with error 1920. The client now runs on .NET Framework 4.6.2 or later.',
     'The client installer checks the .NET Framework version first. On a computer where it is too old, the install log says so.',
@@ -1426,6 +1430,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.445': ['2026-11-28', 'fix', 'The client update that removed the client'],
   '1.1.444': ['2026-11-27', 'fix', 'The client installs on Windows Server 2016'],
   '1.1.443': ['2026-11-27', 'update', 'Simpler monster settings'],
   '1.1.442': ['2026-11-27', 'update', 'Less code behind the pages'],
