@@ -6,7 +6,6 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Globalization;
 using System.Linq;
-using System.Management;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
@@ -568,14 +567,16 @@ internal sealed class ClientWindow : Form
         {
             (maker, model, serial) = r;
         }
-        var made = model is null ? "Not read yet" : maker is { Length: > 0 } m && !model.StartsWith(m, StringComparison.OrdinalIgnoreCase) && !m.StartsWith("System manufacturer", StringComparison.OrdinalIgnoreCase) ? $"{Tidy(m)} {model}" : model;
+        // Read, and the maker set none (Inventory.Hardware leaves the firmware's fill-in words out): Not available.
+        var none = read is null && s.Model is null ? "Not read yet" : "Not available";
+        var made = model is null ? (maker is { Length: > 0 } only ? Tidy(only) : none) : maker is { Length: > 0 } m && !model.StartsWith(m, StringComparison.OrdinalIgnoreCase) ? $"{Tidy(m)} {model}" : model;
         var checkedIn = s.State == Status.Waiting ? "Waiting for approval" : s.CheckedIn is { } t
             ? (t.ToLocalTime().Date == DateTime.Today ? $"Today, {t.ToLocalTime():h:mm tt}" : t.ToLocalTime().ToString("ddd, MMM d, h:mm tt", CultureInfo.CurrentCulture)) : "Never";
         var current = s.State == Status.Connected && s.ServerVersion == Agent.Version ? "Up to date" : null;
         return new List<(string, string, string?)>
         {
             ("Computer name", Environment.MachineName, null), ("Signed-in user", Me, null), ("IP address", Ip(), null), ("Make and model", made, null),
-            ("Serial number", serial is { Length: > 0 } ? serial : "Not read yet", null), ("Windows", Machine.Os, null), ("Client version", Agent.Version, current),
+            ("Serial number", serial is { Length: > 0 } ? serial : none, null), ("Windows", Machine.Os, null), ("Client version", Agent.Version, current),
             ("Last check-in", checkedIn, null),
         };
     }
@@ -615,29 +616,7 @@ internal sealed class ClientWindow : Form
         }
         Task.Run(() =>
         {
-            string? maker = null, model = null, serial = null;
-            try
-            {
-                using (var cs = new ManagementObjectSearcher("SELECT Manufacturer, Model FROM Win32_ComputerSystem"))
-                {
-                    foreach (var o in cs.Get())
-                    {
-                        (maker, model) = (o["Manufacturer"]?.ToString()?.Trim(), o["Model"]?.ToString()?.Trim());
-                    }
-                }
-                using (var bios = new ManagementObjectSearcher("SELECT SerialNumber FROM Win32_BIOS"))
-                {
-                    foreach (var o in bios.Get())
-                    {
-                        serial = o["SerialNumber"]?.ToString()?.Trim();
-                    }
-                }
-            }
-            catch (Exception e) when (e is ManagementException or COMException or UnauthorizedAccessException)
-            {
-                // Said as Not read yet.
-            }
-            read = (maker, model, serial);
+            read = Inventory.Hardware(); // the inventory's own reader: no fill-in words from the firmware
             try
             {
                 BeginInvoke((Action) Invalidate);

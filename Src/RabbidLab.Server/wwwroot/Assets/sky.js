@@ -4,13 +4,15 @@
 // animations."); whether the holidays show on their dates; and whether the weather where the lab is shows. A colour shows
 // neither. Kept in this browser, as the theme is. The lab's place,
 // a US ZIP code, is the lab's own (Weather.cs), set here by whoever may change the lab's look. scene.js paints and draws
-// what this says, weather.js the weather. The options are on a page, Settings, Banner (with the monsters', monsters.js),
-// and in a window that opens from the time and the weather on Overview's banner; the banner changes behind it as you pick.
+// what this says, weather.js the weather. Here too, each person's own: where Overview's line of words is (the top or the
+// bottom) and whether its quote of the day shows (ovinfo.js draws them). The options are on a page, Settings, Banner (with
+// the monsters', monsters.js), and in a window that opens from the time on Overview's banner; the banner changes behind it
+// as you pick.
 (() => {
   const KEY = 'rabbidlab.sky';
   const TIMES = [['clock', 'Follow the clock'], ['dawn', 'Dawn'], ['day', 'Day'], ['dusk', 'Dusk'], ['night', 'Night'], ['colour', 'Colour'], ['solid', 'Solid']];
   const COLOURS = { '#5900FF': 'Purple', '#2563EB': 'Blue', '#0D9488': 'Teal', '#16A34A': 'Green', '#DC2626': 'Red', '#EA580C': 'Orange', '#DB2777': 'Pink', '#475569': 'Slate' };
-  const START = { dark: 'clock', light: 'clock', darkColour: '#5900FF', lightColour: '#2563EB', holidays: true, weather: true };
+  const START = { dark: 'clock', light: 'clock', darkColour: '#5900FF', lightColour: '#2563EB', holidays: true, weather: true, line: 'top', quote: true };
   // Only what this file can show is taken from what was kept.
   const clean = (o) => ({
     dark: TIMES.some(([k]) => k === o?.dark) ? o.dark : START.dark,
@@ -19,6 +21,8 @@
     lightColour: Object.hasOwn(COLOURS, o?.lightColour ?? '') ? o.lightColour : START.lightColour,
     holidays: o?.holidays !== false,
     weather: o?.weather !== false,
+    line: o?.line === 'bottom' ? 'bottom' : 'top',
+    quote: o?.quote !== false,
   });
   let st = { ...START };
   try {
@@ -150,6 +154,11 @@
           : wx.problem || 'Waiting for the first weather update.';
     return `${box}<p class="sky-note${zipProblem ? ' problem' : ''}">${esc(line)}</p><p class="sky-note">Weather from the US National Weather Service.</p>`;
   };
+  // Overview's line of words and its quote of the day.
+  const words = () => `<div class="sky-row"><span>Text position</span><div>${seg('line', [['top', 'Top'], ['bottom', 'Bottom']], st.line)}`
+    + '<p class="sky-note">Where the lab name, the date, the time and the weather appear on the Overview banner.</p></div></div>'
+    + `<div class="sky-row"><span>Quote of the day</span><div><label class="sky-switch"><input type="checkbox" class="switch" data-sky-quote ${st.quote ? 'checked' : ''}><span>Show the quote of the day</span></label>`
+    + '<p class="sky-note">Appears on the Overview banner. Quotes come from the kind set for the sign-in page under Settings, Appearance.</p></div></div>';
   // inPage: in Settings, Banner, which has no Showing row (the window's look at the other mode ends when it closes).
   const form = (inPage) => (inPage ? '' : `<div class="sky-row"><span>Showing</span>${seg('showing', [['dark', 'Dark mode'], ['light', 'Light mode']], mode())}</div>`)
     + `<div class="sky-row"><span>Dark mode</span><div>${seg('dark', TIMES, st.dark)}${swatches('dark')}</div></div>`
@@ -159,12 +168,13 @@
     + `<div class="sky-row"><span>Weather</span><div>${seg('weather', [['off', 'Off'], ['on', 'Current weather']], st.weather ? 'on' : 'off')}${place()}</div></div>`;
 
   let dialog = null;
-  // Where the options are drawn: Settings, Banner (inPage), and the window once it has been opened.
+  // Where the options are drawn: Settings, Banner (its Overview text and its Sky sections), and the window once it has
+  // been opened, which has both.
   const places = [];
-  const draw = () => places.forEach(({ el, inPage }) => {
+  const draw = () => places.forEach(({ el, part }) => {
     // The ZIP box keeps its place in the typing when the options are drawn again.
     const typing = el.contains(document.activeElement) && document.activeElement.matches('[data-sky-zip]') ? document.activeElement.selectionStart : null;
-    el.innerHTML = form(inPage);
+    el.innerHTML = part === 'words' ? words() : part === 'sky' ? form(true) : words() + form(false);
     // The page allows no style attributes, so each swatch's colour is set here.
     el.querySelectorAll('[data-c]').forEach((b) => b.style.setProperty('--c', b.dataset.c));
     if (typing !== null) { const z = el.querySelector('[data-sky-zip]'); z?.focus(); z?.setSelectionRange(typing, typing); }
@@ -214,8 +224,9 @@
       draw();
     });
     root.addEventListener('change', (e) => {
-      if (!e.target.matches('[data-sky-holidays]')) return;
-      st.holidays = e.target.checked;
+      if (e.target.matches('[data-sky-holidays]')) st.holidays = e.target.checked;
+      else if (e.target.matches('[data-sky-quote]')) st.quote = e.target.checked;
+      else return;
       keep();
       draw();
     });
@@ -224,11 +235,11 @@
   };
   const open = () => {
     if (!dialog) {
-      document.body.insertAdjacentHTML('beforeend', '<dialog class="dialog sky-dialog" id="sky-dialog" aria-labelledby="sky-title"><h2 id="sky-title">The banner\'s sky</h2>'
-        + '<p class="dialog-lead">Applies to the banner on every page, in this browser only. Changes apply immediately. These settings and the monster settings are also under Settings, Banner.</p><div class="sky-form"></div>'
+      document.body.insertAdjacentHTML('beforeend', '<dialog class="dialog sky-dialog" id="sky-dialog" aria-labelledby="sky-title"><h2 id="sky-title">Banner settings</h2>'
+        + '<p class="dialog-lead">Saved in this browser only. Changes apply immediately. The text position and the quote apply to Overview, and the rest to the banner on every page. These settings and the monster settings are also under Settings, Banner.</p><div class="sky-form"></div>'
         + '<div class="dialog-foot"><button type="button" class="primary" data-sky-done>Done</button></div></dialog>');
       dialog = document.getElementById('sky-dialog');
-      places.push({ el: dialog.querySelector('.sky-form'), inPage: false });
+      places.push({ el: dialog.querySelector('.sky-form'), part: 'all' });
       wire(dialog);
       dialog.addEventListener('click', (e) => { if (e.target.closest('[data-sky-done]')) dialog.close(); });
       dialog.addEventListener('close', restore);
@@ -239,19 +250,22 @@
     ask();
   };
   document.addEventListener('click', (e) => { if (e.target.closest('[data-sky-open]')) open(); });
-  // Settings, Banner: the same options on a page.
-  const inSettings = document.getElementById('set-sky');
-  if (inSettings) {
-    places.push({ el: inSettings, inPage: true });
-    wire(inSettings);
-    draw();
-  }
+  // Settings, Banner: the same options on a page, in its two sections.
+  [['set-words', 'words'], ['set-sky', 'sky']].forEach(([id, part]) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    places.push({ el, part });
+    wire(el);
+  });
+  draw();
 
   window.RabbidLabSky = {
     open,
     says,
     // Where the lab is, [latitude, longitude], or null when the server has no ZIP code for it.
     place: () => lab.spot,
+    // Overview's words (ovinfo.js): the line at the top or at the bottom, and whether the quote of the day shows.
+    words: () => ({ line: st.line, quote: st.quote }),
     // For Overview's words (ovinfo.js): a temperature as a figure, the wind, and the hours to come while the weather shows.
     deg: (c) => (c === null || c === undefined ? '' : `${Math.round(imperial ? (c * 9) / 5 + 32 : c)}°`),
     wind,

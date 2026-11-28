@@ -333,18 +333,46 @@ internal static class Inventory
         return list;
     }
 
+    // What firmware says where its maker filled nothing in. A PC built from parts has these for its model and serial number.
+    private static readonly HashSet<string> NotFilledIn = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "System Product Name", "System Serial Number", "System manufacturer", "System Version", "To Be Filled By O.E.M.", "To be filled by O.E.M",
+        "Default string", "Not Specified", "Not Applicable", "Not Available", "None", "N/A", "Unknown", "OEM", "O.E.M.", "INVALID", "Empty",
+        "Chassis Serial Number", "Base Board Serial Number", "BaseBoard Serial Number", "Board Serial Number", "No Asset Information",
+        "0123456789", "1234567890", "123456789",
+    };
+
+    // A value the maker really set: not one of those, and not one character repeated (000000, xxxxxxxx).
+    private static string? Real(object? value) => Text(value) is { } text && !NotFilledIn.Contains(text) && text.Distinct().Count() > 1 ? text : null;
+
+    /// <summary>
+    /// The computer's maker, model and serial number, for the inventory and the client's window. Where the firmware has
+    /// only fill-in words ("System Product Name", "System Serial Number"), the motherboard's own are given instead.
+    /// </summary>
+    public static (string? Maker, string? Model, string? Serial) Hardware()
+    {
+        string? maker = null, model = null, serial = null;
+        Wmi("SELECT Manufacturer, Model FROM Win32_ComputerSystem", o => (maker, model) = (Real(o["Manufacturer"]), Real(o["Model"])));
+        Wmi("SELECT SerialNumber FROM Win32_BIOS", o => serial = Real(o["SerialNumber"]));
+        if (maker is null || model is null || serial is null)
+        {
+            Wmi("SELECT Manufacturer, Product, SerialNumber FROM Win32_BaseBoard", o =>
+            {
+                maker ??= Real(o["Manufacturer"]);
+                model ??= Real(o["Product"]);
+                serial ??= Real(o["SerialNumber"]);
+            });
+        }
+        return (maker, model, serial);
+    }
+
     /// <summary>Everything quick to read, with what Windows Update last said is missing.</summary>
     public static InventoryReport Gather()
     {
         misses = new List<string>();
         var r = new InventoryReport();
-        Wmi("SELECT Manufacturer, Model, TotalPhysicalMemory FROM Win32_ComputerSystem", o =>
-        {
-            r.Manufacturer = Text(o["Manufacturer"]);
-            r.Model = Text(o["Model"]);
-            r.Memory = o["TotalPhysicalMemory"] is null ? 0 : Convert.ToInt64(o["TotalPhysicalMemory"], CultureInfo.InvariantCulture);
-        });
-        Wmi("SELECT SerialNumber FROM Win32_BIOS", o => r.Serial = Text(o["SerialNumber"]));
+        (r.Manufacturer, r.Model, r.Serial) = Hardware();
+        Wmi("SELECT TotalPhysicalMemory FROM Win32_ComputerSystem", o => r.Memory = o["TotalPhysicalMemory"] is null ? 0 : Convert.ToInt64(o["TotalPhysicalMemory"], CultureInfo.InvariantCulture));
         var processors = new List<string>();
         Wmi("SELECT Name FROM Win32_Processor", o => processors.Add(Text(o["Name"]) ?? "Processor"));
         r.Processor = processors.Count == 0 ? null : processors.Count == 1 ? processors[0] : $"{processors.Count} × {processors[0]}";

@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.451 (2026-11-28)
+
+- The Overview banner now has one line of text: the lab name at the left, and the date, the time and the weather at the right. Click the weather to see the next hours. Click the time to open the banner settings.
+- Settings, Banner has a new Overview text section. Text position puts the line at the top or the bottom of the banner. Quote of the day shows or hides a daily quote, taken from the kind set for the sign-in page.
+- The client no longer shows placeholder text such as System Product Name or System Serial Number for a computer built from parts. It shows the motherboard model and serial number instead.
+
 ## 1.1.450 (2026-11-28)
 
 - Before a client update is installed, the tray icon closes, and it opens again when the update is done. With the icon open, an update took about 45 seconds longer, the computer showed as offline for that time, and Windows marked the update as needing a restart.

@@ -86,6 +86,7 @@
 <script src="Assets/deploy.js" defer></script>
 <script src="Assets/dock.js" defer></script>
 <script src="Assets/dashboard.js" defer></script>
+<script src="Assets/quotes.js" defer></script>
 <script src="Assets/ovinfo.js" defer></script>
 </head>
 <!-- The console: the top bar, the rail down the left, and one page at a time (console.js picks it from the address). -->
@@ -299,20 +300,27 @@
     <a class="button small primary" id="here-download" href="/api/clients/download" download><svg><use href="#i-download"/></svg><span>Download the client</span></a>
     <button type="button" class="link" id="here-later">Not now</button></div>
   <section class="page home" id="page-overview" data-page="overview" data-title="Overview" hidden>
-    <!-- The banner: a scene drawn from the accent (scene.js), the time, the weather and the lab's name at the foot on the left, and a glass strip
-         along the bottom with the numbers and the buttons. Nothing on it changes size, so it never moves. -->
-    <header class="ovb" id="hero">
+    <!-- The banner: a scene drawn from the accent (scene.js), one line of words across it, and a glass strip along the
+         bottom with the numbers and the buttons. Nothing on it changes size, so it never moves. -->
+    <header class="ovb" id="hero" data-line="top" data-quote="off">
       <div class="ovb-art" data-scene aria-hidden="true"></div>
-      <!-- The words (ovinfo.js): the time and the weather where the lab is, the hours to come, the lab's name. The time and
-           the weather open the sky's window. -->
-      <div class="ovb-main">
-        <div class="ovw-pair">
-          <button type="button" class="ovw-half" data-sky-open data-tip="Change the sky"><b class="ovw-fig"><span id="ovw-time"></span><small id="ovw-ap"></small></b><span class="ovw-strong" id="ovw-date"></span></button>
-          <button type="button" class="ovw-half" id="ovw-wx" data-sky-open data-tip="Change the sky" hidden><b class="ovw-fig" id="ovw-temp"></b><span class="ovw-strong" id="ovw-says"></span><small class="ovw-soft" id="ovw-more"></small></button>
-        </div>
-        <div class="ovw-hours" id="ovw-hours" hidden></div>
+      <!-- The words (ovinfo.js): one line with the lab's name at its left and the date, the time and the weather where the
+           lab is at its right. The weather opens the next hours; the time opens the banner's settings. The line is at the
+           top or at the bottom, with the quote of the day at the other end (Settings, Banner). -->
+      <div class="ovw-line">
         <div class="ovw-lab"><h1><span id="hero-name">Rabbid Lab</span><em id="hero-dev" hidden>DEV</em></h1><p id="hero-eyebrow">Lab console</p></div>
+        <div class="ovw-end">
+          <span class="ovw-date" id="ovw-date"></span>
+          <button type="button" class="ovw-time" id="ovw-time" data-sky-open data-tip="Banner settings"></button>
+          <button type="button" class="ovw-wx" id="ovw-wx" aria-expanded="false" aria-controls="ovw-pop" data-tip="Next hours" hidden><span id="ovw-icon"></span><b id="ovw-temp"></b><span id="ovw-says"></span><svg class="chev"><use href="#i-chevron-down"/></svg></button>
+          <div class="ovw-pop" id="ovw-pop" hidden>
+            <p id="ovw-more"></p>
+            <div class="ovw-rows" id="ovw-hours"></div>
+            <button type="button" class="small" data-sky-open>Banner settings</button>
+          </div>
+        </div>
       </div>
+      <p class="ovw-quote" id="ovw-quote" hidden><q id="ovw-quote-text"></q><cite id="ovw-quote-by"></cite></p>
       <div class="ovb-strip">
         <div class="ovb-nums">
           <div><b id="hero-version"><i class="sk sk-num"></i></b><span>Version</span></div>
@@ -524,9 +532,13 @@
     <!-- Banner: what every page's banner shows (sky.js draws its options here and in its window), and the monsters on
          Overview's banner (monsters.js). Kept in this browser. -->
     <section class="sub" data-sub="banner" data-title="Banner" hidden>
-      <header class="sub-head"><h2>Banner</h2><p>Choose what the banner at the top of each page shows: the sky, holidays, weather, and the monsters on Overview.</p></header>
+      <header class="sub-head"><h2>Banner</h2><p>Choose what the banner at the top of each page shows: the text on Overview, the sky, holidays, weather, and the monsters on Overview.</p></header>
+      <section class="ds-sec" data-sec="words"><h3 class="ds-h">Overview text <small class="ds-scope">Just you</small></h3>
+        <p class="sq-lead">Choose where the lab name, the date, the time and the weather appear on the Overview banner, and whether the banner shows a quote of the day. Changes apply immediately and are saved in this browser only.</p>
+        <div class="sky-form" id="set-words"></div>
+      </section>
       <section class="ds-sec" data-sec="sky"><h3 class="ds-h">Sky <small class="ds-scope">Just you</small></h3>
-        <p class="sq-lead">Set the sky for dark mode and for light mode. Changes apply immediately and are saved in this browser only. You can also open these settings by clicking the time or the weather on the Overview banner. Follow the clock uses sunrise and sunset for the ZIP code under Weather, or this computer's time zone if no ZIP code is set.</p>
+        <p class="sq-lead">Set the sky for dark mode and for light mode. Changes apply immediately and are saved in this browser only. You can also open these settings by clicking the time on the Overview banner. Follow the clock uses sunrise and sunset for the ZIP code under Weather, or this computer's time zone if no ZIP code is set.</p>
         <div class="sky-form" id="set-sky"></div>
       </section>
       <section class="ds-sec" data-sec="monsters"><h3 class="ds-h has-reset">Monsters <small class="ds-scope">Just you</small><button type="button" class="ds-btn" id="mon-reset">Reset</button></h3>

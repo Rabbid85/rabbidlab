@@ -1,5 +1,5 @@
-/* The banners. Overview's (.ovb): a rounded panel with the night scene (scene.js) behind it, the headline at the foot on the
-   left with the sky open above it, and a glass strip along the bottom with the numbers and, at its end, the buttons. It has
+/* The banners. Overview's (.ovb): a rounded panel with the night scene (scene.js) behind it, one line of words across it at the top or
+   the bottom (ovinfo.js), and a glass strip along the bottom with the numbers and, at its end, the buttons. It has
    a fixed height and nothing on it changes size when an update comes in, so it never moves. Every other page's (.hero) is
    a smaller one of the same, further down. Their edges are the page's edges (--side, console.css), so every page's tabs
    and lists line up with them ("Align all pages with borders"). */
@@ -14,43 +14,67 @@
 /* A faint grain over the scene, so its fades show no steps; kept out of the drawing so its moving parts never redraw it. */
 .ovb-art::before, .hero-art::before { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none; opacity: .05; mix-blend-mode: overlay;
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
-/* Shade behind the words at the bottom left, and solid under the strip, so no moonlight glows up through its glass. */
-.ovb-art::after { content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none;
-  background: linear-gradient(0deg, rgb(7 7 22) 0 84px, transparent 92px),
-    radial-gradient(ellipse 72% 82% at 0% 100%, color-mix(in srgb, var(--sk-shade, #070716) 80%, transparent), color-mix(in srgb, var(--sk-shade, #070716) 42%, transparent) 55%, transparent 86%); }
+/* Solid under the strip, so no moonlight glows up through its glass. What stands on the picture in white has a soft
+   shade behind it: the quote in the bottom left corner, or a band right across for the line at the bottom. */
+.ovb-art::after { content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none; background: linear-gradient(0deg, rgb(7 7 22) 0 84px, transparent 92px); }
+.ovb[data-line="top"][data-quote="on"] .ovb-art::after { background: linear-gradient(0deg, rgb(7 7 22) 0 84px, transparent 92px),
+  radial-gradient(ellipse 940px 250px at 0% 100%, rgb(7 7 22 / .6), rgb(7 7 22 / .3) 55%, transparent 86%); }
+.ovb[data-line="bottom"] .ovb-art::after { background: linear-gradient(0deg, rgb(7 7 22) 0 84px, rgb(7 7 22 / .66) 84px, rgb(7 7 22 / .4) 150px, transparent 250px); }
 
-/* The words (ovinfo.js): the time and the weather side by side in large thin figures with a thin line between them, the
-   next five hours under them, then the lab's name with its line. They take the sky's own word colours, dark by day. The
-   time and the weather are buttons that open the sky's window, so the banner has no chip. */
-.ovb-main { position: absolute; left: 48px; bottom: 116px; color: var(--sk-text, #fff); transition: color 2.4s ease; }
-.ovw-pair { display: flex; align-items: flex-start; }
-.ovw-half, .ovw-half:hover { display: grid; justify-items: start; height: auto; margin: 0; padding: 0; border: 0; border-radius: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
-.ovw-half[hidden] { display: none; }
-.ovw-half:focus-visible { outline: 2px solid var(--accent-line); outline-offset: 6px; border-radius: 8px; }
-.ovw-half + .ovw-half { margin-left: 44px; padding-left: 44px; border-left: 1px solid color-mix(in srgb, currentColor 24%, transparent); }
-.ovw-fig { display: flex; align-items: baseline; gap: 12px; font: 300 84px/1 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; letter-spacing: -.04em; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.ovw-fig small { margin-left: -2px; font-size: .3em; font-weight: 600; letter-spacing: 0; }
-.ovw-ic { flex: none; width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
-.ovw-fig .ovw-ic { align-self: center; width: 50px; height: 50px; stroke-width: 1.3; transition: color .15s ease; }
-.ovw-half:hover .ovw-fig .ovw-ic { color: var(--accent-soft); }
-.ovw-strong { display: block; margin-top: 10px; font-size: 18px; font-weight: 650; line-height: 1.4; white-space: nowrap; }
-.ovw-soft { display: block; color: var(--sk-lead, #C9CCDA); font-size: 13.5px; font-weight: 600; line-height: 1.4; white-space: nowrap; transition: color 2.4s ease; }
-.ovw-soft[hidden] { display: none; }
-.ovw-hours { display: flex; gap: 34px; margin-top: 22px; padding-top: 16px; border-top: 1px solid color-mix(in srgb, currentColor 18%, transparent); }
-.ovw-hours[hidden] { display: none; }
-.ovw-hours > span { display: grid; justify-items: center; gap: 5px; min-width: 46px; }
-.ovw-hours small { color: var(--sk-lead, #C9CCDA); font-size: 12.5px; font-weight: 600; white-space: nowrap; transition: color 2.4s ease; }
-.ovw-hours b { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
-/* The lab's name with its line under it; the DEV tag sits at the top of its capitals. */
-.ovw-lab { margin-top: 26px; }
-.ovw-lab h1 { margin: 0; color: inherit; font: 800 30px/1.1 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; letter-spacing: -.03em; white-space: nowrap; }
-.ovw-lab h1 em { display: inline-block; margin: 6.6px 0 0 5px; padding: 2px 7px; border-radius: 4px; background: var(--accent); color: #fff; font: 700 12px/1.4 "Segoe UI", system-ui, sans-serif; letter-spacing: .08em; font-style: normal; vertical-align: top; }
+/* The words (ovinfo.js): one line across the banner, the lab's name with its own line at the left and the date, the time
+   and the weather at the right. At the top it stands on the sky and takes the sky's own word colours, dark by day; at the
+   bottom it is white on its band at every time of day. The time opens the banner's settings and the weather the next
+   hours, so the banner has no chip. */
+.ovw-line { position: absolute; left: 48px; right: 48px; top: 26px; z-index: 3; display: flex; align-items: center; justify-content: space-between; gap: 32px;
+  color: var(--sk-text, #fff); transition: color 2.4s ease; }
+.ovw-lab { display: flex; align-items: baseline; gap: 14px; min-width: 0; }
+.ovw-lab h1 { margin: 0; color: inherit; font: 800 24px/1.1 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; letter-spacing: -.03em; white-space: nowrap; }
+/* The DEV tag sits at the top of the name's capitals. */
+.ovw-lab h1 em { display: inline-block; margin: 4px 0 0 5px; padding: 2px 7px; border-radius: 4px; background: var(--accent); color: #fff; font: 700 11px/1.4 "Segoe UI", system-ui, sans-serif; letter-spacing: .08em; font-style: normal; vertical-align: top; }
 .ovw-lab h1 em[hidden] { display: none; }
-.ovw-lab p { margin: 4px 0 0; color: var(--sk-lead, #C9CCDA); font-size: 14px; transition: color 2.4s ease; }
-/* By day the words are dark and have no shade behind them; the small ones at the foot would be lost on the dark pines, so
-   a tight light glow lies there. */
-:root[data-sky="day"] .ovb-art::after { background: linear-gradient(0deg, rgb(7 7 22) 0 84px, transparent 92px),
-  radial-gradient(ellipse 46% 60% at 0% 100%, rgb(255 255 255 / .62), rgb(255 255 255 / .26) 55%, transparent 88%); }
+.ovw-lab p { min-width: 0; margin: 0; overflow: hidden; color: var(--sk-lead, #C9CCDA); font-size: 14px; white-space: nowrap; text-overflow: ellipsis; transition: color 2.4s ease; }
+.ovw-end { position: relative; display: flex; flex: none; align-items: center; gap: 24px; }
+.ovw-date { font-size: 16px; font-weight: 650; white-space: nowrap; }
+.ovw-time, .ovw-time:hover, .ovw-wx, .ovw-wx:hover { display: inline-flex; align-items: center; gap: 8px; height: auto; margin: 0; padding: 0; border: 0; border-radius: 0; background: none; color: inherit;
+  font: 600 16px/1 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; white-space: nowrap; cursor: pointer; }
+.ovw-wx[hidden] { display: none; }
+.ovw-time, .ovw-time:hover, .ovw-wx b { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+:is(.ovw-time, .ovw-wx):focus-visible { outline: 2px solid var(--accent-line); outline-offset: 6px; border-radius: 8px; }
+#ovw-icon { display: inline-flex; }
+.ovw-ic { flex: none; width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.ovw-wx .chev { width: 15px; height: 15px; color: var(--sk-lead, #C9CCDA); transition: transform .2s ease, color 2.4s ease; }
+.ovw-wx[aria-expanded="true"] .chev { transform: rotate(180deg); }
+/* The next hours: black glass on a layer behind them, popping in under the weather where it is. The menus' style when the
+   lab set one (style.js). */
+.ovw-pop { position: absolute; right: 0; top: calc(100% + 16px); z-index: 4; isolation: isolate; width: 300px; padding: 16px 18px; border: 1px solid rgb(255 255 255 / .05); border-radius: 14px; color: #fff;
+  transform-origin: 100% 0; animation: ovw-pop .22s ease backwards; }
+.ovw-pop[hidden] { display: none; }
+.ovw-pop::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: rgb(0 0 0 / .52); backdrop-filter: blur(22px) saturate(148%); }
+html[data-sty-menus] .ovw-pop { border-color: var(--sty-menus-edge); }
+html[data-sty-menus] .ovw-pop::before { background: var(--sty-menus-bg); backdrop-filter: var(--sty-menus-blur); }
+@keyframes ovw-pop { from { opacity: 0; transform: scale(.96); } }
+.ovw-pop > p { margin: 0 0 10px; color: #A9ADC2; font-size: 13px; font-weight: 600; }
+.ovw-pop > p[hidden] { display: none; }
+.ovw-rows > div { display: grid; grid-template-columns: 54px 22px 1fr auto; align-items: center; gap: 10px; height: 36px; border-top: 1px solid rgb(255 255 255 / .08); font-size: 14px; }
+.ovw-rows small { color: #A9ADC2; font-size: 13px; font-weight: 600; }
+.ovw-rows .ovw-ic { width: 20px; height: 20px; }
+.ovw-rows b { font-weight: 700; font-variant-numeric: tabular-nums; }
+.ovw-pop > button { width: 100%; margin-top: 12px; justify-content: center; }
+/* The quote of the day: its words, then who said them, quieter. At the foot it is the picture's only words there, white
+   on the corner's shade. */
+.ovw-quote { position: absolute; left: 48px; bottom: 116px; z-index: 3; max-width: 620px; margin: 0; color: #fff; font-size: 16px; font-style: italic; line-height: 1.45; }
+.ovw-quote[hidden] { display: none; }
+.ovw-quote q { quotes: "\201C" "\201D"; }
+.ovw-quote cite { margin-left: 10px; color: #D6D9E6; font-size: 13.5px; font-style: normal; font-weight: 600; white-space: nowrap; }
+.ovw-quote cite::before { content: "\2014\00a0"; }
+.ovw-quote cite:empty { display: none; }
+/* The line at the bottom, just over the strip: white on its band, the hours opening upward, and the quote alone at the
+   top in the sky's own colours. */
+.ovb[data-line="bottom"] .ovw-line { top: auto; bottom: 104px; color: #fff; }
+.ovb[data-line="bottom"] :is(.ovw-lab p, .ovw-wx .chev) { color: #D6D9E6; }
+.ovb[data-line="bottom"] .ovw-pop { top: auto; bottom: calc(100% + 16px); transform-origin: 100% 100%; }
+.ovb[data-line="bottom"] .ovw-quote { top: 28px; bottom: auto; color: var(--sk-text, #fff); transition: color 2.4s ease; }
+.ovb[data-line="bottom"] .ovw-quote cite { color: var(--sk-lead, #C9CCDA); transition: color 2.4s ease; }
 /* The other pages' words fade to their new colour with the sky. */
 :is(.hero-title, .hero-lead) { transition: color 2.4s ease; }
 
@@ -80,14 +104,19 @@
 .ovb-btns .button { border: 1px solid rgb(255 255 255 / .14); background: rgb(10 11 19 / .5); color: #fff; }
 .ovb-btns .button:hover { border-color: rgb(255 255 255 / .3); background: rgb(10 11 19 / .7); }
 
-/* A narrow window: the banner grows to fit, the words above the strip, the strip's buttons under its numbers. */
+/* A narrow window: the banner grows to fit, the strip's buttons under its numbers. */
 @media (max-width: 1100px) {
   .ovb { display: flex; flex-direction: column; justify-content: flex-end; height: auto; min-height: 520px; }
-  .ovb-main { position: relative; left: auto; bottom: auto; padding: 140px 32px 32px; }
-  .ovw-fig { font-size: 60px; }
-  .ovw-fig .ovw-ic { width: 38px; height: 38px; }
-  .ovw-half + .ovw-half { margin-left: 26px; padding-left: 26px; }
-  .ovw-hours { gap: 20px; }
+  /* The line wraps: the name, then the date, the time and the weather under it. What is at the foot goes in the flow
+     over the strip, which is as tall as its buttons make it there. */
+  .ovw-line { left: 32px; right: 32px; top: 22px; flex-wrap: wrap; gap: 10px 24px; }
+  .ovw-lab { flex-wrap: wrap; gap: 2px 14px; }
+  .ovw-end { flex-wrap: wrap; gap: 8px 20px; }
+  .ovw-quote { position: static; margin: 0 32px 22px; }
+  .ovb[data-line="bottom"] .ovw-line { position: static; margin: 0 32px 20px; }
+  .ovb[data-line="bottom"] .ovw-quote { position: absolute; left: 32px; right: 32px; top: 22px; margin: 0; }
+  .ovw-pop { right: auto; left: 0; transform-origin: 0 0; }
+  .ovb[data-line="bottom"] .ovw-pop { transform-origin: 0 100%; }
   .ovb-strip { position: relative; flex-wrap: wrap; height: auto; padding: 18px 32px; }
   .ovb-btns { margin-left: 0; }
 }
