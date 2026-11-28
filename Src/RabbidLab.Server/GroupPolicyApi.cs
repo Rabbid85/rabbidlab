@@ -150,7 +150,10 @@ public static class GroupPolicyApi
             {
                 return Results.BadRequest(new { error = "The client installer was not found on this server. Run Setup again to restore it." });
             }
-            var fingerprint = ClientFiles.Certificate(config) is { } cert ? ClientFiles.Fingerprint(cert) : null;
+            // The key's fingerprint, as every other place gives clients: right at every console address. The certificate's
+            // own was given until 1.1.445, and a computer sent to an added address (which has a certificate of its own)
+            // installed the client and could never connect.
+            var fingerprint = ClientFiles.KeyFingerprint(config);
             var id = await gp.DeployClient(form.Server ?? "", fingerprint, await File.ReadAllBytesAsync(ClientFiles.Msi, context.RequestAborted), form.Login, ActivityLog.Who(context), context.RequestAborted);
             log.Record(context, "users", "gpo.client", $"Deployed client version {Product.Version} to all computers with the GPO {DirectoryTools.ClientGpoName}, using server {form.Server}");
             return Results.Ok(new { id });
