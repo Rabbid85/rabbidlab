@@ -13,6 +13,13 @@
     <Icon Id="rabbidlab.ico" SourceFile="$(Icon)" />
     <Property Id="ARPPRODUCTICON" Value="rabbidlab.ico" />
     <Property Id="ARPURLINFOABOUT" Value="https://github.com/Rabbid85/rabbidlab" />
+    <!-- The client runs on .NET Framework 4.6.2 or later (release 394802, which Windows Server 2016 ships with). Checked
+         before anything is copied, so an older Windows says why in the log; without it the service is installed, does
+         not start, and the install fails 30 seconds later with error 1920. Compared the way WiX's own check does. -->
+    <Property Id="NETRELEASE">
+      <RegistrySearch Id="NetRelease" Root="HKLM" Key="SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full" Name="Release" Type="raw" Bitness="always64" />
+    </Property>
+    <Launch Condition="Installed OR NETRELEASE &gt;= &quot;#394802&quot;" Message="The Rabbid Lab client requires .NET Framework 4.6.2 or later. Install .NET Framework 4.8 on this computer, then run the installer again." />
     <Property Id="SERVER" Secure="yes" />
     <Property Id="FINGERPRINT" Secure="yes" />
     <!-- What was given before, read back so a repair or an update with nothing on the command line keeps it. -->

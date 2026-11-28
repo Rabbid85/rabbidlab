@@ -55,7 +55,7 @@ internal sealed class ClientWindow : Form
         Text = "Rabbid Lab";
         ShowInTaskbar = true;
         KeyPreview = true;
-        Scale(DeviceDpi);
+        Scale(Look.StartDpi);
         tick.Tick += (_, _) =>
         {
             Invalidate(Rectangle.Inflate(Rectangle.Round(ring), 4, 4));
@@ -149,7 +149,7 @@ internal sealed class ClientWindow : Form
         base.OnHandleCreated(e);
         Look.Rounded(Handle);
         // Made at the main screen's scale; opened on another one (where the mouse was), it's drawn at that one's.
-        if (Look.Dpi(Handle) is var dpi and > 0 && dpi != DeviceDpi)
+        if (Look.Dpi(Handle) is var dpi and > 0 && dpi != Look.StartDpi)
         {
             Scale(dpi);
         }

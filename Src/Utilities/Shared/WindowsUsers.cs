@@ -4,7 +4,7 @@ using System.DirectoryServices.AccountManagement;
 using System.Linq;
 using System.Runtime.Serialization;
 
-// Compiled into both the server (net10.0) and the client (net472): the same code makes and changes Windows accounts on
+// Compiled into both the server (net10.0) and the client (net462): the same code makes and changes Windows accounts on
 // the server itself and on each computer in Devices. The [DataMember] names are the JSON both sides send.
 namespace RabbidLab.Shared;
 

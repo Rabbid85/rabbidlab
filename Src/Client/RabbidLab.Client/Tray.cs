@@ -468,6 +468,18 @@ internal static class Look
     /// </summary>
     public const int DpiChanged = 0x02E0;
 
+    /// <summary>
+    /// The main screen's scale when the client started, in DPI: what windows are made at before they are on a screen.
+    /// (Forms has this as Control.DeviceDpi, but only since .NET Framework 4.7.)
+    /// </summary>
+    public static int StartDpi { get; } = ReadStartDpi();
+
+    private static int ReadStartDpi()
+    {
+        using var screen = Graphics.FromHwnd(IntPtr.Zero);
+        return screen.DpiX > 0 ? (int) Math.Round(screen.DpiX) : 96;
+    }
+
     /// <summary>The scale of the screen a window is on, in DPI; 0 where Windows can't say.</summary>
     public static int Dpi(IntPtr window)
     {

@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.444', [
+    'Fixed: the client now installs on Windows Server 2016. It needed .NET Framework 4.7.2 and Server 2016 ships with 4.6.2, so the service did not start and the install failed with error 1920. The client now runs on .NET Framework 4.6.2 or later.',
+    'The client installer checks the .NET Framework version first. On a computer where it is too old, the install log says so.',
+    'After you install this version, click Deploy again under Devices, Deploy the client. A computer where the install failed only tries again when the GPO changes.']],
   ['1.1.443', [
     'Settings, Banner: each monster is now one line, with a drop-down for how often it appears and four buttons for the times of day. Point at a button to see which time of day it is.',
     'Every monster now starts on Rarely. If you changed the monster settings before, click Reset to get the new defaults.',
@@ -1422,6 +1426,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.444': ['2026-11-27', 'fix', 'The client installs on Windows Server 2016'],
   '1.1.443': ['2026-11-27', 'update', 'Simpler monster settings'],
   '1.1.442': ['2026-11-27', 'update', 'Less code behind the pages'],
   '1.1.441': ['2026-11-27', 'fix', 'Links and Sensors line up with their banner again'],

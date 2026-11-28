@@ -167,7 +167,7 @@ internal sealed class AskWindow : Form
             }
             Invalidate(Rectangle.Round(pictures));
         };
-        Scale(DeviceDpi);
+        Scale(Look.StartDpi);
     }
 
     private static readonly TimeSpan Fade = TimeSpan.FromMilliseconds(350);
@@ -374,7 +374,7 @@ internal sealed class AskWindow : Form
         Look.Rounded(Handle);
         SendMessage(title.Handle, 0x1501, (IntPtr) 1, "A few words, like: The printer won't print"); // the hint in the empty box
         // At the scale of the client window's screen, in the middle of it (a window that isn't a dialog isn't put there).
-        if (Look.Dpi(Handle) is var dpi and > 0 && dpi != DeviceDpi)
+        if (Look.Dpi(Handle) is var dpi and > 0 && dpi != Look.StartDpi)
         {
             Scale(dpi);
         }
@@ -752,7 +752,7 @@ internal sealed class Toast : Form
         StartPosition = FormStartPosition.Manual;
         TopMost = true;
         BackColor = ink.Aside;
-        k = DeviceDpi / 96f;
+        k = Look.StartDpi / 96f;
         ClientSize = new Size((int) (360 * k), (int) (76 * k));
         var area = Screen.PrimaryScreen.WorkingArea;
         Location = new Point(area.Right - Width - (int) (12 * k), area.Bottom - Height - (int) (12 * k));

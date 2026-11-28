@@ -37,18 +37,20 @@ internal sealed class ServerApi : IDisposable
     /// </summary>
     public ServerApi(string server, string? fingerprint, TimeSpan? timeout = null, bool looking = false)
     {
-        var handler = new HttpClientHandler
+        // WebRequestHandler's check, not HttpClientHandler's: that one came with .NET Framework 4.7.1, and this runs on 4.6.2.
+        var handler = new WebRequestHandler
         {
-            ServerCertificateCustomValidationCallback = (_, certificate, _, errors) =>
+            ServerCertificateValidationCallback = (_, shown, _, errors) =>
             {
-                Shown = certificate is not null ? Pin.OfKey(certificate.RawData) : null;
+                var certificate = shown?.GetRawCertData();
+                Shown = certificate is not null ? Pin.OfKey(certificate) : null;
                 if (looking)
                 {
                     return certificate is not null;
                 }
-                var ok = fingerprint is null ? errors == SslPolicyErrors.None : certificate is not null && Pin.Matches(certificate.RawData, fingerprint);
+                var ok = fingerprint is null ? errors == SslPolicyErrors.None : certificate is not null && Pin.Matches(certificate, fingerprint);
                 Untrusted = !ok;
-                Key = ok && certificate is not null ? Pin.OfKey(certificate.RawData) : null;
+                Key = ok && certificate is not null ? Pin.OfKey(certificate) : null;
                 return ok;
             },
         };

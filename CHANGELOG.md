@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.444 (2026-11-27)
+
+- Fixed: the client now installs on Windows Server 2016. It needed .NET Framework 4.7.2 and Server 2016 ships with 4.6.2, so the service did not start and the install failed with error 1920. The client now runs on .NET Framework 4.6.2 or later.
+- The client installer checks the .NET Framework version first. On a computer where it is too old, the install log says so.
+- After you install this version, click Deploy again under Devices, Deploy the client. A computer where the install failed only tries again when the GPO changes.
+
 ## 1.1.443 (2026-11-27)
 
 - Settings, Banner: each monster is now one line, with a drop-down for how often it appears and four buttons for the times of day. Point at a button to see which time of day it is.
