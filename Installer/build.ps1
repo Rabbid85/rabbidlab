@@ -71,19 +71,23 @@ if ($Stage -ne 'Setup') {
     foreach ($old in 'bin', 'obj') { $p = Join-Path $client "Installer\$old"; if (Test-Path $p) { Remove-Item $p -Recurse -Force } }
     dotnet build (Join-Path $client 'Installer\RabbidLab.Client.Installer.wixproj') --no-incremental -c Release -p:Version=$version "-p:ClientDir=$clientOut" -o (Join-Path $clientOut 'msi')
     if ($LASTEXITCODE) { throw 'Building the client MSI failed.' }
-    $msiDb = (New-Object -ComObject WindowsInstaller.Installer).GetType().InvokeMember('OpenDatabase', 'InvokeMethod', $null, (New-Object -ComObject WindowsInstaller.Installer), @([string](Join-Path $clientOut 'msi\RabbidLab-Client.msi'), 0))
-    $inMsi = @{}
-    foreach ($ask in @{ exe = "SELECT ``Version`` FROM ``File`` WHERE ``File`` = 'ClientExe'"; product = "SELECT ``Value`` FROM ``Property`` WHERE ``Property`` = 'ProductVersion'" }.GetEnumerator()) {
-        $view = $msiDb.GetType().InvokeMember('OpenView', 'InvokeMethod', $null, $msiDb, @($ask.Value))
-        [void]$view.GetType().InvokeMember('Execute', 'InvokeMethod', $null, $view, $null)
-        $row = $view.GetType().InvokeMember('Fetch', 'InvokeMethod', $null, $view, $null)
-        $inMsi[$ask.Key] = if ($row) { $row.GetType().InvokeMember('StringData', 'GetProperty', $null, $row, 1) } else { '' }
-        [void]$view.GetType().InvokeMember('Close', 'InvokeMethod', $null, $view, $null)
-    }
-    [void][Runtime.InteropServices.Marshal]::ReleaseComObject($msiDb)
-    [GC]::Collect(); [GC]::WaitForPendingFinalizers() # lets go of the MSI, which is copied and signed next
+    # Read back in a process of its own: when it ends nothing holds the MSI, which is copied and cleared away below.
+    $reader = Join-Path $clientOut 'read-msi.ps1'
+    Set-Content -Path $reader -Encoding ASCII -Value @'
+param([string] $Msi)
+$installer = New-Object -ComObject WindowsInstaller.Installer
+$db = $installer.GetType().InvokeMember('OpenDatabase', 'InvokeMethod', $null, $installer, @($Msi, 0))
+foreach ($ask in 'SELECT `Version` FROM `File` WHERE `File` = ''ClientExe''', 'SELECT `Value` FROM `Property` WHERE `Property` = ''ProductVersion''') {
+    $view = $db.GetType().InvokeMember('OpenView', 'InvokeMethod', $null, $db, @($ask))
+    [void]$view.GetType().InvokeMember('Execute', 'InvokeMethod', $null, $view, $null)
+    $row = $view.GetType().InvokeMember('Fetch', 'InvokeMethod', $null, $view, $null)
+    if ($row) { $row.GetType().InvokeMember('StringData', 'GetProperty', $null, $row, 1) } else { '' }
+}
+'@
+    $read = @(powershell.exe -NoProfile -ExecutionPolicy Bypass -File $reader (Join-Path $clientOut 'msi\RabbidLab-Client.msi'))
+    $inMsi = @{ exe = "$($read[0])"; product = "$($read[1])" }
     if ($inMsi.exe -ne "$version.0" -or $inMsi.product -ne $version) {
-        throw "The client MSI holds RabbidLab-Client.exe $($inMsi.exe) as product $($inMsi.product), not $version: it would not replace an older client. Nothing was published."
+        throw "The client MSI holds RabbidLab-Client.exe $($inMsi.exe) as product $($inMsi.product), not ${version}: it would not replace an older client. Nothing was published."
     }
     "Client MSI: RabbidLab-Client.exe $($inMsi.exe), product $($inMsi.product)"
     $handout = Join-Path $publish 'Client'
