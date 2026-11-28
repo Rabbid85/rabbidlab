@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.446 (2026-11-28)
+
+- Fixed: a computer that installed the client from the deploy GPO could not connect when the GPO used an added console address. The GPO gave computers the fingerprint of the wrong certificate; it now gives the fingerprint of the key, which is right at every address.
+- Fixed: on Windows Server 2016, a computer where the GPO install failed never tried again, because the install task from the first try was still registered. Each deployment now has an install task of its own.
+- After you install this version, click Deploy again under Devices, Deploy the client.
+
 ## 1.1.445 (2026-11-28)
 
 - Fixed: the 1.1.444 client update removed the client from computers that already had it. Its installer held a program file marked version 0.0.0, so Windows Installer removed the old client and did not install the new one. This version installs correctly, including on a computer that 1.1.444 left without the client.

@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.446', [
+    'Fixed: a computer that installed the client from the deploy GPO could not connect when the GPO used an added console address. The GPO gave computers the fingerprint of the wrong certificate; it now gives the fingerprint of the key, which is right at every address.',
+    'Fixed: on Windows Server 2016, a computer where the GPO install failed never tried again, because the install task from the first try was still registered. Each deployment now has an install task of its own.',
+    'After you install this version, click Deploy again under Devices, Deploy the client.']],
   ['1.1.445', [
     'Fixed: the 1.1.444 client update removed the client from computers that already had it. Its installer held a program file marked version 0.0.0, so Windows Installer removed the old client and did not install the new one. This version installs correctly, including on a computer that 1.1.444 left without the client.',
     'To put the client back: update this server to 1.1.445, then click Deploy again under Devices, Deploy the client. Each computer installs it at its next Group Policy refresh and keeps its entry under Computers. Or run the installer from Settings, Devices, Install the client on the computer.',
@@ -1430,6 +1434,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.446': ['2026-11-28', 'fix', 'Deploy GPO: fingerprint and retries'],
   '1.1.445': ['2026-11-28', 'fix', 'The client update that removed the client'],
   '1.1.444': ['2026-11-27', 'fix', 'The client installs on Windows Server 2016'],
   '1.1.443': ['2026-11-27', 'update', 'Simpler monster settings'],
