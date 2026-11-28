@@ -4,15 +4,13 @@
 (() => {
   const R = window.RabbidLab;
   const D = R.devices;
-  const { $, esc, svg, send, get, toast, sure, panel, when, has, say } = R;
+  const { $, esc, svg, send, get, toast, sure, panel, when, has, say, BRAKE, many, names, oops, qa, section, none, closeX } = R;
 
   const NEEDS = '1.1.168'; // the first client that takes jobs
-  const BRAKE = 10; // more computers than this, and how many has to be typed
   const canScripts = () => has('seats.scripts.run') || has('seats.scripts.edit');
   const canDo = () => canScripts() || has('seats.actions') || has('seats.installs');
   const canJobs = () => canDo() || has('seats.workflows');
   const canPick = () => canDo() || has('seats.approve') || has('seats.remove');
-  const many = (n, one = 'computer') => `${n.toLocaleString()} ${one}${n === 1 ? '' : 's'}`;
   // Whether a computer's client is older than the version given.
   const below = (c, version) => {
     const [a, b] = [c.version || '0', version].map((v) => v.split('.').map(Number));
@@ -20,15 +18,10 @@
     return false;
   };
   const older = (c) => below(c, NEEDS);
-  const names = (list) => (list.length <= 4 ? list.map((c) => c.computer).join(', ') : many(list.length));
   const LANG = { powershell: 'PowerShell', cmd: 'Command' };
-  const oops = (e) => { if (!e.cancelled) toast('The operation failed.', e.message, { tone: 'warn' }); };
   const head = (icon, title, sub) => `<div class="dw-head"><span class="pic dw-pic">${svg(icon)}</span><div class="dw-name"><h2 id="dw-title">${esc(title)}</h2><p>${sub}</p></div>`
-    + `<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`;
-  const qa = (attr, icon, label) => `<button type="button" class="dw-qa" ${attr}>${svg(icon)}<span>${esc(label)}</span></button>`;
-  const section = (title, body, right = '') => `<section class="dw-sec"><div class="dw-sec-head"><h3>${title}</h3>${right}</div>${body}</section>`;
+    + `${closeX}</div>`;
   const facts = (rows) => `<ul class="does">${rows.filter(Boolean).map(([k, v]) => `<li><b>${esc(k)}</b><span>${esc(v)}</span></li>`).join('')}</ul>`;
-  const none = (text) => `<p class="muted dw-empty">${esc(text)}</p>`;
   const pill = ([tone, label]) => `<span class="state ${tone}">${esc(label)}</span>`;
   const pressed = (seg, attr, value) => seg.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset[attr] === value)));
 
@@ -429,39 +422,11 @@
     act.dataset.tip = own ? (n ? `${n.toLocaleString()} selected` : 'Select items first') : n ? `${many(n)} selected` : 'Select computers first';
     // Computers and Windows updates' own row per computer share the ticks.
     for (const table of TICKED.map((id) => $(id))) {
-      const boxes = [...table.querySelectorAll('[data-tick]')];
-      boxes.forEach((box) => {
-        box.checked = D.picked.has(box.dataset.tick);
-        box.closest('.tr')?.classList.toggle('picked', box.checked);
-      });
-      const all = table.querySelector('[data-tick-all]');
-      if (all) {
-        const on = boxes.filter((b) => b.checked).length;
-        all.checked = !!boxes.length && on === boxes.length;
-        all.indeterminate = on > 0 && on < boxes.length;
-      }
+      R.grid.ticks(table, 'tick', D.picked);
     }
   };
-  // Shift-click ticks every row between the last one ticked and this one.
-  let lastTick = null;
   const TICKED = ['seats-table'];
-  for (const id of TICKED) {
-    $(id).addEventListener('click', (e) => {
-      const box = e.target.closest('.tk')?.querySelector('input');
-      if (!box || e.target !== box) return; // the label's own click comes through the box
-      const boxes = [...$(id).querySelectorAll('[data-tick]')];
-      const set = (b) => (box.checked ? D.picked.add(b.dataset.tick) : D.picked.delete(b.dataset.tick));
-      if (box.dataset.tickAll !== undefined) boxes.forEach(set);
-      else {
-        const i = boxes.indexOf(box);
-        const from = e.shiftKey && lastTick !== null ? Math.min(lastTick, i) : i;
-        const to = e.shiftKey && lastTick !== null ? Math.max(lastTick, i) : i;
-        boxes.slice(from, to + 1).forEach(set);
-        lastTick = i;
-      }
-      drawPicked();
-    });
-  }
+  for (const id of TICKED) $(id).addEventListener('click', (e) => { if (R.grid.tick(e, $(id), 'tick', D.picked)) drawPicked(); });
   // What can be done on computers, from this one list: the Actions menu for the ticked ones, and the Actions button of
   // a computer's panel (actions.js draws it). Related ones go in a sub-menu; a group of one is a row of its own.
   // printers.js and installs.js add theirs through actItems.

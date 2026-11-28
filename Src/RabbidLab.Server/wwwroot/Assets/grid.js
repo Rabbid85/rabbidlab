@@ -6,9 +6,7 @@
 // each grid; Compact or Relaxed is one setting for every list.
 (() => {
   const R = window.RabbidLab;
-  const { esc, svg } = R;
-  const read = (k) => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch { return null; } };
-  const keep = (k, v) => { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)); } catch { /* not kept, then */ } };
+  const { esc, svg, saved: read, save: keep } = R;
   const DENSITY = 'rabbidlab.ad.density';
   const density = () => (read(DENSITY) === 'relaxed' ? 'relaxed' : 'compact');
   const GAP = 20; // between columns, with the line in the middle
@@ -530,6 +528,42 @@
     el.classList.remove('bump');
     void el.offsetWidth;
     el.classList.add('bump');
+  };
+
+  // Ticks, for every list that has them. attr is the boxes' data attribute as a script says it: gpoTick for
+  // data-gpo-tick, and the box in the heading has the same with All after it. picked is a Set of the keys ticked.
+  // ticks: the boxes as picked has them, each one's row marked, and the heading's box all, some or none.
+  const tickBoxes = (table, attr) => [...table.querySelectorAll(`[data-${attr.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}]`)];
+  grid.ticks = (table, attr, picked) => {
+    const boxes = tickBoxes(table, attr);
+    boxes.forEach((b) => {
+      b.checked = picked.has(b.dataset[attr]);
+      b.closest('.tr')?.classList.toggle('picked', b.checked);
+    });
+    const all = tickBoxes(table, `${attr}All`)[0];
+    if (!all) return;
+    const on = boxes.filter((b) => b.checked).length;
+    all.checked = !!boxes.length && on === boxes.length;
+    all.indeterminate = on > 0 && on < boxes.length;
+  };
+  // tick: a click on a row's box picks it, with Shift every row from the last one clicked there to this one, and the
+  // heading's box picks or clears every row drawn. Answers null when the click was not on a tick, false for the
+  // label's own click (the box's follows it), and true when what is picked changed.
+  const lastTick = new WeakMap(); // a list → the row last clicked in it
+  grid.tick = (e, table, attr, picked) => {
+    const box = e.target.closest('.tk')?.querySelector('input');
+    if (!box) return null;
+    if (e.target !== box) return false;
+    const boxes = tickBoxes(table, attr);
+    const set = (b) => (box.checked ? picked.add(b.dataset[attr]) : picked.delete(b.dataset[attr]));
+    if (box.dataset[`${attr}All`] !== undefined) boxes.forEach(set);
+    else {
+      const i = boxes.indexOf(box);
+      const last = lastTick.get(table) ?? null;
+      boxes.slice(e.shiftKey && last !== null ? Math.min(last, i) : i, (e.shiftKey && last !== null ? Math.max(last, i) : i) + 1).forEach(set);
+      lastTick.set(table, i);
+    }
+    return true;
   };
 
   R.grid = grid;

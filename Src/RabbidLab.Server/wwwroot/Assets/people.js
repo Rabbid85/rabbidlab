@@ -4,7 +4,7 @@
 // someone in a higher tier (Roles.cs). It asks /api/roles when the page opens and after each change.
 (() => {
   const R = window.RabbidLab;
-  const { $, esc, svg, say, initials, sure } = R;
+  const { $, esc, svg, say, initials, sure, sameText: same, count: plural, section: sec, qa, strip, badge, muted, closeX } = R;
   const SWATCHES = R.palette;
   const KIND = { group: 'Group', user: 'User', local: 'Local account', everyone: 'Everyone', windows: 'Built-in', all: 'Built-in' };
   const ICON = { group: 'users', user: 'user', local: 'key', everyone: 'users', windows: 'monitor', all: 'users' };
@@ -30,7 +30,6 @@
   const mine = (key) => data.me.can.includes(key);
   const allParts = () => data.catalog.flatMap((p) => p.actions.map((a) => a.key));
   const permsOf = (r) => new Set(r.id === 'admin' ? allParts() : r.permissions);
-  const same = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
   const lower = (s) => s.charAt(0).toLowerCase() + s.slice(1);
   const tierName = (t) => `Tier ${t}`;
   const day = (iso) => new Date(iso).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' });
@@ -43,12 +42,6 @@
     return m < 2 ? 'Just now' : m < 60 ? `${m} min ago` : m < 120 ? 'An hour ago' : m < 1440 ? `${Math.floor(m / 60)} hours ago` : days === 1 ? 'Yesterday' : `${days} days ago`;
   };
   const current = (el, on) => (on ? el.setAttribute('aria-current', 'page') : el.removeAttribute('aria-current'));
-  const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
-  const sec = (title, body) => `<section class="dw-sec"><div class="dw-sec-head"><h3>${title}</h3></div>${body}</section>`;
-  const qa = (attr, icon, label) => `<button type="button" class="dw-qa" ${attr}>${svg(icon)}<span>${esc(label)}</span></button>`;
-  const strip = (pairs) => `<div class="dw-strip">${pairs.map(([l, v]) => `<div><span class="l">${esc(l)}</span><span class="v">${v}</span></div>`).join('')}</div>`;
-  const badge = (text, tone) => `<span class="ubadge ${tone}">${esc(text)}</span>`;
-  const muted = (text) => `<span class="muted">${esc(text)}</span>`;
   const ell = (text) => `<span class="ell">${esc(text)}</span>`;
   const dot = (r) => `<span class="pp-role" data-color="${esc(r.color)}"><i class="dot"></i><span class="ell">${esc(r.name)}</span></span>`;
   const findText = () => $('ppl-find').value.trim().toLowerCase();
@@ -327,7 +320,7 @@
     const why = editWhy(r);
     const y = R.panel.body.scrollTop;
     R.panel.body.innerHTML = `<div class="dw-head"><span class="pic dw-pic pp-rpic" data-color="${esc(r.color)}">${svg('shield')}</span><div class="dw-name"><h2 id="dw-title">${esc(r.name)}</h2>`
-      + `<p>${esc(r.about || `${tierName(r.tier)}. ${TIER_SHORT[r.tier]}`)}</p></div><button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`
+      + `<p>${esc(r.about || `${tierName(r.tier)}. ${TIER_SHORT[r.tier]}`)}</p></div>${closeX}</div>`
       + `<div class="dw-bar">${rp.edit ? '' : R.editButton('data-pp-redit', why)}${r.manage && mine('access.members') ? qa('data-pp-rgive', 'user-plus', 'Give this role') : ''}`
       + `${r.id === 'admin' ? '' : qa('data-pp-rpreview', 'eye', 'Preview as')}</div>`
       + strip([['Tier', esc(tierName(r.tier))], ['Can', `${can} of ${total}`], ['Can\'t', String(total - can)], ['Assignments', String(as.length)], ['People', r.id === 'user' ? 'Everyone' : String(peopleIn(r))]])
@@ -353,7 +346,7 @@
 
   const keyOf = (x) => (x.via || (x.kind === 'local' && x.built) ? `p:${x.kind}:${x.name}` : `a:${x.id}`);
   const head = (picHtml, title, sub) => `<div class="dw-head">${picHtml}<div class="dw-name"><h2 id="dw-title">${esc(title)}</h2><p>${esc(sub)}</p></div>`
-    + `<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`;
+    + `${closeX}</div>`;
   const gives = (r, where) => {
     if (r.id === 'admin') return '<ul class="does"><li><b>Everything</b><span>The Administrator role has every permission.</span></li></ul>';
     return `<ul class="does">${data.catalog.map((p) => {

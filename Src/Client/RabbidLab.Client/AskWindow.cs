@@ -117,7 +117,6 @@ internal sealed class AskWindow : Form
 {
     private const float W = 580;
     private readonly Ink ink;
-    private readonly string lab;
     private readonly string mode;
     private readonly List<Shot> shots;
     private readonly List<(string Label, string Value)> facts;
@@ -134,9 +133,9 @@ internal sealed class AskWindow : Form
     private Font? fHead, fH2, fText, fBtn, fSmall;
     private float bottom;
 
-    public AskWindow(Ink ink, string lab, string mode, List<Shot> shots, List<(string, string)> facts, Action<string, string> toast)
+    public AskWindow(Ink ink, string mode, List<Shot> shots, List<(string, string)> facts, Action<string, string> toast)
     {
-        (this.ink, this.lab, this.mode, this.shots, this.facts, this.toast) = (ink, lab, mode, shots, facts, toast);
+        (this.ink, this.mode, this.shots, this.facts, this.toast) = (ink, mode, shots, facts, toast);
         tick = mode == "all";
         SetStyle(ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.ResizeRedraw, true);
         AutoScaleMode = AutoScaleMode.None;
@@ -372,14 +371,7 @@ internal sealed class AskWindow : Form
     protected override void OnHandleCreated(EventArgs e)
     {
         base.OnHandleCreated(e);
-        try
-        {
-            var round = 2;
-            DwmSetWindowAttribute(Handle, 33, ref round, sizeof(int));
-        }
-        catch (Exception x) when (x is DllNotFoundException or EntryPointNotFoundException)
-        {
-        }
+        Look.Rounded(Handle);
         SendMessage(title.Handle, 0x1501, (IntPtr) 1, "A few words, like: The printer won't print"); // the hint in the empty box
         // At the scale of the client window's screen, in the middle of it (a window that isn't a dialog isn't put there).
         if (Look.Dpi(Handle) is var dpi and > 0 && dpi != DeviceDpi)
@@ -695,8 +687,7 @@ internal sealed class AskWindow : Form
         base.OnMouseDown(e);
         if (e.Button == MouseButtons.Left && !hits.Any(x => x.R.Contains(e.Location)))
         {
-            ReleaseCapture();
-            SendMessage(Handle, 0xA1, (IntPtr) 2, IntPtr.Zero);
+            Look.Drag(Handle);
         }
     }
 
@@ -729,15 +720,6 @@ internal sealed class AskWindow : Form
         }
         base.OnFormClosed(e);
     }
-
-    [DllImport("dwmapi.dll")]
-    private static extern int DwmSetWindowAttribute(IntPtr window, int attribute, ref int value, int size);
-
-    [DllImport("user32.dll")]
-    private static extern bool ReleaseCapture();
-
-    [DllImport("user32.dll")]
-    private static extern IntPtr SendMessage(IntPtr window, int message, IntPtr w, IntPtr l);
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     private static extern IntPtr SendMessage(IntPtr window, int message, IntPtr w, string l);
@@ -812,14 +794,7 @@ internal sealed class Toast : Form
     protected override void OnHandleCreated(EventArgs e)
     {
         base.OnHandleCreated(e);
-        try
-        {
-            var round = 2;
-            DwmSetWindowAttribute(Handle, 33, ref round, sizeof(int));
-        }
-        catch (Exception x) when (x is DllNotFoundException or EntryPointNotFoundException)
-        {
-        }
+        Look.Rounded(Handle);
     }
 
     protected override void OnPaint(PaintEventArgs e)
@@ -845,9 +820,6 @@ internal sealed class Toast : Form
         }
         base.OnFormClosed(e);
     }
-
-    [DllImport("dwmapi.dll")]
-    private static extern int DwmSetWindowAttribute(IntPtr window, int attribute, ref int value, int size);
 }
 
 /// <summary>The tray icon's menu in the client's colours.</summary>

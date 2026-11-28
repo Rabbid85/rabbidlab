@@ -3,13 +3,12 @@
 (() => {
   const R = window.RabbidLab;
   const D = R.devices;
-  const { $, esc, svg, has, get, toast, sure } = R;
+  const { $, esc, svg, has, get, toast, sure, stamp: when } = R;
 
   let state = null; // /api/gpo/client
   let addresses = []; // the console's addresses, full names first
   let problem = '';
   let loading = null;
-  const when = (iso) => (iso ? new Date(iso).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '');
   const may = () => has('seats.add') && has('gpo.change');
   // What deploying does, as six small tiles: icon, a few words, one line.
   const DOES = [

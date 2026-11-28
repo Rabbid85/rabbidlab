@@ -3,7 +3,7 @@
 // its line, then every copy seen, newest first. Every row opens the side panel, where a failure says why and can retry.
 (() => {
   const R = window.RabbidLab;
-  const { $, esc, svg, has, panel, toast, get, send, when, where } = R;
+  const { $, esc, svg, has, panel, toast, get, send, when, where, head, clock: time, count: plural, section, none, qa } = R;
 
   const ICON = { user: 'user', group: 'users', computer: 'laptop', contact: 'user', ou: 'folder', other: 'list' };
   const FILTERS = [['all', 'Everything'], ['user', 'Users'], ['group', 'Groups'], ['computer', 'Computers'], ['bad', 'Problems']];
@@ -17,15 +17,8 @@
   let wasRunning = false;
   let clip = 0;
 
-  const time = (iso) => (iso ? new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '');
   const at = (iso) => (iso && new Date(iso).toDateString() === new Date().toDateString() ? time(iso) : when(iso));
-  const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
-  const section = (title, body) => `<section class="dw-sec"><div class="dw-sec-head"><h3>${title}</h3></div>${body}</section>`;
-  const none = (text) => `<p class="muted dw-empty">${esc(text)}</p>`;
-  const qa = (attr, icon, label) => `<button type="button" class="dw-qa" ${attr}>${svg(icon)}<span>${esc(label)}</span></button>`;
   const strip = (pairs) => `<div class="dw-strip">${pairs.map(([l, v]) => `<div><span class="l">${l}</span><span class="v">${esc(v)}</span></div>`).join('')}</div>`;
-  const head = (icon, title, sub) => `<div class="dw-head"><span class="pic dw-pic">${svg(icon)}</span><div class="dw-name"><h2 id="dw-title">${esc(title)}</h2><p>${esc(sub)}</p></div>`
-    + `<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`;
   const m365Label = (m) => (m.label || '').replace('{at}', time(m.at));
   const dcNames = () => (data?.dcs || []).map((d) => d.name);
   const missingSomewhere = (c) => dcNames().some((n) => c.places[n] === 'pending');

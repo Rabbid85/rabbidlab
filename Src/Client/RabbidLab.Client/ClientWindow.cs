@@ -147,15 +147,7 @@ internal sealed class ClientWindow : Form
     protected override void OnHandleCreated(EventArgs e)
     {
         base.OnHandleCreated(e);
-        try
-        {
-            var round = 2; // Windows 11's rounded corners on a window without its own frame
-            DwmSetWindowAttribute(Handle, 33, ref round, sizeof(int));
-        }
-        catch (Exception x) when (x is DllNotFoundException or EntryPointNotFoundException)
-        {
-            // Square corners before Windows 11.
-        }
+        Look.Rounded(Handle);
         // Made at the main screen's scale; opened on another one (where the mouse was), it's drawn at that one's.
         if (Look.Dpi(Handle) is var dpi and > 0 && dpi != DeviceDpi)
         {
@@ -855,8 +847,7 @@ internal sealed class ClientWindow : Form
             return;
         }
         // Dragged by anywhere that isn't a button: the window has no title bar of its own.
-        ReleaseCapture();
-        SendMessage(Handle, 0xA1, (IntPtr) 2, IntPtr.Zero);
+        Look.Drag(Handle);
     }
 
     protected override void OnMouseUp(MouseEventArgs e)
@@ -1024,17 +1015,8 @@ internal sealed class ClientWindow : Form
         }
         var mode = s.Help?.Pictures ?? "all";
         var shots = mode == "never" ? new List<Shot>() : Shot.Screens();
-        asked = new AskWindow(ink, Lab, mode, shots, Facts().Select(f => (f.Label, f.Value)).ToList(), toast) { Owner = this };
+        asked = new AskWindow(ink, mode, shots, Facts().Select(f => (f.Label, f.Value)).ToList(), toast) { Owner = this };
         asked.FormClosed += (_, _) => asked = null;
         asked.Show(this);
     }
-
-    [DllImport("dwmapi.dll")]
-    private static extern int DwmSetWindowAttribute(IntPtr window, int attribute, ref int value, int size);
-
-    [DllImport("user32.dll")]
-    private static extern bool ReleaseCapture();
-
-    [DllImport("user32.dll")]
-    private static extern IntPtr SendMessage(IntPtr window, int message, IntPtr w, IntPtr l);
 }

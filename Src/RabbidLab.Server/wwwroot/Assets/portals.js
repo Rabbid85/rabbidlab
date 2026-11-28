@@ -3,7 +3,7 @@
 // Add a link's arrow: groups, search and ticks, then the group they go in and who sees them. links.js shares R.links.
 (() => {
   const R = window.RabbidLab;
-  const { $, esc, svg, say, has: can } = R;
+  const { $, esc, svg, say, has: can, colour, letter, count: plural, section: sec, strip, closeX } = R;
   const CAT = R.portalCatalog || [];
   const ALL = CAT.flatMap((g) => g.portals);
   const NEW = ' new'; // Add to: a new Admin portals group
@@ -11,11 +11,7 @@
   const groupName = (id) => CAT.find((g) => g.id === id)?.name || '';
   const host = (url) => { try { return new URL(url).host; } catch { return url; } };
   const maker = (p) => (p.group === 'community' ? 'Community' : /apple\.com/.test(p.url) ? 'Apple' : /google\.com/.test(p.url) ? 'Google' : /samsung/.test(p.url) ? 'Samsung' : 'Microsoft');
-  const COLOURS = R.palette.slice(0, 9);
-  const colour = (name) => COLOURS[[...String(name)].reduce((n, c) => (n * 31 + c.charCodeAt(0)) >>> 0, 7) % COLOURS.length];
-  const letter = (name) => esc((String(name).match(/[A-Za-z0-9]/) || ['?'])[0].toUpperCase());
   const face = (p, cls = 'lx-ic') => `<span class="${cls} letter" data-color="${colour(p.name)}"><b>${letter(p.name)}</b></span>`;
-  const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
   const now = () => R.links?.now() || { links: [], groups: [], roles: [] };
   // The link a portal is in Links as, for this person: theirs, or one for everyone or a role they see.
   const linkOf = (p) => now().links.find((l) => l.catalog === p.key) || null;
@@ -117,13 +113,11 @@
 
   // --- One portal in the side panel ---------------------------------------------------------------------------------
 
-  const sec = (title, body) => `<section class="dw-sec"><div class="dw-sec-head"><h3>${title}</h3></div>${body}</section>`;
-  const strip = (pairs) => `<div class="dw-strip">${pairs.map(([l, v]) => `<div><span class="l">${esc(l)}</span><span class="v">${v}</span></div>`).join('')}</div>`;
   const openPortal = (p, again = false) => {
     if (!p) { R.panel.close(); return; }
     const l = linkOf(p);
     R.panel.body.innerHTML = `<div class="dw-head">${face(p, 'pic dw-pic lp-pic')}<div class="dw-name"><h2 id="dw-title">${esc(p.name)}</h2><p>${esc(host(p.url))}</p></div>`
-      + `<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`
+      + `${closeX}</div>`
       + `<div class="dw-bar"><a class="dw-qa" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">${svg('out')}<span>Open</span></a>`
       + (!l && (can('links.own') || can('links.edit')) ? `<button type="button" class="dw-qa" data-lp-star="${esc(p.key)}">${svg('star')}<span>Add to your links</span></button>` : '')
       + (l?.owner ? `<button type="button" class="dw-qa" data-lp-star="${esc(p.key)}">${svg('star')}<span>Remove from your links</span></button>` : '')

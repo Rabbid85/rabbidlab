@@ -4,23 +4,10 @@
 // step as the server does it. Read-only for now.
 (() => {
   const R = window.RabbidLab;
-  const { $, esc, svg, has, get, send, toast, sure, panel } = R;
+  const { $, esc, svg, has, get, send, toast, sure, panel, head, day, stamp, badge, muted, facts, section, none, count: plural, stat, since } = R;
 
-  const day = (iso) => (iso ? new Date(iso).toLocaleDateString([], { dateStyle: 'medium' }) : '');
-  const stamp = (iso) => (iso ? new Date(iso).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '');
-  const since = (iso) => {
-    if (!iso) return '';
-    const m = Math.max(0, Math.round((Date.now() - new Date(iso)) / 60000));
-    return m < 1 ? 'Just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} hours ago` : m < 2880 ? 'Yesterday' : `${Math.round(m / 1440)} days ago`;
-  };
   const time = (iso) => (iso ? new Date(iso).getTime() : 0);
-  const badge = (text, tone) => `<span class="ubadge ${tone}">${esc(text)}</span>`;
-  const muted = (text) => `<span class="muted">${esc(text)}</span>`;
   const mono = (text) => `<span class="mono muted ell">${esc(text || '')}</span>`;
-  const facts = (rows) => `<ul class="does">${rows.filter(Boolean).map(([k, v]) => `<li><b>${esc(k)}</b><span>${v}</span></li>`).join('')}</ul>`;
-  const section = (title, body) => `<section class="dw-sec"><div class="dw-sec-head"><h3>${title}</h3></div>${body}</section>`;
-  const none = (text) => `<p class="muted dw-empty">${esc(text)}</p>`;
-  const plural = (n, one, many = `${one}s`) => `${n.toLocaleString()} ${n === 1 ? one : many}`;
   const who = (icon, name) => `<div class="who"><span class="pic">${svg(icon)}</span><b class="ell">${esc(name || '')}</b></div>`;
   const ENTRA = 'https://entra.microsoft.com/#view';
   const EXO = 'https://admin.exchange.microsoft.com/#';
@@ -256,7 +243,7 @@
   let cloudProblem = '';
   const data = {}; // list path -> { rows, at } | { error }
   const reading = {}; // list path -> the read under way
-  const st = Object.fromEntries(Object.keys(SERVICES).map((k) => [k, { list: Object.keys(SERVICES[k].lists)[0], view: 'all', picked: new Set(), lastTick: null }]));
+  const st = Object.fromEntries(Object.keys(SERVICES).map((k) => [k, { list: Object.keys(SERVICES[k].lists)[0], view: 'all', picked: new Set() }]));
   const showing = () => (SERVICES[R.where()[0]] ? R.where()[0] : '');
   const canSee = () => has('cloud.view');
 
@@ -317,7 +304,6 @@
     wire(k, page);
   });
 
-  const stat = (num, label) => `<div><b>${num === null ? '<i class="sk sk-num"></i>' : num}</b><span>${esc(label)}</span></div>`;
   const shown = (k) => rowsOf(k).filter(SERVICES[k].bar.test());
   const draw = (k) => {
     const s = SERVICES[k];
@@ -455,17 +441,7 @@
   const ticked = (k) => all(L(k)).filter((x) => st[k].picked.has(keyOf(L(k), x)));
   const drawTicks = (k) => {
     const table = $(`cl-${k}-table`);
-    const boxes = [...table.querySelectorAll('[data-cl-tick]')];
-    boxes.forEach((b) => {
-      b.checked = st[k].picked.has(b.dataset.clTick);
-      b.closest('.tr')?.classList.toggle('picked', b.checked);
-    });
-    const head = table.querySelector('[data-cl-tick-all]');
-    if (head) {
-      const n = boxes.filter((b) => b.checked).length;
-      head.checked = !!boxes.length && n === boxes.length;
-      head.indeterminate = n > 0 && n < boxes.length;
-    }
+    R.grid.ticks(table, 'clTick', st[k].picked);
     const n = ticked(k).length;
     const act = $(`cl-${k}-act`);
     act.hidden = !cloud?.connected;
@@ -494,20 +470,9 @@
     });
     $(`cl-${k}-table`).addEventListener('click', (e) => {
       const t = st[k];
-      const box = e.target.closest('.tk')?.querySelector('input');
-      if (box) {
-        if (e.target !== box) return; // the label's own click comes through the box
-        const boxes = [...$(`cl-${k}-table`).querySelectorAll('[data-cl-tick]')];
-        const set = (b) => (box.checked ? t.picked.add(b.dataset.clTick) : t.picked.delete(b.dataset.clTick));
-        if (box.dataset.clTickAll !== undefined) boxes.forEach(set);
-        else {
-          const i = boxes.indexOf(box);
-          const from = e.shiftKey && t.lastTick !== null ? Math.min(t.lastTick, i) : i;
-          const to = e.shiftKey && t.lastTick !== null ? Math.max(t.lastTick, i) : i;
-          boxes.slice(from, to + 1).forEach(set);
-          t.lastTick = i;
-        }
-        drawTicks(k);
+      const ticked = R.grid.tick(e, $(`cl-${k}-table`), 'clTick', t.picked);
+      if (ticked !== null) {
+        if (ticked) drawTicks(k);
         return;
       }
       const row = e.target.closest('[data-cl-row]');
@@ -531,8 +496,6 @@
   // --- A row's side panel, and the connection's ----------------------------------------------------------------------
   let open = null; // { k, list, id } or { connection: true }
   let tab = 'details';
-  const head = (icon, title, sub) => `<div class="dw-head"><span class="pic dw-pic">${svg(icon)}</span><div class="dw-name"><h2 id="dw-title">${esc(title)}</h2><p>${esc(sub)}</p></div>`
-    + `<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`;
   const tabsOf = (list) => `<div class="tabs2 dw-tabs" role="tablist">${list.map(([key, label, n = '']) => `<a role="tab" data-cl-tab="${key}"${tab === key ? ' aria-current="true"' : ''}>${esc(label)}${n === '' || n === 0 ? '' : ` <small>${n}</small>`}</a>`).join('')}</div>`;
   const value = (c, x) => (c.cell ? c.cell(x) : esc(String(c.get(x) ?? '')));
   const openRow = (k, list, id) => {

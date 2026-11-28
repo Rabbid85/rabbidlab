@@ -4,35 +4,23 @@
 (() => {
   const R = window.RabbidLab;
   const D = R.devices;
-  const { $, esc, svg, has, panel, toast, sure, get, send } = R;
+  const { $, esc, svg, has, panel, toast, sure, get, send, chip, section, qa, none, day, listed: and, oops, closeX, below } = R;
 
   const NEEDS = '1.1.183'; // the first client that reads and changes Administrators
   const KIND = { local: 'Local account', localgroup: 'Local group', user: 'Domain user', group: 'Domain group', computer: 'Domain computer', wellknown: 'Windows group', unknown: 'Unknown account' };
   const ICON = { local: 'user', localgroup: 'users', user: 'user', group: 'users', computer: 'monitor', wellknown: 'users', unknown: 'user' };
-  const chip = (text, cls = '', icon = '') => `<span class="uchip ${cls}">${icon ? svg(icon) : ''}${esc(text)}</span>`;
-  const section = (title, body, right = '') => `<section class="dw-sec"><div class="dw-sec-head"><h3>${title}</h3>${right}</div>${body}</section>`;
   const fact = (label, value) => `<div class="dw-fact"><span class="l">${esc(label)}</span><span class="v">${value ? esc(value) : '<span class="muted">Not set</span>'}</span></div>`;
-  const qa = (attr, icon, label) => `<button type="button" class="dw-qa" ${attr}>${svg(icon)}<span>${esc(label)}</span></button>`;
-  const none = (text) => `<p class="muted dw-empty">${esc(text)}</p>`;
   const pic = (kind, cls = 'small') => `<span class="pic ${cls}">${svg(ICON[kind] || 'user')}</span>`;
   const x = (attr, label) => `<button type="button" class="at-more dw-x" ${attr} data-tip="Remove" aria-label="${esc(label)}">${svg('x')}</button>`;
   const del = (attr, label) => `<button type="button" class="at-more dw-x" ${attr} data-tip="Delete" aria-label="${esc(label)}">${svg('trash')}</button>`;
-  const day = (iso) => new Date(iso).toLocaleDateString([], { dateStyle: 'medium' });
   const seen = (iso) => {
     if (!iso) return 'Never signed in';
     const d = Math.floor((Date.now() - new Date(iso)) / 86400000);
     return `Last sign-in ${d < 1 ? 'today' : d < 30 ? `${d} day${d === 1 ? '' : 's'} ago` : day(iso)}`;
   };
-  const and = (list) => (list.length < 2 ? list.join('') : `${list.slice(0, -1).join(', ')} and ${list[list.length - 1]}`);
   const how = (p) => (p.direct && p.via.length ? `Direct member, also through ${and(p.via)}` : p.direct ? 'Direct member' : `Member through ${and(p.via)}`);
   const short = (name) => name.slice(name.indexOf('\\') + 1); // AMW\mwiles -> mwiles
   const prefix = (name) => (name.includes('\\') ? name.slice(0, name.indexOf('\\')) : '');
-  const below = (version, than) => {
-    const [a, b] = [version || '0', than].map((v) => v.split('.').map(Number));
-    for (let i = 0; i < 3; i++) if ((a[i] || 0) !== b[i]) return (a[i] || 0) < b[i];
-    return false;
-  };
-  const oops = (e) => toast('The operation failed.', e.message, { tone: 'warn' });
 
   // --- What's known -----------------------------------------------------------------------------------------------
   let adm = null; // /api/devices/admins: { computers: [{ id, computer, server, online, version, checked, admins, locals }], groups }
@@ -503,32 +491,8 @@
   const deletable = (rows) => rows.filter((r) => r.kind === 'local' && localOf(r) && !localOf(r).builtIn && !ready[r.pc.id]).map((r) => ({ pc: r.pc, name: short(r.name), full: r.name }));
   const drawTicks = () => {
     const table = $(tab === 'people' ? 'dv-adminp' : 'dv-admins');
-    const boxes = [...table.querySelectorAll('[data-adm-tick]')];
-    boxes.forEach((b) => {
-      b.checked = picked.has(b.dataset.admTick);
-      b.closest('.tr')?.classList.toggle('picked', b.checked);
-    });
-    const all = table.querySelector('[data-adm-tick-all]');
-    if (all) {
-      const on = boxes.filter((b) => b.checked).length;
-      all.checked = !!boxes.length && on === boxes.length;
-      all.indeterminate = on > 0 && on < boxes.length;
-    }
+    R.grid.ticks(table, 'admTick', picked);
     D.drawPicked?.();
-  };
-  let lastTick = null;
-  const tick = (table, box, shift) => {
-    const boxes = [...table.querySelectorAll('[data-adm-tick]')];
-    const set = (b) => (box.checked ? picked.add(b.dataset.admTick) : picked.delete(b.dataset.admTick));
-    if (box.dataset.admTickAll !== undefined) boxes.forEach(set);
-    else {
-      const i = boxes.indexOf(box);
-      const from = shift && lastTick !== null ? Math.min(lastTick, i) : i;
-      const to = shift && lastTick !== null ? Math.max(lastTick, i) : i;
-      boxes.slice(from, to + 1).forEach(set);
-      lastTick = i;
-    }
-    drawTicks();
   };
   // The Actions menu (actions.js): taking people out of Administrators, and deleting local accounts last.
   const openActs = (button) => {
@@ -610,7 +574,7 @@
   const markRow = () => document.querySelectorAll('#dv-admins [data-acc-row], #dv-adminp [data-acc-row]').forEach((el) => el.classList.toggle('dw-on', panel.shows('admins', el.dataset.accRow)));
   panel.el.addEventListener('close', markRow);
   const head = (kind, title, sub) => `<div class="dw-head">${pic(kind, 'dw-pic')}<div class="dw-name"><h2 id="dw-title">${esc(title)}</h2><p>${esc(sub)}</p></div>`
-    + `<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`;
+    + `${closeX}</div>`;
   // A computer it's an administrator of, with a take-out button when it was added there directly.
   const pcRow = (c, second, sid = null, name = '') => `<div class="mrow acc-row" data-acc-pc="${esc(c.id)}"><span class="pic small">${svg(c.server ? 'server' : 'monitor')}</span>`
     + `<div class="two"><b>${esc(c.computer)}</b><small>${esc(second)}</small></div>`
@@ -653,9 +617,9 @@
   const sidOn = (c, name) => (c.admins || []).find((m) => m.name.toUpperCase() === name.toUpperCase())?.sid || null;
   for (const id of ['dv-admins', 'dv-adminp']) {
     $(id).addEventListener('click', (e) => {
-      const box = e.target.closest('.tk')?.querySelector('input');
-      if (box) {
-        if (e.target === box) tick($(id), box, e.shiftKey); // the label's own click comes through the box
+      const ticked = R.grid.tick(e, $(id), 'admTick', picked);
+      if (ticked !== null) {
+        if (ticked) drawTicks();
         return;
       }
       const row = e.target.closest('[data-acc-row]');

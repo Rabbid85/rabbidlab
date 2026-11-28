@@ -78,9 +78,9 @@
 /* The dialogs. */
 .dialog .seg.sn-seg { margin: 2px 0 6px; }
 .dialog .seg.sn-seg button { height: 32px; padding: 0 13px; font-size: 13px; }
-#sensor-dialog .dialog-foot, #sview-dialog .dialog-foot, #mail-dialog .dialog-foot { align-items: center; }
-#sensor-dialog .grow, #sview-dialog .grow, #mail-dialog .grow { flex: 1; }
-#sensor-dialog .primary, #mail-dialog .primary { display: inline-flex; align-items: center; gap: 7px; }
+#sensor-dialog .dialog-foot, #sview-dialog .dialog-foot { align-items: center; }
+#sensor-dialog .grow, #sview-dialog .grow { flex: 1; }
+#sensor-dialog .primary { display: inline-flex; align-items: center; gap: 7px; }
 .sv-now { display: flex; align-items: center; gap: 14px; margin: 12px 0 14px; padding: 14px 16px; border: 1px solid color-mix(in srgb, var(--c) 45%, transparent); border-radius: 12px; background: color-mix(in srgb, var(--c) 7%, transparent); }
 .sv-now .big-ic { background: color-mix(in srgb, var(--c) 12%, transparent); color: var(--c); }
 .sv-now b { display: block; color: var(--title); font-size: 15px; }
@@ -147,10 +147,6 @@
 .al-rows .ds-r select { width: 230px; height: 36px; }
 .al-rows .ds-r select:disabled, .al-rows input.switch:disabled { opacity: .45; cursor: default; }
 .form input.switch, .ds-r input.switch { width: 40px; height: 22px; padding: 0; border: 0; border-radius: 22px; } /* the form sizes every input; a switch keeps its own */
-.al-copy { display: flex; justify-content: flex-start; margin-top: -4px; }
-.al-copy .link { color: var(--accent-soft); }
-.al-send .ds-r { max-width: 72%; }
-.al-send .chans { width: min(600px, 100%); grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .ld-alerts { margin-top: 14px; }
 
 /* Find a check, over the kinds. */
@@ -196,23 +192,8 @@
 .sd-more-rows .ds-l > span { font-size: 12.5px; }
 .sd-more-rows select { width: 130px; }
 /* Channels in Settings, Notifications, and the channel dialog. */
-.nt-chs .ds-row { gap: 14px; }
-.nt-new { color: var(--muted); font-size: 12.5px; }
 .ch-kinds { grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 6px 0 16px; }
-.ch-sw .ds-row { min-height: 0; padding: 4px 0 0; border-bottom: 0; } /* On for new sensors, as a settings row */
-#channel-dialog { width: min(720px, calc(100vw - 32px)); }
 
-/* Send to ends with one line to add a channel, with the kinds not set up yet as small marks. */
-.chan-addline { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 8px 12px 8px 16px; border: 1px dashed var(--line-strong); border-radius: 10px;
-  background: none; color: var(--muted); font: inherit; text-align: left; cursor: pointer; }
-.chan-addline > svg { flex: none; width: 16px; height: 16px; }
-.chan-addline > span { display: grid; min-width: 0; }
-.chan-addline b { color: var(--title); font-size: 13.5px; font-weight: 650; }
-.chan-addline small { overflow: hidden; color: var(--muted); font-size: 12px; white-space: nowrap; text-overflow: ellipsis; }
-.chan-addline:hover { border-color: var(--accent-line); background: #131624; color: var(--accent-soft); }
-.chan-minis { display: flex; flex: none; gap: 6px; margin-left: auto; }
-.chan-minis .chan-ic { width: 28px; height: 28px; border-radius: 8px; }
-.chan-minis .chan-ic svg { width: 15px; height: 15px; }
 .chan-ic svg { width: 18px; height: 18px; }
 
 /* One sensor: what it waits on and what waits on it, Send a test alert, and Pause with how long. */
@@ -241,20 +222,6 @@
 /* Waiting on something that's down: grey, not red, and it doesn't add to the count. */
 .s-wait { --c: #8A8FA8; }
 
-/* Use these alerts on other sensors. */
-.cp-dialog { width: min(640px, calc(100vw - 32px)); }
-.cp-find { display: flex; margin: 4px 0 10px; }
-.cp-list { max-height: 420px; overflow: auto; }
-.cp-list .sd-watch { align-items: center; }
-.cp-g { margin-left: auto; padding-left: 12px; color: var(--muted); font-size: 12.5px; white-space: nowrap; }
-#copy-dialog .dialog-foot { align-items: center; }
-#copy-dialog .grow { flex: 1; }
-#copy-dialog .link { color: var(--accent-soft); }
-/* Email picked in Add a channel: the mail server fields, under the kinds. */
-#ch-mail { padding: 18px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); } /* the same box as the webhook fields */
-#ch-mail[hidden] { display: none; }
-#ch-mail .sd-div { display: none; }
-#ch-mail #ml-help { margin: 10px 0 0; }
 .table.dgrid.compact .tr.sn .nm .lic { width: 24px; height: 24px; border-radius: 7px; }
 .table.dgrid.compact .tr.sn .nm .lic img { width: 16px; height: 16px; }
 .table.dgrid.compact .tr.sn .sn-chart { height: 22px; }

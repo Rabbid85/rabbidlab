@@ -6,7 +6,7 @@
 // ranges, the schedule and the SNMP community.
 (() => {
   const R = window.RabbidLab;
-  const { $, esc, svg, has, panel, toast, sure, get, send } = R;
+  const { $, esc, svg, has, panel, toast, sure, get, send, stored: read, count, oops, section, qa, facts, strip, closeX } = R;
 
   const KIND = { router: ['Router', 'router'], switch: ['Switch', 'switch'], ap: ['Access point', 'wifi'], server: ['Server', 'server'], pc: ['PC', 'laptop'],
     printer: ['Printer', 'printer'], camera: ['Camera', 'camera'], phone: ['Phone or tablet', 'phone'], nas: ['NAS', 'disk'], iot: ['Smart device', 'chip'], unknown: ['Unknown', 'unknown'] };
@@ -16,7 +16,6 @@
     445: 'SMB', 515: 'LPD printing', 554: 'RTSP video', 631: 'IPP printing', 902: 'VMware ESXi', 3389: 'Remote Desktop', 5000: 'Web (Synology DSM and others)',
     5001: 'Web, secure (Synology DSM and others)', 5985: 'WinRM', 8000: 'Web (alternate)', 8080: 'Web (alternate)', 9100: 'Raw printing (JetDirect)', 62078: 'Apple device sync' };
   const WEB = { 80: 'http', 443: 'https', 5000: 'http', 5001: 'https', 8000: 'http', 8080: 'http' };
-  const read = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
   const keep = (k, v) => { try { localStorage.setItem(k, v); } catch { /* not kept, then */ } };
 
   let data = null; // /api/network
@@ -28,7 +27,6 @@
   const came = new Map(); // id -> when it came in, for devices found while the page was open
 
   const may = () => has('network.scan');
-  const count = (n, one, many = `${one}s`) => `${n.toLocaleString()} ${n === 1 ? one : many}`;
   const kindOf = (d) => KIND[d.kind] || KIND.unknown;
   const nameOf = (d) => d.name || d.ip;
   const rangeOf = (d) => data?.ranges.find((r) => r.id === d.range);
@@ -355,14 +353,7 @@
     document.querySelectorAll('#net-strips [data-net-cell], #net-maps [data-net-cell]').forEach((el) => el.classList.toggle('on', panel.shows('network', el.dataset.netCell)));
   };
   const drawTicks = () => {
-    const boxes = [...$('net-table').querySelectorAll('[data-net-tick]')];
-    boxes.forEach((b) => { b.checked = picked.has(b.dataset.netTick); b.closest('.tr')?.classList.toggle('picked', b.checked); });
-    const all = $('net-table').querySelector('[data-net-tick-all]');
-    if (all) {
-      const on = boxes.filter((b) => b.checked).length;
-      all.checked = !!boxes.length && on === boxes.length;
-      all.indeterminate = on > 0 && on < boxes.length;
-    }
+    R.grid.ticks($('net-table'), 'netTick', picked);
     const n = picked.size;
     $('net-act').disabled = !n;
     $('net-act').dataset.tip = n ? '' : 'Select devices first';
@@ -441,7 +432,6 @@
   document.addEventListener('rabbidlab:me', () => { if (has('network.view') && R.where()[0] !== 'network') get('/api/network').then((v) => { if (!data) { data = v; wasScan = v.scan; drawRail(); } }).catch(() => {}); });
 
   // --- Doing things --------------------------------------------------------------------------------------------------
-  const oops = (e) => { if (!e.cancelled) toast('The operation failed.', e.message, { tone: 'warn' }); };
   const act = async (work) => {
     acting += 1;
     drawBar();
@@ -504,10 +494,6 @@
   };
 
   // --- A device in the side panel ------------------------------------------------------------------------------------
-  const section = (title, body) => `<section class="dw-sec"><div class="dw-sec-head"><h3>${title}</h3></div>${body}</section>`;
-  const qa = (attr, icon, label) => `<button type="button" class="dw-qa" ${attr}>${svg(icon)}<span>${esc(label)}</span></button>`;
-  const facts = (rows) => `<ul class="does">${rows.filter(Boolean).map(([k, v]) => `<li><b>${esc(k)}</b><span>${v}</span></li>`).join('')}</ul>`;
-  const strip = (pairs) => `<div class="dw-strip">${pairs.map(([l, v]) => `<div><span class="l">${esc(l)}</span><span class="v">${v}</span></div>`).join('')}</div>`;
   const openDevice = (d, again2 = false) => {
     if (!d) return;
     const k = kindOf(d);
@@ -519,7 +505,7 @@
       : `<p class="muted dw-empty">${d.online ? 'None of the common ports checked are open.' : 'Not checked: the device did not answer the last scan.'}</p>`;
     const why = [d.why, d.custom && d.kind !== d.detected ? `The scan detected ${(KIND[d.detected] || KIND.unknown)[0].toLowerCase()}; the type was changed with Edit.` : ''].filter(Boolean).join(' ');
     panel.body.innerHTML = `<div class="dw-head"><span class="pic dw-pic net-pic"${tone(d.kind)}>${svg(k[1])}</span><div class="dw-name"><h2 id="dw-title">${esc(nameOf(d))}</h2>`
-      + `<p>${esc([k[0], d.vendor].filter(Boolean).join(' · '))}</p></div><button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`
+      + `<p>${esc([k[0], d.vendor].filter(Boolean).join(' · '))}</p></div>${closeX}</div>`
       + `<div class="dw-bar">${R.editButton('data-net-edit', may() ? '' : 'Your role does not include changing Network.')}`
       + (d.client && has('seats.view') ? qa('data-net-pc', 'monitor', 'Open in Devices') : '')
       + (noClient(d) && has('seats.add') ? qa('data-net-client', 'download', 'Install the client') : '')
@@ -591,23 +577,10 @@
   $('net-edit-name').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('net-edit-save').click(); });
 
   // --- The list's clicks: ticks, rows, ⋯, Actions, the map, List or Map ----------------------------------------------
-  let lastTick = null;
   $('net-table').addEventListener('click', (e) => {
-    const tk = e.target.closest('.tk');
-    if (tk) {
-      const box = tk.querySelector('input');
-      if (e.target !== box) return; // the label's own click comes through the box
-      const boxes = [...$('net-table').querySelectorAll('[data-net-tick]')];
-      const set = (b) => (box.checked ? picked.add(b.dataset.netTick) : picked.delete(b.dataset.netTick));
-      if (box.dataset.netTickAll !== undefined) boxes.forEach(set);
-      else {
-        const i = boxes.indexOf(box);
-        const from = e.shiftKey && lastTick !== null ? Math.min(lastTick, i) : i;
-        const to = e.shiftKey && lastTick !== null ? Math.max(lastTick, i) : i;
-        boxes.slice(from, to + 1).forEach(set);
-        lastTick = i;
-      }
-      drawTicks();
+    const ticked = R.grid.tick(e, $('net-table'), 'netTick', picked);
+    if (ticked !== null) {
+      if (ticked) drawTicks();
       return;
     }
     const m = e.target.closest('[data-net-more]');

@@ -3,9 +3,7 @@
 // R.picker.menu shows a plain menu. There's one box; it opens under the button that asked and closes on a click elsewhere.
 (() => {
   const R = window.RabbidLab;
-  const { esc, svg } = R;
-  const read = (k) => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch { return null; } };
-  const keep = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* not kept, then */ } };
+  const { esc, svg, saved: read, save: keep } = R;
 
   const box = document.createElement('div');
   box.className = 'gear-menu xpick';

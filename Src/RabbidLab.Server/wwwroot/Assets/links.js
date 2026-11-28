@@ -2,8 +2,7 @@
 // answers. Adding one reads the site for its name, icon and IP. console.js shares its helpers as window.RabbidLab.
 (() => {
   const R = window.RabbidLab;
-  const { $, esc, svg, say, has: can } = R;
-  const COLOURS = R.palette.slice(0, 9); // the grey at the end is left to roles
+  const { $, esc, svg, say, has: can, stored, colour, letter, count, clock: at } = R;
   let links = [];
   let states = {};
   let checks = { every: 60, downAfter: 30 }; // seconds: between checks, and unanswered before a link shows as down
@@ -20,11 +19,8 @@
   let ip = ''; // the IP shown on the tile: looked up from the address, never typed
   let lookRun = 0; // the newest read: an older one's answer is dropped
   let timer = null;
-  const stored = (key) => { try { return localStorage.getItem(key); } catch { return null; } };
   let view = ['grid', 'links', 'icons'].includes(stored('rabbidlab.links.view')) ? stored('rabbidlab.links.view') : 'cards'; // tiles, rows, plain links or icons
 
-  const colour = (name) => COLOURS[[...String(name)].reduce((n, c) => (n * 31 + c.charCodeAt(0)) >>> 0, 7) % COLOURS.length];
-  const letter = (name) => esc((String(name).match(/[A-Za-z0-9]/) || ['?'])[0].toUpperCase());
   const NO_ICON = 'none'; // a link's icon when it's to show none at all; with no icon saved it shows its first letter
   const own = (l) => !!l.icon && l.icon !== NO_ICON; // it has a picture
   const pic = (l) => (own(l) ? `<img src="${esc(l.icon)}" alt="">` : `<b>${letter(l.name)}</b>`);
@@ -165,7 +161,6 @@
 
   // --- The hero: how the links are doing -------------------------------------------------------------------------
 
-  const at = (iso) => (iso ? new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '');
   const checked = (l) => /^https?:/i.test(l.url);
   const EVERY_SHORT = { 15: 'Every 15 sec', 30: 'Every 30 sec', 60: 'Every minute', 300: 'Every 5 min' };
   const drawHero = () => {
@@ -414,7 +409,6 @@
     draw();
   });
   // Import: a file Export made, added beside what's here. The flask covers the links while it goes in.
-  const count = (n, thing) => `${n} ${thing}${n === 1 ? '' : 's'}`;
   // Refresh: every link with a web address has its site read again, four at a time. On Links each
   // tile being read shows the flask and takes what was found as soon as it's back, the way Plex refreshes metadata; in
   // Settings, Links the flask covers the section with how far along it is. One run at a time.

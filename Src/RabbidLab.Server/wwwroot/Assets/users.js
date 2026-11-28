@@ -2,14 +2,11 @@
 // password windows a computer's Accounts tab on Devices uses (accounts.js). console.js shares its helpers as window.RabbidLab.
 (() => {
   const R = window.RabbidLab;
-  const { $, esc, svg, say, initials, sure, has: can, daysAgo: ago } = R;
+  const { $, esc, svg, say, initials, sure, has: can, daysAgo: ago, day, chip, badge, clock, count, fld, ymd, sameText: same, closeX, listed: listOf } = R;
   const ADMINS = 'S-1-5-32-544';
   const DAY = 86400000;
-  const day = (iso) => new Date(iso).toLocaleDateString([], { dateStyle: 'medium' });
   const days = (iso) => Math.floor((new Date(iso) - Date.now()) / DAY);
   const stale = (iso) => !iso || Date.now() - new Date(iso) > 90 * DAY;
-  const chip = (text, cls = '', icon = '') => `<span class="uchip ${cls}">${icon ? svg(icon) : ''}${esc(text)}</span>`;
-  const badge = (text, tone) => `<span class="ubadge ${tone}">${esc(text)}</span>`;
   // A moment on one line: Today 12:04 PM, Yesterday 4:34 PM, Nov 12 1:34 PM. dayOf is its day.
   const dayOf = (iso) => {
     const d = new Date(iso);
@@ -17,7 +14,6 @@
     return back === 0 ? 'Today' : back === 1 ? 'Yesterday'
       : d.toLocaleDateString([], { month: 'short', day: 'numeric', ...(d.getFullYear() === new Date().getFullYear() ? {} : { year: 'numeric' }) });
   };
-  const clock = (iso) => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   const stamp = (iso) => `${dayOf(iso)} ${clock(iso)}`;
   const kindWord = (kind) => (kind === 'ou' ? 'OU' : kind ? kind.charAt(0).toUpperCase() + kind.slice(1) : '');
 
@@ -36,7 +32,6 @@
   const pickedHere = () => picked[adPage] || new Set();
   const keyOf = (x) => String(AD[adPage].key(x));
   const byKey = (key) => (lists[adPage] || []).find((x) => keyOf(x) === key);
-  const count = (n, one, many) => `${n.toLocaleString()} ${n === 1 ? one : many}`;
   // How many are ticked on the Actions button (greyed until there are some), the tick in the heading and each row's
   // highlight, without drawing the list again.
   const drawPicked = () => {
@@ -549,7 +544,6 @@
   const total = {}; // how many each page had when it was last read, for the list down the left
 
   // The filter's fields: what each can be asked, by kind (filter.js has the tests).
-  const fld = (key, label, type, get, o = {}) => ({ key, label, type, get, ...o });
   const OU = (x) => x.where || '';
   const IN = (x) => (x.groups || []).map((g) => g.name);
   AD.users.fields = [
@@ -811,7 +805,6 @@
   // The audit's line: which DCs don't record changes and how to fix that, or whose logs it reads; and how long changes are kept.
   const KEEP = [[30, '30 days'], [90, '90 days'], [365, '1 year']];
   const keepWords = (d) => KEEP.find(([n]) => n === d)?.[1] || `${d} days`;
-  const listOf = (names) => (names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`);
   const auditBanner = ({ dcs = [], keep, windows, account }) => {
     const off = dcs.filter((d) => d.state === 'silent' || d.state === 'denied').map((d) => d.name);
     const down = dcs.filter((d) => d.state === 'unreachable' || d.state === 'error');
@@ -1137,12 +1130,6 @@
     computers: [['name', 'name', 'names', (c) => c.name], ['host', 'DNS host name', 'DNS host names', (c) => c.host], ['dn', 'distinguished name', 'distinguished names', (c) => c.dn]],
   };
   const PIC = { users: 'user', groups: 'users', computers: 'laptop' };
-  // What's left out on each page, one and several, for the line under the menu's heading.
-  const LEFT_OUT = {
-    users: ['protected or built-in account', 'protected or built-in accounts'],
-    groups: ['built-in group', 'built-in groups'],
-    computers: ['domain controller', 'domain controllers'],
-  };
   // An account option's field on the user, and what turning it on or off says afterwards.
   const FLAGS = {
     mustchange: ['mustChange', (w) => `${w} must change password at next sign-in.`, (w) => `Password change requirement cleared for ${w}.`],
@@ -1525,7 +1512,6 @@
 
   // Set account expiration: the last day it works, as ADUC's End of.
   let expFor = [];
-  const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const openExpiry = (us) => {
     expFor = us;
     const one = us.length === 1 ? us[0] : null;
@@ -1795,7 +1781,7 @@
     const why = dwWhy(k, x);
     return `<div class="dw-head">${pic}<div class="dw-name"><h2 id="dw-title">${esc(nameOf(x))}</h2>${sub ? `<p>${esc(sub)}</p>` : ''}</div>`
       + `<div class="dw-do">${edit}${main}<button type="button" class="small" data-dw-more aria-haspopup="menu">Actions${svg('chevron-down', 'chev')}</button></div>`
-      + `<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`
+      + `${closeX}</div>`
       + `<p class="dw-path">${esc([ad.state.domain, x.where].filter(Boolean).join(' / '))}</p>`
       + `<div class="dw-strip">${strip}</div>`
       + `<div class="dw-status">${status}</div>`
@@ -1961,7 +1947,7 @@
         + '<p class="hint problem" id="dws-problem" hidden></p><div class="dws-foot"><button type="button" class="primary" data-dws-save>Save</button></div></section>'
       : s.how ? `<section class="dw-sec"><div class="dw-sec-head"><h3>How to change it</h3><div class="dw-links">${dwsLink(s.key)}</div></div><p class="dw-how">${esc(s.how)}</p></section>` : '';
     return `<div class="dw-head"><span class="pic dw-pic">${svg(AREA_ICON[s.area] || 'shield')}</span><div class="dw-name"><h2 id="dw-title">${esc(s.name)}</h2><p>${esc(s.area)}</p></div>`
-      + `<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`
+      + `${closeX}</div>`
       + `<div class="dw-status">${TONE[s.tone] || ''}</div>`
       + dwFacts('Check', [dwFact('Current', esc(s.now)), dwFact('Recommended', esc(s.recommended)), dwFact('Details', esc(s.about), true)])
       + dwFound(s)
@@ -2056,7 +2042,7 @@
   };
   // AD audit and Recycle Bin rows: what changed (and Open it), or what was deleted (and Restore).
   const dwTop = (icon, name, sub, status) => `<div class="dw-head"><span class="pic dw-pic">${svg(icon)}</span><div class="dw-name"><h2 id="dw-title">${esc(name)}</h2>`
-    + `${sub ? `<p>${esc(sub)}</p>` : ''}</div><button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div><div class="dw-status">${status}</div>`;
+    + `${sub ? `<p>${esc(sub)}</p>` : ''}</div>${closeX}</div><div class="dw-status">${status}</div>`;
   const PAGE_OF = { user: 'users', group: 'groups', computer: 'computers' };
   // An AD audit row: the old value over the new one in full, every value on its own line, the operation's other changes,
   // and the Security event that recorded it (or why there is none).
@@ -2069,7 +2055,7 @@
     const by = c.by ? esc(c.by) : '<span class="muted">Unknown</span>';
     return `<div class="dw-head">${auditPic(c, ' dw-pic')}<div class="dw-name"><h2 id="dw-title">${esc(c.name)}</h2>`
       + `<p>${esc(`${c.label}: ${(WHAT_WORD[c.what] || c.what).toLowerCase()}${c.by ? ` by ${c.by}` : ''}`)}</p></div>`
-      + `<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`
+      + `${closeX}</div>`
       + `<p class="dw-path">${esc([ad.state.domain, c.where].filter(Boolean).join(' / '))}</p>`
       + `<div class="dw-strip"><div><span class="l">When</span><span class="v">${esc(stamp(c.at))}</span></div><div><span class="l">Modified by</span><span class="v">${by}</span></div>`
       + `<div><span class="l">Originating DC</span><span class="v">${c.dc ? esc(c.dc) : '<span class="muted">Unknown</span>'}</span></div>`
@@ -2678,7 +2664,6 @@
   const dnParent = (dn) => { const m = String(dn).match(/^(?:[^,\\]|\\.)*,(.*)$/); return m ? m[1] : ''; };
   const dnName = (dn) => { const first = String(dn).match(/^(?:[^,\\]|\\.)*/)[0]; return first.slice(first.indexOf('=') + 1).replace(/\\(.)/g, '$1'); };
   const isDomain = (dn) => /^DC=/i.test(dn);
-  const same = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
   const pick = { select: null, sel: '', find: '', nodes: [], domain: '' };
   const PICK_LEADS = { 'dset-scope': 'The service account gets Full Control over users, groups and computers in this OU.', 'new-ou': 'Select the OU for the new user.', 'grp-ou': 'Select the OU for the new group.',
     'adset-ou': 'Default OU for new users.', 'adset-gou': 'Default OU for new groups.', 'adset-cou': 'Default OU for new computers.', 'pcnew-ou': 'Select the OU for the new computer account.',

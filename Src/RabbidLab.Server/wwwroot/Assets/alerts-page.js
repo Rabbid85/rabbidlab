@@ -5,13 +5,8 @@
 // learning period. A user's Actions › Alert me about this user, and their Alerts tab (users.js), are about one person.
 (() => {
   const R = window.RabbidLab;
-  const { $, esc, svg, has, panel, toast, sure, get, send } = R;
+  const { $, esc, svg, has, panel, toast, sure, get, send, count, listed: list, section, none, oops, closeX } = R;
   const may = () => has('sensors.alerts');
-  const count = (n, one, many = `${one}s`) => `${n.toLocaleString()} ${n === 1 ? one : many}`;
-  const list = (xs) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
-  const section = (title, body, right = '') => `<section class="dw-sec"><div class="dw-sec-head"><h3>${title}</h3>${right}</div>${body}</section>`;
-  const none = (text) => `<p class="muted dw-empty">${esc(text)}</p>`;
-  const oops = (e) => { if (!e.cancelled) toast('The operation failed.', e.message, { tone: 'warn' }); };
   const same = (a, b) => !!a && !!b && a.toLowerCase() === b.toLowerCase();
   const SEV = { critical: ['Critical', 'red'], warning: ['Warning', 'amber'], info: ['Info', 'grey'] };
   const AREA_ICON = { 'Domain sign-ins': 'lock', 'Active Directory': 'users', Devices: 'monitor', 'Sensors and links': 'activity', Printers: 'printer', 'Connected apps': 'plug', 'Rabbid Lab': 'shield' };
@@ -21,6 +16,7 @@
   const OPS = { is: 'is', isnot: 'is not', oneof: 'is one of', noneof: 'is none of', contains: 'contains', starts: 'starts with', between: 'is between' };
   const PER = { account: 'account', address: 'address', computer: 'computer', group: 'group', all: 'of them together' };
   const DISTINCT = { '': 'times', account: 'different accounts', address: 'different addresses', computer: 'different computers' };
+  R.alertWords = { OPS, DISTINCT }; // for alerts.js, which says a rule the same way
   const HINT = { oneof: 'Values, separated by commas', noneof: 'Values, separated by commas', between: 'Hours, such as 9-17' };
 
   let data = null; // /api/event-alerts
@@ -399,7 +395,7 @@
     const box = panel.body.querySelector('.dw-scroll, .dw-panel');
     const top = panel.body.scrollTop;
     panel.body.innerHTML = `<div class="dw-head">${areaPic(e).replace('class="pic"', 'class="pic dw-pic"')}<div class="dw-name"><h2 id="dw-title">${esc(nameOf(r))}</h2><p>${esc(say(r))}</p></div>`
-      + `<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`
+      + `${closeX}</div>`
       + `<div class="dw-bar">${R.editButton('data-ea-edit', '')}<button type="button" class="dw-qa" data-ea-test>${svg('bell')}<span>Send test</span></button><button type="button" class="dw-qa" data-ea-turn>${svg(r.on ? 'pause' : 'play')}<span>${r.on ? 'Turn off' : 'Turn on'}</span></button>`
       + `<button type="button" class="dw-qa" data-ea-del>${svg('trash')}<span>Delete</span></button></div>`
       + `<div class="dw-strip"><div><span class="l">State</span><span class="v">${r.on ? '<span class="ubadge green">On</span>' : '<span class="ubadge grey">Off</span>'}</span></div><div><span class="l">Severity</span><span class="v">${sevBadge(r.severity)}</span></div>`
@@ -423,7 +419,7 @@
       + `<div class="ea-ask-do">${flow ? `<button type="button" class="primary small" data-ea-approve>${svg('play')}Approve and run</button>` : ''}<button type="button" class="small" data-ea-dismiss>Dismiss</button></div>`)
       : f.approval ? section('Workflow', `<p class="ea-ask">${esc(f.approval === 'approved' ? `Approved and run by ${f.approvalBy}.` : `Dismissed by ${f.approvalBy}.`)}</p>`) : '';
     panel.body.innerHTML = `<div class="dw-head">${sevPic(f.severity, 'pic dw-pic')}<div class="dw-name"><h2 id="dw-title">${esc(f.title)}</h2><p>${esc(`${R.when(f.at)} · ${r ? nameOf(r) : ev(f.event)?.name || f.event}`)}</p></div>`
-      + `<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`
+      + `${closeX}</div>`
       + `<div class="dw-bar">${r ? R.editButton('data-ea-editrule', '') : ''}${f.state === 'new' ? `<button type="button" class="dw-qa" data-ea-ack>${svg('check')}<span>Acknowledge</span></button>` : ''}${r ? `<button type="button" class="dw-qa" data-ea-torule>${svg('bell')}<span>Open the alert</span></button>` : ''}</div>`
       + `<div class="dw-strip"><div><span class="l">State</span><span class="v">${f.state === 'new' ? '<span class="ubadge amber">New</span>' : '<span class="ubadge grey">Acknowledged</span>'}</span></div><div><span class="l">Severity</span><span class="v">${sevBadge(f.severity)}</span></div>`
       + `<div><span class="l">Sent</span><span class="v">${esc(SENT[f.sent] || f.sent)}</span></div><div><span class="l">When</span><span class="v">${esc(R.when(f.at))}</span></div>${f.ackBy ? `<div><span class="l">Acknowledged by</span><span class="v">${esc(f.ackBy)}</span></div>` : ''}</div>`

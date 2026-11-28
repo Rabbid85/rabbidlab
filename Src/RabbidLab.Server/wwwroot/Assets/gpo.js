@@ -6,23 +6,9 @@
 (() => {
   const R = window.RabbidLab;
   const D = R.devices;
-  const { $, esc, svg, has, get, send, toast, sure, panel } = R;
+  const { $, esc, svg, has, get, send, toast, sure, panel, head, day, stamp, badge, muted, facts, section, none, count: plural, oops, stat, since } = R;
 
-  const day = (iso) => (iso ? new Date(iso).toLocaleDateString([], { dateStyle: 'medium' }) : '');
-  const stamp = (iso) => (iso ? new Date(iso).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '');
-  const since = (iso) => {
-    if (!iso) return '';
-    const m = Math.max(0, Math.round((Date.now() - new Date(iso)) / 60000));
-    return m < 1 ? 'Just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} hours ago` : m < 2880 ? 'Yesterday' : `${Math.round(m / 1440)} days ago`;
-  };
-  const badge = (text, tone) => `<span class="ubadge ${tone}">${esc(text)}</span>`;
-  const muted = (text) => `<span class="muted">${esc(text)}</span>`;
-  const facts = (rows) => `<ul class="does">${rows.filter(Boolean).map(([k, v]) => `<li><b>${esc(k)}</b><span>${v}</span></li>`).join('')}</ul>`;
-  const section = (title, body, right = '') => `<section class="dw-sec"><div class="dw-sec-head"><h3>${title}</h3>${right}</div>${body}</section>`;
   const rows2 = (items) => `<div class="dw-list seat-list">${items.map(([a, b, right = '', attr = '']) => `<div class="mrow${attr ? ' acc-row' : ''}" ${attr}><div class="two"><b>${esc(a)}</b><small>${esc(b)}</small></div>${right}</div>`).join('')}</div>`;
-  const none = (text) => `<p class="muted dw-empty">${esc(text)}</p>`;
-  const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
-  const oops = (e) => { if (!e.cancelled) toast('The operation failed.', e.message, { tone: 'warn' }); };
   const WEEK = 7 * 86400000;
 
   // --- What's known --------------------------------------------------------------------------------------------------
@@ -167,7 +153,6 @@
       setTimeout(poll, 2000);
     }, { code: s.command, safe: true });
   };
-  R.installGpmc = installGpmc;
   // Installed, with Windows waiting for a restart: asked once when a page finds it missing, and known after an install.
   let gpmcWaits = null;
   const gpmcWaiting = () => {
@@ -261,7 +246,6 @@
   // The filter bar over the list (filter.js): a search, a chip for each column worth filtering by, and saved filters.
   const gpoBar = R.filter.bar({ el: $('gpo-fbar'), store: 'rabbidlab.gpo', key: () => list, grid: () => g0, noun: () => L().noun, rows: () => L().rows(), redraw: () => draw() });
   const shown = () => L().rows().filter(gpoBar.test());
-  const stat = (num, label) => `<div><b>${num === null ? '<i class="sk sk-num"></i>' : num}</b><span>${esc(label)}</span></div>`;
   let drawnCmds = null; // what the banner's commands are, so a redraw keeps its buttons
   const draw = () => {
     const setup = ad && !ad.state;
@@ -380,17 +364,7 @@
   // --- Ticks, and what Actions does with them --------------------------------------------------------------------
   const tickedRows = () => L().rows().filter((x) => picked.has(L().key(x)));
   const drawTicks = () => {
-    const boxes = [...$('gpo-table').querySelectorAll('[data-gpo-tick]')];
-    boxes.forEach((b) => {
-      b.checked = picked.has(b.dataset.gpoTick);
-      b.closest('.tr')?.classList.toggle('picked', b.checked);
-    });
-    const all = $('gpo-table').querySelector('[data-gpo-tick-all]');
-    if (all) {
-      const on = boxes.filter((b) => b.checked).length;
-      all.checked = !!boxes.length && on === boxes.length;
-      all.indeterminate = on > 0 && on < boxes.length;
-    }
+    R.grid.ticks($('gpo-table'), 'gpoTick', picked);
     const n = tickedRows().length;
     const act = $('gpo-act');
     act.hidden = !canTick() || !gp;
@@ -399,22 +373,10 @@
     act.querySelector('.cnt').textContent = n.toLocaleString();
     act.dataset.tip = n ? `${n} selected` : `Select ${L().noun} first`;
   };
-  let lastTick = null;
   $('gpo-table').addEventListener('click', (e) => {
-    const box = e.target.closest('.tk')?.querySelector('input');
-    if (box) {
-      if (e.target !== box) return; // the label's own click comes through the box
-      const boxes = [...$('gpo-table').querySelectorAll('[data-gpo-tick]')];
-      const set = (b) => (box.checked ? picked.add(b.dataset.gpoTick) : picked.delete(b.dataset.gpoTick));
-      if (box.dataset.gpoTickAll !== undefined) boxes.forEach(set);
-      else {
-        const i = boxes.indexOf(box);
-        const from = e.shiftKey && lastTick !== null ? Math.min(lastTick, i) : i;
-        const to = e.shiftKey && lastTick !== null ? Math.max(lastTick, i) : i;
-        boxes.slice(from, to + 1).forEach(set);
-        lastTick = i;
-      }
-      drawTicks();
+    const ticked = R.grid.tick(e, $('gpo-table'), 'gpoTick', picked);
+    if (ticked !== null) {
+      if (ticked) drawTicks();
       return;
     }
     const row = e.target.closest('[data-gpo-row]');
@@ -454,8 +416,6 @@
   // --- A row's side panel: a GPO, a place, a filter or a backup --------------------------------------------------
   let open = null; // { kind, id }
   let tab = 'details';
-  const head = (icon, title, sub) => `<div class="dw-head"><span class="pic dw-pic">${svg(icon)}</span><div class="dw-name"><h2 id="dw-title">${esc(title)}</h2><p>${esc(sub)}</p></div>`
-    + `<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`;
   const actsButton = (show = true) => (show ? `<div class="dw-bar"><button type="button" class="small dw-acts" data-gpo-menu aria-haspopup="menu">${svg('menu')}Actions${svg('chevron-down', 'chev')}</button></div>` : '');
   const tabs = (list2) => `<div class="tabs2 dw-tabs" role="tablist">${list2.map(([k, label, count = '']) => `<a role="tab" data-gpo-tab="${k}"${tab === k ? ' aria-current="true"' : ''}>${label}${count === '' || count === 0 ? '' : ` <small>${count}</small>`}</a>`).join('')}</div>`;
   const panelGrid = (id, key, cols, rows, sort, tail = null) => {
@@ -1142,17 +1102,7 @@
     row: (c) => ` data-gpl-pc="${esc(c.id)}"`, empty: () => (D.failed() ? 'Could not load the list.' : 'No computers yet.'), loading: D.reading, redraw: () => D.draw(),
   }));
   const drawLocalTicks = () => {
-    const boxes = [...$('dv-gplocal').querySelectorAll('[data-gpl-tick]')];
-    boxes.forEach((b) => {
-      b.checked = ticks.has(b.dataset.gplTick);
-      b.closest('.tr')?.classList.toggle('picked', b.checked);
-    });
-    const all = $('dv-gplocal').querySelector('[data-gpl-tick-all]');
-    if (all) {
-      const on = boxes.filter((b) => b.checked).length;
-      all.checked = !!boxes.length && on === boxes.length;
-      all.indeterminate = on > 0 && on < boxes.length;
-    }
+    R.grid.ticks($('dv-gplocal'), 'gplTick', ticks);
     D.drawPicked?.();
   };
   D.lists.gplocal = ['Group Policy', 'policy', 'Group Policy results and errors for each computer.'];
@@ -1178,22 +1128,10 @@
       },
     },
   };
-  let lastLocal = null;
   $('dv-gplocal').addEventListener('click', (e) => {
-    const box = e.target.closest('.tk')?.querySelector('input');
-    if (box) {
-      if (e.target !== box) return;
-      const boxes = [...$('dv-gplocal').querySelectorAll('[data-gpl-tick]')];
-      const set = (b) => (box.checked ? ticks.add(b.dataset.gplTick) : ticks.delete(b.dataset.gplTick));
-      if (box.dataset.gplTickAll !== undefined) boxes.forEach(set);
-      else {
-        const i = boxes.indexOf(box);
-        const from = e.shiftKey && lastLocal !== null ? Math.min(lastLocal, i) : i;
-        const to = e.shiftKey && lastLocal !== null ? Math.max(lastLocal, i) : i;
-        boxes.slice(from, to + 1).forEach(set);
-        lastLocal = i;
-      }
-      drawLocalTicks();
+    const ticked = R.grid.tick(e, $('dv-gplocal'), 'gplTick', ticks);
+    if (ticked !== null) {
+      if (ticked) drawLocalTicks();
       return;
     }
     const row = e.target.closest('[data-gpl-pc]');

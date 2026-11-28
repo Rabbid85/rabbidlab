@@ -228,10 +228,6 @@
 .lw-f[hidden] { display: none; }
 .lw-f > span:first-child { color: #9DA1B3; font-size: 10.5px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
 .lw-f select { width: 140px; height: 32px; }
-.lw-chips { display: flex; gap: 6px; }
-.lw-chip { display: inline-flex; align-items: center; height: 30px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 8px; background: none; color: #B8BCCB; font: inherit; font-size: 13px; cursor: pointer; }
-.lw-chip.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); color: #fff; }
-.lw-none { color: var(--muted); font-size: 12.5px; line-height: 30px; }
 .lw-bar .primary { display: inline-flex; align-items: center; gap: 7px; }
 .lw-bar .primary svg { width: 15px; height: 15px; }
 .lw-bar .link { color: #B8BCCB; }

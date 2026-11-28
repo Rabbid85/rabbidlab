@@ -3,10 +3,8 @@
 // Actions › Offboard…, asks for the tab and the column, and reads its list again on rabbidlab:offboarded.
 (() => {
   const R = window.RabbidLab;
-  const { $, esc, svg } = R;
+  const { $, esc, svg, count, listed: list } = R;
   const lower = (u) => String(u || '').toLowerCase();
-  const count = (n, one, many) => `${n.toLocaleString()} ${n === 1 ? one : many}`;
-  const list = (xs) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
 
   // --- What the Users list shows: each person's offboarding in brief --------------------------------------------------
   const briefs = new Map(); // username → { status, state, next }
@@ -27,7 +25,6 @@
   };
   const brief = (u) => briefs.get(lower(u));
   const active = (u) => ['scheduled', 'running', 'failed'].includes(brief(u)?.state);
-  const STATE_TONE = { failed: 'red', running: 'amber', scheduled: 'amber', done: 'green' };
   const cell = (u) => {
     const b = brief(u);
     if (!b) return '<span class="muted">-</span>';

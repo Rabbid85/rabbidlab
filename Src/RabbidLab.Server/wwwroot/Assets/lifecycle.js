@@ -3,14 +3,12 @@
 // opens the person on their Offboarding tab; and an account about to expire in Active Directory, with Offboard….
 (() => {
   const R = window.RabbidLab;
-  const { $, esc, svg, has, toast, sure, get, send } = R;
+  const { $, esc, svg, has, toast, sure, get, send, count, oops } = R;
   const DAY = 86400000;
-  const count = (n, one, many) => `${n.toLocaleString()} ${n === 1 ? one : many}`;
   const lower = (s) => String(s || '').toLowerCase();
   const onPage = () => R.where()[0] === 'lifecycle';
   const dayOf = (d) => new Date(d).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
   const timeOf = (d) => new Date(d).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-  const oops = (e) => { if (!e.cancelled) toast('The operation failed.', e.message, { tone: 'warn' }); };
 
   let data = null; // /api/lifecycle
   let users = []; // the Users list other pages keep, for accounts about to expire
@@ -165,6 +163,4 @@
   // Something was scheduled or changed elsewhere: the count beside its name, and the page when it's open.
   ['rabbidlab:lifecycle', 'rabbidlab:undone'].forEach((name) => document.addEventListener(name, () => { if (has('ad.view')) load(); }));
   document.addEventListener('rabbidlab:me', () => { if (has('ad.view') && !data) load(); });
-
-  R.lifecycle = { load };
 })();

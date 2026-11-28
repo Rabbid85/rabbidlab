@@ -2,8 +2,7 @@
 // account. console.js shares its helpers as window.RabbidLab, and users.js the service account setup card.
 (() => {
   const R = window.RabbidLab;
-  const { $, esc, svg, say, initials } = R;
-  const byName = (a, b) => String(a.name || a.username).localeCompare(String(b.name || b.username));
+  const { $, esc, svg, say, initials, closeX, section } = R;
 
   // Whether the service account is set up: asked until it is, then again only after it changes or a read fails.
   let ad = null;
@@ -378,15 +377,14 @@
     const reports = o.kids.get(org.selected) || [];
     const person = (p) => `<div class="mrow acc-row" data-org-go="${esc(keyOf(p.dn))}"><span class="pic small user">${esc(initials(nameOf(p)))}</span>`
       + `<div class="two"><b>${esc(nameOf(p))}</b><small>${esc([p.title, p.department].filter(Boolean).join(' · ') || p.username)}</small></div>${svg('right', 'acc-go')}</div>`;
-    const part = (title, body) => `<section class="dw-sec"><div class="dw-sec-head"><h3>${title}</h3></div>${body}</section>`;
     const line = (label, value) => (value ? `<li><b>${label}</b><span>${esc(value)}</span></li>` : '');
     R.panel.body.innerHTML = `<div class="dw-head"><span class="pic dw-pic user">${esc(initials(nameOf(u)))}</span><div class="dw-name"><h2 id="dw-title">${esc(nameOf(u))}</h2><p>${esc(u.title || u.username)}</p></div>`
-      + `<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`
+      + `${closeX}</div>`
       + `<div class="dw-bar">${org.mode !== 'chart' || org.focus !== org.selected ? `<button type="button" class="dw-qa" data-org-focus="${esc(org.selected)}">${svg('org')}<span>Show only this reporting line</span></button>` : ''}`
       + `<button type="button" class="dw-qa" data-org-open="${esc(u.username)}">${svg('user')}<span>Open in Users</span></button></div>`
-      + part('Details', `<ul class="does">${line('Username', u.username)}${line('Department', u.department || 'Not set')}${line('Email', u.email)}${line('Office', u.office)}${line('Phone', u.phone)}</ul>`)
-      + part('Reports to', boss ? `<div class="dw-list">${person(boss)}</div>` : '<p class="muted dw-empty">No manager set.</p>')
-      + part(`Direct reports <small>${reports.length}</small>`, reports.length ? `<div class="dw-list">${reports.map(person).join('')}</div>` : '<p class="muted dw-empty">No direct reports.</p>');
+      + section('Details', `<ul class="does">${line('Username', u.username)}${line('Department', u.department || 'Not set')}${line('Email', u.email)}${line('Office', u.office)}${line('Phone', u.phone)}</ul>`)
+      + section('Reports to', boss ? `<div class="dw-list">${person(boss)}</div>` : '<p class="muted dw-empty">No manager set.</p>')
+      + section(`Direct reports <small>${reports.length}</small>`, reports.length ? `<div class="dw-list">${reports.map(person).join('')}</div>` : '<p class="muted dw-empty">No direct reports.</p>');
     if (!again) R.panel.open('org', org.selected);
   };
   const orgSelect = (key) => {

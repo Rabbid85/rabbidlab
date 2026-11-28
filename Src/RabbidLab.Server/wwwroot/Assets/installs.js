@@ -4,18 +4,11 @@
 (() => {
   const R = window.RabbidLab;
   const D = R.devices;
-  const { $, esc, svg, has, panel, toast, sure, get, send, say, when } = R;
+  const { $, esc, svg, has, panel, toast, sure, get, send, say, when, BRAKE, many, names, section, none, qa, oops, closeX } = R;
 
-  const BRAKE = 10; // more computers than this, and how many has to be typed
   const CATEGORIES = ['Browsers', 'Developer tools', 'Admin tools', 'Utilities', 'Office', 'Media', 'Runtimes', 'Other'];
   const can = () => has('seats.installs');
-  const many = (n) => `${n.toLocaleString()} computer${n === 1 ? '' : 's'}`;
-  const names = (list) => (list.length <= 4 ? list.map((c) => c.computer).join(', ') : many(list.length));
   const appNames = (list) => (list.length <= 3 ? list.map((a) => a.name).join(', ') : `${list.length} apps`);
-  const section = (title, body, right = '') => `<section class="dw-sec"><div class="dw-sec-head"><h3>${title}</h3>${right}</div>${body}</section>`;
-  const none = (text) => `<p class="muted dw-empty">${esc(text)}</p>`;
-  const qa = (attr, icon, label) => `<button type="button" class="dw-qa" ${attr}>${svg(icon)}<span>${esc(label)}</span></button>`;
-  const oops = (e) => { if (!e.cancelled) toast('The operation failed.', e.message, { tone: 'warn' }); };
   const ms = (iso) => (iso ? new Date(iso).getTime() : 0);
   const byName = (a, b) => a.name.localeCompare(b.name);
   const source = (a) => (a.builtIn ? 'Built-in' : a.by || '');
@@ -62,38 +55,13 @@
 
   // Ticks, like every list: what's ticked goes to Actions.
   const drawTicks = () => {
-    const boxes = [...$('dv-installs').querySelectorAll('[data-app-tick]')];
-    boxes.forEach((b) => {
-      b.checked = picked.has(b.dataset.appTick);
-      b.closest('.tr')?.classList.toggle('picked', b.checked);
-    });
-    const all = $('dv-installs').querySelector('[data-app-tick-all]');
-    if (all) {
-      const on = boxes.filter((b) => b.checked).length;
-      all.checked = !!boxes.length && on === boxes.length;
-      all.indeterminate = on > 0 && on < boxes.length;
-    }
+    R.grid.ticks($('dv-installs'), 'appTick', picked);
     D.drawPicked?.();
   };
-  let lastTick = null;
-  const tick = (box, shift) => {
-    const boxes = [...$('dv-installs').querySelectorAll('[data-app-tick]')];
-    const set = (b) => (box.checked ? picked.add(b.dataset.appTick) : picked.delete(b.dataset.appTick));
-    if (box.dataset.appTickAll !== undefined) boxes.forEach(set);
-    else {
-      const i = boxes.indexOf(box);
-      const from = shift && lastTick !== null ? Math.min(lastTick, i) : i;
-      const to = shift && lastTick !== null ? Math.max(lastTick, i) : i;
-      boxes.slice(from, to + 1).forEach(set);
-      lastTick = i;
-    }
-    drawTicks();
-  };
   $('dv-installs').addEventListener('click', (e) => {
-    const tk = e.target.closest('.tk');
-    if (tk) {
-      const box = tk.querySelector('input');
-      if (e.target === box) tick(box, e.shiftKey); // the label's own click comes through the box
+    const ticked = R.grid.tick(e, $('dv-installs'), 'appTick', picked);
+    if (ticked !== null) {
+      if (ticked) drawTicks();
       return;
     }
     const row = e.target.closest('[data-row]');
@@ -134,7 +102,7 @@
     const extras = a.extensions.length ? `<p class="dw-how">Also adds ${esc(a.extensions.map((x) => x.name).join(', '))} to VS Code for each user of the computer. The signed-in user gets it immediately, and other users at their first sign-in. It is added once per user, so if a user removes it, it is not added again.</p>`
       + `<pre class="code-box">${a.extensions.map((x) => `code --install-extension ${esc(x.id)}`).join('\n')}</pre>` : '';
     panel.body.innerHTML = `<div class="dw-head"><span class="pic dw-pic">${svg('box')}</span><div class="dw-name"><h2 id="dw-title">${esc(a.name)}</h2><p>${esc([a.publisher, a.winget].filter(Boolean).join(' · '))}</p></div>`
-      + `<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`
+      + `${closeX}</div>`
       + `<div class="dw-bar">${R.editButton('data-app-edit', a.builtIn ? 'Built-in apps cannot be edited.' : '')}${qa('data-app-install', 'download', 'Install…')}${a.builtIn ? '' : qa('data-app-del', 'trash', 'Delete')}</div>`
       + `<div class="dw-strip">${strip}</div>`
       + section('About', `<p class="dw-how">${esc(a.about || 'No description.')}</p><p class="dw-how">winget installs the app for all users as SYSTEM. If the app is already installed, it is updated.</p>${extras}`)

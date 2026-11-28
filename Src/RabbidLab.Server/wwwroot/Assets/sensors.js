@@ -3,7 +3,7 @@
 // console.js shares its helpers as window.RabbidLab.
 (() => {
   const R = window.RabbidLab;
-  const { $, esc, svg, say, has: can } = R;
+  const { $, esc, svg, say, has: can, stored, listed: and, mins } = R;
   const KIND = { ping: 'Ping', port: 'Port', web: 'Web page', dns: 'DNS lookup', cert: 'Certificate', hw: 'Server hardware', nas: 'Storage', vmware: 'VMware', snmp: 'SNMP', svc: 'Windows service', disk: 'Disk space' };
   const WORD = { up: 'Up', down: 'Down', warn: 'Warning', paused: 'Paused', new: 'Pending', wait: 'Unreachable' };
   // A sensor's icon when it doesn't watch a link with one, and the badge on its corner for how it is.
@@ -20,7 +20,6 @@
   let lastCheck = null;
   let timer = null;
 
-  const stored = (key) => { try { return localStorage.getItem(key); } catch { return null; } };
   const store = (key, value) => { try { localStorage.setItem(key, value); } catch { /* private browsing: it lasts until the page closes */ } };
   let view = stored('rabbidlab.sensors.view') === 'grid' ? 'grid' : 'cards';
 
@@ -48,7 +47,6 @@
   };
   // When it alerts, in a few words: After 5 min, Right away, Never.
   const alertShort = (a) => (!a ? '' : a.after < 0 ? 'Never' : a.after === 0 ? 'Immediately' : `After ${a.after === 60 ? '1 hour' : `${a.after} min`}`);
-  const notAnswering = (s) => s.status === 'down' || s.status === 'wait';
   const percent = (p) => (p == null ? '' : `${p === 100 ? 100 : p.toFixed(p > 99.9 ? 2 : 1)}%`);
   const paint = (root) => {
     R.paint(root);
@@ -349,7 +347,6 @@
   const EVENT = { down: ['Down', 's-down'], up: ['Up', 's-up'], warn: ['Warning', 's-warn'], email: ['Alert sent', 's-new'], problem: ['Alert failed', 's-down'],
     pause: ['Paused', 's-paused'], resume: ['Resumed', 's-new'] };
   // Names as a list: a, b and c.
-  const and = (names) => (names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`);
   // What depends on a sensor, directly or through others.
   const behindOf = (id) => {
     const found = [];
@@ -659,7 +656,6 @@
   let types = [];
   let startType = '';
   const typeOf = (id) => types.find((t) => t.id === id);
-  const mins = (m) => (m === 60 ? '1 hour' : m === 1 ? '1 minute' : `${m} minutes`);
   // An alert type in words: After 5 minutes down, once, and an all-clear when it's back, to Rabbid Lab Links.
   const typeWords = (id) => {
     const t = typeOf(id);

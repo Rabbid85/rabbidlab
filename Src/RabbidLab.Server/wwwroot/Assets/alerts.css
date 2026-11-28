@@ -67,9 +67,6 @@
 /* Edit a rule: the rows, and what follows it with a way to make the rest follow it too. */
 .rl-rows { margin-top: 10px; }
 .rl-rows .ds-row + .ds-row { border-top: 1px solid var(--line); }
-.rl-follow { display: flex; align-items: center; gap: 12px; margin-top: 12px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: #0F111A; color: var(--muted); font-size: 13px; }
-.rl-follow b { color: #E6E8F2; }
-.rl-follow .ds-btn { flex: none; height: 32px; padding: 0 12px; font-size: 13px; }
 
 /* Notifications: a bar with Find and Add, then each one by its name, in groups by kind. */
 .nt-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 22px 0 18px; }
@@ -133,7 +130,6 @@
 .hrow .held { color: #F2BE6B; font-size: 12px; font-weight: 650; }
 
 /* The watch bar on Links says what the watched-link rule does. */
-.lw-rule { max-width: 420px; overflow: hidden; color: var(--muted); font-size: 12.5px; white-space: nowrap; text-overflow: ellipsis; }
 .nt-bar .grow { flex: 1; }
 #nf-mail, #nf-hook { margin-top: 12px; }
 

@@ -2,6 +2,12 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.442 (2026-11-27)
+
+- Cleanup behind the pages, with nothing meant to look or work differently: the small parts that many pages draw the same way are written once and shared, lists share one piece of code for their tick boxes, and unused code and styles are gone.
+- Fixed: on Local admins, cancelling a change that asks you to confirm no longer shows The operation failed.
+- Counts of 1,000 or more in Group Policy, Portals, Roles and Sync show a thousands separator, as the other pages do.
+
 ## 1.1.441 (2026-11-27)
 
 - Fixed: on Links and Sensors the list under the banner ran to the very edge of the sidebar. It starts and ends where the banner does again, as it did before 1.1.433.

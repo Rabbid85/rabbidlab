@@ -452,7 +452,7 @@ public sealed class SyncEngine(DirectoryTools tools, IReplicator replicator, Dev
             }
             if (live.What != "dcs")
             {
-                after = await SyncM365(live, dcs, after, since, failed, stop) ?? after;
+                after = await SyncM365(live, after, since, failed, stop) ?? after;
             }
             var f = file.Read();
             f.Last = live.Started;
@@ -609,7 +609,7 @@ public sealed class SyncEngine(DirectoryTools tools, IReplicator replicator, Dev
         Save(events);
     }
 
-    private async Task<SyncScan?> SyncM365(Live live, List<SyncDc> dcs, SyncScan scan, DateTime since, List<string> failed, CancellationToken stop)
+    private async Task<SyncScan?> SyncM365(Live live, SyncScan scan, DateTime since, List<string> failed, CancellationToken stop)
     {
         var server = await tools.EntraServer(stop);
         if (server is null)

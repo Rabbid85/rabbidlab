@@ -3,6 +3,10 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.442', [
+    'Cleanup behind the pages, with nothing meant to look or work differently: the small parts that many pages draw the same way are written once and shared, lists share one piece of code for their tick boxes, and unused code and styles are gone.',
+    'Fixed: on Local admins, cancelling a change that asks you to confirm no longer shows The operation failed.',
+    'Counts of 1,000 or more in Group Policy, Portals, Roles and Sync show a thousands separator, as the other pages do.']],
   ['1.1.441', [
     'Fixed: on Links and Sensors the list under the banner ran to the very edge of the sidebar. It starts and ends where the banner does again, as it did before 1.1.433.']],
   ['1.1.440', [
@@ -1413,6 +1417,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.442': ['2026-11-27', 'update', 'Less code behind the pages'],
   '1.1.441': ['2026-11-27', 'fix', 'Links and Sensors line up with their banner again'],
   '1.1.440': ['2026-11-27', 'fix', 'The banner goes by sunrise and sunset'],
   '1.1.439': ['2026-11-27', 'update', 'The client download knows its server'],
@@ -1870,7 +1875,18 @@ const RELEASE_INFO = {
 (() => {
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-  const when = (iso) => (iso ? new Date(iso).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : 'never');
+  // Dates as every page says them: the day, the time, both, how long ago, and a day as a date box wants it. Nothing for
+  // no date; when says never.
+  const day = (iso) => (iso ? new Date(iso).toLocaleDateString([], { dateStyle: 'medium' }) : '');
+  const clock = (iso) => (iso ? new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '');
+  const stamp = (iso) => (iso ? new Date(iso).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '');
+  const when = (iso) => stamp(iso) || 'never';
+  const since = (iso) => {
+    if (!iso) return '';
+    const m = Math.max(0, Math.round((Date.now() - new Date(iso)) / 60000));
+    return m < 1 ? 'Just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} hours ago` : m < 2880 ? 'Yesterday' : `${Math.round(m / 1440)} days ago`;
+  };
+  const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const mb = (n) => (n / 1048576).toFixed(1) + ' MB';
   const svg = (id, cls = '') => `<svg${cls ? ` class="${cls}"` : ''}><use href="#i-${id}"/></svg>`;
   // Shows a line of text in an element, or hides it when there's nothing to say.
@@ -1887,7 +1903,7 @@ const RELEASE_INFO = {
   const daysAgo = (iso, never = 'Never') => {
     if (!iso) return never;
     const d = Math.floor((Date.now() - new Date(iso)) / 86400000);
-    return d < 1 ? 'Today' : d === 1 ? 'Yesterday' : d < 60 ? `${d} days ago` : new Date(iso).toLocaleDateString([], { dateStyle: 'medium' });
+    return d < 1 ? 'Today' : d === 1 ? 'Yesterday' : d < 60 ? `${d} days ago` : day(iso);
   };
   const headers = { 'X-Rabbid-Lab': '1', 'Content-Type': 'application/json', Accept: 'application/json' };
   // A session that ended (signed out elsewhere, or a password changed) goes back to the sign-in page.
@@ -2430,7 +2446,7 @@ const RELEASE_INFO = {
 
   // An update under way takes the status card's place, and shows in a dialog mid screen: download, install, restart.
   // Phase null puts the status card back.
-  let since = 0; // when installing began
+  let installSince = 0; // when installing began
   let heard = 0; // when the server last answered this page
   let began = 0; // when this page first saw the update under way
   let dl = null; // the download so far, { got, total } in bytes
@@ -2451,7 +2467,7 @@ const RELEASE_INFO = {
     if (!on) {
       clearInterval(tick);
       tick = null;
-      since = 0;
+      installSince = 0;
       began = 0;
       dl = null;
       if ($('update-dialog').open) $('update-dialog').close();
@@ -2476,7 +2492,7 @@ const RELEASE_INFO = {
       : 'Downloading the update. You can keep using Rabbid Lab until the installation starts.';
     const size = dl?.total ? mb(dl.total) : '';
     const notes = [phase === 'download' ? (size && `${mb(dl.got)} of ${size}`) : size,
-      done ? (since ? `Completed in ${secs(Date.now() - since)} s` : '') : phase === 'install' ? 'Less than a minute' : '',
+      done ? (installSince ? `Completed in ${secs(Date.now() - installSince)} s` : '') : phase === 'install' ? 'Less than a minute' : '',
       done ? 'Loading the new version' : 'The page reloads'];
     // How far each step has got: the line into the next dot fills with it.
     const part = [phase === 'download' ? (dl?.total ? dl.got / dl.total : 0) : 1, done ? 1 : phase === 'install' ? Math.max(0, (pct - 66) / 32) : 0];
@@ -2490,8 +2506,8 @@ const RELEASE_INFO = {
     });
     // Done: how long it took comes up in the foot, which keeps one height, so the window keeps its size.
     // Counted from when installing began, which every page was told, so they all say the same.
-    $('updlg-took').hidden = !(done && since);
-    if (done && since) $('updlg-took').replaceChildren('Completed in ', Object.assign(document.createElement('b'), { textContent: took(secs(Date.now() - since)) }));
+    $('updlg-took').hidden = !(done && installSince);
+    if (done && installSince) $('updlg-took').replaceChildren('Completed in ', Object.assign(document.createElement('b'), { textContent: took(secs(Date.now() - installSince)) }));
     if (!$('update-dialog').open) $('update-dialog').showModal();
     const n = Math.min(100, pct);
     const p = `${Math.round(n)}%`;
@@ -2512,9 +2528,9 @@ const RELEASE_INFO = {
   // server said installing began. It says so a few seconds before it stops, so every page open on the console counts
   // from the same moment and shows the same number.
   const installing = (version, forSeconds) => {
-    if (forSeconds != null) since = Date.now() - forSeconds * 1000;
-    since ||= heard || Date.now();
-    bar('install', 66 + 32 * (1 - Math.exp(-(Date.now() - since) / 12000)), version, last ? `From ${last.version}` : '');
+    if (forSeconds != null) installSince = Date.now() - forSeconds * 1000;
+    installSince ||= heard || Date.now();
+    bar('install', 66 + 32 * (1 - Math.exp(-(Date.now() - installSince) / 12000)), version, last ? `From ${last.version}` : '');
     tick ||= setInterval(() => installing(version), 250);
   };
 
@@ -3006,7 +3022,7 @@ const RELEASE_INFO = {
     return `<div class="dw-head"><span class="pic dw-pic">${svg(e.change ? 'history' : icon)}</span><div class="dw-name"><h2 id="dw-title">${esc(e.title)}</h2>`
       + `<p>${esc([c?.object?.name, when(e.at)].filter(Boolean).join(' · '))}</p></div>`
       + `<div class="dw-do">${can ? `<button type="button" class="primary" data-al-undo>${svg('history')}Undo</button>` : ''}</div>`
-      + `<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`
+      + `${closeX}</div>`
       + `<div class="dw-strip"><div><span class="l">Result</span><span class="v"><span class="ubadge ${tone}">${result}</span></span></div>`
       + `<div><span class="l">By</span><span class="v">${esc(e.by)}</span></div><div><span class="l">When</span><span class="v">${esc(when(e.at))}</span></div>`
       + (e.from ? `<div><span class="l">From</span><span class="v">${esc(e.from)}</span></div>` : '')
@@ -3083,21 +3099,8 @@ const RELEASE_INFO = {
   };
   const forget = () => kept.clear();
 
-  // --- What the pages share: popup cards, search lists, Are you sure, and Copy ------------------------------------
+  // --- What the pages share: search lists, Are you sure, and Copy -------------------------------------------------
 
-  // Puts a popup card under the row it's for, inside its page.
-  const place = (box, near, pageEl, dx = 0) => {
-    const pg = pageEl.getBoundingClientRect();
-    const r = near.getBoundingClientRect();
-    box.hidden = false;
-    box.style.top = `${r.bottom - pg.top + 6}px`;
-    box.style.left = `${Math.max(12, Math.min(r.left - pg.left + dx, pg.width - box.offsetWidth - 16))}px`;
-  };
-  // Closes popup cards on Escape and on a click outside them; inside is a selector for what doesn't close them.
-  const popups = (inside, close) => {
-    document.addEventListener('click', (e) => { if (!e.target.closest(`${inside}, dialog`)) close(); });
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !document.querySelector('dialog[open]')) close(); });
-  };
   // One line of a search list: a picture, a name and a detail.
   const option = (attrs, pic, name, detail) => `<button type="button" class="opt"${attrs}>${pic}<span class="t"><b>${esc(name)}</b><span>${esc(detail || '')}</span></span></button>`;
   // A search box ([data-find]) over a list ([data-drop]) in host: find(text) gets the matches, draw(item, i) a line with data-pick, pick(item) the choice.
@@ -4550,7 +4553,6 @@ const RELEASE_INFO = {
     let seatInv = null; // its whole inventory once the server answered: { inventory }, where inventory is null when it has sent none
     const markSeat = () => document.querySelectorAll('#page-seats [data-client], #page-seats [data-thing]').forEach((el) => el.classList.toggle('dw-on', panel.shows('seats', el.dataset.client || el.dataset.thing)));
     panel.el.addEventListener('close', markSeat);
-    const clock = (iso) => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
     const drawSeat = () => {
       const st = stateOf(seat);
       // This server has no client: nothing to approve, remove or uninstall, and no inventory yet.
@@ -4575,11 +4577,10 @@ const RELEASE_INFO = {
       // What its client sent: the hardware on Summary, and a tab each for its software and its Windows updates.
       const inv = seatInv?.inventory;
       const list = (rows2) => `<div class="dw-list seat-list">${rows2.map(([a, b, tone]) => `<div class="mrow"><div class="two"><b>${esc(a)}</b><small>${esc(b)}</small></div>${tone ? `<span class="state ${tone[0]}">${esc(tone[1])}</span>` : ''}</div>`).join('')}</div>`;
-      const none = (text) => `<p class="muted dw-empty">${esc(text)}</p>`;
+      const { none, section } = window.RabbidLab; // parts.js
       // Placeholder rows until the server answers; then why there's nothing.
       const waitingFor = !seatInv ? '<div data-seat-skel></div>' : none(seatInv.error ? `Could not read the inventory from this computer. ${seatInv.error}`
         : 'No inventory received yet. Computers send their inventory within 30 minutes of approval (client 1.1.165 or later).');
-      const section = (title, body, right = '') => `<section class="dw-sec"><div class="dw-sec-head"><h3>${title}</h3>${right}</div>${body}</section>`;
       const facts2 = (rows2) => `<ul class="does">${rows2.filter(Boolean).map(([k, v]) => `<li><b>${esc(k)}</b><span>${esc(v)}</span></li>`).join('')}</ul>`;
       const tabs = st === 'waiting' ? '' : `<div class="tabs2 dw-tabs" role="tablist">${[['summary', 'Summary', ''],
         ...(seat.server ? [] : [['software', 'Software', inv ? inv.software.length : ''], ['updates', 'Updates', inv?.missingChecked ? inv.missing.filter((u) => !u.definition).length : '']]), ...(dvHooks.seatTabs?.(seat) || [])]
@@ -4627,7 +4628,7 @@ const RELEASE_INFO = {
         seat.server || missing === null ? null : ['Updates', missing ? `<span class="state waiting">${missing} missing</span>` : '<span class="state">Up to date</span>'],
         seat.server ? null : ['Last seen', esc(ago(seat.lastSeen))]].filter(Boolean).map(([l, v]) => `<div><span class="l">${l}</span><span class="v">${v}</span></div>`).join('');
       const html = `<div class="dw-head"><span class="pic dw-pic">${svg(seat.server ? 'server' : 'monitor')}</span><div class="dw-name"><h2 id="dw-title">${esc(seat.computer)}</h2>`
-        + `${model ? `<p>${esc(model)}</p>` : ''}</div>${acts ? `<div class="dw-do">${acts}</div>` : ''}<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`
+        + `${model ? `<p>${esc(model)}</p>` : ''}</div>${acts ? `<div class="dw-do">${acts}</div>` : ''}${closeX}</div>`
         + `<div class="dw-strip">${strip}</div>${tabs}${pane}`;
       // Devices read again with nothing new for this computer: the panel stays as it is.
       if (dvLive && html === seatDrawn.html && seatDrawn.head && panel.body.contains(seatDrawn.head)) return;
@@ -5963,6 +5964,8 @@ const RELEASE_INFO = {
     box.dispatchEvent(new Event('change', { bubbles: true }));
   });
 
+  // A side panel's ×, in the corner of its head.
+  const closeX = `<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button>`;
   // A side panel's Edit: the orange button with the pencil, first at the end of the name (arrange). With why (your role
   // can't, or it's built in) it stays there, grey, with why as its hint, and does nothing.
   const editButton = (attrs, why = '') => (why
@@ -5970,14 +5973,14 @@ const RELEASE_INFO = {
     : `<button type="button" class="primary dw-edit" ${attrs}>${svg('edit')}<span>Edit</span></button>`);
 
   // What the other scripts use. Hints are tips.js and data grids are grid.js.
-  window.RabbidLab = { app: () => product, $, esc, svg, say, initials, when, daysAgo, send, get, keep, forget, has, paint, where, viewAs, place, popups, option, dropdown, sure, newLabel, copy, busy, refresh, live, groupTools, skeleton, toast, undo, stepper, panel, editButton,
+  window.RabbidLab = { app: () => product, $, esc, svg, say, initials, when, daysAgo, day, clock, stamp, since, ymd, fld, send, get, keep, forget, has, paint, where, viewAs, option, dropdown, sure, newLabel, copy, busy, refresh, live, groupTools, skeleton, toast, undo, stepper, panel, closeX, editButton,
     palette: window.RabbidLabColours.roles, me: () => meInfo,
     // For the dashboard (dashboard.js): every version with its date, kind and title, the tag of a kind, and This machine.
     releases: () => RELEASE_NOTES.map(release), relTag, machine,
     activityKinds: AL_KINDS, activityKind: (area) => AREA_KIND[area] || 'admin', // the Activity log's kinds, for report.js
     // The Devices page, for devices.js: its lists, what's ticked, and drawing or reading it again. failed() is why the
     // last read didn't work, so a list stops waiting for it; reading() is true until the computers are first read.
-    devices: { lists: DV, more: dvMore, hooks: dvHooks, picked: dvPicked, computers: () => computers, rows: () => dvAll(), at: () => dvAt, shown: () => dvShown, grid: () => dvGrid(),
+    devices: { lists: DV, more: dvMore, hooks: dvHooks, picked: dvPicked, computers: () => computers, rows: () => dvAll(), at: () => dvAt, grid: () => dvGrid(),
       failed: () => dvFailed, reading: () => !computersRead && !dvFailed,
       draw: () => drawSeats(), reload: () => seats(), panelAgain: () => seatPanel?.(), open: (id, tab = 'summary') => seatOn?.(id, tab), stateOf } };
 })();

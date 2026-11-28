@@ -5,13 +5,10 @@
 // over the list. kind is the view open: all, dc, server or pc.
 (() => {
   const R = window.RabbidLab;
-  const { $, esc, svg } = R;
-  const count = (n, one, many) => `${n.toLocaleString()} ${n === 1 ? one : many}`;
-  const list = (xs) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
+  const { $, esc, svg, count, listed: list, muted, clock: time, closeX } = R;
   // A few names, then how many more, in words: "PC01, PC02, PC03 and 12 more".
   const some = (xs, max = 3) => (xs.length <= max + 1 ? list(xs) : `${xs.slice(0, max).join(', ')} and ${xs.length - max} more`);
   const badge = (text, tone, tip = '') => `<span class="ubadge ${tone}"${tip ? ` data-tip="${esc(tip)}"` : ''}>${esc(text)}</span>`;
-  const muted = (t) => `<span class="muted">${esc(t)}</span>`;
   const DC_GPO_ID = '{6AC1786C-016F-11D2-945F-00C04FB984F9}'; // Default Domain Controllers Policy
   const DC_GPO = 'Default Domain Controllers Policy';
   const MEMBER_GPO = 'A GPO linked to the servers’ and PCs’ OUs';
@@ -20,7 +17,6 @@
   const WORDS = { all: ['computer', 'computers'], dc: ['domain controller', 'domain controllers'], server: ['server', 'servers'], pc: ['PC', 'PCs'] };
   const TYPE = { dc: 'Domain controller', server: 'Server', pc: 'PC' };
   const REMOTE_PATHS = 'Network access: Remotely accessible registry paths and subpaths';
-  const time = (iso) => (iso ? new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '');
   const today = (iso) => iso && new Date(iso).toDateString() === new Date().toDateString();
   const at = (iso) => (!iso ? 'Never' : today(iso) ? time(iso) : R.when(iso));
   const words = (n, kind) => count(n, ...WORDS[kind]);
@@ -194,7 +190,7 @@
       + '<p class="dw-how">Computers apply the change at their next Group Policy refresh (within 5 minutes on DCs, 90 minutes on others), or run gpupdate /force on each one. Then select Re-check.</p></section>' : '';
     const forWhom = s.kinds.length === 3 ? 'Every computer' : s.kinds.map((k) => WORDS[k][1].charAt(0).toUpperCase() + WORDS[k][1].slice(1)).join(' and ');
     return `<div class="dw-head"><span class="pic dw-pic">${svg('shield')}</span><div class="dw-name"><h2 id="dw-title">${esc(s.name)}</h2><p>${esc(forWhom)} · Severity: ${esc(s.severity)}</p></div>`
-      + `<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`
+      + `${closeX}</div>`
       + `<div class="dw-status">${top}</div>`
       + `<div class="dw-bar"><button type="button" class="dw-qa" data-dcs-recheck>${svg('refresh')}<span>Re-check</span></button>${gpo}`
       + `<button type="button" class="dw-qa" data-dcs-copy>${svg('copy')}<span>Copy path</span></button></div>`

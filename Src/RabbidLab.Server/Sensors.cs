@@ -657,8 +657,6 @@ public sealed partial class Sensors(DataFolder folder, TimeProvider clock, ISens
         return r;
     }
 
-    private static AlertRule Own(RuleForm form) => Timed(new AlertRule { Id = "custom", Name = "Custom", Color = "#8A8FA8" }, form);
-
     private static AlertRule Own(AlertRule r) => new() { Id = "custom", Name = "Custom", Color = "#8A8FA8", After = r.After, Again = r.Again, Back = r.Back };
 
     // When a sensor alerts: its alert type's times, never, or for one from before alert types, its rule's, its own, or a saved setting.

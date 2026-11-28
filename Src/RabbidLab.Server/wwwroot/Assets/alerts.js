@@ -3,7 +3,7 @@
 // the dialog that adds one. Alerts.cs and Channels.cs on the server.
 (() => {
   const R = window.RabbidLab;
-  const { $, esc, svg, say, has: can, panel } = R;
+  const { $, esc, svg, say, has: can, panel, listed: and, mins, section: sec, closeX } = R;
 
   // --- Notifications: the list, their marks, and words for them ----------------------------------------------------------
 
@@ -22,7 +22,6 @@
   // What sends it, as a tag: Gmail, Mail server, Microsoft 365, Webhook or Topic.
   const how = (n) => (n.kind === 'email' ? { gmail: 'Gmail', m365: 'Microsoft 365' }[n.mail?.provider] || 'Mail server' : n.kind === 'ntfy' ? 'Topic' : 'Webhook');
   const named = (id) => notes?.channels.find((n) => n.id === id);
-  const and = (names) => (names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`);
   const words = (ids) => and((ids || []).map((id) => named(id)?.name).filter(Boolean));
   const chip = (n) => `<span class="np-chip"><span class="chan-ic ${n.kind}">${mark(n.kind)}</span>${esc(n.name)}</span>`;
   let notesWrong = ''; // why the last read of them failed; what was read before stays
@@ -373,10 +372,8 @@
   const TONE = { critical: 'red', warning: 'amber', info: 'grey' };
   const STATE = { on: 'Alerts', off: 'Logged only', none: 'Not detected' };
   const FIELD = { account: 'account', address: 'address', computer: 'computer', reason: 'reason', group: 'group', object: 'object', kind: 'kind of object', by: 'changed by', hour: 'hour', day: 'day' };
-  const OPS = { is: 'is', isnot: 'is not', oneof: 'is one of', noneof: 'is none of', contains: 'contains', starts: 'starts with', between: 'is between' };
   const PER = { account: 'account', address: 'address', computer: 'computer', group: 'group' };
-  const DISTINCT = { '': 'times', account: 'different accounts', address: 'different addresses', computer: 'different computers' };
-  const mins = (m) => (m === 60 ? '1 hour' : m === 1 ? '1 minute' : `${m} minutes`);
+  const { OPS, DISTINCT } = R.alertWords; // alerts-page.js
   const EVERY = { 60: 'every hour', 360: 'every 6 hours', 1440: 'every day', 10080: 'every week' };
   // A rule or an alert type in a line: After 5 minutes down, once, and an all-clear when it comes back.
   const when = (x, r) => {
@@ -568,7 +565,6 @@
   };
 
   // The side panel: an alert, with its trigger, its alert type and a preview of it arriving; or an alert type with what uses it.
-  const sec = (title, body) => `<section class="dw-sec"><div class="dw-sec-head"><h3>${title}</h3></div>${body}</section>`;
   const preview = (it) => `<div class="ar-msg"><span class="ar-av" aria-hidden="true">RL</span><div class="ar-mbody">`
     + `<p class="ar-mwho"><b>${esc(R.app())}</b><i>App</i><time>${esc(new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }))}</time></p>`
     + `<div class="ar-mcard ${esc(it.sev)}"><p class="ar-mtag">${SEV[it.sev] || ''}</p><p class="ar-mtitle">${esc(it.name)}</p><p class="ar-mline">${esc(it.trigger)}</p><p class="ar-mfoot">${esc(R.app())}</p></div></div></div>`;
@@ -580,7 +576,7 @@
       it.src === 'event' && it.state === 'on' ? `<button type="button" class="dw-qa" data-ar-test>${svg('bell')}<span>Send test</span></button>` : '',
       it.state === 'on' && it.type !== 'each' ? `<button type="button" class="dw-qa" data-ar-mute>${svg('x')}<span>Don’t alert</span></button>` : ''].join('');
     panel.body.innerHTML = `<div class="dw-head">${pic(it, 'dw-pic')}<div class="dw-name"><h2 id="dw-title">${esc(it.name)}</h2><p>${esc(it.area)}</p></div>`
-      + `<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`
+      + `${closeX}</div>`
       + (bar ? `<div class="dw-bar">${bar}</div>` : '')
       + `<div class="dw-strip"><div><span class="l">Severity</span><span class="v">${sevBadge(it.sev)}</span></div><div><span class="l">Alert type</span><span class="v">${esc(typeWord(it))}</span></div>`
       + `<div><span class="l">Today</span><span class="v">${STATE[it.state]}</span></div>${counts ? `<div><span class="l">Sensors</span><span class="v">${counts.count}</span></div>` : ''}</div>`
@@ -595,7 +591,7 @@
     const mine = items().filter((it) => it.type === id);
     const used = t ? usedWords(rules.counts.types[t.id]) : '';
     panel.body.innerHTML = `<div class="dw-head"><span class="ric dw-pic">${svg(t ? 'bell' : 'x')}</span><div class="dw-name"><h2 id="dw-title">${esc(t ? t.name : 'Don’t alert')}</h2>`
-      + `<p>${esc(t ? `Sends to ${words(t.to) || 'no notifications'}` : 'These alerts are not sent.')}</p></div><button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`
+      + `<p>${esc(t ? `Sends to ${words(t.to) || 'no notifications'}` : 'These alerts are not sent.')}</p></div>${closeX}</div>`
       + (t ? `<div class="dw-bar">${R.editButton('data-ar-tedit', '')}</div>` : '')
       + `<div class="dw-strip"><div><span class="l">Alerts</span><span class="v">${mine.length}</span></div>`
       + (t ? `<div><span class="l">Sensors and links</span><span class="v">${esc(used || 'None')}</span></div><div><span class="l">New sensors</span><span class="v">${t.id === rules.now.startType ? 'Start with it' : 'No'}</span></div>` : '') + '</div>'

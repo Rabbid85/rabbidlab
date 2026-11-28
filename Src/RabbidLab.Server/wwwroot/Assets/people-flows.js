@@ -3,12 +3,8 @@
 // Run workflow… opens Run for that user (users.js).
 (() => {
   const R = window.RabbidLab;
-  const { $, esc, svg, has, panel, toast, sure, get, send } = R;
+  const { $, esc, svg, has, panel, toast, sure, get, send, count, section, none, oops, closeX } = R;
   const may = () => has('ad.workflows');
-  const count = (n, one, many) => `${n.toLocaleString()} ${n === 1 ? one : many}`;
-  const section = (title, body, right = '') => `<section class="dw-sec"><div class="dw-sec-head"><h3>${title}</h3>${right}</div>${body}</section>`;
-  const none = (text) => `<p class="muted dw-empty">${esc(text)}</p>`;
-  const oops = (e) => { if (!e.cancelled) toast('The operation failed.', e.message, { tone: 'warn' }); };
   const KIND_WORD = { text: 'Text', choice: 'Choice', user: 'User', ou: 'OU', date: 'Date' };
   // What each step's values are called in the editor, and what goes in them.
   const VALUE = {
@@ -150,7 +146,7 @@
         + `<ul class="pf-results">${r.steps.map((s) => `<li class="${s.state}">${svg(s.state === 'done' ? 'check' : s.state === 'failed' ? 'alert' : 'dots')}<span><b>${esc(s.label)}</b><small>${esc(s.detail)}</small></span></li>`).join('')}</ul></div>`;
     }).join('');
     panel.body.innerHTML = `<div class="dw-head"><span class="pic dw-pic">${svg('org')}</span><div class="dw-name"><h2 id="dw-title">${esc(f.name)}</h2><p>${esc(makes(f) ? 'Makes a new user' : 'Runs on a user')} · ${f.on ? 'Enabled' : 'Disabled'}</p></div>`
-      + `<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`
+      + `${closeX}</div>`
       + `<div class="dw-bar">${may() ? R.editButton('data-pf-edit', '') : ''}<button type="button" class="dw-qa" data-pf-run${f.on ? '' : ' disabled'}>${svg('play')}<span>Run</span></button>`
       + (may() ? `<button type="button" class="dw-qa" data-pf-dup>${svg('copy')}<span>Duplicate</span></button><button type="button" class="dw-qa" data-pf-turn>${svg(f.on ? 'pause' : 'play')}<span>${f.on ? 'Disable' : 'Enable'}</span></button>`
         + `<button type="button" class="dw-qa" data-pf-del>${svg('trash')}<span>Delete</span></button>` : '') + '</div>'

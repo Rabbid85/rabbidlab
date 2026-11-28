@@ -4,26 +4,14 @@
 (() => {
   const R = window.RabbidLab;
   const D = R.devices;
-  const { $, esc, svg, has, panel, toast, sure, get, send, say } = R;
+  const { $, esc, svg, has, panel, toast, sure, get, send, say, BRAKE, many, names, chip, section, none, oops, closeX, below } = R;
 
   const NEEDS = '1.1.190'; // the first client that reports its printers
-  const BRAKE = 10;
   const KIND = { tcpip: 'TCP/IP', lpr: 'LPR', ipp: 'IPP', wsd: 'WSD', share: 'Shared', universal: 'Universal Print', virtual: 'Virtual', local: 'Local' };
   // Windows' own drivers, there to pick even when no computer reported them yet.
   const CLASS = ['Microsoft PCL6 Class Driver', 'Microsoft PS Class Driver', 'Microsoft IPP Class Driver', 'Generic / Text Only'];
-  const many = (n) => `${n.toLocaleString()} computer${n === 1 ? '' : 's'}`;
-  const names = (list) => (list.length <= 4 ? list.map((c) => c.computer).join(', ') : many(list.length));
-  const chip = (text, cls = '', icon = '') => `<span class="uchip ${cls}">${icon ? svg(icon) : ''}${esc(text)}</span>`;
-  const section = (title, body, right = '') => `<section class="dw-sec"><div class="dw-sec-head"><h3>${title}</h3>${right}</div>${body}</section>`;
-  const none = (text) => `<p class="muted dw-empty">${esc(text)}</p>`;
   const where = (p) => [KIND[p.kind] || p.kind, p.address].filter(Boolean).join(' · ');
   const can = () => has('seats.actions');
-  const oops = (e) => { if (!e.cancelled) toast('The operation failed.', e.message, { tone: 'warn' }); };
-  const below = (version, than) => {
-    const [a, b] = [version || '0', than].map((v) => v.split('.').map(Number));
-    for (let i = 0; i < 3; i++) if ((a[i] || 0) !== b[i]) return (a[i] || 0) < b[i];
-    return false;
-  };
 
   // --- Running one: add, remove or a test page, as a job on the computers given ---------------------------------
   const runPrinter = async (on, printer, count) => {
@@ -401,7 +389,7 @@
       queued && has('seats.printers') ? `<button type="button" class="dw-qa" data-pq-printer="${p.status === 'Paused' ? 'resume' : 'pause'}">${svg(p.status === 'Paused' ? 'play' : 'pause')}<span>${p.status === 'Paused' ? 'Resume printing' : 'Pause printing'}</span></button>`
         + `<button type="button" class="dw-qa" data-pq-printer="purge">${svg('x')}<span>Cancel all jobs</span></button>` : ''].join('');
     const head = `<div class="dw-head"><span class="pic dw-pic">${svg('printer')}</span><div class="dw-name"><h2 id="dw-title">${esc(p.name)}</h2><p>${esc([KIND[p.kind] || p.kind, addr(p) || p.server].filter(Boolean).join(' · '))}</p></div>`
-      + `<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>${bar ? `<div class="dw-bar">${bar}</div>` : ''}${tabs}`;
+      + `${closeX}</div>${bar ? `<div class="dw-bar">${bar}</div>` : ''}${tabs}`;
     if (queued && pv.tab !== 'summary') {
       panel.body.innerHTML = head + (pv.tab === 'queue' ? queuePane(p) : historyPane(p));
       afterPane(p);
@@ -453,7 +441,7 @@
     if (!s) return;
     const its = rows.filter((p) => p.found && (p.server || '').toLowerCase() === s.server.toLowerCase());
     panel.body.innerHTML = `<div class="dw-head"><span class="pic dw-pic">${svg('server')}</span><div class="dw-name"><h2 id="dw-title">${esc(s.server)}</h2><p>${esc(s.host)}</p></div>`
-      + `<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`
+      + `${closeX}</div>`
       + (s.problem ? section('Unreachable', `<ul class="pr-probs"><li>${svg('alert')}<span>${esc(s.problem)}</span></li></ul>`
         + `<p class="muted dw-empty">${esc(R.app())} connects over File and Printer Sharing (port 445) using this server's computer account. Last checked ${esc(R.when(s.at))}.</p>`) : '')
       + (s.problem ? '' : section(`Printers <small>${its.length}</small>`, its.length ? `<div class="dw-list">${its.map((p) => `<div class="mrow acc-row" data-ps-printer="${esc(`${p.name}\n${p.address || ''}`)}"><span class="pic small">${svg('printer')}</span>`
@@ -716,7 +704,7 @@
   const openJob = (j) => {
     const fact = (label, value) => `<div><span class="l">${label}</span><span class="v">${value}</span></div>`;
     panel.body.innerHTML = `<div class="dw-head"><span class="pic dw-pic">${svg('printer')}</span><div class="dw-name"><h2 id="dw-title">${esc(j.document)}</h2><p>${esc(`${j.printer} · ${j.server}`)}</p></div>`
-      + `<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`
+      + `${closeX}</div>`
       + (manage() ? `<div class="dw-bar">${j.state === 'Paused' ? `<button type="button" class="dw-qa" data-pq-job="resume:${j.id}" data-pq-share="${esc(j.share)}">${svg('play')}<span>Resume</span></button>`
         : `<button type="button" class="dw-qa" data-pq-job="pause:${j.id}" data-pq-share="${esc(j.share)}">${svg('pause')}<span>Pause</span></button>`}`
         + `<button type="button" class="dw-qa" data-pq-job="restart:${j.id}" data-pq-share="${esc(j.share)}">${svg('restart')}<span>Restart</span></button>`

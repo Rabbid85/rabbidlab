@@ -131,8 +131,6 @@ body.app.rail-small { grid-template-columns: 60px minmax(0, 1fr); }
 .ds-r select:disabled, .ds-r input.switch:disabled { opacity: .45; cursor: default; }
 .ds-link { display: inline-flex; align-items: center; gap: 6px; color: #D7DAE8; font-size: 14.5px; }
 .ds-link svg { width: 16px; height: 16px; color: #8B90A5; }
-.ds-dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--c, #8A8FA8); }
-.ds-star { width: 14px; height: 14px; color: var(--amber); }
 .ds-add { margin-top: 12px; }
 .ds-note { display: flex; align-items: center; gap: 8px; margin: 4px 0 0; color: #6D7290; font-size: 12.5px; }
 .ds-note svg { flex: none; width: 14px; height: 14px; }
@@ -577,7 +575,6 @@ input.pick:focus { outline: none; border-color: var(--accent); }
 .table { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); overflow-x: auto; }
 .tr { display: grid; grid-template-columns: 96px minmax(140px, 1.3fr) minmax(120px, 1.1fr) 64px 110px 96px 190px; align-items: center; gap: 12px; min-width: 820px;
   min-height: 50px; padding: 0 16px; border-top: 1px solid var(--line); font-size: 13px; }
-.tr.sess { grid-template-columns: minmax(150px, 1.3fr) minmax(110px, 1fr) minmax(140px, 1.2fr) 110px 150px 96px 110px; }
 .tr:first-child { border-top: 0; }
 .tr.th { min-height: 36px; background: #0F111A; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #5E6380; }
 .tr b { display: block; overflow: hidden; color: var(--title); font-weight: 600; white-space: nowrap; text-overflow: ellipsis; }
@@ -885,15 +882,9 @@ section.page.home.dir-top { max-width: none; padding: 0; gap: 0; }
 .dkids a small.tone.amber { color: var(--amber); font-weight: 700; }
 .dkids i { height: 6px; }
 .dkids .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.dfilters { display: grid; flex: none; }
-.dfilter { display: grid; gap: 7px; margin: 0 0 12px 12px; }
-.dfilter > span { color: #7D8297; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
-.dfilter .seg { margin: 0; }
-.dfilter .seg button { height: 28px; padding: 0 9px; font-size: 12px; }
-.dfilter select { width: 100%; height: 34px; padding-left: 10px; border: 1px solid var(--line-strong); border-radius: 8px; background-color: #0C0E17; color: var(--title); font: inherit; font-size: 13px; }
 .dnav .dir-acct { flex: none; margin: 10px 0 0 12px; }
 /* Find, the views and the filters are for the pages that list things, once the service account is there. */
-.dnav:not(.lists) > .side-find, .dnav:not(.lists) .dkids, .dnav:not(.lists) .dfilters { display: none; }
+.dnav:not(.lists) > .side-find, .dnav:not(.lists) .dkids { display: none; }
 .dir-page .lib { grid-template-columns: minmax(0, 1fr); }
 /* Across the top of the list: tabs, then the sort, rows or tiles, Export and New. */
 .dbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; border-bottom: 1px solid var(--line); }
@@ -909,22 +900,13 @@ section.page.home.dir-top { max-width: none; padding: 0; gap: 0; }
 .dbar > .vswitch { margin: 0 0 8px; } /* only one of its own: the one by Refresh and Export lines up with that box */
 .dbar > .primary, .dbar > .small { display: inline-flex; align-items: center; gap: 7px; height: 34px; margin-bottom: 8px; }
 .dbar > .primary svg, .dbar > .small svg { width: 15px; height: 15px; }
-/* Every list's Search, at the start of its bar like Columns and Filters after it. */
-.dbar > .tsearch { flex: 1 1 130px; min-width: 0; max-width: 220px; height: 34px; margin: 0 0 8px; }
-.dbar > .tsearch input { flex: 1; width: 0; min-width: 0; }
 .dbar > .small svg.chev { width: 12px; height: 12px; margin-left: -2px; }
-.dnow { display: flex; align-items: baseline; gap: 10px; margin: 16px 0 0; }
-.dnow b { color: var(--title); font-size: 15px; font-weight: 650; }
-/* The list itself: a card to a row under the column headings, or tiles. */
+/* The list itself: a card to a row under the column headings. */
 .table.adt { margin-top: 14px; border: 0; border-radius: 0; background: none; }
 .adt.drows:not(.dgrid) { display: grid; gap: 6px; }
 .adt.drows:not(.dgrid) .tr { min-height: 56px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
 .adt.drows:not(.dgrid) .tr.th { min-height: 28px; border-color: transparent; background: none; }
 .adt.drows .who .pic { width: 36px; height: 36px; }
-.adt.dtiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; overflow: visible; }
-.table.adt.dtiles .tr.dtile { display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; gap: 12px; min-width: 0; min-height: 0; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
-.dtile-more { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding-top: 10px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12.5px; }
-.dtile-more > div { min-width: 0; }
 .adt .empty { border: 1px dashed var(--line); border-radius: 12px; }
 /* Active Directory with no service account yet: the list and the page wait under a cover, with what to do in a card in the middle of the window. */
 .dgate { position: fixed; inset: 52px 0 0 224px; z-index: 6; background: rgba(11, 12, 20, .9); } /* the whole page under the top bar, beside the sidebar */

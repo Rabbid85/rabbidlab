@@ -5,7 +5,7 @@
 // person's roles show, and keeps up to date while Overview is open.
 (() => {
   const R = window.RabbidLab;
-  const { $, esc, svg, has, get, send, toast, where, live } = R;
+  const { $, esc, svg, has, get, send, toast, where, live, count } = R;
   const [GAP, ROW] = [12, 196]; // between cards, and a row's height (dashboard.css)
   const SIZES = [['Small', 1, 1], ['Wide', 2, 1], ['Tall', 1, 2], ['Large', 2, 2]];
   const date = (iso) => new Date(`${iso}T12:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric' });
@@ -14,7 +14,6 @@
   const rows = (list) => `<ul class="dash-rows">${list.map(([tone, a, b]) => `<li><i class="dash-dot" data-tone="${tone}"></i><span>${esc(a)}</span><small>${esc(b ?? '')}</small></li>`).join('')}</ul>`;
   const wait = '<div class="dash-big"><b><i class="sk sk-num"></i></b></div><div class="sk-lines"><i class="sk w75"></i><i class="sk w45"></i></div>';
   const none = (text) => `<p class="dash-none">${esc(text)}</p>`;
-  const count = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
   // The cards there are: name, icon, usual size (columns by rows), the page it opens, a line for Add a card, whose roles
   // show it, and how it draws from what was read (d) at w columns by h rows; nothing read yet draws as loading.
@@ -229,7 +228,6 @@
   let drag = null; // { c, f: its copy, x0, y0, left, top, x, y, rest: the other cards, from, at: its place in the order then and now }
   let press = null; // a pointer is down on a card: { c, x, y, id }
   let settle = null; // ends the last card's flight to its slot at once
-  const within = (r, x, y) => x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
   const far = (r, x, y) => Math.hypot(Math.max(r.left - x, 0, x - r.right), Math.max(r.top - y, 0, y - r.bottom));
   const order = (d, i) => [...d.rest.slice(0, i), d.c, ...d.rest.slice(i)];
   const spot = (x, y) => {

@@ -21,7 +21,7 @@ internal sealed class Agent
     {
         var settings = Settings.Read();
         var status = new Status { Server = settings.Server ?? settings.Plain, ServerVersion = Status.Read()?.ServerVersion, User = Machine.Users() };
-        var joined = false; // this computer has an identity on this server
+        bool joined; // this computer has an identity on this server
         if (settings.Plain is not null)
         {
             // An http:// address: nothing is sent to it, and a computer that was locked stays locked.

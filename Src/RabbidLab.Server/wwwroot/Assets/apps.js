@@ -4,13 +4,9 @@
 // gives one or several groups and roles in each app. Review changes lists every difference before anything is changed.
 (() => {
   const R = window.RabbidLab;
-  const { $, esc, svg, has, panel, toast, sure, get, send } = R;
-  const count = (n, one, many) => `${n.toLocaleString()} ${n === 1 ? one : many}`;
-  const list = (xs) => (xs.length < 3 ? xs.join(' and ') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
+  const { $, esc, svg, has, panel, toast, sure, get, send, count, listed: list, none, oops, closeX } = R;
   const some = (xs, more = 2) => (xs.length <= more ? list(xs) : `${xs.slice(0, more).join(', ')} and ${xs.length - more} more`);
   const section = (title, body, right = '') => `<section class="dw-sec"><div class="dw-sec-head"><h3>${title}</h3>${right ? `<span class="dw-sec-do">${right}</span>` : ''}</div>${body}</section>`;
-  const none = (text) => `<p class="muted dw-empty">${esc(text)}</p>`;
-  const oops = (e) => { if (!e.cancelled) toast('The operation failed.', e.message, { tone: 'warn' }); };
   const onPage = () => R.where()[0] === 'apps';
   const MATCH = { email: 'Email address', username: 'Username', hand: 'By hand' };
   const MARK = { create: '+', add: '+', drift: '−', blocked: '!' };
@@ -254,7 +250,7 @@
     const where = a.settings.url || a.settings.domain || a.settings.folder || '';
     const scroll = panel.body.scrollTop;
     panel.body.innerHTML = `<div class="dw-head">${tile(a, 'dw-pic')}<div class="dw-name"><h2 id="dw-title">${esc(a.name)}</h2><p>${esc([a.kindName, where].filter(Boolean).join(' · '))}</p></div>`
-      + `<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`
+      + `${closeX}</div>`
       + `<div class="dw-bar">${may() ? R.editButton('data-ap-edit', '') : ''}<button type="button" class="dw-qa" data-ap-sync${may() ? '' : ' disabled'}>${svg('refresh')}<span>Sync now</span></button>`
       + (may() ? `<button type="button" class="dw-qa" data-ap-pause>${svg(a.paused ? 'play' : 'pause')}<span>${a.paused ? 'Resume sync' : 'Pause sync'}</span></button><button type="button" class="dw-qa" data-ap-remove>${svg('trash')}<span>Remove</span></button>` : '') + '</div>'
       + (a.problem ? `<p class="hint problem" role="alert">${esc(`The last sync failed: ${a.problem}`)}</p>` : '')
@@ -347,7 +343,7 @@
     const blocked = mine.filter((i) => i.kind === 'blocked');
     const scroll = panel.body.scrollTop;
     panel.body.innerHTML = `<div class="dw-head"><span class="pic dw-pic">${svg('link')}</span><div class="dw-name"><h2 id="dw-title">${esc(`Members of ${r.adName}`)}</h2><p>${esc(`Access rule · ${count(r.people, 'person', 'people')} · given ${r.mode === 'auto' ? 'automatically' : 'after approval'}`)}</p></div>`
-      + `<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`
+      + `${closeX}</div>`
       + (may() ? `<div class="dw-bar">${R.editButton('data-ap-redit', '')}<button type="button" class="dw-qa" data-ap-rdel>${svg('trash')}<span>Delete</span></button></div>` : '')
       + section(`What they get <small>${r.to.length}</small>`, `<div class="dw-list">${gives(r).map(([a, names]) => `<div class="mrow">${tile(a, 'small')}<div class="two"><b>${esc(list(names))}</b><small>${esc(`${a.name} · ${count(names.length, a.group, `${a.group}s`)}`)}</small></div></div>`).join('')}</div>`
         + '<p class="hint">Someone who leaves the Active Directory group keeps these until you review and apply the change.</p>')

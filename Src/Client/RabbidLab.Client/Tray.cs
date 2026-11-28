@@ -427,6 +427,27 @@ internal static class Look
         return by;
     }
 
+    /// <summary>Windows 11's rounded corners on a window without its own frame; square before that.</summary>
+    public static void Rounded(IntPtr window)
+    {
+        try
+        {
+            var round = 2;
+            DwmSetWindowAttribute(window, 33, ref round, sizeof(int));
+        }
+        catch (Exception e) when (e is DllNotFoundException or EntryPointNotFoundException)
+        {
+            // Square corners before Windows 11.
+        }
+    }
+
+    /// <summary>A window without a title bar is dragged by its body: Windows is told the press was on a caption.</summary>
+    public static void Drag(IntPtr window)
+    {
+        ReleaseCapture();
+        SendMessage(window, 0xA1, (IntPtr) 2, IntPtr.Zero);
+    }
+
     /// <summary>The window's own title bar dark too, where Windows can (10 and 11).</summary>
     public static void DarkTitle(IntPtr window)
     {
@@ -478,6 +499,12 @@ internal static class Look
 
     [DllImport("dwmapi.dll")]
     private static extern int DwmSetWindowAttribute(IntPtr window, int attribute, ref int value, int size);
+
+    [DllImport("user32.dll")]
+    private static extern bool ReleaseCapture();
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr SendMessage(IntPtr window, int message, IntPtr w, IntPtr l);
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     private struct StockIcon

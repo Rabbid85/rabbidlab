@@ -475,7 +475,6 @@ public sealed class WindowsPrintQueueProbe : IPrintQueueProbe
 {
     private const uint UseAccess = 0x8; // PRINTER_ACCESS_USE
     private const uint AdministerAccess = 0x4; // PRINTER_ACCESS_ADMINISTER
-    private const int InsufficientBuffer = 122;
 
     public (List<PrintJob> Jobs, string? Problem) Jobs(string share)
     {

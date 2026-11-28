@@ -3,7 +3,7 @@
 // Filter window, the tests and the filter in words are all here.
 (() => {
   const R = window.RabbidLab;
-  const { $, esc, svg } = R;
+  const { $, esc, svg, saved: read, save: keep } = R;
   const DAY = 86400000;
 
   // What each kind of field can be asked. Ops in NO_VALUE need nothing filled in.
@@ -249,8 +249,6 @@
   // of one column or all of them, a chip for each column worth filtering by, and Add/remove filters. A chip lists that
   // column's values with how many rows have each. What's picked stays until it's cleared or the page is opened again;
   // which chips show and the saved filters are kept in this browser.
-  const read = (k) => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch { return null; } };
-  const keep = (k, v) => { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)); } catch { /* not kept, then */ } };
   const of = (v) => (typeof v === 'function' ? v() : v);
   // The search box's tests follow the column picked: words for text, more or less for a number, days for a date, yes
   // or no for a column that is one or the other. Ops in QUICK_BARE need nothing typed, so the box hides.

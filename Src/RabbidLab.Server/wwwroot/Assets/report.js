@@ -3,12 +3,11 @@
 // Reports, where it's emailed on a schedule, with every report sent. Rows open the side panel.
 (() => {
   const R = window.RabbidLab;
-  const { $, esc, svg, has, say, panel, toast, get, send, where, initials } = R;
+  const { $, esc, svg, has, say, panel, toast, get, send, where, initials, listed: and, qa, strip, section, none, ymd, closeX } = R;
   const KINDS = R.activityKinds;
   const ORDER = Object.keys(KINDS);
   const num = (n) => Number(n || 0).toLocaleString();
   const plural = (n, one, many) => `${num(n)} ${n === 1 ? one : many}`;
-  const and = (names) => (names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`);
   const time = (d) => new Date(d).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   const day = (d, year = true) => new Date(d).toLocaleDateString([], { month: 'short', day: 'numeric', year: year ? 'numeric' : undefined });
   // A date and time on one line: Today 2:04 PM, or Nov 21, 2:04 PM.
@@ -26,11 +25,7 @@
     : `<span class="pic user${cls}">${esc(initials(name))}</span>`);
   const kindPic = (k, cls = '') => `<span class="${cls || 'al-ic'}" data-color="${KINDS[k][2]}">${svg(KINDS[k][1])}</span>`;
   const head = (p, title, sub) => `<div class="dw-head">${p}<div class="dw-name"><h2 id="dw-title">${esc(title)}</h2><p>${esc(sub)}</p></div>`
-    + `<button type="button" class="icon dw-close" data-dw-close aria-label="Close">${svg('x')}</button></div>`;
-  const qa = (attr, icon, label) => `<button type="button" class="dw-qa" ${attr}>${svg(icon)}<span>${esc(label)}</span></button>`;
-  const strip = (pairs) => `<div class="dw-strip">${pairs.map(([l, v]) => `<div><span class="l">${esc(l)}</span><span class="v">${v}</span></div>`).join('')}</div>`;
-  const section = (title, body) => `<section class="dw-sec"><div class="dw-sec-head"><h3>${title}</h3></div>${body}</section>`;
-  const none = (text) => `<p class="muted dw-empty">${esc(text)}</p>`;
+    + `${closeX}</div>`;
   const pct = (n, total) => (total ? Math.round((n / total) * 100) : 0);
   const share = (n, total) => `<span class="rp-share"><progress max="100" value="${pct(n, total)}" aria-label="${pct(n, total)}% of entries"></progress><small>${pct(n, total)}%</small></span>`;
   const red = (n) => (n ? `<b class="rp-red">${num(n)}</b>` : '<span class="muted">0</span>');
@@ -46,19 +41,11 @@
     cell: (x) => `<label class="tk"><input type="checkbox" data-tick="${esc(keyOf(x))}" aria-label="Select"></label>` });
   const ticker = (o) => {
     const picked = new Set();
-    let last = null;
     const ticked = () => o.rows().filter((x) => picked.has(o.keyOf(x)));
     const draw = () => {
       const keys = new Set(o.rows().map(o.keyOf));
       [...picked].forEach((k) => { if (!keys.has(k)) picked.delete(k); }); // gone from the list
-      const boxes = [...o.table.querySelectorAll('[data-tick]')];
-      boxes.forEach((b) => { b.checked = picked.has(b.dataset.tick); b.closest('.tr')?.classList.toggle('picked', b.checked); });
-      const all = o.table.querySelector('[data-tick-all]');
-      const on = boxes.filter((b) => b.checked).length;
-      if (all) {
-        all.checked = !!boxes.length && on === boxes.length;
-        all.indeterminate = on > 0 && on < boxes.length;
-      }
+      R.grid.ticks(o.table, 'tick', picked);
       const n = picked.size;
       o.act.disabled = !n;
       o.act.querySelector('.cnt').hidden = !n;
@@ -66,20 +53,7 @@
       const shown = keys.size;
       o.count.textContent = o.loading() ? '' : n ? `${num(n)} of ${plural(shown, 'item', 'items')} selected` : plural(shown, 'item', 'items');
     };
-    o.table.addEventListener('click', (e) => {
-      const box = e.target.closest('.tk')?.querySelector('input');
-      if (!box || e.target !== box) return; // the label's own click comes through the box
-      const boxes = [...o.table.querySelectorAll('[data-tick]')];
-      const set = (b) => (box.checked ? picked.add(b.dataset.tick) : picked.delete(b.dataset.tick));
-      if (box.dataset.tickAll !== undefined) boxes.forEach(set);
-      else {
-        const i = boxes.indexOf(box);
-        const [a, b] = e.shiftKey && last !== null ? [Math.min(last, i), Math.max(last, i)] : [i, i];
-        boxes.slice(a, b + 1).forEach(set);
-        last = i;
-      }
-      draw();
-    });
+    o.table.addEventListener('click', (e) => { if (R.grid.tick(e, o.table, 'tick', picked)) draw(); });
     return { picked, ticked, draw, clear: () => { picked.clear(); draw(); } };
   };
   // A row of a grid that opens the side panel, unless the click was on its tick or a heading.
@@ -254,7 +228,6 @@
   // --- Report: the print preview -----------------------------------------------------------------------------------
   // r: the period (1 today, 7, 30, 'month', 0 all, 'custom' from and until, as yyyy-mm-dd). kinds: the areas in it.
   const pv = { r: 7, from: '', until: '', who: '', kinds: new Set(ORDER), problems: false, sum: null, page: null, problem: '', seq: 0 };
-  const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   // Report from the log (or a row of its summary): what its bar picks, with o over it.
   const report = (o = {}) => {
     const d = sum.detail || {};
