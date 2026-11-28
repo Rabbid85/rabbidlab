@@ -14,16 +14,23 @@
 /* A faint grain over the scene, so its fades show no steps; kept out of the drawing so its moving parts never redraw it. */
 .ovb-art::before, .hero-art::before { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none; opacity: .05; mix-blend-mode: overlay;
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
-/* Solid under the strip, so no moonlight glows up through its glass. What stands on the picture in white has a soft
-   shade behind it: the quote in the bottom left corner, or a band right across for the line at the bottom. */
-.ovb-art::after { content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none; background: linear-gradient(0deg, rgb(7 7 22) 0 84px, transparent 92px); }
-.ovb[data-line="top"][data-quote="on"] .ovb-art::after { background: linear-gradient(0deg, rgb(7 7 22) 0 84px, transparent 92px),
-  radial-gradient(ellipse 940px 250px at 0% 100%, rgb(7 7 22 / .6), rgb(7 7 22 / .3) 55%, transparent 86%); }
-.ovb[data-line="bottom"] .ovb-art::after { background: linear-gradient(0deg, rgb(7 7 22) 0 84px, rgb(7 7 22 / .66) 84px, rgb(7 7 22 / .4) 150px, transparent 250px); }
+/* Solid under the strip, so no moonlight glows up through its glass. The words are white at every time of day ("This
+   should also be in white, no?"), so each has a soft shade behind it: a band along the top for what stands there (the
+   line, or the quote when the line is at the bottom), the bottom left corner for the quote at the foot, and a band right
+   across for the line at the bottom. The top band is the sky's own shade, which is pale under a pale colour's dark words. */
+.ovb-art::after { content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  --solid: linear-gradient(0deg, rgb(7 7 22) 0 84px, transparent 92px);
+  --top: linear-gradient(180deg, color-mix(in srgb, var(--sk-shade, #070716) 52%, transparent), color-mix(in srgb, var(--sk-shade, #070716) 24%, transparent) 64px, transparent 136px);
+  --foot: linear-gradient(0deg, rgb(7 7 22) 0 84px, rgb(7 7 22 / .66) 84px, rgb(7 7 22 / .4) 150px, transparent 250px);
+  background: var(--solid); }
+.ovb[data-line="top"] .ovb-art::after { background: var(--solid), var(--top); }
+.ovb[data-line="top"][data-quote="on"] .ovb-art::after { background: var(--solid), var(--top), radial-gradient(ellipse 940px 250px at 0% 100%, rgb(7 7 22 / .6), rgb(7 7 22 / .3) 55%, transparent 86%); }
+.ovb[data-line="bottom"] .ovb-art::after { background: var(--foot); }
+.ovb[data-line="bottom"][data-quote="on"] .ovb-art::after { background: var(--foot), var(--top); }
 
 /* The words (ovinfo.js): one line across the banner, the lab's name with its own line at the left and the date, the time
-   and the weather at the right. At the top it stands on the sky and takes the sky's own word colours, dark by day; at the
-   bottom it is white on its band at every time of day. The time opens the banner's settings and the weather the next
+   and the weather at the right. At the top it stands on the sky, on the band there, in the sky's own word colour (white, or dark on a pale
+   colour); at the bottom it is white on its band. The time opens the banner's settings and the weather the next
    hours, so the banner has no chip. */
 .ovw-line { position: absolute; left: 48px; right: 48px; top: 26px; z-index: 3; display: flex; align-items: center; justify-content: space-between; gap: 32px;
   color: var(--sk-text, #fff); transition: color 2.4s ease; }
@@ -133,6 +140,9 @@ html[data-sty-menus] .ovw-pop::before { background: var(--sty-menus-bg); backdro
 .hero { display: flex; flex-direction: column; justify-content: flex-end; min-height: 270px; }
 .hero-art::after { content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none;
   background: radial-gradient(ellipse 60% 110% at 0% 100%, color-mix(in srgb, var(--sk-shade, #070716) 75%, transparent), color-mix(in srgb, var(--sk-shade, #070716) 35%, transparent) 55%, transparent 85%); }
+/* By day the picture is bright and the words are white, so the shade is deeper there and runs right along the foot. */
+:root[data-sky="day"] .hero-art::after { background: linear-gradient(0deg, color-mix(in srgb, var(--sk-shade, #070716) 64%, transparent) 0 84px, color-mix(in srgb, var(--sk-shade, #070716) 34%, transparent) 172px, transparent 250px),
+  radial-gradient(ellipse 60% 110% at 0% 100%, color-mix(in srgb, var(--sk-shade, #070716) 62%, transparent), transparent 82%); }
 /* The room over the title keeps the sky open, so a strip on two lines makes the banner taller, not the scene shorter. */
 .hero-title { margin: 86px 48px 0; color: var(--sk-text, #fff); font: 800 44px/1.04 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; letter-spacing: -.04em; }
 /* The line under the title: always one line, so a longer one never makes the banner taller; cut short with … only where the

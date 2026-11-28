@@ -39,6 +39,9 @@ internal sealed class ClientWindow : Form
     private AskWindow? asked; // Ask IT for help, while it's open
     private DateTime? doneAt; // the ring's finish when a check-in just came
     private RectangleF ring;
+    private float scroll, scrollMax; // how far down Activity is, and how far it goes, at 96 DPI
+    private RectangleF thumb; // Activity's scroll bar, when there is more than fits
+    private (int Y, float From)? pull; // the scroll bar being dragged: where the pointer took it, and where Activity was
     private Font? fBrand, fTitle, fSub, fBtn, fSmall, fName, fMeta, fTab, fH3, fRow, fRing, fAxis;
     private string? ip;
     private (string? Maker, string? Model, string? Serial)? read; // read from Windows when the inventory hasn't said yet
@@ -538,7 +541,7 @@ internal sealed class ClientWindow : Form
                 g.FillRectangle(bar, R(x0 - 1, 110, w + 2, 2));
             }
             var tabId = id;
-            Hit(R(x0 - 6, 74, w + 12, 38), "tab-" + id, () => { page = tabId; Invalidate(); });
+            Hit(R(x0 - 6, 74, w + 12, 38), "tab-" + id, () => { page = tabId; scroll = 0; Invalidate(); });
             x0 += w + 26;
         }
         using (var line = new Pen(ink.Line, Math.Max(1, k)))
@@ -720,8 +723,21 @@ internal sealed class ClientWindow : Form
         return said is { } w ? new Act { Icon = a.Icon, Tone = a.Tone, Title = w.Title, Detail = w.Detail, At = a.At } : a;
     }
 
+    // The day an entry is under: Today, Yesterday, then the day's own name ("A heading for each day", the cwacts mock).
+    private static string DayName(DateTime day) =>
+        day == DateTime.Today ? "Today" : day == DateTime.Today.AddDays(-1) ? "Yesterday"
+        : day.ToString(day.Year == DateTime.Today.Year ? "dddd, MMMM d" : "dddd, MMMM d, yyyy", CultureInfo.CurrentCulture);
+
     private void PaintActivity(Graphics g, List<Act> rows)
     {
+        // The page scrolls under the tabs when there is more than fits: the wheel, the arrow and page keys, or its bar.
+        const float top = 113;
+        const TextFormatFlags moved = TextFormatFlags.PreserveGraphicsClipping | TextFormatFlags.PreserveGraphicsTranslateTransform;
+        scroll = Math.Max(0, Math.Min(scroll, scrollMax));
+        var whole = g.Save();
+        g.SetClip(R(Aside + 1, top, W - Aside - 1, H - top), System.Drawing.Drawing2D.CombineMode.Intersect);
+        g.TranslateTransform(0, -(float) Math.Round(scroll * k));
+        void Put(string text, Font? f, Color c, RectangleF r, TextFormatFlags flags) => Say(g, text, f, c, r, flags | moved);
         // At the top: the last day, a bar for each half hour.
         var y = 134f;
         var (said, bad) = s.State switch
@@ -731,8 +747,8 @@ internal sealed class ClientWindow : Form
             Status.Unreachable => (s.LastOk is { } l ? $"None since {l.ToLocalTime():h:mm tt}" : "None lately", true),
             _ => (s.FailedDay == 0 ? $"All {s.OkDay:N0} on time" : $"{s.OkDay:N0} of {s.OkDay + s.FailedDay:N0} on time", false),
         };
-        Say(g, "Check-ins in the last 24 hours", fH3, ink.Head, R(330, y, 300, 20), TextFormatFlags.SingleLine);
-        Say(g, said, fMeta, bad ? ink.Bad : ink.Muted, R(600, y + 1, 250, 20), TextFormatFlags.Right | TextFormatFlags.SingleLine);
+        Put("Check-ins in the last 24 hours", fH3, ink.Head, R(330, y, 300, 20), TextFormatFlags.SingleLine);
+        Put(said, fMeta, bad ? ink.Bad : ink.Muted, R(600, y + 1, 250, 20), TextFormatFlags.Right | TextFormatFlags.SingleLine);
         y += 32;
         var day = s.Day is { Count: 48 } d ? d : Enumerable.Repeat(-1, 48).ToList();
         var bw = (520f - 47 * 3) / 48;
@@ -746,8 +762,8 @@ internal sealed class ClientWindow : Form
         y += 37;
         // Under it: the day's hours, where they fall, and Now.
         var start = DateTime.Now.AddHours(-24);
-        Say(g, start.AddMinutes(30 - start.Minute).ToString("h tt", CultureInfo.CurrentCulture), fAxis, ink.Muted, R(330, y, 60, 16), TextFormatFlags.SingleLine);
-        Say(g, "Now", fAxis, ink.Muted, R(790, y, 60, 16), TextFormatFlags.Right | TextFormatFlags.SingleLine);
+        Put(start.AddMinutes(30 - start.Minute).ToString("h tt", CultureInfo.CurrentCulture), fAxis, ink.Muted, R(330, y, 60, 16), TextFormatFlags.SingleLine);
+        Put("Now", fAxis, ink.Muted, R(790, y, 60, 16), TextFormatFlags.Right | TextFormatFlags.SingleLine);
         for (var h = 0; h < 24; h += 6)
         {
             var mark = DateTime.Today.AddHours(h);
@@ -758,40 +774,80 @@ internal sealed class ClientWindow : Form
             var at = (float) ((mark - start).TotalHours / 24);
             if (at is > 0.14f and < 0.86f) // never on top of the first hour or Now
             {
-                Say(g, mark.ToString("h tt", CultureInfo.CurrentCulture), fAxis, ink.Muted, R(330 + at * 520 - 30, y, 60, 16), TextFormatFlags.HorizontalCenter | TextFormatFlags.SingleLine);
+                Put(mark.ToString("h tt", CultureInfo.CurrentCulture), fAxis, ink.Muted, R(330 + at * 520 - 30, y, 60, 16), TextFormatFlags.HorizontalCenter | TextFormatFlags.SingleLine);
             }
         }
         y += 40;
 
-        // Then what it did, filling in under the bars as things happen.
-        Say(g, $"What {Lab} did here", fH3, ink.Head, R(330, y, 400, 20), TextFormatFlags.SingleLine);
-        y += 34;
+        // Then what it did, newest first, under a heading for each day; it fills in as things happen.
+        Put($"What {Lab} did here", fH3, ink.Head, R(330, y, 400, 20), TextFormatFlags.SingleLine);
+        y += 20;
         if (rows.Count == 0)
         {
-            Say(g, "Nothing yet. What the client does here shows up as it happens.", fRow, ink.Muted, R(330, y, 520, 20), TextFormatFlags.SingleLine);
-            return;
+            Put("Nothing yet. What the client does here shows up as it happens.", fRow, ink.Muted, R(330, y + 14, 520, 20), TextFormatFlags.SingleLine);
+            y += 34;
         }
-        using var hair = new Pen(ink.Line, Math.Max(1, k));
-        for (var i = 0; i < rows.Count && y + 44 <= 600 - 18; i++)
+        using (var hair = new Pen(ink.Line, Math.Max(1, k)))
         {
-            var a = rows[i];
-            var dot = R(330, y, 30, 30);
-            if (i < rows.Count - 1 && y + 52 + 44 <= 600 - 18)
+            foreach (var days in rows.GroupBy(a => a.At.ToLocalTime().Date))
             {
-                g.DrawLine(hair, 345 * k, (y + 36) * k, 345 * k, (y + 48) * k);
+                y += 18;
+                Put(DayName(days.Key), fSmall, ink.Muted, R(330, y, 400, 16), TextFormatFlags.SingleLine);
+                y += 26;
+                var left = days.Count();
+                foreach (var a in days)
+                {
+                    var dot = R(330, y, 30, 30);
+                    if (--left > 0)
+                    {
+                        g.DrawLine(hair, 345 * k, (y + 36) * k, 345 * k, (y + 48) * k);
+                    }
+                    using (var b = new SolidBrush(ink.Tile))
+                    using (var line = new Pen(ink.Line, k))
+                    {
+                        g.FillEllipse(b, dot);
+                        g.DrawEllipse(line, dot);
+                    }
+                    Glyphs.Draw(g, a.Icon, R(338, y + 8, 14, 14), ink.Tone(a.Tone), 2f);
+                    Put(a.Title, fH3, ink.Head, R(374, y + 1, 380, 19), TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis);
+                    Put(a.Detail, fMeta, ink.Muted, R(374, y + 21, 400, 18), TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis);
+                    Put(a.At.ToLocalTime().ToString("h:mm tt", CultureInfo.CurrentCulture), fSmall, ink.Muted, R(760, y + 3, 90, 16), TextFormatFlags.Right | TextFormatFlags.SingleLine);
+                    y += left > 0 ? 52 : 38;
+                }
             }
-            using (var b = new SolidBrush(ink.Tile))
-            using (var line = new Pen(ink.Line, k))
-            {
-                g.FillEllipse(b, dot);
-                g.DrawEllipse(line, dot);
-            }
-            Glyphs.Draw(g, a.Icon, R(338, y + 8, 14, 14), ink.Tone(a.Tone), 2f);
-            Say(g, a.Title, fH3, ink.Head, R(374, y + 1, 380, 19), TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis);
-            Say(g, a.Detail, fMeta, ink.Muted, R(374, y + 21, 400, 18), TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis);
-            var when = a.At.ToLocalTime();
-            Say(g, when.Date == DateTime.Today ? when.ToString("h:mm tt", CultureInfo.CurrentCulture) : when.ToString("MMM d", CultureInfo.CurrentCulture), fSmall, ink.Muted, R(760, y + 3, 90, 16), TextFormatFlags.Right | TextFormatFlags.SingleLine);
-            y += 52;
+        }
+        g.Restore(whole);
+        // How far it goes, and its bar at the right edge when there is more than fits.
+        scrollMax = Math.Max(0, y + 24 - H);
+        thumb = RectangleF.Empty;
+        if (scrollMax > 0)
+        {
+            var (track, view) = (H - top - 12, H - top);
+            var tall = Math.Max(28, track * view / (view + scrollMax));
+            thumb = R(W - 9, top + 6 + (track - tall) * Math.Min(scroll, scrollMax) / scrollMax, 4, tall);
+            using var bar = new SolidBrush(pull is not null ? ink.Soft : ink.Line);
+            using var shape = Ink.Round(thumb, 2 * k);
+            g.FillPath(bar, shape);
+        }
+    }
+
+    // Activity moved by so much, kept within what there is.
+    private void ScrollTo(float to)
+    {
+        var next = Math.Max(0, Math.Min(to, scrollMax));
+        if (Math.Abs(next - scroll) > 0.01f)
+        {
+            scroll = next;
+            Invalidate();
+        }
+    }
+
+    protected override void OnMouseWheel(MouseEventArgs e)
+    {
+        base.OnMouseWheel(e);
+        if (page == "activity")
+        {
+            ScrollTo(scroll - e.Delta / 120f * 78);
         }
     }
 
@@ -803,6 +859,11 @@ internal sealed class ClientWindow : Form
     protected override void OnMouseMove(MouseEventArgs e)
     {
         base.OnMouseMove(e);
+        if (pull is { } taken)
+        {
+            ScrollTo(taken.From + (e.Y - taken.Y) / k / Math.Max(1, H - 125 - thumb.Height / k) * scrollMax);
+            return;
+        }
         var h = HitAt(e.Location);
         Cursor = h is not null ? Cursors.Hand : Cursors.Default;
         if (h?.Id != hover)
@@ -844,6 +905,18 @@ internal sealed class ClientWindow : Form
             Invalidate();
             return;
         }
+        // Activity's scroll bar: taken where it is, or brought to the pointer first.
+        if (page == "activity" && scrollMax > 0 && e.X >= (W - 16) * k && e.Y >= 113 * k)
+        {
+            if (!thumb.Contains(e.Location))
+            {
+                ScrollTo((e.Y / k - 119 - thumb.Height / k / 2) / (H - 125 - thumb.Height / k) * scrollMax);
+            }
+            pull = (e.Y, scroll);
+            Capture = true;
+            Invalidate();
+            return;
+        }
         // Dragged by anywhere that isn't a button: the window has no title bar of its own.
         Look.Drag(Handle);
     }
@@ -851,6 +924,13 @@ internal sealed class ClientWindow : Form
     protected override void OnMouseUp(MouseEventArgs e)
     {
         base.OnMouseUp(e);
+        if (pull is not null)
+        {
+            pull = null;
+            Capture = false;
+            Invalidate();
+            return;
+        }
         var h = HitAt(e.Location);
         var was = press;
         press = null;
@@ -871,7 +951,13 @@ internal sealed class ClientWindow : Form
         if (keys is (Keys.Control | Keys.Tab) or (Keys.Control | Keys.Shift | Keys.Tab))
         {
             page = page == "details" ? "activity" : "details";
+            scroll = 0;
             Invalidate();
+            return true;
+        }
+        if (page == "activity" && keys is Keys.Down or Keys.Up or Keys.PageDown or Keys.PageUp or Keys.Home or Keys.End)
+        {
+            ScrollTo(keys switch { Keys.Down => scroll + 52, Keys.Up => scroll - 52, Keys.PageDown => scroll + 400, Keys.PageUp => scroll - 400, Keys.Home => 0, _ => scrollMax });
             return true;
         }
         return base.ProcessCmdKey(ref msg, keys);

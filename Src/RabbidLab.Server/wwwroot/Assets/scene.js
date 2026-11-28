@@ -130,7 +130,7 @@
 
   // The time of day, from the clock: dawn, the day with the sun, dusk, night ("Day and night, dawn, dusk look amazing", then
   // "Write this to dev" of take B in the day-and-night mock): the same bright dawn, day and dusk in dark and light mode, with
-  // dark words by day, and the night drawn from the accent. The colours go on <html> as --sk-* (overview.css falls back to the
+  // white words on a soft dark shade at every time of day, and the night drawn from the accent. The colours go on <html> as --sk-* (overview.css falls back to the
   // night): at night a holiday's own, at other times its tint on the time's. ?time=dawn, day, dusk or night shows one.
   const rgb = (c) => [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16));
   const mix = (a, b, t) => { const [x, y] = [rgb(a), rgb(b)]; return `#${x.map((v, i) => Math.round(v + (y[i] - v) * t).toString(16).padStart(2, '0')).join('')}`; };
@@ -143,7 +143,7 @@
       glow: '#ffd4aa', water0: '#c98b9b', water1: '#2b2447', rim: '#ffcdb5', mist: '#f6c4b4', star: '.25', glint: '#fff0e0', ...SUN, moon1: '#fff0dc', moon2: '#ffcf9e', halo: '.55' },
     day: { sky0: '#5f9fe9', sky1: '#a7ccf3', sky2: '#e4effb', l1: '#94b8d0', l2: '#77a18d', l3: '#5b8568', l4: '#446b53', l5: '#2f4d3c', pines3: '#3f6a4e', pines5: '#23402f',
       fog: '#dcebf8', fogK: '.5', glow: '#fff3c4', water0: '#86b6e2', water1: '#2c5d8e', rim: '#ffffff', mist: '#ffffff', mistK: '.6', star: '0', glint: '#ffffff',
-      text: '#10213f', lead: '#26364f', eye: '#2c5d8e', shade: 'transparent', ...SUN }, // no shade behind the words by day ("No shade", the haze mock)
+      ...SUN }, // white words by day too, on the night's own shade ("This should also be in white, no?")
     dusk: { sky0: '#1d1a4a', sky1: '#a5487b', sky2: '#f69c5c', l1: '#4b305f', l2: '#3c2651', l3: '#2f1e43', l4: '#231735', l5: '#160f23', fog: '#f08c6c', fogK: '.7',
       glow: '#ffc58c', water0: '#a1517b', water1: '#1b1231', rim: '#ffb28c', mist: '#f3a080', star: '.5', glint: '#ffe0c4', ...SUN, moon1: '#ffe2c0', moon2: '#ffa868', halo: '.6' },
   };
@@ -322,7 +322,7 @@
     return light
       ? { sky0: l(0.35), sky1: l(0.55), sky2: l(0.78), l1: l(0.45), l2: l(0.3), l3: l(0.15), l4: d(0.15), l5: d(0.35), pines3: d(0.05), pines5: d(0.45), water0: l(0.5), water1: d(0.2),
         fog: l(0.8), glow: l(0.92), rim: '#ffffff', mist: l(0.85), glint: '#ffffff', star: '0', moon0: '#ffffff', moon1: l(0.95), moon2: l(0.8), seas: '0', halo: '.5',
-        text: d(0.75), lead: d(0.6), eye: d(0.4), shade: l(0.85) }
+        text: d(0.75), lead: d(0.6), shade: l(0.85) }
       : { sky0: d(0.92), sky1: d(0.8), sky2: d(0.55), l1: d(0.62), l2: d(0.7), l3: d(0.78), l4: d(0.84), l5: d(0.92), pines3: d(0.82), pines5: d(0.95), water0: d(0.6), water1: d(0.95),
         fog: l(0.25), glow: l(0.7), rim: l(0.5), mist: l(0.4), glint: l(0.8), moon0: '#ffffff', moon1: l(0.9), moon2: l(0.7) };
   };

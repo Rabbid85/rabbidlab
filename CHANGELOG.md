@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.452 (2026-11-28)
+
+- Banner text is now white at every time of day, on Overview and on every other page, with a soft dark shade behind it. By day it was dark and hard to read on the trees.
+- The client window: Activity now has a heading for each day (Today, Yesterday, then the date) and scrolls, so every entry can be read. Before, only the newest few fit in the window.
+
 ## 1.1.451 (2026-11-28)
 
 - The Overview banner now has one line of text: the lab name at the left, and the date, the time and the weather at the right. Click the weather to see the next hours. Click the time to open the banner settings.

@@ -3,6 +3,9 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.452', [
+    'Banner text is now white at every time of day, on Overview and on every other page, with a soft dark shade behind it. By day it was dark and hard to read on the trees.',
+    'The client window: Activity now has a heading for each day (Today, Yesterday, then the date) and scrolls, so every entry can be read. Before, only the newest few fit in the window.']],
   ['1.1.451', [
     'The Overview banner now has one line of text: the lab name at the left, and the date, the time and the weather at the right. Click the weather to see the next hours. Click the time to open the banner settings.',
     'Settings, Banner has a new Overview text section. Text position puts the line at the top or the bottom of the banner. Quote of the day shows or hides a daily quote, taken from the kind set for the sign-in page.',
@@ -1450,6 +1453,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.452': ['2026-11-28', 'fix', 'White banner text by day, and client activity by day'],
   '1.1.451': ['2026-11-28', 'feature', 'One line of text on the Overview banner'],
   '1.1.450': ['2026-11-28', 'fix', 'Client updates no longer wait for the tray icon'],
   '1.1.448': ['2026-11-28', 'fix', 'A failed client update keeps the old client'],
