@@ -190,7 +190,10 @@ public static class GpoXml
     {
         var args = $"/c if not exist \"{DirectoryTools.ClientExe}\" msiexec.exe /i \"{msi}\" /qn /norestart /l*v \"%windir%\\Temp\\RabbidLab-Client-install.log\" QUIET=1 SERVER={server}"
             + (string.IsNullOrEmpty(fingerprint) ? "" : $" FINGERPRINT={fingerprint}");
-        const string name = "Install the Rabbid Lab client";
+        // A name of its own for each deployment. Group Policy only creates the task, and does nothing while one of the
+        // same name is there: Windows Server 2016 keeps the task after it has run (seen 2026-11-27 on two domain
+        // controllers, where a failed install then never ran again however often the GPO changed).
+        var name = $"Install the Rabbid Lab client {now:yyyyMMdd-HHmmss}";
         var doc = new XElement("ScheduledTasks", new XAttribute("clsid", "{CC63F200-7309-4ba0-B154-A71CD118DBCC}"),
             new XElement("ImmediateTaskV2",
                 new XAttribute("clsid", "{9756B581-76EC-4169-9AFC-0CA8D43ADB5F}"), new XAttribute("name", name), new XAttribute("image", "0"),

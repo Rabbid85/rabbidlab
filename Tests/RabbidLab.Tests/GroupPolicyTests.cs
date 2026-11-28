@@ -368,6 +368,8 @@ public sealed class GroupPolicyTests : IDisposable
             (string) ad.Mods.Last(m => m.Dn == dn && m.Mod.Attribute == "gPCMachineExtensionNames").Mod.Values[0]);
         Assert.Equal(["1", "2"], ad.Mods.Where(m => m.Dn == dn && m.Mod.Attribute == "versionNumber").Select(m => (string) m.Mod.Values[0]));
         Assert.Equal(id, again); // the same GPO, brought up to date
+        // Each deployment's task has a name of its own, so one left on a computer never stops the next from being made.
+        Assert.Matches(@"name=""Install the Rabbid Lab client d{8}-d{6}""", task);
         Assert.Equal([4, 5], files.Files[$@"{root}\Machine\Rabbid Lab\RabbidLab-Client.msi"]);
         Assert.True(deployed.Linked);
         Assert.Equal(DirectoryTools.ClientGpoName, deployed.Name);
