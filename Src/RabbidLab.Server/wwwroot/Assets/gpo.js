@@ -94,7 +94,7 @@
     no(Object.assign(new Error('Cancelled.'), { cancelled: true }));
   });
   // A change: confirmed it's you (as Devices asks), then as the service account, or with the login when it isn't allowed.
-  const change = (path, body = {}, where = $('gpo-lib')) => together(async () => {
+  const change = (path, body = {}, where = $('gpo-lib'), what = 'Applying Group Policy changes') => together(async () => {
     const attempt = async () => {
       const l = login;
       try {
@@ -106,7 +106,7 @@
         return attempt();
       }
     };
-    R.busy(where, 'Applying Group Policy changes');
+    R.busy(where, what);
     try {
       return await D.confirmed(attempt);
     } finally {

@@ -13,6 +13,9 @@ public sealed class ClientDeployFile
     public string? Version { get; set; }
     public string? By { get; set; }
     public DateTime? At { get; set; }
+
+    /// <summary>What each computer's install log said when it was last read, by the computer's name in capitals (ClientDeployStatus.cs).</summary>
+    public Dictionary<string, InstallLogRead>? Logs { get; set; }
 }
 
 /// <summary>What the Deploy page shows: whether Group Policy Management is here, and the deployment if there is one.</summary>
@@ -150,6 +153,7 @@ public sealed partial class DirectoryTools
         }
         lock (deploy.Gate)
         {
+            // Written whole: the install logs read before are of the last deployment, and every computer now tries again.
             deploy.Save(new ClientDeployFile { Gpo = id, Server = address.GetLeftPart(UriPartial.Authority), Version = Product.Version, By = by, At = DateTime.UtcNow });
         }
         return id;
@@ -183,12 +187,12 @@ public static class GpoXml
 {
     /// <summary>
     /// An immediate task that runs once each policy refresh as SYSTEM: when the client isn't installed, msiexec installs it
-    /// quietly from the GPO's folder, pointed at this server, with QUIET=1 so people at the computer see nothing (no tray
-    /// icon, no messages); it still waits for approval. Once it's there the task does nothing.
+    /// quietly from the GPO's folder, pointed at this server; no installer window shows, and the tray icon appears once
+    /// it is installed. It still waits for approval. Once it's there the task does nothing.
     /// </summary>
     public static byte[] InstallTask(string msi, string server, string? fingerprint, DateTime now)
     {
-        var args = $"/c if not exist \"{DirectoryTools.ClientExe}\" msiexec.exe /i \"{msi}\" /qn /norestart /l*v \"%windir%\\Temp\\RabbidLab-Client-install.log\" QUIET=1 SERVER={server}"
+        var args = $"/c if not exist \"{DirectoryTools.ClientExe}\" msiexec.exe /i \"{msi}\" /qn /norestart /l*v \"%windir%\\Temp\\RabbidLab-Client-install.log\" SERVER={server}"
             + (string.IsNullOrEmpty(fingerprint) ? "" : $" FINGERPRINT={fingerprint}");
         // A name of its own for each deployment. Group Policy only creates the task, and does nothing while one of the
         // same name is there: Windows Server 2016 keeps the task after it has run (seen 2026-11-27 on two domain

@@ -40,7 +40,11 @@ internal sealed class Settings
     /// <summary>Whether the server may run scripts and actions on this computer (Jobs.cs). Group Policy can turn it off.</summary>
     public bool Scripts { get; private set; } = true;
 
-    /// <summary>Nothing for people at the computer to see: no tray icon, no messages. Group Policy first, then the installer's QUIET=1.</summary>
+    /// <summary>
+    /// Nothing for people at the computer to see: no tray icon, no messages. Only when Group Policy says so (the Rabbid
+    /// Lab template). The installer's QUIET=1, which the deploy GPO gave until 1.1.446, no longer hides anything: the
+    /// icon always shows ("it should ALWAYS show. Period. The end."), on computers installed that way too.
+    /// </summary>
     public bool Quiet { get; private set; }
 
     public static Settings Read()
@@ -66,13 +70,9 @@ internal sealed class Settings
             {
                 installedServer = Text(installed, "Server")?.TrimEnd('/');
                 installedFingerprint = CleanFingerprint(Text(installed, "CertificateFingerprint"));
-                s.Quiet = policyQuiet is int q ? q != 0 : installed.GetValue("Quiet") is int iq && iq != 0;
-            }
-            else
-            {
-                s.Quiet = policyQuiet is int q && q != 0;
             }
         }
+        s.Quiet = policyQuiet is int q && q != 0;
 #if DEBUG
         // Trying it out without installing, in a debug build only: the same from environment variables.
         installedServer ??= Environment.GetEnvironmentVariable("RABBIDLAB_SERVER")?.TrimEnd('/');

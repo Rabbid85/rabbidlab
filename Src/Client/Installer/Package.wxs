@@ -67,8 +67,9 @@
       </RegistryKey>
     </Component>
 
-    <!-- QUIET=1 (the deploy GPO gives it): nothing for people at the computer to see, no tray icon and no messages. Kept
-         through updates. The Rabbid Lab template's Hide the client policy wins over it either way. -->
+    <!-- QUIET=1 was what the deploy GPO gave until 1.1.446, and it is still written when given. The client no longer
+         reads it: the tray icon always shows, unless the Rabbid Lab template's Group Policy setting hides it. This
+         goes when the installer is next reworked and tried on real computers. -->
     <Property Id="QUIET" Secure="yes" />
     <Component Id="QuietSetting" Directory="INSTALLFOLDER" Condition="QUIET" Permanent="yes" Bitness="always64">
       <RegistryValue Root="HKLM" Key="SOFTWARE\Rabbid Lab\Client" Name="Quiet" Type="integer" Value="1" KeyPath="yes" />

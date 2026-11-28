@@ -3,6 +3,13 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.447', [
+    'Devices, Deploy the client now lists every computer in the domain with its state: Installed, Pending approval, Install failed or Not installed. Select a computer and click Get install log to read why an install failed. It asks for an administrator login when it needs one and does not save it.',
+    'Deploy the client also has Install on one computer: the installer download and the command for a silent install.',
+    'The tray icon now always shows on computers installed by the deploy GPO, including ones already installed. Only the Group Policy template can hide it.',
+    'The client window now says why it cannot reach the server, such as a certificate that does not match, a server name that was not found, or a timeout.',
+    'The join command asks Windows for administrator rights when it needs them, and shows a message if it cannot finish.',
+    'The client removes the install tasks that the deploy GPO leaves in Task Scheduler on Windows Server 2016.']],
   ['1.1.446', [
     'Fixed: a computer that installed the client from the deploy GPO could not connect when the GPO used an added console address. The GPO gave computers the fingerprint of the wrong certificate; it now gives the fingerprint of the key, which is right at every address.',
     'Fixed: on Windows Server 2016, a computer where the GPO install failed never tried again, because the install task from the first try was still registered. Each deployment now has an install task of its own.',
@@ -1434,6 +1441,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.447': ['2026-11-28', 'feature', 'See which computers have the client'],
   '1.1.446': ['2026-11-28', 'fix', 'Deploy GPO: fingerprint and retries'],
   '1.1.445': ['2026-11-28', 'fix', 'The client update that removed the client'],
   '1.1.444': ['2026-11-27', 'fix', 'The client installs on Windows Server 2016'],

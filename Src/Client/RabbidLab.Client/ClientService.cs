@@ -86,6 +86,7 @@ internal sealed class ClientService : ServiceBase
     private static async Task Run(CancellationToken stop)
     {
         var agent = new Agent();
+        var (tidied, reached) = (false, 0);
         while (!stop.IsCancellationRequested)
         {
             // The tray icon, for anyone signed in to Windows who hasn't got one.
@@ -110,6 +111,13 @@ internal sealed class ClientService : ServiceBase
                 if (status.State == Status.Connected)
                 {
                     await Inventory.Follow(stop).ConfigureAwait(false);
+                }
+                // Once, from the second round it reached the server on: the deploy GPO's install tasks, which Windows
+                // Server 2016 leaves in Task Scheduler, are taken away (InstallTasks.cs).
+                if (!tidied && status.State is Status.Connected or Status.Waiting && ++reached >= 2)
+                {
+                    tidied = true;
+                    InstallTasks.Clear();
                 }
             }
             catch (Exception e) when (!stop.IsCancellationRequested)

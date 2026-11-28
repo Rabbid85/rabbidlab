@@ -18,7 +18,7 @@ internal static class Program
     {
         if (args.Length == 0 || (args.Length == 1 && args[0] == "--tray"))
         {
-            // Quiet (the deploy GPO, or Group Policy): no icon at sign-in. Opened from the Start menu, it still shows, and so
+            // Quiet (Group Policy only, the Rabbid Lab template): no icon at sign-in. Opened from the Start menu, it still shows, and so
             // does a window an update just closed (Tray.Kept).
             if (args.Length == 1 && Tray.Kept(take: false) is null && Settings.Read().Quiet)
             {
@@ -64,7 +64,7 @@ internal static class Program
         }
         if (args.Length == 3 && args[0] == "--join")
         {
-            return new JoinLink { Server = args[1], Fingerprint = args[2] }.Save();
+            return new JoinLink { Server = args[1], Fingerprint = args[2] }.Run();
         }
         if (args.Length == 1 && args[0] == "--unlock")
         {

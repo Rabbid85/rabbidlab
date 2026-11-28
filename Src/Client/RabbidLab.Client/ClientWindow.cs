@@ -222,6 +222,25 @@ internal sealed class ClientWindow : Form
         _ => "Starting",
     };
 
+    /// <summary>
+    /// Why the server can't be reached, from what the service found (Status.Problem), in words of the window's own: the
+    /// service's text can name the server, which no window does. It said "No answer from the server" for every reason,
+    /// a certificate that does not match included.
+    /// </summary>
+    private string Why()
+    {
+        var p = s.Problem ?? "";
+        bool Has(string words) => p.IndexOf(words, StringComparison.OrdinalIgnoreCase) >= 0;
+        return Has("does not match the fingerprint") ? "The server's certificate does not match the one stored on this computer. An administrator needs to connect this computer again."
+            : Has("trust the server's certificate") ? "Windows does not trust the server's certificate."
+            : Has("could not be resolved") ? "The server's name was not found (DNS). Check this computer's network connection."
+            : Has("timed out") ? "The connection to the server timed out."
+            : Has("(HTTP ") ? p
+            : Has("http://") ? "This computer is set to an http:// server address. The client connects only over https://."
+            : Has("actively refused") || Has("Unable to connect") ? "The server is not accepting connections. It may be stopped or restarting."
+            : "No answer from the server.";
+    }
+
     private string[] Lead()
     {
         string At(DateTime? utc) => utc is { } t ? t.ToLocalTime().ToString("h:mm tt", CultureInfo.CurrentCulture) : "";
@@ -229,7 +248,7 @@ internal sealed class ClientWindow : Form
         {
             Status.Connected => new[] { $"Checked in at {At(s.CheckedIn)}.", "The ring counts down to the next." },
             Status.Waiting => new[] { $"{Lab} has this computer's request.", "An admin needs to approve it." },
-            Status.Unreachable => new[] { s.LastOk is { } l ? $"No answer since {At(l)}." : "No answer from the server.", "The ring counts down to the next try." },
+            Status.Unreachable => new[] { Why(), s.LastOk is { } l ? $"Last check-in at {At(l)}. The ring counts down to the next try." : "The ring counts down to the next try." },
             Status.NoServer => new[] { "Connect to a server here. Or uninstall this client and install the one from the server's console, which already knows its server." },
             Status.Refused => new[] { "It tries again in a few minutes." },
             Status.Removed => new[] { "It was taken out of Devices. It reconnects by itself." },

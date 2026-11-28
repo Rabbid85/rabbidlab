@@ -64,8 +64,57 @@ internal sealed class JoinLink
     public const string Typed = "Enter the server's https:// address. If Windows doesn't trust the server's certificate, install the client from the server's console instead: that download already knows its server.";
 
     /// <summary>
-    /// Saved where the installer keeps its settings, then the service restarted so it joins straight away. Run as an
-    /// administrator (--join); the window asks Windows for that.
+    /// --join, as typed at a prompt or started by the Connect window. From a prompt that is not an administrator's it
+    /// asks Windows for one; it used to end without a word and save nothing. What stops it is said in a message, since
+    /// this program has no console to write to.
+    /// </summary>
+    public int Run()
+    {
+        if ((Problem() ?? (LockedTo(Server) is not null ? LockedNote : null)) is { } why)
+        {
+            return Tell(why, 2);
+        }
+        bool admin;
+        using (var me = System.Security.Principal.WindowsIdentity.GetCurrent())
+        {
+            admin = new System.Security.Principal.WindowsPrincipal(me).IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
+        }
+        if (admin)
+        {
+            try
+            {
+                return Save();
+            }
+            catch (Exception e) when (e is UnauthorizedAccessException or System.Security.SecurityException or System.IO.IOException)
+            {
+                return Tell($"Could not save the server address: {e.Message}", 1);
+            }
+        }
+        try
+        {
+            using var elevated = Process.Start(new ProcessStartInfo(Application.ExecutablePath, $"--join \"{Server}\" \"{Fingerprint}\"") { Verb = "runas", UseShellExecute = true });
+            elevated?.WaitForExit();
+            return elevated?.ExitCode ?? 1;
+        }
+        catch (Win32Exception)
+        {
+            return Tell("Connecting this computer to a server requires administrator rights. Run the command again and select Yes when Windows asks.", 5);
+        }
+    }
+
+    private static int Tell(string why, int code)
+    {
+        Console.Error.WriteLine(why);
+        if (Environment.UserInteractive)
+        {
+            MessageBox.Show(why, "Rabbid Lab Client", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        }
+        return code;
+    }
+
+    /// <summary>
+    /// Saved where the installer keeps its settings, then the service restarted so it joins straight away. As an
+    /// administrator (Run).
     /// </summary>
     public int Save()
     {

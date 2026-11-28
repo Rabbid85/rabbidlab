@@ -2,6 +2,15 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.447 (2026-11-28)
+
+- Devices, Deploy the client now lists every computer in the domain with its state: Installed, Pending approval, Install failed or Not installed. Select a computer and click Get install log to read why an install failed. It asks for an administrator login when it needs one and does not save it.
+- Deploy the client also has Install on one computer: the installer download and the command for a silent install.
+- The tray icon now always shows on computers installed by the deploy GPO, including ones already installed. Only the Group Policy template can hide it.
+- The client window now says why it cannot reach the server, such as a certificate that does not match, a server name that was not found, or a timeout.
+- The join command asks Windows for administrator rights when it needs them, and shows a message if it cannot finish.
+- The client removes the install tasks that the deploy GPO leaves in Task Scheduler on Windows Server 2016.
+
 ## 1.1.446 (2026-11-28)
 
 - Fixed: a computer that installed the client from the deploy GPO could not connect when the GPO used an added console address. The GPO gave computers the fingerprint of the wrong certificate; it now gives the fingerprint of the key, which is right at every address.

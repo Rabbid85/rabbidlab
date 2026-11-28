@@ -159,6 +159,23 @@ public static class GroupPolicyApi
             return Results.Ok(new { id });
         }));
 
+        // Every computer in the domain with the client on it or not, from Active Directory and the clients that check in.
+        app.MapGet("/api/gpo/client/computers", (HttpContext context, DirectoryTools tools, Clients clients) => Gpo(context, Permissions.GpoView, async () =>
+            Access.Can(context, Permissions.SeatsAdd) ? Results.Ok(await tools.DeployComputers(clients.All(), clients.IsOnline, context.RequestAborted)) : Access.NotAllowed(), change: false));
+
+        // One computer's install log, read from that computer as an administrator of it. The login is asked for when
+        // Rabbid Lab's own account is not one, used for this read and not kept. Confirmed and logged, like deploying.
+        app.MapPost("/api/gpo/client/log", (InstallLogForm form, HttpContext context, DirectoryTools tools, Clients clients, ActivityLog log) => Gpo(context, Permissions.GpoChange, async () =>
+        {
+            if (Access.RefuseUnless(context, Permissions.SeatsAdd) is { } refused)
+            {
+                return refused;
+            }
+            var answer = await tools.ReadInstallLog(form.Computer ?? "", form.Login, ActivityLog.Who(context), clients.All(), clients.IsOnline, context.RequestAborted);
+            log.Record(context, "users", "gpo.client.log", $"Read the client install log on {answer.Computer.Name}");
+            return Results.Ok(answer);
+        }));
+
         app.MapPost("/api/gpo/client/stop", (GpoForm form, HttpContext context, IGroupPolicy gp, ActivityLog log) => Gpo(context, Permissions.GpoLink, async () =>
         {
             await gp.StopClientDeploy(form.Login, context.RequestAborted);
