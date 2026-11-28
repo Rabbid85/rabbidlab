@@ -22,7 +22,7 @@
   // how long from one time to the next. idle: the pines rustle while he waits.
   const KEY = 'rabbidlab.monsters';
   const MIN = 60000;
-  const TIMES = [['dawn', 'Dawn'], ['day', 'Day'], ['dusk', 'Dusk'], ['night', 'Night']];
+  const TIMES = [['dawn', 'Dawn', 'sunrise'], ['day', 'Day', 'sun'], ['dusk', 'Dusk', 'sunset'], ['night', 'Night', 'moon']]; // and its icon
   const OFTEN = [['never', 'Never'], ['rarely', 'Rarely'], ['sometimes', 'Sometimes'], ['often', 'Often']];
   const RULES = {
     rarely: { odds: 0.1, first: [3000, 15000], open: [20 * MIN, 40 * MIN], gap: [20 * MIN, 40 * MIN] },
@@ -30,12 +30,12 @@
     // As they were until 1.1.438: Nessie on the lake about two thirds of the time, the runner bolting every few seconds.
     often: { nessie: { odds: 1, first: [3000, 9000], gap: [6000, 20000] }, runner: { odds: 1, first: [4000, 11000], gap: [4000, 11000], idle: true } },
   };
-  // Each one's name, where it is, and how often it comes until someone says otherwise: Nessie rarely, the runners as before.
+  // Each one's name, what it is, and how often it comes until someone says otherwise: rarely ("This should be default.").
   const WHO = {
-    nessie: ['Nessie', 'In the lake.', 'rarely'],
-    sasquatch: ['Sasquatch', 'On the far shore.', 'often'],
-    yeti: ['The yeti', 'In Sasquatch’s place while it snows.', 'often'],
-    santa: ['Santa', 'In Sasquatch’s place at Christmas.', 'often'],
+    nessie: ['Nessie', 'Swims in the lake.', 'rarely'],
+    sasquatch: ['Sasquatch', 'Runs along the far shore.', 'rarely'],
+    yeti: ['Yeti', 'Replaces Sasquatch when it is snowing.', 'rarely'],
+    santa: ['Santa', 'Replaces Sasquatch at Christmas.', 'rarely'],
   };
   // Only what this file knows is taken from what was kept.
   const clean = (o) => Object.fromEntries(Object.entries(WHO).map(([k, [, , usual]]) => [k, {
@@ -67,43 +67,44 @@
   // Whether it comes at the time of day the banner shows now (scene.js keeps that on the page).
   const allowed = (k) => opts[k].times.includes(document.documentElement.dataset.sky || 'night');
 
-  // The options as Settings, Banner shows them: a row a monster, with how often, the times of day, and what that means.
-  const words = (xs) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
-  const says = (k) => {
+  // The options as Settings, Banner shows them: a line a monster. Under its name what it is and how often it shows, always
+  // one short sentence; at the right how often as a drop-down and the four times of day as buttons, their names as hints.
+  const about = (k) => {
     const o = opts[k];
-    const runner = k !== 'nessie';
-    if (!o.times.length) return `No time of day is selected, so ${runner ? 'he never bolts from the pines' : 'she never comes up'}.`;
-    const how = {
-      never: runner ? 'He never bolts from the pines.' : 'She never comes up.',
-      rarely: `On one visit to Overview in ten, within the first fifteen seconds. Left open, ${runner ? 'he bolts' : 'she comes up'} every 20 to 40 minutes.`,
-      sometimes: `${runner ? 'He first bolts' : 'She first comes up'} one to three minutes after Overview opens, then every three to eight minutes.`,
-      often: runner ? 'He is always behind the pines, which rustle, and bolts to another clump every 4 to 11 seconds.' : 'She comes up within nine seconds of every visit, and again 6 to 20 seconds after each dive.',
-    }[o.often];
-    return o.often === 'never' || o.times.length === TIMES.length ? how : `${how} Only ${words(o.times.map((t) => (t === 'day' ? 'by day' : `at ${t}`)))}.`;
+    const how = o.often === 'never' ? 'Turned off.' : !o.times.length ? 'No times of day selected.'
+      : { rarely: 'Appears on about 1 in 10 visits.', sometimes: 'Appears every few minutes.', often: k === 'nessie' ? 'Appears on every visit.' : 'Appears every few seconds.' }[o.often];
+    return `${WHO[k][1]} ${how}`;
   };
-  const form = () => Object.entries(WHO).map(([k, [name, where]]) => `<div class="sky-row mon-row"><span>${name}<small>${where}</small></span><div>`
-    + `<div class="mon-opt"><small>How often</small><div class="seg" data-mon-often="${k}" role="group" aria-label="How often ${name} comes">${OFTEN.map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${opts[k].often === v}">${l}</button>`).join('')}</div></div>`
-    + `<div class="mon-opt"><small>Times of day</small><div class="seg" data-mon-times="${k}" role="group" aria-label="Times of day ${name} comes at">${TIMES.map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${opts[k].times.includes(v)}"${opts[k].often === 'never' ? ' disabled' : ''}>${l}</button>`).join('')}</div></div>`
-    + `<p class="sky-note">${says(k)}</p></div></div>`).join('');
+  const form = () => Object.entries(WHO).map(([k, [name]]) => `<div class="ds-row"><div class="ds-l"><b>${name}</b><span>${about(k)}</span></div><div class="ds-r">`
+    + `<select data-mon-often="${k}" aria-label="How often ${name} appears">${OFTEN.map(([v, l]) => `<option value="${v}"${opts[k].often === v ? ' selected' : ''}>${l}</option>`).join('')}</select>`
+    + `<div class="mon-times" data-mon-times="${k}" role="group" aria-label="Times of day ${name} appears">${TIMES.map(([v, l, icon]) => `<button type="button" data-v="${v}" data-tip="${l}" aria-label="${l}" aria-pressed="${opts[k].times.includes(v)}"${opts[k].often === 'never' ? ' disabled' : ''}><svg><use href="#i-${icon}"/></svg></button>`).join('')}</div>`
+    + '</div></div>').join('');
   // Drawn into Settings, Banner; a change is kept at once and the banner goes by it from then. reset: its Reset button.
   const mount = (el, reset) => {
     const draw = () => {
-      // The button that was clicked keeps the keyboard's place when the rows are drawn again.
+      // The control that was used keeps the keyboard's place when the lines are drawn again.
       const at = el.contains(document.activeElement) ? document.activeElement : null;
-      const [group, v] = [at?.parentElement.dataset, at?.dataset.v];
+      const where = !at ? null : at.dataset.monOften ? `[data-mon-often="${at.dataset.monOften}"]` : `[data-mon-times="${at.parentElement.dataset.monTimes}"] > [data-v="${at.dataset.v}"]`;
       el.innerHTML = form();
-      if (at) el.querySelector(`[data-mon-${group.monOften ? `often="${group.monOften}"` : `times="${group.monTimes}"`}] > [data-v="${v}"]`)?.focus();
+      if (where) el.querySelector(where)?.focus();
     };
-    el.addEventListener('click', (e) => {
-      const b = e.target.closest('.seg > button[data-v]');
-      if (!b) return;
-      const { monOften, monTimes } = b.parentElement.dataset;
-      if (monOften) opts[monOften].often = b.dataset.v;
-      else { const had = opts[monTimes].times; opts[monTimes].times = TIMES.map(([v]) => v).filter((v) => (v === b.dataset.v) !== had.includes(v)); }
+    el.addEventListener('change', (e) => {
+      const often = e.target.dataset.monOften;
+      if (!often) return;
+      opts[often].often = e.target.value;
       keep();
       draw();
     });
-    reset?.addEventListener('click', () => { opts = clean(null); keep(); draw(); });
+    el.addEventListener('click', (e) => {
+      const b = e.target.closest('.mon-times > button');
+      if (!b) return;
+      const k = b.parentElement.dataset.monTimes;
+      const had = opts[k].times;
+      opts[k].times = TIMES.map(([v]) => v).filter((v) => (v === b.dataset.v) !== had.includes(v));
+      keep();
+      draw();
+    });
+    reset?.addEventListener('click', () => { opts = clean(null); keep(); draw(); window.RabbidLab?.toast('Monster settings were reset to the defaults.'); });
     draw();
   };
   const page = document.getElementById('set-monsters');

@@ -2,6 +2,13 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.443 (2026-11-27)
+
+- Settings, Banner: each monster is now one line, with a drop-down for how often it appears and four buttons for the times of day. Point at a button to see which time of day it is.
+- Every monster now starts on Rarely. If you changed the monster settings before, click Reset to get the new defaults.
+- The Banner page is reworded in plain English, and Reset shows a message when it is done.
+- Fixed: the Reset button on Monsters, and on Style in Appearance, had a line down its left edge and square corners on that side.
+
 ## 1.1.442 (2026-11-27)
 
 - Cleanup behind the pages, with nothing meant to look or work differently: the small parts that many pages draw the same way are written once and shared, lists share one piece of code for their tick boxes, and unused code and styles are gone.

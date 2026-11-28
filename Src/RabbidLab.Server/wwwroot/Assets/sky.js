@@ -123,11 +123,11 @@
   const seg = (k, choices, on) => `<div class="seg" data-sky-pick="${k}">${choices.map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${v === on}">${esc(l)}</button>`).join('')}</div>`;
   // Colour and Solid share the mode's colour. Under the swatches, what each one shows.
   const swatches = (m) => (!['colour', 'solid'].includes(st[m]) ? '' : `<div class="sky-sw">${Object.entries(COLOURS).map(([c, name]) => `<button type="button" data-sky-colour="${m}" data-c="${c}" data-tip="${name}" aria-label="${name}" aria-pressed="${st[`${m}Colour`] === c}"></button>`).join('')}</div>`
-    + `<p class="sky-note">${st[m] === 'colour' ? 'The drawing in shades of this colour.' : 'One solid colour in place of the drawing. Nothing moves.'} Holidays and the weather are not shown.</p>`);
+    + `<p class="sky-note">${st[m] === 'colour' ? 'Shows the banner picture in shades of this colour.' : 'Shows a solid colour instead of the banner picture, with no animation.'} Holidays and weather are hidden.</p>`);
   const note = () => {
-    if (!st.holidays) return 'The banner stays the same all year.';
+    if (!st.holidays) return 'Holiday banners are turned off.';
     const [on, then] = [onNow(), next()];
-    return `${on ? `${on.name} is on now, until ${day(on.to(today().getFullYear()))}.` : 'No holiday is on now.'} Next: ${then.name}, ${day(then.from)}.`;
+    return `${on ? `${on.name} is showing now, until ${day(on.to(today().getFullYear()))}.` : 'No holiday is showing now.'} Next: ${then.name}, ${day(then.from)}.`;
   };
   // What was typed in the ZIP box and not saved yet, and what the server said when a save failed.
   let zipDraft = null;
@@ -140,21 +140,21 @@
   // Under Current weather: the lab's ZIP code (a box for whoever may change the lab's look), and what was last read.
   const place = () => {
     if (!st.weather) return '';
-    if (!wx) return '<p class="sky-note">The weather could not be read from the server.</p>';
+    if (!wx) return '<p class="sky-note">Could not get the weather from the server.</p>';
     const r = wx.reading;
-    const box = wx.canSet ? `<label class="sky-place"><span>ZIP code of the lab</span><span class="sky-zip"><input class="ds-input" data-sky-zip inputmode="numeric" maxlength="5" autocomplete="off" spellcheck="false" placeholder="60601" value="${esc(zipDraft ?? wx.zip)}">`
+    const box = wx.canSet ? `<label class="sky-place"><span>Lab ZIP code</span><span class="sky-zip"><input class="ds-input" data-sky-zip inputmode="numeric" maxlength="5" autocomplete="off" spellcheck="false" placeholder="60601" value="${esc(zipDraft ?? wx.zip)}">`
       + `<button type="button" class="ds-btn" data-sky-zip-save${saving ? ' disabled' : ''}>${saving ? 'Checking' : 'Save'}</button></span></label>` : '';
     const line = zipProblem ? zipProblem
-      : !wx.zip ? (wx.canSet ? 'Enter the lab’s ZIP code to show the weather there. United States only.' : 'The lab’s ZIP code is not set yet. Someone who can change the lab’s appearance sets it here.')
-        : r ? `${[says(r), r.windKph ? `wind ${wind(r.windKph)}` : ''].filter(Boolean).join(', ')}${r.place ? ` in ${r.place}` : ''}. Read ${ago(r.at)}; the server checks every ${wx.every} minutes.`
-          : wx.problem || 'Waiting for the first reading.';
+      : !wx.zip ? (wx.canSet ? 'Enter the lab’s ZIP code to show its weather. United States only.' : 'The lab’s ZIP code is not set. An admin who can change the lab’s appearance can set it here.')
+        : r ? `${[says(r), r.windKph ? `wind ${wind(r.windKph)}` : ''].filter(Boolean).join(', ')}${r.place ? ` in ${r.place}` : ''}. Updated ${ago(r.at)}. The server checks every ${wx.every} minutes.`
+          : wx.problem || 'Waiting for the first weather update.';
     return `${box}<p class="sky-note${zipProblem ? ' problem' : ''}">${esc(line)}</p><p class="sky-note">Weather from the US National Weather Service.</p>`;
   };
   // inPage: in Settings, Banner, which has no Showing row (the window's look at the other mode ends when it closes).
   const form = (inPage) => (inPage ? '' : `<div class="sky-row"><span>Showing</span>${seg('showing', [['dark', 'Dark mode'], ['light', 'Light mode']], mode())}</div>`)
     + `<div class="sky-row"><span>Dark mode</span><div>${seg('dark', TIMES, st.dark)}${swatches('dark')}</div></div>`
     + `<div class="sky-row"><span>Light mode</span><div>${seg('light', TIMES, st.light)}${swatches('light')}</div></div>`
-    + `<div class="sky-row"><span>Holidays</span><div><label class="sky-switch"><input type="checkbox" class="switch" data-sky-holidays ${st.holidays ? 'checked' : ''}><span>On their dates</span></label>`
+    + `<div class="sky-row"><span>Holidays</span><div><label class="sky-switch"><input type="checkbox" class="switch" data-sky-holidays ${st.holidays ? 'checked' : ''}><span>Show holiday banners</span></label>`
     + `<p class="sky-note">${esc(note())}</p></div></div>`
     + `<div class="sky-row"><span>Weather</span><div>${seg('weather', [['off', 'Off'], ['on', 'Current weather']], st.weather ? 'on' : 'off')}${place()}</div></div>`;
 
@@ -187,9 +187,9 @@
       const r = await fetch('/api/settings/weather', { method: 'POST', headers, body: JSON.stringify({ zip: (zipDraft ?? wx?.zip ?? '').trim() }) });
       const j = await r.json().catch(() => ({}));
       if (r.ok) { [wx, zipDraft] = [j, null]; learn(); }
-      else zipProblem = j.error || 'The ZIP code could not be saved.';
+      else zipProblem = j.error || 'Could not save the ZIP code.';
     } catch {
-      zipProblem = 'The server did not answer. Try again.';
+      zipProblem = 'The server did not respond. Try again.';
     }
     saving = false;
     changed();
@@ -225,7 +225,7 @@
   const open = () => {
     if (!dialog) {
       document.body.insertAdjacentHTML('beforeend', '<dialog class="dialog sky-dialog" id="sky-dialog" aria-labelledby="sky-title"><h2 id="sky-title">The banner\'s sky</h2>'
-        + '<p class="dialog-lead">For every page\'s banner, in this browser. It changes behind this window as you pick. These options and the monsters are also in Settings, Banner.</p><div class="sky-form"></div>'
+        + '<p class="dialog-lead">Applies to the banner on every page, in this browser only. Changes apply immediately. These settings and the monster settings are also under Settings, Banner.</p><div class="sky-form"></div>'
         + '<div class="dialog-foot"><button type="button" class="primary" data-sky-done>Done</button></div></dialog>');
       dialog = document.getElementById('sky-dialog');
       places.push({ el: dialog.querySelector('.sky-form'), inPage: false });
