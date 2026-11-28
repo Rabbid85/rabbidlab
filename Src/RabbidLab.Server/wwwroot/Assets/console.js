@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.440', [
+    'With Follow the clock, the banner now goes by the real sunrise and sunset for the date where the lab is, from its ZIP code, or by the time zone of the computer when no ZIP code is set. Dusk was 5:00 to 7:30 PM all year, so in winter the banner stayed light long after dark.']],
   ['1.1.439', [
     'The client downloaded from the console already knows its server: run it and the computer shows up in Devices. Keep the name of the file as it is, because the address of the server is in it.',
     'Connect this computer links are gone. No link or web page can start the client, connect a computer or move it to another server.']],
@@ -1409,6 +1411,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.440': ['2026-11-27', 'fix', 'The banner goes by sunrise and sunset'],
   '1.1.439': ['2026-11-27', 'update', 'The client download knows its server'],
   '1.1.438': ['2026-11-27', 'feature', 'A Banner page in Settings'],
   '1.1.437': ['2026-11-27', 'fix', 'The client connects only over https'],

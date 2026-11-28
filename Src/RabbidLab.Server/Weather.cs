@@ -71,6 +71,9 @@ public sealed partial class Weather(DataFolder folder, WeatherHttp http, ILogger
 
     public string Zip => file.Read().Zip;
 
+    /// <summary>The middle of the lab's ZIP code area, to a hundredth of a degree: where the banners work the sun out for. Null with no ZIP code.</summary>
+    public (double Lat, double Lon)? Where => Zips.Value.TryGetValue(Zip, out var at) ? (Math.Round(at.Lat, 2), Math.Round(at.Lon, 2)) : null;
+
     /// <summary>The last reading, unless it is too old to show. Null: none yet, or no ZIP.</summary>
     public WeatherReading? Reading
     {
@@ -374,6 +377,8 @@ public static class WeatherApi
     private static object View(Weather weather, bool canSet) => new
     {
         zip = weather.Zip,
+        lat = weather.Where?.Lat,
+        lon = weather.Where?.Lon,
         reading = weather.Reading,
         ahead = weather.Ahead,
         problem = canSet ? weather.Problem : null,

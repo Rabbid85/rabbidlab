@@ -67,6 +67,22 @@
   let wx = null;
   let asking = false;
   let askedAt = 0;
+  // Where the lab is (the middle of its ZIP code area, from the server), for where the sun stands there: Follow the clock
+  // goes by sunrise and sunset (scene.js). Kept in this browser with when it was learned, so the first banner drawn is
+  // right; null when the lab has no ZIP code.
+  const PLACE = 'rabbidlab.sky.place';
+  let lab = { at: 0, spot: null };
+  try {
+    const kept = JSON.parse(localStorage.getItem(PLACE) || 'null');
+    if (kept && (kept.spot === null || (Array.isArray(kept.spot) && kept.spot.length === 2 && kept.spot.every(Number.isFinite)))) lab = { at: Number(kept.at) || 0, spot: kept.spot };
+  } catch {
+    // Asked for again.
+  }
+  // The lab's place, from what the server just answered.
+  const learn = () => {
+    lab = { at: Date.now(), spot: Number.isFinite(wx.lat) && Number.isFinite(wx.lon) ? [wx.lat, wx.lon] : null };
+    try { localStorage.setItem(PLACE, JSON.stringify(lab)); } catch { /* this visit only */ }
+  };
   const headers = { 'X-Rabbid-Lab': '1', 'Content-Type': 'application/json', Accept: 'application/json' };
   const ask = async () => {
     if (asking) return;
@@ -76,6 +92,7 @@
       const r = await fetch('/api/weather', { headers: { Accept: 'application/json' } });
       if (r.ok) {
         wx = await r.json();
+        learn();
         changed();
         draw();
       }
@@ -169,7 +186,7 @@
     try {
       const r = await fetch('/api/settings/weather', { method: 'POST', headers, body: JSON.stringify({ zip: (zipDraft ?? wx?.zip ?? '').trim() }) });
       const j = await r.json().catch(() => ({}));
-      if (r.ok) [wx, zipDraft] = [j, null];
+      if (r.ok) { [wx, zipDraft] = [j, null]; learn(); }
       else zipProblem = j.error || 'The ZIP code could not be saved.';
     } catch {
       zipProblem = 'The server did not answer. Try again.';
@@ -233,6 +250,8 @@
   window.RabbidLabSky = {
     open,
     says,
+    // Where the lab is, [latitude, longitude], or null when the server has no ZIP code for it.
+    place: () => lab.spot,
     // For Overview's words (ovinfo.js): a temperature as a figure, the wind, and the hours to come while the weather shows.
     deg: (c) => (c === null || c === undefined ? '' : `${Math.round(imperial ? (c * 9) / 5 + 32 : c)}°`),
     wind,
@@ -255,8 +274,9 @@
   };
   // The server is asked only while this person shows the weather (or has the window open, which shows the reading) and
   // the tab is in front; a tab that comes back in front asks at once if its reading is five minutes old.
+  // A person who shows no weather still needs the lab's place for the sun: asked for once a day.
   const EVERY = 300000;
-  const due = () => { if (!document.hidden && (st.weather || dialog?.open) && Date.now() - askedAt >= EVERY - 5000) ask(); };
+  const due = () => { if (!document.hidden && (st.weather || dialog?.open || Date.now() - lab.at > 86400000) && Date.now() - askedAt >= EVERY - 5000) ask(); };
   due();
   setInterval(due, EVERY);
   document.addEventListener('visibilitychange', due);

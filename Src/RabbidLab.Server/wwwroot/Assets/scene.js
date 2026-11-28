@@ -165,11 +165,35 @@
   };
   const NAMES = { dawn: 'Dawn', day: 'Day', dusk: 'Dusk', night: 'Night' };
   const asked = new URLSearchParams(location.search).get('time');
-  const timeNow = () => {
-    if (NAMES[asked]) return asked;
-    const m = new Date().getHours() * 60 + new Date().getMinutes();
-    return m >= 360 && m < 480 ? 'dawn' : m >= 480 && m < 1020 ? 'day' : m >= 1020 && m < 1170 ? 'dusk' : 'night';
+  // How high the sun stands over the horizon, in degrees, at a moment (ms) and a place: the Astronomical Almanac's short
+  // formulas, right to a small part of a degree. Worked from the moment itself, so the season and daylight saving time
+  // are in it ("This needs to take into account daylight savings time, it's dark as fuck outside.", of dusk drawn at
+  // 7:09 PM in late November, when dusk was 5 to 7:30 PM by the clock all year).
+  const sunHeight = (ms, lat, lon) => {
+    const rad = Math.PI / 180;
+    const d = ms / 86400000 - 10957.5; // days since noon on 1 January 2000
+    const g = (357.529 + 0.98560028 * d) * rad;
+    const along = (280.459 + 0.98564736 * d + 1.915 * Math.sin(g) + 0.02 * Math.sin(2 * g)) * rad;
+    const tilt = (23.439 - 0.00000036 * d) * rad;
+    const dec = Math.asin(Math.sin(tilt) * Math.sin(along));
+    const turn = ((18.697374558 + 24.06570982441908 * d) * 15 + lon) * rad - Math.atan2(Math.cos(tilt) * Math.sin(along), Math.cos(along));
+    return Math.asin(Math.sin(lat * rad) * Math.sin(dec) + Math.cos(lat * rad) * Math.cos(dec) * Math.cos(turn)) / rad;
   };
+  // Where the sun is worked out for: the lab's place when the server knows it (its ZIP code, sky.js), otherwise a guess
+  // from this computer's time zone: the middle of the zone across, and a middling latitude on its side of the equator
+  // (clocks that go forward in January are south of it).
+  const guess = () => {
+    const y = new Date().getFullYear();
+    const [jan, jul] = [new Date(y, 0, 1).getTimezoneOffset(), new Date(y, 6, 1).getTimezoneOffset()];
+    return [jan < jul ? -35 : 38, -Math.max(jan, jul) / 4];
+  };
+  // The time of day by the sun: day while it stands 6 degrees or more over the horizon, night once it is 6 under (the
+  // end of civil twilight), and dawn or dusk between, as it rises or sets.
+  const timeAt = (ms, [lat, lon]) => {
+    const up = sunHeight(ms, lat, lon);
+    return up >= 6 ? 'day' : up < -6 ? 'night' : sunHeight(ms + 600000, lat, lon) > up ? 'dawn' : 'dusk';
+  };
+  const timeNow = () => (NAMES[asked] ? asked : timeAt(Date.now(), Sky?.place?.() ?? guess()));
 
   // Christmas lights: along the lower edge of each of a pine's three tiers, from one branch tip to the other, 3, 4 and 5
   // plain coloured bulbs, the same colours in the same order on every pine ("Each tree needs the same light setup").
@@ -204,7 +228,7 @@
   // each size ([the drawing's, its left half's], for the wind), and how far below the moon's place the sun or moon stands
   // now (disc). solid: a solid colour is shown in place of the picture.
   const blur = (id, sd) => `<filter id="${id}" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="${sd}"/></filter>`;
-  const Scene = { holiday, snowing: false, solid: false, disc: 0, rnd, f1, blur, still, life, beat, vars, pine, corners, lights: (cx, y, h) => lights(cx, y, h, false, () => 1), near: {}, shore: {} };
+  const Scene = { holiday, snowing: false, solid: false, disc: 0, rnd, f1, blur, still, life, beat, vars, pine, corners, sunHeight, timeAt, lights: (cx, y, h) => lights(cx, y, h, false, () => 1), near: {}, shore: {} };
   window.RabbidLabScene = Scene;
   // A bat: a body, a head with ears, and two scalloped wings that flap from the shoulders, bobbing as it flies. The body
   // and each wing are drawings of their own, so the graphics card flaps, bobs and flies it (overview.css).

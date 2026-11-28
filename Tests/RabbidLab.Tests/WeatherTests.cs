@@ -48,6 +48,30 @@ public sealed class WeatherTests : IDisposable
     }
 
     [Fact]
+    public void The_place_the_banners_work_the_sun_out_for_is_the_zip_codes_and_no_finer()
+    {
+        var weather = Make(new FakeWeatherService());
+        Assert.Null(weather.Where);
+
+        // Chicago's Loop, to a hundredth of a degree (about a kilometre): enough for sunrise and sunset to the minute.
+        weather.SetZip("60601");
+        var (lat, lon) = weather.Where!.Value;
+        Assert.InRange(lat, 41.8, 41.95);
+        Assert.InRange(lon, -87.7, -87.55);
+        Assert.Equal(Math.Round(lat, 2), lat);
+        Assert.Equal(Math.Round(lon, 2), lon);
+    }
+
+    [Fact]
+    public void The_banner_goes_by_the_sun_and_not_by_fixed_hours()
+    {
+        // Dusk was 5:00 to 7:30 PM by the clock all year, so in winter the banner stayed light long after dark.
+        var scene = File.ReadAllText(Path.Combine(ReleaseKeyTests.Root(), "Src", "RabbidLab.Server", "wwwroot", "Assets", "scene.js"));
+        Assert.DoesNotContain("getHours()", scene);
+        Assert.Contains("timeAt(Date.now(), Sky?.place?.() ?? guess())", scene);
+    }
+
+    [Fact]
     public void A_reading_says_what_is_falling_how_hard_and_how_much_cloud()
     {
         var cloudy = Read(Observation("Mostly Cloudy", """{"amount":"FEW"},{"amount":"BKN"}"""));

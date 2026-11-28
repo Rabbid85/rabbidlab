@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.440 (2026-11-27)
+
+- With Follow the clock, the banner now goes by the real sunrise and sunset for the date where the lab is, from its ZIP code, or by the time zone of the computer when no ZIP code is set. Dusk was 5:00 to 7:30 PM all year, so in winter the banner stayed light long after dark.
+
 ## 1.1.439 (2026-11-27)
 
 - The client downloaded from the console already knows its server: run it and the computer shows up in Devices. Keep the name of the file as it is, because the address of the server is in it.
