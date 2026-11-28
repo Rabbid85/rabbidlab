@@ -7,8 +7,10 @@
 -->
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
   <Package Name="Rabbid Lab Client" Manufacturer="Rabbid" Version="$(Version)" UpgradeCode="C344F3AC-01E7-4D01-AB7E-C0BB0DF38689" Scope="perMachine" Compressed="yes">
-    <!-- The same version built again replaces the one installed, not a second entry beside it. -->
-    <MajorUpgrade AllowSameVersionUpgrades="yes" DowngradeErrorMessage="A newer version of the Rabbid Lab client is already installed." />
+    <!-- The same version built again replaces the one installed, not a second entry beside it. The old client is
+         removed last, in the same transaction, so a failed update rolls back to it (until 1.1.447 it was removed first
+         and a failure left no client). Safe only while the Program component keeps its id: build.ps1 checks both. -->
+    <MajorUpgrade Schedule="afterInstallExecute" AllowSameVersionUpgrades="yes" DowngradeErrorMessage="A newer version of the Rabbid Lab client is already installed." />
     <MediaTemplate EmbedCab="yes" />
     <Icon Id="rabbidlab.ico" SourceFile="$(Icon)" />
     <Property Id="ARPPRODUCTICON" Value="rabbidlab.ico" />

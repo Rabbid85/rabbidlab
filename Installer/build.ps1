@@ -77,7 +77,9 @@ if ($Stage -ne 'Setup') {
 param([string] $Msi)
 $installer = New-Object -ComObject WindowsInstaller.Installer
 $db = $installer.GetType().InvokeMember('OpenDatabase', 'InvokeMethod', $null, $installer, @($Msi, 0))
-foreach ($ask in 'SELECT `Version` FROM `File` WHERE `File` = ''ClientExe''', 'SELECT `Value` FROM `Property` WHERE `Property` = ''ProductVersion''') {
+foreach ($ask in 'SELECT `Version` FROM `File` WHERE `File` = ''ClientExe''', 'SELECT `Value` FROM `Property` WHERE `Property` = ''ProductVersion''',
+        'SELECT `ComponentId` FROM `Component` WHERE `Component` = ''Program''', 'SELECT `Sequence` FROM `InstallExecuteSequence` WHERE `Action` = ''InstallExecute''',
+        'SELECT `Sequence` FROM `InstallExecuteSequence` WHERE `Action` = ''RemoveExistingProducts''', 'SELECT `Sequence` FROM `InstallExecuteSequence` WHERE `Action` = ''InstallFinalize''') {
     $view = $db.GetType().InvokeMember('OpenView', 'InvokeMethod', $null, $db, @($ask))
     [void]$view.GetType().InvokeMember('Execute', 'InvokeMethod', $null, $view, $null)
     $row = $view.GetType().InvokeMember('Fetch', 'InvokeMethod', $null, $view, $null)
@@ -89,7 +91,16 @@ foreach ($ask in 'SELECT `Version` FROM `File` WHERE `File` = ''ClientExe''', 'S
     if ($inMsi.exe -ne "$version.0" -or $inMsi.product -ne $version) {
         throw "The client MSI holds RabbidLab-Client.exe $($inMsi.exe) as product $($inMsi.product), not ${version}: it would not replace an older client. Nothing was published."
     }
-    "Client MSI: RabbidLab-Client.exe $($inMsi.exe), product $($inMsi.product)"
+    # An update removes the old client last, after the new one is in (Package.wxs). That only keeps the client while the
+    # Program component has the id every client since 1.0.0 has: with another id, removing the old one deletes the
+    # service and the program the new one just installed.
+    $program = '{F40E4F28-4A72-5B70-91B4-2ECCE0A41EC2}'
+    $order = @($read[3..5] | ForEach-Object { [int]"0$_" })
+    if ("$($read[2])" -ne $program) { throw "The client MSI's Program component is $($read[2]), not ${program}: an update would remove the client it had just installed. Nothing was published." }
+    if (-not ($order[0] -gt 0 -and $order[0] -lt $order[1] -and $order[1] -lt $order[2])) {
+        throw "The client MSI removes the old client at $($order[1]), not between InstallExecute ($($order[0])) and InstallFinalize ($($order[2])): a failed update would leave no client. Nothing was published."
+    }
+    "Client MSI: RabbidLab-Client.exe $($inMsi.exe), product $($inMsi.product), old client removed last"
     $handout = Join-Path $publish 'Client'
     New-Item -ItemType Directory -Force $handout | Out-Null
     Copy-Item (Join-Path $clientOut 'msi\RabbidLab-Client.msi') (Join-Path $handout 'RabbidLab-Client.msi') -Force

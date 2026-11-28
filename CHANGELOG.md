@@ -2,6 +2,11 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.448 (2026-11-28)
+
+- A client update now installs the new client before it removes the old one. If the update fails, Windows Installer rolls it back and the old client keeps running. Before, a failed update could leave a computer with no client.
+- A release is not published if its client installer would update any other way.
+
 ## 1.1.447 (2026-11-28)
 
 - Devices, Deploy the client now lists every computer in the domain with its state: Installed, Pending approval, Install failed or Not installed. Select a computer and click Get install log to read why an install failed. It asks for an administrator login when it needs one and does not save it.
