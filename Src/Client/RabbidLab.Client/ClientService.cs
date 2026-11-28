@@ -151,6 +151,10 @@ internal sealed class ClientService : ServiceBase
                 {
                     break; // Check in now
                 }
+                if (stop.IsCancellationRequested)
+                {
+                    break; // stopping: no icon is started on the way out, where it would hold the file an update replaces
+                }
                 try
                 {
                     TrayStarter.Ensure();
@@ -235,6 +239,15 @@ internal static class Updater
             // A server without the MSI, or a download cut short: tried again in ten minutes.
             Problems.Note("update", $"Could not download client {status.ServerVersion} from the server.");
             return;
+        }
+        // The tray icons close first, so the installer doesn't wait for the program file (TrayStarter.StepAside).
+        try
+        {
+            TrayStarter.StepAside();
+        }
+        catch (Exception)
+        {
+            // The update goes ahead: the installer waits for the file.
         }
         // msiexec carries on after this service stops for the upgrade, and starts the new one.
         var system = Environment.GetFolderPath(Environment.SpecialFolder.System);

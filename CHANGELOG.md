@@ -2,6 +2,10 @@
 
 What changed in each version of Rabbid Lab. The console shows the same notes under What's new.
 
+## 1.1.450 (2026-11-28)
+
+- Before a client update is installed, the tray icon closes, and it opens again when the update is done. With the icon open, an update took about 45 seconds longer, the computer showed as offline for that time, and Windows marked the update as needing a restart.
+
 ## 1.1.448 (2026-11-28)
 
 - A client update now installs the new client before it removes the old one. If the update fails, Windows Installer rolls it back and the old client keeps running. Before, a failed update could leave a computer with no client.

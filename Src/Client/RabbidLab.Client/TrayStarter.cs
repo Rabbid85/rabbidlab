@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Security.AccessControl;
 using System.Text;
+using System.Threading;
 
 namespace RabbidLab.Client;
 
@@ -21,11 +23,64 @@ internal static class TrayStarter
     private static readonly Dictionary<int, DateTime> old = new();
     private static readonly TimeSpan Grace = TimeSpan.FromSeconds(20);
 
+    // No icon is started before this: an update is being installed, and the new service starts them.
+    private static DateTime holdUntil = DateTime.MinValue;
+
+    /// <summary>
+    /// Before an update: every tray icon is asked to close, so nothing has the program file open when the installer
+    /// replaces it. With an icon open, Windows Installer waited 45 seconds for the file and marked the update as needing
+    /// a restart (seen with 1.1.448). The service that starts after the update starts the icons again (Ensure).
+    /// </summary>
+    public static void StepAside()
+    {
+        holdUntil = DateTime.UtcNow.AddMinutes(2);
+        var name = Path.GetFileNameWithoutExtension(typeof(TrayStarter).Assembly.Location);
+        foreach (var session in Open(name))
+        {
+            try
+            {
+                // Each icon's own signal, in its own session (Tray.LeaveName).
+                if (EventWaitHandle.TryOpenExisting($@"Session\{session}\{Tray.LeaveName}", EventWaitHandleRights.Modify, out var leave))
+                {
+                    leave.Set();
+                    leave.Dispose();
+                }
+            }
+            catch (Exception e) when (e is UnauthorizedAccessException or IOException or WaitHandleCannotBeOpenedException)
+            {
+                // That one stays: the installer waits for the file.
+            }
+        }
+        // They go at once. Four seconds at most; the update goes ahead either way.
+        var until = DateTime.UtcNow.AddSeconds(4);
+        while (DateTime.UtcNow < until && Open(name).Count > 0)
+        {
+            Thread.Sleep(100);
+        }
+    }
+
+    // The sessions with this program open in them: tray icons, and the client's windows. Not the service's own.
+    private static HashSet<int> Open(string name)
+    {
+        var sessions = new HashSet<int>();
+        foreach (var p in Process.GetProcessesByName(name))
+        {
+            using (p)
+            {
+                if (p.SessionId != 0)
+                {
+                    sessions.Add(p.SessionId);
+                }
+            }
+        }
+        return sessions;
+    }
+
     public static void Ensure()
     {
-        if (Settings.Read().Quiet)
+        if (Settings.Read().Quiet || DateTime.UtcNow < holdUntil)
         {
-            return; // nothing for people at the computer to see
+            return; // nothing for people at the computer to see, or an update is going in
         }
         string exe;
         string installed; // where Windows says this service's own program file is: the installed one

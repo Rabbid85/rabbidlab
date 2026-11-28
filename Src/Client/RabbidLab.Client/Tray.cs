@@ -20,12 +20,16 @@ internal sealed class Tray : ApplicationContext
     /// <summary>Set by a second copy (the Start menu shortcut) to have the one that's running open its window.</summary>
     public const string ShowSignal = @"Local\RabbidLab.Client.Show";
 
+    /// <summary>Set by the service before it installs an update, so this program closes and lets go of its file (TrayStarter.StepAside).</summary>
+    public const string LeaveName = "RabbidLab.Client.Leave";
+
     private readonly NotifyIcon icon;
     private readonly ContextMenuStrip menu = new();
     private readonly ToolStripMenuItem heading = new() { Enabled = false };
     private readonly System.Windows.Forms.Timer timer = new() { Interval = 5000 };
     private readonly Control pump = new(); // a handle on this thread, for the signal to come back to
     private readonly EventWaitHandle signal = new(false, EventResetMode.AutoReset, ShowSignal);
+    private readonly EventWaitHandle leave = new(false, EventResetMode.AutoReset, $@"Local\{LeaveName}");
     private ClientWindow? window;
     private Status? last;
     private Ink ink = Ink.Now(null);
@@ -77,6 +81,19 @@ internal sealed class Tray : ApplicationContext
                 // Closing.
             }
         }, null, Timeout.Infinite, executeOnlyOnce: false);
+        // An update is about to replace this program: it closes, keeping an open window's place, and the new service
+        // starts the icon again.
+        ThreadPool.RegisterWaitForSingleObject(leave, (_, _) =>
+        {
+            try
+            {
+                pump.BeginInvoke((Action) Quit);
+            }
+            catch (InvalidOperationException)
+            {
+                // Closing.
+            }
+        }, null, Timeout.Infinite, executeOnlyOnce: true);
         var kept = Kept(take: true);
         if (open || kept is not null)
         {

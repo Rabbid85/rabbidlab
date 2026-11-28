@@ -3,6 +3,8 @@
 // (Access.cs). Setup's What's new reads RELEASE_NOTES from this file. Each version's notes are here and, word for word,
 // in CHANGELOG.md (ChangelogTests checks): newest first, each note one sentence first.
 const RELEASE_NOTES = [
+  ['1.1.450', [
+    'Before a client update is installed, the tray icon closes, and it opens again when the update is done. With the icon open, an update took about 45 seconds longer, the computer showed as offline for that time, and Windows marked the update as needing a restart.']],
   ['1.1.448', [
     'A client update now installs the new client before it removes the old one. If the update fails, Windows Installer rolls it back and the old client keeps running. Before, a failed update could leave a computer with no client.',
     'A release is not published if its client installer would update any other way.']],
@@ -1444,6 +1446,7 @@ const RELEASE_NOTES = [
 // Each version's date, as CHANGELOG.md says, and for newer ones its kind (feature, fix or update), a short title, and for a
 // feature a screenshot in Assets/news, for the news cards on Overview and the What's new timeline. A new version gets a line here.
 const RELEASE_INFO = {
+  '1.1.450': ['2026-11-28', 'fix', 'Client updates no longer wait for the tray icon'],
   '1.1.448': ['2026-11-28', 'fix', 'A failed client update keeps the old client'],
   '1.1.447': ['2026-11-28', 'feature', 'See which computers have the client'],
   '1.1.446': ['2026-11-28', 'fix', 'Deploy GPO: fingerprint and retries'],
